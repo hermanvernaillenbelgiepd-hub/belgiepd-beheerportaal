@@ -13,7 +13,7 @@ import { installCallsignRoutes } from './callsign-routes.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import { installRoleRoutes } from './role-routes.js';
-
+import { installLeaveRoutes } from './leave-routes.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 app.disable('x-powered-by');
@@ -24,6 +24,7 @@ app.use('/api/callsigns',express.json({limit:'12kb',strict:true}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
+app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
 installRoleRoutes(app);
@@ -147,6 +148,7 @@ app.get('/api/dossiers/:dept/:discordId',requireUser,async(req,res)=>{
 installRegistrationRoutes(app,{requireUser,getSnapshot});
 installManagementRoutes(app,{requireUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
+installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 app.get('/api/health',(_req,res)=>res.json({status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded'}));
 app.use('/api',(_req,res)=>res.status(404).json({error:'Niet gevonden'}));
 app.listen(Number(process.env.PORT)||8080,()=>console.log('BelgiumPD op poort '+(process.env.PORT||8080)));
