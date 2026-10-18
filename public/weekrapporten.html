@@ -1,0 +1,169 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Personeelsdossiers en weekrapporten – BelgiëPD Beheerportaal</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,'Segoe UI',Arial,sans-serif;background:#090f1c;color:#e7edf8}*{box-sizing:border-box}body{margin:0}a{color:#9cbbff;text-decoration:none}a:hover{text-decoration:underline}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.48;cursor:not-allowed}.hidden{display:none!important}
+header{border-bottom:1px solid #24354e;background:#0c1628;position:sticky;top:0;z-index:5}.head{max-width:1250px;margin:auto;display:flex;align-items:center;gap:16px;padding:15px 20px}.brand{font-weight:750;font-size:18px;color:white}.subtitle{font-size:12px;color:#a0b0c9;margin-top:4px}.head-right{margin-left:auto;display:flex;align-items:center;gap:12px}#authStatus{font-size:12px;color:#acbfdd}.tag{font-size:11px;border:1px solid #365273;border-radius:15px;padding:5px 9px;color:#abc9f7}
+main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:22px}h1{font-size:27px;margin:0 0 7px}h2{font-size:18px;margin:0 0 10px}h3{font-size:15px;margin:0 0 12px}p{margin:6px 0;color:#b4c1d6;line-height:1.5;font-size:14px}.muted{font-size:12px;color:#aebbd0}.tabbar{display:flex;gap:9px;margin:0 0 22px;flex-wrap:wrap}.tab{border:1px solid #2a4161;background:#112039;color:#a9c2e7;padding:10px 16px;border-radius:9px}.tab.active{color:#fff;background:#234881;border-color:#497cbb}.layout{display:grid;grid-template-columns:1.02fr .98fr;gap:18px}.card{border:1px solid #283a57;border-radius:13px;background:#101d32;padding:21px;margin-bottom:18px}.card h2,.card h3{color:#f3f7ff}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.full{grid-column:1/-1}.field-label{font-size:12px;color:#bdd0e9;display:block;margin:0 0 7px}input,select,textarea{color:#eaf2ff;background:#0b1628;border:1px solid #344c70;border-radius:9px;padding:11px 12px;width:100%;outline:none}input:focus,select:focus,textarea:focus{border-color:#6999de}textarea{resize:vertical;min-height:100px}input[type=date]{color-scheme:dark}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:17px}.primary,.secondary,.ghost{border-radius:9px;padding:10px 15px;font-weight:600}.primary{background:#3675da;border:1px solid #4d88ee;color:#fff}.secondary{background:#172b46;border:1px solid #3a5478;color:#d8e8fc}.ghost{background:transparent;border:1px solid #37516f;color:#a8ccfa}.info{background:#142740;border-left:3px solid #6497db;padding:12px 14px;border-radius:6px;margin-bottom:18px;color:#bed5f6;font-size:13px;line-height:1.5}.warn{background:#382816;border-left-color:#f1bd61;color:#fce7bb}.status{padding:10px 14px;border-radius:9px;white-space:pre-wrap;font-size:13px;margin-bottom:16px}.status.error{background:#3c1d28;color:#ffd4d9}.status.good{background:#153b32;color:#b7f6d8}.status.notice{background:#16334e;color:#c7e7ff}
+.item{border:1px solid #2c405d;padding:12px 14px;border-radius:10px;margin:10px 0;background:#0b182b}.item-title{font-size:14px;font-weight:650;color:#e6f0ff}.item-meta{font-size:11px;color:#abc3df;margin-top:6px}.item-body{font-size:13px;line-height:1.55;color:#d6dfee;white-space:pre-wrap;margin-top:7px;overflow-wrap:anywhere}.pill{display:inline-block;font-size:11px;border:1px solid #43658c;padding:4px 8px;border-radius:16px;color:#b3d3ff;margin-left:6px}.nowrap{white-space:nowrap}.section-title{padding-bottom:9px;border-bottom:1px solid #243853;margin-bottom:12px}.report-preview{max-height:600px;overflow-y:auto}footer{max-width:1250px;margin:auto;border-top:1px solid #24354e;padding:18px 20px 30px;color:#92abc9;font-size:12px}@media(max-width:820px){.layout{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.head{flex-wrap:wrap}.head-right{margin-left:0;width:100%;justify-content:space-between}.intro{display:block}}
+
+/* v0.9: rubrieken, compacte overzichtstabellen en overzichtelijke exportknoppen. */
+.report-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.report-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.report-actions button{font-size:12px;padding:8px 11px}
+.report-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:15px 0}
+.report-kpi{border:1px solid #304b6b;background:#132743;border-radius:9px;padding:12px 9px}
+.report-kpi span{font-size:11px;color:#a9c6e9;display:block}
+.report-kpi strong{font-size:22px;color:#fff;display:block;margin-top:4px}
+.report-meta{font-size:12px;line-height:1.5;color:#c9d8ef;margin:8px 0 12px}
+.report-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px;margin:8px 0 18px}
+.report-table th{text-align:left;background:#1a3354;padding:9px 7px;color:#f1f6ff;font-size:11px}
+.report-table td{border-bottom:1px solid #32465f;padding:9px 7px;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}
+.report-table th:nth-child(1),.report-table td:nth-child(1){width:88px}
+.report-table th:nth-child(2),.report-table td:nth-child(2){width:105px}
+.report-table th:nth-child(3),.report-table td:nth-child(3){width:92px}
+.report-table small{display:block;color:#b0c4e0;font-size:10px;margin-top:2px}
+.report-section{break-inside:avoid-page;margin-top:20px}
+.report-table tr{break-inside:avoid}
+#printSheet{display:none}
+@media(max-width:700px){.report-summary{grid-template-columns:repeat(2,1fr)}.report-table{font-size:11px}.report-table th:nth-child(1),.report-table td:nth-child(1){width:72px}.report-table th:nth-child(2),.report-table td:nth-child(2){width:85px}.report-table th:nth-child(3),.report-table td:nth-child(3){width:75px}}
+@page{size:A4 landscape;margin:13mm}
+@media print{
+ body{color:#0b1930;background:#fff!important;font-family:Arial,sans-serif;font-size:10pt}
+ body>header,body>main,body>footer{display:none!important}
+ #printSheet{display:none!important;color:#142236}
+ body.can-export #printSheet{display:block!important}
+ body:not(.can-export)::before{content:"PDF-export is alleen toegestaan voor officierenkader en korpsleiding.";display:block;color:#222;font:14pt Arial,sans-serif;padding:20mm}
+ #printSheet h1{color:#152f55;font-size:21pt;margin:0 0 9pt}
+ #printSheet h3{font-size:12pt;margin:12pt 0 7pt;color:#173a68}
+ #printSheet p,#printSheet .report-meta{color:#334760}
+ #printSheet .report-kpi{background:#f2f6fb;border:1px solid #bccce1}
+ #printSheet .report-kpi span{color:#39516c}
+ #printSheet .report-kpi strong{color:#13345a}
+ #printSheet .report-table th{background:#dce7f6;color:#143158}
+ #printSheet .report-table td{color:#17263a;border-bottom:1px solid #c4d1e0}
+ #printSheet .report-table small{color:#566779}
+ #printSheet .info.warn{color:#573e0b;background:#fff2d6;border-color:#c69535}
+ #printSheet .report-summary{grid-template-columns:repeat(3,1fr)}
+ #printSheet .section-title{border-color:#bed0e0}
+}
+</style></head><body>
+<header><div class="head"><div><div class="brand">BelgiëPD Beheerportaal</div><div class="subtitle">Personeelsdossiers · Registraties · Weekrapporten</div></div><a href="/" class="ghost" style="padding:9px 12px;border-radius:9px">← Personeelsbeheer</a><div class="head-right"><a href="/discord-status.html" style="color:#adc9ff;font-size:12px">Discord-test</a><span id="authStatus">Aanmelding controleren…</span><button class="secondary" id="authBtn" type="button">Google aanmelden</button></div></div></header>
+<main><div class="intro"><div><h1>Dossieradministratie & weekrapporten</h1><p>Beveiligde Firestore-registraties op basis van Discord ID, gescheiden van de originele Google Sheets.</p></div><span class="tag">v0.9 · TESTOMGEVING</span></div>
+<div class="info">Middenkader kan personeelsdossiers beheren en promotievoorstellen indienen. Naamswijzigingen en definitieve personeelsbewegingen mogen uitsluitend door officierenkader en korpsleiding worden vastgelegd. De oorspronkelijke Google-personeelslijst wordt niet aangepast. Rapporten zijn voorlopig <strong>dynamische concepten</strong>, geen afgesloten archieven.</div>
+<div id="status" role="status" aria-live="polite"></div>
+<section id="needLogin" class="card"><h2>Google-aanmelding vereist</h2><p>Gebruik je eigen gemachtigde BelgiumPD-account. Het basiskader kan deze dossiers en weekrapporten niet openen.</p></section>
+<div id="app" class="hidden"><div class="tabbar"><button id="tabCases" class="tab active" type="button">Personeelsdossiers</button><button id="tabReports" class="tab" type="button">Weekrapportdatabase</button><a class="tab" href="/registraties.html">Observaties & sancties</a></div>
+<section id="casesView"><div class="layout"><div>
+<div class="card"><h2>Nieuwe dossierregistratie</h2><p id="actorLabel">Identiteit laden...</p><form id="caseForm"><div class="form-grid">
+<div><label class="field-label" for="caseDept">Hulpdienst</label><select id="caseDept" required></select></div>
+<div><label class="field-label" for="casePerson">Betrokken personeelslid</label><select id="casePerson" required></select></div>
+<div><label class="field-label" for="entryType">Categorie</label><select id="entryType" required></select></div>
+<div><label class="field-label" for="entryDate">Datum gebeurtenis</label><input type="date" id="entryDate" required></div>
+<div id="endDateWrap" class="hidden"><label class="field-label" for="endDate">Einddatum verlof</label><input type="date" id="endDate"></div>
+<div id="courseWrap" class="hidden"><label class="field-label" for="courseName">Naam van de opleiding</label><input id="courseName" maxlength="150" placeholder="Afgeronde opleiding"></div>
+<div id="nameWrap" class="hidden"><label class="field-label" for="newName">Nieuwe naam</label><input id="newName" maxlength="100"></div>
+<div id="rankWrap" class="hidden"><label class="field-label" for="proposedRank">Voorgestelde graad</label><input id="proposedRank" maxlength="140"></div>
+<div id="movementWrap" class="hidden"><label class="field-label" for="movement">Soort personeelsbeweging</label><input id="movement" maxlength="150"></div>
+<div class="full"><label class="field-label" for="details">Omschrijving / motivering</label><textarea id="details" maxlength="4000" required placeholder="Omschrijf de feiten en de relevante beslissing of opvolging"></textarea></div>
+<div class="full"><label class="field-label" for="referenceUrl">Bewijs- of documentlink (optioneel, https)</label><input id="referenceUrl" type="url" maxlength="800" placeholder="https://..."></div>
+</div><div class="buttons"><button class="primary" id="saveCase" type="submit">Registratie opslaan</button></div></form><p class="muted">De werkelijke auteur wordt automatisch vastgelegd via Google-login en gekoppelde Discord ID. Personeelsbewegingen worden hier alleen gelogd, niet naar Google Sheets gesynchroniseerd.</p></div></div>
+<div><div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h2>Personeelsdossier</h2><button class="secondary" id="reloadCases" type="button">Verversen</button></div><p class="muted">Inclusief eerder opgeslagen observaties en sancties. Hogere leiding kan afzonderlijke testregistraties markeren zonder ze te verwijderen.</p><div id="caseList">Selecteer een personeelslid.</div></div></div></div></section>
+<section id="reportsView" class="hidden"><div class="layout"><div>
+<div class="card"><h2>Nieuw weekrapport (concept)</h2><form id="reportForm"><div class="form-grid"><div class="full"><label class="field-label" for="reportTitle">Titel</label><input id="reportTitle" required maxlength="120" placeholder="Weekrapport Politie – periode van 14 dagen"></div><div><label class="field-label" for="reportDept">Hulpdienst</label><select id="reportDept" required></select></div><div><label class="field-label" for="periodStart">Begindatum</label><input id="periodStart" type="date" required></div><div><label class="field-label" for="periodEnd">Einddatum</label><input id="periodEnd" type="date" required></div><p class="muted" id="periodNote">Standaard 14 kalenderdagen (inclusief begin- en einddatum). Beide datums zijn vrij aanpasbaar, tot maximaal 31 dagen.</p></div><div class="buttons"><button class="primary" id="createReport" type="submit">Conceptweekrapport aanmaken</button></div></form></div>
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:9px"><h2>Bewaarde weekrapporten</h2><button class="secondary" id="reloadReports" type="button">Verversen</button></div><p class="muted">Concepten worden in Firestore bewaard. Klik om actuele dossierregistraties voor de periode samen te stellen.</p><div id="reportList"></div></div></div>
+<div><div class="card"><div class="report-heading"><h2>Rapportinhoud</h2><div class="report-actions hidden" id="reportExportActions"><button class="secondary" id="exportDocx" type="button" disabled>Word downloaden</button><button class="secondary" id="exportPrint" type="button" disabled>PDF opslaan / afdrukken</button></div></div><p class="muted hidden" id="exportReadOnlyNote">Je kunt dit weekrapport bekijken. Downloaden als Word of PDF is alleen toegestaan voor officierenkader en korpsleiding.</p><p class="muted">Automatisch samengesteld uit bestaande Firestore-dossiers; Word-documenten en oude Google-dossierbladen zijn nog niet geïmporteerd.</p><div id="reportContents" class="report-preview">Selecteer links een weekrapport.</div></div></div></div></section></div>
+</main><footer>BelgiëPD Beheerportaal · Alleen gemachtigde kaderleden · Google Sheets blijft alleen-lezen · Geen Discord-berichten</footer>
+<script type="module">
+const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const labels={observatie:'Observatie',sanctie:'Sanctie',verlof:'Verlof',notitie:'Personeelsnotitie',opleiding:'Gedane opleiding',naamswijziging:'Naamswijziging',promotievoorstel:'Promotievoorstel',personeelsbeweging:'Personeelsbeweging'};
+const extraFields={verlof:['endDateWrap'],opleiding:['courseWrap'],naamswijziging:['nameWrap'],promotievoorstel:['rankWrap'],personeelsbeweging:['movementWrap']};
+const allTypes=['verlof','notitie','opleiding','promotievoorstel','naamswijziging','personeelsbeweging'];
+let firebaseAuth=null,authModule=null,authApp=null,subjects=[],viewData=null,currentTab='cases',reportItems=[],activeReport=null;
+const msg=(message,kind='notice')=>{$('status').textContent=message;$('status').className='status '+kind;};
+const fmt=d=>d?new Date(d).toLocaleString('nl-BE'):'—';
+const roleHigher=r=>['officierenkader','korpsleiding'].includes(r);
+function selectOptions(el,items,placeholder){el.replaceChildren();const o=document.createElement('option');o.value='';o.textContent=placeholder;el.append(o);items.forEach(it=>{const a=document.createElement('option');a.value=it.value;a.textContent=it.label;el.append(a)})}
+async function api(url,method='GET',body){if(!firebaseAuth?.currentUser)throw new Error('Niet aangemeld');const token=await firebaseAuth.currentUser.getIdToken();const resp=await fetch(url,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'});const data=await resp.json().catch(()=>({}));if(!resp.ok)throw new Error(data.error||'HTTP '+resp.status);return data}
+function setTab(tab){currentTab=tab;const reports=tab==='reports';$('casesView').classList.toggle('hidden',reports);$('reportsView').classList.toggle('hidden',!reports);$('tabCases').classList.toggle('active',!reports);$('tabReports').classList.toggle('active',reports);if(reports)loadReports();else loadCases();}
+function filterCases(){const d=$('caseDept').value;const opts=subjects.filter(p=>p.dept===d).sort((a,b)=>a.call.localeCompare(b.call,'nl',{numeric:true})).map(p=>({value:p.discordId,label:`${p.call} – ${p.name}`}));const old=$('casePerson').value;selectOptions($('casePerson'),opts,'Selecteer personeelslid');if(opts.some(o=>o.value===old))$('casePerson').value=old;loadCases()}
+function changeExtra(){const t=$('entryType').value;Object.values(extraFields).flat().forEach(id=>$(id).classList.add('hidden'));(extraFields[t]||[]).forEach(id=>$(id).classList.remove('hidden'))}
+function renderEntry(e,allowClassify=false){const by=e.registeredBy?.name||'Onbekende auteur';const special=e.courseName||e.proposedRank||e.newName||e.movement||e.sanctionType||'';const flagged=e.testRecord===true;const control=allowClassify&&viewData?.canClassifyTests?`<div class="buttons"><button class="secondary" type="button" data-classify-entry="${esc(e.id)}" data-flagged="${flagged}">${flagged?'Testmarkering opheffen':'Als testregistratie markeren'}</button></div>`:'';return `<div class="item"><div class="item-title">${esc(labels[e.type]||e.type)} ${flagged?'<span class="pill">TEST – niet in weekrapport</span>':''} ${special?`<span class="pill">${esc(special)}</span>`:''}</div><div class="item-meta">${esc(e.eventDate||'Geen datum')} · Door ${esc(by)} · ${esc(e.subjectCallAtCreation||'')}</div><div class="item-body">${esc(e.details||e.explanation||'Geen omschrijving')}</div>${control}</div>`} 
+async function loadCases(){if(!viewData||!$('casePerson').value||!$('caseDept').value){$('caseList').textContent='Selecteer een personeelslid.';return}const id=$('casePerson').value,dept=$('caseDept').value;$('caseList').textContent='Dossierregistraties laden...';try{const data=await api(`/api/management/cases?dept=${encodeURIComponent(dept)}&discordId=${encodeURIComponent(id)}`);$('caseList').innerHTML=data.entries.length?data.entries.map(e=>renderEntry(e,true)).join(''):'Geen interne dossierregistraties gevonden.';if(data.limited)msg('Dossieroverzicht toont maximaal 150 recente registraties.','notice')}catch(e){$('caseList').textContent=e.message}}
+function renderReports(){const root=$('reportList');root.innerHTML=reportItems.length?reportItems.map(r=>`<div class="item"><div class="item-title">${esc(r.title)} <span class="pill">${esc(r.status||'concept')}</span></div><div class="item-meta">${esc(r.periodStart)} t/m ${esc(r.periodEnd)} · ${esc(r.createdBy?.name||'')}</div><div class="buttons"><button class="secondary" type="button" data-open-report="${esc(r.id)}">Inhoud bekijken</button></div></div>`).join(''):'Nog geen weekrapporten voor deze hulpdienst.'}
+async function loadReports(){resetReportExport();$('reportContents').textContent='Selecteer links een weekrapport.';if(!viewData||!$('reportDept').value)return;const dept=$('reportDept').value;$('reportList').textContent='Weekrapporten laden...';try{const data=await api('/api/management/reports?dept='+encodeURIComponent(dept));reportItems=data.reports;renderReports();if(data.limited)msg('Maximaal 100 recente weekrapporten worden getoond.','notice')}catch(e){$('reportList').textContent=e.message}}
+function reportText(e){
+  const attrs=[];
+  if(e.sanctionType)attrs.push('Sanctie: '+e.sanctionType);
+  if(Array.isArray(e.reasons)&&e.reasons.length)attrs.push('Redenen: '+e.reasons.join(', '));
+  if(e.severity!==undefined&&e.severity!==null)attrs.push('Ernst: '+e.severity+'/10');
+  if(e.status&&e.type==='sanctie')attrs.push('Status: '+e.status);
+  for(const [key,label] of [['endDate','Einddatum'],['courseName','Opleiding'],['newName','Nieuwe naam'],['proposedRank','Voorgestelde graad'],['movement','Personeelsbeweging'],['otherPlayers','Andere betrokkenen'],['referenceUrl','Bijlage'],['evidenceUrl','Bijlage']]){if(e[key])attrs.push(label+': '+e[key]);}
+  if(e.details||e.explanation)attrs.push(e.details||e.explanation);
+  return attrs.join('\n')||'Geen omschrijving';
+}
+function reportSection(section){
+  const rows=section.entries.map(e=>`<tr><td>${esc(e.eventDate||'—')}</td><td><strong>${esc(e.subjectNameAtCreation||'—')}</strong><small>Roepnr. ${esc(e.subjectCallAtCreation||'—')}</small></td><td>${esc(e.registeredBy?.name||'Onbekend')}</td><td>${esc(reportText(e))}</td></tr>`).join('');
+  return `<section class="report-section"><h3 class="section-title">${esc(section.label)} (${section.entries.length})</h3>${rows?`<table class="report-table"><thead><tr><th>Datum</th><th>Personeelslid</th><th>Door</th><th>Registratie / omschrijving</th></tr></thead><tbody>${rows}</tbody></table>`:'<p class="muted">Geen registraties in deze categorie.</p>'}</section>`;
+}
+function renderReport(out){
+  const summary=`<div class="report-summary"><div class="report-kpi"><span>Registraties</span><strong>${out.recordCount}</strong></div><div class="report-kpi"><span>Rubrieken</span><strong>${out.sections.filter(s=>s.entries.length).length}</strong></div><div class="report-kpi"><span>Testregistraties uitgesloten</span><strong>${out.excludedTestCount||0}</strong></div></div>`;
+  const info=`<h1>${esc(out.report.title)}</h1><div class="report-meta"><strong>BelgiëPD Beheerportaal</strong> · ${esc(out.report.dept)} · ${esc(out.report.periodStart)} t/m ${esc(out.report.periodEnd)}<br/>Opgesteld door ${esc(out.report.createdBy?.name||'Onbekend')} · Status: <strong>CONCEPT</strong></div>${summary}<div class="info warn">${esc(out.disclaimer)}</div>`;
+  const end=out.truncated?'<div class="info warn">Let op: ten minste één dossier bevat meer registraties dan deze weergave kan verwerken. Export is geblokkeerd; dit rapport is onvolledig.</div>':'';
+  return info+out.sections.map(reportSection).join('')+end;
+}
+function resetReportExport(){activeReport=null;$('exportDocx').disabled=true;$('exportPrint').disabled=true;$('printSheet').replaceChildren();}
+async function openReport(id){
+  resetReportExport();$('reportContents').textContent='Dossiergegevens voor de periode ophalen...';
+  try{
+    const out=await api('/api/management/reports/'+encodeURIComponent(id));
+    const html=renderReport(out);
+    $('reportContents').innerHTML=html;
+    // Alleen toegestane exportgebruikers krijgen het afzonderlijke afdrukdocument.
+    if(viewData?.canExportReports) $('printSheet').innerHTML=html;
+    if(!out.truncated && viewData?.canExportReports){activeReport=id;$('exportDocx').disabled=false;$('exportPrint').disabled=false;}
+    else msg('Dit weekrapport is niet volledig. Downloaden of afdrukken is geblokkeerd.','error');
+  }catch(e){$('reportContents').textContent='Rapport niet geladen: '+e.message}
+}
+async function exportWord(){
+  if(!viewData?.canExportReports||!activeReport||!firebaseAuth?.currentUser)return;
+  const btn=$('exportDocx');btn.disabled=true;
+  try{
+    const token=await firebaseAuth.currentUser.getIdToken();
+    const res=await fetch('/api/management/reports/'+encodeURIComponent(activeReport)+'/docx',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+    if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error||'Word-export mislukt (HTTP '+res.status+')')}
+    const blob=await res.blob();
+    const disposition=res.headers.get('Content-Disposition')||'';
+    const name=/filename="([A-Za-z0-9_.-]+\.docx)"/.exec(disposition)?.[1]||'BelgiePD_Weekrapport.docx';
+    const href=URL.createObjectURL(blob),a=document.createElement('a');a.href=href;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(href),60000);
+    msg('Word-bestand aangemaakt. Het blijft een dynamisch concept, geen afgesloten rapport.','good');
+  }catch(e){msg('Word-download mislukt: '+e.message,'error')}
+  finally{btn.disabled=!activeReport||!viewData?.canExportReports;}
+}
+$('exportDocx').addEventListener('click',exportWord);
+$('exportPrint').addEventListener('click',()=>{if(!viewData?.canExportReports||!activeReport)return;window.print()});
+function showUser(data){viewData=data;const exportAllowed=data.canExportReports===true;document.body.classList.toggle('can-export',exportAllowed);$('reportExportActions').classList.toggle('hidden',!exportAllowed);$('exportReadOnlyNote').classList.toggle('hidden',exportAllowed);resetReportExport();subjects=data.subjects;const depts=data.departments.map(x=>({value:x,label:({'politie':'Politie','ambulance':'Ambulance','brandweer':'Brandweer','depannage':'Depannage'})[x]||x}));selectOptions($('caseDept'),depts,'Kies dienst');selectOptions($('reportDept'),depts,'Kies dienst');$('caseDept').value=depts[0]?.value||'';$('reportDept').value=depts[0]?.value||'';let choices=allTypes.filter(t=>roleHigher(data.role)||!['naamswijziging','personeelsbeweging'].includes(t));selectOptions($('entryType'),choices.map(x=>({value:x,label:labels[x]})),'Kies categorie');$('entryType').value=choices[0];$('actorLabel').textContent=data.actor?`Ingevuld door: ${data.actor.name} – ${data.actor.call} (${data.role})`:'Geen gekoppeld personeelslid: opslaan is niet mogelijk.';$('saveCase').disabled=!data.actor||!data.writesEnabled;$('createReport').disabled=!data.actor||!data.writesEnabled;$('needLogin').classList.add('hidden');$('app').classList.remove('hidden');if(!data.writesEnabled)msg('Registraties staan uit. Controleer BPD_ENABLE_MANAGEMENT_WRITES=true en BPD_ENABLE_REGISTRATIONS=true in de serverconfiguratie.','notice');else msg('Ingelogd: alleen jouw toegelaten hulpdiensten zijn zichtbaar.','good');filterCases();changeExtra();const params=new URLSearchParams(location.search),dept=params.get('dept'),id=params.get('discordId');if(dept&&depts.some(x=>x.value===dept)){$('caseDept').value=dept;filterCases();}if(id&&subjects.some(x=>x.dept===$('caseDept').value&&x.discordId===id)){$('casePerson').value=id;loadCases();}if(location.hash==='#weekrapporten')setTab('reports');}
+$('caseDept').addEventListener('change',filterCases);$('casePerson').addEventListener('change',loadCases);$('entryType').addEventListener('change',changeExtra);$('reloadCases').addEventListener('click',loadCases);$('reloadReports').addEventListener('click',loadReports);$('reportDept').addEventListener('change',loadReports);$('tabCases').addEventListener('click',()=>setTab('cases'));$('tabReports').addEventListener('click',()=>setTab('reports'));
+$('caseForm').addEventListener('submit',async e=>{e.preventDefault();if(!viewData?.writesEnabled)return;const body={dept:$('caseDept').value,discordId:$('casePerson').value,type:$('entryType').value,eventDate:$('entryDate').value,details:$('details').value,endDate:$('endDate').value,courseName:$('courseName').value,newName:$('newName').value,proposedRank:$('proposedRank').value,movement:$('movement').value,referenceUrl:$('referenceUrl').value};$('saveCase').disabled=true;try{await api('/api/management/cases','POST',body);msg('Dossierregistratie succesvol opgeslagen.','good');$('details').value='';$('referenceUrl').value='';await loadCases()}catch(err){msg('Niet opgeslagen: '+err.message,'error')}finally{$('saveCase').disabled=false}});
+$('reportForm').addEventListener('submit',async e=>{e.preventDefault();if(!viewData?.writesEnabled)return;const body={dept:$('reportDept').value,title:$('reportTitle').value,periodStart:$('periodStart').value,periodEnd:$('periodEnd').value};$('createReport').disabled=true;try{const result=await api('/api/management/reports','POST',body);msg('Conceptweekrapport aangemaakt.','good');await loadReports();await openReport(result.id)}catch(err){msg('Rapport niet aangemaakt: '+err.message,'error')}finally{$('createReport').disabled=false}});
+$('caseList').addEventListener('click',async event=>{
+  const btn=event.target.closest('[data-classify-entry]');
+  if(!btn||!viewData?.canClassifyTests||!viewData?.writesEnabled)return;
+  const testRecord=btn.dataset.flagged!=='true';
+  const description=testRecord?'als TESTREGISTRATIE markeren en uit weekrapporten uitsluiten':'opnieuw als gewone registratie opnemen in weekrapporten';
+  if(!window.confirm('Wil je deze registratie '+description+'? De originele registratie en auditgeschiedenis blijven bewaard.'))return;
+  const reason=window.prompt('Verplichte reden voor deze wijziging:');
+  if(reason===null)return;
+  if(!reason.trim()||reason.trim().length>500){msg('Vul een reden in van maximaal 500 tekens.','error');return}
+  btn.disabled=true;
+  const dept=$('caseDept').value,id=$('casePerson').value;
+  try{
+    await api(`/api/management/cases/${encodeURIComponent(dept)}/${encodeURIComponent(id)}/${encodeURIComponent(btn.dataset.classifyEntry)}/test-classification`,'PATCH',{testRecord,reason:reason.trim()});
+    msg(testRecord?'Testregistratie gemarkeerd. Ze blijft in het dossier maar valt buiten weekrapporten.':'Testmarkering opgeheven. De registratie telt weer mee in weekrapporten.','good');
+    resetReportExport();$('reportContents').textContent='Rapportinhoud mogelijk gewijzigd. Open het concept opnieuw om de actuele inhoud te bekijken.';
+    await loadCases();
+  }catch(e){msg('Testmarkering niet gewijzigd: '+e.message,'error');btn.disabled=false}
+});
+$('reportList').addEventListener('click',event=>{const btn=event.target.closest('[data-open-report]');if(btn)openReport(btn.dataset.openReport)});
+async function main(){const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());if(!cfg.enabled)throw new Error('Firebase-instellingen ontbreken');const {initializeApp}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');authApp=initializeApp(cfg.firebaseConfig);firebaseAuth=authModule.getAuth(authApp);$('authBtn').addEventListener('click',async()=>{try{if(firebaseAuth.currentUser)await authModule.signOut(firebaseAuth);else await authModule.signInWithPopup(firebaseAuth,new authModule.GoogleAuthProvider())}catch(e){msg('Aanmelding mislukt: '+(e.message||e.code),'error')}});authModule.onAuthStateChanged(firebaseAuth,async user=>{if(!user){resetReportExport();document.body.classList.remove('can-export');$('reportExportActions').classList.add('hidden');$('app').classList.add('hidden');$('needLogin').classList.remove('hidden');$('authStatus').textContent='Niet aangemeld';$('authBtn').textContent='Google aanmelden';viewData=null;return;}$('authStatus').textContent=user.email||'Google-account';$('authBtn').textContent='Afmelden';try{const data=await api('/api/management/overview');showUser(data)}catch(e){$('app').classList.add('hidden');$('needLogin').classList.remove('hidden');msg('Geen toegang: '+e.message,'error')}});const d=new Date(),start=new Date(d);start.setDate(start.getDate()-13);const isoLocal=x=>[x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-');$('entryDate').value=isoLocal(d);$('periodEnd').value=isoLocal(d);$('periodStart').value=isoLocal(start)}
+main().catch(e=>msg('Beheerportaal kon niet laden: '+e.message,'error'));
+</script><div id="printSheet" aria-hidden="true"></div></body></html>

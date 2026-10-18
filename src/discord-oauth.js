@@ -1,0 +1,89 @@
+import { randomBytes, createHmac, createHash, timingSafeEqual } from 'node:crypto';
+import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { discordConfig, isDiscordId, validReturnTo } from './discord-utils.js';
+
+const B = bytes => Buffer.from(bytes).toString('base64url');
+const b64 = n => B(randomBytes(n));
+const timingEqual=(a,b)=>{const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&timingSafeEqual(x,y)};
+const getCookie=(req,key)=>{const val=(req.headers.cookie||'').split('; ').find(x=>x.startsWith(key+'='));return val?.slice(key.length+1)||''};
+function appAuth(){if(!getApps().length)initializeApp({credential:applicationDefault(),projectId:process.env.FIREBASE_PROJECT_ID});return getAuth()}
+function signed(value,key){return `${value}.${createHmac('sha256',key).update(value).digest('base64url')}`}
+function unsigned(value,key){const p=value.lastIndexOf('.');if(p<0)return null;const data=value.slice(0,p);if(!timingEqual(value.slice(p+1),createHmac('sha256',key).update(data).digest('base64url')))return null;try{return JSON.parse(Buffer.from(data,'base64url').toString('utf8'))}catch{return null}}
+async function discordJson(url,opts={}){const response=await fetch(url,{...opts,signal:AbortSignal.timeout(12000),headers:{'Accept':'application/json',...(opts.headers||{})}});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error('Discord API: '+response.status);return data}
+// One-time exchange codes: this is intentionally a single-process local test.
+// A multi-instance cloud deployment must use a distributed store instead.
+const handoffs=new Map();
+export function installDiscordOAuth(app){
+  // An ephemeral HMAC key prevents forgeable OAuth callback cookies after restarts.
+  const cookieKey=randomBytes(32);
+  const config=()=>discordConfig(process.env);
+  app.get('/auth/discord/status',(_req,res)=>{const cfg=config();res.json({ready:cfg.ready,serverConfigured:Boolean(cfg.guildId),testMode:true});});
+  app.get('/auth/discord/start',(req,res)=>{
+    const cfg=config();if(!cfg.ready)return res.status(503).send('Discord is nog niet ingesteld. Vul eerst de echte Client Secret lokaal in .env in.');
+    const state=b64(24),verifier=b64(32);
+    const data={state,verifier,iat:Date.now(),returnTo:validReturnTo(String(req.query.return||''))};
+    const cookieName='bpd_discord_oauth';const val=signed(B(Buffer.from(JSON.stringify(data))),cookieKey);
+    res.set('Set-Cookie',`${cookieName}=${val}; HttpOnly; SameSite=Lax; Path=/auth/discord/callback; Max-Age=600${cfg.redirect.startsWith('https://')?'; Secure':''}`);
+    const u=new URL('https://discord.com/oauth2/authorize');
+    u.searchParams.set('client_id',cfg.clientId);
+    u.searchParams.set('response_type','code');
+    u.searchParams.set('redirect_uri',cfg.redirect);
+    u.searchParams.set('scope','identify guilds.members.read');
+    u.searchParams.set('state',state);
+    u.searchParams.set('code_challenge',B(createHash('sha256').update(verifier).digest()));
+    u.searchParams.set('code_challenge_method','S256');
+    res.redirect(302,u.toString());
+  });
+  app.get('/auth/discord/callback',async(req,res)=>{
+    const cfg=config();
+    res.set('Set-Cookie','bpd_discord_oauth=; HttpOnly; SameSite=Lax; Path=/auth/discord/callback; Max-Age=0');
+    const raw=getCookie(req,'bpd_discord_oauth');
+    const rawData=unsigned(raw,cookieKey);
+    const state=rawData?.state;
+    if(!rawData||!timingEqual(state,req.query.state||'')||Date.now()-rawData.iat>600000 || Date.now()<rawData.iat || !cfg.ready || typeof req.query.code!=='string') {
+      return res.redirect(302,'/discord-status.html?error=ongeldige_of_verlopen_poging');
+    }
+    try {
+      const params=new URLSearchParams({client_id:cfg.clientId,client_secret:cfg.secret,grant_type:'authorization_code',code:req.query.code,redirect_uri:cfg.redirect,code_verifier:rawData.verifier});
+      const oauth=await discordJson('https://discord.com/api/v10/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params});
+      if(typeof oauth.access_token!=='string'||!String(oauth.scope||'').includes('guilds.members.read'))throw new Error('Ontbrekende toestemmingen');
+      const authorization={Authorization:'Bearer '+oauth.access_token};
+      const user=await discordJson('https://discord.com/api/v10/users/@me',{headers:authorization});
+      if(!isDiscordId(user.id))throw new Error('Ongeldige Discord gebruiker');
+      const member=await discordJson('https://discord.com/api/v10/users/@me/guilds/'+cfg.guildId+'/member',{headers:authorization});
+      if(member.user?.id && member.user.id!==user.id)throw new Error('Discord-lidmaatschap komt niet overeen');
+      const roles=Array.isArray(member.roles)?member.roles.filter(isDiscordId):[];
+      if(!member.joined_at || !Array.isArray(member.roles))throw new Error('Geen controleerbaar lidmaatschap');
+      const now=Date.now();
+      // Only limited member metadata are stored. OAuth access and refresh tokens
+      // are NEVER persisted, logged or included in the browser response.
+      appAuth();
+      await getFirestore().collection('bpd_discord_auth').doc(user.id).set({guildId:cfg.guildId,roleIds:roles,joinedAt:String(member.joined_at),username:String(user.global_name||user.username||'').slice(0,80),verifiedAt:now,updatedAt:FieldValue.serverTimestamp()},{merge:true});
+      const token=await getAuth().createCustomToken('discord:'+user.id,{bpdDiscord:true,bpdGuildId:cfg.guildId});
+      const handle=b64(32);handoffs.set(handle,{token,expires:now+60000});
+      for(const [key,x] of handoffs)if(x.expires<now)handoffs.delete(key);
+      const p=new URLSearchParams({bpd_discord_code:handle});
+      res.redirect(302,'/discord-status.html?'+p.toString());
+    } catch(e){console.error('Discord OAuth mislukt:',String(e.message||'fout').slice(0,130));res.redirect(302,'/discord-status.html?error=aanmelden_mislukt');}
+  });
+  app.post('/auth/discord/exchange',app.locals.discordJsonParser,(req,res)=>{
+    const code=req.body?.code;
+    if(typeof code!=='string'||!/^[A-Za-z0-9_-]{30,80}$/.test(code))return res.status(400).json({error:'Ongeldige aanmeldcode'});
+    const one=handoffs.get(code);handoffs.delete(code);
+    if(!one||Date.now()>one.expires)return res.status(401).json({error:'Discord-aanmelding verlopen. Probeer opnieuw.'});
+    res.set('Cache-Control','no-store');res.json({customToken:one.token});
+  });
+  app.get('/api/discord/profile',async(req,res)=>{
+    const match=/^Bearer (\S+)$/.exec(req.get('Authorization')||'');
+    if(!match)return res.status(401).json({error:'Aanmelding vereist'});
+    try{
+      const decoded=await appAuth().verifyIdToken(match[1]);
+      if(decoded.firebase?.sign_in_provider!=='custom'||decoded.bpdDiscord!==true||!/^discord:\d{15,22}$/.test(decoded.uid))return res.status(403).json({error:'Discord-aanmelding vereist'});
+      const data=(await getFirestore().collection('bpd_discord_auth').doc(decoded.uid.slice(8)).get()).data();
+      if(!data||data.guildId!==process.env.DISCORD_GUILD_ID)return res.status(403).json({error:'Discord-lidmaatschap ontbreekt'});
+      res.json({discordId:decoded.uid.slice(8),name:data.username||'',joinedAt:data.joinedAt||null,roleIds:data.roleIds||[],lastVerifiedAt:data.verifiedAt,accessNote:'Testmodus: Discord-rollen geven nog geen personeels- of dossierrechten. Google-aanmelding blijft beschikbaar.'});
+    }catch{return res.status(401).json({error:'Verificatie mislukt'});}
+  });
+}

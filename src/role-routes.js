@@ -1,0 +1,214 @@
+import { getApps,initializeApp,applicationDefault } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore,FieldValue } from 'firebase-admin/firestore';
+import { isDiscordId } from './discord-utils.js';
+import { ROLE_CATALOG,roleSummary,SERVICE_DEPTS } from './role-catalog.js';
+import { basePermissions,effectivePermissions,validateOverride,canAdministerRoles,canLogTraining,canReviewTraining,visibleTrainingPermissions,DELEGATABLE_PERMISSIONS } from './permissions-utils.js';
+import { mayMaintainTraining,isArchivedTraining,validateMaintenanceReason,isRecordId,requiresReReview } from './training-maintenance.js';
+
+const asText=(v,n=300)=>typeof v==='string' ? v.trim().slice(0,n):'';
+const db=()=>getFirestore();
+const iso=v=>v?.toDate?.()?.toISOString()||null;
+function firebaseAuth(){if(!getApps().length)initializeApp({credential:applicationDefault(),projectId:process.env.FIREBASE_PROJECT_ID});return getAuth()}
+function googleAccessList(){
+  try{const o=JSON.parse(process.env.BPD_ACCESS_JSON||'{}');return o&&typeof o==='object'&&!Array.isArray(o)?o:{}}
+  catch{return {}}
+}
+async function resolveActor(req,res,next){
+  const token=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
+  if(!token)return res.status(401).json({error:'Aanmelding vereist'});
+  try{
+    const decoded=await firebaseAuth().verifyIdToken(token);
+    let bpd=null,discordId='';
+    if(decoded.firebase?.sign_in_provider==='google.com' && decoded.email_verified){
+      const e=googleAccessList()[String(decoded.email||'').toLowerCase()];
+      if(!e||!Array.isArray(e.departments)||!['basiskader','middenkader','officierenkader','korpsleiding','beheerder'].includes(e.role))return res.status(403).json({error:'Google-account niet gemachtigd'});
+      bpd={provider:'google',role:e.role,departments:e.departments.filter(d=>SERVICE_DEPTS.includes(d)),uid:decoded.uid,email:decoded.email,discordId:String(e.discordId||'')};
+      discordId=bpd.discordId;
+    }else if(decoded.firebase?.sign_in_provider==='custom' && decoded.bpdDiscord===true && /^discord:\d{15,22}$/.test(decoded.uid) && decoded.bpdGuildId===process.env.DISCORD_GUILD_ID){
+      discordId=decoded.uid.slice(8);
+      bpd={provider:'discord',role:null,departments:[],uid:decoded.uid,discordId};
+    }else return res.status(403).json({error:'Geen toegelaten aanmeldmethode'});
+    const snap=isDiscordId(discordId)?await db().collection('bpd_discord_auth').doc(discordId).get():null;
+    const member=snap?.exists?snap.data():null;
+    const base=basePermissions(member,process.env.DISCORD_GUILD_ID);
+    // Never infer rank from a stale role snapshot, or from an unrelated Discord ID.
+    const override=isDiscordId(discordId)?(await db().collection('bpd_permission_overrides').doc(discordId).get()).data():null;
+    req.roleActor={bpd,discordId,member,base,perms:effectivePermissions(base,override),override};
+    next();
+  }catch(e){console.error('Rolaanmelding mislukt:',e?.code||e?.message||'onbekend');return res.status(401).json({error:'Verificatie niet beschikbaar'});}
+}
+function admin(req,res,next){
+  // Bootstrap only through the existing approved Google allowlist. Discord-only sessions
+  // cannot change other people's rights, even with a leadership Discord role.
+  const actor=req.roleActor?.bpd;
+  if(actor?.provider!=='google' || !['officierenkader','korpsleiding'].includes(actor.role))return res.status(403).json({error:'Alleen gemachtigd hoger kader via de bestaande Google-aanmelding'});
+  next();
+}
+function trainingAccess(req,dept,kind){
+  const {bpd,perms}=req.roleActor;
+  return kind==='log'?canLogTraining(bpd,dept,perms):canReviewTraining(bpd,dept,perms);
+}
+function inputRecord(x){
+  const department=asText(x?.department,40),discordId=asText(x?.discordId,40);
+  const courseName=asText(x?.courseName,150),details=asText(x?.details,1600),eventDate=asText(x?.eventDate,20),result=asText(x?.result,32);
+  if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId))throw new Error('Ongeldige dienst of Discord ID');
+  if(courseName.length<3 || typeof x?.courseName!=='string' || x.courseName.length>150)throw new Error('Ongeldige opleidingsnaam');
+  if(typeof x?.details!=='string'||x.details.length>1600)throw new Error('Omschrijving te lang');
+  if(!['in_opleiding','geslaagd','niet_geslaagd'].includes(result))throw new Error('Ongeldig opleidingsresultaat');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)||new Date(eventDate+'T12:00:00Z').toISOString().slice(0,10)!==eventDate||eventDate>new Date().toISOString().slice(0,10))throw new Error('Ongeldige opleidingsdatum');
+  return {department,subjectDiscordId:discordId,courseName,details,eventDate,result};
+}
+const error=(res,e)=>{console.error('Rollen/opleidingen:',e?.code||e?.message||'onbekend');return res.status(503).json({error:'Firestore tijdelijk niet beschikbaar'});};
+export function installRoleRoutes(app){
+  app.get('/api/roles/catalog',resolveActor,(req,res)=>res.json({roles:ROLE_CATALOG,departments:SERVICE_DEPTS}));
+  app.get('/api/roles/me',resolveActor,(req,res)=>{
+    const {bpd,discordId,base,perms}=req.roleActor;
+    return res.json({provider:bpd.provider,discordId:discordId||null,googleRank:bpd.provider==='google'?bpd.role:null,
+      verifiedRolesFresh:base.fresh,roles:base.roles,departments:base.departments,
+      policeRank:base.policeRank,unknownRoleCount:base.unknownCount,
+      permissions:visibleTrainingPermissions(bpd,perms),canManage:bpd.provider==='google'&&['officierenkader','korpsleiding'].includes(bpd.role),
+      trainingWritesEnabled:process.env.BPD_ENABLE_TRAINING_WRITES==='true',
+      note:'Discord-toekenningen en Google Sheets worden NIET automatisch aangepast. Bestaande dossiers blijven onder de huidige Google-allowlist.'});
+  });
+  app.get('/api/roles/overrides/:discordId',resolveActor,admin,async(req,res)=>{
+    const id=req.params.discordId;
+    if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
+    try{const doc=await db().collection('bpd_permission_overrides').doc(id).get();
+      const departments=Object.fromEntries(Object.entries(doc.data()?.departments||{}).filter(([dept])=>canAdministerRoles(req.roleActor.bpd,dept)));
+      res.json({discordId:id,departments,delegatablePermissions:DELEGATABLE_PERMISSIONS});}
+    catch(e){error(res,e)}
+  });
+  app.patch('/api/roles/overrides/:discordId',resolveActor,admin,async(req,res)=>{
+    const target=req.params.discordId,actor=req.roleActor.bpd;
+    if(!isDiscordId(target))return res.status(400).json({error:'Ongeldige Discord ID'});
+    if(!isDiscordId(actor.discordId))return res.status(403).json({error:'Beheeraccount heeft geen gekoppelde Discord ID'});
+    if(target===actor.discordId)return res.status(403).json({error:'Eigen bevoegdheden kunnen niet worden aangepast'});
+    let change;try{change=validateOverride(req.body)}catch(e){return res.status(400).json({error:e.message})}
+    if(!canAdministerRoles(actor,change.department))return res.status(403).json({error:'Geen beheerrecht voor deze dienst'});
+    if(process.env.BPD_ENABLE_PERMISSION_WRITES!=='true')return res.status(503).json({error:'Machtigingswijzigingen staan nog uit. Activeer BPD_ENABLE_PERMISSION_WRITES=true na testen.'});
+    try{
+      const targetRef=db().collection('bpd_permission_overrides').doc(target);
+      // No broad Firestore document read: use a transaction so concurrent edits are audited.
+      await db().runTransaction(async tx=>{
+        const old=await tx.get(targetRef),data=old.data()||{},depts={...(data.departments||{})},existing={...(depts[change.department]||{})};
+        const prev=existing[change.permission]||null;
+        if(change.action==='inherit')delete existing[change.permission];
+        else existing[change.permission]={action:change.action,expiresOn:change.expiresOn,reason:change.reason,changedBy:actor.discordId,at:Date.now()};
+        depts[change.department]=existing;
+        tx.set(targetRef,{departments:depts,updatedAt:FieldValue.serverTimestamp()},{merge:true});
+        tx.create(db().collection('bpd_permission_audit').doc(),{targetDiscordId:target,department:change.department,permission:change.permission,previous:prev,next:existing[change.permission]||null,reason:change.reason,actorDiscordId:actor.discordId,actorUid:actor.uid,at:FieldValue.serverTimestamp()});
+      });
+      res.json({saved:true,googleSheetsUpdated:false,discordRolesUpdated:false});
+    }catch(e){error(res,e)}
+  });
+  app.get('/api/training/:department/:discordId',resolveActor,async(req,res)=>{
+    const {department,discordId}=req.params;
+    if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
+    if(!trainingAccess(req,department,'log')&&!trainingAccess(req,department,'review'))return res.status(403).json({error:'Geen toegang tot opleidingen van deze dienst'});
+    try{
+      const all=trainingAccess(req,department,'review');
+      const query=db().collection('bpd_training').doc(`${department}_${discordId}`).collection('records');
+      // Instructeurs zien enkel eigen evaluaties; gemachtigde beoordelaars mogen het hele opleidingsdossier bekijken.
+      const s=await (all?query.orderBy('createdAt','desc').limit(100):query.where('registeredByDiscordId','==',req.roleActor.bpd.discordId).limit(100)).get();
+      const actorId=req.roleActor.bpd.discordId,mayLog=trainingAccess(req,department,'log');
+      const rows=s.docs.filter(d=>!isArchivedTraining(d.data())).map(d=>({id:d.id,...d.data(),
+        canEdit:mayMaintainTraining(d.data(),{actorDiscordId:actorId,mayLog,mayReview:all}),
+        canDelete:mayMaintainTraining(d.data(),{actorDiscordId:actorId,mayLog,mayReview:all}),
+        createdAt:iso(d.get('createdAt')),reviewedAt:iso(d.get('reviewedAt'))}));
+      if(!all)rows.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+      res.json({records:rows,limited:s.size===100,scope:all?'volledig':'alleen_eigen_registraties'});
+    }catch(e){error(res,e)}
+  });
+  app.post('/api/training',resolveActor,async(req,res)=>{
+    if(process.env.BPD_ENABLE_TRAINING_WRITES!=='true')return res.status(503).json({error:'Opleidingsregistratie staat nog uit'});
+    let data;try{data=inputRecord(req.body)}catch(e){return res.status(400).json({error:e.message})}
+    if(!trainingAccess(req,data.department,'log'))return res.status(403).json({error:'Geen opleidingsregistratierecht voor deze dienst'});
+    const actor=req.roleActor.bpd;
+    if(!isDiscordId(actor.discordId))return res.status(403).json({error:'Geen gekoppelde Discord ID voor instructeur'});
+    try{
+      const record=db().collection('bpd_training').doc(`${data.department}_${data.subjectDiscordId}`).collection('records').doc();
+      await record.create({...data,registeredByDiscordId:actor.discordId,registeredByProvider:actor.provider,
+        status:'geregistreerd',cmNotified:false,rosterStatus:'nog_niet_beoordeeld',createdAt:FieldValue.serverTimestamp()});
+      res.status(201).json({saved:true,id:record.id,discordRoleUpdated:false,googleSheetsUpdated:false});
+    }catch(e){error(res,e)}
+  });
+  // Editing always preserves subject, department, review authority and the audit trail.
+  app.patch('/api/training/:department/:discordId/:recordId',resolveActor,async(req,res)=>{
+    if(process.env.BPD_ENABLE_TRAINING_WRITES!=='true')return res.status(503).json({error:'Opleidingswijzigingen staan uit'});
+    const {department,discordId,recordId}=req.params;
+    if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId)||!isRecordId(recordId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
+    const mayLog=trainingAccess(req,department,'log'),mayReview=trainingAccess(req,department,'review');
+    if(!mayLog&&!mayReview)return res.status(403).json({error:'Geen opleidingsbevoegdheid voor deze dienst'});
+    let data,reason;
+    try{data=inputRecord({...req.body,department,discordId});reason=validateMaintenanceReason(req.body?.reason)}
+    catch(e){return res.status(400).json({error:e.message})}
+    const actor=req.roleActor.bpd;
+    if(!isDiscordId(actor.discordId))return res.status(403).json({error:'Geen gekoppelde Discord ID'});
+    const ref=db().collection('bpd_training').doc(`${department}_${discordId}`).collection('records').doc(recordId);
+    try{
+      await db().runTransaction(async tx=>{
+        const snap=await tx.get(ref);
+        if(!snap.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
+        const old=snap.data();
+        if(!mayMaintainTraining(old,{actorDiscordId:actor.discordId,mayLog,mayReview}))throw Object.assign(Error('Geen wijzigingsrecht op deze registratie'),{status:403});
+        const before=Object.fromEntries(['courseName','details','eventDate','result','rosterStatus'].map(k=>[k,old[k]??null]));
+        const next={courseName:data.courseName,details:data.details,eventDate:data.eventDate,result:data.result};
+        if(requiresReReview(old,next))next.rosterStatus='ter_controle';
+        tx.update(ref,{...next,updatedAt:FieldValue.serverTimestamp(),updatedByDiscordId:actor.discordId});
+        tx.create(ref.collection('audit').doc(),{kind:'record-edit',previous:before,next:{...next},reason,
+          actorDiscordId:actor.discordId,actorUid:actor.uid,at:FieldValue.serverTimestamp()});
+      });
+      res.json({saved:true,googleSheetsUpdated:false,discordRolesUpdated:false});
+    }catch(e){if(e.status===403||e.status===404)return res.status(e.status).json({error:e.message});error(res,e)}
+  });
+
+  // "Verwijderen" is archival, not physical deletion: audits remain intact.
+  app.delete('/api/training/:department/:discordId/:recordId',resolveActor,async(req,res)=>{
+    if(process.env.BPD_ENABLE_TRAINING_WRITES!=='true')return res.status(503).json({error:'Opleidingswijzigingen staan uit'});
+    const {department,discordId,recordId}=req.params;
+    if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId)||!isRecordId(recordId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
+    const mayLog=trainingAccess(req,department,'log'),mayReview=trainingAccess(req,department,'review');
+    if(!mayLog&&!mayReview)return res.status(403).json({error:'Geen opleidingsbevoegdheid voor deze dienst'});
+    let reason;try{reason=validateMaintenanceReason(req.body?.reason)}catch(e){return res.status(400).json({error:e.message})}
+    const actor=req.roleActor.bpd;
+    if(!isDiscordId(actor.discordId))return res.status(403).json({error:'Geen gekoppelde Discord ID'});
+    const ref=db().collection('bpd_training').doc(`${department}_${discordId}`).collection('records').doc(recordId);
+    try{
+      await db().runTransaction(async tx=>{
+        const snap=await tx.get(ref);
+        if(!snap.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
+        const old=snap.data();
+        if(!mayMaintainTraining(old,{actorDiscordId:actor.discordId,mayLog,mayReview}))throw Object.assign(Error('Geen verwijderrecht op deze registratie'),{status:403});
+        tx.update(ref,{status:'verwijderd',archivedAt:FieldValue.serverTimestamp(),archivedByDiscordId:actor.discordId,archiveReason:reason});
+        tx.create(ref.collection('audit').doc(),{kind:'record-archive',previousStatus:old.status||'geregistreerd',reason,
+          actorDiscordId:actor.discordId,actorUid:actor.uid,at:FieldValue.serverTimestamp()});
+      });
+      res.json({archived:true,googleSheetsUpdated:false,discordRolesUpdated:false});
+    }catch(e){if(e.status===403||e.status===404)return res.status(e.status).json({error:e.message});error(res,e)}
+  });
+
+  app.post('/api/training/:department/:discordId/:recordId/review',resolveActor,async(req,res)=>{
+    if(process.env.BPD_ENABLE_TRAINING_WRITES!=='true')return res.status(503).json({error:'Beoordelingen staan nog uit'});
+    const {department,discordId,recordId}=req.params;
+    if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId)||!/^[A-Za-z0-9]{12,30}$/.test(recordId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
+    if(!trainingAccess(req,department,'review'))return res.status(403).json({error:'Geen bevoegdheid voor officiële opleidingscontrole'});
+    const actor=req.roleActor.bpd;
+    if(!isDiscordId(actor.discordId))return res.status(403).json({error:'Geen gekoppelde Discord ID'});
+    const status=asText(req.body?.status,40),reason=asText(req.body?.reason,500);
+    if(!['klaar_voor_manuele_invoer','ter_controle'].includes(status)||reason.length<8||typeof req.body?.reason!=='string'||req.body.reason.length>500)return res.status(400).json({error:'Ongeldige beoordeling of reden'});
+    const ref=db().collection('bpd_training').doc(`${department}_${discordId}`).collection('records').doc(recordId);
+    try{
+      await db().runTransaction(async tx=>{
+        const doc=await tx.get(ref);
+        if(!doc.exists)throw Object.assign(new Error('Registratie niet gevonden'),{status:404});
+        const old=doc.data();
+        if(isArchivedTraining(old))throw Object.assign(new Error('Verwijderde registratie kan niet beoordeeld worden'),{status:409});
+        // Approved entries are STILL NOT written into Google Sheets.
+        tx.update(ref,{rosterStatus:status,reviewReason:reason,reviewedByDiscordId:actor.discordId,reviewedAt:FieldValue.serverTimestamp()});
+        tx.create(ref.collection('audit').doc(),{kind:'manual-roster-review',previous:old.rosterStatus||null,next:status,reason,actorDiscordId:actor.discordId,at:FieldValue.serverTimestamp()});
+      });
+      res.json({saved:true,googleSheetsUpdated:false,discordRolesUpdated:false});
+    }catch(e){if(e.status===404||e.status===409)return res.status(e.status).json({error:e.message});error(res,e)}
+  });
+}

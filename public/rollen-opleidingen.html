@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Rollen & opleidingen | BelgiëPD</title>
+<style>
+:root{font:15px/1.5 system-ui,'Segoe UI',Arial,sans-serif;color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;background:#091425;color:#edf2fc}header{background:#10243f;border-bottom:1px solid #294262;padding:17px max(18px,calc((100vw - 1040px)/2));display:flex;gap:20px;align-items:center;flex-wrap:wrap}a{color:#bdd8ff}header a{margin-left:auto}main{max-width:1040px;margin:28px auto;padding:0 18px 50px}
+h1{font-size:26px;margin-bottom:0}p,small{color:#abc0d9}.subtitle{margin-top:5px}.panel{background:#12243d;border:1px solid #2c4669;border-radius:14px;padding:22px;margin:18px 0}.notice{background:#2d2b1d;border-left:3px solid #dbb659;border-radius:8px;padding:12px;margin:14px 0}.status{padding:12px;background:#183b33;color:#b6e8cd;border-radius:8px;margin:13px 0}.error{background:#4b2730;color:#ffd0d5}.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:740px){.two{grid-template-columns:1fr}}
+label{display:block;margin-top:14px;color:#d5e4f6;font-weight:600}input,select,textarea{margin-top:6px;width:100%;padding:10px 12px;background:#09192d;border:1px solid #49617f;border-radius:8px;color:#e7efff;font:inherit}textarea{min-height:85px;resize:vertical}button{background:#3267db;border:0;border-radius:9px;color:white;padding:11px 16px;font-weight:600;cursor:pointer;margin:12px 8px 0 0}button.secondary{background:#243e61}button:disabled{opacity:.55;cursor:not-allowed}button.small-action{margin:1px 5px 3px 0;padding:6px 9px;font-size:12px}button.danger{background:#853546}button.danger:hover{background:#a84257}.tag{display:inline-block;padding:4px 9px;margin:4px 6px 4px 0;border:1px solid #53779d;border-radius:18px;font-size:13px}.mini{font-size:12px;color:#aec3dd}table{width:100%;border-collapse:collapse}th,td{text-align:left;border-bottom:1px solid #314763;padding:9px;vertical-align:top}th{color:#aec3dd;font-size:12px}.hidden{display:none}.columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.item{padding:13px;background:#182d4c;border-radius:9px}.item strong{display:block}.item small{display:block}
+</style></head>
+<body><header><strong>🚓 BelgiëPD · Rollen & opleidingen</strong><a href="/">← Personeelsportaal</a><a href="/discord-status.html">Discord-verificatie</a></header>
+<main><h1>Rollen & opleidingen</h1><p class="subtitle">v0.9.4 TEST – Discord-rollen, opleidingsregistraties en gecontroleerd wijzigen/verwijderen.</p>
+<div class="notice">De Discord-rollen worden herkend, maar geven <strong>nog geen toegang tot het bestaande personeels- en sanctiedossier</strong>. Instructeurs loggen resultaten; CMs beheren Discord-rollen; uitsluitend gemachtigd kader verwerkt de officiële personeelslijst. Dit scherm schrijft nooit rechtstreeks naar Discord of Google Sheets.</div>
+<div class="panel"><h2>Aanmelden</h2><button id="google">Aanmelden met Google</button><a href="/auth/discord/start?return=%2Fdiscord-status.html">Aanmelden met Discord</a> <button class="secondary" id="logout">Afmelden</button><div class="status" id="state">Verbinden…</div><small>Na een Discord-aanmelding op de verificatiepagina kun je hier terugkomen. Voor wijzigingen in machtigingen gebruik je voorlopig de bestaande, goedgekeurde Google-aanmelding.</small></div>
+<section class="panel" id="profile" hidden><h2>Mijn geverifieerde rollen</h2><div id="summary"></div><h3>Rollen uit de catalogus</h3><div id="roleList"></div><p id="unknown" class="mini"></p><h3>Opleidingsbevoegdheden</h3><p class="mini">Deze rechten omvatten ook je bestaande, goedgekeurde Google-beheerdersrechten. Controleren betekent een registratie beoordelen voor <strong>handmatige</strong> verwerking; er wordt niets rechtstreeks aangepast in Google Sheets.</p><div class="columns" id="permissionList"></div></section>
+<section class="panel" id="training" hidden><h2>Opleidingsdossier</h2><p>Het dossier wordt per hulpdienst en Discord ID bewaard. De officieuze registratie verandert geen Discord-rol of personeelslijst.</p>
+<div class="two"><label>Hulpdienst<select id="dept"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="dispatch">Dispatch</option></select></label><label>Discord ID van cursist<input id="subject" inputmode="numeric" placeholder="Bijvoorbeeld 18 cijfers" maxlength="22"></label></div>
+<button class="secondary" id="showRecords">Opleidingshistoriek raadplegen</button><p class="mini">Via <strong>Wijzigen</strong> of <strong>Verwijderen</strong> kun je een registratie aanpassen of archiveren, voor zover je bevoegd bent. De audit blijft bewaard. De officiële personeelslijst en Discord-rollen wijzigen niet.</p><div id="records"></div>
+<h3>Opleiding registreren</h3><div class="two"><label>Opleiding<input id="course" maxlength="150" placeholder="Bijv. Motard-basisopleiding"></label><label>Datum<input id="date" type="date"></label></div><label>Resultaat<select id="result"><option value="in_opleiding">In opleiding</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option></select></label><label>Opmerkingen<textarea id="details" maxlength="1600" placeholder="Evaluatie en aandachtspunten"></textarea></label><button id="saveTraining">Registratie bewaren</button><button class="secondary" id="cancelEdit" hidden>Wijziging annuleren</button><p class="mini" id="editNotice" hidden></p><p class="mini" id="trainingNote"></p></section>
+<section class="panel" id="admin" hidden><h2>Uitzonderingen in machtigingen</h2><p>Alleen vooraf gemachtigd officierenkader of korpsleiding via Google. Je kunt je eigen rechten niet veranderen. Alle wijzigingen krijgen een auditvermelding.</p>
+<div class="two"><label>Discord ID medewerker<input id="target" maxlength="22" inputmode="numeric"></label><label>Hulpdienst<select id="overrideDept"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="dispatch">Dispatch</option></select></label></div>
+<div class="two"><label>Bevoegdheid<select id="perm"><option value="training.log">Opleidingen registreren</option><option value="training.review">Opleidingsregistratie controleren</option></select></label><label>Actie<select id="action"><option value="allow">Toekennen</option><option value="deny">Weigeren</option><option value="inherit">Uitzondering opheffen</option></select></label></div>
+<div class="two"><label>Vervaldatum (optioneel)<input type="date" id="expiry"></label><label>Reden (verplicht)<input id="reason" minlength="8" maxlength="500" placeholder="Bijv. tijdelijke machtiging voor opleiding"></label></div>
+<button class="secondary" id="lookup">Bestaande uitzonderingen bekijken</button><button id="saveOverride">Wijziging registreren</button><div id="overrideInfo" class="mini"></div><p class="mini" id="adminNote"></p></section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);let auth,mods,profile,editing=null;
+const state=(msg,err=false)=>{$('state').textContent=msg;$('state').classList.toggle('error',err)};
+function text(parent,value,tag='span'){const el=document.createElement(tag);el.textContent=String(value);parent.append(el);return el}
+async function api(url,opts={}){const u=auth.currentUser;if(!u)throw Error('Meld eerst aan');const t=await u.getIdToken();const r=await fetch(url,{...opts,cache:'no-store',headers:{'Authorization':'Bearer '+t,...(opts.body?{'Content-Type':'application/json'}:{}),...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'HTTP '+r.status);return d}
+async function refresh(){
+  $('profile').hidden=$('training').hidden=$('admin').hidden=true;
+  if(!auth.currentUser){state('Nog niet aangemeld. Gebruik Google of Discord.');return}
+  try{
+    const p=await api('/api/roles/me');profile=p;$('profile').hidden=false;$('training').hidden=false;$('admin').hidden=!p.canManage;
+    state('Aangemeld met '+(p.provider==='google'?'Google':'Discord')+(p.verifiedRolesFresh?' · Discord-rollen recent gecontroleerd':' · Discord-verificatie verlopen of nog niet beschikbaar'));
+    $('summary').replaceChildren();text($('summary'),'Discord ID: '+(p.discordId||'niet gekoppeld'),'p');text($('summary'),'Hulpdiensten: '+(p.departments.join(', ')||'nog niet vastgesteld'),'p');text($('summary'),'Politie-kader: '+(p.policeRank||'niet van toepassing'),'p');
+    $('roleList').replaceChildren();for(const role of p.roles){const t=text($('roleList'),role.name+' · '+role.dept+' · '+role.stage);t.className='tag'}
+    if(!p.roles.length)text($('roleList'),'Nog geen recente Discord-rolverificatie.');
+    $('unknown').textContent=p.unknownRoleCount?p.unknownRoleCount+' overige Discord-rollen nog niet in de catalogus.':'';
+    $('permissionList').replaceChildren();for(const [dept,rights] of Object.entries(p.permissions)){const v=document.createElement('div');v.className='item';text(v,dept,'strong');text(v,'Registreren: '+(rights['training.log']?'ja':'nee'),'small');text(v,'Controleren: '+(rights['training.review']?'ja':'nee'),'small');$('permissionList').append(v)}
+    $('trainingNote').textContent=p.trainingWritesEnabled?'Opslag ingeschakeld. Alleen binnen je bevoegde hulpdienst.':'Opslag voorlopig uit: BPD_ENABLE_TRAINING_WRITES=false.';
+    $('saveTraining').disabled=!p.trainingWritesEnabled;
+    $('adminNote').textContent='Wijzigingen vereisen BPD_ENABLE_PERMISSION_WRITES=true en een gemachtigd Google-account.';
+  }catch(e){state(e.message,true)}
+}
+$('google').onclick=async()=>{try{await mods.signInWithPopup(auth,new mods.GoogleAuthProvider());await refresh()}catch(e){state('Google-aanmelding: '+(e.code||e.message),true)}};
+$('logout').onclick=async()=>{await mods.signOut(auth);await refresh()};
+// Historiek: knoppen verschijnen uitsluitend als de API voor die registratie rechten bevestigt.
+function cancelEdit(){
+  editing=null;$('dept').disabled=false;$('subject').disabled=false;
+  $('saveTraining').textContent='Registratie bewaren';$('cancelEdit').hidden=true;
+  $('editNotice').hidden=true;
+}
+$('cancelEdit').onclick=cancelEdit;
+async function showRecords(){
+  const dept=$('dept').value,subject=$('subject').value.trim();
+  try{
+    const d=await api('/api/training/'+encodeURIComponent(dept)+'/'+encodeURIComponent(subject));
+    $('records').replaceChildren();
+    if(!d.records.length){text($('records'),'Nog geen registraties.','p');return}
+    const t=document.createElement('table'),head=document.createElement('tr');
+    for(const h of ['Datum','Opleiding','Resultaat','Personeelslijst','Aangemaakt','Acties'])text(head,h,'th');t.append(head);
+    const resultLabels={in_opleiding:'In opleiding',geslaagd:'Geslaagd',niet_geslaagd:'Niet geslaagd'};
+    const reviewLabels={nog_niet_beoordeeld:'Nog niet beoordeeld',ter_controle:'Ter controle',klaar_voor_manuele_invoer:'Klaar voor manuele invoer'};
+    for(const r of d.records){
+      const tr=document.createElement('tr');
+      for(const value of [r.eventDate,r.courseName,resultLabels[r.result]||r.result,reviewLabels[r.rosterStatus]||r.rosterStatus||'Open',r.createdAt?new Date(r.createdAt).toLocaleString('nl-BE'):'—'])text(tr,value,'td');
+      const actions=document.createElement('td');
+      if(profile.trainingWritesEnabled && r.canEdit){
+        const edit=document.createElement('button');edit.type='button';edit.className='secondary small-action';edit.textContent='Wijzigen';
+        edit.onclick=()=>{
+          editing={id:r.id,department:dept,discordId:subject};
+          $('dept').value=dept;$('subject').value=subject;$('dept').disabled=true;$('subject').disabled=true;
+          $('course').value=r.courseName;$('date').value=r.eventDate;$('result').value=r.result;$('details').value=r.details||'';
+          $('saveTraining').textContent='Wijziging bewaren';$('cancelEdit').hidden=false;
+          $('editNotice').textContent='Je bewerkt een bestaande registratie. Geef bij bewaren een reden. De Discord-rollen en personeelslijst blijven onveranderd.';
+          $('editNotice').hidden=false;$('course').focus();
+        };
+        actions.append(edit);
+      }
+      if(profile.trainingWritesEnabled && r.canDelete){
+        const remove=document.createElement('button');remove.type='button';remove.className='danger small-action';remove.textContent='Verwijderen';
+        remove.onclick=async()=>{
+          const reason=window.prompt('Reden voor het verwijderen van deze opleiding (minstens 8 tekens):','Dubbele of foutieve TEST-registratie');
+          if(reason===null)return;
+          if(reason.trim().length<8){$('trainingNote').textContent='Reden moet minstens 8 tekens bevatten.';return}
+          if(!window.confirm('Deze registratie wordt uit het actieve overzicht verwijderd, maar blijft bewaard in de auditgeschiedenis. Doorgaan?'))return;
+          remove.disabled=true;
+          try{
+            await api('/api/training/'+encodeURIComponent(dept)+'/'+encodeURIComponent(subject)+'/'+encodeURIComponent(r.id),
+              {method:'DELETE',body:JSON.stringify({reason})});
+            if(editing?.id===r.id)cancelEdit();
+            $('trainingNote').textContent='Registratie gearchiveerd. Geen Discord-rol of personeelslijst gewijzigd.';
+            await showRecords();
+          }catch(e){$('trainingNote').textContent='Verwijderen mislukt: '+e.message;remove.disabled=false}
+        };
+        actions.append(remove);
+      }
+      if(!actions.children.length)text(actions,'Geen wijzigingsrecht');
+      tr.append(actions);t.append(tr);
+    }
+    $('records').append(t);
+  }catch(e){$('records').textContent=e.message}
+}
+$('showRecords').onclick=showRecords;
+$('saveTraining').onclick=async()=>{
+  const button=$('saveTraining');if(button.disabled)return;
+  const values={department:$('dept').value,discordId:$('subject').value.trim(),courseName:$('course').value,
+    eventDate:$('date').value,result:$('result').value,details:$('details').value};
+  let url='/api/training',method='POST';
+  if(editing){
+    const reason=window.prompt('Reden van deze wijziging (minstens 8 tekens):','Correctie opleidingsregistratie');
+    if(reason===null)return;
+    if(reason.trim().length<8){$('trainingNote').textContent='Reden moet minstens 8 tekens bevatten.';return}
+    values.reason=reason;method='PATCH';
+    url='/api/training/'+encodeURIComponent(editing.department)+'/'+encodeURIComponent(editing.discordId)+'/'+encodeURIComponent(editing.id);
+  }
+  button.disabled=true;
+  try{
+    const d=await api(url,{method,body:JSON.stringify(values)});
+    $('trainingNote').textContent=d.saved?(editing?'Wijziging met audit bewaard.':'Geregistreerd.')+' Discord en Google Sheets zijn niet gewijzigd.':'Niet opgeslagen';
+    cancelEdit();await showRecords();
+  }catch(e){$('trainingNote').textContent='Fout: '+e.message}
+  finally{button.disabled=!profile?.trainingWritesEnabled}
+};
+$('lookup').onclick=async()=>{try{const d=await api('/api/roles/overrides/'+encodeURIComponent($('target').value.trim()));$('overrideInfo').textContent=JSON.stringify(d.departments,null,2)}catch(e){$('overrideInfo').textContent='Fout: '+e.message}};
+$('saveOverride').onclick=async()=>{try{const d=await api('/api/roles/overrides/'+encodeURIComponent($('target').value.trim()),{method:'PATCH',body:JSON.stringify({department:$('overrideDept').value,permission:$('perm').value,action:$('action').value,reason:$('reason').value,expiresOn:$('expiry').value})});$('overrideInfo').textContent=d.saved?'Wijziging bewaard met audit. Discord-rollen en Google Sheets niet gewijzigd.':'Niet opgeslagen';$('lookup').click()}catch(e){$('overrideInfo').textContent='Fout: '+e.message}};
+async function init(){try{const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());if(!config.enabled)throw Error('Firebase-configuratie ontbreekt');const appMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');mods=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');auth=mods.getAuth(appMod.initializeApp(config.firebaseConfig));await auth.authStateReady();$('date').value=new Date().toLocaleDateString('en-CA');await refresh()}catch(e){state('Verbinding mislukt: '+e.message,true)}}init();
+</script></body></html>
