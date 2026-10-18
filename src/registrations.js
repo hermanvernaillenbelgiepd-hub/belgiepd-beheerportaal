@@ -1,6 +1,6 @@
 import { policeKader } from './normalize.js';
 // Autorisatie en validatie: geen client-claims over rol of de identiteit van de indiener.
-export const ALLOWED_ROLES = ['basiskader','middenkader','officierenkader','korpsleiding','beheerder'];
+export const ALLOWED_ROLES = ['basiskader','middenkader','officierenkader','korpsleiding','burger','beheerder'];
 export const SANCTION_REASONS = [
   'Radioprotocol','Rijstijl','Onrechtmatig gebruik dienstspecifiek voertuig',
   'Onrechtmatig gebruik collectief / dienstspecifiek wapen',
