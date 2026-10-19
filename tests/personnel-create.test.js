@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {testCreateEnabled,canCreatePersonnel,validateNewPersonnel,
+import {testCreateEnabled,personnelDataEnabled,personnelCreationEnabled,
+  canCreatePersonnel,validateNewPersonnel,
   asCreatedPersonnel,uniqueNewPerson,visiblePendingPersonnel} from '../src/personnel-create.js';
 
 const person={dept:'politie',discordId:'444444444444444444',
@@ -16,6 +17,20 @@ test('New personnel creation is never active in production',()=>{
   assert.equal(testCreateEnabled({...env,BPD_TEST_FIXTURES:'false'}),false);
   assert.equal(testCreateEnabled({...env,FIREBASE_PROJECT_ID:'belgiepd-prod'}),false);
   assert.equal(testCreateEnabled({...env,BPD_ENABLE_PERSONNEL_CREATION:'false'}),false);
+});
+test('MAIN intake has independent explicit enablement and safe read-only pause',()=>{
+ const prod={FIREBASE_PROJECT_ID:'belgiepd-production',BPD_TEST_FIXTURES:'false'};
+ assert.equal(personnelDataEnabled(prod),false);
+ assert.equal(personnelCreationEnabled(prod),false);
+ const visible={...prod,BPD_PRODUCTION_PERSONNEL_DATA:'true'};
+ assert.equal(personnelDataEnabled(visible),true);
+ assert.equal(personnelCreationEnabled(visible),false);
+ assert.equal(personnelCreationEnabled({...visible,BPD_PRODUCTION_PERSONNEL_CREATION:'true'}),true);
+ assert.equal(personnelDataEnabled({...visible,FIREBASE_PROJECT_ID:'belgiepd-test'}),false);
+ assert.equal(personnelCreationEnabled({...visible,BPD_TEST_FIXTURES:'true'}),false);
+ assert.equal(personnelDataEnabled({...visible,BPD_TEST_FIXTURES:'true'}),false);
+ assert.equal(personnelCreationEnabled({...env,BPD_ENABLE_PERSONNEL_WRITES:'true'}),true);
+ assert.equal(personnelCreationEnabled(env),false);
 });
 test('Validated limited intake cannot inject rank privileges or extra properties',()=>{
   assert.deepEqual(validateNewPersonnel(person),person);
