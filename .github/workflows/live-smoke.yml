@@ -1,0 +1,34 @@
+name: BelgiumPD Live Security Smoke Checks
+
+on:
+  push:
+    branches:
+      - main
+      - feature/verlofmodule-test
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Check deployed public modules and auth guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify this branch is the one deployed to Render
+        env:
+          BPD_LIVE_URL: ${{ github.ref_name == 'main' && 'https://belgiepd-beheerportaal.onrender.com' || 'https://belgiepd-beheerportaal-testserver.onrender.com' }}
+          BPD_EXPECTED_SHA: ${{ github.sha }}
+          BPD_EXPECTED_BRANCH: ${{ github.ref_name }}
+        run: node scripts/live-smoke.mjs
