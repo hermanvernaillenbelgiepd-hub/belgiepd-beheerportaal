@@ -20,6 +20,20 @@ export function testCreateEnabled(env){
   return env.BPD_TEST_FIXTURES==='true'&&env.FIREBASE_PROJECT_ID==='belgiepd-test'&&
     env.BPD_ENABLE_PERSONNEL_CREATION==='true';
 }
+// The production Firestore roster remains visible even when intake is paused.
+// These explicit production switches never enable TEST fixtures or legacy edits.
+export function personnelDataEnabled(env){
+  if(testCreateEnabled(env))return true;
+  return env.BPD_TEST_FIXTURES!=='true'&&
+    typeof env.FIREBASE_PROJECT_ID==='string'&&
+    env.FIREBASE_PROJECT_ID.length>0&&env.FIREBASE_PROJECT_ID!=='belgiepd-test'&&
+    env.BPD_PRODUCTION_PERSONNEL_DATA==='true';
+}
+export function personnelCreationEnabled(env){
+  if(testCreateEnabled(env))
+    return env.BPD_ENABLE_PERSONNEL_WRITES==='true';
+  return personnelDataEnabled(env)&&env.BPD_PRODUCTION_PERSONNEL_CREATION==='true';
+}
 export function canCreatePersonnel(actor,dept){
   if(!actor?.departments?.includes(dept)||!TEST_RANKS[dept])return false;
   const role=roleForDepartment(actor,dept);
@@ -45,7 +59,7 @@ export function asCreatedPersonnel(d){
      typeof d.name!=='string'||typeof d.call!=='string'||!EDITABLE_STATUSES.includes(d.status))return null;
   const {dept,discordId,name,call,rank,status}=d;
   return {id:dept+':'+discordId,personId:discordId,name,call,dept,rank,
-    series:'Instroom',seriesRaw:'TEST-NIEUW',status,
+    series:'Instroom',seriesRaw:'FIRESTORE-NIEUW',status,
     specialties:[],special:'Geen geregistreerde specialisaties',hours:null,totalHours:null,
     last:null,lastConnection:null,lastCheck:null,activityStatus:null,lastPing:null,
     pingCount:null,pingResponses:null,source:'firestore-created'};
