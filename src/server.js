@@ -21,6 +21,8 @@ import { installLeaveRoutes } from './leave-routes.js';
 import { installUserRoutes } from './user-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
+import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
+import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits} from './personnel-editor-policy.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 app.disable('x-powered-by');
@@ -33,6 +35,7 @@ app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
+app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
 installRoleRoutes(app);
@@ -149,7 +152,7 @@ async function queryLive(){
   const built=buildData(personnel,activityRows,allDepts);
   return built;
 }
-async function getSnapshot(){
+async function getSourceSnapshot(){
   if(cache.data && Date.now()<cache.expires) return {data:cache.data,fetchedAt:cache.fetchedAt,stale:false};
   if(!cache.pending){
     cache.pending=queryLive().then(rows=>{cache.data=rows;cache.fetchedAt=new Date().toISOString();cache.expires=Date.now()+cacheMs;}).finally(()=>{cache.pending=null});
@@ -160,6 +163,15 @@ async function getSnapshot(){
     if(cache.data) return {data:cache.data,fetchedAt:cache.fetchedAt,stale:true};
     throw err;
   }
+}
+// Only read Firestore edits into shared personnel snapshots after the pilot is approved.
+// Read-only Sheets remain intact for rollback and comparison.
+async function getSnapshot(){
+  const base=await getSourceSnapshot();
+  if(process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE!=='true')return base;
+  const edits=await getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get();
+  if(edits.size===400)throw new Error('Personeelsoverschrijvingen overschrijden de veilige limiet');
+  return {...base,data:mergePersonnelEdits(base.data,edits.docs.map(d=>d.data()))};
 }
 app.get('/api/client-config',(_req,res)=>{
   const {FIREBASE_PROJECT_ID,FIREBASE_API_KEY,FIREBASE_AUTH_DOMAIN}=process.env;
@@ -222,6 +234,7 @@ installManagementRoutes(app,{requireUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
+installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
 app.get('/api/health',(_req,res)=>res.json({status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded'}));
 app.use('/api',(_req,res)=>res.status(404).json({error:'Niet gevonden'}));
 app.listen(Number(process.env.PORT)||8080,()=>console.log('BelgiumPD op poort '+(process.env.PORT||8080)));
