@@ -2,6 +2,7 @@ import {getAuth} from 'firebase-admin/auth';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {verifiedDiscordIdentity} from './user-access.js';
 import {bearerToken} from './personnel-link.js';
+import {citizenDossiersEnabled,CITIZEN_COLLECTION,citizenInitialData} from './citizen-policy.js';
 import {canCreatePersonnel} from './personnel-create.js';
 import {APPLICATION_SERVICES,SERVICE_APPLICATIONS_COLLECTION,
   serviceApplicantDossierId,validateServiceApplicationDraft} from './service-applications-policy.js';
@@ -60,8 +61,27 @@ export function installServiceApplicationRoutes(app,{requireUser}){
     try{
       const {discordId,...values}=evidenceInput;
       const evidence=signTrustedTelemetry(discordId,values,secret);
-      await getFirestore().collection(EVIDENCE_COLLECTION).doc(discordId).set({
-        ...evidence,updatedAt:FieldValue.serverTimestamp()
+      const db=getFirestore();
+      const evidenceRef=db.collection(EVIDENCE_COLLECTION).doc(discordId);
+      // When a trusted FiveM connector eventually starts posting telemetry,
+      // create a separate civilian identity dossier only if independently enabled.
+      // No police/personnel roles or applicant decisions are assigned here.
+      const citizenOn=citizenDossiersEnabled(process.env);
+      const citizenRef=citizenOn?db.collection(CITIZEN_COLLECTION).doc(discordId):null;
+      await db.runTransaction(async tx=>{
+        const existing=citizenRef?await tx.get(citizenRef):null;
+        tx.set(evidenceRef,{...evidence,updatedAt:FieldValue.serverTimestamp()});
+        if(citizenRef&&!existing.exists){
+          tx.create(citizenRef,{
+            ...citizenInitialData(discordId,'trusted_fivem_server'),
+            createdAt:FieldValue.serverTimestamp(),
+            updatedAt:FieldValue.serverTimestamp()
+          });
+          tx.create(citizenRef.collection('audit').doc(),{
+            action:'citizen_registered',origin:'trusted_fivem_server',
+            byDiscordId:null,at:FieldValue.serverTimestamp()
+          });
+        }
       });
       return res.json({saved:true,discordId});
     }catch(e){return friendlyError(res,e)}
