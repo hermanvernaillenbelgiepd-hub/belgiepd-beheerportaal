@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      - feature/test-personeel-toevoegen-20261019
+      - feature/verlofmodule-test
   pull_request:
     branches:
       - main
