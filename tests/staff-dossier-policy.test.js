@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {STAFF_DOSSIER_COLLECTION,STAFF_NOTE_TYPES,staffDossierEnabled,staffDossierWritesEnabled,
   staffDossierId,uniqueStaffSubject,canReadStaffDossier,canMaintainStaffDossier,
-  normalizeStaffProfile,validateStaffProfile,validateStaffNote,publicStaffNote}
+  normalizeStaffProfile,validateStaffProfile,publicStaffNote}
   from '../src/staff-dossier-policy.js';
 
 const id='123456789012345678',other='987654321098765432';
@@ -58,15 +58,10 @@ test('Profile updates demand complete fields, reason, and concurrency revision',
     rank:'Hoofdinspecteur'}}));
   assert.throws(()=>validateStaffProfile({...valid,profile:{unit:'Ploeg 1'}}));
 });
-test('Immutable notes have controlled categories and bounds',()=>{
-  const valid={kind:'begeleiding',title:'Praktische opvolging',
-    details:'Begeleidingsgesprek na de eerste dienstweek.'};
-  assert.deepEqual(validateStaffNote(valid),valid);
+test('Historical note categories remain readable without allowing a second writer',()=>{
   assert.ok(STAFF_NOTE_TYPES.includes('opleiding'));
-  assert.throws(()=>validateStaffNote({...valid,kind:'salaris'}));
-  assert.throws(()=>validateStaffNote({...valid,details:'kort'}));
-  assert.throws(()=>validateStaffNote({...valid,details:'<script>secret</script>'}));
-  assert.throws(()=>validateStaffNote({...valid,discordId:other}));
+  assert.ok(STAFF_NOTE_TYPES.includes('evaluatie'));
+  assert.ok(STAFF_NOTE_TYPES.includes('administratief'));
 });
 test('Public notes expose only allowed fields and never internal uid or secrets',()=>{
   const n=publicStaffNote({kind:'opleiding',title:'Afgeronde instructie',
