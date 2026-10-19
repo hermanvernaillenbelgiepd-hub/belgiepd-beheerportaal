@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {testCreateEnabled,canCreatePersonnel,validateNewPersonnel,
-  asCreatedPersonnel,uniqueNewPerson} from '../src/personnel-create.js';
+  asCreatedPersonnel,uniqueNewPerson,visiblePendingPersonnel} from '../src/personnel-create.js';
 
 const person={dept:'politie',discordId:'444444444444444444',
   name:'Nieuw Fictief Lid',call:'TEST-P404',rank:'Inspecteur',
@@ -58,4 +58,27 @@ test('Avoid duplicate Discord IDs and callsign within the same service',()=>{
   assert.doesNotThrow(()=>uniqueNewPerson(existing,person));
   assert.throws(()=>uniqueNewPerson([...existing,{dept:'politie',personId:person.discordId,call:'OTHER'}],person));
   assert.throws(()=>uniqueNewPerson(existing,{...person,call:'test-p202'}));
+});
+
+test('New personnel can be registered without Discord ID, with no account privileges',()=>{
+  const pending=validateNewPersonnel({...person,discordId:''});
+  assert.equal(pending.discordId,null);
+  assert.equal(pending.dept,'politie');
+  assert.equal(asCreatedPersonnel({...pending,status:'In opleiding'}),null);
+  assert.doesNotThrow(()=>uniqueNewPerson([],pending));
+  const draft=visiblePendingPersonnel('aBcDefGhiJKlmNop1234',{
+    ...pending,discordId:null,state:'awaiting_discord'
+  });
+  assert.equal(draft?.status,'Wacht op Discord-koppeling');
+  assert.equal(draft?.internalId,'aBcDefGhiJKlmNop1234');
+  assert.equal(Object.hasOwn(draft,'role'),false);
+  assert.equal(Object.hasOwn(draft,'discordId'),false);
+  assert.equal(visiblePendingPersonnel('bad/ref',{
+    ...pending,state:'awaiting_discord'}),null);
+  assert.equal(visiblePendingPersonnel('aBcDefGhiJKlmNop1234',{
+    ...pending,state:'linked'}),null);
+});
+test('A missing Discord ID never bypasses the service-specific callsign check',()=>{
+  assert.throws(()=>uniqueNewPerson([{dept:'politie',personId:'111111111111111111',call:'TEST-P404'}],
+    validateNewPersonnel({...person,discordId:''})));
 });
