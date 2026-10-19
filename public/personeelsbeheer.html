@@ -31,9 +31,9 @@ label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#
 </section>
 <section id="pendingPanel" class="card" hidden>
 <h2>Wacht op Discord-koppeling</h2><p>Deze fictieve medewerkers hebben een interne personeelsreferentie, maar nog geen Discord-ID.
-Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers.</p>
+Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a href="/personeel-koppelen.html">Open de pagina om Discord te koppelen</a>.</p>
 <div class="scroller"><table><thead><tr><th>Personeelslid</th><th>Hulpdienst</th>
-<th>Roepnummer</th><th>Rang</th><th>Interne referentie</th><th>Status</th></tr></thead>
+<th>Roepnummer</th><th>Rang</th><th>Interne referentie</th><th>Status / actie</th></tr></thead>
 <tbody id="pendingResults"></tbody></table></div></section>
 <section id="newPanel" class="card" hidden>
 <div class="controls" style="justify-content:space-between"><h2>Nieuw personeelslid – TESTSERVER</h2><button id="newClose" class="alt" type="button">Sluiten</button></div>
@@ -86,8 +86,34 @@ function renderPending(){
   for(const p of pendingPeople){
     const row=document.createElement('tr');
     td(row,p.name);td(row,departments[p.dept]||p.dept);td(row,p.call);
-    td(row,p.rank);td(row,p.internalId);td(row,p.status);
-    body.append(row);
+    td(row,p.rank);td(row,p.internalId);
+    const cell=document.createElement('td');
+    const info=document.createElement('div');info.textContent=p.status;cell.append(info);
+    if(p.request){
+      const member=document.createElement('small');member.textContent=
+        'Discord: '+p.request.username+' ('+p.request.discordId+')';
+      cell.append(member);
+      const approve=document.createElement('button');approve.type='button';
+      approve.textContent='Koppeling goedkeuren';approve.className='alt';
+      approve.style.marginTop='8px';
+      approve.onclick=async()=>{
+        if(!confirm('Bevestig dat Discord-account '+p.request.username+
+          ' bij medewerker '+p.name+' hoort. Dit geeft GEEN toegangsrechten.'))return;
+        const reason=prompt('Motivering koppeling (minstens 10 tekens):',
+          'Discord-identiteit en personeelsfiche gecontroleerd');
+        if(reason===null)return;
+        approve.disabled=true;
+        try{
+          await request('/api/personnel/link/'+encodeURIComponent(p.internalId)+'/approve',
+            {method:'POST',body:{reason}});
+          await load();
+          notice('Discord-identiteit aan personeelsfiche gekoppeld. Portaalrechten blijven afzonderlijk.');
+        }catch(e){notice(e.message,true)}
+        finally{approve.disabled=false}
+      };
+      cell.append(approve);
+    }
+    row.append(cell);body.append(row);
   }
 }
 function render(){
