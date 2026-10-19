@@ -1,6 +1,7 @@
 import {canEditPersonnel,canViewPersonnel,validPersonnelKey} from './personnel-editor-policy.js';
 
 export const STAFF_DOSSIER_COLLECTION='bpd_staff_dossiers';
+// Historical categories are retained for read-only access, not for new writes.
 export const STAFF_NOTE_TYPES=Object.freeze(['opleiding','begeleiding','evaluatie','administratief','waardering']);
 const FIELDS=Object.freeze(['startDate','unit','functionTitle']);
 const DEFAULT=Object.freeze({startDate:'',unit:'',functionTitle:''});
@@ -67,17 +68,6 @@ export function validateStaffProfile(body){
     functionTitle:safeText(fields.functionTitle,80)
   };
   return {profile,expectedRevision:body.expectedRevision,reason};
-}
-export function validateStaffNote(body){
-  if(!body||typeof body!=='object'||Array.isArray(body)||
-    Object.keys(body).some(k=>!['kind','title','details'].includes(k)))
-    throw Error('Ongeldige personeelsnotitie');
-  if(!STAFF_NOTE_TYPES.includes(body.kind))throw Error('Kies een geldig registratietype');
-  const title=safeText(body.title,120);
-  const details=safeText(body.details,1200);
-  if(title.length<5||details.length<15)
-    throw Error('Titel (5 tekens) en toelichting (15 tekens) zijn vereist');
-  return {kind:body.kind,title,details};
 }
 const asIso=value=>{
   const date=value?.toDate?.()||value;
