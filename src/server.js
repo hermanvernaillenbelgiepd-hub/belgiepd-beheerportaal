@@ -23,6 +23,7 @@ import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from '
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installServiceApplicationRoutes} from './service-applications-routes.js';
+import {installDossierCenterRoutes} from './dossier-center-routes.js';
 import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
@@ -248,6 +249,7 @@ installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
 installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
 installServiceApplicationRoutes(app,{requireUser});
+installDossierCenterRoutes(app,{requireUser,getSnapshot});
 app.get('/api/health',(_req,res)=>res.json({status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded'}));
 app.use('/api',(_req,res)=>res.status(404).json({error:'Niet gevonden'}));
 app.listen(Number(process.env.PORT)||8080,()=>console.log('BelgiumPD op poort '+(process.env.PORT||8080)));
