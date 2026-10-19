@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BelgiumPD · Algemeen verlofbeheer</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#152344;background:#f4f6fa;font-size:15px}
+*{box-sizing:border-box}body{margin:0}header{background:#101c38;color:white;padding:18px max(20px,calc((100vw - 1150px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}header a{color:#dbe7ff;text-decoration:none}header button{background:#e9efff;color:#233e95}button,.link{font:inherit;cursor:pointer;border:1px solid #cdd7e9;border-radius:9px;padding:10px 14px;background:white;color:#14336c}button:hover{filter:brightness(.97)}button.primary{color:white;background:#2e55df;border-color:#2e55df}button:disabled{opacity:.5;cursor:not-allowed}main{max-width:1150px;margin:30px auto;padding:0 20px}h1{font-size:29px;margin:0 0 10px}h2{font-size:19px;margin:0 0 14px}p{color:#51617a;line-height:1.55}small,.muted{color:#6e7c92}.panel{background:white;border:1px solid #e0e6f0;border-radius:14px;padding:22px;margin:18px 0;box-shadow:0 3px 14px #15234407}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}label{font-size:13px;font-weight:700;color:#34425c}input,select,textarea{font:inherit;padding:11px;border:1px solid #cbd5e4;border-radius:8px;width:100%;color:#182747;background:white}textarea{min-height:70px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.pill{display:inline-block;padding:4px 9px;border-radius:12px;background:#eff2fb;color:#344a78;font-size:12px;font-weight:700}.pending{background:#fff3de;color:#976118}.approved{background:#e4f5e9;color:#166739}.rejected{background:#ffe5e9;color:#a02938}.hidden{display:none!important}.error{background:#fff0f0;color:#9a1d2b;border-radius:8px;padding:13px}.notice{background:#edf2ff;color:#214482;border-radius:8px;padding:12px;margin:12px 0}.record{padding:14px 0;border-top:1px solid #e8edf5;display:flex;justify-content:space-between;align-items:flex-start;gap:18px}.record:first-child{border-top:0}.record p{margin:6px 0}.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat>div{background:#f2f5fb;padding:15px;border-radius:9px}.stat strong{font-size:22px;display:block}.warn{background:#fff8e6;padding:12px;border-radius:8px;color:#785411;margin:12px 0}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}@media(max-width:750px){.grid,.stat{grid-template-columns:1fr}.record{display:block}.record .actions{margin-top:12px}}
+</style>
+</head>
+<body>
+<header><div><strong>🛡️ BelgiëPD</strong> <span style="opacity:.7">/ Centraal verlofbeheer</span></div><div class="actions"><a href="/">← Dashboard</a><button id="login">Google aanmelden</button></div></header>
+<main>
+  <h1>Algemeen verlofbeheer</h1>
+  <p>Verlof wordt per persoon één keer vastgelegd. Goedgekeurde perioden gelden voor al zijn of haar actieve hulpdiensten, onafhankelijk van het operationele roepnummer.</p>
+  <div id="feedback" role="status" aria-live="polite" class="notice">Aanmeldstatus controleren…</div>
+  <div id="authRequired" class="panel"><h2>Aanmelden vereist</h2><p>Log in met een gemachtigd BelgiumPD-account om de verlofmodule te openen. Zonder aanmelding worden geen personeelsgegevens geladen.</p></div>
+  <div id="content" class="hidden">
+    <div class="stat"><div><small>Mijn aanvragen</small><strong id="countMine">0</strong></div><div><small>Te behandelen</small><strong id="countPending">0</strong></div><div><small>Mijn kaderrol</small><strong id="myRole" style="font-size:16px">—</strong></div></div>
+    <div id="writesOff" class="warn hidden">Testmodus: schrijfacties zijn uitgeschakeld. Zet deze pas aan in een afzonderlijke testomgeving na de bevoegdhedencontrole.</div>
+    <div class="grid">
+      <section class="panel"><h2>Verlof aanvragen</h2><form id="requestForm">
+        <div class="grid"><div class="field"><label for="start">Begindatum</label><input id="start" type="date" required></div><div class="field"><label for="end">Einddatum (inbegrepen)</label><input id="end" type="date" required></div></div>
+        <p id="dayCount">Selecteer beide datums.</p><div class="field"><label for="note">Toelichting (optioneel, max. 300 tekens)</label><textarea id="note" maxlength="300" placeholder="Deel geen onnodige persoonlijke informatie."></textarea></div>
+        <button id="submitRequest" class="primary" type="submit">Aanvraag indienen</button>
+      </form></section>
+      <section class="panel"><h2>Mijn aanvragen</h2><div id="myRequests">Nog geen gegevens geladen.</div></section>
+    </div>
+    <section class="panel"><h2>Te behandelen aanvragen</h2><p>Een middenkaderlid mag maximaal 30 kalenderdagen goedkeuren. Vanaf 31 dagen is officierenkader, korpsleiding of een daartoe gemachtigde verlofbeheerder vereist. Eigen aanvragen mogen nooit zelf worden goedgekeurd.</p><div id="reviewList">Nog geen gegevens geladen.</div></section>
+    <section class="panel"><h2>Verlofstatus in een hulpdienstdossier</h2><p>Bevoegde kaderleden zien alleen de verlofperioden en beschikbaarheidsstatus binnen hun eigen hulpdienst. Er worden geen vertrouwelijke opmerkingen of gegevens uit andere dienst­dossiers getoond.</p>
+      <form id="lookupForm"><div class="grid"><div class="field"><label for="lookupId">Discord ID van personeelslid</label><input id="lookupId" inputmode="numeric" pattern="[0-9]{15,22}" required placeholder="Discord ID"></div><div class="field"><label for="lookupDept">Hulpdienst</label><select id="lookupDept" required></select></div></div><button type="submit">Toon verlofstatus</button></form><div id="personLeaves" style="margin-top:14px"></div>
+    </section>
+    <section id="delegationPanel" class="panel hidden"><h2>Tijdelijke rol VERLOFBEHEER</h2><p>Uitsluitend officierenkader en korpsleiding kunnen een aanvullende verlofmachtiging toekennen. Een machtiging geeft géén toegang tot interne hulpdienstdossiers.</p>
+      <form id="grantForm"><div class="grid"><div class="field"><label for="grantEmail">Google-account van medewerker</label><input id="grantEmail" type="email" required placeholder="medewerker@example.com"></div><div class="field"><label for="grantLevel">Bevoegdheid</label><select id="grantLevel"><option value="max30">Maximaal 30 kalenderdagen</option><option value="all">Alle verlofduren</option></select></div><div class="field"><label for="grantFrom">Geldig vanaf</label><input id="grantFrom" type="date" required></div><div class="field"><label for="grantUntil">Geldig tot en met</label><input id="grantUntil" type="date" required></div></div><div class="actions"><button class="primary" type="submit">Machtiging toekennen</button><button type="button" id="revoke">Machtiging op basis van e-mailadres intrekken</button></div></form>
+      <div id="grantList" style="margin-top:16px"></div>
+    </section>
+  </div>
+</main>
+<script type="module">
+let firebaseAuth=null,firebaseFns=null,me=null;
+const el=id=>document.getElementById(id);
+const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const statusText={pending:'In behandeling',approved:'Goedgekeurd',rejected:'Afgewezen'};
+function tell(message,error=false){const x=el('feedback');x.textContent=message;x.className=error?'error':'notice'}
+function countDays(a,b){if(!a||!b)return 0;return (Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/86400000+1}
+function updateCount(){const n=countDays(el('start').value,el('end').value);el('dayCount').textContent=n>0?`${n} kalenderdag(en) — ${n<=30?'beoordeling mogelijk door middenkader':'goedkeuring door hoger kader vereist'}`:'Selecteer een geldige begin- en einddatum.'}
+for(const x of ['start','end'])el(x).addEventListener('change',updateCount);
+async function request(url,options={}){
+  if(!firebaseAuth?.currentUser)throw new Error('Meld eerst aan via Google');
+  const token=await firebaseAuth.currentUser.getIdToken();
+  const r=await fetch(url,{...options,headers:{Authorization:`Bearer ${token}`,...(options.body?{'Content-Type':'application/json'}:{}),...options.headers},cache:'no-store'});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.error||`Serverfout ${r.status}`);
+  return data;
+}
+function record(x,decision=false){const container=document.createElement('div');container.className='record';
+  const label=document.createElement('div');label.innerHTML=`<strong>${escapeHtml(x.subjectName||'Personeelslid')}</strong> <span class="pill ${escapeHtml(x.status)}">${escapeHtml(statusText[x.status]||x.status)}</span><p>${escapeHtml(x.startDate)} t/m ${escapeHtml(x.endDate)} · ${Number(x.days)} kalenderdagen</p><small>${escapeHtml((x.subjectDepartments||[]).join(' · '))}</small>`;
+  container.append(label);
+  if(decision&&me?.writesEnabled){const actions=document.createElement('div');actions.className='actions';for(const [value,title] of [['approved','Goedkeuren'],['rejected','Afwijzen']]){const btn=document.createElement('button');btn.textContent=title;btn.className=value==='approved'?'primary':'';btn.addEventListener('click',async()=>{if(!confirm(`Aanvraag ${title.toLowerCase()} voor ${x.days} kalenderdagen?`))return;btn.disabled=true;try{await request('/api/leave/requests/'+encodeURIComponent(x.id)+'/decision',{method:'POST',body:JSON.stringify({decision:value})});tell('Beslissing geregistreerd.');await refresh()}catch(e){tell(e.message,true)}finally{btn.disabled=false}});actions.append(btn)}container.append(actions)}return container;
+}
+function fill(id,rows,decision=false){const root=el(id);root.replaceChildren();if(!rows.length){const p=document.createElement('p');p.textContent=decision?'Geen aanvragen die je mag behandelen.':'Geen aanvragen.';root.append(p)}else rows.forEach(x=>root.append(record(x,decision)))}
+async function refresh(){const [who,leaves]=await Promise.all([request('/api/leave/me'),request('/api/leave/requests')]);me=who;el('authRequired').classList.add('hidden');el('content').classList.remove('hidden');el('myRole').textContent=who.role;el('countMine').textContent=leaves.mine.length;el('countPending').textContent=leaves.toReview.length;
+  el('writesOff').classList.toggle('hidden',who.writesEnabled);el('submitRequest').disabled=!who.writesEnabled;
+  el('delegationPanel').classList.toggle('hidden',!who.canManageGrants);el('grantForm').querySelectorAll('button,input,select').forEach(x=>x.disabled=!who.writesEnabled);
+  fill('myRequests',leaves.mine);fill('reviewList',leaves.toReview,true);if(who.canManageGrants)await showGrants();
+  const deptSelect=el('lookupDept'),oldDept=deptSelect.value;deptSelect.replaceChildren();
+  for(const dept of who.departments){const option=document.createElement('option');option.value=dept;option.textContent=dept;deptSelect.append(option)}
+  if(who.departments.includes(oldDept))deptSelect.value=oldDept;
+  const params=new URLSearchParams(location.search),linkedId=params.get('discordId'),linkedDept=params.get('dept');
+  if(linkedId&&linkedDept&&who.departments.includes(linkedDept)&&!el('lookupId').value){
+    el('lookupId').value=linkedId;deptSelect.value=linkedDept;
+    el('lookupForm').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+  }
+
+  if(leaves.limited)tell('Opgelet: dit overzicht is begrensd op een aantal recente aanvragen.');
+}
+async function showGrants(){const data=await request('/api/leave/grants');const root=el('grantList');root.replaceChildren();for(const g of data.grants){const p=document.createElement('p');p.textContent=`${g.email} · ${g.level==='all'?'Alle duur':'Max. 30 dagen'} · ${g.startsOn} – ${g.expiresOn}${g.revoked?' (ingetrokken)':''}`;root.append(p)}}
+el('requestForm').addEventListener('submit',async e=>{e.preventDefault();const startDate=el('start').value,endDate=el('end').value;if(countDays(startDate,endDate)<=0)return tell('Controleer de datums.',true);const btn=el('submitRequest');btn.disabled=true;try{await request('/api/leave/requests',{method:'POST',body:JSON.stringify({startDate,endDate,note:el('note').value})});el('requestForm').reset();updateCount();tell('Verlofaanvraag veilig ingediend.');await refresh()}catch(err){tell(err.message,true)}finally{btn.disabled=!me?.writesEnabled}});
+el('lookupForm').addEventListener('submit',async e=>{e.preventDefault();
+  const id=el('lookupId').value.trim(),dept=el('lookupDept').value,root=el('personLeaves');
+  root.textContent='Verlofstatus ophalen…';
+  try{const result=await request('/api/leave/person/'+encodeURIComponent(id)+'?dept='+encodeURIComponent(dept));root.replaceChildren();
+    if(!result.leaves.length){root.textContent='Geen goedgekeurd verlof geregistreerd.';return;}
+    for(const x of result.leaves){const p=document.createElement('p');p.textContent=`${x.startDate} t/m ${x.endDate} — ${x.days} kalenderdagen (${statusText[x.status]||x.status})`;root.append(p)}
+    if(result.limited){const warn=document.createElement('p');warn.textContent='Overzicht is begrensd tot de eerste 100 registraties.';root.append(warn)}
+  }catch(err){root.textContent='Geen toegang of gegevens niet beschikbaar: '+err.message}
+});
+el('grantForm').addEventListener('submit',async e=>{e.preventDefault();try{await request('/api/leave/grants',{method:'POST',body:JSON.stringify({email:el('grantEmail').value,level:el('grantLevel').value,startsOn:el('grantFrom').value,expiresOn:el('grantUntil').value})});tell('Tijdelijke verlofmachtiging opgeslagen.');await showGrants()}catch(err){tell(err.message,true)}});
+el('revoke').addEventListener('click',async()=>{const email=el('grantEmail').value;if(!email)return tell('Vul eerst het accountadres in.',true);if(!confirm('De verlofmachtiging voor dit account intrekken?'))return;try{await request('/api/leave/grants/revoke',{method:'POST',body:JSON.stringify({email})});tell('Machtiging ingetrokken.');await showGrants()}catch(err){tell(err.message,true)}});
+async function init(){try{const r=await fetch('/api/client-config',{cache:'no-store'}),c=await r.json();if(!c.enabled)throw new Error('Firebase is niet geconfigureerd');const a=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');firebaseFns=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');firebaseAuth=firebaseFns.getAuth(a.initializeApp(c.firebaseConfig));
+  el('login').addEventListener('click',async()=>{try{if(firebaseAuth.currentUser)await firebaseFns.signOut(firebaseAuth);else await firebaseFns.signInWithPopup(firebaseAuth,new firebaseFns.GoogleAuthProvider())}catch(err){tell('Google-aanmelding mislukt: '+err.message,true)}});
+  firebaseFns.onAuthStateChanged(firebaseAuth,async user=>{el('login').textContent=user?'Afmelden':'Google aanmelden';el('authRequired').classList.toggle('hidden',Boolean(user));el('content').classList.add('hidden');me=null;if(user){tell('Bevoegdheden controleren…');try{await refresh();tell('Aangemeld: persoonlijke en gemachtigde verlofgegevens geladen.')}catch(e){tell(e.message,true)}}else tell('Meld aan om je verlofgegevens te bekijken.');});
+}catch(err){tell('Aanmelding niet beschikbaar: '+err.message,true)}}
+init();
+</script>
+</body></html>
