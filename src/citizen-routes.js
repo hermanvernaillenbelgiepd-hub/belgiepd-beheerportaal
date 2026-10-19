@@ -32,7 +32,7 @@ function handleError(res,e){
 export function installCitizenRoutes(app){
   app.get('/api/citizens/status',(_req,res)=>{
     res.json({enabled:citizenDossiersEnabled(process.env),
-      discordLoginRequired:true,fivemAutomaticallyVerified:false});
+      discordLoginRequired:true});
   });
   app.get('/api/citizens/me',async(req,res)=>{
     if(!citizenDossiersEnabled(process.env))
@@ -74,8 +74,7 @@ export function installCitizenRoutes(app){
     try{
       const citizen=await currentCitizen(req),db=getFirestore();
       const ref=db.collection(CITIZEN_COLLECTION).doc(citizen.discordId);
-      let created=false;
-      await db.runTransaction(async tx=>{
+      const created=await db.runTransaction(async tx=>{
         const previous=await tx.get(ref);
         if(!previous.exists){
           tx.create(ref,{...citizenInitialData(citizen.discordId,'discord_oauth',citizen.username),
@@ -84,7 +83,7 @@ export function installCitizenRoutes(app){
             action:'citizen_registered',origin:'discord_oauth',
             byDiscordId:citizen.discordId,at:FieldValue.serverTimestamp()
           });
-          created=true;
+          return true;
         }else if(previous.get('discordId')!==citizen.discordId||
           previous.get('category')!=='burger'||
           previous.get('state')!=='registered')
@@ -92,6 +91,7 @@ export function installCitizenRoutes(app){
         else if(previous.get('displayName')!==citizen.username)
           tx.update(ref,{displayName:citizen.username,
             updatedAt:FieldValue.serverTimestamp()});
+        return false;
       });
       return res.json({registered:true,created,rightsGranted:false});
     }catch(e){return handleError(res,e)}
