@@ -16,11 +16,20 @@ label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#
 .scroller{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:750px}th,td{text-align:left;border-bottom:1px solid #324660;padding:12px 10px;vertical-align:middle;font-size:13px}th{color:#a8bdd7;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
 .pill{display:inline-block;padding:4px 10px;border-radius:99px;background:#263d5e;color:#dce8ff;font-size:12px}
 .overlay{background:#1d4c4b;color:#bcf6ec}.subtle{font-size:12px;color:#9eb0ca}#panel{border-top:1px solid #3b5374;margin-top:18px;padding-top:20px}
-.history{padding:9px 0;border-bottom:1px solid #384965}#results td:first-child{font-weight:700}button.small{padding:6px 9px;font-size:12px;margin-top:5px}code{overflow-wrap:anywhere;color:#cce0ff}.inline-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#c8d9ef}.inline-check input{width:auto}
+.history{padding:9px 0;border-bottom:1px solid #384965}
+.dossier-head{border-top:1px solid #3b5374;padding-top:18px;margin-top:20px}
+.dossier-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dossier-summary>div{border:1px solid #324b70;border-radius:8px;padding:12px}
+.dossier-summary b{display:block;color:#abc6e9;font-size:12px;margin-bottom:5px}
+.note-item{padding:12px 0;border-bottom:1px solid #344d6f;overflow-wrap:anywhere}
+.note-item strong{display:block}.note-item p{white-space:pre-wrap;color:#d0e0f5;margin:6px 0}
+.dossier-shortcuts{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.dossier-shortcuts a{border:1px solid #456b96;border-radius:8px;padding:9px 12px}
+@media(max-width:660px){.dossier-summary{grid-template-columns:1fr}}#results td:first-child{font-weight:700}button.small{padding:6px 9px;font-size:12px;margin-top:5px}code{overflow-wrap:anywhere;color:#cce0ff}.inline-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#c8d9ef}.inline-check input{width:auto}
 [hidden]{display:none!important}
 @media(max-width:660px){.grid{grid-template-columns:1fr}.card{padding:15px}h1{font-size:25px}header{padding:14px}}
 </style></head>
-<body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/sollicitatiebeheer.html">Sollicitatiebeheer</a><a href="/dossiercentrum.html">Dossiercentrum</a><button id="login" type="button">Aanmelden</button></nav></header>
+<body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
 <div id="mode" class="warn" hidden></div>
@@ -80,21 +89,59 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 </div>
 <div class="controls" style="margin-top:14px"><button id="promoteSave" type="submit">Promotie registreren</button></div>
 </form></section>
-<h3>Wijzigingsgeschiedenis</h3><div id="history" class="subtle">Wordt geladen…</div></section>
+<section class="dossier-head" id="staffDossierSection">
+<h2>Administratief personeelsdossier</h2>
+<p class="subtle">Aanstellingsgegevens, functie en administratieve opvolging. Het officiële personeelsbestand, de rang en de bestaande opleidingen worden hierdoor niet overschreven.</p>
+<div id="staffDossierStatus" role="status" class="subtle">Dossiergegevens worden opgehaald…</div>
+<div id="staffDossierSummary" class="dossier-summary"></div>
+<div class="dossier-shortcuts">
+<a href="/rollen-opleidingen.html">Opleidingen en beoordelingen</a>
+<a href="/registraties.html">Registraties</a>
+<a href="/verlofbeheer.html">Verlofbeheer</a>
+</div>
+<form id="staffProfileForm" hidden>
+<h3>Administratieve basisgegevens</h3>
+<div class="grid">
+<div><label for="staffStartDate">Aanstellingsdatum</label><input id="staffStartDate" type="date"></div>
+<div><label for="staffUnit">Eenheid of ploeg</label><input id="staffUnit" maxlength="80" placeholder="Bijvoorbeeld wijkteam 01"></div>
+<div><label for="staffFunction">Functie of opdracht</label><input id="staffFunction" maxlength="80" placeholder="Bijvoorbeeld terreinondersteuner"></div>
+<div><label for="staffProfileReason">Motivering wijziging</label><textarea id="staffProfileReason" rows="2" minlength="15" maxlength="500" required placeholder="Waarom worden deze gegevens aangepast?"></textarea></div>
+</div>
+<button id="staffProfileSave" type="submit">Administratieve gegevens bewaren</button>
+</form>
+<h3>Opvolgingsnotities</h3>
+<p class="subtle">Opleiding, begeleiding, functioneringsgesprek, waardering en administratie. Noteer geen echte medische of andere overbodige gevoelige persoonsgegevens.</p>
+<div id="staffNotes" class="subtle"></div>
+<form id="staffNoteForm" hidden>
+<div class="grid">
+<div><label for="staffNoteKind">Soort registratie</label><select id="staffNoteKind">
+<option value="opleiding">Opleiding</option><option value="begeleiding">Begeleiding</option>
+<option value="evaluatie">Functioneringsgesprek</option><option value="administratief">Administratieve opvolging</option>
+<option value="waardering">Waardering</option></select></div>
+<div><label for="staffNoteTitle">Onderwerp</label><input id="staffNoteTitle" minlength="5" maxlength="120" required></div>
+<div style="grid-column:1/-1"><label for="staffNoteDetails">Toelichting</label><textarea id="staffNoteDetails" minlength="15" maxlength="1200" rows="4" required></textarea></div>
+</div>
+<button id="staffNoteSave" type="submit">Notitie registreren</button>
+</form>
+<h3>Administratieve dossierhistoriek</h3><div id="staffDossierHistory" class="subtle"></div>
+</section>
+<h3>Officiële personeels- en ranghistoriek</h3><div id="history" class="subtle">Wordt geladen…</div></section>
 </main>
 <script type="module">
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
-let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={};
+let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
 function notice(text,bad=false){$('notice').textContent=text;$('notice').classList.toggle('error',bad)}
 async function request(url,options={}){
-  if(!auth?.currentUser)throw Error('Meld je eerst aan met Discord');
-  const token=await auth.currentUser.getIdToken();
+  const user=auth?.currentUser;
+  if(!user)throw Error('Meld je eerst aan');
+  const token=await user.getIdToken();
   const response=await fetch(url,{method:options.method||'GET',cache:'no-store',
     headers:{Authorization:'Bearer '+token,...(options.body?{'Content-Type':'application/json'}:{})},
     ...(options.body?{body:JSON.stringify(options.body)}:{})});
   const data=await response.json().catch(()=>({}));
+  if(auth.currentUser?.uid!==user.uid)throw Error('Aanmelding gewijzigd: vernieuw het dossier');
   if(!response.ok)throw Error(data.error||'Fout bij ophalen ('+response.status+')');
   return data;
 }
@@ -205,7 +252,7 @@ function render(){
   }
 }
 async function load(){
-  if(!auth?.currentUser){people=[];pendingPeople=[];createRanks={};promotionsEnabled=false;$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();renderPending();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+  if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;$('panel').hidden=true;createRanks={};promotionsEnabled=false;$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();renderPending();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     const data=await request('/api/personnel/overview');
     people=data.records||[];pendingPeople=data.pendingPersonnel||[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;testMode=data.testMode===true;
@@ -226,6 +273,93 @@ async function load(){
     if(selected){const still=people.find(p=>p.dept===selected.dept&&p.discordId===selected.discordId);if(still)await showPerson(still);else $('panel').hidden=true}
   }catch(e){people=[];$('panel').hidden=true;render();notice(e.message,true)}
 }
+function staffField(parent,label,value){
+  const div=document.createElement('div');
+  const key=document.createElement('b');key.textContent=label;
+  const field=document.createElement('span');field.textContent=value||'Niet ingevuld';
+  div.append(key,field);parent.append(div);
+}
+const staffNotesLabels={opleiding:'Opleiding',begeleiding:'Begeleiding',
+  evaluatie:'Functioneringsgesprek',administratief:'Administratieve opvolging',
+  waardering:'Waardering'};
+async function loadStaffDossier(p){
+  const key=p.dept+':'+p.discordId;
+  const base='/api/staff-dossiers/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
+  $('staffDossierStatus').textContent='Administratieve gegevens ophalen…';
+  $('staffDossierSummary').replaceChildren();$('staffNotes').replaceChildren();
+  $('staffDossierHistory').replaceChildren();
+  $('staffProfileForm').hidden=true;$('staffNoteForm').hidden=true;
+  staffDossierCanMaintain=false;
+  try{
+    const result=await request(base);
+    if(!selected||selected.dept+':'+selected.discordId!==key||$('panel').hidden)return;
+    staffDossierRevision=result.revision;
+    staffDossierCanMaintain=result.canMaintain===true;
+    const profile=result.profile||{};
+    const summary=$('staffDossierSummary');
+    staffField(summary,'Aanstellingsdatum',profile.startDate);
+    staffField(summary,'Eenheid of ploeg',profile.unit);
+    staffField(summary,'Functie of opdracht',profile.functionTitle);
+    $('staffStartDate').value=profile.startDate||'';
+    $('staffUnit').value=profile.unit||'';
+    $('staffFunction').value=profile.functionTitle||'';
+    $('staffProfileReason').value='';
+    $('staffProfileForm').hidden=!staffDossierCanMaintain;
+    $('staffNoteForm').hidden=!staffDossierCanMaintain;
+    $('staffDossierStatus').textContent=staffDossierCanMaintain?
+      'Administratieve dossierwijzigingen zijn beschikbaar; iedere wijziging krijgt een auditregistratie.':
+      'Alleen-lezen dossier. Je bestaande personeels- en opleidingsrechten blijven bepalend.';
+    const list=$('staffNotes');
+    if(!result.notes?.length)list.textContent='Nog geen administratieve opvolgingsnotities.';
+    else for(const item of result.notes){
+      const div=document.createElement('div');div.className='note-item';
+      const title=document.createElement('strong');
+      title.textContent=(staffNotesLabels[item.kind]||item.kind)+' · '+item.title;
+      const body=document.createElement('p');body.textContent=item.details;
+      const meta=document.createElement('span');meta.className='subtle';
+      meta.textContent=(item.recordedAt?new Date(item.recordedAt).toLocaleString('nl-BE'):'Datum onbekend')+
+        ' · Registratie door '+(item.authorDiscordId||'onbekend');
+      div.append(title,body,meta);list.append(div);
+    }
+    if(result.notesLimited)list.append(document.createTextNode(' Alleen de 60 recentste notities worden getoond.'));
+    const hist=$('staffDossierHistory');
+    if(!result.profileChanges?.length)hist.textContent='Nog geen administratieve wijzigingen geregistreerd.';
+    else for(const entry of result.profileChanges){
+      const line=document.createElement('div');line.className='history';
+      line.textContent=(entry.action==='profile_updated'?'Administratieve basisgegevens gewijzigd':'Notitie geregistreerd')+
+        ' · '+(entry.recordedAt?new Date(entry.recordedAt).toLocaleString('nl-BE'):'Datum onbekend')+
+        ' · Door '+(entry.byDiscordId||'onbekend')+(entry.reason?' · '+entry.reason:'');
+      hist.append(line);
+    }
+  }catch(e){
+    if(selected&&selected.dept+':'+selected.discordId===key)
+      $('staffDossierStatus').textContent='Administratief dossier niet beschikbaar: '+e.message;
+  }
+}
+$('staffProfileForm').onsubmit=async event=>{
+  event.preventDefault();if(!selected||!staffDossierCanMaintain)return;
+  const button=$('staffProfileSave');button.disabled=true;
+  try{
+    await request('/api/staff-dossiers/'+encodeURIComponent(selected.dept)+'/'+encodeURIComponent(selected.discordId)+'/profile',{
+      method:'POST',body:{expectedRevision:staffDossierRevision,
+        profile:{startDate:$('staffStartDate').value,unit:$('staffUnit').value,
+          functionTitle:$('staffFunction').value},reason:$('staffProfileReason').value.trim()}});
+    await loadStaffDossier(selected);
+    notice('Administratieve personeelsgegevens opgeslagen, inclusief auditgeschiedenis.');
+  }catch(e){notice(e.message,true)}finally{button.disabled=false}
+};
+$('staffNoteForm').onsubmit=async event=>{
+  event.preventDefault();if(!selected||!staffDossierCanMaintain)return;
+  const button=$('staffNoteSave');button.disabled=true;
+  try{
+    await request('/api/staff-dossiers/'+encodeURIComponent(selected.dept)+'/'+encodeURIComponent(selected.discordId)+'/notes',{
+      method:'POST',body:{kind:$('staffNoteKind').value,title:$('staffNoteTitle').value.trim(),
+        details:$('staffNoteDetails').value.trim()}});
+    $('staffNoteTitle').value='';$('staffNoteDetails').value='';
+    await loadStaffDossier(selected);
+    notice('Personeelsnotitie geregistreerd met vermelding van de auteur en datum.');
+  }catch(e){notice(e.message,true)}finally{button.disabled=false}
+};
 async function showPerson(p){
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
   $('identity').textContent=(departments[p.dept]||p.dept)+' · Discord ID '+p.discordId+' · Revisie '+p.revision;
@@ -244,6 +378,7 @@ async function showPerson(p){
   $('policyHint').textContent=!p.canEdit?'Je hebt geen wijzigingsbevoegdheid voor deze fiche.':
     !writesEnabled?'Opslaan staat momenteel uit (veilige voorbereidingsmodus).':
     'Wijzigingen worden met revisiecontrole en een auditregistratie opgeslagen.';
+  await loadStaffDossier(p);
   $('history').textContent='Geschiedenis ophalen…';
   try{
     const r=await request('/api/personnel/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId)+'/history');
