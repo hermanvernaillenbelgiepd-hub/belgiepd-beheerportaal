@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>BelgiumPD · Gebruikersbeheer</title>
+<style>
+:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:#eaf1ff;background:#071124}*{box-sizing:border-box}body{margin:0}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:19px max(18px,calc((100vw - 1180px)/2));background:#10203c;border-bottom:1px solid #2c4261}
+header strong{font-size:18px}header nav{display:flex;align-items:center;gap:16px;flex-wrap:wrap}a{color:#aecaff;text-decoration:none}
+main{max-width:1180px;padding:28px 18px 70px;margin:auto}h1{font-size:30px;margin:0 0 9px}h2{font-size:20px;margin:0 0 12px}p{color:#b0bfd8;line-height:1.6}
+.card{background:#11233f;border:1px solid #304769;border-radius:13px;padding:22px;margin:16px 0}
+button,select,input{font:inherit;border-radius:8px}button{cursor:pointer;background:#345fe1;border:1px solid #5b84ff;color:white;padding:10px 14px;font-weight:650}button.alt{background:#1c3353;border-color:#48617d}button.danger{background:#622e40;border-color:#96536b}button:disabled{opacity:.5;cursor:not-allowed}
+input,select{background:#0a1830;color:#eff5ff;border:1px solid #476080;padding:9px;width:100%}label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#9eb0ca}
+.notice{border-radius:9px;background:#1d3d36;color:#c7eddd;padding:13px 15px;margin:15px 0}.notice.error{background:#562c3a;color:#ffe0e7}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:15px}
+table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;border-bottom:1px solid #324660;padding:13px 10px;vertical-align:top;font-size:13px}th{color:#a8bdd7;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.scroller{overflow-x:auto}fieldset{border:1px solid #405572;border-radius:9px;padding:14px;margin:12px 0}legend{padding:0 6px}
+.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.controls button{white-space:nowrap}.name{font-weight:750}.muted{font-size:12px;color:#8fa8ca}
+.status{display:inline-block;border-radius:999px;padding:3px 9px;background:#334862;font-size:12px}.status.approved{background:#20684d}.status.blocked{background:#703444}
+[hidden]{display:none!important}
+</style></head>
+<body>
+<header><div><strong>🛡️ BelgiumPD</strong> / Gebruikersbeheer</div><nav><a href="/">Dashboard</a><a href="/discord-status.html">Mijn Discord</a><button id="login">Aanmelden</button></nav></header>
+<main><h1>Centraal gebruikersbeheer</h1>
+<p>Personeelsleden vragen toegang aan met hun eigen Discord-account. Bevoegde leidinggevenden controleren hun hulpdienst en kaderfunctie. Beslissingen worden bewaard in Firestore, niet in Render.</p>
+<div id="notice" class="notice" role="status" aria-live="polite">Aanmelding controleren…</div>
+<section class="card"><h2>Mijn toegang</h2><div id="self">Meld je aan met Discord om je aanvraagstatus te controleren.</div>
+<p class="muted">Discord-rollen geven nooit op zichzelf recht op personeelsdossiers. Goedkeuring door bevoegd kader is verplicht.</p>
+<button id="request" type="button" hidden>Toegang aanvragen</button></section>
+<section id="admin" class="card" hidden><div class="controls" style="justify-content:space-between"><h2>Te beheren personeelsaccounts</h2><button id="refresh" class="alt" type="button">Vernieuwen</button></div>
+<p>Een officier kan basiskader en middenkader van de eigen hulpdienst goedkeuren. Korpsleiding kan ook officieren beheren. Alleen de technische beheerder heeft overkoepelende rechten. Je kunt je eigen bevoegdheden niet wijzigen.</p>
+<div class="controls"><label for="filter">Filter</label><select id="filter" style="width:auto"><option value="all">Alle statussen</option><option value="pending">Nieuwe aanvragen</option><option value="approved">Goedgekeurd</option><option value="blocked">Geblokkeerd</option></select><span id="count" class="muted"></span></div>
+<div class="scroller"><table><thead><tr><th>Discord-lid</th><th>Status</th><th>Hulpdienst</th><th>Functie</th><th>Beslissing</th></tr></thead><tbody id="list"></tbody></table></div>
+<p id="more" class="muted" hidden>Het overzicht is begrensd tot 250 accounts. Een paginering volgt bij verdere groei.</p></section>
+</main>
+<script type="module">
+let setupPortalLogin;
+const $=id=>document.getElementById(id);
+let auth=null,authMod=null,items=[];
+const roles=['basiskader','middenkader','officierenkader','korpsleiding'];
+const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
+const roleNames={basiskader:'Basiskader',middenkader:'Middenkader',officierenkader:'Officierenkader',korpsleiding:'Korpsleiding'};
+function notice(msg,bad=false){$('notice').textContent=msg;$('notice').classList.toggle('error',bad)}
+async function api(path,opts={}){
+  if(!auth?.currentUser)throw new Error('Meld je eerst aan');
+  const token=await auth.currentUser.getIdToken();
+  const r=await fetch(path,{method:opts.method||'GET',cache:'no-store',
+    headers:{Authorization:'Bearer '+token,...(opts.body?{'Content-Type':'application/json'}:{})},
+    ...(opts.body?{body:JSON.stringify(opts.body)}:{})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.error||'Verzoek mislukt ('+r.status+')');
+  return data;
+}
+function option(value,title){const e=document.createElement('option');e.value=value;e.textContent=title;return e}
+function cell(tr,content){const td=document.createElement('td');if(typeof content==='string')td.textContent=content;else td.append(content);tr.append(td);return td}
+function render(){
+  const list=$('list');list.replaceChildren();
+  const matches=items.filter(x=>$('filter').value==='all'||x.status===$('filter').value);
+  $('count').textContent=matches.length+' gebruiker(s)';
+  if(!matches.length){const row=document.createElement('tr');const td=cell(row,'Geen gebruikers in dit overzicht.');td.colSpan=5;list.append(row);return}
+  for(const u of matches){
+    const row=document.createElement('tr'),person=document.createElement('div');person.className='name';person.textContent=u.username||'Discord-lid';
+    const id=document.createElement('small');id.textContent=u.discordId;id.style.display='block';
+    const wrap=document.createElement('div');wrap.append(person,id);cell(row,wrap);
+    const state=document.createElement('span');state.className='status '+u.status;state.textContent=({pending:'In aanvraag',approved:'Goedgekeurd',blocked:'Geblokkeerd'})[u.status]||u.status;cell(row,state);
+    const dept=document.createElement('select');const available=u.status==='pending'?u.candidateDepartments:u.departments;
+    for(const key of available||[]){if(deptNames[key])dept.append(option(key,deptNames[key]))}
+    if(!dept.options.length)dept.append(option('','Geen gekoppelde hulpdienst'));
+    dept.disabled=!dept.options.length||dept.value==='';
+    cell(row,dept);
+    const rank=document.createElement('select');for(const name of roles)rank.append(option(name,roleNames[name]));
+    rank.value=u.role||'basiskader';cell(row,rank);
+    const actions=document.createElement('div');actions.className='controls';
+    const approve=document.createElement('button');approve.textContent=u.status==='approved'?'Wijzig':'Goedkeuren';
+    approve.onclick=async()=>{
+      if(!dept.value)return notice('Dit Discord-account heeft nog geen herkenbare hulpdienstrol. Laat de Discord-beheerder de rol controleren.',true);
+      const reason=prompt('Reden voor goedkeuring/wijziging (minimaal 8 tekens):','Toegang na controle van Discord en personeelsfunctie');
+      if(reason===null)return;
+      approve.disabled=true;
+      try{await api('/api/users/'+encodeURIComponent(u.discordId)+'/approve',{method:'POST',
+        body:{role:rank.value,departments:[dept.value],reason}});notice('Toegang veilig bijgewerkt.');await loadAdmin()}
+      catch(e){notice(e.message,true)}finally{approve.disabled=false}
+    };
+    actions.append(approve);
+    if(u.status!=='blocked'){
+      const block=document.createElement('button');block.textContent='Blokkeer';block.className='danger';
+      block.onclick=async()=>{
+        if(!confirm('Toegang van '+(u.username||u.discordId)+' blokkeren?'))return;
+        const reason=prompt('Reden voor blokkering (minimaal 8 tekens):','Toegang ingetrokken na personeelscontrole');
+        if(reason===null)return;
+        block.disabled=true;
+        try{await api('/api/users/'+encodeURIComponent(u.discordId)+'/block',{method:'POST',body:{reason}});notice('Toegang geblokkeerd.');await loadAdmin()}
+        catch(e){notice(e.message,true)}finally{block.disabled=false}
+      };actions.append(block);
+    }
+    cell(row,actions);list.append(row);
+  }
+}
+async function loadAdmin(){
+  try{const data=await api('/api/users/overview');items=data.users||[];
+    $('admin').hidden=false;$('more').hidden=!data.limited;render();
+  }catch(e){$('admin').hidden=true;if(!/Alleen officierenkader|Account is niet gemachtigd|Discord-verificatie verlopen|Geen toegelaten hulpdienst|Aanmelding vereist/.test(e.message))notice(e.message,true)}
+}
+async function refresh(){
+  if(!auth?.currentUser){$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;return}
+  const isDiscord=auth.currentUser.uid.startsWith('discord:');
+  $('request').hidden=true;
+  if(isDiscord){
+    try{const me=await api('/api/users/me');
+      const txt=({not_requested:'Er is nog geen toegangsaanvraag ingediend.',pending:'Je aanvraag wacht op goedkeuring.',approved:'Je account is goedgekeurd.',blocked:'Je portaaltoegang is geblokkeerd.',legacy:'Je account heeft al bestaande toegangsrechten.'})[me.status]||me.status;
+      $('self').textContent=(me.username||'Discord-gebruiker')+' ('+me.discordId+'): '+txt+(me.role?' Functie: '+(roleNames[me.role]||me.role)+'.':'');
+      $('request').hidden=me.status!=='not_requested';
+    }catch(e){$('self').textContent=e.message;notice('Vernieuw je Discord-verificatie indien nodig.',true)}
+  }else $('self').textContent='Je gebruikt de Google-noodlogin. Aanvragen worden via Discord ingediend.';
+  await loadAdmin();
+}
+$('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
+$('refresh').onclick=loadAdmin;$('filter').onchange=render;
+async function start(){
+  try{
+    const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+    if(!cfg.enabled)throw Error('Firebase is niet ingesteld');
+    ({setupPortalLogin}=await import('/portal-login.js'));
+    const a=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+    authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+    auth=authMod.getAuth(a.initializeApp(cfg.firebaseConfig));
+    setupPortalLogin({button:$('login'),auth,authModule:authMod,config:cfg,onError:e=>notice(e.message,true)});
+    authMod.onAuthStateChanged(auth,()=>{refresh().catch(e=>notice(e.message,true))});
+  }catch(e){notice('Kan de aanmelding niet starten: '+e.message,true)}
+}start();
+</script></body></html>

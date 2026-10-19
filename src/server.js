@@ -18,6 +18,8 @@ import { installDiscordOAuth } from './discord-oauth.js';
 import { installRoleRoutes } from './role-routes.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
+import { installUserRoutes } from './user-routes.js';
+import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 app.disable('x-powered-by');
@@ -29,6 +31,7 @@ app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
+app.use('/api/users',express.json({limit:'4kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
 installRoleRoutes(app);
@@ -60,14 +63,33 @@ async function requireUser(req,res,next){
       email=String(verified.email||'').toLowerCase();
       entry=accessList()[email];
       discordId=String(entry?.discordId||'');
+      // Once a Firestore decision exists it also governs legacy Google sessions:
+      // a blocked user may never fall back to their old Render allowlist entry.
+      if(entry && /^\d{15,22}$/.test(discordId)){
+        const managed=await getFirestore().collection(USER_COLLECTION).doc(discordId).get();
+        if(managed.exists){
+          entry=approvedManagedEntry(managed.data(),discordId);
+          if(!entry)return res.status(403).json({error:'Deze portaaltoegang is geblokkeerd of niet goedgekeurd'});
+        }
+      }
     }else if(process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true'
       && verified.firebase?.sign_in_provider==='custom' && verified.bpdDiscord===true){
       const id=String(verified.uid||'').replace(/^discord:/,'');
       if(!/^\d{15,22}$/.test(id))return res.status(403).json({error:'Discord-identiteit ongeldig'});
       const member=(await getFirestore().collection('bpd_discord_auth').doc(id).get()).data();
-      const mapped=discordPortalAccess(verified,accessList(),member,process.env.DISCORD_GUILD_ID);
-      if(!mapped)return res.status(403).json({error:'Discord-verificatie verlopen of je Discord ID is niet uniek aan een goedgekeurd account gekoppeld. Meld je opnieuw aan met Discord.'});
-      ({email,entry,discordId}=mapped);
+      if(!verifiedDiscordIdentity(verified,member,process.env.DISCORD_GUILD_ID))
+        return res.status(403).json({error:'Discord-verificatie verlopen. Meld je opnieuw aan met Discord.'});
+      const managed=await getFirestore().collection(USER_COLLECTION).doc(id).get();
+      if(managed.exists){
+        entry=approvedManagedEntry(managed.data(),id);
+        if(!entry)return res.status(403).json({error:'Je portaaltoegang is nog niet goedgekeurd of werd geblokkeerd. Open Gebruikersbeheer.'});
+        discordId=id;
+        email=Object.entries(accessList()).find(([,value])=>value?.discordId===id)?.[0]||'';
+      }else{
+        const mapped=discordPortalAccess(verified,accessList(),member,process.env.DISCORD_GUILD_ID);
+        if(!mapped)return res.status(403).json({error:'Je Discord-account heeft nog geen goedgekeurde toegang. Open Gebruikersbeheer om toegang aan te vragen.'});
+        ({email,entry,discordId}=mapped);
+      }
     }else return res.status(403).json({error:'Gebruik de toegelaten Google- of Discord-aanmelding'});
     if (!entry || !Array.isArray(entry.departments) || !ALLOWED_ROLES.includes(entry.role)) return res.status(403).json({error:'Account is niet gemachtigd voor de koppeling'});
     const departments=entry.departments.filter(d=>allDepts.includes(d));
@@ -186,6 +208,7 @@ installRegistrationRoutes(app,{requireUser,getSnapshot});
 installManagementRoutes(app,{requireUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
+installUserRoutes(app,{requireUser,accessList});
 app.get('/api/health',(_req,res)=>res.json({status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded'}));
 app.use('/api',(_req,res)=>res.status(404).json({error:'Niet gevonden'}));
 app.listen(Number(process.env.PORT)||8080,()=>console.log('BelgiumPD op poort '+(process.env.PORT||8080)));
