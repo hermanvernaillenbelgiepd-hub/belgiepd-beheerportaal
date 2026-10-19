@@ -19,6 +19,23 @@ export const STANDARD_ENTRY_RANK=Object.freeze({
 export function exceptionalPoliceRank(rank,dept){
   return dept==='politie'&&rank!==STANDARD_ENTRY_RANK.politie;
 }
+// A promotion is one documented police grade at a time; never a direct
+// privilege or Discord role change. Earlier entry-rank events stay immutable.
+export function nextPoliceRank(rank){
+  const ranks=TEST_RANKS.politie;
+  const index=ranks.indexOf(rank);
+  return index>=0&&index<ranks.length-1?ranks[index+1]:null;
+}
+export function validatePolicePromotion(body){
+  if(!body||typeof body!=='object'||Array.isArray(body)||
+    Object.keys(body).some(key=>!['expectedRank','newRank','reason'].includes(key)))
+    throw Error('Ongeldige politiepromotie');
+  const expectedRank=body.expectedRank,newRank=body.newRank;
+  if(typeof expectedRank!=='string'||nextPoliceRank(expectedRank)!==newRank)
+    throw Error('Alleen een promotie naar de eerstvolgende politie-instaprang is toegestaan');
+  const reason=safe(body.reason,20,500,'Motivering promotie');
+  return {expectedRank,newRank,reason};
+}
 export function canAuthoriseExceptionalPoliceRank(actor,dept){
   if(dept!=='politie'||!actor?.departments?.includes('politie'))return false;
   const scoped=roleForDepartment(actor,'politie');
@@ -85,7 +102,7 @@ export function asCreatedPersonnel(d){
     series:'Instroom',seriesRaw:'FIRESTORE-NIEUW',status,
     specialties:[],special:'Geen geregistreerde specialisaties',hours:null,totalHours:null,
     last:null,lastConnection:null,lastCheck:null,activityStatus:null,lastPing:null,
-    pingCount:null,pingResponses:null,source:'firestore-created'};
+    pingCount:null,pingResponses:null,source:'firestore-created',createdInFirestore:true};
 }
 export function uniqueNewPerson(records,person){
   if(person.discordId&&records.some(p=>p.dept===person.dept&&p.personId===person.discordId))

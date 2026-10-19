@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {testCreateEnabled,personnelDataEnabled,personnelCreationEnabled,
   STANDARD_ENTRY_RANK,exceptionalPoliceRank,canAuthoriseExceptionalPoliceRank,
+  nextPoliceRank,validatePolicePromotion,
   canCreatePersonnel,validateNewPersonnel,
   asCreatedPersonnel,uniqueNewPerson,visiblePendingPersonnel} from '../src/personnel-create.js';
 
@@ -118,4 +119,20 @@ test('New personnel can be registered without Discord ID, with no account privil
 test('A missing Discord ID never bypasses the service-specific callsign check',()=>{
   assert.throws(()=>uniqueNewPerson([{dept:'politie',personId:'111111111111111111',call:'TEST-P404'}],
     validateNewPersonnel({...person,discordId:''})));
+});
+
+test('Police promotions advance only one grade and require a recorded reason',()=>{
+  assert.equal(nextPoliceRank('Agent'),'Aspirant Inspecteur');
+  assert.equal(nextPoliceRank('Aspirant Inspecteur'),'Inspecteur');
+  assert.equal(nextPoliceRank('Inspecteur'),'Hoofdinspecteur');
+  assert.equal(nextPoliceRank('Hoofdinspecteur'),null);
+  assert.equal(nextPoliceRank('Niet gekend'),null);
+  const change={expectedRank:'Agent',newRank:'Aspirant Inspecteur',
+    reason:'Promotie goedgekeurd na controle van opleiding en functioneren.'};
+  assert.deepEqual(validatePolicePromotion(change),change);
+  assert.throws(()=>validatePolicePromotion({...change,newRank:'Inspecteur'}));
+  assert.throws(()=>validatePolicePromotion({...change,reason:'kort'}));
+  assert.throws(()=>validatePolicePromotion({...change,discordId:person.discordId}));
+  assert.throws(()=>validatePolicePromotion({...change,expectedRank:'Hoofdinspecteur'}));
+  assert.equal(asCreatedPersonnel({...person,status:'In opleiding'}).createdInFirestore,true);
 });

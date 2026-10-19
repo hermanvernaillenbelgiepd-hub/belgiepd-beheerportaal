@@ -6,6 +6,7 @@ import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   personnelCallClaimId} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
   personnelDataEnabled,personnelCreationEnabled,canCreatePersonnel,canAuthoriseExceptionalPoliceRank,
+  nextPoliceRank,validatePolicePromotion,
   STANDARD_ENTRY_RANK,validateNewPersonnel,uniqueNewPerson,
   visiblePendingPersonnel} from './personnel-create.js';
 
@@ -34,7 +35,11 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       const overlay=edits.docs.map(d=>d.data());
       const records=mergePersonnelEdits(base,overlay).map(p=>{
         const edit=overlay.find(e=>e.dept===p.dept&&e.discordId===p.personId);
+        const canPromote=Boolean(p.createdInFirestore===true&&p.dept==='politie'&&
+          nextPoliceRank(p.rank)&&req.bpd.discordId!==p.personId&&
+          canAuthoriseExceptionalPoliceRank(req.bpd,'politie'));
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
+          canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
           series:p.series,status:p.status,revision:Number.isSafeInteger(edit?.revision)?edit.revision:0,
           source:edit?'firestore-overlay':p.source==='firestore-created'?'firestore-created':'google-sheets',
           canEdit:canEditPersonnel(req.bpd,p)};
@@ -44,6 +49,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       return res.json({records,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
         role:req.bpd.role,departments:allowed,
         writesEnabled:writes(),createEnabled:personnelCreationEnabled(process.env),
+        promotionsEnabled:personnelDataEnabled(process.env)&&process.env.BPD_ENABLE_PERSONNEL_RANK_CHANGES==='true',
         createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,dept==='politie'&&!canAuthoriseExceptionalPoliceRank(req.bpd,dept)?[STANDARD_ENTRY_RANK.politie]:TEST_RANKS[dept]])),
         overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
         sourceStale:snapshot.stale,limited:edits.size===400,statuses:EDITABLE_STATUSES});
@@ -267,6 +273,50 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
         });
       });
       return res.json({rejected:true,availableForNewRequest:true});
+    }catch(e){return safeResponse(res,e)}
+  });
+  // Independent, fail-closed promotion register for newly created, linked police
+  // records. Legacy Google Sheets ranks cannot be silently rewritten here.
+  app.post('/api/personnel/:dept/:discordId/promote',requireUser,async(req,res)=>{
+    const {dept,discordId}=req.params;
+    if(dept!=='politie'||!validPersonnelKey(dept,discordId))
+      return error(res,400,'Ongeldige politiepersoneelsfiche');
+    if(!personnelDataEnabled(process.env)||
+      process.env.BPD_ENABLE_PERSONNEL_RANK_CHANGES!=='true')
+      return error(res,503,'Politiepromoties staan nog niet open');
+    if(req.bpd.discordId===discordId||
+      !canAuthoriseExceptionalPoliceRank(req.bpd,dept))
+      return error(res,403,'Alleen bevoegde korpsleiding of beheerder kan een andere medewerker promoveren');
+    let proposal;
+    try{proposal=validatePolicePromotion(req.body)}
+    catch(e){return error(res,400,e.message)}
+    try{
+      const store=getFirestore();
+      const ref=store.collection(CREATED_PERSONNEL_COLLECTION).doc(dept+'_'+discordId);
+      await store.runTransaction(async tx=>{
+        const current=await tx.get(ref);
+        if(!current.exists)
+          throw userError(409,'Deze fiche is afkomstig uit Google Sheets en kan hier nog niet van rang veranderen');
+        const data=current.data();
+        if(data.dept!==dept||data.discordId!==discordId||data.state!=='linked')
+          throw userError(409,'De personeelsfiche is niet volledig gekoppeld');
+        if(data.rank!==proposal.expectedRank||
+          nextPoliceRank(data.rank)!==proposal.newRank)
+          throw userError(409,'De rang is intussen gewijzigd. Vernieuw eerst de personeelsfiche');
+        tx.update(ref,{rank:proposal.newRank,
+          rankUpdatedAt:FieldValue.serverTimestamp(),
+          rankUpdatedByUid:req.bpd.uid,
+          rankUpdatedByDiscordId:req.bpd.discordId||null});
+        tx.create(ref.collection('audit').doc(),{
+          action:'promotion',
+          previousRank:data.rank,newRank:proposal.newRank,
+          reason:proposal.reason,
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
+          at:FieldValue.serverTimestamp()
+        });
+      });
+      return res.json({promoted:true,dept,discordId,newRank:proposal.newRank,
+        rolesGranted:false,sourceSheetsChanged:false});
     }catch(e){return safeResponse(res,e)}
   });
   app.post('/api/personnel/:dept/:discordId',requireUser,async(req,res)=>{
