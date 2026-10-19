@@ -1,7 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {calendarDays,validDiscordId,validateLeaveRequest,mayApproveLeave,
-  mayManageGrants,highCadreDepartments,validateGrant,activeGrant,normalizeEmail} from './leave-policy.js';
+  mayManageGrants,highCadreDepartments,validateGrant,activeGrant,normalizeEmail,roleForDepartment} from './leave-policy.js';
 
 const coll='bpd_leave_requests';
 const grants='bpd_leave_grants';
@@ -82,7 +82,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       const records=personRecords(snapshot,personId);
       if(!records.some(p=>p.dept===dept))return res.status(404).json({error:'Geen lidmaatschap gevonden'});
       const self=personId===req.bpd.discordId;
-      const cadre=['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role);
+      const cadre=['middenkader','officierenkader','korpsleiding'].includes(roleForDepartment(req.bpd,dept));
       if(!self&&(!cadre||!req.bpd.departments.includes(dept)))
         return res.status(403).json({error:'Geen toegang tot deze hulpdienst'});
       const snap=await db().collection(coll).where('personDiscordId','==',personId).limit(100).get();

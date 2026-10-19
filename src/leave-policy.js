@@ -44,14 +44,20 @@ export function sharesDepartment(actor,subjectDepartments){
 }
 // Een delegatie is een EXTRA recht, geen algemene kaderrol. Een dienstoverstijgende
 // delegatie verleent uitsluitend toegang tot centrale verlofdata, nooit dossiers.
+// Gebruik de rol die binnen de gevraagde hulpdienst geldig is.
+// Een algemene kaderrol mag niet automatisch op andere diensten doorwerken.
+export function roleForDepartment(actor,department){
+  if(!Array.isArray(actor?.departments)||!actor.departments.includes(department))return null;
+  const map=actor.departmentRoles;
+  if(map && typeof map==='object' && !Array.isArray(map) && Object.keys(map).length){
+    return typeof map[department]==='string'?map[department]:null;
+  }
+  // Legacy: enkel bij een ondubbelzinnig lidmaatschap van precies 1 dienst.
+  return actor.departments.length===1 && typeof actor.role==='string'?actor.role:null;
+}
 function scopedRoles(actor,subjectDepartments){
-  const overlaps=Array.isArray(actor?.departments)?actor.departments.filter(d=>subjectDepartments.includes(d)):[];
-  if(!overlaps.length)return [];
-  const map=actor?.departmentRoles||{};
-  if(Object.keys(map).length)return overlaps.map(d=>map[d]).filter(Boolean);
-  // Een enkele afdeling is ondubbelzinnig. Bij meerdere afdelingen zijn
-  // expliciete kaders per dienst nodig voordat automatisch goedgekeurd wordt.
-  return actor.departments.length===1?[actor.role]:[];
+  if(!Array.isArray(subjectDepartments))return [];
+  return subjectDepartments.map(dept=>roleForDepartment(actor,dept)).filter(Boolean);
 }
 export function mayApproveLeave(actor,request,grant,today=new Date().toISOString().slice(0,10)){
   if(!actor||!validDiscordId(actor.discordId)||!request||request.status!=='pending')return false;
