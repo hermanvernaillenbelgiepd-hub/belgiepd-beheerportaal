@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>BelgiumPD · Personeelsfiches</title>
+<style>
+:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:#eaf1ff;background:#071124}*{box-sizing:border-box}body{margin:0}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:19px max(18px,calc((100vw - 1180px)/2));background:#10203c;border-bottom:1px solid #2c4261}
+header strong{font-size:18px}header nav{display:flex;align-items:center;gap:15px;flex-wrap:wrap}a{color:#aecaff;text-decoration:none}
+main{max-width:1180px;padding:28px 18px 70px;margin:auto}h1{font-size:30px;margin:0 0 9px}h2{font-size:20px;margin:0 0 12px}p{color:#b0bfd8;line-height:1.6}
+.card{background:#11233f;border:1px solid #304769;border-radius:13px;padding:22px;margin:16px 0}
+button,select,input,textarea{font:inherit;border-radius:8px}button{cursor:pointer;background:#345fe1;border:1px solid #5b84ff;color:white;padding:10px 14px;font-weight:650}button.alt{background:#1c3353;border-color:#48617d}button:disabled{opacity:.5;cursor:not-allowed}
+input,select,textarea{background:#0a1830;color:#eff5ff;border:1px solid #476080;padding:10px;width:100%}
+label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#9eb0ca}
+.notice{border-radius:9px;background:#1d3d36;color:#c7eddd;padding:13px 15px;margin:15px 0}.notice.error{background:#562c3a;color:#ffe0e7}
+.warn{background:#413119;color:#fbe2a5;padding:13px 15px;border-radius:9px;margin:12px 0}
+.controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.controls>*{flex-shrink:0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.scroller{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:750px}th,td{text-align:left;border-bottom:1px solid #324660;padding:12px 10px;vertical-align:middle;font-size:13px}th{color:#a8bdd7;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.pill{display:inline-block;padding:4px 10px;border-radius:99px;background:#263d5e;color:#dce8ff;font-size:12px}
+.overlay{background:#1d4c4b;color:#bcf6ec}.subtle{font-size:12px;color:#9eb0ca}#panel{border-top:1px solid #3b5374;margin-top:18px;padding-top:20px}
+.history{padding:9px 0;border-bottom:1px solid #384965}#results td:first-child{font-weight:700}
+[hidden]{display:none!important}
+@media(max-width:660px){.grid{grid-template-columns:1fr}.card{padding:15px}h1{font-size:25px}header{padding:14px}}
+</style></head>
+<body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><button id="login" type="button">Aanmelden</button></nav></header>
+<main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
+<div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
+<div id="mode" class="warn" hidden></div>
+<section class="card"><div class="controls" style="justify-content:space-between"><h2>Personeelslijst</h2><button class="alt" id="reload" type="button">Vernieuwen</button></div>
+<div class="grid"><div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div><div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div></div>
+<p class="subtle"><span id="count">Nog geen personeelsgegevens geladen.</span></p>
+<div class="scroller"><table><thead><tr><th>Personeelslid</th><th>Roepnummer</th><th>Rang</th><th>Hulpdienst</th><th>Status</th><th>Gegevensbron</th><th></th></tr></thead><tbody id="results"></tbody></table></div>
+</section>
+<section id="panel" class="card" hidden><div class="controls" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2><button class="alt" id="close" type="button">Sluiten</button></div>
+<p class="subtle" id="identity"></p>
+<form id="editForm"><div class="grid">
+<div><label for="pName">Naam</label><input id="pName" maxlength="120" minlength="2" required></div>
+<div><label for="pCall">Roepnummer</label><input id="pCall" maxlength="24" required></div>
+<div><label for="pStatus">Personeelsstatus</label><select id="pStatus"></select></div>
+<div><label for="pRank">Officiële rang (alleen lezen)</label><input id="pRank" disabled></div>
+<div style="grid-column:1/-1"><label for="reason">Motivering wijziging (minimaal 10 tekens)</label><textarea id="reason" rows="3" maxlength="500" minlength="10" placeholder="Waarom moeten deze personeelsgegevens aangepast worden?"></textarea></div>
+</div>
+<div class="controls" style="margin-top:16px"><button id="save" type="submit">Wijziging registreren</button><span id="policyHint" class="subtle"></span></div></form>
+<h3>Wijzigingsgeschiedenis</h3><div id="history" class="subtle">Wordt geladen…</div></section>
+</main>
+<script type="module">
+let setupPortalLogin;
+const $=id=>document.getElementById(id);
+let auth=null,authModule=null,people=[],selected=null,statuses=[],writesEnabled=false;
+const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
+function notice(text,bad=false){$('notice').textContent=text;$('notice').classList.toggle('error',bad)}
+async function request(url,options={}){
+  if(!auth?.currentUser)throw Error('Meld je eerst aan met Discord');
+  const token=await auth.currentUser.getIdToken();
+  const response=await fetch(url,{method:options.method||'GET',cache:'no-store',
+    headers:{Authorization:'Bearer '+token,...(options.body?{'Content-Type':'application/json'}:{})},
+    ...(options.body?{body:JSON.stringify(options.body)}:{})});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(data.error||'Fout bij ophalen ('+response.status+')');
+  return data;
+}
+function option(value,label){const o=document.createElement('option');o.value=value;o.textContent=label;return o}
+function td(tr,text){const c=document.createElement('td');c.textContent=text;tr.append(c);return c}
+function render(){
+  const q=$('search').value.trim().toLowerCase(),dept=$('dept').value;
+  const matches=people.filter(x=>(dept==='all'||dept===x.dept)&&
+    [x.name,x.call,x.discordId,x.rank].some(v=>String(v||'').toLowerCase().includes(q)));
+  $('count').textContent=matches.length+' fiche(s) zichtbaar';
+  const body=$('results');body.replaceChildren();
+  if(!matches.length){const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');c.colSpan=7;body.append(tr);return}
+  for(const person of matches){
+    const tr=document.createElement('tr');
+    td(tr,person.name);td(tr,person.call);td(tr,person.rank);td(tr,departments[person.dept]||person.dept);td(tr,person.status);
+    const source=document.createElement('span');source.className='pill '+(person.source==='firestore-overlay'?'overlay':'');source.textContent=person.source==='firestore-overlay'?'Firestore-wijziging':'Google Sheets';
+    const col=document.createElement('td');col.append(source);tr.append(col);
+    const action=document.createElement('button');action.type='button';action.textContent='Open fiche';action.className='alt';
+    action.onclick=()=>showPerson(person);
+    const cell=document.createElement('td');cell.append(action);tr.append(cell);body.append(tr);
+  }
+}
+async function load(){
+  if(!auth?.currentUser){people=[];render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+  try{
+    const data=await request('/api/personnel/overview');
+    people=data.records||[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;
+    $('dept').replaceChildren(option('all','Alle toegelaten diensten'));
+    (data.departments||[]).forEach(d=>$('dept').append(option(d,departments[d]||d)));
+    $('mode').hidden=false;
+    $('mode').textContent=!writesEnabled?'Voorbereidingsmodus: personeelswijzigingen zijn uitgeschakeld tot de gecontroleerde test is afgerond. Google Sheets blijven ongewijzigd.':
+      data.overridesActive?'Firestore-wijzigingen zijn actief in de personeelsweergaven. Google Sheets blijven als terugvalbron behouden.':
+        'Testmodus: wijzigingen worden in Firestore opgeslagen, maar nog niet gebruikt als hoofdgegevensbron.';
+    render();
+    notice('Personeelsgegevens geladen. '+people.length+' bestaande fiches, '+(people.filter(p=>p.source==='firestore-overlay').length)+' Firestore-wijzigingen.');
+    if(data.limited)notice('Het overzicht van wijzigingen heeft de veilige limiet bereikt. Vraag een beheerder om controle.',true);
+    if(selected){const still=people.find(p=>p.dept===selected.dept&&p.discordId===selected.discordId);if(still)await showPerson(still);else $('panel').hidden=true}
+  }catch(e){people=[];$('panel').hidden=true;render();notice(e.message,true)}
+}
+async function showPerson(p){
+  selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
+  $('identity').textContent=(departments[p.dept]||p.dept)+' · Discord ID '+p.discordId+' · Revisie '+p.revision;
+  $('pName').value=p.name;$('pCall').value=p.call;$('pRank').value=p.rank;$('reason').value='';
+  $('pStatus').replaceChildren(...statuses.map(x=>option(x,x)));
+  if(!statuses.includes(p.status))$('pStatus').prepend(option(p.status,p.status+' (bronwaarde)'));
+  $('pStatus').value=p.status;
+  const editable=p.canEdit&&writesEnabled;
+  $('editForm').querySelectorAll('input,textarea,select').forEach(el=>el.disabled=!editable||el.id==='pRank');
+  $('save').disabled=!editable;
+  $('policyHint').textContent=!p.canEdit?'Je hebt geen wijzigingsbevoegdheid voor deze fiche.':
+    !writesEnabled?'Opslaan staat momenteel uit (veilige voorbereidingsmodus).':
+    'Wijzigingen worden met revisiecontrole en een auditregistratie opgeslagen.';
+  $('history').textContent='Geschiedenis ophalen…';
+  try{
+    const r=await request('/api/personnel/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId)+'/history');
+    $('history').replaceChildren();
+    if(!r.changes.length){$('history').textContent='Nog geen wijzigingen vanuit het portaal.'}
+    else for(const change of r.changes){
+      const div=document.createElement('div');div.className='history';
+      const strong=document.createElement('strong');strong.textContent='Revisie '+change.revision+' · '+(change.at?new Date(change.at).toLocaleString('nl-BE'):'tijdstip onbekend');
+      const text=document.createElement('p');text.textContent='Door Discord ID '+(change.actorDiscordId||'onbekend')+' · '+(change.reason||'geen reden');
+      div.append(strong,text);$('history').append(div);
+    }
+  }catch(e){$('history').textContent='Geschiedenis niet beschikbaar: '+e.message}
+  $('panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+$('editForm').onsubmit=async ev=>{
+  ev.preventDefault();if(!selected||!selected.canEdit||!writesEnabled)return;
+  const btn=$('save');btn.disabled=true;
+  try{
+    await request('/api/personnel/'+encodeURIComponent(selected.dept)+'/'+encodeURIComponent(selected.discordId),{
+      method:'POST',body:{name:$('pName').value,call:$('pCall').value,status:$('pStatus').value,
+        reason:$('reason').value,expectedRevision:selected.revision}});
+    await load();
+    notice('Wijziging opgeslagen in Firestore, inclusief historiek.');
+  }catch(e){notice(e.message,true)}finally{btn.disabled=false}
+};
+$('reload').onclick=load;$('search').oninput=render;$('dept').onchange=render;
+$('close').onclick=()=>{$('panel').hidden=true;selected=null};
+async function start(){
+  try{
+    const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+    if(!cfg.enabled)throw Error('Firebase is niet ingesteld');
+    ({setupPortalLogin}=await import('/portal-login.js'));
+    const a=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+    authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+    auth=authModule.getAuth(a.initializeApp(cfg.firebaseConfig));
+    setupPortalLogin({button:$('login'),auth,authModule,config:cfg,onError:e=>notice(e.message,true)});
+    authModule.onAuthStateChanged(auth,()=>load().catch(e=>notice(e.message,true)));
+  }catch(e){notice('Kan personeelsbeheer niet starten: '+e.message,true)}
+}start();
+</script></body></html>

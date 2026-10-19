@@ -38,4 +38,4 @@ export function discordAccess(entry,member,map,expectedGuild,now=Date.now()) {
   const roles=new Set(member.roleIds);
   return EXPECTED_ROLES.some(level=>RANK[level]>=RANK[entry.role] && map[level]?.some(id=>roles.has(id)));
 }
-export function validReturnTo(route){return ['/','/registraties.html','/weekrapporten.html','/roepnummers.html','/discord-status.html'].includes(route)?route:'/discord-status.html';}
+export function validReturnTo(route){return ['/','/registraties.html','/weekrapporten.html','/roepnummers.html','/discord-status.html','/verlofbeheer.html','/rollen-opleidingen.html','/gebruikersbeheer.html','/personeelsbeheer.html'].includes(route)?route:'/discord-status.html';}

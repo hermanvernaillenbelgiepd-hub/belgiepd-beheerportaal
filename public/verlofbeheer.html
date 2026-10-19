@@ -9,7 +9,7 @@
 </style>
 </head>
 <body>
-<header><div><strong>🛡️ BelgiëPD</strong> <span style="opacity:.7">/ Centraal verlofbeheer</span></div><div class="actions"><a href="/">← Dashboard</a><button id="login">Google aanmelden</button></div></header>
+<header><div><strong>🛡️ BelgiëPD</strong> <span style="opacity:.7">/ Centraal verlofbeheer</span></div><div class="actions"><a href="/">← Dashboard</a><button id="login">Aanmelden</button></div></header>
 <main>
   <h1>Algemeen verlofbeheer</h1>
   <p>Verlof wordt per persoon één keer vastgelegd. Goedgekeurde perioden gelden voor al zijn of haar actieve hulpdiensten, onafhankelijk van het operationele roepnummer.</p>
@@ -88,8 +88,8 @@ el('lookupForm').addEventListener('submit',async e=>{e.preventDefault();
 el('grantForm').addEventListener('submit',async e=>{e.preventDefault();try{await request('/api/leave/grants',{method:'POST',body:JSON.stringify({email:el('grantEmail').value,level:el('grantLevel').value,startsOn:el('grantFrom').value,expiresOn:el('grantUntil').value})});tell('Tijdelijke verlofmachtiging opgeslagen.');await showGrants()}catch(err){tell(err.message,true)}});
 el('revoke').addEventListener('click',async()=>{const email=el('grantEmail').value;if(!email)return tell('Vul eerst het accountadres in.',true);if(!confirm('De verlofmachtiging voor dit account intrekken?'))return;try{await request('/api/leave/grants/revoke',{method:'POST',body:JSON.stringify({email})});tell('Machtiging ingetrokken.');await showGrants()}catch(err){tell(err.message,true)}});
 async function init(){try{const r=await fetch('/api/client-config',{cache:'no-store'}),c=await r.json();if(!c.enabled)throw new Error('Firebase is niet geconfigureerd');const a=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');firebaseFns=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');firebaseAuth=firebaseFns.getAuth(a.initializeApp(c.firebaseConfig));
-  el('login').addEventListener('click',async()=>{try{if(firebaseAuth.currentUser)await firebaseFns.signOut(firebaseAuth);else await firebaseFns.signInWithPopup(firebaseAuth,new firebaseFns.GoogleAuthProvider())}catch(err){tell('Google-aanmelding mislukt: '+err.message,true)}});
-  firebaseFns.onAuthStateChanged(firebaseAuth,async user=>{el('login').textContent=user?'Afmelden':'Google aanmelden';el('authRequired').classList.toggle('hidden',Boolean(user));el('content').classList.add('hidden');me=null;if(user){tell('Bevoegdheden controleren…');try{await refresh();tell('Aangemeld: persoonlijke en gemachtigde verlofgegevens geladen.')}catch(e){tell(e.message,true)}}else tell('Meld aan om je verlofgegevens te bekijken.');});
+  // Alle pagina's delen de onthouden Firebase-sessie; Discord is de primaire aanmelding.
+  firebaseFns.onAuthStateChanged(firebaseAuth,async user=>{el('login').textContent=user?'Afmelden':'Google aanmelden';el('authRequired').classList.toggle('hidden',Boolean(user));el('content').classList.add('hidden');me=null;if(user){tell('Bevoegdheden controleren…');try{await refresh();tell('Aangemeld: persoonlijke en gemachtigde verlofgegevens geladen.')}catch(e){tell(e.message,true)}}else tell('Meld aan om je verlofgegevens te bekijken.');});const {setupPortalLogin}=await import('/portal-login.js');setupPortalLogin({button:el('login'),auth:firebaseAuth,authModule:firebaseFns,config:c,onError:e=>tell('Aanmelding mislukt: '+e.message,true)});
 }catch(err){tell('Aanmelding niet beschikbaar: '+err.message,true)}}
 init();
 </script>

@@ -55,7 +55,7 @@ export function canAdministerRoles(bpd,dept){
 }
 export function canLogTraining(bpd,dept,perms){
   if(!SERVICE_DEPTS.includes(dept))return false;
-  if(bpd?.provider==='google' && ['officierenkader','korpsleiding'].includes(bpd.role) && bpd.departments.includes(dept))return true;
+  if(bpd?.trustedStaff===true && ['officierenkader','korpsleiding'].includes(bpd.role) && bpd.departments.includes(dept))return true;
   return Boolean(perms?.[dept]?.['training.log']);
 }
 export function canReviewTraining(bpd,dept,perms){
