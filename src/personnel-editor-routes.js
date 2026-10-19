@@ -1,4 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {personnelTestActor} from './personnel-test-actor.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits,
   personnelCallClaimId} from './personnel-editor-policy.js';
@@ -15,9 +16,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
   const collection=()=>getFirestore().collection(PERSONNEL_EDITS_COLLECTION);
   // Production defaults to read-only; authorized users cannot bypass the flag.
   const writes=()=>process.env.BPD_ENABLE_PERSONNEL_WRITES==='true';
+  // A local, scoped test grant is intentionally *not* added to req.bpd.
+  const actor=req=>personnelTestActor(req.bpd,process.env);
   app.get('/api/personnel/overview',requireUser,async(req,res)=>{
     try {
-      const allowed=req.bpd.departments.filter(d=>canViewPersonnel(req.bpd,d));
+      const viewer=actor(req);
+      const allowed=viewer.departments.filter(d=>canViewPersonnel(viewer,d));
       if(!allowed.length)return error(res,403,'Je hebt geen kaderrechten voor personeelsbeheer');
       const [snapshot,edits]=await Promise.all([getSnapshot(),collection().limit(400).get()]);
       const base=snapshot.data.filter(p=>allowed.includes(p.dept));
@@ -27,9 +31,10 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
           series:p.series,status:p.status,revision:Number.isSafeInteger(edit?.revision)?edit.revision:0,
           source:edit?'firestore-overlay':'google-sheets',
-          canEdit:canEditPersonnel(req.bpd,p)};
+          canEdit:canEditPersonnel(viewer,p)};
       });
-      return res.json({records,role:req.bpd.role,departments:allowed,
+      return res.json({records,role:viewer.role,departments:allowed,
+        personnelTestMode:viewer.personnelTestMode===true,
         writesEnabled:writes(),overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
         sourceStale:snapshot.stale,limited:edits.size===400,statuses:EDITABLE_STATUSES});
     }catch(e){return safeResponse(res,e)}
@@ -44,7 +49,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       const matches=snap.data.filter(p=>p.dept===req.params.dept&&p.personId===req.params.discordId);
       if(matches.length!==1)throw userError(409,'Geen eenduidige bestaande personeelsfiche gevonden');
       const subject=matches[0];
-      if(!canEditPersonnel(req.bpd,subject))throw userError(403,'Je mag deze personeelsfiche niet wijzigen');
+      if(!canEditPersonnel(actor(req),subject))throw userError(403,'Je mag deze personeelsfiche niet wijzigen');
       if(snap.data.some(p=>p.dept===subject.dept&&p.personId!==subject.personId&&
         p.call===proposed.call))throw userError(409,'Dit roepnummer wordt al gebruikt binnen deze hulpdienst');
       if(subject.name===proposed.name&&subject.call===proposed.call&&subject.status===proposed.status)
@@ -80,7 +85,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
   });
   app.get('/api/personnel/:dept/:discordId/history',requireUser,async(req,res)=>{
     if(!validPersonnelKey(req.params.dept,req.params.discordId))return error(res,400,'Ongeldige hulpdienst of Discord ID');
-    if(!canViewPersonnel(req.bpd,req.params.dept))return error(res,403,'Geen toegang tot deze hulpdienst');
+    if(!canViewPersonnel(actor(req),req.params.dept))return error(res,403,'Geen toegang tot deze hulpdienst');
     try{
       const snap=await getSnapshot();
       if(!snap.data.some(p=>p.dept===req.params.dept&&p.personId===req.params.discordId))
