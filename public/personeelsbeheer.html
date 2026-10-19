@@ -69,12 +69,23 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 <div style="grid-column:1/-1"><label for="reason">Motivering wijziging (minimaal 10 tekens)</label><textarea id="reason" rows="3" maxlength="500" minlength="10" placeholder="Waarom moeten deze personeelsgegevens aangepast worden?"></textarea></div>
 </div>
 <div class="controls" style="margin-top:16px"><button id="save" type="submit">Wijziging registreren</button><span id="policyHint" class="subtle"></span></div></form>
+<section id="promotionPanel" hidden style="border-top:1px solid #3b5374;margin-top:20px;padding-top:16px">
+<h3>Politiepromotie registreren</h3>
+<p>Alleen een bevoegd lid van de korpsleiding of beheerder kan een nieuwe Firestore-medewerker één rang verhogen. De beslissing wordt in het auditlog opgeslagen; Discord-rechten en Google Sheets wijzigen niet.</p>
+<form id="promotionForm">
+<div class="grid">
+<div><label>Huidige rang</label><input id="promoteFrom" disabled></div>
+<div><label>Nieuwe rang</label><input id="promoteTo" disabled></div>
+<div style="grid-column:1/-1"><label for="promoteReason">Motivering promotie (20–500 tekens)</label><textarea id="promoteReason" required minlength="20" maxlength="500" rows="3"></textarea></div>
+</div>
+<div class="controls" style="margin-top:14px"><button id="promoteSave" type="submit">Promotie registreren</button></div>
+</form></section>
 <h3>Wijzigingsgeschiedenis</h3><div id="history" class="subtle">Wordt geladen…</div></section>
 </main>
 <script type="module">
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
-let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,testMode=true,createRanks={};
+let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={};
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
 function notice(text,bad=false){$('notice').textContent=text;$('notice').classList.toggle('error',bad)}
 async function request(url,options={}){
@@ -194,10 +205,10 @@ function render(){
   }
 }
 async function load(){
-  if(!auth?.currentUser){people=[];pendingPeople=[];createRanks={};$('newBtn').hidden=true;$('newPanel').hidden=true;render();renderPending();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+  if(!auth?.currentUser){people=[];pendingPeople=[];createRanks={};promotionsEnabled=false;$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();renderPending();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     const data=await request('/api/personnel/overview');
-    people=data.records||[];pendingPeople=data.pendingPersonnel||[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;testMode=data.testMode===true;
+    people=data.records||[];pendingPeople=data.pendingPersonnel||[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
     $('newBtn').hidden=!Object.keys(createRanks).length;
     if($('newPanel').hidden===false&&!Object.keys(createRanks).length)$('newPanel').hidden=true;
@@ -222,6 +233,11 @@ async function showPerson(p){
   $('pStatus').replaceChildren(...statuses.map(x=>option(x,x)));
   if(!statuses.includes(p.status))$('pStatus').prepend(option(p.status,p.status+' (bronwaarde)'));
   $('pStatus').value=p.status;
+  const canPromote=promotionsEnabled&&p.canPromote===true&&Boolean(p.nextPromotionRank);
+  $('promotionPanel').hidden=!canPromote;
+  $('promoteFrom').value=p.rank;
+  $('promoteTo').value=canPromote?p.nextPromotionRank:'';
+  $('promoteReason').value='';
   const editable=p.canEdit&&writesEnabled;
   $('editForm').querySelectorAll('input,textarea,select').forEach(el=>el.disabled=!editable||el.id==='pRank');
   $('save').disabled=!editable;
@@ -237,7 +253,7 @@ async function showPerson(p){
       const div=document.createElement('div');div.className='history';
       const strong=document.createElement('strong');
       const eventLabels={create:'Personeelsfiche aangemaakt',entry_rank:'Instaprang geregistreerd',
-        exceptional_entry_rank:'Uitzonderlijke instaprang',link_discord:'Discord-koppeling goedgekeurd',
+        exceptional_entry_rank:'Uitzonderlijke instaprang',promotion:'Politiepromotie geregistreerd',link_discord:'Discord-koppeling goedgekeurd',
         edit:'Personeelsfiche gewijzigd'};
       const label=eventLabels[change.action]||(change.revision!=null?'Revisie '+change.revision:'Dossierregistratie');
       const ranks=change.newRank?' · '+(change.previousRank||'Geen vorige rang')+' → '+change.newRank:'';
@@ -250,6 +266,19 @@ async function showPerson(p){
   }catch(e){$('history').textContent='Geschiedenis niet beschikbaar: '+e.message}
   $('panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
+$('promotionForm').onsubmit=async ev=>{
+  ev.preventDefault();
+  if(!selected||!promotionsEnabled||!selected.canPromote||!selected.nextPromotionRank)return;
+  const btn=$('promoteSave');btn.disabled=true;
+  try{
+    const expectedRank=selected.rank,newRank=selected.nextPromotionRank;
+    if(!confirm('Bevestig promotie van '+selected.name+' van '+expectedRank+' naar '+newRank+'?'))return;
+    await request('/api/personnel/politie/'+encodeURIComponent(selected.discordId)+'/promote',{
+      method:'POST',body:{expectedRank,newRank,reason:$('promoteReason').value.trim()}});
+    await load();
+    notice('Politiepromotie geregistreerd in Firestore, inclusief ranggeschiedenis. Discord-rechten blijven ongewijzigd.');
+  }catch(e){notice(e.message,true)}finally{btn.disabled=false}
+};
 $('editForm').onsubmit=async ev=>{
   ev.preventDefault();if(!selected||!selected.canEdit||!writesEnabled)return;
   const btn=$('save');btn.disabled=true;
