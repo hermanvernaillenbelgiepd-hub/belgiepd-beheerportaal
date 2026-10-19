@@ -235,8 +235,16 @@ async function showPerson(p){
     if(!r.changes.length){$('history').textContent='Nog geen wijzigingen vanuit het portaal.'}
     else for(const change of r.changes){
       const div=document.createElement('div');div.className='history';
-      const strong=document.createElement('strong');strong.textContent='Revisie '+change.revision+' · '+(change.at?new Date(change.at).toLocaleString('nl-BE'):'tijdstip onbekend');
-      const text=document.createElement('p');text.textContent='Door Discord ID '+(change.actorDiscordId||'onbekend')+' · '+(change.reason||'geen reden');
+      const strong=document.createElement('strong');
+      const eventLabels={create:'Personeelsfiche aangemaakt',entry_rank:'Instaprang geregistreerd',
+        exceptional_entry_rank:'Uitzonderlijke instaprang',link_discord:'Discord-koppeling goedgekeurd',
+        edit:'Personeelsfiche gewijzigd'};
+      const label=eventLabels[change.action]||(change.revision!=null?'Revisie '+change.revision:'Dossierregistratie');
+      const ranks=change.newRank?' · '+(change.previousRank||'Geen vorige rang')+' → '+change.newRank:'';
+      strong.textContent=label+ranks+' · '+(change.at?new Date(change.at).toLocaleString('nl-BE'):'tijdstip onbekend');
+      const text=document.createElement('p');
+      text.textContent='Door Discord ID '+(change.actorDiscordId||'onbekend')+
+        ' · '+(change.reason||'geen afzonderlijke motivering');
       div.append(strong,text);$('history').append(div);
     }
   }catch(e){$('history').textContent='Geschiedenis niet beschikbaar: '+e.message}

@@ -39,6 +39,16 @@ test('Personnel intake warns about duplicate callsigns and Discord claims',()=>{
   assert.equal(check(existing,pending,{...input,call:'S252'}),'');
   assert.equal(check(existing,pending,{...input,dept:'brandweer'}),'');
 });
+test('MAIN personnel history renders exceptional entry ranks and uses safe Firestore visibility',()=>{
+ const ui=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ assert.match(ui,/Uitzonderlijke instaprang/);
+ assert.match(ui,/change\.previousRank/);
+ assert.match(ui,/change\.newRank/);
+ assert.match(server,/personnelDataEnabled\(process\.env\)\s*\?createLog/);
+ assert.match(server,/previousRank:e\.previousRank/);
+ assert.doesNotMatch(server,/testCreateEnabled\(process\.env\)/);
+});
 test('OAuth return-to paths are explicitly allowlisted; never external domains',()=>{
   assert.equal(validReturnTo('/verlofbeheer.html'),'/verlofbeheer.html');
   assert.equal(validReturnTo('/rollen-opleidingen.html'),'/rollen-opleidingen.html');
