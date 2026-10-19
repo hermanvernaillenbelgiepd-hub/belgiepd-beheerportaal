@@ -51,3 +51,20 @@ jobs:
           echo "Checking Render testserver /api/health without credentials"
           curl --fail --silent --show-error --location --max-time 75 --retry 1 --retry-delay 3 "$url" > health-response.json
           node --input-type=module -e "import fs from 'node:fs'; const h=JSON.parse(fs.readFileSync('health-response.json','utf8')); if(h.status!=='ok') process.exit(1); console.log('Render health: ok; integration: '+String(h.integration||'unknown'));"
+      - name: Read-only check whether leave feature is deployed to Render
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://belgiepd-beheerportaal-testserver.onrender.com'
+          html_status=$(curl --silent --show-error --location --output /dev/null --write-out '%{http_code}' --max-time 35 "$base/verlofbeheer.html")
+          api_status=$(curl --silent --show-error --location --output /dev/null --write-out '%{http_code}' --max-time 35 "$base/api/leave/me")
+          echo "Render verlofbeheer.html HTTP $html_status"
+          echo "Render unauthenticated /api/leave/me HTTP $api_status"
+          if [[ "$html_status" == 200 && "$api_status" == 401 ]]; then
+            echo "Leave page is available and API requires authentication"
+          else
+            echo "::warning::Verlofmodule staat nog niet aantoonbaar op Render; verwacht HTML 200 en API 401"
+            exit 1
+          fi
