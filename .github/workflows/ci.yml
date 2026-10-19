@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - 'integratie/**'
-      - 'feature/**'
   pull_request:
     branches:
       - main
@@ -40,6 +38,7 @@ jobs:
           node --check src/leave-policy.js
           node --check src/leave-routes.js
           node --check tests/leave-policy.test.js
+          node --check tests/leave-routes.test.js
       - name: Execute automated tests
         run: npm test
       - name: Read-only Render testserver health check
