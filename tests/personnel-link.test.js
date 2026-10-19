@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,bearerToken} from '../src/personnel-link.js';
+import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from '../src/personnel-link.js';
 import {visiblePendingPersonnel,validateNewPersonnel} from '../src/personnel-create.js';
 const discordId='505659510359064606',guild='1309532437952466984',now=Date.UTC(2026,9,19,16,0);
 const officer={role:'officierenkader',discordId:'111111111111111111',
@@ -52,6 +52,18 @@ test('Only officer of owning service may approve an independently verified membe
  assert.equal(mayApproveLink(officer,record,{...member,verifiedAt:now-8*24*60*60*1000},guild,now),false);
  assert.equal(mayApproveLink(officer,record,{...member,guildId:'999999999999999999'},guild,now),false);
  assert.equal(mayApproveLink(officer,record,{...member,roleIds:['invalid']},guild,now),false);
+});
+test('A permitted cadre member can reject a self-claim without approving it',()=>{
+ const selfOfficer={...officer,discordId};
+ assert.equal(mayApproveLink(selfOfficer,record,member,guild,now),false);
+ assert.equal(mayRejectLink(selfOfficer,record),true);
+ assert.equal(mayRejectLink({...officer,role:'middenkader'},record),false);
+ assert.equal(mayRejectLink({...officer,departments:['brandweer'],
+    departmentRoles:{brandweer:'officierenkader'}},record),false);
+ assert.equal(mayRejectLink(selfOfficer,{...record,state:'linked'}),false);
+ assert.equal(mayRejectLink(selfOfficer,{...record,discordId}),false);
+ assert.equal(mayRejectLink(selfOfficer,{...record,linkRequest:null}),false);
+ assert.equal(mayRejectLink(selfOfficer,{...record,linkRequest:{...record.linkRequest,state:'rejected'}}),false);
 });
 test('Missing Discord ID remains pending and never becomes active on member lists',()=>{
  const pending=validateNewPersonnel({dept:'politie',name:'Fictieve Medewerker',call:'TEST-P550',
