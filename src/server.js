@@ -56,7 +56,30 @@ async function requireUser(req,res,next){
     if (!entry || !Array.isArray(entry.departments) || !ALLOWED_ROLES.includes(entry.role)) return res.status(403).json({error:'Account is niet gemachtigd voor de koppeling'});
     const departments=entry.departments.filter(d=>allDepts.includes(d));
     if (!departments.length) return res.status(403).json({error:'Geen toegelaten hulpdienst'});
-    req.bpd={email,uid:verified.uid,role:String(entry.role),departments,discordId:String(entry.discordId||'')};
+    
+const rawDepartmentRoles =
+  entry.departmentRoles &&
+  typeof entry.departmentRoles === 'object' &&
+  !Array.isArray(entry.departmentRoles)
+    ? entry.departmentRoles
+    : {};
+
+const departmentRoles = Object.fromEntries(
+  Object.entries(rawDepartmentRoles).filter(
+    ([dept, role]) =>
+      departments.includes(dept) &&
+      ALLOWED_ROLES.includes(role)
+  )
+);
+
+    req.bpd={
+  email,
+  uid: verified.uid,
+  role: String(entry.role),
+  departments,
+  discordId: String(entry.discordId || ''),
+  departmentRoles
+};
     next();
   } catch(e) {
     if(e.message?.includes('BPD_ACCESS_JSON')) return res.status(503).json({error:'Rechtenconfiguratie ongeldig'});
