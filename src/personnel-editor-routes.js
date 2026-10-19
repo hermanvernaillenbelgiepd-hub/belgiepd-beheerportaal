@@ -1,6 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
-import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink} from './personnel-link.js';
+import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,bearerToken} from './personnel-link.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits,
   personnelCallClaimId} from './personnel-editor-policy.js';
@@ -99,9 +99,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
     const internalId=req.body?.internalId;
     if(!validateLinkReference(internalId))return error(res,400,'Ongeldige interne personeelsreferentie');
     try{
-      const auth=/^Bearer (\\S+)$/.exec(req.get('Authorization')||'');
-      if(!auth)return error(res,401,'Meld je eerst aan met Discord');
-      const decoded=await getAuth().verifyIdToken(auth[1]);
+      const token=bearerToken(req.get('Authorization'));
+      if(!token)return error(res,401,'Meld je eerst aan met Discord');
+      const decoded=await getAuth().verifyIdToken(token);
       const discordId=String(decoded.uid||'').replace(/^discord:/,'');
       if(!/^\d{15,22}$/.test(discordId))return error(res,403,'Gebruik een Discord-aanmelding');
       const store=getFirestore();
