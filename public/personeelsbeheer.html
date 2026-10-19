@@ -112,6 +112,23 @@ function renderPending(){
         finally{approve.disabled=false}
       };
       cell.append(approve);
+      const reject=document.createElement('button');reject.type='button';
+      reject.textContent='Koppelaanvraag afwijzen';reject.className='alt';
+      reject.style.marginTop='8px';reject.style.marginLeft='8px';
+      reject.onclick=async()=>{
+        if(!confirm('Koppelaanvraag voor '+p.name+' afwijzen? De personeelsfiche en het roepnummer blijven bewaard, zodat een andere Discord-gebruiker later een nieuwe aanvraag kan doen.'))return;
+        const reason=prompt('Motivering afwijzing (minstens 10 tekens):',
+          'Testaanvraag ingediend met verkeerd Discord-account');
+        if(reason===null)return;
+        reject.disabled=true;approve.disabled=true;
+        try{
+          await request('/api/personnel/link/'+encodeURIComponent(p.internalId)+'/reject',
+            {method:'POST',body:{reason}});
+          await load();
+          notice('Koppelaanvraag afgewezen. De personeelsfiche blijft beschikbaar voor een nieuwe Discord-koppeling.');
+        }catch(e){notice(e.message,true);reject.disabled=false;approve.disabled=false}
+      };
+      cell.append(reject);
     }
     row.append(cell);body.append(row);
   }
