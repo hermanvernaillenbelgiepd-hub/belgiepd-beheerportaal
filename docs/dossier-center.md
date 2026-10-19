@@ -30,3 +30,20 @@ De API staat standaard uit. Zet pas na de toegangscontrole in TEST (en later MAI
 6. Bevestig dat een niet-gekoppelde Discord-identiteit geen personeelsrechten of dossierinzage krijgt.
 
 De bot/FiveM-koppeling kan later aansluiten zonder nieuwe dossierstructuur of dubbel geregistreerde bestanden.
+
+
+## Verbeteringen in het dossieroverzicht
+
+De pagina `/dossiercentrum.html` biedt voortaan:
+- Zoeken op naam, roepnummer, rang, status of Discord-ID, met hoofdletter- en accentongevoelige matching.
+- Filter per toegelaten hulpdienst, personeel/sollicitatie/beide en sollicitatiestatus.
+- Samenvattende aantallen **uitsluitend binnen de toegelaten serverdata**.
+- Paginering van 25 zichtbare dossiers; zoekfilters veranderen nooit de serverautorisatie.
+- Detailweergave met afzonderlijke werklinks naar het personeels- of sollicitatiebeheer (geen automatische dossieroverdracht).
+- Gecombineerde auditweergave met filter op loopbaan, personeelswijzigingen, sollicitaties of burgerregistratie.
+- Sollicitatiebesluiten tonen waar geregistreerd ook de vorige en nieuwe workflowstatus.
+- Registratiehistoriek van een burgerdossier is uitsluitend zichtbaar bij een al bevoegd bekeken personeelsfiche of hulpdienstsollicitatie voor exact die Discord-ID.
+
+**Privacy:** deze pagina is geen algemene burgerzoekmachine. Het dossiercentrum toont geen burgers zonder bestaande, toegankelijke dienstgebonden personeels- of sollicitatieverwijzing. Er worden geen nieuwe dossierrechten, identiteitsbewijzen of Discord-rollen aangemaakt. Sollicitaties blijven verborgen als de bestaande sollicitatiemodule uitgeschakeld is.
+
+**Test op echte accounts:** bevestig afzonderlijk dat een politie-kaderlid geen motivaties van ambulance ziet, dat een ambulancemedewerker zonder sollicitatiebeoordelingsrecht geen kandidaten kan opzoeken, en dat burgerregistraties alleen voorkomen waar die koppeling daadwerkelijk al bestaat. De geautomatiseerde tests controleren de filterlogica en autorisatiestructuur, niet de volledige productiegegevens.
