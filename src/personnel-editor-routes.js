@@ -2,6 +2,8 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits,
   personnelCallClaimId} from './personnel-editor-policy.js';
+import {CREATED_PERSONNEL_COLLECTION,TEST_RANKS,testCreateEnabled,canCreatePersonnel,
+  validateNewPersonnel,uniqueNewPerson} from './personnel-create.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
 const asTime=x=>x?.toDate?.().toISOString?.()||null;
@@ -26,12 +28,54 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
         const edit=overlay.find(e=>e.dept===p.dept&&e.discordId===p.personId);
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
           series:p.series,status:p.status,revision:Number.isSafeInteger(edit?.revision)?edit.revision:0,
-          source:edit?'firestore-overlay':'google-sheets',
+          source:edit?'firestore-overlay':p.source==='firestore-created'?'firestore-created':'google-sheets',
           canEdit:canEditPersonnel(req.bpd,p)};
       });
       return res.json({records,role:req.bpd.role,departments:allowed,
-        writesEnabled:writes(),overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
+        writesEnabled:writes(),createEnabled:testCreateEnabled(process.env)&&writes(),
+        createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,TEST_RANKS[dept]])),
+        overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
         sourceStale:snapshot.stale,limited:edits.size===400,statuses:EDITABLE_STATUSES});
+    }catch(e){return safeResponse(res,e)}
+  });
+  // Fictitious personnel intake: explicitly isolated to the TEST Firebase project.
+  // Creating a personnel row never creates Firebase users, Discord roles or portal access.
+  app.post('/api/personnel/new',requireUser,async(req,res)=>{
+    if(!writes()||!testCreateEnabled(process.env))
+      return error(res,503,'Nieuwe personeelsleden toevoegen staat alleen op de geïsoleerde TESTSERVER aan');
+    let proposed;
+    try{proposed=validateNewPersonnel(req.body)}catch(e){return error(res,400,e.message)}
+    if(!canCreatePersonnel(req.bpd,proposed.dept))
+      return error(res,403,'Geen bevoegdheid om personeelsleden in deze hulpdienst aan te maken');
+    try{
+      const snap=await getSnapshot();
+      try{uniqueNewPerson(snap.data,proposed)}
+      catch(e){return error(res,409,e.message)}
+      const store=getFirestore();
+      const ref=store.collection(CREATED_PERSONNEL_COLLECTION)
+        .doc(proposed.dept+'_'+proposed.discordId);
+      const claim=store.collection('bpd_personnel_call_claims')
+        .doc(personnelCallClaimId(proposed.dept,proposed.call));
+      await store.runTransaction(async tx=>{
+        const [existing,reserved]=await Promise.all([tx.get(ref),tx.get(claim)]);
+        if(existing.exists)throw userError(409,'Deze personeelsfiche bestaat al');
+        if(reserved.exists)throw userError(409,'Roepnummer reeds gereserveerd');
+        const doc={dept:proposed.dept,discordId:proposed.discordId,
+          name:proposed.name,call:proposed.call,rank:proposed.rank,
+          status:'In opleiding',revision:0,createdByUid:req.bpd.uid,
+          createdByDiscordId:req.bpd.discordId||null,
+          createdAt:FieldValue.serverTimestamp()};
+        tx.create(ref,doc);
+        tx.create(claim,{dept:proposed.dept,discordId:proposed.discordId,
+          call:proposed.call,updatedAt:FieldValue.serverTimestamp()});
+        tx.create(ref.collection('audit').doc(),{action:'create',
+          next:{name:proposed.name,call:proposed.call,rank:proposed.rank,
+            status:'In opleiding'},revision:0,reason:proposed.reason,
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
+          at:FieldValue.serverTimestamp()});
+      });
+      return res.status(201).json({created:true,discordId:proposed.discordId,
+        dept:proposed.dept});
     }catch(e){return safeResponse(res,e)}
   });
   app.post('/api/personnel/:dept/:discordId',requireUser,async(req,res)=>{
