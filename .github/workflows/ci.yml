@@ -51,6 +51,21 @@ jobs:
           echo "Checking Render testserver /api/health without credentials"
           curl --fail --silent --show-error --location --max-time 75 --retry 1 --retry-delay 3 "$url" > health-response.json
           node --input-type=module -e "import fs from 'node:fs'; const h=JSON.parse(fs.readFileSync('health-response.json','utf8')); if(h.status!=='ok') process.exit(1); console.log('Render health: ok; integration: '+String(h.integration||'unknown'));"
+      - name: Inspect public Firebase configuration on Render testserver
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://belgiepd-beheerportaal-testserver.onrender.com/api/client-config'
+          curl --fail --silent --show-error --location --max-time 35 "$url" > firebase-config-check.json
+          node --input-type=module -e "
+          import fs from 'node:fs';
+          const c=JSON.parse(fs.readFileSync('firebase-config-check.json','utf8'));
+          console.log('Firebase client configuration enabled: '+Boolean(c.enabled));
+          console.log('Expected isolated test project: '+Boolean(c.firebaseConfig?.projectId==='belgiepd-test'));
+          if(!c.enabled||c.firebaseConfig?.projectId!=='belgiepd-test') process.exit(1);
+          "
       - name: Read-only check whether leave feature is deployed to Render
         if: github.event_name == 'pull_request'
         continue-on-error: true
