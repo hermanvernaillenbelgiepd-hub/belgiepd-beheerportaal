@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>BelgiumPD · Centraal dossiercentrum</title>
+<style>
+:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;background:#081329;color:#eaf1ff}
+*{box-sizing:border-box}body{margin:0}header{background:#122541;border-bottom:1px solid #344e70;padding:18px max(18px,calc((100vw - 1120px)/2));display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px}
+a{color:#b4ceff}nav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}main{max-width:1120px;margin:auto;padding:28px 18px 80px}
+h1{font-size:29px;margin:0}h2{font-size:20px;margin:0 0 10px}p{line-height:1.55;color:#b5c7e0}
+.card{background:#122441;border:1px solid #344e70;border-radius:13px;padding:20px;margin:16px 0}
+.notice{border-radius:9px;background:#20483d;color:#e3fff2;padding:14px;margin:15px 0}.notice.error{background:#562b3a;color:#ffe2e7}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px}.search{display:grid;grid-template-columns:1fr 210px;gap:12px}
+label{display:block;color:#c2d4ed;font-size:13px;margin-bottom:6px}
+input,select,button{font:inherit;border-radius:9px;padding:10px;color:#edf3ff}
+input,select{width:100%;background:#0a1931;border:1px solid #547093}
+button{background:#345fe0;border:1px solid #668bff;cursor:pointer;font-weight:650}
+button.alt{background:#223c60;border-color:#587497}
+button:disabled{opacity:.5;cursor:not-allowed}
+.scroller{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:750px}
+th,td{text-align:left;padding:11px 9px;border-bottom:1px solid #334e6e;vertical-align:top;font-size:13px}
+th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
+.muted{font-size:12px;color:#aac0da}.tag{display:inline-block;padding:4px 8px;border-radius:16px;background:#274469;margin:3px 5px 3px 0;font-size:12px}
+.event{border-bottom:1px solid #304a67;padding:11px 0}.event strong{display:block}.event p{margin:5px 0}
+.kv{display:grid;grid-template-columns:145px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #30445c;overflow-wrap:anywhere}
+.motivation{white-space:pre-wrap;overflow-wrap:anywhere}
+[hidden]{display:none!important}
+@media(max-width:720px){.grid,.search{grid-template-columns:1fr}header{padding:14px}h1{font-size:25px}.card{padding:15px}}
+</style></head><body>
+<header><strong>🛡️ BelgiumPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><a href="/sollicitatiebeheer.html">Sollicitaties</a><button id="login" type="button">Aanmelden</button></nav></header>
+<main><h1>Centraal dossieroverzicht</h1>
+<p>Een beveiligd overzicht van personeelsfiches, loopbaanhistoriek en hulpdienstsollicitaties. Alleen gegevens waarvoor je per hulpdienst bevoegd bent worden getoond. Er worden geen dossiers samengevoegd of rechten toegekend.</p>
+<div id="message" role="status" aria-live="polite" class="notice">Toegangsrechten controleren…</div>
+<section class="card">
+<div class="search">
+<div><label for="query">Zoek dossier</label><input id="query" placeholder="Naam, roepnummer of Discord-ID" autocomplete="off"></div>
+<div><label for="department">Hulpdienst</label><select id="department"><option value="all">Alle toegelaten diensten</option></select></div>
+</div><p class="muted" id="count">Nog geen dossiers geladen.</p>
+<div class="scroller"><table><thead><tr><th>Naam</th><th>Dienst</th><th>Personeel</th><th>Sollicitatie</th><th>Identiteit</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<section class="card" id="detail" hidden><h2 id="detailTitle">Dossier</h2><p class="muted" id="matchWarning"></p>
+<div class="grid">
+<div><h3>Personeelsfiche</h3><div id="staff"></div></div>
+<div><h3>Sollicitatie</h3><div id="application"></div></div>
+</div>
+<h3>Geregistreerde historiek</h3><div class="muted" id="history"></div>
+<button id="close" type="button" class="alt">Dossier sluiten</button></section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+const departments={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage'};
+const states={submitted:'Ingediend',reviewing:'In behandeling',accepted:'Aanvaard',rejected:'Afgewezen'};
+const actions={create:'Fiche aangemaakt',entry_rank:'Instaprang',exceptional_entry_rank:'Uitzonderlijke instaprang',promotion:'Promotie',link_discord:'Discord gekoppeld',submitted:'Sollicitatie ingediend',reviewing:'In behandeling',accepted:'Aanvaard',rejected:'Afgewezen',edit:'Personeelswijziging'};
+let auth,authModule,rows=[],portalSetup,shown=null;
+function message(text,bad=false){$('message').textContent=text;$('message').classList.toggle('error',bad)}
+function node(tag,text,cls){const x=document.createElement(tag);if(text!==undefined)x.textContent=String(text??'');if(cls)x.className=cls;return x}
+function item(root,key,value){const div=node('div',undefined,'kv');div.append(node('strong',key),node('span',value??'—'));root.append(div)}
+async function request(url){
+  if(!auth?.currentUser)throw Error('Meld je eerst aan');
+  const token=await auth.currentUser.getIdToken();
+  const response=await fetch(url,{cache:'no-store',headers:{Authorization:'Bearer '+token}});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(data.error||'Serverfout '+response.status);
+  return data;
+}
+function render(){
+  const query=$('query').value.trim().toLocaleLowerCase('nl');
+  const dept=$('department').value;
+  const found=rows.filter(p=>(dept==='all'||dept===p.dept)&&
+    [p.name,p.call,p.rank,p.discordId].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query)));
+  $('count').textContent=found.length+' dossier(s) zichtbaar';
+  const body=$('rows');body.replaceChildren();
+  if(!found.length){const tr=node('tr');const cell=node('td','Geen toegelaten dossiers gevonden');cell.colSpan=6;tr.append(cell);body.append(tr)}
+  for(const r of found){
+    const tr=node('tr');tr.append(node('td',r.name),node('td',departments[r.dept]||r.dept),
+      node('td',r.personnel?(r.rank||'')+' · '+(r.status||''):'Geen personeelsfiche'),
+      node('td',r.application?(states[r.applicationStatus]||r.applicationStatus):'—'),
+      node('td',r.discordId));
+    const cell=node('td');const button=node('button','Open dossier','alt');
+    button.type='button';button.onclick=()=>openDossier(r);cell.append(button);tr.append(cell);body.append(tr);
+  }
+}
+async function openDossier(r){
+  shown=r.dept+':'+r.discordId;
+  const active=shown;
+  $('detail').hidden=false;$('detailTitle').textContent='Dossier · '+r.name;
+  $('staff').textContent='Laden…';$('application').textContent='Laden…';$('history').textContent='Laden…';$('matchWarning').textContent='';
+  try{
+    const data=await request('/api/dossiercentrum/'+encodeURIComponent(r.dept)+'/'+encodeURIComponent(r.discordId));
+    if(shown!==active)return;
+    $('matchWarning').textContent=data.matchNotice||'Dossiers blijven dienstgebonden en zijn gekoppeld op Discord-ID, niet op naam.';
+    const staff=$('staff');staff.replaceChildren();
+    if(data.personnel){
+      const p=data.personnel;
+      item(staff,'Naam',p.name);item(staff,'Roepnummer',p.call);item(staff,'Rang',p.rank);item(staff,'Status',p.status);
+      item(staff,'Gegevensbron',p.source==='firestore-created'?'Firestore':p.source==='firestore-overlay'?'Firestore-wijziging':'Google Sheets');
+    }else staff.textContent='Geen zichtbare personeelsfiche.';
+    const application=$('application');application.replaceChildren();
+    if(data.application){
+      const a=data.application;
+      item(application,'Status',states[a.status]||a.status);
+      item(application,'Ingediend',a.createdAt?new Date(a.createdAt).toLocaleString('nl-BE'):'—');
+      application.append(node('p','Motivatie:','muted'),node('div',a.motivation,'motivation'));
+      if(a.decisionReason)application.append(node('p','Beslissing: '+a.decisionReason));
+    }else application.textContent='Geen sollicitatie zichtbaar of geen beoordelingsrechten.';
+    const history=$('history');history.replaceChildren();
+    if(!data.timeline?.length)history.textContent='Nog geen portaalhistoriek geregistreerd.';
+    else for(const e of data.timeline){
+      const div=node('div',undefined,'event');
+      div.append(node('strong',(actions[e.action]||e.action)+' · '+e.kind+
+        (e.at?' · '+new Date(e.at).toLocaleString('nl-BE'):'')));
+      if(e.newRank)div.append(node('p',(e.previousRank||'Geen rang')+' → '+e.newRank));
+      if(e.reason)div.append(node('p',e.reason));
+      if(e.actorDiscordId)div.append(node('span','Geregistreerd door '+e.actorDiscordId,'muted'));
+      history.append(div);
+    }
+    $('detail').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){if(shown===active){$('staff').textContent='';$('application').textContent='';$('history').textContent='';message(e.message,true)}}
+}
+async function load(){
+  if(!auth?.currentUser){rows=[];shown=null;$('detail').hidden=true;render();return message('Meld je aan met een bevoegd account om dossiers te bekijken.')}
+  try{
+    const data=await request('/api/dossiercentrum/overview');
+    rows=data.rows||[];
+    const selected=$('department').value;
+    $('department').replaceChildren(node('option','Alle toegelaten diensten'));
+    $('department').firstChild.value='all';
+    (data.departments||[]).forEach(d=>{const op=node('option',departments[d]||d);op.value=d;$('department').append(op)});
+    $('department').value=[...$('department').options].some(o=>o.value===selected)?selected:'all';
+    $('detail').hidden=true;shown=null;render();
+    message(rows.length+' dossiers geladen. Alleen-lezen.'+(data.sourceStale?' De personeelsbron gebruikt tijdelijk gecachete gegevens.':''));
+  }catch(e){rows=[];shown=null;$('detail').hidden=true;render();message(e.message,true)}
+}
+$('query').oninput=render;$('department').onchange=render;
+$('close').onclick=()=>{$('detail').hidden=true;shown=null};
+async function start(){
+  try{
+    const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+    if(!cfg.enabled)throw Error('Firebase-aanmelding ontbreekt');
+    ({setupPortalLogin:portalSetup}=await import('/portal-login.js'));
+    const app=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+    authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+    auth=authModule.getAuth(app.initializeApp(cfg.firebaseConfig));
+    portalSetup({button:$('login'),auth,authModule,config:cfg,onError:e=>message(e.message,true)});
+    authModule.onAuthStateChanged(auth,()=>load().catch(e=>message(e.message,true)));
+  }catch(e){message('Dossiercentrum kon niet starten: '+e.message,true)}
+}
+start();
+</script></body></html>
