@@ -55,7 +55,9 @@ async function load(){
  if(!auth?.currentUser?.uid?.startsWith('discord:'))
    return message('Meld je aan met je eigen Discord-account. Google-login geeft geen toegang tot een burgerdossier.');
  try{
+   const expectedUid=auth.currentUser.uid;
    const data=await request('/api/citizens/me');
+   if(auth.currentUser?.uid!==expectedUid)return;
    const identity=$('identity');identity.replaceChildren();
    field(identity,'Discord-account',data.identity.username);
    field(identity,'Discord-ID',data.identity.discordId);
