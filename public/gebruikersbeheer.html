@@ -67,7 +67,7 @@ function render(){
     dept.disabled=!dept.options.length||dept.value==='';
     cell(row,dept);
     const rank=document.createElement('select');for(const name of roles)rank.append(option(name,roleNames[name]));
-    rank.value=u.role||'middenkader';cell(row,rank);
+    rank.value=u.role||'basiskader';cell(row,rank);
     const actions=document.createElement('div');actions.className='controls';
     const approve=document.createElement('button');approve.textContent=u.status==='approved'?'Wijzig':'Goedkeuren';
     approve.onclick=async()=>{
