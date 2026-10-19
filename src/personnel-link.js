@@ -4,6 +4,10 @@ const D=/^\d{15,22}$/,P=/^[A-Za-z0-9]{12,40}$/;
 export function linkEnabled(env){
   return testCreateEnabled(env)&&env.BPD_ENABLE_PERSONNEL_WRITES==='true';
 }
+// Parse Firebase ID-token headers without route-specific regexes.
+export function bearerToken(header){
+  return /^Bearer (\S+)$/.exec(header||'')?.[1]||null;
+}
 export function validateLinkReference(id){
   return typeof id==='string'&&P.test(id);
 }
