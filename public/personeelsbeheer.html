@@ -24,10 +24,23 @@ label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
 <div id="mode" class="warn" hidden></div>
-<section class="card"><div class="controls" style="justify-content:space-between"><h2>Personeelslijst</h2><button class="alt" id="reload" type="button">Vernieuwen</button></div>
+<section class="card"><div class="controls" style="justify-content:space-between"><h2>Personeelslijst</h2><div class="controls"><button id="newBtn" type="button" hidden>Nieuw personeelslid</button><button class="alt" id="reload" type="button">Vernieuwen</button></div></div>
 <div class="grid"><div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div><div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div></div>
 <p class="subtle"><span id="count">Nog geen personeelsgegevens geladen.</span></p>
 <div class="scroller"><table><thead><tr><th>Personeelslid</th><th>Roepnummer</th><th>Rang</th><th>Hulpdienst</th><th>Status</th><th>Gegevensbron</th><th></th></tr></thead><tbody id="results"></tbody></table></div>
+</section>
+<section id="newPanel" class="card" hidden>
+<div class="controls" style="justify-content:space-between"><h2>Nieuw personeelslid – TESTSERVER</h2><button id="newClose" class="alt" type="button">Sluiten</button></div>
+<p>Maak uitsluitend een fictieve personeelsfiche aan. Een personeelsfiche verleent geen Discord- of portaalrechten.</p>
+<form id="newForm"><div class="grid">
+<div><label for="newDept">Hulpdienst</label><select id="newDept" required></select></div>
+<div><label for="newId">Discord-ID (fictief, 15–22 cijfers)</label><input id="newId" required pattern="[0-9]{15,22}" maxlength="22" placeholder="Bijvoorbeeld 444444444444444444"></div>
+<div><label for="newName">Naam</label><input id="newName" required minlength="2" maxlength="120" placeholder="Test Nieuw Lid"></div>
+<div><label for="newCall">Roepnummer</label><input id="newCall" required maxlength="24" placeholder="TEST-P404"></div>
+<div><label for="newRank">Instaprang</label><select id="newRank" required></select></div>
+<div><label>Startstatus</label><input value="In opleiding (automatisch)" disabled></div>
+<div style="grid-column:1/-1"><label for="newReason">Motivering (minstens 10 tekens)</label><textarea id="newReason" required minlength="10" maxlength="500" rows="2" placeholder="Fictieve test – nieuwe personeelsfiche"></textarea></div>
+</div><div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Enkel Firestore TEST, geen Google Sheets of Discord-wijziging</span></div></form>
 </section>
 <section id="panel" class="card" hidden><div class="controls" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2><button class="alt" id="close" type="button">Sluiten</button></div>
 <p class="subtle" id="identity"></p>
@@ -44,7 +57,7 @@ label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#
 <script type="module">
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
-let auth=null,authModule=null,people=[],selected=null,statuses=[],writesEnabled=false;
+let auth=null,authModule=null,people=[],selected=null,statuses=[],writesEnabled=false,createRanks={};
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
 function notice(text,bad=false){$('notice').textContent=text;$('notice').classList.toggle('error',bad)}
 async function request(url,options={}){
@@ -69,7 +82,7 @@ function render(){
   for(const person of matches){
     const tr=document.createElement('tr');
     td(tr,person.name);td(tr,person.call);td(tr,person.rank);td(tr,departments[person.dept]||person.dept);td(tr,person.status);
-    const source=document.createElement('span');source.className='pill '+(person.source==='firestore-overlay'?'overlay':'');source.textContent=person.source==='firestore-overlay'?'Firestore-wijziging':'Google Sheets';
+    const source=document.createElement('span');source.className='pill '+(person.source==='firestore-overlay'||person.source==='firestore-created'?'overlay':'');source.textContent=person.source==='firestore-overlay'?'Firestore-wijziging':person.source==='firestore-created'?'Nieuw in Firestore':'Google Sheets';
     const col=document.createElement('td');col.append(source);tr.append(col);
     const action=document.createElement('button');action.type='button';action.textContent='Open fiche';action.className='alt';
     action.onclick=()=>showPerson(person);
@@ -77,10 +90,13 @@ function render(){
   }
 }
 async function load(){
-  if(!auth?.currentUser){people=[];render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+  if(!auth?.currentUser){people=[];createRanks={};$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     const data=await request('/api/personnel/overview');
     people=data.records||[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;
+    createRanks=data.createEnabled?data.createRanks||{}:{};
+    $('newBtn').hidden=!Object.keys(createRanks).length;
+    if($('newPanel').hidden===false&&!Object.keys(createRanks).length)$('newPanel').hidden=true;
     $('dept').replaceChildren(option('all','Alle toegelaten diensten'));
     (data.departments||[]).forEach(d=>$('dept').append(option(d,departments[d]||d)));
     $('mode').hidden=false;
@@ -88,7 +104,7 @@ async function load(){
       data.overridesActive?'Firestore-wijzigingen zijn actief in de personeelsweergaven. Google Sheets blijven als terugvalbron behouden.':
         'Testmodus: wijzigingen worden in Firestore opgeslagen, maar nog niet gebruikt als hoofdgegevensbron.';
     render();
-    notice('Personeelsgegevens geladen. '+people.length+' bestaande fiches, '+(people.filter(p=>p.source==='firestore-overlay').length)+' Firestore-wijzigingen.');
+    notice('Personeelsgegevens geladen. '+people.length+' fiches, '+(people.filter(p=>p.source==='firestore-created').length)+' nieuwe Firestore-fiches, '+(people.filter(p=>p.source==='firestore-overlay').length)+' bijgewerkte fiches.');
     if(data.limited)notice('Het overzicht van wijzigingen heeft de veilige limiet bereikt. Vraag een beheerder om controle.',true);
     if(selected){const still=people.find(p=>p.dept===selected.dept&&p.discordId===selected.discordId);if(still)await showPerson(still);else $('panel').hidden=true}
   }catch(e){people=[];$('panel').hidden=true;render();notice(e.message,true)}
@@ -129,6 +145,36 @@ $('editForm').onsubmit=async ev=>{
         reason:$('reason').value,expectedRevision:selected.revision}});
     await load();
     notice('Wijziging opgeslagen in Firestore, inclusief historiek.');
+  }catch(e){notice(e.message,true)}finally{btn.disabled=false}
+};
+function refreshNewRanks(){
+  $('newRank').replaceChildren(...(createRanks[$('newDept').value]||[]).map(rank=>option(rank,rank)));
+}
+$('newBtn').onclick=()=>{
+  $('panel').hidden=true;selected=null;
+  $('newForm').reset();
+  $('newDept').replaceChildren(...Object.keys(createRanks).map(key=>option(key,departments[key]||key)));
+  refreshNewRanks();$('newPanel').hidden=false;
+  $('newPanel').scrollIntoView({behavior:'smooth',block:'start'});
+};
+$('newClose').onclick=()=>{$('newPanel').hidden=true};
+$('newDept').onchange=refreshNewRanks;
+$('newForm').onsubmit=async event=>{
+  event.preventDefault();
+  if(!writesEnabled||!Object.keys(createRanks).length)return;
+  const btn=$('newSave');btn.disabled=true;
+  const person={dept:$('newDept').value,discordId:$('newId').value.trim(),
+    name:$('newName').value,call:$('newCall').value,rank:$('newRank').value,
+    reason:$('newReason').value};
+  try{
+    if(!confirm('Een FICTIEF personeelslid toevoegen aan de TESTSERVER?'))return;
+    const result=await request('/api/personnel/new',{method:'POST',body:person});
+    $('newPanel').hidden=true;$('newForm').reset();
+    $('dept').value='all';$('search').value='';
+    await load();
+    notice('Nieuwe testfiche aangemaakt in Firestore. Discord-account en toegangsrechten zijn niet gewijzigd.');
+    const found=people.find(p=>p.discordId===result.discordId&&p.dept===result.dept);
+    if(found)await showPerson(found);
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
 };
 $('reload').onclick=load;$('search').oninput=render;$('dept').onchange=render;
