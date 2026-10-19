@@ -153,8 +153,8 @@ async function queryLive(){
   const built=buildData(personnel,activityRows,allDepts);
   return built;
 }
-async function getSourceSnapshot(){
-  if(cache.data && Date.now()<cache.expires) return {data:cache.data,fetchedAt:cache.fetchedAt,stale:false};
+async function getSourceSnapshot(forceRefresh=false){
+  if(!forceRefresh&&cache.data && Date.now()<cache.expires) return {data:cache.data,fetchedAt:cache.fetchedAt,stale:false};
   if(!cache.pending){
     cache.pending=queryLive().then(rows=>{cache.data=rows;cache.fetchedAt=new Date().toISOString();cache.expires=Date.now()+cacheMs;}).finally(()=>{cache.pending=null});
   }
@@ -167,8 +167,8 @@ async function getSourceSnapshot(){
 }
 // Only read Firestore edits into shared personnel snapshots after the pilot is approved.
 // Read-only Sheets remain intact for rollback and comparison.
-async function getSnapshot(){
-  const base=await getSourceSnapshot();
+async function getSnapshot({forceRefresh=false}={}){
+  const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
   const [created,edits]=await Promise.all([
     on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(500).get():null,
