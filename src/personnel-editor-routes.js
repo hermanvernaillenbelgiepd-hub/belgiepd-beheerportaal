@@ -326,14 +326,16 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
         .doc(key).collection('audit');
       const [edits,created]=await Promise.all([
         editLog.orderBy('at','desc').limit(25).get(),
-        testCreateEnabled(process.env)
+        personnelDataEnabled(process.env)
           ?createLog.orderBy('at','desc').limit(25).get():Promise.resolve({docs:[]})
       ]);
       const changes=[...edits.docs,...created.docs].map(d=>{
         const e=d.data();
         return {action:e.action||'edit',revision:e.revision,
           previous:e.previous||null,next:e.next||null,
-          reason:e.reason,at:asTime(e.at),actorDiscordId:e.actorDiscordId||null};
+          previousRank:e.previousRank??null,newRank:e.newRank??null,
+          standardRank:e.standardRank??null,exceptional:e.exceptional===true,
+          reason:e.reason||'',at:asTime(e.at),actorDiscordId:e.actorDiscordId||null};
       }).sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))).slice(0,25);
       return res.json({changes});
     }catch(e){return safeResponse(res,e)}
