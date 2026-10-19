@@ -27,3 +27,12 @@ export function mayApproveLink(actor,record,member,guildId,now=Date.now()){
   // Candidate must still be the same recently verified Discord identity.
   return Number.isSafeInteger(link.verifiedAt)&&link.verifiedAt<=member.verifiedAt;
 }
+
+export function mayRejectLink(actor,record){
+  const link=record?.linkRequest;
+  // Rejection removes only the pending request. It does not create a personnel
+  // identity or grant any rights. A cadre member may reject their own test claim.
+  return Boolean(record&&record.state==='awaiting_discord'&&record.discordId===null&&
+    canCreatePersonnel(actor,record.dept)&&
+    link?.state==='awaiting_approval'&&D.test(link.discordId));
+}
