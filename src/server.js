@@ -13,6 +13,7 @@ import { installCallsignRoutes } from './callsign-routes.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import { installRoleRoutes } from './role-routes.js';
+import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
@@ -56,30 +57,18 @@ async function requireUser(req,res,next){
     if (!entry || !Array.isArray(entry.departments) || !ALLOWED_ROLES.includes(entry.role)) return res.status(403).json({error:'Account is niet gemachtigd voor de koppeling'});
     const departments=entry.departments.filter(d=>allDepts.includes(d));
     if (!departments.length) return res.status(403).json({error:'Geen toegelaten hulpdienst'});
-    
-const rawDepartmentRoles =
-  entry.departmentRoles &&
-  typeof entry.departmentRoles === 'object' &&
-  !Array.isArray(entry.departmentRoles)
-    ? entry.departmentRoles
-    : {};
-
-const departmentRoles = Object.fromEntries(
-  Object.entries(rawDepartmentRoles).filter(
-    ([dept, role]) =>
-      departments.includes(dept) &&
-      ALLOWED_ROLES.includes(role)
-  )
-);
-
-    req.bpd={
-  email,
-  uid: verified.uid,
-  role: String(entry.role),
-  departments,
-  discordId: String(entry.discordId || ''),
-  departmentRoles
-};
+    // Een rol geldt alleen voor de gekoppelde hulpdienst; geen algemene verhoging.
+    const rawDepartmentRoles =
+      entry.departmentRoles && typeof entry.departmentRoles === 'object' && !Array.isArray(entry.departmentRoles)
+        ? entry.departmentRoles
+        : {};
+    const departmentRoles = Object.fromEntries(
+      Object.entries(rawDepartmentRoles).filter(([dept, role]) =>
+        departments.includes(dept) && ALLOWED_ROLES.includes(role)
+      )
+    );
+    req.bpd={email,uid:verified.uid,role:String(entry.role),departments,
+      discordId:String(entry.discordId||''),departmentRoles};
     next();
   } catch(e) {
     if(e.message?.includes('BPD_ACCESS_JSON')) return res.status(503).json({error:'Rechtenconfiguratie ongeldig'});
@@ -87,6 +76,16 @@ const departmentRoles = Object.fromEntries(
   }
 }
 async function queryLive(){
+
+  if (process.env.BPD_TEST_FIXTURES === 'true') {
+    if (process.env.FIREBASE_PROJECT_ID !== 'belgiepd-test') {
+      throw new Error(
+        'Fictieve testdata alleen toegestaan voor belgiepd-test'
+      );
+    }
+
+    return createTestPersonnel();
+  }
   if (!process.env.PERSONNEL_SPREADSHEET_ID || !process.env.ACTIVITY_SPREADSHEET_ID) throw new Error('Bronbestand-ID ontbreekt');
   const auth=new google.auth.GoogleAuth({scopes:['https://www.googleapis.com/auth/spreadsheets.readonly']});
   const sheets=google.sheets({version:'v4',auth});
