@@ -11,9 +11,12 @@ test('Only three-way verified police officer mismatch can be reconciled',()=>{
  assert.equal(updated?.departmentRoles.brandweer,'basiskader');
  assert.equal(legacy.departmentRoles.politie,'middenkader');
 });
-test('Unverified Discord officer, expired member, wrong guild, or wrong rank do not elevate',()=>{
+test('Officer rights persist for verified portal session, but not beyond seven days',()=>{
  assert.equal(reconcileLegacyPoliceOfficer(legacy,id,{...member,roleIds:['1335578488664490057']},staff,guild,now),null);
- assert.equal(reconcileLegacyPoliceOfficer(legacy,id,{...member,verifiedAt:now-16*60*1000},staff,guild,now),null);
+ assert.equal(reconcileLegacyPoliceOfficer(legacy,id,{...member,roleIds:['not-a-discord-id',OFFICER_DISCORD_ROLE]},staff,guild,now),null);
+ assert.equal(reconcileLegacyPoliceOfficer(legacy,id,{...member,verifiedAt:now+60*1000},staff,guild,now),null);
+ assert.equal(reconcileLegacyPoliceOfficer(legacy,id,{...member,verifiedAt:now-16*60*1000},staff,guild,now)?.departmentRoles.politie,'officierenkader');
+ assert.equal(reconcileLegacyPoliceOfficer(legacy,id,{...member,verifiedAt:now-7*24*60*60*1000-1000},staff,guild,now),null);
  assert.equal(reconcileLegacyPoliceOfficer(legacy,id,{...member,guildId:'123456789012345678'},staff,guild,now),null);
  assert.equal(reconcileLegacyPoliceOfficer(legacy,id,member,[{...staff[0],rank:'Hoofdinspecteur (HINP)'}],guild,now),null);
  assert.equal(reconcileLegacyPoliceOfficer(legacy,id,member,[...staff,...staff],guild,now),null);
