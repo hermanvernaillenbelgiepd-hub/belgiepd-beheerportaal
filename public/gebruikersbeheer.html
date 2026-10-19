@@ -120,13 +120,27 @@ async function refresh(){
   if(!auth?.currentUser){$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;return}
   const isDiscord=auth.currentUser.uid.startsWith('discord:');
   $('request').hidden=true;
+  let accessStatus=null;
   if(isDiscord){
     try{const me=await api('/api/users/me');
+      accessStatus=me.status;
       const txt=({not_requested:'Er is nog geen toegangsaanvraag ingediend.',pending:'Je aanvraag wacht op goedkeuring.',approved:'Je account is goedgekeurd.',blocked:'Je portaaltoegang is geblokkeerd.',legacy:'Je account heeft al bestaande toegangsrechten.'})[me.status]||me.status;
       $('self').textContent=(me.username||'Discord-gebruiker')+' ('+me.discordId+'): '+txt+(me.role?' Functie: '+(roleNames[me.role]||me.role)+'.':'');
       $('request').hidden=me.status!=='not_requested';
     }catch(e){$('self').textContent=e.message;notice('Vernieuw je Discord-verificatie indien nodig.',true)}
   }else $('self').textContent='Je gebruikt de Google-noodlogin. Aanvragen worden via Discord ingediend.';
+  // Unapproved Discord members must never query the administrator endpoint.
+  // Display their expected request status rather than a confusing 403 error.
+  if(isDiscord && ['not_requested','pending','blocked'].includes(accessStatus)){
+    $('admin').hidden=true;
+    const message={
+      not_requested:'Je Discord-account is herkend. Klik op Toegang aanvragen om je personeelsrechten te laten goedkeuren.',
+      pending:'Je aanvraag is geregistreerd en wacht op goedkeuring door een bevoegd kaderlid.',
+      blocked:'Je portaaltoegang is geblokkeerd. Neem contact op met een bevoegde beheerder.'
+    };
+    notice(message[accessStatus],accessStatus==='blocked');
+    return;
+  }
   await loadAdmin();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
