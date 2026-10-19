@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink} from '../src/personnel-link.js';
+import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,bearerToken} from '../src/personnel-link.js';
 import {visiblePendingPersonnel,validateNewPersonnel} from '../src/personnel-create.js';
 const discordId='505659510359064606',guild='1309532437952466984',now=Date.UTC(2026,9,19,16,0);
 const officer={role:'officierenkader',discordId:'111111111111111111',
@@ -19,6 +19,14 @@ test('Pilot-only link feature never runs in production',()=>{
    {BPD_ENABLE_PERSONNEL_WRITES:'false'}]){
     assert.equal(linkEnabled({...env,...changes}),false);
  }
+});
+test('Personnel Discord request accepts a valid Firebase Bearer token header',()=>{
+ assert.equal(bearerToken('Bearer eyJhbGciOiJSUzI1NiJ9.token.signature'),
+   'eyJhbGciOiJSUzI1NiJ9.token.signature');
+ assert.equal(bearerToken(''),null);
+ assert.equal(bearerToken('Bearer '),null);
+ assert.equal(bearerToken('Basic credentials'),null);
+ assert.equal(bearerToken('Bearer abc def'),null);
 });
 test('Only valid generated personnel references are accepted',()=>{
  assert.equal(validateLinkReference('aBcDefGhiJKlmNop1234'),true);
