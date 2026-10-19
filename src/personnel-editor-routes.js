@@ -2,8 +2,9 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits,
   personnelCallClaimId} from './personnel-editor-policy.js';
-import {CREATED_PERSONNEL_COLLECTION,TEST_RANKS,testCreateEnabled,canCreatePersonnel,
-  validateNewPersonnel,uniqueNewPerson} from './personnel-create.js';
+import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
+  testCreateEnabled,canCreatePersonnel,validateNewPersonnel,uniqueNewPerson,
+  visiblePendingPersonnel} from './personnel-create.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
 const asTime=x=>x?.toDate?.().toISOString?.()||null;
@@ -21,7 +22,11 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
     try {
       const allowed=req.bpd.departments.filter(d=>canViewPersonnel(req.bpd,d));
       if(!allowed.length)return error(res,403,'Je hebt geen kaderrechten voor personeelsbeheer');
-      const [snapshot,edits]=await Promise.all([getSnapshot(),collection().limit(400).get()]);
+      const [snapshot,edits,pending]=await Promise.all([
+        getSnapshot(),collection().limit(400).get(),
+        testCreateEnabled(process.env)?getFirestore().collection(PENDING_PERSONNEL_COLLECTION)
+          .limit(150).get():Promise.resolve({docs:[],size:0})
+      ]);
       const base=snapshot.data.filter(p=>allowed.includes(p.dept));
       const overlay=edits.docs.map(d=>d.data());
       const records=mergePersonnelEdits(base,overlay).map(p=>{
@@ -31,7 +36,10 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
           source:edit?'firestore-overlay':p.source==='firestore-created'?'firestore-created':'google-sheets',
           canEdit:canEditPersonnel(req.bpd,p)};
       });
-      return res.json({records,role:req.bpd.role,departments:allowed,
+      const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
+        .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
+      return res.json({records,pendingPersonnel,pendingLimited:pending.size===150,
+        role:req.bpd.role,departments:allowed,
         writesEnabled:writes(),createEnabled:testCreateEnabled(process.env)&&writes(),
         createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,TEST_RANKS[dept]])),
         overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
@@ -52,8 +60,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       try{uniqueNewPerson(snap.data,proposed)}
       catch(e){return error(res,409,e.message)}
       const store=getFirestore();
-      const ref=store.collection(CREATED_PERSONNEL_COLLECTION)
-        .doc(proposed.dept+'_'+proposed.discordId);
+      const pending=!proposed.discordId;
+      const ref=pending?store.collection(PENDING_PERSONNEL_COLLECTION).doc():
+        store.collection(CREATED_PERSONNEL_COLLECTION).doc(proposed.dept+'_'+proposed.discordId);
       const claim=store.collection('bpd_personnel_call_claims')
         .doc(personnelCallClaimId(proposed.dept,proposed.call));
       await store.runTransaction(async tx=>{
@@ -62,20 +71,22 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
         if(reserved.exists)throw userError(409,'Roepnummer reeds gereserveerd');
         const doc={dept:proposed.dept,discordId:proposed.discordId,
           name:proposed.name,call:proposed.call,rank:proposed.rank,
-          status:'In opleiding',revision:0,createdByUid:req.bpd.uid,
+          status:'In opleiding',state:pending?'awaiting_discord':'linked',
+          revision:0,createdByUid:req.bpd.uid,
           createdByDiscordId:req.bpd.discordId||null,
           createdAt:FieldValue.serverTimestamp()};
         tx.create(ref,doc);
         tx.create(claim,{dept:proposed.dept,discordId:proposed.discordId,
-          call:proposed.call,updatedAt:FieldValue.serverTimestamp()});
+          internalId:pending?ref.id:null,call:proposed.call,
+          updatedAt:FieldValue.serverTimestamp()});
         tx.create(ref.collection('audit').doc(),{action:'create',
           next:{name:proposed.name,call:proposed.call,rank:proposed.rank,
             status:'In opleiding'},revision:0,reason:proposed.reason,
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
           at:FieldValue.serverTimestamp()});
       });
-      return res.status(201).json({created:true,discordId:proposed.discordId,
-        dept:proposed.dept});
+      return res.status(201).json({created:true,pending,internalId:pending?ref.id:null,
+        discordId:proposed.discordId,dept:proposed.dept});
     }catch(e){return safeResponse(res,e)}
   });
   app.post('/api/personnel/:dept/:discordId',requireUser,async(req,res)=>{
