@@ -1,4 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getAuth} from 'firebase-admin/auth';
+import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink} from './personnel-link.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits,
   personnelCallClaimId} from './personnel-editor-policy.js';
@@ -87,6 +89,92 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       });
       return res.status(201).json({created:true,pending,internalId:pending?ref.id:null,
         discordId:proposed.discordId,dept:proposed.dept});
+    }catch(e){return safeResponse(res,e)}
+  });
+  // Self-service Discord proof: only the person currently authenticated through
+  // the portal's OAuth flow can claim their own ID. Still requires cadre approval.
+  app.post('/api/personnel/link/request',async(req,res)=>{
+    if(!linkEnabled(process.env))
+      return error(res,503,'Discord-koppeling is alleen actief op de TESTSERVER');
+    const internalId=req.body?.internalId;
+    if(!validateLinkReference(internalId))return error(res,400,'Ongeldige interne personeelsreferentie');
+    try{
+      const auth=/^Bearer (\\S+)$/.exec(req.get('Authorization')||'');
+      if(!auth)return error(res,401,'Meld je eerst aan met Discord');
+      const decoded=await getAuth().verifyIdToken(auth[1]);
+      const discordId=String(decoded.uid||'').replace(/^discord:/,'');
+      if(!/^\\d{15,22}$/.test(discordId))return error(res,403,'Gebruik een Discord-aanmelding');
+      const store=getFirestore();
+      const member=(await store.collection('bpd_discord_auth').doc(discordId).get()).data();
+      if(verifiedLinkRequester(decoded,member,process.env.DISCORD_GUILD_ID)!==discordId)
+        return error(res,403,'Vernieuw je Discord-aanmelding voordat je de koppeling aanvraagt');
+      const ref=store.collection(PENDING_PERSONNEL_COLLECTION).doc(internalId);
+      await store.runTransaction(async tx=>{
+        const doc=await tx.get(ref);
+        if(!doc.exists||doc.get('state')!=='awaiting_discord'||doc.get('discordId')!==null)
+          throw userError(404,'Geen beschikbare personeelsfiche met deze referentie');
+        const old=doc.get('linkRequest');
+        if(old&&old.discordId!==discordId)
+          throw userError(409,'Er is al een andere koppelaanvraag in behandeling');
+        if(old?.state==='awaiting_approval')return;
+        tx.update(ref,{linkRequest:{discordId,
+          username:String(member.username||'Discord-lid').slice(0,80),
+          verifiedAt:member.verifiedAt,state:'awaiting_approval',
+          requestedAt:FieldValue.serverTimestamp()},
+          updatedAt:FieldValue.serverTimestamp()});
+      });
+      return res.json({status:'awaiting_approval'});
+    }catch(e){return safeResponse(res,e)}
+  });
+  // Explicit kader approval does not grant any Firebase/Discord module roles.
+  app.post('/api/personnel/link/:internalId/approve',requireUser,async(req,res)=>{
+    if(!linkEnabled(process.env))
+      return error(res,503,'Discord-koppeling is alleen actief op de TESTSERVER');
+    if(!validateLinkReference(req.params.internalId))
+      return error(res,400,'Ongeldige interne personeelsreferentie');
+    const reason=typeof req.body?.reason==='string'?req.body.reason.trim():'';
+    if(reason.length<10||reason.length>500)
+      return error(res,400,'Een motivering van 10 tot 500 tekens is vereist');
+    try{
+      const store=getFirestore(),pending=store.collection(PENDING_PERSONNEL_COLLECTION)
+        .doc(req.params.internalId);
+      const check=await pending.get();
+      if(!check.exists)return error(res,404,'Personeelsfiche niet gevonden');
+      const record=check.data(),discordId=record.linkRequest?.discordId;
+      if(!/^\\d{15,22}$/.test(discordId))return error(res,409,'Geen koppelaanvraag ingediend');
+      const member=(await store.collection('bpd_discord_auth').doc(discordId).get()).data();
+      if(!mayApproveLink(req.bpd,record,member,process.env.DISCORD_GUILD_ID))
+        return error(res,403,'Deze koppeling mag niet worden goedgekeurd of Discord moet opnieuw verifiëren');
+      const snap=await getSnapshot();
+      if(snap.data.some(p=>p.dept===record.dept&&p.personId===discordId))
+        return error(res,409,'Deze Discord-ID heeft al een personeelsfiche in deze hulpdienst');
+      const created=store.collection(CREATED_PERSONNEL_COLLECTION).doc(record.dept+'_'+discordId);
+      const claim=store.collection('bpd_personnel_call_claims')
+        .doc(personnelCallClaimId(record.dept,record.call));
+      await store.runTransaction(async tx=>{
+        const [current,existing,reserved]=await Promise.all([
+          tx.get(pending),tx.get(created),tx.get(claim)
+        ]);
+        if(!current.exists||existing.exists||
+           !mayApproveLink(req.bpd,current.data(),member,process.env.DISCORD_GUILD_ID))
+          throw userError(409,'De koppelaanvraag is gewijzigd of deze medewerker bestaat al');
+        if(!reserved.exists||reserved.get('internalId')!==pending.id||
+           reserved.get('discordId')!==null)
+          throw userError(409,'De roepnummerreservering komt niet overeen');
+        const d=current.data();
+        tx.create(created,{dept:d.dept,discordId,internalId:pending.id,
+          name:d.name,call:d.call,rank:d.rank,status:'In opleiding',
+          revision:0,state:'linked',createdAt:d.createdAt,
+          linkedAt:FieldValue.serverTimestamp(),linkedByUid:req.bpd.uid});
+        tx.update(pending,{state:'linked',discordId,linkedAt:FieldValue.serverTimestamp(),
+          linkedByUid:req.bpd.uid,linkApprovedReason:reason});
+        tx.update(claim,{discordId,internalId:null,updatedAt:FieldValue.serverTimestamp()});
+        tx.create(created.collection('audit').doc(),{
+          action:'link_discord',previous:{discordId:null},next:{discordId},
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
+          reason,at:FieldValue.serverTimestamp()});
+      });
+      return res.json({linked:true,discordId,dept:record.dept});
     }catch(e){return safeResponse(res,e)}
   });
   app.post('/api/personnel/:dept/:discordId',requireUser,async(req,res)=>{
