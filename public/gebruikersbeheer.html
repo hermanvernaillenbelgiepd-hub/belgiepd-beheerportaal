@@ -32,7 +32,7 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <p id="more" class="muted" hidden>Het overzicht is begrensd tot 250 accounts. Een paginering volgt bij verdere groei.</p></section>
 </main>
 <script type="module">
-import {setupPortalLogin} from '/portal-login.js';
+let setupPortalLogin;
 const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
 const roles=['basiskader','middenkader','officierenkader','korpsleiding'];
@@ -118,6 +118,7 @@ async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
     if(!cfg.enabled)throw Error('Firebase is niet ingesteld');
+    ({setupPortalLogin}=await import('/portal-login.js'));
     const a=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
     authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
     auth=authMod.getAuth(a.initializeApp(cfg.firebaseConfig));
