@@ -11,6 +11,20 @@ export const TEST_RANKS=Object.freeze({
   ambulance:['Ambulancier'],
   depannage:['Depanneur']
 });
+// A new police recruit is always an Agent unless leadership explicitly
+// authorises an exceptional entry rank with a separately recorded justification.
+export const STANDARD_ENTRY_RANK=Object.freeze({
+  politie:'Agent',brandweer:'Brandweerman',ambulance:'Ambulancier',depannage:'Depanneur'
+});
+export function exceptionalPoliceRank(rank,dept){
+  return dept==='politie'&&rank!==STANDARD_ENTRY_RANK.politie;
+}
+export function canAuthoriseExceptionalPoliceRank(actor,dept){
+  if(dept!=='politie'||!actor?.departments?.includes('politie'))return false;
+  const scoped=roleForDepartment(actor,'politie');
+  return actor.role==='beheerder'&&scoped==='beheerder'||
+    actor.role==='korpsleiding'&&scoped==='korpsleiding';
+}
 function safe(v,min,max,label){
   const s=typeof v==='string'?v.trim():'';
   if(s.length<min||s.length>max||/[\x00-\x1f\x7f<>]/.test(s))throw Error(label+' is ongeldig');
@@ -43,7 +57,7 @@ export function canCreatePersonnel(actor,dept){
 }
 export function validateNewPersonnel(body){
   if(!body||typeof body!=='object'||Array.isArray(body))throw Error('Ongeldige personeelsfiche');
-  if(Object.keys(body).some(k=>!['dept','discordId','name','call','rank','reason'].includes(k)))
+  if(Object.keys(body).some(k=>!['dept','discordId','name','call','rank','reason','exceptionalRank','exceptionReason'].includes(k)))
     throw Error('Onbekend of niet-toegelaten veld');
   const dept=String(body.dept||''),discordId=String(body.discordId||'');
   // No placeholder Discord ID: an unlinked person receives an internal Firestore ID.
@@ -52,7 +66,16 @@ export function validateNewPersonnel(body){
   const name=safe(body.name,2,120,'Naam'),call=safe(body.call,1,24,'Roepnummer');
   const rank=String(body.rank||'');
   if(!TEST_RANKS[dept]?.includes(rank))throw Error('Kies een geldige instaprang voor deze hulpdienst');
-  return {dept,discordId:discordId||null,name,call,rank,reason:safe(body.reason,10,500,'Motivering')};
+  const exceptional=exceptionalPoliceRank(rank,dept);
+  const requestedException=body.exceptionalRank===true;
+  const exceptionReason=typeof body.exceptionReason==='string'?body.exceptionReason.trim():'';
+  if(exceptional){
+    if(!requestedException)throw Error('Een uitzonderlijke politie-instaprang moet expliciet worden bevestigd');
+    safe(exceptionReason,30,500,'Afzonderlijke motivering uitzonderlijke instaprang');
+  }else if(requestedException||exceptionReason)
+    throw Error('Een uitzonderlijke instaprang is alleen voor politie boven Agent mogelijk');
+  return {dept,discordId:discordId||null,name,call,rank,reason:safe(body.reason,10,500,'Motivering'),
+    exceptionalRank:exceptional,exceptionReason:exceptional?exceptionReason:null};
 }
 export function asCreatedPersonnel(d){
   if(!d||!validPersonnelKey(d.dept,d.discordId)||!TEST_RANKS[d.dept].includes(d.rank)||

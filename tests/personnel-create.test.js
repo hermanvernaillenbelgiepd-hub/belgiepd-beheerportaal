@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {testCreateEnabled,personnelDataEnabled,personnelCreationEnabled,
+  STANDARD_ENTRY_RANK,exceptionalPoliceRank,canAuthoriseExceptionalPoliceRank,
   canCreatePersonnel,validateNewPersonnel,
   asCreatedPersonnel,uniqueNewPerson,visiblePendingPersonnel} from '../src/personnel-create.js';
 
 const person={dept:'politie',discordId:'444444444444444444',
-  name:'Nieuw Fictief Lid',call:'TEST-P404',rank:'Inspecteur',
+  name:'Nieuw Fictief Lid',call:'TEST-P404',rank:'Agent',
   reason:'TEST nieuwe personeelsfiche registreren'};
 const actor={role:'officierenkader',departments:['politie','ambulance'],
   departmentRoles:{politie:'officierenkader',ambulance:'middenkader'}};
@@ -33,16 +34,37 @@ test('MAIN intake has independent explicit enablement and safe read-only pause',
  assert.equal(personnelCreationEnabled(env),false);
 });
 test('Validated limited intake cannot inject rank privileges or extra properties',()=>{
-  assert.deepEqual(validateNewPersonnel(person),person);
+  assert.deepEqual(validateNewPersonnel(person),{...person,exceptionalRank:false,exceptionReason:null});
   for(const extra of [{role:'beheerder'},{departmentRoles:{politie:'korpsleiding'}},
     {status:'Actief'},{source:'google-sheets'}]){
     assert.throws(()=>validateNewPersonnel({...person,...extra}));
   }
   assert.throws(()=>validateNewPersonnel({...person,rank:'Commissaris'}));
+  assert.throws(()=>validateNewPersonnel({...person,rank:'Inspecteur'}));
   assert.throws(()=>validateNewPersonnel({...person,discordId:'not-an-id'}));
   assert.throws(()=>validateNewPersonnel({...person,reason:'te kort'}));
   assert.throws(()=>validateNewPersonnel({...person,name:'<script>alert(1)</script>'}));
   assert.throws(()=>validateNewPersonnel({...person,call:'TEST-\nX'}));
+});
+test('Police starts as Agent unless leadership independently authorises and logs an exceptional entry rank',()=>{
+  assert.equal(STANDARD_ENTRY_RANK.politie,'Agent');
+  assert.equal(exceptionalPoliceRank('Agent','politie'),false);
+  assert.equal(exceptionalPoliceRank('Inspecteur','politie'),true);
+  assert.equal(exceptionalPoliceRank('Ambulancier','ambulance'),false);
+  assert.equal(canAuthoriseExceptionalPoliceRank(actor,'politie'),false);
+  const chief={role:'korpsleiding',departments:['politie'],departmentRoles:{politie:'korpsleiding'}};
+  const admin={role:'beheerder',departments:['politie'],departmentRoles:{politie:'beheerder'}};
+  assert.equal(canAuthoriseExceptionalPoliceRank(chief,'politie'),true);
+  assert.equal(canAuthoriseExceptionalPoliceRank(admin,'politie'),true);
+  assert.equal(canAuthoriseExceptionalPoliceRank({...chief,departmentRoles:{politie:'officierenkader'}},'politie'),false);
+  assert.equal(canAuthoriseExceptionalPoliceRank(admin,'ambulance'),false);
+  const upgrade={...person,rank:'Inspecteur',exceptionalRank:true,
+    exceptionReason:'Uitzonderlijk instapniveau wegens aantoonbare opleiding en beslissing korpsleiding.'};
+  assert.deepEqual(validateNewPersonnel(upgrade),{...upgrade});
+  assert.throws(()=>validateNewPersonnel({...upgrade,exceptionalRank:false}));
+  assert.throws(()=>validateNewPersonnel({...upgrade,exceptionReason:'te kort'}));
+  assert.throws(()=>validateNewPersonnel({...person,exceptionalRank:true}));
+  assert.throws(()=>validateNewPersonnel({...person,exceptionReason:'Ongevraagd'}));
 });
 test('Only high cadre in the subject service can create',()=>{
   assert.equal(canCreatePersonnel(actor,'politie'),true);
@@ -61,7 +83,7 @@ test('Creation projects a strictly non-privileged personnel record',()=>{
   assert.equal(record.id,'politie:'+person.discordId);
   assert.equal(record.source,'firestore-created');
   assert.equal(record.status,'In opleiding');
-  assert.equal(record.rank,'Inspecteur');
+  assert.equal(record.rank,'Agent');
   assert.equal(Object.hasOwn(record,'departments'),false);
   assert.equal(Object.hasOwn(record,'role'),false);
   assert.equal(asCreatedPersonnel({...person,status:'Gepromoveerd'}),null);

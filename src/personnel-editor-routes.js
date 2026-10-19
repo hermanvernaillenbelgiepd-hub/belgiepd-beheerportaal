@@ -5,7 +5,8 @@ import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits,
   personnelCallClaimId} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
-  personnelDataEnabled,personnelCreationEnabled,canCreatePersonnel,validateNewPersonnel,uniqueNewPerson,
+  personnelDataEnabled,personnelCreationEnabled,canCreatePersonnel,canAuthoriseExceptionalPoliceRank,
+  STANDARD_ENTRY_RANK,validateNewPersonnel,uniqueNewPerson,
   visiblePendingPersonnel} from './personnel-create.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
@@ -43,7 +44,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       return res.json({records,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
         role:req.bpd.role,departments:allowed,
         writesEnabled:writes(),createEnabled:personnelCreationEnabled(process.env),
-        createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,TEST_RANKS[dept]])),
+        createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,dept==='politie'&&!canAuthoriseExceptionalPoliceRank(req.bpd,dept)?[STANDARD_ENTRY_RANK.politie]:TEST_RANKS[dept]])),
         overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
         sourceStale:snapshot.stale,limited:edits.size===400,statuses:EDITABLE_STATUSES});
     }catch(e){return safeResponse(res,e)}
@@ -57,6 +58,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
     try{proposed=validateNewPersonnel(req.body)}catch(e){return error(res,400,e.message)}
     if(!canCreatePersonnel(req.bpd,proposed.dept))
       return error(res,403,'Geen bevoegdheid om personeelsleden in deze hulpdienst aan te maken');
+    if(proposed.exceptionalRank&&!canAuthoriseExceptionalPoliceRank(req.bpd,proposed.dept))
+      return error(res,403,'Een uitzonderlijke politie-instaprang vereist toestemming van korpsleiding of beheerder');
     try{
       // Reject intake rather than trusting a stale cached personnel roster.
       const snap=await getSnapshot({forceRefresh:true});
@@ -78,6 +81,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
           status:'In opleiding',state:pending?'awaiting_discord':'linked',
           revision:0,createdByUid:req.bpd.uid,
           createdByDiscordId:req.bpd.discordId||null,
+          entryRank:proposed.rank,
+          exceptionalEntryRank:proposed.exceptionalRank,
+          exceptionalEntryReason:proposed.exceptionReason,
           createdAt:FieldValue.serverTimestamp()};
         tx.create(ref,doc);
         tx.create(claim,{dept:proposed.dept,discordId:proposed.discordId,
@@ -88,6 +94,17 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
             status:'In opleiding'},revision:0,reason:proposed.reason,
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
           at:FieldValue.serverTimestamp()});
+        // Dedicated, immutable entry-rank event. Promotion events will use the
+        // same old/new-rank vocabulary so career history remains chronological.
+        tx.create(ref.collection('audit').doc(),{
+          action:proposed.exceptionalRank?'exceptional_entry_rank':'entry_rank',
+          previousRank:null,newRank:proposed.rank,
+          standardRank:STANDARD_ENTRY_RANK[proposed.dept],
+          exceptional:proposed.exceptionalRank,
+          reason:proposed.exceptionalRank?proposed.exceptionReason:proposed.reason,
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
+          at:FieldValue.serverTimestamp()
+        });
       });
       return res.status(201).json({created:true,pending,internalId:pending?ref.id:null,
         discordId:proposed.discordId,dept:proposed.dept});
@@ -190,11 +207,25 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
         const d=current.data();
         tx.create(created,{dept:d.dept,discordId,internalId:pending.id,
           name:d.name,call:d.call,rank:d.rank,status:'In opleiding',
+          entryRank:d.entryRank||d.rank,
+          exceptionalEntryRank:d.exceptionalEntryRank===true,
+          exceptionalEntryReason:d.exceptionalEntryReason||null,
           revision:0,state:'linked',createdAt:d.createdAt,
           linkedAt:FieldValue.serverTimestamp(),linkedByUid:req.bpd.uid});
         tx.update(pending,{state:'linked',discordId,linkedAt:FieldValue.serverTimestamp(),
           linkedByUid:req.bpd.uid,linkApprovedReason:reason});
         tx.update(claim,{discordId,internalId:null,updatedAt:FieldValue.serverTimestamp()});
+        tx.create(created.collection('audit').doc(),{
+          action:d.exceptionalEntryRank?'exceptional_entry_rank':'entry_rank',
+          previousRank:null,newRank:d.rank,
+          standardRank:STANDARD_ENTRY_RANK[d.dept],
+          exceptional:d.exceptionalEntryRank===true,
+          reason:d.exceptionalEntryRank?d.exceptionalEntryReason||'': 'Oorspronkelijk ingeschreven door bevoegd kaderlid',
+          recordedAt:d.createdAt||null,
+          recordedByUid:d.createdByUid||null,
+          actorUid:d.createdByUid||null,actorDiscordId:d.createdByDiscordId||null,
+          at:FieldValue.serverTimestamp()
+        });
         tx.create(created.collection('audit').doc(),{
           action:'link_discord',previous:{discordId:null},next:{discordId},
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
