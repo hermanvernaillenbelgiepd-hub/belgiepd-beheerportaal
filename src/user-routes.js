@@ -2,6 +2,7 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {roleSummary} from './role-catalog.js';
+import {roleForDepartment} from './leave-policy.js';
 import {USER_COLLECTION,USER_DEPTS,verifiedDiscordIdentity,validUserGrant,
   isUserManager,canSeeUser,canChangeUser,canBlockUser} from './user-access.js';
 
@@ -67,6 +68,14 @@ export function installUserRoutes(app,{requireUser,accessList}){
       return res.json({discordId:id,username:member.username||'',status:d?.status||(legacy?'legacy':'not_requested'),
         role:d?.status==='approved'?d.role:null});
     }catch(e){return fail(res,e)}
+  });
+  // Only returns the authenticated member's OWN authorisation context.
+  // Useful when a valid Discord identity lacks scoped management rights.
+  app.get('/api/users/context',requireUser,(req,res)=>{
+    const depts=req.bpd.departments||[];
+    res.json({role:req.bpd.role,departments:depts,
+      departmentRoles:Object.fromEntries(depts.map(dept=>[dept,roleForDepartment(req.bpd,dept)||'geen'])),
+      canManageUsers:isUserManager(req.bpd)});
   });
   const admin=(req,res,next)=>isUserManager(req.bpd)?next():denial(res,403,'Alleen officierenkader, korpsleiding en beheer kunnen gebruikers beheren');
   app.get('/api/users/overview',requireUser,admin,async(req,res)=>{

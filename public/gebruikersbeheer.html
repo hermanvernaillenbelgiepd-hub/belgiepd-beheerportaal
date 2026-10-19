@@ -95,9 +95,26 @@ function render(){
   }
 }
 async function loadAdmin(){
-  try{const data=await api('/api/users/overview');items=data.users||[];
+  try{
+    // Server-side role calculation, never a browser-side grant.
+    const context=await api('/api/users/context');
+    if(!context.canManageUsers){
+      $('admin').hidden=true;
+      const scoped=Object.entries(context.departmentRoles||{})
+        .map(([dept,role])=>dept+': '+role).join(', ')||'geen hulpdienst';
+      notice('Je Discord-login werkt. Gebruikersbeheer is niet toegestaan voor je huidige dienstrollen ('+
+        scoped+'). Algemene rol: '+context.role+'. Laat de goedgekeurde rollen controleren.',true);
+      return;
+    }
+    const data=await api('/api/users/overview');items=data.users||[];
     $('admin').hidden=false;$('more').hidden=!data.limited;render();
-  }catch(e){$('admin').hidden=true;if(!/Alleen officierenkader|Account is niet gemachtigd|Discord-verificatie verlopen|Geen toegelaten hulpdienst|Aanmelding vereist/.test(e.message))notice(e.message,true)}
+    notice('Aangemeld als '+context.role+'. Gebruikersbeheer geladen ('+items.length+' zichtbare accounts).');
+  }catch(e){
+    $('admin').hidden=true;
+    // Never hide access errors: an older allowlist entry alone does not prove
+    // permission to use management APIs.
+    notice('Gebruikersbeheer kon niet worden geopend: '+e.message,true);
+  }
 }
 async function refresh(){
   if(!auth?.currentUser){$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;return}
