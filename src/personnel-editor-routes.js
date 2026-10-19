@@ -1,6 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
-  canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits} from './personnel-editor-policy.js';
+  canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits,
+  personnelCallClaimId} from './personnel-editor-policy.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
 const asTime=x=>x?.toDate?.().toISOString?.()||null;
@@ -54,11 +55,22 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
         const current=existing.exists?existing.data():null;
         const revision=current?.revision||0;
         if(revision!==proposed.expectedRevision)throw userError(409,'Deze fiche is intussen gewijzigd. Vernieuw de pagina.');
+        const oldCall=current?.call??subject.call;
+        const claims=getFirestore().collection('bpd_personnel_call_claims');
+        const newClaim=claims.doc(personnelCallClaimId(subject.dept,proposed.call));
+        const oldClaim=claims.doc(personnelCallClaimId(subject.dept,oldCall));
+        const reserved=await tx.get(newClaim);
+        if(reserved.exists&&reserved.get('discordId')!==subject.personId)
+          throw userError(409,'Dit roepnummer is intussen gereserveerd voor een ander personeelslid');
+        const previousClaim=oldCall===proposed.call?reserved:await tx.get(oldClaim);
         const audit=ref.collection('audit').doc();
-        const previous={name:current?.name??subject.name,call:current?.call??subject.call,status:current?.status??subject.status};
+        const previous={name:current?.name??subject.name,call:oldCall,status:current?.status??subject.status};
         const next={name:proposed.name,call:proposed.call,status:proposed.status};
         tx.set(ref,{...next,dept:subject.dept,discordId:subject.personId,revision:revision+1,
           updatedAt:FieldValue.serverTimestamp(),updatedByUid:req.bpd.uid,updatedByDiscordId:req.bpd.discordId});
+        tx.set(newClaim,{discordId:subject.personId,dept:subject.dept,call:proposed.call,updatedAt:FieldValue.serverTimestamp()});
+        if(oldCall!==proposed.call&&previousClaim.exists&&previousClaim.get('discordId')===subject.personId)
+          tx.delete(oldClaim);
         tx.create(audit,{previous,next,revision:revision+1,reason:proposed.reason,
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
           at:FieldValue.serverTimestamp()});
