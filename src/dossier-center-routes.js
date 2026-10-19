@@ -30,6 +30,8 @@ function publicApplication(a){
     decidedAt:timestamp(a.decidedAt)};
 }
 export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){
+  // Public readiness contains only the opt-in flag and no identity or dossier data.
+  app.get('/api/dossiercentrum/status',(_req,res)=>res.json({enabled:enabled(),readOnly:true}));
   app.get('/api/dossiercentrum/overview',requireUser,async(req,res)=>{
     if(!enabled())return respond(res,503,'Het dossiercentrum is nog niet geactiveerd');
     const scopes=dossierScopes(req.bpd,applicationsEnabled());
