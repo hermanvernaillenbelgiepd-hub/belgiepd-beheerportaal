@@ -1,8 +1,11 @@
-import {testCreateEnabled,canCreatePersonnel} from './personnel-create.js';
+import {testCreateEnabled,personnelCreationEnabled,canCreatePersonnel} from './personnel-create.js';
 import {verifiedDiscordIdentity} from './user-access.js';
 const D=/^\d{15,22}$/,P=/^[A-Za-z0-9]{12,40}$/;
 export function linkEnabled(env){
-  return testCreateEnabled(env)&&env.BPD_ENABLE_PERSONNEL_WRITES==='true';
+  if(testCreateEnabled(env))return env.BPD_ENABLE_PERSONNEL_WRITES==='true';
+  return personnelCreationEnabled(env)&&
+    env.BPD_PRODUCTION_PERSONNEL_LINKING==='true'&&
+    env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true';
 }
 // Parse Firebase ID-token headers without route-specific regexes.
 export function bearerToken(header){
