@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { google } from 'googleapis';
 import { initializeApp, applicationDefault, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+import { discordConfig } from './discord-utils.js';
+import { discordPortalAccess } from './discord-portal-access.js';
 import { buildData } from './normalize.js';
 import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.js';
 import { ALLOWED_ROLES } from './registrations.js';
@@ -50,10 +53,22 @@ async function requireUser(req,res,next){
   try {
     if (!getApps().length) initializeApp({credential:applicationDefault(),projectId:process.env.FIREBASE_PROJECT_ID});
     const verified=await getAuth().verifyIdToken(token);
-    // Alleen verifieerbare Google-auth en afzonderlijke serverallowlist.
-    if (!verified.email_verified || verified.firebase?.sign_in_provider!=='google.com') return res.status(403).json({error:'Google-aanmelding vereist'});
-    const email=String(verified.email||'').toLowerCase();
-    const entry=accessList()[email];
+    // Google-noodtoegang blijft bestaan. Discord krijgt enkel de bestaande,
+    // persoonlijk gemapte rechten uit de allowlist; geen rollen op basis van ID alleen.
+    let email,entry,discordId;
+    if(verified.email_verified && verified.firebase?.sign_in_provider==='google.com'){
+      email=String(verified.email||'').toLowerCase();
+      entry=accessList()[email];
+      discordId=String(entry?.discordId||'');
+    }else if(process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true'
+      && verified.firebase?.sign_in_provider==='custom' && verified.bpdDiscord===true){
+      const id=String(verified.uid||'').replace(/^discord:/,'');
+      if(!/^\d{15,22}$/.test(id))return res.status(403).json({error:'Discord-identiteit ongeldig'});
+      const member=(await getFirestore().collection('bpd_discord_auth').doc(id).get()).data();
+      const mapped=discordPortalAccess(verified,accessList(),member,process.env.DISCORD_GUILD_ID);
+      if(!mapped)return res.status(403).json({error:'Discord-verificatie verlopen of je Discord ID is niet uniek aan een goedgekeurd account gekoppeld. Meld je opnieuw aan met Discord.'});
+      ({email,entry,discordId}=mapped);
+    }else return res.status(403).json({error:'Gebruik de toegelaten Google- of Discord-aanmelding'});
     if (!entry || !Array.isArray(entry.departments) || !ALLOWED_ROLES.includes(entry.role)) return res.status(403).json({error:'Account is niet gemachtigd voor de koppeling'});
     const departments=entry.departments.filter(d=>allDepts.includes(d));
     if (!departments.length) return res.status(403).json({error:'Geen toegelaten hulpdienst'});
@@ -68,7 +83,7 @@ async function requireUser(req,res,next){
       )
     );
     req.bpd={email,uid:verified.uid,role:String(entry.role),departments,
-      discordId:String(entry.discordId||''),departmentRoles};
+      discordId,departmentRoles};
     next();
   } catch(e) {
     if(e.message?.includes('BPD_ACCESS_JSON')) return res.status(503).json({error:'Rechtenconfiguratie ongeldig'});
@@ -113,7 +128,7 @@ async function getSnapshot(){
 }
 app.get('/api/client-config',(_req,res)=>{
   const {FIREBASE_PROJECT_ID,FIREBASE_API_KEY,FIREBASE_AUTH_DOMAIN}=process.env;
-  res.json({enabled:Boolean(FIREBASE_PROJECT_ID&&FIREBASE_API_KEY&&FIREBASE_AUTH_DOMAIN),firebaseConfig:{projectId:FIREBASE_PROJECT_ID||'',apiKey:FIREBASE_API_KEY||'',authDomain:FIREBASE_AUTH_DOMAIN||''}});
+  res.json({enabled:Boolean(FIREBASE_PROJECT_ID&&FIREBASE_API_KEY&&FIREBASE_AUTH_DOMAIN),discordPortalLoginReady:process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true'&&discordConfig(process.env).ready,firebaseConfig:{projectId:FIREBASE_PROJECT_ID||'',apiKey:FIREBASE_API_KEY||'',authDomain:FIREBASE_AUTH_DOMAIN||''}});
 });
 app.get('/api/data',requireUser,async(req,res)=>{
   if(req.bpd.role==='basiskader')return res.status(403).json({error:'Basiskader heeft geen toegang tot het personeelsbeheer'});

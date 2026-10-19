@@ -236,7 +236,7 @@ async function initConnection(){
       document.getElementById('sourceBadge').title='Laatst gelezen: '+(payload.fetchedAt||'onbekend');
       authButton.textContent='Afmelden';
       document.querySelector('.sidebar-profile strong').textContent='BelgiëPD-beheer';
-      document.querySelector('.sidebar-profile small').textContent='Google-login · '+payload.role;
+      document.querySelector('.sidebar-profile small').textContent=(user.uid.startsWith('discord:')?'Discord-login · ':'Google-login · ')+payload.role;
       render();
     }
     authModule.onAuthStateChanged(auth,async user=>{
@@ -244,10 +244,8 @@ async function initConnection(){
         catch(error){if(error.message?.includes('Basiskader heeft geen toegang')){window.location.assign('/registraties.html');return;}dossierState=Object.create(null);liveMode=false;liveInfo=null;employees=sampleEmployees.map(x=>({...x}));document.getElementById('sourceBadge').textContent='DEMO-MODUS';document.querySelector('.sidebar-profile strong').textContent='Testgebruiker';document.querySelector('.sidebar-profile small').textContent='Simulatie · geen live-toegang';render();toast('Geen live-toegang: '+error.message);}}
       else{dossierState=Object.create(null);liveMode=false;liveInfo=null;employees=sampleEmployees.map(x=>({...x}));role='korpsleiding';document.querySelector('.sidebar-profile strong').textContent='Testgebruiker';document.querySelector('.sidebar-profile small').textContent='Simulatie · geen login';authButton.textContent='Google aanmelden';document.getElementById('sourceBadge').textContent='DEMO-MODUS';render();}
     });
-    authButton.addEventListener('click',async()=>{
-      try{if(auth.currentUser)await authModule.signOut(auth);else await authModule.signInWithPopup(auth,new authModule.GoogleAuthProvider());}
-      catch(error){toast('Aanmelden mislukt: '+(error.code||'controleer Firebase-instellingen'));}
-    });
+    const {setupPortalLogin}=await import('/portal-login.js');
+    setupPortalLogin({button:authButton,auth,authModule,config,onError:error=>toast('Aanmelden mislukt: '+(error.code||error.message))});
     // Refresh bij open browser; server-cache vervalt na 15 minuten. Geen geplande cloudtaak in deze fase.
     setInterval(()=>{if(auth.currentUser&&liveMode)loadData(auth.currentUser).catch(()=>toast('Verversen mislukt; gegevens kunnen verouderd zijn.'));},15*60*1000);
   } catch {document.getElementById('authBtn').disabled=true;document.getElementById('authBtn').textContent='Firebase laden mislukt';}

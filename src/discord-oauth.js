@@ -19,7 +19,7 @@ export function installDiscordOAuth(app){
   // An ephemeral HMAC key prevents forgeable OAuth callback cookies after restarts.
   const cookieKey=randomBytes(32);
   const config=()=>discordConfig(process.env);
-  app.get('/auth/discord/status',(_req,res)=>{const cfg=config();res.json({ready:cfg.ready,serverConfigured:Boolean(cfg.guildId),testMode:true});});
+  app.get('/auth/discord/status',(_req,res)=>{const cfg=config();res.json({ready:cfg.ready,serverConfigured:Boolean(cfg.guildId),portalLoginEnabled:process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true',testMode:false});});
   app.get('/auth/discord/start',(req,res)=>{
     const cfg=config();if(!cfg.ready)return res.status(503).send('Discord is nog niet ingesteld. Vul eerst de echte Client Secret lokaal in .env in.');
     const state=b64(24),verifier=b64(32);
@@ -64,7 +64,7 @@ export function installDiscordOAuth(app){
       const token=await getAuth().createCustomToken('discord:'+user.id,{bpdDiscord:true,bpdGuildId:cfg.guildId});
       const handle=b64(32);handoffs.set(handle,{token,expires:now+60000});
       for(const [key,x] of handoffs)if(x.expires<now)handoffs.delete(key);
-      const p=new URLSearchParams({bpd_discord_code:handle});
+      const p=new URLSearchParams({bpd_discord_code:handle,returnTo:validReturnTo(rawData.returnTo)});
       res.redirect(302,'/discord-status.html?'+p.toString());
     } catch(e){console.error('Discord OAuth mislukt:',String(e.message||'fout').slice(0,130));res.redirect(302,'/discord-status.html?error=aanmelden_mislukt');}
   });

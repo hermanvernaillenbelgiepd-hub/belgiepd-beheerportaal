@@ -37,10 +37,28 @@ jobs:
         run: |
           node --check src/leave-policy.js
           node --check src/leave-routes.js
+          node --check src/discord-portal-access.js
+          node --check src/discord-oauth.js
+          node --check src/role-routes.js
+          node --check public/portal-login.js
           node --check tests/leave-policy.test.js
           node --check tests/leave-routes.test.js
       - name: Execute automated tests
         run: npm test
+      - name: Inspect public Discord login readiness
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 40 'https://belgiepd-beheerportaal.onrender.com/auth/discord/status' > discord-check.json
+          node --input-type=module -e "
+          import fs from 'node:fs';
+          const s=JSON.parse(fs.readFileSync('discord-check.json','utf8'));
+          console.log('Discord OAuth configured in production: '+Boolean(s.ready));
+          console.log('Discord portal login already enabled: '+Boolean(s.portalLoginEnabled));
+          if(!s.ready) process.exit(1);
+          "
       - name: Read-only Render testserver health check
         if: github.event_name == 'pull_request'
         continue-on-error: true

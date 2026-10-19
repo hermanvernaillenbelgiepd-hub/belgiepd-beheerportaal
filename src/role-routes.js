@@ -1,6 +1,7 @@
 import { getApps,initializeApp,applicationDefault } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore,FieldValue } from 'firebase-admin/firestore';
+import { discordPortalAccess } from './discord-portal-access.js';
 import { isDiscordId } from './discord-utils.js';
 import { ROLE_CATALOG,roleSummary,SERVICE_DEPTS } from './role-catalog.js';
 import { basePermissions,effectivePermissions,validateOverride,canAdministerRoles,canLogTraining,canReviewTraining,visibleTrainingPermissions,DELEGATABLE_PERMISSIONS } from './permissions-utils.js';
@@ -23,7 +24,7 @@ async function resolveActor(req,res,next){
     if(decoded.firebase?.sign_in_provider==='google.com' && decoded.email_verified){
       const e=googleAccessList()[String(decoded.email||'').toLowerCase()];
       if(!e||!Array.isArray(e.departments)||!['basiskader','middenkader','officierenkader','korpsleiding','beheerder'].includes(e.role))return res.status(403).json({error:'Google-account niet gemachtigd'});
-      bpd={provider:'google',role:e.role,departments:e.departments.filter(d=>SERVICE_DEPTS.includes(d)),uid:decoded.uid,email:decoded.email,discordId:String(e.discordId||'')};
+      bpd={provider:'google',role:e.role,departments:e.departments.filter(d=>SERVICE_DEPTS.includes(d)),uid:decoded.uid,email:decoded.email,discordId:String(e.discordId||''),trustedStaff:true};
       discordId=bpd.discordId;
     }else if(decoded.firebase?.sign_in_provider==='custom' && decoded.bpdDiscord===true && /^discord:\d{15,22}$/.test(decoded.uid) && decoded.bpdGuildId===process.env.DISCORD_GUILD_ID){
       discordId=decoded.uid.slice(8);
@@ -31,6 +32,13 @@ async function resolveActor(req,res,next){
     }else return res.status(403).json({error:'Geen toegelaten aanmeldmethode'});
     const snap=isDiscordId(discordId)?await db().collection('bpd_discord_auth').doc(discordId).get():null;
     const member=snap?.exists?snap.data():null;
+    if(bpd.provider==='discord' && process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true'){
+      const allowed=discordPortalAccess(decoded,googleAccessList(),member,process.env.DISCORD_GUILD_ID);
+      if(allowed && Array.isArray(allowed.entry.departments)
+        && ['basiskader','middenkader','officierenkader','korpsleiding','beheerder'].includes(allowed.entry.role)){
+        bpd={...bpd,role:allowed.entry.role,departments:allowed.entry.departments.filter(d=>SERVICE_DEPTS.includes(d)),email:allowed.email,trustedStaff:true};
+      }
+    }
     const base=basePermissions(member,process.env.DISCORD_GUILD_ID);
     // Never infer rank from a stale role snapshot, or from an unrelated Discord ID.
     const override=isDiscordId(discordId)?(await db().collection('bpd_permission_overrides').doc(discordId).get()).data():null;
@@ -42,7 +50,7 @@ function admin(req,res,next){
   // Bootstrap only through the existing approved Google allowlist. Discord-only sessions
   // cannot change other people's rights, even with a leadership Discord role.
   const actor=req.roleActor?.bpd;
-  if(actor?.provider!=='google' || !['officierenkader','korpsleiding'].includes(actor.role))return res.status(403).json({error:'Alleen gemachtigd hoger kader via de bestaande Google-aanmelding'});
+  if(!actor?.trustedStaff || !['officierenkader','korpsleiding'].includes(actor.role))return res.status(403).json({error:'Alleen vooraf gemachtigd hoger kader mag rollen beheren'});
   next();
 }
 function trainingAccess(req,dept,kind){
@@ -64,10 +72,10 @@ export function installRoleRoutes(app){
   app.get('/api/roles/catalog',resolveActor,(req,res)=>res.json({roles:ROLE_CATALOG,departments:SERVICE_DEPTS}));
   app.get('/api/roles/me',resolveActor,(req,res)=>{
     const {bpd,discordId,base,perms}=req.roleActor;
-    return res.json({provider:bpd.provider,discordId:discordId||null,googleRank:bpd.provider==='google'?bpd.role:null,
+    return res.json({provider:bpd.provider,discordId:discordId||null,googleRank:bpd.trustedStaff?bpd.role:null,
       verifiedRolesFresh:base.fresh,roles:base.roles,departments:base.departments,
       policeRank:base.policeRank,unknownRoleCount:base.unknownCount,
-      permissions:visibleTrainingPermissions(bpd,perms),canManage:bpd.provider==='google'&&['officierenkader','korpsleiding'].includes(bpd.role),
+      permissions:visibleTrainingPermissions(bpd,perms),canManage:bpd.trustedStaff===true&&['officierenkader','korpsleiding'].includes(bpd.role),
       trainingWritesEnabled:process.env.BPD_ENABLE_TRAINING_WRITES==='true',
       note:'Discord-toekenningen en Google Sheets worden NIET automatisch aangepast. Bestaande dossiers blijven onder de huidige Google-allowlist.'});
   });
