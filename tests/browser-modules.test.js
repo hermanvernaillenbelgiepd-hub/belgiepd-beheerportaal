@@ -22,7 +22,7 @@ test('Personnel intake warns about duplicate callsigns and Discord claims',()=>{
   assert.match(html,/id="newDuplicateWarning"/);
   assert.match(html,/id="pendingSummary"/);
   assert.match(html,/Kopieer uitnodiging/);
-  assert.match(html,/window\.location\.origin\+'\/personeel-koppelen\.html'/);
+  assert.ok(html.includes("window.location.origin+'/personeel-koppelen.html"));
   const from=html.indexOf('function newPersonnelConflicts(person){');
   const to=html.indexOf('function newFormData(){',from);
   assert.ok(from>0&&to>from);
