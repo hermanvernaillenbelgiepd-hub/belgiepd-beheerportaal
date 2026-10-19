@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>BelgiumPD · Solliciteren hulpdiensten</title>
+<style>
+:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:#edf3ff;background:#081329}*{box-sizing:border-box}
+body{margin:0}header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;background:#122541;border-bottom:1px solid #345070;padding:18px max(18px,calc((100vw - 1030px)/2))}
+main{max-width:1030px;margin:auto;padding:30px 18px 75px}h1{font-size:29px}h2{font-size:20px;margin-top:0}p{color:#b5c6e0;line-height:1.6}a{color:#b4d0ff}
+.card{background:#122542;border:1px solid #345072;padding:22px;border-radius:13px;margin:18px 0}
+.notice{padding:14px 17px;background:#22483d;color:#d4f6e6;border-radius:9px;line-height:1.5}.notice.error{background:#592a3d;color:#ffe1e8}
+button,select,textarea{font:inherit;border-radius:9px;padding:11px;color:#f4f7ff}
+button{background:#335fe2;border:1px solid #6490ff;cursor:pointer;font-weight:650}button:disabled{opacity:.55;cursor:not-allowed}
+select,textarea{width:100%;background:#091a34;border:1px solid #526e91}
+label{display:block;color:#cbdaef;margin:14px 0 7px}.muted{font-size:13px;color:#aac0dc}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.mini{border:1px solid #344e70;border-radius:10px;padding:17px}
+strong{color:#fff}header a{text-decoration:none}[hidden]{display:none!important}
+@media(max-width:700px){.grid{grid-template-columns:1fr}h1{font-size:25px}}
+</style></head><body>
+<header><strong>🛡️ BelgiumPD · Sollicitaties</strong><div><a href="/">Beheerportaal</a> · <a href="/personeel-koppelen.html">Discord-koppeling</a></div><button id="login" type="button">Aanmelden</button></header>
+<main><h1>Solliciteer bij de hulpdiensten</h1>
+<p>Ook zonder politiefunctie kun je solliciteren bij de ambulance, brandweer of depannage. Elke hulpdienst krijgt een eigen sollicitatiedossier. Een ingediende sollicitatie geeft nooit automatisch personeelsrechten of Discord-rollen.</p>
+<div id="msg" role="status" aria-live="polite" class="notice">Sollicitatiemodule en Discord-aanmelding controleren…</div>
+<p><a id="discordLink" href="/auth/discord/start?return=%2Fsolliciteren.html">Aanmelden of opnieuw verifiëren met Discord</a></p>
+<section class="card">
+<h2>Voorwaarden</h2>
+<div class="grid">
+<div class="mini"><strong>10 speeluren</strong><p class="muted" id="hours">Nog niet geverifieerd</p></div>
+<div class="mini"><strong>5 dagen op de server</strong><p class="muted" id="days">Nog niet geverifieerd</p></div>
+<div class="mini"><strong>FiveM-verificatie</strong><p class="muted" id="verification">Wacht op de vertrouwde serverkoppeling</p></div>
+</div>
+<p class="muted">De voorwaarden worden uitsluitend gecontroleerd met gegevens van de FiveM-server. Zelf opgegeven uren of een Discord-registratiedatum tellen niet mee.</p>
+</section>
+<section class="card"><h2>Mijn sollicitaties</h2><div id="applications" class="muted">Meld je aan om je eigen dossierstatus te bekijken.</div></section>
+<section class="card"><h2>Nieuwe sollicitatie</h2>
+<form id="form">
+<label for="dept">Hulpdienst</label>
+<select id="dept" required><option value="ambulance">Ambulance</option><option value="brandweer">Brandweer</option><option value="depannage">Depannage</option></select>
+<label for="motivation">Waarom wil je bij deze hulpdienst starten? (40–3000 tekens)</label>
+<textarea id="motivation" rows="7" maxlength="3000" minlength="40" required placeholder="Vertel over je motivatie, beschikbaarheid, ervaring en wat je verwacht van de functie."></textarea>
+<p class="muted">Na verzending beslist het bevoegd kader van die hulpdienst. Een aanvaarde sollicitatie creëert niet automatisch een personeelsfiche.</p>
+<button id="submit" type="submit" disabled>Sollicitatie indienen</button>
+</form></section>
+</main>
+<script type="module">
+let auth,authModule,portalSetup,ready=false,eligible=false;
+const $=id=>document.getElementById(id);
+function message(x,bad=false){$('msg').textContent=x;$('msg').classList.toggle('error',bad)}
+async function request(url,body){
+ const user=auth?.currentUser;
+ if(!user?.uid?.startsWith('discord:'))throw Error('Meld je aan met je eigen Discord-account');
+ const headers={Authorization:'Bearer '+await user.getIdToken()};
+ const response=await fetch(url,{method:body?'POST':'GET',headers:body?{...headers,'Content-Type':'application/json'}:headers,
+   ...(body?{body:JSON.stringify(body)}:{}),cache:'no-store'});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'Serverfout '+response.status);
+ return data;
+}
+const labels={submitted:'Ingediend',reviewing:'In behandeling',accepted:'Aanvaard',rejected:'Afgewezen'};
+async function refresh(){
+ const user=auth?.currentUser;
+ $('submit').disabled=true;eligible=false;
+ if(!ready)return message('Sollicitatiemodule staat nog in voorbereiding; inzenden is uitgeschakeld.',true);
+ if(!user?.uid?.startsWith('discord:'))return message('Meld je aan met Discord om je eigen toelating en dossiers te bekijken.');
+ try{
+   const data=await request('/api/service-applications/me');
+   if(auth.currentUser?.uid!==user.uid)return;
+   const e=data.eligibility;
+   $('hours').textContent=e.playHoursMet?'Minstens 10 uur bevestigd':'Nog geen 10 uur bevestigd';
+   $('days').textContent=e.membershipDaysMet?'Minstens 5 dagen bevestigd':'Nog geen 5 dagen bevestigd';
+   $('verification').textContent=e.status==='eligible'?'Beide voorwaarden geverifieerd':
+     e.status==='not_yet_eligible'?'Nog niet aan alle voorwaarden voldaan':
+     'Nog geen betrouwbare FiveM-gegevens beschikbaar';
+   const root=$('applications');root.replaceChildren();
+   if(!data.applications?.length)root.textContent='Nog geen sollicitaties ingediend.';
+   else for(const p of data.applications){
+     const item=document.createElement('p');
+     item.textContent=p.dept+' · '+(labels[p.status]||p.status)+
+       (p.decisionReason?' · '+p.decisionReason:'');
+     root.append(item);
+   }
+   eligible=e.eligible===true;
+   $('submit').disabled=!eligible;
+   message(eligible?'Je identiteit en de twee toelatingsvoorwaarden zijn geverifieerd. Je kunt solliciteren.':
+     'Je Discord-identiteit is bevestigd. Indienen blijft geblokkeerd tot 10 speeluren én 5 dagen met FiveM-gegevens zijn geverifieerd.',!eligible);
+ }catch(e){message(e.message,true)}
+}
+$('form').onsubmit=async ev=>{
+ ev.preventDefault();
+ if(!eligible)return message('Beide servervoorwaarden moeten eerst bevestigd zijn.',true);
+ const button=$('submit');button.disabled=true;
+ try{
+   const result=await request('/api/service-applications/submit',{
+     dept:$('dept').value,motivation:$('motivation').value.trim()});
+   $('motivation').value='';
+   await refresh();
+   message('Sollicitatie ingediend voor '+result.dept+'. Een bevoegd kaderlid beoordeelt je dossier.');
+ }catch(e){message(e.message,true)}finally{button.disabled=!eligible}
+};
+async function start(){
+ try{
+   const status=await fetch('/api/service-applications/status',{cache:'no-store'}).then(r=>r.json());
+   ready=status.enabled===true;
+   const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+   if(!cfg.enabled)throw Error('Firebase-aanmelding ontbreekt');
+   ({setupPortalLogin:portalSetup}=await import('/portal-login.js'));
+   const app=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+   authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+   auth=authModule.getAuth(app.initializeApp(cfg.firebaseConfig));
+   portalSetup({button:$('login'),auth,authModule,config:cfg,onError:e=>message(e.message,true)});
+   authModule.onAuthStateChanged(auth,()=>refresh().catch(e=>message(e.message,true)));
+ }catch(e){message('Kan sollicitaties niet openen: '+e.message,true)}
+}
+start();
+</script></body></html>
