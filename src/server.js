@@ -13,7 +13,7 @@ import { installCallsignRoutes } from './callsign-routes.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import { installRoleRoutes } from './role-routes.js';
-
+import { createTestPersonnel } from './test-personnel.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 app.disable('x-powered-by');
@@ -63,6 +63,16 @@ async function requireUser(req,res,next){
   }
 }
 async function queryLive(){
+
+  if (process.env.BPD_TEST_FIXTURES === 'true') {
+    if (process.env.FIREBASE_PROJECT_ID !== 'belgiepd-test') {
+      throw new Error(
+        'Fictieve testdata alleen toegestaan voor belgiepd-test'
+      );
+    }
+
+    return createTestPersonnel();
+  }
   if (!process.env.PERSONNEL_SPREADSHEET_ID || !process.env.ACTIVITY_SPREADSHEET_ID) throw new Error('Bronbestand-ID ontbreekt');
   const auth=new google.auth.GoogleAuth({scopes:['https://www.googleapis.com/auth/spreadsheets.readonly']});
   const sheets=google.sheets({version:'v4',auth});
