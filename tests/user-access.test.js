@@ -52,6 +52,17 @@ test('Korpsleiding may grant officer but not own rank; manager can grant chief, 
   assert.equal(canChangeUser(admin,discordId,pending,chiefGrant),true);
   assert.equal(canChangeUser(officer,discordId,{...approved,role:'korpsleiding'},grant),false);
 });
+test('Rights in a secondary service cannot be inherited from the global role',()=>{
+  const officerDual={...officer,departments:['politie','brandweer'],departmentRoles:{politie:'officierenkader',brandweer:'basiskader'}};
+  const bwGrant=validUserGrant({role:'middenkader',departments:['brandweer'],reason:'Controle van brandweer'});
+  const bwPending={...pending,candidateDepartments:['brandweer']};
+  assert.equal(isUserManager(officerDual),true);
+  assert.equal(canSeeUser(officerDual,bwPending),false);
+  assert.equal(canChangeUser(officerDual,discordId,bwPending,bwGrant),false);
+  assert.equal(canBlockUser(officerDual,discordId,bwPending),false);
+  const forged={...officerDual,role:'basiskader',departmentRoles:{politie:'officierenkader',brandweer:'officierenkader'}};
+  assert.equal(isUserManager(forged),false);
+});
 test('Managers only see own service; no self-block and higher cadre cannot be blocked',()=>{
   assert.equal(canSeeUser(officer,pending),true);
   assert.equal(canSeeUser(officer,{...pending,candidateDepartments:['ambulance']}),false);
