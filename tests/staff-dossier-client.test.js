@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {Script} from 'node:vm';
+const load=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
+
+test('Personnel page keeps one combined dossier and scripts remain syntactically valid',()=>{
+  const html=load('public/personeelsbeheer.html');
+  const matches=[...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)];
+  assert.equal(matches.length,1);
+  assert.doesNotThrow(()=>new Script(matches[0][1],{filename:'personeelsbeheer.html'}));
+  for(const name of ['staffDossierSection','staffDossierSummary','staffProfileForm',
+    'staffNoteForm','staffDossierHistory','staffStartDate','staffUnit','staffFunction'])
+    assert.ok(html.includes('id="'+name+'"'),name);
+  assert.ok(html.includes('await loadStaffDossier(p)'));
+  assert.ok(html.includes("'/rollen-opleidingen.html'")||html.includes('href="/rollen-opleidingen.html"'));
+  assert.equal(/\.innerHTML\s*=/.test(html),false);
+});
+test('Staff routes enforce authorised read, separate write flag, and immutable audit',()=>{
+  const route=load('src/staff-dossier-routes.js');
+  assert.ok(route.includes("app.get('/api/staff-dossiers/:dept/:discordId',requireUser"));
+  assert.ok(route.includes("app.post('/api/staff-dossiers/:dept/:discordId/profile',requireUser"));
+  assert.ok(route.includes("app.post('/api/staff-dossiers/:dept/:discordId/notes',requireUser"));
+  assert.ok(route.includes("staffDossierWritesEnabled(process.env)"));
+  assert.ok(route.includes("canMaintainStaffDossier(req.bpd,staff)"));
+  assert.ok(route.includes("getSubject(req,getSnapshot)"));
+  assert.ok(route.includes("uniqueStaffSubject(snap.data"));
+  assert.ok(route.includes('tx.create(ref.collection(\'audit\').doc()'));
+  assert.equal(route.includes('tx.delete('),false);
+  assert.equal(route.includes('discordRoleIds'),false);
+  assert.equal(route.includes('PERSONNEL_SPREADSHEET_ID'),false);
+});
+test('No duplicate personnel roster and no changes to public unauthenticated access',()=>{
+  const server=load('src/server.js');
+  assert.ok(server.includes('installStaffDossierRoutes(app,{requireUser,getSnapshot});'));
+  assert.ok(server.includes("app.use('/api/staff-dossiers',express.json"));
+  const html=load('public/personeelsbeheer.html');
+  assert.ok(html.includes('/api/personnel/overview'));
+  assert.ok(html.includes('/api/personnel/:dept/:discordId')===false);
+});
