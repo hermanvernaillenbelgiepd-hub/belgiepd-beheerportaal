@@ -84,7 +84,8 @@ async function load(){
     $('dept').replaceChildren(option('all','Alle toegelaten diensten'));
     (data.departments||[]).forEach(d=>$('dept').append(option(d,departments[d]||d)));
     $('mode').hidden=false;
-    $('mode').textContent=!writesEnabled?'Voorbereidingsmodus: personeelswijzigingen zijn uitgeschakeld tot de gecontroleerde test is afgerond. Google Sheets blijven ongewijzigd.':
+    $('mode').textContent=data.personnelTestMode?'TESTSERVER: tijdelijke testrechten voor deze sessie. Wijzig uitsluitend fictieve personeelsleden; productie blijft ongewijzigd.':
+      !writesEnabled?'Voorbereidingsmodus: personeelswijzigingen zijn uitgeschakeld tot de gecontroleerde test is afgerond. Google Sheets blijven ongewijzigd.':
       data.overridesActive?'Firestore-wijzigingen zijn actief in de personeelsweergaven. Google Sheets blijven als terugvalbron behouden.':
         'Testmodus: wijzigingen worden in Firestore opgeslagen, maar nog niet gebruikt als hoofdgegevensbron.';
     render();
