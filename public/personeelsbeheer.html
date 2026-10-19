@@ -30,25 +30,25 @@ label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#
 <div class="scroller"><table><thead><tr><th>Personeelslid</th><th>Roepnummer</th><th>Rang</th><th>Hulpdienst</th><th>Status</th><th>Gegevensbron</th><th></th></tr></thead><tbody id="results"></tbody></table></div>
 </section>
 <section id="pendingPanel" class="card" hidden>
-<h2>Wacht op Discord-koppeling</h2><p>Deze fictieve medewerkers hebben een interne personeelsreferentie, maar nog geen Discord-ID.
+<h2>Wacht op Discord-koppeling</h2><p>Deze medewerkers hebben een interne personeelsreferentie, maar nog geen gekoppelde Discord-ID.
 Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a href="/personeel-koppelen.html">Open de pagina om Discord te koppelen</a>.</p>
 <div class="scroller"><table><thead><tr><th>Personeelslid</th><th>Hulpdienst</th>
 <th>Roepnummer</th><th>Rang</th><th>Interne referentie</th><th>Status / actie</th></tr></thead>
 <tbody id="pendingResults"></tbody></table></div></section>
 <section id="newPanel" class="card" hidden>
-<div class="controls" style="justify-content:space-between"><h2>Nieuw personeelslid – TESTSERVER</h2><button id="newClose" class="alt" type="button">Sluiten</button></div>
-<p>Maak uitsluitend een fictieve personeelsfiche aan. Een personeelsfiche verleent geen Discord- of portaalrechten.</p>
+<div class="controls" style="justify-content:space-between"><h2>Nieuw personeelslid</h2><button id="newClose" class="alt" type="button">Sluiten</button></div>
+<p>Maak een personeelsfiche aan. Met een opgegeven Discord-ID wordt de juiste identiteit bij Discord-aanmelding automatisch herkend. Zonder Discord-ID volgt een aparte koppelaanvraag en kadergoedkeuring. Een fiche kent nooit automatisch portaalrechten toe.</p>
 <form id="newForm"><div class="grid">
 <div><label for="newDept">Hulpdienst</label><select id="newDept" required></select></div>
 <div><label for="newId">Discord-ID (optioneel)</label>
 <input id="newId" pattern="[0-9]{15,22}" maxlength="22" placeholder="Leeg laten als het Discord-account nog ontbreekt">
 <small>Er wordt automatisch een interne personeelsreferentie aangemaakt. Discord kan later gekoppeld worden.</small></div>
-<div><label for="newName">Naam</label><input id="newName" required minlength="2" maxlength="120" placeholder="Test Nieuw Lid"></div>
-<div><label for="newCall">Roepnummer</label><input id="newCall" required maxlength="24" placeholder="TEST-P404"></div>
+<div><label for="newName">Naam</label><input id="newName" required minlength="2" maxlength="120" placeholder="Naam personeelslid"></div>
+<div><label for="newCall">Roepnummer</label><input id="newCall" required maxlength="24" placeholder="Bijvoorbeeld S250"></div>
 <div><label for="newRank">Instaprang</label><select id="newRank" required></select></div>
 <div><label>Startstatus</label><input value="In opleiding (automatisch)" disabled></div>
-<div style="grid-column:1/-1"><label for="newReason">Motivering (minstens 10 tekens)</label><textarea id="newReason" required minlength="10" maxlength="500" rows="2" placeholder="Fictieve test – nieuwe personeelsfiche"></textarea></div>
-</div><div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Enkel Firestore TEST, geen Google Sheets of Discord-wijziging</span></div></form>
+<div style="grid-column:1/-1"><label for="newReason">Motivering (minstens 10 tekens)</label><textarea id="newReason" required minlength="10" maxlength="500" rows="2" placeholder="Reden van inschrijving"></textarea></div>
+</div><div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Firestore registratie; Google Sheets en Discord-rollen blijven ongewijzigd</span></div></form>
 </section>
 <section id="panel" class="card" hidden><div class="controls" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2><button class="alt" id="close" type="button">Sluiten</button></div>
 <p class="subtle" id="identity"></p>
@@ -65,7 +65,7 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 <script type="module">
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
-let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createRanks={};
+let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,testMode=true,createRanks={};
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
 function notice(text,bad=false){$('notice').textContent=text;$('notice').classList.toggle('error',bad)}
 async function request(url,options={}){
@@ -154,14 +154,14 @@ async function load(){
   if(!auth?.currentUser){people=[];pendingPeople=[];createRanks={};$('newBtn').hidden=true;$('newPanel').hidden=true;render();renderPending();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     const data=await request('/api/personnel/overview');
-    people=data.records||[];pendingPeople=data.pendingPersonnel||[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;
+    people=data.records||[];pendingPeople=data.pendingPersonnel||[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
     $('newBtn').hidden=!Object.keys(createRanks).length;
     if($('newPanel').hidden===false&&!Object.keys(createRanks).length)$('newPanel').hidden=true;
     $('dept').replaceChildren(option('all','Alle toegelaten diensten'));
     (data.departments||[]).forEach(d=>$('dept').append(option(d,departments[d]||d)));
     $('mode').hidden=false;
-    $('mode').textContent=!writesEnabled?'Voorbereidingsmodus: personeelswijzigingen zijn uitgeschakeld tot de gecontroleerde test is afgerond. Google Sheets blijven ongewijzigd.':
+    $('mode').textContent=createEnabled&&!writesEnabled?'Nieuwe personeelsfiches en Discord-koppelingen zijn beschikbaar. Bestaande bronfiches blijven alleen-lezen en Google Sheets worden niet aangepast.':!writesEnabled?'Voorbereidingsmodus: bestaande personeelswijzigingen zijn uitgeschakeld; Google Sheets blijven ongewijzigd.':
       data.overridesActive?'Firestore-wijzigingen zijn actief in de personeelsweergaven. Google Sheets blijven als terugvalbron behouden.':
         'Testmodus: wijzigingen worden in Firestore opgeslagen, maar nog niet gebruikt als hoofdgegevensbron.';
     render();renderPending();
@@ -222,13 +222,13 @@ $('newClose').onclick=()=>{$('newPanel').hidden=true};
 $('newDept').onchange=refreshNewRanks;
 $('newForm').onsubmit=async event=>{
   event.preventDefault();
-  if(!writesEnabled||!Object.keys(createRanks).length)return;
+  if(!createEnabled||!Object.keys(createRanks).length)return;
   const btn=$('newSave');btn.disabled=true;
   const person={dept:$('newDept').value,discordId:$('newId').value.trim(),
     name:$('newName').value,call:$('newCall').value,rank:$('newRank').value,
     reason:$('newReason').value};
   try{
-    if(!confirm('Een FICTIEF personeelslid toevoegen aan de TESTSERVER'+(!person.discordId?' zonder Discord-koppeling':'')+'?'))return;
+    if(!confirm('Een '+(testMode?'fictief ':'')+'personeelslid toevoegen'+(!person.discordId?' zonder Discord-koppeling':' met de opgegeven Discord-ID')+'? Dit kent geen portaalrechten toe.'))return;
     const result=await request('/api/personnel/new',{method:'POST',body:person});
     $('newPanel').hidden=true;$('newForm').reset();
     $('dept').value='all';$('search').value='';
@@ -236,7 +236,7 @@ $('newForm').onsubmit=async event=>{
     notice(result.pending
       ?'Conceptpersoneelsfiche aangemaakt met interne referentie '+result.internalId+
         '. Deze staat onder Wacht op Discord-koppeling. Er zijn geen inlogrechten toegekend.'
-      :'Nieuwe testfiche aangemaakt in Firestore. Discord-account en toegangsrechten zijn niet gewijzigd.');
+      :'Nieuwe personeelsfiche aangemaakt in Firestore. Discord- en portaalrechten zijn niet gewijzigd.');
     if(!result.pending){
       const found=people.find(p=>p.discordId===result.discordId&&p.dept===result.dept);
       if(found)await showPerson(found);

@@ -20,6 +20,21 @@ test('Pilot-only link feature never runs in production',()=>{
     assert.equal(linkEnabled({...env,...changes}),false);
  }
 });
+test('Production linking requires explicit data, intake, Discord and linking switches',()=>{
+ const prod={FIREBASE_PROJECT_ID:'belgiepd-production',BPD_TEST_FIXTURES:'false',
+   BPD_PRODUCTION_PERSONNEL_DATA:'true',BPD_PRODUCTION_PERSONNEL_CREATION:'true',
+   BPD_PRODUCTION_PERSONNEL_LINKING:'true',BPD_ENABLE_DISCORD_PORTAL_LOGIN:'true'};
+ assert.equal(linkEnabled(prod),true);
+ for(const [key,value] of [
+   ['BPD_PRODUCTION_PERSONNEL_DATA','false'],
+   ['BPD_PRODUCTION_PERSONNEL_CREATION','false'],
+   ['BPD_PRODUCTION_PERSONNEL_LINKING','false'],
+   ['BPD_ENABLE_DISCORD_PORTAL_LOGIN','false'],
+   ['BPD_TEST_FIXTURES','true'],
+   ['FIREBASE_PROJECT_ID','belgiepd-test']
+ ])assert.equal(linkEnabled({...prod,[key]:value}),false,key);
+ assert.equal(linkEnabled({...prod,BPD_ENABLE_PERSONNEL_WRITES:'false'}),true);
+});
 test('Personnel Discord request accepts a valid Firebase Bearer token header',()=>{
  assert.equal(bearerToken('Bearer eyJhbGciOiJSUzI1NiJ9.token.signature'),
    'eyJhbGciOiJSUzI1NiJ9.token.signature');

@@ -5,7 +5,7 @@ import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits,
   personnelCallClaimId} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
-  testCreateEnabled,canCreatePersonnel,validateNewPersonnel,uniqueNewPerson,
+  personnelDataEnabled,personnelCreationEnabled,canCreatePersonnel,validateNewPersonnel,uniqueNewPerson,
   visiblePendingPersonnel} from './personnel-create.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
@@ -26,8 +26,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       if(!allowed.length)return error(res,403,'Je hebt geen kaderrechten voor personeelsbeheer');
       const [snapshot,edits,pending]=await Promise.all([
         getSnapshot(),collection().limit(400).get(),
-        testCreateEnabled(process.env)?getFirestore().collection(PENDING_PERSONNEL_COLLECTION)
-          .limit(150).get():Promise.resolve({docs:[],size:0})
+        personnelDataEnabled(process.env)?getFirestore().collection(PENDING_PERSONNEL_COLLECTION)
+          .limit(500).get():Promise.resolve({docs:[],size:0})
       ]);
       const base=snapshot.data.filter(p=>allowed.includes(p.dept));
       const overlay=edits.docs.map(d=>d.data());
@@ -40,25 +40,27 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       });
       const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
         .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
-      return res.json({records,pendingPersonnel,pendingLimited:pending.size===150,
+      return res.json({records,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
         role:req.bpd.role,departments:allowed,
-        writesEnabled:writes(),createEnabled:testCreateEnabled(process.env)&&writes(),
+        writesEnabled:writes(),createEnabled:personnelCreationEnabled(process.env),
         createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,TEST_RANKS[dept]])),
         overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
         sourceStale:snapshot.stale,limited:edits.size===400,statuses:EDITABLE_STATUSES});
     }catch(e){return safeResponse(res,e)}
   });
-  // Fictitious personnel intake: explicitly isolated to the TEST Firebase project.
+  // Authorised intake: separate production enablement; source Sheets stay read-only.
   // Creating a personnel row never creates Firebase users, Discord roles or portal access.
   app.post('/api/personnel/new',requireUser,async(req,res)=>{
-    if(!writes()||!testCreateEnabled(process.env))
-      return error(res,503,'Nieuwe personeelsleden toevoegen staat alleen op de geïsoleerde TESTSERVER aan');
+    if(!personnelCreationEnabled(process.env))
+      return error(res,503,'Nieuwe personeelsleden toevoegen is hier niet ingeschakeld');
     let proposed;
     try{proposed=validateNewPersonnel(req.body)}catch(e){return error(res,400,e.message)}
     if(!canCreatePersonnel(req.bpd,proposed.dept))
       return error(res,403,'Geen bevoegdheid om personeelsleden in deze hulpdienst aan te maken');
     try{
-      const snap=await getSnapshot();
+      // Reject intake rather than trusting a stale cached personnel roster.
+      const snap=await getSnapshot({forceRefresh:true});
+      if(snap.stale)return error(res,503,'De actuele personeelsbron kan niet worden gecontroleerd. Probeer later opnieuw.');
       try{uniqueNewPerson(snap.data,proposed)}
       catch(e){return error(res,409,e.message)}
       const store=getFirestore();
@@ -91,11 +93,34 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
         discordId:proposed.discordId,dept:proposed.dept});
     }catch(e){return safeResponse(res,e)}
   });
+  // A verified member with an existing exact Discord-ID match in Sheets or
+  // a Firestore personnel record is recognised automatically, without a new
+  // registration, personnel mutation, role grant or cadre approval.
+  app.get('/api/personnel/link/me',async(req,res)=>{
+    if(!personnelDataEnabled(process.env))
+      return error(res,503,'Personeelskoppeling is niet beschikbaar');
+    try{
+      const token=bearerToken(req.get('Authorization'));
+      if(!token)return error(res,401,'Discord-aanmelding vereist');
+      const decoded=await getAuth().verifyIdToken(token);
+      const discordId=String(decoded.uid||'').replace(/^discord:/,'');
+      if(!/^\d{15,22}$/.test(discordId))
+        return error(res,403,'Discord-aanmelding vereist');
+      const member=(await getFirestore().collection('bpd_discord_auth').doc(discordId).get()).data();
+      if(verifiedLinkRequester(decoded,member,process.env.DISCORD_GUILD_ID)!==discordId)
+        return error(res,403,'Vernieuw eerst je Discord-verificatie');
+      const snap=await getSnapshot();
+      const matches=snap.data.filter(p=>p.personId===discordId)
+        .map(p=>({dept:p.dept,name:p.name,call:p.call,source:p.source==='firestore-created'?'firestore':'sheets'}));
+      res.set('Cache-Control','no-store');
+      return res.json({recognised:matches.length>0,personnel:matches});
+    }catch(e){return safeResponse(res,e)}
+  });
   // Self-service Discord proof: only the person currently authenticated through
   // the portal's OAuth flow can claim their own ID. Still requires cadre approval.
   app.post('/api/personnel/link/request',async(req,res)=>{
     if(!linkEnabled(process.env))
-      return error(res,503,'Discord-koppeling is alleen actief op de TESTSERVER');
+      return error(res,503,'Discord-koppeling is hier niet ingeschakeld');
     const internalId=req.body?.internalId;
     if(!validateLinkReference(internalId))return error(res,400,'Ongeldige interne personeelsreferentie');
     try{
@@ -129,7 +154,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
   // Explicit kader approval does not grant any Firebase/Discord module roles.
   app.post('/api/personnel/link/:internalId/approve',requireUser,async(req,res)=>{
     if(!linkEnabled(process.env))
-      return error(res,503,'Discord-koppeling is alleen actief op de TESTSERVER');
+      return error(res,503,'Discord-koppeling is hier niet ingeschakeld');
     if(!validateLinkReference(req.params.internalId))
       return error(res,400,'Ongeldige interne personeelsreferentie');
     const reason=typeof req.body?.reason==='string'?req.body.reason.trim():'';
@@ -145,7 +170,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       const member=(await store.collection('bpd_discord_auth').doc(discordId).get()).data();
       if(!mayApproveLink(req.bpd,record,member,process.env.DISCORD_GUILD_ID))
         return error(res,403,'Deze koppeling mag niet worden goedgekeurd of Discord moet opnieuw verifiëren');
-      const snap=await getSnapshot();
+      const snap=await getSnapshot({forceRefresh:true});
+      if(snap.stale)return error(res,503,'De actuele personeelsbron kan niet worden gecontroleerd. Probeer later opnieuw.');
       if(snap.data.some(p=>p.dept===record.dept&&p.personId===discordId))
         return error(res,409,'Deze Discord-ID heeft al een personeelsfiche in deze hulpdienst');
       const created=store.collection(CREATED_PERSONNEL_COLLECTION).doc(record.dept+'_'+discordId);
@@ -182,7 +208,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
   // Rejections (including erroneous self-claims) are auditable and never grant roles.
   app.post('/api/personnel/link/:internalId/reject',requireUser,async(req,res)=>{
     if(!linkEnabled(process.env))
-      return error(res,503,'Discord-koppeling is alleen actief op de TESTSERVER');
+      return error(res,503,'Discord-koppeling is hier niet ingeschakeld');
     if(!validateLinkReference(req.params.internalId))
       return error(res,400,'Ongeldige interne personeelsreferentie');
     const reason=typeof req.body?.reason==='string'?req.body.reason.trim():'';

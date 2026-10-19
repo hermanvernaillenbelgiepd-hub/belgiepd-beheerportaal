@@ -10,7 +10,7 @@ input{background:#0a1933;border:1px solid #496487;color:white;width:100%;margin:
 .notice{padding:14px;border-radius:9px;background:#214d3d}.notice.error{background:#582d3d}
 small{display:block;color:#a5bad7}
 </style></head>
-<body><header><strong>🛡️ BelgiumPD / Discord-koppeling TEST</strong><a href="/personeelsbeheer.html">Personeelsbeheer</a><button id="login">Aanmelden</button></header>
+<body><header><strong>🛡️ BelgiumPD / Discord-koppeling</strong><a href="/personeelsbeheer.html">Personeelsbeheer</a><button id="login">Aanmelden</button></header>
 <main><h1>Koppel je Discord-account aan je personeelsfiche</h1>
 <p>Je hoeft hiervoor geen bestaand portaalaccount te hebben. Meld je aan via Discord en vul de <strong>interne referentie</strong> in die je van een bevoegd kaderlid hebt ontvangen.</p>
 <div id="message" class="notice" role="status" aria-live="polite">Discord-aanmelding controleren…</div>
@@ -55,7 +55,21 @@ async function start(){
     authModule.onAuthStateChanged(auth,user=>{
       const confirmed=Boolean(user?.uid?.startsWith('discord:'));
       $('send').disabled=!confirmed;
-      if(confirmed)message('Aangemeld met Discord. Vul nu de interne personeelsreferentie in.');
+      if(confirmed){
+        message('Aangemeld met Discord. Bestaande personeelsfiche controleren…');
+        user.getIdToken().then(token=>fetch('/api/personnel/link/me',{
+          headers:{Authorization:'Bearer '+token},cache:'no-store'
+        })).then(async r=>{
+          const data=await r.json();
+          if(!r.ok)throw Error(data.error||'Personeelscontrole niet beschikbaar');
+          if(auth.currentUser?.uid!==user.uid)return;
+          if(data.recognised){
+            const summary=(data.personnel||[]).map(p=>p.name+' · '+p.dept+' · '+p.call).join('; ');
+            message('Discord-identiteit bevestigd. Je bestaande personeelsfiche is automatisch herkend: '+summary+'. Er zijn geen extra portaalrechten toegekend.');
+          }else message('Aangemeld met Discord. Geen bestaande fiche met jouw Discord-ID gevonden. Vul de interne personeelsreferentie in.');
+        }).catch(e=>{if(auth.currentUser?.uid===user.uid)
+          message('Discord-aanmelding gelukt. Automatische fichecontrole is niet beschikbaar: '+e.message,true)});
+      }
       else if(!discordReady)message('Discord-login is op deze TESTSERVER nog niet ingesteld. De bestaande Google-login kan geen koppelaanvraag uitvoeren. Laat eerst de Discord OAuth-gegevens en testcallback configureren.',true);
       else if(user)message('Je bent met Google aangemeld. Klik op “Discord-aanmelding starten” om je Discord-account te gebruiken.',true);
       else message('Meld je aan via de link “Discord-aanmelding starten” om je eigen account te verifiëren.');
