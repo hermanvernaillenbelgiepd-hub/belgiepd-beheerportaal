@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {dossierScopes,dossierOverviewRows,dossierTimelineEntry} from '../src/dossier-center-policy.js';
 
 const id='123456789012345678',id2='987654321098765432';
@@ -59,4 +60,28 @@ test('Timeline never returns arbitrary nested audit details',()=>{
     at:'2026-10-19T20:00:00.000Z',previousRank:'Agent',newRank:'Aspirant Inspecteur',
     reason:'Gedocumenteerde beslissing',actorDiscordId:id});
   assert.equal(Object.hasOwn(e,'privateToken'),false);
+});
+
+test('Application audit records display only documented status transitions',()=>{
+  const event=dossierTimelineEntry({action:'accepted',previousStatus:'reviewing',
+    newStatus:'accepted',reason:'Geselecteerd na interview',
+    byDiscordId:id2,secretToken:'never-disclose',
+    oldRecord:{personal:'private'}},'sollicitatie');
+  assert.equal(event.previousStatus,'reviewing');
+  assert.equal(event.newStatus,'accepted');
+  assert.equal(event.actorDiscordId,id2);
+  assert.equal(Object.hasOwn(event,'secretToken'),false);
+  assert.equal(Object.hasOwn(event,'oldRecord'),false);
+  const unknown=dossierTimelineEntry({action:'edit',previousStatus:'blocked',
+    newStatus:'superuser'},'personeel');
+  assert.equal(Object.hasOwn(unknown,'previousStatus'),false);
+  assert.equal(Object.hasOwn(unknown,'newStatus'),false);
+});
+test('Citizen history is only retrieved within previously authorized service dossier',()=>{
+
+  const source=readFileSync(new URL('../src/dossier-center-routes.js',import.meta.url),'utf8');
+  assert.ok(source.indexOf("if(!p&&!application)return respond")<
+    source.indexOf("if(civilian&&citizenDoc)"));
+  assert.ok(source.includes("histories.push(timeline(citizenDoc.ref,'burger'))"));
+  assert.ok(source.includes('const civilian=citizenDoc?publicCitizenProfile('));
 });
