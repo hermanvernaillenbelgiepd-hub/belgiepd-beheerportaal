@@ -96,7 +96,7 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 <div id="staffDossierSummary" class="dossier-summary"></div>
 <div class="dossier-shortcuts">
 <a href="/rollen-opleidingen.html">Opleidingen en beoordelingen</a>
-<a href="/registraties.html">Registraties</a>
+<a href="/weekrapporten.html">Kaderregistraties en weekrapport</a><a href="/registraties.html">Observaties en sancties</a>
 <a href="/verlofbeheer.html">Verlofbeheer</a>
 </div>
 <form id="staffProfileForm" hidden>
@@ -109,20 +109,15 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 </div>
 <button id="staffProfileSave" type="submit">Administratieve gegevens bewaren</button>
 </form>
-<h3>Opvolgingsnotities</h3>
-<p class="subtle">Opleiding, begeleiding, functioneringsgesprek, waardering en administratie. Noteer geen echte medische of andere overbodige gevoelige persoonsgegevens.</p>
+<h3>Gekoppelde opleidingen</h3>
+<p class="subtle">Bestaande opleidingsresultaten worden hier alleen gelezen uit het opleidingssysteem. Nieuwe resultaten registreer je uitsluitend via <a href="/rollen-opleidingen.html">Opleidingen</a>.</p>
+<div id="staffLinkedTraining" class="subtle">Opleidingsgegevens laden…</div>
+<h3>Kadernotities en opvolging</h3>
+<p class="subtle">Deze notities komen uit de bestaande <a href="/weekrapporten.html">Kaderregistraties</a>. Er wordt hier geen tweede registratieformulier aangeboden.</p>
+<div id="staffLinkedCases" class="subtle">Kaderregistraties laden…</div>
+<h3>Eerdere dossiernotities (alleen lezen)</h3>
+<p class="subtle">Notities die eventueel via het oude aanvullende formulier zijn ingevoerd blijven zichtbaar, maar kunnen niet meer dubbel geregistreerd worden.</p>
 <div id="staffNotes" class="subtle"></div>
-<form id="staffNoteForm" hidden>
-<div class="grid">
-<div><label for="staffNoteKind">Soort registratie</label><select id="staffNoteKind">
-<option value="opleiding">Opleiding</option><option value="begeleiding">Begeleiding</option>
-<option value="evaluatie">Functioneringsgesprek</option><option value="administratief">Administratieve opvolging</option>
-<option value="waardering">Waardering</option></select></div>
-<div><label for="staffNoteTitle">Onderwerp</label><input id="staffNoteTitle" minlength="5" maxlength="120" required></div>
-<div style="grid-column:1/-1"><label for="staffNoteDetails">Toelichting</label><textarea id="staffNoteDetails" minlength="15" maxlength="1200" rows="4" required></textarea></div>
-</div>
-<button id="staffNoteSave" type="submit">Notitie registreren</button>
-</form>
 <h3>Administratieve dossierhistoriek</h3><div id="staffDossierHistory" class="subtle"></div>
 </section>
 <h3>Officiële personeels- en ranghistoriek</h3><div id="history" class="subtle">Wordt geladen…</div></section>
@@ -282,13 +277,65 @@ function staffField(parent,label,value){
 const staffNotesLabels={opleiding:'Opleiding',begeleiding:'Begeleiding',
   evaluatie:'Functioneringsgesprek',administratief:'Administratieve opvolging',
   waardering:'Waardering'};
+async function loadLinkedPersonnelRecords(p,key){
+  const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
+  const training=$('staffLinkedTraining'),cases=$('staffLinkedCases');
+  const trainingUrl='/api/training/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
+  const casesUrl='/api/management/cases?dept='+encodeURIComponent(p.dept)+
+    '&discordId='+encodeURIComponent(p.discordId);
+  await Promise.all([
+    (async()=>{
+      try{
+        const data=await request(trainingUrl);
+        if(!same())return;
+        training.replaceChildren();
+        if(!data.records?.length)training.textContent='Geen zichtbare opleidingsregistraties.';
+        for(const row of (data.records||[]).slice(0,25)){
+          const div=document.createElement('div');div.className='note-item';
+          const title=document.createElement('strong');
+          title.textContent=String(row.courseName||'Opleiding').slice(0,150)+
+            ' · '+String(row.result||'Onbekend resultaat');
+          const meta=document.createElement('span');meta.className='subtle';
+          meta.textContent=String(row.eventDate||'Datum onbekend');
+          div.append(title,meta);training.append(div);
+        }
+        if(data.limited||data.records?.length>25)
+          training.append(document.createTextNode(' Alleen een deel van de opleidingsregistraties wordt hier getoond.'));
+        if(data.scope==='alleen_eigen_registraties')
+          training.append(document.createTextNode(' Je ziet alleen opleidingen die je zelf registreerde.'));
+      }catch(e){if(same())training.textContent=
+        'Opleidingen kunnen uitsluitend met de bestaande opleidingsrechten worden bekeken ('+e.message+').'}
+    })(),
+    (async()=>{
+      try{
+        const data=await request(casesUrl);
+        if(!same())return;
+        cases.replaceChildren();
+        const allowed=(data.entries||[]).filter(row=>row.type==='notitie').slice(0,25);
+        if(!allowed.length)cases.textContent='Geen toegelaten kadernotities gevonden.';
+        for(const row of allowed){
+          const div=document.createElement('div');div.className='note-item';
+          const title=document.createElement('strong');
+          title.textContent='Personeelsnotitie · '+String(row.eventDate||'Datum onbekend');
+          const body=document.createElement('p');
+          body.textContent=String(row.details||'').slice(0,4000);
+          div.append(title,body);cases.append(div);
+        }
+        if(data.limited)cases.append(document.createTextNode(' Er kunnen oudere registraties bestaan.'));
+      }catch(e){if(same())cases.textContent=
+        'Kaderregistraties kunnen alleen met de bestaande kaderrechten worden bekeken ('+e.message+').'}
+    })()
+  ]);
+}
 async function loadStaffDossier(p){
   const key=p.dept+':'+p.discordId;
   const base='/api/staff-dossiers/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
   $('staffDossierStatus').textContent='Administratieve gegevens ophalen…';
   $('staffDossierSummary').replaceChildren();$('staffNotes').replaceChildren();
+  $('staffLinkedTraining').textContent='Opleidingsgegevens laden…';
+  $('staffLinkedCases').textContent='Kaderregistraties laden…';
   $('staffDossierHistory').replaceChildren();
-  $('staffProfileForm').hidden=true;$('staffNoteForm').hidden=true;
+  $('staffProfileForm').hidden=true;
   staffDossierCanMaintain=false;
   try{
     const result=await request(base);
@@ -305,12 +352,11 @@ async function loadStaffDossier(p){
     $('staffFunction').value=profile.functionTitle||'';
     $('staffProfileReason').value='';
     $('staffProfileForm').hidden=!staffDossierCanMaintain;
-    $('staffNoteForm').hidden=!staffDossierCanMaintain;
     $('staffDossierStatus').textContent=staffDossierCanMaintain?
       'Administratieve dossierwijzigingen zijn beschikbaar; iedere wijziging krijgt een auditregistratie.':
       'Alleen-lezen dossier. Je bestaande personeels- en opleidingsrechten blijven bepalend.';
     const list=$('staffNotes');
-    if(!result.notes?.length)list.textContent='Nog geen administratieve opvolgingsnotities.';
+    if(!result.notes?.length)list.textContent='Geen eerder in dit aanvullende dossier geregistreerde notities.';
     else for(const item of result.notes){
       const div=document.createElement('div');div.className='note-item';
       const title=document.createElement('strong');
@@ -321,7 +367,8 @@ async function loadStaffDossier(p){
         ' · Registratie door '+(item.authorDiscordId||'onbekend');
       div.append(title,body,meta);list.append(div);
     }
-    if(result.notesLimited)list.append(document.createTextNode(' Alleen de 60 recentste notities worden getoond.'));
+    if(result.notesLimited)list.append(document.createTextNode(' Alleen de 60 recentste oudere dossiernotities worden getoond.'));
+    void loadLinkedPersonnelRecords(p,key);
     const hist=$('staffDossierHistory');
     if(!result.profileChanges?.length)hist.textContent='Nog geen administratieve wijzigingen geregistreerd.';
     else for(const entry of result.profileChanges){
@@ -346,18 +393,6 @@ $('staffProfileForm').onsubmit=async event=>{
           functionTitle:$('staffFunction').value},reason:$('staffProfileReason').value.trim()}});
     await loadStaffDossier(selected);
     notice('Administratieve personeelsgegevens opgeslagen, inclusief auditgeschiedenis.');
-  }catch(e){notice(e.message,true)}finally{button.disabled=false}
-};
-$('staffNoteForm').onsubmit=async event=>{
-  event.preventDefault();if(!selected||!staffDossierCanMaintain)return;
-  const button=$('staffNoteSave');button.disabled=true;
-  try{
-    await request('/api/staff-dossiers/'+encodeURIComponent(selected.dept)+'/'+encodeURIComponent(selected.discordId)+'/notes',{
-      method:'POST',body:{kind:$('staffNoteKind').value,title:$('staffNoteTitle').value.trim(),
-        details:$('staffNoteDetails').value.trim()}});
-    $('staffNoteTitle').value='';$('staffNoteDetails').value='';
-    await loadStaffDossier(selected);
-    notice('Personeelsnotitie geregistreerd met vermelding van de auteur en datum.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
 async function showPerson(p){

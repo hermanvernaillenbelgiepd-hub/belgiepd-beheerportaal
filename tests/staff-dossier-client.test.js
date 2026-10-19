@@ -10,9 +10,14 @@ test('Personnel page keeps one combined dossier and scripts remain syntactically
   assert.equal(matches.length,1);
   assert.doesNotThrow(()=>new Script(matches[0][1],{filename:'personeelsbeheer.html'}));
   for(const name of ['staffDossierSection','staffDossierSummary','staffProfileForm',
-    'staffNoteForm','staffDossierHistory','staffStartDate','staffUnit','staffFunction'])
+    'staffLinkedTraining','staffLinkedCases','staffDossierHistory','staffStartDate','staffUnit','staffFunction'])
     assert.ok(html.includes('id="'+name+'"'),name);
   assert.ok(html.includes('await loadStaffDossier(p)'));
+  assert.equal(html.includes('id="staffNoteForm"'),false,'A second note form must not exist');
+  assert.ok(html.includes("'/api/training/'"));
+  assert.ok(html.includes("'/api/management/cases?dept='"));
+  assert.ok(html.includes('/weekrapporten.html'));
+  assert.equal(html.includes('staffNoteForm'),false);
   assert.ok(html.includes("'/rollen-opleidingen.html'")||html.includes('href="/rollen-opleidingen.html"'));
   assert.equal(/\.innerHTML\s*=/.test(html),false);
 });
@@ -21,6 +26,9 @@ test('Staff routes enforce authorised read, separate write flag, and immutable a
   assert.ok(route.includes("app.get('/api/staff-dossiers/:dept/:discordId',requireUser"));
   assert.ok(route.includes("app.post('/api/staff-dossiers/:dept/:discordId/profile',requireUser"));
   assert.ok(route.includes("app.post('/api/staff-dossiers/:dept/:discordId/notes',requireUser"));
+  assert.ok(route.includes("respond(res,410,'Gebruik Kaderregistraties"));
+  assert.equal(route.includes('validateStaffNote('),false);
+  assert.equal(route.includes("tx.create(noteId"),false);
   assert.ok(route.includes("staffDossierWritesEnabled(process.env)"));
   assert.ok(route.includes("canMaintainStaffDossier(req.bpd,staff)"));
   assert.ok(route.includes("getSubject(req,getSnapshot)"));
