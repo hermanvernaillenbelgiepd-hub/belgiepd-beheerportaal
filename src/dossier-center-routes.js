@@ -1,4 +1,5 @@
 import {getFirestore} from 'firebase-admin/firestore';
+import {citizenDossiersEnabled,CITIZEN_COLLECTION,publicCitizenProfile} from './citizen-policy.js';
 import {dossierScopes,dossierOverviewRows,dossierTimelineEntry} from './dossier-center-policy.js';
 import {validPersonnelKey} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,personnelDataEnabled} from './personnel-create.js';
@@ -76,6 +77,12 @@ export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){
       const application=candidate?.exists&&candidate.get('dept')===dept&&
         candidate.get('discordId')===discordId?candidate.data():null;
       if(!p&&!application)return respond(res,404,'Geen dossier gevonden');
+      // A general citizen record never independently grants dossier-center
+      // discovery rights; it is visible only next to already authorised staff
+      // or application data for this exact service and Discord ID.
+      const citizenDoc=citizenDossiersEnabled(process.env)
+        ?await db.collection(CITIZEN_COLLECTION).doc(discordId).get():null;
+      const civilian=citizenDoc?publicCitizenProfile(citizenDoc.data(),discordId):null;
       const histories=[];
       if(p){
         histories.push(timeline(db.collection(PERSONNEL_EDITS_COLLECTION)
@@ -89,7 +96,7 @@ export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){
         histories.push(timeline(candidate.ref,'sollicitatie'));
       const timelineEntries=(await Promise.all(histories)).flat()
         .sort((a,b)=>(b.at||'').localeCompare(a.at||'')).slice(0,50);
-      return res.json({dept,discordId,readOnly:true,
+      return res.json({dept,discordId,readOnly:true,citizen:civilian,
         matchNotice:p&&application?'Personeelsfiche en sollicitatie hebben hetzelfde Discord-ID. Controleer de identiteit vóór administratieve acties.':null,
         personnel:p?publicPerson(p):null,
         application:application?publicApplication(application):null,

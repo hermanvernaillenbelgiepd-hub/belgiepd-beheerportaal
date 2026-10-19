@@ -25,7 +25,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 [hidden]{display:none!important}
 @media(max-width:720px){.grid,.search{grid-template-columns:1fr}header{padding:14px}h1{font-size:25px}.card{padding:15px}}
 </style></head><body>
-<header><strong>🛡️ BelgiumPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><a href="/sollicitatiebeheer.html">Sollicitaties</a><button id="login" type="button">Aanmelden</button></nav></header>
+<header><strong>🛡️ BelgiumPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><a href="/sollicitatiebeheer.html">Sollicitaties</a><a href="/burgerdossier.html">Mijn burgerdossier</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal dossieroverzicht</h1>
 <p>Een beveiligd overzicht van personeelsfiches, loopbaanhistoriek en hulpdienstsollicitaties. Alleen gegevens waarvoor je per hulpdienst bevoegd bent worden getoond. Er worden geen dossiers samengevoegd of rechten toegekend.</p>
 <div id="message" role="status" aria-live="polite" class="notice">Toegangsrechten controleren…</div>
@@ -37,6 +37,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <div class="scroller"><table><thead><tr><th>Naam</th><th>Dienst</th><th>Personeel</th><th>Sollicitatie</th><th>Identiteit</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <section class="card" id="detail" hidden><h2 id="detailTitle">Dossier</h2><p class="muted" id="matchWarning"></p>
+<div id="citizenProfile" class="muted"></div>
 <div class="grid">
 <div><h3>Personeelsfiche</h3><div id="staff"></div></div>
 <div><h3>Sollicitatie</h3><div id="application"></div></div>
@@ -82,11 +83,19 @@ async function openDossier(r){
   shown=r.dept+':'+r.discordId;
   const active=shown;
   $('detail').hidden=false;$('detailTitle').textContent='Dossier · '+r.name;
-  $('staff').textContent='Laden…';$('application').textContent='Laden…';$('history').textContent='Laden…';$('matchWarning').textContent='';
+  $('staff').textContent='Laden…';$('application').textContent='Laden…';$('history').textContent='Laden…';$('citizenProfile').textContent='';$('matchWarning').textContent='';
   try{
     const data=await request('/api/dossiercentrum/'+encodeURIComponent(r.dept)+'/'+encodeURIComponent(r.discordId));
     if(shown!==active)return;
     $('matchWarning').textContent=data.matchNotice||'Dossiers blijven dienstgebonden en zijn gekoppeld op Discord-ID, niet op naam.';
+    const citizen=$('citizenProfile');citizen.replaceChildren();
+    if(data.citizen){
+      citizen.append(node('h3','Geverifieerd burgerdossier'));
+      item(citizen,'Discord-profiel',data.citizen.displayName||'Naam niet beschikbaar');
+      item(citizen,'Dossierbron',data.citizen.origin==='trusted_fivem_server'?'Beveiligde FiveM-bron':'Discord-verificatie');
+      item(citizen,'Geregistreerd',data.citizen.registeredAt?
+        new Date(data.citizen.registeredAt).toLocaleString('nl-BE'):'Onbekend');
+    }
     const staff=$('staff');staff.replaceChildren();
     if(data.personnel){
       const p=data.personnel;
