@@ -20,6 +20,7 @@ import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
 import { installUserRoutes } from './user-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
+import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 app.disable('x-powered-by');
@@ -89,6 +90,18 @@ async function requireUser(req,res,next){
         const mapped=discordPortalAccess(verified,accessList(),member,process.env.DISCORD_GUILD_ID);
         if(!mapped)return res.status(403).json({error:'Je Discord-account heeft nog geen goedgekeurde toegang. Open Gebruikersbeheer om toegang aan te vragen.'});
         ({email,entry,discordId}=mapped);
+        // A historical cross-field mismatch cannot be blindly elevated.
+        // Repair ONLY after independent, fresh Discord and personnel evidence.
+        if(entry.role==='officierenkader' && entry.departmentRoles?.politie==='middenkader'){
+          try{
+            const snap=await getSnapshot();
+            const corrected=reconcileLegacyPoliceOfficer(entry,discordId,member,
+              snap.data,process.env.DISCORD_GUILD_ID);
+            if(corrected)entry=corrected;
+          }catch(err){
+            console.error('Dienstrolcontrole niet beschikbaar:',err?.code||err?.message||'fout');
+          }
+        }
       }
     }else return res.status(403).json({error:'Gebruik de toegelaten Google- of Discord-aanmelding'});
     if (!entry || !Array.isArray(entry.departments) || !ALLOWED_ROLES.includes(entry.role)) return res.status(403).json({error:'Account is niet gemachtigd voor de koppeling'});
