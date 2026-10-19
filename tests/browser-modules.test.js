@@ -8,7 +8,7 @@ const pages=['index','discord-status','registraties','roepnummers','rollen-oplei
 test('All browser module scripts parse as valid JavaScript',()=>{
   for(const name of pages){
     const html=readFileSync(new URL('../public/'+name+'.html',import.meta.url),'utf8');
-    const scripts=[...html.matchAll(/<script\s+type="module"[^>]*>([\s\S]*?)<\/script>/gi)];
+    const scripts=[...html.matchAll(/<script(?:\s+[^>]*)?>([\s\S]*?)<\/script>/gi)];
     assert.ok(scripts.length>0,name+' must contain a module');
     for(const [i,script] of scripts.entries()){
       assert.doesNotThrow(()=>new Script(script[1],{filename:name+'#'+i}),name+' has invalid JS');
