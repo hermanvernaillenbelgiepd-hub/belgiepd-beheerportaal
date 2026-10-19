@@ -58,7 +58,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
     if(!canCreatePersonnel(req.bpd,proposed.dept))
       return error(res,403,'Geen bevoegdheid om personeelsleden in deze hulpdienst aan te maken');
     try{
-      const snap=await getSnapshot();
+      // Reject intake rather than trusting a stale cached personnel roster.
+      const snap=await getSnapshot({forceRefresh:true});
+      if(snap.stale)return error(res,503,'De actuele personeelsbron kan niet worden gecontroleerd. Probeer later opnieuw.');
       try{uniqueNewPerson(snap.data,proposed)}
       catch(e){return error(res,409,e.message)}
       const store=getFirestore();
@@ -168,7 +170,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       const member=(await store.collection('bpd_discord_auth').doc(discordId).get()).data();
       if(!mayApproveLink(req.bpd,record,member,process.env.DISCORD_GUILD_ID))
         return error(res,403,'Deze koppeling mag niet worden goedgekeurd of Discord moet opnieuw verifiëren');
-      const snap=await getSnapshot();
+      const snap=await getSnapshot({forceRefresh:true});
+      if(snap.stale)return error(res,503,'De actuele personeelsbron kan niet worden gecontroleerd. Probeer later opnieuw.');
       if(snap.data.some(p=>p.dept===record.dept&&p.personId===discordId))
         return error(res,409,'Deze Discord-ID heeft al een personeelsfiche in deze hulpdienst');
       const created=store.collection(CREATED_PERSONNEL_COLLECTION).doc(record.dept+'_'+discordId);
