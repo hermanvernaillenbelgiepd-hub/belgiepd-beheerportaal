@@ -64,5 +64,7 @@ export function visiblePendingPersonnel(id,data){
      typeof data.name!=='string'||typeof data.call!=='string'||
      data.state!=='awaiting_discord'||data.discordId!==null)return null;
   return {internalId:id,dept:data.dept,name:data.name,call:data.call,
-    rank:data.rank,status:'Wacht op Discord-koppeling'};
+    rank:data.rank,status:data.linkRequest?.state==='awaiting_approval'?'Wacht op kadergoedkeuring':'Wacht op Discord-koppeling',
+    request:data.linkRequest?.state==='awaiting_approval'&&/^\\d{15,22}$/.test(data.linkRequest.discordId)?
+      {discordId:data.linkRequest.discordId,username:String(data.linkRequest.username||'').slice(0,80)}:null};
 }
