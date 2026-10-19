@@ -129,13 +129,22 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       const snap=await getSnapshot();
       if(!snap.data.some(p=>p.dept===req.params.dept&&p.personId===req.params.discordId))
         return error(res,404,'Personeelsfiche niet gevonden');
-      const log=await collection().doc(req.params.dept+'_'+req.params.discordId)
-        .collection('audit').orderBy('at','desc').limit(25).get();
-      return res.json({changes:log.docs.map(d=>{
+      const key=req.params.dept+'_'+req.params.discordId;
+      const editLog=collection().doc(key).collection('audit');
+      const createLog=getFirestore().collection(CREATED_PERSONNEL_COLLECTION)
+        .doc(key).collection('audit');
+      const [edits,created]=await Promise.all([
+        editLog.orderBy('at','desc').limit(25).get(),
+        testCreateEnabled(process.env)
+          ?createLog.orderBy('at','desc').limit(25).get():Promise.resolve({docs:[]})
+      ]);
+      const changes=[...edits.docs,...created.docs].map(d=>{
         const e=d.data();
-        return {revision:e.revision,previous:e.previous,next:e.next,
+        return {action:e.action||'edit',revision:e.revision,
+          previous:e.previous||null,next:e.next||null,
           reason:e.reason,at:asTime(e.at),actorDiscordId:e.actorDiscordId||null};
-      })});
+      }).sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))).slice(0,25);
+      return res.json({changes});
     }catch(e){return safeResponse(res,e)}
   });
 }
