@@ -40,7 +40,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       });
       const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
         .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
-      return res.json({records,pendingPersonnel,pendingLimited:pending.size===500,
+      return res.json({records,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
         role:req.bpd.role,departments:allowed,
         writesEnabled:writes(),createEnabled:personnelCreationEnabled(process.env),
         createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,TEST_RANKS[dept]])),
