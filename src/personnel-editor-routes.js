@@ -1,6 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
-import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,bearerToken} from './personnel-link.js';
+import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits,
   personnelCallClaimId} from './personnel-editor-policy.js';
@@ -175,6 +175,41 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
           reason,at:FieldValue.serverTimestamp()});
       });
       return res.json({linked:true,discordId,dept:record.dept});
+    }catch(e){return safeResponse(res,e)}
+  });
+  // TEST-only administrative rejection. Leave the personnel draft and its call
+  // reservation in place, but free the draft for another verified Discord user.
+  // Rejections (including erroneous self-claims) are auditable and never grant roles.
+  app.post('/api/personnel/link/:internalId/reject',requireUser,async(req,res)=>{
+    if(!linkEnabled(process.env))
+      return error(res,503,'Discord-koppeling is alleen actief op de TESTSERVER');
+    if(!validateLinkReference(req.params.internalId))
+      return error(res,400,'Ongeldige interne personeelsreferentie');
+    const reason=typeof req.body?.reason==='string'?req.body.reason.trim():'';
+    if(reason.length<10||reason.length>500)
+      return error(res,400,'Een motivering van 10 tot 500 tekens is vereist');
+    try{
+      const store=getFirestore();
+      const pending=store.collection(PENDING_PERSONNEL_COLLECTION).doc(req.params.internalId);
+      await store.runTransaction(async tx=>{
+        const snapshot=await tx.get(pending);
+        if(!snapshot.exists)throw userError(404,'Personeelsfiche niet gevonden');
+        const record=snapshot.data();
+        if(!mayRejectLink(req.bpd,record))
+          throw userError(403,'Geen bevoegdheid of geen openstaande koppelaanvraag');
+        tx.update(pending,{
+          linkRequest:FieldValue.delete(),
+          updatedAt:FieldValue.serverTimestamp()
+        });
+        tx.create(pending.collection('audit').doc(),{
+          action:'reject_discord_link',
+          previous:{discordId:record.linkRequest.discordId},
+          next:{discordId:null},
+          reason,actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
+          at:FieldValue.serverTimestamp()
+        });
+      });
+      return res.json({rejected:true,availableForNewRequest:true});
     }catch(e){return safeResponse(res,e)}
   });
   app.post('/api/personnel/:dept/:discordId',requireUser,async(req,res)=>{
