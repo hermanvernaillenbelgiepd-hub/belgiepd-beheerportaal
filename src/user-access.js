@@ -46,7 +46,9 @@ export function validUserGrant(body){
 // A global high role must never bleed into a second low-ranked department.
 function ceilingIn(actor,dept){
   if(actor?.role==='beheerder')return 4;
+  if(!['officierenkader','korpsleiding'].includes(actor?.role))return 0;
   const scoped=roleForDepartment(actor,dept);
+  if((ranks[scoped]||0)>ranks[actor.role])return 0;
   return scoped==='korpsleiding'?3:scoped==='officierenkader'?2:0;
 }
 export function isUserManager(actor){
