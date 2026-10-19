@@ -1,3 +1,4 @@
+import {roleForDepartment} from './leave-policy.js';
 // Bevoegdheden zijn expliciete, door het portaal goedgekeurde gegevens.
 // Discord-rollen zijn uitsluitend verificatie- en selectiesignalen.
 export const USER_COLLECTION='bpd_portal_users';
@@ -41,29 +42,35 @@ export function validUserGrant(body){
   return {role,departments:[...departments],
     departmentRoles:Object.fromEntries(departments.map(d=>[d,role])),reason};
 }
+// Each approver may only manage the rank formally held in the TARGET service.
+// A global high role must never bleed into a second low-ranked department.
+function ceilingIn(actor,dept){
+  if(actor?.role==='beheerder')return 4;
+  const scoped=roleForDepartment(actor,dept);
+  return scoped==='korpsleiding'?3:scoped==='officierenkader'?2:0;
+}
 export function isUserManager(actor){
-  return Boolean(actor&&['officierenkader','korpsleiding','beheerder'].includes(actor.role));
+  if(actor?.role==='beheerder')return true;
+  if(!Array.isArray(actor?.departments))return false;
+  return actor.departments.some(d=>ceilingIn(actor,d)>0);
 }
 export function canSeeUser(actor,record){
   if(!isUserManager(actor))return false;
   if(actor.role==='beheerder')return true;
-  const depts=record.status==='pending'?record.candidateDepartments:record.departments;
-  return Array.isArray(depts)&&depts.some(d=>actor.departments?.includes(d));
+  const depts=record?.status==='pending'?record.candidateDepartments:record?.departments;
+  return Array.isArray(depts)&&depts.some(d=>ceilingIn(actor,d)>0);
 }
 export function canChangeUser(actor,targetId,record,grant){
   if(!isUserManager(actor)||!ID.test(targetId)||targetId===actor.discordId||
      !record||!['pending','approved','blocked'].includes(record.status)||
      !Array.isArray(grant?.departments)||!grant.departments.length)return false;
   if(actor.role==='beheerder')return true;
-  const ceiling=actor.role==='korpsleiding'?3:2;
-  if((ranks[grant.role]||99)>ceiling||
-     grant.departments.some(d=>!actor.departments?.includes(d)))return false;
+  if(grant.departments.some(d=>(ranks[grant.role]||99)>ceilingIn(actor,d)))return false;
   if(record.status==='pending'){
-    // Incoming staff must actually have a Discord department association.
     if(!grant.departments.every(d=>record.candidateDepartments?.includes(d)))return false;
   }else{
-    if(!Array.isArray(record.departments)||record.departments.some(d=>!actor.departments?.includes(d)))return false;
-    if((ranks[record.role]||99)>ceiling)return false;
+    if(!Array.isArray(record.departments)||!record.departments.length||
+       record.departments.some(d=>(ranks[record.role]||99)>ceilingIn(actor,d)))return false;
   }
   return true;
 }
@@ -71,8 +78,7 @@ export function canBlockUser(actor,targetId,record){
   if(!isUserManager(actor)||targetId===actor.discordId||
      !record||!['pending','approved','blocked'].includes(record.status))return false;
   if(actor.role==='beheerder')return true;
-  const ceiling=actor.role==='korpsleiding'?3:2;
-  if(record.status==='pending')return record.candidateDepartments?.some(d=>actor.departments?.includes(d))===true;
-  return Array.isArray(record.departments)&&record.departments.every(d=>actor.departments?.includes(d))&&
-    (ranks[record.role]||99)<=ceiling;
+  if(record.status==='pending')return record.candidateDepartments?.some(d=>ceilingIn(actor,d)>0)===true;
+  return Array.isArray(record.departments)&&record.departments.length>0&&
+    record.departments.every(d=>(ranks[record.role]||99)<=ceilingIn(actor,d));
 }
