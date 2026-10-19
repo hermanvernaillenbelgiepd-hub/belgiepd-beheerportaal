@@ -2,7 +2,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {
   STAFF_DOSSIER_COLLECTION,staffDossierEnabled,staffDossierWritesEnabled,
   staffDossierId,uniqueStaffSubject,canReadStaffDossier,canMaintainStaffDossier,
-  normalizeStaffProfile,validateStaffProfile,validateStaffNote,publicStaffNote
+  normalizeStaffProfile,validateStaffProfile,publicStaffNote
 } from './staff-dossier-policy.js';
 
 const respond=(res,status,message)=>res.status(status).json({error:message});
@@ -93,32 +93,9 @@ export function installStaffDossierRoutes(app,{requireUser,getSnapshot}){
     }catch(e){return onError(res,e)}
   });
 
-  app.post('/api/staff-dossiers/:dept/:discordId/notes',requireUser,async(req,res)=>{
-    if(!staffDossierWritesEnabled(process.env))return respond(res,503,'Administratieve personeelsnotities staan uit');
-    let note;
-    try{note=validateStaffNote(req.body)}
-    catch(e){return respond(res,400,e.message)}
-    try{
-      const {staff,key}=await getSubject(req,getSnapshot);
-      if(!canMaintainStaffDossier(req.bpd,staff))
-        return respond(res,403,'Geen bevoegdheid om dit personeelsdossier aan te vullen');
-      if(!/^\d{15,22}$/.test(req.bpd.discordId||''))
-        return respond(res,403,'Een gekoppelde Discord-identiteit is vereist voor auditregistraties');
-      const ref=getFirestore().collection(STAFF_DOSSIER_COLLECTION).doc(key);
-      const noteId=ref.collection('entries').doc();
-      await getFirestore().runTransaction(async tx=>{
-        const existing=await tx.get(ref);
-        if(!existing.exists)tx.create(ref,{dept:staff.dept,discordId:staff.personId,
-          revision:0,profile:normalizeStaffProfile(null),createdAt:FieldValue.serverTimestamp()});
-        tx.create(noteId,{...note,authorDiscordId:req.bpd.discordId,
-          authorUid:req.bpd.uid,createdAt:FieldValue.serverTimestamp()});
-        tx.create(ref.collection('audit').doc(),{
-          action:'note_added',kind:note.kind,title:note.title,
-          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
-          at:FieldValue.serverTimestamp()
-        });
-      });
-      return res.status(201).json({saved:true,noteId:noteId.id,discordRolesChanged:false});
-    }catch(e){return onError(res,e)}
-  });
+  // Compatibility response: the separate note-writer is retired.
+  // Canonical personnel remarks live under /api/management/cases and
+  // training results under /api/training; legacy staff notes remain readable.
+  app.post('/api/staff-dossiers/:dept/:discordId/notes',requireUser,(_req,res)=>
+    respond(res,410,'Gebruik Kaderregistraties voor notities en Opleidingen voor opleidingsresultaten'));
 }
