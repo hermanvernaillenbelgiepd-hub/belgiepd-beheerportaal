@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {testCreateEnabled,canCreatePersonnel,validateNewPersonnel,
+  asCreatedPersonnel,uniqueNewPerson} from '../src/personnel-create.js';
+
+const person={dept:'politie',discordId:'444444444444444444',
+  name:'Nieuw Fictief Lid',call:'TEST-P404',rank:'Inspecteur',
+  reason:'TEST nieuwe personeelsfiche registreren'};
+const actor={role:'officierenkader',departments:['politie','ambulance'],
+  departmentRoles:{politie:'officierenkader',ambulance:'middenkader'}};
+const env={BPD_TEST_FIXTURES:'true',FIREBASE_PROJECT_ID:'belgiepd-test',
+  BPD_ENABLE_PERSONNEL_CREATION:'true'};
+
+test('New personnel creation is never active in production',()=>{
+  assert.equal(testCreateEnabled(env),true);
+  assert.equal(testCreateEnabled({...env,BPD_TEST_FIXTURES:'false'}),false);
+  assert.equal(testCreateEnabled({...env,FIREBASE_PROJECT_ID:'belgiepd-prod'}),false);
+  assert.equal(testCreateEnabled({...env,BPD_ENABLE_PERSONNEL_CREATION:'false'}),false);
+});
+test('Validated limited intake cannot inject rank privileges or extra properties',()=>{
+  assert.deepEqual(validateNewPersonnel(person),person);
+  for(const extra of [{role:'beheerder'},{departmentRoles:{politie:'korpsleiding'}},
+    {status:'Actief'},{source:'google-sheets'}]){
+    assert.throws(()=>validateNewPersonnel({...person,...extra}));
+  }
+  assert.throws(()=>validateNewPersonnel({...person,rank:'Commissaris'}));
+  assert.throws(()=>validateNewPersonnel({...person,discordId:'not-an-id'}));
+  assert.throws(()=>validateNewPersonnel({...person,reason:'te kort'}));
+  assert.throws(()=>validateNewPersonnel({...person,name:'<script>alert(1)</script>'}));
+  assert.throws(()=>validateNewPersonnel({...person,call:'TEST-\nX'}));
+});
+test('Only high cadre in the subject service can create',()=>{
+  assert.equal(canCreatePersonnel(actor,'politie'),true);
+  assert.equal(canCreatePersonnel(actor,'ambulance'),false);
+  assert.equal(canCreatePersonnel({...actor,role:'middenkader'},'politie'),false);
+  assert.equal(canCreatePersonnel({...actor,departments:['ambulance']},'politie'),false);
+  assert.equal(canCreatePersonnel({...actor,role:'beheerder'},'politie'),false);
+  const admin={role:'beheerder',departments:['politie'],
+    departmentRoles:{politie:'beheerder'}};
+  assert.equal(canCreatePersonnel(admin,'politie'),true);
+  assert.equal(canCreatePersonnel(admin,'ambulance'),false);
+});
+test('Creation projects a strictly non-privileged personnel record',()=>{
+  const record=asCreatedPersonnel({...person,status:'In opleiding'});
+  assert.equal(record.personId,person.discordId);
+  assert.equal(record.id,'politie:'+person.discordId);
+  assert.equal(record.source,'firestore-created');
+  assert.equal(record.status,'In opleiding');
+  assert.equal(record.rank,'Inspecteur');
+  assert.equal(Object.hasOwn(record,'departments'),false);
+  assert.equal(Object.hasOwn(record,'role'),false);
+  assert.equal(asCreatedPersonnel({...person,status:'Gepromoveerd'}),null);
+  assert.equal(asCreatedPersonnel({...person,rank:'Korpschef',status:'Actief'}),null);
+});
+test('Avoid duplicate Discord IDs and callsign within the same service',()=>{
+  const existing=[{dept:'politie',personId:'111111111111111111',call:'TEST-P202'},
+    {dept:'ambulance',personId:person.discordId,call:person.call}];
+  assert.doesNotThrow(()=>uniqueNewPerson(existing,person));
+  assert.throws(()=>uniqueNewPerson([...existing,{dept:'politie',personId:person.discordId,call:'OTHER'}],person));
+  assert.throws(()=>uniqueNewPerson(existing,{...person,call:'test-p202'}));
+});
