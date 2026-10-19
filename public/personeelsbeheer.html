@@ -16,7 +16,7 @@ label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#
 .scroller{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:750px}th,td{text-align:left;border-bottom:1px solid #324660;padding:12px 10px;vertical-align:middle;font-size:13px}th{color:#a8bdd7;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
 .pill{display:inline-block;padding:4px 10px;border-radius:99px;background:#263d5e;color:#dce8ff;font-size:12px}
 .overlay{background:#1d4c4b;color:#bcf6ec}.subtle{font-size:12px;color:#9eb0ca}#panel{border-top:1px solid #3b5374;margin-top:18px;padding-top:20px}
-.history{padding:9px 0;border-bottom:1px solid #384965}#results td:first-child{font-weight:700}
+.history{padding:9px 0;border-bottom:1px solid #384965}#results td:first-child{font-weight:700}button.small{padding:6px 9px;font-size:12px;margin-top:5px}code{overflow-wrap:anywhere;color:#cce0ff}.inline-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#c8d9ef}.inline-check input{width:auto}
 [hidden]{display:none!important}
 @media(max-width:660px){.grid{grid-template-columns:1fr}.card{padding:15px}h1{font-size:25px}header{padding:14px}}
 </style></head>
@@ -30,7 +30,9 @@ label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#
 <div class="scroller"><table><thead><tr><th>Personeelslid</th><th>Roepnummer</th><th>Rang</th><th>Hulpdienst</th><th>Status</th><th>Gegevensbron</th><th></th></tr></thead><tbody id="results"></tbody></table></div>
 </section>
 <section id="pendingPanel" class="card" hidden>
-<h2>Wacht op Discord-koppeling</h2><p>Deze medewerkers hebben een interne personeelsreferentie, maar nog geen gekoppelde Discord-ID.
+<h2>Wacht op Discord-koppeling</h2><p id="pendingSummary" class="subtle"></p>
+<label class="inline-check"><input id="onlyApprovals" type="checkbox"> Alleen aanvragen die op kadergoedkeuring wachten</label>
+<p>Deze medewerkers hebben een interne personeelsreferentie, maar nog geen gekoppelde Discord-ID.
 Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a href="/personeel-koppelen.html">Open de pagina om Discord te koppelen</a>.</p>
 <div class="scroller"><table><thead><tr><th>Personeelslid</th><th>Hulpdienst</th>
 <th>Roepnummer</th><th>Rang</th><th>Interne referentie</th><th>Status / actie</th></tr></thead>
@@ -48,7 +50,8 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 <div><label for="newRank">Instaprang</label><select id="newRank" required></select></div>
 <div><label>Startstatus</label><input value="In opleiding (automatisch)" disabled></div>
 <div style="grid-column:1/-1"><label for="newReason">Motivering (minstens 10 tekens)</label><textarea id="newReason" required minlength="10" maxlength="500" rows="2" placeholder="Reden van inschrijving"></textarea></div>
-</div><div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Firestore registratie; Google Sheets en Discord-rollen blijven ongewijzigd</span></div></form>
+</div><div id="newDuplicateWarning" class="warn" role="status" aria-live="polite" hidden></div>
+<div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Firestore registratie; Google Sheets en Discord-rollen blijven ongewijzigd</span></div></form>
 </section>
 <section id="panel" class="card" hidden><div class="controls" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2><button class="alt" id="close" type="button">Sluiten</button></div>
 <p class="subtle" id="identity"></p>
@@ -80,13 +83,47 @@ async function request(url,options={}){
 }
 function option(value,label){const o=document.createElement('option');o.value=value;o.textContent=label;return o}
 function td(tr,text){const c=document.createElement('td');c.textContent=text;tr.append(c);return c}
+function inviteText(person){
+  return 'BelgiumPD personeelskoppeling\n' +
+    'Naam: '+person.name+'\n' +
+    'Hulpdienst: '+(departments[person.dept]||person.dept)+'\n' +
+    'Interne referentie: '+person.internalId+'\n' +
+    'Open: '+window.location.origin+'/personeel-koppelen.html\n' +
+    'Meld je aan met je eigen Discord-account en vul de referentie in. '+
+    'Een bevoegd kaderlid moet de koppeling nog goedkeuren. '+
+    'Deel deze uitnodiging uitsluitend privé met de betrokken medewerker.';
+}
 function renderPending(){
   $('pendingPanel').hidden=!pendingPeople.length;
+  const approvalCount=pendingPeople.filter(p=>Boolean(p.request)).length;
+  $('pendingSummary').textContent=pendingPeople.length+' zonder gekoppelde Discord-ID · '+
+    approvalCount+' wachten op kadergoedkeuring · '+
+    (pendingPeople.length-approvalCount)+' wachten op een Discord-aanvraag';
   const body=$('pendingResults');body.replaceChildren();
-  for(const p of pendingPeople){
+  const entries=pendingPeople.filter(p=>!$('onlyApprovals').checked||p.request)
+    .sort((a,b)=>Number(Boolean(b.request))-Number(Boolean(a.request))||
+      String(a.name).localeCompare(String(b.name),'nl'));
+  if(!entries.length){
+    const row=document.createElement('tr');
+    const cell=td(row,'Geen aanvragen ter goedkeuring.');
+    cell.colSpan=6;body.append(row);
+  }
+  for(const p of entries){
     const row=document.createElement('tr');
     td(row,p.name);td(row,departments[p.dept]||p.dept);td(row,p.call);
-    td(row,p.rank);td(row,p.internalId);
+    td(row,p.rank);
+    const refCell=document.createElement('td');
+    const ref=document.createElement('code');ref.textContent=p.internalId;
+    const copy=document.createElement('button');copy.type='button';
+    copy.className='alt small';copy.textContent='Kopieer uitnodiging';
+    copy.onclick=async()=>{
+      const invitation=inviteText(p);
+      try{
+        await navigator.clipboard.writeText(invitation);
+        notice('Uitnodiging voor '+p.name+' gekopieerd. Deel die privé met de medewerker.');
+      }catch{window.prompt('Kopieer deze uitnodiging en verstuur ze privé:',invitation)}
+    };
+    refCell.append(ref,document.createElement('br'),copy);row.append(refCell);
     const cell=document.createElement('td');
     const info=document.createElement('div');info.textContent=p.status;cell.append(info);
     if(p.request){
@@ -166,7 +203,9 @@ async function load(){
         'Testmodus: wijzigingen worden in Firestore opgeslagen, maar nog niet gebruikt als hoofdgegevensbron.';
     render();renderPending();
     notice('Personeelsgegevens geladen. '+people.length+' fiches, '+(people.filter(p=>p.source==='firestore-created').length)+' nieuwe Firestore-fiches, '+(people.filter(p=>p.source==='firestore-overlay').length)+' bijgewerkte fiches.');
-    if(data.limited)notice('Het overzicht van wijzigingen heeft de veilige limiet bereikt. Vraag een beheerder om controle.',true);
+    if(data.limited||data.pendingLimited)
+      notice('De veilige laadlimiet van personeelsgegevens is bereikt. Vraag een beheerder om controle.',true);
+    if(!$('newPanel').hidden)updateNewDuplicateWarning();
     if(selected){const still=people.find(p=>p.dept===selected.dept&&p.discordId===selected.discordId);if(still)await showPerson(still);else $('panel').hidden=true}
   }catch(e){people=[];$('panel').hidden=true;render();notice(e.message,true)}
 }
@@ -208,8 +247,36 @@ $('editForm').onsubmit=async ev=>{
     notice('Wijziging opgeslagen in Firestore, inclusief historiek.');
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
 };
+function newPersonnelConflicts(person){
+  const dept=person.dept;
+  const call=String(person.call||'').trim().toLocaleLowerCase('nl-BE');
+  const discordId=String(person.discordId||'').trim();
+  const existing=people.filter(p=>p.dept===dept);
+  const pending=pendingPeople.filter(p=>p.dept===dept);
+  const sameCall=[...existing,...pending].find(p=>call&&
+    String(p.call||'').trim().toLocaleLowerCase('nl-BE')===call);
+  const sameDiscord=discordId&&(
+    existing.find(p=>p.discordId===discordId)||
+    pending.find(p=>p.request?.discordId===discordId));
+  return sameCall?'Roepnummer '+person.call+' is al in gebruik door '+sameCall.name+
+    '. Controleer de bestaande fiche in plaats van een dubbele aan te maken.':
+    sameDiscord?'Deze Discord-ID is al gekoppeld of aangevraagd voor '+sameDiscord.name+
+      ' binnen deze hulpdienst. Controleer de bestaande fiche.':'';
+}
+function newFormData(){
+  return {dept:$('newDept').value,discordId:$('newId').value.trim(),
+    name:$('newName').value.trim(),call:$('newCall').value.trim(),
+    rank:$('newRank').value,reason:$('newReason').value};
+}
+function updateNewDuplicateWarning(){
+  const issue=newPersonnelConflicts(newFormData());
+  $('newDuplicateWarning').hidden=!issue;
+  $('newDuplicateWarning').textContent=issue;
+  return issue;
+}
 function refreshNewRanks(){
   $('newRank').replaceChildren(...(createRanks[$('newDept').value]||[]).map(rank=>option(rank,rank)));
+  updateNewDuplicateWarning();
 }
 $('newBtn').onclick=()=>{
   $('panel').hidden=true;selected=null;
@@ -220,14 +287,17 @@ $('newBtn').onclick=()=>{
 };
 $('newClose').onclick=()=>{$('newPanel').hidden=true};
 $('newDept').onchange=refreshNewRanks;
+$('newId').oninput=updateNewDuplicateWarning;
+$('newCall').oninput=updateNewDuplicateWarning;
+$('onlyApprovals').onchange=renderPending;
 $('newForm').onsubmit=async event=>{
   event.preventDefault();
   if(!createEnabled||!Object.keys(createRanks).length)return;
   const btn=$('newSave');btn.disabled=true;
-  const person={dept:$('newDept').value,discordId:$('newId').value.trim(),
-    name:$('newName').value,call:$('newCall').value,rank:$('newRank').value,
-    reason:$('newReason').value};
+  const person=newFormData();
   try{
+    const duplicate=updateNewDuplicateWarning();
+    if(duplicate)throw Error(duplicate);
     if(!confirm('Een '+(testMode?'fictief ':'')+'personeelslid toevoegen'+(!person.discordId?' zonder Discord-koppeling':' met de opgegeven Discord-ID')+'? Dit kent geen portaalrechten toe.'))return;
     const result=await request('/api/personnel/new',{method:'POST',body:person});
     $('newPanel').hidden=true;$('newForm').reset();

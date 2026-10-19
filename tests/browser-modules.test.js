@@ -17,6 +17,28 @@ test('All browser module scripts parse as valid JavaScript',()=>{
   const common=readFileSync(new URL('../public/portal-login.js',import.meta.url),'utf8');
   assert.doesNotThrow(()=>new Script(common.replace(/^export\s+/gm,'')));
 });
+test('Personnel intake warns about duplicate callsigns and Discord claims',()=>{
+  const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  assert.match(html,/id="newDuplicateWarning"/);
+  assert.match(html,/id="pendingSummary"/);
+  assert.match(html,/Kopieer uitnodiging/);
+  assert.ok(html.includes("window.location.origin+'/personeel-koppelen.html"));
+  const from=html.indexOf('function newPersonnelConflicts(person){');
+  const to=html.indexOf('function newFormData(){',from);
+  assert.ok(from>0&&to>from);
+  const check=new Function('people','pendingPeople','person',
+    html.slice(from,to)+';return newPersonnelConflicts(person)');
+  const existing=[{dept:'politie',discordId:'111111111111111111',name:'Bestaand',call:'S250'}];
+  const pending=[{dept:'politie',name:'In afwachting',call:'S251',
+    request:{discordId:'222222222222222222'}}];
+  const input={dept:'politie',discordId:'',call:'s250'};
+  assert.match(check(existing,pending,input),/Roepnummer/);
+  assert.match(check(existing,pending,{...input,call:'S251'}),/Roepnummer/);
+  assert.match(check(existing,pending,{...input,call:'S252',discordId:'111111111111111111'}),/Discord-ID/);
+  assert.match(check(existing,pending,{...input,call:'S252',discordId:'222222222222222222'}),/Discord-ID/);
+  assert.equal(check(existing,pending,{...input,call:'S252'}),'');
+  assert.equal(check(existing,pending,{...input,dept:'brandweer'}),'');
+});
 test('OAuth return-to paths are explicitly allowlisted; never external domains',()=>{
   assert.equal(validReturnTo('/verlofbeheer.html'),'/verlofbeheer.html');
   assert.equal(validReturnTo('/rollen-opleidingen.html'),'/rollen-opleidingen.html');
