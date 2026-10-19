@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validPersonnelKey,canViewPersonnel,canEditPersonnel,validatePersonnelChange,
- mergePersonnelEdits,EDITABLE_STATUSES} from '../src/personnel-editor-policy.js';
+ mergePersonnelEdits,EDITABLE_STATUSES,personnelCallClaimId} from '../src/personnel-editor-policy.js';
 const officer={role:'officierenkader',departments:['politie','brandweer'],departmentRoles:{politie:'officierenkader',brandweer:'middenkader'},discordId:'505659510359064606'};
 const chief={role:'korpsleiding',departments:['politie'],departmentRoles:{politie:'korpsleiding'},discordId:'111111111111111111'};
 const id='298799630458552323';
@@ -58,4 +58,11 @@ test('Invalid and mismatched overrides are silently ignored',()=>{
  {dept:'politie',discordId:id,revision:0,name:'x',call:'y',status:'Actief'},
  {dept:'politie',discordId:id,revision:1,name:'x',call:'y',status:'Onmogelijk'}];
  assert.deepEqual(mergePersonnelEdits([staff],bad),[staff]);
+});
+
+test('Concurrent callsign claims use the same deterministic document in one service only',()=>{
+ assert.equal(personnelCallClaimId('politie','930'),personnelCallClaimId('politie',' 930 '));
+ assert.notEqual(personnelCallClaimId('politie','930'),personnelCallClaimId('brandweer','930'));
+ assert.notEqual(personnelCallClaimId('politie','931'),personnelCallClaimId('politie','930'));
+ assert.match(personnelCallClaimId('politie','930'),/^[a-f0-9]{64}$/);
 });
