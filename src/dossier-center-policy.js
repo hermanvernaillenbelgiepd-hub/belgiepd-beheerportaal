@@ -49,10 +49,15 @@ export function dossierTimelineEntry(event,kind){
   let at=null;
   if(date instanceof Date&&Number.isFinite(date.getTime()))at=date.toISOString();
   else if(typeof date==='string'&&Number.isFinite(Date.parse(date)))at=new Date(date).toISOString();
-  return {kind,action:String(event?.action||'registratie').slice(0,55),
+  const result={kind,action:String(event?.action||'registratie').slice(0,55),
     at,previousRank:typeof event?.previousRank==='string'?event.previousRank.slice(0,80):null,
     newRank:typeof event?.newRank==='string'?event.newRank.slice(0,80):null,
     reason:typeof event?.reason==='string'?event.reason.slice(0,500):'',
     actorDiscordId:/^\d{15,22}$/.test(event?.actorDiscordId||event?.byDiscordId||'')
       ?event.actorDiscordId||event.byDiscordId:null};
+  // Preserve application workflow steps without revealing additional audit
+  // metadata such as arbitrary document contents, tokens or internal grants.
+  if(STATUSES.has(event?.previousStatus))result.previousStatus=event.previousStatus;
+  if(STATUSES.has(event?.newStatus))result.newStatus=event.newStatus;
+  return result;
 }
