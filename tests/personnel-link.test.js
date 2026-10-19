@@ -82,7 +82,7 @@ test('A permitted cadre member can reject a self-claim without approving it',()=
 });
 test('Missing Discord ID remains pending and never becomes active on member lists',()=>{
  const pending=validateNewPersonnel({dept:'politie',name:'Fictieve Medewerker',call:'TEST-P550',
-   rank:'Inspecteur',reason:'Personeelsadministratie testen',discordId:''});
+   rank:'Agent',reason:'Personeelsadministratie testen',discordId:''});
  assert.equal(pending.discordId,null);
  const draft=visiblePendingPersonnel('aBcDefGhiJKlmNop1234',{...pending,state:'awaiting_discord',
     linkRequest:{...record.linkRequest}});
