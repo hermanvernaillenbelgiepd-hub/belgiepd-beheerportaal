@@ -96,6 +96,10 @@ export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){
       }
       if(application&&candidate)
         histories.push(timeline(candidate.ref,'sollicitatie'));
+      // A citizen's audit is visible only when this exact service dossier is
+      // already authorised. No general citizen search or cross-service data.
+      if(civilian&&citizenDoc)
+        histories.push(timeline(citizenDoc.ref,'burger'));
       const timelineEntries=(await Promise.all(histories)).flat()
         .sort((a,b)=>(b.at||'').localeCompare(a.at||'')).slice(0,50);
       return res.json({dept,discordId,readOnly:true,citizen:civilian,
