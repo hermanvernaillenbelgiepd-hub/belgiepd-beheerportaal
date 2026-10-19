@@ -17,6 +17,7 @@ test('Login return paths allow the citizen dossier only through explicit allowli
   const policy=source('src/discord-utils.js');
   const login=source('public/discord-status.html');
   assert.ok(policy.includes("'/burgerdossier.html'"));
+  assert.ok(policy.includes("'/dossiercentrum.html'"));
   assert.ok(login.includes("'/burgerdossier.html'"));
 });
 test('Citizen API is self-scoped and cannot take a target Discord ID in its routes',()=>{
