@@ -47,7 +47,13 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 <small>Er wordt automatisch een interne personeelsreferentie aangemaakt. Discord kan later gekoppeld worden.</small></div>
 <div><label for="newName">Naam</label><input id="newName" required minlength="2" maxlength="120" placeholder="Naam personeelslid"></div>
 <div><label for="newCall">Roepnummer</label><input id="newCall" required maxlength="24" placeholder="Bijvoorbeeld S250"></div>
-<div><label for="newRank">Instaprang</label><select id="newRank" required></select></div>
+<div><label for="newRank">Instaprang</label><select id="newRank" required></select><small>Politie start standaard als Agent. Alleen korpsleiding of beheerder kan uitzonderlijk een hogere instaprang registreren.</small></div>
+<div id="newRankException" style="grid-column:1/-1" hidden>
+  <label class="inline-check" for="newRankExceptionConfirm"><input id="newRankExceptionConfirm" type="checkbox"> Uitzonderlijke instaprang expliciet bevestigen (verplicht)</label>
+  <label for="newRankExceptionReason">Afzonderlijke motivering hogere instaprang (30–500 tekens)</label>
+  <textarea id="newRankExceptionReason" rows="3" minlength="30" maxlength="500" placeholder="Beschrijf de uitzonderlijke beslissing en waarom niet als Agent wordt gestart."></textarea>
+  <small>De oorspronkelijke instaprang, afwijking, motivering en bevoegde beslisser worden geregistreerd in het auditlog.</small>
+</div>
 <div><label>Startstatus</label><input value="In opleiding (automatisch)" disabled></div>
 <div style="grid-column:1/-1"><label for="newReason">Motivering (minstens 10 tekens)</label><textarea id="newReason" required minlength="10" maxlength="500" rows="2" placeholder="Reden van inschrijving"></textarea></div>
 </div><div id="newDuplicateWarning" class="warn" role="status" aria-live="polite" hidden></div>
@@ -264,9 +270,12 @@ function newPersonnelConflicts(person){
       ' binnen deze hulpdienst. Controleer de bestaande fiche.':'';
 }
 function newFormData(){
+  const exceptional=$('newDept').value==='politie'&&$('newRank').value!=='Agent';
   return {dept:$('newDept').value,discordId:$('newId').value.trim(),
     name:$('newName').value.trim(),call:$('newCall').value.trim(),
-    rank:$('newRank').value,reason:$('newReason').value};
+    rank:$('newRank').value,reason:$('newReason').value,
+    exceptionalRank:exceptional&&$('newRankExceptionConfirm').checked,
+    exceptionReason:exceptional?$('newRankExceptionReason').value.trim():''};
 }
 function updateNewDuplicateWarning(){
   const issue=newPersonnelConflicts(newFormData());
@@ -274,8 +283,19 @@ function updateNewDuplicateWarning(){
   $('newDuplicateWarning').textContent=issue;
   return issue;
 }
+function refreshExceptionalRank(){
+  const exceptional=$('newDept').value==='politie'&&$('newRank').value!=='Agent';
+  $('newRankException').hidden=!exceptional;
+  $('newRankExceptionConfirm').required=exceptional;
+  $('newRankExceptionReason').required=exceptional;
+  if(!exceptional){
+    $('newRankExceptionConfirm').checked=false;
+    $('newRankExceptionReason').value='';
+  }
+}
 function refreshNewRanks(){
   $('newRank').replaceChildren(...(createRanks[$('newDept').value]||[]).map(rank=>option(rank,rank)));
+  refreshExceptionalRank();
   updateNewDuplicateWarning();
 }
 $('newBtn').onclick=()=>{
@@ -287,6 +307,7 @@ $('newBtn').onclick=()=>{
 };
 $('newClose').onclick=()=>{$('newPanel').hidden=true};
 $('newDept').onchange=refreshNewRanks;
+$('newRank').onchange=refreshExceptionalRank;
 $('newId').oninput=updateNewDuplicateWarning;
 $('newCall').oninput=updateNewDuplicateWarning;
 $('onlyApprovals').onchange=renderPending;
@@ -298,6 +319,9 @@ $('newForm').onsubmit=async event=>{
   try{
     const duplicate=updateNewDuplicateWarning();
     if(duplicate)throw Error(duplicate);
+    if(person.dept==='politie'&&person.rank!=='Agent'&&
+       (!person.exceptionalRank||person.exceptionReason.length<30))
+      throw Error('Een hogere politie-instaprang vereist een expliciete bevestiging en afzonderlijke motivering van minstens 30 tekens.');
     if(!confirm('Een '+(testMode?'fictief ':'')+'personeelslid toevoegen'+(!person.discordId?' zonder Discord-koppeling':' met de opgegeven Discord-ID')+'? Dit kent geen portaalrechten toe.'))return;
     const result=await request('/api/personnel/new',{method:'POST',body:person});
     $('newPanel').hidden=true;$('newForm').reset();
