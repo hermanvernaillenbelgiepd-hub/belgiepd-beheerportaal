@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {roleForDepartment} from './leave-policy.js';
 import {policeKader} from './normalize.js';
 
@@ -8,6 +9,10 @@ export const EDITABLE_STATUSES=Object.freeze(['Actief','Inactief','50/50','Verlo
 const ID=/^\d{15,22}$/;
 const SERVICES=new Set(['politie','brandweer','ambulance','depannage']);
 const TRIM=s=>typeof s==='string'?s.trim():'';
+// Claim documents protect against concurrent duplicate callsign allocation.
+export function personnelCallClaimId(dept,call){
+  return createHash('sha256').update(dept+'|'+String(call||'').trim().toLocaleLowerCase('nl')).digest('hex');
+}
 export function validPersonnelKey(dept,id){
   return SERVICES.has(dept)&&ID.test(id);
 }
