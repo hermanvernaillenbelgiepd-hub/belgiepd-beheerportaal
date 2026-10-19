@@ -102,7 +102,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       if(!token)return error(res,401,'Discord-aanmelding vereist');
       const decoded=await getAuth().verifyIdToken(token);
       const discordId=String(decoded.uid||'').replace(/^discord:/,'');
-      if(!/^\\d{15,22}$/.test(discordId))
+      if(!/^\d{15,22}$/.test(discordId))
         return error(res,403,'Discord-aanmelding vereist');
       const member=(await getFirestore().collection('bpd_discord_auth').doc(discordId).get()).data();
       if(verifiedLinkRequester(decoded,member,process.env.DISCORD_GUILD_ID)!==discordId)
