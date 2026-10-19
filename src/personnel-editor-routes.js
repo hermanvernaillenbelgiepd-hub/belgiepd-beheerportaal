@@ -103,7 +103,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       if(!auth)return error(res,401,'Meld je eerst aan met Discord');
       const decoded=await getAuth().verifyIdToken(auth[1]);
       const discordId=String(decoded.uid||'').replace(/^discord:/,'');
-      if(!/^\\d{15,22}$/.test(discordId))return error(res,403,'Gebruik een Discord-aanmelding');
+      if(!/^\d{15,22}$/.test(discordId))return error(res,403,'Gebruik een Discord-aanmelding');
       const store=getFirestore();
       const member=(await store.collection('bpd_discord_auth').doc(discordId).get()).data();
       if(verifiedLinkRequester(decoded,member,process.env.DISCORD_GUILD_ID)!==discordId)
@@ -141,7 +141,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       const check=await pending.get();
       if(!check.exists)return error(res,404,'Personeelsfiche niet gevonden');
       const record=check.data(),discordId=record.linkRequest?.discordId;
-      if(!/^\\d{15,22}$/.test(discordId))return error(res,409,'Geen koppelaanvraag ingediend');
+      if(!/^\d{15,22}$/.test(discordId))return error(res,409,'Geen koppelaanvraag ingediend');
       const member=(await store.collection('bpd_discord_auth').doc(discordId).get()).data();
       if(!mayApproveLink(req.bpd,record,member,process.env.DISCORD_GUILD_ID))
         return error(res,403,'Deze koppeling mag niet worden goedgekeurd of Discord moet opnieuw verifiëren');
