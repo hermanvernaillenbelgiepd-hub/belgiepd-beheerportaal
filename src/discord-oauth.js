@@ -11,7 +11,23 @@ const getCookie=(req,key)=>{const val=(req.headers.cookie||'').split('; ').find(
 function appAuth(){if(!getApps().length)initializeApp({credential:applicationDefault(),projectId:process.env.FIREBASE_PROJECT_ID});return getAuth()}
 function signed(value,key){return `${value}.${createHmac('sha256',key).update(value).digest('base64url')}`}
 function unsigned(value,key){const p=value.lastIndexOf('.');if(p<0)return null;const data=value.slice(0,p);if(!timingEqual(value.slice(p+1),createHmac('sha256',key).update(data).digest('base64url')))return null;try{return JSON.parse(Buffer.from(data,'base64url').toString('utf8'))}catch{return null}}
-async function discordJson(url,opts={}){const response=await fetch(url,{...opts,signal:AbortSignal.timeout(12000),headers:{'Accept':'application/json',...(opts.headers||{})}});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error('Discord API: '+response.status);return data}
+async function discordJson(url,opts={}){
+  const response=await fetch(url,{...opts,signal:AbortSignal.timeout(12000),
+    headers:{'Accept':'application/json',...(opts.headers||{})}});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){
+    // Never log URLs with parameters, access tokens, Client Secrets or response
+    // descriptions. Classify only the failing OAuth stage and a safe error code.
+    const path=new URL(url).pathname;
+    const stage=path.endsWith('/oauth2/token')?'token_exchange':
+      path.endsWith('/users/@me')?'identity_lookup':
+      path.includes('/guilds/')&&path.endsWith('/member')?'guild_member_lookup':'discord_api';
+    const oauthCode=typeof data.error==='string'&&/^[a-z_]{3,40}$/.test(data.error)?
+      data.error:'unknown';
+    throw new Error('Discord '+stage+' HTTP '+response.status+' ('+oauthCode+')');
+  }
+  return data;
+}
 // One-time exchange codes: this is intentionally a single-process local test.
 // A multi-instance cloud deployment must use a distributed store instead.
 const handoffs=new Map();

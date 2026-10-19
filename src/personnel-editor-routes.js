@@ -1,7 +1,12 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getAuth} from 'firebase-admin/auth';
+import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canEditPersonnel,validatePersonnelChange,mergePersonnelEdits,
   personnelCallClaimId} from './personnel-editor-policy.js';
+import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
+  testCreateEnabled,canCreatePersonnel,validateNewPersonnel,uniqueNewPerson,
+  visiblePendingPersonnel} from './personnel-create.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
 const asTime=x=>x?.toDate?.().toISOString?.()||null;
@@ -19,19 +24,192 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
     try {
       const allowed=req.bpd.departments.filter(d=>canViewPersonnel(req.bpd,d));
       if(!allowed.length)return error(res,403,'Je hebt geen kaderrechten voor personeelsbeheer');
-      const [snapshot,edits]=await Promise.all([getSnapshot(),collection().limit(400).get()]);
+      const [snapshot,edits,pending]=await Promise.all([
+        getSnapshot(),collection().limit(400).get(),
+        testCreateEnabled(process.env)?getFirestore().collection(PENDING_PERSONNEL_COLLECTION)
+          .limit(150).get():Promise.resolve({docs:[],size:0})
+      ]);
       const base=snapshot.data.filter(p=>allowed.includes(p.dept));
       const overlay=edits.docs.map(d=>d.data());
       const records=mergePersonnelEdits(base,overlay).map(p=>{
         const edit=overlay.find(e=>e.dept===p.dept&&e.discordId===p.personId);
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
           series:p.series,status:p.status,revision:Number.isSafeInteger(edit?.revision)?edit.revision:0,
-          source:edit?'firestore-overlay':'google-sheets',
+          source:edit?'firestore-overlay':p.source==='firestore-created'?'firestore-created':'google-sheets',
           canEdit:canEditPersonnel(req.bpd,p)};
       });
-      return res.json({records,role:req.bpd.role,departments:allowed,
-        writesEnabled:writes(),overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
+      const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
+        .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
+      return res.json({records,pendingPersonnel,pendingLimited:pending.size===150,
+        role:req.bpd.role,departments:allowed,
+        writesEnabled:writes(),createEnabled:testCreateEnabled(process.env)&&writes(),
+        createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,TEST_RANKS[dept]])),
+        overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
         sourceStale:snapshot.stale,limited:edits.size===400,statuses:EDITABLE_STATUSES});
+    }catch(e){return safeResponse(res,e)}
+  });
+  // Fictitious personnel intake: explicitly isolated to the TEST Firebase project.
+  // Creating a personnel row never creates Firebase users, Discord roles or portal access.
+  app.post('/api/personnel/new',requireUser,async(req,res)=>{
+    if(!writes()||!testCreateEnabled(process.env))
+      return error(res,503,'Nieuwe personeelsleden toevoegen staat alleen op de geïsoleerde TESTSERVER aan');
+    let proposed;
+    try{proposed=validateNewPersonnel(req.body)}catch(e){return error(res,400,e.message)}
+    if(!canCreatePersonnel(req.bpd,proposed.dept))
+      return error(res,403,'Geen bevoegdheid om personeelsleden in deze hulpdienst aan te maken');
+    try{
+      const snap=await getSnapshot();
+      try{uniqueNewPerson(snap.data,proposed)}
+      catch(e){return error(res,409,e.message)}
+      const store=getFirestore();
+      const pending=!proposed.discordId;
+      const ref=pending?store.collection(PENDING_PERSONNEL_COLLECTION).doc():
+        store.collection(CREATED_PERSONNEL_COLLECTION).doc(proposed.dept+'_'+proposed.discordId);
+      const claim=store.collection('bpd_personnel_call_claims')
+        .doc(personnelCallClaimId(proposed.dept,proposed.call));
+      await store.runTransaction(async tx=>{
+        const [existing,reserved]=await Promise.all([tx.get(ref),tx.get(claim)]);
+        if(existing.exists)throw userError(409,'Deze personeelsfiche bestaat al');
+        if(reserved.exists)throw userError(409,'Roepnummer reeds gereserveerd');
+        const doc={dept:proposed.dept,discordId:proposed.discordId,
+          name:proposed.name,call:proposed.call,rank:proposed.rank,
+          status:'In opleiding',state:pending?'awaiting_discord':'linked',
+          revision:0,createdByUid:req.bpd.uid,
+          createdByDiscordId:req.bpd.discordId||null,
+          createdAt:FieldValue.serverTimestamp()};
+        tx.create(ref,doc);
+        tx.create(claim,{dept:proposed.dept,discordId:proposed.discordId,
+          internalId:pending?ref.id:null,call:proposed.call,
+          updatedAt:FieldValue.serverTimestamp()});
+        tx.create(ref.collection('audit').doc(),{action:'create',
+          next:{name:proposed.name,call:proposed.call,rank:proposed.rank,
+            status:'In opleiding'},revision:0,reason:proposed.reason,
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
+          at:FieldValue.serverTimestamp()});
+      });
+      return res.status(201).json({created:true,pending,internalId:pending?ref.id:null,
+        discordId:proposed.discordId,dept:proposed.dept});
+    }catch(e){return safeResponse(res,e)}
+  });
+  // Self-service Discord proof: only the person currently authenticated through
+  // the portal's OAuth flow can claim their own ID. Still requires cadre approval.
+  app.post('/api/personnel/link/request',async(req,res)=>{
+    if(!linkEnabled(process.env))
+      return error(res,503,'Discord-koppeling is alleen actief op de TESTSERVER');
+    const internalId=req.body?.internalId;
+    if(!validateLinkReference(internalId))return error(res,400,'Ongeldige interne personeelsreferentie');
+    try{
+      const token=bearerToken(req.get('Authorization'));
+      if(!token)return error(res,401,'Meld je eerst aan met Discord');
+      const decoded=await getAuth().verifyIdToken(token);
+      const discordId=String(decoded.uid||'').replace(/^discord:/,'');
+      if(!/^\d{15,22}$/.test(discordId))return error(res,403,'Gebruik een Discord-aanmelding');
+      const store=getFirestore();
+      const member=(await store.collection('bpd_discord_auth').doc(discordId).get()).data();
+      if(verifiedLinkRequester(decoded,member,process.env.DISCORD_GUILD_ID)!==discordId)
+        return error(res,403,'Vernieuw je Discord-aanmelding voordat je de koppeling aanvraagt');
+      const ref=store.collection(PENDING_PERSONNEL_COLLECTION).doc(internalId);
+      await store.runTransaction(async tx=>{
+        const doc=await tx.get(ref);
+        if(!doc.exists||doc.get('state')!=='awaiting_discord'||doc.get('discordId')!==null)
+          throw userError(404,'Geen beschikbare personeelsfiche met deze referentie');
+        const old=doc.get('linkRequest');
+        if(old&&old.discordId!==discordId)
+          throw userError(409,'Er is al een andere koppelaanvraag in behandeling');
+        if(old?.state==='awaiting_approval')return;
+        tx.update(ref,{linkRequest:{discordId,
+          username:String(member.username||'Discord-lid').slice(0,80),
+          verifiedAt:member.verifiedAt,state:'awaiting_approval',
+          requestedAt:FieldValue.serverTimestamp()},
+          updatedAt:FieldValue.serverTimestamp()});
+      });
+      return res.json({status:'awaiting_approval'});
+    }catch(e){return safeResponse(res,e)}
+  });
+  // Explicit kader approval does not grant any Firebase/Discord module roles.
+  app.post('/api/personnel/link/:internalId/approve',requireUser,async(req,res)=>{
+    if(!linkEnabled(process.env))
+      return error(res,503,'Discord-koppeling is alleen actief op de TESTSERVER');
+    if(!validateLinkReference(req.params.internalId))
+      return error(res,400,'Ongeldige interne personeelsreferentie');
+    const reason=typeof req.body?.reason==='string'?req.body.reason.trim():'';
+    if(reason.length<10||reason.length>500)
+      return error(res,400,'Een motivering van 10 tot 500 tekens is vereist');
+    try{
+      const store=getFirestore(),pending=store.collection(PENDING_PERSONNEL_COLLECTION)
+        .doc(req.params.internalId);
+      const check=await pending.get();
+      if(!check.exists)return error(res,404,'Personeelsfiche niet gevonden');
+      const record=check.data(),discordId=record.linkRequest?.discordId;
+      if(!/^\d{15,22}$/.test(discordId))return error(res,409,'Geen koppelaanvraag ingediend');
+      const member=(await store.collection('bpd_discord_auth').doc(discordId).get()).data();
+      if(!mayApproveLink(req.bpd,record,member,process.env.DISCORD_GUILD_ID))
+        return error(res,403,'Deze koppeling mag niet worden goedgekeurd of Discord moet opnieuw verifiëren');
+      const snap=await getSnapshot();
+      if(snap.data.some(p=>p.dept===record.dept&&p.personId===discordId))
+        return error(res,409,'Deze Discord-ID heeft al een personeelsfiche in deze hulpdienst');
+      const created=store.collection(CREATED_PERSONNEL_COLLECTION).doc(record.dept+'_'+discordId);
+      const claim=store.collection('bpd_personnel_call_claims')
+        .doc(personnelCallClaimId(record.dept,record.call));
+      await store.runTransaction(async tx=>{
+        const [current,existing,reserved]=await Promise.all([
+          tx.get(pending),tx.get(created),tx.get(claim)
+        ]);
+        if(!current.exists||existing.exists||
+           !mayApproveLink(req.bpd,current.data(),member,process.env.DISCORD_GUILD_ID))
+          throw userError(409,'De koppelaanvraag is gewijzigd of deze medewerker bestaat al');
+        if(!reserved.exists||reserved.get('internalId')!==pending.id||
+           reserved.get('discordId')!==null)
+          throw userError(409,'De roepnummerreservering komt niet overeen');
+        const d=current.data();
+        tx.create(created,{dept:d.dept,discordId,internalId:pending.id,
+          name:d.name,call:d.call,rank:d.rank,status:'In opleiding',
+          revision:0,state:'linked',createdAt:d.createdAt,
+          linkedAt:FieldValue.serverTimestamp(),linkedByUid:req.bpd.uid});
+        tx.update(pending,{state:'linked',discordId,linkedAt:FieldValue.serverTimestamp(),
+          linkedByUid:req.bpd.uid,linkApprovedReason:reason});
+        tx.update(claim,{discordId,internalId:null,updatedAt:FieldValue.serverTimestamp()});
+        tx.create(created.collection('audit').doc(),{
+          action:'link_discord',previous:{discordId:null},next:{discordId},
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
+          reason,at:FieldValue.serverTimestamp()});
+      });
+      return res.json({linked:true,discordId,dept:record.dept});
+    }catch(e){return safeResponse(res,e)}
+  });
+  // TEST-only administrative rejection. Leave the personnel draft and its call
+  // reservation in place, but free the draft for another verified Discord user.
+  // Rejections (including erroneous self-claims) are auditable and never grant roles.
+  app.post('/api/personnel/link/:internalId/reject',requireUser,async(req,res)=>{
+    if(!linkEnabled(process.env))
+      return error(res,503,'Discord-koppeling is alleen actief op de TESTSERVER');
+    if(!validateLinkReference(req.params.internalId))
+      return error(res,400,'Ongeldige interne personeelsreferentie');
+    const reason=typeof req.body?.reason==='string'?req.body.reason.trim():'';
+    if(reason.length<10||reason.length>500)
+      return error(res,400,'Een motivering van 10 tot 500 tekens is vereist');
+    try{
+      const store=getFirestore();
+      const pending=store.collection(PENDING_PERSONNEL_COLLECTION).doc(req.params.internalId);
+      await store.runTransaction(async tx=>{
+        const snapshot=await tx.get(pending);
+        if(!snapshot.exists)throw userError(404,'Personeelsfiche niet gevonden');
+        const record=snapshot.data();
+        if(!mayRejectLink(req.bpd,record))
+          throw userError(403,'Geen bevoegdheid of geen openstaande koppelaanvraag');
+        tx.update(pending,{
+          linkRequest:FieldValue.delete(),
+          updatedAt:FieldValue.serverTimestamp()
+        });
+        tx.create(pending.collection('audit').doc(),{
+          action:'reject_discord_link',
+          previous:{discordId:record.linkRequest.discordId},
+          next:{discordId:null},
+          reason,actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
+          at:FieldValue.serverTimestamp()
+        });
+      });
+      return res.json({rejected:true,availableForNewRequest:true});
     }catch(e){return safeResponse(res,e)}
   });
   app.post('/api/personnel/:dept/:discordId',requireUser,async(req,res)=>{
@@ -85,13 +263,22 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       const snap=await getSnapshot();
       if(!snap.data.some(p=>p.dept===req.params.dept&&p.personId===req.params.discordId))
         return error(res,404,'Personeelsfiche niet gevonden');
-      const log=await collection().doc(req.params.dept+'_'+req.params.discordId)
-        .collection('audit').orderBy('at','desc').limit(25).get();
-      return res.json({changes:log.docs.map(d=>{
+      const key=req.params.dept+'_'+req.params.discordId;
+      const editLog=collection().doc(key).collection('audit');
+      const createLog=getFirestore().collection(CREATED_PERSONNEL_COLLECTION)
+        .doc(key).collection('audit');
+      const [edits,created]=await Promise.all([
+        editLog.orderBy('at','desc').limit(25).get(),
+        testCreateEnabled(process.env)
+          ?createLog.orderBy('at','desc').limit(25).get():Promise.resolve({docs:[]})
+      ]);
+      const changes=[...edits.docs,...created.docs].map(d=>{
         const e=d.data();
-        return {revision:e.revision,previous:e.previous,next:e.next,
+        return {action:e.action||'edit',revision:e.revision,
+          previous:e.previous||null,next:e.next||null,
           reason:e.reason,at:asTime(e.at),actorDiscordId:e.actorDiscordId||null};
-      })});
+      }).sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))).slice(0,25);
+      return res.json({changes});
     }catch(e){return safeResponse(res,e)}
   });
 }

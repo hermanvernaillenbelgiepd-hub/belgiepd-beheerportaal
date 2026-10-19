@@ -23,6 +23,7 @@ import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from '
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits} from './personnel-editor-policy.js';
+import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,testCreateEnabled} from './personnel-create.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 app.disable('x-powered-by');
@@ -168,10 +169,19 @@ async function getSourceSnapshot(){
 // Read-only Sheets remain intact for rollback and comparison.
 async function getSnapshot(){
   const base=await getSourceSnapshot();
-  if(process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE!=='true')return base;
-  const edits=await getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get();
-  if(edits.size===400)throw new Error('Personeelsoverschrijvingen overschrijden de veilige limiet');
-  return {...base,data:mergePersonnelEdits(base.data,edits.docs.map(d=>d.data()))};
+  const on=testCreateEnabled(process.env);
+  const [created,edits]=await Promise.all([
+    on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(150).get():null,
+    process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'
+      ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null
+  ]);
+  if(created?.size===150||edits?.size===400)throw Error('Te veel personeelsrecords; migratiecontrole nodig');
+  const added=(created?.docs||[]).map(d=>asCreatedPersonnel(d.data())).filter(Boolean);
+  // Never silently override or duplicate an original service+Discord ID.
+  const keys=new Set(base.data.map(p=>p.dept+':'+p.personId));
+  const extra=added.filter(p=>!keys.has(p.dept+':'+p.personId));
+  const combined=base.data.concat(extra);
+  return {...base,data:edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined};
 }
 app.get('/api/client-config',(_req,res)=>{
   const {FIREBASE_PROJECT_ID,FIREBASE_API_KEY,FIREBASE_AUTH_DOMAIN}=process.env;
