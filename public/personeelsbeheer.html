@@ -84,11 +84,11 @@ async function request(url,options={}){
 function option(value,label){const o=document.createElement('option');o.value=value;o.textContent=label;return o}
 function td(tr,text){const c=document.createElement('td');c.textContent=text;tr.append(c);return c}
 function inviteText(person){
-  return 'BelgiumPD personeelskoppeling\\n' +
-    'Naam: '+person.name+'\\n' +
-    'Hulpdienst: '+(departments[person.dept]||person.dept)+'\\n' +
-    'Interne referentie: '+person.internalId+'\\n' +
-    'Open: '+window.location.origin+'/personeel-koppelen.html\\n' +
+  return 'BelgiumPD personeelskoppeling\n' +
+    'Naam: '+person.name+'\n' +
+    'Hulpdienst: '+(departments[person.dept]||person.dept)+'\n' +
+    'Interne referentie: '+person.internalId+'\n' +
+    'Open: '+window.location.origin+'/personeel-koppelen.html\n' +
     'Meld je aan met je eigen Discord-account en vul de referentie in. '+
     'Een bevoegd kaderlid moet de koppeling nog goedkeuren. '+
     'Deel deze uitnodiging uitsluitend privé met de betrokken medewerker.';
