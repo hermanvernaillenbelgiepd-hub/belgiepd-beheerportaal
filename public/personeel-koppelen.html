@@ -14,6 +14,7 @@ small{display:block;color:#a5bad7}
 <main><h1>Koppel je Discord-account aan je personeelsfiche</h1>
 <p>Je hoeft hiervoor geen bestaand portaalaccount te hebben. Meld je aan via Discord en vul de <strong>interne referentie</strong> in die je van een bevoegd kaderlid hebt ontvangen.</p>
 <div id="message" class="notice" role="status" aria-live="polite">Discord-aanmelding controleren…</div>
+<p><a id="discordLogin" href="/auth/discord/start?return=%2Fpersoneel-koppelen.html" hidden>Discord-aanmelding starten of opnieuw verifiëren</a></p>
 <div class="card"><h2>Mijn koppelaanvraag</h2>
 <p>Je Discord-identiteit wordt via de bestaande BelgiumPD-login geverifieerd. De koppeling is pas definitief na controle door het bevoegde kader.</p>
 <form id="linkForm"><label for="reference">Interne personeelsreferentie</label>
@@ -21,11 +22,13 @@ small{display:block;color:#a5bad7}
 <button id="send" type="submit">Discord-koppeling aanvragen</button></form>
 <small>Een koppelaanvraag verleent nooit automatisch toegang tot dossiers of Discord-rollen.</small></div></main>
 <script type="module">
-let setupPortalLogin,auth,authModule;
+let setupPortalLogin,auth,authModule,discordReady=false;
 const $=id=>document.getElementById(id);
 function message(msg,error=false){$('message').textContent=msg;$('message').classList.toggle('error',error)}
 $('linkForm').onsubmit=async e=>{
-  e.preventDefault();if(!auth?.currentUser)return message('Meld je eerst aan met Discord.',true);
+  e.preventDefault();
+  if(!auth?.currentUser?.uid?.startsWith('discord:'))
+    return message('Deze koppeling vereist je eigen Discord-login, niet de Google-noodlogin.',true);
   const button=$('send');button.disabled=true;
   try{
     const token=await auth.currentUser.getIdToken();
@@ -46,10 +49,17 @@ async function start(){
     const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
     authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
     auth=authModule.getAuth(appModule.initializeApp(cfg.firebaseConfig));
+    discordReady=cfg.discordPortalLoginReady===true;
+    $('discordLogin').hidden=!discordReady;
     setupPortalLogin({button:$('login'),auth,authModule,config:cfg,onError:e=>message(e.message,true)});
-    authModule.onAuthStateChanged(auth,user=>message(user?
-      (user.uid.startsWith('discord:')?'Aangemeld met Discord. Je kunt de interne referentie invullen.':'Gebruik de Discord-aanmelding, niet Google.'):
-      'Meld je aan met Discord om je personeelsfiche te koppelen.',Boolean(user&&!user.uid.startsWith('discord:'))));
+    authModule.onAuthStateChanged(auth,user=>{
+      const confirmed=Boolean(user?.uid?.startsWith('discord:'));
+      $('send').disabled=!confirmed;
+      if(confirmed)message('Aangemeld met Discord. Vul nu de interne personeelsreferentie in.');
+      else if(!discordReady)message('Discord-login is op deze TESTSERVER nog niet ingesteld. De bestaande Google-login kan geen koppelaanvraag uitvoeren. Laat eerst de Discord OAuth-gegevens en testcallback configureren.',true);
+      else if(user)message('Je bent met Google aangemeld. Klik op “Discord-aanmelding starten” om je Discord-account te gebruiken.',true);
+      else message('Meld je aan via de link “Discord-aanmelding starten” om je eigen account te verifiëren.');
+    });
   }catch(e){message('Kan aanmelding niet laden: '+e.message,true)}
 }
 start();
