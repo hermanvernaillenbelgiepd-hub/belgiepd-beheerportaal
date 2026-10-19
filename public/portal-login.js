@@ -20,6 +20,16 @@ export function setupPortalLogin({button,auth,authModule,config,onError}){
       await google();
     }catch(e){notify(e)}
   };
+  let refresh;
+  if(discordReady){
+    refresh=document.createElement('button');
+    refresh.type='button';
+    refresh.textContent='Discord opnieuw verifiëren';
+    refresh.title='Vernieuw je Discord-serververificatie zonder eerst af te melden';
+    refresh.style.marginInlineStart='8px';
+    refresh.onclick=()=>location.assign('/auth/discord/start?return='+encodeURIComponent(location.pathname));
+    button.insertAdjacentElement('afterend',refresh);
+  }
   let fallback;
   if(discordReady){
     fallback=document.createElement('button');
@@ -34,6 +44,7 @@ export function setupPortalLogin({button,auth,authModule,config,onError}){
   authModule.onAuthStateChanged(auth,user=>{
     button.textContent=label(user);
     if(fallback)fallback.hidden=Boolean(user);
+    if(refresh)refresh.hidden=!(user && typeof user.uid==='string' && user.uid.startsWith('discord:'));
   });
   button.textContent=label(auth.currentUser);
 }
