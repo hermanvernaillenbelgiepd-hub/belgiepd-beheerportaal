@@ -1,0 +1,44 @@
+name: BelgiumPD Code Checks
+
+on:
+  push:
+    branches:
+      - main
+      - 'integratie/**'
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Node.js tests and syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Check core syntax
+        run: npm run check
+      - name: Check leave-module syntax
+        run: |
+          node --check src/leave-policy.js
+          node --check src/leave-routes.js
+          node --check tests/leave-policy.test.js
+      - name: Execute automated tests
+        run: npm test
