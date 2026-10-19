@@ -63,7 +63,8 @@ export function installUserRoutes(app,{requireUser,accessList}){
       const {id,member}=await discordSubject(req);
       const snap=await collection().doc(id).get();
       const d=snap.exists?snap.data():null;
-      return res.json({discordId:id,username:member.username||'',status:d?.status||'not_requested',
+      const legacy=!d && Object.values(accessList()).some(entry=>entry?.discordId===id);
+      return res.json({discordId:id,username:member.username||'',status:d?.status||(legacy?'legacy':'not_requested'),
         role:d?.status==='approved'?d.role:null});
     }catch(e){return fail(res,e)}
   });
