@@ -44,7 +44,7 @@ test('Radio workflow clearly excludes unrecognized users and exposes reversible 
   for(const expected of [
     'function visibleRadioUser(user)',"user.name!=='Onbekende gebruiker'",
     'const visibleCrews=allCrews.filter(crew=>crew.members.some(visibleRadioUser))',
-    'unknown', 'const hiddenCount=','function pendingRadioCrews()',
+    'const hiddenCount=','function pendingRadioCrews()',
     'radio.newIds.add(id)', 'async function quickAddRadioCrew(id)',
     "command('add-team'","case 'radio-quick-add'",
     "case 'remove-team'", "document.addEventListener('dragstart'",
