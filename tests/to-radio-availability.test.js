@@ -56,9 +56,9 @@ test('Starred duplicate members keep their radio identity but form one operation
   const service=createSonoranRadioService({
     env:{SONORAN_RADIO_API_KEY:'test-secret',SONORAN_RADIO_COMMUNITY_ID:'test-community'},
     fetchImpl:async()=>new Response(JSON.stringify({connectedUsers:[
-      {identity:'private-a',name:'SANTO-600* | Agent A',roomId:1},
-      {identity:'private-b',name:'SANTO-00600* (NB) | Agent B',roomId:2},
-      {identity:'private-c',name:'BWM-600 | Brandweer',roomId:3}
+      {identity:'private-a',name:'SANTO-600* | Agent A',roomId:1,metadata:{state:{primaryChId:10}}},
+      {identity:'private-b',name:'SANTO-00600* (NB) | Agent B',roomId:2,metadata:{state:{primaryChId:11}}},
+      {identity:'private-c',name:'BWM-600 | Brandweer',roomId:3,metadata:{state:{primaryChId:12}}}
     ]}),{status:200,headers:{'content-type':'application/json'}})
   });
   const payload=await service.read();
