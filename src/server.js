@@ -23,6 +23,8 @@ import {installBoardAppointmentRoutes} from './board-appointment-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
+import {installSpecializationRoutes} from './specialization-routes.js';
+import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
@@ -181,18 +183,21 @@ async function getSourceSnapshot(forceRefresh=false){
 async function getSnapshot({forceRefresh=false}={}){
   const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
-  const [created,edits]=await Promise.all([
+  const [created,edits,specialties]=await Promise.all([
     on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(500).get():null,
     process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'
-      ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null
+      ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null,
+    specialtyReadEnabled(process.env)
+      ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null
   ]);
-  if(created?.size===500||edits?.size===400)throw Error('Te veel personeelsrecords; migratiecontrole nodig');
+  if(created?.size===500||edits?.size===400||specialties?.size===600)throw Error('Te veel personeelsrecords; migratiecontrole nodig');
   const added=(created?.docs||[]).map(d=>asCreatedPersonnel(d.data())).filter(Boolean);
   // Never silently override or duplicate an original service+Discord ID.
   const keys=new Set(base.data.map(p=>p.dept+':'+p.personId));
   const extra=added.filter(p=>!keys.has(p.dept+':'+p.personId));
   const combined=base.data.concat(extra);
-  return {...base,data:edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined};
+  const personnel=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
+  return {...base,data:specialties?applySpecialtyOverlays(personnel,specialties.docs):personnel};
 }
 app.get('/api/client-config',(_req,res)=>{
   const {FIREBASE_PROJECT_ID,FIREBASE_API_KEY,FIREBASE_AUTH_DOMAIN}=process.env;
@@ -257,6 +262,7 @@ installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
 installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
+installSpecializationRoutes(app,{requireUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser,getSnapshot});
 app.get('/api/health',(_req,res)=>res.json({

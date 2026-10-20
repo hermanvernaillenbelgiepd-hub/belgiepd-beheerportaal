@@ -71,5 +71,45 @@
       seen.add(key);return true;
     }).slice(0,16).map(x=>({label:x.label,value:x.value,icon:specialtyIcon(x.label)}));
   }
-  root.BPDPersonnelVisuals=Object.freeze({rankInfo,specialtyBadges,specialtyIcon,qualification});
+  // Full administrative status strip: unlike the compact success-only icons,
+  // this ALWAYS includes Nee, Stage, Ja, Docent and unknown source values.
+  function specialtyStatuses(stored){
+    if(!Array.isArray(stored))return [];
+    const seen=new Set(),out=[];
+    for(const item of stored.slice(0,20)){
+      if(!item||typeof item.label!=='string')continue;
+      const label=item.label.trim().slice(0,64);
+      const key=label.toLocaleLowerCase('nl-BE');
+      if(!key||seen.has(key))continue;
+      seen.add(key);
+      const raw=typeof item.value==='string'?item.value.trim():'';
+      const lower=raw.toLocaleLowerCase('nl-BE');
+      const status=lower==='ja'?'Ja':lower==='nee'||lower==='neen'?'Nee':
+        lower==='stage'?'Stage':lower==='docent'?'Docent':
+        raw||'Niet ingevuld';
+      const style=status==='Ja'?'yes':status==='Nee'?'no':
+        status==='Stage'?'stage':status==='Docent'?'teacher':'unknown';
+      out.push({label,status,style,icon:specialtyIcon(label)});
+    }
+    return out;
+  }
+  // Display one status column per service-specific specialization.
+  // For combined services, the caller displays a compact summary instead.
+  const labelsByService=Object.freeze({
+    politie:['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE','SRT','DSU'],
+    ambulance:['Basis TR','Medicatie','HELI','Motor','MIP'],
+    brandweer:['Basis TR','Logistiek','Ladderwagen','Duiker','Signalisatie','RED team','Gevaarlijke stoffen','Grote Boot'],
+    depannage:['Opleiding DEP2K','Opleiding FAST']
+  });
+  function specialtyColumns(dept){
+    return labelsByService[dept]?[...labelsByService[dept]]:[];
+  }
+  function specialtyStateFor(person,label){
+    return specialtyStatuses(person?.specialties).find(x=>x.label===label)||
+      {label,status:'Niet ingevuld',style:'unknown',icon:specialtyIcon(label)};
+  }
+  root.BPDPersonnelVisuals=Object.freeze({
+    rankInfo,specialtyBadges,specialtyIcon,qualification,specialtyStatuses,
+    specialtyColumns,specialtyStateFor
+  });
 })(typeof window==='object'?window:globalThis);

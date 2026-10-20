@@ -64,31 +64,34 @@ test('Specializations pictograms show only positive roster values; status preser
   assert.equal(api.specialtyBadges([],null).length,0);
   assert.equal(api.specialtyBadges([], 'Geen geregistreerde specialisaties').length,0);
 });
-test('Both personnel tables use identical requested column order, safe grade image and icon helper',()=>{
+test('Both personnel tables retain identity columns and show per-service dynamic specialty headings',()=>{
   const dashboard=source('public/index.html');
   const manager=source('public/personeelsbeheer.html');
-  const header=['Roepnummer','Rangkenteken','Naam van rang','Naam personeelslid',
-    'Reeks','Status','Specialisaties'];
   for(const markup of [dashboard,manager]){
-    let last=-1;
-    for(const name of header){
-      const start=markup.indexOf('<th>'+name+'</th>');
-      assert.ok(start>=0,name);
-      assert.ok(start>last, 'Expected ordered column '+name);
-      last=start;
-    }
     assert.ok(markup.includes('<script src="/personnel-list-visuals.js"></script>'));
     assert.ok(markup.includes('BPDPersonnelVisuals.rankInfo('));
-    assert.ok(markup.includes('BPDPersonnelVisuals.specialtyBadges('));
-    assert.equal(markup.includes('roster-attribution'),false);
-    assert.equal(markup.includes('Specialisaties zijn geregistreerde brongegevens'),false);
+    assert.ok(markup.includes('BPDPersonnelVisuals.specialtyStateFor('));
+    assert.ok(markup.includes('BPDPersonnelVisuals.specialtyColumns('));
     assert.ok(markup.includes('href="/bronnen.html"'));
+    assert.equal(markup.includes('roster-attribution'),false);
   }
-  assert.ok(dashboard.includes('function personnelGradeHtml('));
+  for(const label of ['Roepnummer','Rangkenteken','Naam van rang',
+    'Naam personeelslid','Reeks','Status']){
+    assert.ok(dashboard.includes(label),label);
+    assert.ok(manager.includes(label),label);
+  }
+  assert.ok(dashboard.includes('specialty-column'));
+  assert.ok(dashboard.includes('specialty-value-cell'));
   assert.ok(dashboard.includes('function employeeTable('));
+  assert.ok(dashboard.includes('main portal')===false);
+  assert.ok(manager.includes('staffColumnHeaders'));
+  assert.ok(manager.includes('specialty-col-head'));
+  assert.ok(manager.includes('specialty-status-col'));
+  assert.ok(manager.includes('main{max-width:1900px'));
+  assert.ok(dashboard.includes('.content:has(.staff-roster)'));
+  assert.ok(manager.includes('specialtyEdit'));
   assert.ok(manager.includes('person.series||'));
   assert.ok(manager.includes('person.specialties'));
-  assert.ok(manager.includes('mark.textContent=item.icon'));
 });
 test('Visual roster credits live on a separate sources page',()=>{
   const page=source('public/bronnen.html');
