@@ -336,7 +336,7 @@ function teamCard(team,busy,editable){
   const status=nbOnRadio?pill('Niet beschikbaar · NB','red')+
     (busy.length?pill('Op '+incidentNumber(busy[0].nr),'amber'):''):
     busy.length?pill('Op '+incidentNumber(busy[0].nr)+(busy.length>1?' +'+(busy.length-1):''),'amber'):
-    team.available===false?pill('Niet beschikbaar','red'):pill('Beschikbaar','green');
+    team.available===false?pill('Niet beschikbaar','red'):phase?pill('In inzet','amber'):pill('Beschikbaar','green');
   const onRadio=radioMembers.length>0;
   const identity=teamVisual(team.dienst);
   const stateClass=nbOnRadio||team.available===false?'on-pause':busy.length||phase?'on-incident':'ready';
