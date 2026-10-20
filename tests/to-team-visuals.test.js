@@ -17,6 +17,7 @@ test('Recognizable brigade categories use stable category codes and different ac
   assert.equal(teamVisual('CANINE').serviceId,'politie');
   assert.equal(teamVisual('STAG').serviceId,'brandweer');
   assert.equal(teamVisual('STAGE').serviceId,'ambulance');
+  assert.equal(teamVisual('ZW').serviceId,'ambulance');
   assert.equal(teamVisual('BWM').serviceId,'brandweer');
   assert.equal(teamVisual('MUG').serviceId,'ambulance');
   for(const [label,code] of Object.entries({
