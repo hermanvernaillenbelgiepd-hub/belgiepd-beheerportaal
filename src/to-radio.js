@@ -11,9 +11,14 @@ const CONFIGURATION_MESSAGE='Sonoran Radio is nog niet ingesteld op de server.';
 const clean=value=>value.replace(/[\x00-\x1f\x7f]/g,' ').trim();
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const orderedCategories=[...TO_CATEGORIES].sort((left,right)=>right.length-left.length);
-// New Ambulancedienst labels can carry their number with a hyphen, space or
-// directly attached (AMB123). Other categories retain their existing grammar.
-const numberedMedicalLabels=new Set(['DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB']);
+// User-defined service prefixes may carry a one-to-five-digit number with a
+// hyphen, a space or no separator (BWV123, DEPK-45, AMB 620).
+// Named specialist LSRA and ZONE categories take precedence when they match.
+const compactNumberedLabels=new Set([
+  'DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB',
+  'BWM','BWV','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE',
+  'LSRA','DEPK'
+]);
 
 // A callsign is an operational label, never proof of a personnel identity.
 export function parseSonoranName(value){
@@ -25,15 +30,20 @@ export function parseSonoranName(value){
   const displayName=nameParts.join('|').trim().slice(0,160)||null;
   // Embedded digits belong to the label (e.g. LSRA-DEPA100), not an officer.
   if(TO_CATEGORIES.includes(upper))return {category:upper,number:null,displayName,importable:false};
-  const medical=orderedCategories.find(category=>numberedMedicalLabels.has(category)&&
+  const compact=orderedCategories.find(category=>compactNumberedLabels.has(category)&&
     upper.startsWith(category)&&/^(?:\s*-\s*|\s+)?\d{1,5}$/.test(head.slice(category.length)));
-  if(medical){
-    const number=head.slice(medical.length).replace(/^\s*-\s*/,'').trim();
-    return {category:medical,number,displayName,importable:Number(number)>0};
+  if(compact){
+    const number=head.slice(compact.length).replace(/^\s*-\s*/,'').trim();
+    return {category:compact,number,displayName,importable:Number(number)>0};
   }
   const known=orderedCategories.find(category=>upper.startsWith(category)&&/^\s*-\s*/.test(head.slice(category.length)));
   const parts=known?null:/^([A-Za-z][A-Za-z0-9_-]{0,29}?)\s*-\s*(.+)$/.exec(head);
-  if(!known&&!parts)return none;
+  // Recovery callsigns can have non-numeric specialist suffixes. Show all
+  // labels starting LSRA/DEPK under Depannage, but do not invent a number.
+  if(!known&&!parts){
+    const recovery=['LSRA','DEPK'].find(prefix=>upper.startsWith(prefix));
+    return recovery?{category:recovery,number:null,displayName,importable:false}:none;
+  }
   const category=known||parts[1].trim().toUpperCase();
   const number=known?head.slice(known.length).replace(/^\s*-\s*/,'').trim():parts[2].trim();
   const importable=TO_CATEGORIES.includes(category)&&/^\d{1,5}$/.test(number)&&Number(number)>0;
