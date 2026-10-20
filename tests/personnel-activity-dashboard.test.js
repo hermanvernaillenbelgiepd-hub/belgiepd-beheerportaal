@@ -74,14 +74,27 @@ test('Manual historic callsign is recorded at registration time, without claimin
 test('Historical callsign audit validates identity, old/current callsigns and detailed reason',()=>{
   const data={discordId:id,previousCall:'S302',expectedCurrentCall:'S485',
     reason:'Manueel bevestigd aan de hand van de officiële personeelslijst'};
-  assert.deepEqual(validateRetrospectiveCallChange(data),data);
+  assert.deepEqual(validateRetrospectiveCallChange(data),{
+    ...data,recordPromotion:false,expectedCurrentRank:null
+  });
+  assert.deepEqual(validateRetrospectiveCallChange({
+    ...data,previousCall:'SANTO-302',expectedCurrentCall:'485',
+    recordPromotion:true,expectedCurrentRank:'Inspecteur van politie'
+  }),{
+    ...data,previousCall:'SANTO-302',expectedCurrentCall:'485',
+    recordPromotion:true,expectedCurrentRank:'Inspecteur van politie'
+  });
   for(const bad of [
     {...data,discordId:'invalid'},
     {...data,previousCall:'S485'},
     {...data,previousCall:'S><'},
     {...data,expectedCurrentCall:'S485 ' ,reason:'te kort'},
     {...data,reason:'goed\\nkeuring'},
-    {...data,actorRole:'beheerder'}
+    {...data,actorRole:'beheerder'},
+    {...data,recordPromotion:'true'},
+    {...data,recordPromotion:true},
+    {...data,expectedCurrentRank:'Inspecteur van politie'},
+    {...data,recordPromotion:true,expectedCurrentRank:'<script>'}
   ])assert.throws(()=>validateRetrospectiveCallChange(bad));
 });
 test('Dashboard uses live event API instead of pretending last-connected staff are promotions',()=>{
@@ -101,6 +114,16 @@ test('Dashboard uses live event API instead of pretending last-connected staff a
   assert.ok(routes.includes("process.env.BPD_ENABLE_HISTORICAL_CALL_AUDIT_WRITES==='true'"));
   assert.ok(routes.includes("source:'retrospective_manual'"));
   assert.ok(routes.includes('actualChangeDate:null'));
+  const activityRoute=server.indexOf('installPersonnelActivityRoutes(app,{requireUser,getSnapshot})');
+  const generalEditRoute=server.indexOf('installPersonnelEditorRoutes(app,{requireUser,getSnapshot})');
+  assert.ok(activityRoute>=0&&generalEditRoute>activityRoute,
+    'Specific activity POST must be registered BEFORE generic personnel POST route');
+  assert.ok(routes.includes("type:'promotion'"));
+  assert.ok(routes.includes('entry.recordPromotion&&person.rank!==entry.expectedCurrentRank'));
+  assert.ok(routes.includes('store.runTransaction(async tx=>'));
+  assert.ok(dashboard.includes('id="historicalAlsoPromotion"'));
+  assert.ok(dashboard.includes('id="historicalCurrentRank"'));
+  assert.ok(dashboard.includes('recordPromotion,...(recordPromotion?{expectedCurrentRank:person.rank}:{})'));
   assert.ok(dashboard.includes('id="historicalCallForm"'));
   assert.ok(dashboard.includes('historicalCallRegistration()'));
   assert.ok(dashboard.includes('Geregistreerd: '));
