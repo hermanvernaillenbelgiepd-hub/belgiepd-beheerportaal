@@ -60,7 +60,7 @@ const empty=(title,text)=>`<div class="empty-state"><strong>${esc(title)}</stron
 const button=(text,action,{id='',teamId='',primary=false,danger=false,small=false,disabled=false,write=false}={})=>`<button type="button" class="button${primary?' button-primary':''}${danger?' button-danger':''}${small?' button-small':''}" data-action="${action}"${id?` data-id="${esc(id)}"`:''}${teamId?` data-team-id="${esc(teamId)}"`:''}${write?' data-write':''}${disabled?' disabled':''}>${esc(text)}</button>`;
 
 let auth=null,authEpoch=0;
-const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',showMoreIncidentPresets:false,archives:null,archive:null,lastSynced:null};
+const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',showMoreIncidentPresets:false,shortcuts:{revision:0,items:{}},shortcutsError:null,archives:null,archive:null,lastSynced:null};
 const radio={snapshot:null,loading:false,error:null,receivedAt:null,requestSerial:0,knownIds:null,newIds:new Set()};
 const INCIDENT_PRESETS=Object.freeze(['ANPR','AGRESSIE','VKO','BRAND','TAKELING','DIEFSTAL','VERDACHTE SITUATIE','MEDISCHE BIJSTAND']);
 const INCIDENT_EXTRA_PRESETS=Object.freeze(['OVERLAST','WONINGINBRAAK','VECHTPARTIJ','VERMIST PERSOON','ACHTERVOLGING','VERDACHT VOERTUIG','VERKEERSHINDER','BEROVING']);
@@ -135,6 +135,33 @@ async function request(path,options={}){
   if(!response.ok)throw Object.assign(new Error(payload.error||'Het dienstbord is momenteel niet beschikbaar.'),{status:response.status});
   return payload;
 }
+async function refreshShortcuts(){
+  if(!auth?.currentUser||!state.env)return;
+  try{
+    const response=await request('/api/to/incident-shortcuts');
+    if(!Number.isSafeInteger(response.revision)||!response.items||Array.isArray(response.items))throw new Error('Ongeldige sneltoetsrespons');
+    if(response.revision>=state.shortcuts.revision)state.shortcuts=response;
+    state.shortcutsError=null;
+  }catch(error){
+    if(error.obsolete)return;
+    state.shortcutsError='Opgeslagen sneltoetsen konden niet worden bijgewerkt.';
+  }
+}
+async function changeShortcut(action,data={}){
+  if(!canEdit())throw new Error('Alleen de huidige TO kan meldingssneltoetsen wijzigen.');
+  state.pending=true;updateButtons();
+  try{
+    const response=await request('/api/to/incident-shortcuts',{
+      method:'POST',body:JSON.stringify({action,expectedRevision:state.shortcuts.revision,...data})
+    });
+    if(!Number.isSafeInteger(response.revision)||!response.items)throw new Error('Ongeldige sneltoetsrespons');
+    state.shortcuts=response;state.shortcutsError=null;
+    render();
+  }catch(error){
+    if(error.status===409){await refreshShortcuts();render();throw new Error(error.message+' De actuele sneltoetsen zijn opnieuw opgehaald.');}
+    throw error;
+  }finally{state.pending=false;updateButtons();}
+}
 function acceptEnvelope(payload){
   if(!payload?.board||!Number.isSafeInteger(payload.board.revision)||payload.board.revision<0||!payload.permissions||!payload.viewer||!Array.isArray(payload.categories))throw new Error('Het dienstbord gaf een onvolledige respons.');
   if(state.env&&payload.board.revision<state.env.board.revision)return;
@@ -145,6 +172,7 @@ async function refresh({quiet=false}={}){
   const wasStale=state.stale;
   try{
     acceptEnvelope(await request('/api/to/board'));
+    await refreshShortcuts();
     if(state.view==='archives'&&!state.archive)await loadArchives();
     render();
     if(!quiet||wasStale)showReadiness();
@@ -152,7 +180,7 @@ async function refresh({quiet=false}={}){
   }catch(error){
     if(error.obsolete)return;
     state.stale=true;
-    if(error.status===401||error.status===403){state.env=null;state.archive=null;state.archives=null;clearRadio();closeDialog();}
+    if(error.status===401||error.status===403){state.env=null;state.archive=null;state.archives=null;state.shortcuts={revision:0,items:{}};state.shortcutsError=null;clearRadio();closeDialog();}
     render();tell(error.message+(state.env?' De getoonde gegevens kunnen verouderd zijn. Vernieuw het bord voordat je wijzigingen maakt.':''),state.env?'warning':'error');
   }
 }
