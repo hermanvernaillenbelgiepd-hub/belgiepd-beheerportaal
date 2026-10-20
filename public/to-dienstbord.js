@@ -21,7 +21,13 @@ const displayCategory=category=>category==='ZW'?'ZW · Ziekenwagen':category;
 // without an existing permanent personnel record.
 const temporaryPoliceCall=(category,number)=>serviceForCategory(category).id==='politie'&&
   typeof number==='string'&&/^\d{1,5}$/.test(number)&&
-  (number==='008'||Number(number)>=100&&Number(number)<=199);
+  (Number(number)>=100&&Number(number)<=199);
+// 008 is Belga's administrative callsign, not an aspirant or temporary unit.
+// This visual label NEVER grants privileges: the server checks the account role.
+const managementPoliceCall=(category,number)=>serviceForCategory(category).id==='politie'&&number==='008';
+const policeRoleBadge=(category,number)=>managementPoliceCall(category,number)
+  ?'<span class="management-call-badge" title="Belga · serverbestuurder (informatief, geen rechten)">BELGA · BEHEER</span>'
+  :temporaryPoliceCall(category,number)?'<span class="temporary-call-badge">TIJDELIJK</span>':'';
 const matches=(...values)=>!state.query||values.some(value=>normalize(value).includes(state.query));
 function matchesCategory(category){return state.category==='all'||state.category===category||state.category==='service:'+serviceForCategory(category).id;}
 function categoryRank(category){const rank=TO_CATEGORIES.indexOf(category);return rank<0?Number.MAX_SAFE_INTEGER:rank;}
@@ -211,7 +217,7 @@ function renderRadio(){
     const nbStatus=crew.radioUnavailable
       ?pill(fresh?'Niet beschikbaar · NB':'NB · laatste radiostand','red')
       :crew.paired?pill('Koppel','blue'):'';
-    const temporaryBadge=temporaryPoliceCall(crew.category,String(crew.number||''))?'<span class="temporary-call-badge">TIJDELIJK</span>':'';
+    const temporaryBadge=policeRoleBadge(crew.category,String(crew.number||''));
     const channels=[...new Set(members.map(user=>user.channel===null||user.channel===undefined||user.channel===''?'Zonder kanaal':'Kanaal '+String(user.channel)))];
     const memberNames=members.map(user=>esc(user.displayName||user.name||'Onbekend radiolabel'));
     const display=crew.paired&&recognized
@@ -298,7 +304,7 @@ function renderBoard(){
     const first=crew.members[0],identity=teamVisual(crew.category);
     const importable=canQuickAddRadioCrew(crew),newlyJoined=crew.members.some(user=>radio.newIds.has(user.id));
     const members=crew.members.map(user=>user.displayName).filter(Boolean).join(' & ');
-    const temporaryBadge=temporaryPoliceCall(crew.category,String(crew.number||''))?'<span class="temporary-call-badge">TIJDELIJK</span>':'';
+    const temporaryBadge=policeRoleBadge(crew.category,String(crew.number||''));
     return `<article class="pending-radio-card" data-service="${esc(identity.serviceId)}" style="--unit-hue:${identity.hue}"${importable&&editable?' draggable="true" data-radio-drag="'+esc(first.id)+'"':''}><div class="pending-radio-title">${unitBadge(crew.category,'unit-token-small')}<strong>${esc(crew.category)}-${esc(crew.number||'—')}${crew.paired?'*':''}</strong>${temporaryBadge}${newlyJoined?'<span class="radio-arrival-badge">NIEUW</span>':''}</div><small>${crew.category==='ZW'?'Ziekenwagen · ':''}${esc(members||'Naam controleren')}${crew.paired?' · 👥 koppel':''}</small><div class="pending-radio-foot">${crew.radioUnavailable?pill('NB','red'):pill('Via radio','green')}${importable&&state.env.permissions.canEdit?`<button type="button" class="button button-small radio-add" data-action="radio-quick-add" data-id="${esc(first.id)}" data-write${!editable?' disabled':''}>＋ Op bord</button>`:'<span class="radio-unrecognized">Controle nodig</span>'}</div></article>`;
   }).join('')}</div></section>`).join('')}</div></section>`:'';
   const teamMarkup=groupByTOService(selectedTeams,team=>team.dienst).map(service=>{
@@ -326,7 +332,7 @@ function teamCard(team,busy,editable){
   const onRadio=radioMembers.length>0;
   const identity=teamVisual(team.dienst);
   const stateClass=nbOnRadio||team.available===false?'on-pause':busy.length?'on-incident':'ready';
-  const temporaryBadge=temporaryPoliceCall(team.dienst,String(team.roepnaam))?'<span class="temporary-call-badge">TIJDELIJK</span>':'';
+  const temporaryBadge=policeRoleBadge(team.dienst,String(team.roepnaam));
   return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}${temporaryBadge}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(displayCategory(team.dienst))}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}${radioMembers.length?'<div class="crew-radio-label">◉ Radio: '+radioMembers.map(user=>esc(user.displayName||user.name||'Radiogebruiker')).join(' · ')+'</div>':''}</div></div><div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions"><button type="button" class="text-button" data-action="toggle-team" data-id="${esc(team.id)}" data-write${busy.length||nbOnRadio?' data-fixed-disabled="true"':''}${!editable||busy.length||nbOnRadio?' disabled':''}>${nbOnRadio?'NB via radio':team.available===false?'Beschikbaar':'Pauzeren'}</button><button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
 }
 function incidentCard(incident){
@@ -364,7 +370,7 @@ function startDialog(takeover=false){
   const label=linked?'Jouw geverifieerde roepnummer':'Jouw naam of tijdelijk roepnummer';
   const sourceNote=linked
     ?'<p class="form-note to-verified-call">✓ Gekoppeld aan jouw Discord-ID via '+(linkedSource==='geverifieerd_tijdelijk'?'een gecontroleerde tijdelijke roepnummeraanvraag':'de personeelslijst')+'. Je roepnummer wordt door de server vastgelegd.</p>'
-    :'<p class="form-note">Geen gekoppeld roepnummer gevonden. Je mag zelf een label invullen, bijvoorbeeld 008 of een tijdelijk nummer tussen 100 en 199. Dit wordt niet als een geverifieerde identiteit beschouwd.</p>';
+    :'<p class="form-note">Geen gekoppeld roepnummer gevonden. Je mag zelf een label invullen, bijvoorbeeld een tijdelijk nummer tussen 100 en 199. Dit wordt niet als een geverifieerde identiteit beschouwd.</p>';
   const intro=takeover
     ?'Je neemt het dienstbord over van '+esc(session?.to||'de huidige TO')+'. Deze overname blijft zichtbaar in de diensthistoriek.'
     :'Je wordt de TO van deze dienst. Collega’s met toegang kunnen het bord bekijken en de dienst later overnemen.';
