@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import {randomUUID} from 'node:crypto';
 import {emptyBoard} from '../src/to-board-policy.js';
-import {createFirestoreTOStore,installTOBoardRoutes,TO_BOARD_COLLECTION,TO_ARCHIVE_COLLECTION} from '../src/to-board-routes.js';
+import {createFirestoreTOStore,installTOBoardRoutes,TO_BOARD_COLLECTION,TO_ARCHIVE_COLLECTION,TO_SHORTCUT_COLLECTION} from '../src/to-board-routes.js';
 
 const actors={
   owner:{uid:'discord:111111111111111111',discordId:'111111111111111111',role:'middenkader',departments:['politie'],departmentRoles:{politie:'middenkader'}},
@@ -226,5 +226,40 @@ test('Archive lookups reject invalid IDs and withhold records from another depar
     assert.equal((await request('/api/to/archives/'+foreignId)).status,404);
     const {body}=await request('/api/to/archives');
     assert.deepEqual(body.archives,[]);
+  });
+});
+
+test('Shared incident shortcuts are visible after shift close and writable only by current TO',async()=>{
+  await appFixture(async({command,request,db})=>{
+    const url='/api/to/incident-shortcuts';
+    const empty=await request(url,{actor:'reader'});
+    assert.equal(empty.status,200);
+    assert.deepEqual(empty.body,{revision:0,items:{}});
+    assert.equal((await request(url,{actor:'foreign'})).status,403);
+    assert.equal((await request(url,{actor:null})).status,401);
+    assert.equal((await request(url,{method:'POST',body:{action:'add',expectedRevision:0,title:'ANPR'}})).status,403);
+    const started=await command({type:'start',displayName:'Hubert',expectedRevision:0});
+    assert.equal(started.status,200);
+    const body={action:'add',expectedRevision:0,title:'Verkeershinder',description:''};
+    assert.equal((await request(url,{actor:'reader',method:'POST',body})).status,403);
+    assert.equal((await request(url,{actor:'colleague',method:'POST',body})).status,403);
+    const saved=await request(url,{method:'POST',body});
+    assert.equal(saved.status,200);
+    assert.equal(saved.body.revision,1);
+    const shortcut=Object.values(saved.body.items)[0];
+    assert.equal(shortcut.title,'Verkeershinder');
+    assert.equal(Object.hasOwn(shortcut,'postcode'),false);
+    assert.equal(db.data(TO_BOARD_COLLECTION+'/politie').revision,1,'Saving a shortcut does not mutate the live board');
+    assert.equal(db.data(TO_SHORTCUT_COLLECTION+'/politie').revision,1);
+    assert.equal((await request(url,{method:'POST',body})).status,409,'Stale shortcut writes are refused');
+    assert.equal((await command({type:'close-session',expectedRevision:1})).status,200);
+    const after=await request(url,{actor:'reader'});
+    assert.equal(after.status,200);
+    assert.equal(after.body.items[shortcut.id].title,'Verkeershinder','Saved templates survive service close');
+    assert.equal((await request(url,{method:'POST',body:{action:'remove',expectedRevision:1,id:shortcut.id}})).status,403);
+    assert.equal((await command({type:'start',expectedRevision:2,displayName:'Next TO'})).status,200);
+    const removed=await request(url,{method:'POST',body:{action:'remove',expectedRevision:1,id:shortcut.id}});
+    assert.equal(removed.status,200);
+    assert.deepEqual(removed.body.items,{});
   });
 });
