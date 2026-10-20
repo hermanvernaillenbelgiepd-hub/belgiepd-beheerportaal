@@ -86,9 +86,21 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       if(!self&&(!cadre||!req.bpd.departments.includes(dept)))
         return res.status(403).json({error:'Geen toegang tot deze hulpdienst'});
       const snap=await db().collection(coll).where('personDiscordId','==',personId).limit(100).get();
-      const selected=snap.docs.filter(d=>d.get('status')==='approved'||(self&&d.get('status')==='pending'));
-      res.json({personDiscordId:personId,dept,leaves:selected.map(d=>({startDate:d.get('startDate'),
-        endDate:d.get('endDate'),days:d.get('days'),status:d.get('status')})),limited:snap.docs.length===100});
+      const grant=activeGrant(await grantFor(req.bpd.uid));
+      const selected=snap.docs.filter(d=>{
+        const record=d.data();
+        return Array.isArray(record.subjectDepartments)&&record.subjectDepartments.includes(dept)&&
+          (record.status==='approved'||(record.status==='pending'&&
+            (self||mayApproveLeave(req.bpd,record,grant))));
+      });
+      res.json({personDiscordId:personId,dept,
+        leaves:selected.map(d=>{
+          const record=d.data();
+          const canDecide=mayApproveLeave(req.bpd,record,grant);
+          return {id:d.id,startDate:record.startDate,endDate:record.endDate,
+            days:record.days,status:record.status,manual:record.manual===true,
+            canDecide:canDecide&&writes()};
+        }),limited:snap.docs.length===100});
     }catch(e){return jsonError(res,e)}
   });
   app.post('/api/leave/requests',requireUser,requireWrites,async(req,res)=>{
@@ -130,6 +142,44 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
           at:FieldValue.serverTimestamp(),note:note.trim(),days:calendarDays(d.startDate,d.endDate)});
       });
       return res.json({ok:true,status:decision});
+    }catch(e){return jsonError(res,e)}
+  });
+  // A cadre member records a manually approved leave in the EXISTING collection.
+  // Same permissions and maximum days as the existing approval workflow.
+  app.post('/api/leave/manual',requireUser,requireWrites,async(req,res)=>{
+    if(process.env.BPD_ENABLE_PERSONNEL_MANUAL_LEAVE!=='true')
+      return res.status(503).json({error:'Handmatige verlofregistratie staat nog niet open'});
+    const dept=String(req.body?.dept||''),personId=String(req.body?.discordId||'');
+    if(!validDiscordId(personId)||!['politie','ambulance','brandweer','depannage'].includes(dept))
+      return res.status(400).json({error:'Ongeldige dienst of personeelsreferentie'});
+    let details;
+    try{details=validateLeaveRequest(req.body)}
+    catch(e){return res.status(400).json({error:e.message})}
+    try{
+      const {snapshot}=await context(req);
+      const matched=snapshot.filter(p=>p.dept===dept&&p.personId===personId);
+      if(matched.length!==1)throw rejection('Geen eenduidige personeelsfiche gevonden',404);
+      const pending={personDiscordId:personId,subjectDepartments:[dept],status:'pending',
+        startDate:details.startDate,endDate:details.endDate};
+      const grant=activeGrant(await grantFor(req.bpd.uid));
+      if(!mayApproveLeave(req.bpd,pending,grant))
+        throw rejection('Je mag deze verlofperiode niet zelfstandig goedkeuren',403);
+      const id='manual_'+dept+'_'+personId+'_'+details.startDate+'_'+details.endDate;
+      const ref=db().collection(coll).doc(id);
+      await db().runTransaction(async tx=>{
+        const previous=await tx.get(ref);
+        if(previous.exists)throw rejection('Deze exacte verlofregistratie bestaat al',409);
+        tx.create(ref,{...details,manual:true,personDiscordId:personId,
+          subjectName:matched[0].name,subjectDepartments:[dept],
+          status:'approved',submittedByUid:req.bpd.uid,submittedByDiscordId:req.bpd.discordId,
+          decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
+          createdAt:FieldValue.serverTimestamp(),decidedAt:FieldValue.serverTimestamp(),
+          updatedAt:FieldValue.serverTimestamp()});
+        tx.create(ref.collection('audit').doc(),{action:'manual_approved',
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
+          note:details.note,days:details.days,at:FieldValue.serverTimestamp()});
+      });
+      return res.status(201).json({id,status:'approved',days:details.days,manual:true});
     }catch(e){return jsonError(res,e)}
   });
   app.get('/api/leave/grants',requireUser,async(req,res)=>{
