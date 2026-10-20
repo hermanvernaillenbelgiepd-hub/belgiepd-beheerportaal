@@ -170,7 +170,7 @@ function employeeTable(data,limit){
     '</tr></thead><tbody>'+ (rows||'<tr><td colspan="8">Geen resultaten.</td></tr>')+
     '</tbody></table></div><div class="roster-attribution">Rangkentekens lokale politie: '+
     '<a href="https://commons.wikimedia.org/wiki/Category:Police_rank_insignia_of_Belgium" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> (Politie123, CC BY-SA 4.0).'+
-    ' Specialisaties zijn geregistreerde brongegevens, geen automatisch toegekende Discord-rechten.</div>';
+    ' <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">Licentie</a>. Specialisaties zijn geregistreerde brongegevens, geen automatisch toegekende Discord-rechten.</div>';
 }
 function registrationShortcut(){return canOpenRegistrations()?`<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Observaties & sancties</div><div class="card-sub">Registraties, sancties en beveiligde personeelsdossiers</div></div><a class="btn btn-primary" style="text-decoration:none" href="/registraties.html">${icon('file')} Open registraties</a></div><div class="profile-note">Alleen toegankelijk voor middenkader, officierenkader en korpsleiding. Het basiskader dient observaties in via het afzonderlijke formulier.</div></div>`:''}
 function approvalWidget(){
