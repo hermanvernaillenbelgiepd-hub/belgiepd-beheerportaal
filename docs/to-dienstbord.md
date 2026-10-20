@@ -25,6 +25,14 @@ De radio- en ploegenlijsten zijn gegroepeerd onder Politie, Brandweer, Ambulance
 - Een handmatige, niet-geverifieerde TO-naam blijft mogelijk wanneer er geen betrouwbare koppeling bestaat, maar verandert nooit de eigenaar of de autorisatie van de dienst. De beveiligde operator-UID wordt afzonderlijk vastgelegd.
 - Dienst starten en dienst overnemen blijven expliciete acties. Het systeem neemt bestaande lopende diensten niet automatisch over bij aanmelding.
 
+## Compacte statusknoppen en eigen meldingssneltoetsen
+
+Elke opgeslagen ploeg toont afzonderlijke bedieningsknoppen: **↗ Onderweg**, **● Ter plaatse**, **Ⅱ Pauze / NB** en **✓ Beschikbaar**. Als de ploeg onderweg of ter plaatse is, verschijnt daarnaast **↺ Status wissen**. De hoofdkaart is niet langer zelf een klikvlak om onbedoelde statuswisselingen te voorkomen. De bestaande gekleurde ploegkaart en het blauw knipperende (onderweg) of vaste (ter plaatse) indicatielicht blijven behouden. Pauze kan alleen zonder actieve uitrukstatus of meldingskoppeling; de TO kan een uitrukstatus expliciet wissen en daarna beschikbaarheid aanpassen. **NB via Sonoran** blijft leidend en wordt niet overschreven door een klik op Beschikbaar.
+
+De knop **★ Titel als sneltoets opslaan** in het nieuwe/bewerkbare meldingsformulier en **★ Opslaan als sneltoets** bij een bestaande melding creëren een **gedeelde, permanente meldingssneltoets**. Enkel de titel wordt overgenomen; postcode en de beschrijving van een concrete oproep worden niet bewaard in het sjabloon. Daardoor komt geen incident-specifieke adres- of persoonsinformatie in de herbruikbare sneltoets terecht.
+
+Alle opgeslagen sneltoetsen verschijnen onder **★ Opgeslagen sneltoetsen**, ook na een dienstafsluiting of bij een nieuwe TO. Een klik opent een nieuwe melding met de titel vooraf ingevuld, maar zonder postcode of andere ingevulde incidentgegevens. De huidige TO kan een sneltoets verwijderen met de aparte **×**-knop en een bevestigingsvenster. De sneltoetsen worden afzonderlijk van het dienstarchief opgeslagen in Firestore onder `bpd_to_incident_shortcuts/politie` en kennen een maximum van **30 stuks**. Alleen de huidige bevoegde TO kan toevoegen of verwijderen; leesbevoegde collega's mogen ze wel bekijken. Dubbele titels, ongeldige waarden en conflicterende wijzigingen worden server-side geweigerd. Bestaande meldingen worden nooit veranderd door het verwijderen van een sneltoets.
+
 ## Uitrukstatus per ploeg: blauw licht en aankomst
 
 De bevoegde TO kan rechtstreeks op **de hoofdkaart van een opgeslagen ploeg** klikken:
