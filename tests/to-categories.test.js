@@ -6,7 +6,7 @@ import {TO_CATEGORIES as boardCategories} from '../src/to-board-policy.js';
 const expected={
   politie:['SANTO','BLAINE','WYCAN','FALCON','EAGLE','SIGMA','SIGNA','MARCAN','AIRCAN','CANINE','RAGO','MIKE','COMMAND'],
   brandweer:['BRANDWEER','BWM','BWV','BAMBU','BWAMBU','BW-AMBU','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE','STAG','ZONE-COMM','PLOEG1','PLOEG2','PLOEG3'],
-  ambulance:['STAGE','DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','AMBULANCE','AMBULANCE-MOTOR','PIT','MUG','MUGHELI','DIR-MED','SIT-TEAM'],
+  ambulance:['ZW','STAGE','DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','AMBULANCE','AMBULANCE-MOTOR','PIT','MUG','MUGHELI','DIR-MED','SIT-TEAM'],
   depannage:['LSRA','DEPK','LSRA-DEPA100','LSRA-DEPAK200','LSRA-F.A.S.T.','LSRA-ANWV'],
   overige:[]
 };
@@ -14,7 +14,7 @@ const expected={
 test('Every operational category belongs to exactly one ordered service shared with the backend',()=>{
   assert.deepEqual(TO_SERVICE_GROUPS.map(group=>group.id),Object.keys(expected));
   assert.deepEqual(TO_SERVICE_GROUPS.map(group=>group.label),['Politie','Brandweer','Ambulance','Depannage','Overige']);
-  assert.equal(TO_CATEGORIES.length,53);
+  assert.equal(TO_CATEGORIES.length,54);
   assert.equal(new Set(TO_CATEGORIES).size,TO_CATEGORIES.length);
   assert.strictEqual(boardCategories,TO_CATEGORIES);
   for(const group of TO_SERVICE_GROUPS){
@@ -35,6 +35,7 @@ test('SANTO and BWM resolve by exact category while lookalike and unknown labels
   assert.equal(serviceForCategory('HAMB123').id,'overige','Do not classify a whole numbered callsign as a permission');
   assert.equal(serviceForCategory('STAG').id,'brandweer');
   assert.equal(serviceForCategory('STAGE').id,'ambulance');
+  assert.equal(serviceForCategory('ZW').id,'ambulance');
   assert.equal(serviceForCategory('CANINE').id,'politie');
   assert.equal(serviceForCategory('PLOEG1').id,'brandweer');
   assert.equal(serviceForCategory('LSRA-DEPA100').id,'depannage');
