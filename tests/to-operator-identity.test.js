@@ -31,8 +31,8 @@ test('Verified temporary police callsign can fill the TO label while submitted c
   assert.deepEqual(callsignForTO(actor,[staff(actor.discordId,'930')],request),{call:'930',source:'personeelslijst'});
 });
 
-test('Temporary rosterless calls 008 and all 100–199 are valid operating labels, not permissions',()=>{
-  for(const value of ['008','100','110','150','195','199']){
+test('100–199 are temporary units while 008 remains a valid administrative callsign',()=>{
+  for(const value of ['100','110','150','195','199']){
     assert.equal(isTemporaryTOUnit(value),true,value);
     const radio=policeCall(value);
     assert.equal(radio.category,'SANTO');
@@ -40,6 +40,8 @@ test('Temporary rosterless calls 008 and all 100–199 are valid operating label
     assert.equal(radio.importable,true);
     assert.equal(validTOCall(value),true);
   }
+  assert.equal(isTemporaryTOUnit('008'),false,'008 belongs to Belga administration');
+  assert.equal(policeCall('008').importable,true,'008 remains a valid police radio unit');
   for(const bad of ['',null,'0','00000','200','0200','90000','100000','abc','-100'])
     assert.equal(isTemporaryTOUnit(bad),false,String(bad));
   assert.equal(temporaryTOCall('008'),false,'008 can be manually rostered but is not part of an officer-verified application range');
