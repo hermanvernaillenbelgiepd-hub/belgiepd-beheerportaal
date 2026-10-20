@@ -1,4 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {staffRoleDisplay} from './staff-role-display.js';
 import {
   STAFF_DOSSIER_COLLECTION,staffDossierEnabled,staffDossierWritesEnabled,
   staffDossierId,uniqueStaffSubject,canReadStaffDossier,canMaintainStaffDossier,
@@ -25,7 +26,8 @@ async function getSubject(req,getSnapshot){
 }
 function subjectDto(staff){
   return {dept:staff.dept,discordId:staff.personId,name:staff.name,
-    call:staff.call,rank:staff.rank,status:staff.status,source:staff.source||'google-sheets'};
+    call:staff.call,rank:staff.rank,status:staff.status,
+    rosterSeries:staff.series||null,source:staff.source||'google-sheets'};
 }
 export function installStaffDossierRoutes(app,{requireUser,getSnapshot}){
   app.get('/api/staff-dossiers/status',(_req,res)=>
@@ -36,15 +38,17 @@ export function installStaffDossierRoutes(app,{requireUser,getSnapshot}){
     try{
       const {staff,key}=await getSubject(req,getSnapshot);
       const ref=getFirestore().collection(STAFF_DOSSIER_COLLECTION).doc(key);
-      const [record,notes,changes]=await Promise.all([
+      const [record,notes,changes,member]=await Promise.all([
         ref.get(),ref.collection('entries').orderBy('createdAt','desc').limit(60).get(),
-        ref.collection('audit').orderBy('at','desc').limit(40).get()
+        ref.collection('audit').orderBy('at','desc').limit(40).get(),
+        getFirestore().collection('bpd_discord_auth').doc(staff.personId).get()
       ]);
       const dto=notes.docs.map(doc=>publicStaffNote(doc.data(),doc.id)).filter(Boolean);
       return res.json({
         readOnly:!staffDossierWritesEnabled(process.env),
         canMaintain:staffDossierWritesEnabled(process.env)&&canMaintainStaffDossier(req.bpd,staff),
         subject:subjectDto(staff),
+        discordRoles:staffRoleDisplay(member.data(),staff.dept,process.env.DISCORD_GUILD_ID),
         profile:normalizeStaffProfile(record.data()?.profile),
         revision:Number.isSafeInteger(record.get('revision'))?record.get('revision'):0,
         notes:dto,notesLimited:notes.size===60,
