@@ -10,6 +10,8 @@ import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
   STANDARD_ENTRY_RANK,validateNewPersonnel,uniqueNewPerson,
   visiblePendingPersonnel} from './personnel-create.js';
 
+import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
+
 const error=(res,status,message)=>res.status(status).json({error:message});
 const asTime=x=>x?.toDate?.().toISOString?.()||null;
 function safeResponse(res,e){
@@ -320,6 +322,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
           at:FieldValue.serverTimestamp()
         });
+        tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+          type:'promotion',dept,discordId,
+          name:String(data.name||'Personeelslid').slice(0,120),
+          before:data.rank,after:proposal.newRank,
+          at:FieldValue.serverTimestamp()
+        });
       });
       return res.json({promoted:true,dept,discordId,newRank:proposal.newRank,
         rolesGranted:false,sourceSheetsChanged:false});
@@ -365,6 +373,13 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
         tx.create(audit,{previous,next,revision:revision+1,reason:proposed.reason,
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
           at:FieldValue.serverTimestamp()});
+        if(oldCall!==proposed.call){
+          tx.create(getFirestore().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+            type:'callsign_changed',dept:subject.dept,discordId:subject.personId,
+            name:proposed.name,before:oldCall,after:proposed.call,
+            at:FieldValue.serverTimestamp()
+          });
+        }
       });
       return res.json({ok:true,status:'saved',active:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'});
     }catch(e){return safeResponse(res,e)}
