@@ -43,6 +43,30 @@ table{min-width:1110px}
 .specialty-unknown{background:#35435c;color:#d0daf0}
 #specialtyEdit{margin-top:14px;border-top:1px solid #354c6c;padding-top:12px}
 #specialtyAuditPanel{margin:14px 0}#specialtyAuditPanel summary{cursor:pointer;font-weight:700}
+
+/* Desktop roster uses the complete browser width, with real specialization columns. */
+main{max-width:1900px;padding-inline:clamp(10px,1.3vw,24px)}
+header{padding-inline:clamp(15px,2vw,34px)}
+.staff-roster-holder{overflow-x:visible}
+.staff-roster-table{table-layout:fixed;width:100%;min-width:0}
+.staff-roster-table th,.staff-roster-table td{padding:9px 3px;font-size:clamp(9px,.75vw,12px);overflow-wrap:anywhere}
+.staff-roster-table th:nth-child(1){width:6%}
+.staff-roster-table th:nth-child(2){width:6%}
+.staff-roster-table th:nth-child(3){width:10%}
+.staff-roster-table th:nth-child(4){width:11%}
+.staff-roster-table th:nth-child(5){width:6%}
+.staff-roster-table th:nth-child(6){width:7%}
+.staff-roster-table th:last-child{width:4.8%}
+.staff-roster-table .rank-insignia{max-width:100%;width:60px;height:30px}
+.specialty-col-head{text-align:center;vertical-align:middle;letter-spacing:0!important}
+.specialty-col-icon{display:block;font-size:17px;line-height:1.4}
+.specialty-col-label{display:block;font-size:clamp(8px,.67vw,10px);text-transform:none;line-height:1.1}
+.specialty-status-col{text-align:center}
+.specialty-status-col .specialty-state{font-size:clamp(8px,.68vw,11px);padding:3px 4px}
+.staff-roster-table .pill{padding:3px 5px;font-size:10px;white-space:normal}
+.staff-roster-table .roster-open{padding:5px;font-size:10px}
+.specialty-summary{display:flex;flex-wrap:wrap;gap:3px}
+@media(max-width:920px){.staff-roster-holder{overflow-x:auto}.staff-roster-table{min-width:1000px}}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
@@ -60,7 +84,7 @@ Een bevoegd beheerder kan de aanvraag daarna in deze omgeving beoordelen.</p>
 <section class="card"><div class="controls" style="justify-content:space-between"><h2>Personeelslijst</h2><div class="controls"><button id="newBtn" type="button" hidden>Nieuw personeelslid</button><button class="alt" id="reload" type="button">Vernieuwen</button></div></div>
 <div class="grid"><div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div><div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div></div>
 <p class="subtle"><span id="count">Nog geen personeelsgegevens geladen.</span></p>
-<div class="scroller"><table><thead><tr><th>Roepnummer</th><th>Rangkenteken</th><th>Naam van rang</th><th>Naam personeelslid</th><th>Reeks</th><th>Status</th><th>Specialisaties</th><th></th></tr></thead><tbody id="results"></tbody></table></div>
+<div class="scroller staff-roster-holder"><table class="staff-roster-table"><thead id="staffColumnHeaders"></thead><tbody id="results"></tbody></table></div>
 
 </section>
 <section id="pendingPanel" class="card" hidden>
@@ -308,49 +332,74 @@ function renderPending(){
 function render(){
   const q=$('search').value.trim().toLowerCase(),dept=$('dept').value;
   const matches=people.filter(x=>(dept==='all'||dept===x.dept)&&
-    [x.name,x.call,x.discordId,x.rank,x.series,...(x.specialties||[]).map(t=>t.label)].some(v=>String(v||'').toLowerCase().includes(q)));
+    [x.name,x.call,x.discordId,x.rank,x.series,...(x.specialties||[]).map(t=>t.label)]
+      .some(v=>String(v||'').toLowerCase().includes(q)));
   $('count').textContent=matches.length+' fiche(s) zichtbaar';
+  const cols=BPDPersonnelVisuals.specialtyColumns(dept);
+  const head=$('staffColumnHeaders');head.replaceChildren();
+  const line=document.createElement('tr');
+  for(const title of ['Roepnummer','Rangkenteken','Naam van rang','Personeelslid','Reeks','Status']){
+    const th=document.createElement('th');th.textContent=title;line.append(th);
+  }
+  if(!cols.length){const th=document.createElement('th');th.textContent='Specialisaties';line.append(th)}
+  for(const label of cols){
+    const th=document.createElement('th');th.className='specialty-col-head';th.title=label;
+    const pict=document.createElement('span');pict.className='specialty-col-icon';
+    pict.textContent=BPDPersonnelVisuals.specialtyIcon(label);pict.setAttribute('aria-hidden','true');
+    const name=document.createElement('span');name.className='specialty-col-label';name.textContent=label;
+    th.append(pict,name);line.append(th);
+  }
+  const last=document.createElement('th');last.textContent='Fiche';line.append(last);head.append(line);
   const body=$('results');body.replaceChildren();
-  if(!matches.length){const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');c.colSpan=8;body.append(tr);return}
+  if(!matches.length){
+    const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');
+    c.colSpan=7+cols.length;body.append(tr);return;
+  }
   for(const person of matches){
     const tr=document.createElement('tr');
     const grade=BPDPersonnelVisuals.rankInfo(person.rank,person.dept);
     td(tr,person.call||'—');
-    const rankCell=document.createElement('td');
+    const badgeCol=document.createElement('td');
     if(grade.image){
       const img=document.createElement('img');img.className='rank-insignia';
       img.src=grade.image;img.alt='Graadkenteken '+grade.label;
       img.title=grade.label;img.loading='lazy';img.referrerPolicy='no-referrer';
-      rankCell.append(img);
-    }else{rankCell.textContent='—';rankCell.className='subtle'}
-    tr.append(rankCell);
+      badgeCol.append(img);
+    }else badgeCol.textContent='—';
+    tr.append(badgeCol);
     td(tr,grade.label);
-    const nameCell=document.createElement('td');
+    const nameCol=document.createElement('td');
     const name=document.createElement('strong');name.textContent=person.name;
-    const deptText=document.createElement('small');deptText.className='roster-dept';
-    deptText.textContent=departments[person.dept]||person.dept;
-    nameCell.append(name,deptText);tr.append(nameCell);
-    td(tr,person.series||'Niet ingevuld');
-    const statusCell=document.createElement('td');
-    const status=document.createElement('span');status.className='pill';
-    status.textContent=person.status||'Onbekend';statusCell.append(status);tr.append(statusCell);
-    const iconsCell=document.createElement('td');iconsCell.className='roster-specialties';
-    const strip=document.createElement('div');strip.className='specialty-strip';
-    const specialties=BPDPersonnelVisuals.specialtyStatuses(person.specialties);
-    if(!specialties.length)iconsCell.textContent='Niet ingevuld';
-    for(const item of specialties){
-      const mark=document.createElement('span');mark.className='specialty-tile';
-      mark.title=item.label+' · '+item.status;
-      const ic=document.createElement('span');ic.textContent=item.icon;ic.setAttribute('aria-hidden','true');
-      const label=document.createElement('span');label.textContent=item.label;
-      const status=document.createElement('span');
-      status.className='specialty-state specialty-'+item.style;status.textContent=item.status;
-      mark.append(ic,label,status);strip.append(mark);
+    const source=document.createElement('small');source.className='roster-dept';
+    source.textContent=departments[person.dept]||person.dept;
+    nameCol.append(name,source);tr.append(nameCol);
+    td(tr,person.series||'—');
+    const personStatus=document.createElement('td'),label=document.createElement('span');
+    label.className='pill';label.textContent=person.status||'Onbekend';
+    personStatus.append(label);tr.append(personStatus);
+    if(!cols.length){
+      const general=document.createElement('td');general.className='roster-specialties';
+      const wrap=document.createElement('div');wrap.className='specialty-summary';
+      for(const item of BPDPersonnelVisuals.specialtyStatuses(person.specialties)){
+        const chip=document.createElement('span');chip.className='specialty-state specialty-'+item.style;
+        chip.title=item.label+' · '+item.status;
+        chip.textContent=item.icon+' '+item.label+': '+item.status;wrap.append(chip);
+      }
+      general.append(wrap);tr.append(general);
     }
-    iconsCell.append(strip);tr.append(iconsCell);
-    const action=document.createElement('button');action.type='button';action.textContent='Open fiche';action.className='alt';
+    for(const specialty of cols){
+      const status=BPDPersonnelVisuals.specialtyStateFor(person,specialty);
+      const cell=document.createElement('td');cell.className='specialty-status-col';
+      const chip=document.createElement('span');chip.className='specialty-state specialty-'+status.style;
+      chip.textContent=status.status==='Niet ingevuld'?'—':status.status;
+      chip.title=specialty+' · '+status.status;
+      cell.append(chip);tr.append(cell);
+    }
+    const action=document.createElement('button');action.type='button';
+    action.className='alt roster-open';action.textContent='Open';action.title='Open personeelsfiche van '+person.name;
     action.onclick=()=>showPerson(person);
-    const cell=document.createElement('td');cell.append(action);tr.append(cell);body.append(tr);
+    const cell=document.createElement('td');cell.append(action);tr.append(cell);
+    body.append(tr);
   }
 }
 async function checkAccessStatus(){
@@ -382,8 +431,12 @@ async function load(){
     createRanks=data.createEnabled?data.createRanks||{}:{};
     $('newBtn').hidden=!Object.keys(createRanks).length;
     if($('newPanel').hidden===false&&!Object.keys(createRanks).length)$('newPanel').hidden=true;
+    const prevDept=$('dept').value;
     $('dept').replaceChildren(option('all','Alle toegelaten diensten'));
     (data.departments||[]).forEach(d=>$('dept').append(option(d,departments[d]||d)));
+    const defaultDept=(data.departments||[]).includes('politie')?'politie':(data.departments||[])[0]||'all';
+    $('dept').value=prevDept&&prevDept!=='all'&&(data.departments||[]).includes(prevDept)
+      ?prevDept:defaultDept;
     $('mode').hidden=false;
     $('mode').textContent=createEnabled&&!writesEnabled?'Nieuwe personeelsfiches en Discord-koppelingen zijn beschikbaar. Bestaande bronfiches blijven alleen-lezen en Google Sheets worden niet aangepast.':!writesEnabled?'Voorbereidingsmodus: bestaande personeelswijzigingen zijn uitgeschakeld; Google Sheets blijven ongewijzigd.':
       data.overridesActive?'Firestore-wijzigingen zijn actief in de personeelsweergaven. Google Sheets blijven als terugvalbron behouden.':
