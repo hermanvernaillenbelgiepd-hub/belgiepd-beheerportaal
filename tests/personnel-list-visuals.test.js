@@ -80,13 +80,22 @@ test('Both personnel tables use identical requested column order, safe grade ima
     assert.ok(markup.includes('<script src="/personnel-list-visuals.js"></script>'));
     assert.ok(markup.includes('BPDPersonnelVisuals.rankInfo('));
     assert.ok(markup.includes('BPDPersonnelVisuals.specialtyBadges('));
-    assert.ok(markup.includes('Politie123, CC BY-SA 4.0'));
+    assert.equal(markup.includes('roster-attribution'),false);
+    assert.equal(markup.includes('Specialisaties zijn geregistreerde brongegevens'),false);
+    assert.ok(markup.includes('href="/bronnen.html"'));
   }
   assert.ok(dashboard.includes('function personnelGradeHtml('));
   assert.ok(dashboard.includes('function employeeTable('));
   assert.ok(manager.includes('person.series||'));
   assert.ok(manager.includes('person.specialties'));
   assert.ok(manager.includes('mark.textContent=item.icon'));
+});
+test('Visual roster credits live on a separate sources page',()=>{
+  const page=source('public/bronnen.html');
+  assert.ok(page.includes('Politie123'));
+  assert.ok(page.includes('CC BY-SA 4.0'));
+  assert.ok(page.includes('https://creativecommons.org/licenses/by-sa/4.0/'));
+  assert.ok(page.includes('Wikimedia Commons'));
 });
 test('Personnel overview returns bounded, authorized specialties without copying roles into grants',()=>{
   const api=source('src/personnel-editor-routes.js');
