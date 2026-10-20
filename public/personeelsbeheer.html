@@ -33,10 +33,8 @@ table{min-width:1110px}
 .roster-dept{display:block;font-size:11px;color:#9eb0ca;margin-top:3px}
 .roster-specialties{min-width:138px;max-width:260px}
 .specialty-pictogram{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:17px;margin:2px;border:1px solid #486585;background:#1a3556;border-radius:7px;cursor:help}
-.roster-attribution{font-size:11px;color:#98b0ce;line-height:1.5;margin:12px 0 0}
-.roster-attribution a{color:#c5d9ff;text-decoration:underline}
 </style></head>
-<body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><button id="login" type="button">Aanmelden</button></nav></header>
+<body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
 <section id="accessHelp" class="card" hidden>
@@ -53,7 +51,7 @@ Een bevoegd beheerder kan de aanvraag daarna in deze omgeving beoordelen.</p>
 <div class="grid"><div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div><div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div></div>
 <p class="subtle"><span id="count">Nog geen personeelsgegevens geladen.</span></p>
 <div class="scroller"><table><thead><tr><th>Roepnummer</th><th>Rangkenteken</th><th>Naam van rang</th><th>Naam personeelslid</th><th>Reeks</th><th>Status</th><th>Specialisaties</th><th></th></tr></thead><tbody id="results"></tbody></table></div>
-<p class="roster-attribution">Belgische graadkentekens lokale politie via <a href="https://commons.wikimedia.org/wiki/Category:Police_rank_insignia_of_Belgium" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> (Politie123, CC BY-SA 4.0, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">licentie</a>). De specialisatiepictogrammen volgen de geregistreerde personeelsbron; ze wijzigen geen Discord-rollen.</p>
+
 </section>
 <section id="pendingPanel" class="card" hidden>
 <h2>Wacht op Discord-koppeling</h2><p id="pendingSummary" class="subtle"></p>
