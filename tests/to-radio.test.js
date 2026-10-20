@@ -95,6 +95,11 @@ test('Brandweer and Depannage prefixes resolve in Sonoran without changing polic
     assert.equal(parsed.importable,false,raw);
     assert.equal(parsed.number,null,raw);
   }
+  for(const callsign of ['DEPKTAKEL-620','LSRASPECIAL-007']){
+    const parsed=parseSonoranName(callsign+' | Chauffeur');
+    assert.equal(parsed.category,callsign.startsWith('LSRA')?'LSRA':'DEPK');
+    assert.equal(parsed.importable,false,'Unlisted specialist labels must not be auto-imported');
+  }
   assert.equal(parseSonoranName('ZONE-COMM - 620').category,'ZONE-COMM');
   assert.equal(parseSonoranName('LSRA-F.A.S.T. - 620').category,'LSRA-F.A.S.T.');
   for(const invalid of ['BWMW-620','BWM-EXTRA-620','KAPITEIN-620','ZONERAND-620'])
