@@ -22,6 +22,13 @@ De radio- en ploegenlijsten zijn gegroepeerd onder Politie, Brandweer, Ambulance
 - Ploegkaarten gebruiken een groene achtergrond voor beschikbaar, oranje voor op melding en rood voor niet beschikbaar, met bijbehorende tekstlabels.
 - Een nieuwe melding kan starten met de snelle knoppen **ANPR**, **AGRESSIE**, **VKO**, **BRAND**, **TAKELING**, **DIEFSTAL**, **VERDACHTE SITUATIE** en **MEDISCHE BIJSTAND**. Die vullen alleen de titel vooraf in: postcode en omschrijving worden vóór opslaan gecontroleerd.
 
+## Alleen radiogebruikers die werkelijk in een kanaal zitten
+- Sonoran `connectedUsers` omvat ook aangemelde gebruikers die nog niet op een zend- of scankanaal zitten. Het TO-dienstbord verwerkt vanaf deze versie **alleen** gebruikers met minimaal één geldige kanaal-ID uit `metadata.state.primaryChId` of `metadata.state.scannedChIds` (en `primaryChIds` indien aanwezig).
+- `roomId` identificeert een Sonoran multi-server kamer en **mag niet als kanaal-ID worden getoond of meegeteld**.
+- Radiogebruikers zonder actieve kanaaltoewijzing verdwijnen uit de operationele lijst, de nieuwe-aansluitingenlijst en de extra radioploegtelling. Het aantal alleen verbonden gebruikers is afzonderlijk zichtbaar.
+- De server geeft uitsluitend geschoonde, in een kanaal actieve gebruikers terug. Een radiogebruiker die het kanaal verlaat, wordt niet automatisch uit een reeds handmatig opgeslagen TO-ploeg verwijderd; de TO beslist zelf over het beëindigen van de dienst.
+- Bij ontbrekende kanaalmetadata wordt niemand ten onrechte als actieve radioploeg aangenomen; controleer in dat geval of Sonoran de verwachte metadata doorstuurt.
+
 ## Radio-calltekens NB en koppeldienst (*)
 
 - De aanduiding `NB` of `(NB)` als los element (hoofdletterongevoelig) in **om het even welk deel van de radiocall** betekent **Niet beschikbaar**. Dit is een afgeleide operationele radiostatus; geen Firestore- of Discordwijziging.
