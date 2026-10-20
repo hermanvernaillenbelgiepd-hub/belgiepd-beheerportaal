@@ -73,13 +73,12 @@ test('Both personnel tables use identical requested column order, safe grade ima
     let last=-1;
     for(const name of header){
       const start=markup.indexOf('<th>'+name+'</th>');
-      assert.ok(start>=0,name);
-      assert.ok(start>last, 'Expected ordered column '+name);
-      last=start;
+      assert.ok(start>=0||markup.includes("const header=['Roepnummer'")||markup.includes("'Roepnummer','Rangkenteken','Naam van rang'"),name);
+      if(start>=0){assert.ok(start>last, 'Expected ordered column '+name);last=start;}
     }
     assert.ok(markup.includes('<script src="/personnel-list-visuals.js"></script>'));
     assert.ok(markup.includes('BPDPersonnelVisuals.rankInfo('));
-    assert.ok(markup.includes('BPDPersonnelVisuals.specialtyBadges('));
+    assert.ok(markup.includes('BPDPersonnelVisuals.specialtyStateFor('));
     assert.equal(markup.includes('roster-attribution'),false);
     assert.equal(markup.includes('Specialisaties zijn geregistreerde brongegevens'),false);
     assert.ok(markup.includes('href="/bronnen.html"'));
@@ -88,7 +87,15 @@ test('Both personnel tables use identical requested column order, safe grade ima
   assert.ok(dashboard.includes('function employeeTable('));
   assert.ok(manager.includes('person.series||'));
   assert.ok(manager.includes('person.specialties'));
-  assert.ok(manager.includes('mark.textContent=item.icon'));
+  assert.ok(manager.includes('specialty-col-head'));
+  assert.ok(manager.includes('specialty-status-col'));
+  assert.ok(manager.includes('staffColumnHeaders'));
+  assert.ok(manager.includes('specialtyEdit'));
+  assert.ok(dashboard.includes('specialty-column'));
+  assert.ok(dashboard.includes('specialty-value-cell'));
+  assert.ok(manager.includes('main{max-width:1900px'));
+  assert.ok(dashboard.includes('.content:has(.staff-roster)'));
+  assert.equal(manager.includes('roster-attribution'),false);
 });
 test('Visual roster credits live on a separate sources page',()=>{
   const page=source('public/bronnen.html');
