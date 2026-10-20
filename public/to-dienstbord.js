@@ -445,7 +445,7 @@ document.addEventListener('click',async event=>{
       case 'radio-refresh':await refreshRadio();break;
       case 'radio-quick-add':await quickAddRadioCrew(id);break;
       case 'incident-template':if(canEdit()&&[...INCIDENT_PRESETS,...INCIDENT_EXTRA_PRESETS].includes(target.dataset.template))incidentForm('',target.dataset.template);break;
-      case 'incident-presets-toggle':state.showMoreIncidentPresets=!state.showMoreIncidentPresets;renderBoardOnly();break;
+      case 'incident-presets-toggle':state.showMoreIncidentPresets=!state.showMoreIncidentPresets;render();break;
       case 'radio-add-team':{
         if(!canEdit()||!radioFresh())break;
         const user=radio.snapshot.users.find(item=>String(item.id)===id);
