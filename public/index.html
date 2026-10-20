@@ -29,6 +29,16 @@
 .profile-subheading{font-size:13px;font-weight:790;margin:22px 0 9px;color:#25334c}
 .profile-timestamp{font-size:10px;color:#8a99ae;margin-top:6px}
 @media(max-width:570px){.profile-meta{grid-template-columns:1fr 1fr}.profile-tab{padding:8px}.drawer{padding:19px}}
+.staff-roster{min-width:1060px}.staff-roster thead th{padding:11px 12px}
+.staff-roster tbody td{padding:10px 12px;vertical-align:middle}
+.rank-insignia{display:block;width:82px;height:36px;object-fit:contain;object-position:left center}
+.rank-unknown,.no-specialty{color:#99a5b7;font-size:12px}
+.rank-name{white-space:normal;min-width:134px;font-weight:650;color:#20304d!important}
+.roster-dept{display:block;margin-top:3px;color:#8a97aa;font-size:10px;font-weight:500}
+.specialty-icons{display:flex;flex-wrap:wrap;gap:4px;min-width:96px;max-width:240px}
+.specialty-pictogram{display:inline-flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:7px;border:1px solid #dce5f4;background:#eef4ff;font-size:17px;cursor:help}
+.roster-attribution{font-size:10px;color:#77869e;padding:8px 18px 13px;line-height:1.4}
+.roster-attribution a{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -73,6 +83,7 @@
  <div class="top-right"><span class="top-tag" id="sourceBadge">DEMO-MODUS</span><a class="btn btn-quiet" href="/verlofbeheer.html" title="Verlof aanvragen en beheren">Verlofbeheer</a><a class="btn btn-quiet" href="/rollen-opleidingen.html" title="Discord-rollen, opleidingsdossiers en machtigingen">Rollen & opleidingen</a><a class="btn btn-quiet" href="/personeelsbeheer.html" title="Personeelsfiches en gecontroleerde wijzigingen">Personeelsfiches</a><a class="btn btn-quiet" href="/dossiercentrum.html" title="Beveiligd dossieroverzicht">Dossiercentrum</a><a class="btn btn-quiet" href="/gebruikersbeheer.html" title="Discord-toegangsaanvragen en personeelsrechten">Gebruikersbeheer</a><a class="btn btn-quiet" href="/discord-status.html" title="Discord-identiteit testen zonder dossierrechten">Discord-test</a><button id="authBtn" class="btn btn-quiet" type="button" title="Beveiligd aanmelden met Google">Google aanmelden</button><button class="notification-trigger" id="topNotifications" title="Meldingen"><svg><use href="#i-bell"/></svg></button><div class="top-avatar">BP</div></div>
 </header><div class="content" id="content"></div></main></div>
 <div id="layer"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/personnel-list-visuals.js"></script>
 <script>
 (() => {
 'use strict';
@@ -123,7 +134,44 @@ const personnel=()=>employees.filter(x=>(deptFilter==='all'||x.dept===deptFilter
 function toast(text){const el=document.getElementById('toast');el.textContent=text;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),4200)}
 function renderNav(){document.getElementById('navMain').innerHTML=nav1.map(([id,ic,t])=>`<button class="nav-btn ${id===page?'active':''}" data-page="${id}">${icon(ic)} ${t}</button>`).join('');document.getElementById('navAdmin').innerHTML=nav2.map(([id,ic,t])=>`<button class="nav-btn ${id===page?'active':''}" data-page="${id}">${icon(ic)} ${t}${id==='meldingen'&&!liveMode?`<span class="count">${messages.filter(x=>!x.seen).length}</span>`:''}</button>`).join('')}
 function chart(){if(liveMode) return '<div class="info-box">Historische activiteitsgrafieken komen na opslag van meerdere meetmomenten. We tonen geen fictieve daggrafiek naast echte gegevens.</div>';let vals=[17,29,23,45,36,60,43,57,65,51,81,73],days=['Ma','Di','Wo','Do','Vr','Za','Zo','Ma','Di','Wo','Do','Vr'];return `<div class="bar-chart">${vals.map((v,i)=>`<div class="bar-wrap"><div class="bar ${i<5?'faded':''}" style="height:${v}%" title="Demowaarde: ${v}"></div><small>${days[i]}</small></div>`).join('')}</div><div class="chart-footer"><span><i class="legend-dot"></i> Activiteitsindicatie (fictief)</span><span><i class="legend-dot light"></i> Vorige periode</span></div>`}
-function employeeTable(data,limit){let rows=(limit?data.slice(0,limit):data).map(x=>`<tr><td class="strong"><div class="name-cell"><span class="name-dot">${esc(x.name.split(' ').map(w=>w[0]).slice(0,2).join(''))}</span>${esc(x.name)}</div></td><td>${esc(x.call)}</td><td>${esc(x.rank)}</td><td>${esc(departments[x.dept].name)}</td><td>${badge(x.status)}</td><td><button class="table-action" title="Open personeelsfiche" data-person="${x.id}">${icon('chevron')}</button></td></tr>`).join('');return `<div class="table-inner"><table class="data-table"><thead><tr><th>Medewerker</th><th>Roepnummer</th><th>Rang</th><th>Dienst</th><th>Status</th><th></th></tr></thead><tbody>${rows||`<tr><td colspan="6">Geen resultaten.</td></tr>`}</tbody></table></div>`}
+function personnelGradeHtml(x){
+  const grade=BPDPersonnelVisuals.rankInfo(x.rank,x.dept);
+  if(!grade.image)return '<span class="rank-unknown" title="Geen gevalideerd politiegraadkenteken">—</span>';
+  return '<img class="rank-insignia" src="'+esc(grade.image)+'" alt="'+
+    esc('Graadkenteken '+grade.label)+'" title="'+esc(grade.label)+'" loading="lazy" referrerpolicy="no-referrer">';
+}
+function personnelSpecialtiesHtml(x){
+  const badges=BPDPersonnelVisuals.specialtyBadges(x.specialties,!liveMode?x.special:null);
+  if(!badges.length)return '<span class="no-specialty" title="Geen bevestigde geregistreerde specialisaties">—</span>';
+  return '<div class="specialty-icons" aria-label="Geregistreerde specialisaties">'+
+    badges.map(b=>{
+      const description=b.label+(b.value?' · '+b.value:'');
+      return '<span class="specialty-pictogram" role="img" aria-label="'+esc(description)+
+        '" title="'+esc(description)+'">'+esc(b.icon)+'</span>';
+    }).join('')+'</div>';
+}
+function employeeTable(data,limit){
+  const rows=(limit?data.slice(0,limit):data).map(x=>{
+    const grade=BPDPersonnelVisuals.rankInfo(x.rank,x.dept);
+    return '<tr>'+
+      '<td class="strong">'+esc(x.call||'—')+'</td>'+
+      '<td>'+personnelGradeHtml(x)+'</td>'+
+      '<td class="rank-name">'+esc(grade.label)+'</td>'+
+      '<td class="strong">'+esc(x.name||'—')+'<small class="roster-dept">'+esc(departments[x.dept]?.name||x.dept)+'</small></td>'+
+      '<td>'+esc(x.series||'Niet ingevuld')+'</td>'+
+      '<td>'+badge(x.status)+'</td>'+
+      '<td>'+personnelSpecialtiesHtml(x)+'</td>'+
+      '<td><button class="table-action" title="Open personeelsfiche" data-person="'+esc(x.id)+'">'+icon('chevron')+'</button></td>'+
+      '</tr>';
+  }).join('');
+  return '<div class="table-inner"><table class="data-table staff-roster"><thead><tr>'+
+    '<th>Roepnummer</th><th>Rangkenteken</th><th>Naam van rang</th>'+
+    '<th>Naam personeelslid</th><th>Reeks</th><th>Status</th><th>Specialisaties</th><th></th>'+
+    '</tr></thead><tbody>'+ (rows||'<tr><td colspan="8">Geen resultaten.</td></tr>')+
+    '</tbody></table></div><div class="roster-attribution">Rangkentekens lokale politie: '+
+    '<a href="https://commons.wikimedia.org/wiki/Category:Police_rank_insignia_of_Belgium" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> (Politie123, CC BY-SA 4.0).'+
+    ' <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">Licentie</a>. Specialisaties zijn geregistreerde brongegevens, geen automatisch toegekende Discord-rechten.</div>';
+}
 function registrationShortcut(){return canOpenRegistrations()?`<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Observaties & sancties</div><div class="card-sub">Registraties, sancties en beveiligde personeelsdossiers</div></div><a class="btn btn-primary" style="text-decoration:none" href="/registraties.html">${icon('file')} Open registraties</a></div><div class="profile-note">Alleen toegankelijk voor middenkader, officierenkader en korpsleiding. Het basiskader dient observaties in via het afzonderlijke formulier.</div></div>`:''}
 function approvalWidget(){
   if(!liveMode||!pendingReview)return '';

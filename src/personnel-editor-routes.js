@@ -40,7 +40,13 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
           canAuthoriseExceptionalPoliceRank(req.bpd,'politie'));
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
           canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
-          series:p.series,status:p.status,revision:Number.isSafeInteger(edit?.revision)?edit.revision:0,
+          series:p.series,status:p.status,
+          // Presentation-only specialties from the already-authorized Sheets
+          // roster. Do not treat these values as Discord role grants.
+          specialties:Array.isArray(p.specialties)?p.specialties.slice(0,16)
+            .filter(x=>x&&typeof x.label==='string'&&typeof x.value==='string')
+            .map(x=>({label:x.label.slice(0,64),value:x.value.slice(0,90)})):[],
+          revision:Number.isSafeInteger(edit?.revision)?edit.revision:0,
           source:edit?'firestore-overlay':p.source==='firestore-created'?'firestore-created':'google-sheets',
           canEdit:canEditPersonnel(req.bpd,p)};
       });

@@ -28,6 +28,13 @@ label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#
 @media(max-width:660px){.dossier-summary{grid-template-columns:1fr}}#results td:first-child{font-weight:700}button.small{padding:6px 9px;font-size:12px;margin-top:5px}code{overflow-wrap:anywhere;color:#cce0ff}.inline-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#c8d9ef}.inline-check input{width:auto}
 [hidden]{display:none!important}
 @media(max-width:660px){.grid{grid-template-columns:1fr}.card{padding:15px}h1{font-size:25px}header{padding:14px}}
+table{min-width:1110px}
+.rank-insignia{display:block;width:82px;height:35px;object-fit:contain;object-position:left center}
+.roster-dept{display:block;font-size:11px;color:#9eb0ca;margin-top:3px}
+.roster-specialties{min-width:138px;max-width:260px}
+.specialty-pictogram{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:17px;margin:2px;border:1px solid #486585;background:#1a3556;border-radius:7px;cursor:help}
+.roster-attribution{font-size:11px;color:#98b0ce;line-height:1.5;margin:12px 0 0}
+.roster-attribution a{color:#c5d9ff;text-decoration:underline}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
@@ -45,7 +52,8 @@ Een bevoegd beheerder kan de aanvraag daarna in deze omgeving beoordelen.</p>
 <section class="card"><div class="controls" style="justify-content:space-between"><h2>Personeelslijst</h2><div class="controls"><button id="newBtn" type="button" hidden>Nieuw personeelslid</button><button class="alt" id="reload" type="button">Vernieuwen</button></div></div>
 <div class="grid"><div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div><div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div></div>
 <p class="subtle"><span id="count">Nog geen personeelsgegevens geladen.</span></p>
-<div class="scroller"><table><thead><tr><th>Personeelslid</th><th>Roepnummer</th><th>Rang</th><th>Hulpdienst</th><th>Status</th><th>Gegevensbron</th><th></th></tr></thead><tbody id="results"></tbody></table></div>
+<div class="scroller"><table><thead><tr><th>Roepnummer</th><th>Rangkenteken</th><th>Naam van rang</th><th>Naam personeelslid</th><th>Reeks</th><th>Status</th><th>Specialisaties</th><th></th></tr></thead><tbody id="results"></tbody></table></div>
+<p class="roster-attribution">Belgische graadkentekens lokale politie via <a href="https://commons.wikimedia.org/wiki/Category:Police_rank_insignia_of_Belgium" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> (Politie123, CC BY-SA 4.0, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">licentie</a>). De specialisatiepictogrammen volgen de geregistreerde personeelsbron; ze wijzigen geen Discord-rollen.</p>
 </section>
 <section id="pendingPanel" class="card" hidden>
 <h2>Wacht op Discord-koppeling</h2><p id="pendingSummary" class="subtle"></p>
@@ -163,6 +171,7 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 </section>
 <h3>Officiële personeels- en ranghistoriek</h3><div id="history" class="subtle">Wordt geladen…</div></section>
 </main>
+<script src="/personnel-list-visuals.js"></script>
 <script type="module">
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
@@ -273,15 +282,42 @@ function renderPending(){
 function render(){
   const q=$('search').value.trim().toLowerCase(),dept=$('dept').value;
   const matches=people.filter(x=>(dept==='all'||dept===x.dept)&&
-    [x.name,x.call,x.discordId,x.rank].some(v=>String(v||'').toLowerCase().includes(q)));
+    [x.name,x.call,x.discordId,x.rank,x.series,...(x.specialties||[]).map(t=>t.label)].some(v=>String(v||'').toLowerCase().includes(q)));
   $('count').textContent=matches.length+' fiche(s) zichtbaar';
   const body=$('results');body.replaceChildren();
-  if(!matches.length){const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');c.colSpan=7;body.append(tr);return}
+  if(!matches.length){const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');c.colSpan=8;body.append(tr);return}
   for(const person of matches){
     const tr=document.createElement('tr');
-    td(tr,person.name);td(tr,person.call);td(tr,person.rank);td(tr,departments[person.dept]||person.dept);td(tr,person.status);
-    const source=document.createElement('span');source.className='pill '+(person.source==='firestore-overlay'||person.source==='firestore-created'?'overlay':'');source.textContent=person.source==='firestore-overlay'?'Firestore-wijziging':person.source==='firestore-created'?'Nieuw in Firestore':'Google Sheets';
-    const col=document.createElement('td');col.append(source);tr.append(col);
+    const grade=BPDPersonnelVisuals.rankInfo(person.rank,person.dept);
+    td(tr,person.call||'—');
+    const rankCell=document.createElement('td');
+    if(grade.image){
+      const img=document.createElement('img');img.className='rank-insignia';
+      img.src=grade.image;img.alt='Graadkenteken '+grade.label;
+      img.title=grade.label;img.loading='lazy';img.referrerPolicy='no-referrer';
+      rankCell.append(img);
+    }else{rankCell.textContent='—';rankCell.className='subtle'}
+    tr.append(rankCell);
+    td(tr,grade.label);
+    const nameCell=document.createElement('td');
+    const name=document.createElement('strong');name.textContent=person.name;
+    const deptText=document.createElement('small');deptText.className='roster-dept';
+    deptText.textContent=departments[person.dept]||person.dept;
+    nameCell.append(name,deptText);tr.append(nameCell);
+    td(tr,person.series||'Niet ingevuld');
+    const statusCell=document.createElement('td');
+    const status=document.createElement('span');status.className='pill';
+    status.textContent=person.status||'Onbekend';statusCell.append(status);tr.append(statusCell);
+    const iconsCell=document.createElement('td');iconsCell.className='roster-specialties';
+    const specialties=BPDPersonnelVisuals.specialtyBadges(person.specialties);
+    if(!specialties.length)iconsCell.textContent='—';
+    for(const item of specialties){
+      const mark=document.createElement('span');mark.className='specialty-pictogram';
+      const label=item.label+(item.value?' · '+item.value:'');
+      mark.title=label;mark.setAttribute('role','img');mark.setAttribute('aria-label',label);
+      mark.textContent=item.icon;iconsCell.append(mark);
+    }
+    tr.append(iconsCell);
     const action=document.createElement('button');action.type='button';action.textContent='Open fiche';action.className='alt';
     action.onclick=()=>showPerson(person);
     const cell=document.createElement('td');cell.append(action);tr.append(cell);body.append(tr);
