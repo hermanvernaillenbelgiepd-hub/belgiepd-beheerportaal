@@ -74,9 +74,31 @@ test('BWM is a distinct recognized fire callsign without accepting similar unkno
   }
   assert.deepEqual(parseSonoranName('BWM | Testbrandweerman'),
     {category:'BWM',number:null,displayName:'Testbrandweerman',importable:false});
-  for(const label of ['BWMW - 620 | Test','BWM-EXTRA - 620 | Test','BWM620 | Test']){
+  for(const label of ['BWMW - 620 | Test','BWM-EXTRA - 620 | Test','BWMOTOR - 620 | Test']){
     assert.equal(parseSonoranName(label).importable,false,label);
   }
+});
+
+test('Brandweer and Depannage prefixes resolve in Sonoran without changing police or ambulance calls',()=>{
+  for(const category of ['BWM','BWV','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE','LSRA','DEPK']){
+    for(const sep of ['','-',' - ',' ']){
+      const value=category+sep+'620* (NB) | Medewerker';
+      const parsed=parseSonoranName(value);
+      assert.equal(parsed.category,category,value);
+      assert.equal(parsed.number,'620',value);
+      assert.equal(parsed.importable,true,value);
+    }
+  }
+  for(const raw of ['LSRA-PECHHULP','LSRAFAST','DEPKTAKEL']){
+    const parsed=parseSonoranName(raw+' | Chauffeur');
+    assert.equal(parsed.category,raw.startsWith('LSRA')?'LSRA':'DEPK',raw);
+    assert.equal(parsed.importable,false,raw);
+    assert.equal(parsed.number,null,raw);
+  }
+  assert.equal(parseSonoranName('ZONE-COMM - 620').category,'ZONE-COMM');
+  assert.equal(parseSonoranName('LSRA-F.A.S.T. - 620').category,'LSRA-F.A.S.T.');
+  for(const invalid of ['BWMW-620','BWM-EXTRA-620','KAPITEIN-620','ZONERAND-620'])
+    assert.equal(parseSonoranName(invalid).importable,false,invalid);
 });
 
 test('Matching BWM and police numbers remain separate importable radio crews',async()=>{
