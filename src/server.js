@@ -23,7 +23,6 @@ import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from '
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
-import {installServiceApplicationRoutes} from './service-applications-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
 import {installCitizenRoutes} from './citizen-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
@@ -43,7 +42,6 @@ app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
-app.use('/api/service-applications',express.json({limit:'5kb',strict:true}));
 app.use('/api/citizens',express.json({limit:'2kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
@@ -254,7 +252,6 @@ installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
 installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser,getSnapshot});
-installServiceApplicationRoutes(app,{requireUser});
 installDossierCenterRoutes(app,{requireUser,getSnapshot});
 installCitizenRoutes(app);
 app.get('/api/health',(_req,res)=>res.json({
