@@ -81,7 +81,7 @@ function normalizedUsers(payload,key){
     // authoritative for pairing. Keep the shared numeric label recognizable.
     if(user.importable&&labels.get(user.category+'|'+Number(user.number))>1){
       const mates=users.filter(item=>item.category===user.category&&
-        /^\\d{1,5}$/.test(String(item.number))&&Number(item.number)===Number(user.number));
+        /^\d{1,5}$/.test(String(item.number))&&Number(item.number)===Number(user.number));
       if(!mates.some(item=>item.paired===true))user.importable=false;
     }
   }
