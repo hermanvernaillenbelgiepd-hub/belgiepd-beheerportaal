@@ -95,7 +95,9 @@
 .historical-call-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:14px}
 .historical-call-form label{font-size:11px;color:#53627c;font-weight:700;display:flex;flex-direction:column;gap:5px}
 .historical-call-form select,.historical-call-form input,.historical-call-form textarea,.historical-call-form output{width:100%;min-height:35px;border:1px solid #cfdae9;border-radius:7px;padding:8px;font:inherit;font-size:12px;background:#fff;color:#24334c}
-.historical-call-form label:has(textarea),.historical-call-hint{grid-column:1/-1}
+.historical-call-form label:has(textarea),.historical-call-hint,.historical-call-checkbox{grid-column:1/-1}
+.historical-call-form .historical-call-checkbox{display:flex;flex-direction:row;align-items:center;gap:9px;font-weight:650}
+.historical-call-form .historical-call-checkbox input{width:17px;min-height:17px;height:17px}
 .historical-call-form button{width:max-content}
 .historical-call-hint{font-size:11px;color:#8592a6;line-height:1.4}
 @media(max-width:680px){.historical-call-form{grid-template-columns:1fr}}
@@ -271,7 +273,7 @@ function personnelActivityRows(){
     const name=known?'<button class="personnel-feed-link" data-person="'+esc(personnelId)+'">'+esc(e.name)+'</button>':
       '<strong>'+esc(e.name)+'</strong>';
     return '<div class="personnel-feed-row"><span class="personnel-feed-type '+esc(e.type)+'">'+
-      esc(e.retrospective?'Historische roepnummerregistratie':eventName)+'</span><div class="personnel-feed-main"><div>'+name+
+      esc(e.retrospective?(e.type==='promotion'?'Historische promotie geregistreerd':'Historische roepnummerregistratie'):eventName)+'</span><div class="personnel-feed-main"><div>'+name+
       '<span class="personnel-feed-dept">'+esc(departments[e.dept]?.name||e.dept)+'</span></div>'+
       '<div class="personnel-feed-description">'+esc(description)+'</div></div>'+
       '<time class="personnel-feed-date" datetime="'+esc(e.at)+'">'+esc(e.retrospective?'Geregistreerd: '+at:at)+'</time></div>';
@@ -289,6 +291,8 @@ function historicalCallRegistration(){
     '</select></label>'+
     '<label>Vorig roepnummer <input id="historicalOldCall" required maxlength="24" placeholder="Bijvoorbeeld S302"></label>'+
     '<label>Huidig roepnummer <output id="historicalCurrentCall">'+esc(people[0].call)+'</output></label>'+
+    '<label>Huidige rang <output id="historicalCurrentRank">'+esc(people[0].rank||'Niet ingevuld')+'</output></label>'+
+    '<label class="historical-call-checkbox"><input type="checkbox" id="historicalAlsoPromotion"> Ook de eerdere promotie naar deze rang registreren</label>'+
     '<label>Motivering <textarea id="historicalCallReason" required minlength="15" maxlength="500" rows="2" placeholder="Bijvoorbeeld: reeds gewijzigd in de officiële personeelslijst"></textarea></label>'+
     '<button class="btn btn-primary" type="submit">Vroegere wijziging registreren</button>'+
     '<p class="historical-call-hint">Deze registratie wijzigt geen roepnummer of Discord-rol. We tonen de registratiedatum, niet een verzonnen datum waarop de wijziging gebeurde.</p>'+
@@ -458,6 +462,8 @@ async function initConnection(){
       const person=employees.find(x=>x.dept==='politie'&&x.personId===event.target.value);
       const target=document.getElementById('historicalCurrentCall');
       if(target)target.textContent=person?.call||'—';
+      const rank=document.getElementById('historicalCurrentRank');
+      if(rank)rank.textContent=person?.rank||'Niet ingevuld';
     });
     document.addEventListener('submit',async event=>{
       if(event.target?.id!=='historicalCallForm')return;
@@ -468,9 +474,13 @@ async function initConnection(){
       const person=employees.find(x=>x.dept==='politie'&&x.personId===discordId);
       const previousCall=document.getElementById('historicalOldCall')?.value.trim();
       const reason=document.getElementById('historicalCallReason')?.value.trim();
+      const recordPromotion=document.getElementById('historicalAlsoPromotion')?.checked===true;
       if(!person)return toast('Selecteer een personeelslid.');
+      if(recordPromotion&&(!person.rank||person.rank==='—'))
+        return toast('Voor deze medewerker is geen controleerbare huidige rang beschikbaar.');
+      const what=recordPromotion?' en eerdere promotie naar '+person.rank:'';
       if(!confirm('Bevestig historische wijziging van '+person.name+': '+previousCall+
-        ' → '+person.call+'. De datum van de oorspronkelijke wijziging is onbekend.'))return;
+        ' → '+person.call+what+'. De oorspronkelijke datum blijft onbekend.'))return;
       const button=event.target.querySelector('button[type="submit"]');
       if(button)button.disabled=true;
       try{
@@ -478,11 +488,12 @@ async function initConnection(){
         const response=await fetch('/api/personnel/activity/retrospective-callsign',{
           method:'POST',cache:'no-store',
           headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-          body:JSON.stringify({discordId,previousCall,expectedCurrentCall:person.call,reason})
+          body:JSON.stringify({discordId,previousCall,expectedCurrentCall:person.call,reason,
+            recordPromotion,...(recordPromotion?{expectedCurrentRank:person.rank}:{})})
         });
         const body=await response.json().catch(()=>({}));
         if(!response.ok)throw Error(body.error||'Historische registratie mislukt');
-        toast('Historische roepnummerwijziging geregistreerd, zonder personeelsgegevens te wijzigen.');
+        toast((body.recordedPromotion?'Promotie en ':'')+'historische roepnummerwijziging geregistreerd. De personeelsgegevens zijn ongewijzigd.');
         await refreshPersonnelActivity(user);
       }catch(e){toast(e.message||'Registratie mislukt')}
       finally{if(button?.isConnected)button.disabled=false}
