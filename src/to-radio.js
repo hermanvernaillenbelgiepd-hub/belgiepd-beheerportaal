@@ -81,7 +81,7 @@ function radioChannelState(metadata){
   const valid=id=>{
     // Some API clients serialize channel numbers as strings.
     const n=typeof id==='number'?id:
-      typeof id==='string'&&/^[1-9]\\d{0,8}$/.test(id)?Number(id):null;
+      typeof id==='string'&&/^[1-9][0-9]{0,8}$/.test(id)?Number(id):null;
     return Number.isSafeInteger(n)&&n>0?String(n):null;
   };
   const channels=[];
