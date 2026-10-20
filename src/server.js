@@ -36,8 +36,7 @@ app.use((_req,res,next)=>{res.set('X-Content-Type-Options','nosniff');res.set('R
 app.get(['/burgerdossier.html','/solliciteren.html','/sollicitatiebeheer.html'],(_req,res)=>
   res.status(410).type('text/plain').send('Deze pagina is buiten gebruik.'));
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
-app.all('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn verwijderd'}));
-app.all('/api/citizens/*rest',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn verwijderd'}));
+app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
 app.use('/api/callsigns',express.json({limit:'12kb',strict:true}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
