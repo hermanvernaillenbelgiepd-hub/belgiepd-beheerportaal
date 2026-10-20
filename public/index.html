@@ -37,6 +37,15 @@
 .roster-dept{display:block;margin-top:3px;color:#8a97aa;font-size:10px;font-weight:500}
 .specialty-icons{display:flex;flex-wrap:wrap;gap:4px;min-width:96px;max-width:240px}
 .specialty-pictogram{display:inline-flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:7px;border:1px solid #dce5f4;background:#eef4ff;font-size:17px;cursor:help}
+.specialty-status-strip{display:flex;flex-wrap:nowrap;gap:7px;overflow-x:auto;max-width:min(550px,58vw);padding:5px 2px;scrollbar-width:thin}
+.specialty-state{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;padding:4px 5px;border:1px solid #e4eafa;background:#f5f7fd;border-radius:8px;font-size:10px}
+.specialty-symbol{font-size:15px}.specialty-name{font-weight:650;color:#475775}
+.specialty-state-value{border-radius:6px;padding:2px 5px;font-size:10px;font-weight:750}
+.specialty-yes{background:#dbf6e9;color:#10734b}
+.specialty-no{background:#e9edf3;color:#6b7788}
+.specialty-stage{background:#fff0d5;color:#976009}
+.specialty-teacher{background:#d3f7f8;color:#007481}
+.specialty-unknown{background:#ebeff9;color:#687a9d}
 .roster-attribution{font-size:10px;color:#77869e;padding:8px 18px 13px;line-height:1.4}
 .roster-attribution a{text-decoration:underline}
 </style>
@@ -141,14 +150,14 @@ function personnelGradeHtml(x){
     esc('Graadkenteken '+grade.label)+'" title="'+esc(grade.label)+'" loading="lazy" referrerpolicy="no-referrer">';
 }
 function personnelSpecialtiesHtml(x){
-  const badges=BPDPersonnelVisuals.specialtyBadges(x.specialties,!liveMode?x.special:null);
-  if(!badges.length)return '<span class="no-specialty" title="Geen bevestigde geregistreerde specialisaties">—</span>';
-  return '<div class="specialty-icons" aria-label="Geregistreerde specialisaties">'+
-    badges.map(b=>{
-      const description=b.label+(b.value?' · '+b.value:'');
-      return '<span class="specialty-pictogram" role="img" aria-label="'+esc(description)+
-        '" title="'+esc(description)+'">'+esc(b.icon)+'</span>';
-    }).join('')+'</div>';
+  const states=BPDPersonnelVisuals.specialtyStatuses(x.specialties);
+  if(!states.length)return '<span class="no-specialty">Niet ingevuld</span>';
+  return '<div class="specialty-status-strip" aria-label="Alle geregistreerde specialisatiestatussen">'+
+    states.map(b=>'<span class="specialty-state" title="'+esc(b.label+' · '+b.status)+'">'+
+      '<span class="specialty-symbol" aria-hidden="true">'+esc(b.icon)+'</span>'+
+      '<span class="specialty-name">'+esc(b.label)+'</span>'+
+      '<span class="specialty-state-value specialty-'+esc(b.style)+'">'+esc(b.status)+'</span>'+
+      '</span>').join('')+'</div>';
 }
 function employeeTable(data,limit){
   const rows=(limit?data.slice(0,limit):data).map(x=>{
