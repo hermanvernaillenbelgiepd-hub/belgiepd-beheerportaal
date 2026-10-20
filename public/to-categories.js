@@ -6,7 +6,7 @@ export const TO_SERVICE_GROUPS=Object.freeze([
     'SANTO','BLAINE','WYCAN','FALCON','EAGLE','SIGMA','SIGNA','MARCAN','AIRCAN','CANINE','RAGO','MIKE','COMMAND'
   ]),
   service('brandweer','Brandweer',['BRANDWEER','BWM','ZONE-COMM','PLOEG1','PLOEG2','PLOEG3']),
-  service('ambulance','Ambulance',['AMBULANCE','AMBULANCE-MOTOR','PIT','MUG','MUGHELI','DIR-MED','SIT-TEAM']),
+  service('ambulance','Ambulance',['DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','AMBULANCE','AMBULANCE-MOTOR','PIT','MUG','MUGHELI','DIR-MED','SIT-TEAM']),
   service('depannage','Depannage',['LSRA-DEPA100','LSRA-DEPAK200','LSRA-F.A.S.T.','LSRA-ANWV']),
   service('overige','Overige',[])
 ]);
