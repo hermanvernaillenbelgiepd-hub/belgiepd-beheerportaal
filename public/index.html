@@ -37,8 +37,6 @@
 .roster-dept{display:block;margin-top:3px;color:#8a97aa;font-size:10px;font-weight:500}
 .specialty-icons{display:flex;flex-wrap:wrap;gap:4px;min-width:96px;max-width:240px}
 .specialty-pictogram{display:inline-flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:7px;border:1px solid #dce5f4;background:#eef4ff;font-size:17px;cursor:help}
-.roster-attribution{font-size:10px;color:#77869e;padding:8px 18px 13px;line-height:1.4}
-.roster-attribution a{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -76,7 +74,7 @@
  <div class="brand"><div class="brand-mark"><svg><use href="#i-shield"/></svg></div><div><div class="brand-title">BelgiëPD</div><div class="brand-sub">Beheerportaal</div></div></div>
  <div class="side-section">Werkruimte</div><nav class="nav" id="navMain"></nav>
  <div class="side-section" style="margin-top:23px">Administratie</div><nav class="nav" id="navAdmin"></nav>
- <div class="sidebar-foot"><div class="sidebar-profile"><div class="avatar">BP</div><div><strong>Testgebruiker</strong><small>Simulatie · geen login</small></div></div><div class="copyright">BELGIËPD · VERSIE 0.5<br>Testomgeving · Niet voor productie</div></div>
+ <div class="sidebar-foot"><div class="sidebar-profile"><div class="avatar">BP</div><div><strong>Testgebruiker</strong><small>Simulatie · geen login</small></div></div><div class="copyright">BELGIËPD · VERSIE 0.5<br>Testomgeving · Niet voor productie<br><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen en licenties</a></div></div>
 </aside><main class="main"><header class="topbar">
  <button class="mobileMenu" id="mobileMenu" aria-label="Open navigatie"><svg><use href="#i-menu"/></svg></button>
  <div class="search"><svg><use href="#i-search"/></svg><input id="globalSearch" aria-label="Zoeken" placeholder="Zoek personeel, documenten of rapporten..."/></div>
@@ -168,9 +166,7 @@ function employeeTable(data,limit){
     '<th>Roepnummer</th><th>Rangkenteken</th><th>Naam van rang</th>'+
     '<th>Naam personeelslid</th><th>Reeks</th><th>Status</th><th>Specialisaties</th><th></th>'+
     '</tr></thead><tbody>'+ (rows||'<tr><td colspan="8">Geen resultaten.</td></tr>')+
-    '</tbody></table></div><div class="roster-attribution">Rangkentekens lokale politie: '+
-    '<a href="https://commons.wikimedia.org/wiki/Category:Police_rank_insignia_of_Belgium" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> (Politie123, CC BY-SA 4.0).'+
-    ' <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">Licentie</a>. Specialisaties zijn geregistreerde brongegevens, geen automatisch toegekende Discord-rechten.</div>';
+    '</tbody></table></div>';
 }
 function registrationShortcut(){return canOpenRegistrations()?`<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Observaties & sancties</div><div class="card-sub">Registraties, sancties en beveiligde personeelsdossiers</div></div><a class="btn btn-primary" style="text-decoration:none" href="/registraties.html">${icon('file')} Open registraties</a></div><div class="profile-note">Alleen toegankelijk voor middenkader, officierenkader en korpsleiding. Het basiskader dient observaties in via het afzonderlijke formulier.</div></div>`:''}
 function approvalWidget(){
