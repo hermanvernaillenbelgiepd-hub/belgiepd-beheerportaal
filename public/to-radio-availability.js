@@ -9,6 +9,42 @@ export function radioMarkedUnavailable(value){
 export function stripRadioNBMarkers(value){
   return typeof value==='string'?value.replace(nbStrip,'$1').replace(/\s+/g,' ').trim():value;
 }
+// A trailing star after a numbered callsign denotes a shared/paired radio
+// shift. NB may occur before or after the star, so remove it first.
+export function radioMarkedPair(value){
+  if(typeof value!=='string')return false;
+  const head=stripRadioNBMarkers(value.split('|')[0]).trim();
+  return /\\d{1,5}\\*\\s*$/.test(head);
+}
+
+// Group ONLY a precisely matching category + positive numeric unit when at
+// least one of its users explicitly carries *. Never infer links between
+// unrelated callsigns. Raw radio users remain unchanged for auth/audit.
+export function groupRadioCrews(users=[]){
+  if(!Array.isArray(users))return [];
+  const byKey=new Map();
+  for(const user of users){
+    const id=key(user?.category,user?.number);
+    if(!id)continue;
+    if(!byKey.has(id))byKey.set(id,[]);
+    byKey.get(id).push(user);
+  }
+  const seen=new Set(),result=[];
+  for(const user of users){
+    const id=key(user?.category,user?.number),members=id?byKey.get(id):null;
+    const shared=members?.some(item=>item.paired===true);
+    if(shared){
+      if(seen.has(id))continue;
+      seen.add(id);
+      result.push({category:user.category,number:user.number,paired:true,
+        radioUnavailable:members.some(item=>item.notAvailable===true),
+        members});
+    }else result.push({category:user?.category,number:user?.number,
+      paired:false,radioUnavailable:user?.notAvailable===true,members:[user]});
+  }
+  return result;
+}
+
 // A single unavailable member is enough to make the whole radio-linked crew
 // unavailable. This is derived from a FRESH radio snapshot, not stored to
 // Firestore and not interpreted as a Discord/personnel authorization.
