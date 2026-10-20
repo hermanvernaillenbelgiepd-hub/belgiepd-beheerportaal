@@ -94,6 +94,22 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 <p class="subtle">Aanstellingsgegevens, functie en administratieve opvolging. Het officiële personeelsbestand, de rang en de bestaande opleidingen worden hierdoor niet overschreven.</p>
 <div id="staffDossierStatus" role="status" class="subtle">Dossiergegevens worden opgehaald…</div>
 <div id="staffDossierSummary" class="dossier-summary"></div>
+<h3>Discord-reeks en specialisaties</h3>
+<p class="subtle">Alleen de recent geverifieerde Discord-rollen worden hier getoond. Rollen wijzigen gebeurt niet via deze fiche; een rolnaam is geen automatische personeelsbevoegdheid.</p>
+<div id="staffDiscordRoles" class="subtle">Discord-rolgegevens laden…</div>
+<h3>Verlof van deze medewerker</h3>
+<p class="subtle">Goedgekeurde verloven en door jou te behandelen aanvragen komen uit de bestaande verlofmodule.</p>
+<div id="staffLeave" class="subtle">Verlofperiodes laden…</div>
+<form id="staffManualLeaveForm" hidden>
+<h3>Verlof manueel inschrijven</h3>
+<div class="grid">
+<div><label for="leaveFrom">Begindatum</label><input type="date" id="leaveFrom" required></div>
+<div><label for="leaveUntil">Einddatum</label><input type="date" id="leaveUntil" required></div>
+<div style="grid-column:1/-1"><label for="leaveNote">Toelichting voor audit</label>
+<textarea id="leaveNote" maxlength="300" rows="2" placeholder="Reden van administratieve inschrijving"></textarea></div>
+</div>
+<button id="leaveManualSave" type="submit">Verlof goedgekeurd registreren</button>
+</form>
 <div class="dossier-shortcuts">
 <a href="/rollen-opleidingen.html">Opleidingen en beoordelingen</a>
 <a href="/weekrapporten.html">Kaderregistraties en weekrapport</a><a href="/registraties.html">Observaties en sancties</a>
@@ -115,6 +131,22 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 <h3>Kadernotities en opvolging</h3>
 <p class="subtle">Deze notities komen uit de bestaande <a href="/weekrapporten.html">Kaderregistraties</a>. Er wordt hier geen tweede registratieformulier aangeboden.</p>
 <div id="staffLinkedCases" class="subtle">Kaderregistraties laden…</div>
+<form id="staffCaseForm" hidden>
+<h3>Nieuwe dossierregistratie</h3>
+<p class="subtle">Wordt opgeslagen in het bestaande kaderregister met jouw identiteit en tijdstip.</p>
+<div class="grid">
+<div><label for="staffCaseType">Type</label><select id="staffCaseType">
+<option value="notitie">Belangrijke notitie</option><option value="activiteit">Dienstactiviteit</option>
+<option value="specialisatiebeperking">Beperking van specialisatie</option></select></div>
+<div><label for="staffCaseDate">Datum gebeurtenis</label><input id="staffCaseDate" type="date" required></div>
+<div style="grid-column:1/-1"><label for="staffCaseDetails">Omschrijving</label>
+<textarea id="staffCaseDetails" rows="4" maxlength="4000" minlength="10" required></textarea></div>
+</div>
+<button id="staffCaseSave" type="submit">Kaderregistratie bewaren</button>
+</form>
+<h3>Observaties en sancties</h3>
+<p class="subtle">Formele observaties en sancties staan in het bestaande beveiligde registratieregister. Maatregelen en rolbeperkingen worden niet automatisch gewijzigd door een notitie.</p>
+<div id="staffFormalRecords" class="subtle">Observaties en sancties laden…</div>
 <h3>Eerdere dossiernotities (alleen lezen)</h3>
 <p class="subtle">Notities die eventueel via het oude aanvullende formulier zijn ingevoerd blijven zichtbaar, maar kunnen niet meer dubbel geregistreerd worden.</p>
 <div id="staffNotes" class="subtle"></div>
