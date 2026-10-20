@@ -49,7 +49,7 @@ export function summarizeTOCrews(board,{users=[],fresh=false,categories=[]}={}){
   }
   const inService=teams.length+radioOnly.size;
   const available=teams.filter(team=>team.available!==false&&!busy.has(team.id)&&
-    !blockedTeams.has(team)).length+
+    !team.responsePhase&&!blockedTeams.has(team)).length+
     [...radioOnly].filter(key=>!blockedRadioOnly.has(key)).length;
   const pairedSaved=teams.filter(team=>team.koppel||(fresh&&records(users).some(user=>
     user.paired===true&&teamKeys(team).has(callsignKey(user.category,user.number))))).length;
