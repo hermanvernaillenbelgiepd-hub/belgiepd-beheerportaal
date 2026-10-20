@@ -232,3 +232,73 @@ test('A nearly full accepted board always has room to finish its incidents and a
   assert.equal(result.archive.meldingen[activeId].status,'niet-actief');
   assert.ok(Buffer.byteLength(JSON.stringify(result.archive),'utf8')<=TO_BOARD_LIMITS.archiveBytes);
 });
+
+
+test('Click-based response phases require underway before on scene and an explicit reset',()=>{
+  let board=addTeam(started(),'930','SANTO');
+  const team=Object.values(board.ploegen)[0],original=structuredClone(board);
+  expectStatus(()=>command(board,'response-phase',{id:team.id,phase:'ter-plaatse'}),409);
+  expectStatus(()=>command(board,'response-phase',{id:team.id,phase:'vrij'}),400);
+  expectStatus(()=>command(board,'response-phase',{id:team.id,phase:null}),409);
+  expectStatus(()=>command(board,'response-phase',{id:team.id,phase:'onderweg',ownerUid:owner.uid}),400);
+  board=command(board,'response-phase',{id:team.id,phase:'onderweg'}).board;
+  assert.deepEqual(original.ploegen[team.id].responsePhase,null,'Previous revision remains immutable');
+  assert.equal(board.ploegen[team.id].responsePhase,'onderweg');
+  assert.equal(board.ploegen[team.id].responseBy,owner.uid);
+  assert.equal(board.ploegen[team.id].responseAt,now);
+  expectStatus(()=>command(board,'response-phase',{id:team.id,phase:'onderweg'}),409);
+  expectStatus(()=>command(board,'toggle-team',{id:team.id,available:false}),409);
+  expectStatus(()=>command(board,'response-phase',{id:team.id,phase:'ter-plaatse'},colleague),403);
+  board=command(board,'response-phase',{id:team.id,phase:'ter-plaatse'}).board;
+  assert.equal(board.ploegen[team.id].responsePhase,'ter-plaatse');
+  expectStatus(()=>command(board,'response-phase',{id:team.id,phase:'onderweg'}),409,
+    'Accidental third click should not mark a crew free');
+  board=command(board,'response-phase',{id:team.id,phase:null}).board;
+  assert.equal(board.ploegen[team.id].responsePhase,null);
+  board=command(board,'toggle-team',{id:team.id,available:false}).board;
+  expectStatus(()=>command(board,'response-phase',{id:team.id,phase:'onderweg'}),409);
+});
+
+test('Team stage changes are audited on active incidents and closing clears the final response',()=>{
+  let board=createIncident(addTeam(started(),'930'));
+  const team=Object.values(board.ploegen)[0],incident=Object.values(board.meldingen)[0];
+  board=command(board,'attach-team',{id:incident.id,teamId:team.id}).board;
+  board=command(board,'response-phase',{id:team.id,phase:'onderweg'}).board;
+  board=command(board,'response-phase',{id:team.id,phase:'ter-plaatse'}).board;
+  let lines=board.meldingen[incident.id].log.map(x=>x.txt);
+  assert.ok(lines.some(s=>s.includes('SANTO-930: onderweg')));
+  assert.ok(lines.some(s=>s.includes('SANTO-930: ter plaatse')));
+  assert.equal(board.ploegen[team.id].responsePhase,'ter-plaatse');
+  board=command(board,'incident-status',{id:incident.id,status:'niet-actief'}).board;
+  assert.equal(board.ploegen[team.id].responsePhase,null,'Closing last linked incident resets response beacon');
+  board=command(board,'remove-team',{id:team.id}).board;
+  assert.equal(board.ploegen[team.id].endedAt,now);
+});
+
+test('Detaching the last active incident clears response; another active call preserves it',()=>{
+  let board=createIncident(addTeam(started(),'166'));
+  const team=Object.values(board.ploegen)[0],first=Object.values(board.meldingen)[0];
+  board=createIncident(board);
+  const second=Object.values(board.meldingen).find(x=>x.id!==first.id);
+  board=command(board,'attach-team',{id:first.id,teamId:team.id}).board;
+  board=command(board,'attach-team',{id:second.id,teamId:team.id}).board;
+  board=command(board,'response-phase',{id:team.id,phase:'onderweg'}).board;
+  board=command(board,'detach-team',{id:first.id,teamId:team.id}).board;
+  assert.equal(board.ploegen[team.id].responsePhase,'onderweg');
+  board=command(board,'detach-team',{id:second.id,teamId:team.id}).board;
+  assert.equal(board.ploegen[team.id].responsePhase,null);
+});
+
+test('Changing incident response remains possible when its log has reached the limit',()=>{
+  let board=createIncident(addTeam(started(),'930'));
+  const team=Object.values(board.ploegen)[0],incident=Object.values(board.meldingen)[0];
+  board=command(board,'attach-team',{id:incident.id,teamId:team.id}).board;
+  const full=structuredClone(board);
+  full.meldingen[incident.id].log=Array.from({length:TO_BOARD_LIMITS.incidentLog},()=>({
+    t:now,by:owner.uid,actorUid:owner.uid,txt:'Oude loglijn'
+  }));
+  // A crowded log does not prevent a unit acknowledging its actual location.
+  const next=command(full,'response-phase',{id:team.id,phase:'onderweg'}).board;
+  assert.equal(next.ploegen[team.id].responsePhase,'onderweg');
+  assert.equal(next.meldingen[incident.id].log.length,TO_BOARD_LIMITS.incidentLog);
+});
