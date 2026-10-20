@@ -1,6 +1,6 @@
 # Sonoran Radio in het TO-dienstbord
 
-Het TO-dienstbord toont de verbonden Sonoran Radio-gebruikers en hun kanaal. Het gebruikt de bestaande portaal-aanmelding en politierechten. De browser vraagt gegevens aan bij de eigen backend; de Community API Key blijft op de server.
+Het TO-dienstbord toont **uitsluitend Sonoran Radio-gebruikers met een aantoonbaar actief zend- of scankanaal**, niet iedereen die alleen bij de community is aangemeld. De werkelijk actieve kanalen komen uit `connectedUsers[].metadata.state.primaryChId`, `primaryChIds` (indien beschikbaar) of `scannedChIds`. `roomId` is een multi-server **kamer-ID** en bewijst geen kanaalactiviteit. Wie geen geldige positieve kanaal-ID heeft, verschijnt niet in de operationele lijst en telt niet mee als extra radioploeg. De teller `connectedCount` kan nog wel aangeven hoeveel gebruikers alleen verbonden zijn. Een aanwezige `scanLists`-preset zonder werkelijk gescand kanaal telt niet als kanaal. Het gebruikt de bestaande portaal-aanmelding en politierechten. De browser vraagt gegevens aan bij de eigen backend; de Community API Key blijft op de server.
 
 De knop **Sonoran Radio ↗** opent jullie community op `https://sonoranradio.com/com/T5NZTAY0` in een nieuw tabblad. Deze openbare communitylink bevat geen API Key. De linkcode `T5NZTAY0` is nog niet gecontroleerd als API-Community ID; gebruik voor de serverinstelling de waarde die Sonoran in de communityadministratie vermeldt.
 
