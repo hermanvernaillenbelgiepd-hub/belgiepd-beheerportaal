@@ -107,7 +107,7 @@ test('Brandweer and Depannage prefixes resolve in Sonoran without changing polic
 });
 
 test('STAG belongs to fire, STAGE to ambulance, CANINE to police across callsign formats',()=>{
-  for(const [category,number] of [['STAG','120'],['STAGE','620'],['CANINE','77']]){
+  for(const [category,number] of [['STAG','120'],['STAGE','620'],['CANINE','77'],['ZW','1']]){
     for(const separator of ['','-',' - ',' ']){
       const parsed=parseSonoranName(category+separator+number+'* (NB) | Collega');
       assert.deepEqual(parsed,{category,number,displayName:'Collega',importable:true},category+separator+number);
