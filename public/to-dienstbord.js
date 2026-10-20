@@ -60,9 +60,10 @@ const empty=(title,text)=>`<div class="empty-state"><strong>${esc(title)}</stron
 const button=(text,action,{id='',teamId='',primary=false,danger=false,small=false,disabled=false,write=false}={})=>`<button type="button" class="button${primary?' button-primary':''}${danger?' button-danger':''}${small?' button-small':''}" data-action="${action}"${id?` data-id="${esc(id)}"`:''}${teamId?` data-team-id="${esc(teamId)}"`:''}${write?' data-write':''}${disabled?' disabled':''}>${esc(text)}</button>`;
 
 let auth=null,authEpoch=0;
-const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',archives:null,archive:null,lastSynced:null};
+const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',showMoreIncidentPresets:false,archives:null,archive:null,lastSynced:null};
 const radio={snapshot:null,loading:false,error:null,receivedAt:null,requestSerial:0,knownIds:null,newIds:new Set()};
 const INCIDENT_PRESETS=Object.freeze(['ANPR','AGRESSIE','VKO','BRAND','TAKELING','DIEFSTAL','VERDACHTE SITUATIE','MEDISCHE BIJSTAND']);
+const INCIDENT_EXTRA_PRESETS=Object.freeze(['OVERLAST','WONINGINBRAAK','VECHTPARTIJ','VERMIST PERSOON','ACHTERVOLGING','VERDACHT VOERTUIG','VERKEERSHINDER','BEROVING']);
 const dialog=el('to-dialog');
 let toastTimer;
 
@@ -322,7 +323,8 @@ function renderBoard(){
   const filtered=allIncidents.filter(item=>(state.filter==='alle'||item.status===state.filter)&&matches(item.titel,item.postcode,item.omschrijving,incidentNumber(item.nr),...(item.ploegen||[]).map(team=>team.dienst+'-'+team.roep))).sort((a,b)=>(a.status===b.status?0:a.status==='actief'?-1:1)||b.nr-a.nr);
   const activeCount=allIncidents.filter(item=>item.status==='actief').length;
   const filter=(value,label,count)=>`<button type="button" data-action="filter-incidents" data-filter="${value}" class="${state.filter===value?'active':''}" aria-pressed="${state.filter===value}">${label} · ${count}</button>`;
-  const presets=state.env.permissions.canEdit?`<div class="incident-presets" role="group" aria-label="Snelle meldingen">${INCIDENT_PRESETS.map(name=>`<button type="button" class="incident-preset" data-action="incident-template" data-template="${esc(name)}" data-write${!editable?' disabled':''}>${esc(name)}</button>`).join('')}</div>`:'';
+  const shownPresets=state.showMoreIncidentPresets?[...INCIDENT_PRESETS,...INCIDENT_EXTRA_PRESETS]:INCIDENT_PRESETS;
+  const presets=state.env.permissions.canEdit?`<div class="incident-presets" role="group" aria-label="Snelle meldingen">${shownPresets.map(name=>`<button type="button" class="incident-preset" data-action="incident-template" data-template="${esc(name)}" data-write${!editable?' disabled':''}>${esc(name)}</button>`).join('')}<button type="button" class="incident-preset incident-more" data-action="incident-presets-toggle" aria-expanded="${state.showMoreIncidentPresets}" aria-label="Meer veelvoorkomende meldingen tonen of verbergen">${state.showMoreIncidentPresets?'− Minder':'＋ Meer meldingen'}</button></div>`:'';
   return `${!board.session?`<section class="no-session"><div><h2>Het bord is klaar voor een nieuwe dienst.</h2><p>Start een sessie om ploegen toe te voegen en meldingen te registreren. Afgesloten diensten blijven terug te vinden in het archief.</p></div>${state.env.permissions.canOperate?button('Dienst starten','start',{primary:true,write:true}):''}</section>`:''}<div class="board-layout"><section aria-labelledby="teams-title"><div class="panel-heading"><div><h2 id="teams-title">Ploegen op dienstbord</h2><p>${teams.length} ${teams.length===1?'ploeg':'ploegen'} · ${savedPairCount} koppelploeg(en)</p></div>${state.env.permissions.canEdit?button('＋ Ploeg toevoegen','add-team',{write:true}):''}</div>${pendingMarkup}<div class="radio-board-dropzone" data-radio-dropzone><span>↓ Sleep een radioploeg hierheen, of gebruik ‘Op bord’</span></div>${teamMarkup||empty(state.query||state.category!=='all'?'Geen ploegen gevonden':'Nog geen ploegen op het dienstbord',state.query||state.category!=='all'?'Probeer een andere zoekterm of categorie.':'Voeg een ploeg met één of twee agenten toe zodra de dienst is gestart.')}</section><section aria-labelledby="incidents-title"><div class="panel-heading"><div><h2 id="incidents-title">Meldingen</h2><p>Van oproep tot afronding, met een gedeeld logboek</p></div>${state.env.permissions.canEdit?button('＋ Nieuwe melding','create-incident',{primary:true,write:true}):''}</div>${presets}<div class="incident-filters" role="group" aria-label="Meldingenfilter">${filter('actief','Actief',activeCount)}${filter('niet-actief','Afgerond',allIncidents.length-activeCount)}${filter('alle','Alle',allIncidents.length)}</div><div class="incident-list">${filtered.map(incidentCard).join('')||empty('Geen meldingen in dit overzicht',state.query?'Probeer een andere zoekterm.':'Nieuwe oproepen verschijnen hier. Afgeronde meldingen blijven binnen de dienst bewaard.')}</div></section></div>`;
 }
 function teamCard(team,busy,editable){
@@ -442,7 +444,8 @@ document.addEventListener('click',async event=>{
       case 'add-team':if(canEdit())teamDialog();break;
       case 'radio-refresh':await refreshRadio();break;
       case 'radio-quick-add':await quickAddRadioCrew(id);break;
-      case 'incident-template':if(canEdit()&&INCIDENT_PRESETS.includes(target.dataset.template))incidentForm('',target.dataset.template);break;
+      case 'incident-template':if(canEdit()&&[...INCIDENT_PRESETS,...INCIDENT_EXTRA_PRESETS].includes(target.dataset.template))incidentForm('',target.dataset.template);break;
+      case 'incident-presets-toggle':state.showMoreIncidentPresets=!state.showMoreIncidentPresets;renderBoardOnly();break;
       case 'radio-add-team':{
         if(!canEdit()||!radioFresh())break;
         const user=radio.snapshot.users.find(item=>String(item.id)===id);
