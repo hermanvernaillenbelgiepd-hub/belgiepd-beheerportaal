@@ -28,11 +28,29 @@ export function callsignActivityEvent(id,data){
     discordId:id,name:trim(data.name,120)||'Personeelslid',before:trim(data.temporaryCall,24),
     after,at};
 }
-export function recentPersonnelActivity(auditDocs,callsignDocs,allowedDepartments,limit=8){
+// Older Firestore-created promotions have rankUpdatedAt even when they predate
+// the new activity feed. The previous rank remains in the per-person audit.
+export function createdPromotionEvent(id,data){
+  if(!data||data.dept!=='politie'||!ID.test(data.discordId)||
+    data.state!=='linked'||!data.rankUpdatedAt)return null;
+  const at=when(data.rankUpdatedAt),after=trim(data.rank,100);
+  if(!at||!after)return null;
+  return {id:'existing-promotion:'+String(id).slice(0,100),type:'promotion',
+    dept:'politie',discordId:data.discordId,
+    name:trim(data.name,120)||'Personeelslid',before:'',after,at};
+}
+export function recentPersonnelActivity(auditDocs,callsignDocs,allowedDepartments,limit=8,createdDocs=[]){
   const allowed=new Set(Array.isArray(allowedDepartments)?allowedDepartments:[]);
+  const tracked=(auditDocs||[]).map(doc=>staffActivityEvent(doc.id,doc.data()))
+    .filter(Boolean);
+  const historical=(createdDocs||[]).map(doc=>createdPromotionEvent(doc.id,doc.data()))
+    .filter(row=>row&&!tracked.some(current=>current.type==='promotion'&&
+      current.dept===row.dept&&current.discordId===row.discordId&&
+      current.after===row.after));
   const rows=[
-    ...(auditDocs||[]).map(doc=>staffActivityEvent(doc.id,doc.data())),
-    ...(callsignDocs||[]).map(doc=>callsignActivityEvent(doc.id,doc.data()))
+    ...tracked,
+    ...(callsignDocs||[]).map(doc=>callsignActivityEvent(doc.id,doc.data())),
+    ...historical
   ].filter(row=>row&&allowed.has(row.dept));
   const seen=new Set();
   return rows.sort((a,b)=>b.at.localeCompare(a.at)||a.id.localeCompare(b.id))
