@@ -17,7 +17,8 @@ export function staffActivityEvent(id,data){
   if(!after||before===after)return null;
   return {id:'audit:'+String(id).slice(0,100),type:data.type,
     dept:data.dept,discordId:data.discordId,
-    name:trim(data.name,120)||'Personeelslid',before,after,at};
+    name:trim(data.name,120)||'Personeelslid',before,after,at,
+    retrospective:data.source==='retrospective_manual'};
 }
 export function callsignActivityEvent(id,data){
   if(!ID.test(id)||data?.status!=='approved')return null;
