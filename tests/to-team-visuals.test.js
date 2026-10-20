@@ -14,6 +14,9 @@ test('Recognizable brigade categories use stable category codes and different ac
     label:'RAGO',code:'RA',hue:284,serviceId:'politie',serviceLabel:'Politie'
   });
   assert.equal(teamVisual('CANINE').code,'K9');
+  assert.equal(teamVisual('CANINE').serviceId,'politie');
+  assert.equal(teamVisual('STAG').serviceId,'brandweer');
+  assert.equal(teamVisual('STAGE').serviceId,'ambulance');
   assert.equal(teamVisual('BWM').serviceId,'brandweer');
   assert.equal(teamVisual('MUG').serviceId,'ambulance');
   for(const [label,code] of Object.entries({
@@ -24,7 +27,7 @@ test('Recognizable brigade categories use stable category codes and different ac
     assert.equal(visual.code,code,label);
   }
   assert.equal(teamVisual('LSRA-F.A.S.T.').serviceId,'depannage');
-  for(const category of ['BWM','BWV','BAMBU','BWAMBU','BW-AMBU','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE']){
+  for(const category of ['BWM','BWV','BAMBU','BWAMBU','BW-AMBU','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE','STAG']){
     const visual=teamVisual(category);
     assert.equal(visual.serviceId,'brandweer',category);
     assert.ok(visual.code.length>=2,category);
