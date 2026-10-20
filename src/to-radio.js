@@ -9,16 +9,23 @@ const SAFE_FAILURE='De radioverbinding is tijdelijk niet beschikbaar. Probeer he
 const CONFIGURATION_MESSAGE='Sonoran Radio is nog niet ingesteld op de server.';
 const clean=value=>value.replace(/[\x00-\x1f\x7f]/g,' ').trim();
 const hash=value=>createHash('sha256').update(value).digest('hex');
+const orderedCategories=[...TO_CATEGORIES].sort((left,right)=>right.length-left.length);
 
 // A callsign is an operational label, never proof of a personnel identity.
 export function parseSonoranName(value){
   const none={category:null,number:null,displayName:null,importable:false};
   if(typeof value!=='string')return none;
   const name=clean(value);
-  const parts=/^([A-Za-z][A-Za-z0-9_-]{0,29}?)\s*-\s*([^|]+?)(?:\s*\|\s*(.*))?$/.exec(name);
-  if(!parts)return none;
-  const category=parts[1].trim().toUpperCase(),number=parts[2].trim();
-  const displayName=parts[3]?.trim().slice(0,160)||null;
+  const [label,...nameParts]=name.split('|');
+  const head=label.trim(),upper=head.toUpperCase();
+  const displayName=nameParts.join('|').trim().slice(0,160)||null;
+  // Embedded digits belong to the label (e.g. LSRA-DEPA100), not an officer.
+  if(TO_CATEGORIES.includes(upper))return {category:upper,number:null,displayName,importable:false};
+  const known=orderedCategories.find(category=>upper.startsWith(category)&&/^\s*-\s*/.test(head.slice(category.length)));
+  const parts=known?null:/^([A-Za-z][A-Za-z0-9_-]{0,29}?)\s*-\s*(.+)$/.exec(head);
+  if(!known&&!parts)return none;
+  const category=known||parts[1].trim().toUpperCase();
+  const number=known?head.slice(known.length).replace(/^\s*-\s*/,'').trim():parts[2].trim();
   const importable=TO_CATEGORIES.includes(category)&&/^\d{1,5}$/.test(number)&&Number(number)>0;
   return {category,number:number.slice(0,40)||null,displayName,importable};
 }

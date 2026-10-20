@@ -1,6 +1,12 @@
 import {roleForDepartment} from './leave-policy.js';
 
-export const TO_CATEGORIES=Object.freeze(['SANTO','BLAINE','WYCAN','FALCON','EAGLE','SIGMA','SIGNA','MARCAN','AIRCAN','CANINE','RAGO','MIKE','COMMAND']);
+// Operational labels do not grant access to another department.
+export const TO_CATEGORIES=Object.freeze([
+  'SANTO','BLAINE','WYCAN','FALCON','EAGLE','SIGMA','SIGNA','MARCAN','AIRCAN','CANINE','RAGO','MIKE','COMMAND',
+  'AMBULANCE','AMBULANCE-MOTOR','PIT','MUG','MUGHELI','DIR-MED','SIT-TEAM',
+  'BRANDWEER','ZONE-COMM','PLOEG1','PLOEG2','PLOEG3',
+  'LSRA-DEPA100','LSRA-DEPAK200','LSRA-F.A.S.T.','LSRA-ANWV'
+]);
 export const TO_BOARD_LIMITS=Object.freeze({activeTeams:100,teams:300,incidents:200,incidentLog:100,handovers:100,bytes:700*1024,archiveBytes:708*1024});
 const READ_ROLES=new Set(['basiskader','middenkader','officierenkader','korpsleiding','beheerder']);
 const OPERATE_ROLES=new Set(['middenkader','officierenkader','korpsleiding','beheerder']);

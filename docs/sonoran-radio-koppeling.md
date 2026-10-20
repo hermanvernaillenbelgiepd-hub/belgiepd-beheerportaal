@@ -29,6 +29,8 @@ De server moet via HTTPS toegang hebben tot `api.sonoranradio.com`. Er is geen e
 
 Basiskader kan het radio-overzicht bekijken. Ploegen toevoegen blijft voorbehouden aan de huidige TO met bedieningsrecht. Dubbele of niet herkende roepnummers worden niet automatisch samengevoegd tot een ploeg.
 
+Naast de bestaande politiecategorieën zijn ook beschikbaar: `AMBULANCE`, `AMBULANCE-MOTOR`, `PIT`, `MUG`, `MUGHELI`, `DIR-MED`, `SIT-TEAM`, `BRANDWEER`, `ZONE-COMM`, `PLOEG1`, `PLOEG2`, `PLOEG3`, `LSRA-DEPA100`, `LSRA-DEPAK200`, `LSRA-F.A.S.T.` en `LSRA-ANWV`. De volledige categorienaam blijft behouden, ook met koppeltekens en punten. Bijvoorbeeld: `AMBULANCE-MOTOR - 620 | Alex` en `LSRA-F.A.S.T. - 100 | Alex`. Een los label zoals `LSRA-DEPA100` zonder afzonderlijk roepnummer blijft alleen een radiolabel; de koppeling verzint geen bemanning of roepnummer. De categorieën zijn ook te kiezen bij handmatig toevoegen en filteren. Ze wijzigen de bestaande portaalrechten niet.
+
 ## Techniek
 
 De beveiligde route `GET /api/to/radio` gebruikt dezelfde `requireUser`-controle en afbakening op politie als het dienstbord. De route wijzigt geen TO-gegevens of Firestore-records.

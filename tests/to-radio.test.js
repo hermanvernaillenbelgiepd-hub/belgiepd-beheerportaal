@@ -64,6 +64,33 @@ test('Radio labels are importable only for known patrol categories and positive 
   }
 });
 
+test('All requested emergency and recovery categories retain their complete radio label',()=>{
+  const categories=['AMBULANCE','AMBULANCE-MOTOR','PIT','MUG','MUGHELI','DIR-MED','SIT-TEAM','BRANDWEER','ZONE-COMM','PLOEG1','PLOEG2','PLOEG3','LSRA-DEPA100','LSRA-DEPAK200','LSRA-F.A.S.T.','LSRA-ANWV'];
+  for(const category of categories){
+    for(const separator of [' - ','-']){
+      assert.deepEqual(parseSonoranName(category.toLowerCase()+separator+'00620 | Hulpverlener Test'),
+        {category,number:'00620',displayName:'Hulpverlener Test',importable:true},category);
+    }
+    assert.deepEqual(parseSonoranName(category+' | Hulpverlener Test'),
+      {category,number:null,displayName:'Hulpverlener Test',importable:false},'Standalone labels must not invent a callsign');
+  }
+  assert.equal(parseSonoranName('AMBULANCE-MOTOROLA - 620 | Test').importable,false);
+  assert.equal(parseSonoranName('LSRA-FxAxSxTx - 100 | Test').importable,false);
+});
+
+test('Compound categories remain distinct when numeric callsigns match',async()=>{
+  const service=createSonoranRadioService({env:configuredEnv,fetchImpl:async()=>reply([
+    {identity:'ambulance',name:'AMBULANCE - 620 | Test Een'},
+    {identity:'motor',name:'AMBULANCE-MOTOR - 00620 | Test Twee'},
+    {identity:'recovery-one',name:'LSRA-F.A.S.T. - 100 | Test Drie'},
+    {identity:'recovery-two',name:'LSRA-F.A.S.T.-00100 | Test Vier'}
+  ])});
+  const result=await service.read();
+  assert.equal(result.connected,true);
+  assert.deepEqual(result.users.map(user=>[user.category,user.importable]),
+    [['AMBULANCE',true],['AMBULANCE-MOTOR',true],['LSRA-F.A.S.T.',false],['LSRA-F.A.S.T.',false]]);
+});
+
 test('Radio normalization deduplicates identities and prevents ambiguous numeric-equivalent callsign imports',async()=>{
   const users=[
     validUser,

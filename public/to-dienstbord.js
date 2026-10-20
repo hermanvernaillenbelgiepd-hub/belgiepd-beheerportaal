@@ -3,7 +3,10 @@ import {setupPortalLogin} from '/portal-login.js';
 const el=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rows=value=>Array.isArray(value)?value:Object.values(value||{});
-const hues={SANTO:220,BLAINE:28,WYCAN:172,FALCON:356,EAGLE:46,SIGMA:268,SIGNA:318,MARCAN:196,AIRCAN:100,CANINE:72,RAGO:292,MIKE:136,COMMAND:215};
+const hues={SANTO:220,BLAINE:28,WYCAN:172,FALCON:356,EAGLE:46,SIGMA:268,SIGNA:318,MARCAN:196,AIRCAN:100,CANINE:72,RAGO:292,MIKE:136,COMMAND:215,
+  AMBULANCE:168,'AMBULANCE-MOTOR':168,PIT:168,MUG:168,MUGHELI:168,'DIR-MED':168,'SIT-TEAM':168,
+  BRANDWEER:8,'ZONE-COMM':8,PLOEG1:8,PLOEG2:8,PLOEG3:8,
+  'LSRA-DEPA100':36,'LSRA-DEPAK200':36,'LSRA-F.A.S.T.':36,'LSRA-ANWV':36};
 const timeFormat=new Intl.DateTimeFormat('nl-BE',{hour:'2-digit',minute:'2-digit'});
 const dateFormat=new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short',year:'numeric'});
 const time=value=>Number.isFinite(Number(value))&&value?timeFormat.format(new Date(Number(value))):'—';

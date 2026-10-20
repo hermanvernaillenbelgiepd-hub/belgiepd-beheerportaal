@@ -16,6 +16,20 @@ function expectStatus(fn,status){assert.throws(fn,error=>error.publicStatus===st
 function addTeam(board,roep='620',dienst='SANTO'){
   return command(board,'add-team',{dienst,leden:[{naam:'Agent Test',roep}]}).board;
 }
+
+test('Requested emergency and recovery categories can be saved without changing access policy',()=>{
+  const categories=['AMBULANCE','AMBULANCE-MOTOR','PIT','MUG','MUGHELI','DIR-MED','SIT-TEAM','BRANDWEER','ZONE-COMM','PLOEG1','PLOEG2','PLOEG3','LSRA-DEPA100','LSRA-DEPAK200','LSRA-F.A.S.T.','LSRA-ANWV'];
+  let board=addTeam(started());
+  for(const category of categories){
+    assert.equal(TO_CATEGORIES.includes(category),true,category);
+    board=addTeam(board,'620',category);
+  }
+  assert.equal(Object.values(board.ploegen).length,17);
+  assert.deepEqual(Object.values(board.ploegen).slice(1).map(team=>team.dienst),categories);
+  expectStatus(()=>command(board,'add-team',{dienst:'LSRA-F.A.S.T.',leden:[{naam:'Dubbel Test',roep:'00620'}]}),409);
+  const medicalUser={...owner,departments:['ambulance'],departmentRoles:{ambulance:'middenkader'}};
+  expectStatus(()=>command(board,'add-team',{dienst:'AMBULANCE',leden:[{naam:'Test',roep:'621'}]},medicalUser),403);
+});
 function createIncident(board){
   return command(board,'create-incident',{postcode:'7042',titel:'Testmelding',omschrijving:'Een testmelding zonder echte persoonsgegevens.'}).board;
 }
