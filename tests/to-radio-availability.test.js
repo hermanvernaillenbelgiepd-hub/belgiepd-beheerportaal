@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {radioMarkedUnavailable,stripRadioNBMarkers,radioMarkedPair,
   groupRadioCrews,radioNBForTeam} from '../public/to-radio-availability.js';
 import {parseSonoranName,createSonoranRadioService} from '../src/to-radio.js';
@@ -71,4 +72,19 @@ test('Starred duplicate members keep their radio identity but form one operation
   assert.equal(groupRadioCrews(payload.users).length,2);
   assert.equal(JSON.stringify(payload).includes('private-a'),false);
   assert.equal(JSON.stringify(payload).includes('test-secret'),false);
+});
+
+test('TO client shows one combined pair, NB status and protects radio-unavailable toggles',()=>{
+  const js=readFileSync(new URL('../public/to-dienstbord.js',import.meta.url),'utf8');
+  const css=readFileSync(new URL('../public/to-dienstbord.css',import.meta.url),'utf8');
+  assert.ok(js.includes('groupRadioCrews(allUsers)'));
+  assert.ok(js.includes('groupByTOService(displayedCrews,crew=>crew.category)'));
+  assert.ok(js.includes('👥'));
+  assert.ok(js.includes('crew.radioUnavailable'));
+  assert.ok(js.includes("pill('Niet beschikbaar · NB','red')"));
+  assert.ok(js.includes("const nbOnRadio=fresh&&radioNBForTeam(team,radioMembers)"));
+  assert.ok(js.includes('data-fixed-disabled="true"'));
+  assert.ok(js.includes("nbOnRadio?'NB via radio'"));
+  assert.ok(css.includes('.radio-crew-paired'));
+  assert.ok(css.includes('.radio-crew-nb'));
 });
