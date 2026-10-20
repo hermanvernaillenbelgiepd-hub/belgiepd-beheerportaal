@@ -344,10 +344,25 @@ function openDialog(title,body,{form='',id='',submit='Opslaan',danger=false,foot
 }
 function closeDialog(){if(dialog.open)dialog.close();dialog.innerHTML='';delete dialog.dataset.incidentId;}
 function formError(message){const target=el('form-error');if(target){target.textContent=message;target.hidden=false;}else tell(message,'error');}
-function defaultName(){return String(auth?.currentUser?.displayName||'').slice(0,60);}
+function defaultName(){
+  const verified=state.env?.viewer?.callsign;
+  return verified||String(auth?.currentUser?.displayName||'').slice(0,60);
+}
 function startDialog(takeover=false){
   const session=state.env.board.session;
-  openDialog(takeover?'Dienst overnemen':'Nieuwe dienst starten',`<p class="form-note">${takeover?'Je neemt het dienstbord over van '+esc(session?.to||'de huidige TO')+'. Deze overname blijft zichtbaar in de diensthistoriek.':'Je wordt de TO van deze dienst. Collega’s met toegang kunnen het bord bekijken en de dienst later overnemen.'}</p><label class="field"><span>Jouw naam op het dienstbord</span><input class="input" name="displayName" maxlength="80" minlength="2" value="${esc(defaultName())}" placeholder="Voor- en achternaam" required autofocus></label>${takeover?'<label class="field"><span>Reden van overname</span><textarea class="input" name="reason" minlength="8" maxlength="300" placeholder="Bijvoorbeeld: aflossing van de lopende dienst" required></textarea></label>':''}`,{form:takeover?'takeover':'start',submit:takeover?'Dienst overnemen':'Dienst starten'});
+  const callsign=state.env.viewer?.callsign;
+  const linked=typeof callsign==='string'&&/^\d{1,5}$/.test(callsign)&&Number(callsign)>0;
+  const linkedSource=state.env.viewer?.callsignSource;
+  const label=linked?'Jouw geverifieerde roepnummer':'Jouw naam of tijdelijk roepnummer';
+  const sourceNote=linked
+    ?'<p class="form-note to-verified-call">✓ Gekoppeld aan jouw Discord-ID via '+(linkedSource==='geverifieerd_tijdelijk'?'een gecontroleerde tijdelijke roepnummeraanvraag':'de personeelslijst')+'. Je roepnummer wordt door de server vastgelegd.</p>'
+    :'<p class="form-note">Geen gekoppeld roepnummer gevonden. Je mag zelf een label invullen, bijvoorbeeld 008 of een tijdelijk nummer tussen 100 en 199. Dit wordt niet als een geverifieerde identiteit beschouwd.</p>';
+  const intro=takeover
+    ?'Je neemt het dienstbord over van '+esc(session?.to||'de huidige TO')+'. Deze overname blijft zichtbaar in de diensthistoriek.'
+    :'Je wordt de TO van deze dienst. Collega’s met toegang kunnen het bord bekijken en de dienst later overnemen.';
+  openDialog(takeover?'Dienst overnemen':'Nieuwe dienst starten',
+    `<p class="form-note">${intro}</p><label class="field"><span>${label}</span><input class="input mono" name="displayName" maxlength="80" minlength="2" value="${esc(defaultName())}" placeholder="${linked?'Roepnummer': 'Naam of roepnummer'}" ${linked?'readonly':''} required autofocus></label>${sourceNote}${takeover?'<label class="field"><span>Reden van overname</span><textarea class="input" name="reason" minlength="8" maxlength="300" placeholder="Bijvoorbeeld: aflossing van de lopende dienst" required></textarea></label>':''}`,
+    {form:takeover?'takeover':'start',submit:takeover?'Dienst overnemen':'Dienst starten'});
 }
 function teamDialog(prefill=null){
   openDialog('Ploeg toevoegen',`<label class="field"><span>Categorie</span><select class="input" name="dienst" id="team-category" required autofocus>${categoryOptions(state.env.categories)}</select></label><fieldset class="form-group"><legend>AGENT 1</legend><div class="form-grid"><label class="field"><span>Naam</span><input class="input" name="naam1" minlength="2" maxlength="80" required placeholder="Naam agent"></label><label class="field"><span>Roepnummer</span><input class="input mono" name="roep1" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" required placeholder="620"></label></div></fieldset><label class="form-checkbox"><input type="checkbox" name="koppel" id="team-paired">Koppelrijden met een tweede agent</label><fieldset class="form-group" id="second-agent" hidden><legend>AGENT 2</legend><div class="form-grid"><label class="field"><span>Naam</span><input class="input" name="naam2" minlength="2" maxlength="80" placeholder="Naam agent"></label><label class="field"><span>Roepnummer</span><input class="input mono" name="roep2" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" placeholder="640"></label></div></fieldset><div class="preview">Ploegnaam<strong id="team-preview">Vul een roepnummer in</strong></div><p class="form-note" style="margin-top:12px;margin-bottom:0">Bij koppelrijden wordt het hoogste roepnummer de ploegnaam.</p>`,{form:'add-team',submit:'Ploeg toevoegen'});
