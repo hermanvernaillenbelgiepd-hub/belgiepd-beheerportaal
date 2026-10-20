@@ -11,9 +11,13 @@ const specs = {
     specialties: [[5,'Opleiding DEP2K'],[6,'Opleiding FAST']] }
 };
 // Expose the canonical per-service catalog without copying Sheet column indexes.
+// SRT/DSU were requested for the status board, but have no confirmed
+// dedicated column in the currently connected Google Sheet. Do not guess.
+const unlinkedSpecialties=Object.freeze({politie:['SRT','DSU']});
 export const SPECIALTY_LABELS=Object.freeze(Object.fromEntries(
   Object.entries(specs).map(([dept,spec])=>[dept,
-    Object.freeze(spec.specialties.map(([,label])=>label))])
+    Object.freeze([...spec.specialties.map(([,label])=>label),
+      ...(unlinkedSpecialties[dept]||[])])])
 ));
 const s = value => String(value ?? '').trim();
 const integer = value => { const str=s(value).replace(',','.'); return /^(0|[1-9]\d*)(\.\d+)?$/.test(str) ? Number(str) : null; };
@@ -80,7 +84,10 @@ export function normalizePersonnel(dept, rows, activities = new Map()) {
     const a=dept==='politie'?activities.get(id):undefined;
     // Status van IEDERE specialisatie bewaren: expliciet 'Nee' is iets anders dan leeg.
     // Oude 'special' string behouden voor compatibiliteit met versie 0.2.
-    const specialties=spec.specialties.map(([col,label])=>({label,value:s(row[col]) || 'Niet ingevuld'}));
+    const specialties=[
+      ...spec.specialties.map(([col,label])=>({label,value:s(row[col]) || 'Niet ingevuld'})),
+      ...(unlinkedSpecialties[dept]||[]).map(label=>({label,value:'Niet ingevuld'}))
+    ];
     const specialText=specialties.filter(x=>isQualified(x.value)).map(x=>`${x.label}: ${x.value}`).join(' · ');
 
     result.push({
