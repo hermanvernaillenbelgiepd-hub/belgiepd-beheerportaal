@@ -35,6 +35,16 @@ table{min-width:1110px}
 .specialty-pictogram{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:17px;margin:2px;border:1px solid #486585;background:#1a3556;border-radius:7px;cursor:help}
 .roster-attribution{font-size:11px;color:#98b0ce;line-height:1.5;margin:12px 0 0}
 .roster-attribution a{color:#c5d9ff;text-decoration:underline}
+.specialty-strip,.specialty-ledger{display:flex;gap:7px;align-items:center;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin;padding:7px 3px}
+.specialty-strip{max-width:min(560px,56vw)}.specialty-ledger{max-width:100%;padding-bottom:14px}
+.specialty-tile{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;flex:0 0 auto;border-radius:8px;background:#192f4a;border:1px solid #3b5478;padding:5px 7px;font-size:11px;color:#dfebfc}
+.specialty-ledger .specialty-tile{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:92px;white-space:normal;text-align:center}
+.specialty-state{font-size:11px;font-weight:750;padding:2px 7px;border-radius:20px;background:#32465f;color:#c9d5e7}
+.specialty-yes{background:#14513b;color:#bbf5d8}.specialty-no{background:#283447;color:#aebdd0}
+.specialty-stage{background:#59401d;color:#ffda99}.specialty-teacher{background:#12515d;color:#b3f6fa}
+.specialty-unknown{background:#35435c;color:#d0daf0}
+#specialtyEdit{margin-top:14px;border-top:1px solid #354c6c;padding-top:12px}
+#specialtyAuditPanel{margin:14px 0}#specialtyAuditPanel summary{cursor:pointer;font-weight:700}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
@@ -111,6 +121,24 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 <p class="subtle">Aanstellingsgegevens, functie en administratieve opvolging. Het officiële personeelsbestand, de rang en de bestaande opleidingen worden hierdoor niet overschreven.</p>
 <div id="staffDossierStatus" role="status" class="subtle">Dossiergegevens worden opgehaald…</div>
 <div id="staffDossierSummary" class="dossier-summary"></div>
+<h3>Specialisaties en bevoegdheden</h3>
+<p class="subtle">Alle onderdelen staan naast elkaar met hun geregistreerde status. Bevoegd officierenkader en korpsleiding kunnen de status met motivering wijzigen. Deze wijziging kent geen Discord-rol toe; een botkoppeling komt later.</p>
+<div id="specialtyStatus" role="status" class="subtle">Specialisaties laden…</div>
+<div id="specialtyGrid" class="specialty-ledger" aria-label="Alle specialisaties"></div>
+<form id="specialtyEdit" hidden>
+<div class="grid">
+<div><label for="specialtyLabel">Specialisatie</label><select id="specialtyLabel" required></select></div>
+<div><label for="specialtyValue">Nieuwe status</label><select id="specialtyValue" required>
+<option>Nee</option><option>Stage</option><option>Ja</option><option>Docent</option><option>Niet ingevuld</option>
+</select></div>
+<div style="grid-column:1/-1"><label for="specialtyReason">Motivering van de statuswijziging</label>
+<textarea id="specialtyReason" rows="2" minlength="15" maxlength="500" required
+placeholder="Bijvoorbeeld: opleiding afgerond en gecontroleerd door instructeur"></textarea></div>
+</div>
+<button id="specialtySave" type="submit">Specialisatiestatus bewaren</button>
+</form>
+<details id="specialtyAuditPanel"><summary>Historiek van specialisatiewijzigingen</summary>
+<div id="specialtyAudit" class="subtle">Nog geen registraties geladen.</div></details>
 <h3>Discord-reeks en specialisaties</h3>
 <p class="subtle">Alleen de recent geverifieerde Discord-rollen worden hier getoond. Rollen wijzigen gebeurt niet via deze fiche; een rolnaam is geen automatische personeelsbevoegdheid.</p>
 <div id="staffDiscordRoles" class="subtle">Discord-rolgegevens laden…</div>
@@ -309,15 +337,19 @@ function render(){
     const status=document.createElement('span');status.className='pill';
     status.textContent=person.status||'Onbekend';statusCell.append(status);tr.append(statusCell);
     const iconsCell=document.createElement('td');iconsCell.className='roster-specialties';
-    const specialties=BPDPersonnelVisuals.specialtyBadges(person.specialties);
-    if(!specialties.length)iconsCell.textContent='—';
+    const strip=document.createElement('div');strip.className='specialty-strip';
+    const specialties=BPDPersonnelVisuals.specialtyStatuses(person.specialties);
+    if(!specialties.length)iconsCell.textContent='Niet ingevuld';
     for(const item of specialties){
-      const mark=document.createElement('span');mark.className='specialty-pictogram';
-      const label=item.label+(item.value?' · '+item.value:'');
-      mark.title=label;mark.setAttribute('role','img');mark.setAttribute('aria-label',label);
-      mark.textContent=item.icon;iconsCell.append(mark);
+      const mark=document.createElement('span');mark.className='specialty-tile';
+      mark.title=item.label+' · '+item.status;
+      const ic=document.createElement('span');ic.textContent=item.icon;ic.setAttribute('aria-hidden','true');
+      const label=document.createElement('span');label.textContent=item.label;
+      const status=document.createElement('span');
+      status.className='specialty-state specialty-'+item.style;status.textContent=item.status;
+      mark.append(ic,label,status);strip.append(mark);
     }
-    tr.append(iconsCell);
+    iconsCell.append(strip);tr.append(iconsCell);
     const action=document.createElement('button');action.type='button';action.textContent='Open fiche';action.className='alt';
     action.onclick=()=>showPerson(person);
     const cell=document.createElement('td');cell.append(action);tr.append(cell);body.append(tr);
