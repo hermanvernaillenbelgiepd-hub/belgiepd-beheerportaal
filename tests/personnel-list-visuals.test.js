@@ -55,7 +55,11 @@ test('Specializations pictograms show only positive roster values; status preser
   assert.equal(result.length,3);
   assert.equal(result[0].icon,'🏍️');
   assert.equal(result[1].icon,'🎧');
-  assert.equal(result[2].icon,'🚦');
+  assert.equal(result[2].icon,'🦺'); // fallback, never displayed while image loads
+  assert.equal(api.specialtyIconImage('Signalisatie'),'/assets/icons/signalisatie.svg');
+  assert.equal(api.specialtyIconImage('SIGNALISATIE'),'/assets/icons/signalisatie.svg');
+  assert.equal(api.specialtyIconImage(' Motor '),null);
+  assert.equal(api.specialtyIconImage('Signalisatie-extra'),null);
   assert.equal(result[1].value,'Geslaagd');
   assert.equal(api.qualification('n.v.t.'),false);
   assert.equal(api.qualification('Nee'),false);
@@ -92,6 +96,21 @@ test('Both personnel tables retain identity columns and show per-service dynamic
   assert.ok(manager.includes('specialtyEdit'));
   assert.ok(manager.includes('person.series||'));
   assert.ok(manager.includes('person.specialties'));
+});
+test('User-provided Signalisatie sign is embedded locally and used across both rosters',()=>{
+  const svg=source('public/assets/icons/signalisatie.svg');
+  assert.match(svg,/<svg\\s/);
+  assert.match(svg,/data:image\\/webp;base64,/);
+  assert.ok(svg.length>4000,'Expected a real embedded sign image, not an external URL');
+  const manager=source('public/personeelsbeheer.html');
+  const dashboard=source('public/index.html');
+  assert.ok(manager.includes('function specialtyMark(label)'));
+  assert.ok(manager.includes('pict.append(specialtyMark(label))'));
+  assert.ok(manager.includes('const icon=specialtyMark(x.label)'));
+  assert.ok(dashboard.includes('function specialtyMarkHtml(label)'));
+  assert.ok(dashboard.includes('specialtyMarkHtml(label)'));
+  assert.ok(manager.includes('.specialty-custom-image'));
+  assert.ok(dashboard.includes('.specialty-custom-image'));
 });
 test('Visual roster credits live on a separate sources page',()=>{
   const page=source('public/bronnen.html');
