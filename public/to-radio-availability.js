@@ -14,7 +14,7 @@ export function stripRadioNBMarkers(value){
 export function radioMarkedPair(value){
   if(typeof value!=='string')return false;
   const head=stripRadioNBMarkers(value.split('|')[0]).trim();
-  return /\\d{1,5}\\*\\s*$/.test(head);
+  return /\d{1,5}\*\s*$/.test(head);
 }
 
 // Group ONLY a precisely matching category + positive numeric unit when at
