@@ -105,3 +105,45 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
   .radio-crew-status{padding-left:35px}
   .radio-pair-detail{font-size:8px;max-width:85px}
 }
+
+/* TO operationele kleuren en snelle radiobediening; tekstlabels blijven leidend. */
+.team-card[data-availability="ready"]{background:#e9f8ef;border-color:#a8dbc1;border-left:5px solid #229866}
+.team-card[data-availability="on-incident"]{background:#fff1d9;border-color:#e9c480;border-left:5px solid #cb872a}
+.team-card[data-availability="on-pause"]{background:#fdebed;border-color:#e8aab1;border-left:5px dashed #ca4b5f;opacity:1}
+.team-card[data-availability="on-pause"] .callsign{color:#7e2638}
+.team-card[data-availability="on-incident"] .callsign{color:#77501a}
+.team-card[data-availability="ready"] .callsign{color:#1c664e}
+.crew-radio-label{padding-top:7px;margin-top:7px;border-top:1px solid #dbe7eb;color:#446c83;font-size:10px;line-height:1.6;overflow-wrap:anywhere}
+.radio-user[draggable="true"],.pending-radio-card[draggable="true"]{cursor:grab}
+.radio-user[draggable="true"]:active,.pending-radio-card[draggable="true"]:active{cursor:grabbing}
+.radio-just-joined{outline:2px solid #dbb452;outline-offset:-2px;border-radius:8px}
+.radio-arrival-badge{font-size:8px!important;font-weight:900;letter-spacing:.6px;background:#fbe3ae;color:#7b4b06;border:1px solid #eac477;padding:3px 5px;border-radius:4px;white-space:nowrap}
+.radio-pending-badge{font-size:8px!important;font-weight:850;background:#eaf0fa;color:#516d9b;padding:3px 5px;border-radius:4px;white-space:nowrap}
+.radio-user-name{flex-wrap:wrap}
+.radio-user .radio-remove{font-size:9px;min-height:27px;padding:5px 7px;white-space:nowrap;flex:none;border-color:#edd0d4;color:#a03d4f;background:#fff4f4}
+.radio-user .radio-add{background:#e9f5ed;border-color:#badfc7;color:#267a52;font-weight:750}
+.pending-radio-section{margin:12px 0 16px;padding:16px;background:#f0f6fd;border:1px solid #bbd0ea;border-radius:12px}
+.pending-radio-section h3{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:#365d83;margin:0 0 5px}
+.pending-radio-section h3 span{font-size:10px;font-weight:700;color:#567b99}
+.pending-radio-section>p{font-size:10px;line-height:1.65;color:#647c99;margin:0 0 12px}
+.pending-radio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.pending-radio-card{min-width:0;border:1px solid #d3e0ef;border-left:4px solid hsl(var(--unit-hue) 62% 47%);border-radius:8px;background:#fff;padding:11px;display:grid;gap:8px}
+.pending-radio-title{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.pending-radio-title strong{font-size:15px;color:#243d5f;overflow-wrap:anywhere}
+.pending-radio-card>small{font-size:10px;color:#6f829a;line-height:1.5;overflow-wrap:anywhere}
+.pending-radio-foot{display:flex;align-items:center;justify-content:space-between;gap:7px}
+.pending-radio-foot .button{font-size:10px;min-height:30px;color:#267a52;background:#e9f5ed;border-color:#badfc7}
+.radio-board-dropzone{display:grid;place-items:center;min-height:44px;margin:0 0 13px;border:2px dashed #c9d6e8;border-radius:9px;background:#f8fafd;color:#7386a4;text-align:center;font-size:10px;line-height:1.5;padding:8px 10px}
+.radio-board-dropzone.radio-drop-active{background:#e4f5e9;border-color:#2b976a;color:#1f7154;box-shadow:0 0 0 3px #9dd7b245}
+.incident-presets{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.incident-preset{min-height:31px;border:1px solid #bccbe3;border-radius:7px;background:#eef3fb;color:#47648e;font-size:10px;font-weight:750;padding:7px 10px}
+.incident-preset:hover:not(:disabled),.incident-preset:focus-visible{background:#dfeafb;border-color:#809ac9}
+.incident-preset:disabled{opacity:.55;cursor:default}
+@media(max-width:700px){
+ .pending-radio-section{padding:12px}
+ .pending-radio-grid{grid-template-columns:1fr}
+ .incident-presets{gap:5px}
+ .incident-preset{font-size:9px;min-height:29px;padding:6px 8px}
+ .radio-board-dropzone{font-size:9px}
+ .radio-arrival-badge,.radio-pending-badge{font-size:7px!important}
+}
