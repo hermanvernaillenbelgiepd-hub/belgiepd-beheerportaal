@@ -1,10 +1,16 @@
-import {getFirestore} from 'firebase-admin/firestore';
-import {canViewPersonnel} from './personnel-editor-policy.js';
+import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {createHash} from 'node:crypto';
+import {canViewPersonnel,canEditPersonnel} from './personnel-editor-policy.js';
+import {roleForDepartment} from './leave-policy.js';
 import {CREATED_PERSONNEL_COLLECTION} from './personnel-create.js';
-import {PERSONNEL_ACTIVITY_COLLECTION,recentPersonnelActivity} from './personnel-activity.js';
+import {PERSONNEL_ACTIVITY_COLLECTION,recentPersonnelActivity,validateRetrospectiveCallChange} from './personnel-activity.js';
 
 const DEPARTMENTS=['politie','ambulance','brandweer','depannage'];
-export function installPersonnelActivityRoutes(app,{requireUser}){
+const mayLogPreviousCall=actor=>/^(?:officierenkader|korpsleiding)$/.test(actor?.role||'')&&
+  ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
+  /^\d{15,22}$/.test(actor?.discordId||'')&&
+  actor.departments?.includes('politie');
+export function installPersonnelActivityRoutes(app,{requireUser,getSnapshot}){
   app.get('/api/personnel/activity/recent',requireUser,async(req,res)=>{
     const permitted=DEPARTMENTS.filter(dept=>canViewPersonnel(req.bpd,dept));
     if(!permitted.length)return res.status(403).json({error:'Geen bevoegdheid voor personeelsactiviteiten'});
@@ -23,11 +29,54 @@ export function installPersonnelActivityRoutes(app,{requireUser}){
       ]);
       const events=recentPersonnelActivity(audits.docs,callsigns.docs,permitted,8,created.docs);
       res.set('Cache-Control','no-store');
-      return res.json({events,readOnly:true,
+      return res.json({events,readOnly:true,canLogHistoricalCall:process.env.BPD_ENABLE_HISTORICAL_CALL_AUDIT_WRITES==='true'&&mayLogPreviousCall(req.bpd),
         note:'Alleen gelogde personeelswijzigingen; handmatige Sheets-wijzigingen zonder historiek worden niet terugwerkend gereconstrueerd.'});
     }catch(err){
       console.error('Recente personeelsactiviteiten:',err?.code||err?.message||'onbekend');
       return res.status(503).json({error:'Recente personeelsactiviteiten tijdelijk niet beschikbaar'});
+    }
+  });
+
+  // A historical Sheet change has no trustworthy occurrence date: store the
+  // date of its manual registration, never silently claim it occurred today.
+  app.post('/api/personnel/activity/retrospective-callsign',requireUser,async(req,res)=>{
+    if(process.env.BPD_ENABLE_HISTORICAL_CALL_AUDIT_WRITES!=='true')
+      return res.status(503).json({error:'Historische roepnummerregistratie is uitgeschakeld'});
+    if(!mayLogPreviousCall(req.bpd))
+      return res.status(403).json({error:'Alleen bevoegd officierenkader of korpsleiding Politie mag dit registreren'});
+    let entry;
+    try{entry=validateRetrospectiveCallChange(req.body)}
+    catch(e){return res.status(400).json({error:e.message})}
+    try{
+      const snapshot=await getSnapshot({forceRefresh:true});
+      if(snapshot.stale)return res.status(503).json({error:'De actuele personeelsbron kon niet worden geverifieerd'});
+      const matches=snapshot.data.filter(p=>p.dept==='politie'&&p.personId===entry.discordId);
+      if(matches.length!==1)return res.status(404).json({error:'Geen eenduidige politionele personeelsfiche'});
+      const person=matches[0];
+      if(!canEditPersonnel(req.bpd,person))
+        return res.status(403).json({error:'Geen wijzigingsrecht op dit personeelsdossier'});
+      if(person.call.toLocaleLowerCase('nl-BE')!==entry.expectedCurrentCall.toLocaleLowerCase('nl-BE'))
+        return res.status(409).json({error:'Het roepnummer in de personeelslijst is intussen anders. Vernieuw het dashboard.'});
+      const key=[person.dept,person.personId,entry.previousCall.toLowerCase(),person.call.toLowerCase()].join('|');
+      const id='historical_call_'+createHash('sha256').update(key).digest('hex');
+      try{
+        await getFirestore().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(id).create({
+          type:'callsign_changed',dept:'politie',discordId:person.personId,
+          name:person.name,before:entry.previousCall,after:person.call,
+          source:'retrospective_manual',reason:entry.reason,
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
+          at:FieldValue.serverTimestamp(),actualChangeDate:null
+        });
+      }catch(err){
+        if(err?.code===6||err?.code==='already-exists')
+          return res.status(409).json({error:'Deze historische roepnummerwijziging is al geregistreerd'});
+        throw err;
+      }
+      return res.status(201).json({recorded:true,recordedAt:'server',
+        currentRosterUnchanged:true,occurrenceDateUnknown:true});
+    }catch(err){
+      console.error('Historische roepnummerregistratie:',err?.code||err?.message||'onbekend');
+      return res.status(503).json({error:'Historische roepnummerregistratie is momenteel niet beschikbaar'});
     }
   });
 }

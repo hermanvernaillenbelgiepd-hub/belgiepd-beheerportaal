@@ -8,6 +8,25 @@ const when=value=>{
     typeof value==='string'?new Date(value):null);
   return date instanceof Date&&Number.isFinite(date.getTime())?date.toISOString():null;
 };
+export function validateRetrospectiveCallChange(payload){
+  if(!payload||typeof payload!=='object'||Array.isArray(payload)||
+    Object.keys(payload).some(k=>!['discordId','previousCall','expectedCurrentCall','reason'].includes(k)))
+    throw Error('Ongeldige historische roepnummerwijziging');
+  if(!ID.test(payload.discordId))throw Error('Kies een bestaand personeelslid');
+  const checkCall=value=>{
+    if(typeof value!=='string'||!/^[A-Za-z0-9][A-Za-z0-9 -]{0,23}$/.test(value.trim()))
+      throw Error('Roepnummer bevat ongeldige tekens');
+    return value.trim();
+  };
+  const previousCall=checkCall(payload.previousCall),
+    expectedCurrentCall=checkCall(payload.expectedCurrentCall);
+  if(previousCall.toLowerCase()===expectedCurrentCall.toLowerCase())
+    throw Error('Oud en nieuw roepnummer mogen niet identiek zijn');
+  const reason=typeof payload.reason==='string'?payload.reason.trim():'';
+  if(reason.length<15||reason.length>500||/[\x00-\x1f\x7f<>]/.test(reason))
+    throw Error('Motivering van minimaal 15 en maximaal 500 tekens vereist');
+  return {discordId:payload.discordId,previousCall,expectedCurrentCall,reason};
+}
 export function staffActivityEvent(id,data){
   if(!data||!SERVICES.has(data.dept)||!ID.test(data.discordId))return null;
   if(!['promotion','callsign_changed'].includes(data.type))return null;
@@ -17,7 +36,8 @@ export function staffActivityEvent(id,data){
   if(!after||before===after)return null;
   return {id:'audit:'+String(id).slice(0,100),type:data.type,
     dept:data.dept,discordId:data.discordId,
-    name:trim(data.name,120)||'Personeelslid',before,after,at};
+    name:trim(data.name,120)||'Personeelslid',before,after,at,
+    retrospective:data.source==='retrospective_manual'};
 }
 export function callsignActivityEvent(id,data){
   if(!ID.test(id)||data?.status!=='approved')return null;

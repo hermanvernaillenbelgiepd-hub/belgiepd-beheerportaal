@@ -89,6 +89,16 @@
 .personnel-feed-date{white-space:nowrap;font-size:11px;color:#75859e}
 @media(max-width:680px){.personnel-feed-row{align-items:flex-start;flex-wrap:wrap;gap:6px}
 .personnel-feed-type{flex:0 0 auto}.personnel-feed-date{margin-left:auto}}
+
+.historical-call-entry{border-top:1px solid #e4eafa;margin-top:7px;padding:12px 4px 3px}
+.historical-call-entry summary{color:#4565b0;font-size:12px;font-weight:700;cursor:pointer}
+.historical-call-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:14px}
+.historical-call-form label{font-size:11px;color:#53627c;font-weight:700;display:flex;flex-direction:column;gap:5px}
+.historical-call-form select,.historical-call-form input,.historical-call-form textarea,.historical-call-form output{width:100%;min-height:35px;border:1px solid #cfdae9;border-radius:7px;padding:8px;font:inherit;font-size:12px;background:#fff;color:#24334c}
+.historical-call-form label:has(textarea),.historical-call-hint{grid-column:1/-1}
+.historical-call-form button{width:max-content}
+.historical-call-hint{font-size:11px;color:#8592a6;line-height:1.4}
+@media(max-width:680px){.historical-call-form{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -167,7 +177,7 @@ const messages=[{id:'m1',title:'Lange inactiviteit vastgesteld',detail:'1 medewe
 let reports=[{id:'r1',title:'Weekrapport – Reeks 1',dept:'politie',period:'12–18 oktober 2026',status:'Concept',author:'Testgebruiker',category:'Observatie',description:'Demonstratierapport. Geen echte personeelsinformatie.'},{id:'r2',title:'Opleidingsregistratie',dept:'brandweer',period:'13 oktober 2026',status:'Ingediend',author:'Testgebruiker',category:'Opleiding',description:'Voorbeeld voor opleidingen.'},{id:'r3',title:'Weekrapport – Reeks 2',dept:'politie',period:'05–11 oktober 2026',status:'Gecontroleerd',author:'Testgebruiker',category:'Varia',description:'Demonstratie van historisch weekrapport.'}];
 const nav1=[['dashboard','home','Dashboard'],['personeel','users','Personeelsbeheer'],['activiteiten','activity','Activiteitencheck'],['rapporten','file','Weekrapporten'],['documenten','folder','Documentencentrum']];
 const nav2=[['meldingen','bell','Meldingen'],['diensten','building','Hulpdiensten'],['beheer','lock','Beheer & rollen']];
-let personnelActivity={loaded:false,events:[],error:null};
+let personnelActivity={loaded:false,events:[],error:null,canLogHistoricalCall:false};
 let restrictedPortal=false;
 let page='dashboard', returnPage='dashboard', query='', deptFilter='politie', statusFilter='all', seriesFilter='all', docFilter='all', role='korpsleiding', selectedDepartment='politie', drawer=null, drawerTab='algemeen', modal=null, reportFilter='all';
 const canReadRecords=()=>role!=='medewerker';
@@ -261,17 +271,34 @@ function personnelActivityRows(){
     const name=known?'<button class="personnel-feed-link" data-person="'+esc(personnelId)+'">'+esc(e.name)+'</button>':
       '<strong>'+esc(e.name)+'</strong>';
     return '<div class="personnel-feed-row"><span class="personnel-feed-type '+esc(e.type)+'">'+
-      esc(eventName)+'</span><div class="personnel-feed-main"><div>'+name+
+      esc(e.retrospective?'Historische roepnummerregistratie':eventName)+'</span><div class="personnel-feed-main"><div>'+name+
       '<span class="personnel-feed-dept">'+esc(departments[e.dept]?.name||e.dept)+'</span></div>'+
       '<div class="personnel-feed-description">'+esc(description)+'</div></div>'+
-      '<time class="personnel-feed-date" datetime="'+esc(e.at)+'">'+esc(at)+'</time></div>';
+      '<time class="personnel-feed-date" datetime="'+esc(e.at)+'">'+esc(e.retrospective?'Geregistreerd: '+at:at)+'</time></div>';
   }).join('');
+}
+function historicalCallRegistration(){
+  if(!liveMode||!personnelActivity.canLogHistoricalCall)return '';
+  const people=employees.filter(x=>x.dept==='politie'&&/^\d{15,22}$/.test(x.personId||'')&&x.call&&x.call!=='—')
+    .sort((a,b)=>a.name.localeCompare(b.name,'nl-BE'));
+  if(!people.length)return '';
+  return '<details class="historical-call-entry"><summary>Reeds gewijzigde roepnummers achteraf registreren</summary>'+
+    '<form id="historicalCallForm" class="historical-call-form">'+
+    '<label>Personeelslid <select id="historicalCallPerson" required>'+
+    people.map(x=>'<option value="'+esc(x.personId)+'">'+esc(x.name)+' · '+esc(x.call)+'</option>').join('')+
+    '</select></label>'+
+    '<label>Vorig roepnummer <input id="historicalOldCall" required maxlength="24" placeholder="Bijvoorbeeld S302"></label>'+
+    '<label>Huidig roepnummer <output id="historicalCurrentCall">'+esc(people[0].call)+'</output></label>'+
+    '<label>Motivering <textarea id="historicalCallReason" required minlength="15" maxlength="500" rows="2" placeholder="Bijvoorbeeld: reeds gewijzigd in de officiële personeelslijst"></textarea></label>'+
+    '<button class="btn btn-primary" type="submit">Vroegere wijziging registreren</button>'+
+    '<p class="historical-call-hint">Deze registratie wijzigt geen roepnummer of Discord-rol. We tonen de registratiedatum, niet een verzonnen datum waarop de wijziging gebeurde.</p>'+
+    '</form></details>';
 }
 function dashboard(){const a=employees.filter(x=>x.status==='Actief').length;return h('Operationeel overzicht','Welkom in het administratieve controlecentrum van BelgiëPD.')+
 `${approvalWidget()}${canOpenRegistrations()?`<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Vaste roepnummers</div><div class="card-sub">Aanvragen controleren en definitief toekennen volgens kaderrechten</div></div><a class="btn btn-primary" href="/roepnummers.html" style="text-decoration:none">Open aanvragen</a></div></div>`:""}<div class="cards">${card('Personeelsleden',employees.length,'Alle hulpdiensten samen','users')}${card('Actieve leden',a,liveMode?'Google Sheets · alleen lezen':'<b>Demo-overzicht</b> · geen live data','activity','green')}${card('Op te volgen',employees.filter(x=>x.status==='Inactief'||x.status==='50/50').length,'Inactiviteit en 50/50-status','alert','amber')}${card('Weekrapporten',liveMode?'—':reports.length,liveMode?'Nog niet gekoppeld':'Waarvan '+reports.filter(r=>r.status==='Concept').length+' in concept','file')}</div>
 <div class="section-grid"><div class="card section-pad"><div class="card-header"><div><div class="card-title">Activiteitsoverzicht</div><div class="card-sub">${liveMode?'Historische meetpunten nog niet gekoppeld':'Gesimuleerde speelactiviteit per dag'}</div></div><span class="badge-inline">${liveMode?'Geen historie':'Laatste 12 dagen'}</span></div>${chart()}</div>
 <div class="card section-pad"><div class="card-header"><div><div class="card-title">Aandachtspunten</div><div class="card-sub">Meldingen voor het middenkader</div></div><button class="small-link" data-page="meldingen">Alles bekijken ${icon('arrow')}</button></div><div class="alert-list">${(liveMode?[]:messages.slice(0,4)).map(m=>`<div class="alert-row"><div class="alert-icon ${m.type}">${icon(m.type==='red'?'alert':m.type==='blue'?'file':'clock')}</div><div class="alert-copy"><strong>${esc(m.title)}</strong><small>${esc(m.detail)}</small></div>${icon('chevron')}</div>`).join('')}${liveMode?'<div class="profile-note">Meldingen zijn nog niet verbonden met de livebronnen.</div>':''}</div></div></div>
-<div class="card table-card"><div class="table-head"><div><div class="card-title">Recente personeelsactiviteit</div><div class="card-sub">Laatste vastgelegde promoties en vaste roepnummers</div></div><a class="small-link" href="/personeelsbeheer.html">Personeelsdossiers →</a></div><div class="personnel-feed-list">${personnelActivityRows()}</div></div><div class="footer-note">${liveMode?"Personeelsactiviteit: geregistreerde besluiten in Firestore. Niet-gelogde historische wijzigingen in Google Sheets zijn niet beschikbaar.":"DEMO · Geen echte personeelsactiviteiten beschikbaar zonder aanmelding."}</div>`}
+<div class="card table-card"><div class="table-head"><div><div class="card-title">Recente personeelsactiviteit</div><div class="card-sub">Laatste vastgelegde promoties en vaste roepnummers</div></div><a class="small-link" href="/personeelsbeheer.html">Personeelsdossiers →</a></div><div class="personnel-feed-list">${personnelActivityRows()}${historicalCallRegistration()}</div></div><div class="footer-note">${liveMode?"Personeelsactiviteit: geregistreerde besluiten in Firestore. Niet-gelogde historische wijzigingen in Google Sheets zijn niet beschikbaar.":"DEMO · Geen echte personeelsactiviteiten beschikbaar zonder aanmelding."}</div>`}
 function personnelPage(){if(!canReadRecords())return h('Personeelsbeheer','Geen machtiging voor deze functie.')+`<div class="card section-pad">${empty('Geen toegang tot personeelsbeheer')}</div>`;
 const seriesOptions=[...new Set(employees.filter(x=>deptFilter==='all'||x.dept===deptFilter).map(x=>x.series).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl',{numeric:true}));
 return h('Personeelsbeheer','Centraal overzicht van alle personeelsleden en hun toegewezen diensten.',
@@ -398,7 +425,7 @@ async function initConnection(){
       if(!r.ok)throw new Error(payload.error||'Geen toegang');
       if(!Array.isArray(payload.employees))throw new Error('Ongeldige serverrespons');
       restrictedPortal=false;dossierState=Object.create(null);liveMode=true;liveInfo=payload;
-      personnelActivity={loaded:false,events:[],error:null};
+      personnelActivity={loaded:false,events:[],error:null,canLogHistoricalCall:false};
       employees=payload.employees;
       const allowed=payload.departments||[];
       if(!allowed.includes(deptFilter))deptFilter=allowed.includes('politie')?'politie':allowed[0]||'all';
@@ -419,17 +446,51 @@ async function initConnection(){
         const body=await response.json().catch(()=>({}));
         if(!response.ok)throw Error(body.error||'Recente personeelsactiviteiten niet beschikbaar');
         if(auth.currentUser?.uid!==user.uid||!liveMode)return;
-        personnelActivity={loaded:true,events:Array.isArray(body.events)?body.events.slice(0,8):[],error:null};
+        personnelActivity={loaded:true,events:Array.isArray(body.events)?body.events.slice(0,8):[],error:null,canLogHistoricalCall:body.canLogHistoricalCall===true};
       }catch(error){
         if(auth.currentUser?.uid!==user.uid||!liveMode)return;
-        personnelActivity={loaded:true,events:[],error:error.message};
+        personnelActivity={loaded:true,events:[],error:error.message,canLogHistoricalCall:false};
       }
       if(page==='dashboard')render();
     }
+    document.addEventListener('change',event=>{
+      if(event.target?.id!=='historicalCallPerson')return;
+      const person=employees.find(x=>x.dept==='politie'&&x.personId===event.target.value);
+      const target=document.getElementById('historicalCurrentCall');
+      if(target)target.textContent=person?.call||'—';
+    });
+    document.addEventListener('submit',async event=>{
+      if(event.target?.id!=='historicalCallForm')return;
+      event.preventDefault();
+      const user=auth.currentUser;
+      if(!user)return toast('Meld je aan om een historische wijziging te registreren.');
+      const discordId=document.getElementById('historicalCallPerson')?.value;
+      const person=employees.find(x=>x.dept==='politie'&&x.personId===discordId);
+      const previousCall=document.getElementById('historicalOldCall')?.value.trim();
+      const reason=document.getElementById('historicalCallReason')?.value.trim();
+      if(!person)return toast('Selecteer een personeelslid.');
+      if(!confirm('Bevestig historische wijziging van '+person.name+': '+previousCall+
+        ' → '+person.call+'. De datum van de oorspronkelijke wijziging is onbekend.'))return;
+      const button=event.target.querySelector('button[type="submit"]');
+      if(button)button.disabled=true;
+      try{
+        const token=await user.getIdToken();
+        const response=await fetch('/api/personnel/activity/retrospective-callsign',{
+          method:'POST',cache:'no-store',
+          headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+          body:JSON.stringify({discordId,previousCall,expectedCurrentCall:person.call,reason})
+        });
+        const body=await response.json().catch(()=>({}));
+        if(!response.ok)throw Error(body.error||'Historische registratie mislukt');
+        toast('Historische roepnummerwijziging geregistreerd, zonder personeelsgegevens te wijzigen.');
+        await refreshPersonnelActivity(user);
+      }catch(e){toast(e.message||'Registratie mislukt')}
+      finally{if(button?.isConnected)button.disabled=false}
+    });
     authModule.onAuthStateChanged(auth,async user=>{
       if(user){try{await loadData(user);toast('Google Sheets gekoppeld: alleen lezen.');}
-        catch(error){restrictedPortal=false;personnelActivity={loaded:false,events:[],error:null};if(error.message?.includes('Basiskader heeft geen toegang')){restrictedPortal=true;liveMode=false;liveInfo=null;employees=[];role='basiskader';page='dashboard';document.getElementById('sourceBadge').textContent='BEPERKTE TOEGANG';document.querySelector('.sidebar-profile strong').textContent='BelgiumPD-portaal';document.querySelector('.sidebar-profile small').textContent='Personeelsinzage niet gemachtigd';render();return;}dossierState=Object.create(null);liveMode=false;liveInfo=null;pendingReview=null;employees=sampleEmployees.map(x=>({...x}));document.getElementById('sourceBadge').textContent='DEMO-MODUS';document.querySelector('.sidebar-profile strong').textContent='Testgebruiker';document.querySelector('.sidebar-profile small').textContent='Simulatie · geen live-toegang';render();toast('Geen live-toegang: '+error.message);}}
-      else{restrictedPortal=false;personnelActivity={loaded:false,events:[],error:null};dossierState=Object.create(null);liveMode=false;liveInfo=null;pendingReview=null;employees=sampleEmployees.map(x=>({...x}));role='korpsleiding';document.querySelector('.sidebar-profile strong').textContent='Testgebruiker';document.querySelector('.sidebar-profile small').textContent='Simulatie · geen login';authButton.textContent='Google aanmelden';document.getElementById('sourceBadge').textContent='DEMO-MODUS';render();}
+        catch(error){restrictedPortal=false;personnelActivity={loaded:false,events:[],error:null,canLogHistoricalCall:false};if(error.message?.includes('Basiskader heeft geen toegang')){restrictedPortal=true;liveMode=false;liveInfo=null;employees=[];role='basiskader';page='dashboard';document.getElementById('sourceBadge').textContent='BEPERKTE TOEGANG';document.querySelector('.sidebar-profile strong').textContent='BelgiumPD-portaal';document.querySelector('.sidebar-profile small').textContent='Personeelsinzage niet gemachtigd';render();return;}dossierState=Object.create(null);liveMode=false;liveInfo=null;pendingReview=null;employees=sampleEmployees.map(x=>({...x}));document.getElementById('sourceBadge').textContent='DEMO-MODUS';document.querySelector('.sidebar-profile strong').textContent='Testgebruiker';document.querySelector('.sidebar-profile small').textContent='Simulatie · geen live-toegang';render();toast('Geen live-toegang: '+error.message);}}
+      else{restrictedPortal=false;personnelActivity={loaded:false,events:[],error:null,canLogHistoricalCall:false};dossierState=Object.create(null);liveMode=false;liveInfo=null;pendingReview=null;employees=sampleEmployees.map(x=>({...x}));role='korpsleiding';document.querySelector('.sidebar-profile strong').textContent='Testgebruiker';document.querySelector('.sidebar-profile small').textContent='Simulatie · geen login';authButton.textContent='Google aanmelden';document.getElementById('sourceBadge').textContent='DEMO-MODUS';render();}
     });
     const {setupPortalLogin}=await import('/portal-login.js');
     setupPortalLogin({button:authButton,auth,authModule,config,onError:error=>toast('Aanmelden mislukt: '+(error.code||error.message))});

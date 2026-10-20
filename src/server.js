@@ -263,7 +263,7 @@ installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
 installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
-installPersonnelActivityRoutes(app,{requireUser});
+installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 installSpecializationRoutes(app,{requireUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser,getSnapshot});
