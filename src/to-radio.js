@@ -62,24 +62,41 @@ function configuration(env){
   return {key,communityId,configured,signature:hash(JSON.stringify([rawKey??null,rawCommunity??null]))};
 }
 function protect(value,key){return key?value.split(key).join('[afgeschermd]'):value;}
-// roomId identifies a multi-server ROOM, not a radio channel. Only Sonoran
-// metadata.state may confirm which transmit/scan channels are actually active.
-// Fail closed when the API does not provide usable channel metadata.
-export function activeSonoranChannels(metadata){
-  const state=metadata&&typeof metadata==='object'&&!Array.isArray(metadata)?metadata.state:null;
-  if(!state||typeof state!=='object'||Array.isArray(state))return [];
-  const valid=id=>Number.isSafeInteger(id)&&id>0?String(id):null;
+// Sonoran Radio v2's connected-users endpoint serializes "metadata" as a
+// JSON STRING, unlike v1 (object). roomId is a multi-server room, never a channel.
+// Never publish upstream metadata, connection identities or raw API messages.
+function radioChannelState(metadata){
+  let source=metadata;
+  if(typeof source==='string'){
+    // Per-user metadata is tiny in the API. Reject unexpected large inputs.
+    if(!source.length||source.length>8192)return {channels:[],known:false};
+    try{source=JSON.parse(source);}catch{return {channels:[],known:false};}
+  }
+  if(!source||typeof source!=='object'||Array.isArray(source))return {channels:[],known:false};
+  const state=source.state;
+  if(!state||typeof state!=='object'||Array.isArray(state))return {channels:[],known:false};
+  const known=Object.hasOwn(state,'primaryChId')||
+    Array.isArray(state.primaryChIds)||Array.isArray(state.scannedChIds);
+  if(!known)return {channels:[],known:false};
+  const valid=id=>{
+    // Some API clients serialize channel numbers as strings.
+    const n=typeof id==='number'?id:
+      typeof id==='string'&&/^[1-9]\\d{0,8}$/.test(id)?Number(id):null;
+    return Number.isSafeInteger(n)&&n>0?String(n):null;
+  };
   const channels=[];
   const append=id=>{const channel=valid(id);if(channel&&!channels.includes(channel))channels.push(channel);};
   append(state.primaryChId);
   if(Array.isArray(state.primaryChIds))for(const id of state.primaryChIds.slice(0,128))append(id);
   if(Array.isArray(state.scannedChIds))for(const id of state.scannedChIds.slice(0,128))append(id);
-  return channels;
+  return {channels,known:true};
 }
+export function activeSonoranChannels(metadata){return radioChannelState(metadata).channels;}
 function normalizedUsers(payload,key){
   if(!payload||typeof payload!=='object'||Array.isArray(payload)||!Array.isArray(payload.connectedUsers)||payload.connectedUsers.length>MAX_USERS)
     throw new Error('Invalid radio payload');
   const users=[],identities=new Set();
+  let channelStatusUnknown=0,notInChannel=0;
   for(const row of payload.connectedUsers){
     if(!row||typeof row!=='object'||Array.isArray(row))throw new Error('Invalid radio row');
     if(row.identity!=null&&(typeof row.identity!=='string'||row.identity.length>512))throw new Error('Invalid radio identity');
@@ -89,8 +106,9 @@ function normalizedUsers(payload,key){
     const identity=typeof row.identity==='string'?clean(row.identity):'';
     const rawName=typeof row.name==='string'?clean(row.name):'';
     if(!identity&&!rawName)throw new Error('Missing radio identity');
-    const channels=activeSonoranChannels(row.metadata);
-    if(!channels.length)continue;
+    const {channels,known}=radioChannelState(row.metadata);
+    if(!known){channelStatusUnknown++;continue;}
+    if(!channels.length){notInChannel++;continue;}
     const channel=channels[0];
     const stableIdentity=identity?'identity:'+identity:JSON.stringify(['name',rawName,channel]);
     if(identities.has(stableIdentity))continue;
@@ -116,7 +134,7 @@ function normalizedUsers(payload,key){
       if(!mates.some(item=>item.paired===true))user.importable=false;
     }
   }
-  return {users,connectedCount:payload.connectedUsers.length};
+  return {users,connectedCount:payload.connectedUsers.length,channelStatusUnknown,notInChannel};
 }
 async function boundedJSON(response){
   const declared=response.headers?.get?.('content-length');
@@ -147,8 +165,8 @@ async function boundedJSON(response){
   }
   return JSON.parse(source);
 }
-function payload({configured,connected=false,stale=false,fetchedAt=null,message=null,users=[],connectedCount=0}){
-  return {configured,connected,stale,fetchedAt,message,users,connectedCount,
+function payload({configured,connected=false,stale=false,fetchedAt=null,message=null,users=[],connectedCount=0,channelStatusUnknown=0,notInChannel=0}){
+  return {configured,connected,stale,fetchedAt,message,users,connectedCount,channelStatusUnknown,notInChannel,
     counts:{online:users.length,recognized:users.filter(user=>user.importable).length},refreshSeconds:REFRESH_SECONDS};
 }
 
@@ -176,11 +194,12 @@ export function createSonoranRadioService({env=process.env,fetchImpl=fetch,now=D
           else if(response.status===429)failureMessage='Sonoran ontvangt momenteel te veel aanvragen. Wacht even voordat je opnieuw ververst.';
           await response.body?.cancel?.().catch(()=>{});throw new Error('Radio request failed');
         }
-        const {users,connectedCount}=normalizedUsers(await boundedJSON(response),config.key);
-        result=payload({configured:true,connected:true,fetchedAt:new Date(now()).toISOString(),users,connectedCount});
+        const {users,connectedCount,channelStatusUnknown,notInChannel}=normalizedUsers(await boundedJSON(response),config.key);
+        result=payload({configured:true,connected:true,fetchedAt:new Date(now()).toISOString(),users,connectedCount,channelStatusUnknown,notInChannel});
       }catch{
         result=payload({configured:true,stale:Boolean(lastGood),fetchedAt:lastGood?.fetchedAt??null,
-          users:lastGood?.users??[],connectedCount:lastGood?.connectedCount??0,message:failureMessage});
+          users:lastGood?.users??[],connectedCount:lastGood?.connectedCount??0,
+          channelStatusUnknown:lastGood?.channelStatusUnknown??0,notInChannel:lastGood?.notInChannel??0,message:failureMessage});
       }
       // An old request must not restore cached data after server bindings change.
       if(activeSignature!==config.signature)return read();
