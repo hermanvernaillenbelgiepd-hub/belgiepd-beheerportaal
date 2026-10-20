@@ -21,9 +21,6 @@ Render biedt hiervoor automatisch `RENDER_GIT_COMMIT` en `RENDER_GIT_BRANCH` aan
 
 Een code-merge activeert de modules niet vanzelf. In iedere afzonderlijke Render-omgeving:
 - `BPD_ENABLE_DOSSIER_CENTER=true` activeert het alleen-lezen dossiercentrum.
-- `BPD_ENABLE_CITIZEN_DOSSIERS=true` activeert eigen burgerdossiers; voor zelfregistratie is de bestaande Discord OAuth-login vereist.
-- `BPD_ENABLE_SERVICE_APPLICATIONS=true` activeert sollicitaties, alleen wanneer de vertrouwde FiveM-bewijsbron is gevalideerd.
-- `BPD_ENABLE_FIVEM_EVIDENCE_INGEST=true` met een **nieuwe aparte** `BPD_FIVEM_EVIDENCE_SECRET` activeert de vertrouwde telemetrieontvangst alleen wanneer de bron technisch beschikbaar is.
 - `BPD_ENABLE_PERSONNEL_RANK_CHANGES=true` activeert gecontroleerde promoties op nieuwe, gekoppelde politie-Firestore-fiches; de personeelsdataschakelaar blijft een tweede voorwaarde.
 
 **Laat de laatste drie functies UIT** totdat de bevoegdheden en de werkelijke bot-/FireStore-bronnen gecontroleerd zijn. Test toegang met een toegelaten burger, een politie-kaderlid en een kaderlid van een andere hulpdienst. Test nooit met fictieve FiveM-uren in MAIN.
