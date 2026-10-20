@@ -17,6 +17,17 @@ test('All browser module scripts parse as valid JavaScript',()=>{
   const common=readFileSync(new URL('../public/portal-login.js',import.meta.url),'utf8');
   assert.doesNotThrow(()=>new Script(common.replace(/^export\s+/gm,'')));
 });
+test('Personnel drawer is wider and all six tabs remain available without a narrow scroll strip',()=>{
+  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+  assert.match(html,/class="drawer personnel-drawer" role="dialog"/);
+  assert.match(html,/\.personnel-drawer\{width:min\(920px,94vw\)/);
+  assert.match(html,/\.personnel-drawer \.profile-tabs\{flex-wrap:wrap;overflow-x:visible/);
+  assert.match(html,/@media\(max-width:680px\)\{[\s\S]*?\.personnel-drawer \.profile-tabs\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  for(const tab of ["'algemeen','Algemeen'","'bevoegdheden','Bevoegdheden'",
+    "'activiteit','Activiteit'","'dossier','Dossier'","'weekrapporten','Weekrapporten'",
+    "'historiek','Historiek'"])
+    assert.ok(html.includes(tab),'Missing personnel tab: '+tab);
+});
 test('Personnel intake warns about duplicate callsigns and Discord claims',()=>{
   const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
   assert.match(html,/id="newDuplicateWarning"/);
