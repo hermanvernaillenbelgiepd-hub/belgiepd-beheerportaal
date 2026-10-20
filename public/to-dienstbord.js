@@ -28,6 +28,7 @@ const button=(text,action,{id='',teamId='',primary=false,danger=false,small=fals
 
 let auth=null,authEpoch=0;
 const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',archives:null,archive:null,lastSynced:null};
+const radio={snapshot:null,loading:false,error:null,requestSerial:0};
 const dialog=el('to-dialog');
 let toastTimer;
 
@@ -38,6 +39,12 @@ function tell(message,kind=''){
 function toast(message){el('toast').textContent=message;el('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el('toast').hidden=true;},4500);}
 function canEdit(){return Boolean(state.env?.permissions.canEdit&&!state.stale&&!state.pending&&state.env.writesEnabled!==false);}
 function canOperate(){return Boolean(state.env?.permissions.canOperate&&!state.stale&&!state.pending&&state.env.writesEnabled!==false);}
+function clearRadio(){radio.requestSerial++;radio.snapshot=null;radio.loading=false;radio.error=null;}
+function radioFresh(){return Boolean(radio.snapshot?.configured&&radio.snapshot.connected&&!radio.snapshot.stale&&!radio.error);}
+function sameCallsign(left,right){return /^\d{1,5}$/.test(String(left))&&/^\d{1,5}$/.test(String(right))&&Number(left)===Number(right);}
+function radioMatchesTeam(user,team){return Boolean(user.category&&user.number&&user.category===team.dienst&&[(team.roepnaam),...(team.leden||[]).map(member=>member.roep)].some(number=>sameCallsign(number,user.number)));}
+function radioAlreadyOnBoard(user){return Boolean(state.env&&activeTeams(state.env.board).some(team=>radioMatchesTeam(user,team)));}
+function canImportRadioUser(user){return Boolean(user?.importable&&state.env?.categories.includes(user.category)&&/^\d{1,5}$/.test(String(user.number))&&Number(user.number)>0);}
 function busyMap(board){
   const result=new Map();
   for(const incident of incidents(board).filter(item=>item.status==='actief'))for(const team of incident.ploegen||[]){
@@ -70,12 +77,57 @@ async function refresh({quiet=false}={}){
     if(state.view==='archives'&&!state.archive)await loadArchives();
     render();
     if(!quiet||wasStale)showReadiness();
+    if(state.view==='board'&&!radio.snapshot&&!radio.loading)void refreshRadio();
   }catch(error){
     if(error.obsolete)return;
     state.stale=true;
-    if(error.status===401||error.status===403){state.env=null;state.archive=null;state.archives=null;closeDialog();}
+    if(error.status===401||error.status===403){state.env=null;state.archive=null;state.archives=null;clearRadio();closeDialog();}
     render();tell(error.message+(state.env?' De getoonde gegevens kunnen verouderd zijn. Vernieuw het bord voordat je wijzigingen maakt.':''),state.env?'warning':'error');
   }
+}
+async function refreshRadio(){
+  if(!auth?.currentUser||!state.env||state.view!=='board'||document.hidden||radio.loading)return;
+  const serial=++radio.requestSerial,epoch=authEpoch;
+  radio.loading=true;renderRadio();
+  try{
+    const payload=await request('/api/to/radio');
+    if(serial!==radio.requestSerial||epoch!==authEpoch||!state.env)return;
+    if(typeof payload.configured!=='boolean'||typeof payload.connected!=='boolean'||typeof payload.stale!=='boolean'||!Array.isArray(payload.users))throw new Error('De radio gaf een onvolledige respons.');
+    radio.snapshot=payload;radio.error=null;
+  }catch(error){
+    if(error.obsolete||serial!==radio.requestSerial||epoch!==authEpoch)return;
+    radio.error='De radioverbinding kon niet worden bijgewerkt. Je kunt ploegen en meldingen gewoon verder beheren.';
+  }finally{
+    if(serial===radio.requestSerial&&epoch===authEpoch){
+      radio.loading=false;renderRadio();
+      if(state.env&&state.view==='board'){el('board-content').innerHTML=renderBoard();updateButtons();}
+    }
+  }
+}
+function renderRadio(){
+  const panel=el('radio-panel');
+  panel.hidden=!state.env||state.view!=='board';
+  if(panel.hidden){if(!state.env)panel.replaceChildren();return;}
+  const snapshot=radio.snapshot,users=snapshot?.users||[],fresh=radioFresh();
+  const configured=snapshot?.configured;
+  const status=!snapshot?(radio.error?'Niet bereikbaar':'Verbinding maken'):!configured?'Nog niet gekoppeld':fresh?'Verbonden':snapshot.stale||radio.error?'Verouderde radio-informatie':'Niet verbonden';
+  const color=fresh?'green':configured&&(snapshot.stale||radio.error)?'amber':'gray';
+  const synced=snapshot?.fetchedAt?time(Date.parse(snapshot.fetchedAt)):null;
+  let notice='';
+  if(radio.error)notice=radio.error;
+  else if(configured===false)notice='De radiokoppeling is nog niet ingesteld voor deze omgeving.';
+  else if(snapshot?.stale)notice=snapshot.message||'Dit is de laatst ontvangen radiostand. De verbinding wordt opnieuw gecontroleerd.';
+  else if(snapshot&&!snapshot.connected)notice=snapshot.message||'Er is momenteel geen verbinding met de radio.';
+  const groups=new Map();
+  for(const user of users){const channel=user.channel===null||user.channel===undefined||user.channel===''?'Zonder kanaal':String(user.channel);if(!groups.has(channel))groups.set(channel,[]);groups.get(channel).push(user);}
+  const userCard=user=>{
+    const onBoard=radioAlreadyOnBoard(user),importable=canImportRadioUser(user);
+    let action=onBoard?'<span class="radio-on-board">Op dienstbord</span>':!importable?'<span class="radio-unrecognized" title="Niet als ploeg herkend. Voeg indien nodig handmatig een ploeg toe.">Radiolabel</span>':'';
+    if(!onBoard&&importable&&state.env.permissions.canEdit)action=`<button type="button" class="button button-small radio-add" data-action="radio-add-team" data-id="${esc(user.id)}" data-write${!fresh?' data-fixed-disabled="true"':''}${!fresh||!canEdit()?' disabled':''}>＋ Ploeg toevoegen</button>`;
+    return `<div class="radio-user"><div class="radio-user-name"><span class="radio-indicator${fresh?' online':''}" aria-hidden="true"></span><span title="${esc(user.name)}">${esc(user.name||'Onbekend radiolabel')}</span></div>${action}</div>`;
+  };
+  panel.innerHTML=`<div class="radio-header"><div class="radio-heading"><span class="radio-symbol" aria-hidden="true">◉</span><div><h2 id="radio-title">Sonoran Radio</h2><p>Verbonden gebruikers · radiolabels</p></div>${pill(status,color)}</div><div class="radio-header-actions">${synced?`<span class="radio-last-sync">Ontvangen ${synced}</span>`:''}<button type="button" class="button button-small" data-action="radio-refresh"${radio.loading?' disabled':''}>${radio.loading?'Bijwerken…':'↻ Radio verversen'}</button></div></div>${notice?`<p class="radio-notice${radio.error||snapshot?.stale?' warning':''}" role="status">${esc(notice)}</p>`:''}${snapshot&&configured?`<div class="radio-summary"><span><strong>${Number(snapshot.counts?.online)||users.length}</strong> op radio</span><span><strong>${Number(snapshot.counts?.recognized)||0}</strong> herkende roepnummers</span><span>Automatisch elke 15 seconden bijgewerkt</span></div>`:''}${groups.size?`<div class="radio-channels">${[...groups].sort(([left],[right])=>left.localeCompare(right,'nl',{numeric:true})).map(([channel,group])=>`<section class="radio-channel"><h3>${channel==='Zonder kanaal'?channel:'Kanaal '+esc(channel)} <span>${group.length}</span></h3><div class="radio-users">${group.map(userCard).join('')}</div></section>`).join('')}</div>`:fresh?'<p class="radio-empty">Er zijn momenteel geen gebruikers met de radio verbonden.</p>':!snapshot&&!radio.error?'<p class="radio-empty">De laatste radiostand wordt opgehaald…</p>':''}${configured&&users.length?'<p class="radio-disclaimer">Radiolabels zijn geen bevestigde personeelsidentiteiten. Controleer de bemanning voordat je een ploeg toevoegt.</p>':''}`;
+  updateButtons();
 }
 function showReadiness(){
   const env=state.env;if(!env)return;
@@ -116,6 +168,7 @@ function render(){
   el('welcome').hidden=Boolean(env);
   el('connection').className='connection'+(env?(state.stale?' stale':' connected'):'');
   el('connection').innerHTML='<span></span>'+(env?(state.stale?'Verbinding onderbroken':'Gedeeld dienstbord'):'Aanmelding vereist');
+  renderRadio();
   if(!env)return;
   renderSummary();
   el('tab-board').classList.toggle('active',state.view==='board');
@@ -158,7 +211,8 @@ function renderBoard(){
 }
 function teamCard(team,busy,editable){
   const status=busy.length?pill('Op '+incidentNumber(busy[0].nr)+(busy.length>1?' +'+(busy.length-1):''),'amber'):team.available===false?pill('Niet beschikbaar','red'):pill('Beschikbaar','green');
-  return `<article class="team-card" style="--category-hue:${hues[team.dienst]||220}"><div class="team-card-body"><div class="team-top">${status}${team.koppel?'<span class="pair-label">KOPPEL</span>':''}</div><div class="callsign"><span>${esc(team.dienst)}</span> ${esc(team.roepnaam)}</div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}</div></div><div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions"><button type="button" class="text-button" data-action="toggle-team" data-id="${esc(team.id)}" data-write${busy.length?' data-fixed-disabled="true"':''}${!editable||busy.length?' disabled':''}>${team.available===false?'Beschikbaar':'Pauzeren'}</button><button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
+  const onRadio=radioFresh()&&(radio.snapshot.users||[]).some(user=>radioMatchesTeam(user,team));
+  return `<article class="team-card" style="--category-hue:${hues[team.dienst]||220}"><div class="team-card-body"><div class="team-top">${status}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${team.koppel?'<span class="pair-label">KOPPEL</span>':''}</div><div class="callsign"><span>${esc(team.dienst)}</span> ${esc(team.roepnaam)}</div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}</div></div><div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions"><button type="button" class="text-button" data-action="toggle-team" data-id="${esc(team.id)}" data-write${busy.length?' data-fixed-disabled="true"':''}${!editable||busy.length?' disabled':''}>${team.available===false?'Beschikbaar':'Pauzeren'}</button><button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
 }
 function incidentCard(incident){
   return `<button type="button" class="incident-card" data-action="open-incident" data-id="${esc(incident.id)}"><span class="incident-meta"><span class="incident-number mono">${incidentNumber(incident.nr)}</span>${pill(incident.status==='actief'?'Actief':'Afgerond',incident.status==='actief'?'amber':'gray')}<span class="incident-time mono">${time(incident.createdAt)}</span></span><strong class="incident-title">${esc(incident.titel)}</strong><span class="incident-description">${esc(String(incident.omschrijving||'Geen aanvullende omschrijving.').slice(0,150))}${String(incident.omschrijving||'').length>150?'…':''}</span><span class="incident-footer"><span class="postal mono">PC ${esc(incident.postcode)}</span>${(incident.ploegen||[]).map(team=>`<span class="team-chip">${esc(team.dienst)}-${esc(team.roep)}</span>`).join('')||'<span class="unassigned">Nog geen ploeg gekoppeld</span>'}</span></button>`;
@@ -188,8 +242,17 @@ function startDialog(takeover=false){
   const session=state.env.board.session;
   openDialog(takeover?'Dienst overnemen':'Nieuwe dienst starten',`<p class="form-note">${takeover?'Je neemt het dienstbord over van '+esc(session?.to||'de huidige TO')+'. Deze overname blijft zichtbaar in de diensthistoriek.':'Je wordt de TO van deze dienst. Collega’s met toegang kunnen het bord bekijken en de dienst later overnemen.'}</p><label class="field"><span>Jouw naam op het dienstbord</span><input class="input" name="displayName" maxlength="80" minlength="2" value="${esc(defaultName())}" placeholder="Voor- en achternaam" required autofocus></label>${takeover?'<label class="field"><span>Reden van overname</span><textarea class="input" name="reason" minlength="8" maxlength="300" placeholder="Bijvoorbeeld: aflossing van de lopende dienst" required></textarea></label>':''}`,{form:takeover?'takeover':'start',submit:takeover?'Dienst overnemen':'Dienst starten'});
 }
-function teamDialog(){
+function teamDialog(prefill=null){
   openDialog('Ploeg toevoegen',`<label class="field"><span>Categorie</span><select class="input" name="dienst" id="team-category" required autofocus>${state.env.categories.map(category=>`<option value="${esc(category)}">${esc(category)}</option>`).join('')}</select></label><fieldset class="form-group"><legend>AGENT 1</legend><div class="form-grid"><label class="field"><span>Naam</span><input class="input" name="naam1" minlength="2" maxlength="80" required placeholder="Naam agent"></label><label class="field"><span>Roepnummer</span><input class="input mono" name="roep1" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" required placeholder="620"></label></div></fieldset><label class="form-checkbox"><input type="checkbox" name="koppel" id="team-paired">Koppelrijden met een tweede agent</label><fieldset class="form-group" id="second-agent" hidden><legend>AGENT 2</legend><div class="form-grid"><label class="field"><span>Naam</span><input class="input" name="naam2" minlength="2" maxlength="80" placeholder="Naam agent"></label><label class="field"><span>Roepnummer</span><input class="input mono" name="roep2" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" placeholder="640"></label></div></fieldset><div class="preview">Ploegnaam<strong id="team-preview">Vul een roepnummer in</strong></div><p class="form-note" style="margin-top:12px;margin-bottom:0">Bij koppelrijden wordt het hoogste roepnummer de ploegnaam.</p>`,{form:'add-team',submit:'Ploeg toevoegen'});
+  if(prefill){
+    const form=el('to-form');
+    form.elements.dienst.value=prefill.category;
+    form.elements.roep1.value=String(prefill.number);
+    form.elements.naam1.value=String(prefill.displayName||'').trim().slice(0,80);
+    const note=document.createElement('p');note.className='form-note';note.textContent='Deze suggestie komt van een radiolabel. Controleer naam en roepnummer; de radio bevestigt geen personeelsidentiteit.';
+    form.querySelector('.dialog-body').prepend(note);
+    previewTeam();form.elements.naam1.focus();
+  }
 }
 function incidentForm(id=''){
   const incident=state.env.board.meldingen[id];
@@ -226,7 +289,7 @@ document.addEventListener('click',async event=>{
   try{
     switch(action){
       case 'refresh':await refresh();break;
-      case 'view-board':state.view='board';state.archive=null;render();break;
+      case 'view-board':state.view='board';state.archive=null;render();void refreshRadio();break;
       case 'view-archives':state.view='archives';state.archive=null;render();await loadArchives();render();break;
       case 'back-archives':state.archive=null;render();if(!state.archives){await loadArchives();render();}break;
       case 'open-archive':{const result=await request('/api/to/archives/'+encodeURIComponent(id));state.archive=result.archive;render();break;}
@@ -237,6 +300,13 @@ document.addEventListener('click',async event=>{
       case 'takeover':if(canOperate())startDialog(true);break;
       case 'close-session':if(canEdit())closeSessionDialog();break;
       case 'add-team':if(canEdit())teamDialog();break;
+      case 'radio-refresh':await refreshRadio();break;
+      case 'radio-add-team':{
+        if(!canEdit()||!radioFresh())break;
+        const user=radio.snapshot.users.find(item=>String(item.id)===id);
+        if(user&&canImportRadioUser(user)&&!radioAlreadyOnBoard(user))teamDialog(user);
+        break;
+      }
       case 'remove-team':{
         if(!canEdit())break;
         const team=state.env.board.ploegen[id];
@@ -280,8 +350,9 @@ dialog.addEventListener('submit',async event=>{
 });
 el('board-search').addEventListener('input',event=>{state.query=normalize(event.target.value.trim());render();});
 el('category-filter').addEventListener('change',event=>{state.category=event.target.value;render();});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh({quiet:true});});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh({quiet:true});void refreshRadio();}});
 setInterval(()=>{if(!document.hidden&&auth?.currentUser)refresh({quiet:true});},12000);
+setInterval(()=>{if(!document.hidden&&auth?.currentUser&&state.view==='board')void refreshRadio();},15000);
 setInterval(()=>{if(state.env){renderSummary();updateButtons();}},30000);
 
 async function init(){
@@ -295,7 +366,7 @@ async function init(){
     setupPortalLogin({button:el('login'),auth,authModule,config,onError:error=>tell('Aanmelden mislukt: '+error.message,'error')});
     el('login').disabled=false;
     authModule.onAuthStateChanged(auth,async user=>{
-      authEpoch++;state.env=null;state.archives=null;state.archive=null;state.stale=true;state.pending=false;closeDialog();render();
+      authEpoch++;state.env=null;state.archives=null;state.archive=null;state.stale=true;state.pending=false;clearRadio();closeDialog();render();
       if(user){tell('Je toegang tot het politiedienstbord wordt gecontroleerd…');await refresh();}
       else tell('Meld je aan met je portaalaccount. Er worden pas daarna dienstgegevens geladen.');
     });

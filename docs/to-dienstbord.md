@@ -62,9 +62,9 @@ De bestaande applicatie hoort met deze wijziging te worden gedeployed om de rout
 
 ## Base44, radio en personeelsgegevens
 
-Het eenhedenoverzicht gebruikt dezelfde categorie/roepnummer/beschikbaarheidsfunctie als de eerder onderzochte Base44-frontend. Deze eigen module is niet afhankelijk van Base44 en verwijdert geen eenheden op basis van een lege radiosnapshot.
+Het eenhedenoverzicht gebruikt dezelfde categorie/roepnummer/beschikbaarheidsfunctie als de eerder onderzochte Base44-frontend. Deze eigen module is niet afhankelijk van Base44. Het Sonoran Radio-paneel leest verbonden radio-eenheden via de eigen backend. De huidige TO kan een herkende eenheid na controle als ploeg toevoegen. De koppeling verwijdert geen eenheden op basis van een lege radiosnapshot. Zie [Sonoran Radio instellen en testen](sonoran-radio-koppeling.md).
 
-De aangeleverde bestanden bevatten geen echte Base44-records, radiogegevens of TO-diensten. Deze versie doet geen automatische import, Sonoran-synchronisatie of koppeling van handmatig ingevulde bemanning aan geverifieerde personeelsdossiers. Daarvoor zijn de echte export en een gecontroleerde ID-koppeling nodig. Bestaande Sheets, personeelsdossiers en Discord-rollen worden door het TO-bord niet gewijzigd.
+De aangeleverde bestanden bevatten geen echte Base44-records, radiogegevens of TO-diensten. Base44-import en koppeling van bemanningsnamen aan geverifieerde personeelsdossiers zijn niet aangesloten. Voor Sonoran zijn de Community ID en geheime Community API Key als Render-serverinstellingen nodig. Bestaande Sheets, personeelsdossiers en Discord-rollen worden door het TO-bord niet gewijzigd.
 
 Er zijn afzonderlijke tests voor het dienstverloop, politierechten, eigendom, versieconflicten en de HTTP-routes. Browsercontroles kunnen lokaal een aangemelde testsessie en tijdelijke opslag simuleren; dat bewijst geen toegang tot de productie-Firebase-database.
 
