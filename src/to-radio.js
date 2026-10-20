@@ -44,9 +44,14 @@ export function parseSonoranName(value){
     const recovery=['LSRA','DEPK'].find(prefix=>upper.startsWith(prefix));
     return recovery?{category:recovery,number:null,displayName,importable:false}:none;
   }
-  const category=known||parts[1].trim().toUpperCase();
+  const categoryLabel=known||parts[1].trim().toUpperCase();
+  // Nonstandard specialist labels with a recovery prefix remain visible under
+  // Depannage, but cannot impersonate a recognized importable unit.
+  const recoveredPrefix=!TO_CATEGORIES.includes(categoryLabel)&&
+    ['LSRA','DEPK'].find(prefix=>categoryLabel.startsWith(prefix));
+  const category=recoveredPrefix||categoryLabel;
   const number=known?head.slice(known.length).replace(/^\s*-\s*/,'').trim():parts[2].trim();
-  const importable=TO_CATEGORIES.includes(category)&&/^\d{1,5}$/.test(number)&&Number(number)>0;
+  const importable=!recoveredPrefix&&TO_CATEGORIES.includes(category)&&/^\d{1,5}$/.test(number)&&Number(number)>0;
   return {category,number:number.slice(0,40)||null,displayName,importable};
 }
 function configuration(env){
