@@ -15,6 +15,14 @@ Het bord wordt periodiek ververst. Een verbroken verbinding of versieconflict wo
 
 De radio- en ploegenlijsten zijn gegroepeerd onder Politie, Brandweer, Ambulance en Depannage. **Ambulancedienst** herkent aanvullend de zeven operationele callsigngroepen `DIRMED`, `HARTS`, `HVPK`, `HAMB`, `ARTS`, `VPK` en `AMB`, elk met een positief numeriek roepnummer van één tot vijf cijfers. Sonoran-labels in de vorm `HAMB-12`, `HAMB 12`, `HAMB12` en `HAMB - 12` vallen daardoor onder Ambulance; de prefixen worden afzonderlijk herkend (bijvoorbeeld HARTS is niet ARTS). Eerdere categorieën zoals `AMBULANCE`, `MUG`, `PIT` en `DIR-MED` blijven beschikbaar. Een roepnaam zonder geldig nummer wordt wel herkend als categorie, maar is niet automatisch als eenheid toe te voegen. De dienstindeling geeft geen personeels- of Discord-rechten. SANTO en de andere politiecategorieën staan onder Politie; BWM wordt als eigen brandweercategorie herkend. Binnen de categorieën lopen de roepnummers numeriek op. Het categoriefilter kan een hele hulpdienst of één categorie tonen. Niet-herkende radiolabels blijven zichtbaar onder Overige.
 
+## Radio-calltekens NB en koppeldienst (*)
+
+- De aanduiding `NB` of `(NB)` als los element (hoofdletterongevoelig) in **om het even welk deel van de radiocall** betekent **Niet beschikbaar**. Dit is een afgeleide operationele radiostatus; geen Firestore- of Discordwijziging.
+- Een `*` direct achter het **numerieke roepnummer**, bijvoorbeeld `SANTO-600*`, markeert **koppeldienst**. Het dienstbord toont 👥 en bundelt radioleden **uitsluitend als hulpdienstcategorie én numeriek ploegroepnummer overeenkomen**, ook bij voorloopnullen.
+- Is een van de leden van die ploeg `NB`, dan is de **volledige ploeg niet beschikbaar** en wordt ze niet als beschikbaar meegeteld. De ploeg blijft wel in dienst geteld; hetzelfde principe geldt voor reeds handmatig geregistreerde ploegen.
+- Deze afgeleide status wordt alleen op **actuele Sonoran Radio-informatie** toegepast. Bij een verouderde verbinding krijgen opgeslagen TO-gegevens weer voorrang. NB en de ster wijzigen geen opgeslagen roepnummer, koppelen geen ongekende personen en verlenen geen toegangsrechten.
+- Een gegroepeerde radiokoppel met twee hetzelfde nummer delende radiogebruikers wordt **niet automatisch als twee handmatige leden opgeslagen**: het bestaande formulier eist onderscheiden persoonlijke roepnummers. De radioweergave kan de ploeg toch onmiddellijk als één tonen; een TO kan de effectieve bemanning afzonderlijk verifiëren.
+
 ## Toegang en opslag
 
 De module gebruikt dezelfde Firebase/Discord-sessie als het portaal en dezelfde backendcontrole `requireUser`. Er is geen tweede account nodig. De hulpdienst moet expliciet `politie` zijn; de operationele categorieën SANTO, BLAINE enzovoort zijn geen hulpdienstmachtigingen.
