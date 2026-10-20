@@ -24,5 +24,5 @@ export function callsignForTO(actor,personnel=[],temporaryRequest=null){
 }
 
 export function isTemporaryTOUnit(value){
-  return validTOCall(value)&&(value==='008'||Number(value)>=100&&Number(value)<=199);
+  return validTOCall(value)&&Number(value)>=100&&Number(value)<=199;
 }
