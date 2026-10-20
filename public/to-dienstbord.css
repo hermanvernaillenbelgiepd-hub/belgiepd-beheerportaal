@@ -167,3 +167,32 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
 .team-top .temporary-call-badge{margin-left:auto}
 .radio-user-name .temporary-call-badge{margin-left:3px}
 @media(max-width:700px){.temporary-call-badge,.management-call-badge{font-size:7px;padding:3px 5px}}
+
+
+/* Shared response-phase visual: blinking blue en route; steady blue on scene. */
+.team-card-body.team-response-clickable{cursor:pointer;transition:box-shadow .16s ease}
+.team-card-body.team-response-clickable:hover{box-shadow:inset 0 0 0 2px #8eaff2}
+.team-card-body.team-response-clickable:focus-visible{outline:3px solid #366bef;outline-offset:-4px;border-radius:8px}
+.team-response-hint{font-size:9px;font-weight:700;line-height:1.5;letter-spacing:.1px;color:#446997;margin-top:10px;overflow-wrap:anywhere}
+.response-indicator{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid #a5c1f1;border-radius:6px;background:#eaf2ff;color:#1f5198;font-size:9px;font-weight:900;letter-spacing:.35px;white-space:nowrap}
+.response-light{display:inline-block;position:relative;flex:none;width:13px;height:10px;border-radius:7px 7px 3px 3px;border:1px solid #0657ac;background:#208dff;box-shadow:0 0 2px 2px #2487fa85,0 0 10px 3px #207ee48c}
+.response-light::before{content:'';position:absolute;top:1px;left:2px;width:4px;height:2px;border-radius:50%;background:#d5f1ff}
+.response-light::after{content:'';position:absolute;bottom:-4px;left:-3px;width:17px;height:3px;border-radius:2px;background:#24538a}
+.response-indicator[data-phase="onderweg"] .response-light{animation:to-blue-response-flash 1.05s steps(1,end) infinite}
+.response-indicator[data-phase="ter-plaatse"]{border-color:#448bdc;background:#dfeeff;color:#124795}
+.response-indicator[data-phase="ter-plaatse"] .response-light{background:#147aff;box-shadow:0 0 7px 3px #358dffb3,0 0 14px 5px #67b0ff7a}
+@keyframes to-blue-response-flash{
+  0%,45%{background:#1388ff;box-shadow:0 0 7px 3px #1780f5db,0 0 15px 4px #56b3ff9c;opacity:1}
+  50%,95%{background:#527ca9;box-shadow:0 0 1px 1px #268cff25;opacity:.42}
+  100%{background:#1388ff;opacity:1}
+}
+.team-card[data-response-phase="onderweg"]{border-top:2px solid #4d89ed}
+.team-card[data-response-phase="ter-plaatse"]{border-top:2px solid #1b64da}
+.team-card[data-response-phase="ter-plaatse"] .response-indicator{box-shadow:0 0 0 1px #6ca6e450}
+.team-actions .response-reset{color:#1c61b1;font-weight:800}
+.incident-more{background:#e8eafa;color:#334d83;border-color:#b3c0e0}
+.incident-more[aria-expanded="true"]{background:#dce9fc;border-color:#83a3dc}
+@media(prefers-reduced-motion:reduce){
+  .response-indicator[data-phase="onderweg"] .response-light{animation:none;background:#226eae;border:2px dashed #eff9ff;box-shadow:0 0 0 2px #c9dcf7}
+  .team-card-body.team-response-clickable{transition:none}
+}
