@@ -99,7 +99,7 @@ test('Both personnel tables retain identity columns and show per-service dynamic
 });
 test('User-provided Signalisatie sign is embedded locally and used across both rosters',()=>{
   const svg=source('public/assets/icons/signalisatie.svg');
-  assert.match(svg,/<svg\\s/);
+  assert.ok(svg.startsWith('<svg '));
   assert.ok(svg.includes('data:image/webp;base64,'));
   assert.ok(svg.length>4000,'Expected a real embedded sign image, not an external URL');
   const manager=source('public/personeelsbeheer.html');
