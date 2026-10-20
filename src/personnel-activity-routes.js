@@ -29,7 +29,7 @@ export function installPersonnelActivityRoutes(app,{requireUser,getSnapshot}){
       ]);
       const events=recentPersonnelActivity(audits.docs,callsigns.docs,permitted,8,created.docs);
       res.set('Cache-Control','no-store');
-      return res.json({events,readOnly:true,canLogHistoricalCall:mayLogPreviousCall(req.bpd),
+      return res.json({events,readOnly:true,canLogHistoricalCall:process.env.BPD_ENABLE_HISTORICAL_CALL_AUDIT_WRITES==='true'&&mayLogPreviousCall(req.bpd),
         note:'Alleen gelogde personeelswijzigingen; handmatige Sheets-wijzigingen zonder historiek worden niet terugwerkend gereconstrueerd.'});
     }catch(err){
       console.error('Recente personeelsactiviteiten:',err?.code||err?.message||'onbekend');
