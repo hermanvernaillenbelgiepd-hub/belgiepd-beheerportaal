@@ -80,7 +80,7 @@ test('BWM is a distinct recognized fire callsign without accepting similar unkno
 });
 
 test('Brandweer and Depannage prefixes resolve in Sonoran without changing police or ambulance calls',()=>{
-  for(const category of ['BWM','BWV','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE','LSRA','DEPK']){
+  for(const category of ['BWM','BWV','BAMBU','BWAMBU','BW-AMBU','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE','LSRA','DEPK']){
     for(const sep of ['','-',' - ',' ']){
       const value=category+sep+'620* (NB) | Medewerker';
       const parsed=parseSonoranName(value);
