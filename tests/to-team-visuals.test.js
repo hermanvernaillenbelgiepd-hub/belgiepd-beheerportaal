@@ -16,6 +16,13 @@ test('Recognizable brigade categories use stable category codes and different ac
   assert.equal(teamVisual('CANINE').code,'K9');
   assert.equal(teamVisual('BWM').serviceId,'brandweer');
   assert.equal(teamVisual('MUG').serviceId,'ambulance');
+  for(const [label,code] of Object.entries({
+    DIRMED:'DM',HARTS:'HA',HVPK:'HV',HAMB:'HB',ARTS:'AR',VPK:'VP',AMB:'AM'
+  })){
+    const visual=teamVisual(label);
+    assert.equal(visual.serviceId,'ambulance',label);
+    assert.equal(visual.code,code,label);
+  }
   assert.equal(teamVisual('LSRA-F.A.S.T.').serviceId,'depannage');
 });
 test('Unrecognized radio categories cannot masquerade as known brigade labels',()=>{
