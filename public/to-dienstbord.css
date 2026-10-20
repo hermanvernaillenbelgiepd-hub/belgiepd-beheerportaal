@@ -147,3 +147,12 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
  .radio-board-dropzone{font-size:9px}
  .radio-arrival-badge,.radio-pending-badge{font-size:7px!important}
 }
+
+.pending-radio-groups{display:grid;gap:12px}
+.pending-service{min-width:0}
+.pending-service h4{display:flex;gap:7px;align-items:center;font-size:10px;font-weight:850;letter-spacing:.55px;text-transform:uppercase;color:#526b8b;margin:0 0 8px;padding:4px 0}
+.pending-service h4 span{font-size:9px;font-weight:750;color:#7b90aa;background:#e1eaf6;border-radius:4px;padding:2px 6px}
+.pending-service[data-service="politie"] h4{color:#4267bf}
+.pending-service[data-service="brandweer"] h4{color:#ae523f}
+.pending-service[data-service="ambulance"] h4{color:#248e73}
+.pending-service[data-service="depannage"] h4{color:#ab7b31}
