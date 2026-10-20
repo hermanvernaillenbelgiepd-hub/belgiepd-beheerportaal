@@ -10,7 +10,8 @@ const when=value=>{
 };
 export function validateRetrospectiveCallChange(payload){
   if(!payload||typeof payload!=='object'||Array.isArray(payload)||
-    Object.keys(payload).some(k=>!['discordId','previousCall','expectedCurrentCall','reason'].includes(k)))
+    Object.keys(payload).some(k=>!['discordId','previousCall','expectedCurrentCall',
+      'reason','recordPromotion','expectedCurrentRank'].includes(k)))
     throw Error('Ongeldige historische roepnummerwijziging');
   if(!ID.test(payload.discordId))throw Error('Kies een bestaand personeelslid');
   const checkCall=value=>{
@@ -25,7 +26,18 @@ export function validateRetrospectiveCallChange(payload){
   const reason=typeof payload.reason==='string'?payload.reason.trim():'';
   if(reason.length<15||reason.length>500||/[\x00-\x1f\x7f<>]/.test(reason))
     throw Error('Motivering van minimaal 15 en maximaal 500 tekens vereist');
-  return {discordId:payload.discordId,previousCall,expectedCurrentCall,reason};
+  if(payload.recordPromotion!==undefined&&typeof payload.recordPromotion!=='boolean')
+    throw Error('Ongeldige promotiekeuze');
+  const recordPromotion=payload.recordPromotion===true;
+  if(recordPromotion&&(
+    typeof payload.expectedCurrentRank!=='string'||
+    !payload.expectedCurrentRank.trim()||payload.expectedCurrentRank.trim().length>100||
+    /[\x00-\x1f\x7f<>]/.test(payload.expectedCurrentRank)))
+    throw Error('Actuele rang ontbreekt of is ongeldig');
+  if(!recordPromotion&&payload.expectedCurrentRank!==undefined)
+    throw Error('Rang mag alleen bij een promotie worden opgegeven');
+  return {discordId:payload.discordId,previousCall,expectedCurrentCall,reason,
+    recordPromotion,expectedCurrentRank:recordPromotion?payload.expectedCurrentRank.trim():null};
 }
 export function staffActivityEvent(id,data){
   if(!data||!SERVICES.has(data.dept)||!ID.test(data.discordId))return null;
