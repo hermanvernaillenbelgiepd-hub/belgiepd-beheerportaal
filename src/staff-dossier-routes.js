@@ -1,5 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {staffRoleDisplay} from './staff-role-display.js';
+import {mayWriteManagement} from './management-utils.js';
+import {roleForDepartment} from './leave-policy.js';
 import {
   STAFF_DOSSIER_COLLECTION,staffDossierEnabled,staffDossierWritesEnabled,
   staffDossierId,uniqueStaffSubject,canReadStaffDossier,canMaintainStaffDossier,
@@ -49,6 +51,16 @@ export function installStaffDossierRoutes(app,{requireUser,getSnapshot}){
         canMaintain:staffDossierWritesEnabled(process.env)&&canMaintainStaffDossier(req.bpd,staff),
         subject:subjectDto(staff),
         discordRoles:staffRoleDisplay(member.data(),staff.dept,process.env.DISCORD_GUILD_ID),
+        cadreActions:{
+          cases:process.env.BPD_ENABLE_REGISTRATIONS==='true'&&
+            process.env.BPD_ENABLE_MANAGEMENT_WRITES==='true'&&
+            mayWriteManagement(req.bpd,staff.dept,'notitie'),
+          manualLeave:process.env.BPD_ENABLE_LEAVE_WRITES==='true'&&
+            process.env.BPD_ENABLE_PERSONNEL_MANUAL_LEAVE==='true'&&
+            req.bpd.discordId!==staff.personId&&
+            ['middenkader','officierenkader','korpsleiding'].includes(
+              roleForDepartment(req.bpd,staff.dept))
+        },
         profile:normalizeStaffProfile(record.data()?.profile),
         revision:Number.isSafeInteger(record.get('revision'))?record.get('revision'):0,
         notes:dto,notesLimited:notes.size===60,
