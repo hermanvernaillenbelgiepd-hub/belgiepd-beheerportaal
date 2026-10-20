@@ -67,6 +67,12 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .roster-open{padding:5px;font-size:10px}
 .specialty-summary{display:flex;flex-wrap:wrap;gap:3px}
 @media(max-width:920px){.staff-roster-holder{overflow-x:auto}.staff-roster-table{min-width:1000px}}
+
+/* Shared pictogram asset, displayed consistently in rosters and dossiers. */
+.specialty-col-icon{display:flex;align-items:center;justify-content:center;min-height:38px}
+.specialty-col-icon .specialty-custom-image{display:block;width:35px;height:37px;max-width:100%;object-fit:contain}
+.specialty-tile .specialty-custom-image{display:block;width:42px;height:44px;max-width:100%;object-fit:contain}
+.specialty-summary .specialty-custom-image{display:inline-block;width:20px;height:22px;object-fit:contain;vertical-align:middle;margin-right:5px}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
@@ -329,6 +335,21 @@ function renderPending(){
     row.append(cell);body.append(row);
   }
 }
+// Use the shared image catalog for Signalisatie, preserving emoji for all other skills.
+function specialtyMark(label){
+  const image=BPDPersonnelVisuals.specialtyIconImage(label);
+  if(image){
+    const pic=document.createElement('img');
+    pic.className='specialty-custom-image';
+    pic.src=image;pic.alt='';pic.loading='lazy';
+    pic.setAttribute('aria-hidden','true');
+    return pic;
+  }
+  const mark=document.createElement('span');
+  mark.textContent=BPDPersonnelVisuals.specialtyIcon(label);
+  mark.setAttribute('aria-hidden','true');
+  return mark;
+}
 function render(){
   const q=$('search').value.trim().toLowerCase(),dept=$('dept').value;
   const matches=people.filter(x=>(dept==='all'||dept===x.dept)&&
@@ -345,7 +366,7 @@ function render(){
   for(const label of cols){
     const th=document.createElement('th');th.className='specialty-col-head';th.title=label;
     const pict=document.createElement('span');pict.className='specialty-col-icon';
-    pict.textContent=BPDPersonnelVisuals.specialtyIcon(label);pict.setAttribute('aria-hidden','true');
+    pict.append(specialtyMark(label));pict.setAttribute('aria-hidden','true');
     const name=document.createElement('span');name.className='specialty-col-label';name.textContent=label;
     th.append(pict,name);line.append(th);
   }
@@ -383,7 +404,8 @@ function render(){
       for(const item of BPDPersonnelVisuals.specialtyStatuses(person.specialties)){
         const chip=document.createElement('span');chip.className='specialty-state specialty-'+item.style;
         chip.title=item.label+' · '+item.status;
-        chip.textContent=item.icon+' '+item.label+': '+item.status;wrap.append(chip);
+        chip.append(specialtyMark(item.label),
+          document.createTextNode(' '+item.label+': '+item.status));wrap.append(chip);
       }
       general.append(wrap);tr.append(general);
     }
@@ -612,8 +634,7 @@ async function loadSpecialtyState(p){
     const states=BPDPersonnelVisuals.specialtyStatuses(specialtyItems);
     for(const x of states){
       const cell=document.createElement('div');cell.className='specialty-tile';
-      const icon=document.createElement('span');icon.textContent=x.icon;
-      icon.setAttribute('aria-hidden','true');
+      const icon=specialtyMark(x.label);
       const label=document.createElement('strong');label.textContent=x.label;
       const value=document.createElement('span');value.className='specialty-state specialty-'+x.style;
       value.textContent=x.status;cell.title=x.label+' · '+x.status;
@@ -646,7 +667,8 @@ async function loadSpecialtyState(p){
     const statuses=BPDPersonnelVisuals.specialtyStatuses(p.specialties);
     for(const x of statuses){
       const tile=document.createElement('div');tile.className='specialty-tile';
-      tile.textContent=x.icon+' '+x.label+' · '+x.status;root.append(tile);
+      tile.append(specialtyMark(x.label),
+        document.createTextNode(' '+x.label+' · '+x.status));root.append(tile);
     }
   }
 }
