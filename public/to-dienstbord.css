@@ -84,3 +84,24 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
   .team-card .callsign{font-size:26px}
   .team-identity{gap:12px}
 }
+
+
+/* Sonoran NB/(NB) and * koppel states: status visible without relying on color. */
+.radio-crew-paired{background:#f5f7fd;border-left:3px solid #6f83bd;padding:10px;border-radius:9px;margin:3px -7px}
+.radio-crew-nb{background:#fff4f4;border-left:3px solid #bd4759;padding:10px;border-radius:9px;margin:3px -7px}
+.radio-crew-paired.radio-crew-nb{background:#fff1f2}
+.radio-pair-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:22px;font-size:17px}
+.radio-crew-members{display:flex;flex-wrap:wrap;gap:4px 7px;padding:8px 0 1px 37px}
+.radio-crew-members span{font-size:10px;color:#536784;line-height:1.5;overflow-wrap:anywhere;max-width:100%}
+.radio-crew-members span+span:before{content:"·";color:#9aaac1;margin-right:7px}
+.radio-crew-status{padding:6px 0 0 37px;display:flex;gap:5px;flex-wrap:wrap}
+.radio-crew-status .pill{font-size:9px}
+.radio-pair-detail{font-size:9px;color:#697b98;line-height:1.4;max-width:115px;text-align:right}
+.team-card[data-availability="on-pause"]:has(.radio-team-badge){opacity:1}
+.team-card[data-availability="on-pause"] .team-top .pill.red{font-weight:900}
+.team-card .team-top .pill{max-width:100%;white-space:normal}
+@media(max-width:700px){
+  .radio-crew-members{padding-left:35px}
+  .radio-crew-status{padding-left:35px}
+  .radio-pair-detail{font-size:8px;max-width:85px}
+}

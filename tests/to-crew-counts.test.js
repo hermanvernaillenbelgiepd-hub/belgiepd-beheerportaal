@@ -93,6 +93,42 @@ test('Stale or empty radio results preserve saved crew totals and availability',
     'Freshness must be opted into explicitly');
 });
 
+test('NB on any live radio member blocks a matched saved crew while keeping it in service',()=>{
+  const board={ploegen:[crew('pair','900',{koppel:true,leden:[
+    {naam:'A',roep:'600'},{naam:'B',roep:'900'}]})],meldingen:{}};
+  const users=[radio('SANTO','00600',{paired:true,notAvailable:false}),
+    radio('SANTO','00900',{paired:true,notAvailable:true})];
+  assert.deepEqual(count(board,users),{
+    inService:1,available:0,unavailable:1,boardTeams:1,radioOnly:0,
+    radioLinked:1,paired:1,activeIncidents:0
+  });
+  assert.equal(count(board,users,false).available,1,
+    'A stale radio snapshot must not override saved TO status');
+});
+
+test('Starred members with one numeric unit count as one radio-only koppel',()=>{
+  const users=[radio('SANTO','600',{paired:true,notAvailable:false}),
+    radio('SANTO','00600',{paired:true,notAvailable:true}),
+    radio('SANTO','601',{notAvailable:false})];
+  assert.deepEqual(count({},users),{
+    inService:2,available:1,unavailable:1,boardTeams:0,radioOnly:2,
+    radioLinked:0,paired:1,activeIncidents:0
+  });
+  assert.deepEqual(count({},users.map(item=>({...item,notAvailable:false}))),{
+    inService:2,available:2,unavailable:0,boardTeams:0,radioOnly:2,
+    radioLinked:0,paired:1,activeIncidents:0
+  });
+});
+
+test('The same numeric unit in another service remains a separate crew',()=>{
+  const users=[radio('SANTO','600',{paired:true,notAvailable:true}),
+    radio('BWM','600',{paired:true,notAvailable:false})];
+  assert.deepEqual(count({},users),{
+    inService:2,available:1,unavailable:1,boardTeams:0,radioOnly:2,
+    radioLinked:0,paired:2,activeIncidents:0
+  });
+});
+
 test('Counting never modifies the saved board or radio snapshot',()=>{
   const board={session:{ownerUid:'test-owner'},ploegen:{team:crew('team','620')},meldingen:{}};
   const options={categories,users:[radio('SANTO','00620'),radio('AMBULANCE','700',{importable:false})],fresh:true};
