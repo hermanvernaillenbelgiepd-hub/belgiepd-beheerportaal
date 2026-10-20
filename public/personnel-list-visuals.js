@@ -93,7 +93,23 @@
     }
     return out;
   }
+  // Display one status column per service-specific specialization.
+  // For combined services, the caller displays a compact summary instead.
+  const labelsByService=Object.freeze({
+    politie:['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE','SRT','DSU'],
+    ambulance:['Basis TR','Medicatie','HELI','Motor','MIP'],
+    brandweer:['Basis TR','Logistiek','Ladderwagen','Duiker','Signalisatie','RED team','Gevaarlijke stoffen','Grote Boot'],
+    depannage:['Opleiding DEP2K','Opleiding FAST']
+  });
+  function specialtyColumns(dept){
+    return labelsByService[dept]?[...labelsByService[dept]]:[];
+  }
+  function specialtyStateFor(person,label){
+    return specialtyStatuses(person?.specialties).find(x=>x.label===label)||
+      {label,status:'Niet ingevuld',style:'unknown',icon:specialtyIcon(label)};
+  }
   root.BPDPersonnelVisuals=Object.freeze({
-    rankInfo,specialtyBadges,specialtyIcon,qualification,specialtyStatuses
+    rankInfo,specialtyBadges,specialtyIcon,qualification,specialtyStatuses,
+    specialtyColumns,specialtyStateFor
   });
 })(typeof window==='object'?window:globalThis);
