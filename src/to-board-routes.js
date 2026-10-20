@@ -2,6 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {applicationDefault,getApps,initializeApp} from 'firebase-admin/app';
 import {getFirestore} from 'firebase-admin/firestore';
 import {TO_CATEGORIES,applyBoardCommand,canReadBoard,canOperateBoard,emptyBoard,validBoardId,boardError} from './to-board-policy.js';
+import {callsignForTO} from './to-operator-identity.js';
 
 export const TO_BOARD_COLLECTION='bpd_to_boards';
 export const TO_ARCHIVE_COLLECTION='bpd_to_archives';
@@ -44,9 +45,9 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
     }
   };
 }
-function envelope(board,actor){
+function envelope(board,actor,identity=null){
   const canOperate=canOperateBoard(actor);
-  return {board,categories:TO_CATEGORIES,permissions:{canRead:true,canOperate,canEdit:canOperate&&board.session?.ownerUid===actor.uid},viewer:{uid:actor.uid},writesEnabled:true};
+  return {board,categories:TO_CATEGORIES,permissions:{canRead:true,canOperate,canEdit:canOperate&&board.session?.ownerUid===actor.uid},viewer:{uid:actor.uid,callsign:identity?.call||null,callsignSource:identity?.source||null},writesEnabled:true};
 }
 function failed(res,error){
   if(Number.isInteger(error?.publicStatus)&&[400,403,404,409,413].includes(error.publicStatus))return res.status(error.publicStatus).json({error:error.message});
@@ -54,19 +55,40 @@ function failed(res,error){
   console.error('TO-dienstbord: opslagbewerking mislukt');
   return res.status(503).json({error:'Het dienstbord is tijdelijk niet beschikbaar. Controleer de Firebase-configuratie.'});
 }
-export function installTOBoardRoutes(app,{requireUser,store=createFirestoreTOStore()}={}){
+export function installTOBoardRoutes(app,{
+  requireUser,store=createFirestoreTOStore(),getSnapshot=null,getTemporaryRequest=null
+}={}){
+  const identityCache=new Map();
+  const identityFor=async actor=>{
+    const discordId=String(actor?.discordId||'');
+    if(!/^\d{15,22}$/.test(discordId)||!canOperateBoard(actor))return null;
+    const old=identityCache.get(discordId);
+    if(old&&Date.now()<old.expires)return old.identity;
+    // A missing roster or an upstream error must not block the TO board itself.
+    // Identity never comes from unverified client fields.
+    let personnel=[],temporary=null;
+    try{if(getSnapshot)personnel=(await getSnapshot()).data||[];}catch{}
+    try{if(getTemporaryRequest)temporary=await getTemporaryRequest(discordId);}catch{}
+    const identity=callsignForTO(actor,personnel,temporary);
+    if(identityCache.size>=250)identityCache.clear();
+    identityCache.set(discordId,{identity,expires:Date.now()+60000});
+    return identity;
+  };
   const requirePolice=(req,res,next)=>{
     if(!canReadBoard(req.bpd)||typeof req.bpd?.uid!=='string'||!req.bpd.uid)return res.status(403).json({error:'Geen toegang tot het politiedienstbord'});
     next();
   };
   app.get('/api/to/board',requireUser,requirePolice,async(req,res)=>{
-    try{return res.json(envelope(await store.readBoard(),req.bpd));}catch(error){return failed(res,error);}
+    try{const [board,identity]=await Promise.all([store.readBoard(),identityFor(req.bpd)]);
+      return res.json(envelope(board,req.bpd,identity));}catch(error){return failed(res,error);}
   });
   app.post('/api/to/commands',requireUser,requirePolice,async(req,res)=>{
     if(!canOperateBoard(req.bpd))return res.status(403).json({error:'Geen bevoegdheid om het politiedienstbord te bedienen'});
     try{
-      const result=await store.execute(req.body,{actor:req.bpd,now:Date.now(),id:randomUUID()});
-      return res.json(envelope(result.board,req.bpd));
+      const identity=await identityFor(req.bpd);
+      const actor=identity?{...req.bpd,toCallsign:identity.call}:req.bpd;
+      const result=await store.execute(req.body,{actor,now:Date.now(),id:randomUUID()});
+      return res.json(envelope(result.board,req.bpd,identity));
     }catch(error){return failed(res,error);}
   });
   app.get('/api/to/archives',requireUser,requirePolice,async(_req,res)=>{
