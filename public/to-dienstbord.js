@@ -434,6 +434,12 @@ function closeSessionDialog(){
   openDialog('Dienst afsluiten',`<p class="form-note">De huidige ploegen, meldingen en overdrachten worden samen bewaard in het dienstarchief. Daarna kan een nieuwe dienst starten.</p>${count?`<div class="feedback warning">Er ${count===1?'is nog één actieve melding':'zijn nog '+count+' actieve meldingen'}. Rond ${count===1?'deze melding':'deze meldingen'} eerst af om de dienst te sluiten.</div>`:'<p class="form-note">Alle meldingen zijn afgerond. Het archief blijft beschikbaar voor bevoegde collega’s.</p>'}`,count?{footer:button('Terug naar het bord','close-dialog')}:{form:'close-session',submit:'Afsluiten en archiveren',danger:true});
 }
 
+document.addEventListener('keydown',event=>{
+  const target=event.target.closest?.('[data-action="team-response-next"][role="button"]');
+  if(!target||(event.key!=='Enter'&&event.key!==' '))return;
+  event.preventDefault();
+  target.click();
+});
 document.addEventListener('click',async event=>{
   const target=event.target.closest('[data-action]');if(!target||target.disabled)return;
   const action=target.dataset.action,id=target.dataset.id;
@@ -466,7 +472,27 @@ document.addEventListener('click',async event=>{
         const team=state.env.board.ploegen[id];
         openDialog('Ploeg uit dienst halen',`<p class="form-note">Wil je ${esc(team.dienst)}-${esc(team.roepnaam)} uit dienst halen? De ploeg blijft bewaard in de historiek van deze dienst.</p>`,{form:'remove-team',id,submit:'Uit dienst halen',danger:true});break;
       }
-      case 'toggle-team':if(canEdit()){const team=state.env.board.ploegen[id];if(busyMap(state.env.board).has(id)){toast('Deze ploeg is aan een actieve melding gekoppeld.');break;}await command('toggle-team',{id,available:team.available===false});toast('Beschikbaarheid bijgewerkt.');}break;
+      case 'toggle-team':if(canEdit()){const team=state.env.board.ploegen[id];if(team.responsePhase){toast('Wis eerst de uitrukstatus.');break;}if(busyMap(state.env.board).has(id)){toast('Deze ploeg is aan een actieve melding gekoppeld.');break;}await command('toggle-team',{id,available:team.available===false});toast('Beschikbaarheid bijgewerkt.');}break;
+      case 'team-response-next':{
+        if(!canEdit())break;
+        const team=state.env.board.ploegen[id];
+        if(!team||team.endedAt)break;
+        if(team.available===false||radioFresh()&&radioNBForTeam(team,(radio.snapshot.users||[]).filter(user=>radioMatchesTeam(user,team)))){
+          toast('Deze ploeg is niet beschikbaar.');break;
+        }
+        const phase=team.responsePhase=== 'onderweg'?'ter-plaatse':!team.responsePhase?'onderweg':null;
+        if(!phase){toast('De ploeg is ter plaatse. Gebruik ‘Status wissen’ wanneer nodig.');break;}
+        await command('response-phase',{id,phase});
+        toast(team.dienst+'-'+team.roepnaam+(phase==='onderweg'?' is onderweg.':' is ter plaatse.'));
+        break;
+      }
+      case 'team-response-clear':{
+        if(!canEdit())break;
+        const team=state.env.board.ploegen[id];if(!team?.responsePhase)break;
+        await command('response-phase',{id,phase:null});
+        toast('Uitrukstatus gewist. De eventuele meldingskoppeling blijft bestaan.');
+        break;
+      }
       case 'create-incident':if(canEdit())incidentForm();break;
       case 'update-incident':if(canEdit())incidentForm(id);break;
       case 'open-incident':openIncident(id);break;
