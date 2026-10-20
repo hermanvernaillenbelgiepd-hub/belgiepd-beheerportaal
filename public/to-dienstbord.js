@@ -315,7 +315,7 @@ function teamCard(team,busy,editable){
   const onRadio=radioMembers.length>0;
   const identity=teamVisual(team.dienst);
   const stateClass=nbOnRadio||team.available===false?'on-pause':busy.length?'on-incident':'ready';
-  return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(team.dienst)}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}</div></div><div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions"><button type="button" class="text-button" data-action="toggle-team" data-id="${esc(team.id)}" data-write${busy.length||nbOnRadio?' data-fixed-disabled="true"':''}${!editable||busy.length||nbOnRadio?' disabled':''}>${nbOnRadio?'NB via radio':team.available===false?'Beschikbaar':'Pauzeren'}</button><button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
+  return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(team.dienst)}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}${radioMembers.length?'<div class="crew-radio-label">◉ Radio: '+radioMembers.map(user=>esc(user.displayName||user.name||'Radiogebruiker')).join(' · ')+'</div>':''}</div></div><div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions"><button type="button" class="text-button" data-action="toggle-team" data-id="${esc(team.id)}" data-write${busy.length||nbOnRadio?' data-fixed-disabled="true"':''}${!editable||busy.length||nbOnRadio?' disabled':''}>${nbOnRadio?'NB via radio':team.available===false?'Beschikbaar':'Pauzeren'}</button><button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
 }
 function incidentCard(incident){
   return `<button type="button" class="incident-card" data-action="open-incident" data-id="${esc(incident.id)}"><span class="incident-meta"><span class="incident-number mono">${incidentNumber(incident.nr)}</span>${pill(incident.status==='actief'?'Actief':'Afgerond',incident.status==='actief'?'amber':'gray')}<span class="incident-time mono">${time(incident.createdAt)}</span></span><strong class="incident-title">${esc(incident.titel)}</strong><span class="incident-description">${esc(String(incident.omschrijving||'Geen aanvullende omschrijving.').slice(0,150))}${String(incident.omschrijving||'').length>150?'…':''}</span><span class="incident-footer"><span class="postal mono">PC ${esc(incident.postcode)}</span>${(incident.ploegen||[]).map(team=>`<span class="team-chip" data-unit-service="${esc(teamVisual(team.dienst).serviceId)}" style="--unit-hue:${teamVisual(team.dienst).hue}">${unitBadge(team.dienst,'unit-token-micro')}${esc(team.dienst)}-${esc(team.roep)}</span>`).join('')||'<span class="unassigned">Nog geen ploeg gekoppeld</span>'}</span></button>`;
@@ -404,6 +404,8 @@ document.addEventListener('click',async event=>{
       case 'close-session':if(canEdit())closeSessionDialog();break;
       case 'add-team':if(canEdit())teamDialog();break;
       case 'radio-refresh':await refreshRadio();break;
+      case 'radio-quick-add':await quickAddRadioCrew(id);break;
+      case 'incident-template':if(canEdit()&&INCIDENT_PRESETS.includes(target.dataset.template))incidentForm('',target.dataset.template);break;
       case 'radio-add-team':{
         if(!canEdit()||!radioFresh())break;
         const user=radio.snapshot.users.find(item=>String(item.id)===id);
@@ -428,6 +430,29 @@ document.addEventListener('click',async event=>{
       case 'close-dialog':closeDialog();break;
     }
   }catch(error){if(error.obsolete)return;if(dialog.open)formError(error.message);else tell(error.message,'error');}
+});
+// Dragging is optional: identical one-click actions remain available for touch and keyboard.
+const resetRadioDrop=()=>document.querySelectorAll('[data-radio-dropzone]').forEach(node=>node.classList.remove('radio-drop-active'));
+document.addEventListener('dragstart',event=>{
+  const source=event.target.closest?.('[data-radio-drag]');
+  if(!source||!event.dataTransfer||!canEdit()||!radioFresh())return;
+  event.dataTransfer.setData('text/plain',source.dataset.radioDrag);
+  event.dataTransfer.effectAllowed='copy';
+  document.querySelectorAll('[data-radio-dropzone]').forEach(node=>node.classList.add('radio-drop-active'));
+});
+document.addEventListener('dragend',resetRadioDrop);
+document.addEventListener('dragover',event=>{
+  if(event.target.closest?.('[data-radio-dropzone]')&&canEdit()&&radioFresh()&&event.dataTransfer){
+    event.preventDefault();event.dataTransfer.dropEffect='copy';
+  }
+});
+document.addEventListener('drop',async event=>{
+  const area=event.target.closest?.('[data-radio-dropzone]');resetRadioDrop();
+  if(!area||!event.dataTransfer||!canEdit()||!radioFresh())return;
+  event.preventDefault();
+  const id=event.dataTransfer.getData('text/plain');
+  if(!radio.snapshot.users.some(user=>user.id===id))return;
+  try{await quickAddRadioCrew(id);}catch(error){tell(error.message,'error');}
 });
 dialog.addEventListener('click',event=>{if(event.target===dialog)closeDialog();});
 dialog.addEventListener('close',()=>{delete dialog.dataset.incidentId;});
