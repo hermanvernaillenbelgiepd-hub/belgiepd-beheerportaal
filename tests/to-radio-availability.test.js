@@ -21,13 +21,13 @@ test('Valid numbered * callsigns are parsed without confusing team IDs or medica
     'HAMB 620*','AMB620*','LSRA-F.A.S.T.-100*']){
     const parsed=parseSonoranName(name+' | Test Medewerker');
     assert.equal(parsed.importable,true,name);
-    assert.match(parsed.number,/^\\d{1,5}$/);
+    assert.match(parsed.number,/^\d{1,5}$/);
     assert.equal(radioMarkedPair(name),true,name);
   }
   assert.equal(parseSonoranName('SANTO-600**').importable,false);
   assert.equal(radioMarkedPair('SANTO-600'),false);
   assert.equal(radioMarkedPair('SANTO-600 | Agent *'),false);
-  assert.equal(radioMarkedPair('NB SANTO-600*'),'true'==='true');
+  assert.equal(radioMarkedPair('NB SANTO-600*'),true);
   assert.equal(parseSonoranName('SANTO-600* (NB)').number,'600');
 });
 
