@@ -24,7 +24,7 @@ test('Recognizable brigade categories use stable category codes and different ac
     assert.equal(visual.code,code,label);
   }
   assert.equal(teamVisual('LSRA-F.A.S.T.').serviceId,'depannage');
-  for(const category of ['BWM','BWV','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE']){
+  for(const category of ['BWM','BWV','BAMBU','BWAMBU','BW-AMBU','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE']){
     const visual=teamVisual(category);
     assert.equal(visual.serviceId,'brandweer',category);
     assert.ok(visual.code.length>=2,category);
