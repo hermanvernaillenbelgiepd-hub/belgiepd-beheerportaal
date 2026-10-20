@@ -1,6 +1,6 @@
 // Nieuwe interne dossierregistraties en concept-weekrapporten.
 // Geen Google Sheets-writes, geen clientvertrouwen bij rollen of auteurs.
-export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging','activiteit','observatie','specialisatiebeperking']);
+export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging','activiteit','specialisatiebeperking']);
 export const CADRE_ROLES = Object.freeze(['middenkader','officierenkader','korpsleiding']);
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
 export const RECORD_LABELS = Object.freeze({
