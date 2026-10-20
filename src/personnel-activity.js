@@ -23,7 +23,7 @@ export function validateRetrospectiveCallChange(payload){
   if(previousCall.toLowerCase()===expectedCurrentCall.toLowerCase())
     throw Error('Oud en nieuw roepnummer mogen niet identiek zijn');
   const reason=typeof payload.reason==='string'?payload.reason.trim():'';
-  if(reason.length<15||reason.length>500||/[\\x00-\\x1f\\x7f<>]/.test(reason))
+  if(reason.length<15||reason.length>500||/[\x00-\x1f\x7f<>]/.test(reason))
     throw Error('Motivering van minimaal 15 en maximaal 500 tekens vereist');
   return {discordId:payload.discordId,previousCall,expectedCurrentCall,reason};
 }
