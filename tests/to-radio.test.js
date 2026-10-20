@@ -1,13 +1,55 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createSonoranRadioService,parseSonoranName} from '../src/to-radio.js';
+import {createSonoranRadioService,parseSonoranName,activeSonoranChannels} from '../src/to-radio.js';
 
 const apiKey='test-only-sonoran-secret-do-not-export';
 const communityId='00000000-0000-4000-8000-000000000001';
 const configuredEnv={SONORAN_RADIO_API_KEY:apiKey,SONORAN_RADIO_COMMUNITY_ID:communityId};
 const startTime=Date.UTC(2026,9,20,14,0);
-const reply=(users,options={})=>new Response(JSON.stringify({connectedUsers:users}),{status:200,headers:{'content-type':'application/json'},...options});
+// Existing fixtures represent users tuned to radio channels by default.
+// Tests for logged-in clients with NO channel supply explicit metadata.
+const reply=(users,options={})=>new Response(JSON.stringify({connectedUsers:users.map(user=>
+  user&&typeof user==='object'&&!Array.isArray(user)&&!Object.hasOwn(user,'metadata')
+    ?{...user,metadata:{state:{primaryChId:19,scannedChIds:[]}}}:user
+)}),{status:200,headers:{'content-type':'application/json'},...options});
 const validUser={identity:'private-identity-one',name:'SANTO - 620 | Agent Test',roomId:1};
+
+test('Only real transmit/scan channel assignments qualify; roomId is a server room, not a channel',()=>{
+  assert.deepEqual(activeSonoranChannels({state:{primaryChId:19,scannedChIds:[175,176,19,0]}}),['19','175','176']);
+  assert.deepEqual(activeSonoranChannels({state:{primaryChId:0,scannedChIds:[215]}}),['215']);
+  for(const metadata of [
+    null,undefined,{}, {state:null}, {state:{}},
+    {state:{primaryChId:0,scannedChIds:[]}},
+    {state:{primaryChId:null,scanLists:[{channelIds:[19]}]}},
+    {state:{primaryChId:-1,scannedChIds:[0,-2,null,'19']}}
+  ])assert.deepEqual(activeSonoranChannels(metadata),[]);
+  assert.deepEqual(activeSonoranChannels({state:{primaryChId:0,primaryChIds:[90,91]}}),['90','91']);
+});
+
+test('Logged-in Sonoran users without an actual radio channel are excluded from operational crews',async()=>{
+  const users=[
+    {identity:'tuned-primary',name:'SANTO-600 | One',roomId:1,
+      metadata:{state:{primaryChId:42,scannedChIds:[]}}},
+    {identity:'tuned-scan',name:'BWM-301 | Two',roomId:1,
+      metadata:{state:{primaryChId:0,scannedChIds:[81]}}},
+    {identity:'lobby-only',name:'SANTO-601 | No Channel',roomId:1,metadata:{state:{primaryChId:0,scannedChIds:[]}}},
+    {identity:'room-only',name:'BWM-302 | No Metadata',roomId:1,metadata:null},
+    {identity:'preset-only',name:'ZW-1 | No Actual Scan',roomId:1,
+      metadata:{state:{primaryChId:0,scanLists:[{channelIds:[55]}]}}},
+    {identity:'zero-room',name:'SANTO-602 | Transmit',roomId:0,
+      metadata:{state:{primaryChId:34,scannedChIds:[]}}}
+  ];
+  const radio=createSonoranRadioService({env:configuredEnv,fetchImpl:async()=>reply(users)});
+  const result=await radio.read();
+  assert.equal(result.connected,true);
+  assert.equal(result.connectedCount,6);
+  assert.deepEqual(result.users.map(u=>[u.category,u.number,u.channel]),[
+    ['SANTO','600','42'],['BWM','301','81'],['SANTO','602','34']
+  ]);
+  assert.deepEqual(result.counts,{online:3,recognized:3});
+  assert.equal(JSON.stringify(result).includes('tuned-primary'),false);
+  assert.equal(result.users.every(u=>!Object.hasOwn(u,'metadata')&&u.channel!==null),true);
+});
 
 test('Sonoran access and rate-limit failures provide safe actionable messages',async()=>{
   for(const [status,pattern] of [[401,/Community ID en API Key/],[403,/Community ID en API Key/],[429,/te veel aanvragen/]]){
