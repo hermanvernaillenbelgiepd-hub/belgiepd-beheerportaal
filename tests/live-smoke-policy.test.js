@@ -13,7 +13,7 @@ test('Smoke checks both feature flags, exact deployments and protected routes',(
   const script=file('scripts/live-smoke.mjs');
   for(const token of [
     '/api/health','/api/citizens/status','/api/dossiercentrum/status',
-    '/api/dossiercentrum/overview','/api/citizens/me/register',
+    '/api/dossiercentrum/overview','/api/staff-dossiers/status',
     '/api/personnel/overview','/burgerdossier.html','/dossiercentrum.html',
     'BPD_EXPECTED_SHA','BPD_EXPECTED_BRANCH','401'
   ])assert.ok(script.includes(token),token);

@@ -24,7 +24,6 @@ import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
-import {installCitizenRoutes} from './citizen-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
 import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
@@ -34,9 +33,10 @@ app.disable('x-powered-by');
 app.use((_req,res,next)=>{res.set('X-Content-Type-Options','nosniff');res.set('Referrer-Policy','no-referrer');res.set('Cache-Control','no-store');next();});
 // Applicant intake has been retired from this deployment. Keep historical
 // Firestore data intact for audit; the retired public HTML cannot be served.
-app.get(['/solliciteren.html','/sollicitatiebeheer.html'],(_req,res)=>
-  res.status(410).type('text/plain').send('Deze sollicitatiepagina is niet actief.'));
+app.get(['/burgerdossier.html','/solliciteren.html','/sollicitatiebeheer.html'],(_req,res)=>
+  res.status(410).type('text/plain').send('Deze pagina is buiten gebruik.'));
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
+app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
 app.use('/api/callsigns',express.json({limit:'12kb',strict:true}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
@@ -46,7 +46,6 @@ app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
-app.use('/api/citizens',express.json({limit:'2kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
 installRoleRoutes(app);
@@ -257,7 +256,6 @@ installUserRoutes(app,{requireUser,accessList});
 installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser,getSnapshot});
-installCitizenRoutes(app);
 app.get('/api/health',(_req,res)=>res.json({
   status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded',
   deployment:publicDeploymentInfo()

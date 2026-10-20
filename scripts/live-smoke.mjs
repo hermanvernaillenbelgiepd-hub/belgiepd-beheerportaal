@@ -55,15 +55,14 @@ async function check(path,expectedStatus=200,assertBody=()=>true){
 }
 await untilDeployed();
 // These endpoints must not disclose any private data.
-await check('/api/citizens/status',200,d=>d?.enabled===true);
+await check('/api/citizens/status',410,d=>typeof d?.error==='string');
 await check('/api/dossiercentrum/status',200,d=>d?.enabled===true&&d?.readOnly===true);
 await check('/api/client-config',200,d=>
   d?.enabled===true &&
   (expectedBranch==='main'?
     d.firebaseConfig?.projectId!=='belgiepd-test':
     d.firebaseConfig?.projectId==='belgiepd-test'));
-await check('/burgerdossier.html',200,d=>typeof d==='string'&&
-  d.includes('Mijn burgerdossier')&&d.includes('api/citizens/me'));
+await check('/burgerdossier.html',410,d=>typeof d==='string');
 await check('/dossiercentrum.html',200,d=>typeof d==='string'&&
   d.includes('Centraal dossieroverzicht')&&d.includes('api/dossiercentrum'));
 await check('/api/citizens/me',401,d=>typeof d?.error==='string');
@@ -71,9 +70,5 @@ await check('/api/dossiercentrum/overview',401,d=>typeof d?.error==='string');
 await check('/api/dossiercentrum/politie/123456789012345678',401,
   d=>typeof d?.error==='string');
 await check('/api/personnel/overview',401,d=>typeof d?.error==='string');
-// Even a POST without credentials must never create a citizen dossier.
-const post=await request('/api/citizens/me/register','POST',{});
-if(post.status!==401||typeof post.body?.error!=='string')
-  throw Error('Onbevoegde burgerregistratie is niet geblokkeerd: HTTP '+post.status);
-console.log('OK /api/citizens/me/register HTTP 401 (geen dossier aangemaakt)');
+await check('/api/staff-dossiers/status',200,d=>d?.enabled===true);
 console.log('Publieke module- en toegangscontroles geslaagd voor '+expectedBranch);

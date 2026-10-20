@@ -32,6 +32,15 @@ label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
+<section id="accessHelp" class="card" hidden>
+<h2>Personeelskoppeling of TEST-toegang ontbreekt</h2>
+<p>TEST heeft een eigen Firebase-project. Goedkeuringen in MAIN worden niet automatisch overgenomen.
+Meld je met je eigen Discord-account aan en controleer de toegangsstatus van deze omgeving.
+Een bevoegd beheerder kan de aanvraag daarna in deze omgeving beoordelen.</p>
+<p><a href="/gebruikersbeheer.html">Mijn toegang controleren of aanvragen</a> ·
+<a href="/discord-status.html">Discord-identiteit opnieuw verifiëren</a></p>
+<div id="accessDetail" class="subtle"></div>
+</section>
 <div id="mode" class="warn" hidden></div>
 <section class="card"><div class="controls" style="justify-content:space-between"><h2>Personeelslijst</h2><div class="controls"><button id="newBtn" type="button" hidden>Nieuw personeelslid</button><button class="alt" id="reload" type="button">Vernieuwen</button></div></div>
 <div class="grid"><div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div><div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div></div>
@@ -278,10 +287,31 @@ function render(){
     const cell=document.createElement('td');cell.append(action);tr.append(cell);body.append(tr);
   }
 }
+async function checkAccessStatus(){
+  const root=$('accessDetail');root.textContent='';
+  if(!auth?.currentUser?.uid?.startsWith('discord:')){
+    root.textContent='Je bent niet aangemeld met Discord. Gebruik de Discord-login voor een nieuwe koppelaanvraag.';
+    return;
+  }
+  try{
+    const token=await auth.currentUser.getIdToken();
+    const response=await fetch('/api/users/me',{cache:'no-store',
+      headers:{Authorization:'Bearer '+token}});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw Error(data.error||'Aanvraagstatus niet beschikbaar');
+    const labels={not_requested:'Nog geen toegangsaanvraag in deze omgeving.',
+      pending:'Je toegangsaanvraag wacht op goedkeuring in deze omgeving.',
+      approved:'Je toegang is goedgekeurd. Controleer je dienst- en kaderrechten.',
+      legacy:'Bestaande toegangsinstelling gevonden. Controleer het gekoppelde account.',
+      blocked:'Dit account werd door een bevoegde beheerder geblokkeerd.'};
+    root.textContent=labels[data.status]||'Toegangsstatus: '+String(data.status||'onbekend');
+  }catch(e){root.textContent='Statuscontrole: '+e.message}
+}
 async function load(){
   if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;$('panel').hidden=true;createRanks={};promotionsEnabled=false;$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();renderPending();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     const data=await request('/api/personnel/overview');
+    $('accessHelp').hidden=true;
     people=data.records||[];pendingPeople=data.pendingPersonnel||[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
     $('newBtn').hidden=!Object.keys(createRanks).length;
@@ -298,7 +328,12 @@ async function load(){
       notice('De veilige laadlimiet van personeelsgegevens is bereikt. Vraag een beheerder om controle.',true);
     if(!$('newPanel').hidden)updateNewDuplicateWarning();
     if(selected){const still=people.find(p=>p.dept===selected.dept&&p.discordId===selected.discordId);if(still)await showPerson(still);else $('panel').hidden=true}
-  }catch(e){people=[];$('panel').hidden=true;render();notice(e.message,true)}
+  }catch(e){
+    people=[];$('panel').hidden=true;render();notice(e.message,true);
+    const denied=/403|koppeling|goedgekeurd|goedgekeurde|niet gemachtigd|kaderrechten|Geen toegelaten hulpdienst/i.test(e.message||'');
+    $('accessHelp').hidden=!denied;
+    if(denied)void checkAccessStatus();
+  }
 }
 function staffField(parent,label,value){
   const div=document.createElement('div');

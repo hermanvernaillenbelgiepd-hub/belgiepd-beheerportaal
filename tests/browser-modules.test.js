@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { validReturnTo,discordConfig } from '../src/discord-utils.js';
 
-const pages=['index','discord-status','registraties','roepnummers','rollen-opleidingen','verlofbeheer','weekrapporten','gebruikersbeheer','personeelsbeheer','personeel-koppelen','solliciteren','sollicitatiebeheer'];
+const pages=['index','discord-status','registraties','roepnummers','rollen-opleidingen','verlofbeheer','weekrapporten','gebruikersbeheer','personeelsbeheer','personeel-koppelen'];
 test('All browser module scripts parse as valid JavaScript',()=>{
   for(const name of pages){
     const html=readFileSync(new URL('../public/'+name+'.html',import.meta.url),'utf8');
@@ -55,8 +55,9 @@ test('OAuth return-to paths are explicitly allowlisted; never external domains',
   assert.equal(validReturnTo('/gebruikersbeheer.html'),'/gebruikersbeheer.html');
   assert.equal(validReturnTo('/personeelsbeheer.html'),'/personeelsbeheer.html');
   assert.equal(validReturnTo('/personeel-koppelen.html'),'/personeel-koppelen.html');
-  assert.equal(validReturnTo('/solliciteren.html'),'/solliciteren.html');
-  assert.equal(validReturnTo('/sollicitatiebeheer.html'),'/sollicitatiebeheer.html');
+  assert.equal(validReturnTo('/solliciteren.html'),'/discord-status.html');
+  assert.equal(validReturnTo('/sollicitatiebeheer.html'),'/discord-status.html');
+  assert.equal(validReturnTo('/burgerdossier.html'),'/discord-status.html');
   assert.equal(validReturnTo('/'),'/');
   assert.equal(validReturnTo('https://evil.example/'),'/discord-status.html');
   assert.equal(validReturnTo('//evil.example/'),'/discord-status.html');

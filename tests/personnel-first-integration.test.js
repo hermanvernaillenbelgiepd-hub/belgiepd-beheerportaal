@@ -80,6 +80,6 @@ test('Personnel card supports inline safe action forms and never duplicates form
 test('Public applicant functionality is not mounted and old applicant pages are closed',()=>{
   const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
   assert.equal(server.includes('installServiceApplicationRoutes(app'),false);
-  assert.ok(server.includes("app.get(['/solliciteren.html','/sollicitatiebeheer.html']"));
+  assert.ok(server.includes("'/solliciteren.html','/sollicitatiebeheer.html'"));
   assert.ok(server.includes('res.status(410)'));
 });
