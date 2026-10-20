@@ -29,7 +29,7 @@
     return row?{label:row[1],image:imgRoot+encodeURIComponent(row[2]),code:row[0]}:
       {label:value||'Rang onbekend',image:null,code:null};
   }
-  const noStatus=/^(?:|NEE|NVT|N\.V\.T\.|NIET INGEVULD|GEEN|0|FALSE|ONBEKEND|NIET VAN TOEPASSING)$/i;
+  const noStatus=/^(?:|NEE|NVT|N\.V\.T\.|NIET INGEVULD|NIET BEHAALD|GEEN|NEEN|NO|0|FALSE|-|—|ONBEKEND|NIET VAN TOEPASSING)$/i;
   const specialtyCatalog=[
     [/\b(MOTARD|MOTOR)\b/i,'🏍️'],
     [/\b(K9|HONDEN|HONDENGE)\b/i,'🐕'],
