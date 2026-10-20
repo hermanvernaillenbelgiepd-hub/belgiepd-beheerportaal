@@ -39,6 +39,13 @@ function text(value,min,max,label,{multiline=false}={}){
   return result;
 }
 function entityId(value){if(!validBoardId(value))fail(400,'Ongeldige verwijzing');return value;}
+// A personnel-verified callsign is assigned by the server and takes precedence
+// over displayName supplied by the browser. Board authorization still uses UID.
+function toDisplayName(actor,raw){
+  const supplied=text(raw,2,80,'TO-naam');
+  const verified=actor?.toCallsign;
+  return typeof verified==='string'&&/^\d{1,5}$/.test(verified)&&Number(verified)>0?verified:supplied;
+}
 function capacity(board){
   if(Object.keys(board.ploegen).length>TO_BOARD_LIMITS.teams||Object.keys(board.meldingen).length>TO_BOARD_LIMITS.incidents)
     fail(413,'Deze dienst bevat te veel gegevens. Sluit meldingen af en archiveer de dienst.');
@@ -100,11 +107,11 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
   };
   if(cmd.type==='start'){
     if(board.session)fail(409,'Er loopt al een dienst. Neem deze eerst over.');
-    board.session={id:newId(),to:text(cmd.displayName,2,80,'TO-naam'),ownerUid:actor.uid,startedAt:now,handovers:[]};
+    board.session={id:newId(),to:toDisplayName(actor,cmd.displayName),ownerUid:actor.uid,startedAt:now,handovers:[]};
   }else{
     if(!board.session)fail(409,'Er loopt geen dienst. Start eerst een dienst.');
     if(cmd.type==='takeover'){
-      const displayName=text(cmd.displayName,2,80,'TO-naam'),reason=text(cmd.reason,8,300,'Reden van overname');
+      const displayName=toDisplayName(actor,cmd.displayName),reason=text(cmd.reason,8,300,'Reden van overname');
       if(board.session.ownerUid===actor.uid)fail(409,'Je bent al de huidige TO. Ga verder met je dienst.');
       if(board.session.handovers.length>=TO_BOARD_LIMITS.handovers)fail(413,'Te veel overdrachten. Rond deze dienst eerst af.');
       board.session.handovers.push({from:board.session.to,to:displayName,fromUid:board.session.ownerUid,toUid:actor.uid,byUid:actor.uid,at:now,reason});
