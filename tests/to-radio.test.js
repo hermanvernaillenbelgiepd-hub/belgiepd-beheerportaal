@@ -106,6 +106,27 @@ test('All requested emergency and recovery categories retain their complete radi
   assert.equal(parseSonoranName('LSRA-FxAxSxTx - 100 | Test').importable,false);
 });
 
+test('Medical unit types and numeric callsigns appear under Ambulancedienst',()=>{
+  const categories=['DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB'];
+  for(const category of categories){
+    for(const [separator,number] of [['-', '123'],[' ', '007'],['','25'],[' - ','42']]){
+      const label=category+separator+number+' | Medewerker Test';
+      assert.deepEqual(parseSonoranName(label),
+        {category,number,displayName:'Medewerker Test',importable:true},label);
+    }
+    const solo=parseSonoranName(category+' | Medewerker Test');
+    assert.equal(solo.category,category);
+    assert.equal(solo.importable,false);
+    assert.equal(solo.number,null);
+    assert.equal(parseSonoranName(category+'0').importable,false);
+    assert.equal(parseSonoranName(category+'123456').importable,false);
+  }
+  assert.equal(parseSonoranName('AMBULANCE-MOTOR - 99').category,'AMBULANCE-MOTOR');
+  assert.equal(parseSonoranName('HAMBULANCE - 99').importable,false);
+  assert.equal(parseSonoranName('AMBX99').importable,false);
+  assert.equal(parseSonoranName('ARTS - ADMIN').importable,false);
+});
+
 test('Compound categories remain distinct when numeric callsigns match',async()=>{
   const service=createSonoranRadioService({env:configuredEnv,fetchImpl:async()=>reply([
     {identity:'ambulance',name:'AMBULANCE - 620 | Test Een'},
