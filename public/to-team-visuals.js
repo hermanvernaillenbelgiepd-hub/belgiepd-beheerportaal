@@ -10,7 +10,7 @@ const hints=Object.freeze({
   BRANDWEER:['BW',9],BWM:['BM',14],BWV:['BV',17],
   BAMBU:['BA',16],BWAMBU:['BU',22],'BW-AMBU':['BH',15],KORP:['KO',8],
   SERG:['SG',13],ADJ:['AD',19],LT:['LT',5],KAP:['KP',24],
-  MAJ:['MJ',12],KOL:['KL',20],STAG:['SG',18],ZONE:['ZO',11],'ZONE-COMM':['ZC',10],
+  MAJ:['MJ',12],KOL:['KL',20],STAG:['ST',18],ZONE:['ZO',11],'ZONE-COMM':['ZC',10],
   PLOEG1:['B1',6],PLOEG2:['B2',13],PLOEG3:['B3',21],
   STAGE:['SE',172],DIRMED:['DM',175],HARTS:['HA',161],HVPK:['HV',153],HAMB:['HB',168],
   ARTS:['AR',178],VPK:['VP',144],AMB:['AM',165],
