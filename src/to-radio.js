@@ -16,7 +16,7 @@ const orderedCategories=[...TO_CATEGORIES].sort((left,right)=>right.length-left.
 // Named specialist LSRA and ZONE categories take precedence when they match.
 const compactNumberedLabels=new Set([
   'DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB',
-  'BWM','BWV','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE',
+  'BWM','BWV','BAMBU','BWAMBU','BW-AMBU','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE',
   'LSRA','DEPK'
 ]);
 
