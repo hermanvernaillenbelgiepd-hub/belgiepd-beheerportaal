@@ -32,6 +32,10 @@ const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 app.disable('x-powered-by');
 app.use((_req,res,next)=>{res.set('X-Content-Type-Options','nosniff');res.set('Referrer-Policy','no-referrer');res.set('Cache-Control','no-store');next();});
+// Applicant intake has been retired from this deployment. Keep historical
+// Firestore data intact for audit; the retired public HTML cannot be served.
+app.get(['/solliciteren.html','/sollicitatiebeheer.html'],(_req,res)=>
+  res.status(410).type('text/plain').send('Deze sollicitatiepagina is niet actief.'));
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
 app.use('/api/callsigns',express.json({limit:'12kb',strict:true}));
