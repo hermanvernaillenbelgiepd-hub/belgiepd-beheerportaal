@@ -3,10 +3,6 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {bearerToken} from './personnel-link.js';
 import {citizenDossiersEnabled,verifiedCitizenId,citizenKey,
   citizenInitialData,publicCitizenProfile,CITIZEN_COLLECTION} from './citizen-policy.js';
-import {SERVICE_APPLICATIONS_COLLECTION,APPLICATION_SERVICES,serviceApplicantDossierId}
-  from './service-applications-policy.js';
-import {EVIDENCE_COLLECTION,verifySignedTelemetry} from './service-applications-evidence.js';
-
 const respond=(res,code,message)=>res.status(code).json({error:message});
 const fail=(code,message)=>Object.assign(new Error(message),{publicStatus:code});
 async function currentCitizen(req){
@@ -40,27 +36,9 @@ export function installCitizenRoutes(app){
     try{
       const citizen=await currentCitizen(req),db=getFirestore();
       const citizenDoc=db.collection(CITIZEN_COLLECTION).doc(citizenKey(citizen.discordId));
-      const withApplications=process.env.BPD_ENABLE_SERVICE_APPLICATIONS==='true';
-      const [profile,evidence,...applications]=await Promise.all([
-        citizenDoc.get(),
-        db.collection(EVIDENCE_COLLECTION).doc(citizen.discordId).get(),
-        ...(withApplications?APPLICATION_SERVICES.map(dept=>
-          db.collection(SERVICE_APPLICATIONS_COLLECTION)
-            .doc(serviceApplicantDossierId(dept,citizen.discordId)).get()):[])
-      ]);
-      const eligibility=verifySignedTelemetry(citizen.discordId,evidence.data(),
-        process.env.BPD_FIVEM_EVIDENCE_SECRET);
-      const telemetry=eligibility.status==='verification_required'?null:{
-        playHours:Math.round(evidence.get('totalPlaySeconds')/36)/100,
-        firstServerJoinAt:evidence.get('firstServerJoinAt'),
-        eligibility:eligibility.status
-      };
-      const publicProfile=publicCitizenProfile(profile.data(),citizen.discordId);
-      res.json({identity:citizen,registered:Boolean(publicProfile),profile:publicProfile,
-        fivem:telemetry,applications:applications.filter(a=>a.exists)
-          .map(a=>({dept:a.get('dept'),status:a.get('status')}))
-          .filter(a=>APPLICATION_SERVICES.includes(a.dept)&&
-            ['submitted','reviewing','accepted','rejected'].includes(a.status))});
+      const document=await citizenDoc.get();
+      const profile=publicCitizenProfile(document.data(),citizen.discordId);
+      res.json({identity:citizen,registered:Boolean(profile),profile});
     }catch(e){return handleError(res,e)}
   });
   // Citizen registration is opt-in and derives ALL identity data from fresh

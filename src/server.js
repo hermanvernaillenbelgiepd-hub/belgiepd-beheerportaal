@@ -23,7 +23,6 @@ import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from '
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
-import {installServiceApplicationRoutes} from './service-applications-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
 import {installCitizenRoutes} from './citizen-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
@@ -33,6 +32,10 @@ const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 app.disable('x-powered-by');
 app.use((_req,res,next)=>{res.set('X-Content-Type-Options','nosniff');res.set('Referrer-Policy','no-referrer');res.set('Cache-Control','no-store');next();});
+// Applicant intake has been retired from this deployment. Keep historical
+// Firestore data intact for audit; the retired public HTML cannot be served.
+app.get(['/solliciteren.html','/sollicitatiebeheer.html'],(_req,res)=>
+  res.status(410).type('text/plain').send('Deze sollicitatiepagina is niet actief.'));
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
 app.use('/api/callsigns',express.json({limit:'12kb',strict:true}));
@@ -43,7 +46,6 @@ app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
-app.use('/api/service-applications',express.json({limit:'5kb',strict:true}));
 app.use('/api/citizens',express.json({limit:'2kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
@@ -254,7 +256,6 @@ installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
 installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser,getSnapshot});
-installServiceApplicationRoutes(app,{requireUser});
 installDossierCenterRoutes(app,{requireUser,getSnapshot});
 installCitizenRoutes(app);
 app.get('/api/health',(_req,res)=>res.json({

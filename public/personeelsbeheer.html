@@ -94,6 +94,22 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 <p class="subtle">Aanstellingsgegevens, functie en administratieve opvolging. Het officiële personeelsbestand, de rang en de bestaande opleidingen worden hierdoor niet overschreven.</p>
 <div id="staffDossierStatus" role="status" class="subtle">Dossiergegevens worden opgehaald…</div>
 <div id="staffDossierSummary" class="dossier-summary"></div>
+<h3>Discord-reeks en specialisaties</h3>
+<p class="subtle">Alleen de recent geverifieerde Discord-rollen worden hier getoond. Rollen wijzigen gebeurt niet via deze fiche; een rolnaam is geen automatische personeelsbevoegdheid.</p>
+<div id="staffDiscordRoles" class="subtle">Discord-rolgegevens laden…</div>
+<h3>Verlof van deze medewerker</h3>
+<p class="subtle">Goedgekeurde verloven en door jou te behandelen aanvragen komen uit de bestaande verlofmodule.</p>
+<div id="staffLeave" class="subtle">Verlofperiodes laden…</div>
+<form id="staffManualLeaveForm" hidden>
+<h3>Verlof manueel inschrijven</h3>
+<div class="grid">
+<div><label for="leaveFrom">Begindatum</label><input type="date" id="leaveFrom" required></div>
+<div><label for="leaveUntil">Einddatum</label><input type="date" id="leaveUntil" required></div>
+<div style="grid-column:1/-1"><label for="leaveNote">Toelichting voor audit</label>
+<textarea id="leaveNote" maxlength="300" rows="2" placeholder="Reden van administratieve inschrijving"></textarea></div>
+</div>
+<button id="leaveManualSave" type="submit">Verlof goedgekeurd registreren</button>
+</form>
 <div class="dossier-shortcuts">
 <a href="/rollen-opleidingen.html">Opleidingen en beoordelingen</a>
 <a href="/weekrapporten.html">Kaderregistraties en weekrapport</a><a href="/registraties.html">Observaties en sancties</a>
@@ -115,6 +131,22 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 <h3>Kadernotities en opvolging</h3>
 <p class="subtle">Deze notities komen uit de bestaande <a href="/weekrapporten.html">Kaderregistraties</a>. Er wordt hier geen tweede registratieformulier aangeboden.</p>
 <div id="staffLinkedCases" class="subtle">Kaderregistraties laden…</div>
+<form id="staffCaseForm" hidden>
+<h3>Nieuwe dossierregistratie</h3>
+<p class="subtle">Wordt opgeslagen in het bestaande kaderregister met jouw identiteit en tijdstip.</p>
+<div class="grid">
+<div><label for="staffCaseType">Type</label><select id="staffCaseType">
+<option value="notitie">Belangrijke notitie</option><option value="activiteit">Dienstactiviteit</option>
+<option value="specialisatiebeperking">Beperking van specialisatie</option></select></div>
+<div><label for="staffCaseDate">Datum gebeurtenis</label><input id="staffCaseDate" type="date" required></div>
+<div style="grid-column:1/-1"><label for="staffCaseDetails">Omschrijving</label>
+<textarea id="staffCaseDetails" rows="4" maxlength="4000" minlength="10" required></textarea></div>
+</div>
+<button id="staffCaseSave" type="submit">Kaderregistratie bewaren</button>
+</form>
+<h3>Observaties en sancties</h3>
+<p class="subtle">Formele observaties en sancties staan in het bestaande beveiligde registratieregister. Maatregelen en rolbeperkingen worden niet automatisch gewijzigd door een notitie.</p>
+<div id="staffFormalRecords" class="subtle">Observaties en sancties laden…</div>
 <h3>Eerdere dossiernotities (alleen lezen)</h3>
 <p class="subtle">Notities die eventueel via het oude aanvullende formulier zijn ingevoerd blijven zichtbaar, maar kunnen niet meer dubbel geregistreerd worden.</p>
 <div id="staffNotes" class="subtle"></div>
@@ -311,12 +343,12 @@ async function loadLinkedPersonnelRecords(p,key){
         const data=await request(casesUrl);
         if(!same())return;
         cases.replaceChildren();
-        const allowed=(data.entries||[]).filter(row=>row.type==='notitie').slice(0,25);
+        const allowed=(data.entries||[]).filter(row=>['notitie','activiteit','specialisatiebeperking'].includes(row.type)).slice(0,35);
         if(!allowed.length)cases.textContent='Geen toegelaten kadernotities gevonden.';
         for(const row of allowed){
           const div=document.createElement('div');div.className='note-item';
           const title=document.createElement('strong');
-          title.textContent='Personeelsnotitie · '+String(row.eventDate||'Datum onbekend');
+          title.textContent=({notitie:'Personeelsnotitie',activiteit:'Dienstactiviteit',specialisatiebeperking:'Specialisatiebeperking'}[row.type]||'Kaderregistratie')+' · '+String(row.eventDate||'Datum onbekend');
           const body=document.createElement('p');
           body.textContent=String(row.details||'').slice(0,4000);
           div.append(title,body);cases.append(div);
@@ -327,6 +359,85 @@ async function loadLinkedPersonnelRecords(p,key){
     })()
   ]);
 }
+async function loadStaffLeave(p,key){
+  const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
+  const root=$('staffLeave');
+  try{
+    const info=await request('/api/leave/person/'+encodeURIComponent(p.discordId)+
+      '?dept='+encodeURIComponent(p.dept));
+    if(!same())return;
+    root.replaceChildren();
+    if(!info.leaves?.length)root.textContent='Geen zichtbare verlofperiodes.';
+    for(const item of info.leaves||[]){
+      const div=document.createElement('div');div.className='note-item';
+      const title=document.createElement('strong');
+      title.textContent=item.startDate+' tot '+item.endDate+
+        ' · '+(item.status==='pending'?'In afwachting':'Goedgekeurd')+
+        (item.manual?' (handmatig)':'');
+      div.append(title);
+      if(item.status==='pending'&&item.canDecide===true){
+        for(const [decision,label] of [['approved','Goedkeuren'],['rejected','Afwijzen']]){
+          const button=document.createElement('button');
+          button.type='button';button.textContent=label;button.className='alt small';
+          button.onclick=async()=>{
+            if(!same()||!confirm('Verlofaanvraag '+label.toLowerCase()+' voor '+p.name+'?'))return;
+            button.disabled=true;
+            try{
+              await request('/api/leave/requests/'+encodeURIComponent(item.id)+'/decision',{
+                method:'POST',body:{decision,note:''}});
+              await loadStaffLeave(p,key);
+              notice('Verlofbeslissing geregistreerd in de bestaande verlofmodule.');
+            }catch(e){notice(e.message,true);button.disabled=false}
+          };
+          div.append(button);
+        }
+      }
+      root.append(div);
+    }
+    if(info.limited)root.append(document.createTextNode(' Niet alle oudere periodes worden getoond.'));
+  }catch(e){if(same())root.textContent='Verlofgegevens niet beschikbaar: '+e.message}
+}
+async function loadStaffFormalRecords(p,key){
+  const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
+  const root=$('staffFormalRecords');
+  try{
+    const data=await request('/api/registrations/entries?dept='+encodeURIComponent(p.dept)+
+      '&discordId='+encodeURIComponent(p.discordId));
+    if(!same())return;
+    root.replaceChildren();
+    const records=(data.entries||[]).filter(r=>['observatie','sanctie'].includes(r.type)).slice(0,35);
+    if(!records.length)root.textContent='Geen zichtbare formele observaties of sancties.';
+    for(const row of records){
+      const div=document.createElement('div');div.className='note-item';
+      const title=document.createElement('strong');
+      title.textContent=(row.type==='sanctie'?'Sanctie':'Observatie')+' · '+
+        String(row.sanctionType||row.eventDate||row.createdAt||'Datum onbekend').slice(0,150);
+      const details=document.createElement('p');
+      details.textContent=String(row.details||row.description||row.reason||'').slice(0,1600);
+      div.append(title,details);root.append(div);
+    }
+    if((data.entries||[]).length>35)root.append(document.createTextNode(' Er kunnen meer registraties bestaan.'));
+  }catch(e){if(same())root.textContent='Formele registraties niet zichtbaar met de huidige bevoegdheden: '+e.message}
+}
+function showStaffRoles(roleData,rosterSeries){
+  const root=$('staffDiscordRoles');root.replaceChildren();
+  if(rosterSeries){
+    const p=document.createElement('p');p.textContent='Personeelsbron – reeks: '+rosterSeries;root.append(p);
+  }
+  if(roleData?.verified!==true){
+    const p=document.createElement('p');
+    p.textContent='Geen recente, geverifieerde Discord-rollen beschikbaar. Laat de betrokkene zijn Discord-aanmelding vernieuwen.';
+    root.append(p);return;
+  }
+  const series=(roleData.series||[]).map(r=>r.name);
+  const special=(roleData.specializations||[]).map(r=>r.name+
+    (r.stage==='opleiding'?' (in opleiding)':''));
+  const p=document.createElement('p');
+  p.textContent='Discord-reeks: '+(series.join(', ')||'Niet vastgesteld');
+  const q=document.createElement('p');
+  q.textContent='Discord-specialisaties: '+(special.join(', ')||'Geen rol gevonden');
+  root.append(p,q);
+}
 async function loadStaffDossier(p){
   const key=p.dept+':'+p.discordId;
   const base='/api/staff-dossiers/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
@@ -335,6 +446,11 @@ async function loadStaffDossier(p){
   $('staffLinkedTraining').textContent='Opleidingsgegevens laden…';
   $('staffLinkedCases').textContent='Kaderregistraties laden…';
   $('staffDossierHistory').replaceChildren();
+  $('staffDiscordRoles').textContent='Discord-verificatie controleren…';
+  $('staffLeave').textContent='Verlofperiodes laden…';
+  $('staffFormalRecords').textContent='Formele registraties laden…';
+  $('staffManualLeaveForm').hidden=true;
+  $('staffCaseForm').hidden=true;
   $('staffProfileForm').hidden=true;
   staffDossierCanMaintain=false;
   try{
@@ -342,6 +458,12 @@ async function loadStaffDossier(p){
     if(!selected||selected.dept+':'+selected.discordId!==key||$('panel').hidden)return;
     staffDossierRevision=result.revision;
     staffDossierCanMaintain=result.canMaintain===true;
+    $('staffManualLeaveForm').hidden=result.cadreActions?.manualLeave!==true;
+    $('staffCaseForm').hidden=result.cadreActions?.cases!==true;
+    $('staffCaseDate').value=new Date().toISOString().slice(0,10);
+    showStaffRoles(result.discordRoles,result.subject?.rosterSeries);
+    void loadStaffLeave(p,key);
+    void loadStaffFormalRecords(p,key);
     const profile=result.profile||{};
     const summary=$('staffDossierSummary');
     staffField(summary,'Aanstellingsdatum',profile.startDate);
@@ -393,6 +515,36 @@ $('staffProfileForm').onsubmit=async event=>{
           functionTitle:$('staffFunction').value},reason:$('staffProfileReason').value.trim()}});
     await loadStaffDossier(selected);
     notice('Administratieve personeelsgegevens opgeslagen, inclusief auditgeschiedenis.');
+  }catch(e){notice(e.message,true)}finally{button.disabled=false}
+};
+$('staffManualLeaveForm').onsubmit=async event=>{
+  event.preventDefault();
+  const person=selected;
+  if(!person)return;
+  const button=$('leaveManualSave');button.disabled=true;
+  try{
+    if(!confirm('Deze verlofperiode meteen als goedgekeurd inschrijven voor '+person.name+'?'))return;
+    await request('/api/leave/manual',{method:'POST',
+      body:{dept:person.dept,discordId:person.discordId,
+        startDate:$('leaveFrom').value,endDate:$('leaveUntil').value,
+        note:$('leaveNote').value.trim()}});
+    $('leaveNote').value='';
+    await loadStaffLeave(person,person.dept+':'+person.discordId);
+    notice('Verlofperiode officieel geregistreerd in het bestaande verlofregister.');
+  }catch(e){notice(e.message,true)}finally{button.disabled=false}
+};
+$('staffCaseForm').onsubmit=async event=>{
+  event.preventDefault();
+  const person=selected;
+  if(!person)return;
+  const button=$('staffCaseSave');button.disabled=true;
+  try{
+    await request('/api/management/cases',{method:'POST',
+      body:{dept:person.dept,discordId:person.discordId,type:$('staffCaseType').value,
+        eventDate:$('staffCaseDate').value,details:$('staffCaseDetails').value.trim()}});
+    $('staffCaseDetails').value='';
+    await loadLinkedPersonnelRecords(person,person.dept+':'+person.discordId);
+    notice('Dossiernotitie toegevoegd aan het bestaande kaderregister.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
 async function showPerson(p){

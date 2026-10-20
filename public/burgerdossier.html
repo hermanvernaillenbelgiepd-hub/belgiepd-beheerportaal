@@ -16,7 +16,7 @@ button:disabled{opacity:.55}
 .muted{font-size:12px;color:#acc0dc}nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}[hidden]{display:none!important}
 @media(max-width:670px){.grid{grid-template-columns:1fr}.kv{grid-template-columns:1fr}}
 </style></head><body>
-<header><strong>🛡️ BelgiumPD · Burgerdossier</strong><nav><a href="/">Dashboard</a><a href="/solliciteren.html">Solliciteren</a><button id="login" type="button">Aanmelden</button></nav></header>
+<header><strong>🛡️ BelgiumPD · Burgerdossier</strong><nav><a href="/">Dashboard</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main>
 <h1>Mijn burgerdossier</h1>
 <p>Iedereen met een geverifieerd BelgiumPD Discord-account kan een persoonlijk burgerdossier registreren, ook zonder politiefunctie of sollicitatie. Dit geeft geen politie-, personeels- of portaalrechten.</p>
@@ -25,11 +25,7 @@ button:disabled{opacity:.55}
 <section class="card"><h2>Identiteit</h2><div id="identity" class="muted">Nog geen geverifieerde identiteit.</div>
 <p id="pending" hidden>Je hebt nog geen burgerdossier. Registratie gebeurt alleen voor jouw eigen geverifieerde Discord-ID.</p>
 <button id="register" type="button" hidden>Mijn burgerdossier registreren</button></section>
-<div class="grid">
-<section class="card"><h2>FiveM-verificatie</h2><div id="fivem" class="muted">Nog niet bevestigd door de gameserver.</div><p class="muted">Discord-lid worden betekent niet automatisch dat je speeluren hebt op FiveM. Alleen gevalideerde servergegevens tellen mee.</p></section>
-<section class="card"><h2>Mijn sollicitaties</h2><div id="applications" class="muted">Sollicitaties worden geladen na aanmelding.</div><p><a href="/solliciteren.html">Naar de hulpdienstsollicitaties</a></p></section>
-</div>
-<p class="muted">Dit burgerdossier is voorlopig beperkt tot accountidentiteit, bevestigde FiveM-gegevens en gekoppelde sollicitatiestatussen. Inhoudelijke burgerregistraties en dossiers van andere personen worden niet automatisch toegankelijk gemaakt.</p>
+<p class="muted">Dit is een persoonlijk identiteitsdossier. De personeelsdossiers blijven afzonderlijk toegankelijk voor bevoegde kaderleden.</p>
 </main>
 <script type="module">
 const $=id=>document.getElementById(id);
@@ -50,8 +46,6 @@ async function request(url,method='GET'){
 async function load(){
  $('register').hidden=true;$('pending').hidden=true;
  $('identity').textContent='Nog geen geverifieerde identiteit.';
- $('fivem').textContent='Nog geen geverifieerde FiveM-speeluren beschikbaar.';
- $('applications').textContent='Geen sollicitatiestatussen beschikbaar.';
  if(!auth?.currentUser?.uid?.startsWith('discord:'))
    return message('Meld je aan met je eigen Discord-account. Google-login geeft geen toegang tot een burgerdossier.');
  try{
@@ -64,15 +58,6 @@ async function load(){
    field(identity,'Burgerdossier',data.registered?'Geregistreerd':'Nog niet geregistreerd');
    if(data.profile?.registeredAt)field(identity,'Aangemaakt',new Date(data.profile.registeredAt).toLocaleString('nl-BE'));
    if(!data.registered){$('pending').hidden=false;$('register').hidden=false}
-   const fivem=$('fivem');fivem.replaceChildren();
-   if(data.fivem){
-     field(fivem,'Speeluren',data.fivem.playHours+' uur');
-     field(fivem,'Eerste FiveM-verbinding',new Date(data.fivem.firstServerJoinAt).toLocaleString('nl-BE'));
-     field(fivem,'10 uur / 5 dagen',data.fivem.eligibility==='eligible'?'Voldaan':'Nog niet volledig voldaan');
-   }else fivem.textContent='De bot heeft nog geen recent, betrouwbaar FiveM-bewijs doorgestuurd.';
-   const box=$('applications');box.replaceChildren();
-   if(!data.applications.length)box.textContent='Geen hulpdienstsollicitaties geregistreerd of de sollicitatiemodule staat uit.';
-   else data.applications.forEach(a=>box.append(el('p',(labels[a.dept]||a.dept)+' · '+(states[a.status]||a.status))));
    message(data.registered?'Je burgerdossier is beschikbaar. Alleen je eigen gegevens worden getoond.':
      'Je Discord-identiteit is gecontroleerd. Je kunt je eigen burgerdossier registreren.');
  }catch(e){message(e.message,true)}
