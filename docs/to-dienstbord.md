@@ -25,6 +25,21 @@ De radio- en ploegenlijsten zijn gegroepeerd onder Politie, Brandweer, Ambulance
 - Een handmatige, niet-geverifieerde TO-naam blijft mogelijk wanneer er geen betrouwbare koppeling bestaat, maar verandert nooit de eigenaar of de autorisatie van de dienst. De beveiligde operator-UID wordt afzonderlijk vastgelegd.
 - Dienst starten en dienst overnemen blijven expliciete acties. Het systeem neemt bestaande lopende diensten niet automatisch over bij aanmelding.
 
+## Uitrukstatus per ploeg: blauw licht en aankomst
+
+De bevoegde TO kan rechtstreeks op **de hoofdkaart van een opgeslagen ploeg** klikken:
+1. **Eerste klik — Onderweg:** de teamkaart toont het tekstlabel **ONDERWEG** en een **knipperend blauw zwaailichtje**. De ploeg telt niet meer als beschikbaar, ook wanneer ze (nog) niet aan een melding gekoppeld is.
+2. **Tweede klik — Ter plaatse:** het tekstlabel wijzigt naar **TER PLAATSE** en het blauwe licht blijft **continu branden**. De voortgang wordt in Firebase opgeslagen en wordt voor alle meelezende TO's opgehaald.
+3. **Geen automatische derde klik:** een derde onbedoelde klik maakt de ploeg nooit automatisch beschikbaar. De knop **Status wissen** verwijdert expliciet alleen de uitrukstatus. Indien de ploeg nog op een actieve melding staat, blijft zij in de telling bezet.
+4. **Afronden/ontkoppelen:** wanneer de laatste actieve gekoppelde melding wordt afgerond of de ploeg ervan wordt ontkoppeld, wordt de uitrukstatus automatisch gewist. Er blijft geen ten onrechte actief zwaailichtje hangen.
+
+De TO kan ook met **Tab** naar een klikbare ploegkaart gaan en met **Enter of spatie** van fase wisselen. Het licht is slechts een visuele aanduiding, geen aansturing van voertuigverlichting of Sonoran. Bij verminderde-bewegingsinstellingen blijft het tekstlabel zichtbaar en knippert het licht niet. De server valideert de fasevolgorde (`onderweg → ter-plaatse → expliciet wissen`), controleert de huidige TO-eigenaar en revisie en noteert iedere fasewisseling in het logboek van gekoppelde actieve meldingen zolang er logruimte beschikbaar is.
+
+## Extra sneltoetsen voor meldingen
+
+De oorspronkelijke meldingsknoppen **ANPR, AGRESSIE, VKO, BRAND, TAKELING, DIEFSTAL, VERDACHTE SITUATIE** en **MEDISCHE BIJSTAND** blijven zichtbaar.
+Met **＋ Meer meldingen** kunnen ook **OVERLAST, WONINGINBRAAK, VECHTPARTIJ, VERMIST PERSOON, ACHTERVOLGING, VERDACHT VOERTUIG, VERKEERSHINDER** en **BEROVING** worden gekozen. Elk van deze knoppen opent alleen het formulier met de titel vooraf ingevuld. Postcode en eventuele omschrijving moeten door de TO worden gecontroleerd; een sneltoets koppelt niet automatisch een ploeg of rondt de melding af.
+
 ## Snelle TO-werkstroom
 - Sonoran blijft een read-only bron: herkende radiogebruikers verschijnen bovenaan, en nog niet opgenomen radioploegen komen in **Nog op te nemen** met een korte aankomstmarkering. Onbekende radiolabels worden uit de operationele lijst verborgen, maar blijven in het totale aantal radioverbindingen meetellen.
 - Met **＋ Op bord** of slepen naar de dropzone slaat de huidige bevoegde TO een **herkend categorie/nummer als één ploeg** op. De radioweergavenaam wordt als voorlopig radiolabel bewaard, niet als geverifieerd personeelsdossier. Bij een Sonoran-koppeldienst met hetzelfde roepnummer blijft het één opgeslagen eenheid, zonder gefingeerde tweede persoonlijke roepnummer.
