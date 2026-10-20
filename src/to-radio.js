@@ -116,7 +116,7 @@ function normalizedUsers(payload,key){
       if(!mates.some(item=>item.paired===true))user.importable=false;
     }
   }
-  return {users,connectedCount:identities.size};
+  return {users,connectedCount:payload.connectedUsers.length};
 }
 async function boundedJSON(response){
   const declared=response.headers?.get?.('content-length');
