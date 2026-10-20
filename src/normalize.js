@@ -10,6 +10,11 @@ const specs = {
   depannage: { name: 3, callsign: 0, rank: 2, series: 1, status: 4, discord: 7,
     specialties: [[5,'Opleiding DEP2K'],[6,'Opleiding FAST']] }
 };
+// Expose the canonical per-service catalog without copying Sheet column indexes.
+export const SPECIALTY_LABELS=Object.freeze(Object.fromEntries(
+  Object.entries(specs).map(([dept,spec])=>[dept,
+    Object.freeze(spec.specialties.map(([,label])=>label))])
+));
 const s = value => String(value ?? '').trim();
 const integer = value => { const str=s(value).replace(',','.'); return /^(0|[1-9]\d*)(\.\d+)?$/.test(str) ? Number(str) : null; };
 const discordId = value => /^\d{15,22}$/.test(s(value)) ? s(value) : null;
