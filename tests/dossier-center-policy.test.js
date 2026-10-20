@@ -2,86 +2,43 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {dossierScopes,dossierOverviewRows,dossierTimelineEntry} from '../src/dossier-center-policy.js';
-
-const id='123456789012345678',id2='987654321098765432';
-const staff={dept:'ambulance',personId:id,name:'Kandidaat A',call:'A15',
-  rank:'Ambulancier',status:'In opleiding',source:'firestore-created'};
-const app={dept:'ambulance',discordId:id,username:'Kandidaat A',
-  status:'submitted',motivation:'Persoonlijke motivatie (niet in overzichten)'};
-test('Scopes never inherit permissions from another department',()=>{
-  const actor={role:'officierenkader',departments:['politie','ambulance'],
-    departmentRoles:{politie:'officierenkader',ambulance:'middenkader'},discordId:id2};
-  const scopes=dossierScopes(actor,true);
-  assert.deepEqual(scopes.personnelDepartments,['politie','ambulance']);
+const id='123456789012345678';
+const other='987654321098765432';
+const person={dept:'politie',personId:id,name:'Inspecteur A',call:'P30',
+  rank:'Inspecteur',status:'Actief',source:'google-sheets'};
+const actor={role:'officierenkader',departments:['politie'],
+  departmentRoles:{politie:'officierenkader'},discordId:other};
+test('Only existing authorized staff are discoverable',()=>{
+  const scopes=dossierScopes(actor);
+  assert.deepEqual(scopes.personnelDepartments,['politie']);
   assert.deepEqual(scopes.applicationDepartments,[]);
-  assert.deepEqual(dossierScopes(actor,false).applicationDepartments,[]);
-  assert.deepEqual(dossierScopes({role:'basiskader',departments:['ambulance'],
-    departmentRoles:{ambulance:'basiskader'}},true),
-    {personnelDepartments:[],applicationDepartments:[]});
-});
-test('Staff viewers cannot discover applicants without service review rights',()=>{
-  const actor={role:'middenkader',departments:['ambulance'],
-    departmentRoles:{ambulance:'middenkader'},discordId:id2};
-  const scopes=dossierScopes(actor,true);
-  const rows=dossierOverviewRows([staff],
-    [app,{...app,discordId:id2,username:'Privékandidaat'}],scopes);
+  const rows=dossierOverviewRows([person,{...person,dept:'ambulance'}],
+    [{dept:'politie',discordId:other,username:'Candidate',status:'accepted'}],scopes);
   assert.equal(rows.length,1);
-  assert.equal(rows[0].personnel,true);
+  assert.equal(rows[0].name,'Inspecteur A');
   assert.equal(rows[0].application,false);
   assert.equal(Object.hasOwn(rows[0],'motivation'),false);
+  assert.deepEqual(dossierScopes({role:'basiskader',departments:['politie'],
+    departmentRoles:{politie:'basiskader'}},{},{})
+    .personnelDepartments,[]);
 });
-test('High cadre may view application and linked staff in same service only',()=>{
-  const actor={role:'korpsleiding',departments:['ambulance'],
-    departmentRoles:{ambulance:'korpsleiding'},discordId:id2};
-  const scopes=dossierScopes(actor,true);
-  const rows=dossierOverviewRows([staff,{...staff,dept:'politie'}],
-    [app,{...app,dept:'brandweer'}, {...app,discordId:id2,username:'Andere kandidaat'}],scopes);
-  assert.equal(rows.length,2);
-  assert.deepEqual(rows.map(r=>r.dept),['ambulance','ambulance']);
-  assert.equal(rows[0].personnel||rows[1].personnel,true);
-  const merged=rows.find(r=>r.discordId===id);
-  assert.equal(merged.application,true);
-  assert.equal(merged.personnel,true);
-  assert.equal(merged.applicationStatus,'submitted');
-  assert.equal(Object.hasOwn(merged,'motivation'),false);
-  assert.equal(Object.hasOwn(merged,'decisionReason'),false);
+test('Invalid identity and duplicate staff records fail closed',()=>{
+  const scopes=dossierScopes(actor);
+  assert.deepEqual(dossierOverviewRows([{...person,personId:'invalid'}],[],scopes),[]);
+  assert.throws(()=>dossierOverviewRows([person,person],[],scopes));
 });
-test('Invalid IDs and duplicates never produce ambiguous records',()=>{
-  const scopes={personnelDepartments:['ambulance'],applicationDepartments:['ambulance']};
-  assert.deepEqual(dossierOverviewRows([{...staff,personId:'bogus'}],[],scopes),[]);
-  assert.throws(()=>dossierOverviewRows([staff,staff],[],scopes));
-  assert.throws(()=>dossierOverviewRows([],[app,app],scopes));
+test('Timeline returns only approved audit fields',()=>{
+  const event=dossierTimelineEntry({action:'promotion',previousRank:'Agent',
+    newRank:'Inspecteur',reason:'Vastgelegd',privateToken:'KEEP PRIVATE',
+    actorDiscordId:id,at:new Date('2026-10-20T11:00:00Z')},'loopbaan');
+  assert.deepEqual(event,{kind:'loopbaan',action:'promotion',at:'2026-10-20T11:00:00.000Z',
+    previousRank:'Agent',newRank:'Inspecteur',reason:'Vastgelegd',actorDiscordId:id});
+  assert.equal(Object.hasOwn(event,'privateToken'),false);
 });
-test('Timeline never returns arbitrary nested audit details',()=>{
-  const e=dossierTimelineEntry({action:'promotion',previousRank:'Agent',
-    newRank:'Aspirant Inspecteur',reason:'Gedocumenteerde beslissing',
-    privateToken:'DO NOT SHARE',actorDiscordId:id,at:new Date('2026-10-19T20:00:00Z')},'loopbaan');
-  assert.deepEqual(e,{kind:'loopbaan',action:'promotion',
-    at:'2026-10-19T20:00:00.000Z',previousRank:'Agent',newRank:'Aspirant Inspecteur',
-    reason:'Gedocumenteerde beslissing',actorDiscordId:id});
-  assert.equal(Object.hasOwn(e,'privateToken'),false);
-});
-
-test('Application audit records display only documented status transitions',()=>{
-  const event=dossierTimelineEntry({action:'accepted',previousStatus:'reviewing',
-    newStatus:'accepted',reason:'Geselecteerd na interview',
-    byDiscordId:id2,secretToken:'never-disclose',
-    oldRecord:{personal:'private'}},'sollicitatie');
-  assert.equal(event.previousStatus,'reviewing');
-  assert.equal(event.newStatus,'accepted');
-  assert.equal(event.actorDiscordId,id2);
-  assert.equal(Object.hasOwn(event,'secretToken'),false);
-  assert.equal(Object.hasOwn(event,'oldRecord'),false);
-  const unknown=dossierTimelineEntry({action:'edit',previousStatus:'blocked',
-    newStatus:'superuser'},'personeel');
-  assert.equal(Object.hasOwn(unknown,'previousStatus'),false);
-  assert.equal(Object.hasOwn(unknown,'newStatus'),false);
-});
-test('Citizen history is only retrieved within previously authorized service dossier',()=>{
-
-  const source=readFileSync(new URL('../src/dossier-center-routes.js',import.meta.url),'utf8');
-  assert.ok(source.indexOf("if(!p&&!application)return respond")<
-    source.indexOf("if(civilian&&citizenDoc)"));
-  assert.ok(source.includes("histories.push(timeline(citizenDoc.ref,'burger'))"));
-  assert.ok(source.includes('const civilian=citizenDoc?publicCitizenProfile('));
+test('Central dossier routes never fetch or reveal deleted citizen records',()=>{
+  const routes=readFileSync(new URL('../src/dossier-center-routes.js',import.meta.url),'utf8');
+  assert.equal(routes.includes('CITIZEN_COLLECTION'),false);
+  assert.equal(routes.includes('SERVICE_APPLICATIONS_COLLECTION'),false);
+  assert.equal(routes.includes('citizen:'),false);
+  assert.ok(routes.includes('if(!p)return respond(res,404'));
 });
