@@ -446,6 +446,11 @@ async function loadStaffDossier(p){
   $('staffLinkedTraining').textContent='Opleidingsgegevens laden…';
   $('staffLinkedCases').textContent='Kaderregistraties laden…';
   $('staffDossierHistory').replaceChildren();
+  $('staffDiscordRoles').textContent='Discord-verificatie controleren…';
+  $('staffLeave').textContent='Verlofperiodes laden…';
+  $('staffFormalRecords').textContent='Formele registraties laden…';
+  $('staffManualLeaveForm').hidden=true;
+  $('staffCaseForm').hidden=true;
   $('staffProfileForm').hidden=true;
   staffDossierCanMaintain=false;
   try{
@@ -453,6 +458,12 @@ async function loadStaffDossier(p){
     if(!selected||selected.dept+':'+selected.discordId!==key||$('panel').hidden)return;
     staffDossierRevision=result.revision;
     staffDossierCanMaintain=result.canMaintain===true;
+    $('staffManualLeaveForm').hidden=result.cadreActions?.manualLeave!==true;
+    $('staffCaseForm').hidden=result.cadreActions?.cases!==true;
+    $('staffCaseDate').value=new Date().toISOString().slice(0,10);
+    showStaffRoles(result.discordRoles,result.subject?.rosterSeries);
+    void loadStaffLeave(p,key);
+    void loadStaffFormalRecords(p,key);
     const profile=result.profile||{};
     const summary=$('staffDossierSummary');
     staffField(summary,'Aanstellingsdatum',profile.startDate);
@@ -504,6 +515,36 @@ $('staffProfileForm').onsubmit=async event=>{
           functionTitle:$('staffFunction').value},reason:$('staffProfileReason').value.trim()}});
     await loadStaffDossier(selected);
     notice('Administratieve personeelsgegevens opgeslagen, inclusief auditgeschiedenis.');
+  }catch(e){notice(e.message,true)}finally{button.disabled=false}
+};
+$('staffManualLeaveForm').onsubmit=async event=>{
+  event.preventDefault();
+  const person=selected;
+  if(!person)return;
+  const button=$('leaveManualSave');button.disabled=true;
+  try{
+    if(!confirm('Deze verlofperiode meteen als goedgekeurd inschrijven voor '+person.name+'?'))return;
+    await request('/api/leave/manual',{method:'POST',
+      body:{dept:person.dept,discordId:person.discordId,
+        startDate:$('leaveFrom').value,endDate:$('leaveUntil').value,
+        note:$('leaveNote').value.trim()}});
+    $('leaveNote').value='';
+    await loadStaffLeave(person,person.dept+':'+person.discordId);
+    notice('Verlofperiode officieel geregistreerd in het bestaande verlofregister.');
+  }catch(e){notice(e.message,true)}finally{button.disabled=false}
+};
+$('staffCaseForm').onsubmit=async event=>{
+  event.preventDefault();
+  const person=selected;
+  if(!person)return;
+  const button=$('staffCaseSave');button.disabled=true;
+  try{
+    await request('/api/management/cases',{method:'POST',
+      body:{dept:person.dept,discordId:person.discordId,type:$('staffCaseType').value,
+        eventDate:$('staffCaseDate').value,details:$('staffCaseDetails').value.trim()}});
+    $('staffCaseDetails').value='';
+    await loadLinkedPersonnelRecords(person,person.dept+':'+person.discordId);
+    notice('Dossiernotitie toegevoegd aan het bestaande kaderregister.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
 async function showPerson(p){
