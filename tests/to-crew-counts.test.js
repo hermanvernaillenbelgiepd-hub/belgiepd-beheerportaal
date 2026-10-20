@@ -146,3 +146,21 @@ test('Counting never modifies the saved board or radio snapshot',()=>{
   summarizeTOCrews(board,options);
   assert.deepEqual({board,options},before);
 });
+
+
+test('Underway and on-scene saved teams do not count as available even without assigned incident',()=>{
+  const roster={ploegen:[
+    crew('a','930',{responsePhase:'onderweg',available:true}),
+    crew('b','166',{responsePhase:'ter-plaatse',available:true}),
+    crew('c','170',{responsePhase:null,available:true})
+  ],meldingen:{}};
+  const result=count(roster,[radio('SANTO','930'),radio('SANTO','166'),radio('SANTO','170')]);
+  assert.equal(result.inService,3);
+  assert.equal(result.available,1);
+  assert.equal(result.unavailable,2);
+  assert.equal(count(roster,[],false).available,1,'Stored stage survives a stale radio poll');
+  const finished=structuredClone(roster);
+  finished.ploegen[0].responsePhase=null;
+  finished.ploegen[1].responsePhase=null;
+  assert.equal(count(finished,[],false).available,3);
+});
