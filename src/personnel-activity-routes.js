@@ -35,6 +35,7 @@ export function installPersonnelActivityRoutes(app,{requireUser,getSnapshot}){
       console.error('Recente personeelsactiviteiten:',err?.code||err?.message||'onbekend');
       return res.status(503).json({error:'Recente personeelsactiviteiten tijdelijk niet beschikbaar'});
     }
+  });
 
   // A historical Sheet change has no trustworthy occurrence date: store the
   // date of its manual registration, never silently claim it occurred today.
@@ -77,6 +78,5 @@ export function installPersonnelActivityRoutes(app,{requireUser,getSnapshot}){
       console.error('Historische roepnummerregistratie:',err?.code||err?.message||'onbekend');
       return res.status(503).json({error:'Historische roepnummerregistratie is momenteel niet beschikbaar'});
     }
-  });
   });
 }
