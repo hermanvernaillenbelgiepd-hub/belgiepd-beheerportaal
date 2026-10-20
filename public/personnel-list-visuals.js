@@ -33,7 +33,8 @@
   const specialtyCatalog=[
     [/\b(MOTARD|MOTOR)\b/i,'🏍️'],
     [/\b(K9|HONDEN|HONDENGE)\b/i,'🐕'],
-    [/(RADIO|RAGO|ASTRID)/i,'📻'],
+    [/\bRAGO\b/i,'🚁'],
+    [/(RADIO|ASTRID)/i,'📻'],
     [/(DISPATCH|MELDKAMER)/i,'🎧'],
     [/(SIGNALISATIE)/i,'🚦'],
     [/(SIV|WPR|VERKEER)/i,'🚓'],
@@ -96,7 +97,7 @@
   // Display one status column per service-specific specialization.
   // For combined services, the caller displays a compact summary instead.
   const labelsByService=Object.freeze({
-    politie:['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE','SRT','DSU'],
+    politie:['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE'],
     ambulance:['Basis TR','Medicatie','HELI','Motor','MIP'],
     brandweer:['Basis TR','Logistiek','Ladderwagen','Duiker','Signalisatie','RED team','Gevaarlijke stoffen','Grote Boot'],
     depannage:['Opleiding DEP2K','Opleiding FAST']
