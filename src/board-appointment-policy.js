@@ -9,7 +9,7 @@ const STATUS=new Set(['pending','approved','rejected','revoked']);
 export function boardEnabled(env){return env.BPD_ENABLE_BOARD_APPOINTMENTS==='true'}
 export function boardWritesEnabled(env){return boardEnabled(env)&&env.BPD_ENABLE_BOARD_APPOINTMENT_WRITES==='true'}
 export function validBoardId(value){return typeof value==='string'&&DISCORD.test(value)}
-export function isTechnicalBoardApprover(actor){return actor?.role==='beheerder'}
+export function isTechnicalBoardApprover(actor){return actor?.role==='beheerder'&&validBoardId(actor?.discordId)}
 export function activeBoardAppointment(data){
   return data?.status==='approved'&&Array.isArray(data.permissions)&&
     data.permissions.every(p=>BOARD_PERMISSIONS.includes(p))&&
@@ -20,6 +20,7 @@ export function hasBoardPermission(data,permission){
     data.permissions.includes(permission);
 }
 export function mayNominateForBoard(actor,ownAppointment){
+  if(!validBoardId(actor?.discordId))return false;
   if(isTechnicalBoardApprover(actor))return true;
   const hasCadre=Array.isArray(actor?.departments)&&actor.departments.some(
     d=>roleForDepartment(actor,d)==='korpsleiding');
