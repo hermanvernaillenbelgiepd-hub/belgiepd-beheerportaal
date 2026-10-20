@@ -272,7 +272,14 @@ installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
 installSpecializationRoutes(app,{requireUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser,getSnapshot});
-installTOBoardRoutes(app,{requireUser});
+// The TO operator's callsign is resolved only from server-owned records
+// tied to the authenticated Discord ID, never from a user-entered nickname.
+const getVerifiedTemporaryTORequest=async discordId=>{
+  if(!/^\d{15,22}$/.test(discordId))return null;
+  const snapshot=await getFirestore().collection('bpd_callsign_requests').doc(discordId).get();
+  return snapshot.exists?{...snapshot.data(),discordId}:null;
+};
+installTOBoardRoutes(app,{requireUser,getSnapshot,getTemporaryRequest:getVerifiedTemporaryTORequest});
 installTORadioRoutes(app,{requireUser});
 app.get('/api/health',(_req,res)=>res.json({
   status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded',
