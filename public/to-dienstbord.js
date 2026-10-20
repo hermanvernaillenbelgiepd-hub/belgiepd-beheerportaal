@@ -372,7 +372,7 @@ function teamCard(team,busy,editable){
   const canUnderway=editable&&!nbOnRadio&&team.available!==false&&!phase;
   const canOnScene=editable&&phase==='onderweg';
   const canPause=editable&&!nbOnRadio&&team.available!==false&&!phase&&!busy.length;
-  const canReturn=editable&&team.available===false&&!phase&&!busy.length;
+  const canReturn=editable&&!nbOnRadio&&team.available===false&&!phase&&!busy.length;
   const statusButton=(label,action,enabled,active=false)=>`<button type="button" class="crew-quick-button${active?' is-active':''}" data-action="${action}" data-id="${esc(team.id)}" data-write${!enabled?' data-fixed-disabled="true" disabled':''} aria-pressed="${active}" title="${esc(label)}">${esc(label)}</button>`;
   const phaseControls=editable?`<div class="crew-quick-controls" role="group" aria-label="Status van ${esc(team.dienst)}-${esc(team.roepnaam)}">
     ${statusButton('↗ Onderweg','team-response-underway',canUnderway,phase==='onderweg')}
