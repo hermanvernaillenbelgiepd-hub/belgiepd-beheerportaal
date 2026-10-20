@@ -1,0 +1,207 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {
+  TO_CATEGORIES,TO_BOARD_LIMITS,emptyBoard,canReadBoard,canOperateBoard,applyBoardCommand
+} from '../src/to-board-policy.js';
+
+const owner={uid:'discord:111111111111111111',role:'middenkader',departments:['politie'],departmentRoles:{politie:'middenkader'}};
+const colleague={uid:'discord:222222222222222222',role:'officierenkader',departments:['politie'],departmentRoles:{politie:'officierenkader'}};
+const now=Date.UTC(2026,9,20,10,0);
+function command(board,type,data={},actor=owner,at=now){
+  return applyBoardCommand(board,{type,expectedRevision:board.revision,...data},{actor,now:at,id:randomUUID()});
+}
+function started(){return command(emptyBoard(),'start',{displayName:'TO Test'}).board;}
+function expectStatus(fn,status){assert.throws(fn,error=>error.publicStatus===status);}
+function addTeam(board,roep='620',dienst='SANTO'){
+  return command(board,'add-team',{dienst,leden:[{naam:'Agent Test',roep}]}).board;
+}
+function createIncident(board){
+  return command(board,'create-incident',{postcode:'7042',titel:'Testmelding',omschrijving:'Een testmelding zonder echte persoonsgegevens.'}).board;
+}
+
+test('TO board rights are scoped to police; another department never supplies operator rights',()=>{
+  const reader={...owner,role:'basiskader',departmentRoles:{politie:'basiskader'}};
+  assert.equal(canReadBoard(reader),true);
+  assert.equal(canOperateBoard(reader),false);
+  assert.equal(canReadBoard(owner),true);
+  assert.equal(canOperateBoard(owner),true);
+  for(const actor of [null,{...owner,departments:['ambulance'],departmentRoles:{ambulance:'beheerder'}},
+    {...owner,role:'beheerder',departments:['politie','ambulance'],departmentRoles:{politie:'burger',ambulance:'beheerder'}},
+    {...owner,role:'korpsleiding',departments:['politie','ambulance'],departmentRoles:{}},
+    {...owner,role:'burger',departmentRoles:{politie:'burger'}}]){
+    assert.equal(canReadBoard(actor),false);
+    assert.equal(canOperateBoard(actor),false);
+  }
+  assert.equal(canOperateBoard({...owner,role:'beheerder',departments:['politie','ambulance'],departmentRoles:{politie:'basiskader',ambulance:'beheerder'}}),false);
+});
+
+test('Starting a TO session uses the authenticated UID, server time and a fresh server ID',()=>{
+  const initial=emptyBoard(),before=structuredClone(initial);
+  const result=command(initial,'start',{displayName:'  TO Test  '});
+  assert.deepEqual(initial,before,'A rejected or accepted proposal must not mutate the persisted input');
+  assert.equal(result.board.session.ownerUid,owner.uid);
+  assert.equal(result.board.session.to,'TO Test');
+  assert.equal(result.board.session.startedAt,now);
+  assert.ok(result.board.session.id);
+  assert.equal(result.board.revision,1);
+  assert.equal(result.archive,null);
+  expectStatus(()=>command(initial,'start',{displayName:'TO',ownerUid:colleague.uid}),400);
+  expectStatus(()=>command(initial,'start',{displayName:'TO',startedAt:1}),400);
+  expectStatus(()=>command(initial,'start',{displayName:'TO'}, {...owner,uid:''}),403);
+  expectStatus(()=>command(result.board,'start',{displayName:'Tweede TO'}),409);
+});
+
+test('Every command requires a numeric current revision and rejects stale writes',()=>{
+  const board=started();
+  for(const revision of [-1,'1',1.5,null,undefined]){
+    expectStatus(()=>applyBoardCommand(board,{type:'close-session',expectedRevision:revision},{actor:owner,now,id:randomUUID()}),400);
+  }
+  expectStatus(()=>applyBoardCommand(board,{type:'close-session',expectedRevision:0},{actor:owner,now,id:randomUUID()}),409);
+  expectStatus(()=>command(board,'unknown-operation'),400);
+  expectStatus(()=>command(board,'close-session',{revision:board.revision}),400);
+});
+
+test('Session ownership cannot be claimed by typing the current TO name',()=>{
+  let board=started();
+  expectStatus(()=>command(board,'add-team',{dienst:'SANTO',leden:[{naam:'Agent',roep:'1'}]},colleague),403);
+  expectStatus(()=>command(board,'takeover',{displayName:'TO Test',reason:'kort'},colleague),400);
+  board=command(board,'takeover',{displayName:'TO Test',reason:'De collega neemt de lopende dienst over.'},colleague,now+60000).board;
+  assert.equal(board.session.ownerUid,colleague.uid);
+  assert.equal(board.session.to,'TO Test');
+  assert.equal(board.session.handovers.length,1);
+  assert.equal(board.session.handovers[0].at,now+60000);
+  expectStatus(()=>command(board,'close-session',{},owner),403);
+});
+
+test('Paired crews derive their numeric callsign and prevent duplicate officers within a category',()=>{
+  assert.equal(TO_CATEGORIES.includes('SANTO'),true);
+  let board=command(started(),'add-team',{dienst:'SANTO',leden:[{naam:'Agent A',roep:'620'},{naam:'Agent B',roep:'1000'}]}).board;
+  const team=Object.values(board.ploegen)[0];
+  assert.equal(team.roepnaam,'1000');
+  assert.equal(team.koppel,true);
+  assert.equal(team.available,true);
+  assert.equal(team.createdAt,now);
+  expectStatus(()=>command(board,'add-team',{dienst:'SANTO',leden:[{naam:'Dubbel',roep:'00620'}]}),409);
+  expectStatus(()=>command(board,'add-team',{dienst:'SANTO',leden:[{naam:'Dubbel A',roep:'42'},{naam:'Dubbel B',roep:'00042'}]}),400);
+  expectStatus(()=>command(board,'add-team',{dienst:'SANTO',leden:[{naam:'Agent',roep:'A620'}]}),400);
+  expectStatus(()=>command(board,'add-team',{dienst:'GEEN-CATEGORIE',leden:[{naam:'Agent',roep:'77'}]}),400);
+  expectStatus(()=>command(board,'add-team',{dienst:'SANTO',leden:[{naam:'Agent',roep:'77',role:'beheerder'}]}),400);
+  board=addTeam(board,'620','BLAINE');
+  assert.equal(Object.values(board.ploegen).length,2,'A different patrol category may use the same callsign');
+});
+
+test('Incident assignments keep snapshots and prevent retiring a crew on an active incident',()=>{
+  let board=createIncident(addTeam(started()));
+  const [team]=Object.values(board.ploegen),[incident]=Object.values(board.meldingen);
+  assert.equal(incident.nr,1);
+  assert.equal(incident.createdAt,now);
+  assert.ok(incident.log.length>0);
+  board=command(board,'attach-team',{id:incident.id,teamId:team.id}).board;
+  assert.deepEqual(board.meldingen[incident.id].ploegen[0],{id:team.id,dienst:'SANTO',roep:'620'});
+  expectStatus(()=>command(board,'remove-team',{id:team.id}),409);
+  expectStatus(()=>command(board,'close-session'),409);
+  board=command(board,'incident-status',{id:incident.id,status:'niet-actief'}).board;
+  board=command(board,'remove-team',{id:team.id},owner,now+120000).board;
+  assert.equal(board.ploegen[team.id].endedAt,now+120000);
+  assert.equal(board.meldingen[incident.id].ploegen[0].roep,'620','Historical assignment remains readable');
+  expectStatus(()=>command(board,'toggle-team',{id:team.id,available:true}),409);
+});
+
+test('Incident sequence and field validation cannot be overridden by a client',()=>{
+  let board=createIncident(started());
+  board=createIncident(board);
+  assert.deepEqual(Object.values(board.meldingen).map(m=>m.nr),[1,2]);
+  expectStatus(()=>command(board,'create-incident',{postcode:'7042',titel:'Titel',omschrijving:'',nr:999}),400);
+  expectStatus(()=>command(board,'create-incident',{postcode:'7042',titel:'Titel',omschrijving:'',createdAt:1}),400);
+  expectStatus(()=>command(board,'create-incident',{postcode:'7042',titel:'<script>test</script>',omschrijving:''}),400);
+  expectStatus(()=>command(board,'create-incident',{postcode:'7042',titel:'Titel',omschrijving:'x'.repeat(2001)}),400);
+  const incident=Object.values(board.meldingen)[0];
+  expectStatus(()=>command(board,'incident-status',{id:incident.id,status:'verwijderd'}),400);
+  expectStatus(()=>command(board,'update-incident',{id:incident.id,postcode:'7043',titel:'Nieuw',omschrijving:'',by:'Andere TO'}),400);
+});
+
+test('Finishing archives the whole service without losing retired crews or handing the next TO stale calls',()=>{
+  let board=createIncident(addTeam(started()));
+  const team=Object.values(board.ploegen)[0],incident=Object.values(board.meldingen)[0];
+  board=command(board,'attach-team',{id:incident.id,teamId:team.id}).board;
+  board=command(board,'incident-status',{id:incident.id,status:'niet-actief'}).board;
+  board=command(board,'remove-team',{id:team.id},owner,now+60000).board;
+  const before=structuredClone(board),result=command(board,'close-session',{},owner,now+300000);
+  assert.deepEqual(board,before);
+  assert.ok(result.archive);
+  assert.equal(result.archive.id,before.session.id);
+  assert.equal(result.archive.closedAt,now+300000);
+  assert.ok(result.archive.ploegen[team.id]);
+  assert.ok(result.archive.meldingen[incident.id]);
+  assert.equal(result.board.session,null);
+  assert.deepEqual(result.board.ploegen,{});
+  assert.deepEqual(result.board.meldingen,{});
+  assert.equal(result.board.revision,before.revision+1);
+  const restarted=command(result.board,'start',{displayName:'Volgende TO'}).board;
+  assert.notEqual(restarted.session.id,before.session.id);
+  assert.deepEqual(restarted.meldingen,{});
+});
+
+test('A full incident log refuses further edits but still allows completion and lossless archiving',()=>{
+  let board=createIncident(started());
+  const incident=Object.values(board.meldingen)[0];
+  const entries=Array.from({length:TO_BOARD_LIMITS.incidentLog},(_,index)=>({t:now+index,by:owner.uid,actorUid:owner.uid,txt:'Bestaande logregel '+index}));
+  board.meldingen[incident.id].log=structuredClone(entries);
+  expectStatus(()=>command(board,'update-incident',{id:incident.id,postcode:'7042',titel:'Gewijzigd',omschrijving:''}),413);
+  board=command(board,'incident-status',{id:incident.id,status:'niet-actief'},owner,now+5000).board;
+  assert.equal(board.meldingen[incident.id].closedBy,owner.uid);
+  const archived=command(board,'close-session',{},owner,now+6000).archive;
+  assert.deepEqual(archived.meldingen[incident.id].log,entries,'Existing audit entries must not be silently truncated');
+});
+
+test('Active crew bounds reject excess state without changing the saved board',()=>{
+  let board=started();
+  for(let index=1;index<=TO_BOARD_LIMITS.activeTeams;index++)board=addTeam(board,String(index));
+  const before=structuredClone(board);
+  expectStatus(()=>addTeam(board,String(TO_BOARD_LIMITS.activeTeams+1)),413);
+  assert.deepEqual(board,before);
+  const retired=Object.values(board.ploegen)[0];
+  board=command(board,'remove-team',{id:retired.id}).board;
+  board=addTeam(board,String(TO_BOARD_LIMITS.activeTeams+1));
+  assert.equal(Object.values(board.ploegen).filter(team=>!team.endedAt).length,TO_BOARD_LIMITS.activeTeams);
+  assert.equal(Object.keys(board.ploegen).length,TO_BOARD_LIMITS.activeTeams+1,'The retired crew remains in history');
+});
+
+test('A nearly full accepted board always has room to finish its incidents and archive',()=>{
+  const seed=createIncident(started()),activeId=Object.keys(seed.meldingen)[0];
+  const historicalIds=Array.from({length:100},()=>randomUUID());
+  const entry=(txt,t=now)=>({t,by:owner.uid,actorUid:owner.uid,txt});
+  function fixture(extraEntries){
+    const board=structuredClone(seed);
+    board.revision=10000;
+    for(const [index,id] of historicalIds.entries()){
+      const updates=Math.min(extraEntries,TO_BOARD_LIMITS.incidentLog-2);
+      extraEntries-=updates;
+      board.meldingen[id]={id,nr:index+2,postcode:'7042',titel:'Historische testmelding',omschrijving:'x'.repeat(2000),status:'niet-actief',ploegen:[],createdAt:now,by:owner.uid,
+        log:[entry('Melding aangemaakt'),...Array.from({length:updates},()=>entry('Gegevens aangepast')),entry('Status gewijzigd naar niet-actief')],updatedAt:now,closedAt:now,closedBy:owner.uid};
+    }
+    board.nextIncidentNumber=historicalIds.length+2;
+    return board;
+  }
+  function growth(extraEntries){
+    return command(fixture(extraEntries),'update-incident',{id:activeId,postcode:'7042',titel:'Actieve testmelding',omschrijving:'y'.repeat(2000)}).board;
+  }
+  // Construct legitimate historical shapes and find the acceptance boundary
+  // without replaying thousands of unrelated mutation commands.
+  let low=0,high=historicalIds.length*(TO_BOARD_LIMITS.incidentLog-2),accepted=null;
+  while(low<=high){
+    const middle=Math.floor((low+high)/2);
+    try{accepted=growth(middle);low=middle+1;}
+    catch(error){assert.equal(error.publicStatus,413);high=middle-1;}
+  }
+  assert.ok(accepted);
+  assert.ok(Buffer.byteLength(JSON.stringify(accepted),'utf8')>TO_BOARD_LIMITS.bytes-5000,'The regression must exercise a board near the actual byte boundary');
+  expectStatus(()=>command(accepted,'update-incident',{id:activeId,postcode:'7042',titel:'Actieve testmelding',omschrijving:'y'.repeat(2000)}),413);
+  const completed=command(accepted,'incident-status',{id:activeId,status:'niet-actief'}).board;
+  const result=command(completed,'close-session');
+  assert.equal(result.board.session,null);
+  assert.equal(Object.keys(result.archive.meldingen).length,historicalIds.length+1);
+  assert.equal(result.archive.meldingen[activeId].status,'niet-actief');
+  assert.ok(Buffer.byteLength(JSON.stringify(result.archive),'utf8')<=TO_BOARD_LIMITS.archiveBytes);
+});

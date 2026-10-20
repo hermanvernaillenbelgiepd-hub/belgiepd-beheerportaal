@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111c38">
+  <title>TO Dienstbord · BelgiëPD</title>
+  <link rel="stylesheet" href="/to-dienstbord.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Naar het dienstbord</a>
+  <header class="portal-header">
+    <div class="header-inner">
+      <a class="portal-brand" href="/" aria-label="Terug naar het BelgiëPD-beheerportaal"><span class="brand-shield" aria-hidden="true">BP</span><span>BelgiëPD<small>BEHEERPORTAAL</small></span></a>
+      <div class="header-actions"><a class="portal-back" href="/">← Beheerportaal</a><button class="button button-light" id="login" type="button" disabled>Aanmelding laden…</button></div>
+    </div>
+  </header>
+  <main id="main" class="workspace">
+    <div class="page-heading"><div><div class="eyebrow">OPERATIONEEL · POLITIE</div><h1>TO Dienstbord<span class="title-dot" aria-hidden="true"></span></h1><p>Ploegen, meldingen en dienstoverdracht op één gedeeld bord.</p></div><div class="connection" id="connection"><span></span>Verbinding voorbereiden</div></div>
+    <div id="feedback" class="feedback" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
+    <section id="welcome" class="welcome"><div class="welcome-mark" aria-hidden="true">TO</div><div><span class="eyebrow">SAMEN ÉÉN OVERZICHT</span><h2>Een heldere start van je dienst.</h2><p>Meld je aan met je portaalaccount om de politieploegen en meldingen te bekijken. Bevoegde TO’s kunnen een dienst starten of overnemen.</p></div></section>
+    <div id="workspace-content" hidden>
+      <section id="session-summary" class="summary-grid" aria-label="Dienstoverzicht"></section>
+      <div class="toolbar"><nav class="view-tabs" aria-label="Dienstbordweergave"><button id="tab-board" class="tab active" type="button" data-action="view-board" aria-current="page">Dienstbord</button><button id="tab-archives" class="tab" type="button" data-action="view-archives">Dienstarchief</button></nav><div class="toolbar-actions"><button class="button button-quiet" type="button" data-action="export-board">↓ Exporteer dienst</button><button class="button button-quiet" id="refresh" type="button" data-action="refresh">↻ Vernieuwen</button></div></div>
+      <div id="board-tools" class="board-tools"><label class="search-field"><span aria-hidden="true">⌕</span><input id="board-search" type="search" placeholder="Zoek ploeg, roepnummer of melding…" aria-label="Zoek in ploegen en meldingen" autocomplete="off"></label><label class="category-filter"><span>Categorie</span><select id="category-filter"><option value="all">Alle categorieën</option></select></label><span id="updated-at" class="updated-at"></span></div>
+      <div id="board-content"></div>
+    </div>
+    <footer class="page-footer"><span>BelgiëPD · Operationele ondersteuning</span><span>Persoonsgegevens blijven binnen je portaalrechten.</span></footer>
+  </main>
+  <dialog id="to-dialog" aria-labelledby="dialog-title"></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/to-dienstbord.js"></script>
+</body>
+</html>

@@ -28,6 +28,7 @@ import {installSpecializationRoutes} from './specialization-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
+import {installTOBoardRoutes} from './to-board-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
 import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
@@ -51,6 +52,7 @@ app.use('/api/users',express.json({limit:'4kb',strict:true}));
 app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
+app.use('/api/to',express.json({limit:'24kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
 installRoleRoutes(app);
@@ -269,6 +271,7 @@ installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
 installSpecializationRoutes(app,{requireUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser,getSnapshot});
+installTOBoardRoutes(app,{requireUser});
 app.get('/api/health',(_req,res)=>res.json({
   status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded',
   deployment:publicDeploymentInfo()

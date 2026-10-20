@@ -66,6 +66,7 @@ test('OAuth return-to paths are explicitly allowlisted; never external domains',
   assert.equal(validReturnTo('/gebruikersbeheer.html'),'/gebruikersbeheer.html');
   assert.equal(validReturnTo('/personeelsbeheer.html'),'/personeelsbeheer.html');
   assert.equal(validReturnTo('/personeel-koppelen.html'),'/personeel-koppelen.html');
+  assert.equal(validReturnTo('/to-dienstbord.html'),'/to-dienstbord.html');
   assert.equal(validReturnTo('/solliciteren.html'),'/discord-status.html');
   assert.equal(validReturnTo('/sollicitatiebeheer.html'),'/discord-status.html');
   assert.equal(validReturnTo('/burgerdossier.html'),'/discord-status.html');
