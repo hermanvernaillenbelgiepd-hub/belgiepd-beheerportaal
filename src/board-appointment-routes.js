@@ -98,9 +98,14 @@ export function installBoardAppointmentRoutes(app,{requireUser}){
       if(!isTechnicalBoardApprover(req.bpd))return denied(res,403,'Alleen technisch beheer kan bestuursaanstellingen goedkeuren');
       const ref=collection().doc(req.params.discordId);
       await getFirestore().runTransaction(async tx=>{
-        const snap=await tx.get(ref),data=snap.data();
+        const [snap,member]=await Promise.all([
+          tx.get(ref),tx.get(getFirestore().collection(USER_COLLECTION).doc(req.params.discordId))
+        ]);
+        const data=snap.data();
         if(!mayDecideBoard(req.bpd,req.params.discordId,data))
           throw fault(403,'Deze aanvraag mag niet door jezelf of voor dit account beslist worden');
+        if(payload.decision==='approved'&&(!member.exists||member.get('status')!=='approved'))
+          throw fault(409,'Het personeelsaccount van de kandidaat is niet meer goedgekeurd');
         tx.update(ref,{status:payload.decision,
           permissions:payload.decision==='approved'?[...data.requestedPermissions]:[],
           decisionReason:payload.reason,
