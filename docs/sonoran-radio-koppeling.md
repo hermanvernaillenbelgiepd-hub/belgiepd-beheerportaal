@@ -2,6 +2,8 @@
 
 Het TO-dienstbord toont de verbonden Sonoran Radio-gebruikers en hun kanaal. Het gebruikt de bestaande portaal-aanmelding en politierechten. De browser vraagt gegevens aan bij de eigen backend; de Community API Key blijft op de server.
 
+De knop **Sonoran Radio ↗** opent jullie community op `https://sonoranradio.com/com/T5NZTAY0` in een nieuw tabblad. Deze openbare communitylink bevat geen API Key. De linkcode `T5NZTAY0` is nog niet gecontroleerd als API-Community ID; gebruik voor de serverinstelling de waarde die Sonoran in de communityadministratie vermeldt.
+
 ## Instellen op Render TEST
 
 Open in Render de webservice die hoort bij `belgiepd-beheerportaal-testserver.onrender.com`. Voeg onder de omgevingsvariabelen toe:
