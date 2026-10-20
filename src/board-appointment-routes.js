@@ -42,9 +42,13 @@ export function installBoardAppointmentRoutes(app,{requireUser}){
       if(!manager&&!reader)return denied(res,403,'Geen bevoegdheid voor het bestuursregister');
       const snap=await collection().limit(101).get();
       if(snap.size>100)return denied(res,503,'Te veel bestuursregistraties voor dit overzicht');
-      const records=snap.docs.map(doc=>serializeBoardAppointment(doc.id,doc.data()))
-        .filter(Boolean)
-        .filter(x=>manager||x.status==='approved');
+      // Leadership sees only its own nominations; explicitly approved board
+      // readers see active members. Technical beheer sees the entire audit queue.
+      const records=snap.docs.filter(doc=>
+        isTechnicalBoardApprover(req.bpd)||
+        (reader&&doc.get('status')==='approved')||
+        (manager&&doc.get('requestedByUid')===req.bpd.uid))
+        .map(doc=>serializeBoardAppointment(doc.id,doc.data())).filter(Boolean);
       return res.json({appointments:records,canNominate:manager,
         canDecide:isTechnicalBoardApprover(req.bpd)});
     }catch(e){return fail(res,e)}
