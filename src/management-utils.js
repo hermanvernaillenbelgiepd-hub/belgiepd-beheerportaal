@@ -1,11 +1,12 @@
 // Nieuwe interne dossierregistraties en concept-weekrapporten.
 // Geen Google Sheets-writes, geen clientvertrouwen bij rollen of auteurs.
-export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging']);
+export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging','activiteit','observatie','specialisatiebeperking']);
 export const CADRE_ROLES = Object.freeze(['middenkader','officierenkader','korpsleiding']);
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
 export const RECORD_LABELS = Object.freeze({
   observatie:'Observatie', sanctie:'Sanctie', verlof:'Verlof', notitie:'Personeelsnotitie',
-  opleiding:'Afgeronde opleiding', naamswijziging:'Naamswijziging',
+  opleiding:'Afgeronde opleiding', activiteit:'Dienstactiviteit',
+  specialisatiebeperking:'Specialisatiebeperking', naamswijziging:'Naamswijziging',
   promotievoorstel:'Promotievoorstel', personeelsbeweging:'Personeelsbeweging'
 });
 export const validDiscord = id => /^\d{15,22}$/.test(String(id??''));
