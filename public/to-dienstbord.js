@@ -49,7 +49,8 @@ const button=(text,action,{id='',teamId='',primary=false,danger=false,small=fals
 
 let auth=null,authEpoch=0;
 const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',archives:null,archive:null,lastSynced:null};
-const radio={snapshot:null,loading:false,error:null,receivedAt:null,requestSerial:0};
+const radio={snapshot:null,loading:false,error:null,receivedAt:null,requestSerial:0,knownIds:null,newIds:new Set()};
+const INCIDENT_PRESETS=Object.freeze(['ANPR','AGRESSIE','VKO','BRAND','TAKELING','DIEFSTAL','VERDACHTE SITUATIE','MEDISCHE BIJSTAND']);
 const dialog=el('to-dialog');
 let toastTimer;
 
@@ -60,7 +61,7 @@ function tell(message,kind=''){
 function toast(message){el('toast').textContent=message;el('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el('toast').hidden=true;},4500);}
 function canEdit(){return Boolean(state.env?.permissions.canEdit&&!state.stale&&!state.pending&&state.env.writesEnabled!==false);}
 function canOperate(){return Boolean(state.env?.permissions.canOperate&&!state.stale&&!state.pending&&state.env.writesEnabled!==false);}
-function clearRadio(){radio.requestSerial++;radio.snapshot=null;radio.loading=false;radio.error=null;radio.receivedAt=null;}
+function clearRadio(){radio.requestSerial++;radio.snapshot=null;radio.loading=false;radio.error=null;radio.receivedAt=null;radio.knownIds=null;radio.newIds.clear();}
 function radioFresh(){
   const age=radio.receivedAt===null?Infinity:Date.now()-radio.receivedAt;
   return Boolean(radio.snapshot?.configured&&radio.snapshot.connected&&!radio.snapshot.stale&&!radio.error&&age>=0&&age<=45000);
@@ -69,6 +70,39 @@ function sameCallsign(left,right){return /^\d{1,5}$/.test(String(left))&&/^\d{1,
 function radioMatchesTeam(user,team){return Boolean(user.category&&user.number&&user.category===team.dienst&&[(team.roepnaam),...(team.leden||[]).map(member=>member.roep)].some(number=>sameCallsign(number,user.number)));}
 function radioAlreadyOnBoard(user){return Boolean(state.env&&activeTeams(state.env.board).some(team=>radioMatchesTeam(user,team)));}
 function canImportRadioUser(user){return Boolean(user?.importable&&state.env?.categories.includes(user.category)&&/^\d{1,5}$/.test(String(user.number))&&Number(user.number)>0);}
+function visibleRadioUser(user){
+  return Boolean(user&&serviceForCategory(user.category).id!=='overige'&&user.name!=='Onbekende gebruiker');
+}
+function radioCrewOnBoard(crew){
+  return activeTeams(state.env?.board).find(team=>crew.members.some(user=>radioMatchesTeam(user,team)))||null;
+}
+function canQuickAddRadioCrew(crew){
+  const first=crew?.members?.[0];
+  return Boolean(first&&canImportRadioUser(first)&&
+    (crew.members.length===1||crew.paired)&&
+    crew.members.every(user=>canImportRadioUser(user)&&user.category===first.category&&sameCallsign(user.number,first.number)));
+}
+function pendingRadioCrews(){
+  if(!radioFresh()||!state.env)return [];
+  const used=new Set();
+  return groupRadioCrews(radio.snapshot.users).filter(crew=>{
+    if(!crew.members.some(visibleRadioUser)||!matchesCategory(crew.category)||!crew.members.some(u=>matches(u.category,u.number,u.displayName,u.name))||radioCrewOnBoard(crew))return false;
+    const key=crew.category+'|'+String(Number(crew.number));
+    if(used.has(key))return false;
+    used.add(key);
+    return true;
+  });
+}
+async function quickAddRadioCrew(id){
+  if(!canEdit()||!radioFresh())return;
+  const crew=groupRadioCrews(radio.snapshot.users).find(crew=>crew.members.some(u=>u.id===id));
+  if(!crew||!canQuickAddRadioCrew(crew)||radioCrewOnBoard(crew))return;
+  const memberNames=[...new Set(crew.members.map(u=>String(u.displayName||'').replace(/[<>\x00-\x1f\x7f]/g,'').trim()).filter(v=>v.length>1))];
+  const combined=memberNames.join(' & ').slice(0,80).trim();
+  const name=combined.length>=2?combined:('Radioploeg '+crew.category+'-'+crew.number).slice(0,80);
+  await command('add-team',{dienst:crew.category,leden:[{naam:name,roep:String(crew.number)}]});
+  toast(crew.category+'-'+crew.number+' staat nu op het dienstbord.');
+}
 function busyMap(board){
   const result=new Map();
   for(const incident of incidents(board).filter(item=>item.status==='actief'))for(const team of incident.ploegen||[]){
@@ -117,6 +151,12 @@ async function refreshRadio(){
     const payload=await request('/api/to/radio');
     if(serial!==radio.requestSerial||epoch!==authEpoch||!state.env)return;
     if(typeof payload.configured!=='boolean'||typeof payload.connected!=='boolean'||typeof payload.stale!=='boolean'||!Array.isArray(payload.users))throw new Error('De radio gaf een onvolledige respons.');
+    if(payload.connected&&!payload.stale){
+      const next=new Set(payload.users.filter(visibleRadioUser).map(user=>user.id));
+      if(radio.knownIds!==null)for(const id of next)if(!radio.knownIds.has(id))radio.newIds.add(id);
+      for(const id of radio.newIds)if(!next.has(id))radio.newIds.delete(id);
+      radio.knownIds=next;
+    }
     radio.snapshot=payload;radio.error=null;radio.receivedAt=Date.now();
   }catch(error){
     if(error.obsolete||serial!==radio.requestSerial||epoch!==authEpoch)return;
