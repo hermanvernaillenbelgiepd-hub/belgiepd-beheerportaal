@@ -106,6 +106,22 @@ test('Brandweer and Depannage prefixes resolve in Sonoran without changing polic
     assert.equal(parseSonoranName(invalid).importable,false,invalid);
 });
 
+test('STAG belongs to fire, STAGE to ambulance, CANINE to police across callsign formats',()=>{
+  for(const [category,number] of [['STAG','120'],['STAGE','620'],['CANINE','77']]){
+    for(const separator of ['','-',' - ',' ']){
+      const parsed=parseSonoranName(category+separator+number+'* (NB) | Collega');
+      assert.deepEqual(parsed,{category,number,displayName:'Collega',importable:true},category+separator+number);
+    }
+    assert.deepEqual(parseSonoranName(category+' | Collega'),{
+      category,number:null,displayName:'Collega',importable:false
+    });
+  }
+  assert.equal(parseSonoranName('STAGE-620').category,'STAGE');
+  assert.equal(parseSonoranName('STAG-620').category,'STAG');
+  for(const name of ['STAGER-620','STAGE-123456','STAGX-620','CANINE-ABC'])
+    assert.equal(parseSonoranName(name).importable,false,name);
+});
+
 test('Matching BWM and police numbers remain separate importable radio crews',async()=>{
   const service=createSonoranRadioService({env:configuredEnv,fetchImpl:async()=>reply([
     {identity:'private-identity-police',name:'SANTO - 620 | Testagent'},
