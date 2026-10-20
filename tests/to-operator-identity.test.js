@@ -4,6 +4,7 @@ import {callsignForTO,isTemporaryTOUnit,temporaryTOCall,validTOCall} from '../sr
 import {parseSonoranName} from '../src/to-radio.js';
 import {emptyBoard,applyBoardCommand} from '../src/to-board-policy.js';
 import {randomUUID} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 
 const actor={uid:'discord:111111111111111111',discordId:'111111111111111111',
   role:'middenkader',departments:['politie'],departmentRoles:{politie:'middenkader'}};
@@ -79,4 +80,16 @@ test('Unlinked temporary TO and trainee units are allowed without changing acces
   assert.throws(()=>applyBoardCommand(emptyBoard(),{type:'start',expectedRevision:0,
     displayName:'008'},{actor:foreign,now:1,id:randomUUID()}),
     err=>err.publicStatus===403,'Having a temporary number must not grant TO rights');
+});
+
+test('Belga 008 has the admin badge, while only 100–199 receive the temporary badge',()=>{
+  const js=readFileSync(new URL('../public/to-dienstbord.js',import.meta.url),'utf8');
+  const css=readFileSync(new URL('../public/to-dienstbord.css',import.meta.url),'utf8');
+  assert.ok(js.includes("const managementPoliceCall=(category,number)"));
+  assert.ok(js.includes("number==='008'"));
+  assert.ok(js.includes('BELGA · BEHEER'));
+  assert.ok(js.includes("Number(number)>=100&&Number(number)<=199"));
+  assert.ok(js.includes('TIJDELIJK'));
+  assert.ok(css.includes('.management-call-badge'));
+  assert.ok(js.includes('This visual label NEVER grants privileges'));
 });
