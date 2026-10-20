@@ -8,7 +8,7 @@ import {PERSONNEL_ACTIVITY_COLLECTION,recentPersonnelActivity,validateRetrospect
 const DEPARTMENTS=['politie','ambulance','brandweer','depannage'];
 const mayLogPreviousCall=actor=>/^(?:officierenkader|korpsleiding)$/.test(actor?.role||'')&&
   ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
-  /^\\d{15,22}$/.test(actor?.discordId||'')&&
+  /^\d{15,22}$/.test(actor?.discordId||'')&&
   actor.departments?.includes('politie');
 export function installPersonnelActivityRoutes(app,{requireUser,getSnapshot}){
   app.get('/api/personnel/activity/recent',requireUser,async(req,res)=>{
