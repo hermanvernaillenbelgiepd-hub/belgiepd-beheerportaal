@@ -33,6 +33,16 @@ test('Catalog exposes all per-service disciplines including SRT and DSU without 
 });
 test('Only officers/leadership with service scope and subordinate may change status',()=>{
   assert.equal(canChangeSpecialty(actor,subject),true);
+  assert.equal(canChangeSpecialty({...actor,role:'beheerder',
+    departmentRoles:{politie:'beheerder'}},subject),false);
+  assert.equal(canChangeSpecialty({...actor,role:'beheerder',
+    departmentRoles:{politie:'korpsleiding'}},subject),false);
+  assert.equal(canChangeSpecialty({...actor,
+    departmentRoles:{politie:'middenkader'}},subject),false);
+  assert.equal(canChangeSpecialty({...actor,
+    departmentRoles:{politie:'officierenkader',ambulance:'officierenkader'},
+    departments:['politie','ambulance']},
+    {...subject,dept:'ambulance'}),false);
   assert.equal(canChangeSpecialty({...actor,role:'middenkader',departmentRoles:{politie:'middenkader'}},subject),false);
   assert.equal(canChangeSpecialty({...actor,discordId:b},subject),false);
   assert.equal(canChangeSpecialty({...actor,departments:['ambulance']},subject),false);
