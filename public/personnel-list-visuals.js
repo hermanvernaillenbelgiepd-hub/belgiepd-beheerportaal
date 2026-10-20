@@ -36,7 +36,7 @@
     [/\bRAGO\b/i,'🚁'],
     [/(RADIO|ASTRID)/i,'📻'],
     [/(DISPATCH|MELDKAMER)/i,'🎧'],
-    [/(SIGNALISATIE)/i,'🚦'],
+    [/(SIGNALISATIE)/i,'🦺'],
     [/(SIV|WPR|VERKEER)/i,'🚓'],
     [/(TO|TERREIN.?ONDERSTEUN)/i,'🛡️'],
     [/(AE|ARREST)/i,'🔒'],
@@ -48,6 +48,12 @@
     [/(LOGISTIEK|FAST|DEP2K|DEPANN)/i,'🛠️'],
     [/(BASIS TR|OPLEIDING|INSTRUCTEUR)/i,'🎓']
   ];
+  // Central image registry: replace the emoji only for the exact requested skill.
+  // Keep an emoji fallback if the asset fails to load.
+  function specialtyIconImage(label){
+    return /^signalisatie$/i.test(String(label||'').trim())
+      ?'/assets/icons/signalisatie.svg':null;
+  }
   function specialtyIcon(label){
     return specialtyCatalog.find(([pattern])=>pattern.test(String(label||'')))?.[1]||'🏷️';
   }
@@ -110,7 +116,7 @@
       {label,status:'Niet ingevuld',style:'unknown',icon:specialtyIcon(label)};
   }
   root.BPDPersonnelVisuals=Object.freeze({
-    rankInfo,specialtyBadges,specialtyIcon,qualification,specialtyStatuses,
+    rankInfo,specialtyBadges,specialtyIcon,specialtyIconImage,qualification,specialtyStatuses,
     specialtyColumns,specialtyStateFor
   });
 })(typeof window==='object'?window:globalThis);
