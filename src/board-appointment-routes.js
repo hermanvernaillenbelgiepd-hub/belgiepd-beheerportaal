@@ -1,7 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
 import {
-  BOARD_COLLECTION,boardEnabled,validBoardId,isTechnicalBoardApprover,
+  BOARD_COLLECTION,boardEnabled,boardWritesEnabled,validBoardId,isTechnicalBoardApprover,
   mayNominateForBoard,mayDecideBoard,hasBoardPermission,validateBoardNomination,
   validateBoardDecision,validateBoardRevocation,serializeBoardAppointment
 } from './board-appointment-policy.js';
@@ -17,9 +17,12 @@ const collection=()=>getFirestore().collection(BOARD_COLLECTION);
 function guard(req,res,next){
   return boardEnabled(process.env)?next():denied(res,503,'Bestuursbeheer is nog niet geactiveerd');
 }
+function requireBoardWrites(req,res,next){
+  return boardWritesEnabled(process.env)?next():denied(res,503,'Bestuursbesluiten zijn nog niet geactiveerd');
+}
 export function installBoardAppointmentRoutes(app,{requireUser}){
   app.get('/api/board/status',(_req,res)=>
-    res.json({enabled:boardEnabled(process.env),separateFromOperationalRank:true}));
+    res.json({enabled:boardEnabled(process.env),writesEnabled:boardWritesEnabled(process.env),separateFromOperationalRank:true}));
 
   app.get('/api/board/me',requireUser,guard,async(req,res)=>{
     try{
@@ -49,7 +52,7 @@ export function installBoardAppointmentRoutes(app,{requireUser}){
 
   // Nominations can be submitted by corps leaders or specifically delegated
   // board members. They have zero effect until independent admin approval.
-  app.post('/api/board/nominations',requireUser,guard,async(req,res)=>{
+  app.post('/api/board/nominations',requireUser,guard,requireBoardWrites,async(req,res)=>{
     let payload;
     try{payload=validateBoardNomination(req.body)}catch(e){return denied(res,400,e.message)}
     try{
@@ -83,7 +86,7 @@ export function installBoardAppointmentRoutes(app,{requireUser}){
     }catch(e){return fail(res,e)}
   });
 
-  app.post('/api/board/:discordId/decision',requireUser,guard,async(req,res)=>{
+  app.post('/api/board/:discordId/decision',requireUser,guard,requireBoardWrites,async(req,res)=>{
     if(!validBoardId(req.params.discordId))return denied(res,400,'Ongeldige bestuurskandidaat');
     let payload;
     try{payload=validateBoardDecision(req.body)}catch(e){return denied(res,400,e.message)}
@@ -109,7 +112,7 @@ export function installBoardAppointmentRoutes(app,{requireUser}){
     }catch(e){return fail(res,e)}
   });
 
-  app.post('/api/board/:discordId/revoke',requireUser,guard,async(req,res)=>{
+  app.post('/api/board/:discordId/revoke',requireUser,guard,requireBoardWrites,async(req,res)=>{
     if(!validBoardId(req.params.discordId))return denied(res,400,'Ongeldige Discord-ID');
     let payload;
     try{payload=validateBoardRevocation(req.body)}catch(e){return denied(res,400,e.message)}
