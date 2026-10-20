@@ -1,3 +1,4 @@
+import {roleForDepartment} from './leave-policy.js';
 // Nieuwe interne dossierregistraties en concept-weekrapporten.
 // Geen Google Sheets-writes, geen clientvertrouwen bij rollen of auteurs.
 export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging','activiteit','specialisatiebeperking']);
@@ -11,9 +12,11 @@ export const RECORD_LABELS = Object.freeze({
 });
 export const validDiscord = id => /^\d{15,22}$/.test(String(id??''));
 export const allowedDept = (actor,dept) => ['politie','ambulance','brandweer','depannage'].includes(dept) && actor?.departments?.includes(dept);
-export const mayReadManagement = (actor,dept) => allowedDept(actor,dept) && CADRE_ROLES.includes(actor.role);
+export const mayReadManagement = (actor,dept) => allowedDept(actor,dept) &&
+  CADRE_ROLES.includes(roleForDepartment(actor,dept));
 export const mayWriteManagement = (actor,dept,type) => mayReadManagement(actor,dept) && MANAGEMENT_TYPES.includes(type) && (
-  !['naamswijziging','personeelsbeweging'].includes(type) || HIGH_ROLES.includes(actor.role)
+  !['naamswijziging','personeelsbeweging'].includes(type) ||
+  HIGH_ROLES.includes(roleForDepartment(actor,dept))
 );
 export const mayDecide = actor => HIGH_ROLES.includes(actor?.role);
 // Rapportinhoud raadplegen kan vanaf middenkader; bestanden exporteren alleen voor hogere kaderrollen, binnen de toegestane dienst.
