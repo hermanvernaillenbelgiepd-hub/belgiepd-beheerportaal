@@ -46,6 +46,33 @@
 .specialty-stage{background:#fff0d5;color:#976009}
 .specialty-teacher{background:#d3f7f8;color:#007481}
 .specialty-unknown{background:#ebeff9;color:#687a9d}
+
+.content:has(.staff-roster){max-width:none;padding-inline:clamp(12px,1.4vw,28px)}
+.staff-roster-holder{overflow:visible}
+.staff-roster{table-layout:fixed;min-width:0;width:100%}
+.staff-roster thead th,.staff-roster tbody td{padding:9px 3px;font-size:clamp(9px,.68vw,12px);overflow-wrap:anywhere}
+.staff-roster thead th:nth-child(1){width:6%}
+.staff-roster thead th:nth-child(2){width:6%}
+.staff-roster thead th:nth-child(3){width:10%}
+.staff-roster thead th:nth-child(4){width:11%}
+.staff-roster thead th:nth-child(5){width:6%}
+.staff-roster thead th:nth-child(6){width:7%}
+.staff-roster thead th:last-child{width:4.8%}
+.staff-roster .rank-insignia{max-width:100%;width:58px;height:30px}
+.staff-roster .rank-name{min-width:0;font-weight:650;font-size:10px;line-height:1.3}
+.staff-roster .badge-inline,.staff-roster .pill{font-size:9px;padding:3px 4px;white-space:normal}
+.specialty-column{text-align:center!important;letter-spacing:0!important}
+.specialty-col-icon{display:block;font-size:16px;line-height:1.4}
+.specialty-col-label{display:block;font-size:clamp(8px,.59vw,10px);line-height:1.15;letter-spacing:0;text-transform:none;overflow-wrap:anywhere}
+.specialty-value-cell{text-align:center}
+.specialty-value{display:inline-block;padding:3px 4px;font-size:clamp(8px,.6vw,11px);font-weight:800;border-radius:8px;white-space:normal}
+.specialty-yes{color:#14754c;background:#e3f9ee}
+.specialty-no{color:#8190a6;background:#f0f3f8}
+.specialty-stage{color:#a56b18;background:#fff1d9}
+.specialty-teacher{color:#00878e;background:#dff8fa}
+.specialty-unknown{color:#74849f;background:#f0f4fa}
+.specialty-overview-summary{display:flex;gap:3px;flex-wrap:wrap}
+@media(max-width:900px){.staff-roster-holder{overflow-x:auto}.staff-roster{min-width:980px}}
 </style>
 </head>
 <body>
@@ -125,7 +152,7 @@ let reports=[{id:'r1',title:'Weekrapport – Reeks 1',dept:'politie',period:'12�
 const nav1=[['dashboard','home','Dashboard'],['personeel','users','Personeelsbeheer'],['activiteiten','activity','Activiteitencheck'],['rapporten','file','Weekrapporten'],['documenten','folder','Documentencentrum']];
 const nav2=[['meldingen','bell','Meldingen'],['diensten','building','Hulpdiensten'],['beheer','lock','Beheer & rollen']];
 let restrictedPortal=false;
-let page='dashboard', returnPage='dashboard', query='', deptFilter='all', statusFilter='all', seriesFilter='all', docFilter='all', role='korpsleiding', selectedDepartment='politie', drawer=null, drawerTab='algemeen', modal=null, reportFilter='all';
+let page='dashboard', returnPage='dashboard', query='', deptFilter='politie', statusFilter='all', seriesFilter='all', docFilter='all', role='korpsleiding', selectedDepartment='politie', drawer=null, drawerTab='algemeen', modal=null, reportFilter='all';
 const canReadRecords=()=>role!=='medewerker';
 const canSeeCases=()=>['korpsleiding','middenkader','officierenkader','beheerder'].includes(role);
 const canOpenRegistrations=()=>liveMode&&['middenkader','officierenkader','korpsleiding'].includes(role);
@@ -148,33 +175,44 @@ function personnelGradeHtml(x){
     esc('Graadkenteken '+grade.label)+'" title="'+esc(grade.label)+'" loading="lazy" referrerpolicy="no-referrer">';
 }
 function personnelSpecialtiesHtml(x){
-  const states=BPDPersonnelVisuals.specialtyStatuses(x.specialties);
-  if(!states.length)return '<span class="no-specialty">Niet ingevuld</span>';
-  return '<div class="specialty-status-strip" aria-label="Alle geregistreerde specialisatiestatussen">'+
-    states.map(b=>'<span class="specialty-state" title="'+esc(b.label+' · '+b.status)+'">'+
-      '<span class="specialty-symbol" aria-hidden="true">'+esc(b.icon)+'</span>'+
-      '<span class="specialty-name">'+esc(b.label)+'</span>'+
-      '<span class="specialty-state-value specialty-'+esc(b.style)+'">'+esc(b.status)+'</span>'+
-      '</span>').join('')+'</div>';
+  const badges=BPDPersonnelVisuals.specialtyStatuses(x.specialties);
+  if(!badges.length)return '<span class="no-specialty">—</span>';
+  return '<div class="specialty-overview-summary">'+badges.map(k=>
+    '<span class="specialty-value specialty-'+esc(k.style)+'" title="'+esc(k.label+' · '+k.status)+'">'+
+    esc(k.icon)+' '+esc(k.label)+': '+esc(k.status)+'</span>').join('')+'</div>';
 }
 function employeeTable(data,limit){
-  const rows=(limit?data.slice(0,limit):data).map(x=>{
+  const selected=limit?data.slice(0,limit):data;
+  const departmentsPresent=new Set(selected.map(x=>x.dept));
+  const rosterDept=departmentsPresent.size===1?[...departmentsPresent][0]:
+    (deptFilter!=='all'&&data.every(x=>x.dept===deptFilter)?deptFilter:'all');
+  const cols=BPDPersonnelVisuals.specialtyColumns(rosterDept);
+  const header=['Roepnummer','Rangkenteken','Naam van rang','Naam personeelslid','Reeks','Status'];
+  const labels=header.map(t=>'<th>'+t+'</th>').join('')+
+    (!cols.length?'<th>Specialisaties</th>':cols.map(label=>
+      '<th class="specialty-column" title="'+esc(label)+'">'+
+      '<span class="specialty-col-icon">'+esc(BPDPersonnelVisuals.specialtyIcon(label))+'</span>'+
+      '<span class="specialty-col-label">'+esc(label)+'</span></th>').join(''))+'<th>Fiche</th>';
+  const rows=selected.map(x=>{
     const grade=BPDPersonnelVisuals.rankInfo(x.rank,x.dept);
-    return '<tr>'+
-      '<td class="strong">'+esc(x.call||'—')+'</td>'+
+    let cells='<td class="strong">'+esc(x.call||'—')+'</td>'+
       '<td>'+personnelGradeHtml(x)+'</td>'+
       '<td class="rank-name">'+esc(grade.label)+'</td>'+
-      '<td class="strong">'+esc(x.name||'—')+'<small class="roster-dept">'+esc(departments[x.dept]?.name||x.dept)+'</small></td>'+
-      '<td>'+esc(x.series||'Niet ingevuld')+'</td>'+
-      '<td>'+badge(x.status)+'</td>'+
-      '<td>'+personnelSpecialtiesHtml(x)+'</td>'+
-      '<td><button class="table-action" title="Open personeelsfiche" data-person="'+esc(x.id)+'">'+icon('chevron')+'</button></td>'+
-      '</tr>';
+      '<td class="strong">'+esc(x.name||'—')+
+      '<small class="roster-dept">'+esc(departments[x.dept]?.name||x.dept)+'</small></td>'+
+      '<td>'+esc(x.series||'Niet ingevuld')+'</td><td>'+badge(x.status)+'</td>';
+    if(!cols.length)cells+='<td>'+personnelSpecialtiesHtml(x)+'</td>';
+    for(const label of cols){
+      const status=BPDPersonnelVisuals.specialtyStateFor(x,label);
+      const txt=status.status==='Niet ingevuld'?'—':status.status;
+      cells+='<td class="specialty-value-cell"><span class="specialty-value specialty-'+
+        esc(status.style)+'" title="'+esc(label+' · '+status.status)+'">'+esc(txt)+'</span></td>';
+    }
+    return '<tr>'+cells+'<td><button class="table-action" title="Open personeelsfiche" data-person="'+
+      esc(x.id)+'">'+icon('chevron')+'</button></td></tr>';
   }).join('');
-  return '<div class="table-inner"><table class="data-table staff-roster"><thead><tr>'+
-    '<th>Roepnummer</th><th>Rangkenteken</th><th>Naam van rang</th>'+
-    '<th>Naam personeelslid</th><th>Reeks</th><th>Status</th><th>Specialisaties</th><th></th>'+
-    '</tr></thead><tbody>'+ (rows||'<tr><td colspan="8">Geen resultaten.</td></tr>')+
+  return '<div class="table-inner staff-roster-holder"><table class="data-table staff-roster"><thead><tr>'+
+    labels+'</tr></thead><tbody>'+ (rows||'<tr><td colspan="'+(7+cols.length)+'">Geen resultaten.</td></tr>')+
     '</tbody></table></div>';
 }
 function registrationShortcut(){return canOpenRegistrations()?`<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Observaties & sancties</div><div class="card-sub">Registraties, sancties en beveiligde personeelsdossiers</div></div><a class="btn btn-primary" style="text-decoration:none" href="/registraties.html">${icon('file')} Open registraties</a></div><div class="profile-note">Alleen toegankelijk voor middenkader, officierenkader en korpsleiding. Het basiskader dient observaties in via het afzonderlijke formulier.</div></div>`:''}
@@ -318,6 +356,8 @@ async function initConnection(){
       if(!Array.isArray(payload.employees))throw new Error('Ongeldige serverrespons');
       restrictedPortal=false;dossierState=Object.create(null);liveMode=true;liveInfo=payload;
       employees=payload.employees;
+      const allowed=payload.departments||[];
+      if(!allowed.includes(deptFilter))deptFilter=allowed.includes('politie')?'politie':allowed[0]||'all';
       role=payload.role;
       document.getElementById('sourceBadge').textContent=payload.stale?'VEROUDERDE BRON':'GOOGLE SHEETS · VERBONDEN';
       document.getElementById('sourceBadge').title='Laatst gelezen: '+(payload.fetchedAt||'onbekend');
