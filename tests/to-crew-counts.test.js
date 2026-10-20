@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {summarizeTOCrews} from '../public/to-crew-counts.js';
 
-const categories=['SANTO','BLAINE','AMBULANCE','AMBULANCE-MOTOR','LSRA-F.A.S.T.'];
+const categories=['SANTO','BLAINE','BWM','AMBULANCE','AMBULANCE-MOTOR','LSRA-F.A.S.T.'];
 const crew=(id,number,extra={})=>({id,dienst:'SANTO',roepnaam:number,leden:[{naam:'Testagent',roep:number}],available:true,...extra});
 const radio=(category,number,extra={})=>({category,number,importable:true,...extra});
 const count=(board,users=[],fresh=true)=>summarizeTOCrews(board,{categories,users,fresh});
@@ -48,6 +48,20 @@ test('Saved pauses and active incident assignments override online radio availab
     meldingen:{active:{status:'actief',ploegen:[{id:'busy'},{id:'busy'}]},closed:{status:'niet-actief',ploegen:[{id:'free'}]}}};
   assert.deepEqual(count(board,[radio('SANTO','620'),radio('SANTO','621'),radio('SANTO','622'),radio('SANTO','623')]),{
     inService:4,available:2,unavailable:2,boardTeams:3,radioOnly:1,radioLinked:3,paired:0,activeIncidents:1
+  });
+});
+
+test('BWM radio crews share saved status while identical police callsigns count separately',()=>{
+  const board={ploegen:[crew('fire-paused','620',{dienst:'BWM',available:false}),
+    crew('fire-busy','621',{dienst:'BWM'})],
+    meldingen:[{status:'actief',ploegen:[{id:'fire-busy'}]}]};
+  const users=[radio('BWM','00620'),radio('BWM','621'),radio('BWM','622'),
+    radio('BWM','00622'),radio('SANTO','620')];
+  assert.deepEqual(count(board,users),{
+    inService:4,available:2,unavailable:2,boardTeams:2,radioOnly:2,radioLinked:2,paired:0,activeIncidents:1
+  });
+  assert.deepEqual(count(board,users,false),{
+    inService:2,available:0,unavailable:2,boardTeams:2,radioOnly:0,radioLinked:0,paired:0,activeIncidents:1
   });
 });
 

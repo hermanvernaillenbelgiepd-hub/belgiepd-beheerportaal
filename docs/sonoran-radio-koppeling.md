@@ -22,7 +22,7 @@ De server moet via HTTPS toegang hebben tot `api.sonoranradio.com`. Er is geen e
 ## Testen in het portaal
 
 1. Open `/to-dienstbord.html` op TEST en meld je aan met je politieaccount.
-2. Het radiopaneel toont of de koppeling is ingesteld, de laatste geslaagde controle en de verbonden gebruikers per kanaal. De gegevens verversen iedere vijftien seconden zolang de pagina zichtbaar is. Met **Vernieuwen** kun je opnieuw de actuele serverstatus opvragen.
+2. Het radiopaneel toont of de koppeling is ingesteld, de laatste geslaagde controle en de verbonden gebruikers per hulpdienst. De kanaalinformatie blijft bij iedere gebruiker zichtbaar. De gegevens verversen iedere vijftien seconden zolang de pagina zichtbaar is. Met **Vernieuwen** kun je opnieuw de actuele serverstatus opvragen.
 3. Voor herkenning gebruikt de koppeling het bestaande formaat `CATEGORIE - NUMMER | NAAM`, bijvoorbeeld `SANTO - 620 | Alex`. De categorie moet een bekende TO-categorie zijn en het roepnummer bestaat uit één tot vijf cijfers.
 4. Herkende radio-ploegen tellen direct mee bij **Ploegen in dienst** en **Beschikbaar**, ook voordat ze als ploeg op het dienstbord zijn opgeslagen. Alleen een bekende categorie met een geldig afzonderlijk roepnummer telt mee. De telling gebruikt de volledige categorie en het numerieke roepnummer: `SANTO - 00620` en `SANTO - 620` tellen samen één keer, terwijl `AMBULANCE - 620` en `AMBULANCE-MOTOR - 620` twee ploegen zijn. Meerdere radiogebruikers met hetzelfde ploeglabel vormen één getelde ploeg.
 5. De huidige TO kan bij een herkenbare radio-eenheid **Ploeg toevoegen** kiezen om de ploeg te beheren, te pauzeren of aan een melding te koppelen. Controleer de vooraf ingevulde gegevens en bevestig de ploeg. Zonder naam blijft het naamveld leeg en moet de TO het aanvullen. Een radio-naam vormt geen geverifieerde personeels- of Discord-koppeling. Dubbele radiolabels blijven niet rechtstreeks te importeren.
@@ -31,11 +31,27 @@ De server moet via HTTPS toegang hebben tot `api.sonoranradio.com`. Er is geen e
 
 Basiskader kan het radio-overzicht en de tellingen bekijken. Ploegen opslaan blijft voorbehouden aan de huidige TO met bedieningsrecht. Automatisch tellen schrijft geen ploegen, bemanningsnamen of andere gegevens naar Firestore.
 
-Naast de bestaande politiecategorieën zijn ook beschikbaar: `AMBULANCE`, `AMBULANCE-MOTOR`, `PIT`, `MUG`, `MUGHELI`, `DIR-MED`, `SIT-TEAM`, `BRANDWEER`, `ZONE-COMM`, `PLOEG1`, `PLOEG2`, `PLOEG3`, `LSRA-DEPA100`, `LSRA-DEPAK200`, `LSRA-F.A.S.T.` en `LSRA-ANWV`. De volledige categorienaam blijft behouden, ook met koppeltekens en punten. Bijvoorbeeld: `AMBULANCE-MOTOR - 620 | Alex` en `LSRA-F.A.S.T. - 100 | Alex`. Een los label zoals `LSRA-DEPA100` zonder afzonderlijk roepnummer blijft alleen een radiolabel; de koppeling verzint geen bemanning of roepnummer. De categorieën zijn ook te kiezen bij handmatig toevoegen en filteren. Ze wijzigen de bestaande portaalrechten niet.
+Naast de bestaande politiecategorieën zijn ook beschikbaar: `AMBULANCE`, `AMBULANCE-MOTOR`, `PIT`, `MUG`, `MUGHELI`, `DIR-MED`, `SIT-TEAM`, `BRANDWEER`, `BWM`, `ZONE-COMM`, `PLOEG1`, `PLOEG2`, `PLOEG3`, `LSRA-DEPA100`, `LSRA-DEPAK200`, `LSRA-F.A.S.T.` en `LSRA-ANWV`. De volledige categorienaam blijft behouden, ook met koppeltekens en punten. Bijvoorbeeld: `AMBULANCE-MOTOR - 620 | Alex` en `LSRA-F.A.S.T. - 100 | Alex`. Een los label zoals `LSRA-DEPA100` zonder afzonderlijk roepnummer blijft alleen een radiolabel; de koppeling verzint geen bemanning of roepnummer. De categorieën zijn ook te kiezen bij handmatig toevoegen en filteren. Ze wijzigen de bestaande portaalrechten niet.
+
+## Sorteren per hulpdienst
+
+Radio en opgeslagen ploegen gebruiken dezelfde categorie-indeling, in deze volgorde:
+
+| Hulpdienst | Operationele categorieën |
+| --- | --- |
+| Politie | SANTO, BLAINE, WYCAN, FALCON, EAGLE, SIGMA, SIGNA, MARCAN, AIRCAN, CANINE, RAGO, MIKE, COMMAND |
+| Brandweer | BRANDWEER, BWM, ZONE-COMM, PLOEG1, PLOEG2, PLOEG3 |
+| Ambulance | AMBULANCE, AMBULANCE-MOTOR, PIT, MUG, MUGHELI, DIR-MED, SIT-TEAM |
+| Depannage | LSRA-DEPA100, LSRA-DEPAK200, LSRA-F.A.S.T., LSRA-ANWV |
+| Overige | Niet-herkende radiolabels |
+
+Binnen iedere hulpdienst staan de categorieën bij elkaar en lopen roepnummers numeriek op, bijvoorbeeld 2 vóór 10. `BWM - 620 | Alex` en `bwm-00620 | Alex` worden als brandweer herkend, tellen mee en kunnen na controle als BWM-ploeg worden opgeslagen. BWM blijft een afzonderlijke operationele categorie; een BWM-ploeg en BRANDWEER-ploeg met hetzelfde nummer worden niet automatisch samengevoegd. Een los `BWM` zonder roepnummer staat onder Brandweer maar telt niet als afzonderlijke ploeg.
+
+Het categoriefilter bevat hulpdienstgroepen en afzonderlijke categorieën. Een hulpdienstfilter, zoals Politie of Brandweer, beperkt zowel de radiolijst als de ploegenlijst. De samenvatting bovenaan blijft het totaal van de hele dienst tonen. Onbekende codes zoals `BWMX` krijgen geen brandweerindeling op basis van alleen het begin van hun naam. Deze visuele indeling verleent geen extra portaalrechten.
 
 ## Techniek
 
-De beveiligde route `GET /api/to/radio` gebruikt dezelfde `requireUser`-controle en afbakening op politie als het dienstbord. De route wijzigt geen TO-gegevens of Firestore-records.
+De beveiligde route `GET /api/to/radio` gebruikt dezelfde `requireUser`-controle en afbakening op politie als het dienstbord. De route wijzigt geen TO-gegevens of Firestore-records. Backend en browser delen de operationele categorieën in `public/to-categories.js`.
 
 De server leest uitsluitend:
 
@@ -52,6 +68,6 @@ Zonder beide instellingen geeft de route een niet-geconfigureerde status terug. 
 
 ## Uitgevoerde controles
 
-Alle 163 repositorytests en de syntaxcontroles slagen. De radiotests controleren onder meer politierechten, afscherming van de sleutel, naamherkenning, dubbele roepnummers, caching, time-outs/foutresponsen, begrensde responsen en herstel na een storing. Negen tellingtests controleren de combinatie van dienstbord en radio, koppelploegen, numeriek gelijke roepnummers, volledige categorieën, pauzes, actieve meldingen, uitdienstmeldingen, verouderde gegevens en behoud van de invoer. De browsercontroles gebruiken tijdelijke opslag, een gesimuleerde aanmelding en gesimuleerde Sonoran-responsen. De werkelijke app weigert anonieme radio-aanvragen met HTTP 401.
+Alle 172 repositorytests en de syntaxcontroles slagen. De radiotests controleren onder meer politierechten, afscherming van de sleutel, naamherkenning inclusief BWM, dubbele roepnummers, caching, time-outs/foutresponsen, begrensde responsen en herstel na een storing. Tien tellingtests controleren de combinatie van dienstbord en radio, koppelploegen, numeriek gelijke roepnummers, volledige categorieën, pauzes, actieve meldingen, uitdienstmeldingen, verouderde gegevens en behoud van de invoer. Vijf tests controleren de gedeelde hulpdienstindeling. Daarnaast slagen vijftien browsercontroles voor de telling en negen voor de hulpdienstindeling, sortering, filters, BWM-import, rechten en mobiele weergave. Die browsercontroles gebruiken tijdelijke opslag, een gesimuleerde aanmelding en gesimuleerde Sonoran-responsen. De werkelijke app weigert anonieme radio-aanvragen met HTTP 401.
 
 De gebruiker heeft de bestaande Sonoran-koppeling op TEST werkend bevestigd. De nieuwe telling is met gesimuleerde radiogegevens gecontroleerd; de ontwikkelomgeving heeft geen echte Community API Key. Een succesvolle Git-push bewijst geen afgeronde Render-uitrol; controleer na die uitrol de communityverbinding en tellingen in het portaal.

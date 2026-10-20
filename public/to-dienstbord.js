@@ -1,12 +1,13 @@
 import {setupPortalLogin} from '/portal-login.js';
 import {summarizeTOCrews} from '/to-crew-counts.js';
+import {TO_CATEGORIES,serviceForCategory,groupByTOService} from '/to-categories.js';
 
 const el=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rows=value=>Array.isArray(value)?value:Object.values(value||{});
 const hues={SANTO:220,BLAINE:28,WYCAN:172,FALCON:356,EAGLE:46,SIGMA:268,SIGNA:318,MARCAN:196,AIRCAN:100,CANINE:72,RAGO:292,MIKE:136,COMMAND:215,
   AMBULANCE:168,'AMBULANCE-MOTOR':168,PIT:168,MUG:168,MUGHELI:168,'DIR-MED':168,'SIT-TEAM':168,
-  BRANDWEER:8,'ZONE-COMM':8,PLOEG1:8,PLOEG2:8,PLOEG3:8,
+  BRANDWEER:8,BWM:8,'ZONE-COMM':8,PLOEG1:8,PLOEG2:8,PLOEG3:8,
   'LSRA-DEPA100':36,'LSRA-DEPAK200':36,'LSRA-F.A.S.T.':36,'LSRA-ANWV':36};
 const timeFormat=new Intl.DateTimeFormat('nl-BE',{hour:'2-digit',minute:'2-digit'});
 const dateFormat=new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short',year:'numeric'});
@@ -18,6 +19,16 @@ const activeTeams=board=>rows(board?.ploegen).filter(team=>!team.endedAt);
 const incidents=board=>rows(board?.meldingen);
 const normalize=value=>String(value||'').toLocaleLowerCase('nl-BE');
 const matches=(...values)=>!state.query||values.some(value=>normalize(value).includes(state.query));
+function matchesCategory(category){return state.category==='all'||state.category===category||state.category==='service:'+serviceForCategory(category).id;}
+function categoryRank(category){const rank=TO_CATEGORIES.indexOf(category);return rank<0?Number.MAX_SAFE_INTEGER:rank;}
+function compareCategories(left,right){return categoryRank(left)-categoryRank(right)||String(left||'').localeCompare(String(right||''),'nl',{numeric:true});}
+function compareRadioUsers(left,right){
+  const number=value=>/^\d{1,5}$/.test(String(value))&&Number(value)>0?Number(value):Number.MAX_SAFE_INTEGER;
+  return compareCategories(left.category,right.category)||number(left.number)-number(right.number)||String(left.displayName||left.name||'').localeCompare(String(right.displayName||right.name||''),'nl',{numeric:true})||String(left.id||'').localeCompare(String(right.id||''));
+}
+function categoryOptions(categories,{services=false}={}){
+  return groupByTOService(categories,category=>category).map(service=>`<optgroup label="${esc(service.label)}">${services?`<option value="service:${esc(service.id)}">Alle ${esc(service.label)}</option>`:''}${service.items.slice().sort(compareCategories).map(category=>`<option value="${esc(category)}">${esc(category)}</option>`).join('')}</optgroup>`).join('');
+}
 function operatorName(uid,session=state.env?.board.session){
   if(uid===session?.ownerUid)return session.to;
   for(const item of (session?.handovers||[]).slice().reverse()){
@@ -115,7 +126,8 @@ function renderRadio(){
   const panel=el('radio-panel');
   panel.hidden=!state.env||state.view!=='board';
   if(panel.hidden){if(!state.env)panel.replaceChildren();return;}
-  const snapshot=radio.snapshot,users=snapshot?.users||[],fresh=radioFresh();
+  const snapshot=radio.snapshot,allUsers=snapshot?.users||[],fresh=radioFresh();
+  const users=allUsers.filter(user=>matchesCategory(user.category)&&matches(user.category,user.number,user.displayName,user.name));
   const configured=snapshot?.configured,outdated=Boolean(snapshot?.stale||snapshot?.connected&&!fresh);
   const status=!snapshot?(radio.error?'Niet bereikbaar':'Verbinding maken'):!configured?'Nog niet gekoppeld':fresh?'Verbonden':outdated||radio.error?'Verouderde radio-informatie':'Niet verbonden';
   const color=fresh?'green':configured&&(outdated||radio.error)?'amber':'gray';
@@ -125,15 +137,15 @@ function renderRadio(){
   else if(configured===false)notice='De radiokoppeling is nog niet ingesteld voor deze omgeving.';
   else if(outdated)notice=(snapshot.message||'Dit is de laatst ontvangen radiostand. De verbinding wordt opnieuw gecontroleerd.')+' Alleen ploegen op het dienstbord tellen mee zolang de radiogegevens niet actueel zijn.';
   else if(snapshot&&!snapshot.connected)notice=snapshot.message||'Er is momenteel geen verbinding met de radio.';
-  const groups=new Map();
-  for(const user of users){const channel=user.channel===null||user.channel===undefined||user.channel===''?'Zonder kanaal':String(user.channel);if(!groups.has(channel))groups.set(channel,[]);groups.get(channel).push(user);}
+  const groups=groupByTOService(users);
   const userCard=user=>{
     const onBoard=radioAlreadyOnBoard(user),importable=canImportRadioUser(user);
     let action=onBoard?'<span class="radio-on-board">Op dienstbord</span>':!importable?'<span class="radio-unrecognized" title="Niet als ploeg herkend. Voeg indien nodig handmatig een ploeg toe.">Radiolabel</span>':'';
     if(!onBoard&&importable&&state.env.permissions.canEdit)action=`<button type="button" class="button button-small radio-add" data-action="radio-add-team" data-id="${esc(user.id)}" data-write${!fresh?' data-fixed-disabled="true"':''}${!fresh||!canEdit()?' disabled':''}>＋ Ploeg toevoegen</button>`;
-    return `<div class="radio-user"><div class="radio-user-name"><span class="radio-indicator${fresh?' online':''}" aria-hidden="true"></span><span title="${esc(user.name)}">${esc(user.name||'Onbekend radiolabel')}</span></div>${action}</div>`;
+    const channel=user.channel===null||user.channel===undefined||user.channel===''?'Zonder kanaal':'Kanaal '+String(user.channel);
+    return `<div class="radio-user"><div class="radio-user-copy"><div class="radio-user-name"><span class="radio-indicator${fresh?' online':''}" aria-hidden="true"></span><span title="${esc(user.name)}">${esc(user.name||'Onbekend radiolabel')}</span></div><small class="radio-user-channel">${esc(channel)}</small></div>${action}</div>`;
   };
-  panel.innerHTML=`<div class="radio-header"><div class="radio-heading"><span class="radio-symbol" aria-hidden="true">◉</span><div><h2 id="radio-title">Sonoran Radio</h2><p>Verbonden gebruikers · radiolabels</p></div>${pill(status,color)}</div><div class="radio-header-actions">${synced?`<span class="radio-last-sync">Ontvangen ${synced}</span>`:''}<button type="button" class="button button-small" data-action="radio-refresh"${radio.loading?' disabled':''}>${radio.loading?'Bijwerken…':'↻ Radio verversen'}</button></div></div>${notice?`<p class="radio-notice${radio.error||outdated?' warning':''}" role="status">${esc(notice)}</p>`:''}${snapshot&&configured?`<div class="radio-summary"><span><strong>${Number(snapshot.counts?.online)||users.length}</strong> op radio</span><span><strong>${Number(snapshot.counts?.recognized)||0}</strong> herkende roepnummers</span><span>Automatisch elke 15 seconden bijgewerkt</span></div>`:''}${groups.size?`<div class="radio-channels">${[...groups].sort(([left],[right])=>left.localeCompare(right,'nl',{numeric:true})).map(([channel,group])=>`<section class="radio-channel"><h3>${channel==='Zonder kanaal'?channel:'Kanaal '+esc(channel)} <span>${group.length}</span></h3><div class="radio-users">${group.map(userCard).join('')}</div></section>`).join('')}</div>`:fresh?'<p class="radio-empty">Er zijn momenteel geen gebruikers met de radio verbonden.</p>':!snapshot&&!radio.error?'<p class="radio-empty">De laatste radiostand wordt opgehaald…</p>':''}${configured&&users.length?'<p class="radio-disclaimer">Herkende radioploegen tellen automatisch mee als beschikbaar, tenzij de TO een andere status heeft vastgelegd. Voeg een ploeg toe om haar status of meldingen te beheren. Controleer de bemanning; radiolabels bevestigen geen personeelsidentiteit.</p>':''}`;
+  panel.innerHTML=`<div class="radio-header"><div class="radio-heading"><span class="radio-symbol" aria-hidden="true">◉</span><div><h2 id="radio-title">Sonoran Radio</h2><p>Verbonden gebruikers · radiolabels</p></div>${pill(status,color)}</div><div class="radio-header-actions">${synced?`<span class="radio-last-sync">Ontvangen ${synced}</span>`:''}<button type="button" class="button button-small" data-action="radio-refresh"${radio.loading?' disabled':''}>${radio.loading?'Bijwerken…':'↻ Radio verversen'}</button></div></div>${notice?`<p class="radio-notice${radio.error||outdated?' warning':''}" role="status">${esc(notice)}</p>`:''}${snapshot&&configured?`<div class="radio-summary"><span><strong>${Number(snapshot.counts?.online)||allUsers.length}</strong> op radio</span><span><strong>${Number(snapshot.counts?.recognized)||0}</strong> herkende roepnummers</span><span>Automatisch elke 15 seconden bijgewerkt</span></div>`:''}${groups.length?`<div class="radio-channels">${groups.map(service=>`<section class="radio-channel radio-service" data-service="${esc(service.id)}" aria-labelledby="radio-service-${esc(service.id)}"><h3 id="radio-service-${esc(service.id)}">${esc(service.label)} <span>${service.items.length} ${service.items.length===1?'radiogebruiker':'radiogebruikers'}</span></h3><div class="radio-users">${service.items.slice().sort(compareRadioUsers).map(userCard).join('')}</div></section>`).join('')}</div>`:fresh?`<p class="radio-empty">${allUsers.length?'Geen radioploegen voor deze selectie.':'Er zijn momenteel geen gebruikers met de radio verbonden.'}</p>`:!snapshot&&!radio.error?'<p class="radio-empty">De laatste radiostand wordt opgehaald…</p>':''}${configured&&allUsers.length?'<p class="radio-disclaimer">Herkende radioploegen tellen automatisch mee als beschikbaar, tenzij de TO een andere status heeft vastgelegd. Voeg een ploeg toe om haar status of meldingen te beheren. Controleer de bemanning; radiolabels bevestigen geen personeelsidentiteit.</p>':''}`;
   updateButtons();
 }
 function showReadiness(){
@@ -175,8 +187,7 @@ function render(){
   el('welcome').hidden=Boolean(env);
   el('connection').className='connection'+(env?(state.stale?' stale':' connected'):'');
   el('connection').innerHTML='<span></span>'+(env?(state.stale?'Verbinding onderbroken':'Gedeeld dienstbord'):'Aanmelding vereist');
-  renderRadio();
-  if(!env)return;
+  if(!env){renderRadio();return;}
   renderSummary();
   el('tab-board').classList.toggle('active',state.view==='board');
   el('tab-archives').classList.toggle('active',state.view==='archives');
@@ -184,8 +195,9 @@ function render(){
   el('board-tools').hidden=state.view!=='board';
   el('updated-at').textContent=state.lastSynced?'Bijgewerkt om '+time(state.lastSynced):'';
   const select=el('category-filter'),previous=state.category;
-  select.innerHTML='<option value="all">Alle categorieën</option>'+env.categories.map(category=>`<option value="${esc(category)}">${esc(category)}</option>`).join('');
-  select.value=env.categories.includes(previous)?previous:'all';state.category=select.value;
+  select.innerHTML='<option value="all">Alle hulpdiensten en categorieën</option>'+categoryOptions(env.categories,{services:true});
+  select.value=env.categories.includes(previous)||groupByTOService(env.categories,category=>category).some(service=>previous==='service:'+service.id)?previous:'all';state.category=select.value;
+  renderRadio();
   el('board-content').innerHTML=state.view==='archives'?renderArchives():renderBoard();
   updateButtons();
 }
@@ -205,12 +217,14 @@ function renderSummary(){
 }
 function renderBoard(){
   const board=state.env.board,teams=activeTeams(board),busy=busyMap(board),allIncidents=incidents(board),editable=canEdit();
-  const selectedTeams=teams.filter(team=>(state.category==='all'||team.dienst===state.category)&&matches(team.dienst,team.roepnaam,...(team.leden||[]).map(member=>member.naam)));
-  const categories=[...state.env.categories,...new Set(teams.map(team=>team.dienst))].filter((value,index,list)=>list.indexOf(value)===index);
-  const teamMarkup=categories.map(category=>{
-    const group=selectedTeams.filter(team=>team.dienst===category).sort((a,b)=>String(a.roepnaam).localeCompare(String(b.roepnaam),'nl',{numeric:true}));
-    if(!group.length)return '';
-    return `<section class="category-section"><h3 class="category-heading">${esc(category)} <span>${group.length} ${group.length===1?'ploeg':'ploegen'}</span></h3><div class="team-grid">${group.map(team=>teamCard(team,busy.get(team.id)||[],editable)).join('')}</div></section>`;
+  const selectedTeams=teams.filter(team=>matchesCategory(team.dienst)&&matches(team.dienst,team.roepnaam,...(team.leden||[]).map(member=>member.naam)));
+  const teamMarkup=groupByTOService(selectedTeams,team=>team.dienst).map(service=>{
+    const categories=[...new Set(service.items.map(team=>team.dienst))].sort(compareCategories);
+    const sections=categories.map(category=>{
+      const group=service.items.filter(team=>team.dienst===category).sort((a,b)=>String(a.roepnaam).localeCompare(String(b.roepnaam),'nl',{numeric:true}));
+      return `<section class="category-section"><h4 class="category-heading">${esc(category)} <span>${group.length} ${group.length===1?'ploeg':'ploegen'}</span></h4><div class="team-grid">${group.map(team=>teamCard(team,busy.get(team.id)||[],editable)).join('')}</div></section>`;
+    }).join('');
+    return `<section class="service-team-section" data-service="${esc(service.id)}" aria-labelledby="board-service-${esc(service.id)}"><h3 class="service-heading" id="board-service-${esc(service.id)}">${esc(service.label)}<span>${service.items.length} ${service.items.length===1?'ploeg':'ploegen'}</span></h3>${sections}</section>`;
   }).join('');
   const filtered=allIncidents.filter(item=>(state.filter==='alle'||item.status===state.filter)&&matches(item.titel,item.postcode,item.omschrijving,incidentNumber(item.nr),...(item.ploegen||[]).map(team=>team.dienst+'-'+team.roep))).sort((a,b)=>(a.status===b.status?0:a.status==='actief'?-1:1)||b.nr-a.nr);
   const activeCount=allIncidents.filter(item=>item.status==='actief').length;
@@ -251,7 +265,7 @@ function startDialog(takeover=false){
   openDialog(takeover?'Dienst overnemen':'Nieuwe dienst starten',`<p class="form-note">${takeover?'Je neemt het dienstbord over van '+esc(session?.to||'de huidige TO')+'. Deze overname blijft zichtbaar in de diensthistoriek.':'Je wordt de TO van deze dienst. Collega’s met toegang kunnen het bord bekijken en de dienst later overnemen.'}</p><label class="field"><span>Jouw naam op het dienstbord</span><input class="input" name="displayName" maxlength="80" minlength="2" value="${esc(defaultName())}" placeholder="Voor- en achternaam" required autofocus></label>${takeover?'<label class="field"><span>Reden van overname</span><textarea class="input" name="reason" minlength="8" maxlength="300" placeholder="Bijvoorbeeld: aflossing van de lopende dienst" required></textarea></label>':''}`,{form:takeover?'takeover':'start',submit:takeover?'Dienst overnemen':'Dienst starten'});
 }
 function teamDialog(prefill=null){
-  openDialog('Ploeg toevoegen',`<label class="field"><span>Categorie</span><select class="input" name="dienst" id="team-category" required autofocus>${state.env.categories.map(category=>`<option value="${esc(category)}">${esc(category)}</option>`).join('')}</select></label><fieldset class="form-group"><legend>AGENT 1</legend><div class="form-grid"><label class="field"><span>Naam</span><input class="input" name="naam1" minlength="2" maxlength="80" required placeholder="Naam agent"></label><label class="field"><span>Roepnummer</span><input class="input mono" name="roep1" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" required placeholder="620"></label></div></fieldset><label class="form-checkbox"><input type="checkbox" name="koppel" id="team-paired">Koppelrijden met een tweede agent</label><fieldset class="form-group" id="second-agent" hidden><legend>AGENT 2</legend><div class="form-grid"><label class="field"><span>Naam</span><input class="input" name="naam2" minlength="2" maxlength="80" placeholder="Naam agent"></label><label class="field"><span>Roepnummer</span><input class="input mono" name="roep2" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" placeholder="640"></label></div></fieldset><div class="preview">Ploegnaam<strong id="team-preview">Vul een roepnummer in</strong></div><p class="form-note" style="margin-top:12px;margin-bottom:0">Bij koppelrijden wordt het hoogste roepnummer de ploegnaam.</p>`,{form:'add-team',submit:'Ploeg toevoegen'});
+  openDialog('Ploeg toevoegen',`<label class="field"><span>Categorie</span><select class="input" name="dienst" id="team-category" required autofocus>${categoryOptions(state.env.categories)}</select></label><fieldset class="form-group"><legend>AGENT 1</legend><div class="form-grid"><label class="field"><span>Naam</span><input class="input" name="naam1" minlength="2" maxlength="80" required placeholder="Naam agent"></label><label class="field"><span>Roepnummer</span><input class="input mono" name="roep1" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" required placeholder="620"></label></div></fieldset><label class="form-checkbox"><input type="checkbox" name="koppel" id="team-paired">Koppelrijden met een tweede agent</label><fieldset class="form-group" id="second-agent" hidden><legend>AGENT 2</legend><div class="form-grid"><label class="field"><span>Naam</span><input class="input" name="naam2" minlength="2" maxlength="80" placeholder="Naam agent"></label><label class="field"><span>Roepnummer</span><input class="input mono" name="roep2" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" placeholder="640"></label></div></fieldset><div class="preview">Ploegnaam<strong id="team-preview">Vul een roepnummer in</strong></div><p class="form-note" style="margin-top:12px;margin-bottom:0">Bij koppelrijden wordt het hoogste roepnummer de ploegnaam.</p>`,{form:'add-team',submit:'Ploeg toevoegen'});
   if(prefill){
     const form=el('to-form');
     form.elements.dienst.value=prefill.category;

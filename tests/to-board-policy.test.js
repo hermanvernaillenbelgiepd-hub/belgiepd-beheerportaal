@@ -30,6 +30,19 @@ test('Requested emergency and recovery categories can be saved without changing 
   const medicalUser={...owner,departments:['ambulance'],departmentRoles:{ambulance:'middenkader'}};
   expectStatus(()=>command(board,'add-team',{dienst:'AMBULANCE',leden:[{naam:'Test',roep:'621'}]},medicalUser),403);
 });
+
+test('The current TO can save BWM without granting brandweer accounts police board access',()=>{
+  assert.equal(TO_CATEGORIES.includes('BWM'),true);
+  let board=addTeam(started(),'620','SANTO');
+  board=addTeam(board,'620','BWM');
+  assert.deepEqual(Object.values(board.ploegen).map(team=>[team.dienst,team.roepnaam]),
+    [['SANTO','620'],['BWM','620']]);
+  expectStatus(()=>command(board,'add-team',{dienst:'BWM',leden:[{naam:'Dubbel Test',roep:'00620'}]}),409);
+  const fireUser={...owner,departments:['brandweer'],departmentRoles:{brandweer:'middenkader'}};
+  assert.equal(canReadBoard(fireUser),false);
+  expectStatus(()=>command(board,'add-team',{dienst:'BWM',leden:[{naam:'Brandweer Test',roep:'621'}]},fireUser),403);
+});
+
 function createIncident(board){
   return command(board,'create-incident',{postcode:'7042',titel:'Testmelding',omschrijving:'Een testmelding zonder echte persoonsgegevens.'}).board;
 }

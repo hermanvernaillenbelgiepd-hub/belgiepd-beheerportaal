@@ -13,6 +13,8 @@ De portaalmodule op `/to-dienstbord.html` vervangt de losse TO-prototypeopslag. 
 
 Het bord wordt periodiek ververst. Een verbroken verbinding of versieconflict wordt zichtbaar gemeld; een mislukte wijziging wordt niet als opgeslagen gepresenteerd. Archieven zijn alleen-lezen en kunnen als JSON worden geëxporteerd.
 
+De radio- en ploegenlijsten zijn gegroepeerd onder Politie, Brandweer, Ambulance en Depannage. SANTO en de andere politiecategorieën staan onder Politie; BWM wordt als eigen brandweercategorie herkend. Binnen de categorieën lopen de roepnummers numeriek op. Het categoriefilter kan een hele hulpdienst of één categorie tonen. Niet-herkende radiolabels blijven zichtbaar onder Overige.
+
 ## Toegang en opslag
 
 De module gebruikt dezelfde Firebase/Discord-sessie als het portaal en dezelfde backendcontrole `requireUser`. Er is geen tweede account nodig. De hulpdienst moet expliciet `politie` zijn; de operationele categorieën SANTO, BLAINE enzovoort zijn geen hulpdienstmachtigingen.
@@ -71,7 +73,7 @@ Er zijn afzonderlijke tests voor het dienstverloop, politierechten, eigendom, ve
 ## Uitgevoerde controles
 
 - `npm run check`: geslaagd, inclusief de nieuwe server- en browsermodules.
-- `npm test`: 163 tests geslaagd, geen overgeslagen tests; inclusief negen afzonderlijke controles van de gecombineerde TO- en radiotelling.
+- `npm test`: 172 tests geslaagd, geen overgeslagen tests; inclusief tien afzonderlijke controles van de gecombineerde TO- en radiotelling, BWM-herkenning en vijf tests van de gedeelde hulpdienstindeling.
 - Werkelijke Express-app: pagina en assets bereikbaar; alle vier TO-API-routes weigeren anonieme verzoeken met HTTP 401.
 - Chromium op desktop en mobiel: starten, koppelploeg toevoegen, melding toewijzen/afronden, versieconflict, accountovername, ploeg uit dienst, archivering, JSON-download en basiskader-leesrechten gecontroleerd.
 - De browsercontrole gebruikt de echte TO-routes en beleidsfuncties met tijdelijke opslag en gesimuleerde Firebase-aanmelding. Op de app zonder Firebase-configuratie is de duidelijke aanmeldmelding gecontroleerd. Er is geen productie-uitrol of live Firebase-schrijfactie uitgevoerd.

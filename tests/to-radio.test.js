@@ -64,6 +64,34 @@ test('Radio labels are importable only for known patrol categories and positive 
   }
 });
 
+test('BWM is a distinct recognized fire callsign without accepting similar unknown labels',()=>{
+  for(const label of ['BWM - 620 | Testbrandweerman','bwm-620 | Testbrandweerman','BWM-00620 | Testbrandweerman']){
+    const parsed=parseSonoranName(label);
+    assert.equal(parsed.category,'BWM');
+    assert.equal(Number(parsed.number),620);
+    assert.equal(parsed.displayName,'Testbrandweerman');
+    assert.equal(parsed.importable,true);
+  }
+  assert.deepEqual(parseSonoranName('BWM | Testbrandweerman'),
+    {category:'BWM',number:null,displayName:'Testbrandweerman',importable:false});
+  for(const label of ['BWMW - 620 | Test','BWM-EXTRA - 620 | Test','BWM620 | Test']){
+    assert.equal(parseSonoranName(label).importable,false,label);
+  }
+});
+
+test('Matching BWM and police numbers remain separate importable radio crews',async()=>{
+  const service=createSonoranRadioService({env:configuredEnv,fetchImpl:async()=>reply([
+    {identity:'private-identity-police',name:'SANTO - 620 | Testagent'},
+    {identity:'private-identity-fire',name:'BWM - 00620 | Testbrandweerman'}
+  ])});
+  const result=await service.read();
+  assert.equal(result.connected,true);
+  assert.deepEqual(result.users.map(user=>[user.category,user.number,user.importable]),
+    [['SANTO','620',true],['BWM','00620',true]]);
+  assert.deepEqual(result.counts,{online:2,recognized:2});
+  assertPrivate(result);
+});
+
 test('All requested emergency and recovery categories retain their complete radio label',()=>{
   const categories=['AMBULANCE','AMBULANCE-MOTOR','PIT','MUG','MUGHELI','DIR-MED','SIT-TEAM','BRANDWEER','ZONE-COMM','PLOEG1','PLOEG2','PLOEG3','LSRA-DEPA100','LSRA-DEPAK200','LSRA-F.A.S.T.','LSRA-ANWV'];
   for(const category of categories){
