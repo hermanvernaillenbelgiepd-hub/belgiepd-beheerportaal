@@ -28,19 +28,31 @@ export function summarizeTOCrews(board,{users=[],fresh=false,categories=[]}={}){
     }
   }
   const recognized=new Set(categories),radioOnly=new Set(),linked=new Set();
+  const blockedRadioOnly=new Set(),blockedTeams=new Set(),pairedRadioOnly=new Set();
   if(fresh){
     for(const user of records(users)){
       if(!recognized.has(user.category))continue;
       const key=callsignKey(user.category,user.number);
       if(!key)continue;
-      // Match every member of a koppel before considering ended callsigns.
-      if(activeKeys.has(key))for(const team of activeKeys.get(key))linked.add(team);
-      else if(!endedKeys.has(key))radioOnly.add(key);
+      // A fresh NB from ANY radio member blocks the entire saved or radio-only
+      // unit, including a koppel. One key = one unit irrespective of members.
+      if(activeKeys.has(key))for(const team of activeKeys.get(key)){
+        linked.add(team);
+        if(user.notAvailable===true)blockedTeams.add(team);
+      }
+      else if(!endedKeys.has(key)){
+        radioOnly.add(key);
+        if(user.notAvailable===true)blockedRadioOnly.add(key);
+        if(user.paired===true)pairedRadioOnly.add(key);
+      }
     }
   }
   const inService=teams.length+radioOnly.size;
-  const available=teams.filter(team=>team.available!==false&&!busy.has(team.id)).length+radioOnly.size;
+  const available=teams.filter(team=>team.available!==false&&!busy.has(team.id)&&
+    !blockedTeams.has(team)).length+
+    [...radioOnly].filter(key=>!blockedRadioOnly.has(key)).length;
   return {inService,available,unavailable:inService-available,boardTeams:teams.length,
-    radioOnly:radioOnly.size,radioLinked:linked.size,paired:teams.filter(team=>team.koppel).length,
+    radioOnly:radioOnly.size,radioLinked:linked.size,
+    paired:teams.filter(team=>team.koppel).length+pairedRadioOnly.size,
     activeIncidents:activeIncidents.length};
 }
