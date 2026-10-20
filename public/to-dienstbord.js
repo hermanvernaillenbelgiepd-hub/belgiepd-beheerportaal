@@ -1,4 +1,5 @@
 import {setupPortalLogin} from '/portal-login.js';
+import {summarizeTOCrews} from '/to-crew-counts.js';
 
 const el=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -31,7 +32,7 @@ const button=(text,action,{id='',teamId='',primary=false,danger=false,small=fals
 
 let auth=null,authEpoch=0;
 const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',archives:null,archive:null,lastSynced:null};
-const radio={snapshot:null,loading:false,error:null,requestSerial:0};
+const radio={snapshot:null,loading:false,error:null,receivedAt:null,requestSerial:0};
 const dialog=el('to-dialog');
 let toastTimer;
 
@@ -42,8 +43,11 @@ function tell(message,kind=''){
 function toast(message){el('toast').textContent=message;el('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el('toast').hidden=true;},4500);}
 function canEdit(){return Boolean(state.env?.permissions.canEdit&&!state.stale&&!state.pending&&state.env.writesEnabled!==false);}
 function canOperate(){return Boolean(state.env?.permissions.canOperate&&!state.stale&&!state.pending&&state.env.writesEnabled!==false);}
-function clearRadio(){radio.requestSerial++;radio.snapshot=null;radio.loading=false;radio.error=null;}
-function radioFresh(){return Boolean(radio.snapshot?.configured&&radio.snapshot.connected&&!radio.snapshot.stale&&!radio.error);}
+function clearRadio(){radio.requestSerial++;radio.snapshot=null;radio.loading=false;radio.error=null;radio.receivedAt=null;}
+function radioFresh(){
+  const age=radio.receivedAt===null?Infinity:Date.now()-radio.receivedAt;
+  return Boolean(radio.snapshot?.configured&&radio.snapshot.connected&&!radio.snapshot.stale&&!radio.error&&age>=0&&age<=45000);
+}
 function sameCallsign(left,right){return /^\d{1,5}$/.test(String(left))&&/^\d{1,5}$/.test(String(right))&&Number(left)===Number(right);}
 function radioMatchesTeam(user,team){return Boolean(user.category&&user.number&&user.category===team.dienst&&[(team.roepnaam),...(team.leden||[]).map(member=>member.roep)].some(number=>sameCallsign(number,user.number)));}
 function radioAlreadyOnBoard(user){return Boolean(state.env&&activeTeams(state.env.board).some(team=>radioMatchesTeam(user,team)));}
@@ -96,13 +100,13 @@ async function refreshRadio(){
     const payload=await request('/api/to/radio');
     if(serial!==radio.requestSerial||epoch!==authEpoch||!state.env)return;
     if(typeof payload.configured!=='boolean'||typeof payload.connected!=='boolean'||typeof payload.stale!=='boolean'||!Array.isArray(payload.users))throw new Error('De radio gaf een onvolledige respons.');
-    radio.snapshot=payload;radio.error=null;
+    radio.snapshot=payload;radio.error=null;radio.receivedAt=Date.now();
   }catch(error){
     if(error.obsolete||serial!==radio.requestSerial||epoch!==authEpoch)return;
     radio.error='De radioverbinding kon niet worden bijgewerkt. Je kunt ploegen en meldingen gewoon verder beheren.';
   }finally{
     if(serial===radio.requestSerial&&epoch===authEpoch){
-      radio.loading=false;renderRadio();
+      radio.loading=false;renderRadio();renderSummary();
       if(state.env&&state.view==='board'){el('board-content').innerHTML=renderBoard();updateButtons();}
     }
   }
@@ -112,14 +116,14 @@ function renderRadio(){
   panel.hidden=!state.env||state.view!=='board';
   if(panel.hidden){if(!state.env)panel.replaceChildren();return;}
   const snapshot=radio.snapshot,users=snapshot?.users||[],fresh=radioFresh();
-  const configured=snapshot?.configured;
-  const status=!snapshot?(radio.error?'Niet bereikbaar':'Verbinding maken'):!configured?'Nog niet gekoppeld':fresh?'Verbonden':snapshot.stale||radio.error?'Verouderde radio-informatie':'Niet verbonden';
-  const color=fresh?'green':configured&&(snapshot.stale||radio.error)?'amber':'gray';
+  const configured=snapshot?.configured,outdated=Boolean(snapshot?.stale||snapshot?.connected&&!fresh);
+  const status=!snapshot?(radio.error?'Niet bereikbaar':'Verbinding maken'):!configured?'Nog niet gekoppeld':fresh?'Verbonden':outdated||radio.error?'Verouderde radio-informatie':'Niet verbonden';
+  const color=fresh?'green':configured&&(outdated||radio.error)?'amber':'gray';
   const synced=snapshot?.fetchedAt?time(Date.parse(snapshot.fetchedAt)):null;
   let notice='';
   if(radio.error)notice=radio.error;
   else if(configured===false)notice='De radiokoppeling is nog niet ingesteld voor deze omgeving.';
-  else if(snapshot?.stale)notice=snapshot.message||'Dit is de laatst ontvangen radiostand. De verbinding wordt opnieuw gecontroleerd.';
+  else if(outdated)notice=(snapshot.message||'Dit is de laatst ontvangen radiostand. De verbinding wordt opnieuw gecontroleerd.')+' Alleen ploegen op het dienstbord tellen mee zolang de radiogegevens niet actueel zijn.';
   else if(snapshot&&!snapshot.connected)notice=snapshot.message||'Er is momenteel geen verbinding met de radio.';
   const groups=new Map();
   for(const user of users){const channel=user.channel===null||user.channel===undefined||user.channel===''?'Zonder kanaal':String(user.channel);if(!groups.has(channel))groups.set(channel,[]);groups.get(channel).push(user);}
@@ -129,7 +133,7 @@ function renderRadio(){
     if(!onBoard&&importable&&state.env.permissions.canEdit)action=`<button type="button" class="button button-small radio-add" data-action="radio-add-team" data-id="${esc(user.id)}" data-write${!fresh?' data-fixed-disabled="true"':''}${!fresh||!canEdit()?' disabled':''}>＋ Ploeg toevoegen</button>`;
     return `<div class="radio-user"><div class="radio-user-name"><span class="radio-indicator${fresh?' online':''}" aria-hidden="true"></span><span title="${esc(user.name)}">${esc(user.name||'Onbekend radiolabel')}</span></div>${action}</div>`;
   };
-  panel.innerHTML=`<div class="radio-header"><div class="radio-heading"><span class="radio-symbol" aria-hidden="true">◉</span><div><h2 id="radio-title">Sonoran Radio</h2><p>Verbonden gebruikers · radiolabels</p></div>${pill(status,color)}</div><div class="radio-header-actions">${synced?`<span class="radio-last-sync">Ontvangen ${synced}</span>`:''}<button type="button" class="button button-small" data-action="radio-refresh"${radio.loading?' disabled':''}>${radio.loading?'Bijwerken…':'↻ Radio verversen'}</button></div></div>${notice?`<p class="radio-notice${radio.error||snapshot?.stale?' warning':''}" role="status">${esc(notice)}</p>`:''}${snapshot&&configured?`<div class="radio-summary"><span><strong>${Number(snapshot.counts?.online)||users.length}</strong> op radio</span><span><strong>${Number(snapshot.counts?.recognized)||0}</strong> herkende roepnummers</span><span>Automatisch elke 15 seconden bijgewerkt</span></div>`:''}${groups.size?`<div class="radio-channels">${[...groups].sort(([left],[right])=>left.localeCompare(right,'nl',{numeric:true})).map(([channel,group])=>`<section class="radio-channel"><h3>${channel==='Zonder kanaal'?channel:'Kanaal '+esc(channel)} <span>${group.length}</span></h3><div class="radio-users">${group.map(userCard).join('')}</div></section>`).join('')}</div>`:fresh?'<p class="radio-empty">Er zijn momenteel geen gebruikers met de radio verbonden.</p>':!snapshot&&!radio.error?'<p class="radio-empty">De laatste radiostand wordt opgehaald…</p>':''}${configured&&users.length?'<p class="radio-disclaimer">Radiolabels zijn geen bevestigde personeelsidentiteiten. Controleer de bemanning voordat je een ploeg toevoegt.</p>':''}`;
+  panel.innerHTML=`<div class="radio-header"><div class="radio-heading"><span class="radio-symbol" aria-hidden="true">◉</span><div><h2 id="radio-title">Sonoran Radio</h2><p>Verbonden gebruikers · radiolabels</p></div>${pill(status,color)}</div><div class="radio-header-actions">${synced?`<span class="radio-last-sync">Ontvangen ${synced}</span>`:''}<button type="button" class="button button-small" data-action="radio-refresh"${radio.loading?' disabled':''}>${radio.loading?'Bijwerken…':'↻ Radio verversen'}</button></div></div>${notice?`<p class="radio-notice${radio.error||outdated?' warning':''}" role="status">${esc(notice)}</p>`:''}${snapshot&&configured?`<div class="radio-summary"><span><strong>${Number(snapshot.counts?.online)||users.length}</strong> op radio</span><span><strong>${Number(snapshot.counts?.recognized)||0}</strong> herkende roepnummers</span><span>Automatisch elke 15 seconden bijgewerkt</span></div>`:''}${groups.size?`<div class="radio-channels">${[...groups].sort(([left],[right])=>left.localeCompare(right,'nl',{numeric:true})).map(([channel,group])=>`<section class="radio-channel"><h3>${channel==='Zonder kanaal'?channel:'Kanaal '+esc(channel)} <span>${group.length}</span></h3><div class="radio-users">${group.map(userCard).join('')}</div></section>`).join('')}</div>`:fresh?'<p class="radio-empty">Er zijn momenteel geen gebruikers met de radio verbonden.</p>':!snapshot&&!radio.error?'<p class="radio-empty">De laatste radiostand wordt opgehaald…</p>':''}${configured&&users.length?'<p class="radio-disclaimer">Herkende radioploegen tellen automatisch mee als beschikbaar, tenzij de TO een andere status heeft vastgelegd. Voeg een ploeg toe om haar status of meldingen te beheren. Controleer de bemanning; radiolabels bevestigen geen personeelsidentiteit.</p>':''}`;
   updateButtons();
 }
 function showReadiness(){
@@ -187,8 +191,9 @@ function render(){
 }
 function renderSummary(){
   const env=state.env;if(!env)return;
-  const board=env.board,teams=activeTeams(board),busy=busyMap(board),active=incidents(board).filter(item=>item.status==='actief');
-  const available=teams.filter(team=>team.available!==false&&!busy.has(team.id)).length;
+  const board=env.board,fresh=radioFresh();
+  const counts=summarizeTOCrews(board,{users:radio.snapshot?.users||[],fresh,categories:env.categories});
+  const radioNote=fresh?counts.radioOnly+' via radio':radio.snapshot?.configured?'radio niet actueel':'geen radiotelling';
   const session=board.session;
   let actions='';
   if(env.permissions.canOperate){
@@ -196,7 +201,7 @@ function renderSummary(){
     else if(env.permissions.canEdit)actions=button('Dienst afsluiten','close-session',{write:true});
     else actions=button('Dienst overnemen','takeover',{primary:true,write:true});
   }
-  el('session-summary').innerHTML=`<article class="summary-card session"><div class="summary-label">TO VAN DIENST${session?pill('Lopende dienst','green'):''}</div><div class="summary-value">${esc(session?.to||'Geen lopende dienst')}</div><div class="summary-note">${session?'Sinds '+time(session.startedAt)+' · '+duration(session.startedAt)+' · '+(session.handovers||[]).length+' overname(s)':'Een gedeeld overzicht begint met een nieuwe sessie.'}</div>${actions?`<div class="summary-actions">${actions}</div>`:''}</article><article class="summary-card"><div class="summary-label">Ploegen in dienst<span class="counter-icon">▤</span></div><div class="summary-value">${teams.length}</div><div class="summary-note">${teams.filter(team=>team.koppel).length} koppelploeg(en)</div></article><article class="summary-card"><div class="summary-label">Beschikbaar<span class="counter-icon green">✓</span></div><div class="summary-value">${available}</div><div class="summary-note">${teams.length-available} bezet of niet beschikbaar</div></article><article class="summary-card"><div class="summary-label">Actieve meldingen<span class="counter-icon amber">!</span></div><div class="summary-value">${active.length}</div><div class="summary-note">${incidents(board).length-active.length} afgerond in deze dienst</div></article>`;
+  el('session-summary').innerHTML=`<article class="summary-card session"><div class="summary-label">TO VAN DIENST${session?pill('Lopende dienst','green'):''}</div><div class="summary-value">${esc(session?.to||'Geen lopende dienst')}</div><div class="summary-note">${session?'Sinds '+time(session.startedAt)+' · '+duration(session.startedAt)+' · '+(session.handovers||[]).length+' overname(s)':'Een gedeeld overzicht begint met een nieuwe sessie.'}</div>${actions?`<div class="summary-actions">${actions}</div>`:''}</article><article class="summary-card"><div class="summary-label">Ploegen in dienst<span class="counter-icon">▤</span></div><div class="summary-value">${counts.inService}</div><div class="summary-note">${counts.boardTeams} op dienstbord · ${radioNote}</div></article><article class="summary-card"><div class="summary-label">Beschikbaar<span class="counter-icon green">✓</span></div><div class="summary-value">${counts.available}</div><div class="summary-note">${counts.unavailable} bezet of niet beschikbaar${counts.radioOnly?' · '+counts.radioOnly+' beschikbaar via radio':''}</div></article><article class="summary-card"><div class="summary-label">Actieve meldingen<span class="counter-icon amber">!</span></div><div class="summary-value">${counts.activeIncidents}</div><div class="summary-note">${incidents(board).length-counts.activeIncidents} afgerond in deze dienst</div></article>`;
 }
 function renderBoard(){
   const board=state.env.board,teams=activeTeams(board),busy=busyMap(board),allIncidents=incidents(board),editable=canEdit();
@@ -210,7 +215,7 @@ function renderBoard(){
   const filtered=allIncidents.filter(item=>(state.filter==='alle'||item.status===state.filter)&&matches(item.titel,item.postcode,item.omschrijving,incidentNumber(item.nr),...(item.ploegen||[]).map(team=>team.dienst+'-'+team.roep))).sort((a,b)=>(a.status===b.status?0:a.status==='actief'?-1:1)||b.nr-a.nr);
   const activeCount=allIncidents.filter(item=>item.status==='actief').length;
   const filter=(value,label,count)=>`<button type="button" data-action="filter-incidents" data-filter="${value}" class="${state.filter===value?'active':''}" aria-pressed="${state.filter===value}">${label} · ${count}</button>`;
-  return `${!board.session?`<section class="no-session"><div><h2>Het bord is klaar voor een nieuwe dienst.</h2><p>Start een sessie om ploegen toe te voegen en meldingen te registreren. Afgesloten diensten blijven terug te vinden in het archief.</p></div>${state.env.permissions.canOperate?button('Dienst starten','start',{primary:true,write:true}):''}</section>`:''}<div class="board-layout"><section aria-labelledby="teams-title"><div class="panel-heading"><div><h2 id="teams-title">Ploegen in dienst</h2><p>${teams.length} ${teams.length===1?'ploeg':'ploegen'} · één overzicht voor de hele dienst</p></div>${state.env.permissions.canEdit?button('＋ Ploeg toevoegen','add-team',{write:true}):''}</div>${teamMarkup||empty(state.query||state.category!=='all'?'Geen ploegen gevonden':'Nog geen ploegen in dienst',state.query||state.category!=='all'?'Probeer een andere zoekterm of categorie.':'Voeg een ploeg met één of twee agenten toe zodra de dienst is gestart.')}</section><section aria-labelledby="incidents-title"><div class="panel-heading"><div><h2 id="incidents-title">Meldingen</h2><p>Van oproep tot afronding, met een gedeeld logboek</p></div>${state.env.permissions.canEdit?button('＋ Nieuwe melding','create-incident',{primary:true,write:true}):''}</div><div class="incident-filters" role="group" aria-label="Meldingenfilter">${filter('actief','Actief',activeCount)}${filter('niet-actief','Afgerond',allIncidents.length-activeCount)}${filter('alle','Alle',allIncidents.length)}</div><div class="incident-list">${filtered.map(incidentCard).join('')||empty('Geen meldingen in dit overzicht',state.query?'Probeer een andere zoekterm.':'Nieuwe oproepen verschijnen hier. Afgeronde meldingen blijven binnen de dienst bewaard.')}</div></section></div>`;
+  return `${!board.session?`<section class="no-session"><div><h2>Het bord is klaar voor een nieuwe dienst.</h2><p>Start een sessie om ploegen toe te voegen en meldingen te registreren. Afgesloten diensten blijven terug te vinden in het archief.</p></div>${state.env.permissions.canOperate?button('Dienst starten','start',{primary:true,write:true}):''}</section>`:''}<div class="board-layout"><section aria-labelledby="teams-title"><div class="panel-heading"><div><h2 id="teams-title">Ploegen op dienstbord</h2><p>${teams.length} ${teams.length===1?'ploeg':'ploegen'} · ${teams.filter(team=>team.koppel).length} koppelploeg(en)</p></div>${state.env.permissions.canEdit?button('＋ Ploeg toevoegen','add-team',{write:true}):''}</div>${teamMarkup||empty(state.query||state.category!=='all'?'Geen ploegen gevonden':'Nog geen ploegen op het dienstbord',state.query||state.category!=='all'?'Probeer een andere zoekterm of categorie.':'Voeg een ploeg met één of twee agenten toe zodra de dienst is gestart.')}</section><section aria-labelledby="incidents-title"><div class="panel-heading"><div><h2 id="incidents-title">Meldingen</h2><p>Van oproep tot afronding, met een gedeeld logboek</p></div>${state.env.permissions.canEdit?button('＋ Nieuwe melding','create-incident',{primary:true,write:true}):''}</div><div class="incident-filters" role="group" aria-label="Meldingenfilter">${filter('actief','Actief',activeCount)}${filter('niet-actief','Afgerond',allIncidents.length-activeCount)}${filter('alle','Alle',allIncidents.length)}</div><div class="incident-list">${filtered.map(incidentCard).join('')||empty('Geen meldingen in dit overzicht',state.query?'Probeer een andere zoekterm.':'Nieuwe oproepen verschijnen hier. Afgeronde meldingen blijven binnen de dienst bewaard.')}</div></section></div>`;
 }
 function teamCard(team,busy,editable){
   const status=busy.length?pill('Op '+incidentNumber(busy[0].nr)+(busy.length>1?' +'+(busy.length-1):''),'amber'):team.available===false?pill('Niet beschikbaar','red'):pill('Beschikbaar','green');
@@ -356,7 +361,7 @@ el('category-filter').addEventListener('change',event=>{state.category=event.tar
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh({quiet:true});void refreshRadio();}});
 setInterval(()=>{if(!document.hidden&&auth?.currentUser)refresh({quiet:true});},12000);
 setInterval(()=>{if(!document.hidden&&auth?.currentUser&&state.view==='board')void refreshRadio();},15000);
-setInterval(()=>{if(state.env){renderSummary();updateButtons();}},30000);
+setInterval(()=>{if(state.env){renderRadio();renderSummary();updateButtons();}},15000);
 
 async function init(){
   try{

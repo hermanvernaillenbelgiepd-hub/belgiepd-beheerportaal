@@ -6,7 +6,7 @@ De portaalmodule op `/to-dienstbord.html` vervangt de losse TO-prototypeopslag. 
 
 1. Open **TO-dienstbord** vanuit het beheerportaal en meld aan met je bestaande account.
 2. Start een dienst met je herkenbare TO-naam. Het account bepaalt wie de dienst bedient; de naam is een weergavelabel.
-3. Voeg ploegen toe met een operationele categorie en één of twee bemanningsleden. Bij koppelrijden bepaalt het hoogste numerieke roepnummer de ploegnaam.
+3. Herkende live Sonoran-ploegen tellen automatisch mee bij ploegen in dienst en beschikbaarheid. Voeg een ploeg toe met een operationele categorie en één of twee bemanningsleden om haar status en meldingen te beheren. Bij koppelrijden bepaalt het hoogste numerieke roepnummer de ploegnaam; de radio's van beide leden tellen samen één ploeg.
 4. Maak meldingen aan, koppel ploegen en werk de status bij. Een ploeg op een actieve melding telt als bezet, ook wanneer haar handmatige beschikbaarheid aanstaat.
 5. Een volgende bevoegde TO kan de dienst met het eigen account overnemen. De vorige TO verliest de bediening en de overname wordt vastgelegd.
 6. Rond actieve meldingen af voordat je de dienst afsluit. De server bewaart het archief en beëindigt de lopende dienst in één transactie. Vertrokken ploegen blijven in de diensthistoriek behouden.
@@ -62,7 +62,7 @@ De bestaande applicatie hoort met deze wijziging te worden gedeployed om de rout
 
 ## Base44, radio en personeelsgegevens
 
-Het eenhedenoverzicht gebruikt dezelfde categorie/roepnummer/beschikbaarheidsfunctie als de eerder onderzochte Base44-frontend. Deze eigen module is niet afhankelijk van Base44. Het Sonoran Radio-paneel leest verbonden radio-eenheden via de eigen backend. De huidige TO kan een herkende eenheid na controle als ploeg toevoegen. De koppeling verwijdert geen eenheden op basis van een lege radiosnapshot. Zie [Sonoran Radio instellen en testen](sonoran-radio-koppeling.md).
+Het eenhedenoverzicht gebruikt dezelfde categorie/roepnummer/beschikbaarheidsfunctie als de eerder onderzochte Base44-frontend. Deze eigen module is niet afhankelijk van Base44. Het Sonoran Radio-paneel leest verbonden radio-eenheden via de eigen backend. Herkende ploegen tellen automatisch mee, zonder dubbele telling van een bestaande ploeg of koppelploeg. Extra radioploegen gelden standaard als beschikbaar totdat de TO ze toevoegt en een andere status vastlegt. Een opgeslagen pauze of actieve melding heeft voorrang. De huidige TO kan een herkende eenheid na controle als ploeg toevoegen. De koppeling verwijdert geen opgeslagen eenheden op basis van een lege radiosnapshot. Zie [Sonoran Radio instellen en testen](sonoran-radio-koppeling.md).
 
 De aangeleverde bestanden bevatten geen echte Base44-records, radiogegevens of TO-diensten. Base44-import en koppeling van bemanningsnamen aan geverifieerde personeelsdossiers zijn niet aangesloten. Voor Sonoran zijn de Community ID en geheime Community API Key als Render-serverinstellingen nodig. Bestaande Sheets, personeelsdossiers en Discord-rollen worden door het TO-bord niet gewijzigd.
 
@@ -71,7 +71,7 @@ Er zijn afzonderlijke tests voor het dienstverloop, politierechten, eigendom, ve
 ## Uitgevoerde controles
 
 - `npm run check`: geslaagd, inclusief de nieuwe server- en browsermodules.
-- `npm test`: 101 tests geslaagd, geen overgeslagen tests; hiervan zijn 18 nieuwe TO-controles.
+- `npm test`: 163 tests geslaagd, geen overgeslagen tests; inclusief negen afzonderlijke controles van de gecombineerde TO- en radiotelling.
 - Werkelijke Express-app: pagina en assets bereikbaar; alle vier TO-API-routes weigeren anonieme verzoeken met HTTP 401.
 - Chromium op desktop en mobiel: starten, koppelploeg toevoegen, melding toewijzen/afronden, versieconflict, accountovername, ploeg uit dienst, archivering, JSON-download en basiskader-leesrechten gecontroleerd.
 - De browsercontrole gebruikt de echte TO-routes en beleidsfuncties met tijdelijke opslag en gesimuleerde Firebase-aanmelding. Op de app zonder Firebase-configuratie is de duidelijke aanmeldmelding gecontroleerd. Er is geen productie-uitrol of live Firebase-schrijfactie uitgevoerd.

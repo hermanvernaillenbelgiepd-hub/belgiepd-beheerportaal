@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/server.js && node --check src/normalize.js && node --check src/to-board-policy.js && node --check src/to-board-routes.js && node --check src/to-radio.js && node --check src/to-radio-routes.js && node --check public/to-dienstbord.js"
+    "check": "node --check src/server.js && node --check src/normalize.js && node --check src/to-board-policy.js && node --check src/to-board-routes.js && node --check src/to-radio.js && node --check src/to-radio-routes.js && node --check public/to-crew-counts.js && node --check public/to-dienstbord.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
