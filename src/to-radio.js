@@ -15,7 +15,7 @@ const orderedCategories=[...TO_CATEGORIES].sort((left,right)=>right.length-left.
 // hyphen, a space or no separator (BWV123, DEPK-45, AMB 620).
 // Named specialist LSRA and ZONE categories take precedence when they match.
 const compactNumberedLabels=new Set([
-  'STAGE','DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','CANINE',
+  'ZW','STAGE','DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','CANINE',
   'BWM','BWV','BAMBU','BWAMBU','BW-AMBU','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE','STAG',
   'LSRA','DEPK'
 ]);
