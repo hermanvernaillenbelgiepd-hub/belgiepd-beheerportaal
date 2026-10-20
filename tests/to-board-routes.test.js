@@ -6,8 +6,8 @@ import {emptyBoard} from '../src/to-board-policy.js';
 import {createFirestoreTOStore,installTOBoardRoutes,TO_BOARD_COLLECTION,TO_ARCHIVE_COLLECTION} from '../src/to-board-routes.js';
 
 const actors={
-  owner:{uid:'discord:111111111111111111',role:'middenkader',departments:['politie'],departmentRoles:{politie:'middenkader'}},
-  colleague:{uid:'discord:222222222222222222',role:'officierenkader',departments:['politie'],departmentRoles:{politie:'officierenkader'}},
+  owner:{uid:'discord:111111111111111111',discordId:'111111111111111111',role:'middenkader',departments:['politie'],departmentRoles:{politie:'middenkader'}},
+  colleague:{uid:'discord:222222222222222222',discordId:'222222222222222222',role:'officierenkader',departments:['politie'],departmentRoles:{politie:'officierenkader'}},
   reader:{uid:'discord:333333333333333333',role:'basiskader',departments:['politie'],departmentRoles:{politie:'basiskader'}},
   foreign:{uid:'discord:444444444444444444',role:'beheerder',departments:['ambulance'],departmentRoles:{ambulance:'beheerder'}},
   mixed:{uid:'discord:555555555555555555',role:'beheerder',departments:['politie','ambulance'],departmentRoles:{politie:'basiskader',ambulance:'beheerder'}}
@@ -59,11 +59,11 @@ function databaseFixture(){
     keys:()=>[...documents.keys()]};
 }
 
-async function appFixture(run){
+async function appFixture(run,{getSnapshot=null,getTemporaryRequest=null}={}){
   const db=databaseFixture(),store=createFirestoreTOStore({getDatabase:()=>db.database});
   const app=express();
   app.use('/api/to',express.json({limit:'24kb',strict:true}));
-  installTOBoardRoutes(app,{store,requireUser:(req,res,next)=>{
+  installTOBoardRoutes(app,{store,getSnapshot,getTemporaryRequest,requireUser:(req,res,next)=>{
     const actor=actors[req.get('X-Test-Actor')];
     if(!actor)return res.status(401).json({error:'Aanmelding vereist'});
     req.bpd=actor;next();
@@ -78,6 +78,33 @@ async function appFixture(run){
   const command=(body,actor='owner')=>request('/api/to/commands',{method:'POST',body,actor});
   try{await run({request,command,db,store});}finally{await new Promise(resolve=>server.close(resolve));}
 }
+
+test('TO board GET and commands bind a verified staff callsign to the actor UID',async()=>{
+  const personnel=[{dept:'politie',personId:actors.owner.discordId,name:'TO A',call:'930'}];
+  await appFixture(async({request,command,db})=>{
+    const profile=await request('/api/to/board');
+    assert.equal(profile.status,200);
+    assert.equal(profile.body.viewer.callsign,'930');
+    assert.equal(profile.body.viewer.callsignSource,'personeelslijst');
+    const result=await command({type:'start',expectedRevision:0,displayName:'Wrong user-supplied name'});
+    assert.equal(result.status,200);
+    assert.equal(result.body.board.session.to,'930');
+    assert.equal(result.body.board.session.ownerUid,actors.owner.uid);
+    assert.equal(db.data(currentPath).session.to,'930');
+  },{getSnapshot:async()=>({data:personnel})});
+});
+
+test('TO temporary callsign comes from a verified request only, not a username',async()=>{
+  await appFixture(async({request,command})=>{
+    const profile=await request('/api/to/board',{actor:'colleague'});
+    assert.equal(profile.body.viewer.callsign,'130');
+    assert.equal(profile.body.viewer.callsignSource,'geverifieerd_tijdelijk');
+    const began=await command({type:'start',expectedRevision:0,displayName:'Impersonator'},'colleague');
+    assert.equal(began.status,200);
+    assert.equal(began.body.board.session.to,'130');
+  },{getSnapshot:async()=>({data:[]}),getTemporaryRequest:async discordId=>
+    discordId===actors.colleague.discordId?{discordId,temporaryCall:'130',status:'verified'}:null});
+});
 
 test('TO HTTP routes require authentication and police scope before touching storage',async()=>{
   await appFixture(async({request,db})=>{
