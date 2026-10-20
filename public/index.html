@@ -279,7 +279,7 @@ function personnelActivityRows(){
 }
 function historicalCallRegistration(){
   if(!liveMode||!personnelActivity.canLogHistoricalCall)return '';
-  const people=employees.filter(x=>x.dept==='politie'&&/^\\d{15,22}$/.test(x.personId||'')&&x.call&&x.call!=='—')
+  const people=employees.filter(x=>x.dept==='politie'&&/^\d{15,22}$/.test(x.personId||'')&&x.call&&x.call!=='—')
     .sort((a,b)=>a.name.localeCompare(b.name,'nl-BE'));
   if(!people.length)return '';
   return '<details class="historical-call-entry"><summary>Reeds gewijzigde roepnummers achteraf registreren</summary>'+
