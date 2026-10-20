@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {TO_CATEGORIES} from './to-board-policy.js';
+import {radioMarkedUnavailable,stripRadioNBMarkers} from '../public/to-radio-availability.js';
 
 const ORIGIN='https://api.sonoranradio.com';
 const REFRESH_SECONDS=15;
@@ -20,7 +21,7 @@ export function parseSonoranName(value){
   if(typeof value!=='string')return none;
   const name=clean(value);
   const [label,...nameParts]=name.split('|');
-  const head=label.trim(),upper=head.toUpperCase();
+  const head=stripRadioNBMarkers(label.trim()),upper=head.toUpperCase();
   const displayName=nameParts.join('|').trim().slice(0,160)||null;
   // Embedded digits belong to the label (e.g. LSRA-DEPA100), not an officer.
   if(TO_CATEGORIES.includes(upper))return {category:upper,number:null,displayName,importable:false};
@@ -65,7 +66,8 @@ function normalizedUsers(payload,key){
     identities.add(stableIdentity);
     const name=protect(rawName,key),parsed=parseSonoranName(name);
     users.push({id:'radio_'+hash('sonoran-user\0'+stableIdentity).slice(0,32),name:name.slice(0,160)||'Onbekende gebruiker',
-      channel:channel===null?null:protect(channel,key).slice(0,80),...parsed});
+      channel:channel===null?null:protect(channel,key).slice(0,80),
+      notAvailable:radioMarkedUnavailable(name),...parsed});
   }
   const labels=new Map();
   for(const user of users){
