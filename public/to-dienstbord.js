@@ -284,7 +284,7 @@ async function command(type,data={},revision=state.env?.board.revision){
     }
     if(error.status>=500||!error.status){state.stale=true;render();}
     throw error;
-  }finally{state.pending=false;renderSummary();updateButtons();}
+  }finally{state.pending=false;render();updateButtons();}
 }
 function updateButtons(){
   for(const control of document.querySelectorAll('[data-write]')){
