@@ -112,6 +112,20 @@ test('User-provided Signalisatie sign is embedded locally and used across both r
   assert.ok(manager.includes('.specialty-custom-image'));
   assert.ok(dashboard.includes('.specialty-custom-image'));
 });
+test('All specialization pictograms use centered uniform icon tiles in both roster themes',()=>{
+  const light=source('public/index.html'),dark=source('public/personeelsbeheer.html');
+  for(const html of [light,dark]){
+    assert.ok(html.includes('class="specialty-emoji"')||
+      html.includes("mark.className='specialty-emoji'"));
+    assert.ok(html.includes('width:40px;height:42px;min-height:42px'));
+    assert.ok(html.includes('margin:0 auto 5px'));
+    assert.ok(html.includes('width:34px;height:36px'));
+    assert.ok(html.includes('specialty-custom-image'));
+  }
+  assert.ok(dark.includes('.specialty-ledger .specialty-tile>:first-child'));
+  assert.ok(light.includes('.specialty-overview-summary .specialty-emoji'));
+});
+
 test('Visual roster credits live on a separate sources page',()=>{
   const page=source('public/bronnen.html');
   assert.ok(page.includes('Politie123'));
