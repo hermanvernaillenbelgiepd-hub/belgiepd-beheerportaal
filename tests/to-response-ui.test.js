@@ -7,11 +7,11 @@ const css=readFileSync(new URL('../public/to-dienstbord.css',import.meta.url),'u
 
 test('TO card uses distinct buttons rather than a full-card click surface',()=>{
   for(const marker of [
-    'statusButton('↗ Onderweg','team-response-underway'',
-    'statusButton('● Ter plaatse','team-response-on-scene'',
-    'statusButton('Ⅱ Pauze / NB','team-pause'',
-    'statusButton('✓ Beschikbaar','team-available'',
-    'statusButton('↺ Status wissen','team-response-clear'',
+    "statusButton('↗ Onderweg','team-response-underway'",
+    "statusButton('● Ter plaatse','team-response-on-scene'",
+    "statusButton('Ⅱ Pauze / NB','team-pause'",
+    "statusButton('✓ Beschikbaar','team-available'",
+    "statusButton('↺ Status wissen','team-response-clear'",
     "case 'team-response-underway':case 'team-response-on-scene':",
     "case 'team-pause':case 'team-available':",
     "case 'team-response-clear':",
