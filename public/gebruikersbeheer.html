@@ -30,11 +30,34 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <div class="controls"><label for="filter">Filter</label><select id="filter" style="width:auto"><option value="all">Alle statussen</option><option value="pending">Nieuwe aanvragen</option><option value="approved">Goedgekeurd</option><option value="blocked">Geblokkeerd</option></select><span id="count" class="muted"></span></div>
 <div class="scroller"><table><thead><tr><th>Discord-lid</th><th>Status</th><th>Hulpdienst</th><th>Functie</th><th>Beslissing</th></tr></thead><tbody id="list"></tbody></table></div>
 <p id="more" class="muted" hidden>Het overzicht is begrensd tot 250 accounts. Een paginering volgt bij verdere groei.</p></section>
+<section id="boardSection" class="card" hidden>
+<h2>Bestuur · afzonderlijke bestuursfunctie</h2>
+<p>Een bestuursaanstelling staat los van de politierang en hulpdienst. Een voordracht wordt pas actief na afzonderlijke goedkeuring door technisch beheer. Er worden geen personeels-, Discord- of portaalrollen toegekend.</p>
+<div id="boardOwn" class="muted">Bestuursstatus controleren…</div>
+<section id="boardNominationSection" hidden>
+<h3>Bestuurslid voordragen</h3>
+<form id="boardNominationForm">
+<div class="grid">
+<div><label for="boardTarget">Discord-ID van kandidaat</label><input id="boardTarget" pattern="[0-9]{15,22}" maxlength="22" required placeholder="Discord-ID van goedgekeurd personeelsaccount"></div>
+<div><label for="boardReason">Motivering (minimaal 15 tekens)</label><input id="boardReason" minlength="15" maxlength="500" required placeholder="Reden voor de voorgestelde bestuursaanstelling"></div>
+</div>
+<fieldset><legend>Specifieke bestuursmachtigingen, standaard geen</legend>
+<label><input type="checkbox" id="boardRead"> Bestuursregister inzien (uitsluitend goedgekeurde aanstellingen)</label>
+<label><input type="checkbox" id="boardPropose"> Nieuwe bestuursleden voordragen (geen goedkeuring)</label>
+</fieldset>
+<button id="boardNominate" type="submit">Voordracht indienen</button>
+</form></section>
+<div id="boardTableWrap" hidden>
+<h3>Bestuursvoordrachten en aanstellingen</h3>
+<div class="scroller"><table><thead><tr><th>Kandidaat</th><th>Bestuursstatus</th><th>Afzonderlijke bevoegdheden</th><th>Beslissing</th></tr></thead><tbody id="boardTable"></tbody></table></div>
+</div>
+</section>
 </main>
 <script type="module">
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
+let boardWritesEnabled=false;
 const roles=['basiskader','middenkader','officierenkader','korpsleiding'];
 const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
 const roleNames={basiskader:'Basiskader',middenkader:'Middenkader',officierenkader:'Officierenkader',korpsleiding:'Korpsleiding'};
@@ -116,8 +139,97 @@ async function loadAdmin(){
     notice('Gebruikersbeheer kon niet worden geopend: '+e.message,true);
   }
 }
+const boardLabels={board_registry_read:'Bestuursregister inzien',
+  board_nomination_propose:'Bestuursleden voordragen'};
+function boardCell(root,value){
+  const td=document.createElement('td');td.textContent=String(value||'—');root.append(td);return td;
+}
+async function boardRefresh(){
+  if(!auth?.currentUser){$('boardSection').hidden=true;return}
+  let flag;
+  try{flag=await fetch('/api/board/status',{cache:'no-store'}).then(r=>r.json())}
+  catch{$('boardSection').hidden=true;return}
+  if(flag.enabled!==true){$('boardSection').hidden=true;return}
+  $('boardSection').hidden=false;
+  boardWritesEnabled=flag.writesEnabled===true;
+  $('boardNominationSection').hidden=true;
+  $('boardTableWrap').hidden=true;
+  try{
+    const own=await api('/api/board/me');
+    const entry=own.appointment;
+    $('boardOwn').textContent=entry?
+      'Eigen bestuursstatus: Bestuur ('+entry.status+') · '+
+      (entry.permissions.map(k=>boardLabels[k]||k).join(', ')||'Geen bijkomende bestuursbevoegdheden'):
+      'Geen actieve bestuursaanstelling voor dit account.';
+  }catch(e){$('boardOwn').textContent='Bestuursstatus niet beschikbaar: '+e.message;return}
+  try{
+    const result=await api('/api/board/overview');
+    $('boardNominationSection').hidden=!(result.canNominate&&boardWritesEnabled);
+    $('boardTableWrap').hidden=false;
+    const body=$('boardTable');body.replaceChildren();
+    if(!result.appointments?.length){
+      const tr=document.createElement('tr');
+      const td=boardCell(tr,'Nog geen bestuursvoordrachten of -aanstellingen');td.colSpan=4;
+      body.append(tr);return;
+    }
+    for(const record of result.appointments){
+      const tr=document.createElement('tr');
+      boardCell(tr,(record.name||'Discord-lid')+' ('+record.discordId+')');
+      boardCell(tr,({pending:'Wacht op goedkeuring',approved:'Aangesteld',
+        rejected:'Afgewezen',revoked:'Ingetrokken'})[record.status]||record.status);
+      boardCell(tr,(record.status==='pending'?record.requestedPermissions:record.permissions)
+        .map(k=>boardLabels[k]||k).join(', ')||'Geen');
+      const actions=document.createElement('td');
+      if(result.canDecide&&boardWritesEnabled){
+        const operations=record.status==='pending'?
+          [['approved','Goedkeuren'],['rejected','Afwijzen']]:
+          record.status==='approved'?[['revoke','Intrekken']]:[];
+        for(const [decision,label] of operations){
+          const button=document.createElement('button');button.type='button';
+          button.textContent=label;
+          button.className=(decision==='revoke'?'danger':'alt');
+          button.onclick=async()=>{
+            const reason=prompt('Motivering van minimaal 15 tekens:', '');
+            if(reason===null)return;
+            if(!confirm('Bestuursaanstelling van '+record.discordId+' '+label.toLowerCase()+'?'))return;
+            button.disabled=true;
+            try{
+              await api('/api/board/'+encodeURIComponent(record.discordId)+'/'+
+                (decision==='revoke'?'revoke':'decision'),{method:'POST',
+                body:decision==='revoke'?{reason}:{decision,reason}});
+              notice('Bestuursbeslissing geregistreerd zonder wijziging van de operationele rang.');
+              await boardRefresh();
+            }catch(e){notice(e.message,true);button.disabled=false}
+          };
+          actions.append(button);
+        }
+      }
+      if(!actions.childNodes.length)actions.textContent='Geen beslissing beschikbaar';
+      tr.append(actions);body.append(tr);
+    }
+  }catch(e){
+    // Readonly board members may see their own status without having a
+    // register viewing grant. No permission is inferred from the title.
+    $('boardTableWrap').hidden=true;
+  }
+}
+$('boardNominationForm').onsubmit=async event=>{
+  event.preventDefault();if(!boardWritesEnabled)return;
+  const btn=$('boardNominate');btn.disabled=true;
+  try{
+    const permissions=[];
+    if($('boardRead').checked)permissions.push('board_registry_read');
+    if($('boardPropose').checked)permissions.push('board_nomination_propose');
+    await api('/api/board/nominations',{method:'POST',body:{
+      discordId:$('boardTarget').value.trim(),
+      reason:$('boardReason').value.trim(),permissions}});
+    $('boardNominationForm').reset();
+    notice('Bestuursvoordracht ingediend. Alleen technisch beheer kan ze goedkeuren.');
+    await boardRefresh();
+  }catch(e){notice(e.message,true)}finally{btn.disabled=false}
+};
 async function refresh(){
-  if(!auth?.currentUser){$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;return}
+  if(!auth?.currentUser){$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;return}
   const isDiscord=auth.currentUser.uid.startsWith('discord:');
   $('request').hidden=true;
   let accessStatus=null;
@@ -142,9 +254,10 @@ async function refresh(){
     return;
   }
   await loadAdmin();
+  await boardRefresh();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=loadAdmin;$('filter').onchange=render;
+$('refresh').onclick=async()=>{await loadAdmin();await boardRefresh()};$('filter').onchange=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
