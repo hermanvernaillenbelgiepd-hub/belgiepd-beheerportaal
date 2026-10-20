@@ -1,37 +1,22 @@
-// Browser and Node share these read-only filters. Access is always checked
-// server-side; changing these filters never expands the authorised dataset.
-export const DOSSIER_TYPES=Object.freeze(['all','personnel','application','both']);
-export const APPLICATION_STATES=Object.freeze(['all','submitted','reviewing','accepted','rejected']);
-export const TIMELINE_TYPES=Object.freeze(['all','personeel','loopbaan','sollicitatie','burger']);
+// Pure browser filters over already-authorized staff rows, no client-side grant logic.
+export const DOSSIER_TYPES=Object.freeze(['all','personnel']);
+export const APPLICATION_STATES=Object.freeze(['all']);
+export const TIMELINE_TYPES=Object.freeze(['all','personeel','loopbaan']);
 export const PAGE_SIZE=25;
-function normalized(value){
-  return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .toLocaleLowerCase('nl-BE').trim().replace(/\s+/g,' ');
-}
+const normalized=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLocaleLowerCase('nl-BE').trim().replace(/\s+/g,' ');
 export function filterDossiers(rows,filters={}){
-  const input=Array.isArray(rows)?rows:[];
-  const dept=String(filters.department||'all');
-  const kind=DOSSIER_TYPES.includes(filters.kind)?filters.kind:'all';
-  const applicationStatus=APPLICATION_STATES.includes(filters.applicationStatus)
-    ?filters.applicationStatus:'all';
+  const data=Array.isArray(rows)?rows:[];
   const query=normalized(filters.query);
-  return input.filter(row=>{
-    if(!row||typeof row!=='object')return false;
-    if(dept!=='all'&&row.dept!==dept)return false;
-    if(kind==='personnel'&&!row.personnel)return false;
-    if(kind==='application'&&!row.application)return false;
-    if(kind==='both'&&!(row.personnel&&row.application))return false;
-    if(applicationStatus!=='all'&&
-       (!row.application||row.applicationStatus!==applicationStatus))return false;
-    return !query||[row.name,row.call,row.rank,row.status,row.discordId,row.applicationStatus]
-      .some(value=>normalized(value).includes(query));
-  });
+  return data.filter(r=>r&&r.personnel===true&&
+    (filters.department==='all'||!filters.department||r.dept===filters.department)&&
+    (!query||[r.name,r.call,r.rank,r.status,r.discordId]
+      .some(v=>normalized(v).includes(query))));
 }
 export function dossierStats(rows){
-  const input=Array.isArray(rows)?rows:[];
-  return {total:input.length,personnel:input.filter(r=>r?.personnel).length,
-    applications:input.filter(r=>r?.application).length,
-    both:input.filter(r=>r?.personnel&&r?.application).length};
+  const data=Array.isArray(rows)?rows:[];
+  const count=data.filter(row=>row?.personnel===true).length;
+  return {total:count,personnel:count,applications:0,both:0};
 }
 export function paginateDossiers(rows,page=1,pageSize=PAGE_SIZE){
   const input=Array.isArray(rows)?rows:[];
