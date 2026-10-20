@@ -71,5 +71,29 @@
       seen.add(key);return true;
     }).slice(0,16).map(x=>({label:x.label,value:x.value,icon:specialtyIcon(x.label)}));
   }
-  root.BPDPersonnelVisuals=Object.freeze({rankInfo,specialtyBadges,specialtyIcon,qualification});
+  // Full administrative status strip: unlike the compact success-only icons,
+  // this ALWAYS includes Nee, Stage, Ja, Docent and unknown source values.
+  function specialtyStatuses(stored){
+    if(!Array.isArray(stored))return [];
+    const seen=new Set(),out=[];
+    for(const item of stored.slice(0,20)){
+      if(!item||typeof item.label!=='string')continue;
+      const label=item.label.trim().slice(0,64);
+      const key=label.toLocaleLowerCase('nl-BE');
+      if(!key||seen.has(key))continue;
+      seen.add(key);
+      const raw=typeof item.value==='string'?item.value.trim():'';
+      const lower=raw.toLocaleLowerCase('nl-BE');
+      const status=lower==='ja'?'Ja':lower==='nee'||lower==='neen'?'Nee':
+        lower==='stage'?'Stage':lower==='docent'?'Docent':
+        raw||'Niet ingevuld';
+      const style=status==='Ja'?'yes':status==='Nee'?'no':
+        status==='Stage'?'stage':status==='Docent'?'teacher':'unknown';
+      out.push({label,status,style,icon:specialtyIcon(label)});
+    }
+    return out;
+  }
+  root.BPDPersonnelVisuals=Object.freeze({
+    rankInfo,specialtyBadges,specialtyIcon,qualification,specialtyStatuses
+  });
 })(typeof window==='object'?window:globalThis);
