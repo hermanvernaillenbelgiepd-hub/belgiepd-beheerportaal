@@ -18,7 +18,7 @@ const body={label:'K9',value:'Ja',expectedRevision:0,reason};
 
 test('Catalog exposes all per-service disciplines including SRT and DSU without false source values',()=>{
   const expected=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9',
-    'RAGO','Dispatch','TO','AE','SRT','DSU'];
+    'RAGO','Dispatch','TO','AE'];
   assert.deepEqual(SPECIALTY_LABELS.politie,expected);
   assert.equal(allowedSpecialty('politie','K9'),true);
   assert.equal(allowedSpecialty('ambulance','K9'),false);
@@ -28,11 +28,20 @@ test('Catalog exposes all per-service disciplines including SRT and DSU without 
   sheet[4]='2';sheet[5]='Actief';sheet[11]='Nee';sheet[17]=b;
   const staff=normalizePersonnel('politie',[header,sheet]);
   assert.equal(staff.length,1);
-  assert.equal(staff[0].specialties.find(x=>x.label==='SRT').value,'Niet ingevuld');
-  assert.equal(staff[0].specialties.find(x=>x.label==='DSU').value,'Niet ingevuld');
+  assert.equal(staff[0].specialties.some(x=>['SRT','DSU'].includes(x.label)),false);
 });
 test('Only officers/leadership with service scope and subordinate may change status',()=>{
   assert.equal(canChangeSpecialty(actor,subject),true);
+  assert.equal(canChangeSpecialty({...actor,role:'beheerder',
+    departmentRoles:{politie:'beheerder'}},subject),false);
+  assert.equal(canChangeSpecialty({...actor,role:'beheerder',
+    departmentRoles:{politie:'korpsleiding'}},subject),false);
+  assert.equal(canChangeSpecialty({...actor,
+    departmentRoles:{politie:'middenkader'}},subject),false);
+  assert.equal(canChangeSpecialty({...actor,
+    departmentRoles:{politie:'officierenkader',ambulance:'officierenkader'},
+    departments:['politie','ambulance']},
+    {...subject,dept:'ambulance'}),false);
   assert.equal(canChangeSpecialty({...actor,role:'middenkader',departmentRoles:{politie:'middenkader'}},subject),false);
   assert.equal(canChangeSpecialty({...actor,discordId:b},subject),false);
   assert.equal(canChangeSpecialty({...actor,departments:['ambulance']},subject),false);
@@ -65,7 +74,7 @@ test('Overlay leaves Sheets intact and makes manual changes visible in main rost
   assert.equal(subject.specialties.find(x=>x.label==='K9').value,'Stage');
   assert.equal(merged[0].specialties.find(x=>x.label==='K9').value,'Ja');
   assert.equal(merged[0].specialties.find(x=>x.label==='RAGO').value,'Docent');
-  assert.equal(merged[0].specialties.find(x=>x.label==='SRT').value,'Niet ingevuld');
+  assert.equal(merged[0].specialties.some(x=>['SRT','DSU'].includes(x.label)),false);
   const publicState=publicSpecializations(subject,doc);
   assert.equal(publicState.revision,1);
   assert.equal(publicState.items.find(x=>x.label==='K9').source,'manual');
@@ -75,7 +84,7 @@ test('Browser headings show pictograms and aligned statuses, including negative 
   const path=new URL('../public/personnel-list-visuals.js',import.meta.url);
   const context={window:{}};runInNewContext(readFileSync(path,'utf8'),context);
   const ui=context.window.BPDPersonnelVisuals;
-  assert.equal(ui.specialtyColumns('politie').length,12);
+  assert.equal(ui.specialtyColumns('politie').length,10);
   assert.equal(ui.specialtyColumns('ambulance').length,5);
   assert.equal(ui.specialtyColumns('all').length,0);
   assert.deepEqual([...ui.specialtyColumns('politie')],SPECIALTY_LABELS.politie);
@@ -83,7 +92,10 @@ test('Browser headings show pictograms and aligned statuses, including negative 
   assert.equal(states.find(x=>x.label==='K9').style,'stage');
   assert.equal(states.find(x=>x.label==='Radio BM').style,'no');
   assert.equal(states.find(x=>x.label==='RAGO').style,'teacher');
-  assert.equal(ui.specialtyStateFor(subject,'SRT').status,'Niet ingevuld');
+  assert.equal(ui.specialtyIcon('RAGO'),'🚁');
+  assert.equal(ui.specialtyIcon('Radio BM'),'📻');
+  assert.equal(ui.specialtyColumns('politie').includes('SRT'),false);
+  assert.equal(ui.specialtyColumns('politie').includes('DSU'),false);
   for(const filename of ['index.html','personeelsbeheer.html']){
     const html=readFileSync(new URL('../public/'+filename,import.meta.url),'utf8');
     assert.ok(html.includes('specialtyStateFor('),filename);
