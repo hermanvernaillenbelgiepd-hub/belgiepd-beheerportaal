@@ -53,7 +53,7 @@ test('TO roster, live radio and assigned incidents share readable unit markers',
   assert.ok(js.includes('const unitBadge=(category,variant='));
   assert.ok(js.includes('unitBadge(team.dienst,\'unit-token-hero\')'));
   assert.ok(js.includes('unitBadge(category,\'unit-token-small\')'));
-  assert.ok(js.includes('unitBadge(user.category,\'unit-token-small\')'));
+  assert.ok(js.includes('unitBadge(crew.category,\'unit-token-small\')'));
   assert.ok(js.includes('unitBadge(team.dienst,\'unit-token-micro\')'));
   assert.ok(js.includes('data-availability='));
   assert.ok(js.includes('team.available===false?'));
