@@ -62,6 +62,20 @@ function configuration(env){
   return {key,communityId,configured,signature:hash(JSON.stringify([rawKey??null,rawCommunity??null]))};
 }
 function protect(value,key){return key?value.split(key).join('[afgeschermd]'):value;}
+// roomId identifies a multi-server ROOM, not a radio channel. Only Sonoran
+// metadata.state may confirm which transmit/scan channels are actually active.
+// Fail closed when the API does not provide usable channel metadata.
+export function activeSonoranChannels(metadata){
+  const state=metadata&&typeof metadata==='object'&&!Array.isArray(metadata)?metadata.state:null;
+  if(!state||typeof state!=='object'||Array.isArray(state))return [];
+  const valid=id=>Number.isSafeInteger(id)&&id>0?String(id):null;
+  const channels=[];
+  const append=id=>{const channel=valid(id);if(channel&&!channels.includes(channel))channels.push(channel);};
+  append(state.primaryChId);
+  if(Array.isArray(state.primaryChIds))for(const id of state.primaryChIds.slice(0,128))append(id);
+  if(Array.isArray(state.scannedChIds))for(const id of state.scannedChIds.slice(0,128))append(id);
+  return channels;
+}
 function normalizedUsers(payload,key){
   if(!payload||typeof payload!=='object'||Array.isArray(payload)||!Array.isArray(payload.connectedUsers)||payload.connectedUsers.length>MAX_USERS)
     throw new Error('Invalid radio payload');
@@ -75,7 +89,9 @@ function normalizedUsers(payload,key){
     const identity=typeof row.identity==='string'?clean(row.identity):'';
     const rawName=typeof row.name==='string'?clean(row.name):'';
     if(!identity&&!rawName)throw new Error('Missing radio identity');
-    const channel=row.roomId==null?null:clean(String(row.roomId))||null;
+    const channels=activeSonoranChannels(row.metadata);
+    if(!channels.length)continue;
+    const channel=channels[0];
     const stableIdentity=identity?'identity:'+identity:JSON.stringify(['name',rawName,channel]);
     if(identities.has(stableIdentity))continue;
     identities.add(stableIdentity);
@@ -100,7 +116,7 @@ function normalizedUsers(payload,key){
       if(!mates.some(item=>item.paired===true))user.importable=false;
     }
   }
-  return users;
+  return {users,connectedCount:identities.size};
 }
 async function boundedJSON(response){
   const declared=response.headers?.get?.('content-length');
@@ -131,8 +147,8 @@ async function boundedJSON(response){
   }
   return JSON.parse(source);
 }
-function payload({configured,connected=false,stale=false,fetchedAt=null,message=null,users=[]}){
-  return {configured,connected,stale,fetchedAt,message,users,
+function payload({configured,connected=false,stale=false,fetchedAt=null,message=null,users=[],connectedCount=0}){
+  return {configured,connected,stale,fetchedAt,message,users,connectedCount,
     counts:{online:users.length,recognized:users.filter(user=>user.importable).length},refreshSeconds:REFRESH_SECONDS};
 }
 
@@ -160,11 +176,11 @@ export function createSonoranRadioService({env=process.env,fetchImpl=fetch,now=D
           else if(response.status===429)failureMessage='Sonoran ontvangt momenteel te veel aanvragen. Wacht even voordat je opnieuw ververst.';
           await response.body?.cancel?.().catch(()=>{});throw new Error('Radio request failed');
         }
-        const users=normalizedUsers(await boundedJSON(response),config.key);
-        result=payload({configured:true,connected:true,fetchedAt:new Date(now()).toISOString(),users});
+        const {users,connectedCount}=normalizedUsers(await boundedJSON(response),config.key);
+        result=payload({configured:true,connected:true,fetchedAt:new Date(now()).toISOString(),users,connectedCount});
       }catch{
         result=payload({configured:true,stale:Boolean(lastGood),fetchedAt:lastGood?.fetchedAt??null,
-          users:lastGood?.users??[],message:failureMessage});
+          users:lastGood?.users??[],connectedCount:lastGood?.connectedCount??0,message:failureMessage});
       }
       // An old request must not restore cached data after server bindings change.
       if(activeSignature!==config.signature)return read();
