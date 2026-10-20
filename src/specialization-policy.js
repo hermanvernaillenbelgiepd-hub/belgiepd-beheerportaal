@@ -1,4 +1,5 @@
-import {canEditPersonnel,canViewPersonnel,validPersonnelKey} from './personnel-editor-policy.js';
+import {canEditPersonnel,validPersonnelKey} from './personnel-editor-policy.js';
+import {roleForDepartment} from './leave-policy.js';
 import {SPECIALTY_LABELS} from './normalize.js';
 
 export const PERSONNEL_SPECIALIZATIONS_COLLECTION='bpd_personnel_specializations';
@@ -12,6 +13,12 @@ export function allowedSpecialty(dept,label){
   return typeof label==='string'&&SPECIALTY_LABELS[dept]?.includes(label)===true;
 }
 export function canChangeSpecialty(actor,subject){
+  // More restrictive than general personnel editing:
+  // exactly officers and corps leadership in POLICE, never technical beheerder,
+  // middle cadre, other services or the staff member themself.
+  if(subject?.dept!=='politie')return false;
+  if(!['officierenkader','korpsleiding'].includes(actor?.role))return false;
+  if(!['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie')))return false;
   return canEditPersonnel(actor,subject);
 }
 export function validateSpecialtyChange(body,dept){
