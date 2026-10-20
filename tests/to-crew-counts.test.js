@@ -106,6 +106,16 @@ test('NB on any live radio member blocks a matched saved crew while keeping it i
     'A stale radio snapshot must not override saved TO status');
 });
 
+test('One saved unit imported from a starred radio koppel still counts as a koppel',()=>{
+  const board={ploegen:[crew('radio-one','600',{koppel:false,leden:[{naam:'Hubert & Collega',roep:'600'}]})]};
+  const users=[radio('SANTO','600',{paired:true}),radio('SANTO','00600',{paired:true})];
+  const result=count(board,users);
+  assert.equal(result.inService,1);
+  assert.equal(result.radioOnly,0);
+  assert.equal(result.paired,1);
+  assert.equal(count(board,users,false).paired,0);
+});
+
 test('Starred members with one numeric unit count as one radio-only koppel',()=>{
   const users=[radio('SANTO','600',{paired:true,notAvailable:false}),
     radio('SANTO','00600',{paired:true,notAvailable:true}),
