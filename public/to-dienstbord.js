@@ -156,11 +156,10 @@ async function changeShortcut(action,data={}){
     });
     if(!Number.isSafeInteger(response.revision)||!response.items)throw new Error('Ongeldige sneltoetsrespons');
     state.shortcuts=response;state.shortcutsError=null;
-    render();
   }catch(error){
-    if(error.status===409){await refreshShortcuts();render();throw new Error(error.message+' De actuele sneltoetsen zijn opnieuw opgehaald.');}
+    if(error.status===409){await refreshShortcuts();throw new Error(error.message+' De actuele sneltoetsen zijn opnieuw opgehaald.');}
     throw error;
-  }finally{state.pending=false;updateButtons();}
+  }finally{state.pending=false;render();}
 }
 function acceptEnvelope(payload){
   if(!payload?.board||!Number.isSafeInteger(payload.board.revision)||payload.board.revision<0||!payload.permissions||!payload.viewer||!Array.isArray(payload.categories))throw new Error('Het dienstbord gaf een onvolledige respons.');
