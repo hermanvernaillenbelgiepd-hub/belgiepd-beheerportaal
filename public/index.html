@@ -113,6 +113,11 @@
   .personnel-drawer .profile-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
   .personnel-drawer .profile-tab{padding:9px 4px;white-space:normal;overflow-wrap:anywhere;font-size:10px}
 }
+
+/* User-supplied Signalisatie pictogram: scale the original sign without distortion. */
+.staff-roster .specialty-col-icon{display:flex;align-items:center;justify-content:center;min-height:36px}
+.staff-roster .specialty-col-icon .specialty-custom-image{display:block;width:34px;height:36px;max-width:100%;object-fit:contain}
+.specialty-overview-summary .specialty-custom-image{display:inline-block;width:19px;height:20px;object-fit:contain;vertical-align:middle;margin-right:3px}
 </style>
 </head>
 <body>
@@ -215,12 +220,18 @@ function personnelGradeHtml(x){
   return '<img class="rank-insignia" src="'+esc(grade.image)+'" alt="'+
     esc('Graadkenteken '+grade.label)+'" title="'+esc(grade.label)+'" loading="lazy" referrerpolicy="no-referrer">';
 }
+function specialtyMarkHtml(label){
+  const image=BPDPersonnelVisuals.specialtyIconImage(label);
+  return image
+    ?'<img class="specialty-custom-image" src="'+esc(image)+'" alt="" aria-hidden="true" loading="lazy">'
+    :esc(BPDPersonnelVisuals.specialtyIcon(label));
+}
 function personnelSpecialtiesHtml(x){
   const badges=BPDPersonnelVisuals.specialtyStatuses(x.specialties);
   if(!badges.length)return '<span class="no-specialty">—</span>';
   return '<div class="specialty-overview-summary">'+badges.map(k=>
     '<span class="specialty-value specialty-'+esc(k.style)+'" title="'+esc(k.label+' · '+k.status)+'">'+
-    esc(k.icon)+' '+esc(k.label)+': '+esc(k.status)+'</span>').join('')+'</div>';
+    specialtyMarkHtml(k.label)+' '+esc(k.label)+': '+esc(k.status)+'</span>').join('')+'</div>';
 }
 function employeeTable(data,limit){
   const selected=limit?data.slice(0,limit):data;
@@ -232,7 +243,7 @@ function employeeTable(data,limit){
   const labels=header.map(t=>'<th>'+t+'</th>').join('')+
     (!cols.length?'<th>Specialisaties</th>':cols.map(label=>
       '<th class="specialty-column" title="'+esc(label)+'">'+
-      '<span class="specialty-col-icon">'+esc(BPDPersonnelVisuals.specialtyIcon(label))+'</span>'+
+      '<span class="specialty-col-icon">'+specialtyMarkHtml(label)+'</span>'+
       '<span class="specialty-col-label">'+esc(label)+'</span></th>').join(''))+'<th>Fiche</th>';
   const rows=selected.map(x=>{
     const grade=BPDPersonnelVisuals.rankInfo(x.rank,x.dept);
