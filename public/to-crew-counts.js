@@ -51,8 +51,10 @@ export function summarizeTOCrews(board,{users=[],fresh=false,categories=[]}={}){
   const available=teams.filter(team=>team.available!==false&&!busy.has(team.id)&&
     !blockedTeams.has(team)).length+
     [...radioOnly].filter(key=>!blockedRadioOnly.has(key)).length;
+  const pairedSaved=teams.filter(team=>team.koppel||(fresh&&records(users).some(user=>
+    user.paired===true&&teamKeys(team).has(callsignKey(user.category,user.number))))).length;
   return {inService,available,unavailable:inService-available,boardTeams:teams.length,
     radioOnly:radioOnly.size,radioLinked:linked.size,
-    paired:teams.filter(team=>team.koppel).length+pairedRadioOnly.size,
+    paired:pairedSaved+pairedRadioOnly.size,
     activeIncidents:activeIncidents.length};
 }
