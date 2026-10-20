@@ -160,7 +160,10 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
 /* Operator callsign identity and temporary-roster status. */
 .to-verified-call{color:#256a56;font-weight:700}
 .to-verified-call::selection{background:#d1efdf}
+.management-call-badge{display:inline-flex;align-items:center;white-space:nowrap;font-size:8px;font-weight:900;letter-spacing:.4px;line-height:1.35;border-radius:5px;padding:3px 6px;border:1px solid #b1a8df;background:#eeeafb;color:#4e3a8c}
+.team-top .management-call-badge{margin-left:auto}
+.radio-user-name .management-call-badge{margin-left:3px}
 .temporary-call-badge{display:inline-flex;align-items:center;white-space:nowrap;font-size:8px;font-weight:850;letter-spacing:.35px;line-height:1.35;border-radius:5px;padding:3px 6px;border:1px solid #eac88c;background:#fff2d8;color:#81520d}
 .team-top .temporary-call-badge{margin-left:auto}
 .radio-user-name .temporary-call-badge{margin-left:3px}
-@media(max-width:700px){.temporary-call-badge{font-size:7px;padding:3px 5px}}
+@media(max-width:700px){.temporary-call-badge,.management-call-badge{font-size:7px;padding:3px 5px}}
