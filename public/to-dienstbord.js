@@ -491,6 +491,36 @@ document.addEventListener('click',async event=>{
       case 'radio-quick-add':await quickAddRadioCrew(id);break;
       case 'incident-template':if(canEdit()&&[...INCIDENT_PRESETS,...INCIDENT_EXTRA_PRESETS].includes(target.dataset.template))incidentForm('',target.dataset.template);break;
       case 'incident-presets-toggle':state.showMoreIncidentPresets=!state.showMoreIncidentPresets;render();break;
+      case 'custom-incident-template':{
+        if(!canEdit())break;
+        const shortcut=state.shortcuts.items[id];if(shortcut)incidentForm('',shortcut.title);
+        break;
+      }
+      case 'save-incident-shortcut':{
+        if(!canEdit())break;
+        const form=dialog.querySelector('#to-form'),title=form?.elements?.titel?.value?.trim();
+        if(!title){formError('Geef eerst een titel voor de sneltoets op.');break;}
+        await changeShortcut('add',{title,description:''});
+        toast('Meldingssneltoets bewaard voor volgende diensten.');
+        break;
+      }
+      case 'save-incident-shortcut-detail':{
+        if(!canEdit())break;
+        const incident=state.env.board.meldingen[id];
+        if(!incident)break;
+        await changeShortcut('add',{title:incident.titel,description:''});
+        toast('Meldingssneltoets bewaard voor volgende diensten.');
+        openIncident(id);
+        break;
+      }
+      case 'remove-incident-shortcut':{
+        if(!canEdit())break;
+        const shortcut=state.shortcuts.items[id];if(!shortcut)break;
+        openDialog('Meldingssneltoets verwijderen',
+          `<p class="form-note">Wil je de gedeelde sneltoets <strong>${esc(shortcut.title)}</strong> verwijderen? Bestaande meldingen blijven ongewijzigd.</p>`,
+          {form:'remove-shortcut',id,submit:'Sneltoets verwijderen',danger:true});
+        break;
+      }
       case 'radio-add-team':{
         if(!canEdit()||!radioFresh())break;
         const user=radio.snapshot.users.find(item=>String(item.id)===id);
@@ -583,6 +613,13 @@ dialog.addEventListener('submit',async event=>{
   if(type==='add-team')data={dienst:fields.dienst.value,leden:[{naam:fields.naam1.value.trim(),roep:fields.roep1.value.trim()},...(fields.koppel.checked?[{naam:fields.naam2.value.trim(),roep:fields.roep2.value.trim()}]:[])]};
   if(type==='create-incident'||type==='update-incident')data={...(id?{id}:{}),postcode:fields.postcode.value.trim(),titel:fields.titel.value.trim(),omschrijving:fields.omschrijving.value.trim()};
   if(type==='remove-team')data={id};
+  if(type==='remove-shortcut'){
+    try{
+      await changeShortcut('remove',{id});
+      closeDialog();toast('Sneltoets verwijderd. Bestaande meldingen zijn behouden.');
+    }catch(error){if(!error.obsolete)formError(error.message);}
+    return;
+  }
   try{
     const result=await command(type,data,revision);
     closeDialog();
