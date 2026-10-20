@@ -11,6 +11,7 @@ const CONTROL=/[\x00-\x1f\x7f<>]/;
 const COMMAND_FIELDS=Object.freeze({
   start:['displayName'],takeover:['displayName','reason'],
   'add-team':['dienst','leden'],'remove-team':['id'],'toggle-team':['id','available'],
+  'response-phase':['id','phase'],
   'create-incident':['postcode','titel','omschrijving'],
   'update-incident':['id','postcode','titel','omschrijving'],
   'incident-status':['id','status'],'attach-team':['id','teamId'],'detach-team':['id','teamId'],
@@ -136,15 +137,42 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
         const teamId=newId();
         if(Object.hasOwn(board.ploegen,teamId))throw new Error('Dubbele server-ID');
         const roepnaam=leden.reduce((highest,member)=>Number(member.roep)>Number(highest)?member.roep:highest,leden[0].roep);
-        board.ploegen[teamId]={id:teamId,dienst:cmd.dienst,leden,koppel:leden.length===2,roepnaam,createdAt:now,by:actor.uid,available:true};
+        board.ploegen[teamId]={id:teamId,dienst:cmd.dienst,leden,koppel:leden.length===2,roepnaam,createdAt:now,by:actor.uid,available:true,responsePhase:null};
       }else if(cmd.type==='remove-team'){
         const team=getTeam(board,cmd.id);
         if(Object.values(board.meldingen).some(incident=>incident.status==='actief'&&incident.ploegen.some(reference=>reference.id===team.id)))
           fail(409,'Ontkoppel deze ploeg eerst van actieve meldingen of rond die meldingen af');
-        team.endedAt=now;team.endedBy=actor.uid;team.available=false;
+        team.endedAt=now;team.endedBy=actor.uid;team.available=false;team.responsePhase=null;
       }else if(cmd.type==='toggle-team'){
         if(typeof cmd.available!=='boolean')fail(400,'Beschikbaarheid moet waar of onwaar zijn');
-        Object.assign(getTeam(board,cmd.id),{available:cmd.available,updatedAt:now,updatedBy:actor.uid});
+        const team=getTeam(board,cmd.id);
+        if(team.responsePhase)fail(409,'Wis eerst de uitrukstatus alvorens de beschikbaarheid aan te passen');
+        Object.assign(team,{available:cmd.available,updatedAt:now,updatedBy:actor.uid});
+      }else if(cmd.type==='response-phase'){
+        // A separate clear action prevents a third accidental click from
+        // returning an on-scene crew to "available" during an active incident.
+        if(!['onderweg','ter-plaatse',null].includes(cmd.phase))fail(400,'Ongeldige uitrukstatus');
+        const team=getTeam(board,cmd.id),previous=team.responsePhase||null;
+        if(cmd.phase==='onderweg'&&(previous!==null||team.available===false))
+          fail(409,'Alleen een beschikbare ploeg zonder uitrukstatus kan vertrekken');
+        if(cmd.phase==='ter-plaatse'&&previous!=='onderweg')
+          fail(409,'Een ploeg moet eerst onderweg zijn om ter plaatse te komen');
+        if(cmd.phase===null&&previous===null)
+          fail(409,'Deze ploeg heeft geen actieve uitrukstatus');
+        team.responsePhase=cmd.phase;
+        team.responseAt=now;
+        team.responseBy=actor.uid;
+        team.updatedAt=now;
+        team.updatedBy=actor.uid;
+        // Mirror the progress in every active assignment for the audit trail,
+        // but never prevent a field status update merely because a log is full.
+        const description=cmd.phase==='onderweg'?'onderweg':
+          cmd.phase==='ter-plaatse'?'ter plaatse':'uitrukstatus gewist';
+        for(const incident of Object.values(board.meldingen)){
+          if(incident.status!=='actief'||!incident.ploegen.some(ref=>ref.id===team.id))continue;
+          if(incident.log.length<TO_BOARD_LIMITS.incidentLog)
+            appendLog(incident,actor,now,team.dienst+'-'+team.roepnaam+': '+description);
+        }
       }else if(cmd.type==='create-incident'){
         if(Object.keys(board.meldingen).length>=TO_BOARD_LIMITS.incidents)fail(413,'Te veel meldingen in deze dienst. Rond de dienst af.');
         const values=incidentFields(cmd),incidentId=newId();
@@ -166,8 +194,18 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
             incident.closedAt=now;
           else appendLog(incident,actor,now,'Status gewijzigd naar '+cmd.status);
           incident.status=cmd.status;incident.updatedAt=now;
-          if(cmd.status==='niet-actief'){incident.closedAt=now;incident.closedBy=actor.uid;}
-          else {delete incident.closedAt;delete incident.closedBy;}
+          if(cmd.status==='niet-actief'){
+            incident.closedAt=now;incident.closedBy=actor.uid;
+            // Closing the last assignment clears the operational response
+            // beacon; other active incidents for that unit keep their state.
+            for(const reference of incident.ploegen){
+              const team=board.ploegen[reference.id];
+              if(!team||!team.responsePhase)continue;
+              const stillAssigned=Object.values(board.meldingen).some(item=>
+                item.id!==incident.id&&item.status==='actief'&&item.ploegen.some(t=>t.id===team.id));
+              if(!stillAssigned){team.responsePhase=null;team.responseAt=now;team.responseBy=actor.uid;}
+            }
+          }else {delete incident.closedAt;delete incident.closedBy;}
         }
       }else if(cmd.type==='attach-team'){
         const incident=getIncident(board,cmd.id),team=getTeam(board,cmd.teamId);
@@ -180,6 +218,11 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
         if(!reference)fail(409,'Deze ploeg is niet gekoppeld aan de melding');
         appendLog(incident,actor,now,reference.dienst+'-'+reference.roep+' ontkoppeld');
         incident.ploegen=incident.ploegen.filter(team=>team.id!==teamId);
+        const team=board.ploegen[teamId];
+        if(team?.responsePhase&&!Object.values(board.meldingen).some(item=>
+          item.status==='actief'&&item.ploegen.some(ref=>ref.id===teamId))){
+          team.responsePhase=null;team.responseAt=now;team.responseBy=actor.uid;
+        }
       }else if(cmd.type==='close-session'){
         if(Object.values(board.meldingen).some(incident=>incident.status==='actief'))fail(409,'Rond eerst alle actieve meldingen af voordat je de dienst afsluit');
         const archive={id:board.session.id,dept:'politie',session:structuredClone(board.session),ploegen:structuredClone(board.ploegen),meldingen:structuredClone(board.meldingen),closedAt:now,closedBy:actor.uid};
