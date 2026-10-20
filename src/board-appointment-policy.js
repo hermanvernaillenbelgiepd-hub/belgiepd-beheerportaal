@@ -7,6 +7,7 @@ export const BOARD_PERMISSIONS=Object.freeze(['board_registry_read','board_nomin
 const DISCORD=/^\d{15,22}$/;
 const STATUS=new Set(['pending','approved','rejected','revoked']);
 export function boardEnabled(env){return env.BPD_ENABLE_BOARD_APPOINTMENTS==='true'}
+export function boardWritesEnabled(env){return boardEnabled(env)&&env.BPD_ENABLE_BOARD_APPOINTMENT_WRITES==='true'}
 export function validBoardId(value){return typeof value==='string'&&DISCORD.test(value)}
 export function isTechnicalBoardApprover(actor){return actor?.role==='beheerder'}
 export function activeBoardAppointment(data){
