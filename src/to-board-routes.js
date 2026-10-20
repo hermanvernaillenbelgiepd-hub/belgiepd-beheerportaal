@@ -3,9 +3,11 @@ import {applicationDefault,getApps,initializeApp} from 'firebase-admin/app';
 import {getFirestore} from 'firebase-admin/firestore';
 import {TO_CATEGORIES,applyBoardCommand,canReadBoard,canOperateBoard,emptyBoard,validBoardId,boardError} from './to-board-policy.js';
 import {callsignForTO} from './to-operator-identity.js';
+import {applyTOShortcutCommand,emptyTOShortcuts} from './to-incident-shortcuts.js';
 
 export const TO_BOARD_COLLECTION='bpd_to_boards';
 export const TO_ARCHIVE_COLLECTION='bpd_to_archives';
+export const TO_SHORTCUT_COLLECTION='bpd_to_incident_shortcuts';
 function defaultDatabase(){
   if(!getApps().length)initializeApp({credential:applicationDefault(),projectId:process.env.FIREBASE_PROJECT_ID});
   return getFirestore();
@@ -23,6 +25,25 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
         const result=applyBoardCommand(snapshot.exists?snapshot.data():emptyBoard(),command,context);
         if(result.archive)transaction.create(database.collection(TO_ARCHIVE_COLLECTION).doc(result.archive.id),result.archive);
         transaction.set(reference,result.board);
+        return result;
+      });
+    },
+    async readShortcuts(){
+      const snapshot=await getDatabase().collection(TO_SHORTCUT_COLLECTION).doc('politie').get();
+      return snapshot.exists?snapshot.data():emptyTOShortcuts();
+    },
+    async updateShortcuts(command,context){
+      const database=getDatabase(),reference=database.collection(TO_SHORTCUT_COLLECTION).doc('politie');
+      // Keep template changes atomically revisioned and independent of the
+      // shift board so they survive closing/archiving the current session.
+      return database.runTransaction(async transaction=>{
+        const boardRef=database.collection(TO_BOARD_COLLECTION).doc('politie');
+        const [boardSnapshot,shortcutSnapshot]=await Promise.all([transaction.get(boardRef),transaction.get(reference)]);
+        const board=boardSnapshot.exists?boardSnapshot.data():emptyBoard();
+        if(!board.session||board.session.ownerUid!==context.actor.uid)
+          throw boardError(403,'Alleen de huidige TO kan meldingssneltoetsen beheren.');
+        const result=applyTOShortcutCommand(shortcutSnapshot.exists?shortcutSnapshot.data():emptyTOShortcuts(),command,context);
+        transaction.set(reference,result);
         return result;
       });
     },
@@ -89,6 +110,16 @@ export function installTOBoardRoutes(app,{
       const actor=identity?{...req.bpd,toCallsign:identity.call}:req.bpd;
       const result=await store.execute(req.body,{actor,now:Date.now(),id:randomUUID()});
       return res.json(envelope(result.board,req.bpd,identity));
+    }catch(error){return failed(res,error);}
+  });
+  app.get('/api/to/incident-shortcuts',requireUser,requirePolice,async(req,res)=>{
+    try{return res.json(await store.readShortcuts());}catch(error){return failed(res,error);}
+  });
+  app.post('/api/to/incident-shortcuts',requireUser,requirePolice,async(req,res)=>{
+    if(!canOperateBoard(req.bpd))return res.status(403).json({error:'Geen bevoegdheid om sneltoetsen te beheren'});
+    try{
+      const result=await store.updateShortcuts(req.body,{actor:req.bpd,now:Date.now(),id:randomUUID()});
+      return res.json(result);
     }catch(error){return failed(res,error);}
   });
   app.get('/api/to/archives',requireUser,requirePolice,async(_req,res)=>{
