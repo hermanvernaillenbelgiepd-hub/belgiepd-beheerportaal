@@ -243,3 +243,67 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
 .team-actions .team-detach-button:focus-visible{outline:2px solid #2e70dc;outline-offset:2px}
 .detach-assignment{font-size:12px;line-height:1.6;padding:12px 14px;margin:0 0 16px;background:#f0f5fd;border:1px solid #cfdaef;border-radius:8px;color:#3f587d;overflow-wrap:anywhere}
 .detach-assignment strong{color:#2859a1}
+
+
+/* Two presentation modes: no operational status logic changes. */
+.board-heading-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:9px}
+.team-view-switch{display:inline-flex;align-items:center;gap:2px;background:#eaf0f8;border:1px solid #d8e1ef;padding:3px;border-radius:9px}
+.team-view-switch button{border:0;border-radius:6px;background:transparent;color:#5a6d88;font-size:10px;font-weight:750;min-height:29px;padding:5px 9px}
+.team-view-switch button.active{background:#fff;color:#2957a9;box-shadow:0 1px 4px #17263f14}
+.board-group-toggle{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;cursor:pointer;font-family:inherit}
+.board-group-toggle:hover{filter:brightness(.98)}
+.board-group-toggle:focus-visible,.pending-radio-toggle:focus-visible{outline:3px solid #5378ef;outline-offset:2px}
+.service-team-section{margin:0 0 17px}
+.service-team-section>.service-heading{margin:0 0 10px;padding:10px 12px;border-left:4px solid #5678d4;border-radius:7px;background:#eaf0fb;color:#243c68;font-weight:850;font-size:12px;letter-spacing:.1px}
+.service-team-section[data-service="ambulance"]>.service-heading{border-left-color:#28a280}
+.service-team-section[data-service="brandweer"]>.service-heading{border-left-color:#d45a47}
+.service-team-section[data-service="depannage"]>.service-heading{border-left-color:#c58b34}
+.service-heading>span:last-child{margin-left:auto;font-size:10px;font-weight:650;color:#687f9e}
+.board-group-toggle.category-heading{margin-bottom:8px;padding:5px 4px;letter-spacing:.4px}
+.board-group-toggle.category-heading:after{order:5}
+.board-group-toggle.category-heading>span:last-child{white-space:nowrap}
+.group-chevron{display:inline-block;min-width:10px;font-size:12px;color:#506b94}
+.pending-radio-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:transparent;color:#365d83;border:0;font-size:13px;font-weight:850;text-align:left;padding:0 0 6px}
+.pending-radio-toggle span{font-size:10px;color:#567b99}
+.pending-radio-toggle span:last-child{font-size:15px}
+.pending-radio-section[data-collapsed="true"]{padding:11px 15px}
+.pending-radio-section[data-collapsed="true"]>p,.pending-radio-section[data-collapsed="true"] .pending-radio-groups{display:none}
+.pending-radio-section[data-collapsed="true"] .pending-radio-toggle{padding-bottom:0}
+
+/* Compact dispatch rows: full-width per team, quick choices always visible. */
+.board-layout[data-team-view="compact"] .team-grid{grid-template-columns:minmax(0,1fr);gap:7px}
+.board-layout[data-team-view="compact"] .category-section{margin-bottom:12px}
+.board-layout[data-team-view="compact"] .team-card{border-radius:9px}
+.board-layout[data-team-view="compact"] .team-card-body{display:grid;grid-template-columns:minmax(130px,1fr) minmax(150px,1.25fr);align-items:center;gap:5px 12px;padding:8px 11px 6px}
+.board-layout[data-team-view="compact"] .team-top{grid-column:1/-1;grid-row:1;margin:0;gap:6px;min-height:20px;flex-wrap:wrap}
+.board-layout[data-team-view="compact"] .team-top .pill{font-size:9px;padding:3px 6px}
+.board-layout[data-team-view="compact"] .team-top .radio-team-badge{font-size:9px}
+.board-layout[data-team-view="compact"] .response-indicator{font-size:8px;padding:3px 6px}
+.board-layout[data-team-view="compact"] .team-identity{grid-column:1;grid-row:2;gap:9px;padding:0;min-width:0}
+.board-layout[data-team-view="compact"] .unit-token-hero{width:38px;height:38px;font-size:13px;border-radius:8px;flex:none}
+.board-layout[data-team-view="compact"] .team-identity-copy{display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 8px}
+.board-layout[data-team-view="compact"] .team-category-name{font-size:9px;letter-spacing:.4px}
+.board-layout[data-team-view="compact"] .team-card .callsign{font-size:19px;letter-spacing:-.4px}
+.board-layout[data-team-view="compact"] .team-card .crew-list{grid-column:2;grid-row:2;margin:0;padding:0;border:0;gap:2px;min-width:0}
+.board-layout[data-team-view="compact"] .crew-line{font-size:10px}
+.board-layout[data-team-view="compact"] .crew-radio-label{font-size:9px;padding:2px 0 0;margin:0;border:0;line-height:1.3}
+.board-layout[data-team-view="compact"] .crew-radio-rename{display:none}
+.board-layout[data-team-view="compact"] .crew-quick-controls{grid-column:1/-1;grid-row:3;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:0;padding:6px 0 0}
+.board-layout[data-team-view="compact"] .crew-quick-button{min-height:29px;font-size:9px;padding:4px 3px}
+.board-layout[data-team-view="compact"] .team-assignment-warning{grid-column:1/-1;margin:0;font-size:9px}
+.board-layout[data-team-view="compact"] .team-card-foot{display:none}
+.compact-crew-menu{display:none}
+.board-layout[data-team-view="compact"] .compact-crew-menu{display:block;padding:0 12px 6px}
+.compact-menu-toggle{background:transparent;border:0;padding:2px 4px;font-size:9px;color:#4b6786;font-weight:750}
+.compact-menu-toggle[aria-expanded="true"]{color:#285cb5}
+.compact-crew-menu-content{display:flex;flex-wrap:wrap;align-items:center;gap:6px;background:#f6f8fc;border:1px solid #e2e9f2;border-radius:7px;padding:8px;margin-top:4px}
+.compact-crew-menu-content .button{min-height:29px}
+.compact-crew-menu-content small{font-size:9px;color:#7e8ea6;margin-left:auto}
+@media(max-width:600px){
+  .board-heading-actions{width:100%;justify-content:flex-start}
+  .board-layout[data-team-view="compact"] .team-card-body{grid-template-columns:minmax(0,1fr)}
+  .board-layout[data-team-view="compact"] .team-top{grid-column:1;grid-row:auto}
+  .board-layout[data-team-view="compact"] .team-identity{grid-column:1;grid-row:auto}
+  .board-layout[data-team-view="compact"] .team-card .crew-list{grid-column:1;grid-row:auto}
+  .board-layout[data-team-view="compact"] .crew-quick-controls{grid-column:1;grid-row:auto;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
