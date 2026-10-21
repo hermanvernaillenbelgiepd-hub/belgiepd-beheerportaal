@@ -57,7 +57,7 @@ export function warningFor(person){
   // 'last' is days since last connection in the established activities check.
   const days=person.last;
   if(!Number.isSafeInteger(days)||days<0)return null;
-  const threshold=[...NOTIFICATION_THRESHOLDS].reverse().find(t=>days>=t.warn&&days<t.due);
+  const threshold=[...NOTIFICATION_THRESHOLDS].reverse().find(t=>days>=t.warn);
   return threshold?{...threshold,days}:null;
 }
 export function isPoliceMember(actor,person){
