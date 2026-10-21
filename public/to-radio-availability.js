@@ -51,6 +51,7 @@ export function groupRadioCrews(users=[]){
 const key=(category,value)=>{
   if(typeof category!=='string'||!['string','number'].includes(typeof value))return null;
   const number=String(value);
+  if(category==='HARTS'&&number==='HARTS')return JSON.stringify([category,'HARTS']);
   return /^\d{1,5}$/.test(number)&&Number(number)>0
     ?JSON.stringify([category,Number(number)]):null;
 };
