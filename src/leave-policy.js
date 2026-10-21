@@ -63,6 +63,16 @@ export function mayApproveLeave(actor,request,grant,today=new Date().toISOString
   if(!actor||!validDiscordId(actor.discordId)||!request||request.status!=='pending')return false;
   if(actor.discordId===request.personDiscordId)return false; // Nooit eigen aanvraag.
   const days=calendarDays(request.startDate,request.endDate);
+  // Server-projected police grade overrides generic leave delegation rights.
+  // Middle cadre leave requires officer/chief; officer leave over 30 days requires chief.
+  if(request.subjectDepartments?.includes('politie')&&request.subjectPoliceGrade!==undefined){
+    const approvingRole=roleForDepartment(actor,'politie');
+    const subject=request.subjectPoliceGrade;
+    if(subject==='korpsleiding'||!['basiskader','middenkader','officierenkader'].includes(subject))return false;
+    if(subject==='middenkader')return ['officierenkader','korpsleiding'].includes(approvingRole);
+    if(subject==='officierenkader')return approvingRole==='korpsleiding'||
+      (approvingRole==='officierenkader'&&days<=30);
+  }
   const delegated=activeGrant(grant,today);
   if(delegated)return delegated.level==='all'||days<=30;
   if(!sharesDepartment(actor,request.subjectDepartments))return false;
