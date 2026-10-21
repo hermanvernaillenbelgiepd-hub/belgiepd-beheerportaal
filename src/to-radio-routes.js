@@ -66,7 +66,7 @@ export function installTORadioRoutes(app,{
     try{alias=radioLabelInput(req.body.alias);}catch(e){return res.status(400).json({error:e.message});}
     try{
       const current=await service.read();
-      if(!current.connected||current.stale||!current.users.some(u=>u.id===id))
+      if(!current.connected||current.stale||!current.users.some(u=>u.id===id&&u.labelEditable===true))
         return res.status(409).json({error:'Deze radiogebruiker is niet meer actueel verbonden'});
       const doc=labels().doc(id),history=audit().doc();
       await firestore().runTransaction(async tx=>{
