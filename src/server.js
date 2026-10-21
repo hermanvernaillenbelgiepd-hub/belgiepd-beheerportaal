@@ -28,6 +28,7 @@ import {installSpecializationRoutes} from './specialization-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
+import {deriveServiceDossierDepartments} from './service-dossier-access.js';
 import {installNotificationRoutes} from './notification-routes.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
@@ -273,8 +274,30 @@ installBoardAppointmentRoutes(app,{requireUser});
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
 installSpecializationRoutes(app,{requireUser,getSnapshot});
-installStaffDossierRoutes(app,{requireUser,getSnapshot});
-installDossierCenterRoutes(app,{requireUser,getSnapshot});
+// Sensitive dossier scopes are determined ONLY on the server after standard
+// portal approval. Never grant them from client-supplied rank or radio name.
+const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
+  try{
+    const id=req.bpd?.discordId;
+    const valid=/^\d{15,22}$/.test(String(id||''));
+    const db=getFirestore();
+    const [snapshot,member,appointment]=await Promise.all([
+      getSnapshot(),
+      valid?db.collection('bpd_discord_auth').doc(id).get():Promise.resolve(null),
+      valid?db.collection('bpd_board_appointments').doc(id).get():Promise.resolve(null)
+    ]);
+    const roster=snapshot.stale?[]:snapshot.data;
+    req.bpd.dossierAllowedDepartments=deriveServiceDossierDepartments(req.bpd,
+      roster,member?.exists?member.data():null,
+      appointment?.exists?appointment.data():null,process.env.DISCORD_GUILD_ID);
+    next();
+  }catch(e){
+    console.error('Dossierrechten konden niet geverifieerd worden:',e?.code||e?.message||'onbekend');
+    res.status(503).json({error:'De dossierrechten kunnen momenteel niet gecontroleerd worden'});
+  }
+});
+installStaffDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installDossierCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installNotificationRoutes(app,{requireUser,getSnapshot});
 // The TO operator's callsign is resolved only from server-owned records
 // tied to the authenticated Discord ID, never from a user-entered nickname.
