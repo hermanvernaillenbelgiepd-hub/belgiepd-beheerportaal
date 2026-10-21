@@ -365,16 +365,14 @@ function renderBoard(){
     const temporaryBadge=policeRoleBadge(crew.category,String(crew.number||''));
     return `<article class="pending-radio-card" data-service="${esc(identity.serviceId)}" style="--unit-hue:${identity.hue}"${importable&&editable?' draggable="true" data-radio-drag="'+esc(first.id)+'"':''}><div class="pending-radio-title">${unitBadge(crew.category,'unit-token-small')}<strong>${esc(crew.category)}${crew.number==='HARTS'?'':'-'+esc(crew.number||'—')}${crew.paired?'*':''}</strong>${temporaryBadge}${newlyJoined?'<span class="radio-arrival-badge">NIEUW</span>':''}</div><small>${crew.category==='ZW'?'Ziekenwagen · ':''}${esc(members||'Naam controleren')}${crew.paired?' · 👥 koppel':''}</small><div class="pending-radio-foot">${crew.radioUnavailable?pill('NB','red'):pill('Via radio','green')}${importable&&state.env.permissions.canEdit?`<button type="button" class="button button-small radio-add" data-action="radio-quick-add" data-id="${esc(first.id)}" data-write${!editable?' disabled':''}>＋ Op bord</button>`:`<span class="radio-unrecognized" title="${esc(!/^\d{1,5}$/.test(String(crew.number))?'Sonoran leverde geen zuiver numeriek roepnummer':crew.members.length>1&&!crew.paired?'Meerdere radiogebruikers met hetzelfde nummer zonder koppelteken *':'Radiogegevens kunnen niet veilig als één ploeg worden geïmporteerd')}">Controle nodig</span>`}</div></article>`;
   }).join('')}</div></section>`).join('')}</div></section>`:'';
-  const teamMarkup=groupByTOService(selectedTeams,team=>team.dienst).map(service=>{
-    const categories=[...new Set(service.items.map(team=>team.dienst))].sort(compareCategories);
-    const sections=categories.map(category=>{
-      const group=service.items.filter(team=>team.dienst===category).sort((a,b)=>String(a.roepnaam).localeCompare(String(b.roepnaam),'nl',{numeric:true}));
-      const groupKey='category:'+category,collapsed=state.collapsedBoardGroups.has(groupKey);
-      return `<section class="category-section"><button type="button" class="board-group-toggle category-heading category-identity" data-action="toggle-board-group" data-group="${esc(groupKey)}" aria-expanded="${!collapsed}"><span class="group-chevron" aria-hidden="true">${collapsed?'▸':'▾'}</span>${unitBadge(category,'unit-token-small')}<strong>${esc(displayCategory(category))}</strong><span>${group.length} ${group.length===1?'ploeg':'ploegen'}</span></button>${collapsed?'':`<div class="team-grid">${group.map(team=>teamCard(team,busy.get(team.id)||[],editable)).join('')}</div>`}</section>`;
-    }).join('');
-    const serviceKey='service:'+service.id,collapsed=state.collapsedBoardGroups.has(serviceKey);
-    return `<section class="service-team-section" data-service="${esc(service.id)}" aria-labelledby="board-service-${esc(service.id)}"><button type="button" class="board-group-toggle service-heading" id="board-service-${esc(service.id)}" data-action="toggle-board-group" data-group="${esc(serviceKey)}" aria-expanded="${!collapsed}"><span class="group-chevron" aria-hidden="true">${collapsed?'▸':'▾'}</span>${esc(service.label)}<span>${service.items.length} ${service.items.length===1?'ploeg':'ploegen'}</span></button>${collapsed?'':sections}</section>`;
-  }).join('');
+  // Keep all units in predictable service/category/callsign order, but avoid
+  // repeating space-consuming group headings above each category.
+  const orderedTeams=groupByTOService(selectedTeams,team=>team.dienst)
+    .flatMap(service=>service.items.slice().sort((a,b)=>compareCategories(a.dienst,b.dienst)||
+      String(a.roepnaam).localeCompare(String(b.roepnaam),'nl',{numeric:true})));
+  const teamMarkup=orderedTeams.length
+    ?`<div class="team-grid team-list-grid">${orderedTeams.map(team=>teamCard(team,busy.get(team.id)||[],editable)).join('')}</div>`
+    :'';
   const filtered=allIncidents.filter(item=>(state.filter==='alle'||item.status===state.filter)&&matches(item.titel,item.postcode,item.omschrijving,incidentNumber(item.nr),...(item.ploegen||[]).map(team=>team.dienst+'-'+team.roep))).sort((a,b)=>(a.status===b.status?0:a.status==='actief'?-1:1)||b.nr-a.nr);
   const activeCount=allIncidents.filter(item=>item.status==='actief').length;
   const filter=(value,label,count)=>`<button type="button" data-action="filter-incidents" data-filter="${value}" class="${state.filter===value?'active':''}" aria-pressed="${state.filter===value}">${label} · ${count}</button>`;
@@ -412,6 +410,28 @@ function teamCard(team,busy,editable){
   const compactRename=editable?radioMembers.filter(user=>user.labelEditable===true).map(user=>`<button type="button" class="button button-small" data-action="radio-edit-label" data-id="${esc(user.id)}" data-write>✎ Naam aanpassen${radioMembers.length>1?' · '+esc(user.number):''}</button>`).join(''):'';
   const compactDetach=busy.length?`<button type="button" class="button button-small" data-action="team-detach-dialog" data-id="${esc(team.id)}" data-write>↗ Ontkoppelen${busy.length>1?' ('+busy.length+')':''}</button>`:'';
   const compactMenu=editable?`<div class="compact-crew-menu"><button type="button" class="compact-menu-toggle" data-action="toggle-team-menu" data-id="${esc(team.id)}" aria-expanded="${menuOpen}">⋯ Acties</button>${menuOpen?`<div class="compact-crew-menu-content">${compactRename}${compactDetach}<button type="button" class="button button-small button-danger" data-action="remove-team" data-id="${esc(team.id)}" data-write>Uit dienst</button><small>In dienst sinds ${time(team.createdAt)}</small></div>`:''}</div>`:'';
+  if(state.teamView==='compact'){
+    const unitName=team.dienst==='HARTS'&&String(team.roepnaam)==='HARTS'
+      ?'HARTS':displayCategory(team.dienst)+'-'+String(team.roepnaam);
+    const members=(team.leden||[]).map(member=>member.naam).filter(Boolean).join(' & ');
+    const radioNames=radioMembers.map(user=>user.portalAlias||user.displayName||user.name||'').filter(Boolean).join(' & ');
+    const compactFlags=[
+      onRadio?'<span class="compact-flag radio-flag">◉ Radio online</span>':'',
+      paired?'<span class="compact-flag">👥 Koppel</span>':'',
+      temporaryBadge
+    ].filter(Boolean).join('');
+    return `<article class="team-card compact-team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}">
+      <div class="compact-unit-head">
+        ${unitBadge(team.dienst,'unit-token-small')}
+        <div class="compact-unit-title"><strong>${esc(unitName)}</strong><span title="${esc(members)}">${esc(members||'Geen bemanning')}</span></div>
+        <div class="compact-unit-state">${choiceBadge}</div>
+      </div>
+      <div class="compact-unit-meta">${compactFlags}${beacon}</div>
+      ${onRadio&&radioNames&&normalize(radioNames)!==normalize(members)?`<div class="compact-radio-alias" title="${esc(radioNames)}">Radio: ${esc(radioNames)}</div>`:''}
+      ${phaseControls}
+      ${compactMenu}
+    </article>`;
+  }
   return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${beacon}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}${temporaryBadge}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(displayCategory(team.dienst))}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}${radioMembers.length?'<div class="crew-radio-label">◉ Radio: '+radioMembers.map(user=>esc(user.portalAlias||user.displayName||user.name||'Radiogebruiker')).join(' · ')+'</div>':''}${editable&&radioMembers.some(user=>user.labelEditable===true)?'<div class="crew-radio-rename">'+radioMembers.filter(user=>user.labelEditable===true).map(user=>'<button type="button" class="button button-small" data-action="radio-edit-label" data-id="'+esc(user.id)+'" title="Wijzig de weergavenaam op het dienstbord">✎ Naam aanpassen'+(radioMembers.length>1?' · '+esc(user.number):'')+'</button>').join('')+'</div>':''}</div>${phaseControls}</div>${compactMenu}<div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions">${busy.length?`<button type="button" class="text-button team-detach-button" data-action="team-detach-dialog" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>↗ Ontkoppelen${busy.length>1?' ('+busy.length+')':''}</button>`:''}<button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
 }
 function incidentCard(incident){
