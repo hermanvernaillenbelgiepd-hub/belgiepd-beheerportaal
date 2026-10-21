@@ -79,7 +79,7 @@ async function readPeriod(){
       const body=document.createElement('p');body.className='muted';body.textContent=event.details;
       p.append(title,body);root.append(p);
     }
-    $('saveReport').disabled=!permissions?.canSave||data.saved;
+    $('saveReport').disabled=!permissions?.canSave||data.saved||!data.canSaveNow;
   }catch(e){status(e.message,true)}
 }
 async function load(){const data=await api('/api/notifications/me');renderNotices(data);status('Meldingen bijgewerkt. '+(data.writesEnabled?'Afhandelen is actief.':'Bevestigen en afhandelen staan nog uit op TEST.'));const leave=data.items.find(x=>x.kind==='return_self');if(leave&&!returnPrompted&&typeof $('returnDialog').showModal==='function'){returnPrompted=true;$('returnCheck').checked=false;$('returnConfirm').disabled=true;$('returnConfirm').onclick=async()=>{try{await api('/api/notifications/return/'+encodeURIComponent(leave.leaveId),'POST',{});$('returnDialog').close();status('Je terugkeer werd bevestigd en gelogd.');await load()}catch(e){status(e.message,true)}};$('returnCheck').onchange=()=>{$('returnConfirm').disabled=!data.writesEnabled||!$('returnCheck').checked};$('returnConfirm').disabled=true;$('returnDialog').showModal()}}
