@@ -120,6 +120,10 @@ test('User-provided SIV/WPR car is bundled locally and uses the same reusable ic
   const svg=source('public/assets/icons/siv-wpr.svg');
   assert.match(svg,/^<svg /);
   assert.match(svg,/aria-label="Belgische Wegpolitie SIV\/WPR voertuig"/);
+  // Zoom in on the front half and side of the supplied image without
+  // changing the original raster, other icons, or roster table dimensions.
+  assert.match(svg,/viewBox="0 0 72 60"/);
+  assert.match(svg,/<image x="0" y="2" width="116" height="56"/);
   const embedded=svg.match(/href="data:image\/webp;base64,([A-Za-z0-9+/=]+)"/);
   assert.ok(embedded,'Expected actual embedded image bytes');
   const bytes=Buffer.from(embedded[1],'base64');
