@@ -115,7 +115,7 @@ test('Dashboard uses live event API instead of pretending last-connected staff a
   assert.ok(routes.includes("source:'retrospective_manual'"));
   assert.ok(routes.includes('actualChangeDate:null'));
   const activityRoute=server.indexOf('installPersonnelActivityRoutes(app,{requireUser,getSnapshot})');
-  const generalEditRoute=server.indexOf('installPersonnelEditorRoutes(app,{requireUser,getSnapshot})');
+  const generalEditRoute=server.indexOf('installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot})');
   assert.ok(activityRoute>=0&&generalEditRoute>activityRoute,
     'Specific activity POST must be registered BEFORE generic personnel POST route');
   assert.ok(routes.includes("type:'promotion'"));
