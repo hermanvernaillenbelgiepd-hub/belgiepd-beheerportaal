@@ -47,7 +47,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     if(!writesEnabled())return res.status(503).json({error:'Registraties staan nog uit. Stel BPD_ENABLE_REGISTRATIONS=true in na controle van Firebase-rechten.'});
     const raw=req.body;
     const dept=trim(raw?.dept), id=trim(raw?.discordId), type=trim(raw?.type);
-    if(!maySubmit(req.bpd,type,dept))return res.status(403).json({error:'Geen bevoegdheid om deze registratie in te dienen'});
+    if(!req.bpd.dossierNativeDepartments?.includes(dept)||!maySubmit(req.bpd,type,dept))return res.status(403).json({error:'Geen bevoegdheid om deze registratie in te dienen'});
     if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const values=validateEntry(raw);
@@ -83,7 +83,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
   app.patch('/api/registrations/entries/:dept/:discordId/:entryId',requireUser,async(req,res)=>{
     if(!writesEnabled())return res.status(503).json({error:'Registraties staan nog uit.'});
     const {dept,discordId:id,entryId}=req.params;
-    if(!canReadServiceDossier(req.bpd,dept)||!mayAmend(req.bpd,'sanctie',dept))return res.status(403).json({error:'Alleen bevoegd officierenkader en korpsleiding mogen sancties wijzigen'});
+    if(!req.bpd.dossierNativeDepartments?.includes(dept)||!canReadServiceDossier(req.bpd,dept)||!mayAmend(req.bpd,'sanctie',dept))return res.status(403).json({error:'Alleen bevoegd officierenkader en korpsleiding mogen sancties wijzigen'});
     if(!isDiscordId(id)||!/^[a-zA-Z0-9]{12,30}$/.test(entryId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
     try{
       const values=validateAmend(req.body);
