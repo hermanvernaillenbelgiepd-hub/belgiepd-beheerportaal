@@ -374,26 +374,23 @@ function teamCard(team,busy,editable){
   const paired=team.koppel||radioMembers.some(user=>user.paired===true);
   const phase=['onderweg','ter-plaatse'].includes(team.responsePhase)?team.responsePhase:null;
   const beacon=phase?`<span class="response-indicator" data-phase="${phase}" role="status" aria-label="${phase==='onderweg'?'Onderweg, blauw licht knippert':'Ter plaatse, blauw licht blijft branden'}"><span class="response-light" aria-hidden="true"></span><span>${phase==='onderweg'?'ONDERWEG':'TER PLAATSE'}</span></span>`:'';
-  const status=nbOnRadio?pill('Niet beschikbaar · NB','red')+
-    (busy.length?pill('Op '+incidentNumber(busy[0].nr),'amber'):''):
-    busy.length?pill('Op '+incidentNumber(busy[0].nr)+(busy.length>1?' +'+(busy.length-1):''),'amber'):
-    team.available===false?pill('Niet beschikbaar','red'):phase?pill('In inzet','amber'):pill('Beschikbaar','green');
+  const currentStatus=phase||(team.available===false?'pauze':'beschikbaar');
+  const choiceBadge=nbOnRadio?pill('Niet beschikbaar · NB','red'):
+    currentStatus==='pauze'?pill('Niet beschikbaar','red'):
+    currentStatus==='onderweg'||currentStatus==='ter-plaatse'?pill('In inzet','amber'):pill('Beschikbaar','green');
+  const status=choiceBadge+(busy.length?pill('Op '+incidentNumber(busy[0].nr)+(busy.length>1?' +'+(busy.length-1):''),'amber'):'');
   const onRadio=radioMembers.length>0;
   const identity=teamVisual(team.dienst);
   const stateClass=nbOnRadio||team.available===false?'on-pause':busy.length||phase?'on-incident':'ready';
-  const canUnderway=editable&&!nbOnRadio&&team.available!==false&&!phase;
-  const canOnScene=editable&&phase==='onderweg';
-  const canPause=editable&&!nbOnRadio&&team.available!==false&&!phase&&!busy.length;
-  const canReturn=editable&&!nbOnRadio&&team.available===false&&!phase&&!busy.length;
-  const statusButton=(label,action,enabled,active=false)=>`<button type="button" class="crew-quick-button${active?' is-active':''}" data-action="${action}" data-id="${esc(team.id)}" data-write${!enabled?' data-fixed-disabled="true" disabled':''} aria-pressed="${active}" title="${esc(label)}">${esc(label)}</button>`;
-  const phaseControls=editable?`<div class="crew-quick-controls" role="group" aria-label="Status van ${esc(team.dienst)}-${esc(team.roepnaam)}">
-    ${statusButton('↗ Onderweg','team-response-underway',canUnderway,phase==='onderweg')}
-    ${statusButton('● Ter plaatse','team-response-on-scene',canOnScene,phase==='ter-plaatse')}
-    ${statusButton('Ⅱ Pauze / NB','team-pause',canPause,team.available===false)}
-    ${statusButton('✓ Beschikbaar','team-available',canReturn,team.available!==false&&!phase&&!busy.length&&!nbOnRadio)}
-    ${phase?statusButton('↺ Status wissen','team-response-clear',editable):''}
-  </div>`:'';
-  const clickHint='';
+  // Direct choice: status buttons are independent, not a mandatory sequence.
+  // Radio NB is authoritative for availability; it cannot be overwritten here.
+  const statusButton=(label,action,active,allowed)=>`<button type="button" class="crew-quick-button${active?' is-active':''}" data-action="${action}" data-id="${esc(team.id)}" data-write${!allowed?' data-fixed-disabled="true" disabled':''} aria-pressed="${active}" title="${esc(label)}">${esc(label)}</button>`;
+  const phaseControls=editable?`<div class="crew-quick-controls" role="group" aria-label="Kies direct de status van ${esc(team.dienst)}-${esc(team.roepnaam)}">
+    ${statusButton('↗ Onderweg','team-response-underway',currentStatus==='onderweg',!nbOnRadio&&currentStatus!=='onderweg')}
+    ${statusButton('● Ter plaatse','team-response-on-scene',currentStatus==='ter-plaatse',!nbOnRadio&&currentStatus!=='ter-plaatse')}
+    ${statusButton('Ⅱ Pauze / NB','team-pause',currentStatus==='pauze',currentStatus!=='pauze')}
+    ${statusButton('✓ Beschikbaar','team-available',currentStatus==='beschikbaar'&&!nbOnRadio,!nbOnRadio&&currentStatus!=='beschikbaar')}
+  </div>${busy.length&&currentStatus==='beschikbaar'?'<p class="team-assignment-warning">Nog gekoppeld aan een actieve melding: ontkoppel de ploeg in de melding om ze ook vrij te tellen.</p>':''}`:'';
   const temporaryBadge=policeRoleBadge(team.dienst,String(team.roepnaam));
   return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${beacon}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}${temporaryBadge}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(displayCategory(team.dienst))}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}${radioMembers.length?'<div class="crew-radio-label">◉ Radio: '+radioMembers.map(user=>esc(user.displayName||user.name||'Radiogebruiker')).join(' · ')+'</div>':''}</div>${phaseControls}</div><div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions"><button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
 }
