@@ -1,87 +1,281 @@
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import {canDecide, canReview, checkApplicant, eligibility, isDiscordId} from './callsign-utils.js';
-import {getPolicePlan, performPoliceSync} from './callsign-sync.js';
+import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getAuth} from 'firebase-admin/auth';
+import {eligibility,isDiscordId} from './callsign-utils.js';
+import {verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
 import {actorFromPersonnel} from './registrations.js';
-const s=x=>String(x??'').trim();
-const timestamp=x=>x?.toDate?.().toISOString()||null;
+import {CREATED_PERSONNEL_COLLECTION,personnelDataEnabled} from './personnel-create.js';
+import {STAFF_DOSSIER_COLLECTION} from './staff-dossier-policy.js';
+import {
+  applicantRequest,canInspect,canAssign,claimedCalls,availableCalls,proposedCall,
+  claimId,existingApplicant,fixedCall,portalReady,POLICE_RANK,POLICE_STATUS
+} from './callsign-portal-policy.js';
 const enabled=()=>process.env.BPD_ENABLE_CALLSIGN_REQUESTS==='true';
-const syncEnabled=()=>process.env.BPD_ENABLE_SHEETS_SYNC==='true';
-const fail=(res,error)=>{console.error('Roepnummeraanvraag:',error?.code||error?.message||'onbekend');return res.status(503).json({error:'De aanvraag kon niet worden verwerkt. Controleer de serverlog en de Google Sheets-toegang.'});};
-export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged=()=>{}}) {
-  const permit=(req)=>req.bpd.departments.includes('politie')&&canReview(req.bpd.role);
-  const officer=(req)=>req.bpd.departments.includes('politie')&&canDecide(req.bpd.role);
-  const actor=async req=>actorFromPersonnel(req.bpd,(await getSnapshot()).data);
-  const collection=()=>getFirestore().collection('bpd_callsign_requests');
+const fail=(res,e)=>{
+  if(e?.httpStatus)return res.status(e.httpStatus).json({error:e.message});
+  console.error('Vaste roepnummers:',e?.code||e?.message||'onbekend');
+  return res.status(503).json({error:'Roepnummeradministratie niet beschikbaar. Er is niets toegewezen.'});
+};
+const reject=(code,message)=>Object.assign(new Error(message),{httpStatus:code});
+const stamp=x=>x?.toDate?.().toISOString?.()||null;
+const rows=snaps=>snaps.docs.map(d=>({...d.data(),id:d.id}));
+export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged=()=>{}}){
+  const db=()=>getFirestore();
+  const requests=()=>db().collection('bpd_callsign_requests');
+  const by=async req=>actorFromPersonnel(req.bpd,(await getSnapshot()).data);
+
+  // Self-service intentionally bypasses privileged portal access, NOT Discord authentication.
+  // The applicant receives no dossier, cadre or personnel-edit permissions.
+  async function discordApplicant(req,res,next){
+    if(!enabled())return res.status(503).json({error:'Aanvraagmodule nog niet ingeschakeld'});
+    if(process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN!=='true')
+      return res.status(503).json({error:'Geverifieerde Discord-login is nog niet ingeschakeld'});
+    const token=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
+    if(!token)return res.status(401).json({error:'Meld je eerst aan via Discord'});
+    try{
+      const verified=await getAuth().verifyIdToken(token);
+      const id=String(verified.uid||'').replace(/^discord:/,'');
+      if(!isDiscordId(id))return res.status(403).json({error:'Discord-login vereist'});
+      const [member,user]=await Promise.all([
+        db().collection('bpd_discord_auth').doc(id).get(),
+        db().collection(USER_COLLECTION).doc(id).get()
+      ]);
+      // An explicitly blocked user cannot bypass their block via the intake module.
+      if(user.exists&&user.get('status')==='blocked')
+        return res.status(403).json({error:'Dit account is geblokkeerd'});
+      const identity=verifiedDiscordIdentity(verified,member.data(),process.env.DISCORD_GUILD_ID);
+      if(!identity)return res.status(403).json({error:'Discord-verificatie verlopen. Meld je opnieuw aan'});
+      req.bpdApplicant={discordId:identity,memberName:String(member.get('username')||'').slice(0,80)};
+      next();
+    }catch(e){return res.status(401).json({error:'Ongeldige Discord-aanmelding'});}
+  }
+
+  async function freshRoster(){
+    const snap=await getSnapshot({forceRefresh:true});
+    if(snap.stale||!Array.isArray(snap.data))throw reject(503,'Bestaande personeelsnummers kunnen niet betrouwbaar gecontroleerd worden');
+    return snap.data;
+  }
+  async function available(roster){
+    const [primary,legacy]=await Promise.all([
+      db().collection('bpd_personnel_call_claims').where('dept','==','politie').limit(1001).get(),
+      db().collection('bpd_callsign_reservations').limit(1001).get()
+    ]);
+    if(primary.size>=1001||legacy.size>=1001)
+      throw reject(503,'De nummerreservaties moeten eerst administratief gecontroleerd worden');
+    return availableCalls(claimedCalls(roster,rows(primary),rows(legacy)));
+  }
+  const safeRequest=x=>({
+    discordId:x.discordId,name:x.name,temporaryCall:x.temporaryCall,
+    preferredCall:x.preferredCall??null,status:x.status,assignedCall:x.assignedCall??null,
+    joinedOn:x.verification?.joinedOn||null,playHours:x.verification?.playHours??null,
+    createdAt:stamp(x.createdAt),verifiedBy:x.verification?.by?.name||null
+  });
+  const responseRequests=async()=>rows(await requests().orderBy('createdAt','desc').limit(80).get()).map(safeRequest);
+
+  // A recruit may see/create ONLY their own request. IDs come from verified Firebase custom tokens.
+  app.get('/api/callsigns/self',discordApplicant,async(req,res)=>{
+    try{
+      const d=await requests().doc(req.bpdApplicant.discordId).get();
+      return res.json({applicant:req.bpdApplicant,request:d.exists?safeRequest(d.data()):null});
+    }catch(e){return fail(res,e);}
+  });
+  app.post('/api/callsigns/self',discordApplicant,async(req,res)=>{
+    try{
+      const subject=applicantRequest(req.body,req.bpdApplicant.discordId);
+      const roster=await freshRoster();
+      if(existingApplicant(roster,subject.discordId,subject.name))
+        return res.status(409).json({error:'Je hebt al een politiepersoneelsfiche of deze naam bestaat reeds'});
+      // The preferred number is a wish, NOT a reservation before officer approval.
+      const free=await available(roster);
+      if(subject.preferredCall!==null&&!free.includes(subject.preferredCall))
+        return res.status(409).json({error:'Het gewenste nummer is momenteel bezet'});
+      const record={...subject,status:'submitted',origin:'discord_self',
+        submittedByDiscordId:subject.discordId,
+        createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()};
+      await requests().doc(subject.discordId).create(record);
+      return res.status(201).json({created:true,status:'submitted'});
+    }catch(e){
+      if(e.code===6||e.code==='already-exists')return res.status(409).json({error:'Je hebt al een aanvraag; vraag het kader om deze te behandelen'});
+      if(/Ongeldige|roepnummer|naam|Discord-identiteit/i.test(e.message)&&!e.httpStatus)
+        return res.status(400).json({error:e.message});
+      return fail(res,e);
+    }
+  });
+  app.get('/api/callsigns/self/available',discordApplicant,async(_req,res)=>{
+    try{return res.json({available:await available(await freshRoster())});}
+    catch(e){return fail(res,e);}
+  });
+
+  // Privileged cadre routes. The personal route above grants NO elevated access.
   app.get('/api/callsigns/settings',requireUser,(req,res)=>{
-    if(!permit(req))return res.status(403).json({error:'Alleen bevoegd politiekader heeft toegang'});
-    res.json({role:req.bpd.role,requestsEnabled:enabled(),sheetSyncEnabled:syncEnabled(),canApprove:officer(req)});
+    if(!canInspect(req.bpd))return res.status(403).json({error:'Geen politiekaderrechten'});
+    res.json({role:req.bpd.role,requestsEnabled:enabled(),sheetSyncEnabled:false,
+      portalApprovalEnabled:portalReady(process.env)&&personnelDataEnabled(process.env),
+      canApprove:canAssign(req.bpd),mode:'firestore_only'});
   });
   app.get('/api/callsigns/requests',requireUser,async(req,res)=>{
-    if(!permit(req))return res.status(403).json({error:'Geen toegang'});
-    try{const snaps=await collection().orderBy('createdAt','desc').limit(80).get();res.json({requests:snaps.docs.map(d=>{const x=d.data();return {discordId:d.id,name:x.name,temporaryCall:x.temporaryCall,status:x.status,joinedOn:x.verification?.joinedOn||null,playHours:x.verification?.playHours??null,assignedCall:x.assignedCall||null,verifiedBy:x.verification?.by?.name||null,createdAt:timestamp(x.createdAt),lastError:x.status==='sync_needs_review'?'Synchronisatie vraagt handmatige controle. Niet opnieuw goedkeuren.':null};})});}catch(e){fail(res,e)}
+    if(!canInspect(req.bpd))return res.status(403).json({error:'Geen inzagerecht'});
+    try{return res.json({requests:await responseRequests()});}
+    catch(e){return fail(res,e);}
   });
-  // Eerste fase: intake door kader op basis van /info member. Aanvragers-selfservice volgt na geverifieerde Discord OAuth.
+  app.get('/api/callsigns/available',requireUser,async(req,res)=>{
+    if(!canInspect(req.bpd))return res.status(403).json({error:'Geen inzagerecht'});
+    try{return res.json({available:await available(await freshRoster())});}
+    catch(e){return fail(res,e);}
+  });
   app.post('/api/callsigns/requests',requireUser,async(req,res)=>{
-    if(!permit(req))return res.status(403).json({error:'Geen bevoegdheid'});
-    if(!enabled())return res.status(503).json({error:'Aanvraagmodule staat nog uit (BPD_ENABLE_CALLSIGN_REQUESTS)'});
-    let details;try{details=checkApplicant(req.body||{});}catch(e){return res.status(400).json({error:e.message})}
-    try{const a=await actor(req);if(!a)return res.status(403).json({error:'Koppel je aanmeldaccount eerst aan je eigen Discord ID'});
-      // Document-ID is de Discord ID: geen twee gelijktijdige dossiers per kandidaat.
-      await collection().doc(details.discordId).create({...details,status:'submitted',submittedBy:a,submittedUid:req.bpd.uid,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
-      res.status(201).json({created:true,discordId:details.discordId,status:'submitted'});
-    }catch(e){if(e.code===6||e.code==='already-exists')return res.status(409).json({error:'Deze Discord ID heeft al een aanvraag'});fail(res,e)}
+    if(!canInspect(req.bpd))return res.status(403).json({error:'Geen bevoegdheid'});
+    if(!enabled())return res.status(503).json({error:'Aanvraagmodule staat nog uit'});
+    let request;
+    try{request=applicantRequest(req.body,req.body?.discordId);}
+    catch(e){return res.status(400).json({error:e.message});}
+    try{
+      const roster=await freshRoster();
+      if(existingApplicant(roster,request.discordId,request.name))
+        return res.status(409).json({error:'Deze speler bestaat al in politiepersoneelsbeheer'});
+      if(request.preferredCall!==null&&!(await available(roster)).includes(request.preferredCall))
+        return res.status(409).json({error:'Dit roepnummer is niet vrij'});
+      const officer=await by(req);
+      if(!officer)return res.status(403).json({error:'Koppel je kaderaccount eerst aan een personeelsfiche'});
+      await requests().doc(request.discordId).create({...request,status:'submitted',
+        origin:'cadre',submittedBy:officer,submittedUid:req.bpd.uid,
+        createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
+      return res.status(201).json({created:true,discordId:request.discordId,status:'submitted'});
+    }catch(e){
+      if(e.code===6||e.code==='already-exists')
+        return res.status(409).json({error:'Voor deze Discord-ID bestaat al een aanvraag'});
+      return fail(res,e);
+    }
   });
   app.post('/api/callsigns/requests/:discordId/verify',requireUser,async(req,res)=>{
-    if(!permit(req))return res.status(403).json({error:'Geen controlebevoegdheid'});
+    if(!canInspect(req.bpd))return res.status(403).json({error:'Geen controlebevoegdheid'});
     if(!enabled())return res.status(503).json({error:'Aanvraagmodule staat uit'});
-    const id=req.params.discordId;if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
-    let result;try{result=eligibility(req.body||{});}catch(e){return res.status(400).json({error:e.message})}
-    try{const a=await actor(req);if(!a)return res.status(403).json({error:'Geen gekoppeld personeelslid'});const ref=collection().doc(id);await getFirestore().runTransaction(async tx=>{const d=await tx.get(ref);if(!d.exists)throw Object.assign(new Error('Aanvraag niet gevonden'),{status:404});if(!['submitted','needs_verification','verified'].includes(d.get('status')))throw Object.assign(new Error('Aanvraag kan niet meer worden gewijzigd'),{status:409});tx.update(ref,{status:result.eligible?'verified':'needs_verification',verification:{...result,source:'/info member (handmatig gecontroleerd)',by:a,verifiedByUid:req.bpd.uid,checkedAt:new Date().toISOString()},updatedAt:FieldValue.serverTimestamp()});});res.json({verified:result.eligible,...result});}
-    catch(e){if(e.status)return res.status(e.status).json({error:e.message});fail(res,e)}
+    if(!isDiscordId(req.params.discordId))return res.status(400).json({error:'Ongeldige Discord ID'});
+    let result;
+    try{result=eligibility(req.body||{});}catch(e){return res.status(400).json({error:e.message});}
+    try{
+      const reviewer=await by(req);
+      if(!reviewer)return res.status(403).json({error:'Geen gekoppeld kaderlid'});
+      const ref=requests().doc(req.params.discordId);
+      await db().runTransaction(async tx=>{
+        const current=await tx.get(ref);
+        if(!current.exists||!['submitted','needs_verification','verified'].includes(current.get('status')))
+          throw reject(409,'Aanvraag ontbreekt of is al behandeld');
+        tx.update(ref,{status:result.eligible?'verified':'needs_verification',
+          verification:{...result,source:'/info member, door kader handmatig bevestigd',
+            by:reviewer,byUid:req.bpd.uid,checkedAt:new Date().toISOString()},
+          updatedAt:FieldValue.serverTimestamp()});
+      });
+      return res.json({verified:result.eligible,...result});
+    }catch(e){return fail(res,e);}
   });
   app.post('/api/callsigns/requests/:discordId/reject',requireUser,async(req,res)=>{
-    if(!officer(req))return res.status(403).json({error:'Alleen officierenkader en korpsleiding mogen afwijzen'});
+    if(!canAssign(req.bpd))return res.status(403).json({error:'Beslissing uitsluitend voor officierenkader of korpsleiding'});
     if(!enabled())return res.status(503).json({error:'Aanvraagmodule staat uit'});
-    const id=req.params.discordId,reason=s(req.body?.reason);
-    if(!isDiscordId(id)||reason.length<8||reason.length>1000)return res.status(400).json({error:'Discord ID of motivering ongeldig (minimaal 8 tekens)'});
-    try{const by=await actor(req);if(!by)return res.status(403).json({error:'Geen gekoppeld personeelslid'});
-      await getFirestore().runTransaction(async tx=>{const ref=collection().doc(id),doc=await tx.get(ref);
-        if(!doc.exists)throw Object.assign(new Error('Aanvraag niet gevonden'),{status:404});
-        if(!['submitted','needs_verification','verified'].includes(doc.get('status')))throw Object.assign(new Error('Aanvraag is al verwerkt'),{status:409});
-        tx.update(ref,{status:'rejected',decision:{type:'afgewezen',reason,by,byUid:req.bpd.uid,at:new Date().toISOString()},updatedAt:FieldValue.serverTimestamp()});
-      });res.json({rejected:true});
-    }catch(e){if(e.status)return res.status(e.status).json({error:e.message});fail(res,e)}
+    const id=req.params.discordId,reason=String(req.body?.reason||'').trim();
+    if(!isDiscordId(id)||reason.length<8||reason.length>1000)
+      return res.status(400).json({error:'Reden (8–1000 tekens) en Discord-ID vereist'});
+    try{
+      const officer=await by(req);
+      if(!officer)return res.status(403).json({error:'Geen gekoppeld kaderlid'});
+      await db().runTransaction(async tx=>{
+        const ref=requests().doc(id),current=await tx.get(ref);
+        if(!current.exists||!['submitted','needs_verification','verified'].includes(current.get('status')))
+          throw reject(409,'Aanvraag is al verwerkt');
+        tx.update(ref,{status:'rejected',decision:{type:'afgewezen',reason,by:officer,
+          byUid:req.bpd.uid,at:new Date().toISOString()},
+          updatedAt:FieldValue.serverTimestamp()});
+      });
+      return res.json({rejected:true});
+    }catch(e){return fail(res,e);}
   });
   app.get('/api/callsigns/requests/:discordId/preview',requireUser,async(req,res)=>{
-    if(!officer(req))return res.status(403).json({error:'Alleen officierenkader en korpsleiding mogen een toekenning voorbereiden'});
-    const id=req.params.discordId;if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
-    try{const d=await collection().doc(id).get();if(!d.exists)return res.status(404).json({error:'Aanvraag niet gevonden'});if(d.get('status')!=='verified')return res.status(409).json({error:'Voorwaarden zijn nog niet bevestigd'});
-      const plan=await getPolicePlan(process.env.PERSONNEL_SPREADSHEET_ID,d.data());res.json({preview:plan,sheetSyncEnabled:syncEnabled()});}
-    catch(e){if(/Discord ID bestaat|Personeelsnaam bestaat|Geen vrij|onvolledig/i.test(e.message))return res.status(409).json({error:e.message});fail(res,e)}
+    if(!canAssign(req.bpd))return res.status(403).json({error:'Geen goedkeuringsrecht'});
+    if(!isDiscordId(req.params.discordId))return res.status(400).json({error:'Ongeldige Discord-ID'});
+    try{
+      const r=await requests().doc(req.params.discordId).get();
+      if(!r.exists||r.get('status')!=='verified')
+        return res.status(409).json({error:'De aanvraag moet eerst gecontroleerd zijn'});
+      const roster=await freshRoster();
+      if(existingApplicant(roster,req.params.discordId,r.get('name')))
+        return res.status(409).json({error:'Er bestaat al een politiepersoneelsfiche of dezelfde naam'});
+      const free=await available(roster);
+      const requested=req.query.preferredCall??r.get('preferredCall')??null;
+      const call=proposedCall(free,requested);
+      return res.json({preview:{name:r.get('name'),call,discordId:req.params.discordId,
+        rank:POLICE_RANK,remainingFree:free.length,source:'firestore',series:'200–299'},
+        portalApprovalEnabled:portalReady(process.env)&&personnelDataEnabled(process.env)});
+    }catch(e){
+      if(/vrij|roepnummer/.test(e.message)&&!e.httpStatus)return res.status(409).json({error:e.message});
+      return fail(res,e);
+    }
   });
   app.post('/api/callsigns/requests/:discordId/approve',requireUser,async(req,res)=>{
-    if(!officer(req))return res.status(403).json({error:'Uitsluitend officierenkader en korpsleiding mogen goedkeuren'});
-    if(!enabled()||!syncEnabled())return res.status(503).json({error:'Goedkeuring en Sheets-schrijfkoppeling zijn nog niet ingeschakeld'});
-    const id=req.params.discordId;if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
-    let plan,approvedBy,locked=false;
-    try{const current=await collection().doc(id).get();if(!current.exists)return res.status(404).json({error:'Aanvraag niet gevonden'});
-      if(current.get('status')!=='verified')return res.status(409).json({error:'Aanvraag is niet gecontroleerd of reeds verwerkt'});
-      approvedBy=await actor(req);if(!approvedBy)return res.status(403).json({error:'Account is niet aan een personeelsfiche gekoppeld'});
-      plan=await getPolicePlan(process.env.PERSONNEL_SPREADSHEET_ID,current.data(),{preferredCall:req.body?.preferredCall});
-      await getFirestore().runTransaction(async tx=>{
-        const ref=collection().doc(id), claim=getFirestore().collection('bpd_callsign_reservations').doc(String(plan.call));
-        const [doc,already]=await Promise.all([tx.get(ref),tx.get(claim)]);
-        if(!doc.exists||doc.get('status')!=='verified')throw Object.assign(new Error('Aanvraag werd ondertussen gewijzigd'),{status:409});
-        if(already.exists)throw Object.assign(new Error('Roepnummer is al gereserveerd; vernieuw de voorbeeldcontrole'),{status:409});
-        tx.create(claim,{discordId:id,approvedBy,createdAt:FieldValue.serverTimestamp()});
-        tx.update(ref,{status:'syncing',selectedPlan:plan,approvedBy,approvedUid:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
-      });locked=true;
-      const synced=await performPoliceSync(process.env.PERSONNEL_SPREADSHEET_ID,plan);
-      const batch=getFirestore().batch();const request=collection().doc(id),caseRef=getFirestore().collection('bpd_cases').doc(`politie_${id}`),notice=getFirestore().collection('bpd_notices').doc('politie').collection('events').doc();
-      batch.update(request,{status:'approved',assignedCall:plan.call,sync:synced,syncedAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
-      batch.set(caseRef,{dept:'politie',discordId:id,name:plan.name,call:String(plan.call),rank:plan.rank,createdFrom:'vaste_roepnummer_aanvraag',createdAt:FieldValue.serverTimestamp()},{merge:true});
-      batch.create(notice,{type:'roepnummer_toegekend',dept:'politie',caseId:`politie_${id}`,createdAt:FieldValue.serverTimestamp()});
-      await batch.commit();onPersonnelChanged();res.json({approved:true,...synced});
-    }catch(e){if(locked){try{await collection().doc(id).update({status:'sync_needs_review',updatedAt:FieldValue.serverTimestamp()});}catch{}} if(e.status)return res.status(e.status).json({error:e.message});if(!locked&&/Discord ID bestaat|Personeelsnaam bestaat|Geen vrij|gewijzigd/i.test(e.message))return res.status(409).json({error:e.message});if(locked)return res.status(503).json({error:'Schrijfactie moet handmatig gecontroleerd worden. NIET opnieuw goedkeuren. Bekijk POLITIE, PolitieInfo en Firestore.'});return fail(res,e)}
+    if(!canAssign(req.bpd))return res.status(403).json({error:'Geen goedkeuringsrecht'});
+    if(!enabled()||!portalReady(process.env)||!personnelDataEnabled(process.env))
+      return res.status(503).json({error:'Firestore-toekenning of dossierregistratie staat nog uit. Sheets wordt niet gewijzigd'});
+    const id=req.params.discordId;
+    if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord-ID'});
+    let requested;
+    try{requested=fixedCall(req.body?.preferredCall,{optional:true});}
+    catch(e){return res.status(400).json({error:e.message});}
+    try{
+      const ref=requests().doc(id),current=await ref.get();
+      if(!current.exists||current.get('status')!=='verified')
+        return res.status(409).json({error:'Aanvraag is niet gecontroleerd of reeds verwerkt'});
+      const roster=await freshRoster();
+      if(existingApplicant(roster,id,current.get('name')))
+        return res.status(409).json({error:'Een politiepersoneelsfiche of personeelsnaam bestaat al'});
+      const free=await available(roster);
+      const call=proposedCall(free,requested??current.get('preferredCall')??null);
+      const officer=await by(req);
+      if(!officer)return res.status(403).json({error:'Goedkeurder heeft geen gekoppeld personeelsdossier'});
+      const store=db(),person=store.collection(CREATED_PERSONNEL_COLLECTION).doc('politie_'+id),
+        dossier=store.collection(STAFF_DOSSIER_COLLECTION).doc('politie_'+id),
+        caseRef=store.collection('bpd_cases').doc('politie_'+id),
+        primary=store.collection('bpd_personnel_call_claims').doc(claimId(call)),
+        legacy=store.collection('bpd_callsign_reservations').doc(String(call)),
+        audit=person.collection('audit').doc(),staffAudit=dossier.collection('audit').doc();
+      // All identity, claims, case and dossier records are written atomically.
+      await store.runTransaction(async tx=>{
+        const [application,used,oldReserved,existing,existingDossier,existingCase]=await Promise.all([
+          tx.get(ref),tx.get(primary),tx.get(legacy),tx.get(person),tx.get(dossier),tx.get(caseRef)
+        ]);
+        if(!application.exists||application.get('status')!=='verified')
+          throw reject(409,'Aanvraag is intussen behandeld');
+        if(used.exists||oldReserved.exists)
+          throw reject(409,'Roepnummer is intussen gereserveerd. Kies opnieuw');
+        if(existing.exists||existingDossier.exists||existingCase.exists)
+          throw reject(409,'Er bestaat al een dossier of personeelsfiche voor deze Discord-ID');
+        if(application.get('name')!==current.get('name'))
+          throw reject(409,'Naam is intussen gewijzigd. Vernieuw de aanvraag');
+        const now=FieldValue.serverTimestamp();
+        tx.create(primary,{dept:'politie',discordId:id,call:String(call),source:'vast_roeppnummer',updatedAt:now});
+        tx.create(legacy,{discordId:id,call:String(call),source:'firestore_portaal',approvedBy:officer,createdAt:now});
+        tx.create(person,{dept:'politie',discordId:id,name:application.get('name'),
+          call:String(call),rank:POLICE_RANK,status:POLICE_STATUS,state:'linked',
+          revision:0,entryRank:POLICE_RANK,exceptionalEntryRank:false,
+          createdFrom:'vaste_roepnummer_aanvraag',createdByUid:req.bpd.uid,
+          createdByDiscordId:req.bpd.discordId||null,createdAt:now});
+        tx.create(dossier,{dept:'politie',discordId:id,revision:0,
+          profile:{startDate:'',unit:'',functionTitle:''},
+          createdFrom:'vaste_roepnummer_aanvraag',createdAt:now,updatedAt:now});
+        tx.create(caseRef,{dept:'politie',discordId:id,name:application.get('name'),
+          call:String(call),rank:POLICE_RANK,createdFrom:'vaste_roepnummer_aanvraag',createdAt:now});
+        tx.create(audit,{action:'entry_rank',previousRank:null,newRank:POLICE_RANK,
+          reason:'Vast roepnummer toegekend',call:String(call),actorUid:req.bpd.uid,
+          actorDiscordId:req.bpd.discordId||null,at:now});
+        tx.create(staffAudit,{action:'callsign_assigned',call:String(call),
+          previousCall:application.get('temporaryCall')||null,
+          reason:'Goedgekeurde aanvraag',actorDiscordId:req.bpd.discordId||null,at:now});
+        tx.update(ref,{status:'approved',assignedCall:call,approvedBy:officer,
+          approvedUid:req.bpd.uid,approvedAt:now,updatedAt:now});
+      });
+      onPersonnelChanged();
+      return res.json({approved:true,call,discordId:id,createdPersonnel:true,
+        createdPoliceDossier:true,sheetsChanged:false});
+    }catch(e){
+      if(/vrij|roepnummer/.test(e.message)&&!e.httpStatus)return res.status(409).json({error:e.message});
+      return fail(res,e);
+    }
   });
 }
