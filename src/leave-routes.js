@@ -1,7 +1,8 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
+import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,mayApproveLeave,
-  mayManageGrants,highCadreDepartments,validateGrant,activeGrant,normalizeEmail,roleForDepartment} from './leave-policy.js';
+  mayManageGrants,highCadreDepartments,validateGrant,activeGrant,roleForDepartment} from './leave-policy.js';
 
 const coll='bpd_leave_requests';
 const grants='bpd_leave_grants';
@@ -39,13 +40,22 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       throw rejection('Je personeelskoppeling is niet gevonden in je gemachtigde hulpdiensten',403);
     return {records,snapshot:snapshot.data,departments:departmentsOf(records)};
   }
-  async function grantFor(uid){
-    const doc=await db().collection(grants).doc(uid).get();
-    return doc.exists?doc.data():null;
+  async function grantFor(actor){
+    // Discord ID is the canonical grant key. Old Google-UID documents continue
+    // to work until replaced; a revoked Discord grant overrides an old one.
+    const id=actor?.discordId;
+    if(!validDiscordId(id))return null;
+    const current=await db().collection(grants).doc(id).get();
+    if(current.exists)return current.data();
+    if(typeof actor.uid==='string'&&actor.uid!==id){
+      const legacy=await db().collection(grants).doc(actor.uid).get();
+      return legacy.exists?legacy.data():null;
+    }
+    return null;
   }
   app.get('/api/leave/me',requireUser,async(req,res)=>{
     try {
-      const {departments}=await context(req),grant=activeGrant(await grantFor(req.bpd.uid));
+      const {departments}=await context(req),grant=activeGrant(await grantFor(req.bpd));
       return res.json({role:req.bpd.role,departments,departmentRoles:req.bpd.departmentRoles,discordId:req.bpd.discordId,
         grant:grant?{level:grant.level,startsOn:grant.startsOn,expiresOn:grant.expiresOn}:null,
         canManageGrants:mayManageGrants(req.bpd),writesEnabled:writes()});
@@ -54,7 +64,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
   app.get('/api/leave/requests',requireUser,async(req,res)=>{
     try {
       const {departments}=await context(req),leave=db().collection(coll);
-      const grant=activeGrant(await grantFor(req.bpd.uid));
+      const grant=activeGrant(await grantFor(req.bpd));
       const my=await leave.where('personDiscordId','==',req.bpd.discordId).limit(100).get();
       let review=[];
       if(grant){
@@ -86,7 +96,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       if(!self&&(!cadre||!req.bpd.departments.includes(dept)))
         return res.status(403).json({error:'Geen toegang tot deze hulpdienst'});
       const snap=await db().collection(coll).where('personDiscordId','==',personId).limit(100).get();
-      const grant=activeGrant(await grantFor(req.bpd.uid));
+      const grant=activeGrant(await grantFor(req.bpd));
       const selected=snap.docs.filter(d=>{
         const record=d.data();
         return Array.isArray(record.subjectDepartments)&&record.subjectDepartments.includes(dept)&&
@@ -127,13 +137,18 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
     if(typeof note!=='string'||note.trim().length>300)return res.status(400).json({error:'Beslissingsnotitie te lang'});
     try{
       await context(req);
-      const ref=db().collection(coll).doc(req.params.id),grantRef=db().collection(grants).doc(req.bpd.uid);
+      const ref=db().collection(coll).doc(req.params.id);
+      const canonical=db().collection(grants).doc(req.bpd.discordId);
+      const legacy=req.bpd.uid===req.bpd.discordId?null:db().collection(grants).doc(req.bpd.uid);
       await db().runTransaction(async tx=>{
-        const [request,grantDoc]=await Promise.all([tx.get(ref),tx.get(grantRef)]);
+        const [request,grantDoc,oldGrant]=await Promise.all([
+          tx.get(ref),tx.get(canonical),legacy?tx.get(legacy):Promise.resolve(null)
+        ]);
         if(!request.exists)throw rejection('Verlofaanvraag niet gevonden',404);
         const d=request.data();
         if(d.status!=='pending')throw rejection('Aanvraag is al behandeld',409);
-        if(!mayApproveLeave(req.bpd,d,grantDoc.exists?grantDoc.data():null))
+        const grant=grantDoc.exists?grantDoc.data():oldGrant?.exists?oldGrant.data():null;
+        if(!mayApproveLeave(req.bpd,d,grant))
           throw rejection('Geen bevoegdheid om dit verlof goed te keuren',403);
         const audit=ref.collection('audit').doc();
         tx.update(ref,{status:decision,decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
@@ -161,7 +176,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       if(matched.length!==1)throw rejection('Geen eenduidige personeelsfiche gevonden',404);
       const pending={personDiscordId:personId,subjectDepartments:[dept],status:'pending',
         startDate:details.startDate,endDate:details.endDate};
-      const grant=activeGrant(await grantFor(req.bpd.uid));
+      const grant=activeGrant(await grantFor(req.bpd));
       if(!mayApproveLeave(req.bpd,pending,grant))
         throw rejection('Je mag deze verlofperiode niet zelfstandig goedkeuren',403);
       const id='manual_'+dept+'_'+personId+'_'+details.startDate+'_'+details.endDate;
@@ -182,15 +197,48 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       return res.status(201).json({id,status:'approved',days:details.days,manual:true});
     }catch(e){return jsonError(res,e)}
   });
+  // Granting the portal's temporary VERLOFBEHEER function does NOT mutate
+  // any Discord guild role. That requires a separately authorized bot.
+  const targetAccount=async id=>{
+    if(!validDiscordId(id))throw rejection('Ongeldig Discord-ID');
+    const managed=await db().collection(USER_COLLECTION).doc(id).get();
+    if(managed.exists){
+      const entry=approvedManagedEntry(managed.data(),id);
+      if(!entry)throw rejection('Dit Discord-account is niet goedgekeurd voor het portaal',403);
+      return entry;
+    }
+    const matched=Object.values(accessList()).filter(e=>e?.discordId===id);
+    if(matched.length!==1||!Array.isArray(matched[0].departments)||
+      matched[0].departments.length===0||
+      !['basiskader','middenkader','officierenkader','korpsleiding','beheerder'].includes(matched[0].role))
+      throw rejection('Keur dit Discord-account eerst goed voor het portaal',403);
+    return matched[0];
+  };
+  const legacyEmailFor=id=>{
+    const list=Object.entries(accessList()).filter(([email,entry])=>
+      entry?.discordId===id&&typeof email==='string'&&email.includes('@'));
+    return list.length===1?list[0][0]:null;
+  };
   app.get('/api/leave/grants',requireUser,async(req,res)=>{
     try{
       await context(req);
       if(!mayManageGrants(req.bpd))return res.status(403).json({error:'Geen machtigingsrechten'});
-      const data=await db().collection(grants).limit(100).get();
-      return res.json({grants:data.docs.filter(d=>
-        Array.isArray(d.get('grantDepartments')) && d.get('grantDepartments').some(dept=>highCadreDepartments(req.bpd).includes(dept)))
-        .map(d=>({email:d.get('email'),level:d.get('level'),
-        startsOn:d.get('startsOn'),expiresOn:d.get('expiresOn'),revoked:Boolean(d.get('revoked'))}))});
+      const data=await db().collection(grants).limit(101).get();
+      if(data.size>100)return res.status(503).json({error:'Te veel machtigingen. Beheer heeft paginering nodig.'});
+      const visible=data.docs.filter(d=>
+        Array.isArray(d.get('grantDepartments'))&&
+        d.get('grantDepartments').some(dept=>highCadreDepartments(req.bpd).includes(dept)));
+      const result=new Map();
+      // Old email-based records are still displayed against their mapped Discord ID.
+      for(const d of visible){
+        const x=d.data(),id=validDiscordId(x.discordId)?x.discordId:
+          Object.entries(accessList()).find(([email,entry])=>email===x.email&&validDiscordId(entry?.discordId))?.[1]?.discordId;
+        if(!validDiscordId(id))continue;
+        const row={discordId:id,level:x.level,startsOn:x.startsOn,
+          expiresOn:x.expiresOn,revoked:Boolean(x.revoked),legacy:!validDiscordId(x.discordId)};
+        if(!result.has(id)||!row.legacy)result.set(id,row);
+      }
+      return res.json({grants:[...result.values()]});
     }catch(e){return jsonError(res,e)}
   });
   app.post('/api/leave/grants',requireUser,requireWrites,async(req,res)=>{
@@ -198,43 +246,58 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       await context(req);
       if(!mayManageGrants(req.bpd))throw rejection('Alleen officierenkader of korpsleiding kan verlofmachtigingen toekennen',403);
       const grant=validateGrant(req.body);
-      if(grant.email===req.bpd.email)throw rejection('Je kunt jezelf geen aanvullende machtiging geven',403);
-      const target=accessList()[grant.email];
-      if(!target||!Array.isArray(target.departments)||!target.departments.some(d=>highCadreDepartments(req.bpd).includes(d)))
-        throw rejection('Doelaccount behoort niet tot een gezamenlijk gemachtigde hulpdienst',403);
-      const user=await getAuth().getUserByEmail(grant.email);
-      if(!user.emailVerified || !user.providerData.some(p=>p.providerId==='google.com'))
-        throw rejection('Doelaccount heeft nog geen geverifieerde Google-aanmelding',403);
+      if(grant.discordId===req.bpd.discordId)throw rejection('Je kunt jezelf geen aanvullende machtiging geven',403);
+      const target=await targetAccount(grant.discordId);
       const grantDepartments=target.departments.filter(d=>highCadreDepartments(req.bpd).includes(d));
-      const ref=db().collection(grants).doc(user.uid),audit=ref.collection('audit').doc();
+      if(!grantDepartments.length)throw rejection('De medewerker behoort niet tot jouw gemachtigde hulpdienst',403);
+      const ref=db().collection(grants).doc(grant.discordId),audit=ref.collection('audit').doc();
       const batch=db().batch();
-      batch.set(ref,{...grant,grantDepartments,revoked:false,grantedByUid:req.bpd.uid,grantedAt:FieldValue.serverTimestamp()});
-      batch.create(audit,{action:'grant',...grant,byUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+      batch.set(ref,{...grant,grantDepartments,revoked:false,grantedByUid:req.bpd.uid,
+        grantedByDiscordId:req.bpd.discordId,grantedAt:FieldValue.serverTimestamp()});
+      batch.create(audit,{action:'grant',...grant,byUid:req.bpd.uid,
+        byDiscordId:req.bpd.discordId,at:FieldValue.serverTimestamp()});
       await batch.commit();
-      return res.status(201).json({ok:true,level:grant.level,expiresOn:grant.expiresOn});
-    }catch(e){
-      if(e?.code==='auth/user-not-found')return res.status(404).json({error:'Dit account moet zich eerst met Google aanmelden'});
-      return jsonError(res,e);
-    }
+      return res.status(201).json({ok:true,discordId:grant.discordId,level:grant.level,
+        expiresOn:grant.expiresOn,discordGuildRoleUpdated:false});
+    }catch(e){return jsonError(res,e)}
   });
   app.post('/api/leave/grants/revoke',requireUser,requireWrites,async(req,res)=>{
     try{
       await context(req);
       if(!mayManageGrants(req.bpd))throw rejection('Geen machtigingsrechten',403);
-      const email=normalizeEmail(req.body?.email);
-      if(email===req.bpd.email)throw rejection('Je kunt je eigen machtiging hier niet aanpassen',403);
-      const user=await getAuth().getUserByEmail(email),ref=db().collection(grants).doc(user.uid);
+      const id=typeof req.body?.discordId==='string'?req.body.discordId.trim():'';
+      if(!validDiscordId(id))throw rejection('Vul een geldig Discord-ID in');
+      if(id===req.bpd.discordId)throw rejection('Je kunt je eigen machtiging hier niet aanpassen',403);
+      const direct=db().collection(grants).doc(id);
+      // For a Google-UID legacy grant, find its old document if there is no
+      // Discord-ID grant. Revocations are always audited and kept in Firestore.
+      const directSnap=await direct.get();
+      let ref=direct;
+      if(!directSnap.exists){
+        const email=legacyEmailFor(id);
+        if(!email)throw rejection('Machtiging niet gevonden',404);
+        let uid;
+        try{uid=(await getAuth().getUserByEmail(email)).uid}
+        catch(e){if(e.code==='auth/user-not-found')throw rejection('Machtiging niet gevonden',404);throw e}
+        ref=db().collection(grants).doc(uid);
+      }
       await db().runTransaction(async tx=>{
         const current=await tx.get(ref);
-        if(!current.exists||current.get('email')!==email)throw rejection('Machtiging niet gevonden',404);
-        if(!Array.isArray(current.get('grantDepartments'))||
-          !current.get('grantDepartments').some(d=>highCadreDepartments(req.bpd).includes(d)))
+        if(!current.exists)throw rejection('Machtiging niet gevonden',404);
+        const previous=current.data();
+        if(previous.discordId!==id &&
+          !(previous.email&&legacyEmailFor(id)===previous.email))
+          throw rejection('Discord-koppeling van deze machtiging klopt niet',403);
+        if(!Array.isArray(previous.grantDepartments)||
+          !previous.grantDepartments.some(d=>highCadreDepartments(req.bpd).includes(d)))
           throw rejection('Geen bevoegdheid voor deze machtiging',403);
         const audit=ref.collection('audit').doc();
-        tx.update(ref,{revoked:true,revokedAt:FieldValue.serverTimestamp(),revokedByUid:req.bpd.uid});
-        tx.create(audit,{action:'revoke',byUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+        tx.update(ref,{revoked:true,revokedAt:FieldValue.serverTimestamp(),
+          revokedByUid:req.bpd.uid,revokedByDiscordId:req.bpd.discordId});
+        tx.create(audit,{action:'revoke',subjectDiscordId:id,byUid:req.bpd.uid,
+          byDiscordId:req.bpd.discordId,at:FieldValue.serverTimestamp()});
       });
       return res.json({ok:true});
-    }catch(e){if(e?.code==='auth/user-not-found')return res.status(404).json({error:'Geen gebruiker gevonden'});return jsonError(res,e)}
+    }catch(e){return jsonError(res,e)}
   });
 }
