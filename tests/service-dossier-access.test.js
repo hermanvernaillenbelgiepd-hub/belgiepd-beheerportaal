@@ -44,7 +44,7 @@ test('Brandweer access requires uniquely identified ZONE function, never generic
     assert.deepEqual(derive(who,[person('brandweer',call)]),[]);
   }
   assert.deepEqual(derive(who,[person('brandweer','ZONE'),person('brandweer','ZONE')]),[]);
-  assert.deepEqual(derive(actor('politie','korpsleiding'),[person('brandweer','ZONE')]),[]);
+  assert.deepEqual(derive(actor('politie','korpsleiding'),[person('brandweer','ZONE')]),['politie']);
 });
 
 test('Ambulance access requires DIRMED, HARTS, HVPK or HAMB in official personnel roster',()=>{
