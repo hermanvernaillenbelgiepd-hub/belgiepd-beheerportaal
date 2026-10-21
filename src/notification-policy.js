@@ -1,5 +1,6 @@
 import {roleForDepartment,calendarDays} from './leave-policy.js';
 import {policeKader} from './normalize.js';
+import {VERIFIED_SERIES_HEADS,AMBIGUOUS_DISCORD_ID,BUTTERFLY_DISCORD_ID} from './police-series-config.js';
 export const POLICE_SERIES=Object.freeze(['1','2','3']);
 export const NOTIFICATION_THRESHOLDS=Object.freeze([{warn:12,due:15,label:'50/50'},{warn:27,due:31,label:'Inactief'},{warn:57,due:61,label:'Controle op eventuele uitschrijving'}]);
 const ID=/^\d{15,22}$/;
@@ -34,22 +35,24 @@ export function normalizeSeries(person){
   const raw=String(person?.seriesRaw||'').trim();
   const displayed=String(person?.series||'').trim();
   if(POLICE_SERIES.includes(raw))return raw;
-  const match=/^Reeks\s+([123])$/i.exec(displayed);
+  if(/^0[123]$/.test(raw))return raw.slice(1);
+  const match=/^Reeks\s+0?([123])$/i.exec(displayed);
   if(match)return match[1];
   return null;
 }
 export function policeSeriesHeads(env){
   let parsed;
-  try{parsed=JSON.parse(env.BPD_POLICE_SERIES_HEADS_JSON||'{}');}catch{return {};}
-  if(!parsed||Array.isArray(parsed)||typeof parsed!=='object')return {};
+  try{parsed=JSON.parse(env.BPD_POLICE_SERIES_HEADS_JSON||'null');}catch{parsed=null;}
+  const source=parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:VERIFIED_SERIES_HEADS;
   return Object.fromEntries(POLICE_SERIES.map(n=>[n,
-    Array.isArray(parsed[n])?unique(parsed[n].filter(x=>typeof x==='string'&&ID.test(x))):[]]));
+    Array.isArray(source[n])?unique(source[n].filter(x=>
+      typeof x==='string'&&ID.test(x)&&x!==AMBIGUOUS_DISCORD_ID)):[]]));
 }
 export function policeScope(actor,heads){
   const role=roleForDepartment(actor,'politie');
   if(!actor?.departments?.includes('politie')||!ID.test(actor.discordId))return {role:null,series:[]};
   if(['officierenkader','korpsleiding'].includes(role))return {role,series:[...POLICE_SERIES]};
-  if(role==='middenkader')return {role,series:POLICE_SERIES.filter(n=>heads[n]?.includes(actor.discordId))};
+  if(role==='middenkader')return {role,series:actor.discordId===BUTTERFLY_DISCORD_ID?[...POLICE_SERIES]:POLICE_SERIES.filter(n=>heads[n]?.includes(actor.discordId))};
   return {role,series:[]};
 }
 export function warningFor(person){
