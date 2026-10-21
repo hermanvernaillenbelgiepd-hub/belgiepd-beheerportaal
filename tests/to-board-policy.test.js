@@ -451,3 +451,38 @@ test('A scoped TO operator grant may run TO without becoming police kader',()=>{
     assert.equal(canOperateBoard({...aria,toAccessLevel:'revoked'}),false);
   }finally{if(old===undefined)delete process.env.BPD_TO_OPERATOR_DISCORD_IDS;else process.env.BPD_TO_OPERATOR_DISCORD_IDS=old;}
 });
+
+
+test('Assigning an available team automatically sets Onderweg and records it in the incident',()=>{
+  let board=createIncident(addTeam(started()));
+  const crew=Object.values(board.ploegen)[0],incident=Object.values(board.meldingen)[0];
+  board=command(board,'attach-team',{id:incident.id,teamId:crew.id},owner,now+1200).board;
+  assert.equal(board.ploegen[crew.id].responsePhase,'onderweg');
+  assert.equal(board.ploegen[crew.id].responseAt,now+1200);
+  assert.equal(board.ploegen[crew.id].responseBy,owner.uid);
+  assert.equal(board.meldingen[incident.id].ploegen.length,1);
+  assert.ok(board.meldingen[incident.id].log.some(e=>e.txt.includes('automatisch onderweg')));
+  expectStatus(()=>command(board,'attach-team',{id:incident.id,teamId:crew.id}),409);
+  board=command(board,'set-team-status',{id:crew.id,status:'ter-plaatse'},owner,now+2000).board;
+  assert.equal(board.ploegen[crew.id].responsePhase,'ter-plaatse');
+});
+test('Assigning a paused or already responding crew does not override its status',()=>{
+  let board=createIncident(addTeam(started()));
+  let [team]=Object.values(board.ploegen),[incident]=Object.values(board.meldingen);
+  board=command(board,'set-team-status',{id:team.id,status:'pauze'}).board;
+  board=command(board,'attach-team',{id:incident.id,teamId:team.id}).board;
+  assert.equal(board.ploegen[team.id].available,false);
+  assert.equal(board.ploegen[team.id].responsePhase,null);
+  assert.ok(!board.meldingen[incident.id].log.some(e=>e.txt.includes('automatisch onderweg')));
+  board=command(board,'set-team-status',{id:team.id,status:'beschikbaar'}).board;
+  board=command(board,'set-team-status',{id:team.id,status:'onderweg'}).board;
+  board=createIncident(board);
+  const second=Object.values(board.meldingen).find(item=>item.id!==incident.id);
+  board=command(board,'attach-team',{id:second.id,teamId:team.id}).board;
+  assert.equal(board.ploegen[team.id].responsePhase,'onderweg');
+  board=command(board,'set-team-status',{id:team.id,status:'ter-plaatse'}).board;
+  board=createIncident(board);
+  const third=Object.values(board.meldingen).find(item=>![incident.id,second.id].includes(item.id));
+  board=command(board,'attach-team',{id:third.id,teamId:team.id}).board;
+  assert.equal(board.ploegen[team.id].responsePhase,'ter-plaatse');
+});
