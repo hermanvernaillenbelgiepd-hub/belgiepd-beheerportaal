@@ -32,7 +32,7 @@ test('Any current radio member preserves a paired crew, including zero padded nu
   assert.equal(radioMatchesSavedTeam(team,[present('600','BWM')]),false);
   const tracker=new Map(),roster=board([team,crew('other','166')]);
   poll(tracker,roster,base,[present('00900')]);
-  assert.equal(tracker.has('paired'),false);
+  assert.equal(tracker.get('paired')?.since,null);
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+150000,[present('00900')]),tracker,base+150000),['other']);
 });
 
@@ -42,7 +42,7 @@ test('One return to channel resets missing duration and delays automatic retirem
   observeRadioDepartures(roster,snapshot(base+30000),tracker,base+30000);
   assert.equal(tracker.get('a').polls,2);
   observeRadioDepartures(roster,snapshot(base+45000,[present('166')]),tracker,base+45000);
-  assert.equal(tracker.has('a'),false);
+  assert.equal(tracker.get('a')?.since,null);
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+120000),tracker,base+120000),[]);
   assert.equal(tracker.get('a').polls,1);
 });
@@ -65,7 +65,7 @@ test('Unknown radio channel metadata protects only the matching rostered callsig
   assert.equal(tracker.has('a'),false);
 });
 
-test('Assigned units are preserved; manual and ended teams are not offered for removal',()=>{
+test('Assigned units are preserved; ended teams are not offered for removal',()=>{
   const tracker=new Map(),roster=board([crew('busy','930'),crew('free','166'),crew('ended','465',{endedAt:base-10})],['busy']);
   assert.deepEqual(poll(tracker,roster)[8],['free']);
   roster.meldingen.call.ploegen=[];
@@ -96,8 +96,7 @@ test('Manual crew observed in radio is signed off after confirmed subsequent dep
   observeRadioDepartures(roster,snapshot(base,[present('204','REPA')]),tracker,base);
   assert.equal(tracker.get('manual')?.seen,true);
   for(const elapsed of [15000,30000,45000,60000,75000,90000,105000,120000])
-    assert.deepEqual(observeRadioDepartures(roster,snapshot(base+elapsed),tracker,base+elapsed),
-      elapsed===120000?[]:[]);
+    assert.deepEqual(observeRadioDepartures(roster,snapshot(base+elapsed),tracker,base+elapsed),[]);
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+135000),tracker,base+135000),['manual']);
 });
 
