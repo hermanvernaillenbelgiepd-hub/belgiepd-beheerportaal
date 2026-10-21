@@ -13,6 +13,31 @@ export function filterDossiers(rows,filters={}){
     (!query||[r.name,r.call,r.rank,r.status,r.discordId]
       .some(v=>normalized(v).includes(query))));
 }
+export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-desc','callsign-asc','name-asc','name-desc']);
+// Compare numerical parts as numbers: e.g. 930 > 404 > 99, including mixed
+// prefixes like SANTO-930 and SANTO-99. Unknown callsigns stay at the bottom.
+const dossierCollator=new Intl.Collator('nl-BE',{numeric:true,sensitivity:'base'});
+const compareFilled=(left,right,direction=1)=>{
+  const a=String(left??'').trim(),b=String(right??'').trim();
+  if(!a&&!b)return 0;
+  if(!a)return 1;
+  if(!b)return -1;
+  return dossierCollator.compare(a,b)*direction;
+};
+export function sortDossiers(rows,order='callsign-desc'){
+  const mode=DOSSIER_SORT_OPTIONS.includes(order)?order:'callsign-desc';
+  const byName=mode.startsWith('name-'),direction=mode.endsWith('-desc')?-1:1;
+  return [...(Array.isArray(rows)?rows:[])].sort((a,b)=>{
+    const main=byName
+      ?compareFilled(a?.name,b?.name,direction)
+      :compareFilled(a?.call,b?.call,direction);
+    if(main)return main;
+    // Stable display order for equal names/callsigns, independent of input order.
+    return compareFilled(a?.name,b?.name)
+      ||compareFilled(a?.dept,b?.dept)
+      ||compareFilled(a?.discordId,b?.discordId);
+  });
+}
 export function dossierStats(rows){
   const data=Array.isArray(rows)?rows:[];
   const count=data.filter(row=>row?.personnel===true).length;
