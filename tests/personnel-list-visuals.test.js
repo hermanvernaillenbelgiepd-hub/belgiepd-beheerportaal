@@ -199,6 +199,22 @@ test('All specialization pictograms use centered uniform icon tiles in both rost
   assert.ok(light.includes('.specialty-overview-summary .specialty-emoji'));
 });
 
+test('Real specialist pictograms have subtle backgrounds without changing column dimensions',()=>{
+  const light=source('public/index.html');
+  const dark=source('public/personeelsbeheer.html');
+  assert.ok(light.includes('.staff-roster .specialty-col-icon .specialty-custom-image{'));
+  assert.ok(light.includes('border-radius:8px;background:#dceafa'));
+  assert.ok(light.includes('.specialty-overview-summary .specialty-custom-image{'));
+  assert.ok(dark.includes('.staff-roster-table .specialty-col-icon .specialty-custom-image{'));
+  assert.ok(dark.includes('border-radius:8px;background:#deebfa'));
+  assert.ok(dark.includes('.specialty-ledger .specialty-tile>.specialty-custom-image{'));
+  assert.ok(dark.includes('.specialty-summary .specialty-custom-image{'));
+  for(const html of [light,dark]){
+    assert.ok(html.includes('width:40px;height:42px;min-height:42px'));
+    assert.ok(html.includes('width:34px;height:36px'));
+  }
+});
+
 test('Visual roster credits live on a separate sources page',()=>{
   const page=source('public/bronnen.html');
   assert.ok(page.includes('Politie123'));
