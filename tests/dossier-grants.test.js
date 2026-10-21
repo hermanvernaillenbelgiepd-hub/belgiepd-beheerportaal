@@ -4,6 +4,8 @@ import {readFileSync} from 'node:fs';
 import {dossierGrantScope,dossierGrantIsAdmin,dossierGrantPayload,activeDossierGrant,
   applyDossierGrants,verifyBoardDiscordRole} from '../src/dossier-grants.js';
 import {mayWriteManagement} from '../src/management-utils.js';
+import {deriveServiceDossierDepartments} from '../src/service-dossier-access.js';
+import {canEditPersonnel} from '../src/personnel-editor-policy.js';
 const id='123456789012345678',id2='987654321098765432',guild='1309532438053130326';
 const admin={uid:'discord:'+id,discordId:id,role:'beheerder',
   departments:['politie'],departmentRoles:{politie:'korpsleiding'}};
@@ -85,4 +87,36 @@ test('Routes preserve existing personnel ranks and include audited grant/revoke 
  assert.ok(ui.includes('id="dossierGrantSection"'));
  assert.ok(ui.includes('id="dossierTesterOn"'));
  assert.ok(ui.includes('data-tab="services"'));
+});
+
+
+test('Bestuur and TESTER all-read scopes never create operational write authorization',()=>{
+ const now=Date.now();
+ const multi={uid:'discord:'+id,discordId:id,role:'officierenkader',
+   departments:['politie','ambulance'],departmentRoles:{politie:'officierenkader',ambulance:'officierenkader'}};
+ const board={status:'approved',permissions:[]};
+ const roster=[{dept:'ambulance',personId:id,call:'AMB-7',rank:'Ambulancier'}];
+ const entire=deriveServiceDossierDepartments(multi,roster,null,board,guild,now);
+ const native=deriveServiceDossierDepartments(multi,roster,null,null,guild,now,false);
+ assert.deepEqual(entire,['politie','ambulance','brandweer','depannage']);
+ assert.deepEqual(native,['politie']);
+ const decorated={...multi,dossierAllowedDepartments:entire,dossierNativeDepartments:native,
+   dossierManageDepartments:[]};
+ const target={dept:'ambulance',personId:id2,rank:'Ambulancier',name:'Collega',call:'AMB-3'};
+ assert.equal(canEditPersonnel(decorated,target),false);
+ assert.equal(mayWriteManagement(decorated,'ambulance','notitie'),false);
+ assert.equal(mayWriteManagement(decorated,'ambulance','personeelsbeweging'),false);
+});
+test('Sensitive dossier endpoints and buttons keep native service guards',()=>{
+ const read=file=>readFileSync(new URL('../'+file,import.meta.url),'utf8');
+ const server=read('src/server.js');
+ const registrations=read('src/registration-routes.js');
+ const speciality=read('src/specialization-routes.js');
+ const management=read('src/management-routes.js');
+ assert.ok(server.includes('req.bpd.dossierNativeDepartments=native'));
+ assert.ok(registrations.includes('req.bpd.dossierNativeDepartments?.includes(dept)'));
+ assert.ok(speciality.includes('req.bpd.dossierNativeDepartments?.includes(req.params.dept)'));
+ assert.ok(speciality.includes('req.bpd.dossierNativeDepartments?.includes(staff.dept)'));
+ assert.ok(management.includes('req.bpd.dossierNativeDepartments?.includes(r.dept)'));
+ assert.ok(management.includes('req.bpd.dossierNativeDepartments?.includes(dept)'));
 });
