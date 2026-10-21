@@ -143,7 +143,7 @@ test('User-provided SIV/WPR car is bundled locally and uses the same reusable ic
   assert.match(svg,/aria-label="Belgische Wegpolitie SIV\/WPR voertuig"/);
   // Isolated transparent police car with blue lights fits the existing
   // personnel pictogram tile without changing its dimensions.
-  assert.match(svg,/viewBox="0 0 72 60"/);
+  assert.match(svg,/viewBox="6 5 60 50"/);
   assert.match(svg,/<image x="0" y="0" width="72" height="60"/);
   const embedded=svg.match(/href="data:image\/webp;base64,([A-Za-z0-9+/=]+)"/);
   assert.ok(embedded,'Expected actual embedded image bytes');
