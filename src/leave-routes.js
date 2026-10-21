@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
+import {subjectPoliceGrade} from './notification-policy.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,mayApproveLeave,
   mayManageGrants,highCadreDepartments,validateGrant,activeGrant,normalizeEmail,roleForDepartment} from './leave-policy.js';
 
@@ -24,6 +25,10 @@ const item=(doc,showNote=false)=>{
 };
 const personRecords=(rows,id)=>rows.filter(p=>p.personId===id);
 const departmentsOf=records=>[...new Set(records.map(p=>p.dept).filter(Boolean))];
+const gradeFor=(records,id)=>{const matches=records.filter(p=>p.dept==='politie'&&p.personId===id);
+  return matches.length===1?subjectPoliceGrade(matches[0]):null;};
+const projected=(record,roster)=>record.subjectDepartments?.includes('politie')?
+  {...record,subjectPoliceGrade:gradeFor(roster,record.personDiscordId)}:record;
 // Geen volwaardige centrale personeelsnummerdatabase in dit project: Discord ID is
 // voorlopig de migratiebrug. Een toekomstig BPD-nummer mag deze sleutel niet vervangen.
 export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
@@ -53,7 +58,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
   });
   app.get('/api/leave/requests',requireUser,async(req,res)=>{
     try {
-      const {departments}=await context(req),leave=db().collection(coll);
+      const {departments,snapshot}=await context(req),leave=db().collection(coll);
       const grant=activeGrant(await grantFor(req.bpd.uid));
       const my=await leave.where('personDiscordId','==',req.bpd.discordId).limit(100).get();
       let review=[];
@@ -65,7 +70,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
         const lists=await Promise.all(permitted.map(dept=>leave.where('subjectDepartments','array-contains',dept).limit(100).get()));
         review=[...new Map(lists.flatMap(x=>x.docs).filter(d=>d.get('status')==='pending').map(d=>[d.id,d])).values()];
       }
-      review=review.filter(d=>mayApproveLeave(req.bpd,d.data(),grant));
+      review=review.filter(d=>mayApproveLeave(req.bpd,projected(d.data(),snapshot),grant));
       const byTime=(a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''));
       return res.json({mine:my.docs.map(d=>item(d,true)).sort(byTime),
         toReview:review.map(d=>item(d,false)).sort(byTime),
@@ -91,12 +96,12 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
         const record=d.data();
         return Array.isArray(record.subjectDepartments)&&record.subjectDepartments.includes(dept)&&
           (record.status==='approved'||(record.status==='pending'&&
-            (self||mayApproveLeave(req.bpd,record,grant))));
+            (self||mayApproveLeave(req.bpd,projected(record,snapshot),grant))));
       });
       res.json({personDiscordId:personId,dept,
         leaves:selected.map(d=>{
           const record=d.data();
-          const canDecide=mayApproveLeave(req.bpd,record,grant);
+          const canDecide=mayApproveLeave(req.bpd,projected(record,snapshot),grant);
           return {id:d.id,startDate:record.startDate,endDate:record.endDate,
             days:record.days,status:record.status,manual:record.manual===true,
             canDecide:canDecide&&writes()};
