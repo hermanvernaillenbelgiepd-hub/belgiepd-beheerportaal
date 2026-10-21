@@ -84,7 +84,7 @@ function radioMatchesTeam(user,team){return Boolean(user.category&&user.number&&
 function radioAlreadyOnBoard(user){return Boolean(state.env&&activeTeams(state.env.board).some(team=>radioMatchesTeam(user,team)));}
 function canImportRadioUser(user){
   const value=String(user?.number||'');
-  const temporaryPoliceNumber=user?.category==='POLITIE'&&/^1\d{2}$/.test(value)&&Number(value)>=101;
+  const temporaryPoliceNumber=serviceForCategory(user?.category).id==='politie'&&/^1\d{2}$/.test(value)&&Number(value)>=101;
   return Boolean(user&&state.env?.categories.includes(user.category)&&/^\d{1,5}$/.test(value)&&Number(value)>0&&(user.importable||temporaryPoliceNumber));
 }
 function visibleRadioUser(user){
@@ -363,7 +363,7 @@ function renderBoard(){
     const importable=canQuickAddRadioCrew(crew),newlyJoined=crew.members.some(user=>radio.newIds.has(user.id));
     const members=crew.members.map(user=>user.portalAlias||user.displayName).filter(Boolean).join(' & ');
     const temporaryBadge=policeRoleBadge(crew.category,String(crew.number||''));
-    return `<article class="pending-radio-card" data-service="${esc(identity.serviceId)}" style="--unit-hue:${identity.hue}"${importable&&editable?' draggable="true" data-radio-drag="'+esc(first.id)+'"':''}><div class="pending-radio-title">${unitBadge(crew.category,'unit-token-small')}<strong>${esc(crew.category)}-${esc(crew.number||'—')}${crew.paired?'*':''}</strong>${temporaryBadge}${newlyJoined?'<span class="radio-arrival-badge">NIEUW</span>':''}</div><small>${crew.category==='ZW'?'Ziekenwagen · ':''}${esc(members||'Naam controleren')}${crew.paired?' · 👥 koppel':''}</small><div class="pending-radio-foot">${crew.radioUnavailable?pill('NB','red'):pill('Via radio','green')}${importable&&state.env.permissions.canEdit?`<button type="button" class="button button-small radio-add" data-action="radio-quick-add" data-id="${esc(first.id)}" data-write${!editable?' disabled':''}>＋ Op bord</button>`:'<span class="radio-unrecognized">Controle nodig</span>'}</div></article>`;
+    return `<article class="pending-radio-card" data-service="${esc(identity.serviceId)}" style="--unit-hue:${identity.hue}"${importable&&editable?' draggable="true" data-radio-drag="'+esc(first.id)+'"':''}><div class="pending-radio-title">${unitBadge(crew.category,'unit-token-small')}<strong>${esc(crew.category)}-${esc(crew.number||'—')}${crew.paired?'*':''}</strong>${temporaryBadge}${newlyJoined?'<span class="radio-arrival-badge">NIEUW</span>':''}</div><small>${crew.category==='ZW'?'Ziekenwagen · ':''}${esc(members||'Naam controleren')}${crew.paired?' · 👥 koppel':''}</small><div class="pending-radio-foot">${crew.radioUnavailable?pill('NB','red'):pill('Via radio','green')}${importable&&state.env.permissions.canEdit?`<button type="button" class="button button-small radio-add" data-action="radio-quick-add" data-id="${esc(first.id)}" data-write${!editable?' disabled':''}>＋ Op bord</button>`:`<span class="radio-unrecognized" title="${esc(!/^\\d{1,5}$/.test(String(crew.number))?'Sonoran leverde geen zuiver numeriek roepnummer':crew.members.length>1&&!crew.paired?'Meerdere radiogebruikers met hetzelfde nummer zonder koppelteken *':'Radiogegevens kunnen niet veilig als één ploeg worden geïmporteerd')}">Controle nodig</span>`}</div></article>`;
   }).join('')}</div></section>`).join('')}</div></section>`:'';
   const teamMarkup=groupByTOService(selectedTeams,team=>team.dienst).map(service=>{
     const categories=[...new Set(service.items.map(team=>team.dienst))].sort(compareCategories);
