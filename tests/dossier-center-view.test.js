@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterDossiers,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
+import {filterDossiers,sortDossiers,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
   from '../public/dossiercentrum-view.js';
 const rows=[
   {dept:'politie',discordId:'111111111111111111',name:'Émile Vermeulen',rank:'Inspecteur',
@@ -35,4 +35,34 @@ test('Only staff timeline types remain',()=>{
   assert.equal(filterTimeline(items,'loopbaan').length,1);
   assert.deepEqual(filterTimeline(items,'all'),items);
   assert.deepEqual(filterTimeline(items,'burger'),items);
+});
+
+test('Four dossier sort choices use natural numeric callsigns and alphabetic names',()=>{
+  const data=[
+    {name:'Zoë',call:'S9',discordId:'1',dept:'politie',personnel:true},
+    {name:'Adam',call:'S100',discordId:'2',dept:'politie',personnel:true},
+    {name:'Émile',call:'S10',discordId:'3',dept:'politie',personnel:true},
+    {name:'Bram',call:'S99',discordId:'4',dept:'politie',personnel:true},
+    {name:'Zonder',call:'',discordId:'5',dept:'politie',personnel:true}
+  ];
+  const pick=(order)=>sortDossiers(data,order).map(d=>d.call||'—');
+  assert.deepEqual(pick('callsign-desc'),['S100','S99','S10','S9','—']);
+  assert.deepEqual(pick('callsign-asc'),['S9','S10','S99','S100','—']);
+  assert.deepEqual(sortDossiers(data,'name-asc').map(d=>d.name),['Adam','Bram','Émile','Zoë','Zonder']);
+  assert.deepEqual(sortDossiers(data,'name-desc').map(d=>d.name),['Zonder','Zoë','Émile','Bram','Adam']);
+  assert.deepEqual(pick('invalid'),pick('callsign-desc'));
+  assert.equal(data[0].call,'S9','Sorting must not mutate the original input');
+});
+test('Sorting applies after search and before pagination across full result set',()=>{
+  const data=Array.from({length:130},(_,i)=>({
+    name:'Medewerker '+(i+1),call:String(i+1),dept:'politie',personnel:true
+  }));
+  const filtered=filterDossiers(data,{department:'politie'});
+  const first=paginateDossiers(sortDossiers(filtered,'callsign-desc'),1,PAGE_SIZE);
+  const second=paginateDossiers(sortDossiers(filtered,'callsign-desc'),2,PAGE_SIZE);
+  assert.equal(first.total,130);
+  assert.equal(first.rows[0].call,'130');
+  assert.equal(first.rows[24].call,'106');
+  assert.equal(second.rows[0].call,'105');
+  assert.equal(second.rows[24].call,'81');
 });
