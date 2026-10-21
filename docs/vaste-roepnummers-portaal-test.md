@@ -25,7 +25,7 @@ De code staat uitsluitend in de branch `feature/verlofmodule-test`. De volgende 
 - `BPD_ENABLE_STAFF_DOSSIERS=true` — personeelsdossiers moeten beschikbaar zijn voor het kader.
 - `BPD_PRODUCTION_PERSONNEL_DATA=true` — uitsluitend in een gecontroleerde niet-fixture Firestore-projectconfiguratie, of gebruik de reeds begrensde TEST-fixtureconfiguratie (`belgiepd-test`). Hiermee worden nieuwe Firestore-fiches zichtbaar in de gedeelde personeelsweergave.
 
-**Controleer vóór het aanzetten van schrijfflags dat TEST een eigen Firebase-project heeft, niet het productieproject.** TEST en MAIN blijven anders logisch gescheiden qua code maar zouden dezelfde database kunnen muteren. Schrijf niets in een gedeelde productie-Firestore vanuit TEST.
+**TEST-schrijfacties zijn in de code expliciet geblokkeerd tenzij `FIREBASE_PROJECT_ID=belgiepd-test`.** Bevestig daarnaast dat het bijbehorende serviceaccount ook daadwerkelijk toegang heeft tot de gescheiden testdatabase. TEST en MAIN blijven anders logisch gescheiden qua code maar zouden dezelfde database kunnen muteren. Schrijf niets in een gedeelde productie-Firestore vanuit TEST.
 
 Het bestaande `BPD_ENABLE_SHEETS_SYNC` wordt in deze flow genegeerd en mag uit blijven. Er is geen productie-release of backfill uitgevoerd.
 
