@@ -22,8 +22,18 @@ const COMMAND_FIELDS=Object.freeze({
 
 export function boardError(status,message){return Object.assign(new Error(message),{publicStatus:status});}
 const fail=(status,message)=>{throw boardError(status,message);};
+// Explicit TO observer access is only evaluated AFTER portal authentication
+// verified the Discord identity and approved the user's existing account.
+// It does not make a fire-service officer a police member or TO operator.
+function isNamedTOObserver(actor){
+  const id=actor?.discordId;
+  if(typeof id!=='string'||!/^\\d{15,22}$/.test(id)||actor?.uid!=='discord:'+id||
+     !Array.isArray(actor?.departments)||!actor.departments.includes('brandweer'))return false;
+  const allow=String(process.env.BPD_TO_READONLY_DISCORD_IDS||'').split(',').map(x=>x.trim());
+  return allow.includes(id);
+}
 export function canReadBoard(actor){
-  return READ_ROLES.has(actor?.role)&&READ_ROLES.has(roleForDepartment(actor,'politie'));
+  return (READ_ROLES.has(actor?.role)&&READ_ROLES.has(roleForDepartment(actor,'politie')))||isNamedTOObserver(actor);
 }
 export function canOperateBoard(actor){
   return OPERATE_ROLES.has(actor?.role)&&OPERATE_ROLES.has(roleForDepartment(actor,'politie'));
