@@ -33,7 +33,7 @@ test('Any current radio member preserves a paired crew, including zero padded nu
   const tracker=new Map(),roster=board([team,crew('other','166')]);
   poll(tracker,roster,base,[present('00900')]);
   assert.equal(tracker.has('paired'),false);
-  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+135000,[present('00900')]),tracker,base+135000),['other']);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+150000,[present('00900')]),tracker,base+150000),['other']);
 });
 
 test('One return to channel resets missing duration and delays automatic retirement',()=>{
@@ -69,7 +69,7 @@ test('Assigned units are preserved; manual and ended teams are not offered for r
   const tracker=new Map(),roster=board([crew('busy','930'),crew('free','166'),crew('ended','465',{endedAt:base-10})],['busy']);
   assert.deepEqual(poll(tracker,roster)[8],['free']);
   roster.meldingen.call.ploegen=[];
-  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+135000),tracker,base+135000).sort(),['busy','free']);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+150000),tracker,base+150000).sort(),['busy','free']);
 });
 
 test('New service sessions and deleted roster entries discard old departure timers',()=>{
