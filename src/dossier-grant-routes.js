@@ -113,7 +113,7 @@ export function installDossierGrantRoutes(app,{requireUser,accessList,db=()=>get
     }catch(e){return respond(res,e)}
   });
   // Read-only tester is deliberately confined to TEST and technical administrators/Bestuur.
-  // This endpoint can grant the requester's own testing scope, never manage/edit rights.
+  // Authorized Bestuur/technical administrators may assign approved testers, never manage/edit rights.
   app.post('/api/dossier-grants/tester',requireUser,async(req,res)=>{
     if(process.env.FIREBASE_PROJECT_ID!=='belgiepd-test')return res.status(403).json({error:'TESTER is uitsluitend voor TEST'});
     let ctx;try{ctx=await context(req.bpd)}catch(e){return respond(res,e)}
