@@ -28,6 +28,9 @@ import {installSpecializationRoutes} from './specialization-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
+import {installDossierGrantRoutes} from './dossier-grant-routes.js';
+import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS} from './dossier-grants.js';
+import {deriveServiceDossierDepartments} from './service-dossier-access.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
@@ -50,6 +53,7 @@ app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
+app.use('/api/dossier-grants',express.json({limit:'4kb',strict:true}));
 app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
@@ -260,19 +264,55 @@ app.get('/api/dossiers/:dept/:discordId',requireUser,async(req,res)=>{
     return res.status(503).json({error:'Dossierlink momenteel niet beschikbaar'});
   }
 });
-installRegistrationRoutes(app,{requireUser,getSnapshot});
-installManagementRoutes(app,{requireUser,getSnapshot});
+// Sensitive dossier scopes are determined ONLY on the server after standard
+// portal approval. Never grant them from client-supplied rank or radio name.
+const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
+  try{
+    const id=req.bpd?.discordId;
+    const valid=/^\d{15,22}$/.test(String(id||''));
+    const db=getFirestore();
+    const [snapshot,member,appointment,grants,tester]=await Promise.all([
+      getSnapshot(),
+      valid?db.collection('bpd_discord_auth').doc(id).get():Promise.resolve(null),
+      valid?db.collection('bpd_board_appointments').doc(id).get():Promise.resolve(null),
+      valid?Promise.all(DOSSIER_DEPTS.map(d=>db.collection(DOSSIER_GRANT_COLLECTION)
+        .doc(dossierGrantKey(d,id)).get())):Promise.resolve([]),
+      valid&&process.env.FIREBASE_PROJECT_ID==='belgiepd-test'
+        ?db.collection('bpd_dossier_testers').doc(id).get():Promise.resolve(null)
+    ]);
+    const roster=snapshot.stale?[]:snapshot.data;
+    const original=deriveServiceDossierDepartments(req.bpd,
+      roster,member?.exists?member.data():null,
+      appointment?.exists?appointment.data():null,process.env.DISCORD_GUILD_ID);
+    const native=deriveServiceDossierDepartments(req.bpd,
+      roster,member?.exists?member.data():null,
+      null,process.env.DISCORD_GUILD_ID,Date.now(),false);
+    const scope=applyDossierGrants(req.bpd,original,
+      grants.filter(d=>d.exists).map(d=>d.data()),tester?.exists?tester.data():null);
+    req.bpd.dossierNativeDepartments=native;
+    req.bpd.dossierAllowedDepartments=scope.departments;
+    req.bpd.dossierManageDepartments=scope.manageDepartments;
+    req.bpd.dossierTester=scope.tester;
+    next();
+  }catch(e){
+    console.error('Dossierrechten konden niet geverifieerd worden:',e?.code||e?.message||'onbekend');
+    res.status(503).json({error:'De dossierrechten kunnen momenteel niet gecontroleerd worden'});
+  }
+});
+installRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installManagementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
+installDossierGrantRoutes(app,{requireUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
 // More-specific activity endpoints MUST precede /api/personnel/:dept/:discordId.
 // That broad POST edit route otherwise intercepts retrospective audit submissions.
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
-installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
-installSpecializationRoutes(app,{requireUser,getSnapshot});
-installStaffDossierRoutes(app,{requireUser,getSnapshot});
-installDossierCenterRoutes(app,{requireUser,getSnapshot});
+installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
+installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installStaffDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installDossierCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 // TO duty board uses MAIN Firestore data and the existing authenticated actor.
 const getVerifiedTemporaryTORequest=async discordId=>{
   if(!/^\d{15,22}$/.test(discordId))return null;
