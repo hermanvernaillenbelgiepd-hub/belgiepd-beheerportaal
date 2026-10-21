@@ -307,3 +307,52 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
   .board-layout[data-team-view="compact"] .team-card .crew-list{grid-column:1;grid-row:auto}
   .board-layout[data-team-view="compact"] .crew-quick-controls{grid-column:1;grid-row:auto;grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* TEST: genuinely compact dispatcher cards; no service/category header bars. */
+.board-layout[data-team-view="compact"] .team-grid.team-list-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,238px),1fr));
+  align-items:start;gap:8px;
+}
+.board-layout[data-team-view="compact"] .team-card.compact-team-card{
+  display:flex;flex-direction:column;gap:4px;min-width:0;min-height:0;
+  padding:9px 9px 6px;border-radius:8px;
+}
+.compact-unit-head{display:grid;grid-template-columns:27px minmax(0,1fr) auto;align-items:center;gap:7px;min-width:0}
+.compact-team-card .unit-token-small{width:27px;height:27px;font-size:9px}
+.compact-unit-title{display:grid;gap:2px;min-width:0}
+.compact-unit-title strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:850;color:#203954}
+.compact-unit-title span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;color:#586d87}
+.compact-unit-state{max-width:120px;min-width:0}
+.compact-unit-state .pill{font-size:8px;font-weight:850;padding:3px 5px;line-height:1.2;white-space:normal}
+.compact-unit-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;min-height:14px}
+.compact-flag{font-size:9px;font-weight:700;color:#5d728e}
+.compact-flag.radio-flag{color:#2b8365}
+.compact-unit-meta .temporary-call-badge,.compact-unit-meta .management-call-badge{font-size:7px;padding:2px 4px}
+.compact-unit-meta .response-indicator{font-size:8px;padding:2px 5px}
+.compact-radio-alias{font-size:9px;color:#5c7088;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board-layout[data-team-view="compact"] .team-card.compact-team-card .crew-quick-controls{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-column:auto;grid-row:auto;
+  border-top:1px solid #cbded5;
+  margin:1px 0 0;padding:5px 0 0;gap:4px;
+}
+.board-layout[data-team-view="compact"] .team-card.compact-team-card .crew-quick-button{
+  min-height:27px;padding:4px 3px;border-radius:5px;font-size:9px;line-height:1.15;
+}
+.board-layout[data-team-view="compact"] .team-card.compact-team-card .compact-crew-menu{
+  padding:0;margin:1px 0 0;
+}
+.board-layout[data-team-view="compact"] .team-card.compact-team-card .compact-menu-toggle{
+  padding:2px 3px;font-size:9px;min-height:21px;
+}
+.board-layout[data-team-view="compact"] .team-card.compact-team-card .compact-crew-menu-content{
+  margin:3px 0 0;padding:6px;gap:5px;
+}
+@media(max-width:650px){
+  .board-layout[data-team-view="compact"] .team-grid.team-list-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,225px),1fr))}
+}
+@media(max-width:480px){
+  .board-layout[data-team-view="compact"] .team-grid.team-list-grid{grid-template-columns:minmax(0,1fr)}
+}
