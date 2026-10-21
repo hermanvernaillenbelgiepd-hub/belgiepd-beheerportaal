@@ -263,17 +263,6 @@ app.get('/api/dossiers/:dept/:discordId',requireUser,async(req,res)=>{
     return res.status(503).json({error:'Dossierlink momenteel niet beschikbaar'});
   }
 });
-installRegistrationRoutes(app,{requireUser,getSnapshot});
-installManagementRoutes(app,{requireUser,getSnapshot});
-installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
-installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
-installUserRoutes(app,{requireUser,accessList});
-installBoardAppointmentRoutes(app,{requireUser});
-// More-specific activity endpoints MUST precede /api/personnel/:dept/:discordId.
-// That broad POST edit route otherwise intercepts retrospective audit submissions.
-installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
-installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
-installSpecializationRoutes(app,{requireUser,getSnapshot});
 // Sensitive dossier scopes are determined ONLY on the server after standard
 // portal approval. Never grant them from client-supplied rank or radio name.
 const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
@@ -296,6 +285,17 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     res.status(503).json({error:'De dossierrechten kunnen momenteel niet gecontroleerd worden'});
   }
 });
+installRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installManagementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
+installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
+installUserRoutes(app,{requireUser,accessList});
+installBoardAppointmentRoutes(app,{requireUser});
+// More-specific activity endpoints MUST precede /api/personnel/:dept/:discordId.
+// That broad POST edit route otherwise intercepts retrospective audit submissions.
+installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
+installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
+installSpecializationRoutes(app,{requireUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installNotificationRoutes(app,{requireUser,getSnapshot});
