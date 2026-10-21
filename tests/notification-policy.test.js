@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {currentFortnight,periodAt,periodsForActor,monthlyActivityStatus,
   policeSeriesHeads,policeScope,warningFor,normalizeSeries,subjectPoliceGrade,leaveAuthority,afterLeave} from '../src/notification-policy.js';
 import {mayApproveLeave} from '../src/leave-policy.js';
@@ -62,13 +63,12 @@ test('Police rank-based leave: chief registers, middle requests higher cadre, of
   assert.equal(afterLeave({status:'approved',endDate:'2026-10-21',subjectDepartments:['politie']},'2026-10-21'),false);
 });
 test('Notifications are registered as protected routes; no Sheets mutations or automatic removals',()=>{
-  const fs=(await import('node:fs')).readFileSync;
-  const route=fs(new URL('../src/notification-routes.js',import.meta.url),'utf8');
+  const route=readFileSync(new URL('../src/notification-routes.js',import.meta.url),'utf8');
   assert.ok(route.includes('app.get(\'/api/notifications/me\',requireUser'));
   assert.ok(route.includes('runTransaction(async tx=>'));
   assert.ok(route.includes('bpd_weekreport_events'));
   assert.ok(!route.includes('spreadsheets.values.update'));
   assert.ok(!route.includes('delete('));
-  const main=fs(new URL('../src/server.js',import.meta.url),'utf8');
+  const main=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
   assert.ok(main.includes('installNotificationRoutes(app,{requireUser,getSnapshot})'));
 });
