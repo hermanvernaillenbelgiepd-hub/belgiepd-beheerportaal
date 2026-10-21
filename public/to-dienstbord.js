@@ -60,7 +60,7 @@ const empty=(title,text)=>`<div class="empty-state"><strong>${esc(title)}</stron
 const button=(text,action,{id='',teamId='',primary=false,danger=false,small=false,disabled=false,write=false}={})=>`<button type="button" class="button${primary?' button-primary':''}${danger?' button-danger':''}${small?' button-small':''}" data-action="${action}"${id?` data-id="${esc(id)}"`:''}${teamId?` data-team-id="${esc(teamId)}"`:''}${write?' data-write':''}${disabled?' disabled':''}>${esc(text)}</button>`;
 
 let auth=null,authEpoch=0;
-const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',lastSeenTakeoverRequest:null,showMoreIncidentPresets:false,shortcuts:{revision:0,items:{}},shortcutsError:null,archives:null,archive:null,lastSynced:null};
+const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',showMoreIncidentPresets:false,shortcuts:{revision:0,items:{}},shortcutsError:null,archives:null,archive:null,lastSynced:null};
 const radio={snapshot:null,loading:false,error:null,receivedAt:null,requestSerial:0,knownIds:null,newIds:new Set()};
 const INCIDENT_PRESETS=Object.freeze(['ANPR','AGRESSIE','VKO','BRAND','TAKELING','DIEFSTAL','VERDACHTE SITUATIE','MEDISCHE BIJSTAND']);
 const INCIDENT_EXTRA_PRESETS=Object.freeze(['OVERLAST','WONINGINBRAAK','VECHTPARTIJ','VERMIST PERSOON','ACHTERVOLGING','VERDACHT VOERTUIG','VERKEERSHINDER','BEROVING']);
@@ -179,7 +179,7 @@ async function refresh({quiet=false}={}){
   }catch(error){
     if(error.obsolete)return;
     state.stale=true;
-    if(error.status===401||error.status===403){state.env=null;state.archive=null;state.archives=null;state.shortcuts={revision:0,items:{}};state.shortcutsError=null;state.lastSeenTakeoverRequest=null;clearRadio();closeDialog();}
+    if(error.status===401||error.status===403){state.env=null;state.archive=null;state.archives=null;state.shortcuts={revision:0,items:{}};state.shortcutsError=null;clearRadio();closeDialog();}
     render();tell(error.message+(state.env?' De getoonde gegevens kunnen verouderd zijn. Vernieuw het bord voordat je wijzigingen maakt.':''),state.env?'warning':'error');
   }
 }
@@ -289,7 +289,7 @@ async function command(type,data={},revision=state.env?.board.revision){
 function updateButtons(){
   for(const control of document.querySelectorAll('[data-write]')){
     const action=control.dataset.action;
-    control.disabled=control.dataset.fixedDisabled==='true'||state.pending||state.stale||(['start','request-takeover','cancel-takeover','emergency-takeover-dialog'].includes(action)?!canOperate():!canEdit());
+    control.disabled=control.dataset.fixedDisabled==='true'||state.pending||state.stale||(['start','takeover'].includes(action)?!canOperate():!canEdit());
   }
   const submit=dialog.querySelector('button[type="submit"]');if(submit)submit.disabled=state.pending||state.stale;
 }
@@ -301,7 +301,6 @@ function render(){
   el('connection').innerHTML='<span></span>'+(env?(state.stale?'Verbinding onderbroken':'Gedeeld dienstbord'):'Aanmelding vereist');
   if(!env){renderRadio();return;}
   renderSummary();
-  promptIncomingTakeover();
   el('tab-board').classList.toggle('active',state.view==='board');
   el('tab-archives').classList.toggle('active',state.view==='archives');
   for(const [id,view]of [['tab-board','board'],['tab-archives','archives']]){if(state.view===view)el(id).setAttribute('aria-current','page');else el(id).removeAttribute('aria-current');}
@@ -320,24 +319,13 @@ function renderSummary(){
   const counts=summarizeTOCrews(board,{users:radio.snapshot?.users||[],fresh,categories:env.categories});
   const radioNote=fresh?counts.radioOnly+' via radio':radio.snapshot?.configured?'radio niet actueel':'geen radiotelling';
   const session=board.session;
-  const pending=session?.pendingTakeover;
-  const freshPending=Boolean(pending&&pending.expiresAt>Date.now());
-  const ownRequest=freshPending&&pending.requesterUid===env.viewer.uid;
-  let actions='',requestMessage='';
+  let actions='';
   if(env.permissions.canOperate){
     if(!session)actions=button('＋ Dienst starten','start',{primary:true,write:true});
-    else if(env.permissions.canEdit){
-      actions=button('Dienst afsluiten','close-session',{write:true});
-      if(freshPending)requestMessage=`<div class="takeover-request-box" role="alert"><strong>Overname aangevraagd door ${esc(pending.name)}</strong><p>${esc(pending.reason)}</p><div class="summary-actions">${button('Goedkeuren','approve-takeover-dialog',{primary:true,write:true})}${button('Weigeren','reject-takeover-dialog',{write:true})}</div></div>`;
-    }else if(ownRequest){
-      actions=button('Aanvraag annuleren','cancel-takeover',{write:true});
-      const seconds=Math.max(0,Math.ceil((pending.requestedAt+120000-Date.now())/1000));
-      requestMessage=`<div class="takeover-request-box"><strong>Je overnameaanvraag is verzonden.</strong><p>Wachten op toestemming van ${esc(session.to)}. ${seconds?'Noodovername mogelijk over '+seconds+' seconden.':'Als de huidige TO niet reageert, kan je een gemotiveerde noodovername bevestigen.'}</p>${seconds?'':button('Noodovername…','emergency-takeover-dialog',{danger:true,write:true})}</div>`;
-    }else if(freshPending){
-      requestMessage='<div class="takeover-request-box"><p>Er staat al een overnameaanvraag open. Wacht tot deze is afgehandeld of verlopen.</p></div>';
-    }else actions=button('Overname aanvragen','request-takeover',{primary:true,write:true});
+    else if(env.permissions.canEdit)actions=button('Dienst afsluiten','close-session',{write:true});
+    else actions=button('Dienst overnemen','takeover',{primary:true,write:true});
   }
-  el('session-summary').innerHTML=`<article class="summary-card session"><div class="summary-label">TO VAN DIENST${session?pill('Lopende dienst','green'):''}</div><div class="summary-value">${esc(session?.to||'Geen lopende dienst')}</div><div class="summary-note">${session?'Sinds '+time(session.startedAt)+' · '+duration(session.startedAt)+' · '+(session.handovers||[]).length+' overname(s)':'Een gedeeld overzicht begint met een nieuwe sessie.'}</div>${actions?`<div class="summary-actions">${actions}</div>`:''}${requestMessage}</article><article class="summary-card"><div class="summary-label">Ploegen in dienst<span class="counter-icon">▤</span></div><div class="summary-value">${counts.inService}</div><div class="summary-note">${counts.boardTeams} op dienstbord · ${radioNote}</div></article><article class="summary-card"><div class="summary-label">Beschikbaar<span class="counter-icon green">✓</span></div><div class="summary-value">${counts.available}</div><div class="summary-note">${counts.unavailable} bezet of niet beschikbaar${counts.radioOnly?' · '+counts.radioOnly+' via radio':''}</div></article><article class="summary-card"><div class="summary-label">Actieve meldingen<span class="counter-icon amber">!</span></div><div class="summary-value">${counts.activeIncidents}</div><div class="summary-note">${incidents(board).length-counts.activeIncidents} afgerond in deze dienst</div></article>`;
+  el('session-summary').innerHTML=`<article class="summary-card session"><div class="summary-label">TO VAN DIENST${session?pill('Lopende dienst','green'):''}</div><div class="summary-value">${esc(session?.to||'Geen lopende dienst')}</div><div class="summary-note">${session?'Sinds '+time(session.startedAt)+' · '+duration(session.startedAt)+' · '+(session.handovers||[]).length+' overname(s)':'Een gedeeld overzicht begint met een nieuwe sessie.'}</div>${actions?`<div class="summary-actions">${actions}</div>`:''}</article><article class="summary-card"><div class="summary-label">Ploegen in dienst<span class="counter-icon">▤</span></div><div class="summary-value">${counts.inService}</div><div class="summary-note">${counts.boardTeams} op dienstbord · ${radioNote}</div></article><article class="summary-card"><div class="summary-label">Beschikbaar<span class="counter-icon green">✓</span></div><div class="summary-value">${counts.available}</div><div class="summary-note">${counts.unavailable} bezet of niet beschikbaar${counts.radioOnly?' · '+counts.radioOnly+' via radio':''}</div></article><article class="summary-card"><div class="summary-label">Actieve meldingen<span class="counter-icon amber">!</span></div><div class="summary-value">${counts.activeIncidents}</div><div class="summary-note">${incidents(board).length-counts.activeIncidents} afgerond in deze dienst</div></article>`;
 }
 function renderBoard(){
   const board=state.env.board,teams=activeTeams(board),busy=busyMap(board),allIncidents=incidents(board),editable=canEdit();
@@ -431,37 +419,11 @@ function startDialog(takeover=false){
     ?'<p class="form-note to-verified-call">✓ Gekoppeld aan jouw Discord-ID via '+(linkedSource==='geverifieerd_tijdelijk'?'een gecontroleerde tijdelijke roepnummeraanvraag':'de personeelslijst')+'. Je roepnummer wordt door de server vastgelegd.</p>'
     :'<p class="form-note">Geen gekoppeld roepnummer gevonden. Je mag zelf een label invullen, bijvoorbeeld een tijdelijk nummer tussen 100 en 199. Dit wordt niet als een geverifieerde identiteit beschouwd.</p>';
   const intro=takeover
-    ?'Je vraagt toestemming aan '+esc(session?.to||'de huidige TO')+' om de lopende dienst over te nemen. De dienst verandert pas wanneer de huidige TO goedkeurt, of na een apart bevestigde noodovername.'
+    ?'Je neemt onmiddellijk de lopende dienst over van '+esc(session?.to||'de huidige TO')+'. De vorige TO verliest de bediening; ploegen en meldingen blijven behouden. De overname wordt gelogd.'
     :'Je wordt de TO van deze dienst. Collega’s met toegang kunnen het bord bekijken en de dienst later overnemen.';
-  openDialog(takeover?'Overname aanvragen':'Nieuwe dienst starten',
-    `<p class="form-note">${intro}</p><label class="field"><span>${label}</span><input class="input mono" name="displayName" maxlength="80" minlength="2" value="${esc(defaultName())}" placeholder="${linked?'Roepnummer': 'Naam of roepnummer'}" ${linked?'readonly':''} required autofocus></label>${sourceNote}${takeover?'<label class="field"><span>Reden van overname</span><textarea class="input" name="reason" minlength="8" maxlength="300" placeholder="Bijvoorbeeld: aflossing van de lopende dienst" required></textarea></label>':''}`,
-    {form:takeover?'request-takeover':'start',submit:takeover?'Aanvraag versturen':'Dienst starten'});
-}
-function promptIncomingTakeover(){
-  const pending=state.env?.board.session?.pendingTakeover;
-  if(!pending||pending.expiresAt<=Date.now()||!state.env.permissions.canEdit||
-     dialog.open||state.stale||state.lastSeenTakeoverRequest===pending.id)return;
-  state.lastSeenTakeoverRequest=pending.id;
-  openDialog('Aanvraag om TO-dienst over te nemen',
-    `<p class="form-note">Een collega vraagt jouw actieve dienst over te nemen.</p><p class="form-note"><strong>Aanvrager: ${esc(pending.name)}</strong></p><p class="form-note">Reden: ${esc(pending.reason)}</p><p class="form-note">De dienst wordt niet overgedragen totdat je dit uitdrukkelijk goedkeurt. Bij uitval bestaat later een afzonderlijk gelogde noodprocedure.</p>`,
-    {footer:button('Later beslissen','close-dialog')+
-      button('Weigeren','reject-takeover-dialog',{write:true})+
-      button('Goedkeuren','approve-takeover-dialog',{primary:true,write:true})});
-}
-function takeoverDecisionDialog(approve){
-  const pending=state.env?.board.session?.pendingTakeover;
-  if(!pending||pending.expiresAt<=Date.now()||!canEdit())return;
-  const action=approve?'approve-takeover':'reject-takeover';
-  openDialog(approve?'Overname goedkeuren':'Overname weigeren',
-    `<p class="form-note">Aanvrager: <strong>${esc(pending.name)}</strong></p><p class="form-note">Reden: ${esc(pending.reason)}</p><p class="form-note">${approve?'Als je goedkeurt, draag je onmiddellijk het volledige dienstbord en de bestaande ploegen en meldingen over.':'Je blijft zelf TO van dienst en de aanvrager ontvangt geen beheerrechten.'}</p>`,
-    {form:action,id:pending.id,submit:approve?'Ja, dienst overdragen':'Aanvraag weigeren',danger:approve});
-}
-function emergencyTakeoverDialog(){
-  const pending=state.env?.board.session?.pendingTakeover;
-  if(!pending||pending.requesterUid!==state.env.viewer.uid||pending.expiresAt<=Date.now()||Date.now()<pending.requestedAt+120000)return;
-  openDialog('Noodovername bevestigen',
-    `<p class="form-note">De huidige TO heeft de aanvraag nog niet beantwoord. Gebruik deze optie uitsluitend wanneer de huidige TO niet bereikbaar of uitgevallen is.</p><p class="form-note"><strong>De overname wordt afzonderlijk gelogd.</strong></p><label class="field"><span>Motivering noodovername</span><textarea class="input" name="reason" required minlength="15" maxlength="300" placeholder="Bijvoorbeeld: huidige TO reageert niet meer en is niet bereikbaar"></textarea></label><label class="field"><span>Typ NOODOVERNAME om te bevestigen</span><input class="input mono" name="confirmation" required autocomplete="off" pattern="NOODOVERNAME"></label>`,
-    {form:'emergency-takeover',id:pending.id,submit:'Noodovername uitvoeren',danger:true});
+  openDialog(takeover?'Ben je zeker dat je deze dienst wilt overnemen?':'Nieuwe dienst starten',
+    `<p class="form-note">${intro}</p><label class="field"><span>${label}</span><input class="input mono" name="displayName" maxlength="80" minlength="2" value="${esc(defaultName())}" placeholder="${linked?'Roepnummer': 'Naam of roepnummer'}" ${linked?'readonly':''} required autofocus></label>${sourceNote}`,
+    {form:takeover?'takeover':'start',submit:takeover?'Ja, dienst overnemen':'Dienst starten',danger:takeover});
 }
 function detachTeamDialog(teamId){
   if(!canEdit())return;
@@ -531,18 +493,7 @@ document.addEventListener('click',async event=>{
       case 'export-archive':download('belgiepd-to-archief-'+state.archive.id+'.json',{format:'belgiepd-to-archive/v1',archive:state.archive});break;
       case 'filter-incidents':state.filter=target.dataset.filter;render();break;
       case 'start':if(canOperate())startDialog();break;
-      case 'request-takeover':if(canOperate())startDialog(true);break;
-      case 'approve-takeover-dialog':takeoverDecisionDialog(true);break;
-      case 'reject-takeover-dialog':takeoverDecisionDialog(false);break;
-      case 'emergency-takeover-dialog':emergencyTakeoverDialog();break;
-      case 'cancel-takeover':{
-        const pending=state.env?.board.session?.pendingTakeover;
-        if(pending&&pending.requesterUid===state.env.viewer.uid&&canOperate()){
-          await command('cancel-takeover',{requestId:pending.id});
-          toast('Je overnameaanvraag is geannuleerd.');
-        }
-        break;
-      }
+      case 'takeover':if(canOperate())startDialog(true);break;
       case 'close-session':if(canEdit())closeSessionDialog();break;
       case 'add-team':if(canEdit())teamDialog();break;
       case 'radio-refresh':await refreshRadio();break;
@@ -662,9 +613,7 @@ dialog.addEventListener('submit',async event=>{
   event.preventDefault();const form=event.target;if(form.id!=='to-form'||state.pending)return;
   const type=form.dataset.form,id=form.dataset.id,fields=form.elements,revision=Number(dialog.dataset.revision);
   let data={};
-  if(type==='start'||type==='request-takeover')data={displayName:fields.displayName.value.trim(),...(type==='request-takeover'?{reason:fields.reason.value.trim()}:{})};
-  if(type==='approve-takeover'||type==='reject-takeover')data={requestId:id};
-  if(type==='emergency-takeover')data={requestId:id,reason:fields.reason.value.trim(),confirmation:fields.confirmation.value.trim()};
+  if(type==='start'||type==='takeover')data={displayName:fields.displayName.value.trim(),...(type==='takeover'?{confirmation:'JA_OVERNAME'}:{})};
   if(type==='add-team')data={dienst:fields.dienst.value,leden:[{naam:fields.naam1.value.trim(),roep:fields.roep1.value.trim()},...(fields.koppel.checked?[{naam:fields.naam2.value.trim(),roep:fields.roep2.value.trim()}]:[])]};
   if(type==='create-incident'||type==='update-incident')data={...(id?{id}:{}),postcode:fields.postcode.value.trim(),titel:fields.titel.value.trim(),omschrijving:fields.omschrijving.value.trim()};
   if(type==='remove-team')data={id};
@@ -696,7 +645,7 @@ dialog.addEventListener('submit',async event=>{
       state.filter='actief';render();
       const created=incidents(result.board).sort((a,b)=>b.nr-a.nr)[0];if(created)openIncident(created.id);
     }else if(type==='update-incident')openIncident(id);
-    else toast(type==='close-session'?'Dienst afgesloten en gearchiveerd.':type==='add-team'?'Ploeg toegevoegd.':type==='remove-team'?'Ploeg uit dienst gehaald.':type==='request-takeover'?'Aanvraag verzonden. Wacht op de huidige TO.':type==='approve-takeover'?'Dienst overgedragen.':type==='reject-takeover'?'Overnameaanvraag geweigerd.':type==='emergency-takeover'?'Noodovername geregistreerd.':'Dienst gestart.');
+    else toast(type==='close-session'?'Dienst afgesloten en gearchiveerd.':type==='add-team'?'Ploeg toegevoegd.':type==='remove-team'?'Ploeg uit dienst gehaald.':type==='takeover'?'Je hebt de dienst overgenomen.':'Dienst gestart.');
   }catch(error){if(!error.obsolete)formError(error.message);}
 });
 el('board-search').addEventListener('input',event=>{state.query=normalize(event.target.value.trim());render();});
