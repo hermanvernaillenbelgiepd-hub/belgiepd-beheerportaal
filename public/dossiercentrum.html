@@ -15,9 +15,15 @@ input,select{width:100%;background:#0a1931;border:1px solid #547093}
 button{background:#345fe0;border:1px solid #668bff;cursor:pointer;font-weight:650}
 button.alt{background:#223c60;border-color:#587497}
 button:disabled{opacity:.5;cursor:not-allowed}
-.scroller{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:750px}
+.scroller{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:960px}
 th,td{text-align:left;padding:11px 9px;border-bottom:1px solid #334e6e;vertical-align:top;font-size:13px}
 th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
+.dossier-callsign{font-weight:800;color:#b8d7ff;white-space:nowrap;letter-spacing:.02em}
+.dossier-rank{min-width:145px;max-width:280px;overflow-wrap:anywhere}
+.dossier-discord{font-size:11px;color:#bad0eb;white-space:nowrap}
+.dossier-status{display:inline-block;padding:4px 9px;border-radius:99px;font-size:11px;font-weight:750;background:#284669;color:#dceaff;white-space:nowrap}
+.dossier-status[data-active="true"]{color:#b5f2cd;background:#1b553c}
+.dossier-status[data-active="false"]{color:#ffd5d6;background:#64313c}
 .muted{font-size:12px;color:#aac0da}.tag{display:inline-block;padding:4px 8px;border-radius:16px;background:#274469;margin:3px 5px 3px 0;font-size:12px}
 .event{border-bottom:1px solid #304a67;padding:11px 0}.event strong{display:block}.event p{margin:5px 0}
 .kv{display:grid;grid-template-columns:145px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #30445c;overflow-wrap:anywhere}
@@ -86,7 +92,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <div class="pager"><span class="muted" id="count">Nog geen dossiers geladen.</span>
 <button id="clear" class="alt" type="button">Filters wissen</button>
 <button id="refresh" class="alt" type="button">Vernieuwen</button></div>
-<div class="scroller"><table><thead><tr><th>Naam</th><th>Dienst</th><th>Personeel</th><th>Discord-ID</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="scroller"><table><thead><tr><th>Naam</th><th>Roepnummer</th><th>Graad</th><th>Dienst</th><th>Status</th><th>Discord-ID</th><th>Actie</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div class="pager"><span id="pageInfo" class="muted">Pagina 1 van 1</span>
 <button type="button" id="previousPage" class="alt">Vorige</button>
 <button type="button" id="nextPage" class="alt">Volgende</button></div>
@@ -178,11 +184,20 @@ function render(){
   const body=$('rows');body.replaceChildren();
   if(!paged.total){
     const tr=node('tr'),cell=node('td','Geen dossiers gevonden voor deze filters');
-    cell.colSpan=6;tr.append(cell);body.append(tr);
+    cell.colSpan=7;tr.append(cell);body.append(tr);
   }
   for(const r of paged.rows){
-    const tr=node('tr');tr.append(node('td',r.name),node('td',departments[r.dept]||r.dept),
-      node('td',(r.rank||'')+' · '+(r.status||'')),node('td',r.discordId));
+    const tr=node('tr');
+    const call=node('span',r.call||'—','dossier-callsign');
+    const rank=node('span',r.rank||'—','dossier-rank');
+    const status=node('span',r.status||'—','dossier-status');
+    const normalizedStatus=String(r.status||'').trim().toLocaleLowerCase('nl-BE');
+    status.dataset.active=normalizedStatus==='actief'?'true':
+      ['inactief','non-actief','niet actief','uit dienst'].includes(normalizedStatus)?'false':'unknown';
+    const withSpan=span=>{const td=node('td');td.append(span);return td};
+    tr.append(node('td',r.name||'—'),withSpan(call),withSpan(rank),
+      node('td',departments[r.dept]||r.dept),withSpan(status),
+      node('td',r.discordId||'—','dossier-discord'));
     const cell=node('td'),button=node('button','Open dossier','alt');
     button.type='button';button.onclick=()=>openDossier(r);
     cell.append(button);tr.append(cell);body.append(tr);
