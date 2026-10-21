@@ -81,12 +81,13 @@ export function mayManageGrants(actor){
 }
 export function validateGrant(raw,today=new Date().toISOString().slice(0,10)){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Ongeldige machtiging');
-  const email=normalizeEmail(raw.email);
+  const discordId=typeof raw.discordId==='string'?raw.discordId.trim():'';
+  if(!validDiscordId(discordId))throw new Error('Vul een geldig Discord-ID in');
   const level=raw.level;
   if(!['max30','all'].includes(level))throw new Error('Kies maximaal 30 dagen of alle verlofduren');
   const startsOn=raw.startsOn,expiresOn=raw.expiresOn;
   const days=calendarDays(startsOn,expiresOn);
   if(startsOn<today)throw new Error('De machtiging mag niet in het verleden beginnen');
   if(days>366)throw new Error('Tijdelijke machtiging mag maximaal 366 dagen duren');
-  return {email,level,startsOn,expiresOn,permission:'VERLOFBEHEER'};
+  return {discordId,level,startsOn,expiresOn,permission:'VERLOFBEHEER'};
 }
