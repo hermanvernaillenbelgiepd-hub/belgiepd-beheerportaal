@@ -94,10 +94,16 @@ function radioCrewOnBoard(crew){
   return activeTeams(state.env?.board).find(team=>crew.members.some(user=>radioMatchesTeam(user,team)))||null;
 }
 function canQuickAddRadioCrew(crew){
-  const first=crew?.members?.[0];
-  return Boolean(first&&canImportRadioUser(first)&&
-    (crew.members.length===1||crew.paired)&&
-    crew.members.every(user=>canImportRadioUser(user)&&user.category===first.category&&sameCallsign(user.number,first.number)));
+  const members=crew?.members||[],first=members[0];
+  if(!first||!state.env?.categories.includes(crew.category)||crew.category==='OPLEIDING')return false;
+  if(!/^\\d{1,5}$/.test(String(crew.number))||Number(crew.number)<=0)return false;
+  // A starred callsign represents one unit, even when Sonoran marks an
+  // individual duplicate label as non-importable. Never add its members
+  // independently; require every member to carry the same valid unit.
+  if(!crew.paired&&members.length!==1)return false;
+  if(!members.every(user=>user.category===crew.category&&sameCallsign(user.number,crew.number)&&visibleRadioUser(user)))return false;
+  return members.some(user=>canImportRadioUser(user))||
+    (crew.paired&&members.some(user=>user.paired===true));
 }
 function pendingRadioCrews(){
   if(!radioFresh()||!state.env)return [];
