@@ -28,6 +28,8 @@ import {installSpecializationRoutes} from './specialization-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
+import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
+import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
 import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
@@ -269,6 +271,15 @@ installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
 installSpecializationRoutes(app,{requireUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser,getSnapshot});
+// TO duty board uses MAIN Firestore data and the existing authenticated actor.
+const getVerifiedTemporaryTORequest=async discordId=>{
+  if(!/^\d{15,22}$/.test(discordId))return null;
+  const snapshot=await getFirestore().collection('bpd_callsign_requests').doc(discordId).get();
+  return snapshot.exists?{...snapshot.data(),discordId}:null;
+};
+const toBoardStore=createFirestoreTOStore();
+installTOBoardRoutes(app,{requireUser,store:toBoardStore,getSnapshot,getTemporaryRequest:getVerifiedTemporaryTORequest});
+installTORadioRoutes(app,{requireUser,store:toBoardStore});
 app.get('/api/health',(_req,res)=>res.json({
   status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded',
   deployment:publicDeploymentInfo()
