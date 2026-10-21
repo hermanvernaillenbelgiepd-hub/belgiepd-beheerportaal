@@ -27,3 +27,11 @@ test('Dossier controls offer authorised filters and paginated results',()=>{
   assert.equal(html.includes('sollicitatiebeheer'),false);
   assert.equal(/\.innerHTML\s*=/.test(html),false);
 });
+
+
+test('Dossier user interface labels each selected service independently',()=>{
+  const html=readFileSync(new URL('../public/dossiercentrum.html',import.meta.url),'utf8');
+  assert.ok(html.includes("afzonderlijk personeelsdossier · '+r.name"));
+  assert.ok(html.includes("Dit is uitsluitend het dossier van "));
+  assert.ok(html.includes("Andere hulpdiensten beheren hun eigen afzonderlijke dossier"));
+});
