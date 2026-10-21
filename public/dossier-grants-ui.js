@@ -6,9 +6,9 @@ export function setupDossierGrantUI({api,notice,$,option,cell}){
   async function load(){
     if(!context){
       context=await api('/api/dossier-grants/context');
-      if(!context.canManage){section.dataset.authorized='false';section.hidden=true;return false}
+      if(!context.canManage){section.dataset.authorized='no';section.hidden=true;return false}
     }
-    section.dataset.authorized='true';
+    section.dataset.authorized='yes';
     $('dossierTesterBox').hidden=!(context.testEnvironment&&context.canAssignTester);
     const select=$('dossierGrantDept'),old=select.value;select.replaceChildren();
     for(const d of context.canManageDepartments)select.append(option(d,names[d]||d));
@@ -44,7 +44,7 @@ export function setupDossierGrantUI({api,notice,$,option,cell}){
     }
     return true;
   }
-  function reset(){context=null;section.dataset.authorized='false';section.hidden=true}
+  function reset(){context=null;section.dataset.authorized='no';section.hidden=true}
   $('dossierGrantForm').onsubmit=async e=>{
     e.preventDefault();const b=$('dossierGrantSave');b.disabled=true;
     try{
