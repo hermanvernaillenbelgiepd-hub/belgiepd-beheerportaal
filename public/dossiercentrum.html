@@ -88,7 +88,8 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <div><label for="query">Zoek dossier</label><input id="query" placeholder="Naam, roepnummer, rang of Discord-ID" autocomplete="off"></div>
 <div><label for="department">Hulpdienst</label><select id="department"><option value="all">Alle toegelaten diensten</option></select></div>
 <div><label for="sortOrder">Sorteren op</label><select id="sortOrder">
-<option value="callsign-desc" selected>Roepnummer aflopend (hoog → laag)</option>
+<option value="callsign-bpd" selected>BelgiumPD-reeksen (900 → 910 → 920 … → 008)</option>
+<option value="callsign-desc">Roepnummer aflopend (hoog → laag)</option>
 <option value="callsign-asc">Roepnummer oplopend (laag → hoog)</option>
 <option value="name-asc">Naam alfabetisch A–Z</option>
 <option value="name-desc">Naam alfabetisch Z–A</option>
@@ -289,7 +290,7 @@ $('historyKind').onchange=renderHistory;
 $('previousPage').onclick=()=>{page--;render()};
 $('nextPage').onclick=()=>{page++;render()};
 $('clear').onclick=()=>{
-  $('query').value='';$('sortOrder').value='callsign-desc';selectDepartment('all');
+  $('query').value='';$('sortOrder').value='callsign-bpd';selectDepartment('all');
 };
 $('refresh').onclick=()=>load().catch(e=>message(e.message,true));
 $('close').onclick=closeDossier;
