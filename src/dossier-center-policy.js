@@ -1,7 +1,8 @@
-import {canViewPersonnel,validPersonnelKey} from './personnel-editor-policy.js';
+import {validPersonnelKey} from './personnel-editor-policy.js';
+import {canReadServiceDossier} from './service-dossier-access.js';
 const SERVICES=Object.freeze(['politie','ambulance','brandweer','depannage']);
 export function dossierScopes(actor){
-  return {personnelDepartments:SERVICES.filter(dept=>canViewPersonnel(actor,dept)),
+  return {personnelDepartments:SERVICES.filter(dept=>canReadServiceDossier(actor,dept)),
     applicationDepartments:[]};
 }
 export function dossierOverviewRows(personnel,_unused,scopes){
