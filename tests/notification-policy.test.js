@@ -33,21 +33,24 @@ test('Three series remain individually assigned to named reekshoofden',()=>{
   assert.equal(normalizeSeries({series:'Reeks 3'}),'3');
   assert.equal(normalizeSeries({series:'Kader'}),null);
   const staged=policeSeriesHeads({BPD_POLICE_SERIES_HEADS_JSON:'not-json'});
-  assert.deepEqual(staged['1'],['622486684033875968','1041812771349737614','949115181785563137','962410307463049236']);
-  assert.deepEqual(staged['2'],['729410384095871098','305021081243090944']);
+  assert.deepEqual(staged['1'],['622486684033875968','1041812771349737614','949115181785563137','962410307463049236','947114717724413952']);
+  assert.deepEqual(staged['2'],['729410384095871098','305021081243090944','298799630458552323']);
   assert.deepEqual(staged['3'],[
     '1103170819355574328','1222286882331824208',
     '344065695635734528','1171128215708909602'
   ],'Confirmed Jones, Roy, J.Eclaire and Seba are heads of series 03');
-  assert.equal(staged['1'].includes('947114717724413952'),false);
+  assert.equal(staged['1'].includes('947114717724413952'),true,'Dieter now has confirmed series 01 identity');
+  assert.equal(staged['2'].includes('298799630458552323'),true,'Unemi has distinct series 02 identity');
   assert.equal(staged['2'].includes('947114717724413952'),false);
   assert.deepEqual(policeScope({...actor('middenkader'),discordId:'528568826481344522'},staged).series,['1','2','3'],'Rx supports all series');
   assert.deepEqual(policeScope({...actor('basiskader'),discordId:'528568826481344522'},staged).series,[],'Butterfly assignment never grants a higher rank');
   for(const id of staged['3'])
     assert.deepEqual(policeScope({...actor('middenkader'),discordId:id},staged).series,['3'],
       'Series 03 heads only receive their own series');
-  assert.deepEqual(policeScope({...actor('middenkader'),discordId:'947114717724413952'},staged).series,[],
-    'Dieter/Unemi duplicate identity receives no series until resolved');
+  assert.deepEqual(policeScope({...actor('middenkader'),discordId:'947114717724413952'},staged).series,['1'],
+    'Dieter has only series 01 access');
+  assert.deepEqual(policeScope({...actor('middenkader'),discordId:'298799630458552323'},staged).series,['2'],
+    'Unemi has only series 02 access');
   assert.deepEqual(policeScope({...actor('basiskader'),discordId:'1103170819355574328'},staged).series,[],
     'Series assignment does not grant a police cadre role');
   assert.equal(normalizeSeries({seriesRaw:'01'}),'1');
@@ -57,7 +60,7 @@ test('Three series remain individually assigned to named reekshoofden',()=>{
     '2':['1171128215708909602'],
     '3':[]
   })});
-  assert.deepEqual(legacyConfig['1'],staged['1'],'Quarantined and series 03 IDs cannot be routed to series 01');
+  assert.deepEqual(legacyConfig['1'],staged['1'],'Dieter remains series 01, and confirmed series 03 IDs cannot move there');
   assert.deepEqual(legacyConfig['2'],staged['2'],'Confirmed series 03 IDs cannot be routed to series 02');
   assert.deepEqual(legacyConfig['3'],staged['3'],'Confirmed series 03 works despite stale Render overrides');
 });
