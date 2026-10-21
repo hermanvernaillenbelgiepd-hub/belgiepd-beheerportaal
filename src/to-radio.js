@@ -51,7 +51,7 @@ export function parseSonoranName(value){
     ['LSRA','DEPK'].find(prefix=>categoryLabel.startsWith(prefix));
   const category=recoveredPrefix||categoryLabel;
   const number=known?head.slice(known.length).replace(/^\s*-\s*/,'').trim():parts[2].trim();
-  const importable=!recoveredPrefix&&TO_CATEGORIES.includes(category)&&/^\d{1,5}$/.test(number)&&Number(number)>0;
+  const importable=category!=='OPLEIDING'&&!recoveredPrefix&&TO_CATEGORIES.includes(category)&&/^\d{1,5}$/.test(number)&&Number(number)>0;
   return {category,number:number.slice(0,40)||null,displayName,importable};
 }
 function configuration(env){
