@@ -55,7 +55,28 @@ test('tijdelijke machtigingen vereisen geldige duur en niet-ingetrokken status',
   assert.equal(activeGrant({...grant,revoked:true},today),null);
   assert.equal(activeGrant({...grant,expiresOn:'2026-10-18'},today),null);
   assert.equal(mayApproveLeave(actor(),request('2026-11-19'),grant,today),true);
-  assert.throws(()=>validateGrant({email:'x@example.com',level:'all',startsOn:'2026-10-01',expiresOn:'2026-10-30'},today));
+  assert.throws(()=>validateGrant({discordId:idA,level:'all',startsOn:'2026-10-01',expiresOn:'2026-10-30'},today));
+  assert.throws(()=>validateGrant({email:'x@example.com',level:'all',startsOn:'2026-10-20',expiresOn:'2026-10-30'},today));
   assert.equal(validDiscordId(idA),true);
   assert.equal(validDiscordId('abc'),false);
+});
+
+test('tijdelijke VERLOFBEHEER werkt met Discord-ID, nooit met willekeurig e-mailadres',()=>{
+  const proposed={discordId:idB,level:'max30',startsOn:'2026-10-20',expiresOn:'2026-11-20'};
+  const parsed=validateGrant(proposed,today);
+  assert.deepEqual(parsed,{...proposed,permission:'VERLOFBEHEER'});
+  assert.equal('email' in parsed,false);
+  assert.equal(activeGrant(parsed,'2026-10-22')?.discordId,idB);
+  assert.equal(activeGrant(parsed,'2026-11-21'),null);
+  assert.equal(activeGrant({...parsed,revoked:true},'2026-10-22'),null);
+  assert.throws(()=>validateGrant({...proposed,discordId:'santo-930'},today),/Discord/);
+  assert.throws(()=>validateGrant({...proposed,discordId:'1234'},today),/Discord/);
+  assert.throws(()=>validateGrant({...proposed,level:'admin'},today));
+  assert.throws(()=>validateGrant({...proposed,expiresOn:'2029-01-01'},today));
+});
+test('de verlofpagina en routes mogen geen Google-e-mailadres als nieuwe machtiging gebruiken',()=>{
+  // A valid Discord identity must be required even when extra fields are supplied.
+  assert.throws(()=>validateGrant({email:'x@example.com',
+    level:'max30',startsOn:'2026-10-20',expiresOn:'2026-11-20'},today),/Discord/);
+  assert.equal(validDiscordId(idB),true);
 });
