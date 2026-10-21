@@ -121,8 +121,10 @@ function normalizedUsers(payload,key){
     if(!known){
       channelStatusUnknown++;
       const parsed=parseSonoranName(protect(rawName,key));
-      if(parsed.category&&typeof parsed.number==='string'&&/^\d{1,5}$/.test(parsed.number)&&Number(parsed.number)>0){
-        const unit=JSON.stringify([parsed.category,Number(parsed.number)]);
+      if(parsed.category&&typeof parsed.number==='string'&&
+          ((/^\d{1,5}$/.test(parsed.number)&&Number(parsed.number)>0)||
+           (parsed.category==='HARTS'&&parsed.number==='HARTS'))){
+        const unit=JSON.stringify([parsed.category,parsed.number==='HARTS'?'HARTS':Number(parsed.number)]);
         uncertainUnits.set(unit,{category:parsed.category,number:parsed.number});
       }
       continue;
