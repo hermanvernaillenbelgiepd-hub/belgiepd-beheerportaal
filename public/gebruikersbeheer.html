@@ -30,6 +30,22 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <div class="controls"><label for="filter">Filter</label><select id="filter" style="width:auto"><option value="all">Alle statussen</option><option value="pending">Nieuwe aanvragen</option><option value="approved">Goedgekeurd</option><option value="blocked">Geblokkeerd</option></select><span id="count" class="muted"></span></div>
 <div class="scroller"><table><thead><tr><th>Discord-lid</th><th>Status</th><th>Hulpdienst</th><th>Functie</th><th>Beslissing</th></tr></thead><tbody id="list"></tbody></table></div>
 <p id="more" class="muted" hidden>Het overzicht is begrensd tot 250 accounts. Een paginering volgt bij verdere groei.</p></section>
+<section id="toSection" class="card" hidden aria-labelledby="toTitle">
+<h2 id="toTitle">TO-dienstbord · toegangsbeheer</h2>
+<p>Voeg een bestaand, goedgekeurd Discord-portaalaccount handmatig toe. Dit verandert geen hulpdienstrang of personeelsrol. Alleen technisch beheer kan deze toegang beheren.</p>
+<form id="toGrantForm">
+<div class="grid">
+<div><label for="toDiscordId">Discord-ID</label><input id="toDiscordId" type="text" inputmode="numeric" pattern="[0-9]{15,22}" minlength="15" maxlength="22" placeholder="Discord-ID van de gebruiker" required></div>
+<div><label for="toLevel">TO-rechten</label><select id="toLevel"><option value="read">Alleen meekijken</option><option value="operate">TO bedienen (dienst starten/overnemen, ploegen en meldingen)</option></select></div>
+<div><label for="toReason">Motivering</label><input id="toReason" type="text" minlength="8" maxlength="300" placeholder="Waarom TO-toegang nodig is" required></div>
+</div>
+<div class="controls"><button type="submit" id="toGrantButton">TO-toegang opslaan</button><button type="button" id="toRefresh" class="alt">Rechten vernieuwen</button></div>
+</form>
+<h3>Toegewezen TO-toegang</h3>
+<div class="scroller"><table><thead><tr><th>Discord-gebruiker</th><th>TO-rechten</th><th>Status</th><th>Beheer</th></tr></thead><tbody id="toGrantsList"></tbody></table></div>
+<p id="toLimit" class="muted" hidden>Maximaal 150 machtigingen zichtbaar. Raadpleeg de beheerder voor oudere records.</p>
+<p class="muted">TO-rechten zijn pas geldig na een succesvolle, goedgekeurde Discord-aanmelding. De huidige TO moet zijn dienst eerst overdragen voordat iemand anders die kan bedienen.</p>
+</section>
 <section id="boardSection" class="card" hidden>
 <h2>Bestuur · afzonderlijke bestuursfunctie</h2>
 <p>Een bestuursaanstelling staat los van de politierang en hulpdienst. Een voordracht wordt pas actief na afzonderlijke goedkeuring door technisch beheer. Er worden geen personeels-, Discord- of portaalrollen toegekend.</p>
@@ -139,6 +155,53 @@ async function loadAdmin(){
     notice('Gebruikersbeheer kon niet worden geopend: '+e.message,true);
   }
 }
+async function loadTOGrants(){
+  if(!auth?.currentUser){$('toSection').hidden=true;return;}
+  try{
+    const context=await api('/api/users/context');
+    if(!context.canManageTO){$('toSection').hidden=true;return;}
+    const data=await api('/api/users/to-grants');
+    $('toSection').hidden=false;$('toLimit').hidden=!data.limited;
+    const body=$('toGrantsList');body.replaceChildren();
+    if(!data.entries?.length){
+      const row=document.createElement('tr');const field=cell(row,'Nog geen handmatige TO-machtigingen.');field.colSpan=4;body.append(row);return;
+    }
+    for(const grant of data.entries){
+      const row=document.createElement('tr');
+      const user=document.createElement('div');user.className='name';user.textContent=grant.username||'Discord-gebruiker';
+      const id=document.createElement('small');id.textContent=grant.discordId;id.style.display='block';user.append(id);cell(row,user);
+      cell(row,grant.level==='operate'?'TO bedienen':'Alleen meekijken');
+      const state=document.createElement('span');state.className='status '+(grant.status==='active'?'approved':'blocked');
+      state.textContent=grant.status==='active'?'Actief':'Ingetrokken';cell(row,state);
+      const actions=document.createElement('div');actions.className='controls';
+      if(grant.status==='active'){
+        const revoke=document.createElement('button');revoke.type='button';revoke.className='danger';revoke.textContent='Intrekken';
+        revoke.onclick=async()=>{
+          if(!confirm('TO-toegang van '+grant.discordId+' intrekken?'))return;
+          const reason=prompt('Reden voor intrekking (minimaal 8 tekens):','TO-bevoegdheid niet langer nodig');
+          if(reason===null)return;
+          revoke.disabled=true;
+          try{
+            await api('/api/users/to-grants/'+encodeURIComponent(grant.discordId)+'/revoke',{method:'POST',body:{reason}});
+            notice('TO-toegang ingetrokken.');await loadTOGrants();
+          }catch(e){notice(e.message,true);revoke.disabled=false;}
+        };
+        actions.append(revoke);
+      }else actions.textContent='Geen actieve toegang';
+      cell(row,actions);body.append(row);
+    }
+  }catch(e){$('toSection').hidden=true;notice('TO-rechten konden niet geladen worden: '+e.message,true);}
+}
+$('toGrantForm').onsubmit=async event=>{
+  event.preventDefault();
+  const button=$('toGrantButton');button.disabled=true;
+  try{
+    await api('/api/users/to-grants',{method:'POST',body:{
+      discordId:$('toDiscordId').value.trim(),level:$('toLevel').value,reason:$('toReason').value.trim()}});
+    $('toGrantForm').reset();notice('TO-toegang opgeslagen.');await loadTOGrants();
+  }catch(e){notice(e.message,true)}finally{button.disabled=false}
+};
+$('toRefresh').onclick=loadTOGrants;
 const boardLabels={board_registry_read:'Bestuursregister inzien',
   board_nomination_propose:'Bestuursleden voordragen'};
 function boardCell(root,value){
@@ -229,7 +292,7 @@ $('boardNominationForm').onsubmit=async event=>{
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
 };
 async function refresh(){
-  if(!auth?.currentUser){$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;return}
+  if(!auth?.currentUser){$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;$('toSection').hidden=true;return}
   const isDiscord=auth.currentUser.uid.startsWith('discord:');
   $('request').hidden=true;
   let accessStatus=null;
@@ -244,7 +307,7 @@ async function refresh(){
   // Unapproved Discord members must never query the administrator endpoint.
   // Display their expected request status rather than a confusing 403 error.
   if(isDiscord && ['not_requested','pending','blocked'].includes(accessStatus)){
-    $('admin').hidden=true;
+    $('admin').hidden=true;$('toSection').hidden=true;
     const message={
       not_requested:'Je Discord-account is herkend. Klik op Toegang aanvragen om je personeelsrechten te laten goedkeuren.',
       pending:'Je aanvraag is geregistreerd en wacht op goedkeuring door een bevoegd kaderlid.',
@@ -254,10 +317,11 @@ async function refresh(){
     return;
   }
   await loadAdmin();
+  await loadTOGrants();
   await boardRefresh();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await boardRefresh()};$('filter').onchange=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadTOGrants();await boardRefresh()};$('filter').onchange=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
