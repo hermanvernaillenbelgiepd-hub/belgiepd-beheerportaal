@@ -178,6 +178,23 @@ test('SIMULATION: temporary 166 → fixed 201 → personnel + complete linked do
       body:{discordId:another,name:'Andere fictieve agent',temporaryCall:167,preferredCall:201}});
     assert.equal(refused.code,409,'Used 201 must be unavailable for another applicant');
     assert.equal(mockDb.snapshot('bpd_callsign_requests/'+another).exists,false);
+
+    // The second supported path: authorized cadre can register for another recruit.
+    const cadreCandidate='555555555555555555';
+    const cadreCreated=await send('POST','/api/callsigns/requests',{
+      bpd:officer('middenkader'),
+      body:{discordId:cadreCandidate,name:'Fictieve collega',temporaryCall:168}});
+    assert.equal(cadreCreated.code,201,JSON.stringify(cadreCreated.payload));
+    assert.equal(mockDb.snapshot('bpd_callsign_requests/'+cadreCandidate).get('origin'),'cadre');
+    const notEligible=await send('POST','/api/callsigns/requests/:discordId/verify',{
+      bpd:officer('middenkader'),params:{discordId:cadreCandidate},
+      body:{joinedOn:'2026-10-01',playHours:8}});
+    assert.equal(notEligible.code,200);
+    assert.equal(notEligible.payload.verified,false,'8 hours never satisfies 10-hour requirement');
+    const blockedPreview=await send('GET','/api/callsigns/requests/:discordId/preview',{
+      bpd:officer('officierenkader'),params:{discordId:cadreCandidate}});
+    assert.equal(blockedPreview.code,409,'Unverified cadre-intake must not reach approval');
+    assert.equal(mockDb.snapshot('bpd_personnel_created/politie_'+cadreCandidate).exists,false);
     assert.ok(snapshotReads>=4,'Both intake and approval must check latest legacy roster');
   }finally{
     for(const [key,value] of Object.entries(envBackup))
