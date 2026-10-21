@@ -138,17 +138,17 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
         const leden=cmd.leden.map(member=>{
           keys(member,['naam','roep']);
           const naam=text(member.naam,2,80,'Agentnaam'),roep=text(member.roep,1,5,'Roepnummer');
-          if(!(/^\d{1,5}$/.test(roep)&&Number(roep)>0)&&!(cmd.dienst==='HARTS'&&roep==='HARTS'))fail(400,'Roepnummer moet één tot vijf cijfers bevatten, behalve de benoemde HARTS-eenheid');
+          if(!(/^\d{1,5}$/.test(roep)&&Number(roep)>0)&&!(['HARTS','HVPK'].includes(cmd.dienst)&&roep===cmd.dienst))fail(400,'Roepnummer moet één tot vijf cijfers bevatten, behalve de benoemde HARTS-eenheid');
           return {naam,roep};
         });
-        if(new Set(leden.map(member=>member.roep==='HARTS'?'HARTS':String(Number(member.roep)))).size!==leden.length)fail(400,'Elke agent in een koppel heeft een eigen roepnummer');
+        if(new Set(leden.map(member=>(['HARTS','HVPK'].includes(cmd.dienst)&&member.roep===cmd.dienst)?cmd.dienst:String(Number(member.roep)))).size!==leden.length)fail(400,'Elke agent in een koppel heeft een eigen roepnummer');
         const activeTeams=Object.values(board.ploegen).filter(team=>!team.endedAt);
         if(activeTeams.length>=TO_BOARD_LIMITS.activeTeams)fail(413,'Er zijn al te veel ploegen in dienst');
-        if(activeTeams.some(team=>team.dienst===cmd.dienst&&team.leden.some(member=>leden.some(added=>(member.roep==='HARTS'||added.roep==='HARTS'?member.roep===added.roep:Number(member.roep)===Number(added.roep))))))
+        if(activeTeams.some(team=>team.dienst===cmd.dienst&&team.leden.some(member=>leden.some(added=>(member.roep===cmd.dienst||added.roep===cmd.dienst?member.roep===added.roep:Number(member.roep)===Number(added.roep))))))
           fail(409,'Dit roepnummer is al in dienst binnen deze categorie');
         const teamId=newId();
         if(Object.hasOwn(board.ploegen,teamId))throw new Error('Dubbele server-ID');
-        const roepnaam=leden.reduce((highest,member)=>Number(member.roep)>Number(highest)?member.roep:highest,leden[0].roep);
+        const roepnaam=['HARTS','HVPK'].includes(cmd.dienst)&&leden.some(member=>member.roep===cmd.dienst)?cmd.dienst:leden.reduce((highest,member)=>Number(member.roep)>Number(highest)?member.roep:highest,leden[0].roep);
         board.ploegen[teamId]={id:teamId,dienst:cmd.dienst,leden,koppel:leden.length===2,roepnaam,createdAt:now,by:actor.uid,available:true,responsePhase:null,...(cmd.radioSource==='sonoran'?{radioSource:'sonoran'}:{})};
       }else if(cmd.type==='remove-team'){
         const team=getTeam(board,cmd.id);
