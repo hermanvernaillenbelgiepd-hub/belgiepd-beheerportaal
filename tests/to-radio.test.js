@@ -226,8 +226,8 @@ test('Medical unit types and numeric callsigns appear under Ambulancedienst',()=
     }
     const solo=parseSonoranName(category+' | Medewerker Test');
     assert.equal(solo.category,category);
-    assert.equal(solo.importable,false);
-    assert.equal(solo.number,null);
+    assert.equal(solo.importable,['HARTS','HVPK'].includes(category));
+    assert.equal(solo.number,['HARTS','HVPK'].includes(category)?category:null);
     assert.equal(parseSonoranName(category+'0').importable,false);
     assert.equal(parseSonoranName(category+'123456').importable,false);
   }
@@ -235,6 +235,23 @@ test('Medical unit types and numeric callsigns appear under Ambulancedienst',()=
   assert.equal(parseSonoranName('HAMBULANCE - 99').importable,false);
   assert.equal(parseSonoranName('AMBX99').importable,false);
   assert.equal(parseSonoranName('ARTS - ADMIN').importable,false);
+});
+
+test('Named radio specialists and inline police operator names are distinct importable units',()=>{
+  for(const label of ['HVPK | Stan','HVPK Stan','HVPK-Stan','HARTS KEVIN','HARTS | Kevin']){
+    const parsed=parseSonoranName(label);
+    assert.equal(parsed.importable,true,label);
+    assert.equal(parsed.number,parsed.category,label);
+    assert.ok(['HARTS','HVPK'].includes(parsed.category));
+    assert.ok(parsed.displayName,label);
+  }
+  assert.deepEqual(parseSonoranName('SANTO-265 Chicken'),
+    {category:'SANTO',number:'265',displayName:'Chicken',importable:true});
+  assert.deepEqual(parseSonoranName('SANTO-265 Chicken | Collega'),
+    {category:'SANTO',number:'265',displayName:'Collega',importable:true});
+  assert.equal(parseSonoranName('SANTO-265 Unknown 123456').importable,false);
+  assert.deepEqual(parseSonoranName('HVPK-123 | Stan'),
+    {category:'HVPK',number:'123',displayName:'Stan',importable:true});
 });
 
 test('Compound categories remain distinct when numeric callsigns match',async()=>{
