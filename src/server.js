@@ -28,7 +28,7 @@ import {installSpecializationRoutes} from './specialization-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
-import {installTOBoardRoutes} from './to-board-routes.js';
+import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
 import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits} from './personnel-editor-policy.js';
@@ -279,8 +279,9 @@ const getVerifiedTemporaryTORequest=async discordId=>{
   const snapshot=await getFirestore().collection('bpd_callsign_requests').doc(discordId).get();
   return snapshot.exists?{...snapshot.data(),discordId}:null;
 };
-installTOBoardRoutes(app,{requireUser,getSnapshot,getTemporaryRequest:getVerifiedTemporaryTORequest});
-installTORadioRoutes(app,{requireUser});
+const toBoardStore=createFirestoreTOStore();
+installTOBoardRoutes(app,{requireUser,store:toBoardStore,getSnapshot,getTemporaryRequest:getVerifiedTemporaryTORequest});
+installTORadioRoutes(app,{requireUser,store:toBoardStore});
 app.get('/api/health',(_req,res)=>res.json({
   status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded',
   deployment:publicDeploymentInfo()
