@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {canViewPersonnel,validPersonnelKey} from './personnel-editor-policy.js';
+import {validPersonnelKey} from './personnel-editor-policy.js';
+import {canReadServiceDossier} from './service-dossier-access.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,
   specialtyWritesEnabled,canChangeSpecialty,validateSpecialtyChange,
   publicSpecializations} from './specialization-policy.js';
@@ -14,7 +15,7 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
   async function subject(req){
     const {dept,discordId}=req.params;
     if(!validPersonnelKey(dept,discordId))throw failure(400,'Ongeldige personeelsreferentie');
-    if(!canViewPersonnel(req.bpd,dept))throw failure(403,'Geen inzagerecht voor deze hulpdienst');
+    if(!canReadServiceDossier(req.bpd,dept))throw failure(403,'Geen inzagerecht voor dit dienstdossier');
     const snap=await getSnapshot();
     const matches=snap.data.filter(p=>p.dept===dept&&p.personId===discordId);
     if(matches.length!==1)throw failure(404,'Geen eenduidige personeelsfiche gevonden');
@@ -31,7 +32,7 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
       ]);
       const state=publicSpecializations(staff,entry.data());
       return res.json({...state,canEdit:specialtyWritesEnabled(process.env)&&
-        canChangeSpecialty(req.bpd,staff),
+        req.bpd.dossierNativeDepartments?.includes(staff.dept)&&canChangeSpecialty(req.bpd,staff),
         history:history.docs.map(doc=>{
           const d=doc.data();
           return {label:String(d.label||'').slice(0,64),
@@ -53,7 +54,7 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
     catch(e){return error(res,400,e.message)}
     try{
       const staff=await subject(req);
-      if(!canChangeSpecialty(req.bpd,staff))
+      if(!req.bpd.dossierNativeDepartments?.includes(req.params.dept)||!canChangeSpecialty(req.bpd,staff))
         return error(res,403,'Alleen bevoegd officierenkader of korpsleiding kan deze specialisatie wijzigen');
       const ref=getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
         .doc(staff.dept+'_'+staff.personId);
