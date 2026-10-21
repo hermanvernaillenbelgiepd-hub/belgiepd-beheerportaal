@@ -352,3 +352,49 @@ test('Emergency takeover needs a verified operator, delay, reason and typed conf
   assert.equal(board.session.handovers[0].reason,input.reason);
   assert.equal(board.session.pendingTakeover,undefined);
 });
+
+
+test('Every crew status may be chosen directly without a forced underway or reset sequence',()=>{
+  let board=addTeam(started(),'930');
+  const id=Object.values(board.ploegen)[0].id;
+  const transitions=[
+    ['ter-plaatse',true,'ter-plaatse'],
+    ['pauze',false,null],
+    ['onderweg',true,'onderweg'],
+    ['beschikbaar',true,null],
+    ['pauze',false,null],
+    ['ter-plaatse',true,'ter-plaatse'],
+    ['beschikbaar',true,null]
+  ];
+  for(const [status,available,phase] of transitions){
+    board=command(board,'set-team-status',{id,status}).board;
+    assert.equal(board.ploegen[id].available,available,status);
+    assert.equal(board.ploegen[id].responsePhase,phase,status);
+    assert.equal(board.ploegen[id].responseBy,owner.uid,status);
+    assert.equal(board.ploegen[id].updatedBy,owner.uid,status);
+  }
+  expectStatus(()=>command(board,'set-team-status',{id,status:'beschikbaar'}),409);
+  expectStatus(()=>command(board,'set-team-status',{id,status:'onbekend'}),400);
+  expectStatus(()=>command(board,'set-team-status',{id,status:'pauze',ownerUid:owner.uid}),400);
+  expectStatus(()=>command(board,'set-team-status',{id,status:'pauze'},colleague),403);
+});
+
+test('Direct choice never deletes active incident assignment or its history',()=>{
+  let board=createIncident(addTeam(started(),'930'));
+  const team=Object.values(board.ploegen)[0],incident=Object.values(board.meldingen)[0];
+  board=command(board,'attach-team',{id:incident.id,teamId:team.id}).board;
+  const oldLength=board.meldingen[incident.id].log.length;
+  board=command(board,'set-team-status',{id:team.id,status:'ter-plaatse'}).board;
+  board=command(board,'set-team-status',{id:team.id,status:'pauze'}).board;
+  board=command(board,'set-team-status',{id:team.id,status:'beschikbaar'}).board;
+  const current=board.meldingen[incident.id];
+  assert.equal(current.status,'actief');
+  assert.equal(current.ploegen[0].id,team.id,'Team remains assigned until manually detached');
+  assert.equal(current.log.length,oldLength+3);
+  assert.ok(current.log.some(item=>item.txt.includes('status ter plaatse')));
+  assert.ok(current.log.some(item=>item.txt.includes('status pauze / niet beschikbaar')));
+  assert.equal(board.ploegen[team.id].responsePhase,null);
+  assert.equal(board.ploegen[team.id].available,true);
+  board=command(board,'detach-team',{id:incident.id,teamId:team.id}).board;
+  assert.equal(board.meldingen[incident.id].ploegen.length,0);
+});
