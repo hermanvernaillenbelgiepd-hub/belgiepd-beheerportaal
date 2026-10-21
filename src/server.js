@@ -31,6 +31,7 @@ import {installDossierCenterRoutes} from './dossier-center-routes.js';
 import {installNotificationRoutes} from './notification-routes.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
+import {installTOPanicRoutes} from './to-panic-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
 import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
@@ -301,6 +302,7 @@ const requireTOUser=(req,res,next)=>requireUser(req,res,async()=>{
 const toBoardStore=createFirestoreTOStore();
 installTOBoardRoutes(app,{requireUser:requireTOUser,store:toBoardStore,getSnapshot,getTemporaryRequest:getVerifiedTemporaryTORequest});
 installTORadioRoutes(app,{requireUser:requireTOUser,store:toBoardStore});
+installTOPanicRoutes(app,{requireUser:requireTOUser});
 app.get('/api/health',(_req,res)=>res.json({
   status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded',
   deployment:publicDeploymentInfo()
