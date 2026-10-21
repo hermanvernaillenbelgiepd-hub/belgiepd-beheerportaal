@@ -13,8 +13,9 @@ export function stripRadioNBMarkers(value){
 // shift. NB may occur before or after the star, so remove it first.
 export function radioMarkedPair(value){
   if(typeof value!=='string')return false;
-  const head=stripRadioNBMarkers(value.split('|')[0]).trim();
-  return /\d{1,5}\*\s*$/.test(head);
+  const head=stripRadioNBMarkers(value.split(/[|│｜¦∣ǀ∥‖❘︱]/)[0]).trim();
+  return /\d{1,5}\*\s*$/.test(head)||
+    /\d{1,5}\*\s+[A-Za-zÀ-ÿ]/.test(head);
 }
 
 // Group ONLY a precisely matching category + positive numeric unit when at
