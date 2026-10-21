@@ -48,7 +48,10 @@ export function installTORadioRoutes(app,{
       // Radio remains visible even if Firestore is temporarily unavailable;
       // a failed safety reconciliation is retried on the next healthy poll.
       try{await sync(snapshot);}catch{console.error('TO-radio automatische dienstafmelding overgeslagen');}
-      return res.json(await withAliases(snapshot));
+      // Alias storage failure must NEVER hide otherwise healthy Sonoran data.
+      let result=snapshot;
+      try{result=await withAliases(snapshot);}catch{console.error('Radioportaal naamcorrecties tijdelijk onbeschikbaar');}
+      return res.json(result);
     }catch{return res.status(503).json({error:'De radioverbinding is tijdelijk niet beschikbaar.'});}
   });
   // Explicit staff-facing alias only. Sonoran is read-only; reversing sync needs
