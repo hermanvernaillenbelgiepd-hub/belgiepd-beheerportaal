@@ -203,10 +203,12 @@ test('Real specialist pictograms have subtle backgrounds without changing column
   const light=source('public/index.html');
   const dark=source('public/personeelsbeheer.html');
   assert.ok(light.includes('.staff-roster .specialty-col-icon .specialty-custom-image{'));
-  assert.ok(light.includes('border-radius:8px;background:#dceafa'));
+  assert.ok(light.includes('border-radius:8px;background:#cfe1f7'));
   assert.ok(light.includes('.specialty-overview-summary .specialty-custom-image{'));
+  assert.ok(light.includes('border-radius:5px;background:#d7e6f8'));
+  assert.ok(dark.includes('border-radius:5px;background:#cddff5'));
   assert.ok(dark.includes('.staff-roster-table .specialty-col-icon .specialty-custom-image{'));
-  assert.ok(dark.includes('border-radius:8px;background:#deebfa'));
+  assert.ok(dark.includes('border-radius:8px;background:#cddff5'));
   assert.ok(dark.includes('.specialty-ledger .specialty-tile>.specialty-custom-image{'));
   assert.ok(dark.includes('.specialty-summary .specialty-custom-image{'));
   for(const html of [light,dark]){
