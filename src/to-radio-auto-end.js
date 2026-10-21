@@ -38,16 +38,24 @@ export function observeRadioDepartures(board,snapshot,tracker,now){
     if(!team?.id)continue;
     const uncertain=radioMatchesSavedTeam(team,snapshot.uncertainUnits);
     const present=radioMatchesSavedTeam(team,snapshot.users);
-    if(present||uncertain){tracker.delete(team.id);continue;}
+    if(present){
+      tracker.set(team.id,{seen:true,since:null,polls:0,lastSnapshot:timestamp});
+      continue;
+    }
+    if(uncertain){tracker.delete(team.id);continue;}
     const prev=tracker.get(team.id);
-    if(!prev){
-      tracker.set(team.id,{since:timestamp,polls:1,lastSnapshot:timestamp});
+    // Only a team imported from Sonoran, or a manually entered team
+    // actually observed in radio this session, can be signed off automatically.
+    // A manually entered offline team must remain under TO control.
+    if(!prev?.seen&&team.radioSource!=='sonoran')continue;
+    if(!prev||prev.since===null){
+      tracker.set(team.id,{seen:true,since:timestamp,polls:1,lastSnapshot:timestamp});
       continue;
     }
     // One fetch can be returned to many viewers from the 15s cache;
     // only a genuinely newer upstream poll confirms a second absence.
     if(timestamp<=prev.lastSnapshot)continue;
-    const observation={since:prev.since,polls:prev.polls+1,lastSnapshot:timestamp};
+    const observation={seen:true,since:prev.since,polls:prev.polls+1,lastSnapshot:timestamp};
     tracker.set(team.id,observation);
     if(!linked.has(team.id)&&timestamp-observation.since>=RADIO_AUTO_END_GRACE_MS&&
         observation.polls>=RADIO_AUTO_END_MIN_POLLS)ready.push(team.id);
