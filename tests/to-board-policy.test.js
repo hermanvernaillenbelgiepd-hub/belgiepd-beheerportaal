@@ -426,3 +426,25 @@ test('Named verified brandweer commander can read TO only; permissions never pro
     else process.env.BPD_TO_READONLY_DISCORD_IDS=old;
   }
 });
+
+test('A scoped TO operator grant may run TO without becoming police kader',()=>{
+  const id='301448301868220417',old=process.env.BPD_TO_OPERATOR_DISCORD_IDS;
+  const aria={uid:'discord:'+id,discordId:id,role:'korpsleiding',
+    departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'}};
+  try{
+    process.env.BPD_TO_OPERATOR_DISCORD_IDS=id;
+    assert.equal(canReadBoard(aria),true);
+    assert.equal(canOperateBoard(aria),true);
+    let current=command(emptyBoard(),'start',{displayName:'ZONE ARIXX'},aria).board;
+    assert.equal(current.session.to,'ZONE ARIXX');
+    assert.equal(canReadBoard({...aria,toAccessLevel:'revoked'}),false);
+    assert.equal(canOperateBoard({...aria,toAccessLevel:'revoked'}),false);
+    assert.equal(canReadBoard({...aria,uid:'discord:111111111111111111'}),false);
+    assert.equal(canOperateBoard({...aria,uid:'discord:111111111111111111'}),false);
+    delete process.env.BPD_TO_OPERATOR_DISCORD_IDS;
+    assert.equal(canOperateBoard({...aria,toAccessLevel:'operate'}),true);
+    assert.equal(canReadBoard({...aria,toAccessLevel:'read'}),true);
+    assert.equal(canOperateBoard({...aria,toAccessLevel:'read'}),false);
+    assert.equal(canOperateBoard({...aria,toAccessLevel:'revoked'}),false);
+  }finally{if(old===undefined)delete process.env.BPD_TO_OPERATOR_DISCORD_IDS;else process.env.BPD_TO_OPERATOR_DISCORD_IDS=old;}
+});
