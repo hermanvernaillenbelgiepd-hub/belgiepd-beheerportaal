@@ -126,6 +126,27 @@ test('User-provided Signalisatie sign is embedded locally and used across both r
   assert.ok(manager.includes('.specialty-custom-image'));
   assert.ok(dashboard.includes('.specialty-custom-image'));
 });
+test('Police K9 / Hond icon uses transparent user-provided logo',()=>{
+  const api=visuals();
+  for(const name of ['K9','K-9','K 9','Hond','Honden','Hondengeleider','Hondengeleiders']){
+    assert.equal(api.specialtyIconImage(name,'politie'),'/assets/icons/k9.svg',name);
+  }
+  assert.equal(api.specialtyIconImage('K9','ambulance'),null);
+  assert.equal(api.specialtyIconImage('K90','politie'),null);
+  assert.equal(api.specialtyIcon('K9'),'🐕','Dog emoji remains as fallback');
+  assert.ok(api.specialtyColumns('politie').includes('K9'));
+  const logo=source('public/assets/icons/k9.svg');
+  assert.match(logo,/aria-label="K9 logo politiehond"/);
+  assert.match(logo,/fill-rule="evenodd"/);
+  assert.match(logo,/viewBox="-7 -6 427 201"/);
+  assert.ok(!logo.includes('data:image'),'K9 remains sharp and fully transparent as a vector');
+  for(const page of ['public/index.html','public/personeelsbeheer.html']){
+    const html=source(page);
+    assert.ok(html.includes('specialtyIconImage(label,dept)'),page);
+    assert.ok(html.includes('specialty-custom-image'),page);
+  }
+});
+
 test('Police Motor/MOTARD uses a real transparent motorcycle image without changing ambulance Motor',()=>{
   const api=visuals();
   for(const label of ['Motor',' MOTOR ','motor'])
