@@ -399,3 +399,34 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
 /* De blauwe bovenrand blijft de ritstatus aangeven, los van de hulpdienstkleur. */
 .team-card[data-availability="on-incident"][data-response-phase="onderweg"]{border-top:2px solid #4d89ed}
 .team-card[data-availability="on-incident"][data-response-phase="ter-plaatse"]{border-top:2px solid #1b64da}
+
+
+/* Signed FiveM / Sonoran Radio panic alerts (TEST). */
+.to-panic-area{margin:0 0 18px}
+.to-panic-area>h2{color:#a81828;letter-spacing:.07em;font-size:14px;margin:4px 0 10px}
+.to-panic-alert{display:flex;align-items:flex-start;gap:14px;border:2px solid #d72b36;
+ border-radius:12px;background:linear-gradient(110deg,#fff0f0,#ffdbdd);
+ box-shadow:0 0 0 3px #d62d2d10,0 3px 18px #b7282933;padding:14px;margin:9px 0;color:#641423}
+.to-panic-siren{display:flex;align-items:center;justify-content:center;flex:none;
+ width:46px;height:46px;border-radius:11px;background:#bd1e2a;color:white;font-size:25px;
+ box-shadow:0 0 0 4px #eb575756;animation:to-panic-pulse 1.05s infinite alternate}
+.to-panic-content{min-width:0;flex:1}
+.to-panic-content>strong{display:block;font-size:14px;line-height:1.4;letter-spacing:.015em}
+.to-panic-content>div{font-size:11px;margin-top:4px}
+.to-panic-content>small{font-size:10px;display:block;margin-top:6px}
+.to-panic-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:10px!important}
+.to-panic-actions button{border:1px solid #d78888;background:#fff;color:#8f2630}
+.to-panic-position{padding:9px 10px;margin-top:9px!important;background:#fff6f6;border:1px solid #eab3b3;border-radius:8px;font-family:ui-monospace,monospace}
+.to-panic-position a{color:#9c1c2b;text-decoration:underline;font-weight:800}
+.to-panic-position small{font-size:9px;color:#8b5c5c}
+.to-panic-history{background:#fff;border:1px solid #edced0;border-radius:9px;padding:9px 12px;margin-top:10px;font-size:11px}
+.to-panic-history summary{font-weight:800;cursor:pointer;color:#803644}
+.to-panic-history li{padding:3px}
+.to-panic-error{color:#9b2a31;padding:8px;border:1px solid #efd1d2;border-radius:6px;background:#fff4f4;font-size:11px}
+.to-panic-team-icon{display:inline-flex;align-items:center;border-radius:6px;font-size:9px!important;font-weight:850;
+ color:#fff;background:#b91c2c;padding:4px 7px;animation:to-panic-pulse 1.05s infinite alternate}
+.team-card:has(.to-panic-team-icon){outline:2px solid #d72b36;outline-offset:1px}
+@keyframes to-panic-pulse{from{box-shadow:0 0 0 0 #e23b3b60;filter:brightness(1)}
+ to{box-shadow:0 0 0 6px #e23b3b0f;filter:brightness(1.17)}}
+@media(prefers-reduced-motion:reduce){.to-panic-siren,.to-panic-team-icon{animation:none}}
+@media(max-width:600px){.to-panic-alert{padding:11px;gap:9px}.to-panic-siren{width:35px;height:35px;font-size:19px}}
