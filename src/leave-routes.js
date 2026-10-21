@@ -116,12 +116,26 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       const ref=db().collection(coll).doc(`${id}_${details.startDate}_${details.endDate}`);
       const subjectDepartments=departmentsOf(records);
       if(!subjectDepartments.length)throw rejection('Geen actieve hulpdiensten gevonden',403);
+      const subjectPoliceGrade=subjectDepartments.includes('politie')?gradeFor(records,id):undefined;
+      if(subjectDepartments.includes('politie')&&!subjectPoliceGrade)
+        throw rejection('Politionele graad kon niet gecontroleerd worden; contacteer het kader',409);
+      const leaderOwnRegistration=subjectPoliceGrade==='korpsleiding'&&
+        roleForDepartment(req.bpd,'politie')==='korpsleiding';
+      const status=leaderOwnRegistration?'approved':'pending';
       try{
-        await ref.create({...details,personDiscordId:id,subjectName,subjectDepartments,
-          status:'pending',submittedByUid:req.bpd.uid,submittedByDiscordId:id,
-          createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
+        const at=FieldValue.serverTimestamp();
+        const data={...details,personDiscordId:id,subjectName,subjectDepartments,subjectPoliceGrade,
+          status,submittedByUid:req.bpd.uid,submittedByDiscordId:id,
+          createdAt:at,updatedAt:at};
+        if(leaderOwnRegistration){
+          data.decidedByUid=req.bpd.uid;data.decidedByDiscordId=id;data.decidedAt=at;
+        }
+        await ref.create(data);
+        if(leaderOwnRegistration)await ref.collection('audit').doc().create({
+          action:'chief_self_registered',actorUid:req.bpd.uid,actorDiscordId:id,
+          at:FieldValue.serverTimestamp(),days:details.days});
       }catch(e){if(e.code===6||e.code==='already-exists')throw rejection('Voor deze exacte periode bestaat al een aanvraag',409);throw e}
-      return res.status(201).json({id:ref.id,status:'pending',days:details.days});
+      return res.status(201).json({id:ref.id,status,days:details.days});
     }catch(e){return jsonError(res,e)}
   });
   app.post('/api/leave/requests/:id/decision',requireUser,requireWrites,async(req,res)=>{
@@ -131,14 +145,14 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
     const note=req.body?.note===undefined?'':req.body.note;
     if(typeof note!=='string'||note.trim().length>300)return res.status(400).json({error:'Beslissingsnotitie te lang'});
     try{
-      await context(req);
+      const {snapshot}=await context(req);
       const ref=db().collection(coll).doc(req.params.id),grantRef=db().collection(grants).doc(req.bpd.uid);
       await db().runTransaction(async tx=>{
         const [request,grantDoc]=await Promise.all([tx.get(ref),tx.get(grantRef)]);
         if(!request.exists)throw rejection('Verlofaanvraag niet gevonden',404);
         const d=request.data();
         if(d.status!=='pending')throw rejection('Aanvraag is al behandeld',409);
-        if(!mayApproveLeave(req.bpd,d,grantDoc.exists?grantDoc.data():null))
+        if(!mayApproveLeave(req.bpd,projected(d,snapshot),grantDoc.exists?grantDoc.data():null))
           throw rejection('Geen bevoegdheid om dit verlof goed te keuren',403);
         const audit=ref.collection('audit').doc();
         tx.update(ref,{status:decision,decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
@@ -165,7 +179,8 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       const matched=snapshot.filter(p=>p.dept===dept&&p.personId===personId);
       if(matched.length!==1)throw rejection('Geen eenduidige personeelsfiche gevonden',404);
       const pending={personDiscordId:personId,subjectDepartments:[dept],status:'pending',
-        startDate:details.startDate,endDate:details.endDate};
+        startDate:details.startDate,endDate:details.endDate,
+        ...(dept==='politie'?{subjectPoliceGrade:subjectPoliceGrade(matched[0])}: {})};
       const grant=activeGrant(await grantFor(req.bpd.uid));
       if(!mayApproveLeave(req.bpd,pending,grant))
         throw rejection('Je mag deze verlofperiode niet zelfstandig goedkeuren',403);
