@@ -24,6 +24,7 @@ export function canViewPersonnel(actor,dept){
 }
 export function canEditPersonnel(actor,person){
   if(!person||!validPersonnelKey(person.dept,person.personId)||!canViewPersonnel(actor,person.dept)||
+     (Array.isArray(actor?.dossierNativeDepartments)&&!actor.dossierNativeDepartments.includes(person.dept))||
      actor.discordId===person.personId)return false;
   const scoped=roleForDepartment(actor,person.dept);
   if(actor.role==='beheerder'&&scoped==='beheerder')return true;
