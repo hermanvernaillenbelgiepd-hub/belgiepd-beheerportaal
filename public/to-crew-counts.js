@@ -22,7 +22,12 @@ export function summarizeTOCrews(board,{users=[],fresh=false,categories=[]}={}){
   const activeKeys=new Map(),endedKeys=new Set();
   for(const team of allTeams){
     for(const key of teamKeys(team)){
-      if(team.endedAt){endedKeys.add(key);continue;}
+      if(team.endedAt){
+        // A previously auto-ended unit may rejoin Sonoran later. Surface it
+        // as a new radio crew rather than silently hiding its return.
+        if(team.endedBy!=='system:sonoran-radio')endedKeys.add(key);
+        continue;
+      }
       if(!activeKeys.has(key))activeKeys.set(key,new Set());
       activeKeys.get(key).add(team);
     }
