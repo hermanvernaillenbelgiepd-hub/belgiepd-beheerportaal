@@ -67,7 +67,12 @@ test('Specializations pictograms show only positive roster values; status preser
     assert.equal(api.specialtyIconImage(label),'/assets/icons/siv-wpr.svg',label);
   assert.equal(api.specialtyIcon('SIV/WPR'),'🚓');
   assert.equal(api.specialtyIconImage('SIV-overige'),null);
-  assert.equal(api.specialtyIconImage(' Motor '),null);
+  assert.equal(api.specialtyIconImage(' Motor '),null,'Unscoped Motor should not be assigned a police image');
+  for(const value of ['Motor',' MOTOR ','motor'])
+    assert.equal(api.specialtyIconImage(value,'politie'),'/assets/icons/motard.svg',value);
+  for(const value of ['MOTARD','Motard','motards'])
+    assert.equal(api.specialtyIconImage(value),'/assets/icons/motard.svg',value);
+  assert.equal(api.specialtyIconImage('Motor','ambulance'),null,'Ambulance motorcycle icon stays unchanged');
   assert.equal(api.specialtyIconImage('Signalisatie-extra'),null);
   assert.equal(result[1].value,'Geslaagd');
   assert.equal(api.qualification('n.v.t.'),false);
