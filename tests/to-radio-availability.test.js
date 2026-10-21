@@ -96,3 +96,10 @@ test('Named HVPK radio matches saved crew and supports NB availability',()=>{
   assert.equal(radioNBForTeam(saved,[user]),true);
   assert.equal(groupRadioCrews([user])[0].number,'HVPK');
 });
+
+
+test('Starred SANTO-112 with a name or Unicode divider is recognized as a radio pair',()=>{
+  for(const label of ['SANTO-112* Liam','SANTO-112*| Liam','SANTO-112*│ Liam','SANTO-112*ǀ Liam'])
+    assert.equal(radioMarkedPair(label),true,label);
+  assert.equal(radioMarkedPair('SANTO-112 Liam'),false);
+});
