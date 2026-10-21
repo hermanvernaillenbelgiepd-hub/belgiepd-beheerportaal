@@ -128,7 +128,7 @@ async function quickAddRadioCrew(id){
   const memberNames=[...new Set(crew.members.map(u=>String(u.portalAlias||u.displayName||'').replace(/[<>\x00-\x1f\x7f]/g,'').trim()).filter(v=>v.length>1))];
   const combined=memberNames.join(' & ').slice(0,80).trim();
   const name=combined.length>=2?combined:('Radioploeg '+crew.category+'-'+crew.number).slice(0,80);
-  await command('add-team',{dienst:crew.category,leden:[{naam:name,roep:String(crew.number)}]});
+  await command('add-team',{dienst:crew.category,leden:[{naam:name,roep:String(crew.number)}],radioSource:'sonoran'});
   toast(crew.category+'-'+crew.number+' staat nu op het dienstbord.');
 }
 function busyMap(board){
