@@ -164,3 +164,17 @@ test('Underway and on-scene saved teams do not count as available even without a
   finished.ploegen[1].responsePhase=null;
   assert.equal(count(finished,[],false).available,3);
 });
+
+
+test('Radio crews rejoining after automatic off-duty are visible and countable again',()=>{
+  const automaticallyEnded=crew('old','166',{
+    endedAt:1780560000000,endedBy:'system:sonoran-radio',endedReason:'radiokanaal-verlaten'
+  });
+  const manuallyEnded=crew('manual','465',{endedAt:1780560000000,endedBy:'discord:111'});
+  const roster={ploegen:{old:automaticallyEnded,manual:manuallyEnded},meldingen:{}};
+  const stats=count(roster,[radio('SANTO','166'),radio('SANTO','465')]);
+  assert.equal(stats.inService,1,'Only radio-rejoined auto-ended unit counts');
+  assert.equal(stats.radioOnly,1);
+  assert.equal(stats.available,1);
+  assert.equal(stats.boardTeams,0,'Ended unit is not restored without a TO');
+});
