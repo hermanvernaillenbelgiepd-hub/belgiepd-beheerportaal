@@ -262,8 +262,16 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
         const incident=getIncident(board,cmd.id),team=getTeam(board,cmd.teamId);
         if(incident.status!=='actief')fail(409,'Zet de melding eerst actief voordat je een ploeg koppelt');
         if(incident.ploegen.some(reference=>reference.id===team.id))fail(409,'Deze ploeg is al gekoppeld');
-        appendLog(incident,actor,now,team.dienst+'-'+team.roepnaam+' gekoppeld');
+        // A newly dispatched, available crew starts its response automatically.
+        // Never overwrite an existing on-scene phase or a paused/NB status.
+        const autoUnderway=team.available!==false&&!team.responsePhase;
+        appendLog(incident,actor,now,team.dienst+'-'+team.roepnaam+
+          (autoUnderway?' gekoppeld · automatisch onderweg':' gekoppeld'));
         incident.ploegen.push({id:team.id,dienst:team.dienst,roep:team.roepnaam});
+        if(autoUnderway){
+          Object.assign(team,{responsePhase:'onderweg',responseAt:now,responseBy:actor.uid,
+            updatedAt:now,updatedBy:actor.uid});
+        }
       }else if(cmd.type==='detach-team'){
         const incident=getIncident(board,cmd.id),teamId=entityId(cmd.teamId),reference=incident.ploegen.find(team=>team.id===teamId);
         if(!reference)fail(409,'Deze ploeg is niet gekoppeld aan de melding');
