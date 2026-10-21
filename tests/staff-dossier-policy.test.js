@@ -74,3 +74,18 @@ test('Public notes expose only allowed fields and never internal uid or secrets'
     authorDiscordId:other,recordedAt:'2026-10-20T12:00:00.000Z'});
   assert.equal(publicStaffNote({kind:'private',details:'secret'},'id'),null);
 });
+
+
+test('Same Discord user may have independent service dossiers that department managers cannot cross',()=>{
+  const police={...member,dept:'politie',call:'S312',rank:'Inspecteur'};
+  const med={...member,dept:'ambulance',call:'AMB-5',rank:'Ambulancier'};
+  assert.notEqual(staffDossierId(police.dept,id),staffDossierId(med.dept,id));
+  assert.equal(canReadStaffDossier(leader,police),true);
+  assert.equal(canMaintainStaffDossier(leader,med),false);
+  assert.equal(canReadStaffDossier(leader,med),false);
+  assert.equal(canReadStaffDossier(ambulance,police),false);
+  assert.equal(canReadStaffDossier(ambulance,med),true);
+  assert.equal(canMaintainStaffDossier(ambulance,med),true);
+  assert.equal(uniqueStaffSubject([police,med],'politie',id)?.call,'S312');
+  assert.equal(uniqueStaffSubject([police,med],'ambulance',id)?.call,'AMB-5');
+});
