@@ -138,7 +138,7 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
         const leden=cmd.leden.map(member=>{
           keys(member,['naam','roep']);
           const naam=text(member.naam,2,80,'Agentnaam'),roep=text(member.roep,1,5,'Roepnummer');
-          if(!(/^\d{1,5}$/.test(roep)&&Number(roep)>0)&&!(['HARTS','HVPK'].includes(cmd.dienst)&&roep===cmd.dienst))fail(400,'Roepnummer moet één tot vijf cijfers bevatten, behalve de benoemde HARTS-eenheid');
+          if(!(/^\d{1,5}$/.test(roep)&&Number(roep)>0)&&!(['HARTS','HVPK'].includes(cmd.dienst)&&roep===cmd.dienst))fail(400,'Roepnummer moet één tot vijf cijfers bevatten, behalve de benoemde HARTS- en HVPK-eenheden');
           return {naam,roep};
         });
         if(new Set(leden.map(member=>(['HARTS','HVPK'].includes(cmd.dienst)&&member.roep===cmd.dienst)?cmd.dienst:String(Number(member.roep)))).size!==leden.length)fail(400,'Elke agent in een koppel heeft een eigen roepnummer');
