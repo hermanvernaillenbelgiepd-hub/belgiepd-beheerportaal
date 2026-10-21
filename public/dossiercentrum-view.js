@@ -29,7 +29,7 @@ const compareFilled=(left,right,direction=1)=>{
 // 008 is explicitly the final callsign, including when prefixed (S008).
 const bpdCallKey=value=>{
   const raw=String(value??'').trim();
-  const match=raw.match(/(?:^|[^0-9])([0-9]{1,3})\\*?$/);
+  const match=raw.match(/(?:^|[^0-9])([0-9]{1,3})[*]?$/);
   if(!match)return {bucket:1,series:0,number:0};
   const number=Number(match[1]);
   if(match[1]==='008')return {bucket:2,series:0,number:8};
