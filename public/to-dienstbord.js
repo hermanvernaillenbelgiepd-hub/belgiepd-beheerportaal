@@ -578,36 +578,30 @@ document.addEventListener('click',async event=>{
         openDialog('Ploeg uit dienst halen',`<p class="form-note">Wil je ${esc(team.dienst)}-${esc(team.roepnaam)} uit dienst halen? De ploeg blijft bewaard in de historiek van deze dienst.</p>`,{form:'remove-team',id,submit:'Uit dienst halen',danger:true});break;
       }
       case 'toggle-team':if(canEdit()){const team=state.env.board.ploegen[id];if(team.responsePhase){toast('Wis eerst de uitrukstatus.');break;}if(busyMap(state.env.board).has(id)){toast('Deze ploeg is aan een actieve melding gekoppeld.');break;}await command('toggle-team',{id,available:team.available===false});toast('Beschikbaarheid bijgewerkt.');}break;
+      case 'team-response-underway':case 'team-response-on-scene':
       case 'team-pause':case 'team-available':{
         if(!canEdit())break;
         const team=state.env.board.ploegen[id];
-        if(!team||team.endedAt||team.responsePhase||busyMap(state.env.board).has(id))break;
-        const available=action==='team-available';
-        if(available=== (team.available!==false))break;
-        await command('toggle-team',{id,available});
-        toast(available?'Ploeg beschikbaar gemeld.':'Ploeg op pauze / niet beschikbaar gezet.');
-        break;
-      }
-      case 'team-response-underway':case 'team-response-on-scene':{
-        if(!canEdit())break;
-        const team=state.env.board.ploegen[id];
         if(!team||team.endedAt)break;
-        if(team.available===false||radioFresh()&&radioNBForTeam(team,(radio.snapshot.users||[]).filter(user=>radioMatchesTeam(user,team)))){
-          toast('Deze ploeg is niet beschikbaar.');break;
+        const status={
+          'team-response-underway':'onderweg',
+          'team-response-on-scene':'ter-plaatse',
+          'team-pause':'pauze',
+          'team-available':'beschikbaar'
+        }[action];
+        const previous=team.responsePhase||((team.available===false)?'pauze':'beschikbaar');
+        if(previous===status)break;
+        if(status!=='pauze'&&radioFresh()&&radioNBForTeam(team,
+          (radio.snapshot.users||[]).filter(user=>radioMatchesTeam(user,team)))){
+          toast('De radio meldt NB. Deze status kan niet handmatig beschikbaar worden gezet.');break;
         }
-        const phase=action==='team-response-underway'?'onderweg':'ter-plaatse';
-        if(phase==='onderweg'&&team.responsePhase||phase==='ter-plaatse'&&team.responsePhase!=='onderweg'){
-          toast('De ploeg heeft ondertussen een andere status gekregen.');break;
-        }
-        await command('response-phase',{id,phase});
-        toast(team.dienst+'-'+team.roepnaam+(phase==='onderweg'?' is onderweg.':' is ter plaatse.'));
-        break;
-      }
-      case 'team-response-clear':{
-        if(!canEdit())break;
-        const team=state.env.board.ploegen[id];if(!team?.responsePhase)break;
-        await command('response-phase',{id,phase:null});
-        toast('Uitrukstatus gewist. De eventuele meldingskoppeling blijft bestaan.');
+        await command('set-team-status',{id,status});
+        const extra=status==='beschikbaar'&&busyMap(state.env.board).has(id)
+          ?' De ploeg blijft aan de actieve melding gekoppeld tot je ze daar ontkoppelt.':'';
+        toast(team.dienst+'-'+team.roepnaam+': '+({
+          onderweg:'onderweg','ter-plaatse':'ter plaatse',
+          pauze:'pauze / niet beschikbaar',beschikbaar:'beschikbaar'
+        }[status])+'.'+extra);
         break;
       }
       case 'create-incident':if(canEdit())incidentForm();break;
