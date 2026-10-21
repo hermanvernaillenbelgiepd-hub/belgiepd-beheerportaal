@@ -56,6 +56,11 @@ test('Specializations pictograms show only positive roster values; status preser
   assert.equal(result[0].icon,'🏍️');
   assert.equal(result[1].icon,'🎧');
   assert.equal(result[2].icon,'🦺'); // fallback, never displayed while image loads
+  for(const label of ['Radio BM','RADIO BM',' radio bm ','Radio   BM'])
+    assert.equal(api.specialtyIconImage(label),'/assets/icons/radio-bm.svg',label);
+  assert.equal(api.specialtyIcon('Radio BM'),'📻','Existing fallback retained');
+  assert.equal(api.specialtyIconImage('Radio'),null,'Generic radio specialization unchanged');
+  assert.equal(api.specialtyIconImage('Radio BM extra'),null);
   assert.equal(api.specialtyIconImage('Signalisatie'),'/assets/icons/signalisatie.svg');
   assert.equal(api.specialtyIconImage('SIGNALISATIE'),'/assets/icons/signalisatie.svg');
   for(const label of ['SIV/WPR','SIV','WPR','siv/wpr',' SIV / WPR '])
@@ -115,6 +120,22 @@ test('User-provided Signalisatie sign is embedded locally and used across both r
   assert.ok(dashboard.includes('specialtyMarkHtml(label)'));
   assert.ok(manager.includes('.specialty-custom-image'));
   assert.ok(dashboard.includes('.specialty-custom-image'));
+});
+test('Radio BM uses the supplied transparent Sepura handheld image',()=>{
+  const asset=source('public/assets/icons/radio-bm.svg');
+  assert.match(asset,/^<svg /);
+  assert.match(asset,/aria-label="Sepura portofoon Radio BM"/);
+  assert.match(asset,/viewBox="0 0 64 128"/);
+  const match=asset.match(/href="data:image\\/webp;base64,([A-Za-z0-9+/=]+)"/);
+  assert.ok(match,'Radio BM icon must contain the source image');
+  const binary=Buffer.from(match[1],'base64');
+  assert.ok(binary.length>2000,'Expected actual optimized radio pixels');
+  assert.equal(binary.toString('ascii',0,4),'RIFF');
+  assert.equal(binary.toString('ascii',8,12),'WEBP');
+  assert.equal(binary.readUInt32LE(4)+8,binary.length,'WebP must be complete');
+  assert.ok(asset.trimEnd().endsWith('</svg>'));
+  for(const path of ['public/index.html','public/personeelsbeheer.html'])
+    assert.ok(source(path).includes('BPDPersonnelVisuals.specialtyIconImage('),path);
 });
 test('User-provided SIV/WPR car is bundled locally and uses the same reusable icon renderer',()=>{
   const svg=source('public/assets/icons/siv-wpr.svg');
