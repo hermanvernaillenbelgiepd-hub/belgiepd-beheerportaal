@@ -96,7 +96,7 @@ function radioCrewOnBoard(crew){
 function canQuickAddRadioCrew(crew){
   const members=crew?.members||[],first=members[0];
   if(!first||!state.env?.categories.includes(crew.category)||crew.category==='OPLEIDING')return false;
-  if(!/^\\d{1,5}$/.test(String(crew.number))||Number(crew.number)<=0)return false;
+  if(!/^\d{1,5}$/.test(String(crew.number))||Number(crew.number)<=0)return false;
   // A starred callsign represents one unit, even when Sonoran marks an
   // individual duplicate label as non-importable. Never add its members
   // independently; require every member to carry the same valid unit.
