@@ -88,3 +88,11 @@ test('TO client shows one combined pair, NB status and protects radio-unavailabl
   assert.ok(css.includes('.radio-crew-paired'));
   assert.ok(css.includes('.radio-crew-nb'));
 });
+
+
+test('Named HVPK radio matches saved crew and supports NB availability',()=>{
+  const saved={dienst:'HVPK',roepnaam:'HVPK',leden:[{naam:'Stan',roep:'HVPK'}]};
+  const user={category:'HVPK',number:'HVPK',notAvailable:true};
+  assert.equal(radioNBForTeam(saved,[user]),true);
+  assert.equal(groupRadioCrews([user])[0].number,'HVPK');
+});
