@@ -294,8 +294,8 @@ installBoardAppointmentRoutes(app,{requireUser});
 // More-specific activity endpoints MUST precede /api/personnel/:dept/:discordId.
 // That broad POST edit route otherwise intercepts retrospective audit submissions.
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
-installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
-installSpecializationRoutes(app,{requireUser,getSnapshot});
+installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
+installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installNotificationRoutes(app,{requireUser,getSnapshot});
