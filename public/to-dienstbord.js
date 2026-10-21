@@ -102,7 +102,12 @@ function canQuickAddRadioCrew(crew){
   // independently; require every member to carry the same valid unit.
   if(!crew.paired&&members.length!==1)return false;
   if(!members.every(user=>user.category===crew.category&&sameCallsign(user.number,crew.number)&&visibleRadioUser(user)))return false;
-  return members.some(user=>canImportRadioUser(user))||
+  // Temporary police units may share a numeric radio callsign before Sonoran
+  // supplies an explicit paired flag. The board still stores only one team per
+  // category and callsign, and the original identities remain unmodified.
+  const temporaryPolice=serviceForCategory(crew.category).id==='politie'&&
+    Number(crew.number)>=101&&Number(crew.number)<=199;
+  return temporaryPolice||members.some(user=>canImportRadioUser(user))||
     (crew.paired&&members.some(user=>user.paired===true));
 }
 function pendingRadioCrews(){
