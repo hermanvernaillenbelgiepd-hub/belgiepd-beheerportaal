@@ -20,6 +20,7 @@ test('MONITOR TO T.O. COBRA REPA are police; OPLEIDING has independent service',
   assert.ok(TO_SERVICE_GROUPS.some(x=>x.id==='opleiding'&&x.label==='Opleiding'));
   assert.equal(serviceForCategory('OPLEIDING').id,'opleiding');
   assert.equal(parseSonoranName('OPLEIDING | Instructeur').category,'OPLEIDING');
+  assert.equal(parseSonoranName('OPLEIDING-202 | Instructeur').importable,false,'Training is informational, not operational');
   assert.equal(serviceForCategory('LSRA').id,'depannage');
   assert.equal(serviceForCategory('BWM').id,'brandweer');
   assert.equal(serviceForCategory('AMB').id,'ambulance');
@@ -60,6 +61,10 @@ test('TO client supports a manual alias but does not issue Sonoran writes',()=>{
   assert.ok(route.includes("radioLabelWritesEnabled(process.env)"));
   assert.ok(route.includes("current.users.some(u=>u.id===id)"));
   assert.ok(route.includes('bpd_radio_label_audit'));
+  assert.ok(route.includes('u.labelEditable===true'));
+  assert.ok(client.includes('first.labelEditable===true'));
+  assert.ok(raw('src/to-radio.js').includes('labelEditable:Boolean(identity)'));
+  assert.ok(client.includes('Opleiding · ter informatie'));
   assert.ok(!route.includes('set-user-display-name'));
   assert.ok(!route.includes('setUserDisplayName'));
 });
