@@ -22,21 +22,27 @@ const COMMAND_FIELDS=Object.freeze({
 
 export function boardError(status,message){return Object.assign(new Error(message),{publicStatus:status});}
 const fail=(status,message)=>{throw boardError(status,message);};
-// Explicit TO observer access is only evaluated AFTER portal authentication
-// verified the Discord identity and approved the user's existing account.
-// It does not make a fire-service officer a police member or TO operator.
-function isNamedTOObserver(actor){
+// Supplemental TO rights are never general police ranks. requireTOUser sets
+// toAccessLevel only from server-owned Firestore grants after authentication.
+function toAllowance(actor){
   const id=actor?.discordId;
   if(typeof id!=='string'||!/^\d{15,22}$/.test(id)||actor?.uid!=='discord:'+id||
-     !Array.isArray(actor?.departments)||!actor.departments.includes('brandweer'))return false;
-  const allow=String(process.env.BPD_TO_READONLY_DISCORD_IDS||'').split(',').map(x=>x.trim());
-  return allow.includes(id);
+     !Array.isArray(actor?.departments)||actor.departments.length===0||
+     actor.toAccessLevel==='revoked')return null;
+  if(actor.toAccessLevel==='operate'||actor.toAccessLevel==='read')return actor.toAccessLevel;
+  const listed=(key)=>String(process.env[key]||'').split(',').some(v=>v.trim()===id);
+  // Legacy ENV entries are revocable by a Firestore grant with status revoked.
+  if(listed('BPD_TO_OPERATOR_DISCORD_IDS'))return 'operate';
+  if(listed('BPD_TO_READONLY_DISCORD_IDS'))return 'read';
+  return null;
 }
 export function canReadBoard(actor){
-  return (READ_ROLES.has(actor?.role)&&READ_ROLES.has(roleForDepartment(actor,'politie')))||isNamedTOObserver(actor);
+  return (READ_ROLES.has(actor?.role)&&READ_ROLES.has(roleForDepartment(actor,'politie')))
+    ||Boolean(toAllowance(actor));
 }
 export function canOperateBoard(actor){
-  return OPERATE_ROLES.has(actor?.role)&&OPERATE_ROLES.has(roleForDepartment(actor,'politie'));
+  return (OPERATE_ROLES.has(actor?.role)&&OPERATE_ROLES.has(roleForDepartment(actor,'politie')))
+    ||toAllowance(actor)==='operate';
 }
 export function emptyBoard(){return {revision:0,session:null,ploegen:{},meldingen:{},nextIncidentNumber:1};}
 export function validBoardId(id){return typeof id==='string'&&UUID.test(id);}
