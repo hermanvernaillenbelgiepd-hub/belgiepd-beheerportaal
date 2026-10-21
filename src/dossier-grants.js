@@ -48,7 +48,7 @@ export function applyDossierGrants(actor,defaults,docs=[],tester=null){
   for(const doc of docs){
     if(!activeDossierGrant(doc,doc?.dept,id))continue;
     result.add(doc.dept);
-    if(doc.level==='manage')manage.push(doc.dept);
+    if(doc.level==='manage'&&actor.departments?.includes(doc.dept))manage.push(doc.dept);
   }
   return {departments:DOSSIER_DEPTS.filter(d=>result.has(d)),
     manageDepartments:[...new Set(manage)],tester:tested};
