@@ -50,8 +50,9 @@
   ];
   // Central image registry: replace the emoji only for the exact requested skill.
   // Keep an emoji fallback if the asset fails to load.
-  function specialtyIconImage(label){
+  function specialtyIconImage(label,dept){
     const normalized=String(label||'').trim();
+    if(/^motards?$/i.test(normalized)||(/^motor$/i.test(normalized)&&dept==='politie'))return '/assets/icons/motard.svg';
     if(/^radio\s+bm$/i.test(normalized))return '/assets/icons/radio-bm.svg';
     if(/^signalisatie$/i.test(normalized))return '/assets/icons/signalisatie.svg';
     if(/^(?:SIV(?:\s*\/\s*WPR)?|WPR)$/i.test(normalized))return '/assets/icons/siv-wpr.svg';
