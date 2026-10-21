@@ -239,7 +239,7 @@ function renderRadio(){
     const importable=canQuickAddRadioCrew(crew);
     const justJoined=!onBoard&&members.some(user=>radio.newIds.has(user.id));
     let action=onBoard?'<span class="radio-on-board">Op dienstbord</span>':
-      !importable?'<span class="radio-unrecognized" title="Controleer de bemanning en het roepnummer.">Controle nodig</span>':'';
+      !importable?(crew.category==='OPLEIDING'?'<span class="radio-unrecognized">Opleiding · ter informatie</span>':'<span class="radio-unrecognized" title="Controleer de bemanning en het roepnummer.">Controle nodig</span>'):'';
     if(onBoard&&state.env.permissions.canEdit)
       action=`<button type="button" class="button button-small radio-remove" data-action="remove-team" data-id="${esc(storedTeam.id)}" data-write${!canEdit()?' disabled':''}>－ Uit dienst</button>`;
     else if(!onBoard&&importable&&state.env.permissions.canEdit)
