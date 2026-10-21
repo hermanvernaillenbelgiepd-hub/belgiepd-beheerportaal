@@ -7,7 +7,7 @@ const other='987654321098765432';
 const person={dept:'politie',personId:id,name:'Inspecteur A',call:'P30',
   rank:'Inspecteur',status:'Actief',source:'google-sheets'};
 const actor={role:'officierenkader',departments:['politie'],
-  departmentRoles:{politie:'officierenkader'},discordId:other};
+  departmentRoles:{politie:'officierenkader'},discordId:other,dossierAllowedDepartments:['politie']};
 test('Only existing authorized staff are discoverable',()=>{
   const scopes=dossierScopes(actor);
   assert.deepEqual(scopes.personnelDepartments,['politie']);
@@ -47,7 +47,7 @@ test('Central dossier routes never fetch or reveal deleted citizen records',()=>
 test('One Discord identity has separate police and ambulance dossiers with isolated leadership access',()=>{
   const ambulanceRecord={...person,dept:'ambulance',call:'AMB-12',rank:'Ambulancier'};
   const ambulanceLead={role:'korpsleiding',departments:['ambulance'],
-    departmentRoles:{ambulance:'korpsleiding'},discordId:other};
+    departmentRoles:{ambulance:'korpsleiding'},discordId:other,dossierAllowedDepartments:['ambulance']};
   const policeLead={...actor};
   const bothRecords=[person,ambulanceRecord];
   const policeRows=dossierOverviewRows(bothRecords,[],dossierScopes(policeLead));
@@ -57,7 +57,7 @@ test('One Discord identity has separate police and ambulance dossiers with isola
   assert.equal(policeRows[0].call,'P30');
   assert.equal(ambulanceRows[0].call,'AMB-12');
   const authorizedBoth={role:'korpsleiding',departments:['politie','ambulance'],
-    departmentRoles:{politie:'korpsleiding',ambulance:'korpsleiding'},discordId:other};
+    departmentRoles:{politie:'korpsleiding',ambulance:'korpsleiding'},discordId:other,dossierAllowedDepartments:['politie','ambulance']};
   const all=dossierOverviewRows(bothRecords,[],dossierScopes(authorizedBoth));
   assert.equal(all.length,2);
   assert.deepEqual(all.map(p=>p.dept),['ambulance','politie']);
