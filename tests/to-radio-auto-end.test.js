@@ -4,7 +4,7 @@ import {observeRadioDepartures,radioMatchesSavedTeam,RADIO_AUTO_END_GRACE_MS} fr
 
 const base=Date.UTC(2026,9,21,10,0,0);
 const crew=(id,number,extra={})=>({id,dienst:'SANTO',roepnaam:String(number),
-  leden:[{naam:'Agent',roep:String(number)}],available:true,...extra});
+  leden:[{naam:'Agent',roep:String(number)}],available:true,radioSource:'sonoran',...extra});
 const board=(teams,linked=[])=>({session:{id:'12345678-1234-4123-8123-123456789012'},
   ploegen:Object.fromEntries(teams.map(team=>[team.id,team])),
   meldingen:linked.length?{call:{status:'actief',ploegen:linked.map(id=>({id}))}}:{}});
@@ -82,4 +82,27 @@ test('New service sessions and deleted roster entries discard old departure time
   next.ploegen={};
   observeRadioDepartures(next,snapshot(base+165000),tracker,base+165000);
   assert.equal(tracker.has('a'),false);
+});
+
+test('Offline-only manually entered crew is never silently signed off',()=>{
+  const roster=board([crew('manual','204',{dienst:'REPA',radioSource:null})]),tracker=new Map();
+  const results=poll(tracker,roster);
+  assert.ok(results.every(ids=>ids.length===0));
+  assert.equal(tracker.has('manual'),false);
+});
+
+test('Manual crew observed in radio is signed off after confirmed subsequent departure',()=>{
+  const roster=board([crew('manual','204',{dienst:'REPA',radioSource:null})]),tracker=new Map();
+  observeRadioDepartures(roster,snapshot(base,[present('204','REPA')]),tracker,base);
+  assert.equal(tracker.get('manual')?.seen,true);
+  for(const elapsed of [15000,30000,45000,60000,75000,90000,105000,120000])
+    assert.deepEqual(observeRadioDepartures(roster,snapshot(base+elapsed),tracker,base+elapsed),
+      elapsed===120000?[]:[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+135000),tracker,base+135000),['manual']);
+});
+
+test('A HARTS unit remains when Sonoran channel metadata is uncertain',()=>{
+  const roster=board([crew('head','HARTS',{dienst:'HARTS'})]),tracker=new Map();
+  const results=poll(tracker,roster,base,[],{uncertainUnits:[present('HARTS','HARTS')]});
+  assert.ok(results.every(ids=>ids.length===0));
 });
