@@ -8,20 +8,24 @@ export function installTORadioRoutes(app,{
   requireUser,service=createSonoranRadioService(),store=null,now=Date.now
 }={}){
   const departures=new Map();
-  let pollJob=Promise.resolve();
+  let pollJob=Promise.resolve(),lastObservedAt=0;
   const sync=async snapshot=>{
     if(!store||!snapshot?.connected||snapshot.stale||!snapshot.configured)return;
     // A serialized observer avoids double absence-counting or duplicate
     // Firestore writes when several viewers refresh the same 15-second result.
     const run=async()=>{
+      const fetched=Date.parse(snapshot?.fetchedAt||'');
+      if(!Number.isFinite(fetched)||fetched<=lastObservedAt)return;
       const board=await store.readBoard();
       const timestamp=now();
       const due=observeRadioDepartures(board,snapshot,departures,timestamp);
-      if(!due.length)return;
-      const ended=await store.autoEndAbsentRadioTeams(due,snapshot,{
-        now:timestamp,sessionId:board.session.id
-      });
-      if(ended?.length)for(const id of ended)departures.delete(id);
+      if(due.length){
+        const ended=await store.autoEndAbsentRadioTeams(due,snapshot,{
+          now:timestamp,sessionId:board.session.id
+        });
+        if(ended?.length)for(const id of ended)departures.delete(id);
+      }
+      lastObservedAt=fetched;
     };
     pollJob=pollJob.catch(()=>{}).then(run);
     await pollJob;
