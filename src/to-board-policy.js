@@ -137,13 +137,13 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
         const leden=cmd.leden.map(member=>{
           keys(member,['naam','roep']);
           const naam=text(member.naam,2,80,'Agentnaam'),roep=text(member.roep,1,5,'Roepnummer');
-          if(!/^\d{1,5}$/.test(roep)||Number(roep)===0)fail(400,'Roepnummer moet één tot vijf cijfers bevatten en groter zijn dan nul');
+          if(!(/^\d{1,5}$/.test(roep)&&Number(roep)>0)&&!(cmd.dienst==='HARTS'&&roep==='HARTS'))fail(400,'Roepnummer moet één tot vijf cijfers bevatten, behalve de benoemde HARTS-eenheid');
           return {naam,roep};
         });
-        if(new Set(leden.map(member=>Number(member.roep))).size!==leden.length)fail(400,'Elke agent in een koppel heeft een eigen roepnummer');
+        if(new Set(leden.map(member=>member.roep==='HARTS'?'HARTS':String(Number(member.roep)))).size!==leden.length)fail(400,'Elke agent in een koppel heeft een eigen roepnummer');
         const activeTeams=Object.values(board.ploegen).filter(team=>!team.endedAt);
         if(activeTeams.length>=TO_BOARD_LIMITS.activeTeams)fail(413,'Er zijn al te veel ploegen in dienst');
-        if(activeTeams.some(team=>team.dienst===cmd.dienst&&team.leden.some(member=>leden.some(added=>Number(member.roep)===Number(added.roep)))))
+        if(activeTeams.some(team=>team.dienst===cmd.dienst&&team.leden.some(member=>leden.some(added=>(member.roep==='HARTS'||added.roep==='HARTS'?member.roep===added.roep:Number(member.roep)===Number(added.roep))))))
           fail(409,'Dit roepnummer is al in dienst binnen deze categorie');
         const teamId=newId();
         if(Object.hasOwn(board.ploegen,teamId))throw new Error('Dubbele server-ID');
