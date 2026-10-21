@@ -405,3 +405,24 @@ test('Named HVPK is a deployable ambulance team without a synthetic numeric call
     leden:[{naam:'Ambulancier',roep:'123'}]}).board;
   assert.equal(Object.values(board.ploegen).length,2);
 });
+
+test('Named verified brandweer commander can read TO only; permissions never propagate to police writes',()=>{
+  const id='301448301868220417';
+  const old=process.env.BPD_TO_READONLY_DISCORD_IDS;
+  const zone={uid:'discord:'+id,discordId:id,role:'korpsleiding',
+    departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'}};
+  try {
+    process.env.BPD_TO_READONLY_DISCORD_IDS=id;
+    assert.equal(canReadBoard(zone),true);
+    assert.equal(canOperateBoard(zone),false);
+    expectStatus(()=>command(started(),'add-team',{dienst:'BWM',
+      leden:[{naam:'Testmedewerker',roep:'625'}]},zone),403);
+    assert.equal(canReadBoard({...zone,uid:'discord:999999999999999999'}),false);
+    assert.equal(canReadBoard({...zone,discordId:'999999999999999999'}),false);
+    assert.equal(canReadBoard({...zone,departments:['ambulance'],departmentRoles:{ambulance:'korpsleiding'}}),false);
+    assert.equal(canReadBoard({...zone,discordId:'3014483018682204179',uid:'discord:3014483018682204179'}),false);
+  } finally {
+    if(old===undefined)delete process.env.BPD_TO_READONLY_DISCORD_IDS;
+    else process.env.BPD_TO_READONLY_DISCORD_IDS=old;
+  }
+});
