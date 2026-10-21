@@ -32,7 +32,7 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
       ]);
       const state=publicSpecializations(staff,entry.data());
       return res.json({...state,canEdit:specialtyWritesEnabled(process.env)&&
-        canChangeSpecialty(req.bpd,staff),
+        req.bpd.dossierNativeDepartments?.includes(staff.dept)&&canChangeSpecialty(req.bpd,staff),
         history:history.docs.map(doc=>{
           const d=doc.data();
           return {label:String(d.label||'').slice(0,64),
@@ -54,7 +54,7 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
     catch(e){return error(res,400,e.message)}
     try{
       const staff=await subject(req);
-      if(!req.bpd.dossierNativeDepartments?.includes(dept)||!canChangeSpecialty(req.bpd,staff))
+      if(!req.bpd.dossierNativeDepartments?.includes(req.params.dept)||!canChangeSpecialty(req.bpd,staff))
         return error(res,403,'Alleen bevoegd officierenkader of korpsleiding kan deze specialisatie wijzigen');
       const ref=getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
         .doc(staff.dept+'_'+staff.personId);
