@@ -40,3 +40,17 @@ test('The MAIN dossier list shows callsign, grade and status in separate columns
   assert.ok(view.includes("[r.name,r.call,r.rank,r.status,r.discordId]"));
   assert.equal(/\.innerHTML\s*=/.test(html),false);
 });
+
+
+test('Dossier sorting selector has four choices, desc default and resets safely',()=>{
+  const html=readFileSync(new URL('../public/dossiercentrum.html',import.meta.url),'utf8');
+  assert.ok(html.includes('id="sortOrder"'));
+  for(const option of ['callsign-desc','callsign-asc','name-asc','name-desc'])
+    assert.ok(html.includes('value="'+option+'"'));
+  assert.ok(html.includes('value="callsign-desc" selected'));
+  assert.ok(html.includes("sortDossiers(found,$('sortOrder').value)"));
+  assert.ok(html.includes("paginateDossiers(sorted,page,PAGE_SIZE)"));
+  assert.ok(html.includes("$('sortOrder').onchange=changedFilters"));
+  assert.ok(html.includes("$('sortOrder').value='callsign-desc'"));
+  assert.ok(html.includes("function changedFilters(){page=1;render()}"));
+});
