@@ -53,6 +53,7 @@
   function specialtyIconImage(label,dept){
     const normalized=String(label||'').trim();
     if(/^motards?$/i.test(normalized)||(/^motor$/i.test(normalized)&&dept==='politie'))return '/assets/icons/motard.svg';
+    if(/^semi[\s._-]*(?:ano\.?|anonieme?)$/i.test(normalized)&&(!dept||dept==='politie'))return '/assets/icons/semi-anonieme.svg';
     if(/^radio\s+bm$/i.test(normalized))return '/assets/icons/radio-bm.svg';
     if(/^signalisatie$/i.test(normalized))return '/assets/icons/signalisatie.svg';
     if(/^(?:SIV(?:\s*\/\s*WPR)?|WPR)$/i.test(normalized))return '/assets/icons/siv-wpr.svg';
