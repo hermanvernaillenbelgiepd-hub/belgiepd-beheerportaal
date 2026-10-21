@@ -7,9 +7,9 @@ import {CREATED_PERSONNEL_COLLECTION,personnelDataEnabled} from './personnel-cre
 import {STAFF_DOSSIER_COLLECTION} from './staff-dossier-policy.js';
 import {
   applicantRequest,canInspect,canAssign,claimedCalls,availableCalls,proposedCall,
-  claimId,existingApplicant,fixedCall,portalReady,POLICE_RANK,POLICE_STATUS
+  claimId,existingApplicant,fixedCall,intakeReady,portalReady,POLICE_RANK,POLICE_STATUS
 } from './callsign-portal-policy.js';
-const enabled=()=>process.env.BPD_ENABLE_CALLSIGN_REQUESTS==='true';
+const enabled=()=>intakeReady(process.env);
 const fail=(res,e)=>{
   if(e?.httpStatus)return res.status(e.httpStatus).json({error:e.message});
   console.error('Vaste roepnummers:',e?.code||e?.message||'onbekend');
@@ -26,7 +26,7 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
   // Self-service intentionally bypasses privileged portal access, NOT Discord authentication.
   // The applicant receives no dossier, cadre or personnel-edit permissions.
   async function discordApplicant(req,res,next){
-    if(!enabled())return res.status(503).json({error:'Aanvraagmodule nog niet ingeschakeld'});
+    if(!enabled())return res.status(503).json({error:'Aanvragen vereisen de geïsoleerde TEST-database en een geactiveerde aanvraagmodule'});
     if(process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN!=='true')
       return res.status(503).json({error:'Geverifieerde Discord-login is nog niet ingeschakeld'});
     const token=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
