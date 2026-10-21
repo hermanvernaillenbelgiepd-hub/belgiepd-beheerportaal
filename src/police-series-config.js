@@ -2,19 +2,20 @@
 // This mapping identifies intended recipients, but NEVER grants a police role,
 // Firestore permissions or elevated portal access. Server-approved actor roles remain mandatory.
 // Confirmed by portal owner: Jones, Roy, J.Eclaire and Seba belong to series 03.
-// Dieter (series 01) and Unemi (series 02) are distinct people; they were
-// supplied with the SAME Discord ID 947114717724413952. Exclude that ID
-// from both series until each correct identity is independently confirmed.
+// Corrected identifiers: Dieter is in series 01 with ID 947114717724413952;
+// Unemi has the separate confirmed ID 298799630458552323 in series 02.
 export const VERIFIED_SERIES_HEADS=Object.freeze({
   '1':Object.freeze([
     '622486684033875968', // Yassine
     '1041812771349737614', // Brayan
     '949115181785563137', // Isaiah
-    '962410307463049236' // Mxxx_
+    '962410307463049236', // Mxxx_
+    '947114717724413952' // Dieter
   ]),
   '2':Object.freeze([
     '729410384095871098', // Anvar
-    '305021081243090944' // Sir-Robin
+    '305021081243090944', // Sir-Robin
+    '298799630458552323' // Unemi
   ]),
   '3':Object.freeze([
     '1103170819355574328', // Jones
@@ -23,7 +24,6 @@ export const VERIFIED_SERIES_HEADS=Object.freeze({
     '1171128215708909602' // Seba
   ])
 });
-export const AMBIGUOUS_DISCORD_ID='947114717724413952';
 export const BUTTERFLY_DISCORD_ID='528568826481344522'; // Rx
 // Named leadership IDs are non-authoritative until independently approved by
 // the existing identity + role management flow.
