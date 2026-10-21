@@ -36,21 +36,22 @@ Om een onbedoelde dienstovername te vermijden is het vroegere rechtstreeks toega
 
 ## Compacte statusknoppen en eigen meldingssneltoetsen
 
-Elke opgeslagen ploeg toont afzonderlijke bedieningsknoppen: **↗ Onderweg**, **● Ter plaatse**, **Ⅱ Pauze / NB** en **✓ Beschikbaar**. Als de ploeg onderweg of ter plaatse is, verschijnt daarnaast **↺ Status wissen**. De hoofdkaart is niet langer zelf een klikvlak om onbedoelde statuswisselingen te voorkomen. De bestaande gekleurde ploegkaart en het blauw knipperende (onderweg) of vaste (ter plaatse) indicatielicht blijven behouden. Pauze kan alleen zonder actieve uitrukstatus of meldingskoppeling; de TO kan een uitrukstatus expliciet wissen en daarna beschikbaarheid aanpassen. **NB via Sonoran** blijft leidend en wordt niet overschreven door een klik op Beschikbaar.
+Elke opgeslagen ploeg toont vier onafhankelijke knoppen: **↗ Onderweg**, **● Ter plaatse**, **Ⅱ Pauze / NB** en **✓ Beschikbaar**. De TO kan rechtstreeks elke gewenste status kiezen, zelfs **Ter plaatse → Pauze**, **Pauze → Onderweg** of **Ter plaatse → Beschikbaar**, zonder tussenliggende stappen. De knop **Status wissen** is verwijderd. De hoofdkaart is niet zelf klikbaar. De geselecteerde status is duidelijk gemarkeerd en de bestaande blauwe lichtindicatie blijft knipperen bij Onderweg en continu branden bij Ter plaatse. Een statuswijziging wordt atomair op het gedeelde dienstbord opgeslagen en in gekoppelde actieve meldingen gelogd. **NB via Sonoran blijft leidend**: het bord laat een radio-NB niet handmatig op beschikbaar/onderweg/ter plaatse zetten. Het wisselen van status ontkoppelt **nooit automatisch** een actieve melding; een ploeg die nog gekoppeld is, blijft volgens de operationele telling bezet tot een TO ze bij de melding ontkoppelt of de melding afsluit.
 
 De knop **★ Titel als sneltoets opslaan** in het nieuwe/bewerkbare meldingsformulier en **★ Opslaan als sneltoets** bij een bestaande melding creëren een **gedeelde, permanente meldingssneltoets**. Enkel de titel wordt overgenomen; postcode en de beschrijving van een concrete oproep worden niet bewaard in het sjabloon. Daardoor komt geen incident-specifieke adres- of persoonsinformatie in de herbruikbare sneltoets terecht.
 
 Alle opgeslagen sneltoetsen verschijnen onder **★ Opgeslagen sneltoetsen**, ook na een dienstafsluiting of bij een nieuwe TO. Een klik opent een nieuwe melding met de titel vooraf ingevuld, maar zonder postcode of andere ingevulde incidentgegevens. De huidige TO kan een sneltoets verwijderen met de aparte **×**-knop en een bevestigingsvenster. De sneltoetsen worden afzonderlijk van het dienstarchief opgeslagen in Firestore onder `bpd_to_incident_shortcuts/politie` en kennen een maximum van **30 stuks**. Alleen de huidige bevoegde TO kan toevoegen of verwijderen; leesbevoegde collega's mogen ze wel bekijken. Dubbele titels, ongeldige waarden en conflicterende wijzigingen worden server-side geweigerd. Bestaande meldingen worden nooit veranderd door het verwijderen van een sneltoets.
 
-## Uitrukstatus per ploeg: blauw licht en aankomst
+## Vrij kiezen van ploegstatus en blauw zwaailicht
 
-De bevoegde TO kan rechtstreeks op **de hoofdkaart van een opgeslagen ploeg** klikken:
-1. **Eerste klik — Onderweg:** de teamkaart toont het tekstlabel **ONDERWEG** en een **knipperend blauw zwaailichtje**. De ploeg telt niet meer als beschikbaar, ook wanneer ze (nog) niet aan een melding gekoppeld is.
-2. **Tweede klik — Ter plaatse:** het tekstlabel wijzigt naar **TER PLAATSE** en het blauwe licht blijft **continu branden**. De voortgang wordt in Firebase opgeslagen en wordt voor alle meelezende TO's opgehaald.
-3. **Geen automatische derde klik:** een derde onbedoelde klik maakt de ploeg nooit automatisch beschikbaar. De knop **Status wissen** verwijdert expliciet alleen de uitrukstatus. Indien de ploeg nog op een actieve melding staat, blijft zij in de telling bezet.
-4. **Afronden/ontkoppelen:** wanneer de laatste actieve gekoppelde melding wordt afgerond of de ploeg ervan wordt ontkoppeld, wordt de uitrukstatus automatisch gewist. Er blijft geen ten onrechte actief zwaailichtje hangen.
+De vier statussen zijn zelfstandig te kiezen via een eigen knop op de ploegkaart:
 
-De TO kan ook met **Tab** naar een klikbare ploegkaart gaan en met **Enter of spatie** van fase wisselen. Het licht is slechts een visuele aanduiding, geen aansturing van voertuigverlichting of Sonoran. Bij verminderde-bewegingsinstellingen blijft het tekstlabel zichtbaar en knippert het licht niet. De server valideert de fasevolgorde (`onderweg → ter-plaatse → expliciet wissen`), controleert de huidige TO-eigenaar en revisie en noteert iedere fasewisseling in het logboek van gekoppelde actieve meldingen zolang er logruimte beschikbaar is.
+- **Onderweg:** knipperend blauw indicatielicht; de ploeg telt niet als beschikbaar.
+- **Ter plaatse:** continu blauw indicatielicht; rechtstreeks te selecteren, zonder eerst Onderweg te kiezen.
+- **Pauze / NB:** handmatige pauze of niet-beschikbaarstatus, ook rechtstreeks te kiezen vanaf Onderweg of Ter plaatse.
+- **Beschikbaar:** verwijdert de handmatige pauze en de uitrukfase in één handeling. Bij een nog actief gekoppelde melding blijft de ploeg wel als bezet meetellen tot ontkoppeling of afhandeling; de ploegkaart waarschuwt daarvoor.
+
+De huidige TO moet alle wijzigingen uitvoeren met het eigen account. Het gekozen label blijft zichtbaar bij andere TO's en de wijziging wordt in de actieve gekoppelde meldingen geregistreerd. Het licht bestuurt geen werkelijke voertuigverlichting. Met de instelling voor minder animatie blijft de tekst zichtbaar zonder knipperbeweging. De server controleert de rechten, geldige statuswaarde en actuele dienstrevisie.
 
 ## Extra sneltoetsen voor meldingen
 
