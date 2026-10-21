@@ -32,7 +32,18 @@ test('Three series remain individually assigned to named reekshoofden',()=>{
   assert.equal(normalizeSeries({seriesRaw:'2'}),'2');
   assert.equal(normalizeSeries({series:'Reeks 3'}),'3');
   assert.equal(normalizeSeries({series:'Kader'}),null);
-  assert.deepEqual(policeSeriesHeads({BPD_POLICE_SERIES_HEADS_JSON:'not-json'}),{});
+  const staged=policeSeriesHeads({BPD_POLICE_SERIES_HEADS_JSON:'not-json'});
+  assert.deepEqual(staged['1'],['622486684033875968','1041812771349737614','949115181785563137','962410307463049236']);
+  assert.deepEqual(staged['2'],['729410384095871098','305021081243090944']);
+  assert.deepEqual(staged['3'],[],'Repeated series 02 heading must not grant 03 access before confirmation');
+  assert.equal(staged['1'].includes('947114717724413952'),false);
+  assert.equal(staged['2'].includes('947114717724413952'),false);
+  assert.deepEqual(policeScope({...actor('middenkader'),discordId:'528568826481344522'},staged).series,['1','2','3'],'Rx supports all series');
+  assert.deepEqual(policeScope({...actor('basiskader'),discordId:'528568826481344522'},staged).series,[],'Butterfly assignment never grants a higher rank');
+  assert.deepEqual(policeScope({...actor('middenkader'),discordId:'1103170819355574328'},staged).series,[],'Unconfirmed third series group cannot see any other series');
+  assert.equal(normalizeSeries({seriesRaw:'01'}),'1');
+  assert.equal(normalizeSeries({series:'Reeks 03'}),'3');
+  assert.deepEqual(policeSeriesHeads({BPD_POLICE_SERIES_HEADS_JSON:JSON.stringify({'1':['947114717724413952']})})['1'],[],'Conflicting account excluded even from env overrides');
 });
 test('Inactivity alerts persist after threshold; leave suppresses alert',()=>{
   for(const [days,expect] of [[11,null],[12,12],[14,12],[15,12],[26,12],[27,27],[31,27],[56,27],[57,57],[61,57],[90,57]])
