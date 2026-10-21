@@ -126,7 +126,7 @@ test('Radio BM uses the supplied transparent Sepura handheld image',()=>{
   assert.match(asset,/^<svg /);
   assert.match(asset,/aria-label="Sepura portofoon Radio BM"/);
   assert.match(asset,/viewBox="0 0 64 128"/);
-  const match=asset.match(/href="data:image\\/webp;base64,([A-Za-z0-9+/=]+)"/);
+  const match=asset.match(/href="data:image\/webp;base64,([A-Za-z0-9+/=]+)"/);
   assert.ok(match,'Radio BM icon must contain the source image');
   const binary=Buffer.from(match[1],'base64');
   assert.ok(binary.length>2000,'Expected actual optimized radio pixels');
