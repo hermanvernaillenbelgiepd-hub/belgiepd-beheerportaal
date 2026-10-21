@@ -91,6 +91,14 @@ export function installUserRoutes(app,{requireUser,accessList}){
       const snap=await toAccess().limit(150).get();
       const entries=snap.docs.map(d=>({discordId:d.id,level:d.data().level||'read',
         status:d.data().status||'revoked',username:String(d.data().username||'').slice(0,80)}));
+      // Show historical ENV TO grants too, so an admin can explicitly revoke
+      // or replace them using the same Firestore-based controls.
+      for(const [key,level] of [['BPD_TO_OPERATOR_DISCORD_IDS','operate'],['BPD_TO_READONLY_DISCORD_IDS','read']]){
+        for(const discordId of String(process.env[key]||'').split(',').map(x=>x.trim()).filter(validId)){
+          if(!entries.some(entry=>entry.discordId===discordId))
+            entries.push({discordId,level,status:'active',username:'Vooraf ingestelde TO-toegang'});
+        }
+      }
       return res.json({entries,limited:snap.size===150});
     }catch(e){return fail(res,e)}
   });
