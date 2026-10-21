@@ -70,7 +70,7 @@ test('User-defined incident shortcuts persist and can be reused or deleted',()=>
 
 test('Crew cards expose unlink only while on active calls, confirm and select a single incident',()=>{
   for(const marker of [
-    "busy.length?\`<button type=\"button\" class=\"text-button team-detach-button\"",
+    "busy.length?`<button type=\"button\" class=\"text-button team-detach-button\"",
     'data-action="team-detach-dialog"',
     "function detachTeamDialog(teamId)",
     "case 'team-detach-dialog':",
