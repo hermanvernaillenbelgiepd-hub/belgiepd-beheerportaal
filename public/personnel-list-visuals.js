@@ -52,6 +52,7 @@
   // Keep an emoji fallback if the asset fails to load.
   function specialtyIconImage(label){
     const normalized=String(label||'').trim();
+    if(/^radio\s+bm$/i.test(normalized))return '/assets/icons/radio-bm.svg';
     if(/^signalisatie$/i.test(normalized))return '/assets/icons/signalisatie.svg';
     if(/^(?:SIV(?:\s*\/\s*WPR)?|WPR)$/i.test(normalized))return '/assets/icons/siv-wpr.svg';
     return null;
