@@ -223,3 +223,11 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
 .shortcut-save-controls small{color:#778ba3;font-size:10px;line-height:1.4;flex:1 1 180px}
 .shortcut-load-error{font-size:10px;color:#8d4a35;margin:6px 0 11px}
 @media(max-width:700px){.crew-quick-button{min-height:35px;font-size:10px}.saved-preset .saved-preset-open{max-width:180px}}
+
+
+/* Shared, approval-based TO handover requests. */
+.takeover-request-box{padding:12px;margin-top:12px;background:#f0f4ff;border:1px solid #b5c7ee;border-radius:9px;color:#1d3765;font-size:11px;line-height:1.55}
+.takeover-request-box strong{display:block;font-size:12px;line-height:1.4}
+.takeover-request-box p{font-size:11px;line-height:1.55;overflow-wrap:anywhere;margin:7px 0}
+.takeover-request-box .summary-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.takeover-request-box .button{font-size:10px;min-height:30px;white-space:normal}
