@@ -39,6 +39,11 @@ export function setupDossierGrantUI({api,notice,$,option,cell}){
           }catch(e){error(e);button.disabled=false}
         };
         box.append(button);
+      }else if(grant.status==='active'&&grant.dept==='alle'){
+        const button=document.createElement('button');button.type='button';
+        button.className='danger';button.textContent='TESTER intrekken';
+        button.onclick=()=>tester(false,grant.discordId);
+        box.append(button);
       }else box.textContent='—';
       cell(tr,box);root.append(tr);
     }
@@ -55,12 +60,13 @@ export function setupDossierGrantUI({api,notice,$,option,cell}){
     }catch(err){error(err)}finally{b.disabled=false}
   };
   $('dossierGrantReload').onclick=()=>load().catch(error);
-  async function tester(enabled){
+  async function tester(enabled,explicitId){
     const reason=prompt('Reden (minimaal 10 tekens):',
       enabled?'TEST: volledige dossierinzage controleren':'TESTER-toegang uitschakelen');
     if(reason===null)return;
     try{
-      await api('/api/dossier-grants/tester',{method:'POST',body:{enabled,reason}});
+      const input=(explicitId||$('dossierTesterId').value.trim());
+      await api('/api/dossier-grants/tester',{method:'POST',body:{enabled,reason,...(input?{discordId:input}:{})}});
       notice(enabled?'TESTER actief: alle dossiers lezen. Open het dossiercentrum.':'TESTER uitgeschakeld.');
       await load();
     }catch(e){error(e)}
