@@ -54,7 +54,7 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
     catch(e){return error(res,400,e.message)}
     try{
       const staff=await subject(req);
-      if(!canChangeSpecialty(req.bpd,staff))
+      if(!req.bpd.dossierNativeDepartments?.includes(dept)||!canChangeSpecialty(req.bpd,staff))
         return error(res,403,'Alleen bevoegd officierenkader of korpsleiding kan deze specialisatie wijzigen');
       const ref=getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
         .doc(staff.dept+'_'+staff.personId);
