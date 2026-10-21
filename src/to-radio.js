@@ -32,6 +32,13 @@ export function parseSonoranName(value){
   const head=stripRadioNBMarkers(label.trim()).replace(/\*\s*$/,'').trim(),upper=head.toUpperCase();
   const displayName=nameParts.join('|').trim().slice(0,160)||null;
   // Embedded digits belong to the label (e.g. LSRA-DEPA100), not an officer.
+  // HARTS is a deployable ambulance unit with a named on-duty operator.
+  // The person's name is metadata, never the callsign or a fabricated number.
+  if(/^HARTS(?:\\s+|\\s*-\\s*)[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .'-]{1,78}$/i.test(head)){
+    const operator=head.replace(/^HARTS(?:\\s+|\\s*-\\s*)/i,'').trim();
+    return {category:'HARTS',number:'HARTS',displayName:displayName||operator,importable:true};
+  }
+  if(upper==='HARTS')return {category:'HARTS',number:'HARTS',displayName,importable:true};
   if(TO_CATEGORIES.includes(upper))return {category:upper,number:null,displayName,importable:false};
   const compact=orderedCategories.find(category=>compactNumberedLabels.has(category)&&
     upper.startsWith(category)&&/^(?:\s*-\s*|\s+)?\d{1,5}$/.test(head.slice(category.length)));
