@@ -72,6 +72,9 @@ export function existingApplicant(roster,discordId,name){
   return (roster||[]).some(p=>p.dept==='politie'&&(
     p.personId===discordId || s(p.name).toLocaleLowerCase('nl')===norm));
 }
-export const portalReady=env=>env.BPD_ENABLE_CALLSIGN_REQUESTS==='true'&&
+// This branch is a TEST pilot: forbid writes to an unknown/shared production database.
+export const isolatedTest=env=>env.FIREBASE_PROJECT_ID==='belgiepd-test';
+export const intakeReady=env=>isolatedTest(env)&&env.BPD_ENABLE_CALLSIGN_REQUESTS==='true';
+export const portalReady=env=>intakeReady(env)&&
   env.BPD_ENABLE_PORTAL_CALLSIGN_APPROVALS==='true'&&
   env.BPD_ENABLE_STAFF_DOSSIERS==='true';
