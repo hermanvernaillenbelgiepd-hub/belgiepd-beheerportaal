@@ -138,3 +138,37 @@ test('Dashboard uses live event API instead of pretending last-connected staff a
   assert.ok(match);
   assert.doesNotThrow(()=>new Script(match[1]));
 });
+
+
+test('Linked personnel intake, status and name transitions appear only in authorized service feed',()=>{
+  const entered=doc('created-1',{type:'personnel_joined',dept:'ambulance',discordId:id,
+    name:'Nieuwe ambulancier',before:'',after:'Ambulancier · AMB-315',
+    at:ts('2026-10-21T14:00:00Z')});
+  const status=doc('status-1',{type:'status_changed',dept:'ambulance',discordId:id,
+    name:'Nieuwe ambulancier',before:'In opleiding',after:'Actief',
+    at:ts('2026-10-21T15:00:00Z')});
+  const renamed=doc('name-1',{type:'name_changed',dept:'ambulance',discordId:id,
+    name:'Nieuwe naam',before:'Oude naam',after:'Nieuwe naam',
+    at:ts('2026-10-21T16:00:00Z')});
+  const rows=recentPersonnelActivity([entered,status,renamed],[],['ambulance'],8);
+  assert.deepEqual(rows.map(x=>x.type),['name_changed','status_changed','personnel_joined']);
+  assert.deepEqual(recentPersonnelActivity([entered,status,renamed],[],['politie']),[]);
+  assert.equal(rows[2].before,'');
+  assert.equal(rows[2].after,'Ambulancier · AMB-315');
+  assert.equal(staffActivityEvent('draft',{...entered.data(),at:null}),null);
+  assert.equal(staffActivityEvent('bogus',{...status.data(),before:''}),null);
+  assert.equal(staffActivityEvent('bogus',{...entered.data(),before:'old'}),null);
+  assert.deepEqual(Object.keys(rows[0]).sort(),['after','at','before','dept','discordId','id','name','retrospective','type']);
+});
+test('Personnel creation, approved link and profile edits persist events in same Firestore transactions',()=>{
+  const source=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+  const dashboard=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+  assert.ok(source.includes("if(!pending)tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc()"));
+  assert.ok(source.includes("type:'personnel_joined',dept:d.dept,discordId"));
+  assert.ok(source.includes("type:'status_changed',dept:subject.dept"));
+  assert.ok(source.includes("type:'name_changed',dept:subject.dept"));
+  assert.ok(source.includes("if(previous.status!==next.status)"));
+  assert.ok(source.includes("if(previous.name!==next.name)"));
+  assert.ok(dashboard.includes("personnel_joined:'Nieuw personeelslid'"));
+  assert.ok(dashboard.includes("status_changed:'Status gewijzigd'"));
+});
