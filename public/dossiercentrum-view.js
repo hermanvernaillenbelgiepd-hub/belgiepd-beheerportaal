@@ -13,7 +13,7 @@ export function filterDossiers(rows,filters={}){
     (!query||[r.name,r.call,r.rank,r.status,r.discordId]
       .some(v=>normalized(v).includes(query))));
 }
-export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-desc','callsign-asc','name-asc','name-desc']);
+export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-bpd','callsign-desc','callsign-asc','name-asc','name-desc']);
 // Compare numerical parts as numbers: e.g. 930 > 404 > 99, including mixed
 // prefixes like SANTO-930 and SANTO-99. Unknown callsigns stay at the bottom.
 const dossierCollator=new Intl.Collator('nl-BE',{numeric:true,sensitivity:'base'});
@@ -24,11 +24,27 @@ const compareFilled=(left,right,direction=1)=>{
   if(!b)return -1;
   return dossierCollator.compare(a,b)*direction;
 };
-export function sortDossiers(rows,order='callsign-desc'){
-  const mode=DOSSIER_SORT_OPTIONS.includes(order)?order:'callsign-desc';
+// BelgiumPD order starts with the 900 series, ascending within each 100-range:
+// 900, 910, 920 ... 990, then 800 ... down to the 0 series.
+// 008 is explicitly the final callsign, including when prefixed (S008).
+const bpdCallKey=value=>{
+  const raw=String(value??'').trim();
+  const match=raw.match(/(?:^|[^0-9])([0-9]{1,3})\\*?$/);
+  if(!match)return {bucket:1,series:0,number:0};
+  const number=Number(match[1]);
+  if(match[1]==='008')return {bucket:2,series:0,number:8};
+  return {bucket:0,series:Math.floor(number/100),number};
+};
+const bpdCallCompare=(left,right)=>{
+  const a=bpdCallKey(left),b=bpdCallKey(right);
+  return a.bucket-b.bucket||b.series-a.series||a.number-b.number||
+    compareFilled(left,right);
+};
+export function sortDossiers(rows,order='callsign-bpd'){
+  const mode=DOSSIER_SORT_OPTIONS.includes(order)?order:'callsign-bpd';
   const byName=mode.startsWith('name-'),direction=mode.endsWith('-desc')?-1:1;
   return [...(Array.isArray(rows)?rows:[])].sort((a,b)=>{
-    const main=byName
+    const main=mode==='callsign-bpd'?bpdCallCompare(a?.call,b?.call):byName
       ?compareFilled(a?.name,b?.name,direction)
       :compareFilled(a?.call,b?.call,direction);
     if(main)return main;
