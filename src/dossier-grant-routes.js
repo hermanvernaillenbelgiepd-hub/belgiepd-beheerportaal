@@ -73,12 +73,15 @@ export function installDossierGrantRoutes(app,{requireUser,accessList,db=()=>get
         const [subject,previous]=await Promise.all([tx.get(user),tx.get(ref)]);
         let username='';
         if(subject.exists){
-          if(!approvedManagedEntry(subject.data(),discordId))throw err(409,'De gebruiker heeft geen goedgekeurd portaalaccount');
+          const approved=approvedManagedEntry(subject.data(),discordId);
+          if(!approved)throw err(409,'De gebruiker heeft geen goedgekeurd portaalaccount');
+          if(level==='manage'&&!approved.departments.includes(dept))throw err(409,'Voor beperkt dossierbeheer moet de medewerker tot de hulpdienst behoren');
           username=String(subject.get('username')||'').slice(0,80);
         }else{
           const legacy=Object.values(accessList()).filter(x=>x?.discordId===discordId);
           if(legacy.length!==1||!['basiskader','middenkader','officierenkader','korpsleiding','beheerder'].includes(legacy[0].role)||
-             !Array.isArray(legacy[0].departments)||!legacy[0].departments.length)
+             !Array.isArray(legacy[0].departments)||!legacy[0].departments.length||
+             (level==='manage'&&!legacy[0].departments.includes(dept)))
             throw err(409,'Keur het Discord-portaalaccount eerst goed');
           username='Bestaand portaalaccount';
         }
