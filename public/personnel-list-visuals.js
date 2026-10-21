@@ -52,6 +52,7 @@
   // Keep an emoji fallback if the asset fails to load.
   function specialtyIconImage(label,dept){
     const normalized=String(label||'').trim();
+    if(/^(?:K[\s-]?9|HOND(?:EN)?|HONDENGE(?:LEIDER(?:S)?)?)$/i.test(normalized)&&(!dept||dept==='politie'))return '/assets/icons/k9.svg';
     if(/^motards?$/i.test(normalized)||(/^motor$/i.test(normalized)&&dept==='politie'))return '/assets/icons/motard.svg';
     if(/^semi[\s._-]*(?:ano\.?|anonieme?)$/i.test(normalized)&&(!dept||dept==='politie'))return '/assets/icons/semi-anonieme.svg';
     if(/^radio\s+bm$/i.test(normalized))return '/assets/icons/radio-bm.svg';
