@@ -25,6 +25,11 @@ label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#
 .note-item strong{display:block}.note-item p{white-space:pre-wrap;color:#d0e0f5;margin:6px 0}
 .dossier-shortcuts{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
 .dossier-shortcuts a{border:1px solid #456b96;border-radius:8px;padding:9px 12px}
+.dossier-entry{border:1px solid #668ab7;border-left:5px solid #72b9ff;border-radius:12px;background:linear-gradient(110deg,#163454,#10243e);padding:17px 20px;display:flex;align-items:center;justify-content:space-between;gap:17px;flex-wrap:wrap;margin:16px 0}
+.dossier-entry strong{font-size:17px;color:#f1f7ff}.dossier-entry p{margin:6px 0 0;font-size:13px}
+.dossier-entry .open-dossier{display:inline-block;padding:12px 18px;border-radius:9px;border:1px solid #81adff;background:#305fd9;color:white;font-weight:800;text-decoration:none}
+.dossier-entry .open-dossier:hover{background:#4678f3}
+.dossier-entry .open-dossier:focus-visible{outline:3px solid #d5e6ff;outline-offset:3px}
 @media(max-width:660px){.dossier-summary{grid-template-columns:1fr}}#results td:first-child{font-weight:700}button.small{padding:6px 9px;font-size:12px;margin-top:5px}code{overflow-wrap:anywhere;color:#cce0ff}.inline-check{display:flex;align-items:center;gap:8px;font-size:13px;color:#c8d9ef}.inline-check input{width:auto}
 [hidden]{display:none!important}
 @media(max-width:660px){.grid{grid-template-columns:1fr}.card{padding:15px}h1{font-size:25px}header{padding:14px}}
@@ -131,6 +136,9 @@ header{padding-inline:clamp(15px,2vw,34px)}
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
+<section class="dossier-entry" aria-label="Dienstgebonden personeelsdossiers"><div><strong>📁 Personeelsdossiers per hulpdienst</strong>
+<p>Open de afzonderlijke dossiers voor Politie, Ambulance, Brandweer en Depannage. Iedere dienst behoudt eigen leiding en historiek.</p></div>
+<a class="open-dossier" href="/dossiercentrum.html">Open dossiercentrum →</a></section>
 <section id="accessHelp" class="card" hidden>
 <h2>Personeelskoppeling of TEST-toegang ontbreekt</h2>
 <p>TEST heeft een eigen Firebase-project. Goedkeuringen in MAIN worden niet automatisch overgenomen.
