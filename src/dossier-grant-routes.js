@@ -120,14 +120,25 @@ export function installDossierGrantRoutes(app,{requireUser,accessList,db=()=>get
     if(!ctx.technical&&!ctx.board)return res.status(403).json({error:'Alleen Bestuur of technisch beheer mag TESTER-toegang activeren'});
     if(typeof req.body?.enabled!=='boolean')return res.status(400).json({error:'Kies activeren of intrekken'});
     let reason;try{reason=dossierGrantReason(req.body)}catch(e){return res.status(400).json({error:e.message})}
-    const discordId=req.bpd.discordId;
-    if(!idOk(discordId))return res.status(403).json({error:'Koppel eerst je eigen Discord-ID aan het portaal'});
+    const discordId=req.body.discordId===undefined?req.bpd.discordId:String(req.body.discordId);
+    if(!idOk(discordId))return res.status(400).json({error:'Vul een geldige Discord-ID in'});
     try{
       const store=db(),ref=store.collection('bpd_dossier_testers').doc(discordId);
       await store.runTransaction(async tx=>{
+        const person=await tx.get(store.collection(USER_COLLECTION).doc(discordId));
+        let username='TESTER';
+        if(person.exists){
+          if(!approvedManagedEntry(person.data(),discordId))throw err(409,'Het gekozen account is niet goedgekeurd');
+          username=String(person.get('username')||'TESTER').slice(0,80);
+        }else{
+          const legacy=Object.values(accessList()).filter(e=>e?.discordId===discordId);
+          if(legacy.length!==1||!Array.isArray(legacy[0].departments)||!legacy[0].departments.length||
+             !['basiskader','middenkader','officierenkader','korpsleiding','beheerder'].includes(legacy[0].role))
+            throw err(409,'Keur het Discord-account eerst goed');
+        }
         const existing=await tx.get(ref);
         tx.set(ref,{discordId,level:'all-read',status:req.body.enabled?'active':'revoked',
-          username:existing.exists?String(existing.get('username')||''):'TESTER',
+          username,
           updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
         tx.create(store.collection(DOSSIER_GRANT_AUDIT).doc(),{
           action:req.body.enabled?'tester_enabled':'tester_revoked',discordId,
