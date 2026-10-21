@@ -235,3 +235,11 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
 .takeover-request-box p{font-size:11px;line-height:1.55;overflow-wrap:anywhere;margin:7px 0}
 .takeover-request-box .summary-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
 .takeover-request-box .button{font-size:10px;min-height:30px;white-space:normal}
+
+
+/* A crew can be detached from active incident(s) without opening the incident. */
+.team-actions .team-detach-button{color:#225aa7;border:1px solid #c4d6f2;background:#f0f6ff;padding:6px 9px;border-radius:6px;white-space:nowrap}
+.team-actions .team-detach-button:hover:not(:disabled){background:#deebff;border-color:#8cb2e9}
+.team-actions .team-detach-button:focus-visible{outline:2px solid #2e70dc;outline-offset:2px}
+.detach-assignment{font-size:12px;line-height:1.6;padding:12px 14px;margin:0 0 16px;background:#f0f5fd;border:1px solid #cfdaef;border-radius:8px;color:#3f587d;overflow-wrap:anywhere}
+.detach-assignment strong{color:#2859a1}
