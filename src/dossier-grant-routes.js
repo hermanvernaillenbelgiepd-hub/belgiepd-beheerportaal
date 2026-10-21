@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
+import {activeBoardAppointment} from './board-appointment-policy.js';
 import {
   DOSSIER_GRANT_COLLECTION,DOSSIER_GRANT_AUDIT,DOSSIER_DEPTS,
   dossierGrantScope,dossierGrantIsAdmin,dossierGrantPayload,
@@ -24,7 +25,7 @@ export function installDossierGrantRoutes(app,{requireUser,accessList,db=()=>get
     const isBoard=verifyBoardDiscordRole(member.data(),process.env.DISCORD_GUILD_ID);
     const boardData=board.exists?board.data():null;
     return {canManage:DOSSIER_DEPTS.filter(dept=>dossierGrantScope(actor,isBoard,boardData,dept)),
-      board:isBoard||boardData?.status==='approved',technical:actor.role==='beheerder'};
+      board:isBoard||activeBoardAppointment(boardData),technical:actor.role==='beheerder'};
   }
   const permitted=(context,dept)=>context.canManage.includes(dept);
   async function requireManager(req,res,next){
