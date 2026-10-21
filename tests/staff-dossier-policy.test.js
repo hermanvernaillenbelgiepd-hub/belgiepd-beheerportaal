@@ -8,9 +8,9 @@ import {STAFF_DOSSIER_COLLECTION,STAFF_NOTE_TYPES,staffDossierEnabled,staffDossi
 const id='123456789012345678',other='987654321098765432';
 const member={personId:id,dept:'politie',rank:'Agent',name:'Test Agent',call:'P-4'};
 const leader={role:'korpsleiding',departments:['politie'],
-  departmentRoles:{politie:'korpsleiding'},discordId:other};
+  departmentRoles:{politie:'korpsleiding'},discordId:other,dossierAllowedDepartments:['politie']};
 const ambulance={role:'korpsleiding',departments:['ambulance'],
-  departmentRoles:{ambulance:'korpsleiding'},discordId:other};
+  departmentRoles:{ambulance:'korpsleiding'},discordId:other,dossierAllowedDepartments:['ambulance']};
 
 test('New staff dossier paths are department-scoped and disabled by default',()=>{
   assert.equal(STAFF_DOSSIER_COLLECTION,'bpd_staff_dossiers');
