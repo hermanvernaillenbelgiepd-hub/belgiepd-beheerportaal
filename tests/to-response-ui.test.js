@@ -5,26 +5,24 @@ import {readFileSync} from 'node:fs';
 const js=readFileSync(new URL('../public/to-dienstbord.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../public/to-dienstbord.css',import.meta.url),'utf8');
 
-test('TO card uses distinct buttons rather than a full-card click surface',()=>{
+test('Four status buttons directly select any phase without an intermediate reset',()=>{
   for(const marker of [
     "statusButton('↗ Onderweg','team-response-underway'",
     "statusButton('● Ter plaatse','team-response-on-scene'",
     "statusButton('Ⅱ Pauze / NB','team-pause'",
     "statusButton('✓ Beschikbaar','team-available'",
-    "statusButton('↺ Status wissen','team-response-clear'",
     "case 'team-response-underway':case 'team-response-on-scene':",
     "case 'team-pause':case 'team-available':",
-    "case 'team-response-clear':",
-    "command('response-phase',{id,phase})",
-    "command('response-phase',{id,phase:null})",
-    "command('toggle-team',{id,available})",
+    "command('set-team-status',{id,status})",
+    "const currentStatus=phase||",
     "const phaseControls=editable?",
-    'data-response-phase=',
-    "phase==='onderweg'?'ONDERWEG':'TER PLAATSE'",
     'role="group"',
     "aria-pressed="
   ])assert.ok(js.includes(marker),marker);
-  assert.ok(!js.includes('data-action="team-response-next"'),'Entire card no longer changes phase');
+  assert.ok(!js.includes("statusButton('↺ Status wissen'"),'No manual reset button');
+  assert.ok(!js.includes("case 'team-response-clear':"),'No intermediate status reset action');
+  assert.ok(!js.includes('data-action="team-response-next"'),'Whole crew card is not clickable');
+  assert.ok(js.includes("team-assignment-warning"),'Active incident assignments are not silently removed');
 });
 
 test('TO response beacons blink only while underway and remain visually steady on scene',()=>{
