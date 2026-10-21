@@ -35,15 +35,31 @@ test('Three series remain individually assigned to named reekshoofden',()=>{
   const staged=policeSeriesHeads({BPD_POLICE_SERIES_HEADS_JSON:'not-json'});
   assert.deepEqual(staged['1'],['622486684033875968','1041812771349737614','949115181785563137','962410307463049236']);
   assert.deepEqual(staged['2'],['729410384095871098','305021081243090944']);
-  assert.deepEqual(staged['3'],[],'Repeated series 02 heading must not grant 03 access before confirmation');
+  assert.deepEqual(staged['3'],[
+    '1103170819355574328','1222286882331824208',
+    '344065695635734528','1171128215708909602'
+  ],'Confirmed Jones, Roy, J.Eclaire and Seba are heads of series 03');
   assert.equal(staged['1'].includes('947114717724413952'),false);
   assert.equal(staged['2'].includes('947114717724413952'),false);
   assert.deepEqual(policeScope({...actor('middenkader'),discordId:'528568826481344522'},staged).series,['1','2','3'],'Rx supports all series');
   assert.deepEqual(policeScope({...actor('basiskader'),discordId:'528568826481344522'},staged).series,[],'Butterfly assignment never grants a higher rank');
-  assert.deepEqual(policeScope({...actor('middenkader'),discordId:'1103170819355574328'},staged).series,[],'Unconfirmed third series group cannot see any other series');
+  for(const id of staged['3'])
+    assert.deepEqual(policeScope({...actor('middenkader'),discordId:id},staged).series,['3'],
+      'Series 03 heads only receive their own series');
+  assert.deepEqual(policeScope({...actor('middenkader'),discordId:'947114717724413952'},staged).series,[],
+    'Dieter/Unemi duplicate identity receives no series until resolved');
+  assert.deepEqual(policeScope({...actor('basiskader'),discordId:'1103170819355574328'},staged).series,[],
+    'Series assignment does not grant a police cadre role');
   assert.equal(normalizeSeries({seriesRaw:'01'}),'1');
   assert.equal(normalizeSeries({series:'Reeks 03'}),'3');
-  assert.deepEqual(policeSeriesHeads({BPD_POLICE_SERIES_HEADS_JSON:JSON.stringify({'1':['947114717724413952']})})['1'],[],'Conflicting account excluded even from env overrides');
+  const legacyConfig=policeSeriesHeads({BPD_POLICE_SERIES_HEADS_JSON:JSON.stringify({
+    '1':['947114717724413952','1103170819355574328'],
+    '2':['1171128215708909602'],
+    '3':[]
+  })});
+  assert.deepEqual(legacyConfig['1'],staged['1'],'Quarantined and series 03 IDs cannot be routed to series 01');
+  assert.deepEqual(legacyConfig['2'],staged['2'],'Confirmed series 03 IDs cannot be routed to series 02');
+  assert.deepEqual(legacyConfig['3'],staged['3'],'Confirmed series 03 works despite stale Render overrides');
 });
 test('Inactivity alerts persist after threshold; leave suppresses alert',()=>{
   for(const [days,expect] of [[11,null],[12,12],[14,12],[15,12],[26,12],[27,27],[31,27],[56,27],[57,57],[61,57],[90,57]])
