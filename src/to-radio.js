@@ -123,7 +123,7 @@ function normalizedUsers(payload,key){
     if(identities.has(stableIdentity))continue;
     identities.add(stableIdentity);
     const name=protect(rawName,key),parsed=parseSonoranName(name);
-    users.push({id:'radio_'+hash('sonoran-user\0'+stableIdentity).slice(0,32),name:name.slice(0,160)||'Onbekende gebruiker',
+    users.push({id:'radio_'+hash('sonoran-user\0'+stableIdentity).slice(0,32),labelEditable:Boolean(identity),name:name.slice(0,160)||'Onbekende gebruiker',
       channel:channel===null?null:protect(channel,key).slice(0,80),
       notAvailable:radioMarkedUnavailable(name),paired:radioMarkedPair(name)&&parsed.importable,...parsed});
   }
