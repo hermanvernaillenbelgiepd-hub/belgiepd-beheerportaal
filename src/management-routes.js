@@ -1,4 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
@@ -21,17 +22,17 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     if(!CADRE_ROLES.includes(req.bpd.role))return res.status(403).json({error:'Alleen middenkader en hoger hebben toegang'});
     next();
   };
-  app.get('/api/management/overview',requireUser,cadre,async(req,res)=>{
+  app.get('/api/management/overview',requireUser,async(req,res)=>{
     try{
       const snap=await getSnapshot();
-      const subjects=snap.data.filter(p=>mayReadManagement(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
+      const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
       const actor=actorFromPersonnel(req.bpd,snap.data);
-      res.json({role:req.bpd.role,departments:req.bpd.departments.filter(d=>mayReadManagement(req.bpd,d)),writesEnabled:enabled(),canClassifyTests:req.bpd.departments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:req.bpd.departments.some(d=>mayExportWeekReport(req.bpd,d)),actor,subjects,types:MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,req.bpd.departments[0],t))});
+      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,'notitie')),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:req.bpd.dossierNativeDepartments.some(d=>mayExportWeekReport(req.bpd,d)),actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t)))});
     }catch(e){errorResponse(res,e)}
   });
-  app.get('/api/management/cases',requireUser,cadre,async(req,res)=>{
+  app.get('/api/management/cases',requireUser,async(req,res)=>{
     const dept=asString(req.query.dept),id=asString(req.query.discordId);
-    if(!mayReadManagement(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
+    if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
     if(!validDiscord(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const snap=await getSnapshot(),subject=uniqueSubject(snap.data,dept,id);
@@ -40,10 +41,10 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},entries:rows.docs.map(d=>({id:d.id,...noPrivate(d.data())})),limited:rows.docs.length===150});
     }catch(e){errorResponse(res,e)}
   });
-  app.post('/api/management/cases',requireUser,cadre,async(req,res)=>{
+  app.post('/api/management/cases',requireUser,async(req,res)=>{
     if(!enabled())return res.status(503).json({error:'Opslag staat uit; stel BPD_ENABLE_MANAGEMENT_WRITES=true in na controle'});
     const dept=asString(req.body?.dept),id=asString(req.body?.discordId),type=asString(req.body?.type);
-    if(!mayWriteManagement(req.bpd,dept,type))return res.status(403).json({error:'Geen bevoegdheid om deze categorie te registreren'});
+    if(!canReadServiceDossier(req.bpd,dept)||!mayWriteManagement(req.bpd,dept,type))return res.status(403).json({error:'Geen bevoegdheid om deze categorie te registreren'});
     if(!validDiscord(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const data=validateManagementEntry(req.body),snap=await getSnapshot();
@@ -66,7 +67,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
   app.patch('/api/management/cases/:dept/:discordId/:entryId/test-classification',requireUser,cadre,async(req,res)=>{
     if(!enabled())return res.status(503).json({error:'Dossierwijzigingen staan uit'});
     const {dept,discordId:id,entryId}=req.params;
-    if(!mayClassifyTest(req.bpd,dept))return res.status(403).json({error:'Alleen officierenkader en korpsleiding mogen testregistraties markeren'});
+    if(!req.bpd.dossierNativeDepartments?.includes(dept)||!canReadServiceDossier(req.bpd,dept)||!mayClassifyTest(req.bpd,dept))return res.status(403).json({error:'Alleen bevoegd officierenkader of korpsleiding mag testregistraties markeren'});
     if(!validDiscord(id)||!safeReportId(entryId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
     let classification;
     try{classification=validateTestClassification(req.body)}
@@ -95,9 +96,9 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       return errorResponse(res,err);
     }
   });
-  app.get('/api/management/reports',requireUser,cadre,async(req,res)=>{
+  app.get('/api/management/reports',requireUser,async(req,res)=>{
     const dept=asString(req.query.dept);
-    if(!mayReadManagement(req.bpd,dept))return res.status(403).json({error:'Geen toegang tot deze hulpdienst'});
+    if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen toegang tot deze hulpdienst'});
     try{
       const snaps=await db().collection('bpd_weekreports').where('dept','==',dept).limit(100).get();
       const reports=snaps.docs.map(d=>({id:d.id,...d.data(),createdAt:toIso(d.get('createdAt'))})).map(({createdByUid,createdByEmail,...safe})=>safe).sort((a,b)=>(b.periodStart||'').localeCompare(a.periodStart||''));
@@ -108,7 +109,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     if(!enabled())return res.status(503).json({error:'Opslag staat uit; stel BPD_ENABLE_MANAGEMENT_WRITES=true in na controle'});
     try{
       const r=validateWeekReport(req.body);
-      if(!mayReadManagement(req.bpd,r.dept))return res.status(403).json({error:'Geen rechten voor deze hulpdienst'});
+      if(!req.bpd.dossierNativeDepartments?.includes(r.dept)||!canReadServiceDossier(req.bpd,r.dept)||!mayReadManagement(req.bpd,r.dept))return res.status(403).json({error:'Geen rechten voor deze hulpdienst'});
       const snap=await getSnapshot();const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel het ingelogde account eerst aan een personeelsfiche'});
       const d=db().collection('bpd_weekreports').doc();
@@ -123,7 +124,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     const ref=db().collection('bpd_weekreports').doc(id),doc=await ref.get();
     if(!doc.exists)return {status:404,error:'Rapport bestaat niet'};
     const report=doc.data();
-    if(!mayReadManagement(req.bpd,report.dept))return {status:403,error:'Geen toegang tot deze rapportage'};
+    if(!canReadServiceDossier(req.bpd,report.dept))return {status:403,error:'Geen toegang tot deze rapportage'};
     const snap=await getSnapshot();
     const allSubjects=snap.data.filter(p=>p.dept===report.dept && validDiscord(p.personId));
     const uniqueIds=[...new Set(allSubjects.map(p=>p.personId))].filter(pid=>uniqueSubject(allSubjects,report.dept,pid));
@@ -140,7 +141,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     const excludedTestCount=result.filter(e=>isTestRecord(e) && e.eventDate>=report.periodStart && e.eventDate<=report.periodEnd).length;
     return {report:{id:doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy},sections,recordCount:sections.reduce((total,section)=>total+section.entries.length,0),excludedTestCount,truncated,disclaimer:'Conceptweergave uit huidige Firestore-dossiers; als test gemarkeerde registraties zijn uitgesloten. Dit is nog geen afgesloten of juridisch gearchiveerd rapport. Externe Word- en Google-dossiers zijn niet geïmporteerd.'};
   }
-  app.get('/api/management/reports/:id',requireUser,cadre,async(req,res)=>{
+  app.get('/api/management/reports/:id',requireUser,async(req,res)=>{
     try{
       const report=await assembleReport(req,req.params.id);
       if(report.status)return res.status(report.status).json({error:report.error});
