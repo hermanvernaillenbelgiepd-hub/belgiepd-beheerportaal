@@ -408,10 +408,11 @@ test('Named HVPK is a deployable ambulance team without a synthetic numeric call
 
 test('Named verified brandweer commander can read TO only; permissions never propagate to police writes',()=>{
   const id='301448301868220417';
-  const old=process.env.BPD_TO_READONLY_DISCORD_IDS;
+  const old=process.env.BPD_TO_READONLY_DISCORD_IDS,oldOperate=process.env.BPD_TO_OPERATOR_DISCORD_IDS;
   const zone={uid:'discord:'+id,discordId:id,role:'korpsleiding',
     departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'}};
   try {
+    delete process.env.BPD_TO_OPERATOR_DISCORD_IDS;
     process.env.BPD_TO_READONLY_DISCORD_IDS=id;
     assert.equal(canReadBoard(zone),true);
     assert.equal(canOperateBoard(zone),false);
@@ -424,6 +425,8 @@ test('Named verified brandweer commander can read TO only; permissions never pro
   } finally {
     if(old===undefined)delete process.env.BPD_TO_READONLY_DISCORD_IDS;
     else process.env.BPD_TO_READONLY_DISCORD_IDS=old;
+    if(oldOperate===undefined)delete process.env.BPD_TO_OPERATOR_DISCORD_IDS;
+    else process.env.BPD_TO_OPERATOR_DISCORD_IDS=oldOperate;
   }
 });
 
