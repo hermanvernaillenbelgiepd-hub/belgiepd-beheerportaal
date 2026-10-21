@@ -8,7 +8,7 @@ De portaalmodule op `/to-dienstbord.html` vervangt de losse TO-prototypeopslag. 
 2. Start of neem een dienst over met je **geverifieerde roepnummer**: het portaal vergelijkt jouw geauthenticeerde Discord-ID met `personId` in de politiewerkgeverslijst en vult bijvoorbeeld `930` vooraf in. Als een kaderlid een tijdelijke aanmelding tussen 100 en 199 heeft geverifieerd in `bpd_callsign_requests`, kan dat nummer ook gebruikt worden. Bij een geldig gekoppeld roepnummer bewaart de server dat nummer, ook als iemand probeert zelf een andere weergavenaam door te sturen. De toegang blijft uitsluitend bepaald door de bestaande Discord/Firebase-accountrechten en de eigen operator-UID. Een lopende dienst wordt nooit automatisch overgenomen.
 3. Herkende live Sonoran-ploegen tellen automatisch mee bij ploegen in dienst en beschikbaarheid. Voeg een ploeg toe met een operationele categorie en één of twee bemanningsleden om haar status en meldingen te beheren. Bij koppelrijden bepaalt het hoogste numerieke roepnummer de ploegnaam; de radio's van beide leden tellen samen één ploeg.
 4. Maak meldingen aan, koppel ploegen en werk de status bij. Een ploeg op een actieve melding telt als bezet, ook wanneer haar handmatige beschikbaarheid aanstaat.
-5. Een volgende bevoegde TO kan de dienst met het eigen account overnemen. De vorige TO verliest de bediening en de overname wordt vastgelegd.
+5. Een bevoegde collega klikt op **Overname aanvragen** en vermeldt een reden. De huidige TO krijgt een eenmalige pop-up met de aanvrager en kan **Goedkeuren** of **Weigeren**. Alleen na bevestigde goedkeuring wordt de dienst overgedragen. Bij uitval kan de aanvrager na minstens **twee minuten** een apart bevestigde en gemotiveerde **noodovername** uitvoeren. De overname en de verantwoordelijke account worden vastgelegd.
 6. Rond actieve meldingen af voordat je de dienst afsluit. De server bewaart het archief en beëindigt de lopende dienst in één transactie. Vertrokken ploegen blijven in de diensthistoriek behouden.
 
 Het bord wordt periodiek ververst. Een verbroken verbinding of versieconflict wordt zichtbaar gemeld; een mislukte wijziging wordt niet als opgeslagen gepresenteerd. Archieven zijn alleen-lezen en kunnen als JSON worden geëxporteerd.
@@ -24,6 +24,15 @@ De radio- en ploegenlijsten zijn gegroepeerd onder Politie, Brandweer, Ambulance
 - Nieuwe agenten met een tijdelijk roepnummer binnen **100–199** verschijnen als **TIJDELIJK**. Ze hoeven nog geen vaste personeelsfiche te hebben om via actuele Sonoran Radio of handmatige invoer als ploeg te verschijnen. Zowel `SANTO-008` als `SANTO-130` blijven bruikbare, afzonderlijke ploegen.
 - Een handmatige, niet-geverifieerde TO-naam blijft mogelijk wanneer er geen betrouwbare koppeling bestaat, maar verandert nooit de eigenaar of de autorisatie van de dienst. De beveiligde operator-UID wordt afzonderlijk vastgelegd.
 - Dienst starten en dienst overnemen blijven expliciete acties. Het systeem neemt bestaande lopende diensten niet automatisch over bij aanmelding.
+
+## Aanvraag en bevestiging van TO-dienstovername
+
+Om een onbedoelde dienstovername te vermijden is het vroegere rechtstreeks toegankelijke **Dienst overnemen** vervangen door **Overname aanvragen**:
+- De aanvrager (minstens middenkader Politie) dient onder de eigen geauthenticeerde UID en eventueel geverifieerde roepnummer een aanvraag in, met **vrij invulbare reden** (8–300 tekens). De huidige TO blijft eigenaar en blijft alle ploegen en meldingen beheren.
+- De actieve TO ontvangt op het gedeelde bord automatisch één pop-up per aanvraag, met **aanvrager, roepnummer en motivering**. Er is een afzonderlijke bevestiging nodig voor goedkeuren. Hij kan ook weigeren of de beslissing uitstellen. Het verzoek wordt elke 12 seconden opnieuw via het bord opgehaald; een gesloten pop-up komt niet steeds opnieuw terug, maar het verzoek blijft zichtbaar.
+- Een verzoek verloopt na 15 minuten. De aanvrager kan het zelf annuleren; andere collega's mogen geen lopende aanvraag kapen. Wanneer de actieve TO niet bereikbaar is, kan alleen de **oorspronkelijke aanvrager** na 2 minuten zonder antwoord een noodovername bevestigen met een motivering van minstens 15 tekens en de exacte code `NOODOVERNAME`.
+- Goedkeuring en noodovername worden in de overdrachtshistoriek met UID, reden, tijdstip en type geregistreerd. De server controleert deze voorwaarden en gebruikt de transactie met revisienummer, niet alleen de zichtbare knoppen. Een roepnummer of zelf ingevoerde naam verleent nooit automatisch rechten.
+- De huidige ploegen, meldingen en ingezette ploegen blijven intact. Bij een mislukte/stale bevestiging verandert de TO niet.
 
 ## Compacte statusknoppen en eigen meldingssneltoetsen
 
