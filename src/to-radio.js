@@ -209,6 +209,8 @@ export function createSonoranRadioService({env=process.env,fetchImpl=fetch,now=D
           method:'GET',headers:{Authorization:'Bearer '+config.key,Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(8000)
         });
         if(!response.ok){
+          // Security-safe production diagnostic: status code only; no keys, URLs, headers, payloads or identities.
+          if(env.BPD_SONORAN_STATUS_DIAGNOSTIC==='true')console.warn('Sonoran Radio HTTP status:',Number(response.status));
           if(response.status===401||response.status===403)failureMessage='Sonoran weigert de verbinding. Laat een beheerder de Community ID en API Key op de server controleren.';
           else if(response.status===429)failureMessage='Sonoran ontvangt momenteel te veel aanvragen. Wacht even voordat je opnieuw ververst.';
           await response.body?.cancel?.().catch(()=>{});throw new Error('Radio request failed');
