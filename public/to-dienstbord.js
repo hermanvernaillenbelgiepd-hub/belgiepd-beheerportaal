@@ -79,7 +79,7 @@ function radioFresh(){
   const age=radio.receivedAt===null?Infinity:Date.now()-radio.receivedAt;
   return Boolean(radio.snapshot?.configured&&radio.snapshot.connected&&!radio.snapshot.stale&&!radio.error&&age>=0&&age<=45000);
 }
-function sameCallsign(left,right){return /^\d{1,5}$/.test(String(left))&&/^\d{1,5}$/.test(String(right))&&Number(left)===Number(right);}
+function sameCallsign(left,right){return (String(left)==='HARTS'&&String(right)==='HARTS')||(/^\d{1,5}$/.test(String(left))&&/^\d{1,5}$/.test(String(right))&&Number(left)===Number(right));}
 function radioMatchesTeam(user,team){return Boolean(user.category&&user.number&&user.category===team.dienst&&[(team.roepnaam),...(team.leden||[]).map(member=>member.roep)].some(number=>sameCallsign(number,user.number)));}
 function radioAlreadyOnBoard(user){return Boolean(state.env&&activeTeams(state.env.board).some(team=>radioMatchesTeam(user,team)));}
 function canImportRadioUser(user){
@@ -96,7 +96,7 @@ function radioCrewOnBoard(crew){
 function canQuickAddRadioCrew(crew){
   const members=crew?.members||[],first=members[0];
   if(!first||!state.env?.categories.includes(crew.category)||crew.category==='OPLEIDING')return false;
-  if(!/^\d{1,5}$/.test(String(crew.number))||Number(crew.number)<=0)return false;
+  if(!(crew.category==='HARTS'&&crew.number==='HARTS')&&(!/^\d{1,5}$/.test(String(crew.number))||Number(crew.number)<=0))return false;
   // A starred callsign represents one unit, even when Sonoran marks an
   // individual duplicate label as non-importable. Never add its members
   // independently; require every member to carry the same valid unit.
@@ -107,7 +107,7 @@ function canQuickAddRadioCrew(crew){
   // category and callsign, and the original identities remain unmodified.
   const temporaryPolice=serviceForCategory(crew.category).id==='politie'&&
     Number(crew.number)>=101&&Number(crew.number)<=199;
-  return temporaryPolice||members.some(user=>canImportRadioUser(user))||
+  return (crew.category==='HARTS'&&crew.number==='HARTS')||temporaryPolice||members.some(user=>canImportRadioUser(user))||
     (crew.paired&&members.some(user=>user.paired===true));
 }
 function pendingRadioCrews(){
@@ -115,7 +115,7 @@ function pendingRadioCrews(){
   const used=new Set();
   return groupRadioCrews(radio.snapshot.users).filter(crew=>{
     if(!crew.members.some(visibleRadioUser)||!matchesCategory(crew.category)||!crew.members.some(u=>matches(u.category,u.number,u.displayName,u.name))||radioCrewOnBoard(crew))return false;
-    const key=crew.category+'|'+String(Number(crew.number));
+    const key=crew.category+'|'+(crew.number==='HARTS'?'HARTS':String(Number(crew.number)));
     if(used.has(key))return false;
     used.add(key);
     return true;
