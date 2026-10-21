@@ -356,3 +356,42 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
 @media(max-width:480px){
   .board-layout[data-team-view="compact"] .team-grid.team-list-grid{grid-template-columns:minmax(0,1fr)}
 }
+
+
+/* Operationele ploegkleuren per hulpdienst (TEST 2026-10-21).
+   Alleen beschikbaar of uitgestuurd; Pauze / NB behoudt de bestaande rood-roze stijl. */
+.team-card[data-service="politie"]{
+  --duty-card-wash:#dceeff;
+  --duty-card-base:#eef7ff;
+  --duty-card-border:#a6cbed;
+  --duty-card-accent:#3a7fc6;
+  --duty-card-glow:rgba(53,130,206,.15);
+}
+.team-card[data-service="brandweer"]{
+  --duty-card-wash:#ffe5e2;
+  --duty-card-base:#fff4f2;
+  --duty-card-border:#edb8b4;
+  --duty-card-accent:#c94e48;
+  --duty-card-glow:rgba(203,75,64,.18);
+}
+.team-card[data-service="ambulance"]{
+  --duty-card-wash:#dff6e8;
+  --duty-card-base:#effbf3;
+  --duty-card-border:#a4d9b8;
+  --duty-card-accent:#2aa874;
+  --duty-card-glow:rgba(39,155,99,.15);
+}
+.team-card[data-service="depannage"]{
+  --duty-card-wash:#ffebcf;
+  --duty-card-base:#fff7ec;
+  --duty-card-border:#e8c18b;
+  --duty-card-accent:#dc922c;
+  --duty-card-glow:rgba(213,140,44,.19);
+}
+.team-card:is([data-service="politie"],[data-service="brandweer"],[data-service="ambulance"],[data-service="depannage"]):is([data-availability="ready"],[data-availability="on-incident"]){
+  background:linear-gradient(137deg,var(--duty-card-wash) 0%,var(--duty-card-base) 82%);
+  border-color:var(--duty-card-border);
+  border-left:5px solid var(--duty-card-accent);
+  box-shadow:0 2px 12px var(--duty-card-glow);
+}
+/* Niet van toepassing op [data-availability="on-pause"]: NB en Pauze blijven ongewijzigd. */
