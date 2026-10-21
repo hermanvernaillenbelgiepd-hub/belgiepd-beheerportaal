@@ -41,11 +41,13 @@ export function validateRetrospectiveCallChange(payload){
 }
 export function staffActivityEvent(id,data){
   if(!data||!SERVICES.has(data.dept)||!ID.test(data.discordId))return null;
-  if(!['promotion','callsign_changed'].includes(data.type))return null;
+  if(!['promotion','callsign_changed','personnel_joined','status_changed','name_changed'].includes(data.type))return null;
   const at=when(data.at);
   if(!at)return null;
   const before=trim(data.before,100),after=trim(data.after,100);
   if(!after||before===after)return null;
+  if(data.type==='personnel_joined'&&before)return null;
+  if(['callsign_changed','status_changed','name_changed'].includes(data.type)&&!before)return null;
   return {id:'audit:'+String(id).slice(0,100),type:data.type,
     dept:data.dept,discordId:data.discordId,
     name:trim(data.name,120)||'Personeelslid',before,after,at,
