@@ -87,3 +87,19 @@ test('Crew cards expose unlink only while on active calls, confirm and select a 
   assert.ok(css.includes('.team-actions .team-detach-button'));
   assert.ok(css.includes('.detach-assignment'));
 });
+
+
+test('TO takeover requires confirmation by new operator, never current operator approval',()=>{
+  for(const marker of [
+    "button('Dienst overnemen','takeover'",
+    "Ben je zeker dat je deze dienst wilt overnemen?",
+    "Ja, dienst overnemen",
+    "form:takeover?'takeover':'start'",
+    "type==='takeover'?{confirmation:'JA_OVERNAME'}",
+    "case 'takeover':if(canOperate())startDialog(true)",
+  ])assert.ok(js.includes(marker),marker);
+  for(const retired of [
+    'request-takeover','approve-takeover-dialog',
+    'promptIncomingTakeover','emergency-takeover-dialog'
+  ])assert.equal(js.includes(retired),false,retired);
+});
