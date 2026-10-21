@@ -3,11 +3,13 @@ const service=(id,label,categories)=>Object.freeze({id,label,categories:Object.f
 // Operational labels describe crews; they never grant department access.
 export const TO_SERVICE_GROUPS=Object.freeze([
   service('politie','Politie',[
-    'SANTO','BLAINE','WYCAN','FALCON','EAGLE','SIGMA','SIGNA','MARCAN','AIRCAN','CANINE','RAGO','MIKE','COMMAND'
+    'SANTO','BLAINE','WYCAN','FALCON','EAGLE','SIGMA','SIGNA','MARCAN','AIRCAN','CANINE','RAGO','MIKE','COMMAND',
+    'MONITOR','TO','T.O.','COBRA','REPA'
   ]),
   service('brandweer','Brandweer',['BRANDWEER','BWM','BWV','BAMBU','BWAMBU','BW-AMBU','KORP','SERG','ADJ','LT','KAP','MAJ','KOL','ZONE','STAG','ZONE-COMM','PLOEG1','PLOEG2','PLOEG3']),
   service('ambulance','Ambulance',['ZW','STAGE','DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','AMBULANCE','AMBULANCE-MOTOR','PIT','MUG','MUGHELI','DIR-MED','SIT-TEAM']),
   service('depannage','Depannage',['LSRA','DEPK','LSRA-DEPA100','LSRA-DEPAK200','LSRA-F.A.S.T.','LSRA-ANWV']),
+  service('opleiding','Opleiding',['OPLEIDING']),
   service('overige','Overige',[])
 ]);
 
