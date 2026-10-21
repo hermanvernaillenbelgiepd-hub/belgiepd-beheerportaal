@@ -1,4 +1,5 @@
 import {roleForDepartment,calendarDays} from './leave-policy.js';
+import {policeKader} from './normalize.js';
 export const POLICE_SERIES=Object.freeze(['1','2','3']);
 export const NOTIFICATION_THRESHOLDS=Object.freeze([{warn:12,due:15,label:'50/50'},{warn:27,due:31,label:'Inactief'},{warn:57,due:61,label:'Controle op eventuele uitschrijving'}]);
 const ID=/^\d{15,22}$/;
@@ -69,11 +70,12 @@ export function afterLeave(leave,today){
     leave.subjectDepartments.includes('politie');
 }
 export function subjectPoliceGrade(person){
-  const grade=String(person?.rank||'').toLocaleLowerCase('nl');
-  if(/commissaris|\bcp\b|korpsleiding|1hcp/.test(grade))return 'korpsleiding';
-  if(/\bah?cp\b|officierenkader/.test(grade))return 'officierenkader';
-  if(/hoofdinspecteur|hinp|middenkader/.test(grade))return 'middenkader';
-  return 'basiskader';
+  const k=policeKader(person?.rank);
+  if(k==='Korpsleiding')return 'korpsleiding';
+  if(k==='Officierenkader')return 'officierenkader';
+  if(k==='Middenkader')return 'middenkader';
+  if(k==='Basiskader')return 'basiskader';
+  return null; // Unknown rank must be reviewed, never assume baseline privileges.
 }
 export function leaveAuthority(actor,leave,subject){
   if(!subject||subject.dept!=='politie'||leave?.status!=='pending'||actor?.discordId===subject.personId)return false;
