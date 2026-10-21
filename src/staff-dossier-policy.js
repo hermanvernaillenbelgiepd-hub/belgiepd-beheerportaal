@@ -1,4 +1,5 @@
-import {canEditPersonnel,canViewPersonnel,validPersonnelKey} from './personnel-editor-policy.js';
+import {canEditPersonnel,validPersonnelKey} from './personnel-editor-policy.js';
+import {canReadServiceDossier} from './service-dossier-access.js';
 
 export const STAFF_DOSSIER_COLLECTION='bpd_staff_dossiers';
 // Historical categories are retained for read-only access, not for new writes.
@@ -35,10 +36,10 @@ export function uniqueStaffSubject(records,dept,discordId){
   return matches[0];
 }
 export function canReadStaffDossier(actor,staff){
-  return Boolean(staff&&canViewPersonnel(actor,staff.dept));
+  return Boolean(staff&&canReadServiceDossier(actor,staff.dept));
 }
 export function canMaintainStaffDossier(actor,staff){
-  return Boolean(staff&&canEditPersonnel(actor,staff));
+  return Boolean(staff&&canReadServiceDossier(actor,staff.dept)&&canEditPersonnel(actor,staff));
 }
 export function normalizeStaffProfile(data){
   if(!data||typeof data!=='object')return {...DEFAULT};
