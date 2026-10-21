@@ -19,6 +19,7 @@ const COMMAND_FIELDS=Object.freeze({
   'emergency-takeover':['requestId','confirmation','reason'],
   'add-team':['dienst','leden'],'remove-team':['id'],'toggle-team':['id','available'],
   'response-phase':['id','phase'],
+  'set-team-status':['id','status'],
   'create-incident':['postcode','titel','omschrijving'],
   'update-incident':['id','postcode','titel','omschrijving'],
   'incident-status':['id','status'],'attach-team':['id','teamId'],'detach-team':['id','teamId'],
@@ -192,6 +193,29 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
         const team=getTeam(board,cmd.id);
         if(team.responsePhase)fail(409,'Wis eerst de uitrukstatus alvorens de beschikbaarheid aan te passen');
         Object.assign(team,{available:cmd.available,updatedAt:now,updatedBy:actor.uid});
+      }else if(cmd.type==='set-team-status'){
+        // Every status is an independent explicit action, not a forced cycle.
+        // Never silently detach a unit from an active incident or close that
+        // incident; assignments are managed separately and remain auditable.
+        const labels={onderweg:'onderweg','ter-plaatse':'ter plaatse',pauze:'pauze / niet beschikbaar',beschikbaar:'beschikbaar'};
+        if(typeof cmd.status!=='string'||!Object.hasOwn(labels,cmd.status))
+          fail(400,'Ongeldige ploegstatus');
+        const team=getTeam(board,cmd.id);
+        const previous=team.responsePhase==='onderweg'||team.responsePhase==='ter-plaatse'
+          ?team.responsePhase:team.available===false?'pauze':'beschikbaar';
+        if(previous===cmd.status)fail(409,'De ploeg heeft deze status al');
+        team.responsePhase=cmd.status==='onderweg'||cmd.status==='ter-plaatse'?cmd.status:null;
+        team.available=cmd.status!=='pauze';
+        team.responseAt=now;
+        team.responseBy=actor.uid;
+        team.updatedAt=now;
+        team.updatedBy=actor.uid;
+        for(const incident of Object.values(board.meldingen)){
+          if(incident.status!=='actief'||!incident.ploegen.some(ref=>ref.id===team.id))continue;
+          if(incident.log.length<TO_BOARD_LIMITS.incidentLog)
+            appendLog(incident,actor,now,team.dienst+'-'+team.roepnaam+
+              ': status '+labels[previous]+' → '+labels[cmd.status]);
+        }
       }else if(cmd.type==='response-phase'){
         // A separate clear action prevents a third accidental click from
         // returning an on-scene crew to "available" during an active incident.
