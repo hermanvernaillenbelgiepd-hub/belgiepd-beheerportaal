@@ -6,10 +6,17 @@ export {TO_CATEGORIES};
 export const TO_BOARD_LIMITS=Object.freeze({activeTeams:100,teams:300,incidents:200,incidentLog:100,handovers:100,bytes:700*1024,archiveBytes:708*1024});
 const READ_ROLES=new Set(['basiskader','middenkader','officierenkader','korpsleiding','beheerder']);
 const OPERATE_ROLES=new Set(['middenkader','officierenkader','korpsleiding','beheerder']);
+export const TO_TAKEOVER_EMERGENCY_DELAY=2*60*1000;
+export const TO_TAKEOVER_REQUEST_TTL=15*60*1000;
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const CONTROL=/[\x00-\x1f\x7f<>]/;
 const COMMAND_FIELDS=Object.freeze({
-  start:['displayName'],takeover:['displayName','reason'],
+  start:['displayName'],
+  'request-takeover':['displayName','reason'],
+  'approve-takeover':['requestId'],
+  'reject-takeover':['requestId'],
+  'cancel-takeover':['requestId'],
+  'emergency-takeover':['requestId','confirmation','reason'],
   'add-team':['dienst','leden'],'remove-team':['id'],'toggle-team':['id','available'],
   'response-phase':['id','phase'],
   'create-incident':['postcode','titel','omschrijving'],
@@ -106,18 +113,55 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
     if(!validBoardId(value))throw new Error('Geldige server-ID ontbreekt');
     return value;
   };
+  const transferOwner=(request,mode,reason)=>{
+    if(board.session.handovers.length>=TO_BOARD_LIMITS.handovers)
+      fail(413,'Te veel overdrachten. Rond deze dienst eerst af.');
+    const fromUid=board.session.ownerUid;
+    board.session.handovers.push({
+      from:board.session.to,to:request.name,fromUid,toUid:request.requesterUid,
+      byUid:actor.uid,at:now,reason,mode,
+      requestedAt:request.requestedAt,requestReason:request.reason
+    });
+    board.session.to=request.name;
+    board.session.ownerUid=request.requesterUid;
+    delete board.session.pendingTakeover;
+  };
   if(cmd.type==='start'){
     if(board.session)fail(409,'Er loopt al een dienst. Neem deze eerst over.');
     board.session={id:newId(),to:toDisplayName(actor,cmd.displayName),ownerUid:actor.uid,startedAt:now,handovers:[]};
   }else{
     if(!board.session)fail(409,'Er loopt geen dienst. Start eerst een dienst.');
-    if(cmd.type==='takeover'){
-      const displayName=toDisplayName(actor,cmd.displayName),reason=text(cmd.reason,8,300,'Reden van overname');
-      if(board.session.ownerUid===actor.uid)fail(409,'Je bent al de huidige TO. Ga verder met je dienst.');
-      if(board.session.handovers.length>=TO_BOARD_LIMITS.handovers)fail(413,'Te veel overdrachten. Rond deze dienst eerst af.');
-      board.session.handovers.push({from:board.session.to,to:displayName,fromUid:board.session.ownerUid,toUid:actor.uid,byUid:actor.uid,at:now,reason});
-      board.session.to=displayName;
-      board.session.ownerUid=actor.uid;
+    if(cmd.type==='request-takeover'){
+      if(board.session.ownerUid===actor.uid)fail(409,'Je bent al TO van dienst');
+      const name=toDisplayName(actor,cmd.displayName),reason=text(cmd.reason,8,300,'Reden van overname');
+      const pending=board.session.pendingTakeover;
+      if(pending&&pending.expiresAt>now)
+        fail(409,pending.requesterUid===actor.uid?'Je overnameaanvraag is al in behandeling':'Er staat al een andere overnameaanvraag open');
+      board.session.pendingTakeover={
+        id:newId(),requesterUid:actor.uid,name,reason,requestedAt:now,
+        expiresAt:now+TO_TAKEOVER_REQUEST_TTL,
+        originalOwnerUid:board.session.ownerUid
+      };
+    }else if(['approve-takeover','reject-takeover','cancel-takeover','emergency-takeover'].includes(cmd.type)){
+      const pending=board.session.pendingTakeover;
+      if(!pending||pending.id!==entityId(cmd.requestId)||pending.originalOwnerUid!==board.session.ownerUid)
+        fail(409,'Er is geen geldige openstaande overnameaanvraag');
+      if(now>=pending.expiresAt)fail(409,'Deze overnameaanvraag is verlopen. Dien een nieuwe aanvraag in.');
+      if(cmd.type==='approve-takeover'||cmd.type==='reject-takeover'){
+        if(actor.uid!==board.session.ownerUid)fail(403,'Alleen de huidige TO kan een aanvraag goedkeuren of weigeren');
+        if(cmd.type==='approve-takeover')transferOwner(pending,'goedgekeurd',pending.reason);
+        else delete board.session.pendingTakeover;
+      }else if(cmd.type==='cancel-takeover'){
+        if(actor.uid!==pending.requesterUid)fail(403,'Alleen de aanvrager kan de aanvraag annuleren');
+        delete board.session.pendingTakeover;
+      }else{
+        if(actor.uid!==pending.requesterUid)fail(403,'Alleen de aanvrager kan de noodovername bevestigen');
+        if(now<pending.requestedAt+TO_TAKEOVER_EMERGENCY_DELAY)
+          fail(409,'Noodovername kan pas na twee minuten zonder goedkeuring');
+        if(cmd.confirmation!=='NOODOVERNAME')fail(400,'Typ NOODOVERNAME om de noodovername te bevestigen');
+        const urgentReason=text(cmd.reason,15,300,'Motivering noodovername');
+        transferOwner(pending,'noodovername',urgentReason);
+      }
     }else{
       if(board.session.ownerUid!==actor.uid)fail(403,'Alleen de huidige TO kan deze dienst wijzigen. Neem de dienst eerst over.');
       if(cmd.type==='add-team'){
