@@ -50,7 +50,7 @@ test('Four dossier sort choices use natural numeric callsigns and alphabetic nam
   assert.deepEqual(pick('callsign-asc'),['S9','S10','S99','S100','—']);
   assert.deepEqual(sortDossiers(data,'name-asc').map(d=>d.name),['Adam','Bram','Émile','Zoë','Zonder']);
   assert.deepEqual(sortDossiers(data,'name-desc').map(d=>d.name),['Zonder','Zoë','Émile','Bram','Adam']);
-  assert.deepEqual(pick('invalid'),pick('callsign-desc'));
+  assert.deepEqual(pick('invalid'),pick('callsign-bpd'));
   assert.equal(data[0].call,'S9','Sorting must not mutate the original input');
 });
 test('Sorting applies after search and before pagination across full result set',()=>{
@@ -65,4 +65,30 @@ test('Sorting applies after search and before pagination across full result set'
   assert.equal(first.rows[24].call,'106');
   assert.equal(second.rows[0].call,'105');
   assert.equal(second.rows[24].call,'81');
+});
+
+
+test('BelgiumPD call series begin with 900, 910 and 920, descending by hundred-series, with 008 last',()=>{
+  const input=['404','008','910','430','800','920','999','700','900','099','001',
+    'SANTO-930*','S008','—','815','909','920','606'].map((call,i)=>({
+      call,name:'Persoon '+i,discordId:String(i),dept:'politie',personnel:true
+    }));
+  const calls=sortDossiers(input,'callsign-bpd').map(r=>r.call);
+  assert.deepEqual(calls,[
+    '900','909','910','920','920','SANTO-930*','999',
+    '800','815','700','606','404','430','001','099','—','008','S008'
+  ]);
+  assert.equal(sortDossiers(input)[0].call,'900');
+  assert.equal(sortDossiers(input).at(-1).call,'S008');
+  assert.equal(input[0].call,'404','The original array must not be modified');
+});
+test('BelgiumPD custom roster order sorts the full set before paging',()=>{
+  const data=Array.from({length:130},(_,i)=>({
+    call:String(900+i%100),name:'Medewerker '+i,discordId:String(i),
+    dept:'politie',personnel:true
+  }));
+  const sorted=sortDossiers(filterDossiers(data,{department:'politie'}),'callsign-bpd');
+  assert.equal(paginateDossiers(sorted,1).rows[0].call,'900');
+  assert.equal(paginateDossiers(sorted,1).rows.at(-1).call,'912');
+  assert.equal(paginateDossiers(sorted,2).rows[0].call,'912');
 });
