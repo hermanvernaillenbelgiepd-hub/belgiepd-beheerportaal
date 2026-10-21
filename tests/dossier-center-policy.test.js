@@ -42,3 +42,24 @@ test('Central dossier routes never fetch or reveal deleted citizen records',()=>
   assert.equal(routes.includes('citizen:'),false);
   assert.ok(routes.includes('if(!p)return respond(res,404'));
 });
+
+
+test('One Discord identity has separate police and ambulance dossiers with isolated leadership access',()=>{
+  const ambulanceRecord={...person,dept:'ambulance',call:'AMB-12',rank:'Ambulancier'};
+  const ambulanceLead={role:'korpsleiding',departments:['ambulance'],
+    departmentRoles:{ambulance:'korpsleiding'},discordId:other};
+  const policeLead={...actor};
+  const bothRecords=[person,ambulanceRecord];
+  const policeRows=dossierOverviewRows(bothRecords,[],dossierScopes(policeLead));
+  const ambulanceRows=dossierOverviewRows(bothRecords,[],dossierScopes(ambulanceLead));
+  assert.deepEqual(policeRows.map(p=>p.dept),['politie']);
+  assert.deepEqual(ambulanceRows.map(p=>p.dept),['ambulance']);
+  assert.equal(policeRows[0].call,'P30');
+  assert.equal(ambulanceRows[0].call,'AMB-12');
+  const authorizedBoth={role:'korpsleiding',departments:['politie','ambulance'],
+    departmentRoles:{politie:'korpsleiding',ambulance:'korpsleiding'},discordId:other};
+  const all=dossierOverviewRows(bothRecords,[],dossierScopes(authorizedBoth));
+  assert.equal(all.length,2);
+  assert.deepEqual(all.map(p=>p.dept),['ambulance','politie']);
+  assert.ok(all.every(p=>p.discordId===id));
+});
