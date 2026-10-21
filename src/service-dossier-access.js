@@ -20,12 +20,12 @@ const ZONE=/^ZONE(?:[- ]?\d{1,3}|[ -]COMMANDANT(?:E)?)?$/;
 const AWV=/^(?:AWV(?:[- ]?\d{1,4})?|AGENTSCHAP WEGEN (?:EN|&) VERKEER)$/;
 const matchesDuty=(person,pattern)=>pattern.test(code(person?.call))||pattern.test(code(person?.rank));
 
-export function deriveServiceDossierDepartments(actor,personnel,member,boardAppointment,guildId,now=Date.now()){
+export function deriveServiceDossierDepartments(actor,personnel,member,boardAppointment,guildId,now=Date.now(),includeBoard=true){
   if(!actor||!DISCORD.test(actor.discordId)||!Array.isArray(actor.departments))return [];
   const roles=verifiedRoles(member,guildId,now);
   // Bestuur is an independently approved appointment OR an independently
   // verified Bestuur Discord role. Neither changes operational rank.
-  if(activeBoardAppointment(boardAppointment)||roles.has(DISCORD_BOARD_ROLE))
+  if(includeBoard&&(activeBoardAppointment(boardAppointment)||roles.has(DISCORD_BOARD_ROLE)))
     return [...SERVICE_DOSSIER_DEPARTMENTS];
   const allowed=[];
   if(actor.departments.includes('politie')&&
