@@ -126,6 +126,29 @@ test('User-provided Signalisatie sign is embedded locally and used across both r
   assert.ok(manager.includes('.specialty-custom-image'));
   assert.ok(dashboard.includes('.specialty-custom-image'));
 });
+test('Police Motor/MOTARD uses a real transparent motorcycle image without changing ambulance Motor',()=>{
+  const api=visuals();
+  for(const label of ['Motor',' MOTOR ','motor'])
+    assert.equal(api.specialtyIconImage(label,'politie'),'/assets/icons/motard.svg');
+  for(const label of ['MOTARD','Motard','motards'])
+    assert.equal(api.specialtyIconImage(label),'/assets/icons/motard.svg');
+  assert.equal(api.specialtyIconImage('Motor','ambulance'),null);
+  const asset=source('public/assets/icons/motard.svg');
+  assert.match(asset,/viewBox="0 0 72 74"/);
+  const match=asset.match(/href="data:image\/webp;base64,([A-Za-z0-9+/=]+)"/);
+  assert.ok(match,'Motorcycle photo must be embedded, not linked externally');
+  const data=Buffer.from(match[1],'base64');
+  assert.equal(data.toString('ascii',0,4),'RIFF');
+  assert.equal(data.toString('ascii',8,12),'WEBP');
+  assert.equal(data.readUInt32LE(4)+8,data.length);
+  assert.ok(data.length>3000);
+  assert.ok(asset.trimEnd().endsWith('</svg>'));
+  for(const path of ['public/index.html','public/personeelsbeheer.html']){
+    const html=source(path);
+    assert.ok(html.includes('specialtyIconImage(label,dept)'),path);
+  }
+});
+
 test('Radio BM uses the supplied transparent Sepura handheld image',()=>{
   const asset=source('public/assets/icons/radio-bm.svg');
   assert.match(asset,/^<svg /);
