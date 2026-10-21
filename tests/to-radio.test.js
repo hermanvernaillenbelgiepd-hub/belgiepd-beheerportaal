@@ -270,7 +270,7 @@ test('Radio normalization deduplicates identities and prevents ambiguous numeric
   assert.equal(result.users.find(user=>user.category==='BLAINE').importable,true);
   assert.equal(result.users.find(user=>user.category==='UNKNOWN').importable,false);
   for(const user of result.users){
-    assert.deepEqual(Object.keys(user).sort(),['category','channel','displayName','id','importable','name','notAvailable','number','paired']);
+    assert.deepEqual(Object.keys(user).sort(),['category','channel','displayName','id','importable','labelEditable','name','notAvailable','number','paired']);
     assert.equal(typeof user.id,'string');assert.ok(user.id);
   }
   assertPrivate(result);
