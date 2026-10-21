@@ -263,7 +263,7 @@ function renderRadio(){
 function editRadioLabelDialog(id){
   if(!state.env?.permissions?.canOperate||!radioFresh())return;
   const user=radio.snapshot?.users?.find(u=>u.id===id);
-  if(!user)return;
+  if(!user||user.labelEditable!==true)return;
   openDialog('Radioweergavenaam aanpassen',
     `<p class="form-note">Deze wijziging verandert uitsluitend de naam die het BelgiumPD-portaal toont. De echte Sonoran Radio-naam, radiostatus en het roepnummer blijven behouden.</p>
     <label class="field"><span>Weergavenaam</span><input class="input" name="alias" maxlength="80" minlength="2" value="${esc(user.portalAlias||'')}" placeholder="${esc(user.displayName||user.name||'Naam')}"></label>
