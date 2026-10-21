@@ -286,9 +286,12 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     const original=deriveServiceDossierDepartments(req.bpd,
       roster,member?.exists?member.data():null,
       appointment?.exists?appointment.data():null,process.env.DISCORD_GUILD_ID);
+    const native=deriveServiceDossierDepartments(req.bpd,
+      roster,member?.exists?member.data():null,
+      null,process.env.DISCORD_GUILD_ID,Date.now(),false);
     const scope=applyDossierGrants(req.bpd,original,
       grants.filter(d=>d.exists).map(d=>d.data()),tester?.exists?tester.data():null);
-    req.bpd.dossierNativeDepartments=original;
+    req.bpd.dossierNativeDepartments=native;
     req.bpd.dossierAllowedDepartments=scope.departments;
     req.bpd.dossierManageDepartments=scope.manageDepartments;
     req.bpd.dossierTester=scope.tester;
