@@ -79,3 +79,85 @@ export function installNotificationRoutes(app,{requireUser,getSnapshot,firestore
     try{res.set('Cache-Control','private, no-store');res.json({...await inbox(req.bpd),writesEnabled:writes()});}
     catch(e){console.error('Meldingen:',e.message);res.status(503).json({error:'Meldingen niet beschikbaar'});}
   });
+  app.post('/api/notifications/return/:id',requireUser,async(req,res)=>{
+    if(!writes())return res.status(503).json({error:'Bevestigingen zijn op TEST nog niet ingeschakeld'});
+    if(!safeId(req.params.id))return res.status(400).json({error:'Ongeldige verlofverwijzing'});
+    try{
+      const people=await roster(),person=people.find(p=>isPoliceMember(req.bpd,p));
+      if(!person)return res.status(403).json({error:'Geen eigen politiepersoneelsfiche'});
+      const id=req.params.id,source=db().collection('bpd_leave_requests').doc(id);
+      const confirmed=db().collection('bpd_leave_returns').doc(id);
+      const event=db().collection('bpd_weekreport_events').doc('return_'+id);
+      await db().runTransaction(async tx=>{
+        const [old,leave]=await Promise.all([tx.get(confirmed),tx.get(source)]);
+        if(old.exists)throw Object.assign(Error('Terugkeer is al bevestigd'),{status:409});
+        if(!leave.exists||leave.get('personDiscordId')!==person.personId||!afterLeave(leave.data(),today()))
+          throw Object.assign(Error('Geen geldige verlopen eigen verlofperiode'),{status:403});
+        const at=FieldValue.serverTimestamp();
+        tx.create(confirmed,{discordId:person.personId,leaveId:id,series:normalizeSeries(person),confirmedAt:at});
+        tx.create(event,{eventDate:today(),type:'return_confirmed',subjectId:person.personId,
+          subjectName:person.name,subjectCall:person.call,series:normalizeSeries(person),
+          byDiscordId:person.personId,details:'Terugkeer na verlof bevestigd',at});
+      });
+      res.json({confirmed:true});
+    }catch(e){res.status(e.status||503).json({error:e.status?e.message:'Bevestiging mislukt'});}
+  });
+  app.post('/api/notifications/:id/dismiss',requireUser,async(req,res)=>{
+    if(!writes())return res.status(503).json({error:'Afhandelen van meldingen staat uit'});
+    const reason=req.body?.reason,id=req.params.id;
+    if(!safeId(id)||typeof reason!=='string'||reason.trim().length<4||reason.trim().length>500)
+      return res.status(400).json({error:'Geef een opvolging van 4–500 tekens op'});
+    try{
+      const data=await inbox(req.bpd),item=data.items.find(x=>x.id===id);
+      if(!item||['return_self','training'].includes(item.kind))
+        return res.status(403).json({error:'Geen bevoegdheid over deze melding'});
+      const doc=notices().doc(id),event=db().collection('bpd_weekreport_events').doc('dismiss_'+id);
+      await db().runTransaction(async tx=>{
+        const old=await tx.get(doc);
+        if(old.exists)throw Object.assign(Error('Melding reeds door een collega afgehandeld'),{status:409});
+        const at=FieldValue.serverTimestamp();
+        tx.create(doc,{action:'dismissed',kind:item.kind,series:item.series||null,
+          subjectId:item.subjectId||null,at,byDiscordId:req.bpd.discordId,reason:reason.trim()});
+        tx.create(event,{eventDate:today(),type:'notification_dismissed',subjectId:item.subjectId,
+          subjectName:item.title.slice(0,120),subjectCall:item.call||'—',
+          series:item.series||null,byDiscordId:req.bpd.discordId,details:reason.trim(),at});
+      });
+      res.json({dismissed:true,weekreportLogged:true});
+    }catch(e){res.status(e.status||503).json({error:e.status?e.message:'Afhandeling mislukt'});}
+  });
+  app.get('/api/notifications/periods',requireUser,(req,res)=>{
+    const periods=periodsForActor(today(),req.bpd);
+    if(!periods.length)return res.status(403).json({error:'Geen inzage in weekrapporten'});
+    res.json({periods,canSave:['officierenkader','korpsleiding'].includes(roleForDepartment(req.bpd,'politie'))});
+  });
+  app.get('/api/notifications/periods/:start',requireUser,async(req,res)=>{
+    try{
+      const period=periodsForActor(today(),req.bpd).find(x=>x.start===req.params.start);
+      if(!period)return res.status(403).json({error:'Deze periode is niet toegankelijk'});
+      const scope=policeScope(req.bpd,policeSeriesHeads(process.env));
+      const snap=await db().collection('bpd_weekreport_events').limit(1500).get();
+      if(snap.size===1500)throw Error('Onvolledig rapport');
+      const events=mapped(snap).filter(x=>x.eventDate>=period.start&&x.eventDate<=period.end&&
+        (scope.series.includes(x.series)||['officierenkader','korpsleiding'].includes(scope.role)&&x.series==null))
+        .map(x=>({eventDate:x.eventDate,type:x.type,subjectName:x.subjectName,
+          subjectCall:x.subjectCall,series:x.series,byDiscordId:x.byDiscordId,details:x.details}))
+        .sort((a,b)=>String(a.eventDate).localeCompare(String(b.eventDate)));
+      const saved=await db().collection('bpd_fortnight_reports').doc(period.start).get();
+      res.json({period,events,saved:saved.exists});
+    }catch(e){res.status(503).json({error:'Rapport niet beschikbaar'});}
+  });
+  app.post('/api/notifications/periods/:start/save',requireUser,async(req,res)=>{
+    if(!writes())return res.status(503).json({error:'Rapport opslaan is nog niet ingeschakeld'});
+    const scope=policeScope(req.bpd,policeSeriesHeads(process.env));
+    if(!['officierenkader','korpsleiding'].includes(scope.role))
+      return res.status(403).json({error:'Alleen officierenkader en korpsleiding kunnen opslaan'});
+    const period=periodsForActor(today(),req.bpd).find(x=>x.start===req.params.start);
+    if(!period)return res.status(403).json({error:'Rapportperiode niet beschikbaar'});
+    try{
+      await db().collection('bpd_fortnight_reports').doc(period.start)
+        .create({...period,dept:'politie',status:'opgeslagen',savedByDiscordId:req.bpd.discordId,
+          savedAt:FieldValue.serverTimestamp()});
+      res.status(201).json({saved:true});
+    }catch(e){res.status(e.code===6?409:503).json({error:e.code===6?'Reeds opgeslagen':'Opslaan mislukt'});}
+  });
+}
