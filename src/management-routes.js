@@ -41,7 +41,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},entries:rows.docs.map(d=>({id:d.id,...noPrivate(d.data())})),limited:rows.docs.length===150});
     }catch(e){errorResponse(res,e)}
   });
-  app.post('/api/management/cases',requireUser,cadre,async(req,res)=>{
+  app.post('/api/management/cases',requireUser,async(req,res)=>{
     if(!enabled())return res.status(503).json({error:'Opslag staat uit; stel BPD_ENABLE_MANAGEMENT_WRITES=true in na controle'});
     const dept=asString(req.body?.dept),id=asString(req.body?.discordId),type=asString(req.body?.type);
     if(!canReadServiceDossier(req.bpd,dept)||!mayWriteManagement(req.bpd,dept,type))return res.status(403).json({error:'Geen bevoegdheid om deze categorie te registreren'});
