@@ -282,9 +282,25 @@ const getVerifiedTemporaryTORequest=async discordId=>{
   const snapshot=await getFirestore().collection('bpd_callsign_requests').doc(discordId).get();
   return snapshot.exists?{...snapshot.data(),discordId}:null;
 };
+// TO-specific Firebase grants, retrieved only AFTER normal portal login.
+// Revoked records override the limited legacy ENV TO allowlist.
+const requireTOUser=(req,res,next)=>requireUser(req,res,async()=>{
+  try{
+    const id=req.bpd?.discordId;
+    if(req.bpd?.uid==='discord:'+id&&/^\\d{15,22}$/.test(String(id))){
+      const snap=await getFirestore().collection('bpd_to_access').doc(id).get();
+      if(snap.exists){
+        const grant=snap.data();
+        req.bpd.toAccessLevel=grant?.status==='active'&&['read','operate'].includes(grant?.level)?grant.level:'revoked';
+      }
+    }
+    next();
+  }catch(error){console.error('TO-machtigingen tijdelijk niet beschikbaar');
+    res.status(503).json({error:'TO-toegangscontrole tijdelijk niet beschikbaar'});}
+});
 const toBoardStore=createFirestoreTOStore();
-installTOBoardRoutes(app,{requireUser,store:toBoardStore,getSnapshot,getTemporaryRequest:getVerifiedTemporaryTORequest});
-installTORadioRoutes(app,{requireUser,store:toBoardStore});
+installTOBoardRoutes(app,{requireUser:requireTOUser,store:toBoardStore,getSnapshot,getTemporaryRequest:getVerifiedTemporaryTORequest});
+installTORadioRoutes(app,{requireUser:requireTOUser,store:toBoardStore});
 app.get('/api/health',(_req,res)=>res.json({
   status:'ok',integration:cache.fetchedAt?'cache-present':'not-yet-loaded',
   deployment:publicDeploymentInfo()
