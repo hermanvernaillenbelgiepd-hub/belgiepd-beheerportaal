@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Vast roepnummer aanvragen | BelgiumPD</title>
+<style>
+:root{font:15px system-ui,"Segoe UI",Arial,sans-serif;color:#dfe9fa;background:#101d39}
+*{box-sizing:border-box}body{margin:0;background:#101d39;color:#dfe9fa}
+header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:#0a152b;padding:17px max(20px,calc((100vw - 940px)/2))}
+a{color:#b5caff}main{max-width:840px;margin:28px auto;padding:0 18px 55px}h1{font-size:27px;margin:0 0 8px}p{line-height:1.55;color:#b7c7e4}
+.card{background:#182d4b;border:1px solid #344e76;border-radius:14px;padding:20px;margin-top:17px}
+.field{margin:14px 0}.field label{display:block;font-weight:600;margin-bottom:7px}
+input,select{width:100%;background:#0f203c;color:#fff;border:1px solid #587094;border-radius:9px;padding:12px;font:inherit}
+button,.button{cursor:pointer;border:0;border-radius:9px;background:#3865f4;color:#fff;font:inherit;font-weight:650;padding:12px 16px}
+button:disabled{opacity:.48;cursor:not-allowed}.outline{background:#233b5d;border:1px solid #506897}
+.alert{padding:12px;border-radius:9px;margin:14px 0;background:#254b42;color:#c7f4df}
+.alert.error{background:#572b36;color:#ffdadf}.muted{font-size:13px;color:#9eb0d2}
+dl{display:grid;grid-template-columns:180px 1fr;gap:9px}dt{color:#9eb0d2}dd{margin:0;font-weight:600}
+@media(max-width:600px){dl{grid-template-columns:1fr}header{padding:15px 18px}}
+</style></head><body>
+<header><strong>BelgiumPD · Politie</strong><nav><a href="/roepnummers.html">Kaderbeheer</a> · <a href="/">Portaal</a></nav></header>
+<main><h1>Vast roepnummer aanvragen</h1>
+<p>Vraag je vaste politieroepnummer aan in de reeks <b>200–299</b>. Je Discord-account wordt gecontroleerd; een kaderlid bevestigt vervolgens de toelatingsvoorwaarden en de hogere leiding beslist. Een gekozen nummer is tot de goedkeuring <b>niet gereserveerd</b>.</p>
+<div class="card"><h2>Discord-aanmelding</h2><p id="identity">Aanmeldstatus laden…</p>
+<button id="login" type="button">Aanmelden met Discord</button>
+<button id="logout" type="button" class="outline" hidden>Afmelden</button></div>
+<div id="alert" role="status" aria-live="polite"></div>
+<section class="card" id="formSection" hidden><h2>Nieuwe aanvraag</h2>
+<form id="requestForm">
+<div class="field"><label for="name">Spelersnaam</label><input id="name" required minlength="2" maxlength="80" autocomplete="off"></div>
+<div class="field"><label for="temp">Tijdelijk roepnummer (110–195)</label><input id="temp" required type="number" min="110" max="195"></div>
+<div class="field"><label for="preferred">Voorkeursnummer (optioneel)</label><select id="preferred"><option value="">Geen voorkeur – eerste vrije nummer</option></select><p class="muted">Beschikbaarheid kan veranderen tot een officier het nummer definitief vastlegt.</p></div>
+<button id="submit" type="submit">Aanvraag indienen</button></form></section>
+<section class="card" id="existing" hidden><h2>Jouw aanvraag</h2><dl id="details"></dl><p>Bij onvoldoende speeluren of dagen blijft de aanvraag in controle. Een kaderlid behandelt je aanvraag en beslist over het vaste nummer.</p></section>
+<section class="card"><h2>Voorwaarden</h2><p>Minimaal <b>10 speeluren</b> en <b>5 volledige dagen</b>. Een kaderlid controleert dit voorlopig via <code>/info member</code>. Je krijgt pas een personeelsfiche en politiedossier na goedkeuring. Er worden geen Google Sheets gewijzigd.</p></section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+let auth,authLib,active=false;
+const show=(message,error=false)=>{const el=$('alert');el.className='alert'+(error?' error':'');el.textContent=message};
+async function call(path,method='GET',data){
+  if(!auth?.currentUser)throw Error('Meld je eerst aan met Discord');
+  const token=await auth.currentUser.getIdToken();
+  const response=await fetch(path,{method,cache:'no-store',headers:{Authorization:'Bearer '+token,...(data?{'Content-Type':'application/json'}:{})},
+    body:data?JSON.stringify(data):undefined});
+  const body=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(body.error||'De server kan de aanvraag niet verwerken');
+  return body;
+}
+async function refresh(){
+  const info=await call('/api/callsigns/self');
+  $('identity').textContent='Ingelogd als '+(info.applicant.memberName||info.applicant.discordId)+' · Discord-ID '+info.applicant.discordId;
+  $('login').hidden=true;$('logout').hidden=false;active=true;
+  $('existing').hidden=!info.request;$('formSection').hidden=Boolean(info.request);
+  if(info.request){
+    const r=info.request;
+    const data=[['Naam',r.name],['Tijdelijk roepnummer',r.temporaryCall],['Voorkeur',r.preferredCall??'Geen'],['Status',r.status],['Vast roepnummer',r.assignedCall??'Nog niet toegekend']];
+    $('details').replaceChildren(...data.flatMap(([k,v])=>{const dt=document.createElement('dt');dt.textContent=k;const dd=document.createElement('dd');dd.textContent=String(v);return [dt,dd]}));
+  }else{
+    const nums=await call('/api/callsigns/self/available');
+    $('preferred').replaceChildren(new Option('Geen voorkeur – eerste vrije nummer',''),...(nums.available||[]).map(n=>new Option(n,n)));
+  }
+}
+$('requestForm').onsubmit=async event=>{
+  event.preventDefault();const button=$('submit');button.disabled=true;
+  try{
+    await call('/api/callsigns/self','POST',{name:$('name').value,temporaryCall:$('temp').value,
+      preferredCall:$('preferred').value||null});
+    show('Aanvraag ontvangen. Een kaderlid moet de gegevens controleren en de leiding beslist over het vaste nummer.');
+    await refresh();
+  }catch(e){show(e.message,true)}finally{button.disabled=false}
+};
+$('login').onclick=()=>location.assign('/auth/discord/start?return='+encodeURIComponent('/roepnummer-aanvragen.html'));
+$('logout').onclick=async()=>{if(auth)await authLib.signOut(auth);location.reload()};
+async function start(){
+  try{
+    const conf=await fetch('/api/client-config',{cache:'no-store'}).then(x=>x.json());
+    if(!conf.enabled||!conf.discordPortalLoginReady)throw Error('Discord-aanmelding is nog niet geactiveerd op deze server');
+    const [app,lib]=await Promise.all([
+      import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js')]);
+    authLib=lib;auth=lib.getAuth(app.initializeApp(conf.firebaseConfig));
+    await auth.authStateReady();
+    if(!auth.currentUser){$('identity').textContent='Meld je aan met je persoonlijke Discord-account';return;}
+    try{await refresh()}catch(e){
+      $('identity').textContent='Je sessie kan niet voor een roepnummeraanvraag worden gebruikt';
+      $('login').hidden=false;$('logout').hidden=false;active=false;show(e.message,true);
+    }
+  }catch(e){$('identity').textContent=e.message;show(e.message,true)}
+}start();
+</script></body></html>
