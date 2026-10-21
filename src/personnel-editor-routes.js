@@ -119,6 +119,11 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
           at:FieldValue.serverTimestamp()
         });
+        if(!pending)tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+          type:'personnel_joined',dept:proposed.dept,discordId:proposed.discordId,
+          name:proposed.name,before:'',after:proposed.rank+' · '+proposed.call,
+          at:FieldValue.serverTimestamp()
+        });
       });
       return res.status(201).json({created:true,pending,internalId:pending?ref.id:null,
         discordId:proposed.discordId,dept:proposed.dept});
@@ -244,6 +249,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
           action:'link_discord',previous:{discordId:null},next:{discordId},
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
           reason,at:FieldValue.serverTimestamp()});
+        // Pending staff enters the activity feed only after approved linkage.
+        tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+          type:'personnel_joined',dept:d.dept,discordId,
+          name:d.name,before:'',after:d.rank+' · '+d.call,
+          at:FieldValue.serverTimestamp()
+        });
       });
       return res.json({linked:true,discordId,dept:record.dept});
     }catch(e){return safeResponse(res,e)}
@@ -377,6 +388,20 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
           tx.create(getFirestore().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
             type:'callsign_changed',dept:subject.dept,discordId:subject.personId,
             name:proposed.name,before:oldCall,after:proposed.call,
+            at:FieldValue.serverTimestamp()
+          });
+        }
+        if(previous.name!==next.name){
+          tx.create(getFirestore().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+            type:'name_changed',dept:subject.dept,discordId:subject.personId,
+            name:next.name,before:previous.name,after:next.name,
+            at:FieldValue.serverTimestamp()
+          });
+        }
+        if(previous.status!==next.status){
+          tx.create(getFirestore().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+            type:'status_changed',dept:subject.dept,discordId:subject.personId,
+            name:next.name,before:previous.status,after:next.status,
             at:FieldValue.serverTimestamp()
           });
         }
