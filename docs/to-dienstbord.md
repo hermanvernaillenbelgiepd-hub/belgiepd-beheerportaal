@@ -70,15 +70,26 @@ Met **＋ Meer meldingen** kunnen ook **OVERLAST, WONINGINBRAAK, VECHTPARTIJ, VE
 ## Snelle TO-werkstroom
 - Sonoran blijft een read-only bron: herkende radiogebruikers verschijnen bovenaan, en nog niet opgenomen radioploegen komen in **Nog op te nemen** met een korte aankomstmarkering. Onbekende radiolabels worden uit de operationele lijst verborgen, maar blijven in het totale aantal radioverbindingen meetellen.
 - Met **＋ Op bord** of slepen naar de dropzone slaat de huidige bevoegde TO een **herkend categorie/nummer als één ploeg** op. De radioweergavenaam wordt als voorlopig radiolabel bewaard, niet als geverifieerd personeelsdossier. Bij een Sonoran-koppeldienst met hetzelfde roepnummer blijft het één opgeslagen eenheid, zonder gefingeerde tweede persoonlijke roepnummer.
-- Met **－ Uit dienst** kan dezelfde TO via bevestiging de ploeg beëindigen. Actieve meldingen verhinderen dit totdat de ploeg ontkoppeld of de melding afgerond is. Radio-afmeldingen verwijderen nooit automatisch een opgeslagen ploeg.
+- Met **－ Uit dienst** kan de TO via bevestiging zelf een ploeg beëindigen. Daarnaast gaat een afwezige radioploeg zonder actieve meldingskoppeling na twee minuten betrouwbare afwezigheid automatisch uit dienst; de bestaande geschiedenis blijft bewaard.
 - Ploegkaarten gebruiken een groene achtergrond voor beschikbaar, oranje voor op melding en rood voor niet beschikbaar, met bijbehorende tekstlabels.
 - Een nieuwe melding kan starten met de snelle knoppen **ANPR**, **AGRESSIE**, **VKO**, **BRAND**, **TAKELING**, **DIEFSTAL**, **VERDACHTE SITUATIE** en **MEDISCHE BIJSTAND**. Die vullen alleen de titel vooraf in: postcode en omschrijving worden vóór opslaan gecontroleerd.
+
+## Automatisch uit dienst bij Sonoran-radioverlies
+
+Het dienstbord controleert de Sonoran-kanaalbezetting ongeveer elke 15 seconden zolang minstens één aangemelde politiemedewerker de radioweergave open heeft. Dit werkt ook wanneer de huidige TO zijn eigen pc verliest maar een collega blijft meekijken.
+
+- Een opgeslagen ploeg die **minstens twee minuten** uit alle radiokanalen verdwenen is, wordt automatisch **Uit dienst** gezet na minimaal **drie afzonderlijke, geldige Sonoran-updates**. Het is geen definitieve verwijdering: `endedAt`, `endedBy=system:sonoran-radio` en `endedReason=radiokanaal-verlaten` blijven op de ploeg bewaard voor archivering.
+- Een korte verbindingsonderbreking wordt genegeerd. Wanneer een ploeg tussendoor opnieuw in een radiokanaal verschijnt, start de wachttijd opnieuw. Een tijdelijke Sonoran-storing, verouderde cache of ontbrekende kanaalinfo geldt niet als bewezen afwezigheid. Een radio-gebruiker waarvan de kanaalstatus onbekend is, beschermt het corresponderende roepnummer tegen automatische afmelding.
+- De beveiligde server vergelijkt **categorie én numeriek roepnummer**, inclusief individuele koppelleden en voorloopnullen. Een actieve melding beschermt haar gekoppelde ploegen: die mogen nooit automatisch uit dienst worden gezet, ook niet wanneer zij de radio verlaten.
+- Deze afmelding gebruikt dezelfde **gedeelde Firebase-dienstborddata** voor iedere TO. Firestore verwerkt het beëindigen atomair en controleert de actuele meldingkoppelingen nogmaals voordat een ploeg als uit dienst wordt bewaard. De TO hoeft niet zelf op **Uit dienst** te klikken.
+- Komt iemand later terug in Sonoran, dan wordt een eerder automatisch uit dienst gezette ploeg weer als **nieuwe radioploeg** getoond; de TO kan haar opnieuw opnemen met **Op bord**, zonder dat oude meldingen of de historische afmelding worden verwijderd.
+- Omdat de server op de regelmatige radiovragen van ingelogde dienstbordgebruikers reageert, kan automatische verwerking stilvallen als **iedereen het dienstbord sluit** of als Render in slaap valt. Bij de volgende geldige verversingen begint dan opnieuw een veilige observatieperiode.
 
 ## Alleen radiogebruikers die werkelijk in een kanaal zitten
 - Sonoran `connectedUsers` omvat ook aangemelde gebruikers die nog niet op een zend- of scankanaal zitten. Het TO-dienstbord verwerkt vanaf deze versie **alleen** gebruikers met minimaal één geldige kanaal-ID uit `metadata.state.primaryChId` of `metadata.state.scannedChIds` (en `primaryChIds` indien aanwezig).
 - `roomId` identificeert een Sonoran multi-server kamer en **mag niet als kanaal-ID worden getoond of meegeteld**.
 - Radiogebruikers zonder actieve kanaaltoewijzing verdwijnen uit de operationele lijst, de nieuwe-aansluitingenlijst en de extra radioploegtelling. Het aantal alleen verbonden gebruikers is afzonderlijk zichtbaar.
-- De server geeft uitsluitend geschoonde, in een kanaal actieve gebruikers terug. Een radiogebruiker die het kanaal verlaat, wordt niet automatisch uit een reeds handmatig opgeslagen TO-ploeg verwijderd; de TO beslist zelf over het beëindigen van de dienst.
+- De server geeft uitsluitend geschoonde, in een kanaal actieve gebruikers terug. Een radiogebruiker die een kanaal verlaat, start de veilige observatietijd voor automatische afmelding van niet-ingezette ploegen. Zie de sectie hierboven.
 - Bij ontbrekende kanaalmetadata wordt niemand ten onrechte als actieve radioploeg aangenomen; controleer in dat geval of Sonoran de verwachte metadata doorstuurt.
 
 ## Radio-calltekens NB en koppeldienst (*)
