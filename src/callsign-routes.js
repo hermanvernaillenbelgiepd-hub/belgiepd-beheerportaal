@@ -18,8 +18,9 @@ const fail=(res,e)=>{
 const reject=(code,message)=>Object.assign(new Error(message),{httpStatus:code});
 const stamp=x=>x?.toDate?.().toISOString?.()||null;
 const rows=snaps=>snaps.docs.map(d=>({...d.data(),id:d.id}));
-export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged=()=>{}}){
-  const db=()=>getFirestore();
+export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged=()=>{},firestore=()=>getFirestore(),authentication=()=>getAuth()}){
+  // Injectable services are used only by deterministic, isolated integration tests.
+  const db=firestore;
   const requests=()=>db().collection('bpd_callsign_requests');
   const by=async req=>actorFromPersonnel(req.bpd,(await getSnapshot()).data);
 
@@ -32,7 +33,7 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
     const token=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
     if(!token)return res.status(401).json({error:'Meld je eerst aan via Discord'});
     try{
-      const verified=await getAuth().verifyIdToken(token);
+      const verified=await authentication().verifyIdToken(token);
       const id=String(verified.uid||'').replace(/^discord:/,'');
       if(!isDiscordId(id))return res.status(403).json({error:'Discord-login vereist'});
       const [member,user]=await Promise.all([
