@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
   fixedCall,applicantRequest,canInspect,canAssign,claimedCalls,
-  availableCalls,proposedCall,claimId,existingApplicant,portalReady
+  availableCalls,proposedCall,claimId,existingApplicant,intakeReady,portalReady
 } from '../src/callsign-portal-policy.js';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const ID='123456789012345678';
@@ -64,7 +64,10 @@ test('Call claims are generated from the SAME global police reservation key as p
 test('Portal approvals fail closed until explicit flags including dossiers are enabled',()=>{
   assert.equal(portalReady({}),false);
   assert.equal(portalReady({BPD_ENABLE_CALLSIGN_REQUESTS:'true',BPD_ENABLE_PORTAL_CALLSIGN_APPROVALS:'true'}),false);
-  assert.equal(portalReady({BPD_ENABLE_CALLSIGN_REQUESTS:'true',BPD_ENABLE_PORTAL_CALLSIGN_APPROVALS:'true',BPD_ENABLE_STAFF_DOSSIERS:'true'}),true);
+  assert.equal(portalReady({BPD_ENABLE_CALLSIGN_REQUESTS:'true',BPD_ENABLE_PORTAL_CALLSIGN_APPROVALS:'true',BPD_ENABLE_STAFF_DOSSIERS:'true'}),false,'Production or unknown database must not receive TEST writes');
+  assert.equal(intakeReady({FIREBASE_PROJECT_ID:'prod',BPD_ENABLE_CALLSIGN_REQUESTS:'true'}),false);
+  assert.equal(intakeReady({FIREBASE_PROJECT_ID:'belgiepd-test',BPD_ENABLE_CALLSIGN_REQUESTS:'true'}),true);
+  assert.equal(portalReady({FIREBASE_PROJECT_ID:'belgiepd-test',BPD_ENABLE_CALLSIGN_REQUESTS:'true',BPD_ENABLE_PORTAL_CALLSIGN_APPROVALS:'true',BPD_ENABLE_STAFF_DOSSIERS:'true'}),true);
 });
 test('API writes no Sheets; creates linked Firestore person, staff dossier, case, audit atomically',()=>{
   const route=read('src/callsign-routes.js');
