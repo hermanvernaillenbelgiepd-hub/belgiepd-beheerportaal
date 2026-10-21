@@ -1,4 +1,5 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import {canReadServiceDossier} from './service-dossier-access.js';
 import { actorFromPersonnel, isCadre, isDiscordId, mayAmend, mayRead, maySubmit, canChooseSanction, canRepresent, eligibleRepresentative, representativeFromPersonnel, safeSubject, validateAmend, validateEntry } from './registrations.js';
 const DEPTS=['politie','brandweer','ambulance','depannage'];
 const trim=s=>String(s??'').trim();
@@ -32,7 +33,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
   // Registraties zijn uitsluitend zichtbaar voor kaderleden van de juiste dienst.
   app.get('/api/registrations/entries',requireUser,async(req,res)=>{
     const dept=trim(req.query.dept), id=trim(req.query.discordId);
-    if(!mayRead(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
+    if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
     if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const snap=await getSnapshot();
@@ -46,7 +47,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     if(!writesEnabled())return res.status(503).json({error:'Registraties staan nog uit. Stel BPD_ENABLE_REGISTRATIONS=true in na controle van Firebase-rechten.'});
     const raw=req.body;
     const dept=trim(raw?.dept), id=trim(raw?.discordId), type=trim(raw?.type);
-    if(!maySubmit(req.bpd,type,dept))return res.status(403).json({error:'Geen bevoegdheid om deze registratie in te dienen'});
+    if(!req.bpd.dossierNativeDepartments?.includes(dept)||!maySubmit(req.bpd,type,dept))return res.status(403).json({error:'Geen bevoegdheid om deze registratie in te dienen'});
     if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const values=validateEntry(raw);
@@ -82,7 +83,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
   app.patch('/api/registrations/entries/:dept/:discordId/:entryId',requireUser,async(req,res)=>{
     if(!writesEnabled())return res.status(503).json({error:'Registraties staan nog uit.'});
     const {dept,discordId:id,entryId}=req.params;
-    if(!mayAmend(req.bpd,'sanctie',dept))return res.status(403).json({error:'Alleen officierenkader en korpsleiding mogen sancties wijzigen'});
+    if(!req.bpd.dossierNativeDepartments?.includes(dept)||!canReadServiceDossier(req.bpd,dept)||!mayAmend(req.bpd,'sanctie',dept))return res.status(403).json({error:'Alleen bevoegd officierenkader en korpsleiding mogen sancties wijzigen'});
     if(!isDiscordId(id)||!/^[a-zA-Z0-9]{12,30}$/.test(entryId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
     try{
       const values=validateAmend(req.body);
@@ -110,7 +111,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
   app.get('/api/registrations/notifications',requireUser,async(req,res)=>{
     if(!isCadre(req.bpd.role))return res.status(403).json({error:'Geen toegang tot meldingen'});
     const dept=trim(req.query.dept);
-    if(!DEPTS.includes(dept)||!req.bpd.departments.includes(dept))return res.status(403).json({error:'Geen toegang tot deze dienst'});
+    if(!DEPTS.includes(dept)||!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen toegang tot deze dienst'});
     try{
       const rows=await db().collection('bpd_notices').doc(dept).collection('events').orderBy('createdAt','desc').limit(40).get();
       res.json({events:rows.docs.map(d=>({id:d.id,type:d.get('type'),createdAt:isoTimestamp(d.get('createdAt')),caseId:d.get('caseId')}))});
