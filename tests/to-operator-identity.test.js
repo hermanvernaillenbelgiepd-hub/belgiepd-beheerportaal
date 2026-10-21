@@ -57,9 +57,14 @@ test('Server-controlled 930 overrides a client-typed TO name for start and takeo
   assert.equal(started.board.session.to,'930');
   assert.equal(started.board.session.ownerUid,operator.uid);
   const handover={...actor,uid:'discord:222222222222222222',discordId:'222222222222222222',toCallsign:'008'};
-  const next=applyBoardCommand(started.board,{type:'takeover',expectedRevision:1,
+  const requested=applyBoardCommand(started.board,{type:'request-takeover',expectedRevision:1,
     displayName:'Andere willekeurige naam',reason:'Overdracht tussen twee kaderleden.'},
     {actor:handover,now:now+5000,id:randomUUID()});
+  assert.equal(requested.board.session.pendingTakeover.name,'008');
+  assert.equal(requested.board.session.ownerUid,operator.uid);
+  const next=applyBoardCommand(requested.board,{type:'approve-takeover',expectedRevision:2,
+    requestId:requested.board.session.pendingTakeover.id},
+    {actor:operator,now:now+6000,id:randomUUID()});
   assert.equal(next.board.session.to,'008');
   assert.equal(next.board.session.handovers[0].from,'930');
   assert.equal(next.board.session.handovers[0].to,'008');
