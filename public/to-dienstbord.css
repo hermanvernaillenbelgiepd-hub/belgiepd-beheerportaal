@@ -395,3 +395,7 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
   box-shadow:0 2px 12px var(--duty-card-glow);
 }
 /* Niet van toepassing op [data-availability="on-pause"]: NB en Pauze blijven ongewijzigd. */
+
+/* De blauwe bovenrand blijft de ritstatus aangeven, los van de hulpdienstkleur. */
+.team-card[data-availability="on-incident"][data-response-phase="onderweg"]{border-top:2px solid #4d89ed}
+.team-card[data-availability="on-incident"][data-response-phase="ter-plaatse"]{border-top:2px solid #1b64da}
