@@ -55,7 +55,7 @@ export function observeRadioDepartures(board,snapshot,tracker,now){
     // One fetch can be returned to many viewers from the 15s cache;
     // only a genuinely newer upstream poll confirms a second absence.
     if(timestamp<=prev.lastSnapshot)continue;
-    const observation={since:prev.since,polls:prev.polls+1,lastSnapshot:timestamp};
+    const observation={seen:true,since:prev.since,polls:prev.polls+1,lastSnapshot:timestamp};
     tracker.set(team.id,observation);
     if(!linked.has(team.id)&&timestamp-observation.since>=RADIO_AUTO_END_GRACE_MS&&
         observation.polls>=RADIO_AUTO_END_MIN_POLLS)ready.push(team.id);
