@@ -807,7 +807,7 @@ async function loadStaffDossier(p){
     if(!result.profileChanges?.length)hist.textContent='Nog geen administratieve wijzigingen geregistreerd.';
     else for(const entry of result.profileChanges){
       const line=document.createElement('div');line.className='history';
-      line.textContent=(entry.action==='profile_updated'?'Administratieve basisgegevens gewijzigd':'Notitie geregistreerd')+
+      line.textContent=(entry.action==='profile_updated'?'Administratieve basisgegevens gewijzigd':entry.action==='callsign_assigned'?'Vast roepnummer toegekend':'Notitie geregistreerd')+
         ' · '+(entry.recordedAt?new Date(entry.recordedAt).toLocaleString('nl-BE'):'Datum onbekend')+
         ' · Door '+(entry.byDiscordId||'onbekend')+(entry.reason?' · '+entry.reason:'');
       hist.append(line);
