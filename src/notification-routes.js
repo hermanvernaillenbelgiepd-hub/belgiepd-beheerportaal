@@ -130,20 +130,26 @@ export function installNotificationRoutes(app,{requireUser,getSnapshot,firestore
     if(!periods.length)return res.status(403).json({error:'Geen inzage in weekrapporten'});
     res.json({periods,canSave:['officierenkader','korpsleiding'].includes(roleForDepartment(req.bpd,'politie'))});
   });
+  async function reportEvents(period,scope){
+    const snap=await db().collection('bpd_weekreport_events').limit(1500).get();
+    if(snap.size===1500)throw Error('Rapportlog is te groot voor een volledige controle');
+    return mapped(snap).filter(x=>x.eventDate>=period.start&&x.eventDate<=period.end&&
+      (scope.series.includes(x.series)||['officierenkader','korpsleiding'].includes(scope.role)&&x.series==null))
+      .map(x=>({eventDate:x.eventDate,type:x.type,subjectName:x.subjectName,
+        subjectCall:x.subjectCall,series:x.series,byDiscordId:x.byDiscordId,details:x.details}))
+      .sort((x,y)=>String(x.eventDate).localeCompare(String(y.eventDate)));
+  }
   app.get('/api/notifications/periods/:start',requireUser,async(req,res)=>{
     try{
       const period=periodsForActor(today(),req.bpd).find(x=>x.start===req.params.start);
       if(!period)return res.status(403).json({error:'Deze periode is niet toegankelijk'});
       const scope=policeScope(req.bpd,policeSeriesHeads(process.env));
-      const snap=await db().collection('bpd_weekreport_events').limit(1500).get();
-      if(snap.size===1500)throw Error('Onvolledig rapport');
-      const events=mapped(snap).filter(x=>x.eventDate>=period.start&&x.eventDate<=period.end&&
-        (scope.series.includes(x.series)||['officierenkader','korpsleiding'].includes(scope.role)&&x.series==null))
-        .map(x=>({eventDate:x.eventDate,type:x.type,subjectName:x.subjectName,
-          subjectCall:x.subjectCall,series:x.series,byDiscordId:x.byDiscordId,details:x.details}))
-        .sort((a,b)=>String(a.eventDate).localeCompare(String(b.eventDate)));
       const saved=await db().collection('bpd_fortnight_reports').doc(period.start).get();
-      res.json({period,events,saved:saved.exists});
+      const all=saved.exists&&Array.isArray(saved.get('events'))?
+        saved.get('events'):await reportEvents(period,scope);
+      const events=all.filter(e=>scope.series.includes(e.series)||
+        ['officierenkader','korpsleiding'].includes(scope.role)&&e.series==null);
+      res.json({period,events,saved:saved.exists,canSaveNow:today()>period.end});
     }catch(e){res.status(503).json({error:'Rapport niet beschikbaar'});}
   });
   app.post('/api/notifications/periods/:start/save',requireUser,async(req,res)=>{
@@ -153,11 +159,15 @@ export function installNotificationRoutes(app,{requireUser,getSnapshot,firestore
       return res.status(403).json({error:'Alleen officierenkader en korpsleiding kunnen opslaan'});
     const period=periodsForActor(today(),req.bpd).find(x=>x.start===req.params.start);
     if(!period)return res.status(403).json({error:'Rapportperiode niet beschikbaar'});
+    if(today()<=period.end)return res.status(409).json({error:'De lopende rapportperiode kan nog niet worden afgesloten'});
     try{
+      const events=await reportEvents(period,scope);
+      if(events.length>500||JSON.stringify(events).length>600000)
+        return res.status(503).json({error:'Rapport bevat te veel gegevens om veilig op te slaan'});
       await db().collection('bpd_fortnight_reports').doc(period.start)
-        .create({...period,dept:'politie',status:'opgeslagen',savedByDiscordId:req.bpd.discordId,
-          savedAt:FieldValue.serverTimestamp()});
-      res.status(201).json({saved:true});
+        .create({...period,dept:'politie',status:'opgeslagen',events,eventCount:events.length,
+          savedByDiscordId:req.bpd.discordId,savedAt:FieldValue.serverTimestamp()});
+      res.status(201).json({saved:true,entries:events.length});
     }catch(e){res.status(e.code===6?409:503).json({error:e.code===6?'Reeds opgeslagen':'Opslaan mislukt'});}
   });
 }
