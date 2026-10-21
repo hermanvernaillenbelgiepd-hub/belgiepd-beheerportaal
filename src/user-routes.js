@@ -4,7 +4,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {roleSummary} from './role-catalog.js';
 import {roleForDepartment} from './leave-policy.js';
 import {USER_COLLECTION,USER_DEPTS,verifiedDiscordIdentity,validUserGrant,
-  isUserManager,canSeeUser,canChangeUser,canBlockUser} from './user-access.js';
+  isUserManager,canSeeUser,canChangeUser,canBlockUser,approvedManagedEntry} from './user-access.js';
 
 const validId=id=>/^\d{15,22}$/.test(String(id||''));
 function ready(){
@@ -75,9 +75,73 @@ export function installUserRoutes(app,{requireUser,accessList}){
     const depts=req.bpd.departments||[];
     res.json({role:req.bpd.role,departments:depts,
       departmentRoles:Object.fromEntries(depts.map(dept=>[dept,roleForDepartment(req.bpd,dept)||'geen'])),
-      canManageUsers:isUserManager(req.bpd)});
+      canManageUsers:isUserManager(req.bpd),canManageTO:req.bpd.role==='beheerder'});
   });
   const admin=(req,res,next)=>isUserManager(req.bpd)?next():denial(res,403,'Alleen officierenkader, korpsleiding en beheer kunnen gebruikers beheren');
+  // Independent TO rights: no police or other personnel role is modified.
+  // Technical administrators only; verified, approved portal users only.
+  const toAdmin=(req,res,next)=>req.bpd?.role==='beheerder'
+    ?next():denial(res,403,'Alleen technisch beheer mag TO-rechten beheren');
+  const toAccess=()=>db().collection('bpd_to_access');
+  const toAudit=()=>db().collection('bpd_to_access_audit');
+  const toReason=reason=>typeof reason==='string'&&reason.trim().length>=8&&reason.trim().length<=300
+    ?reason.trim():null;
+  app.get('/api/users/to-grants',requireUser,toAdmin,async(_req,res)=>{
+    try{
+      const snap=await toAccess().limit(150).get();
+      const entries=snap.docs.map(d=>({discordId:d.id,level:d.data().level||'read',
+        status:d.data().status||'revoked',username:String(d.data().username||'').slice(0,80)}));
+      return res.json({entries,limited:snap.size===150});
+    }catch(e){return fail(res,e)}
+  });
+  app.post('/api/users/to-grants',requireUser,toAdmin,async(req,res)=>{
+    const discordId=String(req.body?.discordId||''),level=req.body?.level,reason=toReason(req.body?.reason);
+    if(!validId(discordId)||!['read','operate'].includes(level)||!reason)
+      return denial(res,400,'Vul een geldige Discord-ID, TO-toegang en reden van 8-300 tekens in');
+    if(discordId===req.bpd.discordId)return denial(res,403,'Je kunt jezelf geen TO-rechten toewijzen');
+    try{
+      const access=toAccess().doc(discordId),person=collection().doc(discordId),audit=toAudit().doc();
+      await db().runTransaction(async tx=>{
+        const user=await tx.get(person),existing=await tx.get(access);
+        let username='';
+        if(user.exists){
+          const approved=approvedManagedEntry(user.data(),discordId);
+          if(!approved)throw publicError('Dit account is niet goedgekeurd voor het portaal');
+          username=String(user.data().username||'').slice(0,80);
+        }else{
+          // Legacy allowlist accounts are accepted only when the target's
+          // original approved ID and role are still valid.
+          const legacy=Object.values(accessList()).find(e=>e?.discordId===discordId);
+          if(!legacy||!Array.isArray(legacy.departments)||!legacy.departments.length||
+             !['basiskader','middenkader','officierenkader','korpsleiding','beheerder'].includes(legacy.role))
+            throw publicError('Laat deze Discord-gebruiker eerst de portaalaanmelding goedkeuren');
+          username='Bestaand portaalaccount';
+        }
+        tx.set(access,{discordId,level,status:'active',username,
+          updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid});
+        tx.create(audit,{discordId,action:existing.exists?'update':'grant',level,
+          actorUid:req.bpd.uid,reason,at:FieldValue.serverTimestamp()});
+      });
+      return res.json({ok:true,discordId,level});
+    }catch(e){return fail(res,e)}
+  });
+  app.post('/api/users/to-grants/:discordId/revoke',requireUser,toAdmin,async(req,res)=>{
+    const discordId=req.params.discordId,reason=toReason(req.body?.reason);
+    if(!validId(discordId)||!reason)return denial(res,400,'Vul een geldige Discord-ID en reden van 8-300 tekens in');
+    if(discordId===req.bpd.discordId)return denial(res,403,'Je kunt je eigen machtiging niet intrekken');
+    try{
+      const access=toAccess().doc(discordId),audit=toAudit().doc();
+      await db().runTransaction(async tx=>{
+        const previous=await tx.get(access);
+        tx.set(access,{...(previous.exists?previous.data():{}),discordId,status:'revoked',
+          level:previous.exists?previous.data().level:'read',
+          updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid});
+        tx.create(audit,{discordId,action:'revoke',actorUid:req.bpd.uid,
+          reason,at:FieldValue.serverTimestamp()});
+      });
+      return res.json({ok:true,discordId,status:'revoked'});
+    }catch(e){return fail(res,e)}
+  });
   app.get('/api/users/overview',requireUser,admin,async(req,res)=>{
     try{
       const snap=await collection().limit(250).get();
