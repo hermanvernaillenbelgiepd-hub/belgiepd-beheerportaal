@@ -376,3 +376,17 @@ test('Direct choice never deletes active incident assignment or its history',()=
   board=command(board,'detach-team',{id:incident.id,teamId:team.id}).board;
   assert.equal(board.meldingen[incident.id].ploegen.length,0);
 });
+
+test('Only teams explicitly imported through radio carry an auto-signoff source marker',()=>{
+  let board=started();
+  board=command(board,'add-team',{dienst:'SANTO',
+    leden:[{naam:'Radiogebruiker',roep:'180'}],radioSource:'sonoran'}).board;
+  const imported=Object.values(board.ploegen)[0];
+  assert.equal(imported.radioSource,'sonoran');
+  board=command(board,'add-team',{dienst:'REPA',
+    leden:[{naam:'Manueel toegevoegd',roep:'204'}]}).board;
+  const manual=Object.values(board.ploegen).find(team=>team.dienst==='REPA');
+  assert.equal(manual.radioSource,undefined);
+  expectStatus(()=>command(board,'add-team',{dienst:'SANTO',
+    leden:[{naam:'Niet toegestaan',roep:'181'}],radioSource:'anders'}),400);
+});
