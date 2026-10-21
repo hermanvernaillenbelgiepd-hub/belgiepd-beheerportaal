@@ -37,7 +37,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 </style></head><body>
 <header><strong>🛡️ BelgiumPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal dossieroverzicht</h1>
-<p>Een beveiligd overzicht van personeelsfiches en loopbaanhistoriek. Alleen gegevens waarvoor je per hulpdienst bevoegd bent worden getoond.</p>
+<p>Elk personeelsdossier is volledig dienstgebonden. Politie, ambulance, brandweer en depannage beheren hun eigen personeelsgegevens, notities en historiek. Alleen jouw bevoegde diensten zijn zichtbaar.</p>
 <div id="message" role="status" aria-live="polite" class="notice">Toegangsrechten controleren…</div>
 <section class="card">
 <div class="filter-grid">
@@ -145,13 +145,13 @@ function detailLinks(data){
 async function openDossier(r){
   shown=r.dept+':'+r.discordId;
   const active=shown;
-  $('detail').hidden=false;$('detailTitle').textContent='Dossier · '+r.name;
+  $('detail').hidden=false;$('detailTitle').textContent=(departments[r.dept]||r.dept)+' · afzonderlijk personeelsdossier · '+r.name;
   timelineEntries=[];$('historyKind').value='all';$('detailLinks').replaceChildren();
   $('staff').textContent='Laden…';$('history').textContent='Laden…';$('matchWarning').textContent='';
   try{
     const data=await request('/api/dossiercentrum/'+encodeURIComponent(r.dept)+'/'+encodeURIComponent(r.discordId));
     if(shown!==active)return;
-    $('matchWarning').textContent=data.matchNotice||'Dossiers blijven dienstgebonden en zijn gekoppeld op Discord-ID, niet op naam.';
+    $('matchWarning').textContent='Dit is uitsluitend het dossier van '+(departments[r.dept]||r.dept)+'. Andere hulpdiensten beheren hun eigen afzonderlijke dossier voor dezelfde Discord-gebruiker.';
     const staff=$('staff');staff.replaceChildren();
     if(data.personnel){
       const p=data.personnel;
