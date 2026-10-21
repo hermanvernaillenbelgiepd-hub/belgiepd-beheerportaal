@@ -66,3 +66,24 @@ test('User-defined incident shortcuts persist and can be reused or deleted',()=>
     '.saved-preset-delete'
   ])assert.ok(js.includes(marker)||css.includes(marker),marker);
 });
+
+
+test('Crew cards expose unlink only while on active calls, confirm and select a single incident',()=>{
+  for(const marker of [
+    "busy.length?\`<button type=\"button\" class=\"text-button team-detach-button\"",
+    'data-action="team-detach-dialog"',
+    "function detachTeamDialog(teamId)",
+    "case 'team-detach-dialog':",
+    "form:'detach-team-from-card'",
+    "if(type==='detach-team-from-card')",
+    "name=\"incidentId\"",
+    "linked.length===1",
+    "linked.map(incident=>",
+    "linked.some(incident=>incident.id===incidentId)",
+    "command('detach-team',{id:incidentId,teamId:id},revision)",
+    "Ontkoppelen bevestigen",
+    "De melding blijft bestaan"
+  ])assert.ok(js.includes(marker),marker);
+  assert.ok(css.includes('.team-actions .team-detach-button'));
+  assert.ok(css.includes('.detach-assignment'));
+});
