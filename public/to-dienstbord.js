@@ -62,6 +62,7 @@ const button=(text,action,{id='',teamId='',primary=false,danger=false,small=fals
 let auth=null,authEpoch=0;
 const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',showMoreIncidentPresets:false,shortcuts:{revision:0,items:{}},shortcutsError:null,archives:null,archive:null,lastSynced:null,teamView:'compact',collapsedBoardGroups:new Set(),pendingCollapsed:false,openCrewMenus:new Set()};
 const radio={snapshot:null,loading:false,error:null,receivedAt:null,requestSerial:0,knownIds:null,newIds:new Set()};
+const panics={items:[],recentCleared:[],loading:false,error:null,serial:0,expanded:new Set()};
 const INCIDENT_PRESETS=Object.freeze(['ANPR','AGRESSIE','VKO','BRAND','TAKELING','DIEFSTAL','VERDACHTE SITUATIE','MEDISCHE BIJSTAND']);
 const INCIDENT_EXTRA_PRESETS=Object.freeze(['OVERLAST','WONINGINBRAAK','VECHTPARTIJ','VERMIST PERSOON','ACHTERVOLGING','VERDACHT VOERTUIG','VERKEERSHINDER','BEROVING']);
 const dialog=el('to-dialog');
@@ -191,6 +192,7 @@ async function refresh({quiet=false}={}){
     render();
     if(!quiet||wasStale)showReadiness();
     if(state.view==='board'&&!radio.snapshot&&!radio.loading)void refreshRadio();
+    if(state.view==='board')void refreshPanics();
   }catch(error){
     if(error.obsolete)return;
     state.stale=true;
@@ -223,6 +225,64 @@ async function refreshRadio(){
     }
   }
 }
+
+async function refreshPanics(){
+  if(!auth?.currentUser||!state.env||document.hidden||panics.loading)return;
+  const serial=++panics.serial,epoch=authEpoch;
+  panics.loading=true;
+  try{
+    const result=await request('/api/to/panics');
+    if(serial!==panics.serial||epoch!==authEpoch||!state.env)return;
+    if(!Array.isArray(result.panics)||!Array.isArray(result.recentCleared))throw Error('Onvolledige noodsignalenrespons');
+    const previous=new Set(panics.items.map(p=>p.serverId));
+    panics.items=result.panics;panics.recentCleared=result.recentCleared;panics.error=null;
+    if(result.panics.some(p=>!previous.has(p.serverId))&&previous.size>0)
+      toast('⚠ Nieuw Sonoran-noodsignaal op het TO-bord');
+  }catch(e){
+    if(e.obsolete||serial!==panics.serial||epoch!==authEpoch)return;
+    panics.error='Noodsignalen tijdelijk niet bereikbaar. Oude gegevens kunnen verouderd zijn.';
+  }finally{
+    if(serial===panics.serial&&epoch===authEpoch){
+      panics.loading=false;
+      if(state.env&&state.view==='board'){el('board-content').innerHTML=renderBoard();updateButtons();}
+    }
+  }
+}
+const gtaMapLink=(position,heading)=>{
+  const h=typeof heading==='number'?heading:0;
+  return 'https://fivemad.com/tools/interactive-map#at='+
+    [position.x,position.y,position.z,h].map(encodeURIComponent).join(',')+'&zoom=6';
+};
+function panicAlertsMarkup(){
+  if(!panics.items.length&&!panics.recentCleared.length&&!panics.error)return '';
+  const live=panics.items.map(p=>{
+    const coords=p.position;
+    const vector=coords?'vector3('+[coords.x,coords.y,coords.z].join(', ')+')':'';
+    const key=String(p.serverId),opened=panics.expanded.has(key);
+    return '<article class="to-panic-alert" role="alert"><span class="to-panic-siren" aria-hidden="true">🚨</span>'+
+      '<div class="to-panic-content"><strong>NOODKNOP GEACTIVEERD · '+esc(p.name)+'</strong>'+
+      '<div>FiveM-speler #'+esc(key)+' · '+time(p.receivedAt)+(p.old?' · Signaal ouder dan 10 minuten':'')+'</div>'+
+      (coords?'<div class="to-panic-actions"><button type="button" class="button button-small" data-action="panic-show-location" data-id="'+esc(key)+'">'+
+        (opened?'Verberg locatie':'📍 Toon locatie')+'</button>'+
+        '<button type="button" class="button button-small" data-action="panic-copy-location" data-id="'+esc(key)+'">Kopieer coördinaten</button></div>'+
+        (opened?'<div class="to-panic-position"><strong>Laatste bekende GTA-locatie</strong> · '+esc(vector)+
+        '<div><a href="'+esc(gtaMapLink(coords,p.heading))+'" target="_blank" rel="noopener noreferrer">Open GTA-kaart ↗</a> '+
+        '<small>(externe kaart; beschikbaarheid kan variëren)</small></div></div>':''):
+        '<small>Geen spelcoördinaten ontvangen.</small>')+
+      '</div></article>';
+  }).join('');
+  const closed=panics.recentCleared.length?'<details class="to-panic-history"><summary>Afgehandelde noodsignalen ('+panics.recentCleared.length+')</summary>'+
+    '<ul>'+panics.recentCleared.map(p=>'<li>'+esc(p.name)+' · gewist om '+time(p.clearedAt)+'</li>').join('')+'</ul></details>':'';
+  return '<section class="to-panic-area" aria-label="Sonoran noodsignalen">'+
+    (panics.items.length?'<h2>🚨 ACTIEVE NOODSIGNALEN ('+panics.items.length+')</h2>':'')+
+    live+(panics.error?'<p class="to-panic-error">'+esc(panics.error)+'</p>':'')+closed+'</section>';
+}
+function panicForTeam(team,radioMembers){
+  const names=new Set([...(team.leden||[]).map(p=>p.naam),...radioMembers.map(u=>u.displayName)].map(s=>String(s||'').trim().toLocaleLowerCase('nl')).filter(Boolean));
+  const matching=panics.items.filter(p=>names.has(String(p.name||'').trim().toLocaleLowerCase('nl')));
+  return matching.length===1?matching[0]:null;
+}
+
 function renderRadio(){
   const panel=el('radio-panel');
   panel.hidden=!state.env||state.view!=='board';
@@ -380,12 +440,14 @@ function renderBoard(){
   const customShortcuts=Object.values(state.shortcuts?.items||{}).sort((a,b)=>a.title.localeCompare(b.title,'nl',{sensitivity:'base'}));
   const savedPresets=customShortcuts.length?`<section class="saved-presets" aria-label="Opgeslagen meldingssneltoetsen"><h3>★ Opgeslagen sneltoetsen <span>· gedeeld tussen diensten</span></h3><div class="saved-presets-row">${customShortcuts.map(shortcut=>`<span class="saved-preset"><button type="button" class="incident-preset saved-preset-open" data-action="custom-incident-template" data-id="${esc(shortcut.id)}" title="Nieuwe melding: ${esc(shortcut.title)}" ${!editable?'disabled':''}>${esc(shortcut.title)}</button>${editable?`<button type="button" class="saved-preset-delete" data-action="remove-incident-shortcut" data-id="${esc(shortcut.id)}" aria-label="Verwijder sneltoets ${esc(shortcut.title)}" title="Sneltoets verwijderen" data-write>×</button>`:''}</span>`).join('')}</div></section>`:'';
   const presets=state.env.permissions.canEdit?`<div class="incident-presets" role="group" aria-label="Snelle meldingen">${shownPresets.map(name=>`<button type="button" class="incident-preset" data-action="incident-template" data-template="${esc(name)}" data-write${!editable?' disabled':''}>${esc(name)}</button>`).join('')}<button type="button" class="incident-preset incident-more" data-action="incident-presets-toggle" aria-expanded="${state.showMoreIncidentPresets}" aria-label="Meer veelvoorkomende meldingen tonen of verbergen">${state.showMoreIncidentPresets?'− Minder':'＋ Meer meldingen'}</button></div>`:'';
-  return `${!board.session?`<section class="no-session"><div><h2>Het bord is klaar voor een nieuwe dienst.</h2><p>Start een sessie om ploegen toe te voegen en meldingen te registreren. Afgesloten diensten blijven terug te vinden in het archief.</p></div>${state.env.permissions.canOperate?button('Dienst starten','start',{primary:true,write:true}):''}</section>`:''}<div class="board-layout" data-team-view="${state.teamView}"><section aria-labelledby="teams-title"><div class="panel-heading"><div><h2 id="teams-title">Ploegen op dienstbord</h2><p>${teams.length} ${teams.length===1?'ploeg':'ploegen'} · ${savedPairCount} koppelploeg(en)</p></div><div class="board-heading-actions"><div class="team-view-switch" role="group" aria-label="Ploegenweergave"><button type="button" data-action="team-view-compact" aria-pressed="${state.teamView==='compact'}" class="${state.teamView==='compact'?'active':''}">Compact</button><button type="button" data-action="team-view-cards" aria-pressed="${state.teamView==='cards'}" class="${state.teamView==='cards'?'active':''}">Kaarten</button></div>${state.env.permissions.canEdit?button('＋ Ploeg toevoegen','add-team',{write:true}):''}</div></div>${pendingMarkup}<div class="radio-board-dropzone" data-radio-dropzone><span>↓ Sleep een radioploeg hierheen, of gebruik ‘Op bord’</span></div>${teamMarkup||empty(state.query||state.category!=='all'?'Geen ploegen gevonden':'Nog geen ploegen op het dienstbord',state.query||state.category!=='all'?'Probeer een andere zoekterm of categorie.':'Voeg een ploeg met één of twee agenten toe zodra de dienst is gestart.')}</section><section aria-labelledby="incidents-title"><div class="panel-heading"><div><h2 id="incidents-title">Meldingen</h2><p>Van oproep tot afronding, met een gedeeld logboek</p></div>${state.env.permissions.canEdit?button('＋ Nieuwe melding','create-incident',{primary:true,write:true}):''}</div>${presets}${savedPresets}${state.shortcutsError?'<p class="shortcut-load-error">'+esc(state.shortcutsError)+'</p>':''}<div class="incident-filters" role="group" aria-label="Meldingenfilter">${filter('actief','Actief',activeCount)}${filter('niet-actief','Afgerond',allIncidents.length-activeCount)}${filter('alle','Alle',allIncidents.length)}</div><div class="incident-list">${filtered.map(incidentCard).join('')||empty('Geen meldingen in dit overzicht',state.query?'Probeer een andere zoekterm.':'Nieuwe oproepen verschijnen hier. Afgeronde meldingen blijven binnen de dienst bewaard.')}</div></section></div>`;
+  return `${panicAlertsMarkup()}${!board.session?`<section class="no-session"><div><h2>Het bord is klaar voor een nieuwe dienst.</h2><p>Start een sessie om ploegen toe te voegen en meldingen te registreren. Afgesloten diensten blijven terug te vinden in het archief.</p></div>${state.env.permissions.canOperate?button('Dienst starten','start',{primary:true,write:true}):''}</section>`:''}<div class="board-layout" data-team-view="${state.teamView}"><section aria-labelledby="teams-title"><div class="panel-heading"><div><h2 id="teams-title">Ploegen op dienstbord</h2><p>${teams.length} ${teams.length===1?'ploeg':'ploegen'} · ${savedPairCount} koppelploeg(en)</p></div><div class="board-heading-actions"><div class="team-view-switch" role="group" aria-label="Ploegenweergave"><button type="button" data-action="team-view-compact" aria-pressed="${state.teamView==='compact'}" class="${state.teamView==='compact'?'active':''}">Compact</button><button type="button" data-action="team-view-cards" aria-pressed="${state.teamView==='cards'}" class="${state.teamView==='cards'?'active':''}">Kaarten</button></div>${state.env.permissions.canEdit?button('＋ Ploeg toevoegen','add-team',{write:true}):''}</div></div>${pendingMarkup}<div class="radio-board-dropzone" data-radio-dropzone><span>↓ Sleep een radioploeg hierheen, of gebruik ‘Op bord’</span></div>${teamMarkup||empty(state.query||state.category!=='all'?'Geen ploegen gevonden':'Nog geen ploegen op het dienstbord',state.query||state.category!=='all'?'Probeer een andere zoekterm of categorie.':'Voeg een ploeg met één of twee agenten toe zodra de dienst is gestart.')}</section><section aria-labelledby="incidents-title"><div class="panel-heading"><div><h2 id="incidents-title">Meldingen</h2><p>Van oproep tot afronding, met een gedeeld logboek</p></div>${state.env.permissions.canEdit?button('＋ Nieuwe melding','create-incident',{primary:true,write:true}):''}</div>${presets}${savedPresets}${state.shortcutsError?'<p class="shortcut-load-error">'+esc(state.shortcutsError)+'</p>':''}<div class="incident-filters" role="group" aria-label="Meldingenfilter">${filter('actief','Actief',activeCount)}${filter('niet-actief','Afgerond',allIncidents.length-activeCount)}${filter('alle','Alle',allIncidents.length)}</div><div class="incident-list">${filtered.map(incidentCard).join('')||empty('Geen meldingen in dit overzicht',state.query?'Probeer een andere zoekterm.':'Nieuwe oproepen verschijnen hier. Afgeronde meldingen blijven binnen de dienst bewaard.')}</div></section></div>`;
 }
 function teamCard(team,busy,editable){
   const fresh=radioFresh(),radioMembers=fresh?(radio.snapshot.users||[]).filter(user=>radioMatchesTeam(user,team)):[];
   const nbOnRadio=fresh&&radioNBForTeam(team,radioMembers);
   const paired=team.koppel||radioMembers.some(user=>user.paired===true);
+  const panic=panicForTeam(team,radioMembers);
+  const panicIndicator=panic?'<span class="to-panic-team-icon" role="status" title="Panieksignaal: spelernaam komt overeen met de bemanning">🚨 NOODKNOP</span>':'';
   const phase=['onderweg','ter-plaatse'].includes(team.responsePhase)?team.responsePhase:null;
   const beacon=phase?`<span class="response-indicator" data-phase="${phase}" role="status" aria-label="${phase==='onderweg'?'Onderweg, blauw licht knippert':'Ter plaatse, blauw licht blijft branden'}"><span class="response-light" aria-hidden="true"></span><span>${phase==='onderweg'?'ONDERWEG':'TER PLAATSE'}</span></span>`:'';
   const currentStatus=phase||(team.available===false?'pauze':'beschikbaar');
@@ -418,7 +480,8 @@ function teamCard(team,busy,editable){
     const compactFlags=[
       onRadio?'<span class="compact-flag radio-flag">◉ Radio online</span>':'',
       paired?'<span class="compact-flag">👥 Koppel</span>':'',
-      temporaryBadge
+      temporaryBadge,
+      panicIndicator
     ].filter(Boolean).join('');
     return `<article class="team-card compact-team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}">
       <div class="compact-unit-head">
@@ -432,7 +495,7 @@ function teamCard(team,busy,editable){
       ${compactMenu}
     </article>`;
   }
-  return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${beacon}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}${temporaryBadge}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(displayCategory(team.dienst))}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}${radioMembers.length?'<div class="crew-radio-label">◉ Radio: '+radioMembers.map(user=>esc(user.portalAlias||user.displayName||user.name||'Radiogebruiker')).join(' · ')+'</div>':''}${editable&&radioMembers.some(user=>user.labelEditable===true)?'<div class="crew-radio-rename">'+radioMembers.filter(user=>user.labelEditable===true).map(user=>'<button type="button" class="button button-small" data-action="radio-edit-label" data-id="'+esc(user.id)+'" title="Wijzig de weergavenaam op het dienstbord">✎ Naam aanpassen'+(radioMembers.length>1?' · '+esc(user.number):'')+'</button>').join('')+'</div>':''}</div>${phaseControls}</div>${compactMenu}<div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions">${busy.length?`<button type="button" class="text-button team-detach-button" data-action="team-detach-dialog" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>↗ Ontkoppelen${busy.length>1?' ('+busy.length+')':''}</button>`:''}<button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
+  return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${beacon}${panicIndicator}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}${temporaryBadge}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(displayCategory(team.dienst))}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}${radioMembers.length?'<div class="crew-radio-label">◉ Radio: '+radioMembers.map(user=>esc(user.portalAlias||user.displayName||user.name||'Radiogebruiker')).join(' · ')+'</div>':''}${editable&&radioMembers.some(user=>user.labelEditable===true)?'<div class="crew-radio-rename">'+radioMembers.filter(user=>user.labelEditable===true).map(user=>'<button type="button" class="button button-small" data-action="radio-edit-label" data-id="'+esc(user.id)+'" title="Wijzig de weergavenaam op het dienstbord">✎ Naam aanpassen'+(radioMembers.length>1?' · '+esc(user.number):'')+'</button>').join('')+'</div>':''}</div>${phaseControls}</div>${compactMenu}<div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions">${busy.length?`<button type="button" class="text-button team-detach-button" data-action="team-detach-dialog" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>↗ Ontkoppelen${busy.length>1?' ('+busy.length+')':''}</button>`:''}<button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
 }
 function incidentCard(incident){
   return `<button type="button" class="incident-card" data-action="open-incident" data-id="${esc(incident.id)}"><span class="incident-meta"><span class="incident-number mono">${incidentNumber(incident.nr)}</span>${pill(incident.status==='actief'?'Actief':'Afgerond',incident.status==='actief'?'amber':'gray')}<span class="incident-time mono">${time(incident.createdAt)}</span></span><strong class="incident-title">${esc(incident.titel)}</strong><span class="incident-description">${esc(String(incident.omschrijving||'Geen aanvullende omschrijving.').slice(0,150))}${String(incident.omschrijving||'').length>150?'…':''}</span><span class="incident-footer"><span class="postal mono">PC ${esc(incident.postcode)}</span>${(incident.ploegen||[]).map(team=>`<span class="team-chip" data-unit-service="${esc(teamVisual(team.dienst).serviceId)}" style="--unit-hue:${teamVisual(team.dienst).hue}">${unitBadge(team.dienst,'unit-token-micro')}${esc(team.dienst)}-${esc(team.roep)}${state.env.board.ploegen[team.id]?.responsePhase==='onderweg'?' · ↗ Onderweg':state.env.board.ploegen[team.id]?.responsePhase==='ter-plaatse'?' · ● Ter plaatse':''}</span>`).join('')||'<span class="unassigned">Nog geen ploeg gekoppeld</span>'}</span></button>`;
@@ -553,6 +616,15 @@ document.addEventListener('click',async event=>{
       case 'takeover':if(canOperate())startDialog(true);break;
       case 'close-session':if(canEdit())closeSessionDialog();break;
       case 'add-team':if(canEdit())teamDialog();break;
+      case 'panic-show-location':if(!id)break;if(panics.expanded.has(id))panics.expanded.delete(id);else panics.expanded.add(id);render();break;
+      case 'panic-copy-location':{
+        const item=panics.items.find(p=>p.serverId===id);
+        if(!item?.position)break;
+        const value='vector3('+[item.position.x,item.position.y,item.position.z].join(', ')+')';
+        try{await navigator.clipboard.writeText(value);toast('GTA-coördinaten gekopieerd.');}
+        catch{window.prompt('Kopieer de GTA-coördinaten:',value);}
+        break;
+      }
       case 'radio-refresh':await refreshRadio();break;
       case 'radio-edit-label':if(state.env?.permissions?.canOperate)editRadioLabelDialog(id);break;
       case 'radio-quick-add':await quickAddRadioCrew(id);break;
@@ -719,9 +791,10 @@ dialog.addEventListener('submit',async event=>{
 });
 el('board-search').addEventListener('input',event=>{state.query=normalize(event.target.value.trim());render();});
 el('category-filter').addEventListener('change',event=>{state.category=event.target.value;render();});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh({quiet:true});void refreshRadio();}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh({quiet:true});void refreshRadio();void refreshPanics();}});
 setInterval(()=>{if(!document.hidden&&auth?.currentUser)refresh({quiet:true});},12000);
 setInterval(()=>{if(!document.hidden&&auth?.currentUser&&state.view==='board')void refreshRadio();},15000);
+setInterval(()=>{if(!document.hidden&&auth?.currentUser&&state.view==='board')void refreshPanics();},5000);
 setInterval(()=>{if(state.env){renderRadio();renderSummary();updateButtons();}},15000);
 
 async function init(){
@@ -735,7 +808,7 @@ async function init(){
     setupPortalLogin({button:el('login'),auth,authModule,config,onError:error=>tell('Aanmelden mislukt: '+error.message,'error')});
     el('login').disabled=false;
     authModule.onAuthStateChanged(auth,async user=>{
-      authEpoch++;state.env=null;state.archives=null;state.archive=null;state.stale=true;state.pending=false;clearRadio();closeDialog();render();
+      authEpoch++;state.env=null;state.archives=null;state.archive=null;state.stale=true;state.pending=false;panics.serial++;panics.items=[];panics.recentCleared=[];panics.error=null;panics.expanded.clear();clearRadio();closeDialog();render();
       if(user){tell('Je toegang tot het politiedienstbord wordt gecontroleerd…');await refresh();}
       else tell('Meld je aan met je portaalaccount. Er worden pas daarna dienstgegevens geladen.');
     });
