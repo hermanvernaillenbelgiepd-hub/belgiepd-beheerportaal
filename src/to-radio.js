@@ -25,7 +25,10 @@ export function parseSonoranName(value){
   const none={category:null,number:null,displayName:null,importable:false};
   if(typeof value!=='string')return none;
   const name=clean(value);
-  const [label,...nameParts]=name.split('|');
+  // Sonoran labels also arrive with visually similar Unicode separators.
+  // Split these before parsing a numeric callsign so a display name cannot
+  // accidentally become part of the unit number (SANTO-180 │ JayD).
+  const [label,...nameParts]=name.split(/[|│｜¦∣]/);
   const head=stripRadioNBMarkers(label.trim()).replace(/\*\s*$/,'').trim(),upper=head.toUpperCase();
   const displayName=nameParts.join('|').trim().slice(0,160)||null;
   // Embedded digits belong to the label (e.g. LSRA-DEPA100), not an officer.
