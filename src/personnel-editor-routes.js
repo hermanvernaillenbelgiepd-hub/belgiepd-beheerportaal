@@ -11,6 +11,7 @@ import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
   visiblePendingPersonnel} from './personnel-create.js';
 
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
+import {canReadServiceDossier} from './service-dossier-access.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
 const asTime=x=>x?.toDate?.().toISOString?.()||null;
@@ -20,7 +21,7 @@ function safeResponse(res,e){
   return error(res,503,'Personeelsbeheer is momenteel niet beschikbaar');
 }
 function userError(status,message){return Object.assign(new Error(message),{publicStatus:status})}
-export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
+export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser=requireUser,getSnapshot}){
   const collection=()=>getFirestore().collection(PERSONNEL_EDITS_COLLECTION);
   // Production defaults to read-only; authorized users cannot bypass the flag.
   const writes=()=>process.env.BPD_ENABLE_PERSONNEL_WRITES==='true';
@@ -409,9 +410,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,getSnapshot}){
       return res.json({ok:true,status:'saved',active:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'});
     }catch(e){return safeResponse(res,e)}
   });
-  app.get('/api/personnel/:dept/:discordId/history',requireUser,async(req,res)=>{
+  app.get('/api/personnel/:dept/:discordId/history',requireDossierUser,async(req,res)=>{
     if(!validPersonnelKey(req.params.dept,req.params.discordId))return error(res,400,'Ongeldige hulpdienst of Discord ID');
-    if(!canViewPersonnel(req.bpd,req.params.dept))return error(res,403,'Geen toegang tot deze hulpdienst');
+    if(!canReadServiceDossier(req.bpd,req.params.dept))return error(res,403,'Geen toegang tot dit dienstdossier');
     try{
       const snap=await getSnapshot();
       if(!snap.data.some(p=>p.dept===req.params.dept&&p.personId===req.params.discordId))
