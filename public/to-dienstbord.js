@@ -85,7 +85,7 @@ function radioAlreadyOnBoard(user){return Boolean(state.env&&activeTeams(state.e
 function canImportRadioUser(user){
   const value=String(user?.number||'');
   const temporaryPoliceNumber=serviceForCategory(user?.category).id==='politie'&&/^1\d{2}$/.test(value)&&Number(value)>=101;
-  return Boolean(user&&state.env?.categories.includes(user.category)&&/^\d{1,5}$/.test(value)&&Number(value)>0&&(user.importable||temporaryPoliceNumber));
+  return Boolean(user&&state.env?.categories.includes(user.category)&&/^\d{1,5}$/.test(value)&&Number(value)>0&&(user.importable||user.duplicateCallsign===true||temporaryPoliceNumber));
 }
 function visibleRadioUser(user){
   return Boolean(user&&serviceForCategory(user.category).id!=='overige'&&user.name!=='Onbekende gebruiker');
