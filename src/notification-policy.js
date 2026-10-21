@@ -43,10 +43,16 @@ export function normalizeSeries(person){
 export function policeSeriesHeads(env){
   let parsed;
   try{parsed=JSON.parse(env.BPD_POLICE_SERIES_HEADS_JSON||'null');}catch{parsed=null;}
-  const source=parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:VERIFIED_SERIES_HEADS;
-  return Object.fromEntries(POLICE_SERIES.map(n=>[n,
-    Array.isArray(source[n])?unique(source[n].filter(x=>
-      typeof x==='string'&&ID.test(x)&&x!==AMBIGUOUS_DISCORD_ID)):[]]));
+  const overrides=parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{};
+  // Confirmed TEST assignments remain active even if an older Render env override
+  // still exists. A configured extra head cannot move a confirmed head to another series.
+  const confirmedOwner=new Map(POLICE_SERIES.flatMap(n=>
+    VERIFIED_SERIES_HEADS[n].map(id=>[id,n])));
+  return Object.fromEntries(POLICE_SERIES.map(n=>[n,unique([
+    ...VERIFIED_SERIES_HEADS[n],
+    ...(Array.isArray(overrides[n])?overrides[n]:[])
+  ].filter(id=>typeof id==='string'&&ID.test(id)&&id!==AMBIGUOUS_DISCORD_ID&&
+    (!confirmedOwner.has(id)||confirmedOwner.get(id)===n)))]));
 }
 export function policeScope(actor,heads){
   const role=roleForDepartment(actor,'politie');
