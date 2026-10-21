@@ -411,7 +411,7 @@ function teamCard(team,busy,editable){
   const compactDetach=busy.length?`<button type="button" class="button button-small" data-action="team-detach-dialog" data-id="${esc(team.id)}" data-write>↗ Ontkoppelen${busy.length>1?' ('+busy.length+')':''}</button>`:'';
   const compactMenu=editable?`<div class="compact-crew-menu"><button type="button" class="compact-menu-toggle" data-action="toggle-team-menu" data-id="${esc(team.id)}" aria-expanded="${menuOpen}">⋯ Acties</button>${menuOpen?`<div class="compact-crew-menu-content">${compactRename}${compactDetach}<button type="button" class="button button-small button-danger" data-action="remove-team" data-id="${esc(team.id)}" data-write>Uit dienst</button><small>In dienst sinds ${time(team.createdAt)}</small></div>`:''}</div>`:'';
   if(state.teamView==='compact'){
-    const unitName=team.dienst==='HARTS'&&String(team.roepnaam)==='HARTS'
+    const unitName=['HARTS','HVPK'].includes(team.dienst)&&String(team.roepnaam)===team.dienst
       ?'HARTS':displayCategory(team.dienst)+'-'+String(team.roepnaam);
     const members=(team.leden||[]).map(member=>member.naam).filter(Boolean).join(' & ');
     const radioNames=radioMembers.map(user=>user.portalAlias||user.displayName||user.name||'').filter(Boolean).join(' & ');
