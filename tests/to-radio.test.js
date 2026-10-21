@@ -249,7 +249,7 @@ test('Named radio specialists and inline police operator names are distinct impo
     {category:'SANTO',number:'265',displayName:'Chicken',importable:true});
   assert.deepEqual(parseSonoranName('SANTO-265 Chicken | Collega'),
     {category:'SANTO',number:'265',displayName:'Collega',importable:true});
-  assert.equal(parseSonoranName('SANTO-265 Unknown 123456').importable,false);
+  assert.equal(parseSonoranName('SANTO-265123456 Chicken').importable,false);
   assert.deepEqual(parseSonoranName('HVPK-123 | Stan'),
     {category:'HVPK',number:'123',displayName:'Stan',importable:true});
 });
