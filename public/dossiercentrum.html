@@ -31,14 +31,52 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .detail-links{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
 .detail-links a{display:inline-block;border:1px solid #59779c;border-radius:8px;padding:9px 12px;text-decoration:none}
 .detail-links a:hover{background:#1d3c61}
+.service-buttons{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:15px 0 17px}
+.service-button{background:#152b49;border:1px solid #385b80;border-left:5px solid var(--service-accent,#6999e4);
+  border-radius:11px;text-align:left;padding:13px 12px;min-height:91px;display:flex;flex-direction:column;
+  gap:6px;justify-content:center;transition:background .15s,border-color .15s}
+.service-button .service-name{font-size:14px;font-weight:800;color:#e9f3ff}
+.service-button .service-count{font-size:12px;font-weight:500;color:#bed1ea}
+.service-button[aria-pressed="true"]{background:#203f68;border-color:var(--service-accent,#8caeff);
+  box-shadow:inset 0 0 0 1px var(--service-accent,#8caeff),0 2px 14px #0003}
+.service-button:disabled{opacity:.47;background:#101f33;cursor:not-allowed;box-shadow:none}
+.service-button:not(:disabled):hover{background:#254669}
+.service-button:focus-visible,.dossier-tab:focus-visible{outline:3px solid #c2dfff;outline-offset:3px}
+.service-button[data-service="politie"]{--service-accent:#78baff}
+.service-button[data-service="ambulance"]{--service-accent:#58daa0}
+.service-button[data-service="brandweer"]{--service-accent:#ff7e82}
+.service-button[data-service="depannage"]{--service-accent:#ffbb67}
+.service-heading{font-size:16px;margin:9px 0 0;font-weight:800}
+.service-notice{font-size:12px;color:#b8cce7;margin:4px 0 8px}
+.dossier-tabs{display:flex;gap:9px;flex-wrap:wrap;margin:15px 0}
+.dossier-tab{border-color:#57769c;background:#1a3759}
+.dossier-tab[aria-pressed="true"]{background:#3662df;border-color:#80a1ff}
+.dossier-service-label{padding:9px 12px;border:1px solid #41648b;border-left:5px solid var(--service-accent,#8eb9fa);
+  border-radius:8px;background:#132b49;margin:10px 0;color:#e6f1ff;font-weight:800}
+.dossier-service-label[data-service="politie"]{--service-accent:#78baff}
+.dossier-service-label[data-service="ambulance"]{--service-accent:#58daa0}
+.dossier-service-label[data-service="brandweer"]{--service-accent:#ff7e82}
+.dossier-service-label[data-service="depannage"]{--service-accent:#ffbb67}
+@media(max-width:900px){.service-buttons{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.service-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .service-button{min-height:78px;padding:10px}}
 @media(max-width:960px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 [hidden]{display:none!important}
 @media(max-width:720px){.grid,.search,.filter-grid{grid-template-columns:1fr}header{padding:14px}h1{font-size:25px}.card{padding:15px}}
 </style></head><body>
 <header><strong>🛡️ BelgiumPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal dossieroverzicht</h1>
-<p>Een beveiligd overzicht van personeelsfiches en loopbaanhistoriek. Alleen gegevens waarvoor je per hulpdienst bevoegd bent worden getoond.</p>
+<p>Elk personeelsdossier is volledig dienstgebonden. Politie, ambulance, brandweer en depannage beheren hun eigen personeelsgegevens, notities en historiek. Alleen jouw bevoegde diensten zijn zichtbaar.</p>
 <div id="message" role="status" aria-live="polite" class="notice">Toegangsrechten controleren…</div>
+<section class="card" aria-label="Kies het personeelsdossier per hulpdienst">
+<h2>Kies je hulpdienst</h2><p class="service-notice">Bestuur: alle dossiers · Politie: middenkader, officierenkader en korpsleiding · Brandweer: ZONE · Ambulance: DIRMED, HARTS, HVPK en HAMB · Depannage: Agentschap Wegen en Verkeer (AWV).</p><p class="service-notice">Dit wordt gecontroleerd op de server. Niet-gemachtigde dienstknoppen blijven vergrendeld.</p>
+<div class="service-buttons" id="serviceButtons" role="group" aria-label="Filter op hulpdienst">
+<button type="button" class="service-button" data-service="all" aria-pressed="true" disabled><span class="service-name">📁 Alle toegelaten</span><span class="service-count">Aanmelden vereist</span></button>
+<button type="button" class="service-button" data-service="politie" aria-pressed="false" disabled><span class="service-name">🔵 Politie</span><span class="service-count">Geen toegang</span></button>
+<button type="button" class="service-button" data-service="ambulance" aria-pressed="false" disabled><span class="service-name">🟢 Ambulance</span><span class="service-count">Geen toegang</span></button>
+<button type="button" class="service-button" data-service="brandweer" aria-pressed="false" disabled><span class="service-name">🔴 Brandweer</span><span class="service-count">Geen toegang</span></button>
+<button type="button" class="service-button" data-service="depannage" aria-pressed="false" disabled><span class="service-name">🟠 Depannage</span><span class="service-count">Geen toegang</span></button>
+</div><p id="serviceSelected" class="service-notice" role="status">Meld je aan om dossiers te openen.</p></section>
 <section class="card">
 <div class="filter-grid">
 <div><label for="query">Zoek dossier</label><input id="query" placeholder="Naam, roepnummer, rang of Discord-ID" autocomplete="off"></div>
@@ -53,15 +91,16 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <button type="button" id="previousPage" class="alt">Vorige</button>
 <button type="button" id="nextPage" class="alt">Volgende</button></div>
 </section>
-<section class="card" id="detail" hidden><h2 id="detailTitle">Dossier</h2><p class="muted" id="matchWarning"></p>
-<h3>Personeelsfiche</h3><div id="staff"></div>
-<div class="pager"><h3 style="margin:0">Geregistreerde historiek</h3>
+<section class="card" id="detail" hidden><h2 id="detailTitle">Dossier</h2><div id="detailService" class="dossier-service-label"></div><p class="muted" id="matchWarning"></p>
+<div class="dossier-tabs" role="group" aria-label="Onderdelen van dit dienstdossier"><button type="button" class="dossier-tab" data-dossier-tab="fiche" aria-pressed="true">📋 Personeelsfiche</button><button type="button" class="dossier-tab" data-dossier-tab="historiek" aria-pressed="false">🕘 Diensthistoriek</button></div>
+<section id="dossierFiche"><h3>Personeelsfiche</h3><div id="staff"></div></section>
+<section id="dossierHistoriek" hidden><div class="pager"><h3 style="margin:0">Geregistreerde historiek</h3>
 <label for="historyKind">Toon:
 <select id="historyKind"><option value="all">Alle gebeurtenissen</option>
 <option value="loopbaan">Loopbaan en rangen</option>
 <option value="personeel">Personeelswijzigingen</option>
 </select></label></div>
-<div class="muted" id="history"></div>
+<div class="muted" id="history"></div></section>
 <div id="detailLinks" class="detail-links"></div>
 <button id="close" type="button" class="alt">Dossier sluiten</button></section>
 </main>
@@ -95,8 +134,41 @@ function renderStats(){
     stat.append(node('b',value),node('span',label));box.append(stat);
   }
 }
+function renderServiceButtons(allowed=[]){
+  const permitted=new Set(allowed);
+  const selected=$('department').value;
+  for(const button of $('serviceButtons').querySelectorAll('button[data-service]')){
+    const dept=button.dataset.service;
+    const accessible=dept==='all'?permitted.size>0:permitted.has(dept);
+    button.disabled=!accessible;
+    button.setAttribute('aria-pressed',String(accessible&&selected===dept));
+    const count=button.querySelector('.service-count');
+    const visible=dept==='all'?rows.length:rows.filter(p=>p.dept===dept).length;
+    count.textContent=accessible?(visible+' '+(visible===1?'dossier':'dossiers')):'Geen toegang';
+  }
+  $('serviceSelected').textContent=permitted.size
+    ?(selected==='all'?'Overzicht van alle hulpdiensten waarvoor je bevoegd bent':
+      'Je bekijkt uitsluitend dossiers van '+(departments[selected]||selected))
+    :'Meld je aan met de juiste dienstrechten om een dossier te openen.';
+}
+function closeDossier(){
+  shown=null;timelineEntries=[];$('detail').hidden=true;
+}
+function selectDepartment(dept){
+  const item=$('department');
+  if(![...item.options].some(option=>option.value===dept))return;
+  item.value=dept;closeDossier();changedFilters();
+}
+function switchDossierTab(next){
+  if(!['fiche','historiek'].includes(next))return;
+  $('dossierFiche').hidden=next!=='fiche';
+  $('dossierHistoriek').hidden=next!=='historiek';
+  for(const button of document.querySelectorAll('button[data-dossier-tab]'))
+    button.setAttribute('aria-pressed',String(button.dataset.dossierTab===next));
+}
 function render(){
   const filters={query:$('query').value,department:$('department').value};
+  renderServiceButtons([...$('department').options].map(option=>option.value).filter(x=>x!=='all'));
   const found=filterDossiers(rows,filters);
   const paged=paginateDossiers(found,page,PAGE_SIZE);page=paged.page;
   $('count').textContent=paged.total+' van '+rows.length+' toegelaten dossiers zichtbaar';
@@ -145,13 +217,16 @@ function detailLinks(data){
 async function openDossier(r){
   shown=r.dept+':'+r.discordId;
   const active=shown;
-  $('detail').hidden=false;$('detailTitle').textContent='Dossier · '+r.name;
+  $('detail').hidden=false;$('detailTitle').textContent=(departments[r.dept]||r.dept)+' · afzonderlijk personeelsdossier · '+r.name;
+  $('detailService').dataset.service=r.dept;
+  $('detailService').textContent='🔒 '+(departments[r.dept]||r.dept)+' · alleen de bevoegde leiding van deze hulpdienst';
+  switchDossierTab('fiche');
   timelineEntries=[];$('historyKind').value='all';$('detailLinks').replaceChildren();
   $('staff').textContent='Laden…';$('history').textContent='Laden…';$('matchWarning').textContent='';
   try{
     const data=await request('/api/dossiercentrum/'+encodeURIComponent(r.dept)+'/'+encodeURIComponent(r.discordId));
     if(shown!==active)return;
-    $('matchWarning').textContent=data.matchNotice||'Dossiers blijven dienstgebonden en zijn gekoppeld op Discord-ID, niet op naam.';
+    $('matchWarning').textContent='Dit is uitsluitend het dossier van '+(departments[r.dept]||r.dept)+'. Andere hulpdiensten beheren hun eigen afzonderlijke dossier voor dezelfde Discord-gebruiker.';
     const staff=$('staff');staff.replaceChildren();
     if(data.personnel){
       const p=data.personnel;
@@ -164,7 +239,7 @@ async function openDossier(r){
   }catch(e){if(shown===active){$('staff').textContent='';$('history').textContent='';message(e.message,true)}}
 }
 async function load(){
-  if(!auth?.currentUser){rows=[];shown=null;timelineEntries=[];page=1;$('detail').hidden=true;renderStats();render();return message('Meld je aan met een bevoegd account om dossiers te bekijken.')}
+  if(!auth?.currentUser){rows=[];page=1;closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();return message('Meld je aan met een bevoegd account om dossiers te bekijken.')}
   try{
     const data=await request('/api/dossiercentrum/overview');
     rows=data.rows||[];page=1;renderStats();
@@ -173,21 +248,28 @@ async function load(){
     $('department').firstChild.value='all';
     (data.departments||[]).forEach(d=>{const op=node('option',departments[d]||d);op.value=d;$('department').append(op)});
     $('department').value=[...$('department').options].some(o=>o.value===selected)?selected:'all';
-    $('detail').hidden=true;shown=null;render();
+    closeDossier();render();
     message(rows.length+' dossiers geladen. Alleen-lezen.'+(data.sourceStale?' De personeelsbron gebruikt tijdelijk gecachete gegevens.':''));
-  }catch(e){rows=[];shown=null;timelineEntries=[];$('detail').hidden=true;renderStats();render();message(e.message,true)}
+  }catch(e){rows=[];closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();message(e.message,true)}
 }
 function changedFilters(){page=1;render()}
 $('query').oninput=changedFilters;
-$('department').onchange=changedFilters;
+$('department').onchange=()=>{closeDossier();changedFilters()};
+$('serviceButtons').addEventListener('click',event=>{
+  const button=event.target.closest('button[data-service]');
+  if(!button||button.disabled)return;
+  selectDepartment(button.dataset.service);
+});
+for(const button of document.querySelectorAll('button[data-dossier-tab]'))
+  button.onclick=()=>switchDossierTab(button.dataset.dossierTab);
 $('historyKind').onchange=renderHistory;
 $('previousPage').onclick=()=>{page--;render()};
 $('nextPage').onclick=()=>{page++;render()};
 $('clear').onclick=()=>{
-  $('query').value='';$('department').value='all';changedFilters();
+  $('query').value='';selectDepartment('all');
 };
 $('refresh').onclick=()=>load().catch(e=>message(e.message,true));
-$('close').onclick=()=>{$('detail').hidden=true;shown=null;timelineEntries=[]};
+$('close').onclick=closeDossier;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
