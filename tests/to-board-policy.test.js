@@ -89,15 +89,24 @@ test('Every command requires a numeric current revision and rejects stale writes
   expectStatus(()=>command(board,'close-session',{revision:board.revision}),400);
 });
 
-test('Session ownership cannot be claimed by typing the current TO name',()=>{
+test('Session handover requires a confirmed request from a different authenticated operator',()=>{
   let board=started();
   expectStatus(()=>command(board,'add-team',{dienst:'SANTO',leden:[{naam:'Agent',roep:'1'}]},colleague),403);
-  expectStatus(()=>command(board,'takeover',{displayName:'TO Test',reason:'kort'},colleague),400);
-  board=command(board,'takeover',{displayName:'TO Test',reason:'De collega neemt de lopende dienst over.'},colleague,now+60000).board;
+  expectStatus(()=>command(board,'takeover',{displayName:'TO Test',reason:'Direct overnemen'},colleague),400);
+  expectStatus(()=>command(board,'request-takeover',{displayName:'TO Test',reason:'kort'},colleague),400);
+  board=command(board,'request-takeover',{displayName:'TO Test',reason:'De collega vraagt de dienst over te nemen.'},colleague,now+60000).board;
+  const req=board.session.pendingTakeover;
+  assert.equal(board.session.ownerUid,owner.uid);
+  assert.equal(req.requesterUid,colleague.uid);
+  expectStatus(()=>command(board,'approve-takeover',{requestId:req.id},colleague,now+61000),403);
+  expectStatus(()=>command(board,'emergency-takeover',{requestId:req.id,confirmation:'NOODOVERNAME',reason:'De TO is al langere tijd uitgevallen.'},colleague,now+62000),409);
+  board=command(board,'approve-takeover',{requestId:req.id},owner,now+65000).board;
   assert.equal(board.session.ownerUid,colleague.uid);
   assert.equal(board.session.to,'TO Test');
   assert.equal(board.session.handovers.length,1);
-  assert.equal(board.session.handovers[0].at,now+60000);
+  assert.equal(board.session.handovers[0].mode,'goedgekeurd');
+  assert.equal(board.session.handovers[0].at,now+65000);
+  assert.equal(board.session.pendingTakeover,undefined);
   expectStatus(()=>command(board,'close-session',{},owner),403);
 });
 
