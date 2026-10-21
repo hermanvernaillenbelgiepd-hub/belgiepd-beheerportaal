@@ -3,539 +3,110 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0d1731">
-<title>BelgiëPD Beheerportaal | Personeelsadministratie</title>
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#101b36">
+<title>BelgiumPD · Beheerportaal</title>
 <style>
-:root{--navy:#0d1731;--navy2:#141f3e;--side:#111c38;--ink:#152139;--muted:#73819a;--line:#e5eaf2;--bg:#f5f7fb;--blue:#365bf5;--blueDark:#2348db;--softBlue:#ecf0ff;--mint:#168568;--mintBG:#e6f7f0;--amber:#a66c12;--amberBG:#fff4da;--red:#c34657;--redBG:#fff0f1;--shadow:0 10px 28px rgba(26,42,81,.055)}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}button,input,select,textarea{font:inherit}button{cursor:pointer}a{color:inherit}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #8c9bff;outline-offset:2px}svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}.shell{display:flex;min-height:100vh}.sidebar{overflow-y:auto;width:254px;background:var(--navy);color:#cad2e7;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:30;padding:30px 13px 17px}.brand{display:flex;align-items:center;gap:12px;padding:1px 15px 31px}.brand-mark{width:41px;height:41px;border:1px solid #647ab3;background:linear-gradient(145deg,#395de0,#1a2f76);border-radius:12px;display:grid;place-items:center;color:#fff;box-shadow:0 7px 18px #060c2333}.brand-mark svg{width:25px;height:25px}.brand-title{font-weight:850;font-size:18px;line-height:1.1;color:#fff;letter-spacing:.1px}.brand-sub{font-size:10px;letter-spacing:1.9px;color:#8c9dbc;text-transform:uppercase;margin-top:5px}.side-section{font-size:10px;letter-spacing:1.7px;text-transform:uppercase;color:#7887a7;font-weight:750;padding:6px 15px 9px;margin-top:8px}.nav{display:flex;flex-direction:column;gap:4px}.nav-btn{width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;border:0;background:transparent;border-radius:10px;color:#a9b7d0;text-align:left;font-weight:600;font-size:13px;transition:background .13s}.nav-btn svg{width:18px;height:18px}.nav-btn:hover{background:#223254;color:#fff}.nav-btn.active{background:#304ce9;color:#fff;box-shadow:0 5px 12px rgba(42,76,242,.22)}.nav-btn .count{margin-left:auto;padding:3px 8px;border-radius:12px;background:#ef6577;color:#fff;font-size:10px}.sidebar-foot{margin-top:auto;padding:0 9px}.sidebar-profile{background:#1d2a48;border:1px solid #2c3a58;border-radius:12px;padding:13px;display:flex;gap:10px;align-items:center}.avatar{width:35px;height:35px;display:grid;place-items:center;border-radius:11px;background:#dae3ff;color:#304bd4;font-weight:800}.sidebar-profile strong{display:block;color:#fff;font-size:12px}.sidebar-profile small{display:block;color:#99a8c1;font-size:10px;margin-top:3px}.copyright{font-size:10px;color:#8290ad;padding:13px 7px 1px;line-height:1.6}.main{margin-left:254px;width:calc(100% - 254px);min-height:100vh}.topbar{height:79px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 36px;background:#fff;position:sticky;top:0;z-index:20}.mobileMenu{display:none}.search{display:flex;align-items:center;gap:10px;background:#f5f7fa;border:1px solid #edf0f5;border-radius:10px;padding:10px 13px;width:min(365px,40vw);color:#9aa7bd}.search svg{width:17px;height:17px}.search input{width:100%;outline:0;border:0;background:transparent;font-size:12px;color:var(--ink)}.search input::placeholder{color:#9eacc0}.top-right{display:flex;gap:14px;align-items:center;margin-left:auto}.top-tag{font-weight:700;font-size:10px;color:#a97113;background:#fff2da;padding:6px 10px;border-radius:7px;letter-spacing:1px}.notification-trigger{position:relative;background:transparent;border:0;color:#6c7a96;padding:9px}.notification-trigger:after{position:absolute;content:"";width:6px;height:6px;background:#ef627b;top:8px;right:9px;border-radius:50%;border:1px solid white}.top-avatar{width:36px;height:36px;border-radius:50%;background:#e5ebff;color:#2c4dd4;display:grid;place-items:center;font-weight:800;font-size:12px}.content{padding:31px 36px 56px;max-width:1550px;margin:auto}.eyebrow{font-size:11px;font-weight:760;letter-spacing:2px;color:#8895ac;text-transform:uppercase}.page-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:26px}.personnel-heading-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.page-heading h1{font-size:28px;line-height:1.16;letter-spacing:-.8px;margin:8px 0 9px;font-weight:810}.subheading{font-size:12.5px;color:#8995aa;line-height:1.6}.btn{border:0;border-radius:9px;padding:11px 15px;display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:740;justify-content:center;transition:background .12s,transform .12s;white-space:nowrap}.btn:hover{transform:translateY(-1px)}.btn svg{width:16px;height:16px}.btn-primary{color:#fff;background:var(--blue);box-shadow:0 5px 13px #3c58e329}.btn-primary:hover{background:var(--blueDark)}.btn-quiet{background:#fff;color:#4d5b73;border:1px solid var(--line)}.btn-danger{background:#fff2f4;color:#b8374a;border:1px solid #f6d9dd}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:22px}.card{background:#fff;border-radius:14px;border:1px solid #e9edf4;box-shadow:var(--shadow)}.kpi{padding:20px 21px;position:relative;min-height:145px}.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:17px}.kpi-name{color:#7b8aa2;font-size:11.5px;font-weight:650}.kpi-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#3459f1;background:#eff2ff}.kpi-icon.green{background:#e5f8ef;color:#15966e}.kpi-icon.amber{background:#fff4e2;color:#d38d23}.kpi-icon.red{background:#fff0f2;color:#d75d71}.kpi-icon svg{width:18px;height:18px}.kpi-value{font-size:28px;font-weight:830;line-height:1.05;letter-spacing:-.8px}.kpi-note{margin-top:11px;color:#9ca8b9;font-size:11px}.kpi-note b{color:var(--mint);font-weight:760}.section-grid{display:grid;grid-template-columns:minmax(0,1.68fr) minmax(310px,1fr);gap:20px;margin-bottom:22px}.section-pad{padding:21px 22px}.card-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}.card-title{font-weight:780;font-size:15px}.card-sub{font-size:11px;color:#9aa6b8;margin-top:5px}.small-link{border:0;background:transparent;color:#3d5ff0;font-size:11.5px;font-weight:750;padding:4px}.bar-chart{height:210px;display:flex;align-items:end;gap:10px;border-bottom:1px solid #dfe5ee;padding-top:16px}.bar-wrap{display:flex;align-items:end;justify-content:center;flex:1;position:relative;height:100%}.bar{width:70%;max-width:54px;min-height:3px;border-radius:7px 7px 0 0;background:linear-gradient(180deg,#6d86ff,#3a5df1);transition:height .3s}.bar.faded{background:#d7e0ff}.bar-wrap small{position:absolute;bottom:-23px;color:#9aa6b7;font-size:10px}.chart-footer{padding:36px 0 5px;display:flex;gap:15px;font-size:11px;color:#99a5b9}.legend-dot{width:9px;height:9px;background:#4567f7;border-radius:3px;display:inline-block;margin-right:6px}.legend-dot.light{background:#d7e0ff}.alert-list{display:flex;flex-direction:column;gap:5px}.alert-row{display:flex;align-items:center;gap:11px;border-radius:10px;padding:12px 5px;border-bottom:1px solid #f0f2f6}.alert-row:last-child{border-bottom:0}.alert-icon{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:#fff0e4;color:#d48c20}.alert-icon.blue{background:#ecf1ff;color:#5373e4}.alert-icon.red{background:#fff0f3;color:#cc4e68}.alert-icon svg{width:17px;height:17px}.alert-copy{min-width:0;flex:1}.alert-copy strong{display:block;font-size:12px;font-weight:740}.alert-copy small{display:block;color:#95a1b4;font-size:10px;margin-top:4px}.table-card{overflow:hidden}.table-inner{overflow-x:auto}.table-head{padding:20px 22px 15px;display:flex;align-items:center;justify-content:space-between;gap:15px}.data-table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}.data-table thead th{font-size:10px;color:#8c9bb0;font-weight:780;text-transform:uppercase;letter-spacing:.8px;padding:13px 20px;background:#fafbfe;border-top:1px solid #f0f2f6;border-bottom:1px solid #edf0f5}.data-table tbody td{padding:14px 20px;font-size:12px;border-bottom:1px solid #f1f3f7;color:#67758c}.data-table tbody tr:last-child td{border-bottom:0}.data-table tbody tr:hover{background:#fafbff}.data-table tbody td.strong{font-weight:700;color:#26324c}.name-cell{display:flex;align-items:center;gap:10px}.name-dot{width:30px;height:30px;border-radius:9px;background:#e9eefd;color:#4d62c4;display:grid;place-items:center;font-size:10px;font-weight:800}.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:99px;font-size:10px;font-weight:760;background:#f0f3f8;color:#77869e}.pill:before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}.pill.green{background:var(--mintBG);color:var(--mint)}.pill.amber{background:var(--amberBG);color:var(--amber)}.pill.red{background:var(--redBG);color:var(--red)}.pill.blue{background:var(--softBlue);color:#4765d9}.table-action{border:0;background:#f1f4ff;color:#3a5ee9;width:30px;height:30px;border-radius:8px;display:grid;place-items:center}.table-action svg{width:15px;height:15px}.footer-note{margin-top:24px;font-size:11px;color:#99a7ba}.filter-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:19px}.select,.field{padding:10px 12px;border:1px solid #dfe6f1;border-radius:9px;background:#fff;color:#52617d;font-size:12px;min-height:39px}.select{min-width:140px}.field{width:100%;outline:none}.field:focus,.select:focus,.textarea:focus{border-color:#7690ff}.textarea{width:100%;border:1px solid #dfe6f1;border-radius:9px;padding:13px;background:#fff;resize:vertical;min-height:110px;color:#455570}.label{display:block;font-size:11px;font-weight:750;color:#677790;margin-bottom:8px}.split{display:grid;grid-template-columns:1.1fr .9fr;gap:20px}.panel-note{background:#f1f5ff;border:1px solid #e0e9ff;border-radius:10px;padding:14px 16px;color:#526791;font-size:12px;line-height:1.7}.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:15px}.mini-stat{background:#f7f9fd;padding:18px;border-radius:10px}.mini-stat b{display:block;font-size:22px;letter-spacing:-.7px}.mini-stat span{font-size:11px;color:#8997ad}.doc-list{display:grid;gap:11px}.doc{display:flex;align-items:center;gap:13px;padding:15px;border:1px solid #e8edf4;border-radius:11px;background:#fff}.doc-icon{width:42px;height:42px;border-radius:11px;background:#edf2ff;color:#4d68d4;display:grid;place-items:center}.doc-icon svg{width:21px;height:21px}.doc strong{font-size:13px;display:block}.doc small{font-size:11px;color:#99a5ba;margin-top:6px;display:block}.doc .btn{margin-left:auto}.dept-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.dept-card{padding:25px;display:flex;flex-direction:column;gap:13px;min-height:180px}.dept-icon{width:45px;height:45px;border-radius:12px;background:#ebefff;color:#4663e9;display:grid;place-items:center}.dept-card strong{font-size:17px}.dept-card small{font-size:12px;color:#8c98ab}.dept-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:auto;color:#596980;font-size:12px}.empty{padding:42px;text-align:center;color:#8795ac}.empty svg{width:33px;height:33px;color:#acb8ca}.empty strong{display:block;color:#344560;margin:13px 0 7px}.drawer-cover,.modal-cover{position:fixed;inset:0;background:rgba(12,21,44,.48);z-index:60;display:flex;justify-content:flex-end}.drawer{width:min(490px,100vw);background:#fff;height:100%;overflow:auto;padding:32px;box-shadow:-10px 0 40px #0b143e33}.drawer-head{display:flex;align-items:start;justify-content:space-between}.drawer-close{border:0;background:#f2f5fa;border-radius:9px;padding:8px;color:#60728c;display:grid;place-items:center}.drawer h2,.modal h2{font-size:23px;letter-spacing:-.5px;margin:15px 0 7px}.drawer-section{border-top:1px solid #edf0f6;padding-top:20px;margin-top:23px}.drawer-section h3{font-size:13px}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.detail-grid small{font-size:10px;color:#95a3b7;display:block}.detail-grid strong{font-size:13px;margin-top:6px;display:block}.modal-cover{align-items:center;justify-content:center;padding:16px}.modal{background:#fff;border-radius:17px;width:min(580px,100%);max-height:92vh;overflow:auto;padding:27px 30px 30px;box-shadow:0 24px 100px #08133055}.modal-heading{display:flex;justify-content:space-between;align-items:start}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.form-full{grid-column:1/-1}.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}.toast{position:fixed;bottom:27px;right:28px;background:#182747;color:#fff;border-radius:11px;padding:14px 17px;box-shadow:0 14px 30px #101d3c44;z-index:100;display:none;max-width:360px;font-size:12px;line-height:1.5}.toast.show{display:block;animation:slide .2s ease-out}@keyframes slide{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}.section-status{font-size:12px;color:#8c9aaf}.badge-inline{color:#4868e5;background:#eff3ff;border-radius:8px;padding:5px 9px;font-size:10px;font-weight:700}.info-box{margin:15px 0;background:#fff8eb;color:#88642b;border:1px solid #fbe5bd;border-radius:9px;padding:12px 13px;font-size:11px;line-height:1.6}.timeline{border-left:2px solid #e7ecfb;margin:20px 0 0 9px;padding-left:20px}.timeline-item{position:relative;margin:0 0 23px;font-size:12px;color:#53627b}.timeline-item:before{content:"";position:absolute;left:-27px;top:4px;width:11px;height:11px;border:3px solid #fff;border-radius:50%;background:#5f76ef;box-shadow:0 0 0 1px #d4dcf9}.timeline-item small{display:block;color:#9ba8bb;margin:5px 0}.role-box{border:1px solid #e6eaf1;padding:16px;border-radius:11px;margin-bottom:14px}.role-box strong{display:block;margin-bottom:7px}.role-box p{font-size:12px;color:#8593aa;line-height:1.6;margin:0}.progress-track{height:6px;background:#e9eef9;border-radius:10px;overflow:hidden}.progress-fill{height:100%;background:#4365ee;border-radius:10px}.desktop-hide{display:none}.loading{color:#7b8ba1}.hidden{display:none!important}
-@media(max-width:1240px){.cards{grid-template-columns:repeat(2,1fr)}.section-grid{grid-template-columns:1fr}.content{padding:29px 26px}.topbar{padding:0 26px}}@media(max-width:880px){.sidebar{transform:translateX(-100%);transition:transform .2s;box-shadow:none}.sidebar.open{transform:translateX(0);box-shadow:12px 0 40px #111a3d44}.main{margin:0;width:100%}.mobileMenu{display:grid;place-items:center;border:0;background:#f1f4fb;border-radius:9px;width:38px;height:38px;color:#46577d}.topbar{height:70px;padding:0 18px}.content{padding:25px 18px}.search{width:auto;flex:1}.top-tag{display:none}.desktop-hide{display:block}.mobile-shade{position:fixed;inset:0;background:#07133280;z-index:25;display:none}.mobile-shade.on{display:block}}@media(max-width:570px){.page-heading{display:block}.page-heading .btn{margin-top:16px}.page-heading h1{font-size:25px}.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi{padding:15px;min-height:125px}.kpi-name{font-size:10px}.kpi-value{font-size:25px}.kpi-note{font-size:9px}.kpi-icon{width:30px;height:30px}.content{padding:21px 12px}.section-pad{padding:16px}.table-head{padding:17px}.section-grid,.split,.dept-grid{grid-template-columns:1fr}.top-right{gap:3px}.top-avatar{display:none}.form-grid{grid-template-columns:1fr}.modal{padding:22px}.doc{flex-wrap:wrap}.doc .btn{margin-left:0}.topbar{gap:8px}.stat-grid{grid-template-columns:1fr 1fr}.section-grid{gap:12px}.drawer{padding:23px}.bar-chart{height:170px}}
-
-/* BelgiëPD v0.4 - bestaande personeelsdossiers via Discord ID */
-.profile-tabs{display:flex;gap:5px;overflow-x:auto;white-space:nowrap;padding:16px 0 10px;border-bottom:1px solid #e7ebf3;scrollbar-width:thin}
-.profile-tab{border:1px solid transparent;background:transparent;border-radius:8px;color:#687995;padding:9px 11px;font-size:11px;font-weight:750;flex:none}
-.profile-tab:hover{background:#f4f6ff;color:#3550cc}
-.profile-tab.active{background:#eaf0ff;border-color:#d7e2ff;color:#2f50ce}
-.profile-note{background:#f3f6ff;border:1px solid #e0e8ff;border-radius:10px;padding:13px 14px;margin:18px 0;color:#51648c;line-height:1.6;font-size:12px}
-.profile-empty{padding:24px 15px;text-align:center;background:#f8faff;border:1px dashed #d9e2f3;border-radius:11px;color:#66758d;line-height:1.75;font-size:12px}
-.profile-empty strong{display:block;color:#394861;font-size:13px;margin-bottom:5px}
-.profile-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:13px}
-.profile-meta>div{padding:13px;background:#f7f9fd;border:1px solid #edf0f7;border-radius:10px;min-width:0}
-.profile-meta small{display:block;color:#8292ad;font-size:10px;font-weight:700;margin-bottom:7px}
-.profile-meta strong{display:block;line-height:1.45;font-size:12px;overflow-wrap:anywhere;color:#29364e}
-.specialty-grid{display:grid;gap:9px;margin:15px 0}
-.specialty-item{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid #edf0f5;border-radius:10px;padding:12px 13px;font-size:12px;color:#35445e}
-.specialty-state{font-size:10px;font-weight:750;padding:6px 10px;border-radius:99px;background:#f1f4f8;color:#62718b;white-space:nowrap}
-.specialty-state.yes{background:#e5f7ef;color:#17835b}.specialty-state.no{background:#f4f5f7;color:#7c879a}.specialty-state.other{background:#fff3df;color:#a76a16}
-.profile-subheading{font-size:13px;font-weight:790;margin:22px 0 9px;color:#25334c}
-.profile-timestamp{font-size:10px;color:#8a99ae;margin-top:6px}
-@media(max-width:570px){.profile-meta{grid-template-columns:1fr 1fr}.profile-tab{padding:8px}.drawer{padding:19px}}
-.staff-roster{min-width:1060px}.staff-roster thead th{padding:11px 12px}
-.staff-roster tbody td{padding:10px 12px;vertical-align:middle}
-.rank-insignia{display:block;width:82px;height:36px;object-fit:contain;object-position:left center}
-.rank-unknown,.no-specialty{color:#99a5b7;font-size:12px}
-.rank-name{white-space:normal;min-width:134px;font-weight:650;color:#20304d!important}
-.roster-dept{display:block;margin-top:3px;color:#8a97aa;font-size:10px;font-weight:500}
-.specialty-icons{display:flex;flex-wrap:wrap;gap:4px;min-width:96px;max-width:240px}
-.specialty-pictogram{display:inline-flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:7px;border:1px solid #dce5f4;background:#eef4ff;font-size:17px;cursor:help}
-.specialty-status-strip{display:flex;flex-wrap:nowrap;gap:7px;overflow-x:auto;max-width:min(550px,58vw);padding:5px 2px;scrollbar-width:thin}
-.specialty-state{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;padding:4px 5px;border:1px solid #e4eafa;background:#f5f7fd;border-radius:8px;font-size:10px}
-.specialty-symbol{font-size:15px}.specialty-name{font-weight:650;color:#475775}
-.specialty-state-value{border-radius:6px;padding:2px 5px;font-size:10px;font-weight:750}
-.specialty-yes{background:#dbf6e9;color:#10734b}
-.specialty-no{background:#e9edf3;color:#6b7788}
-.specialty-stage{background:#fff0d5;color:#976009}
-.specialty-teacher{background:#d3f7f8;color:#007481}
-.specialty-unknown{background:#ebeff9;color:#687a9d}
-
-.content:has(.staff-roster){max-width:none;padding-inline:clamp(12px,1.4vw,28px)}
-.staff-roster-holder{overflow:visible}
-.staff-roster{table-layout:fixed;min-width:0;width:100%}
-.staff-roster thead th,.staff-roster tbody td{padding:9px 3px;font-size:clamp(9px,.68vw,12px);overflow-wrap:anywhere}
-.staff-roster thead th:nth-child(1){width:6%}
-.staff-roster thead th:nth-child(2){width:6%}
-.staff-roster thead th:nth-child(3){width:10%}
-.staff-roster thead th:nth-child(4){width:11%}
-.staff-roster thead th:nth-child(5){width:6%}
-.staff-roster thead th:nth-child(6){width:7%}
-.staff-roster thead th:last-child{width:4.8%}
-.staff-roster .rank-insignia{max-width:100%;width:58px;height:30px}
-.staff-roster .rank-name{min-width:0;font-weight:650;font-size:10px;line-height:1.3}
-.staff-roster .badge-inline,.staff-roster .pill{font-size:9px;padding:3px 4px;white-space:normal}
-.specialty-column{text-align:center!important;letter-spacing:0!important}
-.specialty-col-icon{display:block;font-size:16px;line-height:1.4}
-.specialty-col-label{display:block;font-size:clamp(8px,.59vw,10px);line-height:1.15;letter-spacing:0;text-transform:none;overflow-wrap:anywhere}
-.specialty-value-cell{text-align:center}
-.specialty-value{display:inline-block;padding:3px 4px;font-size:clamp(8px,.6vw,11px);font-weight:800;border-radius:8px;white-space:normal}
-.specialty-yes{color:#14754c;background:#e3f9ee}
-.specialty-no{color:#8190a6;background:#f0f3f8}
-.specialty-stage{color:#a56b18;background:#fff1d9}
-.specialty-teacher{color:#00878e;background:#dff8fa}
-.specialty-unknown{color:#74849f;background:#f0f4fa}
-.specialty-overview-summary{display:flex;gap:3px;flex-wrap:wrap}
-@media(max-width:900px){.staff-roster-holder{overflow-x:auto}.staff-roster{min-width:980px}}
-
-.personnel-feed-list{padding:0 18px 16px}
-.personnel-feed-empty{padding:20px 8px;color:#71809a;font-size:12px}
-.personnel-feed-row{display:flex;align-items:center;gap:15px;padding:12px 8px;border-top:1px solid #edf1f7}
-.personnel-feed-type{flex:0 0 148px;text-align:center;border-radius:7px;padding:6px 8px;background:#eaf0fc;color:#345aad;font-weight:750;font-size:11px}
-.personnel-feed-type.callsign_assigned{background:#e2f5eb;color:#17815d}
-.personnel-feed-type.callsign_changed{background:#fff3d8;color:#946614}
-.personnel-feed-main{min-width:0;flex:1}
-.personnel-feed-main strong{font-size:12px;color:#27344b}
-.personnel-feed-link{font:inherit;font-size:12px;font-weight:750;color:#345bd3;background:none;border:0;padding:0;text-align:left;cursor:pointer}
-.personnel-feed-link:hover{text-decoration:underline}
-.personnel-feed-dept{font-size:10px;color:#8190aa;margin-left:9px}
-.personnel-feed-description{font-size:12px;color:#596983;margin-top:3px;overflow-wrap:anywhere}
-.personnel-feed-date{white-space:nowrap;font-size:11px;color:#75859e}
-@media(max-width:680px){.personnel-feed-row{align-items:flex-start;flex-wrap:wrap;gap:6px}
-.personnel-feed-type{flex:0 0 auto}.personnel-feed-date{margin-left:auto}}
-
-.historical-call-entry{border-top:1px solid #e4eafa;margin-top:7px;padding:12px 4px 3px}
-.historical-call-entry summary{color:#4565b0;font-size:12px;font-weight:700;cursor:pointer}
-.historical-call-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:14px}
-.historical-call-form label{font-size:11px;color:#53627c;font-weight:700;display:flex;flex-direction:column;gap:5px}
-.historical-call-form select,.historical-call-form input,.historical-call-form textarea,.historical-call-form output{width:100%;min-height:35px;border:1px solid #cfdae9;border-radius:7px;padding:8px;font:inherit;font-size:12px;background:#fff;color:#24334c}
-.historical-call-form label:has(textarea),.historical-call-hint,.historical-call-checkbox{grid-column:1/-1}
-.historical-call-form .historical-call-checkbox{display:flex;flex-direction:row;align-items:center;gap:9px;font-weight:650}
-.historical-call-form .historical-call-checkbox input{width:17px;min-height:17px;height:17px}
-.historical-call-form button{width:max-content}
-.historical-call-hint{font-size:11px;color:#8592a6;line-height:1.4}
-@media(max-width:680px){.historical-call-form{grid-template-columns:1fr}}
-
-/* Spacious personnel dossier: keep all six navigation tabs visible on desktop.
-   Narrow devices use a full-width panel with a wrapped, touch-friendly tab grid. */
-.personnel-drawer{width:min(920px,94vw);max-width:100%;min-width:0}
-.personnel-drawer .profile-tabs{flex-wrap:wrap;overflow-x:visible;white-space:normal;scrollbar-width:auto}
-.personnel-drawer .profile-tab{min-width:0}
-.personnel-drawer .profile-body{min-width:0}
-@media(max-width:680px){
-  .personnel-drawer{width:100vw;padding:20px}
-  .personnel-drawer .profile-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-  .personnel-drawer .profile-tab{padding:9px 4px;white-space:normal;overflow-wrap:anywhere;font-size:10px}
-}
-
-/* User-supplied Signalisatie pictogram: scale the original sign without distortion. */
-.staff-roster .specialty-col-icon{display:flex;align-items:center;justify-content:center;min-height:36px}
-.staff-roster .specialty-col-icon .specialty-custom-image{display:block;width:34px;height:36px;max-width:100%;object-fit:contain}
-.specialty-overview-summary .specialty-custom-image{display:inline-block;width:19px;height:20px;object-fit:contain;vertical-align:middle;margin-right:3px}
+:root{font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#172a48;background:#f3f6fb}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh}
+a{color:inherit;text-decoration:none}
+a:focus-visible{outline:3px solid #6b9aff;outline-offset:3px}
+.skip{position:absolute;top:-100px;left:12px;background:white;color:#0b1e40;padding:12px;border-radius:8px;z-index:5}
+.skip:focus{top:12px}
+.portal{min-height:100vh;display:grid;grid-template-columns:244px minmax(0,1fr)}
+aside{background:#101b36;color:#dae7ff;padding:26px 16px 24px;display:flex;flex-direction:column;gap:26px}
+.brand{display:flex;gap:11px;align-items:center;margin:0 8px 8px;color:white}
+.brand-icon{width:40px;height:40px;display:grid;place-items:center;border-radius:13px;background:#3156d8;border:1px solid #7795ff;box-shadow:0 4px 18px #070f2280;font-weight:900;font-size:17px}
+.brand strong{display:block;font-size:17px;letter-spacing:-.02em;line-height:1.2}
+.brand small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:#92abe1}
+.nav-label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:#91a8d4;margin:8px 12px}
+nav{display:grid;gap:4px}
+nav a{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:9px;font-size:13px;font-weight:600;transition:background .12s}
+nav a:hover{background:#223659}
+nav a[aria-current="page"]{background:#3054d5;color:white}
+nav svg{width:17px;height:17px;flex:none;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.side-note{margin-top:auto;padding:14px;border:1px solid #34476e;border-radius:12px;background:#1b2b4c;color:#c4d6f3;font-size:12px}
+.side-note strong{color:white;display:block;margin-bottom:4px}
+.surface{min-width:0}
+.topbar{padding:18px clamp(22px,4vw,56px);background:white;border-bottom:1px solid #e1e8f2;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.topbar .path{font-size:13px;color:#6d7f9d}
+.topbar .status{font-size:12px;font-weight:700;color:#2856b6;border:1px solid #d3e0fb;background:#edf3ff;border-radius:99px;padding:7px 12px}
+main{max-width:1390px;margin:0 auto;padding:36px clamp(22px,4vw,56px) 60px}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.19em;color:#5775a7;font-weight:800;margin:0 0 8px}
+h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:0;color:#112444}
+.lead{color:#60748e;margin:11px 0 0;font-size:15px;max-width:70ch}
+.hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding-bottom:30px;border-bottom:1px solid #dde5ef}
+.hero-icon{flex:none;width:76px;height:76px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(150deg,#284cba,#6e8afe);color:white;box-shadow:0 12px 27px #4669cd33}
+.hero-icon svg{width:40px;height:40px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.section-title{font-size:19px;font-weight:800;letter-spacing:-.025em;color:#182d4d;margin:28px 0 15px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.module{min-width:0;min-height:170px;padding:22px;background:white;border:1px solid #dfe7f2;border-radius:16px;box-shadow:0 8px 22px #1b355e07;display:flex;flex-direction:column;gap:10px;transition:transform .13s,border-color .13s,box-shadow .13s}
+.module:hover{transform:translateY(-2px);border-color:#93b1ed;box-shadow:0 10px 24px #1b355e16}
+.module .ico{width:38px;height:38px;border-radius:10px;background:#eaf0ff;color:#4163d1;display:grid;place-items:center;font-size:21px}
+.module h3{font-size:16px;line-height:1.3;margin:0;color:#142747}
+.module p{font-size:12px;color:#63758e;margin:0;flex:1}
+.module .open{font-weight:800;color:#3555cf;font-size:12px;margin-top:2px}
+.bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+.bottom a{display:flex;gap:13px;align-items:center;background:#eaf0ff;border:1px solid #d5e2fb;padding:16px 20px;border-radius:12px;color:#1e3d80;font-weight:700;font-size:13px}
+.bottom a:hover{background:#dfe9ff}
+.bottom span{font-size:21px}
+.caption{font-size:12px;color:#6f8197;margin:22px 0 0}
+@media(max-width:1080px){.portal{grid-template-columns:210px minmax(0,1fr)}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.portal{display:block}aside{padding:15px;gap:11px}.brand{margin:0}.nav-label,.side-note{display:none}nav{display:flex;overflow-x:auto;gap:6px;padding-bottom:3px}nav a{white-space:nowrap;border:1px solid #405276}.topbar{padding:12px 18px}main{padding:26px 18px 40px}.hero{align-items:flex-start}.hero-icon{width:56px;height:56px;border-radius:15px}.hero-icon svg{width:29px;height:29px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.module{padding:16px;min-height:175px}.bottom{grid-template-columns:1fr}}
+@media(max-width:440px){.grid{grid-template-columns:1fr}.hero-icon{display:none}.module{min-height:140px}.topbar .path{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.module{transition:none}.module:hover{transform:none}}
 </style>
 </head>
 <body>
-<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden" xmlns="http://www.w3.org/2000/svg"><defs>
-<symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 22 7-4V6l-7-4-7 4v12z"/><path d="m9 12 2 2 4-4"/></symbol>
-<symbol id="i-home" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></symbol>
-<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
-<symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
-<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></symbol>
-<symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
-<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
-<symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1M10 21v-3h4v3"/></symbol>
-<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></symbol>
-<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
-<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7"/></symbol>
-<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
-<symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
-<symbol id="i-alert" viewBox="0 0 24 24"><path d="m12 3 10 18H2zM12 9v4m0 4h.01"/></symbol>
-<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/></symbol>
-<symbol id="i-external" viewBox="0 0 24 24"><path d="M13 4h7v7M20 4l-9 9M20 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h6"/></symbol>
-<symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18M6 12h12M9 19h6"/></symbol>
-<symbol id="i-close" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
-<symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 22c5 0 8-4 8-9 0-4-3-7-5-8 0 4-2 4-3 5 0-4-2-7-4-8 0 5-4 7-4 12a8 8 0 0 0 8 8Z"/><path d="M12 22c2 0 3-2 3-4-1-2-3-3-3-5-2 2-3 3-3 5 0 2 1 4 3 4"/></symbol>
-<symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0l-1 1-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/><path d="M3.5 12h5l2-3 3 6 2-3h5"/></symbol>
-<symbol id="i-tool" viewBox="0 0 24 24"><path d="M14.7 6.3a4.5 4.5 0 0 0-5.5 5.5L3 18a2 2 0 0 0 3 3l6.2-6.2a4.5 4.5 0 0 0 5.5-5.5l-3 3-3-3z"/></symbol>
-<symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
-<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7V3l-4 4M4 17v4l4-4"/><path d="M20 7a8 8 0 0 0-14-2M4 17a8 8 0 0 0 14 2"/></symbol>
-<symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m3 6 9 7 9-7"/></symbol>
-<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/></symbol>
-</defs></svg>
-<div class="mobile-shade" id="mobileShade"></div>
-<div class="shell"><aside class="sidebar" id="sidebar">
- <div class="brand"><div class="brand-mark"><svg><use href="#i-shield"/></svg></div><div><div class="brand-title">BelgiëPD</div><div class="brand-sub">Beheerportaal</div></div></div>
- <div class="side-section">Werkruimte</div><nav class="nav" id="navMain"></nav>
- <a class="nav-btn" style="text-decoration:none;margin-top:4px" href="/to-dienstbord.html"><svg><use href="#i-activity"/></svg>TO-dienstbord</a>
- <div class="side-section" style="margin-top:23px">Administratie</div><nav class="nav" id="navAdmin"></nav>
- <div class="sidebar-foot"><div class="sidebar-profile"><div class="avatar">BP</div><div><strong>Testgebruiker</strong><small>Simulatie · geen login</small></div></div><div class="copyright">BELGIËPD · VERSIE 0.5<br>Testomgeving · Niet voor productie<br><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen en licenties</a></div></div>
-</aside><main class="main"><header class="topbar">
- <button class="mobileMenu" id="mobileMenu" aria-label="Open navigatie"><svg><use href="#i-menu"/></svg></button>
- <div class="search"><svg><use href="#i-search"/></svg><input id="globalSearch" aria-label="Zoeken" placeholder="Zoek personeel, documenten of rapporten..."/></div>
- <div class="top-right"><span class="top-tag" id="sourceBadge">DEMO-MODUS</span><a class="btn btn-quiet" href="/verlofbeheer.html" title="Verlof aanvragen en beheren">Verlofbeheer</a><a class="btn btn-quiet" href="/rollen-opleidingen.html" title="Discord-rollen, opleidingsdossiers en machtigingen">Rollen & opleidingen</a><a class="btn btn-quiet" href="/personeelsbeheer.html" title="Personeelsfiches en gecontroleerde wijzigingen">Personeelsfiches</a><a class="btn btn-quiet" href="/dossiercentrum.html" title="Beveiligd dossieroverzicht">Dossiercentrum</a><a class="btn btn-quiet" href="/gebruikersbeheer.html" title="Discord-toegangsaanvragen en personeelsrechten">Gebruikersbeheer</a><a class="btn btn-quiet" href="/discord-status.html" title="Discord-identiteit testen zonder dossierrechten">Discord-test</a><button id="authBtn" class="btn btn-quiet" type="button" title="Beveiligd aanmelden met Google">Google aanmelden</button><button class="notification-trigger" id="topNotifications" title="Meldingen"><svg><use href="#i-bell"/></svg></button><div class="top-avatar">BP</div></div>
-</header><div class="content" id="content"></div></main></div>
-<div id="layer"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="/personnel-list-visuals.js"></script>
-<script>
-(() => {
-'use strict';
-const icon=(n)=>`<svg aria-hidden="true"><use href="#i-${n}"/></svg>`;
-const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const departments={politie:{name:'Politie',icon:'shield'},brandweer:{name:'Brandweer',icon:'flame'},ambulance:{name:'Ambulance',icon:'heart'},depannage:{name:'Depannage',icon:'tool'}};
-let employees=[
-{id:'p01',name:'Alex Vermeer',call:'730',dept:'politie',rank:'HINP',series:'1',status:'Actief',hours:42,last:1,special:'TO · Verkeerspolitie'},
-{id:'p02',name:'Noor De Clercq',call:'740',dept:'politie',rank:'HINP',series:'2',status:'Actief',hours:34,last:1,special:'Motard · Dispatch'},
-{id:'p03',name:'Milan Peeters',call:'302',dept:'politie',rank:'AINP',series:'1',status:'Actief',hours:58,last:1,special:'Radio basis'},
-{id:'p04',name:'Emma Verstraete',call:'416',dept:'politie',rank:'INP',series:'1',status:'50/50',hours:8,last:13,special:'Signalisatie'},
-{id:'p05',name:'Lars Willems',call:'428',dept:'politie',rank:'INP',series:'3',status:'Actief',hours:25,last:3,special:'WPR'},
-{id:'p06',name:'Jules Martens',call:'530',dept:'politie',rank:'1INP',series:'1',status:'Actief',hours:18,last:5,special:'Motard'},
-{id:'p07',name:'Lina Jacobs',call:'250',dept:'politie',rank:'AINP',series:'2',status:'Verlof',hours:0,last:17,special:'Radio basis'},
-{id:'p08',name:'Amir Claes',call:'380',dept:'politie',rank:'INP',series:'2',status:'Inactief',hours:0,last:33,special:'Signalisatie'},
-{id:'p09',name:'Sophie Vermeulen',call:'620',dept:'politie',rank:'AHINP',series:'2',status:'Actief',hours:31,last:2,special:'Instructeur'},
-{id:'p10',name:'Finn Maes',call:'760',dept:'politie',rank:'HINP',series:'1',status:'Actief',hours:22,last:4,special:'TO'},
-{id:'b01',name:'Robin Van Acker',call:'BW-101',dept:'brandweer',rank:'Brandweerman',series:'A',status:'Actief',hours:27,last:1,special:'Technische hulpverlening'},
-{id:'b02',name:'Zoë Janssens',call:'BW-112',dept:'brandweer',rank:'Ploegchef',series:'B',status:'Actief',hours:32,last:2,special:'Opleider'},
-{id:'b03',name:'Bram De Smet',call:'BW-130',dept:'brandweer',rank:'Brandweerman',series:'A',status:'Inactief',hours:0,last:20,special:'Adembescherming'},
-{id:'a01',name:'Elise Lambert',call:'AM-201',dept:'ambulance',rank:'Ambulancier',series:'A',status:'Actief',hours:21,last:1,special:'Ambulance'},
-{id:'a02',name:'Simon Dubois',call:'AM-205',dept:'ambulance',rank:'Teamleider',series:'B',status:'Verlof',hours:0,last:9,special:'Instructeur'},
-{id:'d01',name:'Kobe De Vos',call:'DP-301',dept:'depannage',rank:'Chauffeur',series:'A',status:'Actief',hours:19,last:2,special:'Takeldienst'},
-{id:'d02',name:'Nina Bosmans',call:'DP-305',dept:'depannage',rank:'Chauffeur',series:'B',status:'50/50',hours:7,last:16,special:'Berging'}
-];
-const sampleEmployees=employees.map(x=>({...x}));
-let liveMode=false, liveInfo=null, firebaseBridge=null, pendingReview=null;
-let dossierState=Object.create(null); // Alleen in geheugen zolang de huidige gebruiker is aangemeld.
-let docs=[{id:'doc1',title:'Handboek operationele procedures',cat:'Procedures',dept:'politie',type:'PDF',url:''},{id:'doc2',title:'Weekrapportsjabloon',cat:'Weekrapporten',dept:'politie',type:'Word',url:''},{id:'doc3',title:'Aanmeldingsformulier opleidingen',cat:'Opleidingen',dept:'algemeen',type:'Google Forms',url:''},{id:'doc4',title:'Dienstinstructies hulpdiensten',cat:'Procedures',dept:'algemeen',type:'Google Docs',url:''},{id:'doc5',title:'Administratieve personeelslijst',cat:'Personeelsbeheer',dept:'politie',type:'Google Sheets',url:''}];
-const messages=[{id:'m1',title:'Lange inactiviteit vastgesteld',detail:'1 medewerker in reeks 2 vraagt opvolging',date:'Vandaag',type:'red',dept:'politie',seen:false},{id:'m2',title:'Nieuw weekrapport ter controle',detail:'Concept moet nog nagekeken worden',date:'Vandaag',type:'blue',dept:'politie',seen:false},{id:'m3',title:'Activiteitscontrole aanbevolen',detail:'Inactiviteit langer dan 14 dagen',date:'Gisteren',type:'amber',dept:'brandweer',seen:false},{id:'m4',title:'Documentlink nog niet gekoppeld',detail:'Het documentenregister bevat demonstratielinks',date:'Gisteren',type:'blue',dept:'algemeen',seen:true}];
-let reports=[{id:'r1',title:'Weekrapport – Reeks 1',dept:'politie',period:'12–18 oktober 2026',status:'Concept',author:'Testgebruiker',category:'Observatie',description:'Demonstratierapport. Geen echte personeelsinformatie.'},{id:'r2',title:'Opleidingsregistratie',dept:'brandweer',period:'13 oktober 2026',status:'Ingediend',author:'Testgebruiker',category:'Opleiding',description:'Voorbeeld voor opleidingen.'},{id:'r3',title:'Weekrapport – Reeks 2',dept:'politie',period:'05–11 oktober 2026',status:'Gecontroleerd',author:'Testgebruiker',category:'Varia',description:'Demonstratie van historisch weekrapport.'}];
-const nav1=[['dashboard','home','Dashboard'],['personeel','users','Personeelsbeheer'],['activiteiten','activity','Activiteitencheck'],['rapporten','file','Weekrapporten'],['documenten','folder','Documentencentrum']];
-const nav2=[['meldingen','bell','Meldingen'],['diensten','building','Hulpdiensten'],['beheer','lock','Beheer & rollen']];
-let personnelActivity={loaded:false,events:[],error:null,canLogHistoricalCall:false};
-let restrictedPortal=false;
-let page='dashboard', returnPage='dashboard', query='', deptFilter='politie', statusFilter='all', seriesFilter='all', docFilter='all', role='korpsleiding', selectedDepartment='politie', drawer=null, drawerTab='algemeen', modal=null, reportFilter='all';
-const canReadRecords=()=>role!=='medewerker';
-const canSeeCases=()=>['korpsleiding','middenkader','officierenkader','beheerder'].includes(role);
-const canOpenRegistrations=()=>liveMode&&['middenkader','officierenkader','korpsleiding'].includes(role);
-const canWriteReports=()=>role==='korpsleiding'||role==='middenkader'||role==='officierenkader';
-const hasDept=(d)=>selectedDepartment==='all'||d==='algemeen'||d===selectedDepartment;
-const badge=(s)=>`<span class="pill ${s==='Actief'||s==='Gecontroleerd'?'green':s==='Verlof'||s==='50/50'||s==='Concept'?'amber':s==='Inactief'?'red':'blue'}">${esc(s)}</span>`;
-const h=(t,desc,button='')=>`<div class="page-heading"><div><div class="eyebrow">BELGIËPD / ${esc(t)}</div><h1>${esc(t)}</h1><div class="subheading">${esc(desc)}</div></div>${button}</div>`;
-const button=(txt,action='new-report',ic='plus')=>`<button class="btn btn-primary" data-action="${action}">${icon(ic)} ${txt}</button>`;
-const empty=(text='Geen resultaten gevonden')=>`<div class="empty">${icon('search')}<strong>${esc(text)}</strong><div>Probeer een andere zoekterm of filter.</div></div>`;
-const card=(label,value,note,ic,color='')=>`<div class="card kpi"><div class="kpi-top"><span class="kpi-name">${label}</span><span class="kpi-icon ${color}">${icon(ic)}</span></div><div class="kpi-value">${value}</div><div class="kpi-note">${note}</div></div>`;
-const find=(t)=>String(t??'').toLocaleLowerCase('nl').includes(query.toLocaleLowerCase('nl'));
-const personnel=()=>employees.filter(x=>(deptFilter==='all'||x.dept===deptFilter)&&(statusFilter==='all'||x.status===statusFilter)&&(seriesFilter==='all'||x.series===seriesFilter)&&(!query||[x.name,x.call,x.rank,x.dept,x.series].some(find)));
-function toast(text){const el=document.getElementById('toast');el.textContent=text;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),4200)}
-function renderNav(){document.getElementById('navMain').innerHTML=nav1.map(([id,ic,t])=>`<button class="nav-btn ${id===page?'active':''}" data-page="${id}">${icon(ic)} ${t}</button>`).join('');document.getElementById('navAdmin').innerHTML=nav2.map(([id,ic,t])=>`<button class="nav-btn ${id===page?'active':''}" data-page="${id}">${icon(ic)} ${t}${id==='meldingen'&&!liveMode?`<span class="count">${messages.filter(x=>!x.seen).length}</span>`:''}</button>`).join('')}
-function chart(){if(liveMode) return '<div class="info-box">Historische activiteitsgrafieken komen na opslag van meerdere meetmomenten. We tonen geen fictieve daggrafiek naast echte gegevens.</div>';let vals=[17,29,23,45,36,60,43,57,65,51,81,73],days=['Ma','Di','Wo','Do','Vr','Za','Zo','Ma','Di','Wo','Do','Vr'];return `<div class="bar-chart">${vals.map((v,i)=>`<div class="bar-wrap"><div class="bar ${i<5?'faded':''}" style="height:${v}%" title="Demowaarde: ${v}"></div><small>${days[i]}</small></div>`).join('')}</div><div class="chart-footer"><span><i class="legend-dot"></i> Activiteitsindicatie (fictief)</span><span><i class="legend-dot light"></i> Vorige periode</span></div>`}
-function personnelGradeHtml(x){
-  const grade=BPDPersonnelVisuals.rankInfo(x.rank,x.dept);
-  if(!grade.image)return '<span class="rank-unknown" title="Geen gevalideerd politiegraadkenteken">—</span>';
-  return '<img class="rank-insignia" src="'+esc(grade.image)+'" alt="'+
-    esc('Graadkenteken '+grade.label)+'" title="'+esc(grade.label)+'" loading="lazy" referrerpolicy="no-referrer">';
-}
-function specialtyMarkHtml(label){
-  const image=BPDPersonnelVisuals.specialtyIconImage(label);
-  return image
-    ?'<img class="specialty-custom-image" src="'+esc(image)+'" alt="" aria-hidden="true" loading="lazy">'
-    :esc(BPDPersonnelVisuals.specialtyIcon(label));
-}
-function personnelSpecialtiesHtml(x){
-  const badges=BPDPersonnelVisuals.specialtyStatuses(x.specialties);
-  if(!badges.length)return '<span class="no-specialty">—</span>';
-  return '<div class="specialty-overview-summary">'+badges.map(k=>
-    '<span class="specialty-value specialty-'+esc(k.style)+'" title="'+esc(k.label+' · '+k.status)+'">'+
-    specialtyMarkHtml(k.label)+' '+esc(k.label)+': '+esc(k.status)+'</span>').join('')+'</div>';
-}
-function employeeTable(data,limit){
-  const selected=limit?data.slice(0,limit):data;
-  const departmentsPresent=new Set(selected.map(x=>x.dept));
-  const rosterDept=departmentsPresent.size===1?[...departmentsPresent][0]:
-    (deptFilter!=='all'&&data.every(x=>x.dept===deptFilter)?deptFilter:'all');
-  const cols=BPDPersonnelVisuals.specialtyColumns(rosterDept);
-  const header=['Roepnummer','Rangkenteken','Naam van rang','Naam personeelslid','Reeks','Status'];
-  const labels=header.map(t=>'<th>'+t+'</th>').join('')+
-    (!cols.length?'<th>Specialisaties</th>':cols.map(label=>
-      '<th class="specialty-column" title="'+esc(label)+'">'+
-      '<span class="specialty-col-icon">'+specialtyMarkHtml(label)+'</span>'+
-      '<span class="specialty-col-label">'+esc(label)+'</span></th>').join(''))+'<th>Fiche</th>';
-  const rows=selected.map(x=>{
-    const grade=BPDPersonnelVisuals.rankInfo(x.rank,x.dept);
-    let cells='<td class="strong">'+esc(x.call||'—')+'</td>'+
-      '<td>'+personnelGradeHtml(x)+'</td>'+
-      '<td class="rank-name">'+esc(grade.label)+'</td>'+
-      '<td class="strong">'+esc(x.name||'—')+
-      '<small class="roster-dept">'+esc(departments[x.dept]?.name||x.dept)+'</small></td>'+
-      '<td>'+esc(x.series||'Niet ingevuld')+'</td><td>'+badge(x.status)+'</td>';
-    if(!cols.length)cells+='<td>'+personnelSpecialtiesHtml(x)+'</td>';
-    for(const label of cols){
-      const status=BPDPersonnelVisuals.specialtyStateFor(x,label);
-      const txt=status.status==='Niet ingevuld'?'—':status.status;
-      cells+='<td class="specialty-value-cell"><span class="specialty-value specialty-'+
-        esc(status.style)+'" title="'+esc(label+' · '+status.status)+'">'+esc(txt)+'</span></td>';
-    }
-    return '<tr>'+cells+'<td><button class="table-action" title="Open personeelsfiche" data-person="'+
-      esc(x.id)+'">'+icon('chevron')+'</button></td></tr>';
-  }).join('');
-  return '<div class="table-inner staff-roster-holder"><table class="data-table staff-roster"><thead><tr>'+
-    labels+'</tr></thead><tbody>'+ (rows||'<tr><td colspan="'+(7+cols.length)+'">Geen resultaten.</td></tr>')+
-    '</tbody></table></div>';
-}
-function registrationShortcut(){return canOpenRegistrations()?`<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Observaties & sancties</div><div class="card-sub">Registraties, sancties en beveiligde personeelsdossiers</div></div><a class="btn btn-primary" style="text-decoration:none" href="/registraties.html">${icon('file')} Open registraties</a></div><div class="profile-note">Alleen toegankelijk voor middenkader, officierenkader en korpsleiding. Het basiskader dient observaties in via het afzonderlijke formulier.</div></div>`:''}
-function approvalWidget(){
-  if(!liveMode||!pendingReview)return '';
-  const link='<a class="btn btn-primary" href="/gebruikersbeheer.html" style="text-decoration:none">Open gebruikersbeheer</a>';
-  if(pendingReview.kind==='limited')return '<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Wachtende goedkeuringen</div><div class="card-sub">Je algemene kaderrol en de effectieve dienstrol komen niet overeen.</div></div>'+link+'</div><div class="profile-note">Je kunt aanvragen pas bekijken en goedkeuren wanneer je dienstbevoegdheden zijn gecontroleerd. Gebruik Discord opnieuw verifiëren indien je functie recent is gewijzigd.</div></div>';
-  if(pendingReview.kind!=='allowed')return '';
-  const rows=pendingReview.users.slice(0,4).map(x=>'<div class="alert-row"><div class="alert-icon blue">'+icon('users')+'</div><div class="alert-copy"><strong>'+esc(x.username||'Discord-lid')+'</strong><small>'+esc(x.candidateDepartments.join(' · ')||'Hulpdienst te verifiëren')+' · In afwachting</small></div></div>').join('');
-  return '<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Wachtende goedkeuringen <span class="badge-inline">'+pendingReview.users.length+'</span></div><div class="card-sub">Discord-toegangsaanvragen binnen jouw bevoegde hulpdiensten</div></div>'+link+'</div>'+(rows||'<div class="profile-note">Geen openstaande aanvragen.</div>')+'</div>';
-}
-function personnelActivityRows(){
-  if(!liveMode)return '<div class="personnel-feed-empty">Deze historiek is alleen beschikbaar wanneer je bent aangemeld met personeelsinzage.</div>';
-  if(!personnelActivity.loaded)return '<div class="personnel-feed-empty">Recente promoties en roepnummers laden…</div>';
-  if(personnelActivity.error)return '<div class="personnel-feed-empty">Recente wijzigingen kunnen momenteel niet geladen worden. Probeer later opnieuw.</div>';
-  if(!personnelActivity.events.length)
-    return '<div class="personnel-feed-empty">Er zijn nog geen geregistreerde promoties of definitieve roepnummertoekenningen gevonden.</div>';
-  return personnelActivity.events.map(e=>{
-    const eventName=e.type==='promotion'?'Promotie':
-      e.type==='callsign_assigned'?'Vast roepnummer toegekend':'Roepnummer gewijzigd';
-    const description=e.type==='promotion'
-      ?(e.before?e.before+' → ':'')+e.after:
-      (e.before&&e.before!==e.after?e.before+' → ':'')+e.after;
-    const stamp=new Date(e.at);
-    const at=Number.isFinite(stamp.getTime())
-      ?stamp.toLocaleString('nl-BE',{dateStyle:'short',timeStyle:'short'}):'';
-    const personnelId=e.dept+':'+e.discordId;
-    const known=employees.some(person=>person.id===personnelId);
-    const name=known?'<button class="personnel-feed-link" data-person="'+esc(personnelId)+'">'+esc(e.name)+'</button>':
-      '<strong>'+esc(e.name)+'</strong>';
-    return '<div class="personnel-feed-row"><span class="personnel-feed-type '+esc(e.type)+'">'+
-      esc(e.retrospective?(e.type==='promotion'?'Historische promotie geregistreerd':'Historische roepnummerregistratie'):eventName)+'</span><div class="personnel-feed-main"><div>'+name+
-      '<span class="personnel-feed-dept">'+esc(departments[e.dept]?.name||e.dept)+'</span></div>'+
-      '<div class="personnel-feed-description">'+esc(description)+'</div></div>'+
-      '<time class="personnel-feed-date" datetime="'+esc(e.at)+'">'+esc(e.retrospective?'Geregistreerd: '+at:at)+'</time></div>';
-  }).join('');
-}
-function historicalCallRegistration(){
-  if(!liveMode||!personnelActivity.canLogHistoricalCall)return '';
-  const people=employees.filter(x=>x.dept==='politie'&&/^\d{15,22}$/.test(x.personId||'')&&x.call&&x.call!=='—')
-    .sort((a,b)=>a.name.localeCompare(b.name,'nl-BE'));
-  if(!people.length)return '';
-  return '<details class="historical-call-entry"><summary>Reeds gewijzigde roepnummers achteraf registreren</summary>'+
-    '<form id="historicalCallForm" class="historical-call-form">'+
-    '<label>Personeelslid <select id="historicalCallPerson" required>'+
-    people.map(x=>'<option value="'+esc(x.personId)+'">'+esc(x.name)+' · '+esc(x.call)+'</option>').join('')+
-    '</select></label>'+
-    '<label>Vorig roepnummer <input id="historicalOldCall" required maxlength="24" placeholder="Bijvoorbeeld S302"></label>'+
-    '<label>Huidig roepnummer <output id="historicalCurrentCall">'+esc(people[0].call)+'</output></label>'+
-    '<label>Huidige rang <output id="historicalCurrentRank">'+esc(people[0].rank||'Niet ingevuld')+'</output></label>'+
-    '<label class="historical-call-checkbox"><input type="checkbox" id="historicalAlsoPromotion"> Ook de eerdere promotie naar deze rang registreren</label>'+
-    '<label>Motivering <textarea id="historicalCallReason" required minlength="15" maxlength="500" rows="2" placeholder="Bijvoorbeeld: reeds gewijzigd in de officiële personeelslijst"></textarea></label>'+
-    '<button class="btn btn-primary" type="submit">Vroegere wijziging registreren</button>'+
-    '<p class="historical-call-hint">Deze registratie wijzigt geen roepnummer of Discord-rol. We tonen de registratiedatum, niet een verzonnen datum waarop de wijziging gebeurde.</p>'+
-    '</form></details>';
-}
-function dashboard(){const a=employees.filter(x=>x.status==='Actief').length;return h('Operationeel overzicht','Welkom in het administratieve controlecentrum van BelgiëPD.')+
-`${approvalWidget()}${canOpenRegistrations()?`<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Vaste roepnummers</div><div class="card-sub">Aanvragen controleren en definitief toekennen volgens kaderrechten</div></div><a class="btn btn-primary" href="/roepnummers.html" style="text-decoration:none">Open aanvragen</a></div></div>`:""}<div class="cards">${card('Personeelsleden',employees.length,'Alle hulpdiensten samen','users')}${card('Actieve leden',a,liveMode?'Google Sheets · alleen lezen':'<b>Demo-overzicht</b> · geen live data','activity','green')}${card('Op te volgen',employees.filter(x=>x.status==='Inactief'||x.status==='50/50').length,'Inactiviteit en 50/50-status','alert','amber')}${card('Weekrapporten',liveMode?'—':reports.length,liveMode?'Nog niet gekoppeld':'Waarvan '+reports.filter(r=>r.status==='Concept').length+' in concept','file')}</div>
-<div class="section-grid"><div class="card section-pad"><div class="card-header"><div><div class="card-title">Activiteitsoverzicht</div><div class="card-sub">${liveMode?'Historische meetpunten nog niet gekoppeld':'Gesimuleerde speelactiviteit per dag'}</div></div><span class="badge-inline">${liveMode?'Geen historie':'Laatste 12 dagen'}</span></div>${chart()}</div>
-<div class="card section-pad"><div class="card-header"><div><div class="card-title">Aandachtspunten</div><div class="card-sub">Meldingen voor het middenkader</div></div><button class="small-link" data-page="meldingen">Alles bekijken ${icon('arrow')}</button></div><div class="alert-list">${(liveMode?[]:messages.slice(0,4)).map(m=>`<div class="alert-row"><div class="alert-icon ${m.type}">${icon(m.type==='red'?'alert':m.type==='blue'?'file':'clock')}</div><div class="alert-copy"><strong>${esc(m.title)}</strong><small>${esc(m.detail)}</small></div>${icon('chevron')}</div>`).join('')}${liveMode?'<div class="profile-note">Meldingen zijn nog niet verbonden met de livebronnen.</div>':''}</div></div></div>
-<div class="card table-card"><div class="table-head"><div><div class="card-title">Recente personeelsactiviteit</div><div class="card-sub">Laatste vastgelegde promoties en vaste roepnummers</div></div><a class="small-link" href="/personeelsbeheer.html">Personeelsdossiers →</a></div><div class="personnel-feed-list">${personnelActivityRows()}${historicalCallRegistration()}</div></div><div class="footer-note">${liveMode?"Personeelsactiviteit: geregistreerde besluiten in Firestore. Niet-gelogde historische wijzigingen in Google Sheets zijn niet beschikbaar.":"DEMO · Geen echte personeelsactiviteiten beschikbaar zonder aanmelding."}</div>`}
-function personnelPage(){if(!canReadRecords())return h('Personeelsbeheer','Geen machtiging voor deze functie.')+`<div class="card section-pad">${empty('Geen toegang tot personeelsbeheer')}</div>`;
-const seriesOptions=[...new Set(employees.filter(x=>deptFilter==='all'||x.dept===deptFilter).map(x=>x.series).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl',{numeric:true}));
-return h('Personeelsbeheer','Centraal overzicht van alle personeelsleden en hun toegewezen diensten.',
-`<div class="personnel-heading-actions">${button('Nieuw weekrapport')}${button('Nieuwe medewerker','unavailable')}</div>`)+
-`${liveMode ? '<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Personeelsfiches in Firestore</div><div class="card-sub">Bestaande personeelsgegevens bekijken en gecontroleerde wijzigingen voorbereiden</div></div><a href="/personeelsbeheer.html" class="btn btn-primary" style="text-decoration:none">Open fichebeheer</a></div></div>' : ''}${registrationShortcut()}${liveMode && canOpenRegistrations()?`<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Dossieradministratie & weekrapportdatabase</div><div class="card-sub">Verloven, notities, opleidingen, promotievoorstellen en concept-weekrapporten</div></div><a class="btn btn-primary" style="text-decoration:none" href="/weekrapporten.html">Open dossieradministratie</a></div><div class="profile-note">Registraties worden in Firestore bewaard. De oorspronkelijke Google Sheets worden niet gewijzigd.</div></div>`:``}<div class="filter-row"><select class="select" id="deptFilter" aria-label="Filter hulpdienst"><option value="all">Alle hulpdiensten</option>${Object.keys(departments).map(d=>`<option value="${d}" ${deptFilter===d?'selected':''}>${departments[d].name}</option>`).join('')}</select><select class="select" id="statusFilter" aria-label="Filter status"><option value="all">Alle statussen</option>${[...new Set(employees.map(x=>x.status))].sort().map(s=>`<option value="${esc(s)}" ${statusFilter===s?'selected':''}>${esc(s)}</option>`).join('')}</select><select class="select" id="seriesFilter" aria-label="Filter reeks"><option value="all">Alle reeksen</option>${seriesOptions.map(s=>`<option value="${esc(s)}" ${seriesFilter===s?'selected':''}>${esc(s)}</option>`).join('')}</select><span class="section-status">${personnel().length} resultaten</span></div><div class="card table-card"><div class="table-head"><div class="card-title">Personeelslijst</div><span class="badge-inline">${liveMode?'Google Sheets · alleen lezen':'Fictieve gegevens'}</span></div>${employeeTable(personnel())}</div>`}
-function activityPage(){const all=employees.filter(x=>hasDept(x.dept)&&(!query||[x.name,x.call,x.status].some(find)));const measured=liveMode?all.filter(x=>x.last!==null||x.hours!==null):all;
-return h('Activiteitencheck','Meetwaarden per personeelslid uit de activiteitencheck; niet rechtstreeks uit FiveM.')+
-`<div class="cards">${card('Met activiteitsmeting',measured.length,liveMode?'Personen met brongegevens':'Demoregistraties','users')}${card('14+ dagen',all.filter(x=>x.last!==null&&x.last>=14).length,'Volgens laatste meting','clock','amber')}${card('Uren deze periode',measured.reduce((sum,x)=>sum+(x.hours??0),0),liveMode?'Som van playtimeverschillen':'Gesimuleerde uren','activity','green')}${card(liveMode?'Meting ontbreekt':'Open meldingen',liveMode?all.length-measured.length:messages.filter(m=>!m.seen&&hasDept(m.dept)).length,liveMode?'Geen bronwaarde beschikbaar':'Demo-notificaties','alert','red')}</div><div class="filter-row"><label class="label" for="activityDept" style="margin:0">Hulpdienst</label><select class="select" id="activityDept"><option value="all" ${selectedDepartment==='all'?'selected':''}>Alle diensten</option>${Object.keys(departments).map(d=>`<option value="${d}" ${selectedDepartment===d?'selected':''}>${departments[d].name}</option>`).join('')}</select></div>
-<div class="card table-card"><div class="table-head"><div><div class="card-title">Activiteitsmetingen</div><div class="card-sub">${liveMode?'Google Sheets · huidige meetwaarden · geen opgeslagen daghistoriek':'Demo · fictieve waarden'}</div></div></div><div class="table-inner"><table class="data-table"><thead><tr><th>Medewerker</th><th>Dienst</th><th>Laatste connectie</th><th>Uren periode</th><th>Dagen inactief</th><th>Open fiche</th></tr></thead><tbody>${all.map(x=>`<tr><td class="strong">${esc(x.name)} <span style="color:#a6b0bf;font-size:10px">${esc(x.call)}</span></td><td>${esc(departments[x.dept].name)}</td><td>${esc(x.lastConnection || 'Geen meetwaarde')}</td><td>${x.hours===null?'—':esc(x.hours)+' u'}</td><td>${x.last===null?'—':esc(x.last)+' d'}</td><td><button class="table-action" data-person="${esc(x.id)}" title="Open personeelsfiche">${icon('chevron')}</button></td></tr>`).join('')||'<tr><td colspan="6">Geen resultaten</td></tr>'}</tbody></table></div></div>`}
-function reportsPage(){if(liveMode && !canWriteReports())return h('Weekrapporten','Geen toegang tot deze functie.')+'<div class="card section-pad">Alleen middenkader en hoger.</div>';if(liveMode)return h('Weekrapporten','Beveiligde rapportdatabase op basis van Firestore-dossierregistraties.')+`<div class="card section-pad"><div class="card-title" style="margin-bottom:12px">Echte weekrapporten openen</div><p class="profile-note">Nieuwe weekrapporten worden in Firestore als concept bewaard. Oude Word-rapporten zijn nog niet ingelezen.</p><p><a href="/weekrapporten.html#weekrapporten" class="btn btn-primary" style="text-decoration:none">Open weekrapportdatabase</a></p></div>`;let r=reports.filter(x=>(reportFilter==='all'||x.dept===reportFilter)&&(!query||[x.title,x.period,x.category].some(find)));return h('Weekrapporten','Maak, controleer en archiveer rapporten per hulpdienst.',canWriteReports()?button('Weekrapport opstellen'):'')+
-`<div class="filter-row"><select id="reportFilter" class="select"><option value="all">Alle hulpdiensten</option>${Object.keys(departments).map(d=>`<option value="${d}" ${reportFilter===d?'selected':''}>${departments[d].name}</option>`).join('')}</select><button class="btn btn-quiet" data-action="word-import">${icon('file')} Word importeren</button></div><div class="card table-card"><div class="table-head"><div class="card-title">Rapportenoverzicht</div><span class="badge-inline">Alleen tijdelijke demo-gegevens</span></div><div class="table-inner"><table class="data-table"><thead><tr><th>Document</th><th>Dienst</th><th>Periode</th><th>Status</th><th>Invoerder</th><th></th></tr></thead><tbody>${r.map(x=>`<tr><td class="strong">${esc(x.title)}</td><td>${esc(departments[x.dept].name)}</td><td>${esc(x.period)}</td><td>${badge(x.status)}</td><td>${esc(x.author)}</td><td><button class="table-action" title="Rapport bekijken" data-report="${x.id}">${icon('chevron')}</button></td></tr>`).join('')||'<tr><td colspan="6">Geen rapporten.</td></tr>'}</tbody></table></div></div><div class="info-box">${icon('info')} De Word-import is in dit prototype een demonstratie. In de productieversie controleren we eerst de herkomst, datums en personeelskoppelingen vooraleer gegevens definitief aan dossiers worden toegevoegd.</div>`}
-function documentsPage(){let matches=docs.filter(x=>(docFilter==='all'||x.cat===docFilter)&&(!query||[x.title,x.cat,x.type].some(find)));return h('Documentencentrum','Alle Google Docs, Sheets, Forms, PDF’s en Word-bestanden op één plaats.',button('Document toevoegen','new-doc'))+
-`<div class="filter-row"><select id="docFilter" class="select"><option value="all">Alle categorieën</option>${[...new Set(docs.map(d=>d.cat))].map(c=>`<option ${docFilter===c?'selected':''}>${esc(c)}</option>`).join('')}</select><span class="section-status">${matches.length} documenten</span></div><div class="doc-list">${matches.map(d=>`<div class="doc"><div class="doc-icon">${icon(d.type==='Word'||d.type==='PDF'?'file':'folder')}</div><div style="flex:1;min-width:150px"><strong>${esc(d.title)}</strong><small>${esc(d.cat)} · ${esc(d.type)} · ${d.dept==='algemeen'?'Algemeen':esc(departments[d.dept].name)}</small></div><button class="btn btn-quiet" data-doc="${d.id}">${icon('external')} Openen</button></div>`).join('')||empty()}</div><div class="footer-note">Documenten met fictieve titels hebben nog geen echte link. Toegevoegde links blijven alleen in het geheugen van dit tabblad.</div>`}
-function notificationsPage(){return h('Geautomatiseerde meldingen','Overzicht van taken en aandachtspunten. Er worden geen echte meldingen verzonden.')+
-`<div class="cards">${card('Openstaand',messages.filter(x=>!x.seen).length,'Nog te behandelen','bell','red')}${card('Inactiviteit',employees.filter(x=>x.last>=14&&x.status!=='Verlof').length,'Mogelijk op te volgen','clock','amber')}${card('Rapporten ter controle',reports.filter(x=>x.status==='Ingediend').length,'Ingediende rapporten','file')}${card('Automatiseringen','0','Niet geactiveerd in deze demo','refresh')}</div><div class="card section-pad"><div class="card-header"><div class="card-title">Meldingscentrum</div><button class="btn btn-quiet" data-action="read-all">${icon('check')} Alles markeren als gelezen</button></div>${messages.map(m=>`<div class="alert-row"><div class="alert-icon ${m.type}">${icon('bell')}</div><div class="alert-copy"><strong>${esc(m.title)} ${m.seen?'<span style="color:#a2aec0;font-size:10px">· gelezen</span>':''}</strong><small>${esc(m.detail)} · ${esc(m.date)}</small></div><button class="btn btn-quiet" data-notif="${m.id}">${m.seen?'Bekeken':'Markeer gelezen'}</button></div>`).join('')}</div><div class="info-box">In de productieversie zijn meldingen uitsluitend opvolgtaken. Inactiviteit leidt nooit zonder menselijke beoordeling tot sancties of ontslag.</div>`}
-function departmentsPage(){return h('Hulpdiensten','Eén platform met een afzonderlijke werkruimte en machtigingen voor iedere dienst.')+
-`<div class="dept-grid">${Object.entries(departments).map(([id,d])=>`<div class="card dept-card"><div class="dept-icon">${icon(d.icon)}</div><div><strong>${d.name}</strong><small style="display:block;margin-top:7px">Gescheiden dossiers, rapporten en gebruikersrechten</small></div><div class="dept-bottom"><span>${employees.filter(x=>x.dept===id).length} ${liveMode?"gekoppelde medewerkers":"demo-personeelsleden"}</span><button class="small-link" data-dept="${id}">Activiteiten bekijken →</button></div></div>`).join('')}</div><div class="info-box">De vier diensten zijn voorbereid in het datamodel. De personeelslijsten van de vier diensten staan in dezelfde administratieve Google Sheet. Activiteitsmeting is voorlopig alleen voor politie beschikbaar.</div>`}
-function settingsPage(){return h('Beheer & rollen','Toegangsbeheer en beveiligde roltoewijzingen.')+`<div class="card section-pad" style="margin-bottom:18px"><div class="card-header"><div><div class="card-title">Gebruikers-, TO- en dienstbeheer</div><div class="card-sub">Beheer afzonderlijke dossierinzage per hulpdienst, TO-rechten en TESTER-kijktoegang.</div></div><a href="/gebruikersbeheer.html#dienstbeheer" class="btn btn-primary" style="text-decoration:none">Beheertoegang hulpdiensten openen</a></div></div>`+
-`<div class="split"><div class="card section-pad"><div class="card-header"><div class="card-title">Rollen simuleren</div><span class="badge-inline">Alleen demo</span></div><label class="label" for="roleSelect">Actieve demonstratierol</label><select id="roleSelect" ${liveMode?"disabled":""} class="select" style="width:100%;margin-bottom:18px"><option value="korpsleiding" ${role==='korpsleiding'?'selected':''}>Korpsleiding</option><option value="middenkader" ${role==='middenkader'?'selected':''}>Middenkader</option><option value="instructeur" ${role==='instructeur'?'selected':''}>Instructeur</option><option value="medewerker" ${role==='medewerker'?'selected':''}>Medewerker</option></select><div class="role-box"><strong>Huidige simulatie: ${esc(role)}</strong><p>${role==='korpsleiding'?'Mag binnen de demo personeelsfiches en alle demonstratievelden zien.':role==='middenkader'?'Mag personeelsgegevens en toegewezen casussen bekijken. In productie moeten reeksen afzonderlijk toegewezen worden.':role==='instructeur'?'Mag algemene personen- en opleidingsinformatie raadplegen, maar geen vertrouwelijke personeelscasussen.':'Mag geen administratieve personeelsdossiers raadplegen.'}</p></div><div class="panel-note">${liveMode?'Google-login en servermachtigingen zijn actief. De getoonde rol komt van de server.':'Dit is uitsluitend een lokale demonstratierol, geen echte beveiliging.'}</div></div>
-<div class="card section-pad"><div class="card-header"><div class="card-title">Status integraties</div></div>${[['Google-login',liveMode?'Verbonden':'Niet aangemeld'],['Google Sheets',liveMode?'Alleen lezen · verbonden':'Niet verbonden'],['Google Forms','Nog niet verbonden'],['Word-import','Nog niet verbonden'],['Documenten in Drive','Nog niet verbonden'],['Cloud Scheduler','Nog niet actief']].map(([x,s])=>`<div class="alert-row"><div class="alert-icon blue">${icon('info')}</div><div class="alert-copy"><strong>${x}</strong><small>${s}</small></div></div>`).join('')}</div></div>`}
-function searchPage(){if(!query.trim())return dashboard();const pe=canReadRecords()?employees.filter(x=>[x.name,x.call,x.rank,departments[x.dept].name].some(find)):[],re=liveMode?[]:canReadRecords()?reports.filter(x=>[x.title,x.period,x.category].some(find)):[],doe=liveMode?[]:docs.filter(x=>[x.title,x.cat,x.type].some(find));return h('Zoekresultaten',`Zoekresultaten voor: ${query}`)+`<div class="cards">${card('Personeel',pe.length,'Gevonden personeelsleden','users')}${card('Documenten',doe.length,'Documentlinks en bestanden','folder')}${card('Rapporten',re.length,'Rapporten op basis van titel','file')}${card('Totaal',pe.length+doe.length+re.length,'Zoekresultaten','search')}</div><div class="card table-card"><div class="table-head"><div class="card-title">Personeel</div></div>${pe.length?employeeTable(pe):empty('Geen personeelsmatches')}</div><div class="card section-pad" style="margin-top:18px"><div class="card-title" style="margin-bottom:16px">Documenten</div><div class="doc-list">${doe.map(d=>`<div class="doc"><div class="doc-icon">${icon('file')}</div><div style="flex:1"><strong>${esc(d.title)}</strong><small>${esc(d.cat)} · ${esc(d.type)}</small></div><button class="btn btn-quiet" data-doc="${d.id}">Openen</button></div>`).join('')||empty('Geen documenten gevonden')}</div></div><div class="card table-card" style="margin-top:18px"><div class="table-head"><div class="card-title">Rapporten</div></div><div class="doc-list" style="padding:0 18px 16px">${re.map(r=>`<div class="doc"><div style="flex:1"><strong>${esc(r.title)}</strong><small>${esc(r.period)}</small></div><button class="btn btn-quiet" data-report="${r.id}">Bekijken</button></div>`).join('')||empty('Geen rapporten gevonden')}</div></div>`}
-function render(){
-  if(restrictedPortal){
-    page='dashboard';drawer=null;modal=null;renderNav();
-    document.getElementById('content').innerHTML='<div class="page-heading"><div><div class="eyebrow">BELGIËPD / Dashboard</div><h1>Dashboard</h1><div class="subheading">Je bent aangemeld. Je account heeft geen toegang tot de centrale personeelslijst.</div></div></div><div class="card section-pad"><div class="card-title">Mijn toegelaten functies</div><p>Je kunt naar je eigen registraties en je Discord-toegang. Personeelsgegevens zijn hier niet beschikbaar.</p><p><a class="btn btn-primary" href="/registraties.html">Open observaties en sancties</a> <a class="btn btn-quiet" href="/gebruikersbeheer.html">Mijn toegangsrechten</a></p></div>';
-    document.getElementById('layer').innerHTML='';
-    return;
-  }
-  renderNav();
-  const blockedLive=liveMode&&['rapporten','documenten','meldingen'].includes(page);
-  const currentPage=blockedLive?()=>(h(page==='rapporten'?'Weekrapporten':page==='documenten'?'Documentencentrum':'Meldingen','Deze module wordt na de eerste beveiligde personeelskoppeling aangesloten.')+'<div class="card section-pad"><div class="info-box">Alleen personeelsbeheer en activiteitencheck tonen momenteel echte gegevens. Er zijn geen echte weekrapporten, documenten of meldingen verbonden. Dit scherm toont bewust geen fictieve gegevens in live-modus.</div></div>'):
-    ({zoeken:searchPage,dashboard, personeel:personnelPage, activiteiten:activityPage, rapporten:reportsPage, documenten:documentsPage, meldingen:notificationsPage, diensten:departmentsPage, beheer:settingsPage}[page]||dashboard);
-  document.getElementById('content').innerHTML=currentPage();document.getElementById('globalSearch').value=query;renderLayer();
-}
-function formatSourceValue(value){return value===null||value===undefined||value===''?'Geen meetwaarde':String(value)}
-function specialtyTone(value){const v=String(value||'').toLowerCase();if(v==='ja')return 'yes';if(v==='nee'||v==='niet ingevuld')return 'no';return 'other'}
-function specialtyList(x){const items=Array.isArray(x.specialties)?x.specialties:[];if(!items.length)return `<div class="profile-note">${liveMode?'Geen afzonderlijke bevoegdheidsgegevens beschikbaar.':'Demonstratie: '+esc(x.special||'Geen gegevens')}</div>`;return `<div class="specialty-grid">${items.map(item=>`<div class="specialty-item"><strong>${esc(item.label)}</strong><span class="specialty-state ${specialtyTone(item.value)}">${esc(item.value)}</span></div>`).join('')}</div><div class="profile-note">De status komt letterlijk uit de personeelslijst. ‘Nee’ en ‘Niet ingevuld’ zijn verschillende situaties.</div>`}
-function personPane(x){switch(drawerTab){
-case 'algemeen':return `<h3 class="profile-subheading">Algemene gegevens</h3><div class="profile-meta">${[['Roepnummer',x.call],['Rang',x.rank],['Reeks / kader',x.series],['Hulpdienst',departments[x.dept]?.name||x.dept],['Personeelsstatus',x.status],['Activiteitencheck',x.dept==='politie'&&(x.last!==null||x.hours!==null)?'Gekoppeld':'Geen meting beschikbaar']].map(([label,value])=>`<div><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`).join('')}</div><div class="profile-note">${liveMode?'Gegevens uit de gekoppelde personeelslijst. Wijzigingen worden alleen in Google Sheets uitgevoerd.':'Fictieve demonstratiegegevens; geen echte koppeling.'}</div>`;
-case 'bevoegdheden':return `<h3 class="profile-subheading">Bevoegdheden en specialisaties</h3>${specialtyList(x)}`;
-case 'activiteit':return `<h3 class="profile-subheading">Activiteitencheck</h3>${liveMode&&x.dept!=='politie'?'<div class="profile-note">Voor deze hulpdienst is nog geen afzonderlijke activiteitsbron aangesloten.</div>':''}<div class="profile-meta">${[['Speeluren huidige periode',x.hours===null?'Geen meting':x.hours+' uur'],['Totale playtime',x.totalHours==null?'Geen meting':x.totalHours+' uur'],['Dagen inactief',x.last==null?'Geen meting':x.last+' dagen'],['Automatische activiteitsstatus',x.activityStatus||'Geen meting'],['Laatste connectie',formatSourceValue(x.lastConnection)],['Laatste controle',formatSourceValue(x.lastCheck)],['Laatste ping',formatSourceValue(x.lastPing)],['Aantal pings',x.pingCount??'Geen meting'],['Reacties op pings',x.pingResponses??'Geen meting']].map(([label,value])=>`<div><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`).join('')}</div><div class="profile-note">${liveMode?'Dit zijn de laatst gelezen meetwaarden uit Google Sheets. Er is nog geen volledige historische reeks in de webapp opgeslagen.':'Dit zijn fictieve demowaarden.'}</div>`;
-case 'dossier': {
-  if(!liveMode) return `<h3 class="profile-subheading">Personeelsdossier</h3><div class="profile-empty"><strong>Alleen demonstratie</strong>Log in met een gemachtigd Google-account om bestaande dossierlinks te controleren.</div>`;
-  const dossierPortal=canOpenRegistrations()?`<p><a class="btn btn-primary" style="text-decoration:none" href="/weekrapporten.html?dept=${encodeURIComponent(x.dept)}&discordId=${encodeURIComponent(x.personId||'')}">${icon('file')} Volledig intern dossier</a> <a class="btn btn-quiet" style="text-decoration:none" href="/registraties.html?dept=${encodeURIComponent(x.dept)}&discordId=${encodeURIComponent(x.personId||'')}">Observaties & sancties</a></p>`:'';
-  const state=dossierState[x.id];
-  if(!state || state.status==='laden') return `<h3 class="profile-subheading">Personeelsdossier</h3>${dossierPortal}<div class="profile-empty"><strong>Dossierlink controleren...</strong>De koppeling wordt beveiligd opgevraagd via de Discord ID.</div>`;
-  if(state.status==='gekoppeld') return `<h3 class="profile-subheading">Personeelsdossier</h3>${dossierPortal}<div class="profile-note">Bij de Discord ID hoort een bestaande dossierlink in de administratieve Google Sheet.</div><button class="btn btn-primary" data-dossier-open="${esc(x.id)}">${icon('folder')} Open dossier in Google Sheets</button><div class="profile-note">Google Drive bepaalt daarnaast afzonderlijk of je het bestand daadwerkelijk mag openen. Er wordt geen dossierinhoud in het portaal ingelezen.</div>`;
-  const states={niet_gekoppeld:['Geen dossierlink','Er is momenteel geen dossierlink aan deze Discord ID gekoppeld in PolitieInfo.'],niet_ingesteld:['Nog niet ingesteld','Voor deze hulpdienst is nog geen dossierregister aangesloten.'],controle_nodig:['Controle nodig','Er staan tegenstrijdige verwijzingen voor deze Discord ID. Er wordt bewust geen dossier geopend.'],forbidden:['Niet gemachtigd','Bestaande Google-dossierlinks zijn voorlopig alleen beschikbaar voor officierenkader, korpsleiding en gemachtigde beheerders binnen de juiste hulpdienst. Middenkader gebruikt de beveiligde interne dossierregistraties totdat de toegang per reeks is ingesteld.'],error:['Dossierlink niet beschikbaar','De server kon de dossierlink niet veilig controleren. Controleer de serverlog en Google Sheets-toegang.']};
-  const parts=states[state.status]||states.error;
-  return `<h3 class="profile-subheading">Personeelsdossier</h3>${dossierPortal}<div class="profile-empty"><strong>${esc(parts[0])}</strong>${esc(parts[1])}</div>`;
-}
-case 'weekrapporten':return liveMode?`<h3 class="profile-subheading">Weekrapporten en observaties</h3><p><a class="btn btn-primary" href="/weekrapporten.html?dept=${encodeURIComponent(x.dept)}&discordId=${encodeURIComponent(x.personId||'')}#weekrapporten">${icon('file')} Weekrapportdatabase</a></p><div class="profile-note">Conceptweekrapporten worden uit bestaande Firestore-registraties samengesteld. Word-import is nog niet aangesloten.</div>`:`<h3 class="profile-subheading">Weekrapporten en observaties</h3><div class="profile-empty">Demonstratie: nog geen gekoppelde live-weekrapporten.</div>`;
-case 'historiek':return `<h3 class="profile-subheading">Personeelshistoriek</h3><div class="profile-empty"><strong>Historiek wordt voorbereid</strong>We bewaren momenteel geen oudere versies van de personeelslijst of activiteitsmetingen. Daarom tonen we geen fictieve rangwijzigingen of gebeurtenissen.</div>${liveMode?`<div class="profile-note">Huidige beschikbare meetdata: laatste controle ${esc(formatSourceValue(x.lastCheck))}; laatste connectie ${esc(formatSourceValue(x.lastConnection))}. Dit is geen historisch logboek.</div>`:''}`;
-default:return '';
-}}
-function renderLayer(){const out=document.getElementById('layer');if(drawer){let x=employees.find(x=>x.id===drawer);if(!x){drawer=null;out.innerHTML='';return}
-const tabs=[['algemeen','Algemeen'],['bevoegdheden','Bevoegdheden'],['activiteit','Activiteit'],['dossier','Dossier'],['weekrapporten','Weekrapporten'],['historiek','Historiek']];
-out.innerHTML=`<div class="drawer-cover" data-close="1"><div class="drawer personnel-drawer" role="dialog" aria-modal="true" aria-label="Personeelsfiche ${esc(x.name)}"><div class="drawer-head"><span class="badge-inline">PERSONEELSFICHE · ${liveMode?'GOOGLE SHEETS':'DEMO'}</span><button class="drawer-close" data-close="1" title="Sluiten" aria-label="Sluiten">${icon('close')}</button></div><h2>${esc(x.name)}</h2><div class="subheading">${esc(departments[x.dept]?.name||x.dept)} · Roepnummer ${esc(x.call)}</div><div style="margin-top:16px">${badge(x.status)}</div><div class="profile-tabs" role="tablist" aria-label="Onderdelen personeelsfiche">${tabs.map(([key,name])=>`<button role="tab" aria-selected="${drawerTab===key}" class="profile-tab ${drawerTab===key?'active':''}" data-profile-tab="${key}">${name}</button>`).join('')}</div><section class="profile-body" role="tabpanel">${personPane(x)}</section><button class="btn btn-quiet" style="width:100%;margin-top:24px" data-close="1">Sluiten</button></div></div>`;return}
-if(modal==='new-report'){out.innerHTML=`<div class="modal-cover" data-close="1"><div class="modal" role="dialog" aria-label="Nieuw weekrapport"><div class="modal-heading"><div><div class="eyebrow">RAPPORTEREN</div><h2>Nieuw weekrapport</h2><div class="subheading">Maak een tijdelijk demonstratierapport.</div></div><button class="drawer-close" data-close="1">${icon('close')}</button></div><form id="reportForm"><div class="form-grid" style="margin-top:24px"><div><label class="label" for="repDept">Hulpdienst</label><select class="select" style="width:100%" id="repDept" required>${Object.keys(departments).map(d=>`<option value="${d}">${departments[d].name}</option>`).join('')}</select></div><div><label class="label" for="repType">Type registratie</label><select class="select" style="width:100%" id="repType" required>${['Observatie','Opleiding','Verlof','Sanctie','Inactiviteit','Varia'].map(v=>`<option>${v}</option>`).join('')}</select></div><div class="form-full"><label class="label" for="repTitle">Titel</label><input class="field" id="repTitle" maxlength="110" required placeholder="Bijv. Weekrapport – Reeks 2"/></div><div class="form-full"><label class="label" for="repPeriod">Rapportperiode / datum</label><input class="field" id="repPeriod" maxlength="100" required placeholder="Bijv. 12–18 oktober 2026"/></div><div class="form-full"><label class="label" for="repNote">Omschrijving</label><textarea class="textarea" id="repNote" minlength="5" maxlength="1500" required placeholder="Gebruik uitsluitend fictieve gegevens in dit prototype."></textarea></div></div><div class="info-box">Dit demonstratieformulier bewaart alleen tijdelijk in dit geopende tabblad. Gebruik hier geen persoonsgegevens of vertrouwelijke dossierinformatie.</div><div class="form-actions"><button class="btn btn-quiet" type="button" data-close="1">Annuleren</button><button class="btn btn-primary" type="submit">${icon('check')} Concept toevoegen</button></div></form></div></div>`;return}
-if(modal==='new-doc'){out.innerHTML=`<div class="modal-cover" data-close="1"><div class="modal" role="dialog" aria-label="Document toevoegen"><div class="modal-heading"><div><div class="eyebrow">DOCUMENTENCENTRUM</div><h2>Document toevoegen</h2><div class="subheading">Link naar een online document toevoegen.</div></div><button class="drawer-close" data-close="1">${icon('close')}</button></div><form id="docForm"><div class="form-grid" style="margin-top:24px"><div class="form-full"><label class="label" for="docTitle">Documenttitel</label><input class="field" id="docTitle" maxlength="110" required placeholder="Bijv. Richtlijnen interventies"/></div><div><label class="label" for="docCat">Categorie</label><select class="select" id="docCat" style="width:100%"><option>Procedures</option><option>Weekrapporten</option><option>Opleidingen</option><option>Personeelsbeheer</option><option>Overige</option></select></div><div><label class="label" for="docDept">Hulpdienst</label><select class="select" id="docDept" style="width:100%"><option value="algemeen">Algemeen</option>${Object.keys(departments).map(d=>`<option value="${d}">${departments[d].name}</option>`).join('')}</select></div><div class="form-full"><label class="label" for="docUrl">Beveiligde link (https://)</label><input class="field" id="docUrl" type="url" required placeholder="https://..."/></div></div><div class="info-box">De link wordt in dit prototype niet blijvend opgeslagen. Toegang tot Google Drive-bestanden blijft afhankelijk van hun eigen machtigingen.</div><div class="form-actions"><button class="btn btn-quiet" data-close="1" type="button">Annuleren</button><button class="btn btn-primary" type="submit">${icon('plus')} Link toevoegen</button></div></form></div></div>`;return}
-if(modal?.startsWith('report:')){const r=reports.find(x=>x.id===modal.split(':')[1]);if(!r){modal=null;out.innerHTML='';return}out.innerHTML=`<div class="modal-cover" data-close="1"><div class="modal" role="dialog" aria-label="Rapportdetails"><div class="modal-heading"><div><div class="eyebrow">WEEKRAPPORT</div><h2>${esc(r.title)}</h2><div class="subheading">${esc(r.period)} · ${esc(departments[r.dept].name)}</div></div><button class="drawer-close" data-close="1">${icon('close')}</button></div><div style="margin-top:20px">${badge(r.status)}</div><div class="drawer-section"><p style="line-height:1.75;color:#54647c">${esc(r.description)}</p><p class="section-status">${esc(r.category)} · ${esc(r.author)}</p></div><div class="form-actions"><button class="btn btn-quiet" data-close="1">Sluiten</button><button class="btn btn-primary" data-export="${r.id}">${icon('download')} Exporteer demo-TXT</button></div></div></div>`;return}
-out.innerHTML=''}
-async function loadDossierForCurrent(){
-  if(!liveMode || !firebaseBridge?.auth?.currentUser) return;
-  const x=employees.find(p=>p.id===drawer);
-  if(!x || drawerTab!=='dossier' || dossierState[x.id]) return;
-  dossierState[x.id]={status:'laden'};
-  renderLayer();
-  const targetId=x.id;
-  try {
-    const token=await firebaseBridge.auth.currentUser.getIdToken();
-    const r=await fetch('/api/dossiers/'+encodeURIComponent(x.dept)+'/'+encodeURIComponent(x.personId||''),{headers:{Authorization:'Bearer '+token},cache:'no-store'});
-    const data=await r.json();
-    dossierState[targetId]=r.status===403?{status:'forbidden'}:r.ok?data:{status:'error'};
-  } catch {dossierState[targetId]={status:'error'};}
-  if(drawer===targetId&&drawerTab==='dossier') renderLayer();
-}
-function closeLayer(){drawer=null;modal=null;renderLayer()}
-function changePage(p){page=restrictedPortal?'dashboard':p;query='';document.getElementById('globalSearch').value='';drawer=null;modal=null;document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('on');render();window.scrollTo({top:0,behavior:'instant'})}
-function safeURL(s){try{const u=new URL(s);return (u.protocol==='https:'&&u.hostname.includes('.'))?u.href:null}catch{return null}}
-function escapeTxt(s){return String(s).replace(/[\r\n\t]/g,' ').slice(0,800)}
-document.addEventListener('click',e=>{const t=e.target.closest('[data-page],[data-person],[data-profile-tab],[data-action],[data-close],[data-report],[data-doc],[data-notif],[data-dept],[data-export],[data-dossier-open]');if(!t)return;if(t.dataset.page){changePage(t.dataset.page);return}if(t.dataset.person){drawer=t.dataset.person;drawerTab='algemeen';renderLayer();return}if(t.dataset.profileTab){drawerTab=t.dataset.profileTab;renderLayer();if(drawerTab==='dossier')loadDossierForCurrent();return}if(t.dataset.dossierOpen){const record=dossierState[t.dataset.dossierOpen];const url=record?.status==='gekoppeld'?record.url:null;if(!url||!safeURL(url)||new URL(url).hostname!=='docs.google.com'){toast('Geen geldige dossierlink beschikbaar.');return}window.open(url,'_blank','noopener,noreferrer');return}if(t.dataset.close){if(e.target.closest('.drawer,.modal')&&!e.target.closest('button[data-close]'))return;closeLayer();return}if(t.dataset.report){modal='report:'+t.dataset.report;renderLayer();return}if(t.dataset.notif){let n=messages.find(x=>x.id===t.dataset.notif);if(n)n.seen=true;render();toast('Melding gemarkeerd als gelezen.');return}if(t.dataset.dept){selectedDepartment=t.dataset.dept;changePage('activiteiten');return}if(t.dataset.export){let r=reports.find(x=>x.id===t.dataset.export);if(!r)return;let content=['BelgiëPD demonstratierapport','NIET VOOR PRODUCTIE','',r.title,r.period,'Dienst: '+departments[r.dept].name,'Type: '+r.category,'Status: '+r.status,'',r.description].join('\n');let blob=new Blob([content],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='BPD-demo-rapport.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return}if(t.dataset.doc){const d=docs.find(x=>x.id===t.dataset.doc);if(!d)return;if(!d.url){toast('Dit voorbeeld heeft nog geen online link. Voeg via Document toevoegen zelf een demonstratielink toe.');return}const url=safeURL(d.url);if(!url){toast('Onveilige of ongeldige link.');return}window.open(url,'_blank','noopener,noreferrer');return}if(t.dataset.action){switch(t.dataset.action){case 'new-report':if(liveMode){if(canWriteReports())window.location.assign('/weekrapporten.html#weekrapporten');else toast('Geen toegang tot weekrapporten.');return}if(!canWriteReports()){toast('Geen toegang tot weekrapporten.');return}modal='new-report';renderLayer();break;case 'new-doc':if(liveMode){toast('Documentencentrum is nog niet aangesloten.');return}modal='new-doc';renderLayer();break;case 'unavailable':toast('In de eerste prototypeversie wordt de personeelslijst alleen ingelezen.');break;case 'word-import':toast('Word-import komt na aansluiting van een beveiligde Google Drive-map. Dit prototype wijzigt geen bestanden.');break;case 'read-all':messages.forEach(x=>x.seen=true);toast('Demomeldingen gemarkeerd als gelezen.');render();break;default:break}}});
-document.addEventListener('submit',e=>{if(e.target.id==='reportForm'){e.preventDefault();if(liveMode){toast('Weekrapporten zijn nog niet aangesloten.');return}let el=id=>document.getElementById(id);reports.unshift({id:'r'+Date.now(),title:escapeTxt(el('repTitle').value),period:escapeTxt(el('repPeriod').value),category:el('repType').value,dept:el('repDept').value,description:el('repNote').value,status:'Concept',author:'Testgebruiker'});closeLayer();changePage('rapporten');toast('Demonstratieconcept toegevoegd. Verdwijnt zodra je de pagina herlaadt.')}if(e.target.id==='docForm'){e.preventDefault();if(liveMode){toast('Documentencentrum is nog niet aangesloten.');return}let el=id=>document.getElementById(id),url=safeURL(el('docUrl').value);if(!url){toast('Gebruik een geldige https://-link.');return}docs.unshift({id:'doc'+Date.now(),title:escapeTxt(el('docTitle').value),cat:el('docCat').value,dept:el('docDept').value,type:'Online link',url});closeLayer();changePage('documenten');toast('Demonstratielink toegevoegd voor deze sessie.')}});
-document.addEventListener('change',e=>{let id=e.target.id;if(id==='deptFilter'){deptFilter=e.target.value;seriesFilter='all';render()}if(id==='statusFilter'){statusFilter=e.target.value;render()}if(id==='seriesFilter'){seriesFilter=e.target.value;render()}if(id==='activityDept'){selectedDepartment=e.target.value;render()}if(id==='reportFilter'){reportFilter=e.target.value;render()}if(id==='docFilter'){docFilter=e.target.value;render()}if(id==='roleSelect'){if(liveMode){toast('Live-rollen worden uitsluitend op de server ingesteld.');render();return}role=e.target.value;render();toast('Demonstratierol gewijzigd. Dit is geen echte beveiliging.')}});
-document.getElementById('globalSearch').addEventListener('input',e=>{const pos=e.target.selectionStart;query=e.target.value;if(query.trim()){if(page!=='zoeken')returnPage=page;page='zoeken'}else if(page==='zoeken')page=returnPage;renderNav();document.getElementById('content').innerHTML=({zoeken:searchPage,dashboard,personeel:personnelPage,activiteiten:activityPage,rapporten:reportsPage,documenten:documentsPage,meldingen:notificationsPage,diensten:departmentsPage,beheer:settingsPage}[page]||dashboard)();document.getElementById('globalSearch').focus();document.getElementById('globalSearch').setSelectionRange(pos,pos)});
-document.getElementById('mobileMenu').addEventListener('click',()=>{document.getElementById('sidebar').classList.add('open');document.getElementById('mobileShade').classList.add('on')});document.getElementById('mobileShade').addEventListener('click',()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('on')});document.getElementById('topNotifications').addEventListener('click',()=>changePage('meldingen'));
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLayer()});render();
-async function initConnection(){
-  if(location.protocol==='file:') {document.getElementById('authBtn').disabled=true;document.getElementById('authBtn').textContent='Open via server';return;}
-  let config;
-  try{const r=await fetch('/api/client-config',{cache:'no-store'});config=await r.json();}
-  catch{document.getElementById('authBtn').disabled=true;document.getElementById('authBtn').textContent='Server niet actief';return;}
-  if(!config.enabled){document.getElementById('authBtn').disabled=true;document.getElementById('authBtn').textContent='Firebase instellen';return;}
-  try {
-    const firebaseAppModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
-    const authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
-    const firebaseApp=firebaseAppModule.initializeApp(config.firebaseConfig);
-    const auth=authModule.getAuth(firebaseApp);
-    const authButton=document.getElementById('authBtn');
-    firebaseBridge={auth,authModule};
-    async function refreshPendingApprovals(user){
-      if(!user||!liveMode){pendingReview=null;return}
-      try{
-        const token=await user.getIdToken();
-        const headers={Authorization:'Bearer '+token};
-        const cRes=await fetch('/api/users/context',{headers,cache:'no-store'});
-        if(!cRes.ok){pendingReview=null;return}
-        const ctx=await cRes.json();
-        if(!ctx.canManageUsers){
-          pendingReview=['officierenkader','korpsleiding','beheerder'].includes(ctx.role)?{kind:'limited'}:null;
-        }else{
-          const r=await fetch('/api/users/overview',{headers,cache:'no-store'});
-          if(!r.ok){pendingReview=null;return}
-          const data=await r.json();
-          pendingReview={kind:'allowed',users:(data.users||[]).filter(x=>x.status==='pending')};
-        }
-      }catch{pendingReview=null}
-      if(page==='dashboard')render();
-    }
-    async function loadData(user){
-      const token=await user.getIdToken();
-      const r=await fetch('/api/data',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
-      const payload=await r.json();
-      if(!r.ok)throw new Error(payload.error||'Geen toegang');
-      if(!Array.isArray(payload.employees))throw new Error('Ongeldige serverrespons');
-      restrictedPortal=false;dossierState=Object.create(null);liveMode=true;liveInfo=payload;
-      personnelActivity={loaded:false,events:[],error:null,canLogHistoricalCall:false};
-      employees=payload.employees;
-      const allowed=payload.departments||[];
-      if(!allowed.includes(deptFilter))deptFilter=allowed.includes('politie')?'politie':allowed[0]||'all';
-      role=payload.role;
-      document.getElementById('sourceBadge').textContent=payload.stale?'VEROUDERDE BRON':'GOOGLE SHEETS · VERBONDEN';
-      document.getElementById('sourceBadge').title='Laatst gelezen: '+(payload.fetchedAt||'onbekend');
-      authButton.textContent='Afmelden';
-      document.querySelector('.sidebar-profile strong').textContent='BelgiëPD-beheer';
-      document.querySelector('.sidebar-profile small').textContent=(user.uid.startsWith('discord:')?'Discord-login · ':'Google-login · ')+payload.role;
-      render();
-      await Promise.all([refreshPendingApprovals(user),refreshPersonnelActivity(user)]);
-    }
-    async function refreshPersonnelActivity(user){
-      try{
-        const token=await user.getIdToken();
-        const response=await fetch('/api/personnel/activity/recent',{cache:'no-store',
-          headers:{Authorization:'Bearer '+token}});
-        const body=await response.json().catch(()=>({}));
-        if(!response.ok)throw Error(body.error||'Recente personeelsactiviteiten niet beschikbaar');
-        if(auth.currentUser?.uid!==user.uid||!liveMode)return;
-        personnelActivity={loaded:true,events:Array.isArray(body.events)?body.events.slice(0,8):[],error:null,canLogHistoricalCall:body.canLogHistoricalCall===true};
-      }catch(error){
-        if(auth.currentUser?.uid!==user.uid||!liveMode)return;
-        personnelActivity={loaded:true,events:[],error:error.message,canLogHistoricalCall:false};
-      }
-      if(page==='dashboard')render();
-    }
-    document.addEventListener('change',event=>{
-      if(event.target?.id!=='historicalCallPerson')return;
-      const person=employees.find(x=>x.dept==='politie'&&x.personId===event.target.value);
-      const target=document.getElementById('historicalCurrentCall');
-      if(target)target.textContent=person?.call||'—';
-      const rank=document.getElementById('historicalCurrentRank');
-      if(rank)rank.textContent=person?.rank||'Niet ingevuld';
-    });
-    document.addEventListener('submit',async event=>{
-      if(event.target?.id!=='historicalCallForm')return;
-      event.preventDefault();
-      const user=auth.currentUser;
-      if(!user)return toast('Meld je aan om een historische wijziging te registreren.');
-      const discordId=document.getElementById('historicalCallPerson')?.value;
-      const person=employees.find(x=>x.dept==='politie'&&x.personId===discordId);
-      const previousCall=document.getElementById('historicalOldCall')?.value.trim();
-      const reason=document.getElementById('historicalCallReason')?.value.trim();
-      const recordPromotion=document.getElementById('historicalAlsoPromotion')?.checked===true;
-      if(!person)return toast('Selecteer een personeelslid.');
-      if(recordPromotion&&(!person.rank||person.rank==='—'))
-        return toast('Voor deze medewerker is geen controleerbare huidige rang beschikbaar.');
-      const what=recordPromotion?' en eerdere promotie naar '+person.rank:'';
-      if(!confirm('Bevestig historische wijziging van '+person.name+': '+previousCall+
-        ' → '+person.call+what+'. De oorspronkelijke datum blijft onbekend.'))return;
-      const button=event.target.querySelector('button[type="submit"]');
-      if(button)button.disabled=true;
-      try{
-        const token=await user.getIdToken();
-        const response=await fetch('/api/personnel/activity/retrospective-callsign',{
-          method:'POST',cache:'no-store',
-          headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-          body:JSON.stringify({discordId,previousCall,expectedCurrentCall:person.call,reason,
-            recordPromotion,...(recordPromotion?{expectedCurrentRank:person.rank}:{})})
-        });
-        const body=await response.json().catch(()=>({}));
-        if(!response.ok)throw Error(body.error||'Historische registratie mislukt');
-        toast((body.recordedPromotion?'Promotie en ':'')+'historische roepnummerwijziging geregistreerd. De personeelsgegevens zijn ongewijzigd.');
-        await refreshPersonnelActivity(user);
-      }catch(e){toast(e.message||'Registratie mislukt')}
-      finally{if(button?.isConnected)button.disabled=false}
-    });
-    authModule.onAuthStateChanged(auth,async user=>{
-      if(user){try{await loadData(user);toast('Google Sheets gekoppeld: alleen lezen.');}
-        catch(error){restrictedPortal=false;personnelActivity={loaded:false,events:[],error:null,canLogHistoricalCall:false};if(error.message?.includes('Basiskader heeft geen toegang')){restrictedPortal=true;liveMode=false;liveInfo=null;employees=[];role='basiskader';page='dashboard';document.getElementById('sourceBadge').textContent='BEPERKTE TOEGANG';document.querySelector('.sidebar-profile strong').textContent='BelgiumPD-portaal';document.querySelector('.sidebar-profile small').textContent='Personeelsinzage niet gemachtigd';render();return;}dossierState=Object.create(null);liveMode=false;liveInfo=null;pendingReview=null;employees=sampleEmployees.map(x=>({...x}));document.getElementById('sourceBadge').textContent='DEMO-MODUS';document.querySelector('.sidebar-profile strong').textContent='Testgebruiker';document.querySelector('.sidebar-profile small').textContent='Simulatie · geen live-toegang';render();toast('Geen live-toegang: '+error.message);}}
-      else{restrictedPortal=false;personnelActivity={loaded:false,events:[],error:null,canLogHistoricalCall:false};dossierState=Object.create(null);liveMode=false;liveInfo=null;pendingReview=null;employees=sampleEmployees.map(x=>({...x}));role='korpsleiding';document.querySelector('.sidebar-profile strong').textContent='Testgebruiker';document.querySelector('.sidebar-profile small').textContent='Simulatie · geen login';authButton.textContent='Google aanmelden';document.getElementById('sourceBadge').textContent='DEMO-MODUS';render();}
-    });
-    const {setupPortalLogin}=await import('/portal-login.js');
-    setupPortalLogin({button:authButton,auth,authModule,config,onError:error=>toast('Aanmelden mislukt: '+(error.code||error.message))});
-    // Refresh bij open browser; server-cache vervalt na 15 minuten. Geen geplande cloudtaak in deze fase.
-    setInterval(()=>{if(auth.currentUser&&liveMode)loadData(auth.currentUser).catch(()=>toast('Verversen mislukt; gegevens kunnen verouderd zijn.'));},15*60*1000);
-  } catch {document.getElementById('authBtn').disabled=true;document.getElementById('authBtn').textContent='Firebase laden mislukt';}
-}
-initConnection();
-
-})();
-</script>
-</body>
-</html>
+<a class="skip" href="#inhoud">Ga naar inhoud</a>
+<div class="portal">
+<aside aria-label="Hoofdnavigatie">
+  <a class="brand" href="/" aria-label="BelgiumPD startpagina"><span class="brand-icon">BP</span><span><strong>BelgiëPD</strong><small>Beheerportaal</small></span></a>
+  <nav aria-label="Werkruimte">
+    <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
+    <a href="/personeelsbeheer.html">♙ &nbsp; Personeelsbeheer</a>
+    <a href="/dossiercentrum.html">▣ &nbsp; Dossiercentrum</a>
+    <a href="/registraties.html">▤ &nbsp; Registraties</a>
+    <a href="/weekrapporten.html">▥ &nbsp; Weekrapporten</a>
+    <a href="/to-dienstbord.html">◉ &nbsp; TO-dienstbord</a>
+    <a href="/verlofbeheer.html">▦ &nbsp; Verlofbeheer</a>
+    <a href="/gebruikersbeheer.html#dienstbeheer">⚙ &nbsp; Beheer &amp; rollen</a>
+  </nav>
+  <div class="side-note"><strong>Beveiligde modules</strong>Meld je aan met je goedgekeurde account. Elke hulpdienst heeft afzonderlijke dossier- en beheersrechten.</div>
+</aside>
+<div class="surface">
+<header class="topbar"><span class="path">BelgiëPD / Startpagina</span><span class="status">Beheeromgeving</span></header>
+<main id="inhoud">
+  <section class="hero" aria-labelledby="home-title">
+    <div><p class="eyebrow">Administratie · Operationele ondersteuning</p>
+      <h1 id="home-title">Welkom in het beheerportaal</h1>
+      <p class="lead">Open rechtstreeks de onderdelen van BelgiumPD. Alleen echte dienstgegevens worden weergegeven in de beveiligde modules; er worden hier geen voorbeeldcijfers of gesimuleerde meldingen getoond.</p>
+    </div>
+    <div class="hero-icon" aria-hidden="true">
+      <svg viewBox="0 0 48 48"><path d="M24 4 40 10v13c0 10-6.5 17.5-16 21C14.5 40.5 8 33 8 23V10L24 4Z"/><path d="m17 23 5 5 10-11"/></svg>
+    </div>
+  </section>
+  <h2 class="section-title">Dagelijks beheer</h2>
+  <div class="grid">
+    <a class="module" href="/personeelsbeheer.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelsbeheer</h3><p>Personeelsfiches, rangen, roepnummers en goedgekeurde administratieve wijzigingen.</p><span class="open">Open personeelsbeheer →</span></a>
+    <a class="module" href="/dossiercentrum.html"><span class="ico" aria-hidden="true">📁</span><h3>Dossiercentrum</h3><p>Afzonderlijke personeelsdossiers en historiek voor Politie, Brandweer, Ambulance en Depannage.</p><span class="open">Open dossiers →</span></a>
+    <a class="module" href="/registraties.html"><span class="ico" aria-hidden="true">📝</span><h3>Registraties</h3><p>Observaties, sancties en personeelsregistraties binnen je eigen bevoegdheid.</p><span class="open">Open registraties →</span></a>
+    <a class="module" href="/weekrapporten.html"><span class="ico" aria-hidden="true">📋</span><h3>Weekrapporten</h3><p>Dossierregistraties, conceptweekrapporten, controles en opvolging.</p><span class="open">Open weekrapporten →</span></a>
+    <a class="module" href="/to-dienstbord.html"><span class="ico" aria-hidden="true">📻</span><h3>TO-dienstbord</h3><p>Operationele ploegen, meldingen, inzetstatussen en Sonoran Radio-overzicht.</p><span class="open">Open dienstbord →</span></a>
+    <a class="module" href="/verlofbeheer.html"><span class="ico" aria-hidden="true">📅</span><h3>Verlofbeheer</h3><p>Centrale verlofaanvragen en goedkeuringen voor de betrokken hulpdiensten.</p><span class="open">Open verlofbeheer →</span></a>
+  </div>
+  <h2 class="section-title">Administratie en rechten</h2>
+  <div class="grid">
+    <a class="module" href="/gebruikersbeheer.html#dienstbeheer"><span class="ico" aria-hidden="true">🛡️</span><h3>Beheertoegang hulpdiensten</h3><p>Toegang per Discord-ID en hulpdienst toekennen, beheren en intrekken.</p><span class="open">Open dienstbeheer →</span></a>
+    <a class="module" href="/gebruikersbeheer.html"><span class="ico" aria-hidden="true">🔐</span><h3>Gebruikersbeheer</h3><p>Accountgoedkeuringen, Bestuur, TO-rechten en toegangsbeheer.</p><span class="open">Open gebruikersbeheer →</span></a>
+    <a class="module" href="/rollen-opleidingen.html"><span class="ico" aria-hidden="true">🎓</span><h3>Rollen &amp; opleidingen</h3><p>Discord-rollen, opleidingen, kwalificaties en specialisaties.</p><span class="open">Open opleidingen →</span></a>
+  </div>
+  <div class="bottom">
+    <a href="/roepnummers.html"><span aria-hidden="true">#️⃣</span> Vaste roepnummers beheren →</a>
+    <a href="/discord-status.html"><span aria-hidden="true">🔗</span> Discord-koppeling controleren →</a>
+  </div>
+  <p class="caption">De modules controleren je toegang bij het openen. De startpagina bevat bewust geen personeelsinformatie of fictieve statistieken.</p>
+</main>
+</div></div>
+</body></html>
