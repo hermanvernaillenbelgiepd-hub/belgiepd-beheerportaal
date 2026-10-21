@@ -4,6 +4,7 @@ import {getFirestore} from 'firebase-admin/firestore';
 import {TO_CATEGORIES,applyBoardCommand,canReadBoard,canOperateBoard,emptyBoard,validBoardId,boardError} from './to-board-policy.js';
 import {callsignForTO} from './to-operator-identity.js';
 import {applyTOShortcutCommand,emptyTOShortcuts} from './to-incident-shortcuts.js';
+import {radioMatchesSavedTeam} from './to-radio-auto-end.js';
 
 export const TO_BOARD_COLLECTION='bpd_to_boards';
 export const TO_ARCHIVE_COLLECTION='bpd_to_archives';
@@ -45,6 +46,42 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
         const result=applyTOShortcutCommand(shortcutSnapshot.exists?shortcutSnapshot.data():emptyTOShortcuts(),command,context);
         transaction.set(reference,result);
         return result;
+      });
+    },
+    async autoEndAbsentRadioTeams(teamIds,snapshot,{now,sessionId}={}){
+      if(!Array.isArray(teamIds)||teamIds.length<1||teamIds.length>100||
+        !snapshot?.configured||!snapshot?.connected||snapshot.stale||
+        !Array.isArray(snapshot.users)||!Array.isArray(snapshot.uncertainUnits)||
+        !Number.isSafeInteger(now)||typeof sessionId!=='string')return [];
+      const fetched=Date.parse(snapshot.fetchedAt||'');
+      if(!Number.isFinite(fetched)||fetched>now+1000||now-fetched>45000)return [];
+      const database=getDatabase(),reference=database.collection(TO_BOARD_COLLECTION).doc('politie');
+      return database.runTransaction(async transaction=>{
+        const current=await transaction.get(reference);
+        if(!current.exists)return [];
+        const board=current.data();
+        if(board.session?.id!==sessionId)return [];
+        const activeLinks=new Set(Object.values(board.meldingen||{})
+          .filter(incident=>incident?.status==='actief')
+          .flatMap(incident=>(incident.ploegen||[]).map(crew=>crew.id)));
+        const ended=[];
+        for(const id of teamIds){
+          const crew=board.ploegen?.[id];
+          if(!validBoardId(id)||!crew||crew.endedAt||activeLinks.has(id)||
+             radioMatchesSavedTeam(crew,snapshot.users)||
+             radioMatchesSavedTeam(crew,snapshot.uncertainUnits))continue;
+          crew.endedAt=now;
+          crew.endedBy='system:sonoran-radio';
+          crew.endedReason='radiokanaal-verlaten';
+          crew.available=false;
+          crew.responsePhase=null;
+          ended.push(id);
+        }
+        if(ended.length){
+          board.revision++;
+          transaction.set(reference,board);
+        }
+        return ended;
       });
     },
     async listArchives(){
