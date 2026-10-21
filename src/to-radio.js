@@ -97,6 +97,7 @@ function normalizedUsers(payload,key){
     throw new Error('Invalid radio payload');
   const users=[],identities=new Set();
   let channelStatusUnknown=0,notInChannel=0;
+  const uncertainUnits=new Map();
   for(const row of payload.connectedUsers){
     if(!row||typeof row!=='object'||Array.isArray(row))throw new Error('Invalid radio row');
     if(row.identity!=null&&(typeof row.identity!=='string'||row.identity.length>512))throw new Error('Invalid radio identity');
@@ -107,7 +108,15 @@ function normalizedUsers(payload,key){
     const rawName=typeof row.name==='string'?clean(row.name):'';
     if(!identity&&!rawName)throw new Error('Missing radio identity');
     const {channels,known}=radioChannelState(row.metadata);
-    if(!known){channelStatusUnknown++;continue;}
+    if(!known){
+      channelStatusUnknown++;
+      const parsed=parseSonoranName(protect(rawName,key));
+      if(parsed.category&&typeof parsed.number==='string'&&/^\d{1,5}$/.test(parsed.number)&&Number(parsed.number)>0){
+        const unit=JSON.stringify([parsed.category,Number(parsed.number)]);
+        uncertainUnits.set(unit,{category:parsed.category,number:parsed.number});
+      }
+      continue;
+    }
     if(!channels.length){notInChannel++;continue;}
     const channel=channels[0];
     const stableIdentity=identity?'identity:'+identity:JSON.stringify(['name',rawName,channel]);
@@ -134,7 +143,7 @@ function normalizedUsers(payload,key){
       if(!mates.some(item=>item.paired===true))user.importable=false;
     }
   }
-  return {users,connectedCount:payload.connectedUsers.length,channelStatusUnknown,notInChannel};
+  return {users,connectedCount:payload.connectedUsers.length,channelStatusUnknown,notInChannel,uncertainUnits:[...uncertainUnits.values()]};
 }
 async function boundedJSON(response){
   const declared=response.headers?.get?.('content-length');
@@ -165,8 +174,8 @@ async function boundedJSON(response){
   }
   return JSON.parse(source);
 }
-function payload({configured,connected=false,stale=false,fetchedAt=null,message=null,users=[],connectedCount=0,channelStatusUnknown=0,notInChannel=0}){
-  return {configured,connected,stale,fetchedAt,message,users,connectedCount,channelStatusUnknown,notInChannel,
+function payload({configured,connected=false,stale=false,fetchedAt=null,message=null,users=[],connectedCount=0,channelStatusUnknown=0,notInChannel=0,uncertainUnits=[]}){
+  return {configured,connected,stale,fetchedAt,message,users,connectedCount,channelStatusUnknown,notInChannel,uncertainUnits,
     counts:{online:users.length,recognized:users.filter(user=>user.importable).length},refreshSeconds:REFRESH_SECONDS};
 }
 
@@ -194,12 +203,12 @@ export function createSonoranRadioService({env=process.env,fetchImpl=fetch,now=D
           else if(response.status===429)failureMessage='Sonoran ontvangt momenteel te veel aanvragen. Wacht even voordat je opnieuw ververst.';
           await response.body?.cancel?.().catch(()=>{});throw new Error('Radio request failed');
         }
-        const {users,connectedCount,channelStatusUnknown,notInChannel}=normalizedUsers(await boundedJSON(response),config.key);
-        result=payload({configured:true,connected:true,fetchedAt:new Date(now()).toISOString(),users,connectedCount,channelStatusUnknown,notInChannel});
+        const {users,connectedCount,channelStatusUnknown,notInChannel,uncertainUnits}=normalizedUsers(await boundedJSON(response),config.key);
+        result=payload({configured:true,connected:true,fetchedAt:new Date(now()).toISOString(),users,connectedCount,channelStatusUnknown,notInChannel,uncertainUnits});
       }catch{
         result=payload({configured:true,stale:Boolean(lastGood),fetchedAt:lastGood?.fetchedAt??null,
           users:lastGood?.users??[],connectedCount:lastGood?.connectedCount??0,
-          channelStatusUnknown:lastGood?.channelStatusUnknown??0,notInChannel:lastGood?.notInChannel??0,message:failureMessage});
+          channelStatusUnknown:lastGood?.channelStatusUnknown??0,notInChannel:lastGood?.notInChannel??0,uncertainUnits:lastGood?.uncertainUnits??[],message:failureMessage});
       }
       // An old request must not restore cached data after server bindings change.
       if(activeSignature!==config.signature)return read();
