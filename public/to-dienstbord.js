@@ -219,7 +219,7 @@ function renderRadio(){
   const missingChannelStatus=Math.max(0,Number(snapshot?.channelStatusUnknown||0));
   const withoutChannel=Math.max(0,Number(snapshot?.notInChannel||0));
   const displayedCrews=visibleCrews.filter(crew=>matchesCategory(crew.category)&&
-    crew.members.some(user=>matches(user.category,user.number,user.displayName,user.name)));
+    crew.members.some(user=>matches(user.category,user.number,user.portalAlias,user.displayName,user.name)));
   const configured=snapshot?.configured,outdated=Boolean(snapshot?.stale||snapshot?.connected&&!fresh);
   const status=!snapshot?(radio.error?'Niet bereikbaar':'Verbinding maken'):!configured?'Nog niet gekoppeld':fresh?'Verbonden':outdated||radio.error?'Verouderde radio-informatie':'Niet verbonden';
   const color=fresh?'green':configured&&(outdated||radio.error)?'amber':'gray';
@@ -251,14 +251,25 @@ function renderRadio(){
       :crew.paired?pill('Koppel','blue'):'';
     const temporaryBadge=policeRoleBadge(crew.category,String(crew.number||''));
     const channels=[...new Set(members.map(user=>user.channel===null||user.channel===undefined||user.channel===''?'Zonder kanaal':'Kanaal '+String(user.channel)))];
-    const memberNames=members.map(user=>esc(user.displayName||user.name||'Onbekend radiolabel'));
+    const memberNames=members.map(user=>esc(user.portalAlias||user.displayName||user.name||'Onbekend radiolabel'));
     const display=crew.paired&&recognized
       ?esc(crew.category)+'-'+esc(crew.number)+'*'
-      :esc(first.name||'Onbekend radiolabel');
-    return `<div class="radio-user${crew.paired?' radio-crew-paired':''}${crew.radioUnavailable?' radio-crew-nb':''}${justJoined?' radio-just-joined':''}"${recognized?' data-category="'+esc(crew.category)+'"':''}${importable&&!onBoard&&fresh&&canEdit()?' draggable="true" data-radio-drag="'+esc(first.id)+'"':''}><div class="radio-user-copy"><div class="radio-user-name"><span class="radio-indicator${fresh?' online':''}" aria-hidden="true"></span>${unit}<span class="radio-display-name" title="${esc(first.name)}">${display}</span>${crew.paired?'<span class="radio-pair-icon" title="Koppeldienst: één ploeg">👥</span>':''}${temporaryBadge}${justJoined?'<span class="radio-arrival-badge">NIEUW</span>':!onBoard?'<span class="radio-pending-badge">NOG OP TE NEMEN</span>':''}</div><small class="radio-user-channel">${recognized?esc(displayCategory(crew.category))+' · ':''}${channels.map(esc).join(' · ')}${crew.paired?' · '+members.length+' radiolid'+(members.length===1?'':'den'):''}</small>${crew.paired?'<div class="radio-crew-members">'+memberNames.map(name=>'<span>'+name+'</span>').join('')+'</div>':''}${nbStatus?'<div class="radio-crew-status">'+nbStatus+'</div>':''}</div>${action}</div>`;
+      :esc(first.portalAlias||first.name||'Onbekend radiolabel');
+    return `<div class="radio-user${crew.paired?' radio-crew-paired':''}${crew.radioUnavailable?' radio-crew-nb':''}${justJoined?' radio-just-joined':''}"${recognized?' data-category="'+esc(crew.category)+'"':''}${importable&&!onBoard&&fresh&&canEdit()?' draggable="true" data-radio-drag="'+esc(first.id)+'"':''}><div class="radio-user-copy"><div class="radio-user-name"><span class="radio-indicator${fresh?' online':''}" aria-hidden="true"></span>${unit}<span class="radio-display-name" title="${esc(first.name)}">${display}</span>${crew.paired?'<span class="radio-pair-icon" title="Koppeldienst: één ploeg">👥</span>':''}${temporaryBadge}${justJoined?'<span class="radio-arrival-badge">NIEUW</span>':!onBoard?'<span class="radio-pending-badge">NOG OP TE NEMEN</span>':''}</div><small class="radio-user-channel">${recognized?esc(displayCategory(crew.category))+' · ':''}${channels.map(esc).join(' · ')}${crew.paired?' · '+members.length+' radiolid'+(members.length===1?'':'den'):''}</small>${crew.paired?'<div class="radio-crew-members">'+memberNames.map(name=>'<span>'+name+'</span>').join('')+'</div>':''}${nbStatus?'<div class="radio-crew-status">'+nbStatus+'</div>':''}</div><div class="radio-user-actions">${action}${state.env.permissions.canOperate?`<button type="button" class="button button-small" data-action="radio-edit-label" data-id="${esc(first.id)}" title="Pas de naam aan in het BelgiumPD-portaal, niet in Sonoran Radio">✎ Naam aanpassen</button>`:''}</div></div>`;
   };
   panel.innerHTML=`<div class="radio-header"><div class="radio-heading"><span class="radio-symbol" aria-hidden="true">◉</span><div><h2 id="radio-title">Sonoran Radio</h2><p>Actief in radiokanalen · radiolabels</p></div>${pill(status,color)}</div><div class="radio-header-actions">${synced?`<span class="radio-last-sync">Ontvangen ${synced}</span>`:''}<button type="button" class="button button-small" data-action="radio-refresh"${radio.loading?' disabled':''}>${radio.loading?'Bijwerken…':'↻ Radio verversen'}</button></div></div>${notice?`<p class="radio-notice${radio.error||outdated?' warning':''}" role="status">${esc(notice)}</p>`:''}${snapshot&&configured?`<div class="radio-summary"><span><strong>${Number.isFinite(Number(snapshot.counts?.online))?Number(snapshot.counts.online):allUsers.length}</strong> in kanaal</span><span><strong>${Number(snapshot.counts?.recognized)||0}</strong> herkende radiogebruikers</span>${hiddenCount?'<span>'+hiddenCount+' onbekende radiolabels verborgen</span>':''}${withoutChannel?'<span>'+withoutChannel+' zonder radiokanaal</span>':''}${missingChannelStatus?'<span>'+missingChannelStatus+' kanaalstatus onbekend</span>':''}<span>Automatisch elke 15 seconden bijgewerkt</span></div>`:''}${groups.length?`<div class="radio-channels">${groups.map(service=>`<section class="radio-channel radio-service" data-service="${esc(service.id)}" aria-labelledby="radio-service-${esc(service.id)}"><h3 id="radio-service-${esc(service.id)}">${esc(service.label)} <span>${service.items.length} ${service.items.length===1?'radio-eenheid':'radio-eenheden'}</span></h3><div class="radio-users">${service.items.slice().sort((a,b)=>compareRadioUsers(a.members[0],b.members[0])).map(userCard).join('')}</div></section>`).join('')}</div>`:fresh?`<p class="radio-empty">${allUsers.length?'Geen radioploegen voor deze selectie.':'Er zijn momenteel geen gebruikers met een bevestigd radiokanaal.'}</p>`:!snapshot&&!radio.error?'<p class="radio-empty">De laatste radiostand wordt opgehaald…</p>':''}${configured&&allUsers.length?'<p class="radio-disclaimer">Herkende radioploegen tellen automatisch mee als beschikbaar. Gebruik ‘Op bord’ of sleep een nieuwe radioploeg naar het dienstbord om ze te beheren. ‘Uit dienst’ bewaart de historiek. Controleer de bemanning: een radiolabel bevestigt geen personeelsidentiteit.</p>':''}`;
   updateButtons();
+}
+function editRadioLabelDialog(id){
+  if(!state.env?.permissions?.canOperate||!radioFresh())return;
+  const user=radio.snapshot?.users?.find(u=>u.id===id);
+  if(!user)return;
+  openDialog('Radioweergavenaam aanpassen',
+    `<p class="form-note">Deze wijziging verandert uitsluitend de naam die het BelgiumPD-portaal toont. De echte Sonoran Radio-naam, radiostatus en het roepnummer blijven behouden.</p>
+    <label class="field"><span>Weergavenaam</span><input class="input" name="alias" maxlength="80" minlength="2" value="${esc(user.portalAlias||'')}" placeholder="${esc(user.displayName||user.name||'Naam')}"></label>
+    <p class="form-note">Origineel radiolabel: ${esc(user.name)}. Maak het veld leeg om de correctie te verwijderen.</p>`,
+    {form:'radio-label',id,submit:'Naam bewaren in portaal'});
+  if(!radio.snapshot.radioLabelWritesEnabled)formError('Handmatige naamcorrecties staan nog uit totdat de afzonderlijke TEST-database is bevestigd.');
 }
 function showReadiness(){
   const env=state.env;if(!env)return;
@@ -497,6 +508,7 @@ document.addEventListener('click',async event=>{
       case 'close-session':if(canEdit())closeSessionDialog();break;
       case 'add-team':if(canEdit())teamDialog();break;
       case 'radio-refresh':await refreshRadio();break;
+      case 'radio-edit-label':if(state.env?.permissions?.canOperate)editRadioLabelDialog(id);break;
       case 'radio-quick-add':await quickAddRadioCrew(id);break;
       case 'incident-template':if(canEdit()&&[...INCIDENT_PRESETS,...INCIDENT_EXTRA_PRESETS].includes(target.dataset.template))incidentForm('',target.dataset.template);break;
       case 'incident-presets-toggle':state.showMoreIncidentPresets=!state.showMoreIncidentPresets;render();break;
@@ -628,6 +640,17 @@ dialog.addEventListener('submit',async event=>{
       await command('detach-team',{id:incidentId,teamId:id},revision);
       closeDialog();
       toast('Ploeg van '+incidentNumber(linked.find(item=>item.id===incidentId).nr)+' ontkoppeld. De melding blijft bestaan.');
+    }catch(error){if(!error.obsolete)formError(error.message);}
+    return;
+  }
+  if(type==='radio-label'){
+    if(!state.env?.permissions?.canOperate||!radioFresh()){formError('Geen bevoegdheid of actuele radiostand.');return;}
+    if(!radio.snapshot?.radioLabelWritesEnabled){formError('Radioweergavenaamcorrecties staan op deze omgeving nog uit.');return;}
+    try{
+      const alias=fields.alias.value.trim()||null;
+      await request('/api/to/radio/label',{method:'POST',body:JSON.stringify({radioId:id,alias})});
+      closeDialog();toast('Weergavenaam bewaard in BelgiumPD. Sonoran Radio werd niet aangepast.');
+      await refreshRadio();
     }catch(error){if(!error.obsolete)formError(error.message);}
     return;
   }
