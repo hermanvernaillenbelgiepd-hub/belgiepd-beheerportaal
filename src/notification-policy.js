@@ -1,6 +1,6 @@
 import {roleForDepartment,calendarDays} from './leave-policy.js';
 import {policeKader} from './normalize.js';
-import {VERIFIED_SERIES_HEADS,AMBIGUOUS_DISCORD_ID,BUTTERFLY_DISCORD_ID} from './police-series-config.js';
+import {VERIFIED_SERIES_HEADS,BUTTERFLY_DISCORD_ID} from './police-series-config.js';
 export const POLICE_SERIES=Object.freeze(['1','2','3']);
 export const NOTIFICATION_THRESHOLDS=Object.freeze([{warn:12,due:15,label:'50/50'},{warn:27,due:31,label:'Inactief'},{warn:57,due:61,label:'Controle op eventuele uitschrijving'}]);
 const ID=/^\d{15,22}$/;
@@ -51,7 +51,7 @@ export function policeSeriesHeads(env){
   return Object.fromEntries(POLICE_SERIES.map(n=>[n,unique([
     ...VERIFIED_SERIES_HEADS[n],
     ...(Array.isArray(overrides[n])?overrides[n]:[])
-  ].filter(id=>typeof id==='string'&&ID.test(id)&&id!==AMBIGUOUS_DISCORD_ID&&
+  ].filter(id=>typeof id==='string'&&ID.test(id)&&
     (!confirmedOwner.has(id)||confirmedOwner.get(id)===n)))]));
 }
 export function policeScope(actor,heads){
