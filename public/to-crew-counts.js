@@ -4,7 +4,7 @@ const records=value=>rows(value).filter(item=>item&&typeof item==='object');
 function callsignKey(category,number){
   if(typeof category!=='string'||!['string','number'].includes(typeof number))return null;
   const value=String(number);
-  if(category==='HARTS'&&value==='HARTS')return JSON.stringify([category,'HARTS']);
+  if(['HARTS','HVPK'].includes(category)&&value===category)return JSON.stringify([category,value]);
   if(!/^\d{1,5}$/.test(value)||Number(value)===0)return null;
   return JSON.stringify([category,Number(value)]);
 }
