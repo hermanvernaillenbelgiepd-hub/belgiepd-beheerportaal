@@ -105,3 +105,12 @@ test('A HARTS unit remains when Sonoran channel metadata is uncertain',()=>{
   const results=poll(tracker,roster,base,[],{uncertainUnits:[present('HARTS','HARTS')]});
   assert.ok(results.every(ids=>ids.length===0));
 });
+
+
+test('Named HVPK crew is preserved when radio presence is current or uncertain',()=>{
+  const named=crew('hvpk','HVPK',{dienst:'HVPK'});
+  const roster=board([named]),tracker=new Map();
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base,[present('HVPK','HVPK')]),tracker,base),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000,[],{uncertainUnits:[present('HVPK','HVPK')]}),tracker,base+30000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+45000,[]),tracker,base+45000),[]);
+});
