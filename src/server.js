@@ -287,7 +287,7 @@ const getVerifiedTemporaryTORequest=async discordId=>{
 const requireTOUser=(req,res,next)=>requireUser(req,res,async()=>{
   try{
     const id=req.bpd?.discordId;
-    if(req.bpd?.uid==='discord:'+id&&/^\\d{15,22}$/.test(String(id))){
+    if(req.bpd?.uid==='discord:'+id&&/^\d{15,22}$/.test(String(id))){
       const snap=await getFirestore().collection('bpd_to_access').doc(id).get();
       if(snap.exists){
         const grant=snap.data();
