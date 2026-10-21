@@ -159,13 +159,18 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
     if(typeof note!=='string'||note.trim().length>300)return res.status(400).json({error:'Beslissingsnotitie te lang'});
     try{
       const {snapshot}=await context(req);
-      const ref=db().collection(coll).doc(req.params.id),grantRef=db().collection(grants).doc(req.bpd.uid);
+      const ref=db().collection(coll).doc(req.params.id);
+      const canonical=db().collection(grants).doc(req.bpd.discordId);
+      const legacy=req.bpd.uid===req.bpd.discordId?null:db().collection(grants).doc(req.bpd.uid);
       await db().runTransaction(async tx=>{
-        const [request,grantDoc]=await Promise.all([tx.get(ref),tx.get(grantRef)]);
+        const [request,grantDoc,oldGrant]=await Promise.all([
+          tx.get(ref),tx.get(canonical),legacy?tx.get(legacy):Promise.resolve(null)
+        ]);
         if(!request.exists)throw rejection('Verlofaanvraag niet gevonden',404);
         const d=request.data();
         if(d.status!=='pending')throw rejection('Aanvraag is al behandeld',409);
-        if(!mayApproveLeave(req.bpd,projected(d,snapshot),grantDoc.exists?grantDoc.data():null))
+        const grant=grantDoc.exists?grantDoc.data():oldGrant?.exists?oldGrant.data():null;
+        if(!mayApproveLeave(req.bpd,projected(d,snapshot),grant))
           throw rejection('Geen bevoegdheid om dit verlof goed te keuren',403);
         const audit=ref.collection('audit').doc();
         tx.update(ref,{status:decision,decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
