@@ -158,7 +158,7 @@ test('Police Semi-ano. uses the new vehicle photo in rosters and dossiers',()=>{
   assert.equal(api.specialtyIconImage('Semi-ano. extra','politie'),null);
   assert.ok(api.specialtyColumns('politie').includes('Semi-ano.'));
   const svg=source('public/assets/icons/semi-anonieme.svg');
-  assert.match(svg,/viewBox="0 0 96 69"/);
+  assert.match(svg,/viewBox="0 0 70 69"/);
   assert.match(svg,/aria-label="BelgiumPD semi-anonieme politie-SUV"/);
   const encoded=svg.match(/href="data:image\/webp;base64,([A-Za-z0-9+/=]+)"/);
   assert.ok(encoded,'Expected embedded optimized photo');
