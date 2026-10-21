@@ -390,3 +390,18 @@ test('Only teams explicitly imported through radio carry an auto-signoff source 
   expectStatus(()=>command(board,'add-team',{dienst:'SANTO',
     leden:[{naam:'Niet toegestaan',roep:'181'}],radioSource:'anders'}),400);
 });
+
+
+test('Named HVPK is a deployable ambulance team without a synthetic numeric callsign',()=>{
+  let board=started();
+  board=command(board,'add-team',{dienst:'HVPK',leden:[{naam:'Stan',roep:'HVPK'}],radioSource:'sonoran'}).board;
+  const unit=Object.values(board.ploegen)[0];
+  assert.equal(unit.roepnaam,'HVPK');
+  assert.equal(unit.dienst,'HVPK');
+  assert.equal(unit.radioSource,'sonoran');
+  expectStatus(()=>command(board,'add-team',{dienst:'HVPK',
+    leden:[{naam:'Andere verpleegkundige',roep:'HVPK'}]}),409);
+  board=command(board,'add-team',{dienst:'HVPK',
+    leden:[{naam:'Ambulancier',roep:'123'}]}).board;
+  assert.equal(Object.values(board.ploegen).length,2);
+});
