@@ -28,7 +28,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .event{border-bottom:1px solid #304a67;padding:11px 0}.event strong{display:block}.event p{margin:5px 0}
 .kv{display:grid;grid-template-columns:145px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #30445c;overflow-wrap:anywhere}
 .motivation{white-space:pre-wrap;overflow-wrap:anywhere}
-.filter-grid{display:grid;grid-template-columns:minmax(180px,2fr) repeat(3,minmax(135px,1fr));gap:12px}
+.filter-grid{display:grid;grid-template-columns:minmax(220px,2fr) repeat(2,minmax(175px,1fr));gap:12px}
 .quickstats{display:flex;flex-wrap:wrap;gap:10px;margin:15px 0}
 .stat{background:#1b385d;border:1px solid #365776;border-radius:10px;padding:10px 14px;min-width:125px}
 .stat b{display:block;font-size:20px;color:#fff}.stat span{font-size:12px;color:#aec6e8}
@@ -87,6 +87,12 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <div class="filter-grid">
 <div><label for="query">Zoek dossier</label><input id="query" placeholder="Naam, roepnummer, rang of Discord-ID" autocomplete="off"></div>
 <div><label for="department">Hulpdienst</label><select id="department"><option value="all">Alle toegelaten diensten</option></select></div>
+<div><label for="sortOrder">Sorteren op</label><select id="sortOrder">
+<option value="callsign-desc" selected>Roepnummer aflopend (hoog → laag)</option>
+<option value="callsign-asc">Roepnummer oplopend (laag → hoog)</option>
+<option value="name-asc">Naam alfabetisch A–Z</option>
+<option value="name-desc">Naam alfabetisch Z–A</option>
+</select></div>
 </div>
 <div class="quickstats" id="stats" aria-label="Samenvatting van toegelaten dossiers"></div>
 <div class="pager"><span class="muted" id="count">Nog geen dossiers geladen.</span>
@@ -111,7 +117,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <button id="close" type="button" class="alt">Dossier sluiten</button></section>
 </main>
 <script type="module">
-import {filterDossiers,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
+import {filterDossiers,sortDossiers,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
   from '/dossiercentrum-view.js';
 const $=id=>document.getElementById(id);
 const departments={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage'};
@@ -176,7 +182,8 @@ function render(){
   const filters={query:$('query').value,department:$('department').value};
   renderServiceButtons([...$('department').options].map(option=>option.value).filter(x=>x!=='all'));
   const found=filterDossiers(rows,filters);
-  const paged=paginateDossiers(found,page,PAGE_SIZE);page=paged.page;
+  const sorted=sortDossiers(found,$('sortOrder').value);
+  const paged=paginateDossiers(sorted,page,PAGE_SIZE);page=paged.page;
   $('count').textContent=paged.total+' van '+rows.length+' toegelaten dossiers zichtbaar';
   $('pageInfo').textContent='Pagina '+paged.page+' van '+paged.pages;
   $('previousPage').disabled=paged.page<=1;
@@ -269,6 +276,7 @@ async function load(){
 }
 function changedFilters(){page=1;render()}
 $('query').oninput=changedFilters;
+$('sortOrder').onchange=changedFilters;
 $('department').onchange=()=>{closeDossier();changedFilters()};
 $('serviceButtons').addEventListener('click',event=>{
   const button=event.target.closest('button[data-service]');
@@ -281,7 +289,7 @@ $('historyKind').onchange=renderHistory;
 $('previousPage').onclick=()=>{page--;render()};
 $('nextPage').onclick=()=>{page++;render()};
 $('clear').onclick=()=>{
-  $('query').value='';selectDepartment('all');
+  $('query').value='';$('sortOrder').value='callsign-desc';selectDepartment('all');
 };
 $('refresh').onclick=()=>load().catch(e=>message(e.message,true));
 $('close').onclick=closeDossier;
