@@ -110,7 +110,7 @@ async function quickAddRadioCrew(id){
   if(!canEdit()||!radioFresh())return;
   const crew=groupRadioCrews(radio.snapshot.users).find(crew=>crew.members.some(u=>u.id===id));
   if(!crew||!canQuickAddRadioCrew(crew)||radioCrewOnBoard(crew))return;
-  const memberNames=[...new Set(crew.members.map(u=>String(u.displayName||'').replace(/[<>\x00-\x1f\x7f]/g,'').trim()).filter(v=>v.length>1))];
+  const memberNames=[...new Set(crew.members.map(u=>String(u.portalAlias||u.displayName||'').replace(/[<>\x00-\x1f\x7f]/g,'').trim()).filter(v=>v.length>1))];
   const combined=memberNames.join(' & ').slice(0,80).trim();
   const name=combined.length>=2?combined:('Radioploeg '+crew.category+'-'+crew.number).slice(0,80);
   await command('add-team',{dienst:crew.category,leden:[{naam:name,roep:String(crew.number)}]});
