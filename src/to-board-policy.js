@@ -11,7 +11,7 @@ const CONTROL=/[\x00-\x1f\x7f<>]/;
 const COMMAND_FIELDS=Object.freeze({
   start:['displayName'],
   takeover:['displayName','confirmation'],
-  'add-team':['dienst','leden'],'remove-team':['id'],'toggle-team':['id','available'],
+  'add-team':['dienst','leden','radioSource'],'remove-team':['id'],'toggle-team':['id','available'],
   'response-phase':['id','phase'],
   'set-team-status':['id','status'],
   'create-incident':['postcode','titel','omschrijving'],
@@ -132,6 +132,7 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
     }else{
       if(board.session.ownerUid!==actor.uid)fail(403,'Alleen de huidige TO kan deze dienst wijzigen. Neem de dienst eerst over.');
       if(cmd.type==='add-team'){
+        if(cmd.radioSource!==undefined&&cmd.radioSource!=='sonoran')fail(400,'Ongeldige radiobron');
         if(!TO_CATEGORIES.includes(cmd.dienst))fail(400,'Onbekende ploegcategorie');
         if(!Array.isArray(cmd.leden)||cmd.leden.length<1||cmd.leden.length>2)fail(400,'Een ploeg bestaat uit één of twee agenten');
         const leden=cmd.leden.map(member=>{
@@ -148,7 +149,7 @@ export function applyBoardCommand(current,cmd,{actor,now,id}={}){
         const teamId=newId();
         if(Object.hasOwn(board.ploegen,teamId))throw new Error('Dubbele server-ID');
         const roepnaam=leden.reduce((highest,member)=>Number(member.roep)>Number(highest)?member.roep:highest,leden[0].roep);
-        board.ploegen[teamId]={id:teamId,dienst:cmd.dienst,leden,koppel:leden.length===2,roepnaam,createdAt:now,by:actor.uid,available:true,responsePhase:null};
+        board.ploegen[teamId]={id:teamId,dienst:cmd.dienst,leden,koppel:leden.length===2,roepnaam,createdAt:now,by:actor.uid,available:true,responsePhase:null,...(cmd.radioSource==='sonoran'?{radioSource:'sonoran'}:{})};
       }else if(cmd.type==='remove-team'){
         const team=getTeam(board,cmd.id);
         if(Object.values(board.meldingen).some(incident=>incident.status==='actief'&&incident.ploegen.some(reference=>reference.id===team.id)))
