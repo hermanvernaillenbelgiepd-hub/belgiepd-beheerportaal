@@ -28,6 +28,7 @@ import {installSpecializationRoutes} from './specialization-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
+import {installNotificationRoutes} from './notification-routes.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
@@ -49,6 +50,7 @@ app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
+app.use('/api/notifications',express.json({limit:'4kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
 app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
@@ -272,6 +274,7 @@ installPersonnelEditorRoutes(app,{requireUser,getSnapshot});
 installSpecializationRoutes(app,{requireUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser,getSnapshot});
+installNotificationRoutes(app,{requireUser,getSnapshot});
 // The TO operator's callsign is resolved only from server-owned records
 // tied to the authenticated Discord ID, never from a user-entered nickname.
 const getVerifiedTemporaryTORequest=async discordId=>{
