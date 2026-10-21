@@ -42,6 +42,16 @@ De knop **★ Titel als sneltoets opslaan** in het nieuwe/bewerkbare meldingsfor
 
 Alle opgeslagen sneltoetsen verschijnen onder **★ Opgeslagen sneltoetsen**, ook na een dienstafsluiting of bij een nieuwe TO. Een klik opent een nieuwe melding met de titel vooraf ingevuld, maar zonder postcode of andere ingevulde incidentgegevens. De huidige TO kan een sneltoets verwijderen met de aparte **×**-knop en een bevestigingsvenster. De sneltoetsen worden afzonderlijk van het dienstarchief opgeslagen in Firestore onder `bpd_to_incident_shortcuts/politie` en kennen een maximum van **30 stuks**. Alleen de huidige bevoegde TO kan toevoegen of verwijderen; leesbevoegde collega's mogen ze wel bekijken. Dubbele titels, ongeldige waarden en conflicterende wijzigingen worden server-side geweigerd. Bestaande meldingen worden nooit veranderd door het verwijderen van een sneltoets.
 
+## Ontkoppelen rechtstreeks op de ploegkaart
+
+Wanneer een opgeslagen ploeg aan minstens één **actieve melding** gekoppeld is, krijgt ze naast **Uit dienst** de knop **↗ Ontkoppelen**. De knop is niet zichtbaar bij ploegen zonder actieve meldingskoppeling. Dit is iets anders dan de ploeg uit dienst halen.
+
+- Bij **één** melding toont een bevestigingsvenster het meldingsnummer en de titel, bijvoorbeeld `M-002 · OVERLAST`.
+- Bij **meerdere** gelijktijdige meldingen toont het venster een verplichte keuzelijst. De TO ontkoppelt uitsluitend de geselecteerde melding en laat de overige koppelingen intact.
+- De TO bevestigt expliciet. De server gebruikt dezelfde beveiligde `detach-team`-actie als de meldingsdetails, controleert de eigenaar en revisie en bewaart de ontkoppeling in het meldingslogboek.
+- De melding blijft open en blijft in de historiek. Bij het verwijderen van de **laatste** actieve koppeling wordt een nog actieve uitrukfase (`onderweg` of `ter-plaatse`) gereset. Een zelf gekozen pauzestatus blijft behouden. De ploeg blijft **in dienst**.
+- Voor een andere status dan `Pauze / NB` blijft een actuele Sonoran-NB leidend en kan de TO deze niet via de beschikbaarheidsknoppen overschrijven.
+
 ## Vrij kiezen van ploegstatus en blauw zwaailicht
 
 De vier statussen zijn zelfstandig te kiezen via een eigen knop op de ploegkaart:
