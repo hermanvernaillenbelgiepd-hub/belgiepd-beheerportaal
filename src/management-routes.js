@@ -22,12 +22,12 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     if(!CADRE_ROLES.includes(req.bpd.role))return res.status(403).json({error:'Alleen middenkader en hoger hebben toegang'});
     next();
   };
-  app.get('/api/management/overview',requireUser,cadre,async(req,res)=>{
+  app.get('/api/management/overview',requireUser,async(req,res)=>{
     try{
       const snap=await getSnapshot();
-      const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)&&mayReadManagement(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
+      const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
       const actor=actorFromPersonnel(req.bpd,snap.data);
-      res.json({role:req.bpd.role,departments:req.bpd.departments.filter(d=>mayReadManagement(req.bpd,d)),writesEnabled:enabled(),canClassifyTests:req.bpd.departments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:req.bpd.departments.some(d=>mayExportWeekReport(req.bpd,d)),actor,subjects,types:MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,req.bpd.departments[0],t))});
+      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled(),canClassifyTests:req.bpd.departments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:req.bpd.departments.some(d=>mayExportWeekReport(req.bpd,d)),actor,subjects,types:MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,req.bpd.departments[0],t))});
     }catch(e){errorResponse(res,e)}
   });
   app.get('/api/management/cases',requireUser,async(req,res)=>{
