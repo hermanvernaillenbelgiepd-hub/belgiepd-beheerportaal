@@ -149,6 +149,31 @@ test('Police Motor/MOTARD uses a real transparent motorcycle image without chang
   }
 });
 
+test('Police Semi-ano. uses the new vehicle photo in rosters and dossiers',()=>{
+  const api=visuals();
+  for(const name of ['Semi-ano.','semi-ano','SEMI ANONIEME','Semi-anoniem','Semi anonieme','semi ano.']){
+    assert.equal(api.specialtyIconImage(name,'politie'),'/assets/icons/semi-anonieme.svg',name);
+  }
+  assert.equal(api.specialtyIconImage('Semi-ano.','ambulance'),null);
+  assert.equal(api.specialtyIconImage('Semi-ano. extra','politie'),null);
+  assert.ok(api.specialtyColumns('politie').includes('Semi-ano.'));
+  const svg=source('public/assets/icons/semi-anonieme.svg');
+  assert.match(svg,/viewBox="0 0 96 69"/);
+  assert.match(svg,/aria-label="BelgiumPD semi-anonieme politie-SUV"/);
+  const encoded=svg.match(/href="data:image\/webp;base64,([A-Za-z0-9+/=]+)"/);
+  assert.ok(encoded,'Expected embedded optimized photo');
+  const image=Buffer.from(encoded[1],'base64');
+  assert.equal(image.length,3072);
+  assert.equal(image.toString('ascii',0,4),'RIFF');
+  assert.equal(image.toString('ascii',8,12),'WEBP');
+  assert.equal(image.readUInt32LE(4)+8,image.length,'Complete WebP asset');
+  for(const page of ['public/index.html','public/personeelsbeheer.html']){
+    const html=source(page);
+    assert.ok(html.includes('specialtyIconImage(label,dept)'),page);
+    assert.ok(html.includes('specialty-custom-image'),page);
+  }
+});
+
 test('Radio BM uses the supplied transparent Sepura handheld image',()=>{
   const asset=source('public/assets/icons/radio-bm.svg');
   assert.match(asset,/^<svg /);
