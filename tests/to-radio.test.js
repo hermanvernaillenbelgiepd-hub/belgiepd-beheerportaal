@@ -414,3 +414,23 @@ test('An old in-flight request cannot restore cached users after server bindings
   assert.deepEqual(oldResult,current);
   assert.deepEqual(await service.read(),current);
 });
+
+
+test('Starred temporary callsigns with an inline operator remain importable',()=>{
+  for(const label of ['SANTO-112* Liam','SANTO-112*| Liam','SANTO-112*│ Liam','SANTO-112*ǀ Liam']){
+    const user=parseSonoranName(label);
+    assert.equal(user.category,'SANTO',label);
+    assert.equal(user.number,'112',label);
+    assert.equal(user.importable,true,label);
+    assert.equal(user.displayName,'Liam',label);
+  }
+});
+test('Duplicate ZW-1 radio identities can form one dispatchable callsign without claiming pairing',async()=>{
+  const result=await createSonoranRadioService({env:configuredEnv,fetchImpl:async()=>reply([
+    {identity:'amb1',name:'ZW-1 | Adam'},
+    {identity:'amb2',name:'ZW-1 | Rogee'}
+  ])}).read();
+  assert.equal(result.users.length,2);
+  assert.ok(result.users.every(u=>u.category==='ZW'&&u.number==='1'));
+  assert.ok(result.users.every(u=>u.importable===false&&u.duplicateCallsign===true));
+});
