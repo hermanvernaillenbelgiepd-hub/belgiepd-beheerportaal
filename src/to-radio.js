@@ -28,7 +28,7 @@ export function parseSonoranName(value){
   // Sonoran labels also arrive with visually similar Unicode separators.
   // Split these before parsing a numeric callsign so a display name cannot
   // accidentally become part of the unit number (SANTO-180 │ JayD).
-  const [label,...nameParts]=name.split(/[|│｜¦∣]/);
+  const [label,...nameParts]=name.split(/[|│｜¦∣ǀ∥‖❘︱]/);
   const head=stripRadioNBMarkers(label.trim()).replace(/\*\s*$/,'').trim(),upper=head.toUpperCase();
   const displayName=nameParts.join('|').trim().slice(0,160)||null;
   // Embedded digits belong to the label (e.g. LSRA-DEPA100), not an officer.
@@ -46,9 +46,9 @@ export function parseSonoranName(value){
   // Sonoran can show a name after a *number* without a pipe separator:
   // e.g. "SANTO-265 Chicken". Never store "265 Chicken" as a callsign.
   const inlineOperator=orderedCategories.find(category=>upper.startsWith(category)&&
-    /^\s*-\s*\d{1,5}\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 .'-]{0,77}$/.test(head.slice(category.length)));
+    /^\s*-\s*\d{1,5}\*?\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 .'-]{0,77}$/.test(head.slice(category.length)));
   if(inlineOperator){
-    const match=/^\s*-\s*(\d{1,5})\s+(.+)$/.exec(head.slice(inlineOperator.length));
+    const match=/^\s*-\s*(\d{1,5})\*?\s+(.+)$/.exec(head.slice(inlineOperator.length));
     return {category:inlineOperator,number:match[1],displayName:displayName||match[2].trim(),
       importable:Number(match[1])>0&&inlineOperator!=='OPLEIDING'};
   }
@@ -165,7 +165,12 @@ function normalizedUsers(payload,key){
     if(user.importable&&labels.get(user.category+'|'+(['HARTS','HVPK'].includes(user.category)&&user.number===user.category?user.number:Number(user.number)))>1){
       const mates=users.filter(item=>item.category===user.category&&
         (user.number===user.category?item.number===user.category:(/^\d{1,5}$/.test(String(item.number))&&Number(item.number)===Number(user.number))));
-      if(!mates.some(item=>item.paired===true))user.importable=false;
+      if(!mates.some(item=>item.paired===true)){
+        // Duplicate callsign: still allow creating ONE team, never two.
+        // Keep the uncertainty explicit instead of treating the identity as confirmed.
+        user.importable=false;
+        user.duplicateCallsign=true;
+      }
     }
   }
   return {users,connectedCount:payload.connectedUsers.length,channelStatusUnknown,notInChannel,uncertainUnits:[...uncertainUnits.values()]};
