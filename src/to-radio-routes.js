@@ -20,7 +20,13 @@ export function installTORadioRoutes(app,{
   }
   let pollJob=Promise.resolve(),lastObservedAt=0;
   const sync=async snapshot=>{
-    if(!store||!snapshot?.connected||snapshot.stale||!snapshot.configured)return;
+    if(!snapshot?.connected||snapshot.stale||!snapshot.configured){
+      // A radio outage breaks the evidence chain; old absence timers may
+      // not run across a failed Sonoran request.
+      departures.clear();
+      return;
+    }
+    if(!store)return;
     // A serialized observer avoids double absence-counting or duplicate
     // Firestore writes when several viewers refresh the same 15-second result.
     const run=async()=>{
