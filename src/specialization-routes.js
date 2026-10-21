@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {canViewPersonnel,validPersonnelKey} from './personnel-editor-policy.js';
+import {validPersonnelKey} from './personnel-editor-policy.js';
+import {canReadServiceDossier} from './service-dossier-access.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,
   specialtyWritesEnabled,canChangeSpecialty,validateSpecialtyChange,
   publicSpecializations} from './specialization-policy.js';
@@ -14,7 +15,7 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
   async function subject(req){
     const {dept,discordId}=req.params;
     if(!validPersonnelKey(dept,discordId))throw failure(400,'Ongeldige personeelsreferentie');
-    if(!canViewPersonnel(req.bpd,dept))throw failure(403,'Geen inzagerecht voor deze hulpdienst');
+    if(!canReadServiceDossier(req.bpd,dept))throw failure(403,'Geen inzagerecht voor dit dienstdossier');
     const snap=await getSnapshot();
     const matches=snap.data.filter(p=>p.dept===dept&&p.personId===discordId);
     if(matches.length!==1)throw failure(404,'Geen eenduidige personeelsfiche gevonden');
