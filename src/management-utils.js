@@ -19,7 +19,9 @@ export const mayWriteManagement = (actor,dept,type) => (
   // This does not convey sanctions, rank changes or other personnel powers.
   (type==='notitie'&&Array.isArray(actor?.dossierManageDepartments)&&
     actor.dossierManageDepartments.includes(dept)&&actor.dossierAllowedDepartments?.includes(dept))
-  ||(mayReadManagement(actor,dept) && MANAGEMENT_TYPES.includes(type) && (
+  ||(mayReadManagement(actor,dept) &&
+    (!Array.isArray(actor?.dossierNativeDepartments)||actor.dossierNativeDepartments.includes(dept))&&
+    MANAGEMENT_TYPES.includes(type) && (
     !['naamswijziging','personeelsbeweging'].includes(type) ||
     HIGH_ROLES.includes(roleForDepartment(actor,dept))
   ))
