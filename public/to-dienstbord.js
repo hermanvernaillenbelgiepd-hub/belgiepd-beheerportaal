@@ -60,7 +60,7 @@ const empty=(title,text)=>`<div class="empty-state"><strong>${esc(title)}</stron
 const button=(text,action,{id='',teamId='',primary=false,danger=false,small=false,disabled=false,write=false}={})=>`<button type="button" class="button${primary?' button-primary':''}${danger?' button-danger':''}${small?' button-small':''}" data-action="${action}"${id?` data-id="${esc(id)}"`:''}${teamId?` data-team-id="${esc(teamId)}"`:''}${write?' data-write':''}${disabled?' disabled':''}>${esc(text)}</button>`;
 
 let auth=null,authEpoch=0;
-const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',showMoreIncidentPresets:false,shortcuts:{revision:0,items:{}},shortcutsError:null,archives:null,archive:null,lastSynced:null};
+const state={env:null,stale:true,pending:false,view:'board',query:'',category:'all',filter:'actief',lastSeenTakeoverRequest:null,showMoreIncidentPresets:false,shortcuts:{revision:0,items:{}},shortcutsError:null,archives:null,archive:null,lastSynced:null};
 const radio={snapshot:null,loading:false,error:null,receivedAt:null,requestSerial:0,knownIds:null,newIds:new Set()};
 const INCIDENT_PRESETS=Object.freeze(['ANPR','AGRESSIE','VKO','BRAND','TAKELING','DIEFSTAL','VERDACHTE SITUATIE','MEDISCHE BIJSTAND']);
 const INCIDENT_EXTRA_PRESETS=Object.freeze(['OVERLAST','WONINGINBRAAK','VECHTPARTIJ','VERMIST PERSOON','ACHTERVOLGING','VERDACHT VOERTUIG','VERKEERSHINDER','BEROVING']);
@@ -179,7 +179,7 @@ async function refresh({quiet=false}={}){
   }catch(error){
     if(error.obsolete)return;
     state.stale=true;
-    if(error.status===401||error.status===403){state.env=null;state.archive=null;state.archives=null;state.shortcuts={revision:0,items:{}};state.shortcutsError=null;clearRadio();closeDialog();}
+    if(error.status===401||error.status===403){state.env=null;state.archive=null;state.archives=null;state.shortcuts={revision:0,items:{}};state.shortcutsError=null;state.lastSeenTakeoverRequest=null;clearRadio();closeDialog();}
     render();tell(error.message+(state.env?' De getoonde gegevens kunnen verouderd zijn. Vernieuw het bord voordat je wijzigingen maakt.':''),state.env?'warning':'error');
   }
 }
@@ -301,6 +301,7 @@ function render(){
   el('connection').innerHTML='<span></span>'+(env?(state.stale?'Verbinding onderbroken':'Gedeeld dienstbord'):'Aanmelding vereist');
   if(!env){renderRadio();return;}
   renderSummary();
+  promptIncomingTakeover();
   el('tab-board').classList.toggle('active',state.view==='board');
   el('tab-archives').classList.toggle('active',state.view==='archives');
   for(const [id,view]of [['tab-board','board'],['tab-archives','archives']]){if(state.view===view)el(id).setAttribute('aria-current','page');else el(id).removeAttribute('aria-current');}
@@ -438,6 +439,17 @@ function startDialog(takeover=false){
   openDialog(takeover?'Overname aanvragen':'Nieuwe dienst starten',
     `<p class="form-note">${intro}</p><label class="field"><span>${label}</span><input class="input mono" name="displayName" maxlength="80" minlength="2" value="${esc(defaultName())}" placeholder="${linked?'Roepnummer': 'Naam of roepnummer'}" ${linked?'readonly':''} required autofocus></label>${sourceNote}${takeover?'<label class="field"><span>Reden van overname</span><textarea class="input" name="reason" minlength="8" maxlength="300" placeholder="Bijvoorbeeld: aflossing van de lopende dienst" required></textarea></label>':''}`,
     {form:takeover?'request-takeover':'start',submit:takeover?'Aanvraag versturen':'Dienst starten'});
+}
+function promptIncomingTakeover(){
+  const pending=state.env?.board.session?.pendingTakeover;
+  if(!pending||pending.expiresAt<=Date.now()||!state.env.permissions.canEdit||
+     dialog.open||state.stale||state.lastSeenTakeoverRequest===pending.id)return;
+  state.lastSeenTakeoverRequest=pending.id;
+  openDialog('Aanvraag om TO-dienst over te nemen',
+    `<p class="form-note">Een collega vraagt jouw actieve dienst over te nemen.</p><p class="form-note"><strong>Aanvrager: ${esc(pending.name)}</strong></p><p class="form-note">Reden: ${esc(pending.reason)}</p><p class="form-note">De dienst wordt niet overgedragen totdat je dit uitdrukkelijk goedkeurt. Bij uitval bestaat later een afzonderlijk gelogde noodprocedure.</p>`,
+    {footer:button('Later beslissen','close-dialog')+
+      button('Weigeren','reject-takeover-dialog',{write:true})+
+      button('Goedkeuren','approve-takeover-dialog',{primary:true,write:true})});
 }
 function takeoverDecisionDialog(approve){
   const pending=state.env?.board.session?.pendingTakeover;
