@@ -1,0 +1,102 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Meldingen | BelgiumPD TEST</title>
+<style>:root{font:14px system-ui,Segoe UI,Arial,sans-serif;background:#0b152a;color:#edf3ff}*{box-sizing:border-box}body{margin:0}
+header{padding:18px max(16px,calc((100vw - 1120px)/2));background:#14213d;border-bottom:1px solid #2b3e60;display:flex;justify-content:space-between;flex-wrap:wrap;gap:15px;align-items:center}
+a{color:#adc8ff}main{max-width:1100px;margin:28px auto;padding:0 16px 65px}h1{margin:0 0 8px;font-size:30px}h2{font-size:19px}.muted{color:#a8b9d3;line-height:1.55}
+.card{border:1px solid #324763;border-radius:13px;background:#172947;padding:20px;margin:15px 0}.alerts{display:grid;gap:12px}
+.notice{border:1px solid #3e567b;border-left:4px solid #72a5ff;background:#1b3151;border-radius:11px;padding:15px}
+.notice.warn{border-left-color:#f3b95e}.notice.urgent{border-left-color:#eb7b79}.notice h3{margin:0 0 6px;font-size:16px}.notice p{margin:0 0 10px;line-height:1.55;color:#bbcce8}
+button,select,input,textarea{font:inherit}button{border:0;border-radius:9px;padding:10px 15px;background:#4269e9;color:#fff;cursor:pointer;font-weight:650}
+button.secondary{background:#2b4468}button:disabled{opacity:.45;cursor:not-allowed}
+label{display:block;margin:8px 0 5px;color:#c4d4ef}select{padding:10px 12px;border:1px solid #50678a;border-radius:9px;background:#182c4a;color:#fff;max-width:340px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px}.status{padding:12px;border-radius:8px;background:#244739;color:#c8ffdb;margin:12px 0}.status.error{background:#542934;color:#ffe5e6}
+.note{padding:12px;border:1px solid #41587a;border-radius:9px;background:#152641;color:#bbd1f0}
+.entry{border-bottom:1px solid #415477;padding:10px 0}.entry:last-child{border:0}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}</style></head>
+<body><header><strong>BelgiumPD · Meldingen</strong><div><a href="/">← Beheerportaal</a> · <a href="/verlofbeheer.html">Verlof</a> · <a href="/weekrapporten.html">Weekrapporten</a> · <button id="login">Aanmelden</button></div></header>
+<main><h1>Meldingen en opvolging</h1><p class="muted">Persoonlijke meldingen worden automatisch gefilterd op jouw gekoppelde Discord-identiteit, politierang en toegewezen reeks. Handmatige opvolging komt in de tweewekelijkse rapportage.</p>
+<div id="status" role="status" aria-live="polite" class="note">Aanmelding controleren…</div>
+<div class="grid"><section>
+<div class="card"><h2>Jouw meldingen <span id="count"></span></h2><p class="muted" id="scope">Verificatie in uitvoering…</p><div class="alerts" id="notices"><p>Er zijn nog geen gegevens geladen.</p></div><button class="secondary" id="refresh">Meldingen vernieuwen</button></div>
+</section><aside>
+<div class="card"><h2>Tweewekelijkse rapportage</h2><p class="muted">Elke periode begint op maandag en duurt 14 dagen. Middenkader mag enkel de huidige en voorafgaande periode bekijken. Officierenkader en korpsleiding kunnen de beschikbare historiek bekijken en rapporten opslaan.</p>
+<label for="period">Rapportperiode</label><select id="period"><option value="">Selecteer periode</option></select>
+<div id="summary" class="note" style="margin:12px 0">Geen periode geopend.</div><div id="events"></div>
+<button id="saveReport" disabled>Rapportperiode opslaan</button></div>
+<div class="card"><h2>Maandelijkse activiteit</h2><p class="muted">≤ 10 uur: inactief · meer dan 10 t/m 20 uur: 50/50 · meer dan 20 uur: actief. Dit wordt pas berekend als er door de bot of bevoegde administratie geverifieerde maandtotalen beschikbaar zijn.</p><p class="muted">Geen automatische uitschrijving uit de personeelslijst. Op dag 57 volgt een melding voor controle vóór dag 61.</p></div>
+</aside></div></main>
+<script type="module">
+const $=id=>document.getElementById(id);
+let auth,mod,permissions=null;
+function status(t,error=false){$('status').textContent=t;$('status').className=error?'status error':'status'}
+async function api(url,method='GET',body){
+  if(!auth?.currentUser)throw Error('Meld je aan');
+  const token=await auth.currentUser.getIdToken();
+  const response=await fetch(url,{method,cache:'no-store',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(data.error||'HTTP '+response.status);
+  return data;
+}
+const button=(label,fn,disabled=false)=>{const b=document.createElement('button');b.textContent=label;b.disabled=disabled;b.onclick=fn;return b};
+function renderNotices(data){
+  $('count').textContent='('+data.items.length+')';
+  $('scope').textContent=data.scope.series.length?'Jouw reeksen: '+data.scope.series.join(', '):'Persoonlijke meldingen · geen reekshoofdtoewijzing';
+  const root=$('notices');root.replaceChildren();
+  if(!data.items.length){const p=document.createElement('p');p.textContent='Geen nieuwe meldingen.';root.append(p);return;}
+  for(const item of data.items){
+    const el=document.createElement('div');el.className='notice'+(['inactivity','monthly'].includes(item.kind)?' warn':'');
+    const title=document.createElement('h3');title.textContent=item.title;el.append(title);
+    const desc=document.createElement('p');desc.textContent=item.message;el.append(desc);
+    if(item.series){const small=document.createElement('p');small.textContent='Reeks '+item.series+(item.call?' · roepnummer '+item.call:'');el.append(small);}
+    if(item.link){const anchor=document.createElement('a');anchor.href=item.link;anchor.textContent='Aanvraag behandelen';el.append(anchor);}
+    if(item.kind==='return_self')
+      el.append(button('Ik bevestig mijn terugkeer',async()=>{if(!confirm('Bevestig je terugkeer uit verlof?'))return;try{await api('/api/notifications/return/'+encodeURIComponent(item.leaveId),'POST',{});status('Terugkeer bevestigd en gelogd.');await load();}catch(e){status(e.message,true)}},!data.writesEnabled));
+    else if(item.kind!=='training')
+      el.append(button('Afhandelen en loggen',async()=>{const reason=prompt('Welke opvolging werd uitgevoerd? (minimaal 4 tekens)');if(reason===null)return;try{await api('/api/notifications/'+encodeURIComponent(item.id)+'/dismiss','POST',{reason});status('Melding gezamenlijk afgehandeld en voor het weekrapport gelogd.');await load();}catch(e){status(e.message,true)}},!data.writesEnabled));
+    root.append(el);
+  }
+}
+async function loadPeriods(){
+  try{
+    permissions=await api('/api/notifications/periods');
+    const current=$('period').value,select=$('period');select.replaceChildren(new Option('Selecteer periode',''));
+    for(const p of permissions.periods)select.append(new Option(p.start+' t/m '+p.end,p.start));
+    select.value=permissions.periods.some(p=>p.start===current)?current:permissions.periods[0]?.start||'';
+    if(select.value)await readPeriod();
+  }catch(e){$('summary').textContent=e.message}
+}
+async function readPeriod(){
+  const start=$('period').value;
+  if(!start)return;
+  try{
+    const data=await api('/api/notifications/periods/'+encodeURIComponent(start));
+    $('summary').textContent=data.period.start+' t/m '+data.period.end+
+      (data.saved?' · opgeslagen':' · nog niet opgeslagen')+' · '+data.events.length+' registraties';
+    const root=$('events');root.replaceChildren();
+    for(const event of data.events){
+      const p=document.createElement('div');p.className='entry';
+      const title=document.createElement('strong');title.textContent=event.eventDate+' · '+event.subjectName;
+      const body=document.createElement('p');body.className='muted';body.textContent=event.details;
+      p.append(title,body);root.append(p);
+    }
+    $('saveReport').disabled=!permissions?.canSave||data.saved;
+  }catch(e){status(e.message,true)}
+}
+async function load(){const data=await api('/api/notifications/me');renderNotices(data);status('Meldingen bijgewerkt. '+(data.writesEnabled?'Afhandelen is actief.':'Bevestigen en afhandelen staan nog uit op TEST.'))}
+$('refresh').onclick=()=>load().catch(e=>status(e.message,true));
+$('period').onchange=readPeriod;
+$('saveReport').onclick=async()=>{if(!confirm('Deze rapportperiode als opgeslagen markeren?'))return;try{await api('/api/notifications/periods/'+encodeURIComponent($('period').value)+'/save','POST',{});await readPeriod();status('Rapportperiode opgeslagen.');}catch(e){status(e.message,true)}};
+async function start(){
+  try{
+    const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+    if(!cfg.enabled)throw Error('Firebase is niet ingesteld');
+    const [app,authMod]=await Promise.all([import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js')]);
+    mod=authMod;auth=mod.getAuth(app.initializeApp(cfg.firebaseConfig));
+    const {setupPortalLogin}=await import('/portal-login.js');
+    setupPortalLogin({button:$('login'),auth,authModule:mod,config:cfg,onError:e=>status(e.message,true)});
+    mod.onAuthStateChanged(auth,user=>{
+      if(!user){$('notices').textContent='Meld je aan voor je persoonlijke meldingen.';status('Niet aangemeld.');return;}
+      Promise.all([load(),loadPeriods()]).catch(e=>status(e.message,true));
+    });
+  }catch(e){status(e.message,true)}
+}start();
+</script></body></html>
