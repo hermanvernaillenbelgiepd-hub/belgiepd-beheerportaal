@@ -178,3 +178,13 @@ test('Radio crews rejoining after automatic off-duty are visible and countable a
   assert.equal(stats.available,1);
   assert.equal(stats.boardTeams,0,'Ended unit is not restored without a TO');
 });
+
+
+test('A named HVPK unit counts as one radio crew and matches the saved unit',()=>{
+  const named={id:'hvpk1',dienst:'HVPK',roepnaam:'HVPK',leden:[{naam:'Stan',roep:'HVPK'}],available:true};
+  const input=[radio('HVPK','HVPK')];
+  const result=count({ploegen:[named]},input);
+  assert.equal(result.boardTeams,1);
+  assert.equal(result.radioLinked,1);
+  assert.equal(result.radioOnly,0);
+});
