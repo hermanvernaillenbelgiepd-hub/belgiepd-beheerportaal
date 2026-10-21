@@ -2,7 +2,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {roleForDepartment} from './leave-policy.js';
 import {policeScope,policeSeriesHeads,normalizeSeries,warningFor,afterLeave,
   isPoliceMember,leaveAuthority,monthlyActivityStatus,periodsForActor,currentFortnight,periodAt,utcDay,subjectPoliceGrade} from './notification-policy.js';
-const stamp=()=>new Date().toISOString().slice(0,10);
+const stamp=()=>{const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const part=name=>parts.find(p=>p.type===name)?.value;return [part('year'),part('month'),part('day')].join('-')};
 const mapped=s=>(s?.docs||[]).map(d=>({id:d.id,...d.data()}));
 const writes=()=>process.env.FIREBASE_PROJECT_ID==='belgiepd-test'&&process.env.BPD_ENABLE_NOTIFICATIONS_WRITES==='true';
 const safeId=x=>/^[A-Za-z0-9_-]{4,180}$/.test(String(x));
