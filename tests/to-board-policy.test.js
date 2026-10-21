@@ -311,3 +311,44 @@ test('Changing incident response remains possible when its log has reached the l
   assert.equal(next.ploegen[team.id].responsePhase,'onderweg');
   assert.equal(next.meldingen[incident.id].log.length,TO_BOARD_LIMITS.incidentLog);
 });
+
+
+test('TO takeover request can be rejected, cancelled, or time out without losing ownership',()=>{
+  let board=started();
+  board=command(board,'request-takeover',{displayName:'Aanvrager',reason:'Overname van dienst wegens pauze'},colleague,now+1000).board;
+  const pending=board.session.pendingTakeover;
+  expectStatus(()=>command(board,'request-takeover',{displayName:'Aanvrager',reason:'Nieuwe aanvraag'},colleague,now+2000),409);
+  expectStatus(()=>command(board,'reject-takeover',{requestId:pending.id},colleague,now+3000),403);
+  board=command(board,'reject-takeover',{requestId:pending.id},owner,now+3000).board;
+  assert.equal(board.session.ownerUid,owner.uid);
+  assert.equal(board.session.pendingTakeover,undefined);
+  board=command(board,'request-takeover',{displayName:'Aanvrager',reason:'Nieuwe dienstovername nodig'},colleague,now+4000).board;
+  expectStatus(()=>command(board,'cancel-takeover',{requestId:board.session.pendingTakeover.id},owner,now+5000),403);
+  board=command(board,'cancel-takeover',{requestId:board.session.pendingTakeover.id},colleague,now+5000).board;
+  assert.equal(board.session.pendingTakeover,undefined);
+  board=command(board,'request-takeover',{displayName:'Aanvrager',reason:'Weer een aanvraag voor overname'},colleague,now+6000).board;
+  expectStatus(()=>command(board,'approve-takeover',{requestId:board.session.pendingTakeover.id},owner,now+16*60000),409);
+  board=command(board,'request-takeover',{displayName:'Aanvrager',reason:'Oude aanvraag verstreken'},colleague,now+16*60000).board;
+  assert.equal(board.session.ownerUid,owner.uid);
+  assert.equal(board.session.pendingTakeover.requestedAt,now+16*60000);
+});
+
+test('Emergency takeover needs a verified operator, delay, reason and typed confirmation',()=>{
+  let board=started();
+  board=command(board,'request-takeover',{displayName:'Collega 166',reason:'Huidige TO onbereikbaar via radio'},colleague,now+1000).board;
+  const requestId=board.session.pendingTakeover.id;
+  const input={requestId,reason:'Huidige TO is uitgevallen en niet bereikbaar',confirmation:'NOODOVERNAME'};
+  expectStatus(()=>command(board,'emergency-takeover',input,colleague,now+100000),409);
+  expectStatus(()=>command(board,'emergency-takeover',{...input,confirmation:'ja'},colleague,now+140000),400);
+  expectStatus(()=>command(board,'emergency-takeover',{...input,reason:'kort'},colleague,now+140000),400);
+  expectStatus(()=>command(board,'emergency-takeover',input,owner,now+140000),403);
+  const outsider={...colleague,role:'basiskader',departmentRoles:{politie:'basiskader'}};
+  expectStatus(()=>command(board,'emergency-takeover',input,outsider,now+140000),403);
+  board=command(board,'emergency-takeover',input,colleague,now+140000).board;
+  assert.equal(board.session.ownerUid,colleague.uid);
+  assert.equal(board.session.handovers[0].mode,'noodovername');
+  assert.equal(board.session.handovers[0].byUid,colleague.uid);
+  assert.equal(board.session.handovers[0].requestReason,'Huidige TO onbereikbaar via radio');
+  assert.equal(board.session.handovers[0].reason,input.reason);
+  assert.equal(board.session.pendingTakeover,undefined);
+});
