@@ -320,13 +320,14 @@ function approvalWidget(){
 }
 function personnelActivityRows(){
   if(!liveMode)return '<div class="personnel-feed-empty">Deze historiek is alleen beschikbaar wanneer je bent aangemeld met personeelsinzage.</div>';
-  if(!personnelActivity.loaded)return '<div class="personnel-feed-empty">Recente promoties en roepnummers laden…</div>';
+  if(!personnelActivity.loaded)return '<div class="personnel-feed-empty">Recente personeelsbewegingen laden…</div>';
   if(personnelActivity.error)return '<div class="personnel-feed-empty">Recente wijzigingen kunnen momenteel niet geladen worden. Probeer later opnieuw.</div>';
   if(!personnelActivity.events.length)
-    return '<div class="personnel-feed-empty">Er zijn nog geen geregistreerde promoties of definitieve roepnummertoekenningen gevonden.</div>';
+    return '<div class="personnel-feed-empty">Er zijn nog geen geregistreerde personeelsbewegingen gevonden.</div>';
   return personnelActivity.events.map(e=>{
-    const eventName=e.type==='promotion'?'Promotie':
-      e.type==='callsign_assigned'?'Vast roepnummer toegekend':'Roepnummer gewijzigd';
+    const eventName=({promotion:'Promotie',callsign_assigned:'Vast roepnummer toegekend',
+      callsign_changed:'Roepnummer gewijzigd',personnel_joined:'Nieuw personeelslid',
+      status_changed:'Status gewijzigd',name_changed:'Naam gewijzigd'})[e.type]||'Personeelswijziging';
     const description=e.type==='promotion'
       ?(e.before?e.before+' → ':'')+e.after:
       (e.before&&e.before!==e.after?e.before+' → ':'')+e.after;
