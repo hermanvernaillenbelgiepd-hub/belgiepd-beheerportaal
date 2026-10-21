@@ -164,11 +164,18 @@ test('HTTP ownership is tied to verified UID and malformed command fields never 
     const injected=await command({type:'takeover',expectedRevision:1,displayName:'Shared label',reason:'Geldige reden voor overname.',ownerUid:actors.owner.uid},'colleague');
     assert.equal(injected.status,400);
     assert.equal(db.data(currentPath).revision,1);
-    const takeover=await command({type:'takeover',expectedRevision:1,displayName:'Shared label',reason:'De dienst wordt door een collega overgenomen.'},'colleague');
+    const asked=await command({type:'request-takeover',expectedRevision:1,displayName:'Shared label',reason:'De dienst wordt door een collega overgenomen.'},'colleague');
+    assert.equal(asked.status,200);
+    assert.equal(asked.body.board.session.ownerUid,actors.owner.uid);
+    assert.equal(asked.body.permissions.canEdit,false);
+    const requestId=asked.body.board.session.pendingTakeover.id;
+    assert.equal((await command({type:'approve-takeover',requestId,expectedRevision:2},'colleague')).status,403);
+    const takeover=await command({type:'approve-takeover',requestId,expectedRevision:2},'owner');
     assert.equal(takeover.status,200);
     assert.equal(takeover.body.board.session.ownerUid,actors.colleague.uid);
-    assert.equal(takeover.body.permissions.canEdit,true);
-    assert.equal((await command({type:'close-session',expectedRevision:2})).status,403);
+    assert.equal(takeover.body.permissions.canEdit,false);
+    assert.equal((await command({type:'close-session',expectedRevision:3})).status,403);
+    assert.equal((await command({type:'close-session',expectedRevision:3},'colleague')).status,200);
   });
 });
 
