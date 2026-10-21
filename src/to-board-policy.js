@@ -27,7 +27,7 @@ const fail=(status,message)=>{throw boardError(status,message);};
 // It does not make a fire-service officer a police member or TO operator.
 function isNamedTOObserver(actor){
   const id=actor?.discordId;
-  if(typeof id!=='string'||!/^\\d{15,22}$/.test(id)||actor?.uid!=='discord:'+id||
+  if(typeof id!=='string'||!/^\d{15,22}$/.test(id)||actor?.uid!=='discord:'+id||
      !Array.isArray(actor?.departments)||!actor.departments.includes('brandweer'))return false;
   const allow=String(process.env.BPD_TO_READONLY_DISCORD_IDS||'').split(',').map(x=>x.trim());
   return allow.includes(id);
