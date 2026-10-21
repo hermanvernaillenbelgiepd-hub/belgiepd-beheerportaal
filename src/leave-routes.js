@@ -124,16 +124,19 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       const status=leaderOwnRegistration?'approved':'pending';
       try{
         const at=FieldValue.serverTimestamp();
-        const data={...details,personDiscordId:id,subjectName,subjectDepartments,subjectPoliceGrade,
+        const data={...details,personDiscordId:id,subjectName,subjectDepartments,
+          ...(subjectDepartments.includes('politie')?{subjectPoliceGrade}:{}),
           status,submittedByUid:req.bpd.uid,submittedByDiscordId:id,
           createdAt:at,updatedAt:at};
         if(leaderOwnRegistration){
           data.decidedByUid=req.bpd.uid;data.decidedByDiscordId=id;data.decidedAt=at;
-        }
-        await ref.create(data);
-        if(leaderOwnRegistration)await ref.collection('audit').doc().create({
-          action:'chief_self_registered',actorUid:req.bpd.uid,actorDiscordId:id,
-          at:FieldValue.serverTimestamp(),days:details.days});
+          const batch=db().batch();
+          batch.create(ref,data);
+          batch.create(ref.collection('audit').doc(),{
+            action:'chief_self_registered',actorUid:req.bpd.uid,actorDiscordId:id,
+            at:FieldValue.serverTimestamp(),days:details.days});
+          await batch.commit();
+        }else await ref.create(data);
       }catch(e){if(e.code===6||e.code==='already-exists')throw rejection('Voor deze exacte periode bestaat al een aanvraag',409);throw e}
       return res.status(201).json({id:ref.id,status,days:details.days});
     }catch(e){return jsonError(res,e)}
