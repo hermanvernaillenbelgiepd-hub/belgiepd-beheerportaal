@@ -16,7 +16,7 @@ export function installTORadioRoutes(app,{
     if(process.env.FIREBASE_PROJECT_ID!=='belgiepd-test'||!snapshot.connected||snapshot.stale)return snapshot;
     const rows=await labels().limit(201).get();
     if(rows.size>200)throw Error('Te veel radioweergavenaamcorrecties, administratieve controle nodig');
-    return enrichRadioSnapshot(snapshot,rows.docs.map(d=>({id:d.id,...d.data()})));
+    return {...enrichRadioSnapshot(snapshot,rows.docs.map(d=>({id:d.id,...d.data()}))),radioLabelWritesEnabled:radioLabelWritesEnabled(process.env)};
   }
   let pollJob=Promise.resolve(),lastObservedAt=0;
   const sync=async snapshot=>{
