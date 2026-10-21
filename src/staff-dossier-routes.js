@@ -66,7 +66,7 @@ export function installStaffDossierRoutes(app,{requireUser,getSnapshot}){
         notes:dto,notesLimited:notes.size===60,
         profileChanges:changes.docs.map(doc=>{
           const v=doc.data();
-          return {action:v.action==='profile_updated'?'profile_updated':'note_added',
+          return {action:['profile_updated','callsign_assigned'].includes(v.action)?v.action:'note_added',
             reason:typeof v.reason==='string'?v.reason.slice(0,500):'',
             recordedAt:v.at?.toDate?.()?.toISOString?.()||null,
             byDiscordId:/^\d{15,22}$/.test(v.actorDiscordId||'')?v.actorDiscordId:null};
