@@ -58,6 +58,10 @@ test('Specializations pictograms show only positive roster values; status preser
   assert.equal(result[2].icon,'🦺'); // fallback, never displayed while image loads
   assert.equal(api.specialtyIconImage('Signalisatie'),'/assets/icons/signalisatie.svg');
   assert.equal(api.specialtyIconImage('SIGNALISATIE'),'/assets/icons/signalisatie.svg');
+  for(const label of ['SIV/WPR','SIV','WPR','siv/wpr',' SIV / WPR '])
+    assert.equal(api.specialtyIconImage(label),'/assets/icons/siv-wpr.svg',label);
+  assert.equal(api.specialtyIcon('SIV/WPR'),'🚓');
+  assert.equal(api.specialtyIconImage('SIV-overige'),null);
   assert.equal(api.specialtyIconImage(' Motor '),null);
   assert.equal(api.specialtyIconImage('Signalisatie-extra'),null);
   assert.equal(result[1].value,'Geslaagd');
@@ -111,6 +115,22 @@ test('User-provided Signalisatie sign is embedded locally and used across both r
   assert.ok(dashboard.includes('specialtyMarkHtml(label)'));
   assert.ok(manager.includes('.specialty-custom-image'));
   assert.ok(dashboard.includes('.specialty-custom-image'));
+});
+test('User-provided SIV/WPR car is bundled locally and uses the same reusable icon renderer',()=>{
+  const svg=source('public/assets/icons/siv-wpr.svg');
+  assert.match(svg,/^<svg /);
+  assert.match(svg,/aria-label="Belgische Wegpolitie SIV\/WPR voertuig"/);
+  const embedded=svg.match(/href="data:image\/webp;base64,([A-Za-z0-9+/=]+)"/);
+  assert.ok(embedded,'Expected actual embedded image bytes');
+  const bytes=Buffer.from(embedded[1],'base64');
+  assert.ok(bytes.length>1800,'The user-supplied vehicle image should not be an empty placeholder');
+  assert.equal(bytes.toString('ascii',0,4),'RIFF');
+  assert.equal(bytes.toString('ascii',8,12),'WEBP');
+  assert.equal(bytes.readUInt32LE(4)+8,bytes.length,'Embedded WEBP must be complete');
+  assert.ok(svg.trimEnd().endsWith('</svg>'));
+  const dashboard=source('public/index.html'),manager=source('public/personeelsbeheer.html');
+  for(const html of [dashboard,manager])assert.ok(html.includes('BPDPersonnelVisuals.specialtyIconImage('));
+  assert.ok(source('public/assets/icons/signalisatie.svg').includes('data:image/webp;base64,'));
 });
 test('All specialization pictograms use centered uniform icon tiles in both roster themes',()=>{
   const light=source('public/index.html'),dark=source('public/personeelsbeheer.html');
