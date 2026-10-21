@@ -31,7 +31,7 @@ export function installNotificationRoutes(app,{requireUser,getSnapshot,firestore
       const series=normalizeSeries(p),warn=warningFor(p);
       if(warn)add({id:'inactive_'+p.personId+'_'+warn.warn,kind:'inactivity',series,subjectId:p.personId,
         title:p.name+' · '+warn.days+' dagen inactief',
-        message:'Op dag '+warn.due+' volgt '+warn.label+'. Controleer eerst verlof en activiteit.',call:p.call});
+        message:(warn.days>=warn.due?'Drempel dag '+warn.due+' bereikt voor '+warn.label+'.':'Vanaf dag '+warn.due+' volgt '+warn.label+'.')+' Controleer eerst verlof en activiteit. Er volgt geen automatische uitschrijving.',call:p.call});
       const activity=months.find(m=>m.discordId===p.personId&&m.month===month&&m.sourceVerified===true);
       const status=monthlyActivityStatus(activity?.hours);
       if(status&&status!=='Actief')add({id:'monthly_'+month+'_'+p.personId,kind:'monthly',series,subjectId:p.personId,
