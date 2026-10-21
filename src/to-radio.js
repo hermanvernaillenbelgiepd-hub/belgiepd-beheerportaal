@@ -32,13 +32,26 @@ export function parseSonoranName(value){
   const head=stripRadioNBMarkers(label.trim()).replace(/\*\s*$/,'').trim(),upper=head.toUpperCase();
   const displayName=nameParts.join('|').trim().slice(0,160)||null;
   // Embedded digits belong to the label (e.g. LSRA-DEPA100), not an officer.
-  // HARTS is a deployable ambulance unit with a named on-duty operator.
-  // The person's name is metadata, never the callsign or a fabricated number.
-  if(/^HARTS(?:\\s+|\\s*-\\s*)[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .'-]{1,78}$/i.test(head)){
-    const operator=head.replace(/^HARTS(?:\\s+|\\s*-\\s*)/i,'').trim();
-    return {category:'HARTS',number:'HARTS',displayName:displayName||operator,importable:true};
+  // HARTS and HVPK are named dispatchable ambulance units: the on-duty
+  // professional can change while the operational team keeps its callsign.
+  const namedUnits=new Set(['HARTS','HVPK']);
+  const named=orderedCategories.find(category=>namedUnits.has(category)&&
+    upper.startsWith(category)&&/^(?:\s*-\s*|\s+)[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .'-]{0,77}$/.test(head.slice(category.length)));
+  if(named){
+    const operator=head.slice(named.length).replace(/^\s*-\s*|\s+/,'').trim();
+    return {category:named,number:named,displayName:displayName||operator,importable:true};
   }
-  if(upper==='HARTS')return {category:'HARTS',number:'HARTS',displayName,importable:true};
+  if(namedUnits.has(upper))
+    return {category:upper,number:upper,displayName,importable:true};
+  // Sonoran can show a name after a *number* without a pipe separator:
+  // e.g. "SANTO-265 Chicken". Never store "265 Chicken" as a callsign.
+  const inlineOperator=orderedCategories.find(category=>upper.startsWith(category)&&
+    /^\s*-\s*\d{1,5}\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 .'-]{0,77}$/.test(head.slice(category.length)));
+  if(inlineOperator){
+    const match=/^\s*-\s*(\d{1,5})\s+(.+)$/.exec(head.slice(inlineOperator.length));
+    return {category:inlineOperator,number:match[1],displayName:displayName||match[2].trim(),
+      importable:Number(match[1])>0&&inlineOperator!=='OPLEIDING'};
+  }
   if(TO_CATEGORIES.includes(upper))return {category:upper,number:null,displayName,importable:false};
   const compact=orderedCategories.find(category=>compactNumberedLabels.has(category)&&
     upper.startsWith(category)&&/^(?:\s*-\s*|\s+)?\d{1,5}$/.test(head.slice(category.length)));
@@ -123,8 +136,8 @@ function normalizedUsers(payload,key){
       const parsed=parseSonoranName(protect(rawName,key));
       if(parsed.category&&typeof parsed.number==='string'&&
           ((/^\d{1,5}$/.test(parsed.number)&&Number(parsed.number)>0)||
-           (parsed.category==='HARTS'&&parsed.number==='HARTS'))){
-        const unit=JSON.stringify([parsed.category,parsed.number==='HARTS'?'HARTS':Number(parsed.number)]);
+           (['HARTS','HVPK'].includes(parsed.category)&&parsed.number===parsed.category))){
+        const unit=JSON.stringify([parsed.category,parsed.number===parsed.category?parsed.number:Number(parsed.number)]);
         uncertainUnits.set(unit,{category:parsed.category,number:parsed.number});
       }
       continue;
@@ -142,16 +155,16 @@ function normalizedUsers(payload,key){
   const labels=new Map();
   for(const user of users){
     if(!user.importable)continue;
-    const label=user.category+'|'+Number(user.number);
+    const label=user.category+'|'+(['HARTS','HVPK'].includes(user.category)&&user.number===user.category?user.number:Number(user.number));
     labels.set(label,(labels.get(label)||0)+1);
   }
   for(const user of users){
     // A matching starred radio koppel is ONE operational unit. Its members
     // cannot all be added as independent saved teams, so only the group UI is
     // authoritative for pairing. Keep the shared numeric label recognizable.
-    if(user.importable&&labels.get(user.category+'|'+Number(user.number))>1){
+    if(user.importable&&labels.get(user.category+'|'+(['HARTS','HVPK'].includes(user.category)&&user.number===user.category?user.number:Number(user.number)))>1){
       const mates=users.filter(item=>item.category===user.category&&
-        /^\d{1,5}$/.test(String(item.number))&&Number(item.number)===Number(user.number));
+        (user.number===user.category?item.number===user.category:(/^\d{1,5}$/.test(String(item.number))&&Number(item.number)===Number(user.number))));
       if(!mates.some(item=>item.paired===true))user.importable=false;
     }
   }
