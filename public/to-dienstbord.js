@@ -79,7 +79,7 @@ function radioFresh(){
   const age=radio.receivedAt===null?Infinity:Date.now()-radio.receivedAt;
   return Boolean(radio.snapshot?.configured&&radio.snapshot.connected&&!radio.snapshot.stale&&!radio.error&&age>=0&&age<=45000);
 }
-function sameCallsign(left,right){return (String(left)==='HARTS'&&String(right)==='HARTS')||(/^\d{1,5}$/.test(String(left))&&/^\d{1,5}$/.test(String(right))&&Number(left)===Number(right));}
+function sameCallsign(left,right){return (['HARTS','HVPK'].includes(String(left))&&String(left)===String(right))||(/^\d{1,5}$/.test(String(left))&&/^\d{1,5}$/.test(String(right))&&Number(left)===Number(right));}
 function radioMatchesTeam(user,team){return Boolean(user.category&&user.number&&user.category===team.dienst&&[(team.roepnaam),...(team.leden||[]).map(member=>member.roep)].some(number=>sameCallsign(number,user.number)));}
 function radioAlreadyOnBoard(user){return Boolean(state.env&&activeTeams(state.env.board).some(team=>radioMatchesTeam(user,team)));}
 function canImportRadioUser(user){
@@ -96,7 +96,7 @@ function radioCrewOnBoard(crew){
 function canQuickAddRadioCrew(crew){
   const members=crew?.members||[],first=members[0];
   if(!first||!state.env?.categories.includes(crew.category)||crew.category==='OPLEIDING')return false;
-  if(!(crew.category==='HARTS'&&crew.number==='HARTS')&&(!/^\d{1,5}$/.test(String(crew.number))||Number(crew.number)<=0))return false;
+  if(!(['HARTS','HVPK'].includes(crew.category)&&crew.number===crew.category)&&(!/^\d{1,5}$/.test(String(crew.number))||Number(crew.number)<=0))return false;
   // A starred callsign represents one unit, even when Sonoran marks an
   // individual duplicate label as non-importable. Never add its members
   // independently; require every member to carry the same valid unit.
@@ -107,7 +107,7 @@ function canQuickAddRadioCrew(crew){
   // category and callsign, and the original identities remain unmodified.
   const temporaryPolice=serviceForCategory(crew.category).id==='politie'&&
     Number(crew.number)>=101&&Number(crew.number)<=199;
-  return (crew.category==='HARTS'&&crew.number==='HARTS')||temporaryPolice||members.some(user=>canImportRadioUser(user))||
+  return (['HARTS','HVPK'].includes(crew.category)&&crew.number===crew.category)||temporaryPolice||members.some(user=>canImportRadioUser(user))||
     (crew.paired&&members.some(user=>user.paired===true));
 }
 function pendingRadioCrews(){
@@ -115,7 +115,7 @@ function pendingRadioCrews(){
   const used=new Set();
   return groupRadioCrews(radio.snapshot.users).filter(crew=>{
     if(!crew.members.some(visibleRadioUser)||!matchesCategory(crew.category)||!crew.members.some(u=>matches(u.category,u.number,u.displayName,u.name))||radioCrewOnBoard(crew))return false;
-    const key=crew.category+'|'+(crew.number==='HARTS'?'HARTS':String(Number(crew.number)));
+    const key=crew.category+'|'+(crew.number===crew.category&&['HARTS','HVPK'].includes(crew.category)?crew.number:String(Number(crew.number)));
     if(used.has(key))return false;
     used.add(key);
     return true;
@@ -363,7 +363,7 @@ function renderBoard(){
     const importable=canQuickAddRadioCrew(crew),newlyJoined=crew.members.some(user=>radio.newIds.has(user.id));
     const members=crew.members.map(user=>user.portalAlias||user.displayName).filter(Boolean).join(' & ');
     const temporaryBadge=policeRoleBadge(crew.category,String(crew.number||''));
-    return `<article class="pending-radio-card" data-service="${esc(identity.serviceId)}" style="--unit-hue:${identity.hue}"${importable&&editable?' draggable="true" data-radio-drag="'+esc(first.id)+'"':''}><div class="pending-radio-title">${unitBadge(crew.category,'unit-token-small')}<strong>${esc(crew.category)}${crew.number==='HARTS'?'':'-'+esc(crew.number||'—')}${crew.paired?'*':''}</strong>${temporaryBadge}${newlyJoined?'<span class="radio-arrival-badge">NIEUW</span>':''}</div><small>${crew.category==='ZW'?'Ziekenwagen · ':''}${esc(members||'Naam controleren')}${crew.paired?' · 👥 koppel':''}</small><div class="pending-radio-foot">${crew.radioUnavailable?pill('NB','red'):pill('Via radio','green')}${importable&&state.env.permissions.canEdit?`<button type="button" class="button button-small radio-add" data-action="radio-quick-add" data-id="${esc(first.id)}" data-write${!editable?' disabled':''}>＋ Op bord</button>`:`<span class="radio-unrecognized" title="${esc(!/^\d{1,5}$/.test(String(crew.number))?'Sonoran leverde geen zuiver numeriek roepnummer':crew.members.length>1&&!crew.paired?'Meerdere radiogebruikers met hetzelfde nummer zonder koppelteken *':'Radiogegevens kunnen niet veilig als één ploeg worden geïmporteerd')}">Controle nodig</span>`}</div></article>`;
+    return `<article class="pending-radio-card" data-service="${esc(identity.serviceId)}" style="--unit-hue:${identity.hue}"${importable&&editable?' draggable="true" data-radio-drag="'+esc(first.id)+'"':''}><div class="pending-radio-title">${unitBadge(crew.category,'unit-token-small')}<strong>${esc(crew.category)}${['HARTS','HVPK'].includes(crew.category)&&crew.number===crew.category?'':'-'+esc(crew.number||'—')}${crew.paired?'*':''}</strong>${temporaryBadge}${newlyJoined?'<span class="radio-arrival-badge">NIEUW</span>':''}</div><small>${crew.category==='ZW'?'Ziekenwagen · ':''}${esc(members||'Naam controleren')}${crew.paired?' · 👥 koppel':''}</small><div class="pending-radio-foot">${crew.radioUnavailable?pill('NB','red'):pill('Via radio','green')}${importable&&state.env.permissions.canEdit?`<button type="button" class="button button-small radio-add" data-action="radio-quick-add" data-id="${esc(first.id)}" data-write${!editable?' disabled':''}>＋ Op bord</button>`:`<span class="radio-unrecognized" title="${esc(!/^\d{1,5}$/.test(String(crew.number))?'Sonoran leverde geen zuiver numeriek roepnummer':crew.members.length>1&&!crew.paired?'Meerdere radiogebruikers met hetzelfde nummer zonder koppelteken *':'Radiogegevens kunnen niet veilig als één ploeg worden geïmporteerd')}">Controle nodig</span>`}</div></article>`;
   }).join('')}</div></section>`).join('')}</div></section>`:'';
   // Keep all units in predictable service/category/callsign order, but avoid
   // repeating space-consuming group headings above each category.
