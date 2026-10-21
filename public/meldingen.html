@@ -11,10 +11,11 @@ label{display:block;margin:8px 0 5px;color:#c4d4ef}select{padding:10px 12px;bord
 .grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px}.status{padding:12px;border-radius:8px;background:#244739;color:#c8ffdb;margin:12px 0}.status.error{background:#542934;color:#ffe5e6}
 .note{padding:12px;border:1px solid #41587a;border-radius:9px;background:#152641;color:#bbd1f0}
 .entry{border-bottom:1px solid #415477;padding:10px 0}.entry:last-child{border:0}
-@media(max-width:800px){.grid{grid-template-columns:1fr}}</style></head>
+@media(max-width:800px){.grid{grid-template-columns:1fr}}dialog{background:#182c49;color:#eef4ff;border:1px solid #6c8ecc;border-radius:14px;max-width:490px;padding:22px}dialog::backdrop{background:#060b14b8}dialog label{display:flex;align-items:center;gap:9px}dialog input{accent-color:#547cff}dialog .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}</style></head>
 <body><header><strong>BelgiumPD · Meldingen</strong><div><a href="/">← Beheerportaal</a> · <a href="/verlofbeheer.html">Verlof</a> · <a href="/weekrapporten.html">Weekrapporten</a> · <button id="login">Aanmelden</button></div></header>
 <main><h1>Meldingen en opvolging</h1><p class="muted">Persoonlijke meldingen worden automatisch gefilterd op jouw gekoppelde Discord-identiteit, politierang en toegewezen reeks. Handmatige opvolging komt in de tweewekelijkse rapportage.</p>
 <div id="status" role="status" aria-live="polite" class="note">Aanmelding controleren…</div>
+<dialog id="returnDialog"><h2>Welkom terug uit uw verlofperiode</h2><p class="muted">Bevestig aan je reekshoofden dat je opnieuw beschikbaar bent. Deze bevestiging wordt opgenomen in de tweewekelijkse rapportage.</p><label><input id="returnCheck" type="checkbox"> Ik bevestig dat mijn verlof is afgelopen en dat ik terugkeer.</label><div class="actions"><button class="secondary" id="returnLater" type="button">Later</button><button id="returnConfirm" type="button" disabled>Terugkeer bevestigen</button></div></dialog>
 <div class="grid"><section>
 <div class="card"><h2>Jouw meldingen <span id="count"></span></h2><p class="muted" id="scope">Verificatie in uitvoering…</p><div class="alerts" id="notices"><p>Er zijn nog geen gegevens geladen.</p></div><button class="secondary" id="refresh">Meldingen vernieuwen</button></div>
 </section><aside>
@@ -26,7 +27,7 @@ label{display:block;margin:8px 0 5px;color:#c4d4ef}select{padding:10px 12px;bord
 </aside></div></main>
 <script type="module">
 const $=id=>document.getElementById(id);
-let auth,mod,permissions=null;
+let auth,mod,permissions=null,returnPrompted=false;
 function status(t,error=false){$('status').textContent=t;$('status').className=error?'status error':'status'}
 async function api(url,method='GET',body){
   if(!auth?.currentUser)throw Error('Meld je aan');
@@ -81,7 +82,9 @@ async function readPeriod(){
     $('saveReport').disabled=!permissions?.canSave||data.saved;
   }catch(e){status(e.message,true)}
 }
-async function load(){const data=await api('/api/notifications/me');renderNotices(data);status('Meldingen bijgewerkt. '+(data.writesEnabled?'Afhandelen is actief.':'Bevestigen en afhandelen staan nog uit op TEST.'))}
+async function load(){const data=await api('/api/notifications/me');renderNotices(data);status('Meldingen bijgewerkt. '+(data.writesEnabled?'Afhandelen is actief.':'Bevestigen en afhandelen staan nog uit op TEST.'));const leave=data.items.find(x=>x.kind==='return_self');if(leave&&!returnPrompted&&typeof $('returnDialog').showModal==='function'){returnPrompted=true;$('returnCheck').checked=false;$('returnConfirm').disabled=true;$('returnConfirm').onclick=async()=>{try{await api('/api/notifications/return/'+encodeURIComponent(leave.leaveId),'POST',{});$('returnDialog').close();status('Je terugkeer werd bevestigd en gelogd.');await load()}catch(e){status(e.message,true)}};$('returnConfirm').disabled=!data.writesEnabled;$('returnDialog').showModal()}}
+$('returnCheck').onchange=()=>{$('returnConfirm').disabled=!$('returnCheck').checked};
+$('returnLater').onclick=()=>$('returnDialog').close();
 $('refresh').onclick=()=>load().catch(e=>status(e.message,true));
 $('period').onchange=readPeriod;
 $('saveReport').onclick=async()=>{if(!confirm('Deze rapportperiode als opgeslagen markeren?'))return;try{await api('/api/notifications/periods/'+encodeURIComponent($('period').value)+'/save','POST',{});await readPeriod();status('Rapportperiode opgeslagen.');}catch(e){status(e.message,true)}};
