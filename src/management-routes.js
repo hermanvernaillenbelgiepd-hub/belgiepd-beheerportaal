@@ -67,7 +67,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
   app.patch('/api/management/cases/:dept/:discordId/:entryId/test-classification',requireUser,cadre,async(req,res)=>{
     if(!enabled())return res.status(503).json({error:'Dossierwijzigingen staan uit'});
     const {dept,discordId:id,entryId}=req.params;
-    if(!canReadServiceDossier(req.bpd,dept)||!mayClassifyTest(req.bpd,dept))return res.status(403).json({error:'Alleen bevoegd officierenkader of korpsleiding mag testregistraties markeren'});
+    if(!req.bpd.dossierNativeDepartments?.includes(dept)||!canReadServiceDossier(req.bpd,dept)||!mayClassifyTest(req.bpd,dept))return res.status(403).json({error:'Alleen bevoegd officierenkader of korpsleiding mag testregistraties markeren'});
     if(!validDiscord(id)||!safeReportId(entryId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
     let classification;
     try{classification=validateTestClassification(req.body)}
@@ -109,7 +109,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     if(!enabled())return res.status(503).json({error:'Opslag staat uit; stel BPD_ENABLE_MANAGEMENT_WRITES=true in na controle'});
     try{
       const r=validateWeekReport(req.body);
-      if(!canReadServiceDossier(req.bpd,r.dept)||!mayReadManagement(req.bpd,r.dept))return res.status(403).json({error:'Geen rechten voor deze hulpdienst'});
+      if(!req.bpd.dossierNativeDepartments?.includes(r.dept)||!canReadServiceDossier(req.bpd,r.dept)||!mayReadManagement(req.bpd,r.dept))return res.status(403).json({error:'Geen rechten voor deze hulpdienst'});
       const snap=await getSnapshot();const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel het ingelogde account eerst aan een personeelsfiche'});
       const d=db().collection('bpd_weekreports').doc();
