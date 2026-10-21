@@ -392,7 +392,7 @@ function teamCard(team,busy,editable){
     ${statusButton('✓ Beschikbaar','team-available',currentStatus==='beschikbaar'&&!nbOnRadio,!nbOnRadio&&currentStatus!=='beschikbaar')}
   </div>${busy.length&&currentStatus==='beschikbaar'?'<p class="team-assignment-warning">Nog gekoppeld aan een actieve melding: ontkoppel de ploeg in de melding om ze ook vrij te tellen.</p>':''}`:'';
   const temporaryBadge=policeRoleBadge(team.dienst,String(team.roepnaam));
-  return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${beacon}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}${temporaryBadge}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(displayCategory(team.dienst))}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}${radioMembers.length?'<div class="crew-radio-label">◉ Radio: '+radioMembers.map(user=>esc(user.displayName||user.name||'Radiogebruiker')).join(' · ')+'</div>':''}</div>${phaseControls}</div><div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions"><button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
+  return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${beacon}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}${temporaryBadge}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(displayCategory(team.dienst))}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}${radioMembers.length?'<div class="crew-radio-label">◉ Radio: '+radioMembers.map(user=>esc(user.displayName||user.name||'Radiogebruiker')).join(' · ')+'</div>':''}</div>${phaseControls}</div><div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions">${busy.length?`<button type="button" class="text-button team-detach-button" data-action="team-detach-dialog" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>↗ Ontkoppelen${busy.length>1?' ('+busy.length+')':''}</button>`:''}<button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
 }
 function incidentCard(incident){
   return `<button type="button" class="incident-card" data-action="open-incident" data-id="${esc(incident.id)}"><span class="incident-meta"><span class="incident-number mono">${incidentNumber(incident.nr)}</span>${pill(incident.status==='actief'?'Actief':'Afgerond',incident.status==='actief'?'amber':'gray')}<span class="incident-time mono">${time(incident.createdAt)}</span></span><strong class="incident-title">${esc(incident.titel)}</strong><span class="incident-description">${esc(String(incident.omschrijving||'Geen aanvullende omschrijving.').slice(0,150))}${String(incident.omschrijving||'').length>150?'…':''}</span><span class="incident-footer"><span class="postal mono">PC ${esc(incident.postcode)}</span>${(incident.ploegen||[]).map(team=>`<span class="team-chip" data-unit-service="${esc(teamVisual(team.dienst).serviceId)}" style="--unit-hue:${teamVisual(team.dienst).hue}">${unitBadge(team.dienst,'unit-token-micro')}${esc(team.dienst)}-${esc(team.roep)}${state.env.board.ploegen[team.id]?.responsePhase==='onderweg'?' · ↗ Onderweg':state.env.board.ploegen[team.id]?.responsePhase==='ter-plaatse'?' · ● Ter plaatse':''}</span>`).join('')||'<span class="unassigned">Nog geen ploeg gekoppeld</span>'}</span></button>`;
@@ -462,6 +462,19 @@ function emergencyTakeoverDialog(){
   openDialog('Noodovername bevestigen',
     `<p class="form-note">De huidige TO heeft de aanvraag nog niet beantwoord. Gebruik deze optie uitsluitend wanneer de huidige TO niet bereikbaar of uitgevallen is.</p><p class="form-note"><strong>De overname wordt afzonderlijk gelogd.</strong></p><label class="field"><span>Motivering noodovername</span><textarea class="input" name="reason" required minlength="15" maxlength="300" placeholder="Bijvoorbeeld: huidige TO reageert niet meer en is niet bereikbaar"></textarea></label><label class="field"><span>Typ NOODOVERNAME om te bevestigen</span><input class="input mono" name="confirmation" required autocomplete="off" pattern="NOODOVERNAME"></label>`,
     {form:'emergency-takeover',id:pending.id,submit:'Noodovername uitvoeren',danger:true});
+}
+function detachTeamDialog(teamId){
+  if(!canEdit())return;
+  const board=state.env?.board,team=board?.ploegen?.[teamId];
+  if(!team||team.endedAt)return;
+  const linked=busyMap(board).get(teamId)||[];
+  if(!linked.length){toast('Deze ploeg is niet meer aan een actieve melding gekoppeld.');return;}
+  const chooser=linked.length===1
+    ?`<p class="detach-assignment"><strong>${esc(incidentNumber(linked[0].nr))}</strong> · ${esc(linked[0].titel)}</p><input type="hidden" name="incidentId" value="${esc(linked[0].id)}">`
+    :`<label class="field"><span>Welke actieve melding wil je ontkoppelen?</span><select name="incidentId" class="input" required autofocus><option value="">Selecteer de melding</option>${linked.map(incident=>`<option value="${esc(incident.id)}">${esc(incidentNumber(incident.nr)+' · '+incident.titel)}</option>`).join('')}</select></label>`;
+  openDialog('Ploeg van melding ontkoppelen',
+    `<p class="form-note"><strong>${esc(team.dienst)}-${esc(team.roepnaam)}</strong> is ${linked.length===1?'aan deze actieve melding':'aan '+linked.length+' actieve meldingen'} gekoppeld.</p>${chooser}<p class="form-note">De melding blijft bestaan en de ontkoppeling wordt in het meldingslogboek geregistreerd. Bij de laatste actieve koppeling wordt een eventuele uitrukfase gewist; de gekozen pauze- of beschikbaarheidstatus blijft behouden.</p>`,
+    {form:'detach-team-from-card',id:teamId,submit:'Ontkoppelen bevestigen',danger:true});
 }
 function teamDialog(prefill=null){
   openDialog('Ploeg toevoegen',`<label class="field"><span>Categorie</span><select class="input" name="dienst" id="team-category" required autofocus>${categoryOptions(state.env.categories)}</select></label><fieldset class="form-group"><legend>AGENT 1</legend><div class="form-grid"><label class="field"><span>Naam</span><input class="input" name="naam1" minlength="2" maxlength="80" required placeholder="Naam agent"></label><label class="field"><span>Roepnummer</span><input class="input mono" name="roep1" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" required placeholder="620"></label></div></fieldset><label class="form-checkbox"><input type="checkbox" name="koppel" id="team-paired">Koppelrijden met een tweede agent</label><fieldset class="form-group" id="second-agent" hidden><legend>AGENT 2</legend><div class="form-grid"><label class="field"><span>Naam</span><input class="input" name="naam2" minlength="2" maxlength="80" placeholder="Naam agent"></label><label class="field"><span>Roepnummer</span><input class="input mono" name="roep2" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" placeholder="640"></label></div></fieldset><div class="preview">Ploegnaam<strong id="team-preview">Vul een roepnummer in</strong></div><p class="form-note" style="margin-top:12px;margin-bottom:0">Bij koppelrijden wordt het hoogste roepnummer de ploegnaam.</p>`,{form:'add-team',submit:'Ploeg toevoegen'});
@@ -572,6 +585,7 @@ document.addEventListener('click',async event=>{
         if(user&&canImportRadioUser(user)&&!radioAlreadyOnBoard(user))teamDialog(user);
         break;
       }
+      case 'team-detach-dialog':if(canEdit())detachTeamDialog(id);break;
       case 'remove-team':{
         if(!canEdit())break;
         const team=state.env.board.ploegen[id];
@@ -654,6 +668,20 @@ dialog.addEventListener('submit',async event=>{
   if(type==='add-team')data={dienst:fields.dienst.value,leden:[{naam:fields.naam1.value.trim(),roep:fields.roep1.value.trim()},...(fields.koppel.checked?[{naam:fields.naam2.value.trim(),roep:fields.roep2.value.trim()}]:[])]};
   if(type==='create-incident'||type==='update-incident')data={...(id?{id}:{}),postcode:fields.postcode.value.trim(),titel:fields.titel.value.trim(),omschrijving:fields.omschrijving.value.trim()};
   if(type==='remove-team')data={id};
+  if(type==='detach-team-from-card'){
+    if(!canEdit()){formError('Je kunt deze ploeg niet ontkoppelen.');return;}
+    const incidentId=fields.incidentId?.value;
+    const linked=busyMap(state.env.board).get(id)||[];
+    if(!incidentId||!linked.some(incident=>incident.id===incidentId)){
+      formError('Deze koppeling is niet meer actief. Vernieuw het dienstbord en probeer opnieuw.');return;
+    }
+    try{
+      await command('detach-team',{id:incidentId,teamId:id},revision);
+      closeDialog();
+      toast('Ploeg van '+incidentNumber(linked.find(item=>item.id===incidentId).nr)+' ontkoppeld. De melding blijft bestaan.');
+    }catch(error){if(!error.obsolete)formError(error.message);}
+    return;
+  }
   if(type==='remove-shortcut'){
     try{
       await changeShortcut('remove',{id});
