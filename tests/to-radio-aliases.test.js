@@ -59,7 +59,7 @@ test('TO client supports a manual alias but does not issue Sonoran writes',()=>{
   assert.ok(client.includes('portalAlias'));
   assert.ok(route.includes("app.post('/api/to/radio/label',requireUser"));
   assert.ok(route.includes("radioLabelWritesEnabled(process.env)"));
-  assert.ok(route.includes("current.users.some(u=>u.id===id)"));
+  assert.ok(route.includes("current.users.some(u=>u.id===id&&u.labelEditable===true)"));
   assert.ok(route.includes('bpd_radio_label_audit'));
   assert.ok(route.includes('u.labelEditable===true'));
   assert.ok(client.includes('first.labelEditable===true'));
