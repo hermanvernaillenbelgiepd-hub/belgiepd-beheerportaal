@@ -3,7 +3,9 @@ import {TO_CATEGORIES} from './to-board-policy.js';
 import {radioMarkedUnavailable,stripRadioNBMarkers,radioMarkedPair,radioMarkedStreamer,stripRadioStreamerMarker} from '../public/to-radio-availability.js';
 
 const ORIGIN='https://api.sonoranradio.com';
-const REFRESH_SECONDS=15;
+// Servercache: maximaal één Sonoran API-aanvraag per vijf seconden,
+// ook bij meerdere open TO-vensters. Mislukte polls worden als stale gemarkeerd.
+const REFRESH_SECONDS=5;
 const MAX_BYTES=512*1024;
 const MAX_USERS=1000;
 const SAFE_FAILURE='De radioverbinding is tijdelijk niet beschikbaar. Probeer het later opnieuw.';
