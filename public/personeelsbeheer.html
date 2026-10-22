@@ -98,7 +98,7 @@ header{padding-inline:clamp(15px,2vw,34px)}
 
 /* MAIN: rustige aaneengesloten personeelslijst, zonder losse vakjes. */
 .staff-roster-holder{overflow-x:auto}
-.staff-roster-table{min-width:1740px;border-spacing:0;border-collapse:collapse}
+.staff-roster-table{min-width:1570px;border-spacing:0;border-collapse:collapse}
 .staff-roster-table thead th{background:#193453;border:0;border-bottom:2px solid #54749b;border-radius:0;padding:12px 9px}
 .staff-roster-table tbody td{background:transparent;border:0;border-bottom:1px solid #324866;border-radius:0;padding:12px 9px;transition:background-color .15s}
 .staff-roster-table tbody tr:nth-child(even){background:#132943}
@@ -106,15 +106,17 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table tbody tr:nth-child(even) td,.staff-roster-table tbody tr:hover td{background:transparent;border-color:#405b7e}
 .staff-roster-table td:nth-child(2){background:transparent}
 .staff-roster-table .rank-insignia{border-color:#3d5878;background:#1c3552}
-.staff-roster-table th:last-child{width:12%}
+.staff-roster-table th:nth-child(1){width:4.5%}
+.staff-roster-table th:nth-child(5){width:6%}
+.staff-roster-table th:last-child{width:13%}
 .staff-roster-table .discord-id-head,.staff-roster-table .discord-id-cell{text-align:left}
-.staff-roster-table .discord-id-cell code{font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:#d5e7ff;background:transparent;border:0;padding:0}
+.staff-roster-table .discord-id-cell code{user-select:text;cursor:text;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:#d5e7ff;background:transparent;border:0;padding:0}
 .staff-roster-table .discord-id-missing{font-size:10px;color:#a9bdd3}
 .staff-roster-table .discord-copy-tools{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
 .staff-roster-table .discord-copy-btn{font-size:10px;font-weight:700;padding:4px 7px;border:1px solid #4b6f9a;border-radius:5px;background:#234468;color:#f2f7ff;white-space:nowrap}
 .staff-roster-table .discord-copy-btn:hover{background:#315b88;border-color:#79a0d1}
 .staff-roster-table .discord-copy-btn:focus-visible{outline:2px solid #a6c7ff;outline-offset:2px}
-@media(max-width:920px){.staff-roster-table{min-width:1740px}}
+@media(max-width:920px){.staff-roster-table{min-width:1570px}}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
@@ -401,7 +403,7 @@ function render(){
   const cols=BPDPersonnelVisuals.specialtyColumns(dept);
   const head=$('staffColumnHeaders');head.replaceChildren();
   const line=document.createElement('tr');
-  for(const title of ['Roepnummer','Rangkenteken','Naam van rang','Personeelslid','Reeks','Status']){
+  for(const title of ['CALL','Rangkenteken','Naam van rang','Personeelslid','Reeks','Status']){
     const th=document.createElement('th');th.textContent=title;line.append(th);
   }
   if(!cols.length){const th=document.createElement('th');th.textContent='Specialisaties';line.append(th)}
@@ -467,7 +469,7 @@ function render(){
     const discordCell=document.createElement('td');discordCell.className='discord-id-cell';
     const id=String(person.discordId||'').trim();
     if(/^\d{15,22}$/.test(id)){
-      const idLabel=document.createElement('code');idLabel.textContent=id;idLabel.title='Gekoppelde Discord-ID';
+      const idLabel=document.createElement('code');idLabel.textContent=id;idLabel.title='Selecteer of kopieer de Discord-ID';
       const tools=document.createElement('span');tools.className='discord-copy-tools';
       const copy=async(value,button,success)=>{
         try{
@@ -482,7 +484,7 @@ function render(){
         }catch(e){notice('Kopiëren mislukt. Selecteer de Discord-ID en kopieer handmatig.',true)}
       };
       const copyId=document.createElement('button');copyId.type='button';copyId.className='discord-copy-btn';
-      copyId.textContent='ID';copyId.title='Kopieer Discord-ID';copyId.setAttribute('aria-label','Kopieer Discord-ID van '+person.name);
+      copyId.textContent='Kopieer ID';copyId.title='Kopieer Discord-ID als platte tekst';copyId.setAttribute('aria-label','Kopieer Discord-ID van '+person.name);
       copyId.onclick=()=>copy(id,copyId,'Discord-ID gekopieerd.');
       const copyPing=document.createElement('button');copyPing.type='button';copyPing.className='discord-copy-btn';
       copyPing.textContent='@ Ping';copyPing.title='Kopieer Discord-vermelding voor een ping';
