@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {validPersonnelKey,canViewPersonnel,canEditPersonnel,validatePersonnelChange,
  mergePersonnelEdits,EDITABLE_STATUSES,personnelCallClaimId} from '../src/personnel-editor-policy.js';
 const officer={role:'officierenkader',departments:['politie','brandweer'],departmentRoles:{politie:'officierenkader',brandweer:'middenkader'},discordId:'505659510359064606'};
@@ -101,8 +102,8 @@ test('Verified Board manages service-wide personnel records but never its own',a
  assert.ok(server.includes("req.bpd.uid==='discord:'+id"));
  assert.ok(server.includes('verifyBoardDiscordRole('));
  assert.ok(server.includes('activeBoardAppointment('));
- assert.ok(route.includes('if(!identityAllowed&&(proposed.name!==subject.name||proposed.call!==subject.call))'));
- assert.ok(ui.includes("'pName').disabled=!canChangeIdentity"));
+ assert.ok(route.includes('if(!identityAllowed&&proposed.call!==subject.call)'));
+ assert.ok(ui.includes("'pName').disabled=!(p.canEditName===true&&writesEnabled)"));
 });
 
 
@@ -138,4 +139,25 @@ test('Official history enriches author server-side and preserves original event 
  assert.ok(ui.includes("current.name+' (Discord-ID: '+actorId"));
  assert.ok(ui.includes("const currentLabel=r.actorRosterStale"));
  assert.ok(ui.includes("const ranks=change.newRank?"));
+});
+
+test('Middenkader changes lower police names but not callsigns; changes feed current weekly reports',async()=>{
+ const {canChangePersonnelName}=await import('../src/personnel-editor-policy.js');
+ const mid={role:'middenkader',discordId:'111111111111111111',
+  departments:['politie'],departmentRoles:{politie:'middenkader'},
+  dossierNativeDepartments:['politie']};
+ const p={...staff,rank:'Inspecteur (INP)',call:'P-410'};
+ assert.equal(canChangePersonnelName(mid,p),true);
+ assert.equal(canChangePersonnelName(mid,{...p,rank:'Commissaris (CP)'}),false);
+ assert.equal(canChangePersonnelName(mid,{...p,personId:mid.discordId}),false);
+ assert.equal(canChangePersonnelName(mid,{...p,dept:'ambulance'}),false);
+ const route=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ assert.ok(route.includes("if(!identityAllowed&&proposed.call!==subject.call)"));
+ assert.ok(route.includes("if(previous.name!==proposed.name){"));
+ assert.ok(route.includes("type:'naamswijziging'"));
+ assert.ok(route.includes("type:'personnel_name_changed'"));
+ assert.ok(route.includes("collection('bpd_cases').doc(subject.dept+'_'+subject.personId)"));
+ assert.ok(ui.includes("'pName').disabled=!(p.canEditName===true&&writesEnabled)"));
+ assert.ok(ui.includes("'pCall').disabled=!(p.canEditCall===true&&writesEnabled)"));
 });

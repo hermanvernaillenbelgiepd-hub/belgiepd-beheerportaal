@@ -21,7 +21,13 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 <section id="reviewPanel" class="panel" hidden>
  <div class="actions" style="justify-content:space-between;align-items:center"><h2>Te behandelen verlofaanvragen <span id="reviewCount" class="pill">0</span></h2><button id="reload" type="button">↻ Vernieuwen</button></div>
  <div id="reviewList"></div>
-</section></main>
+</section>
+<section id="cadreChanges" class="panel" hidden>
+<div class="actions" style="justify-content:space-between;align-items:center">
+<h2>Personeelswijzigingen · Officierenkader en Korpsleiding</h2>
+<button type="button" id="changeRefresh">↻ Vernieuwen</button></div>
+<p>Specialisatie- en naamswijzigingen worden hier automatisch gemeld en in de historiek gelogd.</p>
+<div id="changeList"></div></section></main>
 <script type="module">
 const $=id=>document.getElementById(id);let auth,authMod,writesEnabled=false;
 function feedback(msg,bad=false){$('feedback').textContent=msg;$('feedback').classList.toggle('error',bad)}
@@ -76,6 +82,27 @@ async function load(){
   feedback(writesEnabled?'Je kunt aanvragen behandelen binnen je eigen bevoegdheid.':'De verlofmodule staat momenteel op alleen-lezen.');
  }catch(e){feedback(e.message,true)}
 }
+async function loadCadreChanges(){
+  $('cadreChanges').hidden=true;
+  try{
+    const result=await api('/api/personnel/specialization-notifications');
+    const root=$('changeList');root.replaceChildren();
+    const entries=result.events||[];
+    if(!entries.length){const p=document.createElement('p');p.textContent='Geen recente personeelswijzigingen.';root.append(p)}
+    for(const e of entries){
+      const item=document.createElement('div');item.className='item';
+      const headline=document.createElement('strong');
+      headline.textContent=(e.type==='personnel_name_changed'?'Naamswijziging':e.label+' · specialisatie')+
+        ' · '+e.from+' → '+e.to;
+      const p=document.createElement('p');
+      p.textContent='Personeelslid '+e.discordId+' · door '+(e.actorDiscordId||'onbekend')+
+        (e.createdAt?' · '+new Date(e.createdAt).toLocaleString('nl-BE'):'');
+      item.append(headline,p);root.append(item);
+    }
+    $('cadreChanges').hidden=false;
+  }catch(e){/* De server geeft voor ander personeel expliciet 403 terug. */}
+}
+$('changeRefresh').onclick=loadCadreChanges;
 $('reload').onclick=load;
 async function init(){
  try{
@@ -86,7 +113,7 @@ async function init(){
   auth=authMod.getAuth(appModule.initializeApp(conf.firebaseConfig));
   const {setupPortalLogin}=await import('/portal-login.js');
   setupPortalLogin({button:$('login'),auth,authModule:authMod,config:conf,onError:e=>feedback(e.message,true)});
-  authMod.onAuthStateChanged(auth,()=>load());
+  authMod.onAuthStateChanged(auth,()=>{load();loadCadreChanges()});
  }catch(e){feedback(e.message,true)}
 }init();
 </script></body></html>
