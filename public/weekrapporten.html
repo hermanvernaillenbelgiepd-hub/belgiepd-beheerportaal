@@ -589,6 +589,31 @@ $('caseForm').addEventListener('submit',async event=>{
     changeExtra();
   }
 });
+$('demoReset').addEventListener('click',async()=>{
+  if(!selectedIsDemo()||!window.confirm('Alle jouw DEMO-registraties terugzetten naar de fictieve voorbeeldgegevens? Echte dossiers blijven ongewijzigd.'))return;
+  const button=$('demoReset');button.disabled=true;
+  try{
+    await api('/api/management/demo/reset','POST',{});
+    resetSanctionEdit();resetRegistrationFields();await loadCases();
+    msg('Alle fictieve oefenregistraties zijn hersteld. Er zijn geen echte dossiers gewijzigd.','good');
+  }catch(error){msg('DEMO herstellen is niet gelukt: '+error.message,'error')}
+  finally{button.disabled=false}
+});
+$('demoReportPreview').addEventListener('click',async()=>{
+  const btn=$('demoReportPreview'),dept=$('reportDept').value||$('caseDept').value;
+  if(!dept)return msg('Kies eerst een hulpdienst om een DEMO-weekrapport te bekijken.','error');
+  btn.disabled=true;resetReportExport();
+  $('reportContents').textContent='Voorbeeldrapport met fictieve dossierregistraties samenstellen…';
+  try{
+    const data=await api('/api/management/demo/report?'+new URLSearchParams({
+      dept,periodStart:$('periodStart').value,periodEnd:$('periodEnd').value
+    }));
+    $('reportContents').innerHTML=renderReport(data);
+    $('printSheet').replaceChildren();
+    msg('DEMO-weekrapport geladen. Dit is geen echt rapport en kan niet worden geëxporteerd.','good');
+  }catch(error){$('reportContents').textContent='DEMO-weekrapport niet geladen: '+error.message}
+  finally{btn.disabled=false}
+});
 $('reportForm').addEventListener('submit',async e=>{e.preventDefault();if(!viewData?.writesEnabled)return;const body={dept:$('reportDept').value,title:$('reportTitle').value,periodStart:$('periodStart').value,periodEnd:$('periodEnd').value};$('createReport').disabled=true;try{const result=await api('/api/management/reports','POST',body);msg('Conceptweekrapport aangemaakt.','good');await loadReports();await openReport(result.id)}catch(err){msg('Rapport niet aangemaakt: '+err.message,'error')}finally{$('createReport').disabled=false}});
 $('caseList').addEventListener('click',async event=>{
   const editButton=event.target.closest('[data-edit-sanction]');
