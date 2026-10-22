@@ -103,3 +103,31 @@ test('Starred SANTO-112 with a name or Unicode divider is recognized as a radio 
     assert.equal(radioMarkedPair(label),true,label);
   assert.equal(radioMarkedPair('SANTO-112 Liam'),false);
 });
+
+test('COBRA en SANTO worden herkend met streep, spatie en zonder nummer',()=>{
+  for(const variant of ['SANTO-930','SANTO 930','SANTO930','SANTO - 930']){
+    const value=parseSonoranName(variant+' | Test');
+    assert.equal(value.category,'SANTO',variant);
+    assert.equal(value.number,'930',variant);
+    assert.equal(value.importable,true,variant);
+  }
+  assert.equal(parseSonoranName('COBRA 490 | Test').category,'COBRA');
+  assert.equal(parseSonoranName('COBRA 490 | Test').number,'490');
+  assert.deepEqual(parseSonoranName('SANTO ').number,null);
+  assert.equal(parseSonoranName('SANTO ').importable,false);
+});
+test('Twee expliciete * in hetzelfde kanaal vormen koppel met hoogste nummer',()=>{
+  const users=[
+    {id:'a',category:'SANTO',number:'600',channel:'52226',paired:true},
+    {id:'b',category:'SANTO',number:'930',channel:'52226',paired:true}
+  ];
+  const result=groupRadioCrews(users);
+  assert.equal(result.length,1);
+  assert.equal(result[0].number,'930');
+  assert.equal(result[0].members.length,2);
+  assert.equal(result[0].paired,true);
+  const unrelated=groupRadioCrews([...users,{id:'c',category:'SANTO',number:'450',channel:'52226',paired:true}]);
+  assert.equal(unrelated.length,3,'Drie willekeurige sterren mogen niet als één koppel worden samengevoegd');
+  const separate=groupRadioCrews([{...users[0]},{...users[1],channel:'12345'}]);
+  assert.equal(separate.length,2);
+});
