@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {validateManagementEntry,mayWriteManagement,reportSections,parseDate} from './management-utils.js';
 import {validateEntry,validateAmend,maySubmit,mayAmend,canChooseSanction} from './registrations.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
+import {validatePromotionProposal} from './promotion-proposal-policy.js';
 
 export const DEMO_SUBJECTS=Object.freeze([
   {dept:'politie',discordId:'DEMO-POL-201',name:'[DEMO] Noor Vermeer',call:'TEST-201',rank:'Agent van politie',demo:true},
@@ -79,7 +80,9 @@ export function installManagementDemoRoutes(app,{requireUser}){
       // DE MOET: geen opvoering namens een ander zonder geverifieerde inzendcontext.
       if(raw.onBehalfOfDiscordId)return deny(res,'Oefenregistraties namens derden zijn hier uitgeschakeld');
       const subject=findDemo(dept,id);
-      const entry={...validated,id:randomUUID().replace(/-/g,''),dept,subjectDiscordId:id,
+      const promotion=type==='promotievoorstel'
+        ?validatePromotionProposal(raw,subject,actor):{};
+      const entry={...validated,...promotion,id:randomUUID().replace(/-/g,''),dept,subjectDiscordId:id,
         subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,
         registeredBy:{name:'[DEMO] Ingelogde tester',call:'TEST'},
         createdAt:new Date().toISOString(),demoRecord:true,testRecord:false};
