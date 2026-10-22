@@ -158,6 +158,28 @@
   border-radius:5px;background:#d7e6f8
 }
 
+
+/* TEST: improved personnel roster legibility, with rank insignia as a priority. */
+.staff-roster-holder{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#768caf #e8eef8}
+.staff-roster{width:100%;min-width:1480px;table-layout:fixed;border-collapse:separate;border-spacing:0}
+.staff-roster thead th,.staff-roster tbody td{padding:12px 8px;font-size:12px;overflow-wrap:normal}
+.staff-roster thead th{position:sticky;top:0;z-index:2;background:var(--navy2);white-space:normal}
+.staff-roster tbody tr:nth-child(even){background:rgba(86,113,159,.035)}
+.staff-roster tbody tr:hover{background:rgba(66,110,191,.095)}
+.staff-roster thead th:nth-child(1){width:6%}
+.staff-roster thead th:nth-child(2){width:9%}
+.staff-roster thead th:nth-child(3){width:12%}
+.staff-roster thead th:nth-child(4){width:12%}
+.staff-roster thead th:nth-child(5){width:8%}
+.staff-roster thead th:nth-child(6){width:7%}
+.staff-roster thead th:last-child{width:5%}
+.staff-roster .rank-insignia{width:112px;max-width:100%;height:58px;object-fit:contain;object-position:center}
+.staff-roster tbody td:nth-child(2){text-align:center;padding-inline:6px}
+.staff-roster .rank-name{font-size:12px;line-height:1.4;font-weight:650;overflow-wrap:break-word}
+.staff-roster .badge-inline,.staff-roster .pill{font-size:10px;padding:4px 7px}
+.staff-roster .specialty-col-label{font-size:10px}
+.staff-roster .specialty-value{font-size:10px;padding:4px 6px}
+@media(max-width:900px){.staff-roster{min-width:1480px}}
 </style>
 </head>
 <body>
