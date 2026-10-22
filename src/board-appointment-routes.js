@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
+import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {
   BOARD_COLLECTION,boardEnabled,boardWritesEnabled,validBoardId,isTechnicalBoardApprover,
   mayNominateForBoard,mayDecideBoard,hasBoardPermission,validateBoardNomination,
@@ -26,10 +27,19 @@ export function installBoardAppointmentRoutes(app,{requireUser}){
 
   app.get('/api/board/me',requireUser,guard,async(req,res)=>{
     try{
-      if(!validBoardId(req.bpd.discordId))return res.json({appointment:null});
-      const snap=await collection().doc(req.bpd.discordId).get();
+      if(!validBoardId(req.bpd.discordId))
+        return res.json({appointment:null,discordBoardVerified:false});
+      const [snap,member]=await Promise.all([
+        collection().doc(req.bpd.discordId).get(),
+        getFirestore().collection('bpd_discord_auth').doc(req.bpd.discordId).get()
+      ]);
       const entry=snap.exists?serializeBoardAppointment(snap.id,snap.data()):null;
-      return res.json({appointment:entry?.status==='approved'?entry:null});
+      // Same recent, guild-bound Discord-role verification used by dossier management.
+      // This is display-only; no board-registry or operational permission is granted.
+      const discordBoardVerified=verifyBoardDiscordRole(
+        member.data(),process.env.DISCORD_GUILD_ID);
+      return res.json({appointment:entry?.status==='approved'?entry:null,
+        discordBoardVerified});
     }catch(e){return fail(res,e)}
   });
 

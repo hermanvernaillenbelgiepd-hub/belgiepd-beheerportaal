@@ -77,8 +77,10 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 </section>
 <section id="boardSection" class="card" hidden>
 <h2>Bestuur · afzonderlijke bestuursfunctie</h2>
-<p>Een bestuursaanstelling staat los van de politierang en hulpdienst. Een voordracht wordt pas actief na afzonderlijke goedkeuring door technisch beheer. Er worden geen personeels-, Discord- of portaalrollen toegekend.</p>
+<p>De <strong>Discord-rol Bestuur</strong> en een <strong>formele bestuursaanstelling</strong> zijn twee afzonderlijke zaken. Een recent geverifieerde Discord-rol kan toegang geven tot dossier- en hulpdienstbeheer zonder bestuursaanstelling in dit register. Een formele bestuursaanstelling wordt apart goedgekeurd door technisch beheer; er worden daarbij geen personeels-, Discord- of portaalrollen toegekend.</p>
 <div id="boardOwn" class="muted">Bestuursstatus controleren…</div>
+<p id="boardDiscordStatus" class="muted" hidden></p>
+<p id="boardHelp" class="muted" hidden></p>
 <section id="boardNominationSection" hidden>
 <h3>Bestuurslid voordragen</h3>
 <form id="boardNominationForm">
@@ -269,13 +271,25 @@ async function boardRefresh(){
   boardWritesEnabled=flag.writesEnabled===true;
   $('boardNominationSection').hidden=true;
   $('boardTableWrap').hidden=true;
+  $('boardDiscordStatus').hidden=true;
+  $('boardHelp').hidden=true;
   try{
     const own=await api('/api/board/me');
     const entry=own.appointment;
+    const verified=own.discordBoardVerified===true;
     $('boardOwn').textContent=entry?
-      'Eigen bestuursstatus: Bestuur ('+entry.status+') · '+
+      'Formele bestuursaanstelling: Bestuur ('+entry.status+') · '+
       (entry.permissions.map(k=>boardLabels[k]||k).join(', ')||'Geen bijkomende bestuursbevoegdheden'):
-      'Geen actieve bestuursaanstelling voor dit account.';
+      'Formele bestuursaanstelling: niet geregistreerd. Dit zegt niets over je Discord-bestuursrol.';
+    $('boardDiscordStatus').hidden=false;
+    $('boardDiscordStatus').textContent=verified?
+      'Discord-rol Bestuur: recent geverifieerd. De bestaande beheertoegang voor hulpdiensten wordt los van de bestuursaanstelling gecontroleerd.':
+      'Discord-rol Bestuur: momenteel niet recent geverifieerd voor dit account. Je kunt je Discord-lidmaatschap opnieuw laten controleren.';
+    const help=$('boardHelp');help.replaceChildren();help.hidden=false;
+    const link=document.createElement('a');
+    link.href=verified?'/gebruikersbeheer.html#dienstbeheer':'/discord-status.html';
+    link.textContent=verified?'Open Beheertoegang hulpdiensten':'Discord-verificatie vernieuwen';
+    help.append(link);
   }catch(e){$('boardOwn').textContent='Bestuursstatus niet beschikbaar: '+e.message;return}
   try{
     const result=await api('/api/board/overview');

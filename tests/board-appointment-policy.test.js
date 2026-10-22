@@ -103,6 +103,21 @@ test('Endpoints preserve user role store and use separate immutable audit',()=>{
   assert.equal(routes.includes('tx.update(db.collection(USER_COLLECTION)'),false);
   assert.equal(routes.includes('departmentRoles:'),false);
 });
+test('Board status distinguishes a verified Discord Bestuur role from the appointment register',()=>{
+  const routes=readFileSync(new URL('../src/board-appointment-routes.js',import.meta.url),'utf8');
+  const html=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+  assert.ok(routes.includes("app.get('/api/board/me',requireUser,guard"));
+  assert.ok(routes.includes('verifyBoardDiscordRole('));
+  assert.ok(routes.includes('getFirestore().collection(\'bpd_discord_auth\')'));
+  assert.ok(routes.includes('discordBoardVerified'));
+  assert.ok(routes.includes('appointment:entry?.status===\'approved\'?entry:null'));
+  assert.ok(html.includes('own.discordBoardVerified===true'));
+  assert.ok(html.includes('id="boardDiscordStatus"'));
+  assert.ok(html.includes('id="boardHelp"'));
+  assert.ok(html.includes('/discord-status.html'));
+  assert.ok(html.includes('/gebruikersbeheer.html#dienstbeheer'));
+  assert.ok(!routes.includes('req.bpd.role=\'bestuur\''));
+});
 test('Registration back link and limited portal return to dashboard instead of observation loop',()=>{
   const registrations=readFileSync(new URL('../public/registraties.html',import.meta.url),'utf8');
   const dashboard=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
