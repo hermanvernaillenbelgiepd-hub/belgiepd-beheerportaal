@@ -116,13 +116,32 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
  #casesView .case-history-toolbar input,#casesView .case-history-toolbar select{min-height:28px;padding:5px 7px}
 }
 @media(max-width:580px){.case-history-toolbar{grid-template-columns:1fr}}
+
+/* Geïntegreerde observaties/sancties binnen hetzelfde dossier. */
+#sanctionFields{border:1px solid #54607f;background:#192b48;padding:10px;border-radius:9px}
+.sanction-fields-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sanction-fields-grid .full{grid-column:1/-1}
+.sanction-reasons{display:flex;flex-wrap:wrap;gap:6px}
+.sanction-reasons label{display:inline-flex;gap:6px;align-items:center;font-size:11px;background:#12223a;border:1px solid #3d5172;padding:4px 7px;border-radius:7px;max-width:100%;cursor:pointer}
+.sanction-reasons input{width:auto;min-height:0}
+#registrationRepresentWrap{background:#172a43;padding:9px;border-radius:7px}
+#registrationRepresentWrap .field-label:not(:first-child){margin-top:8px}
+#sanctionAmendFields{padding:10px;border:1px solid #995b65;border-radius:8px;background:#311e2f}
+#sanctionAmendFields textarea{min-height:58px}
+.case-special-note{color:#f9cb8f}
+.case-edit-action{font-size:11px!important;padding:5px 8px!important}
+@media(max-width:650px){.sanction-fields-grid{grid-template-columns:1fr}}
+@media(min-width:1000px) and (min-height:720px){
+ #casesView .card:has(#caseForm){overflow-y:auto;overscroll-behavior:contain}
+ #casesView .card:has(#caseForm) #caseForm{flex-shrink:0;flex:none}
+}
 </style></head><body>
 <header><div class="head"><div><div class="brand">BelgiëPD Beheerportaal</div><div class="subtitle">Personeelsdossiers · Registraties · Weekrapporten</div></div><a href="/" class="ghost" style="padding:9px 12px;border-radius:9px">← Personeelsbeheer</a><div class="head-right"><a href="/discord-status.html" style="color:#adc9ff;font-size:12px">Discord-test</a><span id="authStatus">Aanmelding controleren…</span><button class="secondary" id="authBtn" type="button">Google aanmelden</button></div></div></header>
 <main><div class="intro"><div><h1>Dossieradministratie & weekrapporten</h1><p><a href="/meldingen.html">Automatische tweewekelijkse rapportage en meldingenlog bekijken</a></p><p>Beveiligde Firestore-registraties op basis van Discord ID, gescheiden van de originele Google Sheets.</p></div><span class="tag">v0.9 · TESTOMGEVING</span></div>
 <div class="info">Middenkader kan personeelsdossiers beheren en promotievoorstellen indienen. Naamswijzigingen en definitieve personeelsbewegingen mogen uitsluitend door officierenkader en korpsleiding worden vastgelegd. De oorspronkelijke Google-personeelslijst wordt niet aangepast. Rapporten zijn voorlopig <strong>dynamische concepten</strong>, geen afgesloten archieven.</div>
 <div id="status" role="status" aria-live="polite"></div>
 <section id="needLogin" class="card"><h2>Beveiligde aanmelding vereist</h2><p>Gebruik je eigen gemachtigde BelgiumPD-account. Het basiskader kan deze dossiers en weekrapporten niet openen.</p></section>
-<div id="app" class="hidden"><div class="tabbar"><button id="tabCases" class="tab active" type="button">Personeelsdossiers</button><button id="tabReports" class="tab" type="button">Weekrapportdatabase</button><a class="tab" href="/registraties.html">Observaties & sancties</a></div>
+<div id="app" class="hidden"><div class="tabbar"><button id="tabCases" class="tab active" type="button">Personeelsdossiers</button><button id="tabReports" class="tab" type="button">Weekrapportdatabase</button></div>
 <section id="casesView"><div class="layout"><div>
 <div class="card"><h2>Nieuwe dossierregistratie</h2><p id="actorLabel">Identiteit laden...</p>
 <div class="case-person-lookup"><label class="field-label" for="casePersonSearch">Snel personeelslid zoeken · naam of roepnummer</label><input type="search" id="casePersonSearch" autocomplete="off" placeholder="Typ een naam of roepnummer…" aria-describedby="casePersonSearchHint"><span id="casePersonSearchHint" class="muted" aria-live="polite"></span></div>
@@ -136,9 +155,25 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 <div id="nameWrap" class="hidden"><label class="field-label" for="newName">Nieuwe naam</label><input id="newName" maxlength="100"></div>
 <div id="rankWrap" class="hidden"><label class="field-label" for="proposedRank">Voorgestelde graad</label><input id="proposedRank" maxlength="140"></div>
 <div id="movementWrap" class="hidden"><label class="field-label" for="movement">Soort personeelsbeweging</label><input id="movement" maxlength="150"></div>
+<div id="registrationTimeWrap" class="hidden"><label class="field-label" for="registrationTime">Tijdstip gebeurtenis *</label><input id="registrationTime" type="time"></div>
+<div id="registrationPlayersWrap" class="full hidden"><label class="field-label" for="registrationPlayers">Andere betrokken spelers (optioneel)</label><input id="registrationPlayers" maxlength="1000"></div>
+<div id="registrationRepresentWrap" class="full hidden"><label class="field-label" for="registrationRepresent">Observatie namens een ander middenkaderlid (optioneel)</label><select id="registrationRepresent"></select>
+  <label class="field-label hidden" id="registrationRepresentReasonWrap" for="registrationRepresentReason">Waarom namens deze collega? *</label>
+  <input id="registrationRepresentReason" class="hidden" maxlength="500" placeholder="Geef een reden van 5 tot 500 tekens">
+</div>
+<div id="sanctionFields" class="full hidden"><div class="sanction-fields-grid">
+  <div><label class="field-label" for="registrationSanctionType">Sanctiemaatregel *</label><select id="registrationSanctionType"></select></div>
+  <div><label class="field-label" for="registrationSeverity">Ernst van de feiten (1–10) *</label><input id="registrationSeverity" type="number" min="1" max="10" value="5"></div>
+  <div class="full"><label class="field-label">Reden(en) van sanctie *</label><div id="registrationReasons" class="sanction-reasons"></div></div>
+  <div><label class="field-label" for="registrationReasonOther">Toelichting bij 'Anders'</label><input id="registrationReasonOther" maxlength="500"></div>
+  <div><label class="field-label" for="registrationCfx">CFX-naam (optioneel)</label><input id="registrationCfx" maxlength="120"></div>
+  <div class="full"><label class="field-label" for="registrationExplanation">Aanvullende uitleg / beperkingen (optioneel)</label><textarea id="registrationExplanation" maxlength="2000" rows="2"></textarea></div>
+</div><p class="muted" id="sanctionHelp">De server controleert je bevoegdheid voor deze maatregel.</p></div>
+<div id="sanctionAmendFields" class="full hidden"><label class="field-label" for="sanctionAmendStatus">Status sanctie</label><select id="sanctionAmendStatus"><option value="actief">Actief</option><option value="ingetrokken">Ingetrokken</option></select>
+<label class="field-label" for="sanctionAmendReason">Verplichte motivering wijziging</label><textarea id="sanctionAmendReason" maxlength="1000" rows="2"></textarea></div>
 <div class="full"><label class="field-label" for="details">Omschrijving / motivering</label><textarea id="details" maxlength="4000" required placeholder="Omschrijf de feiten en de relevante beslissing of opvolging"></textarea></div>
-<div class="full"><label class="field-label" for="referenceUrl">Bewijs- of documentlink (optioneel, https)</label><input id="referenceUrl" type="url" maxlength="800" placeholder="https://..."></div>
-</div><div class="buttons"><button class="primary" id="saveCase" type="submit">Registratie opslaan</button><button class="secondary" id="clearCaseDetails" type="button">Velden wissen</button></div><div id="caseSaveNotice" class="case-save-notice" role="status" aria-live="polite"></div></form><p class="muted">Auteur en tijdstip worden vastgelegd. Elke gewone dossierregistratie telt automatisch mee in het dynamische weekrapport van de bijbehorende periode; testregistraties worden uitgesloten.</p></div></div>
+<div class="full"><label class="field-label" id="referenceUrlLabel" for="referenceUrl">Bewijs- of documentlink (optioneel, https)</label><input id="referenceUrl" type="url" maxlength="800" placeholder="https://..."></div>
+</div><div class="buttons"><button class="primary" id="saveCase" type="submit">Registratie opslaan</button><button class="secondary" id="clearCaseDetails" type="button">Velden wissen</button><button class="secondary hidden" id="cancelSanctionEdit" type="button">Wijziging annuleren</button></div><div id="caseSaveNotice" class="case-save-notice" role="status" aria-live="polite"></div></form><p class="muted">Auteur en tijdstip worden vastgelegd. Elke gewone dossierregistratie telt automatisch mee in het dynamische weekrapport van de bijbehorende periode; testregistraties worden uitgesloten.</p></div></div>
 <div><div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h2>Personeelsdossier</h2><button class="secondary" id="reloadCases" type="button">Verversen</button></div><p class="muted">Alleen voor het geselecteerde personeelslid. Een testregistratie blijft in het dossier, maar telt niet mee in het weekrapport.</p>
 <div id="caseSelected" class="case-selected" aria-live="polite">Selecteer eerst een personeelslid.</div>
 <div class="case-history-toolbar"><label class="field-label" for="caseHistoryType">Categorie<select id="caseHistoryType"><option value="all">Alle categorieën</option></select></label><label class="field-label" for="caseHistorySearch">Zoek in historiek<input id="caseHistorySearch" type="search" autocomplete="off" placeholder="Omschrijving, auteur…"></label></div>
