@@ -2,7 +2,10 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,mayApproveLeave,
-  mayManageGrants,highCadreDepartments,validateGrant,activeGrant,roleForDepartment} from './leave-policy.js';
+  mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,
+  validateGrant,activeGrant,roleForDepartment} from './leave-policy.js';
+import {verifyBoardDiscordRole} from './dossier-grants.js';
+import {activeBoardAppointment} from './board-appointment-policy.js';
 
 const coll='bpd_leave_requests';
 const grants='bpd_leave_grants';
@@ -40,6 +43,19 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       throw rejection('Je personeelskoppeling is niet gevonden in je gemachtigde hulpdiensten',403);
     return {records,snapshot:snapshot.data,departments:departmentsOf(records)};
   }
+  // Only verified Board members (Discord role or approved appointment)
+  // and appropriately ranked service cadre may manage leave grants.
+  async function grantManagerScope(actor){
+    if(!validDiscordId(actor?.discordId))return [];
+    if(actor.role==='beheerder')return leaveGrantDepartments(actor,true);
+    const [member,board]=await Promise.all([
+      db().collection('bpd_discord_auth').doc(actor.discordId).get(),
+      db().collection('bpd_board_appointments').doc(actor.discordId).get()
+    ]);
+    const verified=verifyBoardDiscordRole(member.data(),process.env.DISCORD_GUILD_ID)||
+      activeBoardAppointment(board.data());
+    return leaveGrantDepartments(actor,verified);
+  }
   async function grantFor(actor){
     // Discord ID is the canonical grant key. Old Google-UID documents continue
     // to work until replaced; a revoked Discord grant overrides an old one.
@@ -58,7 +74,16 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       const {departments}=await context(req),grant=activeGrant(await grantFor(req.bpd));
       return res.json({role:req.bpd.role,departments,departmentRoles:req.bpd.departmentRoles,discordId:req.bpd.discordId,
         grant:grant?{level:grant.level,startsOn:grant.startsOn,expiresOn:grant.expiresOn}:null,
-        canManageGrants:mayManageGrants(req.bpd),writesEnabled:writes()});
+        canManageGrants:false,canReview:mayReviewLeaveNotifications(req.bpd,Boolean(grant)),writesEnabled:writes()});
+    }catch(e){return jsonError(res,e)}
+  });
+  // Dedicated notifications capability: personnel requests remain elsewhere.
+  app.get('/api/leave/notifications/context',requireUser,async(req,res)=>{
+    try{
+      await context(req);
+      const delegated=Boolean(activeGrant(await grantFor(req.bpd)));
+      return res.json({canReview:mayReviewLeaveNotifications(req.bpd,delegated),
+        writesEnabled:writes()});
     }catch(e){return jsonError(res,e)}
   });
   app.get('/api/leave/requests',requireUser,async(req,res)=>{
@@ -219,15 +244,21 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       entry?.discordId===id&&typeof email==='string'&&email.includes('@'));
     return list.length===1?list[0][0]:null;
   };
+  app.get('/api/leave/grants/context',requireUser,async(req,res)=>{
+    try{
+      const departments=await grantManagerScope(req.bpd);
+      return res.json({canManage:departments.length>0,departments,writesEnabled:writes()});
+    }catch(e){return jsonError(res,e)}
+  });
   app.get('/api/leave/grants',requireUser,async(req,res)=>{
     try{
-      await context(req);
-      if(!mayManageGrants(req.bpd))return res.status(403).json({error:'Geen machtigingsrechten'});
+      const allowed=await grantManagerScope(req.bpd);
+      if(!allowed.length)return res.status(403).json({error:'Geen machtigingsrechten'});
       const data=await db().collection(grants).limit(101).get();
       if(data.size>100)return res.status(503).json({error:'Te veel machtigingen. Beheer heeft paginering nodig.'});
       const visible=data.docs.filter(d=>
         Array.isArray(d.get('grantDepartments'))&&
-        d.get('grantDepartments').some(dept=>highCadreDepartments(req.bpd).includes(dept)));
+        d.get('grantDepartments').some(dept=>allowed.includes(dept)));
       const result=new Map();
       // Old email-based records are still displayed against their mapped Discord ID.
       for(const d of visible){
@@ -243,28 +274,33 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
   });
   app.post('/api/leave/grants',requireUser,requireWrites,async(req,res)=>{
     try{
-      await context(req);
-      if(!mayManageGrants(req.bpd))throw rejection('Alleen officierenkader of korpsleiding kan verlofmachtigingen toekennen',403);
+      const allowed=await grantManagerScope(req.bpd);
+      if(!allowed.length)throw rejection('Alleen bevoegde leidinggevenden, Bestuur of technisch beheer kunnen verlofmachtigingen toekennen',403);
       const grant=validateGrant(req.body);
       if(grant.discordId===req.bpd.discordId)throw rejection('Je kunt jezelf geen aanvullende machtiging geven',403);
       const target=await targetAccount(grant.discordId);
-      const grantDepartments=target.departments.filter(d=>highCadreDepartments(req.bpd).includes(d));
+      const grantDepartments=target.departments.filter(d=>allowed.includes(d));
       if(!grantDepartments.length)throw rejection('De medewerker behoort niet tot jouw gemachtigde hulpdienst',403);
       const ref=db().collection(grants).doc(grant.discordId),audit=ref.collection('audit').doc();
-      const batch=db().batch();
-      batch.set(ref,{...grant,grantDepartments,revoked:false,grantedByUid:req.bpd.uid,
-        grantedByDiscordId:req.bpd.discordId,grantedAt:FieldValue.serverTimestamp()});
-      batch.create(audit,{action:'grant',...grant,byUid:req.bpd.uid,
-        byDiscordId:req.bpd.discordId,at:FieldValue.serverTimestamp()});
-      await batch.commit();
+      await db().runTransaction(async tx=>{
+        const previous=await tx.get(ref);
+        // A service officer cannot overwrite a grant involving another service.
+        if(previous.exists&&Array.isArray(previous.get('grantDepartments'))&&
+          !previous.get('grantDepartments').every(dept=>allowed.includes(dept)))
+          throw rejection('Deze machtiging bevat andere hulpdiensten. Laat Bestuur of technisch beheer de wijziging uitvoeren.',403);
+        tx.set(ref,{...grant,grantDepartments,revoked:false,grantedByUid:req.bpd.uid,
+          grantedByDiscordId:req.bpd.discordId,grantedAt:FieldValue.serverTimestamp()});
+        tx.create(audit,{action:'grant',...grant,byUid:req.bpd.uid,
+          byDiscordId:req.bpd.discordId,at:FieldValue.serverTimestamp()});
+      });
       return res.status(201).json({ok:true,discordId:grant.discordId,level:grant.level,
         expiresOn:grant.expiresOn,discordGuildRoleUpdated:false});
     }catch(e){return jsonError(res,e)}
   });
   app.post('/api/leave/grants/revoke',requireUser,requireWrites,async(req,res)=>{
     try{
-      await context(req);
-      if(!mayManageGrants(req.bpd))throw rejection('Geen machtigingsrechten',403);
+      const allowed=await grantManagerScope(req.bpd);
+      if(!allowed.length)throw rejection('Geen machtigingsrechten',403);
       const id=typeof req.body?.discordId==='string'?req.body.discordId.trim():'';
       if(!validDiscordId(id))throw rejection('Vul een geldig Discord-ID in');
       if(id===req.bpd.discordId)throw rejection('Je kunt je eigen machtiging hier niet aanpassen',403);
@@ -289,7 +325,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
           !(previous.email&&legacyEmailFor(id)===previous.email))
           throw rejection('Discord-koppeling van deze machtiging klopt niet',403);
         if(!Array.isArray(previous.grantDepartments)||
-          !previous.grantDepartments.some(d=>highCadreDepartments(req.bpd).includes(d)))
+          !previous.grantDepartments.every(d=>allowed.includes(d)))
           throw rejection('Geen bevoegdheid voor deze machtiging',403);
         const audit=ref.collection('audit').doc();
         tx.update(ref,{revoked:true,revokedAt:FieldValue.serverTimestamp(),

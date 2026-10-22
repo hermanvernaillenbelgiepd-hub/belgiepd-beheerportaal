@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>BelgiumPD · Meldingen</title>
+<style>
+:root{font:15px/1.5 Inter,system-ui,Segoe UI,Arial,sans-serif;color:#162443;background:#f4f6fb}
+*{box-sizing:border-box}body{margin:0}header{padding:18px clamp(20px,5vw,68px);background:#101c38;color:white;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+header a{color:#dbe7ff}main{max-width:1070px;margin:32px auto;padding:0 20px}h1{margin:0 0 8px}p{color:#53647c;line-height:1.6}
+.panel{border:1px solid #dce5f0;border-radius:13px;background:white;padding:24px;margin:18px 0;box-shadow:0 4px 16px #14294b0a}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+button{font:inherit;padding:10px 16px;border-radius:8px;border:1px solid #9ab1da;cursor:pointer;background:#ecf2ff;color:#183e83;font-weight:700}
+button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabled{opacity:.5}
+.item{border-top:1px solid #e0e9f2;padding:16px 0}.item:first-child{border-top:0}
+.pill{border-radius:20px;background:#fff0d7;color:#8d5914;font-size:12px;padding:4px 9px}
+.message{background:#eaf1fc;border-radius:9px;padding:12px;color:#194481}
+.message.error{background:#ffebee;color:#953341}
+[hidden]{display:none!important}
+</style></head><body>
+<header><strong>🛡️ BelgiumPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
+<main><h1>📬 Meldingen</h1><p>Verlofaanvragen die jij volgens je eigen kaderfunctie of toegekende VERLOFBEHEER-machtiging mag behandelen. Middenkader mag maximaal 30 kalenderdagen goedkeuren; officierenkader en korpsleiding kunnen langere aanvragen behandelen. Je eigen aanvragen zijn uitgesloten.</p>
+<div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
+<section id="reviewPanel" class="panel" hidden>
+ <div class="actions" style="justify-content:space-between;align-items:center"><h2>Te behandelen verlofaanvragen <span id="reviewCount" class="pill">0</span></h2><button id="reload" type="button">↻ Vernieuwen</button></div>
+ <div id="reviewList"></div>
+</section></main>
+<script type="module">
+const $=id=>document.getElementById(id);let auth,authMod,writesEnabled=false;
+function feedback(msg,bad=false){$('feedback').textContent=msg;$('feedback').classList.toggle('error',bad)}
+async function api(url,body){
+ if(!auth?.currentUser)throw Error('Meld je aan met een goedgekeurd account.');
+ const token=await auth.currentUser.getIdToken();
+ const response=await fetch(url,{method:body?'POST':'GET',cache:'no-store',
+  headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},
+  ...(body?{body:JSON.stringify(body)}:{})});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'Verzoek mislukt');
+ return data;
+}
+function item(x){
+ const row=document.createElement('div');row.className='item';
+ const title=document.createElement('strong');title.textContent=(x.subjectName||'Personeelslid')+
+  ' · '+(x.startDate||'?')+' t/m '+(x.endDate||'?');
+ const info=document.createElement('p');info.textContent=Number(x.days)+' kalenderdagen · '+
+  (x.subjectDepartments||[]).join(', ');
+ row.append(title,info);
+ if(writesEnabled){
+  const buttons=document.createElement('div');buttons.className='actions';
+  for(const [decision,label] of [['approved','Goedkeuren'],['rejected','Afwijzen']]){
+   const b=document.createElement('button');b.textContent=label;
+   if(decision==='approved')b.className='primary';
+   b.onclick=async()=>{
+    if(!confirm('Verlofaanvraag '+label.toLowerCase()+'?'))return;
+    b.disabled=true;
+    try{
+     await api('/api/leave/requests/'+encodeURIComponent(x.id)+'/decision',{decision});
+     feedback('Beslissing geregistreerd.');await load();
+    }catch(e){feedback('Beslissing niet opgeslagen: '+e.message,true)}
+    finally{b.disabled=false}
+   };buttons.append(b);
+  }
+  row.append(buttons);
+ }return row;
+}
+async function load(){
+ $('reviewPanel').hidden=true;
+ try{
+  const access=await api('/api/leave/notifications/context');
+  if(!access.canReview){feedback('Dit meldingenoverzicht is uitsluitend toegankelijk voor gemachtigd middenkader, officierenkader, korpsleiding of VERLOFBEHEER.',true);return}
+  const result=await api('/api/leave/requests');
+  writesEnabled=access.writesEnabled===true;
+  const list=$('reviewList');list.replaceChildren();
+  const entries=result.toReview||[];
+  $('reviewCount').textContent=String(entries.length);
+  if(!entries.length){const msg=document.createElement('p');msg.textContent='Geen aanvragen die je momenteel mag behandelen.';list.append(msg)}
+  else for(const x of entries)list.append(item(x));
+  $('reviewPanel').hidden=false;
+  feedback(writesEnabled?'Je kunt aanvragen behandelen binnen je eigen bevoegdheid.':'De verlofmodule staat momenteel op alleen-lezen.');
+ }catch(e){feedback(e.message,true)}
+}
+$('reload').onclick=load;
+async function init(){
+ try{
+  const conf=await fetch('/api/client-config',{cache:'no-store'}).then(x=>x.json());
+  if(!conf.enabled)throw Error('Firebase is niet geconfigureerd');
+  const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  auth=authMod.getAuth(appModule.initializeApp(conf.firebaseConfig));
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:$('login'),auth,authModule:authMod,config:conf,onError:e=>feedback(e.message,true)});
+  authMod.onAuthStateChanged(auth,()=>load());
+ }catch(e){feedback(e.message,true)}
+}init();
+</script></body></html>
