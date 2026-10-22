@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {validPersonnelKey,canViewPersonnel,canEditPersonnel,validatePersonnelChange,
  mergePersonnelEdits,EDITABLE_STATUSES,personnelCallClaimId} from '../src/personnel-editor-policy.js';
 const officer={role:'officierenkader',departments:['politie','brandweer'],departmentRoles:{politie:'officierenkader',brandweer:'middenkader'},discordId:'505659510359064606'};
@@ -101,8 +102,8 @@ test('Verified Board manages service-wide personnel records but never its own',a
  assert.ok(server.includes("req.bpd.uid==='discord:'+id"));
  assert.ok(server.includes('verifyBoardDiscordRole('));
  assert.ok(server.includes('activeBoardAppointment('));
- assert.ok(route.includes('if(!identityAllowed&&(proposed.name!==subject.name||proposed.call!==subject.call))'));
- assert.ok(ui.includes("'pName').disabled=!canChangeIdentity"));
+ assert.ok(route.includes('if(!identityAllowed&&proposed.call!==subject.call)'));
+ assert.ok(ui.includes("'pName').disabled=!(p.canEditName===true&&writesEnabled)"));
 });
 
 
