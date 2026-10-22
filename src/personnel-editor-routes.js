@@ -62,8 +62,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const roleLabels=new Map();
       const guildId=process.env.DISCORD_GUILD_ID;
       const nineHundreds=[...new Set(records.filter(p=>p.dept==='politie'&&isPolice9xx(p.call)&&
-        /^\\d{15,22}$/.test(String(p.discordId||''))).map(p=>p.discordId))];
-      if(/^\\d{15,22}$/.test(String(guildId||''))&&nineHundreds.length){
+        /^\d{15,22}$/.test(String(p.discordId||''))).map(p=>p.discordId))];
+      if(/^\d{15,22}$/.test(String(guildId||''))&&nineHundreds.length){
         try{
           const authCollection=getFirestore().collection('bpd_discord_auth');
           for(let i=0;i<nineHundreds.length;i+=100){
