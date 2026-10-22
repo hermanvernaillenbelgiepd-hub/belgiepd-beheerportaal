@@ -66,9 +66,9 @@ test('Unknown radio channel metadata protects only the matching rostered callsig
   assert.equal(tracker.has('a'),false);
 });
 
-test('Assigned units are preserved; ended teams are not offered for removal',()=>{
+test('Ook gekoppelde offline ploegen worden afgemeld; al afgesloten ploegen niet',()=>{
   const tracker=new Map(),roster=board([crew('busy','930'),crew('free','166'),crew('ended','465',{endedAt:base-10})],['busy']);
-  assert.deepEqual(poll(tracker,roster)[8],['free']);
+  assert.deepEqual(poll(tracker,roster)[1].sort(),['busy','free']);
   roster.meldingen.call.ploegen=[];
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+150000),tracker,base+150000).sort(),['busy','free']);
 });
@@ -85,11 +85,11 @@ test('New service sessions and deleted roster entries discard old departure time
   assert.equal(tracker.has('a'),false);
 });
 
-test('Offline-only manually entered crew is never silently signed off',()=>{
+test('Manueel ingevoerde ploeg die niet op radio zit verdwijnt ook na twee actuele controles',()=>{
   const roster=board([crew('manual','204',{dienst:'REPA',radioSource:null})]),tracker=new Map();
   const results=poll(tracker,roster);
-  assert.ok(results.every(ids=>ids.length===0));
-  assert.equal(tracker.has('manual'),false);
+  assert.deepEqual(results[0],[]);
+  assert.deepEqual(results[1],['manual']);
 });
 
 test('Manual crew observed in radio is signed off after confirmed subsequent departure',()=>{
@@ -123,4 +123,20 @@ test('Herhaalde cache-reads tellen niet en een terugkeer herstart de 15s-waarnem
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000),tracker,base+30000),[]);
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000),tracker,base+31000),[]);
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+45000),tracker,base+45000),['a']);
+});
+
+test('Handmatige ploeg bij actieve melding krijgt na twee checks een vertrekvoorstel',()=>{
+  const tracker=new Map(),roster=board([crew('manual','180',{radioSource:null})],['manual']);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base),tracker,base),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+15000),tracker,base+15000),['manual']);
+  assert.deepEqual(roster.meldingen.call.ploegen,[{id:'manual'}], 'Observer muteert geen meldingen');
+});
+test('Vijf seconden verversen mag nooit dezelfde cache als twee aparte controles tellen',()=>{
+  const tracker=new Map(),roster=board([crew('manual','180',{radioSource:null})]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base),tracker,base),[]);
+  for(const elapsed of [5000,10000,14999])
+    assert.deepEqual(observeRadioDepartures(roster,snapshot(base),tracker,base+elapsed),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+5000),tracker,base+5000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+10000),tracker,base+10000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+15000),tracker,base+15000),['manual']);
 });
