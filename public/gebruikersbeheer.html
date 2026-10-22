@@ -44,6 +44,7 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <button type="button" data-tab="services" hidden>🛡️ Beheertoegang hulpdiensten</button>
 <button type="button" data-tab="to" hidden>📻 TO-rechten</button>
 <button type="button" data-tab="board" hidden>🏛️ Bestuur</button>
+<button type="button" data-tab="leave" hidden>📅 VERLOFBEHEER</button>
 </nav>
 <section id="admin" class="card" hidden><div class="controls" style="justify-content:space-between"><h2>Te beheren personeelsaccounts</h2><button id="refresh" class="alt" type="button">Vernieuwen</button></div>
 <p>Een officier kan basiskader en middenkader van de eigen hulpdienst goedkeuren. Korpsleiding kan ook officieren beheren. Alleen de technische beheerder heeft overkoepelende rechten. Je kunt je eigen bevoegdheden niet wijzigen.</p>
@@ -116,6 +117,19 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <div class="scroller"><table><thead><tr><th>Kandidaat</th><th>Bestuursstatus</th><th>Afzonderlijke bevoegdheden</th><th>Beslissing</th></tr></thead><tbody id="boardTable"></tbody></table></div>
 </div>
 </section>
+<section id="leaveGrantSection" class="card" hidden>
+<h2>📅 Tijdelijke functie VERLOFBEHEER</h2>
+<p>Alleen gemachtigd <strong>Officierenkader, Korpsleiding, Bestuur en technisch beheer</strong> mogen deze tijdelijke functie binnen hun bevoegdheid beheren. Officierenkader en Korpsleiding blijven beperkt tot hun eigen hulpdienst. Deze functie verandert geen Discord-rol, rang of personeelsdossier.</p>
+<p id="leaveGrantAccess" class="muted">Bevoegdheden controleren…</p>
+<form id="leaveGrantForm"><div class="grid">
+<div><label for="leaveGrantId">Discord-ID van het goedgekeurde personeelsaccount</label><input id="leaveGrantId" type="text" pattern="[0-9]{15,22}" inputmode="numeric" maxlength="22" required></div>
+<div><label for="leaveGrantLevel">Goedkeuringsmachtiging</label><select id="leaveGrantLevel"><option value="max30">Tot en met 30 kalenderdagen</option><option value="all">Alle verlofduren</option></select></div>
+<div><label for="leaveGrantFrom">Geldig vanaf</label><input id="leaveGrantFrom" type="date" required></div>
+<div><label for="leaveGrantUntil">Geldig tot en met</label><input id="leaveGrantUntil" type="date" required></div>
+</div><div class="controls"><button id="leaveGrantSave" type="submit">VERLOFBEHEER toekennen</button><button id="leaveGrantReload" type="button" class="alt">Vernieuwen</button><button id="leaveGrantRevoke" type="button" class="danger">Machtiging intrekken</button></div></form>
+<h3>Bestaande verlofmachtigingen</h3>
+<div id="leaveGrantRecords" class="scroller" aria-live="polite">Nog geen machtigingen geladen.</div>
+</section>
 </main>
 <script type="module">
 import {setupDossierGrantUI} from '/dossier-grants-ui.js';
@@ -145,9 +159,11 @@ async function api(path,opts={}){
 function option(value,title){const e=document.createElement('option');e.value=value;e.textContent=title;return e}
 function cell(tr,content){const td=document.createElement('td');if(typeof content==='string')td.textContent=content;else td.append(content);tr.append(td);return td}
 const dossierGrants=setupDossierGrantUI({api,notice,$,option,cell});
-let tabChoice=window.location.hash==='#dienstbeheer'?'services':'accounts';
+let tabChoice=window.location.hash==='#dienstbeheer'?'services':
+  window.location.hash==='#verlofmachtigingen'?'leave':'accounts';
 function showManageTabs(){
-  const mapping={accounts:'admin',services:'dossierGrantSection',to:'toSection',board:'boardSection'};
+  const mapping={accounts:'admin',services:'dossierGrantSection',to:'toSection',
+    board:'boardSection',leave:'leaveGrantSection'};
   const active=Object.keys(mapping).filter(k=>$(mapping[k]).dataset.authorized==='yes');
   $('manageTabs').hidden=!active.length;
   if(!active.includes(tabChoice))tabChoice=active[0]||'accounts';
@@ -162,6 +178,7 @@ for(const b of $('manageTabs').querySelectorAll('button[data-tab]'))
   b.onclick=()=>{
     tabChoice=b.dataset.tab;
     if(tabChoice==='services')window.history.replaceState(null,'','#dienstbeheer');
+    else if(tabChoice==='leave')window.history.replaceState(null,'','#verlofmachtigingen');
     else window.history.replaceState(null,'',window.location.pathname);
     showManageTabs();
   };
@@ -486,8 +503,65 @@ $('profileApply').onclick=async()=>{
     notice('Profiel kon niet worden geactiveerd: '+e.message,true);
   }
 };
+let leaveGrantCtx=null;
+async function loadLeaveGrantManager(){
+  $('leaveGrantSection').dataset.authorized='no';leaveGrantCtx=null;
+  if(!auth?.currentUser)return;
+  try{
+    const context=await api('/api/leave/grants/context');
+    if(!context.canManage)return;
+    leaveGrantCtx=context;
+    $('leaveGrantSection').dataset.authorized='yes';
+    $('leaveGrantAccess').textContent='Bevoegde hulpdienst(en): '+
+      context.departments.map(d=>deptNames[d]||d).join(', ')+
+      (context.writesEnabled?'':' · Opslaan staat momenteel uit.');
+    for(const id of ['leaveGrantSave','leaveGrantRevoke'])
+      $(id).disabled!==undefined&&($(id).disabled=!context.writesEnabled);
+    await renderLeaveGrants();
+  }catch(e){notice('Verlofmachtigingen: '+e.message,true)}
+}
+async function renderLeaveGrants(){
+  const list=$('leaveGrantRecords');list.replaceChildren();
+  if(!leaveGrantCtx)return;
+  const info=await api('/api/leave/grants');
+  if(!info.grants?.length){list.textContent='Geen bestaande verlofmachtigingen binnen je hulpdienst(en).';return}
+  const table=document.createElement('table'),head=document.createElement('thead');
+  const hr=document.createElement('tr');for(const label of ['Discord-ID','Duur','Geldigheid','Status'])
+  {const th=document.createElement('th');th.textContent=label;hr.append(th)}
+  head.append(hr);table.append(head);
+  const body=document.createElement('tbody');
+  for(const g of info.grants){
+    const row=document.createElement('tr');
+    for(const val of [g.discordId,g.level==='all'?'Alle verlofduren':'Maximaal 30 dagen',
+      g.startsOn+' t/m '+g.expiresOn,g.revoked?'Ingetrokken':'Actief'])cell(row,String(val));
+    body.append(row);
+  }
+  table.append(body);list.append(table);
+}
+$('leaveGrantForm').onsubmit=async e=>{
+  e.preventDefault();if(!leaveGrantCtx?.writesEnabled)return;
+  const button=$('leaveGrantSave');button.disabled=true;
+  try{
+    await api('/api/leave/grants',{method:'POST',body:{
+      discordId:$('leaveGrantId').value.trim(),level:$('leaveGrantLevel').value,
+      startsOn:$('leaveGrantFrom').value,expiresOn:$('leaveGrantUntil').value}});
+    notice('Tijdelijke verlofmachtiging opgeslagen.');await renderLeaveGrants();
+  }catch(e){notice('Machtiging niet opgeslagen: '+e.message,true)}finally{button.disabled=false}
+};
+$('leaveGrantRevoke').onclick=async()=>{
+  if(!leaveGrantCtx?.writesEnabled)return;
+  const id=$('leaveGrantId').value.trim();
+  if(!/^\d{15,22}$/.test(id))return notice('Vul eerst een geldig Discord-ID in.',true);
+  if(!confirm('VERLOFBEHEER voor dit Discord-ID intrekken?'))return;
+  const button=$('leaveGrantRevoke');button.disabled=true;
+  try{
+    await api('/api/leave/grants/revoke',{method:'POST',body:{discordId:id}});
+    notice('Verlofmachtiging ingetrokken.');await renderLeaveGrants();
+  }catch(e){notice('Intrekken mislukt: '+e.message,true)}finally{button.disabled=false}
+};
+$('leaveGrantReload').onclick=()=>loadLeaveGrantManager().then(showManageTabs);
 async function refresh(){
-  for(const name of ['admin','toSection','boardSection','dossierGrantSection'])$(name).dataset.authorized='no';
+  for(const name of ['admin','toSection','boardSection','dossierGrantSection','leaveGrantSection'])$(name).dataset.authorized='no';
   dossierGrants.reset();
   if(!auth?.currentUser){$('profileSwitcher').hidden=true;$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;$('toSection').hidden=true;return}
   const isDiscord=auth.currentUser.uid.startsWith('discord:');
@@ -518,10 +592,11 @@ async function refresh(){
   await loadTOGrants();
   await boardRefresh();
   try{if(await dossierGrants.load())$('dossierGrantSection').dataset.authorized='yes'}catch(e){notice('Dienstbeheer: '+e.message,true)}
+  await loadLeaveGrantManager();
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadTOGrants();await boardRefresh();await dossierGrants.load();showManageTabs()};$('filter').onchange=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();showManageTabs()};$('filter').onchange=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());

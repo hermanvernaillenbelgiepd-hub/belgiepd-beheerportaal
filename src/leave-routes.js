@@ -251,12 +251,17 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       const grantDepartments=target.departments.filter(d=>highCadreDepartments(req.bpd).includes(d));
       if(!grantDepartments.length)throw rejection('De medewerker behoort niet tot jouw gemachtigde hulpdienst',403);
       const ref=db().collection(grants).doc(grant.discordId),audit=ref.collection('audit').doc();
-      const batch=db().batch();
-      batch.set(ref,{...grant,grantDepartments,revoked:false,grantedByUid:req.bpd.uid,
-        grantedByDiscordId:req.bpd.discordId,grantedAt:FieldValue.serverTimestamp()});
-      batch.create(audit,{action:'grant',...grant,byUid:req.bpd.uid,
-        byDiscordId:req.bpd.discordId,at:FieldValue.serverTimestamp()});
-      await batch.commit();
+      await db().runTransaction(async tx=>{
+        const previous=await tx.get(ref);
+        // A service officer cannot overwrite a grant involving another service.
+        if(previous.exists&&Array.isArray(previous.get('grantDepartments'))&&
+          !previous.get('grantDepartments').every(dept=>allowed.includes(dept)))
+          throw rejection('Deze machtiging bevat andere hulpdiensten. Laat Bestuur of technisch beheer de wijziging uitvoeren.',403);
+        tx.set(ref,{...grant,grantDepartments,revoked:false,grantedByUid:req.bpd.uid,
+          grantedByDiscordId:req.bpd.discordId,grantedAt:FieldValue.serverTimestamp()});
+        tx.create(audit,{action:'grant',...grant,byUid:req.bpd.uid,
+          byDiscordId:req.bpd.discordId,at:FieldValue.serverTimestamp()});
+      });
       return res.status(201).json({ok:true,discordId:grant.discordId,level:grant.level,
         expiresOn:grant.expiresOn,discordGuildRoleUpdated:false});
     }catch(e){return jsonError(res,e)}
@@ -289,7 +294,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
           !(previous.email&&legacyEmailFor(id)===previous.email))
           throw rejection('Discord-koppeling van deze machtiging klopt niet',403);
         if(!Array.isArray(previous.grantDepartments)||
-          !previous.grantDepartments.some(d=>highCadreDepartments(req.bpd).includes(d)))
+          !previous.grantDepartments.every(d=>allowed.includes(d)))
           throw rejection('Geen bevoegdheid voor deze machtiging',403);
         const audit=ref.collection('audit').doc();
         tx.update(ref,{revoked:true,revokedAt:FieldValue.serverTimestamp(),

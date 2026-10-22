@@ -80,8 +80,20 @@ export function highCadreDepartments(actor){
   if(Object.keys(map).length)return depts.filter(d=>HIGH_ROLES.has(map[d]));
   return depts.length===1&&HIGH_ROLES.has(actor?.role)?depts:[];
 }
-export function mayManageGrants(actor){
-  return Boolean(actor&&validDiscordId(actor.discordId)&&highCadreDepartments(actor).length);
+export const LEAVE_SERVICES=Object.freeze(['politie','brandweer','ambulance','depannage']);
+export function leaveGrantDepartments(actor,verifiedBoard=false){
+  if(!actor||!validDiscordId(actor.discordId))return [];
+  if(actor.role==='beheerder'||verifiedBoard===true)return [...LEAVE_SERVICES];
+  return highCadreDepartments(actor).filter(d=>LEAVE_SERVICES.includes(d));
+}
+export function mayManageGrants(actor,verifiedBoard=false){
+  return leaveGrantDepartments(actor,verifiedBoard).length>0;
+}
+export function mayReviewLeaveNotifications(actor,delegated=false){
+  return Boolean(actor&&validDiscordId(actor.discordId)&&(
+    delegated===true||actor.role==='beheerder'||
+    (Array.isArray(actor.departments)&&actor.departments.some(d=>
+      LEAVE_SERVICES.includes(d)&&LEAVE_ROLES.includes(roleForDepartment(actor,d))))));
 }
 export function validateGrant(raw,today=new Date().toISOString().slice(0,10)){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Ongeldige machtiging');
