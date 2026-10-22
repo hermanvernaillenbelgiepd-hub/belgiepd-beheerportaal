@@ -144,7 +144,7 @@ const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
   technisch_medewerker:'Technisch medewerker (geen beheerrechten)'};
 const serviceDepartments=['politie','ambulance','brandweer','depannage'];
 const otherCategories=['burger','bestuur','technisch_medewerker'];
-const roleNames={basiskader:'Basiskader',middenkader:'Middenkader',officierenkader:'Officierenkader',korpsleiding:'Korpsleiding',bestuur:'BESTUUR (afzonderlijke functie)'};
+const roleNames={basiskader:'Basiskader',middenkader:'Middenkader (leidinggevende)',officierenkader:'Officierenkader',korpsleiding:'Korpsleiding',bestuur:'BESTUUR (afzonderlijke functie)'};
 function notice(msg,bad=false){$('notice').textContent=msg;$('notice').classList.toggle('error',bad)}
 async function api(path,opts={}){
   if(!auth?.currentUser)throw new Error('Meld je eerst aan');
@@ -472,7 +472,7 @@ $('boardNominationForm').onsubmit=async event=>{
     await boardRefresh();
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
 };
-const policeRoleNames={basiskader:'Basiskader',middenkader:'Middenkader',
+const policeRoleNames={basiskader:'Basiskader',middenkader:'Middenkader (leidinggevende)',
   officierenkader:'Officierenkader',korpsleiding:'Korpsleiding'};
 async function loadProfileSwitcher(){
   const root=$('profileSwitcher');root.hidden=true;

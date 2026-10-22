@@ -80,3 +80,18 @@ test('Both access paths derive roles on server, audit and preserve manual approv
  assert.ok(ui.includes('Politie en Middenkader'));
  assert.equal(ui.includes('TEST heeft een eigen Firebase-project'),false);
 });
+
+test('Exact Discord role 1335578488664490057 is visibly Middenkader (leidinggevende) without privilege escalation',async()=>{
+ const {recognizeRoles,roleSummary}=await import('../src/role-catalog.js');
+ const list=recognizeRoles(['1335578488664490057']);
+ assert.equal(list.length,1);
+ assert.equal(list[0].id,'1335578488664490057');
+ assert.equal(list[0].name,'Middenkader (leidinggevende)');
+ assert.equal(list[0].dept,'politie');
+ assert.equal(roleSummary(['1335578488664490057',...roleIds]).policeRank,'middenkader');
+ const {MANAGED_ROLES}=await import('../src/user-access.js');
+ assert.equal(MANAGED_ROLES.includes('middenkader'),true);
+ assert.equal(MANAGED_ROLES.includes('beheerder'),false);
+ const html=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+ assert.ok(html.includes("middenkader:'Middenkader (leidinggevende)'"));
+});

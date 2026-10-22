@@ -8,7 +8,7 @@ export const ROLE_CATALOG=Object.freeze([
     ['1309532438053130326','Politie'],['1351212180120408166','Basiskader'],
     ['1448043875284287599','Reeks 1','opleiding'],['1448043426502148159','Reeks 2','opleiding'],
     ['1448043995371540603','Reeks 3','opleiding'],['1448044041823322253','Reeks 4','opleiding'],
-    ['1335578488664490057','Middenkader'],['1473474238664020151','Officierenkader'],
+    ['1335578488664490057','Middenkader (leidinggevende)'],['1473474238664020151','Officierenkader'],
     ['1353670078142615592','Korpsleiding']]),
   ...make('politie','specialisatie',[
     ['1537606324886442035','Motard-IO','opleiding'],['1358148694297415741','Motard'],
