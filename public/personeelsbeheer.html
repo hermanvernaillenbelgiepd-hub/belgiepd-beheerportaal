@@ -133,6 +133,7 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .rank-insignia{width:94px;height:52px;max-width:100%;padding:3px}
 .staff-roster-table td:nth-child(3),.staff-roster-table td:nth-child(4){overflow-wrap:anywhere;line-height:1.35}
 @media(max-width:920px){.staff-roster-table{min-width:1450px}}
+.discord-verified-cadre{font-weight:700;color:#99c6ff;white-space:nowrap;font-size:10px}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
@@ -449,7 +450,14 @@ function render(){
       badgeCol.append(img);
     }else badgeCol.textContent='—';
     tr.append(badgeCol);
-    td(tr,grade.label);
+    const rankCell=td(tr,grade.label);
+    if(person.discordCadre==='Korpsleiding'||person.discordCadre==='Officierenkader'){
+      const cadre=document.createElement('small');
+      cadre.className='roster-dept discord-verified-cadre';
+      cadre.textContent='Discord: '+person.discordCadre;
+      cadre.title='Recent geverifieerde Discord-kaderrol · uitsluitend ter informatie';
+      rankCell.append(cadre);
+    }
     const nameCol=document.createElement('td');
     const name=document.createElement('strong');name.textContent=person.name;
     const source=document.createElement('small');source.className='roster-dept';
