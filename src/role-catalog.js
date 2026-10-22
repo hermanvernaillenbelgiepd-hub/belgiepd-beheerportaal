@@ -54,8 +54,9 @@ export const ROLE_CATALOG=Object.freeze([
     ['1560418130252005507','Hall of Shame'],['1471930509062967417','Hall of Fame'],
     ['1558147172204281890','Burgermelding ping'],['1315334316347363429','Streamer'],
     ['1437176141659111656','Radio-opleiding'],['1309532438053130327','Donateur'],
-    ['1309532437952466991','Beta-tester'],['1309532438082355251','Bestuur'],
-    ['1309532438053130330','Team']])
+    ['1309532437952466991','Beta-tester'],['1309532438053130330','Team']]),
+  // Een afzonderlijke Discord-bestuursrol, zonder operationele kadermachtiging.
+  ...make('algemeen','bestuursfunctie', [['1309532438082355251','Bestuur']])
 ]);
 export const KNOWN_ROLE_IDS=new Set(ROLE_CATALOG.map(r=>r.id));
 const byId=new Map(ROLE_CATALOG.map(r=>[r.id,r]));

@@ -24,19 +24,29 @@ const normStatus = value => s(value) || 'Onbekend';
 // In de politiesheet is 'KADER' een verzamelcode, geen officiële kaderindeling.
 // Alleen die code wordt naar de juiste benaming omgezet op basis van de rang.
 // De ingevulde reeksen (1, 2, 3 ...) blijven altijd behouden.
-export function policeKader(rank) {
+// Roepnummers 100-199 zijn tijdelijk; 200-299 zijn vaste agenten.
+// 008 is een aparte beheersroepnaam en wordt nooit automatisch Bestuur.
+function policeCallNumber(raw){
+  const matched=s(raw).match(/^(?:[a-z]+[- ]?)?(\d{3})$/i);
+  return matched?Number(matched[1]):null;
+}
+export function policeKader(rank,call='') {
+  const n=policeCallNumber(call);
+  if(n!==null && n>=100 && n<=299)return 'Agentenkader';
   const r=s(rank).toLocaleLowerCase('nl');
   if (/hoofdcommissaris|eerste\s+commissaris|\b1hcp\b|\b1cp\b/i.test(r)) return 'Korpsleiding';
   if (/aspirant\s+commissaris|\bacp\b/i.test(r)) return 'Officierenkader';
   if (/commissaris|\bcp\b/i.test(r)) return 'Korpsleiding';
   if (/hoofdinspecteur|\(ahinp\)|\(hinp\)|\(1hinp\)/i.test(r)) return 'Middenkader';
-  if (/inspecteur|agent|\(ainp\)|\(1inp\)|\(inp\)/i.test(r)) return 'Basiskader';
+  if(/inspecteur|\(ainp\)|\(1inp\)|\(inp\)/i.test(r))return 'Basiskader';
+  if(n!==null && n>=300 && n<=999)return 'Basiskader';
+  if(/agent|\(ap\)|\(aap\)|\(1ap\)/i.test(r))return 'Basiskader';
   return 'Kader'; // Geen aanname bij een onbekende rang.
 }
-export function displaySeries(value, rank = '', dept = 'politie') {
+export function displaySeries(value, rank = '', dept = 'politie', call = '') {
   const raw=s(value);
   if (!raw) return 'Niet ingevuld';
-  if (/^kader(?:\b|[^a-z])/i.test(raw)) return dept === 'politie' ? policeKader(rank) : 'Kader';
+  if (/^kader(?:\b|[^a-z])/i.test(raw)) return dept === 'politie' ? policeKader(rank,call) : 'Kader';
   if (/^leiding\b/i.test(raw)) return 'Leiding';
   if (/^\d+$/.test(raw)) return `Reeks ${raw}`;
   return raw;
@@ -89,7 +99,8 @@ export function normalizePersonnel(dept, rows, activities = new Map()) {
     result.push({
       id:`${dept}:${id}`, personId:id, name, call:s(row[spec.callsign]) || '—',
       dept, rank:s(row[spec.rank]) || '—',
-      series:displaySeries(row[spec.series], row[spec.rank], dept), seriesRaw:s(row[spec.series]) || null,
+      series:displaySeries(row[spec.series], row[spec.rank], dept, row[spec.callsign]), seriesRaw:s(row[spec.series]) || null,
+      kader:dept==='politie'?policeKader(row[spec.rank],row[spec.callsign]):null,
       status:normStatus(row[spec.status]), specialties,
       special:specialText || 'Geen geregistreerde specialisaties',
       hours:a?.hours ?? null, totalHours:a?.totalHours ?? null,
