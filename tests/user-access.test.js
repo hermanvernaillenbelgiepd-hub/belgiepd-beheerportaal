@@ -116,3 +116,10 @@ test('All operational service and other category choices appear in management UI
   assert.ok(routes.includes("action:'category_update'"));
   assert.ok(routes.includes("category:FieldValue.delete()"));
 });
+
+test('Administrative categories work even for members who also hold Bestuur',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const html=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+  assert.ok(html.includes("['burger','technisch_medewerker'].includes(dept.value)?'Categorie opslaan'"));
+  assert.ok(html.includes("dept.value==='bestuur'||(rank.value==='bestuur'&&serviceDepartments.includes(dept.value))"));
+});

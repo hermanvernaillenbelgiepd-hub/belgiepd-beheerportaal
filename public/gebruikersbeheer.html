@@ -196,13 +196,14 @@ function render(){
     const actions=document.createElement('div');actions.className='controls';
     const approve=document.createElement('button');
     const refreshButton=()=>approve.textContent=
-      rank.value==='bestuur'||dept.value==='bestuur'?'Bestuur voordragen':
-      otherCategories.includes(dept.value)?'Categorie opslaan':
+      dept.value==='bestuur'?'Bestuur voordragen':
+      ['burger','technisch_medewerker'].includes(dept.value)?'Categorie opslaan':
+      rank.value==='bestuur'?'Bestuur voordragen':
       u.status==='approved'?'Wijzig':'Goedkeuren';
     rank.onchange=refreshButton;dept.onchange=refreshButton;refreshButton();
     approve.onclick=async()=>{
       if(!dept.value)return notice('Dit account heeft nog geen gekoppelde hulpdienst.',true);
-      if(dept.value==='bestuur'||rank.value==='bestuur'){
+      if(dept.value==='bestuur'||(rank.value==='bestuur'&&serviceDepartments.includes(dept.value))){
         if(u.board?.discord||u.board?.appointed)
           return notice('BESTUUR is voor dit account al actief via Discord of een goedgekeurde bestuursaanstelling. De operationele rol blijft apart behouden.');
         if(u.status!=='approved')return notice('Keur eerst de gewone portaaltoegang goed. Bestuur is geen operationele rang.',true);
