@@ -130,6 +130,10 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 #sanctionAmendFields textarea{min-height:58px}
 .case-special-note{color:#f9cb8f}
 .case-edit-action{font-size:11px!important;padding:5px 8px!important}.case-type-hint{font-size:10px;color:#a9c8f0;line-height:1.35;margin-top:4px}
+.promotion-exception{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:#382e1b;border:1px solid #94712f;color:#ffe3ac;font-size:12px}
+.promotion-exception input{width:auto!important;min-height:0!important;margin:0}
+#promotionOverrideReasonWrap{margin-top:8px}
+#promotionOverrideReason{min-height:56px!important}
 @media(max-width:650px){.sanction-fields-grid{grid-template-columns:1fr}}
 @media(min-width:1000px) and (min-height:720px){
  #casesView .card:has(#caseForm){overflow-y:auto;overscroll-behavior:contain}
@@ -163,7 +167,13 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 <div id="endDateWrap" class="hidden"><label class="field-label" for="endDate">Einddatum verlof</label><input type="date" id="endDate"></div>
 <div id="courseWrap" class="hidden"><label class="field-label" for="courseName">Naam van de opleiding</label><input id="courseName" maxlength="150" placeholder="Afgeronde opleiding"></div>
 <div id="nameWrap" class="hidden"><label class="field-label" for="newName">Nieuwe naam</label><input id="newName" maxlength="100"></div>
-<div id="rankWrap" class="hidden"><label class="field-label" for="proposedRank">Voorgestelde graad</label><input id="proposedRank" maxlength="140"></div>
+<div id="rankWrap" class="hidden"><label class="field-label" for="proposedRank">Voorgestelde graad *</label>
+  <select id="proposedRank"></select><div id="promotionHint" class="case-type-hint" aria-live="polite"></div>
+</div>
+<div id="promotionOverrideWrap" class="full hidden">
+  <label class="promotion-exception"><input id="promotionOverride" type="checkbox"> <strong>Korpsleiding: uitzonderlijke promotiesprong voorstellen</strong></label>
+  <div id="promotionOverrideReasonWrap" class="hidden"><label class="field-label" for="promotionOverrideReason">Verplichte motivering (20–500 tekens)</label><textarea id="promotionOverrideReason" maxlength="500" minlength="20" rows="2" placeholder="Waarom is een uitzonderlijke sprong over de tussenliggende rang verantwoord?"></textarea></div>
+</div>
 <div id="movementWrap" class="hidden"><label class="field-label" for="movement">Soort personeelsbeweging</label><input id="movement" maxlength="150"></div>
 <div id="registrationTimeWrap" class="hidden"><label class="field-label" for="registrationTime">Tijdstip gebeurtenis *</label><input id="registrationTime" type="time"></div>
 <div id="registrationPlayersWrap" class="full hidden"><label class="field-label" for="registrationPlayers">Andere betrokken spelers (optioneel)</label><input id="registrationPlayers" maxlength="1000"></div>
@@ -207,7 +217,7 @@ const categoryExplanations={
   opleiding:'Registreer een gevolgde opleiding in het dossier.',
   specialisatiebeperking:'Leg een beperking vast. Dit wijzigt niet automatisch de actuele specialisatierechten.',
   verlof:'Administratieve dossiernotitie over verlof; geen nieuwe verlofaanvraag.',
-  promotievoorstel:'Noteer een voorstel; dit voert geen automatische promotie uit.',
+  promotievoorstel:'Standaard enkel de eerstvolgende rang; Korpsleiding kan gemotiveerd afwijken. Een voorstel verandert de effectieve rang niet.',
   naamswijziging:'Historische registratie; de actuele personeelsnaam wordt hier niet automatisch aangepast.',
   personeelsbeweging:'Leg een personeelsbeweging administratief vast.'
 };
