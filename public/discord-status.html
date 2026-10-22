@@ -1,11 +1,80 @@
 <!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>Discord-aanmelding | BelgiëPD Beheerportaal</title><style>
-:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#081223;color:#edf3ff}header{background:#0f213b;border-bottom:1px solid #263b5d;padding:20px max(20px,calc((100vw - 1000px)/2))}header a{color:#c0d7ff;margin-left:18px;font-size:14px}main{max-width:950px;margin:36px auto;padding:0 20px}h1{font-size:28px}p{color:#afc1db;line-height:1.55}.card{background:#11213c;border:1px solid #2b4365;border-radius:14px;padding:22px;margin:16px 0}button,.button{display:inline-flex;align-items:center;border:1px solid #567cbd;border-radius:9px;background:#305ee2;color:white;padding:11px 16px;font-size:15px;font-weight:600;text-decoration:none;cursor:pointer;margin:3px 10px 3px 0}.secondary{background:#182d4b}.warn{background:#352716;border-left:3px solid #edb958;border-radius:8px;padding:14px;color:#f9dfb0}.status{padding:12px;color:#bce9ce;background:#153b32;border-radius:9px;margin-top:15px}.error{background:#4d242a;color:#ffd1d3}.muted{font-size:12px;color:#99b0cb}dt{font-size:12px;color:#a4bddb;margin-top:17px}dd{margin:4px 0 0;overflow-wrap:anywhere}code{font-size:13px;color:#d9e5ff}.roles{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.role{border:1px solid #456895;padding:6px 9px;border-radius:16px;font-size:13px}a{color:#adc9ff}
-</style></head><body><header><strong>BelgiëPD Beheerportaal</strong> <a href="/">← Terug naar beheerportaal</a> <a href="/rollen-opleidingen.html">Rollen & opleidingen</a> <a href="/gebruikersbeheer.html">Gebruikersbeheer</a></header><main><h1>Discord-aanmelding BelgiëPD</h1><p>Meld je aan met je Discord-account. Je browser onthoudt de aanmelding; voor personeels- en dossierrechten controleert de server je bestaande, goedgekeurde bevoegdheden.</p><div class="card"><h2>Discord verbinden</h2><a class="button" href="/auth/discord/start?return=%2Fdiscord-status.html">Aanmelden met Discord</a><button class="secondary" id="google" type="button">Google aanmelden</button><button class="secondary" id="logout" type="button">Afmelden</button><p class="muted">Gebruik voor de Discord-test je eigen Discord-account dat lid is van de BelgiumPD-server. Een Discord-login vervangt in deze browser de huidige Firebase-sessie; via Google kun je je opnieuw aanmelden.</p><div id="state" class="status">Aanmelding en serverinstellingen controleren…</div></div><div class="card" id="profile" hidden><h2>Geverifieerde Discord-gegevens</h2><dl><dt>Discord-account</dt><dd id="name"></dd><dt>Discord ID</dt><dd id="discordId"></dd><dt>Toegetreden op</dt><dd id="joined"></dd><dt>Laatst geverifieerd</dt><dd id="verified"></dd><dt>Discord-rol-ID's op de BelgiumPD-server</dt><dd class="roles" id="roles"></dd></dl><button class="secondary" type="button" id="copy">Rol-ID's kopiëren</button>
+:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#081223;color:#edf3ff}header{background:#0f213b;border-bottom:1px solid #263b5d;padding:20px max(20px,calc((100vw - 1000px)/2))}header a{color:#c0d7ff;margin-left:18px;font-size:14px}main{max-width:950px;margin:36px auto;padding:0 20px}h1{font-size:28px}p{color:#afc1db;line-height:1.55}.card{background:#11213c;border:1px solid #2b4365;border-radius:14px;padding:22px;margin:16px 0}button,.button{display:inline-flex;align-items:center;border:1px solid #567cbd;border-radius:9px;background:#305ee2;color:white;padding:11px 16px;font-size:15px;font-weight:600;text-decoration:none;cursor:pointer;margin:3px 10px 3px 0}.secondary{background:#182d4b}.warn{background:#352716;border-left:3px solid #edb958;border-radius:8px;padding:14px;color:#f9dfb0}.status{padding:12px;color:#bce9ce;background:#153b32;border-radius:9px;margin-top:15px}.error{background:#4d242a;color:#ffd1d3}.muted{font-size:12px;color:#99b0cb}dt{font-size:12px;color:#a4bddb;margin-top:17px}dd{margin:4px 0 0;overflow-wrap:anywhere}code{font-size:13px;color:#d9e5ff}.roles{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.role{border:1px solid #456895;padding:6px 9px;border-radius:16px;font-size:13px}a{color:#adc9ff}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}.tabs button[aria-selected="true"]{background:#305ee2;border-color:#85a9ef}.profile-section{border-top:1px solid #29466b;padding-top:14px;margin-top:12px}.profile-row{padding:9px 0;border-bottom:1px solid #2b4365}.profile-row strong{display:block}.profile-row small{color:#a9bdd7}.profile-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:15px}.profile-columns section{padding:13px;border:1px solid #2b4365;border-radius:9px}.profile-columns h3{margin-top:0}
+</style></head><body><header><strong>BelgiëPD Beheerportaal</strong> <a href="/">← Terug naar beheerportaal</a> <a href="/rollen-opleidingen.html">Rollen & opleidingen</a> <a href="/gebruikersbeheer.html">Gebruikersbeheer</a></header><main><h1>Discord-aanmelding BelgiëPD</h1><p>Meld je aan met je Discord-account. Je browser onthoudt de aanmelding; voor personeels- en dossierrechten controleert de server je bestaande, goedgekeurde bevoegdheden.</p><div class="card"><h2>Discord verbinden</h2><a class="button" href="/auth/discord/start?return=%2Fdiscord-status.html">Aanmelden met Discord</a><button class="secondary" id="google" type="button">Google aanmelden</button><button class="secondary" id="logout" type="button">Afmelden</button><p class="muted">Gebruik voor de Discord-test je eigen Discord-account dat lid is van de BelgiumPD-server. Een Discord-login vervangt in deze browser de huidige Firebase-sessie; via Google kun je je opnieuw aanmelden.</p><div id="state" class="status">Aanmelding en serverinstellingen controleren…</div></div><div class="card" id="profile" hidden>
+<h2>Mijn Discord</h2>
+<div class="tabs" role="tablist" aria-label="Mijn Discord">
+<button type="button" class="secondary" role="tab" id="discordTab" aria-selected="true" aria-controls="discordDetails">Discord-gegevens</button>
+<button type="button" class="secondary" role="tab" id="personalTab" aria-selected="false" aria-controls="personalDetails">Mijn profiel · rollen, specialisaties en opleidingen</button>
+</div>
+<section id="discordDetails" role="tabpanel" aria-labelledby="discordTab"><h3>Geverifieerde Discord-gegevens</h3><dl><dt>Discord-account</dt><dd id="name"></dd><dt>Discord ID</dt><dd id="discordId"></dd><dt>Toegetreden op</dt><dd id="joined"></dd><dt>Laatst geverifieerd</dt><dd id="verified"></dd><dt>Discord-rol-ID's op de BelgiumPD-server</dt><dd class="roles" id="roles"></dd></dl><button class="secondary" type="button" id="copy">Rol-ID's kopiëren</button>
 <button class="secondary" type="button" id="botRefresh">↻ Via bot vernieuwen</button>
-<p class="muted">Haalt handmatig je actuele Discord-rollen op via de gekoppelde bot. Maximaal één keer per minuut; er worden geen rollen of portaalrechten gewijzigd.</p><div class="warn"><b>Geen automatische bevoegdheden:</b> deze rol-ID's moeten eerst door het serverbeheer worden gecontroleerd en aan onze interne bevoegdheidsrollen worden gekoppeld. De originele personeelsgegevens blijven ongewijzigd. Bij toegangsproblemen kun je met je goedgekeurde Google-account inloggen.</div></div></main><script type="module">
+<p class="muted">Haalt handmatig je actuele Discord-rollen op via de gekoppelde bot. Maximaal één keer per minuut; er worden geen rollen of portaalrechten gewijzigd.</p><div class="warn"><b>Geen automatische bevoegdheden:</b> deze rol-ID's moeten eerst door het serverbeheer worden gecontroleerd en aan onze interne bevoegdheidsrollen worden gekoppeld. De originele personeelsgegevens blijven ongewijzigd. Bij toegangsproblemen kun je met je goedgekeurde Google-account inloggen.</div></section>
+<section id="personalDetails" class="profile-section" role="tabpanel" aria-labelledby="personalTab" hidden>
+<p>Persoonlijk overzicht van je eigen geverifieerde Discord-rollen, personeelsgegevens en geregistreerde opleidingen. Alleen lezen.</p>
+<button type="button" id="personalReload" class="secondary">↻ Mijn profiel vernieuwen</button>
+<p id="personalStatus" class="muted" role="status" aria-live="polite">Open dit tabblad om je gegevens op te halen.</p>
+<div class="profile-columns">
+<section><h3>Discord-rollen</h3><div id="personalRoles"></div></section>
+<section><h3>Specialisaties</h3><div id="personalSpecializations"></div></section>
+<section><h3>Gevolgde opleidingen</h3><div id="personalTraining"></div></section>
+</div>
+</section></div></main><script type="module">
 const $=id=>document.getElementById(id);let auth,authMod,currentRoles=[];
 function state(msg,isError=false){$('state').textContent=msg;$('state').classList.toggle('error',isError)}
-async function showProfile(){const user=auth.currentUser;if(!user){$('profile').hidden=true;state('Nog niet aangemeld. Klik op Aanmelden met Discord.');return}try{const token=await user.getIdToken();const r=await fetch('/api/discord/profile',{headers:{Authorization:'Bearer '+token},cache:'no-store'});const data=await r.json();if(!r.ok)throw new Error(data.error||'Geen Discord-gegevens gevonden');$('profile').hidden=false;$('name').textContent=data.name||'Onbekend';$('discordId').textContent=data.discordId;$('joined').textContent=data.joinedAt?new Date(data.joinedAt).toLocaleString('nl-BE'):'Onbekend';$('verified').textContent=data.lastVerifiedAt?new Date(data.lastVerifiedAt).toLocaleString('nl-BE'):'Onbekend';currentRoles=data.roleIds||[];$('roles').replaceChildren(...currentRoles.map(x=>{const el=document.createElement('span');el.className='role';el.textContent=x;return el}));state('Discord-lidmaatschap geverifieerd. De rol-ID’s zijn opgehaald.');}catch(e){$('profile').hidden=true;state('Geen actieve Discord-verificatie: '+e.message+'. Google-login blijft beschikbaar.',true)}}
+let activeTab='discord',loadedFor=null;
+function tabs(mode){
+  activeTab=mode;
+  const personal=mode==='personal';
+  $('discordDetails').hidden=personal;
+  $('personalDetails').hidden=!personal;
+  $('discordTab').setAttribute('aria-selected',String(!personal));
+  $('personalTab').setAttribute('aria-selected',String(personal));
+  if(personal&&loadedFor!==auth?.currentUser?.uid)loadPersonal();
+}
+function rows(id,items,render,empty){
+  const root=$(id);root.replaceChildren();
+  if(!items?.length){const p=document.createElement('p');p.className='muted';p.textContent=empty;root.append(p);return}
+  for(const item of items){
+    const row=document.createElement('div');row.className='profile-row';
+    const title=document.createElement('strong');title.textContent=render(item)[0];
+    const subtitle=document.createElement('small');subtitle.textContent=render(item)[1];
+    row.append(title,subtitle);root.append(row);
+  }
+}
+async function loadPersonal(){
+  const user=auth?.currentUser;if(!user)return;
+  const btn=$('personalReload');btn.disabled=true;$('personalStatus').textContent='Je persoonlijke gegevens ophalen…';
+  try{
+    const token=await user.getIdToken();
+    const response=await fetch('/api/discord/personal-profile',{cache:'no-store',
+      headers:{Authorization:'Bearer '+token}});
+    const p=await response.json();
+    if(!response.ok)throw Error(p.error||'Persoonlijk profiel niet beschikbaar');
+    rows('personalRoles',p.roles,x=>[x.name,(x.department||'Algemeen')+' · '+(x.stage||x.kind||'Discord')],'Geen herkende Discord-rollen.');
+    const skills=(p.staff||[]).flatMap(s=>(s.specializations||[]).map(x=>({
+      name:x.name,department:s.department,status:x.status,origin:'Personeelsdossier'
+    }))).concat((p.discordSpecializations||[]).map(s=>({
+      name:s.name,department:s.department,status:s.stage,origin:'Discord-rol (geen opleidingsbewijs)'
+    })));
+    rows('personalSpecializations',skills,x=>[x.name,
+      (x.department||'Algemeen')+' · '+(x.status||'')+' · '+x.origin],
+      p.personnelUnavailable?'Personeelsgegevens momenteel niet beschikbaar.':'Geen actieve specialisaties geregistreerd.');
+    rows('personalTraining',p.training,x=>[x.name,
+      (x.department||'Algemeen')+' · '+(x.date||'Datum onbekend')+' · '+
+      ({geslaagd:'Geslaagd',niet_geslaagd:'Niet geslaagd',in_opleiding:'In opleiding'}[x.result]||x.result)],
+      p.trainingUnavailable?'Opleidingsregister momenteel niet beschikbaar.':'Nog geen opleidingsresultaten geregistreerd.');
+    loadedFor=user.uid;
+    $('personalStatus').textContent=(p.staff||[]).map(s=>
+      s.department+': '+(s.rank||'Rang onbekend')+' · '+(s.call||'Geen roepnummer')).join(' | ')||
+      'Geen gekoppelde personeelsfiche gevonden. Discord-gegevens zijn wel beschikbaar.';
+    if(p.limitedTraining)$('personalStatus').textContent+=' Er kunnen oudere opleidingsresultaten ontbreken.';
+  }catch(e){loadedFor=null;$('personalStatus').textContent='Persoonlijk overzicht niet beschikbaar: '+e.message}
+  finally{btn.disabled=false}
+}
+$('discordTab').onclick=()=>tabs('discord');
+$('personalTab').onclick=()=>tabs('personal');
+$('personalReload').onclick=()=>{loadedFor=null;loadPersonal()};
+async function showProfile(){const user=auth.currentUser;if(!user){loadedFor=null;$('profile').hidden=true;state('Nog niet aangemeld. Klik op Aanmelden met Discord.');return}try{const token=await user.getIdToken();const r=await fetch('/api/discord/profile',{headers:{Authorization:'Bearer '+token},cache:'no-store'});const data=await r.json();if(!r.ok)throw new Error(data.error||'Geen Discord-gegevens gevonden');$('profile').hidden=false;loadedFor=null;if(activeTab==='personal')loadPersonal();$('name').textContent=data.name||'Onbekend';$('discordId').textContent=data.discordId;$('joined').textContent=data.joinedAt?new Date(data.joinedAt).toLocaleString('nl-BE'):'Onbekend';$('verified').textContent=data.lastVerifiedAt?new Date(data.lastVerifiedAt).toLocaleString('nl-BE'):'Onbekend';currentRoles=data.roleIds||[];$('roles').replaceChildren(...currentRoles.map(x=>{const el=document.createElement('span');el.className='role';el.textContent=x;return el}));state('Discord-lidmaatschap geverifieerd. De rol-ID’s zijn opgehaald.');}catch(e){$('profile').hidden=true;state('Geen actieve Discord-verificatie: '+e.message+'. Google-login blijft beschikbaar.',true)}}
 async function start(){
   try{const conf=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());const status=await fetch('/auth/discord/status',{cache:'no-store'}).then(r=>r.json());if(!conf.enabled)throw new Error('Firebase-configuratie ontbreekt');const appMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');auth=authMod.getAuth(appMod.initializeApp(conf.firebaseConfig));await authMod.setPersistence(auth,authMod.browserLocalPersistence);$('google').onclick=async()=>{try{await authMod.signInWithPopup(auth,new authMod.GoogleAuthProvider());await showProfile()}catch(e){state('Google-login mislukt: '+(e.code||e.message),true)}};$('logout').onclick=async()=>{await authMod.signOut(auth);await showProfile()};$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(currentRoles.join('\n'));state('Rol-ID’s gekopieerd.')}catch{state('Kopiëren niet ondersteund; selecteer de ID’s handmatig.')}};
     $('botRefresh').onclick=async()=>{

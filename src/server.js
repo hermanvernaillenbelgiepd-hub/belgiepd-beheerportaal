@@ -15,6 +15,7 @@ import { installRegistrationRoutes } from './registration-routes.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
+import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
 import { installRoleRoutes } from './role-routes.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
@@ -317,6 +318,7 @@ installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
+installDiscordPersonalProfileRoutes(app,{getSnapshot});
 // More-specific activity endpoints MUST precede /api/personnel/:dept/:discordId.
 // That broad POST edit route otherwise intercepts retrospective audit submissions.
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
