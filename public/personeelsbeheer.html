@@ -456,7 +456,7 @@ function render(){
     const source=document.createElement('small');source.className='roster-dept';
     source.textContent=departments[person.dept]||person.dept;
     nameCol.append(name,source);tr.append(nameCol);
-    td(tr,person.series||'—');
+    td(tr,BPDPersonnelVisuals.seriesWithCadre(person,person.series||'—'));
     const personStatus=document.createElement('td'),label=document.createElement('span');
     label.className='pill';label.textContent=person.status||'Onbekend';
     personStatus.append(label);tr.append(personStatus);
