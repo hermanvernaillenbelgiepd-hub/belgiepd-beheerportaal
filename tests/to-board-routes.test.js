@@ -270,7 +270,7 @@ test('Shared incident shortcuts are visible after shift close and writable only 
 });
 
 
-test('Server radio reconciliation retires only absent unassigned teams, never active incidents',async()=>{
+test('Radio-afmelding beëindigt ook gekoppelde ploegen maar houdt melding en log bij',async()=>{
   await appFixture(async({command,store,db})=>{
     let rev=0;
     let response=await command({type:'start',expectedRevision:rev++,displayName:'TO Auto'});
@@ -284,16 +284,17 @@ test('Server radio reconciliation retires only absent unassigned teams, never ac
     const incident=Object.values(response.body.board.meldingen)[0];
     await command({type:'attach-team',expectedRevision:rev++,id:incident.id,teamId:active.get('930')});
     const now=Date.now(),snapshot={configured:true,connected:true,stale:false,
-      fetchedAt:new Date(now).toISOString(),users:[{category:'SANTO',number:'930'}],uncertainUnits:[]};
+      fetchedAt:new Date(now).toISOString(),users:[],uncertainUnits:[]};
     const ended=await store.autoEndAbsentRadioTeams([...active.values()],snapshot,{now,sessionId});
-    assert.deepEqual(new Set(ended),new Set([active.get('166'),active.get('465')]));
+    assert.deepEqual(new Set(ended),new Set([...active.values()]));
     const saved=db.data(currentPath);
     assert.equal(saved.revision,rev+1);
     assert.equal(saved.ploegen[active.get('166')].endedBy,'system:sonoran-radio');
     assert.equal(saved.ploegen[active.get('465')].endedReason,'radiokanaal-verlaten');
-    assert.equal(saved.ploegen[active.get('930')].endedAt,undefined,'Active incident must prevent retirement');
+    assert.equal(saved.ploegen[active.get('930')].endedBy,'system:sonoran-radio');
     assert.equal(saved.meldingen[incident.id].status,'actief');
-    assert.equal(saved.meldingen[incident.id].ploegen.length,1);
+    assert.equal(saved.meldingen[incident.id].ploegen.length,0);
+    assert.match(saved.meldingen[incident.id].log.at(-1).txt,/automatisch uit dienst/);
     assert.equal((await store.autoEndAbsentRadioTeams([active.get('930')],snapshot,{now,sessionId:'incorrect'})).length,0);
     assert.equal((await store.autoEndAbsentRadioTeams([active.get('930')],{...snapshot,connected:false},{now,sessionId})).length,0);
     assert.equal((await store.autoEndAbsentRadioTeams([active.get('930')],{...snapshot,uncertainUnits:[{category:'SANTO',number:'930'}]},{now,sessionId})).length,0);
