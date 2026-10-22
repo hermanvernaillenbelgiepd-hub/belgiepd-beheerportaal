@@ -37,10 +37,29 @@ test('Read-only own Discord profile fetch derives identity from authenticated to
  assert.ok(route.includes("doc(dept+'_'+id).collection('records')"));
  assert.ok(route.includes("p?.personId===id"));
  assert.ok(server.includes('installDiscordPersonalProfileRoutes(app,{getSnapshot})'));
- assert.ok(ui.includes('id="personalTab"'));
+ assert.ok(ui.includes('class="identity-grid"'));
+ assert.ok(ui.includes('id="joined"'));
+ assert.ok(ui.includes('id="verified"'));
+ assert.ok(ui.includes('id="name"'));
+ assert.ok(ui.includes('id="discordId"'));
+ assert.ok(ui.includes('<details class="role-details">'));
+ assert.ok(ui.includes('id="botRefresh"'));
+ assert.ok(ui.includes("await loadPersonal();}catch(e){"));
+ assert.equal(ui.includes('id="discordTab"'),false);
+ assert.equal(ui.includes('id="personalTab"'),false);
  assert.ok(ui.includes('id="personalRoles"'));
  assert.ok(ui.includes('id="personalSpecializations"'));
  assert.ok(ui.includes('id="personalTraining"'));
  assert.ok(ui.includes('id="personalReload"'));
  assert.equal(route.includes('req.params.discordId'),false);
+});
+
+test('Discord profile is presented on one screen, without duplicate tab content',()=>{
+ const ui=readFileSync(new URL('../public/discord-status.html',import.meta.url),'utf8');
+ const items=['id="profile"','id="name"','id="discordId"','id="joined"','id="verified"',
+  'id="personalRoles"','id="personalSpecializations"','id="personalTraining"','id="personalReload"','id="botRefresh"','id="roles"'];
+ for(const marker of items)assert.equal(ui.split(marker).length-1,1,marker);
+ assert.ok(ui.includes('<summary>Geavanceerd · alle Discord-rol-ID'));
+ assert.equal(ui.includes('role="tab"'),false);
+ assert.equal(ui.includes('role="tabpanel"'),false);
 });
