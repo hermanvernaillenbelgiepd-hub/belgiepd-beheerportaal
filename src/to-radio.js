@@ -55,9 +55,9 @@ export function parseSonoranName(value){
   // Zelfde unit ongeacht het scheidingsteken: SANTO-930, SANTO 930 of SANTO930.
   // Een categorie zonder nummer blijft herkenbaar, maar is niet veilig op te nemen.
   const flexible=orderedCategories.find(category=>upper.startsWith(category)&&
-    /^(?:\\s*-\\s*|\\s+)?\\d{1,5}$/.test(head.slice(category.length)));
+    /^(?:\s*-\s*|\s+)?\d{1,5}$/.test(head.slice(category.length)));
   if(flexible){
-    const number=head.slice(flexible.length).replace(/^\\s*-?\\s*/,'').trim();
+    const number=head.slice(flexible.length).replace(/^\s*-?\s*/,'').trim();
     return {category:flexible,number,displayName,
       importable:flexible!=='OPLEIDING'&&Number(number)>0};
   }
