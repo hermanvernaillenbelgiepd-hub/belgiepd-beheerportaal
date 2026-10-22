@@ -14,6 +14,7 @@ import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.
 import { ALLOWED_ROLES } from './registrations.js';
 import { installRegistrationRoutes } from './registration-routes.js';
 import { installCallsignRoutes } from './callsign-routes.js';
+import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
@@ -52,7 +53,8 @@ app.get(['/burgerdossier.html','/solliciteren.html','/sollicitatiebeheer.html'],
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
 app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
-app.use('/api/callsigns',express.json({limit:'12kb',strict:true}));
+app.use('/api/callsigns',express.json({limit:'12kb',strict:true,
+  verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
@@ -332,6 +334,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
 installRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installManagementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
+installCallsignBotRoutes(app);
 installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});

@@ -19,7 +19,7 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
   });
   app.get('/api/callsigns/requests',requireUser,async(req,res)=>{
     if(!permit(req))return res.status(403).json({error:'Geen toegang'});
-    try{const snaps=await collection().orderBy('createdAt','desc').limit(80).get();res.json({requests:snaps.docs.map(d=>{const x=d.data();return {discordId:d.id,name:x.name,temporaryCall:x.temporaryCall,status:x.status,joinedOn:x.verification?.joinedOn||null,playHours:x.verification?.playHours??null,assignedCall:x.assignedCall||null,verifiedBy:x.verification?.by?.name||null,createdAt:timestamp(x.createdAt),lastError:x.status==='sync_needs_review'?'Synchronisatie vraagt handmatige controle. Niet opnieuw goedkeuren.':null};})});}catch(e){fail(res,e)}
+    try{const snaps=await collection().orderBy('createdAt','desc').limit(80).get();res.json({requests:snaps.docs.map(d=>{const x=d.data();return {discordId:d.id,name:x.name,temporaryCall:x.temporaryCall,status:x.status,joinedOn:x.verification?.joinedOn||null,playHours:x.verification?.playHours??null,assignedCall:x.assignedCall||null,verifiedBy:x.verification?.by?.name||(x.verification?.source==='fivem-bot-en-discord-api'?'DC-bot + Discord API':null),verificationSource:x.verification?.source||null,createdAt:timestamp(x.createdAt),lastError:x.status==='sync_needs_review'?'Synchronisatie vraagt handmatige controle. Niet opnieuw goedkeuren.':null};})});}catch(e){fail(res,e)}
   });
   // Eerste fase: intake door kader op basis van /info member. Aanvragers-selfservice volgt na geverifieerde Discord OAuth.
   app.post('/api/callsigns/requests',requireUser,async(req,res)=>{
