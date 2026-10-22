@@ -96,18 +96,19 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .specialty-status-col .specialty-state{font-size:10px;padding:4px 6px}
 @media(max-width:920px){.staff-roster-table{min-width:1520px}}
 
-/* MAIN: afgebakende tabelvakken en rechts gekoppelde Discord-ID. */
+/* MAIN: rustige aaneengesloten personeelslijst, zonder losse vakjes. */
 .staff-roster-holder{overflow-x:auto}
-.staff-roster-table{min-width:1740px;border-spacing:3px 5px;border-collapse:separate}
-.staff-roster-table thead th{background:#193453;border:1px solid #3b577b;border-radius:8px;padding:11px 7px}
-.staff-roster-table tbody td{background:#122741;border:1px solid #304a6a;border-radius:8px;padding:10px 8px;transition:background-color .15s,border-color .15s}
-.staff-roster-table tbody tr:nth-child(even) td{background:#172d49}
-.staff-roster-table tbody tr:hover td{background:#203b5c;border-color:#597ca8}
-.staff-roster-table td:nth-child(2){background:#182e4b}
-.staff-roster-table .rank-insignia{border-color:#4b6484;background:#1c3552}
+.staff-roster-table{min-width:1740px;border-spacing:0;border-collapse:collapse}
+.staff-roster-table thead th{background:#193453;border:0;border-bottom:2px solid #54749b;border-radius:0;padding:12px 9px}
+.staff-roster-table tbody td{background:transparent;border:0;border-bottom:1px solid #324866;border-radius:0;padding:12px 9px;transition:background-color .15s}
+.staff-roster-table tbody tr:nth-child(even){background:#132943}
+.staff-roster-table tbody tr:hover{background:#203b5c}
+.staff-roster-table tbody tr:nth-child(even) td,.staff-roster-table tbody tr:hover td{background:transparent;border-color:#405b7e}
+.staff-roster-table td:nth-child(2){background:transparent}
+.staff-roster-table .rank-insignia{border-color:#3d5878;background:#1c3552}
 .staff-roster-table th:last-child{width:12%}
 .staff-roster-table .discord-id-head,.staff-roster-table .discord-id-cell{text-align:left}
-.staff-roster-table .discord-id-cell code{display:inline-block;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:#d5e7ff;padding:6px 7px;background:#213d5b;border:1px solid #466286;border-radius:6px}
+.staff-roster-table .discord-id-cell code{font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:#d5e7ff;background:transparent;border:0;padding:0}
 .staff-roster-table .discord-id-missing{font-size:10px;color:#a9bdd3}
 @media(max-width:920px){.staff-roster-table{min-width:1740px}}
 </style></head>
