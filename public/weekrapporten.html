@@ -235,7 +235,9 @@ function selectedPerson(){
 }
 function displaySelectedPerson(){
   const p=selectedPerson();
-  $('caseSelected').textContent=p?`${p.call||'—'} · ${p.name||'Onbekend'} · ${p.rank||p.dept}`:'Selecteer eerst een personeelslid.';
+  const band=p?.promotion?.callBand;
+  $('caseSelected').textContent=p?`${p.call||'—'} · ${p.name||'Onbekend'} · ${p.rank||p.dept}`+
+    (band?' · '+(band.code?band.code+' · ':'')+band.range+' ('+band.kader+')':''):'Selecteer eerst een personeelslid.';
   $('demoActions').classList.toggle('hidden',p?.demo!==true);
   changeExtra();
 }
@@ -356,6 +358,15 @@ function populateQuickTypes(choices){
   }
   changeExtra();
 }
+const promotionGradeDisplay={
+  'Agent':'AP · Agent van Politie (1xx/2xx)',
+  'Aspirant Inspecteur':'A-INP · Aspirant Inspecteur van Politie (3xx)',
+  'Inspecteur':'INP · Inspecteur van Politie (4xx)',
+  'Eerste Inspecteur':'1-INP · Eerste Inspecteur van Politie (5xx)',
+  'Aspirant Hoofdinspecteur':'A-HINP · Aspirant Hoofdinspecteur van Politie (6xx)',
+  'Hoofdinspecteur':'HINP · Hoofdinspecteur van Politie (7xx)',
+  'Eerste Hoofdinspecteur':'1-HINP · Eerste Hoofdinspecteur van Politie (8xx)'
+};
 let lastPromotionSubject='';
 function updatePromotionChoices(){
   const type=$('entryType').value,active=type==='promotievoorstel';
@@ -378,7 +389,7 @@ function updatePromotionChoices(){
   const options=active?(override?(policy.higher||[]).filter(rank=>rank!==policy.next):
     (policy.next?[policy.next]:[])):[];
   const old=$('proposedRank').value;
-  selectOptions($('proposedRank'),options.map(value=>({value,label:value})),
+  selectOptions($('proposedRank'),options.map(value=>({value,label:promotionGradeDisplay[value]||value})),
     options.length?'Kies de voorgestelde rang':'Geen geldige volgende rang');
   if(options.includes(old))$('proposedRank').value=old;
   else if(options.length===1)$('proposedRank').value=options[0];
@@ -387,9 +398,12 @@ function updatePromotionChoices(){
   $('proposedRank').disabled=!active||options.length===0;
   $('promotionHint').textContent=!active?'':!person?'Kies een medewerker.':
     person.dept!=='politie'?'Deze promotierangorde geldt alleen voor politie.':
+    policy.conflict?'LET OP: '+person.call+' is een '+policy.callBand.range+
+      '-roepnummer en hoort bij '+policy.callBand.code+' ('+policy.callBand.label+
+      '). De geregistreerde rang wijkt af. Laat deze eerst controleren.':
     !policy.current?'Huidige rang onbekend. Eerst de personeelsrang controleren.':
     override?'Uitzonderlijk voorstel: kies een hogere rang en motiveer de sprong.':
-    policy.next?'Huidige rang: '+person.rank+' · eerstvolgende: '+policy.next:
+    policy.next?'Huidige rang: '+person.rank+' · eerstvolgende: '+(promotionGradeDisplay[policy.next]||policy.next):
     'Hoogste geregistreerde rang binnen deze promotieladder bereikt.';
   return !active||options.length>0;
 }
