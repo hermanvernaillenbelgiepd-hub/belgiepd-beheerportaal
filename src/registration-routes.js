@@ -69,7 +69,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
          roleForDepartment(req.bpd,dept),values.sanctionType,values.severity))
          return res.status(403).json({error:values.sanctionType==='Voorstel tot degradatie'?
            'Een voorstel tot degradatie is alleen toegestaan bij ernst 9 of 10 op 10.':
-           'Deze sanctiemaatregel is niet toegestaan voor jouw kaderrol. Degradatie, schorsing en ontslag zijn alleen voor Korpsleiding.'});
+           'Deze sanctiemaatregel is niet toegestaan voor jouw kaderrol. Degradatie en schorsing vereisen Officierenkader of Korpsleiding; ontslag en blacklisting uitsluitend Korpsleiding.'});
        const representedId=trim(raw?.onBehalfOfDiscordId);
        if(representedId && !canRepresent(req.bpd,type,dept)) return res.status(403).json({error:'Registratie namens een ander is alleen toegestaan voor observaties door kaderleden'});
        const onBehalfReason=representedId ? trim(raw?.onBehalfReason) : '';
@@ -106,7 +106,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const values=validateAmend(req.body);
       const sanctionRole=roleForDepartment(req.bpd,dept);
       if(!canChooseSanction(sanctionRole,values.sanctionType,values.severity))
-        return res.status(403).json({error:'Geen bevoegdheid voor deze sanctiemaatregel of ernst. Alleen Korpsleiding kan zware sancties vastleggen.'});
+        return res.status(403).json({error:'Geen bevoegdheid voor deze sanctiemaatregel of ernst. Degradatie en schorsing vereisen Officierenkader; ontslag en blacklisting uitsluitend Korpsleiding.'});
       const snap=await getSnapshot();
       if(!safeSubject(snap.data,dept,id))return res.status(404).json({error:'Personeelslid niet gevonden'});
       const actor=actorFromPersonnel(req.bpd,snap.data);
