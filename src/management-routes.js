@@ -1,6 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
-import {actorFromPersonnel} from './registrations.js';
+import {actorFromPersonnel,maySubmit,mayAmend,canChooseSanction,canRepresent,eligibleRepresentative,SANCTION_TYPES,SANCTION_REASONS} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
 const asString=x=>String(x??'').trim();
@@ -27,7 +27,23 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const snap=await getSnapshot();
       const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
       const actor=actorFromPersonnel(req.bpd,snap.data);
-      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,'notitie')),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:req.bpd.dossierNativeDepartments.some(d=>mayExportWeekReport(req.bpd,d)),actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t)))});
+      const registrationPermissions=Object.fromEntries(
+        (req.bpd.dossierAllowedDepartments||[]).filter(d=>canReadServiceDossier(req.bpd,d))
+          .map(dept=>[dept,{
+            observatie:req.bpd.dossierNativeDepartments?.includes(dept)===true&&maySubmit(req.bpd,'observatie',dept),
+            sanctie:req.bpd.dossierNativeDepartments?.includes(dept)===true&&maySubmit(req.bpd,'sanctie',dept),
+            amendSanction:req.bpd.dossierNativeDepartments?.includes(dept)===true&&
+              mayAmend(req.bpd,'sanctie',dept)
+          }]));
+      const representatives=subjects.filter(p=>registrationPermissions[p.dept]?.observatie &&
+        canRepresent(req.bpd,'observatie',p.dept)&&
+        eligibleRepresentative({dept:p.dept,personId:p.discordId,rank:p.rank},p.dept)&&
+        p.discordId!==actor?.discordId)
+        .map(p=>({dept:p.dept,discordId:p.discordId,name:p.name,call:p.call}));
+      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,'notitie')),registrationWritesEnabled:process.env.BPD_ENABLE_REGISTRATIONS==='true',registrationPermissions,
+        registrationSanctionTypes:SANCTION_TYPES.filter(t=>canChooseSanction(req.bpd.role,t)),
+        registrationSanctionReasons:SANCTION_REASONS,representatives,
+        canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:req.bpd.dossierNativeDepartments.some(d=>mayExportWeekReport(req.bpd,d)),actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t)))});
     }catch(e){errorResponse(res,e)}
   });
   app.get('/api/management/cases',requireUser,async(req,res)=>{
