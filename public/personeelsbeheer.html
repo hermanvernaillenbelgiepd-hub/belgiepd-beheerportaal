@@ -110,6 +110,10 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .discord-id-head,.staff-roster-table .discord-id-cell{text-align:left}
 .staff-roster-table .discord-id-cell code{font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:#d5e7ff;background:transparent;border:0;padding:0}
 .staff-roster-table .discord-id-missing{font-size:10px;color:#a9bdd3}
+.staff-roster-table .discord-copy-tools{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+.staff-roster-table .discord-copy-btn{font-size:10px;font-weight:700;padding:4px 7px;border:1px solid #4b6f9a;border-radius:5px;background:#234468;color:#f2f7ff;white-space:nowrap}
+.staff-roster-table .discord-copy-btn:hover{background:#315b88;border-color:#79a0d1}
+.staff-roster-table .discord-copy-btn:focus-visible{outline:2px solid #a6c7ff;outline-offset:2px}
 @media(max-width:920px){.staff-roster-table{min-width:1740px}}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
@@ -463,7 +467,28 @@ function render(){
     const discordCell=document.createElement('td');discordCell.className='discord-id-cell';
     const id=String(person.discordId||'').trim();
     if(/^\d{15,22}$/.test(id)){
-      const idLabel=document.createElement('code');idLabel.textContent=id;idLabel.title='Gekoppelde Discord-ID';discordCell.append(idLabel);
+      const idLabel=document.createElement('code');idLabel.textContent=id;idLabel.title='Gekoppelde Discord-ID';
+      const tools=document.createElement('span');tools.className='discord-copy-tools';
+      const copy=async(value,button,success)=>{
+        try{
+          if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(value);
+          else{
+            const temp=document.createElement('textarea');temp.value=value;
+            temp.style.position='fixed';temp.style.opacity='0';document.body.append(temp);
+            temp.select();const ok=document.execCommand('copy');temp.remove();
+            if(!ok)throw Error('Kopiëren is niet beschikbaar');
+          }
+          button.textContent='Gekopieerd ✓';notice(success);
+        }catch(e){notice('Kopiëren mislukt. Selecteer de Discord-ID en kopieer handmatig.',true)}
+      };
+      const copyId=document.createElement('button');copyId.type='button';copyId.className='discord-copy-btn';
+      copyId.textContent='ID';copyId.title='Kopieer Discord-ID';copyId.setAttribute('aria-label','Kopieer Discord-ID van '+person.name);
+      copyId.onclick=()=>copy(id,copyId,'Discord-ID gekopieerd.');
+      const copyPing=document.createElement('button');copyPing.type='button';copyPing.className='discord-copy-btn';
+      copyPing.textContent='@ Ping';copyPing.title='Kopieer Discord-vermelding voor een ping';
+      copyPing.setAttribute('aria-label','Kopieer Discord-vermelding van '+person.name);
+      copyPing.onclick=()=>copy('<@'+id+'>',copyPing,'Discord-vermelding gekopieerd. Plak deze in Discord.');
+      tools.append(copyId,copyPing);discordCell.append(idLabel,tools);
     }else{
       const missing=document.createElement('span');missing.className='discord-id-missing';
       missing.textContent='Niet gekoppeld';discordCell.append(missing);
