@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {installManagementDemoRoutes,DEMO_SUBJECTS} from '../src/management-demo.js';
 import {reportSections} from '../src/management-utils.js';
+import {policeCallBand} from '../src/police-rank-bands.js';
+import {canonicalPromotionRank} from '../src/promotion-proposal-policy.js';
 
 function fixture(){
   const endpoints=new Map();
@@ -26,8 +28,8 @@ const officer=(uid,departments=['politie'])=>({
 });
 const target=DEMO_SUBJECTS.find(x=>x.dept==='politie');
 
-test('Zes duidelijk fictieve medewerkers met ongeldige, niet-echte Discord-ID',()=>{
-  assert.equal(DEMO_SUBJECTS.length,6);
+test('Twaalf duidelijk fictieve medewerkers met ongeldige, niet-echte Discord-ID',()=>{
+  assert.equal(DEMO_SUBJECTS.length,12);
   for(const p of DEMO_SUBJECTS){
     assert.ok(p.name.startsWith('[DEMO]'));
     assert.ok(p.call.startsWith('TEST-'));
@@ -76,4 +78,14 @@ test('Voorbeeld-weekrapport wordt uitsluitend uit fictieve in-memory registratie
   assert.equal(result.data.report.status,'concept');
   assert.equal(reportSections([{type:'observatie',eventDate:date,testRecord:true}],date,date)
     .find(x=>x.type==='observatie').entries.length,0);
+});
+
+test('Iedere fictieve politiecall 1xx–8xx heeft de juiste geregistreerde graad',()=>{
+  const police=DEMO_SUBJECTS.filter(p=>p.dept==='politie');
+  assert.equal(police.length,9);
+  for(const person of police){
+    const band=policeCallBand(person.call);
+    assert.ok(band?.rank,person.call);
+    assert.equal(canonicalPromotionRank(person.rank),band.rank,person.call);
+  }
 });
