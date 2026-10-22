@@ -39,7 +39,7 @@ const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const statusText={pending:'In behandeling',approved:'Goedgekeurd',rejected:'Afgewezen'};
 function tell(message,error=false){const x=el('feedback');x.textContent=message;x.className=error?'error':'notice'}
 function countDays(a,b){if(!a||!b)return 0;return (Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/86400000+1}
-function updateCount(){const n=countDays(el('start').value,el('end').value);el('dayCount').textContent=n>0?`${n} kalenderdag(en) — ${n<=30?'beoordeling mogelijk door middenkader':'goedkeuring door hoger kader vereist'}`:'Selecteer een geldige begin- en einddatum.'}
+function updateCount(){const n=countDays(el('start').value,el('end').value);el('dayCount').textContent=n>0?`${n} kalenderdag(en) — ${n<7?'geen aanvraag nodig':n<=14?'automatisch goedgekeurd':n<=30?'behandeling door bevoegd kader vereist':'goedkeuring door officierenkader, korpsleiding of Bestuur vereist'}`:'Selecteer een geldige begin- en einddatum.'}
 for(const x of ['start','end'])el(x).addEventListener('change',updateCount);
 async function request(url,options={}){
   if(!firebaseAuth?.currentUser)throw new Error('Meld eerst aan via Google');
@@ -78,13 +78,16 @@ async function refresh(){
 el('requestForm').addEventListener('submit',async e=>{
  e.preventDefault();
  const startDate=el('start').value,endDate=el('end').value;
- if(countDays(startDate,endDate)<=0)return tell('Controleer de datums.',true);
+ const days=countDays(startDate,endDate);
+ if(days<=0)return tell('Controleer de datums.',true);
+ if(days<7){const msg='Verlof korter dan 7 kalenderdagen hoef je niet aan te vragen.';window.alert(msg);return tell(msg,true)}
  const button=el('submitRequest');button.disabled=true;
  try{
-   await request('/api/leave/requests',{method:'POST',
+   const result=await request('/api/leave/requests',{method:'POST',
      body:JSON.stringify({startDate,endDate,note:el('note').value})});
    el('requestForm').reset();updateCount();
-   tell('Verlofaanvraag veilig ingediend.');await refresh();
+   tell(result.status==='approved'?'Verlof automatisch goedgekeurd en geregistreerd.':
+     'Verlofaanvraag ingediend ter goedkeuring.');await refresh();
  }catch(err){tell(err.message,true)}
  finally{button.disabled=!me?.writesEnabled}
 });
