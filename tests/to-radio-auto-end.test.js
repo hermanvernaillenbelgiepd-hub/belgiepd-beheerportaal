@@ -16,13 +16,14 @@ const poll=(tracker,roster,start=base,users=[],extra={})=>{
   return snapshots.map(delay=>observeRadioDepartures(roster,snapshot(start+delay,users,extra),tracker,start+delay));
 };
 
-test('Two minutes and multiple distinct healthy upstream reads precede auto retirement',()=>{
+test('Radio departure takes two separate healthy Sonoran polls at least 15 seconds apart',()=>{
   const roster=board([crew('a','166'),crew('b','465')]);
   const tracker=new Map();
   const results=poll(tracker,roster);
-  assert.ok(results.slice(0,-2).every(ids=>ids.length===0));
-  assert.deepEqual(results[8].sort(),['a','b']);
-  assert.deepEqual(results[9].sort(),['a','b']);
+  assert.deepEqual(results[0],[]);
+  assert.deepEqual(results[1].sort(),['a','b']);
+  assert.deepEqual(results[2].sort(),['a','b']);
+  assert.equal(RADIO_AUTO_END_GRACE_MS,15_000);
 });
 
 test('Any current radio member preserves a paired crew, including zero padded numbers',()=>{
@@ -95,9 +96,8 @@ test('Manual crew observed in radio is signed off after confirmed subsequent dep
   const roster=board([crew('manual','204',{dienst:'REPA',radioSource:null})]),tracker=new Map();
   observeRadioDepartures(roster,snapshot(base,[present('204','REPA')]),tracker,base);
   assert.equal(tracker.get('manual')?.seen,true);
-  for(const elapsed of [15000,30000,45000,60000,75000,90000,105000,120000])
-    assert.deepEqual(observeRadioDepartures(roster,snapshot(base+elapsed),tracker,base+elapsed),[]);
-  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+135000),tracker,base+135000),['manual']);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+15000),tracker,base+15000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000),tracker,base+30000),['manual']);
 });
 
 test('A HARTS unit remains when Sonoran channel metadata is uncertain',()=>{
@@ -113,4 +113,14 @@ test('Named HVPK crew is preserved when radio presence is current or uncertain',
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base,[present('HVPK','HVPK')]),tracker,base),[]);
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000,[],{uncertainUnits:[present('HVPK','HVPK')]}),tracker,base+30000),[]);
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+45000,[]),tracker,base+45000),[]);
+});
+
+test('Herhaalde cache-reads tellen niet en een terugkeer herstart de 15s-waarneming',()=>{
+  const tracker=new Map(),roster=board([crew('a','166')]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base),tracker,base),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base),tracker,base+5000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+15000,[present('166')]),tracker,base+15000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000),tracker,base+30000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000),tracker,base+31000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+45000),tracker,base+45000),['a']);
 });
