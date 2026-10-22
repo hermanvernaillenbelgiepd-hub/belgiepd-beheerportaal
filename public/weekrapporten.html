@@ -154,17 +154,94 @@ const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>
 const labels={observatie:'Observatie',sanctie:'Sanctie',verlof:'Verlof',notitie:'Personeelsnotitie',opleiding:'Gedane opleiding',naamswijziging:'Naamswijziging',promotievoorstel:'Promotievoorstel',personeelsbeweging:'Personeelsbeweging'};
 const extraFields={verlof:['endDateWrap'],opleiding:['courseWrap'],naamswijziging:['nameWrap'],promotievoorstel:['rankWrap'],personeelsbeweging:['movementWrap']};
 const allTypes=['verlof','notitie','opleiding','promotievoorstel','naamswijziging','personeelsbeweging'];
-let firebaseAuth=null,authModule=null,authApp=null,subjects=[],viewData=null,currentTab='cases',reportItems=[],activeReport=null;
+let firebaseAuth=null,authModule=null,authApp=null,subjects=[],viewData=null,currentTab='cases',reportItems=[],activeReport=null,caseEntries=[],caseRequestSerial=0;
 const msg=(message,kind='notice')=>{$('status').textContent=message;$('status').className='status '+kind;};
 const fmt=d=>d?new Date(d).toLocaleString('nl-BE'):'—';
 const roleHigher=r=>['officierenkader','korpsleiding'].includes(r);
 function selectOptions(el,items,placeholder){el.replaceChildren();const o=document.createElement('option');o.value='';o.textContent=placeholder;el.append(o);items.forEach(it=>{const a=document.createElement('option');a.value=it.value;a.textContent=it.label;el.append(a)})}
 async function api(url,method='GET',body){if(!firebaseAuth?.currentUser)throw new Error('Niet aangemeld');const token=await firebaseAuth.currentUser.getIdToken();const resp=await fetch(url,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'});const data=await resp.json().catch(()=>({}));if(!resp.ok)throw new Error(data.error||'HTTP '+resp.status);return data}
 function setTab(tab){currentTab=tab;const reports=tab==='reports';$('casesView').classList.toggle('hidden',reports);$('reportsView').classList.toggle('hidden',!reports);$('tabCases').classList.toggle('active',!reports);$('tabReports').classList.toggle('active',reports);if(reports)loadReports();else loadCases();}
-function filterCases(){const d=$('caseDept').value;const opts=subjects.filter(p=>p.dept===d).sort((a,b)=>a.call.localeCompare(b.call,'nl',{numeric:true})).map(p=>({value:p.discordId,label:`${p.call} – ${p.name}`}));const old=$('casePerson').value;selectOptions($('casePerson'),opts,'Selecteer personeelslid');if(opts.some(o=>o.value===old))$('casePerson').value=old;loadCases()}
-function changeExtra(){const t=$('entryType').value;Object.values(extraFields).flat().forEach(id=>$(id).classList.add('hidden'));(extraFields[t]||[]).forEach(id=>$(id).classList.remove('hidden'))}
+function selectedPerson(){
+  return subjects.find(p=>p.dept===$('caseDept').value&&p.discordId===$('casePerson').value)||null;
+}
+function displaySelectedPerson(){
+  const p=selectedPerson();
+  $('caseSelected').textContent=p?`${p.call||'—'} · ${p.name||'Onbekend'} · ${p.rank||p.dept}`:'Selecteer eerst een personeelslid.';
+}
+function filterCases({keepHistory=false}={}){
+  const dept=$('caseDept').value,previous=$('casePerson').value;
+  const search=$('casePersonSearch').value.trim().toLocaleLowerCase('nl');
+  const all=subjects.filter(p=>p.dept===dept).sort((a,b)=>String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true}));
+  const found=all.filter(p=>!search||[p.call,p.name,p.discordId].some(value=>String(value||'').toLocaleLowerCase('nl').includes(search)));
+  const visible=all.filter(p=>found.includes(p)||p.discordId===previous);
+  selectOptions($('casePerson'),visible.map(p=>({value:p.discordId,label:`${p.call} – ${p.name}`})),'Selecteer personeelslid');
+  if(all.some(p=>p.discordId===previous))$('casePerson').value=previous;
+  $('casePersonSearchHint').textContent=search?`${found.length} van ${all.length} personeelsleden gevonden`:`${all.length} personeelsleden in deze dienst`;
+  displaySelectedPerson();
+  if(!keepHistory)loadCases();
+}
+function populateQuickTypes(choices){
+  const root=$('caseQuickTypes');root.replaceChildren();
+  for(const type of choices){
+    const button=document.createElement('button');button.type='button';
+    button.className='case-type-chip';button.dataset.type=type;
+    button.textContent=labels[type]||type;
+    button.setAttribute('aria-pressed',String($('entryType').value===type));
+    button.onclick=()=>{$('entryType').value=type;changeExtra();$('details').focus()};
+    root.append(button);
+  }
+  changeExtra();
+}
+function changeExtra(){
+  const type=$('entryType').value;
+  Object.values(extraFields).flat().forEach(id=>$(id).classList.add('hidden'));
+  (extraFields[type]||[]).forEach(id=>$(id).classList.remove('hidden'));
+  for(const [field,kind] of [['endDate','verlof'],['courseName','opleiding'],['newName','naamswijziging'],['proposedRank','promotievoorstel'],['movement','personeelsbeweging']])
+    $(field).required=type===kind;
+  for(const button of $('caseQuickTypes').querySelectorAll('button'))
+    button.setAttribute('aria-pressed',String(button.dataset.type===type));
+}
+function populateHistoryTypes(){
+  const select=$('caseHistoryType');
+  selectOptions(select,[...Object.keys(labels)].map(type=>({value:type,label:labels[type]})),'Alle categorieën');
+  select.options[0].value='all';select.value='all';
+}
+function renderCaseHistory(){
+  const category=$('caseHistoryType').value||'all';
+  const q=$('caseHistorySearch').value.trim().toLocaleLowerCase('nl');
+  const selected=caseEntries.filter(e=>(category==='all'||e.type===category)&&
+    (!q||[e.details,e.explanation,e.registeredBy?.name,e.eventDate,e.subjectCallAtCreation,e.type,
+      e.courseName,e.proposedRank,e.newName,e.movement].some(value=>
+        String(value||'').toLocaleLowerCase('nl').includes(q))));
+  const included=caseEntries.filter(e=>e.testRecord!==true).length;
+  $('caseHistorySummary').textContent=caseEntries.length?
+    `${selected.length} getoond van ${caseEntries.length} registraties · ${included} komen in aanmerking voor dynamische weekrapporten.`:
+    'Geen dossierregistraties gevonden voor deze medewerker.';
+  $('caseList').innerHTML=selected.length?selected.map(e=>renderEntry(e,true)).join(''):
+    (caseEntries.length?'Geen registraties voor deze zoekopdracht.':'Nog geen dossierregistraties.');
+}
 function renderEntry(e,allowClassify=false){const by=e.registeredBy?.name||'Onbekende auteur';const special=e.courseName||e.proposedRank||e.newName||e.movement||e.sanctionType||'';const flagged=e.testRecord===true;const control=allowClassify&&viewData?.canClassifyTests?`<div class="buttons"><button class="secondary" type="button" data-classify-entry="${esc(e.id)}" data-flagged="${flagged}">${flagged?'Testmarkering opheffen':'Als testregistratie markeren'}</button></div>`:'';return `<div class="item"><div class="item-title">${esc(labels[e.type]||e.type)} ${flagged?'<span class="pill">TEST – niet in weekrapport</span>':''} ${special?`<span class="pill">${esc(special)}</span>`:''}</div><div class="item-meta">${esc(e.eventDate||'Geen datum')} · Door ${esc(by)} · ${esc(e.subjectCallAtCreation||'')}</div><div class="item-body">${esc(e.details||e.explanation||'Geen omschrijving')}</div>${control}</div>`} 
-async function loadCases(){if(!viewData||!$('casePerson').value||!$('caseDept').value){$('caseList').textContent='Selecteer een personeelslid.';return}const id=$('casePerson').value,dept=$('caseDept').value;$('caseList').textContent='Dossierregistraties laden...';try{const data=await api(`/api/management/cases?dept=${encodeURIComponent(dept)}&discordId=${encodeURIComponent(id)}`);$('caseList').innerHTML=data.entries.length?data.entries.map(e=>renderEntry(e,true)).join(''):'Geen interne dossierregistraties gevonden.';if(data.limited)msg('Dossieroverzicht toont maximaal 150 recente registraties.','notice')}catch(e){$('caseList').textContent=e.message}}
+async function loadCases(){
+  const serial=++caseRequestSerial,id=$('casePerson').value,dept=$('caseDept').value;
+  displaySelectedPerson();caseEntries=[];
+  if(!viewData||!id||!dept){
+    $('caseHistorySummary').textContent='';
+    $('caseList').textContent='Selecteer een personeelslid.';return;
+  }
+  $('caseHistorySummary').textContent='';
+  $('caseList').textContent='Dossierregistraties laden…';
+  try{
+    const data=await api(`/api/management/cases?dept=${encodeURIComponent(dept)}&discordId=${encodeURIComponent(id)}`);
+    if(serial!==caseRequestSerial||$('caseDept').value!==dept||$('casePerson').value!==id)return;
+    caseEntries=Array.isArray(data.entries)?data.entries:[];
+    renderCaseHistory();
+    if(data.limited)msg('Er zijn meer dan 150 registraties; alleen de meest recente worden weergegeven.','notice');
+  }catch(error){
+    if(serial!==caseRequestSerial)return;
+    $('caseList').textContent='Dossier kon niet laden: '+error.message;
+    $('caseHistorySummary').textContent='';
+  }
+}
 function renderReports(){const root=$('reportList');root.innerHTML=reportItems.length?reportItems.map(r=>`<div class="item"><div class="item-title">${esc(r.title)} <span class="pill">${esc(r.status||'concept')}</span></div><div class="item-meta">${esc(r.periodStart)} t/m ${esc(r.periodEnd)} · ${esc(r.createdBy?.name||'')}</div><div class="buttons"><button class="secondary" type="button" data-open-report="${esc(r.id)}">Inhoud bekijken</button></div></div>`).join(''):'Nog geen weekrapporten voor deze hulpdienst.'}
 async function loadReports(){resetReportExport();$('reportContents').textContent='Selecteer links een weekrapport.';if(!viewData||!$('reportDept').value)return;const dept=$('reportDept').value;$('reportList').textContent='Weekrapporten laden...';try{const data=await api('/api/management/reports?dept='+encodeURIComponent(dept));reportItems=data.reports;renderReports();if(data.limited)msg('Maximaal 100 recente weekrapporten worden getoond.','notice')}catch(e){$('reportList').textContent=e.message}}
 function reportText(e){
