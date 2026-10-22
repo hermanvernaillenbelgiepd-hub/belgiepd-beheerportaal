@@ -29,7 +29,8 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
          .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call})):[];
        const sanctionDepartments=['politie','brandweer','ambulance','depannage'].filter(d=>
-         (req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&maySubmit(req.bpd,'sanctie',d));
+         (req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&
+         maySubmit(req.bpd,'sanctie',d)&&permittedSanctionTypes(roleForDepartment(req.bpd,d),10).length>0);
        const sanctionRoles=Object.fromEntries(sanctionDepartments.map(d=>[d,roleForDepartment(req.bpd,d)]));
        const sanctionOptionsByDepartment=Object.fromEntries(sanctionDepartments.map(d=>
          [d,permittedSanctionTypes(sanctionRoles[d],10)]));
