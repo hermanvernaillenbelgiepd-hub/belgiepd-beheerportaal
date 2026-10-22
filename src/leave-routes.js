@@ -174,7 +174,10 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
   });
   app.post('/api/leave/requests',requireUser,requireWrites,async(req,res)=>{
     try {
-      const {records}=await context(req),details=validateLeaveRequest(req.body);
+      const {records}=await context(req);
+      let details;
+      try{details=validateLeaveRequest(req.body)}
+      catch(e){throw rejection(e.message,400)}
       const id=req.bpd.discordId;
       const subjectName=records.find(p=>req.bpd.departments.includes(p.dept))?.name||'Onbekend personeelslid';
       const ref=db().collection(coll).doc(`${id}_${details.startDate}_${details.endDate}`);
