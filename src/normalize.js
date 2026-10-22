@@ -27,7 +27,7 @@ const normStatus = value => s(value) || 'Onbekend';
 // Roepnummers 100-199 zijn tijdelijk; 200-299 zijn vaste agenten.
 // 008 is een aparte beheersroepnaam en wordt nooit automatisch Bestuur.
 function policeCallNumber(raw){
-  const matched=s(raw).match(/^(?:[a-z]+[- ]?)?(\\d{3})$/i);
+  const matched=s(raw).match(/^(?:[a-z]+[- ]?)?(\d{3})$/i);
   return matched?Number(matched[1]):null;
 }
 export function policeKader(rank,call='') {
@@ -38,9 +38,9 @@ export function policeKader(rank,call='') {
   if (/aspirant\s+commissaris|\bacp\b/i.test(r)) return 'Officierenkader';
   if (/commissaris|\bcp\b/i.test(r)) return 'Korpsleiding';
   if (/hoofdinspecteur|\(ahinp\)|\(hinp\)|\(1hinp\)/i.test(r)) return 'Middenkader';
-  if(/inspecteur|\\(ainp\\)|\\(1inp\\)|\\(inp\\)/i.test(r))return 'Basiskader';
+  if(/inspecteur|\(ainp\)|\(1inp\)|\(inp\)/i.test(r))return 'Basiskader';
   if(n!==null && n>=300 && n<=999)return 'Basiskader';
-  if(/agent|\\(ap\\)|\\(aap\\)|\\(1ap\\)/i.test(r))return 'Agentenkader';
+  if(/agent|\(ap\)|\(aap\)|\(1ap\)/i.test(r))return 'Agentenkader';
   return 'Kader'; // Geen aanname bij een onbekende rang.
 }
 export function displaySeries(value, rank = '', dept = 'politie', call = '') {
