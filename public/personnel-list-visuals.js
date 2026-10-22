@@ -135,7 +135,7 @@
     if(['HINP','1HINP','AHINP'].includes(code))return 'Middenkader';
     if(['INP','1INP','AINP'].includes(code))return 'Basiskader';
     if(number!==null && number>=300 && number<=999)return 'Basiskader';
-    if(['AP','1AP','AAP'].includes(code))return 'Agentenkader';
+    if(['AP','1AP','AAP'].includes(code))return null;
     return null;
   }
   function seriesWithCadre(person,series){
