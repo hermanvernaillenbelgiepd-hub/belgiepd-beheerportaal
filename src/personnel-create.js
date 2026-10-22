@@ -1,4 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
+import {POLICE_PROMOTION_RANKS} from './police-rank-bands.js';
 import {validPersonnelKey,EDITABLE_STATUSES} from './personnel-editor-policy.js';
 // New profiles never grant Discord roles or module permissions.
 // The pilot is limited to an isolated Firebase test project with fixtures.
@@ -6,7 +7,7 @@ export const CREATED_PERSONNEL_COLLECTION='bpd_personnel_created';
 // Incomplete staff identity stored independently from active personnel records.
 export const PENDING_PERSONNEL_COLLECTION='bpd_personnel_pending_links';
 export const TEST_RANKS=Object.freeze({
-  politie:['Agent','Aspirant Inspecteur','Inspecteur','Hoofdinspecteur'],
+  politie:[...POLICE_PROMOTION_RANKS],
   brandweer:['Brandweerman','Korporaal'],
   ambulance:['Ambulancier'],
   depannage:['Depanneur']
