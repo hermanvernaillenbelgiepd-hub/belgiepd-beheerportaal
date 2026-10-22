@@ -66,3 +66,41 @@ test('Concurrent callsign claims use the same deterministic document in one serv
  assert.notEqual(personnelCallClaimId('politie','931'),personnelCallClaimId('politie','930'));
  assert.match(personnelCallClaimId('politie','930'),/^[a-f0-9]{64}$/);
 });
+
+test('Middenkader status updates are restricted to lower police ranks',async()=>{
+ const {canChangePersonnelStatus}=await import('../src/personnel-editor-policy.js');
+ const mid={role:'middenkader',discordId:'111111111111111111',
+   departments:['politie'],departmentRoles:{politie:'middenkader'},
+   dossierNativeDepartments:['politie']};
+ const junior={...staff,rank:'Inspecteur (INP)',call:'402'};
+ assert.equal(canViewPersonnel(mid,'politie'),true);
+ assert.equal(canEditPersonnel(mid,junior),false);
+ assert.equal(canChangePersonnelStatus(mid,junior),true);
+ for(const rank of ['Hoofdinspecteur (HINP)','Commissaris (CP)','Onbekend'])
+  assert.equal(canChangePersonnelStatus(mid,{...junior,rank}),false);
+ assert.equal(canChangePersonnelStatus(mid,{...junior,dept:'brandweer'}),false);
+ assert.equal(canChangePersonnelStatus(mid,{...junior,personId:mid.discordId}),false);
+ assert.equal(canChangePersonnelStatus({...mid,dossierNativeDepartments:[]},junior),false);
+ assert.equal(canChangePersonnelStatus({...mid,role:'basiskader'},junior),false);
+});
+test('Verified Board manages service-wide personnel records but never its own',async()=>{
+ const board={uid:'discord:111111111111111111',role:'basiskader',
+  discordId:'111111111111111111',departments:['politie'],
+  departmentRoles:{politie:'basiskader'},dossierNativeDepartments:['politie'],
+  boardPersonnelAdmin:true};
+ for(const dept of ['politie','brandweer','ambulance','depannage']){
+  assert.equal(canViewPersonnel(board,dept),true);
+  assert.equal(canEditPersonnel(board,{...staff,dept}),true);
+ }
+ assert.equal(canEditPersonnel(board,{...staff,personId:board.discordId}),false);
+ assert.equal(canViewPersonnel({...board,boardPersonnelAdmin:false},'brandweer'),false);
+ const fs=await import('node:fs');
+ const server=fs.readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ const route=fs.readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ const ui=fs.readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ assert.ok(server.includes("req.bpd.uid==='discord:'+id"));
+ assert.ok(server.includes('verifyBoardDiscordRole('));
+ assert.ok(server.includes('activeBoardAppointment('));
+ assert.ok(route.includes('if(!identityAllowed&&(proposed.name!==subject.name||proposed.call!==subject.call))'));
+ assert.ok(ui.includes("'pName').disabled=!canChangeIdentity"));
+});

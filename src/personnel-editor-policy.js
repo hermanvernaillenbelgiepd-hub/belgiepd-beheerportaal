@@ -17,15 +17,19 @@ export function validPersonnelKey(dept,id){
   return SERVICES.has(dept)&&ID.test(id);
 }
 export function canViewPersonnel(actor,dept){
-  if(!SERVICES.has(dept)||!actor?.departments?.includes(dept))return false;
+  if(!SERVICES.has(dept))return false;
+  if(actor?.boardPersonnelAdmin===true)return true;
+  if(!actor?.departments?.includes(dept))return false;
   const scoped=roleForDepartment(actor,dept);
   return ['middenkader','officierenkader','korpsleiding'].includes(scoped)||
     (actor.role==='beheerder'&&scoped==='beheerder');
 }
 export function canEditPersonnel(actor,person){
   if(!person||!validPersonnelKey(person.dept,person.personId)||!canViewPersonnel(actor,person.dept)||
-     (Array.isArray(actor?.dossierNativeDepartments)&&!actor.dossierNativeDepartments.includes(person.dept))||
      actor.discordId===person.personId)return false;
+  if(actor.boardPersonnelAdmin===true)return true;
+  if(Array.isArray(actor?.dossierNativeDepartments)&&
+     !actor.dossierNativeDepartments.includes(person.dept))return false;
   const scoped=roleForDepartment(actor,person.dept);
   if(person.dept==='brandweer'&&actor.fireZoneChief===true)return true;
   if(actor.portalTechnicalMode===true||actor.role==='beheerder'&&scoped==='beheerder')return true;
@@ -38,6 +42,17 @@ export function canEditPersonnel(actor,person){
     if(target==='Officierenkader'&&scoped!=='korpsleiding')return false;
   }
   return true;
+}
+// Status-only delegation for Middenkader. The rank itself must be a known
+// lower rank; a callsign cannot masquerade as proof of rank.
+export function canChangePersonnelStatus(actor,person){
+  if(!person||!validPersonnelKey(person.dept,person.personId)||
+     actor?.discordId===person.personId||!canViewPersonnel(actor,person.dept)||
+     actor?.role!=='middenkader'||roleForDepartment(actor,person.dept)!=='middenkader'||
+     !Array.isArray(actor.dossierNativeDepartments)||
+     !actor.dossierNativeDepartments.includes(person.dept)||
+     person.dept!=='politie')return false;
+  return ['Agentenkader','Basiskader'].includes(policeKader(person.rank));
 }
 function checkedText(value,min,max,name){
   const text=TRIM(value);

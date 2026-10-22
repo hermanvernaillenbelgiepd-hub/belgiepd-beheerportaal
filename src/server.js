@@ -32,7 +32,9 @@ import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialty
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
 import {installDossierGrantRoutes} from './dossier-grant-routes.js';
-import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS} from './dossier-grants.js';
+import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,
+  verifyBoardDiscordRole} from './dossier-grants.js';
+import {activeBoardAppointment} from './board-appointment-policy.js';
 import {deriveServiceDossierDepartments,verifiedFireZoneChief} from './service-dossier-access.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
@@ -312,6 +314,10 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
       null,process.env.DISCORD_GUILD_ID,Date.now(),false);
     const scope=applyDossierGrants(req.bpd,original,
       grants.filter(d=>d.exists).map(d=>d.data()),tester?.exists?tester.data():null);
+    req.bpd.boardPersonnelAdmin=Boolean(valid&&req.bpd.uid==='discord:'+id&&(
+      verifyBoardDiscordRole(member?.exists?member.data():null,process.env.DISCORD_GUILD_ID)||
+      activeBoardAppointment(appointment?.exists?appointment.data():null)
+    ));
     req.bpd.dossierNativeDepartments=native;
     req.bpd.dossierAllowedDepartments=scope.departments;
     req.bpd.dossierManageDepartments=scope.manageDepartments;

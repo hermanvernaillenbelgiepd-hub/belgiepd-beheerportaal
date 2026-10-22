@@ -819,11 +819,17 @@ async function showPerson(p){
   $('promoteFrom').value=p.rank;
   $('promoteTo').value=canPromote?p.nextPromotionRank:'';
   $('promoteReason').value='';
-  const editable=p.canEdit&&writesEnabled;
-  $('editForm').querySelectorAll('input,textarea,select').forEach(el=>el.disabled=!editable||el.id==='pRank');
-  $('save').disabled=!editable;
+  const canChangeStatus=p.canEditStatus===true&&writesEnabled;
+  const canChangeIdentity=p.canEditIdentity===true&&writesEnabled;
+  $('pName').disabled=!canChangeIdentity;
+  $('pCall').disabled=!canChangeIdentity;
+  $('pStatus').disabled=!canChangeStatus;
+  $('pRank').disabled=true;
+  $('reason').disabled=!canChangeStatus;
+  $('save').disabled=!canChangeStatus;
   $('policyHint').textContent=!p.canEdit?'Je hebt geen wijzigingsbevoegdheid voor deze fiche.':
     !writesEnabled?'Opslaan staat momenteel uit (veilige voorbereidingsmodus).':
+    !p.canEditIdentity?'Middenkader kan enkel de personeelsstatus van lager politiekader wijzigen. Naam, roepnummer en rang blijven beschermd.':
     'Wijzigingen worden met revisiecontrole en een auditregistratie opgeslagen.';
   await loadStaffDossier(p);
   $('history').textContent='Geschiedenis ophalen…';
