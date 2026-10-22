@@ -57,7 +57,7 @@ test('Technical profile supports privileged operational routes without raising n
   const read=name=>readFileSync(new URL('../src/'+name,import.meta.url),'utf8');
   assert.ok(read('callsign-routes.js').includes('req.bpd.portalTechnicalMode===true||canDecide(req.bpd.role)'));
   assert.ok(read('management-routes.js').includes('req.bpd.portalTechnicalMode!==true&&!CADRE_ROLES.includes(req.bpd.role)'));
-  assert.ok(read('registration-routes.js').includes("req.bpd.portalTechnicalMode===true?'korpsleiding':req.bpd.role"));
+  assert.ok(read('registration-routes.js').includes("req.bpd.portalTechnicalMode===true||dept==='brandweer'&&req.bpd.fireZoneChief===true?'korpsleiding':req.bpd.role"));
   assert.ok(read('registrations.js').includes('user.portalTechnicalMode===true||canEditSanction(user.role)'));
   assert.ok(read('user-routes.js').includes("mode:'politie',at:FieldValue.serverTimestamp()"));
 });
