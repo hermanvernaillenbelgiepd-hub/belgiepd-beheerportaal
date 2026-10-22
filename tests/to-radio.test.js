@@ -311,7 +311,7 @@ test('Unexpected upstream fields and accidental credential echoes are excluded o
   assert.equal(Object.hasOwn(result.users[0],'internalData'),false);
 });
 
-test('Concurrent radio reads coalesce into one upstream request and cache for fifteen seconds',async()=>{
+test('Concurrent radio reads coalesce into one upstream request and cache for five seconds',async()=>{
   let time=startTime,calls=0,release;
   const gate=new Promise(resolve=>{release=resolve;});
   const service=createSonoranRadioService({env:configuredEnv,now:()=>time,fetchImpl:async()=>{calls++;await gate;return reply([validUser]);}});
@@ -321,7 +321,7 @@ test('Concurrent radio reads coalesce into one upstream request and cache for fi
   const [a,b]=await Promise.all([first,second]);
   assert.deepEqual(a,b);
   assert.equal(a.users.length,1);
-  time+=14999;
+  time+=4999;
   assert.deepEqual(await service.read(),a);
   assert.equal(calls,1);
   time+=2;
@@ -338,7 +338,7 @@ test('A failed refresh preserves the last good snapshot as stale and recovers to
     return reply([]);
   }});
   const first=await service.read();
-  time+=15001;
+  time+=5001;
   const stale=await service.read();
   assert.equal(stale.connected,false);
   assert.equal(stale.stale,true);
@@ -347,7 +347,7 @@ test('A failed refresh preserves the last good snapshot as stale and recovers to
   assertPrivate(stale);
   time+=1000;
   await service.read();assert.equal(calls,2,'Failed refreshes must also be rate limited');
-  time+=15001;
+  time+=5001;
   const recovered=await service.read();
   assert.equal(calls,3);
   assert.equal(recovered.connected,true);
