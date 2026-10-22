@@ -154,7 +154,7 @@ export function installDiscordOAuth(app){
       if(decoded.firebase?.sign_in_provider!=='custom'||decoded.bpdDiscord!==true||!/^discord:\d{15,22}$/.test(decoded.uid))return res.status(403).json({error:'Discord-aanmelding vereist'});
       const data=(await getFirestore().collection('bpd_discord_auth').doc(decoded.uid.slice(8)).get()).data();
       if(!data||data.guildId!==process.env.DISCORD_GUILD_ID)return res.status(403).json({error:'Discord-lidmaatschap ontbreekt'});
-      res.json({discordId:decoded.uid.slice(8),name:data.username||'',joinedAt:data.joinedAt||null,roleIds:data.roleIds||[],lastVerifiedAt:data.verifiedAt,accessNote:'Testmodus: Discord-rollen geven nog geen personeels- of dossierrechten. Google-aanmelding blijft beschikbaar.'});
+      res.json({discordId:decoded.uid.slice(8),name:data.username||'',joinedAt:data.joinedAt||null,roleIds:data.roleIds||[],lastVerifiedAt:data.verifiedAt,accessNote:'Discord-rollen worden onafhankelijk geverifieerd. Alleen de expliciet ingestelde Politie-Middenkaderrol kan automatisch een beperkte portaalgoedkeuring krijgen.'});
     }catch{return res.status(401).json({error:'Verificatie mislukt'});}
   });
 }

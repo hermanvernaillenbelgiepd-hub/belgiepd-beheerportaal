@@ -78,10 +78,10 @@ header{padding-inline:clamp(15px,2vw,34px)}
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
 <section id="accessHelp" class="card" hidden>
-<h2>Personeelskoppeling of TEST-toegang ontbreekt</h2>
-<p>TEST heeft een eigen Firebase-project. Goedkeuringen in MAIN worden niet automatisch overgenomen.
-Meld je met je eigen Discord-account aan en controleer de toegangsstatus van deze omgeving.
-Een bevoegd beheerder kan de aanvraag daarna in deze omgeving beoordelen.</p>
+<h2>Personeelskoppeling of portaaltoegang ontbreekt</h2>
+<p>De toegangsrechten worden per omgeving gecontroleerd. Als je de recent geverifieerde Discord-rollen
+Politie en Middenkader hebt, kan het portaal je in een ingeschakelde omgeving automatisch toegang geven.
+Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Discord-rollen.</p>
 <p><a href="/gebruikersbeheer.html">Mijn toegang controleren of aanvragen</a> ·
 <a href="/discord-status.html">Discord-identiteit opnieuw verifiëren</a></p>
 <div id="accessDetail" class="subtle"></div>
@@ -440,8 +440,10 @@ async function checkAccessStatus(){
       pending:'Je toegangsaanvraag wacht op goedkeuring in deze omgeving.',
       approved:'Je toegang is goedgekeurd. Controleer je dienst- en kaderrechten.',
       legacy:'Bestaande toegangsinstelling gevonden. Controleer het gekoppelde account.',
-      blocked:'Dit account werd door een bevoegde beheerder geblokkeerd.'};
-    root.textContent=labels[data.status]||'Toegangsstatus: '+String(data.status||'onbekend');
+      blocked:'Dit account werd door een bevoegde beheerder geblokkeerd.',
+      reverify:'Je automatische Middenkader-toegang vereist opnieuw geverifieerde Discord-rollen.'};
+    root.textContent=(labels[data.status]||'Toegangsstatus: '+String(data.status||'onbekend'))+
+      (data.automatic?' · Gekoppeld aan je geverifieerde Middenkaderrol.':'');
   }catch(e){root.textContent='Statuscontrole: '+e.message}
 }
 async function load(){

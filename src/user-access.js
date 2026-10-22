@@ -1,6 +1,8 @@
 import {roleForDepartment} from './leave-policy.js';
 // Bevoegdheden zijn expliciete, door het portaal goedgekeurde gegevens.
-// Discord-rollen zijn uitsluitend verificatie- en selectiesignalen.
+// Alleen expliciet ingeschakelde, recent geverifieerde Politie-Middenkader
+// kan automatisch beperkte dienstgebonden portaaltoegang krijgen.
+// Andere Discord-rollen blijven verificatie- en selectiesignalen.
 export const USER_COLLECTION='bpd_portal_users';
 export const MANAGED_ROLES=Object.freeze(['basiskader','middenkader','officierenkader','korpsleiding']);
 export const USER_DEPTS=Object.freeze(['politie','brandweer','ambulance','depannage']);

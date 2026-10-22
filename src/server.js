@@ -8,6 +8,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { discordConfig } from './discord-utils.js';
 import { discordPortalAccess } from './discord-portal-access.js';
+import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
 import { buildData } from './normalize.js';
 import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.js';
 import { ALLOWED_ROLES } from './registrations.js';
@@ -97,6 +98,8 @@ async function requireUser(req,res,next){
       if(entry && /^\d{15,22}$/.test(discordId)){
         const managed=await getFirestore().collection(USER_COLLECTION).doc(discordId).get();
         if(managed.exists){
+          if(managed.get('approvalSource')===AUTO_CADRE_SOURCE)
+            return res.status(403).json({error:'Automatisch goedgekeurde kaderrechten vereisen je eigen Discord-login'});
           entry=approvedManagedEntry(managed.data(),discordId);
           if(!entry)return res.status(403).json({error:'Deze portaaltoegang is geblokkeerd of niet goedgekeurd'});
         }
@@ -109,10 +112,19 @@ async function requireUser(req,res,next){
       discordMember=member;
       if(!verifiedDiscordIdentity(verified,member,process.env.DISCORD_GUILD_ID))
         return res.status(403).json({error:'Discord-verificatie verlopen. Meld je opnieuw aan met Discord.'});
-      const managed=await getFirestore().collection(USER_COLLECTION).doc(id).get();
+      const store=getFirestore(),ref=store.collection(USER_COLLECTION).doc(id);
+      let managed=await ref.get();
+      if(!managed.exists||managed.get('status')==='pending'){
+        const provisioned=await ensureVerifiedMiddleAccess(store,verified,member,
+          process.env.DISCORD_GUILD_ID,process.env);
+        if(provisioned)managed=await ref.get();
+      }
       if(managed.exists){
         entry=approvedManagedEntry(managed.data(),id);
         if(!entry)return res.status(403).json({error:'Je portaaltoegang is nog niet goedgekeurd of werd geblokkeerd. Open Gebruikersbeheer.'});
+        if(!stillEligibleAutoCadre(verified,member,process.env.DISCORD_GUILD_ID,
+          process.env,managed.data()))
+          return res.status(403).json({error:'Je automatische Middenkader-toegang vereist een nieuwe Discord-verificatie. Vernieuw je rollen in Mijn Discord.'});
         discordId=id;
         email=Object.entries(accessList()).find(([,value])=>value?.discordId===id)?.[0]||'';
       }else{
