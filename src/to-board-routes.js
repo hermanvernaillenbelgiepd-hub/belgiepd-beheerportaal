@@ -66,7 +66,7 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
           (user.importable===true||user.duplicateCallsign===true||user.paired===true)))return false;
         if(!crew.paired&&crew.members.length!==1)return false;
         return (['HARTS','HVPK'].includes(crew.category)&&crew.number===crew.category)||
-          (/^\\d{1,5}$/.test(String(crew.number))&&Number(crew.number)>0);
+          (/^\d{1,5}$/.test(String(crew.number))&&Number(crew.number)>0);
       });
       if(!candidates.length)return [];
       const database=getDatabase(),reference=database.collection(TO_BOARD_COLLECTION).doc('politie');
@@ -78,23 +78,23 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
         const active=Object.values(board.ploegen||{}).filter(team=>team&&!team.endedAt);
         const used=new Set(active.flatMap(team=>
           [team.roepnaam,...(team.leden||[]).map(m=>m.roep)].map(n=>
-            JSON.stringify([team.dienst,/^\\d{1,5}$/.test(String(n))?String(Number(n)):String(n)]))));
+            JSON.stringify([team.dienst,/^\d{1,5}$/.test(String(n))?String(Number(n)):String(n)]))));
         const imported=[];
         for(const crew of candidates){
           if(active.length+imported.length>=TO_BOARD_LIMITS.activeTeams||
              Object.keys(board.ploegen||{}).length+imported.length>=TO_BOARD_LIMITS.teams||
              imported.length>=10)break;
           const own=[...new Set(crew.members.map(m=>m.number)
-            .filter(n=>/^\\d{1,5}$/.test(String(n))&&Number(n)>0||
+            .filter(n=>/^\d{1,5}$/.test(String(n))&&Number(n)>0||
               (['HARTS','HVPK'].includes(crew.category)&&n===crew.category))
-            .map(n=>/^\\d{1,5}$/.test(String(n))?String(Number(n)):String(n)))];
+            .map(n=>/^\d{1,5}$/.test(String(n))?String(Number(n)):String(n)))];
           if(!own.length||own.some(n=>used.has(JSON.stringify([crew.category,n]))))continue;
           const numbers=crew.paired&&own.length===2?own:[String(crew.number)];
           if(numbers.some(n=>!own.includes(n)))continue;
           const leden=numbers.map((roep,i)=>{
             const person=crew.members.find(m=>String(m.number)===roep||
-              (/^\\d+$/.test(String(m.number))&&Number(m.number)===Number(roep)));
-            const label=String(person?.displayName||person?.name||'').replace(/[<>\\x00-\\x1f\\x7f]/g,' ').trim();
+              (/^\d+$/.test(String(m.number))&&Number(m.number)===Number(roep)));
+            const label=String(person?.displayName||person?.name||'').replace(/[<>\x00-\x1f\x7f]/g,' ').trim();
             const naam=(label.length>=2?label:'Radioploeg '+crew.category+'-'+roep).slice(0,80);
             return {naam,roep};
           });
