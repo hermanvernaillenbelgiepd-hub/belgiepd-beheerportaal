@@ -123,7 +123,12 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     if(!DEPTS.includes(dept)||!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen toegang tot deze dienst'});
     try{
       const rows=await db().collection('bpd_notices').doc(dept).collection('events').orderBy('createdAt','desc').limit(40).get();
-      res.json({events:rows.docs.map(d=>({id:d.id,type:d.get('type'),createdAt:isoTimestamp(d.get('createdAt')),caseId:d.get('caseId')}))});
+      const higher=req.bpd.dossierNativeDepartments?.includes(dept)&&
+        ['officierenkader','korpsleiding'].includes(req.bpd.role)&&
+        ['officierenkader','korpsleiding'].includes(req.bpd.departmentRoles?.[dept]||req.bpd.role);
+      const hidden=new Set(['specialization_changed','personnel_name_changed']);
+      res.json({events:rows.docs.filter(d=>higher||!hidden.has(d.get('type')))
+        .map(d=>({id:d.id,type:d.get('type'),createdAt:isoTimestamp(d.get('createdAt')),caseId:d.get('caseId')}))});
     }catch(err){return handleError(res,err)}
   });
 }
