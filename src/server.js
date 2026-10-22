@@ -337,6 +337,15 @@ installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache
 installCallsignBotRoutes(app);
 installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
+// Dashboard visibility uses server-confirmed operational or board authorisation.
+app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
+  const actor=req.bpd;
+  const higher=['officierenkader','korpsleiding'];
+  const allowed=actor.role==='beheerder'||actor.portalTechnicalMode===true||
+    actor.boardPersonnelAdmin===true||higher.includes(actor.role)||
+    Object.values(actor.departmentRoles||{}).some(role=>higher.includes(role));
+  res.json({visible:allowed});
+});
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
 installDiscordPersonalProfileRoutes(app,{getSnapshot});
