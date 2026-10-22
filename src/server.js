@@ -31,7 +31,7 @@ import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
 import {installDossierGrantRoutes} from './dossier-grant-routes.js';
 import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS} from './dossier-grants.js';
-import {deriveServiceDossierDepartments} from './service-dossier-access.js';
+import {deriveServiceDossierDepartments,verifiedFireZoneChief} from './service-dossier-access.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
@@ -288,6 +288,9 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
         ?db.collection('bpd_dossier_testers').doc(id).get():Promise.resolve(null)
     ]);
     const roster=snapshot.stale?[]:snapshot.data;
+    // Server-only, freshly checked ZONE leadership, scoped exclusively to fire.
+    req.bpd.fireZoneChief=verifiedFireZoneChief(req.bpd,roster,
+      member?.exists?member.data():null,process.env.DISCORD_GUILD_ID);
     const original=deriveServiceDossierDepartments(req.bpd,
       roster,member?.exists?member.data():null,
       appointment?.exists?appointment.data():null,process.env.DISCORD_GUILD_ID);

@@ -25,7 +25,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
   const collection=()=>getFirestore().collection(PERSONNEL_EDITS_COLLECTION);
   // Production defaults to read-only; authorized users cannot bypass the flag.
   const writes=()=>process.env.BPD_ENABLE_PERSONNEL_WRITES==='true';
-  app.get('/api/personnel/overview',requireUser,async(req,res)=>{
+  app.get('/api/personnel/overview',requireDossierUser,async(req,res)=>{
     try {
       const allowed=req.bpd.departments.filter(d=>canViewPersonnel(req.bpd,d));
       if(!allowed.length)return error(res,403,'Je hebt geen kaderrechten voor personeelsbeheer');
@@ -66,7 +66,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
   });
   // Authorised intake: separate production enablement; source Sheets stay read-only.
   // Creating a personnel row never creates Firebase users, Discord roles or portal access.
-  app.post('/api/personnel/new',requireUser,async(req,res)=>{
+  app.post('/api/personnel/new',requireDossierUser,async(req,res)=>{
     if(!personnelCreationEnabled(process.env))
       return error(res,503,'Nieuwe personeelsleden toevoegen is hier niet ingeschakeld');
     let proposed;
@@ -334,7 +334,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         rolesGranted:false,sourceSheetsChanged:false});
     }catch(e){return safeResponse(res,e)}
   });
-  app.post('/api/personnel/:dept/:discordId',requireUser,async(req,res)=>{
+  app.post('/api/personnel/:dept/:discordId',requireDossierUser,async(req,res)=>{
     if(!validPersonnelKey(req.params.dept,req.params.discordId))return error(res,400,'Ongeldige hulpdienst of Discord ID');
     if(!writes())return error(res,503,'Personeelswijzigingen staan nog uit. Test de module eerst veilig.');
     let proposed;

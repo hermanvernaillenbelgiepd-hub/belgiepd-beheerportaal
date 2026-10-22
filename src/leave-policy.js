@@ -47,6 +47,10 @@ export function sharesDepartment(actor,subjectDepartments){
 // Gebruik de rol die binnen de gevraagde hulpdienst geldig is.
 // Een algemene kaderrol mag niet automatisch op andere diensten doorwerken.
 export function roleForDepartment(actor,department){
+  // A verified ZONE chef is equivalent to korpsleiding ONLY inside Brandweer.
+  // This never alters the global or official operational rank.
+  if(department==='brandweer'&&actor?.fireZoneChief===true&&
+     actor?.departments?.includes('brandweer'))return 'korpsleiding';
   if(!Array.isArray(actor?.departments)||!actor.departments.includes(department))return null;
   const map=actor.departmentRoles;
   if(map && typeof map==='object' && !Array.isArray(map) && Object.keys(map).length){

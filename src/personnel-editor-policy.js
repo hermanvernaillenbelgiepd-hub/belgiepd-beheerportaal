@@ -27,6 +27,7 @@ export function canEditPersonnel(actor,person){
      (Array.isArray(actor?.dossierNativeDepartments)&&!actor.dossierNativeDepartments.includes(person.dept))||
      actor.discordId===person.personId)return false;
   const scoped=roleForDepartment(actor,person.dept);
+  if(person.dept==='brandweer'&&actor.fireZoneChief===true)return true;
   if(actor.portalTechnicalMode===true||actor.role==='beheerder'&&scoped==='beheerder')return true;
   if(!['officierenkader','korpsleiding'].includes(scoped) ||
      !['officierenkader','korpsleiding'].includes(actor.role))return false;

@@ -30,10 +30,17 @@ export function representativeFromPersonnel(persons,dept,id) {
 export const canEditSanction = role => ['officierenkader','korpsleiding'].includes(role);
 export const hasDept = (user,dept) => Boolean(user?.departments?.includes(dept));
 export const maySubmit = (user,type,dept) => hasDept(user,dept) && (
-  type === 'observatie' || (type === 'sanctie' && dept === 'politie' && (user.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(user.role)))
+  type === 'observatie' || (type === 'sanctie' && (
+    (dept === 'politie' && (user.portalTechnicalMode===true||
+      ['middenkader','officierenkader','korpsleiding'].includes(user.role))) ||
+    (dept === 'brandweer' && (user.portalTechnicalMode===true||user.fireZoneChief===true))
+  ))
 );
 export const mayRead = (user,dept) => hasDept(user,dept) && isCadre(user.role);
-export const mayAmend = (user,type,dept) => type === 'sanctie' && hasDept(user,dept) && (user.portalTechnicalMode===true||canEditSanction(user.role));
+export const mayAmend = (user,type,dept) => type === 'sanctie' && hasDept(user,dept) &&
+  ((user.portalTechnicalMode===true&&['politie','brandweer'].includes(dept))||
+   (dept==='brandweer'&&user.fireZoneChief===true)||
+   (dept==='politie'&&canEditSanction(user.role)));
 const text=(value,max) => typeof value==='string' ? value.trim().slice(0,max+1) : '';
 const str=(value,max,required=false) => {
   const s=text(value,max); if(s.length>max || (required && !s)) throw new Error('Vereist veld ontbreekt of bevat te veel tekens'); return s;

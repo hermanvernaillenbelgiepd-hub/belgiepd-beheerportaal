@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {deriveServiceDossierDepartments,canReadServiceDossier} from '../src/service-dossier-access.js';
+import {deriveServiceDossierDepartments,canReadServiceDossier,verifiedFireZoneChief} from '../src/service-dossier-access.js';
 
 const guild='1309532438053130326';
 const other='987654321098765432';
@@ -79,4 +79,17 @@ test('Server projection, not caller-supplied nickname or rank, decides dossier a
   assert.equal(canReadServiceDossier({...who,dossierAllowedDepartments:['ambulance']},'politie'),false);
   assert.equal(canReadServiceDossier({...who,dossierAllowedDepartments:['ambulance']},'unknown'),false);
   assert.deepEqual(derive({...who,discordId:'niet-geverifieerd'},[person('ambulance','DIRMED')]),[]);
+});
+
+test('ZONE write authority requires a fresh Discord identity and unique verified fire roster record',()=>{
+  const a=actor('brandweer','basiskader');
+  const z=[person('brandweer','ZONE','ZONE Chef')];
+  assert.equal(verifiedFireZoneChief(a,z,member([]),guild,now),true);
+  assert.equal(verifiedFireZoneChief(a,z,member([]),'999999999999999999',now),false);
+  assert.equal(verifiedFireZoneChief(a,z,{...member([]),verifiedAt:now-8*24*60*60*1000},guild,now),false);
+  assert.equal(verifiedFireZoneChief(a,z,{...member([]),roleIds:['not-id']},guild,now),false);
+  assert.equal(verifiedFireZoneChief({...a,uid:'discord:111111111111111111'},z,member([]),guild,now),false);
+  assert.equal(verifiedFireZoneChief(actor('politie','korpsleiding'),z,member([]),guild,now),false);
+  assert.equal(verifiedFireZoneChief(a,z.concat(z),member([]),guild,now),false);
+  assert.equal(verifiedFireZoneChief(a,[person('brandweer','BW-1')],member([]),guild,now),false);
 });

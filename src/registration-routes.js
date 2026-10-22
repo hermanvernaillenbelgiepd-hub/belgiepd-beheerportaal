@@ -27,7 +27,15 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const actor=actorFromPersonnel(req.bpd,subset);
       const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
          .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call})):[];
-       res.json({role:req.bpd.role,departments:req.bpd.departments,writesEnabled:writesEnabled(),actor,representatives,subjects:subset.map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call}))});
+       const sanctionDepartments=['politie','brandweer'].filter(d=>
+         req.bpd.dossierNativeDepartments?.includes(d)&&maySubmit(req.bpd,'sanctie',d));
+       const heavySanctionDepartments=sanctionDepartments.filter(d=>
+         d==='brandweer'||req.bpd.portalTechnicalMode===true||
+         ['officierenkader','korpsleiding'].includes(req.bpd.role));
+       res.json({role:req.bpd.role,departments:req.bpd.departments,writesEnabled:writesEnabled(),
+         fireZoneChief:req.bpd.fireZoneChief===true,portalTechnicalMode:req.bpd.portalTechnicalMode===true,
+         sanctionDepartments,heavySanctionDepartments,actor,representatives,
+         subjects:subset.map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call}))});
     }catch(err){return handleError(res,err)}
   });
   // Registraties zijn uitsluitend zichtbaar voor kaderleden van de juiste dienst.
@@ -51,7 +59,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const values=validateEntry(raw);
-       if(type==='sanctie' && !canChooseSanction(req.bpd.portalTechnicalMode===true?'korpsleiding':req.bpd.role,values.sanctionType))
+       if(type==='sanctie' && !canChooseSanction(req.bpd.portalTechnicalMode===true||dept==='brandweer'&&req.bpd.fireZoneChief===true?'korpsleiding':req.bpd.role,values.sanctionType))
          return res.status(403).json({error:'Deze sanctiemaatregel is alleen beschikbaar voor officierenkader of korpsleiding'});
        const representedId=trim(raw?.onBehalfOfDiscordId);
        if(representedId && !canRepresent(req.bpd,type,dept)) return res.status(403).json({error:'Registratie namens een ander is alleen toegestaan voor observaties door kaderleden'});
@@ -109,7 +117,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     }catch(err){if(err?.status===404)return res.status(404).json({error:'Sanctie niet gevonden'});return handleError(res,err)}
   });
   app.get('/api/registrations/notifications',requireUser,async(req,res)=>{
-    if(!isCadre(req.bpd.role))return res.status(403).json({error:'Geen toegang tot meldingen'});
+    if(req.bpd.fireZoneChief!==true&&!isCadre(req.bpd.role))return res.status(403).json({error:'Geen toegang tot meldingen'});
     const dept=trim(req.query.dept);
     if(!DEPTS.includes(dept)||!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen toegang tot deze dienst'});
     try{

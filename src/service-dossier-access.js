@@ -19,6 +19,20 @@ const AMBULANCE=/^(?:DIRMED|HARTS|HVPK|HAMB)(?:[- ]?\d{1,4})?$/;
 const ZONE=/^ZONE(?:[- ]?\d{1,3}|[ -]COMMANDANT(?:E)?)?$/;
 const AWV=/^(?:AWV(?:[- ]?\d{1,4})?|AGENTSCHAP WEGEN (?:EN|&) VERKEER)$/;
 const matchesDuty=(person,pattern)=>pattern.test(code(person?.call))||pattern.test(code(person?.rank));
+// Fire brigade administrative privileges require an unambiguous official ZONE
+// record bound to an authenticated Discord identity, never a display name.
+export function verifiedFireZoneChief(actor,roster,member,guildId,now=Date.now()){
+  if(!actor||actor.portalTechnicalMode===true||
+     !DISCORD.test(actor.discordId)||actor.uid!=='discord:'+actor.discordId||
+     !Array.isArray(actor.departments)||!actor.departments.includes('brandweer')||
+     !Array.isArray(roster)||!DISCORD.test(guildId)||
+     member?.guildId!==guildId||!Array.isArray(member.roleIds)||
+     !member.roleIds.every(id=>DISCORD.test(id))||
+     !Number.isSafeInteger(member.verifiedAt)||
+     member.verifiedAt>now||now-member.verifiedAt>7*24*60*60*1000)return false;
+  const owned=roster.filter(p=>p?.dept==='brandweer'&&p.personId===actor.discordId);
+  return owned.length===1&&matchesDuty(owned[0],ZONE);
+}
 
 export function deriveServiceDossierDepartments(actor,personnel,member,boardAppointment,guildId,now=Date.now(),includeBoard=true){
   if(!actor||!DISCORD.test(actor.discordId)||!Array.isArray(actor.departments))return [];

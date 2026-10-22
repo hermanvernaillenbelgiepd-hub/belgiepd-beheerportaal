@@ -68,6 +68,7 @@ export function personnelCreationEnabled(env){
 export function canCreatePersonnel(actor,dept){
   if(!actor?.departments?.includes(dept)||!TEST_RANKS[dept])return false;
   const role=roleForDepartment(actor,dept);
+  if(dept==='brandweer'&&actor.fireZoneChief===true)return true;
   if(actor.role==='beheerder'&&role==='beheerder')return true;
   return ['officierenkader','korpsleiding'].includes(actor.role)&&
     ['officierenkader','korpsleiding'].includes(role);
