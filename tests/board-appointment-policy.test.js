@@ -124,10 +124,11 @@ test('Registration back link and limited portal return to dashboard instead of o
   assert.ok(registrations.includes('id="backToDashboard"'));
   assert.ok(registrations.includes('href="/" id="backToDashboard"'));
   assert.equal(dashboard.includes("window.location.assign('/registraties.html');return;"),false);
-  assert.ok(dashboard.includes("restrictedPortal=true"));
-  assert.ok(dashboard.includes("page='dashboard'"));
-  assert.ok(dashboard.includes("employees=[]"));
-  assert.doesNotThrow(()=>new Script(dashboard.match(/<script>([\s\S]*?)<\/script>/)[1]));
+  assert.ok(dashboard.includes('href="/personeelsbeheer.html"'));
+  assert.ok(dashboard.includes('href="/registraties.html"'));
+  assert.ok(dashboard.includes('De modules controleren je toegang bij het openen'));
+  assert.equal(dashboard.includes('<script>'),false,
+    'The new dashboard is a static navigation page, not an old personnel SPA');
 });
 test('User management Board UI has separate nomination and decision controls',()=>{
   const html=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
@@ -137,9 +138,12 @@ test('User management Board UI has separate nomination and decision controls',()
   assert.ok(html.includes("'/api/board/overview'"));
   assert.ok(html.includes('await boardRefresh()'));
   assert.ok(html.includes("const roles=['basiskader','middenkader','officierenkader','korpsleiding','bestuur']"));
-  assert.ok(html.includes("if(rank.value==='bestuur')"));
+  assert.ok(html.includes("rank.value==='bestuur'&&serviceDepartments.includes(dept.value)"));
   assert.ok(html.includes("'/api/board/status'") || html.includes("'/api/board/status'"));
   assert.throws(()=>validUserGrant({role:'bestuur',departments:['politie'],reason:'Ongeoorloofd als politierang'}));
   const match=html.match(/<script type="module">([\s\S]*?)<\/script>/);
-  assert.ok(match);assert.doesNotThrow(()=>new Script(match[1]));
+  assert.ok(match);
+  // The page uses a real ES module; vm.Script cannot parse static imports.
+  // Strip only the import declaration for this legacy syntax probe.
+  assert.doesNotThrow(()=>new Script(match[1].replace(/^import [^\n]*\n/gm,'')));
 });

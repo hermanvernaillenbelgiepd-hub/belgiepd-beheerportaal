@@ -21,9 +21,11 @@ test('Only real transmit/scan channel assignments qualify; roomId is a server ro
     null,undefined,{}, {state:null}, {state:{}},
     {state:{primaryChId:0,scannedChIds:[]}},
     {state:{primaryChId:null,scanLists:[{channelIds:[19]}]}},
-    {state:{primaryChId:-1,scannedChIds:[0,-2,null,'19']}}
+    {state:{primaryChId:-1,scannedChIds:[0,-2,null]}}
   ])assert.deepEqual(activeSonoranChannels(metadata),[]);
   assert.deepEqual(activeSonoranChannels({state:{primaryChId:0,primaryChIds:[90,91]}}),['90','91']);
+  assert.deepEqual(activeSonoranChannels({state:{primaryChId:-1,scannedChIds:[null,'19']}}),['19'],
+    'Sonoran v2 may encode valid channel IDs as decimal strings');
   // Radio API v2 encodes metadata as a JSON STRING (not a nested object).
   assert.deepEqual(activeSonoranChannels(JSON.stringify({
     sonrad:true,state:{primaryChId:19,scannedChIds:[175,176]}
@@ -284,10 +286,16 @@ test('Radio normalization deduplicates identities and prevents ambiguous numeric
   const ambiguous=result.users.filter(user=>user.category==='SANTO');
   assert.equal(ambiguous.length,2);
   assert.equal(ambiguous.every(user=>user.importable===false),true,'620 and00620 would claim the same TO callsign');
+  assert.equal(ambiguous.every(user=>user.duplicateCallsign===true),true);
   assert.equal(result.users.find(user=>user.category==='BLAINE').importable,true);
   assert.equal(result.users.find(user=>user.category==='UNKNOWN').importable,false);
   for(const user of result.users){
-    assert.deepEqual(Object.keys(user).sort(),['category','channel','displayName','id','importable','labelEditable','name','notAvailable','number','paired']);
+    const keys=Object.keys(user).filter(key=>key!=='duplicateCallsign').sort();
+    assert.deepEqual(keys,['category','channel','displayName','id','importable','labelEditable','name','notAvailable','number','paired']);
+    if(user.duplicateCallsign!==undefined){
+      assert.equal(user.duplicateCallsign,true);
+      assert.equal(user.importable,false,'Ambiguous callsigns must never auto-import');
+    }
     assert.equal(typeof user.id,'string');assert.ok(user.id);
   }
   assertPrivate(result);

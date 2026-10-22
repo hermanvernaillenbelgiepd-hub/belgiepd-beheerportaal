@@ -75,7 +75,10 @@ export function parseSonoranName(value){
   const category=recoveredPrefix||categoryLabel;
   const number=known?head.slice(known.length).replace(/^\s*-\s*/,'').trim():parts[2].trim();
   const importable=category!=='OPLEIDING'&&!recoveredPrefix&&TO_CATEGORIES.includes(category)&&/^\d{1,5}$/.test(number)&&Number(number)>0;
-  return {category,number:number.slice(0,40)||null,displayName,importable};
+  // A non-numeric suffix such as LSRA-PECHHULP describes a specialist team,
+  // not a numbered operational callsign. Never treat it as a crew number.
+  return {category,number:/^\d{1,5}$/.test(number)&&Number(number)>0
+    ?number.slice(0,40):null,displayName,importable};
 }
 function configuration(env){
   const rawKey=env.SONORAN_RADIO_API_KEY,rawCommunity=env.SONORAN_RADIO_COMMUNITY_ID;

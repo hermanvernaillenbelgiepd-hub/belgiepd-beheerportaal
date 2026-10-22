@@ -6,7 +6,9 @@ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
 test('Authenticated scope middleware guards every service-dossier data entry point',()=>{
  const server=read('src/server.js');
- assert.ok(server.includes('req.bpd.dossierAllowedDepartments=deriveServiceDossierDepartments'));
+ assert.ok(server.includes('const original=deriveServiceDossierDepartments('));
+ assert.ok(server.includes('req.bpd.dossierAllowedDepartments=scope.departments'));
+ assert.ok(server.includes('req.bpd.dossierFullDepartments=scope.fullDepartments'));
  assert.ok(server.includes("db.collection('bpd_board_appointments').doc(id).get()"));
  assert.ok(server.includes("db.collection('bpd_discord_auth').doc(id).get()"));
  assert.ok(server.includes('const roster=snapshot.stale?[]:snapshot.data'));

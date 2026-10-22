@@ -84,7 +84,8 @@ test('TO client shows one combined pair, NB status and protects radio-unavailabl
   assert.ok(js.includes("pill('Niet beschikbaar · NB','red')"));
   assert.ok(js.includes("const nbOnRadio=fresh&&radioNBForTeam(team,radioMembers)"));
   assert.ok(js.includes('data-fixed-disabled="true"'));
-  assert.ok(js.includes("nbOnRadio?'NB via radio'"));
+  assert.ok(js.includes("const choiceBadge=nbOnRadio?pill('Niet beschikbaar · NB','red')"));
+  assert.ok(js.includes('!nbOnRadio&&currentStatus'));
   assert.ok(css.includes('.radio-crew-paired'));
   assert.ok(css.includes('.radio-crew-nb'));
 });
