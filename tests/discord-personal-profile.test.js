@@ -44,7 +44,7 @@ test('Read-only own Discord profile fetch derives identity from authenticated to
  assert.ok(ui.includes('id="discordId"'));
  assert.ok(ui.includes('<details class="role-details">'));
  assert.ok(ui.includes('id="botRefresh"'));
- assert.ok(ui.includes("await loadPersonal();}catch(e){"));
+ assert.ok(ui.includes("await Promise.all([loadPersonal(),loadLeave()])"));
  assert.equal(ui.includes('id="discordTab"'),false);
  assert.equal(ui.includes('id="personalTab"'),false);
  assert.ok(ui.includes('id="personalRoles"'));
