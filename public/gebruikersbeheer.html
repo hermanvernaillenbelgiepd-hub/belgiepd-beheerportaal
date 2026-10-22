@@ -96,6 +96,8 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <div id="boardOwn" class="muted">Bestuursstatus controleren…</div>
 <p id="boardDiscordStatus" class="muted" hidden></p>
 <p id="boardHelp" class="muted" hidden></p>
+<div class="controls"><button type="button" id="boardBotRefresh" class="alt">↻ Mijn Discord-rollen via bot vernieuwen</button></div>
+<p class="muted">Werkt uitsluitend voor je eigen Discord-login en ververst de geverifieerde rollen. Wijzigt geen Discord-rollen, bestuursaanstellingen of dossierrechten.</p>
 <section id="boardNominationSection" hidden>
 <h3>Bestuurslid voordragen</h3>
 <form id="boardNominationForm">
@@ -345,6 +347,15 @@ $('toGrantForm').onsubmit=async event=>{
 $('toRefresh').onclick=loadTOGrants;
 const boardLabels={board_registry_read:'Bestuursregister inzien',
   board_nomination_propose:'Bestuursleden voordragen'};
+$('boardBotRefresh').onclick=async()=>{
+  const button=$('boardBotRefresh');button.disabled=true;
+  try{
+    const result=await api('/api/discord/refresh',{method:'POST'});
+    await boardRefresh();
+    notice('Je Discord-rollen zijn via de bot vernieuwd ('+result.roleCount+' rol(len)). Andere portaalrechten worden opnieuw gecontroleerd bij het herladen.');
+  }catch(e){notice('Bot-verversing: '+e.message,true)}
+  finally{button.disabled=false}
+};
 function boardCell(root,value){
   const td=document.createElement('td');td.textContent=String(value||'—');root.append(td);return td;
 }

@@ -3,6 +3,7 @@ import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { discordConfig, isDiscordId, validReturnTo } from './discord-utils.js';
+import {discordBotToken,botRefreshAllowed,botRefreshTooSoon,verifiedBotMember} from './discord-bot-refresh.js';
 
 const B = bytes => Buffer.from(bytes).toString('base64url');
 const b64 = n => B(randomBytes(n));
@@ -90,6 +91,60 @@ export function installDiscordOAuth(app){
     const one=handoffs.get(code);handoffs.delete(code);
     if(!one||Date.now()>one.expires)return res.status(401).json({error:'Discord-aanmelding verlopen. Probeer opnieuw.'});
     res.set('Cache-Control','no-store');res.json({customToken:one.token});
+  });
+  // User-initiated membership sync using server-held Discord bot credentials.
+  // No OAuth refresh tokens are stored, no identities are accepted from the UI.
+  // This remains usable when the old role snapshot has expired.
+  const botRefreshPending=new Set();
+  app.post('/api/discord/refresh',async(req,res)=>{
+    const token=discordBotToken(process.env),guild=process.env.DISCORD_GUILD_ID;
+    if(!token||!isDiscordId(guild))
+      return res.status(503).json({error:'De Discord-bot is nog niet ingesteld op deze Render-service. Meld je opnieuw aan met Discord.'});
+    const bearer=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
+    if(!bearer)return res.status(401).json({error:'Discord-aanmelding vereist'});
+    let id,decoded,snapshot;
+    try{
+      decoded=await appAuth().verifyIdToken(bearer);
+      id=decoded.uid?.startsWith('discord:')?decoded.uid.slice(8):'';
+      if(!isDiscordId(id))return res.status(403).json({error:'Gebruik je eigen Discord-login'});
+      snapshot=await getFirestore().collection('bpd_discord_auth').doc(id).get();
+      if(!botRefreshAllowed(decoded,snapshot.data(),guild))
+        return res.status(403).json({error:'Discord-verificatie ontbreekt. Meld je eerst opnieuw aan met Discord.'});
+    }catch{return res.status(401).json({error:'Discord-aanmelding verlopen of ongeldig'})}
+    if(botRefreshPending.has(id)||botRefreshTooSoon(snapshot.data()))
+      return res.status(429).json({error:'Recent vernieuwd. Probeer na één minuut opnieuw.'});
+    botRefreshPending.add(id);
+    try{
+      const response=await fetch('https://discord.com/api/v10/guilds/'+guild+'/members/'+id,{
+        headers:{Authorization:'Bot '+token,Accept:'application/json'},
+        signal:AbortSignal.timeout(10000),redirect:'error'
+      });
+      if(response.status===404){
+        // An account no longer in the guild must lose its cached fresh roles.
+        await snapshot.ref.set({roleIds:[],verifiedAt:0,
+          updatedAt:FieldValue.serverTimestamp()},{merge:true});
+        return res.status(403).json({error:'Dit Discord-account is niet meer als serverlid gevonden.'});
+      }
+      if(!response.ok)return res.status(503).json({
+        error:'De bot kon het serverlidmaatschap niet controleren. Controleer de botrechten en probeer later opnieuw.'
+      });
+      const data=await response.json();
+      const member=verifiedBotMember(data,id);
+      if(!member)return res.status(503).json({error:'Discord gaf geen controleerbare rolgegevens terug.'});
+      const now=Date.now(),store=getFirestore(),batch=store.batch();
+      batch.set(snapshot.ref,{guildId:guild,roleIds:member.roleIds,
+        joinedAt:member.joinedAt,verifiedAt:now,botRefreshedAt:now,
+        updatedAt:FieldValue.serverTimestamp()},{merge:true});
+      batch.create(store.collection('bpd_discord_refresh_audit').doc(),{
+        discordId:id,actorUid:decoded.uid,method:'manual_bot',
+        at:FieldValue.serverTimestamp()
+      });
+      await batch.commit();
+      return res.json({refreshed:true,roleCount:member.roleIds.length,
+        lastVerifiedAt:now,changesToDiscord:false,permissionsGranted:false});
+    }catch{
+      return res.status(503).json({error:'Synchronisatie met de Discord-bot is tijdelijk niet beschikbaar.'});
+    }finally{botRefreshPending.delete(id)}
   });
   app.get('/api/discord/profile',async(req,res)=>{
     const match=/^Bearer (\S+)$/.exec(req.get('Authorization')||'');
