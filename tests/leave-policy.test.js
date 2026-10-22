@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   calendarDays, validateLeaveRequest, validDiscordId, roleForDepartment,
-  mayApproveLeave, mayManageGrants, activeGrant, validateGrant
+  mayApproveLeave, mayManageGrants, activeGrant, validateGrant, leaveSubmissionStatus, leaveApplicantIsCorps
 } from '../src/leave-policy.js';
 
 const idA = '111111111111111111';
 const idB = '222222222222222222';
 const today = '2026-10-19';
 const request = (endDate='2026-11-18') => ({
-  personDiscordId:idB, subjectDepartments:['politie'],
+  personDiscordId:idB, subjectDepartments:['politie'], subjectDepartmentRoles:{politie:'basiskader'},
   startDate:'2026-10-20', endDate, status:'pending'
 });
 const actor = (role='middenkader') => ({
@@ -23,8 +23,9 @@ test('datums worden strikt gecontroleerd en beide grensdagen tellen mee',()=>{
   assert.throws(()=>calendarDays('2026-02-30','2026-03-01'));
   assert.throws(()=>calendarDays('2026-10-21','2026-10-20'));
   assert.throws(()=>calendarDays('2026-01-01','2028-01-02'));
-  assert.deepEqual(validateLeaveRequest({startDate:'2026-10-20',endDate:'2026-10-20',note:'  Test  '}),
-    {startDate:'2026-10-20',endDate:'2026-10-20',days:1,note:'Test'});
+  assert.throws(()=>validateLeaveRequest({startDate:'2026-10-20',endDate:'2026-10-20',note:'  Test  '}),/7/);
+  assert.deepEqual(validateLeaveRequest({startDate:'2026-10-20',endDate:'2026-10-26',note:'  Test  '}),
+    {startDate:'2026-10-20',endDate:'2026-10-26',days:7,note:'Test'});
 });
 
 test('middenkader mag maximaal dertig dagen behandelen, hoger kader meer',()=>{
@@ -54,7 +55,7 @@ test('tijdelijke machtigingen vereisen geldige duur en niet-ingetrokken status',
   assert.ok(activeGrant(grant,today));
   assert.equal(activeGrant({...grant,revoked:true},today),null);
   assert.equal(activeGrant({...grant,expiresOn:'2026-10-18'},today),null);
-  assert.equal(mayApproveLeave(actor(),request('2026-11-19'),grant,today),true);
+  assert.equal(mayApproveLeave(actor(),request('2026-11-19'),grant,today),false);
   assert.throws(()=>validateGrant({discordId:idA,level:'all',startsOn:'2026-10-01',expiresOn:'2026-10-30'},today));
   assert.throws(()=>validateGrant({email:'x@example.com',level:'all',startsOn:'2026-10-20',expiresOn:'2026-10-30'},today));
   assert.equal(validDiscordId(idA),true);
@@ -79,4 +80,35 @@ test('de verlofpagina en routes mogen geen Google-e-mailadres als nieuwe machtig
   assert.throws(()=>validateGrant({email:'x@example.com',
     level:'max30',startsOn:'2026-10-20',expiresOn:'2026-11-20'},today),/Discord/);
   assert.equal(validDiscordId(idB),true);
+});
+
+test('aanvraagduur 6/7/14/15/16/30/31 en automatische korpsbeslissing',()=>{
+  assert.throws(()=>leaveSubmissionStatus(6),/7/);
+  assert.equal(leaveSubmissionStatus(7),'approved');
+  assert.equal(leaveSubmissionStatus(14),'approved');
+  assert.equal(leaveSubmissionStatus(15),'pending');
+  assert.equal(leaveSubmissionStatus(16),'pending');
+  assert.equal(leaveSubmissionStatus(30),'pending');
+  assert.equal(leaveSubmissionStatus(31),'pending');
+  assert.equal(leaveSubmissionStatus(31,true),'approved');
+  assert.equal(leaveApplicantIsCorps(actor('korpsleiding'),['politie']),true);
+  assert.equal(leaveApplicantIsCorps(actor('officierenkader'),['politie']),false);
+});
+test('hiërarchie: alleen lagere kadergroepen, middenkader maximaal 30 dagen',()=>{
+  const middleRequest={...request(),subjectDepartmentRoles:{politie:'middenkader'}};
+  const officerRequest={...request(),subjectDepartmentRoles:{politie:'officierenkader'}};
+  const corpRequest={...request(),subjectDepartmentRoles:{politie:'korpsleiding'}};
+  assert.equal(mayApproveLeave(actor(),middleRequest,null,today),false);
+  assert.equal(mayApproveLeave(actor('officierenkader'),middleRequest,null,today),true);
+  assert.equal(mayApproveLeave(actor('officierenkader'),officerRequest,null,today),false);
+  assert.equal(mayApproveLeave(actor('korpsleiding'),officerRequest,null,today),true);
+  assert.equal(mayApproveLeave(actor('korpsleiding'),corpRequest,null,today),false);
+  assert.equal(mayApproveLeave(actor('officierenkader'),request('2026-11-19'),null,today),true);
+  assert.equal(mayApproveLeave(actor(),request('2026-11-19'),null,today),false);
+});
+test('Bestuur kan alle andere aanvragen behandelen maar nooit eigen aanvragen',()=>{
+  const pending={...request('2026-11-19'),subjectDepartmentRoles:{politie:'korpsleiding'}};
+  assert.equal(mayApproveLeave(actor(),pending,null,today,true),true);
+  assert.equal(mayApproveLeave({...actor(),discordId:idB},pending,null,today,true),false);
+  assert.equal(mayApproveLeave(actor(),{...pending,status:'approved'},null,today,true),false);
 });
