@@ -1,8 +1,10 @@
 // Radio-presence observer. It only proposes removals; Firestore re-checks
 // every condition atomically before recording an "uit dienst" event.
 // Never trust roomId, stale cached users or a single transient channel drop.
-export const RADIO_AUTO_END_GRACE_MS=120_000;
-export const RADIO_AUTO_END_MIN_POLLS=3;
+// Een nieuwe, geldige Sonoran-poll na minstens 15 s moet vertrek bevestigen.
+// Nooit beëindigen op één momentopname of een verouderde radiorespons.
+export const RADIO_AUTO_END_GRACE_MS=15_000;
+export const RADIO_AUTO_END_MIN_POLLS=2;
 const key=(category,number)=>{
   if(typeof category!=='string'||!['string','number'].includes(typeof number))return null;
   const value=String(number);
