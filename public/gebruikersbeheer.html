@@ -570,8 +570,9 @@ async function refresh(){
   if(isDiscord){
     try{const me=await api('/api/users/me');
       accessStatus=me.status;
-      const txt=({not_requested:'Er is nog geen toegangsaanvraag ingediend.',pending:'Je aanvraag wacht op goedkeuring.',approved:'Je account is goedgekeurd.',blocked:'Je portaaltoegang is geblokkeerd.',legacy:'Je account heeft al bestaande toegangsrechten.'})[me.status]||me.status;
-      $('self').textContent=(me.username||'Discord-gebruiker')+' ('+me.discordId+'): '+txt+(me.role?' Functie: '+(roleNames[me.role]||me.role)+'.':'');
+      const txt=({not_requested:'Er is nog geen toegangsaanvraag ingediend.',pending:'Je aanvraag wacht op goedkeuring.',approved:'Je account is goedgekeurd.',blocked:'Je portaaltoegang is geblokkeerd.',reverify:'Vernieuw je Discord-rollen via Mijn Discord.',legacy:'Je account heeft al bestaande toegangsrechten.'})[me.status]||me.status;
+      $('self').textContent=(me.username||'Discord-gebruiker')+' ('+me.discordId+'): '+txt+(me.role?' Functie: '+(roleNames[me.role]||me.role)+'.':'')+
+        (me.automatic?' Discord-Middenkaderrol gecontroleerd.':'');
       $('request').hidden=me.status!=='not_requested';
     }catch(e){$('self').textContent=e.message;notice('Vernieuw je Discord-verificatie indien nodig.',true)}
   }else $('self').textContent='Je gebruikt de Google-noodlogin. Aanvragen worden via Discord ingediend.';
@@ -595,7 +596,7 @@ async function refresh(){
   await loadLeaveGrantManager();
   showManageTabs();
 }
-$('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
+$('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
 $('refresh').onclick=async()=>{await loadAdmin();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();showManageTabs()};$('filter').onchange=render;
 async function start(){
   try{

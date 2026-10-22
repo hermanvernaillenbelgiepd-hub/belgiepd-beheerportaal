@@ -2,6 +2,7 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {roleSummary} from './role-catalog.js';
+import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
 import {makeProfileCookie,clearProfileCookie} from './portal-profile-mode.js';
 import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
@@ -40,17 +41,24 @@ export function installUserRoutes(app,{requireUser,accessList}){
     const member=(await db().collection('bpd_discord_auth').doc(id).get()).data();
     const verified=verifiedDiscordIdentity(decoded,member,process.env.DISCORD_GUILD_ID,Date.now(),15*60*1000);
     if(!verified)throw publicError('Vernieuw eerst je Discord-verificatie en probeer opnieuw');
-    return {id,member};
+    return {id,member,decoded};
   }
   // This endpoint cannot grant roles. It only creates one pending request tied
   // to an independently verified Discord ID belonging to our own guild.
   app.post('/api/users/request',async(req,res)=>{
     try{
       ready();
-      const {id,member}=await discordSubject(req);
+      const {id,member,decoded}=await discordSubject(req);
       if(Object.values(accessList()).some(entry=>entry?.discordId===id))
         return res.json({status:'legacy',message:'Je account heeft al een bestaande toewijzing.'});
       const ref=collection().doc(id);
+      const existing=await ref.get();
+      if(!existing.exists||existing.get('status')==='pending'){
+        const auto=await ensureVerifiedMiddleAccess(db(),decoded,member,
+          process.env.DISCORD_GUILD_ID,process.env);
+        if(auto?.status==='approved')
+          return res.json({status:'approved',automatic:true,role:'middenkader',departments:['politie']});
+      }
       const candidates=roleSummary(member.roleIds).departments.filter(d=>USER_DEPTS.includes(d));
       try{
         await ref.create({discordId:id,guildId:process.env.DISCORD_GUILD_ID,status:'pending',
@@ -65,12 +73,20 @@ export function installUserRoutes(app,{requireUser,accessList}){
   app.get('/api/users/me',async(req,res)=>{
     try{
       ready();
-      const {id,member}=await discordSubject(req);
-      const snap=await collection().doc(id).get();
+      const {id,member,decoded}=await discordSubject(req);
+      let snap=await collection().doc(id).get();
+      const legacy=!snap.exists&&Object.values(accessList()).some(entry=>entry?.discordId===id);
+      if(!legacy&&(!snap.exists||snap.get('status')==='pending')){
+        const auto=await ensureVerifiedMiddleAccess(db(),decoded,member,
+          process.env.DISCORD_GUILD_ID,process.env);
+        if(auto)snap=await collection().doc(id).get();
+      }
       const d=snap.exists?snap.data():null;
-      const legacy=!d && Object.values(accessList()).some(entry=>entry?.discordId===id);
-      return res.json({discordId:id,username:member.username||'',status:d?.status||(legacy?'legacy':'not_requested'),
-        role:d?.status==='approved'?d.role:null});
+      const active=d?.status==='approved'?
+        stillEligibleAutoCadre(decoded,member,process.env.DISCORD_GUILD_ID,process.env,d):false;
+      return res.json({discordId:id,username:member.username||'',
+        status:d?.status==='approved'&&!active?'reverify':d?.status||(legacy?'legacy':'not_requested'),
+        role:active?d.role:null,automatic:d?.approvalSource===AUTO_CADRE_SOURCE});
     }catch(e){return fail(res,e)}
   });
   // The profile switch cannot alter the permanent approval/Discord rank.
@@ -253,7 +269,8 @@ export function installUserRoutes(app,{requireUser,accessList}){
           throw publicError('Je mag deze medewerker, functie of hulpdienst niet wijzigen');
         const audit=ref.collection('audit').doc();
         tx.update(ref,{status:'approved',role:grant.role,departments:grant.departments,
-          departmentRoles:grant.departmentRoles,category:FieldValue.delete(),updatedAt:FieldValue.serverTimestamp(),
+          departmentRoles:grant.departmentRoles,approvalSource:FieldValue.delete(),
+          category:FieldValue.delete(),updatedAt:FieldValue.serverTimestamp(),
           approvedAt:FieldValue.serverTimestamp(),approvedBy:req.bpd.uid});
         tx.create(audit,{action:'approve',actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||'',
           reason:grant.reason,role:grant.role,departments:grant.departments,
