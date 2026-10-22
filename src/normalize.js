@@ -33,6 +33,7 @@ function policeCallNumber(raw){
 export function policeKader(rank,call='') {
   const n=policeCallNumber(call);
   if(n!==null && n>=100 && n<=299)return 'Agentenkader';
+  if(n!==null && n>=900 && n<=999)return 'Officierenkader / Korpsleiding';
   const r=s(rank).toLocaleLowerCase('nl');
   if (/hoofdcommissaris|eerste\s+commissaris|\b1hcp\b|\b1cp\b/i.test(r)) return 'Korpsleiding';
   if (/aspirant\s+commissaris|\bacp\b/i.test(r)) return 'Officierenkader';
