@@ -104,3 +104,38 @@ test('Verified Board manages service-wide personnel records but never its own',a
  assert.ok(route.includes('if(!identityAllowed&&(proposed.name!==subject.name||proposed.call!==subject.call))'));
  assert.ok(ui.includes("'pName').disabled=!canChangeIdentity"));
 });
+
+
+test('Audit actors show current roster identity, callsign and rank, not outdated values',async()=>{
+ const {currentPersonnelAuditActor}=await import('../src/personnel-editor-policy.js');
+ const current={...staff,name:'Nieuwe naam',call:'SANTO-700',rank:'Hoofdinspecteur (HINP)'};
+ assert.deepEqual(currentPersonnelAuditActor(id,'politie',[current],['politie']),{
+  name:'Nieuwe naam',call:'SANTO-700',rank:'Hoofdinspecteur (HINP)',department:'politie'
+ });
+ assert.equal(currentPersonnelAuditActor(id,'politie',[{...current,call:'SANTO-600'}],['politie']).call,'SANTO-600');
+});
+test('Auditor names never leak across unauthorized help-service dossiers',async()=>{
+ const {currentPersonnelAuditActor}=await import('../src/personnel-editor-policy.js');
+ const police={...staff,call:'SANTO-700'};
+ const fire={...police,dept:'brandweer',name:'Brandweernaam',call:'BW-9',rank:'ZONE'};
+ assert.equal(currentPersonnelAuditActor(id,'politie',[police,fire],['politie']).call,'SANTO-700');
+ assert.equal(currentPersonnelAuditActor(id,'politie',[police,fire],['politie','brandweer']).call,'SANTO-700');
+ assert.equal(currentPersonnelAuditActor(id,'brandweer',[police,fire],['brandweer']).call,'BW-9');
+ assert.equal(currentPersonnelAuditActor(id,'brandweer',[police],['brandweer']),null);
+ assert.equal(currentPersonnelAuditActor(id,'brandweer',[police],['politie']),null);
+ assert.equal(currentPersonnelAuditActor(id,'politie',[police,police],['politie']),null);
+ assert.equal(currentPersonnelAuditActor('bad','politie',[police],['politie']),null);
+ assert.equal(currentPersonnelAuditActor(id,'politie',[{...police,name:''}],['politie']),null);
+});
+test('Official history enriches author server-side and preserves original event rank/dates',async()=>{
+ const fs=await import('node:fs');
+ const route=fs.readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ const ui=fs.readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ assert.ok(route.includes('currentPersonnelAuditActor(actorId,req.params.dept,'));
+ assert.ok(route.includes('snap.data,allowedActorDepartments)'));
+ assert.ok(route.includes('actorDiscordId:actorId'));
+ assert.ok(route.includes('actorRosterStale:snap.stale===true'));
+ assert.ok(ui.includes("current.name+' (Discord-ID: '+actorId"));
+ assert.ok(ui.includes("const currentLabel=r.actorRosterStale"));
+ assert.ok(ui.includes("const ranks=change.newRank?"));
+});

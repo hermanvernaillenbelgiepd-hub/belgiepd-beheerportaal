@@ -847,7 +847,17 @@ async function showPerson(p){
       const ranks=change.newRank?' · '+(change.previousRank||'Geen vorige rang')+' → '+change.newRank:'';
       strong.textContent=label+ranks+' · '+(change.at?new Date(change.at).toLocaleString('nl-BE'):'tijdstip onbekend');
       const text=document.createElement('p');
-      text.textContent='Door Discord ID '+(change.actorDiscordId||'onbekend')+
+      const current=change.actorCurrent;
+      const actorId=change.actorDiscordId||'onbekend';
+      const currentLabel=r.actorRosterStale?'laatst bekend':'huidig';
+      const actor=current?
+        current.name+' (Discord-ID: '+actorId+' · '+currentLabel+' roepnummer: '+current.call+')':
+        'Discord-ID: '+actorId;
+      const currentRank=current?' · '+(r.actorRosterStale?'Laatst bekende':'Huidige')+
+        ' rang: '+current.rank:'';
+      const service=current&&current.department!==p.dept?
+        ' · Hulpdienst: '+(departments[current.department]||current.department):'';
+      text.textContent='Door '+actor+currentRank+service+
         ' · '+(change.reason||'geen afzonderlijke motivering');
       div.append(strong,text);$('history').append(div);
     }
