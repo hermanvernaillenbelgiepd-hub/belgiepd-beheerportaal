@@ -442,3 +442,31 @@ test('Duplicate ZW-1 radio identities can form one dispatchable callsign without
   assert.ok(result.users.every(u=>u.category==='ZW'&&u.number==='1'));
   assert.ok(result.users.every(u=>u.importable===false&&u.duplicateCallsign===true));
 });
+
+test('BPD rode bol herkent streamer zonder roepnummerherkenning te beschadigen',async()=>{
+  for(const label of ['🔴 DEPK-212| Owen','DEPK-212 🔴| Owen','DEPK-212| 🔴 Owen']){
+    const parsed=parseSonoranName(label);
+    assert.equal(parsed.category,'DEPK',label);
+    assert.equal(parsed.number,'212',label);
+    assert.equal(parsed.importable,true,label);
+  }
+  const service=createSonoranRadioService({env:configuredEnv,fetchImpl:async()=>reply([
+    {identity:'stream-owen',name:'🔴 DEPK-212| Owen'},
+    {identity:'regular-user',name:'DEPK-213| Persoon Zonder Rode Bol'}
+  ])});
+  const result=await service.read();
+  assert.deepEqual(result.users.map(user=>user.streamer),[true,false]);
+  assert.deepEqual(result.users.map(user=>user.number),['212','213']);
+  assert.equal(result.users[0].category,'DEPK');
+  assert.equal(result.users[0].importable,true);
+  assertPrivate(result);
+});
+test('Rode bol met NB en koppelster behoudt radiobeschikbaarheid en ploegnummer',async()=>{
+  const result=await createSonoranRadioService({env:configuredEnv,fetchImpl:async()=>reply([
+    {identity:'streamer-pair',name:'🔴 SANTO-600* (NB) | Collega'}
+  ])}).read();
+  assert.equal(result.users[0].streamer,true);
+  assert.equal(result.users[0].notAvailable,true);
+  assert.equal(result.users[0].paired,true);
+  assert.equal(result.users[0].number,'600');
+});
