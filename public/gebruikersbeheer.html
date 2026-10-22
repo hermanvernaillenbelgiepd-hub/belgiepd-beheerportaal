@@ -34,10 +34,11 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 </nav>
 <section id="admin" class="card" hidden><div class="controls" style="justify-content:space-between"><h2>Te beheren personeelsaccounts</h2><button id="refresh" class="alt" type="button">Vernieuwen</button></div>
 <p>Een officier kan basiskader en middenkader van de eigen hulpdienst goedkeuren. Korpsleiding kan ook officieren beheren. Alleen de technische beheerder heeft overkoepelende rechten. Je kunt je eigen bevoegdheden niet wijzigen.</p>
+<p class="muted">Onder <strong>Hulpdienst / categorie</strong> kun je Politie, Ambulance, Brandweer en Depannage kiezen. Burger en Technisch medewerker zijn administratieve labels en geven geen nieuwe bevoegdheden. Bestuur opent de afzonderlijke voordrachtprocedure. Korpsleiding kan de categorie Burger beheren voor eigen politieaccounts; het label Technisch medewerker vereist technisch beheer.</p>
 <p class="muted"><strong>BESTUUR</strong> is nu een afzonderlijke functiekeuze: Korpsleiding kan hiermee een voordracht voor een goedgekeurd account starten. De aanstelling vereist daarna onafhankelijke goedkeuring door technisch beheer. De operationele rang en de Discord-rol veranderen niet.</p>
 <p class="muted"><strong>AGENTENKADER</strong>: tijdelijke roepnummers 100–199 en vaste roepnummers 200–299. <strong>BASISKADER</strong>: vanaf roepnummer 300 (rekening houdend met een eventuele hogere rang). <strong>BESTUUR</strong> is een afzonderlijke functie onder het tabblad Bestuur. Deze indeling verleent nooit automatisch Discord- of dossierrechten.</p>
 <div class="controls"><label for="filter">Filter</label><select id="filter" style="width:auto"><option value="all">Alle statussen</option><option value="pending">Nieuwe aanvragen</option><option value="approved">Goedgekeurd</option><option value="blocked">Geblokkeerd</option></select><span id="count" class="muted"></span></div>
-<div class="scroller"><table><thead><tr><th>Discord-lid</th><th>Status</th><th>Hulpdienst</th><th>Functie</th><th>Beslissing</th></tr></thead><tbody id="list"></tbody></table></div>
+<div class="scroller"><table><thead><tr><th>Discord-lid</th><th>Status</th><th>Hulpdienst / categorie</th><th>Functie</th><th>Beslissing</th></tr></thead><tbody id="list"></tbody></table></div>
 <p id="more" class="muted" hidden>Het overzicht is begrensd tot 250 accounts. Een paginering volgt bij verdere groei.</p></section>
 <section id="dossierGrantSection" class="card" hidden>
 <h2>🛡️ Beheertoegang hulpdiensten</h2>
@@ -108,7 +109,12 @@ const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
 let boardWritesEnabled=false;
 const roles=['basiskader','middenkader','officierenkader','korpsleiding','bestuur'];
-const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
+const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
+  depannage:'Depannage',burger:'Burger (administratieve categorie)',
+  bestuur:'Bestuur (aparte bestuursfunctie)',
+  technisch_medewerker:'Technisch medewerker (geen beheerrechten)'};
+const serviceDepartments=['politie','ambulance','brandweer','depannage'];
+const otherCategories=['burger','bestuur','technisch_medewerker'];
 const roleNames={basiskader:'Basiskader',middenkader:'Middenkader',officierenkader:'Officierenkader',korpsleiding:'Korpsleiding',bestuur:'BESTUUR (afzonderlijke functie)'};
 function notice(msg,bad=false){$('notice').textContent=msg;$('notice').classList.toggle('error',bad)}
 async function api(path,opts={}){
@@ -155,11 +161,23 @@ function render(){
     const id=document.createElement('small');id.textContent=u.discordId;id.style.display='block';
     const wrap=document.createElement('div');wrap.append(person,id);cell(row,wrap);
     const state=document.createElement('span');state.className='status '+u.status;state.textContent=({pending:'In aanvraag',approved:'Goedgekeurd',blocked:'Geblokkeerd'})[u.status]||u.status;cell(row,state);
-    const dept=document.createElement('select');const available=u.status==='pending'?u.candidateDepartments:u.departments;
-    for(const key of available||[]){if(deptNames[key])dept.append(option(key,deptNames[key]))}
-    if(!dept.options.length)dept.append(option('','Geen gekoppelde hulpdienst'));
-    dept.disabled=!dept.options.length||dept.value==='';
-    cell(row,dept);
+    const dept=document.createElement('select');
+    const services=document.createElement('optgroup');services.label='Operationele hulpdiensten';
+    for(const key of serviceDepartments)services.append(option(key,deptNames[key]));
+    dept.append(services);
+    const categories=document.createElement('optgroup');categories.label='Overige categorieën';
+    for(const key of otherCategories)categories.append(option(key,deptNames[key]));
+    dept.append(categories);
+    const chosen=u.category||(u.board?.discord||u.board?.appointed?'bestuur':null)||
+      (u.departments?.[0]||u.candidateDepartments?.[0]||'politie');
+    dept.value=deptNames[chosen]?chosen:'politie';
+    const departmentWrap=document.createElement('div');departmentWrap.append(dept);
+    const detail=document.createElement('small');detail.className='muted';
+    detail.textContent=u.category?
+      'Administratieve aanduiding; bestaande dienstrechten blijven behouden':
+      'Toegekende dienst(en): '+(u.departments||[]).map(d=>deptNames[d]||d).join(', ');
+    departmentWrap.append(detail);
+    cell(row,departmentWrap);
     const rank=document.createElement('select');for(const name of roles)rank.append(option(name,roleNames[name]));
     rank.value=u.board?.discord||u.board?.appointed?'bestuur':u.role||'basiskader';
     const functionWrap=document.createElement('div');functionWrap.append(rank);
@@ -177,11 +195,14 @@ function render(){
     cell(row,functionWrap);
     const actions=document.createElement('div');actions.className='controls';
     const approve=document.createElement('button');
-    const refreshButton=()=>approve.textContent=rank.value==='bestuur'?'Bestuur voordragen':u.status==='approved'?'Wijzig':'Goedkeuren';
-    rank.onchange=refreshButton;refreshButton();
+    const refreshButton=()=>approve.textContent=
+      rank.value==='bestuur'||dept.value==='bestuur'?'Bestuur voordragen':
+      otherCategories.includes(dept.value)?'Categorie opslaan':
+      u.status==='approved'?'Wijzig':'Goedkeuren';
+    rank.onchange=refreshButton;dept.onchange=refreshButton;refreshButton();
     approve.onclick=async()=>{
       if(!dept.value)return notice('Dit account heeft nog geen gekoppelde hulpdienst.',true);
-      if(rank.value==='bestuur'){
+      if(dept.value==='bestuur'||rank.value==='bestuur'){
         if(u.board?.discord||u.board?.appointed)
           return notice('BESTUUR is voor dit account al actief via Discord of een goedgekeurde bestuursaanstelling. De operationele rol blijft apart behouden.');
         if(u.status!=='approved')return notice('Keur eerst de gewone portaaltoegang goed. Bestuur is geen operationele rang.',true);
@@ -197,12 +218,32 @@ function render(){
         notice('De bestuursvoordracht is voorbereid. Vul de motivering en eventuele afzonderlijke bevoegdheden in en dien de voordracht in.');
         return;
       }
-      const reason=prompt('Reden voor goedkeuring/wijziging (minimaal 8 tekens):','Toegang na controle van Discord en personeelsfunctie');
+      if(otherCategories.includes(dept.value)){
+        if(u.status!=='approved')
+          return notice('Keur eerst het personeelsaccount goed voordat je een extra categorie vastlegt.',true);
+        const reason=prompt('Reden voor deze administratieve categorie (minimaal 10 tekens):',
+          'Administratieve indeling na controle van het account');
+        if(reason===null)return;
+        approve.disabled=true;
+        try{
+          await api('/api/users/'+encodeURIComponent(u.discordId)+'/category',{
+            method:'POST',body:{category:dept.value,reason}});
+          notice('Categorie opgeslagen. Bestaande dienst- en technische rechten zijn niet gewijzigd.');
+          await loadAdmin();
+        }catch(e){notice(e.message,true)}finally{approve.disabled=false}
+        return;
+      }
+      const reason=prompt('Reden voor goedkeuring/wijziging (minimaal 8 tekens):',
+        'Toegang na controle van Discord en personeelsfunctie');
       if(reason===null)return;
+      if(u.status==='approved'&&!u.departments?.includes(dept.value)&&
+        !confirm('Je kiest een andere hulpdienst. Dit vervangt de huidige diensttoewijzing en kan bestaande dienstrechten wijzigen. Doorgaan?'))return;
       approve.disabled=true;
-      try{await api('/api/users/'+encodeURIComponent(u.discordId)+'/approve',{method:'POST',
-        body:{role:rank.value,departments:[dept.value],reason}});notice('Toegang veilig bijgewerkt.');await loadAdmin()}
-      catch(e){notice(e.message,true)}finally{approve.disabled=false}
+      try{
+        await api('/api/users/'+encodeURIComponent(u.discordId)+'/approve',{
+          method:'POST',body:{role:rank.value,departments:[dept.value],reason}});
+        notice('Operationele diensttoewijzing bijgewerkt.');await loadAdmin();
+      }catch(e){notice(e.message,true)}finally{approve.disabled=false}
     };
     actions.append(approve);
     if(u.status!=='blocked'){

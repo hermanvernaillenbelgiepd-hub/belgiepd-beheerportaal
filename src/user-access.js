@@ -4,6 +4,30 @@ import {roleForDepartment} from './leave-policy.js';
 export const USER_COLLECTION='bpd_portal_users';
 export const MANAGED_ROLES=Object.freeze(['basiskader','middenkader','officierenkader','korpsleiding']);
 export const USER_DEPTS=Object.freeze(['politie','brandweer','ambulance','depannage']);
+// Administrative labels, not operational service memberships or access rights.
+// BESTUUR uses independently verified Discord roles or approved appointments.
+export const ACCOUNT_CATEGORIES=Object.freeze(['burger','technisch_medewerker']);
+export function validAccountCategory(body){
+  if(!body||typeof body!=='object'||Array.isArray(body)||
+    Object.keys(body).some(k=>!['category','reason'].includes(k)))
+    throw new Error('Ongeldige accountcategorie');
+  if(!ACCOUNT_CATEGORIES.includes(body.category))
+    throw new Error('Onbekende accountcategorie');
+  const reason=typeof body.reason==='string'?body.reason.trim():'';
+  if(reason.length<10||reason.length>300)
+    throw new Error('Motivering van 10 tot 300 tekens verplicht');
+  return {category:body.category,reason};
+}
+export function mayLabelAccount(actor,subject,category){
+  if(!actor||!subject||subject.status!=='approved'||
+    !Array.isArray(subject.departments)||!canSeeUser(actor,subject)||
+    actor.discordId===subject.discordId)return false;
+  if(actor.role==='beheerder')return true;
+  // Korpsleiding may mark existing police staff as civilian, not technicians.
+  return category==='burger'&&actor.role==='korpsleiding'&&
+    roleForDepartment(actor,'politie')==='korpsleiding'&&
+    subject.departments.includes('politie');
+}
 const ranks={basiskader:1,middenkader:2,officierenkader:3,korpsleiding:4,beheerder:5};
 const ID=/^\d{15,22}$/;
 export const MAX_DISCORD_AGE=7*24*60*60*1000;

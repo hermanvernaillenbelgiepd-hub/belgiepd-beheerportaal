@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {approvedManagedEntry,verifiedDiscordIdentity,validUserGrant,
-  canSeeUser,canChangeUser,canBlockUser,isUserManager} from '../src/user-access.js';
+  canSeeUser,canChangeUser,canBlockUser,isUserManager,validAccountCategory,mayLabelAccount} from '../src/user-access.js';
 
 const discordId='505659510359064606',guild='1309532437952466984',now=Date.UTC(2026,9,19);
 const decoded={uid:'discord:'+discordId,bpdDiscord:true,bpdGuildId:guild,
@@ -82,4 +82,37 @@ test('Management overview presents verified Board origin without changing operat
   assert.ok(page.includes("rank.value=u.board?.discord||u.board?.appointed?'bestuur'"));
   assert.ok(page.includes("u.board.discord?'Discord (geverifieerd)'"));
   assert.ok(page.includes("u.board.appointed?'portaal (goedgekeurd)'"));
+});
+
+test('Burger and technical colleague are informational categories, never service or admin roles',()=>{
+  assert.deepEqual(validAccountCategory({category:'burger',reason:'Administratief burgeraccount'}),
+    {category:'burger',reason:'Administratief burgeraccount'});
+  assert.throws(()=>validAccountCategory({category:'bestuur',reason:'Bestuursrol ten onrechte als dienst'}));
+  assert.throws(()=>validAccountCategory({category:'beheerder',reason:'Mag nooit technische rechten geven'}));
+  assert.throws(()=>validUserGrant({role:'middenkader',departments:['burger'],reason:'Dienst onterecht'}));
+  assert.throws(()=>validUserGrant({role:'middenkader',departments:['bestuur'],reason:'Bestuur onterecht'}));
+  assert.throws(()=>validUserGrant({role:'middenkader',departments:['technisch_medewerker'],reason:'Technisch onterecht'}));
+  const subject={...approved,discordId,status:'approved'};
+  assert.equal(mayLabelAccount(admin,subject,'burger'),true);
+  assert.equal(mayLabelAccount(admin,subject,'technisch_medewerker'),true);
+  assert.equal(mayLabelAccount(chief,subject,'burger'),true);
+  assert.equal(mayLabelAccount(chief,subject,'technisch_medewerker'),false);
+  assert.equal(mayLabelAccount(officer,subject,'burger'),false);
+  assert.equal(mayLabelAccount(admin,{...subject,discordId:admin.discordId},'burger'),false);
+  assert.equal(mayLabelAccount(admin,{...subject,status:'blocked'},'burger'),false);
+});
+test('All operational service and other category choices appear in management UI',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const html=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+  const routes=readFileSync(new URL('../src/user-routes.js',import.meta.url),'utf8');
+  for(const value of ['politie','ambulance','brandweer','depannage'])
+    assert.ok(html.includes(value));
+  for(const value of ['burger','bestuur','technisch_medewerker'])
+    assert.ok(html.includes(value));
+  assert.ok(html.includes("services.label='Operationele hulpdiensten'"));
+  assert.ok(html.includes("categories.label='Overige categorieën'"));
+  assert.ok(html.includes("/category"));
+  assert.ok(routes.includes("app.post('/api/users/:discordId/category',requireUser,admin"));
+  assert.ok(routes.includes("action:'category_update'"));
+  assert.ok(routes.includes("category:FieldValue.delete()"));
 });

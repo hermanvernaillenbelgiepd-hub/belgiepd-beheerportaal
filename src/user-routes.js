@@ -5,7 +5,7 @@ import {roleSummary} from './role-catalog.js';
 import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {roleForDepartment} from './leave-policy.js';
-import {USER_COLLECTION,USER_DEPTS,verifiedDiscordIdentity,validUserGrant,
+import {USER_COLLECTION,USER_DEPTS,verifiedDiscordIdentity,validUserGrant,validAccountCategory,mayLabelAccount,
   isUserManager,canSeeUser,canChangeUser,canBlockUser,approvedManagedEntry} from './user-access.js';
 
 const validId=id=>/^\d{15,22}$/.test(String(id||''));
@@ -23,7 +23,8 @@ const publicError=(message,publicStatus=403)=>Object.assign(new Error(message),{
 const serialize=(id,d)=>({discordId:id,username:String(d.username||'').slice(0,80),
   status:d.status||'pending',candidateDepartments:Array.isArray(d.candidateDepartments)?d.candidateDepartments:[],
   departments:Array.isArray(d.departments)?d.departments:[],
-  role:d.status==='approved'?d.role:null});
+  role:d.status==='approved'?d.role:null,
+  category:d.status==='approved'&&['burger','technisch_medewerker'].includes(d.category)?d.category:null});
 export function installUserRoutes(app,{requireUser,accessList}){
   const db=()=>ready();
   const collection=()=>db().collection(USER_COLLECTION);
@@ -178,6 +179,29 @@ export function installUserRoutes(app,{requireUser,accessList}){
         users,limited:snap.size===250});
     }catch(e){return fail(res,e)}
   });
+  // Classification has no effect on access, roles or department assignments.
+  app.post('/api/users/:discordId/category',requireUser,admin,async(req,res)=>{
+    if(!validId(req.params.discordId))return denial(res,400,'Ongeldige Discord-ID');
+    let change;
+    try{change=validAccountCategory(req.body)}catch(e){return denial(res,400,e.message)}
+    const ref=collection().doc(req.params.discordId);
+    try{
+      await db().runTransaction(async tx=>{
+        const snap=await tx.get(ref);
+        if(!snap.exists)throw publicError('Gebruikersaccount niet gevonden',404);
+        const data=snap.data();
+        if(!mayLabelAccount(req.bpd,{...data,discordId:req.params.discordId},change.category))
+          throw publicError('Je mag deze categorie niet aan dit account toewijzen');
+        tx.update(ref,{category:change.category,updatedAt:FieldValue.serverTimestamp()});
+        tx.create(ref.collection('audit').doc(),{
+          action:'category_update',category:change.category,
+          previousCategory:data.category||null,reason:change.reason,
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||'',
+          at:FieldValue.serverTimestamp()});
+      });
+      return res.json({saved:true,category:change.category,permissionsChanged:false});
+    }catch(e){return fail(res,e)}
+  });
   app.post('/api/users/:discordId/approve',requireUser,admin,async(req,res)=>{
     if(!validId(req.params.discordId))return denial(res,400,'Ongeldige Discord ID');
     let grant;
@@ -192,7 +216,7 @@ export function installUserRoutes(app,{requireUser,accessList}){
           throw publicError('Je mag deze medewerker, functie of hulpdienst niet wijzigen');
         const audit=ref.collection('audit').doc();
         tx.update(ref,{status:'approved',role:grant.role,departments:grant.departments,
-          departmentRoles:grant.departmentRoles,updatedAt:FieldValue.serverTimestamp(),
+          departmentRoles:grant.departmentRoles,category:FieldValue.delete(),updatedAt:FieldValue.serverTimestamp(),
           approvedAt:FieldValue.serverTimestamp(),approvedBy:req.bpd.uid});
         tx.create(audit,{action:'approve',actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||'',
           reason:grant.reason,role:grant.role,departments:grant.departments,
