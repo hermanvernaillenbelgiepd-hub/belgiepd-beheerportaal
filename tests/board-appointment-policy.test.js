@@ -136,7 +136,10 @@ test('User management Board UI has separate nomination and decision controls',()
   assert.ok(html.includes('Bestuur · afzonderlijke bestuursfunctie'));
   assert.ok(html.includes("'/api/board/overview'"));
   assert.ok(html.includes('await boardRefresh()'));
-  assert.equal(/roles=\[[^\]]*['"]bestuur['"]/.test(html),false);
+  assert.ok(html.includes("const roles=['basiskader','middenkader','officierenkader','korpsleiding','bestuur']"));
+  assert.ok(html.includes("if(rank.value==='bestuur')"));
+  assert.ok(html.includes("'/api/board/status'") || html.includes("'/api/board/status'"));
+  assert.throws(()=>validUserGrant({role:'bestuur',departments:['politie'],reason:'Ongeoorloofd als politierang'}));
   const match=html.match(/<script type="module">([\s\S]*?)<\/script>/);
   assert.ok(match);assert.doesNotThrow(()=>new Script(match[1]));
 });
