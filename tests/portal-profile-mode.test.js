@@ -51,3 +51,13 @@ test('Profile routes only switch signed cookies after verified authentication an
   assert.ok(routes.includes("collection('bpd_portal_profile_audit').add("));
   assert.ok(routes.includes('makeProfileCookie(req.bpd.uid,req.bpd.discordId'));
 });
+
+test('Technical profile supports privileged operational routes without raising normal police access',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const read=name=>readFileSync(new URL('../src/'+name,import.meta.url),'utf8');
+  assert.ok(read('callsign-routes.js').includes('req.bpd.portalTechnicalMode===true||canDecide(req.bpd.role)'));
+  assert.ok(read('management-routes.js').includes('req.bpd.portalTechnicalMode!==true&&!CADRE_ROLES.includes(req.bpd.role)'));
+  assert.ok(read('registration-routes.js').includes("req.bpd.portalTechnicalMode===true?'korpsleiding':req.bpd.role"));
+  assert.ok(read('registrations.js').includes('user.portalTechnicalMode===true||canEditSanction(user.role)'));
+  assert.ok(read('user-routes.js').includes("mode:'politie',at:FieldValue.serverTimestamp()"));
+});

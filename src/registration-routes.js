@@ -25,7 +25,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const snap=await getSnapshot();
       const subset=snap.data.filter(p=>req.bpd.departments.includes(p.dept));
       const actor=actorFromPersonnel(req.bpd,subset);
-      const representatives=['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role)?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
+      const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
          .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call})):[];
        res.json({role:req.bpd.role,departments:req.bpd.departments,writesEnabled:writesEnabled(),actor,representatives,subjects:subset.map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call}))});
     }catch(err){return handleError(res,err)}
@@ -51,7 +51,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const values=validateEntry(raw);
-       if(type==='sanctie' && !canChooseSanction(req.bpd.role,values.sanctionType))
+       if(type==='sanctie' && !canChooseSanction(req.bpd.portalTechnicalMode===true?'korpsleiding':req.bpd.role,values.sanctionType))
          return res.status(403).json({error:'Deze sanctiemaatregel is alleen beschikbaar voor officierenkader of korpsleiding'});
        const representedId=trim(raw?.onBehalfOfDiscordId);
        if(representedId && !canRepresent(req.bpd,type,dept)) return res.status(403).json({error:'Registratie namens een ander is alleen toegestaan voor observaties door kaderleden'});

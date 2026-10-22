@@ -19,7 +19,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
   const db=()=>getFirestore();
   const enabled=()=>process.env.BPD_ENABLE_REGISTRATIONS==='true' && process.env.BPD_ENABLE_MANAGEMENT_WRITES==='true';
   const cadre=(req,res,next)=>{
-    if(!CADRE_ROLES.includes(req.bpd.role))return res.status(403).json({error:'Alleen middenkader en hoger hebben toegang'});
+    if(req.bpd.portalTechnicalMode!==true&&!CADRE_ROLES.includes(req.bpd.role))return res.status(403).json({error:'Alleen middenkader en hoger hebben toegang'});
     next();
   };
   app.get('/api/management/overview',requireUser,async(req,res)=>{
@@ -151,7 +151,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
   });
   app.get('/api/management/reports/:id/docx',requireUser,cadre,async(req,res)=>{
     // Vroegtijdige serverweigering: een afgeschermde knop of rechtstreekse URL geeft middenkader geen exportrecht.
-    if(!['officierenkader','korpsleiding'].includes(req.bpd.role))
+    if(req.bpd.portalTechnicalMode!==true&&!['officierenkader','korpsleiding'].includes(req.bpd.role))
       return res.status(403).json({error:'Word- en PDF-export is uitsluitend toegestaan voor officierenkader en korpsleiding'});
     try{
       const report=await assembleReport(req,req.params.id);

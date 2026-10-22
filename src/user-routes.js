@@ -89,7 +89,12 @@ export function installUserRoutes(app,{requireUser,accessList}){
       return denial(res,400,'Kies een geldig portaalprofiel');
     if(mode==='politie'){
       res.set('Set-Cookie',clearProfileCookie());
-      return res.json({mode:'politie',changed:true});
+      try{
+        await db().collection('bpd_portal_profile_audit').add({
+          discordId:req.bpd.discordId,actorUid:req.bpd.uid,
+          mode:'politie',at:FieldValue.serverTimestamp()});
+        return res.json({mode:'politie',changed:true});
+      }catch(e){return fail(res,e)}
     }
     if(req.bpd.profileTechnicalAvailable!==true||
        !validId(req.bpd.discordId)||!req.bpd.uid?.startsWith('discord:'))

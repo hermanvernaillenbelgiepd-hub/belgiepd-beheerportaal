@@ -18,7 +18,7 @@ export const HEAVY_SANCTION_TYPES = ['Degradatie','Schorsing','Ontslag','Ontslag
 export const isDiscordId = id => /^\d{15,22}$/.test(String(id??''));
 export const isCadre = role => ['middenkader','officierenkader','korpsleiding','beheerder'].includes(role);
 export const canChooseSanction = (role,kind) => ['middenkader','officierenkader','korpsleiding'].includes(role) && SANCTION_TYPES.includes(kind) && (!HEAVY_SANCTION_TYPES.includes(kind) || canEditSanction(role));
-export const canRepresent = (user,type,dept) => type==='observatie' && hasDept(user,dept) && ['middenkader','officierenkader','korpsleiding'].includes(user?.role);
+export const canRepresent = (user,type,dept) => type==='observatie' && hasDept(user,dept) && (user?.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(user?.role));
 // Alleen politie-middenkaderleden als mogelijke vertegenwoordigde auteur; het is geen autorisatiebron.
 export const eligibleRepresentative = (person,dept) => dept==='politie' && person?.dept===dept && isDiscordId(person?.personId) && policeKader(person.rank)==='Middenkader';
 export function representativeFromPersonnel(persons,dept,id) {
@@ -30,10 +30,10 @@ export function representativeFromPersonnel(persons,dept,id) {
 export const canEditSanction = role => ['officierenkader','korpsleiding'].includes(role);
 export const hasDept = (user,dept) => Boolean(user?.departments?.includes(dept));
 export const maySubmit = (user,type,dept) => hasDept(user,dept) && (
-  type === 'observatie' || (type === 'sanctie' && dept === 'politie' && ['middenkader','officierenkader','korpsleiding'].includes(user.role))
+  type === 'observatie' || (type === 'sanctie' && dept === 'politie' && (user.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(user.role)))
 );
 export const mayRead = (user,dept) => hasDept(user,dept) && isCadre(user.role);
-export const mayAmend = (user,type,dept) => type === 'sanctie' && hasDept(user,dept) && canEditSanction(user.role);
+export const mayAmend = (user,type,dept) => type === 'sanctie' && hasDept(user,dept) && (user.portalTechnicalMode===true||canEditSanction(user.role));
 const text=(value,max) => typeof value==='string' ? value.trim().slice(0,max+1) : '';
 const str=(value,max,required=false) => {
   const s=text(value,max); if(s.length>max || (required && !s)) throw new Error('Vereist veld ontbreekt of bevat te veel tekens'); return s;

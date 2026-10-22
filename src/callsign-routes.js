@@ -8,8 +8,8 @@ const enabled=()=>process.env.BPD_ENABLE_CALLSIGN_REQUESTS==='true';
 const syncEnabled=()=>process.env.BPD_ENABLE_SHEETS_SYNC==='true';
 const fail=(res,error)=>{console.error('Roepnummeraanvraag:',error?.code||error?.message||'onbekend');return res.status(503).json({error:'De aanvraag kon niet worden verwerkt. Controleer de serverlog en de Google Sheets-toegang.'});};
 export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged=()=>{}}) {
-  const permit=(req)=>req.bpd.departments.includes('politie')&&canReview(req.bpd.role);
-  const officer=(req)=>req.bpd.departments.includes('politie')&&canDecide(req.bpd.role);
+  const permit=(req)=>req.bpd.departments.includes('politie')&&(req.bpd.portalTechnicalMode===true||canReview(req.bpd.role));
+  const officer=(req)=>req.bpd.departments.includes('politie')&&(req.bpd.portalTechnicalMode===true||canDecide(req.bpd.role));
   const actor=async req=>actorFromPersonnel(req.bpd,(await getSnapshot()).data);
   const collection=()=>getFirestore().collection('bpd_callsign_requests');
   app.get('/api/callsigns/settings',requireUser,(req,res)=>{
