@@ -65,7 +65,9 @@ await check('/api/client-config',200,d=>
 await check('/burgerdossier.html',410,d=>typeof d==='string');
 await check('/dossiercentrum.html',200,d=>typeof d==='string'&&
   d.includes('Centraal dossieroverzicht')&&d.includes('api/dossiercentrum'));
-await check('/api/citizens/me',401,d=>typeof d?.error==='string');
+// Retired citizen endpoints return 410 Gone even without authentication.
+// They must not silently revert to an active 401-protected route.
+await check('/api/citizens/me',410,d=>typeof d?.error==='string');
 await check('/api/dossiercentrum/overview',401,d=>typeof d?.error==='string');
 await check('/api/dossiercentrum/politie/123456789012345678',401,
   d=>typeof d?.error==='string');
