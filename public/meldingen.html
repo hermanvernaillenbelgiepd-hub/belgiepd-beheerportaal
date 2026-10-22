@@ -16,11 +16,16 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 [hidden]{display:none!important}
 </style></head><body>
 <header><strong>🛡️ BelgiumPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
-<main><h1>📬 Meldingen</h1><p>Verlofaanvragen die jij volgens je eigen kaderfunctie of toegekende VERLOFBEHEER-machtiging mag behandelen. Middenkader mag maximaal 30 kalenderdagen goedkeuren; officierenkader en korpsleiding kunnen langere aanvragen behandelen. Je eigen aanvragen zijn uitgesloten.</p>
+<main><h1>📬 Meldingen</h1><p>Verlofaanvragen die jij volgens je eigen kaderfunctie of toegekende VERLOFBEHEER-machtiging mag behandelen. Middenkader behandelt aanvragen van basiskader/agentenkader tot 30 dagen; officierenkader en korpsleiding behandelen aanvragen van lagere kadergroepen. Vanaf 31 dagen beslissen alleen officierenkader, korpsleiding of Bestuur. Bestuur kan beslissingen gemotiveerd overrulen. Je eigen aanvragen zijn uitgesloten.</p>
 <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
 <section id="reviewPanel" class="panel" hidden>
  <div class="actions" style="justify-content:space-between;align-items:center"><h2>Te behandelen verlofaanvragen <span id="reviewCount" class="pill">0</span></h2><button id="reload" type="button">↻ Vernieuwen</button></div>
  <div id="reviewList"></div>
+</section>
+<section id="overridePanel" class="panel" hidden>
+  <h2>Bestuur · eerdere verlofbeslissingen herzien</h2>
+  <p>Alleen geverifieerd Bestuur of technisch beheer. Een herziening moet gemotiveerd worden en wordt gelogd.</p>
+  <div id="overrideList"></div>
 </section></main>
 <script type="module">
 const $=id=>document.getElementById(id);let auth,authMod,writesEnabled=false;
@@ -35,24 +40,28 @@ async function api(url,body){
  if(!response.ok)throw Error(data.error||'Verzoek mislukt');
  return data;
 }
-function item(x){
+function item(x,override=false){
  const row=document.createElement('div');row.className='item';
  const title=document.createElement('strong');title.textContent=(x.subjectName||'Personeelslid')+
   ' · '+(x.startDate||'?')+' t/m '+(x.endDate||'?');
  const info=document.createElement('p');info.textContent=Number(x.days)+' kalenderdagen · '+
-  (x.subjectDepartments||[]).join(', ');
+  (x.subjectDepartments||[]).join(', ')+(override?' · huidige status: '+(x.status==='approved'?'Goedgekeurd':'Afgewezen'):'');
  row.append(title,info);
  if(writesEnabled){
   const buttons=document.createElement('div');buttons.className='actions';
   for(const [decision,label] of [['approved','Goedkeuren'],['rejected','Afwijzen']]){
    const b=document.createElement('button');b.textContent=label;
    if(decision==='approved')b.className='primary';
+   if(override&&decision===x.status)continue;
    b.onclick=async()=>{
-    if(!confirm('Verlofaanvraag '+label.toLowerCase()+'?'))return;
+    if(!confirm('Verlofaanvraag '+(override?'via Bestuur ':'')+label.toLowerCase()+'?'))return;
+    const reason=override?prompt('Reden voor de bestuurs-overrule (minimaal 10 tekens):',''):'';
+    if(override&&reason===null)return;
     b.disabled=true;
     try{
-     await api('/api/leave/requests/'+encodeURIComponent(x.id)+'/decision',{decision});
-     feedback('Beslissing geregistreerd.');await load();
+     await api('/api/leave/requests/'+encodeURIComponent(x.id)+(override?'/override':'/decision'),
+       override?{decision,reason}:{decision});
+     feedback('Beslissing geregistreerd en gelogd.');await load();
     }catch(e){feedback('Beslissing niet opgeslagen: '+e.message,true)}
     finally{b.disabled=false}
    };buttons.append(b);
@@ -73,6 +82,15 @@ async function load(){
   if(!entries.length){const msg=document.createElement('p');msg.textContent='Geen aanvragen die je momenteel mag behandelen.';list.append(msg)}
   else for(const x of entries)list.append(item(x));
   $('reviewPanel').hidden=false;
+  const overrides=result.canOverride?result.toOverride||[]:[];
+  const overrideList=$('overrideList');overrideList.replaceChildren();
+  if(overrides.length){
+    for(const x of overrides)overrideList.append(item(x,true));
+  }else{
+    const none=document.createElement('p');none.textContent='Geen eerdere beslissingen om te herzien.';
+    overrideList.append(none);
+  }
+  $('overridePanel').hidden=result.canOverride!==true;
   feedback(writesEnabled?'Je kunt aanvragen behandelen binnen je eigen bevoegdheid.':'De verlofmodule staat momenteel op alleen-lezen.');
  }catch(e){feedback(e.message,true)}
 }
