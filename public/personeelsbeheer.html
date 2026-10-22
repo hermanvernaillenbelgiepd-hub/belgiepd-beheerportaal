@@ -132,7 +132,7 @@ header{padding-inline:clamp(15px,2vw,34px)}
   border-radius:5px;background:#cddff5
 }
 
-</style></head>
+.compact-case-link{display:inline-flex;align-items:center;justify-content:center;background:#285cbd;color:#fff;border:1px solid #5a8feb;border-radius:8px;padding:8px 11px;font-size:12px;font-weight:750;text-decoration:none}.compact-case-link:hover{background:#3c75da}</style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
@@ -185,7 +185,7 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 </div><div id="newDuplicateWarning" class="warn" role="status" aria-live="polite" hidden></div>
 <div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Firestore registratie; Google Sheets en Discord-rollen blijven ongewijzigd</span></div></form>
 </section>
-<section id="panel" class="card" hidden><div class="controls" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2><button class="alt" id="close" type="button">Sluiten</button></div>
+<section id="panel" class="card" hidden><div class="controls" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2><div class="controls"><a id="quickCaseLink" class="compact-case-link" href="/weekrapporten.html">✎ Dossierregistratie · compact</a><button class="alt" id="close" type="button">Sluiten</button></div></div>
 <p class="subtle" id="identity"></p>
 <form id="editForm"><div class="grid">
 <div><label for="pName">Naam</label><input id="pName" maxlength="120" minlength="2" required></div>
@@ -869,6 +869,7 @@ $('staffCaseForm').onsubmit=async event=>{
 };
 async function showPerson(p){
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
+  $('quickCaseLink').href='/weekrapporten.html?dept='+encodeURIComponent(p.dept)+'&discordId='+encodeURIComponent(p.discordId);
   $('identity').textContent=(departments[p.dept]||p.dept)+' · Discord ID '+p.discordId+' · Revisie '+p.revision;
   $('pName').value=p.name;$('pCall').value=p.call;$('pRank').value=p.rank;$('reason').value='';
   $('pStatus').replaceChildren(...statuses.map(x=>option(x,x)));
