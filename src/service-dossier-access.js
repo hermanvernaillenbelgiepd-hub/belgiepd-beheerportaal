@@ -22,6 +22,7 @@ const matchesDuty=(person,pattern)=>pattern.test(code(person?.call))||pattern.te
 
 export function deriveServiceDossierDepartments(actor,personnel,member,boardAppointment,guildId,now=Date.now(),includeBoard=true){
   if(!actor||!DISCORD.test(actor.discordId)||!Array.isArray(actor.departments))return [];
+  if(actor.portalTechnicalMode===true)return [...SERVICE_DOSSIER_DEPARTMENTS];
   const roles=verifiedRoles(member,guildId,now);
   // Bestuur is an independently approved appointment OR an independently
   // verified Bestuur Discord role. Neither changes operational rank.

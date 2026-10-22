@@ -2,6 +2,7 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {roleSummary} from './role-catalog.js';
+import {makeProfileCookie,clearProfileCookie} from './portal-profile-mode.js';
 import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {roleForDepartment} from './leave-policy.js';
@@ -72,11 +73,42 @@ export function installUserRoutes(app,{requireUser,accessList}){
         role:d?.status==='approved'?d.role:null});
     }catch(e){return fail(res,e)}
   });
+  // The profile switch cannot alter the permanent approval/Discord rank.
+  app.get('/api/users/profile',requireUser,(req,res)=>{
+    const actor=req.bpd;
+    return res.json({technicalAvailable:actor.profileTechnicalAvailable===true,
+      mode:actor.portalTechnicalMode===true?'technisch':'politie',
+      operationalRole:actor.operationalRole||actor.role,
+      discordPoliceRank:actor.discordPoliceRank||null,
+      linkedDiscordId:actor.discordId||null});
+  });
+  app.post('/api/users/profile',requireUser,async(req,res)=>{
+    const mode=req.body?.mode;
+    if(!['politie','technisch'].includes(mode)||
+       !req.body||Object.keys(req.body).some(k=>k!=='mode'))
+      return denial(res,400,'Kies een geldig portaalprofiel');
+    if(mode==='politie'){
+      res.set('Set-Cookie',clearProfileCookie());
+      return res.json({mode:'politie',changed:true});
+    }
+    if(req.bpd.profileTechnicalAvailable!==true||
+       !validId(req.bpd.discordId)||!req.bpd.uid?.startsWith('discord:'))
+      return denial(res,403,'Dit Discord-account heeft geen geautoriseerd technisch beheerprofiel');
+    try{
+      // Failed audit storage must fail closed; a mode switch is security-relevant.
+      await db().collection('bpd_portal_profile_audit').add({
+        discordId:req.bpd.discordId,actorUid:req.bpd.uid,
+        mode:'technisch',at:FieldValue.serverTimestamp()});
+      res.set('Set-Cookie',makeProfileCookie(req.bpd.uid,req.bpd.discordId,
+        process.env.BPD_PORTAL_PROFILE_SIGNING_KEY));
+      return res.json({mode:'technisch',changed:true});
+    }catch(e){return fail(res,e)}
+  });
   // Only returns the authenticated member's OWN authorisation context.
   // Useful when a valid Discord identity lacks scoped management rights.
   app.get('/api/users/context',requireUser,(req,res)=>{
     const depts=req.bpd.departments||[];
-    res.json({role:req.bpd.role,departments:depts,
+    res.json({role:req.bpd.role,profileMode:req.bpd.portalTechnicalMode===true?'technisch':'politie',departments:depts,
       departmentRoles:Object.fromEntries(depts.map(dept=>[dept,roleForDepartment(req.bpd,dept)||'geen'])),
       canManageUsers:isUserManager(req.bpd),canManageTO:req.bpd.role==='beheerder'});
   });

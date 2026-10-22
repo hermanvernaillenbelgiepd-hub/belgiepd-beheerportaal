@@ -22,6 +22,7 @@ import { installUserRoutes } from './user-routes.js';
 import {installBoardAppointmentRoutes} from './board-appointment-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
+import {eligibleForTechnicalProfile,verifiedPoliceRank,technicalCookieIsValid,technicalActor} from './portal-profile-mode.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
@@ -85,7 +86,7 @@ async function requireUser(req,res,next){
     const verified=await getAuth().verifyIdToken(token);
     // Google-noodtoegang blijft bestaan. Discord krijgt enkel de bestaande,
     // persoonlijk gemapte rechten uit de allowlist; geen rollen op basis van ID alleen.
-    let email,entry,discordId;
+    let email,entry,discordId,discordMember=null;
     if(verified.email_verified && verified.firebase?.sign_in_provider==='google.com'){
       email=String(verified.email||'').toLowerCase();
       entry=accessList()[email];
@@ -104,6 +105,7 @@ async function requireUser(req,res,next){
       const id=String(verified.uid||'').replace(/^discord:/,'');
       if(!/^\d{15,22}$/.test(id))return res.status(403).json({error:'Discord-identiteit ongeldig'});
       const member=(await getFirestore().collection('bpd_discord_auth').doc(id).get()).data();
+      discordMember=member;
       if(!verifiedDiscordIdentity(verified,member,process.env.DISCORD_GUILD_ID))
         return res.status(403).json({error:'Discord-verificatie verlopen. Meld je opnieuw aan met Discord.'});
       const managed=await getFirestore().collection(USER_COLLECTION).doc(id).get();
@@ -143,8 +145,13 @@ async function requireUser(req,res,next){
         departments.includes(dept) && ALLOWED_ROLES.includes(role)
       )
     );
-    req.bpd={email,uid:verified.uid,role:String(entry.role),departments,
+    const actor={email,uid:verified.uid,role:String(entry.role),departments,
       discordId,departmentRoles};
+    const canSwitch=eligibleForTechnicalProfile(verified,actor,discordMember,process.env);
+    actor.profileTechnicalAvailable=canSwitch;
+    actor.discordPoliceRank=verifiedPoliceRank(discordMember,process.env.DISCORD_GUILD_ID);
+    req.bpd=canSwitch&&technicalCookieIsValid(req.headers.cookie,verified.uid,discordId,
+      process.env.BPD_PORTAL_PROFILE_SIGNING_KEY)?technicalActor(actor):actor;
     next();
   } catch(e) {
     if(e.message?.includes('BPD_ACCESS_JSON')) return res.status(503).json({error:'Rechtenconfiguratie ongeldig'});

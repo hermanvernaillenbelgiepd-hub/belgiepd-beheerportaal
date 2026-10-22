@@ -2,6 +2,7 @@ import { getApps,initializeApp,applicationDefault } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore,FieldValue } from 'firebase-admin/firestore';
 import { discordPortalAccess } from './discord-portal-access.js';
+import {eligibleForTechnicalProfile,technicalCookieIsValid} from './portal-profile-mode.js';
 import { isDiscordId } from './discord-utils.js';
 import { ROLE_CATALOG,roleSummary,SERVICE_DEPTS } from './role-catalog.js';
 import { basePermissions,effectivePermissions,validateOverride,canAdministerRoles,canLogTraining,canReviewTraining,visibleTrainingPermissions,DELEGATABLE_PERMISSIONS } from './permissions-utils.js';
@@ -38,6 +39,13 @@ async function resolveActor(req,res,next){
         && ['basiskader','middenkader','officierenkader','korpsleiding','beheerder'].includes(allowed.entry.role)){
         bpd={...bpd,role:allowed.entry.role,departments:allowed.entry.departments.filter(d=>SERVICE_DEPTS.includes(d)),email:allowed.email,trustedStaff:true};
       }
+    }
+    // Technical mode is restricted by a separately configured, verified Discord ID.
+    if(bpd.trustedStaff===true&&eligibleForTechnicalProfile(decoded,bpd,member,process.env)&&
+       technicalCookieIsValid(req.headers.cookie,decoded.uid,discordId,
+         process.env.BPD_PORTAL_PROFILE_SIGNING_KEY)){
+      bpd={...bpd,role:'korpsleiding',departments:['politie','brandweer','ambulance','depannage'],
+        portalTechnicalMode:true,trustedStaff:true};
     }
     const base=basePermissions(member,process.env.DISCORD_GUILD_ID);
     // Never infer rank from a stale role snapshot, or from an unrelated Discord ID.

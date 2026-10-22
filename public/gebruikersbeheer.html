@@ -25,6 +25,19 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmelding controleren…</div>
 <section class="card"><h2>Mijn toegang</h2><div id="self">Meld je aan met Discord om je aanvraagstatus te controleren.</div>
 <p class="muted">Discord-rollen geven nooit op zichzelf recht op personeelsdossiers. Goedkeuring door bevoegd kader is verplicht.</p>
+<div id="profileSwitcher" hidden style="margin-top:16px;padding:14px;border:1px solid #476b9c;border-radius:10px">
+  <strong>Mijn portaalprofiel</strong>
+  <p id="profilePoliceDetails" class="muted"></p>
+  <div class="controls">
+    <label for="profileMode">Werkmodus</label>
+    <select id="profileMode" style="width:auto;min-width:220px">
+      <option value="politie">Mijn politieprofiel</option>
+      <option value="technisch">Technisch beheer — volledige toegang</option>
+    </select>
+    <button type="button" id="profileApply" class="alt">Profiel activeren</button>
+  </div>
+  <p id="profileWarning" class="muted" hidden>Technische modus is actief op MAIN. Alle wijzigingen aan gegevens zijn echt en worden volgens de bestaande modules geregistreerd. Het verandert je Discord-rol of politierang niet. Je kunt altijd terugschakelen.</p>
+</div>
 <button id="request" type="button" hidden>Toegang aanvragen</button></section>
 <nav id="manageTabs" class="manage-tabs" aria-label="Tabbladen gebruikersbeheer" hidden>
 <button type="button" data-tab="accounts" hidden>👥 Personeelsaccounts</button>
@@ -431,10 +444,41 @@ $('boardNominationForm').onsubmit=async event=>{
     await boardRefresh();
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
 };
+const policeRoleNames={basiskader:'Basiskader',middenkader:'Middenkader',
+  officierenkader:'Officierenkader',korpsleiding:'Korpsleiding'};
+async function loadProfileSwitcher(){
+  const root=$('profileSwitcher');root.hidden=true;
+  if(!auth?.currentUser)return;
+  try{
+    const profile=await api('/api/users/profile');
+    if(!profile.technicalAvailable)return;
+    root.hidden=false;
+    $('profileMode').value=profile.mode;
+    $('profilePoliceDetails').textContent=
+      'Politieprofiel: '+(policeRoleNames[profile.operationalRole]||profile.operationalRole||'Onbekend')+
+      ' · Discord-politierang: '+
+      (policeRoleNames[profile.discordPoliceRank]||'niet recent geverifieerd');
+    $('profileWarning').hidden=profile.mode!=='technisch';
+  }catch{
+    root.hidden=true;
+  }
+}
+$('profileApply').onclick=async()=>{
+  const mode=$('profileMode').value;
+  if(mode==='technisch'&&!confirm('Technisch beheer geeft uitgebreide toegang tot LIVE-gegevens op MAIN. Deze sessie duurt maximaal één uur en vereist een recent geverifieerde Discord-login. Activeren?'))return;
+  $('profileApply').disabled=true;
+  try{
+    await api('/api/users/profile',{method:'POST',body:{mode}});
+    window.location.reload();
+  }catch(e){
+    $('profileApply').disabled=false;
+    notice('Profiel kon niet worden geactiveerd: '+e.message,true);
+  }
+};
 async function refresh(){
   for(const name of ['admin','toSection','boardSection','dossierGrantSection'])$(name).dataset.authorized='no';
   dossierGrants.reset();
-  if(!auth?.currentUser){$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;$('toSection').hidden=true;return}
+  if(!auth?.currentUser){$('profileSwitcher').hidden=true;$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;$('toSection').hidden=true;return}
   const isDiscord=auth.currentUser.uid.startsWith('discord:');
   $('request').hidden=true;
   let accessStatus=null;
@@ -458,6 +502,7 @@ async function refresh(){
     notice(message[accessStatus],accessStatus==='blocked');
     return;
   }
+  await loadProfileSwitcher();
   await loadAdmin();
   await loadTOGrants();
   await boardRefresh();

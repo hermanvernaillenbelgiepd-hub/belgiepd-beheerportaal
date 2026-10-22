@@ -26,12 +26,12 @@ export const mayWriteManagement = (actor,dept,type) => (
     HIGH_ROLES.includes(roleForDepartment(actor,dept))
   ))
 );
-export const mayDecide = actor => HIGH_ROLES.includes(actor?.role);
+export const mayDecide = actor => actor?.portalTechnicalMode===true||HIGH_ROLES.includes(actor?.role);
 // Rapportinhoud raadplegen kan vanaf middenkader; bestanden exporteren alleen voor hogere kaderrollen, binnen de toegestane dienst.
-export const mayExportWeekReport = (actor,dept) => mayReadManagement(actor,dept) && HIGH_ROLES.includes(actor.role);
+export const mayExportWeekReport = (actor,dept) => mayReadManagement(actor,dept) && (actor.portalTechnicalMode===true||HIGH_ROLES.includes(actor.role));
 // Testregistraties mogen alleen door hogere leiding worden geclassificeerd.
 // De classificatie verwijdert geen dossiers en verandert geen sanctiebevoegdheden.
-export const mayClassifyTest = (actor,dept) => mayReadManagement(actor,dept) && HIGH_ROLES.includes(actor.role);
+export const mayClassifyTest = (actor,dept) => mayReadManagement(actor,dept) && (actor.portalTechnicalMode===true||HIGH_ROLES.includes(actor.role));
 export const isTestRecord = record => record?.testRecord === true;
 export function validateTestClassification(value){
   if(typeof value?.testRecord !== 'boolean')throw new Error('Ongeldige testmarkering');

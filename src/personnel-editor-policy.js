@@ -27,7 +27,7 @@ export function canEditPersonnel(actor,person){
      (Array.isArray(actor?.dossierNativeDepartments)&&!actor.dossierNativeDepartments.includes(person.dept))||
      actor.discordId===person.personId)return false;
   const scoped=roleForDepartment(actor,person.dept);
-  if(actor.role==='beheerder'&&scoped==='beheerder')return true;
+  if(actor.portalTechnicalMode===true||actor.role==='beheerder'&&scoped==='beheerder')return true;
   if(!['officierenkader','korpsleiding'].includes(scoped) ||
      !['officierenkader','korpsleiding'].includes(actor.role))return false;
   if(actor.role==='officierenkader'&&scoped==='korpsleiding')return false;
