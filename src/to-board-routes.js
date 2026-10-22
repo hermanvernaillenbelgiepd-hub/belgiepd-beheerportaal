@@ -89,7 +89,7 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
               (['HARTS','HVPK'].includes(crew.category)&&n===crew.category))
             .map(n=>/^\d{1,5}$/.test(String(n))?String(Number(n)):String(n)))];
           if(!own.length||own.some(n=>used.has(JSON.stringify([crew.category,n]))))continue;
-          const numbers=crew.paired&&own.length===2?own:[String(crew.number)];
+          const numbers=crew.paired&&own.length===2?own:[/^\d{1,5}$/.test(String(crew.number))?String(Number(crew.number)):String(crew.number)];
           if(numbers.some(n=>!own.includes(n)))continue;
           const leden=numbers.map((roep,i)=>{
             const person=crew.members.find(m=>String(m.number)===roep||
