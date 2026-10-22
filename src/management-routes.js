@@ -2,6 +2,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel,maySubmit,mayAmend,canChooseSanction,canRepresent,eligibleRepresentative,SANCTION_TYPES,SANCTION_REASONS} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
+import {installManagementDemoRoutes,DEMO_SUBJECTS} from './management-demo.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
@@ -17,6 +18,7 @@ const errorResponse=(res,error)=>{
 };
 export function installManagementRoutes(app,{requireUser,getSnapshot}){
   const db=()=>getFirestore();
+  installManagementDemoRoutes(app,{requireUser});
   const enabled=()=>process.env.BPD_ENABLE_REGISTRATIONS==='true' && process.env.BPD_ENABLE_MANAGEMENT_WRITES==='true';
   const cadre=(req,res,next)=>{
     if(!CADRE_ROLES.includes(req.bpd.role))return res.status(403).json({error:'Alleen middenkader en hoger hebben toegang'});
@@ -25,7 +27,10 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
   app.get('/api/management/overview',requireUser,async(req,res)=>{
     try{
       const snap=await getSnapshot();
-      const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
+      const realSubjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
+      // DEMO-gegevens staan uitsluitend in procesgeheugen en kunnen nooit per ongeluk
+      // in de gewone getSnapshot()/Firestore-personeelsbron terechtkomen.
+      const subjects=[...realSubjects,...DEMO_SUBJECTS.filter(p=>canReadServiceDossier(req.bpd,p.dept))];
       const actor=actorFromPersonnel(req.bpd,snap.data);
       const registrationPermissions=Object.fromEntries(
         (req.bpd.dossierAllowedDepartments||[]).filter(d=>canReadServiceDossier(req.bpd,d))
@@ -42,7 +47,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
         .map(p=>({dept:p.dept,discordId:p.discordId,name:p.name,call:p.call}));
       res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,'notitie')),registrationWritesEnabled:process.env.BPD_ENABLE_REGISTRATIONS==='true',registrationPermissions,
         registrationSanctionTypes:SANCTION_TYPES.filter(t=>canChooseSanction(req.bpd.role,t)),
-        registrationSanctionReasons:SANCTION_REASONS,representatives,
+        registrationSanctionReasons:SANCTION_REASONS,representatives,demoEnabled:true,
         canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:req.bpd.dossierNativeDepartments.some(d=>mayExportWeekReport(req.bpd,d)),actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t)))});
     }catch(e){errorResponse(res,e)}
   });
