@@ -17,6 +17,34 @@
 .leave-badge.rejected{background:#562d34;color:#ffd1d3}
 .leave-badge.pending{background:#473a22;color:#ffe4aa}
 .leave-box[hidden]{display:none}
+
+/* Compacte, rustige profielweergave; geen wijzigingen aan gegevens of acties. */
+main{max-width:1060px;margin:18px auto;padding:0 18px 28px}
+header{padding-top:12px;padding-bottom:12px}
+h1{font-size:24px;margin:0 0 5px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 8px}
+h3{font-size:15px}
+main>p{margin:5px 0 12px;font-size:13px}
+.card{padding:16px 18px;margin:10px 0;border-radius:11px}
+.card>p{margin:6px 0 10px}
+button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
+.status{margin-top:9px;padding:9px 11px;font-size:13px}
+.identity-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}
+.identity-grid>div{min-width:0;padding:10px 12px;background:#152a47;border:1px solid #2b4365;border-radius:8px}
+.identity-grid dt{margin:0 0 3px;font-size:11px}
+.identity-grid dd{font-size:13px;line-height:1.35}
+.leave-box{margin-top:12px;padding:13px 15px}
+.leave-form-grid{gap:10px;margin:10px 0}
+.leave-field input,.leave-field textarea{padding:8px}
+.leave-record{padding:8px 0}
+.profile-actions{margin-top:12px;margin-bottom:8px}
+.profile-section{padding-top:12px;margin-top:12px}
+.profile-columns{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.profile-columns section{min-width:0;padding:11px}
+.profile-row{padding:6px 0}
+.role-details{margin-top:12px;padding:11px}
+@media(max-width:850px){.identity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-columns{grid-template-columns:1fr}}
+@media(max-width:520px){main{padding:0 12px 24px}.card{padding:13px}.identity-grid{grid-template-columns:1fr 1fr;gap:6px}.identity-grid>div{padding:8px}.identity-grid dd{font-size:12px}header{padding:12px}}
 </style></head><body><header><strong>BelgiëPD Beheerportaal</strong> <a href="/">← Terug naar beheerportaal</a> <a href="/rollen-opleidingen.html">Rollen & opleidingen</a> <a href="/gebruikersbeheer.html">Gebruikersbeheer</a></header><main><h1>Mijn profiel</h1><p>Meld je aan met je Discord-account. Je browser onthoudt de aanmelding; voor personeels- en dossierrechten controleert de server je bestaande, goedgekeurde bevoegdheden.</p><div class="card"><h2>Discord verbinden</h2><a class="button" href="/auth/discord/start?return=%2Fdiscord-status.html">Aanmelden met Discord</a><button class="secondary" id="google" type="button">Google aanmelden</button><button class="secondary" id="logout" type="button">Afmelden</button><p class="muted">Gebruik voor de Discord-test je eigen Discord-account dat lid is van de BelgiumPD-server. Een Discord-login vervangt in deze browser de huidige Firebase-sessie; via Google kun je je opnieuw aanmelden.</p><div id="state" class="status">Aanmelding en serverinstellingen controleren…</div></div><div class="card" id="profile" hidden>
 <h2>Mijn gegevens en status</h2>
 <p class="muted">Je eigen geverifieerde Discord-gegevens, personeelsrollen, specialisaties en opleidingen op één pagina. Je personeelsgegevens zijn alleen-lezen; verlof aanvragen kan onderaan deze pagina.</p>
