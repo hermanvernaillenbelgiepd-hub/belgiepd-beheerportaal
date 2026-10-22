@@ -10,7 +10,7 @@ export const SANCTION_REASONS = [
   'Ongeoorloofde toe-eigening van een specialisatie','Anders'
 ];
 // Kaderbeleid: eerste drie maatregelen zelfstandig; voorstel tot degradatie vanaf ernst 9/10.
-// Effectieve degradatie, schorsing en (geblackliste) ontslagen uitsluitend korpsleiding.
+// Effectieve degradatie en schorsing vanaf officierenkader; ontslag (met blacklisting) uitsluitend korpsleiding.
 export const SANCTION_TYPES = [
   'Mondelinge waarschuwing', 'Officiële waarschuwing', 'Tijdelijke beperking',
   'Voorstel tot degradatie', 'Degradatie', 'Schorsing', 'Ontslag', 'Ontslag met blacklisting'
@@ -20,7 +20,10 @@ export const isDiscordId = id => /^\d{15,22}$/.test(String(id??''));
 export const isCadre = role => ['middenkader','officierenkader','korpsleiding','beheerder'].includes(role);
 export const canChooseSanction=(role,kind,severity=null)=>{
   if(!['middenkader','officierenkader','korpsleiding'].includes(role)||!SANCTION_TYPES.includes(kind))return false;
-  if(HEAVY_SANCTION_TYPES.includes(kind))return role==='korpsleiding';
+  if(kind==='Degradatie'||kind==='Schorsing')
+    return role==='officierenkader'||role==='korpsleiding';
+  if(kind==='Ontslag'||kind==='Ontslag met blacklisting')
+    return role==='korpsleiding';
   if(kind==='Voorstel tot degradatie')return Number.isInteger(severity)&&severity>=9&&severity<=10;
   return true;
 };
