@@ -67,3 +67,18 @@ export function applySpecialtyOverlays(records,docs){
       special:legacy||'Geen geregistreerde specialisaties'};
   });
 }
+
+// Safe initial qualifications for a newly registered police officer.
+// This does not grant Discord roles, operational rank or module access.
+// Never apply to an unverified / unsynchronized callsign request.
+export const INITIAL_POLICE_SPECIALTIES=Object.freeze(['Radio BM','SIV/WPR']);
+export function initialFixedCallSpecialties(assignment){
+  const call=Number(assignment?.assignedCall);
+  if(assignment?.status!=='approved'||!Number.isSafeInteger(call)||
+    call<200||call>299||!/^\d{15,22}$/.test(String(assignment.discordId||''))||
+    Number(assignment.sync?.call)!==call||
+    String(assignment.sync?.discordId||'')!==String(assignment.discordId))
+    return null;
+  return Object.fromEntries(INITIAL_POLICE_SPECIALTIES.map(label=>
+    [label,{value:'Ja',source:'manual'}]));
+}

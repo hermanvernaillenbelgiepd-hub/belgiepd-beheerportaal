@@ -80,3 +80,15 @@ test('API is signature-only, checks real Discord member and existing pending req
  assert.ok(srv.includes('installCallsignBotRoutes(app)'));
  assert.ok(call.includes("verificationSource:x.verification?.source||null"));
 });
+
+test('Production callsign and specialization modules load with matching exports',async()=>{
+ const a=await import('../src/callsign-routes.js');
+ const b=await import('../src/specialization-policy.js');
+ assert.equal(typeof a.installCallsignRoutes,'function');
+ assert.equal(typeof b.initialFixedCallSpecialties,'function');
+ const ready=b.initialFixedCallSpecialties({status:'approved',assignedCall:200,
+  discordId:id,sync:{call:200,discordId:id}});
+ assert.deepEqual(Object.keys(ready),['Radio BM','SIV/WPR']);
+ assert.equal(b.initialFixedCallSpecialties({status:'verified',assignedCall:200,
+  discordId:id,sync:{call:200,discordId:id}}),null);
+});
