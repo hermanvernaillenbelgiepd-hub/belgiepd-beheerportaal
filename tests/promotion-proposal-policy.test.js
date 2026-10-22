@@ -16,17 +16,19 @@ test('Voorstellen gebruiken exact de bestaande, beheerde politierangorde',()=>{
   assert.equal(canonicalPromotionRank('Aspirant-inspecteur van politie'),'Aspirant Inspecteur');
   assert.equal(canonicalPromotionRank('Hoofdinspecteur van politie'),'Hoofdinspecteur');
   assert.equal(promotionOptions('Agent van politie').next,'Aspirant Inspecteur');
-  assert.equal(promotionOptions('Inspecteur').next,'Hoofdinspecteur');
-  assert.equal(promotionOptions('Hoofdinspecteur').next,null);
+  assert.equal(promotionOptions('Inspecteur').next,'Eerste Inspecteur');
+  assert.equal(promotionOptions('Hoofdinspecteur').next,'Eerste Hoofdinspecteur');
+  assert.equal(promotionOptions('Eerste Hoofdinspecteur').next,null);
 });
 test('Iedere gewone promotie is uitsluitend naar de eerstvolgende rang',()=>{
   assert.deepEqual(validatePromotionProposal(request('Aspirant Inspecteur'),subject('Agent van politie'),officer),{
     previousRank:'Agent',proposedRank:'Aspirant Inspecteur',promotionOverride:false
   });
-  for(const target of ['Agent','Inspecteur','Hoofdinspecteur','Niet-bestaande graad']){
+  for(const target of ['Agent','Inspecteur','Eerste Inspecteur','Hoofdinspecteur','Niet-bestaande graad']){
     assert.throws(()=>validatePromotionProposal(request(target),subject('Agent'),officer));
   }
   assert.throws(()=>validatePromotionProposal(request('Agent'),subject('Hoofdinspecteur'),officer));
+  assert.deepEqual(validatePromotionProposal(request('Eerste Inspecteur'),subject('Inspecteur'),officer),{previousRank:'Inspecteur',proposedRank:'Eerste Inspecteur',promotionOverride:false});
   assert.throws(()=>validatePromotionProposal(request('Inspecteur'),subject('Onbekende rang'),officer));
 });
 test('Alleen geverifieerde politie-korpsleiding mag een sprong met reden indienen',()=>{
@@ -63,4 +65,47 @@ test('Een uitzondering is nooit een willekeurige of lagere rang en vereist polit
   assert.throws(()=>validatePromotionProposal(request('Inspecteur',{
     promotionOverride:true,promotionOverrideReason:reason
   }),{dept:'brandweer',rank:'Brandweerman'},corps));
+});
+
+test('1xx en 2xx zijn AP; eerstvolgende rang is 3xx A-INP, geen promotie tussen AP-reeksen',()=>{
+  for(const call of ['150','S188','TEST-201','235']){
+    const actual={dept:'politie',rank:'AP',call};
+    assert.equal(promotionOptions(actual.rank,call).callBand.kader,'agentenkader');
+    assert.equal(promotionOptions(actual.rank,call).next,'Aspirant Inspecteur');
+    assert.deepEqual(validatePromotionProposal(request('Aspirant Inspecteur'),actual,officer),{
+      previousRank:'Agent',proposedRank:'Aspirant Inspecteur',promotionOverride:false
+    });
+  }
+});
+test('Roepnummerreeks 3xx–8xx valideert alle aangegeven politiegraden',()=>{
+  const subjects=[
+    ['S302','A-INP','Aspirant Inspecteur','Inspecteur'],
+    ['450','INP','Inspecteur','Eerste Inspecteur'],
+    ['TEST-540','1-INP','Eerste Inspecteur','Aspirant Hoofdinspecteur'],
+    ['650','A-HINP','Aspirant Hoofdinspecteur','Hoofdinspecteur'],
+    ['750','HINP','Hoofdinspecteur','Eerste Hoofdinspecteur'],
+    ['850','1-HINP','Eerste Hoofdinspecteur',null]
+  ];
+  for(const [call,rank,current,next] of subjects){
+    const options=promotionOptions(rank,call);
+    assert.equal(options.current,current);
+    assert.equal(options.next,next);
+    assert.equal(options.conflict,false);
+    if(next)assert.equal(validatePromotionProposal(request(next),{dept:'politie',call,rank},officer).previousRank,current);
+  }
+});
+test('Misleidende roepnummer-rangcombinaties blokkeren voorstel totdat dossier is gecorrigeerd',()=>{
+  const options=promotionOptions('Hoofdinspecteur','S302');
+  assert.equal(options.conflict,true);
+  assert.equal(options.next,null);
+  assert.throws(()=>validatePromotionProposal(request('Eerste Hoofdinspecteur'),{
+    dept:'politie',call:'S302',rank:'Hoofdinspecteur'
+  },officer),/Roepnummer/);
+});
+test('9xx geeft alleen Officierenkader of Korpsleiding aan, geen verzonnen officiersrang',()=>{
+  const options=promotionOptions('Commissaris','950');
+  assert.equal(options.current,null);
+  assert.equal(options.callBand.kader,'officierenkader/korpsleiding');
+  assert.equal(options.callBand.rank,null);
+  assert.equal(options.next,null);
 });
