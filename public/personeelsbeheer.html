@@ -480,7 +480,14 @@ function render(){
             temp.select();const ok=document.execCommand('copy');temp.remove();
             if(!ok)throw Error('Kopiëren is niet beschikbaar');
           }
+          const originalLabel=button.dataset.originalLabel||button.textContent;
+          button.dataset.originalLabel=originalLabel;
+          if(button.copyResetTimer)clearTimeout(button.copyResetTimer);
           button.textContent='Gekopieerd ✓';notice(success);
+          button.copyResetTimer=setTimeout(()=>{
+            button.textContent=originalLabel;
+            delete button.copyResetTimer;
+          },2200);
         }catch(e){notice('Kopiëren mislukt. Selecteer de Discord-ID en kopieer handmatig.',true)}
       };
       const copyId=document.createElement('button');copyId.type='button';copyId.className='discord-copy-btn';
