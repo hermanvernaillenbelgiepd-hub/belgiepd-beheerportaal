@@ -56,6 +56,7 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
 @media(max-width:720px){.portal{display:block}aside{padding:15px;gap:11px}.brand{margin:0}.nav-label,.side-note{display:none}nav{display:flex;overflow-x:auto;gap:6px;padding-bottom:3px}nav a{white-space:nowrap;border:1px solid #405276}.topbar{padding:12px 18px}main{padding:26px 18px 40px}.hero{align-items:flex-start}.hero-icon{width:56px;height:56px;border-radius:15px}.hero-icon svg{width:29px;height:29px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.module{padding:16px;min-height:175px}.bottom{grid-template-columns:1fr}}
 @media(max-width:440px){.grid{grid-template-columns:1fr}.hero-icon{display:none}.module{min-height:140px}.topbar .path{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.module{transition:none}.module:hover{transform:none}}
+.topbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.my-profile-link{display:inline-flex;align-items:center;justify-content:center;padding:8px 13px;border-radius:9px;background:#3157d6;color:#fff;font-size:13px;font-weight:750;border:1px solid #5276eb}.my-profile-link:hover{background:#2449c2}.my-profile-link:focus-visible{outline:3px solid #8caaff;outline-offset:2px}
 </style>
 </head>
 <body>
@@ -76,7 +77,7 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
   <div class="side-note"><strong>Beveiligde modules</strong>Meld je aan met je goedgekeurde account. Elke hulpdienst heeft afzonderlijke dossier- en beheersrechten.</div>
 </aside>
 <div class="surface">
-<header class="topbar"><span class="path">BelgiëPD / Startpagina</span><span class="status">Beheeromgeving</span></header>
+<header class="topbar"><span class="path">BelgiëPD / Startpagina</span><div class="topbar-actions"><a class="my-profile-link" href="/discord-status.html" aria-label="Open mijn profiel">👤 Mijn profiel</a><span class="status">Beheeromgeving</span></div></header>
 <main id="inhoud">
   <section class="hero" aria-labelledby="home-title">
     <div><p class="eyebrow">Administratie · Operationele ondersteuning</p>
