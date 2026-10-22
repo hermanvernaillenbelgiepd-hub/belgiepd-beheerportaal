@@ -40,7 +40,7 @@ export function policeKader(rank,call='') {
   if (/hoofdinspecteur|\(ahinp\)|\(hinp\)|\(1hinp\)/i.test(r)) return 'Middenkader';
   if(/inspecteur|\(ainp\)|\(1inp\)|\(inp\)/i.test(r))return 'Basiskader';
   if(n!==null && n>=300 && n<=999)return 'Basiskader';
-  if(/agent|\(ap\)|\(aap\)|\(1ap\)/i.test(r))return 'Agentenkader';
+  if(/agent|\(ap\)|\(aap\)|\(1ap\)/i.test(r))return 'Basiskader';
   return 'Kader'; // Geen aanname bij een onbekende rang.
 }
 export function displaySeries(value, rank = '', dept = 'politie', call = '') {
