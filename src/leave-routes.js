@@ -274,7 +274,12 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       const {snapshot}=await context(req);
       const matched=snapshot.filter(p=>p.dept===dept&&p.personId===personId);
       if(matched.length!==1)throw rejection('Geen eenduidige personeelsfiche gevonden',404);
-      const pending={personDiscordId:personId,subjectDepartments:[dept],status:'pending',
+      // De doelrang komt uit een goedgekeurd portaalaccount, nooit uit het formulier.
+      const subject=await targetAccount(personId);
+      const subjectRole=roleForDepartment(subject,dept);
+      if(!subjectRole)throw rejection('Geen geverifieerde kaderrol bij deze medewerker; handmatige goedkeuring niet mogelijk',403);
+      const pending={personDiscordId:personId,subjectDepartments:[dept],
+        subjectDepartmentRoles:{[dept]:subjectRole},subjectRole,status:'pending',
         startDate:details.startDate,endDate:details.endDate};
       const grant=activeGrant(await grantFor(req.bpd));
       if(!mayApproveLeave(req.bpd,pending,grant))
