@@ -73,6 +73,28 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .specialty-col-icon .specialty-custom-image{display:block;width:35px;height:37px;max-width:100%;object-fit:contain}
 .specialty-tile .specialty-custom-image{display:block;width:42px;height:44px;max-width:100%;object-fit:contain}
 .specialty-summary .specialty-custom-image{display:inline-block;width:20px;height:22px;object-fit:contain;vertical-align:middle;margin-right:5px}
+
+/* MAIN: rustigere personeelslijst met duidelijk zichtbare graadkentekens. */
+.staff-roster-holder{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#6783aa #142842}
+.staff-roster-table{width:100%;min-width:1520px;table-layout:fixed;border-collapse:separate;border-spacing:0}
+.staff-roster-table th,.staff-roster-table td{padding:12px 7px;font-size:12px;overflow-wrap:normal;vertical-align:middle}
+.staff-roster-table thead th{position:sticky;top:0;z-index:2;background:#152b49;line-height:1.35}
+.staff-roster-table tbody tr:nth-child(even){background:rgba(110,153,207,.035)}
+.staff-roster-table tbody tr:hover{background:rgba(89,139,201,.12)}
+.staff-roster-table th:nth-child(1){width:6%}
+.staff-roster-table th:nth-child(2){width:9%}
+.staff-roster-table th:nth-child(3){width:12%}
+.staff-roster-table th:nth-child(4){width:12%}
+.staff-roster-table th:nth-child(5){width:8%}
+.staff-roster-table th:nth-child(6){width:7%}
+.staff-roster-table th:last-child{width:5%}
+.staff-roster-table td:nth-child(2){text-align:center;padding:7px 6px}
+.staff-roster-table .rank-insignia{display:block;width:112px;max-width:100%;height:58px;object-fit:contain;object-position:center;margin:auto;padding:4px 6px;border-radius:8px;background:#1a2b45;border:1px solid #354966;image-rendering:auto}
+.staff-roster-table td:nth-child(3){font-size:12px;line-height:1.45;overflow-wrap:break-word}
+.staff-roster-table .pill{font-size:10px;padding:4px 7px}
+.staff-roster-table .specialty-col-label{font-size:10px;line-height:1.2}
+.staff-roster-table .specialty-status-col .specialty-state{font-size:10px;padding:4px 6px}
+@media(max-width:920px){.staff-roster-table{min-width:1520px}}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
