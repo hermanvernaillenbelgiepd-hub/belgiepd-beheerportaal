@@ -369,7 +369,30 @@ function renderCaseHistory(){
   $('caseList').innerHTML=selected.length?selected.map(e=>renderEntry(e,true)).join(''):
     (caseEntries.length?'Geen registraties voor deze zoekopdracht.':'Nog geen dossierregistraties.');
 }
-function renderEntry(e,allowClassify=false){const by=e.registeredBy?.name||'Onbekende auteur';const special=e.courseName||e.proposedRank||e.newName||e.movement||e.sanctionType||'';const flagged=e.testRecord===true;const control=allowClassify&&viewData?.canClassifyTests?`<div class="buttons"><button class="secondary" type="button" data-classify-entry="${esc(e.id)}" data-flagged="${flagged}">${flagged?'Testmarkering opheffen':'Als testregistratie markeren'}</button></div>`:'';return `<div class="item"><div class="item-title">${esc(labels[e.type]||e.type)} ${flagged?'<span class="pill">TEST – niet in weekrapport</span>':''} ${special?`<span class="pill">${esc(special)}</span>`:''}</div><div class="item-meta">${esc(e.eventDate||'Geen datum')} · Door ${esc(by)} · ${esc(e.subjectCallAtCreation||'')}</div><div class="item-body">${esc(e.details||e.explanation||'Geen omschrijving')}</div>${control}</div>`} 
+function renderEntry(e,allowClassify=false){
+  const by=e.registeredBy?.name||'Onbekende auteur';
+  const special=e.courseName||e.proposedRank||e.newName||e.movement||e.sanctionType||'';
+  const flagged=e.testRecord===true;
+  const sanctions=e.type==='sanctie'?
+    '<div class="item-meta">Status: '+esc(e.status==='ingetrokken'?'Ingetrokken':'Actief')+
+    ' · Ernst: '+esc(e.severity||'—')+'/10'+
+    (Array.isArray(e.reasons)&&e.reasons.length?' · Redenen: '+esc(e.reasons.join(', ')):'')+'</div>':'';
+  const actions=[];
+  if(e.type==='sanctie'&&allowClassify&&mayAmendSelectedSanction()&&viewData?.registrationWritesEnabled===true)
+    actions.push('<button type="button" class="secondary case-edit-action" data-edit-sanction="'+esc(e.id)+'">Sanctie wijzigen</button>');
+  if(allowClassify&&viewData?.canClassifyTests)
+    actions.push('<button type="button" class="secondary case-edit-action" data-classify-entry="'+esc(e.id)+
+      '" data-flagged="'+flagged+'">'+(flagged?'Testmarkering opheffen':'Als testregistratie markeren')+'</button>');
+  const control=actions.length?'<div class="buttons">'+actions.join('')+'</div>':'';
+  return '<div class="item"><div class="item-title">'+esc(labels[e.type]||e.type)+
+    (flagged?' <span class="pill">TEST – niet in weekrapport</span>':'')+
+    (special?' <span class="pill">'+esc(special)+'</span>':'')+'</div>'+
+    '<div class="item-meta">'+esc(e.eventDate||'Geen datum')+
+    (e.eventTime?' · '+esc(e.eventTime):'')+
+    ' · Door '+esc(by)+' · '+esc(e.subjectCallAtCreation||'')+'</div>'+
+    '<div class="item-body">'+esc(e.details||e.explanation||'Geen omschrijving')+'</div>'+
+    sanctions+control+'</div>';
+}
 async function loadCases(){
   const serial=++caseRequestSerial,id=$('casePerson').value,dept=$('caseDept').value;
   displaySelectedPerson();caseEntries=[];
@@ -526,6 +549,11 @@ $('caseForm').addEventListener('submit',async event=>{
 });
 $('reportForm').addEventListener('submit',async e=>{e.preventDefault();if(!viewData?.writesEnabled)return;const body={dept:$('reportDept').value,title:$('reportTitle').value,periodStart:$('periodStart').value,periodEnd:$('periodEnd').value};$('createReport').disabled=true;try{const result=await api('/api/management/reports','POST',body);msg('Conceptweekrapport aangemaakt.','good');await loadReports();await openReport(result.id)}catch(err){msg('Rapport niet aangemaakt: '+err.message,'error')}finally{$('createReport').disabled=false}});
 $('caseList').addEventListener('click',async event=>{
+  const editButton=event.target.closest('[data-edit-sanction]');
+  if(editButton){
+    beginSanctionEdit(editButton.dataset.editSanction);
+    return;
+  }
   const btn=event.target.closest('[data-classify-entry]');
   if(!btn||!viewData?.canClassifyTests||!viewData?.writesEnabled)return;
   const testRecord=btn.dataset.flagged!=='true';
