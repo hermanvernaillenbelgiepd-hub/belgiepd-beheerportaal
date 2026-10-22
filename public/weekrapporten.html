@@ -291,7 +291,9 @@ function resetSanctionEdit(){
 function resetRegistrationFields(){
   for(const id of ['details','endDate','courseName','newName','proposedRank','movement','referenceUrl',
      'registrationPlayers','registrationRepresentReason','registrationReasonOther',
-     'registrationCfx','registrationExplanation'])$(id).value='';
+     'registrationCfx','registrationExplanation','promotionOverrideReason'])$(id).value='';
+  $('promotionOverride').checked=false;
+  updatePromotionChoices();
   $('registrationRepresent').value='';
   $('registrationSeverity').value='5';
   for(const c of $('registrationReasons').querySelectorAll('input[type="checkbox"]'))c.checked=false;
@@ -354,9 +356,47 @@ function populateQuickTypes(choices){
   }
   changeExtra();
 }
+let lastPromotionSubject='';
+function updatePromotionChoices(){
+  const type=$('entryType').value,active=type==='promotievoorstel';
+  const person=selectedPerson(),policy=person?.promotion||{current:null,next:null,higher:[]};
+  const key=person?person.dept+':'+person.discordId:'';
+  if(lastPromotionSubject!==key){
+    lastPromotionSubject=key;
+    $('promotionOverride').checked=false;
+    $('promotionOverrideReason').value='';
+  }
+  const canOverride=active&&person?.dept==='politie'&&viewData?.canOverridePromotion===true&&
+    (policy.higher||[]).some(rank=>rank!==policy.next);
+  $('promotionOverrideWrap').classList.toggle('hidden',!canOverride);
+  if(!canOverride){
+    $('promotionOverride').checked=false;$('promotionOverrideReason').value='';
+  }
+  const override=canOverride&&$('promotionOverride').checked===true;
+  $('promotionOverrideReasonWrap').classList.toggle('hidden',!override);
+  $('promotionOverrideReason').required=override;
+  const options=active?(override?(policy.higher||[]).filter(rank=>rank!==policy.next):
+    (policy.next?[policy.next]:[])):[];
+  const old=$('proposedRank').value;
+  selectOptions($('proposedRank'),options.map(value=>({value,label:value})),
+    options.length?'Kies de voorgestelde rang':'Geen geldige volgende rang');
+  if(options.includes(old))$('proposedRank').value=old;
+  else if(options.length===1)$('proposedRank').value=options[0];
+  else $('proposedRank').value='';
+  $('proposedRank').required=active&&options.length>0;
+  $('proposedRank').disabled=!active||options.length===0;
+  $('promotionHint').textContent=!active?'':!person?'Kies een medewerker.':
+    person.dept!=='politie'?'Deze promotierangorde geldt alleen voor politie.':
+    !policy.current?'Huidige rang onbekend. Eerst de personeelsrang controleren.':
+    override?'Uitzonderlijk voorstel: kies een hogere rang en motiveer de sprong.':
+    policy.next?'Huidige rang: '+person.rank+' · eerstvolgende: '+policy.next:
+    'Hoogste geregistreerde rang binnen deze promotieladder bereikt.';
+  return !active||options.length>0;
+}
 function changeExtra(){
   const type=$('entryType').value,reg=isRegistrationType(type),sanction=type==='sanctie';
   $('caseTypeHint').textContent=categoryExplanations[type]||'';
+  const promotionValid=updatePromotionChoices();
   Object.values(extraFields).flat().forEach(id=>$(id).classList.add('hidden'));
   (extraFields[type]||[]).forEach(id=>$(id).classList.remove('hidden'));
   for(const [field,kind] of [['endDate','verlof'],['courseName','opleiding'],['newName','naamswijziging'],
@@ -386,7 +426,7 @@ function changeExtra(){
     button.setAttribute('aria-pressed',String(button.dataset.type===type));
   const other=[...$('registrationReasons').querySelectorAll('input[type="checkbox"]')].some(c=>c.value==='Anders'&&c.checked);
   $('registrationReasonOther').required=sanction&&other;
-  $('saveCase').disabled=(!viewData?.actor&&!selectedIsDemo())||
+  $('saveCase').disabled=!promotionValid||(!viewData?.actor&&!selectedIsDemo())||
     (!selectedIsDemo()&&(reg?viewData?.registrationWritesEnabled!==true:viewData?.writesEnabled!==true));
 }
 function populateHistoryTypes(){
@@ -509,7 +549,7 @@ async function exportWord(){
 }
 $('exportDocx').addEventListener('click',exportWord);
 $('exportPrint').addEventListener('click',()=>{if(!viewData?.canExportReports||!activeReport)return;window.print()});
-function showUser(data){viewData=data;const exportAllowed=data.canExportReports===true;document.body.classList.toggle('can-export',exportAllowed);$('reportExportActions').classList.toggle('hidden',!exportAllowed);$('exportReadOnlyNote').classList.toggle('hidden',exportAllowed);resetReportExport();subjects=data.subjects;const depts=data.departments.map(x=>({value:x,label:({'politie':'Politie','ambulance':'Ambulance','brandweer':'Brandweer','depannage':'Depannage'})[x]||x}));selectOptions($('caseDept'),depts,'Kies dienst');selectOptions($('reportDept'),depts,'Kies dienst');$('caseDept').value=depts[0]?.value||'';$('reportDept').value=depts[0]?.value||'';populateSanctionOptions();refreshRegistrationChoices();populateHistoryTypes();$('actorLabel').textContent=data.actor?`Ingevuld door: ${data.actor.name} – ${data.actor.call} (${data.role})`:'Geen gekoppeld personeelslid: opslaan is niet mogelijk.';$('saveCase').disabled=!data.actor||!data.writesEnabled;$('createReport').disabled=!data.actor||!data.writesEnabled;$('needLogin').classList.add('hidden');$('app').classList.remove('hidden');$('demoBanner').classList.toggle('hidden',data.demoEnabled!==true);
+function showUser(data){viewData=data;const exportAllowed=data.canExportReports===true;document.body.classList.toggle('can-export',exportAllowed);$('reportExportActions').classList.toggle('hidden',!exportAllowed);$('exportReadOnlyNote').classList.toggle('hidden',exportAllowed);resetReportExport();subjects=data.subjects;const depts=data.departments.map(x=>({value:x,label:({'politie':'Politie','ambulance':'Ambulance','brandweer':'Brandweer','depannage':'Depannage'})[x]||x}));selectOptions($('caseDept'),depts,'Kies dienst');selectOptions($('reportDept'),depts,'Kies dienst');$('caseDept').value=depts[0]?.value||'';$('reportDept').value=depts[0]?.value||'';populateSanctionOptions();refreshRegistrationChoices();populateHistoryTypes();$('actorLabel').textContent=data.actor?`Ingevuld door: ${data.actor.name} – ${data.actor.call} (${data.role})`:data.demoEnabled?'Geen eigen personeelsfiche gekoppeld. Je kunt wel met [DEMO]-personen oefenen.':'Geen gekoppeld personeelslid: opslaan is niet mogelijk.';$('saveCase').disabled=!data.actor||!data.writesEnabled;$('createReport').disabled=!data.actor||!data.writesEnabled;$('needLogin').classList.add('hidden');$('app').classList.remove('hidden');$('demoBanner').classList.toggle('hidden',data.demoEnabled!==true);
 if(!data.writesEnabled)msg(data.demoEnabled?'Echte dossieropslag staat uit. Kies een [DEMO]-medewerker om veilig te oefenen; DEMO-opslag is actief.':'Registraties staan uit. Controleer BPD_ENABLE_MANAGEMENT_WRITES en BPD_ENABLE_REGISTRATIONS.','notice');else msg('Ingelogd: alleen jouw toegelaten hulpdiensten zijn zichtbaar.','good');filterCases();changeExtra();const params=new URLSearchParams(location.search),dept=params.get('dept'),id=params.get('discordId');if(dept&&depts.some(x=>x.value===dept)){$('caseDept').value=dept;filterCases();refreshRegistrationChoices();}if(id&&subjects.some(x=>x.dept===$('caseDept').value&&x.discordId===id)){
   $('casePerson').value=id;loadCases();
 }else if(data.demoEnabled===true){
@@ -521,6 +561,7 @@ $('caseDept').addEventListener('change',()=>{$('casePersonSearch').value='';filt
 $('casePersonSearch').addEventListener('input',()=>filterCases({keepHistory:true}));
 $('casePerson').addEventListener('change',()=>{loadCases()});
 $('registrationRepresent').addEventListener('change',updateRepresentReason);
+$('promotionOverride').addEventListener('change',updatePromotionChoices);
 $('registrationReasons').addEventListener('change',changeExtra);
 $('cancelSanctionEdit').addEventListener('click',()=>{resetSanctionEdit();resetRegistrationFields()});
 $('caseHistoryType').addEventListener('change',renderCaseHistory);
@@ -545,6 +586,8 @@ $('caseForm').addEventListener('submit',async event=>{
   const body={dept,discordId:id,type,eventDate:$('entryDate').value,details:$('details').value,
     endDate:$('endDate').value,courseName:$('courseName').value,newName:$('newName').value,
     proposedRank:$('proposedRank').value,movement:$('movement').value,
+    promotionOverride:type==='promotievoorstel'&&$('promotionOverride').checked,
+    promotionOverrideReason:type==='promotievoorstel'&&$('promotionOverride').checked?$('promotionOverrideReason').value:'',
     referenceUrl:$('referenceUrl').value};
   if(reg){
     Object.assign(body,{
