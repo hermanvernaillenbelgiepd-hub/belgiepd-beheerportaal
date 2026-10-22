@@ -399,3 +399,10 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
 /* De blauwe bovenrand blijft de ritstatus aangeven, los van de hulpdienstkleur. */
 .team-card[data-availability="on-incident"][data-response-phase="onderweg"]{border-top:2px solid #4d89ed}
 .team-card[data-availability="on-incident"][data-response-phase="ter-plaatse"]{border-top:2px solid #1b64da}
+
+
+/* Streamer is een BPD-radiolabel met 🔴, géén Sonoran zenderstatus. */
+.radio-streamer-tag{display:inline-flex;align-items:center;justify-content:center;flex:none;white-space:nowrap;gap:3px;padding:3px 6px;border-radius:5px;border:1px solid #f0b5bb;background:#fff0f1;color:#a5293b;font-size:9px;line-height:1.1;font-weight:800;letter-spacing:.02em}
+.radio-user-name .radio-streamer-tag{margin-left:2px}
+.team-top .radio-streamer-tag{font-size:10px}
+.compact-flag.radio-streamer-tag{background:#fff0f1;color:#a5293b;border-color:#f0b5bb}
