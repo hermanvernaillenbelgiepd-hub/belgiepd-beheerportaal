@@ -958,26 +958,50 @@ $('staffFormalForm').onsubmit=async event=>{
   finally{button.disabled=false;updateFormalFields()}
 };
 async function loadStaffFormalRecords(p,key){
-  const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
   const root=$('staffFormalRecords');
   try{
     const data=await request('/api/registrations/entries?dept='+encodeURIComponent(p.dept)+
       '&discordId='+encodeURIComponent(p.discordId));
-    if(!same())return;
+    if(!sameDossier(key))return;
     root.replaceChildren();
-    const records=(data.entries||[]).filter(r=>['observatie','sanctie'].includes(r.type)).slice(0,35);
+    const records=(data.entries||[]).filter(r=>['observatie','sanctie'].includes(r.type));
+    formalRecords=records;
     if(!records.length)root.textContent='Geen zichtbare formele observaties of sancties.';
-    for(const row of records){
-      const div=document.createElement('div');div.className='note-item';
+    for(const row of records.slice(0,100)){
+      const item=document.createElement('div');item.className='note-item';
       const title=document.createElement('strong');
-      title.textContent=(row.type==='sanctie'?'Sanctie':'Observatie')+' · '+
-        String(row.sanctionType||row.eventDate||row.createdAt||'Datum onbekend').slice(0,150);
+      const date=row.eventDate||row.createdAt||'Datum onbekend';
+      title.textContent=(row.type==='sanctie'?'Sanctie · '+String(row.sanctionType||'onbekend'):
+        'Observatie')+' · '+date+(row.testRecord===true?' · TEST':'')+
+        (row.status==='ingetrokken'?' · INGETROKKEN':'');
+      const author=document.createElement('span');author.className='subtle';author.style.display='block';
+      author.textContent='Door '+(row.registeredBy?.name||'onbekend')+
+        (row.registeredBy?.call?' · '+row.registeredBy.call:'')+
+        (row.eventTime?' · '+row.eventTime:'')+
+        (row.modifiedAt?' · bijgewerkt '+new Date(row.modifiedAt).toLocaleString('nl-BE'):'');
       const details=document.createElement('p');
-      details.textContent=String(row.details||row.description||row.reason||'').slice(0,1600);
-      div.append(title,details);root.append(div);
+      details.textContent=String(row.details||row.description||row.reason||'').slice(0,6000);
+      item.append(title,author,details);
+      if(row.type==='sanctie'){
+        const reasons=document.createElement('div');reasons.className='subtle';
+        reasons.textContent='Ernst '+(row.severity||'—')+'/10 · '+(row.reasons||[]).join(', ');
+        item.append(reasons);
+        const permitted=Boolean(formalPermissions?.sanctionAmendDepartments?.includes(p.dept)&&
+          formalPermissions?.writesEnabled===true&&
+          formalPermissions?.sanctionOptionsByDepartment?.[p.dept]?.includes(row.sanctionType)&&
+          (row.sanctionType!=='Voorstel tot degradatie'||Number(row.severity)>=9));
+        if(permitted){
+          const edit=document.createElement('button');edit.type='button';edit.className='alt small';
+          edit.textContent='Sanctie wijzigen';edit.onclick=()=>openFormalEdit(row);
+          item.append(edit);
+        }
+      }
+      root.append(item);
     }
-    if((data.entries||[]).length>35)root.append(document.createTextNode(' Er kunnen meer registraties bestaan.'));
-  }catch(e){if(same())root.textContent='Formele registraties niet zichtbaar met de huidige bevoegdheden: '+e.message}
+    if(data.entries?.length===100)root.append(document.createTextNode(
+      ' Het register toont maximaal de 100 recentste registraties.'));
+  }catch(e){if(sameDossier(key))root.textContent=
+    'Formele registraties niet zichtbaar met de huidige bevoegdheden: '+e.message}
 }
 function showStaffRoles(roleData,rosterSeries){
   const root=$('staffDiscordRoles');root.replaceChildren();
@@ -1105,7 +1129,7 @@ async function loadStaffDossier(p){
     showStaffRoles(result.discordRoles,result.subject?.rosterSeries);
     void loadSpecialtyState(p);
     void loadStaffLeave(p,key);
-    void loadStaffFormalRecords(p,key);
+    void loadStaffFormalPermissions(p,key);
     const profile=result.profile||{};
     const summary=$('staffDossierSummary');
     staffField(summary,'Aanstellingsdatum',profile.startDate);
