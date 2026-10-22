@@ -129,7 +129,7 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 #sanctionAmendFields{padding:10px;border:1px solid #995b65;border-radius:8px;background:#311e2f}
 #sanctionAmendFields textarea{min-height:58px}
 .case-special-note{color:#f9cb8f}
-.case-edit-action{font-size:11px!important;padding:5px 8px!important}
+.case-edit-action{font-size:11px!important;padding:5px 8px!important}.case-type-hint{font-size:10px;color:#a9c8f0;line-height:1.35;margin-top:4px}
 @media(max-width:650px){.sanction-fields-grid{grid-template-columns:1fr}}
 @media(min-width:1000px) and (min-height:720px){
  #casesView .card:has(#caseForm){overflow-y:auto;overscroll-behavior:contain}
@@ -148,7 +148,7 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 <form id="caseForm"><div id="caseQuickTypes" class="case-quick-types" role="group" aria-label="Snel categorie kiezen"></div><div class="form-grid">
 <div><label class="field-label" for="caseDept">Hulpdienst</label><select id="caseDept" required></select></div>
 <div><label class="field-label" for="casePerson">Betrokken personeelslid</label><select id="casePerson" required></select></div>
-<div><label class="field-label" for="entryType">Categorie</label><select id="entryType" required></select></div>
+<div><label class="field-label" for="entryType">Categorie</label><select id="entryType" required></select><div id="caseTypeHint" class="case-type-hint" aria-live="polite"></div></div>
 <div><label class="field-label" for="entryDate">Datum gebeurtenis</label><input type="date" id="entryDate" required></div>
 <div id="endDateWrap" class="hidden"><label class="field-label" for="endDate">Einddatum verlof</label><input type="date" id="endDate"></div>
 <div id="courseWrap" class="hidden"><label class="field-label" for="courseName">Naam van de opleiding</label><input id="courseName" maxlength="150" placeholder="Afgeronde opleiding"></div>
@@ -188,6 +188,18 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={observatie:'Observatie',sanctie:'Sanctie',verlof:'Verlof',notitie:'Personeelsnotitie',opleiding:'Gedane opleiding',activiteit:'Dienstactiviteit',specialisatiebeperking:'Specialisatiebeperking',naamswijziging:'Naamswijziging',promotievoorstel:'Promotievoorstel',personeelsbeweging:'Personeelsbeweging'};
 const extraFields={verlof:['endDateWrap'],opleiding:['courseWrap'],naamswijziging:['nameWrap'],promotievoorstel:['rankWrap'],personeelsbeweging:['movementWrap']};
+const categoryExplanations={
+  notitie:'Algemene interne personeelsopvolging.',
+  activiteit:'Registratie van dienstactiviteiten of uitgevoerde taken.',
+  observatie:'Feitelijke vaststelling, zonder sanctiemaatregel.',
+  sanctie:'Formele maatregel met verplichte reden en ernst; rechten worden gecontroleerd.',
+  opleiding:'Registreer een gevolgde opleiding in het dossier.',
+  specialisatiebeperking:'Leg een beperking vast. Dit wijzigt niet automatisch de actuele specialisatierechten.',
+  verlof:'Administratieve dossiernotitie over verlof; geen nieuwe verlofaanvraag.',
+  promotievoorstel:'Noteer een voorstel; dit voert geen automatische promotie uit.',
+  naamswijziging:'Historische registratie; de actuele personeelsnaam wordt hier niet automatisch aangepast.',
+  personeelsbeweging:'Leg een personeelsbeweging administratief vast.'
+};
 const allTypes=['notitie','activiteit','opleiding','specialisatiebeperking','verlof','promotievoorstel','naamswijziging','personeelsbeweging'];
 let firebaseAuth=null,authModule=null,authApp=null,subjects=[],viewData=null,currentTab='cases',reportItems=[],activeReport=null,caseEntries=[],caseRequestSerial=0,editingSanction=null;
 const msg=(message,kind='notice')=>{$('status').textContent=message;$('status').className='status '+kind;};
@@ -320,6 +332,7 @@ function populateQuickTypes(choices){
 }
 function changeExtra(){
   const type=$('entryType').value,reg=isRegistrationType(type),sanction=type==='sanctie';
+  $('caseTypeHint').textContent=categoryExplanations[type]||'';
   Object.values(extraFields).flat().forEach(id=>$(id).classList.add('hidden'));
   (extraFields[type]||[]).forEach(id=>$(id).classList.remove('hidden'));
   for(const [field,kind] of [['endDate','verlof'],['courseName','opleiding'],['newName','naamswijziging'],
@@ -347,6 +360,8 @@ function changeExtra(){
   updateRepresentReason();
   for(const button of $('caseQuickTypes').querySelectorAll('button'))
     button.setAttribute('aria-pressed',String(button.dataset.type===type));
+  const other=[...$('registrationReasons').querySelectorAll('input[type="checkbox"]')].some(c=>c.value==='Anders'&&c.checked);
+  $('registrationReasonOther').required=sanction&&other;
   $('saveCase').disabled=!viewData?.actor||
     (reg?viewData?.registrationWritesEnabled!==true:viewData?.writesEnabled!==true);
 }
@@ -471,6 +486,7 @@ $('caseDept').addEventListener('change',()=>{$('casePersonSearch').value='';filt
 $('casePersonSearch').addEventListener('input',()=>filterCases({keepHistory:true}));
 $('casePerson').addEventListener('change',()=>{loadCases()});
 $('registrationRepresent').addEventListener('change',updateRepresentReason);
+$('registrationReasons').addEventListener('change',changeExtra);
 $('cancelSanctionEdit').addEventListener('click',()=>{resetSanctionEdit();resetRegistrationFields()});
 $('caseHistoryType').addEventListener('change',renderCaseHistory);
 $('caseHistorySearch').addEventListener('input',renderCaseHistory);
