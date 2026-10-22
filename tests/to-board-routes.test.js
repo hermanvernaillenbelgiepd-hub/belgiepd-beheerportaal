@@ -299,3 +299,32 @@ test('Server radio reconciliation retires only absent unassigned teams, never ac
     assert.equal((await store.autoEndAbsentRadioTeams([active.get('930')],{...snapshot,uncertainUnits:[{category:'SANTO',number:'930'}]},{now,sessionId})).length,0);
   });
 });
+
+test('Automatische Sonoran-ploegen verschijnen exact éénmaal, met de hoogste koppelcall',async()=>{
+  await appFixture(async({command,store,db})=>{
+    const started=await command({type:'start',expectedRevision:0,displayName:'TO Autotest'});
+    assert.equal(started.status,200);
+    const sessionId=started.body.board.session.id,now=Date.now();
+    const users=[
+      {id:'a',category:'SANTO',number:'600',channel:'52226',paired:true,importable:true,displayName:'A'},
+      {id:'b',category:'SANTO',number:'930',channel:'52226',paired:true,importable:true,displayName:'B'},
+      {id:'c',category:'COBRA',number:'0490',channel:'52226',paired:false,importable:true,displayName:'C'},
+      {id:'d',category:'SANTO',number:null,channel:'52226',paired:false,importable:false}
+    ];
+    const payload={connected:true,configured:true,stale:false,fetchedAt:new Date(now).toISOString(),users,uncertainUnits:[]};
+    const created=await store.autoImportRadioTeams(payload,{now,sessionId});
+    assert.equal(created.length,2);
+    const board=db.data(currentPath),teams=Object.values(board.ploegen);
+    const duo=teams.find(t=>t.dienst==='SANTO');
+    assert.equal(duo.roepnaam,'930');
+    assert.equal(duo.koppel,true);
+    assert.deepEqual(duo.leden.map(m=>m.roep).sort(),['600','930']);
+    assert.equal(duo.radioSource,'sonoran');
+    assert.equal(duo.autoAdded,true);
+    assert.equal(duo.provisional,true);
+    assert.equal(teams.find(t=>t.dienst==='COBRA')?.roepnaam,'490');
+    assert.deepEqual(await store.autoImportRadioTeams(payload,{now,sessionId}),[]);
+    assert.equal(Object.keys(db.data(currentPath).ploegen).length,2);
+    assert.deepEqual(await store.autoImportRadioTeams({...payload,stale:true},{now,sessionId}),[]);
+  });
+});
