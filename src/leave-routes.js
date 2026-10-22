@@ -201,7 +201,8 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
     const note=req.body?.note===undefined?'':req.body.note;
     if(typeof note!=='string'||note.trim().length>300)return res.status(400).json({error:'Beslissingsnotitie te lang'});
     try{
-      await context(req);
+      const board=await verifiedBoardFor(req.bpd);
+      if(!board)await context(req);
       const ref=db().collection(coll).doc(req.params.id);
       const canonical=db().collection(grants).doc(req.bpd.discordId);
       const legacy=req.bpd.uid===req.bpd.discordId?null:db().collection(grants).doc(req.bpd.uid);
@@ -213,7 +214,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
         const d=request.data();
         if(d.status!=='pending')throw rejection('Aanvraag is al behandeld',409);
         const grant=grantDoc.exists?grantDoc.data():oldGrant?.exists?oldGrant.data():null;
-        if(!mayApproveLeave(req.bpd,d,grant))
+        if(!mayApproveLeave(req.bpd,d,grant,yyyyMmDd(),board))
           throw rejection('Geen bevoegdheid om dit verlof goed te keuren',403);
         const audit=ref.collection('audit').doc();
         tx.update(ref,{status:decision,decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
@@ -222,6 +223,40 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
           at:FieldValue.serverTimestamp(),note:note.trim(),days:calendarDays(d.startDate,d.endDate)});
       });
       return res.json({ok:true,status:decision});
+    }catch(e){return jsonError(res,e)}
+  });
+  // Bestuur/technisch beheer kan eerder genomen beslissingen expliciet herzien.
+  // Niet beschikbaar voor gewone kaderleden, en nooit voor eigen aanvragen.
+  app.post('/api/leave/requests/:id/override',requireUser,requireWrites,async(req,res)=>{
+    if(!validId(req.params.id))return res.status(400).json({error:'Ongeldig aanvraagnummer'});
+    if(!['approved','rejected'].includes(req.body?.decision))
+      return res.status(400).json({error:'Ongeldige beslissing'});
+    const reason=typeof req.body?.reason==='string'?req.body.reason.trim():'';
+    if(reason.length<10||reason.length>300)
+      return res.status(400).json({error:'Een gemotiveerde bestuursbeslissing van 10 tot 300 tekens is verplicht'});
+    try{
+      if(!await verifiedBoardFor(req.bpd))throw rejection('Alleen geverifieerd Bestuur mag eerdere beslissingen overrulen',403);
+      const ref=db().collection(coll).doc(req.params.id);
+      await db().runTransaction(async tx=>{
+        const doc=await tx.get(ref);
+        if(!doc.exists)throw rejection('Verlofaanvraag niet gevonden',404);
+        const previous=doc.data();
+        if(previous.personDiscordId===req.bpd.discordId)throw rejection('Een eigen aanvraag mag niet worden overruled',403);
+        if(!['approved','rejected'].includes(previous.status))
+          throw rejection('Deze aanvraag wacht nog op een gewone beslissing',409);
+        if(previous.status===req.body.decision)throw rejection('Deze beslissing is al van kracht',409);
+        tx.update(ref,{status:req.body.decision,
+          decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
+          decidedAt:FieldValue.serverTimestamp(),decisionNote:reason,
+          overriddenFrom:previous.status,overriddenAt:FieldValue.serverTimestamp(),
+          updatedAt:FieldValue.serverTimestamp()});
+        tx.create(ref.collection('audit').doc(),{action:'board_override',
+          from:previous.status,to:req.body.decision,actorUid:req.bpd.uid,
+          actorDiscordId:req.bpd.discordId,note:reason,
+          days:calendarDays(previous.startDate,previous.endDate),
+          at:FieldValue.serverTimestamp()});
+      });
+      return res.json({ok:true,status:req.body.decision,overridden:true});
     }catch(e){return jsonError(res,e)}
   });
   // A cadre member records a manually approved leave in the EXISTING collection.
