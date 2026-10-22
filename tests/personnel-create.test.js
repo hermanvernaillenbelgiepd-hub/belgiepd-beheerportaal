@@ -124,8 +124,11 @@ test('A missing Discord ID never bypasses the service-specific callsign check',(
 test('Police promotions advance only one grade and require a recorded reason',()=>{
   assert.equal(nextPoliceRank('Agent'),'Aspirant Inspecteur');
   assert.equal(nextPoliceRank('Aspirant Inspecteur'),'Inspecteur');
-  assert.equal(nextPoliceRank('Inspecteur'),'Hoofdinspecteur');
-  assert.equal(nextPoliceRank('Hoofdinspecteur'),null);
+  assert.equal(nextPoliceRank('Inspecteur'),'Eerste Inspecteur');
+  assert.equal(nextPoliceRank('Eerste Inspecteur'),'Aspirant Hoofdinspecteur');
+  assert.equal(nextPoliceRank('Aspirant Hoofdinspecteur'),'Hoofdinspecteur');
+  assert.equal(nextPoliceRank('Hoofdinspecteur'),'Eerste Hoofdinspecteur');
+  assert.equal(nextPoliceRank('Eerste Hoofdinspecteur'),null);
   assert.equal(nextPoliceRank('Niet gekend'),null);
   const change={expectedRank:'Agent',newRank:'Aspirant Inspecteur',
     reason:'Promotie goedgekeurd na controle van opleiding en functioneren.'};
