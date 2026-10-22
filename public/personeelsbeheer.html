@@ -93,7 +93,8 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table td:nth-child(3){font-size:12px;line-height:1.45;overflow-wrap:break-word}
 .staff-roster-table .pill{font-size:10px;padding:4px 7px}
 .staff-roster-table .specialty-col-label{font-size:10px;line-height:1.2}
-.staff-roster-table .specialty-status-col .specialty-state{font-size:10px;padding:4px 6px}
+.staff-roster-table .specialty-status-col{padding:10px 5px}
+.staff-roster-table .specialty-status-col .specialty-state{display:inline-flex;align-items:center;justify-content:center;max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;word-break:normal;text-align:center;line-height:1.25;font-size:10px;padding:5px 4px;box-sizing:border-box}
 @media(max-width:920px){.staff-roster-table{min-width:1520px}}
 
 /* MAIN: rustige aaneengesloten personeelslijst, zonder losse vakjes. */
@@ -548,7 +549,15 @@ async function load(){
     $('mode').textContent=createEnabled&&!writesEnabled?'Nieuwe personeelsfiches en Discord-koppelingen zijn beschikbaar. Bestaande bronfiches blijven alleen-lezen en Google Sheets worden niet aangepast.':!writesEnabled?'Voorbereidingsmodus: bestaande personeelswijzigingen zijn uitgeschakeld; Google Sheets blijven ongewijzigd.':
       data.overridesActive?'Firestore-wijzigingen zijn actief in de personeelsweergaven. Google Sheets blijven als terugvalbron behouden.':
         'Testmodus: wijzigingen worden in Firestore opgeslagen, maar nog niet gebruikt als hoofdgegevensbron.';
+    const prefill=new URLSearchParams(window.location.search).get('discordId');
+    if(prefill&&/^\d{15,22}$/.test(prefill)){
+      $('dept').value='all';$('search').value=prefill;
+    }
     render();renderPending();
+    if(prefill&&/^\d{15,22}$/.test(prefill)){
+      const matching=people.filter(p=>p.discordId===prefill);
+      if(matching.length===1)await showPerson(matching[0]);
+    }
     notice('Personeelsgegevens geladen. '+people.length+' fiches, '+(people.filter(p=>p.source==='firestore-created').length)+' nieuwe Firestore-fiches, '+(people.filter(p=>p.source==='firestore-overlay').length)+' bijgewerkte fiches.');
     if(data.limited||data.pendingLimited)
       notice('De veilige laadlimiet van personeelsgegevens is bereikt. Vraag een beheerder om controle.',true);
