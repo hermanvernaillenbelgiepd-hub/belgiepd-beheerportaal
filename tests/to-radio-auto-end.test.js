@@ -16,13 +16,13 @@ const poll=(tracker,roster,start=base,users=[],extra={})=>{
   return snapshots.map(delay=>observeRadioDepartures(roster,snapshot(start+delay,users,extra),tracker,start+delay));
 };
 
-test('Two minutes and multiple distinct healthy upstream reads precede auto retirement',()=>{
+test('Twee verse Sonoran-metingen over minimaal 15 seconden bevestigen afmelding',()=>{
   const roster=board([crew('a','166'),crew('b','465')]);
   const tracker=new Map();
   const results=poll(tracker,roster);
-  assert.ok(results.slice(0,-2).every(ids=>ids.length===0));
-  assert.deepEqual(results[8].sort(),['a','b']);
-  assert.deepEqual(results[9].sort(),['a','b']);
+  assert.deepEqual(results[0],[]);
+  assert.deepEqual(results[1].sort(),['a','b']);
+  assert.equal(RADIO_AUTO_END_GRACE_MS,15_000);
 });
 
 test('Any current radio member preserves a paired crew, including zero padded numbers',()=>{
@@ -84,20 +84,20 @@ test('New service sessions and deleted roster entries discard old departure time
   assert.equal(tracker.has('a'),false);
 });
 
-test('Offline-only manually entered crew is never silently signed off',()=>{
+test('Ook handmatig aangemaakte offline ploegen verdwijnen na twee gezonde Sonoran-metingen',()=>{
   const roster=board([crew('manual','204',{dienst:'REPA',radioSource:null})]),tracker=new Map();
   const results=poll(tracker,roster);
-  assert.ok(results.every(ids=>ids.length===0));
-  assert.equal(tracker.has('manual'),false);
+  assert.deepEqual(results[0],[]);
+  assert.deepEqual(results[1],['manual']);
+  assert.equal(tracker.get('manual')?.polls,10);
 });
 
 test('Manual crew observed in radio is signed off after confirmed subsequent departure',()=>{
   const roster=board([crew('manual','204',{dienst:'REPA',radioSource:null})]),tracker=new Map();
   observeRadioDepartures(roster,snapshot(base,[present('204','REPA')]),tracker,base);
   assert.equal(tracker.get('manual')?.seen,true);
-  for(const elapsed of [15000,30000,45000,60000,75000,90000,105000,120000])
-    assert.deepEqual(observeRadioDepartures(roster,snapshot(base+elapsed),tracker,base+elapsed),[]);
-  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+135000),tracker,base+135000),['manual']);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+15000),tracker,base+15000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000),tracker,base+30000),['manual']);
 });
 
 test('A HARTS unit remains when Sonoran channel metadata is uncertain',()=>{
@@ -113,4 +113,20 @@ test('Named HVPK crew is preserved when radio presence is current or uncertain',
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base,[present('HVPK','HVPK')]),tracker,base),[]);
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000,[],{uncertainUnits:[present('HVPK','HVPK')]}),tracker,base+30000),[]);
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+45000,[]),tracker,base+45000),[]);
+});
+
+test('Handmatige ploeg gekoppeld aan actieve melding blijft staan; na ontkoppelen mag ze weg',()=>{
+  const tracker=new Map(),roster=board([crew('manual','180',{radioSource:null})],['manual']);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base),tracker,base),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+15000),tracker,base+15000),[]);
+  roster.meldingen.call.ploegen=[];
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000),tracker,base+30000),['manual']);
+});
+test('Alleen verse metingen: dubbele cache en tijdelijk onbereikbare radio verwijderen niets',()=>{
+  const tracker=new Map(),roster=board([crew('manual','180',{radioSource:null})]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base),tracker,base),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base),tracker,base+14000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+15000,[],{stale:true}),tracker,base+15000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000),tracker,base+30000),[]);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+45000),tracker,base+45000),['manual']);
 });
