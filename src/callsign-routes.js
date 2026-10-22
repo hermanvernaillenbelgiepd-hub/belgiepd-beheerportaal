@@ -1,6 +1,7 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import {canDecide, canReview, checkApplicant, eligibility, isDiscordId} from './callsign-utils.js';
 import {getPolicePlan, performPoliceSync} from './callsign-sync.js';
+import {initialFixedCallSpecialties,PERSONNEL_SPECIALIZATIONS_COLLECTION} from './specialization-policy.js';
 import {actorFromPersonnel} from './registrations.js';
 const s=x=>String(x??'').trim();
 const timestamp=x=>x?.toDate?.().toISOString()||null;
@@ -77,7 +78,34 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
         tx.update(ref,{status:'syncing',selectedPlan:plan,approvedBy,approvedUid:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
       });locked=true;
       const synced=await performPoliceSync(process.env.PERSONNEL_SPREADSHEET_ID,plan);
-      const batch=getFirestore().batch();const request=collection().doc(id),caseRef=getFirestore().collection('bpd_cases').doc(`politie_${id}`),notice=getFirestore().collection('bpd_notices').doc('politie').collection('events').doc();
+      const store=getFirestore(),batch=store.batch();
+      const request=collection().doc(id),caseRef=store.collection('bpd_cases').doc('politie_'+id);
+      const notice=store.collection('bpd_notices').doc('politie').collection('events').doc();
+      const specialtyRef=store.collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).doc('politie_'+id);
+      const specialtyCurrent=await specialtyRef.get();
+      const defaults=initialFixedCallSpecialties({discordId:id,status:'approved',
+        assignedCall:plan.call,sync:synced});
+      // Avoid overriding separately reviewed qualifications on existing dossiers.
+      if(defaults&&!specialtyCurrent.exists){
+        const at=FieldValue.serverTimestamp();
+        batch.create(specialtyRef,{dept:'politie',discordId:id,revision:1,
+          values:defaults,source:'approved_fixed_callsign',
+          updatedAt:at,updatedByUid:req.bpd.uid,updatedByDiscordId:req.bpd.discordId});
+        for(const label of Object.keys(defaults)){
+          batch.create(specialtyRef.collection('audit').doc(),{
+            action:'initial_fixed_callsign_specialty',label,
+            previous:'Niet ingevuld',value:'Ja',source:'automatic',
+            reason:'Automatisch na gecontroleerde en gesynchroniseerde uitgifte van vast roepnummer 200–299',
+            revision:1,actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,at});
+          batch.create(store.collection('bpd_cases').doc('politie_'+id).collection('entries').doc(),{
+            type:'activiteit',reportCategory:'activiteit',dept:'politie',
+            subjectDiscordId:id,subjectNameAtCreation:plan.name,
+            subjectCallAtCreation:String(plan.call),eventDate:new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Brussels'}),
+            details:label+': automatisch op Ja na gecontroleerde uitgifte vast roepnummer '+plan.call,
+            registeredBy:approvedBy,source:'automatic_fixed_callsign_specialty',
+            createdAt:at,modifiedAt:null});
+        }
+      }
       batch.update(request,{status:'approved',assignedCall:plan.call,sync:synced,syncedAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
       batch.set(caseRef,{dept:'politie',discordId:id,name:plan.name,call:String(plan.call),rank:plan.rank,createdFrom:'vaste_roepnummer_aanvraag',createdAt:FieldValue.serverTimestamp()},{merge:true});
       batch.create(notice,{type:'roepnummer_toegekend',dept:'politie',caseId:`politie_${id}`,createdAt:FieldValue.serverTimestamp()});

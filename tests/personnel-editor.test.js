@@ -139,3 +139,24 @@ test('Official history enriches author server-side and preserves original event 
  assert.ok(ui.includes("const currentLabel=r.actorRosterStale"));
  assert.ok(ui.includes("const ranks=change.newRank?"));
 });
+
+test('Middenkader changes lower police names but not callsigns; changes feed current weekly reports',async()=>{
+ const {canChangePersonnelName}=await import('../src/personnel-editor-policy.js');
+ const mid={role:'middenkader',discordId:'111111111111111111',
+  departments:['politie'],departmentRoles:{politie:'middenkader'},
+  dossierNativeDepartments:['politie']};
+ const p={...staff,rank:'Inspecteur (INP)',call:'P-410'};
+ assert.equal(canChangePersonnelName(mid,p),true);
+ assert.equal(canChangePersonnelName(mid,{...p,rank:'Commissaris (CP)'}),false);
+ assert.equal(canChangePersonnelName(mid,{...p,personId:mid.discordId}),false);
+ assert.equal(canChangePersonnelName(mid,{...p,dept:'ambulance'}),false);
+ const route=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ assert.ok(route.includes("if(!identityAllowed&&proposed.call!==subject.call)"));
+ assert.ok(route.includes("if(previous.name!==proposed.name){"));
+ assert.ok(route.includes("type:'naamswijziging'"));
+ assert.ok(route.includes("type:'personnel_name_changed'"));
+ assert.ok(route.includes("collection('bpd_cases').doc(subject.dept+'_'+subject.personId)"));
+ assert.ok(ui.includes("'pName').disabled=!(p.canEditName===true&&writesEnabled)"));
+ assert.ok(ui.includes("'pCall').disabled=!(p.canEditCall===true&&writesEnabled)"));
+});

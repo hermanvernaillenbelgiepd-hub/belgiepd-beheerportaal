@@ -45,6 +45,7 @@ export function canEditPersonnel(actor,person){
 }
 // Status-only delegation for Middenkader. The rank itself must be a known
 // lower rank; a callsign cannot masquerade as proof of rank.
+export function canChangePersonnelName(actor,person){return canChangePersonnelStatus(actor,person)}
 export function canChangePersonnelStatus(actor,person){
   if(!person||!validPersonnelKey(person.dept,person.personId)||
      actor?.discordId===person.personId||!canViewPersonnel(actor,person.dept)||
