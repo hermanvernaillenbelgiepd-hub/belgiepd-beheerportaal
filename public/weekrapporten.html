@@ -189,7 +189,7 @@ const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>
 const labels={observatie:'Observatie',sanctie:'Sanctie',verlof:'Verlof',notitie:'Personeelsnotitie',opleiding:'Gedane opleiding',activiteit:'Dienstactiviteit',specialisatiebeperking:'Specialisatiebeperking',naamswijziging:'Naamswijziging',promotievoorstel:'Promotievoorstel',personeelsbeweging:'Personeelsbeweging'};
 const extraFields={verlof:['endDateWrap'],opleiding:['courseWrap'],naamswijziging:['nameWrap'],promotievoorstel:['rankWrap'],personeelsbeweging:['movementWrap']};
 const allTypes=['notitie','activiteit','opleiding','specialisatiebeperking','verlof','promotievoorstel','naamswijziging','personeelsbeweging'];
-let firebaseAuth=null,authModule=null,authApp=null,subjects=[],viewData=null,currentTab='cases',reportItems=[],activeReport=null,caseEntries=[],caseRequestSerial=0;
+let firebaseAuth=null,authModule=null,authApp=null,subjects=[],viewData=null,currentTab='cases',reportItems=[],activeReport=null,caseEntries=[],caseRequestSerial=0,editingSanction=null;
 const msg=(message,kind='notice')=>{$('status').textContent=message;$('status').className='status '+kind;};
 const fmt=d=>d?new Date(d).toLocaleString('nl-BE'):'—';
 const roleHigher=r=>['officierenkader','korpsleiding'].includes(r);
@@ -215,6 +215,97 @@ function filterCases({keepHistory=false}={}){
   displaySelectedPerson();
   if(!keepHistory)loadCases();
 }
+const isRegistrationType=type=>type==='observatie'||type==='sanctie';
+const registrationRights=dept=>viewData?.registrationPermissions?.[dept]||{};
+const mayAmendSelectedSanction=()=>registrationRights($('caseDept').value).amendSanction===true;
+function registrationChoices(){
+  const dept=$('caseDept').value;
+  const ordinary=(viewData?.types||[]).filter(type=>!['naamswijziging','personeelsbeweging'].includes(type)||roleHigher(viewData.role));
+  const rights=registrationRights(dept);
+  return [
+    ...ordinary.slice(0,1),
+    ...(rights.observatie?['observatie']:[]),
+    ...(rights.sanctie?['sanctie']:[]),
+    ...ordinary.slice(1)
+  ];
+}
+function refreshRegistrationChoices(){
+  const choices=registrationChoices(),current=$('entryType').value;
+  selectOptions($('entryType'),choices.map(type=>({value:type,label:labels[type]||type})),'Kies categorie');
+  $('entryType').value=choices.includes(current)?current:choices[0]||'';
+  populateQuickTypes(choices);
+  const available=Array.isArray(viewData?.representatives)?viewData.representatives:[];
+  selectOptions($('registrationRepresent'),available
+    .filter(person=>person.dept===$('caseDept').value&&person.discordId!==viewData?.actor?.discordId)
+    .map(person=>({value:person.discordId,label:String(person.call||'')+' – '+String(person.name||'')})),
+    'Nee, zelf geregistreerd');
+  $('saveCase').disabled=!viewData?.actor||
+    (isRegistrationType($('entryType').value)?viewData?.registrationWritesEnabled!==true:viewData?.writesEnabled!==true);
+}
+function resetSanctionEdit(){
+  editingSanction=null;
+  for(const id of ['caseDept','casePerson','entryType'])$(id).disabled=false;
+  $('casePersonSearch').disabled=false;$('cancelSanctionEdit').classList.add('hidden');
+  $('saveCase').textContent='Registratie opslaan';
+  $('sanctionAmendReason').value='';$('sanctionAmendFields').classList.add('hidden');
+  $('caseSaveNotice').textContent='';$('caseSaveNotice').className='case-save-notice';
+  for(const button of $('caseQuickTypes').querySelectorAll('button'))button.disabled=false;
+  changeExtra();
+}
+function resetRegistrationFields(){
+  for(const id of ['details','endDate','courseName','newName','proposedRank','movement','referenceUrl',
+     'registrationPlayers','registrationRepresentReason','registrationReasonOther',
+     'registrationCfx','registrationExplanation'])$(id).value='';
+  $('registrationRepresent').value='';
+  $('registrationSeverity').value='5';
+  for(const c of $('registrationReasons').querySelectorAll('input[type="checkbox"]'))c.checked=false;
+  $('registrationSanctionType').value='';
+}
+function populateSanctionOptions(){
+  const choices=viewData?.registrationSanctionTypes||[];
+  selectOptions($('registrationSanctionType'),choices.map(v=>({value:v,label:v})),'Kies sanctiemaatregel');
+  const root=$('registrationReasons');root.replaceChildren();
+  for(const reason of viewData?.registrationSanctionReasons||[]){
+    const label=document.createElement('label');
+    const cb=document.createElement('input');cb.type='checkbox';cb.name='sanction-reason';cb.value=reason;
+    label.append(cb,document.createTextNode(reason));root.append(label);
+  }
+}
+function updateRepresentReason(){
+  const active=!$('registrationRepresentWrap').classList.contains('hidden')&&Boolean($('registrationRepresent').value);
+  $('registrationRepresentReason').classList.toggle('hidden',!active);
+  $('registrationRepresentReasonWrap').classList.toggle('hidden',!active);
+  $('registrationRepresentReason').required=active;
+  if(!active)$('registrationRepresentReason').value='';
+}
+function beginSanctionEdit(id){
+  if(!mayAmendSelectedSanction()||viewData?.registrationWritesEnabled!==true)return;
+  const record=caseEntries.find(x=>x.id===id&&x.type==='sanctie');
+  if(!record)return;
+  editingSanction=id;
+  $('entryType').value='sanctie';changeExtra();
+  for(const [field,value] of [
+    ['entryDate',record.eventDate],['registrationTime',record.eventTime],
+    ['details',record.details],['referenceUrl',record.evidenceUrl],
+    ['registrationPlayers',record.otherPlayers],['registrationSanctionType',record.sanctionType],
+    ['registrationSeverity',record.severity],['registrationCfx',record.cfxName],
+    ['registrationReasonOther',record.reasonOther],['registrationExplanation',record.explanation],
+    ['sanctionAmendStatus',record.status||'actief']
+  ])$(field).value=value??'';
+  for(const item of $('registrationReasons').querySelectorAll('input[type="checkbox"]'))
+    item.checked=record.reasons?.includes(item.value)===true;
+  for(const id of ['caseDept','casePerson','entryType'])$(id).disabled=true;
+  $('casePersonSearch').disabled=true;
+  for(const button of $('caseQuickTypes').querySelectorAll('button'))button.disabled=true;
+  $('sanctionAmendFields').classList.remove('hidden');
+  $('sanctionAmendReason').required=true;
+  $('cancelSanctionEdit').classList.remove('hidden');
+  $('saveCase').textContent='Sanctiewijziging opslaan';
+  $('caseSaveNotice').textContent='Sanctie bewerken: de oorspronkelijke registratie blijft bewaard in de auditgeschiedenis.';
+  $('caseSaveNotice').className='case-save-notice';
+  $('caseForm').scrollIntoView({block:'nearest',behavior:'smooth'});
+  $('sanctionAmendReason').focus({preventScroll:true});
+}
 function populateQuickTypes(choices){
   const root=$('caseQuickTypes');root.replaceChildren();
   for(const type of choices){
@@ -228,13 +319,36 @@ function populateQuickTypes(choices){
   changeExtra();
 }
 function changeExtra(){
-  const type=$('entryType').value;
+  const type=$('entryType').value,reg=isRegistrationType(type),sanction=type==='sanctie';
   Object.values(extraFields).flat().forEach(id=>$(id).classList.add('hidden'));
   (extraFields[type]||[]).forEach(id=>$(id).classList.remove('hidden'));
-  for(const [field,kind] of [['endDate','verlof'],['courseName','opleiding'],['newName','naamswijziging'],['proposedRank','promotievoorstel'],['movement','personeelsbeweging']])
+  for(const [field,kind] of [['endDate','verlof'],['courseName','opleiding'],['newName','naamswijziging'],
+    ['proposedRank','promotievoorstel'],['movement','personeelsbeweging']])
     $(field).required=type===kind;
+  $('registrationTimeWrap').classList.toggle('hidden',!reg);
+  $('registrationTime').required=reg;
+  if(reg&&!$('registrationTime').value){
+    const now=new Date(),pad=n=>String(n).padStart(2,'0');
+    $('registrationTime').value=pad(now.getHours())+':'+pad(now.getMinutes());
+  }
+  $('registrationPlayersWrap').classList.toggle('hidden',!reg);
+  $('registrationRepresentWrap').classList.toggle('hidden',!reg||sanction||
+    !registrationRights($('caseDept').value).observatie||
+    !((viewData?.representatives||[]).some(p=>p.dept===$('caseDept').value)));
+  $('sanctionFields').classList.toggle('hidden',!sanction);
+  $('registrationSanctionType').required=sanction;
+  $('registrationSeverity').required=sanction;
+  $('details').maxLength=reg?6000:4000;
+  $('referenceUrlLabel').textContent=reg?'Clip / bewijsmateriaal (optioneel, https)':
+    'Bewijs- of documentlink (optioneel, https)';
+  $('sanctionHelp').textContent=roleHigher(viewData?.role)?
+    'Zware sancties alleen binnen de bestaande goedkeuringsbevoegdheid.':
+    'Degradatie, schorsing, ontslag en blacklisting zijn voorbehouden aan officierenkader en korpsleiding.';
+  updateRepresentReason();
   for(const button of $('caseQuickTypes').querySelectorAll('button'))
     button.setAttribute('aria-pressed',String(button.dataset.type===type));
+  $('saveCase').disabled=!viewData?.actor||
+    (reg?viewData?.registrationWritesEnabled!==true:viewData?.writesEnabled!==true);
 }
 function populateHistoryTypes(){
   const select=$('caseHistoryType');
