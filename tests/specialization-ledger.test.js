@@ -96,14 +96,16 @@ test('Browser headings show pictograms and aligned statuses, including negative 
   assert.equal(ui.specialtyIcon('Radio BM'),'📻');
   assert.equal(ui.specialtyColumns('politie').includes('SRT'),false);
   assert.equal(ui.specialtyColumns('politie').includes('DSU'),false);
-  for(const filename of ['index.html','personeelsbeheer.html']){
-    const html=readFileSync(new URL('../public/'+filename,import.meta.url),'utf8');
-    assert.ok(html.includes('specialtyStateFor('),filename);
-    assert.ok(html.includes('specialtyColumns('),filename);
-    assert.equal(html.includes('roster-attribution'),false);
-    for(const match of html.matchAll(/<script(?: type="module")?>([\s\S]*?)<\/script>/g))
-      assert.doesNotThrow(()=>new Script(match[1]),filename);
-  }
+  const homepage=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+  assert.ok(homepage.includes('href="/personeelsbeheer.html"'));
+  assert.equal(homepage.includes('specialtyStateFor('),false,
+    'The redesigned home page does not expose protected personnel data');
+  const manager=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  assert.ok(manager.includes('specialtyStateFor('));
+  assert.ok(manager.includes('specialtyColumns('));
+  assert.equal(manager.includes('roster-attribution'),false);
+  for(const match of manager.matchAll(/<script(?: type="module")?>([\s\S]*?)<\/script>/g))
+    assert.doesNotThrow(()=>new Script(match[1].replace(/^import [^\n]*\n/gm,'')));
 });
 test('Server synchronizes per-person overlay only when enabled and keeps all writes audit protected',()=>{
   const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');

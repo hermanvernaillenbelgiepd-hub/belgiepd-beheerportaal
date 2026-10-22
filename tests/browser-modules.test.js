@@ -16,7 +16,8 @@ test('All browser module scripts parse as valid JavaScript',()=>{
     }
     assert.ok(scripts.length>0,name+' must contain a module');
     for(const [i,script] of scripts.entries()){
-      assert.doesNotThrow(()=>new Script(script[1],{filename:name+'#'+i}),name+' has invalid JS');
+      const source=script[1].replace(/^import [^\n]*\n/gm,'');
+      assert.doesNotThrow(()=>new Script(source,{filename:name+'#'+i}),name+' has invalid JS');
     }
   }
   const common=readFileSync(new URL('../public/portal-login.js',import.meta.url),'utf8');

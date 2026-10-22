@@ -142,5 +142,8 @@ test('User management Board UI has separate nomination and decision controls',()
   assert.ok(html.includes("'/api/board/status'") || html.includes("'/api/board/status'"));
   assert.throws(()=>validUserGrant({role:'bestuur',departments:['politie'],reason:'Ongeoorloofd als politierang'}));
   const match=html.match(/<script type="module">([\s\S]*?)<\/script>/);
-  assert.ok(match);assert.doesNotThrow(()=>new Script(match[1]));
+  assert.ok(match);
+  // The page uses a real ES module; vm.Script cannot parse static imports.
+  // Strip only the import declaration for this legacy syntax probe.
+  assert.doesNotThrow(()=>new Script(match[1].replace(/^import [^\n]*\n/gm,'')));
 });
