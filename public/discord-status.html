@@ -189,7 +189,11 @@ function leaveDays(){
 function updateLeaveDays(){
   const days=leaveDays();
   $('leaveDays').textContent=days>0&&days<=730?
-    days+' kalenderdag(en), inclusief weekends. '+(days>30?'Goedkeuring door hoger kader vereist.':''):
+    days+' kalenderdag(en), inclusief weekends. '+(days<7?
+      'Voor minder dan 7 dagen is geen aanvraag nodig.':
+      days<=14?'Deze aanvraag wordt automatisch goedgekeurd.':
+      days<=30?'Deze aanvraag wordt ter goedkeuring voorgelegd.':
+      'Goedkeuring door officierenkader, korpsleiding of Bestuur vereist.'):
     'Kies een geldige periode van maximaal 730 kalenderdagen.';
 }
 for(const key of ['leaveStart','leaveEnd'])$(key).addEventListener('change',updateLeaveDays);
@@ -243,13 +247,19 @@ $('leaveForm').onsubmit=async e=>{
   e.preventDefault();
   const days=leaveDays();
   if(days<1||days>730){$('leaveStatus').textContent='Kies een geldige periode van maximaal 730 kalenderdagen.';return}
+  if(days<7){
+    const msg='Voor verlof van minder dan 7 kalenderdagen hoef je geen aanvraag in te dienen.';
+    window.alert(msg);$('leaveStatus').textContent=msg;return;
+  }
   const btn=$('leaveSubmit');btn.disabled=true;
   try{
-    await leaveRequest('/api/leave/requests',{startDate:$('leaveStart').value,
+    const result=await leaveRequest('/api/leave/requests',{startDate:$('leaveStart').value,
       endDate:$('leaveEnd').value,note:$('leaveNote').value});
     $('leaveForm').reset();updateLeaveDays();
     await loadLeave();
-    $('leaveStatus').textContent='Je verlofaanvraag is ingediend en wordt volgens de bestaande regels behandeld.';
+    $('leaveStatus').textContent=result.status==='approved'?
+      'Je verlof is automatisch goedgekeurd en geregistreerd.':
+      'Je verlofaanvraag is ingediend en wacht op goedkeuring door bevoegd kader.';
   }catch(err){$('leaveStatus').textContent='Verlofaanvraag niet ingediend: '+err.message}
   finally{btn.disabled=false}
 };
