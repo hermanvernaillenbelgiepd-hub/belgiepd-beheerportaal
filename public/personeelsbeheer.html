@@ -361,6 +361,55 @@ let setupPortalLogin;
 const $=id=>document.getElementById(id);
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
+/* Alle onderdelen behouden hun originele ID's en beveiligde API's, maar delen één fiche. */
+let dossierTab='overzicht';
+const dossierTabNames={overzicht:'Overzicht',gegevens:'Personeelsgegevens',specialisaties:'Specialisaties',
+  verlof:'Verlof',registraties:'Dossierregistraties',sancties:'Observaties & sancties',
+  opleidingen:'Opleidingen',historiek:'Alle historiek'};
+function openDossierTab(name){
+  dossierTab=dossierTabNames[name]?name:'overzicht';
+  for(const button of $('dossierTabBar').querySelectorAll('button')){
+    const active=button.dataset.dossierTab===dossierTab;
+    button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;
+  }
+  for(const pane of $('dossierViews').children)pane.hidden=pane.dataset.dossierPane!==dossierTab;
+}
+function setupDossierTabs(){
+  const panes={};
+  for(const [key,label] of Object.entries(dossierTabNames)){
+    const button=document.createElement('button');button.type='button';button.textContent=label;
+    button.dataset.dossierTab=key;button.setAttribute('role','tab');
+    button.onclick=()=>openDossierTab(key);$('dossierTabBar').append(button);
+    const pane=document.createElement('section');pane.className='dossier-pane';pane.dataset.dossierPane=key;
+    pane.setAttribute('role','tabpanel');panes[key]=pane;$('dossierViews').append(pane);
+  }
+  panes.gegevens.append($('editForm'),$('promotionPanel'));
+  const source=$('staffDossierSection'),nodes=[...source.children];
+  let section='overzicht';
+  for(const node of nodes){
+    if(node.classList.contains('dossier-shortcuts')){node.remove();continue}
+    if(node.id==='staffProfileForm'){panes.gegevens.append(node);continue}
+    if(node.tagName==='H3'){
+      const label=node.textContent.trim().toLowerCase();
+      if(label.startsWith('specialisaties'))section='specialisaties';
+      else if(label.startsWith('discord-reeks'))section='overzicht';
+      else if(label.startsWith('verlof van'))section='verlof';
+      else if(label.startsWith('gekoppelde opleidingen'))section='opleidingen';
+      else if(label.startsWith('kadernotities'))section='registraties';
+      else if(label.startsWith('observaties en sancties'))section='sancties';
+      else if(label.startsWith('eerdere dossiernotities')||
+        label.startsWith('administratieve dossierhistoriek'))section='historiek';
+    }
+    panes[section].append(node);
+  }
+  source.remove();
+  const rankHistory=$('history'),heading=rankHistory.previousElementSibling;
+  if(heading?.tagName==='H3')panes.historiek.append(heading);
+  panes.historiek.append(rankHistory);
+  openDossierTab('overzicht');
+}
+setupDossierTabs();
+
 function notice(text,bad=false){$('notice').textContent=text;$('notice').classList.toggle('error',bad)}
 async function request(url,options={}){
   const user=auth?.currentUser;
