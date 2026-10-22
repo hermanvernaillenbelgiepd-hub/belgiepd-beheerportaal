@@ -95,6 +95,21 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .specialty-col-label{font-size:10px;line-height:1.2}
 .staff-roster-table .specialty-status-col .specialty-state{font-size:10px;padding:4px 6px}
 @media(max-width:920px){.staff-roster-table{min-width:1520px}}
+
+/* MAIN: afgebakende tabelvakken en rechts gekoppelde Discord-ID. */
+.staff-roster-holder{overflow-x:auto}
+.staff-roster-table{min-width:1740px;border-spacing:3px 5px;border-collapse:separate}
+.staff-roster-table thead th{background:#193453;border:1px solid #3b577b;border-radius:8px;padding:11px 7px}
+.staff-roster-table tbody td{background:#122741;border:1px solid #304a6a;border-radius:8px;padding:10px 8px;transition:background-color .15s,border-color .15s}
+.staff-roster-table tbody tr:nth-child(even) td{background:#172d49}
+.staff-roster-table tbody tr:hover td{background:#203b5c;border-color:#597ca8}
+.staff-roster-table td:nth-child(2){background:#182e4b}
+.staff-roster-table .rank-insignia{border-color:#4b6484;background:#1c3552}
+.staff-roster-table th:last-child{width:12%}
+.staff-roster-table .discord-id-head,.staff-roster-table .discord-id-cell{text-align:left}
+.staff-roster-table .discord-id-cell code{display:inline-block;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:#d5e7ff;padding:6px 7px;background:#213d5b;border:1px solid #466286;border-radius:6px}
+.staff-roster-table .discord-id-missing{font-size:10px;color:#a9bdd3}
+@media(max-width:920px){.staff-roster-table{min-width:1740px}}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
@@ -392,11 +407,12 @@ function render(){
     const name=document.createElement('span');name.className='specialty-col-label';name.textContent=label;
     th.append(pict,name);line.append(th);
   }
-  const last=document.createElement('th');last.textContent='Fiche';line.append(last);head.append(line);
+  const last=document.createElement('th');last.textContent='Fiche';line.append(last);
+  const discordHeader=document.createElement('th');discordHeader.textContent='Discord-ID';discordHeader.className='discord-id-head';line.append(discordHeader);head.append(line);
   const body=$('results');body.replaceChildren();
   if(!matches.length){
     const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');
-    c.colSpan=7+cols.length;body.append(tr);return;
+    c.colSpan=8+cols.length;body.append(tr);return;
   }
   for(const person of matches){
     const tr=document.createElement('tr');
@@ -443,7 +459,15 @@ function render(){
     action.className='alt roster-open';action.textContent='Open';action.title='Open personeelsfiche van '+person.name;
     action.onclick=()=>showPerson(person);
     const cell=document.createElement('td');cell.append(action);tr.append(cell);
-    body.append(tr);
+    const discordCell=document.createElement('td');discordCell.className='discord-id-cell';
+    const id=String(person.discordId||'').trim();
+    if(/^\d{15,22}$/.test(id)){
+      const idLabel=document.createElement('code');idLabel.textContent=id;idLabel.title='Gekoppelde Discord-ID';discordCell.append(idLabel);
+    }else{
+      const missing=document.createElement('span');missing.className='discord-id-missing';
+      missing.textContent='Niet gekoppeld';discordCell.append(missing);
+    }
+    tr.append(discordCell);body.append(tr);
   }
 }
 async function checkAccessStatus(){
