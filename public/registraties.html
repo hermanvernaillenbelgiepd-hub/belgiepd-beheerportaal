@@ -77,9 +77,12 @@ function updateForm(){
  const prior=$('sanctionType').value;
  setOptions($('sanctionType'),choices.map(x=>({value:x,label:x==='Tijdelijke beperking'?'Tijdelijke beperking van specialisatie':x})),'Kies de sanctiemaatregel');
  if(choices.includes(prior))$('sanctionType').value=prior;
- $('sanctionHelp').textContent=canHeavy($('dept').value)?
-   'Effectieve degradatie, schorsing en ontslag zijn uitsluitend voor Korpsleiding. Een voorstel tot degradatie vereist ernst 9 of 10/10.':
-   'Middenkader en Officierenkader: mondelinge waarschuwing, officiële waarschuwing of tijdelijke beperking. Voorstel tot degradatie pas vanaf ernst 9/10. Effectieve degradatie, schorsing of ontslag uitsluitend Korpsleiding.';
+ const role=userState?.sanctionRoles?.[$('dept').value];
+ $('sanctionHelp').textContent=role==='korpsleiding'?
+   'Korpsleiding kan ook ontslag of ontslag met blacklisting registreren. Voorstel tot degradatie vereist ernst 9 of 10/10.':
+   role==='officierenkader'?
+     'Officierenkader kan ook effectieve degradatie en schorsing registreren. Ontslag en blacklisting blijven uitsluitend voor Korpsleiding. Voorstel tot degradatie vanaf ernst 9/10.':
+     'Middenkader: mondelinge waarschuwing, officiële waarschuwing en tijdelijke beperking van specialisatie. Voorstel tot degradatie vanaf ernst 9/10. Degradatie, schorsing en ontslag zijn niet toegestaan.';
  const showRepresent=['middenkader','officierenkader','korpsleiding'].includes(userState?.role)&&$('dept').value==='politie'&&!sanctioned&&!editId&&representatives.some(p=>p.dept===$('dept').value);
  $('representBlock').classList.toggle('hidden',!showRepresent);
  if(!showRepresent)$('represent').value='';
