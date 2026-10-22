@@ -65,9 +65,9 @@ test('Unknown radio channel metadata protects only the matching rostered callsig
   assert.equal(tracker.has('a'),false);
 });
 
-test('Assigned units are preserved; ended teams are not offered for removal',()=>{
+test('Een ploeg bij actieve melding kan na bevestigde radio-uitval worden afgemeld',()=>{
   const tracker=new Map(),roster=board([crew('busy','930'),crew('free','166'),crew('ended','465',{endedAt:base-10})],['busy']);
-  assert.deepEqual(poll(tracker,roster)[8],['free']);
+  assert.deepEqual(poll(tracker,roster)[1].sort(),['busy','free']);
   roster.meldingen.call.ploegen=[];
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+150000),tracker,base+150000).sort(),['busy','free']);
 });
@@ -115,12 +115,12 @@ test('Named HVPK crew is preserved when radio presence is current or uncertain',
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base+45000,[]),tracker,base+45000),[]);
 });
 
-test('Handmatige ploeg gekoppeld aan actieve melding blijft staan; na ontkoppelen mag ze weg',()=>{
+test('Handmatige ploeg bij actieve melding wordt na twee radiopolls voor gelogde afmelding aangeboden',()=>{
   const tracker=new Map(),roster=board([crew('manual','180',{radioSource:null})],['manual']);
   assert.deepEqual(observeRadioDepartures(roster,snapshot(base),tracker,base),[]);
-  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+15000),tracker,base+15000),[]);
-  roster.meldingen.call.ploegen=[];
-  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+30000),tracker,base+30000),['manual']);
+  assert.deepEqual(observeRadioDepartures(roster,snapshot(base+15000),tracker,base+15000),['manual']);
+  assert.deepEqual(roster.meldingen.call.ploegen,[{id:'manual'}],
+    'De observer mag zelf geen melding muteren; dat gebeurt atomair in Firestore');
 });
 test('Alleen verse metingen: dubbele cache en tijdelijk onbereikbare radio verwijderen niets',()=>{
   const tracker=new Map(),roster=board([crew('manual','180',{radioSource:null})]);
