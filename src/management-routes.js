@@ -13,7 +13,7 @@ const noPrivate=e=>{
   return {...other,createdAt:toIso(createdAt),modifiedAt:toIso(modifiedAt)};
 };
 const errorResponse=(res,error)=>{
-  if(/^(Ongeldig|Ongeldige|Omschrijving|Rapporttitel|Rapportperiode|Einddatum|Naam van|Nieuwe naam|Voorgestelde graad|Personeelsbeweging|Datum|Begindatum|Hulpdienst|Huidige rang|Voorgestelde rang|Alleen korpsleiding|Selecteer|Motivering uitzondering|Voor de eerstvolgende|Promotievoorstellen)/.test(error?.message||''))return res.status(400).json({error:error.message});
+  if(/^(Ongeldig|Ongeldige|Omschrijving|Rapporttitel|Rapportperiode|Einddatum|Naam van|Nieuwe naam|Voorgestelde graad|Personeelsbeweging|Datum|Begindatum|Hulpdienst|Huidige rang|Voorgestelde rang|Alleen korpsleiding|Selecteer|Motivering uitzondering|Voor de eerstvolgende|Promotievoorstellen|Roepnummer)/.test(error?.message||''))return res.status(400).json({error:error.message});
   console.error('Weekrapport/dossierfout:',error?.code||error?.message||'onbekend');
   return res.status(503).json({error:'Interne dossier- of weekrapportopslag tijdelijk niet beschikbaar'});
 };
@@ -32,7 +32,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       // DEMO-gegevens staan uitsluitend in procesgeheugen en kunnen nooit per ongeluk
       // in de gewone getSnapshot()/Firestore-personeelsbron terechtkomen.
       const subjects=[...realSubjects,...DEMO_SUBJECTS.filter(p=>canReadServiceDossier(req.bpd,p.dept))]
-        .map(p=>({...p,...(p.dept==='politie'?{promotion:promotionOptions(p.rank)}:{})}));
+        .map(p=>({...p,...(p.dept==='politie'?{promotion:promotionOptions(p.rank,p.call)}:{})}));
       const actor=actorFromPersonnel(req.bpd,snap.data);
       const registrationPermissions=Object.fromEntries(
         (req.bpd.dossierAllowedDepartments||[]).filter(d=>canReadServiceDossier(req.bpd,d))
@@ -77,7 +77,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel je Google-account eerst aan je eigen Discord ID'});
       const promotion=type==='promotievoorstel'
-        ?validatePromotionProposal(req.body,{dept,rank:subject.rank},req.bpd):{};
+        ?validatePromotionProposal(req.body,{dept,rank:subject.rank,call:subject.call},req.bpd):{};
       const newDoc=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const batch=db().batch();
