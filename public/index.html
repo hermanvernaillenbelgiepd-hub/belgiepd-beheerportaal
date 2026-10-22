@@ -97,12 +97,13 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
     <a class="module" href="/verlofbeheer.html"><span class="ico" aria-hidden="true">📅</span><h3>Mijn verlof</h3><p>Vraag verlof aan en bekijk je persoonlijke verlofaanvragen.</p><span class="open">Open verlof →</span></a>
     <a class="module" href="/meldingen.html"><span class="ico" aria-hidden="true">📬</span><h3>Meldingen</h3><p>Af te handelen verlofaanvragen voor middenkader en hoger, met bestaande dienstbevoegdheden.</p><span class="open">Bekijk meldingen →</span></a>
   </div>
-  <h2 class="section-title">Administratie en rechten</h2>
+  <section id="adminRights" hidden aria-label="Administratie en rechten"><h2 class="section-title">Administratie en rechten</h2>
   <div class="grid">
     <a class="module" href="/gebruikersbeheer.html#dienstbeheer"><span class="ico" aria-hidden="true">🛡️</span><h3>Beheertoegang hulpdiensten</h3><p>Toegang per Discord-ID en hulpdienst toekennen, beheren en intrekken.</p><span class="open">Open dienstbeheer →</span></a>
     <a class="module" href="/gebruikersbeheer.html"><span class="ico" aria-hidden="true">🔐</span><h3>Gebruikersbeheer</h3><p>Accountgoedkeuringen, Bestuur, TO-rechten en toegangsbeheer.</p><span class="open">Open gebruikersbeheer →</span></a>
     <a class="module" href="/rollen-opleidingen.html"><span class="ico" aria-hidden="true">🎓</span><h3>Rollen &amp; opleidingen</h3><p>Discord-rollen, opleidingen, kwalificaties en specialisaties.</p><span class="open">Open opleidingen →</span></a>
   </div>
+  </section>
   <div class="bottom">
     <a href="/roepnummers.html"><span aria-hidden="true">#️⃣</span> Vaste roepnummers beheren →</a>
     <a href="/discord-status.html"><span aria-hidden="true">🔗</span> Discord-koppeling controleren →</a>
@@ -110,4 +111,32 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
   <p class="caption">De modules controleren je toegang bij het openen. De startpagina bevat bewust geen personeelsinformatie of fictieve statistieken.</p>
 </main>
 </div></div>
+<script type="module">
+/* Navigatie uitsluitend zichtbaar na servergecontroleerde roltoets.
+   De doelmodules blijven hun eigen autorisatie afdwingen. */
+const adminSection=document.getElementById('adminRights');
+try{
+  const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+  if(config.enabled){
+    const {initializeApp,getApps,getApp}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+    const {getAuth,onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+    const app=getApps().length?getApp():initializeApp(config.firebaseConfig);
+    onAuthStateChanged(getAuth(app),async user=>{
+      adminSection.hidden=true;
+      if(!user)return;
+      try{
+        const token=await user.getIdToken();
+        const response=await fetch('/api/users/context',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+        if(!response.ok)return;
+        const ctx=await response.json();
+        const higher=['officierenkader','korpsleiding'];
+        const authorized=ctx.role==='beheerder'||ctx.profileMode==='technisch'||
+          (ctx.canManageUsers===true&&(higher.includes(ctx.role)||
+          Object.values(ctx.departmentRoles||{}).some(role=>higher.includes(role))));
+        adminSection.hidden=!authorized;
+      }catch{adminSection.hidden=true}
+    });
+  }
+}catch{adminSection.hidden=true}
+</script>
 </body></html>
