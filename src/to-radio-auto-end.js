@@ -1,8 +1,9 @@
 // Radio-presence observer. It only proposes removals; Firestore re-checks
 // every condition atomically before recording an "uit dienst" event.
 // Never trust roomId, stale cached users or a single transient channel drop.
-export const RADIO_AUTO_END_GRACE_MS=120_000;
-export const RADIO_AUTO_END_MIN_POLLS=3;
+// Twee afzonderlijke, recente Sonoran-metingen om kortstondige radio-uitval op te vangen.
+export const RADIO_AUTO_END_GRACE_MS=15_000;
+export const RADIO_AUTO_END_MIN_POLLS=2;
 const key=(category,number)=>{
   if(typeof category!=='string'||!['string','number'].includes(typeof number))return null;
   const value=String(number);
@@ -44,10 +45,10 @@ export function observeRadioDepartures(board,snapshot,tracker,now){
     }
     if(uncertain){tracker.delete(team.id);continue;}
     const prev=tracker.get(team.id);
-    // Only a team imported from Sonoran, or a manually entered team
-    // actually observed in radio this session, can be signed off automatically.
-    // A manually entered offline team must remain under TO control.
-    if(!prev?.seen&&team.radioSource!=='sonoran')continue;
+    // TEST: ook historisch/manueel aangemaakte ploegen volgen radio-aanwezigheid.
+    // Ontbreekt de ploeg in twee afzonderlijke gezonde Sonoran-metingen,
+    // dan mag ze automatisch uit dienst, ongeacht de invoermethode.
+    // Actief aan een melding gekoppelde ploegen blijven beschermd.
     if(!prev||prev.since===null){
       tracker.set(team.id,{seen:true,since:timestamp,polls:1,lastSnapshot:timestamp});
       continue;
