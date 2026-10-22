@@ -1,6 +1,7 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
-import { actorFromPersonnel, isCadre, isDiscordId, mayAmend, mayRead, maySubmit, canChooseSanction, canRepresent, eligibleRepresentative, representativeFromPersonnel, safeSubject, validateAmend, validateEntry } from './registrations.js';
+import {roleForDepartment} from './leave-policy.js';
+import { actorFromPersonnel, isCadre, isDiscordId, mayAmend, mayRead, maySubmit, canChooseSanction, permittedSanctionTypes, canRepresent, eligibleRepresentative, representativeFromPersonnel, safeSubject, validateAmend, validateEntry } from './registrations.js';
 const DEPTS=['politie','brandweer','ambulance','depannage'];
 const trim=s=>String(s??'').trim();
 const isoTimestamp=v=>v?.toDate?.().toISOString()||null;
@@ -29,13 +30,14 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
          .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call})):[];
        const sanctionDepartments=['politie','brandweer','ambulance','depannage'].filter(d=>
          (req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&maySubmit(req.bpd,'sanctie',d));
-       const heavySanctionDepartments=sanctionDepartments.filter(d=>
-         d==='brandweer'||req.bpd.portalTechnicalMode===true||req.bpd.dossierFullDepartments?.includes(d)||
-         ['officierenkader','korpsleiding'].includes(req.bpd.role));
+       const sanctionRoles=Object.fromEntries(sanctionDepartments.map(d=>[d,roleForDepartment(req.bpd,d)]));
+       const sanctionOptionsByDepartment=Object.fromEntries(sanctionDepartments.map(d=>
+         [d,permittedSanctionTypes(sanctionRoles[d],10)]));
+       const heavySanctionDepartments=sanctionDepartments.filter(d=>sanctionRoles[d]==='korpsleiding');
        res.json({role:req.bpd.role,departments:req.bpd.departments,writesEnabled:writesEnabled(),
          fireZoneChief:req.bpd.fireZoneChief===true,portalTechnicalMode:req.bpd.portalTechnicalMode===true,
          fullDossierDepartments:req.bpd.dossierFullDepartments||[],
-         sanctionDepartments,heavySanctionDepartments,actor,representatives,
+         sanctionDepartments,heavySanctionDepartments,sanctionRoles,sanctionOptionsByDepartment,actor,representatives,
          subjects:subset.map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call}))});
     }catch(err){return handleError(res,err)}
   });
@@ -60,8 +62,11 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const values=validateEntry(raw);
-       if(type==='sanctie' && !canChooseSanction(req.bpd.portalTechnicalMode===true||req.bpd.dossierFullDepartments?.includes(dept)||dept==='brandweer'&&req.bpd.fireZoneChief===true?'korpsleiding':req.bpd.role,values.sanctionType))
-         return res.status(403).json({error:'Deze sanctiemaatregel is alleen beschikbaar voor officierenkader of korpsleiding'});
+       if(type==='sanctie' && !canChooseSanction(
+         roleForDepartment(req.bpd,dept),values.sanctionType,values.severity))
+         return res.status(403).json({error:values.sanctionType==='Voorstel tot degradatie'?
+           'Een voorstel tot degradatie is alleen toegestaan bij ernst 9 of 10 op 10.':
+           'Deze sanctiemaatregel is niet toegestaan voor jouw kaderrol. Degradatie, schorsing en ontslag zijn alleen voor Korpsleiding.'});
        const representedId=trim(raw?.onBehalfOfDiscordId);
        if(representedId && !canRepresent(req.bpd,type,dept)) return res.status(403).json({error:'Registratie namens een ander is alleen toegestaan voor observaties door kaderleden'});
        const onBehalfReason=representedId ? trim(raw?.onBehalfReason) : '';
@@ -96,6 +101,9 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     if(!isDiscordId(id)||!/^[a-zA-Z0-9]{12,30}$/.test(entryId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
     try{
       const values=validateAmend(req.body);
+      const sanctionRole=roleForDepartment(req.bpd,dept);
+      if(!canChooseSanction(sanctionRole,values.sanctionType,values.severity))
+        return res.status(403).json({error:'Geen bevoegdheid voor deze sanctiemaatregel of ernst. Alleen Korpsleiding kan zware sancties vastleggen.'});
       const snap=await getSnapshot();
       if(!safeSubject(snap.data,dept,id))return res.status(404).json({error:'Personeelslid niet gevonden'});
       const actor=actorFromPersonnel(req.bpd,snap.data);
@@ -108,6 +116,10 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
         if(!existing.exists)return Object.assign(new Error('Niet gevonden'),{status:404});
         const old=existing.data();
         if(old.type!=='sanctie'||old.subjectDiscordId!==id||old.dept!==dept)throw Object.assign(new Error('Geen sanctie'),{status:404});
+        // Ook de OORSPRONKELIJKE sanctie bepaalt wie ze mag wijzigen:
+        // officierenkader kan nooit een degradatie/schorsing/ontslag terugdraaien.
+        if(!canChooseSanction(sanctionRole,old.sanctionType,old.severity))
+          throw Object.assign(new Error('Alleen Korpsleiding mag deze bestaande sanctie wijzigen'),{status:403});
         const {amendmentReason,...rest}=values;
         tx.update(ref,{...rest,modifiedAt:FieldValue.serverTimestamp(),modifiedBy:actor});
         // Oude waarden en reden bewaren in een afgeschermd log (geen harde delete).
@@ -115,7 +127,11 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
         tx.create(notice,{caseId:docId(dept,id),entryId,type:'sanctie_gewijzigd',dept,createdAt:FieldValue.serverTimestamp()});
       });
       res.json({saved:true});
-    }catch(err){if(err?.status===404)return res.status(404).json({error:'Sanctie niet gevonden'});return handleError(res,err)}
+    }catch(err){
+      if(err?.status===404)return res.status(404).json({error:'Sanctie niet gevonden'});
+      if(err?.status===403)return res.status(403).json({error:err.message});
+      return handleError(res,err)
+    }
   });
   app.get('/api/registrations/notifications',requireUser,async(req,res)=>{
     if(req.bpd.fireZoneChief!==true&&!isCadre(req.bpd.role)&&!req.bpd.dossierFullDepartments?.length)return res.status(403).json({error:'Geen toegang tot meldingen'});
