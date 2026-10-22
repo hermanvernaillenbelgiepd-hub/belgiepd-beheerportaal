@@ -126,13 +126,10 @@ try{
       if(!user)return;
       try{
         const token=await user.getIdToken();
-        const response=await fetch('/api/users/context',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+        const response=await fetch('/api/dashboard/admin-visibility',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
         if(!response.ok)return;
         const ctx=await response.json();
-        const higher=['officierenkader','korpsleiding'];
-        const authorized=ctx.role==='beheerder'||ctx.profileMode==='technisch'||
-          (ctx.canManageUsers===true&&(higher.includes(ctx.role)||
-          Object.values(ctx.departmentRoles||{}).some(role=>higher.includes(role))));
+        const authorized=ctx.visible===true;
         adminSection.hidden=!authorized;
       }catch{adminSection.hidden=true}
     });
