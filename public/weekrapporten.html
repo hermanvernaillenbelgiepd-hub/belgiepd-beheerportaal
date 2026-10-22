@@ -219,12 +219,14 @@ const roleHigher=r=>['officierenkader','korpsleiding'].includes(r);
 function selectOptions(el,items,placeholder){el.replaceChildren();const o=document.createElement('option');o.value='';o.textContent=placeholder;el.append(o);items.forEach(it=>{const a=document.createElement('option');a.value=it.value;a.textContent=it.label;el.append(a)})}
 async function api(url,method='GET',body){if(!firebaseAuth?.currentUser)throw new Error('Niet aangemeld');const token=await firebaseAuth.currentUser.getIdToken();const resp=await fetch(url,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'});const data=await resp.json().catch(()=>({}));if(!resp.ok)throw new Error(data.error||'HTTP '+resp.status);return data}
 function setTab(tab){currentTab=tab;const reports=tab==='reports';$('casesView').classList.toggle('hidden',reports);$('reportsView').classList.toggle('hidden',!reports);$('tabCases').classList.toggle('active',!reports);$('tabReports').classList.toggle('active',reports);if(reports)loadReports();else loadCases();}
+const selectedIsDemo=()=>selectedPerson()?.demo===true;
 function selectedPerson(){
   return subjects.find(p=>p.dept===$('caseDept').value&&p.discordId===$('casePerson').value)||null;
 }
 function displaySelectedPerson(){
   const p=selectedPerson();
   $('caseSelected').textContent=p?`${p.call||'—'} · ${p.name||'Onbekend'} · ${p.rank||p.dept}`:'Selecteer eerst een personeelslid.';
+  $('demoActions').classList.toggle('hidden',p?.demo!==true);
 }
 function filterCases({keepHistory=false}={}){
   const dept=$('caseDept').value,previous=$('casePerson').value;
@@ -262,8 +264,8 @@ function refreshRegistrationChoices(){
     .filter(person=>person.dept===$('caseDept').value&&person.discordId!==viewData?.actor?.discordId)
     .map(person=>({value:person.discordId,label:String(person.call||'')+' – '+String(person.name||'')})),
     'Nee, zelf geregistreerd');
-  $('saveCase').disabled=!viewData?.actor||
-    (isRegistrationType($('entryType').value)?viewData?.registrationWritesEnabled!==true:viewData?.writesEnabled!==true);
+  $('saveCase').disabled=(!viewData?.actor&&!selectedIsDemo())||
+    (!selectedIsDemo()&&(isRegistrationType($('entryType').value)?viewData?.registrationWritesEnabled!==true:viewData?.writesEnabled!==true));
 }
 function resetSanctionEdit(){
   editingSanction=null;
@@ -302,7 +304,7 @@ function updateRepresentReason(){
   if(!active)$('registrationRepresentReason').value='';
 }
 function beginSanctionEdit(id){
-  if(!mayAmendSelectedSanction()||viewData?.registrationWritesEnabled!==true)return;
+  if(!mayAmendSelectedSanction()||(!selectedIsDemo()&&viewData?.registrationWritesEnabled!==true))return;
   const record=caseEntries.find(x=>x.id===id&&x.type==='sanctie');
   if(!record)return;
   editingSanction=id;
@@ -373,8 +375,8 @@ function changeExtra(){
     button.setAttribute('aria-pressed',String(button.dataset.type===type));
   const other=[...$('registrationReasons').querySelectorAll('input[type="checkbox"]')].some(c=>c.value==='Anders'&&c.checked);
   $('registrationReasonOther').required=sanction&&other;
-  $('saveCase').disabled=!viewData?.actor||
-    (reg?viewData?.registrationWritesEnabled!==true:viewData?.writesEnabled!==true);
+  $('saveCase').disabled=(!viewData?.actor&&!selectedIsDemo())||
+    (!selectedIsDemo()&&(reg?viewData?.registrationWritesEnabled!==true:viewData?.writesEnabled!==true));
 }
 function populateHistoryTypes(){
   const select=$('caseHistoryType');
@@ -390,6 +392,7 @@ function renderCaseHistory(){
         String(value||'').toLocaleLowerCase('nl').includes(q))));
   const included=caseEntries.filter(e=>e.testRecord!==true).length;
   $('caseHistorySummary').textContent=caseEntries.length?
+    selectedIsDemo()?`${selected.length} van ${caseEntries.length} fictieve registraties · ${included} zichtbaar in het DEMO-weekrapport.`:
     `${selected.length} getoond van ${caseEntries.length} registraties · ${included} komen in aanmerking voor dynamische weekrapporten.`:
     'Geen dossierregistraties gevonden voor deze medewerker.';
   $('caseList').innerHTML=selected.length?selected.map(e=>renderEntry(e,true)).join(''):
@@ -399,18 +402,20 @@ function renderEntry(e,allowClassify=false){
   const by=e.registeredBy?.name||'Onbekende auteur';
   const special=e.courseName||e.proposedRank||e.newName||e.movement||e.sanctionType||'';
   const flagged=e.testRecord===true;
+  const demo=e.demoRecord===true;
   const sanctions=e.type==='sanctie'?
     '<div class="item-meta">Status: '+esc(e.status==='ingetrokken'?'Ingetrokken':'Actief')+
     ' · Ernst: '+esc(e.severity||'—')+'/10'+
     (Array.isArray(e.reasons)&&e.reasons.length?' · Redenen: '+esc(e.reasons.join(', ')):'')+'</div>':'';
   const actions=[];
-  if(e.type==='sanctie'&&allowClassify&&mayAmendSelectedSanction()&&viewData?.registrationWritesEnabled===true)
+  if(e.type==='sanctie'&&allowClassify&&mayAmendSelectedSanction()&&(demo||viewData?.registrationWritesEnabled===true))
     actions.push('<button type="button" class="secondary case-edit-action" data-edit-sanction="'+esc(e.id)+'">Sanctie wijzigen</button>');
-  if(allowClassify&&viewData?.canClassifyTests)
+  if(!demo&&allowClassify&&viewData?.canClassifyTests)
     actions.push('<button type="button" class="secondary case-edit-action" data-classify-entry="'+esc(e.id)+
       '" data-flagged="'+flagged+'">'+(flagged?'Testmarkering opheffen':'Als testregistratie markeren')+'</button>');
   const control=actions.length?'<div class="buttons">'+actions.join('')+'</div>':'';
   return '<div class="item"><div class="item-title">'+esc(labels[e.type]||e.type)+
+    (demo?' <span class="case-demo-marker">DEMO</span>':'')+
     (flagged?' <span class="pill">TEST – niet in weekrapport</span>':'')+
     (special?' <span class="pill">'+esc(special)+'</span>':'')+'</div>'+
     '<div class="item-meta">'+esc(e.eventDate||'Geen datum')+
@@ -429,7 +434,8 @@ async function loadCases(){
   $('caseHistorySummary').textContent='';
   $('caseList').textContent='Dossierregistraties laden…';
   try{
-    const data=await api(`/api/management/cases?dept=${encodeURIComponent(dept)}&discordId=${encodeURIComponent(id)}`);
+    const data=await api((selectedIsDemo()?'/api/management/demo/entries?':'/api/management/cases?')+
+      `dept=${encodeURIComponent(dept)}&discordId=${encodeURIComponent(id)}`);
     if(serial!==caseRequestSerial||$('caseDept').value!==dept||$('casePerson').value!==id)return;
     caseEntries=Array.isArray(data.entries)?data.entries:[];
     renderCaseHistory();
