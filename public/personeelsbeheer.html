@@ -134,7 +134,36 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table td:nth-child(3),.staff-roster-table td:nth-child(4){overflow-wrap:anywhere;line-height:1.35}
 @media(max-width:920px){.staff-roster-table{min-width:1450px}}
 .discord-verified-cadre{font-weight:700;color:#99c6ff;white-space:nowrap;font-size:10px}
-</style></head>
+
+/* MAIN: dossier-FICHE als geïntegreerde compacte werkruimte. */
+#panel{scroll-margin-top:10px}
+#panel>div:first-child{position:sticky;top:0;z-index:4;background:#11233f;border-bottom:1px solid #3b5374;padding:8px 0}
+.dossier-tabbar{display:flex;gap:6px;flex-wrap:wrap;padding:8px 0 12px;border-bottom:1px solid #354d6a}
+.dossier-tabbar button{padding:8px 12px;border:1px solid #435e83;border-radius:8px;background:#192f50;color:#d7e5f9;font-size:12px}
+.dossier-tabbar button[aria-selected="true"]{background:#315dd1;color:white;border-color:#86a4ff}
+.dossier-views{min-height:180px}
+.dossier-pane{display:block;padding:14px 3px 10px;max-height:min(68vh,780px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.dossier-pane[hidden]{display:none!important}
+.dossier-pane h3{font-size:16px;margin:13px 0 5px}
+.dossier-pane p{margin:5px 0 10px}
+.dossier-pane .grid{gap:10px}
+.dossier-pane input,.dossier-pane select,.dossier-pane textarea{padding:8px 9px}
+.dossier-pane button{padding:8px 11px}
+.dossier-pane section{border:0;margin:0;padding:0}
+.dossier-pane .dossier-summary{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dossier-pane .dossier-summary>div{padding:9px}
+.dossier-pane .history,.dossier-pane .note-item{padding:7px 0}
+.dossier-pane .dossier-head{border:0;margin:0;padding:0}
+.inline-form{border:1px solid #3a5577;padding:12px;border-radius:10px;background:#132a48;margin:12px 0}
+.formal-reasons{display:flex;gap:7px;flex-wrap:wrap}
+.formal-reasons label{display:inline-flex;align-items:center;gap:5px;border:1px solid #486481;border-radius:7px;padding:5px 8px}
+.formal-reasons input{width:auto}
+.dossier-shortcuts{display:none!important}
+@media(max-width:750px){
+.dossier-pane{max-height:none}
+.dossier-pane .dossier-summary{grid-template-columns:1fr}
+.dossier-tabbar button{padding:7px 9px;font-size:11px}
+}</style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
@@ -186,6 +215,8 @@ Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a
 </section>
 <section id="panel" class="card" hidden><div class="controls" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2><button class="alt" id="close" type="button">Sluiten</button></div>
 <p class="subtle" id="identity"></p>
+<div id="dossierTabBar" class="dossier-tabbar" role="tablist" aria-label="Onderdelen van personeelsdossier"></div>
+<div id="dossierViews" class="dossier-views"></div>
 <form id="editForm"><div class="grid">
 <div><label for="pName">Naam</label><input id="pName" maxlength="120" minlength="2" required></div>
 <div><label for="pCall">Roepnummer</label><input id="pCall" maxlength="24" required></div>
@@ -244,11 +275,7 @@ placeholder="Bijvoorbeeld: opleiding afgerond en gecontroleerd door instructeur"
 </div>
 <button id="leaveManualSave" type="submit">Verlof goedgekeurd registreren</button>
 </form>
-<div class="dossier-shortcuts">
-<a href="/rollen-opleidingen.html">Opleidingen en beoordelingen</a>
-<a href="/weekrapporten.html">Kaderregistraties en weekrapport</a><a href="/registraties.html">Observaties en sancties</a>
-<a href="/verlofbeheer.html">Verlofbeheer</a>
-</div>
+<div class="dossier-shortcuts" hidden aria-hidden="true"></div>
 <form id="staffProfileForm" hidden>
 <h3>Administratieve basisgegevens</h3>
 <div class="grid">
@@ -271,15 +298,55 @@ placeholder="Bijvoorbeeld: opleiding afgerond en gecontroleerd door instructeur"
 <div class="grid">
 <div><label for="staffCaseType">Type</label><select id="staffCaseType">
 <option value="notitie">Belangrijke notitie</option><option value="activiteit">Dienstactiviteit</option>
-<option value="specialisatiebeperking">Beperking van specialisatie</option></select></div>
+<option value="specialisatiebeperking">Beperking van specialisatie</option>
+<option value="opleiding">Gevolgde opleiding</option><option value="verlof">Verlofnotitie</option>
+<option value="promotievoorstel">Promotievoorstel</option>
+<option value="naamswijziging">Naamswijziging registreren</option>
+<option value="personeelsbeweging">Personeelsbeweging</option></select></div>
 <div><label for="staffCaseDate">Datum gebeurtenis</label><input id="staffCaseDate" type="date" required></div>
-<div style="grid-column:1/-1"><label for="staffCaseDetails">Omschrijving</label>
-<textarea id="staffCaseDetails" rows="4" maxlength="4000" minlength="10" required></textarea></div>
+<div id="staffCaseExtra" class="grid" style="grid-column:1/-1" hidden>
+<div id="staffCourseField" hidden><label for="staffCourseName">Opleidingsnaam</label><input id="staffCourseName" maxlength="180"></div>
+<div id="staffEndDateField" hidden><label for="staffEndDate">Einddatum verlofnotitie</label><input id="staffEndDate" type="date"></div>
+<div id="staffRankField" hidden><label for="staffProposedRank">Voorgestelde rang</label><input id="staffProposedRank" maxlength="140"></div>
+<div id="staffNewNameField" hidden><label for="staffNewName">Nieuwe naam</label><input id="staffNewName" maxlength="120"></div>
+<div id="staffMovementField" hidden><label for="staffMovement">Personeelsbeweging</label><input id="staffMovement" maxlength="150"></div>
+</div>
+<div style="grid-column:1/-1"><label for="staffCaseDetails">Omschrijving of motivering</label>
+<textarea id="staffCaseDetails" rows="3" maxlength="4000" minlength="10" required></textarea></div>
+<div style="grid-column:1/-1"><label for="staffCaseReference">Bewijs- of documentlink (optioneel, https)</label><input id="staffCaseReference" type="url" maxlength="800" placeholder="https://…"></div>
 </div>
 <button id="staffCaseSave" type="submit">Kaderregistratie bewaren</button>
 </form>
 <h3>Observaties en sancties</h3>
 <p class="subtle">Formele observaties en sancties staan in het bestaande beveiligde registratieregister. Maatregelen en rolbeperkingen worden niet automatisch gewijzigd door een notitie.</p>
+<form id="staffFormalForm" class="inline-form" hidden>
+<h3 id="staffFormalFormTitle">Nieuwe observatie of sanctie</h3>
+<p id="staffFormalPolicy" class="subtle">Rechten worden gecontroleerd via de bestaande beveiligde registratie-API.</p>
+<div class="grid">
+<div><label for="formalType">Registratietype</label><select id="formalType"><option value="observatie">Observatie</option><option value="sanctie">Sanctie</option></select></div>
+<div><label for="formalDate">Datum</label><input id="formalDate" type="date" required></div>
+<div><label for="formalTime">Tijdstip</label><input id="formalTime" type="time" required></div>
+<div><label for="formalEvidence">Bewijslink (optioneel, https)</label><input id="formalEvidence" type="url" maxlength="800" placeholder="https://…"></div>
+<div style="grid-column:1/-1"><label for="formalDetails">Feiten, tussenkomst en uitkomst</label><textarea id="formalDetails" rows="3" maxlength="6000" required></textarea></div>
+<div style="grid-column:1/-1"><label for="formalPlayers">Andere betrokken spelers (optioneel)</label><input id="formalPlayers" maxlength="1000"></div>
+</div>
+<div id="formalSanctionFields" hidden>
+<h4>Sanctiegegevens</h4><div class="grid">
+<div><label for="formalSeverity">Ernst (1–10)</label><input id="formalSeverity" type="number" min="1" max="10" value="5"></div>
+<div><label for="formalSanctionType">Maatregel</label><select id="formalSanctionType"></select></div>
+<div style="grid-column:1/-1"><label>Reden(en) van de sanctie</label><div id="formalReasons" class="formal-reasons"></div></div>
+<div><label for="formalReasonOther">Toelichting bij Anders</label><input id="formalReasonOther" maxlength="500"></div>
+<div><label for="formalCfx">CFX-naam (optioneel)</label><input id="formalCfx" maxlength="120"></div>
+<div style="grid-column:1/-1"><label for="formalExplanation">Aanvullende toelichting (optioneel)</label><textarea id="formalExplanation" rows="2" maxlength="2000"></textarea></div>
+</div></div>
+<div id="formalAmendFields" hidden><h4>Bestaande sanctie wijzigen</h4><div class="grid">
+<div><label for="formalAmendStatus">Status</label><select id="formalAmendStatus"><option value="actief">Actief</option><option value="ingetrokken">Ingetrokken</option></select></div>
+<div style="grid-column:1/-1"><label for="formalAmendReason">Verplichte motivering van de wijziging</label><textarea id="formalAmendReason" maxlength="1000" rows="2"></textarea></div>
+</div></div>
+<div class="controls" style="margin-top:10px"><button type="submit" id="formalSave">Registratie opslaan</button>
+<button type="button" id="formalCancelEdit" class="alt" hidden>Wijziging annuleren</button>
+<span id="formalNotice" class="subtle" role="status"></span></div>
+</form>
 <div id="staffFormalRecords" class="subtle">Observaties en sancties laden…</div>
 <h3>Eerdere dossiernotities (alleen lezen)</h3>
 <p class="subtle">Notities die eventueel via het oude aanvullende formulier zijn ingevoerd blijven zichtbaar, maar kunnen niet meer dubbel geregistreerd worden.</p>
