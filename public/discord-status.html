@@ -26,19 +26,6 @@
 <div><dt>Toegetreden op</dt><dd id="joined"></dd></div>
 <div><dt>Laatst geverifieerd</dt><dd id="verified"></dd></div>
 </dl>
-<div class="profile-actions">
-<button class="secondary" type="button" id="botRefresh">↻ Discord via bot vernieuwen</button>
-<button type="button" id="personalReload" class="secondary">↻ Mijn profiel vernieuwen</button>
-</div>
-<p class="muted profile-hint">Bot: actuele Discord-rollen ophalen (maximaal één keer per minuut). Mijn profiel: personeelsgegevens en opleidingen opnieuw laden. Geen van beide wijzigt je bevoegdheden.</p>
-<section id="personalDetails" class="profile-section" aria-label="Mijn rollen, specialisaties en opleidingen">
-<p id="personalStatus" class="muted" role="status" aria-live="polite">Je gegevens worden opgehaald zodra je bent aangemeld.</p>
-<div class="profile-columns">
-<section><h3>Discord-rollen</h3><div id="personalRoles"></div></section>
-<section><h3>Specialisaties</h3><div id="personalSpecializations"></div></section>
-<section><h3>Gevolgde opleidingen</h3><div id="personalTraining"></div></section>
-</div>
-</section>
 <section class="leave-box" id="myLeave" aria-labelledby="leaveHeading">
 <h3 id="leaveHeading">Mijn verlofaanvragen</h3>
 <p class="muted">Eén centrale verlofaanvraag voor al je actieve hulpdiensten. Bekijk hier je aanvraagstatus of dien een nieuwe aanvraag in.</p>
@@ -54,6 +41,20 @@
 <div id="leaveRequests" aria-label="Mijn ingediende verlofaanvragen"></div>
 <p><a href="/verlofbeheer.html">Open het volledige verlofbeheer →</a></p>
 </section>
+<div class="profile-actions">
+<button class="secondary" type="button" id="botRefresh">↻ Discord via bot vernieuwen</button>
+<button type="button" id="personalReload" class="secondary">↻ Mijn profiel vernieuwen</button>
+</div>
+<p class="muted profile-hint">Bot: actuele Discord-rollen ophalen (maximaal één keer per minuut). Mijn profiel: personeelsgegevens en opleidingen opnieuw laden. Geen van beide wijzigt je bevoegdheden.</p>
+<section id="personalDetails" class="profile-section" aria-label="Mijn rollen, specialisaties en opleidingen">
+<p id="personalStatus" class="muted" role="status" aria-live="polite">Je gegevens worden opgehaald zodra je bent aangemeld.</p>
+<div class="profile-columns">
+<section><h3>Discord-rollen</h3><div id="personalRoles"></div></section>
+<section><h3>Specialisaties</h3><div id="personalSpecializations"></div></section>
+<section><h3>Gevolgde opleidingen</h3><div id="personalTraining"></div></section>
+</div>
+</section>
+
 <details class="role-details"><summary>Geavanceerd · alle Discord-rol-ID's bekijken</summary>
 <p class="muted">Technische rol-ID's zijn alleen ter controle. Een Discord-rol kent niet automatisch dossier- of portaalrechten toe.</p>
 <div class="roles" id="roles"></div>
