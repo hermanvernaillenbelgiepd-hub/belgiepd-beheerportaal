@@ -61,15 +61,26 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
         if(!current.exists)return [];
         const board=current.data();
         if(board.session?.id!==sessionId)return [];
-        const activeLinks=new Set(Object.values(board.meldingen||{})
-          .filter(incident=>incident?.status==='actief')
-          .flatMap(incident=>(incident.ploegen||[]).map(crew=>crew.id)));
         const ended=[];
         for(const id of teamIds){
           const crew=board.ploegen?.[id];
-          if(!validBoardId(id)||!crew||crew.endedAt||activeLinks.has(id)||
+          if(!validBoardId(id)||!crew||crew.endedAt||
              radioMatchesSavedTeam(crew,snapshot.users)||
              radioMatchesSavedTeam(crew,snapshot.uncertainUnits))continue;
+          // Sluit een uit de radio verdwenen ploeg atomair af. Meldingen
+          // blijven actief, maar krijgen een controleerbare logregel.
+          const linked=Object.values(board.meldingen||{}).filter(incident=>
+            incident?.status==='actief'&&Array.isArray(incident.ploegen)&&
+            incident.ploegen.some(member=>member.id===id));
+          if(linked.some(incident=>!Array.isArray(incident.log)||
+             incident.log.length>=TO_BOARD_LIMITS.incidentLog))continue;
+          for(const incident of linked){
+            incident.log.push({t:now,by:'system:sonoran-radio',
+              actorUid:'system:sonoran-radio',
+              txt:crew.dienst+'-'+crew.roepnaam+
+                ' automatisch uit dienst: niet meer in Sonoran Radio; ploeg losgekoppeld'});
+            incident.ploegen=incident.ploegen.filter(member=>member.id!==id);
+          }
           crew.endedAt=now;
           crew.endedBy='system:sonoran-radio';
           crew.endedReason='radiokanaal-verlaten';
