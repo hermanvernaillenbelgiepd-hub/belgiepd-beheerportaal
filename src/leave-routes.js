@@ -88,6 +88,19 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
         canManageGrants:false,canReview:mayReviewLeaveNotifications(req.bpd,Boolean(grant)),writesEnabled:writes()});
     }catch(e){return jsonError(res,e)}
   });
+  // Historische aanvragen bevatten soms nog geen kaderrol. Los die uitsluitend
+  // via een goedgekeurd portaalaccount op, nooit via browserinvoer.
+  async function resolveApplicantRoles(request){
+    if(request.subjectDepartmentRoles&&
+      Object.values(request.subjectDepartmentRoles).some(Boolean))return request;
+    if(!validDiscordId(request.personDiscordId))return request;
+    try{
+      const approved=await targetAccount(request.personDiscordId);
+      const roles=Object.fromEntries((request.subjectDepartments||[]).map(dept=>
+        [dept,roleForDepartment(approved,dept)]));
+      return {...request,subjectDepartmentRoles:roles};
+    }catch{return request}
+  }
   // Dedicated notifications capability: personnel requests remain elsewhere.
   app.get('/api/leave/notifications/context',requireUser,async(req,res)=>{
     try{
@@ -118,7 +131,9 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
         review=[...new Map(lists.flatMap(x=>x.docs)
           .filter(d=>d.get('status')==='pending').map(d=>[d.id,d])).values()];
       }
-      review=review.filter(d=>mayApproveLeave(req.bpd,d.data(),grant,yyyyMmDd(),board));
+      const allowed=await Promise.all(review.map(async d=>board||mayApproveLeave(
+        req.bpd,await resolveApplicantRoles(d.data()),grant,yyyyMmDd(),false)));
+      review=review.filter((d,i)=>allowed[i]);
       const byTime=(a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''));
       return res.json({mine:my.docs.map(d=>item(d,true)).sort(byTime),
         toReview:review.map(d=>item(d,false)).sort(byTime),
@@ -214,7 +229,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
         const d=request.data();
         if(d.status!=='pending')throw rejection('Aanvraag is al behandeld',409);
         const grant=grantDoc.exists?grantDoc.data():oldGrant?.exists?oldGrant.data():null;
-        if(!mayApproveLeave(req.bpd,d,grant,yyyyMmDd(),board))
+        if(!mayApproveLeave(req.bpd,board?d:await resolveApplicantRoles(d),grant,yyyyMmDd(),board))
           throw rejection('Geen bevoegdheid om dit verlof goed te keuren',403);
         const audit=ref.collection('audit').doc();
         tx.update(ref,{status:decision,decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
