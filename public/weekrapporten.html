@@ -227,6 +227,7 @@ function displaySelectedPerson(){
   const p=selectedPerson();
   $('caseSelected').textContent=p?`${p.call||'—'} · ${p.name||'Onbekend'} · ${p.rank||p.dept}`:'Selecteer eerst een personeelslid.';
   $('demoActions').classList.toggle('hidden',p?.demo!==true);
+  changeExtra();
 }
 function filterCases({keepHistory=false}={}){
   const dept=$('caseDept').value,previous=$('casePerson').value;
@@ -498,7 +499,8 @@ async function exportWord(){
 }
 $('exportDocx').addEventListener('click',exportWord);
 $('exportPrint').addEventListener('click',()=>{if(!viewData?.canExportReports||!activeReport)return;window.print()});
-function showUser(data){viewData=data;const exportAllowed=data.canExportReports===true;document.body.classList.toggle('can-export',exportAllowed);$('reportExportActions').classList.toggle('hidden',!exportAllowed);$('exportReadOnlyNote').classList.toggle('hidden',exportAllowed);resetReportExport();subjects=data.subjects;const depts=data.departments.map(x=>({value:x,label:({'politie':'Politie','ambulance':'Ambulance','brandweer':'Brandweer','depannage':'Depannage'})[x]||x}));selectOptions($('caseDept'),depts,'Kies dienst');selectOptions($('reportDept'),depts,'Kies dienst');$('caseDept').value=depts[0]?.value||'';$('reportDept').value=depts[0]?.value||'';populateSanctionOptions();refreshRegistrationChoices();populateHistoryTypes();$('actorLabel').textContent=data.actor?`Ingevuld door: ${data.actor.name} – ${data.actor.call} (${data.role})`:'Geen gekoppeld personeelslid: opslaan is niet mogelijk.';$('saveCase').disabled=!data.actor||!data.writesEnabled;$('createReport').disabled=!data.actor||!data.writesEnabled;$('needLogin').classList.add('hidden');$('app').classList.remove('hidden');if(!data.writesEnabled)msg('Registraties staan uit. Controleer BPD_ENABLE_MANAGEMENT_WRITES=true en BPD_ENABLE_REGISTRATIONS=true in de serverconfiguratie.','notice');else msg('Ingelogd: alleen jouw toegelaten hulpdiensten zijn zichtbaar.','good');filterCases();changeExtra();const params=new URLSearchParams(location.search),dept=params.get('dept'),id=params.get('discordId');if(dept&&depts.some(x=>x.value===dept)){$('caseDept').value=dept;filterCases();refreshRegistrationChoices();}if(id&&subjects.some(x=>x.dept===$('caseDept').value&&x.discordId===id)){$('casePerson').value=id;loadCases();}if(location.hash==='#weekrapporten')setTab('reports');}
+function showUser(data){viewData=data;const exportAllowed=data.canExportReports===true;document.body.classList.toggle('can-export',exportAllowed);$('reportExportActions').classList.toggle('hidden',!exportAllowed);$('exportReadOnlyNote').classList.toggle('hidden',exportAllowed);resetReportExport();subjects=data.subjects;const depts=data.departments.map(x=>({value:x,label:({'politie':'Politie','ambulance':'Ambulance','brandweer':'Brandweer','depannage':'Depannage'})[x]||x}));selectOptions($('caseDept'),depts,'Kies dienst');selectOptions($('reportDept'),depts,'Kies dienst');$('caseDept').value=depts[0]?.value||'';$('reportDept').value=depts[0]?.value||'';populateSanctionOptions();refreshRegistrationChoices();populateHistoryTypes();$('actorLabel').textContent=data.actor?`Ingevuld door: ${data.actor.name} – ${data.actor.call} (${data.role})`:'Geen gekoppeld personeelslid: opslaan is niet mogelijk.';$('saveCase').disabled=!data.actor||!data.writesEnabled;$('createReport').disabled=!data.actor||!data.writesEnabled;$('needLogin').classList.add('hidden');$('app').classList.remove('hidden');$('demoBanner').classList.toggle('hidden',data.demoEnabled!==true);
+if(!data.writesEnabled)msg(data.demoEnabled?'Echte dossieropslag staat uit. Kies een [DEMO]-medewerker om veilig te oefenen; DEMO-opslag is actief.':'Registraties staan uit. Controleer BPD_ENABLE_MANAGEMENT_WRITES en BPD_ENABLE_REGISTRATIONS.','notice');else msg('Ingelogd: alleen jouw toegelaten hulpdiensten zijn zichtbaar.','good');filterCases();changeExtra();const params=new URLSearchParams(location.search),dept=params.get('dept'),id=params.get('discordId');if(dept&&depts.some(x=>x.value===dept)){$('caseDept').value=dept;filterCases();refreshRegistrationChoices();}if(id&&subjects.some(x=>x.dept===$('caseDept').value&&x.discordId===id)){$('casePerson').value=id;loadCases();}if(location.hash==='#weekrapporten')setTab('reports');}
 $('caseDept').addEventListener('change',()=>{$('casePersonSearch').value='';filterCases();refreshRegistrationChoices()});
 $('casePersonSearch').addEventListener('input',()=>filterCases({keepHistory:true}));
 $('casePerson').addEventListener('change',()=>{loadCases()});
@@ -516,13 +518,14 @@ $('clearCaseDetails').addEventListener('click',()=>{
 $('caseForm').addEventListener('submit',async event=>{
   event.preventDefault();
   const type=$('entryType').value,reg=isRegistrationType(type),dept=$('caseDept').value,id=$('casePerson').value;
-  if(!viewData?.actor||!dept||!id||!type)return msg('Selecteer eerst een medewerker, hulpdienst en categorie.','error');
+  const isDemo=selectedIsDemo();
+  if((!viewData?.actor&&!isDemo)||!dept||!id||!type)return msg('Selecteer eerst een medewerker, hulpdienst en categorie.','error');
   if(reg){
     const rights=registrationRights(dept);
-    if(viewData.registrationWritesEnabled!==true||!rights[type]||editingSanction&&!rights.amendSanction){
+    if((!isDemo&&viewData.registrationWritesEnabled!==true)||!rights[type]||editingSanction&&!rights.amendSanction){
       msg('Voor deze registratie heb je geen schrijfrechten.','error');return;
     }
-  }else if(viewData?.writesEnabled!==true||editingSanction)return;
+  }else if((!isDemo&&viewData?.writesEnabled!==true)||editingSanction)return;
   const body={dept,discordId:id,type,eventDate:$('entryDate').value,details:$('details').value,
     endDate:$('endDate').value,courseName:$('courseName').value,newName:$('newName').value,
     proposedRank:$('proposedRank').value,movement:$('movement').value,
@@ -555,9 +558,13 @@ $('caseForm').addEventListener('submit',async event=>{
   $('caseSaveNotice').textContent='Registratie veilig opslaan…';
   try{
     const wasEdit=Boolean(editingSanction);
-    if(wasEdit){
+    if(wasEdit&&!isDemo){
       await api('/api/registrations/entries/'+encodeURIComponent(dept)+'/'+encodeURIComponent(id)+'/'+encodeURIComponent(editingSanction),
         'PATCH',body);
+    }else if(wasEdit&&isDemo){
+      await api('/api/management/demo/entries/'+encodeURIComponent(editingSanction),'PATCH',body);
+    }else if(isDemo){
+      await api('/api/management/demo/entries','POST',body);
     }else if(reg){
       await api('/api/registrations/entries','POST',body);
     }else{
@@ -567,7 +574,9 @@ $('caseForm').addEventListener('submit',async event=>{
     $('reportContents').textContent='De inhoud van een weekrapport kan gewijzigd zijn. Open het concept opnieuw voor de nieuwste inhoud.';
     if(wasEdit)resetSanctionEdit();
     resetRegistrationFields();
-    const success=wasEdit?'Sanctiewijziging opgeslagen met behoud van de vorige versie in het auditlog.':
+    const success=isDemo?(wasEdit?'DEMO-sanctie aangepast. Alleen in dit oefendossier.':
+      'DEMO-registratie opgeslagen in het oefendossier. Bekijk haar in het DEMO-weekrapport.'):
+      wasEdit?'Sanctiewijziging opgeslagen met behoud van de vorige versie in het auditlog.':
       'Registratie opgeslagen. Ze telt mee in dynamische weekrapporten die de gebeurtenisdatum omvatten, tenzij als TEST gemarkeerd.';
     msg(success,'good');$('caseSaveNotice').className='case-save-notice good';
     $('caseSaveNotice').textContent='✓ '+success;
