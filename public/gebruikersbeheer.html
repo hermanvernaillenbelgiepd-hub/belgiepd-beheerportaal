@@ -17,6 +17,9 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 .status{display:inline-block;border-radius:999px;padding:3px 9px;background:#334862;font-size:12px}.status.approved{background:#20684d}.status.blocked{background:#703444}
 .manage-tabs{display:flex;flex-wrap:wrap;gap:9px;margin:20px 0 8px}.manage-tabs button{background:#1a3455;border-color:#4b739c}.manage-tabs button[aria-pressed="true"]{background:#345fe1;border-color:#91b5ff}.grant-info{border-left:4px solid #7bb8ff;background:#1a3454;border-radius:6px;padding:12px;margin:12px 0}.tester-box{border:1px solid #50769b;border-radius:9px;padding:14px;margin:14px 0;background:#1b3754}
 [hidden]{display:none!important}
+.personnel-quicklink{display:inline-flex;align-items:center;justify-content:center;border:1px solid #547ab1;background:#203a5d;color:#deebff;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;text-decoration:none}
+.personnel-quicklink:hover{background:#30507b;color:white}
+.personnel-quicklink:focus-visible{outline:2px solid #9dc5ff;outline-offset:2px}
 </style></head>
 <body>
 <header><div><strong>🛡️ BelgiumPD</strong> / Gebruikersbeheer</div><nav><a href="/">Dashboard</a><a href="/discord-status.html">Mijn Discord</a><button id="login">Aanmelden</button></nav></header>
@@ -279,6 +282,14 @@ function render(){
       }catch(e){notice(e.message,true)}finally{approve.disabled=false}
     };
     actions.append(approve);
+    if(/^\d{15,22}$/.test(String(u.discordId||''))){
+      const personnel=document.createElement('a');
+      personnel.href='/personeelsbeheer.html?discordId='+encodeURIComponent(u.discordId);
+      personnel.textContent='Personeelsfiche / specialisaties';
+      personnel.className='personnel-quicklink';
+      personnel.title='Open de personeelsfiche om specialisaties volgens je bevoegdheden aan te passen';
+      actions.append(personnel);
+    }
     if(u.status!=='blocked'){
       const block=document.createElement('button');block.textContent='Blokkeer';block.className='danger';
       block.onclick=async()=>{
