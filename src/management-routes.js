@@ -19,7 +19,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
   const db=()=>getFirestore();
   const enabled=()=>process.env.BPD_ENABLE_REGISTRATIONS==='true' && process.env.BPD_ENABLE_MANAGEMENT_WRITES==='true';
   const cadre=(req,res,next)=>{
-    if(req.bpd.portalTechnicalMode!==true&&req.bpd.fireZoneChief!==true&&!CADRE_ROLES.includes(req.bpd.role))return res.status(403).json({error:'Alleen middenkader en hoger hebben toegang'});
+    if(req.bpd.portalTechnicalMode!==true&&req.bpd.fireZoneChief!==true&&!CADRE_ROLES.includes(req.bpd.role)&&!req.bpd.dossierFullDepartments?.length)return res.status(403).json({error:'Alleen middenkader en hoger hebben toegang'});
     next();
   };
   app.get('/api/management/overview',requireUser,async(req,res)=>{

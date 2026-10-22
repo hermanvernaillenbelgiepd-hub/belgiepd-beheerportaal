@@ -2,6 +2,8 @@ import { getApps,initializeApp,applicationDefault } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore,FieldValue } from 'firebase-admin/firestore';
 import { discordPortalAccess } from './discord-portal-access.js';
+import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
+import {activeDossierGrant,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS} from './dossier-grants.js';
 import {eligibleForTechnicalProfile,technicalCookieIsValid} from './portal-profile-mode.js';
 import { isDiscordId } from './discord-utils.js';
 import { ROLE_CATALOG,roleSummary,SERVICE_DEPTS } from './role-catalog.js';
@@ -46,6 +48,25 @@ async function resolveActor(req,res,next){
          process.env.BPD_PORTAL_PROFILE_SIGNING_KEY)){
       bpd={...bpd,role:'korpsleiding',departments:['politie','brandweer','ambulance','depannage'],
         portalTechnicalMode:true,trustedStaff:true};
+    }
+    // A full dossier delegation may additionally grant training log/review for
+    // THAT department. Validate the portal account and a fresh Discord identity.
+    // Never turn a delegation into a global cadre or role-management grant.
+    bpd.dossierFullDepartments=[];
+    if(bpd.provider==='discord'&&process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true'&&
+       verifiedDiscordIdentity(decoded,member,process.env.DISCORD_GUILD_ID)===discordId){
+      const portal=await db().collection(USER_COLLECTION).doc(discordId).get();
+      const managed=portal.exists?approvedManagedEntry(portal.data(),discordId):null;
+      const services=portal.exists
+        ?(managed?.departments||[])
+        :(bpd.trustedStaff===true?bpd.departments:[]);
+      const eligible=services.filter(dept=>DOSSIER_DEPTS.includes(dept));
+      const checked=await Promise.all(eligible.map(async dept=>{
+        const g=await db().collection(DOSSIER_GRANT_COLLECTION)
+          .doc(dossierGrantKey(dept,discordId)).get();
+        return activeDossierGrant(g.data(),dept,discordId)&&g.get('level')==='full'?dept:null;
+      }));
+      bpd.dossierFullDepartments=checked.filter(Boolean);
     }
     const base=basePermissions(member,process.env.DISCORD_GUILD_ID);
     // Never infer rank from a stale role snapshot, or from an unrelated Discord ID.

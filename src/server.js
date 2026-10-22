@@ -302,6 +302,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     req.bpd.dossierNativeDepartments=native;
     req.bpd.dossierAllowedDepartments=scope.departments;
     req.bpd.dossierManageDepartments=scope.manageDepartments;
+    req.bpd.dossierFullDepartments=scope.fullDepartments;
     req.bpd.dossierTester=scope.tester;
     next();
   }catch(e){
@@ -314,7 +315,7 @@ installManagementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
-installDossierGrantRoutes(app,{requireUser,accessList});
+installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
 // More-specific activity endpoints MUST precede /api/personnel/:dept/:discordId.
 // That broad POST edit route otherwise intercepts retrospective audit submissions.

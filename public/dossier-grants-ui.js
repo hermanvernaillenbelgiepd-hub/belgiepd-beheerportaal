@@ -22,7 +22,7 @@ export function setupDossierGrantUI({api,notice,$,option,cell}){
       const tr=document.createElement('tr'),name=document.createElement('div');name.className='name';name.textContent=grant.username||'Discord-lid';
       const id=document.createElement('small');id.textContent=grant.discordId;id.style.display='block';name.append(id);cell(tr,name);
       cell(tr,grant.dept==='alle'?'Alle diensten (TESTER)':names[grant.dept]||grant.dept);
-      cell(tr,grant.level==='all-read'?'TESTER – alleen lezen':grant.level==='manage'?'Beperkt beheer':'Alleen lezen');
+      cell(tr,grant.level==='all-read'?'TESTER – alleen lezen':grant.level==='full'?'Volledige toegang':grant.level==='manage'?'Beperkte toegang':'Alleen lezen');
       cell(tr,grant.status==='active'?'Actief':'Ingetrokken');
       const box=document.createElement('div');box.className='controls';
       if(grant.status==='active'&&grant.dept!=='alle'){

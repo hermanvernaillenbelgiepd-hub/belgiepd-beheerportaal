@@ -77,7 +77,7 @@ test('Routes preserve existing personnel ranks and include audited grant/revoke 
  const read=file=>readFileSync(new URL('../'+file,import.meta.url),'utf8');
  const server=read('src/server.js'),routes=read('src/dossier-grant-routes.js'),ui=read('public/gebruikersbeheer.html');
  assert.ok(server.includes("app.use('/api/dossier-grants',express.json"));
- assert.ok(server.includes('installDossierGrantRoutes(app,{requireUser,accessList})'));
+ assert.ok(server.includes('installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList})'));
  assert.ok(server.includes('applyDossierGrants(req.bpd,original'));
  assert.ok(routes.includes('approvedManagedEntry'));
  assert.ok(routes.includes("store.collection(DOSSIER_GRANT_AUDIT).doc()"));

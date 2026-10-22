@@ -13,13 +13,16 @@ export const RECORD_LABELS = Object.freeze({
 export const validDiscord = id => /^\d{15,22}$/.test(String(id??''));
 export const allowedDept = (actor,dept) => ['politie','ambulance','brandweer','depannage'].includes(dept) && actor?.departments?.includes(dept);
 export const mayReadManagement = (actor,dept) => allowedDept(actor,dept) &&
-  CADRE_ROLES.includes(roleForDepartment(actor,dept));
+  (CADRE_ROLES.includes(roleForDepartment(actor,dept))||
+   actor?.dossierFullDepartments?.includes(dept));
 export const mayWriteManagement = (actor,dept,type) => (
   // Delegated case management can add only routine dossier notes.
   // This does not convey sanctions, rank changes or other personnel powers.
-  (type==='notitie'&&Array.isArray(actor?.dossierManageDepartments)&&
+  (['notitie','opleiding'].includes(type)&&actor?.dossierFullDepartments?.includes(dept)&&
+    actor?.dossierAllowedDepartments?.includes(dept)&&allowedDept(actor,dept))
+  ||(type==='notitie'&&Array.isArray(actor?.dossierManageDepartments)&&
     actor.dossierManageDepartments.includes(dept)&&actor.dossierAllowedDepartments?.includes(dept))
-  ||(mayReadManagement(actor,dept) &&
+  ||(CADRE_ROLES.includes(roleForDepartment(actor,dept))&&mayReadManagement(actor,dept) &&
     (!Array.isArray(actor?.dossierNativeDepartments)||actor.dossierNativeDepartments.includes(dept))&&
     MANAGEMENT_TYPES.includes(type) && (
     !['naamswijziging','personeelsbeweging'].includes(type) ||

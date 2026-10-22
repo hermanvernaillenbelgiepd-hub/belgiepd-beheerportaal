@@ -30,6 +30,7 @@ export function representativeFromPersonnel(persons,dept,id) {
 export const canEditSanction = role => ['officierenkader','korpsleiding'].includes(role);
 export const hasDept = (user,dept) => Boolean(user?.departments?.includes(dept));
 export const maySubmit = (user,type,dept) => hasDept(user,dept) && (
+  (user?.dossierFullDepartments?.includes(dept)&&['observatie','sanctie'].includes(type)) ||
   type === 'observatie' || (type === 'sanctie' && (
     (dept === 'politie' && (user.portalTechnicalMode===true||
       ['middenkader','officierenkader','korpsleiding'].includes(user.role))) ||
@@ -38,7 +39,8 @@ export const maySubmit = (user,type,dept) => hasDept(user,dept) && (
 );
 export const mayRead = (user,dept) => hasDept(user,dept) && isCadre(user.role);
 export const mayAmend = (user,type,dept) => type === 'sanctie' && hasDept(user,dept) &&
-  ((user.portalTechnicalMode===true&&['politie','brandweer'].includes(dept))||
+  (user?.dossierFullDepartments?.includes(dept)||
+   (user.portalTechnicalMode===true&&['politie','brandweer'].includes(dept))||
    (dept==='brandweer'&&user.fireZoneChief===true)||
    (dept==='politie'&&canEditSanction(user.role)));
 const text=(value,max) => typeof value==='string' ? value.trim().slice(0,max+1) : '';

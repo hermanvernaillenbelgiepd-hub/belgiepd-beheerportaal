@@ -55,13 +55,13 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <p id="more" class="muted" hidden>Het overzicht is begrensd tot 250 accounts. Een paginering volgt bij verdere groei.</p></section>
 <section id="dossierGrantSection" class="card" hidden>
 <h2>🛡️ Beheertoegang hulpdiensten</h2>
-<p>Bestuur en technisch beheer kunnen de toegang per hulpdienst regelen. Korpsleiding kan dit enkel voor Politie. Iedere machtiging heeft een motivering en kan ingetrokken worden.</p>
-<div class="grant-info"><strong>Wat houdt dit in?</strong><p class="muted"><strong>Bekijken</strong>: dossiers, notities en historiek inkijken. <strong>Beperkt beheer</strong>: ook gewone dossiernotities toevoegen, maar geen sancties, rangen of promoties wijzigen.</p></div>
+<p>Bestuur en technisch beheer kunnen rechten per hulpdienst toekennen. Korpsleiding mag dit alleen voor de eigen hulpdienst (Brandweer: geverifieerde ZONE-chef). Elke wijziging vereist een motivering en wordt gelogd.</p>
+<div class="grant-info"><strong>Wat houdt dit in?</strong><p class="muted"><strong>Bekijken</strong>: uitsluitend inzage. <strong>Beperkte toegang</strong>: dossiers bekijken en gewone notities toevoegen. <strong>Volledige toegang</strong>: daarnaast observaties, sancties en opleidingen registreren en corrigeren binnen de gekozen hulpdienst. Dit geeft geen bevoegdheid om rangen, Discord- of portaalrollen te wijzigen.</p></div>
 <form id="dossierGrantForm">
 <div class="grid">
 <div><label for="dossierGrantId">Discord-ID</label><input type="text" id="dossierGrantId" inputmode="numeric" pattern="[0-9]{15,22}" maxlength="22" required placeholder="Goedgekeurd Discord-account"></div>
 <div><label for="dossierGrantDept">Hulpdienst</label><select id="dossierGrantDept" required></select></div>
-<div><label for="dossierGrantLevel">Rechten</label><select id="dossierGrantLevel"><option value="read">Dossiers bekijken</option><option value="manage">Beperkt beheer: ook notities toevoegen</option></select></div>
+<div><label for="dossierGrantLevel">Rechten</label><select id="dossierGrantLevel"><option value="read">Dossiers bekijken</option><option value="manage">Beperkte toegang — bekijken en notities</option><option value="full">Volledige toegang — observaties, sancties, opleidingen en notities</option></select></div>
 <div><label for="dossierGrantReason">Motivering</label><input id="dossierGrantReason" type="text" minlength="10" maxlength="300" required placeholder="Minimaal 10 tekens"></div>
 </div>
 <div class="controls"><button id="dossierGrantSave" type="submit">Dossierrecht opslaan</button><button id="dossierGrantReload" class="alt" type="button">Vernieuwen</button></div>
