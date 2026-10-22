@@ -9,6 +9,11 @@ test('All browser module scripts parse as valid JavaScript',()=>{
   for(const name of pages){
     const html=readFileSync(new URL('../public/'+name+'.html',import.meta.url),'utf8');
     const scripts=[...html.matchAll(/<script(?:\s+[^>]*)?>([\s\S]*?)<\/script>/gi)];
+    if(name==='index'){
+      assert.equal(scripts.length,0,'The new home screen must remain a script-free navigation page');
+      assert.ok(html.includes('href="/personeelsbeheer.html"'));
+      continue;
+    }
     assert.ok(scripts.length>0,name+' must contain a module');
     for(const [i,script] of scripts.entries()){
       assert.doesNotThrow(()=>new Script(script[1],{filename:name+'#'+i}),name+' has invalid JS');
@@ -17,17 +22,20 @@ test('All browser module scripts parse as valid JavaScript',()=>{
   const common=readFileSync(new URL('../public/portal-login.js',import.meta.url),'utf8');
   assert.doesNotThrow(()=>new Script(common.replace(/^export\s+/gm,'')));
 });
-test('Personnel drawer is wider and all six tabs remain available without a narrow scroll strip',()=>{
-  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
-  assert.match(html,/class="drawer personnel-drawer" role="dialog"/);
-  assert.match(html,/\.personnel-drawer\{width:min\(920px,94vw\)/);
-  assert.match(html,/\.personnel-drawer \.profile-tabs\{flex-wrap:wrap;overflow-x:visible/);
-  assert.match(html,/@media\(max-width:680px\)\{[\s\S]*?\.personnel-drawer \.profile-tabs\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
-  for(const tab of ["'algemeen','Algemeen'","'bevoegdheden','Bevoegdheden'",
-    "'activiteit','Activiteit'","'dossier','Dossier'","'weekrapporten','Weekrapporten'",
-    "'historiek','Historiek'"])
-    assert.ok(html.includes(tab),'Missing personnel tab: '+tab);
+test('New home screen links to the independent protected personnel and dossier sections',()=>{
+  const dashboard=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+  const manager=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  assert.ok(dashboard.includes('href="/personeelsbeheer.html"'));
+  assert.ok(dashboard.includes('href="/dossiercentrum.html"'));
+  assert.ok(dashboard.includes('href="/weekrapporten.html"'));
+  assert.ok(manager.includes('id="panel"'));
+  assert.ok(manager.includes('id="staffDossierSection"'));
+  assert.ok(manager.includes('id="staffDossierHistory"'));
+  assert.ok(manager.includes('id="history"'));
+  assert.ok(manager.includes('id="specialtyAuditPanel"'));
+  assert.ok(manager.includes('href="/dossiercentrum.html"'));
 });
+
 test('Personnel intake warns about duplicate callsigns and Discord claims',()=>{
   const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
   assert.match(html,/id="newDuplicateWarning"/);

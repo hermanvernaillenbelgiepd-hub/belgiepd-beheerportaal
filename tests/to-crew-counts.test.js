@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {summarizeTOCrews} from '../public/to-crew-counts.js';
 
-const categories=['SANTO','BLAINE','BWM','AMBULANCE','AMBULANCE-MOTOR','LSRA-F.A.S.T.'];
+const categories=['SANTO','BLAINE','BWM','AMBULANCE','AMBULANCE-MOTOR','LSRA-F.A.S.T.','HVPK','HARTS'];
 const crew=(id,number,extra={})=>({id,dienst:'SANTO',roepnaam:number,leden:[{naam:'Testagent',roep:number}],available:true,...extra});
 const radio=(category,number,extra={})=>({category,number,importable:true,...extra});
 const count=(board,users=[],fresh=true)=>summarizeTOCrews(board,{categories,users,fresh});

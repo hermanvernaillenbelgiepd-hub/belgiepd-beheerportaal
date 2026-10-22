@@ -97,15 +97,14 @@ test('Historical callsign audit validates identity, old/current callsigns and de
     {...data,recordPromotion:true,expectedCurrentRank:'<script>'}
   ])assert.throws(()=>validateRetrospectiveCallChange(bad));
 });
-test('Dashboard uses live event API instead of pretending last-connected staff are promotions',()=>{
+test('New dashboard avoids fake personnel activity and protected event API keeps audited history',()=>{
   const dashboard=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
   const routes=readFileSync(new URL('../src/personnel-activity-routes.js',import.meta.url),'utf8');
   const editor=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
   const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
-  assert.ok(dashboard.includes('Recente personeelsactiviteit'));
-  assert.ok(dashboard.includes('/api/personnel/activity/recent'));
-  assert.ok(dashboard.includes('function personnelActivityRows()'));
-  assert.ok(dashboard.includes('Vast roepnummer toegekend'));
+  assert.ok(dashboard.includes('href="/personeelsbeheer.html"'));
+  assert.ok(dashboard.includes('geen voorbeeldcijfers of gesimuleerde meldingen'));
+  assert.equal(dashboard.includes('Recente personeelsactiviteit'),false);
   assert.equal(dashboard.includes("employeeTable(employees.slice().sort((a,b)=>(a.last??Infinity)-(b.last??Infinity)),6)"),false);
   assert.ok(routes.includes('canViewPersonnel(req.bpd,dept)'));
   assert.ok(routes.includes("app.post('/api/personnel/activity/retrospective-callsign',requireUser"));
@@ -116,25 +115,14 @@ test('Dashboard uses live event API instead of pretending last-connected staff a
   assert.ok(routes.includes('actualChangeDate:null'));
   const activityRoute=server.indexOf('installPersonnelActivityRoutes(app,{requireUser,getSnapshot})');
   const generalEditRoute=server.indexOf('installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot})');
-  assert.ok(activityRoute>=0&&generalEditRoute>activityRoute,
-    'Specific activity POST must be registered BEFORE generic personnel POST route');
+  assert.ok(activityRoute>=0&&generalEditRoute>activityRoute,'Specific activity route must precede generic personnel route');
   assert.ok(routes.includes("type:'promotion'"));
   assert.ok(routes.includes('entry.recordPromotion&&person.rank!==entry.expectedCurrentRank'));
   assert.ok(routes.includes('store.runTransaction(async tx=>'));
-  assert.ok(dashboard.includes('id="historicalAlsoPromotion"'));
-  assert.ok(dashboard.includes('id="historicalCurrentRank"'));
-  assert.ok(dashboard.includes('recordPromotion,...(recordPromotion?{expectedCurrentRank:person.rank}:{})'));
-  assert.ok(dashboard.includes('id="historicalCallForm"'));
-  assert.ok(dashboard.includes('historicalCallRegistration()'));
-  assert.ok(dashboard.includes('Geregistreerd: '));
   assert.ok(routes.includes(".orderBy('syncedAt','desc')"));
   assert.ok(routes.includes(".orderBy('rankUpdatedAt','desc')"));
-  assert.ok(server.includes('installPersonnelActivityRoutes(app,{requireUser,getSnapshot});'));
   assert.ok(editor.includes("type:'promotion',dept,discordId"));
   assert.ok(editor.includes("type:'callsign_changed',dept:subject.dept"));
   assert.ok(editor.includes('tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc()'));
   assert.ok(editor.includes('if(oldCall!==proposed.call)'));
-  const match=dashboard.match(/<script>([\s\S]*?)<\/script>/);
-  assert.ok(match);
-  assert.doesNotThrow(()=>new Script(match[1]));
 });

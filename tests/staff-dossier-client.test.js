@@ -40,7 +40,7 @@ test('Staff routes enforce authorised read, separate write flag, and immutable a
 });
 test('No duplicate personnel roster and no changes to public unauthenticated access',()=>{
   const server=load('src/server.js');
-  assert.ok(server.includes('installStaffDossierRoutes(app,{requireUser,getSnapshot});'));
+  assert.ok(server.includes('installStaffDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});'));
   assert.ok(server.includes("app.use('/api/staff-dossiers',express.json"));
   const html=load('public/personeelsbeheer.html');
   assert.ok(html.includes('/api/personnel/overview'));

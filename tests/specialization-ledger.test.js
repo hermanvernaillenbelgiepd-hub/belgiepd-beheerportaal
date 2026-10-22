@@ -109,7 +109,7 @@ test('Server synchronizes per-person overlay only when enabled and keeps all wri
   const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
   const routes=readFileSync(new URL('../src/specialization-routes.js',import.meta.url),'utf8');
   assert.ok(server.includes('applySpecialtyOverlays(personnel,specialties.docs)'));
-  assert.ok(server.includes('installSpecializationRoutes(app,{requireUser,getSnapshot});'));
+  assert.ok(server.includes('installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});'));
   assert.ok(routes.includes('canChangeSpecialty(req.bpd,staff)'));
   assert.ok(routes.includes('validateSpecialtyChange(req.body,req.params.dept)'));
   assert.ok(routes.includes('tx.create(ref.collection(\'audit\').doc()'));

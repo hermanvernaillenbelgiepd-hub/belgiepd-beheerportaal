@@ -68,50 +68,42 @@ test('Specializations pictograms show only positive roster values; status preser
   assert.equal(api.specialtyBadges([],null).length,0);
   assert.equal(api.specialtyBadges([], 'Geen geregistreerde specialisaties').length,0);
 });
-test('Both personnel tables retain identity columns and show per-service dynamic specialty headings',()=>{
+test('Protected personnel table retains identity, specialization and attribution information',()=>{
   const dashboard=source('public/index.html');
   const manager=source('public/personeelsbeheer.html');
-  for(const markup of [dashboard,manager]){
-    assert.ok(markup.includes('<script src="/personnel-list-visuals.js"></script>'));
-    assert.ok(markup.includes('BPDPersonnelVisuals.rankInfo('));
-    assert.ok(markup.includes('BPDPersonnelVisuals.specialtyStateFor('));
-    assert.ok(markup.includes('BPDPersonnelVisuals.specialtyColumns('));
-    assert.ok(markup.includes('href="/bronnen.html"'));
-    assert.equal(markup.includes('roster-attribution'),false);
-  }
+  assert.ok(dashboard.includes('href="/personeelsbeheer.html"'));
+  assert.ok(dashboard.includes('href="/bronnen.html"')===false,
+    'Dashboard links to modules; source attribution lives in personnel manager');
+  for(const symbol of ['BPDPersonnelVisuals.rankInfo(', 'BPDPersonnelVisuals.specialtyStateFor(',
+    'BPDPersonnelVisuals.specialtyColumns(', 'BPDPersonnelVisuals.seriesWithCadre('])
+    assert.ok(manager.includes(symbol),symbol);
+  assert.ok(manager.includes('<script src="/personnel-list-visuals.js"></script>'));
+  assert.ok(manager.includes('href="/bronnen.html"'));
+  assert.equal(manager.includes('roster-attribution'),false);
   for(const label of ['Roepnummer','Rangkenteken','Naam van rang',
-    'Naam personeelslid','Reeks','Status']){
-    assert.ok(dashboard.includes(label),label);
-    assert.ok(manager.includes(label),label);
-  }
-  assert.ok(dashboard.includes('specialty-column'));
-  assert.ok(dashboard.includes('specialty-value-cell'));
-  assert.ok(dashboard.includes('function employeeTable('));
-  assert.ok(dashboard.includes('main portal')===false);
-  assert.ok(manager.includes('staffColumnHeaders'));
+    'Naam personeelslid','Reeks','Status'])assert.ok(manager.includes(label),label);
   assert.ok(manager.includes('specialty-col-head'));
   assert.ok(manager.includes('specialty-status-col'));
-  assert.ok(manager.includes('main{max-width:1900px'));
-  assert.ok(dashboard.includes('.content:has(.staff-roster)'));
+  assert.ok(manager.includes('staffColumnHeaders'));
   assert.ok(manager.includes('specialtyEdit'));
   assert.ok(manager.includes('person.series||'));
   assert.ok(manager.includes('person.specialties'));
 });
-test('User-provided Signalisatie sign is embedded locally and used across both rosters',()=>{
+
+test('User-provided Signalisatie sign remains embedded in the protected personnel list',()=>{
   const svg=source('public/assets/icons/signalisatie.svg');
   assert.ok(svg.startsWith('<svg '));
   assert.ok(svg.includes('data:image/webp;base64,'));
-  assert.ok(svg.length>4000,'Expected a real embedded sign image, not an external URL');
+  assert.ok(svg.length>4000,'Expected embedded sign image, not external URL');
   const manager=source('public/personeelsbeheer.html');
-  const dashboard=source('public/index.html');
   assert.ok(manager.includes('function specialtyMark(label)'));
   assert.ok(manager.includes('pict.append(specialtyMark(label))'));
   assert.ok(manager.includes('const icon=specialtyMark(x.label)'));
-  assert.ok(dashboard.includes('function specialtyMarkHtml(label)'));
-  assert.ok(dashboard.includes('specialtyMarkHtml(label)'));
   assert.ok(manager.includes('.specialty-custom-image'));
-  assert.ok(dashboard.includes('.specialty-custom-image'));
+  const visuals=source('public/personnel-list-visuals.js');
+  assert.ok(visuals.includes('function specialtyIconImage(label)'));
 });
+
 test('Visual roster credits live on a separate sources page',()=>{
   const page=source('public/bronnen.html');
   assert.ok(page.includes('Politie123'));
@@ -126,11 +118,10 @@ test('Personnel overview returns bounded, authorized specialties without copying
   assert.ok(api.includes("const allowed=req.bpd.departments.filter(d=>canViewPersonnel(req.bpd,d))"));
   assert.equal(/setCustomUserClaims.*specialties/s.test(api),false);
 });
-test('Both browser scripts remain valid JavaScript',()=>{
-  for(const path of ['public/index.html','public/personeelsbeheer.html']){
-    const html=source(path);
-    const scripts=[...html.matchAll(/<script(?: type="module")?>([\s\S]*?)<\/script>/g)];
-    assert.ok(scripts.length,path);
-    for(const m of scripts)assert.doesNotThrow(()=>new Script(m[1]));
-  }
+test('Personnel management inline script remains valid JavaScript and homepage has no inline scripts',()=>{
+  const manager=source('public/personeelsbeheer.html');
+  const scripts=[...manager.matchAll(/<script(?: type="module")?>([\s\S]*?)<\/script>/g)];
+  assert.ok(scripts.length>0,'Personnel manager must contain protected UI logic');
+  for(const match of scripts)assert.doesNotThrow(()=>new Script(match[1]));
+  assert.equal([...source('public/index.html').matchAll(/<script(?: type="module")?>([\s\S]*?)<\/script>/g)].length,0);
 });

@@ -274,10 +274,11 @@ test('Team stage changes are audited on active incidents and closing clears the 
   let board=createIncident(addTeam(started(),'930'));
   const team=Object.values(board.ploegen)[0],incident=Object.values(board.meldingen)[0];
   board=command(board,'attach-team',{id:incident.id,teamId:team.id}).board;
-  board=command(board,'response-phase',{id:team.id,phase:'onderweg'}).board;
+  assert.equal(board.ploegen[team.id].responsePhase,'onderweg',
+    'Attaching an available unit automatically starts its response');
   board=command(board,'response-phase',{id:team.id,phase:'ter-plaatse'}).board;
   let lines=board.meldingen[incident.id].log.map(x=>x.txt);
-  assert.ok(lines.some(s=>s.includes('SANTO-930: onderweg')));
+  assert.ok(lines.some(s=>s.includes('SANTO-930 gekoppeld · automatisch onderweg')));
   assert.ok(lines.some(s=>s.includes('SANTO-930: ter plaatse')));
   assert.equal(board.ploegen[team.id].responsePhase,'ter-plaatse');
   board=command(board,'incident-status',{id:incident.id,status:'niet-actief'}).board;
@@ -293,7 +294,7 @@ test('Detaching the last active incident clears response; another active call pr
   const second=Object.values(board.meldingen).find(x=>x.id!==first.id);
   board=command(board,'attach-team',{id:first.id,teamId:team.id}).board;
   board=command(board,'attach-team',{id:second.id,teamId:team.id}).board;
-  board=command(board,'response-phase',{id:team.id,phase:'onderweg'}).board;
+  assert.equal(board.ploegen[team.id].responsePhase,'onderweg');
   board=command(board,'detach-team',{id:first.id,teamId:team.id}).board;
   assert.equal(board.ploegen[team.id].responsePhase,'onderweg');
   board=command(board,'detach-team',{id:second.id,teamId:team.id}).board;
@@ -304,13 +305,15 @@ test('Changing incident response remains possible when its log has reached the l
   let board=createIncident(addTeam(started(),'930'));
   const team=Object.values(board.ploegen)[0],incident=Object.values(board.meldingen)[0];
   board=command(board,'attach-team',{id:incident.id,teamId:team.id}).board;
+  // The actual dispatch is underway already; a full audit log cannot block
+  // status transitions to on scene.
   const full=structuredClone(board);
   full.meldingen[incident.id].log=Array.from({length:TO_BOARD_LIMITS.incidentLog},()=>({
     t:now,by:owner.uid,actorUid:owner.uid,txt:'Oude loglijn'
   }));
   // A crowded log does not prevent a unit acknowledging its actual location.
-  const next=command(full,'response-phase',{id:team.id,phase:'onderweg'}).board;
-  assert.equal(next.ploegen[team.id].responsePhase,'onderweg');
+  const next=command(full,'response-phase',{id:team.id,phase:'ter-plaatse'}).board;
+  assert.equal(next.ploegen[team.id].responsePhase,'ter-plaatse');
   assert.equal(next.meldingen[incident.id].log.length,TO_BOARD_LIMITS.incidentLog);
 });
 
@@ -406,7 +409,7 @@ test('Named HVPK is a deployable ambulance team without a synthetic numeric call
   assert.equal(Object.values(board.ploegen).length,2);
 });
 
-test('Named verified brandweer commander can read TO only; permissions never propagate to police writes',()=>{
+test('Explicit TO-read grant stays identity-bound and never gives operational edit rights',()=>{
   const id='301448301868220417';
   const old=process.env.BPD_TO_READONLY_DISCORD_IDS,oldOperate=process.env.BPD_TO_OPERATOR_DISCORD_IDS;
   const zone={uid:'discord:'+id,discordId:id,role:'korpsleiding',
@@ -420,7 +423,9 @@ test('Named verified brandweer commander can read TO only; permissions never pro
       leden:[{naam:'Testmedewerker',roep:'625'}]},zone),403);
     assert.equal(canReadBoard({...zone,uid:'discord:999999999999999999'}),false);
     assert.equal(canReadBoard({...zone,discordId:'999999999999999999'}),false);
-    assert.equal(canReadBoard({...zone,departments:['ambulance'],departmentRoles:{ambulance:'korpsleiding'}}),false);
+    assert.equal(canReadBoard({...zone,departments:['ambulance'],departmentRoles:{ambulance:'korpsleiding'}}),true,
+      'Explicit TO-read grant is separate from operational cadre and remains read-only');
+    assert.equal(canOperateBoard({...zone,departments:['ambulance'],departmentRoles:{ambulance:'korpsleiding'}}),false);
     assert.equal(canReadBoard({...zone,discordId:'3014483018682204179',uid:'discord:3014483018682204179'}),false);
   } finally {
     if(old===undefined)delete process.env.BPD_TO_READONLY_DISCORD_IDS;
