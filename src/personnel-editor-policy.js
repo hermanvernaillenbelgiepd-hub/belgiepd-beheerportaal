@@ -88,3 +88,22 @@ export function mergePersonnelEdits(records,editRecords){
     return e?{...p,name:e.name,call:e.call,status:e.status,source:'firestore-overlay'}:p;
   });
 }
+
+// Resolve the auditor's current, not historical, name and callsign.
+// Use only personnel from services the requesting reader may access.
+export function currentPersonnelAuditActor(actorId,eventDept,records,allowedDepartments){
+  if(!ID.test(String(actorId||''))||!SERVICES.has(eventDept)||
+    !Array.isArray(records)||!Array.isArray(allowedDepartments)||
+    !allowedDepartments.includes(eventDept))return null;
+  const candidates=records.filter(p=>p&&p.personId===actorId&&
+    SERVICES.has(p.dept)&&allowedDepartments.includes(p.dept));
+  const sameService=candidates.filter(p=>p.dept===eventDept);
+  const matches=sameService.length?sameService:candidates;
+  // Ambiguous cross-service records must not be guessed.
+  if(matches.length!==1)return null;
+  const person=matches[0];
+  const name=TRIM(person.name),call=TRIM(person.call),rank=TRIM(person.rank);
+  if(!name||!call||!rank)return null;
+  return {name:name.slice(0,120),call:call.slice(0,24),
+    rank:rank.slice(0,90),department:person.dept};
+}

@@ -3,7 +3,7 @@ import {getAuth} from 'firebase-admin/auth';
 import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canEditPersonnel,canChangePersonnelStatus,validatePersonnelChange,mergePersonnelEdits,
-  personnelCallClaimId} from './personnel-editor-policy.js';
+  currentPersonnelAuditActor,personnelCallClaimId} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
   personnelDataEnabled,personnelCreationEnabled,canCreatePersonnel,canAuthoriseExceptionalPoliceRank,
   nextPoliceRank,validatePolicePromotion,
@@ -407,15 +407,20 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         personnelDataEnabled(process.env)
           ?createLog.orderBy('at','desc').limit(25).get():Promise.resolve({docs:[]})
       ]);
+      const allowedActorDepartments=Array.isArray(req.bpd.dossierAllowedDepartments)?
+        req.bpd.dossierAllowedDepartments:[req.params.dept];
       const changes=[...edits.docs,...created.docs].map(d=>{
-        const e=d.data();
+        const e=d.data(),actorId=e.actorDiscordId||e.byDiscordId||null;
         return {action:e.action||'edit',revision:e.revision,
           previous:e.previous||null,next:e.next||null,
           previousRank:e.previousRank??null,newRank:e.newRank??null,
           standardRank:e.standardRank??null,exceptional:e.exceptional===true,
-          reason:e.reason||'',at:asTime(e.at),actorDiscordId:e.actorDiscordId||null};
+          reason:e.reason||'',at:asTime(e.at),actorDiscordId:actorId,
+          actorCurrent:currentPersonnelAuditActor(actorId,req.params.dept,
+            snap.data,allowedActorDepartments)};
       }).sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))).slice(0,25);
-      return res.json({changes});
+      return res.json({changes,actorRosterFetchedAt:snap.fetchedAt,
+        actorRosterStale:snap.stale===true});
     }catch(e){return safeResponse(res,e)}
   });
 }
