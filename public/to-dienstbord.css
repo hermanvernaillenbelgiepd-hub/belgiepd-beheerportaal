@@ -406,3 +406,7 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
 .radio-user-name .radio-streamer-tag{margin-left:2px}
 .team-top .radio-streamer-tag{font-size:10px}
 .compact-flag.radio-streamer-tag{background:#fff0f1;color:#a5293b;border-color:#f0b5bb}
+
+/* Radio-aanwezigheid is anders dan handmatig uit dienst zetten. */
+.radio-offline-flag{display:inline-flex;align-items:center;justify-content:center;flex:none;padding:3px 6px;border:1px solid #f0c58a;border-radius:5px;background:#fff5e6;color:#975c14;font-size:10px;font-weight:750;white-space:nowrap;line-height:1.3}
+.compact-flag.radio-offline-flag{background:#fff5e6;color:#975c14;border-color:#f0c58a}
