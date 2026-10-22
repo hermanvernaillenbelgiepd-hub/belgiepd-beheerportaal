@@ -454,6 +454,11 @@ function renderEntry(e,allowClassify=false){
   const special=e.courseName||e.proposedRank||e.newName||e.movement||e.sanctionType||'';
   const flagged=e.testRecord===true;
   const demo=e.demoRecord===true;
+  const promotion=e.type==='promotievoorstel'?
+    '<div class="item-meta">Huidige rang: '+esc(e.previousRank||'Onbekend')+
+    ' → voorgesteld: '+esc(e.proposedRank||'—')+
+    (e.promotionOverride?'<br>Uitzondering Korpsleiding · motivering: '+esc(e.promotionOverrideReason||'—'):'')+
+    '</div>':'';
   const sanctions=e.type==='sanctie'?
     '<div class="item-meta">Status: '+esc(e.status==='ingetrokken'?'Ingetrokken':'Actief')+
     ' · Ernst: '+esc(e.severity||'—')+'/10'+
@@ -473,7 +478,7 @@ function renderEntry(e,allowClassify=false){
     (e.eventTime?' · '+esc(e.eventTime):'')+
     ' · Door '+esc(by)+' · '+esc(e.subjectCallAtCreation||'')+'</div>'+
     '<div class="item-body">'+esc(e.details||e.explanation||'Geen omschrijving')+'</div>'+
-    sanctions+control+'</div>';
+    sanctions+promotion+control+'</div>';
 }
 async function loadCases(){
   const serial=++caseRequestSerial,id=$('casePerson').value,dept=$('caseDept').value;
@@ -502,6 +507,11 @@ async function loadReports(){resetReportExport();$('reportContents').textContent
 function reportText(e){
   const attrs=[];
   if(e.sanctionType)attrs.push('Sanctie: '+e.sanctionType);
+  if(e.previousRank)attrs.push('Huidige rang: '+e.previousRank);
+  if(e.promotionOverride){
+    attrs.push('Uitzonderlijk voorstel door Korpsleiding');
+    if(e.promotionOverrideReason)attrs.push('Motivering uitzondering: '+e.promotionOverrideReason);
+  }
   if(Array.isArray(e.reasons)&&e.reasons.length)attrs.push('Redenen: '+e.reasons.join(', '));
   if(e.severity!==undefined&&e.severity!==null)attrs.push('Ernst: '+e.severity+'/10');
   if(e.status&&e.type==='sanctie')attrs.push('Status: '+e.status);
