@@ -123,6 +123,11 @@
     const match=raw.match(/^(?:[a-z]+[- ]?)?(\d{3})$/i);
     const number=match?Number(match[1]):null;
     if(number!==null && number>=100 && number<=299)return 'Agentenkader';
+    // 9xx: het roepnummer identificeert de groep; de geverifieerde Discord-rol
+    // onderscheidt officierenkader en korpsleiding, zonder rechten te wijzigen.
+    if(number!==null && number>=900 && number<=999)
+      return person.discordCadre==='Korpsleiding'||person.discordCadre==='Officierenkader'?
+        person.discordCadre:'Officierenkader / Korpsleiding';
     const code=rankInfo(person.rank,'politie').code;
     if(['HCP','1HCP','CP','1CP'].includes(code))return 'Korpsleiding';
     if(code==='ACP')return 'Officierenkader';
