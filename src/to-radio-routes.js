@@ -31,20 +31,25 @@ export function installTORadioRoutes(app,{
     // Firestore writes when several viewers refresh the same 15-second result.
     const run=async()=>{
       const fetched=Date.parse(snapshot?.fetchedAt||'');
-      if(!Number.isFinite(fetched)||fetched<=lastObservedAt)return;
+      if(!Number.isFinite(fetched)||fetched<=lastObservedAt)return false;
       const board=await store.readBoard();
       const timestamp=now();
+      // Auto-import en auto-uitdienst nemen gebruiken dezelfde verse Sonoran-momentopname.
+      const imported=board.session&&typeof store.autoImportRadioTeams==='function'
+        ?await store.autoImportRadioTeams(snapshot,{now:timestamp,sessionId:board.session.id}):[];
       const due=observeRadioDepartures(board,snapshot,departures,timestamp);
+      let ended=[];
       if(due.length){
-        const ended=await store.autoEndAbsentRadioTeams(due,snapshot,{
+        ended=await store.autoEndAbsentRadioTeams(due,snapshot,{
           now:timestamp,sessionId:board.session.id
-        });
-        if(ended?.length)for(const id of ended)departures.delete(id);
+        })||[];
+        for(const id of ended)departures.delete(id);
       }
       lastObservedAt=fetched;
+      return imported.length>0||ended.length>0;
     };
     pollJob=pollJob.catch(()=>{}).then(run);
-    await pollJob;
+    return await pollJob;
   };
   app.get('/api/to/radio',requireUser,async(req,res)=>{
     if(!canReadBoard(req.bpd)||typeof req.bpd?.uid!=='string'||!req.bpd.uid)
@@ -53,11 +58,12 @@ export function installTORadioRoutes(app,{
       const snapshot=await service.read();
       // Radio remains visible even if Firestore is temporarily unavailable;
       // a failed safety reconciliation is retried on the next healthy poll.
-      try{await sync(snapshot);}catch{console.error('TO-radio automatische dienstafmelding overgeslagen');}
+      let boardUpdated=false;
+      try{boardUpdated=await sync(snapshot)===true;}catch{console.error('TO-radio automatische synchronisatie overgeslagen');}
       // Alias storage failure must NEVER hide otherwise healthy Sonoran data.
       let result=snapshot;
       try{result=await withAliases(snapshot);}catch{console.error('Radioportaal naamcorrecties tijdelijk onbeschikbaar');}
-      return res.json(result);
+      return res.json({...result,boardUpdated});
     }catch{return res.status(503).json({error:'De radioverbinding is tijdelijk niet beschikbaar.'});}
   });
   // Explicit staff-facing alias only. Sonoran is read-only; reversing sync needs
