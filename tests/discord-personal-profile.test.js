@@ -63,3 +63,20 @@ test('Discord profile is presented on one screen, without duplicate tab content'
  assert.equal(ui.includes('role="tab"'),false);
  assert.equal(ui.includes('role="tabpanel"'),false);
 });
+
+test('My Discord reuses central leave APIs and never shows another user’s review queue',()=>{
+ const ui=readFileSync(new URL('../public/discord-status.html',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/leave-routes.js',import.meta.url),'utf8');
+ for(const s of ['id="myLeave"','id="leaveStart"','id="leaveEnd"','id="leaveNote"',
+   'id="leaveForm"','id="leaveRequests"','href="/verlofbeheer.html"'])assert.ok(ui.includes(s),s);
+ assert.ok(ui.includes("leaveRequest('/api/leave/me')"));
+ assert.ok(ui.includes("leaveRequest('/api/leave/requests')"));
+ assert.ok(ui.includes('renderLeaves(leaves.mine)'));
+ assert.ok(ui.includes("await leaveRequest('/api/leave/requests',{startDate:"));
+ assert.ok(ui.includes("context.writesEnabled!==true"));
+ assert.ok(ui.includes("await Promise.all([loadPersonal(),loadLeave()])"));
+ assert.equal(ui.includes('renderLeaves(leaves.toReview)'),false);
+ assert.ok(server.includes("app.get('/api/leave/requests',requireUser"));
+ assert.ok(server.includes("app.post('/api/leave/requests',requireUser,requireWrites"));
+ assert.ok(server.includes("leave.where('personDiscordId','==',req.bpd.discordId)"));
+});
