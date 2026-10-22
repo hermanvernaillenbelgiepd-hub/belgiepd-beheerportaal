@@ -75,7 +75,7 @@ function updateForm(){
  $('severity').required=sanctioned;
  const choices=selectableSanctions($('dept').value);
  const prior=$('sanctionType').value;
- setOptions($('sanctionType'),choices.map(x=>({value:x,label:x})),'Kies de sanctiemaatregel');
+ setOptions($('sanctionType'),choices.map(x=>({value:x,label:x==='Tijdelijke beperking'?'Tijdelijke beperking van specialisatie':x})),'Kies de sanctiemaatregel');
  if(choices.includes(prior))$('sanctionType').value=prior;
  $('sanctionHelp').textContent=canHeavy($('dept').value)?
    'Effectieve degradatie, schorsing en ontslag zijn uitsluitend voor Korpsleiding. Een voorstel tot degradatie vereist ernst 9 of 10/10.':
