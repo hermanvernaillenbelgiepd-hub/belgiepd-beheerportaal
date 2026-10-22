@@ -102,7 +102,11 @@ function canQuickAddRadioCrew(crew){
   // individual duplicate label as non-importable. Never add its members
   // independently; require every member to carry the same valid unit.
   if(!crew.paired&&members.length!==1)return false;
-  if(!members.every(user=>user.category===crew.category&&sameCallsign(user.number,crew.number)&&visibleRadioUser(user)))return false;
+  if(!members.every(user=>user.category===crew.category&&visibleRadioUser(user)))return false;
+  // Expliciet gekoppelde, afzonderlijke nummers horen samen op het bord.
+  if(crew.paired&&members.length===2&&
+      members.every(user=>user.paired===true&&/^\d{1,5}$/.test(String(user.number))))return true;
+  if(!members.every(user=>sameCallsign(user.number,crew.number)))return false;
   // Temporary police units may share a numeric radio callsign before Sonoran
   // supplies an explicit paired flag. The board still stores only one team per
   // category and callsign, and the original identities remain unmodified.
@@ -129,7 +133,12 @@ async function quickAddRadioCrew(id){
   const memberNames=[...new Set(crew.members.map(u=>String(u.portalAlias||u.displayName||'').replace(/[<>\x00-\x1f\x7f]/g,'').trim()).filter(v=>v.length>1))];
   const combined=memberNames.join(' & ').slice(0,80).trim();
   const name=combined.length>=2?combined:('Radioploeg '+crew.category+'-'+crew.number).slice(0,80);
-  await command('add-team',{dienst:crew.category,leden:[{naam:name,roep:String(crew.number)}],radioSource:'sonoran'});
+  const distinct=[...new Set(crew.members.map(user=>String(user.number)))];
+  const leden=crew.paired&&distinct.length===2?crew.members.map(user=>({
+    naam:String(user.portalAlias||user.displayName||user.name||name).slice(0,80),
+    roep:String(user.number)
+  })):[{naam:name,roep:String(crew.number)}];
+  await command('add-team',{dienst:crew.category,leden,radioSource:'sonoran'});
   toast(crew.category+'-'+crew.number+' staat nu op het dienstbord.');
 }
 function busyMap(board){
@@ -215,6 +224,8 @@ async function refreshRadio(){
       radio.knownIds=next;
     }
     radio.snapshot=payload;radio.error=null;radio.receivedAt=Date.now();
+    // Nieuwe radioploegen en automatische afmeldingen zonder extra wachtronde tonen.
+    if(payload.boardUpdated===true)await refresh({quiet:true});
   }catch(error){
     if(error.obsolete||serial!==radio.requestSerial||epoch!==authEpoch)return;
     radio.error='De radioverbinding kon niet worden bijgewerkt. Je kunt ploegen en meldingen gewoon verder beheren.';
@@ -312,7 +323,8 @@ function renderRadio(){
   const userCard=crew=>{
     const members=crew.members,first=members[0],storedTeam=radioCrewOnBoard(crew),onBoard=Boolean(storedTeam);
     const importable=canQuickAddRadioCrew(crew);
-    const justJoined=!onBoard&&members.some(user=>radio.newIds.has(user.id));
+    const justJoined=members.some(user=>radio.newIds.has(user.id))||
+      Boolean(storedTeam?.autoAdded&&Date.now()-Number(storedTeam.createdAt)<120000);
     let action=onBoard?'<span class="radio-on-board">Op dienstbord</span>':
       !importable?(crew.category==='OPLEIDING'?'<span class="radio-unrecognized">Opleiding · ter informatie</span>':'<span class="radio-unrecognized" title="Controleer de bemanning en het roepnummer.">Controle nodig</span>'):'';
     if(onBoard&&state.env.permissions.canEdit)
@@ -330,7 +342,7 @@ function renderRadio(){
     const display=crew.paired&&recognized
       ?esc(crew.category)+'-'+esc(crew.number)+'*'
       :esc(first.portalAlias||first.name||'Onbekend radiolabel');
-    return `<div class="radio-user${crew.paired?' radio-crew-paired':''}${crew.radioUnavailable?' radio-crew-nb':''}${justJoined?' radio-just-joined':''}"${recognized?' data-category="'+esc(crew.category)+'"':''}${importable&&!onBoard&&fresh&&canEdit()?' draggable="true" data-radio-drag="'+esc(first.id)+'"':''}><div class="radio-user-copy"><div class="radio-user-name"><span class="radio-indicator${fresh?' online':''}" aria-hidden="true"></span>${unit}<span class="radio-display-name" title="${esc(first.name)}">${display}</span>${crew.paired?'<span class="radio-pair-icon" title="Koppeldienst: één ploeg">👥</span>':''}${temporaryBadge}${justJoined?'<span class="radio-arrival-badge">NIEUW</span>':!onBoard?'<span class="radio-pending-badge">NOG OP TE NEMEN</span>':''}</div><small class="radio-user-channel">${recognized?esc(displayCategory(crew.category))+' · ':''}${channels.map(esc).join(' · ')}${crew.paired?' · '+members.length+' radiolid'+(members.length===1?'':'den'):''}</small>${crew.paired?'<div class="radio-crew-members">'+memberNames.map(name=>'<span>'+name+'</span>').join('')+'</div>':''}${nbStatus?'<div class="radio-crew-status">'+nbStatus+'</div>':''}</div><div class="radio-user-actions">${action}${state.env.permissions.canOperate&&first.labelEditable===true?`<button type="button" class="button button-small" data-action="radio-edit-label" data-id="${esc(first.id)}" title="Pas de naam aan in het BelgiumPD-portaal, niet in Sonoran Radio">✎ Naam aanpassen</button>`:''}</div></div>`;
+    return `<div class="radio-user${crew.paired?' radio-crew-paired':''}${crew.radioUnavailable?' radio-crew-nb':''}${justJoined?' radio-just-joined':''}"${recognized?' data-category="'+esc(crew.category)+'"':''}${importable&&!onBoard&&fresh&&canEdit()?' draggable="true" data-radio-drag="'+esc(first.id)+'"':''}><div class="radio-user-copy"><div class="radio-user-name"><span class="radio-indicator${fresh?' online':''}" aria-hidden="true"></span>${unit}<span class="radio-display-name" title="${esc(first.name)}">${display}</span>${crew.paired?'<span class="radio-pair-icon" title="Koppeldienst: één ploeg">👥</span>':''}${temporaryBadge}${justJoined?'<span class="radio-arrival-badge">NIEUW!</span>':!onBoard?'<span class="radio-pending-badge">ROEPNUMMER CONTROLEREN</span>':''}</div><small class="radio-user-channel">${recognized?esc(displayCategory(crew.category))+' · ':''}${channels.map(esc).join(' · ')}${crew.paired?' · '+members.length+' radiolid'+(members.length===1?'':'den'):''}</small>${crew.paired?'<div class="radio-crew-members">'+memberNames.map(name=>'<span>'+name+'</span>').join('')+'</div>':''}${nbStatus?'<div class="radio-crew-status">'+nbStatus+'</div>':''}</div><div class="radio-user-actions">${action}${state.env.permissions.canOperate&&first.labelEditable===true?`<button type="button" class="button button-small" data-action="radio-edit-label" data-id="${esc(first.id)}" title="Pas de naam aan in het BelgiumPD-portaal, niet in Sonoran Radio">✎ Naam aanpassen</button>`:''}</div></div>`;
   };
   panel.innerHTML=`<div class="radio-header"><div class="radio-heading"><span class="radio-symbol" aria-hidden="true">◉</span><div><h2 id="radio-title">Sonoran Radio</h2><p>Actief in radiokanalen · radiolabels</p></div>${pill(status,color)}</div><div class="radio-header-actions">${synced?`<span class="radio-last-sync">Ontvangen ${synced}</span>`:''}<button type="button" class="button button-small" data-action="radio-refresh"${radio.loading?' disabled':''}>${radio.loading?'Bijwerken…':'↻ Radio verversen'}</button></div></div>${notice?`<p class="radio-notice${radio.error||outdated?' warning':''}" role="status">${esc(notice)}</p>`:''}${snapshot&&configured?`<div class="radio-summary"><span><strong>${Number.isFinite(Number(snapshot.counts?.online))?Number(snapshot.counts.online):allUsers.length}</strong> in kanaal</span><span><strong>${Number(snapshot.counts?.recognized)||0}</strong> herkende radiogebruikers</span>${hiddenCount?'<span>'+hiddenCount+' onbekende radiolabels verborgen</span>':''}${withoutChannel?'<span>'+withoutChannel+' zonder radiokanaal</span>':''}${missingChannelStatus?'<span>'+missingChannelStatus+' kanaalstatus onbekend</span>':''}<span>Automatisch elke 15 seconden bijgewerkt</span></div>`:''}${groups.length?`<div class="radio-channels">${groups.map(service=>`<section class="radio-channel radio-service" data-service="${esc(service.id)}" aria-labelledby="radio-service-${esc(service.id)}"><h3 id="radio-service-${esc(service.id)}">${esc(service.label)} <span>${service.items.length} ${service.items.length===1?'radio-eenheid':'radio-eenheden'}</span></h3><div class="radio-users">${service.items.slice().sort((a,b)=>compareRadioUsers(a.members[0],b.members[0])).map(userCard).join('')}</div></section>`).join('')}</div>`:fresh?`<p class="radio-empty">${allUsers.length?'Geen radioploegen voor deze selectie.':'Er zijn momenteel geen gebruikers met een bevestigd radiokanaal.'}</p>`:!snapshot&&!radio.error?'<p class="radio-empty">De laatste radiostand wordt opgehaald…</p>':''}${configured&&allUsers.length?'<p class="radio-disclaimer">Herkende radioploegen tellen automatisch mee als beschikbaar. Gebruik ‘Op bord’ of sleep een nieuwe radioploeg naar het dienstbord om ze te beheren. ‘Uit dienst’ bewaart de historiek. Controleer de bemanning: een radiolabel bevestigt geen personeelsidentiteit.</p>':''}`;
   updateButtons();
@@ -468,6 +480,11 @@ function teamCard(team,busy,editable){
     ${statusButton('✓ Beschikbaar','team-available',currentStatus==='beschikbaar'&&!nbOnRadio,!nbOnRadio&&currentStatus!=='beschikbaar')}
   </div>${busy.length&&currentStatus==='beschikbaar'?'<p class="team-assignment-warning">Nog gekoppeld aan een actieve melding. Gebruik ‘Ontkoppelen’ hieronder om ze ook vrij te tellen.</p>':''}`:'';
   const temporaryBadge=policeRoleBadge(team.dienst,String(team.roepnaam));
+  const autoBadges=team.autoAdded===true?
+    '<span class="to-auto-badge" title="Automatisch uit Sonoran Radio toegevoegd; controleer de bezetting">TIJDELIJK</span>'+
+    (Number.isFinite(Number(team.createdAt))&&Date.now()-Number(team.createdAt)<120000?
+      '<span class="to-new-badge">NIEUW!</span>':''):'';
+
   const menuOpen=state.openCrewMenus.has(team.id);
   const compactRename=editable?radioMembers.filter(user=>user.labelEditable===true).map(user=>`<button type="button" class="button button-small" data-action="radio-edit-label" data-id="${esc(user.id)}" data-write>✎ Naam aanpassen${radioMembers.length>1?' · '+esc(user.number):''}</button>`).join(''):'';
   const compactDetach=busy.length?`<button type="button" class="button button-small" data-action="team-detach-dialog" data-id="${esc(team.id)}" data-write>↗ Ontkoppelen${busy.length>1?' ('+busy.length+')':''}</button>`:'';
@@ -481,6 +498,7 @@ function teamCard(team,busy,editable){
       onRadio?'<span class="compact-flag radio-flag">◉ Radio online</span>':'',
       paired?'<span class="compact-flag">👥 Koppel</span>':'',
       temporaryBadge,
+      autoBadges,
       panicIndicator
     ].filter(Boolean).join('');
     return `<article class="team-card compact-team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}">
@@ -495,7 +513,7 @@ function teamCard(team,busy,editable){
       ${compactMenu}
     </article>`;
   }
-  return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${beacon}${panicIndicator}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}${temporaryBadge}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(displayCategory(team.dienst))}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}${radioMembers.length?'<div class="crew-radio-label">◉ Radio: '+radioMembers.map(user=>esc(user.portalAlias||user.displayName||user.name||'Radiogebruiker')).join(' · ')+'</div>':''}${editable&&radioMembers.some(user=>user.labelEditable===true)?'<div class="crew-radio-rename">'+radioMembers.filter(user=>user.labelEditable===true).map(user=>'<button type="button" class="button button-small" data-action="radio-edit-label" data-id="'+esc(user.id)+'" title="Wijzig de weergavenaam op het dienstbord">✎ Naam aanpassen'+(radioMembers.length>1?' · '+esc(user.number):'')+'</button>').join('')+'</div>':''}</div>${phaseControls}</div>${compactMenu}<div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions">${busy.length?`<button type="button" class="text-button team-detach-button" data-action="team-detach-dialog" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>↗ Ontkoppelen${busy.length>1?' ('+busy.length+')':''}</button>`:''}<button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
+  return `<article class="team-card" data-service="${esc(identity.serviceId)}" data-availability="${stateClass}" data-response-phase="${esc(phase||'geen')}" style="--unit-hue:${identity.hue}"><div class="team-card-body"><div class="team-top">${status}${beacon}${panicIndicator}${onRadio?'<span class="radio-team-badge">◉ Radio online</span>':''}${paired?'<span class="pair-label">👥 KOPPEL</span>':''}${temporaryBadge}${autoBadges}</div><div class="team-identity">${unitBadge(team.dienst,'unit-token-hero')}<div class="team-identity-copy"><span class="team-category-name">${esc(displayCategory(team.dienst))}</span><div class="callsign"><strong>${esc(team.roepnaam)}</strong></div></div></div><div class="crew-list">${(team.leden||[]).map(member=>`<div class="crew-line"><span>${esc(member.naam)}</span><span class="mono">${esc(member.roep)}</span></div>`).join('')}${radioMembers.length?'<div class="crew-radio-label">◉ Radio: '+radioMembers.map(user=>esc(user.portalAlias||user.displayName||user.name||'Radiogebruiker')).join(' · ')+'</div>':''}${editable&&radioMembers.some(user=>user.labelEditable===true)?'<div class="crew-radio-rename">'+radioMembers.filter(user=>user.labelEditable===true).map(user=>'<button type="button" class="button button-small" data-action="radio-edit-label" data-id="'+esc(user.id)+'" title="Wijzig de weergavenaam op het dienstbord">✎ Naam aanpassen'+(radioMembers.length>1?' · '+esc(user.number):'')+'</button>').join('')+'</div>':''}</div>${phaseControls}</div>${compactMenu}<div class="team-card-foot"><span class="team-since">In dienst sinds ${time(team.createdAt)}</span>${state.env.permissions.canEdit?`<div class="team-actions">${busy.length?`<button type="button" class="text-button team-detach-button" data-action="team-detach-dialog" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>↗ Ontkoppelen${busy.length>1?' ('+busy.length+')':''}</button>`:''}<button type="button" class="text-button danger" data-action="remove-team" data-id="${esc(team.id)}" data-write${!editable?' disabled':''}>Uit dienst</button></div>`:''}</div></article>`;
 }
 function incidentCard(incident){
   return `<button type="button" class="incident-card" data-action="open-incident" data-id="${esc(incident.id)}"><span class="incident-meta"><span class="incident-number mono">${incidentNumber(incident.nr)}</span>${pill(incident.status==='actief'?'Actief':'Afgerond',incident.status==='actief'?'amber':'gray')}<span class="incident-time mono">${time(incident.createdAt)}</span></span><strong class="incident-title">${esc(incident.titel)}</strong><span class="incident-description">${esc(String(incident.omschrijving||'Geen aanvullende omschrijving.').slice(0,150))}${String(incident.omschrijving||'').length>150?'…':''}</span><span class="incident-footer"><span class="postal mono">PC ${esc(incident.postcode)}</span>${(incident.ploegen||[]).map(team=>`<span class="team-chip" data-unit-service="${esc(teamVisual(team.dienst).serviceId)}" style="--unit-hue:${teamVisual(team.dienst).hue}">${unitBadge(team.dienst,'unit-token-micro')}${esc(team.dienst)}-${esc(team.roep)}${state.env.board.ploegen[team.id]?.responsePhase==='onderweg'?' · ↗ Onderweg':state.env.board.ploegen[team.id]?.responsePhase==='ter-plaatse'?' · ● Ter plaatse':''}</span>`).join('')||'<span class="unassigned">Nog geen ploeg gekoppeld</span>'}</span></button>`;
