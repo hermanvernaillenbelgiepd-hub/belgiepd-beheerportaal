@@ -430,3 +430,9 @@ dialog{position:fixed;border:0;border-radius:18px;width:min(620px,calc(100vw - 2
  to{box-shadow:0 0 0 6px #e23b3b0f;filter:brightness(1.17)}}
 @media(prefers-reduced-motion:reduce){.to-panic-siren,.to-panic-team-icon{animation:none}}
 @media(max-width:600px){.to-panic-alert{padding:11px;gap:9px}.to-panic-siren{width:35px;height:35px;font-size:19px}}
+
+/* TEST · automatisch toegevoegde Sonoran-ploegen */
+.to-auto-badge,.to-new-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:5px;font-size:10px;font-weight:800;line-height:1.2;white-space:nowrap}
+.to-auto-badge{background:#fff1d9;color:#8e5a13;border:1px solid #e6c183}
+.to-new-badge{background:#dff6eb;color:#126a48;border:1px solid #9ed8ba}
+.compact-unit-meta .to-auto-badge,.compact-unit-meta .to-new-badge{margin-right:3px}
