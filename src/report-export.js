@@ -29,7 +29,12 @@ export function specialFields(e){
   if(e.endDate)p.push('Einddatum: '+e.endDate);
   if(e.courseName)p.push('Opleiding: '+limit(e.courseName,150));
   if(e.newName)p.push('Nieuwe naam: '+limit(e.newName,150));
+  if(e.previousRank)p.push('Huidige rang: '+limit(e.previousRank,140));
   if(e.proposedRank)p.push('Voorgestelde graad: '+limit(e.proposedRank,150));
+  if(e.promotionOverride){
+    p.push('UITZONDERING KORPSLEIDING – rangsprong');
+    if(e.promotionOverrideReason)p.push('Motivering uitzondering: '+limit(e.promotionOverrideReason,500));
+  }
   if(e.movement)p.push('Personeelsbeweging: '+limit(e.movement,150));
   if(e.referenceUrl||e.evidenceUrl)p.push('Bijlage: '+limit(e.referenceUrl||e.evidenceUrl,800));
   if(e.otherPlayers)p.push('Andere betrokkenen: '+limit(e.otherPlayers,1000));
