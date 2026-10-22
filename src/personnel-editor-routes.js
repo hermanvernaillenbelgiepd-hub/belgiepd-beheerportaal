@@ -2,7 +2,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
-  canViewPersonnel,canEditPersonnel,canChangePersonnelStatus,canChangePersonnelName,validatePersonnelChange,mergePersonnelEdits,
+  canViewPersonnel,canEditPersonnel,canChangePersonnelStatus,validatePersonnelChange,mergePersonnelEdits,
   currentPersonnelAuditActor,personnelCallClaimId} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
   personnelDataEnabled,personnelCreationEnabled,canCreatePersonnel,canAuthoriseExceptionalPoliceRank,
@@ -53,8 +53,6 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           source:edit?'firestore-overlay':p.source==='firestore-created'?'firestore-created':'google-sheets',
           canEdit:canEditPersonnel(req.bpd,p)||canChangePersonnelStatus(req.bpd,p),
           canEditIdentity:canEditPersonnel(req.bpd,p),
-          canEditName:canEditPersonnel(req.bpd,p)||canChangePersonnelName(req.bpd,p),
-          canEditCall:canEditPersonnel(req.bpd,p),
           canEditStatus:canEditPersonnel(req.bpd,p)||canChangePersonnelStatus(req.bpd,p)};
       });
       const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
@@ -349,16 +347,10 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       if(matches.length!==1)throw userError(409,'Geen eenduidige bestaande personeelsfiche gevonden');
       const subject=matches[0];
       const identityAllowed=canEditPersonnel(req.bpd,subject);
-      const statusAllowed=canChangePersonnelStatus(req.bpd,subject);
-      const nameAllowed=canChangePersonnelName(req.bpd,subject);
-      if(!identityAllowed&&!statusAllowed&&!nameAllowed)
+      if(!identityAllowed&&!canChangePersonnelStatus(req.bpd,subject))
         throw userError(403,'Je mag deze personeelsfiche niet wijzigen');
-      if(!identityAllowed&&proposed.call!==subject.call)
-        throw userError(403,'Middenkader mag geen roepnummers wijzigen');
-      if(!identityAllowed&&proposed.name!==subject.name&&!nameAllowed)
-        throw userError(403,'Middenkader mag deze naam niet wijzigen');
-      if(!identityAllowed&&proposed.status!==subject.status&&!statusAllowed)
-        throw userError(403,'Middenkader mag deze status niet wijzigen');
+      if(!identityAllowed&&(proposed.name!==subject.name||proposed.call!==subject.call))
+        throw userError(403,'Middenkader mag alleen de personeelsstatus van lager kader wijzigen');
       if(snap.data.some(p=>p.dept===subject.dept&&p.personId!==subject.personId&&
         p.call===proposed.call))throw userError(409,'Dit roepnummer wordt al gebruikt binnen deze hulpdienst');
       if(subject.name===proposed.name&&subject.call===proposed.call&&subject.status===proposed.status)
@@ -388,33 +380,6 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         tx.create(audit,{previous,next,revision:revision+1,reason:proposed.reason,
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
           at:FieldValue.serverTimestamp()});
-        if(previous.name!==proposed.name){
-          const at=FieldValue.serverTimestamp();
-          const actorRecords=snap.data.filter(p=>p.personId===req.bpd.discordId&&p.dept===subject.dept);
-          const a=actorRecords.length===1?actorRecords[0]:null;
-          const d=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
-            timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'
-          }).formatToParts(new Date()).map(x=>[x.type,x.value]));
-          const date=d.year+'-'+d.month+'-'+d.day;
-          tx.create(getFirestore().collection('bpd_cases').doc(subject.dept+'_'+subject.personId)
-            .collection('entries').doc(),{
-            type:'naamswijziging',reportCategory:'naamswijziging',
-            dept:subject.dept,subjectDiscordId:subject.personId,
-            subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,
-            newName:proposed.name,eventDate:date,
-            details:'Naamswijziging: '+previous.name+' → '+proposed.name+'. '+proposed.reason,
-            registeredBy:a?{discordId:a.personId,name:a.name,call:a.call,rank:a.rank,dept:a.dept}:
-              {discordId:req.bpd.discordId||null,name:'Discord-gebruiker',call:'',rank:req.bpd.role,dept:subject.dept},
-            source:'automatic_personnel_audit',createdAt:at,modifiedAt:null
-          });
-          tx.create(getFirestore().collection('bpd_notices').doc(subject.dept)
-            .collection('events').doc(),{
-            type:'personnel_name_changed',dept:subject.dept,discordId:subject.personId,
-            caseId:subject.dept+'_'+subject.personId,
-            from:previous.name,to:proposed.name,actorDiscordId:req.bpd.discordId||null,
-            createdAt:at
-          });
-        }
         if(oldCall!==proposed.call){
           tx.create(getFirestore().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
             type:'callsign_changed',dept:subject.dept,discordId:subject.personId,
