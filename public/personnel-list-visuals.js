@@ -121,8 +121,32 @@
     return specialtyStatuses(person?.specialties).find(x=>x.label===label)||
       {label,status:'Niet ingevuld',style:'unknown',icon:specialtyIcon(label)};
   }
+  // Informatieve kaderindeling op basis van de personeelsfiche.
+  // Discord-rollen en dossiermachtigingen worden hierdoor nooit gewijzigd.
+  function policeCadre(person){
+    if(person?.dept!=='politie')return null;
+    const raw=String(person.call||'').trim();
+    const match=raw.match(/^(?:[a-z]+[- ]?)?(\\d{3})$/i);
+    const number=match?Number(match[1]):null;
+    if(number!==null && number>=100 && number<=299)return 'Agentenkader';
+    const code=rankInfo(person.rank,'politie').code;
+    if(['HCP','1HCP','CP','1CP'].includes(code))return 'Korpsleiding';
+    if(code==='ACP')return 'Officierenkader';
+    if(['HINP','1HINP','AHINP'].includes(code))return 'Middenkader';
+    if(['INP','1INP','AINP'].includes(code))return 'Basiskader';
+    if(number!==null && number>=300 && number<=999)return 'Basiskader';
+    if(['AP','1AP','AAP'].includes(code))return 'Agentenkader';
+    return null;
+  }
+  function seriesWithCadre(person,series){
+    const current=String(series||'').trim(),cadre=policeCadre(person);
+    if(!cadre)return current||'—';
+    if(current===cadre)return current;
+    if(!current||current==='Niet ingevuld'||current==='—'||current==='Kader')return cadre;
+    return current+' · '+cadre;
+  }
   root.BPDPersonnelVisuals=Object.freeze({
     rankInfo,specialtyBadges,specialtyIcon,specialtyIconImage,qualification,specialtyStatuses,
-    specialtyColumns,specialtyStateFor
+    specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre
   });
 })(typeof window==='object'?window:globalThis);
