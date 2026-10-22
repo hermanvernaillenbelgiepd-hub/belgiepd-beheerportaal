@@ -161,11 +161,19 @@ function render(){
     dept.disabled=!dept.options.length||dept.value==='';
     cell(row,dept);
     const rank=document.createElement('select');for(const name of roles)rank.append(option(name,roleNames[name]));
-    rank.value=u.role||'basiskader';
+    rank.value=u.board?.discord||u.board?.appointed?'bestuur':u.role||'basiskader';
     const functionWrap=document.createElement('div');functionWrap.append(rank);
     const explanation=document.createElement('small');explanation.className='muted';
     explanation.textContent='Operationele rol: '+(roleNames[u.role]||u.role||'Nog niet goedgekeurd');
     functionWrap.append(explanation);
+    if(u.board?.discord||u.board?.appointed){
+      const origin=document.createElement('small');origin.className='muted';
+      origin.textContent=' · BESTUUR: '+[
+        u.board.discord?'Discord (geverifieerd)':null,
+        u.board.appointed?'portaal (goedgekeurd)':null
+      ].filter(Boolean).join(' + ');
+      functionWrap.append(origin);
+    }
     cell(row,functionWrap);
     const actions=document.createElement('div');actions.className='controls';
     const approve=document.createElement('button');
@@ -174,6 +182,8 @@ function render(){
     approve.onclick=async()=>{
       if(!dept.value)return notice('Dit account heeft nog geen gekoppelde hulpdienst.',true);
       if(rank.value==='bestuur'){
+        if(u.board?.discord||u.board?.appointed)
+          return notice('BESTUUR is voor dit account al actief via Discord of een goedgekeurde bestuursaanstelling. De operationele rol blijft apart behouden.');
         if(u.status!=='approved')return notice('Keur eerst de gewone portaaltoegang goed. Bestuur is geen operationele rang.',true);
         const details=await fetch('/api/board/status',{cache:'no-store'}).then(r=>r.json()).catch(()=>({}));
         if(details.enabled!==true||details.writesEnabled!==true)

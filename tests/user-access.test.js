@@ -72,3 +72,14 @@ test('Managers only see own service; no self-block and higher cadre cannot be bl
   assert.equal(canBlockUser(officer,discordId,{...approved,role:'officierenkader'}),false);
   assert.equal(canBlockUser(chief,discordId,{...approved,role:'officierenkader'}),true);
 });
+
+test('Management overview presents verified Board origin without changing operational roles',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const routes=readFileSync(new URL('../src/user-routes.js',import.meta.url),'utf8');
+  const page=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+  assert.ok(routes.includes('verifyBoardDiscordRole(member.data(),process.env.DISCORD_GUILD_ID)'));
+  assert.ok(routes.includes('activeBoardAppointment(appointment.data())'));
+  assert.ok(page.includes("rank.value=u.board?.discord||u.board?.appointed?'bestuur'"));
+  assert.ok(page.includes("u.board.discord?'Discord (geverifieerd)'"));
+  assert.ok(page.includes("u.board.appointed?'portaal (goedgekeurd)'"));
+});

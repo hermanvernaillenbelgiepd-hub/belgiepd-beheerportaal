@@ -2,6 +2,8 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {roleSummary} from './role-catalog.js';
+import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
+import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {roleForDepartment} from './leave-policy.js';
 import {USER_COLLECTION,USER_DEPTS,verifiedDiscordIdentity,validUserGrant,
   isUserManager,canSeeUser,canChangeUser,canBlockUser,approvedManagedEntry} from './user-access.js';
@@ -153,9 +155,27 @@ export function installUserRoutes(app,{requireUser,accessList}){
   app.get('/api/users/overview',requireUser,admin,async(req,res)=>{
     try{
       const snap=await collection().limit(250).get();
+      const scoped=snap.docs.filter(d=>canSeeUser(req.bpd,d.data()));
+      const users=[];
+      // Read-only, guild-verified Board status. Never grants a rank or privilege.
+      // Read in bounded groups to avoid excessive concurrent Firestore requests.
+      for(let i=0;i<scoped.length;i+=20){
+        const group=await Promise.all(scoped.slice(i,i+20).map(async d=>{
+          const summary=serialize(d.id,d.data());
+          if(summary.status!=='approved')return {...summary,board:{discord:false,appointed:false}};
+          const [member,appointment]=await Promise.all([
+            db().collection('bpd_discord_auth').doc(d.id).get(),
+            db().collection(BOARD_COLLECTION).doc(d.id).get()
+          ]);
+          return {...summary,board:{
+            discord:verifyBoardDiscordRole(member.data(),process.env.DISCORD_GUILD_ID),
+            appointed:activeBoardAppointment(appointment.data())
+          }};
+        }));
+        users.push(...group);
+      }
       return res.json({role:req.bpd.role,departments:req.bpd.departments,
-        users:snap.docs.filter(d=>canSeeUser(req.bpd,d.data())).map(d=>serialize(d.id,d.data())),
-        limited:snap.size===250});
+        users,limited:snap.size===250});
     }catch(e){return fail(res,e)}
   });
   app.post('/api/users/:discordId/approve',requireUser,admin,async(req,res)=>{
