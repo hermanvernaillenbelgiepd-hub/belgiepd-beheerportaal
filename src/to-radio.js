@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {TO_CATEGORIES} from './to-board-policy.js';
-import {radioMarkedUnavailable,stripRadioNBMarkers,radioMarkedPair} from '../public/to-radio-availability.js';
+import {radioMarkedUnavailable,stripRadioNBMarkers,radioMarkedPair,radioMarkedStreamer,stripRadioStreamerMarker} from '../public/to-radio-availability.js';
 
 const ORIGIN='https://api.sonoranradio.com';
 const REFRESH_SECONDS=15;
@@ -24,7 +24,7 @@ const compactNumberedLabels=new Set([
 export function parseSonoranName(value){
   const none={category:null,number:null,displayName:null,importable:false};
   if(typeof value!=='string')return none;
-  const name=clean(value);
+  const name=stripRadioStreamerMarker(clean(value));
   // Sonoran labels also arrive with visually similar Unicode separators.
   // Split these before parsing a numeric callsign so a display name cannot
   // accidentally become part of the unit number (SANTO-180 │ JayD).
@@ -153,7 +153,8 @@ function normalizedUsers(payload,key){
     const name=protect(rawName,key),parsed=parseSonoranName(name);
     users.push({id:'radio_'+hash('sonoran-user\0'+stableIdentity).slice(0,32),labelEditable:Boolean(identity),name:name.slice(0,160)||'Onbekende gebruiker',
       channel:channel===null?null:protect(channel,key).slice(0,80),
-      notAvailable:radioMarkedUnavailable(name),paired:radioMarkedPair(name)&&parsed.importable,...parsed});
+      notAvailable:radioMarkedUnavailable(name),paired:radioMarkedPair(name)&&parsed.importable,
+      streamer:radioMarkedStreamer(name),...parsed});
   }
   const labels=new Map();
   for(const user of users){
