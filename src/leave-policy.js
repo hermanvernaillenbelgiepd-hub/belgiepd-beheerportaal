@@ -1,6 +1,16 @@
 // Centrale verlofregels. Alle bevoegdheden worden op de SERVER gecontroleerd.
 export const LEAVE_ROLES=Object.freeze(['middenkader','officierenkader','korpsleiding']);
 const HIGH_ROLES=new Set(['officierenkader','korpsleiding']);
+const LEAVE_RANK=Object.freeze({agentenkader:1,basiskader:1,middenkader:2,officierenkader:3,korpsleiding:4});
+export const MIN_LEAVE_REQUEST_DAYS=7;
+export function leaveSubmissionStatus(days,isCorpsLeadership=false){
+  if(days<MIN_LEAVE_REQUEST_DAYS)throw new Error('Verlof korter dan 7 kalenderdagen hoef je niet aan te vragen.');
+  return isCorpsLeadership||days<=14?'approved':'pending';
+}
+export function leaveApplicantIsCorps(actor,departments){
+  return Array.isArray(departments)&&departments.some(dept=>
+    roleForDepartment(actor,dept)==='korpsleiding'&&actor?.portalTechnicalMode!==true);
+}
 const ISO_DATE=/^\d{4}-\d{2}-\d{2}$/;
 const ISO_EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const LEAVE_MAX_DAYS=730;
@@ -27,6 +37,7 @@ export function validateLeaveRequest(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Ongeldige aanvraag');
   const startDate=raw.startDate,endDate=raw.endDate;
   const days=calendarDays(startDate,endDate);
+  if(days<MIN_LEAVE_REQUEST_DAYS)throw new Error('Verlof korter dan 7 kalenderdagen hoef je niet aan te vragen.');
   const note=raw.note===undefined?'':raw.note;
   if(typeof note!=='string'||note.trim().length>300)throw new Error('Toelichting mag maximaal 300 tekens bevatten');
   return {startDate,endDate,days,note:note.trim()};
@@ -63,17 +74,30 @@ function scopedRoles(actor,subjectDepartments){
   if(!Array.isArray(subjectDepartments))return [];
   return subjectDepartments.map(dept=>roleForDepartment(actor,dept)).filter(Boolean);
 }
-export function mayApproveLeave(actor,request,grant,today=new Date().toISOString().slice(0,10)){
+export function mayApproveLeave(actor,request,grant,today=new Date().toISOString().slice(0,10),verifiedBoard=false){
   if(!actor||!validDiscordId(actor.discordId)||!request||request.status!=='pending')return false;
-  if(actor.discordId===request.personDiscordId)return false; // Nooit eigen aanvraag.
+  if(actor.discordId===request.personDiscordId)return false;
   const days=calendarDays(request.startDate,request.endDate);
+  // Board may decide all pending requests irrespective of service or operational grade.
+  if(verifiedBoard)return true;
+  const departments=Array.isArray(request.subjectDepartments)?request.subjectDepartments:[];
+  if(!departments.length)return false;
+  const subjectRoles=request.subjectDepartmentRoles||{};
   const delegated=activeGrant(grant,today);
-  if(delegated)return delegated.level==='all'||days<=30;
-  if(!sharesDepartment(actor,request.subjectDepartments))return false;
-  const roles=scopedRoles(actor,request.subjectDepartments);
-  if(roles.some(role=>HIGH_ROLES.has(role)))return true;
-  return roles.includes('middenkader')&&days<=30;
+  if(delegated&&days<=30)return true; // Bestaande tijdelijke verlofverantwoordelijke.
+  // Over 30 dagen is enkel officierenkader/korpsleiding bevoegd.
+  for(const dept of departments){
+    if(!actor.departments?.includes(dept))continue;
+    const reviewer=roleForDepartment(actor,dept),subject=subjectRoles[dept]||request.subjectRole;
+    const reviewerRank=LEAVE_RANK[reviewer]||0,subjectRank=LEAVE_RANK[subject]||0;
+    if(!subjectRank||reviewerRank<=subjectRank)continue;
+    if(reviewer==='korpsleiding')return true;
+    if(reviewer==='officierenkader')return true;
+    if(reviewer==='middenkader'&&days<=30&&subjectRank===1)return true;
+  }
+  return false;
 }
+
 export function highCadreDepartments(actor){
   const depts=Array.isArray(actor?.departments)?actor.departments:[];
   const map=actor?.departmentRoles||{};
