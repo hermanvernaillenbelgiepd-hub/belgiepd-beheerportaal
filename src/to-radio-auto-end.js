@@ -32,8 +32,6 @@ export function observeRadioDepartures(board,snapshot,tracker,now){
   const previous=tracker.get('__session');
   if(previous!==sessionId){tracker.clear();tracker.set('__session',sessionId);}
   const active=Object.values(board.ploegen||{}).filter(x=>x&&!x.endedAt);
-  const linked=new Set(Object.values(board.meldingen||{}).filter(x=>x?.status==='actief')
-    .flatMap(item=>(item.ploegen||[]).map(x=>x.id)));
   const activeIds=new Set(active.map(x=>x.id));
   const ready=[];
   for(const team of active){
@@ -46,10 +44,8 @@ export function observeRadioDepartures(board,snapshot,tracker,now){
     }
     if(uncertain){tracker.delete(team.id);continue;}
     const prev=tracker.get(team.id);
-    // Only a team imported from Sonoran, or a manually entered team
-    // actually observed in radio this session, can be signed off automatically.
-    // A manually entered offline team must remain under TO control.
-    if(!prev?.seen&&team.radioSource!=='sonoran')continue;
+    // Zowel automatisch als handmatig ingevoerde ploegen volgen dezelfde
+    // geverifieerde Sonoran-status. Nooit afmelden op cache/hergebruik.
     if(!prev||prev.since===null){
       tracker.set(team.id,{seen:true,since:timestamp,polls:1,lastSnapshot:timestamp});
       continue;
@@ -59,7 +55,7 @@ export function observeRadioDepartures(board,snapshot,tracker,now){
     if(timestamp<=prev.lastSnapshot)continue;
     const observation={seen:true,since:prev.since,polls:prev.polls+1,lastSnapshot:timestamp};
     tracker.set(team.id,observation);
-    if(!linked.has(team.id)&&timestamp-observation.since>=RADIO_AUTO_END_GRACE_MS&&
+    if(timestamp-observation.since>=RADIO_AUTO_END_GRACE_MS&&
         observation.polls>=RADIO_AUTO_END_MIN_POLLS)ready.push(team.id);
   }
   for(const id of tracker.keys())if(id!=='__session'&&!activeIds.has(id))tracker.delete(id);
