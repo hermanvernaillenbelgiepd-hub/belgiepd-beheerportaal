@@ -9,7 +9,8 @@ export const SANCTION_REASONS = [
   'Ongeoorloofde toe-eigening van een graad',
   'Ongeoorloofde toe-eigening van een specialisatie','Anders'
 ];
-// Eerste vier zijn ook toegestaan voor middenkader; zware maatregelen uitsluitend voor officieren en korpsleiding.
+// Kaderbeleid: eerste drie maatregelen zelfstandig; voorstel tot degradatie vanaf ernst 9/10.
+// Effectieve degradatie, schorsing en (geblackliste) ontslagen uitsluitend korpsleiding.
 export const SANCTION_TYPES = [
   'Mondelinge waarschuwing', 'Officiële waarschuwing', 'Tijdelijke beperking',
   'Voorstel tot degradatie', 'Degradatie', 'Schorsing', 'Ontslag', 'Ontslag met blacklisting'
@@ -17,7 +18,14 @@ export const SANCTION_TYPES = [
 export const HEAVY_SANCTION_TYPES = ['Degradatie','Schorsing','Ontslag','Ontslag met blacklisting'];
 export const isDiscordId = id => /^\d{15,22}$/.test(String(id??''));
 export const isCadre = role => ['middenkader','officierenkader','korpsleiding','beheerder'].includes(role);
-export const canChooseSanction = (role,kind) => ['middenkader','officierenkader','korpsleiding'].includes(role) && SANCTION_TYPES.includes(kind) && (!HEAVY_SANCTION_TYPES.includes(kind) || canEditSanction(role));
+export const canChooseSanction=(role,kind,severity=null)=>{
+  if(!['middenkader','officierenkader','korpsleiding'].includes(role)||!SANCTION_TYPES.includes(kind))return false;
+  if(HEAVY_SANCTION_TYPES.includes(kind))return role==='korpsleiding';
+  if(kind==='Voorstel tot degradatie')return Number.isInteger(severity)&&severity>=9&&severity<=10;
+  return true;
+};
+export const permittedSanctionTypes=(role,severity)=>
+  SANCTION_TYPES.filter(kind=>canChooseSanction(role,kind,severity));
 export const canRepresent = (user,type,dept) => type==='observatie' && hasDept(user,dept) && (user?.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(user?.role));
 // Alleen politie-middenkaderleden als mogelijke vertegenwoordigde auteur; het is geen autorisatiebron.
 export const eligibleRepresentative = (person,dept) => dept==='politie' && person?.dept===dept && isDiscordId(person?.personId) && policeKader(person.rank)==='Middenkader';
