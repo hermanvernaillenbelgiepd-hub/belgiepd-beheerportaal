@@ -31,7 +31,7 @@ export function parseBotTelemetry(payload,expectedGuild,now=Date.now()){
   if(!/^[a-zA-Z0-9_-]{12,64}$/.test(eventId||'')||
     !isDiscordId(discordId)||guildId!==expectedGuild||!isDiscordId(guildId)||
     source!=='fivem-playtime'||
-    !Number.isSafeInteger(playSeconds)||playSeconds<0||playSeconds>1_000_000_000||
+    !Number.isSafeInteger(playSeconds)||playSeconds<0||playSeconds>360_000_000||
     typeof observedAt!=='string'||!/^\d{4}-\d\d-\d\dT/.test(observedAt))
     throw Error('Ongeldige of onvolledige botgegevens');
   const ms=Date.parse(observedAt);
