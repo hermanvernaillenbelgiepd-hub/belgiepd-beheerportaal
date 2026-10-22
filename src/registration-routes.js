@@ -34,10 +34,12 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
        const sanctionOptionsByDepartment=Object.fromEntries(sanctionDepartments.map(d=>
          [d,permittedSanctionTypes(sanctionRoles[d],10)]));
        const heavySanctionDepartments=sanctionDepartments.filter(d=>sanctionRoles[d]==='korpsleiding');
+       const sanctionAmendDepartments=sanctionDepartments.filter(d=>mayAmend(req.bpd,'sanctie',d) &&
+         ['officierenkader','korpsleiding'].includes(sanctionRoles[d]));
        res.json({role:req.bpd.role,departments:req.bpd.departments,writesEnabled:writesEnabled(),
          fireZoneChief:req.bpd.fireZoneChief===true,portalTechnicalMode:req.bpd.portalTechnicalMode===true,
          fullDossierDepartments:req.bpd.dossierFullDepartments||[],
-         sanctionDepartments,heavySanctionDepartments,sanctionRoles,sanctionOptionsByDepartment,actor,representatives,
+         sanctionDepartments,heavySanctionDepartments,sanctionAmendDepartments,sanctionRoles,sanctionOptionsByDepartment,actor,representatives,
          subjects:subset.map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call}))});
     }catch(err){return handleError(res,err)}
   });
