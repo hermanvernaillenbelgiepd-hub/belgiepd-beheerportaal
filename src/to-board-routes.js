@@ -5,6 +5,8 @@ import {TO_CATEGORIES,applyBoardCommand,canReadBoard,canOperateBoard,emptyBoard,
 import {callsignForTO} from './to-operator-identity.js';
 import {applyTOShortcutCommand,emptyTOShortcuts} from './to-incident-shortcuts.js';
 import {radioMatchesSavedTeam} from './to-radio-auto-end.js';
+import {groupRadioCrews} from '../public/to-radio-availability.js';
+import {serviceForCategory} from '../public/to-categories.js';
 
 export const TO_BOARD_COLLECTION='bpd_to_boards';
 export const TO_ARCHIVE_COLLECTION='bpd_to_archives';
@@ -46,6 +48,68 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
         const result=applyTOShortcutCommand(shortcutSnapshot.exists?shortcutSnapshot.data():emptyTOShortcuts(),command,context);
         transaction.set(reference,result);
         return result;
+      });
+    },
+    // Server-side radio-observer: maak alleen aantoonbaar aanwezige, geldige
+    // radioploegen aan. De browser mag deze automatische invoer niet vervalsen.
+    async autoImportRadioTeams(snapshot,{now,sessionId}={}){
+      if(!snapshot?.configured||!snapshot.connected||snapshot.stale||
+        !Array.isArray(snapshot.users)||!Number.isSafeInteger(now)||
+        typeof sessionId!=='string')return [];
+      const fetched=Date.parse(snapshot.fetchedAt||'');
+      if(!Number.isFinite(fetched)||fetched>now+1000||now-fetched>45000)return [];
+      const candidates=groupRadioCrews(snapshot.users).filter(crew=>{
+        if(!TO_CATEGORIES.includes(crew.category)||crew.category==='OPLEIDING')return false;
+        if(!crew.members.length||crew.members.length>2||
+          serviceForCategory(crew.category).id==='overige')return false;
+        if(!crew.members.every(user=>user.category===crew.category&&user.channel&&
+          (user.importable===true||user.duplicateCallsign===true||user.paired===true)))return false;
+        if(!crew.paired&&crew.members.length!==1)return false;
+        return (['HARTS','HVPK'].includes(crew.category)&&crew.number===crew.category)||
+          (/^\\d{1,5}$/.test(String(crew.number))&&Number(crew.number)>0);
+      });
+      if(!candidates.length)return [];
+      const database=getDatabase(),reference=database.collection(TO_BOARD_COLLECTION).doc('politie');
+      return database.runTransaction(async tx=>{
+        const stored=await tx.get(reference);
+        if(!stored.exists)return [];
+        const board=stored.data();
+        if(board.session?.id!==sessionId)return [];
+        const active=Object.values(board.ploegen||{}).filter(team=>team&&!team.endedAt);
+        const used=new Set(active.flatMap(team=>
+          [team.roepnaam,...(team.leden||[]).map(m=>m.roep)].map(n=>
+            JSON.stringify([team.dienst,/^\\d{1,5}$/.test(String(n))?String(Number(n)):String(n)]))));
+        const imported=[];
+        for(const crew of candidates){
+          if(active.length+imported.length>=TO_BOARD_LIMITS.activeTeams||
+             Object.keys(board.ploegen||{}).length+imported.length>=TO_BOARD_LIMITS.teams||
+             imported.length>=10)break;
+          const own=[...new Set(crew.members.map(m=>m.number)
+            .filter(n=>/^\\d{1,5}$/.test(String(n))&&Number(n)>0||
+              (['HARTS','HVPK'].includes(crew.category)&&n===crew.category))
+            .map(n=>/^\\d{1,5}$/.test(String(n))?String(Number(n)):String(n)))];
+          if(!own.length||own.some(n=>used.has(JSON.stringify([crew.category,n]))))continue;
+          const numbers=crew.paired&&own.length===2?own:[String(crew.number)];
+          if(numbers.some(n=>!own.includes(n)))continue;
+          const leden=numbers.map((roep,i)=>{
+            const person=crew.members.find(m=>String(m.number)===roep||
+              (/^\\d+$/.test(String(m.number))&&Number(m.number)===Number(roep)));
+            const label=String(person?.displayName||person?.name||'').replace(/[<>\\x00-\\x1f\\x7f]/g,' ').trim();
+            const naam=(label.length>=2?label:'Radioploeg '+crew.category+'-'+roep).slice(0,80);
+            return {naam,roep};
+          });
+          const name=['HARTS','HVPK'].includes(crew.category)&&crew.number===crew.category
+            ?crew.category:leden.reduce((highest,member)=>Number(member.roep)>Number(highest)?member.roep:highest,leden[0].roep);
+          const id=randomUUID();
+          board.ploegen[id]={id,dienst:crew.category,leden,koppel:leden.length===2,
+            roepnaam:name,createdAt:now,by:'system:sonoran-radio',
+            available:crew.radioUnavailable!==true,responsePhase:null,
+            radioSource:'sonoran',autoAdded:true,provisional:true};
+          for(const n of own)used.add(JSON.stringify([crew.category,n]));
+          imported.push(id);
+        }
+        if(imported.length){board.revision++;tx.set(reference,board);}
+        return imported;
       });
     },
     async autoEndAbsentRadioTeams(teamIds,snapshot,{now,sessionId}={}){
