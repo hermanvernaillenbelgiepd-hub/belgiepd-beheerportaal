@@ -1,3 +1,14 @@
+// BelgiumPD-afspraak: de rode bol in een Sonoran-RADIONAAM betekent
+// dat deze gebruiker streamt. Niet verwarren met een zenderstatus of met
+// willekeurige Sonoran-kleuren. Alleen de letterlijke emoji telt.
+export function radioMarkedStreamer(value){
+  return typeof value==='string'&&value.includes('🔴');
+}
+export function stripRadioStreamerMarker(value){
+  return typeof value==='string'
+    ?value.replace(/🔴\uFE0F?/gu,'').replace(/\s+/g,' ').trim():value;
+}
+
 // Operational Sonoran availability markers. A standalone NB or (NB), regardless
 // of its position in the radio label, means unavailable. Never treat a substring
 // of an ordinary word (e.g. NBX, HAMB) as a status flag.
