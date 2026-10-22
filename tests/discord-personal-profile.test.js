@@ -80,3 +80,14 @@ test('My Discord reuses central leave APIs and never shows another user’s revi
  assert.ok(server.includes("app.post('/api/leave/requests',requireUser,requireWrites"));
  assert.ok(server.includes("leave.where('personDiscordId','==',req.bpd.discordId)"));
 });
+
+test('Mijn verlofaanvragen staat onmiddellijk na verificatiedatum, vóór de vernieuwknoppen en rolkaarten',()=>{
+ const html=readFileSync(new URL('../public/discord-status.html',import.meta.url),'utf8');
+ const lastVerified=html.indexOf('<dd id="verified">');
+ const leave=html.indexOf('<section class="leave-box" id="myLeave"');
+ const refresh=html.indexOf('<div class="profile-actions">');
+ const roles=html.indexOf('<div class="profile-columns">');
+ assert.ok(lastVerified>=0&&lastVerified<leave,'Laatste verificatie moet boven de verlofaanvraag staan');
+ assert.ok(leave<refresh&&refresh<roles,'Verlof moet voor de knoppen en het rol-, specialisatie- en opleidingsoverzicht staan');
+ assert.equal(html.split('id="myLeave"').length-1,1);
+});
