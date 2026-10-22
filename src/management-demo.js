@@ -8,11 +8,17 @@ import {validatePromotionProposal} from './promotion-proposal-policy.js';
 
 export const DEMO_SUBJECTS=Object.freeze([
   {dept:'politie',discordId:'DEMO-POL-201',name:'[DEMO] Noor Vermeer',call:'TEST-201',rank:'Agent van politie',demo:true},
-  {dept:'politie',discordId:'DEMO-POL-235',name:'[DEMO] Milan De Smet',call:'TEST-235',rank:'Inspecteur',demo:true},
-  {dept:'politie',discordId:'DEMO-POL-302',name:'[DEMO] Lotte Peeters',call:'TEST-302',rank:'Hoofdinspecteur',demo:true},
+  {dept:'politie',discordId:'DEMO-POL-235',name:'[DEMO] Milan De Smet',call:'TEST-235',rank:'Agent van politie',demo:true},
+  {dept:'politie',discordId:'DEMO-POL-302',name:'[DEMO] Lotte Peeters',call:'TEST-302',rank:'Aspirant Inspecteur van Politie',demo:true},
   {dept:'brandweer',discordId:'DEMO-BW-901',name:'[DEMO] Emma Jacobs',call:'TEST-BW-901',rank:'Brandweerman',demo:true},
   {dept:'ambulance',discordId:'DEMO-AMB-901',name:'[DEMO] Ruben Maes',call:'TEST-AMB-901',rank:'Ambulancier',demo:true},
-  {dept:'depannage',discordId:'DEMO-DEP-901',name:'[DEMO] Lisa Claes',call:'TEST-DEP-901',rank:'Depanneur',demo:true}
+  {dept:'depannage',discordId:'DEMO-DEP-901',name:'[DEMO] Lisa Claes',call:'TEST-DEP-901',rank:'Depanneur',demo:true},
+  {dept:'politie',discordId:'DEMO-POL-150',name:'[DEMO] Niels Roeland',call:'TEST-150',rank:'Agent van Politie',demo:true},
+  {dept:'politie',discordId:'DEMO-POL-450',name:'[DEMO] Robin Martens',call:'TEST-450',rank:'Inspecteur van Politie',demo:true},
+  {dept:'politie',discordId:'DEMO-POL-540',name:'[DEMO] Julie Vos',call:'TEST-540',rank:'Eerste Inspecteur van Politie',demo:true},
+  {dept:'politie',discordId:'DEMO-POL-650',name:'[DEMO] Senne Wouters',call:'TEST-650',rank:'Aspirant Hoofdinspecteur van Politie',demo:true},
+  {dept:'politie',discordId:'DEMO-POL-750',name:'[DEMO] Emma Van Dijk',call:'TEST-750',rank:'Hoofdinspecteur van Politie',demo:true},
+  {dept:'politie',discordId:'DEMO-POL-850',name:'[DEMO] Lars Verhaegen',call:'TEST-850',rank:'Eerste Hoofdinspecteur van Politie',demo:true}
 ]);
 
 export const isDemoSubject=id=>DEMO_SUBJECTS.some(person=>person.discordId===id);
