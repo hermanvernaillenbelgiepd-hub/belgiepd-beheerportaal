@@ -126,7 +126,7 @@
   function policeCadre(person){
     if(person?.dept!=='politie')return null;
     const raw=String(person.call||'').trim();
-    const match=raw.match(/^(?:[a-z]+[- ]?)?(\\d{3})$/i);
+    const match=raw.match(/^(?:[a-z]+[- ]?)?(\d{3})$/i);
     const number=match?Number(match[1]):null;
     if(number!==null && number>=100 && number<=299)return 'Agentenkader';
     const code=rankInfo(person.rank,'politie').code;
