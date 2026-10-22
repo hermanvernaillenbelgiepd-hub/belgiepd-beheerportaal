@@ -3,7 +3,7 @@ import {getAuth} from 'firebase-admin/auth';
 import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,mayApproveLeave,
   mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,
-  validateGrant,activeGrant,roleForDepartment} from './leave-policy.js';
+  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,leaveApplicantIsCorps} from './leave-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 
@@ -56,6 +56,17 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       activeBoardAppointment(board.data());
     return leaveGrantDepartments(actor,verified);
   }
+  // Verifieer bestuurslidmaatschap bij iedere gevoelige aanvraag tegen actuele bron.
+  async function verifiedBoardFor(actor){
+    if(!validDiscordId(actor?.discordId))return false;
+    if(actor.role==='beheerder')return true; // Technisch beheer.
+    const [member,appointment]=await Promise.all([
+      db().collection('bpd_discord_auth').doc(actor.discordId).get(),
+      db().collection('bpd_board_appointments').doc(actor.discordId).get()
+    ]);
+    return verifyBoardDiscordRole(member.exists?member.data():null,process.env.DISCORD_GUILD_ID)||
+      activeBoardAppointment(appointment.exists?appointment.data():null);
+  }
   async function grantFor(actor){
     // Discord ID is the canonical grant key. Old Google-UID documents continue
     // to work until replaced; a revoked Discord grant overrides an old one.
@@ -80,31 +91,39 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
   // Dedicated notifications capability: personnel requests remain elsewhere.
   app.get('/api/leave/notifications/context',requireUser,async(req,res)=>{
     try{
-      await context(req);
+      const board=await verifiedBoardFor(req.bpd);
+      if(!board)await context(req);
       const delegated=Boolean(activeGrant(await grantFor(req.bpd)));
-      return res.json({canReview:mayReviewLeaveNotifications(req.bpd,delegated),
-        writesEnabled:writes()});
+      return res.json({canReview:board||mayReviewLeaveNotifications(req.bpd,delegated),
+        canOverride:board,writesEnabled:writes()});
     }catch(e){return jsonError(res,e)}
   });
   app.get('/api/leave/requests',requireUser,async(req,res)=>{
     try {
-      const {departments}=await context(req),leave=db().collection(coll);
+      const board=await verifiedBoardFor(req.bpd);
+      const {departments}=board?{departments:req.bpd.departments}:await context(req);
+      const leave=db().collection(coll);
       const grant=activeGrant(await grantFor(req.bpd));
       const my=await leave.where('personDiscordId','==',req.bpd.discordId).limit(100).get();
-      let review=[];
-      if(grant){
+      let review=[],overrides=[];
+      if(board||grant){
         const all=await leave.limit(250).get();
         review=all.docs.filter(d=>d.get('status')==='pending'&&d.get('personDiscordId')!==req.bpd.discordId);
-      } else if(req.bpd.departments.length===1 || Object.keys(req.bpd.departmentRoles||{}).length){
+        if(board)overrides=all.docs.filter(d=>
+          ['approved','rejected'].includes(d.get('status'))&&d.get('personDiscordId')!==req.bpd.discordId);
+      }else if(req.bpd.departments.length===1||Object.keys(req.bpd.departmentRoles||{}).length){
         const permitted=departments.filter(d=>req.bpd.departments.includes(d));
-        const lists=await Promise.all(permitted.map(dept=>leave.where('subjectDepartments','array-contains',dept).limit(100).get()));
-        review=[...new Map(lists.flatMap(x=>x.docs).filter(d=>d.get('status')==='pending').map(d=>[d.id,d])).values()];
+        const lists=await Promise.all(permitted.map(dept=>
+          leave.where('subjectDepartments','array-contains',dept).limit(100).get()));
+        review=[...new Map(lists.flatMap(x=>x.docs)
+          .filter(d=>d.get('status')==='pending').map(d=>[d.id,d])).values()];
       }
-      review=review.filter(d=>mayApproveLeave(req.bpd,d.data(),grant));
+      review=review.filter(d=>mayApproveLeave(req.bpd,d.data(),grant,yyyyMmDd(),board));
       const byTime=(a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''));
       return res.json({mine:my.docs.map(d=>item(d,true)).sort(byTime),
         toReview:review.map(d=>item(d,false)).sort(byTime),
-        limited:my.docs.length===100||review.length>=100});
+        toOverride:board?overrides.map(d=>item(d,false)).sort(byTime):[],
+        canOverride:board,limited:my.docs.length===100||review.length>=100||overrides.length>=250});
     }catch(e){return jsonError(res,e)}
   });
   // Dossierweergave per hulpdienst: enkel kalenderdata/status, GEEN reden of
@@ -146,12 +165,33 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       const ref=db().collection(coll).doc(`${id}_${details.startDate}_${details.endDate}`);
       const subjectDepartments=departmentsOf(records);
       if(!subjectDepartments.length)throw rejection('Geen actieve hulpdiensten gevonden',403);
+      const isCorps=leaveApplicantIsCorps(req.bpd,subjectDepartments);
+      const status=leaveSubmissionStatus(details.days,isCorps);
+      const subjectDepartmentRoles=Object.fromEntries(subjectDepartments.map(dept=>[
+        dept,req.bpd.portalTechnicalMode===true
+          ?req.bpd.operationalDepartmentRoles?.[dept]||null
+          :roleForDepartment(req.bpd,dept)
+      ]));
+      const autoApproved=status==='approved';
       try{
-        await ref.create({...details,personDiscordId:id,subjectName,subjectDepartments,
-          status:'pending',submittedByUid:req.bpd.uid,submittedByDiscordId:id,
-          createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
-      }catch(e){if(e.code===6||e.code==='already-exists')throw rejection('Voor deze exacte periode bestaat al een aanvraag',409);throw e}
-      return res.status(201).json({id:ref.id,status:'pending',days:details.days});
+        await db().runTransaction(async tx=>{
+          const existing=await tx.get(ref);
+          if(existing.exists)throw rejection('Voor deze exacte periode bestaat al een aanvraag',409);
+          tx.create(ref,{...details,note:isCorps?'':details.note,
+            personDiscordId:id,subjectName,subjectDepartments,subjectDepartmentRoles,
+            subjectRole:req.bpd.portalTechnicalMode===true?req.bpd.operationalRole:req.bpd.role,
+            status,autoApproved,approvalReason:isCorps?'korpsleiding_vrijgesteld':
+              autoApproved?'duur_7_tot_14_dagen':null,
+            submittedByUid:req.bpd.uid,submittedByDiscordId:id,
+            ...(autoApproved?{decidedAt:FieldValue.serverTimestamp(),decidedBy:'system'}:{}),
+            createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
+          tx.create(ref.collection('audit').doc(),{action:autoApproved?
+            (isCorps?'korpsleiding_vrijgesteld':'automatic_approved'):'submitted',
+            actorUid:req.bpd.uid,actorDiscordId:id,days:details.days,
+            at:FieldValue.serverTimestamp()});
+        });
+      }catch(e){if(e.code===6||e.code==='already-exists'||e.status===409)throw rejection('Voor deze exacte periode bestaat al een aanvraag',409);throw e}
+      return res.status(201).json({id:ref.id,status,days:details.days,automatic:autoApproved});
     }catch(e){return jsonError(res,e)}
   });
   app.post('/api/leave/requests/:id/decision',requireUser,requireWrites,async(req,res)=>{
