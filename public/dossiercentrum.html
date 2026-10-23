@@ -41,6 +41,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .my-service-tabs button{background:#1a3657;border-color:#456b96;padding:10px 13px}
 .my-service-tabs button[aria-pressed="true"]{background:#345fe1;border-color:#9abaff}
 .my-service-tabs button:focus-visible{outline:3px solid #bed5ff;outline-offset:2px}
+#burgerEnroll[hidden]{display:none!important}#burgerEnroll:not([hidden]){display:flex;gap:9px;flex-wrap:wrap;align-items:end}
 .service-buttons{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:15px 0 17px}
 .service-button{background:#152b49;border:1px solid #385b80;border-left:5px solid var(--service-accent,#6999e4);
   border-radius:11px;text-align:left;padding:13px 12px;min-height:91px;display:flex;flex-direction:column;
@@ -92,7 +93,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <h2>Mijn dossierdiensten</h2>
 <p class="service-notice">Je ziet hier uitsluitend diensten waarvan de server jouw leidinggevende of bestuursrechten heeft bevestigd. Klik op een dienst om alleen die personeelsleden te tonen.</p>
 <div class="my-service-tabs" id="myServiceTabs" role="group" aria-label="Mijn toegelaten dossierdiensten"></div>
-<form id="burgerEnroll" hidden style="margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;align-items:end">
+<form id="burgerEnroll" hidden style="margin-top:16px">
 <div><label for="burgerPersonId">Burger registreren na Discord-verificatie</label>
 <input id="burgerPersonId" placeholder="Discord-ID burger" pattern="[0-9]{15,22}" maxlength="22" required></div>
 <button type="submit">Nieuw Burgerdossier</button>
