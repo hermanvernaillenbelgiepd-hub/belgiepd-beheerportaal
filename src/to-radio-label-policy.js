@@ -11,7 +11,10 @@ export function radioLabelInput(value){
   return label;
 }
 export const mayEditRadioLabel=actor=>canOperateBoard(actor);
-export const radioLabelWritesEnabled=env=>env.FIREBASE_PROJECT_ID==='belgiepd-test'&&
+// Enable only by an explicit service-level setting, with a configured
+// Firestore project. Permissions are independently enforced per request.
+export const radioLabelWritesEnabled=env=>typeof env.FIREBASE_PROJECT_ID==='string'&&
+  env.FIREBASE_PROJECT_ID.trim().length>0&&
   env.BPD_ENABLE_TO_RADIO_LABEL_WRITES==='true';
 export function enrichRadioSnapshot(snapshot,records){
   const safe=new Map((records||[])
