@@ -639,9 +639,21 @@ function setupDossierTabs(){
   $('staffProfileReason').required=false;
   $('staffProfileSave').hidden=true;
   $('save').hidden=true;
+  const generalCell=sheet.querySelector('[data-sheet-tile="gegevens"]');
+  const reasonRow=$('reason').closest('div');
+  reasonRow.classList.add('personnel-info-reason');
+  reasonRow.querySelector('label').textContent='Motivering wijziging (minimaal 15 tekens)';
+  generalCell.append(reasonRow, generalCell.querySelector('.personnel-info-actions'));
   $('savePersonnelInfoAll').onclick=savePersonnelInfoAll;
   $('reason').placeholder='Reden van de wijziging (minstens 15 tekens)';
   $('reason').minLength=15;
+  // Enter in een van de twee bestaande formulieren gebruikt ook het
+  // gezamenlijke opslagpad en kan dus geen enkele controle omzeilen.
+  for(const formId of ['editForm','staffProfileForm'])
+    $(formId).addEventListener('submit',event=>{
+      event.preventDefault();event.stopImmediatePropagation();
+      void savePersonnelInfoAll();
+    },true);
   // Observatie/sanctie delen een beveiligd formulier met een typekeuze.
   // Eén brede regel voorkomt dubbele invoerknoppen of formulieren.
   $('formalInlineArea').append($('formalWriteStatus'),$('staffFormalForm'));
@@ -1101,6 +1113,8 @@ function updateGeneralPersonnelInfoDisplay(){
   $('editForm').hidden=!canCore;
   $('staffProfileForm').hidden=!canProfile;
   $('savePersonnelInfoAll').hidden=!canWrite;
+  $('reason').closest('.personnel-info-reason').hidden=!canWrite;
+  $('reason').disabled=!canWrite;
   $('sheetProfile').hidden=canWrite;
   $('personnelInfoSaveState').textContent=canWrite?
     'Alle wijzigingen in deze rubriek worden samen opgeslagen met één motivering.':
