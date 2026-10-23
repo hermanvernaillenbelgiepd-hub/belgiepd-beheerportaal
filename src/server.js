@@ -41,6 +41,7 @@ import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPT
   verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {deriveServiceDossierDepartments,verifiedFireZoneChief} from './service-dossier-access.js';
+import {burgerDossierScope,BURGER_PERSONNEL_COLLECTION} from './burger-role-policy.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
@@ -73,7 +74,7 @@ app.use('/api/to',express.json({limit:'24kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
 installRoleRoutes(app);
-const allDepts=['politie','brandweer','ambulance','depannage'];
+const allDepts=['politie','brandweer','ambulance','depannage','burger'];
 const docs={
   politie:'POLITIE!A3:R300', ambulance:'AMBULANCE!A3:K150',
   brandweer:'BRANDWEER!A3:N150', depannage:'DEPANNAGE!A3:H120'
@@ -252,19 +253,31 @@ async function getSourceSnapshot(forceRefresh=false){
 async function getSnapshot({forceRefresh=false}={}){
   const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
-  const [created,edits,specialties]=await Promise.all([
+  const [created,edits,specialties,burger]=await Promise.all([
     on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(500).get():null,
     process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'
       ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null,
     specialtyReadEnabled(process.env)
-      ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null
+      ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null,
+    // Nieuwe burgerpersoneelsbron, GEEN toegang tot oude /api/citizens.
+    process.env.BPD_ENABLE_BURGER_DOSSIERS==='true'?
+      getFirestore().collection(BURGER_PERSONNEL_COLLECTION).limit(500).get():null
   ]);
-  if(created?.size===500||edits?.size===400||specialties?.size===600)throw Error('Te veel personeelsrecords; migratiecontrole nodig');
+  if(created?.size===500||edits?.size===400||specialties?.size===600||burger?.size===500)throw Error('Te veel personeelsrecords; migratiecontrole nodig');
   const added=(created?.docs||[]).map(d=>asCreatedPersonnel(d.data())).filter(Boolean);
   // Never silently override or duplicate an original service+Discord ID.
   const keys=new Set(base.data.map(p=>p.dept+':'+p.personId));
   const extra=added.filter(p=>!keys.has(p.dept+':'+p.personId));
-  const combined=base.data.concat(extra);
+  const burgerRows=(burger?.docs||[]).map(doc=>{
+    const p=doc.data();
+    if(p.discordId!==doc.id||!/^\\d{15,22}$/.test(doc.id)||
+      typeof p.name!=='string'||!p.name.trim())return null;
+    return {dept:'burger',personId:doc.id,name:p.name.slice(0,120),
+      call:typeof p.call==='string'?p.call.slice(0,24):'—',
+      rank:'Burger (rol nog te verifiëren)',series:'Burger',status:'In afwachting',
+      specialties:[],source:'firestore-created'};
+  }).filter(Boolean);
+  const combined=base.data.concat(extra,burgerRows);
   const personnel=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
   return {...base,data:specialties?applySpecialtyOverlays(personnel,specialties.docs):personnel};
 }
@@ -356,8 +369,12 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
       verifyBoardDiscordRole(member?.exists?member.data():null,process.env.DISCORD_GUILD_ID)||
       activeBoardAppointment(appointment?.exists?appointment.data():null)
     ));
-    req.bpd.dossierNativeDepartments=native;
-    req.bpd.dossierAllowedDepartments=scope.departments;
+    const burgerScope=process.env.BPD_ENABLE_BURGER_DOSSIERS==='true'
+      ?burgerDossierScope(req.bpd,member?.exists?member.data():null,
+          process.env.DISCORD_GUILD_ID):{read:false,write:false,council:false};
+    req.bpd.burgerDossierAccess=burgerScope;
+    req.bpd.dossierNativeDepartments=burgerScope.write?[...native,'burger']:native;
+    req.bpd.dossierAllowedDepartments=burgerScope.read?[...scope.departments,'burger']:scope.departments;
     req.bpd.dossierManageDepartments=scope.manageDepartments;
     req.bpd.dossierFullDepartments=scope.fullDepartments;
     req.bpd.dossierTester=scope.tester;
