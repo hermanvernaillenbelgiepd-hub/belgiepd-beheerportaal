@@ -20,6 +20,26 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 .personnel-quicklink{display:inline-flex;align-items:center;justify-content:center;border:1px solid #547ab1;background:#203a5d;color:#deebff;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;text-decoration:none}
 .personnel-quicklink:hover{background:#30507b;color:white}
 .personnel-quicklink:focus-visible{outline:2px solid #9dc5ff;outline-offset:2px}
+/* TEST: Board-only Discord intake, no nested scrollbar or bundled actions. */
+#pendingBoardPanel{margin-top:24px;padding-top:18px;border-top:1px solid #395678}
+.pending-board-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pending-board-card{border-bottom:1px solid #35506f;padding:15px 0}
+.pending-board-grid{display:grid;grid-template-columns:minmax(120px,1.2fr) minmax(110px,1fr) minmax(70px,.7fr) minmax(85px,.7fr) minmax(160px,1.4fr);gap:10px;align-items:start}
+.pending-board-field{min-width:0;overflow-wrap:anywhere}
+.pending-board-field small{display:block;color:#91a9c9;margin-bottom:4px;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.pending-board-field strong,.pending-board-field code{font-size:12px;color:#e9f4ff}
+.pending-board-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.pending-board-actions button{width:auto;flex:0 0 auto;white-space:nowrap;font-size:12px;padding:8px 11px}
+.pending-board-actions .pending-status{font-size:12px;color:#b5cde9;margin-right:auto;min-width:140px}
+#pendingBoardList{max-height:none;overflow:visible}
+#pendingBoardList .pending-board-card:last-child{border-bottom:0}
+@media(max-width:760px){
+ .pending-board-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .pending-board-field:last-child{grid-column:1/-1}
+ .pending-board-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .pending-board-actions .pending-status{grid-column:1/-1}
+ .pending-board-actions button{white-space:normal;width:100%;min-width:0}
+}
 </style></head>
 <body>
 <header><div><strong>🛡️ BelgiumPD</strong> / Gebruikersbeheer</div><nav><a href="/">Dashboard</a><a href="/discord-status.html">Mijn Discord</a><button id="login">Aanmelden</button></nav></header>
@@ -119,6 +139,17 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <h3>Bestuursvoordrachten en aanstellingen</h3>
 <div class="scroller"><table><thead><tr><th>Kandidaat</th><th>Bestuursstatus</th><th>Afzonderlijke bevoegdheden</th><th>Beslissing</th></tr></thead><tbody id="boardTable"></tbody></table></div>
 </div>
+<section id="pendingBoardPanel" hidden aria-labelledby="pendingBoardTitle">
+  <div class="pending-board-header">
+    <h3 id="pendingBoardTitle">Wacht op Discord-koppeling</h3>
+    <button type="button" id="pendingBoardReload" class="alt">Vernieuwen</button>
+  </div>
+  <p id="pendingBoardSummary" class="muted"></p>
+  <label><input type="checkbox" id="onlyBoardApprovals"> Alleen aanvragen die op kadergoedkeuring wachten</label>
+  <p class="muted">Alleen geverifieerd Bestuur kan deze interne personeelsreferenties bekijken.
+  Koppelingen goedkeuren of afwijzen vereist daarnaast de bestaande operationele kaderbevoegdheid.</p>
+  <div id="pendingBoardList"></div>
+</section>
 </section>
 <section id="leaveGrantSection" class="card" hidden>
 <h2>📅 Tijdelijke functie VERLOFBEHEER</h2>
@@ -186,6 +217,102 @@ for(const b of $('manageTabs').querySelectorAll('button[data-tab]'))
     showManageTabs();
   };
 
+
+let pendingBoardPeople=[];
+function pendingInvitation(person){
+  return 'BelgiumPD personeelskoppeling\\n'+
+    'Naam: '+person.name+'\\n'+
+    'Hulpdienst: '+(deptNames[person.dept]||person.dept)+'\\n'+
+    'Interne referentie: '+person.internalId+'\\n'+
+    'Open: '+location.origin+'/personeel-koppelen.html\\n'+
+    'Meld je met je eigen Discord-account aan en vul de referentie in. '+
+    'De koppeling wordt pas na bevoegde kadergoedkeuring uitgevoerd. '+
+    'Verstuur deze uitnodiging uitsluitend privé.';
+}
+async function pendingBoardDecision(person,action,button){
+  if(!person.canReview)return;
+  const approved=action==='approve';
+  if(!confirm((approved?'Koppeling goedkeuren':'Koppelaanvraag afwijzen')+
+      ' voor '+person.name+'? De registratie verleent geen Discord- of portaalrechten.'))return;
+  const reason=prompt('Motivering (minstens 10 tekens):',
+    approved?'Discord-identiteit en personeelsfiche gecontroleerd':
+      'Koppelverzoek afgewezen na controle');
+  if(reason===null)return;
+  button.disabled=true;
+  try{
+    await api('/api/personnel/link/'+encodeURIComponent(person.internalId)+'/'+action,
+      {method:'POST',body:{reason}});
+    notice(approved?'Discord-koppeling goedgekeurd.':'Discord-koppelaanvraag afgewezen.');
+    await loadPendingBoard();
+  }catch(e){notice(e.message,true);button.disabled=false}
+}
+function pendingField(label,value,code=false){
+  const el=document.createElement('div');el.className='pending-board-field';
+  const heading=document.createElement('small');heading.textContent=label;
+  const item=document.createElement(code?'code':'strong');
+  item.textContent=String(value||'—');
+  el.append(heading,item);return el;
+}
+function renderPendingBoard(){
+  const box=$('pendingBoardList');box.replaceChildren();
+  const people=pendingBoardPeople;
+  const approvals=people.filter(p=>p.request).length;
+  $('pendingBoardSummary').textContent=people.length+' zonder Discord-koppeling · '+
+    approvals+' wachten op kadergoedkeuring · '+(people.length-approvals)+' wachten op aanvraag';
+  const filtered=people.filter(p=>!$('onlyBoardApprovals').checked||p.request);
+  if(!filtered.length){box.textContent='Geen aanvragen binnen dit filter.';return}
+  for(const p of filtered){
+    const card=document.createElement('article');card.className='pending-board-card';
+    const grid=document.createElement('div');grid.className='pending-board-grid';
+    grid.append(pendingField('Personeelslid',p.name),
+      pendingField('Hulpdienst',deptNames[p.dept]||p.dept),
+      pendingField('Roepnummer',p.call),pendingField('Rang',p.rank),
+      pendingField('Interne referentie',p.internalId,true));
+    const actions=document.createElement('div');actions.className='pending-board-actions';
+    const state=document.createElement('span');state.className='pending-status';
+    state.textContent=p.status+(p.request?
+      ' · '+String(p.request.username||'Discord-lid'):'');
+    actions.append(state);
+    const copy=document.createElement('button');copy.type='button';copy.className='alt';
+    copy.textContent='Kopieer uitnodiging';
+    copy.onclick=async()=>{
+      const invitation=pendingInvitation(p);
+      try{await navigator.clipboard.writeText(invitation);
+        notice('Uitnodiging gekopieerd. Deel deze alleen privé met '+p.name+'.')}
+      catch{window.prompt('Kopieer de uitnodiging:',invitation)}
+    };
+    actions.append(copy);
+    if(p.request&&p.canReview){
+      for(const [action,title] of [['approve','Koppeling goedkeuren'],['reject','Aanvraag afwijzen']]){
+        const button=document.createElement('button');button.type='button';
+        button.className='alt';button.textContent=title;
+        button.onclick=()=>pendingBoardDecision(p,action,button);
+        actions.append(button);
+      }
+    }
+    card.append(grid,actions);box.append(card);
+  }
+}
+async function loadPendingBoard(){
+  const panel=$('pendingBoardPanel');
+  panel.hidden=true;pendingBoardPeople=[];
+  if(!auth?.currentUser)return;
+  try{
+    // Strictly checked by the server; a hidden tab gives no access.
+    const result=await api('/api/personnel/pending-links');
+    if(result.boardOnly!==true)throw Error('Bestuursverificatie ontbreekt');
+    pendingBoardPeople=result.pendingPersonnel||[];
+    panel.hidden=false;
+    renderPendingBoard();
+    if(result.limited)notice('De koppelingenlijst bereikt de veilige limiet van 500 records.',true);
+  }catch(e){
+    panel.hidden=true;
+    if(!/403|Bestuur|Geen toegang|Aanmelding/i.test(e.message||''))
+      notice('Discord-koppelingen konden niet geladen worden: '+e.message,true);
+  }
+}
+$('pendingBoardReload').onclick=loadPendingBoard;
+$('onlyBoardApprovals').onchange=renderPendingBoard;
 function render(){
   const list=$('list');list.replaceChildren();
   const matches=items.filter(x=>$('filter').value==='all'||x.status===$('filter').value);
@@ -603,12 +730,13 @@ async function refresh(){
   await loadAdmin();
   await loadTOGrants();
   await boardRefresh();
+  await loadPendingBoard();
   try{if(await dossierGrants.load())$('dossierGrantSection').dataset.authorized='yes'}catch(e){notice('Dienstbeheer: '+e.message,true)}
   await loadLeaveGrantManager();
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();showManageTabs()};$('filter').onchange=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadTOGrants();await boardRefresh();await loadPendingBoard();await dossierGrants.load();await loadLeaveGrantManager();showManageTabs()};$('filter').onchange=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
