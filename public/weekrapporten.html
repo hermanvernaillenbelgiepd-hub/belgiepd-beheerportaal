@@ -75,7 +75,7 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 </main><footer>BelgiëPD Beheerportaal · Alleen gemachtigde kaderleden · Google Sheets blijft alleen-lezen · Geen Discord-berichten</footer>
 <script type="module">
 const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const labels={observatie:'Observatie',sanctie:'Sanctie',verlof:'Verlof',notitie:'Personeelsnotitie',opleiding:'Gedane opleiding',naamswijziging:'Naamswijziging',promotievoorstel:'Promotievoorstel',personeelsbeweging:'Personeelsbeweging'};
+const labels={observatie:'Observatie',sanctie:'Sanctie',functiewijziging:'Functiewijziging',verlof:'Verlof',notitie:'Personeelsnotitie',opleiding:'Gedane opleiding',naamswijziging:'Naamswijziging',promotievoorstel:'Promotievoorstel',personeelsbeweging:'Personeelsbeweging'};
 const extraFields={verlof:['endDateWrap'],opleiding:['courseWrap'],naamswijziging:['nameWrap'],promotievoorstel:['rankWrap'],personeelsbeweging:['movementWrap']};
 const allTypes=['verlof','notitie','opleiding','promotievoorstel','naamswijziging','personeelsbeweging'];
 let firebaseAuth=null,authModule=null,authApp=null,subjects=[],viewData=null,currentTab='cases',reportItems=[],activeReport=null;
