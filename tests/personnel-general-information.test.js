@@ -52,3 +52,17 @@ test('Beide personeelsroutes gebruiken dezelfde serverpolicy; Middenkader status
   assert.ok(inline);
   assert.doesNotThrow(()=>new Script(inline.replace(/^import [^\n]*\n/gm,'')));
 });
+
+test('Personeelsinformatie blijft zichtbaar als alleen-lezen fiche zonder extra administratieve invulling',()=>{
+  const ui=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  const css=readFileSync(new URL('../public/personnel-onepage-test.css',import.meta.url),'utf8');
+  for(const field of ['Naam','Roepnummer','Graad','Status','Reeks',
+    'Discord ID','Aanstellingsdatum','Eenheid / ploeg','Functie / opdracht'])
+    assert.ok(ui.includes("['"+field+"',"),field);
+  assert.match(ui,/root\.append\(list\)/);
+  assert.match(ui,/detail\.textContent=String\(value\?\?''\)\.trim\(\)\|\|'Niet ingevuld'/);
+  assert.match(ui,/\$\('sheetProfile'\)\.hidden=canWrite/);
+  assert.match(ui,/sheetDossierProfile\(\{\}\)/);
+  assert.match(ui,/\$\('savePersonnelInfoAll'\)\.hidden=!canWrite/);
+  assert.match(css,/\.personnel-readonly-grid/);
+});
