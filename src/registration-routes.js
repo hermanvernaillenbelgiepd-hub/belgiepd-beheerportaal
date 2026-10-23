@@ -1,5 +1,6 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
+import {SPECIALTY_LABELS} from './normalize.js';
 import {roleForDepartment} from './leave-policy.js';
 import {basicObservationTargets} from './basic-observation-policy.js';
 import { actorFromPersonnel, isCadre, isDiscordId, mayAmend, mayRead, maySubmit, canChooseSanction, permittedSanctionTypes, canRepresent, eligibleRepresentative, representativeFromPersonnel, safeSubject, validateAmend, validateEntry, SANCTION_REASONS } from './registrations.js';
@@ -13,7 +14,7 @@ function publicEntry(record) {
   return {...fields,createdAt:isoTimestamp(createdAt),modifiedAt:isoTimestamp(modifiedAt)};
 }
 function handleError(res,err){
-  if (err instanceof Error && /^(Vereist veld|Onbekend registratietype|Ongeldig|Gebruik een geldige|Selecteer minstens|Andere|Ernst|Geef een reden)/.test(err.message))
+  if (err instanceof Error && /^(Vereist veld|Onbekend registratietype|Ongeldig|Gebruik een geldige|Selecteer minstens|Andere|Ernst|Einddatum tijdelijke beperking|Geef een reden)/.test(err.message))
     return res.status(400).json({error:err.message});
   console.error('Registratieopslag mislukt:',err?.code||err?.message||'onbekend');
   return res.status(503).json({error:'Beveiligde registratieopslag momenteel niet beschikbaar. Controleer Firestore-toegang van het serviceaccount.'});
@@ -72,6 +73,9 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
          fireZoneChief:req.bpd.fireZoneChief===true,portalTechnicalMode:req.bpd.portalTechnicalMode===true,
          fullDossierDepartments:req.bpd.dossierFullDepartments||[],
          sanctionDepartments,heavySanctionDepartments,sanctionAmendDepartments,sanctionRoles,sanctionOptionsByDepartment,sanctionReasons:SANCTION_REASONS,
+         restrictionSpecialtiesByDepartment:Object.fromEntries(req.bpd.departments
+           .filter(dept=>Array.isArray(SPECIALTY_LABELS[dept]))
+           .map(dept=>[dept,SPECIALTY_LABELS[dept]])),
          observationDepartments:DEPTS.filter(d=>(req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&maySubmit(req.bpd,'observatie',d)),actor,representatives,
          subjects:(basic?(limited?.targets||[]):subset)
            .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call}))});
@@ -118,7 +122,10 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
             severity:before.severity||null,status:before.status||'onbekend',
             details:String(before.details||'').slice(0,6000),
             reasons:Array.isArray(before.reasons)?before.reasons.slice(0,12):[],
-            explanation:String(before.explanation||'').slice(0,2000)
+            explanation:String(before.explanation||'').slice(0,2000),
+            restrictedSpecialties:Array.isArray(before.restrictedSpecialties)
+              ?before.restrictedSpecialties.slice(0,12):[],
+            endDate:before.endDate||null
           }
         };
       }),limited:rows.docs.length===40});
