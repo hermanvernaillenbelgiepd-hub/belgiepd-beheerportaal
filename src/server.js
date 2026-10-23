@@ -273,7 +273,7 @@ async function getSnapshot({forceRefresh=false}={}){
   const extra=added.filter(p=>!keys.has(p.dept+':'+p.personId));
   const burgerRows=(burger?.docs||[]).map(doc=>{
     const p=doc.data();
-    if(p.discordId!==doc.id||!/^\\d{15,22}$/.test(doc.id)||
+    if(p.discordId!==doc.id||!/^\d{15,22}$/.test(doc.id)||
       typeof p.name!=='string'||!p.name.trim())return null;
     return {dept:'burger',personId:doc.id,name:p.name.slice(0,120),
       call:typeof p.call==='string'?p.call.slice(0,24):'—',
