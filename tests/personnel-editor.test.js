@@ -11,7 +11,7 @@ const payload={name:'UNEMI Aangepast',call:'932',status:'Actief',reason:'Na veri
 
 test('Personnel keys require known services and genuine Discord IDs',()=>{
  assert.equal(validPersonnelKey('politie',id),true);
- assert.equal(validPersonnelKey('burger',id),false);
+ assert.equal(validPersonnelKey('burger',id),true); // Afzonderlijke Burger-dossiers met eigen backend
  assert.equal(validPersonnelKey('politie','fake'),false);
 });
 test('Officer may read their own services but cannot edit outside officer scope',()=>{
