@@ -418,19 +418,19 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <input id="formalDate" type="date" required aria-label="Datum kiezen met kalender" title="Kies een datum met de kalender">
 </div><small id="formalDateHint">Je kunt de datum typen of kiezen via de kalender.</small></div>
 <div><label for="formalTime">Tijdstip</label><input id="formalTime" type="time" required></div>
-<div><label for="formalEvidence">Bewijslink (optioneel, https)</label><input id="formalEvidence" type="url" maxlength="800" placeholder="https://…"></div>
+<div><label for="formalEvidence">Link naar clip / bewijs (optioneel, https)</label><input id="formalEvidence" type="url" maxlength="800" placeholder="https://…"></div>
 <div id="formalScoreField"><label for="formalScore">Observatiescore (1–10)</label><input id="formalScore" type="number" min="1" max="10" step="1" placeholder="1–10"></div>
 <div style="grid-column:1/-1"><label for="formalDetails">Samenvatting observatie / feiten en omkadering sanctie</label><textarea id="formalDetails" rows="3" maxlength="6000" required></textarea></div>
-<div style="grid-column:1/-1"><label for="formalPlayers">Andere betrokken spelers (optioneel)</label><input id="formalPlayers" maxlength="1000"></div>
+<div style="grid-column:1/-1"><label for="formalPlayers">Betrokken personen (optioneel)</label><input id="formalPlayers" maxlength="1000"></div>
 </div>
 <div id="formalSanctionFields" hidden>
 <h4>Sanctiegegevens</h4><div class="grid">
-<div><label for="formalSeverity">Ernst (1–10)</label><input id="formalSeverity" type="number" min="1" max="10" value="5"></div>
+<div><label for="formalSeverity">Graad van ernst (1–10)</label><input id="formalSeverity" type="number" min="1" max="10" value="5"></div>
 <div><label for="formalSanctionType">Maatregel</label><select id="formalSanctionType"></select></div>
 <div style="grid-column:1/-1"><label>Reden(en) van de sanctie</label><div id="formalReasons" class="formal-reasons"></div></div>
 <div><label for="formalReasonOther">Toelichting bij Anders</label><input id="formalReasonOther" maxlength="500"></div>
 <div><label for="formalCfx">CFX-naam (optioneel)</label><input id="formalCfx" maxlength="120"></div>
-<div style="grid-column:1/-1"><label for="formalExplanation">Aanvullende toelichting (optioneel)</label><textarea id="formalExplanation" rows="2" maxlength="2000"></textarea></div>
+<div style="grid-column:1/-1"><label for="formalExplanation">Omkadering, toelichting en opvolging</label><textarea id="formalExplanation" rows="2" maxlength="2000"></textarea></div>
 </div></div>
 <div id="formalAmendFields" hidden><h4>Bestaande sanctie wijzigen</h4><div class="grid">
 <div><label for="formalAmendStatus">Status</label><select id="formalAmendStatus"><option value="actief">Actief</option><option value="ingetrokken">Ingetrokken</option></select></div>
@@ -692,9 +692,10 @@ function setupDossierTabs(){
       <div id="registrationFields" class="registration-hub-fields"></div>
       <button type="button" id="registrationSubmit">Registratie opslaan</button>
     </section>
-    <div class="landscape-footer"><span>De bestaande dienstgebonden registers blijven de gegevensbron.</span>
-      <button type="button" class="alt" data-open-sheet="historiek">Audit &amp; historiek bekijken</button>
-    </div>
+    <div class="landscape-footer"><span>Alle registraties blijven gecontroleerd bewaard in het juiste dienstregister.</span></div>
+    <details class="dossier-audit-compact" id="auditDetails">
+      <summary>Wijzigingshistoriek en audit <span>Bekijk eerdere wijzigingen</span></summary>
+    </details>
   `);
   panes.overzicht.prepend(sheet);
   // Identiteit staat boven de tabs en niet langer opnieuw in Overzicht.
@@ -779,10 +780,10 @@ function setupDossierTabs(){
   $('staffCaseType').closest('div').hidden=true;
   $('registrationKind').onchange=()=>displaySelectedRegistration();
   $('registrationSubmit').onclick=submitSelectedRegistration;
-  // De oude controleknoppen blijven intern beschikbaar maar niet in het blad.
-  // Eén klik sluit de aanvullende detailrubriek zonder de fiche te verbergen.
+  // Onderhouds- en auditdetails blijven behouden, maar slechts één
+  // uitklapbare regel onderaan het horizontale dossierblad.
   for(const [key,pane] of Object.entries(panes)){
-    if(key==='overzicht')continue;
+    if(key==='overzicht'||key==='historiek')continue;
     const close=document.createElement('button');close.type='button';
     close.className='alt sheet-close-editor';close.textContent='Sluit deze rubriek';
     close.onclick=()=>openDossierTab('overzicht');
@@ -791,6 +792,10 @@ function setupDossierTabs(){
   const rankHistory=$('history'),heading=rankHistory.previousElementSibling;
   if(heading?.tagName==='H3')panes.historiek.append(heading);
   panes.historiek.append(rankHistory);
+  const audit=panes.historiek;
+  audit.hidden=false;
+  audit.querySelector('.sheet-category-heading')?.remove();
+  $('auditDetails').append(audit);
   openDossierTab('overzicht');
 }
 setupDossierTabs();
