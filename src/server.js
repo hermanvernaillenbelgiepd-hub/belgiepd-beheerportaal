@@ -13,6 +13,7 @@ import { buildData } from './normalize.js';
 import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.js';
 import { ALLOWED_ROLES } from './registrations.js';
 import { installRegistrationRoutes } from './registration-routes.js';
+import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import { installManagementRoutes } from './management-routes.js';
@@ -334,6 +335,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
   }
 });
 installRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installBasicObservationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installManagementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installCallsignBotRoutes(app);
