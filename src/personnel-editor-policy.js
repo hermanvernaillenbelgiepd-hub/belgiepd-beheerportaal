@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {roleForDepartment} from './leave-policy.js';
+import {canReadServiceDossier} from './service-dossier-access.js';
 import {policeKader} from './normalize.js';
 
 // Persistent overlays never contain identity, rank or permissions.
