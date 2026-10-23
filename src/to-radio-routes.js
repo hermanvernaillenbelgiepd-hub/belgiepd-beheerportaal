@@ -10,8 +10,11 @@ export function installTORadioRoutes(app,{
   requireUser,service=createSonoranRadioService(),store=null,now=Date.now,firestore=()=>getFirestore()
 }={}){
   const departures=new Map();
-  const labels=()=>firestore().collection('bpd_radio_label_overrides');
-  const audit=()=>firestore().collection('bpd_radio_label_audit');
+  // MAIN gebruikt een eigen naamcorrectieregister. Zelfs als TEST ooit
+  // hetzelfde Firebase-project deelt, overschrijven beide omgevingen
+  // elkaars Sonoran-weergavenamen en wijzigingslogs niet.
+  const labels=()=>firestore().collection('bpd_radio_label_overrides_main');
+  const audit=()=>firestore().collection('bpd_radio_label_audit_main');
   async function withAliases(snapshot){
     if(!snapshot.connected||snapshot.stale)return {...snapshot,radioLabelWritesEnabled:false};
     if(!process.env.FIREBASE_PROJECT_ID)return {...snapshot,radioLabelWritesEnabled:false};
