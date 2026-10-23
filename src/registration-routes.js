@@ -1,6 +1,7 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {roleForDepartment} from './leave-policy.js';
+import {basicObservationTargets} from './basic-observation-policy.js';
 import { actorFromPersonnel, isCadre, isDiscordId, mayAmend, mayRead, maySubmit, canChooseSanction, permittedSanctionTypes, canRepresent, eligibleRepresentative, representativeFromPersonnel, safeSubject, validateAmend, validateEntry, SANCTION_REASONS } from './registrations.js';
 const DEPTS=['politie','brandweer','ambulance','depannage'];
 const trim=s=>String(s??'').trim();
@@ -37,12 +38,16 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
        const heavySanctionDepartments=sanctionDepartments.filter(d=>sanctionRoles[d]==='korpsleiding');
        const sanctionAmendDepartments=sanctionDepartments.filter(d=>mayAmend(req.bpd,'sanctie',d) &&
          ['officierenkader','korpsleiding'].includes(sanctionRoles[d]));
+       const basic=req.bpd.role==='basiskader'&&
+         roleForDepartment(req.bpd,'politie')==='basiskader';
+       const limited=basic?basicObservationTargets(req.bpd,snap.data):null;
        res.json({role:req.bpd.role,departments:req.bpd.departments,writesEnabled:writesEnabled(),
          fireZoneChief:req.bpd.fireZoneChief===true,portalTechnicalMode:req.bpd.portalTechnicalMode===true,
          fullDossierDepartments:req.bpd.dossierFullDepartments||[],
          sanctionDepartments,heavySanctionDepartments,sanctionAmendDepartments,sanctionRoles,sanctionOptionsByDepartment,sanctionReasons:SANCTION_REASONS,
          observationDepartments:DEPTS.filter(d=>(req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&maySubmit(req.bpd,'observatie',d)),actor,representatives,
-         subjects:subset.map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call}))});
+         subjects:(basic?(limited?.targets||[]):subset)
+           .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call}))});
     }catch(err){return handleError(res,err)}
   });
   // Registraties zijn uitsluitend zichtbaar voor kaderleden van de juiste dienst.
@@ -116,6 +121,14 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       if(!target)return res.status(404).json({error:'Personeelslid niet gevonden of Discord ID dubbelzinnig'});
       const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel je ingelogde Google-account eerst aan je eigen Discord ID in de serverconfiguratie'});
+      // Ook oudere formulieren of directe API-aanroepen kunnen deze
+      // beperkingen niet omzeilen: Basiskader uitsluitend naar lagere rangen.
+      if(req.bpd.role==='basiskader'&&roleForDepartment(req.bpd,'politie')==='basiskader'){
+        const {author,targets}=basicObservationTargets(req.bpd,snap.data);
+        if(dept!=='politie'||type!=='observatie'||representedId||!author||
+           !targets.some(p=>p.personId===id))
+          return res.status(403).json({error:'Basiskader mag uitsluitend lagere politiegraden observeren. Sancties of registreren namens derden zijn niet toegestaan.'});
+      }
       const represented=representedId?representativeFromPersonnel(snap.data,dept,representedId):null;
        if(representedId && (!represented || representedId===actor.discordId))
          return res.status(400).json({error:'Ongeldige middenkaderselectie voor registratie namens een ander'});
