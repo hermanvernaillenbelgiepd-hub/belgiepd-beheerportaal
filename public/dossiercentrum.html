@@ -86,11 +86,18 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <button type="button" class="service-button" data-service="ambulance" aria-pressed="false" disabled><span class="service-name">🟢 Ambulance</span><span class="service-count">Geen toegang</span></button>
 <button type="button" class="service-button" data-service="brandweer" aria-pressed="false" disabled><span class="service-name">🔴 Brandweer</span><span class="service-count">Geen toegang</span></button>
 <button type="button" class="service-button" data-service="depannage" aria-pressed="false" disabled><span class="service-name">🟠 Depannage</span><span class="service-count">Geen toegang</span></button>
+<button type="button" class="service-button" data-service="burger" aria-pressed="false" disabled><span class="service-name">🟣 Burger</span><span class="service-count">Geen dossiers</span></button>
 </div><p id="serviceSelected" class="service-notice" role="status">Meld je aan om dossiers te openen.</p></section>
 <section class="card" id="myServices" hidden>
 <h2>Mijn dossierdiensten</h2>
 <p class="service-notice">Je ziet hier uitsluitend diensten waarvan de server jouw leidinggevende of bestuursrechten heeft bevestigd. Klik op een dienst om alleen die personeelsleden te tonen.</p>
 <div class="my-service-tabs" id="myServiceTabs" role="group" aria-label="Mijn toegelaten dossierdiensten"></div>
+<form id="burgerEnroll" hidden style="margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;align-items:end">
+<div><label for="burgerPersonId">Burger registreren na Discord-verificatie</label>
+<input id="burgerPersonId" placeholder="Discord-ID burger" pattern="[0-9]{15,22}" maxlength="22" required></div>
+<button type="submit">Nieuw Burgerdossier</button>
+<small>De burger moet de gedeelde Burger/Burger IO-rol recent bij Discord geverifieerd hebben.</small>
+</form>
 </section>
 <section class="card">
 <div class="filter-grid">
@@ -131,12 +138,12 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 import {filterDossiers,sortDossiers,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
   from '/dossiercentrum-view.js';
 const $=id=>document.getElementById(id);
-const departments={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage'};
+const departments={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage',burger:'Burger'};
 const actions={create:'Fiche aangemaakt',entry_rank:'Instaprang',
   exceptional_entry_rank:'Uitzonderlijke instaprang',promotion:'Promotie',
   link_discord:'Discord gekoppeld',edit:'Personeelswijziging'};
 const historyKinds={personeel:'Personeelswijziging',loopbaan:'Loopbaan'};
-let auth,authModule,rows=[],portalSetup,shown=null,page=1,timelineEntries=[],securedRows=[];
+let auth,authModule,rows=[],portalSetup,shown=null,page=1,timelineEntries=[],securedRows=[],securedDepartments=[],burgerCanWrite=false;
 function message(text,bad=false){$('message').textContent=text;$('message').classList.toggle('error',bad)}
 function node(tag,text,cls){const x=document.createElement(tag);if(text!==undefined)x.textContent=String(text??'');if(cls)x.className=cls;return x}
 function item(root,key,value){const div=node('div',undefined,'kv');div.append(node('strong',key),node('span',value??'—'));root.append(div)}
@@ -173,8 +180,9 @@ function renderServiceButtons(){
 function renderMyServices(){
   const wrap=$('myServices'),root=$('myServiceTabs');
   root.replaceChildren();
-  const permitted=[...new Set(securedRows.map(r=>r.dept))];
+  const permitted=securedDepartments;
   wrap.hidden=permitted.length===0;
+  $('burgerEnroll').hidden=!(burgerCanWrite&&permitted.includes('burger'));
   for(const dept of permitted){
     const button=node('button',departments[dept]||dept);
     button.type='button';
@@ -267,9 +275,8 @@ async function openDossier(r){
   $('matchWarning').textContent='Observaties, opleidingen, notities en historiek zijn afzonderlijk per discipline. Verlof blijft gekoppeld aan de persoon.';
   $('history').textContent='Historiek laden…';
   const frame=$('inlinePersonnelFrame');
-  frame.src='/personeelsbeheer.html?'+new URLSearchParams({
-    embed:'1',dept:r.dept,discordId:r.discordId
-  }).toString();
+  frame.src=(r.dept==='burger'?'/burger-fiche.html?':'/personeelsbeheer.html?')+
+    new URLSearchParams({embed:'1',dept:r.dept,discordId:r.discordId}).toString();
   try{
     const data=await request('/api/dossiercentrum/'+encodeURIComponent(r.dept)+'/'+encodeURIComponent(r.discordId));
     if(shown!==active)return;
@@ -290,7 +297,7 @@ window.addEventListener('message',event=>{
 });
 async function load(){
   closeDossier();
-  securedRows=[];
+  securedRows=[];securedDepartments=[];burgerCanWrite=false;
   try{
     const publicData=await fetch('/api/dossiercentrum/public-roster',{cache:'no-store'}).then(async res=>{
       const body=await res.json().catch(()=>({}));
@@ -302,6 +309,8 @@ async function load(){
       try{
         const secured=await request('/api/dossiercentrum/overview');
         securedRows=secured.rows||[];
+        securedDepartments=secured.departments||[];
+        burgerCanWrite=secured.burgerCanWrite===true;
         // Privé-identiteit wordt alleen gekoppeld na afzonderlijk geautoriseerde API-respons.
         // Bij dubbele publieke identiteiten blokkeren we de knop in plaats van te gokken.
         const index=new Map();
@@ -327,7 +336,7 @@ async function load(){
       }
     }else message('Openbare personeelslijst geladen. Meld je aan om bevoegde fiches te openen.');
     const selected=$('department').value;
-    const available=[...new Set(rows.map(p=>p.dept))];
+    const available=[...new Set([...rows.map(p=>p.dept),...securedDepartments])];
     $('department').replaceChildren(node('option','Alle disciplines'));
     $('department').firstChild.value='all';
     for(const dept of available){
@@ -336,9 +345,27 @@ async function load(){
     $('department').value=available.includes(selected)?selected:'all';
     page=1;renderStats();render();
   }catch(e){
-    rows=[];securedRows=[];renderStats();render();message(e.message,true);
+    rows=[];securedRows=[];securedDepartments=[];burgerCanWrite=false;renderStats();render();message(e.message,true);
   }
 }
+$('burgerEnroll').onsubmit=async event=>{
+  event.preventDefault();
+  if(!burgerCanWrite||!auth?.currentUser)return;
+  const id=$('burgerPersonId').value.trim();
+  if(!/^\d{15,22}$/.test(id))return message('Ongeldig Discord-ID',true);
+  try{
+    const token=await auth.currentUser.getIdToken();
+    const response=await fetch('/api/burger-dossiers/personnel',{
+      method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({discordId:id})
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok)throw Error(result.error||'Burgerdossier kon niet worden aangemaakt');
+    $('burgerPersonId').value='';await load();
+    selectDepartment('burger');
+    message('Burgerdossier aangemaakt. Burger/Burger IO blijft voorlopig onbevestigd.');
+  }catch(e){message(e.message,true)}
+};
 function changedFilters(){page=1;render()}
 $('query').oninput=changedFilters;
 $('sortOrder').onchange=changedFilters;
