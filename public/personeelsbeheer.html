@@ -1271,6 +1271,19 @@ function sheetDossierProfile(profile={}){
   }
   root.append(list);
 }
+// Dynamisch samengesteld uit de twee bestaande beveiligde bronnen.
+let importantCaseEntries=[],importantRestrictionEntries=[],
+  importantCaseLimited=false,importantRestrictionLimited=false;
+function renderDossierImportantNotes(){
+  const entries=[...importantCaseEntries,...importantRestrictionEntries]
+    .sort((a,b)=>String(b.eventDate||'').localeCompare(String(a.eventDate||'')));
+  sheetSetRows('notes',entries,x=>[
+    x.eventDate||'—',
+    x.importantTitle||staffCaseLabels[x.type]||x.type,
+    x.details||'—',
+    'Door '+sheetWho(x)
+  ],'Geen belangrijke notities of tijdelijke beperkingen.',importantCaseLimited||importantRestrictionLimited);
+}
 function sheetCaseRows(entries,limited){
   const cases=entries||[];
   const moves=cases.filter(x=>['personeelsbeweging','promotievoorstel','naamswijziging','functiewijziging'].includes(x.type));
@@ -1278,9 +1291,11 @@ function sheetCaseRows(entries,limited){
     staffCaseLabels[x.type]||x.type,
     x.proposedRank||x.movement||x.newName||x.newFunction||x.details||'—',sheetWho(x)],
     'Geen personeelsbewegingen geregistreerd.',limited);
-  const notes=cases.filter(x=>['notitie','activiteit','specialisatiebeperking'].includes(x.type));
-  sheetSetRows('notes',notes,x=>[x.eventDate||'—',staffCaseLabels[x.type]||x.type,
-    x.details||'—',sheetWho(x)],'Geen notities geregistreerd.',limited);
+  // Houd gewone activiteiten buiten de belangrijke-notitierubriek.
+  // Geverifieerde kadernotities en beperkingen verschijnen hier automatisch.
+  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking'].includes(x.type));
+  importantCaseLimited=Boolean(limited);
+  renderDossierImportantNotes();
 }
 function sheetFormalRows(entries,limited){
   const list=Array.isArray(entries)?entries:[];
@@ -1295,6 +1310,16 @@ function sheetFormalRows(entries,limited){
     'Geen observaties geregistreerd.',limited);
   sheetSetRows('sanctions',list.filter(x=>x.type==='sanctie'),preview,
     'Geen sancties geregistreerd.',limited);
+  // Tijdelijke specialisatiebeperkingen worden in het leesoverzicht
+  // automatisch als belangrijke notitie getoond zonder dubbele opslag.
+  importantRestrictionEntries=list.filter(x=>x.type==='sanctie'&&
+    x.sanctionType==='Tijdelijke beperking')
+    .map(x=>({...x,importantTitle:'Tijdelijke beperking · '+(x.status==='ingetrokken'?'INGETROKKEN':'actief'),
+      details:[x.details,x.explanation,
+        Array.isArray(x.reasons)&&x.reasons.length?'Reden: '+x.reasons.join(', '):'',
+        x.evidenceUrl?'Bewijs: '+x.evidenceUrl:''].filter(Boolean).join(' · ')}));
+  importantRestrictionLimited=Boolean(limited);
+  renderDossierImportantNotes();
 }
 async function loadLinkedPersonnelRecords(p,key){
   const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
@@ -2057,6 +2082,9 @@ async function loadStaffDossier(p){
   $('staffDiscordRoles').textContent='Discord-verificatie controleren…';
   $('staffLeave').textContent='Verlofperiodes laden…';
   $('staffFormalRecords').textContent='Formele registraties laden…';
+  importantCaseEntries=[];importantRestrictionEntries=[];
+  importantCaseLimited=false;importantRestrictionLimited=false;
+  $('sheetNotes').textContent='Notities laden…';
   $('staffFormalForm').hidden=true;
   $('formalWriteActions').hidden=true;
   $('formalWriteStatus').textContent='Invoerrechten controleren…';
