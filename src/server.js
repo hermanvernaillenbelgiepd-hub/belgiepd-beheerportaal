@@ -6,6 +6,7 @@ import { google } from 'googleapis';
 import { initializeApp, applicationDefault, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import {firebaseDiagnostic} from './firebase-diagnostics.js';
 import { discordConfig } from './discord-utils.js';
 import { discordPortalAccess } from './discord-portal-access.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
@@ -179,11 +180,10 @@ async function requireUser(req,res,next){
     // Only log a short, recognized Firebase/backend error code, never
     // bearer tokens, IDs, e.message, or private Firestore contents.
     const rawCode=typeof e?.code==='string'?e.code:'';
-    const code=/^[a-z0-9_/-]{3,45}$/.test(rawCode)?rawCode:'session-check-failed';
-    console.warn('Portaal-aanmeldcontrole:',code);
-    const infra=code.startsWith('app/')||
-      ['unavailable','permission-denied','deadline-exceeded','auth/invalid-credential',
-        '5','7','13','14'].includes(code);
+    const diagnostic=firebaseDiagnostic(e);
+    console.warn('Portaal-aanmeldcontrole:',diagnostic.code,diagnostic.category);
+    const infra=diagnostic.category!=='unexpected_error'||
+      /^(app\\/|auth\\/invalid-credential)/.test(diagnostic.code);
     return res.status(infra?503:401).json({error:infra?
       'De server kan de aanmelding tijdelijk niet controleren. Probeer opnieuw.':
       'Ongeldige of verlopen aanmelding. Meld opnieuw aan met Discord of Google.'});
@@ -403,4 +403,24 @@ app.get('/api/health',(_req,res)=>res.json({
   deployment:publicDeploymentInfo()
 }));
 app.use('/api',(_req,res)=>res.status(404).json({error:'Niet gevonden'}));
-app.listen(Number(process.env.PORT)||8080,()=>console.log('BelgiumPD op poort '+(process.env.PORT||8080)));
+// Non-sensitive read-only health probe: one impossible document ID,
+// performed at startup so missing Firestore configuration is diagnosable
+// even before a member attempts login. No new user data is ever written.
+async function probeDiscordFirestore(){
+  try{
+    if(!getApps().length)
+      initializeApp({credential:applicationDefault(),projectId:process.env.FIREBASE_PROJECT_ID});
+    const check=getFirestore().collection('bpd_discord_auth').doc('000000000000000000').get();
+    const timeout=new Promise((_,reject)=>setTimeout(()=>
+      reject(Object.assign(new Error('Firestore health timeout'),{code:4})),12000));
+    await Promise.race([check,timeout]);
+    console.info('Discord Firebase-databasecontrole: verbonden');
+  }catch(error){
+    const diagnostic=firebaseDiagnostic(error);
+    console.warn('Discord Firebase-databasecontrole:',diagnostic.code,diagnostic.category);
+  }
+}
+app.listen(Number(process.env.PORT)||8080,()=>{
+  console.log('BelgiumPD op poort '+(process.env.PORT||8080));
+  void probeDiscordFirestore();
+});
