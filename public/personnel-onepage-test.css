@@ -115,3 +115,41 @@ body.dossier-onepage .landscape-formal-entry #staffFormalForm .controls{gap:8px}
  body.dossier-onepage .landscape-formal-entry #staffFormalForm .grid{grid-template-columns:1fr}
  body.dossier-onepage .landscape-formal-entry #staffFormalForm .grid>[style*="grid-column"]{grid-column:1/-1!important}
 }
+
+/* Algemene personeelsinformatie: één uniforme invoerstrook, één knop. */
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #editForm,
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #staffProfileForm{
+  margin:0 10px!important;padding:0!important;border:0!important;background:transparent!important
+}
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #editForm>.grid,
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #staffProfileForm>.grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px
+}
+body.dossier-onepage #save,
+body.dossier-onepage #staffProfileSave,
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #policyHint,
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #staffProfileForm>h3{display:none!important}
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] .personnel-info-reason{
+  display:block;margin:8px 10px 0;
+}
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] .personnel-info-reason[hidden]{display:none!important}
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] .personnel-info-reason label{
+  font-size:11px;color:#bbd5f3;margin:0 0 4px
+}
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] .personnel-info-reason textarea{
+  width:100%;min-height:47px;padding:7px 9px;font-size:12px;resize:vertical
+}
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] .personnel-info-actions{
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  padding:9px 10px 0;margin:0;
+}
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #savePersonnelInfoAll{
+  border:1px solid #628bfb;border-radius:5px;padding:8px 15px;
+  font-size:12px;background:#355fe2;color:#fff;font-weight:750
+}
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #savePersonnelInfoAll[hidden]{display:none!important}
+body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #personnelInfoSaveState{font-size:10px}
+@media(max-width:650px){
+ body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #editForm>.grid,
+ body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #staffProfileForm>.grid{grid-template-columns:minmax(0,1fr)}
+}
