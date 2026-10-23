@@ -336,6 +336,8 @@ $('clear').onclick=()=>{
 $('refresh').onclick=()=>load().catch(e=>message(e.message,true));
 $('close').onclick=closeDossier;
 async function start(){
+  // De openbare lijst is onafhankelijk van Firebase-aanmelding zichtbaar.
+  await load();
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
     if(!cfg.enabled)throw Error('Firebase-aanmelding ontbreekt');
