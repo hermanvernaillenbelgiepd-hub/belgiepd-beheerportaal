@@ -97,7 +97,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <div><label for="burgerPersonId">Burger registreren na Discord-verificatie</label>
 <input id="burgerPersonId" placeholder="Discord-ID burger" pattern="[0-9]{15,22}" maxlength="22" required></div>
 <button type="submit">Nieuw Burgerdossier</button>
-<small>De burger moet de gedeelde Burger/Burger IO-rol recent bij Discord geverifieerd hebben.</small>
+<small>Burger en Burger IO vallen allebei onder Burgerraad. Een recente Discord-verificatie is vereist.</small>
 </form>
 </section>
 <section class="card">
@@ -364,7 +364,7 @@ $('burgerEnroll').onsubmit=async event=>{
     if(!response.ok)throw Error(result.error||'Burgerdossier kon niet worden aangemaakt');
     $('burgerPersonId').value='';await load();
     selectDepartment('burger');
-    message('Burgerdossier aangemaakt. Burger/Burger IO blijft voorlopig onbevestigd.');
+    message('Burgerdossier aangemaakt onder supervisie van Burgerraad.');
   }catch(e){message(e.message,true)}
 };
 function changedFilters(){page=1;render()}
