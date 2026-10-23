@@ -224,3 +224,35 @@ body.dossier-onepage #registrationFields #staffFormalForm .grid{grid-template-co
  body.dossier-onepage #registrationFields #staffFormalForm .grid{grid-template-columns:minmax(0,1fr)}
  body.dossier-onepage .registration-hub-fields>form .grid>[style*="grid-column"]{grid-column:1!important}
 }
+
+/* Volledige audit blijft beschikbaar, zonder groot tweede scherm of actieknoppen. */
+body.dossier-onepage .dossier-audit-compact{
+  margin-top:8px;border:1px solid #355579;border-radius:5px;
+  background:#112641;color:#cedef4;
+}
+body.dossier-onepage .dossier-audit-compact summary{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;cursor:pointer;padding:8px 12px;color:#dcecff;
+  font-size:12px;font-weight:650;list-style-position:inside
+}
+body.dossier-onepage .dossier-audit-compact summary span{
+  color:#9bb8d7;font-size:10px;font-weight:400
+}
+body.dossier-onepage .dossier-audit-compact[open] summary{
+  background:#244574;border-bottom:1px solid #3a577a
+}
+body.dossier-onepage .dossier-audit-compact>.dossier-pane{
+  display:block!important;border:0!important;border-radius:0!important;
+  margin:0!important;padding:10px 13px 14px!important;
+  background:transparent!important;max-height:none!important;overflow:visible!important
+}
+body.dossier-onepage .dossier-audit-compact>.dossier-pane h3{
+  font-size:12px;margin:10px 0 5px
+}
+body.dossier-onepage .dossier-audit-compact>.dossier-pane p{
+  font-size:11px;margin:3px 0 9px
+}
+body.dossier-onepage .dossier-audit-compact>.dossier-pane .history{
+  margin:4px 0;padding:7px 9px;border-bottom:1px solid #345170
+}
+body.dossier-onepage .registration-hub #formalScoreField[hidden]{display:none!important}
