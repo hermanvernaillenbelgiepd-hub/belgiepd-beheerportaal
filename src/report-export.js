@@ -25,6 +25,8 @@ export function specialFields(e){
   if(e.sanctionType)p.push('Sanctie: '+limit(e.sanctionType,120));
   if(Array.isArray(e.reasons)&&e.reasons.length)p.push('Redenen: '+e.reasons.map(x=>limit(x,100)).join(', '));
   if(e.severity!==undefined&&e.severity!==null)p.push('Ernst: '+String(e.severity)+'/10');
+  if(e.type==='observatie'&&Number.isInteger(e.score))
+    p.push('Observatiescore: '+e.score+'/10');
   if(e.status&&e.type==='sanctie')p.push('Status: '+limit(e.status,70));
   if(e.endDate)p.push('Einddatum: '+e.endDate);
   if(e.courseName)p.push('Opleiding: '+limit(e.courseName,150));
