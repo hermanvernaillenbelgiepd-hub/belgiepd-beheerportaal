@@ -65,7 +65,13 @@ const $=id=>document.getElementById(id);
 const search=new URLSearchParams(location.search);
 const id=search.get('discordId');
 const embedded=search.get('embed')==='1';
-let auth=null,authModule,records=[],canWrite=false,tab='overzicht',reportAccess=false;
+const reportsOnly=search.get('reports')==='1';
+let auth=null,authModule,records=[],canWrite=false,
+  tab=reportsOnly?'weekrapport':'overzicht',reportAccess=false;
+if(reportsOnly){
+  document.querySelector('#auth h1').textContent='Burger-weekrapporten';
+  $('tabs').hidden=true;
+}
 function notice(msg,error=false){$('message').textContent=msg;$('message').classList.toggle('error',error)}
 function resize(){
   if(!embedded||window.parent===window)return;
@@ -191,6 +197,11 @@ $('reportForm').onsubmit=async event=>{
 };
 async function load(){
   if(!auth?.currentUser){notice('Meld je aan om dit dossier te bekijken.');return}
+  if(reportsOnly){
+    $('summary').hidden=true;$('entryForm').hidden=true;
+    notice('Burger-weekrapporten · alleen voor bevoegde Burgerraad, Korpsleiding en Bestuur.');
+    draw();return;
+  }
   if(!/^\d{15,22}$/.test(id||'')){notice('Ongeldige dossierverwijzing.',true);return}
   try{
     const result=await api('/api/burger-dossiers/'+encodeURIComponent(id));
