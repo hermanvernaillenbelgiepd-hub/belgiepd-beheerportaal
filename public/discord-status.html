@@ -1,5 +1,19 @@
 <!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>Mijn profiel | BelgiëPD Beheerportaal</title><style>
-:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#081223;color:#edf3ff}header{background:#0f213b;border-bottom:1px solid #263b5d;padding:20px max(20px,calc((100vw - 1000px)/2))}header a{color:#c0d7ff;margin-left:18px;font-size:14px}main{max-width:950px;margin:36px auto;padding:0 20px}h1{font-size:28px}p{color:#afc1db;line-height:1.55}.card{background:#11213c;border:1px solid #2b4365;border-radius:14px;padding:22px;margin:16px 0}button,.button{display:inline-flex;align-items:center;border:1px solid #567cbd;border-radius:9px;background:#305ee2;color:white;padding:11px 16px;font-size:15px;font-weight:600;text-decoration:none;cursor:pointer;margin:3px 10px 3px 0}.secondary{background:#182d4b}.warn{background:#352716;border-left:3px solid #edb958;border-radius:8px;padding:14px;color:#f9dfb0}.status{padding:12px;color:#bce9ce;background:#153b32;border-radius:9px;margin-top:15px}.error{background:#4d242a;color:#ffd1d3}.muted{font-size:12px;color:#99b0cb}dt{font-size:12px;color:#a4bddb;margin-top:17px}dd{margin:4px 0 0;overflow-wrap:anywhere}code{font-size:13px;color:#d9e5ff}.roles{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.role{border:1px solid #456895;padding:6px 9px;border-radius:16px;font-size:13px}a{color:#adc9ff}.identity-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));column-gap:20px;row-gap:12px;margin:16px 0 18px}.identity-grid dt{margin:0 0 5px}.identity-grid dd{margin:0;font-weight:600}.profile-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px}.profile-actions button{margin:0}.profile-section{border-top:1px solid #29466b;padding-top:16px;margin-top:18px}.role-details{margin-top:20px;padding:14px;border:1px solid #2b4365;border-radius:10px}.role-details summary{cursor:pointer;font-weight:600}.role-details .roles{margin:15px 0}.profile-hint{margin-bottom:4px}.profile-row{padding:9px 0;border-bottom:1px solid #2b4365}.profile-row strong{display:block}.profile-row small{color:#a9bdd7}.profile-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:15px}.profile-columns section{padding:13px;border:1px solid #2b4365;border-radius:9px}.profile-columns h3{margin-top:0}
+:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#081223;color:#edf3ff}header{background:#0f213b;border-bottom:1px solid #263b5d;padding:20px max(20px,calc((100vw - 1000px)/2))}header a{color:#c0d7ff;margin-left:18px;font-size:14px}main{max-width:950px;margin:36px auto;padding:0 20px}h1{font-size:28px}p{color:#afc1db;line-height:1.55}.card{background:#11213c;border:1px solid #2b4365;border-radius:14px;padding:22px;margin:16px 0}button,.button{display:inline-flex;align-items:center;border:1px solid #567cbd;border-radius:9px;background:#305ee2;color:white;padding:11px 16px;font-size:15px;font-weight:600;text-decoration:none;cursor:pointer;margin:3px 10px 3px 0}.secondary{background:#182d4b}.warn{background:#352716;border-left:3px solid #edb958;border-radius:8px;padding:14px;color:#f9dfb0}.status{padding:12px;color:#bce9ce;background:#153b32;border-radius:9px;margin-top:15px}.error{background:#4d242a;color:#ffd1d3}
+.leave-error-dialog{max-width:min(440px,calc(100vw - 28px));width:100%;margin:auto;
+  padding:0;color:#fff1f2;background:#3c1723;border:1px solid #dc5265;
+  border-radius:14px;box-shadow:0 22px 75px #0009;overflow:hidden}
+.leave-error-dialog::backdrop{background:rgba(3,9,21,.76)}
+.leave-error-dialog .error-content{padding:22px 24px}
+.leave-error-dialog .error-head{display:flex;gap:12px;align-items:center}
+.leave-error-dialog .error-symbol{display:grid;place-items:center;flex:none;width:40px;height:40px;
+  border:1px solid #f08490;border-radius:50%;background:#802535;font-size:24px;font-weight:750}
+.leave-error-dialog h2{margin:0;color:#fff1f2;font-size:19px}
+.leave-error-dialog p{color:#ffe1e5;line-height:1.6;margin:17px 0;overflow-wrap:anywhere}
+.leave-error-dialog .error-actions{display:flex;justify-content:flex-end}
+.leave-error-dialog .error-actions button{background:#dc394f;border-color:#ff8090;color:#fff;
+  padding:9px 21px;min-width:110px;margin:0}
+.leave-error-dialog .error-actions button:hover{background:#b92842}.muted{font-size:12px;color:#99b0cb}dt{font-size:12px;color:#a4bddb;margin-top:17px}dd{margin:4px 0 0;overflow-wrap:anywhere}code{font-size:13px;color:#d9e5ff}.roles{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.role{border:1px solid #456895;padding:6px 9px;border-radius:16px;font-size:13px}a{color:#adc9ff}.identity-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));column-gap:20px;row-gap:12px;margin:16px 0 18px}.identity-grid dt{margin:0 0 5px}.identity-grid dd{margin:0;font-weight:600}.profile-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px}.profile-actions button{margin:0}.profile-section{border-top:1px solid #29466b;padding-top:16px;margin-top:18px}.role-details{margin-top:20px;padding:14px;border:1px solid #2b4365;border-radius:10px}.role-details summary{cursor:pointer;font-weight:600}.role-details .roles{margin:15px 0}.profile-hint{margin-bottom:4px}.profile-row{padding:9px 0;border-bottom:1px solid #2b4365}.profile-row strong{display:block}.profile-row small{color:#a9bdd7}.profile-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:15px}.profile-columns section{padding:13px;border:1px solid #2b4365;border-radius:9px}.profile-columns h3{margin-top:0}
 .leave-box{margin-top:16px;border:1px solid #355276;border-radius:11px;padding:18px;background:#142947}
 .leave-box h3{margin:0 0 5px}.leave-box a{font-weight:600}
 .leave-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:14px 0}
@@ -156,7 +170,15 @@ button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
 <div class="roles" id="roles"></div>
 <button class="secondary" type="button" id="copy">Rol-ID's kopiëren</button>
 </details>
-</div></main><script type="module">
+</div></main>
+<dialog id="leaveErrorDialog" class="leave-error-dialog" aria-labelledby="leaveErrorTitle" aria-describedby="leaveErrorText">
+  <div class="error-content">
+    <div class="error-head"><span class="error-symbol" aria-hidden="true">!</span><h2 id="leaveErrorTitle">Verlofaanvraag niet ingediend</h2></div>
+    <p id="leaveErrorText"></p>
+    <div class="error-actions"><button id="leaveErrorClose" type="button">Sluiten</button></div>
+  </div>
+</dialog>
+<script type="module">
 const $=id=>document.getElementById(id);let auth,authMod,currentRoles=[],knownRoleNames=new Map();
 function renderAdvancedRoles(){
   const root=$('roles');root.replaceChildren();
@@ -260,6 +282,19 @@ function updateLeaveDays(){
     'Kies een geldige periode van maximaal 730 kalenderdagen.';
 }
 for(const key of ['leaveStart','leaveEnd'])$(key).addEventListener('change',updateLeaveDays);
+function showLeaveError(reason,status){
+  const dialog=$('leaveErrorDialog');
+  $('leaveErrorTitle').textContent=status===409||status===403?
+    'Verlofaanvraag geweigerd':'Verlofaanvraag niet ingediend';
+  $('leaveErrorText').textContent=String(reason||'De aanvraag kon niet worden opgeslagen.');
+  if(typeof dialog.showModal==='function'){
+    if(!dialog.open)dialog.showModal();
+  }else{
+    dialog.setAttribute('open','');
+  }
+  $('leaveErrorClose').focus();
+}
+$('leaveErrorClose').onclick=()=>$('leaveErrorDialog').close();
 async function leaveRequest(url,body){
   const user=auth?.currentUser;if(!user)throw Error('Meld je eerst aan met Discord.');
   const token=await user.getIdToken();
@@ -267,7 +302,8 @@ async function leaveRequest(url,body){
     Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})
   },...(body?{body:JSON.stringify(body)}:{})});
   const result=await r.json().catch(()=>({}));
-  if(!r.ok)throw Error(result.error||'Verlofmodule tijdelijk niet beschikbaar');
+  if(!r.ok)throw Object.assign(
+    new Error(result.error||'Verlofmodule tijdelijk niet beschikbaar'),{status:r.status});
   return result;
 }
 function leaveToday(){
@@ -385,7 +421,10 @@ $('leaveForm').onsubmit=async e=>{
     $('leaveStatus').textContent=result.status==='approved'?
       'Je verlof is automatisch goedgekeurd en geregistreerd.':
       'Je verlofaanvraag is ingediend en wacht op goedkeuring door bevoegd kader.';
-  }catch(err){$('leaveStatus').textContent='Verlofaanvraag niet ingediend: '+err.message}
+  }catch(err){
+    $('leaveStatus').textContent='De aanvraag werd niet opgeslagen. Je kunt de datums aanpassen en opnieuw proberen.';
+    showLeaveError(err.message,err.status);
+  }
   finally{btn.disabled=false}
 };
 async function showProfile(){const user=auth.currentUser;
