@@ -87,6 +87,24 @@ function accessList(){
     return parsed;
   } catch {throw new Error('BPD_ACCESS_JSON bevat ongeldige JSON.');}
 }
+// Reduce duplicate Firestore reads when board, radio and shortcuts poll in
+// parallel. Max 2.5 seconds of cached verified authorization documents;
+// Firebase ID tokens and cadre/service permissions are still validated on
+// every request. Failures are never cached; blocked rights remain fail-closed.
+const authDocCache=new Map();
+async function cachedAuthDoc(collection,id){
+  const key=collection+':'+id,now=Date.now(),old=authDocCache.get(key);
+  if(old?.snapshot&&old.expires>now)return old.snapshot;
+  if(old?.pending)return old.pending;
+  const pending=getFirestore().collection(collection).doc(id).get();
+  authDocCache.set(key,{pending});
+  try{
+    const snapshot=await pending;
+    if(authDocCache.size>750)authDocCache.clear();
+    authDocCache.set(key,{snapshot,expires:Date.now()+2500});
+    return snapshot;
+  }catch(error){authDocCache.delete(key);throw error}
+}
 async function requireUser(req,res,next){
   const bearer=req.get('Authorization')||'';
   const token=/^Bearer (\S+)$/.exec(bearer)?.[1];
@@ -104,7 +122,7 @@ async function requireUser(req,res,next){
       // Once a Firestore decision exists it also governs legacy Google sessions:
       // a blocked user may never fall back to their old Render allowlist entry.
       if(entry && /^\d{15,22}$/.test(discordId)){
-        const managed=await getFirestore().collection(USER_COLLECTION).doc(discordId).get();
+        const managed=await cachedAuthDoc(USER_COLLECTION,discordId);
         if(managed.exists){
           if(managed.get('approvalSource')===AUTO_CADRE_SOURCE)
             return res.status(403).json({error:'Automatisch goedgekeurde kaderrechten vereisen je eigen Discord-login'});
@@ -116,16 +134,16 @@ async function requireUser(req,res,next){
       && verified.firebase?.sign_in_provider==='custom' && verified.bpdDiscord===true){
       const id=String(verified.uid||'').replace(/^discord:/,'');
       if(!/^\d{15,22}$/.test(id))return res.status(403).json({error:'Discord-identiteit ongeldig'});
-      const member=(await getFirestore().collection('bpd_discord_auth').doc(id).get()).data();
+      const member=(await cachedAuthDoc('bpd_discord_auth',id)).data();
       discordMember=member;
       if(!verifiedDiscordIdentity(verified,member,process.env.DISCORD_GUILD_ID))
         return res.status(403).json({error:'Discord-verificatie verlopen. Meld je opnieuw aan met Discord.'});
       const store=getFirestore(),ref=store.collection(USER_COLLECTION).doc(id);
-      let managed=await ref.get();
+      let managed=await cachedAuthDoc(USER_COLLECTION,id);
       if(!managed.exists||managed.get('status')==='pending'){
         const provisioned=await ensureVerifiedMiddleAccess(store,verified,member,
           process.env.DISCORD_GUILD_ID,process.env);
-        if(provisioned)managed=await ref.get();
+        if(provisioned){authDocCache.delete(USER_COLLECTION+':'+id);managed=await cachedAuthDoc(USER_COLLECTION,id);}
       }
       if(managed.exists){
         entry=approvedManagedEntry(managed.data(),id);
