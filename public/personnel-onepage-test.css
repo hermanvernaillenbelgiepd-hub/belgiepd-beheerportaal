@@ -153,3 +153,27 @@ body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #personnelInfoS
  body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #editForm>.grid,
  body.dossier-onepage .landscape-cell[data-sheet-tile="gegevens"] #staffProfileForm>.grid{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Read-only personeelsinformatie heeft dezelfde compacte informatiedichtheid
+   als het bewerkbare formulier; geen lege placeholder bij ontbrekende data. */
+body.dossier-onepage .landscape-cell .personnel-readonly-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  margin:2px 0 4px;gap:2px 12px;
+}
+body.dossier-onepage .landscape-cell .personnel-readonly-field{
+  margin:0;padding:5px 0;border-bottom:1px solid #2d4869;
+  min-width:0;
+}
+body.dossier-onepage .landscape-cell .personnel-readonly-field dt{
+  font-size:10px;line-height:1.35;color:#9fbada;font-weight:500;
+}
+body.dossier-onepage .landscape-cell .personnel-readonly-field dd{
+  margin:2px 0 0;font-size:12px;line-height:1.4;
+  color:#f0f6ff;font-weight:600;overflow-wrap:anywhere;
+}
+body.dossier-onepage .landscape-cell #sheetProfile[hidden]{display:none!important}
+@media(max-width:650px){
+ body.dossier-onepage .landscape-cell .personnel-readonly-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))
+ }
+}
