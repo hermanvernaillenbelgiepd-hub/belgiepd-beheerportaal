@@ -1,57 +1,64 @@
-/* BelgiumPD TEST: spreadsheet-geïnspireerde personeelsfiche, zonder tabbladnavigatie.
-   Bestaande data/ACL/formulieren blijven de enige bron van waarheid. */
-body.dossier-onepage main{max-width:1670px}
-body.dossier-onepage #panel{margin-top:12px;padding:17px 20px;border:1px solid #315273;border-radius:9px;background:#10213b}
-body.dossier-onepage #panel #personTitle{font-size:21px;margin:0}
-body.dossier-onepage #panel #identity{font-size:11px;margin:5px 0 10px;color:#a4bcda}
+/* BelgiumPD TEST — één compact horizontaal dossierblad, geen extra tabs.
+   Alle informatie komt uit bestaande serverbeveiligde dossierbronnen. */
+body.dossier-onepage main{max-width:1920px;padding:12px 14px 44px}
+body.dossier-onepage #panel{max-width:none;width:100%;padding:15px 18px;margin:10px auto;border-radius:9px;background:#10213b;box-shadow:none}
+body.dossier-onepage #personTitle{font-size:19px;margin:0}
+body.dossier-onepage #identity{font-size:10px;color:#9bb6d8;margin:4px 0 8px}
 body.dossier-onepage #dossierTabBar{display:none!important}
-body.dossier-onepage #panel>.sheet-identity{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;background:#182f4f;border:1px solid #3b5b80;margin:10px 0 14px;border-radius:4px;padding:9px 12px}
-body.dossier-onepage #panel>.sheet-identity>div{min-width:0;padding:3px 10px}
-body.dossier-onepage #panel>.sheet-identity small{font-size:10px;color:#a1bedc;letter-spacing:.04em;text-transform:uppercase;display:block}
-body.dossier-onepage #panel>.sheet-identity strong{font-size:13px;color:#eaf3ff;overflow-wrap:anywhere}
-body.dossier-onepage #dossierViews{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:
- "gegevens specialisaties nieuw"
- "verlof sancties opleidingen"
- "registraties middenregistraties historiek";
- gap:0;align-items:start;min-height:0}
-body.dossier-onepage #dossierViews .dossier-pane{display:block!important;min-width:0;max-height:none!important;overflow:visible!important;overscroll-behavior:auto;scrollbar-width:auto;padding:12px 14px 18px;border-top:2px solid #436b9b;border-right:1px solid #385474;border-bottom:1px solid #385474;align-self:stretch;background:transparent}
-body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="overzicht"]{display:none!important}
-body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="gegevens"]{grid-area:gegevens}
-body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="specialisaties"]{grid-area:specialisaties}
-body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="nieuw"]{grid-area:nieuw}
-body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="verlof"]{grid-area:verlof}
-body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="sancties"]{grid-area:sancties}
-body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="opleidingen"]{grid-area:opleidingen}
-body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="registraties"]{grid-area:registraties}
-body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="middenregistraties"]{grid-area:middenregistraties}
-body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="historiek"]{grid-area:historiek;border-right:0}
-body.dossier-onepage #dossierViews .dossier-pane:nth-child(3n + 2){border-right:0}
-body.dossier-onepage #dossierViews .dossier-pane>.sheet-category-heading{font-size:14px;font-weight:750;line-height:1.35;margin:-12px -14px 12px;padding:9px 14px;background:#23487b;color:#edf6ff}
-body.dossier-onepage #dossierViews .dossier-pane h3{font-size:13px;margin:12px 0 7px}
-body.dossier-onepage #dossierViews .dossier-pane p{font-size:11px;line-height:1.45;color:#a9bdd8;margin:5px 0 9px}
-body.dossier-onepage #dossierViews .dossier-pane .grid{grid-template-columns:minmax(0,1fr);gap:9px}
-body.dossier-onepage #dossierViews .dossier-pane .grid>[style*="grid-column"]{grid-column:1!important}
-body.dossier-onepage #dossierViews .dossier-pane form{margin:10px 0;background:transparent;border:0;border-top:1px solid #385573;padding:11px 0 7px;border-radius:0}
+body.dossier-onepage #panel>.sheet-identity{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:8px 12px;margin:4px 0 9px;background:#152e50;border:1px solid #315175;border-radius:4px;gap:0}
+body.dossier-onepage #panel>.sheet-identity>div{min-width:0;padding:0 12px}
+body.dossier-onepage #panel>.sheet-identity small{font-size:10px;text-transform:uppercase;letter-spacing:.045em;color:#91b4d9;display:block}
+body.dossier-onepage #panel>.sheet-identity strong{display:block;font-size:12px;color:#eef6ff;overflow-wrap:anywhere}
+body.dossier-onepage #dossierViews{display:block;min-height:0}
+body.dossier-onepage #dossierViews .dossier-pane{max-height:none;overflow:visible;min-width:0;scrollbar-width:auto;overscroll-behavior:auto}
+body.dossier-onepage #dossierViews .dossier-pane[hidden]{display:none!important}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="overzicht"]{display:block!important;border:0;padding:0;background:transparent;margin:0}
+body.dossier-onepage .sheet-intro{font-size:11px;color:#94b5d7;margin:0 0 9px!important}
+body.dossier-onepage .landscape-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;align-items:stretch;border-left:1px solid #365579;border-top:1px solid #365579}
+body.dossier-onepage .landscape-cell{border-right:1px solid #365579;border-bottom:1px solid #365579;min-width:0;padding:0 0 9px;background:#10213b;min-height:0}
+body.dossier-onepage .landscape-cell>h3{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;margin:0 0 7px!important;background:#20477d;color:#f1f7ff;font-size:12px!important;font-weight:750;line-height:1.25}
+body.dossier-onepage .landscape-cell>h3>button{flex-shrink:0;background:#315c94;border:1px solid #6185b1;color:#f1f7ff;font-size:10px!important;border-radius:5px;padding:4px 7px;white-space:nowrap;max-width:42%}
+body.dossier-onepage .landscape-cell>h3>button:hover{background:#4172af}
+body.dossier-onepage .landscape-cell .sheet-records,
+body.dossier-onepage .landscape-cell #sheetProfile,
+body.dossier-onepage .landscape-cell #sheetSpecialties{margin:0 10px;min-height:0;color:#d7e7fc;font-size:11px}
+body.dossier-onepage .landscape-cell .sheet-specialties{display:flex;gap:4px;flex-wrap:wrap;padding:0;max-height:none;overflow:visible}
+body.dossier-onepage .landscape-cell .sheet-chip{display:inline-flex;border:1px solid #415e80;border-radius:4px;background:#17365a;font-size:10px;line-height:1.3;padding:4px 6px;max-width:100%;white-space:normal}
+body.dossier-onepage .landscape-cell .sheet-chip.sheet-chip-negative{background:#402c38;border-color:#64444d}
+body.dossier-onepage .landscape-cell .overview-profile-line{padding:2px 0}
+body.dossier-onepage .landscape-muted{margin:5px 10px 0;font-size:10px;color:#8faccc}
+body.dossier-onepage .landscape-cell .overview-preview,
+body.dossier-onepage .landscape-cell .dashboard-preview-row{padding:5px 0;border-bottom:1px solid #2d4562;display:flex;gap:7px;justify-content:space-between;align-items:flex-start;line-height:1.3}
+body.dossier-onepage .landscape-cell .overview-preview:last-child{border:0}
+body.dossier-onepage .landscape-cell .overview-preview strong{font-size:11px;font-weight:600;overflow-wrap:anywhere}
+body.dossier-onepage .landscape-cell .overview-preview span{font-size:10px;color:#95b3d5;text-align:right;overflow-wrap:anywhere}
+body.dossier-onepage .landscape-cell .overview-no-data{font-size:10px;color:#8da8c8}
+body.dossier-onepage .landscape-cell .sheet-show-more{background:transparent;border:0;border-bottom:1px dotted #83abe0;color:#a9cafa;padding:4px 0;font-size:10px;display:inline-block;margin-top:4px}
+body.dossier-onepage .landscape-footer{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:10px 0 3px;font-size:10px;color:#94afce}
+body.dossier-onepage .landscape-footer button{padding:5px 8px;font-size:10px}
+body.dossier-onepage #dossierViews .dossier-pane:not([data-dossier-pane="overzicht"]):not([hidden]){display:block!important;margin-top:10px;padding:12px 14px;border:1px solid #385678;background:#132b49;border-radius:5px}
+body.dossier-onepage #dossierViews .dossier-pane>.sheet-category-heading{background:#224a81;color:white;padding:8px 10px;margin:0 0 12px;font-size:13px}
+body.dossier-onepage #dossierViews .dossier-pane .grid{gap:9px}
+body.dossier-onepage #dossierViews .dossier-pane .note-item{padding:7px 0}
+body.dossier-onepage #dossierViews .dossier-pane .dossier-summary>div{padding:6px 8px}
 body.dossier-onepage #dossierViews .dossier-pane input,
 body.dossier-onepage #dossierViews .dossier-pane textarea,
-body.dossier-onepage #dossierViews .dossier-pane select{min-width:0;max-width:100%}
-body.dossier-onepage #dossierViews .dossier-pane button{font-size:11px;max-width:100%}
-body.dossier-onepage #dossierViews .dossier-pane .controls{display:flex;flex-wrap:wrap;gap:8px}
-body.dossier-onepage #dossierViews .dossier-pane .dossier-summary{grid-template-columns:1fr;gap:5px}
-body.dossier-onepage #dossierViews .dossier-pane .dossier-summary>div{padding:7px 8px;border:0;border-bottom:1px solid #345170;border-radius:0;background:transparent}
-body.dossier-onepage #dossierViews .dossier-pane .note-item{padding:9px 2px;border-bottom:1px solid #344f70}
-body.dossier-onepage #dossierViews .dossier-pane .specialty-ledger{display:flex;gap:6px;flex-wrap:wrap}
-body.dossier-onepage #panel .sheet-caption{font-size:11px}
-body.dossier-onepage #panel .dossier-views [hidden]{display:none!important}
-@media(max-width:1180px){
- body.dossier-onepage #dossierViews{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:
- "gegevens specialisaties" "nieuw verlof" "sancties opleidingen"
- "registraties middenregistraties" "historiek historiek"}
+body.dossier-onepage #dossierViews .dossier-pane select{min-width:0}
+body.dossier-onepage #dossierViews .dossier-pane .inline-form{padding:11px;border:1px solid #365679;background:#132c4a;border-radius:6px}
+body.dossier-onepage .sheet-close-editor{padding:5px 9px!important;font-size:11px!important;margin:0 0 8px}
+body.dossier-onepage #formalWriteActions[hidden],
+body.dossier-onepage #staffFormalForm[hidden],
+body.dossier-onepage #addFormalObservation[hidden],
+body.dossier-onepage #addFormalSanction[hidden]{display:none!important}
+@media(max-width:1100px){
+ body.dossier-onepage .landscape-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-@media(max-width:700px){
- body.dossier-onepage #panel{padding:13px}
- body.dossier-onepage #panel>.sheet-identity{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
- body.dossier-onepage #dossierViews{grid-template-columns:minmax(0,1fr);grid-template-areas:
- "gegevens" "specialisaties" "nieuw" "verlof" "sancties" "opleidingen" "registraties" "middenregistraties" "historiek"}
- body.dossier-onepage #dossierViews .dossier-pane{border-right:0}
+@media(max-width:650px){
+ body.dossier-onepage main{padding:7px 5px 30px}
+ body.dossier-onepage #panel{padding:9px 10px}
+ body.dossier-onepage #panel>.sheet-identity{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:9px}
+ body.dossier-onepage .landscape-grid{grid-template-columns:1fr}
+ body.dossier-onepage .landscape-cell>h3{font-size:12px!important}
+ body.dossier-onepage .landscape-cell .overview-preview{flex-direction:column;gap:2px}
+ body.dossier-onepage .landscape-cell .overview-preview span{text-align:left}
 }
