@@ -1,7 +1,7 @@
 import {roleForDepartment} from './leave-policy.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 
-export const SERVICE_DOSSIER_DEPARTMENTS=Object.freeze(['politie','ambulance','brandweer','depannage','burger']);
+export const SERVICE_DOSSIER_DEPARTMENTS=Object.freeze(['politie','ambulance','brandweer','depannage']);
 const DISCORD=/^\d{15,22}$/;
 const DISCORD_BOARD_ROLE='1309532438082355251';
 const DISCORD_AWV_ROLE='1309532438019706969';
@@ -61,6 +61,6 @@ export function deriveServiceDossierDepartments(actor,personnel,member,boardAppo
   return allowed;
 }
 export function canReadServiceDossier(actor,dept){
-  return SERVICE_DOSSIER_DEPARTMENTS.includes(dept)&&
+  return (SERVICE_DOSSIER_DEPARTMENTS.includes(dept)||dept==='burger')&&
     Array.isArray(actor?.dossierAllowedDepartments)&&actor.dossierAllowedDepartments.includes(dept);
 }
