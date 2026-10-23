@@ -34,10 +34,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const allowed=(req.bpd.dossierAllowedDepartments||[])
         .filter(d=>canReadServiceDossier(req.bpd,d));
       if(!allowed.length)return error(res,403,'Je hebt geen kaderrechten voor personeelsbeheer');
-      const [snapshot,edits,pending]=await Promise.all([
-        getSnapshot(),collection().limit(400).get(),
-        personnelDataEnabled(process.env)?getFirestore().collection(PENDING_PERSONNEL_COLLECTION)
-          .limit(500).get():Promise.resolve({docs:[],size:0})
+      const [snapshot,edits]=await Promise.all([
+        getSnapshot(),collection().limit(400).get()
       ]);
       const base=snapshot.data.filter(p=>allowed.includes(p.dept));
       const overlay=edits.docs.map(d=>d.data());
@@ -89,15 +87,36 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const labelledRecords=records.map(p=>({...p,
         discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
           roleLabels.get(p.discordId)||null:null}));
-      const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
-        .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
-      return res.json({records:labelledRecords,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
+      // Koppelingen en geheime interne referenties worden NOOIT met de
+      // algemene personeelslijst teruggegeven. Alleen /pending-links is bevoegd.
+      return res.json({records:labelledRecords,testMode:process.env.BPD_TEST_FIXTURES==='true',
         role:req.bpd.role,departments:allowed,
         writesEnabled:writes(),createEnabled:personnelCreationEnabled(process.env),
         promotionsEnabled:personnelDataEnabled(process.env)&&process.env.BPD_ENABLE_PERSONNEL_RANK_CHANGES==='true',
         createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,dept==='politie'&&!canAuthoriseExceptionalPoliceRank(req.bpd,dept)?[STANDARD_ENTRY_RANK.politie]:TEST_RANKS[dept]])),
         overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
         sourceStale:snapshot.stale,limited:edits.size===400,statuses:EDITABLE_STATUSES});
+    }catch(e){return safeResponse(res,e)}
+  });
+  // BESTUUR-ONLY overzicht: een afzonderlijk gegevensendpoint.
+  // Het verbergen van HTML alleen is geen autorisatiebeveiliging.
+  app.get('/api/personnel/pending-links',requireDossierUser,async(req,res)=>{
+    if(req.bpd?.boardPersonnelAdmin!==true)
+      return error(res,403,'Alleen geverifieerd Bestuur mag koppelaanvragen bekijken');
+    if(!personnelDataEnabled(process.env))
+      return res.json({pendingPersonnel:[],limited:false,boardOnly:true});
+    try{
+      const pending=await getFirestore().collection(PENDING_PERSONNEL_COLLECTION)
+        .limit(500).get();
+      const candidates=pending.docs.map(d=>({
+        ...visiblePendingPersonnel(d.id,d.data()),
+        sourceRecord:d.data()
+      })).filter(p=>p.internalId);
+      const entries=candidates.map(({sourceRecord,...p})=>({
+        ...p,canReview:mayRejectLink(req.bpd,sourceRecord)
+      }));
+      res.set('Cache-Control','private, no-store');
+      return res.json({pendingPersonnel:entries,limited:pending.size===500,boardOnly:true});
     }catch(e){return safeResponse(res,e)}
   });
   // Authorised intake: separate production enablement; source Sheets stay read-only.
