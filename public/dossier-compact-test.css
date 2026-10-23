@@ -1,0 +1,78 @@
+/* BelgiumPD TEST — compacte personeelsfiche; uitsluitend presentatielaag.
+   Alle rechten, formulieren en API's blijven servergestuurd. */
+#panel{max-width:1420px;margin:20px auto;padding:20px 22px;background:#11213a;border:1px solid #32496b;box-shadow:0 12px 36px #0002}
+#panel>div:first-child{position:relative;top:auto;background:transparent;border:0;padding:0 0 2px}
+#panel #personTitle{font-size:23px;font-weight:800;letter-spacing:-.025em;margin:0}
+#panel #identity{margin:2px 0 12px;font-size:11px;color:#8eaccb}
+#panel>.sheet-identity{display:flex;gap:0;flex-wrap:wrap;padding:10px 14px;margin:0 0 15px;background:#152c49;border:1px solid #304c6e;border-radius:10px}
+#panel>.sheet-identity>div{padding:3px 16px 3px 0;min-width:155px;flex:1 1 130px}
+#panel>.sheet-identity small{display:block;color:#91afd0;font-size:10px;letter-spacing:.045em;text-transform:uppercase;margin-bottom:2px}
+#panel>.sheet-identity strong{display:block;color:#edf5ff;font-size:13px;font-weight:720}
+#panel .dossier-tabbar{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#506d91 transparent;padding:5px 0 12px;border-bottom:1px solid #35506f}
+#panel .dossier-tabbar button{font-size:12px;white-space:nowrap;flex:0 0 auto;background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;padding:9px 11px;color:#b5cbe7}
+#panel .dossier-tabbar button[aria-selected="true"]{background:#27456a;border-color:#75a6ef;color:white;border-radius:7px 7px 3px 3px}
+#panel .dossier-tabbar button:focus-visible,#panel .overview-actions button:focus-visible,#panel .overview-line-heading button:focus-visible{outline:2px solid #b5d5ff;outline-offset:2px}
+#panel .dossier-pane{max-height:none;overflow:visible;overscroll-behavior:auto;padding:17px 0 5px}
+#panel .dossier-pane h3{margin-top:12px}
+#panel .dossier-sheet{display:block}
+#panel .overview-headline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}
+#panel .overview-headline h3{margin:0;font-size:17px;letter-spacing:-.015em}
+#panel .overview-headline p{margin:2px 0 0;font-size:12px;color:#97b2d1;line-height:1.4}
+#panel #overviewShowEmpty{font-size:11px;color:#b3cbe8;background:transparent;border:1px solid #3c5776;padding:6px 10px;white-space:nowrap}
+#panel .overview-actions{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 20px}
+#panel .overview-actions button{font-size:12px;font-weight:700;padding:9px 12px;border:1px solid #436a9f;border-radius:8px;background:#1d426b;color:#e5f1ff}
+#panel .overview-actions button:last-child{background:transparent;border-color:#4b627e;color:#bdd6f5}
+#panel .overview-actions button:hover{background:#315984}
+#panel .overview-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,0.9fr);gap:26px;align-items:start}
+#panel .overview-recent,#panel .overview-side{min-width:0}
+#panel .overview-recent>h3{font-size:14px;font-weight:750;margin:0 0 8px;color:#dbe8fa}
+#panel .overview-side{border-left:1px solid #2f4563;padding-left:24px}
+#panel .overview-info+.overview-info{border-top:1px solid #314965;margin-top:20px;padding-top:14px}
+#panel .overview-info h3{font-size:14px;margin:0;color:#e1edfd}
+#panel .overview-info .sheet-specialties{max-height:none;overflow:visible;display:flex;flex-wrap:wrap;gap:6px;padding:11px 0 3px;font-size:12px;color:#a8c0dc}
+#panel .overview-info .sheet-chip{border:1px solid #3d5674;border-radius:99px;font-size:11px;padding:5px 9px;background:#172d49}
+#panel .overview-info #sheetProfile{font-size:12px;color:#afc5df;padding:9px 0;min-height:0}
+#panel .overview-info .overview-profile-line{padding:4px 0;line-height:1.45}
+#panel .overview-info .overview-profile-line strong{color:#d3e5fd}
+#panel .overview-line{border-bottom:1px solid #2e4664;padding:8px 0 10px}
+#panel .overview-line:first-of-type{padding-top:4px}
+#panel .overview-line-heading{display:flex;gap:10px;align-items:center;flex-wrap:wrap;min-width:0}
+#panel .overview-line-heading>strong{font-size:12px;color:#e0eeff}
+#panel .overview-line-heading>[data-overview-count]{font-size:11px;background:#263c56;border-radius:999px;color:#c8e0ff;min-width:22px;text-align:center;padding:2px 6px}
+#panel .overview-line-heading button{margin-left:auto;font-size:11px;border:0;background:transparent;padding:5px 3px;color:#a6cfff;font-weight:700}
+#panel .overview-line-heading button:hover{text-decoration:underline}
+#panel .overview-records{padding:4px 0 0}
+#panel .overview-preview{display:flex;gap:6px 14px;justify-content:space-between;align-items:baseline;flex-wrap:wrap;font-size:12px;color:#b7cde6;line-height:1.5;padding:3px 0}
+#panel .overview-preview strong{font-size:12px;font-weight:600;color:#e6f0fd}
+#panel .overview-preview span{font-size:11px;min-width:0;overflow-wrap:anywhere}
+#panel .overview-more,#panel .overview-no-data,#panel .overview-empty{font-size:11px;color:#95abc7}
+#panel .overview-empty{padding:12px 0}
+#panel .dossier-pane[data-dossier-pane="gegevens"] .dossier-summary>div{background:#152a45;border:1px solid #344c6b;border-radius:7px}
+#panel .dossier-pane[data-dossier-pane="gegevens"]>h2{font-size:16px;margin:8px 0}
+#panel .dossier-pane[data-dossier-pane="gegevens"]>p.subtle{margin-bottom:9px}
+#panel .dossier-pane[data-dossier-pane="gegevens"] #staffDossierStatus{font-size:11px;margin-bottom:9px}
+#panel .dossier-pane[data-dossier-pane="specialisaties"] .specialty-ledger{flex-wrap:wrap}
+#panel .dossier-pane[data-dossier-pane="historiek"] .history,
+#panel .dossier-pane[data-dossier-pane="historiek"] .note-item{background:transparent}
+@media(max-width:950px){
+  #panel .overview-layout{grid-template-columns:minmax(0,1fr)}
+  #panel .overview-side{border-left:0;border-top:1px solid #304866;padding:18px 0 0}
+}
+@media(max-width:640px){
+  #panel{padding:15px;margin:10px 0}
+  #panel #personTitle{font-size:19px}
+  #panel>.sheet-identity{padding:10px;gap:7px}
+  #panel>.sheet-identity>div{flex:1 1 calc(50% - 10px);min-width:120px;padding:2px}
+  #panel .overview-headline{align-items:flex-start;flex-direction:column}
+  #panel .overview-actions button{flex:1 1 auto}
+  #panel .overview-preview{display:block}
+  #panel .overview-preview span{display:block}
+}
+
+/* Schrijfrechten blijven bepalend: verborgen invoer mag niet zichtbaar
+   worden door globale .controls/display-regels. */
+#formalWriteActions[hidden],#staffFormalForm[hidden],
+#addFormalObservation[hidden],#addFormalSanction[hidden]{display:none!important}
+#formalWriteActions{display:flex;flex-wrap:wrap;gap:9px;margin:13px 0 7px}
+#formalWriteStatus{margin:6px 0 13px;line-height:1.5;color:#a8c6e6}
+#formalWriteActions button{min-width:160px;text-align:center}

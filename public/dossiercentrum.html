@@ -4,7 +4,7 @@
 <style>
 :root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;background:#081329;color:#eaf1ff}
 *{box-sizing:border-box}body{margin:0}header{background:#122541;border-bottom:1px solid #344e70;padding:18px max(18px,calc((100vw - 1120px)/2));display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px}
-a{color:#b4ceff}nav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}main{max-width:1120px;margin:auto;padding:28px 18px 80px}
+a{color:#b4ceff}nav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}main{max-width:1120px;margin:auto;padding:28px 18px 80px}body.dossier-wide main{max-width:none;width:100%;padding:14px clamp(8px,1vw,18px) 65px}body.dossier-wide #detail{max-width:none;padding:14px}body.dossier-wide #dossierFiche{width:100%}
 h1{font-size:29px;margin:0}h2{font-size:20px;margin:0 0 10px}p{line-height:1.55;color:#b5c7e0}
 .card{background:#122441;border:1px solid #344e70;border-radius:13px;padding:20px;margin:16px 0}
 .notice{border-radius:9px;background:#20483d;color:#e3fff2;padding:14px;margin:15px 0}.notice.error{background:#562b3a;color:#ffe2e7}
@@ -165,7 +165,7 @@ function renderServiceButtons(allowed=[]){
     :'Meld je aan met de juiste dienstrechten om een dossier te openen.';
 }
 function closeDossier(){
-  shown=null;timelineEntries=[];$('detail').hidden=true;
+  shown=null;timelineEntries=[];$('detail').hidden=true;document.body.classList.remove('dossier-wide');$('inlinePersonnelFrame')?.remove();
 }
 function selectDepartment(dept){
   const item=$('department');
@@ -243,7 +243,7 @@ function detailLinks(data,person){
 async function openDossier(r){
   shown=r.dept+':'+r.discordId;
   const active=shown;
-  $('detail').hidden=false;$('detailTitle').textContent=(departments[r.dept]||r.dept)+' · afzonderlijk personeelsdossier · '+r.name;
+  $('detail').hidden=false;document.body.classList.add('dossier-wide');$('detailTitle').textContent=(departments[r.dept]||r.dept)+' · afzonderlijk personeelsdossier · '+r.name;
   $('detailService').dataset.service=r.dept;
   $('detailService').textContent='🔒 '+(departments[r.dept]||r.dept)+' · alleen de bevoegde leiding van deze hulpdienst';
   switchDossierTab('fiche');
@@ -255,9 +255,16 @@ async function openDossier(r){
     $('matchWarning').textContent='Dit is uitsluitend het dossier van '+(departments[r.dept]||r.dept)+'. Andere hulpdiensten beheren hun eigen afzonderlijke dossier voor dezelfde Discord-gebruiker.';
     const staff=$('staff');staff.replaceChildren();
     if(data.personnel){
-      const p=data.personnel;
-      item(staff,'Naam',p.name);item(staff,'Roepnummer',p.call);item(staff,'Rang',p.rank);item(staff,'Status',p.status);
-      item(staff,'Gegevensbron',p.source==='firestore-created'?'Firestore':p.source==='firestore-overlay'?'Firestore-wijziging':'Google Sheets');
+      // Zelfde beveiligde personeelsfiche als in TEST, zonder een tweede gegevensbron.
+      const frame=document.createElement('iframe');
+      frame.id='inlinePersonnelFrame';
+      frame.title='Personeelsdossier voor '+r.name;
+      frame.referrerPolicy='no-referrer';
+      frame.style.cssText='display:block;width:100%;height:1100px;min-height:650px;border:0;border-radius:7px;background:#0b1b32';
+      frame.src='/personeelsbeheer.html?'+new URLSearchParams({
+        embed:'1',dept:r.dept,discordId:r.discordId
+      }).toString();
+      staff.append(frame);
     }else staff.textContent='Geen zichtbare personeelsfiche.';
     timelineEntries=Array.isArray(data.timeline)?data.timeline:[];
     renderHistory();detailLinks(data,r);
@@ -275,7 +282,7 @@ async function load(){
     (data.departments||[]).forEach(d=>{const op=node('option',departments[d]||d);op.value=d;$('department').append(op)});
     $('department').value=[...$('department').options].some(o=>o.value===selected)?selected:'all';
     closeDossier();render();
-    message(rows.length+' dossiers geladen. Alleen-lezen.'+(data.sourceStale?' De personeelsbron gebruikt tijdelijk gecachete gegevens.':''));
+    message(rows.length+' dossiers geladen. Bewerkrechten worden per rubriek gecontroleerd.'+(data.sourceStale?' De personeelsbron gebruikt tijdelijk gecachete gegevens.':''));
   }catch(e){rows=[];closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();message(e.message,true)}
 }
 function changedFilters(){page=1;render()}
@@ -297,6 +304,14 @@ $('clear').onclick=()=>{
 };
 $('refresh').onclick=()=>load().catch(e=>message(e.message,true));
 $('close').onclick=closeDossier;
+window.addEventListener('message',event=>{
+  const frame=$('inlinePersonnelFrame');
+  if(event.origin!==window.location.origin||event.source!==frame?.contentWindow||
+    event.data?.type!=='bpd-dossier-embed-size')return;
+  const height=Number(event.data.height);
+  if(Number.isFinite(height)&&height>=400&&height<=30000)
+    frame.style.height=Math.ceil(height+20)+'px';
+});
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
