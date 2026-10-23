@@ -1,0 +1,57 @@
+/* BelgiumPD TEST: spreadsheet-geïnspireerde personeelsfiche, zonder tabbladnavigatie.
+   Bestaande data/ACL/formulieren blijven de enige bron van waarheid. */
+body.dossier-onepage main{max-width:1670px}
+body.dossier-onepage #panel{margin-top:12px;padding:17px 20px;border:1px solid #315273;border-radius:9px;background:#10213b}
+body.dossier-onepage #panel #personTitle{font-size:21px;margin:0}
+body.dossier-onepage #panel #identity{font-size:11px;margin:5px 0 10px;color:#a4bcda}
+body.dossier-onepage #dossierTabBar{display:none!important}
+body.dossier-onepage #panel>.sheet-identity{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;background:#182f4f;border:1px solid #3b5b80;margin:10px 0 14px;border-radius:4px;padding:9px 12px}
+body.dossier-onepage #panel>.sheet-identity>div{min-width:0;padding:3px 10px}
+body.dossier-onepage #panel>.sheet-identity small{font-size:10px;color:#a1bedc;letter-spacing:.04em;text-transform:uppercase;display:block}
+body.dossier-onepage #panel>.sheet-identity strong{font-size:13px;color:#eaf3ff;overflow-wrap:anywhere}
+body.dossier-onepage #dossierViews{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:
+ "gegevens specialisaties nieuw"
+ "verlof sancties opleidingen"
+ "registraties middenregistraties historiek";
+ gap:0;align-items:start;min-height:0}
+body.dossier-onepage #dossierViews .dossier-pane{display:block!important;min-width:0;max-height:none!important;overflow:visible!important;overscroll-behavior:auto;scrollbar-width:auto;padding:12px 14px 18px;border-top:2px solid #436b9b;border-right:1px solid #385474;border-bottom:1px solid #385474;align-self:stretch;background:transparent}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="overzicht"]{display:none!important}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="gegevens"]{grid-area:gegevens}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="specialisaties"]{grid-area:specialisaties}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="nieuw"]{grid-area:nieuw}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="verlof"]{grid-area:verlof}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="sancties"]{grid-area:sancties}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="opleidingen"]{grid-area:opleidingen}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="registraties"]{grid-area:registraties}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="middenregistraties"]{grid-area:middenregistraties}
+body.dossier-onepage #dossierViews .dossier-pane[data-dossier-pane="historiek"]{grid-area:historiek;border-right:0}
+body.dossier-onepage #dossierViews .dossier-pane:nth-child(3n + 2){border-right:0}
+body.dossier-onepage #dossierViews .dossier-pane>.sheet-category-heading{font-size:14px;font-weight:750;line-height:1.35;margin:-12px -14px 12px;padding:9px 14px;background:#23487b;color:#edf6ff}
+body.dossier-onepage #dossierViews .dossier-pane h3{font-size:13px;margin:12px 0 7px}
+body.dossier-onepage #dossierViews .dossier-pane p{font-size:11px;line-height:1.45;color:#a9bdd8;margin:5px 0 9px}
+body.dossier-onepage #dossierViews .dossier-pane .grid{grid-template-columns:minmax(0,1fr);gap:9px}
+body.dossier-onepage #dossierViews .dossier-pane .grid>[style*="grid-column"]{grid-column:1!important}
+body.dossier-onepage #dossierViews .dossier-pane form{margin:10px 0;background:transparent;border:0;border-top:1px solid #385573;padding:11px 0 7px;border-radius:0}
+body.dossier-onepage #dossierViews .dossier-pane input,
+body.dossier-onepage #dossierViews .dossier-pane textarea,
+body.dossier-onepage #dossierViews .dossier-pane select{min-width:0;max-width:100%}
+body.dossier-onepage #dossierViews .dossier-pane button{font-size:11px;max-width:100%}
+body.dossier-onepage #dossierViews .dossier-pane .controls{display:flex;flex-wrap:wrap;gap:8px}
+body.dossier-onepage #dossierViews .dossier-pane .dossier-summary{grid-template-columns:1fr;gap:5px}
+body.dossier-onepage #dossierViews .dossier-pane .dossier-summary>div{padding:7px 8px;border:0;border-bottom:1px solid #345170;border-radius:0;background:transparent}
+body.dossier-onepage #dossierViews .dossier-pane .note-item{padding:9px 2px;border-bottom:1px solid #344f70}
+body.dossier-onepage #dossierViews .dossier-pane .specialty-ledger{display:flex;gap:6px;flex-wrap:wrap}
+body.dossier-onepage #panel .sheet-caption{font-size:11px}
+body.dossier-onepage #panel .dossier-views [hidden]{display:none!important}
+@media(max-width:1180px){
+ body.dossier-onepage #dossierViews{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:
+ "gegevens specialisaties" "nieuw verlof" "sancties opleidingen"
+ "registraties middenregistraties" "historiek historiek"}
+}
+@media(max-width:700px){
+ body.dossier-onepage #panel{padding:13px}
+ body.dossier-onepage #panel>.sheet-identity{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ body.dossier-onepage #dossierViews{grid-template-columns:minmax(0,1fr);grid-template-areas:
+ "gegevens" "specialisaties" "nieuw" "verlof" "sancties" "opleidingen" "registraties" "middenregistraties" "historiek"}
+ body.dossier-onepage #dossierViews .dossier-pane{border-right:0}
+}
