@@ -18,20 +18,44 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
   // zelden. Eén gedeelde cache spaart een afzonderlijke Firestore-read per
   // gebruiker/poll; een geslaagde wijziging invalideert hem direct.
   const shortcutsCache={value:null,expires:0,pending:null};
+  // Merge simultaneous viewer polls into one Firestore read; keep the board
+  // fresh within the 5-second browser interval. Every successful mutation
+  // invalidates the cache so commands never operate on cached revisions.
+  const boardCache={value:null,expires:0,pending:null,generation:0};
+  const invalidateBoard=()=>{
+    boardCache.generation++;boardCache.value=null;boardCache.expires=0;
+  };
   return {
     async readBoard(){
-      const snapshot=await getDatabase().collection(TO_BOARD_COLLECTION).doc('politie').get();
-      return snapshot.exists?snapshot.data():emptyBoard();
+      if(boardCache.value!==null&&Date.now()<boardCache.expires)
+        return boardCache.value;
+      if(!boardCache.pending){
+        const generation=boardCache.generation;
+        const job=(async()=>{
+          const snapshot=await getDatabase().collection(TO_BOARD_COLLECTION).doc('politie').get();
+          const value=snapshot.exists?snapshot.data():emptyBoard();
+          if(generation===boardCache.generation){
+            boardCache.value=value;boardCache.expires=Date.now()+2000;
+          }
+          return value;
+        })();
+        boardCache.pending=job;
+      }
+      const job=boardCache.pending;
+      try{return await job}
+      finally{if(boardCache.pending===job)boardCache.pending=null}
     },
     async execute(command,context){
       const database=getDatabase(),reference=database.collection(TO_BOARD_COLLECTION).doc('politie');
-      return database.runTransaction(async transaction=>{
+      const result=await database.runTransaction(async transaction=>{
         const snapshot=await transaction.get(reference);
         const result=applyBoardCommand(snapshot.exists?snapshot.data():emptyBoard(),command,context);
         if(result.archive)transaction.create(database.collection(TO_ARCHIVE_COLLECTION).doc(result.archive.id),result.archive);
         transaction.set(reference,result.board);
         return result;
       });
+      invalidateBoard();
+      return result;
     },
     async readShortcuts(){
       if(shortcutsCache.value!==null&&Date.now()<shortcutsCache.expires)
@@ -109,6 +133,9 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
           board.revision++;
           transaction.set(reference,board);
         }
+        return ended;
+      }).then(ended=>{
+        if(ended.length)invalidateBoard();
         return ended;
       });
     },
