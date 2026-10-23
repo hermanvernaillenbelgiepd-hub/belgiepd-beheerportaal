@@ -816,14 +816,28 @@ async function load(){
     $('mode').textContent=createEnabled&&!writesEnabled?'Nieuwe personeelsfiches en Discord-koppelingen zijn beschikbaar. Bestaande bronfiches blijven alleen-lezen en Google Sheets worden niet aangepast.':!writesEnabled?'Voorbereidingsmodus: bestaande personeelswijzigingen zijn uitgeschakeld; Google Sheets blijven ongewijzigd.':
       data.overridesActive?'Firestore-wijzigingen zijn actief in de personeelsweergaven. Google Sheets blijven als terugvalbron behouden.':
         'Testmodus: wijzigingen worden in Firestore opgeslagen, maar nog niet gebruikt als hoofdgegevensbron.';
-    const prefill=new URLSearchParams(window.location.search).get('discordId');
+    // Eénmalige beveiligde deeplink vanuit Weekrapporten/Dossiercentrum:
+    // de personeelslijst bepaalt of dit dossier echt voor de gebruiker zichtbaar is.
+    const query=new URLSearchParams(window.location.search);
+    const prefill=query.get('discordId'),targetDept=query.get('dept');
     if(prefill&&/^\d{15,22}$/.test(prefill)){
-      $('dept').value='all';$('search').value=prefill;
+      if(targetDept&&(data.departments||[]).includes(targetDept))$('dept').value=targetDept;
+      else $('dept').value='all';
+      $('search').value=prefill;
     }
     render();renderPending();
     if(prefill&&/^\d{15,22}$/.test(prefill)){
-      const matching=people.filter(p=>p.discordId===prefill);
-      if(matching.length===1)await showPerson(matching[0]);
+      const matching=people.filter(p=>p.discordId===prefill&&
+        (!targetDept||p.dept===targetDept));
+      if(matching.length===1){
+        await showPerson(matching[0]);
+        if(!$('panel').hidden){
+          const clean=new URL(window.location.href);
+          clean.searchParams.delete('discordId');clean.searchParams.delete('dept');
+          window.history.replaceState(null,'',clean.pathname+clean.search+clean.hash);
+          $('panel').scrollIntoView({block:'start'});
+        }
+      }
     }
     notice('Personeelsgegevens geladen. '+people.length+' fiches, '+(people.filter(p=>p.source==='firestore-created').length)+' nieuwe Firestore-fiches, '+(people.filter(p=>p.source==='firestore-overlay').length)+' bijgewerkte fiches.');
     if(data.limited||data.pendingLimited)
