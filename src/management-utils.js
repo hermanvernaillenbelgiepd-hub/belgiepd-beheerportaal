@@ -5,7 +5,7 @@ export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','n
 export const CADRE_ROLES = Object.freeze(['middenkader','officierenkader','korpsleiding']);
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
 export const RECORD_LABELS = Object.freeze({
-  observatie:'Observatie', sanctie:'Sanctie', verlof:'Verlof', notitie:'Personeelsnotitie',
+  observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Personeelsnotitie',
   opleiding:'Afgeronde opleiding', activiteit:'Dienstactiviteit',
   specialisatiebeperking:'Specialisatiebeperking', naamswijziging:'Naamswijziging',
   promotievoorstel:'Promotievoorstel', personeelsbeweging:'Personeelsbeweging'
