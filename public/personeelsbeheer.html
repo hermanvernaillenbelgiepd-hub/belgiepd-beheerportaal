@@ -427,8 +427,15 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <h4>Sanctiegegevens</h4><div class="grid">
 <div><label for="formalSeverity">Graad van ernst (1–10)</label><input id="formalSeverity" type="number" min="1" max="10" value="5"></div>
 <div><label for="formalSanctionType">Maatregel</label><select id="formalSanctionType"></select></div>
-<div style="grid-column:1/-1"><label>Reden(en) van de sanctie</label><div id="formalReasons" class="formal-reasons"></div></div>
-<div><label for="formalReasonOther">Toelichting bij Anders</label><input id="formalReasonOther" maxlength="500"></div>
+<div class="sanction-reasons-field" style="grid-column:1/-1">
+  <div class="sanction-reasons-heading">
+    <strong id="sanctionReasonsLabel">Reden(en) van de sanctie</strong>
+    <span id="sanctionReasonCount" aria-live="polite">Selecteer minstens één reden</span>
+  </div>
+  <div id="formalReasons" class="formal-reasons" role="group" aria-labelledby="sanctionReasonsLabel"></div>
+  <div id="selectedSanctionReasons" class="sanction-reasons-selected" hidden></div>
+</div>
+<div id="formalOtherReasonField" hidden><label for="formalReasonOther">Toelichting bij Anders</label><input id="formalReasonOther" maxlength="500"></div>
 <div><label for="formalCfx">CFX-naam (optioneel)</label><input id="formalCfx" maxlength="120"></div>
 <div style="grid-column:1/-1"><label for="formalExplanation">Omkadering, toelichting en opvolging</label><textarea id="formalExplanation" rows="2" maxlength="2000"></textarea></div>
 </div></div>
@@ -1467,8 +1474,64 @@ async function loadStaffLeave(p,key){
    met originele actor, auditlog en automatische opname in weekrapporten. */
 let formalPermissions=null,formalRecords=[],formalEditId=null;
 const sameDossier=key=>Boolean(selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden);
+// Zichtbare afkortingen, maar de checkbox-waarde blijft de officiële
+// sanctiereden die de server valideert, bewaart en exporteert.
+const sanctionReasonGroups=[
+  {title:'Procedure & veiligheid',reasons:[
+    ['Radioprotocol','Radioprotocol'],['Rijstijl','Rijstijl'],['Veiligheid','Veiligheid']]},
+  {title:'Onrechtmatig gebruik',reasons:[
+    ['Onrechtmatig gebruik dienstspecifiek voertuig','Dienstspecifiek voertuig'],
+    ['Onrechtmatig gebruik collectief / dienstspecifiek wapen','Collectief / dienstspecifiek wapen'],
+    ['Onterecht (vuur)wapengebruik','Onterecht (vuur)wapengebruik']]},
+  {title:'Gedrag',reasons:[['Schelden/pesten','Schelden / pesten']]},
+  {title:'Buiten bevoegdheid',reasons:[
+    ['Buiten bevoegdheid treden (intern)','Intern'],
+    ['Buiten bevoegdheid treden (extern)','Extern']]},
+  {title:'Integriteit',reasons:[
+    ['Ongeoorloofde toe-eigening van een graad','Ongeoorloofde graad'],
+    ['Ongeoorloofde toe-eigening van een specialisatie','Ongeoorloofde specialisatie']]},
+  {title:'Overig',reasons:[['Anders','Anders (toelichten)']]}
+];
+function renderSanctionReasonChoices(reasons=[]){
+  const available=new Set(reasons),root=$('formalReasons');
+  root.replaceChildren();
+  for(const group of sanctionReasonGroups){
+    const items=group.reasons.filter(([value])=>available.has(value));
+    if(!items.length)continue;
+    const section=document.createElement('section');
+    section.className='sanction-reason-group';
+    const title=document.createElement('h5');title.textContent=group.title;
+    const choices=document.createElement('div');choices.className='sanction-reason-options';
+    for(const [value,shortName] of items){
+      const label=document.createElement('label');
+      label.className='sanction-reason-option';
+      label.title=value;
+      const input=document.createElement('input');
+      input.type='checkbox';input.value=value;
+      const name=document.createElement('span');name.textContent=shortName;
+      label.append(input,name);choices.append(label);
+    }
+    section.append(title,choices);root.append(section);
+  }
+  updateSelectedSanctionReasons();
+}
 function formalSelectedReasons(){
   return [...$('formalReasons').querySelectorAll('input[type="checkbox"]:checked')].map(x=>x.value);
+}
+function updateSelectedSanctionReasons(){
+  const choices=formalSelectedReasons(),summary=$('selectedSanctionReasons');
+  summary.replaceChildren();
+  $('sanctionReasonCount').textContent=choices.length
+    ?choices.length+' reden'+(choices.length===1?'':'en')+' geselecteerd'
+    :'Selecteer minstens één reden';
+  summary.hidden=!choices.length;
+  if(!choices.length)return;
+  for(const value of choices){
+    const selected=document.createElement('span');selected.className='sanction-reason-chip';
+    selected.textContent=sanctionReasonGroups.flatMap(g=>g.reasons)
+      .find(([key])=>key===value)?.[1]||value;
+    summary.append(selected);
+  }
 }
 function formalSanctionOptions(){
   const dept=selected?.dept,level=Number($('formalSeverity').value);
@@ -1493,7 +1556,9 @@ function updateFormalFields(){
   }
   if(opts.includes(old))$('formalSanctionType').value=old;
   const other=formalSelectedReasons().includes('Anders');
+  $('formalOtherReasonField').hidden=!isSanction||!other;
   $('formalReasonOther').required=isSanction&&other;
+  updateSelectedSanctionReasons();
   $('formalSave').disabled=!formalPermissions?.writesEnabled||
     (isSanction?!sanction||!opts.length:!observation);
   $('staffFormalPolicy').textContent=!formalPermissions?.writesEnabled?
@@ -1565,6 +1630,7 @@ function openFormalEdit(row){
   setFormalDate(row.eventDate);
   for(const cb of $('formalReasons').querySelectorAll('input[type="checkbox"]'))
     cb.checked=Array.isArray(row.reasons)&&row.reasons.includes(cb.value);
+  updateFormalFields();
   $('formalAmendFields').hidden=false;$('formalAmendReason').required=true;
   $('formalAmendReason').value='';$('formalCancelEdit').hidden=false;
   $('staffFormalFormTitle').textContent='Sanctie wijzigen · bestaande registratie';
@@ -1606,12 +1672,7 @@ async function loadStaffFormalPermissions(p,key){
     if(canObs)$('formalType').append(option('observatie','Observatie'));
     if(canSan)$('formalType').append(option('sanctie','Sanctie'));
     $('formalType').disabled=false;
-    $('formalReasons').replaceChildren();
-    for(const reason of data.sanctionReasons||[]){
-      const label=document.createElement('label'),input=document.createElement('input');
-      input.type='checkbox';input.value=reason;label.append(input,document.createTextNode(reason));
-      $('formalReasons').append(label);
-    }
+    renderSanctionReasonChoices(data.sanctionReasons||[]);
     if(canObs||canSan){
       clearFormalEdit();
       $('formalWriteStatus').textContent='Vul de registratie hieronder rechtstreeks in. Enkel de voor jou toegelaten categorieën zijn beschikbaar.';
