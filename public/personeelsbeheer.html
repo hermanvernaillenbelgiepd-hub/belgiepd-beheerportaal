@@ -240,14 +240,6 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <div class="scroller staff-roster-holder"><table class="staff-roster-table"><thead id="staffColumnHeaders"></thead><tbody id="results"></tbody></table></div>
 
 </section>
-<section id="pendingPanel" class="card" hidden>
-<h2>Wacht op Discord-koppeling</h2><p id="pendingSummary" class="subtle"></p>
-<label class="inline-check"><input id="onlyApprovals" type="checkbox"> Alleen aanvragen die op kadergoedkeuring wachten</label>
-<p>Deze medewerkers hebben een interne personeelsreferentie, maar nog geen gekoppelde Discord-ID.
-Hiermee krijgen ze geen Discord-rollen, portaalrechten of personeelsdossiers. <a href="/personeel-koppelen.html">Open de pagina om Discord te koppelen</a>.</p>
-<div class="scroller"><table><thead><tr><th>Personeelslid</th><th>Hulpdienst</th>
-<th>Roepnummer</th><th>Rang</th><th>Interne referentie</th><th>Status / actie</th></tr></thead>
-<tbody id="pendingResults"></tbody></table></div></section>
 <section id="newPanel" class="card" hidden>
 <div class="controls" style="justify-content:space-between"><h2>Nieuw personeelslid</h2><button id="newClose" class="alt" type="button">Sluiten</button></div>
 <p>Maak een personeelsfiche aan. Met een opgegeven Discord-ID wordt de juiste identiteit bij Discord-aanmelding automatisch herkend. Zonder Discord-ID volgt een aparte koppelaanvraag en kadergoedkeuring. Een fiche kent nooit automatisch portaalrechten toe.</p>
@@ -619,93 +611,6 @@ async function request(url,options={}){
 }
 function option(value,label){const o=document.createElement('option');o.value=value;o.textContent=label;return o}
 function td(tr,text){const c=document.createElement('td');c.textContent=text;tr.append(c);return c}
-function inviteText(person){
-  return 'BelgiumPD personeelskoppeling\n' +
-    'Naam: '+person.name+'\n' +
-    'Hulpdienst: '+(departments[person.dept]||person.dept)+'\n' +
-    'Interne referentie: '+person.internalId+'\n' +
-    'Open: '+window.location.origin+'/personeel-koppelen.html\n' +
-    'Meld je aan met je eigen Discord-account en vul de referentie in. '+
-    'Een bevoegd kaderlid moet de koppeling nog goedkeuren. '+
-    'Deel deze uitnodiging uitsluitend privé met de betrokken medewerker.';
-}
-function renderPending(){
-  $('pendingPanel').hidden=!pendingPeople.length;
-  const approvalCount=pendingPeople.filter(p=>Boolean(p.request)).length;
-  $('pendingSummary').textContent=pendingPeople.length+' zonder gekoppelde Discord-ID · '+
-    approvalCount+' wachten op kadergoedkeuring · '+
-    (pendingPeople.length-approvalCount)+' wachten op een Discord-aanvraag';
-  const body=$('pendingResults');body.replaceChildren();
-  const entries=pendingPeople.filter(p=>!$('onlyApprovals').checked||p.request)
-    .sort((a,b)=>Number(Boolean(b.request))-Number(Boolean(a.request))||
-      String(a.name).localeCompare(String(b.name),'nl'));
-  if(!entries.length){
-    const row=document.createElement('tr');
-    const cell=td(row,'Geen aanvragen ter goedkeuring.');
-    cell.colSpan=6;body.append(row);
-  }
-  for(const p of entries){
-    const row=document.createElement('tr');
-    td(row,p.name);td(row,departments[p.dept]||p.dept);td(row,p.call);
-    td(row,p.rank);
-    const refCell=document.createElement('td');
-    const ref=document.createElement('code');ref.textContent=p.internalId;
-    const copy=document.createElement('button');copy.type='button';
-    copy.className='alt small';copy.textContent='Kopieer uitnodiging';
-    copy.onclick=async()=>{
-      const invitation=inviteText(p);
-      try{
-        await navigator.clipboard.writeText(invitation);
-        notice('Uitnodiging voor '+p.name+' gekopieerd. Deel die privé met de medewerker.');
-      }catch{window.prompt('Kopieer deze uitnodiging en verstuur ze privé:',invitation)}
-    };
-    refCell.append(ref,document.createElement('br'),copy);row.append(refCell);
-    const cell=document.createElement('td');
-    const info=document.createElement('div');info.textContent=p.status;cell.append(info);
-    if(p.request){
-      const member=document.createElement('small');member.textContent=
-        'Discord: '+p.request.username+' ('+p.request.discordId+')';
-      cell.append(member);
-      const approve=document.createElement('button');approve.type='button';
-      approve.textContent='Koppeling goedkeuren';approve.className='alt';
-      approve.style.marginTop='8px';
-      approve.onclick=async()=>{
-        if(!confirm('Bevestig dat Discord-account '+p.request.username+
-          ' bij medewerker '+p.name+' hoort. Dit geeft GEEN toegangsrechten.'))return;
-        const reason=prompt('Motivering koppeling (minstens 10 tekens):',
-          'Discord-identiteit en personeelsfiche gecontroleerd');
-        if(reason===null)return;
-        approve.disabled=true;
-        try{
-          await request('/api/personnel/link/'+encodeURIComponent(p.internalId)+'/approve',
-            {method:'POST',body:{reason}});
-          await load();
-          notice('Discord-identiteit aan personeelsfiche gekoppeld. Portaalrechten blijven afzonderlijk.');
-        }catch(e){notice(e.message,true)}
-        finally{approve.disabled=false}
-      };
-      cell.append(approve);
-      const reject=document.createElement('button');reject.type='button';
-      reject.textContent='Koppelaanvraag afwijzen';reject.className='alt';
-      reject.style.marginTop='8px';reject.style.marginLeft='8px';
-      reject.onclick=async()=>{
-        if(!confirm('Koppelaanvraag voor '+p.name+' afwijzen? De personeelsfiche en het roepnummer blijven bewaard, zodat een andere Discord-gebruiker later een nieuwe aanvraag kan doen.'))return;
-        const reason=prompt('Motivering afwijzing (minstens 10 tekens):',
-          'Testaanvraag ingediend met verkeerd Discord-account');
-        if(reason===null)return;
-        reject.disabled=true;approve.disabled=true;
-        try{
-          await request('/api/personnel/link/'+encodeURIComponent(p.internalId)+'/reject',
-            {method:'POST',body:{reason}});
-          await load();
-          notice('Koppelaanvraag afgewezen. De personeelsfiche blijft beschikbaar voor een nieuwe Discord-koppeling.');
-        }catch(e){notice(e.message,true);reject.disabled=false;approve.disabled=false}
-      };
-      cell.append(reject);
-    }
-    row.append(cell);body.append(row);
-  }
-}
 // Use the shared image catalog for Signalisatie, preserving emoji for all other skills.
 function specialtyMark(label){
   const image=BPDPersonnelVisuals.specialtyIconImage(label);
@@ -862,11 +767,11 @@ async function checkAccessStatus(){
   }catch(e){root.textContent='Statuscontrole: '+e.message}
 }
 async function load(){
-  if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;$('panel').hidden=true;createRanks={};promotionsEnabled=false;$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();renderPending();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+  if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;$('panel').hidden=true;createRanks={};promotionsEnabled=false;$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     const data=await request('/api/personnel/overview');
     $('accessHelp').hidden=true;
-    people=data.records||[];pendingPeople=data.pendingPersonnel||[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;testMode=data.testMode===true;
+    people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
     $('newBtn').hidden=!Object.keys(createRanks).length;
     if($('newPanel').hidden===false&&!Object.keys(createRanks).length)$('newPanel').hidden=true;
@@ -889,7 +794,7 @@ async function load(){
       else $('dept').value='all';
       $('search').value=prefill;
     }
-    render();renderPending();
+    render();
     if(prefill&&/^\d{15,22}$/.test(prefill)){
       const matching=people.filter(p=>p.discordId===prefill&&
         (!targetDept||p.dept===targetDept));
@@ -2108,7 +2013,6 @@ $('newDept').onchange=refreshNewRanks;
 $('newRank').onchange=refreshExceptionalRank;
 $('newId').oninput=updateNewDuplicateWarning;
 $('newCall').oninput=updateNewDuplicateWarning;
-$('onlyApprovals').onchange=renderPending;
 $('newForm').onsubmit=async event=>{
   event.preventDefault();
   if(!createEnabled||!Object.keys(createRanks).length)return;
@@ -2127,7 +2031,7 @@ $('newForm').onsubmit=async event=>{
     await load();
     notice(result.pending
       ?'Conceptpersoneelsfiche aangemaakt met interne referentie '+result.internalId+
-        '. Deze staat onder Wacht op Discord-koppeling. Er zijn geen inlogrechten toegekend.'
+        '. Deze wordt nu uitsluitend in Gebruikersbeheer → Bestuur weergegeven. Er zijn geen inlogrechten toegekend.'
       :'Nieuwe personeelsfiche aangemaakt in Firestore. Discord- en portaalrechten zijn niet gewijzigd.');
     if(!result.pending){
       const found=people.find(p=>p.discordId===result.discordId&&p.dept===result.dept);
