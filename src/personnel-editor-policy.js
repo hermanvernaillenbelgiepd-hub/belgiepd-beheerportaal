@@ -7,7 +7,7 @@ import {policeKader} from './normalize.js';
 export const PERSONNEL_EDITS_COLLECTION='bpd_personnel_edits';
 export const EDITABLE_STATUSES=Object.freeze(['Actief','Inactief','50/50','Verlof','In opleiding','Afwezig']);
 const ID=/^\d{15,22}$/;
-const SERVICES=new Set(['politie','brandweer','ambulance','depannage']);
+const SERVICES=new Set(['politie','brandweer','ambulance','depannage','burger']);
 const TRIM=s=>typeof s==='string'?s.trim():'';
 // Claim documents protect against concurrent duplicate callsign allocation.
 export function personnelCallClaimId(dept,call){
