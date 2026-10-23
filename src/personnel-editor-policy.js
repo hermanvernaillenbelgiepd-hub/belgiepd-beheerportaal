@@ -30,7 +30,10 @@ export function canEditPersonnel(actor,person){
   // Bestuur is uitsluitend een inzagerecht. Een afzonderlijk goedgekeurde
   // operationele dienstrol blijft geldig, ook bij een bestuursaanstelling.
   // Nooit schrijfrechten ontlenen aan Bestuur alleen.
-  if(!Array.isArray(actor?.dossierNativeDepartments)||
+  // Een expliciet berekende dienstscope mag geen andere dienst openen;
+  // oudere correct goedgekeurde kaderaccounts zonder scopeveld behouden hun
+  // dienstrol. Bestuur alléén geeft nooit operationele schrijfrechten.
+  if(Array.isArray(actor?.dossierNativeDepartments)&&
      !actor.dossierNativeDepartments.includes(person.dept))return false;
   const scoped=roleForDepartment(actor,person.dept);
   if(person.dept==='brandweer'&&actor.fireZoneChief===true)return true;
