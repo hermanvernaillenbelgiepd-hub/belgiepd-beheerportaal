@@ -22,7 +22,7 @@ test('TEST: één invulhub met originele geautoriseerde formulieren en zonder tw
  for(const [tile,form] of [
    ['gegevens','staffProfileForm'],['gegevens','editForm'],['movements','promotionPanel']
  ]){
-   assert.match(html,new RegExp("\\\\['"+tile+"','"+form+"'\\\\]"));
+   assert.ok(html.includes("['"+tile+"','"+form+"']"),form);
    assert.equal([...html.matchAll(new RegExp('id="'+form+'"','g'))].length,1);
  }
  for(const form of [
