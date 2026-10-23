@@ -41,7 +41,18 @@ export const receivedAuthor=(entry,people)=>{
   if(!id(author))return null;
   const hits=(people||[]).filter(p=>p.dept==='politie'&&p.personId===author);
   if(hits.length!==1)return null;
-  const person=hits[0],bucket=receivedGroup(person);
-  return bucket?{bucket,discordId:author,name:person.name,call:person.call,
-    rank:person.rank}:null;
+  const person=hits[0];
+  // Door de server bewaarde kaderstand BIJ INDIENING. Latere promoties
+  // verplaatsen bestaande observaties niet tussen ontvangstrubrieken.
+  // De actuele personeelsbron controleert de identiteit van de auteur.
+  const snapshot=entry?.submittedByActor?.discordId===author?
+    entry.submittedByActor:entry?.registeredBy?.discordId===author?
+      entry.registeredBy:null;
+  const stored=snapshot?.rank&&snapshot?.call?
+    {dept:'politie',rank:snapshot.rank,call:snapshot.call}:null;
+  const bucket=receivedGroup(stored||person);
+  return bucket?{bucket,discordId:author,
+    name:typeof snapshot?.name==='string'?snapshot.name:person.name,
+    call:typeof snapshot?.call==='string'?snapshot.call:person.call,
+    rank:typeof snapshot?.rank==='string'?snapshot.rank:person.rank}:null;
 };
