@@ -55,6 +55,27 @@ export function installBurgerDossierRoutes(app,{requireUser,getSnapshot}){
       return failure(res,503,'Burgerdossier niet beschikbaar');
     }
   });
+  // Verlof is persoonsgebonden en centraal; Burgerraad leest alleen
+  // de periode en de status, geen toelichting of beslissingsnotities.
+  app.get('/api/burger-dossiers/:discordId/leave',requireUser,guard,async(req,res)=>{
+    const id=req.params.discordId;
+    if(!ID.test(id))return failure(res,400,'Ongeldig Discord-ID');
+    try{
+      const people=await subject(id);
+      if(people.length!==1)return failure(res,404,'Burgerdossier niet gevonden');
+      const result=await getFirestore().collection('bpd_leave_requests')
+        .where('personDiscordId','==',id).limit(100).get();
+      const leaves=result.docs.map(doc=>{
+        const p=doc.data();
+        return {startDate:p.startDate,endDate:p.endDate,days:p.days,
+          status:p.status||'onbekend'};
+      }).sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||''));
+      return res.json({leaves,limited:result.size===100,source:'central_leave'});
+    }catch(e){
+      console.error('Burgerverlof lezen:',e?.code||'onbekend');
+      return failure(res,503,'Centrale verlofgegevens zijn niet beschikbaar');
+    }
+  });
   app.post('/api/burger-dossiers/personnel',requireUser,guard,canWrite,async(req,res)=>{
     const id=req.body?.discordId;
     if(!ID.test(id)||Object.keys(req.body||{}).some(k=>k!=='discordId'))
