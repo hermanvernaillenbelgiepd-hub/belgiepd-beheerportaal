@@ -101,16 +101,23 @@ export function installBurgerWeekReportRoutes(app,{requireUser,getSnapshot}){
           return error(res,409,'Dubbele Burgeridentiteit; controle vereist');
         unique.add(person.personId);
       }
-      for(const person of people){
-        const query=await db.collection('bpd_cases').doc('burger_'+person.personId)
-          .collection('entries')
-          .where('eventDate','>=',record.periodStart)
-          .where('eventDate','<=',record.periodEnd)
-          .limit(201).get();
-        if(query.size>200)truncated=true;
-        const records=query.docs.slice(0,200).map(d=>d.data())
-          .filter(d=>d.dept==='burger'&&d.subjectDiscordId===person.personId);
-        entries.push(...summarizeBurgerWeekEntries(records,record.periodStart,record.periodEnd));
+      // Bounded parallel reads: no single unbounded cross-service collection scan.
+      for(let i=0;i<people.length;i+=12){
+        const batches=await Promise.all(people.slice(i,i+12).map(async person=>{
+          const query=await db.collection('bpd_cases').doc('burger_'+person.personId)
+            .collection('entries')
+            .where('eventDate','>=',record.periodStart)
+            .where('eventDate','<=',record.periodEnd)
+            .limit(201).get();
+          const items=query.docs.slice(0,200).map(d=>d.data())
+            .filter(d=>d.dept==='burger'&&d.subjectDiscordId===person.personId);
+          return {tooMany:query.size>200,
+            items:summarizeBurgerWeekEntries(items,record.periodStart,record.periodEnd)};
+        }));
+        for(const batch of batches){
+          if(batch.tooMany)truncated=true;
+          entries.push(...batch.items);
+        }
       }
       const sections=['observatie','notitie','opleiding'].map(type=>({
         type,label:({observatie:'Observaties',notitie:'Notities',opleiding:'Opleidingen'})[type],
