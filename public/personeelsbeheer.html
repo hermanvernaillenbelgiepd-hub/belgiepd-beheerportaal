@@ -1082,7 +1082,7 @@ function sheetIdentity(p){
   $('sheetCall').textContent=p.call||'—';
   $('sheetRank').textContent=p.rank||'—';$('sheetSeries').textContent=p.series||'—';
   $('sheetStatus').textContent=p.status||'—';
-  $('sheetProfile').textContent='Administratieve gegevens laden…';
+  sheetDossierProfile({});
   $('sheetSpecialties').textContent='Specialisaties laden…';
   for(const key of [...Object.keys(sheetDefs),'observations','sanctions','basisNotes']){
     const field=$('sheet'+key[0].toUpperCase()+key.slice(1));
@@ -1120,16 +1120,28 @@ function updateGeneralPersonnelInfoDisplay(){
     'Alle wijzigingen in deze rubriek worden samen opgeslagen met één motivering.':
     'Alleen lezen · aanpassingen voor Officierenkader, Korpsleiding of Bestuur.';
 }
-function sheetDossierProfile(profile){
+function sheetDossierProfile(profile={}){
+  // Ook zonder aanvullende Firestore-profielvelden zijn de bestaande
+  // personeelsgegevens zichtbaar: de roosterfiche is de primaire bron.
   const root=$('sheetProfile');root.replaceChildren();
-  const fields=[['Aanstellingsdatum',profile.startDate],['Eenheid / ploeg',profile.unit],
-    ['Functie / opdracht',profile.functionTitle]].filter(([,value])=>Boolean(value));
-  if(!fields.length){root.textContent='Geen aanvullende administratieve gegevens geregistreerd.';return}
+  const person=selected||{};
+  const fields=[
+    ['Naam',person.name],['Roepnummer',person.call],
+    ['Graad',person.rank],['Status',person.status],
+    ['Reeks',person.series],['Discord ID',person.discordId],
+    ['Aanstellingsdatum',profile.startDate],
+    ['Eenheid / ploeg',profile.unit],['Functie / opdracht',profile.functionTitle]
+  ];
+  const list=document.createElement('dl');
+  list.className='personnel-readonly-grid';
   for(const [label,value] of fields){
-    const line=document.createElement('div');line.className='overview-profile-line';
-    const bold=document.createElement('strong');bold.textContent=label+': ';
-    line.append(bold,document.createTextNode(value));root.append(line);
+    const row=document.createElement('div');row.className='personnel-readonly-field';
+    const term=document.createElement('dt');term.textContent=label;
+    const detail=document.createElement('dd');
+    detail.textContent=String(value??'').trim()||'Niet ingevuld';
+    row.append(term,detail);list.append(row);
   }
+  root.append(list);
 }
 function sheetCaseRows(entries,limited){
   const cases=entries||[];
@@ -1971,6 +1983,7 @@ async function loadStaffDossier(p){
     }
   }catch(e){
     if(selected&&selected.dept+':'+selected.discordId===key){
+      sheetDossierProfile({});
       updateGeneralPersonnelInfoDisplay();
       $('staffDossierStatus').textContent='Administratief dossier niet beschikbaar: '+e.message;
     }
