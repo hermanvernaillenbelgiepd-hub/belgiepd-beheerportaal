@@ -83,16 +83,20 @@ test('Middenkader status updates are restricted to lower police ranks',async()=>
  assert.equal(canChangePersonnelStatus({...mid,dossierNativeDepartments:[]},junior),false);
  assert.equal(canChangePersonnelStatus({...mid,role:'basiskader'},junior),false);
 });
-test('Verified Board manages service-wide personnel records but never its own',async()=>{
+test('Verified Board may edit general personnel fields but not operational rank actions',async()=>{
  const board={uid:'discord:111111111111111111',role:'basiskader',
   discordId:'111111111111111111',departments:['politie'],
   departmentRoles:{politie:'basiskader'},dossierNativeDepartments:['politie'],
   boardPersonnelAdmin:true};
  for(const dept of ['politie','brandweer','ambulance','depannage']){
   assert.equal(canViewPersonnel(board,dept),true);
-  assert.equal(canEditPersonnel(board,{...staff,dept}),true);
+  assert.equal(canEditPersonnel(board,{...staff,dept}),false);
  }
  assert.equal(canEditPersonnel(board,{...staff,personId:board.discordId}),false);
+ const {canEditGeneralPersonnelInfo}=await import('../src/personnel-editor-policy.js');
+ const validBoard={...board,dossierAllowedDepartments:['politie','brandweer','ambulance','depannage']};
+ assert.equal(canEditGeneralPersonnelInfo(validBoard,staff),true);
+ assert.equal(canEditGeneralPersonnelInfo(validBoard,{...staff,personId:board.discordId}),false);
  assert.equal(canViewPersonnel({...board,boardPersonnelAdmin:false},'brandweer'),false);
  const fs=await import('node:fs');
  const server=fs.readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
@@ -101,7 +105,7 @@ test('Verified Board manages service-wide personnel records but never its own',a
  assert.ok(server.includes("req.bpd.uid==='discord:'+id"));
  assert.ok(server.includes('verifyBoardDiscordRole('));
  assert.ok(server.includes('activeBoardAppointment('));
- assert.ok(route.includes('if(!identityAllowed&&(proposed.name!==subject.name||proposed.call!==subject.call))'));
+ assert.ok(route.includes('if(!canEditGeneralPersonnelInfo(req.bpd,subject))'));
  assert.ok(ui.includes("'pName').disabled=!canChangeIdentity"));
 });
 

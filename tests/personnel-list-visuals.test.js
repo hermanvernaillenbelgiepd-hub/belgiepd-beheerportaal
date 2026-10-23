@@ -115,13 +115,13 @@ test('Personnel overview returns bounded, authorized specialties without copying
   const api=source('src/personnel-editor-routes.js');
   assert.ok(api.includes("specialties:Array.isArray(p.specialties)?p.specialties.slice(0,16)"));
   assert.ok(api.includes("label:x.label.slice(0,64),value:x.value.slice(0,90)"));
-  assert.ok(api.includes("const allowed=req.bpd.departments.filter(d=>canViewPersonnel(req.bpd,d))"));
+  assert.ok(api.includes("const allowed=(req.bpd.dossierAllowedDepartments||req.bpd.departments||[]).filter(d=>canReadServiceDossier(req.bpd,d))"));
   assert.equal(/setCustomUserClaims.*specialties/s.test(api),false);
 });
 test('Personnel management inline script remains valid JavaScript and homepage has no inline scripts',()=>{
   const manager=source('public/personeelsbeheer.html');
   const scripts=[...manager.matchAll(/<script(?: type="module")?>([\s\S]*?)<\/script>/g)];
   assert.ok(scripts.length>0,'Personnel manager must contain protected UI logic');
-  for(const match of scripts)assert.doesNotThrow(()=>new Script(match[1]));
+  for(const match of scripts)assert.doesNotThrow(()=>new Script(match[1].replace(/^import [^\n]*\n/gm,'')));
   assert.equal([...source('public/index.html').matchAll(/<script(?: type="module")?>([\s\S]*?)<\/script>/g)].length,0);
 });
