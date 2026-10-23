@@ -35,7 +35,7 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
           const snapshot=await getDatabase().collection(TO_BOARD_COLLECTION).doc('politie').get();
           const value=snapshot.exists?snapshot.data():emptyBoard();
           if(generation===boardCache.generation){
-            boardCache.value=value;boardCache.expires=Date.now()+2000;
+            boardCache.value=value;boardCache.expires=Date.now()+4500;
           }
           return value;
         })();
