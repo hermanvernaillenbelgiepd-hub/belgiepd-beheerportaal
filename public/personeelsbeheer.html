@@ -539,6 +539,13 @@ function availablePersonnelRegistrationKinds(){
 }
 function displaySelectedRegistration(){
   const kind=$('registrationKind').value;
+  // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
+  // wanneer de gebruiker naar een ander registratietype omschakelt.
+  if(kind!=='sanctie'&&formalEditId!==null){
+    $('formalType').disabled=false;
+    clearFormalEdit();
+  }
+  if(kind!=='training'&&trainingEditId!==null)resetStaffTrainingEdit();
   const available=availablePersonnelRegistrationKinds();
   const permitted=available.some(([k])=>k===kind);
   for(const id of registrationForms)$(id).hidden=true;
