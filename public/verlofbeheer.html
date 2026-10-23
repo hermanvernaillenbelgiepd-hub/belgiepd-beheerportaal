@@ -5,7 +5,19 @@
 <title>BelgiumPD · Algemeen verlofbeheer</title>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#152344;background:#f4f6fa;font-size:15px}
-*{box-sizing:border-box}body{margin:0}header{background:#101c38;color:white;padding:18px max(20px,calc((100vw - 1150px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}header a{color:#dbe7ff;text-decoration:none}header button{background:#e9efff;color:#233e95}button,.link{font:inherit;cursor:pointer;border:1px solid #cdd7e9;border-radius:9px;padding:10px 14px;background:white;color:#14336c}button:hover{filter:brightness(.97)}button.primary{color:white;background:#2e55df;border-color:#2e55df}button:disabled{opacity:.5;cursor:not-allowed}main{max-width:1150px;margin:30px auto;padding:0 20px}h1{font-size:29px;margin:0 0 10px}h2{font-size:19px;margin:0 0 14px}p{color:#51617a;line-height:1.55}small,.muted{color:#6e7c92}.panel{background:white;border:1px solid #e0e6f0;border-radius:14px;padding:22px;margin:18px 0;box-shadow:0 3px 14px #15234407}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}label{font-size:13px;font-weight:700;color:#34425c}input,select,textarea{font:inherit;padding:11px;border:1px solid #cbd5e4;border-radius:8px;width:100%;color:#182747;background:white}textarea{min-height:70px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.pill{display:inline-block;padding:4px 9px;border-radius:12px;background:#eff2fb;color:#344a78;font-size:12px;font-weight:700}.pending{background:#fff3de;color:#976118}.approved{background:#e4f5e9;color:#166739}.rejected{background:#ffe5e9;color:#a02938}.hidden{display:none!important}.error{background:#fff0f0;color:#9a1d2b;border-radius:8px;padding:13px}.notice{background:#edf2ff;color:#214482;border-radius:8px;padding:12px;margin:12px 0}.record{padding:14px 0;border-top:1px solid #e8edf5;display:flex;justify-content:space-between;align-items:flex-start;gap:18px}.record:first-child{border-top:0}.record p{margin:6px 0}.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat>div{background:#f2f5fb;padding:15px;border-radius:9px}.stat strong{font-size:22px;display:block}.warn{background:#fff8e6;padding:12px;border-radius:8px;color:#785411;margin:12px 0}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}@media(max-width:750px){.grid,.stat{grid-template-columns:1fr}.record{display:block}.record .actions{margin-top:12px}}
+*{box-sizing:border-box}body{margin:0}header{background:#101c38;color:white;padding:18px max(20px,calc((100vw - 1150px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}header a{color:#dbe7ff;text-decoration:none}header button{background:#e9efff;color:#233e95}button,.link{font:inherit;cursor:pointer;border:1px solid #cdd7e9;border-radius:9px;padding:10px 14px;background:white;color:#14336c}button:hover{filter:brightness(.97)}button.primary{color:white;background:#2e55df;border-color:#2e55df}button:disabled{opacity:.5;cursor:not-allowed}main{max-width:1150px;margin:30px auto;padding:0 20px}h1{font-size:29px;margin:0 0 10px}h2{font-size:19px;margin:0 0 14px}p{color:#51617a;line-height:1.55}small,.muted{color:#6e7c92}.panel{background:white;border:1px solid #e0e6f0;border-radius:14px;padding:22px;margin:18px 0;box-shadow:0 3px 14px #15234407}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}label{font-size:13px;font-weight:700;color:#34425c}input,select,textarea{font:inherit;padding:11px;border:1px solid #cbd5e4;border-radius:8px;width:100%;color:#182747;background:white}textarea{min-height:70px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.pill{display:inline-block;padding:4px 9px;border-radius:12px;background:#eff2fb;color:#344a78;font-size:12px;font-weight:700}.pending{background:#fff3de;color:#976118}.approved{background:#e4f5e9;color:#166739}.rejected{background:#ffe5e9;color:#a02938}.withdrawn{background:#e9edf4;color:#4e5d73}
+button.withdraw{background:#fff1f2;border-color:#efb8c0;color:#a3293c;padding:7px 11px;font-size:12px}
+button.withdraw:hover{background:#ffe4e8}
+.record .record-activity{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.history-details{border:1px solid #e2e8f3;border-radius:7px;margin-top:9px;padding:7px 9px;font-size:12px}
+.history-details summary{cursor:pointer;font-weight:650;color:#32537e}
+.history-event{border-top:1px solid #e8edf5;padding:7px 0;color:#465a78}
+.history-event:first-child{border-top:0}
+.dialog-error{border:1px solid #e15b70;border-radius:13px;max-width:min(460px,calc(100vw - 28px));padding:0;
+box-shadow:0 18px 75px #0e183666;background:#fff;color:#4c1220}
+.dialog-error::backdrop{background:#08152caa}
+.dialog-body{padding:23px}.dialog-body h2{color:#982439;margin:0 0 12px}
+.dialog-body p{color:#64283a;overflow-wrap:anywhere}.dialog-actions{display:flex;justify-content:flex-end;margin-top:16px}.hidden{display:none!important}.error{background:#fff0f0;color:#9a1d2b;border-radius:8px;padding:13px}.notice{background:#edf2ff;color:#214482;border-radius:8px;padding:12px;margin:12px 0}.record{padding:14px 0;border-top:1px solid #e8edf5;display:flex;justify-content:space-between;align-items:flex-start;gap:18px}.record:first-child{border-top:0}.record p{margin:6px 0}.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat>div{background:#f2f5fb;padding:15px;border-radius:9px}.stat strong{font-size:22px;display:block}.warn{background:#fff8e6;padding:12px;border-radius:8px;color:#785411;margin:12px 0}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}@media(max-width:750px){.grid,.stat{grid-template-columns:1fr}.record{display:block}.record .actions{margin-top:12px}}
 </style>
 </head>
 <body>
@@ -32,11 +44,32 @@
     </section>
   </div>
 </main>
+<dialog id="leaveErrorDialog" class="dialog-error" aria-labelledby="leaveErrorTitle" aria-describedby="leaveErrorMessage">
+  <div class="dialog-body">
+    <h2 id="leaveErrorTitle">Verlofaanvraag niet verwerkt</h2>
+    <p id="leaveErrorMessage"></p>
+    <div class="dialog-actions"><button id="leaveErrorClose" type="button" class="primary">Sluiten</button></div>
+  </div>
+</dialog>
 <script type="module">
 let firebaseAuth=null,firebaseFns=null,me=null;
 const el=id=>document.getElementById(id);
 const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const statusText={pending:'In behandeling',approved:'Goedgekeurd',rejected:'Afgewezen'};
+const statusText={pending:'In behandeling',approved:'Goedgekeurd',rejected:'Geweigerd',withdrawn:'Ingetrokken'};
+const auditActionText={
+  submitted:'Aanvraag ingediend',automatic_approved:'Automatisch goedgekeurd',
+  korpsleiding_vrijgesteld:'Automatisch geregistreerd (Korpsleiding)',
+  approved:'Goedgekeurd',rejected:'Geweigerd',withdrawn:'Ingetrokken door aanvrager',
+  board_override:'Beslissing herzien door Bestuur',manual_approved:'Handmatig goedgekeurd'
+};
+const showError=(message,heading='Verlofaanvraag niet verwerkt')=>{
+  el('leaveErrorTitle').textContent=heading;
+  el('leaveErrorMessage').textContent=String(message||'Onbekende fout');
+  const dialog=el('leaveErrorDialog');
+  if(typeof dialog.showModal==='function'&&!dialog.open)dialog.showModal();
+  else if(typeof dialog.showModal!=='function')dialog.setAttribute('open','');
+};
+el('leaveErrorClose').onclick=()=>el('leaveErrorDialog').close();
 function tell(message,error=false){const x=el('feedback');x.textContent=message;x.className=error?'error':'notice'}
 function countDays(a,b){if(!a||!b)return 0;return (Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/86400000+1}
 function updateCount(){const n=countDays(el('start').value,el('end').value);el('dayCount').textContent=n>0?`${n} kalenderdag(en) — ${n<7?'geen aanvraag nodig':n<=14?'automatisch goedgekeurd':n<=30?'behandeling door bevoegd kader vereist':'goedkeuring door officierenkader, korpsleiding of Bestuur vereist'}`:'Selecteer een geldige begin- en einddatum.'}
@@ -46,7 +79,7 @@ async function request(url,options={}){
   const token=await firebaseAuth.currentUser.getIdToken();
   const r=await fetch(url,{...options,headers:{Authorization:`Bearer ${token}`,...(options.body?{'Content-Type':'application/json'}:{}),...options.headers},cache:'no-store'});
   const data=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error(data.error||`Serverfout ${r.status}`);
+  if(!r.ok)throw Object.assign(new Error(data.error||`Serverfout ${r.status}`),{status:r.status});
   return data;
 }
 function record(x){
@@ -54,10 +87,54 @@ function record(x){
  const main=document.createElement('div'),label=document.createElement('strong');
  label.textContent=(x.startDate||'?')+' t/m '+(x.endDate||'?');
  const status=document.createElement('span');
- status.className='pill '+(['pending','approved','rejected'].includes(x.status)?x.status:'');
+ status.className='pill '+(['pending','approved','rejected','withdrawn'].includes(x.status)?x.status:'');
  status.textContent=statusText[x.status]||x.status||'Onbekend';
  const days=document.createElement('p');days.textContent=Number(x.days||0)+' kalenderdagen';
- main.append(label,' ',status,days);row.append(main);return row;
+ main.append(label,' ',status,days);
+ if(x.canWithdraw&&me?.writesEnabled){
+   const actions=document.createElement('div');actions.className='record-activity';
+   const button=document.createElement('button');button.type='button';button.className='withdraw';
+   button.textContent='Verlof intrekken';
+   button.title='Intrekking wordt bewaard in de dossierhistoriek en het lopende weekrapport';
+   button.onclick=async()=>{
+     if(!window.confirm('Wil je je verlof van '+x.startDate+' tot en met '+x.endDate+
+       ' intrekken? De aanvraag, goedkeuring en intrekking blijven gelogd in het personeelsdossier en weekrapport.'))return;
+     button.disabled=true;
+     try{
+       await request('/api/leave/requests/'+encodeURIComponent(x.id)+'/withdraw',{
+         method:'POST',body:JSON.stringify({reason:''})});
+       await refresh();
+       tell('Verlof ingetrokken. De aanvraag, eventuele goedkeuring en de intrekking blijven bewaard in het dossier en lopende weekrapport.');
+     }catch(error){showError(error.message,'Verlof kon niet worden ingetrokken');button.disabled=false;}
+   };
+   actions.append(button);main.append(actions);
+ }
+ const history=document.createElement('details');history.className='history-details';
+ const summary=document.createElement('summary');summary.textContent='Aanvraag- en beslissingshistoriek';
+ const events=document.createElement('div');events.textContent='Open om de historiek te bekijken.';
+ history.append(summary,events);
+ history.addEventListener('toggle',async()=>{
+   if(!history.open||history.dataset.loaded==='true')return;
+   events.textContent='Historiek laden…';
+   try{
+     const info=await request('/api/leave/requests/'+encodeURIComponent(x.id)+'/history');
+     if(!history.isConnected||!history.open)return;
+     events.replaceChildren();
+     if(!info.events?.length)events.textContent='Geen geregistreerde beslissingen gevonden.';
+     for(const event of info.events||[]){
+       const item=document.createElement('div');item.className='history-event';
+       const who=event.actorType==='self'?'Jijzelf':
+         event.actorType==='system'?'Automatisch':'Bevoegd kader of Bestuur';
+       item.textContent=(event.at?new Date(event.at).toLocaleString('nl-BE')+' · ':'')+
+         (auditActionText[event.action]||event.action||'Wijziging')+' · '+who;
+       events.append(item);
+     }
+     history.dataset.loaded='true';
+     if(info.limited)events.append(document.createTextNode(' Alleen de eerste 75 auditgebeurtenissen zijn geladen.'));
+   }catch(error){events.textContent='Historiek tijdelijk niet beschikbaar: '+error.message}
+ });
+ main.append(history);
+ row.append(main);return row;
 }
 function fill(id,rows){
  const root=el(id);root.replaceChildren();
@@ -88,7 +165,7 @@ el('requestForm').addEventListener('submit',async e=>{
    el('requestForm').reset();updateCount();
    tell(result.status==='approved'?'Verlof automatisch goedgekeurd en geregistreerd.':
      'Verlofaanvraag ingediend ter goedkeuring.');await refresh();
- }catch(err){tell(err.message,true)}
+ }catch(err){tell('De aanvraag werd niet opgeslagen.',true);showError(err.message,'Verlofaanvraag niet ingediend')}
  finally{button.disabled=!me?.writesEnabled}
 });
 async function init(){try{const r=await fetch('/api/client-config',{cache:'no-store'}),c=await r.json();if(!c.enabled)throw new Error('Firebase is niet geconfigureerd');const a=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');firebaseFns=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');firebaseAuth=firebaseFns.getAuth(a.initializeApp(c.firebaseConfig));
