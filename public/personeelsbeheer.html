@@ -181,6 +181,37 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .received-record .received-meta{font-size:11px;color:#adc5e5;display:block;margin:6px 0}
 .received-record .received-details{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.48;color:#dce8f9;margin:6px 0}
 .received-record .received-test{display:inline-block;font-size:10px;border-radius:5px;padding:2px 5px;background:#604b1c;color:#ffe0a0}
+
+/* Compacte personeelsdossierkaart gebaseerd op de vertrouwde spreadsheet-
+   rubrieken. De inhoud komt uit dezelfde beveiligde API's als de invulvelden. */
+.dossier-sheet{display:grid;gap:11px;min-width:0}
+.dossier-sheet .sheet-identity{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid #58769a;border-radius:10px;overflow:hidden;background:#122945}
+.dossier-sheet .sheet-identity>div{padding:10px 11px;border-right:1px solid #38587b;min-width:0}
+.dossier-sheet .sheet-identity>div:last-child{border-right:0}
+.dossier-sheet .sheet-identity small{display:block;text-transform:uppercase;font-size:10px;letter-spacing:.045em;color:#91b2df;margin-bottom:5px}
+.dossier-sheet .sheet-identity strong{font-size:13px;color:#edf5ff;overflow-wrap:anywhere}
+.dossier-sheet .sheet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;min-width:0}
+.dossier-sheet .sheet-block{min-width:0;border:1px solid #3c5677;border-radius:9px;background:#112440;overflow:hidden}
+.dossier-sheet .sheet-block.wide{grid-column:1/-1}
+.dossier-sheet .sheet-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;
+ background:#254a7e;border-bottom:1px solid #6285b1;padding:8px 11px}
+.dossier-sheet .sheet-heading h3{margin:0;font-size:12px;letter-spacing:.02em;color:white}
+.dossier-sheet .sheet-heading button{font-size:11px;padding:5px 8px;border:1px solid #82a6d5;background:#173859}
+.dossier-sheet .sheet-table-holder{width:100%;max-height:210px;overflow:auto}
+.dossier-sheet table{border-collapse:collapse;width:100%;min-width:440px;font-size:11px}
+.dossier-sheet th,.dossier-sheet td{border-right:1px solid #334e6b;border-bottom:1px solid #304766;
+ padding:7px 9px;font-size:11px;vertical-align:top;overflow-wrap:anywhere;text-align:left}
+.dossier-sheet th{background:#183757;color:#c7dcf8;font-size:10px;text-transform:uppercase;position:sticky;top:0}
+.dossier-sheet tbody tr:nth-child(even){background:#142a47}
+.dossier-sheet .sheet-none{padding:11px;color:#a6bfdc;font-size:11px;min-height:33px}
+.dossier-sheet .sheet-caption{font-size:11px;color:#acc5e4;line-height:1.5;margin:3px 2px 0}
+.dossier-sheet .sheet-specialties{padding:10px;display:flex;gap:6px;flex-wrap:wrap;max-height:105px;overflow:auto}
+.dossier-sheet .sheet-chip{padding:4px 7px;border:1px solid #506e91;border-radius:6px;
+  background:#1a375a;color:#d9ebff;font-size:11px}
+@media(max-width:880px){.dossier-sheet .sheet-identity{grid-template-columns:repeat(2,minmax(0,1fr))}
+.dossier-sheet .sheet-identity>div:nth-child(2n){border-right:0}
+.dossier-sheet .sheet-grid{grid-template-columns:1fr}
+.dossier-sheet .sheet-block.wide{grid-column:auto}}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
@@ -441,6 +472,39 @@ function setupDossierTabs(){
     const pane=document.createElement('section');pane.className='dossier-pane';pane.dataset.dossierPane=key;
     pane.setAttribute('role','tabpanel');panes[key]=pane;$('dossierViews').append(pane);
   }
+  const sheet=document.createElement('div');sheet.className='dossier-sheet';sheet.id='sheetOverview';
+  sheet.innerHTML=`
+    <div class="sheet-identity" aria-label="Personeelsinformatie">
+      <div><small>Roepnummer</small><strong id="sheetCall">—</strong></div>
+      <div><small>Personeelslid</small><strong id="sheetName">—</strong></div>
+      <div><small>Graad</small><strong id="sheetRank">—</strong></div>
+      <div><small>Reeks</small><strong id="sheetSeries">—</strong></div>
+      <div><small>Status</small><strong id="sheetStatus">—</strong></div>
+    </div>
+    <div class="sheet-grid">
+      <section class="sheet-block"><div class="sheet-heading"><h3>Specialisaties</h3><button type="button" data-open-sheet="specialisaties">Beheren →</button></div>
+        <div class="sheet-specialties" id="sheetSpecialties">Specialisaties laden…</div></section>
+      <section class="sheet-block"><div class="sheet-heading"><h3>Aanstellingsgegevens / functies</h3><button type="button" data-open-sheet="gegevens">Bewerken →</button></div>
+        <div id="sheetProfile" class="sheet-none">Administratieve gegevens laden…</div></section>
+      <section class="sheet-block"><div class="sheet-heading"><h3>Personeelsbewegingen</h3><button type="button" data-open-sheet="nieuw">Registreren →</button></div>
+        <div id="sheetMovements">Registraties laden…</div></section>
+      <section class="sheet-block"><div class="sheet-heading"><h3>Verloven</h3><button type="button" data-open-sheet="verlof">Openen →</button></div>
+        <div id="sheetLeave">Verlofgegevens laden…</div></section>
+      <section class="sheet-block wide"><div class="sheet-heading"><h3>Observaties &amp; sancties — één personeelsdossier</h3>
+        <button type="button" data-open-sheet="sancties">Observatie / sanctie toevoegen of wijzigen →</button></div>
+        <div id="sheetFormal">Observaties en sancties laden…</div></section>
+      <section class="sheet-block"><div class="sheet-heading"><h3>Gevolgde opleidingen</h3><button type="button" data-open-sheet="opleidingen">Registreren →</button></div>
+        <div id="sheetTraining">Opleidingen laden…</div></section>
+      <section class="sheet-block"><div class="sheet-heading"><h3>Notities (basis &amp; belangrijk)</h3><button type="button" data-open-sheet="nieuw">Notitie toevoegen →</button></div>
+        <div id="sheetNotes">Notities laden…</div></section>
+    </div>
+    <p class="sheet-caption">Vaste rubrieken naar het voorbeeld van het oude personeelsblad. Dit is een live weergave van de bestaande dossierbronnen, geen tweede kopie. Invoer, wijzigingsrechten en auditlogs blijven via de bestaande beveiligde formulieren lopen.</p>
+  `;
+  panes.overzicht.prepend(sheet);
+  sheet.addEventListener('click',event=>{
+    const button=event.target.closest('[data-open-sheet]');
+    if(button)openDossierTab(button.dataset.openSheet);
+  });
   panes.gegevens.append($('editForm'),$('promotionPanel'));
   const source=$('staffDossierSection'),nodes=[...source.children];
   let section='overzicht';
@@ -898,6 +962,98 @@ $('staffTrainingForm').onsubmit=async event=>{
   }catch(e){notice('Opleiding niet bewaard: '+e.message,true)}
   finally{button.disabled=false}
 };
+
+// Samenvattingsblokken krijgen uitsluitend server-goedgekeurde gegevens.
+// Geen tweede fetch, geen dubbele opslag, en alle zichtbare tekst via textContent.
+const sheetDefs={
+  movements:['Datum','Soort','Nieuwe / oude graad','Ingevoerd door'],
+  leave:['Begin','Einde','Status','Dagen'],
+  formal:['Datum','Soort','Omschrijving / reden','Score','Observator'],
+  training:['Datum','Opleiding','Resultaat','Opleider'],
+  notes:['Datum','Soort','Notitie','Auteur']
+};
+function sheetCell(value){
+  const td=document.createElement('td');
+  td.textContent=value===null||value===undefined||value===''?'—':String(value).slice(0,1200);
+  return td;
+}
+function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',limited=false){
+  const root=$('sheet'+group[0].toUpperCase()+group.slice(1));
+  if(!root)return;
+  root.replaceChildren();
+  if(!rows?.length){
+    const note=document.createElement('div');note.className='sheet-none';
+    note.textContent=empty;root.append(note);return;
+  }
+  const holder=document.createElement('div');holder.className='sheet-table-holder';
+  const table=document.createElement('table');
+  const head=document.createElement('thead'),tr=document.createElement('tr');
+  for(const title of sheetDefs[group]){
+    const th=document.createElement('th');th.textContent=title;tr.append(th);
+  }
+  head.append(tr);table.append(head);
+  const body=document.createElement('tbody');
+  for(const row of rows.slice(0,25)){
+    const tr=document.createElement('tr');
+    for(const value of toCells(row))tr.append(sheetCell(value));
+    body.append(tr);
+  }
+  table.append(body);holder.append(table);root.append(holder);
+  if(limited||rows.length>25){
+    const note=document.createElement('div');note.className='sheet-none';
+    note.textContent='Alleen de recentste registraties zichtbaar. Open de rubriek voor meer informatie.';
+    root.append(note);
+  }
+}
+const sheetWho=row=>row.registeredBy?.name||row.submittedByActor?.name||'Onbekend';
+function sheetIdentity(p){
+  $('sheetCall').textContent=p.call||'—';$('sheetName').textContent=p.name||'—';
+  $('sheetRank').textContent=p.rank||'—';$('sheetSeries').textContent=p.series||'—';
+  $('sheetStatus').textContent=p.status||'—';
+  $('sheetProfile').textContent='Administratieve gegevens laden…';
+  $('sheetSpecialties').textContent='Specialisaties laden…';
+  for(const key of Object.keys(sheetDefs)){
+    const field=$('sheet'+key[0].toUpperCase()+key.slice(1));
+    field.textContent='Registraties laden…';
+  }
+  sheetSpecialtyRows(BPDPersonnelVisuals.specialtyStatuses(p.specialties||[]));
+}
+function sheetSpecialtyRows(rows){
+  const container=$('sheetSpecialties');container.replaceChildren();
+  if(!rows?.length){container.textContent='Nog geen specialisaties geregistreerd.';return}
+  for(const item of rows){
+    const chip=document.createElement('span');chip.className='sheet-chip';
+    chip.textContent=String(item.label||'Specialisatie')+' · '+String(item.status||'—');
+    container.append(chip);
+  }
+}
+function sheetDossierProfile(profile){
+  const root=$('sheetProfile');root.replaceChildren();
+  const fields=[['Aanstellingsdatum',profile.startDate],['Eenheid / ploeg',profile.unit],
+    ['Functie / opdracht',profile.functionTitle]];
+  for(const [label,value] of fields){
+    const line=document.createElement('div');line.className='sheet-none';
+    const bold=document.createElement('strong');bold.textContent=label+': ';
+    line.append(bold,document.createTextNode(value||'Niet ingevuld'));root.append(line);
+  }
+}
+function sheetCaseRows(entries,limited){
+  const cases=entries||[];
+  const moves=cases.filter(x=>['personeelsbeweging','promotievoorstel','naamswijziging','functiewijziging'].includes(x.type));
+  sheetSetRows('movements',moves,x=>[x.eventDate||'—',
+    staffCaseLabels[x.type]||x.type,
+    x.proposedRank||x.movement||x.newName||x.newFunction||x.details||'—',sheetWho(x)],
+    'Geen personeelsbewegingen geregistreerd.',limited);
+  const notes=cases.filter(x=>['notitie','activiteit','specialisatiebeperking'].includes(x.type));
+  sheetSetRows('notes',notes,x=>[x.eventDate||'—',staffCaseLabels[x.type]||x.type,
+    x.details||'—',sheetWho(x)],'Geen notities geregistreerd.',limited);
+}
+function sheetFormalRows(entries,limited){
+  sheetSetRows('formal',entries,x=>[x.eventDate||'—',
+    x.type==='sanctie'?'Sanctie · '+(x.sanctionType||'Maatregel'):'Observatie',
+    x.details||x.explanation||'—',x.type==='sanctie'?x.severity??'—':x.score??'—',
+    sheetWho(x)],'Geen zichtbare observaties of sancties.',limited);
+}
 async function loadLinkedPersonnelRecords(p,key){
   const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
   const training=$('staffLinkedTraining'),cases=$('staffLinkedCases');
