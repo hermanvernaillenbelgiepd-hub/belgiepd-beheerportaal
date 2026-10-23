@@ -1065,6 +1065,10 @@ async function loadLinkedPersonnelRecords(p,key){
       try{
         const data=await request(trainingUrl);
         if(!same())return;
+        sheetSetRows('training',data.records||[],x=>[
+          x.eventDate||'—',x.courseName||'Opleiding',x.result||'—',
+          x.instructorName||x.instructor||x.registeredBy?.name||'—'
+        ],'Geen zichtbare opleidingen.',data.limited);
         training.replaceChildren();
         if(!data.records?.length)training.textContent='Geen zichtbare opleidingsregistraties.';
         for(const row of (data.records||[]).slice(0,25)){
@@ -1086,13 +1090,16 @@ async function loadLinkedPersonnelRecords(p,key){
           training.append(document.createTextNode(' Alleen een deel van de opleidingsregistraties wordt hier getoond.'));
         if(data.scope==='alleen_eigen_registraties')
           training.append(document.createTextNode(' Je ziet alleen opleidingen die je zelf registreerde.'));
-      }catch(e){if(same())training.textContent=
-        'Opleidingen kunnen uitsluitend met de bestaande opleidingsrechten worden bekeken ('+e.message+').'}
+      }catch(e){if(same()){
+        training.textContent='Opleidingen kunnen uitsluitend met de bestaande opleidingsrechten worden bekeken ('+e.message+').';
+        $('sheetTraining').textContent='Geen toegang tot opleidingsgegevens of bron tijdelijk niet beschikbaar.';
+      }}
     })(),
     (async()=>{
       try{
         const data=await request(casesUrl);
         if(!same())return;
+        sheetCaseRows(data.entries||[],data.limited);
         cases.replaceChildren();
         const allowed=(data.entries||[]).filter(row=>!['observatie','sanctie'].includes(row.type)).slice(0,60);
         if(!allowed.length)cases.textContent='Geen toegelaten kadernotities gevonden.';
@@ -1111,8 +1118,11 @@ async function loadLinkedPersonnelRecords(p,key){
           div.append(title,body);cases.append(div);
         }
         if(data.limited)cases.append(document.createTextNode(' Er kunnen oudere registraties bestaan.'));
-      }catch(e){if(same())cases.textContent=
-        'Kaderregistraties kunnen alleen met de bestaande kaderrechten worden bekeken ('+e.message+').'}
+      }catch(e){if(same()){
+        cases.textContent='Kaderregistraties kunnen alleen met de bestaande kaderrechten worden bekeken ('+e.message+').';
+        $('sheetMovements').textContent='Kaderregistraties niet beschikbaar.';
+        $('sheetNotes').textContent='Kadernotities niet beschikbaar.';
+      }}
     })()
   ]);
 }
@@ -1123,6 +1133,12 @@ async function loadStaffLeave(p,key){
     const info=await request('/api/leave/person/'+encodeURIComponent(p.discordId)+
       '?dept='+encodeURIComponent(p.dept));
     if(!same())return;
+    sheetSetRows('leave',info.leaves||[],x=>[
+      x.startDate||'—',x.endDate||'—',
+      x.status==='pending'?'In behandeling':x.status==='approved'?'Goedgekeurd':
+        x.status==='withdrawn'?'Ingetrokken':x.status==='rejected'?'Geweigerd':x.status||'—',
+      Number(x.days)||'—'
+    ],'Geen zichtbare verlofperiodes.',info.limited);
     root.replaceChildren();
     if(!info.leaves?.length)root.textContent='Geen zichtbare verlofperiodes.';
     for(const item of info.leaves||[]){
@@ -1152,7 +1168,10 @@ async function loadStaffLeave(p,key){
       root.append(div);
     }
     if(info.limited)root.append(document.createTextNode(' Niet alle oudere periodes worden getoond.'));
-  }catch(e){if(same())root.textContent='Verlofgegevens niet beschikbaar: '+e.message}
+  }catch(e){if(same()){
+    root.textContent='Verlofgegevens niet beschikbaar: '+e.message;
+    $('sheetLeave').textContent='Verlofgegevens niet beschikbaar.';
+  }}
 }
 
 /* Formele registraties delen de bestaande beveiligde registratietabellen,
@@ -1382,6 +1401,7 @@ async function loadStaffFormalRecords(p,key){
     root.replaceChildren();
     const records=(data.entries||[]).filter(r=>['observatie','sanctie'].includes(r.type));
     formalRecords=records;
+    sheetFormalRows(records,data.limited);
     if(!records.length)root.textContent='Geen zichtbare formele observaties of sancties.';
     for(const row of records.slice(0,100)){
       const item=document.createElement('div');item.className='note-item';
@@ -1464,6 +1484,7 @@ async function loadSpecialtyState(p){
     if(!same())return;
     specialtyRevision=data.revision;specialtyItems=data.items||[];
     const states=BPDPersonnelVisuals.specialtyStatuses(specialtyItems);
+    sheetSpecialtyRows(states);
     for(const x of states){
       const cell=document.createElement('div');cell.className='specialty-tile';
       const icon=specialtyMark(x.label);
@@ -1752,6 +1773,7 @@ async function loadStaffDossier(p){
     void loadStaffFormalPermissions(p,key);
     void loadReceivedRegistrations(p);
     const profile=result.profile||{};
+    sheetDossierProfile(profile);
     const summary=$('staffDossierSummary');
     staffField(summary,'Aanstellingsdatum',profile.startDate);
     staffField(summary,'Eenheid of ploeg',profile.unit);
@@ -1846,6 +1868,7 @@ $('staffCaseForm').onsubmit=async event=>{
 async function showPerson(p){
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
+  sheetIdentity(p);
   if(!sameSelected)openDossierTab('overzicht');
   $('identity').textContent=(departments[p.dept]||p.dept)+' · Discord ID '+p.discordId+' · Revisie '+p.revision;
   $('pName').value=p.name;$('pCall').value=p.call;$('pRank').value=p.rank;$('reason').value='';
