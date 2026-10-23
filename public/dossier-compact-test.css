@@ -68,3 +68,11 @@
   #panel .overview-preview{display:block}
   #panel .overview-preview span{display:block}
 }
+
+/* Schrijfrechten blijven bepalend: verborgen invoer mag niet zichtbaar
+   worden door globale .controls/display-regels. */
+#formalWriteActions[hidden],#staffFormalForm[hidden],
+#addFormalObservation[hidden],#addFormalSanction[hidden]{display:none!important}
+#formalWriteActions{display:flex;flex-wrap:wrap;gap:9px;margin:13px 0 7px}
+#formalWriteStatus{margin:6px 0 13px;line-height:1.5;color:#a8c6e6}
+#formalWriteActions button{min-width:160px;text-align:center}
