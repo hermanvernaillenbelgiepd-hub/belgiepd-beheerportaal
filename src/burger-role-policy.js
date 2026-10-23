@@ -1,7 +1,8 @@
 import {roleForDepartment} from './leave-policy.js';
 
-// TEST: twee opgegeven burgerrollen hebben nog hetzelfde Discord-ID.
-// Het systeem mag deze twee categorieën NIET verzinnen of onderscheiden.
+// Burger en Burger IO zijn administratief één discipline: Burger.
+// Beide opgegeven benamingen verwijzen naar dezelfde Discord-rol.
+// Alleen Burgerraad verleent leidinggevende Burgerdossierrechten.
 export const BURGER_ROLE_IDS=Object.freeze({
   member:'1557804276250845185',
   council:'1492485336197234728'
@@ -17,9 +18,9 @@ export function confirmedMemberRoles(member,guildId,now=Date.now()){
   return new Set(member.roleIds);
 }
 export function burgerSubjectCategory(member,guildId,now=Date.now()){
-  // Een gedeeld ID kan nooit Burger IO versus Burger bewijzen.
+  // Burger en Burger IO vallen in dezelfde categorie zonder extra bevoegdheden.
   const roles=confirmedMemberRoles(member,guildId,now);
-  return roles.has(BURGER_ROLE_IDS.member)?'burger_onbevestigd':null;
+  return roles.has(BURGER_ROLE_IDS.member)?'burger':null;
 }
 export function burgerDossierScope(actor,member,guildId,now=Date.now()){
   const roles=confirmedMemberRoles(member,guildId,now);
