@@ -4,8 +4,11 @@ import {BURGER_PERSONNEL_COLLECTION,burgerSubjectCategory} from './burger-role-p
 const ID=/^\d{15,22}$/;
 const STATUS=Object.freeze(['observatie','notitie','opleiding']);
 const failure=(res,status,msg)=>res.status(status).json({error:msg});
-const dateValid=date=>typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&
-  new Date(date+'T12:00:00Z').toISOString().slice(0,10)===date;
+const dateValid=date=>{
+  if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date))return false;
+  const parsed=new Date(date+'T12:00:00Z');
+  return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===date;
+};
 const safe=(text,max)=>typeof text==='string'&&
   text.trim().length>0&&text.trim().length<=max&&!/[\x00-\x08\x0b\x0c\x0e-\x1f<>]/.test(text);
 const toIso=value=>value?.toDate?.()?.toISOString?.()||null;
