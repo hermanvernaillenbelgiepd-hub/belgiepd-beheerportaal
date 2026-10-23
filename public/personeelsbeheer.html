@@ -1478,6 +1478,94 @@ $('functionChangeForm').onsubmit=async event=>{
   }catch(error){notice('Functiewijziging niet opgeslagen: '+error.message,true)}
   finally{button.disabled=false}
 };
+
+let receivedRequestSerial=0;
+function receivedVisibility(access,counts={}){
+  for(const [key,group] of [['registraties','basiskader'],['middenregistraties','middenkader']]){
+    const button=$('dossierTabBar').querySelector('[data-dossier-tab="'+key+'"]');
+    if(!button)continue;
+    const allowed=access.includes(group);
+    button.hidden=!allowed;
+    button.style.display=allowed?'':'none';
+    button.textContent=dossierTabNames[key]+(allowed&&Number.isInteger(counts[group])?' ('+counts[group]+')':'');
+    if(!allowed&&dossierTab===key)openDossierTab('overzicht');
+  }
+}
+function renderReceived(group,rows,limited){
+  const root=$('dossierViews').querySelector('[data-received-list="'+
+    (group==='basiskader'?'registraties':'middenregistraties')+'"]');
+  if(!root)return;
+  root.replaceChildren();
+  if(rows===null){root.textContent='Je hebt geen inzagerecht voor deze rubriek.';return}
+  if(!rows?.length){root.textContent='Geen ontvangen registraties voor deze medewerker.';return}
+  for(const entry of rows){
+    const div=document.createElement('article');div.className='received-record';
+    const title=document.createElement('strong');
+    const labels={observatie:'Observatie',sanctie:'Sanctie',notitie:'Personeelsnotitie',
+      activiteit:'Dienstactiviteit',opleiding:'Opleiding',verlof:'Verlofnotitie',
+      promotievoorstel:'Promotievoorstel',naamswijziging:'Naamswijziging',
+      personeelsbeweging:'Personeelsbeweging',
+      specialisatiebeperking:'Specialisatiebeperking',functiewijziging:'Functiewijziging'};
+    title.textContent=(labels[entry.type]||entry.type)+
+      (entry.sanctionType?' · '+entry.sanctionType:'');
+    const meta=document.createElement('span');meta.className='received-meta';
+    meta.textContent='Ingediend door: '+(entry.author?.call||'—')+' · '+
+      (entry.author?.name||'Onbekend')+' · '+(entry.author?.rank||'Rang onbekend')+
+      ' | Gebeurtenis: '+(entry.eventDate||'—')+
+      (entry.eventTime?' '+entry.eventTime:'')+
+      (entry.createdAt?' | Registratie: '+new Date(entry.createdAt).toLocaleString('nl-BE'):'');
+    const description=document.createElement('p');description.className='received-details';
+    description.textContent=entry.details||'Geen omschrijving opgegeven.';
+    div.append(title,meta,description);
+    if(entry.type==='sanctie'){
+      const detail=document.createElement('small');
+      detail.textContent='Ernst: '+(entry.severity??'—')+'/10'+
+        (entry.status?' · Status: '+entry.status:'');
+      div.append(detail);
+    }
+    if(entry.testRecord===true){
+      const badge=document.createElement('span');badge.className='received-test';
+      badge.textContent='TEST – uitgesloten van weekrapport';div.append(badge);
+    }
+    root.append(div);
+  }
+  if(limited){
+    const note=document.createElement('p');note.className='subtle';
+    note.textContent='Alleen de recentste registraties zijn geladen. Oudere registraties blijven bewaard.';
+    root.append(note);
+  }
+}
+async function loadReceivedRegistrations(person){
+  const key=person.dept+':'+person.discordId,serial=++receivedRequestSerial;
+  receivedVisibility([]);
+  const same=()=>serial===receivedRequestSerial&&selected?.dept+':'+selected?.discordId===key&&!$('panel').hidden;
+  for(const name of ['registraties','middenregistraties']){
+    const root=$('dossierViews').querySelector('[data-received-list="'+name+'"]');
+    if(root)root.textContent='Ontvangen registraties laden…';
+  }
+  if(person.dept!=='politie')return;
+  try{
+    const result=await request('/api/personnel/'+encodeURIComponent(person.dept)+'/'+
+      encodeURIComponent(person.discordId)+'/received-records');
+    if(!same())return;
+    const groups=result.groups||{};
+    receivedVisibility(result.allowed||[],{
+      basiskader:groups.basiskader?.length||0,
+      middenkader:groups.middenkader?.length||0
+    });
+    renderReceived('basiskader',groups.basiskader,result.limited);
+    renderReceived('middenkader',groups.middenkader,result.limited);
+  }catch(error){
+    if(!same())return;
+    // Geen alternatieve onbeveiligde zoekroute: bij 403 blijven beide tabs verborgen.
+    if(!/geen recht|geen dossiertoegang|403/i.test(error.message)){
+      for(const name of ['registraties','middenregistraties']){
+        const root=$('dossierViews').querySelector('[data-received-list="'+name+'"]');
+        if(root)root.textContent='Ontvangen registraties tijdelijk niet beschikbaar: '+error.message;
+      }
+    }
+  }
+}
 async function loadStaffDossier(p){
   const key=p.dept+':'+p.discordId;
   const base='/api/staff-dossiers/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
@@ -1506,6 +1594,7 @@ async function loadStaffDossier(p){
     void loadFunctionRoles(p);
     void loadStaffLeave(p,key);
     void loadStaffFormalPermissions(p,key);
+    void loadReceivedRegistrations(p);
     const profile=result.profile||{};
     const summary=$('staffDossierSummary');
     staffField(summary,'Aanstellingsdatum',profile.startDate);
