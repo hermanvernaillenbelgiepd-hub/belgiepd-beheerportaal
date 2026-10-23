@@ -17,6 +17,9 @@ export const leaveCanWithdraw=(request,today)=>{
   return request&&['pending','approved'].includes(request.status)&&
     typeof request.endDate==='string'&&request.endDate>=today;
 };
+// An old leave application never disappears; only the latest application
+// for the same dates may block a new attempt. Unknown states fail closed.
+export const leaveCanReapply=status=>status==='withdrawn'||status==='rejected';
 export function leaveEventDetails(action,request,from=null,to=null){
   const base=leaveEventLabel(action)+' · '+request.startDate+' t/m '+
     request.endDate+' ('+request.days+' kalenderdagen)';
