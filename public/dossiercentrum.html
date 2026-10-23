@@ -71,13 +71,13 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 @media(max-width:720px){.grid,.search,.filter-grid{grid-template-columns:1fr}header{padding:14px}h1{font-size:25px}.card{padding:15px}}
 </style></head><body>
 <header><strong>🛡️ BelgiumPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><button id="login" type="button">Aanmelden</button></nav></header>
-<main><h1>Centraal dossieroverzicht</h1>
-<p>Elk personeelsdossier is volledig dienstgebonden. Politie, ambulance, brandweer en depannage beheren hun eigen personeelsgegevens, notities en historiek. Alleen jouw bevoegde diensten zijn zichtbaar.</p>
-<div id="message" role="status" aria-live="polite" class="notice">Toegangsrechten controleren…</div>
+<main><h1>Personeelslijst en dienstgebonden dossiers</h1>
+<p>De personeelslijst is zichtbaar voor iedereen. Na aanmelding verschijnt de knop FICHE uitsluitend bij personeelsleden van diensten waarvoor je gemachtigd bent. Bestuur kan inkijken; je operationele kaderrol bepaalt de bewerkrechten.</p>
+<div id="message" role="status" aria-live="polite" class="notice">Personeelslijst laden…</div>
 <section class="card" aria-label="Kies het personeelsdossier per hulpdienst">
-<h2>Kies je hulpdienst</h2><p class="service-notice">Bestuur: alle dossiers · Politie: middenkader, officierenkader en korpsleiding · Brandweer: ZONE · Ambulance: DIRMED, HARTS, HVPK en HAMB · Depannage: Agentschap Wegen en Verkeer (AWV).</p><p class="service-notice">Dit wordt gecontroleerd op de server. Niet-gemachtigde dienstknoppen blijven vergrendeld.</p>
+<h2>Discipline</h2><p class="service-notice">Kies een discipline om de openbare personeelslijst te filteren. Alleen de server bepaalt of de afgeschermde fiche geopend mag worden.</p>
 <div class="service-buttons" id="serviceButtons" role="group" aria-label="Filter op hulpdienst">
-<button type="button" class="service-button" data-service="all" aria-pressed="true" disabled><span class="service-name">📁 Alle toegelaten</span><span class="service-count">Aanmelden vereist</span></button>
+<button type="button" class="service-button" data-service="all" aria-pressed="true" disabled><span class="service-name">📁 Alle diensten</span><span class="service-count">Alle personeelsleden</span></button>
 <button type="button" class="service-button" data-service="politie" aria-pressed="false" disabled><span class="service-name">🔵 Politie</span><span class="service-count">Geen toegang</span></button>
 <button type="button" class="service-button" data-service="ambulance" aria-pressed="false" disabled><span class="service-name">🟢 Ambulance</span><span class="service-count">Geen toegang</span></button>
 <button type="button" class="service-button" data-service="brandweer" aria-pressed="false" disabled><span class="service-name">🔴 Brandweer</span><span class="service-count">Geen toegang</span></button>
@@ -99,14 +99,15 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <div class="pager"><span class="muted" id="count">Nog geen dossiers geladen.</span>
 <button id="clear" class="alt" type="button">Filters wissen</button>
 <button id="refresh" class="alt" type="button">Vernieuwen</button></div>
-<div class="scroller"><table><thead><tr><th>Naam</th><th>Roepnummer</th><th>Graad</th><th>Dienst</th><th>Status</th><th>Discord-ID</th><th>Actie</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="scroller"><table><thead><tr><th>Naam</th><th>Roepnummer</th><th>Graad</th><th>Dienst</th><th>Status</th><th>Fiche</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div class="pager"><span id="pageInfo" class="muted">Pagina 1 van 1</span>
 <button type="button" id="previousPage" class="alt">Vorige</button>
 <button type="button" id="nextPage" class="alt">Volgende</button></div>
 </section>
 <section class="card" id="detail" hidden><h2 id="detailTitle">Dossier</h2><div id="detailService" class="dossier-service-label"></div><p class="muted" id="matchWarning"></p>
 <div class="dossier-tabs" role="group" aria-label="Onderdelen van dit dienstdossier"><button type="button" class="dossier-tab" data-dossier-tab="fiche" aria-pressed="true">📋 Personeelsfiche</button><button type="button" class="dossier-tab" data-dossier-tab="historiek" aria-pressed="false">🕘 Diensthistoriek</button></div>
-<section id="dossierFiche"><h3>Personeelsfiche</h3><div id="staff"></div></section>
+<section id="dossierFiche"><p class="muted">Volledige personeelsfiche — bewerken uitsluitend volgens je dienstrechten.</p>
+<iframe id="inlinePersonnelFrame" title="Beveiligde personeelsfiche" loading="eager" referrerpolicy="no-referrer" style="display:block;width:100%;min-height:650px;height:1050px;border:0;border-radius:10px;background:#0b1b32"></iframe></section>
 <section id="dossierHistoriek" hidden><div class="pager"><h3 style="margin:0">Geregistreerde historiek</h3>
 <label for="historyKind">Toon:
 <select id="historyKind"><option value="all">Alle gebeurtenissen</option>
@@ -114,7 +115,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <option value="personeel">Personeelswijzigingen</option>
 </select></label></div>
 <div class="muted" id="history"></div></section>
-<div id="detailLinks" class="detail-links"></div>
+
 <button id="close" type="button" class="alt">Dossier sluiten</button></section>
 </main>
 <script type="module">
@@ -126,7 +127,7 @@ const actions={create:'Fiche aangemaakt',entry_rank:'Instaprang',
   exceptional_entry_rank:'Uitzonderlijke instaprang',promotion:'Promotie',
   link_discord:'Discord gekoppeld',edit:'Personeelswijziging'};
 const historyKinds={personeel:'Personeelswijziging',loopbaan:'Loopbaan'};
-let auth,authModule,rows=[],portalSetup,shown=null,page=1,timelineEntries=[];
+let auth,authModule,rows=[],portalSetup,shown=null,page=1,timelineEntries=[],securedRows=[];
 function message(text,bad=false){$('message').textContent=text;$('message').classList.toggle('error',bad)}
 function node(tag,text,cls){const x=document.createElement(tag);if(text!==undefined)x.textContent=String(text??'');if(cls)x.className=cls;return x}
 function item(root,key,value){const div=node('div',undefined,'kv');div.append(node('strong',key),node('span',value??'—'));root.append(div)}
@@ -147,25 +148,22 @@ function renderStats(){
     stat.append(node('b',value),node('span',label));box.append(stat);
   }
 }
-function renderServiceButtons(allowed=[]){
-  const permitted=new Set(allowed);
+function renderServiceButtons(){
   const selected=$('department').value;
   for(const button of $('serviceButtons').querySelectorAll('button[data-service]')){
     const dept=button.dataset.service;
-    const accessible=dept==='all'?permitted.size>0:permitted.has(dept);
-    button.disabled=!accessible;
-    button.setAttribute('aria-pressed',String(accessible&&selected===dept));
-    const count=button.querySelector('.service-count');
     const visible=dept==='all'?rows.length:rows.filter(p=>p.dept===dept).length;
-    count.textContent=accessible?(visible+' '+(visible===1?'dossier':'dossiers')):'Geen toegang';
+    button.disabled=visible===0;
+    button.setAttribute('aria-pressed',String(visible>0&&selected===dept));
+    button.querySelector('.service-count').textContent=visible+' '+(visible===1?'medewerker':'medewerkers');
   }
-  $('serviceSelected').textContent=permitted.size
-    ?(selected==='all'?'Overzicht van alle hulpdiensten waarvoor je bevoegd bent':
-      'Je bekijkt uitsluitend dossiers van '+(departments[selected]||selected))
-    :'Meld je aan met de juiste dienstrechten om een dossier te openen.';
+  $('serviceSelected').textContent=selected==='all'?
+    'Openbare personeelslijst per discipline':
+    'Personeelslijst van '+(departments[selected]||selected);
 }
 function closeDossier(){
   shown=null;timelineEntries=[];$('detail').hidden=true;
+  $('inlinePersonnelFrame').removeAttribute('src');
 }
 function selectDepartment(dept){
   const item=$('department');
@@ -181,18 +179,18 @@ function switchDossierTab(next){
 }
 function render(){
   const filters={query:$('query').value,department:$('department').value};
-  renderServiceButtons([...$('department').options].map(option=>option.value).filter(x=>x!=='all'));
+  renderServiceButtons();
   const found=filterDossiers(rows,filters);
   const sorted=sortDossiers(found,$('sortOrder').value);
   const paged=paginateDossiers(sorted,page,PAGE_SIZE);page=paged.page;
-  $('count').textContent=paged.total+' van '+rows.length+' toegelaten dossiers zichtbaar';
+  $('count').textContent=paged.total+' van '+rows.length+' personeelsleden zichtbaar';
   $('pageInfo').textContent='Pagina '+paged.page+' van '+paged.pages;
   $('previousPage').disabled=paged.page<=1;
   $('nextPage').disabled=paged.page>=paged.pages;
   const body=$('rows');body.replaceChildren();
   if(!paged.total){
     const tr=node('tr'),cell=node('td','Geen dossiers gevonden voor deze filters');
-    cell.colSpan=7;tr.append(cell);body.append(tr);
+    cell.colSpan=6;tr.append(cell);body.append(tr);
   }
   for(const r of paged.rows){
     const tr=node('tr');
@@ -204,11 +202,14 @@ function render(){
       ['inactief','non-actief','niet actief','uit dienst'].includes(normalizedStatus)?'false':'unknown';
     const withSpan=span=>{const td=node('td');td.append(span);return td};
     tr.append(node('td',r.name||'—'),withSpan(call),withSpan(rank),
-      node('td',departments[r.dept]||r.dept),withSpan(status),
-      node('td',r.discordId||'—','dossier-discord'));
-    const cell=node('td'),button=node('button','Open dossier','alt');
-    button.type='button';button.onclick=()=>openDossier(r);
-    cell.append(button);tr.append(cell);body.append(tr);
+      node('td',departments[r.dept]||r.dept),withSpan(status));
+    const cell=node('td');
+    if(r.canOpen===true&&/^\d{15,22}$/.test(r.discordId||'')){
+      const button=node('button','FICHE','alt');
+      button.type='button';button.onclick=()=>openDossier(r);
+      cell.append(button);
+    }else cell.append(node('span','—','muted'));
+    tr.append(cell);body.append(tr);
   }
 }
 function renderHistory(){
@@ -230,53 +231,90 @@ function renderHistory(){
     history.append(div);
   }
 }
-function detailLinks(data,person){
-  const links=$('detailLinks');links.replaceChildren();
-  if(!data.personnel||!/^[0-9]{15,22}$/.test(String(person?.discordId||'')))return;
-  const a=node('a','Open volledige personeelsfiche · observaties & sancties');
-  a.href='/personeelsbeheer.html?'+new URLSearchParams({
-    dept:person.dept,discordId:person.discordId
-  }).toString();
-  a.rel='noopener';
-  links.append(a);
-}
 async function openDossier(r){
+  if(r.canOpen!==true||!auth?.currentUser||!/^\d{15,22}$/.test(r.discordId||''))return;
   shown=r.dept+':'+r.discordId;
   const active=shown;
-  $('detail').hidden=false;$('detailTitle').textContent=(departments[r.dept]||r.dept)+' · afzonderlijk personeelsdossier · '+r.name;
+  $('detail').hidden=false;
+  $('detailTitle').textContent=(departments[r.dept]||r.dept)+' · '+r.name;
   $('detailService').dataset.service=r.dept;
-  $('detailService').textContent='🔒 '+(departments[r.dept]||r.dept)+' · alleen de bevoegde leiding van deze hulpdienst';
+  $('detailService').textContent='🔒 '+(departments[r.dept]||r.dept)+' · uitsluitend deze discipline';
   switchDossierTab('fiche');
-  timelineEntries=[];$('historyKind').value='all';$('detailLinks').replaceChildren();
-  $('staff').textContent='Laden…';$('history').textContent='Laden…';$('matchWarning').textContent='';
+  timelineEntries=[];$('historyKind').value='all';
+  $('matchWarning').textContent='Observaties, opleidingen, notities en historiek zijn afzonderlijk per discipline. Verlof blijft gekoppeld aan de persoon.';
+  $('history').textContent='Historiek laden…';
+  const frame=$('inlinePersonnelFrame');
+  frame.src='/personeelsbeheer.html?'+new URLSearchParams({
+    embed:'1',dept:r.dept,discordId:r.discordId
+  }).toString();
   try{
     const data=await request('/api/dossiercentrum/'+encodeURIComponent(r.dept)+'/'+encodeURIComponent(r.discordId));
     if(shown!==active)return;
-    $('matchWarning').textContent='Dit is uitsluitend het dossier van '+(departments[r.dept]||r.dept)+'. Andere hulpdiensten beheren hun eigen afzonderlijke dossier voor dezelfde Discord-gebruiker.';
-    const staff=$('staff');staff.replaceChildren();
-    if(data.personnel){
-      const p=data.personnel;
-      item(staff,'Naam',p.name);item(staff,'Roepnummer',p.call);item(staff,'Rang',p.rank);item(staff,'Status',p.status);
-      item(staff,'Gegevensbron',p.source==='firestore-created'?'Firestore':p.source==='firestore-overlay'?'Firestore-wijziging':'Google Sheets');
-    }else staff.textContent='Geen zichtbare personeelsfiche.';
     timelineEntries=Array.isArray(data.timeline)?data.timeline:[];
-    renderHistory();detailLinks(data,r);
+    renderHistory();
     $('detail').scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(e){if(shown===active){$('staff').textContent='';$('history').textContent='';message(e.message,true)}}
+  }catch(e){
+    if(shown===active){frame.removeAttribute('src');closeDossier();message(e.message,true)}
+  }
 }
+window.addEventListener('message',event=>{
+  const frame=$('inlinePersonnelFrame');
+  if(event.origin!==window.location.origin||event.source!==frame.contentWindow||
+    event.data?.type!=='bpd-dossier-embed-size')return;
+  const height=Number(event.data.height);
+  if(Number.isFinite(height)&&height>=400&&height<=30000)
+    frame.style.height=Math.ceil(height+22)+'px';
+});
 async function load(){
-  if(!auth?.currentUser){rows=[];page=1;closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();return message('Meld je aan met een bevoegd account om dossiers te bekijken.')}
+  closeDossier();
+  securedRows=[];
   try{
-    const data=await request('/api/dossiercentrum/overview');
-    rows=data.rows||[];page=1;renderStats();
+    const publicData=await fetch('/api/dossiercentrum/public-roster',{cache:'no-store'}).then(async res=>{
+      const body=await res.json().catch(()=>({}));
+      if(!res.ok)throw Error(body.error||'Personeelslijst niet beschikbaar');
+      return body;
+    });
+    rows=(publicData.rows||[]).map(p=>({...p,canOpen:false}));
+    if(auth?.currentUser){
+      try{
+        const secured=await request('/api/dossiercentrum/overview');
+        securedRows=secured.rows||[];
+        // Privé-identiteit wordt alleen gekoppeld na afzonderlijk geautoriseerde API-respons.
+        // Bij dubbele publieke identiteiten blokkeren we de knop in plaats van te gokken.
+        const index=new Map();
+        for(const p of securedRows){
+          const key=[p.dept,p.call,p.name].join('|');
+          if(!index.has(key))index.set(key,[]);
+          index.get(key).push(p);
+        }
+        const counts=new Map();
+        for(const p of rows){
+          const key=[p.dept,p.call,p.name].join('|');
+          counts.set(key,(counts.get(key)||0)+1);
+        }
+        rows=rows.map(p=>{
+          const key=[p.dept,p.call,p.name].join('|');
+          const candidates=index.get(key)||[];
+          return candidates.length===1&&counts.get(key)===1?
+            {...p,discordId:candidates[0].discordId,canOpen:true}:p;
+        });
+        message('Personeelslijst geladen. FICHE is beschikbaar voor jouw toegelaten diensten.');
+      }catch(e){
+        message('Openbare personeelslijst geladen. Geen dossiertoegang: '+e.message);
+      }
+    }else message('Openbare personeelslijst geladen. Meld je aan om bevoegde fiches te openen.');
     const selected=$('department').value;
-    $('department').replaceChildren(node('option','Alle toegelaten diensten'));
+    const available=[...new Set(rows.map(p=>p.dept))];
+    $('department').replaceChildren(node('option','Alle disciplines'));
     $('department').firstChild.value='all';
-    (data.departments||[]).forEach(d=>{const op=node('option',departments[d]||d);op.value=d;$('department').append(op)});
-    $('department').value=[...$('department').options].some(o=>o.value===selected)?selected:'all';
-    closeDossier();render();
-    message(rows.length+' dossiers geladen. Alleen-lezen.'+(data.sourceStale?' De personeelsbron gebruikt tijdelijk gecachete gegevens.':''));
-  }catch(e){rows=[];closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();message(e.message,true)}
+    for(const dept of available){
+      const op=node('option',departments[dept]||dept);op.value=dept;$('department').append(op);
+    }
+    $('department').value=available.includes(selected)?selected:'all';
+    page=1;renderStats();render();
+  }catch(e){
+    rows=[];securedRows=[];renderStats();render();message(e.message,true);
+  }
 }
 function changedFilters(){page=1;render()}
 $('query').oninput=changedFilters;
