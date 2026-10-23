@@ -28,7 +28,11 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
   const writes=()=>process.env.BPD_ENABLE_PERSONNEL_WRITES==='true';
   app.get('/api/personnel/overview',requireDossierUser,async(req,res)=>{
     try {
-      const allowed=req.bpd.departments.filter(d=>canViewPersonnel(req.bpd,d));
+      // Dezelfde server-goedgekeurde dossierrechten als het Dossiercentrum.
+      // Operationele dienstleiding en Bestuur kunnen lezen, maar schrijfrechten
+      // blijven per apart endpoint onder canEditPersonnel / kaderregels vallen.
+      const allowed=(req.bpd.dossierAllowedDepartments||[])
+        .filter(d=>canReadServiceDossier(req.bpd,d));
       if(!allowed.length)return error(res,403,'Je hebt geen kaderrechten voor personeelsbeheer');
       const [snapshot,edits,pending]=await Promise.all([
         getSnapshot(),collection().limit(400).get(),
