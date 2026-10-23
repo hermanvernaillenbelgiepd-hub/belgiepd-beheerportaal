@@ -135,6 +135,11 @@ header{padding-inline:clamp(15px,2vw,34px)}
 @media(max-width:920px){.staff-roster-table{min-width:1450px}}
 .discord-verified-cadre{font-weight:700;color:#99c6ff;white-space:nowrap;font-size:10px}
 
+/* MAIN: een volledig handmatig bewerkbare datum en een optionele kalenderkeuze. */
+.formal-date-row{display:flex;align-items:center;gap:7px}
+.formal-date-row #formalDateText{min-width:0;flex:1 1 175px}
+.formal-date-row #formalDate{min-width:137px;width:155px;max-width:45%;flex:0 0 155px;cursor:pointer;color-scheme:dark}
+@media(max-width:600px){.formal-date-row{flex-wrap:wrap}.formal-date-row #formalDate{max-width:none;width:155px}}
 /* MAIN: dossier-FICHE als geïntegreerde compacte werkruimte. */
 #panel{scroll-margin-top:10px}
 #panel>div:first-child{position:sticky;top:0;z-index:4;background:#11233f;border-bottom:1px solid #3b5374;padding:8px 0}
@@ -336,7 +341,11 @@ placeholder="Bijvoorbeeld: opleiding afgerond en gecontroleerd door instructeur"
 <p id="staffFormalPolicy" class="subtle">Rechten worden gecontroleerd via de bestaande beveiligde registratie-API.</p>
 <div class="grid">
 <div><label for="formalType">Registratietype</label><select id="formalType"><option value="observatie">Observatie</option><option value="sanctie">Sanctie</option></select></div>
-<div><label for="formalDate">Datum</label><input id="formalDate" type="date" required></div>
+<div><label for="formalDateText">Datum gebeurtenis (dd/mm/jjjj)</label>
+<div class="formal-date-row">
+<input id="formalDateText" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="dd/mm/jjjj" required aria-describedby="formalDateHint">
+<input id="formalDate" type="date" required aria-label="Datum kiezen met kalender" title="Kies een datum met de kalender">
+</div><small id="formalDateHint">Je kunt de datum typen of kiezen via de kalender.</small></div>
 <div><label for="formalTime">Tijdstip</label><input id="formalTime" type="time" required></div>
 <div><label for="formalEvidence">Bewijslink (optioneel, https)</label><input id="formalEvidence" type="url" maxlength="800" placeholder="https://…"></div>
 <div style="grid-column:1/-1"><label for="formalDetails">Feiten, tussenkomst en uitkomst</label><textarea id="formalDetails" rows="3" maxlength="6000" required></textarea></div>
@@ -979,6 +988,37 @@ function updateFormalFields(){
     'De registratiemodule staat momenteel uit. Je kunt de bestaande registraties wel raadplegen.':
     'De server bepaalt de toegelaten sancties op basis van je rol binnen deze hulpdienst; bij ernst 9–10 kan een degradatievoorstel worden geregistreerd.';
 }
+// Datums worden in het formulier altijd in Belgisch formaat getoond,
+// maar de bestaande dossier-API bewaart de originele ISO-datum (YYYY-MM-DD).
+function formalDateFromText(text){
+  const raw=String(text||'').trim();
+  const belgian=/^(\\d{1,2})[\\/.-](\\d{1,2})[\\/.-](\\d{4})$/.exec(raw);
+  const isoText=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(raw);
+  let yyyy,mm,dd;
+  if(belgian){dd=Number(belgian[1]);mm=Number(belgian[2]);yyyy=Number(belgian[3]);}
+  else if(isoText){yyyy=Number(isoText[1]);mm=Number(isoText[2]);dd=Number(isoText[3]);}
+  else return null;
+  const pad=n=>String(n).padStart(2,'0');
+  const iso=String(yyyy).padStart(4,'0')+'-'+pad(mm)+'-'+pad(dd);
+  const date=new Date(iso+'T12:00:00Z');
+  if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==iso)return null;
+  return iso;
+}
+function formalDateForDisplay(iso){
+  const match=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(iso||''));
+  return match?match[3]+'/'+match[2]+'/'+match[1]:'';
+}
+function setFormalDate(iso){
+  $('formalDate').value=iso||'';
+  $('formalDateText').value=formalDateForDisplay(iso);
+}
+$('formalDateText').addEventListener('input',()=>{
+  const iso=formalDateFromText($('formalDateText').value);
+  if(iso)$('formalDate').value=iso;
+});
+$('formalDate').addEventListener('change',()=>{
+  setFormalDate($('formalDate').value);
+});
 function clearFormalEdit(){
   formalEditId=null;
   $('staffFormalForm').reset();
@@ -987,7 +1027,7 @@ function clearFormalEdit(){
   $('staffFormalFormTitle').textContent='Nieuwe observatie of sanctie';
   $('formalSave').textContent='Registratie opslaan';
   const now=new Date(),pad=n=>String(n).padStart(2,'0');
-  $('formalDate').value=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  setFormalDate(now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate()));
   $('formalTime').value=pad(now.getHours())+':'+pad(now.getMinutes());
   $('formalNotice').textContent='';
   updateFormalFields();
@@ -1009,6 +1049,7 @@ function openFormalEdit(row){
     ['formalReasonOther',row.reasonOther],['formalCfx',row.cfxName],
     ['formalExplanation',row.explanation],['formalAmendStatus',row.status||'actief']])
     $(field).value=value??'';
+  setFormalDate(row.eventDate);
   for(const cb of $('formalReasons').querySelectorAll('input[type="checkbox"]'))
     cb.checked=Array.isArray(row.reasons)&&row.reasons.includes(cb.value);
   $('formalAmendFields').hidden=false;$('formalAmendReason').required=true;
@@ -1060,7 +1101,14 @@ $('staffFormalForm').onsubmit=async event=>{
   const allowed=isSanction?formalPermissions.sanctionDepartments?.includes(dept):
     formalPermissions.observationDepartments?.includes(dept);
   if(!allowed){notice('Geen bevoegdheid voor deze categorie.',true);return}
-  const data={dept,discordId:id,type,eventDate:$('formalDate').value,
+  const selectedDate=formalDateFromText($('formalDateText').value);
+  if(!selectedDate){
+    $('formalDateText').focus();
+    $('formalNotice').textContent='Voer een geldige datum in als dd/mm/jjjj (bijvoorbeeld 21/10/2026), of kies een datum in de kalender.';
+    return notice('Ongeldige datum. Gebruik dd/mm/jjjj of de kalender.',true);
+  }
+  setFormalDate(selectedDate);
+  const data={dept,discordId:id,type,eventDate:selectedDate,
     eventTime:$('formalTime').value,details:$('formalDetails').value,
     otherPlayers:$('formalPlayers').value,evidenceUrl:$('formalEvidence').value};
   if(isSanction){
