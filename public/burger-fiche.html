@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>BelgiumPD · Burgerdossier</title>
+<style>
+:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:#e8f1ff;background:#0e213b}
+*{box-sizing:border-box}body{margin:0}main{max-width:1150px;margin:auto;padding:18px 15px 45px}
+h1{font-size:23px;margin:0 0 9px}h2{font-size:16px;margin:0 0 11px}
+p{font-size:13px;line-height:1.55;color:#b4c9e3}a{color:#b5d4ff}
+#auth{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+#summary{padding:13px 15px;background:#193450;border:1px solid #375879;border-radius:10px;margin:15px 0}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid #365371;padding:0 0 10px}
+button{border:1px solid #5277a1;background:#234b7c;color:white;padding:9px 12px;border-radius:8px;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+button[aria-selected=true]{background:#3568dc;border-color:#94b8ff}
+button.alt{background:#182e4b}button:disabled{opacity:.5}
+.pane{padding:17px 1px}.entry{border-bottom:1px solid #304866;padding:13px 3px}
+.entry strong{display:block;font-size:14px}.entry small{display:block;font-size:11px;color:#98b6d8;margin:4px 0}
+.entry p{white-space:pre-wrap;margin:4px 0;color:#d9e7f7}
+form{background:#122b49;padding:17px;border:1px solid #426080;border-radius:10px;margin:15px 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.full{grid-column:1/-1}label{font-size:12px;color:#a6c2e4;display:block;margin-bottom:5px}
+input,select,textarea{width:100%;background:#091b33;color:white;border:1px solid #476481;border-radius:7px;padding:10px;font:inherit;font-size:13px}
+#message{color:#bcd9f6;font-size:12px}#message.error{color:#ffc1c1}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.full{grid-column:1}}
+</style></head>
+<body><main>
+<div id="auth"><h1>Burgerdossier</h1><button id="login" type="button" class="alt">Aanmelden</button></div>
+<p id="message" role="status" aria-live="polite">Burgerdossier laden…</p>
+<div id="summary" hidden></div>
+<div id="tabs" class="tabs" role="tablist" aria-label="Burgerdossiercategorie">
+<button type="button" data-tab="overzicht" aria-selected="true">Overzicht</button>
+<button type="button" data-tab="observatie" aria-selected="false">Observaties</button>
+<button type="button" data-tab="notitie" aria-selected="false">Notities</button>
+<button type="button" data-tab="opleiding" aria-selected="false">Opleidingen</button>
+</div>
+<div id="records" class="pane"></div>
+<form id="entryForm" hidden>
+<h2>Nieuwe Burger-registratie</h2>
+<p>Deze registratie blijft uitsluitend binnen Burger en wordt met auteur en datum in het burgerregister opgeslagen.</p>
+<div class="grid">
+<div><label for="type">Categorie</label><select id="type"><option value="observatie">Observatie</option><option value="notitie">Notitie</option><option value="opleiding">Opleiding</option></select></div>
+<div><label for="date">Datum</label><input id="date" type="date" required></div>
+<div class="full"><label for="title">Titel</label><input id="title" maxlength="120" required></div>
+<div class="full"><label for="details">Omschrijving</label><textarea id="details" maxlength="2000" rows="4" required></textarea></div>
+</div><button type="submit" id="save">Registratie opslaan</button>
+</form>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+const search=new URLSearchParams(location.search);
+const id=search.get('discordId');
+const embedded=search.get('embed')==='1';
+let auth=null,authModule,records=[],canWrite=false,tab='overzicht';
+function notice(msg,error=false){$('message').textContent=msg;$('message').classList.toggle('error',error)}
+function resize(){
+  if(!embedded||window.parent===window)return;
+  window.parent.postMessage({type:'bpd-dossier-embed-size',
+    height:Math.max(450,document.documentElement.scrollHeight)},window.location.origin);
+}
+function draw(){
+  for(const b of $('tabs').querySelectorAll('button'))b.setAttribute('aria-selected',String(b.dataset.tab===tab));
+  const root=$('records');root.replaceChildren();
+  if(tab==='overzicht'){
+    const visible=[...records].slice(0,10);
+    if(!visible.length)root.textContent='Nog geen burgerregistraties beschikbaar.';
+    for(const entry of visible)appendEntry(root,entry);
+  }else{
+    const matching=records.filter(entry=>entry.type===tab);
+    if(!matching.length)root.textContent='Nog geen registraties binnen deze categorie.';
+    for(const entry of matching)appendEntry(root,entry);
+  }
+  resize();
+}
+function appendEntry(root,item){
+  const block=document.createElement('article');block.className='entry';
+  const title=document.createElement('strong');
+  title.textContent=String(item.title||'Registratie');
+  const meta=document.createElement('small');
+  meta.textContent=[item.eventDate,item.author].filter(Boolean).join(' · ');
+  const description=document.createElement('p');
+  description.textContent=String(item.details||'');
+  block.append(title,meta,description);root.append(block);
+}
+async function api(url,options={}){
+  if(!auth?.currentUser)throw Error('Meld je opnieuw aan met Discord');
+  const token=await auth.currentUser.getIdToken();
+  const response=await fetch(url,{cache:'no-store',...options,headers:{
+    Authorization:'Bearer '+token,...(options.body?{'Content-Type':'application/json'}:{})
+  }});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(result.error||'Dossier kon niet geladen worden');
+  return result;
+}
+async function load(){
+  if(!auth?.currentUser){notice('Meld je aan om dit dossier te bekijken.');return}
+  if(!/^\d{15,22}$/.test(id||'')){notice('Ongeldige dossierverwijzing.',true);return}
+  try{
+    const result=await api('/api/burger-dossiers/'+encodeURIComponent(id));
+    records=result.entries||[];canWrite=result.canWrite===true;
+    $('summary').hidden=false;
+    $('summary').textContent=[result.person?.name,result.person?.rank,
+      result.person?.status].filter(Boolean).join(' · ');
+    $('entryForm').hidden=!canWrite;
+    notice(canWrite?'Burgerdossier geopend · wijzigingen worden geregistreerd':
+      'Burgerdossier geopend · alleen lezen');
+    draw();
+  }catch(e){$('summary').hidden=true;$('entryForm').hidden=true;notice(e.message,true)}
+}
+$('tabs').onclick=event=>{
+  const b=event.target.closest('button[data-tab]');
+  if(!b)return;
+  tab=b.dataset.tab;draw();
+};
+$('entryForm').onsubmit=async event=>{
+  event.preventDefault();
+  if(!canWrite)return;
+  const button=$('save');button.disabled=true;
+  try{
+    await api('/api/burger-dossiers/'+encodeURIComponent(id)+'/entries',{
+      method:'POST',body:JSON.stringify({type:$('type').value,eventDate:$('date').value,
+        title:$('title').value,details:$('details').value})
+    });
+    $('title').value='';$('details').value='';
+    await load();
+    notice('Registratie veilig opgeslagen in het Burgerdossier.');
+  }catch(e){notice(e.message,true)}
+  finally{button.disabled=false}
+};
+async function start(){
+  $('date').value=new Date().toLocaleDateString('sv-SE');
+  try{
+    const conf=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+    if(!conf.enabled)throw Error('Aanmelding momenteel niet beschikbaar');
+    const {setupPortalLogin}=await import('/portal-login.js');
+    const app=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+    authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+    auth=authModule.getAuth(app.initializeApp(conf.firebaseConfig));
+    setupPortalLogin({button:$('login'),auth,authModule,config:conf,onError:e=>notice(e.message,true)});
+    authModule.onAuthStateChanged(auth,load);
+  }catch(e){notice(e.message,true)}
+}
+if(typeof ResizeObserver!=='undefined')new ResizeObserver(resize).observe(document.body);
+start();
+</script></body></html>
