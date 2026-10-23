@@ -96,6 +96,9 @@ export function installBurgerDossierRoutes(app,{requireUser,getSnapshot}){
       const people=await subject(id);
       if(people.length!==1)return failure(res,404,'Burgerdossier niet gevonden');
       const db=getFirestore();
+      const auditor=await db.collection('bpd_discord_auth').doc(req.bpd.discordId).get();
+      const knownName=String(auditor.exists?auditor.get('username')||'':'').trim();
+      const authorName=safe(knownName,80)?knownName:req.bpd.discordId;
       const ref=db.collection('bpd_cases').doc('burger_'+id).collection('entries').doc();
       const batch=db.batch();
       const when=FieldValue.serverTimestamp();
@@ -105,7 +108,7 @@ export function installBurgerDossierRoutes(app,{requireUser,getSnapshot}){
         eventDate:body.eventDate,
         subjectNameAtCreation:people[0].name,
         authorDiscordId:req.bpd.discordId,
-        authorName:req.bpd.email||req.bpd.discordId,
+        authorName,
         createdAt:when
       });
       batch.create(db.collection('bpd_notices').doc('burger').collection('events').doc(),{
