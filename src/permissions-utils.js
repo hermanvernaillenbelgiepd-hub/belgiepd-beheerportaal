@@ -56,7 +56,12 @@ export function canAdministerRoles(bpd,dept){
 export function canLogTraining(bpd,dept,perms){
   if(!SERVICE_DEPTS.includes(dept))return false;
   if(bpd?.dossierFullDepartments?.includes(dept))return true;
-  if(bpd?.trustedStaff===true && ['officierenkader','korpsleiding'].includes(bpd.role) && bpd.departments.includes(dept))return true;
+  // Politie: Middenkader en hoger mogen opleidingen registreren, ook zonder
+  // instructeurspecialisatie. Instructeurs houden hun aparte rolcontrole.
+  if(bpd?.trustedStaff===true && Array.isArray(bpd.departments) &&
+     bpd.departments.includes(dept) &&
+     (['officierenkader','korpsleiding'].includes(bpd.role) ||
+      (dept==='politie'&&bpd.role==='middenkader')))return true;
   return Boolean(perms?.[dept]?.['training.log']);
 }
 export function canReviewTraining(bpd,dept,perms){
