@@ -13,7 +13,8 @@ export function installTORadioRoutes(app,{
   const labels=()=>firestore().collection('bpd_radio_label_overrides');
   const audit=()=>firestore().collection('bpd_radio_label_audit');
   async function withAliases(snapshot){
-    if(process.env.FIREBASE_PROJECT_ID!=='belgiepd-test'||!snapshot.connected||snapshot.stale)return snapshot;
+    if(!snapshot.connected||snapshot.stale)return {...snapshot,radioLabelWritesEnabled:false};
+    if(!process.env.FIREBASE_PROJECT_ID)return {...snapshot,radioLabelWritesEnabled:false};
     const rows=await labels().limit(201).get();
     if(rows.size>200)throw Error('Te veel radioweergavenaamcorrecties, administratieve controle nodig');
     return {...enrichRadioSnapshot(snapshot,rows.docs.map(d=>({id:d.id,...d.data()}))),radioLabelWritesEnabled:radioLabelWritesEnabled(process.env)};
@@ -67,7 +68,7 @@ export function installTORadioRoutes(app,{
   // a verified Sonoran account UUID and dedicated outbound permission flow.
   app.post('/api/to/radio/label',requireUser,async(req,res)=>{
     if(!mayEditRadioLabel(req.bpd))return res.status(403).json({error:'Geen bevoegdheid om radiolabels te corrigeren'});
-    if(!radioLabelWritesEnabled(process.env))return res.status(503).json({error:'Radiolabelopslag staat nog uit op TEST'});
+    if(!radioLabelWritesEnabled(process.env))return res.status(503).json({error:'Radioweergavenaamcorrecties zijn op deze server niet ingeschakeld'});
     const id=req.body?.radioId;
     if(!validRadioId(id)||!req.body||Object.keys(req.body).some(k=>!['radioId','alias'].includes(k)))
       return res.status(400).json({error:'Ongeldige radioverwijzing'});
