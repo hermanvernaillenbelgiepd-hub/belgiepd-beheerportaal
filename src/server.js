@@ -262,7 +262,8 @@ async function getSnapshot({forceRefresh=false}={}){
     specialtyReadEnabled(process.env)
       ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null,
     // Nieuwe burgerpersoneelsbron, GEEN toegang tot oude /api/citizens.
-    process.env.BPD_ENABLE_BURGER_DOSSIERS==='true'?
+    process.env.BPD_ENABLE_BURGER_DOSSIERS==='true'&&
+      process.env.FIREBASE_PROJECT_ID==='belgiepd-test'?
       getFirestore().collection(BURGER_PERSONNEL_COLLECTION).limit(500).get():null
   ]);
   if(created?.size===500||edits?.size===400||specialties?.size===600||burger?.size===500)throw Error('Te veel personeelsrecords; migratiecontrole nodig');
@@ -371,7 +372,8 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
       verifyBoardDiscordRole(member?.exists?member.data():null,process.env.DISCORD_GUILD_ID)||
       activeBoardAppointment(appointment?.exists?appointment.data():null)
     ));
-    const burgerScope=process.env.BPD_ENABLE_BURGER_DOSSIERS==='true'
+    const burgerScope=process.env.BPD_ENABLE_BURGER_DOSSIERS==='true'&&
+      process.env.FIREBASE_PROJECT_ID==='belgiepd-test'
       ?burgerDossierScope(req.bpd,member?.exists?member.data():null,
           process.env.DISCORD_GUILD_ID):{read:false,write:false,council:false};
     req.bpd.burgerDossierAccess=burgerScope;
