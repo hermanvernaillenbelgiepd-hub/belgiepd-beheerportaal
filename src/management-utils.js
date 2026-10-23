@@ -25,7 +25,7 @@ export const mayWriteManagement = (actor,dept,type) => (
   ||(CADRE_ROLES.includes(roleForDepartment(actor,dept))&&mayReadManagement(actor,dept) &&
     (!Array.isArray(actor?.dossierNativeDepartments)||actor.dossierNativeDepartments.includes(dept))&&
     MANAGEMENT_TYPES.includes(type) && (
-    !['naamswijziging','personeelsbeweging'].includes(type) ||
+    !['naamswijziging','personeelsbeweging','promotievoorstel'].includes(type) ||
     HIGH_ROLES.includes(roleForDepartment(actor,dept))
   ))
 );
