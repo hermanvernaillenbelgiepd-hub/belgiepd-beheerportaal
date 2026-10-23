@@ -27,7 +27,7 @@ export async function registeredActorForTestFixtures(user,persons,dept,readMembe
   if(actual)return actual;
   if(process.env.FIREBASE_PROJECT_ID!=='belgiepd-test'||
      process.env.BPD_TEST_FIXTURES!=='true'||
-     !/^\\d{15,22}$/.test(user?.discordId||'')||
+     !/^\d{15,22}$/.test(user?.discordId||'')||
      user.uid!=='discord:'+user.discordId||
      !Array.isArray(user.dossierNativeDepartments)||
      !user.dossierNativeDepartments.includes(dept)||
