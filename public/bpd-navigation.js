@@ -3,7 +3,7 @@
   'use strict';
   if(window.self!==window.top)return; // Geen dubbele knoppen in dossier-iframes.
   const key='bpdPortalNavigationHistoryV1';
-  const here=window.location.pathname+window.location.search;
+  const here=window.location.pathname; // Bewaar geen Discord-ID's of andere queryparameters.
   // Alleen paden op hetzelfde portaal, max. 30 bezoeken en deze browsertab.
   function validPath(path){return typeof path==='string'&&path.startsWith('/')&&!path.startsWith('//')&&!path.includes('\\');}
   function readStack(){
