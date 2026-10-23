@@ -1,110 +1,260 @@
-<!doctype html><html lang="nl"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Registraties · BelgiumPD</title>
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Observaties vanuit Basiskader · BelgiëPD</title>
 <style>
-:root{--navy:#101d39;--blue:#3f5dde;--bg:#f4f7fd;--ink:#1f2f4b;--muted:#75829d;--line:#dfe6f3;--green:#148b61}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px Inter,'Segoe UI',Arial,sans-serif;line-height:1.5}button,input,select,textarea{font:inherit}button{cursor:pointer}a{color:inherit}header{background:var(--navy);color:white;display:flex;justify-content:space-between;align-items:center;gap:15px;padding:18px max(24px,calc((100% - 1160px)/2))}header strong{font-size:20px}header small{display:block;color:#aebee0}.header-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.header-actions a{color:#d8e2ff}.header-actions button{background:#fff;color:var(--navy);border:0;padding:9px 14px;border-radius:8px}main{max-width:1160px;margin:35px auto;padding:0 22px 70px}h1{font-size:29px;margin:0 0 7px}h2{font-size:18px;margin:0 0 10px}p{color:#71809b;margin:0 0 12px}.top-note{background:#e9eeff;border:1px solid #d5deff;border-radius:12px;padding:15px;color:#43598d;margin:20px 0}.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(275px,1fr);gap:19px}.card{background:white;border:1px solid #e4eaf4;border-radius:15px;padding:24px;box-shadow:0 8px 24px rgba(24,42,85,.045);margin-bottom:18px}.subtle{color:var(--muted);font-size:12px}.chip{font-size:11px;font-weight:700;border-radius:40px;background:#e6f5ee;color:var(--green);display:inline-block;padding:4px 11px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{margin-top:12px}.field label{display:block;font-size:12px;font-weight:700;color:#455574;margin-bottom:6px}input,select,textarea{width:100%;padding:10px 12px;color:var(--ink);border:1px solid #d6dfef;border-radius:8px;background:#fff}textarea{min-height:110px;resize:vertical}.span2{grid-column:span 2}.reasons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.reasons label{display:flex;align-items:flex-start;gap:8px;font-size:12px}.reasons input{width:auto;margin-top:3px}button.primary{border:0;color:#fff;background:var(--blue);padding:12px 17px;font-weight:700;border-radius:9px}button.secondary{border:1px solid #cdd7eb;color:#465c99;background:#fff;padding:9px 12px;border-radius:9px}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #9cafff;outline-offset:2px}.row{display:flex;gap:10px;align-items:center;justify-content:space-between}.hidden{display:none!important}.info{padding:14px;background:#f3f6ff;color:#53678a;border-radius:10px;margin:14px 0;font-size:12px}.error{color:#a92742;background:#fff0f3;border:1px solid #f0c5d0;border-radius:8px;padding:12px}.success{background:#e9f8f1;color:#147953;border:1px solid #bee9d5;border-radius:8px;padding:12px}.entry{padding:13px 0;border-bottom:1px solid var(--line)}.entry strong{display:block}.entry small{color:#74819b}.entry p{white-space:pre-wrap;word-break:break-word;color:#405271;margin-top:7px}.entry .meta{font-size:11px;color:#7886a2}.notifications{padding:10px 0;border-bottom:1px solid var(--line)}.notifications span{display:block}.notifications small{color:#75829d}.warning{font-size:11px;color:#95601e}.pill{display:inline-block;color:#475da5;background:#edf1ff;border-radius:7px;padding:3px 8px;margin-left:8px;font-size:10px}.readonly{background:#f6f8fc;border-radius:8px;padding:10px 12px;font-size:12px;color:#5c6d8c}.smallbutton{font-size:11px;margin-top:6px}#message{margin:10px 0}#signIn{display:block;max-width:560px;margin:40px auto}#roleLabel{font-size:12px;color:#bdc9e6}
-@media(max-width:790px){.grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.span2{grid-column:auto}.reasons{grid-template-columns:1fr}.card{padding:18px}header{padding:15px}main{padding:0 12px}}
-</style></head><body>
-<header><div><strong>BelgiumPD</strong><small>Registraties · Personeelsbeheer</small></div><div class="header-actions"><a href="/" id="backToDashboard" title="Ga naar het dashboard van BelgiumPD">← Terug naar dashboard</a><a href="/discord-status.html">Discord-test</a><span id="roleLabel">Niet aangemeld</span><button id="authBtn" type="button">Google aanmelden</button></div></header>
-<main><div class="row"><div><h1>Observaties & sancties</h1><p>Beveiligde registraties gekoppeld via de Discord ID van het personeelslid.</p></div><span class="chip">TESTOMGEVING</span></div>
-<div class="top-note">In deze versie worden nieuwe registraties uitsluitend in <strong>BelgiumPD (Firestore)</strong> opgeslagen en niet teruggeschreven naar bestaande Google Sheets-dossierbladen. Gebruik eerst fictieve testregistraties totdat de rechten zijn gecontroleerd.</div>
-<div id="signIn" class="card"><h2>Beveiligde aanmelding vereist</h2><p>Gebruik je voor BelgiumPD goedgekeurde Google-account. De server bepaalt jouw rechten; je kunt ze niet zelf kiezen.</p><div id="signInStatus" class="subtle">Beveiligde verbinding voorbereiden...</div></div>
-<div id="message" role="status" aria-live="polite"></div>
-<div id="workspace" class="grid hidden">
-<section><div class="card"><h2>Nieuwe registratie</h2><p id="roleHint"></p>
-<form id="registrationForm"><div class="form-grid"><div class="field"><label for="dept">Hulpdienst *</label><select id="dept" required></select></div><div class="field"><label for="target">Betrokken personeelslid *</label><select id="target" required></select></div>
-<div class="field span2"><label for="actor">Ingevuld door (automatisch via login)</label><div class="readonly" id="actor">Nog niet gekoppeld</div></div>
-<div class="field span2 hidden" id="representBlock"><label for="represent">Observatie namens een ander middenkaderlid (optioneel)</label><select id="represent"></select><div class="subtle">Alleen bij observaties. De werkelijk ingelogde gebruiker blijft altijd zichtbaar in het auditspoor.</div></div>
-<div class="field span2 hidden" id="representReasonBlock"><label for="representReason">Waarom registreer je namens deze collega? *</label><textarea id="representReason" maxlength="500" rows="2" placeholder="Vermeld waarom de collega deze observatie niet zelf registreert."></textarea></div>
-<div class="field span2"><label for="type">Soort registratie *</label><select id="type"><option value="observatie">Observatie</option><option value="sanctie">Sanctie</option></select></div>
-<div class="field"><label for="date">Datum gebeurtenis *</label><input id="date" type="date" required></div><div class="field"><label for="time">Tijdstip gebeurtenis *</label><input id="time" type="time" required></div>
-<div id="sanction" class="span2 hidden"><div class="form-grid"><div class="field span2"><label for="sanctionType">Soort sanctie *</label><select id="sanctionType"></select><div class="subtle" id="sanctionHelp">Zware maatregelen alleen voor officierenkader en korpsleiding.</div></div><div class="field span2"><label for="explanation">Licht de sanctie verder toe (periode, beperkingen...)</label><textarea id="explanation" maxlength="2000" rows="2"></textarea></div><div class="field span2"><label>Reden(en) van de sanctie *</label><div class="reasons" id="reasons"></div></div><div class="field span2"><label for="reasonOther">Toelichting bij 'Anders'</label><input id="reasonOther" maxlength="500" /></div><div class="field"><label for="severity">Ernst van de feiten (1–10) *</label><input id="severity" type="number" min="1" max="10" value="5"></div><div class="field"><label for="cfxName">CFX-naam personeelslid (optioneel)</label><input id="cfxName" maxlength="120" /></div></div></div>
-<div class="field span2"><label for="details">Situatie, tussenkomst en uitkomst *</label><textarea id="details" maxlength="6000" required placeholder="Wat gebeurde er? Hoe is er tussengekomen en wat was de uitkomst?"></textarea></div><div class="field span2"><label for="otherPlayers">Andere betrokken spelers (optioneel)</label><textarea id="otherPlayers" maxlength="1000" rows="2"></textarea></div><div class="field span2"><label for="evidenceUrl">URL clip / bewijsmateriaal (optioneel)</label><input id="evidenceUrl" maxlength="800" type="url" placeholder="https://..."/></div>
-<div id="amend" class="span2 hidden"><div class="field"><label for="amendStatus">Status van de sanctie</label><select id="amendStatus"><option value="actief">Actief</option><option value="ingetrokken">Ingetrokken</option></select></div><div class="field"><label for="amendReason">Reden van de wijziging *</label><textarea id="amendReason" maxlength="1000" rows="2"></textarea></div></div>
-<div class="span2"><button class="primary" id="saveBtn" type="submit">Registratie veilig opslaan</button><button class="secondary hidden" id="cancelEdit" type="button">Wijziging annuleren</button></div></div></form></div></section>
-<aside><div class="card" id="casePanel"><div class="row"><h2>Dossierregistraties</h2><button type="button" id="refreshEntries" class="secondary">Verversen</button></div><p class="subtle">Alleen zichtbaar vanaf middenkader.</p><div id="caseEntries" class="subtle">Selecteer een personeelslid.</div></div><div class="card" id="notificationPanel"><div class="row"><h2>Meldingencentrum</h2><button type="button" id="refreshNotifications" class="secondary">Verversen</button></div><div class="subtle">Interne registratiegebeurtenissen. Discord is niet gekoppeld.</div><div id="notifications" class="subtle">Nog geen gegevens geladen.</div></div></aside>
-</div></main><script type="module">
+:root{font-family:Inter,'Segoe UI',Arial,sans-serif;color-scheme:dark;background:#09162a;color:#e6edf9}
+*{box-sizing:border-box}
+body{margin:0;background:#0d1930;font-size:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:16px clamp(17px,3vw,38px);background:#101f3d;border-bottom:1px solid #30476c}
+header strong{font-size:19px}header small{color:#a7bedf;display:block;font-size:11px}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+a{color:#bad1ff}button,input,select,textarea{font:inherit}
+button{border:1px solid #5072a4;border-radius:8px;padding:9px 14px;color:white;
+  background:#315dcc;font-weight:650;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.secondary{background:#1b3051}
+main{max-width:1190px;margin:auto;padding:23px clamp(12px,2.6vw,30px) 55px}
+h1{font-size:23px;margin:0 0 7px}h2{font-size:17px;margin:0 0 8px}
+h3{font-size:14px;margin:0 0 5px}p{margin:7px 0 12px;line-height:1.55;color:#b4c6e4}
+.card{background:#132541;border:1px solid #324d74;border-radius:13px;padding:18px;
+  margin:12px 0;box-shadow:0 5px 18px #07132655}
+.card[hidden],[hidden]{display:none!important}
+.banner{background:#152e4a;border-left:3px solid #81a9ff;border-radius:7px;padding:12px 15px;
+  color:#c6dbfa;font-size:12px;line-height:1.55;margin:15px 0}
+label{font-size:12px;color:#bed5f2;display:block;margin:0 0 5px}
+input,select,textarea{background:#0a182e;border:1px solid #4b6385;color:white;border-radius:8px;
+  width:100%;padding:10px 11px}
+textarea{min-height:95px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid #81b9ff;outline-offset:1px}
+fieldset{border:0;margin:0;padding:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.field.full{grid-column:1/-1}
+.field{min-width:0}
+.buttons{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:15px}
+.helper{font-size:11px;color:#9eb9dc;margin:7px 0}
+.status{font-size:12px;line-height:1.5;margin:12px 0}
+.error{padding:11px 13px;border-radius:8px;background:#402437;color:#ffdce1}
+.success{padding:11px 13px;border-radius:8px;background:#164036;color:#b6f7d5}
+.report-item{border:1px solid #385375;border-radius:9px;padding:12px;background:#0e1d34;margin:8px 0}
+.report-item strong{display:block}
+.report-meta{font-size:11px;color:#aac6e7;margin-top:5px}
+.report-desc{color:#e0e9fa;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0}
+.readonly{border:1px solid #304a6d;background:#0b1b31;border-radius:7px;
+  padding:10px 12px;color:#bed4f2}
+.toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.toolbar input{max-width:340px}
+.counter{font-size:11px;color:#afc8e7}
+@media(max-width:670px){.grid{grid-template-columns:1fr}.field.full{grid-column:auto}header{padding:13px}}
+</style></head>
+<body>
+<header>
+  <div><strong>BelgiumPD</strong><small>OBSERVATIES VANUIT BASISKADER · BEHEERPORTAAL</small></div>
+  <div class="actions"><a href="/">← Startpagina</a><span id="roleLabel" class="counter">Niet aangemeld</span>
+    <button type="button" id="authBtn" class="secondary">Aanmelden</button></div>
+</header>
+<main>
+  <h1>Observaties vanuit Basiskader</h1>
+  <p>Basiskader kan enkel een observatie indienen over politieleden <strong>onder de eigen rang</strong>. Deze pagina bevat geen sancties.</p>
+  <div class="banner">De lijst met betrokken personeelsleden wordt rechtstreeks uit <strong>Centraal personeelsbeheer</strong> geladen. Ingediende observaties komen in het personeelsdossier en in het bestaande dynamische weekrapport. Alleen Middenkader, Officierenkader, Korpsleiding en geverifieerd Bestuur kunnen het gebundelde ontvangstoverzicht bekijken.</div>
+  <div class="card" id="loginPanel"><h2>Beveiligd aanmelden</h2><p>Gebruik je voor BelgiumPD goedgekeurde account.</p>
+    <p id="loginStatus" class="helper">De aanmeldservice wordt voorbereid…</p></div>
+  <div id="message" class="status" role="status" aria-live="polite"></div>
+  <section id="formPanel" class="card" hidden>
+    <h2>Nieuwe observatie</h2><p id="submitHint" class="helper"></p>
+    <form id="observationForm">
+      <div class="grid">
+        <div class="field"><label for="author">Ingediend door (geverifieerd)</label>
+          <div id="author" class="readonly"></div></div>
+        <div class="field"><label for="target">Betrokken personeelslid *</label>
+          <select id="target" required></select><div id="targetCount" class="helper"></div></div>
+        <div class="field"><label for="eventDate">Datum van gebeurtenis *</label>
+          <input id="eventDate" type="date" required></div>
+        <div class="field"><label for="eventTime">Tijdstip *</label>
+          <input id="eventTime" type="time" required></div>
+        <div class="field full"><label for="details">Observatie: feiten, tussenkomst en uitkomst *</label>
+          <textarea id="details" maxlength="6000" required placeholder="Beschrijf wat er concreet is gebeurd en welke opvolging nodig is."></textarea></div>
+        <div class="field full"><label for="otherPlayers">Andere betrokken spelers (optioneel)</label>
+          <input id="otherPlayers" maxlength="1000"></div>
+        <div class="field full"><label for="evidenceUrl">Clip of bewijsmateriaal (optionele https-link)</label>
+          <input id="evidenceUrl" type="url" maxlength="800" placeholder="https://…"></div>
+      </div>
+      <div class="buttons"><button id="submitBtn" type="submit">Observatie opslaan</button><button id="clearBtn" type="button" class="secondary">Invoervelden wissen</button></div>
+    </form>
+    <div class="helper">Een observatie is geen sanctie. De ingelogde auteur, datum en tijdstip worden veilig geregistreerd. Basiskader heeft geen inzage in de observaties van andere medewerkers.</div>
+  </section>
+  <section id="inboxPanel" class="card" hidden>
+    <div class="toolbar"><div><h2>Gebundelde ontvangen observaties</h2>
+      <p class="helper">Alleen zichtbaar voor Middenkader, Officierenkader, Korpsleiding en Bestuur, binnen de eigen inzagerechten.</p></div>
+      <button type="button" id="refreshInbox" class="secondary">Vernieuwen</button></div>
+    <div class="toolbar"><input type="search" id="filterInbox" placeholder="Zoek roepnummer, naam of observatie…" aria-label="Zoek in ontvangen observaties">
+      <span id="inboxCount" class="counter"></span></div>
+    <div id="inboxList" role="list"></div>
+    <p id="inboxLimit" class="helper" hidden>Alleen de 250 recentste registratiemeldingen zijn doorzocht. Oudere registraties blijven beschikbaar in de personeelsdossiers.</p>
+  </section>
+  <section id="noAccess" class="card" hidden><h2>Geen toegang tot deze module</h2>
+    <p id="accessReason">Deze module is bedoeld voor observaties door Basiskader of inzage door bevoegd kader en Bestuur.</p></section>
+</main>
+<script type="module">
 const $=id=>document.getElementById(id);
-const out={};let bridge=null,userState=null,subjects=[],representatives=[],actor=null,editId=null,openedEntries=[];
-const cadre=r=>['middenkader','officierenkader','korpsleiding','beheerder'].includes(r);
-const officer=r=>['officierenkader','korpsleiding'].includes(r);
-// Only server-authorised service scopes determine whether this user may
-// register or amend sanctions; a global police rank is insufficient.
-const canSanction=dept=>Boolean(userState?.sanctionDepartments?.includes(dept));
-const canHeavy=dept=>Boolean(userState?.heavySanctionDepartments?.includes(dept));
-const canBrowse=()=>cadre(userState?.role)||userState?.fireZoneChief===true||Boolean(userState?.fullDossierDepartments?.length);
-const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const sanctionTypes=['Mondelinge waarschuwing','Officiële waarschuwing','Tijdelijke beperking','Voorstel tot degradatie','Degradatie','Schorsing','Ontslag','Ontslag met blacklisting'];
-const canAmendSanction=dept=>Boolean(userState?.sanctionAmendDepartments?.includes(dept));
-const canChooseCurrent=kind=>{
- const severity=Number($('severity').value);
- return Boolean(userState?.sanctionOptionsByDepartment?.[$('dept').value]?.includes(kind))&&
-   (kind!=='Voorstel tot degradatie'||Number.isInteger(severity)&&severity>=9&&severity<=10);
+let bridge=null,context=null,inboxData=[],submitBusy=false;
+const setMessage=(msg,error=false)=>{
+  $('message').className=msg?'status '+(error?'error':'success'):'status';
+  $('message').textContent=msg;
 };
-const selectableSanctions=dept=>{
- const severity=Number($('severity').value);
- return (userState?.sanctionOptionsByDepartment?.[dept]||[])
-   .filter(kind=>kind!=='Voorstel tot degradatie'||
-     Number.isInteger(severity)&&severity>=9&&severity<=10);
+const today=()=>{
+  const d=new Date(),pad=n=>String(n).padStart(2,'0');
+  $('eventDate').value=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  $('eventTime').value=pad(d.getHours())+':'+pad(d.getMinutes());
 };
-const reasons=['Radioprotocol','Rijstijl','Onrechtmatig gebruik dienstspecifiek voertuig','Onrechtmatig gebruik collectief / dienstspecifiek wapen','Onterecht (vuur)wapengebruik','Veiligheid','Schelden/pesten','Buiten bevoegdheid treden (intern)','Buiten bevoegdheid treden (extern)','Ongeoorloofde toe-eigening van een graad','Ongeoorloofde toe-eigening van een specialisatie','Anders'];
-const fail=msg=>{const n=$('message');n.className='error';n.textContent=msg;};
-const success=msg=>{const n=$('message');n.className='success';n.textContent=msg;};
-const clearMessage=()=>{$('message').className='';$('message').textContent=''};
-function setNow(){const d=new Date(),pad=x=>String(x).padStart(2,'0');$('date').value=[d.getFullYear(),pad(d.getMonth()+1),pad(d.getDate())].join('-');$('time').value=pad(d.getHours())+':'+pad(d.getMinutes())}
-function setOptions(el,items,placeholder){el.replaceChildren();const o=document.createElement('option');o.value='';o.textContent=placeholder;el.append(o);for(const p of items){const opt=document.createElement('option');opt.value=p.value;opt.textContent=p.label;el.append(opt)}}
-async function api(url,method='GET',body){if(!bridge?.auth.currentUser)throw new Error('Je bent niet aangemeld');const token=await bridge.auth.currentUser.getIdToken();const r=await fetch(url,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Serverfout '+r.status);return data}
-function showWorkspace(data){userState=data;subjects=data.subjects;representatives=data.representatives||[];actor=data.actor;$('signIn').classList.add('hidden');$('workspace').classList.remove('hidden');$('roleLabel').textContent=data.role;$('roleHint').textContent=!data.writesEnabled?'Schrijven staat nog uit: stel eerst Firestore-toegang en de beveiligde configuratie in.':data.role==='basiskader'?'Je kunt alleen observaties indienen. Dossierinformatie en meldingen zijn niet toegankelijk.':'Registraties worden onmiddellijk aan het beveiligde interne dossier toegevoegd.';$('actor').textContent=actor?`${actor.name} · ${actor.call} · Discord ID ${actor.discordId}`:'Geen gekoppeld personeelslid: neem contact op met het beheer. Opslaan is uitgeschakeld.';$('saveBtn').disabled=!actor||!data.writesEnabled;$('casePanel').classList.toggle('hidden',!(cadre(data.role)||data.fireZoneChief===true||data.fullDossierDepartments?.length));$('notificationPanel').classList.toggle('hidden',!(cadre(data.role)||data.fireZoneChief===true||data.fullDossierDepartments?.length));$('type').querySelector('option[value="sanctie"]').disabled=!(data.sanctionDepartments||[]).length;if(!(data.sanctionDepartments||[]).length)$('type').value='observatie';
-const list=data.departments.map(d=>({value:d,label:d.charAt(0).toUpperCase()+d.slice(1)}));setOptions($('dept'),list,'Kies hulpdienst');if(list.length){$('dept').value=list[0].value}const params=new URLSearchParams(location.search),requestedDept=params.get('dept'),requestedId=params.get('discordId');if(requestedDept&&data.departments.includes(requestedDept))$('dept').value=requestedDept;fillTargets(requestedId);fillRepresentatives();setNow();updateForm();refreshSidebar();}
-function fillTargets(selected){const dept=$('dept').value;setOptions($('target'),subjects.filter(p=>p.dept===dept).sort((a,b)=>a.call.localeCompare(b.call,'nl',{numeric:true})).map(p=>({value:p.discordId,label:`${p.call} – ${p.name}`})),'Kies personeelslid');if(selected)$('target').value=selected;updateForm();if(canBrowse())loadEntries();}
-function fillRepresentatives(){
- const selected=$('represent').value;
- const available=representatives.filter(p=>p.dept===$('dept').value && p.discordId!==actor?.discordId)
-   .sort((a,b)=>a.call.localeCompare(b.call,'nl',{numeric:true})).map(p=>({value:p.discordId,label:`${p.call} – ${p.name}`}));
- setOptions($('represent'),available,'Nee – ik registreer namens mezelf');
- if(selected && available.some(x=>x.value===selected))$('represent').value=selected;
- updateForm();
+function clearForm(){
+  $('observationForm').reset();today();
 }
-function updateForm(){
- const isSanction=$('type').value==='sanctie';
- const allowed=canSanction($('dept').value);
- $('type').querySelector('option[value="sanctie"]').disabled=!allowed;
- if(isSanction&&!allowed)$('type').value='observatie';
- const sanctioned=$('type').value==='sanctie';
- $('sanction').classList.toggle('hidden',!sanctioned);
- $('sanctionType').required=sanctioned;
- $('severity').required=sanctioned;
- const choices=selectableSanctions($('dept').value);
- const prior=$('sanctionType').value;
- setOptions($('sanctionType'),choices.map(x=>({value:x,label:x==='Tijdelijke beperking'?'Tijdelijke beperking van specialisatie':x})),'Kies de sanctiemaatregel');
- if(choices.includes(prior))$('sanctionType').value=prior;
- const role=userState?.sanctionRoles?.[$('dept').value];
- $('sanctionHelp').textContent=role==='korpsleiding'?
-   'Korpsleiding kan ook ontslag of ontslag met blacklisting registreren. Voorstel tot degradatie vereist ernst 9 of 10/10.':
-   role==='officierenkader'?
-     'Officierenkader kan ook effectieve degradatie en schorsing registreren. Ontslag en blacklisting blijven uitsluitend voor Korpsleiding. Voorstel tot degradatie vanaf ernst 9/10.':
-     'Middenkader: mondelinge waarschuwing, officiële waarschuwing en tijdelijke beperking van specialisatie. Voorstel tot degradatie vanaf ernst 9/10. Degradatie, schorsing en ontslag zijn niet toegestaan.';
- const showRepresent=['middenkader','officierenkader','korpsleiding'].includes(userState?.role)&&$('dept').value==='politie'&&!sanctioned&&!editId&&representatives.some(p=>p.dept===$('dept').value);
- $('representBlock').classList.toggle('hidden',!showRepresent);
- if(!showRepresent)$('represent').value='';
- const hasRepresentative=showRepresent&&Boolean($('represent').value);
- $('representReasonBlock').classList.toggle('hidden',!hasRepresentative);
- $('representReason').required=hasRepresentative;
- if(!hasRepresentative)$('representReason').value='';
+async function api(path,method='GET',body){
+  const user=bridge?.auth.currentUser;
+  if(!user)throw Error('Aanmelden vereist');
+  const token=await user.getIdToken();
+  const response=await fetch(path,{method,cache:'no-store',headers:{
+    Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},
+    ...(body?{body:JSON.stringify(body)}:{})});
+  const data=await response.json().catch(()=>({}));
+  if(bridge.auth.currentUser?.uid!==user.uid)throw Error('Aanmelding gewijzigd');
+  if(!response.ok)throw Error(data.error||'Serverfout '+response.status);
+  return data;
 }
-function renderReasons(){$('reasons').innerHTML=reasons.map(x=>`<label><input type="checkbox" name="reason" value="${esc(x)}"/>${esc(x)}</label>`).join('')}
-function payload(){return {dept:$('dept').value,discordId:$('target').value,type:$('type').value,eventDate:$('date').value,eventTime:$('time').value,details:$('details').value,otherPlayers:$('otherPlayers').value,evidenceUrl:$('evidenceUrl').value,...($('type').value==='observatie' && $('represent').value?{onBehalfOfDiscordId:$('represent').value,onBehalfReason:$('representReason').value}:{}),...($('type').value==='sanctie'?{sanctionType:$('sanctionType').value,explanation:$('explanation').value,reasons:[...document.querySelectorAll('[name="reason"]:checked')].map(x=>x.value),reasonOther:$('reasonOther').value,severity:Number($('severity').value),cfxName:$('cfxName').value}:{})};}
-function cancelEdit() {editId=null;const keptDept=$('dept').value,keptTarget=$('target').value;$('registrationForm').reset();setNow();$('type').disabled=false;$('target').disabled=false;$('dept').disabled=false;$('amend').classList.add('hidden');$('cancelEdit').classList.add('hidden');$('saveBtn').textContent='Registratie veilig opslaan';$('type').value='observatie';$('represent').value='';$('representReason').value='';if(keptDept)$('dept').value=keptDept;if(keptTarget)$('target').value=keptTarget;fillRepresentatives();updateForm();}
-$('registrationForm').addEventListener('submit',async e=>{e.preventDefault();clearMessage();if(!actor)return fail('Er is nog geen geverifieerde Discord-koppeling voor je ingelogde account.');const button=$('saveBtn');button.disabled=true;try{const p=payload();if(!p.discordId)throw new Error('Selecteer het betrokken personeelslid.');if(editId){if(!canAmendSanction(p.dept))throw new Error('Onvoldoende rechten voor deze wijziging');p.status=$('amendStatus').value;p.amendmentReason=$('amendReason').value;await api('/api/registrations/entries/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId)+'/'+encodeURIComponent(editId),'PATCH',p);success('Sanctie gewijzigd; de oude inhoud is bewaard in de auditgeschiedenis.')}else{const r=await api('/api/registrations/entries','POST',p);success('Registratie opgeslagen en aan de Discord ID gekoppeld. Referentie: '+r.reference)}const target=p.discordId;const dept=p.dept;cancelEdit();$('dept').value=dept;fillTargets(target);await refreshSidebar();}catch(err){fail(err.message)}finally{button.disabled=!actor||!userState?.writesEnabled}});
-const canChooseCurrentEntry=record=>Boolean(
- userState?.sanctionOptionsByDepartment?.[$('dept').value]?.includes(record.sanctionType)&&
- (record.sanctionType!=='Voorstel tot degradatie'||Number(record.severity)>=9)
-);
-async function loadEntries(){const dept=$('dept').value,id=$('target').value;if(!canBrowse())return;const node=$('caseEntries');if(!id){node.textContent='Selecteer eerst een personeelslid.';return}node.textContent='Dossierregistraties laden...';try{const d=await api('/api/registrations/entries?dept='+encodeURIComponent(dept)+'&discordId='+encodeURIComponent(id));openedEntries=d.entries;node.innerHTML=openedEntries.length?openedEntries.map(x=>`<div class="entry"><div class="row"><strong>${x.type==='sanctie'?'Sanctie':'Observatie'} ${x.status==='ingetrokken'?'<span class="pill">Ingetrokken</span>':''}</strong>${x.type==='sanctie'&&canAmendSanction($('dept').value)&&canChooseCurrentEntry(x)?`<button type="button" class="secondary smallbutton" data-edit="${esc(x.id)}">Wijzigen</button>`:''}</div><div class="meta">${esc(x.createdAt?new Date(x.createdAt).toLocaleString('nl-BE'):'Tijdstip onbekend')} · ${esc(x.registeredBy?.name||'')} · ${esc(x.registeredBy?.call||'')}${x.onBehalfOf?` · daadwerkelijk ingevoerd door ${esc(x.submittedByActor?.name||'onbekend')}`:''}</div><p>${esc(x.details)}</p>${x.type==='sanctie'?`<small>${esc(x.sanctionType)} · Ernst ${esc(x.severity)}/10</small>`:''}</div>`).join(''):'Nog geen registraties voor dit personeelslid.';}catch(err){node.textContent=err.message}}
-function beginEdit(id){const x=openedEntries.find(x=>x.id===id);if(!x||x.type!=='sanctie'||!canAmendSanction($('dept').value)||!canChooseCurrentEntry(x))return;editId=id;$('type').value='sanctie';$('type').disabled=true;$('dept').disabled=true;$('target').disabled=true;for(const [key,value] of Object.entries({date:x.eventDate,time:x.eventTime,details:x.details,otherPlayers:x.otherPlayers,evidenceUrl:x.evidenceUrl,sanctionType:x.sanctionType,explanation:x.explanation,severity:x.severity,cfxName:x.cfxName,reasonOther:x.reasonOther,amendStatus:x.status||'actief'}))if($(key))$(key).value=value||'';updateForm();$('sanctionType').value=x.sanctionType;for(const c of document.querySelectorAll('[name="reason"]'))c.checked=x.reasons?.includes(c.value)||false;$('amend').classList.remove('hidden');$('amendReason').value='';$('cancelEdit').classList.remove('hidden');$('saveBtn').textContent='Sanctie gewijzigd opslaan';window.scrollTo({top:0,behavior:'smooth'})}
-$('caseEntries').addEventListener('click',e=>{const b=e.target.closest('[data-edit]');if(b)beginEdit(b.dataset.edit)});
-async function refreshSidebar(){if(!canBrowse())return;await Promise.all([loadEntries(),loadNotifications()])}
-async function loadNotifications(){const dept=$('dept').value;if(!dept)return;const node=$('notifications');node.textContent='Meldingen laden...';try{const d=await api('/api/registrations/notifications?dept='+encodeURIComponent(dept));node.innerHTML=d.events.length?d.events.map(x=>`<div class="notifications"><span>${x.type==='observatie'?'Nieuwe observatie':x.type==='sanctie'?'Nieuwe sanctie':'Sanctie gewijzigd'}</span><small>${esc(x.createdAt?new Date(x.createdAt).toLocaleString('nl-BE'):'')} · Beveiligd dossier</small></div>`).join(''):'Er zijn nog geen registratiemeldingen.'}catch(err){node.textContent=err.message}}
-$('dept').addEventListener('change',()=>{cancelEdit();fillTargets();fillRepresentatives();loadNotifications()});$('target').addEventListener('change',()=>{if(editId)cancelEdit();loadEntries()});$('type').addEventListener('change',updateForm);$('severity').addEventListener('input',updateForm);$('represent').addEventListener('change',updateForm);$('refreshEntries').addEventListener('click',loadEntries);$('refreshNotifications').addEventListener('click',loadNotifications);$('cancelEdit').addEventListener('click',cancelEdit);renderReasons();
-async function init(){try{const r=await fetch('/api/client-config',{cache:'no-store'});const conf=await r.json();if(!conf.enabled)throw new Error('Firebase is niet ingesteld.');const [{initializeApp},{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}]=await Promise.all([import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js')]);const app=initializeApp(conf.firebaseConfig);const auth=getAuth(app);bridge={auth};onAuthStateChanged(auth,async u=>{clearMessage();if(!u){userState=null;subjects=[];representatives=[];actor=null;openedEntries=[];$('workspace').classList.add('hidden');$('signIn').classList.remove('hidden');$('roleLabel').textContent='Niet aangemeld';$('authBtn').textContent='Google aanmelden';$('signInStatus').textContent='Klik rechtsboven op Google aanmelden.';return}$('authBtn').textContent='Afmelden';$('signInStatus').textContent='Toegang controleren...';try{showWorkspace(await api('/api/registrations/subjects'))}catch(e){userState=null;$('workspace').classList.add('hidden');$('signIn').classList.remove('hidden');$('signInStatus').textContent=e.message}});const {setupPortalLogin}=await import('/portal-login.js');setupPortalLogin({button:$('authBtn'),auth,authModule:{GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged,...await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js')},config:conf,onError:e=>fail('Aanmelden mislukt: '+e.message)});}catch(err){$('signInStatus').textContent='Verbinding mislukt: '+err.message}}
+function prepareForm(data){
+  $('formPanel').hidden=!data.canSubmit;
+  if(!data.canSubmit)return;
+  $('author').textContent=(data.actor?.call||'')+' · '+(data.actor?.name||'')+
+    ' · '+(data.actor?.rank||'');
+  const targets=[...(data.targets||[])].sort((a,b)=>String(a.call).localeCompare(String(b.call),'nl',{numeric:true}));
+  const select=$('target');select.replaceChildren();
+  const empty=document.createElement('option');empty.value='';empty.textContent='Selecteer een personeelslid';select.append(empty);
+  for(const item of targets){
+    const opt=document.createElement('option');opt.value=item.discordId;
+    opt.textContent=item.call+' · '+item.name+' · '+item.rank;select.append(opt);
+  }
+  $('targetCount').textContent=targets.length+' personeelsleden met een lagere rang beschikbaar';
+  $('submitHint').textContent=data.writesEnabled?
+    'De observatie wordt opgeslagen met jouw geverifieerde identiteit.':
+    'De registratieopslag is tijdelijk uitgeschakeld door de server.';
+  $('submitBtn').disabled=!data.writesEnabled||!targets.length;
+  clearForm();
+}
+function displayInbox(list){
+  const q=$('filterInbox').value.trim().toLocaleLowerCase('nl');
+  const rows=(list||[]).filter(row=>[
+    row.subject?.name,row.subject?.call,row.actor?.name,row.actor?.call,
+    row.details,row.eventDate
+  ].some(v=>String(v||'').toLocaleLowerCase('nl').includes(q)));
+  const root=$('inboxList');root.replaceChildren();
+  $('inboxCount').textContent=rows.length+' van '+(list?.length||0)+' observaties';
+  if(!rows.length){root.textContent='Geen ontvangen observaties gevonden.';return}
+  // Gegroepeerd per betrokken personeelslid; nooit per browser-rol.
+  const groups=new Map();
+  for(const row of rows){
+    const key=row.subject?.discordId||'';
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(row);
+  }
+  for(const entries of groups.values()){
+    const first=entries[0],head=document.createElement('h3');
+    head.textContent=(first.subject?.call||'—')+' · '+(first.subject?.name||'Onbekend')+
+      ' ('+entries.length+' observatie'+(entries.length===1?'':'s')+')';
+    root.append(head);
+    for(const row of entries){
+      const article=document.createElement('article');article.className='report-item';
+      const title=document.createElement('strong');
+      title.textContent='Observatie · '+(row.eventDate||'Datum onbekend')+
+        (row.eventTime?' · '+row.eventTime:'');
+      const meta=document.createElement('div');meta.className='report-meta';
+      meta.textContent='Ingediend door '+(row.actor?.call||'—')+' · '+
+        (row.actor?.name||'Onbekend')+' · '+(row.actor?.rank||'')+
+        (row.createdAt?' · geregistreerd '+new Date(row.createdAt).toLocaleString('nl-BE'):'');
+      const details=document.createElement('p');details.className='report-desc';
+      details.textContent=row.details||'';
+      article.append(title,meta,details);
+      if(row.testRecord){
+        const test=document.createElement('span');test.className='counter';
+        test.textContent='TEST · uitgesloten uit weekrapport';article.append(test);
+      }
+      root.append(article);
+    }
+  }
+}
+async function loadInbox(){
+  if(!context?.canReview)return;
+  $('inboxList').textContent='Ontvangen observaties laden…';
+  try{
+    const response=await api('/api/basic-observations/inbox');
+    inboxData=response.entries||[];
+    displayInbox(inboxData);
+    $('inboxLimit').hidden!==Boolean(response.limited);
+    $('inboxLimit').hidden=!response.limited;
+  }catch(error){$('inboxList').textContent='Ontvangen observaties niet beschikbaar: '+error.message}
+}
+async function loadContext(){
+  const data=await api('/api/basic-observations/context');context=data;
+  $('loginPanel').hidden=true;$('roleLabel').textContent=data.actor?
+    data.actor.rank:(data.canReview?'Bevoegde dossierinzage':'Ingelogd');
+  prepareForm(data);
+  $('inboxPanel').hidden=!data.canReview;
+  $('noAccess').hidden=Boolean(data.canSubmit||data.canReview);
+  if(data.canReview)await loadInbox();
+}
+$('clearBtn').onclick=()=>{clearForm();setMessage('')};
+$('refreshInbox').onclick=loadInbox;
+$('filterInbox').oninput=()=>displayInbox(inboxData);
+$('observationForm').onsubmit=async event=>{
+  event.preventDefault();if(submitBusy||!context?.canSubmit||!context.writesEnabled)return;
+  const target=$('target').value;
+  if(!context.targets?.some(p=>p.discordId===target))
+    return setMessage('Selecteer een personeelslid van een lagere rang.',true);
+  const body={type:'observatie',discordId:target,eventDate:$('eventDate').value,
+    eventTime:$('eventTime').value,details:$('details').value,
+    otherPlayers:$('otherPlayers').value,evidenceUrl:$('evidenceUrl').value};
+  submitBusy=true;$('submitBtn').disabled=true;
+  try{
+    const response=await api('/api/basic-observations','POST',body);
+    setMessage('Observatie veilig opgeslagen in het personeelsdossier en het weekrapport. Referentie: '+response.reference);
+    clearForm();
+  }catch(e){setMessage('Niet opgeslagen: '+e.message,true)}
+  finally{submitBusy=false;$('submitBtn').disabled=!context?.writesEnabled||!context?.targets?.length}
+};
+async function init(){
+  try{
+    const conf=await(await fetch('/api/client-config',{cache:'no-store'})).json();
+    if(!conf.enabled)throw Error('Firebase is niet ingesteld');
+    const [{initializeApp},{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}]=
+      await Promise.all([
+        import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js')]);
+    const app=initializeApp(conf.firebaseConfig),auth=getAuth(app);
+    bridge={auth};
+    onAuthStateChanged(auth,async user=>{
+      setMessage('');
+      if(!user){
+        context=null;inboxData=[];$('formPanel').hidden=true;$('inboxPanel').hidden=true;
+        $('noAccess').hidden=true;$('loginPanel').hidden=false;
+        $('roleLabel').textContent='Niet aangemeld';$('authBtn').textContent='Google aanmelden';
+        $('loginStatus').textContent='Meld je aan met je goedgekeurde BelgiumPD-account.';
+        return;
+      }
+      $('authBtn').textContent='Afmelden';
+      $('loginStatus').textContent='Beveiligde bevoegdheden ophalen…';
+      try{await loadContext()}catch(e){
+        context=null;$('formPanel').hidden=true;$('inboxPanel').hidden=true;
+        $('loginPanel').hidden=false;$('noAccess').hidden=true;
+        $('loginStatus').textContent='Toegang controleren mislukt: '+e.message;
+      }
+    });
+    const {setupPortalLogin}=await import('/portal-login.js');
+    setupPortalLogin({button:$('authBtn'),auth,
+      authModule:{GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged,
+        ...await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js')},
+      config:conf,onError:error=>setMessage('Aanmelden mislukt: '+error.message,true)});
+  }catch(e){$('loginStatus').textContent='Verbinding mislukt: '+e.message}
+}
 init();
-</script></body></html>
+</script>
+</body></html>
