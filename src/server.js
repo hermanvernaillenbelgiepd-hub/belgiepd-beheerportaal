@@ -30,6 +30,7 @@ import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
 import {installFunctionChangeRoutes} from './function-change-routes.js';
+import {installReceivedRegistrationRoutes} from './received-registration-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
@@ -356,6 +357,7 @@ installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
 installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installFunctionChangeRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installReceivedRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 // TO duty board uses MAIN Firestore data and the existing authenticated actor.
