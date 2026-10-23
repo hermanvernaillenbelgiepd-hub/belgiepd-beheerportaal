@@ -48,7 +48,7 @@ export function installDiscordOAuth(app){
     if(guildRoleCache.map!==null&&guildRoleCache.expires>now)return guildRoleCache.map;
     if(guildRoleCache.pending)return guildRoleCache.pending;
     const botToken=discordBotToken(process.env),guildId=process.env.DISCORD_GUILD_ID;
-    if(!botToken||!/^\\d{15,22}$/.test(String(guildId||'')))return new Map();
+    if(!botToken||!/^\d{15,22}$/.test(String(guildId||'')))return new Map();
     const work=(async()=>{
       try{
         const response=await fetch('https://discord.com/api/v10/guilds/'+guildId+'/roles',{
@@ -58,7 +58,7 @@ export function installDiscordOAuth(app){
         if(!response.ok)throw Error('Discord roles unavailable');
         const values=await response.json();
         if(!Array.isArray(values)||values.length>1000)throw Error('Invalid Discord roles');
-        const names=new Map(values.filter(x=>/^\\d{15,22}$/.test(String(x.id))&&
+        const names=new Map(values.filter(x=>/^\d{15,22}$/.test(String(x.id))&&
           typeof x.name==='string'&&x.name.length>0&&x.name.length<=100)
           .map(x=>[x.id,x.name]));
         guildRoleCache.map=names;guildRoleCache.expires=Date.now()+10*60*1000;
@@ -205,7 +205,7 @@ export function installDiscordOAuth(app){
       const data=(await getFirestore().collection('bpd_discord_auth').doc(decoded.uid.slice(8)).get()).data();
       if(!data||data.guildId!==process.env.DISCORD_GUILD_ID)
         return res.status(403).json({error:'Discord-lidmaatschap niet bevestigd. Meld opnieuw aan met Discord.'});
-      const ids=Array.isArray(data.roleIds)?data.roleIds.filter(id=>/^\\d{15,22}$/.test(String(id))).slice(0,500):[];
+      const ids=Array.isArray(data.roleIds)?data.roleIds.filter(id=>/^\d{15,22}$/.test(String(id))).slice(0,500):[];
       const known=new Map(recognizeRoles(ids).map(role=>[role.id,role.name]));
       const actual=await guildRoleNames(); // Alleen namen; geen rechtentoekenning.
       return res.json({discordId:decoded.uid.slice(8),name:data.username||'',
