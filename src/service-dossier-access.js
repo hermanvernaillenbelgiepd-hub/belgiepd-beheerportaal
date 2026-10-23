@@ -1,7 +1,7 @@
 import {roleForDepartment} from './leave-policy.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 
-export const SERVICE_DOSSIER_DEPARTMENTS=Object.freeze(['politie','ambulance','brandweer','depannage']);
+export const SERVICE_DOSSIER_DEPARTMENTS=Object.freeze(['politie','ambulance','brandweer','depannage','burger']);
 const DISCORD=/^\d{15,22}$/;
 const DISCORD_BOARD_ROLE='1309532438082355251';
 const DISCORD_AWV_ROLE='1309532438019706969';
