@@ -1,4 +1,4 @@
-import {canEditPersonnel,validPersonnelKey} from './personnel-editor-policy.js';
+import {canEditGeneralPersonnelInfo,validPersonnelKey} from './personnel-editor-policy.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 
 export const STAFF_DOSSIER_COLLECTION='bpd_staff_dossiers';
@@ -39,7 +39,7 @@ export function canReadStaffDossier(actor,staff){
   return Boolean(staff&&canReadServiceDossier(actor,staff.dept));
 }
 export function canMaintainStaffDossier(actor,staff){
-  return Boolean(staff&&canReadServiceDossier(actor,staff.dept)&&canEditPersonnel(actor,staff));
+  return Boolean(staff&&canEditGeneralPersonnelInfo(actor,staff));
 }
 export function normalizeStaffProfile(data){
   if(!data||typeof data!=='object')return {...DEFAULT};
