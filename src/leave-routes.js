@@ -162,8 +162,8 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       const selected=snap.docs.filter(d=>{
         const record=d.data();
         return Array.isArray(record.subjectDepartments)&&record.subjectDepartments.includes(dept)&&
-          (record.status==='approved'||(record.status==='pending'&&
-            (self||mayApproveLeave(req.bpd,record,grant))));
+          (self||['approved','rejected','withdrawn'].includes(record.status)||
+            (record.status==='pending'&&mayApproveLeave(req.bpd,record,grant)));
       });
       res.json({personDiscordId:personId,dept,
         leaves:selected.map(d=>{
