@@ -40,9 +40,12 @@ test('New home screen links to the independent protected personnel and dossier s
 test('Personnel intake warns about duplicate callsigns and Discord claims',()=>{
   const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
   assert.match(html,/id="newDuplicateWarning"/);
-  assert.match(html,/id="pendingSummary"/);
-  assert.match(html,/Kopieer uitnodiging/);
-  assert.ok(html.includes("window.location.origin+'/personeel-koppelen.html"));
+  const board=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+  assert.doesNotMatch(html,/id="pendingPanel"/);
+  assert.match(board,/id="pendingBoardPanel"/);
+  assert.match(board,/Kopieer uitnodiging/);
+  assert.match(board,/pendingInvitation/);
+  assert.match(board,/pending-board-actions/);
   const from=html.indexOf('function newPersonnelConflicts(person){');
   const to=html.indexOf('function newFormData(){',from);
   assert.ok(from>0&&to>from);
