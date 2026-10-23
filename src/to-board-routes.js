@@ -14,6 +14,10 @@ function defaultDatabase(){
   return getFirestore();
 }
 export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
+  // Iedere browser pollt om de 5 seconden, maar sneltoetspresets wijzigen
+  // zelden. Eén gedeelde cache spaart een afzonderlijke Firestore-read per
+  // gebruiker/poll; een geslaagde wijziging invalideert hem direct.
+  const shortcutsCache={value:null,expires:0,pending:null};
   return {
     async readBoard(){
       const snapshot=await getDatabase().collection(TO_BOARD_COLLECTION).doc('politie').get();
@@ -30,14 +34,25 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
       });
     },
     async readShortcuts(){
-      const snapshot=await getDatabase().collection(TO_SHORTCUT_COLLECTION).doc('politie').get();
-      return snapshot.exists?snapshot.data():emptyTOShortcuts();
+      if(shortcutsCache.value!==null&&Date.now()<shortcutsCache.expires)
+        return shortcutsCache.value;
+      if(!shortcutsCache.pending){
+        shortcutsCache.pending=(async()=>{
+          const snapshot=await getDatabase().collection(TO_SHORTCUT_COLLECTION).doc('politie').get();
+          return snapshot.exists?snapshot.data():emptyTOShortcuts();
+        })();
+      }
+      try{
+        const value=await shortcutsCache.pending;
+        shortcutsCache.value=value;shortcutsCache.expires=Date.now()+60000;
+        return value;
+      }finally{shortcutsCache.pending=null}
     },
     async updateShortcuts(command,context){
       const database=getDatabase(),reference=database.collection(TO_SHORTCUT_COLLECTION).doc('politie');
       // Keep template changes atomically revisioned and independent of the
       // shift board so they survive closing/archiving the current session.
-      return database.runTransaction(async transaction=>{
+      const result=await database.runTransaction(async transaction=>{
         const boardRef=database.collection(TO_BOARD_COLLECTION).doc('politie');
         const [boardSnapshot,shortcutSnapshot]=await Promise.all([transaction.get(boardRef),transaction.get(reference)]);
         const board=boardSnapshot.exists?boardSnapshot.data():emptyBoard();
@@ -47,6 +62,8 @@ export function createFirestoreTOStore({getDatabase=defaultDatabase}={}){
         transaction.set(reference,result);
         return result;
       });
+      shortcutsCache.value=null;shortcutsCache.expires=0;
+      return result;
     },
     async autoEndAbsentRadioTeams(teamIds,snapshot,{now,sessionId}={}){
       if(!Array.isArray(teamIds)||teamIds.length<1||teamIds.length>100||
