@@ -203,8 +203,10 @@ async function requireUser(req,res,next){
     const infra=diagnostic.category!=='unexpected_error'||
       diagnostic.code.startsWith('app/')||
       diagnostic.code==='auth/invalid-credential';
-    return res.status(infra?503:401).json({error:infra?
-      'De server kan de aanmelding tijdelijk niet controleren. Probeer opnieuw.':
+    return res.status(infra?503:401).json({error:
+      diagnostic.category==='firestore_quota_exhausted'?
+        'Firebase Firestore-gebruikslimiet bereikt. De server kan de toegang momenteel niet bevestigen. Controleer Firestore Usage en quota.':
+      infra?'De server kan de aanmelding tijdelijk niet controleren. Probeer opnieuw.':
       'Ongeldige of verlopen aanmelding. Meld opnieuw aan met Discord of Google.'});
   }
 }
