@@ -571,9 +571,18 @@ function setupDossierTabs(){
     </section>
     </div>
     <div id="sheetFormal" hidden></div>
-    <section class="landscape-formal-entry" id="formalInlineArea">
-      <h3>Observatie of sanctie registreren</h3>
-      <p class="landscape-form-intro">Vul hier rechtstreeks een observatie of sanctie in. Alleen de toegestane registratietypes en velden zijn beschikbaar voor jouw discipline.</p>
+    <section class="landscape-formal-entry registration-hub" id="formalInlineArea" hidden>
+      <h3>Registratie toevoegen</h3>
+      <div class="registration-hub-heading">
+        <label for="registrationKind">Wat wil je registreren?
+          <select id="registrationKind" aria-describedby="registrationKindHint">
+            <option value="">Bevoegdheden controleren…</option>
+          </select>
+        </label>
+        <p id="registrationKindHint" role="status">De beschikbare categorieën worden bepaald door je goedgekeurde rol binnen deze hulpdienst.</p>
+      </div>
+      <div id="registrationFields" class="registration-hub-fields"></div>
+      <button type="button" id="registrationSubmit">Registratie opslaan</button>
     </section>
     <div class="landscape-footer"><span>De bestaande dienstgebonden registers blijven de gegevensbron.</span>
       <button type="button" class="alt" data-open-sheet="historiek">Audit &amp; historiek bekijken</button>
@@ -622,10 +631,6 @@ function setupDossierTabs(){
   const inlineForms=[
     ['gegevens','editForm'],
     ['gegevens','staffProfileForm'],
-    ['specialisaties','specialtyEdit'],
-    ['leave','staffManualLeaveForm'],
-    ['training','staffTrainingForm'],
-    ['notes','staffCaseForm'],
     ['movements','promotionPanel']
   ];
   for(const [tile,form] of inlineForms){
@@ -654,9 +659,16 @@ function setupDossierTabs(){
       event.preventDefault();event.stopImmediatePropagation();
       void savePersonnelInfoAll();
     },true);
-  // Observatie/sanctie delen een beveiligd formulier met een typekeuze.
-  // Eén brede regel voorkomt dubbele invoerknoppen of formulieren.
-  $('formalInlineArea').append($('formalWriteStatus'),$('staffFormalForm'));
+  // Behoud elke originele onsubmit en serverroute. Eén invoerscherm
+  // bepaalt op basis van serverrechten welk formulier mag worden getoond.
+  for(const formId of [
+    'staffFormalForm','staffCaseForm','staffTrainingForm',
+    'staffManualLeaveForm','specialtyEdit','functionChangeForm'
+  ])$('registrationFields').append($(formId));
+  $('registrationFields').prepend($('formalWriteStatus'));
+  $('registrationKind').onchange=()=>displaySelectedRegistration();
+  $('registrationSubmit').onclick=submitSelectedRegistration;
+  refreshPersonnelRegistrationOptions();
   // De oude controleknoppen blijven intern beschikbaar maar niet in het blad.
   // Eén klik sluit de aanvullende detailrubriek zonder de fiche te verbergen.
   for(const [key,pane] of Object.entries(panes)){
