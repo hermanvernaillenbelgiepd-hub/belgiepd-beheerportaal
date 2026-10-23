@@ -6,7 +6,7 @@ import {calendarDays,validDiscordId,validateLeaveRequest,mayApproveLeave,
   validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,leaveApplicantIsCorps} from './leave-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
-import {leaveCanWithdraw,writeLeaveEvent} from './leave-event-log.js';
+import {leaveCanWithdraw,leaveCanReapply,writeLeaveEvent} from './leave-event-log.js';
 import {actorFromPersonnel} from './registrations.js';
 
 const coll='bpd_leave_requests';
@@ -217,7 +217,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
             throw rejection('Voor deze periode bestaat al een lopende of goedgekeurde verlofaanvraag',409);
           // Fail closed for any unexpected state; only completed/rejected
           // submissions are eligible for a fresh immutable attempt.
-          if(latest.exists&&!['withdrawn','rejected'].includes(latest.get('status')))
+          if(latest.exists&&!leaveCanReapply(latest.get('status')))
             throw rejection('Status van eerdere verlofaanvraag onbekend. Contacteer een beheerder.',409);
           const target=original.exists?db().collection(coll).doc():ref;
           if(original.exists)tx.update(ref,{
