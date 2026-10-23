@@ -189,7 +189,6 @@ async function loadInbox(){
     const response=await api('/api/basic-observations/inbox');
     inboxData=response.entries||[];
     displayInbox(inboxData);
-    $('inboxLimit').hidden!==Boolean(response.limited);
     $('inboxLimit').hidden=!response.limited;
   }catch(error){$('inboxList').textContent='Ontvangen observaties niet beschikbaar: '+error.message}
 }
