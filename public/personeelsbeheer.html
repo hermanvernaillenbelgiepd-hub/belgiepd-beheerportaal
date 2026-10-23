@@ -1055,6 +1055,7 @@ $('staffCaseType').onchange=updateStaffCaseFields;
 async function loadStaffCasePermissions(person,key,canManage){
   casePermissions=null;
   $('staffCaseForm').hidden=true;
+  refreshPersonnelRegistrationOptions();
   if(!canManage)return;
   try{
     const overview=await request('/api/management/overview');
@@ -1073,6 +1074,7 @@ async function loadStaffCasePermissions(person,key,canManage){
       $('staffCaseHint').textContent='Kaderregistratie niet beschikbaar: '+error.message;
     }
   }
+  if(sameDossier(key))refreshPersonnelRegistrationOptions();
 }
 
 let trainingRights=null,trainingEditId=null;
@@ -1099,11 +1101,15 @@ async function loadStaffTrainingRights(p,key){
   }catch(e){
     if(sameDossier(key))$('staffTrainingForm').hidden=true;
   }
-  if(sameDossier(key))void loadLinkedPersonnelRecords(p,key);
+  if(sameDossier(key)){
+    refreshPersonnelRegistrationOptions();
+    void loadLinkedPersonnelRecords(p,key);
+  }
 }
 function staffTrainingEdit(record){
   if(!selected||!trainingRights?.trainingWritesEnabled||record.canEdit!==true||
      !trainingRights.permissions?.[selected.dept]?.['training.log'])return;
+  if(!choosePersonnelRegistration('training',true))return;
   trainingEditId=record.id;
   $('staffTrainingCourse').value=record.courseName||'';
   $('staffTrainingDate').value=record.eventDate||'';
@@ -1543,7 +1549,7 @@ async function loadStaffFormalPermissions(p,key){
   $('addFormalObservation').hidden=true;
   $('addFormalSanction').hidden=true;
   $('formalWriteStatus').textContent='Invoerrechten controleren…';
-  $('formalInlineArea').hidden=true;
+  refreshPersonnelRegistrationOptions();
   try{
     const data=await request('/api/registrations/subjects');
     if(!sameDossier(key))return;
@@ -1567,11 +1573,8 @@ async function loadStaffFormalPermissions(p,key){
     }
     if(canObs||canSan){
       clearFormalEdit();
-      $('staffFormalForm').hidden=false;
-      $('formalInlineArea').hidden=false;
       $('formalWriteStatus').textContent='Vul de registratie hieronder rechtstreeks in. Enkel de voor jou toegelaten categorieën zijn beschikbaar.';
     }else{
-      $('formalInlineArea').hidden=true;
       $('formalWriteStatus').textContent=!data.writesEnabled?
         'Registraties zijn momenteel uitgeschakeld in deze omgeving.':
         !data.actor?
@@ -1585,7 +1588,10 @@ async function loadStaffFormalPermissions(p,key){
       $('formalNotice').textContent='Formele registratie niet beschikbaar: '+e.message;
     }
   }
-  if(sameDossier(key))void loadStaffFormalRecords(p,key);
+  if(sameDossier(key)){
+    refreshPersonnelRegistrationOptions();
+    void loadStaffFormalRecords(p,key);
+  }
 }
 $('formalType').onchange=()=>{if(!formalEditId)updateFormalFields()};
 $('formalSeverity').oninput=updateFormalFields;
@@ -1773,7 +1779,8 @@ async function loadSpecialtyState(p){
     $('specialtyStatus').textContent=data.canEdit?
       'Je kunt de status hieronder aanpassen. Iedere wijziging wordt afzonderlijk gelogd.':
       'Alle onderdelen zijn alleen-lezen. Aanpassingen vereisen bevoegd officierenkader of korpsleiding.';
-    $('specialtyEdit').hidden=data.canEdit!==true;
+    registrationSpecialty=data.canEdit===true&&states.length>0;
+    $('specialtyEdit').hidden=true;
     $('specialtyLabel').replaceChildren(...states.map(x=>option(x.label,x.label)));
     if(states.length){
       $('specialtyValue').value=states[0].status;
@@ -1790,8 +1797,11 @@ async function loadSpecialtyState(p){
       row.append(head,note);$('specialtyAudit').append(row);
     }
     if(data.historyLimited)$('specialtyAudit').append(document.createTextNode(' Alleen de 40 meest recente wijzigingen zijn zichtbaar.'));
+    refreshPersonnelRegistrationOptions();
   }catch(e){
     if(!same())return;
+    registrationSpecialty=false;
+    refreshPersonnelRegistrationOptions();
     $('specialtyStatus').textContent='Specialisatieregister niet beschikbaar: '+e.message;
     const statuses=BPDPersonnelVisuals.specialtyStatuses(p.specialties);
     for(const x of statuses){
@@ -1868,9 +1878,10 @@ function renderFunctionRoles(data){
     'Discord-functies niet recent geverifieerd. Laat betrokkene opnieuw aanmelden om verschillen te vergelijken.':
     'Recent geverifieerd in Discord: '+(data.discordRoles.map(x=>x.name).join(', ')||'geen functies')+
     '. Deze lijst is alleen ter controle en wordt niet door de portaalwijziging aangepast.';
-  $('functionChangeForm').hidden=!functionCanEdit;
+  $('functionChangeForm').hidden=true;
   $('functionAction').value=functionRoles.length?'replace':'add';
   updateFunctionForm();
+  refreshPersonnelRegistrationOptions();
   const audit=$('functionAudit');audit.replaceChildren();
   if(!data.history?.length)audit.textContent='Nog geen functiewijzigingen geregistreerd.';
   for(const event of data.history||[]){
@@ -1889,6 +1900,8 @@ async function loadFunctionRoles(p){
   const key=p.dept+':'+p.discordId;
   const same=()=>selected?.dept+':'+selected?.discordId===key&&!$('panel').hidden;
   $('functionChangeForm').hidden=true;
+  functionCanEdit=false;
+  refreshPersonnelRegistrationOptions();
   $('functionCurrent').textContent='';
   $('functionState').textContent='Dossierfuncties laden…';
   $('functionDiscord').textContent='';$('functionAudit').textContent='';
@@ -1901,7 +1914,11 @@ async function loadFunctionRoles(p){
       encodeURIComponent(p.discordId)+'/functions');
     if(same())renderFunctionRoles(data);
   }catch(error){
-    if(same())$('functionState').textContent='Functieregister momenteel niet beschikbaar: '+error.message;
+    if(same()){
+      functionCanEdit=false;
+      refreshPersonnelRegistrationOptions();
+      $('functionState').textContent='Functieregister momenteel niet beschikbaar: '+error.message;
+    }
   }
 }
 $('functionAction').onchange=updateFunctionForm;
