@@ -975,7 +975,7 @@ function updateFormalFields(){
   $('formalReasonOther').required=isSanction&&other;
   $('formalSave').disabled=!formalPermissions?.writesEnabled||
     (isSanction?!sanction||!opts.length:!observation);
-  $('formalPolicy').textContent=!formalPermissions?.writesEnabled?
+  $('staffFormalPolicy').textContent=!formalPermissions?.writesEnabled?
     'De registratiemodule staat momenteel uit. Je kunt de bestaande registraties wel raadplegen.':
     'De server bepaalt de toegelaten sancties op basis van je rol binnen deze hulpdienst; bij ernst 9–10 kan een degradatievoorstel worden geregistreerd.';
 }
