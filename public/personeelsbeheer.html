@@ -377,7 +377,7 @@ const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance'
 let dossierTab='overzicht';
 const dossierTabNames={overzicht:'Overzicht',gegevens:'Personeelsgegevens',specialisaties:'Specialisaties',
   verlof:'Verlof',registraties:'Dossierregistraties',sancties:'Observaties & sancties',
-  opleidingen:'Opleidingen',historiek:'Alle historiek'};
+  opleidingen:'Opleidingen',historiek:'Audit & historiek'};
 function openDossierTab(name){
   dossierTab=dossierTabNames[name]?name:'overzicht';
   for(const button of $('dossierTabBar').querySelectorAll('button')){
@@ -1096,6 +1096,33 @@ $('staffFormalForm').onsubmit=async event=>{
   }catch(error){notice('Registratie niet opgeslagen: '+error.message,true)}
   finally{button.disabled=false;updateFormalFields()}
 };
+async function showSanctionAudit(row,item,p,key){
+  let box=item.querySelector('.sanction-audit-details');
+  if(box){box.remove();return}
+  box=document.createElement('div');box.className='sanction-audit-details';
+  box.textContent='Wijzigingshistoriek laden…';item.append(box);
+  try{
+    const data=await request('/api/registrations/entries/'+encodeURIComponent(p.dept)+'/'+
+      encodeURIComponent(p.discordId)+'/'+encodeURIComponent(row.id)+'/audit');
+    if(!sameDossier(key)||!box.isConnected)return;
+    box.replaceChildren();
+    if(!data.changes?.length)box.textContent='Nog geen geregistreerde sanctiewijzigingen.';
+    for(const change of data.changes||[]){
+      const entry=document.createElement('div');entry.className='history';
+      const heading=document.createElement('strong');
+      heading.textContent=(change.at?new Date(change.at).toLocaleString('nl-BE'):'Tijdstip onbekend')+
+        ' · door '+(change.actor?.name||'Onbekend')+
+        (change.actor?.call?' ('+change.actor.call+')':'');
+      const before=document.createElement('p');
+      before.textContent='Vorige maatregel: '+(change.previous?.sanctionType||'Onbekend')+
+        ' · ernst '+(change.previous?.severity||'—')+'/10 · '+(change.previous?.status||'—')+
+        ' · '+(change.previous?.details||'');
+      const reason=document.createElement('p');reason.textContent='Motivering wijziging: '+(change.reason||'—');
+      entry.append(heading,before,reason);box.append(entry);
+    }
+    if(data.limited)box.append(document.createTextNode(' Er bestaan mogelijk oudere auditregels.'));
+  }catch(error){if(sameDossier(key))box.textContent='Audit niet beschikbaar: '+error.message}
+}
 async function loadStaffFormalRecords(p,key){
   const root=$('staffFormalRecords');
   try{
@@ -1129,6 +1156,14 @@ async function loadStaffFormalRecords(p,key){
           formalPermissions?.writesEnabled===true&&
           formalPermissions?.sanctionOptionsByDepartment?.[p.dept]?.includes(row.sanctionType)&&
           (row.sanctionType!=='Voorstel tot degradatie'||Number(row.severity)>=9));
+        const mayInspect=Boolean(formalPermissions?.sanctionAmendDepartments?.includes(p.dept)&&
+          formalPermissions?.sanctionOptionsByDepartment?.[p.dept]?.includes(row.sanctionType)&&
+          (row.sanctionType!=='Voorstel tot degradatie'||Number(row.severity)>=9));
+        if(mayInspect){
+          const audit=document.createElement('button');audit.type='button';audit.className='alt small';
+          audit.textContent='Wijzigingslog';audit.onclick=()=>showSanctionAudit(row,item,p,key);
+          item.append(audit);
+        }
         if(permitted){
           const edit=document.createElement('button');edit.type='button';edit.className='alt small';
           edit.textContent='Sanctie wijzigen';edit.onclick=()=>openFormalEdit(row);
@@ -1362,7 +1397,9 @@ $('staffCaseForm').onsubmit=async event=>{
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
 async function showPerson(p){
+  const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
+  if(!sameSelected)openDossierTab('overzicht');
   $('identity').textContent=(departments[p.dept]||p.dept)+' · Discord ID '+p.discordId+' · Revisie '+p.revision;
   $('pName').value=p.name;$('pCall').value=p.call;$('pRank').value=p.rank;$('reason').value='';
   $('pStatus').replaceChildren(...statuses.map(x=>option(x,x)));
