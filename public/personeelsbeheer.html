@@ -340,8 +340,8 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div class="controls" style="margin-top:10px"><button id="staffTrainingSave" type="submit">Opleiding registreren</button><button class="alt" id="staffTrainingCancel" type="button" hidden>Annuleren</button></div>
 </form>
 <div id="staffLinkedTraining" class="subtle">Opleidingsgegevens laden…</div>
-<h3>Kadernotities en opvolging</h3>
-<p class="subtle">Deze notities komen uit de bestaande <a href="/weekrapporten.html">Kaderregistraties</a>. Er wordt hier geen tweede registratieformulier aangeboden.</p>
+<h3>Nieuwe dossierregistratie</h3>
+<p class="subtle">Registreer rechtstreeks in deze personeelsfiche. Je ziet uitsluitend de categorieën waarvoor je volgens je dienst- en kaderrol bevoegd bent. Auteur, tijdstip en wijzigingen worden via de beveiligde server geregistreerd in het dossier en dynamische weekrapport.</p>
 <div id="staffLinkedCases" class="subtle">Kaderregistraties laden…</div>
 <form id="staffCaseForm" hidden>
 <h3>Nieuwe dossierregistratie</h3>
@@ -453,7 +453,7 @@ function setupDossierTabs(){
       else if(label.startsWith('discord-reeks'))section='overzicht';
       else if(label.startsWith('verlof van'))section='verlof';
       else if(label.startsWith('gekoppelde opleidingen'))section='opleidingen';
-      else if(label.startsWith('kadernotities'))section='nieuw';
+      else if(label.startsWith('nieuwe dossierregistratie'))section='nieuw';
       else if(label.startsWith('observaties en sancties'))section='sancties';
       else if(label.startsWith('eerdere dossiernotities')||
         label.startsWith('administratieve dossierhistoriek'))section='historiek';
