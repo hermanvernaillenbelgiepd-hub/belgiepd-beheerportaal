@@ -40,6 +40,38 @@ export function installDiscordOAuth(app){
   // and keeps PKCE/state cookies valid across a zero-downtime restart.
   // No signing key or OAuth token is ever sent to the client.
   const config=()=>discordConfig(process.env);
+  const guildRoleCache={map:null,expires:0,pending:null};
+  // Presentatie-only rollenamen ophalen via de bestaande Discord-bot.
+  // Dit verandert nooit een Discord-rol of de bevoegdheidscontrole.
+  async function guildRoleNames(){
+    const now=Date.now();
+    if(guildRoleCache.map!==null&&guildRoleCache.expires>now)return guildRoleCache.map;
+    if(guildRoleCache.pending)return guildRoleCache.pending;
+    const botToken=discordBotToken(process.env),guildId=process.env.DISCORD_GUILD_ID;
+    if(!botToken||!/^\\d{15,22}$/.test(String(guildId||'')))return new Map();
+    const work=(async()=>{
+      try{
+        const response=await fetch('https://discord.com/api/v10/guilds/'+guildId+'/roles',{
+          headers:{Authorization:'Bot '+botToken,Accept:'application/json'},
+          signal:AbortSignal.timeout(4000)
+        });
+        if(!response.ok)throw Error('Discord roles unavailable');
+        const values=await response.json();
+        if(!Array.isArray(values)||values.length>1000)throw Error('Invalid Discord roles');
+        const names=new Map(values.filter(x=>/^\\d{15,22}$/.test(String(x.id))&&
+          typeof x.name==='string'&&x.name.length>0&&x.name.length<=100)
+          .map(x=>[x.id,x.name]));
+        guildRoleCache.map=names;guildRoleCache.expires=Date.now()+10*60*1000;
+        return names;
+      }catch{
+        guildRoleCache.map=new Map();guildRoleCache.expires=Date.now()+60*1000;
+        return guildRoleCache.map;
+      }
+    })();
+    guildRoleCache.pending=work;
+    try{return await work}finally{if(guildRoleCache.pending===work)guildRoleCache.pending=null}
+  }
+
   const cookieKey=createHmac('sha256',config().secret||b64(32))
     .update('belgiepd-discord-oauth-state-cookie-v1').digest();
   app.get('/auth/discord/status',(_req,res)=>{const cfg=config();res.json({ready:cfg.ready,serverConfigured:Boolean(cfg.guildId),portalLoginEnabled:process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true',testMode:false});});
@@ -173,9 +205,13 @@ export function installDiscordOAuth(app){
       const data=(await getFirestore().collection('bpd_discord_auth').doc(decoded.uid.slice(8)).get()).data();
       if(!data||data.guildId!==process.env.DISCORD_GUILD_ID)
         return res.status(403).json({error:'Discord-lidmaatschap niet bevestigd. Meld opnieuw aan met Discord.'});
+      const ids=Array.isArray(data.roleIds)?data.roleIds.filter(id=>/^\\d{15,22}$/.test(String(id))).slice(0,500):[];
+      const known=new Map(recognizeRoles(ids).map(role=>[role.id,role.name]));
+      const actual=await guildRoleNames(); // Alleen namen; geen rechtentoekenning.
       return res.json({discordId:decoded.uid.slice(8),name:data.username||'',
-        joinedAt:data.joinedAt||null,roleIds:data.roleIds||[],
-        roleNames:Object.fromEntries(recognizeRoles(data.roleIds||[]).map(role=>[role.id,role.name])),
+        joinedAt:data.joinedAt||null,roleIds:ids,
+        roleNames:Object.fromEntries(ids.filter(id=>actual.has(id)||known.has(id))
+          .map(id=>[id,actual.get(id)||known.get(id)])),
         lastVerifiedAt:data.verifiedAt,
         accessNote:'Discord-rollen worden onafhankelijk geverifieerd. Alleen de expliciet ingestelde Politie-Middenkaderrol kan automatisch een beperkte portaalgoedkeuring krijgen.'});
     }catch(e){
