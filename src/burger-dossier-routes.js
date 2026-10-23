@@ -63,7 +63,7 @@ export function installBurgerDossierRoutes(app,{requireUser,getSnapshot}){
       const db=getFirestore();
       const auth=await db.collection('bpd_discord_auth').doc(id).get();
       const roles=auth.exists?auth.data():null;
-      // Dubbel gebruikte Burger/Burger IO rol nooit stilzwijgend omzetten naar een van beide.
+      // Burger en Burger IO vallen onder dezelfde Burger-discipline en Burgerraad.
       const category=burgerSubjectCategory(roles,process.env.DISCORD_GUILD_ID);
       if(!category)return failure(res,409,'Dit lid moet zijn burgerrol opnieuw verifiëren via Discord');
       const name=String(roles.username||'').trim();
@@ -71,7 +71,7 @@ export function installBurgerDossierRoutes(app,{requireUser,getSnapshot}){
       const ref=db.collection(BURGER_PERSONNEL_COLLECTION).doc(id);
       try{
         await ref.create({discordId:id,name,
-          category:'burger_onbevestigd',createdAt:FieldValue.serverTimestamp(),
+          category:'burger',createdAt:FieldValue.serverTimestamp(),
           createdByDiscordId:req.bpd.discordId||null});
       }catch(e){
         if(e?.code===6||e?.code==='already-exists')return failure(res,409,'Burgerdossier bestaat al');
@@ -79,7 +79,7 @@ export function installBurgerDossierRoutes(app,{requireUser,getSnapshot}){
       }
       await ref.collection('audit').add({action:'created',byDiscordId:req.bpd.discordId||null,
         at:FieldValue.serverTimestamp()});
-      return res.status(201).json({saved:true,category:'burger_onbevestigd'});
+      return res.status(201).json({saved:true,category:'burger'});
     }catch(e){
       console.error('Burgerdossier aanmaken:',e?.code||'onbekend');
       return failure(res,503,'Burgerdossier kon niet worden aangemaakt');
