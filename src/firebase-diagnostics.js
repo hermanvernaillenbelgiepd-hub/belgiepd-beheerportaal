@@ -7,6 +7,8 @@ export function firebaseDiagnostic(error){
       rawCode:'unknown';
   const message=String(error?.message||'').toLowerCase();
   const category=
+    code==='8'||code==='resource-exhausted'||/resource.exhausted|quota.exceeded|quota exhausted/.test(message)
+      ?'firestore_quota_exhausted':
     code==='7'||code==='permission-denied'||/permission.denied|missing.or.insufficient.permissions/.test(message)
       ?'permission_denied':
     code==='16'||code==='unauthenticated'||/unauthenticated|invalid_grant/.test(message)
