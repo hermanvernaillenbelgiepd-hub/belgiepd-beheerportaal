@@ -649,7 +649,7 @@ function setupDossierTabs(){
       <div id="sheetSpecialties" class="sheet-specialties">Specialisaties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="movements">
-      <h3>Personeelsbewegingen <button type="button" data-open-sheet="nieuw">Andere beweging</button></h3>
+      <h3>Personeelsbewegingen</h3>
       <div id="sheetMovements" class="sheet-records">Registraties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="leave">
@@ -775,6 +775,7 @@ function setupDossierTabs(){
   $('registrationFields').prepend($('formalWriteStatus'));
   // De categorie wordt bovenaan gekozen: voorkom tweede typekeuzelijst.
   $('formalType').closest('div').hidden=true;
+  $('staffCaseType').closest('div').hidden=true;
   $('registrationKind').onchange=()=>displaySelectedRegistration();
   $('registrationSubmit').onclick=submitSelectedRegistration;
   // De oude controleknoppen blijven intern beschikbaar maar niet in het blad.
