@@ -526,14 +526,14 @@ function setupDossierTabs(){
       <div><small>Reeks</small><strong id="sheetSeries">—</strong></div>
       <div><small>Status</small><strong id="sheetStatus">—</strong></div>
     </div>
-    <p class="sheet-intro">Eén personeelsdossier per discipline. Informatie staat meteen zichtbaar; het invoerformulier opent hieronder wanneer je iets toevoegt of wijzigt.</p>
+    <p class="sheet-intro">Eén breed personeelsblad. Bevoegde leiding vult rechtstreeks in onder de categorie; bewaren gebeurt per registratie met audit en weekrapport.</p>
     <div class="landscape-grid" aria-label="Personeelsdossier in negen categorieën">
     <section class="landscape-cell" data-sheet-tile="gegevens">
-      <h3>Personeelsinformatie <button type="button" data-open-sheet="gegevens">Bewerken</button></h3>
+      <h3>Personeelsinformatie</h3>
       <div id="sheetProfile" class="sheet-data">Administratieve gegevens laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="specialisaties">
-      <h3>Specialisaties <button type="button" data-open-sheet="specialisaties">Beheren</button></h3>
+      <h3>Specialisaties <button type="button" data-open-sheet="specialisaties">Functies</button></h3>
       <div id="sheetSpecialties" class="sheet-specialties">Specialisaties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="movements">
@@ -541,15 +541,15 @@ function setupDossierTabs(){
       <div id="sheetMovements" class="sheet-records">Registraties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="leave">
-      <h3>Verloven <button type="button" data-open-sheet="verlof">Bekijken</button></h3>
+      <h3>Verloven</h3>
       <div id="sheetLeave" class="sheet-records">Verlofperiodes laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="observations">
-      <h3>Observaties <button type="button" data-open-sheet="sancties" data-formal-action="observatie">+ Observatie</button></h3>
+      <h3>Observaties</h3>
       <div id="sheetObservations" class="sheet-records">Observaties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="training">
-      <h3>Voltooide opleidingen <button type="button" data-open-sheet="opleidingen">+ Opleiding</button></h3>
+      <h3>Voltooide opleidingen</h3>
       <div id="sheetTraining" class="sheet-records">Opleidingen laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="basisNotes">
@@ -557,15 +557,19 @@ function setupDossierTabs(){
       <div id="sheetBasisNotes" class="sheet-records">Basisnotities laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="notes">
-      <h3>Belangrijke notities <button type="button" data-open-sheet="nieuw">+ Notitie</button></h3>
+      <h3>Belangrijke notities</h3>
       <div id="sheetNotes" class="sheet-records">Notities laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="sanctions">
-      <h3>Sancties <button type="button" data-open-sheet="sancties" data-formal-action="sanctie">+ Sanctie</button></h3>
+      <h3>Sancties</h3>
       <div id="sheetSanctions" class="sheet-records">Sancties laden…</div>
     </section>
     </div>
     <div id="sheetFormal" hidden></div>
+    <section class="landscape-formal-entry" id="formalInlineArea">
+      <h3>Observatie of sanctie registreren</h3>
+      <p class="landscape-form-intro">Vul hier rechtstreeks een observatie of sanctie in. Alleen de toegestane registratietypes en velden zijn beschikbaar voor jouw discipline.</p>
+    </section>
     <div class="landscape-footer"><span>De bestaande dienstgebonden registers blijven de gegevensbron.</span>
       <button type="button" class="alt" data-open-sheet="historiek">Audit &amp; historiek bekijken</button>
     </div>
@@ -608,7 +612,25 @@ function setupDossierTabs(){
   insertReceived('registraties','Observaties en dossierregistraties ingediend door Agentenkader of Basiskader, uitsluitend bij personeel onder jouw kaderbevoegdheid.');
   insertReceived('middenregistraties','Afzonderlijke registraties ingediend door Middenkader, uitsluitend zichtbaar voor bevoegd Officierenkader en Korpsleiding.');
   source.remove();
-  // Eén klik sluit het invoervak zonder de andere categorieën te verbergen.
+  // Verplaats de bestaande BEVEILIGDE formulieren naar hun rubriek.
+  // Dit zijn dezelfde DOM-formulieren en onsubmit-handlers (geen extra opslag).
+  const inlineForms=[
+    ['gegevens','staffProfileForm'],
+    ['specialisaties','specialtyEdit'],
+    ['leave','staffManualLeaveForm'],
+    ['training','staffTrainingForm'],
+    ['notes','staffCaseForm']
+  ];
+  for(const [tile,form] of inlineForms){
+    const cell=sheet.querySelector('[data-sheet-tile="'+tile+'"]');
+    const element=$(form);
+    if(cell&&element)cell.append(element);
+  }
+  // Observatie/sanctie delen een beveiligd formulier met een typekeuze.
+  // Eén brede regel voorkomt dubbele invoerknoppen of formulieren.
+  $('formalInlineArea').append($('formalWriteStatus'),$('staffFormalForm'));
+  // De oude controleknoppen blijven intern beschikbaar maar niet in het blad.
+  // Eén klik sluit de aanvullende detailrubriek zonder de fiche te verbergen.
   for(const [key,pane] of Object.entries(panes)){
     if(key==='overzicht')continue;
     const close=document.createElement('button');close.type='button';
@@ -1349,6 +1371,7 @@ async function loadStaffFormalPermissions(p,key){
   $('addFormalObservation').hidden=true;
   $('addFormalSanction').hidden=true;
   $('formalWriteStatus').textContent='Invoerrechten controleren…';
+  $('formalInlineArea').hidden=true;
   try{
     const data=await request('/api/registrations/subjects');
     if(!sameDossier(key))return;
@@ -1372,8 +1395,11 @@ async function loadStaffFormalPermissions(p,key){
     }
     if(canObs||canSan){
       clearFormalEdit();
-      $('formalWriteStatus').textContent='Kies Observatie of Sanctie om rechtstreeks in dit personeelsdossier te registreren. De server bewaart je identiteit en historiek.';
+      $('staffFormalForm').hidden=false;
+      $('formalInlineArea').hidden=false;
+      $('formalWriteStatus').textContent='Vul de registratie hieronder rechtstreeks in. Enkel de voor jou toegelaten categorieën zijn beschikbaar.';
     }else{
+      $('formalInlineArea').hidden=true;
       $('formalWriteStatus').textContent=!data.writesEnabled?
         'Registraties zijn momenteel uitgeschakeld in deze omgeving.':
         !data.actor?
@@ -1833,6 +1859,7 @@ async function loadStaffDossier(p){
   $('staffLeave').textContent='Verlofperiodes laden…';
   $('staffFormalRecords').textContent='Formele registraties laden…';
   $('staffFormalForm').hidden=true;
+  $('formalInlineArea').hidden=true;
   $('formalWriteActions').hidden=true;
   $('formalWriteStatus').textContent='Invoerrechten controleren…';
   $('staffManualLeaveForm').hidden=true;
