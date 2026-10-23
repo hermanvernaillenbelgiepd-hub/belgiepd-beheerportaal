@@ -18,6 +18,31 @@ function handleError(res,err){
   console.error('Registratieopslag mislukt:',err?.code||err?.message||'onbekend');
   return res.status(503).json({error:'Beveiligde registratieopslag momenteel niet beschikbaar. Controleer Firestore-toegang van het serviceaccount.'});
 }
+// TEST-fixtures bevatten fictieve medewerkers. Een goedgekeurde, via Discord
+// geverifieerde operationele kadergebruiker kan dan als zichzelf registreren,
+// zonder fictieve personeelsidentiteiten als auteur te gebruiken. Geen fallback
+// op MAIN, voor een Google-noodlogin of bij ontbrekende dienstrechten.
+export async function registeredActorForTestFixtures(user,persons,dept,readMember){
+  const actual=actorFromPersonnel(user,persons);
+  if(actual)return actual;
+  if(process.env.FIREBASE_PROJECT_ID!=='belgiepd-test'||
+     process.env.BPD_TEST_FIXTURES!=='true'||
+     !/^\\d{15,22}$/.test(user?.discordId||'')||
+     user.uid!=='discord:'+user.discordId||
+     !Array.isArray(user.dossierNativeDepartments)||
+     !user.dossierNativeDepartments.includes(dept)||
+     !user.departments?.includes(dept)||
+     !['middenkader','officierenkader','korpsleiding'].includes(roleForDepartment(user,dept)))
+    return null;
+  const member=await readMember(user.discordId);
+  const age=Date.now()-Number(member?.verifiedAt||0);
+  if(member?.guildId!==process.env.DISCORD_GUILD_ID||
+     !Array.isArray(member.roleIds)||age<0||age>7*24*60*60*1000||
+     typeof member.username!=='string'||!member.username.trim())return null;
+  return {discordId:user.discordId,
+    name:member.username.trim().slice(0,80)+' (TEST)',
+    call:'TEST',rank:roleForDepartment(user,dept),dept};
+}
 export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
   const db=()=>getFirestore();
   const writesEnabled=()=>process.env.BPD_ENABLE_REGISTRATIONS==='true';
@@ -26,7 +51,9 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     try{
       const snap=await getSnapshot();
       const subset=snap.data.filter(p=>req.bpd.departments.includes(p.dept));
-      const actor=actorFromPersonnel(req.bpd,subset);
+      const actor=await registeredActorForTestFixtures(req.bpd,subset,
+        (req.bpd.dossierNativeDepartments||[]).find(d=>req.bpd.departments?.includes(d))||'',
+        async id=>(await db().collection('bpd_discord_auth').doc(id).get()).data());
       const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
          .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call})):[];
        const sanctionDepartments=['politie','brandweer','ambulance','depannage'].filter(d=>
@@ -119,8 +146,9 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
        const snap=await getSnapshot();
       const target=safeSubject(snap.data,dept,id);
       if(!target)return res.status(404).json({error:'Personeelslid niet gevonden of Discord ID dubbelzinnig'});
-      const actor=actorFromPersonnel(req.bpd,snap.data);
-      if(!actor)return res.status(403).json({error:'Koppel je ingelogde Google-account eerst aan je eigen Discord ID in de serverconfiguratie'});
+      const actor=await registeredActorForTestFixtures(req.bpd,snap.data,dept,
+        async actorId=>(await db().collection('bpd_discord_auth').doc(actorId).get()).data());
+      if(!actor)return res.status(403).json({error:'Voor registreren is een gekoppelde eigen personeelsidentiteit vereist. Bij TEST-fixtures moet je met een recent geverifieerde, goedgekeurde Discord-kaderlogin aanmelden.'});
       // Ook oudere formulieren of directe API-aanroepen kunnen deze
       // beperkingen niet omzeilen: Basiskader uitsluitend naar lagere rangen.
       if(req.bpd.role==='basiskader'&&roleForDepartment(req.bpd,'politie')==='basiskader'){
