@@ -453,6 +453,7 @@ let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
+let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
 const dossierEmbedded=new URLSearchParams(window.location.search).get('embed')==='1';
 if(dossierEmbedded){
@@ -531,6 +532,10 @@ function setupDossierTabs(){
     <section class="landscape-cell" data-sheet-tile="gegevens">
       <h3>Personeelsinformatie</h3>
       <div id="sheetProfile" class="sheet-data">Administratieve gegevens laden…</div>
+      <div class="personnel-info-actions">
+        <button type="button" id="savePersonnelInfoAll" hidden>Gegevens opslaan</button>
+        <span class="subtle" id="personnelInfoSaveState" role="status"></span>
+      </div>
     </section>
     <section class="landscape-cell" data-sheet-tile="specialisaties">
       <h3>Specialisaties <button type="button" data-open-sheet="specialisaties">Functies</button></h3>
@@ -615,8 +620,8 @@ function setupDossierTabs(){
   // Verplaats de bestaande BEVEILIGDE formulieren naar hun rubriek.
   // Dit zijn dezelfde DOM-formulieren en onsubmit-handlers (geen extra opslag).
   const inlineForms=[
-    ['gegevens','staffProfileForm'],
     ['gegevens','editForm'],
+    ['gegevens','staffProfileForm'],
     ['specialisaties','specialtyEdit'],
     ['leave','staffManualLeaveForm'],
     ['training','staffTrainingForm'],
@@ -628,6 +633,15 @@ function setupDossierTabs(){
     const element=$(form);
     if(cell&&element)cell.append(element);
   }
+  // Eén reden en één bewuste opslaanknop voor beide bestaande databronnen.
+  // Er worden geen nieuwe permissies uit browsergegevens afgeleid.
+  $('staffProfileReason').closest('div').hidden=true;
+  $('staffProfileReason').required=false;
+  $('staffProfileSave').hidden=true;
+  $('save').hidden=true;
+  $('savePersonnelInfoAll').onclick=savePersonnelInfoAll;
+  $('reason').placeholder='Reden van de wijziging (minstens 15 tekens)';
+  $('reason').minLength=15;
   // Observatie/sanctie delen een beveiligd formulier met een typekeuze.
   // Eén brede regel voorkomt dubbele invoerknoppen of formulieren.
   $('formalInlineArea').append($('formalWriteStatus'),$('staffFormalForm'));
@@ -1080,11 +1094,23 @@ function sheetSpecialtyRows(rows){
     container.append(chip);
   }
 }
+function updateGeneralPersonnelInfoDisplay(){
+  const canCore=Boolean(selected?.canEditIdentity===true&&writesEnabled);
+  const canProfile=staffDossierCanMaintain===true;
+  const canWrite=canCore||canProfile;
+  $('editForm').hidden=!canCore;
+  $('staffProfileForm').hidden=!canProfile;
+  $('savePersonnelInfoAll').hidden=!canWrite;
+  $('sheetProfile').hidden=canWrite;
+  $('personnelInfoSaveState').textContent=canWrite?
+    'Alle wijzigingen in deze rubriek worden samen opgeslagen met één motivering.':
+    'Alleen lezen · aanpassingen voor Officierenkader, Korpsleiding of Bestuur.';
+}
 function sheetDossierProfile(profile){
   const root=$('sheetProfile');root.replaceChildren();
   const fields=[['Aanstellingsdatum',profile.startDate],['Eenheid / ploeg',profile.unit],
     ['Functie / opdracht',profile.functionTitle]].filter(([,value])=>Boolean(value));
-  if(!fields.length){root.textContent='Nog geen administratieve gegevens ingevuld.';return}
+  if(!fields.length){root.textContent='Geen aanvullende administratieve gegevens geregistreerd.';return}
   for(const [label,value] of fields){
     const line=document.createElement('div');line.className='overview-profile-line';
     const bold=document.createElement('strong');bold.textContent=label+': ';
@@ -1868,6 +1894,7 @@ async function loadStaffDossier(p){
   $('staffCaseForm').hidden=true;
   $('staffProfileForm').hidden=true;
   staffDossierCanMaintain=false;
+  updateGeneralPersonnelInfoDisplay();
   try{
     const result=await request(base);
     if(!selected||selected.dept+':'+selected.discordId!==key||$('panel').hidden)return;
@@ -1883,6 +1910,9 @@ async function loadStaffDossier(p){
     void loadStaffFormalPermissions(p,key);
     void loadReceivedRegistrations(p);
     const profile=result.profile||{};
+    personnelInfoOriginalProfile={
+      startDate:profile.startDate||'',unit:profile.unit||'',functionTitle:profile.functionTitle||''
+    };
     sheetDossierProfile(profile);
     const summary=$('staffDossierSummary');
     staffField(summary,'Aanstellingsdatum',profile.startDate);
@@ -1892,7 +1922,7 @@ async function loadStaffDossier(p){
     $('staffUnit').value=profile.unit||'';
     $('staffFunction').value=profile.functionTitle||'';
     $('staffProfileReason').value='';
-    $('staffProfileForm').hidden=!staffDossierCanMaintain;
+    updateGeneralPersonnelInfoDisplay();
     $('staffDossierStatus').textContent=staffDossierCanMaintain?
       'Administratieve dossierwijzigingen zijn beschikbaar; iedere wijziging krijgt een auditregistratie.':
       'Alleen-lezen dossier. Je bestaande personeels- en opleidingsrechten blijven bepalend.';
@@ -1926,9 +1956,74 @@ async function loadStaffDossier(p){
       hist.append(line);
     }
   }catch(e){
-    if(selected&&selected.dept+':'+selected.discordId===key)
+    if(selected&&selected.dept+':'+selected.discordId===key){
+      updateGeneralPersonnelInfoDisplay();
       $('staffDossierStatus').textContent='Administratief dossier niet beschikbaar: '+e.message;
+    }
   }
+}
+// Eén centrale opslagactie voor de zichtbare personeelsinformatie.
+async function savePersonnelInfoAll(){
+  const p=selected;
+  const coreAllowed=Boolean(p?.canEditIdentity===true&&writesEnabled);
+  const profileAllowed=staffDossierCanMaintain===true;
+  if(!p||!(coreAllowed||profileAllowed))return notice('Geen bewerkingsrecht voor algemene personeelsinformatie.',true);
+  const key=p.dept+':'+p.discordId;
+  const newProfile={
+    startDate:$('staffStartDate').value,
+    unit:$('staffUnit').value.trim(),
+    functionTitle:$('staffFunction').value.trim()
+  };
+  const profileChanged=profileAllowed&&
+    JSON.stringify(newProfile)!==JSON.stringify(personnelInfoOriginalProfile);
+  const newCore={name:$('pName').value.trim(),call:$('pCall').value.trim(),status:$('pStatus').value};
+  const coreChanged=coreAllowed&&
+    (newCore.name!==p.name||newCore.call!==p.call||newCore.status!==p.status);
+  if(!profileChanged&&!coreChanged){
+    $('personnelInfoSaveState').textContent='Geen nieuwe wijzigingen om op te slaan.';
+    return;
+  }
+  const reason=$('reason').value.trim();
+  if(reason.length<15){
+    $('reason').focus();
+    return notice('Vul één motivering in van minstens 15 tekens.',true);
+  }
+  if(profileChanged&&!$('staffProfileForm').reportValidity())return;
+  if(coreChanged&&!$('editForm').reportValidity())return;
+  const btn=$('savePersonnelInfoAll');
+  btn.disabled=true;
+  $('personnelInfoSaveState').textContent='Wijzigingen bewaren…';
+  let saved=0;
+  try{
+    if(profileChanged){
+      await request('/api/staff-dossiers/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId)+'/profile',{
+        method:'POST',body:{expectedRevision:staffDossierRevision,
+          profile:newProfile,reason}
+      });
+      saved++;
+    }
+    if(coreChanged){
+      await request('/api/personnel/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId),{
+        method:'POST',body:{...newCore,reason,expectedRevision:p.revision}
+      });
+      saved++;
+    }
+    if(selected?.dept+':'+selected?.discordId!==key)return;
+    await load();
+    $('personnelInfoSaveState').textContent='Wijzigingen opgeslagen.';
+    notice('Personeelsgegevens opgeslagen met één motivering en auditregistraties.');
+  }catch(e){
+    if(saved>0){
+      // De twee bestaande registers hebben ieder hun eigen revisie.
+      // Waarschuw eerlijk bij gedeeltelijke opslag; maak geen stille retries.
+      notice('Een deel werd opgeslagen, maar niet alles: '+e.message+
+        '. Vernieuw de fiche voordat je opnieuw opslaat.',true);
+      $('personnelInfoSaveState').textContent='Gedeeltelijk opgeslagen; controleer de fiche.';
+    }else{
+      notice(e.message,true);
+      $('personnelInfoSaveState').textContent='Opslaan niet gelukt.';
+    }
+  }finally{btn.disabled=false}
 }
 $('staffProfileForm').onsubmit=async event=>{
   event.preventDefault();if(!selected||!staffDossierCanMaintain)return;
@@ -2005,6 +2100,7 @@ async function showPerson(p){
   $('pRank').disabled=true;
   $('reason').disabled=!canChangeStatus;
   $('save').disabled=!canChangeStatus;
+  updateGeneralPersonnelInfoDisplay();
   $('policyHint').textContent=!p.canEdit?'Je hebt geen wijzigingsbevoegdheid voor deze fiche.':
     !writesEnabled?'Opslaan staat momenteel uit (veilige voorbereidingsmodus).':
     !p.canEditIdentity?'Middenkader kan enkel de personeelsstatus van lager politiekader wijzigen. Naam, roepnummer en rang blijven beschermd.':
