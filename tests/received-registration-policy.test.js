@@ -62,3 +62,17 @@ test('Ontvangen-lijsten worden server-side gefilterd zonder e-mail of technische
   assert.match(source,/Cache-Control','private, no-store'/);
   assert.doesNotMatch(source,/submittedBy:record\.submittedBy/);
 });
+
+test('Registratie blijft in oorspronkelijk indienerkader na latere promotie',()=>{
+  const promoted={...author,call:'S650',rank:'Hoofdinspecteur van politie'};
+  const record={
+    submittedByActor:{discordId:author.personId,name:'Oorspronkelijke naam',
+      call:'S408',rank:'Inspecteur van politie'},
+    registeredBy:{discordId:author.personId,name:'Oorspronkelijke naam',
+      call:'S408',rank:'Inspecteur van politie'}
+  };
+  const origin=receivedAuthor(record,[promoted]);
+  assert.equal(origin.bucket,'basiskader');
+  assert.equal(origin.call,'S408');
+  assert.equal(origin.rank,'Inspecteur van politie');
+});
