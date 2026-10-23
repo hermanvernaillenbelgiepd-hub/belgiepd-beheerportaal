@@ -1138,6 +1138,10 @@ async function loadLinkedPersonnelRecords(p,key){
     })()
   ]);
 }
+const leaveStatusText=status=>({
+  pending:'In behandeling',approved:'Goedgekeurd',
+  withdrawn:'Ingetrokken',rejected:'Geweigerd'
+})[status]||String(status||'Onbekend');
 async function loadStaffLeave(p,key){
   const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
   const root=$('staffLeave');
@@ -1145,19 +1149,23 @@ async function loadStaffLeave(p,key){
     const info=await request('/api/leave/person/'+encodeURIComponent(p.discordId)+
       '?dept='+encodeURIComponent(p.dept));
     if(!same())return;
-    sheetSetRows('leave',info.leaves||[],x=>[
-      x.startDate||'—',x.endDate||'—',
-      x.status==='pending'?'In behandeling':x.status==='approved'?'Goedgekeurd':
-        x.status==='withdrawn'?'Ingetrokken':x.status==='rejected'?'Geweigerd':x.status||'—',
+    // Eén centrale bron voor alle disciplines van dezelfde Discord-identiteit.
+    // Toon ingediende, goedgekeurde, geweigerde en ingetrokken periodes,
+    // zonder vertrouwelijke toelichting te kopiëren naar het personeelsdossier.
+    const leaves=[...(info.leaves||[])].sort((a,b)=>
+      String(b.startDate||'').localeCompare(String(a.startDate||''))||
+      String(b.endDate||'').localeCompare(String(a.endDate||'')));
+    sheetSetRows('leave',leaves,x=>[
+      x.startDate||'—',x.endDate||'—',leaveStatusText(x.status),
       Number(x.days)||'—'
-    ],'Geen zichtbare verlofperiodes.',info.limited);
+    ],'Geen geregistreerde verlofperiodes.',info.limited);
     root.replaceChildren();
-    if(!info.leaves?.length)root.textContent='Geen zichtbare verlofperiodes.';
-    for(const item of info.leaves||[]){
+    if(!leaves.length)root.textContent='Geen geregistreerde verlofperiodes.';
+    for(const item of leaves){
       const div=document.createElement('div');div.className='note-item';
       const title=document.createElement('strong');
       title.textContent=item.startDate+' tot '+item.endDate+
-        ' · '+(item.status==='pending'?'In afwachting':'Goedgekeurd')+
+        ' · '+leaveStatusText(item.status)+
         (item.manual?' (handmatig)':'');
       div.append(title);
       if(item.status==='pending'&&item.canDecide===true){
