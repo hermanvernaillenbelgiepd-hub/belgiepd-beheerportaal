@@ -5,6 +5,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { discordConfig, isDiscordId, validReturnTo } from './discord-utils.js';
 import {discordBotToken,botRefreshAllowed,botRefreshTooSoon,verifiedBotMember} from './discord-bot-refresh.js';
 import {firebaseDiagnostic} from './firebase-diagnostics.js';
+import {recognizeRoles} from './role-catalog.js';
 
 const B = bytes => Buffer.from(bytes).toString('base64url');
 const b64 = n => B(randomBytes(n));
@@ -174,6 +175,7 @@ export function installDiscordOAuth(app){
         return res.status(403).json({error:'Discord-lidmaatschap niet bevestigd. Meld opnieuw aan met Discord.'});
       return res.json({discordId:decoded.uid.slice(8),name:data.username||'',
         joinedAt:data.joinedAt||null,roleIds:data.roleIds||[],
+        roleNames:Object.fromEntries(recognizeRoles(data.roleIds||[]).map(role=>[role.id,role.name])),
         lastVerifiedAt:data.verifiedAt,
         accessNote:'Discord-rollen worden onafhankelijk geverifieerd. Alleen de expliciet ingestelde Politie-Middenkaderrol kan automatisch een beperkte portaalgoedkeuring krijgen.'});
     }catch(e){
