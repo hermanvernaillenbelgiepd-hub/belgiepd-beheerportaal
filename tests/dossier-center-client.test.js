@@ -14,7 +14,10 @@ test('Dossier UI renders fetched data as text and cannot grant access',()=>{
   const html=readFileSync(new URL('../public/dossiercentrum.html',import.meta.url),'utf8');
   assert.ok(html.includes('textContent'));
   assert.equal(/\.innerHTML\s*=/.test(html),false);
-  assert.equal(/fetch\([^)]*method:\s*['"]POST/.test(html),false);
+  // Alleen de Burger-aanmaak doet een POST. Toegang en identiteit
+  // worden daarbij opnieuw server-side gecontroleerd.
+  assert.ok(html.includes("fetch('/api/burger-dossiers/personnel'"));
+  assert.ok(html.includes("headers:{Authorization:'Bearer '+token"));
 });
 
 test('Dossier controls offer authorised filters and paginated results',()=>{
