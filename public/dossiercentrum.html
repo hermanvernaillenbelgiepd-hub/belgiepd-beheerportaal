@@ -69,7 +69,8 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 @media(max-width:960px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 [hidden]{display:none!important}
 @media(max-width:720px){.grid,.search,.filter-grid{grid-template-columns:1fr}header{padding:14px}h1{font-size:25px}.card{padding:15px}}
-</style></head><body>
+</style><link rel="stylesheet" href="/bpd-navigation.css">
+</head><body>
 <header><strong>🛡️ BelgiumPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal dossieroverzicht</h1>
 <p>Elk personeelsdossier is volledig dienstgebonden. Politie, ambulance, brandweer en depannage beheren hun eigen personeelsgegevens, notities en historiek. Alleen jouw bevoegde diensten zijn zichtbaar.</p>
@@ -114,7 +115,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <option value="personeel">Personeelswijzigingen</option>
 </select></label></div>
 <div class="muted" id="history"></div></section>
-<div id="detailLinks" class="detail-links"></div>
+
 <button id="close" type="button" class="alt">Dossier sluiten</button></section>
 </main>
 <script type="module">
@@ -230,16 +231,6 @@ function renderHistory(){
     history.append(div);
   }
 }
-function detailLinks(data,person){
-  const links=$('detailLinks');links.replaceChildren();
-  if(!data.personnel||!/^[0-9]{15,22}$/.test(String(person?.discordId||'')))return;
-  const a=node('a','Open volledige personeelsfiche · observaties & sancties');
-  a.href='/personeelsbeheer.html?'+new URLSearchParams({
-    dept:person.dept,discordId:person.discordId
-  }).toString();
-  a.rel='noopener';
-  links.append(a);
-}
 async function openDossier(r){
   shown=r.dept+':'+r.discordId;
   const active=shown;
@@ -267,7 +258,7 @@ async function openDossier(r){
       staff.append(frame);
     }else staff.textContent='Geen zichtbare personeelsfiche.';
     timelineEntries=Array.isArray(data.timeline)?data.timeline:[];
-    renderHistory();detailLinks(data,r);
+    renderHistory();
     $('detail').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){if(shown===active){$('staff').textContent='';$('history').textContent='';message(e.message,true)}}
 }
@@ -325,4 +316,5 @@ async function start(){
   }catch(e){message('Dossiercentrum kon niet starten: '+e.message,true)}
 }
 start();
-</script></body></html>
+</script><script defer src="/bpd-navigation.js"></script>
+</body></html>
