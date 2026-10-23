@@ -776,7 +776,8 @@ const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   opleiding:'Gevolgde opleiding',naamswijziging:'Naamswijziging (registratie)',
   promotievoorstel:'Promotievoorstel (geen automatische promotie)',
   personeelsbeweging:'Personeelsbeweging (registratie)',
-  activiteit:'Dienstactiviteit',specialisatiebeperking:'Beperking van specialisatie'};
+  activiteit:'Dienstactiviteit',specialisatiebeperking:'Beperking van specialisatie',
+  functiewijziging:'Functiewijziging'};
 function updateStaffCaseFields(){
   const type=$('staffCaseType').value;
   const extras=staffCaseFields[type]||[];
@@ -1019,8 +1020,8 @@ function updateFormalFields(){
 // maar de bestaande dossier-API bewaart de originele ISO-datum (YYYY-MM-DD).
 function formalDateFromText(text){
   const raw=String(text||'').trim();
-  const belgian=/^(\\d{1,2})[\\/.-](\\d{1,2})[\\/.-](\\d{4})$/.exec(raw);
-  const isoText=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(raw);
+  const belgian=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/.exec(raw);
+  const isoText=/^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
   let yyyy,mm,dd;
   if(belgian){dd=Number(belgian[1]);mm=Number(belgian[2]);yyyy=Number(belgian[3]);}
   else if(isoText){yyyy=Number(isoText[1]);mm=Number(isoText[2]);dd=Number(isoText[3]);}
@@ -1032,7 +1033,7 @@ function formalDateFromText(text){
   return iso;
 }
 function formalDateForDisplay(iso){
-  const match=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(iso||''));
+  const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||''));
   return match?match[3]+'/'+match[2]+'/'+match[1]:'';
 }
 function setFormalDate(iso){
