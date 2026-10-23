@@ -23,6 +23,15 @@
 .leave-history-item{padding:5px 0;border-bottom:1px solid #314667}
 .leave-history-item:last-child{border-bottom:0}
 .leave-cancel{font-size:11px!important;padding:5px 9px!important;margin-top:7px!important;background:#2c3853;border-color:#617795}
+.leave-archive{margin-top:10px;border:1px solid #3b587c;border-radius:9px;background:#10233d}
+.leave-archive>summary{display:flex;align-items:center;gap:8px;cursor:pointer;
+  padding:9px 11px;color:#dce9ff;font-size:12px;font-weight:700;list-style:none}
+.leave-archive>summary::-webkit-details-marker{display:none}
+.leave-archive>summary::before{content:"▸";color:#9dbfea}
+.leave-archive[open]>summary::before{content:"▾"}
+.leave-archive-count{background:#29466c;border-radius:20px;padding:2px 7px;font-size:11px;color:#d4e7ff}
+#leaveArchivedRequests{padding:0 12px 7px;border-top:1px solid #334f72}
+#leaveArchivedRequests>.muted{font-size:12px}
 .profile-fold{border:1px solid #334e71;border-radius:8px;padding:7px 9px;min-width:0;background:#132744}
 .profile-fold>summary{cursor:pointer;font-size:12px;font-weight:700;color:#e2eeff;list-style:none}
 .profile-fold>summary::-webkit-details-marker{display:none}
@@ -121,7 +130,11 @@ button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
   <div class="leave-field"><label for="leaveNote">Toelichting (optioneel, max. 300 tekens)</label><textarea id="leaveNote" maxlength="300" placeholder="Vermeld geen onnodige persoonlijke informatie."></textarea></div>
   <div class="leave-actions"><button type="submit" id="leaveSubmit">Verlof aanvragen</button><span id="leaveDays" class="muted">Weekends tellen mee als kalenderdagen.</span></div>
 </form>
-<div id="leaveRequests" aria-label="Mijn ingediende verlofaanvragen"></div>
+<div id="leaveRequests" aria-label="Mijn lopende verlofaanvragen en verlofperiodes"></div>
+<details id="leaveArchive" class="leave-archive">
+  <summary>Historiek <span id="leaveArchiveCount" class="leave-archive-count">0</span></summary>
+  <div id="leaveArchivedRequests" aria-label="Afgehandelde en afgelopen verlofaanvragen"></div>
+</details>
 <p><a href="/verlofbeheer.html">Open het volledige verlofbeheer →</a></p>
 </section>
 <div class="profile-actions">
@@ -257,11 +270,32 @@ async function leaveRequest(url,body){
   if(!r.ok)throw Error(result.error||'Verlofmodule tijdelijk niet beschikbaar');
   return result;
 }
+function leaveToday(){
+  return new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+    year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+}
+// Lopend: in behandeling of goedgekeurd, én de verlofperiode is niet voorbij.
+// Ingetrokken, geweigerd en afgelopen perioden blijven altijd in Historiek.
+function isCurrentLeave(x,today=leaveToday()){
+  return (x.status==='pending'||x.status==='approved')&&
+    typeof x.endDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x.endDate)&&
+    x.endDate>=today;
+}
 function renderLeaves(items){
-  const root=$('leaveRequests');root.replaceChildren();
-  if(!items.length){const p=document.createElement('p');p.className='muted';
-    p.textContent='Je hebt nog geen verlofaanvragen ingediend.';root.append(p);return}
-  for(const x of items){
+  const activeRoot=$('leaveRequests'),archivedRoot=$('leaveArchivedRequests');
+  activeRoot.replaceChildren();archivedRoot.replaceChildren();
+  const today=leaveToday();
+  const current=items.filter(x=>isCurrentLeave(x,today)).sort((a,b)=>
+    String(a.startDate||'').localeCompare(String(b.startDate||'')));
+  const archived=items.filter(x=>!isCurrentLeave(x,today)).sort((a,b)=>
+    String(b.createdAt||b.endDate||'').localeCompare(String(a.createdAt||a.endDate||'')));
+  $('leaveArchiveCount').textContent=String(archived.length);
+  if(!current.length){const p=document.createElement('p');p.className='muted';
+    p.textContent='Geen lopende aanvragen of toekomstige verlofperiodes.';activeRoot.append(p)}
+  if(!archived.length){const p=document.createElement('p');p.className='muted';
+    p.textContent='Nog geen afgehandelde of afgelopen verlofaanvragen.';archivedRoot.append(p)}
+  for(const x of [...current,...archived]){
+    const root=isCurrentLeave(x,today)?activeRoot:archivedRoot;
     const row=document.createElement('div');row.className='leave-record';
     const heading=document.createElement('strong');
     heading.textContent=(x.startDate||'?')+' tot en met '+(x.endDate||'?');
@@ -325,7 +359,7 @@ async function loadLeave(){
     renderLeaves(leaves.mine);
     $('leaveForm').hidden=context.writesEnabled!==true;
     $('leaveStatus').textContent=context.writesEnabled===true?
-      'Je kunt verlof aanvragen, je aanvragen intrekken en alle beslissingen in de historiek bekijken.':
+      'Je lopende verlofperiodes en aanvragen staan hieronder. Afgehandelde aanvragen staan onder Historiek.':
       'Verlof aanvragen is momenteel uitgeschakeld; je kunt je eerdere aanvragen wel bekijken.';
     if(leaves.limited)$('leaveStatus').textContent+=' Het overzicht is beperkt tot maximaal 100 aanvragen.';
   }catch(e){
