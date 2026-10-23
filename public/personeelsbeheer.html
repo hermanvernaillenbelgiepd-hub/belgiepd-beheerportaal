@@ -989,47 +989,43 @@ function sheetCell(value){
   td.textContent=value===null||value===undefined||value===''?'—':String(value).slice(0,1200);
   return td;
 }
+// Kort zichtbaar, maar alle records zijn met 'Toon alles' onder dezelfde
+// categorie leesbaar. Geen tweede pagina of verborgen gegevens.
 let overviewShowEmpty=false;
-function refreshOverviewEmpty(){
-  const root=$('sheetOverview');
-  if(!root)return;
-  const sections=[...root.querySelectorAll('[data-overview-key]')];
-  for(const section of sections)
-    section.hidden=!overviewShowEmpty&&section.dataset.empty==='true';
-  $('overviewEmptyRecords').hidden=overviewShowEmpty||
-    sections.some(section=>section.dataset.empty!=='true');
-  $('overviewShowEmpty').setAttribute('aria-pressed',String(overviewShowEmpty));
-  $('overviewShowEmpty').textContent=overviewShowEmpty?'Verberg lege rubrieken':'Toon lege rubrieken';
-}
+function refreshOverviewEmpty(){/* Alle negen categorieën blijven altijd zichtbaar. */}
 function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',limited=false){
   const root=$('sheet'+group[0].toUpperCase()+group.slice(1));
   if(!root)return;
   const entries=Array.isArray(rows)?rows:[];
-  const section=root.closest('[data-overview-key]');
-  if(section)section.dataset.empty=entries.length?'false':'true';
-  const count=$('sheetOverview').querySelector('[data-overview-count="'+group+'"]');
-  if(count)count.textContent=entries.length?String(entries.length)+(limited?'+':''):'0';
+  const wasExpanded=root.dataset.expanded==='true';
   root.replaceChildren();
-  if(!entries.length){
-    const note=document.createElement('span');note.className='overview-no-data';
-    note.textContent=empty;root.append(note);
-    refreshOverviewEmpty();return;
-  }
-  for(const row of entries.slice(0,2)){
+  const append=(row)=>{
     const cells=toCells(row).map(value=>value===null||value===undefined||value===''?'—':String(value));
     const item=document.createElement('div');item.className='overview-preview';
     const heading=document.createElement('strong');
-    heading.textContent=(cells[1]||cells[0]||'Registratie').slice(0,110);
+    heading.textContent=[cells[0],cells[1]].filter(value=>value&&value!=='—').join(' · ').slice(0,160)||'Registratie';
     const meta=document.createElement('span');
-    meta.textContent=[cells[0],cells[2]].filter(value=>value&&value!=='—').join(' · ').slice(0,160);
+    meta.textContent=cells.slice(2).filter(value=>value&&value!=='—').join(' · ').slice(0,330);
     item.append(heading,meta);root.append(item);
+  };
+  if(!entries.length){
+    const note=document.createElement('span');note.className='overview-no-data';
+    note.textContent=empty;root.append(note);return;
   }
-  if(entries.length>2||limited){
-    const more=document.createElement('span');more.className='overview-more';
-    more.textContent='Open de rubriek voor alle toegelaten registraties.';
-    root.append(more);
+  for(const row of (wasExpanded?entries:entries.slice(0,3)))append(row);
+  if(entries.length>3){
+    const toggle=document.createElement('button');toggle.type='button';
+    toggle.className='sheet-show-more';
+    toggle.textContent=wasExpanded?'Minder tonen':'Toon alle '+entries.length+(limited?'+':'')+' registraties';
+    toggle.onclick=()=>{
+      root.dataset.expanded=wasExpanded?'false':'true';
+      sheetSetRows(group,entries,toCells,empty,limited);
+    };
+    root.append(toggle);
+  }else if(limited){
+    const notice=document.createElement('span');notice.className='overview-no-data';
+    notice.textContent='De bron toont niet alle oudere registraties.';root.append(notice);
   }
-  refreshOverviewEmpty();
 }
 const sheetWho=row=>row.registeredBy?.name||row.submittedByActor?.name||'Onbekend';
 function sheetIdentity(p){
@@ -1038,8 +1034,10 @@ function sheetIdentity(p){
   $('sheetStatus').textContent=p.status||'—';
   $('sheetProfile').textContent='Administratieve gegevens laden…';
   $('sheetSpecialties').textContent='Specialisaties laden…';
-  for(const key of Object.keys(sheetDefs)){
+  for(const key of [...Object.keys(sheetDefs),'observations','sanctions','basisNotes']){
     const field=$('sheet'+key[0].toUpperCase()+key.slice(1));
+    if(!field)continue;
+    field.dataset.expanded='false';
     field.textContent='Registraties laden…';
   }
   sheetSpecialtyRows(BPDPersonnelVisuals.specialtyStatuses(p.specialties||[]));
@@ -1083,10 +1081,18 @@ function sheetCaseRows(entries,limited){
     x.details||'—',sheetWho(x)],'Geen notities geregistreerd.',limited);
 }
 function sheetFormalRows(entries,limited){
-  sheetSetRows('formal',entries,x=>[x.eventDate||'—',
-    x.type==='sanctie'?'Sanctie · '+(x.sanctionType||'Maatregel'):'Observatie',
-    x.details||x.explanation||'—',x.type==='sanctie'?x.severity??'—':x.score??'—',
-    sheetWho(x)],'Geen zichtbare observaties of sancties.',limited);
+  const list=Array.isArray(entries)?entries:[];
+  // Observaties en sancties hebben afzonderlijke kolommen in het leesblad.
+  const preview=x=>[x.eventDate||'—',x.type==='sanctie'?
+      String(x.sanctionType||'Maatregel'):'Observatie',
+    x.details||x.explanation||'—',
+    x.type==='sanctie'?'Ernst '+(x.severity??'—'):'Score '+(x.score??'—'),
+    'Door '+sheetWho(x)];
+  sheetSetRows('formal',list,preview,'Geen zichtbare registraties.',limited);
+  sheetSetRows('observations',list.filter(x=>x.type==='observatie'),preview,
+    'Geen observaties geregistreerd.',limited);
+  sheetSetRows('sanctions',list.filter(x=>x.type==='sanctie'),preview,
+    'Geen sancties geregistreerd.',limited);
 }
 async function loadLinkedPersonnelRecords(p,key){
   const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
@@ -1864,6 +1870,12 @@ async function loadStaffDossier(p){
       'Administratieve dossierwijzigingen zijn beschikbaar; iedere wijziging krijgt een auditregistratie.':
       'Alleen-lezen dossier. Je bestaande personeels- en opleidingsrechten blijven bepalend.';
     const list=$('staffNotes');
+    const basis=(result.notes||[]);
+    sheetSetRows('basisNotes',basis,x=>[
+      x.recordedAt?new Date(x.recordedAt).toLocaleDateString('nl-BE'):'—',
+      x.title||staffNotesLabels[x.kind]||'Notitie',
+      x.details||'—','Door '+(x.authorDiscordId||'—')
+    ],'Geen eerdere basisnotities.',result.notesLimited===true);
     if(!result.notes?.length)list.textContent='Geen eerder in dit aanvullende dossier geregistreerde notities.';
     else for(const item of result.notes){
       const div=document.createElement('div');div.className='note-item';
