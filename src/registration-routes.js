@@ -57,6 +57,41 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       res.json({entries:rows.docs.map(d=>({id:d.id,...publicEntry(d.data())}))});
     }catch(err){return handleError(res,err)}
   });
+  // Alleen bevoegde sanctionerende kaderleden zien de gedetailleerde
+  // wijzigingshistoriek. Nooit Firebase UID's, e-mail of andere auditgeheimen.
+  app.get('/api/registrations/entries/:dept/:discordId/:entryId/audit',requireUser,async(req,res)=>{
+    const {dept,discordId:id,entryId}=req.params;
+    if(!isDiscordId(id)||!/^[a-zA-Z0-9]{12,30}$/.test(entryId))
+      return res.status(400).json({error:'Ongeldige sanctieverwijzing'});
+    if(!canReadServiceDossier(req.bpd,dept)||!mayAmend(req.bpd,'sanctie',dept))
+      return res.status(403).json({error:'Geen toegang tot sanctie-audit'});
+    try{
+      const snap=await getSnapshot();
+      if(!safeSubject(snap.data,dept,id))return res.status(404).json({error:'Personeelslid niet gevonden'});
+      const ref=db().collection('bpd_cases').doc(docId(dept,id)).collection('entries').doc(entryId);
+      const original=await ref.get();
+      if(!original.exists||original.data()?.type!=='sanctie')
+        return res.status(404).json({error:'Sanctie niet gevonden'});
+      const old=original.data(),role=roleForDepartment(req.bpd,dept);
+      if(!canChooseSanction(role,old.sanctionType,old.severity))
+        return res.status(403).json({error:'Geen bevoegdheid om deze sanctiehistoriek te bekijken'});
+      const rows=await ref.collection('audit').orderBy('at','desc').limit(40).get();
+      return res.json({changes:rows.docs.map(d=>{
+        const item=d.data(),before=item.before||{},by=item.by||{};
+        return {
+          at:isoTimestamp(item.at),reason:String(item.reason||'').slice(0,1000),
+          actor:{name:String(by.name||'Onbekend'),call:String(by.call||'')},
+          previous:{
+            sanctionType:before.sanctionType||'Onbekend',
+            severity:before.severity||null,status:before.status||'onbekend',
+            details:String(before.details||'').slice(0,6000),
+            reasons:Array.isArray(before.reasons)?before.reasons.slice(0,12):[],
+            explanation:String(before.explanation||'').slice(0,2000)
+          }
+        };
+      }),limited:rows.docs.length===40});
+    }catch(error){return handleError(res,error)}
+  });
   // Formulierindiener wordt uitsluitend afgeleid van geverifieerde Firebase-login + server-allowlist.
   app.post('/api/registrations/entries',requireUser,async(req,res)=>{
     if(!writesEnabled())return res.status(503).json({error:'Registraties staan nog uit. Stel BPD_ENABLE_REGISTRATIONS=true in na controle van Firebase-rechten.'});
