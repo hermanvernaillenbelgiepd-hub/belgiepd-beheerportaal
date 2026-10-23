@@ -645,7 +645,7 @@ function setupDossierTabs(){
       </div>
     </section>
     <section class="landscape-cell" data-sheet-tile="specialisaties">
-      <h3>Specialisaties <button type="button" data-open-sheet="specialisaties">Functies</button></h3>
+      <h3>Specialisaties</h3>
       <div id="sheetSpecialties" class="sheet-specialties">Specialisaties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="movements">
@@ -665,7 +665,7 @@ function setupDossierTabs(){
       <div id="sheetTraining" class="sheet-records">Opleidingen laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="basisNotes">
-      <h3>Notities (basis) <button type="button" data-open-sheet="historiek">Bekijken</button></h3>
+      <h3>Notities (basis)</h3>
       <div id="sheetBasisNotes" class="sheet-records">Basisnotities laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="notes">
@@ -1502,6 +1502,7 @@ function clearFormalEdit(){
 function openFormalEdit(row){
   if(!row||row.type!=='sanctie'||!sameDossier(selected.dept+':'+selected.discordId)||
      !formalPermissions?.sanctionAmendDepartments?.includes(selected.dept))return;
+  if(!choosePersonnelRegistration('sanctie',true))return;
   formalEditId=row.id;
   $('formalType').value='sanctie';$('formalType').disabled=true;
   $('formalSeverity').value=String(row.severity||5);
@@ -1532,13 +1533,8 @@ function startFormalRegistration(type){
     formalPermissions.observationDepartments?.includes(selected.dept):
     formalPermissions.sanctionDepartments?.includes(selected.dept);
   if(!valid||!formalPermissions.actor)return;
-  $('formalType').disabled=false;
-  clearFormalEdit();
-  $('formalType').value=type;
-  updateFormalFields();
-  $('staffFormalForm').hidden=false;
+  if(!choosePersonnelRegistration(type,true))return;
   $('formalDetails').focus();
-  $('staffFormalForm').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 $('addFormalObservation').onclick=()=>startFormalRegistration('observatie');
 $('addFormalSanction').onclick=()=>startFormalRegistration('sanctie');
@@ -2048,20 +2044,27 @@ async function loadStaffDossier(p){
   $('staffLeave').textContent='Verlofperiodes laden…';
   $('staffFormalRecords').textContent='Formele registraties laden…';
   $('staffFormalForm').hidden=true;
-  $('formalInlineArea').hidden=true;
   $('formalWriteActions').hidden=true;
   $('formalWriteStatus').textContent='Invoerrechten controleren…';
   $('staffManualLeaveForm').hidden=true;
   $('staffCaseForm').hidden=true;
   $('staffProfileForm').hidden=true;
+  registrationManualLeave=false;
+  registrationSpecialty=false;
+  functionCanEdit=false;
+  casePermissions=null;
+  trainingRights=null;
+  formalPermissions=null;
   staffDossierCanMaintain=false;
+  refreshPersonnelRegistrationOptions();
   updateGeneralPersonnelInfoDisplay();
   try{
     const result=await request(base);
     if(!selected||selected.dept+':'+selected.discordId!==key||$('panel').hidden)return;
     staffDossierRevision=result.revision;
     staffDossierCanMaintain=result.canMaintain===true;
-    $('staffManualLeaveForm').hidden=result.cadreActions?.manualLeave!==true;
+    registrationManualLeave=result.cadreActions?.manualLeave===true;
+    refreshPersonnelRegistrationOptions();
     void loadStaffCasePermissions(p,key,result.cadreActions?.cases===true);
     $('staffCaseDate').value=new Date().toISOString().slice(0,10);
     showStaffRoles(result.discordRoles,result.subject?.rosterSeries);
@@ -2242,7 +2245,10 @@ async function showPerson(p){
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
   sheetIdentity(p);
-  if(!sameSelected)openDossierTab('overzicht');
+  if(!sameSelected){
+    registrationSubjectKey=p.dept+':'+p.discordId;
+    openDossierTab('overzicht');
+  }
   $('identity').textContent=(departments[p.dept]||p.dept)+' · Discord ID '+p.discordId+' · Revisie '+p.revision;
   $('pName').value=p.name;$('pCall').value=p.call;$('pRank').value=p.rank;$('reason').value='';
   $('pStatus').replaceChildren(...statuses.map(x=>option(x,x)));
