@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {leaveCanWithdraw,leaveEventDetails,leaveEventLabel,writeLeaveEvent}
+import {leaveCanWithdraw,leaveCanReapply,leaveEventDetails,leaveEventLabel,writeLeaveEvent}
   from '../src/leave-event-log.js';
 
 const request={personDiscordId:'111111111111111111',subjectName:'Demo',
@@ -32,7 +32,7 @@ test('Iedere statusovergang schrijft een immutable audit en weekrapport dossiere
   assert.match(source,/prior\.personDiscordId!==req\.bpd\.discordId/);
   assert.match(source,/tx\.update\(ref,\{status:'withdrawn'/);
   assert.match(source,/writeLeaveEvent\(tx,\{requestRef:ref,request:prior,action:'withdrawn'/);
-  assert.match(source,/writeLeaveEvent\(tx,\{requestRef:ref,request:historyBase,action:'submitted'/);
+  assert.match(source,/writeLeaveEvent\(tx,\{requestRef:target,request:historyBase,action:'submitted'/);
   assert.match(source,/action:decision/);
   assert.match(source,/action:'board_override'/);
   assert.match(helper,/tx\.create\(requestRef\.collection\('audit'\)/);
@@ -52,4 +52,23 @@ test('Profiel toont intrekking en ladende historie enkel op verzoek',()=>{
   assert.match(page,/Gevolgde opleidingen/);
   assert.match(page,/class="profile-fold"/);
   assert.match(page,/renderAdvancedRoles\(\)/);
+});
+
+test('Na intrekking of weigering opnieuw dezelfde verlofperiode aanvragen',()=>{
+  for(const status of ['withdrawn','rejected'])
+    assert.equal(leaveCanReapply(status),true,status);
+  for(const status of ['pending','approved',undefined,null,'unknown'])
+    assert.equal(leaveCanReapply(status),false,String(status));
+  const source=readFileSync(new URL('../src/leave-routes.js',import.meta.url),'utf8');
+  // Het oorspronkelijke document blijft intact; een nieuwe aanvraag heeft
+  // een eigen ID en de ankerpointer voorkomt parallelle actieve duplicaten.
+  assert.match(source,/const target=original\.exists\?db\(\)\.collection\(coll\)\.doc\(\):ref/);
+  assert.match(source,/tx\.update\(ref,\{\s*latestAttemptId:target\.id/);
+  assert.match(source,/tx\.create\(target,\{/);
+  assert.match(source,/previousAttemptId:latest\.id/);
+  assert.match(source,/latest=await tx\.get\(db\(\)\.collection\(coll\)\.doc\(latestId\)\)/);
+  assert.match(source,/\['pending','approved'\]\.includes\(latest\.get\('status'\)\)/);
+  assert.match(source,/!leaveCanReapply\(latest\.get\('status'\)\)/);
+  assert.match(source,/writeLeaveEvent\(tx,\{requestRef:target/);
+  assert.match(source,/return res\.status\(201\)\.json\(\{id:createdId/);
 });
