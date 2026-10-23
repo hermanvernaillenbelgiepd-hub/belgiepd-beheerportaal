@@ -14,7 +14,8 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 .message{background:#eaf1fc;border-radius:9px;padding:12px;color:#194481}
 .message.error{background:#ffebee;color:#953341}
 [hidden]{display:none!important}
-</style></head><body>
+</style><link rel="stylesheet" href="/bpd-navigation.css">
+</head><body>
 <header><strong>🛡️ BelgiumPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>📬 Meldingen</h1><p>Verlofaanvragen die jij volgens je eigen kaderfunctie of toegekende VERLOFBEHEER-machtiging mag behandelen. Middenkader behandelt aanvragen van basiskader/agentenkader tot 30 dagen; officierenkader en korpsleiding behandelen aanvragen van lagere kadergroepen. Vanaf 31 dagen beslissen alleen officierenkader, korpsleiding of Bestuur. Bestuur kan beslissingen gemotiveerd overrulen. Je eigen aanvragen zijn uitgesloten.</p>
 <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
@@ -107,4 +108,5 @@ async function init(){
   authMod.onAuthStateChanged(auth,()=>load());
  }catch(e){feedback(e.message,true)}
 }init();
-</script></body></html>
+</script><script defer src="/bpd-navigation.js"></script>
+</body></html>

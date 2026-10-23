@@ -22,7 +22,8 @@ test('Dossier controls offer authorised filters and paginated results',()=>{
   for(const id of ['query','department','historyKind','nextPage','previousPage','stats'])
     assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
   assert.ok(html.includes("from '/dossiercentrum-view.js'"));
-  assert.ok(html.includes('detailLinks(data,r)'));
+  assert.equal(html.includes('Open volledige personeelsfiche · observaties & sancties'),false);
+  assert.ok(html.includes("frame.src='/personeelsbeheer.html?'"));
   assert.ok(html.includes("frame.src='/personeelsbeheer.html?'"));
   assert.equal(html.includes('burgerdossier'),false);
   assert.equal(html.includes('sollicitatiebeheer'),false);

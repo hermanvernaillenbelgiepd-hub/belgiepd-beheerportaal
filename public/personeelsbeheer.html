@@ -220,7 +220,8 @@ body.dossier-embed main{max-width:none;margin:0;padding:0}
 body.dossier-embed #panel{max-width:none;width:100%;margin:0;border:0;box-shadow:none;background:#10243e}
 body.dossier-embed #notice{margin:0 0 10px}
 body.dossier-embed #accessHelp{margin:10px 0}
-</style><link rel="stylesheet" href="/personnel-onepage-test.css"></head>
+</style><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-navigation.css">
+</head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/weekrapporten.html">Weekrapporten</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
@@ -839,7 +840,7 @@ function setupDossierTabs(){
 }
 setupDossierTabs();
 
-function notice(text,bad=false){$('notice').textContent=text;$('notice').classList.toggle('error',bad)}
+function notice(text,bad=false){$('notice').hidden=false;$('notice').textContent=text;$('notice').classList.toggle('error',bad)}
 async function request(url,options={}){
   const user=auth?.currentUser;
   if(!user)throw Error('Meld je eerst aan');
@@ -1024,7 +1025,7 @@ async function load(){
     const defaultDept=(data.departments||[]).includes('politie')?'politie':(data.departments||[])[0]||'all';
     $('dept').value=prevDept&&prevDept!=='all'&&(data.departments||[]).includes(prevDept)
       ?prevDept:defaultDept;
-    $('mode').hidden=false;
+    $('mode').hidden=data.canViewPersonnelDiagnostics!==true;
     $('mode').textContent=createEnabled&&!writesEnabled?'Nieuwe personeelsfiches en Discord-koppelingen zijn beschikbaar. Bestaande bronfiches blijven alleen-lezen en Google Sheets worden niet aangepast.':!writesEnabled?'Voorbereidingsmodus: bestaande personeelswijzigingen zijn uitgeschakeld; Google Sheets blijven ongewijzigd.':
       data.overridesActive?'Firestore-wijzigingen zijn actief in de personeelsweergaven. Google Sheets blijven als terugvalbron behouden.':
         'Testmodus: wijzigingen worden in Firestore opgeslagen, maar nog niet gebruikt als hoofdgegevensbron.';
@@ -1054,6 +1055,9 @@ async function load(){
       }
     }
     notice('Personeelsgegevens geladen. '+people.length+' fiches, '+(people.filter(p=>p.source==='firestore-created').length)+' nieuwe Firestore-fiches, '+(people.filter(p=>p.source==='firestore-overlay').length)+' bijgewerkte fiches.');
+    // Laad- en databroncijfers alleen voor server-geverifieerd Bestuur.
+    // Handelingen, toegangsproblemen en echte foutmeldingen blijven zichtbaar.
+    if(data.canViewPersonnelDiagnostics!==true)$('notice').hidden=true;
     if(data.limited||data.pendingLimited)
       notice('De veilige laadlimiet van personeelsgegevens is bereikt. Vraag een beheerder om controle.',true);
     if(!$('newPanel').hidden)updateNewDuplicateWarning();
@@ -2674,4 +2678,5 @@ async function start(){
     authModule.onAuthStateChanged(auth,()=>load().catch(e=>notice(e.message,true)));
   }catch(e){notice('Kan personeelsbeheer niet starten: '+e.message,true)}
 }start();
-</script></body></html>
+</script><script defer src="/bpd-navigation.js"></script>
+</body></html>

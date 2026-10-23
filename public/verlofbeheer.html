@@ -19,6 +19,7 @@ box-shadow:0 18px 75px #0e183666;background:#fff;color:#4c1220}
 .dialog-body{padding:23px}.dialog-body h2{color:#982439;margin:0 0 12px}
 .dialog-body p{color:#64283a;overflow-wrap:anywhere}.dialog-actions{display:flex;justify-content:flex-end;margin-top:16px}.hidden{display:none!important}.error{background:#fff0f0;color:#9a1d2b;border-radius:8px;padding:13px}.notice{background:#edf2ff;color:#214482;border-radius:8px;padding:12px;margin:12px 0}.record{padding:14px 0;border-top:1px solid #e8edf5;display:flex;justify-content:space-between;align-items:flex-start;gap:18px}.record:first-child{border-top:0}.record p{margin:6px 0}.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat>div{background:#f2f5fb;padding:15px;border-radius:9px}.stat strong{font-size:22px;display:block}.warn{background:#fff8e6;padding:12px;border-radius:8px;color:#785411;margin:12px 0}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}@media(max-width:750px){.grid,.stat{grid-template-columns:1fr}.record{display:block}.record .actions{margin-top:12px}}
 </style>
+<link rel="stylesheet" href="/bpd-navigation.css">
 </head>
 <body>
 <header><div><strong>🛡️ BelgiëPD</strong> <span style="opacity:.7">/ Centraal verlofbeheer</span></div><div class="actions"><a href="/">← Dashboard</a><button id="login">Aanmelden</button></div></header>
@@ -174,4 +175,5 @@ async function init(){try{const r=await fetch('/api/client-config',{cache:'no-st
 }catch(err){tell('Aanmelding niet beschikbaar: '+err.message,true)}}
 init();
 </script>
+<script defer src="/bpd-navigation.js"></script>
 </body></html>
