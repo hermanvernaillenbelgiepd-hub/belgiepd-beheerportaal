@@ -19,6 +19,22 @@ function publicPerson(p){
     status:p.status,source:p.source||'google-sheets'};
 }
 export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){
+  // Openbare personeelslijst: alleen publiek zichtbare RP-basisvelden.
+  // Discord-identiteit, audit, opleidingen, opmerkingen en rechten nooit openbaar maken.
+  app.get('/api/dossiercentrum/public-roster',async(_req,res)=>{
+    if(!enabled())return respond(res,503,'Personeelslijst nog niet beschikbaar');
+    try{
+      const snap=await getSnapshot();
+      const rows=snap.data.filter(p=>validPersonnelKey(p.dept,p.personId))
+        .map(p=>({
+          dept:p.dept,name:String(p.name||'').slice(0,120),
+          call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,80),
+          status:String(p.status||'').slice(0,50),personnel:true
+        })).sort((a,b)=>a.dept.localeCompare(b.dept,'nl')||
+          a.call.localeCompare(b.call,'nl',{numeric:true}));
+      return res.json({rows,sourceStale:snap.stale===true,public:true});
+    }catch(e){return failed(res,e)}
+  });
   app.get('/api/dossiercentrum/status',(_req,res)=>
     res.json({enabled:enabled(),readOnly:true,personnelOnly:true}));
   app.get('/api/dossiercentrum/overview',requireUser,async(req,res)=>{
