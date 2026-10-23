@@ -230,11 +230,14 @@ function renderHistory(){
     history.append(div);
   }
 }
-function detailLinks(data){
+function detailLinks(data,person){
   const links=$('detailLinks');links.replaceChildren();
-  if(!data.personnel)return;
-  const a=node('a','Open personeelsbeheer');
-  a.href='/personeelsbeheer.html';a.rel='noopener';
+  if(!data.personnel||!/^[0-9]{15,22}$/.test(String(person?.discordId||'')))return;
+  const a=node('a','Open volledige personeelsfiche · observaties & sancties');
+  a.href='/personeelsbeheer.html?'+new URLSearchParams({
+    dept:person.dept,discordId:person.discordId
+  }).toString();
+  a.rel='noopener';
   links.append(a);
 }
 async function openDossier(r){
@@ -257,7 +260,7 @@ async function openDossier(r){
       item(staff,'Gegevensbron',p.source==='firestore-created'?'Firestore':p.source==='firestore-overlay'?'Firestore-wijziging':'Google Sheets');
     }else staff.textContent='Geen zichtbare personeelsfiche.';
     timelineEntries=Array.isArray(data.timeline)?data.timeline:[];
-    renderHistory();detailLinks(data);
+    renderHistory();detailLinks(data,r);
     $('detail').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){if(shown===active){$('staff').textContent='';$('history').textContent='';message(e.message,true)}}
 }
