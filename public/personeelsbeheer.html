@@ -402,6 +402,11 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 </form>
 <h3>Observaties en sancties</h3>
 <p class="subtle">Formele observaties en sancties staan in het bestaande beveiligde registratieregister. Maatregelen en rolbeperkingen worden niet automatisch gewijzigd door een notitie.</p>
+<div id="formalWriteActions" class="controls" hidden>
+  <button id="addFormalObservation" type="button" hidden>+ Observatie toevoegen</button>
+  <button id="addFormalSanction" type="button" hidden>+ Sanctie toevoegen</button>
+</div>
+<p id="formalWriteStatus" class="subtle" role="status">Invoerrechten voor deze dienst worden gecontroleerd…</p>
 <form id="staffFormalForm" class="inline-form" hidden>
 <h3 id="staffFormalFormTitle">Nieuwe observatie of sanctie</h3>
 <p id="staffFormalPolicy" class="subtle">Rechten worden gecontroleerd via de bestaande beveiligde registratie-API.</p>
@@ -1287,18 +1292,40 @@ function openFormalEdit(row){
   $('formalNotice').textContent='De vorige sanctie blijft in het beveiligde auditlog bewaard.';
   $('staffFormalForm').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+function startFormalRegistration(type){
+  if(!selected||!formalPermissions?.writesEnabled)return;
+  const valid=type==='observatie'?
+    formalPermissions.observationDepartments?.includes(selected.dept):
+    formalPermissions.sanctionDepartments?.includes(selected.dept);
+  if(!valid||!formalPermissions.actor)return;
+  $('formalType').disabled=false;
+  clearFormalEdit();
+  $('formalType').value=type;
+  updateFormalFields();
+  $('staffFormalForm').hidden=false;
+  $('formalDetails').focus();
+  $('staffFormalForm').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+$('addFormalObservation').onclick=()=>startFormalRegistration('observatie');
+$('addFormalSanction').onclick=()=>startFormalRegistration('sanctie');
 async function loadStaffFormalPermissions(p,key){
   formalPermissions=null;formalRecords=[];formalEditId=null;
   $('staffFormalForm').hidden=true;
+  $('formalWriteActions').hidden=true;
+  $('addFormalObservation').hidden=true;
+  $('addFormalSanction').hidden=true;
+  $('formalWriteStatus').textContent='Invoerrechten controleren…';
   try{
     const data=await request('/api/registrations/subjects');
     if(!sameDossier(key))return;
     formalPermissions=data;
-    const canObs=data.writesEnabled===true&&data.actor&&
-      data.observationDepartments?.includes(p.dept);
-    const canSan=data.writesEnabled===true&&data.actor&&
-      data.sanctionDepartments?.includes(p.dept);
-    $('staffFormalForm').hidden=!(canObs||canSan);
+    const canObs=Boolean(data.writesEnabled===true&&data.actor&&
+      data.observationDepartments?.includes(p.dept));
+    const canSan=Boolean(data.writesEnabled===true&&data.actor&&
+      data.sanctionDepartments?.includes(p.dept));
+    $('formalWriteActions').hidden=!(canObs||canSan);
+    $('addFormalObservation').hidden=!canObs;
+    $('addFormalSanction').hidden=!canSan;
     $('formalType').replaceChildren();
     if(canObs)$('formalType').append(option('observatie','Observatie'));
     if(canSan)$('formalType').append(option('sanctie','Sanctie'));
@@ -1309,10 +1336,20 @@ async function loadStaffFormalPermissions(p,key){
       input.type='checkbox';input.value=reason;label.append(input,document.createTextNode(reason));
       $('formalReasons').append(label);
     }
-    if(canObs||canSan)clearFormalEdit();
+    if(canObs||canSan){
+      clearFormalEdit();
+      $('formalWriteStatus').textContent='Kies Observatie of Sanctie om rechtstreeks in dit personeelsdossier te registreren. De server bewaart je identiteit en historiek.';
+    }else{
+      $('formalWriteStatus').textContent=!data.writesEnabled?
+        'Registraties zijn momenteel uitgeschakeld in deze omgeving.':
+        !data.actor?
+        'Je eigen Discord-identiteit is niet gekoppeld aan een personeelsfiche. In TEST kun je een fictief dossier invullen met een recent geverifieerde Discord-kaderlogin, mits je die dienst mag beheren.':
+        'Je kunt deze discipline alleen bekijken: je hebt geen schrijfrechten voor observaties of sancties.';
+    }
   }catch(e){
     if(sameDossier(key)){
       $('staffFormalForm').hidden=true;
+      $('formalWriteStatus').textContent='Invoerrechten niet beschikbaar: '+e.message;
       $('formalNotice').textContent='Formele registratie niet beschikbaar: '+e.message;
     }
   }
@@ -1761,6 +1798,9 @@ async function loadStaffDossier(p){
   $('staffDiscordRoles').textContent='Discord-verificatie controleren…';
   $('staffLeave').textContent='Verlofperiodes laden…';
   $('staffFormalRecords').textContent='Formele registraties laden…';
+  $('staffFormalForm').hidden=true;
+  $('formalWriteActions').hidden=true;
+  $('formalWriteStatus').textContent='Invoerrechten controleren…';
   $('staffManualLeaveForm').hidden=true;
   $('staffCaseForm').hidden=true;
   $('staffProfileForm').hidden=true;
