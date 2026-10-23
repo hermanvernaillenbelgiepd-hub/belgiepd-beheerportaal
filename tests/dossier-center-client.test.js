@@ -22,21 +22,22 @@ test('Dossier controls offer authorised filters and paginated results',()=>{
   for(const id of ['query','department','historyKind','nextPage','previousPage','stats'])
     assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
   assert.ok(html.includes("from '/dossiercentrum-view.js'"));
-  assert.ok(html.includes('detailLinks(data)'));
+  assert.ok(html.includes('inlinePersonnelFrame'));
   assert.equal(html.includes('burgerdossier'),false);
   assert.equal(html.includes('sollicitatiebeheer'),false);
   assert.equal(/\.innerHTML\s*=/.test(html),false);
 });
 
 
-test('The MAIN dossier list shows callsign, grade and status in separate columns',()=>{
+test('TEST openbare personeelslijst toont roepnummer, graad en status, maar geen Discord-ID',()=>{
   const html=readFileSync(new URL('../public/dossiercentrum.html',import.meta.url),'utf8');
   const view=readFileSync(new URL('../public/dossiercentrum-view.js',import.meta.url),'utf8');
-  assert.match(html,/<th>Naam<\/th><th>Roepnummer<\/th><th>Graad<\/th><th>Dienst<\/th><th>Status<\/th><th>Discord-ID<\/th><th>Actie<\/th>/);
+  assert.match(html,/<th>Naam<\/th><th>Roepnummer<\/th><th>Graad<\/th><th>Dienst<\/th><th>Status<\/th><th>Fiche<\/th>/);
+  assert.doesNotMatch(html,/<th>Discord-ID<\/th>/);
   assert.ok(html.includes("node('span',r.call||'—','dossier-callsign')"));
   assert.ok(html.includes("node('span',r.rank||'—','dossier-rank')"));
   assert.ok(html.includes("node('span',r.status||'—','dossier-status')"));
-  assert.ok(html.includes("cell.colSpan=7"));
+  assert.ok(html.includes("cell.colSpan=6"));
   assert.ok(view.includes("[r.name,r.call,r.rank,r.status,r.discordId]"));
   assert.equal(/\.innerHTML\s*=/.test(html),false);
 });
