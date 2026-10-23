@@ -70,7 +70,15 @@ export function validateEntry(raw){
   const type=raw?.type;
   if(!['observatie','sanctie'].includes(type))throw new Error('Onbekend registratietype');
   const common={type,details:str(raw.details,6000,true),eventDate:date(raw.eventDate),eventTime:time(raw.eventTime),otherPlayers:str(raw.otherPlayers,1000),evidenceUrl:url(raw.evidenceUrl)};
-  if(type==='observatie')return {...common};
+  if(type==='observatie'){
+    // Legacy clients may omit the score; this dashboard requires it in UI.
+    // Do not reject older incoming observations without a score.
+    const supplied=raw?.score!==undefined&&raw?.score!==null&&String(raw.score).trim()!=='';
+    const score=supplied?Number(raw.score):null;
+    if(supplied&&(!Number.isInteger(score)||score<1||score>10))
+      throw new Error('Observatiescore moet tussen 1 en 10 liggen');
+    return {...common,score};
+  }
   const severity=Number(raw.severity);
   if(!Number.isInteger(severity)||severity<1||severity>10)throw new Error('Ernst moet tussen 1 en 10 liggen');
   const kind=str(raw.sanctionType,100,true);
