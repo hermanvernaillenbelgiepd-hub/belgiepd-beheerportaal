@@ -2241,6 +2241,30 @@ $('staffCaseForm').onsubmit=async event=>{
     notice('Dossierregistratie opgeslagen in het bestaande kaderregister en het dynamische weekrapport.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
+// Centrale opslagknop: de oorspronkelijke validators, transactie-API's,
+// audiethistoriek en weekrapportkoppeling blijven ongewijzigd.
+for(const formId of registrationForms){
+  const form=$(formId),originalSubmit=form.onsubmit;
+  if(typeof originalSubmit!=='function')continue;
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    const kind=$('registrationKind').value;
+    if(registrationSaving||form.hidden||
+        registrationFormFor(kind)!==formId||
+        !availablePersonnelRegistrationKinds().some(([k])=>k===kind))
+      return;
+    registrationSaving=true;
+    $('registrationSubmit').disabled=true;
+    $('registrationKind').disabled=true;
+    try{
+      await originalSubmit.call(form,event);
+    }finally{
+      registrationSaving=false;
+      $('registrationSubmit').disabled=false;
+      $('registrationKind').disabled=false;
+    }
+  };
+}
 async function showPerson(p){
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
