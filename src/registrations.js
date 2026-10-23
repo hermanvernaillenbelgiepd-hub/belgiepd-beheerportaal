@@ -1,4 +1,4 @@
-import { policeKader } from './normalize.js';
+import { policeKader,SPECIALTY_LABELS } from './normalize.js';
 // Autorisatie en validatie: geen client-claims over rol of de identiteit van de indiener.
 export const ALLOWED_ROLES = ['basiskader','middenkader','officierenkader','korpsleiding','burger','beheerder'];
 export const SANCTION_REASONS = [
@@ -83,7 +83,25 @@ export function validateEntry(raw){
   if(!Number.isInteger(severity)||severity<1||severity>10)throw new Error('Ernst moet tussen 1 en 10 liggen');
   const kind=str(raw.sanctionType,100,true);
   if(!SANCTION_TYPES.includes(kind)) throw new Error('Ongeldig sanctietype');
-  return {...common,sanctionType:kind,explanation:str(raw.explanation,2000),reasons:reasons(raw.reasons),reasonOther:raw.reasons.includes('Anders')?str(raw.reasonOther,500,true):'',severity,cfxName:str(raw.cfxName,120),status:'actief'};
+  let restrictedSpecialties=[],endDate='';
+  if(kind==='Tijdelijke beperking'){
+    const allowed=SPECIALTY_LABELS[raw?.dept]||[];
+    const values=raw?.restrictedSpecialties;
+    if(!Array.isArray(values)||values.length<1||values.length>allowed.length||
+      values.some(v=>typeof v!=='string'||!allowed.includes(v))||
+      new Set(values).size!==values.length)
+      throw new Error('Selecteer minstens één geldige specialisatie uit deze hulpdienst');
+    restrictedSpecialties=values;
+    endDate=date(raw?.endDate);
+    if(endDate<common.eventDate)
+      throw new Error('Einddatum tijdelijke beperking mag niet vóór de gebeurtenisdatum liggen');
+  }else if((Array.isArray(raw?.restrictedSpecialties)&&raw.restrictedSpecialties.length>0)||
+      (raw?.endDate!==undefined&&raw?.endDate!==null&&String(raw.endDate).trim()!=='')){
+    throw new Error('Specialisatie en einddatum zijn alleen toegestaan bij een tijdelijke beperking');
+  }
+  return {...common,sanctionType:kind,explanation:str(raw.explanation,2000),
+    reasons:reasons(raw.reasons),reasonOther:raw.reasons.includes('Anders')?str(raw.reasonOther,500,true):'',
+    severity,cfxName:str(raw.cfxName,120),restrictedSpecialties,endDate,status:'actief'};
 }
 export function validateAmend(raw){
   if(raw?.status && !['actief','ingetrokken'].includes(raw.status)) throw new Error('Ongeldige status');
