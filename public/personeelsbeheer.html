@@ -494,6 +494,113 @@ function openDossierTab(name){
   if(dossierTab!=='overzicht'&&!$('panel').hidden&&pane)
     pane.scrollIntoView({behavior:'smooth',block:'start'});
 }
+// Registratiehub: client toont uitsluitend door bestaande beveiligde API's
+// toegestane opties. POST/PATCH blijven in originele onsubmit-handlers.
+// Type 'case:' is altijd een managementnotitie en wijzigt op zichzelf geen
+// echte promotie, naam, verlof of Discord-bevoegdheid.
+let registrationManualLeave=false,registrationSpecialty=false,
+  registrationSaving=false,registrationSubjectKey='';
+const registrationForms=[
+  'staffFormalForm','staffCaseForm','staffTrainingForm',
+  'staffManualLeaveForm','specialtyEdit','functionChangeForm'
+];
+function registrationFormFor(kind){
+  if(['observatie','sanctie'].includes(kind))return 'staffFormalForm';
+  if(kind.startsWith('case:'))return 'staffCaseForm';
+  return ({training:'staffTrainingForm',leave:'staffManualLeaveForm',
+    specialty:'specialtyEdit',function:'functionChangeForm'})[kind]||null;
+}
+function availablePersonnelRegistrationKinds(){
+  const dept=selected?.dept;
+  if(!dept)return [];
+  const kinds=[];
+  if(formalPermissions?.writesEnabled===true&&formalPermissions.actor){
+    if(formalPermissions.observationDepartments?.includes(dept))
+      kinds.push(['observatie','Observatie']);
+    if(formalPermissions.sanctionDepartments?.includes(dept))
+      kinds.push(['sanctie','Sanctie']);
+  }
+  if(casePermissions?.writesEnabled===true&&casePermissions.actor){
+    for(const type of casePermissions.typesByDepartment?.[dept]||[]){
+      const text=staffCaseLabels[type]||type;
+      kinds.push(['case:'+type,
+        type==='verlof'?'Verlofnotitie (geen verlofaanvraag)':
+        type==='opleiding'?'Opleidingsnotitie (geen afgeronde opleiding)':text]);
+    }
+  }
+  if(trainingRights?.trainingWritesEnabled===true&&
+      trainingRights.permissions?.[dept]?.['training.log']===true)
+    kinds.push(['training','Opleiding registreren']);
+  if(registrationManualLeave)kinds.push(['leave','Verlofperiode manueel inschrijven']);
+  if(registrationSpecialty)kinds.push(['specialty','Specialisatie wijzigen']);
+  if(functionCanEdit)kinds.push(['function','Functie wijzigen']);
+  return kinds;
+}
+function displaySelectedRegistration(){
+  const kind=$('registrationKind').value;
+  const available=availablePersonnelRegistrationKinds();
+  const permitted=available.some(([k])=>k===kind);
+  for(const id of registrationForms)$(id).hidden=true;
+  $('formalWriteStatus').hidden=!['observatie','sanctie'].includes(kind);
+  $('registrationSubmit').hidden=!permitted;
+  if(!permitted)return;
+  const formId=registrationFormFor(kind);
+  if(!formId)return;
+  if(kind.startsWith('case:')){
+    $('staffCaseType').value=kind.slice(5);
+    updateStaffCaseFields();
+  }else if(kind==='observatie'||kind==='sanctie'){
+    if(formalEditId===null){
+      $('formalType').disabled=false;
+      $('formalType').value=kind;
+      updateFormalFields();
+    }
+  }else if(kind==='training'&&trainingEditId===null){
+    // Wijzigmodus wordt enkel vanuit een bestaande opleidingsregistratie geopend.
+    $('staffTrainingReason').required=false;
+  }
+  $(formId).hidden=false;
+  $('registrationSubmit').textContent=
+    (kind==='sanctie'&&formalEditId!==null)||(kind==='training'&&trainingEditId!==null)?
+      'Wijziging met audit opslaan':'Registratie opslaan';
+  $('registrationKindHint').textContent='Registratie voor '+selected.name+
+    ' · '+(selected.call||selected.discordId)+
+    ' · '+(selected.dept||'')+'; jouw serverrechten bepalen wat bewaard mag worden.';
+}
+function refreshPersonnelRegistrationOptions(){
+  const pick=$('registrationKind');
+  if(!pick)return;
+  const kinds=availablePersonnelRegistrationKinds(),old=pick.value;
+  pick.replaceChildren(...(kinds.length?kinds.map(([key,label])=>option(key,label)):
+    [option('','Geen invulbevoegdheid voor dit personeelsdossier')]));
+  const current=kinds.some(([key])=>key===old)?old:kinds[0]?.[0]||'';
+  pick.value=current;
+  $('formalInlineArea').hidden=!kinds.length;
+  displaySelectedRegistration();
+}
+function choosePersonnelRegistration(kind,focus=false){
+  const select=$('registrationKind');
+  if(!availablePersonnelRegistrationKinds().some(([key])=>key===kind))return false;
+  select.value=kind;
+  if(kind==='observatie'||kind==='sanctie'){
+    $('formalType').disabled=false;
+    clearFormalEdit();
+  }
+  displaySelectedRegistration();
+  if(focus)$('formalInlineArea').scrollIntoView({behavior:'smooth',block:'start'});
+  return true;
+}
+function submitSelectedRegistration(){
+  if(registrationSaving)return;
+  const kind=$('registrationKind').value;
+  // UI-optie alleen geldig wanneer actuele API-capabilities overeenkomen.
+  if(!availablePersonnelRegistrationKinds().some(([key])=>key===kind))
+    return notice('Geen actuele registratierechten voor deze categorie.',true);
+  const formId=registrationFormFor(kind),form=formId?$(formId):null;
+  if(!form||form.hidden)return;
+  if(!form.reportValidity())return;
+  form.requestSubmit();
+}
 function setupDossierTabs(){
   const panes={};
   for(const [key,label] of Object.entries(dossierTabNames)){
@@ -668,7 +775,6 @@ function setupDossierTabs(){
   $('registrationFields').prepend($('formalWriteStatus'));
   $('registrationKind').onchange=()=>displaySelectedRegistration();
   $('registrationSubmit').onclick=submitSelectedRegistration;
-  refreshPersonnelRegistrationOptions();
   // De oude controleknoppen blijven intern beschikbaar maar niet in het blad.
   // Eén klik sluit de aanvullende detailrubriek zonder de fiche te verbergen.
   for(const [key,pane] of Object.entries(panes)){
