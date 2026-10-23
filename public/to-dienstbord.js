@@ -142,12 +142,31 @@ function busyMap(board){
 async function request(path,options={}){
   const user=auth?.currentUser,epoch=authEpoch;
   if(!user)throw new Error('Meld je eerst aan met je portaalaccount.');
-  const token=await user.getIdToken();
-  if(epoch!==authEpoch||auth?.currentUser?.uid!==user.uid)throw Object.assign(new Error('Aanmeldsessie gewijzigd.'),{obsolete:true});
-  const response=await fetch(path,{...options,headers:{Accept:'application/json',Authorization:'Bearer '+token,...(options.body?{'Content-Type':'application/json'}:{})},cache:'no-store',signal:AbortSignal.timeout(15000)});
-  const payload=await response.json().catch(()=>({}));
-  if(epoch!==authEpoch||auth?.currentUser?.uid!==user.uid)throw Object.assign(new Error('Aanmeldsessie gewijzigd.'),{obsolete:true});
-  if(!response.ok)throw Object.assign(new Error(payload.error||'Het dienstbord is momenteel niet beschikbaar.'),{status:response.status});
+  const assertCurrent=()=>{
+    if(epoch!==authEpoch||auth?.currentUser?.uid!==user.uid)
+      throw Object.assign(new Error('Aanmeldsessie gewijzigd.'),{obsolete:true});
+  };
+  const execute=async forceRefresh=>{
+    const token=await user.getIdToken(forceRefresh);
+    assertCurrent();
+    const response=await fetch(path,{...options,headers:{
+      Accept:'application/json',Authorization:'Bearer '+token,
+      ...(options.body?{'Content-Type':'application/json'}:{})
+    },cache:'no-store',signal:AbortSignal.timeout(15000)});
+    const payload=await response.json().catch(()=>({}));
+    assertCurrent();
+    return {response,payload};
+  };
+  let {response,payload}=await execute(false);
+  // A cached Firebase ID-token can be invalidated while the browser remains
+  // signed in. Retry ONCE using a newly issued token, never retry a 403 grant.
+  if(response.status===401)({response,payload}=await execute(true));
+  if(!response.ok){
+    const message=response.status===401?
+      'Je aanmeldsessie kon niet worden bevestigd. Klik op Discord opnieuw verifiëren om opnieuw aan te melden.':
+      payload.error||'Het dienstbord is momenteel niet beschikbaar.';
+    throw Object.assign(new Error(message),{status:response.status});
+  }
   return payload;
 }
 async function refreshShortcuts(){
