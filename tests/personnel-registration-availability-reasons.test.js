@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {Script} from 'node:vm';
+const page=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+const css=readFileSync(new URL('../public/personnel-onepage-test.css',import.meta.url),'utf8');
+test('Keuzelijst blijft gefilterd op geverifieerde rol en dienstrechten',()=>{
+ const src=page.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+ assert.ok(src);
+ assert.doesNotThrow(()=>new Script(src.replace(/^import [^\n]*\n/gm,'')));
+ assert.match(page,/formalPermissions\?\.writesEnabled===true&&formalPermissions\.actor/);
+ assert.match(page,/casePermissions\?\.writesEnabled===true&&casePermissions\.actor/);
+ assert.match(page,/trainingRights\?\.trainingWritesEnabled===true/);
+ assert.match(page,/registrationManualLeave/);
+ assert.match(page,/registrationSpecialty/);
+ assert.match(page,/functionCanEdit/);
+});
+test('Niet-beschikbare modules tonen de werkelijke serverreden zonder verborgen rechten toe te voegen',()=>{
+ assert.match(page,/id="registrationAccessHint"/);
+ assert.match(page,/registrationModuleStates\.cases=!overview\.writesEnabled/);
+ assert.match(page,/!overview\.actor\?/);
+ assert.match(page,/registrationModuleStates\.training=!data\.trainingWritesEnabled/);
+ assert.match(page,/registrationModuleStates\.specialty=registrationSpecialty/);
+ assert.match(page,/registrationModuleStates\.functions=functionCanEdit/);
+ assert.match(page,/registrationModuleStates\.cases='ophalen mislukt'/);
+ assert.match(page,/registrationModuleStates\.training='ophalen mislukt'/);
+ assert.match(page,/registrationModuleStates\.specialty='ophalen mislukt'/);
+ assert.match(page,/registrationModuleStates\.functions='ophalen mislukt'/);
+ assert.match(page,/\$\('registrationAccessHint'\)\.textContent=/);
+ assert.match(css,/\.registration-access-hint/);
+});
