@@ -225,7 +225,12 @@ async function loadPersonal(){
   finally{btn.disabled=false}
 }
 $('personalReload').onclick=()=>{loadedFor=null;loadPersonal();loadLeave()};
-const leaveNames={pending:'In behandeling',approved:'Goedgekeurd',rejected:'Afgewezen'};
+const leaveNames={pending:'In behandeling',approved:'Goedgekeurd',rejected:'Geweigerd',withdrawn:'Ingetrokken'};
+const leaveActionNames={submitted:'Aanvraag ingediend',
+  automatic_approved:'Automatisch goedgekeurd',korpsleiding_vrijgesteld:'Automatisch geregistreerd (Korpsleiding)',
+  approved:'Goedgekeurd',rejected:'Geweigerd',board_override:'Beslissing door Bestuur herzien',
+  withdrawn:'Ingetrokken door aanvrager',manual_approved:'Handmatig goedgekeurd'};
+let mayWithdrawLeaves=false;
 function leaveDays(){
   const start=$('leaveStart').value,end=$('leaveEnd').value;
   if(!start||!end)return 0;
@@ -261,10 +266,50 @@ function renderLeaves(items){
     const heading=document.createElement('strong');
     heading.textContent=(x.startDate||'?')+' tot en met '+(x.endDate||'?');
     const badge=document.createElement('span');badge.className='leave-badge '+(
-      ['pending','approved','rejected'].includes(x.status)?x.status:'');
+      ['pending','approved','rejected','withdrawn'].includes(x.status)?x.status:'');
     badge.textContent=leaveNames[x.status]||x.status||'Status onbekend';heading.append(badge);
     const sub=document.createElement('small');sub.textContent=Number(x.days||0)+' kalenderdagen';
-    row.append(heading,sub);root.append(row);
+    row.append(heading,sub);
+    if(x.canWithdraw&&mayWithdrawLeaves){
+      const cancel=document.createElement('button');cancel.type='button';
+      cancel.className='secondary leave-cancel';cancel.textContent='Verlof intrekken';
+      cancel.title='De aanvraag en eerdere beslissingen blijven bewaard in dossier en weekrapport';
+      cancel.onclick=async()=>{
+        if(!window.confirm('Verlof van '+x.startDate+' tot '+x.endDate+
+          ' intrekken? De aanvraag en alle beslissingen blijven in je dossier en weekrapport gelogd.'))return;
+        cancel.disabled=true;
+        try{
+          await leaveRequest('/api/leave/requests/'+encodeURIComponent(x.id)+'/withdraw',{reason:''});
+          await loadLeave();
+          $('leaveStatus').textContent='Verlof ingetrokken. De aanvraag, eerdere beslissing en intrekking blijven geregistreerd.';
+        }catch(error){$('leaveStatus').textContent='Intrekking mislukt: '+error.message;cancel.disabled=false}
+      };
+      row.append(cancel);
+    }
+    const history=document.createElement('details');history.className='leave-history';
+    const summary=document.createElement('summary');summary.textContent='Historiek van aanvraag en beslissingen';
+    const list=document.createElement('div');list.className='leave-history-list';
+    history.append(summary,list);
+    history.addEventListener('toggle',async()=>{
+      if(!history.open||history.dataset.loaded==='true')return;
+      list.textContent='Historiek ophalen…';
+      try{
+        const audit=await leaveRequest('/api/leave/requests/'+encodeURIComponent(x.id)+'/history');
+        if(!history.isConnected||!history.open)return;
+        list.replaceChildren();
+        if(!audit.events?.length)list.textContent='Geen auditregels beschikbaar voor deze aanvraag.';
+        for(const e of audit.events||[]){
+          const item=document.createElement('div');item.className='leave-history-item';
+          const who=e.actorType==='system'?'Automatisch':e.actorType==='self'?'Jijzelf':'Bevoegd kader/Bestuur';
+          item.textContent=(e.at?new Date(e.at).toLocaleString('nl-BE')+' · ':'')+
+            (leaveActionNames[e.action]||e.action)+' · '+who;
+          list.append(item);
+        }
+        if(audit.limited)list.append(document.createTextNode(' Alleen de eerste 75 gebeurtenissen worden getoond.'));
+        history.dataset.loaded='true';
+      }catch(error){list.textContent='Historiek niet beschikbaar: '+error.message}
+    });
+    row.append(history);root.append(row);
   }
 }
 async function loadLeave(){
@@ -276,10 +321,11 @@ async function loadLeave(){
       leaveRequest('/api/leave/me'),leaveRequest('/api/leave/requests')
     ]);
     if(!Array.isArray(leaves.mine))throw Error('Ongeldig antwoord van verlofbeheer');
+    mayWithdrawLeaves=context.writesEnabled===true;
     renderLeaves(leaves.mine);
     $('leaveForm').hidden=context.writesEnabled!==true;
     $('leaveStatus').textContent=context.writesEnabled===true?
-      'Je kunt hier verlof aanvragen en de status van je eigen aanvragen bekijken.':
+      'Je kunt verlof aanvragen, je aanvragen intrekken en alle beslissingen in de historiek bekijken.':
       'Verlof aanvragen is momenteel uitgeschakeld; je kunt je eerdere aanvragen wel bekijken.';
     if(leaves.limited)$('leaveStatus').textContent+=' Het overzicht is beperkt tot maximaal 100 aanvragen.';
   }catch(e){
