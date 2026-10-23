@@ -8,7 +8,7 @@ const ID=/^\d{15,22}$/;
 const err=(res,code,msg)=>res.status(code).json({error:msg});
 const iso=value=>value?.toDate?.()?.toISOString?.()||null;
 const txt=(v,n)=>typeof v==='string'?v.slice(0,n):'';
-const actorSafe=a=>({name:txt(a.name,120),call:txt(a.call,35),rank:txt(a.rank,120),discordId:a.discordId});
+const actorSafe=a=>({name:txt(a.name,120),call:txt(a.call,35),rank:txt(a.rank,120),discordId:a.personId||a.discordId});
 const latestSubjects=async getSnapshot=>{
   const snapshot=await getSnapshot();
   if(snapshot.stale)throw Object.assign(new Error('Centrale personeelslijst tijdelijk verouderd'),{status:503});
