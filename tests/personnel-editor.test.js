@@ -105,7 +105,7 @@ test('Verified Board reads all services but only operational leadership can edit
  assert.ok(server.includes("req.bpd.uid==='discord:'+id"));
  assert.ok(server.includes('verifyBoardDiscordRole('));
  assert.ok(server.includes('activeBoardAppointment('));
- assert.ok(route.includes('if(!identityAllowed&&(proposed.name!==subject.name||proposed.call!==subject.call))'));
+ assert.ok(route.includes('if(!canEditGeneralPersonnelInfo(req.bpd,subject))'));
  assert.ok(ui.includes("'pName').disabled=!canChangeIdentity"));
 });
 
