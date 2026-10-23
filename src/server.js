@@ -377,8 +377,12 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
       ?burgerDossierScope(req.bpd,member?.exists?member.data():null,
           process.env.DISCORD_GUILD_ID):{read:false,write:false,council:false};
     req.bpd.burgerDossierAccess=burgerScope;
-    req.bpd.dossierNativeDepartments=burgerScope.write?[...native,'burger']:native;
-    req.bpd.dossierAllowedDepartments=burgerScope.read?[...scope.departments,'burger']:scope.departments;
+    req.bpd.dossierNativeDepartments=native;
+    req.bpd.dossierAllowedDepartments=scope.departments;
+    // Een geverifieerde Burgerraad/Politie-Korpsleiding krijgt alleen de
+    // afzonderlijke Burger-scope, zonder de bestaande dienstscopes te wijzigen.
+    if(burgerScope.write)req.bpd.dossierNativeDepartments=[...native,'burger'];
+    if(burgerScope.read)req.bpd.dossierAllowedDepartments=[...scope.departments,'burger'];
     req.bpd.dossierManageDepartments=scope.manageDepartments;
     req.bpd.dossierFullDepartments=scope.fullDepartments;
     req.bpd.dossierTester=scope.tester;
