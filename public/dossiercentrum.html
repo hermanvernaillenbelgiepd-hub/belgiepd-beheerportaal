@@ -191,6 +191,12 @@ function renderMyServices(){
     button.onclick=()=>selectDepartment(dept);
     root.append(button);
   }
+  if(permitted.includes('burger')){
+    const reportButton=node('button','Burger-weekrapporten →');
+    reportButton.type='button';
+    reportButton.onclick=()=>window.location.assign('/burger-fiche.html?reports=1');
+    root.append(reportButton);
+  }
 }
 function closeDossier(){
   shown=null;timelineEntries=[];$('detail').hidden=true;
