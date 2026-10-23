@@ -15,12 +15,29 @@ export function installTORadioRoutes(app,{
   // elkaars Sonoran-weergavenamen en wijzigingslogs niet.
   const labels=()=>firestore().collection('bpd_radio_label_overrides_main');
   const audit=()=>firestore().collection('bpd_radio_label_audit_main');
+  // Sonoran blijft elke vijf seconden zichtbaar, maar portaallabels worden
+  // gezamenlijk voor maximaal 60 seconden gecachet om Firestore-quota te sparen.
+  const aliasCache={expires:0,items:null,pending:null};
+  async function cachedAliases(){
+    if(aliasCache.items!==null&&now()<aliasCache.expires)return aliasCache.items;
+    if(!aliasCache.pending){
+      aliasCache.pending=(async()=>{
+        const rows=await labels().limit(201).get();
+        if(rows.size>200)throw Error('Te veel radioweergavenaamcorrecties, administratieve controle nodig');
+        return rows.docs.map(d=>({id:d.id,...d.data()}));
+      })();
+    }
+    try{
+      const items=await aliasCache.pending;
+      aliasCache.items=items;aliasCache.expires=now()+60000;
+      return items;
+    }finally{aliasCache.pending=null}
+  }
   async function withAliases(snapshot){
     if(!snapshot.connected||snapshot.stale)return {...snapshot,radioLabelWritesEnabled:false};
     if(!process.env.FIREBASE_PROJECT_ID)return {...snapshot,radioLabelWritesEnabled:false};
-    const rows=await labels().limit(201).get();
-    if(rows.size>200)throw Error('Te veel radioweergavenaamcorrecties, administratieve controle nodig');
-    return {...enrichRadioSnapshot(snapshot,rows.docs.map(d=>({id:d.id,...d.data()}))),radioLabelWritesEnabled:radioLabelWritesEnabled(process.env)};
+    const items=await cachedAliases();
+    return {...enrichRadioSnapshot(snapshot,items),radioLabelWritesEnabled:radioLabelWritesEnabled(process.env)};
   }
   let pollJob=Promise.resolve(),lastObservedAt=0;
   const sync=async snapshot=>{
@@ -92,6 +109,7 @@ export function installTORadioRoutes(app,{
         tx.create(history,{radioId:id,previousAlias:old,nextAlias:alias,
           byDiscordId:req.bpd.discordId||null,byUid:req.bpd.uid,at});
       });
+      aliasCache.items=null;aliasCache.expires=0;
       return res.json({saved:true,radioId:id,alias,sonoranSynced:false});
     }catch(e){console.error('Radio label correction:',e.code||e.message);return res.status(503).json({error:'Radioweergavenaam kon niet worden opgeslagen'});}
   });
