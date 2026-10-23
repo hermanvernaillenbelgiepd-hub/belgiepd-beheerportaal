@@ -90,14 +90,14 @@ fieldset{border:0;margin:0;padding:0}
     <div class="toolbar"><input type="search" id="filterInbox" placeholder="Zoek roepnummer, naam of observatie…" aria-label="Zoek in ontvangen observaties">
       <span id="inboxCount" class="counter"></span></div>
     <div id="inboxList" role="list"></div>
-    <p id="inboxLimit" class="helper" hidden>Alleen de 250 recentste registratiemeldingen zijn doorzocht. Oudere registraties blijven beschikbaar in de personeelsdossiers.</p>
+    <div class="buttons"><button id="olderInbox" type="button" class="secondary" hidden>Oudere observaties laden</button></div>
   </section>
   <section id="noAccess" class="card" hidden><h2>Geen toegang tot deze module</h2>
     <p id="accessReason">Deze module is bedoeld voor observaties door Basiskader of inzage door bevoegd kader en Bestuur.</p></section>
 </main>
 <script type="module">
 const $=id=>document.getElementById(id);
-let bridge=null,context=null,inboxData=[],submitBusy=false;
+let bridge=null,context=null,inboxData=[],inboxCursor=null,submitBusy=false;
 const setMessage=(msg,error=false)=>{
   $('message').className=msg?'status '+(error?'error':'success'):'status';
   $('message').textContent=msg;
@@ -182,15 +182,26 @@ function displayInbox(list){
     }
   }
 }
-async function loadInbox(){
+async function loadInbox(loadMore=false){
   if(!context?.canReview)return;
-  $('inboxList').textContent='Ontvangen observaties laden…';
+  const btn=$('olderInbox');btn.disabled=true;
+  if(!loadMore){inboxData=[];inboxCursor=null;$('inboxList').textContent='Ontvangen observaties laden…'}
   try{
-    const response=await api('/api/basic-observations/inbox');
-    inboxData=response.entries||[];
+    const url='/api/basic-observations/inbox'+(loadMore&&inboxCursor?
+      '?cursor='+encodeURIComponent(inboxCursor):'');
+    const response=await api(url);
+    const ids=new Set(inboxData.map(x=>x.subject?.discordId+':'+x.id));
+    for(const row of response.entries||[]){
+      const key=row.subject?.discordId+':'+row.id;
+      if(!ids.has(key)){inboxData.push(row);ids.add(key)}
+    }
+    inboxCursor=response.nextCursor||null;
+    btn.hidden=!inboxCursor;
     displayInbox(inboxData);
-    $('inboxLimit').hidden=!response.limited;
-  }catch(error){$('inboxList').textContent='Ontvangen observaties niet beschikbaar: '+error.message}
+  }catch(error){
+    if(!loadMore)$('inboxList').textContent='Ontvangen observaties niet beschikbaar: '+error.message;
+    else setMessage('Oudere observaties niet geladen: '+error.message,true);
+  }finally{btn.disabled=false}
 }
 async function loadContext(){
   const data=await api('/api/basic-observations/context');context=data;
@@ -202,7 +213,8 @@ async function loadContext(){
   if(data.canReview)await loadInbox();
 }
 $('clearBtn').onclick=()=>{clearForm();setMessage('')};
-$('refreshInbox').onclick=loadInbox;
+$('refreshInbox').onclick=()=>loadInbox();
+$('olderInbox').onclick=()=>loadInbox(true);
 $('filterInbox').oninput=()=>displayInbox(inboxData);
 $('observationForm').onsubmit=async event=>{
   event.preventDefault();if(submitBusy||!context?.canSubmit||!context.writesEnabled)return;
@@ -233,7 +245,7 @@ async function init(){
     onAuthStateChanged(auth,async user=>{
       setMessage('');
       if(!user){
-        context=null;inboxData=[];$('formPanel').hidden=true;$('inboxPanel').hidden=true;
+        context=null;inboxData=[];inboxCursor=null;$('olderInbox').hidden=true;$('formPanel').hidden=true;$('inboxPanel').hidden=true;
         $('noAccess').hidden=true;$('loginPanel').hidden=false;
         $('roleLabel').textContent='Niet aangemeld';$('authBtn').textContent='Google aanmelden';
         $('loginStatus').textContent='Meld je aan met je goedgekeurde BelgiumPD-account.';
