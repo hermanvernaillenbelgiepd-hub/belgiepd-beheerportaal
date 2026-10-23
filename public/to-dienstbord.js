@@ -288,7 +288,7 @@ function editRadioLabelDialog(id){
     <label class="field"><span>Weergavenaam</span><input class="input" name="alias" maxlength="80" minlength="2" value="${esc(user.portalAlias||'')}" placeholder="${esc(user.displayName||user.name||'Naam')}"></label>
     <p class="form-note">Origineel radiolabel: ${esc(user.name)}. Maak het veld leeg om de correctie te verwijderen.</p>`,
     {form:'radio-label',id,submit:'Naam bewaren in portaal'});
-  if(!radio.snapshot.radioLabelWritesEnabled)formError('Handmatige naamcorrecties staan nog uit totdat de afzonderlijke TEST-database is bevestigd.');
+  if(!radio.snapshot.radioLabelWritesEnabled)formError('Radioweergavenaamcorrecties staan op deze omgeving nog uit.');
 }
 function showReadiness(){
   const env=state.env;if(!env)return;
