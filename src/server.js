@@ -277,7 +277,7 @@ async function getSnapshot({forceRefresh=false}={}){
       typeof p.name!=='string'||!p.name.trim())return null;
     return {dept:'burger',personId:doc.id,name:p.name.slice(0,120),
       call:typeof p.call==='string'?p.call.slice(0,24):'—',
-      rank:'Burger (rol nog te verifiëren)',series:'Burger',status:'In afwachting',
+      rank:'Burger',series:'Burger',status:'Geregistreerd',
       specialties:[],source:'firestore-created'};
   }).filter(Boolean);
   const combined=base.data.concat(extra,burgerRows);
