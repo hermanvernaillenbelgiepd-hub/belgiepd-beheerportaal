@@ -28,7 +28,12 @@ export function specialFields(e){
   if(e.type==='observatie'&&Number.isInteger(e.score))
     p.push('Observatiescore: '+e.score+'/10');
   if(e.status&&e.type==='sanctie')p.push('Status: '+limit(e.status,70));
-  if(e.endDate)p.push('Einddatum: '+e.endDate);
+  if(e.sanctionType==='Tijdelijke beperking'&&Array.isArray(e.restrictedSpecialties)&&
+     e.restrictedSpecialties.length)
+    p.push('Beperkte specialisaties: '+e.restrictedSpecialties.map(x=>limit(x,90)).join(', '));
+  if(e.sanctionType==='Tijdelijke beperking'&&e.endDate)
+    p.push('Tijdelijke beperking tot en met: '+e.endDate);
+  else if(e.endDate)p.push('Einddatum: '+e.endDate);
   if(e.courseName)p.push('Opleiding: '+limit(e.courseName,150));
   if(e.newName)p.push('Nieuwe naam: '+limit(e.newName,150));
   if(e.proposedRank)p.push('Voorgestelde graad: '+limit(e.proposedRank,150));
