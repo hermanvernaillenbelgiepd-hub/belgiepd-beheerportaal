@@ -27,15 +27,17 @@ export function canViewPersonnel(actor,dept){
 export function canEditPersonnel(actor,person){
   if(!person||!validPersonnelKey(person.dept,person.personId)||!canViewPersonnel(actor,person.dept)||
      actor.discordId===person.personId)return false;
-  if(actor.boardPersonnelAdmin===true)return true;
-  if(Array.isArray(actor?.dossierNativeDepartments)&&
+  // Bestuur is uitsluitend een inzagerecht. Een afzonderlijk goedgekeurde
+  // operationele dienstrol blijft geldig, ook bij een bestuursaanstelling.
+  // Nooit schrijfrechten ontlenen aan Bestuur alleen.
+  if(!Array.isArray(actor?.dossierNativeDepartments)||
      !actor.dossierNativeDepartments.includes(person.dept))return false;
   const scoped=roleForDepartment(actor,person.dept);
   if(person.dept==='brandweer'&&actor.fireZoneChief===true)return true;
   if(actor.portalTechnicalMode===true||actor.role==='beheerder'&&scoped==='beheerder')return true;
-  if(!['officierenkader','korpsleiding'].includes(scoped) ||
-     !['officierenkader','korpsleiding'].includes(actor.role))return false;
-  if(actor.role==='officierenkader'&&scoped==='korpsleiding')return false;
+  // De goedgekeurde dienstrol bepaalt de bevoegdheid, niet het Bestuur-label
+  // en niet uitsluitend de globale (mogelijk anders weergegeven) accountrol.
+  if(!['officierenkader','korpsleiding'].includes(scoped))return false;
   if(person.dept==='politie'){
     const target=policeKader(person.rank);
     if(target==='Korpsleiding'||target==='Kader')return false;
