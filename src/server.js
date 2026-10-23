@@ -183,7 +183,8 @@ async function requireUser(req,res,next){
     const diagnostic=firebaseDiagnostic(e);
     console.warn('Portaal-aanmeldcontrole:',diagnostic.code,diagnostic.category);
     const infra=diagnostic.category!=='unexpected_error'||
-      /^(app\\/|auth\\/invalid-credential)/.test(diagnostic.code);
+      diagnostic.code.startsWith('app/')||
+      diagnostic.code==='auth/invalid-credential';
     return res.status(infra?503:401).json({error:infra?
       'De server kan de aanmelding tijdelijk niet controleren. Probeer opnieuw.':
       'Ongeldige of verlopen aanmelding. Meld opnieuw aan met Discord of Google.'});
