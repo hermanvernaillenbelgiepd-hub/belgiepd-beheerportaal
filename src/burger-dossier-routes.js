@@ -12,7 +12,8 @@ const dateValid=date=>{
 const safe=(text,max)=>typeof text==='string'&&
   text.trim().length>0&&text.trim().length<=max&&!/[\x00-\x08\x0b\x0c\x0e-\x1f<>]/.test(text);
 const toIso=value=>value?.toDate?.()?.toISOString?.()||null;
-const enabled=()=>process.env.BPD_ENABLE_BURGER_DOSSIERS==='true';
+const enabled=()=>process.env.BPD_ENABLE_BURGER_DOSSIERS==='true'&&
+  process.env.FIREBASE_PROJECT_ID==='belgiepd-test';
 const writeEnabled=()=>enabled()&&process.env.BPD_ENABLE_BURGER_DOSSIER_WRITES==='true';
 // Persoonsidentiteit gekoppeld aan een aparte, geverifieerde Burger-bron.
 export function installBurgerDossierRoutes(app,{requireUser,getSnapshot}){
