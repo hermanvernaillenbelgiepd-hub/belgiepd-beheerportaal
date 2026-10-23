@@ -87,10 +87,11 @@ function accessList(){
     return parsed;
   } catch {throw new Error('BPD_ACCESS_JSON bevat ongeldige JSON.');}
 }
-// Reduce duplicate Firestore reads when board, radio and shortcuts poll in
-// parallel. Max 2.5 seconds of cached verified authorization documents;
-// Firebase ID tokens and cadre/service permissions are still validated on
-// every request. Failures are never cached; blocked rights remain fail-closed.
+// Reduce Firestore reads across the separate 5-second board and radio polls.
+// Authorization documents are cached for at most 15 seconds (never negative-
+// cached on failure); Firebase ID tokens are still verified on every request.
+// Security tradeoff: revocations may take up to 15 seconds to take effect.
+// Do not cache sensitive role or approval changes longer than this.
 const authDocCache=new Map();
 async function cachedAuthDoc(collection,id){
   const key=collection+':'+id,now=Date.now(),old=authDocCache.get(key);
@@ -101,7 +102,7 @@ async function cachedAuthDoc(collection,id){
   try{
     const snapshot=await pending;
     if(authDocCache.size>750)authDocCache.clear();
-    authDocCache.set(key,{snapshot,expires:Date.now()+2500});
+    authDocCache.set(key,{snapshot,expires:Date.now()+15000});
     return snapshot;
   }catch(error){authDocCache.delete(key);throw error}
 }
@@ -406,7 +407,7 @@ const requireTOUser=(req,res,next)=>requireUser(req,res,async()=>{
   try{
     const id=req.bpd?.discordId;
     if(req.bpd?.uid==='discord:'+id&&/^\d{15,22}$/.test(String(id))){
-      const snap=await getFirestore().collection('bpd_to_access').doc(id).get();
+      const snap=await cachedAuthDoc('bpd_to_access',id);
       if(snap.exists){
         const grant=snap.data();
         req.bpd.toAccessLevel=grant?.status==='active'&&['read','operate'].includes(grant?.level)?grant.level:'revoked';
