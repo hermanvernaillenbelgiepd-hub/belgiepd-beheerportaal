@@ -427,6 +427,17 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <h4>Sanctiegegevens</h4><div class="grid">
 <div><label for="formalSeverity">Graad van ernst (1–10)</label><input id="formalSeverity" type="number" min="1" max="10" value="5"></div>
 <div><label for="formalSanctionType">Maatregel</label><select id="formalSanctionType"></select></div>
+<div id="formalSpecializationRestrictionFields" class="specialization-restriction" style="grid-column:1/-1" hidden>
+  <div class="restriction-heading">
+    <strong>Beperkte specialisaties en einddatum</strong>
+    <span>Alleen bij tijdelijke beperking · kies één of meer specialisaties</span>
+  </div>
+  <div id="formalRestrictedSpecialties" class="restriction-specialty-options" role="group" aria-label="Specialisaties die tijdelijk beperkt worden"></div>
+  <label class="restriction-deadline" for="formalRestrictionEndDate">Beperking geldt tot en met
+    <input id="formalRestrictionEndDate" type="date">
+  </label>
+  <p class="subtle restriction-explanation">De beperking wordt geregistreerd in het personeelsdossier en weekrapport. Een aanpassing aan operationele of Discord-specialisatierechten gebeurt niet automatisch.</p>
+</div>
 <div class="sanction-reasons-field" style="grid-column:1/-1">
   <div class="sanction-reasons-heading">
     <strong id="sanctionReasonsLabel">Reden(en) van de sanctie</strong>
@@ -1321,7 +1332,11 @@ function sheetFormalRows(entries,limited){
   // Observaties en sancties hebben afzonderlijke kolommen in het leesblad.
   const preview=x=>[x.eventDate||'—',x.type==='sanctie'?
       String(x.sanctionType||'Maatregel'):'Observatie',
-    x.details||x.explanation||'—',
+    [x.details||x.explanation||'—',
+      x.sanctionType==='Tijdelijke beperking'?
+        [Array.isArray(x.restrictedSpecialties)?x.restrictedSpecialties.join(', '):'',
+          x.endDate?'tot en met '+x.endDate:''].filter(Boolean).join(' · '):''
+    ].filter(Boolean).join(' · '),
     x.type==='sanctie'?'Ernst '+(x.severity??'—'):'Score '+(x.score??'—'),
     'Door '+sheetWho(x)];
   sheetSetRows('formal',list,preview,'Geen zichtbare registraties.',limited);
@@ -1333,8 +1348,14 @@ function sheetFormalRows(entries,limited){
   // automatisch als belangrijke notitie getoond zonder dubbele opslag.
   importantRestrictionEntries=list.filter(x=>x.type==='sanctie'&&
     x.sanctionType==='Tijdelijke beperking')
-    .map(x=>({...x,importantTitle:'Tijdelijke beperking · '+(x.status==='ingetrokken'?'INGETROKKEN':'actief'),
-      details:[x.details,x.explanation,
+    .map(x=>({...x,importantTitle:'Tijdelijke beperking · '+(
+        x.status==='ingetrokken'?'INGETROKKEN':
+        x.endDate&&x.endDate<new Date().toISOString().slice(0,10)?'termijn verstreken':'actief'),
+      details:[
+        Array.isArray(x.restrictedSpecialties)&&x.restrictedSpecialties.length?
+          'Specialisatie: '+x.restrictedSpecialties.join(', '):'Specialisatie niet gespecificeerd (oud dossier)',
+        x.endDate?'Tot en met: '+x.endDate:'',
+        x.details,x.explanation,
         Array.isArray(x.reasons)&&x.reasons.length?'Reden: '+x.reasons.join(', '):'',
         x.evidenceUrl?'Bewijs: '+x.evidenceUrl:''].filter(Boolean).join(' · ')}));
   importantRestrictionLimited=Boolean(limited);
@@ -1515,6 +1536,27 @@ function renderSanctionReasonChoices(reasons=[]){
   }
   updateSelectedSanctionReasons();
 }
+// Geverifieerde specialisatiebenamingen komen uit de servercatalogus per
+// hulpdienst. Checkboxes wijzigen geen operationele kwalificatie of Discord-rol.
+function selectedRestrictedSpecialties(){
+  return [...$('formalRestrictedSpecialties').querySelectorAll('input[type="checkbox"]:checked')]
+    .map(x=>x.value);
+}
+function renderRestrictionSpecialties(labels=[]){
+  const root=$('formalRestrictedSpecialties');
+  root.replaceChildren();
+  if(!labels.length){
+    const empty=document.createElement('p');
+    empty.className='subtle';empty.textContent='Geen bekende specialisaties voor deze hulpdienst.';
+    root.append(empty);return;
+  }
+  for(const label of labels){
+    const item=document.createElement('label');item.className='restriction-specialty';
+    const control=document.createElement('input');control.type='checkbox';control.value=label;
+    const text=document.createElement('span');text.textContent=label;
+    item.append(control,text);root.append(item);
+  }
+}
 function formalSelectedReasons(){
   return [...$('formalReasons').querySelectorAll('input[type="checkbox"]:checked')].map(x=>x.value);
 }
@@ -1555,6 +1597,11 @@ function updateFormalFields(){
       'Tijdelijke beperking van specialisatie':kind));
   }
   if(opts.includes(old))$('formalSanctionType').value=old;
+  const restrict=isSanction&&$('formalSanctionType').value==='Tijdelijke beperking';
+  $('formalSpecializationRestrictionFields').hidden=!restrict;
+  $('formalRestrictionEndDate').required=restrict;
+  // De gebeurtenisdatum is ook de begindatum van de beperking.
+  if($('formalDate').value)$('formalRestrictionEndDate').min=$('formalDate').value;
   const other=formalSelectedReasons().includes('Anders');
   $('formalOtherReasonField').hidden=!isSanction||!other;
   $('formalReasonOther').required=isSanction&&other;
@@ -1630,6 +1677,9 @@ function openFormalEdit(row){
   setFormalDate(row.eventDate);
   for(const cb of $('formalReasons').querySelectorAll('input[type="checkbox"]'))
     cb.checked=Array.isArray(row.reasons)&&row.reasons.includes(cb.value);
+  for(const cb of $('formalRestrictedSpecialties').querySelectorAll('input[type="checkbox"]'))
+    cb.checked=Array.isArray(row.restrictedSpecialties)&&row.restrictedSpecialties.includes(cb.value);
+  $('formalRestrictionEndDate').value=row.endDate||'';
   updateFormalFields();
   $('formalAmendFields').hidden=false;$('formalAmendReason').required=true;
   $('formalAmendReason').value='';$('formalCancelEdit').hidden=false;
@@ -1673,6 +1723,7 @@ async function loadStaffFormalPermissions(p,key){
     if(canSan)$('formalType').append(option('sanctie','Sanctie'));
     $('formalType').disabled=false;
     renderSanctionReasonChoices(data.sanctionReasons||[]);
+    renderRestrictionSpecialties(data.restrictionSpecialtiesByDepartment?.[p.dept]||[]);
     if(canObs||canSan){
       clearFormalEdit();
       $('formalWriteStatus').textContent='Vul de registratie hieronder rechtstreeks in. Enkel de voor jou toegelaten categorieën zijn beschikbaar.';
@@ -1697,6 +1748,7 @@ async function loadStaffFormalPermissions(p,key){
 }
 $('formalType').onchange=()=>{if(!formalEditId)updateFormalFields()};
 $('formalSeverity').oninput=updateFormalFields;
+$('formalSanctionType').onchange=updateFormalFields;
 $('formalReasons').onchange=updateFormalFields;
 $('formalCancelEdit').onclick=()=>{$('formalType').disabled=false;clearFormalEdit()};
 $('staffFormalForm').onsubmit=async event=>{
@@ -1729,6 +1781,14 @@ $('staffFormalForm').onsubmit=async event=>{
     data.reasonOther=$('formalReasonOther').value;
     data.cfxName=$('formalCfx').value;
     data.explanation=$('formalExplanation').value;
+    if(data.sanctionType==='Tijdelijke beperking'){
+      data.restrictedSpecialties=selectedRestrictedSpecialties();
+      data.endDate=$('formalRestrictionEndDate').value;
+      if(!data.restrictedSpecialties.length)
+        return notice('Selecteer minstens één specialisatie waarop de tijdelijke beperking betrekking heeft.',true);
+      if(!data.endDate||data.endDate<selectedDate)
+        return notice('Kies een einddatum op of na de gebeurtenisdatum.',true);
+    }
     if(!formalSanctionOptions().includes(data.sanctionType))
       return notice('Deze maatregel is niet toegestaan bij je kaderrol en ernstscore.',true);
     if(!data.reasons.length)return notice('Kies minstens één reden voor de sanctie.',true);
@@ -1775,6 +1835,9 @@ async function showSanctionAudit(row,item,p,key){
       const before=document.createElement('p');
       before.textContent='Vorige maatregel: '+(change.previous?.sanctionType||'Onbekend')+
         ' · ernst '+(change.previous?.severity||'—')+'/10 · '+(change.previous?.status||'—')+
+        (change.previous?.restrictedSpecialties?.length?
+          ' · specialisaties '+change.previous.restrictedSpecialties.join(', '):'')+
+        (change.previous?.endDate?' · einddatum '+change.previous.endDate:'')+
         ' · '+(change.previous?.details||'');
       const reason=document.createElement('p');reason.textContent='Motivering wijziging: '+(change.reason||'—');
       entry.append(heading,before,reason);box.append(entry);
