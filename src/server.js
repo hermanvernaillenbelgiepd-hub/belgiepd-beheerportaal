@@ -43,6 +43,7 @@ import {activeBoardAppointment} from './board-appointment-policy.js';
 import {deriveServiceDossierDepartments,verifiedFireZoneChief} from './service-dossier-access.js';
 import {burgerDossierScope,BURGER_PERSONNEL_COLLECTION} from './burger-role-policy.js';
 import {installBurgerDossierRoutes} from './burger-dossier-routes.js';
+import {installBurgerWeekReportRoutes} from './burger-weekreport-routes.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
@@ -71,6 +72,7 @@ app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
 app.use('/api/burger-dossiers',express.json({limit:'5kb',strict:true}));
+app.use('/api/burger-reports',express.json({limit:'4kb',strict:true}));
 // Parse TO commands before installing TO routes, retaining strict size limits.
 app.use('/api/to',express.json({limit:'24kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
@@ -393,6 +395,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
   }
 });
 installBurgerDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installBurgerWeekReportRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installBasicObservationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installManagementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
