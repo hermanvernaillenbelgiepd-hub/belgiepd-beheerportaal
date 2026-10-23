@@ -220,11 +220,11 @@ for(const b of $('manageTabs').querySelectorAll('button[data-tab]'))
 
 let pendingBoardPeople=[];
 function pendingInvitation(person){
-  return 'BelgiumPD personeelskoppeling\\n'+
-    'Naam: '+person.name+'\\n'+
-    'Hulpdienst: '+(deptNames[person.dept]||person.dept)+'\\n'+
-    'Interne referentie: '+person.internalId+'\\n'+
-    'Open: '+location.origin+'/personeel-koppelen.html\\n'+
+  return 'BelgiumPD personeelskoppeling\n'+
+    'Naam: '+person.name+'\n'+
+    'Hulpdienst: '+(deptNames[person.dept]||person.dept)+'\n'+
+    'Interne referentie: '+person.internalId+'\n'+
+    'Open: '+location.origin+'/personeel-koppelen.html\n'+
     'Meld je met je eigen Discord-account aan en vul de referentie in. '+
     'De koppeling wordt pas na bevoegde kadergoedkeuring uitgevoerd. '+
     'Verstuur deze uitnodiging uitsluitend privé.';
