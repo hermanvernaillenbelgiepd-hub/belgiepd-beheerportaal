@@ -2,7 +2,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
-  canViewPersonnel,canEditPersonnel,canChangePersonnelStatus,validatePersonnelChange,mergePersonnelEdits,
+  canViewPersonnel,canEditPersonnel,canEditGeneralPersonnelInfo,canChangePersonnelStatus,validatePersonnelChange,mergePersonnelEdits,
   currentPersonnelAuditActor,personnelCallClaimId} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
   personnelDataEnabled,personnelCreationEnabled,canCreatePersonnel,canAuthoriseExceptionalPoliceRank,
@@ -54,9 +54,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
             .map(x=>({label:x.label.slice(0,64),value:x.value.slice(0,90)})):[],
           revision:Number.isSafeInteger(edit?.revision)?edit.revision:0,
           source:edit?'firestore-overlay':p.source==='firestore-created'?'firestore-created':'google-sheets',
-          canEdit:canEditPersonnel(req.bpd,p)||canChangePersonnelStatus(req.bpd,p),
-          canEditIdentity:canEditPersonnel(req.bpd,p),
-          canEditStatus:canEditPersonnel(req.bpd,p)||canChangePersonnelStatus(req.bpd,p)};
+          canEdit:canEditGeneralPersonnelInfo(req.bpd,p),
+          canEditIdentity:canEditGeneralPersonnelInfo(req.bpd,p),
+          canEditStatus:canEditGeneralPersonnelInfo(req.bpd,p)};
       });
       // Presentation-only: officer versus corps indication for the 9xx range.
       // Only previously authenticated, recent Discord role snapshots of the
@@ -399,11 +399,11 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const matches=snap.data.filter(p=>p.dept===req.params.dept&&p.personId===req.params.discordId);
       if(matches.length!==1)throw userError(409,'Geen eenduidige bestaande personeelsfiche gevonden');
       const subject=matches[0];
-      const identityAllowed=canEditPersonnel(req.bpd,subject);
-      if(!identityAllowed&&!canChangePersonnelStatus(req.bpd,subject))
-        throw userError(403,'Je mag deze personeelsfiche niet wijzigen');
-      if(!identityAllowed&&(proposed.name!==subject.name||proposed.call!==subject.call))
-        throw userError(403,'Middenkader mag alleen de personeelsstatus van lager kader wijzigen');
+      // Alleen algemene dossierbeheerder (bevoegd officierenkader,
+      // korpsleiding of geverifieerd Bestuur) kan dit endpoint gebruiken.
+      // De oude Middenkader-statusdelegatie geldt hier niet.
+      if(!canEditGeneralPersonnelInfo(req.bpd,subject))
+        throw userError(403,'Alleen bevoegde Officierenkaderleden, Korpsleiding of Bestuur mogen deze persoonsgegevens wijzigen');
       if(snap.data.some(p=>p.dept===subject.dept&&p.personId!==subject.personId&&
         p.call===proposed.call))throw userError(409,'Dit roepnummer wordt al gebruikt binnen deze hulpdienst');
       if(subject.name===proposed.name&&subject.call===proposed.call&&subject.status===proposed.status)
