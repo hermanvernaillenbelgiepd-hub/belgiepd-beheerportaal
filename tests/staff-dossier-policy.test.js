@@ -89,3 +89,18 @@ test('Same Discord user may have independent service dossiers that department ma
   assert.equal(uniqueStaffSubject([police,med],'politie',id)?.call,'S312');
   assert.equal(uniqueStaffSubject([police,med],'ambulance',id)?.call,'AMB-5');
 });
+
+test('Bestuur is read-only, maar Bestuur plus Politie Korpsleiding kan blijven aanvullen',()=>{
+  const target={...member,rank:'Inspecteur'};
+  const boardOnly={role:'basiskader',discordId:other,departments:['politie'],
+    departmentRoles:{politie:'basiskader'},boardPersonnelAdmin:true,
+    dossierAllowedDepartments:['politie'],dossierNativeDepartments:[]};
+  const boardCorps={...boardOnly,role:'korpsleiding',
+    departmentRoles:{politie:'korpsleiding'},dossierNativeDepartments:['politie']};
+  assert.equal(canReadStaffDossier(boardOnly,target),true);
+  assert.equal(canMaintainStaffDossier(boardOnly,target),false);
+  assert.equal(canReadStaffDossier(boardCorps,target),true);
+  assert.equal(canMaintainStaffDossier(boardCorps,target),true);
+  assert.equal(canMaintainStaffDossier({...boardCorps,discordId:id},target),false);
+  assert.equal(canMaintainStaffDossier({...boardCorps,dossierNativeDepartments:[]},target),false);
+});
