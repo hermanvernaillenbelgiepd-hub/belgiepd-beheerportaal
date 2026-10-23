@@ -212,7 +212,15 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .dossier-sheet .sheet-identity>div:nth-child(2n){border-right:0}
 .dossier-sheet .sheet-grid{grid-template-columns:1fr}
 .dossier-sheet .sheet-block.wide{grid-column:auto}}
-</style><link rel="stylesheet" href="/dossier-compact-test.css"></head>
+</style><link rel="stylesheet" href="/dossier-compact-test.css">
+<style>
+body.dossier-embed{background:transparent}
+body.dossier-embed>header{display:none}
+body.dossier-embed main{max-width:none;margin:0;padding:0}
+body.dossier-embed #panel{max-width:none;width:100%;margin:0;border:0;box-shadow:none;background:#10243e}
+body.dossier-embed #notice{margin:0 0 10px}
+body.dossier-embed #accessHelp{margin:10px 0}
+</style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
@@ -448,6 +456,23 @@ let setupPortalLogin;
 const $=id=>document.getElementById(id);
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
+const dossierEmbedded=new URLSearchParams(window.location.search).get('embed')==='1';
+if(dossierEmbedded){
+  document.body.classList.add('dossier-embed');
+  document.querySelector('body>header').hidden=true;
+  for(const section of document.querySelector('main').children){
+    if(!['panel','notice','accessHelp'].includes(section.id))section.hidden=true;
+  }
+  const notifyFrameSize=()=>{
+    if(window.parent===window)return;
+    const height=Math.max(450,Math.ceil(document.documentElement.scrollHeight));
+    window.parent.postMessage({type:'bpd-dossier-embed-size',height},window.location.origin);
+  };
+  if(typeof ResizeObserver!=='undefined')
+    new ResizeObserver(notifyFrameSize).observe(document.body);
+  window.addEventListener('load',notifyFrameSize);
+}
+
 /* Alle onderdelen behouden hun originele ID's en beveiligde API's, maar delen één fiche. */
 let dossierTab='overzicht';
 const dossierTabNames={overzicht:'Overzicht',gegevens:'Personeelsgegevens',specialisaties:'Specialisaties',
@@ -872,9 +897,11 @@ async function load(){
         await showPerson(matching[0]);
         if(!$('panel').hidden){
           const clean=new URL(window.location.href);
-          clean.searchParams.delete('discordId');clean.searchParams.delete('dept');
-          window.history.replaceState(null,'',clean.pathname+clean.search+clean.hash);
-          $('panel').scrollIntoView({block:'start'});
+          if(!dossierEmbedded){
+            clean.searchParams.delete('discordId');clean.searchParams.delete('dept');
+            window.history.replaceState(null,'',clean.pathname+clean.search+clean.hash);
+            $('panel').scrollIntoView({block:'start'});
+          }
         }
       }
     }
@@ -1998,7 +2025,7 @@ async function showPerson(p){
       div.append(strong,text);$('history').append(div);
     }
   }catch(e){$('history').textContent='Geschiedenis niet beschikbaar: '+e.message}
-  $('panel').scrollIntoView({behavior:'smooth',block:'start'});
+  if(!dossierEmbedded)$('panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 $('promotionForm').onsubmit=async ev=>{
   ev.preventDefault();
