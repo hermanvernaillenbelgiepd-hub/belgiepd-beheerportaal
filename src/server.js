@@ -174,8 +174,19 @@ async function requireUser(req,res,next){
       process.env.BPD_PORTAL_PROFILE_SIGNING_KEY)?technicalActor(actor):actor;
     next();
   } catch(e) {
-    if(e.message?.includes('BPD_ACCESS_JSON')) return res.status(503).json({error:'Rechtenconfiguratie ongeldig'});
-    return res.status(401).json({error:'Ongeldige of verlopen aanmelding'});
+    if(e.message?.includes('BPD_ACCESS_JSON'))
+      return res.status(503).json({error:'Rechtenconfiguratie ongeldig'});
+    // Only log a short, recognized Firebase/backend error code, never
+    // bearer tokens, IDs, e.message, or private Firestore contents.
+    const rawCode=typeof e?.code==='string'?e.code:'';
+    const code=/^[a-z0-9_/-]{3,45}$/.test(rawCode)?rawCode:'session-check-failed';
+    console.warn('Portaal-aanmeldcontrole:',code);
+    const infra=code.startsWith('app/')||
+      ['unavailable','permission-denied','deadline-exceeded','auth/invalid-credential',
+        '5','7','13','14'].includes(code);
+    return res.status(infra?503:401).json({error:infra?
+      'De server kan de aanmelding tijdelijk niet controleren. Probeer opnieuw.':
+      'Ongeldige of verlopen aanmelding. Meld opnieuw aan met Discord of Google.'});
   }
 }
 async function queryLive(){
