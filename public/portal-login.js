@@ -20,12 +20,14 @@ export function setupPortalLogin({button,auth,authModule,config,onError}){
       await google();
     }catch(e){notify(e)}
   };
+  // A Google login must not hide the Discord login option. Changing the
+  // login provider is deliberate; the server still checks every access right.
   let refresh;
   if(discordReady){
     refresh=document.createElement('button');
     refresh.type='button';
-    refresh.textContent='Discord opnieuw verifiëren';
-    refresh.title='Vernieuw je Discord-serververificatie zonder eerst af te melden';
+    refresh.textContent='Aanmelden met Discord';
+    refresh.title='Verbind of vernieuw je eigen Discord-serververificatie';
     refresh.style.marginInlineStart='8px';
     refresh.onclick=()=>location.assign('/auth/discord/start?return='+encodeURIComponent(location.pathname));
     button.insertAdjacentElement('afterend',refresh);
@@ -44,7 +46,11 @@ export function setupPortalLogin({button,auth,authModule,config,onError}){
   authModule.onAuthStateChanged(auth,user=>{
     button.textContent=label(user);
     if(fallback)fallback.hidden=Boolean(user);
-    if(refresh)refresh.hidden=!(user && typeof user.uid==='string' && user.uid.startsWith('discord:'));
+    if(refresh){
+      refresh.hidden=!user;
+      refresh.textContent=user?.uid?.startsWith('discord:')?
+        'Discord opnieuw verifiëren':'Aanmelden met Discord';
+    }
   });
   button.textContent=label(auth.currentUser);
 }
