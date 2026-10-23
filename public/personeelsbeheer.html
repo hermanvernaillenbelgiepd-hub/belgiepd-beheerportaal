@@ -1047,15 +1047,13 @@ function sheetSpecialtyRows(rows){
   const actual=(rows||[]).filter(x=>x.status&&
     !['Niet ingevuld','Onbekend'].includes(String(x.status)));
   if(!actual.length){container.textContent='Nog geen geregistreerde specialisaties.';return}
-  for(const item of actual.slice(0,6)){
+  for(const item of actual){
     const chip=document.createElement('span');chip.className='sheet-chip';
-    chip.textContent=String(item.label||'Specialisatie')+' · '+String(item.status||'—');
+    const status=String(item.status||'—');
+    chip.textContent=String(item.label||'Specialisatie')+' · '+status;
+    if(['Nee','Niet toegestaan','Afgekeurd'].includes(status))
+      chip.classList.add('sheet-chip-negative');
     container.append(chip);
-  }
-  if(actual.length>6){
-    const extra=document.createElement('span');extra.className='overview-more';
-    extra.textContent='+'+(actual.length-6)+' meer onder Specialisaties';
-    container.append(extra);
   }
 }
 function sheetDossierProfile(profile){
