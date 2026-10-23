@@ -773,6 +773,8 @@ function setupDossierTabs(){
     'staffManualLeaveForm','specialtyEdit','functionChangeForm'
   ])$('registrationFields').append($(formId));
   $('registrationFields').prepend($('formalWriteStatus'));
+  // De categorie wordt bovenaan gekozen: voorkom tweede typekeuzelijst.
+  $('formalType').closest('div').hidden=true;
   $('registrationKind').onchange=()=>displaySelectedRegistration();
   $('registrationSubmit').onclick=submitSelectedRegistration;
   // De oude controleknoppen blijven intern beschikbaar maar niet in het blad.
