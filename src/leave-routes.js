@@ -6,11 +6,13 @@ import {calendarDays,validDiscordId,validateLeaveRequest,mayApproveLeave,
   validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,leaveApplicantIsCorps} from './leave-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
+import {leaveCanWithdraw,writeLeaveEvent} from './leave-event-log.js';
+import {actorFromPersonnel} from './registrations.js';
 
 const coll='bpd_leave_requests';
 const grants='bpd_leave_grants';
 const stamp=()=>new Date().toISOString();
-const yyyyMmDd=()=>new Date().toISOString().slice(0,10);
+const yyyyMmDd=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const jsonError=(res,e)=>{
   if(e?.userError)return res.status(e.status||400).json({error:e.message});
   console.error('Verlofmodule:',e?.code||e?.message||'onbekende fout');
@@ -23,7 +25,8 @@ const item=(doc,showNote=false)=>{
   const d=doc.data();
   return {id:doc.id,personDiscordId:d.personDiscordId,subjectName:d.subjectName,
     subjectDepartments:d.subjectDepartments||[],startDate:d.startDate,endDate:d.endDate,
-    days:d.days,status:d.status,createdAt:iso(d.createdAt),decidedAt:iso(d.decidedAt),
+    days:d.days,status:d.status,canWithdraw:leaveCanWithdraw(d,yyyyMmDd()),
+    createdAt:iso(d.createdAt),decidedAt:iso(d.decidedAt),withdrawnAt:iso(d.withdrawnAt),
     ...(showNote?{note:d.note||''}:{})};
 };
 const personRecords=(rows,id)=>rows.filter(p=>p.personId===id);
@@ -180,6 +183,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       catch(e){throw rejection(e.message,400)}
       const id=req.bpd.discordId;
       const subjectName=records.find(p=>req.bpd.departments.includes(p.dept))?.name||'Onbekend personeelslid';
+      const subjectCall=records.find(p=>req.bpd.departments.includes(p.dept))?.call||'';
       const ref=db().collection(coll).doc(`${id}_${details.startDate}_${details.endDate}`);
       const subjectDepartments=departmentsOf(records);
       if(!subjectDepartments.length)throw rejection('Geen actieve hulpdiensten gevonden',403);
@@ -196,20 +200,77 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
           const existing=await tx.get(ref);
           if(existing.exists)throw rejection('Voor deze exacte periode bestaat al een aanvraag',409);
           tx.create(ref,{...details,note:isCorps?'':details.note,
-            personDiscordId:id,subjectName,subjectDepartments,subjectDepartmentRoles,
+            personDiscordId:id,subjectName,subjectCall,subjectDepartments,subjectDepartmentRoles,
             subjectRole:req.bpd.portalTechnicalMode===true?req.bpd.operationalRole:req.bpd.role,
             status,autoApproved,approvalReason:isCorps?'korpsleiding_vrijgesteld':
               autoApproved?'duur_7_tot_14_dagen':null,
             submittedByUid:req.bpd.uid,submittedByDiscordId:id,
             ...(autoApproved?{decidedAt:FieldValue.serverTimestamp(),decidedBy:'system'}:{}),
             createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
-          tx.create(ref.collection('audit').doc(),{action:autoApproved?
-            (isCorps?'korpsleiding_vrijgesteld':'automatic_approved'):'submitted',
-            actorUid:req.bpd.uid,actorDiscordId:id,days:details.days,
-            at:FieldValue.serverTimestamp()});
+          const historyBase={...details,personDiscordId:id,subjectName,
+            subjectCall,subjectDepartments,status};
+          const submitter=actorFromPersonnel(req.bpd,records)||{name:subjectName,call:subjectCall,discordId:id};
+          writeLeaveEvent(tx,{requestRef:ref,request:historyBase,action:'submitted',
+            actor:submitter,actorUid:req.bpd.uid,eventDate:yyyyMmDd(),to:'pending'});
+          if(autoApproved)writeLeaveEvent(tx,{requestRef:ref,request:historyBase,
+            action:isCorps?'korpsleiding_vrijgesteld':'automatic_approved',
+            actor:null,actorUid:null,eventDate:yyyyMmDd(),from:'pending',to:'approved'});
         });
       }catch(e){if(e.code===6||e.code==='already-exists'||e.status===409)throw rejection('Voor deze exacte periode bestaat al een aanvraag',409);throw e}
       return res.status(201).json({id:ref.id,status,days:details.days,automatic:autoApproved});
+    }catch(e){return jsonError(res,e)}
+  });
+  // Een eigen nog lopend/voorafgaand verlof intrekken, nooit verwijderen.
+  // De originele aanvraag, alle beslissingen en het tijdstip blijven bewaard.
+  app.post('/api/leave/requests/:id/withdraw',requireUser,requireWrites,async(req,res)=>{
+    const requestId=String(req.params.id||'');
+    if(!validId(requestId))return res.status(400).json({error:'Ongeldig aanvraagnummer'});
+    const reason=req.body?.reason===undefined?'':req.body.reason;
+    if(typeof reason!=='string'||reason.trim().length>300)
+      return res.status(400).json({error:'Intrekkingsreden mag maximaal 300 tekens bevatten'});
+    try{
+      const {records}=await context(req);
+      const ref=db().collection(coll).doc(requestId),today=yyyyMmDd();
+      await db().runTransaction(async tx=>{
+        const snap=await tx.get(ref);
+        if(!snap.exists)throw rejection('Verlofaanvraag niet gevonden',404);
+        const prior=snap.data();
+        if(prior.personDiscordId!==req.bpd.discordId)
+          throw rejection('Je kunt uitsluitend je eigen verlof intrekken',403);
+        if(!leaveCanWithdraw(prior,today))
+          throw rejection('Alleen een lopende of goedgekeurde aanvraag die nog niet is afgelopen kan worden ingetrokken',409);
+        const submitter=actorFromPersonnel(req.bpd,records)||
+          {discordId:req.bpd.discordId,name:prior.subjectName||'Aanvrager',call:prior.subjectCall||''};
+        tx.update(ref,{status:'withdrawn',withdrawnAt:FieldValue.serverTimestamp(),
+          withdrawnByDiscordId:req.bpd.discordId,withdrawnByUid:req.bpd.uid,
+          withdrawReason:reason.trim(),updatedAt:FieldValue.serverTimestamp()});
+        writeLeaveEvent(tx,{requestRef:ref,request:prior,action:'withdrawn',
+          actor:submitter,actorUid:req.bpd.uid,eventDate:today,
+          from:prior.status,to:'withdrawn',note:reason.trim()});
+      });
+      return res.json({ok:true,status:'withdrawn',historyPreserved:true});
+    }catch(e){return jsonError(res,e)}
+  });
+  // Detailhistoriek voor de aanvrager: bestaande auditstukken blijven
+  // zichtbaar ook na een intrekking of afwijzing.
+  app.get('/api/leave/requests/:id/history',requireUser,async(req,res)=>{
+    const requestId=String(req.params.id||'');
+    if(!validId(requestId))return res.status(400).json({error:'Ongeldig aanvraagnummer'});
+    try{
+      const ref=db().collection(coll).doc(requestId);
+      const request=await ref.get();
+      if(!request.exists)return res.status(404).json({error:'Verlofaanvraag niet gevonden'});
+      const data=request.data();
+      if(data.personDiscordId!==req.bpd.discordId)
+        return res.status(403).json({error:'Deze historiek behoort niet tot je eigen verlof'});
+      const snap=await ref.collection('audit').orderBy('at','asc').limit(75).get();
+      res.set('Cache-Control','private, no-store');
+      return res.json({id:requestId,status:data.status,events:snap.docs.map(doc=>{
+        const event=doc.data(),actorId=event.actorDiscordId;
+        return {action:event.action||'gewijzigd',from:event.from||null,to:event.to||null,
+          at:iso(event.at),actorType:!actorId?'system':
+            actorId===req.bpd.discordId?'self':'reviewer'};
+      }),limited:snap.docs.length===75});
     }catch(e){return jsonError(res,e)}
   });
   app.post('/api/leave/requests/:id/decision',requireUser,requireWrites,async(req,res)=>{
@@ -234,11 +295,11 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
         const grant=grantDoc.exists?grantDoc.data():oldGrant?.exists?oldGrant.data():null;
         if(!mayApproveLeave(req.bpd,board?d:await resolveApplicantRoles(d),grant,yyyyMmDd(),board))
           throw rejection('Geen bevoegdheid om dit verlof goed te keuren',403);
-        const audit=ref.collection('audit').doc();
         tx.update(ref,{status:decision,decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
           decidedAt:FieldValue.serverTimestamp(),decisionNote:note.trim(),updatedAt:FieldValue.serverTimestamp()});
-        tx.create(audit,{action:decision,actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
-          at:FieldValue.serverTimestamp(),note:note.trim(),days:calendarDays(d.startDate,d.endDate)});
+        writeLeaveEvent(tx,{requestRef:ref,request:d,action:decision,
+          actor:{discordId:req.bpd.discordId,name:'Bevoegd kaderlid',call:''},
+          actorUid:req.bpd.uid,eventDate:yyyyMmDd(),from:'pending',to:decision,note:note.trim()});
       });
       return res.json({ok:true,status:decision});
     }catch(e){return jsonError(res,e)}
@@ -268,11 +329,10 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
           decidedAt:FieldValue.serverTimestamp(),decisionNote:reason,
           overriddenFrom:previous.status,overriddenAt:FieldValue.serverTimestamp(),
           updatedAt:FieldValue.serverTimestamp()});
-        tx.create(ref.collection('audit').doc(),{action:'board_override',
-          from:previous.status,to:req.body.decision,actorUid:req.bpd.uid,
-          actorDiscordId:req.bpd.discordId,note:reason,
-          days:calendarDays(previous.startDate,previous.endDate),
-          at:FieldValue.serverTimestamp()});
+        writeLeaveEvent(tx,{requestRef:ref,request:previous,action:'board_override',
+          actor:{discordId:req.bpd.discordId,name:'Bestuur',call:''},
+          actorUid:req.bpd.uid,eventDate:yyyyMmDd(),
+          from:previous.status,to:req.body.decision,note:reason});
       });
       return res.json({ok:true,status:req.body.decision,overridden:true});
     }catch(e){return jsonError(res,e)}
@@ -313,9 +373,11 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
           decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
           createdAt:FieldValue.serverTimestamp(),decidedAt:FieldValue.serverTimestamp(),
           updatedAt:FieldValue.serverTimestamp()});
-        tx.create(ref.collection('audit').doc(),{action:'manual_approved',
-          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
-          note:details.note,days:details.days,at:FieldValue.serverTimestamp()});
+        writeLeaveEvent(tx,{requestRef:ref,request:{...details,personDiscordId:personId,
+          subjectName:matched[0].name,subjectCall:matched[0].call,subjectDepartments:[dept],status:'approved'},
+          action:'manual_approved',actor:{discordId:req.bpd.discordId,
+            name:'Bevoegd kaderlid',call:''},actorUid:req.bpd.uid,
+          eventDate:yyyyMmDd(),to:'approved',note:details.note});
       });
       return res.status(201).json({id,status:'approved',days:details.days,manual:true});
     }catch(e){return jsonError(res,e)}
