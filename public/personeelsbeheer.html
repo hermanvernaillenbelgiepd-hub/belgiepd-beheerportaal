@@ -537,7 +537,7 @@ function setupDossierTabs(){
       <div id="sheetSpecialties" class="sheet-specialties">Specialisaties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="movements">
-      <h3>Personeelsbewegingen <button type="button" data-open-sheet="nieuw">Registreren</button></h3>
+      <h3>Personeelsbewegingen <button type="button" data-open-sheet="nieuw">Andere beweging</button></h3>
       <div id="sheetMovements" class="sheet-records">Registraties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="leave">
@@ -616,10 +616,12 @@ function setupDossierTabs(){
   // Dit zijn dezelfde DOM-formulieren en onsubmit-handlers (geen extra opslag).
   const inlineForms=[
     ['gegevens','staffProfileForm'],
+    ['gegevens','editForm'],
     ['specialisaties','specialtyEdit'],
     ['leave','staffManualLeaveForm'],
     ['training','staffTrainingForm'],
-    ['notes','staffCaseForm']
+    ['notes','staffCaseForm'],
+    ['movements','promotionPanel']
   ];
   for(const [tile,form] of inlineForms){
     const cell=sheet.querySelector('[data-sheet-tile="'+tile+'"]');
@@ -1999,6 +2001,7 @@ async function showPerson(p){
   $('pName').disabled=!canChangeIdentity;
   $('pCall').disabled=!canChangeIdentity;
   $('pStatus').disabled=!canChangeStatus;
+  $('editForm').hidden=!(canChangeIdentity||canChangeStatus);
   $('pRank').disabled=true;
   $('reason').disabled=!canChangeStatus;
   $('save').disabled=!canChangeStatus;
