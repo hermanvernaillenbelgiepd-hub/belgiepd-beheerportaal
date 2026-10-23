@@ -408,3 +408,16 @@ body.dossier-onepage .restriction-explanation{
   align-items:flex-start!important;flex-direction:column;gap:5px;
  }
 }
+
+/* Toon in één korte, rustige regel waarom categorieën niet beschikbaar zijn.
+   Het bericht verandert geen rechten of datastromen. */
+body.dossier-onepage .registration-hub-heading .registration-access-hint{
+  flex:1 1 100%;max-width:none;margin:4px 0 2px;
+  color:#a3c5ea;font-size:10px;line-height:1.55;
+  padding:7px 9px;background:#18334f;
+  border-left:2px solid #4e7ca8;border-radius:2px;
+  overflow-wrap:anywhere;
+}
+body.dossier-onepage .registration-hub-heading .registration-access-hint:empty{
+  display:none;
+}
