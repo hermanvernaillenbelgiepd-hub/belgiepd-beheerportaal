@@ -10,11 +10,11 @@ const burgerId='111111111111111111';
 const actor={uid:'discord:'+burgerId,discordId:burgerId,
   role:'burger',departments:['burger'],departmentRoles:{burger:'burger'}};
 const roles=roleIds=>({guildId:guild,verifiedAt:now-60_000,roleIds});
-test('Burgerraad gebruikt unieke, geverifieerde Discord-rol; Burger/IO delen voorlopig één code',()=>{
+test('Burger en Burger IO delen bewust dezelfde Burgercategorie; Burgerraad is afzonderlijk',()=>{
   assert.equal(BURGER_ROLE_IDS.council,'1492485336197234728');
   assert.equal(BURGER_ROLE_IDS.member,'1557804276250845185');
   assert.equal(burgerSubjectCategory(roles([BURGER_ROLE_IDS.member]),guild,now),
-    'burger_onbevestigd');
+    'burger');
   assert.equal(burgerSubjectCategory(roles([]),guild,now),null);
   assert.equal(burgerSubjectCategory(roles([BURGER_ROLE_IDS.council]),guild,now),null);
   assert.equal(burgerSubjectCategory(roles([BURGER_ROLE_IDS.member]),'999999999999999999',now),null);
@@ -55,6 +55,8 @@ test('Burgerdossier blijft aparte Firestore-sleutel en eigen privacy-api',()=>{
   assert.match(routes,/req\.bpd\?\.burgerDossierAccess\?\.read/);
   assert.match(routes,/req\.bpd\?\.burgerDossierAccess\?\.write/);
   assert.match(routes,/burgerSubjectCategory/);
+  assert.match(routes,/category:'burger'/);
+  assert.doesNotMatch(routes,/burger_onbevestigd/);
   assert.match(dossier,/burger-fiche\.html/);
   assert.match(html,/BPD|Burgerdossier/);
   const src=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
