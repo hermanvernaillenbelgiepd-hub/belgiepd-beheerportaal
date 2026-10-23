@@ -294,7 +294,7 @@ placeholder="Bijvoorbeeld: opleiding afgerond en gecontroleerd door instructeur"
 <div id="staffLinkedCases" class="subtle">Kaderregistraties laden…</div>
 <form id="staffCaseForm" hidden>
 <h3>Nieuwe dossierregistratie</h3>
-<p class="subtle">Wordt opgeslagen in het bestaande kaderregister met jouw identiteit en tijdstip.</p>
+<p class="subtle">Wordt opgeslagen in het bestaande kaderregister met jouw identiteit en tijdstip en opgenomen in het dynamische weekrapport. Een dossierregistratie past de effectieve naam, rang of bevoegdheden niet automatisch aan: gebruik daarvoor Personeelsgegevens of Specialisaties.</p>
 <div class="grid">
 <div><label for="staffCaseType">Type</label><select id="staffCaseType">
 <option value="notitie">Belangrijke notitie</option><option value="activiteit">Dienstactiviteit</option>
@@ -315,7 +315,8 @@ placeholder="Bijvoorbeeld: opleiding afgerond en gecontroleerd door instructeur"
 <textarea id="staffCaseDetails" rows="3" maxlength="4000" minlength="10" required></textarea></div>
 <div style="grid-column:1/-1"><label for="staffCaseReference">Bewijs- of documentlink (optioneel, https)</label><input id="staffCaseReference" type="url" maxlength="800" placeholder="https://…"></div>
 </div>
-<button id="staffCaseSave" type="submit">Kaderregistratie bewaren</button>
+<button id="staffCaseSave" type="submit">Registratie bewaren in dossier en weekrapport</button>
+<span id="staffCaseHint" class="subtle" role="status"></span>
 </form>
 <h3>Observaties en sancties</h3>
 <p class="subtle">Formele observaties en sancties staan in het bestaande beveiligde registratieregister. Maatregelen en rolbeperkingen worden niet automatisch gewijzigd door een notitie.</p>
@@ -716,6 +717,53 @@ function staffField(parent,label,value){
 const staffNotesLabels={opleiding:'Opleiding',begeleiding:'Begeleiding',
   evaluatie:'Functioneringsgesprek',administratief:'Administratieve opvolging',
   waardering:'Waardering'};
+
+/* Dezelfde categoriebevoegdheden als de kaderregister-API:
+   het formulier is alleen een andere weergave van bestaande registraties. */
+let casePermissions=null;
+const staffCaseFields={verlof:['staffEndDateField'],opleiding:['staffCourseField'],
+  promotievoorstel:['staffRankField'],naamswijziging:['staffNewNameField'],
+  personeelsbeweging:['staffMovementField']};
+const staffCaseValues=['staffEndDate','staffCourseName','staffProposedRank','staffNewName','staffMovement'];
+const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
+  opleiding:'Gevolgde opleiding',naamswijziging:'Naamswijziging (registratie)',
+  promotievoorstel:'Promotievoorstel (geen automatische promotie)',
+  personeelsbeweging:'Personeelsbeweging (registratie)',
+  activiteit:'Dienstactiviteit',specialisatiebeperking:'Beperking van specialisatie'};
+function updateStaffCaseFields(){
+  const type=$('staffCaseType').value;
+  const extras=staffCaseFields[type]||[];
+  $('staffCaseExtra').hidden=!extras.length;
+  for(const [field,ids] of Object.entries(staffCaseFields))
+    for(const id of ids)$(id).hidden=!extras.includes(id);
+  const required={staffEndDate:'verlof',staffCourseName:'opleiding',
+    staffProposedRank:'promotievoorstel',staffNewName:'naamswijziging',
+    staffMovement:'personeelsbeweging'};
+  for(const [id,t] of Object.entries(required))$(id).required=type===t;
+}
+$('staffCaseType').onchange=updateStaffCaseFields;
+async function loadStaffCasePermissions(person,key,canManage){
+  casePermissions=null;
+  $('staffCaseForm').hidden=true;
+  if(!canManage)return;
+  try{
+    const overview=await request('/api/management/overview');
+    if(!sameDossier(key))return;
+    casePermissions=overview;
+    const types=overview.typesByDepartment?.[person.dept]||[];
+    $('staffCaseType').replaceChildren(...types.map(type=>
+      option(type,staffCaseLabels[type]||type)));
+    $('staffCaseForm').hidden=!(overview.writesEnabled&&overview.actor&&types.length);
+    if(!types.length)$('staffCaseHint').textContent='Geen schrijfrechten voor deze categorieën.';
+    else $('staffCaseHint').textContent='Alleen categorieën toegestaan door je huidige dienst- en kaderrol.';
+    updateStaffCaseFields();
+  }catch(error){
+    if(sameDossier(key)){
+      $('staffCaseForm').hidden=true;
+      $('staffCaseHint').textContent='Kaderregistratie niet beschikbaar: '+error.message;
+    }
+  }
+}
 async function loadLinkedPersonnelRecords(p,key){
   const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
   const training=$('staffLinkedTraining'),cases=$('staffLinkedCases');
@@ -750,12 +798,18 @@ async function loadLinkedPersonnelRecords(p,key){
         const data=await request(casesUrl);
         if(!same())return;
         cases.replaceChildren();
-        const allowed=(data.entries||[]).filter(row=>['notitie','activiteit','specialisatiebeperking'].includes(row.type)).slice(0,35);
+        const allowed=(data.entries||[]).filter(row=>!['observatie','sanctie'].includes(row.type)).slice(0,60);
         if(!allowed.length)cases.textContent='Geen toegelaten kadernotities gevonden.';
         for(const row of allowed){
           const div=document.createElement('div');div.className='note-item';
           const title=document.createElement('strong');
-          title.textContent=({notitie:'Personeelsnotitie',activiteit:'Dienstactiviteit',specialisatiebeperking:'Specialisatiebeperking'}[row.type]||'Kaderregistratie')+' · '+String(row.eventDate||'Datum onbekend');
+          title.textContent=(staffCaseLabels[row.type]||row.type||'Kaderregistratie')+
+            ' · '+String(row.eventDate||'Datum onbekend')+
+            (row.testRecord===true?' · TEST':'');
+          const by=document.createElement('span');by.className='subtle';by.style.display='block';
+          by.textContent='Door '+(row.registeredBy?.name||'onbekend')+
+            (row.registeredBy?.call?' · '+row.registeredBy.call:'');
+          div.append(by);
           const body=document.createElement('p');
           body.textContent=String(row.details||'').slice(0,4000);
           div.append(title,body);cases.append(div);
@@ -1124,7 +1178,7 @@ async function loadStaffDossier(p){
     staffDossierRevision=result.revision;
     staffDossierCanMaintain=result.canMaintain===true;
     $('staffManualLeaveForm').hidden=result.cadreActions?.manualLeave!==true;
-    $('staffCaseForm').hidden=result.cadreActions?.cases!==true;
+    void loadStaffCasePermissions(p,key,result.cadreActions?.cases===true);
     $('staffCaseDate').value=new Date().toISOString().slice(0,10);
     showStaffRoles(result.discordRoles,result.subject?.rosterSeries);
     void loadSpecialtyState(p);
@@ -1204,13 +1258,22 @@ $('staffCaseForm').onsubmit=async event=>{
   const person=selected;
   if(!person)return;
   const button=$('staffCaseSave');button.disabled=true;
+  const type=$('staffCaseType').value,key=person.dept+':'+person.discordId;
+  if(!casePermissions?.writesEnabled||!casePermissions.typesByDepartment?.[person.dept]?.includes(type)){
+    button.disabled=false;return notice('Je hebt geen bevoegdheid voor deze dossiercategorie.',true);
+  }
   try{
     await request('/api/management/cases',{method:'POST',
-      body:{dept:person.dept,discordId:person.discordId,type:$('staffCaseType').value,
-        eventDate:$('staffCaseDate').value,details:$('staffCaseDetails').value.trim()}});
-    $('staffCaseDetails').value='';
-    await loadLinkedPersonnelRecords(person,person.dept+':'+person.discordId);
-    notice('Dossiernotitie toegevoegd aan het bestaande kaderregister.');
+      body:{dept:person.dept,discordId:person.discordId,type,
+        eventDate:$('staffCaseDate').value,details:$('staffCaseDetails').value.trim(),
+        endDate:$('staffEndDate').value,courseName:$('staffCourseName').value,
+        proposedRank:$('staffProposedRank').value,newName:$('staffNewName').value,
+        movement:$('staffMovement').value,referenceUrl:$('staffCaseReference').value}});
+    if(!sameDossier(key))return;
+    $('staffCaseDetails').value='';$('staffCaseReference').value='';
+    for(const id of staffCaseValues)$(id).value='';
+    await loadLinkedPersonnelRecords(person,key);
+    notice('Dossierregistratie opgeslagen in het bestaande kaderregister en het dynamische weekrapport.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
 async function showPerson(p){
