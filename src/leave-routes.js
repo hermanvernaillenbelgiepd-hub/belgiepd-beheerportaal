@@ -33,7 +33,7 @@ const personRecords=(rows,id)=>rows.filter(p=>p.personId===id);
 const departmentsOf=records=>[...new Set(records.map(p=>p.dept).filter(Boolean))];
 // Geen volwaardige centrale personeelsnummerdatabase in dit project: Discord ID is
 // voorlopig de migratiebrug. Een toekomstig BPD-nummer mag deze sleutel niet vervangen.
-export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
+export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUser,getSnapshot,accessList}){
   const db=()=>getFirestore();
   const writes=()=>process.env.BPD_ENABLE_LEAVE_WRITES==='true';
   const requireWrites=(req,res,next)=>writes()?next():res.status(503).json({error:'Verlofmodule is voorlopig alleen voor testen. Schrijfacties staan uit.'});
@@ -146,7 +146,7 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
   });
   // Dossierweergave per hulpdienst: enkel kalenderdata/status, GEEN reden of
   // vertrouwelijke beslissing. Een medewerker mag zijn eigen verlof zien.
-  app.get('/api/leave/person/:discordId',requireUser,async(req,res)=>{
+  app.get('/api/leave/person/:discordId',requireDossierUser,async(req,res)=>{
     const personId=String(req.params.discordId||''),dept=String(req.query.dept||'');
     if(!validDiscordId(personId))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
@@ -154,16 +154,20 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
       const records=personRecords(snapshot,personId);
       if(!records.some(p=>p.dept===dept))return res.status(404).json({error:'Geen lidmaatschap gevonden'});
       const self=personId===req.bpd.discordId;
-      const cadre=['middenkader','officierenkader','korpsleiding'].includes(roleForDepartment(req.bpd,dept));
-      if(!self&&(!cadre||!req.bpd.departments.includes(dept)))
+      const canRead=Array.isArray(req.bpd.dossierAllowedDepartments)
+        ?req.bpd.dossierAllowedDepartments.includes(dept)
+        :(['middenkader','officierenkader','korpsleiding'].includes(roleForDepartment(req.bpd,dept))&&
+          req.bpd.departments?.includes(dept));
+      if(!self&&!canRead)
         return res.status(403).json({error:'Geen toegang tot deze hulpdienst'});
       const snap=await db().collection(coll).where('personDiscordId','==',personId).limit(100).get();
       const grant=activeGrant(await grantFor(req.bpd));
       const selected=snap.docs.filter(d=>{
         const record=d.data();
-        return Array.isArray(record.subjectDepartments)&&record.subjectDepartments.includes(dept)&&
-          (self||['approved','rejected','withdrawn'].includes(record.status)||
-            (record.status==='pending'&&mayApproveLeave(req.bpd,record,grant)));
+        // Verlof is persoonsgebonden: alle huidige dienstendossiers van
+        // dezelfde Discord-identiteit tonen dezelfde verlofhistoriek.
+        // De voorafgaande check verifieert eerst de huidige diensttoegang.
+        return self||['approved','rejected','withdrawn','pending'].includes(record.status);
       });
       res.json({personDiscordId:personId,dept,
         leaves:selected.map(d=>{

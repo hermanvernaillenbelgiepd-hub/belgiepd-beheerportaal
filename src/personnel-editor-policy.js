@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {roleForDepartment} from './leave-policy.js';
+import {canReadServiceDossier} from './service-dossier-access.js';
 import {policeKader} from './normalize.js';
 
 // Persistent overlays never contain identity, rank or permissions.
@@ -7,7 +8,7 @@ import {policeKader} from './normalize.js';
 export const PERSONNEL_EDITS_COLLECTION='bpd_personnel_edits';
 export const EDITABLE_STATUSES=Object.freeze(['Actief','Inactief','50/50','Verlof','In opleiding','Afwezig']);
 const ID=/^\d{15,22}$/;
-const SERVICES=new Set(['politie','brandweer','ambulance','depannage']);
+const SERVICES=new Set(['politie','brandweer','ambulance','depannage','burger']);
 const TRIM=s=>typeof s==='string'?s.trim():'';
 // Claim documents protect against concurrent duplicate callsign allocation.
 export function personnelCallClaimId(dept,call){
@@ -27,13 +28,20 @@ export function canViewPersonnel(actor,dept){
 export function canEditPersonnel(actor,person){
   if(!person||!validPersonnelKey(person.dept,person.personId)||!canViewPersonnel(actor,person.dept)||
      actor.discordId===person.personId)return false;
-  if(actor.boardPersonnelAdmin===true)return true;
+  // Bestuur is uitsluitend een inzagerecht. Een afzonderlijk goedgekeurde
+  // operationele dienstrol blijft geldig, ook bij een bestuursaanstelling.
+  // Nooit schrijfrechten ontlenen aan Bestuur alleen.
+  // Een expliciet berekende dienstscope mag geen andere dienst openen;
+  // oudere correct goedgekeurde kaderaccounts zonder scopeveld behouden hun
+  // dienstrol. Bestuur alléén geeft nooit operationele schrijfrechten.
   if(Array.isArray(actor?.dossierNativeDepartments)&&
      !actor.dossierNativeDepartments.includes(person.dept))return false;
   const scoped=roleForDepartment(actor,person.dept);
   if(person.dept==='brandweer'&&actor.fireZoneChief===true)return true;
   if(actor.portalTechnicalMode===true||actor.role==='beheerder'&&scoped==='beheerder')return true;
-  if(!['officierenkader','korpsleiding'].includes(scoped) ||
+  // De goedgekeurde dienstrol bepaalt de bevoegdheid, niet het Bestuur-label
+  // en niet uitsluitend de globale (mogelijk anders weergegeven) accountrol.
+  if(!['officierenkader','korpsleiding'].includes(scoped)||
      !['officierenkader','korpsleiding'].includes(actor.role))return false;
   if(actor.role==='officierenkader'&&scoped==='korpsleiding')return false;
   if(person.dept==='politie'){
@@ -42,6 +50,23 @@ export function canEditPersonnel(actor,person){
     if(target==='Officierenkader'&&scoped!=='korpsleiding')return false;
   }
   return true;
+}
+// Uitsluitend voor de algemene fichegegevens (naam, roepnummer, status,
+// aanstellingsdatum, eenheid en functie). Dit verleent geen rechten op
+// promoties, specialisaties, sancties of andere personeelsacties.
+export function canEditGeneralPersonnelInfo(actor,person){
+  if(!person||!validPersonnelKey(person.dept,person.personId)||
+     !canReadServiceDossier(actor,person.dept)||
+     actor?.discordId===person.personId)return false;
+  // boardPersonnelAdmin is uitsluitend afkomstig van server-geverifieerd Bestuur.
+  if(actor?.boardPersonnelAdmin===true)return true;
+  // De eigen operationele kaderrol blijft dienstgebonden en onderworpen aan
+  // bestaande doelrangbeperkingen; Middenkader of technische modus is op
+  // zichzelf niet bevoegd om deze algemene gegevens te wijzigen.
+  const cadre=roleForDepartment(actor,person.dept);
+  return ['officierenkader','korpsleiding'].includes(actor?.role)&&
+    ['officierenkader','korpsleiding'].includes(cadre)&&
+    canEditPersonnel(actor,person);
 }
 // Status-only delegation for Middenkader. The rank itself must be a known
 // lower rank; a callsign cannot masquerade as proof of rank.
