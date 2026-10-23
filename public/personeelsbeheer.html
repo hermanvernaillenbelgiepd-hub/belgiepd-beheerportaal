@@ -212,6 +212,45 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .dossier-sheet .sheet-identity>div:nth-child(2n){border-right:0}
 .dossier-sheet .sheet-grid{grid-template-columns:1fr}
 .dossier-sheet .sheet-block.wide{grid-column:auto}}
+
+/* Compact personeelsdashboard: presentatielaag boven bestaande rechten en API. */
+#panel .dossier-tabbar{gap:5px;display:flex;flex-wrap:wrap;overflow:visible;padding:8px 0 13px}
+#panel .dossier-tabbar button{font-size:12px;padding:8px 10px;white-space:normal}
+#panel .dossier-pane{overflow:visible;max-height:none;padding:18px 2px 10px}
+#panel>.sheet-identity{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:10px 0 12px;padding:12px 16px;background:#183252;border:1px solid #365576;border-radius:10px}
+#panel>.sheet-identity>div{min-width:0}#panel>.sheet-identity small{display:block;margin-bottom:4px;color:#9eb8d9;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+#panel>.sheet-identity strong{font-size:13px;color:#eef5ff;overflow-wrap:anywhere}
+#panel .dashboard-title{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 13px}
+#panel .dashboard-title h3{margin:0;font-size:17px}#panel .dashboard-title p{margin:2px 0 0;color:#98b3d2;font-size:12px}
+#panel .dashboard-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:16px}
+#panel .dashboard-metric{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:3px;padding:12px 14px;background:#1b3656;color:#e9f2ff;border:1px solid #355779;border-radius:9px;min-width:0}
+#panel .dashboard-metric .metric-count{font-size:24px;font-weight:800;line-height:1.25;font-variant-numeric:tabular-nums}
+#panel .dashboard-metric .metric-label{color:#b5cce8;font-size:12px}#panel .dashboard-metric .metric-open{font-size:10px;color:#98bff3}
+#panel .dashboard-actions{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 17px}
+#panel .dashboard-actions button{flex:0 1 auto;font-size:12px;padding:9px 12px;white-space:normal;background:#24466d;border:1px solid #4b79ac}
+#panel .dashboard-actions button:last-child{background:transparent}
+#panel .dashboard-main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(240px,.9fr);gap:24px;align-items:start}
+#panel .dashboard-feed{min-width:0}#panel .dashboard-feed>h3{margin:0 0 8px;font-size:14px}
+#panel .dashboard-line{padding:11px 0;border-top:1px solid #304968}
+#panel .dashboard-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#panel .dashboard-heading strong{font-size:12px}#panel .dashboard-heading button{font-size:11px;padding:5px 8px;background:none;border:0;color:#a7d0ff}
+#panel .dashboard-preview{display:flex;flex-direction:column;gap:4px;padding:7px 0 0}
+#panel .dashboard-preview-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;font-size:12px}
+#panel .dashboard-preview-row strong{font-size:12px;font-weight:600}
+#panel .dashboard-preview-row small{font-size:11px;text-align:right;color:#9cb4d2;overflow-wrap:anywhere}
+#panel .dashboard-empty{color:#8fa9ca;font-size:11px}
+#panel .dashboard-aside{border-left:1px solid #365271;padding-left:20px;min-width:0}
+#panel .dashboard-aside>section+section{padding-top:15px;margin-top:15px;border-top:1px solid #35506b}
+#panel .dashboard-aside h3{font-size:13px;margin:0}#panel .dashboard-aside .sheet-specialties{display:flex;flex-wrap:wrap;gap:6px;max-height:none;overflow:visible;margin-top:8px}
+#panel .dashboard-aside .sheet-chip{font-size:11px;padding:5px 9px;border-radius:99px}
+#panel .dashboard-aside #sheetProfile{font-size:12px;line-height:1.6;margin-top:8px}
+#panel .dashboard-aside #sheetProfile .sheet-none{padding:2px 0}
+#panel .dashboard-no-records{font-size:12px;color:#a8bfdf;padding:10px 0}
+#panel #formalWriteActions[hidden],#panel #staffFormalForm[hidden],#panel #addFormalObservation[hidden],#panel #addFormalSanction[hidden]{display:none!important}
+#panel #formalWriteActions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 5px}
+#panel #formalWriteStatus{font-size:12px;line-height:1.5;color:#abc6e7}
+@media(max-width:850px){#panel .dashboard-main{grid-template-columns:1fr}#panel .dashboard-aside{border-left:0;border-top:1px solid #365271;padding:15px 0 0}}
+@media(max-width:600px){#panel .dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#panel>.sheet-identity{grid-template-columns:repeat(2,minmax(0,1fr))}#panel .dashboard-actions button{flex:1 1 45%}}
 </style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
@@ -402,6 +441,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 </form>
 <h3>Observaties en sancties</h3>
 <p class="subtle">Formele observaties en sancties staan in het bestaande beveiligde registratieregister. Maatregelen en rolbeperkingen worden niet automatisch gewijzigd door een notitie.</p>
+<p id="formalWriteStatus" class="subtle" role="status">Invoerrechten controleren…</p>
 <form id="staffFormalForm" class="inline-form" hidden>
 <h3 id="staffFormalFormTitle">Nieuwe observatie of sanctie</h3>
 <p id="staffFormalPolicy" class="subtle">Rechten worden gecontroleerd via de bestaande beveiligde registratie-API.</p>
@@ -476,45 +516,66 @@ function setupDossierTabs(){
   sheet.innerHTML=`
     <div class="sheet-identity" aria-label="Personeelsinformatie">
       <div><small>Roepnummer</small><strong id="sheetCall">—</strong></div>
-      <div><small>Personeelslid</small><strong id="sheetName">—</strong></div>
       <div><small>Graad</small><strong id="sheetRank">—</strong></div>
       <div><small>Reeks</small><strong id="sheetSeries">—</strong></div>
       <div><small>Status</small><strong id="sheetStatus">—</strong></div>
     </div>
-    <div class="sheet-grid">
-      <section class="sheet-block"><div class="sheet-heading"><h3>Specialisaties</h3><button type="button" data-open-sheet="specialisaties">Beheren →</button></div>
-        <div class="sheet-specialties" id="sheetSpecialties">Specialisaties laden…</div></section>
-      <section class="sheet-block"><div class="sheet-heading"><h3>Aanstellingsgegevens / functies</h3><button type="button" data-open-sheet="gegevens">Bewerken →</button></div>
-        <div id="sheetProfile" class="sheet-none">Administratieve gegevens laden…</div></section>
-      <section class="sheet-block"><div class="sheet-heading"><h3>Personeelsbewegingen</h3><button type="button" data-open-sheet="nieuw">Registreren →</button></div>
-        <div id="sheetMovements">Registraties laden…</div></section>
-      <section class="sheet-block"><div class="sheet-heading"><h3>Verloven</h3><button type="button" data-open-sheet="verlof">Openen →</button></div>
-        <div id="sheetLeave">Verlofgegevens laden…</div></section>
-      <section class="sheet-block wide"><div class="sheet-heading"><h3>Observaties &amp; sancties — één personeelsdossier</h3>
-        <button type="button" data-open-sheet="sancties">Observatie / sanctie toevoegen of wijzigen →</button></div>
-        <div id="sheetFormal">Observaties en sancties laden…</div></section>
-      <section class="sheet-block"><div class="sheet-heading"><h3>Gevolgde opleidingen</h3><button type="button" data-open-sheet="opleidingen">Registreren →</button></div>
-        <div id="sheetTraining">Opleidingen laden…</div></section>
-      <section class="sheet-block"><div class="sheet-heading"><h3>Notities (basis &amp; belangrijk)</h3><button type="button" data-open-sheet="nieuw">Notitie toevoegen →</button></div>
-        <div id="sheetNotes">Notities laden…</div></section>
+    <div class="dashboard-title">
+      <div><h3>Dossieroverzicht</h3><p>Samenvatting van de zichtbare registraties binnen deze discipline.</p></div>
+      <button type="button" class="alt" data-open-sheet="historiek">Audit &amp; historiek →</button>
     </div>
-    <p class="sheet-caption">Vaste rubrieken naar het voorbeeld van het oude personeelsblad. Dit is een live weergave van de bestaande dossierbronnen, geen tweede kopie. Invoer, wijzigingsrechten en auditlogs blijven via de bestaande beveiligde formulieren lopen.</p>
+    <div class="dashboard-stats" aria-label="Aantal dossierregistraties">
+      <button type="button" class="dashboard-metric" data-open-sheet="sancties">
+        <span class="metric-count" id="metricObservations">—</span><span class="metric-label">Observaties</span><span class="metric-open">Open rubriek →</span></button>
+      <button type="button" class="dashboard-metric" data-open-sheet="sancties">
+        <span class="metric-count" id="metricSanctions">—</span><span class="metric-label">Sancties</span><span class="metric-open">Open rubriek →</span></button>
+      <button type="button" class="dashboard-metric" data-open-sheet="opleidingen">
+        <span class="metric-count" id="metricTraining">—</span><span class="metric-label">Opleidingen</span><span class="metric-open">Open rubriek →</span></button>
+      <button type="button" class="dashboard-metric" data-open-sheet="nieuw">
+        <span class="metric-count" id="metricNotes">—</span><span class="metric-label">Notities</span><span class="metric-open">Open rubriek →</span></button>
+    </div>
+    <div class="dashboard-actions" role="group" aria-label="Dossieracties">
+      <button type="button" data-open-sheet="sancties" data-formal-action="observatie">+ Observatie</button>
+      <button type="button" data-open-sheet="sancties" data-formal-action="sanctie">+ Sanctie</button>
+      <button type="button" data-open-sheet="nieuw">+ Notitie / registratie</button>
+      <button type="button" data-open-sheet="opleidingen">+ Opleiding</button>
+      <button type="button" data-open-sheet="gegevens">Personeelsgegevens →</button>
+    </div>
+    <div class="dashboard-main">
+      <section class="dashboard-feed" aria-label="Recente dossierregistraties">
+        <h3>Recente registraties</h3>
+        <div class="dashboard-line"><div class="dashboard-heading"><strong>Observaties &amp; sancties</strong><button type="button" data-open-sheet="sancties">Bekijken →</button></div><div id="sheetFormal" class="dashboard-preview">Laden…</div></div>
+        <div class="dashboard-line"><div class="dashboard-heading"><strong>Notities</strong><button type="button" data-open-sheet="nieuw">Bekijken →</button></div><div id="sheetNotes" class="dashboard-preview">Laden…</div></div>
+        <div class="dashboard-line"><div class="dashboard-heading"><strong>Opleidingen</strong><button type="button" data-open-sheet="opleidingen">Bekijken →</button></div><div id="sheetTraining" class="dashboard-preview">Laden…</div></div>
+        <div class="dashboard-line"><div class="dashboard-heading"><strong>Personeelsbewegingen</strong><button type="button" data-open-sheet="nieuw">Bekijken →</button></div><div id="sheetMovements" class="dashboard-preview">Laden…</div></div>
+        <div class="dashboard-line"><div class="dashboard-heading"><strong>Verlof</strong><button type="button" data-open-sheet="verlof">Bekijken →</button></div><div id="sheetLeave" class="dashboard-preview">Laden…</div></div>
+      </section>
+      <aside class="dashboard-aside">
+        <section><div class="dashboard-heading"><h3>Specialisaties</h3><button type="button" data-open-sheet="specialisaties">Openen →</button></div><div class="sheet-specialties" id="sheetSpecialties">Laden…</div></section>
+        <section><div class="dashboard-heading"><h3>Aanstelling / functie</h3><button type="button" data-open-sheet="gegevens">Bewerken →</button></div><div id="sheetProfile">Laden…</div></section>
+      </aside>
+    </div>
+    <p class="sheet-caption">Alle gegevens komen uit de bestaande beveiligde dossierbronnen. Invoer is uitsluitend mogelijk volgens je dienstrechten.</p>
   `;
   panes.overzicht.prepend(sheet);
+  $('identity').after(sheet.querySelector('.sheet-identity'));
   sheet.addEventListener('click',event=>{
     const button=event.target.closest('[data-open-sheet]');
-    if(button)openDossierTab(button.dataset.openSheet);
+    if(button){
+      openDossierTab(button.dataset.openSheet);
+      if(button.dataset.formalAction)startFormalRegistration(button.dataset.formalAction);
+    }
   });
   panes.gegevens.append($('editForm'),$('promotionPanel'));
   const source=$('staffDossierSection'),nodes=[...source.children];
-  let section='overzicht';
+  let section='gegevens';
   for(const node of nodes){
     if(node.classList.contains('dossier-shortcuts')){node.remove();continue}
     if(node.id==='staffProfileForm'){panes.gegevens.append(node);continue}
     if(node.tagName==='H3'){
       const label=node.textContent.trim().toLowerCase();
       if(label.startsWith('specialisaties'))section='specialisaties';
-      else if(label.startsWith('discord-reeks'))section='overzicht';
+      else if(label.startsWith('discord-reeks'))section='specialisaties';
       else if(label.startsWith('verlof van'))section='verlof';
       else if(label.startsWith('gekoppelde opleidingen'))section='opleidingen';
       else if(label.startsWith('nieuwe dossierregistratie'))section='nieuw';
@@ -994,37 +1055,34 @@ function sheetCell(value){
 function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',limited=false){
   const root=$('sheet'+group[0].toUpperCase()+group.slice(1));
   if(!root)return;
+  const entries=Array.isArray(rows)?rows:[];
+  const metric={notes:'metricNotes',training:'metricTraining'}[group];
+  if(metric)$(metric).textContent=entries.length+(limited?'+':'');
   root.replaceChildren();
-  if(!rows?.length){
-    const note=document.createElement('div');note.className='sheet-none';
-    note.textContent=empty;root.append(note);return;
+  if(!entries.length){
+    const text=document.createElement('span');text.className='dashboard-empty';
+    text.textContent=empty;root.append(text);return;
   }
-  const holder=document.createElement('div');holder.className='sheet-table-holder';
-  const table=document.createElement('table');
-  const head=document.createElement('thead'),tr=document.createElement('tr');
-  for(const title of sheetDefs[group]){
-    const th=document.createElement('th');th.textContent=title;tr.append(th);
+  for(const row of entries.slice(0,2)){
+    const cells=toCells(row).map(x=>x===null||x===undefined||x===''?'—':String(x));
+    const element=document.createElement('div');element.className='dashboard-preview-row';
+    const label=document.createElement('strong');label.textContent=(cells[1]||cells[0]||'Registratie').slice(0,100);
+    const extra=document.createElement('small');extra.textContent=[cells[0],cells[2]].filter(x=>x!=='—').join(' · ').slice(0,150);
+    element.append(label,extra);root.append(element);
   }
-  head.append(tr);table.append(head);
-  const body=document.createElement('tbody');
-  for(const row of rows.slice(0,25)){
-    const tr=document.createElement('tr');
-    for(const value of toCells(row))tr.append(sheetCell(value));
-    body.append(tr);
-  }
-  table.append(body);holder.append(table);root.append(holder);
-  if(limited||rows.length>25){
-    const note=document.createElement('div');note.className='sheet-none';
-    note.textContent='Alleen de recentste registraties zichtbaar. Open de rubriek voor meer informatie.';
-    root.append(note);
+  if(entries.length>2||limited){
+    const more=document.createElement('small');more.className='dashboard-empty';
+    more.textContent='Open de rubriek voor alle toegelaten registraties.';
+    root.append(more);
   }
 }
 const sheetWho=row=>row.registeredBy?.name||row.submittedByActor?.name||'Onbekend';
 function sheetIdentity(p){
-  $('sheetCall').textContent=p.call||'—';$('sheetName').textContent=p.name||'—';
+  $('sheetCall').textContent=p.call||'—';
   $('sheetRank').textContent=p.rank||'—';$('sheetSeries').textContent=p.series||'—';
   $('sheetStatus').textContent=p.status||'—';
   $('sheetProfile').textContent='Administratieve gegevens laden…';
+  for(const name of ['metricObservations','metricSanctions','metricNotes','metricTraining'])$(name).textContent='—';
   $('sheetSpecialties').textContent='Specialisaties laden…';
   for(const key of Object.keys(sheetDefs)){
     const field=$('sheet'+key[0].toUpperCase()+key.slice(1));
@@ -1063,6 +1121,9 @@ function sheetCaseRows(entries,limited){
     x.details||'—',sheetWho(x)],'Geen notities geregistreerd.',limited);
 }
 function sheetFormalRows(entries,limited){
+  const list=Array.isArray(entries)?entries:[];
+  $('metricObservations').textContent=list.filter(r=>r.type==='observatie').length+(limited?'+':'');
+  $('metricSanctions').textContent=list.filter(r=>r.type==='sanctie').length+(limited?'+':'');
   sheetSetRows('formal',entries,x=>[x.eventDate||'—',
     x.type==='sanctie'?'Sanctie · '+(x.sanctionType||'Maatregel'):'Observatie',
     x.details||x.explanation||'—',x.type==='sanctie'?x.severity??'—':x.score??'—',
@@ -1294,9 +1355,20 @@ function openFormalEdit(row){
   $('formalNotice').textContent='De vorige sanctie blijft in het beveiligde auditlog bewaard.';
   $('staffFormalForm').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+function startFormalRegistration(type){
+  if(!selected||!formalPermissions?.writesEnabled)return;
+  const allowed=type==='observatie'?
+    formalPermissions.observationDepartments?.includes(selected.dept):
+    formalPermissions.sanctionDepartments?.includes(selected.dept);
+  if(!allowed||!formalPermissions.actor)return;
+  $('formalType').disabled=false;clearFormalEdit();$('formalType').value=type;
+  updateFormalFields();$('staffFormalForm').hidden=false;
+  $('formalDetails').focus();
+}
 async function loadStaffFormalPermissions(p,key){
   formalPermissions=null;formalRecords=[];formalEditId=null;
   $('staffFormalForm').hidden=true;
+  $('formalWriteStatus').textContent='Invoerrechten controleren…';
   try{
     const data=await request('/api/registrations/subjects');
     if(!sameDossier(key))return;
@@ -1316,10 +1388,19 @@ async function loadStaffFormalPermissions(p,key){
       input.type='checkbox';input.value=reason;label.append(input,document.createTextNode(reason));
       $('formalReasons').append(label);
     }
-    if(canObs||canSan)clearFormalEdit();
+    if(canObs||canSan){
+      clearFormalEdit();
+      $('formalWriteStatus').textContent='Registraties toevoegen is toegestaan volgens je huidige dienstrechten.';
+    }else{
+      $('formalWriteStatus').textContent=!data.writesEnabled?
+        'Registraties zijn momenteel uitgeschakeld.':
+        !data.actor?'Je eigen personeelsidentiteit moet gekoppeld zijn om te registreren.':
+        'Je kunt dit dossier bekijken, maar geen observaties of sancties toevoegen.';
+    }
   }catch(e){
     if(sameDossier(key)){
       $('staffFormalForm').hidden=true;
+      $('formalWriteStatus').textContent='Registratie niet beschikbaar: '+e.message;
       $('formalNotice').textContent='Formele registratie niet beschikbaar: '+e.message;
     }
   }
