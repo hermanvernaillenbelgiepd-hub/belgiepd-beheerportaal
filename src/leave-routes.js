@@ -195,29 +195,61 @@ export function installLeaveRoutes(app,{requireUser,getSnapshot,accessList}){
           :roleForDepartment(req.bpd,dept)
       ]));
       const autoApproved=status==='approved';
+      // The original deterministic document is the historical anchor for
+      // this exact interval. Withdrawn/rejected requests remain immutable
+      // history; subsequent attempts receive a new Firestore document ID.
+      // The anchor only records a pointer to the newest attempt, so
+      // concurrent submissions conflict on one transactionally read document.
+      let createdId=null;
       try{
         await db().runTransaction(async tx=>{
-          const existing=await tx.get(ref);
-          if(existing.exists)throw rejection('Voor deze exacte periode bestaat al een aanvraag',409);
-          tx.create(ref,{...details,note:isCorps?'':details.note,
+          const original=await tx.get(ref);
+          let latest=original;
+          if(original.exists&&original.get('latestAttemptId')){
+            const latestId=original.get('latestAttemptId');
+            if(!validId(latestId)||latestId===ref.id)
+              throw rejection('Controle van eerdere aanvragen mislukt. Contacteer een beheerder.',409);
+            latest=await tx.get(db().collection(coll).doc(latestId));
+            if(!latest.exists)
+              throw rejection('Eerdere verlofaanvraag kon niet worden gecontroleerd. Contacteer een beheerder.',409);
+          }
+          if(latest.exists&&['pending','approved'].includes(latest.get('status')))
+            throw rejection('Voor deze periode bestaat al een lopende of goedgekeurde verlofaanvraag',409);
+          // Fail closed for any unexpected state; only completed/rejected
+          // submissions are eligible for a fresh immutable attempt.
+          if(latest.exists&&!['withdrawn','rejected'].includes(latest.get('status')))
+            throw rejection('Status van eerdere verlofaanvraag onbekend. Contacteer een beheerder.',409);
+          const target=original.exists?db().collection(coll).doc():ref;
+          if(original.exists)tx.update(ref,{
+            latestAttemptId:target.id,latestAttemptAt:FieldValue.serverTimestamp()
+          });
+          tx.create(target,{...details,note:isCorps?'':details.note,
             personDiscordId:id,subjectName,subjectCall,subjectDepartments,subjectDepartmentRoles,
             subjectRole:req.bpd.portalTechnicalMode===true?req.bpd.operationalRole:req.bpd.role,
             status,autoApproved,approvalReason:isCorps?'korpsleiding_vrijgesteld':
               autoApproved?'duur_7_tot_14_dagen':null,
             submittedByUid:req.bpd.uid,submittedByDiscordId:id,
+            ...(original.exists?{previousAttemptId:latest.id}:{}),
             ...(autoApproved?{decidedAt:FieldValue.serverTimestamp(),decidedBy:'system'}:{}),
             createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
           const historyBase={...details,personDiscordId:id,subjectName,
             subjectCall,subjectDepartments,status};
-          const submitter=actorFromPersonnel(req.bpd,records)||{name:subjectName,call:subjectCall,discordId:id};
-          writeLeaveEvent(tx,{requestRef:ref,request:historyBase,action:'submitted',
+          const submitter=actorFromPersonnel(req.bpd,records)||{
+            name:subjectName,call:subjectCall,discordId:id
+          };
+          writeLeaveEvent(tx,{requestRef:target,request:historyBase,action:'submitted',
             actor:submitter,actorUid:req.bpd.uid,eventDate:yyyyMmDd(),to:'pending'});
-          if(autoApproved)writeLeaveEvent(tx,{requestRef:ref,request:historyBase,
+          if(autoApproved)writeLeaveEvent(tx,{requestRef:target,request:historyBase,
             action:isCorps?'korpsleiding_vrijgesteld':'automatic_approved',
             actor:null,actorUid:null,eventDate:yyyyMmDd(),from:'pending',to:'approved'});
+          createdId=target.id;
         });
-      }catch(e){if(e.code===6||e.code==='already-exists'||e.status===409)throw rejection('Voor deze exacte periode bestaat al een aanvraag',409);throw e}
-      return res.status(201).json({id:ref.id,status,days:details.days,automatic:autoApproved});
+      }catch(e){
+        if(e.code===6||e.code==='already-exists')
+          throw rejection('Er bestaat intussen al een aanvraag voor deze periode. Vernieuw je verlofoverzicht.',409);
+        throw e;
+      }
+      return res.status(201).json({id:createdId,status,days:details.days,automatic:autoApproved});
     }catch(e){return jsonError(res,e)}
   });
   // Een eigen nog lopend/voorafgaand verlof intrekken, nooit verwijderen.
