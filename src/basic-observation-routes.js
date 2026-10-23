@@ -84,8 +84,17 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
       const roster=await latestSubjects(getSnapshot);
       const people=roster.filter(p=>p.dept===POL);
       const db=getFirestore();
-      const notices=await db.collection('bpd_notices').doc(POL).collection('events')
-        .orderBy('createdAt','desc').limit(250).get();
+      const events=db.collection('bpd_notices').doc(POL).collection('events');
+      const cursor=String(req.query.cursor||'');
+      if(cursor&&!/^[A-Za-z0-9_-]{12,32}$/.test(cursor))
+        return err(res,400,'Ongeldige pagina-verwijzing');
+      let query=events.orderBy('createdAt','desc').limit(160);
+      if(cursor){
+        const previous=await events.doc(cursor).get();
+        if(!previous.exists)return err(res,400,'Pagina-verwijzing niet gevonden');
+        query=query.startAfter(previous);
+      }
+      const notices=await query.get();
       const picked=notices.docs.map(d=>d.data()).filter(e=>e.type==='observatie'&&
         typeof e.caseId==='string'&&/^politie_\d{15,22}$/.test(e.caseId)&&
         typeof e.entryId==='string'&&/^[A-Za-z0-9_-]{12,32}$/.test(e.entryId));
@@ -119,8 +128,9 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
             rank:txt(subject[0].rank,120),discordId:subject[0].personId}});
       }
       res.set('Cache-Control','private, no-store');
-      return res.json({entries:rows,limited:notices.docs.length===250,
-        description:'Ontvangen observaties vanuit Basiskader; uitsluitend aan bevoegde kaderleden en Bestuur. Maximaal de 250 recentste registratiemeldingen doorzocht.'});
+      return res.json({entries:rows,
+        nextCursor:notices.docs.length===160?notices.docs[notices.docs.length-1].id:null,
+        description:'Ontvangen observaties vanuit Basiskader; uitsluitend aan bevoegde kaderleden en Bestuur. Oudere meldingen kunnen per pagina worden bijgeladen.'});
     }catch(e){
       if(e.status)return err(res,e.status,e.message);
       console.error('Basiskader ontvangen observaties:',e.code||e.message);
