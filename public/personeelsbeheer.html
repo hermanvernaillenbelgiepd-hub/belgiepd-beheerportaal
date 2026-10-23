@@ -212,7 +212,7 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .dossier-sheet .sheet-identity>div:nth-child(2n){border-right:0}
 .dossier-sheet .sheet-grid{grid-template-columns:1fr}
 .dossier-sheet .sheet-block.wide{grid-column:auto}}
-</style></head>
+</style><link rel="stylesheet" href="/dossier-compact-test.css"></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
@@ -451,7 +451,7 @@ const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance'
 /* Alle onderdelen behouden hun originele ID's en beveiligde API's, maar delen één fiche. */
 let dossierTab='overzicht';
 const dossierTabNames={overzicht:'Overzicht',gegevens:'Personeelsgegevens',specialisaties:'Specialisaties',
-  verlof:'Verlof',nieuw:'Nieuwe dossierregistratie',
+  verlof:'Verlof',nieuw:'Notities & registratie',
   registraties:'Ontvangen vanuit Basiskader',
   middenregistraties:'Ontvangen vanuit Middenkader',
   sancties:'Observaties & sancties',opleidingen:'Opleidingen',historiek:'Audit & historiek'};
@@ -473,48 +473,87 @@ function setupDossierTabs(){
     pane.setAttribute('role','tabpanel');panes[key]=pane;$('dossierViews').append(pane);
   }
   const sheet=document.createElement('div');sheet.className='dossier-sheet';sheet.id='sheetOverview';
-  sheet.innerHTML=`
+  sheet.insertAdjacentHTML('afterbegin',`
     <div class="sheet-identity" aria-label="Personeelsinformatie">
       <div><small>Roepnummer</small><strong id="sheetCall">—</strong></div>
-      <div><small>Personeelslid</small><strong id="sheetName">—</strong></div>
       <div><small>Graad</small><strong id="sheetRank">—</strong></div>
       <div><small>Reeks</small><strong id="sheetSeries">—</strong></div>
       <div><small>Status</small><strong id="sheetStatus">—</strong></div>
     </div>
-    <div class="sheet-grid">
-      <section class="sheet-block"><div class="sheet-heading"><h3>Specialisaties</h3><button type="button" data-open-sheet="specialisaties">Beheren →</button></div>
-        <div class="sheet-specialties" id="sheetSpecialties">Specialisaties laden…</div></section>
-      <section class="sheet-block"><div class="sheet-heading"><h3>Aanstellingsgegevens / functies</h3><button type="button" data-open-sheet="gegevens">Bewerken →</button></div>
-        <div id="sheetProfile" class="sheet-none">Administratieve gegevens laden…</div></section>
-      <section class="sheet-block"><div class="sheet-heading"><h3>Personeelsbewegingen</h3><button type="button" data-open-sheet="nieuw">Registreren →</button></div>
-        <div id="sheetMovements">Registraties laden…</div></section>
-      <section class="sheet-block"><div class="sheet-heading"><h3>Verloven</h3><button type="button" data-open-sheet="verlof">Openen →</button></div>
-        <div id="sheetLeave">Verlofgegevens laden…</div></section>
-      <section class="sheet-block wide"><div class="sheet-heading"><h3>Observaties &amp; sancties — één personeelsdossier</h3>
-        <button type="button" data-open-sheet="sancties">Observatie / sanctie toevoegen of wijzigen →</button></div>
-        <div id="sheetFormal">Observaties en sancties laden…</div></section>
-      <section class="sheet-block"><div class="sheet-heading"><h3>Gevolgde opleidingen</h3><button type="button" data-open-sheet="opleidingen">Registreren →</button></div>
-        <div id="sheetTraining">Opleidingen laden…</div></section>
-      <section class="sheet-block"><div class="sheet-heading"><h3>Notities (basis &amp; belangrijk)</h3><button type="button" data-open-sheet="nieuw">Notitie toevoegen →</button></div>
-        <div id="sheetNotes">Notities laden…</div></section>
+    <div class="overview-headline">
+      <div><h3>In één oogopslag</h3><p>Actuele gegevens en recente registraties van dit personeelslid.</p></div>
+      <button type="button" class="alt" id="overviewShowEmpty" aria-pressed="false">Toon lege rubrieken</button>
     </div>
-    <p class="sheet-caption">Vaste rubrieken naar het voorbeeld van het oude personeelsblad. Dit is een live weergave van de bestaande dossierbronnen, geen tweede kopie. Invoer, wijzigingsrechten en auditlogs blijven via de bestaande beveiligde formulieren lopen.</p>
-  `;
+    <div class="overview-actions" role="group" aria-label="Snelle dossieracties">
+      <button type="button" data-open-sheet="sancties">+ Observatie / sanctie</button>
+      <button type="button" data-open-sheet="nieuw">+ Notitie / registratie</button>
+      <button type="button" data-open-sheet="opleidingen">+ Opleiding</button>
+      <button type="button" data-open-sheet="gegevens">Personeelsgegevens →</button>
+    </div>
+    <div class="overview-layout">
+      <section class="overview-recent" aria-label="Recente dossieractiviteiten">
+        <h3>Recente dossieractiviteiten</h3>
+        <div class="overview-line" data-overview-key="formal">
+          <div class="overview-line-heading"><strong>Observaties &amp; sancties</strong><span data-overview-count="formal"></span>
+            <button type="button" data-open-sheet="sancties">Bekijken →</button></div>
+          <div id="sheetFormal" class="overview-records">Registraties laden…</div>
+        </div>
+        <div class="overview-line" data-overview-key="notes">
+          <div class="overview-line-heading"><strong>Notities</strong><span data-overview-count="notes"></span>
+            <button type="button" data-open-sheet="nieuw">Bekijken →</button></div>
+          <div id="sheetNotes" class="overview-records">Registraties laden…</div>
+        </div>
+        <div class="overview-line" data-overview-key="training">
+          <div class="overview-line-heading"><strong>Opleidingen</strong><span data-overview-count="training"></span>
+            <button type="button" data-open-sheet="opleidingen">Bekijken →</button></div>
+          <div id="sheetTraining" class="overview-records">Registraties laden…</div>
+        </div>
+        <div class="overview-line" data-overview-key="movements">
+          <div class="overview-line-heading"><strong>Personeelsbewegingen</strong><span data-overview-count="movements"></span>
+            <button type="button" data-open-sheet="nieuw">Bekijken →</button></div>
+          <div id="sheetMovements" class="overview-records">Registraties laden…</div>
+        </div>
+        <div class="overview-line" data-overview-key="leave">
+          <div class="overview-line-heading"><strong>Verlof</strong><span data-overview-count="leave"></span>
+            <button type="button" data-open-sheet="verlof">Bekijken →</button></div>
+          <div id="sheetLeave" class="overview-records">Verlofperiodes laden…</div>
+        </div>
+        <p id="overviewEmptyRecords" class="overview-empty" hidden>Er zijn momenteel geen zichtbare dossieractiviteiten. Gebruik de tabbladen om gegevens te bekijken of toe te voegen.</p>
+      </section>
+      <aside class="overview-side" aria-label="Dossiersamenvatting">
+        <section class="overview-info">
+          <div class="overview-line-heading"><h3>Specialisaties</h3><button type="button" data-open-sheet="specialisaties">Beheren →</button></div>
+          <div id="sheetSpecialties" class="sheet-specialties">Specialisaties laden…</div>
+        </section>
+        <section class="overview-info">
+          <div class="overview-line-heading"><h3>Aanstellingsgegevens</h3><button type="button" data-open-sheet="gegevens">Bewerken →</button></div>
+          <div id="sheetProfile" class="sheet-none">Administratieve gegevens laden…</div>
+        </section>
+      </aside>
+    </div>
+  `);
   panes.overzicht.prepend(sheet);
+  // Identiteit staat boven de tabs en niet langer opnieuw in Overzicht.
+  $('identity').after(sheet.querySelector('.sheet-identity'));
+  $('overviewShowEmpty').onclick=()=>{
+    overviewShowEmpty=!overviewShowEmpty;
+    refreshOverviewEmpty();
+  };
   sheet.addEventListener('click',event=>{
     const button=event.target.closest('[data-open-sheet]');
     if(button)openDossierTab(button.dataset.openSheet);
   });
   panes.gegevens.append($('editForm'),$('promotionPanel'));
   const source=$('staffDossierSection'),nodes=[...source.children];
-  let section='overzicht';
+  // Oude administratieve rubrieken horen niet onder Overzicht.
+  let section='gegevens';
   for(const node of nodes){
     if(node.classList.contains('dossier-shortcuts')){node.remove();continue}
     if(node.id==='staffProfileForm'){panes.gegevens.append(node);continue}
     if(node.tagName==='H3'){
       const label=node.textContent.trim().toLowerCase();
       if(label.startsWith('specialisaties'))section='specialisaties';
-      else if(label.startsWith('discord-reeks'))section='overzicht';
+      else if(label.startsWith('discord-reeks'))section='specialisaties';
       else if(label.startsWith('verlof van'))section='verlof';
       else if(label.startsWith('gekoppelde opleidingen'))section='opleidingen';
       else if(label.startsWith('nieuwe dossierregistratie'))section='nieuw';
@@ -991,37 +1030,51 @@ function sheetCell(value){
   td.textContent=value===null||value===undefined||value===''?'—':String(value).slice(0,1200);
   return td;
 }
+let overviewShowEmpty=false;
+function refreshOverviewEmpty(){
+  const root=$('sheetOverview');
+  if(!root)return;
+  const sections=[...root.querySelectorAll('[data-overview-key]')];
+  for(const section of sections)
+    section.hidden=!overviewShowEmpty&&section.dataset.empty==='true';
+  $('overviewEmptyRecords').hidden=overviewShowEmpty||
+    sections.some(section=>section.dataset.empty!=='true');
+  $('overviewShowEmpty').setAttribute('aria-pressed',String(overviewShowEmpty));
+  $('overviewShowEmpty').textContent=overviewShowEmpty?'Verberg lege rubrieken':'Toon lege rubrieken';
+}
 function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',limited=false){
   const root=$('sheet'+group[0].toUpperCase()+group.slice(1));
   if(!root)return;
+  const entries=Array.isArray(rows)?rows:[];
+  const section=root.closest('[data-overview-key]');
+  if(section)section.dataset.empty=entries.length?'false':'true';
+  const count=$('sheetOverview').querySelector('[data-overview-count="'+group+'"]');
+  if(count)count.textContent=entries.length?String(entries.length)+(limited?'+':''):'0';
   root.replaceChildren();
-  if(!rows?.length){
-    const note=document.createElement('div');note.className='sheet-none';
-    note.textContent=empty;root.append(note);return;
+  if(!entries.length){
+    const note=document.createElement('span');note.className='overview-no-data';
+    note.textContent=empty;root.append(note);
+    refreshOverviewEmpty();return;
   }
-  const holder=document.createElement('div');holder.className='sheet-table-holder';
-  const table=document.createElement('table');
-  const head=document.createElement('thead'),tr=document.createElement('tr');
-  for(const title of sheetDefs[group]){
-    const th=document.createElement('th');th.textContent=title;tr.append(th);
+  for(const row of entries.slice(0,2)){
+    const cells=toCells(row).map(value=>value===null||value===undefined||value===''?'—':String(value));
+    const item=document.createElement('div');item.className='overview-preview';
+    const heading=document.createElement('strong');
+    heading.textContent=(cells[1]||cells[0]||'Registratie').slice(0,110);
+    const meta=document.createElement('span');
+    meta.textContent=[cells[0],cells[2]].filter(value=>value&&value!=='—').join(' · ').slice(0,160);
+    item.append(heading,meta);root.append(item);
   }
-  head.append(tr);table.append(head);
-  const body=document.createElement('tbody');
-  for(const row of rows.slice(0,25)){
-    const tr=document.createElement('tr');
-    for(const value of toCells(row))tr.append(sheetCell(value));
-    body.append(tr);
+  if(entries.length>2||limited){
+    const more=document.createElement('span');more.className='overview-more';
+    more.textContent='Open de rubriek voor alle toegelaten registraties.';
+    root.append(more);
   }
-  table.append(body);holder.append(table);root.append(holder);
-  if(limited||rows.length>25){
-    const note=document.createElement('div');note.className='sheet-none';
-    note.textContent='Alleen de recentste registraties zichtbaar. Open de rubriek voor meer informatie.';
-    root.append(note);
-  }
+  refreshOverviewEmpty();
 }
 const sheetWho=row=>row.registeredBy?.name||row.submittedByActor?.name||'Onbekend';
 function sheetIdentity(p){
-  $('sheetCall').textContent=p.call||'—';$('sheetName').textContent=p.name||'—';
+  $('sheetCall').textContent=p.call||'—';
   $('sheetRank').textContent=p.rank||'—';$('sheetSeries').textContent=p.series||'—';
   $('sheetStatus').textContent=p.status||'—';
   $('sheetProfile').textContent='Administratieve gegevens laden…';
@@ -1034,21 +1087,29 @@ function sheetIdentity(p){
 }
 function sheetSpecialtyRows(rows){
   const container=$('sheetSpecialties');container.replaceChildren();
-  if(!rows?.length){container.textContent='Nog geen specialisaties geregistreerd.';return}
-  for(const item of rows){
+  const actual=(rows||[]).filter(x=>x.status&&
+    !['Niet ingevuld','Onbekend'].includes(String(x.status)));
+  if(!actual.length){container.textContent='Nog geen geregistreerde specialisaties.';return}
+  for(const item of actual.slice(0,6)){
     const chip=document.createElement('span');chip.className='sheet-chip';
     chip.textContent=String(item.label||'Specialisatie')+' · '+String(item.status||'—');
     container.append(chip);
+  }
+  if(actual.length>6){
+    const extra=document.createElement('span');extra.className='overview-more';
+    extra.textContent='+'+(actual.length-6)+' meer onder Specialisaties';
+    container.append(extra);
   }
 }
 function sheetDossierProfile(profile){
   const root=$('sheetProfile');root.replaceChildren();
   const fields=[['Aanstellingsdatum',profile.startDate],['Eenheid / ploeg',profile.unit],
-    ['Functie / opdracht',profile.functionTitle]];
+    ['Functie / opdracht',profile.functionTitle]].filter(([,value])=>Boolean(value));
+  if(!fields.length){root.textContent='Nog geen administratieve gegevens ingevuld.';return}
   for(const [label,value] of fields){
-    const line=document.createElement('div');line.className='sheet-none';
+    const line=document.createElement('div');line.className='overview-profile-line';
     const bold=document.createElement('strong');bold.textContent=label+': ';
-    line.append(bold,document.createTextNode(value||'Niet ingevuld'));root.append(line);
+    line.append(bold,document.createTextNode(value));root.append(line);
   }
 }
 function sheetCaseRows(entries,limited){
