@@ -220,7 +220,7 @@ body.dossier-embed main{max-width:none;margin:0;padding:0}
 body.dossier-embed #panel{max-width:none;width:100%;margin:0;border:0;box-shadow:none;background:#10243e}
 body.dossier-embed #notice{margin:0 0 10px}
 body.dossier-embed #accessHelp{margin:10px 0}
-</style></head>
+</style><link rel="stylesheet" href="/personnel-onepage-test.css"></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/weekrapporten.html">Weekrapporten</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
@@ -451,6 +451,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <script type="module">
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
+document.body.classList.add('dossier-onepage');
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
 const dossierEmbedded=new URLSearchParams(window.location.search).get('embed')==='1';
@@ -477,13 +478,22 @@ const dossierTabNames={overzicht:'Overzicht',gegevens:'Personeelsgegevens',speci
   registraties:'Ontvangen vanuit Basiskader',
   middenregistraties:'Ontvangen vanuit Middenkader',
   sancties:'Observaties & sancties',opleidingen:'Opleidingen',historiek:'Audit & historiek'};
+// Eén personeelsfiche op één pagina. De bestaande navigatie-acties scrollen
+// naar de rubriek in plaats van andere dossierinhoud te verbergen.
 function openDossierTab(name){
-  dossierTab=dossierTabNames[name]?name:'overzicht';
+  dossierTab=dossierTabNames[name]?name:'gegevens';
   for(const button of $('dossierTabBar').querySelectorAll('button')){
     const active=button.dataset.dossierTab===dossierTab;
-    button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;
+    button.setAttribute('aria-selected',String(active));
+    button.tabIndex=0;
   }
-  for(const pane of $('dossierViews').children)pane.hidden=pane.dataset.dossierPane!==dossierTab;
+  let target=null;
+  for(const pane of $('dossierViews').children){
+    pane.hidden=pane.dataset.dossierPane==='overzicht';
+    if(pane.dataset.dossierPane===dossierTab)target=pane;
+  }
+  if(!$('panel').hidden&&dossierTab!=='overzicht'&&target)
+    target.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function setupDossierTabs(){
   const panes={};
@@ -492,7 +502,23 @@ function setupDossierTabs(){
     button.dataset.dossierTab=key;button.setAttribute('role','tab');
     button.onclick=()=>openDossierTab(key);$('dossierTabBar').append(button);
     const pane=document.createElement('section');pane.className='dossier-pane';pane.dataset.dossierPane=key;
-    pane.setAttribute('role','tabpanel');panes[key]=pane;$('dossierViews').append(pane);
+    pane.setAttribute('role','region');
+    pane.setAttribute('aria-label',label);
+    panes[key]=pane;
+    if(key!=='overzicht'){
+      const heading=document.createElement('h3');
+      heading.className='sheet-category-heading';
+      heading.textContent=({
+        gegevens:'Personeelsinformatie',specialisaties:'Specialisaties & functies',
+        nieuw:'Belangrijke notities & personeelsbewegingen',
+        verlof:'Verloven',sancties:'Observaties & sancties',
+        opleidingen:'Voltooide opleidingen',
+        registraties:'Notities (basis)',middenregistraties:'Ontvangen vanuit Middenkader',
+        historiek:'Historiek & audit'
+      })[key]||label;
+      pane.append(heading);
+    }
+    $('dossierViews').append(pane);
   }
   const sheet=document.createElement('div');sheet.className='dossier-sheet';sheet.id='sheetOverview';
   sheet.insertAdjacentHTML('afterbegin',`
