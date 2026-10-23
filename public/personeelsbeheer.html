@@ -419,7 +419,8 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 </div><small id="formalDateHint">Je kunt de datum typen of kiezen via de kalender.</small></div>
 <div><label for="formalTime">Tijdstip</label><input id="formalTime" type="time" required></div>
 <div><label for="formalEvidence">Bewijslink (optioneel, https)</label><input id="formalEvidence" type="url" maxlength="800" placeholder="https://…"></div>
-<div style="grid-column:1/-1"><label for="formalDetails">Feiten, tussenkomst en uitkomst</label><textarea id="formalDetails" rows="3" maxlength="6000" required></textarea></div>
+<div id="formalScoreField"><label for="formalScore">Observatiescore (1–10)</label><input id="formalScore" type="number" min="1" max="10" step="1" placeholder="1–10"></div>
+<div style="grid-column:1/-1"><label for="formalDetails">Samenvatting observatie / feiten en omkadering sanctie</label><textarea id="formalDetails" rows="3" maxlength="6000" required></textarea></div>
 <div style="grid-column:1/-1"><label for="formalPlayers">Andere betrokken spelers (optioneel)</label><input id="formalPlayers" maxlength="1000"></div>
 </div>
 <div id="formalSanctionFields" hidden>
@@ -1441,6 +1442,8 @@ function updateFormalFields(){
   const sanction=Boolean(formalPermissions?.sanctionDepartments?.includes(dept));
   const isSanction=$('formalType').value==='sanctie';
   $('formalSanctionFields').hidden=!isSanction;
+  $('formalScoreField').hidden=isSanction;
+  $('formalScore').required=!isSanction;
   $('formalSanctionType').required=isSanction;
   $('formalSeverity').required=isSanction;
   const opts=formalSanctionOptions(),old=$('formalSanctionType').value;
@@ -1613,6 +1616,12 @@ $('staffFormalForm').onsubmit=async event=>{
   const data={dept,discordId:id,type,eventDate:selectedDate,
     eventTime:$('formalTime').value,details:$('formalDetails').value,
     otherPlayers:$('formalPlayers').value,evidenceUrl:$('formalEvidence').value};
+  if(!isSanction){
+    const score=Number($('formalScore').value);
+    if(!Number.isInteger(score)||score<1||score>10)
+      return notice('Kies een observatiescore van 1 tot 10.',true);
+    data.score=score;
+  }
   if(isSanction){
     data.sanctionType=$('formalSanctionType').value;
     data.severity=Number($('formalSeverity').value);
@@ -1698,6 +1707,8 @@ async function loadStaffFormalRecords(p,key){
         (row.modifiedAt?' · bijgewerkt '+new Date(row.modifiedAt).toLocaleString('nl-BE'):'');
       const details=document.createElement('p');
       details.textContent=String(row.details||row.description||row.reason||'').slice(0,6000);
+      if(row.type==='observatie'&&Number.isInteger(row.score))
+        details.textContent='Score '+row.score+'/10 · '+details.textContent;
       item.append(title,author,details);
       if(row.type==='sanctie'){
         const reasons=document.createElement('div');reasons.className='subtle';
