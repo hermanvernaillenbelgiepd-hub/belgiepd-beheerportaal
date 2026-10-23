@@ -40,7 +40,9 @@ export function canEditPersonnel(actor,person){
   if(actor.portalTechnicalMode===true||actor.role==='beheerder'&&scoped==='beheerder')return true;
   // De goedgekeurde dienstrol bepaalt de bevoegdheid, niet het Bestuur-label
   // en niet uitsluitend de globale (mogelijk anders weergegeven) accountrol.
-  if(!['officierenkader','korpsleiding'].includes(scoped))return false;
+  if(!['officierenkader','korpsleiding'].includes(scoped)||
+     !['officierenkader','korpsleiding'].includes(actor.role))return false;
+  if(actor.role==='officierenkader'&&scoped==='korpsleiding')return false;
   if(person.dept==='politie'){
     const target=policeKader(person.rank);
     if(target==='Korpsleiding'||target==='Kader')return false;
