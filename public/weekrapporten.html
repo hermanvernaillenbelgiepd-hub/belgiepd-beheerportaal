@@ -46,13 +46,27 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
  #printSheet .report-summary{grid-template-columns:repeat(3,1fr)}
  #printSheet .section-title{border-color:#bed0e0}
 }
+
+/* Spreadsheet-overzicht van één bestaand personeelsdossier. */
+.case-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.case-head h2{margin:0}
+.case-open-fiche{display:inline-block;text-decoration:none;font-size:12px;padding:8px 12px}
+.case-ledger{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.case-group{border:1px solid #38577f;background:#0b1b30;border-radius:9px;overflow:hidden;min-width:0}
+.case-group.wide{grid-column:1/-1}
+.case-group h3{background:#254e83;font-size:12px;color:#fff;margin:0;padding:9px 12px;letter-spacing:.02em}
+.case-group h3 span{font-weight:400;font-size:11px;color:#c6defd;margin-left:6px}
+.case-group .case-group-content{padding:7px 9px;max-height:310px;overflow:auto}
+.case-group .case-group-content .item{margin:7px 0;padding:10px}
+.case-group .case-empty{padding:10px;color:#9eb8dd;font-size:12px}
+@media(max-width:750px){.case-ledger{grid-template-columns:1fr}.case-group.wide{grid-column:auto}}
 </style></head><body>
 <header><div class="head"><div><div class="brand">BelgiëPD Beheerportaal</div><div class="subtitle">Personeelsdossiers · Registraties · Weekrapporten</div></div><a href="/" class="ghost" style="padding:9px 12px;border-radius:9px">← Personeelsbeheer</a><div class="head-right"><a href="/discord-status.html" style="color:#adc9ff;font-size:12px">Discord-test</a><span id="authStatus">Aanmelding controleren…</span><button class="secondary" id="authBtn" type="button">Google aanmelden</button></div></div></header>
 <main><div class="intro"><div><h1>Dossieradministratie & weekrapporten</h1><p>Beveiligde Firestore-registraties op basis van Discord ID, gescheiden van de originele Google Sheets.</p></div><span class="tag">v0.9 · TESTOMGEVING</span></div>
 <div class="info">Middenkader kan personeelsdossiers beheren en promotievoorstellen indienen. Naamswijzigingen en definitieve personeelsbewegingen mogen uitsluitend door officierenkader en korpsleiding worden vastgelegd. De oorspronkelijke Google-personeelslijst wordt niet aangepast. Rapporten zijn voorlopig <strong>dynamische concepten</strong>, geen afgesloten archieven.</div>
 <div id="status" role="status" aria-live="polite"></div>
 <section id="needLogin" class="card"><h2>Beveiligde aanmelding vereist</h2><p>Gebruik je eigen gemachtigde BelgiumPD-account. Het basiskader kan deze dossiers en weekrapporten niet openen.</p></section>
-<div id="app" class="hidden"><div class="tabbar"><button id="tabCases" class="tab active" type="button">Personeelsdossiers</button><button id="tabReports" class="tab" type="button">Weekrapportdatabase</button><a class="tab" href="/registraties.html">Observaties & sancties</a></div>
+<div id="app" class="hidden"><div class="tabbar"><button id="tabCases" class="tab active" type="button">Personeelsdossiers</button><button id="tabReports" class="tab" type="button">Weekrapportdatabase</button><a class="tab" href="/personeelsbeheer.html">Centrale FICHE · Observaties &amp; sancties</a></div>
 <section id="casesView"><div class="layout"><div>
 <div class="card"><h2>Nieuwe dossierregistratie</h2><p id="actorLabel">Identiteit laden...</p><form id="caseForm"><div class="form-grid">
 <div><label class="field-label" for="caseDept">Hulpdienst</label><select id="caseDept" required></select></div>
@@ -67,7 +81,12 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 <div class="full"><label class="field-label" for="details">Omschrijving / motivering</label><textarea id="details" maxlength="4000" required placeholder="Omschrijf de feiten en de relevante beslissing of opvolging"></textarea></div>
 <div class="full"><label class="field-label" for="referenceUrl">Bewijs- of documentlink (optioneel, https)</label><input id="referenceUrl" type="url" maxlength="800" placeholder="https://..."></div>
 </div><div class="buttons"><button class="primary" id="saveCase" type="submit">Registratie opslaan</button></div></form><p class="muted">De werkelijke auteur wordt automatisch vastgelegd via Google-login en gekoppelde Discord ID. Personeelsbewegingen worden hier alleen gelogd, niet naar Google Sheets gesynchroniseerd.</p></div></div>
-<div><div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h2>Personeelsdossier</h2><button class="secondary" id="reloadCases" type="button">Verversen</button></div><p class="muted">Inclusief eerder opgeslagen observaties en sancties. Hogere leiding kan afzonderlijke testregistraties markeren zonder ze te verwijderen.</p><div id="caseList">Selecteer een personeelslid.</div></div></div></div></section>
+<div><div class="card"><div class="case-head">
+  <h2>Personeelsdossier — vertrouwde rubrieken</h2>
+  <div class="buttons"><a class="secondary case-open-fiche hidden" id="caseOpenFiche" href="/personeelsbeheer.html">Open centrale FICHE →</a>
+  <button class="secondary" id="reloadCases" type="button">Verversen</button></div>
+ </div><p class="muted">Eén dossier per personeelslid met de vertrouwde rubrieken van het oude spreadsheet: personeelsbewegingen, verloven, <strong>observaties en sancties samen</strong>, gevolgde opleidingen en notities. Klik op centrale FICHE om rechtstreeks te registreren of bevoegd te wijzigen. De dossierregistraties en de weekrapportdatabase blijven één bron gebruiken.</p>
+ <div id="caseList">Selecteer een personeelslid.</div></div></div></div></section>
 <section id="reportsView" class="hidden"><div class="layout"><div>
 <div class="card"><h2>Nieuw weekrapport (concept)</h2><form id="reportForm"><div class="form-grid"><div class="full"><label class="field-label" for="reportTitle">Titel</label><input id="reportTitle" required maxlength="120" placeholder="Weekrapport Politie – periode van 14 dagen"></div><div><label class="field-label" for="reportDept">Hulpdienst</label><select id="reportDept" required></select></div><div><label class="field-label" for="periodStart">Begindatum</label><input id="periodStart" type="date" required></div><div><label class="field-label" for="periodEnd">Einddatum</label><input id="periodEnd" type="date" required></div><p class="muted" id="periodNote">Standaard 14 kalenderdagen (inclusief begin- en einddatum). Beide datums zijn vrij aanpasbaar, tot maximaal 31 dagen.</p></div><div class="buttons"><button class="primary" id="createReport" type="submit">Conceptweekrapport aanmaken</button></div></form></div>
 <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:9px"><h2>Bewaarde weekrapporten</h2><button class="secondary" id="reloadReports" type="button">Verversen</button></div><p class="muted">Concepten worden in Firestore bewaard. Klik om actuele dossierregistraties voor de periode samen te stellen.</p><div id="reportList"></div></div></div>
@@ -88,7 +107,40 @@ function setTab(tab){currentTab=tab;const reports=tab==='reports';$('casesView')
 function filterCases(){const d=$('caseDept').value;const opts=subjects.filter(p=>p.dept===d).sort((a,b)=>a.call.localeCompare(b.call,'nl',{numeric:true})).map(p=>({value:p.discordId,label:`${p.call} – ${p.name}`}));const old=$('casePerson').value;selectOptions($('casePerson'),opts,'Selecteer personeelslid');if(opts.some(o=>o.value===old))$('casePerson').value=old;loadCases()}
 function changeExtra(){const t=$('entryType').value;Object.values(extraFields).flat().forEach(id=>$(id).classList.add('hidden'));(extraFields[t]||[]).forEach(id=>$(id).classList.remove('hidden'))}
 function renderEntry(e,allowClassify=false){const by=e.registeredBy?.name||'Onbekende auteur';const special=e.courseName||e.proposedRank||e.newName||e.movement||e.sanctionType||'';const flagged=e.testRecord===true;const control=allowClassify&&viewData?.canClassifyTests?`<div class="buttons"><button class="secondary" type="button" data-classify-entry="${esc(e.id)}" data-flagged="${flagged}">${flagged?'Testmarkering opheffen':'Als testregistratie markeren'}</button></div>`:'';return `<div class="item"><div class="item-title">${esc(labels[e.type]||e.type)} ${flagged?'<span class="pill">TEST – niet in weekrapport</span>':''} ${special?`<span class="pill">${esc(special)}</span>`:''}</div><div class="item-meta">${esc(e.eventDate||'Geen datum')} · Door ${esc(by)} · ${esc(e.subjectCallAtCreation||'')}</div><div class="item-body">${esc(e.details||e.explanation||'Geen omschrijving')}</div>${control}</div>`} 
-async function loadCases(){if(!viewData||!$('casePerson').value||!$('caseDept').value){$('caseList').textContent='Selecteer een personeelslid.';return}const id=$('casePerson').value,dept=$('caseDept').value;$('caseList').textContent='Dossierregistraties laden...';try{const data=await api(`/api/management/cases?dept=${encodeURIComponent(dept)}&discordId=${encodeURIComponent(id)}`);$('caseList').innerHTML=data.entries.length?data.entries.map(e=>renderEntry(e,true)).join(''):'Geen interne dossierregistraties gevonden.';if(data.limited)msg('Dossieroverzicht toont maximaal 150 recente registraties.','notice')}catch(e){$('caseList').textContent=e.message}}
+
+function renderWorkbook(entries){
+  // Zelfde beveiligde bpd_cases-API als het centrale personeelsdossier.
+  // Formele observaties en sancties zijn één rubriek, zonder rechten te verruimen.
+  const sections=[
+    {title:'Personeelsbewegingen',kind:'movements',
+      accept:x=>['personeelsbeweging','naamswijziging','promotievoorstel','functiewijziging'].includes(x.type)},
+    {title:'Verloven',kind:'leave',accept:x=>x.type==='verlof'},
+    {title:'Observaties & sancties',kind:'formal',wide:true,
+      accept:x=>['observatie','sanctie'].includes(x.type)},
+    {title:'Gevolgde opleidingen',kind:'training',accept:x=>x.type==='opleiding'},
+    {title:'Notities (basis en belangrijk)',kind:'notes',
+      accept:x=>!['verlof','opleiding','personeelsbeweging','naamswijziging',
+        'promotievoorstel','functiewijziging','observatie','sanctie'].includes(x.type)}
+  ];
+  return '<div class="case-ledger">'+sections.map(section=>{
+    const subset=entries.filter(section.accept);
+    return '<section class="case-group'+(section.wide?' wide':'')+'">'+
+      '<h3>'+esc(section.title)+' <span>'+subset.length+' registratie(s)</span></h3>'+
+      '<div class="case-group-content">'+
+        (subset.length?subset.map(x=>renderEntry(x,true)).join(''):
+          '<p class="case-empty">Nog geen registraties in deze rubriek.</p>')+
+      '</div></section>';
+  }).join('')+'</div>';
+}
+function updateCaseLink(){
+  const dept=$('caseDept').value,id=$('casePerson').value;
+  const allowed=subjects.some(p=>p.dept===dept&&p.discordId===id);
+  $('caseOpenFiche').classList.toggle('hidden',!allowed);
+  if(allowed)$('caseOpenFiche').href='/personeelsbeheer.html?'+
+    new URLSearchParams({dept,discordId:id}).toString();
+  else $('caseOpenFiche').removeAttribute('href');
+}
+async function loadCases(){updateCaseLink();if(!viewData||!$('casePerson').value||!$('caseDept').value){$('caseList').textContent='Selecteer een personeelslid.';return}const id=$('casePerson').value,dept=$('caseDept').value;$('caseList').textContent='Dossierregistraties laden...';try{const data=await api(`/api/management/cases?dept=${encodeURIComponent(dept)}&discordId=${encodeURIComponent(id)}`);$('caseList').innerHTML=renderWorkbook(data.entries||[]);if(data.limited)msg('Dossieroverzicht toont maximaal 150 recente registraties.','notice')}catch(e){$('caseList').textContent=e.message}}
 function renderReports(){const root=$('reportList');root.innerHTML=reportItems.length?reportItems.map(r=>`<div class="item"><div class="item-title">${esc(r.title)} <span class="pill">${esc(r.status||'concept')}</span></div><div class="item-meta">${esc(r.periodStart)} t/m ${esc(r.periodEnd)} · ${esc(r.createdBy?.name||'')}</div><div class="buttons"><button class="secondary" type="button" data-open-report="${esc(r.id)}">Inhoud bekijken</button></div></div>`).join(''):'Nog geen weekrapporten voor deze hulpdienst.'}
 async function loadReports(){resetReportExport();$('reportContents').textContent='Selecteer links een weekrapport.';if(!viewData||!$('reportDept').value)return;const dept=$('reportDept').value;$('reportList').textContent='Weekrapporten laden...';try{const data=await api('/api/management/reports?dept='+encodeURIComponent(dept));reportItems=data.reports;renderReports();if(data.limited)msg('Maximaal 100 recente weekrapporten worden getoond.','notice')}catch(e){$('reportList').textContent=e.message}}
 function reportText(e){
