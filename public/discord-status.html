@@ -263,8 +263,32 @@ $('leaveForm').onsubmit=async e=>{
   }catch(err){$('leaveStatus').textContent='Verlofaanvraag niet ingediend: '+err.message}
   finally{btn.disabled=false}
 };
-async function showProfile(){const user=auth.currentUser;if(!user){updateConnectionCard(false);loadedFor=null;$('leaveForm').hidden=true;$('leaveRequests').replaceChildren();$('profile').hidden=true;state('Nog niet aangemeld. Klik op Aanmelden met Discord.');return}try{const token=await user.getIdToken();const r=await fetch('/api/discord/profile',{headers:{Authorization:'Bearer '+token},cache:'no-store'});const data=await r.json();if(!r.ok)throw new Error(data.error||'Geen Discord-gegevens gevonden');$('profile').hidden=false;updateConnectionCard(true);loadedFor=null;$('name').textContent=data.name||'Onbekend';$('discordId').textContent=data.discordId;$('joined').textContent=data.joinedAt?new Date(data.joinedAt).toLocaleString('nl-BE'):'Onbekend';$('verified').textContent=data.lastVerifiedAt?new Date(data.lastVerifiedAt).toLocaleString('nl-BE'):'Onbekend';currentRoles=data.roleIds||[];$('roles').replaceChildren(...currentRoles.map(x=>{const el=document.createElement('span');el.className='role';el.textContent=x;return el}));state('Discord-lidmaatschap geverifieerd. Je volledige profiel staat hieronder.');
-await Promise.all([loadPersonal(),loadLeave()]);}catch(e){updateConnectionCard(false);$('profile').hidden=true;state('Geen actieve Discord-verificatie: '+e.message+'. Google-login blijft beschikbaar.',true)}}
+async function showProfile(){const user=auth.currentUser;
+  if(!user){updateConnectionCard(false);loadedFor=null;$('leaveForm').hidden=true;
+    $('leaveRequests').replaceChildren();$('profile').hidden=true;
+    state('Nog niet aangemeld. Klik op Aanmelden met Discord.');return false}
+  try{
+    const tokenResult=await user.getIdTokenResult();
+    if(tokenResult.signInProvider!=='custom'||!user.uid?.startsWith('discord:')){
+      updateConnectionCard(false);$('profile').hidden=true;
+      state('Je bent momenteel via Google aangemeld. Klik op Aanmelden met Discord om je Discord-profiel en TO-rechten te verifiëren.',true);
+      return false;
+    }
+    const load=async refresh=>{
+      const token=await user.getIdToken(refresh);
+      const r=await fetch('/api/discord/profile',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+      const data=await r.json().catch(()=>({}));
+      return {r,data};
+    };
+    let {r,data}=await load(false);
+    if(r.status===401)({r,data}=await load(true));
+    if(!r.ok)throw new Error(data.error||'Discord-profiel kon niet worden geverifieerd');$('profile').hidden=false;updateConnectionCard(true);loadedFor=null;$('name').textContent=data.name||'Onbekend';$('discordId').textContent=data.discordId;$('joined').textContent=data.joinedAt?new Date(data.joinedAt).toLocaleString('nl-BE'):'Onbekend';$('verified').textContent=data.lastVerifiedAt?new Date(data.lastVerifiedAt).toLocaleString('nl-BE'):'Onbekend';currentRoles=data.roleIds||[];$('roles').replaceChildren(...currentRoles.map(x=>{const el=document.createElement('span');el.className='role';el.textContent=x;return el}));state('Discord-lidmaatschap geverifieerd. Je volledige profiel staat hieronder.');
+await Promise.all([loadPersonal(),loadLeave()]);
+return true;
+}catch(e){updateConnectionCard(false);$('profile').hidden=true;
+  state('Geen actieve Discord-verificatie: '+e.message+'. Klik op Aanmelden met Discord om opnieuw te verbinden.',true);
+  return false;
+}}
 async function start(){
   try{const conf=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());const status=await fetch('/auth/discord/status',{cache:'no-store'}).then(r=>r.json());if(!conf.enabled)throw new Error('Firebase-configuratie ontbreekt');const appMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');auth=authMod.getAuth(appMod.initializeApp(conf.firebaseConfig));await authMod.setPersistence(auth,authMod.browserLocalPersistence);$('google').onclick=async()=>{try{await authMod.signInWithPopup(auth,new authMod.GoogleAuthProvider());await showProfile()}catch(e){state('Google-login mislukt: '+(e.code||e.message),true)}};$('logout').onclick=async()=>{await authMod.signOut(auth);await showProfile()};$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(currentRoles.join('\n'));state('Rol-ID’s gekopieerd.')}catch{state('Kopiëren niet ondersteund; selecteer de ID’s handmatig.')}};
     $('botRefresh').onclick=async()=>{
@@ -282,7 +306,7 @@ async function start(){
     };
     const qs=new URLSearchParams(location.search),code=qs.get('bpd_discord_code'),error=qs.get('error'),returnTo=qs.get('returnTo');if(code||error){history.replaceState({},'',location.pathname+location.hash)}
     if(error)state('Discord-aanmelding werd niet voltooid ('+error+'). Probeer opnieuw.',true);
-    else if(code){state('Discord-login verwerken…');const result=await fetch('/auth/discord/exchange',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code}),cache:'no-store'});const body=await result.json();if(!result.ok)throw new Error(body.error||'Aanmeldcode verlopen');await authMod.signInWithCustomToken(auth,body.customToken);await showProfile();const safe=new Set(['/','/registraties.html','/weekrapporten.html','/roepnummers.html','/verlofbeheer.html','/rollen-opleidingen.html','/gebruikersbeheer.html','/personeelsbeheer.html','/personeel-koppelen.html','/dossiercentrum.html','/to-dienstbord.html']);if(safe.has(returnTo))location.replace(returnTo)}
+    else if(code){state('Discord-login verwerken…');const result=await fetch('/auth/discord/exchange',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code}),cache:'no-store'});const body=await result.json();if(!result.ok)throw new Error(body.error||'Aanmeldcode verlopen');await authMod.signInWithCustomToken(auth,body.customToken);const verified=await showProfile();const safe=new Set(['/','/registraties.html','/weekrapporten.html','/roepnummers.html','/verlofbeheer.html','/rollen-opleidingen.html','/gebruikersbeheer.html','/personeelsbeheer.html','/personeel-koppelen.html','/dossiercentrum.html','/to-dienstbord.html']);if(verified&&safe.has(returnTo))location.replace(returnTo)}
     else{await auth.authStateReady();await showProfile();if(!status.ready||!conf.discordPortalLoginReady)state('Discord-portaallogin is nog niet geactiveerd. Google-noodlogin blijft werken.',true)}
   }catch(e){state('Verbinding mislukt: '+(e.message||'Onbekende fout'),true)}
 }start();
