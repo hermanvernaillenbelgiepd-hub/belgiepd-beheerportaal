@@ -168,7 +168,12 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .dossier-pane{max-height:none}
 .dossier-pane .dossier-summary{grid-template-columns:1fr}
 .dossier-tabbar button{padding:7px 9px;font-size:11px}
-}</style></head>
+}.function-role-chip{display:inline-flex;align-items:center;gap:6px;background:#143653;border:1px solid #466e8a;border-radius:8px;padding:6px 9px;margin:3px 5px 3px 0;font-size:12px}
+#functionChangeForm .grid{gap:10px}
+#functionDiscord{font-size:11px;padding:3px 0}
+#functionAuditPanel{margin:12px 0}
+#functionAuditPanel summary{cursor:pointer;font-weight:700}
+</style></head>
 <body><header><div><strong>🛡️ BelgiumPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
@@ -264,6 +269,28 @@ placeholder="Bijvoorbeeld: opleiding afgerond en gecontroleerd door instructeur"
 </form>
 <details id="specialtyAuditPanel"><summary>Historiek van specialisatiewijzigingen</summary>
 <div id="specialtyAudit" class="subtle">Nog geen registraties geladen.</div></details>
+<h3>Functiewijzigingen en extra rollen</h3>
+<p class="subtle">Officierenkader of Korpsleiding met bevoegdheid binnen deze dienst kan een dossierfunctie vervangen (bijvoorbeeld K9-IO → K9), toevoegen of beëindigen. Brandweerfuncties kunnen eveneens als extra functie worden geregistreerd. Elke wijziging verschijnt in het dossier, auditlog en dynamische weekrapport. <strong>Dit wijzigt niet automatisch de Discord-rollen of toegangsrechten.</strong></p>
+<div id="functionState" class="subtle" role="status">Dossierfuncties laden…</div>
+<div id="functionCurrent" class="specialty-ledger" aria-label="Huidige geregistreerde dossierfuncties"></div>
+<div id="functionDiscord" class="subtle"></div>
+<form id="functionChangeForm" class="inline-form" hidden>
+<div class="grid">
+<div><label for="functionAction">Soort functiewijziging</label>
+<select id="functionAction" required><option value="replace">Functie vervangen</option>
+<option value="add">Extra functie toevoegen</option>
+<option value="remove">Functie beëindigen</option></select></div>
+<div id="functionFromWrap"><label for="functionFrom">Huidige functie</label><select id="functionFrom"></select></div>
+<div id="functionToWrap"><label for="functionTo">Nieuwe functie</label><select id="functionTo"></select></div>
+<div style="grid-column:1/-1"><label for="functionReason">Motivering (15–500 tekens)</label>
+<textarea id="functionReason" rows="2" minlength="15" maxlength="500" required
+placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd voor K9"></textarea></div>
+</div>
+<button id="functionSave" type="submit">Functiewijziging registreren</button>
+</form>
+<details id="functionAuditPanel"><summary>Historiek van functiewijzigingen</summary>
+<div id="functionAudit" class="subtle">Nog geen geregistreerde functiewijzigingen.</div>
+</details>
 <h3>Discord-reeks en specialisaties</h3>
 <p class="subtle">Alleen de recent geverifieerde Discord-rollen worden hier getoond. Rollen wijzigen gebeurt niet via deze fiche; een rolnaam is geen automatische personeelsbevoegdheid.</p>
 <div id="staffDiscordRoles" class="subtle">Discord-rolgegevens laden…</div>
