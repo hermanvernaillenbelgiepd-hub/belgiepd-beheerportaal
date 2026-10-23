@@ -4,6 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { discordConfig, isDiscordId, validReturnTo } from './discord-utils.js';
 import {discordBotToken,botRefreshAllowed,botRefreshTooSoon,verifiedBotMember} from './discord-bot-refresh.js';
+import {firebaseDiagnostic} from './firebase-diagnostics.js';
 
 const B = bytes => Buffer.from(bytes).toString('base64url');
 const b64 = n => B(randomBytes(n));
@@ -177,10 +178,11 @@ export function installDiscordOAuth(app){
         accessNote:'Discord-rollen worden onafhankelijk geverifieerd. Alleen de expliciet ingestelde Politie-Middenkaderrol kan automatisch een beperkte portaalgoedkeuring krijgen.'});
     }catch(e){
       // Firestore/server errors are not evidence that the user's token expired.
-      const code=typeof e?.code==='string'&&/^[a-z_-]{3,35}$/.test(e.code)?
-        e.code:'database-unavailable';
-      console.warn('Discord profiel: opslagcontrole tijdelijk niet beschikbaar:',code);
-      return res.status(503).json({error:'Discord-profiel tijdelijk niet beschikbaar. Probeer opnieuw.'});
+      const diagnostic=firebaseDiagnostic(e);
+      console.warn('Discord profiel: opslagcontrole:',diagnostic.code,diagnostic.category);
+      return res.status(503).json({error:diagnostic.category==='firestore_quota_exhausted'?
+        'Firebase Firestore heeft zijn gebruikslimiet bereikt. De Discord-gegevens kunnen tijdelijk niet worden gelezen. Controleer Firestore Usage en quota in Firebase Console.':
+        'Discord-profiel tijdelijk niet beschikbaar. Probeer opnieuw.'});
     }
   });
 }
