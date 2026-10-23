@@ -480,20 +480,18 @@ const dossierTabNames={overzicht:'Overzicht',gegevens:'Personeelsgegevens',speci
   sancties:'Observaties & sancties',opleidingen:'Opleidingen',historiek:'Audit & historiek'};
 // Eén personeelsfiche op één pagina. De bestaande navigatie-acties scrollen
 // naar de rubriek in plaats van andere dossierinhoud te verbergen.
+// Het hoofdblad blijft open; enkel het gekozen detailformulier wordt eronder zichtbaar.
 function openDossierTab(name){
-  dossierTab=dossierTabNames[name]?name:'gegevens';
+  dossierTab=dossierTabNames[name]?name:'overzicht';
+  for(const pane of $('dossierViews').children)
+    pane.hidden=pane.dataset.dossierPane!=='overzicht'&&pane.dataset.dossierPane!==dossierTab;
   for(const button of $('dossierTabBar').querySelectorAll('button')){
-    const active=button.dataset.dossierTab===dossierTab;
-    button.setAttribute('aria-selected',String(active));
+    button.setAttribute('aria-selected',String(button.dataset.dossierTab===dossierTab));
     button.tabIndex=0;
   }
-  let target=null;
-  for(const pane of $('dossierViews').children){
-    pane.hidden=pane.dataset.dossierPane==='overzicht';
-    if(pane.dataset.dossierPane===dossierTab)target=pane;
-  }
-  if(!$('panel').hidden&&dossierTab!=='overzicht'&&target)
-    target.scrollIntoView({behavior:'smooth',block:'start'});
+  const pane=$('dossierViews').querySelector('[data-dossier-pane="'+dossierTab+'"]');
+  if(dossierTab!=='overzicht'&&!$('panel').hidden&&pane)
+    pane.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function setupDossierTabs(){
   const panes={};
@@ -528,68 +526,58 @@ function setupDossierTabs(){
       <div><small>Reeks</small><strong id="sheetSeries">—</strong></div>
       <div><small>Status</small><strong id="sheetStatus">—</strong></div>
     </div>
-    <div class="overview-headline">
-      <div><h3>In één oogopslag</h3><p>Actuele gegevens en recente registraties van dit personeelslid.</p></div>
-      <button type="button" class="alt" id="overviewShowEmpty" aria-pressed="false">Toon lege rubrieken</button>
+    <p class="sheet-intro">Eén personeelsdossier per discipline. Informatie staat meteen zichtbaar; het invoerformulier opent hieronder wanneer je iets toevoegt of wijzigt.</p>
+    <div class="landscape-grid" aria-label="Personeelsdossier in negen categorieën">
+    <section class="landscape-cell" data-sheet-tile="gegevens">
+      <h3>Personeelsinformatie <button type="button" data-open-sheet="gegevens">Bewerken</button></h3>
+      <div id="sheetProfile" class="sheet-data">Administratieve gegevens laden…</div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="specialisaties">
+      <h3>Specialisaties <button type="button" data-open-sheet="specialisaties">Beheren</button></h3>
+      <div id="sheetSpecialties" class="sheet-specialties">Specialisaties laden…</div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="movements">
+      <h3>Personeelsbewegingen <button type="button" data-open-sheet="nieuw">Registreren</button></h3>
+      <div id="sheetMovements" class="sheet-records">Registraties laden…</div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="leave">
+      <h3>Verloven <button type="button" data-open-sheet="verlof">Bekijken</button></h3>
+      <div id="sheetLeave" class="sheet-records">Verlofperiodes laden…</div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="observations">
+      <h3>Observaties <button type="button" data-open-sheet="sancties" data-formal-action="observatie">+ Observatie</button></h3>
+      <div id="sheetObservations" class="sheet-records">Observaties laden…</div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="training">
+      <h3>Voltooide opleidingen <button type="button" data-open-sheet="opleidingen">+ Opleiding</button></h3>
+      <div id="sheetTraining" class="sheet-records">Opleidingen laden…</div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="basisNotes">
+      <h3>Notities (basis) <button type="button" data-open-sheet="historiek">Bekijken</button></h3>
+      <div id="sheetBasisNotes" class="sheet-records">Basisnotities laden…</div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="notes">
+      <h3>Belangrijke notities <button type="button" data-open-sheet="nieuw">+ Notitie</button></h3>
+      <div id="sheetNotes" class="sheet-records">Notities laden…</div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="sanctions">
+      <h3>Sancties <button type="button" data-open-sheet="sancties" data-formal-action="sanctie">+ Sanctie</button></h3>
+      <div id="sheetSanctions" class="sheet-records">Sancties laden…</div>
+    </section>
     </div>
-    <div class="overview-actions" role="group" aria-label="Snelle dossieracties">
-      <button type="button" data-open-sheet="sancties">+ Observatie / sanctie</button>
-      <button type="button" data-open-sheet="nieuw">+ Notitie / registratie</button>
-      <button type="button" data-open-sheet="opleidingen">+ Opleiding</button>
-      <button type="button" data-open-sheet="gegevens">Personeelsgegevens →</button>
-    </div>
-    <div class="overview-layout">
-      <section class="overview-recent" aria-label="Recente dossieractiviteiten">
-        <h3>Recente dossieractiviteiten</h3>
-        <div class="overview-line" data-overview-key="formal">
-          <div class="overview-line-heading"><strong>Observaties &amp; sancties</strong><span data-overview-count="formal"></span>
-            <button type="button" data-open-sheet="sancties">Bekijken →</button></div>
-          <div id="sheetFormal" class="overview-records">Registraties laden…</div>
-        </div>
-        <div class="overview-line" data-overview-key="notes">
-          <div class="overview-line-heading"><strong>Notities</strong><span data-overview-count="notes"></span>
-            <button type="button" data-open-sheet="nieuw">Bekijken →</button></div>
-          <div id="sheetNotes" class="overview-records">Registraties laden…</div>
-        </div>
-        <div class="overview-line" data-overview-key="training">
-          <div class="overview-line-heading"><strong>Opleidingen</strong><span data-overview-count="training"></span>
-            <button type="button" data-open-sheet="opleidingen">Bekijken →</button></div>
-          <div id="sheetTraining" class="overview-records">Registraties laden…</div>
-        </div>
-        <div class="overview-line" data-overview-key="movements">
-          <div class="overview-line-heading"><strong>Personeelsbewegingen</strong><span data-overview-count="movements"></span>
-            <button type="button" data-open-sheet="nieuw">Bekijken →</button></div>
-          <div id="sheetMovements" class="overview-records">Registraties laden…</div>
-        </div>
-        <div class="overview-line" data-overview-key="leave">
-          <div class="overview-line-heading"><strong>Verlof</strong><span data-overview-count="leave"></span>
-            <button type="button" data-open-sheet="verlof">Bekijken →</button></div>
-          <div id="sheetLeave" class="overview-records">Verlofperiodes laden…</div>
-        </div>
-        <p id="overviewEmptyRecords" class="overview-empty" hidden>Er zijn momenteel geen zichtbare dossieractiviteiten. Gebruik de tabbladen om gegevens te bekijken of toe te voegen.</p>
-      </section>
-      <aside class="overview-side" aria-label="Dossiersamenvatting">
-        <section class="overview-info">
-          <div class="overview-line-heading"><h3>Specialisaties</h3><button type="button" data-open-sheet="specialisaties">Beheren →</button></div>
-          <div id="sheetSpecialties" class="sheet-specialties">Specialisaties laden…</div>
-        </section>
-        <section class="overview-info">
-          <div class="overview-line-heading"><h3>Aanstellingsgegevens</h3><button type="button" data-open-sheet="gegevens">Bewerken →</button></div>
-          <div id="sheetProfile" class="sheet-none">Administratieve gegevens laden…</div>
-        </section>
-      </aside>
+    <div id="sheetFormal" hidden></div>
+    <div class="landscape-footer"><span>De bestaande dienstgebonden registers blijven de gegevensbron.</span>
+      <button type="button" class="alt" data-open-sheet="historiek">Audit &amp; historiek bekijken</button>
     </div>
   `);
   panes.overzicht.prepend(sheet);
   // Identiteit staat boven de tabs en niet langer opnieuw in Overzicht.
   $('identity').after(sheet.querySelector('.sheet-identity'));
-  $('overviewShowEmpty').onclick=()=>{
-    overviewShowEmpty=!overviewShowEmpty;
-    refreshOverviewEmpty();
-  };
   sheet.addEventListener('click',event=>{
     const button=event.target.closest('[data-open-sheet]');
-    if(button)openDossierTab(button.dataset.openSheet);
+    if(!button)return;
+    openDossierTab(button.dataset.openSheet);
+    if(button.dataset.formalAction)startFormalRegistration(button.dataset.formalAction);
   });
   panes.gegevens.append($('editForm'),$('promotionPanel'));
   const source=$('staffDossierSection'),nodes=[...source.children];
@@ -620,6 +608,14 @@ function setupDossierTabs(){
   insertReceived('registraties','Observaties en dossierregistraties ingediend door Agentenkader of Basiskader, uitsluitend bij personeel onder jouw kaderbevoegdheid.');
   insertReceived('middenregistraties','Afzonderlijke registraties ingediend door Middenkader, uitsluitend zichtbaar voor bevoegd Officierenkader en Korpsleiding.');
   source.remove();
+  // Eén klik sluit het invoervak zonder de andere categorieën te verbergen.
+  for(const [key,pane] of Object.entries(panes)){
+    if(key==='overzicht')continue;
+    const close=document.createElement('button');close.type='button';
+    close.className='alt sheet-close-editor';close.textContent='Sluit deze rubriek';
+    close.onclick=()=>openDossierTab('overzicht');
+    pane.insertBefore(close,pane.firstChild.nextSibling);
+  }
   const rankHistory=$('history'),heading=rankHistory.previousElementSibling;
   if(heading?.tagName==='H3')panes.historiek.append(heading);
   panes.historiek.append(rankHistory);
