@@ -34,6 +34,8 @@ test('API en server bewaren vorige/nieuwe weergavenaam in audit en verhinderen S
   assert.match(source,/validRadioId\(id\)/);
   assert.match(source,/u\.id===id&&u\.labelEditable===true/);
   assert.match(source,/previousAlias:old,nextAlias:alias/);
+  assert.match(source,/bpd_radio_label_overrides_main/);
+  assert.match(source,/bpd_radio_label_audit_main/);
   assert.match(source,/sonoranSynced:false/);
   assert.ok(!source.includes("FIREBASE_PROJECT_ID!=='belgiepd-test'"));
 });
