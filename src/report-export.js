@@ -31,6 +31,11 @@ export function specialFields(e){
   if(e.newName)p.push('Nieuwe naam: '+limit(e.newName,150));
   if(e.proposedRank)p.push('Voorgestelde graad: '+limit(e.proposedRank,150));
   if(e.movement)p.push('Personeelsbeweging: '+limit(e.movement,150));
+  if(e.type==='functiewijziging'){
+    if(e.previousFunction)p.push('Vorige functie: '+limit(e.previousFunction,120));
+    if(e.newFunction)p.push('Nieuwe functie: '+limit(e.newFunction,120));
+    if(e.reason)p.push('Motivering functiewijziging: '+limit(e.reason,500));
+  }
   if(e.referenceUrl||e.evidenceUrl)p.push('Bijlage: '+limit(e.referenceUrl||e.evidenceUrl,800));
   if(e.otherPlayers)p.push('Andere betrokkenen: '+limit(e.otherPlayers,1000));
   return p;
