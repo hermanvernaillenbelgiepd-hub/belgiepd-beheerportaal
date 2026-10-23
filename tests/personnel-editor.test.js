@@ -83,15 +83,19 @@ test('Middenkader status updates are restricted to lower police ranks',async()=>
  assert.equal(canChangePersonnelStatus({...mid,dossierNativeDepartments:[]},junior),false);
  assert.equal(canChangePersonnelStatus({...mid,role:'basiskader'},junior),false);
 });
-test('Verified Board manages service-wide personnel records but never its own',async()=>{
+test('Verified Board reads all services but only operational leadership can edit',async()=>{
  const board={uid:'discord:111111111111111111',role:'basiskader',
   discordId:'111111111111111111',departments:['politie'],
   departmentRoles:{politie:'basiskader'},dossierNativeDepartments:['politie'],
   boardPersonnelAdmin:true};
  for(const dept of ['politie','brandweer','ambulance','depannage']){
   assert.equal(canViewPersonnel(board,dept),true);
-  assert.equal(canEditPersonnel(board,{...staff,dept}),true);
+  assert.equal(canEditPersonnel(board,{...staff,dept}),false);
  }
+ const boardAndCorps={...board,role:'korpsleiding',
+   departmentRoles:{politie:'korpsleiding'},dossierNativeDepartments:['politie']};
+ assert.equal(canEditPersonnel(boardAndCorps,{...staff,dept:'politie',rank:'Inspecteur'}),true);
+ assert.equal(canEditPersonnel(boardAndCorps,{...staff,dept:'brandweer'}),false);
  assert.equal(canEditPersonnel(board,{...staff,personId:board.discordId}),false);
  assert.equal(canViewPersonnel({...board,boardPersonnelAdmin:false},'brandweer'),false);
  const fs=await import('node:fs');
