@@ -50,6 +50,23 @@ export function canEditPersonnel(actor,person){
   }
   return true;
 }
+// Uitsluitend voor de algemene fichegegevens (naam, roepnummer, status,
+// aanstellingsdatum, eenheid en functie). Dit verleent geen rechten op
+// promoties, specialisaties, sancties of andere personeelsacties.
+export function canEditGeneralPersonnelInfo(actor,person){
+  if(!person||!validPersonnelKey(person.dept,person.personId)||
+     !canReadServiceDossier(actor,person.dept)||
+     actor?.discordId===person.personId)return false;
+  // boardPersonnelAdmin is uitsluitend afkomstig van server-geverifieerd Bestuur.
+  if(actor?.boardPersonnelAdmin===true)return true;
+  // De eigen operationele kaderrol blijft dienstgebonden en onderworpen aan
+  // bestaande doelrangbeperkingen; Middenkader of technische modus is op
+  // zichzelf niet bevoegd om deze algemene gegevens te wijzigen.
+  const cadre=roleForDepartment(actor,person.dept);
+  return ['officierenkader','korpsleiding'].includes(actor?.role)&&
+    ['officierenkader','korpsleiding'].includes(cadre)&&
+    canEditPersonnel(actor,person);
+}
 // Status-only delegation for Middenkader. The rank itself must be a known
 // lower rank; a callsign cannot masquerade as proof of rank.
 export function canChangePersonnelStatus(actor,person){
