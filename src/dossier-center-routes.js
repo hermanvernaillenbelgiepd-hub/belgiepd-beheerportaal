@@ -47,6 +47,8 @@ export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){
       const personnel=snap.data.filter(p=>scopes.personnelDepartments.includes(p.dept));
       const rows=dossierOverviewRows(personnel,[],scopes);
       return res.json({rows,departments:scopes.personnelDepartments,
+        burgerCanWrite:process.env.BPD_ENABLE_BURGER_DOSSIER_WRITES==='true'&&
+          req.bpd?.burgerDossierAccess?.write===true,
         sourceStale:snap.stale===true,readOnly:true});
     }catch(e){return failed(res,e)}
   });
