@@ -33,9 +33,13 @@ async function discordJson(url,opts={}){
 // A multi-instance cloud deployment must use a distributed store instead.
 const handoffs=new Map();
 export function installDiscordOAuth(app){
-  // An ephemeral HMAC key prevents forgeable OAuth callback cookies after restarts.
-  const cookieKey=randomBytes(32);
+  // Derive a dedicated OAuth cookie signing key from the existing Discord
+  // client secret. Unlike a random process key, this survives Render deploys
+  // and keeps PKCE/state cookies valid across a zero-downtime restart.
+  // No signing key or OAuth token is ever sent to the client.
   const config=()=>discordConfig(process.env);
+  const cookieKey=createHmac('sha256',config().secret||b64(32))
+    .update('belgiepd-discord-oauth-state-cookie-v1').digest();
   app.get('/auth/discord/status',(_req,res)=>{const cfg=config();res.json({ready:cfg.ready,serverConfigured:Boolean(cfg.guildId),portalLoginEnabled:process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true',testMode:false});});
   app.get('/auth/discord/start',(req,res)=>{
     const cfg=config();if(!cfg.ready)return res.status(503).send('Discord is nog niet ingesteld. Vul eerst de echte Client Secret lokaal in .env in.');
