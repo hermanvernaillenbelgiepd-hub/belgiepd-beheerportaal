@@ -12,6 +12,7 @@ p{font-size:13px;line-height:1.55;color:#b4c9e3}a{color:#b5d4ff}
 button{border:1px solid #5277a1;background:#234b7c;color:white;padding:9px 12px;border-radius:8px;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
 button[aria-selected=true]{background:#3568dc;border-color:#94b8ff}
 button.alt{background:#182e4b}button:disabled{opacity:.5}
+.report-links{display:flex;flex-wrap:wrap;gap:9px;margin:10px 0}.report-entry{border-bottom:1px solid #344d69;padding:12px 0}.report-info{font-size:11px;color:#a8c0df;margin:4px 0}#reportDetails{margin-top:16px;white-space:pre-wrap}#reportDetails .entry{margin:5px 0}
 .pane{padding:17px 1px}.entry{border-bottom:1px solid #304866;padding:13px 3px}
 .entry strong{display:block;font-size:14px}.entry small{display:block;font-size:11px;color:#98b6d8;margin:4px 0}
 .entry p{white-space:pre-wrap;margin:4px 0;color:#d9e7f7}
@@ -31,8 +32,23 @@ input,select,textarea{width:100%;background:#091b33;color:white;border:1px solid
 <button type="button" data-tab="observatie" aria-selected="false">Observaties</button>
 <button type="button" data-tab="notitie" aria-selected="false">Notities</button>
 <button type="button" data-tab="opleiding" aria-selected="false">Opleidingen</button>
+<button type="button" data-tab="verlof" aria-selected="false">Verlof</button>
+<button type="button" data-tab="weekrapport" aria-selected="false">Burger-weekrapporten</button>
 </div>
 <div id="records" class="pane"></div>
+<section id="reportPane" class="pane" hidden>
+<h2>Weekrapporten · Burger</h2>
+<p>Alleen Burger-observaties, -notities en -opleidingen komen in deze conceptweekrapporten. De andere diensten blijven afgeschermd.</p>
+<form id="reportForm" hidden>
+<div class="grid">
+<div class="full"><label for="reportTitle">Titel</label><input id="reportTitle" maxlength="120" required></div>
+<div><label for="periodStart">Vanaf</label><input id="periodStart" type="date" required></div>
+<div><label for="periodEnd">Tot en met</label><input id="periodEnd" type="date" required></div>
+</div><button id="reportSave" type="submit">Weekrapport aanmaken</button>
+</form>
+<div id="reportList"></div>
+<div id="reportDetails" role="region" aria-label="Inhoud weekrapport"></div>
+</section>
 <form id="entryForm" hidden>
 <h2>Nieuwe Burger-registratie</h2>
 <p>Deze registratie blijft uitsluitend binnen Burger en wordt met auteur en datum in het burgerregister opgeslagen.</p>
@@ -49,7 +65,7 @@ const $=id=>document.getElementById(id);
 const search=new URLSearchParams(location.search);
 const id=search.get('discordId');
 const embedded=search.get('embed')==='1';
-let auth=null,authModule,records=[],canWrite=false,tab='overzicht';
+let auth=null,authModule,records=[],canWrite=false,tab='overzicht',reportAccess=false;
 function notice(msg,error=false){$('message').textContent=msg;$('message').classList.toggle('error',error)}
 function resize(){
   if(!embedded||window.parent===window)return;
@@ -59,6 +75,9 @@ function resize(){
 function draw(){
   for(const b of $('tabs').querySelectorAll('button'))b.setAttribute('aria-selected',String(b.dataset.tab===tab));
   const root=$('records');root.replaceChildren();
+  $('reportPane').hidden=tab!=='weekrapport';
+  if(tab==='weekrapport'){refreshReports();resize();return;}
+  if(tab==='verlof'){refreshLeave(root);resize();return;}
   if(tab==='overzicht'){
     const visible=[...records].slice(0,10);
     if(!visible.length)root.textContent='Nog geen burgerregistraties beschikbaar.';
@@ -90,6 +109,86 @@ async function api(url,options={}){
   if(!response.ok)throw Error(result.error||'Dossier kon niet geladen worden');
   return result;
 }
+async function refreshLeave(root){
+  root.textContent='Centrale verlofperiodes laden…';
+  try{
+    const response=await api('/api/burger-dossiers/'+encodeURIComponent(id)+'/leave');
+    root.replaceChildren();
+    if(!(response.leaves||[]).length){root.textContent='Geen centrale verlofperiodes geregistreerd.';return}
+    for(const leave of response.leaves){
+      const period=document.createElement('article');period.className='entry';
+      const title=document.createElement('strong');
+      title.textContent=[leave.startDate,leave.endDate].filter(Boolean).join(' t/m ');
+      const note=document.createElement('small');note.textContent='Status: '+(leave.status||'—')+
+        ' · '+String(leave.days||'?')+' kalenderdagen';
+      period.append(title,note);root.append(period);
+    }
+  }catch(e){root.textContent=e.message}
+  resize();
+}
+async function refreshReports(){
+  const root=$('reportList');root.textContent='Burger-weekrapporten laden…';
+  $('reportDetails').replaceChildren();
+  try{
+    const data=await api('/api/burger-reports');
+    reportAccess=data.canWrite===true;
+    $('reportForm').hidden=!reportAccess;
+    root.replaceChildren();
+    const list=data.reports||[];
+    if(!list.length)root.textContent='Er zijn nog geen Burger-weekrapporten.';
+    for(const report of list){
+      const item=document.createElement('div');item.className='report-entry';
+      const title=document.createElement('strong');title.textContent=report.title||'Weekrapport Burger';
+      const meta=document.createElement('div');meta.className='report-info';
+      meta.textContent=[report.periodStart,report.periodEnd].filter(Boolean).join(' t/m ')+
+        ' · '+String(report.status||'concept');
+      const button=document.createElement('button');button.type='button';
+      button.textContent='Inhoud bekijken';button.dataset.reportId=report.id;
+      item.append(title,meta,button);root.append(item);
+    }
+  }catch(e){root.textContent=e.message}
+  resize();
+}
+$('reportList').onclick=async event=>{
+  const button=event.target.closest('button[data-report-id]');
+  if(!button)return;
+  const root=$('reportDetails');root.textContent='Weekrapport samenstellen…';
+  try{
+    const data=await api('/api/burger-reports/'+encodeURIComponent(button.dataset.reportId));
+    root.replaceChildren();
+    const h=document.createElement('h2');h.textContent=data.report?.title||'Burger-weekrapport';
+    root.append(h);
+    const status=document.createElement('p');
+    status.textContent=String(data.recordCount||0)+' registraties'+
+      (data.truncated?' · Onvolledige weergave (limiet bereikt)':'');
+    root.append(status);
+    for(const section of data.sections||[]){
+      const sh=document.createElement('h2');sh.textContent=section.label+
+        ' ('+String(section.entries?.length||0)+')';root.append(sh);
+      for(const entry of section.entries||[])appendEntry(root,{
+        title:entry.subjectName+' · '+entry.title,eventDate:entry.eventDate,
+        author:entry.author,details:entry.details
+      });
+    }
+    const note=document.createElement('p');note.textContent=data.disclaimer||'Conceptweekrapport';
+    root.append(note);
+  }catch(e){root.textContent=e.message}
+  resize();
+};
+$('reportForm').onsubmit=async event=>{
+  event.preventDefault();
+  if(!reportAccess)return;
+  $('reportSave').disabled=true;
+  try{
+    await api('/api/burger-reports',{method:'POST',
+      body:JSON.stringify({title:$('reportTitle').value,periodStart:$('periodStart').value,
+        periodEnd:$('periodEnd').value})});
+    $('reportTitle').value='';
+    await refreshReports();
+    notice('Burger-weekrapport aangemaakt als concept.');
+  }catch(e){notice(e.message,true)}
+  finally{$('reportSave').disabled=false}
+};
 async function load(){
   if(!auth?.currentUser){notice('Meld je aan om dit dossier te bekijken.');return}
   if(!/^\d{15,22}$/.test(id||'')){notice('Ongeldige dossierverwijzing.',true);return}
@@ -126,7 +225,12 @@ $('entryForm').onsubmit=async event=>{
   finally{button.disabled=false}
 };
 async function start(){
-  $('date').value=new Date().toLocaleDateString('sv-SE');
+  const today=new Date(),weekStart=new Date(today);
+  weekStart.setDate(today.getDate()-6);
+  const isoLocal=date=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),
+    String(date.getDate()).padStart(2,'0')].join('-');
+  $('date').value=isoLocal(today);$('periodEnd').value=isoLocal(today);
+  $('periodStart').value=isoLocal(weekStart);
   try{
     const conf=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
     if(!conf.enabled)throw Error('Aanmelding momenteel niet beschikbaar');
