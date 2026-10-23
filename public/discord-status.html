@@ -16,6 +16,25 @@
 .leave-badge.approved{background:#1b4735;color:#acf2c6}
 .leave-badge.rejected{background:#562d34;color:#ffd1d3}
 .leave-badge.pending{background:#473a22;color:#ffe4aa}
+.leave-badge.withdrawn{background:#424d60;color:#e4eaff}
+.leave-history{padding:7px 10px;margin:7px 0;border:1px solid #344e72;border-radius:8px}
+.leave-history summary{cursor:pointer;font-size:12px;color:#bfd8fa}
+.leave-history-list{font-size:12px;margin-top:7px;color:#d8e4f3}
+.leave-history-item{padding:5px 0;border-bottom:1px solid #314667}
+.leave-history-item:last-child{border-bottom:0}
+.leave-cancel{font-size:11px!important;padding:5px 9px!important;margin-top:7px!important;background:#2c3853;border-color:#617795}
+.profile-fold{border:1px solid #334e71;border-radius:8px;padding:7px 9px;min-width:0;background:#132744}
+.profile-fold>summary{cursor:pointer;font-size:12px;font-weight:700;color:#e2eeff;list-style:none}
+.profile-fold>summary::-webkit-details-marker{display:none}
+.profile-fold>summary:before{content:"▸";margin-right:7px;color:#8daee4}
+.profile-fold[open]>summary:before{content:"▾"}
+.profile-fold[open]>div{padding-top:7px}
+.fold-count{float:right;font-size:11px;padding:1px 6px;background:#274365;border-radius:10px;color:#bcd5f6}
+.role-id-button{background:#172f50;color:#d8e8ff;font-size:11px;padding:5px 9px;
+  border:1px solid #436690;border-radius:15px;max-width:100%;overflow-wrap:anywhere}
+.role-id-button[aria-label]{cursor:pointer}
+.role-id-button:focus-visible{outline:2px solid #9ac2ff}
+
 .leave-box[hidden]{display:none}
 
 /* Compacte, rustige profielweergave; geen wijzigingen aan gegevens of acties. */
@@ -113,19 +132,40 @@ button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
 <section id="personalDetails" class="profile-section" aria-label="Mijn rollen, specialisaties en opleidingen">
 <p id="personalStatus" class="muted" role="status" aria-live="polite">Je gegevens worden opgehaald zodra je bent aangemeld.</p>
 <div class="profile-columns">
-<section><h3>Discord-rollen</h3><div id="personalRoles"></div></section>
-<section><h3>Specialisaties</h3><div id="personalSpecializations"></div></section>
-<section><h3>Gevolgde opleidingen</h3><div id="personalTraining"></div></section>
+<details class="profile-fold"><summary>Discord-rollen <span id="roleCount" class="fold-count">0</span></summary><div id="personalRoles"></div></details>
+<details class="profile-fold"><summary>Specialisaties <span id="skillCount" class="fold-count">0</span></summary><div id="personalSpecializations"></div></details>
+<details class="profile-fold"><summary>Gevolgde opleidingen <span id="trainingCount" class="fold-count">0</span></summary><div id="personalTraining"></div></details>
 </div>
 </section>
 
-<details class="role-details"><summary>Geavanceerd · alle Discord-rol-ID's bekijken</summary>
-<p class="muted">Technische rol-ID's zijn alleen ter controle. Een Discord-rol kent niet automatisch dossier- of portaalrechten toe.</p>
+<details class="role-details"><summary>Geavanceerd · Discord-rollen en rol-ID's bekijken</summary>
+<p class="muted">De rolnamen staan standaard zichtbaar. Klik op een rol om het ID tijdelijk te tonen en te kopiëren; daarna keert de naam automatisch terug. Onbekende rollen krijgen geen verzonnen naam.</p>
 <div class="roles" id="roles"></div>
 <button class="secondary" type="button" id="copy">Rol-ID's kopiëren</button>
 </details>
 </div></main><script type="module">
-const $=id=>document.getElementById(id);let auth,authMod,currentRoles=[];
+const $=id=>document.getElementById(id);let auth,authMod,currentRoles=[],knownRoleNames=new Map();
+function renderAdvancedRoles(){
+  const root=$('roles');root.replaceChildren();
+  for(const roleId of currentRoles){
+    const button=document.createElement('button');
+    button.type='button';button.className='role-id-button';
+    const label=knownRoleNames.get(roleId)||'Niet-herkende Discord-rol';
+    button.textContent=label;button.title='Klik om rol-ID te tonen en te kopiëren';
+    button.setAttribute('aria-label',label+' – toon en kopieer rol-ID');
+    let reset;
+    button.onclick=async()=>{
+      if(reset)clearTimeout(reset);
+      button.textContent=roleId;button.title='Rol-ID '+roleId;
+      reset=setTimeout(()=>{button.textContent=label;button.title='Klik om rol-ID te tonen en te kopiëren'},2300);
+      try{await navigator.clipboard.writeText(roleId)}
+      catch{state('Rol-ID zichtbaar; kopieer dit indien nodig handmatig.')}
+    };
+    root.append(button);
+  }
+  if(!currentRoles.length)root.textContent='Geen Discord-rollen gekoppeld.';
+}
+
 function updateConnectionCard(verified){
   const card=$('connectionCard'),toggle=$('accountToggle'),options=$('accountOptions');
   card.classList.toggle('verified-compact',verified);
@@ -159,14 +199,19 @@ async function loadPersonal(){
     const p=await response.json();
     if(!response.ok)throw Error(p.error||'Persoonlijk profiel niet beschikbaar');
     rows('personalRoles',p.roles,x=>[x.name,(x.department||'Algemeen')+' · '+(x.stage||x.kind||'Discord')],'Geen herkende Discord-rollen.');
+    $('roleCount').textContent=String(p.roles?.length||0);
+    for(const role of p.roles||[])if(role.id&&role.name)knownRoleNames.set(role.id,role.name);
+    renderAdvancedRoles();
     const skills=(p.staff||[]).flatMap(s=>(s.specializations||[]).map(x=>({
       name:x.name,department:s.department,status:x.status,origin:'Personeelsdossier'
     }))).concat((p.discordSpecializations||[]).map(s=>({
       name:s.name,department:s.department,status:s.stage,origin:'Discord-rol (geen opleidingsbewijs)'
     })));
+    $('skillCount').textContent=String(skills.length);
     rows('personalSpecializations',skills,x=>[x.name,
       (x.department||'Algemeen')+' · '+(x.status||'')+' · '+x.origin],
       p.personnelUnavailable?'Personeelsgegevens momenteel niet beschikbaar.':'Geen actieve specialisaties geregistreerd.');
+    $('trainingCount').textContent=String(p.training?.length||0);
     rows('personalTraining',p.training,x=>[x.name,
       (x.department||'Algemeen')+' · '+(x.date||'Datum onbekend')+' · '+
       ({geslaagd:'Geslaagd',niet_geslaagd:'Niet geslaagd',in_opleiding:'In opleiding'}[x.result]||x.result)],
@@ -282,7 +327,7 @@ async function showProfile(){const user=auth.currentUser;
     };
     let {r,data}=await load(false);
     if(r.status===401)({r,data}=await load(true));
-    if(!r.ok)throw new Error(data.error||'Discord-profiel kon niet worden geverifieerd');$('profile').hidden=false;updateConnectionCard(true);loadedFor=null;$('name').textContent=data.name||'Onbekend';$('discordId').textContent=data.discordId;$('joined').textContent=data.joinedAt?new Date(data.joinedAt).toLocaleString('nl-BE'):'Onbekend';$('verified').textContent=data.lastVerifiedAt?new Date(data.lastVerifiedAt).toLocaleString('nl-BE'):'Onbekend';currentRoles=data.roleIds||[];$('roles').replaceChildren(...currentRoles.map(x=>{const el=document.createElement('span');el.className='role';el.textContent=x;return el}));state('Discord-lidmaatschap geverifieerd. Je volledige profiel staat hieronder.');
+    if(!r.ok)throw new Error(data.error||'Discord-profiel kon niet worden geverifieerd');$('profile').hidden=false;updateConnectionCard(true);loadedFor=null;$('name').textContent=data.name||'Onbekend';$('discordId').textContent=data.discordId;$('joined').textContent=data.joinedAt?new Date(data.joinedAt).toLocaleString('nl-BE'):'Onbekend';$('verified').textContent=data.lastVerifiedAt?new Date(data.lastVerifiedAt).toLocaleString('nl-BE'):'Onbekend';currentRoles=data.roleIds||[];knownRoleNames=new Map(Object.entries(data.roleNames||{}));renderAdvancedRoles();state('Discord-lidmaatschap geverifieerd. Je volledige profiel staat hieronder.');
 await Promise.all([loadPersonal(),loadLeave()]);
 return true;
 }catch(e){updateConnectionCard(false);$('profile').hidden=true;
