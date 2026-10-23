@@ -153,12 +153,34 @@ export function installDiscordOAuth(app){
   app.get('/api/discord/profile',async(req,res)=>{
     const match=/^Bearer (\S+)$/.exec(req.get('Authorization')||'');
     if(!match)return res.status(401).json({error:'Aanmelding vereist'});
+    let decoded;
     try{
-      const decoded=await appAuth().verifyIdToken(match[1]);
-      if(decoded.firebase?.sign_in_provider!=='custom'||decoded.bpdDiscord!==true||!/^discord:\d{15,22}$/.test(decoded.uid))return res.status(403).json({error:'Discord-aanmelding vereist'});
+      decoded=await appAuth().verifyIdToken(match[1]);
+    }catch(e){
+      const code=typeof e?.code==='string'&&/^(auth|app)\/[a-z-]+$/.test(e.code)?
+        e.code:'auth/verification-unavailable';
+      // Diagnostic code only: never log bearer tokens, Discord IDs or secrets.
+      console.warn('Discord profiel: Firebase token niet geverifieerd:',code);
+      return res.status(401).json({error:
+        'Portaalsessie verlopen of ongeldig. Meld opnieuw aan met Discord.'});
+    }
+    if(decoded.firebase?.sign_in_provider!=='custom'||decoded.bpdDiscord!==true||
+       !/^discord:\d{15,22}$/.test(decoded.uid))
+      return res.status(403).json({error:'Gebruik Aanmelden met Discord in plaats van Google aanmelden'});
+    try{
       const data=(await getFirestore().collection('bpd_discord_auth').doc(decoded.uid.slice(8)).get()).data();
-      if(!data||data.guildId!==process.env.DISCORD_GUILD_ID)return res.status(403).json({error:'Discord-lidmaatschap ontbreekt'});
-      res.json({discordId:decoded.uid.slice(8),name:data.username||'',joinedAt:data.joinedAt||null,roleIds:data.roleIds||[],lastVerifiedAt:data.verifiedAt,accessNote:'Discord-rollen worden onafhankelijk geverifieerd. Alleen de expliciet ingestelde Politie-Middenkaderrol kan automatisch een beperkte portaalgoedkeuring krijgen.'});
-    }catch{return res.status(401).json({error:'Verificatie mislukt'});}
+      if(!data||data.guildId!==process.env.DISCORD_GUILD_ID)
+        return res.status(403).json({error:'Discord-lidmaatschap niet bevestigd. Meld opnieuw aan met Discord.'});
+      return res.json({discordId:decoded.uid.slice(8),name:data.username||'',
+        joinedAt:data.joinedAt||null,roleIds:data.roleIds||[],
+        lastVerifiedAt:data.verifiedAt,
+        accessNote:'Discord-rollen worden onafhankelijk geverifieerd. Alleen de expliciet ingestelde Politie-Middenkaderrol kan automatisch een beperkte portaalgoedkeuring krijgen.'});
+    }catch(e){
+      // Firestore/server errors are not evidence that the user's token expired.
+      const code=typeof e?.code==='string'&&/^[a-z_-]{3,35}$/.test(e.code)?
+        e.code:'database-unavailable';
+      console.warn('Discord profiel: opslagcontrole tijdelijk niet beschikbaar:',code);
+      return res.status(503).json({error:'Discord-profiel tijdelijk niet beschikbaar. Probeer opnieuw.'});
+    }
   });
 }
