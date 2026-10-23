@@ -1352,6 +1352,113 @@ $('specialtyEdit').onsubmit=async event=>{
     notice('Specialisatiestatus geregistreerd in Firestore met audit. Discord-rollen zijn ongewijzigd.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
+/* Interne functieaanstellingen: alleen whitelisted operationele functies.
+   Discord-rollen en toegangsmachtigingen worden hier nooit aangepast. */
+let functionRevision=0,functionRoles=[],functionOptions=[],functionCanEdit=false;
+const functionSelection=(role,placeholder)=>{
+  const select=$(role);select.replaceChildren(option('',placeholder));
+};
+function updateFunctionForm(){
+  const action=$('functionAction').value,from=$('functionFrom'),to=$('functionTo');
+  const priorFrom=from.value,priorTo=to.value;
+  $('functionFromWrap').hidden=action==='add';
+  $('functionToWrap').hidden=action==='remove';
+  functionSelection('functionFrom','Kies de vorige functie');
+  for(const role of functionRoles)from.append(option(role.id,role.name));
+  if(functionRoles.some(x=>x.id===priorFrom))from.value=priorFrom;
+  functionSelection('functionTo','Kies de nieuwe functie');
+  for(const role of functionOptions.filter(x=>!functionRoles.some(c=>c.id===x.id))){
+    to.append(option(role.id,role.name+(role.stage==='opleiding'?' (in opleiding)':'')));
+  }
+  if([...to.options].some(x=>x.value===priorTo))to.value=priorTo;
+  from.required=action!=='add';to.required=action!=='remove';
+  const usable=action==='add'?to.options.length>1:
+    action==='remove'?from.options.length>1:
+      from.options.length>1&&to.options.length>1;
+  $('functionSave').disabled=!functionCanEdit||!usable;
+}
+function renderFunctionRoles(data){
+  functionRevision=data.revision;
+  functionRoles=data.roles||[];functionOptions=data.options||[];
+  functionCanEdit=data.canEdit===true;
+  const existing=$('functionCurrent');existing.replaceChildren();
+  if(!functionRoles.length)existing.textContent='Nog geen functies geregistreerd voor deze hulpdienst.';
+  for(const role of functionRoles){
+    const span=document.createElement('span');span.className='function-role-chip';
+    span.textContent=role.name+(role.stage==='opleiding'?' · in opleiding':'');existing.append(span);
+  }
+  $('functionState').textContent=data.internallyRecorded?
+    'Actuele intern geregistreerde dossierfuncties (met wijzigingshistoriek).':
+    data.discordRoles!==null?
+    'Begintoestand gebaseerd op recent geverifieerde Discord-functies. Wijzigingen worden uitsluitend in het portaal geregistreerd.':
+    'Geen recente Discord-bevestiging. Alleen een extra dossierfunctie toevoegen is mogelijk totdat de actuele functies zijn bevestigd.';
+  $('functionDiscord').textContent=data.discordRoles===null?
+    'Discord-functies niet recent geverifieerd. Laat betrokkene opnieuw aanmelden om verschillen te vergelijken.':
+    'Recent geverifieerd in Discord: '+(data.discordRoles.map(x=>x.name).join(', ')||'geen functies')+
+    '. Deze lijst is alleen ter controle en wordt niet door de portaalwijziging aangepast.';
+  $('functionChangeForm').hidden=!functionCanEdit;
+  $('functionAction').value=functionRoles.length?'replace':'add';
+  updateFunctionForm();
+  const audit=$('functionAudit');audit.replaceChildren();
+  if(!data.history?.length)audit.textContent='Nog geen functiewijzigingen geregistreerd.';
+  for(const event of data.history||[]){
+    const div=document.createElement('div');div.className='history';
+    const head=document.createElement('strong');
+    head.textContent=(event.from||'Geen')+' → '+(event.to||'Geen')+
+      ' · '+(event.at?new Date(event.at).toLocaleString('nl-BE'):'tijdstip onbekend');
+    const txt=document.createElement('p');
+    txt.textContent=(event.reason||'Geen motivering')+' · door '+
+      (event.by?.name||'Onbekend')+(event.by?.call?' ('+event.by.call+')':'');
+    div.append(head,txt);audit.append(div);
+  }
+  if(data.historyLimited)audit.append(document.createTextNode(' Alleen de 40 recentste functiewijzigingen worden getoond.'));
+}
+async function loadFunctionRoles(p){
+  const key=p.dept+':'+p.discordId;
+  const same=()=>selected?.dept+':'+selected?.discordId===key&&!$('panel').hidden;
+  $('functionChangeForm').hidden=true;
+  $('functionCurrent').textContent='';
+  $('functionState').textContent='Dossierfuncties laden…';
+  $('functionDiscord').textContent='';$('functionAudit').textContent='';
+  if(!['politie','brandweer'].includes(p.dept)){
+    $('functionState').textContent='Dossierfunctie-aanpassingen zijn momenteel ingericht voor Politie en Brandweer.';
+    return;
+  }
+  try{
+    const data=await request('/api/personnel/'+encodeURIComponent(p.dept)+'/'+
+      encodeURIComponent(p.discordId)+'/functions');
+    if(same())renderFunctionRoles(data);
+  }catch(error){
+    if(same())$('functionState').textContent='Functieregister momenteel niet beschikbaar: '+error.message;
+  }
+}
+$('functionAction').onchange=updateFunctionForm;
+$('functionChangeForm').onsubmit=async event=>{
+  event.preventDefault();const person=selected;
+  if(!person||!functionCanEdit)return;
+  const key=person.dept+':'+person.discordId;
+  const action=$('functionAction').value;
+  const previousRoleId=action==='add'?null:$('functionFrom').value;
+  const newRoleId=action==='remove'?null:$('functionTo').value;
+  const reason=$('functionReason').value.trim();
+  const names=id=>functionOptions.find(x=>x.id===id)?.name||'Geen';
+  if(!confirm('Functiewijziging voor '+person.name+': '+names(previousRoleId)+
+    ' → '+names(newRoleId)+' registreren?\nDit past geen Discord-rollen aan.'))return;
+  const button=$('functionSave');button.disabled=true;
+  try{
+    const result=await request('/api/personnel/'+encodeURIComponent(person.dept)+'/'+
+      encodeURIComponent(person.discordId)+'/functions',{
+        method:'POST',body:{action,previousRoleId,newRoleId,reason,expectedRevision:functionRevision}
+      });
+    if(selected?.dept+':'+selected?.discordId!==key)return;
+    $('functionReason').value='';
+    await loadFunctionRoles(person);
+    await loadLinkedPersonnelRecords(person,key);
+    notice('Functiewijziging '+result.from+' → '+result.to+
+      ' met audit gelogd in personeelsdossier en dynamisch weekrapport. Discord-rollen ongewijzigd.');
+  }catch(error){notice('Functiewijziging niet opgeslagen: '+error.message,true)}
+  finally{button.disabled=false}
+};
 async function loadStaffDossier(p){
   const key=p.dept+':'+p.discordId;
   const base='/api/staff-dossiers/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
@@ -1377,6 +1484,7 @@ async function loadStaffDossier(p){
     $('staffCaseDate').value=new Date().toISOString().slice(0,10);
     showStaffRoles(result.discordRoles,result.subject?.rosterSeries);
     void loadSpecialtyState(p);
+    void loadFunctionRoles(p);
     void loadStaffLeave(p,key);
     void loadStaffFormalPermissions(p,key);
     const profile=result.profile||{};
