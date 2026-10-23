@@ -1,3 +1,4 @@
+import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 // Leave decisions are immutable audit events and ordinary personnel dossier
 // records. Keeping the two in the SAME Firestore transaction prevents a
 // cancellation from disappearing from weekly reports or a dossier.
@@ -21,9 +22,8 @@ export function leaveEventDetails(action,request,from=null,to=null){
     request.endDate+' ('+request.days+' kalenderdagen)';
   return base+(from?' · status '+from+' → '+(to||'ingetrokken'):'');
 }
-export function writeLeaveEvent(tx,{requestRef,db,request,action,actor,actorUid,
+export function writeLeaveEvent(tx,{requestRef,request,action,actor,actorUid,
   eventDate,from=null,to=null,note=''}) {
-  const at=()=>new Date().toISOString();
   const registeredBy=actor&&typeof actor==='object'?{
     name:String(actor.name||'Onbekend'),call:String(actor.call||''),
     discordId:String(actor.discordId||'')
@@ -31,14 +31,14 @@ export function writeLeaveEvent(tx,{requestRef,db,request,action,actor,actorUid,
   tx.create(requestRef.collection('audit').doc(),{
     action,from,to,note,actorUid:actorUid||null,
     actorDiscordId:registeredBy.discordId||null,days:request.days,
-    at:db.FieldValue.serverTimestamp()
+    at:FieldValue.serverTimestamp()
   });
   const departments=[...new Set((request.subjectDepartments||[])
     .filter(d=>['politie','brandweer','ambulance','depannage'].includes(d)))];
   for(const dept of departments){
-    const ref=db.firestore.collection('bpd_cases').doc(dept+'_'+request.personDiscordId)
+    const ref=getFirestore().collection('bpd_cases').doc(dept+'_'+request.personDiscordId)
       .collection('entries').doc();
-    const notice=db.firestore.collection('bpd_notices').doc(dept)
+    const notice=getFirestore().collection('bpd_notices').doc(dept)
       .collection('events').doc();
     tx.create(ref,{
       type:'verlof',leaveAction:action,leaveRequestId:requestRef.id,
@@ -48,10 +48,10 @@ export function writeLeaveEvent(tx,{requestRef,db,request,action,actor,actorUid,
       subjectCallAtCreation:request.subjectCall||'',
       eventDate,details:leaveEventDetails(action,request,from,to),
       statusFrom:from,statusTo:to||request.status,
-      registeredBy,createdAt:db.FieldValue.serverTimestamp(),
+      registeredBy,createdAt:FieldValue.serverTimestamp(),
       modifiedAt:null,source:'central-leave-audit'
     });
     tx.create(notice,{caseId:dept+'_'+request.personDiscordId,
-      entryId:ref.id,type:'verlof',dept,createdAt:db.FieldValue.serverTimestamp()});
+      entryId:ref.id,type:'verlof',dept,createdAt:FieldValue.serverTimestamp()});
   }
 }
