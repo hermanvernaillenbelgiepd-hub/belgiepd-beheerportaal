@@ -36,10 +36,10 @@ test('Direct dossier URLs require service-specific rights',()=>{
  assert.ok(specialist.includes("if(!canReadServiceDossier(req.bpd,dept))throw failure(403"));
  assert.ok(cases.includes("if(!canReadServiceDossier(req.bpd,report.dept))return {status:403"));
 });
-test('Board does not receive modification rights solely by obtaining all-service read access',()=>{
+test('Bestuur krijgt uitsluitend algemene personeelswijzigingen en geen kaderregistratie of sanctierechten',()=>{
  const cases=read('src/management-routes.js');
  const staff=read('src/staff-dossier-policy.js');
  assert.ok(cases.includes('!mayWriteManagement(req.bpd,dept,type)'));
  assert.ok(cases.includes('!mayClassifyTest(req.bpd,dept)'));
- assert.ok(staff.includes('&&canEditPersonnel(actor,staff)'));
+ assert.ok(staff.includes('canEditGeneralPersonnelInfo(actor,staff)'));
 });
