@@ -519,6 +519,7 @@ function openDossierTab(name){
 // echte promotie, naam, verlof of Discord-bevoegdheid.
 let registrationManualLeave=false,registrationSpecialty=false,
   registrationSaving=false,registrationSubjectKey='';
+const registrationModuleStates={cases:'laden',training:'laden',specialty:'laden',functions:'laden'};
 const registrationForms=[
   'staffFormalForm','staffCaseForm','staffTrainingForm',
   'staffManualLeaveForm','specialtyEdit','functionChangeForm'
@@ -603,6 +604,18 @@ function refreshPersonnelRegistrationOptions(){
   pick.value=current;
   $('formalInlineArea').hidden=!kinds.length;
   displaySelectedRegistration();
+  const missing=[];
+  const dept=selected?.dept;
+  if(!kinds.some(([k])=>k.startsWith('case:')))
+    missing.push('Dossiernotities en personeelsbewegingen: '+registrationModuleStates.cases);
+  if(!kinds.some(([k])=>k==='training'))
+    missing.push('Opleidingen: '+registrationModuleStates.training);
+  if(!kinds.some(([k])=>k==='specialty'))
+    missing.push('Specialisaties: '+registrationModuleStates.specialty);
+  if(!kinds.some(([k])=>k==='function'))
+    missing.push('Functies: '+registrationModuleStates.functions);
+  $('registrationAccessHint').textContent=dept&&missing.length?
+    'Overige categorieën voor '+(departments[dept]||dept)+': '+missing.join(' · '):'';
 }
 function choosePersonnelRegistration(kind,focus=false){
   const select=$('registrationKind');
@@ -713,6 +726,7 @@ function setupDossierTabs(){
           </select>
         </label>
         <p id="registrationKindHint" role="status">De beschikbare categorieën worden bepaald door je goedgekeurde rol binnen deze hulpdienst.</p>
+        <p id="registrationAccessHint" class="registration-access-hint" role="status" aria-live="polite"></p>
       </div>
       <div id="registrationFields" class="registration-hub-fields"></div>
       <button type="button" id="registrationSubmit">Registratie opslaan</button>
@@ -1088,6 +1102,8 @@ function updateStaffCaseFields(){
 $('staffCaseType').onchange=updateStaffCaseFields;
 async function loadStaffCasePermissions(person,key,canManage){
   casePermissions=null;
+  registrationModuleStates.cases=canManage?'bevoegdheden laden…':
+    'niet vrijgegeven of geen kaderbevoegdheid voor deze dienst';
   $('staffCaseForm').hidden=true;
   refreshPersonnelRegistrationOptions();
   if(!canManage)return;
@@ -1096,6 +1112,12 @@ async function loadStaffCasePermissions(person,key,canManage){
     if(!sameDossier(key))return;
     casePermissions=overview;
     const types=overview.typesByDepartment?.[person.dept]||[];
+    registrationModuleStates.cases=!overview.writesEnabled?
+      'schrijven momenteel uitgeschakeld':
+      !overview.actor?
+        'eigen personeelsidentiteit is niet gekoppeld':
+      !types.length?
+        'geen goedgekeurd schrijfrecht voor deze dienst':'beschikbaar';
     $('staffCaseType').replaceChildren(...types.map(type=>
       option(type,staffCaseLabels[type]||type)));
     $('staffCaseForm').hidden=!(overview.writesEnabled&&overview.actor&&types.length);
@@ -1105,6 +1127,7 @@ async function loadStaffCasePermissions(person,key,canManage){
   }catch(error){
     if(sameDossier(key)){
       $('staffCaseForm').hidden=true;
+      registrationModuleStates.cases='ophalen mislukt';
       $('staffCaseHint').textContent='Kaderregistratie niet beschikbaar: '+error.message;
     }
   }
@@ -1125,15 +1148,24 @@ function resetStaffTrainingEdit(){
 $('staffTrainingCancel').onclick=resetStaffTrainingEdit;
 async function loadStaffTrainingRights(p,key){
   trainingRights=null;trainingEditId=null;$('staffTrainingForm').hidden=true;
+  registrationModuleStates.training='bevoegdheden laden…';
+  refreshPersonnelRegistrationOptions();
   try{
     const data=await request('/api/roles/me');
     if(!sameDossier(key))return;
     trainingRights=data;
+    registrationModuleStates.training=!data.trainingWritesEnabled?
+      'registratie uitgeschakeld op deze server':
+      !data.permissions?.[p.dept]?.['training.log']?
+        'je rol heeft geen opleidingsregistratierecht':'beschikbaar';
     $('staffTrainingForm').hidden=!(data.trainingWritesEnabled===true&&
       data.permissions?.[p.dept]?.['training.log']===true);
     if(!$('staffTrainingForm').hidden)resetStaffTrainingEdit();
   }catch(e){
-    if(sameDossier(key))$('staffTrainingForm').hidden=true;
+    if(sameDossier(key)){
+      $('staffTrainingForm').hidden=true;
+      registrationModuleStates.training='ophalen mislukt';
+    }
   }
   if(sameDossier(key)){
     refreshPersonnelRegistrationOptions();
@@ -1928,6 +1960,7 @@ function specialtySelectedValue(){
 }
 async function loadSpecialtyState(p){
   const key=p.dept+':'+p.discordId;
+  registrationModuleStates.specialty='bevoegdheden laden…';
   const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
   const root=$('specialtyGrid');root.replaceChildren();
   $('specialtyEdit').hidden=true;
@@ -1953,6 +1986,9 @@ async function loadSpecialtyState(p){
       'Je kunt de status hieronder aanpassen. Iedere wijziging wordt afzonderlijk gelogd.':
       'Alle onderdelen zijn alleen-lezen. Aanpassingen vereisen bevoegd officierenkader of korpsleiding.';
     registrationSpecialty=data.canEdit===true&&states.length>0;
+    registrationModuleStates.specialty=registrationSpecialty?
+      'beschikbaar':!states.length?'geen specialisaties voor deze dienst':
+      'alleen bevoegd Officierenkader of Korpsleiding mag aanpassen';
     $('specialtyEdit').hidden=true;
     $('specialtyLabel').replaceChildren(...states.map(x=>option(x.label,x.label)));
     if(states.length){
@@ -1974,6 +2010,7 @@ async function loadSpecialtyState(p){
   }catch(e){
     if(!same())return;
     registrationSpecialty=false;
+    registrationModuleStates.specialty='ophalen mislukt';
     refreshPersonnelRegistrationOptions();
     $('specialtyStatus').textContent='Specialisatieregister niet beschikbaar: '+e.message;
     const statuses=BPDPersonnelVisuals.specialtyStatuses(p.specialties);
@@ -2036,6 +2073,8 @@ function renderFunctionRoles(data){
   functionRevision=data.revision;
   functionRoles=data.roles||[];functionOptions=data.options||[];
   functionCanEdit=data.canEdit===true;
+  registrationModuleStates.functions=functionCanEdit?
+    'beschikbaar':'alleen-lezen volgens je dienstbevoegdheid';
   const existing=$('functionCurrent');existing.replaceChildren();
   if(!functionRoles.length)existing.textContent='Nog geen functies geregistreerd voor deze hulpdienst.';
   for(const role of functionRoles){
@@ -2074,6 +2113,7 @@ async function loadFunctionRoles(p){
   const same=()=>selected?.dept+':'+selected?.discordId===key&&!$('panel').hidden;
   $('functionChangeForm').hidden=true;
   functionCanEdit=false;
+  registrationModuleStates.functions='bevoegdheden laden…';
   refreshPersonnelRegistrationOptions();
   $('functionCurrent').textContent='';
   $('functionState').textContent='Dossierfuncties laden…';
@@ -2089,6 +2129,7 @@ async function loadFunctionRoles(p){
   }catch(error){
     if(same()){
       functionCanEdit=false;
+      registrationModuleStates.functions='ophalen mislukt';
       refreshPersonnelRegistrationOptions();
       $('functionState').textContent='Functieregister momenteel niet beschikbaar: '+error.message;
     }
@@ -2232,6 +2273,8 @@ async function loadStaffDossier(p){
   registrationManualLeave=false;
   registrationSpecialty=false;
   functionCanEdit=false;
+  for(const key of Object.keys(registrationModuleStates))
+    registrationModuleStates[key]='laden';
   casePermissions=null;
   trainingRights=null;
   formalPermissions=null;
