@@ -693,7 +693,7 @@ function setupDossierTabs(){
       <div id="sheetMovements" class="sheet-records">Registraties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="leave">
-      <h3>Verloven</h3>
+      <h3>Verlofperiodes <span class="landscape-counter">max. 5</span></h3>
       <div id="sheetLeave" class="sheet-records">Verlofperiodes laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="observations">
@@ -738,6 +738,16 @@ function setupDossierTabs(){
     </details>
   `);
   panes.overzicht.prepend(sheet);
+  // Twee onafhankelijke compacte kolommen: geen grote lege vlakken naast korte rubrieken.
+  const summaryGrid=sheet.querySelector('.landscape-grid');
+  const priority=document.createElement('div');priority.className='landscape-priority';
+  for(const [label,tiles] of [['Notities en verloven',['notes','leave']],['Specialisaties en bewegingen',['specialisaties','movements']]]){
+    const column=document.createElement('div');column.className='landscape-priority-column';
+    column.setAttribute('aria-label',label);
+    for(const tile of tiles)column.append(summaryGrid.querySelector('[data-sheet-tile="'+tile+'"]'));
+    priority.append(column);
+  }
+  summaryGrid.prepend(priority);
   // Identiteit staat boven de tabs en niet langer opnieuw in Overzicht.
   $('identity').after(sheet.querySelector('.sheet-identity'));
   sheet.addEventListener('click',event=>{
@@ -1256,8 +1266,9 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
     const note=document.createElement('span');note.className='overview-no-data';
     note.textContent=empty;root.append(note);return;
   }
-  for(const row of (wasExpanded?entries:entries.slice(0,3)))append(row);
-  if(entries.length>3){
+  const previewCount=group==='leave'?5:3;
+  for(const row of (wasExpanded?entries:entries.slice(0,previewCount)))append(row);
+  if(entries.length>previewCount){
     const toggle=document.createElement('button');toggle.type='button';
     toggle.className='sheet-show-more';
     toggle.textContent=wasExpanded?'Minder tonen':'Toon alle '+entries.length+(limited?'+':'')+' registraties';
@@ -1488,10 +1499,20 @@ async function loadStaffLeave(p,key){
     const leaves=[...(info.leaves||[])].sort((a,b)=>
       String(b.startDate||'').localeCompare(String(a.startDate||''))||
       String(b.endDate||'').localeCompare(String(a.endDate||'')));
-    sheetSetRows('leave',leaves,x=>[
-      x.startDate||'—',x.endDate||'—',leaveStatusText(x.status),
+    // Overzicht: maximaal vijf goedgekeurde verlofperiodes, met lopend verlof eerst.
+    // Ingetrokken, geweigerde en lopende aanvragen blijven in de beveiligde detailbron.
+    const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels'}).format(new Date());
+    const periodState=x=>x.startDate<=today&&x.endDate>=today?'Lopend':
+      x.startDate>today?'Gepland':'Afgerond';
+    const order={Lopend:0,Gepland:1,Afgerond:2};
+    const overviewLeaves=leaves.filter(x=>x.status==='approved')
+      .sort((a,b)=>order[periodState(a)]-order[periodState(b)]||
+        String(b.startDate||'').localeCompare(String(a.startDate||'')))
+      .slice(0,5);
+    sheetSetRows('leave',overviewLeaves,x=>[
+      x.startDate||'—',x.endDate||'—',periodState(x),
       Number(x.days)||'—'
-    ],'Geen geregistreerde verlofperiodes.',info.limited);
+    ],'Geen goedgekeurde verlofperiodes.',info.limited);
     root.replaceChildren();
     if(!leaves.length)root.textContent='Geen geregistreerde verlofperiodes.';
     for(const item of leaves){

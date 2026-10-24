@@ -421,3 +421,22 @@ body.dossier-onepage .registration-hub-heading .registration-access-hint{
 body.dossier-onepage .registration-hub-heading .registration-access-hint:empty{
   display:none;
 }
+
+/* MAIN/TEST: notities/verlof links, specialisaties/bewegingen rechts.
+   De overige dossiercategorieën behouden hun eigen rechten en registraties. */
+body.dossier-onepage .landscape-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.dossier-onepage .landscape-priority{
+  grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  min-width:0;align-items:start
+}
+body.dossier-onepage .landscape-priority-column{min-width:0;display:flex;flex-direction:column}
+body.dossier-onepage .landscape-priority-column>.landscape-cell{flex:0 0 auto;padding-bottom:7px}
+body.dossier-onepage .landscape-grid>.landscape-cell[data-sheet-tile="sanctions"]{grid-column:1/-1}
+body.dossier-onepage .landscape-counter{
+  font-size:10px;font-weight:500;color:#c8dcf4;white-space:nowrap
+}
+@media(max-width:720px){
+  body.dossier-onepage .landscape-grid,
+  body.dossier-onepage .landscape-priority{grid-template-columns:minmax(0,1fr)}
+  body.dossier-onepage .landscape-grid>.landscape-cell[data-sheet-tile="sanctions"]{grid-column:auto}
+}
