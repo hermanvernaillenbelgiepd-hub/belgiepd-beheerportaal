@@ -7,20 +7,20 @@ export function dossierScopes(actor){
 }
 export function dossierOverviewRows(personnel,_unused,scopes){
   const rows=new Map();
-  for(const p of personnel||[]){
-    if(!scopes.personnelDepartments.includes(p.dept)||
-       !validPersonnelKey(p.dept,p.personId))continue;
-    const key=p.dept+':'+p.personId;
+  for(const [index,p] of (personnel||[]).entries()){
+    if(!scopes.personnelDepartments.includes(p.dept))continue;
+    const linked=validPersonnelKey(p.dept,p.personId);
+    const key=linked?p.dept+':'+p.personId:p.dept+':unlinked:'+index;
     if(rows.has(key))throw Error('Dubbele personeelsidentiteit gevonden');
-    rows.set(key,{dept:p.dept,discordId:p.personId,
+    rows.set(key,{dept:p.dept,discordId:linked?p.personId:null,
       name:String(p.name||'').slice(0,120),call:String(p.call||'').slice(0,24),
       rank:String(p.rank||'').slice(0,80),status:String(p.status||'').slice(0,50),
-      canOpen:typeof scopes.canReadSubject==='function'&&scopes.canReadSubject(p),
+      canOpen:linked&&typeof scopes.canReadSubject==='function'&&scopes.canReadSubject(p),
       personnel:true,application:false,applicationStatus:null,
       source:p.source==='firestore-created'?'Firestore':'Google Sheets'});
   }
   return [...rows.values()].sort((a,b)=>a.dept.localeCompare(b.dept,'nl')||
-    a.name.localeCompare(b.name,'nl')||a.discordId.localeCompare(b.discordId));
+    a.name.localeCompare(b.name,'nl')||String(a.discordId||'').localeCompare(String(b.discordId||'')));
 }
 
 export function dossierTimelineEntry(event,kind){
