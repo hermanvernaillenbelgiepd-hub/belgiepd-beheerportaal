@@ -80,11 +80,16 @@
   const create=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=value;return n;};
   const statuses={full:'● Toegang binnen eigen dienst',limited:'◐ Beperkte toegang of eigen aanvraag',none:'— Geen toegang voor dit profiel',extra:'◇ Alleen na afzonderlijke machtiging'};
   let roleId='nieuw',moduleId='users';
-  const getRole=()=>roles.find(p=>p.id===roleId);
+  const getRole=()=>{
+    const role=roles.find(p=>p.id===roleId);
+    const variant=rankVariants[roleId]?.find(p=>p.call===selectedCall[roleId]);
+    return variant?{...role,...variant}:role;
+  };
   const getModule=()=>modules.find(m=>m.id===moduleId);
-  const state=(module,role)=>module.access[roles.indexOf(role)];
+  const roleIndex=role=>roles.findIndex(p=>p.id===role.id);
+  const state=(module,role)=>module.access[roleIndex(role)];
   function availableAction(module,role,index){
-    const order=roles.indexOf(role);
+    const order=roleIndex(role);
     if(module.id==='users')return index===0||index===1&&order>=5||index===2&&order===6;
     if(module.id==='home')return true;
     if(module.id==='roster')return order>=4&&(index<2||order===6);
@@ -125,7 +130,7 @@
     const cards=create('div','mock-panel');
     const rows=module.id==='roster'||module.id==='dossier'?
       [['CALL',role.call],['Personeelslid',role.name],['Voorbeeld Korpsleiding','900-reeks · volgens Discord-rol afgeschermd']]:
-      module.id==='verlof'?[['Aanvrager',role.name],['Aanvraag','7 tot 14 dagen (voorbeeld)'],['Goedkeuring',roles.indexOf(role)>=2?'Afhankelijk van rol / duur':'Niet bevoegd']]:
+      module.id==='verlof'?[['Aanvrager',role.name],['Aanvraag','7 tot 14 dagen (voorbeeld)'],['Goedkeuring',roleIndex(role)>=4?'Afhankelijk van rol / duur':'Niet bevoegd']]:
       module.id==='users'?[['Account',role.name],['Status',role.status],['Goedgekeurde rol',role.role]]:
       [['Personeel',role.name],['Rang',role.rank],['Dienst','Politie']];
     for(const [label,value] of rows){const card=create('div','');card.append(create('small','',label),create('strong','',value));cards.append(card);}
