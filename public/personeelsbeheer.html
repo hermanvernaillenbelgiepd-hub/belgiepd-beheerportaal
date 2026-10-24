@@ -1615,14 +1615,41 @@ function sheetIdentity(p){
   seriesTitle.textContent=p.series||'—';
   seriesSlot.append(seriesTitle);
   // Reekshoofden zijn zichtbare contactnamen, nooit een bron van toegangsrechten.
-  const seriesHeads={'1':['Dieter'],'2':['Unemi'],'3':['Jones','Roy','J.Eclaire','Seba']};
-  const seriesMatch=String(p.series||'').match(/(?:reeks|serie|series)\s*0?([123])\b/i);
+  // Reekshoofden: expliciet beheerde namen/Discord-identiteiten.
+  // Middenkaderrol 1563579538074767423 wordt hier niet als bevoegdheid gebruikt.
+  const seriesHeads={
+    '1':[
+      {name:'Brayan',id:'1041812771349737614'},
+      {name:'Yassine',id:'622486684033875968'},
+      {name:'Isaiah',id:'949115181785563137'},
+      {name:'Mxxx_',id:'962410307463049236'}
+    ],
+    '2':[
+      {name:'Anvar',id:'729410384095871098'},
+      {name:'Sit-robin',id:'305021081243090944'},
+      {name:'Unemi',id:'298799630458552323'}
+    ],
+    '3':[
+      {name:'Jones',id:'1103170819355574328'},
+      {name:'Roy',id:'1222286882331824208'},
+      {name:'J.Eclaire',id:'344065695635734528'},
+      {name:'Seba',id:'1171128215708909602'}
+    ]
+  };
+  const seriesRelief={name:'RX',id:'528568826481344522'};
+  const seriesMatch=String(p.series||'').match(/(?:reeks|serie|series)\\s*0?([123])\\b/i);
   const heads=p.dept==='politie'&&seriesMatch?seriesHeads[seriesMatch[1]]:null;
   if(heads){
     const line=document.createElement('small');
     line.className='dossier-series-heads';
-    line.textContent='Reekshoofd'+(heads.length>1?'en':'')+': '+heads.join(', ');
+    line.textContent='Reekshoofden: '+heads.map(x=>x.name).join(', ');
+    line.title=heads.map(x=>x.name+' · '+x.id).join(' | ');
     seriesSlot.append(line);
+    const relief=document.createElement('small');
+    relief.className='dossier-series-heads';
+    relief.textContent='Vlinder: '+seriesRelief.name;
+    relief.title=seriesRelief.id+' · inzetbaar in alle reeksen';
+    seriesSlot.append(relief);
   }
   $('sheetStatus').textContent=p.status||'—';
   $('sheetDiscordId').textContent=p.discordId||'—';
