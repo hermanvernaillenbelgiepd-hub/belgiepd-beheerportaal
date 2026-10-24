@@ -1637,7 +1637,7 @@ function sheetIdentity(p){
     ]
   };
   const seriesRelief={name:'RX',id:'528568826481344522'};
-  const seriesMatch=String(p.series||'').match(/(?:reeks|serie|series)\\s*0?([123])\\b/i);
+  const seriesMatch=String(p.series||'').match(/(?:reeks|serie|series)\s*0?([123])\b/i);
   const heads=p.dept==='politie'&&seriesMatch?seriesHeads[seriesMatch[1]]:null;
   if(heads){
     const line=document.createElement('small');
