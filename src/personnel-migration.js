@@ -107,13 +107,14 @@ export function planPersonnelMigration(personnel,activityRows,legacyGrid=null,ex
         const distinct=new Set(candidates.map(c=>c.discordId));
         if(distinct.size>1){
           unmatched.push({key:`${dept}_${sourceRow}`,dept,sourceRow,sourceCells:row,reason:'meerdere_brandweerinfo_kandidaten'});
-          normalizedRows.push(row);continue;
+          // Ambiguous role/ID must never enter the normalized roster by accident.
+          normalizedRows.push(row.map((value,col)=>col===spec.idCol?'':value));continue;
         }
         if(distinct.size===1){
           const candidate=candidates[0];
           if(goodId(id)&&id!==candidate.discordId){
             unmatched.push({key:`${dept}_${sourceRow}`,dept,sourceRow,sourceCells:row,reason:'tegenstrijdige_discord_ids'});
-            normalizedRows.push(row);continue;
+            normalizedRows.push(row.map((value,col)=>col===spec.idCol?'':value));continue;
           }
           id=candidate.discordId;
           brandweerInfoRow=candidate.sourceRow;

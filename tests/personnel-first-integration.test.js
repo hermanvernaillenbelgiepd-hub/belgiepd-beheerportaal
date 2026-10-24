@@ -5,6 +5,7 @@ import {mayReadManagement,mayWriteManagement} from '../src/management-utils.js';
 import {mayApproveLeave} from '../src/leave-policy.js';
 import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
+import {planPersonnelMigration} from '../src/personnel-migration.js';
 
 const guild='999999999999999999';
 const person='111111111111111111';
@@ -82,4 +83,77 @@ test('Public applicant functionality is not mounted and old applicant pages are 
   assert.equal(server.includes('installServiceApplicationRoutes(app'),false);
   assert.ok(server.includes("'/solliciteren.html','/sollicitatiebeheer.html'"));
   assert.ok(server.includes('res.status(410)'));
+});
+
+
+test('Live Sheets personnel sync links verified firefighter IDs and includes other service profiles',()=>{
+  const idA='111111111111111111',idB='222222222222222222',
+    idC='333333333333333333',idD='444444444444444444',idE='555555555555555555';
+  const police=['901','♚','Eerste Hoofdcommissaris','POL_MEMBER','KADER','Actief','Ja','Ja','Nee'];
+  police[17]=idA;
+  const ambulance=['AMB-01','LEIDING','Ambulancier','AMB_MEMBER','Actief','Ja'];
+  ambulance[10]=idB;
+  const fire=['ZONE','Hoger kader','Zonecommandant','FIRE_MEMBER','Actief','Docent'];
+  // The Fire main tab does NOT contain an ID; BrandweerInfo does.
+  const towing=['DEP-01','LEIDING','Depanneur','DEP_MEMBER','Actief','Ja','Nee',idD];
+  const citizen=['','Burger','Beroep','CIV_MEMBER','Actief','Ja',idE];
+  const personnel={
+    politie:[['Callsign','Graad','','Naam'],police],
+    ambulance:[['Callsign','Kader','Functie','Naam'],ambulance],
+    brandweer:[['Callsign','Kader','Functie','Naam'],fire],
+    depannage:[['Callsign','Kader','Functie','Naam'],towing],
+    burger:[['','Rol','Functie','Naam'],citizen]
+  };
+  const info=[['Naam','PZ check','Status','Basis','Logistiek','Ladderwagen','Duiker',
+    'Signalisatie','RED team','Gevaarlijke stoffen','Grote Boot','Discord','OUDE NAMEN'],
+    ['FIRE_MEMBER','','Actief','Docent','','','','','','','',idC,'OLD_FIRE_MEMBER']];
+  const originalFire=[...personnel.brandweer[1]];
+  const plan=planPersonnelMigration(personnel,[],null,{brandweerInfo:info});
+  assert.equal(plan.records.length,5);
+  const persons=new Map(plan.records.map(r=>[r.personnel.dept,r.personnel]));
+  assert.equal(persons.get('brandweer').personId,idC);
+  assert.equal(persons.get('brandweer').call,'ZONE');
+  assert.equal(persons.get('brandweer').specialties[0].value,'Docent');
+  assert.equal(persons.get('politie').personId,idA);
+  assert.equal(persons.get('politie').specialties[0].value,'Ja');
+  assert.equal(persons.get('ambulance').personId,idB);
+  assert.equal(persons.get('depannage').personId,idD);
+  assert.equal(persons.get('burger').personId,idE);
+  assert.deepEqual(personnel.brandweer[1],originalFire,'Het Google Sheet-bronrecord mag niet worden gewijzigd');
+  assert.ok(plan.records.every(r=>/^\d{15,22}$/.test(r.personnel.personId)));
+});
+
+test('Live sync imports no ambiguous or conflicting firefighter dossier identity',()=>{
+  const idA='111111111111111111',idB='222222222222222222';
+  const main=['ZONE','','Brandweerman','FIRE_MEMBER','Actief']; main[13]=idA;
+  const personnel={
+    politie:[['Callsign','Graad','','Naam']],
+    ambulance:[['Callsign','Kader','Functie','Naam']],
+    brandweer:[['Callsign','Kader','Functie','Naam'],main],
+    depannage:[['Callsign','Kader','Functie','Naam']],
+    burger:[['','Rol','Functie','Naam']]
+  };
+  const info=[['Naam','PZ check','Status','Basis','Logistiek','Ladderwagen','Duiker',
+    'Signalisatie','RED team','Gevaarlijke stoffen','Grote Boot','Discord','OUDE NAMEN'],
+    ['FIRE_MEMBER','','','','','','','','','','',idB,'']];
+  const plan=planPersonnelMigration(personnel,[],null,{brandweerInfo:info});
+  assert.equal(plan.records.length,0);
+  assert.equal(plan.unmatched.some(x=>x.reason==='tegenstrijdige_discord_ids'),true);
+  assert.equal(personnel.brandweer[1][13],idA);
+  // Two independent IDs claiming the same name are ambiguous.
+  main[13]='';
+  info.push(['FIRE_MEMBER','','','','','','','','','','',idA,'']);
+  const clash=planPersonnelMigration(personnel,[],null,{brandweerInfo:info});
+  assert.equal(clash.records.length,0);
+  assert.equal(clash.unmatched.some(x=>x.reason==='meerdere_brandweerinfo_kandidaten'),true);
+});
+
+test('Main personnel sync reads all five source tabs without writing over audit records',()=>{
+  const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+  assert.match(server,/burger:'BURGERS!A3:H180'/);
+  assert.match(server,/brandweerInfo:'BrandweerInfo!A1:M150'/);
+  assert.match(server,/planPersonnelMigration\(personnel,activityRows,null,\{brandweerInfo\}\)/);
+  assert.match(server,/getFirestore\(\)\.collection\(PERSONNEL_EDITS_COLLECTION\)/);
+  assert.match(server,/mergePersonnelEdits\(combined,edits\.docs\.map/);
+  assert.match(server,/return plan\.records\.map\(row=>/);
 });
