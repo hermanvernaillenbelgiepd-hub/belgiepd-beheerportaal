@@ -35,15 +35,23 @@ export function canReadPersonnelSubject(actor,person){
   if(!person||!canReadServiceDossier(actor,person.dept))return false;
   if(person.dept!=='politie')return true;
   if(actor?.boardPersonnelAdmin===true)return true;
-  if(isPolice9xx(person.call)){
-    // Subject role labels come ONLY from authenticated server-side guild
-    // snapshots and never from a request body or the person's callsign.
-    // Missing, expired or ambiguous snapshots fail closed.
-    const label=actor?.verifiedPoliceSubjectRoles?.[person.personId];
-    if(label==='Officierenkader')return true;
-    return verifiedCorpsReader(actor);
-  }
-  return !isCorpsLeadershipPersonnel(person)||verifiedCorpsReader(actor);
+  const scoped=roleForDepartment(actor,'politie');
+  const officer=['officierenkader','korpsleiding'].includes(scoped)&&
+    ['officierenkader','korpsleiding'].includes(actor?.role);
+  const corps=verifiedCorpsReader(actor);
+  const call=String(person.call||'').trim().match(/^(?:S[- ]?)?(\d{3})$/i);
+  const number=call?Number(call[1]):null;
+  // 900 Thijs en 910 Extra: enkel geverifieerde Korpsleiding (of Bestuur).
+  if(number===900||number===910)return corps;
+  // Andere 9xx: enkel Korpsleiding; uitzonderingen met een geverifieerde
+  // officierenrol blijven leesbaar voor Korpsleiding, niet voor Middenkader.
+  if(isPolice9xx(person.call))return corps;
+  const cadre=policeKader(person.rank);
+  if(cadre==='Korpsleiding')return corps;
+  if(cadre==='Officierenkader')return corps;
+  if(cadre==='Middenkader')return officer;
+  if(cadre==='Kader')return false;
+  return true;
 }
 export function canViewPersonnel(actor,dept){
   if(!SERVICES.has(dept))return false;
