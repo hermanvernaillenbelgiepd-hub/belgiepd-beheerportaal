@@ -381,7 +381,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 </section>
 <section id="panel" class="card" hidden>
 <div class="controls dossier-top-actions" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2>
-<div class="controls"><button id="editPersonnelSummary" type="button" class="alt" hidden>Personeelsgegevens wijzigen</button><button class="alt" id="close" type="button">Sluiten</button></div></div>
+<div class="controls"><button id="renameLowerPolice" type="button" class="alt" hidden>Naam corrigeren</button><button id="editPersonnelSummary" type="button" class="alt" hidden>Personeelsgegevens wijzigen</button><button class="alt" id="close" type="button">Sluiten</button></div></div>
 <div id="ficheNavigator" class="fiche-navigator" hidden>
   <a id="ficheBackLink" href="/personeelsbeheer.html">← Terug naar personeelslijst</a>
   <label for="ficheColleague">Andere collega selecteren</label>
@@ -2898,6 +2898,7 @@ async function showPerson(p){
   }
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
+  $('renameLowerPolice').hidden=!(p.canRename===true&&writesEnabled);
   $('sheetTrainingRegisterLink').href='/rollen-opleidingen.html?'+new URLSearchParams({
     department:p.dept,discordId:p.discordId
   }).toString();
@@ -2976,6 +2977,23 @@ $('promotionForm').onsubmit=async ev=>{
     await load();
     notice('Politiepromotie geregistreerd in Firestore, inclusief ranggeschiedenis. Discord-rechten blijven ongewijzigd.');
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
+};
+$('renameLowerPolice').onclick=async()=>{
+  if(!selected||selected.canRename!==true||!writesEnabled)return;
+  const newName=prompt('Nieuwe personeelsnaam:',selected.name||'');
+  if(newName===null)return;
+  const reason=prompt('Motivering van deze naamswijziging (15–500 tekens):');
+  if(reason===null)return;
+  const button=$('renameLowerPolice');button.disabled=true;
+  try{
+    await request('/api/personnel/'+encodeURIComponent(selected.dept)+'/'+
+      encodeURIComponent(selected.discordId)+'/name',{
+      method:'POST',body:{name:newName.trim(),reason:reason.trim(),
+        expectedRevision:selected.revision}});
+    await load();
+    notice('Naamswijziging geregistreerd met auditspoor.');
+  }catch(e){notice('Naamswijziging mislukt: '+e.message,true)}
+  finally{button.disabled=false}
 };
 $('editForm').onsubmit=async ev=>{
   ev.preventDefault();if(!selected||!selected.canEdit||!writesEnabled)return;
