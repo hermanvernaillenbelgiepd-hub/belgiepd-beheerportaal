@@ -118,6 +118,18 @@ export function installRoleRoutes(app,{getSnapshot}={}){
   };
   const mayAccessSubject=(bpd,subject)=>!isCorpsLeadershipPersonnel(subject)||
     (bpd?.trustedStaff===true && roleForDepartment(bpd,'politie')==='korpsleiding');
+  async function guardTrainingSubject(req,res,next){
+    const {department,discordId}=req.params;
+    if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId))
+      return res.status(400).json({error:'Ongeldige opleidingsdossierverwijzing'});
+    try {
+      const subject=await findSubject(department,discordId);
+      if(!subject)return res.status(404).json({error:'Geen eenduidig personeelslid binnen deze hulpdienst'});
+      if(!mayAccessSubject(req.roleActor.bpd,subject))
+        return res.status(403).json({error:'Dit personeelsdossier is afgeschermd'});
+      next();
+    }catch(e){error(res,e)}
+  }
   app.get('/api/roles/catalog',resolveActor,(req,res)=>res.json({roles:ROLE_CATALOG,departments:SERVICE_DEPTS}));
   app.get('/api/roles/me',resolveActor,(req,res)=>{
     const {bpd,discordId,base,perms}=req.roleActor;
@@ -178,7 +190,7 @@ export function installRoleRoutes(app,{getSnapshot}={}){
       res.json({department,people,limited:false});
     }catch(e){error(res,e)}
   });
-  app.get('/api/training/:department/:discordId',resolveActor,async(req,res)=>{
+  app.get('/api/training/:department/:discordId',resolveActor,guardTrainingSubject,async(req,res)=>{
     const {department,discordId}=req.params;
     if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
     if(!trainingAccess(req,department,'log')&&!trainingAccess(req,department,'review'))return res.status(403).json({error:'Geen toegang tot opleidingen van deze dienst'});
@@ -217,7 +229,7 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     }catch(e){error(res,e)}
   });
   // Editing always preserves subject, department, review authority and the audit trail.
-  app.patch('/api/training/:department/:discordId/:recordId',resolveActor,async(req,res)=>{
+  app.patch('/api/training/:department/:discordId/:recordId',resolveActor,guardTrainingSubject,async(req,res)=>{
     if(process.env.BPD_ENABLE_TRAINING_WRITES!=='true')return res.status(503).json({error:'Opleidingswijzigingen staan uit'});
     const {department,discordId,recordId}=req.params;
     if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId)||!isRecordId(recordId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
@@ -247,7 +259,7 @@ export function installRoleRoutes(app,{getSnapshot}={}){
   });
 
   // "Verwijderen" is archival, not physical deletion: audits remain intact.
-  app.delete('/api/training/:department/:discordId/:recordId',resolveActor,async(req,res)=>{
+  app.delete('/api/training/:department/:discordId/:recordId',resolveActor,guardTrainingSubject,async(req,res)=>{
     if(process.env.BPD_ENABLE_TRAINING_WRITES!=='true')return res.status(503).json({error:'Opleidingswijzigingen staan uit'});
     const {department,discordId,recordId}=req.params;
     if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId)||!isRecordId(recordId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
@@ -271,7 +283,7 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     }catch(e){if(e.status===403||e.status===404)return res.status(e.status).json({error:e.message});error(res,e)}
   });
 
-  app.post('/api/training/:department/:discordId/:recordId/review',resolveActor,async(req,res)=>{
+  app.post('/api/training/:department/:discordId/:recordId/review',resolveActor,guardTrainingSubject,async(req,res)=>{
     if(process.env.BPD_ENABLE_TRAINING_WRITES!=='true')return res.status(503).json({error:'Beoordelingen staan nog uit'});
     const {department,discordId,recordId}=req.params;
     if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId)||!/^[A-Za-z0-9]{12,30}$/.test(recordId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
