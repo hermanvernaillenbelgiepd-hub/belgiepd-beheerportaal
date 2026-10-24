@@ -1,5 +1,5 @@
 import { isDiscordId } from './discord-utils.js';
-import { SERVICE_DEPTS,roleSummary,isInstructorForDept } from './role-catalog.js';
+import { SERVICE_DEPTS,roleSummary,TRAINING_ROLE_IDS } from './role-catalog.js';
 import {roleForDepartment} from './leave-policy.js';
 
 // No authorization to administer rights can ever be assigned via overrides.
@@ -14,19 +14,21 @@ export function basePermissions(member,guildId,now=Date.now(),fireInstructorRole
   const fresh=recentDiscordMember(member,guildId,now);
   const summary=roleSummary(fresh?member.roleIds:[]);
   const permissions={};
-  // Role IDs are proven by a freshly verified guild membership. Fire instructors
-  // need a configured actual Discord role ID; never authorize the free-text name "docent".
-  const fireInstructors=new Set(fireInstructorRoleIds.filter(isDiscordId));
-  const isFireInstructor=fresh&&summary.departments.includes('brandweer')&&
-    member.roleIds.some(id=>fireInstructors.has(id));
+  // Use only recently verified role IDs from the authenticated Discord member.
+  // These permissions are scoped to *training*; no dossier-wide administration
+  // or cross-service kader role is derived from an instructor designation.
+  const verified=new Set(fresh?member.roleIds:[]);
+  const extraFireIds=new Set(fireInstructorRoleIds.filter(isDiscordId));
   for(const dept of SERVICE_DEPTS){
-    const memberOfDept=summary.departments.includes(dept);
-    const fireMid=dept==='brandweer'&&fresh&&summary.roles.some(r=>
-      r.dept==='brandweer'&&['BW middenkader','BW leiding'].includes(r.name));
+    const policy=TRAINING_ROLE_IDS[dept]||{leadership:[],instructors:[]};
+    const leader=policy.leadership.some(id=>verified.has(id));
+    const instructor=policy.instructors.some(id=>verified.has(id));
+    const configuredFireInstructor=dept==='brandweer'&&fresh&&
+      summary.departments.includes('brandweer')&&
+      [...extraFireIds].some(id=>verified.has(id));
     permissions[dept]={
-      'training.log':memberOfDept && (isInstructorForDept(summary.roles,dept)||
-        fireMid||isFireInstructor),
-      'training.review':memberOfDept&&fireMid
+      'training.log':leader||instructor||configuredFireInstructor,
+      'training.review':leader
     };
   }
   return {fresh,...summary,permissions};
