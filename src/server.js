@@ -44,7 +44,7 @@ import {deriveServiceDossierDepartments,verifiedFireZoneChief} from './service-d
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
-import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits} from './personnel-editor-policy.js';
+import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits,canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
@@ -361,6 +361,20 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     req.bpd.dossierManageDepartments=scope.manageDepartments;
     req.bpd.dossierFullDepartments=scope.fullDepartments;
     req.bpd.dossierTester=scope.tester;
+    // Beveilig elk rechtstreeks geopend individueel dossier, ook met een
+    // bekend Discord-ID. Een verborgen rij in de browser is geen toegangscontrole.
+    const subjectPath=/^\/api\/(?:personnel\/|staff-dossiers\/|training\/|registrations\/entries(?:\/|$)|management\/cases(?:\/|$)|dossiercentrum\/)/.test(req.path);
+    const subjectDept=req.params?.dept||req.query?.dept||req.body?.dept;
+    const subjectId=req.params?.discordId||req.query?.discordId||req.body?.discordId;
+    if(subjectPath&&subjectDept&&/^\d{15,22}$/.test(String(subjectId||''))){
+      if(snapshot.stale)
+        return res.status(503).json({error:'De personeelsbron moet actueel zijn om een beschermd dossier te openen'});
+      const target=snapshot.data.filter(p=>p.dept===subjectDept&&p.personId===subjectId);
+      if(target.length!==1)
+        return res.status(404).json({error:'Geen eenduidige personeelsfiche gevonden'});
+      if(!canReadPersonnelSubject(req.bpd,target[0]))
+        return res.status(403).json({error:'Dit personeelsdossier is afgeschermd voor jouw kaderrol'});
+    }
     next();
   }catch(e){
     console.error('Dossierrechten konden niet geverifieerd worden:',e?.code||e?.message||'onbekend');

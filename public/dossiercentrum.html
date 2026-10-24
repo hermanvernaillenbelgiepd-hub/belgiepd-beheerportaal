@@ -208,7 +208,11 @@ function render(){
       node('td',departments[r.dept]||r.dept),withSpan(status),
       node('td',r.discordId||'—','dossier-discord'));
     const cell=node('td'),button=node('button','Open dossier','alt');
-    button.type='button';button.onclick=()=>openDossier(r);
+    button.type='button';button.onclick=()=>{
+      window.location.assign('/personeelsbeheer.html?'+new URLSearchParams({
+        fiche:'1',dept:r.dept,discordId:r.discordId,from:'dossiercentrum'
+      }).toString());
+    };
     cell.append(button);tr.append(cell);body.append(tr);
   }
 }

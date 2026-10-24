@@ -1,15 +1,16 @@
-import {validPersonnelKey} from './personnel-editor-policy.js';
+import {validPersonnelKey,canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 const SERVICES=Object.freeze(['politie','ambulance','brandweer','depannage']);
 export function dossierScopes(actor){
   return {personnelDepartments:SERVICES.filter(dept=>canReadServiceDossier(actor,dept)),
-    applicationDepartments:[]};
+    canReadSubject:person=>canReadPersonnelSubject(actor,person),applicationDepartments:[]};
 }
 export function dossierOverviewRows(personnel,_unused,scopes){
   const rows=new Map();
   for(const p of personnel||[]){
     if(!scopes.personnelDepartments.includes(p.dept)||
-       !validPersonnelKey(p.dept,p.personId))continue;
+       !validPersonnelKey(p.dept,p.personId)||
+       (typeof scopes.canReadSubject==='function'&&!scopes.canReadSubject(p)))continue;
     const key=p.dept+':'+p.personId;
     if(rows.has(key))throw Error('Dubbele personeelsidentiteit gevonden');
     rows.set(key,{dept:p.dept,discordId:p.personId,

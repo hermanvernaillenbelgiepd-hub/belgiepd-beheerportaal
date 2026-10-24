@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {dossierScopes,dossierOverviewRows,dossierTimelineEntry} from '../src/dossier-center-policy.js';
+import {canReadPersonnelSubject} from '../src/personnel-editor-policy.js';
 const id='123456789012345678';
 const other='987654321098765432';
 const person={dept:'politie',personId:id,name:'Inspecteur A',call:'P30',
@@ -62,4 +63,27 @@ test('One Discord identity has separate police and ambulance dossiers with isola
   assert.equal(all.length,2);
   assert.deepEqual(all.map(p=>p.dept),['ambulance','politie']);
   assert.ok(all.every(p=>p.discordId===id));
+});
+
+test('Korpsleiding-dossiers blijven afgeschermd voor andere kaders, ook met het Discord-ID',()=>{
+  const leader={...person,rank:'Hoofdcommissaris',call:'S950'};
+  assert.equal(canReadPersonnelSubject(actor,leader),false);
+  assert.deepEqual(dossierOverviewRows([person,leader],[],dossierScopes(actor)).map(p=>p.rank),['Inspecteur']);
+  const chief={...actor,role:'korpsleiding',departmentRoles:{politie:'korpsleiding'}};
+  assert.equal(canReadPersonnelSubject(chief,leader),true);
+  const board={...actor,boardPersonnelAdmin:true};
+  assert.equal(canReadPersonnelSubject(board,leader),true);
+  assert.equal(canReadPersonnelSubject(actor,person),true);
+});
+
+test('Volledig personeelsblad bevat zes identiteitsvelden en de 3-koloms dossierindeling',()=>{
+  const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  for(const id of ['sheetCall','sheetRank','sheetName','sheetSeries','sheetStatus','sheetDiscordId',
+    'ficheColleague','ficheEditor','registerTrainingQuick'])
+    assert.ok(html.includes(id),id);
+  assert.ok(html.includes('dossier-main-row'));
+  assert.ok(html.includes('dossier-lower-row'));
+  assert.ok(html.includes("right.append(makeTile('specialisaties'),makeTile('movements'),makeTile('training'))"));
+  assert.ok(html.includes("lower.append(makeTile('basisNotes'),makeTile('observations'),makeTile('sanctions'))"));
+  assert.ok(html.includes('const ficheMode='));
 });

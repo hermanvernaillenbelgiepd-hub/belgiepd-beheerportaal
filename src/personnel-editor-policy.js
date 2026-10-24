@@ -17,6 +17,17 @@ export function personnelCallClaimId(dept,call){
 export function validPersonnelKey(dept,id){
   return SERVICES.has(dept)&&ID.test(id);
 }
+// Korpsleiding-fiches zijn geen algemene kaderdossiers. De officiële rang
+// bepaalt de afscherming; een 9xx-nummer op zichzelf is geen korpsbewijs.
+export function isCorpsLeadershipPersonnel(person){
+  return person?.dept==='politie'&&policeKader(person.rank)==='Korpsleiding';
+}
+export function canReadPersonnelSubject(actor,person){
+  if(!person||!canReadServiceDossier(actor,person.dept))return false;
+  return !isCorpsLeadershipPersonnel(person)||
+    actor?.boardPersonnelAdmin===true||
+    (actor?.role==='korpsleiding'&&roleForDepartment(actor,'politie')==='korpsleiding');
+}
 export function canViewPersonnel(actor,dept){
   if(!SERVICES.has(dept))return false;
   if(actor?.boardPersonnelAdmin===true)return true;
