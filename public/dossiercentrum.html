@@ -79,6 +79,8 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .scroller table tbody .dossier-status{display:inline-flex;align-items:center;justify-content:center;min-height:19px;padding:2px 8px;font-size:10px;line-height:1;border-radius:9px}
 .scroller table tbody button.alt{min-height:26px;padding:4px 9px;font-size:11px;line-height:1.1;border-radius:6px}
 .scroller table tbody td:last-child{white-space:nowrap}
+.scroller{max-height:560px;overflow-y:auto;overflow-x:auto;scrollbar-width:thin}
+.scroller thead th{position:sticky;top:0;z-index:3;background:#193656}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
 <header><strong>🛡️ BelgiumPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><button id="login" type="button">Aanmelden</button></nav></header>
@@ -111,9 +113,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <button id="clear" class="alt" type="button">Filters wissen</button>
 <button id="refresh" class="alt" type="button">Vernieuwen</button></div>
 <div class="scroller"><table><thead><tr><th>Naam</th><th>Roepnummer</th><th>Graad</th><th>Dienst</th><th>Status</th><th>Discord-ID</th><th>Actie</th></tr></thead><tbody id="rows"></tbody></table></div>
-<div class="pager"><span id="pageInfo" class="muted">Pagina 1 van 1</span>
-<button type="button" id="previousPage" class="alt">Vorige</button>
-<button type="button" id="nextPage" class="alt">Volgende</button></div>
+
 </section>
 <section class="card" id="detail" hidden><h2 id="detailTitle">Dossier</h2><div id="detailService" class="dossier-service-label"></div><p class="muted" id="matchWarning"></p>
 <div class="dossier-tabs" role="group" aria-label="Onderdelen van dit dienstdossier"><button type="button" class="dossier-tab" data-dossier-tab="fiche" aria-pressed="true">📋 Personeelsfiche</button><button type="button" class="dossier-tab" data-dossier-tab="historiek" aria-pressed="false">🕘 Diensthistoriek</button></div>
@@ -195,17 +195,13 @@ function render(){
   renderServiceButtons([...$('department').options].map(option=>option.value).filter(x=>x!=='all'));
   const found=filterDossiers(rows,filters);
   const sorted=sortDossiers(found,$('sortOrder').value);
-  const paged=paginateDossiers(sorted,page,PAGE_SIZE);page=paged.page;
-  $('count').textContent=paged.total+' van '+rows.length+' personeelsleden zichtbaar';
-  $('pageInfo').textContent='Pagina '+paged.page+' van '+paged.pages;
-  $('previousPage').disabled=paged.page<=1;
-  $('nextPage').disabled=paged.page>=paged.pages;
+  $('count').textContent=sorted.length+' van '+rows.length+' personeelsleden zichtbaar';
   const body=$('rows');body.replaceChildren();
-  if(!paged.total){
+  if(!sorted.length){
     const tr=node('tr'),cell=node('td','Geen dossiers gevonden voor deze filters');
     cell.colSpan=7;tr.append(cell);body.append(tr);
   }
-  for(const r of paged.rows){
+  for(const r of sorted){
     const tr=node('tr');
     const call=node('span',r.call||'—','dossier-callsign');
     const rank=node('span',r.rank||'—','dossier-rank');
@@ -310,8 +306,6 @@ $('serviceButtons').addEventListener('click',event=>{
 for(const button of document.querySelectorAll('button[data-dossier-tab]'))
   button.onclick=()=>switchDossierTab(button.dataset.dossierTab);
 $('historyKind').onchange=renderHistory;
-$('previousPage').onclick=()=>{page--;render()};
-$('nextPage').onclick=()=>{page++;render()};
 $('clear').onclick=()=>{
   $('query').value='';$('sortOrder').value='callsign-bpd';selectDepartment('all');
 };
