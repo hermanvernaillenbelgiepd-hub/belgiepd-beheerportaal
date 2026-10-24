@@ -81,8 +81,8 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .scroller table tbody td:last-child{white-space:nowrap}
 .scroller{max-height:560px;overflow-y:auto;overflow-x:auto;scrollbar-width:thin}
 .scroller thead th{position:sticky;top:0;z-index:3;background:#193656}
-.scroller table tbody tr.dossier-fire-group{height:29px}
-.scroller table tbody tr.dossier-fire-group td{background:#203c5e;color:#d5e8ff;font-size:11px;font-weight:800;letter-spacing:.045em;text-transform:uppercase;padding:7px 9px;border-top:1px solid #53749c;border-bottom:1px solid #53749c}
+.scroller table tbody tr.dossier-cadre-group{height:29px}
+.scroller table tbody tr.dossier-cadre-group td{background:#203c5e;color:#d5e8ff;font-size:11px;font-weight:800;letter-spacing:.045em;text-transform:uppercase;padding:7px 9px;border-top:1px solid #53749c;border-bottom:1px solid #53749c}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
 <header><strong>🛡️ BelgiumPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><button id="login" type="button">Aanmelden</button></nav></header>
@@ -103,7 +103,8 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <div><label for="query">Zoek dossier</label><input id="query" placeholder="Naam, roepnummer, rang of Discord-ID" autocomplete="off"></div>
 <div><label for="department">Hulpdienst</label><select id="department"><option value="all">Alle toegelaten diensten</option></select></div>
 <div><label for="sortOrder">Sorteren op</label><select id="sortOrder">
-<option value="callsign-bpd" selected>Politie: 900 → 910 → 920 … → 008</option>
+<option value="callsign-bpd" selected>BelgiumPD-reeksen (900 → … → 008)</option>
+<option value="callsign-police" hidden disabled>Politie: Korpsleiding → Agentenkader</option>
 <option value="callsign-fire" hidden disabled>Brandweer: ZONE → OFF → OOFF → BWM → STAG</option>
 <option value="callsign-desc">Roepnummer aflopend (hoog → laag)</option>
 <option value="callsign-asc">Roepnummer oplopend (laag → hoog)</option>
@@ -132,7 +133,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <button id="close" type="button" class="alt">Dossier sluiten</button></section>
 </main>
 <script type="module">
-import {filterDossiers,sortDossiers,fireCallGroup,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
+import {filterDossiers,sortDossiers,policeCallGroup,fireCallGroup,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
   from '/dossiercentrum-view.js';
 const $=id=>document.getElementById(id);
 const departments={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage'};
@@ -182,11 +183,13 @@ function closeDossier(){
   shown=null;timelineEntries=[];$('detail').hidden=true;document.body.classList.remove('dossier-wide');$('inlinePersonnelFrame')?.remove();
 }
 function synchronizeDossierSort(dept){
-  const order=$('sortOrder'),fireOption=order.querySelector('[value="callsign-fire"]');
-  const fire=dept==='brandweer';
+  const order=$('sortOrder'),fireOption=order.querySelector('[value="callsign-fire"]'),
+    policeOption=order.querySelector('[value="callsign-police"]');
+  const fire=dept==='brandweer',police=dept==='politie';
   fireOption.hidden=!fire;fireOption.disabled=!fire;
-  if(['callsign-bpd','callsign-fire'].includes(order.value)){
-    order.value=fire?'callsign-fire':'callsign-bpd';
+  policeOption.hidden=!police;policeOption.disabled=!police;
+  if(['callsign-bpd','callsign-fire','callsign-police'].includes(order.value)){
+    order.value=fire?'callsign-fire':police?'callsign-police':'callsign-bpd';
   }
 }
 function selectDepartment(dept){
@@ -212,16 +215,17 @@ function render(){
     const tr=node('tr'),cell=node('td','Geen dossiers gevonden voor deze filters');
     cell.colSpan=7;tr.append(cell);body.append(tr);
   }
-  let previousFireGroup=null;
-  const groupFire=filters.department==='brandweer'&&$('sortOrder').value==='callsign-fire';
+  let previousGroup=null;
+  const groupFire=filters.department==='brandweer'&&$('sortOrder').value==='callsign-fire',
+    groupPolice=filters.department==='politie'&&$('sortOrder').value==='callsign-police';
   for(const r of sorted){
-    if(groupFire){
-      const group=fireCallGroup(r.call);
-      if(group.group!==previousFireGroup){
-        const heading=node('tr');heading.className='dossier-fire-group';
+    if(groupFire||groupPolice){
+      const group=groupFire?fireCallGroup(r.call):policeCallGroup(r);
+      if(group.group!==previousGroup){
+        const heading=node('tr');heading.className='dossier-cadre-group';
         const label=node('td',group.label);label.colSpan=7;
         heading.append(label);body.append(heading);
-        previousFireGroup=group.group;
+        previousGroup=group.group;
       }
     }
     const tr=node('tr');
