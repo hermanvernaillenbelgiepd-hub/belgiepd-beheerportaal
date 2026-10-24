@@ -47,7 +47,7 @@ label{display:block;margin-top:14px;color:#d5e4f6;font-weight:600}input,select,t
 <div class="two"><label>Discord ID medewerker<input id="target" maxlength="22" inputmode="numeric"></label><label>Hulpdienst<select id="overrideDept"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="dispatch">Dispatch</option></select></label></div>
 <div class="two"><label>Bevoegdheid<select id="perm"><option value="training.log">Opleidingen registreren</option><option value="training.review">Opleidingsregistratie controleren</option></select></label><label>Actie<select id="action"><option value="allow">Toekennen</option><option value="deny">Weigeren</option><option value="inherit">Uitzondering opheffen</option></select></label></div>
 <div class="two"><label>Vervaldatum (optioneel)<input type="date" id="expiry"></label><label>Reden (verplicht)<input id="reason" minlength="8" maxlength="500" placeholder="Bijv. tijdelijke machtiging voor opleiding"></label></div>
-<button class="secondary" id="lookup">Bestaande uitzonderingen bekijken</button><button id="saveOverride">Wijziging registreren</button><div id="overrideInfo" class="mini"></div><p class="mini" id="adminNote"></p></section>
+<button class="secondary" id="lookup">Bestaande uitzonderingen bekijken</button><button id="saveOverride">Wijziging registreren</button><div id="overrideInfo" class="mini"></div></section>
 <details id="technicalDetails" class="tech-details">
   <summary>Technische details en geverifieerde rollen</summary>
   <section class="panel" id="profile" hidden><h2>Mijn geverifieerde rollen</h2><div id="summary"></div><h3>Rollen uit de catalogus</h3><div id="roleList"></div><p id="unknown" class="mini"></p><h3>Opleidingsbevoegdheden</h3><p class="mini">Deze rechten omvatten ook je bestaande, goedgekeurde Google-beheerdersrechten. Controleren betekent een registratie beoordelen voor <strong>handmatige</strong> verwerking; er wordt niets rechtstreeks aangepast in Google Sheets.</p><div class="columns" id="permissionList"></div></section>
@@ -84,7 +84,6 @@ async function refresh(){
     if(allowed.includes(desired))$('dept').value=desired;
     else if(!allowed.includes($('dept').value))$('dept').value=allowed[0]||'';
     await refreshPeople();
-    $('adminNote').textContent='Wijzigingen vereisen BPD_ENABLE_PERMISSION_WRITES=true en een vooraf gemachtigd account.';
   }catch(e){state(e.message,true)}
 }
 $('google').onclick=async()=>{try{await mods.signInWithPopup(auth,new mods.GoogleAuthProvider());await refresh()}catch(e){state('Google-aanmelding: '+(e.code||e.message),true)}};
