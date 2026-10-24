@@ -310,6 +310,13 @@ header{padding-inline:clamp(15px,2vw,34px)}
   border:0;border-radius:0;background:transparent;box-shadow:none;filter:none;
 }
 .staff-roster-table .rank-code{flex:0 0 auto;color:#e3edfc;font-size:10px;font-weight:800;letter-spacing:.015em;line-height:1}
+
+/* Graadkenteken en rangcode ook in personeelsdossier, zonder extra hoogte. */
+.dossier-sheet .sheet-identity #sheetRank{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:18px}
+.dossier-rank-inline{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;max-height:23px}
+.dossier-rank-inline img{display:block;width:50px;height:21px;object-fit:contain;background:transparent;border:0;box-shadow:none}
+.dossier-rank-code{font-size:11px;font-weight:800;color:#f2d16a;white-space:nowrap}
+.dossier-rank-label{font-size:12px;line-height:1.2}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -1586,7 +1593,22 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
 const sheetWho=row=>row.registeredBy?.name||row.submittedByActor?.name||'Onbekend';
 function sheetIdentity(p){
   $('sheetCall').textContent=p.call||'—';
-  $('sheetRank').textContent=p.rank||'—';$('sheetName').textContent=p.name||'—';
+  const rankSlot=$('sheetRank');
+  rankSlot.replaceChildren();
+  const grade=BPDPersonnelVisuals.rankInfo(p.rank,p.dept);
+  if(grade.image){
+    const compact=document.createElement('span');compact.className='dossier-rank-inline';
+    const image=document.createElement('img');
+    image.src=grade.image;image.alt='';image.loading='lazy';image.referrerPolicy='no-referrer';
+    image.setAttribute('aria-hidden','true');
+    const code=document.createElement('span');code.className='dossier-rank-code';
+    code.textContent=grade.code||'';
+    compact.append(image,code);
+    rankSlot.append(compact);
+  }
+  const label=document.createElement('span');label.className='dossier-rank-label';
+  label.textContent=p.rank||'—';rankSlot.append(label);
+  $('sheetName').textContent=p.name||'—';
   $('sheetSeries').textContent=p.series||'—';$('sheetStatus').textContent=p.status||'—';
   $('sheetDiscordId').textContent=p.discordId||'—';
   $('ficheEditor').hidden=true;$('ficheEditor').open=false;
