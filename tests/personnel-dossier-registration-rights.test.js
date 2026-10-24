@@ -92,3 +92,53 @@ test('Registration selector stays focused on dossier entries while protected mai
   assert.match(css,/\.dossier-main-row/);
   assert.match(css,/background:transparent!important/);
 });
+
+
+test('Eén officiële opleidingsregistratie met alle geselecteerde types en vrije keuze ANDERE',()=>{
+  const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  const inline=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]||'';
+  assert.doesNotThrow(()=>new Script(inline));
+  const select=html.match(/<select id="staffTrainingCourse" required>([\s\S]*?)<\/select>/)?.[1];
+  assert.ok(select,'Keuzelijst opleidingen aanwezig');
+  const options=[...select.matchAll(/<option value="([^"]*)">/g)].map(match=>match[1]);
+  assert.deepEqual(options,[
+    '', 'RADIO OPLEIDING (VERPLICHT)', 'RADIO OPLEIDING (VRIJWILLIG)',
+    'BASISCURSIS', 'GEWELDBEHEERSING', 'WAPENGEBRUIK',
+    'VERKEERSBEGELEIDING', 'VERKEERSCONTROLE', 'PRIORITAIR RIJDEN',
+    'EHBO VOOR INTERVENIERENDEN', 'BEVEILIGEN OPENBARE WEG',
+    'K-9', 'RAGO', 'MOTARD', 'MOTARD-OFF ROAD',
+    'DISPATCH', 'BEVOEGDHEDEN TO', 'ERT AE-I', 'ERT AE-T', 'ERT-AE-F', 'ANDERE'
+  ]);
+  const choices=inline.slice(inline.indexOf('function availablePersonnelRegistrationKinds()'),
+    inline.indexOf('function displaySelectedRegistration()'));
+  assert.match(choices,/type==='activiteit'\|\|type==='opleiding'/);
+  assert.doesNotMatch(choices,/Opleidingsnotitie \(geen afgeronde opleiding\)/);
+  assert.match(choices,/\['training','Opleiding registreren'\]/);
+  const start=inline.indexOf('function syncStaffTrainingOther(){');
+  const end=inline.indexOf('function resetStaffTrainingEdit(){',start);
+  assert.ok(start>=0&&end>start,'Opleidingskeuze helpers aanwezig');
+  const elems={
+    staffTrainingCourse:{value:'',options:options.map(value=>({value}))},
+    staffTrainingOther:{value:'',required:false},
+    staffTrainingOtherWrap:{hidden:true}
+  };
+  const helpers=new Script(inline.slice(start,end)+
+    '\n({syncStaffTrainingOther,selectedStaffTrainingName,setStaffTrainingCourse})')
+    .runInNewContext({$:id=>elems[id]});
+  helpers.setStaffTrainingCourse('K-9');
+  assert.equal(elems.staffTrainingCourse.value,'K-9');
+  assert.equal(helpers.selectedStaffTrainingName(),'K-9');
+  assert.equal(elems.staffTrainingOtherWrap.hidden,true);
+  assert.equal(elems.staffTrainingOther.required,false);
+  helpers.setStaffTrainingCourse('Oude opleiding uit historiek');
+  assert.equal(elems.staffTrainingCourse.value,'ANDERE');
+  assert.equal(elems.staffTrainingOther.value,'Oude opleiding uit historiek');
+  assert.equal(elems.staffTrainingOtherWrap.hidden,false);
+  assert.equal(elems.staffTrainingOther.required,true);
+  assert.equal(helpers.selectedStaffTrainingName(),'Oude opleiding uit historiek');
+  elems.staffTrainingCourse.value='MOTARD-OFF ROAD';
+  helpers.syncStaffTrainingOther();
+  assert.equal(elems.staffTrainingOther.value,'');
+  assert.equal(helpers.selectedStaffTrainingName(),'MOTARD-OFF ROAD');
+  assert.match(inline,/courseName,eventDate:\$\('staffTrainingDate'\)\.value/);
+});
