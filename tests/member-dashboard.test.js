@@ -93,3 +93,21 @@ test('Mijn profiel toont de eigen vaste-roepnummerstatus zonder tijdelijk dossie
  assert.match(profile,/\/api\/callsigns\/self\/status/);
  assert.doesNotMatch(read('src/member-dashboard-routes.js'),/collection\('bpd_cases'\)/);
 });
+
+test('Tijdelijk en vast Agentenkader zien alleen persoonlijk profiel, leesbare lijst en vaste aanvraag',()=>{
+ const page=read('public/index.html');
+ const preview=read('public/toegangsvoorbeeld.js');
+ const api=read('src/member-dashboard-routes.js');
+ assert.match(page,/id="memberDashboard" hidden/);
+ assert.match(page,/href="\/discord-status\.html"/);
+ assert.match(page,/href="\/personeelslijst\.html"/);
+ assert.match(page,/href="\/vast-roepnummer-aanvragen\.html"/);
+ assert.match(preview,/id:'roster'[^\n]+access:\['full','full','full','full'/);
+ assert.match(preview,/id:'observaties'[^\n]+access:\['none','none','none','limited'/);
+ assert.match(preview,/id:'verlof'[^\n]+access:\['none','none','none','limited'/);
+ assert.match(preview,/if\(module\.id==='home'\)return index===0\|\|order>=3/);
+ assert.match(preview,/if\(module\.id==='verlof'\)return order>=3/);
+ assert.match(preview,/role\.id==='nieuw'\|\|role\.id==='agent'/);
+ assert.match(api,/if\(!approved && !legacyApproved\)return 'member'/);
+ assert.doesNotMatch(api,/collection\('bpd_cases'\)/);
+});
