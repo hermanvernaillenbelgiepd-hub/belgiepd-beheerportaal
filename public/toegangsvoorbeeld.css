@@ -65,3 +65,9 @@ td[data-access=full]{color:#a0f1ca;font-weight:800}td[data-access=limited]{color
 button:focus-visible,a:focus-visible{outline:3px solid #8eb9ff;outline-offset:2px}
 @media(max-width:920px){.heading{grid-template-columns:1fr}.role-buttons{grid-template-columns:repeat(3,minmax(0,1fr))}.mock-panel{grid-template-columns:1fr 1fr}.read-only{display:none}}
 @media(max-width:650px){.experience{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid #315077}#moduleMenu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.role-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}.mock-panel{grid-template-columns:1fr}.workspace{padding:15px}}
+
+.rank-variants{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid #345373}
+.rank-variants[hidden]{display:none}
+.rank-variant-buttons{display:flex;flex-wrap:wrap;gap:7px}
+.rank-variant-buttons button{font:inherit;font-size:12px;cursor:pointer;border-radius:7px;border:1px solid #5475a5;background:#102641;color:#dbe9ff;padding:7px 11px}
+.rank-variant-buttons button[aria-pressed=true]{background:#305fc1;border-color:#97bcff;color:#fff;font-weight:750}
