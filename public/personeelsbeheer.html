@@ -123,6 +123,8 @@ header{padding-inline:clamp(15px,2vw,34px)}
 /* Sorteren blijft compact naast zoeken en filteren, ook op kleinere schermen. */
 .staff-filters{grid-template-columns:minmax(180px,1fr) minmax(240px,1.5fr) minmax(200px,1.2fr)}
 @media(max-width:760px){.staff-filters{grid-template-columns:minmax(0,1fr)}}
+/* Geen openknop of deeplink voor dossiers die alleen in de lijst mogen staan. */
+.roster-protected{display:inline-block;color:#b1c3d7;font-size:11px;font-weight:600;white-space:nowrap}
 /* Compacter CALL, rang, rangnaam, personeelslid en status; extra ruimte voor specialisaties. */
 .staff-roster-table{min-width:1450px}
 .staff-roster-table th:nth-child(1){width:3.8%}
@@ -547,8 +549,9 @@ const ficheUrl=p=>'/personeelsbeheer.html?'+new URLSearchParams({
 function updateFicheColleagues(){
   if(!ficheMode)return;
   const select=$('ficheColleague');
-  const options=[...people].sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','nl')||
-    BPDPersonnelVisuals.comparePersonnel(a,b,'call-desc'));
+  const options=people.filter(p=>p.canOpenDossier===true)
+    .sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','nl')||
+      BPDPersonnelVisuals.comparePersonnel(a,b,'call-desc'));
   select.replaceChildren(...options.map(p=>option(p.dept+':'+p.discordId,
     (p.call||'—')+' · '+p.name+' ('+(departments[p.dept]||p.dept)+')')));
   if(selected)select.value=selected.dept+':'+selected.discordId;
@@ -1097,10 +1100,21 @@ function render(){
       chip.title=specialty+' · '+status.status;
       cell.append(chip);tr.append(cell);
     }
-    const action=document.createElement('button');action.type='button';
-    action.className='alt roster-open';action.textContent='Open';action.title='Open personeelsfiche van '+person.name;
-    action.onclick=()=>window.location.assign(ficheUrl(person));
-    const cell=document.createElement('td');cell.append(action);tr.append(cell);
+    const cell=document.createElement('td');
+    if(person.canOpenDossier===true){
+      const action=document.createElement('button');action.type='button';
+      action.className='alt roster-open';action.textContent='Open';
+      action.title='Open personeelsfiche van '+person.name;
+      action.onclick=()=>window.location.assign(ficheUrl(person));
+      cell.append(action);
+    }else{
+      const restricted=document.createElement('span');
+      restricted.className='roster-protected';
+      restricted.textContent='🔒 Afgeschermd';
+      restricted.title='Personeelslid zichtbaar; het volledige dossier is alleen voor bevoegd Korpsleiding of Bestuur';
+      cell.append(restricted);
+    }
+    tr.append(cell);
     const discordCell=document.createElement('td');discordCell.className='discord-id-cell';
     const id=String(person.discordId||'').trim();
     if(/^\d{15,22}$/.test(id)){
@@ -2712,6 +2726,11 @@ for(const formId of registrationForms){
   };
 }
 async function showPerson(p){
+  if(p?.canOpenDossier!==true){
+    selected=null;$('panel').hidden=true;
+    notice('Dit personeelslid is zichtbaar in de lijst, maar het dossier is afgeschermd.',true);
+    return;
+  }
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
   $('sheetTrainingRegisterLink').href='/rollen-opleidingen.html?'+new URLSearchParams({
