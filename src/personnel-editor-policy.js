@@ -34,6 +34,11 @@ function verifiedCorpsReader(actor){
 }
 export function canReadPersonnelSubject(actor,person){
   if(!person||!canReadServiceDossier(actor,person.dept))return false;
+  // Technical access is never inferred from ownership claims, callsigns or
+  // a browser flag. The server only sets this mode after checking the configured
+  // Discord allowlist and a signed short-lived technical session.
+  if(actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true&&
+     actor?.uid==='discord:'+actor?.discordId)return true;
   if(person.dept==='brandweer'){
     return mayOpenFireSubject(actor,person,
       actor.fireSubjectRoleSets?.get(person.personId)||null);
@@ -101,6 +106,8 @@ export function canEditGeneralPersonnelInfo(actor,person){
      actor?.discordId===person.personId)return false;
   // boardPersonnelAdmin is uitsluitend afkomstig van server-geverifieerd Bestuur.
   if(actor?.boardPersonnelAdmin===true)return true;
+  if(actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true&&
+     actor?.uid==='discord:'+actor?.discordId)return canEditPersonnel(actor,person);
   // De eigen operationele kaderrol blijft dienstgebonden en onderworpen aan
   // bestaande doelrangbeperkingen; Middenkader of technische modus is op
   // zichzelf niet bevoegd om deze algemene gegevens te wijzigen.
