@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterDossiers,sortDossiers,fireCallGroup,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
+import {filterDossiers,sortDossiers,fireCallGroup,policeCallGroup,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
   from '../public/dossiercentrum-view.js';
 const rows=[
   {dept:'politie',discordId:'111111111111111111',name:'Émile Vermeulen',rank:'Inspecteur',
@@ -119,4 +119,43 @@ test('Brandweer roster filter stays independent from Police default sorting',()=
    .map(x=>x.call),['ZONE','STAG-02']);
  assert.deepEqual(sortDossiers(filterDossiers(data,{department:'politie'}),'callsign-bpd')
    .map(x=>x.call),['900','910']);
+});
+
+test('Police cadre separators group korpsleiding, officieren-, midden-, basis- en agentenkader',()=>{
+ const records=[
+  ['530','Eerste Inspecteur van Politie (1INP)'],
+  ['920','Aspirant Commissaris van Politie (ACP)'],
+  ['008','Beheer'],
+  ['700','Hoofdinspecteur van Politie (HINP)'],
+  ['900','Eerste Hoofdcommissaris van Politie (1HCP)'],
+  ['200','Agent van Politie'],
+  ['930','Aspirant Commissaris van Politie (ACP)'],
+  ['910','Eerste Commissaris van Politie (1CP)'],
+  ['400','Inspecteur van Politie (INP)'],
+  ['600','Aspirant Hoofdinspecteur van Politie (AHINP)']
+ ].map(([call,rank],i)=>({call,rank,dept:'politie',name:'Lid '+i,personnel:true}));
+ const sourceCalls=records.map(r=>r.call);
+ const ordered=sortDossiers(records,'callsign-police');
+ assert.deepEqual(ordered.map(r=>r.call),[
+  '900','910','920','930','600','700','400','530','200','008'
+ ]);
+ assert.deepEqual(ordered.map(r=>policeCallGroup(r).label),[
+  'KORPSLEIDING','KORPSLEIDING','OFFICIERENKADER','OFFICIERENKADER',
+  'MIDDENKADER','MIDDENKADER','BASISKADER','BASISKADER',
+  'AGENTENKADER','OVERIGE POLITIE / BEHEER'
+ ]);
+ assert.deepEqual(records.map(r=>r.call),sourceCalls);
+});
+test('Distinct sort modes preserve fire and police separation',()=>{
+ const mixed=[
+  {call:'BWM-01',dept:'brandweer',personnel:true},
+  {call:'920',rank:'Aspirant Commissaris van Politie (ACP)',dept:'politie',personnel:true},
+  {call:'ZONE',dept:'brandweer',personnel:true},
+  {call:'900',rank:'Eerste Hoofdcommissaris van Politie',dept:'politie',personnel:true}
+ ];
+ assert.deepEqual(sortDossiers(filterDossiers(mixed,{department:'politie'}),'callsign-police')
+   .map(r=>r.call),['900','920']);
+ assert.deepEqual(sortDossiers(filterDossiers(mixed,{department:'brandweer'}),'callsign-fire')
+   .map(r=>r.call),['ZONE','BWM-01']);
+ assert.equal(sortDossiers(mixed,'callsign-bpd')[0].call,'900');
 });
