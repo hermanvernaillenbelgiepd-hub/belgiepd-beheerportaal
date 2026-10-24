@@ -8,6 +8,7 @@ header strong{font-size:18px}header nav{display:flex;align-items:center;gap:16px
 main{max-width:1180px;padding:28px 18px 70px;margin:auto}h1{font-size:30px;margin:0 0 9px}h2{font-size:20px;margin:0 0 12px}p{color:#b0bfd8;line-height:1.6}
 .card{background:#11233f;border:1px solid #304769;border-radius:13px;padding:22px;margin:16px 0}
 button,select,input{font:inherit;border-radius:8px}button{cursor:pointer;background:#345fe1;border:1px solid #5b84ff;color:white;padding:10px 14px;font-weight:650}button.alt{background:#1c3353;border-color:#48617d}button.danger{background:#622e40;border-color:#96536b}button:disabled{opacity:.5;cursor:not-allowed}
+textarea{width:100%;font:inherit;background:#0a1830;color:#eff5ff;border:1px solid #476080;border-radius:8px;padding:9px;margin-bottom:12px}
 input,select{background:#0a1830;color:#eff5ff;border:1px solid #476080;padding:9px;width:100%}input[type=checkbox]{width:auto;margin-right:8px;accent-color:#345fe1}label{display:block;color:#bed0e8;font-size:13px;margin-bottom:6px}small{color:#9eb0ca}
 .notice{border-radius:9px;background:#1d3d36;color:#c7eddd;padding:13px 15px;margin:15px 0}.notice.error{background:#562c3a;color:#ffe0e7}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:15px}
@@ -45,6 +46,7 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <button id="request" type="button" hidden>Toegang aanvragen</button></section>
 <nav id="manageTabs" class="manage-tabs" aria-label="Tabbladen gebruikersbeheer" hidden>
 <button type="button" data-tab="accounts" hidden>👥 Personeelsaccounts</button>
+<button type="button" data-tab="manual" hidden>🔐 Handmatig rolherstel</button>
 <button type="button" data-tab="services" hidden>🛡️ Beheertoegang hulpdiensten</button>
 <button type="button" data-tab="to" hidden>📻 TO-rechten</button>
 <button type="button" data-tab="board" hidden>🏛️ Bestuur</button>
@@ -59,6 +61,23 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <div class="controls"><label for="filter">Filter</label><select id="filter" style="width:auto"><option value="all">Alle statussen</option><option value="pending">Nieuwe aanvragen</option><option value="approved">Goedgekeurd</option><option value="blocked">Geblokkeerd</option></select><span id="count" class="muted"></span></div>
 <div class="scroller"><table><thead><tr><th>Discord-lid</th><th>Status</th><th>Hulpdienst / categorie</th><th>Functie</th><th>Beslissing</th></tr></thead><tbody id="list"></tbody></table></div>
 <p id="more" class="muted" hidden>Het overzicht is begrensd tot 250 accounts. Een paginering volgt bij verdere groei.</p></section>
+<section id="manualRoleSection" class="card" hidden>
+<h2>🔐 Handmatige kaderrollen via Discord-ID</h2>
+<p>Alleen voor een mislukte rolsynchronisatie. Een aanvraag geeft nog geen toegang. Een andere, bevoegde persoon moet de aanvraag goedkeuren. Bestuur kan een aanvraag voorstellen, maar kent hiermee geen operationele rol aan zichzelf toe. Voor een bestuursaanstelling gebruik je het afzonderlijke tabblad Bestuur.</p>
+<form id="manualRoleForm">
+<div class="grid">
+<div><label for="manualId">Discord-ID medewerker</label><input id="manualId" inputmode="numeric" autocomplete="off" maxlength="22" pattern="[0-9]{15,22}" required placeholder="Discord-ID"></div>
+<div><label for="manualDept">Hulpdienst</label><select id="manualDept"><option value="politie">Politie</option><option value="ambulance">Ambulance</option><option value="brandweer">Brandweer</option><option value="depannage">Depannage</option></select></div>
+<div><label for="manualRole">Gewenste kaderrol</label><select id="manualRole"><option value="middenkader">Middenkader</option><option value="officierenkader">Officierenkader</option><option value="korpsleiding">Korpsleiding</option></select></div>
+</div>
+<label for="manualReason">Motivering (minimaal 15 tekens)</label>
+<textarea id="manualReason" required minlength="15" maxlength="500" rows="2" placeholder="Vermeld de reden en wie de functie bevestigde"></textarea>
+<div class="controls"><button id="manualRequest" type="submit">Ter goedkeuring indienen</button><button id="manualRefresh" type="button" class="alt">Overzicht vernieuwen</button></div>
+</form>
+<p id="manualMessage" class="muted" role="status"></p>
+<div class="scroller"><table><thead><tr><th>Discord-ID</th><th>Hulpdienst / kader</th><th>Status</th><th>Aanvrager</th><th>Beslissing</th></tr></thead><tbody id="manualRecords"></tbody></table></div>
+<p class="muted">Een toekenning wordt per dienst gecontroleerd en gelogd. De Discord-rol zelf wordt niet gewijzigd.</p>
+</section>
 <section id="dossierGrantSection" class="card" hidden>
 <h2>🛡️ Beheertoegang hulpdiensten</h2>
 <p>Bestuur en technisch beheer kunnen rechten per hulpdienst toekennen. Korpsleiding mag dit alleen voor de eigen hulpdienst (Brandweer: geverifieerde ZONE-chef). Elke wijziging vereist een motivering en wordt gelogd.</p>
@@ -167,7 +186,7 @@ const dossierGrants=setupDossierGrantUI({api,notice,$,option,cell});
 let tabChoice=window.location.hash==='#dienstbeheer'?'services':
   window.location.hash==='#verlofmachtigingen'?'leave':'accounts';
 function showManageTabs(){
-  const mapping={accounts:'admin',services:'dossierGrantSection',to:'toSection',
+  const mapping={accounts:'admin',manual:'manualRoleSection',services:'dossierGrantSection',to:'toSection',
     board:'boardSection',leave:'leaveGrantSection'};
   const active=Object.keys(mapping).filter(k=>$(mapping[k]).dataset.authorized==='yes');
   $('manageTabs').hidden=!active.length;
@@ -328,6 +347,67 @@ async function loadAdmin(){
     notice('Gebruikersbeheer kon niet worden geopend: '+e.message,true);
   }
 }
+async function loadManualRoles(){
+  const panel=$('manualRoleSection');panel.dataset.authorized='no';panel.hidden=true;
+  if(!auth?.currentUser)return;
+  try{
+    const data=await api('/api/users/manual-role-requests');
+    panel.dataset.authorized='yes';panel.hidden=false;
+    const body=$('manualRecords');body.replaceChildren();
+    const records=data.requests||[];
+    $('manualMessage').textContent=records.length+' handmatige aanvraag/aanvragen · roltoekenning uitsluitend na aparte goedkeuring.';
+    if(!records.length){
+      const tr=document.createElement('tr');const td=cell(tr,'Geen handmatige rolherstelverzoeken.');td.colSpan=5;body.append(tr);
+    }
+    for(const item of records){
+      const tr=document.createElement('tr');
+      cell(tr,item.discordId);
+      cell(tr,(deptNames[item.dept]||item.dept)+' · '+(roleNames[item.role]||item.role));
+      const status=document.createElement('span');status.className='status '+(item.status==='approved'?'approved':item.status==='rejected'?'blocked':'');
+      status.textContent=({pending:'In afwachting',approved:'Goedgekeurd',rejected:'Geweigerd'})[item.status]||item.status;
+      cell(tr,status);
+      cell(tr,item.requestedBy||'—');
+      const actions=document.createElement('div');actions.className='controls';
+      if(item.status==='pending'&&data.canApprove){
+        for(const decision of ['approved','rejected']){
+          const button=document.createElement('button');button.type='button';
+          button.className=decision==='rejected'?'danger':'alt';
+          button.textContent=decision==='approved'?'Goedkeuren':'Weigeren';
+          button.onclick=async()=>{
+            const reason=prompt('Motivering van deze beslissing (minimaal 15 tekens):');
+            if(reason===null)return;
+            button.disabled=true;
+            try{
+              await api('/api/users/manual-role-requests/'+encodeURIComponent(item.dept)+'/'+encodeURIComponent(item.discordId)+'/decision',{
+                method:'POST',body:{decision,reason}});
+              notice('Beslissing opgeslagen. Bevoegdheden worden pas na goedkeuring actief.');
+              await loadManualRoles();await loadAdmin();showManageTabs();
+            }catch(e){notice(e.message,true);button.disabled=false}
+          };
+          actions.append(button);
+        }
+      }else actions.textContent=item.status==='pending'?'Wacht op onafhankelijke goedkeuring':'Afgehandeld';
+      cell(tr,actions);body.append(tr);
+    }
+  }catch(e){
+    if(!/403|Geen toegang|Geen bevoegdheid/.test(e.message))
+      notice('Rolherstel: '+e.message,true);
+  }
+}
+$('manualRoleForm').onsubmit=async event=>{
+  event.preventDefault();
+  const btn=$('manualRequest');btn.disabled=true;
+  try{
+    const result=await api('/api/users/manual-role-requests',{method:'POST',body:{
+      discordId:$('manualId').value.trim(),dept:$('manualDept').value,
+      role:$('manualRole').value,reason:$('manualReason').value.trim()
+    }});
+    $('manualReason').value='';
+    notice(result.status==='pending'?'Rolherstel voorgesteld. Een tweede bevoegde persoon moet goedkeuren.':'Aanvraag verwerkt.');
+    await loadManualRoles();showManageTabs();
+  }catch(e){notice(e.message,true)}finally{btn.disabled=false}
+};
+$('manualRefresh').onclick=async()=>{await loadManualRoles();showManageTabs()};
 async function loadTOGrants(){
   if(!auth?.currentUser){$('toSection').hidden=true;return;}
   try{
@@ -574,7 +654,7 @@ $('leaveGrantRevoke').onclick=async()=>{
 };
 $('leaveGrantReload').onclick=()=>loadLeaveGrantManager().then(showManageTabs);
 async function refresh(){
-  for(const name of ['admin','toSection','boardSection','dossierGrantSection','leaveGrantSection'])$(name).dataset.authorized='no';
+  for(const name of ['admin','manualRoleSection','toSection','boardSection','dossierGrantSection','leaveGrantSection'])$(name).dataset.authorized='no';
   dossierGrants.reset();
   if(!auth?.currentUser){$('profileSwitcher').hidden=true;$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;$('toSection').hidden=true;return}
   const isDiscord=auth.currentUser.uid.startsWith('discord:');
@@ -603,6 +683,7 @@ async function refresh(){
   }
   await loadProfileSwitcher();
   await loadAdmin();
+  await loadManualRoles();
   await loadTOGrants();
   await boardRefresh();
   try{if(await dossierGrants.load())$('dossierGrantSection').dataset.authorized='yes'}catch(e){notice('Dienstbeheer: '+e.message,true)}
@@ -610,7 +691,7 @@ async function refresh(){
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();showManageTabs()};$('filter').onchange=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();showManageTabs()};$('filter').onchange=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
