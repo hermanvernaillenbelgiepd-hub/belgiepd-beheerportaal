@@ -14,7 +14,11 @@ const specs = {
 // per-service Google Sheets columns: no invented SRT/DSU qualifications.
 export const SPECIALTY_LABELS=Object.freeze(Object.fromEntries(
   Object.entries(specs).map(([dept,spec])=>[dept,
-    Object.freeze(spec.specialties.map(([,label])=>label))])
+    Object.freeze([...spec.specialties.map(([,label])=>label),
+      ...(dept==='brandweer'?[
+        'Logistiek / Signalisatie','Bosbestrijding','Brandweer-AMBU',
+        'RED-TEAM','Basistraining'
+      ]:[])])])
 ));
 const s = value => String(value ?? '').trim();
 const integer = value => { const str=s(value).replace(',','.'); return /^(0|[1-9]\d*)(\.\d+)?$/.test(str) ? Number(str) : null; };
