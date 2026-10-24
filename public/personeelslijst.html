@@ -11,7 +11,7 @@ h1{font-size:27px;margin:0 0 7px}p{color:#bad0e9;font-size:13px;margin:0 0 16px}
 .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:14px}
 label{font-size:12px;color:#a9c6ec;display:block;margin-bottom:5px}
 input,select{border:1px solid #4d719d;border-radius:8px;color:#fff;background:#0c1e36;padding:10px 12px;font:inherit}
-input{width:min(420px,100%)}button{background:#315cce;color:white;border:1px solid #7699e3;border-radius:8px;font:inherit;font-weight:700;cursor:pointer;padding:9px 13px}
+input{width:min(420px,100%)} .login-link{display:inline-block;background:#315cce;color:#fff;border:1px solid #7699e3;border-radius:8px;font-weight:700;padding:10px 14px;text-decoration:none;margin:0 0 12px}button{background:#315cce;color:white;border:1px solid #7699e3;border-radius:8px;font:inherit;font-weight:700;cursor:pointer;padding:9px 13px}
 #message{font-size:12px;color:#c2d5ee;margin:10px 0 14px}
 .tablewrap{overflow:auto;max-height:70vh;border:1px solid #345376;border-radius:8px}
 table{border-collapse:collapse;width:100%;min-width:730px;font-size:12px}
@@ -25,6 +25,7 @@ tbody tr:nth-child(2n){background:#183450}
 <main><h1>Personeelslijst politie</h1>
 <p>Leesbaar overzicht van personeel en roepnummers, ook voor nieuwe leden. Dossiers, observaties, Discord-ID’s, sancties en andere persoonsgegevens zijn hier niet toegankelijk.</p>
 <div class="panel">
+<a class="login-link" id="discordLogin" href="/auth/discord/start?return=%2Fpersoneelslijst.html" hidden>Inloggen met Discord om personeelslijst te bekijken →</a>
 <div class="filters"><div><label for="search">Zoeken</label><input id="search" placeholder="Roepnummer, naam, rang of reeks"></div>
 <div><label for="sort">Sorteren</label><select id="sort"><option value="desc">Roepnummer aflopend</option><option value="asc">Roepnummer oplopend</option><option value="name">Naam A–Z</option></select></div>
 <button id="refresh" type="button">Vernieuwen</button></div>
@@ -55,12 +56,13 @@ function render(){
 }
 async function load(){
  const token=await idToken();
- if(!token){$('message').textContent='Meld je eerst aan met je eigen Discord-account op Mijn profiel.';return;}
+ if(!token){$('discordLogin').hidden=false;$('message').textContent='Ieder geverifieerd lid van de BelgiumPD Discord-server kan deze personeelslijst bekijken. Log in met Discord; een vast roepnummer is niet vereist.';return;}
  $('refresh').disabled=true;
  try{
   const res=await fetch('/api/member/personnel-list',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
   const data=await res.json();
   if(!res.ok)throw Error(data.error||'Geen toegang');
+  $('discordLogin').hidden=true;
   people=Array.isArray(data.records)?data.records:[];
   render();
   if(data.stale)$('message').textContent+=' · Let op: brongegevens momenteel niet actueel';
@@ -76,7 +78,7 @@ try{
  const app=getApps().length?getApp():initializeApp(config.firebaseConfig);auth=getAuth(app);
  onAuthStateChanged(auth,user=>{
   if(user?.uid?.startsWith('discord:'))load();
-  else $('message').textContent='Meld je met Discord aan via Mijn profiel. Zonder geverifieerd account zijn personeelsgegevens verborgen.';
+  else {people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiumPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script></body></html>
