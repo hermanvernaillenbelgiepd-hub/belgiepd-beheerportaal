@@ -26,7 +26,7 @@ test('Toegangsvoorbeeld biedt zeven fictieve profielen zonder echte aanmeldgegev
   assert.match(js,/call:'700'/);
   assert.match(js,/call:'930'/);
   assert.match(js,/call:'900'/);
-  assert.match(js,/CALL 900 en 910/);
+  assert.match(js,/CALL 900–999; Discord-rol bepaalt rechten/);
   assert.ok(html.includes('/vast-roepnummer-aanvragen.html'));
   assert.match(js,/roles\.indexOf\(role\)/);
   assert.match(css,/\.experience\{display:grid/);
@@ -55,7 +55,7 @@ test('Voorbeeld blijft gescheiden van technisch profiel en normale machtigingen'
   assert.match(html,/fictieve personen, geen live dossiers/i);
   assert.match(js,/TO-rechten worden apart toegekend/);
   assert.match(js,/Bestuur is geen politierang/);
-  assert.match(js,/Korpsleidingleden zoals 900 en 910 blijven in de lijst zichtbaar/);
+  assert.match(js,/Korpsleidingleden in de gedeelde 900-reeks blijven in de lijst zichtbaar/);
   const profile=readFileSync(new URL('../src/portal-profile-mode.js',import.meta.url),'utf8');
   assert.match(profile,/eligibleForTechnicalProfile/);
   assert.match(profile,/technicalCookieIsValid/);

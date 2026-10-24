@@ -50,7 +50,7 @@ test('Nieuwe aanvraagpagina gebruikt enkel eigen Discord-login en toont botvoorw
   assert.ok(script);
   // Replace dynamic imports only for parsing: the JavaScript syntax must remain valid.
   assert.doesNotThrow(()=>new Script(script));
-  assert.match(html,/id="tempCall" type="number" min="110" max="195"/);
+  assert.match(html,/id="tempCall" type="number" min="101" max="199"/);
   assert.match(html,/minstens <strong>5 volledige dagen<\/strong>/);
   assert.match(html,/api\/callsigns\/self\/status/);
   assert.match(html,/api\/callsigns\/self\/request/);

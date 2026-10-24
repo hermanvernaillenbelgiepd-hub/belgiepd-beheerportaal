@@ -4,12 +4,12 @@
 (function(){
   const roles=[
     {id:'nieuw',label:'Volledig nieuw lid',short:'Nieuw',name:'Nieuw Discord-lid (voorbeeld)',call:'Nog geen CALL',rank:'Nog niet ingedeeld',role:'Geen goedgekeurde portaalrol',status:'Toegang nog niet aangevraagd'},
-    {id:'agent',label:'Agentenkader · tijdelijk',short:'Agent temp.',name:'Voorbeeld Agent (tijdelijk)',call:'150',rank:'Agent van politie',role:'Agentenkader · tijdelijk zelfgekozen CALL 110–195',status:'Nog geen vaste 200-reeks'},
-    {id:'agentvast',label:'Agentenkader · vast',short:'Agent vast',name:'Voorbeeld Agent (vaste CALL)',call:'250',rank:'Agent van politie',role:'Agentenkader · vaste CALL 200–299',status:'Vast roepnummer na gecontroleerde aanvraag'},
-    {id:'basis',label:'Basiskader',short:'Basis',name:'Voorbeeld Inspecteur',call:'300',rank:'Inspecteur van politie',role:'Basiskader · vanaf 300',status:'Portaaltoegang goedgekeurd'},
-    {id:'midden',label:'Middenkader',short:'Midden',name:'Voorbeeld Hoofdinspecteur',call:'700',rank:'Hoofdinspecteur van politie',role:'Middenkader · 600/610/620 … 700/710/720 … 800/810',status:'Portaaltoegang goedgekeurd'},
-    {id:'officier',label:'Officierenkader',short:'Officier',name:'Voorbeeld Aspirant Commissaris',call:'930',rank:'Aspirant-commissaris van politie',role:'Officierenkader · rolcontrole (ook CALL 920)',status:'Portaaltoegang goedgekeurd'},
-    {id:'korps',label:'Korpsleiding',short:'Korps',name:'Voorbeeld Eerste Hoofdcommissaris',call:'900',rank:'Eerste hoofdcommissaris van politie',role:'Korpsleiding · CALL 900 en 910',status:'Portaaltoegang goedgekeurd'}
+    {id:'agent',label:'Agentenkader · tijdelijk',short:'Agent temp.',name:'Voorbeeld Agent (tijdelijk)',call:'150',rank:'Agent van politie',role:'Agentenkader · tijdelijk, CALL 101–199',status:'Nog geen vaste 200-reeks'},
+    {id:'agentvast',label:'Agentenkader · vast',short:'Agent vast',name:'Voorbeeld Agent (vaste CALL)',call:'250',rank:'Agent van politie',role:'Agentenkader · vast, CALL 200–299',status:'Vast roepnummer na gecontroleerde aanvraag'},
+    {id:'basis',label:'Basiskader',short:'Basis',name:'Voorbeeld Inspecteur',call:'300',rank:'Inspecteur van politie',role:'Basiskader · CALL 300–599',status:'Portaaltoegang goedgekeurd'},
+    {id:'midden',label:'Middenkader',short:'Midden',name:'Voorbeeld Hoofdinspecteur',call:'700',rank:'Hoofdinspecteur van politie',role:'Middenkader · CALL 600–899',status:'Portaaltoegang goedgekeurd'},
+    {id:'officier',label:'Officierenkader',short:'Officier',name:'Voorbeeld Aspirant Commissaris',call:'930',rank:'Aspirant-commissaris van politie',role:'Officierenkader · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'},
+    {id:'korps',label:'Korpsleiding',short:'Korps',name:'Voorbeeld Eerste Hoofdcommissaris',call:'900',rank:'Eerste hoofdcommissaris van politie',role:'Korpsleiding · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'}
   ];
   // full = authorized for this service, limited = restricted actions,
   // none = no access, extra = separate delegated entitlement required.
@@ -19,12 +19,12 @@
      actions:['Mijn profiel bekijken','Verlofbeheer openen'],explain:'De startpagina toont grotendeels dezelfde modulelinks. Beveiligde API’s bepalen wat daarna werkelijk gelezen of gewijzigd kan worden.'},
     {id:'users',icon:'👥',label:'Gebruikersbeheer',access:['limited','limited','limited','limited','limited','limited','full'],
      heading:'Centraal gebruikersbeheer',description:'Eigen toegang controleren en aanvragen; accounts van anderen beheren volgens de toegestane kadergrenzen.',
-     actions:['Mijn toegangsstatus','Aanvragen beoordelen','Officieren beheren'],explain:'Nieuwe leden kunnen een verzoek indienen. Basiskader en Middenkader beheren geen andere gebruikers. Officierenkader mag Basiskader en Middenkader binnen de eigen dienst behandelen. Korpsleiding kan ook Officierenkader beheren.',
+     actions:['Mijn toegangsstatus','Aanvragen beoordelen','Officieren beheren'],explain:'Nieuwe leden kunnen hun toegang aanvragen. Officierenkader en Korpsleiding delen de 900-reeks; de geverifieerde Discord-rol bepaalt wie aanvragen mag beoordelen. Een roepnummer kent nooit rechten toe.',
      override:{officier:'limited'},customStatus:{nieuw:'Eigen aanvraag: nog niet ingediend',basis:'Alleen eigen toegangsstatus; geen accountbeheer',midden:'Alleen eigen toegangsstatus; geen accountbeheer',officier:'Beheer aanvragen Basiskader en Middenkader (eigen dienst)',korps:'Beheer aanvragen t/m Officierenkader (eigen dienst)'}},
     {id:'roster',icon:'♙',label:'Personeelslijst',access:['none','none','none','none','full','full','full'],
      heading:'Personeelslijst',description:'Afgeschermde dienstlijst met roepnummer, rang, reeks, status en specialisaties.',
      actions:['Personeelslijst bekijken','Dossier lagere rang openen','Korpsdossier openen'],
-     explain:'De bestaande personeelslijst wordt voor bevoegd Middenkader en hoger geopend. Korpsleidingleden zoals 900 en 910 blijven in de lijst zichtbaar; hun volledige dossiers zijn voor onbevoegden afgeschermd.'},
+     explain:'De bestaande personeelslijst wordt voor bevoegd Middenkader en hoger geopend. Korpsleidingleden in de gedeelde 900-reeks blijven in de lijst zichtbaar; hun volledige dossiers zijn voor onbevoegden afgeschermd.'},
     {id:'dossier',icon:'▣',label:'Personeelsdossiers',access:['none','none','none','none','limited','full','full'],
      heading:'Personeelsfiche',description:'Persoonsgegevens, belangrijke notities, opleiding, observaties, sancties en personeelsbewegingen.',
      actions:['Notitie registreren','Observatie of sanctie','Promotie / personeelsbeweging'],
@@ -106,7 +106,7 @@
   function mockCards(role,module,root){
     const cards=create('div','mock-panel');
     const rows=module.id==='roster'||module.id==='dossier'?
-      [['CALL',role.call],['Personeelslid',role.name],['Voorbeeld Korpsleiding','900 · 🔒 Afgeschermd']]:
+      [['CALL',role.call],['Personeelslid',role.name],['Voorbeeld Korpsleiding','900-reeks · volgens Discord-rol afgeschermd']]:
       module.id==='verlof'?[['Aanvrager',role.name],['Aanvraag','7 tot 14 dagen (voorbeeld)'],['Goedkeuring',roles.indexOf(role)>=2?'Afhankelijk van rol / duur':'Niet bevoegd']]:
       module.id==='users'?[['Account',role.name],['Status',role.status],['Goedgekeurde rol',role.role]]:
       [['Personeel',role.name],['Rang',role.rank],['Dienst','Politie']];
@@ -126,7 +126,7 @@
     root.append(create('h3','',module.heading),create('p','',module.description));
     mockCards(role,module,root);
     if(module.id==='users'&&(role.id==='nieuw'||role.id==='agent')){
-      root.append(create('div','tips','Vast roepnummer 200–299 aanvragen: vanaf 5 volledige dagen in Discord én 10 speeluren in FiveM, geverifieerd via de bot. Een tijdelijk roepnummer 110–195 is zelfgekozen; de hogere leiding beslist over toekenning.'));
+      root.append(create('div','tips','Vast roepnummer 200–299 aanvragen: vanaf 5 volledige dagen in Discord én 10 speeluren in FiveM, geverifieerd via de bot. Een tijdelijk roepnummer 101–199 is zelfgekozen; de hogere leiding beslist over de vaste toekenning.'));
     }
     if(level==='none')root.append(create('div','tips','Deze sectie is niet beschikbaar voor het geselecteerde profiel. Er worden geen gevoelige dossiers getoond.'));
     if(level==='extra')root.append(create('div','tips','Deze module vereist een afzonderlijk goedgekeurd recht. Een politierang alleen volstaat niet.'));

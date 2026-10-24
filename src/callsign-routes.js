@@ -113,6 +113,22 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
       }
       batch.update(request,{status:'approved',assignedCall:plan.call,sync:synced,syncedAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
       batch.set(caseRef,{dept:'politie',discordId:id,name:plan.name,call:String(plan.call),rank:plan.rank,createdFrom:'vaste_roepnummer_aanvraag',createdAt:FieldValue.serverTimestamp()},{merge:true});
+      // De overgang van tijdelijk naar vast hoort bij dezelfde Discord-ID:
+      // één dossier, met een tijdgestempelde personeelsbeweging in het lopende
+      // weekrapport. De rang blijft Agent; dit is geen graadpromotie.
+      batch.create(caseRef.collection('entries').doc(),{
+        type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+        movement:'Tijdelijk naar vast roepnummer',
+        dept:'politie',subjectDiscordId:id,subjectNameAtCreation:plan.name,
+        subjectCallAtCreation:String(plan.call),
+        eventDate:new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Brussels'}),
+        previousCall:String(current.get('temporaryCall')||''),
+        newCall:String(plan.call),
+        details:'Vast roepnummer toegekend: '+String(current.get('temporaryCall')||'—')+
+          ' → '+String(plan.call)+'. Zelfde Discord-ID en personeelsdossier; geen rangpromotie.',
+        registeredBy:approvedBy,source:'approved_fixed_callsign',
+        createdAt:FieldValue.serverTimestamp(),modifiedAt:null
+      });
       batch.create(notice,{type:'roepnummer_toegekend',dept:'politie',caseId:`politie_${id}`,createdAt:FieldValue.serverTimestamp()});
       const reservedCall=String(current.get('temporaryCall')||'');
       if(/^\d{3}$/.test(reservedCall)){
