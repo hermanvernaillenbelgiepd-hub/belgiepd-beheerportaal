@@ -163,7 +163,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
             id:'training:'+doc.id,type:'opleiding',eventDate:r.eventDate,
             courseName:r.courseName,trainingResult:r.result,
             details:['Opleidingsresultaat: '+({geslaagd:'Geslaagd',
-              niet_geslaagd:'Niet geslaagd',in_opleiding:'In opleiding'}[r.result]||'Onbekend'),
+              niet_geslaagd:'Niet geslaagd',in_opleiding:'In opleiding',restricted:'RESTRICTED'}[r.result]||'Onbekend'),
               r.details||''].filter(Boolean).join(' · '),
             subjectDiscordId:pid,subjectNameAtCreation:person?.name||'—',
             subjectCallAtCreation:person?.call||'—',
