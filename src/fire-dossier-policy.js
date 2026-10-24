@@ -22,6 +22,12 @@ export function fireSubjectClass(subject,roles){
  if(!roles)return 'unverified';
  if(roles.has(FIRE_ROLES.leadership))return 'leadership';
  if(roles.has(FIRE_ROLES.middle))return 'middle';
+ // Callsigns only restrict visibility, never confer operational authority.
+ const duty=String(subject.call||'').trim().toUpperCase();
+ const rank=String(subject.rank||'').trim().toUpperCase();
+ if(/^ZONE(?:$|[- ]|[0-9])/.test(duty)||/^ZONE(?:$|[- ])/.test(rank))
+   return 'leadership';
+ if(/^OOFF[- ]?(?:0[89]|1[0-5])$/.test(duty))return 'middle';
  if(roles.has(FIRE_ROLES.member))return 'member';
  const label=String(subject.call||'')+' '+String(subject.rank||'');
  return /STAG/i.test(label)?'trainee':'unverified';
