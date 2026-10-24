@@ -5,6 +5,8 @@ import {Script} from 'node:vm';
 import {validateEntry,canChooseSanction,permittedSanctionTypes} from '../src/registrations.js';
 import {mayWriteManagement} from '../src/management-utils.js';
 import {canLogTraining,canReviewTraining,basePermissions} from '../src/permissions-utils.js';
+import {verifyBoardDiscordRole} from '../src/dossier-grants.js';
+import {activeBoardAppointment} from '../src/board-appointment-policy.js';
 import {TRAINING_ROLE_IDS,roleSummary,recognizeRoles} from '../src/role-catalog.js';
 import {specialFields} from '../src/report-export.js';
 
@@ -343,4 +345,47 @@ test('Dispatch-instructeur blijft een Dispatch-rol maar kan politieopleiding reg
   assert.equal(p.permissions.dispatch['training.log'],true);
   for(const dept of ['brandweer','ambulance','depannage','burger'])
     assert.equal(p.permissions[dept]['training.log'],false);
+});
+
+test('RESTRICTED is an accepted training outcome and appears in both UI and week reports',()=>{
+  const route=readFileSync(new URL('../src/role-routes.js',import.meta.url),'utf8');
+  const register=readFileSync(new URL('../public/rollen-opleidingen.html',import.meta.url),'utf8');
+  const fiche=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  const reports=readFileSync(new URL('../src/management-routes.js',import.meta.url),'utf8');
+  assert.match(route,/\['in_opleiding','geslaagd','niet_geslaagd','restricted'\]\.includes\(result\)/);
+  assert.match(register,/<option value="restricted">RESTRICTED<\/option>/);
+  assert.match(fiche,/<option value="restricted">RESTRICTED<\/option>/);
+  assert.match(register,/restricted:'RESTRICTED'/);
+  assert.match(reports,/restricted:'RESTRICTED'/);
+  assert.match(fiche,/row\.result==='restricted'\?'RESTRICTED'/);
+});
+
+test('Only verified Bestuur receives training write/review access across all services',()=>{
+  const services=['politie','brandweer','ambulance','depannage','burger','dispatch'];
+  const board={boardPersonnelAdmin:true,role:'basiskader',departments:['politie'],
+    departmentRoles:{politie:'basiskader'},trustedStaff:true};
+  for(const dept of services){
+    assert.equal(canLogTraining(board,dept,{}),true,dept);
+    assert.equal(canReviewTraining(board,dept,{}),true,dept);
+  }
+  const ordinary={...board,boardPersonnelAdmin:false};
+  for(const dept of services){
+    assert.equal(canLogTraining(ordinary,dept,{}),false,dept);
+    assert.equal(canReviewTraining(ordinary,dept,{}),false,dept);
+  }
+  assert.equal(canLogTraining(board,'ongekende_dienst',{}),false);
+  const guild='123456789012345678',now=Date.now();
+  const member={guildId:guild,verifiedAt:now,roleIds:['1309532438082355251']};
+  assert.equal(verifyBoardDiscordRole(member,guild,now),true);
+  assert.equal(verifyBoardDiscordRole({...member,verifiedAt:now-16*60*1000},guild,now),false);
+  assert.equal(verifyBoardDiscordRole({...member,guildId:'223456789012345678'},guild,now),false);
+  assert.equal(activeBoardAppointment({status:'approved',permissions:['board_registry_read']}),true);
+  assert.equal(activeBoardAppointment({status:'revoked',permissions:['board_registry_read']}),false);
+  const routes=readFileSync(new URL('../src/role-routes.js',import.meta.url),'utf8');
+  assert.match(routes,/bpd\.provider==='discord'&&isDiscordId\(discordId\)/);
+  assert.match(routes,/verifiedDiscordIdentity\(decoded,member,process\.env\.DISCORD_GUILD_ID\)===discordId/);
+  assert.match(routes,/bpd\.boardPersonnelAdmin=Boolean\(verifiedBoardIdentity/);
+  assert.match(routes,/verifyBoardDiscordRole\(member,process\.env\.DISCORD_GUILD_ID\)/);
+  assert.match(routes,/activeBoardAppointment\(boardAppointment\?\.data\(\)\)/);
+  assert.match(routes,/bpd\?\.boardPersonnelAdmin===true/);
 });
