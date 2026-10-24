@@ -57,7 +57,7 @@ async function resolveActor(req,res,next){
        technicalCookieIsValid(req.headers.cookie,decoded.uid,discordId,
          process.env.BPD_PORTAL_PROFILE_SIGNING_KEY)){
       bpd={...bpd,role:'korpsleiding',departments:['politie','brandweer','ambulance','depannage'],
-        portalTechnicalMode:true,trustedStaff:true};
+        portalTechnicalMode:true,profileTechnicalAvailable:true,trustedStaff:true};
     }
     // Bestuur is independent of operational grade. Grant cross-service TRAINING
     // only after verified Discord authentication and a fresh guild role or an
