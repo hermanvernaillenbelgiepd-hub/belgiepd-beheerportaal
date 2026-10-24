@@ -360,9 +360,12 @@ app.get('/api/dossiers/:dept/:discordId',requireUser,async(req,res)=>{
     const subject=snap.data.filter(p=>p.dept===dept&&p.personId===discordId);
     if(subject.length!==1)
       return res.status(404).json({error:'Geen eenduidig personeelslid gevonden'});
+    const verifiedTechnical=req.bpd.portalTechnicalMode===true&&
+      req.bpd.profileTechnicalAvailable===true&&
+      req.bpd.uid==='discord:'+req.bpd.discordId;
     // Even a legacy Google dossier link is sensitive. Never bypass the 9xx
     // role check through this older route, whether by direct URL or via UI.
-    if(isPolice9xx(subject[0].call)){
+    if(isPolice9xx(subject[0].call)&&!verifiedTechnical){
       const member=await cachedAuthDoc('bpd_discord_auth',discordId);
       const subjectRole=member.exists?verifiedOfficerCadre(member.data(),
         process.env.DISCORD_GUILD_ID,Date.now(),15*60*1000):null;
@@ -371,7 +374,7 @@ app.get('/api/dossiers/:dept/:discordId',requireUser,async(req,res)=>{
         req.bpd.discordPoliceRank==='korpsleiding';
       if(subjectRole!=='Officierenkader'&&!genuineChief)
         return res.status(403).json({error:'Dit dossier is afgeschermd'});
-    }else if(isCorpsLeadershipPersonnel(subject[0])){
+    }else if(isCorpsLeadershipPersonnel(subject[0])&&!verifiedTechnical){
       if(req.bpd.uid!=='discord:'+req.bpd.discordId||
         req.bpd.role!=='korpsleiding'||req.bpd.discordPoliceRank!=='korpsleiding')
         return res.status(403).json({error:'Dit dossier is afgeschermd'});
