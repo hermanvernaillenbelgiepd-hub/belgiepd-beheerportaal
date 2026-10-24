@@ -2,6 +2,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
+import {isArchivedTraining} from './training-maintenance.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
@@ -139,6 +140,39 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
         return {truncated:rows.docs.length>200,docs:rows.docs.slice(0,200).map(d=>({id:d.id,...noPrivate(d.data())}))};
       }));
       for(const part of parts){result.push(...part.docs);if(part.truncated)truncated=true;}
+    }
+    // Canonieke opleidingsresultaten horen automatisch in het dynamische
+    // weekrapport van hun eigen hulpdienst; geen tweede registratie of write.
+    // Oudere losse opleidingsNOTITIES blijven staan als historische entries.
+    for(let i=0;i<uniqueIds.length;i+=12){
+      const people=uniqueIds.slice(i,i+12);
+      const part=await Promise.all(people.map(async pid=>{
+        const rows=await db().collection('bpd_training').doc(caseId(report.dept,pid))
+          .collection('records').where('eventDate','>=',report.periodStart)
+          .where('eventDate','<=',report.periodEnd).limit(201).get();
+        return {pid,rows:rows.docs};
+      }));
+      for(const {pid,rows} of part){
+        if(rows.length>200)truncated=true;
+        const person=uniqueSubject(allSubjects,report.dept,pid);
+        for(const doc of rows.slice(0,200)){
+          const r=doc.data();
+          if(isArchivedTraining(r))continue;
+          const teacher=allSubjects.find(p=>p.personId===r.registeredByDiscordId);
+          result.push({
+            id:'training:'+doc.id,type:'opleiding',eventDate:r.eventDate,
+            courseName:r.courseName,trainingResult:r.result,
+            details:['Opleidingsresultaat: '+({geslaagd:'Geslaagd',
+              niet_geslaagd:'Niet geslaagd',in_opleiding:'In opleiding'}[r.result]||'Onbekend'),
+              r.details||''].filter(Boolean).join(' · '),
+            subjectDiscordId:pid,subjectNameAtCreation:person?.name||'—',
+            subjectCallAtCreation:person?.call||'—',
+            registeredBy:{name:teacher?.name||'Instructeur '+(r.registeredByDiscordId||'onbekend'),
+              call:teacher?.call||''},
+            source:'bpd_training'
+          });
+        }
+      }
     }
     const sections=reportSections(result,report.periodStart,report.periodEnd);
     const excludedTestCount=result.filter(e=>isTestRecord(e) && e.eventDate>=report.periodStart && e.eventDate<=report.periodEnd).length;

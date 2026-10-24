@@ -1,5 +1,6 @@
 import { isDiscordId } from './discord-utils.js';
 import { SERVICE_DEPTS,roleSummary,isInstructorForDept } from './role-catalog.js';
+import {roleForDepartment} from './leave-policy.js';
 
 // No authorization to administer rights can ever be assigned via overrides.
 export const DELEGATABLE_PERMISSIONS=Object.freeze(['training.log','training.review']);
@@ -9,15 +10,23 @@ export function recentDiscordMember(member,guildId,now=Date.now()){
     member.verifiedAt<=now && now-member.verifiedAt<=MAX_ROLE_AGE_MS &&
     Array.isArray(member.roleIds) && member.roleIds.every(isDiscordId));
 }
-export function basePermissions(member,guildId,now=Date.now()){
+export function basePermissions(member,guildId,now=Date.now(),fireInstructorRoleIds=[]){
   const fresh=recentDiscordMember(member,guildId,now);
   const summary=roleSummary(fresh?member.roleIds:[]);
   const permissions={};
+  // Role IDs are proven by a freshly verified guild membership. Fire instructors
+  // need a configured actual Discord role ID; never authorize the free-text name "docent".
+  const fireInstructors=new Set(fireInstructorRoleIds.filter(isDiscordId));
+  const isFireInstructor=fresh&&summary.departments.includes('brandweer')&&
+    member.roleIds.some(id=>fireInstructors.has(id));
   for(const dept of SERVICE_DEPTS){
     const memberOfDept=summary.departments.includes(dept);
+    const fireMid=dept==='brandweer'&&fresh&&summary.roles.some(r=>
+      r.dept==='brandweer'&&['BW middenkader','BW leiding'].includes(r.name));
     permissions[dept]={
-      'training.log':memberOfDept && isInstructorForDept(summary.roles,dept),
-      'training.review':false
+      'training.log':memberOfDept && (isInstructorForDept(summary.roles,dept)||
+        fireMid||isFireInstructor),
+      'training.review':memberOfDept&&fireMid
     };
   }
   return {fresh,...summary,permissions};
@@ -56,17 +65,21 @@ export function canAdministerRoles(bpd,dept){
 export function canLogTraining(bpd,dept,perms){
   if(!SERVICE_DEPTS.includes(dept))return false;
   if(bpd?.dossierFullDepartments?.includes(dept))return true;
-  // Politie: Middenkader en hoger mogen opleidingen registreren, ook zonder
-  // instructeurspecialisatie. Instructeurs houden hun aparte rolcontrole.
-  if(bpd?.trustedStaff===true && Array.isArray(bpd.departments) &&
-     bpd.departments.includes(dept) &&
-     (['officierenkader','korpsleiding'].includes(bpd.role) ||
-      (dept==='politie'&&bpd.role==='middenkader')))return true;
-  return Boolean(perms?.[dept]?.['training.log']);
+  // Approved cadre rights never migrate from one service to another.
+  const rank=roleForDepartment(bpd,dept);
+  if(bpd?.trustedStaff===true &&
+     ['middenkader','officierenkader','korpsleiding'].includes(rank))return true;
+  // Approved instructors and fire leadership carry their own service-scoped
+  // permission from fresh Discord guild role IDs (or explicit delegated access).
+  return perms?.[dept]?.['training.log']===true;
 }
 export function canReviewTraining(bpd,dept,perms){
-  if(bpd?.dossierFullDepartments?.includes(dept)&&SERVICE_DEPTS.includes(dept))return true;
-  return canAdministerRoles(bpd,dept)||Boolean(perms?.[dept]?.['training.review']);
+  if(!SERVICE_DEPTS.includes(dept))return false;
+  if(bpd?.dossierFullDepartments?.includes(dept))return true;
+  const rank=roleForDepartment(bpd,dept);
+  return (bpd?.trustedStaff===true &&
+    ['middenkader','officierenkader','korpsleiding'].includes(rank)) ||
+    perms?.[dept]?.['training.review']===true;
 }
 
 // For display, use precisely the same permissions as the protected API endpoints.

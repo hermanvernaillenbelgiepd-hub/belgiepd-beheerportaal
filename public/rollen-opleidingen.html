@@ -15,9 +15,9 @@ label{display:block;margin-top:14px;color:#d5e4f6;font-weight:600}input,select,t
 <div class="panel"><h2>Aanmelden</h2><button id="google">Google-noodlogin</button><a href="/auth/discord/start?return=%2Frollen-opleidingen.html">Aanmelden met Discord</a> <button class="secondary" id="logout">Afmelden</button><div class="status" id="state">Verbinden…</div><small>Na een Discord-aanmelding op de verificatiepagina kun je hier terugkomen. Voor gevoelige gegevens gelden altijd servermachtigingen; Google-noodlogin blijft beschikbaar.</small></div>
 <section class="panel" id="profile" hidden><h2>Mijn geverifieerde rollen</h2><div id="summary"></div><h3>Rollen uit de catalogus</h3><div id="roleList"></div><p id="unknown" class="mini"></p><h3>Opleidingsbevoegdheden</h3><p class="mini">Deze rechten omvatten ook je bestaande, goedgekeurde Google-beheerdersrechten. Controleren betekent een registratie beoordelen voor <strong>handmatige</strong> verwerking; er wordt niets rechtstreeks aangepast in Google Sheets.</p><div class="columns" id="permissionList"></div></section>
 <section class="panel" id="training" hidden><h2>Opleidingshistoriek en resultaten</h2><p>De opleiding en het resultaat worden hier per hulpdienst en Discord-ID bewaard. Je kunt ze raadplegen en met de juiste rechten aanpassen. Dit wijzigt geen Discord-rol of officiële personeelslijst en registreert niet automatisch een weekrapportnotitie.</p>
-<div class="two"><label>Hulpdienst<select id="dept"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="dispatch">Dispatch</option></select></label><label>Discord ID van cursist<input id="subject" inputmode="numeric" placeholder="Bijvoorbeeld 18 cijfers" maxlength="22"></label></div>
+<div class="two"><label>Hulpdienst<select id="dept"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="dispatch">Dispatch</option></select></label><label>Personeelslid binnen deze hulpdienst<select id="subjectChoice" aria-describedby="peopleNote"><option value="">Haal personeelslijst op…</option></select><input id="subject" type="hidden"></label></div><p id="peopleNote" class="mini">Alleen collega's uit jouw gemachtigde hulpdienst zijn selecteerbaar.</p>
 <button class="secondary" id="showRecords">Opleidingshistoriek raadplegen</button><p class="mini">Via <strong>Wijzigen</strong> of <strong>Verwijderen</strong> kun je een registratie aanpassen of archiveren, voor zover je bevoegd bent. De audit blijft bewaard. De officiële personeelslijst en Discord-rollen wijzigen niet.</p><div id="records"></div>
-<h3>Opleiding registreren</h3><div class="two"><label>Opleiding<input id="course" maxlength="150" placeholder="Bijv. Motard-basisopleiding"></label><label>Datum<input id="date" type="date"></label></div><label>Resultaat<select id="result"><option value="in_opleiding">In opleiding</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option></select></label><label>Opmerkingen<textarea id="details" maxlength="1600" placeholder="Evaluatie en aandachtspunten"></textarea></label><button id="saveTraining">Registratie bewaren</button><button class="secondary" id="cancelEdit" hidden>Wijziging annuleren</button><p class="mini" id="editNotice" hidden></p><p class="mini" id="trainingNote"></p></section>
+<h3>Opleiding registreren</h3><div class="two"><label>Opleiding<select id="course"><option value="">Kies een opleiding…</option><option value="RADIO OPLEIDING (VERPLICHT)">RADIO OPLEIDING (VERPLICHT)</option><option value="RADIO OPLEIDING (VRIJWILLIG)">RADIO OPLEIDING (VRIJWILLIG)</option><option value="BASISCURSIS">BASISCURSIS</option><option value="GEWELDBEHEERSING">GEWELDBEHEERSING</option><option value="WAPENGEBRUIK">WAPENGEBRUIK</option><option value="VERKEERSBEGELEIDING">VERKEERSBEGELEIDING</option><option value="VERKEERSCONTROLE">VERKEERSCONTROLE</option><option value="PRIORITAIR RIJDEN">PRIORITAIR RIJDEN</option><option value="EHBO VOOR INTERVENIERENDEN">EHBO VOOR INTERVENIERENDEN</option><option value="BEVEILIGEN OPENBARE WEG">BEVEILIGEN OPENBARE WEG</option><option value="K-9">K-9</option><option value="RAGO">RAGO</option><option value="MOTARD">MOTARD</option><option value="MOTARD-OFF ROAD">MOTARD-OFF ROAD</option><option value="DISPATCH">DISPATCH</option><option value="BEVOEGDHEDEN TO">BEVOEGDHEDEN TO</option><option value="ERT AE-I">ERT AE-I</option><option value="ERT AE-T">ERT AE-T</option><option value="ERT-AE-F">ERT-AE-F</option><option value="ANDERE">ANDERE (zelf invullen)</option></select></label><label>Datum<input id="date" type="date"></label></div><label id="courseOtherWrap" hidden>Andere opleiding<input id="courseOther" maxlength="150" minlength="3" placeholder="Naam van de opleiding"></label><label>Resultaat<select id="result"><option value="in_opleiding">In opleiding</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option></select></label><label>Opmerkingen<textarea id="details" maxlength="1600" placeholder="Evaluatie en aandachtspunten"></textarea></label><button id="saveTraining">Registratie bewaren</button><button class="secondary" id="cancelEdit" hidden>Wijziging annuleren</button><p class="mini" id="editNotice" hidden></p><p class="mini" id="trainingNote"></p></section>
 <section class="panel" id="admin" hidden><h2>Uitzonderingen in machtigingen</h2><p>Alleen vooraf gemachtigd officierenkader of korpsleiding via Google. Je kunt je eigen rechten niet veranderen. Alle wijzigingen krijgen een auditvermelding.</p>
 <div class="two"><label>Discord ID medewerker<input id="target" maxlength="22" inputmode="numeric"></label><label>Hulpdienst<select id="overrideDept"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="dispatch">Dispatch</option></select></label></div>
 <div class="two"><label>Bevoegdheid<select id="perm"><option value="training.log">Opleidingen registreren</option><option value="training.review">Opleidingsregistratie controleren</option></select></label><label>Actie<select id="action"><option value="allow">Toekennen</option><option value="deny">Weigeren</option><option value="inherit">Uitzondering opheffen</option></select></label></div>
@@ -42,14 +42,64 @@ async function refresh(){
     $('permissionList').replaceChildren();for(const [dept,rights] of Object.entries(p.permissions)){const v=document.createElement('div');v.className='item';text(v,dept,'strong');text(v,'Registreren: '+(rights['training.log']?'ja':'nee'),'small');text(v,'Controleren: '+(rights['training.review']?'ja':'nee'),'small');$('permissionList').append(v)}
     $('trainingNote').textContent=p.trainingWritesEnabled?'Opslag ingeschakeld. Alleen binnen je bevoegde hulpdienst.':'Opslag voorlopig uit: BPD_ENABLE_TRAINING_WRITES=false.';
     $('saveTraining').disabled=!p.trainingWritesEnabled;
+    const allowed=Object.entries(p.permissions||{})
+      .filter(([,v])=>v['training.log']||v['training.review']).map(([d])=>d);
+    const desired=new URLSearchParams(location.search).get('department')||$('dept').value;
+    for(const option of $('dept').options)option.hidden=!allowed.includes(option.value);
+    if(allowed.includes(desired))$('dept').value=desired;
+    else if(!allowed.includes($('dept').value))$('dept').value=allowed[0]||'';
+    await refreshPeople();
     $('adminNote').textContent='Wijzigingen vereisen BPD_ENABLE_PERMISSION_WRITES=true en een vooraf gemachtigd account.';
   }catch(e){state(e.message,true)}
 }
 $('google').onclick=async()=>{try{await mods.signInWithPopup(auth,new mods.GoogleAuthProvider());await refresh()}catch(e){state('Google-aanmelding: '+(e.code||e.message),true)}};
 $('logout').onclick=async()=>{await mods.signOut(auth);await refresh()};
+let peopleNonce=0;
+async function refreshPeople(){
+  const n=++peopleNonce,dept=$('dept').value,select=$('subjectChoice');
+  $('subject').value='';select.replaceChildren(new Option('Personeelslijst laden…',''));
+  if(!dept||!profile?.permissions?.[dept]?.['training.log']&&
+      !profile?.permissions?.[dept]?.['training.review']){
+    $('peopleNote').textContent='Geen opleidingsrechten voor deze hulpdienst.';
+    return;
+  }
+  try{
+    const data=await api('/api/training/people?department='+encodeURIComponent(dept));
+    if(n!==peopleNonce)return;
+    const target=new URLSearchParams(location.search).get('discordId');
+    select.replaceChildren(new Option('Kies een collega…',''),
+      ...(data.people||[]).map(p=>new Option((p.call||'—')+' · '+p.name,p.discordId)));
+    if(target&&data.people?.some(p=>p.discordId===target))select.value=target;
+    $('subject').value=select.value;
+    $('peopleNote').textContent=(data.people?.length||0)+
+      ' personeelsleden beschikbaar binnen '+dept+'. Andere diensten blijven afgeschermd.';
+  }catch(e){
+    if(n!==peopleNonce)return;
+    select.replaceChildren(new Option('Personeelslijst niet beschikbaar',''));
+    $('peopleNote').textContent=e.message;
+  }
+}
+$('dept').onchange=()=>{cancelEdit();void refreshPeople()};
+$('subjectChoice').onchange=()=>{$('subject').value=$('subjectChoice').value};
 // Historiek: knoppen verschijnen uitsluitend als de API voor die registratie rechten bevestigt.
+function setCourse(name){
+  const course=String(name||'').trim(),select=$('course');
+  const known=[...select.options].some(o=>o.value===course&&o.value&&o.value!=='ANDERE');
+  select.value=known?course:course?'ANDERE':'';
+  $('courseOther').value=known?'':course;
+  syncCourseOther();
+}
+function syncCourseOther(){
+  const other=$('course').value==='ANDERE';
+  $('courseOtherWrap').hidden=!other;
+  $('courseOther').required=other;
+  if(!other)$('courseOther').value='';
+}
+$('course').onchange=syncCourseOther;
+function selectedCourse(){return ($('course').value==='ANDERE'?
+  $('courseOther').value:$('course').value).trim();}
 function cancelEdit(){
-  editing=null;$('dept').disabled=false;$('subject').disabled=false;
+  editing=null;$('dept').disabled=false;$('subjectChoice').disabled=false;
   $('saveTraining').textContent='Registratie bewaren';$('cancelEdit').hidden=true;
   $('editNotice').hidden=true;
 }
@@ -57,6 +107,7 @@ $('cancelEdit').onclick=cancelEdit;
 async function showRecords(){
   const dept=$('dept').value,subject=$('subject').value.trim();
   try{
+    if(!subject){$('records').textContent='Selecteer eerst een personeelslid.';return}
     const d=await api('/api/training/'+encodeURIComponent(dept)+'/'+encodeURIComponent(subject));
     $('records').replaceChildren();
     if(!d.records.length){text($('records'),'Nog geen registraties.','p');return}
@@ -72,8 +123,9 @@ async function showRecords(){
         const edit=document.createElement('button');edit.type='button';edit.className='secondary small-action';edit.textContent='Wijzigen';
         edit.onclick=()=>{
           editing={id:r.id,department:dept,discordId:subject};
-          $('dept').value=dept;$('subject').value=subject;$('dept').disabled=true;$('subject').disabled=true;
-          $('course').value=r.courseName;$('date').value=r.eventDate;$('result').value=r.result;$('details').value=r.details||'';
+          $('dept').value=dept;$('subject').value=subject;$('dept').disabled=true;
+          $('subjectChoice').disabled=true;
+          setCourse(r.courseName);$('date').value=r.eventDate;$('result').value=r.result;$('details').value=r.details||'';
           $('saveTraining').textContent='Wijziging bewaren';$('cancelEdit').hidden=false;
           $('editNotice').textContent='Je bewerkt een bestaande registratie. Geef bij bewaren een reden. De Discord-rollen en personeelslijst blijven onveranderd.';
           $('editNotice').hidden=false;$('course').focus();
@@ -107,7 +159,14 @@ async function showRecords(){
 $('showRecords').onclick=showRecords;
 $('saveTraining').onclick=async()=>{
   const button=$('saveTraining');if(button.disabled)return;
-  const values={department:$('dept').value,discordId:$('subject').value.trim(),courseName:$('course').value,
+  if(!$('subject').value){
+    $('trainingNote').textContent='Kies eerst een personeelslid binnen je hulpdienst.';return;
+  }
+  const courseName=selectedCourse();
+  if(courseName.length<3||courseName.length>150){
+    $('trainingNote').textContent='Kies een opleiding of vul bij ANDERE de naam in.';return;
+  }
+  const values={department:$('dept').value,discordId:$('subject').value.trim(),courseName,
     eventDate:$('date').value,result:$('result').value,details:$('details').value};
   let url='/api/training',method='POST';
   if(editing){
