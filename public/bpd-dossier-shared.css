@@ -1,0 +1,125 @@
+/* BelgiumPD unified personnel dossier visuals.
+   Shared by Police, Brandweer, Ambulance and Depannage.
+   Presentation only: no permission or API changes. */
+body.bpd-unified-dossier {
+  --dossier-bg: #091529;
+  --dossier-card: #122744;
+  --dossier-inner: #193555;
+  --dossier-border: #395a7f;
+  --dossier-accent: #83adff;
+  --dossier-muted: #bad0ec;
+  background: var(--dossier-bg);
+  color: #eaf2ff;
+}
+body.bpd-unified-dossier #panel,
+body.bpd-unified-dossier #mainCard,
+body.bpd-unified-dossier .dossier-panel,
+body.bpd-unified-dossier .dossier-pane {
+  border-color: var(--dossier-border);
+}
+body.bpd-unified-dossier #panel,
+body.bpd-unified-dossier .dossier-panel {
+  background: var(--dossier-card);
+  border-radius: 12px;
+}
+/* Six consistent identity cells; the police page renders them dynamically. */
+body.bpd-unified-dossier .sheet-identity,
+body.bpd-unified-dossier #mainCard .grid {
+  display: grid;
+  grid-template-columns: repeat(6,minmax(0,1fr));
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+body.bpd-unified-dossier .sheet-identity > div,
+body.bpd-unified-dossier #mainCard .grid > div {
+  min-width: 0;
+  padding: 11px 12px;
+  background: var(--dossier-inner);
+  border: 1px solid var(--dossier-border);
+  border-radius: 8px;
+}
+body.bpd-unified-dossier .sheet-identity > div:last-child { border-right: 1px solid var(--dossier-border); }
+body.bpd-unified-dossier .sheet-identity small,
+body.bpd-unified-dossier #mainCard .grid small {
+  display: block;
+  margin: 0 0 5px;
+  color: #abc8ec;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+body.bpd-unified-dossier .sheet-identity strong,
+body.bpd-unified-dossier #mainCard .grid strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.25;
+  color: #f4f8ff;
+  overflow-wrap: anywhere;
+}
+body.bpd-unified-dossier .dossier-tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 9px 0 12px;
+  margin: 10px 0 0;
+  border-bottom: 1px solid var(--dossier-border);
+}
+body.bpd-unified-dossier .dossier-tabbar button {
+  padding: 8px 11px;
+  min-height: 34px;
+  background: #1c3655;
+  border: 1px solid #4b6b91;
+  border-radius: 7px;
+  color: #dfedff;
+  font-size: 12px;
+  font-weight: 650;
+}
+body.bpd-unified-dossier .dossier-tabbar button[aria-selected="true"] {
+  background: #315dd1;
+  border-color: #8fabff;
+  color: white;
+}
+body.bpd-unified-dossier .dossier-tabbar button:focus-visible {
+  outline: 2px solid #b7d5ff;
+  outline-offset: 2px;
+}
+body.bpd-unified-dossier .landscape-cell,
+body.bpd-unified-dossier .summary-grid > div {
+  min-width: 0;
+  background: var(--dossier-inner);
+  border: 1px solid var(--dossier-border);
+  border-radius: 9px;
+  padding: 12px 13px;
+}
+body.bpd-unified-dossier .landscape-cell h3,
+body.bpd-unified-dossier .summary-grid h3 {
+  color: white;
+  font-size: 14px;
+  margin: 4px 0 9px;
+}
+body.bpd-unified-dossier .dossier-panel {
+  padding: 15px 17px;
+  margin: 12px 0;
+}
+body.bpd-unified-dossier .dossier-panel h2,
+body.bpd-unified-dossier .dossier-pane h3 {
+  color: #eff6ff;
+}
+@media(max-width:1100px) {
+ body.bpd-unified-dossier .sheet-identity,
+ body.bpd-unified-dossier #mainCard .grid {
+   grid-template-columns: repeat(3,minmax(0,1fr));
+ }
+}
+@media(max-width:650px) {
+ body.bpd-unified-dossier .sheet-identity,
+ body.bpd-unified-dossier #mainCard .grid {
+   grid-template-columns: repeat(2,minmax(0,1fr));
+ }
+ body.bpd-unified-dossier .summary-grid { grid-template-columns: 1fr; }
+}
