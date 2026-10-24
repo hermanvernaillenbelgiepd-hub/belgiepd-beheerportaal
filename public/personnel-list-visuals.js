@@ -166,6 +166,21 @@
     const fallback=()=>nameCompare||
       String(a?.dept||'').localeCompare(String(b?.dept||''),'nl')||
       String(a?.discordId||a?.personId||'').localeCompare(String(b?.discordId||b?.personId||''),'nl');
+    // BelgiumPD: hoogste honderdreeks eerst, binnen die reeks oplopend.
+    // Bijvoorbeeld 900, 910, 920, 930, daarna 800..., 700..., 600...
+    // Bestuursnummer 008 blijft altijd onderaan.
+    if(mode==='series-desc'){
+      const aSpecial=reservedCall(a?.call),bSpecial=reservedCall(b?.call);
+      if(aSpecial!==bSpecial)return aSpecial?1:-1;
+      const aNum=callNumber(a?.call),bNum=callNumber(b?.call);
+      if((aNum===null)!==(bNum===null))return aNum===null?1:-1;
+      if(aNum!==null&&bNum!==null){
+        const groupA=Math.floor(aNum/100),groupB=Math.floor(bNum/100);
+        if(groupA!==groupB)return groupB-groupA;
+        if(aNum!==bNum)return aNum-bNum;
+      }
+      return fallback();
+    }
     if(mode==='name-asc'||mode==='name-desc')
       return (mode==='name-desc'?-nameCompare:nameCompare)||
         String(a?.call||'').localeCompare(String(b?.call||''),'nl',{numeric:true})||fallback();
