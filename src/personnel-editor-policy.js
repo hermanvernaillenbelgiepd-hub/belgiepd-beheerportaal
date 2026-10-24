@@ -115,6 +115,27 @@ export function canChangePersonnelStatus(actor,person){
      person.dept!=='politie')return false;
   return ['Agentenkader','Basiskader'].includes(policeKader(person.rank));
 }
+// Middenkader mag uitsluitend de naam van eigen lager politiekader corrigeren.
+export function canRenameLowerPolice(actor,person){
+  return Boolean(person?.dept==='politie'&&validPersonnelKey(person.dept,person.personId)&&
+    actor?.uid==='discord:'+actor?.discordId&&
+    actor?.discordId!==person.personId&&actor?.role==='middenkader'&&
+    roleForDepartment(actor,'politie')==='middenkader'&&
+    Array.isArray(actor?.dossierNativeDepartments)&&
+    actor.dossierNativeDepartments.includes('politie')&&
+    canReadPersonnelSubject(actor,person)&&
+    ['Agentenkader','Basiskader'].includes(policeKader(person.rank)));
+}
+export function validateLowerPoliceRename(body){
+  if(!body||typeof body!=='object'||Array.isArray(body)||
+    Object.keys(body).some(x=>!['name','reason','expectedRevision'].includes(x)))
+    throw Error('Alleen naam, motivering en revisie zijn toegestaan');
+  const name=checkedText(body.name,2,120,'Naam');
+  const reason=checkedText(body.reason,15,500,'Motivering');
+  if(!Number.isSafeInteger(body.expectedRevision)||body.expectedRevision<0)
+    throw Error('Vernieuw eerst de personeelsfiche');
+  return {name,reason,expectedRevision:body.expectedRevision};
+}
 function checkedText(value,min,max,name){
   const text=TRIM(value);
   if(!text||text.length<min||text.length>max||/[\x00-\x1f\x7f<>]/.test(text))
