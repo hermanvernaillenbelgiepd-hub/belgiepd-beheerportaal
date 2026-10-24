@@ -27,7 +27,7 @@ tbody tr:nth-child(2n){background:#183450}
 <div class="panel">
 <a class="login-link" id="discordLogin" href="/auth/discord/start?return=%2Fpersoneelslijst.html" hidden>Inloggen met Discord om personeelslijst te bekijken →</a>
 <div class="filters"><div><label for="search">Zoeken</label><input id="search" placeholder="Roepnummer, naam, rang of reeks"></div>
-<div><label for="sort">Sorteren</label><select id="sort"><option value="desc">Roepnummer aflopend</option><option value="asc">Roepnummer oplopend</option><option value="name">Naam A–Z</option></select></div>
+<div><label>Vaste volgorde</label><small>Hoogste reeks eerst, binnen elke reeks oplopend · 008 laatst</small></div>
 <button id="refresh" type="button">Vernieuwen</button></div>
 <p id="message" role="status" aria-live="polite">Personeelslijst laden…</p>
 <div class="tablewrap"><table><thead><tr><th>CALL</th><th>Personeelslid</th><th>Rang</th><th>Reeks / kader</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table></div>
@@ -40,8 +40,6 @@ function render(){
  const q=$('search').value.toLocaleLowerCase('nl').trim();
  const rows=people.filter(p=>[p.call,p.name,p.rank,p.series,p.status].some(s=>
    String(s||'').toLocaleLowerCase('nl').includes(q)));
- if($('sort').value==='asc')rows.reverse();
- if($('sort').value==='name')rows.sort((a,b)=>a.name.localeCompare(b.name,'nl'));
  const root=$('rows');root.replaceChildren();
  for(const p of rows){
   const tr=document.createElement('tr');
@@ -69,7 +67,7 @@ async function load(){
  }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
  finally{$('refresh').disabled=false}
 }
-$('search').oninput=render;$('sort').onchange=render;$('refresh').onclick=load;
+$('search').oninput=render;$('refresh').onclick=load;
 try{
  const config=await(await fetch('/api/client-config',{cache:'no-store'})).json();
  if(!config.enabled)throw Error('Aanmelding tijdelijk niet beschikbaar');
