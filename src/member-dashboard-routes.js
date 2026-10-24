@@ -43,8 +43,12 @@ export function publicPoliceRoster(rows){
     if(special(a.call)!==special(b.call))return special(a.call)?1:-1;
     const x=callNumber(a.call),y=callNumber(b.call);
     if((x===null)!==(y===null))return x===null?1:-1;
-    return (x!==null&&y!==null?y-x:0)||
-      a.call.localeCompare(b.call,'nl',{numeric:true})||
+    if(x!==null&&y!==null){
+      const groupDiff=Math.floor(y/100)-Math.floor(x/100);
+      if(groupDiff)return groupDiff;
+      if(x!==y)return x-y;
+    }
+    return a.call.localeCompare(b.call,'nl',{numeric:true})||
       a.name.localeCompare(b.name,'nl');
   });
   return visible.slice(0,400);
