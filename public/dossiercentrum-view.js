@@ -13,7 +13,7 @@ export function filterDossiers(rows,filters={}){
     (!query||[r.name,r.call,r.rank,r.status,r.discordId]
       .some(v=>normalized(v).includes(query))));
 }
-export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-bpd','callsign-desc','callsign-asc','name-asc','name-desc']);
+export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-bpd','callsign-fire','callsign-desc','callsign-asc','name-asc','name-desc']);
 // Compare numerical parts as numbers: e.g. 930 > 404 > 99, including mixed
 // prefixes like SANTO-930 and SANTO-99. Unknown callsigns stay at the bottom.
 const dossierCollator=new Intl.Collator('nl-BE',{numeric:true,sensitivity:'base'});
@@ -40,11 +40,40 @@ const bpdCallCompare=(left,right)=>{
   return a.bucket-b.bucket||b.series-a.series||a.number-b.number||
     compareFilled(left,right);
 };
+// Brandweer ordering follows operational Sheet sequence.
+export function fireCallGroup(value){
+ const v=String(value||'').trim().toUpperCase().replaceAll(' ','');
+ let group=6,num=999;
+ if(v==='ZONE'||v==='ZONECOMMANDANT'||v==='ZONECOMMANDANTE') {group=0;num=0;}
+ else{
+  const parts=v.split('-'),prefix=parts.length===2?parts[0]:v.replace(/[0-9]/g,''),
+    n=Number(parts.length===2?parts[1]:v.slice(prefix.length));
+  if(Number.isInteger(n)){
+   if(prefix==='OFF'&&n>=2&&n<=6)group=1;
+   if(prefix==='OOFF'&&n>=8&&n<=15)group=2;
+   if((prefix==='BWM'||prefix==='BMW')&&n>=1&&n<=5)group=3;
+   if((prefix==='BWM'||prefix==='BMW')&&n>=6&&n<=25)group=4;
+   if(prefix==='STAG'&&n>=1&&n<=21)group=5;
+   if(group!==6)num=n;
+  }
+ }
+ const labels=['ZONECHEF · ZONECOMMANDANT(E)','HOGER KADER · OFF-02 t/m OFF-06',
+ 'MIDDENKADER · OOFF-08 t/m OOFF-15',
+ 'BASISKADER · Korporaal (BWM-01 t/m BWM-05)',
+ 'BASISKADER · Brandweerman/vrouw (BWM-06 t/m BWM-25)',
+ 'STAGIAIRS · STAG-01 t/m STAG-21','OVERIGE BRANDWEER'];
+ return {group,number:num,label:labels[group]};
+}
+const fireCallCompare=(x,y)=>{
+ const a=fireCallGroup(x),b=fireCallGroup(y);
+ return a.group-b.group||a.number-b.number||compareFilled(x,y);
+};
 export function sortDossiers(rows,order='callsign-bpd'){
   const mode=DOSSIER_SORT_OPTIONS.includes(order)?order:'callsign-bpd';
   const byName=mode.startsWith('name-'),direction=mode.endsWith('-desc')?-1:1;
   return [...(Array.isArray(rows)?rows:[])].sort((a,b)=>{
-    const main=mode==='callsign-bpd'?bpdCallCompare(a?.call,b?.call):byName
+    const main=mode==='callsign-fire'?fireCallCompare(a?.call,b?.call):
+      mode==='callsign-bpd'?bpdCallCompare(a?.call,b?.call):byName
       ?compareFilled(a?.name,b?.name,direction)
       :compareFilled(a?.call,b?.call,direction);
     if(main)return main;
