@@ -74,34 +74,36 @@ export function installCallsignSelfServiceRoutes(app,{getSnapshot}){
     if(Object.keys(raw).some(k=>!['name','temporaryCall'].includes(k)))
       return res.status(400).json({error:'Onbekende aanvraagvelden'});
     let data;
-    try{data=checkApplicant({name:raw.name,temporaryCall:raw.temporaryCall,discordId:id})}
+    try{data=checkApplicant({name:raw.name,temporaryCall:raw.temporaryCall,discordId:id},{allowMissingTemporary:true})}
     catch(error){return res.status(400).json({error:error.message})}
     try{
       const snap=await getSnapshot();
       if(snap.stale)return res.status(503).json({error:'Personeelslijst is tijdelijk niet actueel'});
       if(snap.data.some(p=>p.dept==='politie'&&p.personId===id))
         return res.status(409).json({error:'Je staat al in de politiepersoneelslijst'});
-      if(snap.data.some(p=>p.dept==='politie'&&String(p.call||'')===data.temporaryCall&&p.personId!==id))
+      if(data.temporaryCall&&snap.data.some(p=>p.dept==='politie'&&String(p.call||'')===data.temporaryCall&&p.personId!==id))
         return res.status(409).json({error:'Dit tijdelijke roepnummer wordt al gebruikt. Kies een ander nummer'});
-      const existing=await db().collection('bpd_callsign_requests')
-        .where('temporaryCall','==',data.temporaryCall).get();
-      if(existing.docs.some(doc=>doc.id!==id&&
-        !['rejected'].includes(doc.get('status'))))
-        return res.status(409).json({error:'Dit tijdelijke roepnummer is al gereserveerd of aangevraagd'});
+      if(data.temporaryCall){
+        const existing=await db().collection('bpd_callsign_requests')
+          .where('temporaryCall','==',data.temporaryCall).get();
+        if(existing.docs.some(doc=>doc.id!==id&&
+          !['rejected'].includes(doc.get('status'))))
+          return res.status(409).json({error:'Dit tijdelijke roepnummer is al gereserveerd of aangevraagd'});
+      }
       const reqRef=db().collection('bpd_callsign_requests').doc(id);
       const proofRef=db().collection('bpd_callsign_eligibility_proofs').doc(id);
-      const callRef=db().collection('bpd_temporary_call_reservations').doc(data.temporaryCall);
+      const callRef=data.temporaryCall?db().collection('bpd_temporary_call_reservations').doc(data.temporaryCall):null;
       await db().runTransaction(async tx=>{
         const [request,proof,call]=await Promise.all([
-          tx.get(reqRef),tx.get(proofRef),tx.get(callRef)
+          tx.get(reqRef),tx.get(proofRef),callRef?tx.get(callRef):Promise.resolve(null)
         ]);
         if(request.exists)throw Object.assign(Error('Je hebt al een aanvraag of vast roepnummer'),{status:409});
         if(!recentVerifiedProof(proof.data(),id))
           throw Object.assign(Error('Eerst 5 dagen én 10 speeluren via de bot laten bevestigen'),{status:403});
-        if(call.exists&&call.get('discordId')!==id)
+        if(call?.exists&&call.get('discordId')!==id)
           throw Object.assign(Error('Dit tijdelijke roepnummer is al gereserveerd'),{status:409});
         const at=FieldValue.serverTimestamp();
-        if(!call.exists)tx.create(callRef,{discordId:id,createdAt:at,source:'selfservice'});
+        if(callRef&&!call.exists)tx.create(callRef,{discordId:id,createdAt:at,source:'selfservice'});
         tx.create(reqRef,{...data,status:'verified',
           verification:{...proof.data(),source:'fivem-bot-en-discord-api'},
           submittedBy:{discordId:id,name:data.name,call:data.temporaryCall},
