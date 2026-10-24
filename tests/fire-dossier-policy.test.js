@@ -14,6 +14,9 @@ test('Brandweer Discord role evidence must be fresh and guild-bound',()=>{
  assert.equal(fireSubjectClass(subject,basic),'member');
  assert.equal(fireSubjectClass(subject,middle),'middle');
  assert.equal(fireSubjectClass(subject,leadership),'leadership');
+ assert.equal(fireSubjectClass({...subject,call:'OOFF-08'},basic),'middle');
+ assert.equal(fireSubjectClass({...subject,call:'OOFF-15'},basic),'middle');
+ assert.equal(fireSubjectClass({...subject,call:'ZONE'},basic),'leadership');
 });
 test('Middenkader sees lower staff identity only, not confidential registrations',()=>{
  const actor={departments:['brandweer'],fireAccessLevel:'middle'};
