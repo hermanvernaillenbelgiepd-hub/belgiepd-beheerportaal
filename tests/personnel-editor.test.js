@@ -150,7 +150,8 @@ test('900 en 910 blijven zichtbaar in roster zonder toegang tot afgeschermde lei
   const {policeKader}=await import('../src/normalize.js');
   const {dossierScopes,dossierOverviewRows}=await import('../src/dossier-center-policy.js');
   const actor={...officer,role:'middenkader',
-    departmentRoles:{politie:'middenkader'},dossierAllowedDepartments:['politie']};
+    departmentRoles:{politie:'middenkader'},dossierAllowedDepartments:['politie'],
+    verifiedPoliceSubjectRoles:{[id]:'Officierenkader'}};
   const highChief={...staff,personId:'111111111111111111',name:'Thijs',
     call:'900',rank:'Eerste Hoofdcommissaris van Politie (1HCP)'};
   const firstCommissioner={...staff,personId:'222222222222222222',name:'Extra',
