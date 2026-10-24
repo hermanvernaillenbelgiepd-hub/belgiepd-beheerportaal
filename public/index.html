@@ -163,38 +163,100 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
 </main>
 </div></div>
 <script type="module">
-/* Navigatie uitsluitend zichtbaar na servergecontroleerde roltoets.
-   De doelmodules blijven hun eigen autorisatie afdwingen. */
-const adminSection=document.getElementById('adminRights');
-const logoutButton=document.getElementById('dashboardLogout');
-try{
-  const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
-  if(config.enabled){
-    const {initializeApp,getApps,getApp}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
-    const {getAuth,onAuthStateChanged,signOut}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
-    const app=getApps().length?getApp():initializeApp(config.firebaseConfig);
-    const auth=getAuth(app);
-    logoutButton.onclick=async()=>{
-      if(!auth.currentUser)return;
-      logoutButton.disabled=true;
-      try{await signOut(auth);window.location.assign('/discord-status.html')}
-      catch{logoutButton.disabled=false;window.alert('Uitloggen is niet gelukt. Probeer opnieuw.')}
-    };
-    onAuthStateChanged(auth,async user=>{
-      logoutButton.disabled=!user;
-      adminSection.hidden=true;
-      if(!user)return;
-      try{
-        const token=await user.getIdToken();
-        const response=await fetch('/api/dashboard/admin-visibility',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
-        if(!response.ok)return;
-        const ctx=await response.json();
-        const authorized=ctx.visible===true;
-        adminSection.hidden=!authorized;
-      }catch{adminSection.hidden=true}
-    });
+const $=id=>document.getElementById(id);
+const staffNav=$('staffNav'),memberNav=$('memberNav'),staffHome=$('staffDashboard');
+const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
+const adminSection=$('adminRights'),logoutButton=$('dashboardLogout');
+let auth,requestNumber=0;
+function show(mode,message=''){
+ staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';
+ staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';
+ guestHome.hidden=mode!=='guest';adminSection.hidden=true;
+ if(message)$('guestMessage').textContent=message;
+}
+function previewRoster(records,stale){
+ const tbody=$('memberRosterRows');tbody.replaceChildren();
+ for(const p of records.slice(0,12)){
+  const tr=document.createElement('tr');
+  for(const key of ['call','name','rank','series','status']){
+   const td=document.createElement('td');td.textContent=String(p[key]||'—');tr.append(td);
   }
-}catch{adminSection.hidden=true}
+  tbody.append(tr);
+ }
+ $('memberRosterStatus').textContent=records.length?
+  records.length+' personeelsleden in het openbare ledenoverzicht'+
+  (stale?' (bron niet actueel)':''):
+  'Geen personeelsleden gevonden in de centrale lijst.';
+}
+async function authorizedFetch(path,token){
+ const response=await fetch(path,{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'De server kon je account niet controleren');
+ return data;
+}
+async function displayAuthenticated(user){
+ const turn=++requestNumber;
+ adminSection.hidden=true;
+ if(!user){show('guest','Meld je aan met Discord via Mijn profiel.');return;}
+ if(!user.uid?.startsWith('discord:')){
+  // Existing Google emergency sign-ins retain their established interface.
+  show('staff');return;
+ }
+ try{
+  const token=await user.getIdToken();
+  const details=await authorizedFetch('/api/member/dashboard',token);
+  if(turn!==requestNumber)return;
+  if(details.mode==='member'){
+    show('member');
+    $('memberAccountStatus').textContent=details.hasPersonnelRecord?
+      'Je Discord-identiteit is bekend. Je beschikt momenteel over de startfuncties voor het Agentenkader.':
+      'Je Discord-account is bevestigd. Je kunt de personeelslijst zien en controleren of je een vast roepnummer kunt aanvragen.';
+    const [roster,eligibility]=await Promise.allSettled([
+      authorizedFetch('/api/member/personnel-list',token),
+      authorizedFetch('/api/callsigns/self/status',token)
+    ]);
+    if(turn!==requestNumber)return;
+    if(roster.status==='fulfilled')previewRoster(roster.value.records||[],roster.value.stale===true);
+    else $('memberRosterStatus').textContent='Personeelslijst tijdelijk niet beschikbaar. Probeer de volledige lijst.';
+    if(eligibility.status==='fulfilled'){
+      const c=eligibility.value;
+      $('memberAccountStatus').textContent=c.request?
+        'Je vaste-roepnummeraanvraag staat op: '+String(c.request.status||'In behandeling')+'. Bekijk Mijn profiel of de aanvraagpagina voor meer informatie.':
+        c.eligible&&c.requestsEnabled?
+          '5 kalenderdagen en 10 speeluren zijn bevestigd: je kunt een vast roepnummer aanvragen.':
+          'Mijn profiel is bereikbaar. Voor een vast roepnummer zijn een botcontrole van 5 kalenderdagen en 10 speeluren vereist.';
+    }
+  }else if(details.mode==='staff'){
+    show('staff');
+    try{
+      const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
+      if(turn===requestNumber)adminSection.hidden=ctx.visible!==true;
+    }catch{adminSection.hidden=true}
+  }else show('guest','Je portaaltoegang moet eerst worden gecontroleerd. Vernieuw je Discord-verificatie in Mijn profiel.');
+ }catch(err){
+  if(turn===requestNumber)show('guest','De aanmelding kon niet worden bevestigd: '+err.message+'. Open Mijn profiel om opnieuw te verifiëren.');
+ }
+}
+show('guest','Je aanmelding wordt gecontroleerd…');
+try{
+ const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+ if(!cfg.enabled)throw Error('De aanmeldservice is niet beschikbaar');
+ const {initializeApp,getApps,getApp}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+ const {getAuth,onAuthStateChanged,signOut}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+ const app=getApps().length?getApp():initializeApp(cfg.firebaseConfig);auth=getAuth(app);
+ logoutButton.onclick=async()=>{
+  if(!auth.currentUser)return;
+  logoutButton.disabled=true;
+  try{await signOut(auth);window.location.assign('/discord-status.html')}
+  catch{logoutButton.disabled=false;window.alert('Uitloggen is niet gelukt. Probeer opnieuw.')}
+ };
+ onAuthStateChanged(auth,user=>{
+  logoutButton.disabled=!user;
+  displayAuthenticated(user);
+ });
+}catch{
+ show('guest','De aanmelding kon niet worden gecontroleerd. Ga naar Mijn profiel om je Discord-account te koppelen.');
+}
 </script>
 <script defer src="/bpd-navigation.js"></script>
 </body></html>
