@@ -646,6 +646,13 @@ function availablePersonnelRegistrationKinds(){
 }
 function displaySelectedRegistration(){
   const kind=$('registrationKind').value;
+  const trainingDestination=$('trainingDestination');
+  trainingDestination.hidden=!['training','case:opleiding'].includes(kind);
+  if(kind==='training'){
+    trainingDestination.textContent='Opslag: opleidingsregister. Het resultaat (in opleiding, geslaagd of niet geslaagd) wordt in de opleidingshistoriek bewaard. Deze registratie verschijnt niet automatisch in het weekrapport en wijzigt geen personeelsrang of Discord-rol.';
+  }else if(kind==='case:opleiding'){
+    trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
+  }
   // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
   // wanneer de gebruiker naar een ander registratietype omschakelt.
   if(kind!=='sanctie'&&formalEditId!==null){
@@ -792,7 +799,7 @@ function setupDossierTabs(){
       <div id="sheetObservations" class="sheet-records">Observaties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="training">
-      <h3>Voltooide opleidingen</h3>
+      <h3>Voltooide opleidingen <a class="training-register-link" href="/rollen-opleidingen.html" title="Bekijk de afzonderlijke opleidingshistoriek">Opleidingsregister ↗</a></h3>
       <div id="sheetTraining" class="sheet-records">Opleidingen laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="basisNotes">
@@ -827,6 +834,7 @@ function setupDossierTabs(){
         <p id="registrationKindHint" role="status">De beschikbare categorieën worden bepaald door je goedgekeurde rol binnen deze hulpdienst.</p>
         <p id="registrationAccessHint" class="registration-access-hint" role="status" aria-live="polite"></p>
       </div>
+      <p id="trainingDestination" class="training-destination" role="status" aria-live="polite" hidden></p>
       <div id="registrationFields" class="registration-hub-fields"></div>
       <button type="button" id="registrationSubmit">Registratie opslaan</button>
     </section>
