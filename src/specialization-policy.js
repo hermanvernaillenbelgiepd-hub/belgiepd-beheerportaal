@@ -16,6 +16,13 @@ export function canChangeSpecialty(actor,subject){
   // More restrictive than general personnel editing:
   // exactly officers and corps leadership in POLICE, never technical beheerder,
   // middle cadre, other services or the staff member themself.
+  // ZONE may alter fire specializations across the verified fire service.
+  // Neither fire leadership nor middle cadre can do this.
+  if(subject?.dept==='brandweer')return Boolean(
+    actor?.fireZoneChief===true&&actor?.departments?.includes('brandweer')&&
+    actor?.dossierNativeDepartments?.includes('brandweer')&&
+    actor?.discordId!==subject.personId&&
+    canEditPersonnel(actor,subject));
   if(subject?.dept!=='politie')return false;
   if(!['officierenkader','korpsleiding'].includes(actor?.role))return false;
   if(!['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie')))return false;
