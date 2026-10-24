@@ -2,7 +2,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
-  canViewPersonnel,canEditPersonnel,canEditGeneralPersonnelInfo,canChangePersonnelStatus,validatePersonnelChange,mergePersonnelEdits,
+  canViewPersonnel,canReadPersonnelSubject,canEditPersonnel,canEditGeneralPersonnelInfo,canChangePersonnelStatus,validatePersonnelChange,mergePersonnelEdits,
   currentPersonnelAuditActor,personnelCallClaimId} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
   personnelDataEnabled,personnelCreationEnabled,canCreatePersonnel,canAuthoriseExceptionalPoliceRank,
@@ -13,6 +13,7 @@ import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
+import {displaySeries} from './normalize.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
 const asTime=x=>x?.toDate?.().toISOString?.()||null;
@@ -35,7 +36,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         personnelDataEnabled(process.env)?getFirestore().collection(PENDING_PERSONNEL_COLLECTION)
           .limit(500).get():Promise.resolve({docs:[],size:0})
       ]);
-      const base=snapshot.data.filter(p=>allowed.includes(p.dept));
+      const base=snapshot.data.filter(p=>allowed.includes(p.dept)&&canReadPersonnelSubject(req.bpd,p));
       const overlay=edits.docs.map(d=>d.data());
       const records=mergePersonnelEdits(base,overlay).map(p=>{
         const edit=overlay.find(e=>e.dept===p.dept&&e.discordId===p.personId);
@@ -44,7 +45,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           canAuthoriseExceptionalPoliceRank(req.bpd,'politie'));
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
           canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
-          series:p.series,status:p.status,
+          series:displaySeries(p.seriesRaw??p.series,p.rank,p.dept,p.call),status:p.status,
           // Presentation-only specialties from the already-authorized Sheets
           // roster. Do not treat these values as Discord role grants.
           specialties:Array.isArray(p.specialties)?p.specialties.slice(0,16)
@@ -84,7 +85,10 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       }
       const labelledRecords=records.map(p=>({...p,
         discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
-          roleLabels.get(p.discordId)||null:null}));
+          roleLabels.get(p.discordId)||null:null}))
+        .filter(p=>p.discordCadre!=='Korpsleiding'||
+          req.bpd.boardPersonnelAdmin===true||
+          req.bpd.role==='korpsleiding');
       const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
         .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
       return res.json({records:labelledRecords,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
@@ -377,6 +381,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const matches=snap.data.filter(p=>p.dept===req.params.dept&&p.personId===req.params.discordId);
       if(matches.length!==1)throw userError(409,'Geen eenduidige bestaande personeelsfiche gevonden');
       const subject=matches[0];
+      if(!canReadPersonnelSubject(req.bpd,subject))throw userError(403,'Dossier van Korpsleiding is afgeschermd');
       if(!canEditGeneralPersonnelInfo(req.bpd,subject))
         throw userError(403,'Alleen bevoegd Officierenkader, Korpsleiding of geverifieerd Bestuur mag algemene personeelsinformatie wijzigen');
       if(snap.data.some(p=>p.dept===subject.dept&&p.personId!==subject.personId&&
@@ -424,8 +429,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
     if(!canReadServiceDossier(req.bpd,req.params.dept))return error(res,403,'Geen toegang tot dit dienstdossier');
     try{
       const snap=await getSnapshot();
-      if(!snap.data.some(p=>p.dept===req.params.dept&&p.personId===req.params.discordId))
-        return error(res,404,'Personeelsfiche niet gevonden');
+      const target=snap.data.find(p=>p.dept===req.params.dept&&p.personId===req.params.discordId);
+      if(!target)return error(res,404,'Personeelsfiche niet gevonden');
+      if(!canReadPersonnelSubject(req.bpd,target))return error(res,403,'Dossier van Korpsleiding is afgeschermd');
       const key=req.params.dept+'_'+req.params.discordId;
       const editLog=collection().doc(key).collection('audit');
       const createLog=getFirestore().collection(CREATED_PERSONNEL_COLLECTION)
