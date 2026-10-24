@@ -387,7 +387,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <p class="subtle">Wordt opgeslagen in het bestaande kaderregister met jouw identiteit en tijdstip en opgenomen in het dynamische weekrapport. Een dossierregistratie past de effectieve naam, rang of bevoegdheden niet automatisch aan: gebruik daarvoor Personeelsgegevens of Specialisaties.</p>
 <div class="grid">
 <div><label for="staffCaseType">Type</label><select id="staffCaseType">
-<option value="notitie">Belangrijke notitie</option><option value="activiteit">Dienstactiviteit</option>
+<option value="notitie">Belangrijke notitie</option>
 <option value="specialisatiebeperking">Beperking van specialisatie</option>
 <option value="opleiding">Gevolgde opleiding</option><option value="verlof">Verlofnotitie</option>
 <option value="promotievoorstel">Promotievoorstel</option>
@@ -554,14 +554,24 @@ let registrationManualLeave=false,registrationSpecialty=false,
   registrationSaving=false,registrationSubjectKey='';
 const registrationModuleStates={cases:'laden',training:'laden',specialty:'laden',functions:'laden'};
 const registrationForms=[
-  'staffFormalForm','staffCaseForm','staffTrainingForm',
-  'staffManualLeaveForm','specialtyEdit','functionChangeForm'
+  'staffFormalForm','staffCaseForm','staffTrainingForm','staffManualLeaveForm'
 ];
+// Specialisatie- en functiewijzigingen zijn beheeracties, geen dossierregistraties.
+function syncDossierMaintenance(){
+  const specialty=registrationSpecialty===true;
+  const functions=functionCanEdit===true;
+  const area=$('dossierMaintenance'),specialtySection=$('specialtyAdmin'),functionSection=$('functionAdmin');
+  specialtySection.hidden=!specialty;functionSection.hidden=!functions;
+  area.hidden=!(specialty||functions);
+  if(!specialty)specialtySection.open=false;
+  if(!functions)functionSection.open=false;
+  $('specialtyEdit').hidden=!(specialty&&specialtySection.open);
+  $('functionChangeForm').hidden=!(functions&&functionSection.open);
+}
 function registrationFormFor(kind){
   if(['observatie','sanctie'].includes(kind))return 'staffFormalForm';
   if(kind.startsWith('case:'))return 'staffCaseForm';
-  return ({training:'staffTrainingForm',leave:'staffManualLeaveForm',
-    specialty:'specialtyEdit',function:'functionChangeForm'})[kind]||null;
+  return ({training:'staffTrainingForm',leave:'staffManualLeaveForm'})[kind]||null;
 }
 function availablePersonnelRegistrationKinds(){
   const dept=selected?.dept;
@@ -575,6 +585,8 @@ function availablePersonnelRegistrationKinds(){
   }
   if(casePermissions?.writesEnabled===true&&casePermissions.actor){
     for(const type of casePermissions.typesByDepartment?.[dept]||[]){
+      // Dienstactiviteiten worden op de operationele rapportage geregistreerd.
+      if(type==='activiteit')continue;
       const text=staffCaseLabels[type]||type;
       kinds.push(['case:'+type,
         type==='verlof'?'Verlofnotitie (geen verlofaanvraag)':
@@ -585,8 +597,6 @@ function availablePersonnelRegistrationKinds(){
       trainingRights.permissions?.[dept]?.['training.log']===true)
     kinds.push(['training','Opleiding registreren']);
   if(registrationManualLeave)kinds.push(['leave','Verlofperiode manueel inschrijven']);
-  if(registrationSpecialty)kinds.push(['specialty','Specialisatie wijzigen']);
-  if(functionCanEdit)kinds.push(['function','Functie wijzigen']);
   return kinds;
 }
 function displaySelectedRegistration(){
@@ -603,7 +613,10 @@ function displaySelectedRegistration(){
   for(const id of registrationForms)$(id).hidden=true;
   $('formalWriteStatus').hidden=!['observatie','sanctie'].includes(kind);
   $('registrationSubmit').hidden=!permitted;
-  if(!permitted)return;
+  if(!permitted){
+    $('registrationKindHint').textContent='Kies een registratie om de invoervelden te openen.';
+    return;
+  }
   const formId=registrationFormFor(kind);
   if(!formId)return;
   if(kind.startsWith('case:')){
@@ -631,10 +644,12 @@ function refreshPersonnelRegistrationOptions(){
   const pick=$('registrationKind');
   if(!pick)return;
   const kinds=availablePersonnelRegistrationKinds(),old=pick.value;
-  pick.replaceChildren(...(kinds.length?kinds.map(([key,label])=>option(key,label)):
-    [option('','Geen invulbevoegdheid voor dit personeelsdossier')]));
-  const current=kinds.some(([key])=>key===old)?old:kinds[0]?.[0]||'';
-  pick.value=current;
+  pick.replaceChildren(...(kinds.length?[
+    option('','Kies een registratie…'),
+    ...kinds.map(([key,label])=>option(key,label))
+  ]:[option('','Geen invulbevoegdheid voor dit personeelsdossier')]));
+  // Geen formulier ongevraagd openen: overzicht blijft rustiger.
+  pick.value=kinds.some(([key])=>key===old)?old:'';
   $('formalInlineArea').hidden=!kinds.length;
   displaySelectedRegistration();
   const missing=[];
@@ -643,13 +658,10 @@ function refreshPersonnelRegistrationOptions(){
     missing.push('Dossiernotities en personeelsbewegingen: '+registrationModuleStates.cases);
   if(!kinds.some(([k])=>k==='training'))
     missing.push('Opleidingen: '+registrationModuleStates.training);
-  if(!kinds.some(([k])=>k==='specialty'))
-    missing.push('Specialisaties: '+registrationModuleStates.specialty);
-  if(!kinds.some(([k])=>k==='function'))
-    missing.push('Functies: '+registrationModuleStates.functions);
   $('registrationAccessHint').textContent=dept&&missing.length?
     'Overige categorieën voor '+(departments[dept]||dept)+': '+missing.join(' · '):'';
   $('registerTrainingQuick').hidden=!kinds.some(([key])=>key==='training');
+  syncDossierMaintenance();
 }
 function choosePersonnelRegistration(kind,focus=false){
   const select=$('registrationKind');
@@ -754,6 +766,13 @@ function setupDossierTabs(){
     </section>
     </div>
     <div id="sheetFormal" hidden></div>
+    <details class="dossier-maintenance" id="dossierMaintenance" hidden>
+      <summary>Beheer specialisaties en functies</summary>
+      <div class="dossier-maintenance-content">
+        <details id="specialtyAdmin" hidden><summary>Specialisatiestatus aanpassen</summary></details>
+        <details id="functionAdmin" hidden><summary>Functieaanstelling aanpassen</summary></details>
+      </div>
+    </details>
     <section class="landscape-formal-entry registration-hub" id="formalInlineArea" hidden>
       <h3>Registratie toevoegen</h3>
       <div class="registration-hub-heading">
@@ -869,11 +888,19 @@ function setupDossierTabs(){
     },true);
   // Behoud elke originele onsubmit en serverroute. Eén invoerscherm
   // bepaalt op basis van serverrechten welk formulier mag worden getoond.
-  for(const formId of [
-    'staffFormalForm','staffCaseForm','staffTrainingForm',
-    'staffManualLeaveForm','specialtyEdit','functionChangeForm'
-  ])$('registrationFields').append($(formId));
+  for(const formId of registrationForms)$('registrationFields').append($(formId));
   $('registrationFields').prepend($('formalWriteStatus'));
+  // Los van Registratie toevoegen blijven bestaande beveiligde beheertools bereikbaar.
+  $('specialtyAdmin').append($('specialtyEdit'));
+  $('functionAdmin').append($('functionChangeForm'));
+  for(const [detailsId,formId] of [
+    ['specialtyAdmin','specialtyEdit'],['functionAdmin','functionChangeForm']
+  ]){
+    $(detailsId).addEventListener('toggle',()=>{
+      const canEdit=detailsId==='specialtyAdmin'?registrationSpecialty:functionCanEdit;
+      $(formId).hidden=!(canEdit&&$(detailsId).open);
+    });
+  }
   // De categorie wordt bovenaan gekozen: voorkom tweede typekeuzelijst.
   $('formalType').closest('div').hidden=true;
   $('staffCaseType').closest('div').hidden=true;
@@ -2575,6 +2602,7 @@ for(const formId of registrationForms){
 async function showPerson(p){
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
+  if(!sameSelected)$('registrationKind').value='';
   sheetIdentity(p);updateFicheColleagues();
   if(!sameSelected){
     registrationSubjectKey=p.dept+':'+p.discordId;
