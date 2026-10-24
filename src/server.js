@@ -10,7 +10,7 @@ import {firebaseDiagnostic} from './firebase-diagnostics.js';
 import { discordConfig } from './discord-utils.js';
 import { discordPortalAccess } from './discord-portal-access.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
-import { buildData } from './normalize.js';
+import { planPersonnelMigration } from './personnel-migration.js';
 import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.js';
 import { ALLOWED_ROLES } from './registrations.js';
 import { installRegistrationRoutes } from './registration-routes.js';
@@ -73,11 +73,15 @@ app.use('/api/to',express.json({limit:'24kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
 installRoleRoutes(app,{getSnapshot});
-const allDepts=['politie','brandweer','ambulance','depannage'];
+// The live personnel view remains sourced from Sheets during the transition.
+ // Including citizens in the snapshot does NOT re-enable retired citizen dossiers.
+const allDepts=['politie','brandweer','ambulance','depannage','burger'];
 const docs={
   politie:'POLITIE!A3:R300', ambulance:'AMBULANCE!A3:K150',
-  brandweer:'BRANDWEER!A3:N150', depannage:'DEPANNAGE!A3:H120'
+  brandweer:'BRANDWEER!A3:N150', depannage:'DEPANNAGE!A3:H120',
+  burger:'BURGERS!A3:H180'
 };
+const auxiliaryPersonnelRanges={brandweerInfo:'BrandweerInfo!A1:M150'};
 const cache={expires:0,data:null,fetchedAt:null,pending:null};
 const cacheMs=Math.max(1,Math.min(60,Number(process.env.SYNC_CACHE_MINUTES)||15))*60*1000;
 function accessList(){
@@ -226,14 +230,31 @@ async function queryLive(){
   const auth=new google.auth.GoogleAuth({scopes:['https://www.googleapis.com/auth/spreadsheets.readonly']});
   const sheets=google.sheets({version:'v4',auth});
   const [p,a]=await Promise.all([
-    sheets.spreadsheets.values.batchGet({spreadsheetId:process.env.PERSONNEL_SPREADSHEET_ID,ranges:Object.values(docs),valueRenderOption:'FORMATTED_VALUE'}),
+    sheets.spreadsheets.values.batchGet({spreadsheetId:process.env.PERSONNEL_SPREADSHEET_ID,
+      ranges:[...Object.values(docs),...Object.values(auxiliaryPersonnelRanges)],
+      valueRenderOption:'FORMATTED_VALUE'}),
     sheets.spreadsheets.values.get({spreadsheetId:process.env.ACTIVITY_SPREADSHEET_ID,range:'ACTIVITEITSCHECK!A2:Z300',valueRenderOption:'FORMATTED_VALUE'})
   ]);
   const personnel={};
   Object.keys(docs).forEach((name,i)=>personnel[name]=p.data.valueRanges?.[i]?.values||[]);
   const activityRows=a.data.values||[];
-  const built=buildData(personnel,activityRows,allDepts);
-  return built;
+  // The migration planner is read-only. It links BrandweerInfo names and
+  // old-name aliases to genuine Discord IDs, and rejects ambiguous/duplicate
+  // entries instead of attaching somebody else's dossier. The original Sheet
+  // and existing Firestore audit/history are never rewritten.
+  const brandweerInfo=p.data.valueRanges?.[Object.keys(docs).length]?.values||[];
+  const plan=planPersonnelMigration(personnel,activityRows,null,{brandweerInfo});
+  if(!plan.records.length)throw Error('Personeelsbron bevat geen geldige dossiers');
+  if(plan.duplicates.length||plan.unmatched.length)
+    console.warn('Personeelsynchronisatie vraagt broncontrole:',JSON.stringify({
+      unmatched:plan.unmatched.length,duplicates:plan.duplicates.length,
+      byDepartment:Object.fromEntries(Object.entries(plan.statistics).map(([dept,x])=>
+        [dept,{linked:x.records,unmatched:x.unmatched,duplicates:x.duplicates}]))
+    }));
+  // Only normalized, validated fields reach authenticated portal endpoints.
+  // Never expose raw sourceCells, auxiliary aliases, or migration notes.
+  return plan.records.map(row=>({...row.personnel,source:'google-sheets',
+    sourceRow:row.sourceRow}));
 }
 async function getSourceSnapshot(forceRefresh=false){
   if(!forceRefresh&&cache.data && Date.now()<cache.expires) return {data:cache.data,fetchedAt:cache.fetchedAt,stale:false};
