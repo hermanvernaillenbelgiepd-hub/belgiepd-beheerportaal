@@ -424,7 +424,15 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <option value="personeelsbeweging">Personeelsbeweging</option></select></div>
 <div><label for="staffCaseDate">Datum gebeurtenis</label><input id="staffCaseDate" type="date" required></div>
 <div id="staffCaseExtra" class="grid" style="grid-column:1/-1" hidden>
-<div id="staffCourseField" hidden><label for="staffCourseName">Opleidingsnaam</label><input id="staffCourseName" maxlength="180"></div>
+<div id="staffCourseField" hidden>
+<label for="staffCourseName">Soort opleiding</label>
+<select id="staffCourseName"><option value="">Kies een opleiding…</option></select>
+<div id="staffCourseOtherWrap" hidden>
+<label for="staffCourseOther">Andere opleiding</label>
+<input id="staffCourseOther" minlength="3" maxlength="150" placeholder="Vul de naam van de opleiding in">
+</div>
+<p class="subtle" id="staffCourseRegisterNote">Deze dossierregistratie komt in het weekrapport. Ze markeert de opleiding niet automatisch als geslaagd in het afzonderlijke opleidingsregister.</p>
+</div>
 <div id="staffEndDateField" hidden><label for="staffEndDate">Einddatum verlofnotitie</label><input id="staffEndDate" type="date"></div>
 <div id="staffRankField" hidden><label for="staffProposedRank">Voorgestelde rang</label><input id="staffProposedRank" maxlength="140"></div>
 <div id="staffNewNameField" hidden><label for="staffNewName">Nieuwe naam</label><input id="staffNewName" maxlength="120"></div>
@@ -602,6 +610,11 @@ function registrationFormFor(kind){
   if(kind.startsWith('case:'))return 'staffCaseForm';
   return ({training:'staffTrainingForm',leave:'staffManualLeaveForm'})[kind]||null;
 }
+function canRegisterOfficialTraining(){
+  const dept=selected?.dept;
+  return Boolean(dept&&trainingRights?.trainingWritesEnabled===true&&
+    trainingRights.permissions?.[dept]?.['training.log']===true);
+}
 function availablePersonnelRegistrationKinds(){
   const dept=selected?.dept;
   if(!dept)return [];
@@ -614,17 +627,19 @@ function availablePersonnelRegistrationKinds(){
   }
   if(casePermissions?.writesEnabled===true&&casePermissions.actor){
     for(const type of casePermissions.typesByDepartment?.[dept]||[]){
-      // Geen dubbele opleidingsnotities of dienstactiviteiten in het personeelsdossier.
-      // Afgeronde opleidingen gebruiken het officiële opleidingsregister met audit.
+      // Opleiding blijft als dossierregistratie beschikbaar wanneer het
+      // formele opleidingsregister hier niet actief is, zonder dubbel menu.
       if(type==='activiteit')continue;
-      if(type==='opleiding')continue;
+      if(canRegisterOfficialTraining()){
+        if(type==='opleiding')continue;
+      }
       const text=staffCaseLabels[type]||type;
       kinds.push(['case:'+type,
+        type==='opleiding'?'Opleiding registreren':
         type==='verlof'?'Verlofnotitie (geen verlofaanvraag)':text]);
     }
   }
-  if(trainingRights?.trainingWritesEnabled===true&&
-      trainingRights.permissions?.[dept]?.['training.log']===true)
+  if(canRegisterOfficialTraining())
     kinds.push(['training','Opleiding registreren']);
   if(registrationManualLeave)kinds.push(['leave','Verlofperiode manueel inschrijven']);
   return kinds;
@@ -678,8 +693,11 @@ function refreshPersonnelRegistrationOptions(){
     option('','Kies een registratie…'),
     ...kinds.map(([key,label])=>option(key,label))
   ]:[option('','Geen invulbevoegdheid voor dit personeelsdossier')]));
-  // Geen formulier ongevraagd openen: overzicht blijft rustiger.
-  pick.value=kinds.some(([key])=>key===old)?old:'';
+  // De geselecteerde opleiding blijft actief als de officiële module later
+  // haar serverbevoegdheden teruggeeft of tijdelijk niet beschikbaar is.
+  pick.value=kinds.some(([key])=>key===old)?old:
+    old==='training'&&kinds.some(([key])=>key==='case:opleiding')?'case:opleiding':
+    old==='case:opleiding'&&kinds.some(([key])=>key==='training')?'training':'';
   $('formalInlineArea').hidden=!kinds.length;
   displaySelectedRegistration();
   // Alleen werkelijk beschikbare formulieren tonen, geen diagnostische
@@ -1217,7 +1235,23 @@ function updateStaffCaseFields(){
     staffProposedRank:'promotievoorstel',staffNewName:'naamswijziging',
     staffMovement:'personeelsbeweging'};
   for(const [id,t] of Object.entries(required))$(id).required=type===t;
+  syncStaffCaseOther();
 }
+function syncStaffCaseOther(){
+  const isOther=$('staffCaseType').value==='opleiding'&&$('staffCourseName').value==='ANDERE';
+  $('staffCourseOtherWrap').hidden=!isOther;
+  $('staffCourseOther').required=isOther;
+  if(!isOther)$('staffCourseOther').value='';
+}
+function selectedStaffCaseCourse(){
+  return ($('staffCourseName').value==='ANDERE'?
+    $('staffCourseOther').value:$('staffCourseName').value).trim();
+}
+// Eén gedeelde opleidingscatalogus, ook voor de rapportagefallback.
+const caseCourseSelect=$('staffCourseName'),officialCourseSelect=$('staffTrainingCourse');
+caseCourseSelect.replaceChildren(...[...officialCourseSelect.options]
+  .map(source=>option(source.value,source.textContent)));
+caseCourseSelect.onchange=syncStaffCaseOther;
 $('staffCaseType').onchange=updateStaffCaseFields;
 async function loadStaffCasePermissions(person,key,canManage){
   casePermissions=null;
@@ -1238,7 +1272,7 @@ async function loadStaffCasePermissions(person,key,canManage){
       !types.length?
         'geen goedgekeurd schrijfrecht voor deze dienst':'beschikbaar';
     $('staffCaseType').replaceChildren(...types
-      .filter(type=>type!=='activiteit'&&type!=='opleiding')
+      .filter(type=>type!=='activiteit')
       .map(type=>option(type,staffCaseLabels[type]||type)));
     $('staffCaseForm').hidden=!(overview.writesEnabled&&overview.actor&&types.length);
     if(!types.length)$('staffCaseHint').textContent='Geen schrijfrechten voor deze categorieën.';
@@ -2610,16 +2644,22 @@ $('staffCaseForm').onsubmit=async event=>{
   if(!casePermissions?.writesEnabled||!casePermissions.typesByDepartment?.[person.dept]?.includes(type)){
     button.disabled=false;return notice('Je hebt geen bevoegdheid voor deze dossiercategorie.',true);
   }
+  const courseName=type==='opleiding'?selectedStaffCaseCourse():'';
+  if(type==='opleiding'&&(courseName.length<3||courseName.length>150)){
+    button.disabled=false;
+    return notice('Selecteer een opleiding of vul bij ANDERE een naam van 3 tot 150 tekens in.',true);
+  }
   try{
     await request('/api/management/cases',{method:'POST',
       body:{dept:person.dept,discordId:person.discordId,type,
         eventDate:$('staffCaseDate').value,details:$('staffCaseDetails').value.trim(),
-        endDate:$('staffEndDate').value,courseName:$('staffCourseName').value,
+        endDate:$('staffEndDate').value,courseName,
         proposedRank:$('staffProposedRank').value,newName:$('staffNewName').value,
         movement:$('staffMovement').value,referenceUrl:$('staffCaseReference').value}});
     if(!sameDossier(key))return;
     $('staffCaseDetails').value='';$('staffCaseReference').value='';
     for(const id of staffCaseValues)$(id).value='';
+    $('staffCourseOther').value='';syncStaffCaseOther();
     await loadLinkedPersonnelRecords(person,key);
     notice('Dossierregistratie opgeslagen in het bestaande kaderregister en het dynamische weekrapport.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
