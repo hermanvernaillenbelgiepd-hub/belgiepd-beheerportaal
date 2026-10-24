@@ -118,7 +118,7 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
       // weekrapport. De rang blijft Agent; dit is geen graadpromotie.
       batch.create(caseRef.collection('entries').doc(),{
         type:'personeelsbeweging',reportCategory:'personeelsbeweging',
-        movement:'Tijdelijk naar vast roepnummer',
+        movement:current.get('temporaryCall')?'Tijdelijk naar vast roepnummer':'Eerste vaste roepnummertoekenning',
         dept:'politie',subjectDiscordId:id,subjectNameAtCreation:plan.name,
         subjectCallAtCreation:String(plan.call),
         eventDate:new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Brussels'}),
