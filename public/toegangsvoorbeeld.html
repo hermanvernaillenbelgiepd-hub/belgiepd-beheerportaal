@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0b1729">
+  <title>BelgiumPD · Toegangsvoorbeeld per politierang</title>
+  <link rel="stylesheet" href="/toegangsvoorbeeld.css">
+  <link rel="stylesheet" href="/bpd-navigation.css">
+  <script defer src="/toegangsvoorbeeld.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <a href="/gebruikersbeheer.html" class="brand"><span aria-hidden="true">🛡️</span> BelgiumPD <span class="dim">/ Gebruikersbeheer / Toegangsvoorbeeld</span></a>
+  <a class="home" href="/gebruikersbeheer.html">← Terug naar Gebruikersbeheer</a>
+</header>
+<main>
+  <div class="heading">
+    <div>
+      <p class="eyebrow">Alleen-lezen · interactief voorbeeld</p>
+      <h1>Zo ziet elke rang het portaal</h1>
+      <p class="intro">Selecteer een nieuw lid of een politierang en bekijk de menuonderdelen, voorbeeldschermen en bijbehorende bevoegdheden. We kunnen hiermee stap voor stap de toegangsindeling verfijnen.</p>
+    </div>
+    <div class="safety"><strong>Geen echte aanmelding of rolwissel</strong>Deze simulatie gebruikt fictieve personen, geen live dossiers. Alle knoppen zijn alleen voorbeeldbediening; er worden geen accounts, rechten of registraties aangemaakt of aangepast.</div>
+  </div>
+  <section aria-label="Voorbeeldprofiel kiezen" class="role-switcher">
+    <h2>Bekijk het portaal als</h2>
+    <div id="roleButtons" class="role-buttons"></div>
+  </section>
+  <div class="experience">
+    <aside class="sidebar" aria-label="Voorbeeldnavigatie">
+      <div class="preview-brand"><span class="shield">BP</span><strong>BelgiumPD</strong><small>VOORBEELD</small></div>
+      <div class="person">
+        <span class="avatar" aria-hidden="true">👤</span>
+        <div><strong id="sampleName">Voorbeeld</strong><small id="sampleCall"></small><small id="sampleRole"></small></div>
+      </div>
+      <p class="navlabel">Menuvoorbeeld</p>
+      <nav id="moduleMenu" aria-label="Onderdeel kiezen"></nav>
+      <p class="side-explain">Een link op het echte hoofdblad is niet automatisch een machtiging. De server controleert elke beveiligde actie.</p>
+    </aside>
+    <div class="workspace">
+      <div class="workspace-head">
+        <div><span class="work-crumb" id="previewPath">Dashboard</span><h2 id="previewHeading">Startpagina</h2></div>
+        <span class="read-only">VOORBEELD — NIET LIVE</span>
+      </div>
+      <div class="access-status" id="accessStatus" role="status" aria-live="polite"></div>
+      <div id="moduleContent" class="module-content"></div>
+      <section class="why" aria-label="Waarom deze toegang">
+        <h3>Wat betekent deze toegang?</h3>
+        <p id="moduleExplanation"></p>
+      </section>
+    </div>
+  </div>
+  <section class="matrix" aria-labelledby="matrixHeading">
+    <div class="section-heading"><div><h2 id="matrixHeading">Toegangsoverzicht per rol</h2><p>Dit is een werkschema van de bestaande regels, geen vervanging van de servermachtigingen of afzonderlijke dienstenrechten.</p></div><span>● Toegang &nbsp; ◐ Beperkt &nbsp; — Geen &nbsp; ◇ Apart toegekend</span></div>
+    <div class="tablewrap"><table><thead id="matrixHeader"></thead><tbody id="matrixBody"></tbody></table></div>
+  </section>
+  <section class="notes">
+    <h2>Belangrijke uitzonderingen</h2>
+    <p><strong>Agentenkader:</strong> roepnummers 100–299 horen bij een afzonderlijke personeelscategorie; de voorbeeldweergave van Basiskader gebruikt CALL 300. Een pas aangemeld lid zonder goedkeuring heeft niet automatisch Basiskaderrechten.</p>
+    <p><strong>Bestuur en instructeurs:</strong> dit zijn aanvullende, afzonderlijk gecontroleerde functies. TO-bevoegdheid, dienstoverschrijdend dossierbeheer en opleidingen door instructeurs worden niet automatisch door een politierang toegekend.</p>
+    <p><strong>De echte interface:</strong> menulinks kunnen voor iedereen zichtbaar zijn, maar pagina-inhoud en schrijfacties verschillen per account, dienst en eventuele extra machtigingen. Deze weergave is bedoeld om indeling en inhoud te beoordelen.</p>
+  </section>
+</main>
+</body>
+</html>
