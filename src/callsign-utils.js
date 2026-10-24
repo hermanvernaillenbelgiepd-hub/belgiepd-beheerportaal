@@ -1,5 +1,19 @@
 // BelgiumPD v0.7 – veilige planning van 200-299, zonder mutatie van brongegevens.
 export const isDiscordId = value => /^\d{15,22}$/.test(String(value ?? '').trim());
+// BelgiumPD nummerverdeling: 10-tallen, vervolgens 5-tallen, vervolgens
+// de overige nummers. Gebruik dezelfde volgorde voor tijdelijk en vast,
+// zonder reeksen of de feitelijke Discord-kaderrol met elkaar te verwarren.
+export function orderedCallNumbers(min,max){
+  if(!Number.isInteger(min)||!Number.isInteger(max)||min>max||min<0||max>9999)
+    throw new Error('Ongeldige roepnummerreeks');
+  const priority=n=>n%10===0?0:n%5===0?1:2;
+  return Array.from({length:max-min+1},(_,i)=>min+i)
+    .sort((a,b)=>priority(a)-priority(b)||a-b);
+}
+export function preferredFreeCall(min,max,used){
+  const occupied=new Set(Array.from(used||[],v=>Number(v)));
+  return orderedCallNumbers(min,max).find(call=>!occupied.has(call))??null;
+}
 const s = v => String(v ?? '').trim();
 export const canReview = role => ['middenkader','officierenkader','korpsleiding'].includes(role);
 export const canDecide = role => ['officierenkader','korpsleiding'].includes(role);
@@ -7,7 +21,7 @@ export function checkApplicant({name, discordId, temporaryCall}) {
   const n=s(name), id=s(discordId), call=s(temporaryCall);
   if (n.length < 2 || n.length > 80 || /[\r\n\t]/.test(n) || /^[=+@-]/.test(n)) throw new Error('Ongeldige personeelsnaam');
   if (!isDiscordId(id)) throw new Error('Ongeldige Discord ID');
-  if (!/^\d+$/.test(call) || Number(call)<110 || Number(call)>195) throw new Error('Tijdelijk roepnummer moet tussen 110 en 195 liggen');
+  if (!/^\d{3}$/.test(call) || Number(call)<101 || Number(call)>199) throw new Error('Tijdelijk roepnummer moet tussen 101 en 199 liggen');
   return {name:n,discordId:id,temporaryCall:call};
 }
 export function eligibility({joinedOn, playHours}, now = new Date()) {
@@ -30,7 +44,9 @@ export function planPoliceSheetSync({policeRows, infoRows, name, discordId, pref
   const slots=policeRows.map((r,i)=>({row:i+1,call:Number(s(r?.[0])),rawCall:s(r?.[0]),name:s(r?.[3]),rank:s(r?.[2])}))
     .filter(x=>Number.isInteger(x.call)&&x.call>=200&&x.call<=299&&String(x.call)===x.rawCall&&/Agent van Politie\s*\(AP\)/i.test(x.rank));
   const counts=new Map();for(const x of slots)counts.set(x.call,(counts.get(x.call)||0)+1);
-  const candidates=slots.filter(x=>!x.name&&counts.get(x.call)===1).sort((a,b)=>a.call-b.call);
+  const callPriority=new Map(orderedCallNumbers(200,299).map((call,index)=>[call,index]));
+  const candidates=slots.filter(x=>!x.name&&counts.get(x.call)===1)
+    .sort((a,b)=>callPriority.get(a.call)-callPriority.get(b.call));
   const preferred=preferredCall===undefined||preferredCall===null||s(preferredCall)===''?null:Number(s(preferredCall));
   if(preferred!==null&&(!Number.isInteger(preferred)||preferred<200||preferred>299))throw new Error('Roepnummer buiten de 200-reeks');
   const selected=preferred===null?candidates[0]:candidates.find(x=>x.call===preferred);
