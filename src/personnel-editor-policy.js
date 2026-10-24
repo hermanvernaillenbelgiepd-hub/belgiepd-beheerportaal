@@ -3,6 +3,7 @@ import {roleForDepartment} from './leave-policy.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {policeKader} from './normalize.js';
 import {isPolice9xx} from './verified-police-cadre.js';
+import {mayOpenFireSubject} from './fire-dossier-policy.js';
 
 // Persistent overlays never contain identity, rank or permissions.
 // They can be merged with source Sheets only after a controlled rollout.
@@ -33,6 +34,10 @@ function verifiedCorpsReader(actor){
 }
 export function canReadPersonnelSubject(actor,person){
   if(!person||!canReadServiceDossier(actor,person.dept))return false;
+  if(person.dept==='brandweer'){
+    return mayOpenFireSubject(actor,person,
+      actor.fireSubjectRoleSets?.get(person.personId)||null);
+  }
   if(person.dept!=='politie')return true;
   if(actor?.boardPersonnelAdmin===true)return true;
   const scoped=roleForDepartment(actor,'politie');
