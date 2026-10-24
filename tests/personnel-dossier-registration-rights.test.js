@@ -198,3 +198,22 @@ test('Kaderopleidingen hergebruiken dezelfde keuzelijst en vrije ANDERE-invoer',
   assert.equal(els.staffCourseOther.required,false);
   assert.equal(els.staffCourseOther.value,'');
 });
+
+
+test('Opleidingregistratie verklaart opslagbestemming en toont apart register',()=>{
+  const personnel=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  const register=readFileSync(new URL('../public/rollen-opleidingen.html',import.meta.url),'utf8');
+  const css=readFileSync(new URL('../public/personnel-onepage-test.css',import.meta.url),'utf8');
+  const script=personnel.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(script);assert.doesNotThrow(()=>new Script(script));
+  assert.match(personnel,/href="\/rollen-opleidingen.html"[^>]*>Opleidingsregister/);
+  assert.match(personnel,/id="trainingDestination"[^>]*hidden/);
+  assert.match(script,/trainingDestination\.hidden=!\['training','case:opleiding'\]\.includes\(kind\)/);
+  assert.match(script,/Opslag: opleidingsregister/);
+  assert.match(script,/Opslag: dossiernotitie en weekrapport/);
+  assert.match(script,/niet automatisch in het weekrapport/);
+  assert.match(register,/<h1>Opleidingsregister<\/h1>/);
+  assert.match(register,/id="training" hidden/);
+  assert.match(css,/\.training-register-link/);
+  assert.match(css,/\.training-destination/);
+});
