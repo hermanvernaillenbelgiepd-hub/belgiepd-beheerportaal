@@ -46,8 +46,8 @@ async function refresh(){
       .filter(([,v])=>v['training.log']||v['training.review']).map(([d])=>d);
     const desired=new URLSearchParams(location.search).get('department')||$('dept').value;
     for(const option of $('dept').options)option.hidden=!allowed.includes(option.value);
-    if(!allowed.includes($('dept').value))$('dept').value=allowed.includes(desired)?desired:(allowed[0]||'');
-    if(!allowed.includes($('dept').value))$('dept').value=allowed[0]||'';
+    if(allowed.includes(desired))$('dept').value=desired;
+    else if(!allowed.includes($('dept').value))$('dept').value=allowed[0]||'';
     await refreshPeople();
     $('adminNote').textContent='Wijzigingen vereisen BPD_ENABLE_PERMISSION_WRITES=true en een vooraf gemachtigd account.';
   }catch(e){state(e.message,true)}
