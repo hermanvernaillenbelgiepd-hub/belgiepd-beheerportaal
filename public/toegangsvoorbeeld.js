@@ -4,54 +4,56 @@
 (function(){
   const roles=[
     {id:'nieuw',label:'Volledig nieuw lid',short:'Nieuw',name:'Nieuw Discord-lid (voorbeeld)',call:'Nog geen CALL',rank:'Nog niet ingedeeld',role:'Geen goedgekeurde portaalrol',status:'Toegang nog niet aangevraagd'},
-    {id:'basis',label:'Basiskader',short:'Basis',name:'Voorbeeld Inspecteur',call:'300',rank:'Inspecteur van politie',role:'Basiskader · Politie',status:'Portaaltoegang goedgekeurd'},
-    {id:'midden',label:'Middenkader',short:'Midden',name:'Voorbeeld Hoofdinspecteur',call:'730',rank:'Hoofdinspecteur van politie',role:'Middenkader · Politie',status:'Portaaltoegang goedgekeurd'},
-    {id:'officier',label:'Officierenkader',short:'Officier',name:'Voorbeeld Aspirant Commissaris',call:'930',rank:'Aspirant-commissaris van politie',role:'Officierenkader · Politie',status:'Portaaltoegang goedgekeurd'},
-    {id:'korps',label:'Korpsleiding',short:'Korps',name:'Voorbeeld Eerste Commissaris',call:'910',rank:'Eerste commissaris van politie',role:'Korpsleiding · Politie',status:'Portaaltoegang goedgekeurd'}
+    {id:'agent',label:'Agentenkader · tijdelijk',short:'Agent temp.',name:'Voorbeeld Agent (tijdelijk)',call:'150',rank:'Agent van politie',role:'Agentenkader · tijdelijk zelfgekozen CALL 110–195',status:'Nog geen vaste 200-reeks'},
+    {id:'agentvast',label:'Agentenkader · vast',short:'Agent vast',name:'Voorbeeld Agent (vaste CALL)',call:'250',rank:'Agent van politie',role:'Agentenkader · vaste CALL 200–299',status:'Vast roepnummer na gecontroleerde aanvraag'},
+    {id:'basis',label:'Basiskader',short:'Basis',name:'Voorbeeld Inspecteur',call:'300',rank:'Inspecteur van politie',role:'Basiskader · vanaf 300',status:'Portaaltoegang goedgekeurd'},
+    {id:'midden',label:'Middenkader',short:'Midden',name:'Voorbeeld Hoofdinspecteur',call:'700',rank:'Hoofdinspecteur van politie',role:'Middenkader · 600/610/620 … 700/710/720 … 800/810',status:'Portaaltoegang goedgekeurd'},
+    {id:'officier',label:'Officierenkader',short:'Officier',name:'Voorbeeld Aspirant Commissaris',call:'930',rank:'Aspirant-commissaris van politie',role:'Officierenkader · rolcontrole (ook CALL 920)',status:'Portaaltoegang goedgekeurd'},
+    {id:'korps',label:'Korpsleiding',short:'Korps',name:'Voorbeeld Eerste Hoofdcommissaris',call:'900',rank:'Eerste hoofdcommissaris van politie',role:'Korpsleiding · CALL 900 en 910',status:'Portaaltoegang goedgekeurd'}
   ];
   // full = authorized for this service, limited = restricted actions,
   // none = no access, extra = separate delegated entitlement required.
   const modules=[
-    {id:'home',icon:'⌂',label:'Dashboard',access:['full','full','full','full','full'],
+    {id:'home',icon:'⌂',label:'Dashboard',access:['limited','full','full','full','full','full','full'],
      heading:'Startpagina',description:'Het hoofdblad toont links naar de portaalmodules. Zichtbare tegels zijn geen automatische toegang.',
      actions:['Mijn profiel bekijken','Verlofbeheer openen'],explain:'De startpagina toont grotendeels dezelfde modulelinks. Beveiligde API’s bepalen wat daarna werkelijk gelezen of gewijzigd kan worden.'},
-    {id:'users',icon:'👥',label:'Gebruikersbeheer',access:['limited','limited','limited','limited','full'],
+    {id:'users',icon:'👥',label:'Gebruikersbeheer',access:['limited','limited','limited','limited','limited','limited','full'],
      heading:'Centraal gebruikersbeheer',description:'Eigen toegang controleren en aanvragen; accounts van anderen beheren volgens de toegestane kadergrenzen.',
      actions:['Mijn toegangsstatus','Aanvragen beoordelen','Officieren beheren'],explain:'Nieuwe leden kunnen een verzoek indienen. Basiskader en Middenkader beheren geen andere gebruikers. Officierenkader mag Basiskader en Middenkader binnen de eigen dienst behandelen. Korpsleiding kan ook Officierenkader beheren.',
      override:{officier:'limited'},customStatus:{nieuw:'Eigen aanvraag: nog niet ingediend',basis:'Alleen eigen toegangsstatus; geen accountbeheer',midden:'Alleen eigen toegangsstatus; geen accountbeheer',officier:'Beheer aanvragen Basiskader en Middenkader (eigen dienst)',korps:'Beheer aanvragen t/m Officierenkader (eigen dienst)'}},
-    {id:'roster',icon:'♙',label:'Personeelslijst',access:['none','none','full','full','full'],
+    {id:'roster',icon:'♙',label:'Personeelslijst',access:['none','none','none','none','full','full','full'],
      heading:'Personeelslijst',description:'Afgeschermde dienstlijst met roepnummer, rang, reeks, status en specialisaties.',
      actions:['Personeelslijst bekijken','Dossier lagere rang openen','Korpsdossier openen'],
      explain:'De bestaande personeelslijst wordt voor bevoegd Middenkader en hoger geopend. Korpsleidingleden zoals 900 en 910 blijven in de lijst zichtbaar; hun volledige dossiers zijn voor onbevoegden afgeschermd.'},
-    {id:'dossier',icon:'▣',label:'Personeelsdossiers',access:['none','none','limited','full','full'],
+    {id:'dossier',icon:'▣',label:'Personeelsdossiers',access:['none','none','none','none','limited','full','full'],
      heading:'Personeelsfiche',description:'Persoonsgegevens, belangrijke notities, opleiding, observaties, sancties en personeelsbewegingen.',
      actions:['Notitie registreren','Observatie of sanctie','Promotie / personeelsbeweging'],
      explain:'Middenkader mag binnen zijn dienst dossiers van lagere rangen behandelen, met beperktere beheeracties. Officieren en Korpsleiding hebben uitgebreidere bevoegdheden; het Korpsleidingdossier zelf blijft afgeschermd voor lagere kaders.'},
-    {id:'observaties',icon:'📝',label:'Observaties',access:['none','limited','full','full','full'],
+    {id:'observaties',icon:'📝',label:'Observaties',access:['none','limited','limited','limited','full','full','full'],
      heading:'Observaties & sancties',description:'Verslaggeving en personeelsregistraties met logging en controle van de doelrang.',
      actions:['Observatie indienen','Sanctie registreren','Sanctiehistoriek bekijken'],
      explain:'Basiskader kan onder voorwaarden observaties over lagere politierangen indienen zonder inzage in het volledige dossier. Middenkader en hoger hebben eigen dienstgebonden bevoegdheden voor observaties en sancties, afhankelijk van de ernst.'},
-    {id:'verlof',icon:'▦',label:'Verlofbeheer',access:['none','limited','full','full','full'],
+    {id:'verlof',icon:'▦',label:'Verlofbeheer',access:['none','limited','limited','limited','full','full','full'],
      heading:'Verlofaanvragen',description:'Verlof aanvragen en, waar bevoegd, aanvragen van collega’s beoordelen.',
      actions:['Eigen verlof aanvragen','Aanvragen van lagere rangen beoordelen'],
      explain:'Eigen verlofaanvragen zijn mogelijk voor goedgekeurde personeelsaccounts. Middenkader mag onder voorwaarden aanvragen van lager personeel tot 30 kalenderdagen beoordelen; Officierenkader en Korpsleiding hebben een hogere beoordelingsbevoegdheid. Extra delegaties blijven afzonderlijk.'},
-    {id:'opleidingen',icon:'🎓',label:'Opleidingscentrum',access:['none','limited','full','full','full'],
+    {id:'opleidingen',icon:'🎓',label:'Opleidingscentrum',access:['none','extra','extra','extra','full','full','full'],
      heading:'Opleidingscentrum',description:'Opleidingen en resultaten per dienst, met afgeschermde personeelstoegang.',
      actions:['Eigen opleidingen bekijken','Opleiding registreren','Resultaat corrigeren'],
      explain:'Opleidingsregistratie is beschikbaar voor gemachtigd kader en erkende instructeurs. Een gewone Basiskaderrol op zichzelf geeft geen instructeursrecht; een afzonderlijke geverifieerde instructeursrol kan dit wel.'},
-    {id:'week',icon:'▥',label:'Weekrapporten',access:['none','none','full','full','full'],
+    {id:'week',icon:'▥',label:'Weekrapporten',access:['none','none','none','none','full','full','full'],
      heading:'Weekrapporten',description:'Samenvattingen van registraties en personeelsactiviteiten voor bevoegd dienstkader.',
      actions:['Rapport bekijken','Registraties opvolgen'],
      explain:'Rapportage bevat afgeschermde dienstgebonden personeelsinformatie. De bevoegdheid is aan het kader en aan de betreffende dienst gekoppeld.'},
-    {id:'beweging',icon:'⇄',label:'Personeelsbewegingen',access:['none','none','none','full','full'],
+    {id:'beweging',icon:'⇄',label:'Personeelsbewegingen',access:['none','none','none','none','none','full','full'],
      heading:'Personeelsbewegingen',description:'Wijzigingen van rang, functie, roepnummer en andere officiële personeelsgegevens.',
      actions:['Personeelsbeweging registreren','Promotie voorstellen'],
      explain:'Officierenkader en Korpsleiding hebben hiervoor afzonderlijke rechten. Een wijziging moet gelogd worden; een hoog roepnummer alleen geeft nooit het recht een promotie door te voeren.'},
-    {id:'to',icon:'📻',label:'TO-dienstbord',access:['extra','extra','extra','extra','extra'],
+    {id:'to',icon:'📻',label:'TO-dienstbord',access:['extra','extra','extra','extra','extra','extra','extra'],
      heading:'TO-dienstbord',description:'Operationele ploegen, statusknoppen, koppeldiensten en meldingen.',
      actions:['Dienstbord openen','Dienst overnemen'],
      explain:'TO-rechten worden apart toegekend (meekijken of bedienen). Een politierang verleent op zichzelf geen TO-toegang.'},
-    {id:'bestuur',icon:'⚙',label:'Bestuur en bijzondere rechten',access:['none','none','none','extra','extra'],
+    {id:'bestuur',icon:'⚙',label:'Bestuur en bijzondere rechten',access:['none','none','none','none','none','extra','extra'],
      heading:'Afzonderlijke machtigingen',description:'Bestuursfunctie, beheertoegang hulpdiensten, technische accounts en uitzonderlijke delegaties.',
      actions:['Bestuursvoordracht bekijken','Dienstenmachtigingen toekennen'],
      explain:'Bestuur is geen politierang. Een afzonderlijk geverifieerde bestuursrol of goedgekeurde aanstelling verleent pas bijbehorende rechten. Officierenkader en Korpsleiding hebben slechts hun uitdrukkelijk toegestane voordracht- of dienstbeheertaken.'}
@@ -65,15 +67,15 @@
   const state=(module,role)=>module.access[roles.indexOf(role)];
   function availableAction(module,role,index){
     const order=roles.indexOf(role);
-    if(module.id==='users')return index===0||index===1&&order>=3||index===2&&order===4;
+    if(module.id==='users')return index===0||index===1&&order>=5||index===2&&order===6;
     if(module.id==='home')return true;
-    if(module.id==='roster')return order>=2&&(index<2||order===4);
-    if(module.id==='dossier')return order>=2&&(index===0||index===1||order>=3);
-    if(module.id==='observaties')return order>=1&&(index===0||order>=2&&index===1||order>=3&&index===2);
-    if(module.id==='verlof')return order>=1&&(index===0||order>=2);
-    if(module.id==='opleidingen')return order>=2&&(index<2||order>=3);
-    if(module.id==='week')return order>=2;
-    if(module.id==='beweging')return order>=3;
+    if(module.id==='roster')return order>=4&&(index<2||order===6);
+    if(module.id==='dossier')return order>=4&&(index===0||index===1||order>=5);
+    if(module.id==='observaties')return order>=1&&(index===0||order>=4&&index===1||order>=5&&index===2);
+    if(module.id==='verlof')return order>=1&&(index===0||order>=4);
+    if(module.id==='opleidingen')return order>=4&&(index<2||order>=5);
+    if(module.id==='week')return order>=4;
+    if(module.id==='beweging')return order>=5;
     return false;
   }
   function paintButtons(){
@@ -123,6 +125,9 @@
     const root=document.getElementById('moduleContent');root.replaceChildren();
     root.append(create('h3','',module.heading),create('p','',module.description));
     mockCards(role,module,root);
+    if(module.id==='users'&&(role.id==='nieuw'||role.id==='agent')){
+      root.append(create('div','tips','Vast roepnummer 200–299 aanvragen: vanaf 5 volledige dagen in Discord én 10 speeluren in FiveM, geverifieerd via de bot. Een tijdelijk roepnummer 110–195 is zelfgekozen; de hogere leiding beslist over toekenning.'));
+    }
     if(level==='none')root.append(create('div','tips','Deze sectie is niet beschikbaar voor het geselecteerde profiel. Er worden geen gevoelige dossiers getoond.'));
     if(level==='extra')root.append(create('div','tips','Deze module vereist een afzonderlijk goedgekeurd recht. Een politierang alleen volstaat niet.'));
     const actions=create('div','mock-actions');
