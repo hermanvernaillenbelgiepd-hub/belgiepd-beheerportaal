@@ -46,6 +46,7 @@ import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js'
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
 import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits,canReadPersonnelSubject} from './personnel-editor-policy.js';
+import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
@@ -383,6 +384,26 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     req.bpd.dossierManageDepartments=scope.manageDepartments;
     req.bpd.dossierFullDepartments=scope.fullDepartments;
     req.bpd.dossierTester=scope.tester;
+    // Trust a 9xx subject's verified Discord role, never the shared callsign
+    // or a possibly historical Sheets rank. Missing/stale guild evidence
+    // means protected dossier, while the visible staff roster remains intact.
+    req.bpd.verifiedPoliceSubjectRoles=Object.create(null);
+    if(scope.departments.includes('politie')&&!snapshot.stale){
+      const ids=[...new Set(roster.filter(p=>p.dept==='politie'&&
+        isPolice9xx(p.call)&&/^\d{15,22}$/.test(String(p.personId||'')))
+        .map(p=>p.personId))];
+      for(let i=0;i<ids.length;i+=25){
+        const group=ids.slice(i,i+25);
+        const found=await Promise.all(group.map(subjectId=>
+          cachedAuthDoc('bpd_discord_auth',subjectId)));
+        for(let j=0;j<group.length;j++){
+          const label=found[j]?.exists?
+            verifiedOfficerCadre(found[j].data(),process.env.DISCORD_GUILD_ID,
+              Date.now(),15*60*1000):null;
+          if(label)req.bpd.verifiedPoliceSubjectRoles[group[j]]=label;
+        }
+      }
+    }
     // Beveilig elk rechtstreeks geopend individueel dossier, ook met een
     // bekend Discord-ID. Een verborgen rij in de browser is geen toegangscontrole.
     const subjectPath=/^\/api\/(?:personnel\/|staff-dossiers\/|training\/|registrations\/entries(?:\/|$)|management\/cases(?:\/|$)|dossiercentrum\/)/.test(req.path);
