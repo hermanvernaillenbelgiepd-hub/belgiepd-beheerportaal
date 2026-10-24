@@ -7,11 +7,23 @@ const ID=new RegExp('^[0-9]{15,22}$');
 const code=(res,status,message)=>res.status(status).json({error:message});
 const formatDate=v=>v?.toDate?.()?.toISOString?.()||null;
 const clean=(v,n)=>typeof v==='string'?v.slice(0,n):'';
+const summary=v=>v&&typeof v==='object'?{
+ startDate:clean(v.startDate,10),unit:clean(v.unit,80),
+ functionTitle:clean(v.functionTitle,80)}:{startDate:'',unit:'',functionTitle:''};
+const publicHistory=(doc)=>{
+ const d=doc.data();
+ return {action:clean(d.action,45),at:formatDate(d.at),
+  byDiscordId:ID.test(String(d.actorDiscordId||''))?d.actorDiscordId:null,
+  reason:clean(d.reason,300)};
+};
+
 const listed=(v)=>Array.isArray(v)?v:[];
 const allowedTypes=['observatie','notitie','sanctie'];
 function safeCase(row,id){
  const r=row.data(),v={id,type:r.type||'',details:clean(r.details,4000),
-  eventDate:clean(r.eventDate,10),createdAt:formatDate(r.createdAt)};
+  eventDate:clean(r.eventDate,10),createdAt:formatDate(r.createdAt),
+  registeredBy:clean(r.registeredBy?.name,90),
+  registeredCall:clean(r.registeredBy?.call,24)};
  if(r.type==='sanctie'){
   v.sanctionType=clean(r.sanctionType,120);
   v.severity=r.severity??null;
@@ -47,10 +59,35 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      if(level==='identity')return res.json({person:publicInfo(person),visibility:level,
        entries:[],trainings:[],canWrite,canEditSpecialties:false});
      const db=getFirestore(),casePath='brandweer_'+person.personId;
-     const caseEntries=await db.collection('bpd_cases').doc(casePath)
-       .collection('entries').orderBy('createdAt','desc').limit(120).get();
+     const [caseEntries,staffDocument,staffNotes,staffHistory,leaveRows]=await Promise.all([
+       db.collection('bpd_cases').doc(casePath).collection('entries')
+         .orderBy('createdAt','desc').limit(120).get(),
+       db.collection('bpd_staff_dossiers').doc(casePath).get(),
+       db.collection('bpd_staff_dossiers').doc(casePath).collection('entries')
+         .orderBy('createdAt','desc').limit(60).get(),
+       db.collection('bpd_staff_dossiers').doc(casePath).collection('audit')
+         .orderBy('at','desc').limit(40).get(),
+       db.collection('bpd_leave_requests').where('personDiscordId','==',person.personId)
+         .limit(100).get()
+     ]);
      const entries=caseEntries.docs.filter(d=>allowedTypes.includes(d.get('type')))
        .map(d=>safeCase(d,person.personId));
+     const oldNotes=staffNotes.docs.filter(doc=>
+       ['opleiding','begeleiding','evaluatie','administratief','waardering']
+         .includes(doc.get('kind'))).map(doc=>({
+       id:doc.id,type:clean(doc.get('kind'),30),
+       title:clean(doc.get('title'),120),details:clean(doc.get('details'),1200),
+       createdAt:formatDate(doc.get('createdAt'))
+     }));
+     const leave=leaveRows.docs.filter(doc=>
+       doc.get('status')==='approved'&&
+       Array.isArray(doc.get('subjectDepartments'))&&
+       doc.get('subjectDepartments').includes('brandweer')).map(doc=>({
+       id:doc.id,startDate:clean(doc.get('startDate'),10),
+       endDate:clean(doc.get('endDate'),10),status:'approved'
+     })).sort((a,b)=>String(b.startDate).localeCompare(String(a.startDate))).slice(0,25);
+     const dossierHistory=staffHistory.docs.map(publicHistory);
+     const profile=summary(staffDocument.get('profile'));
      let trainings=[];
      if(level==='full'||level==='leadership'){
        const rows=await db.collection('bpd_training').doc(casePath)
@@ -61,11 +98,12 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
          result:clean(d.get('result'),40)}));
      }
      return res.json({person:publicInfo(person),visibility:level,entries,trainings,
+       leave,profile,olderNotes:oldNotes,dossierHistory,
        canWrite,canEditSpecialties:(req.bpd.fireZoneChief===true||
         req.bpd.portalTechnicalMode===true&&req.bpd.profileTechnicalAvailable===true)&&
        req.bpd.discordId!==person.personId,
-       specialties:level==='full'?listed(person.specialties).map(x=>({
-         label:clean(x.label,100),value:clean(x.value,40)})):undefined});
+       specialties:listed(person.specialties).map(x=>({
+         label:clean(x.label,100),value:clean(x.value,40)}))});
    }catch(e){console.error('Brandweerdossier:',e.code||'onbekend');
      return code(res,503,'Brandweerdossier niet beschikbaar')}
  });
