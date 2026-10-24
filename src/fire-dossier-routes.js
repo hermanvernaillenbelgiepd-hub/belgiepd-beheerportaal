@@ -71,7 +71,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
          .limit(100).get()
      ]);
      const entries=caseEntries.docs.filter(d=>allowedTypes.includes(d.get('type')))
-       .map(d=>safeCase(d,person.personId));
+       .map(d=>safeCase(d,d.id));
      const oldNotes=staffNotes.docs.filter(doc=>
        ['opleiding','begeleiding','evaluatie','administratief','waardering']
          .includes(doc.get('kind'))).map(doc=>({
