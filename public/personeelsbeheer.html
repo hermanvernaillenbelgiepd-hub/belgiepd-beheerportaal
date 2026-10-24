@@ -120,6 +120,9 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .discord-copy-btn:hover{background:#315b88;border-color:#79a0d1}
 .staff-roster-table .discord-copy-btn:focus-visible{outline:2px solid #a6c7ff;outline-offset:2px}
 @media(max-width:920px){.staff-roster-table{min-width:1570px}}
+/* Sorteren blijft compact naast zoeken en filteren, ook op kleinere schermen. */
+.staff-filters{grid-template-columns:minmax(180px,1fr) minmax(240px,1.5fr) minmax(200px,1.2fr)}
+@media(max-width:760px){.staff-filters{grid-template-columns:minmax(0,1fr)}}
 /* Compacter CALL, rang, rangnaam, personeelslid en status; extra ruimte voor specialisaties. */
 .staff-roster-table{min-width:1450px}
 .staff-roster-table th:nth-child(1){width:3.8%}
@@ -236,7 +239,16 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 </section>
 <div id="mode" class="warn" hidden></div>
 <section class="card"><div class="controls" style="justify-content:space-between"><h2>Personeelslijst</h2><div class="controls"><button id="newBtn" type="button" hidden>Nieuw personeelslid</button><button class="alt" id="reload" type="button">Vernieuwen</button></div></div>
-<div class="grid"><div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div><div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div></div>
+<div class="grid staff-filters">
+ <div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div>
+ <div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div>
+ <div><label for="rosterSort">Sorteren op</label><select id="rosterSort">
+   <option value="call-desc">Roepnummer aflopend (900 → 008)</option>
+   <option value="call-asc">Roepnummer oplopend</option>
+   <option value="name-asc">Naam A–Z</option>
+   <option value="name-desc">Naam Z–A</option>
+ </select></div>
+</div>
 <p class="subtle"><span id="count">Nog geen personeelsgegevens geladen.</span></p>
 <div class="scroller staff-roster-holder"><table class="staff-roster-table"><thead id="staffColumnHeaders"></thead><tbody id="results"></tbody></table></div>
 
@@ -536,7 +548,7 @@ function updateFicheColleagues(){
   if(!ficheMode)return;
   const select=$('ficheColleague');
   const options=[...people].sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','nl')||
-    (a.call||'').localeCompare(b.call||'','nl',{numeric:true}));
+    BPDPersonnelVisuals.comparePersonnel(a,b,'call-desc'));
   select.replaceChildren(...options.map(p=>option(p.dept+':'+p.discordId,
     (p.call||'—')+' · '+p.name+' ('+(departments[p.dept]||p.dept)+')')));
   if(selected)select.value=selected.dept+':'+selected.discordId;
@@ -1009,9 +1021,12 @@ function specialtyMark(label){
 }
 function render(){
   const q=$('search').value.trim().toLowerCase(),dept=$('dept').value;
-  const matches=people.filter(x=>(dept==='all'||dept===x.dept)&&
-    [x.name,x.call,x.discordId,x.rank,x.series,...(x.specialties||[]).map(t=>t.label)]
-      .some(v=>String(v||'').toLowerCase().includes(q)));
+  const matches=BPDPersonnelVisuals.sortPersonnelRows(
+    people.filter(x=>(dept==='all'||dept===x.dept)&&
+      [x.name,x.call,x.discordId,x.rank,x.series,...(x.specialties||[]).map(t=>t.label)]
+        .some(v=>String(v||'').toLowerCase().includes(q))),
+    $('rosterSort').value
+  );
   $('count').textContent=matches.length+' fiche(s) zichtbaar';
   const cols=BPDPersonnelVisuals.specialtyColumns(dept);
   const head=$('staffColumnHeaders');head.replaceChildren();
@@ -2872,7 +2887,8 @@ $('newForm').onsubmit=async event=>{
     }
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
 };
-$('reload').onclick=load;$('search').oninput=render;$('dept').onchange=render;
+$('reload').onclick=load;$('search').oninput=render;
+$('dept').onchange=render;$('rosterSort').onchange=render;
 $('close').onclick=()=>{
   if(ficheMode){window.location.assign($('ficheBackLink').href);return}
   $('panel').hidden=true;selected=null
