@@ -61,6 +61,18 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
 .topbar-logout:hover:not(:disabled){background:#edf2fb}
 .topbar-logout:disabled{opacity:.5;cursor:not-allowed}
 .topbar-logout:focus-visible{outline:3px solid #8caaff;outline-offset:2px}
+
+.member-notice{margin:18px 0 4px;background:#e9f3ff;color:#234879;border:1px solid #b6cdee;border-radius:9px;padding:12px 15px;font-size:13px;font-weight:650}
+.member-section{margin:25px 0 10px;border:1px solid #dfe7f2;border-radius:14px;background:white;padding:17px 20px}
+.member-section-top{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.member-section-top h2{margin:0}.member-section-top .caption{margin:0 0 8px}
+.member-roster-link{font-size:12px;font-weight:750;color:#2853bd}
+.member-table-wrap{overflow-x:auto;max-height:430px}
+.member-table{width:100%;border-collapse:collapse;font-size:12px;min-width:660px}
+.member-table th,.member-table td{padding:10px 11px;text-align:left;border-bottom:1px solid #dfe8f4}
+.member-table th{background:#e8f1fd;color:#24476e;font-weight:800}
+.member-table td:first-child{font-weight:750;color:#193766}
+[hidden]{display:none!important}
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
 </head>
@@ -69,7 +81,7 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
 <div class="portal">
 <aside aria-label="Hoofdnavigatie">
   <a class="brand" href="/" aria-label="BelgiumPD startpagina"><span class="brand-icon">BP</span><span><strong>BelgiëPD</strong><small>Beheerportaal</small></span></a>
-  <nav aria-label="Werkruimte">
+  <nav id="staffNav" aria-label="Werkruimte" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
     <a href="/personeelsbeheer.html">♙ &nbsp; Personeelsbeheer</a>
     <a href="/dossiercentrum.html">▣ &nbsp; Dossiercentrum</a>
@@ -80,11 +92,18 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
     <a href="/verlofbeheer.html">▦ &nbsp; Verlofbeheer</a>
     <a href="/gebruikersbeheer.html#dienstbeheer">⚙ &nbsp; Beheer &amp; rollen</a>
   </nav>
+  <nav id="memberNav" aria-label="Nieuwe leden" hidden>
+    <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
+    <a href="/discord-status.html">👤 &nbsp; Mijn profiel</a>
+    <a href="/personeelslijst.html">👥 &nbsp; Personeelslijst</a>
+    <a href="/vast-roepnummer-aanvragen.html">🔢 &nbsp; Vast roepnummer aanvragen</a>
+  </nav>
   <div class="side-note"><strong>Beveiligde modules</strong>Meld je aan met je goedgekeurde account. Elke hulpdienst heeft afzonderlijke dossier- en beheersrechten.</div>
 </aside>
 <div class="surface">
 <header class="topbar"><span class="path">BelgiëPD / Startpagina</span><div class="topbar-actions"><a class="my-profile-link" href="/discord-status.html" aria-label="Open mijn profiel">👤 Mijn profiel</a><button class="topbar-logout" id="dashboardLogout" type="button" disabled>Uitloggen</button></div></header>
 <main id="inhoud">
+  <div id="staffDashboard" hidden>
   <section class="hero" aria-labelledby="home-title">
     <div><p class="eyebrow">Administratie · Operationele ondersteuning</p>
       <h1 id="home-title">Welkom in het beheerportaal</h1>
@@ -117,6 +136,30 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
     <a href="/discord-status.html"><span aria-hidden="true">🔗</span> Discord-koppeling controleren →</a>
   </div>
   <p class="caption">De modules controleren je toegang bij het openen. De startpagina bevat bewust geen personeelsinformatie of fictieve statistieken.</p>
+  </div>
+  <section id="memberDashboard" hidden aria-labelledby="memberDashboardTitle">
+    <p class="eyebrow">Welkom bij BelgiumPD</p>
+    <h1 id="memberDashboardTitle">Jouw startpagina</h1>
+    <p class="lead">Als nieuw lid kun je je eigen status bekijken, de personeelslijst raadplegen en een vast roepnummer aanvragen zodra je aan de voorwaarden voldoet. Een tijdelijk roepnummer hoeft nog geen dossier op te leveren.</p>
+    <div class="member-notice" id="memberAccountStatus" role="status">Je Discord-profiel wordt gecontroleerd.</div>
+    <h2 class="section-title">Voor jou beschikbaar</h2>
+    <div class="grid">
+      <a class="module" href="/discord-status.html"><span class="ico" aria-hidden="true">👤</span><h3>Mijn profiel</h3><p>Bekijk je Discord-koppeling, je personeelsstatus en je eigen gegevens.</p><span class="open">Bekijk mijn profiel →</span></a>
+      <a class="module" href="/personeelslijst.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelslijst</h3><p>Bekijk roepnummer, naam, rang, reeks en status. Zonder dossiergegevens of wijzigingen.</p><span class="open">Open personeelslijst →</span></a>
+      <a class="module" href="/vast-roepnummer-aanvragen.html"><span class="ico" aria-hidden="true">🔢</span><h3>Vast roepnummer aanvragen</h3><p>Alleen na 5 volledige kalenderdagen op Discord en minstens 10 speeluren, bevestigd door de FiveM-bot.</p><span class="open">Controleer mijn voorwaarden →</span></a>
+    </div>
+    <div class="member-section">
+      <div class="member-section-top"><div><h2 class="section-title">Personeelslijst politie</h2><p class="caption">Een beperkt, alleen-lezen overzicht. Geen Discord-ID’s, dossiers of observaties.</p></div>
+      <a href="/personeelslijst.html" class="member-roster-link">Volledige personeelslijst →</a></div>
+      <p id="memberRosterStatus" class="caption" role="status">Personeelslijst laden…</p>
+      <div class="member-table-wrap"><table class="member-table"><thead><tr><th>CALL</th><th>Naam</th><th>Rang</th><th>Reeks</th><th>Status</th></tr></thead><tbody id="memberRosterRows"></tbody></table></div>
+    </div>
+  </section>
+  <section id="guestDashboard" aria-labelledby="guestDashboardTitle">
+    <p class="eyebrow">BelgiumPD</p><h1 id="guestDashboardTitle">Welkom op het beheerportaal</h1>
+    <p class="lead" id="guestMessage">Meld je aan met je eigen Discord-account via Mijn profiel om je toegelaten startpagina te openen.</p>
+    <div class="grid" style="margin-top:25px"><a class="module" href="/discord-status.html"><span class="ico">👤</span><h3>Mijn profiel en aanmelden</h3><p>Koppel en verifieer je Discord-account.</p><span class="open">Open Mijn profiel →</span></a></div>
+  </section>
 </main>
 </div></div>
 <script type="module">
