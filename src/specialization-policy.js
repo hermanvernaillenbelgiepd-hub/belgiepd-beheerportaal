@@ -13,6 +13,10 @@ export function allowedSpecialty(dept,label){
   return typeof label==='string'&&SPECIALTY_LABELS[dept]?.includes(label)===true;
 }
 export function canChangeSpecialty(actor,subject){
+  if(actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true&&
+     actor?.uid==='discord:'+actor?.discordId&&
+     actor?.discordId!==subject?.personId)
+    return canEditPersonnel(actor,subject);
   // More restrictive than general personnel editing:
   // exactly officers and corps leadership in POLICE, never technical beheerder,
   // middle cadre, other services or the staff member themself.
