@@ -28,7 +28,7 @@ test('Toegangsvoorbeeld biedt zeven fictieve profielen zonder echte aanmeldgegev
   assert.match(js,/call:'900'/);
   assert.match(js,/CALL 900–999; Discord-rol bepaalt rechten/);
   assert.ok(html.includes('/vast-roepnummer-aanvragen.html'));
-  assert.match(js,/roles\.indexOf\(role\)/);
+  assert.match(js,/const roleIndex=role=>roles\.findIndex\(p=>p\.id===role\.id\)/);
   assert.match(css,/\.experience\{display:grid/);
 });
 
@@ -74,7 +74,7 @@ test('Voorbeeldrijen volgen exacte roepnummers en rangbenamingen zonder rollen t
   };
   for(const [call,rank] of Object.entries(variants)){
     assert.ok(js.includes("call:'"+call+"',short:'"+rank+"'"),call+' '+rank);
-    assert.match(html,new RegExp('\\b'+call+'\\s+'+rank.replace(/-/g,'-')));
+    assert.ok(html.includes(call+' '+rank)||html.includes(call+' ('+rank+')'),call+' '+rank);
   }
   assert.match(js,/const selectedCall=\{basis:'300',midden:'600',officier:'920',korps:'900'\}/);
   assert.match(js,/selectedCall\[roleId\]=variant\.call;draw\(\)/);
