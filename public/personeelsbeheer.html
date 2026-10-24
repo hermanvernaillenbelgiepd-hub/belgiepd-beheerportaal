@@ -237,6 +237,29 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .specialty-state.specialty-no{background:#344863;color:#dce7f7}
 .specialty-state.specialty-unknown{background:#3d4654;color:#d9e0ea}
 
+
+/* Compacte, volledig uitgelijnde personeelsmatrix (MAIN). */
+.staff-roster-table{border-collapse:collapse;border-spacing:0}
+.staff-roster-table thead th{padding:7px 6px;line-height:1.15;vertical-align:middle}
+.staff-roster-table tbody tr{height:46px}
+.staff-roster-table tbody td{padding:5px 6px;line-height:1.18;vertical-align:middle;border-bottom:1px solid #506c8d}
+.staff-roster-table tbody tr:hover td{background-color:#1b3556}
+.staff-roster-table .rank-insignia{width:76px;height:32px;max-width:100%;object-fit:contain;object-position:center;display:block;margin:0 auto}
+.staff-roster-table .specialty-status-col{padding:4px 3px;text-align:center;vertical-align:middle}
+.staff-roster-table .specialty-status-col .specialty-state,
+.staff-roster-table .roster-specialties .specialty-state{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:42px;min-height:23px;height:auto;padding:4px 6px;
+  border-radius:3px;font-size:10px;font-weight:750;
+  line-height:1.15;text-align:center;white-space:normal;
+  overflow-wrap:normal;word-break:normal;
+  border:1px solid rgba(255,255,255,.16);box-sizing:border-box;
+}
+.staff-roster-table .pill{display:inline-flex;align-items:center;justify-content:center;
+  min-height:23px;padding:3px 7px;border-radius:3px;font-size:10px;line-height:1.15}
+.staff-roster-table .roster-dept{font-size:10px;margin-top:2px;line-height:1.1}
+.staff-roster-table td:nth-child(3),.staff-roster-table td:nth-child(4),
+.staff-roster-table td:nth-child(5){line-height:1.2}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
