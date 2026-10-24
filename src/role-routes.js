@@ -199,7 +199,10 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     return res.json({provider:bpd.provider,discordId:discordId||null,googleRank:bpd.trustedStaff?bpd.role:null,
       verifiedRolesFresh:base.fresh,roles:base.roles,departments:base.departments,
       policeRank:base.policeRank,unknownRoleCount:base.unknownCount,
-      permissions:visibleTrainingPermissions(bpd,perms),canManage:bpd.trustedStaff===true&&['officierenkader','korpsleiding'].includes(bpd.role),
+      permissions:{...visibleTrainingPermissions(bpd,perms),brandweer:{
+        'training.log':trainingAccess(req,'brandweer','log'),
+        'training.review':trainingAccess(req,'brandweer','review')}},
+      canManage:bpd.trustedStaff===true&&['officierenkader','korpsleiding'].includes(bpd.role),
       trainingWritesEnabled:process.env.BPD_ENABLE_TRAINING_WRITES==='true',
       note:'Discord-toekenningen en Google Sheets worden NIET automatisch aangepast. Bestaande dossiers blijven onder de huidige Google-allowlist.'});
   });
