@@ -16,7 +16,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 .dossier-tabbar button{background:#152f51;border-color:#395c83;font-size:12px;padding:9px 12px}
 .dossier-tabbar button[aria-selected="true"]{background:#315cdc;border-color:#8dabff}
 .dossier-panel{min-height:155px}
-.summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .summary-grid>div{background:#152e4d;border:1px solid #345576;border-radius:9px;padding:13px}
 .sheet-rows{display:grid;gap:7px}
 .sheet-row{display:grid;grid-template-columns:minmax(115px,1fr) minmax(0,2.2fr);gap:9px;padding:9px 10px;background:#183351;border-bottom:1px solid #355678;border-radius:5px;font-size:13px}
@@ -26,6 +26,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 .record{background:#173150;border:1px solid #345777;border-radius:8px;padding:12px;margin-bottom:7px}
 .record h3{font-size:14px;margin:0 0 4px}.record p{white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0;font-size:13px}
 .record small{color:#a9c5e7}
+@media(max-width:960px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.summary-grid{grid-template-columns:1fr}.sheet-row{grid-template-columns:1fr}}
 </style><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/bpd-dossier-shared.css">
 </head><body class="bpd-unified-dossier">
@@ -62,6 +63,11 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <div><h3>Verlofstatus</h3><div id="overviewLeave" class="small-rows"></div></div>
 <div id="overviewQuals" hidden><h3>Specialisaties</h3><div id="overviewSpecialties" class="small-rows"></div></div>
 <div id="overviewActivity" hidden><h3>Recente registraties</h3><div id="overviewRecent" class="small-rows"></div></div>
+<div id="overviewObservationTile" hidden><h3>Observaties</h3><div id="overviewObservationCount" class="small-rows"></div></div>
+<div id="overviewNotesTile" hidden><h3>Belangrijke notities</h3><div id="overviewNotesCount" class="small-rows"></div></div>
+<div id="overviewSanctionsTile" hidden><h3>Sancties</h3><div id="overviewSanctionsCount" class="small-rows"></div></div>
+<div id="overviewTrainingTile" hidden><h3>Voltooide opleidingen</h3><div id="overviewTrainingCount" class="small-rows"></div></div>
+<div id="overviewHistoryTile" hidden><h3>Historiek en personeelswijzigingen</h3><div id="overviewHistoryCount" class="small-rows"></div></div>
 </div></section>
 <section id="profileSection" class="card dossier-panel" data-pane="gegevens" hidden>
 <h2>Personeelsinformatie</h2><div id="profile" class="sheet-rows"></div>
@@ -242,6 +248,9 @@ async function load(){
   }
   $('overviewQuals').hidden=!advanced;
   $('overviewActivity').hidden=!advanced;
+  for(const tile of ['overviewObservationTile','overviewNotesTile',
+    'overviewSanctionsTile','overviewTrainingTile','overviewHistoryTile'])
+    $(tile).hidden=!advanced;
   if(advanced){
    const qualifiers=data.specialties||[];
    rows($('specialties'),qualifiers.map(x=>[x.label,x.value]));
@@ -249,6 +258,17 @@ async function load(){
      !['Nee','Niet ingevuld'].includes(x.value)).slice(0,6)
      .map(x=>x.label+' · '+x.value).join(' | ')||'Geen actuele kwalificaties';
    const entries=data.entries||[];
+   $('overviewObservationCount').textContent=
+     entries.filter(x=>x.type==='observatie').length+' geregistreerde observaties';
+   $('overviewNotesCount').textContent=
+     (entries.filter(x=>x.type==='notitie').length+(data.olderNotes||[]).length)+
+     ' geregistreerde notities';
+   $('overviewSanctionsCount').textContent=
+     entries.filter(x=>x.type==='sanctie').length+' geregistreerde sancties';
+   $('overviewTrainingCount').textContent=
+     (data.trainings||[]).length+' gekoppelde opleidingen';
+   $('overviewHistoryCount').textContent=
+     (data.dossierHistory||[]).length+' administratieve wijzigingen';
    const label={observatie:'Observatie',notitie:'Belangrijke notitie',sanctie:'Sanctie'};
    $('overviewRecent').textContent=entries.slice(0,5)
      .map(x=>(label[x.type]||x.type)+' · '+(x.eventDate||'—')).join(' | ')
