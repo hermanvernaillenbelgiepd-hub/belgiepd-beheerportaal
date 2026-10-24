@@ -54,10 +54,20 @@ export function fireRecordVisibility(actor,subject,subjectRoles){
     actor?.portalTechnicalMode===true)return 'full';
  return actor?.fireAccessLevel==='leadership'?'leadership':'identity';
 }
+export function fireSanctionLevel(actor){
+  if(actor?.fireZoneChief===true||
+     actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true)
+    return 'korpsleiding';
+  return actor?.fireAccessLevel==='leadership'?'middenkader':null;
+}
 export function fireMayCreate(actor,subject,subjectRoles,type){
  const scope=fireRecordVisibility(actor,subject,subjectRoles);
  if(actor?.boardPersonnelAdmin===true&&!actor?.fireZoneChief&&
     actor?.portalTechnicalMode!==true)return false;
+ // Brandweerleiding mirrors Police Middenkader for lower fire personnel:
+ // observations, routine/important notes and limited sanctions. ZONE has
+ // corps leadership powers, but only inside the Brandweer service.
  return scope==='identity'?type==='observatie':
- scope==='leadership'||scope==='full'?['observatie','notitie','sanctie'].includes(type):false;
+ scope==='leadership'||scope==='full'?
+ ['observatie','basisnotitie','notitie','sanctie'].includes(type):false;
 }
