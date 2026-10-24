@@ -95,14 +95,15 @@
         lower==='stage'?'Stage':lower==='docent'?'Docent':
         raw||'Niet ingevuld';
       const kind=status.toLocaleUpperCase('nl-BE');
-      const style=kind==='JA'?'yes':kind==='NEE'?'no':
-        kind==='STAGE'?'stage':kind==='DOCENT'?'teacher':
-        ['BLACKLISTED','GESCHORST','ONTSLAG'].includes(kind)?'alert':
-        kind==='RESTRICTED'?'warning':
-        kind==='INACTIEF'?'muted':
-        ['LEIDING','SPECIALISATIE'].includes(kind)?'lead':
-        ['MUG-HELI','INSTRUCTEUR'].includes(kind)?'trained':
-        ['AANGEMELD','PLAVA','GPC','OPLEIDING!'].includes(kind)?'info':'unknown';
+      const style=['ACTIEF','JA'].includes(kind)?'yes':
+        ['INACTIEF'].includes(kind)?'inactive':
+        kind==='BLACKLISTED'?'blacklisted':
+        kind==='ONTSLAG'?'resigned':
+        ['STAGE','AANGEMELD'].includes(kind)?'stage':
+        ['RESTRICTED','OPLEIDING!','WAARSCHUWING'].includes(kind)?'warning':
+        ['PLAVA','GPC','LEIDING','SPECIALISATIE','INSTRUCTEUR','DOCENT'].includes(kind)?'lead':
+        kind==='MUG-HELI'?'lightgreen':
+        kind==='NEE'?'no':'unknown';
       out.push({label,status,style,icon:specialtyIcon(label)});
     }
     return out;
