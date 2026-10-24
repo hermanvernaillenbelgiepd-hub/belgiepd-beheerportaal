@@ -423,3 +423,13 @@ test('Opleidingscentrum verbergt overbodige rolblokken en houdt aanmelden bereik
   assert.match(html,/\$\('logout'\)\.hidden=!signedIn/);
   assert.match(html,/\$\('training'\)\.hidden=false/);
 });
+
+test('Opleidingscentrum toont geen interne machtigingsvariabelen in de interface',()=>{
+  const html=readFileSync(new URL('../public/rollen-opleidingen.html',import.meta.url),'utf8');
+  assert.doesNotMatch(html,/Wijzigingen vereisen BPD_ENABLE_PERMISSION_WRITES=true/);
+  assert.doesNotMatch(html,/id="adminNote"/);
+  assert.match(html,/id="overrideInfo"/);
+  const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(script);
+  assert.doesNotThrow(()=>new Script(script));
+});
