@@ -54,3 +54,13 @@ test('Voorbeeld vermeldt gedeelde 900-reeks en personeelscontinuïteit per Disco
   assert.match(html,/eerst de tientallen/);
   assert.match(html,/101–199/);
 });
+
+test('Nieuw lid kan vast nummer aanvragen zonder tijdelijk nummer, maar alleen via expliciete server-optie',()=>{
+  const id='123456789012345678';
+  assert.throws(()=>checkApplicant({name:'Voorbeeld nieuw',discordId:id,temporaryCall:''}),/101 en 199/);
+  const data=checkApplicant({name:'Voorbeeld nieuw',discordId:id},{allowMissingTemporary:true});
+  assert.equal(data.discordId,id);
+  assert.equal(data.temporaryCall,'');
+  assert.equal(checkApplicant({name:'Voorbeeld nieuw',discordId:id,temporaryCall:'150'},{allowMissingTemporary:true}).temporaryCall,'150');
+  assert.throws(()=>checkApplicant({name:'Voorbeeld nieuw',discordId:id,temporaryCall:'250'},{allowMissingTemporary:true}),/101 en 199/);
+});
