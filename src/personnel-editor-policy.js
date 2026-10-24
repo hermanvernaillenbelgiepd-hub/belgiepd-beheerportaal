@@ -2,6 +2,7 @@ import {createHash} from 'node:crypto';
 import {roleForDepartment} from './leave-policy.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {policeKader} from './normalize.js';
+import {isPolice9xx} from './verified-police-cadre.js';
 
 // Persistent overlays never contain identity, rank or permissions.
 // They can be merged with source Sheets only after a controlled rollout.
@@ -22,11 +23,27 @@ export function validPersonnelKey(dept,id){
 export function isCorpsLeadershipPersonnel(person){
   return person?.dept==='politie'&&policeKader(person.rank)==='Korpsleiding';
 }
+function verifiedCorpsReader(actor){
+  // Both an approved portal role AND a recent, matching Discord role are
+  // required; a self-reported 9xx callsign or legacy Google account cannot
+  // grant access to protected corps dossiers.
+  return actor?.uid==='discord:'+actor?.discordId&&
+    actor?.role==='korpsleiding'&&roleForDepartment(actor,'politie')==='korpsleiding'&&
+    actor?.discordPoliceRank==='korpsleiding';
+}
 export function canReadPersonnelSubject(actor,person){
   if(!person||!canReadServiceDossier(actor,person.dept))return false;
-  return !isCorpsLeadershipPersonnel(person)||
-    actor?.boardPersonnelAdmin===true||
-    (actor?.role==='korpsleiding'&&roleForDepartment(actor,'politie')==='korpsleiding');
+  if(person.dept!=='politie')return true;
+  if(actor?.boardPersonnelAdmin===true)return true;
+  if(isPolice9xx(person.call)){
+    // Subject role labels come ONLY from authenticated server-side guild
+    // snapshots and never from a request body or the person's callsign.
+    // Missing, expired or ambiguous snapshots fail closed.
+    const label=actor?.verifiedPoliceSubjectRoles?.[person.personId];
+    if(label==='Officierenkader')return true;
+    return verifiedCorpsReader(actor);
+  }
+  return !isCorpsLeadershipPersonnel(person)||verifiedCorpsReader(actor);
 }
 export function canViewPersonnel(actor,dept){
   if(!SERVICES.has(dept))return false;

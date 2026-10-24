@@ -150,7 +150,8 @@ test('900 en 910 blijven zichtbaar in roster zonder toegang tot afgeschermde lei
   const {policeKader}=await import('../src/normalize.js');
   const {dossierScopes,dossierOverviewRows}=await import('../src/dossier-center-policy.js');
   const actor={...officer,role:'middenkader',
-    departmentRoles:{politie:'middenkader'},dossierAllowedDepartments:['politie']};
+    departmentRoles:{politie:'middenkader'},dossierAllowedDepartments:['politie'],
+    verifiedPoliceSubjectRoles:{[id]:'Officierenkader'}};
   const highChief={...staff,personId:'111111111111111111',name:'Thijs',
     call:'900',rank:'Eerste Hoofdcommissaris van Politie (1HCP)'};
   const firstCommissioner={...staff,personId:'222222222222222222',name:'Extra',
@@ -166,7 +167,7 @@ test('900 en 910 blijven zichtbaar in roster zonder toegang tot afgeschermde lei
   const board={...actor,boardPersonnelAdmin:true};
   assert.equal(canReadPersonnelSubject(board,highChief),true);
   assert.equal(canReadPersonnelSubject(board,firstCommissioner),true);
-  const leadership={...chief,dossierAllowedDepartments:['politie']};
+  const leadership={...chief,uid:'discord:'+chief.discordId,discordPoliceRank:'korpsleiding',dossierAllowedDepartments:['politie']};
   assert.equal(canReadPersonnelSubject(leadership,highChief),true);
   assert.equal(canReadPersonnelSubject(leadership,firstCommissioner),true);
 
@@ -182,4 +183,50 @@ test('900 en 910 blijven zichtbaar in roster zonder toegang tot afgeschermde lei
   assert.match(ui,/if\(p\?\.canOpenDossier!==true\)/);
   assert.match(ui,/people\.filter\(p=>p\.canOpenDossier===true\)/);
   assert.match(route,/if\(!canReadPersonnelSubject\(req\.bpd,target\)\)return error\(res,403/);
+});
+
+test('De volledige gedeelde 900-reeks is alleen via geverifieerde Discord-rollen in te zien',async()=>{
+  const {canReadPersonnelSubject}=await import('../src/personnel-editor-policy.js');
+  const actor={...officer,uid:'discord:'+officer.discordId,
+    dossierAllowedDepartments:['politie'],discordPoliceRank:'officierenkader',
+    verifiedPoliceSubjectRoles:Object.create(null)};
+  const officer900={...staff,call:'920',rank:'Eerste Commissaris van Politie',personId:'111111111111111111'};
+  const corps900={...staff,call:'930',rank:'Aspirant Commissaris van Politie',personId:'222222222222222222'};
+  const noEvidence={...staff,call:'999',rank:'Inspecteur van Politie',personId:'333333333333333333'};
+  // Official rank or 900 CALL cannot disclose dossiers without Discord proof.
+  for(const p of [officer900,corps900,noEvidence])
+    assert.equal(canReadPersonnelSubject(actor,p),false,p.call);
+  actor.verifiedPoliceSubjectRoles[officer900.personId]='Officierenkader';
+  actor.verifiedPoliceSubjectRoles[corps900.personId]='Korpsleiding';
+  assert.equal(canReadPersonnelSubject(actor,officer900),true,
+    'Een geverifieerde officier in 900 mag niet als korps afgeschermd blijven');
+  assert.equal(canReadPersonnelSubject(actor,corps900),false,
+    'Een geverifieerde Korpsleiding met rangtekst officier blijft beschermd');
+  const chiefActor={...chief,uid:'discord:'+chief.discordId,
+    discordPoliceRank:'korpsleiding',dossierAllowedDepartments:['politie'],
+    verifiedPoliceSubjectRoles:{...actor.verifiedPoliceSubjectRoles}};
+  assert.equal(canReadPersonnelSubject(chiefActor,corps900),true);
+  assert.equal(canReadPersonnelSubject({...chiefActor,discordPoliceRank:null},corps900),false);
+  assert.equal(canReadPersonnelSubject({...chiefActor,uid:'google:login'},corps900),false);
+  assert.equal(canReadPersonnelSubject({...chiefActor,role:'officierenkader'},corps900),false);
+  const board={...actor,boardPersonnelAdmin:true};
+  assert.equal(canReadPersonnelSubject(board,corps900),true);
+  assert.equal(canReadPersonnelSubject(board,noEvidence),true);
+  assert.equal(canReadPersonnelSubject(actor,{...corps900,dept:'brandweer'}),false);
+});
+test('API beschermt tevens directe dossierlinks en opleidingen tegen een 900-bypass',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const s=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+  const roles=readFileSync(new URL('../src/role-routes.js',import.meta.url),'utf8');
+  const overview=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+  const center=readFileSync(new URL('../src/dossier-center-routes.js',import.meta.url),'utf8');
+  assert.match(s,/req\.bpd\.verifiedPoliceSubjectRoles=Object\.create\(null\)/);
+  assert.match(s,/verifiedOfficerCadre\(found\[j\]\.data\(\),process\.env\.DISCORD_GUILD_ID/);
+  assert.match(s,/if\(!canReadPersonnelSubject\(req\.bpd,target\[0\]\)\)/);
+  assert.match(s,/const subjectRole=member\.exists\?verifiedOfficerCadre/);
+  assert.match(roles,/if\(!mayAccessSubject\(req\.roleActor\.bpd,subject,verified\)\)/);
+  assert.match(roles,/await verifiedSubjects\(\[subject\]\)/);
+  assert.match(overview,/canOpenDossier=canReadPersonnelSubject\(req\.bpd,p\)/);
+  assert.match(overview,/req\.bpd\.verifiedPoliceSubjectRoles\?\.\[p\.discordId\]/);
+  assert.match(center,/if\(!canReadPersonnelSubject\(req\.bpd,p\)\)/);
 });

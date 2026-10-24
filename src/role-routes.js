@@ -12,6 +12,7 @@ import { basePermissions,effectivePermissions,validateOverride,canAdministerRole
 import { mayMaintainTraining,isArchivedTraining,validateMaintenanceReason,isRecordId,requiresReReview } from './training-maintenance.js';
 import {roleForDepartment} from './leave-policy.js';
 import {isCorpsLeadershipPersonnel} from './personnel-editor-policy.js';
+import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
 
 const asText=(v,n=300)=>typeof v==='string' ? v.trim().slice(0,n):'';
 const db=()=>getFirestore();
@@ -67,6 +68,8 @@ async function resolveActor(req,res,next){
     bpd.boardPersonnelAdmin=Boolean(verifiedBoardIdentity&&(
       verifyBoardDiscordRole(member,process.env.DISCORD_GUILD_ID)||
       activeBoardAppointment(boardAppointment?.data())));
+    bpd.discordPoliceRank=verifiedOfficerCadre(member,process.env.DISCORD_GUILD_ID,
+      Date.now(),15*60*1000);
     // A full dossier delegation may additionally grant training log/review for
     // THAT department. Validate the portal account and a fresh Discord identity.
     // Never turn a delegation into a global cadre or role-management grant.
@@ -127,9 +130,32 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     const matches=snap.data.filter(p=>p.dept===dept&&p.personId===discordId);
     return matches.length===1?matches[0]:null;
   };
-  const mayAccessSubject=(bpd,subject)=>!isCorpsLeadershipPersonnel(subject)||
-    bpd?.boardPersonnelAdmin===true||
-    (bpd?.trustedStaff===true && roleForDepartment(bpd,'politie')==='korpsleiding');
+  const mayAccessSubject=(bpd,subject,roleMap)=>{
+    if(bpd?.boardPersonnelAdmin===true)return true;
+    const mayOpenCorps=bpd?.provider==='discord'&&bpd?.trustedStaff===true&&
+      bpd?.role==='korpsleiding'&&roleForDepartment(bpd,'politie')==='korpsleiding'&&
+      bpd?.discordPoliceRank==='Korpsleiding';
+    if(subject.dept==='politie'&&isPolice9xx(subject.call))
+      return roleMap?.get(subject.personId)==='Officierenkader'||mayOpenCorps;
+    return !isCorpsLeadershipPersonnel(subject)||mayOpenCorps;
+  };
+  async function verifiedSubjects(subjects){
+    const map=new Map(),guildId=process.env.DISCORD_GUILD_ID;
+    const ids=[...new Set(subjects.filter(p=>p?.dept==='politie'&&
+      isPolice9xx(p.call)&&isDiscordId(p.personId)).map(p=>p.personId))];
+    if(!isDiscordId(guildId)||!ids.length)return map;
+    const collection=db().collection('bpd_discord_auth');
+    for(let i=0;i<ids.length;i+=50){
+      const chunk=ids.slice(i,i+50);
+      const results=await db().getAll(...chunk.map(id=>collection.doc(id)));
+      for(let j=0;j<results.length;j++){
+        const role=results[j].exists?
+          verifiedOfficerCadre(results[j].data(),guildId,Date.now(),15*60*1000):null;
+        if(role)map.set(chunk[j],role);
+      }
+    }
+    return map;
+  }
   async function guardTrainingSubject(req,res,next){
     const {department,discordId}=req.params;
     if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId))
@@ -137,8 +163,10 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     try {
       const subject=await findSubject(department,discordId);
       if(!subject)return res.status(404).json({error:'Geen eenduidig personeelslid binnen deze hulpdienst'});
-      if(!mayAccessSubject(req.roleActor.bpd,subject))
+      const verified=await verifiedSubjects([subject]);
+      if(!mayAccessSubject(req.roleActor.bpd,subject,verified))
         return res.status(403).json({error:'Dit personeelsdossier is afgeschermd'});
+      req.trainingSubjectRoles=verified;
       next();
     }catch(e){error(res,e)}
   }
@@ -194,8 +222,9 @@ export function installRoleRoutes(app,{getSnapshot}={}){
       const counts=new Map();
       for(const p of snap.data)if(p.dept===department&&isDiscordId(p.personId))
         counts.set(p.personId,(counts.get(p.personId)||0)+1);
+      const verified=await verifiedSubjects(snap.data.filter(p=>p.dept===department));
       const people=snap.data.filter(p=>p.dept===department&&isDiscordId(p.personId)&&
-        counts.get(p.personId)===1&&mayAccessSubject(req.roleActor.bpd,p))
+        counts.get(p.personId)===1&&mayAccessSubject(req.roleActor.bpd,p,verified))
         .map(p=>({discordId:p.personId,call:p.call,name:p.name,department:p.dept}))
         .sort((a,b)=>String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true}));
       res.set('Cache-Control','private, no-store');
@@ -209,7 +238,7 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     try{
       const subject=await findSubject(department,discordId);
       if(!subject)return res.status(404).json({error:'Geen eenduidig personeelslid binnen deze hulpdienst'});
-      if(!mayAccessSubject(req.roleActor.bpd,subject))
+      if(!mayAccessSubject(req.roleActor.bpd,subject,req.trainingSubjectRoles))
         return res.status(403).json({error:'Dit dossier is afgeschermd'});
       const all=trainingAccess(req,department,'review');
       const query=db().collection('bpd_training').doc(`${department}_${discordId}`).collection('records');
@@ -233,7 +262,8 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     try{
       const subject=await findSubject(data.department,data.subjectDiscordId);
       if(!subject)return res.status(404).json({error:'Geen eenduidig personeelslid binnen deze hulpdienst'});
-      if(!mayAccessSubject(actor,subject))return res.status(403).json({error:'Dit dossier is afgeschermd'});
+      if(!mayAccessSubject(actor,subject,await verifiedSubjects([subject])))
+        return res.status(403).json({error:'Dit dossier is afgeschermd'});
       const record=db().collection('bpd_training').doc(`${data.department}_${data.subjectDiscordId}`).collection('records').doc();
       await record.create({...data,registeredByDiscordId:actor.discordId,registeredByProvider:actor.provider,
         status:'geregistreerd',cmNotified:false,rosterStatus:'nog_niet_beoordeeld',createdAt:FieldValue.serverTimestamp()});
