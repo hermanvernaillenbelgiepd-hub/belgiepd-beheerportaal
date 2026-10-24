@@ -69,6 +69,16 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 @media(max-width:960px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 [hidden]{display:none!important}
 @media(max-width:720px){.grid,.search,.filter-grid{grid-template-columns:1fr}header{padding:14px}h1{font-size:25px}.card{padding:15px}}
+
+/* Compact dossiercentrum: lagere, consequent uitgelijnde overzichtsrijen. */
+.scroller table{border-collapse:collapse;border-spacing:0}
+.scroller table thead th{padding:7px 8px;font-size:11px;line-height:1.1;vertical-align:middle}
+.scroller table tbody tr{height:40px}
+.scroller table tbody td{padding:4px 8px;line-height:1.12;vertical-align:middle;border-bottom:1px solid rgba(255,255,255,.12);font-size:12px}
+.scroller table tbody .dossier-callsign,.scroller table tbody .dossier-rank,.scroller table tbody .dossier-discord{font-size:12px;line-height:1.1}
+.scroller table tbody .dossier-status{display:inline-flex;align-items:center;justify-content:center;min-height:19px;padding:2px 8px;font-size:10px;line-height:1;border-radius:9px}
+.scroller table tbody button.alt{min-height:26px;padding:4px 9px;font-size:11px;line-height:1.1;border-radius:6px}
+.scroller table tbody td:last-child{white-space:nowrap}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
 <header><strong>🛡️ BelgiumPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><button id="login" type="button">Aanmelden</button></nav></header>
