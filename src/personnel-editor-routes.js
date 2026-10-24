@@ -2,7 +2,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
-  canViewPersonnel,canReadPersonnelSubject,canEditPersonnel,canEditGeneralPersonnelInfo,canChangePersonnelStatus,validatePersonnelChange,mergePersonnelEdits,
+  canViewPersonnel,canReadPersonnelSubject,canEditPersonnel,canEditGeneralPersonnelInfo,canChangePersonnelStatus,canRenameLowerPolice,validateLowerPoliceRename,validatePersonnelChange,mergePersonnelEdits,
   currentPersonnelAuditActor,personnelCallClaimId} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
   personnelDataEnabled,personnelCreationEnabled,canCreatePersonnel,canAuthoriseExceptionalPoliceRank,
@@ -346,6 +346,47 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       });
       return res.json({promoted:true,dept,discordId,newRank:proposal.newRank,
         rolesGranted:false,sourceSheetsChanged:false});
+    }catch(e){return safeResponse(res,e)}
+  });
+  app.post('/api/personnel/:dept/:discordId/name',requireDossierUser,async(req,res)=>{
+    const {dept,discordId}=req.params;
+    if(!validPersonnelKey(dept,discordId))return error(res,400,'Ongeldige personeelsreferentie');
+    if(!writes())return error(res,503,'Personeelswijzigingen staan nog uit');
+    let data;
+    try{data=validateLowerPoliceRename(req.body)}catch(e){return error(res,400,e.message)}
+    try{
+      const snap=await getSnapshot();
+      if(snap.stale)throw userError(503,'Personeelsbron moet eerst opnieuw synchroniseren');
+      const matches=snap.data.filter(p=>p.dept===dept&&p.personId===discordId);
+      if(matches.length!==1)throw userError(409,'Geen eenduidige personeelsfiche');
+      const subject=matches[0];
+      if(!canRenameLowerPolice(req.bpd,subject))
+        throw userError(403,'Middenkader mag alleen namen van lager politiekader aanpassen');
+      const ref=collection().doc(dept+'_'+discordId);
+      await getFirestore().runTransaction(async tx=>{
+        const current=await tx.get(ref);
+        const saved=current.data();
+        const revision=saved?.revision||0;
+        if(revision!==data.expectedRevision)
+          throw userError(409,'De fiche is gewijzigd. Vernieuw voor je opnieuw opslaat');
+        const oldName=saved?.name??subject.name;
+        if(oldName===data.name)throw userError(409,'De naam is niet gewijzigd');
+        const previous={name:oldName,call:saved?.call??subject.call,status:saved?.status??subject.status};
+        const next={...previous,name:data.name};
+        tx.set(ref,{...next,dept,discordId,revision:revision+1,
+          updatedAt:FieldValue.serverTimestamp(),updatedByUid:req.bpd.uid,
+          updatedByDiscordId:req.bpd.discordId});
+        tx.create(ref.collection('audit').doc(),{action:'name_changed',
+          previous,next,revision:revision+1,reason:data.reason,
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
+          at:FieldValue.serverTimestamp()});
+        tx.create(getFirestore().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+          type:'name_changed',dept,discordId,name:data.name,
+          before:oldName,after:data.name,actorDiscordId:req.bpd.discordId,
+          at:FieldValue.serverTimestamp()
+        });
+      });
+      return res.json({saved:true,active:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'});
     }catch(e){return safeResponse(res,e)}
   });
   app.post('/api/personnel/:dept/:discordId',requireDossierUser,async(req,res)=>{
