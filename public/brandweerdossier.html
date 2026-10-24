@@ -12,6 +12,21 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 .fieldgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.buttons{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.row{padding:11px 0;border-bottom:1px solid #345071}.row:last-child{border:0}.row small{display:block;color:#a5bbd7}.tabs{display:flex;gap:8px;flex-wrap:wrap} .tag{display:inline-block;background:#315479;border-radius:30px;padding:4px 10px;font-size:11px}
 .error{color:#ffb5b5} [hidden]{display:none!important}
 @media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.fieldgrid{grid-template-columns:1fr}}
+.dossier-tabbar{display:flex;gap:7px;flex-wrap:wrap;margin:16px 0}
+.dossier-tabbar button{background:#152f51;border-color:#395c83;font-size:12px;padding:9px 12px}
+.dossier-tabbar button[aria-selected="true"]{background:#315cdc;border-color:#8dabff}
+.dossier-panel{min-height:155px}
+.summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.summary-grid>div{background:#152e4d;border:1px solid #345576;border-radius:9px;padding:13px}
+.sheet-rows{display:grid;gap:7px}
+.sheet-row{display:grid;grid-template-columns:minmax(115px,1fr) minmax(0,2.2fr);gap:9px;padding:9px 10px;background:#183351;border-bottom:1px solid #355678;border-radius:5px;font-size:13px}
+.sheet-row>span:first-child{color:#b6cbe4;font-size:12px}
+.sheet-row>span:last-child{overflow-wrap:anywhere}
+.small-rows{display:grid;gap:7px;font-size:12px;color:#c4d6f0}
+.record{background:#173150;border:1px solid #345777;border-radius:8px;padding:12px;margin-bottom:7px}
+.record h3{font-size:14px;margin:0 0 4px}.record p{white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0;font-size:13px}
+.record small{color:#a9c5e7}
+@media(max-width:800px){.summary-grid{grid-template-columns:1fr}.sheet-row{grid-template-columns:1fr}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
 <header><strong>🚒 BelgiumPD · Brandweerdossier</strong><nav class="buttons"><a href="/dossiercentrum.html">← Dossiercentrum</a><a href="/">Home</a><button id="login" class="alt">Aanmelden</button></nav></header>
@@ -27,15 +42,63 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <div><small>VERLOF-/PERSONEELSSTATUS</small><strong id="status">—</strong></div>
 <div><small>DISCORD-ID</small><strong id="discord">—</strong></div>
 </div><p class="muted" id="access"></p></section>
-<section id="caseSection" class="card" hidden>
-<h2>Personeelsregistraties</h2>
-<div class="buttons"><button class="alt" id="refresh" type="button">Vernieuwen</button>
-<a id="trainingLink" href="/rollen-opleidingen.html?department=brandweer">🚒 Brandweeropleidingen</a>
-<a id="specialtyLink" hidden>Specialisaties beheren (ZONE)</a></div>
-<div id="entries"></div>
-</section>
-<section class="card" id="trainingSection" hidden><h2>Opleidingsresultaten</h2><div id="trainings"></div></section>
-<section class="card" id="entrySection" hidden><h2>Nieuwe registratie</h2>
+<nav id="dossierTabBar" class="dossier-tabbar" role="tablist" aria-label="Onderdelen van Brandweerdossier" hidden>
+<button type="button" data-tab="overzicht">Overzicht</button>
+<button type="button" data-tab="gegevens">Personeelsinformatie</button>
+<button type="button" data-tab="specialisaties">Specialisaties</button>
+<button type="button" data-tab="verlof">Verlof</button>
+<button type="button" data-tab="observaties">Observaties</button>
+<button type="button" data-tab="notities">Belangrijke notities</button>
+<button type="button" data-tab="sancties">Sancties</button>
+<button type="button" data-tab="opleidingen">Opleidingen</button>
+<button type="button" data-tab="historiek">Historiek</button>
+<button type="button" data-tab="nieuw">Registratie toevoegen</button>
+</nav>
+<section id="overviewSection" class="card dossier-panel" data-pane="overzicht" hidden>
+<h2>Brandweer · personeelsfiche</h2>
+<p class="muted">Dezelfde dossierindeling als bij de politie. Inhoud en acties zijn afhankelijk van je geverifieerde Brandweerfunctie.</p>
+<div class="summary-grid">
+<div><h3>Personeelsinformatie</h3><div id="overviewIdentity" class="small-rows"></div></div>
+<div><h3>Verlofstatus</h3><div id="overviewLeave" class="small-rows"></div></div>
+<div id="overviewQuals" hidden><h3>Specialisaties</h3><div id="overviewSpecialties" class="small-rows"></div></div>
+<div id="overviewActivity" hidden><h3>Recente registraties</h3><div id="overviewRecent" class="small-rows"></div></div>
+</div></section>
+<section id="profileSection" class="card dossier-panel" data-pane="gegevens" hidden>
+<h2>Personeelsinformatie</h2><div id="profile" class="sheet-rows"></div>
+<p class="muted">Officiële rang en roepnummer blijven afkomstig uit de personeelslijst.</p></section>
+<section id="specialtySection" class="card dossier-panel" data-pane="specialisaties" hidden>
+<h2>Specialisaties en bevoegdheden</h2>
+<p class="muted">Kwalificaties en actuele statussen voor deze medewerker. Wijzigen is uitsluitend mogelijk met bevoegd ZONE-/technisch beheer.</p>
+<div id="specialties" class="sheet-rows"></div>
+<form id="specialtyEdit" hidden>
+<div class="fieldgrid">
+<div><label for="specialtyLabel">Specialisatie</label><select id="specialtyLabel" required></select></div>
+<div><label for="specialtyValue">Status</label><select id="specialtyValue">
+<option>Nee</option><option>Stage</option><option>Ja</option><option>Docent</option><option>Niet ingevuld</option><option>AANGEMELD</option><option>RESTRICTED</option><option>INACTIEF</option><option>OPLEIDING!</option><option>GESCHORST</option>
+</select></div></div>
+<label for="specialtyReason">Motivering (minstens 15 tekens)</label>
+<textarea id="specialtyReason" minlength="15" maxlength="500" required></textarea>
+<div class="buttons"><button type="submit" id="specialtySave">Specialisatie bewaren</button></div></form></section>
+<section id="leaveSection" class="card dossier-panel" data-pane="verlof" hidden>
+<h2>Verlof en personeelsstatus</h2>
+<div id="leaveSummary" class="small-rows"></div>
+<div id="leavePeriods" class="sheet-rows"></div>
+<p><a href="/verlofbeheer.html">Naar Verlofbeheer</a></p></section>
+<section id="observationsSection" class="card dossier-panel" data-pane="observaties" hidden>
+<h2>Observaties</h2><div id="observations" class="sheet-rows"></div></section>
+<section id="caseSection" class="card dossier-panel" data-pane="notities" hidden>
+<h2>Belangrijke notities</h2><div id="entries" class="sheet-rows"></div></section>
+<section id="sanctionsSection" class="card dossier-panel" data-pane="sancties" hidden>
+<h2>Sancties</h2><div id="sanctions" class="sheet-rows"></div></section>
+<section id="trainingSection" class="card dossier-panel" data-pane="opleidingen" hidden>
+<div class="buttons" style="justify-content:space-between">
+<h2>Gekoppelde opleidingen</h2><a id="trainingLink" href="/rollen-opleidingen.html?department=brandweer">Brandweeropleidingen ↗</a></div>
+<div id="trainings" class="sheet-rows"></div></section>
+<section id="historySection" class="card dossier-panel" data-pane="historiek" hidden>
+<h2>Administratieve dossierhistoriek</h2>
+<div id="history" class="sheet-rows"></div>
+<p class="muted">Historiek wordt alleen getoond aan bevoegd Brandweerleiding, ZONE en technisch beheer.</p></section>
+<section class="card dossier-panel" data-pane="nieuw" id="entrySection" hidden><h2>Nieuwe registratie</h2>
 <form id="entryForm">
 <div class="fieldgrid">
 <div><label for="kind">Type</label><select id="kind"></select></div>
