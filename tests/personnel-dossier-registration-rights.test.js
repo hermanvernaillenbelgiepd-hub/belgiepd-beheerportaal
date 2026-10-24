@@ -143,3 +143,58 @@ test('Eén officiële opleidingsregistratie met alle geselecteerde types en vrij
   assert.equal(helpers.selectedStaffTrainingName(),'MOTARD-OFF ROAD');
   assert.match(inline,/courseName,eventDate:\$\('staffTrainingDate'\)\.value/);
 });
+
+
+test('Opleiding blijft zichtbaar met kaderregisterrechten wanneer formele training uit staat',()=>{
+  const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  const inline=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]||'';
+  assert.doesNotThrow(()=>new Script(inline));
+  const choices=inline.slice(inline.indexOf('function canRegisterOfficialTraining()'),
+    inline.indexOf('function displaySelectedRegistration()'));
+  assert.match(choices,/if\(canRegisterOfficialTraining\(\)\)/);
+  assert.match(choices,/if\(type==='opleiding'\)continue;/);
+  assert.match(choices,/type==='opleiding'\?'Opleiding registreren'/);
+  assert.match(choices,/kinds\.push\(\['training','Opleiding registreren'\]\)/);
+  assert.match(inline,/pick\.value=kinds\.some\(\(\[key\]\)=>key===old\)\?old:/);
+  assert.match(inline,/old==='training'&&kinds\.some\(\(\[key\]\)=>key==='case:opleiding'\)/);
+  assert.match(html,/id="staffCourseName"/);
+  assert.match(html,/id="staffCourseOtherWrap"/);
+  assert.match(html,/id="staffCourseRegisterNote"/);
+  assert.match(inline,/staffCaseType'\)\.replaceChildren\(\.\.\.types/);
+  assert.match(inline,/const courseName=type==='opleiding'\?selectedStaffCaseCourse\(\):'';/);
+  assert.doesNotMatch(html,/Opleidingsnotitie \(geen afgeronde opleiding\)/);
+});
+
+test('Kaderopleidingen hergebruiken dezelfde keuzelijst en vrije ANDERE-invoer',()=>{
+  const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  const inline=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]||'';
+  const start=inline.indexOf('function syncStaffCaseOther(){');
+  const end=inline.indexOf("$('staffCaseType').onchange=updateStaffCaseFields;",start);
+  assert.ok(start>=0&&end>start);
+  const els={
+    staffCaseType:{value:'opleiding'},
+    staffCourseName:{value:'RADIO OPLEIDING (VERPLICHT)',options:[
+      {value:''},{value:'RADIO OPLEIDING (VERPLICHT)'},{value:'ANDERE'}]},
+    staffCourseOther:{value:'',required:false},
+    staffCourseOtherWrap:{hidden:true},
+    staffTrainingCourse:{options:[]}
+  };
+  const $=id=>els[id];
+  const option=(value,label)=>({value,textContent:label});
+  els.staffCourseName.replaceChildren=(...items)=>{els.staffCourseName.options=items};
+  const {syncStaffCaseOther,selectedStaffCaseCourse}=new Script(inline.slice(start,end)+
+    '\n({syncStaffCaseOther,selectedStaffCaseCourse})')
+    .runInNewContext({$,option});
+  assert.equal(selectedStaffCaseCourse(),'RADIO OPLEIDING (VERPLICHT)');
+  els.staffCourseName.value='ANDERE';
+  syncStaffCaseOther();
+  assert.equal(els.staffCourseOtherWrap.hidden,false);
+  assert.equal(els.staffCourseOther.required,true);
+  els.staffCourseOther.value='Specifieke herhalingsopleiding';
+  assert.equal(selectedStaffCaseCourse(),'Specifieke herhalingsopleiding');
+  els.staffCourseName.value='RADIO OPLEIDING (VERPLICHT)';
+  syncStaffCaseOther();
+  assert.equal(els.staffCourseOtherWrap.hidden,true);
+  assert.equal(els.staffCourseOther.required,false);
+  assert.equal(els.staffCourseOther.value,'');
+});
