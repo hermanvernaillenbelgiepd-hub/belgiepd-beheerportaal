@@ -107,7 +107,7 @@ test('Tijdelijk en vast Agentenkader zien alleen persoonlijk profiel, leesbare l
  assert.match(preview,/id:'verlof'[^\n]+access:\['none','none','none','limited'/);
  assert.match(preview,/if\(module\.id==='home'\)return index===0\|\|order>=3/);
  assert.match(preview,/if\(module\.id==='verlof'\)return order>=3/);
- assert.match(preview,/role\.id==='nieuw'\|\|role\.id==='agent'/);
+ assert.ok(preview.includes("['nieuw','agent','agentvast'].includes(role.id)"));
  assert.match(api,/if\(!approved && !legacyApproved\)return 'member'/);
  assert.doesNotMatch(api,/collection\('bpd_cases'\)/);
 });
