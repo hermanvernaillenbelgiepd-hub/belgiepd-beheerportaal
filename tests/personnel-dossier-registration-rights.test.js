@@ -111,7 +111,8 @@ test('Eén officiële opleidingsregistratie met alle geselecteerde types en vrij
   ]);
   const choices=inline.slice(inline.indexOf('function availablePersonnelRegistrationKinds()'),
     inline.indexOf('function displaySelectedRegistration()'));
-  assert.match(choices,/type==='activiteit'\|\|type==='opleiding'/);
+  assert.match(choices,/if\(type==='activiteit'\)continue/);
+  assert.match(choices,/if\(type==='opleiding'\)continue/);
   assert.doesNotMatch(choices,/Opleidingsnotitie \(geen afgeronde opleiding\)/);
   assert.match(choices,/\['training','Opleiding registreren'\]/);
   const start=inline.indexOf('function syncStaffTrainingOther(){');
