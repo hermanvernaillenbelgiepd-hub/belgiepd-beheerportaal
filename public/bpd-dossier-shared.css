@@ -123,3 +123,123 @@ body.bpd-unified-dossier .dossier-pane h3 {
  }
  body.bpd-unified-dossier .summary-grid { grid-template-columns: 1fr; }
 }
+
+/* Canonical Fire alignment: the Police one-page stylesheet is used for
+   the exact same sheet hierarchy; only API and permissions differ. */
+body.dossier-fire-sheet #panel {
+  max-width: none;
+  width: 100%;
+}
+body.dossier-fire-sheet #panel #title {
+  font-size: 19px;
+  margin: 0;
+}
+body.dossier-fire-sheet #panel #message {
+  margin: 4px 0 8px;
+  font-size: 10px;
+  color: #9bb6d8;
+}
+body.dossier-fire-sheet #panel > .sheet-identity {
+  grid-template-columns: repeat(6,minmax(0,1fr));
+  padding: 8px 12px;
+  background: #152e50;
+  border: 1px solid #315175;
+  border-radius: 4px;
+  gap: 0;
+  margin: 4px 0 9px;
+}
+body.dossier-fire-sheet #panel > .sheet-identity > div {
+  min-width: 0;
+  padding: 2px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+body.dossier-fire-sheet #panel > .sheet-identity small {
+  font-size: 10px;
+  color: #91b4d9;
+}
+body.dossier-fire-sheet #panel > .sheet-identity strong {
+  font-size: 12px;
+  color: #eef6ff;
+}
+body.dossier-fire-sheet #panel > #access {
+  font-size: 11px;
+  color: #9bb8da;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+body.dossier-fire-sheet #panel .dossier-panel[data-pane="overzicht"] {
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+body.dossier-fire-sheet #panel .dossier-panel:not([data-pane="overzicht"]) {
+  margin: 12px 0 0;
+  border: 1px solid #385678;
+  background: #132b49;
+  padding: 12px 14px;
+  border-radius: 5px;
+}
+body.dossier-fire-sheet #panel .landscape-grid .sheet-records {
+  min-height: 30px;
+  margin: 0 11px;
+  color: #d7e7fc;
+  font-size: 11px;
+}
+body.dossier-fire-sheet #panel .landscape-grid .small-rows {
+  gap: 4px;
+  line-height: 1.45;
+  color: #d7e7fc;
+}
+body.dossier-fire-sheet #panel .landscape-grid .fire-redacted {
+  padding: 4px 0;
+  color: #92aecf;
+  font-size: 11px;
+}
+body.dossier-fire-sheet #panel .landscape-grid .fire-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+body.dossier-fire-sheet #panel .landscape-grid [data-open-tab][hidden] {
+  display: none !important;
+}
+body.dossier-fire-sheet #panel > .fiche-editor {
+  display: block;
+  margin: 3px 0 10px;
+  border: 1px solid #355473;
+  border-radius: 5px;
+  padding: 7px 11px;
+  background: #132d4b;
+}
+body.dossier-fire-sheet #panel > .fiche-editor[hidden] {
+  display: none !important;
+}
+body.dossier-fire-sheet #panel > .fiche-editor summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c5defb;
+}
+body.dossier-fire-sheet #panel > .fiche-editor .sheet-rows {
+  margin-top: 9px;
+}
+@media (max-width: 950px) {
+  body.dossier-fire-sheet #panel > .sheet-identity {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    row-gap: 7px;
+  }
+}
+@media (max-width: 650px) {
+  body.dossier-fire-sheet #panel > .sheet-identity {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  body.dossier-fire-sheet #panel > .sheet-identity > div {
+    padding: 5px 7px;
+  }
+}
