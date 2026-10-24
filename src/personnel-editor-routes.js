@@ -12,7 +12,7 @@ import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
 
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
-import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
+import {isPolice9xx} from './verified-police-cadre.js';
 import {displaySeries} from './normalize.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
@@ -60,37 +60,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           canEditIdentity:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p),
           canEditStatus:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p)};
       });
-      // Presentation-only: officer versus corps indication for the 9xx range.
-      // Only previously authenticated, recent Discord role snapshots of the
-      // configured server are used. Failure to refresh never blocks the roster.
-      const roleLabels=new Map();
-      const guildId=process.env.DISCORD_GUILD_ID;
-      const nineHundreds=[...new Set(records.filter(p=>p.dept==='politie'&&isPolice9xx(p.call)&&
-        /^\d{15,22}$/.test(String(p.discordId||''))).map(p=>p.discordId))];
-      if(/^\d{15,22}$/.test(String(guildId||''))&&nineHundreds.length){
-        try{
-          const authCollection=getFirestore().collection('bpd_discord_auth');
-          for(let i=0;i<nineHundreds.length;i+=100){
-            const ids=nineHundreds.slice(i,i+100);
-            const docs=await getFirestore().getAll(...ids.map(id=>authCollection.doc(id)));
-            for(let j=0;j<docs.length;j++){
-              const label=docs[j].exists?
-                verifiedOfficerCadre(docs[j].data(),guildId):null;
-              if(label)roleLabels.set(ids[j],label);
-            }
-          }
-        }catch(error){
-          // Verified Discord role metadata is optional. No guessed role and
-          // absolutely no permission changes on transient Discord failures.
-          console.warn('9xx Discord-kaderindicatie tijdelijk niet beschikbaar:',error?.code||'fout');
-          roleLabels.clear();
-        }
-      }
+      // The same server-verified subject role controls access and the visual
+      // badge. Never display a 24-hour-old role while the access policy
+      // requires a fresh 15-minute role verification.
       const labelledRecords=records.map(p=>({...p,
         discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
-          roleLabels.get(p.discordId)||null:null}));
-      // Een geverifieerd kaderlabel dient als weergave, niet als extra
-      // filter waarmee leidinggevenden uit de personeelslijst verdwijnen.
+          req.bpd.verifiedPoliceSubjectRoles?.[p.discordId]||null:null}));
       const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
         .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
       return res.json({records:labelledRecords,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
