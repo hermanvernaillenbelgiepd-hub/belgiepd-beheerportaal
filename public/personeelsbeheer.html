@@ -370,7 +370,36 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <form id="staffTrainingForm" class="inline-form" hidden>
 <h3 id="staffTrainingTitle">Opleiding toevoegen</h3>
 <div class="grid">
-<div><label for="staffTrainingCourse">Opleiding</label><input id="staffTrainingCourse" maxlength="150" required></div>
+<div>
+  <label for="staffTrainingCourse">Soort opleiding</label>
+  <select id="staffTrainingCourse" required>
+    <option value="">Kies een opleiding…</option>
+    <option value="RADIO OPLEIDING (VERPLICHT)">RADIO OPLEIDING (VERPLICHT)</option>
+<option value="RADIO OPLEIDING (VRIJWILLIG)">RADIO OPLEIDING (VRIJWILLIG)</option>
+<option value="BASISCURSIS">BASISCURSIS</option>
+<option value="GEWELDBEHEERSING">GEWELDBEHEERSING</option>
+<option value="WAPENGEBRUIK">WAPENGEBRUIK</option>
+<option value="VERKEERSBEGELEIDING">VERKEERSBEGELEIDING</option>
+<option value="VERKEERSCONTROLE">VERKEERSCONTROLE</option>
+<option value="PRIORITAIR RIJDEN">PRIORITAIR RIJDEN</option>
+<option value="EHBO VOOR INTERVENIERENDEN">EHBO VOOR INTERVENIERENDEN</option>
+<option value="BEVEILIGEN OPENBARE WEG">BEVEILIGEN OPENBARE WEG</option>
+<option value="K-9">K-9</option>
+<option value="RAGO">RAGO</option>
+<option value="MOTARD">MOTARD</option>
+<option value="MOTARD-OFF ROAD">MOTARD-OFF ROAD</option>
+<option value="DISPATCH">DISPATCH</option>
+<option value="BEVOEGDHEDEN TO">BEVOEGDHEDEN TO</option>
+<option value="ERT AE-I">ERT AE-I</option>
+<option value="ERT AE-T">ERT AE-T</option>
+<option value="ERT-AE-F">ERT-AE-F</option>
+    <option value="ANDERE">ANDERE (zelf invullen)</option>
+  </select>
+</div>
+<div id="staffTrainingOtherWrap" hidden>
+  <label for="staffTrainingOther">Andere opleiding</label>
+  <input id="staffTrainingOther" maxlength="150" minlength="3" placeholder="Vul de naam van de opleiding in">
+</div>
 <div><label for="staffTrainingDate">Datum</label><input id="staffTrainingDate" type="date" required></div>
 <div><label for="staffTrainingResult">Resultaat</label><select id="staffTrainingResult"><option value="in_opleiding">In opleiding</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option></select></div>
 <div style="grid-column:1/-1"><label for="staffTrainingDetails">Evaluatie of opmerkingen</label><textarea id="staffTrainingDetails" rows="2" maxlength="1600"></textarea></div>
@@ -585,12 +614,13 @@ function availablePersonnelRegistrationKinds(){
   }
   if(casePermissions?.writesEnabled===true&&casePermissions.actor){
     for(const type of casePermissions.typesByDepartment?.[dept]||[]){
-      // Dienstactiviteiten worden op de operationele rapportage geregistreerd.
+      // Geen dubbele opleidingsnotities of dienstactiviteiten in het personeelsdossier.
+      // Afgeronde opleidingen gebruiken het officiële opleidingsregister met audit.
       if(type==='activiteit')continue;
+      if(type==='opleiding')continue;
       const text=staffCaseLabels[type]||type;
       kinds.push(['case:'+type,
-        type==='verlof'?'Verlofnotitie (geen verlofaanvraag)':
-        type==='opleiding'?'Opleidingsnotitie (geen afgeronde opleiding)':text]);
+        type==='verlof'?'Verlofnotitie (geen verlofaanvraag)':text]);
     }
   }
   if(trainingRights?.trainingWritesEnabled===true&&
@@ -1207,8 +1237,9 @@ async function loadStaffCasePermissions(person,key,canManage){
         'eigen personeelsidentiteit is niet gekoppeld':
       !types.length?
         'geen goedgekeurd schrijfrecht voor deze dienst':'beschikbaar';
-    $('staffCaseType').replaceChildren(...types.map(type=>
-      option(type,staffCaseLabels[type]||type)));
+    $('staffCaseType').replaceChildren(...types
+      .filter(type=>type!=='activiteit'&&type!=='opleiding')
+      .map(type=>option(type,staffCaseLabels[type]||type)));
     $('staffCaseForm').hidden=!(overview.writesEnabled&&overview.actor&&types.length);
     if(!types.length)$('staffCaseHint').textContent='Geen schrijfrechten voor deze categorieën.';
     else $('staffCaseHint').textContent='Alleen categorieën toegestaan door je huidige dienst- en kaderrol.';
@@ -1224,9 +1255,29 @@ async function loadStaffCasePermissions(person,key,canManage){
 }
 
 let trainingRights=null,trainingEditId=null;
+function syncStaffTrainingOther(){
+  const isOther=$('staffTrainingCourse').value==='ANDERE';
+  $('staffTrainingOtherWrap').hidden=!isOther;
+  $('staffTrainingOther').required=isOther;
+  if(!isOther)$('staffTrainingOther').value='';
+}
+$('staffTrainingCourse').onchange=syncStaffTrainingOther;
+function selectedStaffTrainingName(){
+  return ($('staffTrainingCourse').value==='ANDERE'
+    ?$('staffTrainingOther').value:$('staffTrainingCourse').value).trim();
+}
+function setStaffTrainingCourse(name){
+  const course=String(name||'').trim();
+  const pick=$('staffTrainingCourse');
+  const known=[...pick.options].some(x=>x.value===course&&x.value!=='ANDERE'&&x.value!=='');
+  pick.value=known?course:course?'ANDERE':'';
+  $('staffTrainingOther').value=known?'':course;
+  syncStaffTrainingOther();
+}
 function resetStaffTrainingEdit(){
   trainingEditId=null;
   $('staffTrainingForm').reset();
+  syncStaffTrainingOther();
   $('staffTrainingTitle').textContent='Opleiding toevoegen';
   $('staffTrainingSave').textContent='Opleiding registreren';
   $('staffTrainingAmend').hidden=true;
@@ -1266,7 +1317,7 @@ function staffTrainingEdit(record){
      !trainingRights.permissions?.[selected.dept]?.['training.log'])return;
   if(!choosePersonnelRegistration('training',true))return;
   trainingEditId=record.id;
-  $('staffTrainingCourse').value=record.courseName||'';
+  setStaffTrainingCourse(record.courseName);
   $('staffTrainingDate').value=record.eventDate||'';
   $('staffTrainingResult').value=record.result||'in_opleiding';
   $('staffTrainingDetails').value=record.details||'';
@@ -1282,8 +1333,11 @@ $('staffTrainingForm').onsubmit=async event=>{
   if(!p||!trainingRights?.trainingWritesEnabled||
      !trainingRights.permissions?.[p.dept]?.['training.log'])return;
   const key=p.dept+':'+p.discordId,id=trainingEditId;
+  const courseName=selectedStaffTrainingName();
+  if(courseName.length<3||courseName.length>150)
+    return notice('Kies een opleiding of vul bij ANDERE een naam van 3 tot 150 tekens in.',true);
   const body={department:p.dept,discordId:p.discordId,
-    courseName:$('staffTrainingCourse').value,eventDate:$('staffTrainingDate').value,
+    courseName,eventDate:$('staffTrainingDate').value,
     result:$('staffTrainingResult').value,details:$('staffTrainingDetails').value};
   if(id){
     body.reason=$('staffTrainingReason').value;
