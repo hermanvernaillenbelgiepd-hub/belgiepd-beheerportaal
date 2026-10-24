@@ -394,6 +394,18 @@ async function loadManualRoles(){
       notice('Rolherstel: '+e.message,true);
   }
 }
+function updateManualFireRoleLabels(){
+  const fire=$('manualDept').value==='brandweer';
+  const options={
+    middenkader:fire?'Brandweer Middenkader (OOFF-08 t/m OOFF-15)':'Middenkader',
+    officierenkader:fire?'Brandweerleiding / Hoger kader':'Officierenkader',
+    korpsleiding:fire?'ZONE (zonecommandant)':'Korpsleiding'
+  };
+  for(const option of $('manualRole').options)
+    option.textContent=options[option.value]||option.textContent;
+}
+$('manualDept').onchange=updateManualFireRoleLabels;
+updateManualFireRoleLabels();
 $('manualRoleForm').onsubmit=async event=>{
   event.preventDefault();
   const btn=$('manualRequest');btn.disabled=true;
