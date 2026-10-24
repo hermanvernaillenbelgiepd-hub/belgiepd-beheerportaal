@@ -460,7 +460,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     // Brandweer heeft zijn eigen, beperkt gegevensmodel. Andere oude dossier-
     // endpoints mogen vertrouwelijke leidinggevende registraties nooit vrijgeven
     // aan Brandweer Middenkader of Brandweerleiding.
-    const restrictedFire=['middle','leadership'].includes(req.bpd.fireAccessLevel)&&
+    const restrictedFire=scope.departments.includes('brandweer')&&
       req.bpd.boardPersonnelAdmin!==true&&req.bpd.fireZoneChief!==true;
     if(restrictedFire&&new RegExp('^/api/(personnel|staff-dossiers|registrations|management|specializations|function-changes)(/|$)').test(req.path)){
       const dept=req.params?.dept||req.query?.dept||req.body?.dept;
