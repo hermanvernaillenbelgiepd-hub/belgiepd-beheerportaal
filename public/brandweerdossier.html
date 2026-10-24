@@ -99,7 +99,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
   <div class="dossier-lower-row">
     <section class="landscape-cell" data-sheet-tile="basisNotes">
       <h3>Notities (basis) <button type="button" data-open-tab="gegevens">Bekijken</button></h3>
-      <div id="overviewIdentity" class="sheet-records small-rows"></div>
+      <div id="overviewBasicNotes" class="sheet-records small-rows"></div>
     </section>
     <section class="landscape-cell" data-sheet-tile="observations">
       <h3>Observaties <span class="fire-inline-actions"><button type="button" data-open-tab="observaties">Bekijken</button><button type="button" data-open-tab="nieuw">Toevoegen</button></span></h3>
@@ -284,11 +284,12 @@ async function load(){
    ['Naam',p.name],['Roepnummer',p.call],['Graad',p.rank],['Reeks',p.series],
    ['Personeelsstatus',p.status],['Discord-ID',p.discordId]
   ];
-  $('overviewIdentity').replaceChildren();
-  for(const [key,value] of identity.slice(0,5)){
-   const small=document.createElement('span');small.textContent=key+': '+(value||'—');
-   $('overviewIdentity').append(small);
-  }
+  // Basic notes can be summarized only from the server-authorized response.
+  $('overviewBasicNotes').textContent=advanced?
+    (data.olderNotes||[]).filter(x=>x.type==='begeleiding'||x.type==='evaluatie')
+      .slice(0,5).map(x=>(x.title||x.type)+': '+(x.details||'').slice(0,90))
+      .join(' | ')||'Geen basisnotities geregistreerd'
+    :'Afgeschermd voor jouw Brandweerfunctie.';
   rows($('profile'),[...identity,...(advanced?[
    ['Aanstellingsdatum',profile.startDate],['Eenheid of ploeg',profile.unit],
    ['Functie of opdracht',profile.functionTitle]
@@ -300,7 +301,10 @@ async function load(){
   ]:[])]);
 
   rows($('leaveSummary'),[['Personeels-/verlofstatus',p.status]]);
-  $('overviewLeave').textContent=p.status||'—';
+  $('overviewLeave').textContent=advanced&&Array.isArray(data.leave)&&data.leave.length
+    ?data.leave.slice(0,5).map(x=>(x.startDate||'—')+' t/m '+(x.endDate||'—'))
+      .join(' | ')
+    :p.status||'—';
   if(advanced){
    cards($('leavePeriods'),data.leave||[],
     x=>'Goedgekeurd verlof',x=>(x.startDate||'—')+' t/m '+(x.endDate||'—'),
