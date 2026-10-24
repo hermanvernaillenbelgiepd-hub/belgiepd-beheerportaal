@@ -80,3 +80,16 @@ test('Toegangsvoorbeeld biedt nieuwe leden personeelsinzage zonder observaties',
  assert.match(js,/id:'observaties'[^\n]+access:\['none','none','none','limited'/);
  assert.match(js,/if\(module\.id==='roster'\)return index===0/);
 });
+
+
+test('Mijn profiel toont de eigen vaste-roepnummerstatus zonder tijdelijk dossier',()=>{
+ const profile=read('public/discord-status.html');
+ assert.match(profile,/id="myCallsign"/);
+ assert.match(profile,/id="myCallsignStatus"/);
+ assert.match(profile,/href="\/vast-roepnummer-aanvragen\.html"/);
+ assert.match(profile,/href="\/personeelslijst\.html"/);
+ assert.match(profile,/if\(identity\.mode==='staff'\)loadLeave\(\)/);
+ assert.match(profile,/\$\('myLeave'\)\.hidden=identity\.mode==='member'/);
+ assert.match(profile,/\/api\/callsigns\/self\/status/);
+ assert.doesNotMatch(read('src/member-dashboard-routes.js'),/collection\('bpd_cases'\)/);
+});
