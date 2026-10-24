@@ -57,6 +57,8 @@ async function resolveActor(req,res,next){
        technicalCookieIsValid(req.headers.cookie,decoded.uid,discordId,
          process.env.BPD_PORTAL_PROFILE_SIGNING_KEY)){
       bpd={...bpd,role:'korpsleiding',departments:['politie','brandweer','ambulance','depannage'],
+        departmentRoles:Object.fromEntries(['politie','brandweer','ambulance','depannage']
+          .map(dept=>[dept,'korpsleiding'])),
         portalTechnicalMode:true,profileTechnicalAvailable:true,trustedStaff:true};
     }
     // Bestuur is independent of operational grade. Grant cross-service TRAINING
