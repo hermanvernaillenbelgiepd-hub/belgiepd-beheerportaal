@@ -88,8 +88,27 @@ async function refresh(){
 }
 $('google').onclick=async()=>{try{await mods.signInWithPopup(auth,new mods.GoogleAuthProvider());await refresh()}catch(e){state('Google-aanmelding: '+(e.code||e.message),true)}};
 $('logout').onclick=async()=>{await mods.signOut(auth);await refresh()};
+// Training-only course lists. No Discord role is assigned by a training record.
+const originalCourses=[...$('course').options].map(o=>({value:o.value,text:o.textContent}));
+const fireCourses=[
+  'Logistiek / Signalisatie','Ladderwagen','Duiker','Bosbestrijding',
+  'Brandweer-AMBU','RED-TEAM','Gevaarlijke stoffen','Basistraining'
+];
+function refreshCourseOptions(){
+ const chosen=$('course').value;
+ const fire=$('dept').value==='brandweer';
+ const options=fire?[
+  {value:'',text:'Kies een Brandweeropleiding…'},
+  ...fireCourses.map(value=>({value,text:value})),
+  {value:'ANDERE',text:'ANDERE (zelf invullen)'}
+ ]:originalCourses;
+ $('course').replaceChildren(...options.map(o=>new Option(o.text,o.value)));
+ $('course').value=options.some(o=>o.value===chosen)?chosen:'';
+ syncCourseOther();
+}
 let peopleNonce=0;
 async function refreshPeople(){
+ refreshCourseOptions();
   const n=++peopleNonce,dept=$('dept').value,select=$('subjectChoice');
   $('subject').value='';select.replaceChildren(new Option('Personeelslijst laden…',''));
   if(!dept||!profile?.permissions?.[dept]?.['training.log']&&
