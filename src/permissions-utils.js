@@ -23,12 +23,10 @@ export function basePermissions(member,guildId,now=Date.now(),fireInstructorRole
     const memberOfDept=summary.departments.includes(dept);
     const fireMid=dept==='brandweer'&&fresh&&summary.roles.some(r=>
       r.dept==='brandweer'&&['BW middenkader','BW leiding'].includes(r.name));
-    const fireChief=dept==='brandweer'&&fresh&&summary.roles.some(r=>
-      r.dept==='brandweer'&&r.name==='BW leiding');
     permissions[dept]={
       'training.log':memberOfDept && (isInstructorForDept(summary.roles,dept)||
         fireMid||isFireInstructor),
-      'training.review':memberOfDept&&fireChief
+      'training.review':memberOfDept&&fireMid
     };
   }
   return {fresh,...summary,permissions};
@@ -80,7 +78,7 @@ export function canReviewTraining(bpd,dept,perms){
   if(bpd?.dossierFullDepartments?.includes(dept))return true;
   const rank=roleForDepartment(bpd,dept);
   return (bpd?.trustedStaff===true &&
-    ['officierenkader','korpsleiding'].includes(rank)) ||
+    ['middenkader','officierenkader','korpsleiding'].includes(rank)) ||
     perms?.[dept]?.['training.review']===true;
 }
 
