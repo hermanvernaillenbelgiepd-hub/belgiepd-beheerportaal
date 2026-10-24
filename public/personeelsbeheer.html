@@ -321,6 +321,7 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .dossier-rank-code{display:inline-flex;align-items:center;justify-content:center;min-height:20px;padding:2px 7px;border-radius:4px;background:#18385c;border:1px solid #446a93;color:#e7f1ff;font-size:11px;font-weight:800;line-height:1;white-space:nowrap}
 .dossier-rank-label{font-size:12px;line-height:1.2;color:#edf5ff}
 .dossier-rank-label{font-size:12px;line-height:1.2}
+.roster-order-locked{padding:11px 12px;border:1px solid #4d719d;background:#0c1e36;color:#d8e8fd;border-radius:7px;font-size:12px;min-height:40px}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -348,13 +349,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <div class="grid staff-filters">
  <div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div>
  <div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div>
- <div><label for="rosterSort">Sorteren op</label><select id="rosterSort">
-   <option value="series-desc">Per reeks: 900, 910, 920, 930, daarna 800, 700, 600…</option>
-   <option value="call-desc">Roepnummer aflopend (900 → 008)</option>
-   <option value="call-asc">Roepnummer oplopend</option>
-   <option value="name-asc">Naam A–Z</option>
-   <option value="name-desc">Naam Z–A</option>
- </select></div>
+ <div><label>Vaste volgorde</label><div class="roster-order-locked">900 → 910 → 920 → 930 · daarna per lagere reeks · 008 laatst</div></div>
 </div>
 <p class="subtle"><span id="count">Nog geen personeelsgegevens geladen.</span></p>
 <div class="scroller staff-roster-holder"><table class="staff-roster-table"><thead id="staffColumnHeaders"></thead><tbody id="results"></tbody></table></div>
@@ -1133,7 +1128,7 @@ function render(){
     people.filter(x=>(dept==='all'||dept===x.dept)&&
       [x.name,x.call,x.discordId,x.rank,x.series,...(x.specialties||[]).map(t=>t.label)]
         .some(v=>String(v||'').toLowerCase().includes(q))),
-    $('rosterSort').value
+    'series-desc'
   );
   $('count').textContent=matches.length+' fiche(s) zichtbaar';
   const cols=BPDPersonnelVisuals.specialtyColumns(dept);
@@ -3033,7 +3028,7 @@ $('newForm').onsubmit=async event=>{
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
 };
 $('reload').onclick=load;$('search').oninput=render;
-$('dept').onchange=render;$('rosterSort').onchange=render;
+$('dept').onchange=render;
 $('close').onclick=()=>{
   if(ficheMode){window.location.assign($('ficheBackLink').href);return}
   $('panel').hidden=true;selected=null
