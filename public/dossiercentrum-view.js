@@ -13,7 +13,7 @@ export function filterDossiers(rows,filters={}){
     (!query||[r.name,r.call,r.rank,r.status,r.discordId]
       .some(v=>normalized(v).includes(query))));
 }
-export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-bpd','callsign-fire','callsign-desc','callsign-asc','name-asc','name-desc']);
+export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-bpd','callsign-police','callsign-fire','callsign-desc','callsign-asc','name-asc','name-desc']);
 // Compare numerical parts as numbers: e.g. 930 > 404 > 99, including mixed
 // prefixes like SANTO-930 and SANTO-99. Unknown callsigns stay at the bottom.
 const dossierCollator=new Intl.Collator('nl-BE',{numeric:true,sensitivity:'base'});
@@ -39,6 +39,46 @@ const bpdCallCompare=(left,right)=>{
   const a=bpdCallKey(left),b=bpdCallKey(right);
   return a.bucket-b.bucket||b.series-a.series||a.number-b.number||
     compareFilled(left,right);
+};
+// Police dossier display hierarchy. Numbers determine the series, while
+// verified rank wording distinguishes 9xx Korpsleiding from Officierenkader.
+// This is display-only; it never grants dossier permissions.
+const POLICE_GROUP_LABELS=[
+  'KORPSLEIDING',
+  'OFFICIERENKADER',
+  'MIDDENKADER',
+  'BASISKADER',
+  'AGENTENKADER',
+  'OVERIGE POLITIE / BEHEER'
+];
+export function policeCallGroup(person){
+  const call=String(person?.call||'').trim();
+  const rank=String(person?.rank||'').trim().toLocaleLowerCase('nl-BE');
+  const key=bpdCallKey(call);
+  const callNumber=key.bucket===0?key.number:null;
+  const isSpecial=key.bucket===2||callNumber!==null&&callNumber<100;
+  let group=5;
+  if(!isSpecial){
+    if(callNumber!==null&&callNumber>=900&&callNumber<=999){
+      const aspirant=rank.includes('aspirant commissaris')||rank.includes('(acp)');
+      const chief=rank.includes('hoofdcommissaris')||
+        rank.includes('eerste commissaris')||
+        rank.includes('(1hcp)')||rank.includes('(1cp)');
+      group=aspirant?1:chief||callNumber===900||callNumber===910?0:1;
+    }else if(callNumber!==null&&callNumber>=600&&callNumber<=899)group=2;
+    else if(callNumber!==null&&callNumber>=300&&callNumber<=599)group=3;
+    else if(callNumber!==null&&callNumber>=100&&callNumber<=299)group=4;
+    else if(rank.includes('hoofdcommissaris')||rank.includes('eerste commissaris'))group=0;
+    else if(rank.includes('aspirant commissaris')||rank.includes('commissaris'))group=1;
+    else if(rank.includes('hoofdinspecteur'))group=2;
+    else if(rank.includes('inspecteur'))group=3;
+    else if(rank.includes('agent'))group=4;
+  }
+  return {group,label:POLICE_GROUP_LABELS[group]};
+}
+const policeCallCompare=(a,b)=>{
+  const left=policeCallGroup(a),right=policeCallGroup(b);
+  return left.group-right.group||bpdCallCompare(a?.call,b?.call);
 };
 // Brandweer ordering follows operational Sheet sequence.
 export function fireCallGroup(value){
@@ -72,7 +112,8 @@ export function sortDossiers(rows,order='callsign-bpd'){
   const mode=DOSSIER_SORT_OPTIONS.includes(order)?order:'callsign-bpd';
   const byName=mode.startsWith('name-'),direction=mode.endsWith('-desc')?-1:1;
   return [...(Array.isArray(rows)?rows:[])].sort((a,b)=>{
-    const main=mode==='callsign-fire'?fireCallCompare(a?.call,b?.call):
+    const main=mode==='callsign-police'?policeCallCompare(a,b):
+      mode==='callsign-fire'?fireCallCompare(a?.call,b?.call):
       mode==='callsign-bpd'?bpdCallCompare(a?.call,b?.call):byName
       ?compareFilled(a?.name,b?.name,direction)
       :compareFilled(a?.call,b?.call,direction);
