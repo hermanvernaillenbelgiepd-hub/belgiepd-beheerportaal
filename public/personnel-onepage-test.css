@@ -701,3 +701,16 @@ body.dossier-onepage .dossier-maintenance-content form :is(input,select,textarea
     padding:5px 8px!important
   }
 }
+
+/* Trainingsregistraties: duidelijke route en opslagbestemming zonder extra kaarten. */
+body.dossier-onepage .training-register-link{
+  display:inline-block;margin-left:6px;font-size:10px;font-weight:600;
+  color:#a7d1ff!important;text-decoration:underline;text-underline-offset:2px;
+  white-space:nowrap
+}
+body.dossier-onepage .training-register-link:hover{color:#fff!important}
+body.dossier-onepage .training-destination{
+  border-left:2px solid #6b9aca;background:#102c48;color:#c8def7;
+  font-size:11px;line-height:1.5;padding:7px 10px;margin:8px 0 10px
+}
+body.dossier-onepage .training-destination[hidden]{display:none!important}
