@@ -27,7 +27,7 @@ test('Toegangsvoorbeeld biedt zeven fictieve profielen zonder echte aanmeldgegev
   assert.match(js,/call:'930'/);
   assert.match(js,/call:'900'/);
   assert.match(js,/CALL 900 en 910/);
-  assert.match(html,//vast-roepnummer-aanvragen.html/);
+  assert.ok(html.includes('/vast-roepnummer-aanvragen.html'));
   assert.match(js,/roles\.indexOf\(role\)/);
   assert.match(css,/\.experience\{display:grid/);
 });
