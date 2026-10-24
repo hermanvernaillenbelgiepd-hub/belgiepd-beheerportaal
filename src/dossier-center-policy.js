@@ -10,12 +10,13 @@ export function dossierOverviewRows(personnel,_unused,scopes){
   for(const p of personnel||[]){
     if(!scopes.personnelDepartments.includes(p.dept)||
        !validPersonnelKey(p.dept,p.personId)||
-       (typeof scopes.canReadSubject==='function'&&!scopes.canReadSubject(p)))continue;
+       false)continue;
     const key=p.dept+':'+p.personId;
     if(rows.has(key))throw Error('Dubbele personeelsidentiteit gevonden');
     rows.set(key,{dept:p.dept,discordId:p.personId,
       name:String(p.name||'').slice(0,120),call:String(p.call||'').slice(0,24),
       rank:String(p.rank||'').slice(0,80),status:String(p.status||'').slice(0,50),
+      canOpen:typeof scopes.canReadSubject==='function'&&scopes.canReadSubject(p),
       personnel:true,application:false,applicationStatus:null,
       source:p.source==='firestore-created'?'Firestore':'Google Sheets'});
   }
