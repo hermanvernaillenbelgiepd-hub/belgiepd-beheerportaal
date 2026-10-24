@@ -6,10 +6,10 @@
     {id:'nieuw',label:'Volledig nieuw lid',short:'Nieuw',name:'Nieuw Discord-lid (voorbeeld)',call:'Nog geen CALL',rank:'Nog niet ingedeeld',role:'Geen goedgekeurde portaalrol',status:'Toegang nog niet aangevraagd'},
     {id:'agent',label:'Agentenkader · tijdelijk',short:'Agent temp.',name:'Voorbeeld Agent (tijdelijk)',call:'150',rank:'Agent van politie',role:'Agentenkader · tijdelijk, CALL 101–199',status:'Nog geen vaste 200-reeks'},
     {id:'agentvast',label:'Agentenkader · vast',short:'Agent vast',name:'Voorbeeld Agent (vaste CALL)',call:'250',rank:'Agent van politie',role:'Agentenkader · vast, CALL 200–299',status:'Vast roepnummer na gecontroleerde aanvraag'},
-    {id:'basis',label:'Basiskader',short:'Basis',name:'Voorbeeld Inspecteur',call:'300',rank:'Inspecteur van politie',role:'Basiskader · CALL 300–599',status:'Portaaltoegang goedgekeurd'},
-    {id:'midden',label:'Middenkader',short:'Midden',name:'Voorbeeld Hoofdinspecteur',call:'700',rank:'Hoofdinspecteur van politie',role:'Middenkader · CALL 600–899',status:'Portaaltoegang goedgekeurd'},
-    {id:'officier',label:'Officierenkader',short:'Officier',name:'Voorbeeld Aspirant Commissaris',call:'930',rank:'Aspirant-commissaris van politie',role:'Officierenkader · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'},
-    {id:'korps',label:'Korpsleiding',short:'Korps',name:'Voorbeeld Eerste Hoofdcommissaris',call:'900',rank:'Eerste hoofdcommissaris van politie',role:'Korpsleiding · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'}
+    {id:'basis',label:'Basiskader',short:'Basis',name:'Voorbeeld Aspirant-inspecteur',call:'300',rank:'Aspirant-inspecteur van politie (A-INP)',role:'Basiskader · CALL 300–599',status:'Portaaltoegang goedgekeurd'},
+    {id:'midden',label:'Middenkader',short:'Midden',name:'Voorbeeld Aspirant-hoofdinspecteur',call:'600',rank:'Aspirant-hoofdinspecteur van politie (A-HINP)',role:'Middenkader · CALL 600–899',status:'Portaaltoegang goedgekeurd'},
+    {id:'officier',label:'Officierenkader',short:'Officier',name:'Voorbeeld Aspirant-commissaris',call:'920',rank:'Aspirant-commissaris van politie (A-CP)',role:'Officierenkader · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'},
+    {id:'korps',label:'Korpsleiding',short:'Korps',name:'Voorbeeld Eerste hoofdcommissaris',call:'900',rank:'Eerste hoofdcommissaris van politie (1-HCP)',role:'Korpsleiding · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'}
   ];
   // full = authorized for this service, limited = restricted actions,
   // none = no access, extra = separate delegated entitlement required.
