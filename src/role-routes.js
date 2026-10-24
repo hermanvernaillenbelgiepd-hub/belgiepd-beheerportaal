@@ -13,7 +13,7 @@ import { mayMaintainTraining,isArchivedTraining,validateMaintenanceReason,isReco
 import {roleForDepartment} from './leave-policy.js';
 import {isCorpsLeadershipPersonnel} from './personnel-editor-policy.js';
 import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
-import {verifiedFireRoles,fireSubjectClass} from './fire-dossier-policy.js';
+import {verifiedFireRoles,fireSubjectClass,FIRE_ROLES} from './fire-dossier-policy.js';
 
 const asText=(v,n=300)=>typeof v==='string' ? v.trim().slice(0,n):'';
 const db=()=>getFirestore();
@@ -107,7 +107,16 @@ function admin(req,res,next){
   next();
 }
 function trainingAccess(req,dept,kind){
-  const {bpd,perms}=req.roleActor;
+  const {bpd,perms,member}=req.roleActor;
+  if(dept==='brandweer'){
+    const roles=verifiedFireRoles(member,process.env.DISCORD_GUILD_ID);
+    // Overrides or unrelated cadre roles cannot turn Brandweer Middenkader
+    // into an instructor/reviewer.
+    if(bpd?.boardPersonnelAdmin===true)return kind==='review';
+    return kind==='log'?
+      (roles?.has(FIRE_ROLES.teacher)||roles?.has(FIRE_ROLES.leadership))===true:
+      roles?.has(FIRE_ROLES.leadership)===true;
+  }
   return kind==='log'?canLogTraining(bpd,dept,perms):canReviewTraining(bpd,dept,perms);
 }
 function inputRecord(x){
