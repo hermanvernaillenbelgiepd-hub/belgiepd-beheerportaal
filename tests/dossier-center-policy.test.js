@@ -69,7 +69,7 @@ test('Korpsleiding-dossiers blijven afgeschermd voor andere kaders, ook met het 
   const leader={...person,rank:'Hoofdcommissaris',call:'S950'};
   assert.equal(canReadPersonnelSubject(actor,leader),false);
   assert.deepEqual(dossierOverviewRows([person,leader],[],dossierScopes(actor)).map(p=>p.rank),['Inspecteur']);
-  const chief={...actor,role:'korpsleiding',departmentRoles:{politie:'korpsleiding'}};
+  const chief={...actor,uid:'discord:'+actor.discordId,role:'korpsleiding',discordPoliceRank:'korpsleiding',departmentRoles:{politie:'korpsleiding'}};
   assert.equal(canReadPersonnelSubject(chief,leader),true);
   const board={...actor,boardPersonnelAdmin:true};
   assert.equal(canReadPersonnelSubject(board,leader),true);
