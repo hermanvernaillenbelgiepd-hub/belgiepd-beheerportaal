@@ -47,6 +47,12 @@ export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){
       const p=matches[0];
       if(!p)return respond(res,404,'Geen personeelsfiche gevonden');
       if(!canReadPersonnelSubject(req.bpd,p))return respond(res,403,'Dossier van Korpsleiding is afgeschermd');
+      // Brandweer Middenkader/leiding sees a narrowly scoped identity only;
+      // personnel timelines can contain confidential decisions and are suppressed.
+      if(dept==='brandweer'&&req.bpd.fireZoneChief!==true&&
+          req.bpd.boardPersonnelAdmin!==true)
+        return res.json({dept,discordId,readOnly:true,
+          personnel:publicPerson(p),timeline:[],fireDossier:true});
       const db=getFirestore();
       const histories=[
         timeline(db.collection(PERSONNEL_EDITS_COLLECTION).doc(dept+'_'+discordId),'personeel')
