@@ -68,7 +68,7 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
         db.collection(USER_COLLECTION).doc(id).get()
       ]);
       if(!verifiedDiscordIdentity(decoded,identity.data(),
-        process.env.DISCORD_GUILD_ID,Date.now(),15*60*1000))
+        process.env.DISCORD_GUILD_ID))
         return res.status(403).json({error:'Vernieuw eerst je Discord-verificatie'});
       if(managed.get('status')==='blocked')
         return res.status(403).json({error:'Je portaaltoegang is geblokkeerd'});
