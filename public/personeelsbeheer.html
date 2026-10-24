@@ -1605,9 +1605,7 @@ function sheetIdentity(p){
     const image=document.createElement('img');
     image.src=grade.image;image.alt='';image.loading='lazy';image.referrerPolicy='no-referrer';
     image.setAttribute('aria-hidden','true');
-    const code=document.createElement('span');code.className='dossier-rank-code';
-    code.textContent=grade.code||'';
-    compact.append(image,code);
+    compact.append(image);
     rankSlot.append(compact);
   }
   const label=document.createElement('span');label.className='dossier-rank-label';
