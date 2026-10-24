@@ -440,3 +440,94 @@ body.dossier-onepage .landscape-counter{
   body.dossier-onepage .landscape-priority{grid-template-columns:minmax(0,1fr)}
   body.dossier-onepage .landscape-grid>.landscape-cell[data-sheet-tile="sanctions"]{grid-column:auto}
 }
+
+/* BelgiumPD: afzonderlijke personeelsfiche, met keuze van een andere collega. */
+body.dossier-standalone main>h1,
+body.dossier-standalone main>h1+p,
+body.dossier-standalone main>section.card:not(#panel):not(#accessHelp){
+  display:none!important
+}
+body.dossier-standalone #panel{margin:0!important;max-width:none;width:100%}
+body.dossier-onepage .fiche-navigator{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  border:1px solid #355679;background:#112a49;padding:8px 12px;
+  border-radius:6px;margin:8px 0 9px;font-size:12px
+}
+body.dossier-onepage .fiche-navigator[hidden]{display:none!important}
+body.dossier-onepage .fiche-navigator>a{color:#bddbff;text-decoration:underline}
+body.dossier-onepage .fiche-navigator label{margin:0;color:#c9dff7;font-size:11px}
+body.dossier-onepage .fiche-navigator select{
+  flex:1 1 260px;max-width:460px;min-width:0;padding:7px;
+  border:1px solid #587fa6;background:#0b1f38;color:#f0f7ff;border-radius:5px;font-size:12px
+}
+body.dossier-onepage #panel>.sheet-identity{
+  grid-template-columns:repeat(6,minmax(0,1fr));gap:0
+}
+body.dossier-onepage #panel>.sheet-identity>div{
+  border-right:1px solid #315175;padding:8px 10px
+}
+body.dossier-onepage #panel>.sheet-identity>div:last-child{border-right:0}
+body.dossier-onepage #sheetDiscordId{font-size:11px;overflow-wrap:anywhere}
+body.dossier-onepage #editPersonnelSummary{font-size:11px;padding:6px 10px}
+body.dossier-onepage .fiche-editor{
+  border:1px solid #45698b;border-radius:6px;background:#122943;
+  padding:0 0 8px;margin:0 0 8px;overflow:hidden
+}
+body.dossier-onepage .fiche-editor[hidden]{display:none!important}
+body.dossier-onepage .fiche-editor>summary{
+  cursor:pointer;list-style-position:inside;padding:8px 11px;
+  background:#20477d;color:#f2f6fc;font-size:12px;font-weight:700
+}
+body.dossier-onepage .fiche-editor>.landscape-cell{
+  border:0;border-radius:0;padding:8px 0;background:transparent
+}
+body.dossier-onepage .fiche-editor>.landscape-cell>h3{display:none}
+body.dossier-onepage .landscape-grid{
+  display:block!important;border:0!important;min-width:0
+}
+body.dossier-onepage .dossier-main-row,
+body.dossier-onepage .dossier-lower-row{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:start;gap:9px;margin-bottom:9px;min-width:0
+}
+body.dossier-onepage .dossier-right-column{
+  display:flex;flex-direction:column;gap:9px;min-width:0
+}
+body.dossier-onepage .dossier-main-row>.landscape-cell,
+body.dossier-onepage .dossier-lower-row>.landscape-cell,
+body.dossier-onepage .dossier-right-column>.landscape-cell{
+  border:1px solid #365579;border-radius:5px;min-width:0;
+  padding-bottom:8px;background:#10213b
+}
+body.dossier-onepage .dossier-main-row .landscape-cell>h3,
+body.dossier-onepage .dossier-lower-row .landscape-cell>h3{
+  margin-bottom:5px!important;padding:7px 10px;font-size:12px!important
+}
+body.dossier-onepage .dossier-main-row .sheet-records,
+body.dossier-onepage .dossier-lower-row .sheet-records,
+body.dossier-onepage .dossier-main-row .sheet-specialties{
+  margin-inline:9px;font-size:11px
+}
+body.dossier-onepage .dossier-main-row .overview-preview,
+body.dossier-onepage .dossier-lower-row .overview-preview{padding:5px 0;gap:5px}
+body.dossier-onepage .dossier-lower-row>.landscape-cell{min-height:138px}
+body.dossier-onepage .dossier-right-column #registerTrainingQuick{
+  border:1px solid #7199ce;background:#274f81;color:#fff;
+  font-size:10px!important;padding:4px 7px;border-radius:4px
+}
+body.dossier-onepage .dossier-right-column #registerTrainingQuick[hidden]{display:none!important}
+@media(max-width:1050px){
+  body.dossier-onepage #panel>.sheet-identity{grid-template-columns:repeat(3,minmax(0,1fr))}
+  body.dossier-onepage .dossier-main-row,
+  body.dossier-onepage .dossier-lower-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.dossier-onepage .dossier-right-column{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  body.dossier-onepage .dossier-lower-row>.landscape-cell:last-child{grid-column:1/-1}
+}
+@media(max-width:680px){
+  body.dossier-onepage #panel>.sheet-identity{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.dossier-onepage .dossier-main-row,
+  body.dossier-onepage .dossier-lower-row,
+  body.dossier-onepage .dossier-right-column{display:grid;grid-template-columns:minmax(0,1fr)}
+  body.dossier-onepage .dossier-right-column,
+  body.dossier-onepage .dossier-lower-row>.landscape-cell:last-child{grid-column:auto}
+}
