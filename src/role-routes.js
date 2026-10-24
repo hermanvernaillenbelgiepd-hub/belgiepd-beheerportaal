@@ -108,6 +108,7 @@ function admin(req,res,next){
 }
 function trainingAccess(req,dept,kind){
   const {bpd,perms,member}=req.roleActor;
+  if(bpd?.portalTechnicalMode===true&&bpd?.profileTechnicalAvailable===true)return true;
   if(dept==='brandweer'){
     const roles=verifiedFireRoles(member,process.env.DISCORD_GUILD_ID);
     // Overrides or unrelated cadre roles cannot turn Brandweer Middenkader
@@ -141,6 +142,7 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     return matches.length===1?matches[0]:null;
   };
   const mayAccessSubject=(bpd,subject,roleMap)=>{
+    if(bpd?.portalTechnicalMode===true&&bpd?.profileTechnicalAvailable===true)return true;
     if(bpd?.boardPersonnelAdmin===true)return true;
     if(subject.dept==='brandweer')return ['member','trainee'].includes(
       fireSubjectClass(subject,roleMap?.get(subject.personId)||null));
