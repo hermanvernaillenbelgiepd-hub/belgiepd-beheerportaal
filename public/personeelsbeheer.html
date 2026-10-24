@@ -652,14 +652,9 @@ function refreshPersonnelRegistrationOptions(){
   pick.value=kinds.some(([key])=>key===old)?old:'';
   $('formalInlineArea').hidden=!kinds.length;
   displaySelectedRegistration();
-  const missing=[];
-  const dept=selected?.dept;
-  if(!kinds.some(([k])=>k.startsWith('case:')))
-    missing.push('Dossiernotities en personeelsbewegingen: '+registrationModuleStates.cases);
-  if(!kinds.some(([k])=>k==='training'))
-    missing.push('Opleidingen: '+registrationModuleStates.training);
-  $('registrationAccessHint').textContent=dept&&missing.length?
-    'Overige categorieën voor '+(departments[dept]||dept)+': '+missing.join(' · '):'';
+  // Alleen werkelijk beschikbare formulieren tonen, geen diagnostische
+  // lijst met ontbrekende bevoegdheden op het normale personeelsblad.
+  $('registrationAccessHint').textContent='';
   $('registerTrainingQuick').hidden=!kinds.some(([key])=>key==='training');
   syncDossierMaintenance();
 }
