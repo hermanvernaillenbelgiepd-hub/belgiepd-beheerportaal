@@ -37,18 +37,21 @@ export function fireActorClass(actor,roles){
  return 'none';
 }
 export function mayOpenFireSubject(actor,subject,subjectRoles){
- if(actor?.boardPersonnelAdmin===true||actor?.fireZoneChief===true)return true;
+ if(actor?.boardPersonnelAdmin===true||actor?.fireZoneChief===true||
+    actor?.portalTechnicalMode===true)return true;
  return ['leadership','middle'].includes(actor?.fireAccessLevel)&&
  ['member','trainee'].includes(fireSubjectClass(subject,subjectRoles));
 }
 export function fireRecordVisibility(actor,subject,subjectRoles){
  if(!mayOpenFireSubject(actor,subject,subjectRoles))return 'none';
- if(actor?.fireZoneChief===true||actor?.boardPersonnelAdmin===true)return 'full';
+ if(actor?.fireZoneChief===true||actor?.boardPersonnelAdmin===true||
+    actor?.portalTechnicalMode===true)return 'full';
  return actor?.fireAccessLevel==='leadership'?'leadership':'identity';
 }
 export function fireMayCreate(actor,subject,subjectRoles,type){
  const scope=fireRecordVisibility(actor,subject,subjectRoles);
- if(actor?.boardPersonnelAdmin===true&&!actor?.fireZoneChief)return false;
+ if(actor?.boardPersonnelAdmin===true&&!actor?.fireZoneChief&&
+    actor?.portalTechnicalMode!==true)return false;
  return scope==='identity'?type==='observatie':
  scope==='leadership'||scope==='full'?['observatie','notitie','sanctie'].includes(type):false;
 }
