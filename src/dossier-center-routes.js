@@ -1,6 +1,6 @@
 import {getFirestore} from 'firebase-admin/firestore';
 import {dossierScopes,dossierOverviewRows,dossierTimelineEntry} from './dossier-center-policy.js';
-import {validPersonnelKey} from './personnel-editor-policy.js';
+import {validPersonnelKey,canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,personnelDataEnabled} from './personnel-create.js';
 import {PERSONNEL_EDITS_COLLECTION} from './personnel-editor-policy.js';
 
@@ -46,6 +46,7 @@ export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){
       if(matches.length>1)return respond(res,409,'Dubbele personeelsidentiteit; administratieve controle nodig');
       const p=matches[0];
       if(!p)return respond(res,404,'Geen personeelsfiche gevonden');
+      if(!canReadPersonnelSubject(req.bpd,p))return respond(res,403,'Dossier van Korpsleiding is afgeschermd');
       const db=getFirestore();
       const histories=[
         timeline(db.collection(PERSONNEL_EDITS_COLLECTION).doc(dept+'_'+discordId),'personeel')
