@@ -217,9 +217,9 @@ function render(){
     if(r.canOpen===true){
       const button=node('button','Open dossier','alt');
       button.type='button';button.onclick=()=>{
-        window.location.assign('/personeelsbeheer.html?'+new URLSearchParams({
-          fiche:'1',dept:r.dept,discordId:r.discordId,from:'dossiercentrum'
-        }).toString());
+        window.location.assign(r.dept==='brandweer'
+          ?'/brandweerdossier.html?'+new URLSearchParams({discordId:r.discordId,from:'dossiercentrum'}).toString()
+          :'/personeelsbeheer.html?'+new URLSearchParams({fiche:'1',dept:r.dept,discordId:r.discordId,from:'dossiercentrum'}).toString());
       };
       cell.append(button);
     }else{
@@ -270,9 +270,9 @@ async function openDossier(r){
       frame.title='Personeelsdossier voor '+r.name;
       frame.referrerPolicy='no-referrer';
       frame.style.cssText='display:block;width:100%;height:1100px;min-height:650px;border:0;border-radius:7px;background:#0b1b32';
-      frame.src='/personeelsbeheer.html?'+new URLSearchParams({
-        embed:'1',dept:r.dept,discordId:r.discordId
-      }).toString();
+      frame.src=r.dept==='brandweer'?
+        '/brandweerdossier.html?'+new URLSearchParams({discordId:r.discordId}).toString():
+        '/personeelsbeheer.html?'+new URLSearchParams({embed:'1',dept:r.dept,discordId:r.discordId}).toString();
       staff.append(frame);
     }else staff.textContent='Geen zichtbare personeelsfiche.';
     timelineEntries=Array.isArray(data.timeline)?data.timeline:[];
