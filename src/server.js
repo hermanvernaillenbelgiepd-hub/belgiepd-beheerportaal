@@ -72,7 +72,7 @@ app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
 app.use('/api/to',express.json({limit:'24kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
-installRoleRoutes(app);
+installRoleRoutes(app,{getSnapshot});
 const allDepts=['politie','brandweer','ambulance','depannage'];
 const docs={
   politie:'POLITIE!A3:R300', ambulance:'AMBULANCE!A3:K150',
