@@ -123,7 +123,7 @@ async function requireUser(req,res,next){
     const verified=await getAuth().verifyIdToken(token);
     // Google-noodtoegang blijft bestaan. Discord krijgt enkel de bestaande,
     // persoonlijk gemapte rechten uit de allowlist; geen rollen op basis van ID alleen.
-    let email,entry,discordId,discordMember=null;
+    let email,entry,discordId,discordMember=null,manualRoleRecovery=null;
     if(verified.email_verified && verified.firebase?.sign_in_provider==='google.com'){
       email=String(verified.email||'').toLowerCase();
       entry=accessList()[email];
@@ -155,6 +155,7 @@ async function requireUser(req,res,next){
         if(provisioned){authDocCache.delete(USER_COLLECTION+':'+id);managed=await cachedAuthDoc(USER_COLLECTION,id);}
       }
       if(managed.exists){
+        manualRoleRecovery=managed.data()?.manualRoleRecovery||null;
         entry=approvedManagedEntry(managed.data(),id);
         if(!entry)return res.status(403).json({error:'Je portaaltoegang is nog niet goedgekeurd of werd geblokkeerd. Open Gebruikersbeheer.'});
         if(!stillEligibleAutoCadre(verified,member,process.env.DISCORD_GUILD_ID,
@@ -195,6 +196,13 @@ async function requireUser(req,res,next){
     );
     const actor={email,uid:verified.uid,role:String(entry.role),departments,
       discordId,departmentRoles};
+    // Alleen een apart goedgekeurde, geauditeerde manuele Korpsleiding-machtiging
+    // kan bij ontbrekende Discord-rolverificatie de beschermde dossiers openen.
+    actor.manualCorpsApproved=Boolean(manualRoleRecovery?.dept==='politie'&&
+      manualRoleRecovery?.role==='korpsleiding'&&
+      actor.role==='korpsleiding'&&departmentRoles.politie==='korpsleiding'&&
+      typeof manualRoleRecovery.approvedBy==='string'&&
+      manualRoleRecovery.approvedBy!==actor.uid&&verified.uid==='discord:'+discordId);
     const canSwitch=eligibleForTechnicalProfile(verified,actor,discordMember,process.env);
     actor.profileTechnicalAvailable=canSwitch;
     actor.discordPoliceRank=verifiedPoliceRank(discordMember,process.env.DISCORD_GUILD_ID);
