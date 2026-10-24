@@ -799,7 +799,7 @@ function setupDossierTabs(){
       <div id="sheetObservations" class="sheet-records">Observaties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="training">
-      <h3>Voltooide opleidingen <a class="training-register-link" href="/rollen-opleidingen.html" title="Bekijk de afzonderlijke opleidingshistoriek">Opleidingsregister ↗</a></h3>
+      <h3>Voltooide opleidingen <a id="sheetTrainingRegisterLink" class="training-register-link" href="/rollen-opleidingen.html" title="Open opleidingen voor dit personeelslid">Opleidingsregister ↗</a></h3>
       <div id="sheetTraining" class="sheet-records">Opleidingen laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="basisNotes">
@@ -2699,6 +2699,9 @@ for(const formId of registrationForms){
 async function showPerson(p){
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
+  $('sheetTrainingRegisterLink').href='/rollen-opleidingen.html?'+new URLSearchParams({
+    department:p.dept,discordId:p.discordId
+  }).toString();
   if(!sameSelected)$('registrationKind').value='';
   sheetIdentity(p);updateFicheColleagues();
   if(!sameSelected){
