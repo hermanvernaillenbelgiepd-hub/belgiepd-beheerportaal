@@ -146,7 +146,7 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     const map=new Map(),guildId=process.env.DISCORD_GUILD_ID;
     const ids=[...new Set(subjects.filter(p=>p?.dept==='politie'&&
       isPolice9xx(p.call)&&isDiscordId(p.personId)).map(p=>p.personId))];
-    if(!isDiscordId(guildId)||!ids.length)return map;
+    if(!isDiscordId(guildId))return map;
     const collection=db().collection('bpd_discord_auth');
     for(let i=0;i<ids.length;i+=50){
       const chunk=ids.slice(i,i+50);
