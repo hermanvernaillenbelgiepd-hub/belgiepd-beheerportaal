@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
 import {validateEntry,canChooseSanction,permittedSanctionTypes} from '../src/registrations.js';
 import {mayWriteManagement} from '../src/management-utils.js';
-import {canLogTraining} from '../src/permissions-utils.js';
+import {canLogTraining,canReviewTraining,basePermissions} from '../src/permissions-utils.js';
 import {specialFields} from '../src/report-export.js';
 
 const actor=role=>({role,departments:['politie'],departmentRoles:{politie:role},
@@ -216,4 +216,64 @@ test('Opleidingregistratie verklaart opslagbestemming en toont apart register',(
   assert.match(register,/id="training" hidden/);
   assert.match(css,/\.training-register-link/);
   assert.match(css,/\.training-destination/);
+});
+
+
+test('Centrale opleidingen respecteren goedgekeurde dienstkaders en nevendiensten',()=>{
+  const police={trustedStaff:true,role:'officierenkader',departments:['politie','brandweer'],
+    departmentRoles:{politie:'officierenkader',brandweer:'basiskader'}};
+  assert.equal(canLogTraining(police,'politie',{}),true);
+  assert.equal(canReviewTraining(police,'politie',{}),true);
+  assert.equal(canLogTraining(police,'brandweer',{}),false);
+  assert.equal(canReviewTraining(police,'brandweer',{}),false);
+  const fire={trustedStaff:true,role:'middenkader',departments:['brandweer'],
+    departmentRoles:{brandweer:'middenkader'}};
+  assert.equal(canLogTraining(fire,'brandweer',{}),true);
+  assert.equal(canReviewTraining(fire,'brandweer',{}),true);
+  assert.equal(canLogTraining(fire,'politie',{}),false);
+});
+
+test('Geverifieerde Discord-instructeurs mogen alleen eigen hulpdienst opleiden',()=>{
+  const guildId='123456789012345678',now=Date.now();
+  const profile=roles=>({guildId,verifiedAt:now,roleIds:roles});
+  const instructor=basePermissions(profile([
+    '1309532438053130326','1359656762289946755'
+  ]),guildId,now);
+  assert.equal(instructor.permissions.politie['training.log'],true);
+  assert.equal(instructor.permissions.brandweer['training.log'],false);
+  assert.equal(canLogTraining({departments:[],trustedStaff:false},'politie',
+    instructor.permissions),true);
+  const fireLeader=basePermissions(profile(['1395115819020714105']),guildId,now);
+  assert.equal(fireLeader.permissions.brandweer['training.log'],true);
+  assert.equal(fireLeader.permissions.brandweer['training.review'],true);
+  assert.equal(fireLeader.permissions.politie['training.log'],false);
+  const docentId='111111111111111111';
+  const fireDocent=basePermissions(profile([
+    '1309532438053130324',docentId
+  ]),guildId,now,[docentId]);
+  assert.equal(fireDocent.permissions.brandweer['training.log'],true);
+  assert.equal(fireDocent.permissions.brandweer['training.review'],false);
+  assert.equal(basePermissions(profile(['1309532438053130324',docentId]),
+    guildId,now,[]).permissions.brandweer['training.log'],false);
+  assert.equal(basePermissions(profile(['1309532438053130324',docentId]),
+    guildId,now-16*60*1000,[docentId]).permissions.brandweer['training.log'],false);
+});
+
+test('Centraal register gebruikt personeelslijst per dienst en beschermt individuele routes',()=>{
+  const route=readFileSync(new URL('../src/role-routes.js',import.meta.url),'utf8');
+  const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+  const report=readFileSync(new URL('../src/management-routes.js',import.meta.url),'utf8');
+  const ui=readFileSync(new URL('../public/rollen-opleidingen.html',import.meta.url),'utf8');
+  assert.match(route,/app.get\('\/api\/training\/people',resolveActor/);
+  assert.match(route,/people,limited:false/);
+  assert.match(route,/guardTrainingSubject/);
+  assert.match(route,/await findSubject\(data.department,data.subjectDiscordId\)/);
+  assert.match(route,/mayAccessSubject/);
+  assert.match(server,/installRoleRoutes\(app,\{getSnapshot\}\)/);
+  assert.match(ui,/id="subjectChoice"/);
+  assert.match(ui,/\/api\/training\/people\?department=/);
+  assert.match(ui,/id="courseOther"/);
+  assert.match(report,/collection\('bpd_training'\)/);
+  assert.match(report,/source:'bpd_training'/);
+  assert.match(report,/isArchivedTraining/);
 });
