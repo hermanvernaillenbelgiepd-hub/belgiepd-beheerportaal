@@ -172,10 +172,18 @@ export function installRoleRoutes(app,{getSnapshot}={}){
       isDiscordId(p.personId)).map(p=>p.personId))];
     for(let i=0;i<fireIds.length;i+=40){
       const group=fireIds.slice(i,i+40);
-      const results=await db().getAll(...group.map(id=>
-        collection.doc(id)));
-      for(let j=0;j<group.length;j++)
-        map.set(group[j],verifiedFireRoles(results[j].data(),guildId));
+      const [results,accounts]=await Promise.all([
+        db().getAll(...group.map(id=>collection.doc(id))),
+        db().getAll(...group.map(id=>db().collection(USER_COLLECTION).doc(id)))
+      ]);
+      for(let j=0;j<group.length;j++){
+        const verified=verifiedFireRoles(results[j].data(),guildId);
+        const approved=accounts[j].exists?approvedManagedEntry(accounts[j].data(),group[j]):null;
+        const rank=approved?.departmentRoles?.brandweer;
+        if(verified&&['middenkader','officierenkader','korpsleiding'].includes(rank))
+          verified.add(rank==='middenkader'?FIRE_ROLES.middle:FIRE_ROLES.leadership);
+        map.set(group[j],verified);
+      }
     }
     return map;
   }
