@@ -186,7 +186,7 @@ function render(){
   const found=filterDossiers(rows,filters);
   const sorted=sortDossiers(found,$('sortOrder').value);
   const paged=paginateDossiers(sorted,page,PAGE_SIZE);page=paged.page;
-  $('count').textContent=paged.total+' van '+rows.length+' toegelaten dossiers zichtbaar';
+  $('count').textContent=paged.total+' van '+rows.length+' personeelsleden zichtbaar';
   $('pageInfo').textContent='Pagina '+paged.page+' van '+paged.pages;
   $('previousPage').disabled=paged.page<=1;
   $('nextPage').disabled=paged.page>=paged.pages;
@@ -207,13 +207,21 @@ function render(){
     tr.append(node('td',r.name||'—'),withSpan(call),withSpan(rank),
       node('td',departments[r.dept]||r.dept),withSpan(status),
       node('td',r.discordId||'—','dossier-discord'));
-    const cell=node('td'),button=node('button','Open dossier','alt');
-    button.type='button';button.onclick=()=>{
-      window.location.assign('/personeelsbeheer.html?'+new URLSearchParams({
-        fiche:'1',dept:r.dept,discordId:r.discordId,from:'dossiercentrum'
-      }).toString());
-    };
-    cell.append(button);tr.append(cell);body.append(tr);
+    const cell=node('td');
+    if(r.canOpen===true){
+      const button=node('button','Open dossier','alt');
+      button.type='button';button.onclick=()=>{
+        window.location.assign('/personeelsbeheer.html?'+new URLSearchParams({
+          fiche:'1',dept:r.dept,discordId:r.discordId,from:'dossiercentrum'
+        }).toString());
+      };
+      cell.append(button);
+    }else{
+      const locked=node('span','🔒 Afgeschermd','muted');
+      locked.title='Je hebt geen inzagerecht voor dit personeelsdossier';
+      cell.append(locked);
+    }
+    tr.append(cell);body.append(tr);
   }
 }
 function renderHistory(){
@@ -277,7 +285,7 @@ async function load(){
     (data.departments||[]).forEach(d=>{const op=node('option',departments[d]||d);op.value=d;$('department').append(op)});
     $('department').value=[...$('department').options].some(o=>o.value===selected)?selected:'all';
     closeDossier();render();
-    message(rows.length+' dossiers geladen. Bewerkrechten worden per rubriek gecontroleerd.'+(data.sourceStale?' De personeelsbron gebruikt tijdelijk gecachete gegevens.':''));
+    message(rows.length+' personeelsleden in het overzicht. Dossierrechten worden per persoon gecontroleerd.'+(data.sourceStale?' De personeelsbron gebruikt tijdelijk gecachete gegevens.':''));
   }catch(e){rows=[];closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();message(e.message,true)}
 }
 function changedFilters(){page=1;render()}
