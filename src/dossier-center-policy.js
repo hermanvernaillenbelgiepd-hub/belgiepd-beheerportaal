@@ -9,8 +9,7 @@ export function dossierOverviewRows(personnel,_unused,scopes){
   const rows=new Map();
   for(const p of personnel||[]){
     if(!scopes.personnelDepartments.includes(p.dept)||
-       !validPersonnelKey(p.dept,p.personId)||
-       false)continue;
+       !validPersonnelKey(p.dept,p.personId))continue;
     const key=p.dept+':'+p.personId;
     if(rows.has(key))throw Error('Dubbele personeelsidentiteit gevonden');
     rows.set(key,{dept:p.dept,discordId:p.personId,
