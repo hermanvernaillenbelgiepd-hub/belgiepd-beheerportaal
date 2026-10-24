@@ -52,7 +52,8 @@ test('Nieuwe aanvraagpagina gebruikt enkel eigen Discord-login en toont botvoorw
   assert.doesNotThrow(()=>new Script(script));
   assert.match(html,/id="tempCall" type="number" min="101" max="199"/);
   assert.doesNotMatch(html,/id="tempCall"[^>]+required/);
-  assert.match(s,/if\(callRef&&!call\.exists\)tx\.create\(callRef/);
+  const selfSource=readFileSync(new URL('../src/callsign-selfservice-routes.js',import.meta.url),'utf8');
+  assert.match(selfSource,/if\(callRef&&!call\.exists\)tx\.create\(callRef/);
   assert.match(html,/minstens <strong>5 volledige dagen<\/strong>/);
   assert.match(html,/api\/callsigns\/self\/status/);
   assert.match(html,/api\/callsigns\/self\/request/);
