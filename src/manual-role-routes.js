@@ -7,7 +7,7 @@ import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-polic
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 
 const STORE='bpd_manual_role_requests';
-const VALID_ID=/^\\d{15,22}$/;
+const VALID_ID=/^\d{15,22}$/;
 const RANK={basiskader:1,middenkader:2,officierenkader:3,korpsleiding:4};
 const REQUEST_ROLES=['middenkader','officierenkader','korpsleiding'];
 const error=(status,message)=>Object.assign(new Error(message),{publicStatus:status});
@@ -18,7 +18,7 @@ const respond=(res,e)=>{
 };
 const safeReason=value=>{
   const reason=typeof value==='string'?value.trim():'';
-  if(reason.length<15||reason.length>500||/[<>\\x00-\\x1f]/.test(reason))
+  if(reason.length<15||reason.length>500||/[<>\x00-\x1f]/.test(reason))
     throw error(400,'Geef een motivering van 15 tot 500 tekens');
   return reason;
 };
@@ -121,7 +121,7 @@ export function installManualRoleRoutes(app,{requireUser}){
           if(!request||request.status!=='pending')throw error(409,'Geen openstaand verzoek');
           if(request.requestedBy===req.bpd.uid||req.bpd.discordId===discordId)
             throw error(403,'Aanvrager, goedkeurder en betrokkene moeten gescheiden zijn');
-          if(request.expiresAt?.toDate?.()?.getTime()<Date.now())
+          if(!request.expiresAt?.toDate||request.expiresAt.toDate().getTime()<Date.now())
             throw error(409,'Dit verzoek is verlopen; maak een nieuw verzoek');
           const current=subject.data();
           if(subject.exists&&current.status==='blocked')
@@ -149,6 +149,8 @@ export function installManualRoleRoutes(app,{requireUser}){
               departments,departmentRoles,
               username:String(current?.username||verified.get('username')||'Discord-lid').slice(0,80),
               approvedBy:req.bpd.uid,approvedAt:FieldValue.serverTimestamp(),
+              manualRoleRecovery:{dept,role:request.role,approvedBy:req.bpd.uid,
+                requestedBy:request.requestedBy},
               approvalSource:FieldValue.delete(),updatedAt:FieldValue.serverTimestamp()
             },{merge:true});
             tx.create(user.collection('audit').doc(),{
