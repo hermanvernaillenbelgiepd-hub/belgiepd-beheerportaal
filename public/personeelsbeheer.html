@@ -263,7 +263,14 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 </div><div id="newDuplicateWarning" class="warn" role="status" aria-live="polite" hidden></div>
 <div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Firestore registratie; Google Sheets en Discord-rollen blijven ongewijzigd</span></div></form>
 </section>
-<section id="panel" class="card" hidden><div class="controls" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2><button class="alt" id="close" type="button">Sluiten</button></div>
+<section id="panel" class="card" hidden>
+<div class="controls dossier-top-actions" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2>
+<div class="controls"><button id="editPersonnelSummary" type="button" class="alt" hidden>Personeelsgegevens wijzigen</button><button class="alt" id="close" type="button">Sluiten</button></div></div>
+<div id="ficheNavigator" class="fiche-navigator" hidden>
+  <a id="ficheBackLink" href="/personeelsbeheer.html">← Terug naar personeelslijst</a>
+  <label for="ficheColleague">Andere collega selecteren</label>
+  <select id="ficheColleague" aria-label="Selecteer een andere toegelaten personeelsfiche"></select>
+</div>
 <p class="subtle" id="identity"></p>
 <div id="dossierTabBar" class="dossier-tabbar" role="tablist" aria-label="Onderdelen van personeelsdossier"></div>
 <div id="dossierViews" class="dossier-views"></div>
@@ -475,7 +482,32 @@ document.body.classList.add('dossier-onepage');
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
 let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
-const dossierEmbedded=new URLSearchParams(window.location.search).get('embed')==='1';
+const initialQuery=new URLSearchParams(window.location.search);
+const dossierEmbedded=initialQuery.get('embed')==='1';
+const ficheMode=!dossierEmbedded&&initialQuery.get('fiche')==='1';
+if(ficheMode){
+  document.body.classList.add('dossier-standalone');
+  $('ficheNavigator').hidden=false;
+  $('ficheBackLink').href=initialQuery.get('from')==='dossiercentrum'?'/dossiercentrum.html':'/personeelsbeheer.html';
+  $('close').textContent='Terug naar de lijst';
+}
+const ficheUrl=p=>'/personeelsbeheer.html?'+new URLSearchParams({
+  fiche:'1',dept:p.dept,discordId:p.discordId,
+  ...(initialQuery.get('from')==='dossiercentrum'?{from:'dossiercentrum'}:{})
+}).toString();
+function updateFicheColleagues(){
+  if(!ficheMode)return;
+  const select=$('ficheColleague');
+  const options=[...people].sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','nl')||
+    (a.call||'').localeCompare(b.call||'','nl',{numeric:true}));
+  select.replaceChildren(...options.map(p=>option(p.dept+':'+p.discordId,
+    (p.call||'—')+' · '+p.name+' ('+(departments[p.dept]||p.dept)+')')));
+  if(selected)select.value=selected.dept+':'+selected.discordId;
+}
+$('ficheColleague').onchange=()=>{
+  const person=people.find(p=>p.dept+':'+p.discordId===$('ficheColleague').value);
+  if(person)window.location.assign(ficheUrl(person));
+};
 if(dossierEmbedded){
   document.body.classList.add('dossier-embed');
   document.querySelector('body>header').hidden=true;
@@ -617,6 +649,7 @@ function refreshPersonnelRegistrationOptions(){
     missing.push('Functies: '+registrationModuleStates.functions);
   $('registrationAccessHint').textContent=dept&&missing.length?
     'Overige categorieën voor '+(departments[dept]||dept)+': '+missing.join(' · '):'';
+  $('registerTrainingQuick').hidden=!kinds.some(([key])=>key==='training');
 }
 function choosePersonnelRegistration(kind,focus=false){
   const select=$('registrationKind');
@@ -671,10 +704,13 @@ function setupDossierTabs(){
     <div class="sheet-identity" aria-label="Personeelsinformatie">
       <div><small>Roepnummer</small><strong id="sheetCall">—</strong></div>
       <div><small>Graad</small><strong id="sheetRank">—</strong></div>
+      <div><small>Naam</small><strong id="sheetName">—</strong></div>
       <div><small>Reeks</small><strong id="sheetSeries">—</strong></div>
       <div><small>Status</small><strong id="sheetStatus">—</strong></div>
+      <div><small>Discord-ID</small><strong id="sheetDiscordId">—</strong></div>
     </div>
-    <p class="sheet-intro">Eén breed personeelsblad. Bevoegde leiding vult rechtstreeks in onder de categorie; bewaren gebeurt per registratie met audit en weekrapport.</p>
+    <details class="fiche-editor" id="ficheEditor" hidden><summary>Algemene personeelsgegevens aanpassen</summary></details>
+    <p class="sheet-intro">Dossiergegevens uit de actuele personeels- en kaderregistraties. Wijzigingen worden afzonderlijk geaudit.</p>
     <div class="landscape-grid" aria-label="Personeelsdossier in negen categorieën">
     <section class="landscape-cell" data-sheet-tile="gegevens">
       <h3>Personeelsinformatie</h3>
@@ -738,18 +774,31 @@ function setupDossierTabs(){
     </details>
   `);
   panes.overzicht.prepend(sheet);
-  // Twee onafhankelijke compacte kolommen: geen grote lege vlakken naast korte rubrieken.
+  // Drie kolommen met twee rijen; rechts drie compacte samenvattingen.
   const summaryGrid=sheet.querySelector('.landscape-grid');
-  const priority=document.createElement('div');priority.className='landscape-priority';
-  for(const [label,tiles] of [['Notities en verloven',['notes','leave']],['Specialisaties en bewegingen',['specialisaties','movements']]]){
-    const column=document.createElement('div');column.className='landscape-priority-column';
-    column.setAttribute('aria-label',label);
-    for(const tile of tiles)column.append(summaryGrid.querySelector('[data-sheet-tile="'+tile+'"]'));
-    priority.append(column);
-  }
-  summaryGrid.prepend(priority);
+  const makeTile=key=>summaryGrid.querySelector('[data-sheet-tile="'+key+'"]');
+  $('ficheEditor').append(makeTile('gegevens'));
+  const upper=document.createElement('div');upper.className='dossier-main-row';
+  const right=document.createElement('div');right.className='dossier-right-column';
+  right.append(makeTile('specialisaties'),makeTile('movements'),makeTile('training'));
+  upper.append(makeTile('leave'),makeTile('notes'),right);
+  const lower=document.createElement('div');lower.className='dossier-lower-row';
+  lower.append(makeTile('basisNotes'),makeTile('observations'),makeTile('sanctions'));
+  summaryGrid.replaceChildren(upper,lower);
+  const trainingHeader=sheet.querySelector('[data-sheet-tile="training"]>h3');
+  const trainingAdd=document.createElement('button');
+  trainingAdd.type='button';trainingAdd.id='registerTrainingQuick';
+  trainingAdd.textContent='+ Opleiding';trainingAdd.hidden=true;
+  trainingAdd.onclick=()=>choosePersonnelRegistration('training',true);
+  trainingHeader.append(trainingAdd);
   // Identiteit staat boven de tabs en niet langer opnieuw in Overzicht.
   $('identity').after(sheet.querySelector('.sheet-identity'));
+  $('editPersonnelSummary').onclick=()=>{
+    const editor=$('ficheEditor');
+    if(editor.hidden)return;
+    editor.open=!editor.open;
+    if(editor.open)editor.scrollIntoView({behavior:'smooth',block:'nearest'});
+  };
   sheet.addEventListener('click',event=>{
     const button=event.target.closest('[data-open-sheet]');
     if(!button)return;
@@ -1285,8 +1334,11 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
 const sheetWho=row=>row.registeredBy?.name||row.submittedByActor?.name||'Onbekend';
 function sheetIdentity(p){
   $('sheetCall').textContent=p.call||'—';
-  $('sheetRank').textContent=p.rank||'—';$('sheetSeries').textContent=p.series||'—';
-  $('sheetStatus').textContent=p.status||'—';
+  $('sheetRank').textContent=p.rank||'—';$('sheetName').textContent=p.name||'—';
+  $('sheetSeries').textContent=p.series||'—';$('sheetStatus').textContent=p.status||'—';
+  $('sheetDiscordId').textContent=p.discordId||'—';
+  $('ficheEditor').hidden=true;$('ficheEditor').open=false;
+  $('editPersonnelSummary').hidden=true;
   sheetDossierProfile({});
   $('sheetSpecialties').textContent='Specialisaties laden…';
   for(const key of [...Object.keys(sheetDefs),'observations','sanctions','basisNotes']){
@@ -1318,6 +1370,9 @@ function updateGeneralPersonnelInfoDisplay(){
   $('editForm').hidden=!canCore;
   $('staffProfileForm').hidden=!canProfile;
   $('savePersonnelInfoAll').hidden=!canWrite;
+  $('ficheEditor').hidden=!canWrite;
+  $('editPersonnelSummary').hidden=!canWrite;
+  if(!canWrite)$('ficheEditor').open=false;
   $('reason').closest('.personnel-info-reason').hidden=!canWrite;
   $('reason').disabled=!canWrite;
   $('sheetProfile').hidden=canWrite;
