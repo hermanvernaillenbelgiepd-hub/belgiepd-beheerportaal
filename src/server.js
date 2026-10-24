@@ -39,6 +39,7 @@ import {installReceivedRegistrationRoutes} from './received-registration-routes.
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
+import {installFireDossierRoutes} from './fire-dossier-routes.js';
 import {installDossierGrantRoutes} from './dossier-grant-routes.js';
 import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,
   verifyBoardDiscordRole} from './dossier-grants.js';
@@ -70,6 +71,7 @@ app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
 app.use('/api/dossier-grants',express.json({limit:'4kb',strict:true}));
+app.use('/api/fire-dossiers',express.json({limit:'6kb',strict:true}));
 app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
@@ -516,6 +518,7 @@ installFunctionChangeRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installReceivedRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installFireDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 // TO duty board uses MAIN Firestore data and the existing authenticated actor.
 const getVerifiedTemporaryTORequest=async discordId=>{
   if(!/^\d{15,22}$/.test(discordId))return null;
