@@ -45,7 +45,7 @@ import {deriveServiceDossierDepartments,verifiedFireZoneChief} from './service-d
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
-import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits,canReadPersonnelSubject} from './personnel-editor-policy.js';
+import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits,canReadPersonnelSubject,isCorpsLeadershipPersonnel} from './personnel-editor-policy.js';
 import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
@@ -336,8 +336,25 @@ app.get('/api/dossiers/:dept/:discordId',requireUser,async(req,res)=>{
   if(dept!=='politie') return res.json({status:'niet_ingesteld'});
   try {
     const snap=await getSnapshot();
-    if(!snap.data.some(p=>p.dept===dept && p.personId===discordId))
-      return res.status(404).json({error:'Geen personeelslid gevonden'});
+    const subject=snap.data.filter(p=>p.dept===dept&&p.personId===discordId);
+    if(subject.length!==1)
+      return res.status(404).json({error:'Geen eenduidig personeelslid gevonden'});
+    // Even a legacy Google dossier link is sensitive. Never bypass the 9xx
+    // role check through this older route, whether by direct URL or via UI.
+    if(isPolice9xx(subject[0].call)){
+      const member=await cachedAuthDoc('bpd_discord_auth',discordId);
+      const subjectRole=member.exists?verifiedOfficerCadre(member.data(),
+        process.env.DISCORD_GUILD_ID,Date.now(),15*60*1000):null;
+      const genuineChief=req.bpd.uid==='discord:'+req.bpd.discordId&&
+        req.bpd.role==='korpsleiding'&&req.bpd.departmentRoles?.politie==='korpsleiding'&&
+        req.bpd.discordPoliceRank==='korpsleiding';
+      if(subjectRole!=='Officierenkader'&&!genuineChief)
+        return res.status(403).json({error:'Dit dossier is afgeschermd'});
+    }else if(isCorpsLeadershipPersonnel(subject[0])){
+      if(req.bpd.uid!=='discord:'+req.bpd.discordId||
+        req.bpd.role!=='korpsleiding'||req.bpd.discordPoliceRank!=='korpsleiding')
+        return res.status(403).json({error:'Dit dossier is afgeschermd'});
+    }
     const index=await policeDossierIndex();
     if(index.ambiguous.has(discordId)) return res.json({status:'controle_nodig'});
     const link=index.links.get(discordId);
