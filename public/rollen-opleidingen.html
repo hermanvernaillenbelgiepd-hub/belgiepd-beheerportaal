@@ -6,14 +6,39 @@
 body{margin:0;background:#091425;color:#edf2fc}header{background:#10243f;border-bottom:1px solid #294262;padding:17px max(18px,calc((100vw - 1040px)/2));display:flex;gap:20px;align-items:center;flex-wrap:wrap}a{color:#bdd8ff}header a{margin-left:auto}main{max-width:1040px;margin:28px auto;padding:0 18px 50px}
 h1{font-size:26px;margin-bottom:0}p,small{color:#abc0d9}.subtitle{margin-top:5px}.panel{background:#12243d;border:1px solid #2c4669;border-radius:14px;padding:22px;margin:18px 0}.notice{background:#2d2b1d;border-left:3px solid #dbb659;border-radius:8px;padding:12px;margin:14px 0}.status{padding:12px;background:#183b33;color:#b6e8cd;border-radius:8px;margin:13px 0}.error{background:#4b2730;color:#ffd0d5}.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:740px){.two{grid-template-columns:1fr}}
 label{display:block;margin-top:14px;color:#d5e4f6;font-weight:600}input,select,textarea{margin-top:6px;width:100%;padding:10px 12px;background:#09192d;border:1px solid #49617f;border-radius:8px;color:#e7efff;font:inherit}textarea{min-height:85px;resize:vertical}button{background:#3267db;border:0;border-radius:9px;color:white;padding:11px 16px;font-weight:600;cursor:pointer;margin:12px 8px 0 0}button.secondary{background:#243e61}button:disabled{opacity:.55;cursor:not-allowed}button.small-action{margin:1px 5px 3px 0;padding:6px 9px;font-size:12px}button.danger{background:#853546}button.danger:hover{background:#a84257}.tag{display:inline-block;padding:4px 9px;margin:4px 6px 4px 0;border:1px solid #53779d;border-radius:18px;font-size:13px}.mini{font-size:12px;color:#aec3dd}table{width:100%;border-collapse:collapse}th,td{text-align:left;border-bottom:1px solid #314763;padding:9px;vertical-align:top}th{color:#aec3dd;font-size:12px}.hidden{display:none}.columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.item{padding:13px;background:#182d4c;border-radius:9px}.item strong{display:block}.item small{display:block}
+
+/* Compacte aanmeldstrook; uitsluitend noodzakelijke bediening zichtbaar. */
+.auth-panel{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;
+  margin:16px 0;padding:12px 16px}
+.auth-panel h2{margin:0;font-size:15px;line-height:1.4}
+.auth-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.auth-controls a{font-size:13px}
+.auth-controls button{margin:0;padding:7px 10px;font-size:12px}
+.auth-panel .status{flex:1 1 230px;margin:0;padding:8px 10px;
+  font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.auth-panel.signed-in{padding:8px 14px;margin:12px 0}
+.auth-panel.signed-in .status{background:transparent;padding:0;color:#b6e8cd}
+.auth-panel.signed-in .auth-controls{order:2}
+.auth-panel.signed-in .status{order:1}
+.auth-panel [hidden]{display:none!important}
+.tech-details{margin:20px 0 0;padding:10px 0;border-top:1px solid #2c4669}
+.tech-details>summary{font-size:12px;color:#93aac6;cursor:pointer}
+.tech-details>.panel{margin-top:10px}
+@media(max-width:600px){.auth-panel .status{flex-basis:100%}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head>
 <body><header><strong>🚓 BelgiumPD · Opleidingsregister</strong><a href="/personeelsbeheer.html">← Personeelsbeheer</a><a href="/discord-status.html">Discord-verificatie</a></header>
 <main><h1>Opleidingsregister</h1><p class="subtitle">Bekijk opleidingsresultaten en historiek per personeelslid. Deze registraties staan los van de dossiernotities die in het weekrapport worden opgenomen.</p>
-<div class="panel"><h2>Politionele kaderindeling</h2><p><strong>AGENTENKADER</strong> – tijdelijke roepnummers 100–199 en vaste roepnummers 200–299. <strong>BASISKADER</strong> – vanaf 300 voor personeel zonder hogere operationele rang. <strong>BESTUUR</strong> – afzonderlijke bestuursfunctie; de reeds gekende Discord-rol wordt apart herkend, niet als politierang.</p><small>De nummers komen uit de gecontroleerde personeelsfiche. Een Discord-rol of roepnummer geeft nooit op zichzelf toegang tot afgeschermde dossiers.</small></div>
-<div class="notice">De Discord-rollen worden herkend, maar geven <strong>nog geen toegang tot het bestaande personeels- en sanctiedossier</strong>. Instructeurs loggen resultaten; CMs beheren Discord-rollen; uitsluitend gemachtigd kader verwerkt de officiële personeelslijst. Dit scherm schrijft nooit rechtstreeks naar Discord of Google Sheets.</div>
-<div class="panel"><h2>Aanmelden</h2><button id="google">Google-noodlogin</button><a href="/auth/discord/start?return=%2Frollen-opleidingen.html">Aanmelden met Discord</a> <button class="secondary" id="logout">Afmelden</button><div class="status" id="state">Verbinden…</div><small>Na een Discord-aanmelding op de verificatiepagina kun je hier terugkomen. Voor gevoelige gegevens gelden altijd servermachtigingen; Google-noodlogin blijft beschikbaar.</small></div>
-<section class="panel" id="profile" hidden><h2>Mijn geverifieerde rollen</h2><div id="summary"></div><h3>Rollen uit de catalogus</h3><div id="roleList"></div><p id="unknown" class="mini"></p><h3>Opleidingsbevoegdheden</h3><p class="mini">Deze rechten omvatten ook je bestaande, goedgekeurde Google-beheerdersrechten. Controleren betekent een registratie beoordelen voor <strong>handmatige</strong> verwerking; er wordt niets rechtstreeks aangepast in Google Sheets.</p><div class="columns" id="permissionList"></div></section>
+<div class="panel auth-panel" id="authPanel" aria-label="Aanmeldstatus">
+  <h2 id="authHeading">Aanmelden</h2>
+  <div class="auth-controls">
+    <a id="discordLogin" href="/auth/discord/start?return=%2Frollen-opleidingen.html">Aanmelden met Discord</a>
+    <button id="google" class="secondary" type="button">Google-noodlogin</button>
+    <button class="secondary" id="logout" type="button" hidden>Afmelden</button>
+  </div>
+  <div class="status" id="state" role="status" aria-live="polite">Verbinden…</div>
+</div>
+
 <section class="panel" id="training" hidden><h2>Opleidingshistoriek en resultaten</h2><p>De opleiding en het resultaat worden hier per hulpdienst en Discord-ID bewaard. Je kunt ze raadplegen en met de juiste rechten aanpassen. Dit wijzigt geen Discord-rol of officiële personeelslijst en registreert niet automatisch een weekrapportnotitie.</p>
 <div class="two"><label>Hulpdienst<select id="dept"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="dispatch">Dispatch</option></select></label><label>Personeelslid binnen deze hulpdienst<select id="subjectChoice" aria-describedby="peopleNote"><option value="">Haal personeelslijst op…</option></select><input id="subject" type="hidden"></label></div><p id="peopleNote" class="mini">Alleen collega's uit jouw gemachtigde hulpdienst zijn selecteerbaar.</p>
 <button class="secondary" id="showRecords">Opleidingshistoriek raadplegen</button><p class="mini">Via <strong>Wijzigen</strong> of <strong>Verwijderen</strong> kun je een registratie aanpassen of archiveren, voor zover je bevoegd bent. De audit blijft bewaard. De officiële personeelslijst en Discord-rollen wijzigen niet.</p><div id="records"></div>
@@ -23,6 +48,10 @@ label{display:block;margin-top:14px;color:#d5e4f6;font-weight:600}input,select,t
 <div class="two"><label>Bevoegdheid<select id="perm"><option value="training.log">Opleidingen registreren</option><option value="training.review">Opleidingsregistratie controleren</option></select></label><label>Actie<select id="action"><option value="allow">Toekennen</option><option value="deny">Weigeren</option><option value="inherit">Uitzondering opheffen</option></select></label></div>
 <div class="two"><label>Vervaldatum (optioneel)<input type="date" id="expiry"></label><label>Reden (verplicht)<input id="reason" minlength="8" maxlength="500" placeholder="Bijv. tijdelijke machtiging voor opleiding"></label></div>
 <button class="secondary" id="lookup">Bestaande uitzonderingen bekijken</button><button id="saveOverride">Wijziging registreren</button><div id="overrideInfo" class="mini"></div><p class="mini" id="adminNote"></p></section>
+<details id="technicalDetails" class="tech-details">
+  <summary>Technische details en geverifieerde rollen</summary>
+  <section class="panel" id="profile" hidden><h2>Mijn geverifieerde rollen</h2><div id="summary"></div><h3>Rollen uit de catalogus</h3><div id="roleList"></div><p id="unknown" class="mini"></p><h3>Opleidingsbevoegdheden</h3><p class="mini">Deze rechten omvatten ook je bestaande, goedgekeurde Google-beheerdersrechten. Controleren betekent een registratie beoordelen voor <strong>handmatige</strong> verwerking; er wordt niets rechtstreeks aangepast in Google Sheets.</p><div class="columns" id="permissionList"></div></section>
+</details>
 </main>
 <script type="module">
 const $=id=>document.getElementById(id);let auth,mods,profile,editing=null;
@@ -31,7 +60,13 @@ function text(parent,value,tag='span'){const el=document.createElement(tag);el.t
 async function api(url,opts={}){const u=auth.currentUser;if(!u)throw Error('Meld eerst aan');const t=await u.getIdToken();const r=await fetch(url,{...opts,cache:'no-store',headers:{'Authorization':'Bearer '+t,...(opts.body?{'Content-Type':'application/json'}:{}),...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'HTTP '+r.status);return d}
 async function refresh(){
   $('profile').hidden=$('training').hidden=$('admin').hidden=true;
-  if(!auth.currentUser){state('Nog niet aangemeld. Gebruik Google of Discord.');return}
+  const signedIn=Boolean(auth.currentUser);
+  $('authPanel').classList.toggle('signed-in',signedIn);
+  $('authHeading').textContent=signedIn?'Account':'Aanmelden';
+  $('discordLogin').hidden=signedIn;
+  $('google').hidden=signedIn;
+  $('logout').hidden=!signedIn;
+  if(!signedIn){state('Nog niet aangemeld. Gebruik Google of Discord.');return}
   try{
     const p=await api('/api/roles/me');profile=p;$('profile').hidden=false;$('training').hidden=false;$('admin').hidden=!p.canManage;
     state('Aangemeld met '+(p.provider==='google'?'Google':'Discord')+(p.verifiedRolesFresh?' · Discord-rollen recent gecontroleerd':' · Discord-verificatie verlopen of nog niet beschikbaar'));
