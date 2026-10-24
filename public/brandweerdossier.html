@@ -28,21 +28,22 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 .record small{color:#a9c5e7}
 @media(max-width:960px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.summary-grid{grid-template-columns:1fr}.sheet-row{grid-template-columns:1fr}}
-</style><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/bpd-dossier-shared.css">
-</head><body class="bpd-unified-dossier">
+</style><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/personnel-onepage-test.css">
+</head><body class="bpd-unified-dossier dossier-onepage dossier-fire-sheet">
 <header><strong>🚒 BelgiumPD · Brandweerdossier</strong><nav class="buttons"><a href="/dossiercentrum.html">← Dossiercentrum</a><a href="/">Home</a><button id="refresh" class="alt" type="button">Vernieuwen</button><button id="login" class="alt">Aanmelden</button></nav></header>
 <main>
+<section id="panel" class="card">
 <h1 id="title">Brandweerpersoneelsdossier</h1>
 <div id="message" class="muted" role="status">Aanmelding controleren…</div>
-<section class="card" id="mainCard" hidden>
-<div class="grid">
+<div id="mainCard" class="sheet-identity" hidden>
 <div><small>ROEPNUMMER</small><strong id="call">—</strong></div>
 <div><small>GRAAD</small><strong id="rank">—</strong></div>
 <div><small>NAAM</small><strong id="name">—</strong></div>
 <div><small>REEKS</small><strong id="series">—</strong></div>
 <div><small>VERLOF-/PERSONEELSSTATUS</small><strong id="status">—</strong></div>
 <div><small>DISCORD-ID</small><strong id="discord">—</strong></div>
-</div><p class="muted" id="access"></p></section>
+</div><p class="muted" id="access"></p>
+<details id="fireProfileEditor" class="fiche-editor" hidden><summary>Algemene personeelsgegevens bekijken</summary><div id="fireProfileSummary" class="sheet-rows"></div></details>
 <nav id="dossierTabBar" class="dossier-tabbar" role="tablist" aria-label="Onderdelen van Brandweerdossier" hidden>
 <button type="button" data-tab="overzicht">Overzicht</button>
 <button type="button" data-tab="gegevens">Personeelsinformatie</button>
@@ -55,20 +56,69 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <button type="button" data-tab="historiek">Historiek</button>
 <button type="button" data-tab="nieuw">Registratie toevoegen</button>
 </nav>
-<section id="overviewSection" class="card dossier-panel" data-pane="overzicht" hidden>
-<h2>Brandweer · personeelsfiche</h2>
-<p class="muted">Dezelfde dossierindeling als bij de politie. Inhoud en acties zijn afhankelijk van je geverifieerde Brandweerfunctie.</p>
-<div class="summary-grid">
-<div><h3>Personeelsinformatie</h3><div id="overviewIdentity" class="small-rows"></div></div>
-<div><h3>Verlofstatus</h3><div id="overviewLeave" class="small-rows"></div></div>
-<div id="overviewQuals" hidden><h3>Specialisaties</h3><div id="overviewSpecialties" class="small-rows"></div></div>
-<div id="overviewActivity" hidden><h3>Recente registraties</h3><div id="overviewRecent" class="small-rows"></div></div>
-<div id="overviewObservationTile" hidden><h3>Observaties</h3><div id="overviewObservationCount" class="small-rows"></div></div>
-<div id="overviewNotesTile" hidden><h3>Belangrijke notities</h3><div id="overviewNotesCount" class="small-rows"></div></div>
-<div id="overviewSanctionsTile" hidden><h3>Sancties</h3><div id="overviewSanctionsCount" class="small-rows"></div></div>
-<div id="overviewTrainingTile" hidden><h3>Voltooide opleidingen</h3><div id="overviewTrainingCount" class="small-rows"></div></div>
-<div id="overviewHistoryTile" hidden><h3>Historiek en personeelswijzigingen</h3><div id="overviewHistoryCount" class="small-rows"></div></div>
-</div></section>
+<section id="overviewSection" class="dossier-panel" data-pane="overzicht" hidden>
+<p class="sheet-intro">Dossiergegevens uit de actuele personeels- en kaderregistraties. Wijzigingen worden afzonderlijk geaudit.</p>
+<div class="landscape-grid" aria-label="Uniform personeelsdossier per hulpdienst">
+  <div class="dossier-main-row">
+    <section class="landscape-cell" data-sheet-tile="leave">
+      <h3>Verlofperiodes <button type="button" data-open-tab="verlof">Bekijken</button></h3>
+      <div class="sheet-records"><div id="overviewLeave" class="small-rows"></div></div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="notes">
+      <h3>Belangrijke notities <button type="button" data-open-tab="notities">Bekijken</button></h3>
+      <div class="sheet-records">
+        <div id="overviewNotesTile" hidden><div id="overviewNotesCount" class="small-rows"></div></div>
+        <div class="fire-redacted">Afgeschermd voor jouw Brandweerfunctie.</div>
+      </div>
+    </section>
+    <div class="dossier-right-column">
+      <section class="landscape-cell" data-sheet-tile="specialisaties">
+        <h3>Specialisaties <button type="button" data-open-tab="specialisaties">Bekijken</button></h3>
+        <div class="sheet-records">
+          <div id="overviewQuals" hidden><div id="overviewSpecialties" class="small-rows"></div></div>
+          <div class="fire-redacted">Afgeschermd voor jouw Brandweerfunctie.</div>
+        </div>
+      </section>
+      <section class="landscape-cell" data-sheet-tile="movements">
+        <h3>Personeelsbewegingen <button type="button" data-open-tab="historiek">Bekijken</button></h3>
+        <div class="sheet-records">
+          <div id="overviewActivity" hidden><div id="overviewRecent" class="small-rows"></div>
+            <div id="overviewHistoryTile" hidden><div id="overviewHistoryCount" class="small-rows"></div></div></div>
+          <div class="fire-redacted">Afgeschermd voor jouw Brandweerfunctie.</div>
+        </div>
+      </section>
+      <section class="landscape-cell" data-sheet-tile="training">
+        <h3>Voltooide opleidingen <button type="button" data-open-tab="opleidingen">Bekijken</button></h3>
+        <div class="sheet-records">
+          <div id="overviewTrainingTile" hidden><div id="overviewTrainingCount" class="small-rows"></div></div>
+          <div class="fire-redacted">Afgeschermd voor jouw Brandweerfunctie.</div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div class="dossier-lower-row">
+    <section class="landscape-cell" data-sheet-tile="basisNotes">
+      <h3>Notities (basis) <button type="button" data-open-tab="gegevens">Bekijken</button></h3>
+      <div id="overviewIdentity" class="sheet-records small-rows"></div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="observations">
+      <h3>Observaties <button type="button" data-open-tab="observaties">Bekijken</button></h3>
+      <div class="sheet-records">
+        <div id="overviewObservationTile" hidden><div id="overviewObservationCount" class="small-rows"></div></div>
+        <div class="fire-redacted">Observaties toevoegen is mogelijk via registratie; inzage is beperkt.</div>
+      </div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="sanctions">
+      <h3>Sancties <button type="button" data-open-tab="sancties">Bekijken</button></h3>
+      <div class="sheet-records">
+        <div id="overviewSanctionsTile" hidden><div id="overviewSanctionsCount" class="small-rows"></div></div>
+        <div class="fire-redacted">Afgeschermd voor jouw Brandweerfunctie.</div>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="landscape-footer">Alle registraties blijven gecontroleerd bewaard in het juiste dienstregister.</div>
+</section>
 <section id="profileSection" class="card dossier-panel" data-pane="gegevens" hidden>
 <h2>Personeelsinformatie</h2><div id="profile" class="sheet-rows"></div>
 <p class="muted">Officiële rang en roepnummer blijven afkomstig uit de personeelslijst.</p></section>
@@ -125,6 +175,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <label for="details">Omschrijving / observatie</label><textarea id="details" required maxlength="4000" minlength="10"></textarea>
 <label for="reason">Motivering (minimaal 15 tekens)</label><textarea id="reason" required minlength="15" maxlength="500"></textarea>
 <div class="buttons"><button id="save" type="submit">Registratie opslaan</button><span class="muted">De auteur en datum worden gelogd.</span></div></form></section>
+</section>
 </main>
 <script type="module">
 const $=id=>document.getElementById(id);
