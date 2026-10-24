@@ -26,6 +26,7 @@ import { installRoleRoutes } from './role-routes.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
 import { installUserRoutes } from './user-routes.js';
+import {installManualRoleRoutes} from './manual-role-routes.js';
 import {installBoardAppointmentRoutes} from './board-appointment-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
@@ -451,6 +452,7 @@ installCallsignSelfServiceRoutes(app,{getSnapshot});
 installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
+installManualRoleRoutes(app,{requireUser});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   const actor=req.bpd;
