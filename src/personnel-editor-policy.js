@@ -29,7 +29,7 @@ function verifiedCorpsReader(actor){
   // grant access to protected corps dossiers.
   return actor?.uid==='discord:'+actor?.discordId&&
     actor?.role==='korpsleiding'&&roleForDepartment(actor,'politie')==='korpsleiding'&&
-    actor?.discordPoliceRank==='korpsleiding';
+    (actor?.discordPoliceRank==='korpsleiding'||actor?.manualCorpsApproved===true);
 }
 export function canReadPersonnelSubject(actor,person){
   if(!person||!canReadServiceDossier(actor,person.dept))return false;
