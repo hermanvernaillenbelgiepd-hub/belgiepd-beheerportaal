@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>Personeelslijst · BelgiumPD</title><style>
+:root{font:14px/1.5 Inter,"Segoe UI",system-ui,Arial,sans-serif;color:#e7f1ff;background:#09162a;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0}
+header{background:#132842;border-bottom:1px solid #385575;padding:15px max(18px,calc((100vw - 1150px)/2));display:flex;justify-content:space-between;gap:15px;align-items:center}
+a{color:#bcd8ff}main{max-width:1190px;margin:26px auto;padding:0 16px 60px}
+h1{font-size:27px;margin:0 0 7px}p{color:#bad0e9;font-size:13px;margin:0 0 16px}
+.panel{background:#122743;border:1px solid #315474;border-radius:11px;padding:18px;margin-top:16px}
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:14px}
+label{font-size:12px;color:#a9c6ec;display:block;margin-bottom:5px}
+input,select{border:1px solid #4d719d;border-radius:8px;color:#fff;background:#0c1e36;padding:10px 12px;font:inherit}
+input{width:min(420px,100%)}button{background:#315cce;color:white;border:1px solid #7699e3;border-radius:8px;font:inherit;font-weight:700;cursor:pointer;padding:9px 13px}
+#message{font-size:12px;color:#c2d5ee;margin:10px 0 14px}
+.tablewrap{overflow:auto;max-height:70vh;border:1px solid #345376;border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:730px;font-size:12px}
+th{position:sticky;top:0;background:#24466b;text-align:left;color:#e5f2ff}
+td,th{padding:11px 13px;border-bottom:1px solid #315075}
+tbody tr:nth-child(2n){background:#183450}
+.call{font-weight:800;color:#fff}small{font-size:11px;color:#a7c6e9}
+[hidden]{display:none!important}
+</style></head><body>
+<header><strong>🛡️ BelgiumPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
+<main><h1>Personeelslijst politie</h1>
+<p>Leesbaar overzicht van personeel en roepnummers, ook voor nieuwe leden. Dossiers, observaties, Discord-ID’s, sancties en andere persoonsgegevens zijn hier niet toegankelijk.</p>
+<div class="panel">
+<div class="filters"><div><label for="search">Zoeken</label><input id="search" placeholder="Roepnummer, naam, rang of reeks"></div>
+<div><label for="sort">Sorteren</label><select id="sort"><option value="desc">Roepnummer aflopend</option><option value="asc">Roepnummer oplopend</option><option value="name">Naam A–Z</option></select></div>
+<button id="refresh" type="button">Vernieuwen</button></div>
+<p id="message" role="status" aria-live="polite">Personeelslijst laden…</p>
+<div class="tablewrap"><table><thead><tr><th>CALL</th><th>Personeelslid</th><th>Rang</th><th>Reeks / kader</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
+</main><script type="module">
+const $=id=>document.getElementById(id);
+let auth=null,people=[];
+const idToken=()=>auth?.currentUser?.uid?.startsWith('discord:')?auth.currentUser.getIdToken():null;
+function render(){
+ const q=$('search').value.toLocaleLowerCase('nl').trim();
+ const rows=people.filter(p=>[p.call,p.name,p.rank,p.series,p.status].some(s=>
+   String(s||'').toLocaleLowerCase('nl').includes(q)));
+ if($('sort').value==='asc')rows.reverse();
+ if($('sort').value==='name')rows.sort((a,b)=>a.name.localeCompare(b.name,'nl'));
+ const root=$('rows');root.replaceChildren();
+ for(const p of rows){
+  const tr=document.createElement('tr');
+  for(const field of ['call','name','rank','series','status']){
+   const td=document.createElement('td');td.textContent=p[field]||'—';
+   if(field==='call')td.className='call';
+   tr.append(td);
+  }
+  root.append(tr);
+ }
+ $('message').textContent=rows.length+' personeelsleden zichtbaar'+(q?' (gefilterd)':'');
+}
+async function load(){
+ const token=await idToken();
+ if(!token){$('message').textContent='Meld je eerst aan met je eigen Discord-account op Mijn profiel.';return;}
+ $('refresh').disabled=true;
+ try{
+  const res=await fetch('/api/member/personnel-list',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+  const data=await res.json();
+  if(!res.ok)throw Error(data.error||'Geen toegang');
+  people=Array.isArray(data.records)?data.records:[];
+  render();
+  if(data.stale)$('message').textContent+=' · Let op: brongegevens momenteel niet actueel';
+ }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
+ finally{$('refresh').disabled=false}
+}
+$('search').oninput=render;$('sort').onchange=render;$('refresh').onclick=load;
+try{
+ const config=await(await fetch('/api/client-config',{cache:'no-store'})).json();
+ if(!config.enabled)throw Error('Aanmelding tijdelijk niet beschikbaar');
+ const {initializeApp,getApps,getApp}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+ const {getAuth,onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+ const app=getApps().length?getApp():initializeApp(config.firebaseConfig);auth=getAuth(app);
+ onAuthStateChanged(auth,user=>{
+  if(user?.uid?.startsWith('discord:'))load();
+  else $('message').textContent='Meld je met Discord aan via Mijn profiel. Zonder geverifieerd account zijn personeelsgegevens verborgen.';
+ });
+}catch(error){$('message').textContent=error.message}
+</script></body></html>

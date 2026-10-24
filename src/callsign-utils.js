@@ -17,11 +17,11 @@ export function preferredFreeCall(min,max,used){
 const s = v => String(v ?? '').trim();
 export const canReview = role => ['middenkader','officierenkader','korpsleiding'].includes(role);
 export const canDecide = role => ['officierenkader','korpsleiding'].includes(role);
-export function checkApplicant({name, discordId, temporaryCall}) {
+export function checkApplicant({name, discordId, temporaryCall}, {allowMissingTemporary=false}={}) {
   const n=s(name), id=s(discordId), call=s(temporaryCall);
   if (n.length < 2 || n.length > 80 || /[\r\n\t]/.test(n) || /^[=+@-]/.test(n)) throw new Error('Ongeldige personeelsnaam');
   if (!isDiscordId(id)) throw new Error('Ongeldige Discord ID');
-  if (!/^\d{3}$/.test(call) || Number(call)<101 || Number(call)>199) throw new Error('Tijdelijk roepnummer moet tussen 101 en 199 liggen');
+  if (!(allowMissingTemporary&&call==='') && (!/^\d{3}$/.test(call) || Number(call)<101 || Number(call)>199)) throw new Error('Tijdelijk roepnummer moet tussen 101 en 199 liggen');
   return {name:n,discordId:id,temporaryCall:call};
 }
 export function eligibility({joinedOn, playHours}, now = new Date()) {

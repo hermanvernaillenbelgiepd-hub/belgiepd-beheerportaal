@@ -18,6 +18,7 @@ import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
+import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
@@ -447,6 +448,7 @@ installManagementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installCallsignBotRoutes(app);
 installCallsignSelfServiceRoutes(app,{getSnapshot});
+installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
 // Dashboard visibility uses server-confirmed operational or board authorisation.

@@ -133,6 +133,11 @@ button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
 <div><dt>Toegetreden op</dt><dd id="joined"></dd></div>
 <div><dt>Laatst geverifieerd</dt><dd id="verified"></dd></div>
 </dl>
+<section class="leave-box" id="myCallsign" aria-labelledby="myCallsignHeading">
+<h3 id="myCallsignHeading">Mijn vaste roepnummer</h3>
+<p id="myCallsignStatus" class="muted" role="status">Controle van 5 kalenderdagen en 10 speeluren wordt opgehaald…</p>
+<p><a class="button" href="/vast-roepnummer-aanvragen.html">Vast roepnummer aanvragen of status bekijken →</a> <a href="/personeelslijst.html">Personeelslijst bekijken →</a></p>
+</section>
 <section class="leave-box" id="myLeave" aria-labelledby="leaveHeading">
 <h3 id="leaveHeading">Mijn verlofaanvragen</h3>
 <p class="muted">Eén centrale verlofaanvraag voor al je actieve hulpdiensten. Bekijk hier je aanvraagstatus of dien een nieuwe aanvraag in.</p>
@@ -260,7 +265,7 @@ async function loadPersonal(){
   }catch(e){loadedFor=null;$('personalStatus').textContent='Persoonlijk overzicht niet beschikbaar: '+e.message}
   finally{btn.disabled=false}
 }
-$('personalReload').onclick=()=>{loadedFor=null;loadPersonal();loadLeave()};
+$('personalReload').onclick=()=>{loadedFor=null;loadPersonal();loadNewMemberStatus()};
 const leaveNames={pending:'In behandeling',approved:'Goedgekeurd',rejected:'Geweigerd',withdrawn:'Ingetrokken'};
 const leaveActionNames={submitted:'Aanvraag ingediend',
   automatic_approved:'Automatisch goedgekeurd',korpsleiding_vrijgesteld:'Automatisch geregistreerd (Korpsleiding)',
@@ -428,6 +433,32 @@ $('leaveForm').onsubmit=async e=>{
   }
   finally{btn.disabled=false}
 };
+async function loadNewMemberStatus(){
+ const user=auth?.currentUser;
+ $('myLeave').hidden=true;
+ if(!user?.uid?.startsWith('discord:'))return;
+ try{
+  const token=await user.getIdToken();
+  const request=async url=>{
+   const response=await fetch(url,{cache:'no-store',headers:{Authorization:'Bearer '+token}});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw Error(data.error||'Controle niet beschikbaar');
+   return data;
+  };
+  const identity=await request('/api/member/dashboard');
+  $('myLeave').hidden=identity.mode==='member';
+  if(identity.mode==='staff')loadLeave();
+  const eligibility=await request('/api/callsigns/self/status');
+  $('myCallsignStatus').textContent=eligibility.request?
+   'Bestaande aanvraag: '+String(eligibility.request.status||'in behandeling')+
+     (eligibility.request.assignedCall?' · vaste CALL '+eligibility.request.assignedCall:''):
+   eligibility.eligible&&eligibility.requestsEnabled?
+     'Beide voorwaarden bevestigd: je kunt nu een vast roepnummer aanvragen.':
+     'Een aanvraag is pas mogelijk nadat de bot 5 volledige kalenderdagen op de server en 10 speeluren heeft bevestigd.';
+ }catch(error){
+  $('myCallsignStatus').textContent='Roepnummerstatus momenteel niet beschikbaar: '+error.message;
+ }
+}
 async function showProfile(){const user=auth.currentUser;
   if(!user){updateConnectionCard(false);loadedFor=null;$('leaveForm').hidden=true;
     $('leaveRequests').replaceChildren();$('profile').hidden=true;
@@ -448,7 +479,7 @@ async function showProfile(){const user=auth.currentUser;
     let {r,data}=await load(false);
     if(r.status===401)({r,data}=await load(true));
     if(!r.ok)throw new Error(data.error||'Discord-profiel kon niet worden geverifieerd');$('profile').hidden=false;updateConnectionCard(true);loadedFor=null;$('name').textContent=data.name||'Onbekend';$('discordId').textContent=data.discordId;$('joined').textContent=data.joinedAt?new Date(data.joinedAt).toLocaleString('nl-BE'):'Onbekend';$('verified').textContent=data.lastVerifiedAt?new Date(data.lastVerifiedAt).toLocaleString('nl-BE'):'Onbekend';currentRoles=data.roleIds||[];knownRoleNames=new Map(Object.entries(data.roleNames||{}));renderAdvancedRoles();state('Discord-lidmaatschap geverifieerd. Je volledige profiel staat hieronder.');
-await Promise.all([loadPersonal(),loadLeave()]);
+await Promise.all([loadPersonal(),loadNewMemberStatus()]);
 return true;
 }catch(e){updateConnectionCard(false);$('profile').hidden=true;
   state('Geen actieve Discord-verificatie: '+e.message+'. Klik op Aanmelden met Discord om opnieuw te verbinden.',true);

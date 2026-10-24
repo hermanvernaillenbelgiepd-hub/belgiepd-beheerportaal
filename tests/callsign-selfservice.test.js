@@ -32,7 +32,7 @@ test('Selfservice requests are tied to own verified Discord uid and cannot appro
   const bot=readFileSync(new URL('../src/callsign-bot-routes.js',import.meta.url),'utf8');
   const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
   assert.match(s,/verifiedDiscordIdentity\(decoded,member\.data\(\),process\.env\.DISCORD_GUILD_ID/);
-  assert.match(s,/checkApplicant\(\{name:raw\.name,temporaryCall:raw\.temporaryCall,discordId:id\}\)/);
+  assert.match(s,/checkApplicant\(\{name:raw\.name,temporaryCall:raw\.temporaryCall,discordId:id\},\{allowMissingTemporary:true\}\)/);
   assert.match(s,/if\(!recentVerifiedProof\(proof\.data\(\),id\)\)/);
   assert.match(s,/tx\.create\(reqRef,\{\.\.\.data,status:'verified'/);
   assert.match(s,/tx\.create\(callRef/);
@@ -51,6 +51,9 @@ test('Nieuwe aanvraagpagina gebruikt enkel eigen Discord-login en toont botvoorw
   // Replace dynamic imports only for parsing: the JavaScript syntax must remain valid.
   assert.doesNotThrow(()=>new Script(script));
   assert.match(html,/id="tempCall" type="number" min="101" max="199"/);
+  assert.doesNotMatch(html,/id="tempCall"[^>]+required/);
+  const selfSource=readFileSync(new URL('../src/callsign-selfservice-routes.js',import.meta.url),'utf8');
+  assert.match(selfSource,/if\(callRef&&!call\.exists\)tx\.create\(callRef/);
   assert.match(html,/minstens <strong>5 volledige dagen<\/strong>/);
   assert.match(html,/api\/callsigns\/self\/status/);
   assert.match(html,/api\/callsigns\/self\/request/);

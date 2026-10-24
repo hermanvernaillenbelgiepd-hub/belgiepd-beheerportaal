@@ -61,6 +61,18 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
 .topbar-logout:hover:not(:disabled){background:#edf2fb}
 .topbar-logout:disabled{opacity:.5;cursor:not-allowed}
 .topbar-logout:focus-visible{outline:3px solid #8caaff;outline-offset:2px}
+
+.member-notice{margin:18px 0 4px;background:#e9f3ff;color:#234879;border:1px solid #b6cdee;border-radius:9px;padding:12px 15px;font-size:13px;font-weight:650}
+.member-section{margin:25px 0 10px;border:1px solid #dfe7f2;border-radius:14px;background:white;padding:17px 20px}
+.member-section-top{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.member-section-top h2{margin:0}.member-section-top .caption{margin:0 0 8px}
+.member-roster-link{font-size:12px;font-weight:750;color:#2853bd}
+.member-table-wrap{overflow-x:auto;max-height:430px}
+.member-table{width:100%;border-collapse:collapse;font-size:12px;min-width:660px}
+.member-table th,.member-table td{padding:10px 11px;text-align:left;border-bottom:1px solid #dfe8f4}
+.member-table th{background:#e8f1fd;color:#24476e;font-weight:800}
+.member-table td:first-child{font-weight:750;color:#193766}
+[hidden]{display:none!important}
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
 </head>
@@ -69,7 +81,7 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
 <div class="portal">
 <aside aria-label="Hoofdnavigatie">
   <a class="brand" href="/" aria-label="BelgiumPD startpagina"><span class="brand-icon">BP</span><span><strong>BelgiëPD</strong><small>Beheerportaal</small></span></a>
-  <nav aria-label="Werkruimte">
+  <nav id="staffNav" aria-label="Werkruimte" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
     <a href="/personeelsbeheer.html">♙ &nbsp; Personeelsbeheer</a>
     <a href="/dossiercentrum.html">▣ &nbsp; Dossiercentrum</a>
@@ -80,11 +92,18 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
     <a href="/verlofbeheer.html">▦ &nbsp; Verlofbeheer</a>
     <a href="/gebruikersbeheer.html#dienstbeheer">⚙ &nbsp; Beheer &amp; rollen</a>
   </nav>
+  <nav id="memberNav" aria-label="Nieuwe leden" hidden>
+    <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
+    <a href="/discord-status.html">👤 &nbsp; Mijn profiel</a>
+    <a href="/personeelslijst.html">👥 &nbsp; Personeelslijst</a>
+    <a href="/vast-roepnummer-aanvragen.html">🔢 &nbsp; Vast roepnummer aanvragen</a>
+  </nav>
   <div class="side-note"><strong>Beveiligde modules</strong>Meld je aan met je goedgekeurde account. Elke hulpdienst heeft afzonderlijke dossier- en beheersrechten.</div>
 </aside>
 <div class="surface">
 <header class="topbar"><span class="path">BelgiëPD / Startpagina</span><div class="topbar-actions"><a class="my-profile-link" href="/discord-status.html" aria-label="Open mijn profiel">👤 Mijn profiel</a><button class="topbar-logout" id="dashboardLogout" type="button" disabled>Uitloggen</button></div></header>
 <main id="inhoud">
+  <div id="staffDashboard" hidden>
   <section class="hero" aria-labelledby="home-title">
     <div><p class="eyebrow">Administratie · Operationele ondersteuning</p>
       <h1 id="home-title">Welkom in het beheerportaal</h1>
@@ -117,41 +136,127 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
     <a href="/discord-status.html"><span aria-hidden="true">🔗</span> Discord-koppeling controleren →</a>
   </div>
   <p class="caption">De modules controleren je toegang bij het openen. De startpagina bevat bewust geen personeelsinformatie of fictieve statistieken.</p>
+  </div>
+  <section id="memberDashboard" hidden aria-labelledby="memberDashboardTitle">
+    <p class="eyebrow">Welkom bij BelgiumPD</p>
+    <h1 id="memberDashboardTitle">Jouw startpagina</h1>
+    <p class="lead">Als nieuw lid kun je je eigen status bekijken, de personeelslijst raadplegen en een vast roepnummer aanvragen zodra je aan de voorwaarden voldoet. Een tijdelijk roepnummer hoeft nog geen dossier op te leveren.</p>
+    <div class="member-notice" id="memberAccountStatus" role="status">Je Discord-profiel wordt gecontroleerd.</div>
+    <h2 class="section-title">Voor jou beschikbaar</h2>
+    <div class="grid">
+      <a class="module" href="/discord-status.html"><span class="ico" aria-hidden="true">👤</span><h3>Mijn profiel</h3><p>Bekijk je Discord-koppeling, je personeelsstatus en je eigen gegevens.</p><span class="open">Bekijk mijn profiel →</span></a>
+      <a class="module" href="/personeelslijst.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelslijst</h3><p>Bekijk roepnummer, naam, rang, reeks en status. Zonder dossiergegevens of wijzigingen.</p><span class="open">Open personeelslijst →</span></a>
+      <a class="module" href="/vast-roepnummer-aanvragen.html"><span class="ico" aria-hidden="true">🔢</span><h3>Vast roepnummer aanvragen</h3><p>Alleen na 5 volledige kalenderdagen op Discord en minstens 10 speeluren, bevestigd door de FiveM-bot.</p><span class="open">Controleer mijn voorwaarden →</span></a>
+    </div>
+    <div class="member-section">
+      <div class="member-section-top"><div><h2 class="section-title">Personeelslijst politie</h2><p class="caption">Een beperkt, alleen-lezen overzicht. Geen Discord-ID’s, dossiers of observaties.</p></div>
+      <a href="/personeelslijst.html" class="member-roster-link">Volledige personeelslijst →</a></div>
+      <p id="memberRosterStatus" class="caption" role="status">Personeelslijst laden…</p>
+      <div class="member-table-wrap"><table class="member-table"><thead><tr><th>CALL</th><th>Naam</th><th>Rang</th><th>Reeks</th><th>Status</th></tr></thead><tbody id="memberRosterRows"></tbody></table></div>
+    </div>
+  </section>
+  <section id="guestDashboard" aria-labelledby="guestDashboardTitle">
+    <p class="eyebrow">BelgiumPD</p><h1 id="guestDashboardTitle">Welkom op het beheerportaal</h1>
+    <p class="lead" id="guestMessage">Meld je aan met je eigen Discord-account via Mijn profiel om je toegelaten startpagina te openen.</p>
+    <div class="grid" style="margin-top:25px"><a class="module" href="/discord-status.html"><span class="ico">👤</span><h3>Mijn profiel en aanmelden</h3><p>Koppel en verifieer je Discord-account.</p><span class="open">Open Mijn profiel →</span></a></div>
+  </section>
 </main>
 </div></div>
 <script type="module">
-/* Navigatie uitsluitend zichtbaar na servergecontroleerde roltoets.
-   De doelmodules blijven hun eigen autorisatie afdwingen. */
-const adminSection=document.getElementById('adminRights');
-const logoutButton=document.getElementById('dashboardLogout');
-try{
-  const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
-  if(config.enabled){
-    const {initializeApp,getApps,getApp}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
-    const {getAuth,onAuthStateChanged,signOut}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
-    const app=getApps().length?getApp():initializeApp(config.firebaseConfig);
-    const auth=getAuth(app);
-    logoutButton.onclick=async()=>{
-      if(!auth.currentUser)return;
-      logoutButton.disabled=true;
-      try{await signOut(auth);window.location.assign('/discord-status.html')}
-      catch{logoutButton.disabled=false;window.alert('Uitloggen is niet gelukt. Probeer opnieuw.')}
-    };
-    onAuthStateChanged(auth,async user=>{
-      logoutButton.disabled=!user;
-      adminSection.hidden=true;
-      if(!user)return;
-      try{
-        const token=await user.getIdToken();
-        const response=await fetch('/api/dashboard/admin-visibility',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
-        if(!response.ok)return;
-        const ctx=await response.json();
-        const authorized=ctx.visible===true;
-        adminSection.hidden=!authorized;
-      }catch{adminSection.hidden=true}
-    });
+const $=id=>document.getElementById(id);
+const staffNav=$('staffNav'),memberNav=$('memberNav'),staffHome=$('staffDashboard');
+const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
+const adminSection=$('adminRights'),logoutButton=$('dashboardLogout');
+let auth,requestNumber=0;
+function show(mode,message=''){
+ staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';
+ staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';
+ guestHome.hidden=mode!=='guest';adminSection.hidden=true;
+ if(message)$('guestMessage').textContent=message;
+}
+function previewRoster(records,stale){
+ const tbody=$('memberRosterRows');tbody.replaceChildren();
+ for(const p of records.slice(0,12)){
+  const tr=document.createElement('tr');
+  for(const key of ['call','name','rank','series','status']){
+   const td=document.createElement('td');td.textContent=String(p[key]||'—');tr.append(td);
   }
-}catch{adminSection.hidden=true}
+  tbody.append(tr);
+ }
+ $('memberRosterStatus').textContent=records.length?
+  records.length+' personeelsleden in het openbare ledenoverzicht'+
+  (stale?' (bron niet actueel)':''):
+  'Geen personeelsleden gevonden in de centrale lijst.';
+}
+async function authorizedFetch(path,token){
+ const response=await fetch(path,{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'De server kon je account niet controleren');
+ return data;
+}
+async function displayAuthenticated(user){
+ const turn=++requestNumber;
+ adminSection.hidden=true;
+ if(!user){show('guest','Meld je aan met Discord via Mijn profiel.');return;}
+ if(!user.uid?.startsWith('discord:')){
+  // Existing Google emergency sign-ins retain their established interface.
+  show('staff');return;
+ }
+ try{
+  const token=await user.getIdToken();
+  const details=await authorizedFetch('/api/member/dashboard',token);
+  if(turn!==requestNumber)return;
+  if(details.mode==='member'){
+    show('member');
+    $('memberAccountStatus').textContent=details.hasPersonnelRecord?
+      'Je Discord-identiteit is bekend. Je beschikt momenteel over de startfuncties voor het Agentenkader.':
+      'Je Discord-account is bevestigd. Je kunt de personeelslijst zien en controleren of je een vast roepnummer kunt aanvragen.';
+    const [roster,eligibility]=await Promise.allSettled([
+      authorizedFetch('/api/member/personnel-list',token),
+      authorizedFetch('/api/callsigns/self/status',token)
+    ]);
+    if(turn!==requestNumber)return;
+    if(roster.status==='fulfilled')previewRoster(roster.value.records||[],roster.value.stale===true);
+    else $('memberRosterStatus').textContent='Personeelslijst tijdelijk niet beschikbaar. Probeer de volledige lijst.';
+    if(eligibility.status==='fulfilled'){
+      const c=eligibility.value;
+      $('memberAccountStatus').textContent=c.request?
+        'Je vaste-roepnummeraanvraag staat op: '+String(c.request.status||'In behandeling')+'. Bekijk Mijn profiel of de aanvraagpagina voor meer informatie.':
+        c.eligible&&c.requestsEnabled?
+          '5 kalenderdagen en 10 speeluren zijn bevestigd: je kunt een vast roepnummer aanvragen.':
+          'Mijn profiel is bereikbaar. Voor een vast roepnummer zijn een botcontrole van 5 kalenderdagen en 10 speeluren vereist.';
+    }
+  }else if(details.mode==='staff'){
+    show('staff');
+    try{
+      const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
+      if(turn===requestNumber)adminSection.hidden=ctx.visible!==true;
+    }catch{adminSection.hidden=true}
+  }else show('guest','Je portaaltoegang moet eerst worden gecontroleerd. Vernieuw je Discord-verificatie in Mijn profiel.');
+ }catch(err){
+  if(turn===requestNumber)show('guest','De aanmelding kon niet worden bevestigd: '+err.message+'. Open Mijn profiel om opnieuw te verifiëren.');
+ }
+}
+show('guest','Je aanmelding wordt gecontroleerd…');
+try{
+ const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+ if(!cfg.enabled)throw Error('De aanmeldservice is niet beschikbaar');
+ const {initializeApp,getApps,getApp}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+ const {getAuth,onAuthStateChanged,signOut}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+ const app=getApps().length?getApp():initializeApp(cfg.firebaseConfig);auth=getAuth(app);
+ logoutButton.onclick=async()=>{
+  if(!auth.currentUser)return;
+  logoutButton.disabled=true;
+  try{await signOut(auth);window.location.assign('/discord-status.html')}
+  catch{logoutButton.disabled=false;window.alert('Uitloggen is niet gelukt. Probeer opnieuw.')}
+ };
+ onAuthStateChanged(auth,user=>{
+  logoutButton.disabled=!user;
+  displayAuthenticated(user);
+ });
+}catch{
+ show('guest','De aanmelding kon niet worden gecontroleerd. Ga naar Mijn profiel om je Discord-account te koppelen.');
+}
 </script>
 <script defer src="/bpd-navigation.js"></script>
 </body></html>

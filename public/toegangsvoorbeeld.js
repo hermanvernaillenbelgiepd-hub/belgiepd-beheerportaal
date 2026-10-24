@@ -39,15 +39,15 @@
      heading:'Centraal gebruikersbeheer',description:'Eigen toegang controleren en aanvragen; accounts van anderen beheren volgens de toegestane kadergrenzen.',
      actions:['Mijn toegangsstatus','Aanvragen beoordelen','Officieren beheren'],explain:'Nieuwe leden kunnen hun toegang aanvragen. Officierenkader en Korpsleiding delen de 900-reeks; de geverifieerde Discord-rol bepaalt wie aanvragen mag beoordelen. Een roepnummer kent nooit rechten toe.',
      override:{officier:'limited'},customStatus:{nieuw:'Eigen aanvraag: nog niet ingediend',basis:'Alleen eigen toegangsstatus; geen accountbeheer',midden:'Alleen eigen toegangsstatus; geen accountbeheer',officier:'Beheer aanvragen Basiskader en Middenkader (eigen dienst)',korps:'Beheer aanvragen t/m Officierenkader (eigen dienst)'}},
-    {id:'roster',icon:'♙',label:'Personeelslijst',access:['none','none','none','none','full','full','full'],
-     heading:'Personeelslijst',description:'Afgeschermde dienstlijst met roepnummer, rang, reeks, status en specialisaties.',
+    {id:'roster',icon:'♙',label:'Personeelslijst',access:['full','full','full','full','full','full','full'],
+     heading:'Personeelslijst',description:'De gewone personeelslijst is ook voor nieuwe leden leesbaar, zonder individuele dossiers, bewerkrechten of Discord-ID’s.',
      actions:['Personeelslijst bekijken','Dossier lagere rang openen','Korpsdossier openen'],
-     explain:'De bestaande personeelslijst wordt voor bevoegd Middenkader en hoger geopend. Korpsleidingleden in de gedeelde 900-reeks blijven in de lijst zichtbaar; hun volledige dossiers zijn voor onbevoegden afgeschermd.'},
+     explain:'Nieuwe leden en Agentenkader zien alleen het algemene overzicht van CALL, naam, rang, reeks en status. Alleen gemachtigd kader kan op basis van Discord-rollen en eigen bevoegdheden een personeelsdossier openen. Korpsleidingleden in de gedeelde 900-reeks blijven in de lijst zichtbaar; hun volledige dossiers zijn voor onbevoegden afgeschermd.'},
     {id:'dossier',icon:'▣',label:'Personeelsdossiers',access:['none','none','none','none','limited','full','full'],
      heading:'Personeelsfiche',description:'Persoonsgegevens, belangrijke notities, opleiding, observaties, sancties en personeelsbewegingen.',
      actions:['Notitie registreren','Observatie of sanctie','Promotie / personeelsbeweging'],
      explain:'Middenkader mag binnen zijn dienst dossiers van lagere rangen behandelen, met beperktere beheeracties. Officieren en Korpsleiding hebben uitgebreidere bevoegdheden; het Korpsleidingdossier zelf blijft afgeschermd voor lagere kaders.'},
-    {id:'observaties',icon:'📝',label:'Observaties',access:['none','limited','limited','limited','full','full','full'],
+    {id:'observaties',icon:'📝',label:'Observaties',access:['none','none','none','limited','full','full','full'],
      heading:'Observaties & sancties',description:'Verslaggeving en personeelsregistraties met logging en controle van de doelrang.',
      actions:['Observatie indienen','Sanctie registreren','Sanctiehistoriek bekijken'],
      explain:'Basiskader kan onder voorwaarden observaties over lagere politierangen indienen zonder inzage in het volledige dossier. Middenkader en hoger hebben eigen dienstgebonden bevoegdheden voor observaties en sancties, afhankelijk van de ernst.'},
@@ -92,9 +92,9 @@
     const order=roleIndex(role);
     if(module.id==='users')return index===0||index===1&&order>=5||index===2&&order===6;
     if(module.id==='home')return true;
-    if(module.id==='roster')return order>=4&&(index<2||order===6);
+    if(module.id==='roster')return index===0||order>=4&&(index===1||order===6);
     if(module.id==='dossier')return order>=4&&(index===0||index===1||order>=5);
-    if(module.id==='observaties')return order>=1&&(index===0||order>=4&&index===1||order>=5&&index===2);
+    if(module.id==='observaties')return order>=3&&(index===0||order>=4&&index===1||order>=5&&index===2);
     if(module.id==='verlof')return order>=1&&(index===0||order>=4);
     if(module.id==='opleidingen')return order>=4&&(index<2||order>=5);
     if(module.id==='week')return order>=4;
