@@ -41,6 +41,12 @@ export function dossierGrantReason(body){
   return reason;
 }
 export function applyDossierGrants(actor,defaults,docs=[],tester=null){
+  // Technical mode requires an authorised Discord ID and signed session.
+  // It is intentionally separate from ordinary operational permissions.
+  if(actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true&&
+     actor?.uid==='discord:'+actor?.discordId)
+    return {departments:[...DOSSIER_DEPTS],manageDepartments:[...DOSSIER_DEPTS],
+      fullDepartments:[...DOSSIER_DEPTS],tester:false};
   const id=actor?.discordId;
   const result=new Set(defaults||[]);
   if(!ID.test(id))return {departments:[...result],manageDepartments:[],fullDepartments:[],tester:false};
