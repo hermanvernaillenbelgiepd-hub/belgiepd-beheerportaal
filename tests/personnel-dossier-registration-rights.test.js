@@ -403,3 +403,23 @@ test('Opleidingscentrum is op de startpagina zichtbaar voor elke aangemelde inst
   assert.equal((html.match(/class="module" href="\/rollen-opleidingen\.html"/g)||[]).length,1);
   assert.match(daily,/Toegang volgens je Discord-rol/);
 });
+
+test('Opleidingscentrum verbergt overbodige rolblokken en houdt aanmelden bereikbaar',()=>{
+  const html=readFileSync(new URL('../public/rollen-opleidingen.html',import.meta.url),'utf8');
+  const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(script);
+  assert.doesNotThrow(()=>new Script(script));
+  assert.doesNotMatch(html,/>Politionele kaderindeling</);
+  assert.doesNotMatch(html,/De Discord-rollen worden herkend, maar geven/);
+  assert.match(html,/<details id="technicalDetails" class="tech-details">/);
+  assert.match(html,/<summary>Technische details en geverifieerde rollen<\/summary>/);
+  assert.match(html,/<section class="panel" id="profile" hidden>/);
+  assert.ok(html.indexOf('id="technicalDetails"')>html.indexOf('id="training"'));
+  assert.match(html,/id="authPanel"/);
+  assert.match(html,/id="discordLogin"/);
+  assert.match(html,/id="google"/);
+  assert.match(html,/id="logout"[^>]*hidden/);
+  assert.match(html,/\$\('authPanel'\)\.classList\.toggle\('signed-in',signedIn\)/);
+  assert.match(html,/\$\('logout'\)\.hidden=!signedIn/);
+  assert.match(html,/\$\('training'\)\.hidden=false/);
+});
