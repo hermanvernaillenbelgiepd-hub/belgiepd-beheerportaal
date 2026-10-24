@@ -67,3 +67,28 @@ test('Registratieblok vermeldt score, omkadering, clip, beperkingen en compacte 
   assert.match(html,/\$\('auditDetails'\)\.append\(audit\)/);
   assert.match(css,/\.dossier-audit-compact/);
 });
+
+test('Registration selector stays focused on dossier entries while protected maintenance remains available',()=>{
+  const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  const css=readFileSync(new URL('../public/personnel-onepage-test.css',import.meta.url),'utf8');
+  const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(script);
+  assert.doesNotThrow(()=>new Script(script));
+  const start=script.indexOf('function availablePersonnelRegistrationKinds()');
+  const end=script.indexOf('function displaySelectedRegistration()',start);
+  assert.ok(start>=0&&end>start);
+  const kinds=script.slice(start,end);
+  assert.match(kinds,/if\(type==='activiteit'\)continue/);
+  assert.doesNotMatch(kinds,/kinds\.push\(\['(?:specialty|function)'/);
+  assert.doesNotMatch(html,/<option value="activiteit">Dienstactiviteit<\/option>/);
+  const centralForms=script.slice(script.indexOf('const registrationForms=['),
+    script.indexOf('function registrationFormFor('));
+  assert.doesNotMatch(centralForms,/specialtyEdit','functionChangeForm/);
+  assert.match(script,/\$\('specialtyAdmin'\)\.append\(\$\('specialtyEdit'\)\)/);
+  assert.match(script,/\$\('functionAdmin'\)\.append\(\$\('functionChangeForm'\)\)/);
+  assert.match(script,/\$\('registrationAccessHint'\)\.textContent='';/);
+  assert.match(html,/id="dossierMaintenance" hidden/);
+  assert.match(html,/id="registrationKind"/);
+  assert.match(css,/\.dossier-main-row/);
+  assert.match(css,/background:transparent!important/);
+});
