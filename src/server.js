@@ -44,6 +44,7 @@ import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPT
   verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {deriveServiceDossierDepartments,verifiedFireZoneChief} from './service-dossier-access.js';
+import {verifiedFireRoles,fireActorClass} from './fire-dossier-policy.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
@@ -394,6 +395,8 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     // Server-only, freshly checked ZONE leadership, scoped exclusively to fire.
     req.bpd.fireZoneChief=verifiedFireZoneChief(req.bpd,roster,
       member?.exists?member.data():null,process.env.DISCORD_GUILD_ID);
+    req.bpd.fireAccessLevel=fireActorClass(req.bpd,
+      verifiedFireRoles(member?.data(),process.env.DISCORD_GUILD_ID));
     const original=deriveServiceDossierDepartments(req.bpd,
       roster,member?.exists?member.data():null,
       appointment?.exists?appointment.data():null,process.env.DISCORD_GUILD_ID);
@@ -411,6 +414,27 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     req.bpd.dossierManageDepartments=scope.manageDepartments;
     req.bpd.dossierFullDepartments=scope.fullDepartments;
     req.bpd.dossierTester=scope.tester;
+    // A fresh, guild-bound role snapshot for each fire subject. A missing role
+    // snapshot can never be treated as ordinary Brandweer membership.
+    req.bpd.fireSubjectRoleSets=new Map();
+    const fireEndpoint=scope.departments.includes('brandweer')&&
+      (req.path==='/api/dossiercentrum/overview'||
+       req.path.startsWith('/api/fire-dossiers')||
+       req.params?.dept==='brandweer'||req.query?.dept==='brandweer'||
+       req.body?.dept==='brandweer');
+    if(fireEndpoint&&!snapshot.stale){
+      const fireIds=[...new Set(roster.filter(p=>p.dept==='brandweer'&&
+        /^[0-9]{15,22}$/.test(String(p.personId||''))).map(p=>p.personId))];
+      for(let i=0;i<fireIds.length;i+=30){
+        const group=fireIds.slice(i,i+30);
+        const roles=await Promise.all(group.map(fireId=>
+          cachedAuthDoc('bpd_discord_auth',fireId)));
+        group.forEach((fireId,index)=>{
+          req.bpd.fireSubjectRoleSets.set(fireId,
+            verifiedFireRoles(roles[index].data(),process.env.DISCORD_GUILD_ID));
+        });
+      }
+    }
     // Trust a 9xx subject's verified Discord role, never the shared callsign
     // or a possibly historical Sheets rank. Missing/stale guild evidence
     // means protected dossier, while the visible staff roster remains intact.
