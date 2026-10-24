@@ -112,6 +112,21 @@
       root.append(button);
     }
   }
+  function paintVariants(){
+    const root=document.getElementById('rankVariantButtons');
+    const wrapper=document.getElementById('rankVariants');
+    const variants=rankVariants[roleId]||[];
+    wrapper.hidden=variants.length===0;
+    root.replaceChildren();
+    for(const variant of variants){
+      const button=create('button','variant-button','CALL '+variant.call+' · '+variant.short);
+      button.type='button';
+      button.setAttribute('aria-pressed',String(variant.call===selectedCall[roleId]));
+      button.title=variant.rank;
+      button.addEventListener('click',()=>{selectedCall[roleId]=variant.call;draw();});
+      root.append(button);
+    }
+  }
   function paintMenu(){
     const root=document.getElementById('moduleMenu');root.replaceChildren();
     const role=getRole();
@@ -184,6 +199,6 @@
       b.append(tr);
     }
   }
-  function draw(){paintButtons();paintMenu();paintWorkspace();}
+  function draw(){paintButtons();paintVariants();paintMenu();paintWorkspace();}
   paintMatrix();draw();
 })();
