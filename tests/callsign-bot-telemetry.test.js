@@ -65,7 +65,7 @@ test('5 full calendar days and 10 complete hours must BOTH be satisfied',()=>{
  assert.throws(()=>verifiedBotEligibility(payload,'not-a-date',new Date(now)));
  assert.throws(()=>verifiedBotEligibility(payload,'2026-10-23T00:00:00Z',new Date(now)));
 });
-test('API is signature-only, checks real Discord member and existing pending request, no auto-approval',()=>{
+test('API is signature-only, checks real Discord member and saves pre-request eligibility, no auto-approval',()=>{
  const src=readFileSync(new URL('../src/callsign-bot-routes.js',import.meta.url),'utf8');
  const srv=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
  const call=readFileSync(new URL('../src/callsign-routes.js',import.meta.url),'utf8');
@@ -73,7 +73,9 @@ test('API is signature-only, checks real Discord member and existing pending req
  assert.ok(src.includes('verifyBotTelemetrySignature(req.bpdRawBody,req.headers,'));
  assert.ok(src.includes("'/members/'+proof.discordId"));
  assert.ok(src.includes('tx.get(eventRef)'));
- assert.ok(src.includes("!['submitted','needs_verification','verified'].includes"));
+ assert.ok(src.includes("['submitted','needs_verification','verified'].includes"));
+ assert.ok(src.includes("collection('bpd_callsign_eligibility_proofs')"));
+ assert.ok(src.includes("tx.set(evidenceRef,evidence)"));
  assert.ok(src.includes("status=verified.eligible?'verified':'needs_verification'"));
  assert.equal(src.includes("status:'approved'"),false);
  assert.ok(srv.includes('verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}'));

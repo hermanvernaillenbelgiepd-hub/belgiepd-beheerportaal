@@ -38,31 +38,34 @@ export function installCallsignBotRoutes(app){
       const verified=verifiedBotEligibility(proof,member.joined_at);
       const db=getFirestore(),ref=db.collection('bpd_callsign_requests').doc(proof.discordId);
       const eventRef=db.collection('bpd_callsign_bot_events').doc(proof.eventId);
+      // Proof is independent of a pending request, allowing new members to
+      // verify conditions before requesting their first permanent callsign.
+      const evidenceRef=db.collection('bpd_callsign_eligibility_proofs').doc(proof.discordId);
       const status=verified.eligible?'verified':'needs_verification';
       await db.runTransaction(async tx=>{
         const [request,event]=await Promise.all([tx.get(ref),tx.get(eventRef)]);
         if(event.exists)
           throw Object.assign(Error('Deze botcontrole is al verwerkt'),{status:409});
-        if(!request.exists)
-          throw Object.assign(Error('Er bestaat geen openstaande aanvraag'),{status:404});
-        if(!['submitted','needs_verification','verified'].includes(request.get('status')))
-          throw Object.assign(Error('Deze aanvraag kan niet meer automatisch worden geverifieerd'),{status:409});
         const at=FieldValue.serverTimestamp();
         tx.create(eventRef,{
           discordId:proof.discordId,guildId:proof.guildId,receivedAt:at,
           source:'fivem-playtime',observedAt:proof.observedAt,eligible:verified.eligible
         });
-        tx.update(ref,{status,
-          verification:{...verified,source:'fivem-bot-en-discord-api',
-            checkedAt:new Date().toISOString(),observedAt:proof.observedAt,
-            verifiedBy:'signed-bot-transport'},
-          updatedAt:at
-        });
-        tx.create(ref.collection('verification_audit').doc(),{
-          source:'fivem-playtime',eventId:proof.eventId,
-          eligible:verified.eligible,joinedOn:verified.joinedOn,
-          playSeconds:proof.playSeconds,at
-        });
+        const verifiedAt=new Date().toISOString();
+        const evidence={...verified,discordId:proof.discordId,
+          guildId:proof.guildId,source:'fivem-bot-en-discord-api',
+          checkedAt:verifiedAt,observedAt:proof.observedAt,
+          verifiedBy:'signed-bot-transport'};
+        tx.set(evidenceRef,evidence);
+        // Don't modify completed/rejected requests when telemetry continues.
+        if(request.exists&&['submitted','needs_verification','verified'].includes(request.get('status'))){
+          tx.update(ref,{status,verification:evidence,updatedAt:at});
+          tx.create(ref.collection('verification_audit').doc(),{
+            source:'fivem-playtime',eventId:proof.eventId,
+            eligible:verified.eligible,joinedOn:verified.joinedOn,
+            playSeconds:proof.playSeconds,at
+          });
+        }
       });
       return res.json({accepted:true,discordId:proof.discordId,status,
         eligible:verified.eligible,hasTenHours:verified.hasTenHours,

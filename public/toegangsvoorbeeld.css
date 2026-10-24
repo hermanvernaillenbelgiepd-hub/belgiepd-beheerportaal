@@ -15,7 +15,7 @@ h1{font-size:clamp(24px,3vw,34px);line-height:1.16;margin:7px 0 11px}
 .safety strong{display:block;font-size:13px;color:#e3f1ff;margin-bottom:5px}
 .role-switcher{margin:20px 0 15px;background:#122742;border:1px solid #2b4867;border-radius:12px;padding:14px}
 .role-switcher h2{font-size:13px;margin:0 0 11px}
-.role-buttons{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.role-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:8px}
 .role-buttons button{appearance:none;cursor:pointer;min-width:0;padding:10px 8px;border-radius:8px;border:1px solid #3b5d87;background:#18324f;color:#d6e7ff;font:inherit;font-weight:650;text-align:center}
 .role-buttons button:hover{background:#24486e}
 .role-buttons button[aria-pressed=true]{background:#2961c4;border-color:#80b5ff;color:white;box-shadow:0 0 0 1px #6b9ef5}

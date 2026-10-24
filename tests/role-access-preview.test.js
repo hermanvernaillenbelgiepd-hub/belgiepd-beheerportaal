@@ -6,7 +6,7 @@ import {Script} from 'node:vm';
 const root=new URL('../public/',import.meta.url);
 const read=path=>readFileSync(new URL(path,root),'utf8');
 
-test('Toegangsvoorbeeld biedt vijf fictieve profielen zonder echte aanmeldgegevens',()=>{
+test('Toegangsvoorbeeld biedt zeven fictieve profielen zonder echte aanmeldgegevens',()=>{
   const html=read('toegangsvoorbeeld.html');
   const js=read('toegangsvoorbeeld.js');
   const css=read('toegangsvoorbeeld.css');
@@ -18,12 +18,16 @@ test('Toegangsvoorbeeld biedt vijf fictieve profielen zonder echte aanmeldgegeve
   assert.match(html,/id="matrixBody"/);
   assert.match(html,/src="\/toegangsvoorbeeld\.js"/);
   assert.match(html,/href="\/gebruikersbeheer\.html"/);
-  for(const role of ["Volledig nieuw lid","Basiskader","Middenkader","Officierenkader","Korpsleiding"])
+  for(const role of ["Volledig nieuw lid","Agentenkader · tijdelijk","Agentenkader · vast","Basiskader","Middenkader","Officierenkader","Korpsleiding"])
     assert.ok(js.includes("label:'"+role+"'"),role);
   assert.match(js,/call:'300'/);
-  assert.match(js,/call:'730'/);
+  assert.match(js,/call:'150'/);
+  assert.match(js,/call:'250'/);
+  assert.match(js,/call:'700'/);
   assert.match(js,/call:'930'/);
-  assert.match(js,/call:'910'/);
+  assert.match(js,/call:'900'/);
+  assert.match(js,/CALL 900 en 910/);
+  assert.ok(html.includes('/vast-roepnummer-aanvragen.html'));
   assert.match(js,/roles\.indexOf\(role\)/);
   assert.match(css,/\.experience\{display:grid/);
 });
