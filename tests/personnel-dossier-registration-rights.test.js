@@ -5,6 +5,7 @@ import {Script} from 'node:vm';
 import {validateEntry,canChooseSanction,permittedSanctionTypes} from '../src/registrations.js';
 import {mayWriteManagement} from '../src/management-utils.js';
 import {canLogTraining,canReviewTraining,basePermissions} from '../src/permissions-utils.js';
+import {TRAINING_ROLE_IDS,roleSummary,recognizeRoles} from '../src/role-catalog.js';
 import {specialFields} from '../src/report-export.js';
 
 const actor=role=>({role,departments:['politie'],departmentRoles:{politie:role},
@@ -276,4 +277,70 @@ test('Centraal register gebruikt personeelslijst per dienst en beschermt individ
   assert.match(report,/collection\('bpd_training'\)/);
   assert.match(report,/source:'bpd_training'/);
   assert.match(report,/isArchivedTraining/);
+});
+
+
+test('Opleidingsrechten: exacte Discord-rol-ID’s per politie, ambulance, brandweer, depannage en burger',()=>{
+  const guildId='123456789012345678',now=Date.now();
+  const verified=roles=>({guildId,verifiedAt:now,roleIds:roles});
+  const checks={
+    politie:{
+      leaders:['1562710901080068229','1473474238664020151','1335578488664490057'],
+      trainers:['1393050971604516904','1345302115689431061',
+        '1393050551188721865','1359656762289946755','1337156006597103746']
+    },
+    ambulance:{
+      leaders:['1309532438053130325'],
+      trainers:['1309532437952466988']
+    },
+    brandweer:{
+      leaders:['1395115819020714105'],
+      trainers:['1309532437952466989']
+    },
+    depannage:{
+      leaders:['1309532438019706969'],trainers:[]
+    },
+    burger:{
+      leaders:['1492485336197234728'],trainers:[]
+    }
+  };
+  for(const [dept,groups] of Object.entries(checks)){
+    assert.deepEqual([...TRAINING_ROLE_IDS[dept].leadership],groups.leaders,dept+' leadership');
+    assert.deepEqual([...TRAINING_ROLE_IDS[dept].instructors],groups.trainers,dept+' instructors');
+    for(const [kind,ids] of Object.entries(groups)){
+      for(const id of ids){
+        const p=basePermissions(verified([id]),guildId,now);
+        assert.equal(p.permissions[dept]['training.log'],true,dept+' '+id);
+        assert.equal(p.permissions[dept]['training.review'],kind==='leaders',dept+' '+id);
+        for(const other of ['politie','brandweer','ambulance','depannage','burger']){
+          if(other!==dept)
+            assert.equal(p.permissions[other]['training.log'],false,
+              'Cross-department write: '+dept+' role '+id+' to '+other);
+        }
+        const stale=basePermissions({guildId,verifiedAt:now-16*60*1000,roleIds:[id]},guildId,now);
+        assert.equal(stale.permissions[dept]['training.log'],false,'Stale role '+id);
+        assert.equal(basePermissions(verified(['999999999999999999']),guildId,now)
+          .permissions[dept]['training.log'],false,'Unknown role is not trusted');
+      }
+    }
+  }
+  const policeRank=roleSummary(['1562710901080068229']);
+  assert.equal(policeRank.policeRank,'korpsleiding');
+  assert.equal(roleSummary(['1353670078142615592']).policeRank,null,
+    'Oude niet-bevestigde korpsrol heeft geen blijvende kadertoekenning');
+  assert.ok(recognizeRoles(['1309532437952466989']).some(r=>
+    r.dept==='brandweer'&&r.name==='Brandweer instructeur'));
+});
+
+test('Dispatch-instructeur blijft een Dispatch-rol maar kan politieopleiding registreren',()=>{
+  const guildId='123456789012345678',now=Date.now();
+  const ids=['1393050971604516904'];
+  const r=roleSummary(ids);
+  assert.ok(r.departments.includes('dispatch'));
+  const p=basePermissions({guildId,verifiedAt:now,roleIds:ids},guildId,now);
+  assert.equal(p.permissions.politie['training.log'],true);
+  assert.equal(p.permissions.politie['training.review'],false);
+  assert.equal(p.permissions.dispatch['training.log'],true);
+  for(const dept of ['brandweer','ambulance','depannage','burger'])
+    assert.equal(p.permissions[dept]['training.log'],false);
 });
