@@ -260,6 +260,23 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .roster-dept{font-size:10px;margin-top:2px;line-height:1.1}
 .staff-roster-table td:nth-child(3),.staff-roster-table td:nth-child(4),
 .staff-roster-table td:nth-child(5){line-height:1.2}
+
+/* Spreadsheetmatrix: lage personeelsrijen, volledig gevulde specialisatiecellen. */
+.staff-roster-table{border-collapse:collapse;border-spacing:0}
+.staff-roster-table tbody tr{height:35px}
+.staff-roster-table tbody td{padding:2px 5px;line-height:1.08;vertical-align:middle;border-bottom:1px solid #47627f}
+.staff-roster-table .specialty-status-col{padding:0!important;vertical-align:middle;text-align:center}
+.staff-roster-table .specialty-status-col .specialty-state{
+  display:flex;width:100%;min-width:0;min-height:34px;height:100%;
+  margin:0;padding:2px 2px;border:0;border-radius:0;
+  align-items:center;justify-content:center;box-sizing:border-box;
+  font-size:10px;font-weight:750;line-height:1.08;
+  white-space:normal;overflow-wrap:normal;word-break:normal;
+}
+.staff-roster-table .rank-insignia{width:71px;height:29px;max-width:100%;margin:0 auto;object-fit:contain;object-position:center}
+.staff-roster-table .roster-dept{margin-top:1px;font-size:9px;line-height:1.05}
+.staff-roster-table .pill{min-height:20px;padding:2px 5px;border-radius:2px}
+.staff-roster-table tbody tr:hover .specialty-status-col .specialty-state{filter:brightness(1.12)}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
