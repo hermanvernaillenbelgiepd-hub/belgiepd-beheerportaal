@@ -36,15 +36,18 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         personnelDataEnabled(process.env)?getFirestore().collection(PENDING_PERSONNEL_COLLECTION)
           .limit(500).get():Promise.resolve({docs:[],size:0})
       ]);
-      const base=snapshot.data.filter(p=>allowed.includes(p.dept)&&canReadPersonnelSubject(req.bpd,p));
+      // De overzichtslijst blijft zichtbaar, ook wanneer de individuele
+       // personeelsfiche beschermd is tegen inzage.
+       const base=snapshot.data.filter(p=>allowed.includes(p.dept));
       const overlay=edits.docs.map(d=>d.data());
       const records=mergePersonnelEdits(base,overlay).map(p=>{
         const edit=overlay.find(e=>e.dept===p.dept&&e.discordId===p.personId);
-        const canPromote=Boolean(p.createdInFirestore===true&&p.dept==='politie'&&
+        const canOpenDossier=canReadPersonnelSubject(req.bpd,p);
+        const canPromote=Boolean(canOpenDossier&&p.createdInFirestore===true&&p.dept==='politie'&&
           nextPoliceRank(p.rank)&&req.bpd.discordId!==p.personId&&
           canAuthoriseExceptionalPoliceRank(req.bpd,'politie'));
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
-          canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
+          canOpenDossier,canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
           series:displaySeries(p.seriesRaw??p.series,p.rank,p.dept,p.call),status:p.status,
           // Presentation-only specialties from the already-authorized Sheets
           // roster. Do not treat these values as Discord role grants.
@@ -53,9 +56,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
             .map(x=>({label:x.label.slice(0,64),value:x.value.slice(0,90)})):[],
           revision:Number.isSafeInteger(edit?.revision)?edit.revision:0,
           source:edit?'firestore-overlay':p.source==='firestore-created'?'firestore-created':'google-sheets',
-          canEdit:canEditGeneralPersonnelInfo(req.bpd,p),
-          canEditIdentity:canEditGeneralPersonnelInfo(req.bpd,p),
-          canEditStatus:canEditGeneralPersonnelInfo(req.bpd,p)};
+          canEdit:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p),
+          canEditIdentity:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p),
+          canEditStatus:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p)};
       });
       // Presentation-only: officer versus corps indication for the 9xx range.
       // Only previously authenticated, recent Discord role snapshots of the
@@ -85,10 +88,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       }
       const labelledRecords=records.map(p=>({...p,
         discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
-          roleLabels.get(p.discordId)||null:null}))
-        .filter(p=>p.discordCadre!=='Korpsleiding'||
-          req.bpd.boardPersonnelAdmin===true||
-          req.bpd.role==='korpsleiding');
+          roleLabels.get(p.discordId)||null:null}));
+      // Een geverifieerd kaderlabel dient als weergave, niet als extra
+      // filter waarmee leidinggevenden uit de personeelslijst verdwijnen.
       const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
         .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
       return res.json({records:labelledRecords,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
