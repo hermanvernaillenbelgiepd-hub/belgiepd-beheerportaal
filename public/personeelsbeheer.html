@@ -1006,7 +1006,7 @@ function render(){
     }
     const action=document.createElement('button');action.type='button';
     action.className='alt roster-open';action.textContent='Open';action.title='Open personeelsfiche van '+person.name;
-    action.onclick=()=>showPerson(person);
+    action.onclick=()=>window.location.assign(ficheUrl(person));
     const cell=document.createElement('td');cell.append(action);tr.append(cell);
     const discordCell=document.createElement('td');discordCell.className='discord-id-cell';
     const id=String(person.discordId||'').trim();
@@ -1097,7 +1097,7 @@ async function load(){
       else $('dept').value='all';
       $('search').value=prefill;
     }
-    render();
+    render();updateFicheColleagues();
     if(prefill&&/^\d{15,22}$/.test(prefill)){
       const matching=people.filter(p=>p.discordId===prefill&&
         (!targetDept||p.dept===targetDept));
@@ -1105,7 +1105,7 @@ async function load(){
         await showPerson(matching[0]);
         if(!$('panel').hidden){
           const clean=new URL(window.location.href);
-          if(!dossierEmbedded){
+          if(!dossierEmbedded&&!ficheMode){
             clean.searchParams.delete('discordId');clean.searchParams.delete('dept');
             window.history.replaceState(null,'',clean.pathname+clean.search+clean.hash);
             $('panel').scrollIntoView({block:'start'});
@@ -1120,7 +1120,11 @@ async function load(){
     if(data.limited||data.pendingLimited)
       notice('De veilige laadlimiet van personeelsgegevens is bereikt. Vraag een beheerder om controle.',true);
     if(!$('newPanel').hidden)updateNewDuplicateWarning();
-    if(selected){const still=people.find(p=>p.dept===selected.dept&&p.discordId===selected.discordId);if(still)await showPerson(still);else $('panel').hidden=true}
+    if(selected){
+      const still=people.find(p=>p.dept===selected.dept&&p.discordId===selected.discordId);
+      if(still&&!(prefill&&still.discordId===prefill&&still.dept===targetDept))await showPerson(still);
+      else if(!still)$('panel').hidden=true;
+    }
   }catch(e){
     people=[];$('panel').hidden=true;render();notice(e.message,true);
     const denied=/403|koppeling|goedgekeurd|goedgekeurde|niet gemachtigd|kaderrechten|Geen toegelaten hulpdienst/i.test(e.message||'');
@@ -2571,7 +2575,7 @@ for(const formId of registrationForms){
 async function showPerson(p){
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
-  sheetIdentity(p);
+  sheetIdentity(p);updateFicheColleagues();
   if(!sameSelected){
     registrationSubjectKey=p.dept+':'+p.discordId;
     openDossierTab('overzicht');
@@ -2631,7 +2635,7 @@ async function showPerson(p){
       div.append(strong,text);$('history').append(div);
     }
   }catch(e){$('history').textContent='Geschiedenis niet beschikbaar: '+e.message}
-  if(!dossierEmbedded)$('panel').scrollIntoView({behavior:'smooth',block:'start'});
+  if(!dossierEmbedded&&!ficheMode)$('panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 $('promotionForm').onsubmit=async ev=>{
   ev.preventDefault();
@@ -2741,7 +2745,10 @@ $('newForm').onsubmit=async event=>{
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
 };
 $('reload').onclick=load;$('search').oninput=render;$('dept').onchange=render;
-$('close').onclick=()=>{$('panel').hidden=true;selected=null};
+$('close').onclick=()=>{
+  if(ficheMode){window.location.assign($('ficheBackLink').href);return}
+  $('panel').hidden=true;selected=null
+};
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
