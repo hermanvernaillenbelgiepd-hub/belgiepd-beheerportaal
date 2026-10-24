@@ -45,7 +45,7 @@ import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPT
   verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {deriveServiceDossierDepartments,verifiedFireZoneChief} from './service-dossier-access.js';
-import {verifiedFireRoles,fireActorClass} from './fire-dossier-policy.js';
+import {verifiedFireRoles,fireActorClass,FIRE_ROLES} from './fire-dossier-policy.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
@@ -206,6 +206,14 @@ async function requireUser(req,res,next){
       actor.role==='korpsleiding'&&departmentRoles.politie==='korpsleiding'&&
       typeof manualRoleRecovery.approvedBy==='string'&&
       manualRoleRecovery.approvedBy!==actor.uid&&verified.uid==='discord:'+discordId);
+    actor.manualFireRole=(manualRoleRecovery?.dept==='brandweer'&&
+      verified.uid==='discord:'+discordId&&
+      actor.departments.includes('brandweer')&&
+      actor.departmentRoles.brandweer===manualRoleRecovery.role&&
+      typeof manualRoleRecovery.approvedBy==='string'&&
+      manualRoleRecovery.approvedBy!==actor.uid)
+        ?({middenkader:'middle',officierenkader:'leadership',
+          korpsleiding:'zone'}[manualRoleRecovery.role]||null):null;
     const canSwitch=eligibleForTechnicalProfile(verified,actor,discordMember,process.env);
     actor.profileTechnicalAvailable=canSwitch;
     actor.discordPoliceRank=verifiedPoliceRank(discordMember,process.env.DISCORD_GUILD_ID);
@@ -396,7 +404,8 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     const roster=snapshot.stale?[]:snapshot.data;
     // Server-only, freshly checked ZONE leadership, scoped exclusively to fire.
     req.bpd.fireZoneChief=verifiedFireZoneChief(req.bpd,roster,
-      member?.exists?member.data():null,process.env.DISCORD_GUILD_ID);
+      member?.exists?member.data():null,process.env.DISCORD_GUILD_ID)||
+      (req.bpd.manualFireRole==='zone');
     req.bpd.fireAccessLevel=fireActorClass(req.bpd,
       verifiedFireRoles(member?.data(),process.env.DISCORD_GUILD_ID));
     const original=deriveServiceDossierDepartments(req.bpd,
@@ -429,11 +438,20 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
         /^[0-9]{15,22}$/.test(String(p.personId||''))).map(p=>p.personId))];
       for(let i=0;i<fireIds.length;i+=30){
         const group=fireIds.slice(i,i+30);
-        const roles=await Promise.all(group.map(fireId=>
-          cachedAuthDoc('bpd_discord_auth',fireId)));
+        const [roles,accounts]=await Promise.all([
+          Promise.all(group.map(fireId=>cachedAuthDoc('bpd_discord_auth',fireId))),
+          Promise.all(group.map(fireId=>cachedAuthDoc(USER_COLLECTION,fireId)))
+        ]);
         group.forEach((fireId,index)=>{
-          req.bpd.fireSubjectRoleSets.set(fireId,
-            verifiedFireRoles(roles[index].data(),process.env.DISCORD_GUILD_ID));
+          const proven=verifiedFireRoles(roles[index].data(),process.env.DISCORD_GUILD_ID);
+          const account=accounts[index].exists?
+            approvedManagedEntry(accounts[index].data(),fireId):null;
+          // An approved higher staff classification also protects the target
+          // when their Discord grade failed to synchronize.
+          const grade=account?.departmentRoles?.brandweer;
+          if(proven&&['middenkader','officierenkader','korpsleiding'].includes(grade))
+            proven.add(grade==='middenkader'?FIRE_ROLES.middle:FIRE_ROLES.leadership);
+          req.bpd.fireSubjectRoleSets.set(fireId,proven);
         });
       }
     }
