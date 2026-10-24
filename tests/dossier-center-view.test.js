@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterDossiers,sortDossiers,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
+import {filterDossiers,sortDossiers,fireCallGroup,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
   from '../public/dossiercentrum-view.js';
 const rows=[
   {dept:'politie',discordId:'111111111111111111',name:'Émile Vermeulen',rank:'Inspecteur',
@@ -91,4 +91,32 @@ test('BelgiumPD custom roster order sorts the full set before paging',()=>{
   assert.equal(paginateDossiers(sorted,1).rows[0].call,'900');
   assert.equal(paginateDossiers(sorted,1).rows.at(-1).call,'912');
   assert.equal(paginateDossiers(sorted,2).rows[0].call,'912');
+});
+
+test('Brandweer callsigns follow the official operational spreadsheet hierarchy',()=>{
+  const calls=['STAG-21','BWM-25','OOFF-15','OFF-06','BWM-06','OFF-04',
+    'OOFF-08','ZONE','BWM-01','STAG-01','OFF-02','OOFF-12',
+    'BWM-05','OOFF-13','OFF-05','OFF-03','OFF-01'];
+  const records=calls.map((call,i)=>({dept:'brandweer',call,
+    name:'Brandweerlid '+i,personnel:true}));
+  assert.deepEqual(sortDossiers(records,'callsign-fire').map(x=>x.call),[
+    'ZONE','OFF-02','OFF-03','OFF-04','OFF-05','OFF-06',
+    'OOFF-08','OOFF-12','OOFF-13','OOFF-15',
+    'BWM-01','BWM-05','BWM-06','BWM-25','STAG-01','STAG-21','OFF-01'
+  ]);
+  assert.equal(fireCallGroup('BMW-06').group,4,'Legacy BMW typo keeps BWM group');
+  assert.equal(fireCallGroup('OOFF-07').group,6,'Unexpected call stays in the list');
+  assert.equal(records[0].call,'STAG-21','Sorting does not change original data');
+});
+test('Brandweer roster filter stays independent from Police default sorting',()=>{
+ const data=[
+  {dept:'brandweer',call:'STAG-02',personnel:true},
+  {dept:'politie',call:'910',personnel:true},
+  {dept:'brandweer',call:'ZONE',personnel:true},
+  {dept:'politie',call:'900',personnel:true}
+ ];
+ assert.deepEqual(sortDossiers(filterDossiers(data,{department:'brandweer'}),'callsign-fire')
+   .map(x=>x.call),['ZONE','STAG-02']);
+ assert.deepEqual(sortDossiers(filterDossiers(data,{department:'politie'}),'callsign-bpd')
+   .map(x=>x.call),['900','910']);
 });
