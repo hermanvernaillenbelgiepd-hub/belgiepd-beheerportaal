@@ -6,11 +6,29 @@
     {id:'nieuw',label:'Volledig nieuw lid',short:'Nieuw',name:'Nieuw Discord-lid (voorbeeld)',call:'Nog geen CALL',rank:'Nog niet ingedeeld',role:'Geen goedgekeurde portaalrol',status:'Toegang nog niet aangevraagd'},
     {id:'agent',label:'Agentenkader · tijdelijk',short:'Agent temp.',name:'Voorbeeld Agent (tijdelijk)',call:'150',rank:'Agent van politie',role:'Agentenkader · tijdelijk, CALL 101–199',status:'Nog geen vaste 200-reeks'},
     {id:'agentvast',label:'Agentenkader · vast',short:'Agent vast',name:'Voorbeeld Agent (vaste CALL)',call:'250',rank:'Agent van politie',role:'Agentenkader · vast, CALL 200–299',status:'Vast roepnummer na gecontroleerde aanvraag'},
-    {id:'basis',label:'Basiskader',short:'Basis',name:'Voorbeeld Inspecteur',call:'300',rank:'Inspecteur van politie',role:'Basiskader · CALL 300–599',status:'Portaaltoegang goedgekeurd'},
-    {id:'midden',label:'Middenkader',short:'Midden',name:'Voorbeeld Hoofdinspecteur',call:'700',rank:'Hoofdinspecteur van politie',role:'Middenkader · CALL 600–899',status:'Portaaltoegang goedgekeurd'},
-    {id:'officier',label:'Officierenkader',short:'Officier',name:'Voorbeeld Aspirant Commissaris',call:'930',rank:'Aspirant-commissaris van politie',role:'Officierenkader · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'},
-    {id:'korps',label:'Korpsleiding',short:'Korps',name:'Voorbeeld Eerste Hoofdcommissaris',call:'900',rank:'Eerste hoofdcommissaris van politie',role:'Korpsleiding · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'}
+    {id:'basis',label:'Basiskader',short:'Basis',name:'Voorbeeld Aspirant-inspecteur',call:'300',rank:'Aspirant-inspecteur van politie (A-INP)',role:'Basiskader · CALL 300–599',status:'Portaaltoegang goedgekeurd'},
+    {id:'midden',label:'Middenkader',short:'Midden',name:'Voorbeeld Aspirant-hoofdinspecteur',call:'600',rank:'Aspirant-hoofdinspecteur van politie (A-HINP)',role:'Middenkader · CALL 600–899',status:'Portaaltoegang goedgekeurd'},
+    {id:'officier',label:'Officierenkader',short:'Officier',name:'Voorbeeld Aspirant-commissaris',call:'920',rank:'Aspirant-commissaris van politie (A-CP)',role:'Officierenkader · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'},
+    {id:'korps',label:'Korpsleiding',short:'Korps',name:'Voorbeeld Eerste hoofdcommissaris',call:'900',rank:'Eerste hoofdcommissaris van politie (1-HCP)',role:'Korpsleiding · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'}
   ];
+  // Fictieve rangvoorbeelden binnen hetzelfde kader. Geen rolwissel of API-call.
+  const rankVariants={
+    basis:[
+      {call:'300',short:'A-INP',rank:'Aspirant-inspecteur van politie (A-INP)',name:'Voorbeeld Aspirant-inspecteur'},
+      {call:'400',short:'INP',rank:'Inspecteur van politie (INP)',name:'Voorbeeld Inspecteur'},
+      {call:'500',short:'1-INP',rank:'Eerste inspecteur van politie (1-INP)',name:'Voorbeeld Eerste inspecteur'}],
+    midden:[
+      {call:'600',short:'A-HINP',rank:'Aspirant-hoofdinspecteur van politie (A-HINP)',name:'Voorbeeld Aspirant-hoofdinspecteur'},
+      {call:'700',short:'HINP',rank:'Hoofdinspecteur van politie (HINP)',name:'Voorbeeld Hoofdinspecteur'},
+      {call:'800',short:'1-HINP',rank:'Eerste hoofdinspecteur van politie (1-HINP)',name:'Voorbeeld Eerste hoofdinspecteur'}],
+    officier:[
+      {call:'920',short:'A-CP',rank:'Aspirant-commissaris van politie (A-CP)',name:'Voorbeeld Aspirant-commissaris 920'},
+      {call:'930',short:'A-CP',rank:'Aspirant-commissaris van politie (A-CP)',name:'Voorbeeld Aspirant-commissaris 930'}],
+    korps:[
+      {call:'900',short:'1-HCP',rank:'Eerste hoofdcommissaris van politie (1-HCP)',name:'Voorbeeld Eerste hoofdcommissaris'},
+      {call:'910',short:'1-CP',rank:'Eerste commissaris van politie (1-CP)',name:'Voorbeeld Eerste commissaris'}]
+  };
+  const selectedCall={basis:'300',midden:'600',officier:'920',korps:'900'};
   // full = authorized for this service, limited = restricted actions,
   // none = no access, extra = separate delegated entitlement required.
   const modules=[
@@ -62,11 +80,16 @@
   const create=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=value;return n;};
   const statuses={full:'● Toegang binnen eigen dienst',limited:'◐ Beperkte toegang of eigen aanvraag',none:'— Geen toegang voor dit profiel',extra:'◇ Alleen na afzonderlijke machtiging'};
   let roleId='nieuw',moduleId='users';
-  const getRole=()=>roles.find(p=>p.id===roleId);
+  const getRole=()=>{
+    const role=roles.find(p=>p.id===roleId);
+    const variant=rankVariants[roleId]?.find(p=>p.call===selectedCall[roleId]);
+    return variant?{...role,...variant}:role;
+  };
   const getModule=()=>modules.find(m=>m.id===moduleId);
-  const state=(module,role)=>module.access[roles.indexOf(role)];
+  const roleIndex=role=>roles.findIndex(p=>p.id===role.id);
+  const state=(module,role)=>module.access[roleIndex(role)];
   function availableAction(module,role,index){
-    const order=roles.indexOf(role);
+    const order=roleIndex(role);
     if(module.id==='users')return index===0||index===1&&order>=5||index===2&&order===6;
     if(module.id==='home')return true;
     if(module.id==='roster')return order>=4&&(index<2||order===6);
@@ -82,10 +105,25 @@
     const root=document.getElementById('roleButtons');root.replaceChildren();
     for(const role of roles){
       const button=create('button','',role.label);
-      const note=create('span','',role.call==='Nog geen CALL'?'Nog niet ingedeeld':'CALL '+role.call);
+      const note=create('span','',role.call==='Nog geen CALL'?'Nog niet ingedeeld':'CALL '+(selectedCall[role.id]||role.call));
       button.append(note);button.type='button';button.dataset.role=role.id;
       button.setAttribute('aria-pressed',String(role.id===roleId));
       button.addEventListener('click',()=>{roleId=role.id;moduleId=role.id==='nieuw'?'users':'home';draw();});
+      root.append(button);
+    }
+  }
+  function paintVariants(){
+    const root=document.getElementById('rankVariantButtons');
+    const wrapper=document.getElementById('rankVariants');
+    const variants=rankVariants[roleId]||[];
+    wrapper.hidden=variants.length===0;
+    root.replaceChildren();
+    for(const variant of variants){
+      const button=create('button','variant-button','CALL '+variant.call+' · '+variant.short);
+      button.type='button';
+      button.setAttribute('aria-pressed',String(variant.call===selectedCall[roleId]));
+      button.title=variant.rank;
+      button.addEventListener('click',()=>{selectedCall[roleId]=variant.call;draw();});
       root.append(button);
     }
   }
@@ -107,7 +145,7 @@
     const cards=create('div','mock-panel');
     const rows=module.id==='roster'||module.id==='dossier'?
       [['CALL',role.call],['Personeelslid',role.name],['Voorbeeld Korpsleiding','900-reeks · volgens Discord-rol afgeschermd']]:
-      module.id==='verlof'?[['Aanvrager',role.name],['Aanvraag','7 tot 14 dagen (voorbeeld)'],['Goedkeuring',roles.indexOf(role)>=2?'Afhankelijk van rol / duur':'Niet bevoegd']]:
+      module.id==='verlof'?[['Aanvrager',role.name],['Aanvraag','7 tot 14 dagen (voorbeeld)'],['Goedkeuring',roleIndex(role)>=4?'Afhankelijk van rol / duur':'Niet bevoegd']]:
       module.id==='users'?[['Account',role.name],['Status',role.status],['Goedgekeurde rol',role.role]]:
       [['Personeel',role.name],['Rang',role.rank],['Dienst','Politie']];
     for(const [label,value] of rows){const card=create('div','');card.append(create('small','',label),create('strong','',value));cards.append(card);}
@@ -161,6 +199,6 @@
       b.append(tr);
     }
   }
-  function draw(){paintButtons();paintMenu();paintWorkspace();}
+  function draw(){paintButtons();paintVariants();paintMenu();paintWorkspace();}
   paintMatrix();draw();
 })();

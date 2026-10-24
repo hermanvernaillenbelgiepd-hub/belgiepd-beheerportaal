@@ -28,7 +28,7 @@ test('Toegangsvoorbeeld biedt zeven fictieve profielen zonder echte aanmeldgegev
   assert.match(js,/call:'900'/);
   assert.match(js,/CALL 900–999; Discord-rol bepaalt rechten/);
   assert.ok(html.includes('/vast-roepnummer-aanvragen.html'));
-  assert.match(js,/roles\.indexOf\(role\)/);
+  assert.match(js,/const roleIndex=role=>roles\.findIndex\(p=>p\.id===role\.id\)/);
   assert.match(css,/\.experience\{display:grid/);
 });
 
@@ -59,4 +59,28 @@ test('Voorbeeld blijft gescheiden van technisch profiel en normale machtigingen'
   const profile=readFileSync(new URL('../src/portal-profile-mode.js',import.meta.url),'utf8');
   assert.match(profile,/eligibleForTechnicalProfile/);
   assert.match(profile,/technicalCookieIsValid/);
+});
+
+test('Voorbeeldrijen volgen exacte roepnummers en rangbenamingen zonder rollen te wijzigen',()=>{
+  const html=read('toegangsvoorbeeld.html');
+  const js=read('toegangsvoorbeeld.js');
+  const css=read('toegangsvoorbeeld.css');
+  assert.match(html,/id="rankVariants"/);
+  assert.match(html,/id="rankVariantButtons"/);
+  const variants={
+    '300':'A-INP','400':'INP','500':'1-INP',
+    '600':'A-HINP','700':'HINP','800':'1-HINP',
+    '920':'A-CP','930':'A-CP','900':'1-HCP','910':'1-CP'
+  };
+  for(const [call,rank] of Object.entries(variants)){
+    assert.ok(js.includes("call:'"+call+"',short:'"+rank+"'"),call+' '+rank);
+    assert.ok(html.includes(call+' '+rank)||html.includes(call+' ('+rank+')'),call+' '+rank);
+  }
+  assert.match(js,/const selectedCall=\{basis:'300',midden:'600',officier:'920',korps:'900'\}/);
+  assert.match(js,/selectedCall\[roleId\]=variant\.call;draw\(\)/);
+  assert.match(js,/paintButtons\(\);paintVariants\(\);paintMenu\(\);paintWorkspace\(\)/);
+  assert.match(js,/const roleIndex=role=>roles\.findIndex\(p=>p\.id===role\.id\)/);
+  assert.match(js,/return variant\?\{\.\.\.role,\.\.\.variant\}:role/);
+  assert.match(css,/\.rank-variants/);
+  assert.doesNotMatch(js,/\bfetch\s*\(/);
 });
