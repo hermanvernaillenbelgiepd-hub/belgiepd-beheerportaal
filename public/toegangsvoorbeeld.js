@@ -33,8 +33,8 @@
   // none = no access, extra = separate delegated entitlement required.
   const modules=[
     {id:'home',icon:'⌂',label:'Dashboard',access:['limited','full','full','full','full','full','full'],
-     heading:'Startpagina',description:'Het hoofdblad toont links naar de portaalmodules. Zichtbare tegels zijn geen automatische toegang.',
-     actions:['Mijn profiel bekijken','Verlofbeheer openen'],explain:'De startpagina toont grotendeels dezelfde modulelinks. Beveiligde API’s bepalen wat daarna werkelijk gelezen of gewijzigd kan worden.'},
+     heading:'Startpagina',description:'Nieuwe leden zien Mijn profiel, de alleen-lezen personeelslijst en Vast roepnummer aanvragen. Alleen geverifieerd kader ziet aanvullende bevoegdheden.',
+     actions:['Mijn profiel bekijken','Verlofbeheer openen'],explain:'Een nieuw lid krijgt een apart dashboard: Mijn profiel, de beperkte personeelslijst en Vast roepnummer aanvragen na 5 kalenderdagen én 10 speeluren. Een tijdelijk CALL geeft geen personeelsdossier of observatierechten.'},
     {id:'users',icon:'👥',label:'Gebruikersbeheer',access:['limited','limited','limited','limited','limited','limited','full'],
      heading:'Centraal gebruikersbeheer',description:'Eigen toegang controleren en aanvragen; accounts van anderen beheren volgens de toegestane kadergrenzen.',
      actions:['Mijn toegangsstatus','Aanvragen beoordelen','Officieren beheren'],explain:'Nieuwe leden kunnen hun toegang aanvragen. Officierenkader en Korpsleiding delen de 900-reeks; de geverifieerde Discord-rol bepaalt wie aanvragen mag beoordelen. Een roepnummer kent nooit rechten toe.',
@@ -51,7 +51,7 @@
      heading:'Observaties & sancties',description:'Verslaggeving en personeelsregistraties met logging en controle van de doelrang.',
      actions:['Observatie indienen','Sanctie registreren','Sanctiehistoriek bekijken'],
      explain:'Basiskader kan onder voorwaarden observaties over lagere politierangen indienen zonder inzage in het volledige dossier. Middenkader en hoger hebben eigen dienstgebonden bevoegdheden voor observaties en sancties, afhankelijk van de ernst.'},
-    {id:'verlof',icon:'▦',label:'Verlofbeheer',access:['none','limited','limited','limited','full','full','full'],
+    {id:'verlof',icon:'▦',label:'Verlofbeheer',access:['none','none','none','limited','full','full','full'],
      heading:'Verlofaanvragen',description:'Verlof aanvragen en, waar bevoegd, aanvragen van collega’s beoordelen.',
      actions:['Eigen verlof aanvragen','Aanvragen van lagere rangen beoordelen'],
      explain:'Eigen verlofaanvragen zijn mogelijk voor goedgekeurde personeelsaccounts. Middenkader mag onder voorwaarden aanvragen van lager personeel tot 30 kalenderdagen beoordelen; Officierenkader en Korpsleiding hebben een hogere beoordelingsbevoegdheid. Extra delegaties blijven afzonderlijk.'},
@@ -91,11 +91,11 @@
   function availableAction(module,role,index){
     const order=roleIndex(role);
     if(module.id==='users')return index===0||index===1&&order>=5||index===2&&order===6;
-    if(module.id==='home')return true;
+    if(module.id==='home')return index===0||order>=3;
     if(module.id==='roster')return index===0||order>=4&&(index===1||order===6);
     if(module.id==='dossier')return order>=4&&(index===0||index===1||order>=5);
     if(module.id==='observaties')return order>=3&&(index===0||order>=4&&index===1||order>=5&&index===2);
-    if(module.id==='verlof')return order>=1&&(index===0||order>=4);
+    if(module.id==='verlof')return order>=3&&(index===0||order>=4);
     if(module.id==='opleidingen')return order>=4&&(index<2||order>=5);
     if(module.id==='week')return order>=4;
     if(module.id==='beweging')return order>=5;
@@ -163,7 +163,7 @@
     const root=document.getElementById('moduleContent');root.replaceChildren();
     root.append(create('h3','',module.heading),create('p','',module.description));
     mockCards(role,module,root);
-    if(module.id==='users'&&(role.id==='nieuw'||role.id==='agent')){
+    if(module.id==='users'&&['nieuw','agent','agentvast'].includes(role.id)){
       root.append(create('div','tips','Vast roepnummer 200–299 aanvragen: vanaf 5 volledige dagen in Discord én 10 speeluren in FiveM, geverifieerd via de bot. Een tijdelijk roepnummer 101–199 is zelfgekozen; de hogere leiding beslist over de vaste toekenning.'));
     }
     if(level==='none')root.append(create('div','tips','Deze sectie is niet beschikbaar voor het geselecteerde profiel. Er worden geen gevoelige dossiers getoond.'));
