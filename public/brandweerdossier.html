@@ -102,7 +102,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
       <div id="overviewIdentity" class="sheet-records small-rows"></div>
     </section>
     <section class="landscape-cell" data-sheet-tile="observations">
-      <h3>Observaties <button type="button" data-open-tab="observaties">Bekijken</button></h3>
+      <h3>Observaties <span class="fire-inline-actions"><button type="button" data-open-tab="observaties">Bekijken</button><button type="button" data-open-tab="nieuw">Toevoegen</button></span></h3>
       <div class="sheet-records">
         <div id="overviewObservationTile" hidden><div id="overviewObservationCount" class="small-rows"></div></div>
         <div class="fire-redacted">Observaties toevoegen is mogelijk via registratie; inzage is beperkt.</div>
@@ -212,14 +212,20 @@ const tabSection=tab=>document.querySelector('.dossier-panel[data-pane="'+tab+'"
 function showTab(tab){
  const target=allowedTabs.has(tab)?tab:'overzicht';
  currentTab=target;
+ // The canonical Police sheet remains visible; a selected detail editor opens
+ // below the same sheet rather than replacing the overview.
  for(const pane of document.querySelectorAll('.dossier-panel'))
-   pane.hidden=pane.dataset.pane!==target;
- for(const button of $('dossierTabBar').querySelectorAll('[data-tab]')){
+   pane.hidden=pane.dataset.pane!=='overzicht'&&pane.dataset.pane!==target;
+ for(const button of $('dossierTabBar').querySelectorAll('[data-tab]'))
    button.setAttribute('aria-selected',String(button.dataset.tab===target));
- }
+ const selected=document.querySelector('.dossier-panel[data-pane="'+target+'"]');
+ if(target!=='overzicht'&&selected&&!selected.hidden)
+   selected.scrollIntoView({block:'start',behavior:'smooth'});
 }
 for(const button of $('dossierTabBar').querySelectorAll('[data-tab]'))
  button.onclick=()=>showTab(button.dataset.tab);
+for(const button of document.querySelectorAll('[data-open-tab]'))
+ button.onclick=()=>showTab(button.dataset.openTab);
 function rows(root,values){
  root.replaceChildren();
  for(const [label,value] of values){
@@ -253,7 +259,9 @@ function setAvailableTabs(data){
  for(const button of $('dossierTabBar').querySelectorAll('[data-tab]')){
   button.hidden=!allowedTabs.has(button.dataset.tab);
  }
- $('dossierTabBar').hidden=false;
+ $('dossierTabBar').hidden=true; // Detail access via the same inline sheet buttons as Police.
+ for(const button of document.querySelectorAll('[data-open-tab]'))
+   button.hidden=!allowedTabs.has(button.dataset.openTab);
 }
 async function load(){
  if(!auth?.currentUser)return;
@@ -285,6 +293,12 @@ async function load(){
    ['Aanstellingsdatum',profile.startDate],['Eenheid of ploeg',profile.unit],
    ['Functie of opdracht',profile.functionTitle]
   ]:[])]);
+  $('fireProfileEditor').hidden=false;
+  rows($('fireProfileSummary'),[...identity,...(advanced?[
+    ['Aanstellingsdatum',profile.startDate],['Eenheid of ploeg',profile.unit],
+    ['Functie of opdracht',profile.functionTitle]
+  ]:[])]);
+
   rows($('leaveSummary'),[['Personeels-/verlofstatus',p.status]]);
   $('overviewLeave').textContent=p.status||'—';
   if(advanced){
