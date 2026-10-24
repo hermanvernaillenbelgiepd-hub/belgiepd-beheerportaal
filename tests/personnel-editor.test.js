@@ -143,3 +143,43 @@ test('Official history enriches author server-side and preserves original event 
  assert.ok(ui.includes("const currentLabel=r.actorRosterStale"));
  assert.ok(ui.includes("const ranks=change.newRank?"));
 });
+
+
+test('900 en 910 blijven zichtbaar in roster zonder toegang tot afgeschermde leidingdossiers',async()=>{
+  const {canReadPersonnelSubject}=await import('../src/personnel-editor-policy.js');
+  const {policeKader}=await import('../src/normalize.js');
+  const {dossierScopes,dossierOverviewRows}=await import('../src/dossier-center-policy.js');
+  const actor={...officer,role:'middenkader',
+    departmentRoles:{politie:'middenkader'},dossierAllowedDepartments:['politie']};
+  const highChief={...staff,personId:'111111111111111111',name:'Thijs',
+    call:'900',rank:'Eerste Hoofdcommissaris van Politie (1HCP)'};
+  const firstCommissioner={...staff,personId:'222222222222222222',name:'Extra',
+    call:'910',rank:'Eerste Commissaris van Politie (1CP)'};
+  const officerStaff={...staff,call:'930',rank:'Aspirant Commissaris van Politie (ACP)'};
+  assert.equal(policeKader(highChief.rank),'Korpsleiding');
+  assert.equal(policeKader(firstCommissioner.rank),'Korpsleiding');
+  assert.equal(canReadPersonnelSubject(actor,highChief),false);
+  assert.equal(canReadPersonnelSubject(actor,firstCommissioner),false);
+  assert.equal(canReadPersonnelSubject(actor,officerStaff),true);
+  assert.deepEqual(dossierOverviewRows([highChief,firstCommissioner,officerStaff],[],
+    dossierScopes(actor)).map(x=>x.name),[officerStaff.name]);
+  const board={...actor,boardPersonnelAdmin:true};
+  assert.equal(canReadPersonnelSubject(board,highChief),true);
+  assert.equal(canReadPersonnelSubject(board,firstCommissioner),true);
+  const leadership={...chief,dossierAllowedDepartments:['politie']};
+  assert.equal(canReadPersonnelSubject(leadership,highChief),true);
+  assert.equal(canReadPersonnelSubject(leadership,firstCommissioner),true);
+
+  const fs=await import('node:fs');
+  const route=fs.readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+  const ui=fs.readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+  assert.match(route,/const base=snapshot\.data\.filter\(p=>allowed\.includes\(p\.dept\)\)/);
+  assert.match(route,/const canOpenDossier=canReadPersonnelSubject\(req\.bpd,p\)/);
+  assert.match(route,/canOpenDossier,canPromote/);
+  assert.doesNotMatch(route,/\.filter\(p=>p\.discordCadre!=='Korpsleiding'/);
+  assert.match(ui,/if\(person\.canOpenDossier===true\)/);
+  assert.match(ui,/restricted\.textContent='🔒 Afgeschermd'/);
+  assert.match(ui,/if\(p\?\.canOpenDossier!==true\)/);
+  assert.match(ui,/people\.filter\(p=>p\.canOpenDossier===true\)/);
+  assert.match(route,/if\(!canReadPersonnelSubject\(req\.bpd,target\)\)return error\(res,403/);
+});
