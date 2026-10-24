@@ -57,6 +57,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           revision:Number.isSafeInteger(edit?.revision)?edit.revision:0,
           source:edit?'firestore-overlay':p.source==='firestore-created'?'firestore-created':'google-sheets',
           canEdit:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p),
+          canRename:canOpenDossier&&canRenameLowerPolice(req.bpd,p),
           canEditIdentity:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p),
           canEditStatus:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p)};
       });
