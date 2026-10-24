@@ -94,8 +94,15 @@
       const status=lower==='ja'?'Ja':lower==='nee'||lower==='neen'?'Nee':
         lower==='stage'?'Stage':lower==='docent'?'Docent':
         raw||'Niet ingevuld';
-      const style=status==='Ja'?'yes':status==='Nee'?'no':
-        status==='Stage'?'stage':status==='Docent'?'teacher':'unknown';
+      const kind=status.toLocaleUpperCase('nl-BE');
+      const style=kind==='JA'?'yes':kind==='NEE'?'no':
+        kind==='STAGE'?'stage':kind==='DOCENT'?'teacher':
+        ['BLACKLISTED','GESCHORST','ONTSLAG'].includes(kind)?'alert':
+        kind==='RESTRICTED'?'warning':
+        kind==='INACTIEF'?'muted':
+        ['LEIDING','SPECIALISATIE'].includes(kind)?'lead':
+        ['MUG-HELI','INSTRUCTEUR'].includes(kind)?'trained':
+        ['AANGEMELD','PLAVA','GPC','OPLEIDING!'].includes(kind)?'info':'unknown';
       out.push({label,status,style,icon:specialtyIcon(label)});
     }
     return out;
