@@ -29,7 +29,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 @media(max-width:800px){.summary-grid{grid-template-columns:1fr}.sheet-row{grid-template-columns:1fr}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
-<header><strong>🚒 BelgiumPD · Brandweerdossier</strong><nav class="buttons"><a href="/dossiercentrum.html">← Dossiercentrum</a><a href="/">Home</a><button id="login" class="alt">Aanmelden</button></nav></header>
+<header><strong>🚒 BelgiumPD · Brandweerdossier</strong><nav class="buttons"><a href="/dossiercentrum.html">← Dossiercentrum</a><a href="/">Home</a><button id="refresh" class="alt" type="button">Vernieuwen</button><button id="login" class="alt">Aanmelden</button></nav></header>
 <main>
 <h1 id="title">Brandweerpersoneelsdossier</h1>
 <div id="message" class="muted" role="status">Aanmelding controleren…</div>
@@ -147,47 +147,185 @@ function line(root,heading,detail,meta){
 function selectKind(){const sanction=$('kind').value==='sanctie';$('sanctionFields').hidden=!sanction;
  $('limitedSpecialty').hidden=!sanction||$('sanctionType').value!=='Tijdelijke beperking'}
 $('kind').onchange=selectKind;$('sanctionType').onchange=selectKind;
+// The server provides redacted views; the browser never infers permissions
+// from the target's callsign, from hidden fields, or from a Discord role name.
+let currentTab='overzicht',specialtyRevision=0;
+const allowedTabs=new Set();
+const tabSection=tab=>document.querySelector('.dossier-panel[data-pane="'+tab+'"]');
+function showTab(tab){
+ const target=allowedTabs.has(tab)?tab:'overzicht';
+ currentTab=target;
+ for(const pane of document.querySelectorAll('.dossier-panel'))
+   pane.hidden=pane.dataset.pane!==target;
+ for(const button of $('dossierTabBar').querySelectorAll('[data-tab]')){
+   button.setAttribute('aria-selected',String(button.dataset.tab===target));
+ }
+}
+for(const button of $('dossierTabBar').querySelectorAll('[data-tab]'))
+ button.onclick=()=>showTab(button.dataset.tab);
+function rows(root,values){
+ root.replaceChildren();
+ for(const [label,value] of values){
+  const line=document.createElement('div');line.className='sheet-row';
+  const key=document.createElement('span');key.textContent=label;
+  const val=document.createElement('span');val.textContent=String(value||'—');
+  line.append(key,val);root.append(line);
+ }
+}
+function cards(root,items,heading,text,metadata){
+ root.replaceChildren();
+ if(!items.length){
+  const empty=document.createElement('p');empty.className='muted';
+  empty.textContent='Geen registraties beschikbaar.';root.append(empty);return;
+ }
+ for(const item of items){
+  const card=document.createElement('div');card.className='record';
+  const title=document.createElement('h3');title.textContent=heading(item);
+  const details=document.createElement('p');details.textContent=text(item)||'—';
+  const meta=document.createElement('small');meta.textContent=metadata(item)||'';
+  card.append(title,details,meta);root.append(card);
+ }
+}
+function setAvailableTabs(data){
+ allowedTabs.clear();
+ for(const tab of ['overzicht','gegevens','verlof'])allowedTabs.add(tab);
+ if(data.visibility==='leadership'||data.visibility==='full')
+  for(const tab of ['specialisaties','observaties','notities','sancties','opleidingen','historiek'])
+   allowedTabs.add(tab);
+ if(Array.isArray(data.canWrite)&&data.canWrite.length)allowedTabs.add('nieuw');
+ for(const button of $('dossierTabBar').querySelectorAll('[data-tab]')){
+  button.hidden=!allowedTabs.has(button.dataset.tab);
+ }
+ $('dossierTabBar').hidden=false;
+}
 async function load(){
  if(!auth?.currentUser)return;
  try{
   if(!/^[0-9]{15,22}$/.test(id))throw Error('Ongeldige dossierverwijzing');
   const data=await api(endpoint);current=data;
-  $('mainCard').hidden=false;$('caseSection').hidden=false;
   const p=data.person;
+  $('mainCard').hidden=false;
   $('title').textContent='Brandweerdossier · '+p.name;
   for(const key of ['call','rank','name','series','status'])$(key).textContent=p[key]||'—';
   $('discord').textContent=p.discordId;
-  const scopes={identity:'Beperkte inzage: administratieve gegevens. Vertrouwelijke registraties zijn afgeschermd.',
-   leadership:'Brandweerleiding: registraties van het lager kader.',
-   full:'ZONE / Bestuur: volledige inzage volgens bevoegdheid.'};
+  const advanced=data.visibility==='leadership'||data.visibility==='full';
+  const scopes={
+   identity:'Brandweer Middenkader: basisgegevens en observatie toevoegen. Vertrouwelijke registraties zijn niet beschikbaar.',
+   leadership:'Brandweerleiding: uitgebreide dossierinzage bij de toegelaten personeelsleden.',
+   full:'ZONE of afzonderlijk gemachtigd beheer: uitgebreide dossierinzage.'};
   $('access').textContent=scopes[data.visibility]||'';
-  $('trainingLink').href='/rollen-opleidingen.html?department=brandweer&discordId='+encodeURIComponent(id);
-  $('specialtyLink').hidden=!data.canEditSpecialties;
-  $('specialtyLink').href='/personeelsbeheer.html?fiche=1&dept=brandweer&discordId='+encodeURIComponent(id);
-  $('entries').replaceChildren();
-  if(!data.entries.length)line($('entries'),'Geen zichtbare registraties',
-    data.visibility==='identity'?'Leidinggevende notities, observaties en sancties zijn voor jouw rol verborgen.':'Geen registraties gevonden.');
-  for(const x of data.entries){
-   line($('entries'),({notitie:'Notitie',observatie:'Observatie',sanctie:'Sanctie'})[x.type]||x.type,
-      x.details,(x.eventDate||'')+' · '+(x.sanctionType||''));
+  const profile=data.profile||{};
+  const identity=[
+   ['Naam',p.name],['Roepnummer',p.call],['Graad',p.rank],['Reeks',p.series],
+   ['Personeelsstatus',p.status],['Discord-ID',p.discordId]
+  ];
+  $('overviewIdentity').replaceChildren();
+  for(const [key,value] of identity.slice(0,5)){
+   const small=document.createElement('span');small.textContent=key+': '+(value||'—');
+   $('overviewIdentity').append(small);
   }
-  $('trainingSection').hidden=!['leadership','full'].includes(data.visibility);
-  $('trainings').replaceChildren();
-  if(!data.trainings.length)line($('trainings'),'Geen opleidingsresultaten','Nog geen registratie.');
-  for(const x of data.trainings)line($('trainings'),x.courseName,x.result,x.eventDate);
-  $('entrySection').hidden=!data.canWrite.length;
+  rows($('profile'),[...identity,...(advanced?[
+   ['Aanstellingsdatum',profile.startDate],['Eenheid of ploeg',profile.unit],
+   ['Functie of opdracht',profile.functionTitle]
+  ]:[])]);
+  rows($('leaveSummary'),[['Personeels-/verlofstatus',p.status]]);
+  $('overviewLeave').textContent=p.status||'—';
+  if(advanced){
+   cards($('leavePeriods'),data.leave||[],
+    x=>'Goedgekeurd verlof',x=>(x.startDate||'—')+' t/m '+(x.endDate||'—'),
+    x=>'Status: goedgekeurd');
+  }else{
+   $('leavePeriods').replaceChildren();
+   const info=document.createElement('p');info.className='muted';
+   info.textContent='Individuele verlofperiodes en administratieve beslissingen zijn niet zichtbaar voor Middenkader.';
+   $('leavePeriods').append(info);
+  }
+  $('overviewQuals').hidden=!advanced;
+  $('overviewActivity').hidden=!advanced;
+  if(advanced){
+   const qualifiers=data.specialties||[];
+   rows($('specialties'),qualifiers.map(x=>[x.label,x.value]));
+   $('overviewSpecialties').textContent=qualifiers.filter(x=>x.value&&
+     !['Nee','Niet ingevuld'].includes(x.value)).slice(0,6)
+     .map(x=>x.label+' · '+x.value).join(' | ')||'Geen actuele kwalificaties';
+   const entries=data.entries||[];
+   const label={observatie:'Observatie',notitie:'Belangrijke notitie',sanctie:'Sanctie'};
+   $('overviewRecent').textContent=entries.slice(0,5)
+     .map(x=>(label[x.type]||x.type)+' · '+(x.eventDate||'—')).join(' | ')
+     ||'Geen recente registraties';
+   const meta=x=>(x.eventDate||'—')+' · '+(x.registeredBy||'')+
+     (x.registeredCall?' ('+x.registeredCall+')':'');
+   cards($('observations'),entries.filter(x=>x.type==='observatie'),
+     x=>'Observatie · '+(x.eventDate||'—'),x=>x.details,meta);
+   const notes=entries.filter(x=>x.type==='notitie');
+   const historical=(data.olderNotes||[]).map(x=>({
+     ...x,eventDate:(x.createdAt||'').slice(0,10),
+     details:x.details,displayTitle:x.title||x.type
+   }));
+   cards($('entries'),notes.concat(historical),
+     x=>x.displayTitle||'Belangrijke notitie · '+(x.eventDate||'—'),
+     x=>x.details,meta);
+   cards($('sanctions'),entries.filter(x=>x.type==='sanctie'),
+     x=>x.sanctionType||'Sanctie',x=>x.details,
+     x=>(x.eventDate||'—')+' · Ernst '+(x.severity??'—'));
+   cards($('trainings'),data.trainings||[],
+     x=>x.courseName||'Opleiding',x=>x.result||'Geen resultaat',
+     x=>x.eventDate||'—');
+   cards($('history'),data.dossierHistory||[],
+     x=>x.action||'Dossierwijziging',x=>x.reason||'Administratieve registratie',
+     x=>(x.at||'').slice(0,16)+' · '+(x.byDiscordId||''));
+   $('trainingLink').href='/rollen-opleidingen.html?department=brandweer&discordId='+
+     encodeURIComponent(id);
+  }
+  $('specialtyEdit').hidden=true;
+  if(data.canEditSpecialties){
+    try{
+      const register=await api('/api/personnel/brandweer/'+encodeURIComponent(id)+'/specializations');
+      const items=register.items||[];
+      rows($('specialties'),items.map(x=>[x.label,x.value]));
+      specialtyRevision=register.revision;
+      $('specialtyLabel').replaceChildren(...items.map(x=>new Option(x.label,x.label)));
+      $('specialtyEdit').hidden=!register.canEdit;
+    }catch(e){
+      const warning=document.createElement('p');warning.className='muted';
+      warning.textContent='Specialisatiebeheer niet beschikbaar: '+e.message;
+      $('specialties').append(warning);
+    }
+  }
+  $('entrySection').hidden=true;
   $('kind').replaceChildren();
-  const labels={observatie:'Observatie',notitie:'Notitie',sanctie:'Sanctie'};
-  for(const x of data.canWrite)$('kind').append(new Option(labels[x],x));
+  for(const x of data.canWrite||[])
+   $('kind').append(new Option(({observatie:'Observatie',notitie:'Notitie',
+     sanctie:'Sanctie'})[x]||x,x));
   $('sanctionType').querySelectorAll('option').forEach((op,index)=>
-    op.disabled=data.visibility!=='full'&&index>2);
+   op.disabled=data.visibility!=='full'&&index>2);
   $('restrictedSpecialty').replaceChildren();
   const course=await api('/api/fire-dossiers/courses');
-  for(const x of course.courses||[])$('restrictedSpecialty').append(new Option(x.name,x.name));
-  selectKind();mark('Dossier geladen volgens de gecontroleerde Brandweerrechten.');
- }catch(e){$('mainCard').hidden=true;$('caseSection').hidden=true;$('trainingSection').hidden=true;$('entrySection').hidden=true;mark(e.message,true)}
+  for(const x of course.courses||[])
+    $('restrictedSpecialty').append(new Option(x.name,x.name));
+  selectKind();
+  setAvailableTabs(data);showTab(currentTab);
+  mark('Dossier geladen. Inzage en registraties volgen de serverrechten.');
+ }catch(e){
+  $('mainCard').hidden=true;$('dossierTabBar').hidden=true;
+  for(const pane of document.querySelectorAll('.dossier-panel'))pane.hidden=true;
+  mark(e.message,true);
+ }
 }
-$('refresh').onclick=()=>load();
+$('specialtyEdit').onsubmit=async ev=>{
+ ev.preventDefault();if(!current?.canEditSpecialties)return;
+ const btn=$('specialtySave');btn.disabled=true;
+ try{
+  await api('/api/personnel/brandweer/'+encodeURIComponent(id)+'/specializations','POST',{
+   label:$('specialtyLabel').value,value:$('specialtyValue').value,
+   reason:$('specialtyReason').value.trim(),expectedRevision:specialtyRevision
+  });
+  $('specialtyReason').value='';
+  mark('Specialisatiestatus opgeslagen en geaudit.');
+  await load();showTab('specialisaties');
+ }catch(e){mark('Specialisatie niet opgeslagen: '+e.message,true)}
+ finally{btn.disabled=false}
+};
 $('entryForm').onsubmit=async ev=>{
  ev.preventDefault();const btn=$('save');btn.disabled=true;
  try{
@@ -207,6 +345,7 @@ $('entryForm').onsubmit=async ev=>{
  }catch(e){mark('Opslaan mislukt: '+e.message,true)}
  finally{btn.disabled=false}
 };
+$('refresh').onclick=()=>load();
 async function start(){
  try{
   const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
