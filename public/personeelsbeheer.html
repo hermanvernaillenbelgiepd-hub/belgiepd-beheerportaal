@@ -616,7 +616,8 @@ function availablePersonnelRegistrationKinds(){
     for(const type of casePermissions.typesByDepartment?.[dept]||[]){
       // Geen dubbele opleidingsnotities of dienstactiviteiten in het personeelsdossier.
       // Afgeronde opleidingen gebruiken het officiële opleidingsregister met audit.
-      if(type==='activiteit'||type==='opleiding')continue;
+      if(type==='activiteit')continue;
+      if(type==='opleiding')continue;
       const text=staffCaseLabels[type]||type;
       kinds.push(['case:'+type,
         type==='verlof'?'Verlofnotitie (geen verlofaanvraag)':text]);
