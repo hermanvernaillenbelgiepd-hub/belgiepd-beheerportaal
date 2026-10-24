@@ -11,6 +11,24 @@
     {id:'officier',label:'Officierenkader',short:'Officier',name:'Voorbeeld Aspirant-commissaris',call:'920',rank:'Aspirant-commissaris van politie (A-CP)',role:'Officierenkader · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'},
     {id:'korps',label:'Korpsleiding',short:'Korps',name:'Voorbeeld Eerste hoofdcommissaris',call:'900',rank:'Eerste hoofdcommissaris van politie (1-HCP)',role:'Korpsleiding · CALL 900–999; Discord-rol bepaalt rechten',status:'Portaaltoegang goedgekeurd'}
   ];
+  // Fictieve rangvoorbeelden binnen hetzelfde kader. Geen rolwissel of API-call.
+  const rankVariants={
+    basis:[
+      {call:'300',short:'A-INP',rank:'Aspirant-inspecteur van politie (A-INP)',name:'Voorbeeld Aspirant-inspecteur'},
+      {call:'400',short:'INP',rank:'Inspecteur van politie (INP)',name:'Voorbeeld Inspecteur'},
+      {call:'500',short:'1-INP',rank:'Eerste inspecteur van politie (1-INP)',name:'Voorbeeld Eerste inspecteur'}],
+    midden:[
+      {call:'600',short:'A-HINP',rank:'Aspirant-hoofdinspecteur van politie (A-HINP)',name:'Voorbeeld Aspirant-hoofdinspecteur'},
+      {call:'700',short:'HINP',rank:'Hoofdinspecteur van politie (HINP)',name:'Voorbeeld Hoofdinspecteur'},
+      {call:'800',short:'1-HINP',rank:'Eerste hoofdinspecteur van politie (1-HINP)',name:'Voorbeeld Eerste hoofdinspecteur'}],
+    officier:[
+      {call:'920',short:'A-CP',rank:'Aspirant-commissaris van politie (A-CP)',name:'Voorbeeld Aspirant-commissaris 920'},
+      {call:'930',short:'A-CP',rank:'Aspirant-commissaris van politie (A-CP)',name:'Voorbeeld Aspirant-commissaris 930'}],
+    korps:[
+      {call:'900',short:'1-HCP',rank:'Eerste hoofdcommissaris van politie (1-HCP)',name:'Voorbeeld Eerste hoofdcommissaris'},
+      {call:'910',short:'1-CP',rank:'Eerste commissaris van politie (1-CP)',name:'Voorbeeld Eerste commissaris'}]
+  };
+  const selectedCall={basis:'300',midden:'600',officier:'920',korps:'900'};
   // full = authorized for this service, limited = restricted actions,
   // none = no access, extra = separate delegated entitlement required.
   const modules=[
