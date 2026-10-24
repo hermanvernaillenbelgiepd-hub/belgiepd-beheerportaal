@@ -13,6 +13,7 @@ import { mayMaintainTraining,isArchivedTraining,validateMaintenanceReason,isReco
 import {roleForDepartment} from './leave-policy.js';
 import {isCorpsLeadershipPersonnel} from './personnel-editor-policy.js';
 import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
+import {verifiedFireRoles,fireSubjectClass} from './fire-dossier-policy.js';
 
 const asText=(v,n=300)=>typeof v==='string' ? v.trim().slice(0,n):'';
 const db=()=>getFirestore();
@@ -132,6 +133,8 @@ export function installRoleRoutes(app,{getSnapshot}={}){
   };
   const mayAccessSubject=(bpd,subject,roleMap)=>{
     if(bpd?.boardPersonnelAdmin===true)return true;
+    if(subject.dept==='brandweer')return ['member','trainee'].includes(
+      fireSubjectClass(subject,roleMap?.get(subject.personId)||null));
     const mayOpenCorps=bpd?.provider==='discord'&&bpd?.trustedStaff===true&&
       bpd?.role==='korpsleiding'&&roleForDepartment(bpd,'politie')==='korpsleiding'&&
       bpd?.discordPoliceRank==='Korpsleiding';
@@ -153,6 +156,17 @@ export function installRoleRoutes(app,{getSnapshot}={}){
           verifiedOfficerCadre(results[j].data(),guildId,Date.now(),15*60*1000):null;
         if(role)map.set(chunk[j],role);
       }
+    }
+    // Docenten en Brandweerleiding mogen enkel opleidingen voor basisleden en
+    // stagiairs invoeren. Middenkader en leidinggevende doelpersonen blijven dicht.
+    const fireIds=[...new Set(subjects.filter(p=>p?.dept==='brandweer'&&
+      isDiscordId(p.personId)).map(p=>p.personId))];
+    for(let i=0;i<fireIds.length;i+=40){
+      const group=fireIds.slice(i,i+40);
+      const results=await db().getAll(...group.map(id=>
+        collection.doc(id)));
+      for(let j=0;j<group.length;j++)
+        map.set(group[j],verifiedFireRoles(results[j].data(),guildId));
     }
     return map;
   }
