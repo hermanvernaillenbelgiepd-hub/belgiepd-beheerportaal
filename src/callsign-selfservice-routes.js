@@ -11,7 +11,7 @@ function apiError(res,error){
   console.error('Eigen vaste roepnummeraanvraag:',error?.code||error?.message||'onbekend');
   res.status(503).json({error:'Je aanvraag kon momenteel niet worden verwerkt'});
 }
-function recentVerifiedProof(value,id,now=Date.now()){
+export function recentVerifiedProof(value,id,now=Date.now()){
   const ms=Date.parse(value?.checkedAt||'');
   return value?.discordId===id &&
     value?.source==='fivem-bot-en-discord-api' &&
