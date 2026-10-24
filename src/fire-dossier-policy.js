@@ -29,6 +29,8 @@ export function fireSubjectClass(subject,roles){
 export function fireActorClass(actor,roles){
  if(!actor?.departments?.includes('brandweer'))return 'none';
  if(actor.fireZoneChief===true)return 'zone';
+ if(actor.manualFireRole==='leadership')return 'leadership';
+ if(actor.manualFireRole==='middle')return 'middle';
  if(!roles)return 'none';
  if(roles.has(FIRE_ROLES.leadership))return 'leadership';
  if(roles.has(FIRE_ROLES.middle))return 'middle';
