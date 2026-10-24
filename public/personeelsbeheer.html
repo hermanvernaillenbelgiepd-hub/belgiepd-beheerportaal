@@ -217,6 +217,14 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .dossier-sheet .sheet-identity>div:nth-child(2n){border-right:0}
 .dossier-sheet .sheet-grid{grid-template-columns:1fr}
 .dossier-sheet .sheet-block.wide{grid-column:auto}}
+.staff-roster-table tbody tr{border-bottom:1px solid #537091}
+.staff-roster-table tbody td{border-bottom:1px solid #537091;vertical-align:middle}
+.staff-roster-table tbody tr:hover td{background-color:#213d60}
+.staff-roster-table .specialty-status-col .specialty-state{min-width:29px;border:1px solid rgba(187,209,240,.16);font-weight:800;line-height:1.3}
+.staff-roster-table .rank-insignia{object-fit:contain;object-position:center;filter:drop-shadow(0 1px 2px rgba(0,0,0,.22))}
+.specialty-alert{background:#71283d;color:#ffe0e9}.specialty-warning{background:#76451e;color:#ffe2b8}
+.specialty-info{background:#244e75;color:#e1f2ff}.specialty-muted{background:#364354;color:#e5ecf6}
+.specialty-lead{background:#504681;color:#f4edff}.specialty-trained{background:#175e6e;color:#d4faff}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -320,7 +328,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <div class="grid">
 <div><label for="specialtyLabel">Specialisatie</label><select id="specialtyLabel" required></select></div>
 <div><label for="specialtyValue">Nieuwe status</label><select id="specialtyValue" required>
-<option>Nee</option><option>Stage</option><option>Ja</option><option>Docent</option><option>Niet ingevuld</option>
+<option>Nee</option><option>Stage</option><option>Ja</option><option>Docent</option><option>Niet ingevuld</option><option>AANGEMELD</option><option>RESTRICTED</option><option>ONTSLAG</option><option>INSTRUCTEUR</option><option>PLAVA</option><option>GPC</option><option>INACTIEF</option><option>MUG-HELI</option><option>SPECIALISATIE</option><option>LEIDING</option><option>OPLEIDING!</option><option>GESCHORST</option><option>BLACKLISTED</option>
 </select></div>
 <div style="grid-column:1/-1"><label for="specialtyReason">Motivering van de statuswijziging</label>
 <textarea id="specialtyReason" rows="2" minlength="15" maxlength="500" required
