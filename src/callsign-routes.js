@@ -50,7 +50,7 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
         if(!doc.exists)throw Object.assign(new Error('Aanvraag niet gevonden'),{status:404});
         if(!['submitted','needs_verification','verified'].includes(doc.get('status')))throw Object.assign(new Error('Aanvraag is al verwerkt'),{status:409});
         const temp=String(doc.get('temporaryCall')||'');
-        const reservation=/^\\d{3}$/.test(temp)?
+        const reservation=/^\d{3}$/.test(temp)?
           getFirestore().collection('bpd_temporary_call_reservations').doc(temp):null;
         const reserved=reservation?await tx.get(reservation):null;
         tx.update(ref,{status:'rejected',decision:{type:'afgewezen',reason,by,byUid:req.bpd.uid,at:new Date().toISOString()},updatedAt:FieldValue.serverTimestamp()});
@@ -115,7 +115,7 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
       batch.set(caseRef,{dept:'politie',discordId:id,name:plan.name,call:String(plan.call),rank:plan.rank,createdFrom:'vaste_roepnummer_aanvraag',createdAt:FieldValue.serverTimestamp()},{merge:true});
       batch.create(notice,{type:'roepnummer_toegekend',dept:'politie',caseId:`politie_${id}`,createdAt:FieldValue.serverTimestamp()});
       const reservedCall=String(current.get('temporaryCall')||'');
-      if(/^\\d{3}$/.test(reservedCall)){
+      if(/^\d{3}$/.test(reservedCall)){
         const tempRef=store.collection('bpd_temporary_call_reservations').doc(reservedCall);
         const reservation=await tempRef.get();
         if(reservation.exists&&reservation.get('discordId')===id)batch.delete(tempRef);
