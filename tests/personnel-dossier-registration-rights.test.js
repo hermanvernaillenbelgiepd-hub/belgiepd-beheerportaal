@@ -389,3 +389,17 @@ test('Only verified Bestuur receives training write/review access across all ser
   assert.match(routes,/activeBoardAppointment\(boardAppointment\?\.data\(\)\)/);
   assert.match(routes,/bpd\?\.boardPersonnelAdmin===true/);
 });
+
+test('Opleidingscentrum is op de startpagina zichtbaar voor elke aangemelde instructeur',()=>{
+  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+  const daily=html.slice(html.indexOf('<h2 class="section-title">Dagelijks beheer</h2>'),
+    html.indexOf('<section id="adminRights"'));
+  const admin=html.slice(html.indexOf('<section id="adminRights"'),
+    html.indexOf('<div class="bottom">'));
+  assert.match(daily,/<a class="module" href="\/rollen-opleidingen\.html"/);
+  assert.match(daily,/<h3>Opleidingscentrum<\/h3>/);
+  assert.match(html,/<a href="\/rollen-opleidingen\.html">🎓 &nbsp; Opleidingscentrum<\/a>/);
+  assert.doesNotMatch(admin,/href="\/rollen-opleidingen\.html"/);
+  assert.equal((html.match(/class="module" href="\/rollen-opleidingen\.html"/g)||[]).length,1);
+  assert.match(daily,/Toegang volgens je Discord-rol/);
+});
