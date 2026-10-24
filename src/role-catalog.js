@@ -9,7 +9,7 @@ export const ROLE_CATALOG=Object.freeze([
     ['1448043875284287599','Reeks 1','opleiding'],['1448043426502148159','Reeks 2','opleiding'],
     ['1448043995371540603','Reeks 3','opleiding'],['1448044041823322253','Reeks 4','opleiding'],
     ['1335578488664490057','Middenkader (leidinggevende)'],['1473474238664020151','Officierenkader'],
-    ['1353670078142615592','Korpsleiding']]),
+    ['1562710901080068229','Korpsleiding']]),
   ...make('politie','specialisatie',[
     ['1537606324886442035','Motard-IO','opleiding'],['1358148694297415741','Motard'],
     ['1359656762289946755','Motard-instructeur'],['1508506242299985980','PIT-MOTOR'],
@@ -36,14 +36,15 @@ export const ROLE_CATALOG=Object.freeze([
     ['1309532437952466986','BW log/signa'],['1399000349037166664','Ladderwagen'],
     ['1399006120965570670','Bosbestrijding'],['1309532437952466985','Duiker'],
     ['1399000449457197188','RED-team'],['1309532437952466987','Adviseur gevaarlijke stoffen'],
-    ['1466508322566967609','BW_AMBU']]),
+    ['1466508322566967609','BW_AMBU'],
+    ['1309532437952466989','Brandweer instructeur']]),
   ...make('ambulance','lidmaatschap',[
     ['1309532438053130323','Ambulance'],['1309532437977497697','AMBU rang'],
     ['1368971738834272356','AMBU interesse','interesse']]),
   ...make('ambulance','specialisatie',[
     ['1309532437977497696','Verpleegkundige'],['1360990854445137980','MIP'],
     ['1360990813357609181','MUGHELI'],['1309532437952466988','Medisch instructeur'],
-    ['1309532437977497695','Arts'],['1309532438053130325','AZLS']]),
+    ['1309532437977497695','Arts'],['1309532438053130325','AZLS leiding']]),
   ...make('algemeen','ondersteuning',[
     ['1392989523104895168','Ticket-support'],['1309532438019706967','Comm-helper'],
     ['1309536724463910924','Server booster'],['1311383517103657030','Gewaardeerd lid'],
@@ -68,14 +69,42 @@ export function roleSummary(roleIds){
   const roles=recognizeRoles(roleIds);
   const depts=[...new Set(roles.filter(r=>r.dept!=='algemeen'&&r.stage!=='interesse').map(r=>r.dept))];
   const police=new Set(roles.filter(r=>r.dept==='politie').map(r=>r.id));
-  const rank=police.has('1353670078142615592')?'korpsleiding'
+  const rank=police.has('1562710901080068229')?'korpsleiding'
     :police.has('1473474238664020151')?'officierenkader'
     :police.has('1335578488664490057')?'middenkader'
     :police.has('1351212180120408166')?'basiskader':null;
   return {roles,departments:depts,policeRank:rank,unknownCount:Array.isArray(roleIds)?roleIds.filter(id=>!KNOWN_ROLE_IDS.has(id)).length:0};
 }
+// Explicit training-only permissions. Discord roles do not confer other
+// personnel administration powers and never authorize a different service.
+export const TRAINING_ROLE_IDS=Object.freeze({
+  politie:Object.freeze({
+    leadership:Object.freeze(['1562710901080068229','1473474238664020151','1335578488664490057']),
+    instructors:Object.freeze(['1393050971604516904','1345302115689431061',
+      '1393050551188721865','1359656762289946755','1337156006597103746'])
+  }),
+  ambulance:Object.freeze({
+    leadership:Object.freeze(['1309532438053130325']),
+    instructors:Object.freeze(['1309532437952466988'])
+  }),
+  brandweer:Object.freeze({
+    leadership:Object.freeze(['1395115819020714105']),
+    instructors:Object.freeze(['1309532437952466989'])
+  }),
+  depannage:Object.freeze({
+    leadership:Object.freeze(['1309532438019706969']),
+    instructors:Object.freeze([])
+  }),
+  burger:Object.freeze({
+    leadership:Object.freeze(['1492485336197234728']),
+    instructors:Object.freeze([])
+  }),
+  dispatch:Object.freeze({
+    leadership:Object.freeze([]),
+    instructors:Object.freeze(['1393050971604516904'])
+  })
+});
 export function isInstructorForDept(roles,dept){
-  const names={politie:['Motard-instructeur','K9-instructeur','RAGO-instructeur','AE-instructeur'],
-    dispatch:['Dispatch-instructeur'],ambulance:['Medisch instructeur']};
-  return roles.some(r=>r.dept===dept && names[dept]?.includes(r.name));
+  const ids=TRAINING_ROLE_IDS[dept]?.instructors||[];
+  return roles.some(r=>ids.includes(r.id));
 }
