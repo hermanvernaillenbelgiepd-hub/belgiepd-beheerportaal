@@ -55,7 +55,8 @@ export function deriveServiceDossierDepartments(actor,personnel,member,boardAppo
     if(owned.length!==1)continue;
     const person=owned[0];
     if(dept==='ambulance'&&matchesDuty(person,AMBULANCE))allowed.push(dept);
-    if(dept==='brandweer'&&matchesDuty(person,ZONE))allowed.push(dept);
+    if(dept==='brandweer'&&(matchesDuty(person,ZONE)||
+       ['middle','leadership'].includes(actor.fireAccessLevel)))allowed.push(dept);
     if(dept==='depannage'&&(matchesDuty(person,AWV)||roles.has(DISCORD_AWV_ROLE)))allowed.push(dept);
   }
   return allowed;
