@@ -144,8 +144,38 @@
     if(!current||current==='Niet ingevuld'||current==='—'||current==='Kader')return cadre;
     return current+' · '+cadre;
   }
+  // Sorteer numeriek op CALL, niet op de toevallige Sheets/Firestore-rijvolgorde.
+  // Ook S300 en 008 worden als getallen gelezen; het speciale 008 staat onderaan.
+  const callNumber=call=>{
+    const value=String(call??'').trim();
+    const match=value.match(/^(?:[A-Z]{1,12}[- ]?)?(\d{1,4})$/i);
+    return match?Number(match[1]):null;
+  };
+  const reservedCall=call=>/^(?:[A-Z]{1,12}[- ]?)?008$/i.test(String(call??'').trim());
+  function comparePersonnel(a,b,mode='call-desc'){
+    const nameA=String(a?.name||''),nameB=String(b?.name||'');
+    const nameCompare=nameA.localeCompare(nameB,'nl',{numeric:true,sensitivity:'base'});
+    const fallback=()=>nameCompare||
+      String(a?.dept||'').localeCompare(String(b?.dept||''),'nl')||
+      String(a?.discordId||a?.personId||'').localeCompare(String(b?.discordId||b?.personId||''),'nl');
+    if(mode==='name-asc'||mode==='name-desc')
+      return (mode==='name-desc'?-nameCompare:nameCompare)||
+        String(a?.call||'').localeCompare(String(b?.call||''),'nl',{numeric:true})||fallback();
+    // Bestuursroepnummer 008 is een uitzondering en blijft altijd onderaan.
+    const specialA=reservedCall(a?.call),specialB=reservedCall(b?.call);
+    if(specialA!==specialB)return specialA?1:-1;
+    const na=callNumber(a?.call),nb=callNumber(b?.call);
+    if((na===null)!==(nb===null))return na===null?1:-1;
+    if(na!==null&&nb!==null&&na!==nb)return mode==='call-asc'?na-nb:nb-na;
+    const ca=String(a?.call||''),cb=String(b?.call||'');
+    const alpha=ca.localeCompare(cb,'nl',{numeric:true,sensitivity:'base'});
+    return (mode==='call-asc'?alpha:-alpha)||fallback();
+  }
+  function sortPersonnelRows(rows,mode='call-desc'){
+    return [...rows].sort((a,b)=>comparePersonnel(a,b,mode));
+  }
   root.BPDPersonnelVisuals=Object.freeze({
     rankInfo,specialtyBadges,specialtyIcon,specialtyIconImage,qualification,specialtyStatuses,
-    specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre
+    specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre,comparePersonnel,sortPersonnelRows
   });
 })(typeof window==='object'?window:globalThis);

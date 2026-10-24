@@ -125,3 +125,48 @@ test('Personnel management inline script remains valid JavaScript and homepage h
   for(const match of scripts)assert.doesNotThrow(()=>new Script(match[1].replace(/^import [^\n]*\n/gm,'')));
   assert.equal([...source('public/index.html').matchAll(/<script(?: type="module")?>([\s\S]*?)<\/script>/g)].length,0);
 });
+
+
+test('Personeelslijst sorteert roepnummers numeriek, niet volgens de inkomende Sheets-volgorde',()=>{
+  const api=visuals();
+  const people=[
+    {call:'300',name:'Lorenzo',discordId:'123'},
+    {call:'290',name:'Pablo',discordId:'124'},
+    {call:'730',name:'Brayan',discordId:'125'},
+    {call:'540',name:'Yorben',discordId:'126'},
+    {call:'265',name:'Kip',discordId:'127'},
+    {call:'475',name:'Teenaris',discordId:'128'},
+    {call:'008',name:'Beheer',discordId:'129'},
+    {call:'S920',name:'Officier',discordId:'130'},
+    {call:'401',name:'Jorre',discordId:'131'}
+  ];
+  const calls=mode=>api.sortPersonnelRows(people,mode).map(p=>p.call).join(',');
+  assert.equal(calls('call-desc'),'S920,730,540,475,401,300,290,265,008');
+  assert.equal(calls('call-asc'),'265,290,300,401,475,540,730,S920,008');
+  assert.equal(people[0].call,'300','Sorteren mag de oorspronkelijke volgorde niet wijzigen');
+});
+
+test('Roepnummer-sortering laat onbekende of niet-numerieke calls veilig onderaan',()=>{
+  const api=visuals();
+  const people=[{call:'008',name:'Beheer'},{call:'—',name:'Onbekend'},
+    {call:'AMB-5',name:'Ambulance'}, {call:'900',name:'Korps'},
+    {call:'S-540',name:'Inspecteur'}, {call:'019',name:'Agent'}];
+  assert.equal(api.sortPersonnelRows(people,'call-desc').map(p=>p.call).join(','),
+    '900,S-540,019,AMB-5,—,008');
+  const byName=[{call:'200',name:'Anna'},{call:'300',name:'Zoë'},
+    {call:'008',name:'Bram'}];
+  assert.equal(api.sortPersonnelRows(byName,'name-asc').map(p=>p.name).join(','),'Anna,Bram,Zoë');
+  assert.equal(api.sortPersonnelRows(byName,'name-desc').map(p=>p.name).join(','),'Zoë,Bram,Anna');
+});
+
+test('Personeelsbeheer behoudt sorteerkeuze bij laden, vernieuwen en filteren',()=>{
+  const html=source('public/personeelsbeheer.html');
+  assert.match(html,/<select id="rosterSort">/);
+  assert.match(html,/<option value="call-desc">Roepnummer aflopend/);
+  for(const mode of ['call-asc','name-asc','name-desc'])
+    assert.ok(html.includes('<option value="'+mode+'">'),mode);
+  assert.match(html,/BPDPersonnelVisuals\.sortPersonnelRows\(/);
+  assert.match(html,/\$\('rosterSort'\)\.value/);
+  assert.match(html,/\$\('rosterSort'\)\.onchange=render/);
+  assert.match(html,/BPDPersonnelVisuals\.comparePersonnel\(a,b,'call-desc'\)/);
+});
