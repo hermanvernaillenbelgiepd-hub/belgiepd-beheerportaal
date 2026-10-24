@@ -455,6 +455,16 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
         }
       }
     }
+    // Brandweer heeft zijn eigen, beperkt gegevensmodel. Andere oude dossier-
+    // endpoints mogen vertrouwelijke leidinggevende registraties nooit vrijgeven
+    // aan Brandweer Middenkader of Brandweerleiding.
+    const restrictedFire=['middle','leadership'].includes(req.bpd.fireAccessLevel)&&
+      req.bpd.boardPersonnelAdmin!==true&&req.bpd.fireZoneChief!==true;
+    if(restrictedFire&&/^\\/api\\/(?:personnel|staff-dossiers|registrations|management|specializations|function-changes)(?:\\/|$)/.test(req.path)){
+      const dept=req.params?.dept||req.query?.dept||req.body?.dept;
+      if(!dept||dept==='brandweer')
+        return res.status(403).json({error:'Gebruik het afgeschermde Brandweerdossier in het Dossiercentrum'});
+    }
     // Beveilig elk rechtstreeks geopend individueel dossier, ook met een
     // bekend Discord-ID. Een verborgen rij in de browser is geen toegangscontrole.
     const subjectPath=/^\/api\/(?:personnel\/|staff-dossiers\/|training\/|registrations\/entries(?:\/|$)|management\/cases(?:\/|$)|dossiercentrum\/)/.test(req.path);
