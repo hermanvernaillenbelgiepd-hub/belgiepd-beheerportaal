@@ -44,7 +44,8 @@ test('Read-only own Discord profile fetch derives identity from authenticated to
  assert.ok(ui.includes('id="discordId"'));
  assert.ok(ui.includes('<details class="role-details">'));
  assert.ok(ui.includes('id="botRefresh"'));
- assert.ok(ui.includes("await Promise.all([loadPersonal(),loadLeave()])"));
+ assert.ok(ui.includes("await Promise.all([loadPersonal(),loadNewMemberStatus()])"));
+  assert.ok(ui.includes("if(identity.mode==='staff')loadLeave()"));
  assert.equal(ui.includes('id="discordTab"'),false);
  assert.equal(ui.includes('id="personalTab"'),false);
  assert.ok(ui.includes('id="personalRoles"'));
@@ -74,7 +75,8 @@ test('My Discord reuses central leave APIs and never shows another user’s revi
  assert.ok(ui.includes('renderLeaves(leaves.mine)'));
  assert.ok(ui.includes("await leaveRequest('/api/leave/requests',{startDate:"));
  assert.ok(ui.includes("context.writesEnabled!==true"));
- assert.ok(ui.includes("await Promise.all([loadPersonal(),loadLeave()])"));
+ assert.ok(ui.includes("await Promise.all([loadPersonal(),loadNewMemberStatus()])"));
+  assert.ok(ui.includes("if(identity.mode==='staff')loadLeave()"));
  assert.equal(ui.includes('renderLeaves(leaves.toReview)'),false);
  assert.ok(server.includes("app.get('/api/leave/requests',requireUser"));
  assert.ok(server.includes("app.post('/api/leave/requests',requireUser,requireWrites"));
