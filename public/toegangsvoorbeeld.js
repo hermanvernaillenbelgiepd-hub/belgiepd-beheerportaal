@@ -105,7 +105,7 @@
     const root=document.getElementById('roleButtons');root.replaceChildren();
     for(const role of roles){
       const button=create('button','',role.label);
-      const note=create('span','',role.call==='Nog geen CALL'?'Nog niet ingedeeld':'CALL '+role.call);
+      const note=create('span','',role.call==='Nog geen CALL'?'Nog niet ingedeeld':'CALL '+(selectedCall[role.id]||role.call));
       button.append(note);button.type='button';button.dataset.role=role.id;
       button.setAttribute('aria-pressed',String(role.id===roleId));
       button.addEventListener('click',()=>{roleId=role.id;moduleId=role.id==='nieuw'?'users':'home';draw();});
