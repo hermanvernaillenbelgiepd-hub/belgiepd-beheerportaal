@@ -84,7 +84,7 @@ export function installCallsignSelfServiceRoutes(app,{getSnapshot}){
       if(snap.data.some(p=>p.dept==='politie'&&String(p.call||'')===data.temporaryCall&&p.personId!==id))
         return res.status(409).json({error:'Dit tijdelijke roepnummer wordt al gebruikt. Kies een ander nummer'});
       const existing=await db().collection('bpd_callsign_requests')
-        .where('temporaryCall','==',data.temporaryCall).limit(20).get();
+        .where('temporaryCall','==',data.temporaryCall).get();
       if(existing.docs.some(doc=>doc.id!==id&&
         !['rejected'].includes(doc.get('status'))))
         return res.status(409).json({error:'Dit tijdelijke roepnummer is al gereserveerd of aangevraagd'});
