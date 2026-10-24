@@ -3,7 +3,8 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore,FieldValue } from 'firebase-admin/firestore';
 import { discordPortalAccess } from './discord-portal-access.js';
 import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
-import {activeDossierGrant,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS} from './dossier-grants.js';
+import {activeDossierGrant,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,verifyBoardDiscordRole} from './dossier-grants.js';
+import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
 import {eligibleForTechnicalProfile,technicalCookieIsValid} from './portal-profile-mode.js';
 import { isDiscordId } from './discord-utils.js';
 import { ROLE_CATALOG,roleSummary,SERVICE_DEPTS } from './role-catalog.js';
@@ -56,6 +57,16 @@ async function resolveActor(req,res,next){
       bpd={...bpd,role:'korpsleiding',departments:['politie','brandweer','ambulance','depannage'],
         portalTechnicalMode:true,trustedStaff:true};
     }
+    // Bestuur is independent of operational grade. Grant cross-service TRAINING
+    // only after verified Discord authentication and a fresh guild role or an
+    // approved, unrevoked board appointment; never from a claimed display name.
+    const verifiedBoardIdentity=bpd.provider==='discord'&&isDiscordId(discordId)&&
+      verifiedDiscordIdentity(decoded,member,process.env.DISCORD_GUILD_ID)===discordId;
+    const boardAppointment=verifiedBoardIdentity
+      ?await db().collection(BOARD_COLLECTION).doc(discordId).get():null;
+    bpd.boardPersonnelAdmin=Boolean(verifiedBoardIdentity&&(
+      verifyBoardDiscordRole(member,process.env.DISCORD_GUILD_ID)||
+      activeBoardAppointment(boardAppointment?.data())));
     // A full dossier delegation may additionally grant training log/review for
     // THAT department. Validate the portal account and a fresh Discord identity.
     // Never turn a delegation into a global cadre or role-management grant.
@@ -101,7 +112,7 @@ function inputRecord(x){
   if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId))throw new Error('Ongeldige dienst of Discord ID');
   if(courseName.length<3 || typeof x?.courseName!=='string' || x.courseName.length>150)throw new Error('Ongeldige opleidingsnaam');
   if(typeof x?.details!=='string'||x.details.length>1600)throw new Error('Omschrijving te lang');
-  if(!['in_opleiding','geslaagd','niet_geslaagd'].includes(result))throw new Error('Ongeldig opleidingsresultaat');
+  if(!['in_opleiding','geslaagd','niet_geslaagd','restricted'].includes(result))throw new Error('Ongeldig opleidingsresultaat');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)||new Date(eventDate+'T12:00:00Z').toISOString().slice(0,10)!==eventDate||eventDate>new Date().toISOString().slice(0,10))throw new Error('Ongeldige opleidingsdatum');
   return {department,subjectDiscordId:discordId,courseName,details,eventDate,result};
 }
@@ -117,6 +128,7 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     return matches.length===1?matches[0]:null;
   };
   const mayAccessSubject=(bpd,subject)=>!isCorpsLeadershipPersonnel(subject)||
+    bpd?.boardPersonnelAdmin===true||
     (bpd?.trustedStaff===true && roleForDepartment(bpd,'politie')==='korpsleiding');
   async function guardTrainingSubject(req,res,next){
     const {department,discordId}=req.params;
