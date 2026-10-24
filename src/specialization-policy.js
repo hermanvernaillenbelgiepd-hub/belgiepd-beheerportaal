@@ -3,7 +3,7 @@ import {roleForDepartment} from './leave-policy.js';
 import {SPECIALTY_LABELS} from './normalize.js';
 
 export const PERSONNEL_SPECIALIZATIONS_COLLECTION='bpd_personnel_specializations';
-export const SPECIALTY_STATES=Object.freeze(['Nee','Stage','Ja','Docent','Niet ingevuld']);
+export const SPECIALTY_STATES=Object.freeze(["Nee","Stage","Ja","Docent","Niet ingevuld","AANGEMELD","RESTRICTED","ONTSLAG","INSTRUCTEUR","PLAVA","GPC","INACTIEF","MUG-HELI","SPECIALISATIE","LEIDING","OPLEIDING!","GESCHORST","BLACKLISTED"]);
 const ACCEPTED=new Set(SPECIALTY_STATES);
 export function specialtyReadEnabled(env){return env.BPD_ENABLE_PERSONNEL_SPECIALTIES==='true'}
 export function specialtyWritesEnabled(env){
@@ -26,7 +26,7 @@ export function validateSpecialtyChange(body,dept){
     Object.keys(body).some(k=>!['label','value','reason','expectedRevision'].includes(k)))
     throw Error('Ongeldige specialisatiewijziging');
   if(!allowedSpecialty(dept,body.label))throw Error('Onbekende specialisatie voor deze hulpdienst');
-  if(!ACCEPTED.has(body.value))throw Error('Kies Nee, Stage, Ja, Docent of Niet ingevuld');
+  if(!ACCEPTED.has(body.value))throw Error('Kies een toegestane specialisatiestatus');
   const reason=typeof body.reason==='string'?body.reason.trim():'';
   if(reason.length<15||reason.length>500||/[\x00-\x1f\x7f<>]/.test(reason))
     throw Error('Motivering vereist (15–500 tekens)');
