@@ -322,6 +322,8 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .dossier-rank-label{font-size:12px;line-height:1.2;color:#edf5ff}
 .dossier-rank-label{font-size:12px;line-height:1.2}
 .roster-order-locked{padding:11px 12px;border:1px solid #4d719d;background:#0c1e36;color:#d8e8fd;border-radius:7px;font-size:12px;min-height:40px}
+.dossier-sheet .sheet-identity #sheetSeries{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.dossier-sheet .sheet-identity #sheetSeries .dossier-series-heads{display:block;color:#9cbde5;font-size:10px;font-weight:500;line-height:1.2;letter-spacing:0;text-transform:none;margin:0}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -1607,7 +1609,22 @@ function sheetIdentity(p){
   const label=document.createElement('span');label.className='dossier-rank-label';
   label.textContent=p.rank||'—';rankSlot.append(label);
   $('sheetName').textContent=p.name||'—';
-  $('sheetSeries').textContent=p.series||'—';$('sheetStatus').textContent=p.status||'—';
+  const seriesSlot=$('sheetSeries');
+  seriesSlot.replaceChildren();
+  const seriesTitle=document.createElement('span');
+  seriesTitle.textContent=p.series||'—';
+  seriesSlot.append(seriesTitle);
+  // Reekshoofden zijn zichtbare contactnamen, nooit een bron van toegangsrechten.
+  const seriesHeads={'1':['Dieter'],'2':['Unemi'],'3':['Jones','Roy','J.Eclaire','Seba']};
+  const seriesMatch=String(p.series||'').match(/(?:reeks|serie|series)\s*0?([123])\b/i);
+  const heads=p.dept==='politie'&&seriesMatch?seriesHeads[seriesMatch[1]]:null;
+  if(heads){
+    const line=document.createElement('small');
+    line.className='dossier-series-heads';
+    line.textContent='Reekshoofd'+(heads.length>1?'en':'')+': '+heads.join(', ');
+    seriesSlot.append(line);
+  }
+  $('sheetStatus').textContent=p.status||'—';
   $('sheetDiscordId').textContent=p.discordId||'—';
   $('ficheEditor').hidden=true;$('ficheEditor').open=false;
   $('editPersonnelSummary').hidden=true;
