@@ -61,7 +61,8 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
          result:clean(d.get('result'),40)}));
      }
      return res.json({person:publicInfo(person),visibility:level,entries,trainings,
-       canWrite,canEditSpecialties:req.bpd.fireZoneChief===true&&
+       canWrite,canEditSpecialties:(req.bpd.fireZoneChief===true||
+        req.bpd.portalTechnicalMode===true&&req.bpd.profileTechnicalAvailable===true)&&
        req.bpd.discordId!==person.personId,
        specialties:level==='full'?listed(person.specialties).map(x=>({
          label:clean(x.label,100),value:clean(x.value,40)})):undefined});
@@ -99,7 +100,9 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
          evidenceUrl:'',explanation:reason
        });
        if(type==='sanctie'){
-         const allowedLevel=req.bpd.fireZoneChief===true?'korpsleiding':'middenkader';
+         const allowedLevel=(req.bpd.fireZoneChief===true||
+           req.bpd.portalTechnicalMode===true&&req.bpd.profileTechnicalAvailable===true)
+           ?'korpsleiding':'middenkader';
          const restricted=allowedLevel==='middenkader'&&
            !['Mondelinge waarschuwing','Officiële waarschuwing','Tijdelijke beperking'].includes(values.sanctionType);
          if(restricted||!canChooseSanction(allowedLevel,values.sanctionType,values.severity))
