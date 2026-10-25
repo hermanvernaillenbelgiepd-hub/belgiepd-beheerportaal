@@ -119,6 +119,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         canRequest:maySubmit(ctx,p)
       }));
       const incoming=[];
+      let canReviewTraining=false;
       // Normal members only load their own records. Avoid a service-wide
       // Firestore scan on every login; this also protects Firestore quotas.
       for(const person of ctx.persons){
@@ -129,6 +130,8 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         const serviceLead=dept!=='politie'&&
           ['middenkader','officierenkader','korpsleiding'].includes(rank);
         if(!highPolice&&!seriesLead&&!serviceLead)continue;
+        // This is a verified reviewer, even if the current queue is empty.
+        canReviewTraining=true;
         let query=db().collection('bpd_training_requests');
         // A reekshoofd sees only the own series. That single-field query
         // uses Firestore's automatic index, without requiring a composite.
@@ -143,7 +146,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         }
       }
       incoming.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
-      res.json({scopes,mine,incoming:incoming.slice(0,200)});
+      res.json({scopes,mine,canReviewTraining,incoming:incoming.slice(0,200)});
     }catch(e){error(res,e)}
   });
   app.post('/api/training-requests',identity,async(req,res)=>{

@@ -163,7 +163,12 @@ async function loadTraining(){
     }
     row.append(title,note,status,actions);target.append(row);
   }
-  $('trainingReviewPanel').hidden=!pending.length;
+  if(!pending.length){
+   const empty=document.createElement('p');
+   empty.textContent='Geen openstaande opleidingsaanvragen.';
+   target.append(empty);
+  }
+  $('trainingReviewPanel').hidden=info.canReviewTraining!==true;
  }catch(e){
   // Login or leave notifications may still be functional if this independent module fails.
   const p=$('trainingPersonal');p.textContent='Opleidingsmeldingen: '+e.message;
