@@ -436,7 +436,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         });
         if(oldCall!==proposal.newCall)
           tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
-            type:'callsign_changed',dept,discordId,name:next.name,
+            type:'callsign_changed',rankMovement:true,dept,discordId,name:next.name,
             before:oldCall,after:proposal.newCall,reason:proposal.reason,
             actorDiscordId:req.bpd.discordId,at:FieldValue.serverTimestamp()
           });
