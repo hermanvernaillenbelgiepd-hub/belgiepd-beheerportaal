@@ -185,6 +185,26 @@
     if(prefix==='STAG'&&n>=1&&n<=21)return {group:5,number:n};
     return {group:6,number:999};
   };
+  // Visual service grouping only; never evidence of Discord permissions.
+  // Depannage specialties (DEP2K/FAST/CRANE/WEGENWERKEN) stay independent.
+  const depannageFunction=person=>{
+    const call=String(person?.call||'').trim().toUpperCase().replace(/\./g,'');
+    const rank=String(person?.rank||'').trim().toUpperCase();
+    const awv=/^(?:AWV|ANWV)(?:[- ]?\d{1,4})?$/.test(call)||
+      /(?:AGENTSCHAP\s+WEGEN\s+(?:EN|&)\s+VERKEER|\bANWV\b|\bAWV\b)/.test(rank);
+    const fast=/^FAST(?:[- ]?\d{1,4})?$/.test(call)||
+      /\bF[.\s]*A[.\s]*S[.\s]*T\b|\bFAST\b/.test(rank);
+    const lsra=/^LSRA(?:[- ]?\d{1,4})?$/.test(call)||/\bLSRA\b/.test(rank);
+    // A recent authenticated Discord role is authoritative for this display.
+    // On stale/missing snapshots, fall back to known function/callsign labels.
+    const verified={leiding:0,fast:1,lsra:2}[person.verifiedFunction];
+    const group=Number.isInteger(verified)?verified:awv?0:fast?1:lsra?2:3;
+    const match=call.match(/(\d{1,4})$/);
+    const names=['Agentschap Wegen en Verkeer','F.A.S.T','LSRA','Niet ingedeeld'];
+    const headings=['LEIDING · Agentschap Wegen en Verkeer','F.A.S.T','LSRA','OVERIGE DEPANNAGE'];
+    return {group,number:match?Number(match[1]):0,
+      functionName:names[group],label:headings[group]};
+  };
   function comparePersonnel(a,b,mode='call-desc'){
     const nameA=String(a?.name||''),nameB=String(b?.name||'');
     const nameCompare=nameA.localeCompare(nameB,'nl',{numeric:true,sensitivity:'base'});
@@ -198,6 +218,11 @@
     if(mode==='brandweer'){
       const aa=fireSortKey(a),bb=fireSortKey(b);
       return aa.group-bb.group||aa.number-bb.number||fallback();
+    }
+    if(mode==='depannage'){
+      const aa=depannageFunction(a),bb=depannageFunction(b);
+      return aa.group-bb.group||aa.number-bb.number||
+        String(a?.call||'').localeCompare(String(b?.call||''),'nl',{numeric:true})||fallback();
     }
     // BelgiumPD: hoogste honderdreeks eerst, binnen die reeks oplopend.
     // Bijvoorbeeld 900, 910, 920, 930, daarna 800..., 700..., 600...
@@ -232,6 +257,6 @@
   }
   root.BPDPersonnelVisuals=Object.freeze({
     rankInfo,specialtyBadges,specialtyIcon,specialtyIconImage,qualification,specialtyStatuses,
-    specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre,comparePersonnel,sortPersonnelRows
+    specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre,depannageFunction,comparePersonnel,sortPersonnelRows
   });
 })(typeof window==='object'?window:globalThis);

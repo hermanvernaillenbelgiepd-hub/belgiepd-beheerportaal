@@ -13,7 +13,7 @@ export function filterDossiers(rows,filters={}){
     (!query||[r.name,r.call,r.rank,r.status,r.discordId]
       .some(v=>normalized(v).includes(query))));
 }
-export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-bpd','callsign-police','callsign-fire','callsign-ambulance','callsign-desc','callsign-asc','name-asc','name-desc']);
+export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-bpd','callsign-police','callsign-fire','callsign-ambulance','callsign-depannage','callsign-desc','callsign-asc','name-asc','name-desc']);
 // Compare numerical parts as numbers: e.g. 930 > 404 > 99, including mixed
 // prefixes like SANTO-930 and SANTO-99. Unknown callsigns stay at the bottom.
 const dossierCollator=new Intl.Collator('nl-BE',{numeric:true,sensitivity:'base'});
@@ -133,6 +133,33 @@ const ambulanceCallCompare=(a,b)=>{
   return left.group-right.group||left.priority-right.priority||
     left.number-right.number||compareFilled(a,b);
 };
+// Depannage has functions/Discord service roles, not police-style grades.
+// Match the known function/callsign in the roster; do not infer a function
+// from FAST/CRANE/DEP2K training specialties (which stay in the dossier).
+export function depannageCallGroup(personOrCall){
+  const person=typeof personOrCall==='object'&&personOrCall!==null?personOrCall:{call:personOrCall};
+  const call=String(person.call||'').trim().toUpperCase().replace(/\./g,'');
+  const rank=String(person.rank||'').trim().toUpperCase();
+  const awv=/^(?:AWV|ANWV)(?:[- ]?\d{1,4})?$/.test(call)||
+    /(?:AGENTSCHAP\s+WEGEN\s+(?:EN|&)\s+VERKEER|\bANWV\b|\bAWV\b)/.test(rank);
+  const fast=/^FAST(?:[- ]?\d{1,4})?$/.test(call)||
+    /\bF[.\s]*A[.\s]*S[.\s]*T\b|\bFAST\b/.test(rank);
+  const lsra=/^LSRA(?:[- ]?\d{1,4})?$/.test(call)||/\bLSRA\b/.test(rank);
+  // A recent authenticated Discord role is authoritative for this display.
+  // On stale/missing snapshots, fall back to known function/callsign labels.
+  const verified={leiding:0,fast:1,lsra:2}[person.verifiedFunction];
+  const group=Number.isInteger(verified)?verified:awv?0:fast?1:lsra?2:3;
+  const n=call.match(/(\d{1,4})$/);
+  const number=n?Number(n[1]):0;
+  const labels=['LEIDING · Agentschap Wegen en Verkeer','F.A.S.T','LSRA','OVERIGE DEPANNAGE'];
+  const functions=['Agentschap Wegen en Verkeer','F.A.S.T','LSRA','Niet ingedeeld'];
+  return {group,number,label:labels[group],functionName:functions[group]};
+}
+const depannageCallCompare=(a,b)=>{
+  const left=depannageCallGroup(a),right=depannageCallGroup(b);
+  return left.group-right.group||left.number-right.number||
+    compareFilled(a?.call,b?.call);
+};
 export function sortDossiers(rows,order='callsign-bpd'){
   const mode=DOSSIER_SORT_OPTIONS.includes(order)?order:'callsign-bpd';
   const byName=mode.startsWith('name-'),direction=mode.endsWith('-desc')?-1:1;
@@ -140,6 +167,7 @@ export function sortDossiers(rows,order='callsign-bpd'){
     const main=mode==='callsign-police'?policeCallCompare(a,b):
       mode==='callsign-fire'?fireCallCompare(a?.call,b?.call):
       mode==='callsign-ambulance'?ambulanceCallCompare(a?.call,b?.call):
+      mode==='callsign-depannage'?depannageCallCompare(a,b):
       mode==='callsign-bpd'?bpdCallCompare(a?.call,b?.call):byName
       ?compareFilled(a?.name,b?.name,direction)
       :compareFilled(a?.call,b?.call,direction);

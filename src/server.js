@@ -47,7 +47,7 @@ import {installDossierGrantRoutes} from './dossier-grant-routes.js';
 import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,
   verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
-import {deriveServiceDossierDepartments,verifiedFireZoneChief,verifiedServiceReportRoles} from './service-dossier-access.js';
+import {deriveServiceDossierDepartments,verifiedFireZoneChief,verifiedServiceReportRoles,verifiedDepannageDisplayFunction} from './service-dossier-access.js';
 import {verifiedFireRoles,fireActorClass,FIRE_ROLES} from './fire-dossier-policy.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
@@ -466,6 +466,27 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
             proven.add(grade==='middenkader'?FIRE_ROLES.middle:FIRE_ROLES.leadership);
           req.bpd.fireSubjectRoleSets.set(fireId,proven);
         });
+      }
+    }
+    // Best-effort display-only service function for authorised roster pages.
+    // Uses cached auth snapshots; never grants dossier or manager permissions.
+    req.bpd.depannageSubjectFunctions=Object.create(null);
+    const depannageRosterEndpoint=scope.departments.includes('depannage')&&
+      !snapshot.stale&&(req.path==='/api/dossiercentrum/overview'||
+        req.path==='/api/personnel/overview');
+    if(depannageRosterEndpoint){
+      const ids=[...new Set(roster.filter(p=>p.dept==='depannage'&&
+        /^\d{15,22}$/.test(String(p.personId||''))).map(p=>p.personId))];
+      for(let i=0;i<ids.length;i+=25){
+        const chunk=ids.slice(i,i+25);
+        const members=await Promise.all(chunk.map(subjectId=>
+          cachedAuthDoc('bpd_discord_auth',subjectId)));
+        for(let j=0;j<chunk.length;j++){
+          const label=members[j]?.exists?
+            verifiedDepannageDisplayFunction(members[j].data(),
+              process.env.DISCORD_GUILD_ID):null;
+          if(label)req.bpd.depannageSubjectFunctions[chunk[j]]=label;
+        }
       }
     }
     // Trust a 9xx subject's verified Discord role, never the shared callsign
