@@ -87,7 +87,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       });
       const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
         .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
-      return res.json({records:labelledRecords,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
+      return res.json({records:labelledRecords,pendingPersonnel,
+        discordRechercheUnlinked:allowed.includes('politie')&&
+          !snapshot.stale?req.bpd.policeLrdUnlinked||[]:[],
+        discordRechercheComplete:allowed.includes('politie')&&
+          !snapshot.stale&&req.bpd.policeLrdUnlinkedAvailable===true,
+        testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
         canViewPersonnelDiagnostics:req.bpd.boardPersonnelAdmin===true,
         role:req.bpd.role,departments:allowed,
         writesEnabled:writes(),createEnabled:personnelCreationEnabled(process.env),
