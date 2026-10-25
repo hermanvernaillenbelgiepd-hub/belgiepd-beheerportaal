@@ -557,6 +557,7 @@ app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   res.json({visible:canSeeDashboardManagement(req.bpd),
     showAdvancedDashboard:canSeeAdvancedDashboard(req.bpd),
     dashboardProfile:isFireZoneDashboard(req.bpd)?'brandweer-zone':null,
+    zoneVerified:req.bpd.fireZoneChief===true,
     allowedDepartments:req.bpd.dossierAllowedDepartments||[]});
 });
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
