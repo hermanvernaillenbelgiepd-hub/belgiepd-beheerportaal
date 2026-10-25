@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {createPoliceLrdIndex,fetchBotLrdGuildSnapshot,
+import {createPoliceLrdIndex,createPoliceLrdSubjectVerifier,fetchBotLrdGuildSnapshot,
   LRD_DISCORD_ROLE_ID,LRD_SPECIALTY_LABEL} from '../src/police-lrd-policy.js';
 import {publicPoliceRoster} from '../src/member-dashboard-routes.js';
 import {allowedSpecialty,validateSpecialtyChange,publicSpecializations} from '../src/specialization-policy.js';
@@ -102,9 +102,8 @@ test('LRD is auto-managed; manual LRD toggles are rejected at the server',()=>{
  const oldManual=publicSpecializations(firstPerson,{revision:1,values:{
    [LRD_SPECIALTY_LABEL]:{value:'Ja',source:'manual'}
  }});
- const lrd=oldManual.items.find(row=>row.label===LRD_SPECIALTY_LABEL);
- assert.equal(lrd.value,'Niet gecontroleerd');
- assert.equal(lrd.readOnly,true);
+ assert.equal(oldManual.items.some(row=>row.label===LRD_SPECIALTY_LABEL),false,
+   'Stored manual LRD does not appear without positive bot verification');
 
  assert.throws(()=>validateSpecialtyChange({
   label:LRD_SPECIALTY_LABEL,value:'Ja',expectedRevision:0,
