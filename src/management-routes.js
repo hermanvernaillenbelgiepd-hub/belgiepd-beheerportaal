@@ -3,6 +3,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {isArchivedTraining} from './training-maintenance.js';
+import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
 const asString=x=>String(x??'').trim();
@@ -308,6 +309,59 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
           });
         }
       }
+    }
+    // Professionally audited rank, callsign, name and specialization updates
+    // are part of the same two-week report as dossier and course entries.
+    // The date query is widened by a day on both sides to include Brussels
+    // local dates around DST; each result is filtered to its local calendar day.
+    const startMs=Date.parse(report.periodStart+'T00:00:00Z');
+    const endMs=Date.parse(report.periodEnd+'T00:00:00Z');
+    const personnelChanges=await db().collection(PERSONNEL_ACTIVITY_COLLECTION)
+      .where('at','>=',Timestamp.fromMillis(startMs-86400000))
+      .where('at','<=',Timestamp.fromMillis(endMs+2*86400000))
+      .limit(501).get();
+    if(personnelChanges.size>500)truncated=true;
+    const brusselsDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+      year:'numeric',month:'2-digit',day:'2-digit'});
+    const subjectIds=new Set(uniqueIds);
+    const movements=new Set(['promotion','demotion','rank_changed',
+      'callsign_changed','name_changed','specialization_changed']);
+    for(const entry of personnelChanges.docs.slice(0,500)){
+      const change=entry.data();
+      if(change.dept!==report.dept||!movements.has(change.type)||
+         !subjectIds.has(change.discordId)||!change.at?.toDate?.()||
+         !includedAfterReportRestart(change.at,resetAt)||
+         change.rankMovement===true&&change.type==='callsign_changed')continue;
+      const date=brusselsDate.format(change.at.toDate());
+      if(date<report.periodStart||date>report.periodEnd)continue;
+      const person=uniqueSubject(allSubjects,report.dept,change.discordId);
+      if(!person)continue;
+      const author=allSubjects.find(p=>p.personId===change.actorDiscordId);
+      const category=change.type==='specialization_changed'?
+        'specialisatiewijziging':'personeelsbeweging';
+      const description={
+        promotion:'Promotie',demotion:'Degradatie',rank_changed:'Rangwissel',
+        callsign_changed:'Roepnummerwijziging',name_changed:'Naamswijziging',
+        specialization_changed:'Specialisatiewijziging'
+      }[change.type];
+      const before=String(change.before||'').slice(0,120),
+        after=String(change.after||'').slice(0,120),
+        label=String(change.label||'').slice(0,100),
+        reason=String(change.reason||'').slice(0,500);
+      const details=[
+        description+(label?' · '+label:'')+': '+before+' → '+after,
+        change.previousCall&&change.newCall?
+          'Roepnummer: '+String(change.previousCall).slice(0,24)+' → '+
+            String(change.newCall).slice(0,24):'',
+        reason?'Motivering: '+reason:''
+      ].filter(Boolean).join(' · ');
+      result.push({id:'personnel:'+entry.id,type:category,eventDate:date,
+        subjectDiscordId:change.discordId,
+        subjectNameAtCreation:String(change.name||person.name).slice(0,120),
+        subjectCallAtCreation:person.call,
+        registeredBy:{name:author?.name||'Discord-ID '+String(change.actorDiscordId||'onbekend'),
+          call:author?.call||''},
+        details,source:'bpd_personnel_activity'});
     }
     const sections=reportSections(result,report.periodStart,report.periodEnd);
     const excludedTestCount=result.filter(e=>isTestRecord(e) && e.eventDate>=report.periodStart && e.eventDate<=report.periodEnd).length;

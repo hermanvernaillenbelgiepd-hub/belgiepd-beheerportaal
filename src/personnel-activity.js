@@ -41,7 +41,7 @@ export function validateRetrospectiveCallChange(payload){
 }
 export function staffActivityEvent(id,data){
   if(!data||!SERVICES.has(data.dept)||!ID.test(data.discordId))return null;
-  if(!['promotion','callsign_changed','name_changed'].includes(data.type))return null;
+  if(!['promotion','demotion','rank_changed','specialization_changed','callsign_changed','name_changed'].includes(data.type))return null;
   const at=when(data.at);
   if(!at)return null;
   const before=trim(data.before,100),after=trim(data.after,100);

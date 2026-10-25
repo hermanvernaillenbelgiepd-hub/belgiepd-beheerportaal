@@ -178,15 +178,25 @@ export function mergePersonnelEdits(records,editRecords){
   for(const e of editRecords||[]){
     if(!e||!validPersonnelKey(e.dept,e.discordId))continue;
     if(!Number.isSafeInteger(e.revision)||e.revision<1)continue;
-    if(typeof e.name!=='string'||typeof e.call!=='string'||!EDITABLE_STATUSES.includes(e.status))continue;
+    // Preserve legitimate non-editable legacy statuses during an authorised
+    // rank change; never replace them with a made-up administrative status.
+    const inheritedStatus=e.approvedRankEdit===true&&typeof e.status==='string'&&
+      e.status.length>0&&e.status.length<=100&&!/[<>\x00-\x1f\x7f]/.test(e.status);
+    if(typeof e.name!=='string'||typeof e.call!=='string'||
+       !EDITABLE_STATUSES.includes(e.status)&&!inheritedStatus)continue;
     const key=e.dept+'_'+e.discordId;
     if(byKey.has(key))continue;
     byKey.set(key,e);
   }
   return records.map(p=>{
     const e=byKey.get(p.dept+'_'+p.personId);
-    // Never modify the immutable identity, rank or specialization metadata.
-    return e?{...p,name:e.name,call:e.call,status:e.status,source:'firestore-overlay'}:p;
+    // An explicit, audited server-side rank decision is the only exception
+    // to the otherwise read-only Google Sheets grade. This does not grant roles.
+    if(!e)return p;
+    const officialRank=e.approvedRankEdit===true&&typeof e.rank==='string'?e.rank:p.rank;
+    return {...p,name:e.name,call:e.call,status:e.status,rank:officialRank,
+      ...(p.dept==='politie'?{kader:policeKader(officialRank,e.call)}:{}),
+      source:'firestore-overlay'};
   });
 }
 

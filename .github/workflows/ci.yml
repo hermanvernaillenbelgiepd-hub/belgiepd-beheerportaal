@@ -47,6 +47,7 @@ jobs:
           node --check tests/leave-routes.test.js
       - name: Execute automated tests
         run: npm test
+
       - name: Inspect public Discord login readiness
         if: github.event_name == 'pull_request'
         continue-on-error: true
