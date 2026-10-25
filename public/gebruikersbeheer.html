@@ -355,7 +355,9 @@ async function loadManualRoles(){
     panel.dataset.authorized='yes';panel.hidden=false;
     const body=$('manualRecords');body.replaceChildren();
     const records=data.requests||[];
-    $('manualMessage').textContent=records.length+' handmatige aanvraag/aanvragen · roltoekenning uitsluitend na aparte goedkeuring.';
+    $('manualMessage').textContent=records.length+' handmatige aanvraag/aanvragen · '+
+      (data.canSoloApprove?'Geverifieerde technische beheermodus: je mag ook je eigen ingediende verzoeken voor andere leden goedkeuren. Iedere beslissing wordt gelogd.':
+        'Goedkeuring vereist een tweede bevoegde persoon.');
     if(!records.length){
       const tr=document.createElement('tr');const td=cell(tr,'Geen handmatige rolherstelverzoeken.');td.colSpan=5;body.append(tr);
     }
@@ -374,7 +376,14 @@ async function loadManualRoles(){
           button.className=decision==='rejected'?'danger':'alt';
           button.textContent=decision==='approved'?'Goedkeuren':'Weigeren';
           button.onclick=async()=>{
-            const reason=prompt('Motivering van deze beslissing (minimaal 15 tekens):');
+            const ownRequest=item.requestedBy===data.actorUid;
+             const solo=ownRequest&&data.canSoloApprove;
+             if(ownRequest&&!solo)return notice('Een onafhankelijke goedkeurder is vereist. Alleen de geverifieerde technische beheermodus mag eigen ingediende verzoeken beoordelen.',true);
+             if(decision==='approved'&&!confirm('Bevestig goedkeuring van '+item.discordId+
+               ' als '+(roleNames[item.role]||item.role)+' bij '+(deptNames[item.dept]||item.dept)+
+               (solo?' via de technische uitzonderingsbevoegdheid':'')+
+               '. De beslissing wordt gelogd en wijzigt de portaalrechten.'))return;
+             const reason=prompt('Motivering van deze beslissing (minimaal 15 tekens):');
             if(reason===null)return;
             button.disabled=true;
             try{
