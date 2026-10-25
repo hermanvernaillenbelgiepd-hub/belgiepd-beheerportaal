@@ -5,7 +5,8 @@ import {roleForDepartment} from './leave-policy.js';
 // Police command, and an independent Board/technical profile stays separate.
 export function isFireZoneDashboard(actor){
   if(!actor||actor.fireZoneChief!==true||!actor.departments?.includes('brandweer')||
-      actor.boardPersonnelAdmin===true||actor.portalTechnicalMode===true)return false;
+      actor.boardPersonnelAdmin===true||actor.portalTechnicalMode===true||
+      actor.role==='beheerder')return false;
   return !['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'));
 }
 
