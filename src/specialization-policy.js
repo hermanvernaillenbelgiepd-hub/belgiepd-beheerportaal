@@ -52,12 +52,24 @@ export function publicSpecializations(subject,document){
     .map(x=>[x.label,typeof x.value==='string'?x.value.slice(0,90):'Niet ingevuld']));
   const values=document?.values&&typeof document.values==='object'&&!Array.isArray(document.values)
     ?document.values:{};
+  // The Fire source columns were historically labelled "RED team" and
+  // "Basis TR". Old portal versions also persisted those same qualifications
+  // under aliases RED-TEAM / Basistraining. Preserve existing manual values
+  // under their legacy keys instead of duplicating rows or losing updates.
+  const fireLegacyAliases=subject.dept==='brandweer'?{
+    'RED team':'RED-TEAM','Basis TR':'Basistraining'
+  }:{};
+  const savedManual=entry=>!!entry&&typeof entry==='object'&&
+    ACCEPTED.has(entry.value)&&entry.source==='manual';
   const items=(SPECIALTY_LABELS[subject.dept]||[]).map(label=>{
     const saved=values[label];
-    const valid=!!saved&&typeof saved==='object'&&ACCEPTED.has(saved.value)&&
-      saved.source==='manual';
-    return {label,value:valid?saved.value:(canonical[label]||'Niet ingevuld'),
-      source:valid?'manual':'google-sheets'};
+    const legacy=values[fireLegacyAliases[label]];
+    // Canonical manual edits always take precedence. A legacy explicit
+    // value is kept unless it is only an empty placeholder.
+    const actual=savedManual(saved)?saved:
+      savedManual(legacy)&&legacy.value!=='Niet ingevuld'?legacy:null;
+    return {label,value:actual?actual.value:(canonical[label]||'Niet ingevuld'),
+      source:actual?'manual':'google-sheets'};
   });
   return {items,revision:Number.isSafeInteger(document?.revision)&&document.revision>=0
     ?document.revision:0};
