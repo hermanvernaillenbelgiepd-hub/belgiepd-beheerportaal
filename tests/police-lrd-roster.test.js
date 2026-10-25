@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {LRD_DISCORD_ROLE_ID,LRD_SPECIALTY_LABEL,
-  verifiedPoliceLrdRole,createPoliceLrdIndex} from '../src/police-lrd-policy.js';
+  verifiedPoliceLrdRole,createPoliceLrdIndex,readVerifiedPoliceLrd} from '../src/police-lrd-policy.js';
 import {publicPoliceRoster} from '../src/member-dashboard-routes.js';
 import {SPECIALTY_LABELS} from '../src/normalize.js';
 import {PUBLIC_POLICE_SPECIALTIES} from '../public/member-police-roster.js';
@@ -40,7 +40,8 @@ test('Bounded LRD roster reader refreshes and caches verified membership only',a
       ref.id===first?roleIds:[])}));
   }
  };
- const read=createPoliceLrdIndex({firestore:()=>db,guildId:()=>guild,now:()=>now});
+ const read=createPoliceLrdIndex({firestore:()=>db,guildId:()=>guild,now:()=>now,
+   botToken:()=>null});
  const rows=[person(first),person(second)];
  let ids=await read(rows);
  assert.deepEqual([...ids],[first]);
@@ -59,7 +60,7 @@ test('Public police roster includes verified LRD but never identity or permissio
  assert.equal(records.length,2);
  assert.deepEqual(PUBLIC_POLICE_SPECIALTIES,SPECIALTY_LABELS.politie);
  assert.equal(records[0].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,'Ja');
- assert.equal(records[1].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,'Niet ingevuld');
+ assert.equal(records[1].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,'Niet gecontroleerd');
  assert.equal(records[0].specialties.length,11);
  for(const row of records){
    assert.deepEqual(Object.keys(row).sort(),
@@ -68,15 +69,16 @@ test('Public police roster includes verified LRD but never identity or permissio
  }
  const manual=publicPoliceRoster([{...person(second),
    specialties:[{label:LRD_SPECIALTY_LABEL,value:'Ja'}]}]);
- assert.equal(manual[0].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,'Ja');
+ assert.equal(manual[0].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,'Niet gecontroleerd',
+   'Manuele waarden mogen Discord-rolverificatie niet vervangen');
 });
 
 test('Protected roster displays verified LRD as a presentation-only speciality',()=>{
  const source=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
  const server=source('src/server.js'),manager=source('src/personnel-editor-routes.js');
- assert.match(server,/verifiedPoliceLrdRole\(member,process\.env\.DISCORD_GUILD_ID\)/);
+ assert.match(server,/readVerifiedPoliceLrd\(roster\)/);
  assert.match(manager,/lrdDiscordVerified:lrdVerified/);
- assert.match(manager,/existing\.value='Ja'/);
+ assert.match(manager,/lrdChecked/);
  const display=source('public/personnel-list-visuals.js');
  assert.match(display,/LRD \(Recherche\)/);
  assert.match(display,/\(LRD\|RECHERCHE\)/);

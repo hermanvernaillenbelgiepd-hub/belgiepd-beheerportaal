@@ -1,12 +1,19 @@
+import {createHash} from 'node:crypto';
 import {getFirestore} from 'firebase-admin/firestore';
+import {discordBotToken} from './discord-bot-refresh.js';
 
-// Searchable, display-only LRD speciality. A Discord role is never a cadre,
-// a dossier grant, or permission to change personnel data.
+// Display-only Discord role evidence; NEVER an authorization source.
 export const LRD_DISCORD_ROLE_ID='1380843428354592780';
 export const LRD_SPECIALTY_LABEL='LRD (Recherche)';
 const DISCORD_ID=/^\d{15,22}$/;
 const FRESH_MS=15*60*1000;
-const CACHE_MS=30*1000;
+const OAUTH_CACHE_MS=30000;
+const BOT_CACHE_MS=90000;
+const BOT_DIRECT_LIMIT=48;
+const BOT_DIRECT_CONCURRENCY=6;
+const BOT_LIST_PAGE_SIZE=1000;
+const BOT_LIST_MAX_PAGES=20;
+const MAX_BYTES=4*1024*1024;
 
 export function verifiedPoliceLrdRole(member,guildId,now=Date.now()){
   return Boolean(typeof guildId==='string'&&guildId.length>0&&
@@ -15,46 +22,201 @@ export function verifiedPoliceLrdRole(member,guildId,now=Date.now()){
     member.verifiedAt<=now&&now-member.verifiedAt<=FRESH_MS&&
     Array.isArray(member.roleIds)&&member.roleIds.includes(LRD_DISCORD_ROLE_ID));
 }
-
-// Share one small, time-limited cache across members opening the read-only
-// roster; never fetch the entire Discord identity document to the browser.
-// Firestore getAll batches avoid an N-request load per connected member.
+function checkedSet(positive,checked,source='unknown'){
+  const value=new Set(positive);
+  // No Discord IDs or role payloads are sent directly to the client.
+  value.confirmedIds=new Set(checked);
+  value.source=source;
+  return value;
+}
+const clone=value=>checkedSet(value,value.confirmedIds||[],value.source);
+async function boundedJSON(response){
+  const declared=response.headers?.get?.('content-length');
+  if(declared&&/^\d+$/.test(declared)&&Number(declared)>MAX_BYTES)
+    throw Error('Discord response too large');
+  const body=await response.text();
+  if(Buffer.byteLength(body,'utf8')>MAX_BYTES)throw Error('Discord response too large');
+  return JSON.parse(body);
+}
+// A full guild snapshot is faster and safer than polling every staff member.
+// Discord may require the Server Members Intent for this endpoint. If that
+// intent is unavailable, a bounded, cached per-member bot lookup is used.
+export async function fetchBotLrdGuildSnapshot(guild,token,{
+  fetchImpl=fetch
+}={}){
+  if(!DISCORD_ID.test(guild)||typeof token!=='string'||token.length<35)
+    throw Error('Discord bot not configured');
+  const matched=new Set(),seen=new Set();
+  let after='';
+  for(let page=0;page<BOT_LIST_MAX_PAGES;page++){
+    const url='https://discord.com/api/v10/guilds/'+guild+'/members?limit='+
+      BOT_LIST_PAGE_SIZE+(after?'&after='+after:'');
+    const response=await fetchImpl(url,{
+      headers:{Authorization:'Bot '+token,Accept:'application/json'},
+      method:'GET',redirect:'error',signal:AbortSignal.timeout(8000)
+    });
+    if(response.status===403)return null;
+    if(!response.ok)throw Error('Discord member list temporarily unavailable');
+    const rows=await boundedJSON(response);
+    if(!Array.isArray(rows)||rows.length>BOT_LIST_PAGE_SIZE)
+      throw Error('Invalid Discord member list');
+    let last='';
+    for(const item of rows){
+      const id=item?.user?.id;
+      if(!DISCORD_ID.test(String(id||''))||!Array.isArray(item.roles)||
+         item.roles.length>500||item.roles.some(role=>!DISCORD_ID.test(role)))
+        throw Error('Invalid Discord member');
+      if(seen.has(id))throw Error('Duplicate Discord member');
+      seen.add(id);
+      last=id;
+      if(item.roles.includes(LRD_DISCORD_ROLE_ID))matched.add(id);
+    }
+    if(rows.length<BOT_LIST_PAGE_SIZE)return matched;
+    if(!last||last===after)throw Error('Discord member cursor did not advance');
+    after=last;
+  }
+  throw Error('Discord member list exceeded safe page limit');
+}
+async function readBotMember(guild,token,id,fetchImpl){
+  try{
+    const response=await fetchImpl(
+      'https://discord.com/api/v10/guilds/'+guild+'/members/'+id,{
+        headers:{Authorization:'Bot '+token,Accept:'application/json'},
+        method:'GET',redirect:'error',signal:AbortSignal.timeout(6000)
+      });
+    if(response.status===404)return false;
+    if(!response.ok)return null; // 429/5xx/forbidden: not verified
+    const member=await boundedJSON(response);
+    if(member?.user?.id!==id||!Array.isArray(member.roles)||
+       member.roles.length>500||member.roles.some(role=>!DISCORD_ID.test(role)))
+      return null;
+    return member.roles.includes(LRD_DISCORD_ROLE_ID);
+  }catch{return null;}
+}
 export function createPoliceLrdIndex({
   firestore=()=>getFirestore(),guildId=()=>process.env.DISCORD_GUILD_ID,
-  now=Date.now
+  now=Date.now,botToken=()=>discordBotToken(process.env),fetchImpl=fetch
 }={}){
-  let key=null,expires=0,verified=new Set(),pending=null;
+  let activeConfig=null,cache=null,pending=null;
+  let guildMembers=null,listExpires=0,listUnsupportedUntil=0;
+  let directFailureUntil=0;
+  const individual=new Map();
+  function reset(signature){
+    if(activeConfig===signature)return;
+    activeConfig=signature;cache=null;pending=null;guildMembers=null;
+    listExpires=0;listUnsupportedUntil=0;directFailureUntil=0;
+    individual.clear();
+  }
+  async function oauthFallback(ids,guild,positive,checked){
+    const db=firestore();
+    for(let start=0;start<ids.length;start+=50){
+      const group=ids.slice(start,start+50);
+      const docs=await db.getAll(...group.map(id=>db.collection('bpd_discord_auth').doc(id)));
+      if(docs.length!==group.length)throw Error('LRD-verificatie is onvolledig');
+      for(let i=0;i<docs.length;i++){
+        if(docs[i]?.exists){
+          const member=docs[i].data();
+          if(member?.guildId===guild&&
+             Number.isSafeInteger(member.verifiedAt)&&member.verifiedAt<=now()&&
+             now()-member.verifiedAt<=FRESH_MS&&Array.isArray(member.roleIds)){
+            checked.add(group[i]);
+            if(verifiedPoliceLrdRole(member,guild,now()))positive.add(group[i]);
+          }
+        }
+      }
+    }
+  }
   return async function verifiedMemberIds(roster){
     const ids=[...new Set((Array.isArray(roster)?roster:[])
       .filter(p=>p?.dept==='politie'&&DISCORD_ID.test(String(p.personId||'')))
       .map(p=>p.personId))].sort().slice(0,500);
-    const guild=guildId(),signature=JSON.stringify([guild,ids]);
-    const timestamp=now();
-    if(key===signature&&timestamp<expires)return new Set(verified);
-    if(pending?.signature===signature)return new Set(await pending.promise);
+    const guild=guildId(),token=botToken();
+    const validBot=DISCORD_ID.test(String(guild||''))&&
+      typeof token==='string'&&token.length>=35;
+    // Hash a secret only inside the process, never in a message or response.
+    const configuration=JSON.stringify([guild,validBot?
+      createHash('sha256').update(token).digest('hex'):'not-configured']);
+    reset(configuration);
+    const signature=JSON.stringify([configuration,ids]);
+    if(cache?.signature===signature&&now()<cache.expires)return clone(cache.value);
+    if(pending?.signature===signature)return clone(await pending.promise);
     const job={signature,promise:null};
     job.promise=(async()=>{
-      const found=new Set();
-      if(!guild||!ids.length)return found;
-      const db=firestore();
-      for(let start=0;start<ids.length;start+=50){
-        const group=ids.slice(start,start+50);
-        const docs=await db.getAll(...group.map(id=>db.collection('bpd_discord_auth').doc(id)));
-        if(docs.length!==group.length)throw Error('LRD-verificatie is onvolledig');
-        for(let i=0;i<docs.length;i++){
-          if(docs[i]?.exists&&verifiedPoliceLrdRole(docs[i].data(),guild,now()))
-            found.add(group[i]);
+      const positive=new Set(),checked=new Set();
+      let source='oauth-cache',complete=true;
+      let canUseDirect=now()<listUnsupportedUntil;
+      if(validBot&&ids.length){
+        if(guildMembers&&now()<listExpires){
+          for(const id of ids){
+            checked.add(id);
+            if(guildMembers.has(id))positive.add(id);
+          }
+          source='discord-bot';
+        }else if(now()>=listUnsupportedUntil){
+          try{
+            const snapshot=await fetchBotLrdGuildSnapshot(guild,token,{fetchImpl});
+            if(snapshot){
+              if(activeConfig===configuration){
+                guildMembers=snapshot;listExpires=now()+BOT_CACHE_MS;
+              }
+              for(const id of ids){checked.add(id);if(snapshot.has(id))positive.add(id);}
+              source='discord-bot';
+            }else{
+              if(activeConfig===configuration)
+                listUnsupportedUntil=now()+10*60*1000;
+              canUseDirect=true;
+            }
+          }catch{/* Bot errors are not evidence that any member lacks LRD. */}
+        }
+        if(source!=='discord-bot'&&canUseDirect&&now()>=directFailureUntil){
+          // Server Members Intent unavailable: refresh a limited number of
+          // roster members per request. Subsequent calls continue the scan.
+          const expired=ids.filter(id=>!individual.has(id)||
+            now()-individual.get(id).at>=BOT_CACHE_MS);
+          const queue=expired.slice(0,BOT_DIRECT_LIMIT);
+          let successfulReads=0;
+          for(let i=0;i<queue.length;i+=BOT_DIRECT_CONCURRENCY){
+            const batch=queue.slice(i,i+BOT_DIRECT_CONCURRENCY);
+            const verified=await Promise.all(batch.map(id=>readBotMember(
+              guild,token,id,fetchImpl)));
+            for(let j=0;j<batch.length;j++){
+              if(verified[j]!==null){
+                successfulReads++;
+                if(activeConfig===configuration)
+                  individual.set(batch[j],{present:verified[j],at:now()});
+              }
+            }
+          }
+          if(queue.length&&!successfulReads&&activeConfig===configuration)
+            directFailureUntil=now()+60000;
+          for(const id of ids){
+            const record=individual.get(id);
+            if(record&&now()-record.at<BOT_CACHE_MS){
+              checked.add(id);
+              if(record.present)positive.add(id);
+            }
+          }
+          source=checked.size?'discord-bot-direct':'oauth-cache';
+          complete=checked.size===ids.length;
         }
       }
-      return found;
+      // Only fresh guild-bound snapshots may supplement bot results.
+      // Never let old OAuth evidence override a confirmed bot negative.
+      const missing=ids.filter(id=>!checked.has(id));
+      if(missing.length)await oauthFallback(missing,guild,positive,checked);
+      if(activeConfig!==configuration)return verifiedMemberIds(roster);
+      const value=checkedSet(positive,checked,source);
+      const ttl=validBot&&source!=='discord-bot'&&!complete?
+        1000:source==='discord-bot'?BOT_CACHE_MS:OAUTH_CACHE_MS;
+      if(activeConfig===configuration)
+        cache={signature,value,expires:now()+ttl};
+      return value;
     })();
     pending=job;
-    try{
-      const fresh=await job.promise;
-      if(pending===job){
-        key=signature;verified=new Set(fresh);expires=now()+CACHE_MS;
-      }
-      return new Set(fresh);
-    }finally{if(pending===job)pending=null;}
+    try{return clone(await job.promise)}
+    finally{if(pending===job)pending=null;}
   };
 }
+// Both the protected and the ordinary police roster use the SAME process
+// cache and the SAME bot evidence, preventing repeated Discord API scans.
+export const readVerifiedPoliceLrd=createPoliceLrdIndex();
