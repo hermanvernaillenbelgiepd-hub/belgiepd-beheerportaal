@@ -1,9 +1,9 @@
-import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {isArchivedTraining} from './training-maintenance.js';
-import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports} from './fortnight-report-policy.js';
+import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart} from './fortnight-report-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
@@ -120,6 +120,11 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
         year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       // Each elapsed period is listed back to the first automatic report.
       const automated=automaticFortnightReports(dept,today,52);
+      const latestRestart=await db().collection('bpd_weekreport_restarts').doc(automated[0].id).get();
+      if(latestRestart.exists){
+        automated[0].restartedAt=toIso(latestRestart.get('restartedAt'));
+        automated[0].restartRevision=latestRestart.get('revision')||1;
+      }
       const available=visibleFortnightReports([...automated,...legacy],hidden,today).sort((a,b)=>
         (b.periodStart||'').localeCompare(a.periodStart||''));
       const {active,archive}=splitReportsByPeriod(available,today);
@@ -185,6 +190,51 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       return res.json({saved:true,id});
     }catch(e){errorResponse(res,e)}
   });
+  // Only current automatic report: a reset retains all source records and audits
+  // and changes only which older records appear in the current report.
+  app.post('/api/management/reports/:id/restart',requireUser,async(req,res)=>{
+    if(!enabled())return res.status(503).json({error:'Rapportwijzigingen staan uit'});
+    const id=asString(req.params.id),body=req.body;
+    if(!body||typeof body!=='object'||Array.isArray(body)||
+       Object.keys(body).some(k=>k!=='reason')||
+       typeof body.reason!=='string'||body.reason.trim().length<10||
+       body.reason.trim().length>500)
+      return res.status(400).json({error:'Vul een motivering in van 10 tot 500 tekens'});
+    try{
+      const snap=await getSnapshot();
+      if(snap.stale)return res.status(503).json({error:'Personeelsbron niet actueel'});
+      const report=parseAutomaticReportId(id);
+      const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      if(!report||!isCurrentAutomaticReport(report,today))
+        return res.status(409).json({error:'Alleen het lopende automatische rapport kan opnieuw gestart worden'});
+      if(!canReadServiceDossier(req.bpd,report.dept)||
+         !mayRemoveWeekReport(req.bpd,report.dept,snap.data))
+        return res.status(403).json({error:'Alleen bevoegd Officierenkader of Korpsleiding van Politie mag dit rapport herstarten'});
+      const actor=actorFromPersonnel(req.bpd,snap.data);
+      if(!actor)return res.status(403).json({error:'Eigen personeelsfiche is niet gekoppeld'});
+      const ref=db().collection('bpd_weekreport_restarts').doc(id);
+      const audit=ref.collection('events').doc();
+      const instant=new Date(),at=Timestamp.fromDate(instant);
+      let revision;
+      await db().runTransaction(async tx=>{
+        const current=await tx.get(ref);
+        revision=(current.exists?current.get('revision')||0:0)+1;
+        tx.set(ref,{reportId:id,dept:report.dept,
+          periodStart:report.periodStart,periodEnd:report.periodEnd,
+          restartedAt:at,revision,lastReason:body.reason.trim(),
+          restartedBy:actor,restartedByUid:req.bpd.uid,
+          sourceEntriesPreserved:true});
+        tx.create(audit,{action:'automatic_report_restarted',reportId:id,
+          dept:report.dept,reason:body.reason.trim(),revision,
+          actor,actorUid:req.bpd.uid,at,sourceEntriesPreserved:true});
+      });
+      res.set('Cache-Control','private, no-store');
+      res.json({saved:true,id,revision,restartedAt:instant.toISOString(),
+        periodStart:report.periodStart,periodEnd:report.periodEnd,
+        sourceEntriesPreserved:true});
+    }catch(e){errorResponse(res,e)}
+  });
   // Eén server-side rapportbouwer voor zowel de beveiligde JSON-weergave als DOCX-export.
   // De rechten worden voor elke aanvraag opnieuw gecontroleerd, ook voor downloaden.
   async function assembleReport(req,id){
@@ -204,6 +254,8 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     if(removal.exists&&!isCurrentAutomaticReport(report,today))
       return {status:404,error:'Dit weekrapport is uit het overzicht verwijderd'};
+    const restart=automatic?await db().collection('bpd_weekreport_restarts').doc(id).get():null;
+    const resetAt=restart?.exists?restart.get('restartedAt'):null;
     const allSubjects=snap.data.filter(p=>p.dept===report.dept && validDiscord(p.personId));
     const uniqueIds=[...new Set(allSubjects.map(p=>p.personId))].filter(pid=>uniqueSubject(allSubjects,report.dept,pid));
     const result=[];let truncated=false;
@@ -211,7 +263,9 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const parts=await Promise.all(uniqueIds.slice(i,i+12).map(async pid=>{
         const rows=await db().collection('bpd_cases').doc(caseId(report.dept,pid)).collection('entries')
           .where('eventDate','>=',report.periodStart).where('eventDate','<=',report.periodEnd).limit(201).get();
-        return {truncated:rows.docs.length>200,docs:rows.docs.slice(0,200).filter(d=>d.get('status')!=='verwijderd').map(d=>({id:d.id,...noPrivate(d.data())}))};
+        return {truncated:rows.docs.length>200,docs:rows.docs.slice(0,200)
+          .filter(d=>d.get('status')!=='verwijderd'&&includedAfterReportRestart(d.get('createdAt'),resetAt))
+          .map(d=>({id:d.id,...noPrivate(d.data())}))};
       }));
       for(const part of parts){result.push(...part.docs);if(part.truncated)truncated=true;}
     }
@@ -231,7 +285,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
         const person=uniqueSubject(allSubjects,report.dept,pid);
         for(const doc of rows.slice(0,200)){
           const r=doc.data();
-          if(isArchivedTraining(r))continue;
+          if(isArchivedTraining(r)||!includedAfterReportRestart(r.createdAt,resetAt))continue;
           const teacher=allSubjects.find(p=>p.personId===r.registeredByDiscordId);
           result.push({
             id:'training:'+doc.id,type:'opleiding',eventDate:r.eventDate,
@@ -250,7 +304,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     }
     const sections=reportSections(result,report.periodStart,report.periodEnd);
     const excludedTestCount=result.filter(e=>isTestRecord(e) && e.eventDate>=report.periodStart && e.eventDate<=report.periodEnd).length;
-    return {report:{id:automatic?.id||doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy,source:report.source||'manual'},sections,recordCount:sections.reduce((total,section)=>total+section.entries.length,0),excludedTestCount,truncated,disclaimer:'Conceptweergave uit huidige Firestore-dossiers; als test gemarkeerde registraties zijn uitgesloten. Dit is nog geen afgesloten of juridisch gearchiveerd rapport. Externe Word- en Google-dossiers zijn niet geïmporteerd.'};
+    return {report:{id:automatic?.id||doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy,source:report.source||'manual',restartedAt:resetAt?toIso(resetAt):null},sections,recordCount:sections.reduce((total,section)=>total+section.entries.length,0),excludedTestCount,truncated,disclaimer:'Conceptweergave uit huidige Firestore-dossiers; als test gemarkeerde registraties en registraties van vóór een rapportherstart zijn uitgesloten. Originele dossiergegevens blijven bestaan. Dit is nog geen afgesloten of juridisch gearchiveerd rapport. Externe Word- en Google-dossiers zijn niet geïmporteerd.'};
   }
   app.get('/api/management/reports/:id',requireUser,async(req,res)=>{
     try{
