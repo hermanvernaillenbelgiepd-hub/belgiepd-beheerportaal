@@ -91,8 +91,8 @@ test('Mijn profiel toont de eigen vaste-roepnummerstatus zonder tijdelijk dossie
  assert.match(profile,/id="myCallsignStatus"/);
  assert.match(profile,/href="\/vast-roepnummer-aanvragen\.html"/);
  assert.match(profile,/href="\/personeelslijst\.html"/);
- assert.match(profile,/if\(identity\.mode==='staff'\)loadLeave\(\)/);
- assert.match(profile,/\$\('myLeave'\)\.hidden=identity\.mode==='member'/);
+ assert.match(profile,/if\(canSeeOwnLeave\)loadLeave\(\)/);
+ assert.match(profile,/\$\('myLeave'\)\.hidden=!canSeeOwnLeave/);
  assert.match(profile,/\/api\/callsigns\/self\/status/);
  assert.doesNotMatch(read('src/member-dashboard-routes.js'),/collection\('bpd_cases'\)/);
 });
