@@ -104,6 +104,13 @@ export function canEditGeneralPersonnelInfo(actor,person){
   if(!person||!validPersonnelKey(person.dept,person.personId)||
      !canReadServiceDossier(actor,person.dept)||
      actor?.discordId===person.personId)return false;
+  // ZONE is the Fire equivalent of operational Korpsleiding, provided that
+  // the Fire role, allowed department and native staff scope are server-verified.
+  // This does not grant ZONE any authority in Police, Ambulance or Depannage.
+  if(person.dept==='brandweer'&&actor?.fireZoneChief===true&&
+     actor?.departments?.includes('brandweer')&&
+     actor?.dossierNativeDepartments?.includes('brandweer')&&
+     actor?.dossierAllowedDepartments?.includes('brandweer'))return true;
   // boardPersonnelAdmin is uitsluitend afkomstig van server-geverifieerd Bestuur.
   if(actor?.boardPersonnelAdmin===true)return true;
   if(actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true&&
