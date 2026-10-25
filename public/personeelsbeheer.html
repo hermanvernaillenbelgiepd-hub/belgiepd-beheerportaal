@@ -778,7 +778,7 @@ function availablePersonnelRegistrationKinds(){
       const text=staffCaseLabels[type]||type;
       kinds.push(['case:'+type,
         type==='opleiding'?'Opleiding registreren':
-        type==='verlof'?'Verlofnotitie (geen verlofaanvraag)':text]);
+        text]);
     }
   }
   if(canRegisterOfficialTraining())
@@ -2894,6 +2894,8 @@ async function loadStaffDossier(p){
         encodeURIComponent(p.dept)+'&discordId='+encodeURIComponent(p.discordId));
       dossierCanRetire=access.canRetire===true;
     }catch{dossierCanRetire=false}
+    if(!selected||selected.dept!==p.dept||selected.discordId!==p.discordId||
+       $('panel').hidden)return;
     registrationManualLeave=result.cadreActions?.manualLeave===true;
     refreshPersonnelRegistrationOptions();
     void loadStaffCasePermissions(p,key,result.cadreActions?.cases===true);
