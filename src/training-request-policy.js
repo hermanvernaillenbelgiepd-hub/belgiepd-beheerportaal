@@ -47,9 +47,14 @@ export function requestCourseOptions(dept,tier){
   }
   return coursesForDepartment(dept)||[];
 }
-export function canSubmitTrainingRequest(person,tier,actorRole=null){
+export function canSubmitTrainingRequest(person,tier,actorRole=null,verifiedOwnRecord=false){
   if(!person||!TRAINING_REQUEST_DEPARTMENTS.includes(person.dept))return false;
   if(person.dept!=='politie')return true;
+  // Een opleidingsaanvraag voor JEZELF is geen beheerdershandeling.
+  // De server mag dit uitsluitend toestaan wanneer de aangemelde Discord-ID
+  // exact één actuele politiepersoneelsfiche heeft. Dit verleent geen
+  // lees-, dossier- of beoordelingsrechten aan de aanvrager.
+  if(verifiedOwnRecord===true)return true;
   if(tier==='agentenkader'||tier==='basiskader')return true;
   if(tier==='officierenkader'||tier==='korpsleiding')
     return ['officierenkader','korpsleiding'].includes(actorRole);
