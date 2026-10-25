@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
-<title>Personeelslijst · BelgiumPD</title><style>
+<title>Personeelslijst · BelgiëPD</title><style>
 :root{font:14px/1.5 Inter,"Segoe UI",system-ui,Arial,sans-serif;color:#e7f1ff;background:#09162a;color-scheme:dark}
 *{box-sizing:border-box}body{margin:0}
 header{background:#132842;border-bottom:1px solid #385575;padding:15px max(18px,calc((100vw - 1150px)/2));display:flex;justify-content:space-between;gap:15px;align-items:center}
@@ -21,7 +21,7 @@ tbody tr:nth-child(2n){background:#183450}
 .call{font-weight:800;color:#fff}small{font-size:11px;color:#a7c6e9}
 [hidden]{display:none!important}
 </style><link rel="stylesheet" href="/member-police-roster.css"></head><body>
-<header><strong>🛡️ BelgiumPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
+<header><strong>🛡️ BelgiëPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
 <main><h1>Personeelslijst politie</h1>
 <p>Personeelsleden met rangkenteken, reeks en geregistreerde specialisatiestatus. Alleen lezen: geen dossiers, observaties, Discord-ID’s, sancties of wijzigingen.</p>
 <div class="panel">
@@ -46,7 +46,7 @@ function render(){
 }
 async function load(){
  const token=await idToken();
- if(!token){$('discordLogin').hidden=false;$('message').textContent='Ieder geverifieerd lid van de BelgiumPD Discord-server kan deze personeelslijst bekijken. Log in met Discord; een vast roepnummer is niet vereist.';return;}
+ if(!token){$('discordLogin').hidden=false;$('message').textContent='Ieder geverifieerd lid van de BelgiëPD Discord-server kan deze personeelslijst bekijken. Log in met Discord; een vast roepnummer is niet vereist.';return;}
  $('refresh').disabled=true;
  try{
   const res=await fetch('/api/member/personnel-list',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
@@ -68,7 +68,7 @@ try{
  const app=getApps().length?getApp():initializeApp(config.firebaseConfig);auth=getAuth(app);
  onAuthStateChanged(auth,user=>{
   if(user?.uid?.startsWith('discord:'))load();
-  else {people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiumPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
+  else {people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script></body></html>
