@@ -77,6 +77,11 @@ function svgIcon(kind){
  }
  return svg;
 }
+export function depannageSpecialtyIcon(label){
+ const icon=svgIcon(depannageSpecialtyMeta(label).icon);
+ icon.classList?.add?.('depannage-specialty-svg');
+ return icon;
+}
 export function renderDepannageSpecialties(root,source,{compact=false}={}){
  const rows=depannageSpecialtyRows(source);
  root.replaceChildren();
