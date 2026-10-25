@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {sortDossiers,depannageCallGroup} from '../public/dossiercentrum-view.js';
+import {verifiedDepannageDisplayFunction} from '../src/service-dossier-access.js';
 import '../public/personnel-list-visuals.js';
 
 const rows=[
@@ -50,6 +51,35 @@ test('Depannage display has functions not grades while preserving specialization
  assert.match(dossier,/depannage\?'callsign-depannage':'callsign-bpd'/);
  assert.match(dossier,/depannageCallGroup\(r\)/);
  assert.match(dossier,/depannage\?'Functie':'Graad'/);
+});
+
+test('Recently verified Depannage Discord membership takes priority over a basic LSRA call',()=>{
+ const guild='1309532438053130326',now=Date.UTC(2026,9,25,15,0,0);
+ const member=roleIds=>({guildId:guild,roleIds,verifiedAt:now-60000});
+ assert.equal(verifiedDepannageDisplayFunction(member(['1309532438019706969']),guild,now),'leiding');
+ assert.equal(verifiedDepannageDisplayFunction(member(['1309532438019706970']),guild,now),'fast');
+ assert.equal(verifiedDepannageDisplayFunction(member(['1309532438019706971']),guild,now),'lsra');
+ assert.equal(verifiedDepannageDisplayFunction(member(['1309532438019706969',
+   '1309532438019706970']),guild,now),'leiding');
+ assert.equal(verifiedDepannageDisplayFunction(member(['1309532438019706969']),
+   '123456789123456789',now),null);
+ assert.equal(verifiedDepannageDisplayFunction({...member(['1309532438019706969']),
+   verifiedAt:now-901000},guild,now),null);
+ const basic={call:'LSRA-15',rank:'LSRA'};
+ assert.equal(depannageCallGroup({...basic,verifiedFunction:'leiding'}).group,0);
+ assert.equal(globalThis.BPDPersonnelVisuals.depannageFunction({...basic,verifiedFunction:'leiding'}).group,0);
+ assert.equal(depannageCallGroup(basic).group,2);
+});
+
+test('Verified service roles reach both authorized roster APIs without changing permissions',()=>{
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ const dossier=readFileSync(new URL('../src/dossier-center-routes.js',import.meta.url),'utf8');
+ const staff=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ assert.match(server,/req\.bpd\.depannageSubjectFunctions=Object\.create\(null\)/);
+ assert.match(server,/cachedAuthDoc\('bpd_discord_auth',subjectId\)/);
+ assert.match(server,/verifiedDepannageDisplayFunction\(/);
+ assert.match(dossier,/verifiedFunction:row\.dept==='depannage'/);
+ assert.match(staff,/verifiedFunction:p\.dept==='depannage'/);
 });
 
 test('Ambulance, Brandweer and Police sorts are unchanged',()=>{
