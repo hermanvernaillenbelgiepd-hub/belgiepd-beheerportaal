@@ -72,10 +72,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         const lrdVerified=p.dept==='politie'&&
           req.bpd.policeLrdSubjectIds?.[p.discordId]===true;
         const specialties=p.specialties.map(item=>({...item}));
-        if(lrdVerified){
+        const lrdChecked=req.bpd.policeLrdCheckedIds?.[p.discordId]===true;
+        if(p.dept==='politie'){
+          const status=lrdVerified?'Ja':lrdChecked?'Nee':'Niet gecontroleerd';
           const existing=specialties.find(s=>s.label===LRD_SPECIALTY_LABEL);
-          if(existing)existing.value='Ja';
-          else specialties.push({label:LRD_SPECIALTY_LABEL,value:'Ja'});
+          if(existing)existing.value=status;
+          else specialties.push({label:LRD_SPECIALTY_LABEL,value:status});
         }
         return {...p,specialties,lrdDiscordVerified:lrdVerified,
           discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
