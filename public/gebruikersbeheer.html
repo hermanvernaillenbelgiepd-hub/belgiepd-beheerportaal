@@ -161,6 +161,7 @@ let setupPortalLogin;
 const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
 let boardWritesEnabled=false;
+let accountRoleCatalog=null;
 const roles=['basiskader','middenkader','officierenkader','korpsleiding','bestuur'];
 const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
   depannage:'Depannage',burger:'Burger (administratieve categorie)',
@@ -182,6 +183,16 @@ async function api(path,opts={}){
 }
 function option(value,title){const e=document.createElement('option');e.value=value;e.textContent=title;return e}
 function cell(tr,content){const td=document.createElement('td');if(typeof content==='string')td.textContent=content;else td.append(content);tr.append(td);return td}
+function accountCadreLabel(dept,role){
+  if(role==='bestuur')return roleNames.bestuur;
+  const match=accountRoleCatalog?.[dept]?.find(option=>option.role===role);
+  return match?.label||roleNames[role]||role;
+}
+function setAccountCadreOptions(select,dept,preferred){
+  select.replaceChildren();
+  for(const role of roles)select.append(option(role,accountCadreLabel(dept,role)));
+  select.value=roles.includes(preferred)?preferred:'basiskader';
+}
 const dossierGrants=setupDossierGrantUI({api,notice,$,option,cell});
 let tabChoice=window.location.hash==='#dienstbeheer'?'services':
   window.location.hash==='#verlofmachtigingen'?'leave':'accounts';
@@ -234,11 +245,23 @@ function render(){
       'Toegekende dienst(en): '+(u.departments||[]).map(d=>deptNames[d]||d).join(', ');
     departmentWrap.append(detail);
     cell(row,departmentWrap);
-    const rank=document.createElement('select');for(const name of roles)rank.append(option(name,roleNames[name]));
-    rank.value=u.board?.discord||u.board?.appointed?'bestuur':u.role||'basiskader';
+    const rank=document.createElement('select');
+    const accountDepartmentRole=department=>
+      u.departmentRoles?.[department]||
+      (u.departments?.includes(department)?u.role:null);
+    const isBoard=Boolean(u.board?.discord||u.board?.appointed);
+    const selectedRole=isBoard?'bestuur':accountDepartmentRole(dept.value)||'basiskader';
+    setAccountCadreOptions(rank,dept.value,selectedRole);
     const functionWrap=document.createElement('div');functionWrap.append(rank);
     const explanation=document.createElement('small');explanation.className='muted';
-    explanation.textContent='Operationele rol: '+(roleNames[u.role]||u.role||'Nog niet goedgekeurd');
+    const updateAccountRoleExplanation=()=>{
+      const saved=accountDepartmentRole(dept.value);
+      explanation.textContent=saved?
+        'Huidig portaalkader: '+accountCadreLabel(dept.value,saved)+
+          ' · Formele dienstfunctie wordt afzonderlijk geverifieerd':
+        'Geen bestaande kadergoedkeuring voor deze dienst';
+    };
+    updateAccountRoleExplanation();
     functionWrap.append(explanation);
     if(u.board?.discord||u.board?.appointed){
       const origin=document.createElement('small');origin.className='muted';
@@ -256,7 +279,15 @@ function render(){
       ['burger','technisch_medewerker'].includes(dept.value)?'Categorie opslaan':
       rank.value==='bestuur'?'Bestuur voordragen':
       u.status==='approved'?'Wijzig':'Goedkeuren';
-    rank.onchange=refreshButton;dept.onchange=refreshButton;refreshButton();
+    rank.onchange=refreshButton;
+    dept.onchange=()=>{
+      // Do not silently carry a high Police rank into another service.
+      const previous=accountDepartmentRole(dept.value);
+      setAccountCadreOptions(rank,dept.value,isBoard?'bestuur':previous||'basiskader');
+      updateAccountRoleExplanation();
+      refreshButton();
+    };
+    refreshButton();
     approve.onclick=async()=>{
       if(!dept.value)return notice('Dit account heeft nog geen gekoppelde hulpdienst.',true);
       if(dept.value==='bestuur'||(rank.value==='bestuur'&&serviceDepartments.includes(dept.value))){
@@ -290,6 +321,8 @@ function render(){
         }catch(e){notice(e.message,true)}finally{approve.disabled=false}
         return;
       }
+      if(dept.value==='brandweer'&&rank.value==='korpsleiding'&&
+        !confirm('ZONE – Zonecommandant selecteren? Dit herstelt uitsluitend het portaal-kader Korpsleiding voor Brandweer. De officiële ZONE-functie en volledige brandweerbevoegdheid vereisen daarnaast de bestaande controle van de gekoppelde personeelsfiche en Discord-verificatie. Verdergaan?'))return;
       const reason=prompt('Reden voor goedkeuring/wijziging (minimaal 8 tekens):',
         'Toegang na controle van Discord en personeelsfunctie');
       if(reason===null)return;
@@ -338,6 +371,7 @@ async function loadAdmin(){
       return;
     }
     const data=await api('/api/users/overview');items=data.users||[];
+    accountRoleCatalog=data.roleCatalog||null;
     $('admin').dataset.authorized='yes';$('admin').hidden=false;$('more').hidden=!data.limited;render();
     notice('Aangemeld als '+context.role+'. Gebruikersbeheer geladen ('+items.length+' zichtbare accounts).');
   }catch(e){
