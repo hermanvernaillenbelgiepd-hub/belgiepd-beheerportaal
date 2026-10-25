@@ -3,7 +3,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {SPECIALTY_LABELS} from './normalize.js';
 import {roleForDepartment} from './leave-policy.js';
 import {basicObservationTargets} from './basic-observation-policy.js';
-import { actorFromPersonnel, isCadre, isDiscordId, mayAmend, mayRead, maySubmit, canChooseSanction, permittedSanctionTypes, canRepresent, eligibleRepresentative, representativeFromPersonnel, safeSubject, validateAmend, validateEntry, SANCTION_REASONS } from './registrations.js';
+import { actorFromPersonnel, isCadre, isDiscordId, mayAmend, mayRead, maySubmit, canChooseSanction, permittedSanctionTypes, permittedDepartmentSanctions, canChooseDepartmentSanction, canRepresent, eligibleRepresentative, representativeFromPersonnel, safeSubject, validateAmend, validateEntry, SANCTION_REASONS } from './registrations.js';
 const DEPTS=['politie','brandweer','ambulance','depannage'];
 const trim=s=>String(s??'').trim();
 const isoTimestamp=v=>v?.toDate?.().toISOString()||null;
@@ -32,10 +32,10 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
          .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call})):[];
        const sanctionDepartments=['politie','brandweer','ambulance','depannage'].filter(d=>
          (req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&
-         maySubmit(req.bpd,'sanctie',d)&&permittedSanctionTypes(roleForDepartment(req.bpd,d),10).length>0);
+         maySubmit(req.bpd,'sanctie',d)&&permittedDepartmentSanctions(d,roleForDepartment(req.bpd,d),10).length>0);
        const sanctionRoles=Object.fromEntries(sanctionDepartments.map(d=>[d,roleForDepartment(req.bpd,d)]));
        const sanctionOptionsByDepartment=Object.fromEntries(sanctionDepartments.map(d=>
-         [d,permittedSanctionTypes(sanctionRoles[d],10)]));
+         [d,permittedDepartmentSanctions(d,sanctionRoles[d],10)]));
        const heavySanctionDepartments=sanctionDepartments.filter(d=>sanctionRoles[d]==='korpsleiding');
        const sanctionAmendDepartments=sanctionDepartments.filter(d=>mayAmend(req.bpd,'sanctie',d) &&
          ['officierenkader','korpsleiding'].includes(sanctionRoles[d]));
@@ -112,8 +112,8 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const values=validateEntry(raw);
-       if(type==='sanctie' && !canChooseSanction(
-         roleForDepartment(req.bpd,dept),values.sanctionType,values.severity))
+       if(type==='sanctie' && !canChooseDepartmentSanction(
+         dept,roleForDepartment(req.bpd,dept),values.sanctionType,values.severity))
          return res.status(403).json({error:values.sanctionType==='Voorstel tot degradatie'?
            'Een voorstel tot degradatie is alleen toegestaan bij ernst 9 of 10 op 10.':
            'Deze sanctiemaatregel is niet toegestaan voor jouw kaderrol. Degradatie en schorsing vereisen Officierenkader of Korpsleiding; ontslag en blacklisting uitsluitend Korpsleiding.'});
@@ -160,7 +160,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     try{
       const values=validateAmend(req.body);
       const sanctionRole=roleForDepartment(req.bpd,dept);
-      if(!canChooseSanction(sanctionRole,values.sanctionType,values.severity))
+      if(!canChooseDepartmentSanction(dept,sanctionRole,values.sanctionType,values.severity))
         return res.status(403).json({error:'Geen bevoegdheid voor deze sanctiemaatregel of ernst. Degradatie en schorsing vereisen Officierenkader; ontslag en blacklisting uitsluitend Korpsleiding.'});
       const snap=await getSnapshot();
       if(!safeSubject(snap.data,dept,id))return res.status(404).json({error:'Personeelslid niet gevonden'});
