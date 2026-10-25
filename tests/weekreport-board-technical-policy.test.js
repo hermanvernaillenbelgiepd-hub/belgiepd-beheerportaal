@@ -39,6 +39,7 @@ test('signed technical administration session may see, erase and restart all fou
 test('client flags, invalid identity and missing technical approval never confer technical report deletion',()=>{
  for(const invalid of [
   {...tech,profileTechnicalAvailable:false},
+  {...tech,role:'officierenkader'},
   {...tech,portalTechnicalMode:false},
   {...tech,uid:'discord:999999999999999999'},
   {...tech,discordId:'not-a-discord-id'},
