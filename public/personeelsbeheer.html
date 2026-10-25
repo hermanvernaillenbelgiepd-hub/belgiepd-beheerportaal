@@ -580,7 +580,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 </div><small id="formalDateHint">Je kunt de datum typen of kiezen via de kalender.</small></div>
 <div><label for="formalTime">Tijdstip</label><input id="formalTime" type="time" required></div>
 <div><label for="formalEvidence">Link naar clip / bewijs (optioneel, https)</label><input id="formalEvidence" type="url" maxlength="800" placeholder="https://…"></div>
-<div id="formalScoreField"><label for="formalScore">Observatiescore (1–10)</label><input id="formalScore" type="number" min="1" max="10" step="1" placeholder="1–10"></div>
+<div id="formalScoreField"><label for="formalScore">Observatiescore (0–10; 0 = DEGRADATIE)</label><input id="formalScore" type="number" min="0" max="10" step="1" placeholder="0–10"></div>
 <div style="grid-column:1/-1"><label for="formalDetails">Samenvatting observatie / feiten en omkadering sanctie</label><textarea id="formalDetails" rows="3" maxlength="6000" required></textarea></div>
 <div style="grid-column:1/-1"><label for="formalPlayers">Betrokken personen (optioneel)</label><input id="formalPlayers" maxlength="1000"></div>
 </div>
@@ -2245,8 +2245,8 @@ $('staffFormalForm').onsubmit=async event=>{
     otherPlayers:$('formalPlayers').value,evidenceUrl:$('formalEvidence').value};
   if(!isSanction){
     const score=Number($('formalScore').value);
-    if(!Number.isInteger(score)||score<1||score>10)
-      return notice('Kies een observatiescore van 1 tot 10.',true);
+    if(!Number.isInteger(score)||score<0||score>10)
+      return notice('Kies een observatiescore van 0 tot 10 (0 = DEGRADATIE).',true);
     data.score=score;
   }
   if(isSanction){
