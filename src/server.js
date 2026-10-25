@@ -24,6 +24,7 @@ import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
 import { installRoleRoutes } from './role-routes.js';
+import {installTrainingRequestRoutes} from './training-request-routes.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
 import { installUserRoutes } from './user-routes.js';
@@ -70,6 +71,7 @@ app.use('/api/callsigns',express.json({limit:'12kb',strict:true,
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
+app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
 app.use('/api/dossier-grants',express.json({limit:'4kb',strict:true}));
@@ -518,6 +520,7 @@ installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache
 installCallsignBotRoutes(app);
 installCallsignSelfServiceRoutes(app,{getSnapshot});
 installMemberDashboardRoutes(app,{getSnapshot,accessList});
+installTrainingRequestRoutes(app,{getSnapshot,accessList});
 installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
 installManualRoleRoutes(app,{requireUser});

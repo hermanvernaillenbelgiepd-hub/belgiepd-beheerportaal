@@ -17,7 +17,7 @@ const verifiedRoles=(member,guildId,now)=>{
 const code=text=>typeof text==='string'?text.trim().toUpperCase().replace(/\s+/g,' '):'';
 const AMBULANCE=/^(?:DIRMED|HARTS|HVPK|HAMB)(?:[- ]?\d{1,4})?$/;
 const ZONE=/^ZONE(?:[- ]?\d{1,3}|[ -]COMMANDANT(?:E)?)?$/;
-const AWV=/^(?:AWV(?:[- ]?\d{1,4})?|AGENTSCHAP WEGEN (?:EN|&) VERKEER)$/;
+const AWV=/^(?:(?:AWV|ANWV)(?:[- ]?\d{1,4}|[ -]LEIDING)?|AGENTSCHAP WEGEN (?:EN|&) VERKEER(?:[ -]\(?LEIDING\)?)?)$/;
 const matchesDuty=(person,pattern)=>pattern.test(code(person?.call))||pattern.test(code(person?.rank));
 // Fire brigade administrative privileges require an unambiguous official ZONE
 // record bound to an authenticated Discord identity, never a display name.

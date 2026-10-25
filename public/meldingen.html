@@ -17,7 +17,7 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
 <header><strong>🛡️ BelgiumPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
-<main><h1>📬 Meldingen</h1><p>Bekijk je persoonlijke verlofbeslissingen. Bevoegde kaderleden kunnen hier daarnaast verlofaanvragen van hun dienst behandelen; die extra functie verschijnt alleen als de server daarvoor toegang verleent.</p>
+<main><h1>📬 Meldingen</h1><p>Bekijk je persoonlijke verlofbeslissingen en opleidingsmeldingen. Reekshoofden en bevoegde dienstleiding zien hier aanvragen die zij mogen behandelen.</p>
 <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
 <section id="personalPanel" class="panel" hidden>
  <h2>Mijn verlofmeldingen</h2>
@@ -32,7 +32,9 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
   <h2>Bestuur · eerdere verlofbeslissingen herzien</h2>
   <p>Alleen geverifieerd Bestuur of technisch beheer. Een herziening moet gemotiveerd worden en wordt gelogd.</p>
   <div id="overrideList"></div>
-</section></main>
+</section>
+<section class="panel" id="trainingPersonalPanel" hidden><h2>🎓 Mijn opleidingsaanvragen</h2><div id="trainingPersonal"></div><p><a href="/opleidingscentrum.html">Nieuwe opleiding aanvragen</a></p></section>
+<section class="panel" id="trainingReviewPanel" hidden><div class="actions" style="justify-content:space-between;align-items:center"><h2>🎓 Opleidingen te behandelen <span id="trainingCount" class="pill">0</span></h2><button type="button" id="trainingReload">↻ Vernieuwen</button></div><div id="trainingReview"></div></section></main>
 <script type="module">
 const $=id=>document.getElementById(id);let auth,authMod,writesEnabled=false;
 function feedback(msg,bad=false){$('feedback').textContent=msg;$('feedback').classList.toggle('error',bad)}
@@ -76,6 +78,7 @@ function item(x,override=false){
  }return row;
 }
 async function load(){
+ void loadTraining();
  $('reviewPanel').hidden=true;
  $('personalPanel').hidden=true;
  $('overridePanel').hidden=true;
@@ -117,6 +120,57 @@ async function load(){
   feedback(writesEnabled?'Je kunt aanvragen behandelen binnen je eigen bevoegdheid.':'De verlofmodule staat momenteel op alleen-lezen.');
  }catch(e){feedback(e.message,true)}
 }
+async function loadTraining(){
+ $('trainingReviewPanel').hidden=true;$('trainingPersonalPanel').hidden=true;
+ if(!auth?.currentUser)return;
+ try{
+  const info=await api('/api/training-requests');
+  const own=$('trainingPersonal');own.replaceChildren();
+  for(const r of info.mine||[]){
+   const row=document.createElement('div');row.className='item';
+   const title=document.createElement('strong');title.textContent=r.courseName+' · '+r.department;
+   row.append(title);const message=document.createElement('p');
+   message.textContent=r.status==='gelezen'?
+     'GELEZEN · De bevoegde reekshoofden of leiding hebben je aanvraag ontvangen en gelezen. Zij nemen contact met je op via Discord.':
+     r.status==='gegeven'?'GEGEVEN · De opleiding werd als gegeven geregistreerd.':
+     r.status==='gewist'?'GEWIST · De aanvraag is uit de actieve meldingen verwijderd.':
+     'NIEUW · Je aanvraag is verzonden en wacht op behandeling.';
+   row.append(message);own.append(row);
+  }
+  if(!own.children.length)own.textContent='Geen opleidingsaanvragen.';
+  $('trainingPersonalPanel').hidden=false;
+  const pending=info.incoming||[],target=$('trainingReview');
+  target.replaceChildren();$('trainingCount').textContent=String(pending.length);
+  for(const r of pending){
+    const row=document.createElement('div');row.className='item';
+    const title=document.createElement('strong');title.textContent=
+      r.applicantCall+' · '+r.applicantName+' · '+r.department+' · '+r.courseName;
+    const note=document.createElement('p');note.textContent=r.note||'Geen toelichting';
+    const status=document.createElement('p');status.textContent='Status: '+r.status;
+    const actions=document.createElement('div');actions.className='actions';
+    for(const [action,label] of [['gelezen','GELEZEN'],['gegeven','GEGEVEN'],['wissen','WISSEN']]){
+      if(action==='gelezen'&&r.status!=='nieuw')continue;
+      if(action==='gegeven'&&r.status==='gegeven')continue;
+      const b=document.createElement('button');b.type='button';b.textContent=label;
+      if(action==='gegeven')b.className='primary';
+      b.onclick=async()=>{
+        if(action==='wissen'&&!confirm('Aanvraag wissen? De verwijdering blijft in de audit en het weekrapport.'))return;
+        b.disabled=true;
+        try{await api('/api/training-requests/'+encodeURIComponent(r.id)+'/action',{action});
+          feedback('Opleidingsaanvraag '+label.toLowerCase()+' en gelogd.');await loadTraining();
+        }catch(e){feedback(e.message,true);b.disabled=false}
+      };actions.append(b);
+    }
+    row.append(title,note,status,actions);target.append(row);
+  }
+  $('trainingReviewPanel').hidden=!pending.length;
+ }catch(e){
+  // Login or leave notifications may still be functional if this independent module fails.
+  const p=$('trainingPersonal');p.textContent='Opleidingsmeldingen: '+e.message;
+  $('trainingPersonalPanel').hidden=false;
+ }
+}
+$('trainingReload').onclick=loadTraining;
 $('reload').onclick=load;
 async function init(){
  try{

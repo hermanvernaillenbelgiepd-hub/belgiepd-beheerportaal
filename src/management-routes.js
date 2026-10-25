@@ -3,6 +3,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {isArchivedTraining} from './training-maintenance.js';
+import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments} from './fortnight-report-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
@@ -28,7 +29,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const snap=await getSnapshot();
       const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
       const actor=actorFromPersonnel(req.bpd,snap.data);
-      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d,t))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:req.bpd.dossierNativeDepartments.some(d=>mayExportWeekReport(req.bpd,d)),actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
+      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),reportDepartments:fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d,t))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)).length>0,actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
         typesByDepartment:Object.fromEntries(req.bpd.dossierAllowedDepartments
           .filter(d=>canReadServiceDossier(req.bpd,d))
           .map(d=>[d,MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,d,t))]))});
@@ -102,19 +103,33 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
   });
   app.get('/api/management/reports',requireUser,async(req,res)=>{
     const dept=asString(req.query.dept);
-    if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen toegang tot deze hulpdienst'});
     try{
+      const snapshot=await getSnapshot();
+      if(snapshot.stale)return res.status(503).json({error:'Personeelsbron niet actueel'});
+      if(!canReadServiceDossier(req.bpd,dept)||
+        !mayReadFortnightReport(req.bpd,dept,snapshot.data))
+        return res.status(403).json({error:'Alleen de aangewezen leiding van deze dienst mag de rapporten raadplegen'});
       const snaps=await db().collection('bpd_weekreports').where('dept','==',dept).limit(100).get();
-      const reports=snaps.docs.map(d=>({id:d.id,...d.data(),createdAt:toIso(d.get('createdAt'))})).map(({createdByUid,createdByEmail,...safe})=>safe).sort((a,b)=>(b.periodStart||'').localeCompare(a.periodStart||''));
-      res.json({reports,limited:snaps.docs.length===100});
+      const legacy=snaps.docs.map(d=>({id:d.id,...d.data(),createdAt:toIso(d.get('createdAt'))}))
+        .map(({createdByUid,createdByEmail,...safe})=>safe);
+      const now=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      const automated=automaticFortnightReports(dept,now,26);
+      const reports=[...automated,...legacy].sort((a,b)=>
+        (b.periodStart||'').localeCompare(a.periodStart||''));
+      res.json({reports,limited:snaps.docs.length===100,automatic:true});
     }catch(e){errorResponse(res,e)}
   });
   app.post('/api/management/reports',requireUser,cadre,async(req,res)=>{
     if(!enabled())return res.status(503).json({error:'Opslag staat uit; stel BPD_ENABLE_MANAGEMENT_WRITES=true in na controle'});
     try{
       const r=validateWeekReport(req.body);
-      if(!req.bpd.dossierNativeDepartments?.includes(r.dept)||!canReadServiceDossier(req.bpd,r.dept)||!mayReadManagement(req.bpd,r.dept))return res.status(403).json({error:'Geen rechten voor deze hulpdienst'});
-      const snap=await getSnapshot();const actor=actorFromPersonnel(req.bpd,snap.data);
+      const snap=await getSnapshot();
+      if(!req.bpd.dossierNativeDepartments?.includes(r.dept)||
+        !canReadServiceDossier(req.bpd,r.dept)||
+        !mayReadFortnightReport(req.bpd,r.dept,snap.data))
+        return res.status(403).json({error:'Geen rapportrechten voor deze hulpdienst'});
+      const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel het ingelogde account eerst aan een personeelsfiche'});
       const d=db().collection('bpd_weekreports').doc();
       await d.create({...r,createdBy:actor,createdByUid:req.bpd.uid,createdAt:FieldValue.serverTimestamp()});
@@ -124,12 +139,16 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
   // Eén server-side rapportbouwer voor zowel de beveiligde JSON-weergave als DOCX-export.
   // De rechten worden voor elke aanvraag opnieuw gecontroleerd, ook voor downloaden.
   async function assembleReport(req,id){
-    if(!safeReportId(id))return {status:400,error:'Ongeldige rapportverwijzing'};
-    const ref=db().collection('bpd_weekreports').doc(id),doc=await ref.get();
-    if(!doc.exists)return {status:404,error:'Rapport bestaat niet'};
-    const report=doc.data();
-    if(!canReadServiceDossier(req.bpd,report.dept))return {status:403,error:'Geen toegang tot deze rapportage'};
+    const automatic=parseAutomaticReportId(id);
+    if(!automatic&&!safeReportId(id))return {status:400,error:'Ongeldige rapportverwijzing'};
+    const doc=automatic?null:await db().collection('bpd_weekreports').doc(id).get();
+    if(!automatic&&!doc.exists)return {status:404,error:'Rapport bestaat niet'};
+    const report=automatic||doc.data();
     const snap=await getSnapshot();
+    if(snap.stale)return {status:503,error:'Personeelsbron niet actueel'};
+    if(!canReadServiceDossier(req.bpd,report.dept)||
+      !mayReadFortnightReport(req.bpd,report.dept,snap.data))
+      return {status:403,error:'Geen toegang tot deze dienstgebonden rapportage'};
     const allSubjects=snap.data.filter(p=>p.dept===report.dept && validDiscord(p.personId));
     const uniqueIds=[...new Set(allSubjects.map(p=>p.personId))].filter(pid=>uniqueSubject(allSubjects,report.dept,pid));
     const result=[];let truncated=false;
@@ -176,7 +195,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     }
     const sections=reportSections(result,report.periodStart,report.periodEnd);
     const excludedTestCount=result.filter(e=>isTestRecord(e) && e.eventDate>=report.periodStart && e.eventDate<=report.periodEnd).length;
-    return {report:{id:doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy},sections,recordCount:sections.reduce((total,section)=>total+section.entries.length,0),excludedTestCount,truncated,disclaimer:'Conceptweergave uit huidige Firestore-dossiers; als test gemarkeerde registraties zijn uitgesloten. Dit is nog geen afgesloten of juridisch gearchiveerd rapport. Externe Word- en Google-dossiers zijn niet geïmporteerd.'};
+    return {report:{id:automatic?.id||doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy,source:report.source||'manual'},sections,recordCount:sections.reduce((total,section)=>total+section.entries.length,0),excludedTestCount,truncated,disclaimer:'Conceptweergave uit huidige Firestore-dossiers; als test gemarkeerde registraties zijn uitgesloten. Dit is nog geen afgesloten of juridisch gearchiveerd rapport. Externe Word- en Google-dossiers zijn niet geïmporteerd.'};
   }
   app.get('/api/management/reports/:id',requireUser,async(req,res)=>{
     try{
@@ -186,14 +205,11 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       res.json(report);
     }catch(e){errorResponse(res,e)}
   });
-  app.get('/api/management/reports/:id/docx',requireUser,cadre,async(req,res)=>{
-    // Vroegtijdige serverweigering: een afgeschermde knop of rechtstreekse URL geeft middenkader geen exportrecht.
-    if(req.bpd.portalTechnicalMode!==true&&req.bpd.fireZoneChief!==true&&!['officierenkader','korpsleiding'].includes(req.bpd.role))
-      return res.status(403).json({error:'Word- en PDF-export is uitsluitend toegestaan voor officierenkader en korpsleiding'});
+  app.get('/api/management/reports/:id/docx',requireUser,async(req,res)=>{
     try{
       const report=await assembleReport(req,req.params.id);
-      if(!report.status && !mayExportWeekReport(req.bpd,report.report.dept))
-        return res.status(403).json({error:'Geen exportrechten voor deze hulpdienst'});
+      // Exports use exactly the same server-side service scope as viewing.
+      // The report builder rejects cross-service and non-leadership access.
       if(report.status)return res.status(report.status).json({error:report.error});
       if(report.truncated)return res.status(409).json({error:'Rapportinhoud is onvolledig. Word-export is geblokkeerd totdat de ontbrekende registraties zijn verwerkt.'});
       const file=createWeekReportDocx(report);

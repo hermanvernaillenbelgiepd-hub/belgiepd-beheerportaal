@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Opleidingscentrum · BelgiumPD</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<style>
+:root{font:15px/1.5 system-ui,Segoe UI,Arial,sans-serif;color:#e7edf7;background:#0a1526}
+*{box-sizing:border-box}body{margin:0}
+header{background:#10243f;padding:15px max(18px,calc((100vw - 1050px)/2));display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header a{color:#bbd4f9}header a:first-of-type{margin-left:auto}
+main{max-width:1050px;margin:26px auto;padding:0 18px 50px}h1{margin:0;font-size:27px}h2{font-size:19px;margin-top:0}
+p,small{color:#afc1d9}.card{background:#152943;border:1px solid #355170;border-radius:13px;padding:20px;margin:17px 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:700px){.two{grid-template-columns:1fr}}
+label{display:block;color:#c5d9f6;font-weight:600;margin:12px 0}
+select,input,textarea{width:100%;background:#0a1c32;border:1px solid #547292;color:#edf4ff;border-radius:8px;padding:11px;font:inherit;margin:5px 0}
+textarea{min-height:75px}button{border:0;background:#346bd7;color:white;border-radius:9px;padding:10px 14px;font:inherit;font-weight:650;cursor:pointer}
+button.secondary{background:#284669}button.danger{background:#833747}button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{margin:0}
+.entry{border-top:1px solid #314a69;padding:12px 0}.entry:first-child{border:0}
+.status{padding:10px;border-radius:9px;background:#244d42;color:#d7f9e8;margin:15px 0}.error{background:#673747;color:#ffe0e3}
+.pill{display:inline-block;border:1px solid #55759f;border-radius:16px;padding:2px 8px;font-size:12px;margin-left:7px}
+[hidden]{display:none!important}
+</style></head><body>
+<header><strong>🎓 BelgiumPD · Opleidingscentrum</strong><a href="/">Dashboard</a><a href="/meldingen.html">Meldingen</a><button id="login" type="button">Aanmelden</button></header>
+<main>
+<h1>Opleidingen aanvragen</h1><p>Vraag zelf een opleiding aan binnen je eigen hulpdienst. Agentenkader en Basiskader kiezen uit de politionele opleidingen; Middenkader beschrijft zelf welke opleiding gewenst is.</p>
+<div id="feedback" class="status" role="status">Je account en opleidingsmogelijkheden controleren…</div>
+<section id="formPanel" class="card" hidden><h2>Nieuwe aanvraag</h2>
+<form id="requestForm"><div class="two">
+<label>Hulpdienst<select id="department" required></select></label>
+<label id="courseWrap">Opleiding<select id="course"></select></label>
+</div>
+<label id="variaWrap" hidden>Gewenste opleiding<textarea id="varia" maxlength="150" placeholder="Welke opleiding wil je aanvragen?"></textarea></label>
+<label>Toelichting (optioneel)<textarea id="note" maxlength="500" placeholder="Eventuele motivatie of toelichting"></textarea></label>
+<button id="submit" type="submit">Opleiding aanvragen</button></form>
+<p><small>Je aanvraag wordt zichtbaar bij de bevoegde reekshoofden of dienstleiding. Zodra je aanvraag gelezen is, ontvang je hier een bevestiging. Verdere afspraken verlopen via Discord.</small></p>
+</section>
+<div class="two"><section class="card"><h2>Mijn opleidingsaanvragen</h2><div id="mine">Nog geen gegevens.</div></section>
+<section class="card" id="inboxPanel" hidden><div class="row"><h2>Te behandelen aanvragen</h2><button class="secondary" id="reload" type="button">Vernieuwen</button></div><div id="inbox"></div></section></div>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id),NAMES={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage'};
+let auth,authMod,scopes=[],requests=[];
+const feedback=(s,bad=false)=>{$('feedback').textContent=s;$('feedback').classList.toggle('error',bad)};
+const el=(tag,value)=>{const e=document.createElement(tag);e.textContent=String(value??'');return e};
+async function api(url,body){
+ if(!auth?.currentUser)throw Error('Meld je aan met je eigen BelgiumPD-account');
+ const token=await auth.currentUser.getIdToken();
+ const r=await fetch(url,{method:body?'POST':'GET',cache:'no-store',headers:{
+  Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})
+ },...(body?{body:JSON.stringify(body)}:{})});
+ const result=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(result.error||'Aanvraag mislukt');
+ return result;
+}
+function options(select,items){select.replaceChildren(...items.map(v=>new Option(v.label,v.value)))}
+function syncCourse(){
+ const scope=scopes.find(s=>s.department===$('department').value);
+ if(!scope)return;
+ const custom=scope.department==='politie'&&scope.tier==='middenkader';
+ $('courseWrap').hidden=custom;
+ options($('course'),custom?[{value:'VARIA',label:'Zelf in te vullen'}]:[
+  {value:'',label:'Selecteer een opleiding…'},
+  ...scope.courses.map(v=>({value:v,label:v})),
+  {value:'VARIA',label:'VARIA · zelf invullen'}
+ ]);
+ if(custom)$('course').value='VARIA';
+ syncVaria();
+}
+function syncVaria(){
+ const custom=$('course').value==='VARIA'||$('courseWrap').hidden;
+ $('variaWrap').hidden=!custom;$('varia').required=custom;
+ if(!custom)$('varia').value='';
+}
+$('department').onchange=syncCourse;$('course').onchange=syncVaria;
+function entry(r,review=false){
+ const node=el('div','');node.className='entry';
+ const head=el('strong',(review?(r.applicantCall||'—')+' · '+r.applicantName+' · ':'')+
+   (NAMES[r.department]||r.department)+' · '+r.courseName);node.append(head);
+ const status=el('span',({nieuw:'NIEUW',gelezen:'GELEZEN',gegeven:'GEGEVEN',gewist:'GEWIST'})[r.status]||r.status);
+ status.className='pill';node.append(status);
+ if(r.note)node.append(el('p',r.note));
+ if(!review&&r.status==='gelezen')node.append(el('p','De bevoegde reekshoofden of leiding hebben je aanvraag goed ontvangen en gelezen. Ze nemen contact op via Discord.'));
+ if(!review&&r.status==='gegeven')node.append(el('p','De opleiding is als gegeven geregistreerd.'));
+ if(!review&&r.status==='gewist')node.append(el('p','De aanvraag werd uit de actieve meldingen verwijderd; de historiek blijft bewaard.'));
+ if(review){
+  const row=el('div','');row.className='row';
+  for(const [action,label] of [['gelezen','GELEZEN'],['gegeven','GEGEVEN'],['wissen','WISSEN']]){
+   if(action==='gelezen'&&r.status!=='nieuw')continue;
+   if(action==='gegeven'&&r.status==='gegeven')continue;
+   const button=el('button',label);
+   if(action==='wissen')button.className='danger';
+   button.onclick=async()=>{
+    if(action==='wissen'&&!confirm('Aanvraag wissen? De actie blijft in het weekrapport en de audit bewaard.'))return;
+    button.disabled=true;
+    try{await api('/api/training-requests/'+encodeURIComponent(r.id)+'/action',{action});
+      feedback('Aanvraag '+label.toLowerCase()+' en gelogd.');await load();
+    }catch(e){feedback(e.message,true);button.disabled=false}
+   };
+   row.append(button);
+  }
+  node.append(row);
+ }
+ return node;
+}
+async function load(){
+ try{
+  const data=await api('/api/training-requests');
+  scopes=(data.scopes||[]).filter(s=>s.canRequest===true);
+  const mine=$('mine');mine.replaceChildren(...(data.mine||[]).map(x=>entry(x)));
+  if(!mine.children.length)mine.textContent='Je hebt nog geen opleidingsaanvragen.';
+  $('formPanel').hidden=!scopes.length;
+  if(scopes.length){
+   const selected=$('department').value;
+   options($('department'),scopes.map(s=>({value:s.department,label:NAMES[s.department]||s.department})));
+   if(scopes.some(s=>s.department===selected))$('department').value=selected;
+   syncCourse();
+  }
+  const incoming=data.incoming||[];$('inboxPanel').hidden=!incoming.length;
+  $('inbox').replaceChildren(...incoming.map(x=>entry(x,true)));
+  feedback('Opleidingsgegevens geladen. Alleen je eigen aanvragen en gemachtigde meldingen zijn zichtbaar.');
+ }catch(e){$('formPanel').hidden=$('inboxPanel').hidden=true;feedback(e.message,true)}
+}
+$('requestForm').onsubmit=async event=>{
+ event.preventDefault();$('submit').disabled=true;
+ try{
+  await api('/api/training-requests',{department:$('department').value,
+   course:$('course').value,varia:$('varia').value,note:$('note').value});
+  $('note').value='';$('varia').value='';
+  await load();feedback('Opleidingsaanvraag verzonden. Je kunt de status hier volgen.');
+ }catch(e){feedback(e.message,true)}
+ finally{$('submit').disabled=false}
+};
+$('reload').onclick=load;
+async function init(){
+ const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+ if(!config.enabled)throw Error('Firebase is niet geconfigureerd');
+ const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+ authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+ auth=authMod.getAuth(appModule.initializeApp(config.firebaseConfig));
+ const {setupPortalLogin}=await import('/portal-login.js');
+ setupPortalLogin({button:$('login'),auth,authModule:authMod,config,onError:e=>feedback(e.message,true)});
+ authMod.onAuthStateChanged(auth,()=>load());
+}
+init().catch(e=>feedback(e.message,true));
+</script><script defer src="/bpd-navigation.js"></script></body></html>
