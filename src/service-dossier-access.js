@@ -5,6 +5,7 @@ export const SERVICE_DOSSIER_DEPARTMENTS=Object.freeze(['politie','ambulance','b
 const DISCORD=/^\d{15,22}$/;
 const DISCORD_BOARD_ROLE='1309532438082355251';
 const DISCORD_AWV_ROLE='1309532438019706969';
+const DISCORD_AZLS_ROLE='1309532438053130325';
 // A role snapshot is evidence only when fetched for the authenticated guild member.
 // This module never accepts a display name, a radio label or a client-side claim.
 const verifiedRoles=(member,guildId,now)=>{
@@ -64,4 +65,19 @@ export function deriveServiceDossierDepartments(actor,personnel,member,boardAppo
 export function canReadServiceDossier(actor,dept){
   return SERVICE_DOSSIER_DEPARTMENTS.includes(dept)&&
     Array.isArray(actor?.dossierAllowedDepartments)&&actor.dossierAllowedDepartments.includes(dept);
+}
+
+/** Server-only proof of medical and towing leadership for reading reports.
+ * Do not derive this from Police cadre, an unverified display label, or an
+ * inherited dossier grant. The member role snapshot is guild-bound and fresh.
+ */
+export function verifiedServiceReportRoles(actor,member,guildId,now=Date.now()){
+  const empty={ambulanceAzls:false,depannageAwv:false};
+  if(!actor||!DISCORD.test(actor.discordId)||actor.uid!=='discord:'+actor.discordId||
+     !Array.isArray(actor.departments)||actor.portalTechnicalMode===true)return empty;
+  const roles=verifiedRoles(member,guildId,now);
+  return {
+    ambulanceAzls:actor.departments.includes('ambulance')&&roles.has(DISCORD_AZLS_ROLE),
+    depannageAwv:actor.departments.includes('depannage')&&roles.has(DISCORD_AWV_ROLE)
+  };
 }
