@@ -1,5 +1,5 @@
 <!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer"><title>BelgiumPD · Discord-koppeling</title>
+<meta name="referrer" content="no-referrer"><title>BelgiëPD · Discord-koppeling</title>
 <style>
 :root{font-family:Inter,system-ui,Segoe UI,sans-serif;color:#eef4ff;background:#071124}
 *{box-sizing:border-box}body{margin:0}header{background:#132642;border-bottom:1px solid #385273;padding:18px max(20px,calc((100vw - 960px)/2));display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px}
@@ -11,13 +11,13 @@ input{background:#0a1933;border:1px solid #496487;color:white;width:100%;margin:
 small{display:block;color:#a5bad7}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head>
-<body><header><strong>🛡️ BelgiumPD / Discord-koppeling</strong><a href="/personeelsbeheer.html">Personeelsbeheer</a><a href="/solliciteren.html">Solliciteren hulpdiensten</a><button id="login">Aanmelden</button></header>
+<body><header><strong>🛡️ BelgiëPD / Discord-koppeling</strong><a href="/personeelsbeheer.html">Personeelsbeheer</a><a href="/solliciteren.html">Solliciteren hulpdiensten</a><button id="login">Aanmelden</button></header>
 <main><h1>Koppel je Discord-account aan je personeelsfiche</h1>
 <p>Je hoeft hiervoor geen bestaand portaalaccount te hebben. Meld je aan via Discord en vul de <strong>interne referentie</strong> in die je van een bevoegd kaderlid hebt ontvangen.</p>
 <div id="message" class="notice" role="status" aria-live="polite">Discord-aanmelding controleren…</div>
 <p><a id="discordLogin" href="/auth/discord/start?return=%2Fpersoneel-koppelen.html" hidden>Discord-aanmelding starten of opnieuw verifiëren</a></p>
 <div class="card"><h2>Mijn koppelaanvraag</h2>
-<p>Je Discord-identiteit wordt via de bestaande BelgiumPD-login geverifieerd. De koppeling is pas definitief na controle door het bevoegde kader.</p>
+<p>Je Discord-identiteit wordt via de bestaande BelgiëPD-login geverifieerd. De koppeling is pas definitief na controle door het bevoegde kader.</p>
 <form id="linkForm"><label for="reference">Interne personeelsreferentie</label>
 <input id="reference" required minlength="12" maxlength="40" pattern="[A-Za-z0-9]{12,40}" placeholder="Referentie uit het personeelsbeheer">
 <button id="send" type="submit">Discord-koppeling aanvragen</button></form>
