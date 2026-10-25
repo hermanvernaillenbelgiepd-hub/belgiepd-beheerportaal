@@ -8,7 +8,8 @@ export const RECORD_LABELS = Object.freeze({
   observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Personeelsnotitie',
   opleiding:'Opleidingen en resultaten', activiteit:'Dienstactiviteit',
   specialisatiebeperking:'Specialisatiebeperking', naamswijziging:'Naamswijziging',
-  promotievoorstel:'Promotievoorstel', personeelsbeweging:'Personeelsbeweging'
+  promotievoorstel:'Promotievoorstel', personeelsbeweging:'Personeelsbeweging',
+  specialisatiewijziging:'Specialisatiewijziging'
 });
 export const validDiscord = id => /^\d{15,22}$/.test(String(id??''));
 export const allowedDept = (actor,dept) => ['politie','ambulance','brandweer','depannage'].includes(dept) && actor?.departments?.includes(dept);
