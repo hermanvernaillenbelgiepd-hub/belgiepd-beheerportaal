@@ -49,7 +49,7 @@ function showUnlinkedRecherche(data){
  list.replaceChildren();
  const complete=data.discordRechercheComplete===true;
  const people=Array.isArray(data.discordRechercheUnlinked)?data.discordRechercheUnlinked:[];
- root.hidden=!complete&&!people.length;
+ root.hidden=false;
  if(!complete){status.textContent='Discord-ledenlijst kon niet volledig worden gecontroleerd.';return;}
  status.textContent=people.length+' rechercheleden zonder politionele personeelsfiche';
  for(const p of people){
