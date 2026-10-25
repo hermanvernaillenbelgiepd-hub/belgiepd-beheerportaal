@@ -1156,7 +1156,7 @@ function render(){
     people.filter(x=>(dept==='all'||dept===x.dept)&&
       [x.name,x.call,x.discordId,x.rank,x.series,...(x.specialties||[]).map(t=>t.label)]
         .some(v=>String(v||'').toLowerCase().includes(q))),
-    dept==='ambulance'?'ambulance':'series-desc'
+    dept==='ambulance'?'ambulance':dept==='brandweer'?'brandweer':'series-desc'
   );
   $('count').textContent=matches.length+' fiche(s) zichtbaar';
   const cols=BPDPersonnelVisuals.specialtyColumns(dept);
