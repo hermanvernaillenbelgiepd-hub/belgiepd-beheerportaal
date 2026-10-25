@@ -55,7 +55,8 @@ export function deriveServiceDossierDepartments(actor,personnel,member,boardAppo
     const owned=roster.filter(p=>p?.dept===dept&&p.personId===actor.discordId);
     if(owned.length!==1)continue;
     const person=owned[0];
-    if(dept==='ambulance'&&matchesDuty(person,AMBULANCE))allowed.push(dept);
+    if(dept==='ambulance'&&(matchesDuty(person,AMBULANCE)||
+       actor.uid==='discord:'+actor.discordId&&roles.has(DISCORD_AZLS_ROLE)))allowed.push(dept);
     if(dept==='brandweer'&&(matchesDuty(person,ZONE)||
        ['middle','leadership'].includes(actor.fireAccessLevel)))allowed.push(dept);
     if(dept==='depannage'&&(matchesDuty(person,AWV)||roles.has(DISCORD_AWV_ROLE)))allowed.push(dept);
