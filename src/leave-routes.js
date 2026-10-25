@@ -147,6 +147,29 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
   });
   // Dossierweergave per hulpdienst: enkel kalenderdata/status, GEEN reden of
   // vertrouwelijke beslissing. Een medewerker mag zijn eigen verlof zien.
+  // Only current, APPROVED leave is shown in the roster. Date boundaries
+  // use Europe/Brussels calendar days, not server time or historical status.
+  app.get('/api/leave/roster-active',requireDossierUser,async(req,res)=>{
+    try{
+      const {snapshot}=await context(req);
+      const allowed=req.bpd.dossierAllowedDepartments||req.bpd.departments||[];
+      const visibleIds=new Set(snapshot.filter(p=>allowed.includes(p.dept))
+        .map(p=>p.personId).filter(validDiscordId));
+      if(!visibleIds.size)return res.json({activeDiscordIds:[],date:yyyyMmDd()});
+      const today=yyyyMmDd();
+      const snap=await db().collection(coll).where('status','==','approved')
+        .limit(1500).get();
+      const active=new Set();
+      for(const doc of snap.docs){
+        const row=doc.data();
+        if(visibleIds.has(row.personDiscordId)&&row.startDate<=today&&
+          row.endDate>=today)active.add(row.personDiscordId);
+      }
+      res.set('Cache-Control','no-store');
+      return res.json({activeDiscordIds:[...active],date:today,
+        limited:snap.size===1500});
+    }catch(e){return jsonError(res,e)}
+  });
   app.get('/api/leave/person/:discordId',requireDossierUser,async(req,res)=>{
     const personId=String(req.params.discordId||''),dept=String(req.query.dept||'');
     if(!validDiscordId(personId))return res.status(400).json({error:'Ongeldige Discord ID'});
