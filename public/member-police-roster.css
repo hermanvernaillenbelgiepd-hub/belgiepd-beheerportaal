@@ -1,0 +1,55 @@
+
+/* Shared Police staff list: deliberately read-only, no dossiers or Discord IDs. */
+.mr-wrapper{width:100%;background:#0f2440;color:#e9f2ff;border:1px solid #345377;
+ border-radius:11px;overflow:hidden;font:12px/1.4 Inter,"Segoe UI",Arial,sans-serif}
+.mr-scroll{overflow:auto;max-height:min(72vh,790px);scrollbar-color:#7794b3 #1b304c}
+.mr-table{border-collapse:separate;border-spacing:0;width:100%;min-width:1480px}
+.mr-table th{position:sticky;top:0;z-index:3;padding:11px 9px;text-align:left;
+ background:#1b3656;color:#c2daf7;font-size:10px;letter-spacing:.02em;
+ border-right:1px solid #3d5776;border-bottom:2px solid #5879a6;white-space:nowrap}
+.mr-table th.mr-specialty-head{text-align:center;min-width:89px;white-space:normal}
+.mr-specialty-head small{display:block;font-size:10px;color:#dbeaff}
+.mr-specialty-icon{display:block;font-size:20px;margin-bottom:4px}
+.mr-table td{padding:8px 9px;border-bottom:1px solid #345474;border-right:1px solid #304d6d;
+ vertical-align:middle;color:#ebf4ff;background:#102540}
+.mr-table tbody tr.mr-person:nth-of-type(even) td{background:#172f4e}
+.mr-table tbody tr.mr-person:hover td{background:#224265}
+.mr-table td.mr-call{font-weight:800;font-size:13px;white-space:nowrap}
+.mr-rank{display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:10px}
+.mr-insignia{width:41px;max-height:20px;object-fit:contain}
+.mr-series{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.mr-series-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:6px;
+ border:1px solid #6687ac;color:#cde4ff;background:#254467;font-size:10px;
+ font-weight:800;white-space:nowrap}
+.mr-series-badge.mr-series-1{background:#64252b;border-color:#b9525a;color:#ffb3b3}
+.mr-series-badge.mr-series-2{background:#4b2769;border-color:#9864c5;color:#eac5ff}
+.mr-series-badge.mr-series-3{background:#164b70;border-color:#56b4e0;color:#b0eaff}
+.mr-series-badge.mr-series-4{background:#655016;border-color:#d7b250;color:#ffe88b}
+.mr-series-badge.mr-butterfly{background:#483769;border-color:#b09cdf;color:#f4e5ff}
+.mr-series-badge.mr-officer,.mr-series-badge.mr-combined{background:linear-gradient(110deg,#87365c,#83508c,#347aab,#2b887d);
+ border-color:#e0caff;color:white}
+.mr-series-badge.mr-corps{background:#58451d;border-color:#dfb75a;color:#ffe599}
+.mr-status{display:inline-block;border:1px solid #466b96;background:#2b4970;border-radius:5px;
+ color:#e1edff;padding:3px 8px;font-size:11px;font-weight:700;white-space:nowrap}
+.mr-table td.mr-specialty-cell{text-align:center;padding:5px 4px}
+.mr-specialty{display:block;border-radius:4px;padding:7px 4px;font-size:10px;
+ font-weight:800;white-space:nowrap}
+.mr-specialty.mr-yes{background:#156548;color:#d9ffe7}
+.mr-specialty.mr-no{background:#344b69;color:#e5effc}
+.mr-specialty.mr-stage{background:#a57c17;color:#fff8cf}
+.mr-specialty.mr-lead{background:#6650a8;color:#fff}
+.mr-specialty.mr-warning{background:#8d3a43;color:#ffe1e4}
+.mr-specialty.mr-unknown{background:#30445b;color:#c7d4e6}
+.mr-table tr.mr-divider td{position:relative;background:#25466e!important;color:#fff!important;
+ border-top:2px solid #7095bf;border-bottom:2px solid #587ca6;padding:7px 11px;
+ font-size:11px;font-weight:850;letter-spacing:.035em}
+.mr-divider .mr-count{color:#bad3ef;margin-left:10px;font-size:10px}
+.mr-divider.mr-korpsleiding td{box-shadow:inset 5px 0 #d8ae5a}
+.mr-divider.mr-officierenkader td{box-shadow:inset 5px 0 #c19beb}
+.mr-divider.mr-middenkader td{box-shadow:inset 5px 0 #7dc7eb}
+.mr-divider.mr-basiskader td{box-shadow:inset 5px 0 #8acc98}
+.mr-divider.mr-agentenkader td{box-shadow:inset 5px 0 #a9b9d5}
+.mr-divider.mr-overig td{box-shadow:inset 5px 0 #8791a5}
+.mr-table th:first-child{min-width:74px}.mr-table th:nth-child(3){min-width:164px}
+.mr-table th:nth-child(4){min-width:152px}.mr-table th:nth-child(5){min-width:125px}
+.mr-table th:nth-child(6){min-width:95px}
