@@ -132,10 +132,18 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
   app.get('/api/member/personnel-list',memberIdentity,async(_req,res)=>{
     try{
       const snapshot=await getSnapshot();
-      // Stale Sheets data cannot establish a fresh personnel-to-Discord match.
-      const lrdIds=snapshot.stale?new Set():await getVerifiedLrdIds(snapshot.data);
+      // An unavailable Discord-role lookup must not take the entire read-only
+      // personnel list offline; no unverified LRD badges are shown on failure.
+      let lrdIds=new Set(),lrdVerificationUnavailable=false;
+      if(!snapshot.stale){
+        try{lrdIds=await getVerifiedLrdIds(snapshot.data);}
+        catch(error){
+          lrdVerificationUnavailable=true;
+          console.error('LRD-rolverificatie:',error?.code||'tijdelijk niet beschikbaar');
+        }
+      }
       return res.json({records:publicPoliceRoster(snapshot.data,lrdIds),stale:snapshot.stale,
-        readOnly:true});
+        readOnly:true,lrdVerificationUnavailable});
     }catch(error){
       console.error('Leesbare personeelslijst:',error?.code||'bron niet beschikbaar');
       return res.status(503).json({error:'Personeelslijst momenteel niet beschikbaar'});
