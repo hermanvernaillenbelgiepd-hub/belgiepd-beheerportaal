@@ -49,6 +49,8 @@ test('Board and approved technical admins retain independent management profile'
  assert.equal(isFireZoneDashboard({...zone,role:'beheerder'}),false);
  assert.equal(isFireZoneDashboard({...zone,fireZoneChief:false}),true,
    'Approved Brandweer-korpsleiding should still see restricted ZONE workspace pending verification');
+ assert.equal(isFireZoneDashboard({...zone,role:'middenkader',fireZoneChief:false}),false,
+   'An unapproved secondary high-role claim never creates a ZONE dashboard');
  assert.equal(isFireZoneDashboard({...zone,departments:['politie','brandweer'],
   departmentRoles:{politie:'officierenkader',brandweer:'korpsleiding'}}),false);
  const admin={...zone,role:'beheerder',departments:['brandweer'],
