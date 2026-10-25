@@ -67,14 +67,14 @@ const authenticatedActor=actor=>/^[0-9]{15,22}$/.test(String(actor?.discordId||'
   actor?.uid==='discord:'+actor.discordId;
 const isBoardReader=actor=>authenticatedActor(actor)&&
   actor.boardPersonnelAdmin===true;
-const isTechnicalReportAdmin=actor=>authenticatedActor(actor)&&
+export const isVerifiedReportTechnicalAdmin=actor=>authenticatedActor(actor)&&
   actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true;
 
 export function mayReadFortnightReport(actor,dept,roster){
   if(!DEPTS.includes(dept))return false;
   // Verified Bestuur reads every service's reports; only the separately
   // authenticated technical manager gains additional deletion rights.
-  if(isTechnicalReportAdmin(actor)||isBoardReader(actor))return true;
+  if(isVerifiedReportTechnicalAdmin(actor)||isBoardReader(actor))return true;
   if(!actor?.departments?.includes(dept))return false;
   const scoped=roleForDepartment(actor,dept);
   if(dept==='politie')return ['officierenkader','korpsleiding'].includes(scoped);
@@ -105,7 +105,7 @@ export function fortnightReportDepartments(actor,roster){
  */
 export function mayRemoveWeekReport(actor,dept,roster){
   if(!DEPTS.includes(dept))return false;
-  if(isTechnicalReportAdmin(actor))return true;
+  if(isVerifiedReportTechnicalAdmin(actor))return true;
   // Generic Bestuur is read-only. Preserve previously authorised Police
   // Officierenkader / Korpsleiding deletion, but no other cross-service
   // rank grants.
