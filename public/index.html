@@ -177,7 +177,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
       <a id="memberLeaveTile" href="/verlofbeheer.html" hidden>📅 Mijn verlof</a>
       <a id="memberNoticesTile" href="/meldingen.html" hidden>📬 Meldingen</a>
       <a id="memberCallsignTile" href="/vast-roepnummer-aanvragen.html" hidden>🔢 <span id="memberCallsignAction">Vast roepnummer aanvragen</span></a>
-      <span id="memberTrainingTile" class="member-upcoming" title="De aanvraagmodule is nog niet beschikbaar">🎓 Opleiding aanvragen · binnenkort</span>
+      <a id="memberTrainingTile" href="/opleidingscentrum.html" hidden>🎓 Opleiding aanvragen</a>
     </nav>
     <section class="member-roster-primary" aria-labelledby="memberRosterTitle">
       <div class="member-roster-top">
@@ -214,11 +214,12 @@ const $=id=>document.getElementById(id);
 const staffNav=$('staffNav'),memberNav=$('memberNav'),staffHome=$('staffDashboard');
 const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
 const adminSection=$('adminRights'),adminNavLink=$('adminNavLink'),logoutButton=$('dashboardLogout');
-const simpleIds=['memberNavCallsign','memberCallsignTile','memberNavLeave','memberLeaveTile','memberNavNotices','memberNoticesTile'];
+const simpleIds=['memberTrainingTile','memberNavCallsign','memberCallsignTile','memberNavLeave','memberLeaveTile','memberNavNotices','memberNoticesTile'];
 function resetSimpleModules(){for(const id of simpleIds)$(id).hidden=true}
 function displaySimpleModules(details){
  const canSelf=details.canUseSelfService===true;
  const canCall=details.callsignRequestAvailable===true;
+ $('memberTrainingTile').hidden=details.hasPersonnelRecord!==true;
  $('memberNavCallsign').hidden=!canCall;
  $('memberCallsignTile').hidden=!canCall;
  $('memberNavLeave').hidden=!canSelf;
@@ -229,7 +230,7 @@ function displaySimpleModules(details){
 function showApprovedBasicDashboard(){
  show('member');
  // Emergency/legacy login cannot use Discord-only callsign verification.
- displaySimpleModules({canUseSelfService:true,callsignRequestAvailable:false});
+ displaySimpleModules({canUseSelfService:true,callsignRequestAvailable:false,hasPersonnelRecord:true});
  $('memberAccountStatus').textContent='Je account heeft gewone personeelsrechten. Je ziet de personeelslijst en je persoonlijke functies.';
  $('memberRosterStatus').textContent='Gebruik de volledige personeelslijst om collega’s te bekijken.';
 }
