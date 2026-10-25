@@ -89,7 +89,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
        db.collection('bpd_leave_requests').where('personDiscordId','==',person.personId)
          .limit(100).get()
      ]);
-     const entries=caseEntries.docs.filter(d=>allowedTypes.includes(d.get('type')))
+     const entries=caseEntries.docs.filter(d=>d.get('status')!=='verwijderd'&&allowedTypes.includes(d.get('type')))
        .map(d=>safeCase(d,d.id));
      const oldNotes=staffNotes.docs.filter(doc=>
        ['opleiding','begeleiding','evaluatie','administratief','waardering']
