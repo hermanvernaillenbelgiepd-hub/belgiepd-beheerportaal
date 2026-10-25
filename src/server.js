@@ -28,6 +28,7 @@ import {installBoardAppointmentRoutes} from './board-appointment-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 import {eligibleForTechnicalProfile,verifiedPoliceRank,technicalCookieIsValid,technicalActor} from './portal-profile-mode.js';
+import {TEST_PREVIEW_GROUPS,TEST_ROLE_PREVIEWS,isRolePreviewAuthorized} from './role-preview-policy.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
@@ -403,6 +404,15 @@ installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache
 installCallsignBotRoutes(app);
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
+app.get('/api/testmodus/rollen',requireUser,(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  if(!isRolePreviewAuthorized(req.bpd,process.env.FIREBASE_PROJECT_ID))
+    return res.status(403).json({error:'Deze TEST-voorvertoning is uitsluitend beschikbaar in geverifieerd Technisch beheer op TEST.'});
+  return res.json({mode:'read-only-preview',testEnvironment:true,
+    disclaimer:'Deze simulatie toont voorbeeldnavigatie en de bedoelde kaders; ze wijzigt geen accounts en is geen live autorisatiecontrole.',
+    groups:TEST_PREVIEW_GROUPS,roles:TEST_ROLE_PREVIEWS});
+});
+
 // Dashboard visibility uses server-confirmed operational or board authorisation.
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   const actor=req.bpd;
