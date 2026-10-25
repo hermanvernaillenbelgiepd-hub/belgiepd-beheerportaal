@@ -82,9 +82,32 @@ function fireIcon(type){
   }
   return svg;
 }
+// Keep older cached responses safe: raw source labels like "RED team"
+// and display aliases like "RED-TEAM" refer to ONE qualification.
+export function uniqueFireSpecialties(items){
+  const list=Array.isArray(items)?items.filter(item=>item&&typeof item==='object'):[];
+  const known=new Map();
+  const result=[];
+  const relevance=item=>{
+    const v=String(item.value??'').trim().toLowerCase();
+    const filled=v!==''&&!['niet ingevuld','onbekend','n.v.t.','nvt'].includes(v);
+    return (filled?2:0)+(filled&&item.source==='manual'?1:0);
+  };
+  for(const item of list){
+    const key=fireSpecialtyKey(fireSpecialtyMeta(item.label).label);
+    const existing=known.get(key);
+    if(existing===undefined){
+      known.set(key,result.length);
+      result.push(item);
+    }else if(relevance(item)>relevance(result[existing])){
+      result[existing]=item;
+    }
+  }
+  return result;
+}
 export function renderFireSpecialties(root,items,{compact=false,limit=0}={}){
   root.replaceChildren();
-  const source=Array.isArray(items)?items.filter(i=>i&&typeof i==='object'):[];
+  const source=uniqueFireSpecialties(items);
   const visible=limit>0?source.slice(0,limit):source;
   if(!visible.length){
     const empty=document.createElement('span');
