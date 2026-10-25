@@ -14,6 +14,8 @@ import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {isPolice9xx} from './verified-police-cadre.js';
 import {displaySeries} from './normalize.js';
+import {canChangePoliceGrade,allowedPoliceGradeChoices,
+  validatePoliceGradeChange,classifyPoliceGradeChange} from './personnel-rank-policy.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
 const asTime=x=>x?.toDate?.().toISOString?.()||null;
@@ -48,6 +50,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           canAuthoriseExceptionalPoliceRank(req.bpd,'politie'));
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
           canOpenDossier,canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
+          canChangeRank:canChangePoliceGrade(req.bpd,p),
           series:displaySeries(p.seriesRaw??p.series,p.rank,p.dept,p.call),status:p.status,
           // Presentation-only specialties from the already-authorized Sheets
           // roster. Do not treat these values as Discord role grants.
@@ -76,6 +79,10 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         role:req.bpd.role,departments:allowed,
         writesEnabled:writes(),createEnabled:personnelCreationEnabled(process.env),
         promotionsEnabled:personnelDataEnabled(process.env)&&process.env.BPD_ENABLE_PERSONNEL_RANK_CHANGES==='true',
+        rankChangesEnabled:personnelDataEnabled(process.env)&&writes()&&
+          process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'&&
+          process.env.BPD_ENABLE_PERSONNEL_RANK_CHANGES==='true',
+        rankOptions:allowedPoliceGradeChoices(req.bpd),
         createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,dept==='politie'&&!canAuthoriseExceptionalPoliceRank(req.bpd,dept)?[STANDARD_ENTRY_RANK.politie]:TEST_RANKS[dept]])),
         overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
         sourceStale:snapshot.stale,limited:edits.size===400,statuses:EDITABLE_STATUSES});
@@ -324,6 +331,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         if(!current.exists)
           throw userError(409,'Deze fiche is afkomstig uit Google Sheets en kan hier nog niet van rang veranderen');
         const data=current.data();
+        const currentOverride=await tx.get(collection().doc(dept+'_'+discordId));
+        if(currentOverride.get('approvedRankEdit')===true)
+          throw userError(409,'Deze fiche gebruikt de nieuwe rangwijzigingsmodule. Vernieuw het dossier.');
         if(data.dept!==dept||data.discordId!==discordId||data.state!=='linked')
           throw userError(409,'De personeelsfiche is niet volledig gekoppeld');
         if(data.rank!==proposal.expectedRank||
@@ -351,6 +361,90 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         rolesGranted:false,sourceSheetsChanged:false});
     }catch(e){return safeResponse(res,e)}
   });
+  // Audited personnel grade and callsign change. Sheets stay untouched; the
+  // effective view uses the approved Firestore overlay. Never changes Discord
+  // roles, operational authorization or the subject's own account claims.
+  app.post('/api/personnel/:dept/:discordId/rank-change',requireDossierUser,async(req,res)=>{
+    const {dept,discordId}=req.params;
+    if(dept!=='politie'||!validPersonnelKey(dept,discordId))
+      return error(res,400,'Ongeldige politiepersoneelsfiche');
+    if(!personnelDataEnabled(process.env)||!writes()||
+       process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE!=='true'||
+       process.env.BPD_ENABLE_PERSONNEL_RANK_CHANGES!=='true')
+      return error(res,503,'Rangwijzigingen zijn nog niet geactiveerd in deze omgeving');
+    let proposal;
+    try{proposal=validatePoliceGradeChange(req.body)}
+    catch(e){return error(res,400,e.message)}
+    try{
+      const snap=await getSnapshot({forceRefresh:true});
+      if(snap.stale)throw userError(503,'Personeelsbron is niet actueel');
+      const matches=snap.data.filter(p=>p.dept===dept&&p.personId===discordId);
+      if(matches.length!==1)throw userError(409,'Personeelsfiche is niet eenduidig');
+      const subject=matches[0];
+      if(!canChangePoliceGrade(req.bpd,subject))
+        throw userError(403,'Geen rangbevoegdheid voor dit personeelslid');
+      if(!allowedPoliceGradeChoices(req.bpd).includes(proposal.newRank))
+        throw userError(403,'Deze nieuwe rang valt buiten jouw kaderbevoegdheid');
+      if(proposal.expectedRank!==subject.rank)
+        throw userError(409,'De huidige rang is gewijzigd. Vernieuw de fiche.');
+      if(snap.data.some(p=>p.dept===dept&&p.personId!==discordId&&
+          String(p.call).trim().toLowerCase()===proposal.newCall.toLowerCase()))
+        throw userError(409,'Het nieuwe roepnummer is al in gebruik');
+      const store=getFirestore(),ref=collection().doc(dept+'_'+discordId);
+      const claims=store.collection('bpd_personnel_call_claims');
+      const newClaim=claims.doc(personnelCallClaimId(dept,proposal.newCall));
+      const oldClaim=claims.doc(personnelCallClaimId(dept,subject.call));
+      const type=classifyPoliceGradeChange(subject.call,proposal.newCall);
+      await store.runTransaction(async tx=>{
+        const [current,reserved,previousClaim]=await Promise.all([
+          tx.get(ref),tx.get(newClaim),
+          newClaim.id===oldClaim.id?tx.get(newClaim):tx.get(oldClaim)
+        ]);
+        const saved=current.data()||{},revision=saved.revision||0;
+        if(revision!==proposal.expectedRevision)
+          throw userError(409,'Deze fiche werd intussen gewijzigd. Vernieuw de pagina.');
+        if(saved.approvedRankEdit===true&&saved.rank!==subject.rank)
+          throw userError(409,'Rang is intussen gewijzigd. Vernieuw de fiche.');
+        if(reserved.exists&&reserved.get('discordId')!==discordId)
+          throw userError(409,'Het nieuwe roepnummer is reeds gereserveerd');
+        const oldRank=subject.rank,oldCall=subject.call;
+        const next={name:saved.name??subject.name,call:proposal.newCall,
+          status:saved.status??subject.status};
+        tx.set(ref,{...next,dept,discordId,revision:revision+1,
+          rank:proposal.newRank,approvedRankEdit:true,
+          updatedAt:FieldValue.serverTimestamp(),updatedByUid:req.bpd.uid,
+          updatedByDiscordId:req.bpd.discordId});
+        tx.set(newClaim,{dept,discordId,call:proposal.newCall,
+          updatedAt:FieldValue.serverTimestamp()});
+        if(oldClaim.id!==newClaim.id&&previousClaim.exists&&
+           previousClaim.get('discordId')===discordId)tx.delete(oldClaim);
+        tx.create(ref.collection('audit').doc(),{
+          action:type==='promotion'?'promotion':type==='demotion'?'demotion':'rank_change',
+          previousRank:oldRank,newRank:proposal.newRank,
+          previousCall:oldCall,newCall:proposal.newCall,
+          reason:proposal.reason,revision:revision+1,
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
+          at:FieldValue.serverTimestamp()
+        });
+        tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+          type,dept,discordId,name:next.name,before:oldRank,after:proposal.newRank,
+          previousCall:oldCall,newCall:proposal.newCall,
+          reason:proposal.reason,actorDiscordId:req.bpd.discordId,
+          at:FieldValue.serverTimestamp()
+        });
+        if(oldCall!==proposal.newCall)
+          tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+            type:'callsign_changed',dept,discordId,name:next.name,
+            before:oldCall,after:proposal.newCall,reason:proposal.reason,
+            actorDiscordId:req.bpd.discordId,at:FieldValue.serverTimestamp()
+          });
+      });
+      res.set('Cache-Control','no-store');
+      return res.json({saved:true,type,newRank:proposal.newRank,newCall:proposal.newCall,
+        sourceSheetsChanged:false,discordRoleChanged:false,
+        requiresDiscordRoleReview:true,revision:proposal.expectedRevision+1});
+    }catch(e){return safeResponse(res,e)}
+  });
   app.post('/api/personnel/:dept/:discordId/name',requireDossierUser,async(req,res)=>{
     const {dept,discordId}=req.params;
     if(!validPersonnelKey(dept,discordId))return error(res,400,'Ongeldige personeelsreferentie');
@@ -376,7 +470,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         if(oldName===data.name)throw userError(409,'De naam is niet gewijzigd');
         const previous={name:oldName,call:saved?.call??subject.call,status:saved?.status??subject.status};
         const next={...previous,name:data.name};
-        tx.set(ref,{...next,dept,discordId,revision:revision+1,
+        tx.set(ref,{...next,
+          ...(saved?.approvedRankEdit===true?{rank:saved.rank,approvedRankEdit:true}:{}),
+          dept,discordId,revision:revision+1,
           updatedAt:FieldValue.serverTimestamp(),updatedByUid:req.bpd.uid,
           updatedByDiscordId:req.bpd.discordId});
         tx.create(ref.collection('audit').doc(),{action:'name_changed',
@@ -426,7 +522,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         const audit=ref.collection('audit').doc();
         const previous={name:current?.name??subject.name,call:oldCall,status:current?.status??subject.status};
         const next={name:proposed.name,call:proposed.call,status:proposed.status};
-        tx.set(ref,{...next,dept:subject.dept,discordId:subject.personId,revision:revision+1,
+        tx.set(ref,{...next,
+          ...(current?.approvedRankEdit===true?{rank:current.rank,approvedRankEdit:true}:{}),
+          dept:subject.dept,discordId:subject.personId,revision:revision+1,
           updatedAt:FieldValue.serverTimestamp(),updatedByUid:req.bpd.uid,updatedByDiscordId:req.bpd.discordId});
         tx.set(newClaim,{discordId:subject.personId,dept:subject.dept,call:proposed.call,updatedAt:FieldValue.serverTimestamp()});
         if(oldCall!==proposed.call&&previousClaim.exists&&previousClaim.get('discordId')===subject.personId)
