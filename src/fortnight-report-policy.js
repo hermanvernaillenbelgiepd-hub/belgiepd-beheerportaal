@@ -68,7 +68,8 @@ const authenticatedActor=actor=>/^[0-9]{15,22}$/.test(String(actor?.discordId||'
 const isBoardReader=actor=>authenticatedActor(actor)&&
   actor.boardPersonnelAdmin===true;
 export const isVerifiedReportTechnicalAdmin=actor=>authenticatedActor(actor)&&
-  actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true;
+  actor.role==='beheerder'&&actor.portalTechnicalMode===true&&
+  actor.profileTechnicalAvailable===true;
 
 export function mayReadFortnightReport(actor,dept,roster){
   if(!DEPTS.includes(dept))return false;
