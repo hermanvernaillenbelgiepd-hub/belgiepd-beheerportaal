@@ -629,7 +629,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 </main>
 <script src="/personnel-list-visuals.js"></script>
 <script type="module">
-import {renderDepannageSpecialties,depannageSpecialtyMeta} from '/depannage-specialty-icons.js';
+import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
@@ -1112,6 +1112,8 @@ function option(value,label){const o=document.createElement('option');o.value=va
 function td(tr,text){const c=document.createElement('td');c.textContent=text;tr.append(c);return c}
 // Use the shared image catalog for Signalisatie, preserving emoji for all other skills.
 function specialtyMark(label){
+  if(['Opleiding DEP2K','Opleiding FAST','CRANE','WEGENWERKEN'].includes(label))
+    return depannageSpecialtyIcon(label);
   const image=BPDPersonnelVisuals.specialtyIconImage(label);
   if(image){
     const pic=document.createElement('img');
@@ -1145,7 +1147,8 @@ function render(){
     const th=document.createElement('th');th.className='specialty-col-head';th.title=label;
     const pict=document.createElement('span');pict.className='specialty-col-icon';
     pict.append(specialtyMark(label));pict.setAttribute('aria-hidden','true');
-    const name=document.createElement('span');name.className='specialty-col-label';name.textContent=label;
+    const name=document.createElement('span');name.className='specialty-col-label';
+    name.textContent=dept==='depannage'?depannageSpecialtyMeta(label).label:label;
     th.append(pict,name);line.append(th);
   }
   const last=document.createElement('th');last.textContent='Fiche';line.append(last);
