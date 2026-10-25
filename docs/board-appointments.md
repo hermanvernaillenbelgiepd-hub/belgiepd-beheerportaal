@@ -17,7 +17,7 @@ Een bestuurslid zonder deze machtigingen heeft alleen de eigen actieve bestuurss
 ## Goedkeuring
 1. Een bestaande bevoegde korpsleider, de technische beheerder of een reeds expliciet gemachtigde voordrager dient een kandidaat-Discord-ID, motivering en gewenste bestuursmachtigingen in.
 2. De server controleert dat de kandidaat reeds een goedgekeurd account heeft in `bpd_portal_users`; een louter Discord-rolletje of naam is onvoldoende. Er wordt een **pending** voordracht vastgelegd met de identiteit van de voordrager en een onveranderbare auditregistratie.
-3. **Alleen de bestaande technisch beheerder** (`req.bpd.role==='beheerder'`) kan een voordracht goedkeuren of afwijzen. Deze persoon mag niet de voordrager zijn en kan zichzelf niet aanstellen.
+3. **Alleen technisch beheer** kan een voordracht goedkeuren of afwijzen. Onafhankelijke goedkeuring is de standaard. De bestaande technische eigenaar mag een door zichzelf ingediende voordracht voor **een ander personeelsaccount** behandelen uitsluitend wanneer de server diens geverifieerde, ondertekende technische beheerprofiel heeft bevestigd. De beslissing wordt uitdrukkelijk als technische uitzondering gelogd. **Zichzelf aanstellen blijft verboden.**
 4. Bij goedkeuring controleert de server opnieuw dat het kandidaataccount goedgekeurd is. Pas daarna wordt de aanstelling actief met uitsluitend de expliciet voorgestelde machtigingen. Bestaande operationele rollen blijven gelijk.
 5. Alleen technisch beheer kan een actieve aanstelling intrekken, met een verplichte motivering en auditregistratie. Bij intrekking verdwijnen de bestuursmachtigingen direct.
 
