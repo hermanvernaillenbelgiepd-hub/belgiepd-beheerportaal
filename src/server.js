@@ -19,7 +19,7 @@ import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
-import {canSeeDashboardManagement} from './dashboard-admin-policy.js';
+import {canSeeDashboardManagement,canSeeAdvancedDashboard} from './dashboard-admin-policy.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
@@ -523,7 +523,8 @@ installManualRoleRoutes(app,{requireUser});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   res.set('Cache-Control','no-store');
-  res.json({visible:canSeeDashboardManagement(req.bpd)});
+  res.json({visible:canSeeDashboardManagement(req.bpd),
+    showAdvancedDashboard:canSeeAdvancedDashboard(req.bpd)});
 });
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
