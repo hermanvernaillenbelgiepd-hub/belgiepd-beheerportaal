@@ -160,12 +160,25 @@
     return match?Number(match[1]):null;
   };
   const reservedCall=call=>/^(?:[A-Z]{1,12}[- ]?)?008$/i.test(String(call??'').trim());
+  // Dedicated ambulance order only; other emergency services retain
+  // their existing personnel-list order and permissions.
+  const ambulanceSortKey=person=>{
+    const call=String(person?.call||'').trim().toUpperCase();
+    const match=call.match(/^(DIRMED|HARTS|HVPK|HAMB|ARTS|VPK|AMB|STAG)(?:[- ]?(\d{1,4}))?$/);
+    const order=['DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','STAG'];
+    return {group:match?order.indexOf(match[1]):99,
+      number:match?.[2]!==undefined?Number(match[2]):0};
+  };
   function comparePersonnel(a,b,mode='call-desc'){
     const nameA=String(a?.name||''),nameB=String(b?.name||'');
     const nameCompare=nameA.localeCompare(nameB,'nl',{numeric:true,sensitivity:'base'});
     const fallback=()=>nameCompare||
       String(a?.dept||'').localeCompare(String(b?.dept||''),'nl')||
       String(a?.discordId||a?.personId||'').localeCompare(String(b?.discordId||b?.personId||''),'nl');
+    if(mode==='ambulance'){
+      const aa=ambulanceSortKey(a),bb=ambulanceSortKey(b);
+      return aa.group-bb.group||aa.number-bb.number||fallback();
+    }
     // BelgiumPD: hoogste honderdreeks eerst, binnen die reeks oplopend.
     // Bijvoorbeeld 900, 910, 920, 930, daarna 800..., 700..., 600...
     // Bestuursnummer 008 blijft altijd onderaan.
