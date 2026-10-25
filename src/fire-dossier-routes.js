@@ -1,6 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
-import {fireRecordVisibility,fireMayCreate,fireSanctionLevel,FIRE_COURSES} from './fire-dossier-policy.js';
+import {fireRecordVisibility,fireMayCreate,fireSanctionLevel,fireCanWithdrawSanction,FIRE_COURSES} from './fire-dossier-policy.js';
 import {validateEntry,canChooseSanction,permittedSanctionTypes,SANCTION_REASONS} from './registrations.js';
 import {validateManagementEntry} from './management-utils.js';
 const ID=new RegExp('^[0-9]{15,22}$');
@@ -60,7 +60,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      const sanctionTypes=canWrite.includes('sanctie')?
        permittedSanctionTypes(fireSanctionLevel(req.bpd),10):[];
      if(level==='identity')return res.json({person:publicInfo(person),visibility:level,
-       entries:[],trainings:[],canWrite,sanctionTypes:[],canEditSpecialties:false});
+       entries:[],trainings:[],canWrite,sanctionTypes:[],canWithdrawSanctions:false,canEditSpecialties:false});
      const db=getFirestore(),casePath='brandweer_'+person.personId;
      const [caseEntries,staffDocument,staffNotes,staffHistory,leaveRows]=await Promise.all([
        db.collection('bpd_cases').doc(casePath).collection('entries')
@@ -102,7 +102,8 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      }
      return res.json({person:publicInfo(person),visibility:level,entries,trainings,
        leave,profile,olderNotes:oldNotes,dossierHistory,
-       canWrite,sanctionTypes,sanctionReasons:SANCTION_REASONS,canEditSpecialties:(req.bpd.fireZoneChief===true||
+       canWrite,sanctionTypes,sanctionReasons:SANCTION_REASONS,
+       canWithdrawSanctions:fireCanWithdrawSanction(req.bpd,person,roles),canEditSpecialties:(req.bpd.fireZoneChief===true||
         req.bpd.portalTechnicalMode===true&&req.bpd.profileTechnicalAvailable===true)&&
        req.bpd.discordId!==person.personId,
        specialties:listed(person.specialties).map(x=>({
@@ -110,6 +111,54 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
    }catch(e){console.error('Brandweerdossier:',e.code||'onbekend');
      return code(res,503,'Brandweerdossier niet beschikbaar')}
  });
+ // ZONE has the same corrective authority as Corps Leadership: a sanction
+ // can be withdrawn, never silently deleted or overwritten.
+ app.post('/api/fire-dossiers/:discordId/sanctions/:entryId/withdraw',
+  requireUser,async(req,res)=>{
+   if(process.env.BPD_ENABLE_REGISTRATIONS!=='true')
+     return code(res,503,'Registraties zijn nog niet geactiveerd');
+   const {discordId,entryId}=req.params;
+   if(!ID.test(discordId)||!/^[a-zA-Z0-9]{12,30}$/.test(entryId))
+     return code(res,400,'Ongeldige dossierverwijzing');
+   if(!req.body||Object.keys(req.body).some(x=>x!=='reason')||
+     typeof req.body.reason!=='string'||req.body.reason.trim().length<15||
+     req.body.reason.trim().length>500)
+     return code(res,400,'Geef een intrekkingsreden van 15 tot 500 tekens');
+   try{
+     const record=await subjectFor(req,getSnapshot);
+     if(record.error)return code(res,record.error,record.message);
+     if(!fireCanWithdrawSanction(req.bpd,record.person,record.roles))
+       return code(res,403,'Alleen ZONE kan deze sanctie intrekken');
+     const db=getFirestore();
+     const ref=db.collection('bpd_cases').doc('brandweer_'+discordId)
+       .collection('entries').doc(entryId);
+     await db.runTransaction(async tx=>{
+       const before=await tx.get(ref);
+       if(!before.exists||before.get('dept')!=='brandweer'||
+          before.get('subjectDiscordId')!==discordId||
+          before.get('type')!=='sanctie')
+         throw Object.assign(new Error('Sanctie niet gevonden'),{status:404});
+       if(before.get('status')==='ingetrokken')
+         throw Object.assign(new Error('Sanctie is reeds ingetrokken'),{status:409});
+       const at=FieldValue.serverTimestamp();
+       const audit={action:'sanction_withdrawn',reason:req.body.reason.trim(),
+         actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
+         dept:'brandweer',subjectDiscordId:discordId,entryId,at};
+       tx.update(ref,{status:'ingetrokken',
+         withdrawal:{reason:req.body.reason.trim(),byDiscordId:req.bpd.discordId,at},
+         modifiedAt:at});
+       tx.create(ref.collection('audit').doc(),audit);
+       tx.create(db.collection('bpd_notices').doc('brandweer')
+         .collection('events').doc(),audit);
+     });
+     return res.json({saved:true,status:'ingetrokken',reference:entryId});
+   }catch(e){
+     if(e.status===404||e.status===409)return code(res,e.status,e.message);
+     console.error('Brandweersanctie-intrekking:',e.code||'onbekend');
+     return code(res,503,'Sanctie-intrekking niet beschikbaar');
+   }
+ });
+
  app.post('/api/fire-dossiers/:discordId/entries',requireUser,async(req,res)=>{
    if(process.env.BPD_ENABLE_REGISTRATIONS!=='true')
      return code(res,503,'Registraties zijn nog niet geactiveerd');
