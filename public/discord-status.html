@@ -446,8 +446,9 @@ async function loadNewMemberStatus(){
    return data;
   };
   const identity=await request('/api/member/dashboard');
-  $('myLeave').hidden=identity.mode==='member';
-  if(identity.mode==='staff')loadLeave();
+  const canSeeOwnLeave=identity.mode==='staff'||identity.canUseSelfService===true;
+  $('myLeave').hidden=!canSeeOwnLeave;
+  if(canSeeOwnLeave)loadLeave();
   const eligibility=await request('/api/callsigns/self/status');
   $('myCallsignStatus').textContent=eligibility.request?
    'Bestaande aanvraag: '+String(eligibility.request.status||'in behandeling')+
