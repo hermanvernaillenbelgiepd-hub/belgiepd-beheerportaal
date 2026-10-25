@@ -42,7 +42,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const snap=await getSnapshot(),subject=uniqueSubject(snap.data,dept,id);
       if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
       const rows=await db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').orderBy('createdAt','desc').limit(150).get();
-      res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},entries:rows.docs.map(d=>({id:d.id,...noPrivate(d.data())})),limited:rows.docs.length===150});
+      res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},entries:rows.docs.filter(d=>d.get('status')!=='verwijderd').map(d=>({id:d.id,...noPrivate(d.data())})),limited:rows.docs.length===150});
     }catch(e){errorResponse(res,e)}
   });
   app.post('/api/management/cases',requireUser,async(req,res)=>{
