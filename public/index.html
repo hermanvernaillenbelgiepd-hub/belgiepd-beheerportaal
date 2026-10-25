@@ -184,6 +184,13 @@ function displaySimpleModules(details){
  $('memberNavNotices').hidden=!canSelf;
  $('memberNoticesTile').hidden=!canSelf;
 }
+function showApprovedBasicDashboard(){
+ show('member');
+ // Emergency/legacy login cannot use Discord-only callsign verification.
+ displaySimpleModules({canUseSelfService:true,callsignRequestAvailable:false});
+ $('memberAccountStatus').textContent='Je account heeft gewone personeelsrechten. Je ziet de personeelslijst en je persoonlijke functies.';
+ $('memberRosterStatus').textContent='Gebruik de volledige personeelslijst om collega’s te bekijken.';
+}
 let auth,requestNumber=0;
 function show(mode,message=''){
  staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';
@@ -217,18 +224,21 @@ async function displayAuthenticated(user){
  adminSection.hidden=true;adminNavLink.hidden=true;
  if(!user){show('guest','Meld je aan met Discord via Mijn profiel.');return;}
  if(!user.uid?.startsWith('discord:')){
-  // Existing Google emergency accounts use the same server-side admin check
-  // as Discord users. Lower cadres never receive a management shortcut.
-  show('staff');
+  // Google emergency accounts also need server-confirmed dashboard scope.
+  // Never show management cards before that verification has completed.
+  show('guest','Je kaderrechten worden gecontroleerd…');
   try{
     const token=await user.getIdToken();
     const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
-    if(turn===requestNumber){
+    if(turn!==requestNumber)return;
+    if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
+    else{
+      show('staff');
       adminSection.hidden=ctx.visible!==true;
       adminNavLink.hidden=ctx.visible!==true;
     }
   }catch{
-    if(turn===requestNumber){adminSection.hidden=true;adminNavLink.hidden=true}
+    if(turn===requestNumber)show('guest','Je dashboardrechten konden niet worden bevestigd. Vernieuw je aanmelding.');
   }
   return;
  }
@@ -264,15 +274,13 @@ async function displayAuthenticated(user){
           'Mijn profiel is bereikbaar. Voor een vast roepnummer zijn een botcontrole van 5 kalenderdagen en 10 speeluren vereist.';
     }
   }else if(details.mode==='staff'){
-    show('staff');
-    try{
-      const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
-      if(turn===requestNumber){
-        adminSection.hidden=ctx.visible!==true;
-        adminNavLink.hidden=ctx.visible!==true;
-      }
-    }catch{
-      if(turn===requestNumber){adminSection.hidden=true;adminNavLink.hidden=true}
+    const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
+    if(turn!==requestNumber)return;
+    if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
+    else{
+      show('staff');
+      adminSection.hidden=ctx.visible!==true;
+      adminNavLink.hidden=ctx.visible!==true;
     }
   }else show('guest','Je portaaltoegang moet eerst worden gecontroleerd. Vernieuw je Discord-verificatie in Mijn profiel.');
  }catch(err){
