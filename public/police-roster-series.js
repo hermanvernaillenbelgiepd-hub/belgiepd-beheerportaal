@@ -53,8 +53,9 @@ export function policeRosterSeriesBadges(person,displayText){
     badges.push({
       label:'Reeks '+series+(series===4?' · Reserve':''),
       type:'series-'+series,
-      title:heads.length?'Reekshoofden: '+heads.map(h=>h.name).join(', '):
-        series===4?'Reservereeks':'Reeks '+series
+      title:(heads.some(h=>h.id===id)?'Reekshoofd van reeks '+series+' · ':'')+
+       (heads.length?'Reekshoofden: '+heads.map(h=>h.name).join(', '):
+        series===4?'Reservereeks':'Reeks '+series)
     });
   }
   // Official rosters may show the collective value "Officierenkader /
@@ -62,11 +63,11 @@ export function policeRosterSeriesBadges(person,displayText){
   // cadre (if present), then the existing visible rank/callsign.
   const cadre=roleForSeries(person);
   if(cadre==='Korpsleiding')
-    badges.push({label:'👑 Korpsleiding',type:'corps'});
+    badges.push({label:'👑',type:'corps',title:'Korpsleiding'});
   else if(cadre==='Officierenkader')
-    badges.push({label:'🌈 Officierenkader',type:'officer'});
+    badges.push({label:'🌈',type:'officer',title:'Officierenkader'});
   else if(/officierenkader/i.test(raw)&&/korpsleiding/i.test(raw))
-    badges.push({label:'🌈 👑 Officierenkader / Korpsleiding',type:'combined',
+    badges.push({label:'🌈 👑',type:'combined',
       title:'Niet verder onderscheiden in de beschikbare personeelsgegevens'});
   else if(/korpsleiding/i.test(raw))
     badges.push({label:'👑 Korpsleiding',type:'corps'});
@@ -74,12 +75,10 @@ export function policeRosterSeriesBadges(person,displayText){
     badges.push({label:'🌈 Officierenkader',type:'officer'});
   if(/\bvlinder\b/i.test(raw)||id===POLICE_SERIES_RELIEF.id)
     badges.push({label:'🦋 Vlinder',type:'butterfly'});
-  const head=Object.entries(POLICE_SERIES_HEADS).find(([,list])=>
-    list.some(h=>h.id===id));
-  if(head)badges.push({label:'Reekshoofd',type:'series-'+head[0],
-    title:'Reekshoofd van reeks '+head[0]});
-  const kaderMatch=raw.match(/(?:^|[·/])\s*(Middenkader|Basiskader|Agentenkader)\b/i);
-  if(kaderMatch)badges.push({label:kaderMatch[1],type:'neutral'});
+  // Operational cadre is shown once by the table's group divider, not in
+  // every individual row. Series-head information is kept in the tooltip.
+  if(!badges.length&&/\b(?:middenkader|basiskader|agentenkader)\b/i.test(raw))
+    return [];
   if(!badges.length)badges.push({label:raw||'—',type:'neutral'});
   return badges;
 }
