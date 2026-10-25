@@ -2601,7 +2601,34 @@ async function loadSpecialtyState(p){
         const label=document.createElement('strong');label.textContent=x.label;
         const value=document.createElement('span');value.className='specialty-state specialty-'+x.style;
         value.textContent=x.status;cell.title=x.label+' · '+x.status;
-        cell.append(icon,label,value);root.append(cell);
+        cell.append(icon,label,value);
+        if(data.canEdit){
+          const toggle=document.createElement('button');
+          toggle.type='button';toggle.className='alt';
+          toggle.textContent=['Ja','Docent','INSTRUCTEUR','LEIDING'].includes(x.status)?'Uitvinken':'Aanvinken';
+          toggle.title='Wijzig deze specialisatie; motivatie en audit zijn verplicht';
+          toggle.onclick=async()=>{
+            const newValue=toggle.textContent==='Uitvinken'?'Nee':'Ja';
+            const reason=prompt('Motivering voor '+x.label+' → '+newValue+' (15–500 tekens):');
+            if(reason===null)return;
+            if(reason.trim().length<15||reason.trim().length>500){
+              notice('Motivering moet 15–500 tekens bevatten.',true);return;
+            }
+            if(!confirm(x.label+' bij '+p.name+' op '+newValue+' zetten?'))return;
+            toggle.disabled=true;
+            try{
+              await request('/api/personnel/'+encodeURIComponent(p.dept)+'/'+
+                encodeURIComponent(p.discordId)+'/specializations',{
+                  method:'POST',body:{label:x.label,value:newValue,reason:reason.trim(),
+                    expectedRevision:specialtyRevision}
+                });
+              notice(x.label+' gewijzigd en afzonderlijk gelogd. Discord-rollen blijven ongewijzigd.');
+              await loadSpecialtyState(p);
+            }catch(e){notice(e.message,true);toggle.disabled=false;}
+          };
+          cell.append(toggle);
+        }
+        root.append(cell);
       }
     }
     if(!states.length)root.textContent='Geen onderdelen bekend voor deze hulpdienst.';
