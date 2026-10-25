@@ -12,9 +12,12 @@ test('Nieuw of voorlopig Agentenkader krijgt beperkte startpagina zonder kaderre
  assert.equal(newcomerPortalMode(id,{status:'pending'},[member('150')]),'member');
  assert.equal(newcomerPortalMode(id,approved,[member('150')]),'member');
  assert.equal(newcomerPortalMode(id,approved,[member('250')]),'member');
- assert.equal(newcomerPortalMode(id,approved,[member('300')]),'staff');
- assert.equal(newcomerPortalMode(id,approved,[]),'staff');
+ assert.equal(newcomerPortalMode(id,approved,[member('300')]),'member');
+ assert.equal(newcomerPortalMode(id,approved,[]),'member');
  assert.equal(newcomerPortalMode(id,null,[],true),'staff');
+ assert.equal(newcomerPortalMode(id,{
+  ...approved,role:'middenkader',departmentRoles:{politie:'middenkader'}
+ },[member('700')]),'staff');
  assert.equal(newcomerPortalMode(id,{status:'blocked'},[]),'blocked');
  assert.equal(newcomerPortalMode(id,{status:'approved',discordId:id,role:'korpsleiding',departments:['politie'],departmentRoles:{politie:'korpsleiding'}},[member('900')]),'staff');
 });
