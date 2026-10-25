@@ -50,7 +50,7 @@ fieldset{border:0;margin:0;padding:0}
 </head>
 <body>
 <header>
-  <div><strong>BelgiumPD</strong><small>OBSERVATIES VANUIT BASISKADER · BEHEERPORTAAL</small></div>
+  <div><strong>BelgiëPD</strong><small>OBSERVATIES VANUIT BASISKADER · BEHEERPORTAAL</small></div>
   <div class="actions"><a href="/">← Startpagina</a><span id="roleLabel" class="counter">Niet aangemeld</span>
     <button type="button" id="authBtn" class="secondary">Aanmelden</button></div>
 </header>
@@ -58,7 +58,7 @@ fieldset{border:0;margin:0;padding:0}
   <h1>Observaties vanuit Basiskader</h1>
   <p>Basiskader kan enkel een observatie indienen over politieleden <strong>onder de eigen rang</strong>. Deze pagina bevat geen sancties.</p>
   <div class="banner">De lijst met betrokken personeelsleden wordt rechtstreeks uit <strong>Centraal personeelsbeheer</strong> geladen. Ingediende observaties komen in het personeelsdossier en in het bestaande dynamische weekrapport. Alleen Middenkader, Officierenkader, Korpsleiding en geverifieerd Bestuur kunnen het gebundelde ontvangstoverzicht bekijken.</div>
-  <div class="card" id="loginPanel"><h2>Beveiligd aanmelden</h2><p>Gebruik je voor BelgiumPD goedgekeurde account.</p>
+  <div class="card" id="loginPanel"><h2>Beveiligd aanmelden</h2><p>Gebruik je voor BelgiëPD goedgekeurde account.</p>
     <p id="loginStatus" class="helper">De aanmeldservice wordt voorbereid…</p></div>
   <div id="message" class="status" role="status" aria-live="polite"></div>
   <section id="formPanel" class="card" hidden>
@@ -249,7 +249,7 @@ async function init(){
         context=null;inboxData=[];inboxCursor=null;$('olderInbox').hidden=true;$('formPanel').hidden=true;$('inboxPanel').hidden=true;
         $('noAccess').hidden=true;$('loginPanel').hidden=false;
         $('roleLabel').textContent='Niet aangemeld';$('authBtn').textContent='Google aanmelden';
-        $('loginStatus').textContent='Meld je aan met je goedgekeurde BelgiumPD-account.';
+        $('loginStatus').textContent='Meld je aan met je goedgekeurde BelgiëPD-account.';
         return;
       }
       $('authBtn').textContent='Afmelden';
