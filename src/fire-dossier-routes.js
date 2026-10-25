@@ -3,6 +3,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {fireRecordVisibility,fireMayCreate,fireSanctionLevel,fireCanWithdrawSanction,FIRE_COURSES} from './fire-dossier-policy.js';
 import {validateEntry,canChooseSanction,permittedSanctionTypes,SANCTION_REASONS} from './registrations.js';
 import {validateManagementEntry} from './management-utils.js';
+import {mayRegisterCentralManualLeave,rosterPoliceRole} from './leave-policy.js';
 const ID=new RegExp('^[0-9]{15,22}$');
 const code=(res,status,message)=>res.status(status).json({error:message});
 const formatDate=v=>v?.toDate?.()?.toISOString?.()||null;
@@ -56,11 +57,16 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      const s=await subjectFor(req,getSnapshot);
      if(s.error)return code(res,s.error,s.message);
      const {person,roles,level}=s;
+     const policeMember=s.snap.data.find(p=>p.dept==='politie'&&p.personId===person.personId);
+     const canLogManualLeave=process.env.BPD_ENABLE_LEAVE_WRITES==='true'&&
+       process.env.BPD_ENABLE_PERSONNEL_MANUAL_LEAVE==='true'&&
+       mayRegisterCentralManualLeave(req.bpd,person.personId,1,
+         policeMember?rosterPoliceRole(policeMember):null,Boolean(policeMember));
      const canWrite=allowedTypes.filter(type=>fireMayCreate(req.bpd,person,roles,type));
      const sanctionTypes=canWrite.includes('sanctie')?
        permittedSanctionTypes(fireSanctionLevel(req.bpd),10):[];
      if(level==='identity')return res.json({person:publicInfo(person),visibility:level,
-       entries:[],trainings:[],canWrite,sanctionTypes:[],canWithdrawSanctions:false,canEditSpecialties:false});
+       entries:[],trainings:[],canWrite,canLogManualLeave:false,sanctionTypes:[],canWithdrawSanctions:false,canEditSpecialties:false});
      const db=getFirestore(),casePath='brandweer_'+person.personId;
      const [caseEntries,staffDocument,staffNotes,staffHistory,leaveRows]=await Promise.all([
        db.collection('bpd_cases').doc(casePath).collection('entries')
@@ -83,9 +89,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
        createdAt:formatDate(doc.get('createdAt'))
      }));
      const leave=leaveRows.docs.filter(doc=>
-       doc.get('status')==='approved'&&
-       Array.isArray(doc.get('subjectDepartments'))&&
-       doc.get('subjectDepartments').includes('brandweer')).map(doc=>({
+       doc.get('status')==='approved').map(doc=>({
        id:doc.id,startDate:clean(doc.get('startDate'),10),
        endDate:clean(doc.get('endDate'),10),status:'approved'
      })).sort((a,b)=>String(b.startDate).localeCompare(String(a.startDate))).slice(0,25);
@@ -101,7 +105,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
          result:clean(d.get('result'),40)}));
      }
      return res.json({person:publicInfo(person),visibility:level,entries,trainings,
-       leave,profile,olderNotes:oldNotes,dossierHistory,
+       leave,canLogManualLeave,profile,olderNotes:oldNotes,dossierHistory,
        canWrite,sanctionTypes,sanctionReasons:SANCTION_REASONS,
        canWithdrawSanctions:fireCanWithdrawSanction(req.bpd,person,roles),canEditSpecialties:(req.bpd.fireZoneChief===true||
         req.bpd.portalTechnicalMode===true&&req.bpd.profileTechnicalAvailable===true)&&
