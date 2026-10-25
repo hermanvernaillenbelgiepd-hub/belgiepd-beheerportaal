@@ -15,6 +15,7 @@ const specs = {
 export const SPECIALTY_LABELS=Object.freeze(Object.fromEntries(
   Object.entries(specs).map(([dept,spec])=>[dept,
     Object.freeze([...spec.specialties.map(([,label])=>label),
+      ...(dept==='politie'?['LRD (Recherche)']:[]),
       ...(dept==='brandweer'?[
         // RED team and Basis TR already exist as actual Google Sheets fields.
         // Do not add display-alias fields RED-TEAM / Basistraining twice.
