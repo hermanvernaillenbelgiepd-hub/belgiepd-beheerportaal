@@ -28,7 +28,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const snap=await getSnapshot();
       const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
       const actor=actorFromPersonnel(req.bpd,snap.data);
-      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,'notitie')),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:req.bpd.dossierNativeDepartments.some(d=>mayExportWeekReport(req.bpd,d)),actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
+      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d,t))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:req.bpd.dossierNativeDepartments.some(d=>mayExportWeekReport(req.bpd,d)),actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
         typesByDepartment:Object.fromEntries(req.bpd.dossierAllowedDepartments
           .filter(d=>canReadServiceDossier(req.bpd,d))
           .map(d=>[d,MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,d,t))]))});
