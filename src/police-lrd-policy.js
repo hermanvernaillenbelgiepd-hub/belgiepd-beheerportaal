@@ -99,11 +99,13 @@ export function createPoliceLrdIndex({
 }={}){
   let activeConfig=null,cache=null,pending=null;
   let guildMembers=null,listExpires=0,listUnsupportedUntil=0;
+  let directFailureUntil=0;
   const individual=new Map();
   function reset(signature){
     if(activeConfig===signature)return;
     activeConfig=signature;cache=null;pending=null;guildMembers=null;
-    listExpires=0;listUnsupportedUntil=0;individual.clear();
+    listExpires=0;listUnsupportedUntil=0;directFailureUntil=0;
+    individual.clear();
   }
   async function oauthFallback(ids,guild,positive,checked){
     const db=firestore();
@@ -142,6 +144,7 @@ export function createPoliceLrdIndex({
     job.promise=(async()=>{
       const positive=new Set(),checked=new Set();
       let source='oauth-cache',complete=true;
+      let canUseDirect=now()<listUnsupportedUntil;
       if(validBot&&ids.length){
         if(guildMembers&&now()<listExpires){
           for(const id of ids){
@@ -156,24 +159,31 @@ export function createPoliceLrdIndex({
               guildMembers=snapshot;listExpires=now()+BOT_CACHE_MS;
               for(const id of ids){checked.add(id);if(snapshot.has(id))positive.add(id);}
               source='discord-bot';
-            }else{listUnsupportedUntil=now()+10*60*1000;}
+            }else{
+              listUnsupportedUntil=now()+10*60*1000;
+              canUseDirect=true;
+            }
           }catch{/* Bot errors are not evidence that any member lacks LRD. */}
         }
-        if(source!=='discord-bot'){
+        if(source!=='discord-bot'&&canUseDirect&&now()>=directFailureUntil){
           // Server Members Intent unavailable: refresh a limited number of
           // roster members per request. Subsequent calls continue the scan.
           const expired=ids.filter(id=>!individual.has(id)||
             now()-individual.get(id).at>=BOT_CACHE_MS);
           const queue=expired.slice(0,BOT_DIRECT_LIMIT);
+          let successfulReads=0;
           for(let i=0;i<queue.length;i+=BOT_DIRECT_CONCURRENCY){
             const batch=queue.slice(i,i+BOT_DIRECT_CONCURRENCY);
             const verified=await Promise.all(batch.map(id=>readBotMember(
               guild,token,id,fetchImpl)));
             for(let j=0;j<batch.length;j++){
-              if(verified[j]!==null)individual.set(batch[j],{
-                present:verified[j],at:now()});
+              if(verified[j]!==null){
+                successfulReads++;
+                individual.set(batch[j],{present:verified[j],at:now()});
+              }
             }
           }
+          if(queue.length&&!successfulReads)directFailureUntil=now()+60000;
           for(const id of ids){
             const record=individual.get(id);
             if(record&&now()-record.at<BOT_CACHE_MS){
@@ -192,7 +202,8 @@ export function createPoliceLrdIndex({
       const value=checkedSet(positive,checked,source);
       const ttl=validBot&&source!=='discord-bot'&&!complete?
         1000:source==='discord-bot'?BOT_CACHE_MS:OAUTH_CACHE_MS;
-      cache={signature,value,expires:now()+ttl};
+      if(activeConfig===configuration)
+        cache={signature,value,expires:now()+ttl};
       return value;
     })();
     pending=job;
