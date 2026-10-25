@@ -1705,7 +1705,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       makeScoreBadge(row.score):null;
     if(score)item.append(heading,score,meta);
     else item.append(heading,meta);
-    attachRetireButton(item,row,group==='leave'?'leave':row.kind?'staff':'cases');
+    attachRetireButton(item,row,group==='leave'?'leave':group==='basisNotes'?'staff':'cases');
     root.append(item);
   };
   if(!entries.length){
