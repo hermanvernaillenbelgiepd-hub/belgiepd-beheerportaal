@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
+import {isVerifiedTechnicalRoleApprover} from './manual-role-decision-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {
   BOARD_COLLECTION,boardEnabled,boardWritesEnabled,validBoardId,isTechnicalBoardApprover,
@@ -58,9 +59,17 @@ export function installBoardAppointmentRoutes(app,{requireUser}){
         isTechnicalBoardApprover(req.bpd)||
         (reader&&doc.get('status')==='approved')||
         (manager&&doc.get('requestedByUid')===req.bpd.uid))
-        .map(doc=>serializeBoardAppointment(doc.id,doc.data())).filter(Boolean);
+        .map(doc=>{
+          const item=serializeBoardAppointment(doc.id,doc.data());
+          // Only the existing Board-approver scope can see who submitted a
+          // nomination, never expose arbitrary proposer identities.
+          if(item&&isTechnicalBoardApprover(req.bpd))
+            item.requestedBySelf=doc.get('requestedByUid')===req.bpd.uid;
+          return item;
+        }).filter(Boolean);
       return res.json({appointments:records,canNominate:manager,
-        canDecide:isTechnicalBoardApprover(req.bpd)});
+        canDecide:isTechnicalBoardApprover(req.bpd),
+        canSoloDecide:isVerifiedTechnicalRoleApprover(req.bpd)});
     }catch(e){return fail(res,e)}
   });
 
