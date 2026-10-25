@@ -65,8 +65,18 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      const canWrite=allowedTypes.filter(type=>fireMayCreate(req.bpd,person,roles,type));
      const sanctionTypes=canWrite.includes('sanctie')?
        permittedSanctionTypes(fireSanctionLevel(req.bpd),10):[];
-     if(level==='identity')return res.json({person:publicInfo(person),visibility:level,
-       entries:[],trainings:[],canWrite,canLogManualLeave:false,sanctionTypes:[],canWithdrawSanctions:false,canEditSpecialties:false});
+     if(level==='identity'){
+       // Middle cadre can see approved leave dates/status, not confidential
+       // reasons, administrative case entries or protected cadre dossiers.
+       const leaveSnap=await getFirestore().collection('bpd_leave_requests')
+         .where('personDiscordId','==',person.personId).limit(100).get();
+       const leave=leaveSnap.docs.filter(doc=>doc.get('status')==='approved')
+         .map(doc=>({id:doc.id,startDate:clean(doc.get('startDate'),10),
+           endDate:clean(doc.get('endDate'),10),status:'approved'}));
+       return res.json({person:publicInfo(person),visibility:level,
+         leave,entries:[],trainings:[],canWrite,canLogManualLeave:false,
+         sanctionTypes:[],canWithdrawSanctions:false,canEditSpecialties:false});
+     }
      const db=getFirestore(),casePath='brandweer_'+person.personId;
      const [caseEntries,staffDocument,staffNotes,staffHistory,leaveRows]=await Promise.all([
        db.collection('bpd_cases').doc(casePath).collection('entries')
