@@ -151,7 +151,10 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
   // use Europe/Brussels calendar days, not server time or historical status.
   app.get('/api/leave/roster-active',requireDossierUser,async(req,res)=>{
     try{
-      const {snapshot}=await context(req);
+      const roster=await getSnapshot();
+      if(roster.stale===true)
+        return res.status(503).json({error:'De personeelsbron is niet actueel'});
+      const snapshot=roster.data;
       const allowed=req.bpd.dossierAllowedDepartments||req.bpd.departments||[];
       const visibleIds=new Set(snapshot.filter(p=>allowed.includes(p.dept))
         .map(p=>p.personId).filter(validDiscordId));
