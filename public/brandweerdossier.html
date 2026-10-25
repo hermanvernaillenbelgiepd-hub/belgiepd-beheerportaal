@@ -180,7 +180,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 </section>
 </main>
 <script type="module">
-import {renderFireSpecialties,fireSpecialtyMeta} from '/fire-specialty-icons.js';
+import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fire-specialty-icons.js';
 const $=id=>document.getElementById(id);
 const id=new URLSearchParams(location.search).get('discordId')||'';
 let auth,authMod,setupLogin,current;
@@ -410,7 +410,7 @@ async function load(){
   if(data.canEditSpecialties){
     try{
       const register=await api('/api/personnel/brandweer/'+encodeURIComponent(id)+'/specializations');
-      const items=register.items||[];
+      const items=uniqueFireSpecialties(register.items||[]);
       renderFireSpecialties($('specialties'),items);
       renderFireSpecialties($('overviewSpecialties'),items,{compact:true});
       specialtyRevision=register.revision;
