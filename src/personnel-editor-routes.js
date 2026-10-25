@@ -66,7 +66,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       // requires a fresh 15-minute role verification.
       const labelledRecords=records.map(p=>({...p,
         discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
-          req.bpd.verifiedPoliceSubjectRoles?.[p.discordId]||null:null}));
+          req.bpd.verifiedPoliceSubjectRoles?.[p.discordId]||null:null,
+        verifiedFunction:p.dept==='depannage'?
+          req.bpd.depannageSubjectFunctions?.[p.discordId]||null:null}));
       const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
         .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
       return res.json({records:labelledRecords,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
