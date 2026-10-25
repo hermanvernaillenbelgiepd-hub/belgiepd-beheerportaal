@@ -60,6 +60,8 @@ test('Only approved rank overlays can change displayed grade; preserve origin ot
  assert.equal(mergePersonnelEdits(src,[manual])[0].rank,'Inspecteur');
  assert.equal(mergePersonnelEdits(src,[{...manual,approvedRankEdit:true}])[0].rank,
   'Aspirant Inspecteur');
+ assert.equal(mergePersonnelEdits(src,[{...manual,status:'GESCHORST',approvedRankEdit:true}])[0].rank,
+  'Aspirant Inspecteur');
 });
 test('Promotions and demotions appear in the recent staff activity history',()=>{
  const data={dept:'politie',discordId:subjectId,name:'Testlid',
