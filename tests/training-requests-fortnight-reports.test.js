@@ -62,8 +62,8 @@ test('automatic reporting is anchored on Monday and covers 14 inclusive calendar
  assert.equal(parseAutomaticReportId('Fpolitie20261019'),null);
  assert.equal(automaticFortnightReports('brandweer','2026-11-01',2).length,2);
 });
-test('fortnight report permissions never inherit ranks from unrelated services',()=>{
- const own={discordId:'444444444444444444',role:'middenkader',
+test('fortnight report permissions are proved separately for each service',()=>{
+ const own={uid:'discord:444444444444444444',discordId:'444444444444444444',role:'middenkader',
    departments:['politie','ambulance','brandweer','depannage'],
    departmentRoles:{politie:'middenkader',ambulance:'middenkader',brandweer:'basiskader',depannage:'middenkader'}};
  const roster=[
@@ -72,12 +72,15 @@ test('fortnight report permissions never inherit ranks from unrelated services',
    {dept:'depannage',personId:own.discordId,call:'AWV-105'}
  ];
  assert.equal(mayReadFortnightReport(own,'politie',roster),false);
- assert.equal(mayReadFortnightReport(own,'ambulance',roster),true);
+ // A generic medical cadre does not prove AZLS leadership.
+ assert.equal(mayReadFortnightReport(own,'ambulance',roster),false);
  assert.equal(mayReadFortnightReport(own,'brandweer',roster),false);
  assert.equal(mayReadFortnightReport(own,'depannage',roster),true);
- assert.deepEqual(fortnightReportDepartments(own,roster),['ambulance','depannage']);
+ assert.deepEqual(fortnightReportDepartments(own,roster),['depannage']);
  assert.equal(mayReadFortnightReport({...own,fireZoneChief:true},'brandweer',roster),true);
- assert.equal(mayReadFortnightReport({...own,departmentRoles:{...own.departmentRoles,ambulance:'basiskader'}},'ambulance',
+ assert.equal(mayReadFortnightReport({...own,reportServiceRoles:{ambulanceAzls:true}},'ambulance',roster),true);
+ assert.equal(mayReadFortnightReport(own,'ambulance',
    [{dept:'ambulance',personId:own.discordId,call:'DIRMED'},...roster.slice(1)]),true);
- assert.equal(mayReadFortnightReport({...own,departmentRoles:{...own.departmentRoles,depannage:'basiskader'}},'depannage',roster),false);
+ assert.equal(mayReadFortnightReport({...own,departmentRoles:{...own.departmentRoles,depannage:'basiskader'}},'depannage',roster),true);
+ assert.equal(mayReadFortnightReport({...own,uid:'discord:999999999999999999'},'depannage',roster),false);
 });
