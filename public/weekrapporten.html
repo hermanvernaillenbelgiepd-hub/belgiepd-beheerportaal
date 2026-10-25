@@ -72,7 +72,7 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 <main><div class="intro"><div><h1>Dossieradministratie & weekrapporten</h1><p>Beveiligde Firestore-registraties op basis van Discord ID, gescheiden van de originele Google Sheets.</p></div><span class="tag">v0.9 · TESTOMGEVING</span></div>
 <div class="info">Middenkader kan personeelsdossiers beheren en promotievoorstellen indienen. Naamswijzigingen en definitieve personeelsbewegingen mogen uitsluitend door officierenkader en korpsleiding worden vastgelegd. De oorspronkelijke Google-personeelslijst wordt niet aangepast. Rapporten zijn voorlopig <strong>dynamische concepten</strong>, geen afgesloten archieven.</div>
 <div id="status" role="status" aria-live="polite"></div>
-<section id="needLogin" class="card"><h2>Beveiligde aanmelding vereist</h2><p>Gebruik je eigen gemachtigde BelgiumPD-account. Het basiskader kan deze dossiers en weekrapporten niet openen.</p></section>
+<section id="needLogin" class="card"><h2>Beveiligde aanmelding vereist</h2><p>Gebruik je eigen gemachtigde BelgiëPD-account. Het basiskader kan deze dossiers en weekrapporten niet openen.</p></section>
 <div id="app" class="hidden"><div class="tabbar"><button id="tabCases" class="tab active" type="button">Personeelsdossiers</button><button id="tabReports" class="tab" type="button">Weekrapportdatabase</button><a class="tab" href="/personeelsbeheer.html">Centrale FICHE · Observaties &amp; sancties</a></div>
 <section id="casesView"><div class="layout"><div>
 <div class="card"><h2>Nieuwe dossierregistratie</h2><p id="actorLabel">Identiteit laden...</p><form id="caseForm"><div class="form-grid">
@@ -200,7 +200,7 @@ function reportSection(section){
 function renderReport(out){
   const summary=`<div class="report-summary"><div class="report-kpi"><span>Registraties</span><strong>${out.recordCount}</strong></div><div class="report-kpi"><span>Rubrieken</span><strong>${out.sections.filter(s=>s.entries.length).length}</strong></div><div class="report-kpi"><span>Testregistraties uitgesloten</span><strong>${out.excludedTestCount||0}</strong></div></div>`;
   const restartLabel=out.report.restartedAt?`<p class="muted">Handmatige herstart: ${esc(new Date(out.report.restartedAt).toLocaleString('nl-BE'))}. Eerdere registraties zijn alleen uit deze rapportinhoud uitgesloten.</p>`:'';
-   const info=`<h1>${esc(out.report.title)}</h1><div class="report-meta"><strong>BelgiëPD Beheerportaal</strong> · ${esc(out.report.dept)} · ${esc(out.report.periodStart)} t/m ${esc(out.report.periodEnd)}<br/>Opgesteld door ${esc(out.report.createdBy?.name||'BelgiumPD')} · Status: <strong>${esc(out.report.status||'concept')}</strong></div>${restartLabel}${summary}<div class="info warn">${esc(out.disclaimer)}</div>`;
+   const info=`<h1>${esc(out.report.title)}</h1><div class="report-meta"><strong>BelgiëPD Beheerportaal</strong> · ${esc(out.report.dept)} · ${esc(out.report.periodStart)} t/m ${esc(out.report.periodEnd)}<br/>Opgesteld door ${esc(out.report.createdBy?.name||'BelgiëPD')} · Status: <strong>${esc(out.report.status||'concept')}</strong></div>${restartLabel}${summary}<div class="info warn">${esc(out.disclaimer)}</div>`;
   const end=out.truncated?'<div class="info warn">Let op: ten minste één dossier bevat meer registraties dan deze weergave kan verwerken. Export is geblokkeerd; dit rapport is onvolledig.</div>':'';
   return info+out.sections.map(reportSection).join('')+end;
 }
