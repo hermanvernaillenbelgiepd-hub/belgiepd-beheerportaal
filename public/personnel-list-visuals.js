@@ -195,7 +195,10 @@
     const fast=/^FAST(?:[- ]?\d{1,4})?$/.test(call)||
       /\bF[.\s]*A[.\s]*S[.\s]*T\b|\bFAST\b/.test(rank);
     const lsra=/^LSRA(?:[- ]?\d{1,4})?$/.test(call)||/\bLSRA\b/.test(rank);
-    const group=awv?0:fast?1:lsra?2:3;
+    // A recent authenticated Discord role is authoritative for this display.
+    // On stale/missing snapshots, fall back to known function/callsign labels.
+    const verified={leiding:0,fast:1,lsra:2}[person.verifiedFunction];
+    const group=Number.isInteger(verified)?verified:awv?0:fast?1:lsra?2:3;
     const match=call.match(/(\d{1,4})$/);
     const names=['Agentschap Wegen en Verkeer','F.A.S.T','LSRA','Niet ingedeeld'];
     const headings=['LEIDING · Agentschap Wegen en Verkeer','F.A.S.T','LSRA','OVERIGE DEPANNAGE'];
