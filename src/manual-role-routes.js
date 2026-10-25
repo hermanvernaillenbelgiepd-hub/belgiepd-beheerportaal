@@ -1,10 +1,12 @@
 // Manuele rolherstelprocedure bij ontbrekende Discord-rolsynchronisatie.
-// Geen directe roltoekenning: een tweede, bevoegde persoon beslist.
+// Onafhankelijke goedkeuring blijft standaard. Alleen de apart geverifieerde,
+// ondertekende technische beheersessie mag een eigen aanvraag besluiten.
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {roleForDepartment} from './leave-policy.js';
 import {USER_COLLECTION,USER_DEPTS,approvedManagedEntry,canChangeUser,isUserManager} from './user-access.js';
 import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
+import {isVerifiedTechnicalRoleApprover,manualRoleDecisionScope} from './manual-role-decision-policy.js';
 
 const STORE='bpd_manual_role_requests';
 const VALID_ID=/^\d{15,22}$/;
@@ -61,7 +63,9 @@ export function installManualRoleRoutes(app,{requireUser}){
         req.bpd.role==='beheerder'||req.bpd.departments?.includes(d.dept))
         .filter(d=>VALID_ID.test(d.discordId)).map(brief);
       return res.json({requests:records,canPropose:true,
-        canApprove:access.manager,board:access.board});
+        canApprove:access.manager,board:access.board,
+        canSoloApprove:access.manager&&isVerifiedTechnicalRoleApprover(req.bpd),
+        actorUid:req.bpd.uid});
     }catch(e){return respond(res,e)}
   });
   app.post('/api/users/manual-role-requests',requireUser,async(req,res)=>{
@@ -119,8 +123,9 @@ export function installManualRoleRoutes(app,{requireUser}){
           ]);
           const request=pending.data();
           if(!request||request.status!=='pending')throw error(409,'Geen openstaand verzoek');
-          if(request.requestedBy===req.bpd.uid||req.bpd.discordId===discordId)
-            throw error(403,'Aanvrager, goedkeurder en betrokkene moeten gescheiden zijn');
+          const scope=manualRoleDecisionScope(req.bpd,request,discordId);
+          if(!scope.allowed)
+            throw error(403,'Voor deze goedkeuring is een tweede persoon vereist, behalve in geverifieerde technische beheermodus. Eigen rollen wijzigen blijft verboden.');
           if(!request.expiresAt?.toDate||request.expiresAt.toDate().getTime()<Date.now())
             throw error(409,'Dit verzoek is verlopen; maak een nieuw verzoek');
           const current=subject.data();
@@ -150,18 +155,24 @@ export function installManualRoleRoutes(app,{requireUser}){
               username:String(current?.username||verified.get('username')||'Discord-lid').slice(0,80),
               approvedBy:req.bpd.uid,approvedAt:FieldValue.serverTimestamp(),
               manualRoleRecovery:{dept,role:request.role,approvedBy:req.bpd.uid,
-                requestedBy:request.requestedBy},
+                requestedBy:request.requestedBy,
+                approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent'},
               approvalSource:FieldValue.delete(),updatedAt:FieldValue.serverTimestamp()
             },{merge:true});
             tx.create(user.collection('audit').doc(),{
               action:'manual_role_recovery',dept,role:request.role,
               actorUid:req.bpd.uid,requestedBy:request.requestedBy,reason,
+              approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent',
               at:FieldValue.serverTimestamp()});
           }
           tx.update(ref,{status:decision,decidedBy:req.bpd.uid,
-            decisionReason:reason,decidedAt:FieldValue.serverTimestamp()});
+            decisionReason:reason,approvalMethod:scope.technicalOverride?
+              'verified_technical_single_approver':'independent',
+            decidedAt:FieldValue.serverTimestamp()});
           tx.create(ref.collection('audit').doc(),{action:decision,
-            actorUid:req.bpd.uid,reason,at:FieldValue.serverTimestamp()});
+            actorUid:req.bpd.uid,requestedBy:request.requestedBy,reason,
+            approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent',
+            at:FieldValue.serverTimestamp()});
         });
         return res.json({status:decision,roleGranted:decision==='approved',
           discordRoleChanged:false});
