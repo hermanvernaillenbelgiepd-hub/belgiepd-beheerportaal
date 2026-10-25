@@ -1,6 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
-import {fireRecordVisibility,fireMayCreate,FIRE_COURSES} from './fire-dossier-policy.js';
+import {fireRecordVisibility,fireMayCreate,fireSanctionLevel,FIRE_COURSES} from './fire-dossier-policy.js';
 import {validateEntry,canChooseSanction,SANCTION_REASONS} from './registrations.js';
 import {validateManagementEntry} from './management-utils.js';
 const ID=new RegExp('^[0-9]{15,22}$');
@@ -18,12 +18,13 @@ const publicHistory=(doc)=>{
 };
 
 const listed=(v)=>Array.isArray(v)?v:[];
-const allowedTypes=['observatie','notitie','sanctie'];
+const allowedTypes=['observatie','basisnotitie','notitie','sanctie'];
 function safeCase(row,id){
  const r=row.data(),v={id,type:r.type||'',details:clean(r.details,4000),
   eventDate:clean(r.eventDate,10),createdAt:formatDate(r.createdAt),
   registeredBy:clean(r.registeredBy?.name,90),
-  registeredCall:clean(r.registeredBy?.call,24)};
+  registeredCall:clean(r.registeredBy?.call,24),
+  noteKind:r.type==='notitie'?(r.noteKind==='basis'?'basis':'belangrijk'):null};
  if(r.type==='sanctie'){
   v.sanctionType=clean(r.sanctionType,120);
   v.severity=r.severity??null;
@@ -123,9 +124,9 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      const reason=String(req.body?.reason||'').trim();
      if(reason.length<15||reason.length>500)return code(res,400,'Motivering (15–500 tekens) verplicht');
      let values;
-     if(type==='notitie'){
-       values=validateManagementEntry({type:'notitie',eventDate:req.body.eventDate,
-         details:req.body.details});
+     if(type==='notitie'||type==='basisnotitie'){
+       values={...validateManagementEntry({type:'notitie',eventDate:req.body.eventDate,
+         details:req.body.details}),noteKind:type==='basisnotitie'?'basis':'belangrijk'};
      }else{
        values=validateEntry({
          type,details:req.body.details,eventDate:req.body.eventDate,
@@ -138,13 +139,11 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
          evidenceUrl:'',explanation:reason
        });
        if(type==='sanctie'){
-         const allowedLevel=(req.bpd.fireZoneChief===true||
-           req.bpd.portalTechnicalMode===true&&req.bpd.profileTechnicalAvailable===true)
-           ?'korpsleiding':'middenkader';
-         const restricted=allowedLevel==='middenkader'&&
-           !['Mondelinge waarschuwing','Officiële waarschuwing','Tijdelijke beperking'].includes(values.sanctionType);
-         if(restricted||!canChooseSanction(allowedLevel,values.sanctionType,values.severity))
-           return code(res,403,'Deze sanctiemaatregel is niet toegestaan');
+         // Equivalent to Police Middenkader / Korpsleiding, based on the
+         // authenticated Brandweer role, never a client-supplied role.
+         const allowedLevel=fireSanctionLevel(req.bpd);
+         if(!canChooseSanction(allowedLevel,values.sanctionType,values.severity))
+           return code(res,403,'Deze sanctiemaatregel is niet toegestaan voor jouw Brandweerfunctie');
        }
      }
      const writer=s.snap.data.filter(p=>p.dept==='brandweer'&&p.personId===req.bpd.discordId);
@@ -161,7 +160,9 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
        submittedByActor:actor,submittedBy:{uid:req.bpd.uid},
        reason,createdAt:at,modifiedAt:null,visibility:'brandweer_leiding'});
      batch.create(audit,{caseId:'brandweer_'+s.person.personId,entryId:entry.id,
-       type,dept:'brandweer',createdAt:at});
+       type,dept:'brandweer',noteKind:values.noteKind||null,
+       actorDiscordId:req.bpd.discordId,subjectDiscordId:s.person.personId,
+       createdAt:at});
      await batch.commit();
      return res.status(201).json({saved:true,reference:entry.id});
    }catch(e){
