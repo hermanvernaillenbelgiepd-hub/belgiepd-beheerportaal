@@ -60,6 +60,8 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
     <button type="button" id="profileApply" class="alt">Profiel activeren</button>
   </div>
   <p id="profileWarning" class="muted" hidden>Technische modus is actief op MAIN. Alle wijzigingen aan gegevens zijn echt en worden volgens de bestaande modules geregistreerd. Het verandert je Discord-rol of politierang niet. Je kunt altijd terugschakelen.</p>
+<p id="rolePreviewLaunch" hidden><a class="personnel-quicklink" href="/testmodus.html">🧪 Testmodus – Bekijk als (alleen lezen)</a>
+ <small>Voorbeeldweergave van Politie, Brandweer, Ambulance en Depannage zonder echte accountwissel.</small></p>
 </div>
 <button id="request" type="button" hidden>Toegang aanvragen</button></section>
 <nav id="manageTabs" class="manage-tabs" aria-label="Tabbladen gebruikersbeheer" hidden>
@@ -625,6 +627,7 @@ async function loadProfileSwitcher(){
       ' · Discord-politierang: '+
       (policeRoleNames[profile.discordPoliceRank]||'niet recent geverifieerd');
     $('profileWarning').hidden=profile.mode!=='technisch';
+    $('rolePreviewLaunch').hidden=profile.mode!=='technisch';
   }catch{
     root.hidden=true;
   }
