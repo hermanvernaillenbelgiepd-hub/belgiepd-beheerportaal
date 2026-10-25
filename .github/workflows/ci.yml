@@ -47,18 +47,6 @@ jobs:
           node --check tests/leave-routes.test.js
       - name: Execute automated tests
         run: npm test
-      - name: Collect syntax and test diagnostics
-        if: failure()
-        shell: bash
-        run: |
-          npm run check > test-diagnostics.txt 2>&1 || true
-          npm test >> test-diagnostics.txt 2>&1 || true
-      - name: Upload test diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-test-diagnostics
-          path: test-diagnostics.txt
 
       - name: Inspect public Discord login readiness
         if: github.event_name == 'pull_request'
