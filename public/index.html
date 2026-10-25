@@ -90,7 +90,7 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
     <a href="/weekrapporten.html">▥ &nbsp; Weekrapporten</a>
     <a href="/to-dienstbord.html">◉ &nbsp; TO-dienstbord</a>
     <a href="/verlofbeheer.html">▦ &nbsp; Verlofbeheer</a>
-    <a href="/gebruikersbeheer.html#dienstbeheer">⚙ &nbsp; Beheer &amp; rollen</a>
+    <a id="adminNavLink" href="/gebruikersbeheer.html#dienstbeheer" hidden>⚙ &nbsp; Beheer &amp; rollen</a>
   </nav>
   <nav id="memberNav" aria-label="Nieuwe leden" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
@@ -166,12 +166,12 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
 const $=id=>document.getElementById(id);
 const staffNav=$('staffNav'),memberNav=$('memberNav'),staffHome=$('staffDashboard');
 const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
-const adminSection=$('adminRights'),logoutButton=$('dashboardLogout');
+const adminSection=$('adminRights'),adminNavLink=$('adminNavLink'),logoutButton=$('dashboardLogout');
 let auth,requestNumber=0;
 function show(mode,message=''){
  staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';
  staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';
- guestHome.hidden=mode!=='guest';adminSection.hidden=true;
+ guestHome.hidden=mode!=='guest';adminSection.hidden=true;adminNavLink.hidden=true;
  if(message)$('guestMessage').textContent=message;
 }
 function previewRoster(records,stale){
@@ -196,11 +196,23 @@ async function authorizedFetch(path,token){
 }
 async function displayAuthenticated(user){
  const turn=++requestNumber;
- adminSection.hidden=true;
+ adminSection.hidden=true;adminNavLink.hidden=true;
  if(!user){show('guest','Meld je aan met Discord via Mijn profiel.');return;}
  if(!user.uid?.startsWith('discord:')){
-  // Existing Google emergency sign-ins retain their established interface.
-  show('staff');return;
+  // Existing Google emergency accounts use the same server-side admin check
+  // as Discord users. Lower cadres never receive a management shortcut.
+  show('staff');
+  try{
+    const token=await user.getIdToken();
+    const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
+    if(turn===requestNumber){
+      adminSection.hidden=ctx.visible!==true;
+      adminNavLink.hidden=ctx.visible!==true;
+    }
+  }catch{
+    if(turn===requestNumber){adminSection.hidden=true;adminNavLink.hidden=true}
+  }
+  return;
  }
  try{
   const token=await user.getIdToken();
@@ -230,8 +242,13 @@ async function displayAuthenticated(user){
     show('staff');
     try{
       const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
-      if(turn===requestNumber)adminSection.hidden=ctx.visible!==true;
-    }catch{adminSection.hidden=true}
+      if(turn===requestNumber){
+        adminSection.hidden=ctx.visible!==true;
+        adminNavLink.hidden=ctx.visible!==true;
+      }
+    }catch{
+      if(turn===requestNumber){adminSection.hidden=true;adminNavLink.hidden=true}
+    }
   }else show('guest','Je portaaltoegang moet eerst worden gecontroleerd. Vernieuw je Discord-verificatie in Mijn profiel.');
  }catch(err){
   if(turn===requestNumber)show('guest','De aanmelding kon niet worden bevestigd: '+err.message+'. Open Mijn profiel om opnieuw te verifiëren.');
