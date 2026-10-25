@@ -59,8 +59,23 @@ const ownRecord=(actor,dept,roster)=>{
   const mine=(roster||[]).filter(p=>p.dept===dept&&p.personId===actor.discordId);
   return mine.length===1?mine[0]:null;
 };
+// These flags originate exclusively from verified server-side Discord /
+// board appointment checks and a signed technical profile session.
+// A display name, client-side role selection or dossier-test delegation
+// must never grant cross-service reporting rights.
+const authenticatedActor=actor=>/^[0-9]{15,22}$/.test(String(actor?.discordId||''))&&
+  actor?.uid==='discord:'+actor.discordId;
+const isBoardReader=actor=>authenticatedActor(actor)&&
+  actor.boardPersonnelAdmin===true;
+const isTechnicalReportAdmin=actor=>authenticatedActor(actor)&&
+  actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true;
+
 export function mayReadFortnightReport(actor,dept,roster){
-  if(!DEPTS.includes(dept)||!actor?.departments?.includes(dept))return false;
+  if(!DEPTS.includes(dept))return false;
+  // Verified Bestuur reads every service's reports; only the separately
+  // authenticated technical manager gains additional deletion rights.
+  if(isTechnicalReportAdmin(actor)||isBoardReader(actor))return true;
+  if(!actor?.departments?.includes(dept))return false;
   const scoped=roleForDepartment(actor,dept);
   if(dept==='politie')return ['officierenkader','korpsleiding'].includes(scoped);
   const person=ownRecord(actor,dept,roster);
@@ -89,7 +104,13 @@ export function fortnightReportDepartments(actor,roster){
  * or corps-leadership grant. This never extends delete rights to other depts.
  */
 export function mayRemoveWeekReport(actor,dept,roster){
-  return dept==='politie'&&mayReadFortnightReport(actor,dept,roster);
+  if(!DEPTS.includes(dept))return false;
+  if(isTechnicalReportAdmin(actor))return true;
+  // Generic Bestuur is read-only. Preserve previously authorised Police
+  // Officierenkader / Korpsleiding deletion, but no other cross-service
+  // rank grants.
+  return dept==='politie'&&actor?.departments?.includes('politie')&&
+    ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'));
 }
 
 /** Period archive is a navigational grouping, not an immutable snapshot. */
