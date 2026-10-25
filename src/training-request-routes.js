@@ -140,8 +140,9 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       const tier=tierOf(ctx,person);
       if(!canSubmitTrainingRequest(person,tier,roleForDepartment(ctx.actor,dept)))
         throw rejection('Geen aanvraagrecht in dit kader');
-      const form=validateTrainingRequestInput(req.body,
-        requestCourseOptions(dept,tier),tier);
+      let form;
+      try{form=validateTrainingRequestInput(req.body,requestCourseOptions(dept,tier),tier)}
+      catch(e){throw rejection(e.message,400)}
       const ref=db().collection('bpd_training_requests').doc();
       await ref.create({
         department:dept,applicantDiscordId:ctx.id,
