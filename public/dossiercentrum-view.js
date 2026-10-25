@@ -13,7 +13,7 @@ export function filterDossiers(rows,filters={}){
     (!query||[r.name,r.call,r.rank,r.status,r.discordId]
       .some(v=>normalized(v).includes(query))));
 }
-export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-bpd','callsign-police','callsign-fire','callsign-desc','callsign-asc','name-asc','name-desc']);
+export const DOSSIER_SORT_OPTIONS=Object.freeze(['callsign-bpd','callsign-police','callsign-fire','callsign-ambulance','callsign-desc','callsign-asc','name-asc','name-desc']);
 // Compare numerical parts as numbers: e.g. 930 > 404 > 99, including mixed
 // prefixes like SANTO-930 and SANTO-99. Unknown callsigns stay at the bottom.
 const dossierCollator=new Intl.Collator('nl-BE',{numeric:true,sensitivity:'base'});
@@ -108,12 +108,38 @@ const fireCallCompare=(x,y)=>{
  const a=fireCallGroup(x),b=fireCallGroup(y);
  return a.group-b.group||a.number-b.number||compareFilled(x,y);
 };
+// Ambulance ranks as recorded on the service's official personnel sheet:
+// DIRMED, HARTS, HVPK, HAMB, ARTS, VPK, AMB, STAG.
+// A number is compared numerically within its own callsign family.
+export function ambulanceCallGroup(value){
+  const raw=String(value??'').trim().toUpperCase();
+  const match=raw.match(/^(DIRMED|HARTS|HVPK|HAMB|ARTS|VPK|AMB|STAG)(?:[- ]?(\d{1,4}))?$/);
+  const ranks=['DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','STAG'];
+  const priority=match?ranks.indexOf(match[1]):99;
+  const group=priority<4?0:priority<99?priority-3:5;
+  const labels=[
+    'LEIDING · DIRMED, HARTS, HVPK, HAMB',
+    'ARTSEN · ARTS',
+    'VERPLEEGKUNDIGEN · VPK',
+    'AMBULANCIERS · AMB',
+    'STAGIAIRS · STAG',
+    'OVERIGE AMBULANCE'
+  ];
+  return {group,priority,
+    number:match?.[2]!==undefined?Number(match[2]):0,label:labels[group]};
+}
+const ambulanceCallCompare=(a,b)=>{
+  const left=ambulanceCallGroup(a),right=ambulanceCallGroup(b);
+  return left.group-right.group||left.priority-right.priority||
+    left.number-right.number||compareFilled(a,b);
+};
 export function sortDossiers(rows,order='callsign-bpd'){
   const mode=DOSSIER_SORT_OPTIONS.includes(order)?order:'callsign-bpd';
   const byName=mode.startsWith('name-'),direction=mode.endsWith('-desc')?-1:1;
   return [...(Array.isArray(rows)?rows:[])].sort((a,b)=>{
     const main=mode==='callsign-police'?policeCallCompare(a,b):
       mode==='callsign-fire'?fireCallCompare(a?.call,b?.call):
+      mode==='callsign-ambulance'?ambulanceCallCompare(a?.call,b?.call):
       mode==='callsign-bpd'?bpdCallCompare(a?.call,b?.call):byName
       ?compareFilled(a?.name,b?.name,direction)
       :compareFilled(a?.call,b?.call,direction);
