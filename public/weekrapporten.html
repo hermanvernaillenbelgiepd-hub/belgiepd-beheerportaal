@@ -264,7 +264,7 @@ async function handleReportListClick(event){
   if(!canRemoveReport||!viewData?.removeReportDepartments?.includes($('reportDept').value))return;
   const report=reportItems.find(x=>x.id===restartBtn.dataset.restartReport);
   if(!report||report.source!=='automatic'||report.status!=='lopende_periode')return;
-  const consent=window.confirm('Het lopende weekrapport opnieuw starten?\\n\\nAlle registraties die vóór de herstart zijn ingevoerd, verdwijnen uit de INHOUD van dit rapport en zijn ook niet meer in de export opgenomen. De oorspronkelijke personeelsdossiers, audit en weekrapportcyclus blijven behouden. De nieuwe periode start op de volgende vaste maandag.');
+  const consent=window.confirm('Het lopende weekrapport opnieuw starten?\n\nAlle registraties die vóór de herstart zijn ingevoerd, verdwijnen uit de INHOUD van dit rapport en zijn ook niet meer in de export opgenomen. De oorspronkelijke personeelsdossiers, audit en weekrapportcyclus blijven behouden. De nieuwe periode start op de volgende vaste maandag.');
   if(!consent)return;
   const reason=window.prompt('Motivering voor de rapportherstart (10 tot 500 tekens):','Testregistraties uitsluiten en met een schone rapportinhoud starten');
   if(reason===null)return;
