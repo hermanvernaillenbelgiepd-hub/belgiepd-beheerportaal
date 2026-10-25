@@ -493,6 +493,29 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
         }
       }
     }
+    // LRD (Lokale Recherche) is only a verified, display-only Discord badge.
+    // It never grants dossier access, official grade or specialization rights.
+    req.bpd.policeLrdSubjectIds=Object.create(null);
+    if(req.path==='/api/personnel/overview'&&scope.departments.includes('politie')&&
+       !snapshot.stale){
+      const ids=[...new Set(roster.filter(p=>p.dept==='politie'&&
+        /^\d{15,22}$/.test(String(p.personId||''))).map(p=>p.personId))];
+      for(let i=0;i<ids.length;i+=25){
+        const group=ids.slice(i,i+25);
+        const docs=await Promise.all(group.map(id=>cachedAuthDoc('bpd_discord_auth',id)));
+        group.forEach((id,index)=>{
+          if(!docs[index]?.exists)return;
+          const member=docs[index].data();
+          if(member.guildId!==process.env.DISCORD_GUILD_ID||
+             !Number.isSafeInteger(member.verifiedAt)||
+             member.verifiedAt>Date.now()||
+             Date.now()-member.verifiedAt>15*60*1000||
+             !Array.isArray(member.roleIds))return;
+          if(member.roleIds.includes('1380843428354592780'))
+            req.bpd.policeLrdSubjectIds[id]=true;
+        });
+      }
+    }
     // Trust a 9xx subject's verified Discord role, never the shared callsign
     // or a possibly historical Sheets rank. Missing/stale guild evidence
     // means protected dossier, while the visible staff roster remains intact.
