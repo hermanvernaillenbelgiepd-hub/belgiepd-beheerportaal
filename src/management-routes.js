@@ -137,7 +137,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const parts=await Promise.all(uniqueIds.slice(i,i+12).map(async pid=>{
         const rows=await db().collection('bpd_cases').doc(caseId(report.dept,pid)).collection('entries')
           .where('eventDate','>=',report.periodStart).where('eventDate','<=',report.periodEnd).limit(201).get();
-        return {truncated:rows.docs.length>200,docs:rows.docs.slice(0,200).map(d=>({id:d.id,...noPrivate(d.data())}))};
+        return {truncated:rows.docs.length>200,docs:rows.docs.slice(0,200).filter(d=>d.get('status')!=='verwijderd').map(d=>({id:d.id,...noPrivate(d.data())}))};
       }));
       for(const part of parts){result.push(...part.docs);if(part.truncated)truncated=true;}
     }
