@@ -324,7 +324,7 @@ async function load(){
   $('discord').textContent=p.discordId;
   const advanced=data.visibility==='leadership'||data.visibility==='full';
   const scopes={
-   identity:'Brandweer Middenkader: basisgegevens en observatie toevoegen. Vertrouwelijke registraties zijn niet beschikbaar.',
+   identity:'Brandweer Middenkader: basisgegevens, goedgekeurde verlofperiodes en observaties. Vertrouwelijke registraties zijn niet beschikbaar.',
    leadership:'Brandweerleiding: uitgebreide dossierinzage bij de toegelaten personeelsleden.',
    full:'ZONE of afzonderlijk gemachtigd beheer: uitgebreide dossierinzage.'};
   $('access').textContent=scopes[data.visibility]||'';
@@ -352,20 +352,15 @@ async function load(){
   ]:[])]);
 
   rows($('leaveSummary'),[['Personeels-/verlofstatus',shownStatus]]);
-  $('overviewLeave').textContent=advanced&&Array.isArray(data.leave)&&data.leave.length
+  $('overviewLeave').textContent=Array.isArray(data.leave)&&data.leave.length
     ?data.leave.slice(0,5).map(x=>(x.startDate||'—')+' t/m '+(x.endDate||'—'))
       .join(' | ')
     :shownStatus;
-  if(advanced){
-   cards($('leavePeriods'),data.leave||[],
+  // Approved calendar dates are intentionally visible at every allowed
+  // Brandweer dossier level; confidential leave notes never leave the API.
+  cards($('leavePeriods'),data.leave||[],
     x=>'Goedgekeurd verlof',x=>(x.startDate||'—')+' t/m '+(x.endDate||'—'),
     x=>'Status: goedgekeurd');
-  }else{
-   $('leavePeriods').replaceChildren();
-   const info=document.createElement('p');info.className='muted';
-   info.textContent='Individuele verlofperiodes en administratieve beslissingen zijn niet zichtbaar voor Middenkader.';
-   $('leavePeriods').append(info);
-  }
   $('overviewQuals').hidden=!advanced;
   $('overviewActivity').hidden=!advanced;
   for(const tile of ['overviewObservationTile','overviewNotesTile',
