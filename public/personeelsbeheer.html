@@ -1646,6 +1646,48 @@ function sheetCell(value){
 // categorie leesbaar. Geen tweede pagina of verborgen gegevens.
 let overviewShowEmpty=false;
 function refreshOverviewEmpty(){/* Alle negen categorieën blijven altijd zichtbaar. */}
+// A server-authorized correction, not a physical Firestore delete.
+let dossierCanRetire=false;
+function attachRetireButton(container,item,source='cases'){
+ if(!dossierCanRetire||!selected||!item?.id)return;
+ if(source==='cases'&&
+   (!['notitie','specialisatiebeperking','basisnotitie','observatie','sanctie'].includes(item.type)||
+    item.source==='central-leave-audit'))return;
+ if(source==='leave'&&item.status!=='approved')return;
+ const button=document.createElement('button');
+ button.type='button';button.className='dossier-retire-button';
+ button.textContent='🗑 Wissen';
+ button.title='Verwijder uit actief dossier; audit en weekrapport blijven bewaard';
+ button.setAttribute('aria-label','Registratie wissen met audit');
+ button.onclick=async()=>{
+   if(!selected)return;
+   const explanation=prompt('Motivering voor het wissen (10 tot 500 tekens):');
+   if(explanation===null)return;
+   const reason=explanation.trim();
+   if(reason.length<10||reason.length>500){
+     notice('Vul een motivering in van 10 tot 500 tekens.',true);return;
+   }
+   const subject=selected;
+   if(!confirm('Deze registratie uit het actieve dossier verwijderen? '+
+       'De originele gegevens blijven in de audit; de intrekking komt in het lopende weekrapport.'))return;
+   button.disabled=true;
+   try{
+     const encoded=id=>encodeURIComponent(id);
+     if(source==='leave'){
+       await request('/api/leave/requests/'+encoded(item.id)+'/retire',{
+         method:'POST',body:{dept:subject.dept,reason}});
+     }else{
+       await request('/api/dossier-retirement/'+encoded(subject.dept)+'/'+
+         encoded(subject.discordId)+'/'+source+'/'+encoded(item.id),{
+         method:'POST',body:{reason}});
+     }
+     notice('Registratie ingetrokken en in het weekrapport gelogd.');
+     if(selected?.dept===subject.dept&&selected?.discordId===subject.discordId)
+       loadStaffDossier(subject);
+   }catch(e){notice('Wissen mislukt: '+e.message,true);button.disabled=false}
+ };
+ container.append(button);
+}
 function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',limited=false){
   const root=$('sheet'+group[0].toUpperCase()+group.slice(1));
   if(!root)return;
@@ -1663,6 +1705,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       makeScoreBadge(row.score):null;
     if(score)item.append(heading,score,meta);
     else item.append(heading,meta);
+    attachRetireButton(item,row,group==='leave'?'leave':row.kind?'staff':'cases');
     root.append(item);
   };
   if(!entries.length){
@@ -2037,6 +2080,7 @@ async function loadStaffLeave(p,key){
         ' · '+leaveStatusText(item.status)+
         (item.manual?' (handmatig)':'');
       div.append(title);
+      attachRetireButton(div,item,'leave');
       if(item.status==='pending'&&item.canDecide===true){
         for(const [decision,label] of [['approved','Goedkeuren'],['rejected','Afwijzen']]){
           const button=document.createElement('button');
@@ -2448,6 +2492,7 @@ async function loadStaffFormalRecords(p,key){
       const score=row.type==='observatie'?makeScoreBadge(row.score):null;
       if(score)item.append(title,score,author,details);
       else item.append(title,author,details);
+      attachRetireButton(item,row,'cases');
       if(row.type==='sanctie'){
         const reasons=document.createElement('div');reasons.className='subtle';
         reasons.textContent='Ernst '+(row.severity||'—')+'/10 · '+(row.reasons||[]).join(', ');
@@ -2823,6 +2868,7 @@ async function loadStaffDossier(p){
   $('staffManualLeaveForm').hidden=true;
   $('staffCaseForm').hidden=true;
   $('staffProfileForm').hidden=true;
+  dossierCanRetire=false;
   registrationManualLeave=false;
   registrationSpecialty=false;
   functionCanEdit=false;
@@ -2839,6 +2885,13 @@ async function loadStaffDossier(p){
     if(!selected||selected.dept+':'+selected.discordId!==key||$('panel').hidden)return;
     staffDossierRevision=result.revision;
     staffDossierCanMaintain=result.canMaintain===true;
+    // Query a scoped server capability; never infer deletion powers from
+    // the user's displayed rank or a local form selector.
+    try{
+      const access=await request('/api/dossier-retirement/access?dept='+
+        encodeURIComponent(p.dept)+'&discordId='+encodeURIComponent(p.discordId));
+      dossierCanRetire=access.canRetire===true;
+    }catch{dossierCanRetire=false}
     registrationManualLeave=result.cadreActions?.manualLeave===true;
     refreshPersonnelRegistrationOptions();
     void loadStaffCasePermissions(p,key,result.cadreActions?.cases===true);
