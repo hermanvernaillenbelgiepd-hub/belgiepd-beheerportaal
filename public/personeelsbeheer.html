@@ -640,6 +640,7 @@ import {policeGroupedRoster,policeOperationalTier,policeTierDisplay} from '/poli
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
+let activeLeaveRosterIds=new Set();
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
 let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
@@ -1243,7 +1244,12 @@ function render(){
     }
     tr.append(seriesCell);
     const personStatus=document.createElement('td'),label=document.createElement('span');
-    label.className='pill';label.textContent=person.status||'Onbekend';
+    if(activeLeaveRosterIds.has(person.discordId)){
+      label.className='active-leave-pill';label.textContent='🏖️ Verlof';
+      label.title='Vandaag valt binnen een goedgekeurde verlofperiode (centrale verlofmodule)';
+    }else{
+      label.className='pill';label.textContent=person.status||'Onbekend';
+    }
     personStatus.append(label);tr.append(personStatus);
     if(!cols.length){
       const general=document.createElement('td');general.className='roster-specialties';
@@ -1341,7 +1347,7 @@ async function checkAccessStatus(){
   }catch(e){root.textContent='Statuscontrole: '+e.message}
 }
 async function load(){
-  if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;$('panel').hidden=true;createRanks={};promotionsEnabled=false;$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+  if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     const data=await request('/api/personnel/overview');
     $('accessHelp').hidden=true;
@@ -1368,6 +1374,15 @@ async function load(){
       else $('dept').value='all';
       $('search').value=prefill;
     }
+    // Active periods are person-linked and appear for each department of the
+    // same Discord identity. A read failure must not invent a leave status.
+    activeLeaveRosterIds=new Set();
+    try{
+      const todayLeave=await request('/api/leave/roster-active');
+      activeLeaveRosterIds=new Set(todayLeave.activeDiscordIds||[]);
+      if(todayLeave.limited===true)
+        notice('Niet alle verlofperiodes zijn geladen; de actuele status kan onvolledig zijn.',true);
+    }catch{/* Keep ordinary status when verified leave is unavailable. */}
     render();updateFicheColleagues();
     if(prefill&&/^\d{15,22}$/.test(prefill)){
       const matching=people.filter(p=>p.discordId===prefill&&
@@ -2960,17 +2975,22 @@ $('staffProfileForm').onsubmit=async event=>{
 $('staffManualLeaveForm').onsubmit=async event=>{
   event.preventDefault();
   const person=selected;
-  if(!person)return;
+  if(!person||!registrationManualLeave)return;
   const button=$('leaveManualSave');button.disabled=true;
   try{
-    if(!confirm('Deze verlofperiode meteen als goedgekeurd inschrijven voor '+person.name+'?'))return;
+    if(!confirm('Centraal verlof voor '+person.name+' registreren? Dit wordt zichtbaar bij ALLE gekoppelde hulpdiensten en gelogd in het weekrapport.'))return;
     await request('/api/leave/manual',{method:'POST',
       body:{dept:person.dept,discordId:person.discordId,
         startDate:$('leaveFrom').value,endDate:$('leaveUntil').value,
         note:$('leaveNote').value.trim()}});
     $('leaveNote').value='';
     await loadStaffLeave(person,person.dept+':'+person.discordId);
-    notice('Verlofperiode officieel geregistreerd in het bestaande verlofregister.');
+    try{
+      const data=await request('/api/leave/roster-active');
+      activeLeaveRosterIds=new Set(data.activeDiscordIds||[]);
+      render();
+    }catch{/* Roster status updates on the next refresh. */}
+    notice('Centraal verlof geregistreerd voor alle gekoppelde hulpdiensten en gelogd in het weekrapport.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
 $('staffCaseForm').onsubmit=async event=>{
