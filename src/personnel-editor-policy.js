@@ -178,7 +178,12 @@ export function mergePersonnelEdits(records,editRecords){
   for(const e of editRecords||[]){
     if(!e||!validPersonnelKey(e.dept,e.discordId))continue;
     if(!Number.isSafeInteger(e.revision)||e.revision<1)continue;
-    if(typeof e.name!=='string'||typeof e.call!=='string'||!EDITABLE_STATUSES.includes(e.status))continue;
+    // Preserve legitimate non-editable legacy statuses during an authorised
+    // rank change; never replace them with a made-up administrative status.
+    const inheritedStatus=e.approvedRankEdit===true&&typeof e.status==='string'&&
+      e.status.length>0&&e.status.length<=100&&!/[<>\x00-\x1f\x7f]/.test(e.status);
+    if(typeof e.name!=='string'||typeof e.call!=='string'||
+       !EDITABLE_STATUSES.includes(e.status)&&!inheritedStatus)continue;
     const key=e.dept+'_'+e.discordId;
     if(byKey.has(key))continue;
     byKey.set(key,e);
