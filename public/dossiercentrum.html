@@ -227,11 +227,15 @@ function render(){
     if(groupFire||groupPolice||groupAmbulance){
       const group=groupFire?fireCallGroup(r.call):groupPolice?policeCallGroup(r):
         ambulanceCallGroup(r.call);
-      if(group.group!==previousGroup){
+      // Korporaals (BWM-01..05) en brandweermannen/-vrouwen
+      // (BWM-06..25) horen bij hetzelfde Basiskader.
+      const displayedGroup=groupFire&&(group.group===3||group.group===4)?3:group.group;
+      if(displayedGroup!==previousGroup){
         const heading=node('tr');heading.className='dossier-cadre-group';
-        const label=node('td',group.label);label.colSpan=7;
+        const label=node('td',groupFire&&displayedGroup===3?
+          'BASISKADER · BWM-01 t/m BWM-25':group.label);label.colSpan=7;
         heading.append(label);body.append(heading);
-        previousGroup=group.group;
+        previousGroup=displayedGroup;
       }
     }
     const tr=node('tr');
