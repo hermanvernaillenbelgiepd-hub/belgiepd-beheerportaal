@@ -737,6 +737,21 @@ function availablePersonnelRegistrationKinds(){
   const dept=selected?.dept;
   if(!dept)return [];
   const kinds=[];
+  if(dept==='depannage'){
+    // Exactly three administrative registrations for Depannage; still show
+    // only those currently granted by the authenticated server session.
+    if(formalPermissions?.writesEnabled===true&&formalPermissions.actor){
+      if(formalPermissions.observationDepartments?.includes(dept))
+        kinds.push(['observatie','Observatie']);
+      if(formalPermissions.sanctionDepartments?.includes(dept)&&
+         formalPermissions.sanctionOptionsByDepartment?.[dept]?.length)
+        kinds.push(['sanctie','Sanctie']);
+    }
+    if(casePermissions?.writesEnabled===true&&casePermissions.actor&&
+       casePermissions.typesByDepartment?.[dept]?.includes('specialisatiebeperking'))
+      kinds.push(['case:specialisatiebeperking','Beperking van specialisatie']);
+    return kinds;
+  }
   if(formalPermissions?.writesEnabled===true&&formalPermissions.actor){
     if(formalPermissions.observationDepartments?.includes(dept))
       kinds.push(['observatie','Observatie']);
@@ -2048,7 +2063,9 @@ function updateFormalFields(){
     (isSanction?!sanction||!opts.length:!observation);
   $('staffFormalPolicy').textContent=!formalPermissions?.writesEnabled?
     'De registratiemodule staat momenteel uit. Je kunt de bestaande registraties wel raadplegen.':
-    'De server bepaalt de toegelaten sancties op basis van je rol binnen deze hulpdienst; bij ernst 9–10 kan een degradatievoorstel worden geregistreerd.';
+    dept==='depannage'?
+      'Depannage: mondelinge waarschuwing en officiële waarschuwing; schorsing uitsluitend voor hoger kader en ontslag uitsluitend voor korpsleiding. De server controleert elke keuze.':
+      'De server bepaalt de toegelaten sancties op basis van je rol binnen deze hulpdienst; bij ernst 9–10 kan een degradatievoorstel worden geregistreerd.';
 }
 // Datums worden in het formulier altijd in Belgisch formaat getoond,
 // maar de bestaande dossier-API bewaart de originele ISO-datum (YYYY-MM-DD).
