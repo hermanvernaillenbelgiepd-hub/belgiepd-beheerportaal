@@ -15,7 +15,8 @@ test('Reeks 1 red, 2 purple, 3 blue, 4 yellow reserve - same spelling in roster 
   const person=police({series:'Reeks '+number});
   assert.equal(rosterSeriesNumber('Reeks '+number+' · Middenkader'),number);
   assert.ok(types(person,'Reeks '+number+' · Middenkader').includes(color));
-  assert.ok(labels(person,'Reeks '+number+' · Middenkader').includes('Middenkader'));
+  assert.ok(!labels(person,'Reeks '+number+' · Middenkader').includes('Middenkader'));
+  assert.equal(labels(person,'Reeks '+number+' · Middenkader')[0],number===4?'Reeks 4 · Reserve':'Reeks '+number);
  }
  assert.equal(labels(police({series:'Reeks 4'}),'Reeks 4 · Middenkader')[0],
   'Reeks 4 · Reserve');
@@ -24,8 +25,9 @@ test('Reeks 1 red, 2 purple, 3 blue, 4 yellow reserve - same spelling in roster 
 test('Specific series heads are identified by their known Discord IDs, not their names',()=>{
  const staff=POLICE_SERIES_HEADS['1'][0];
  const p=police({discordId:staff.id,name:'Bijgewerkte gebruikersnaam',series:'Reeks 1'});
- assert.deepEqual(types(p,'Reeks 1 · Middenkader').slice(0,2),['series-1','series-1']);
- assert.ok(labels(p,'Reeks 1 · Middenkader').includes('Reekshoofd'));
+ assert.deepEqual(types(p,'Reeks 1 · Middenkader'),['series-1']);
+ assert.ok(policeRosterSeriesBadges(p,'Reeks 1 · Middenkader')[0].title.includes('Reekshoofd'));
+ assert.ok(!labels(p,'Reeks 1 · Middenkader').includes('Reekshoofd'));
  assert.ok(!labels(police({name:staff.name,discordId:'999999999999999999',
   series:'Reeks 1'}),'Reeks 1 · Middenkader').includes('Reekshoofd'));
  assert.equal(POLICE_SERIES_RELIEF.name,'RX');
@@ -34,14 +36,14 @@ test('Specific series heads are identified by their known Discord IDs, not their
 });
 test('Officer rainbow, Corps crown and ambiguous 9xx combined class are visual only',()=>{
  assert.ok(labels(police({call:'900',series:'Kader',rank:'Eerste hoofdcommissaris'}),
-  'Officierenkader / Korpsleiding').includes('👑 Korpsleiding'));
+  'Officierenkader / Korpsleiding').includes('👑'));
  assert.ok(labels(police({call:'920',series:'Kader',rank:'Aspirant Commissaris'}),
-  'Officierenkader / Korpsleiding').includes('🌈 Officierenkader'));
+  'Officierenkader / Korpsleiding').includes('🌈'));
  assert.ok(labels(police({call:'925',series:'Kader',rank:'Commissaris',discordCadre:'Korpsleiding'}),
-  'Officierenkader / Korpsleiding').includes('👑 Korpsleiding'));
+  'Officierenkader / Korpsleiding').includes('👑'));
  const uncertain=police({call:'—',rank:'Onbekend',series:'Kader'});
  assert.deepEqual(labels(uncertain,'Officierenkader / Korpsleiding'),
-  ['🌈 👑 Officierenkader / Korpsleiding']);
+  ['🌈 👑']);
  assert.deepEqual(policeRosterSeriesBadges({dept:'brandweer',series:'Reeks 1'},'Reeks 1'),[]);
 });
 test('Police roster uses DOM text nodes and keeps non-Police columns unchanged',()=>{
