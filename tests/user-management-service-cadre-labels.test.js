@@ -30,7 +30,7 @@ test('Changing the service selects its own cadre rather than carrying a police r
 
 test('ZONE selection remains a portal rank, not an authorization bypass',()=>{
  assert.match(html,/ZONE – Zonecommandant selecteren\?/);
- assert.match(html,/formele ZONE-functie en volledige brandweerbevoegdheid vereisen daarnaast/);
+ assert.match(html,/officiële ZONE-functie en volledige brandweerbevoegdheid vereisen daarnaast/);
  assert.match(html,/role:rank\.value,departments:\[dept\.value\],reason/);
  const actor={uid:'discord:301448301868220417',discordId:'301448301868220417',
    departments:['brandweer'],role:'korpsleiding',portalTechnicalMode:false};
