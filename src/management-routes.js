@@ -3,7 +3,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {isArchivedTraining} from './training-maintenance.js';
-import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments} from './fortnight-report-policy.js';
+import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod} from './fortnight-report-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
@@ -29,7 +29,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const snap=await getSnapshot();
       const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
       const actor=actorFromPersonnel(req.bpd,snap.data);
-      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),reportDepartments:fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d,t))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)).length>0,actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
+      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),reportDepartments:fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d,t))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)).length>0,removeReportDepartments:enabled()?fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)&&mayRemoveWeekReport(req.bpd,d,snap.data)):[],actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
         typesByDepartment:Object.fromEntries(req.bpd.dossierAllowedDepartments
           .filter(d=>canReadServiceDossier(req.bpd,d))
           .map(d=>[d,MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,d,t))]))});
@@ -109,15 +109,23 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       if(!canReadServiceDossier(req.bpd,dept)||
         !mayReadFortnightReport(req.bpd,dept,snapshot.data))
         return res.status(403).json({error:'Alleen de aangewezen leiding van deze dienst mag de rapporten raadplegen'});
-      const snaps=await db().collection('bpd_weekreports').where('dept','==',dept).limit(100).get();
+      const [snaps,removals]=await Promise.all([
+        db().collection('bpd_weekreports').where('dept','==',dept).limit(200).get(),
+        db().collection('bpd_weekreport_removals').where('dept','==',dept).get()
+      ]);
+      const hidden=new Set(removals.docs.map(d=>d.id));
       const legacy=snaps.docs.map(d=>({id:d.id,...d.data(),createdAt:toIso(d.get('createdAt'))}))
         .map(({createdByUid,createdByEmail,...safe})=>safe);
-      const now=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+      const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
         year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-      const automated=automaticFortnightReports(dept,now,26);
-      const reports=[...automated,...legacy].sort((a,b)=>
+      // Each elapsed period is listed back to the first automatic report.
+      const automated=automaticFortnightReports(dept,today,52);
+      const available=[...automated,...legacy].filter(r=>!hidden.has(r.id)).sort((a,b)=>
         (b.periodStart||'').localeCompare(a.periodStart||''));
-      res.json({reports,limited:snaps.docs.length===100,automatic:true});
+      const {active,archive}=splitReportsByPeriod(available,today);
+      res.json({reports:active,archivedReports:archive,
+        canRemove:enabled()&&mayRemoveWeekReport(req.bpd,dept,snapshot.data),
+        limited:snaps.docs.length===200,automatic:true});
     }catch(e){errorResponse(res,e)}
   });
   app.post('/api/management/reports',requireUser,cadre,async(req,res)=>{
@@ -136,6 +144,43 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       res.status(201).json({saved:true,id:d.id});
     }catch(e){errorResponse(res,e)}
   });
+  // A report is hidden through an immutable removal record, not deleted from
+  // personnel dossiers. The marker also serves as an auditable deletion log.
+  app.delete('/api/management/reports/:id',requireUser,async(req,res)=>{
+    if(!enabled())return res.status(503).json({error:'Rapportwijzigingen staan uit'});
+    const id=asString(req.params.id),automatic=parseAutomaticReportId(id);
+    if(!automatic&&!safeReportId(id))
+      return res.status(400).json({error:'Ongeldige rapportverwijzing'});
+    try{
+      const snap=await getSnapshot();
+      if(snap.stale)return res.status(503).json({error:'Personeelsbron niet actueel'});
+      const legacy=automatic?null:await db().collection('bpd_weekreports').doc(id).get();
+      if(!automatic&&!legacy.exists)return res.status(404).json({error:'Rapport bestaat niet'});
+      const report=automatic||legacy.data();
+      if(!canReadServiceDossier(req.bpd,report.dept)||
+        !mayRemoveWeekReport(req.bpd,report.dept,snap.data))
+        return res.status(403).json({error:'Alleen Officierenkader en Korpsleiding van Politie mogen weekrapporten wissen'});
+      const actor=actorFromPersonnel(req.bpd,snap.data);
+      if(!actor)return res.status(403).json({error:'Eigen personeelsfiche is niet gekoppeld'});
+      const marker=db().collection('bpd_weekreport_removals').doc(id);
+      try{
+        await marker.create({
+          reportId:id,dept:report.dept,title:report.title,
+          periodStart:report.periodStart,periodEnd:report.periodEnd,
+          source:automatic?'automatic':report.source||'manual',
+          removedAt:FieldValue.serverTimestamp(),
+          removedBy:actor,removedByUid:req.bpd.uid,
+          action:'report-hidden',retainsDossierEntries:true
+        });
+      }catch(err){
+        if(err?.code===6||err?.code==='already-exists')
+          return res.status(409).json({error:'Dit rapport werd reeds gewist'});
+        throw err;
+      }
+      res.set('Cache-Control','private, no-store');
+      return res.json({saved:true,id});
+    }catch(e){errorResponse(res,e)}
+  });
   // Eén server-side rapportbouwer voor zowel de beveiligde JSON-weergave als DOCX-export.
   // De rechten worden voor elke aanvraag opnieuw gecontroleerd, ook voor downloaden.
   async function assembleReport(req,id){
@@ -149,6 +194,9 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     if(!canReadServiceDossier(req.bpd,report.dept)||
       !mayReadFortnightReport(req.bpd,report.dept,snap.data))
       return {status:403,error:'Geen toegang tot deze dienstgebonden rapportage'};
+    // A removed report must not be accessible via a guessed direct URL or export.
+    const removal=await db().collection('bpd_weekreport_removals').doc(id).get();
+    if(removal.exists)return {status:404,error:'Dit weekrapport is uit het overzicht verwijderd'};
     const allSubjects=snap.data.filter(p=>p.dept===report.dept && validDiscord(p.personId));
     const uniqueIds=[...new Set(allSubjects.map(p=>p.personId))].filter(pid=>uniqueSubject(allSubjects,report.dept,pid));
     const result=[];let truncated=false;

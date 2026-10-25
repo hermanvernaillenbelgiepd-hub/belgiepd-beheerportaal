@@ -10,6 +10,11 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 .report-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .report-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px}
 .report-actions button{font-size:12px;padding:8px 11px}
+.report-delete{border-color:#86424c;color:#ffe1e5;background:#4e2731}
+.report-delete:hover{background:#65313c}
+.report-archive{border:1px solid #304663;border-radius:10px;margin-top:20px;padding:12px;background:#101f35}
+.report-archive summary{cursor:pointer;font-weight:700;color:#dfeeff;padding:4px 0}
+.report-archive[open] summary{margin-bottom:12px}
 .report-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:15px 0}
 .report-kpi{border:1px solid #304b6b;background:#132743;border-radius:9px;padding:12px 9px}
 .report-kpi span{font-size:11px;color:#a9c6e9;display:block}
@@ -90,7 +95,7 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
  <div id="caseList">Selecteer een personeelslid.</div></div></div></div></section>
 <section id="reportsView" class="hidden"><div class="layout"><div>
 <div class="card hidden" id="legacyReportCreator"><h2>Handmatig concept (historisch)</h2><form id="reportForm"><div class="form-grid"><div class="full"><label class="field-label" for="reportTitle">Titel</label><input id="reportTitle" required maxlength="120" placeholder="Weekrapport Politie – periode van 14 dagen"></div><div><label class="field-label" for="reportDept">Hulpdienst</label><select id="reportDept" required></select></div><div><label class="field-label" for="periodStart">Begindatum</label><input id="periodStart" type="date" required></div><div><label class="field-label" for="periodEnd">Einddatum</label><input id="periodEnd" type="date" required></div><p class="muted" id="periodNote">Standaard 14 kalenderdagen (inclusief begin- en einddatum). Beide datums zijn vrij aanpasbaar, tot maximaal 31 dagen.</p></div><div class="buttons"><button class="primary" id="createReport" type="submit">Conceptweekrapport aanmaken</button></div></form></div>
-<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:9px"><h2>Automatische tweewekelijkse rapporten</h2><button class="secondary" id="reloadReports" type="button">Verversen</button></div><p class="muted">Elke rapportperiode loopt 14 kalenderdagen, van maandag tot en met de tweede zondag. Het portaal stelt de rapporten automatisch per hulpdienst samen. Historische handmatige concepten blijven raadpleegbaar.</p><div id="reportList"></div></div></div>
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:9px"><h2>Automatische tweewekelijkse rapporten</h2><button class="secondary" id="reloadReports" type="button">Verversen</button></div><p class="muted">Elke rapportperiode loopt 14 kalenderdagen, van maandag tot en met de tweede zondag. De lopende rapporten staan hieronder. Afgesloten periodes blijven raadpleegbaar via het archief.</p><div id="reportList"></div><details id="reportArchive" class="report-archive"><summary>Archief weekrapporten (<span id="archiveCount">0</span>)</summary><p class="muted">Oude rapportperiodes blijven raadpleegbaar. De inhoud wordt voorlopig nog dynamisch uit de huidige dossierregistraties samengesteld; dit zijn geen onveranderlijke archiefkopieën.</p><div id="reportArchiveList">Geen oudere rapporten.</div></details></div></div>
 <div><div class="card"><div class="report-heading"><h2>Rapportinhoud</h2><div class="report-actions hidden" id="reportExportActions"><button class="secondary" id="exportDocx" type="button" disabled>Word downloaden</button><button class="secondary" id="exportPrint" type="button" disabled>PDF opslaan / afdrukken</button></div></div><p class="muted hidden" id="exportReadOnlyNote">Je kunt deze rapporten alleen inzien binnen jouw geverifieerde dienstbevoegdheden.</p><p class="muted">Automatisch samengesteld uit bestaande Firestore-dossiers; Word-documenten en oude Google-dossierbladen zijn nog niet geïmporteerd.</p><div id="reportContents" class="report-preview">Selecteer links een weekrapport.</div></div></div></div></section></div>
 </main><footer>BelgiëPD Beheerportaal · Alleen gemachtigde kaderleden · Google Sheets blijft alleen-lezen · Geen Discord-berichten</footer>
 <script type="module">
@@ -98,7 +103,7 @@ const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>
 const labels={observatie:'Observatie',sanctie:'Sanctie',functiewijziging:'Functiewijziging',verlof:'Verlof',notitie:'Personeelsnotitie',opleiding:'Gedane opleiding',naamswijziging:'Naamswijziging',promotievoorstel:'Promotievoorstel',personeelsbeweging:'Personeelsbeweging'};
 const extraFields={verlof:['endDateWrap'],opleiding:['courseWrap'],naamswijziging:['nameWrap'],promotievoorstel:['rankWrap'],personeelsbeweging:['movementWrap']};
 const allTypes=['verlof','notitie','opleiding','promotievoorstel','naamswijziging','personeelsbeweging'];
-let firebaseAuth=null,authModule=null,authApp=null,subjects=[],viewData=null,currentTab='cases',reportItems=[],activeReport=null;
+let firebaseAuth=null,authModule=null,authApp=null,subjects=[],viewData=null,currentTab='cases',reportItems=[],archivedReportItems=[],canRemoveReport=false,activeReport=null;
 const msg=(message,kind='notice')=>{$('status').textContent=message;$('status').className='status '+kind;};
 const fmt=d=>d?new Date(d).toLocaleString('nl-BE'):'—';
 const roleHigher=r=>['officierenkader','korpsleiding'].includes(r);
@@ -142,8 +147,37 @@ function updateCaseLink(){
   else $('caseOpenFiche').removeAttribute('href');
 }
 async function loadCases(){updateCaseLink();if(!viewData||!$('casePerson').value||!$('caseDept').value){$('caseList').textContent='Selecteer een personeelslid.';return}const id=$('casePerson').value,dept=$('caseDept').value;$('caseList').textContent='Dossierregistraties laden...';try{const data=await api(`/api/management/cases?dept=${encodeURIComponent(dept)}&discordId=${encodeURIComponent(id)}`);$('caseList').innerHTML=renderWorkbook(data.entries||[]);if(data.limited)msg('Dossieroverzicht toont maximaal 150 recente registraties.','notice')}catch(e){$('caseList').textContent=e.message}}
-function renderReports(){const root=$('reportList');root.innerHTML=reportItems.length?reportItems.map(r=>`<div class="item"><div class="item-title">${esc(r.title)} <span class="pill">${esc(r.status||'concept')}</span></div><div class="item-meta">${esc(r.periodStart)} t/m ${esc(r.periodEnd)} · ${esc(r.createdBy?.name||'')}</div><div class="buttons"><button class="secondary" type="button" data-open-report="${esc(r.id)}">Inhoud bekijken</button></div></div>`).join(''):'Nog geen weekrapporten voor deze hulpdienst.'}
-async function loadReports(){resetReportExport();$('reportContents').textContent='Selecteer links een weekrapport.';if(!viewData||!$('reportDept').value)return;const dept=$('reportDept').value;$('reportList').textContent='Weekrapporten laden...';try{const data=await api('/api/management/reports?dept='+encodeURIComponent(dept));reportItems=data.reports;renderReports();if(data.limited)msg('Maximaal 100 recente weekrapporten worden getoond.','notice')}catch(e){$('reportList').textContent=e.message}}
+function reportCard(r){
+ const actions=`<button class="secondary" type="button" data-open-report="${esc(r.id)}">Inhoud bekijken</button>`+
+  (canRemoveReport?`<button class="report-delete secondary" type="button" data-delete-report="${esc(r.id)}">Wissen</button>`:'');
+ return `<div class="item"><div class="item-title">${esc(r.title)} <span class="pill">${esc(r.status||'concept')}</span></div><div class="item-meta">${esc(r.periodStart)} t/m ${esc(r.periodEnd)} · ${esc(r.createdBy?.name||'')}</div><div class="buttons">${actions}</div></div>`;
+}
+function renderReports(){
+ $('reportList').innerHTML=reportItems.length?
+  reportItems.map(reportCard).join(''):'Geen lopende weekrapporten voor deze hulpdienst.';
+ $('archiveCount').textContent=String(archivedReportItems.length);
+ $('reportArchiveList').innerHTML=archivedReportItems.length?
+  archivedReportItems.map(reportCard).join(''):'Geen oudere weekrapporten voor deze hulpdienst.';
+}
+async function loadReports(){
+ resetReportExport();$('reportContents').textContent='Selecteer links een weekrapport.';
+ if(!viewData||!$('reportDept').value)return;
+ const dept=$('reportDept').value;
+ $('reportList').textContent='Weekrapporten laden...';
+ $('reportArchiveList').textContent='Archief laden...';
+ try{
+  const data=await api('/api/management/reports?dept='+encodeURIComponent(dept));
+  if($('reportDept').value!==dept)return;
+  reportItems=data.reports||[];
+  archivedReportItems=data.archivedReports||[];
+  canRemoveReport=data.canRemove===true&&viewData.removeReportDepartments?.includes(dept);
+  renderReports();
+  if(data.limited)msg('Maximaal 200 historische handmatige rapporten worden getoond.','notice');
+ }catch(e){
+  $('reportList').textContent='Rapporten niet geladen: '+e.message;
+  $('reportArchiveList').textContent='Archief niet geladen: '+e.message;
+ }
+}
 function reportText(e){
   const attrs=[];
   if(e.sanctionType)attrs.push('Sanctie: '+e.sanctionType);
@@ -216,7 +250,24 @@ $('caseList').addEventListener('click',async event=>{
     await loadCases();
   }catch(e){msg('Testmarkering niet gewijzigd: '+e.message,'error');btn.disabled=false}
 });
-$('reportList').addEventListener('click',event=>{const btn=event.target.closest('[data-open-report]');if(btn)openReport(btn.dataset.openReport)});
+async function handleReportListClick(event){
+ const open=event.target.closest('[data-open-report]');
+ if(open){await openReport(open.dataset.openReport);return}
+ const button=event.target.closest('[data-delete-report]');
+ if(!button||!canRemoveReport||!viewData?.removeReportDepartments?.includes($('reportDept').value))return;
+ const id=button.dataset.deleteReport;
+ const report=[...reportItems,...archivedReportItems].find(x=>x.id===id);
+ if(!report)return;
+ if(!window.confirm('Weekrapport "'+report.title+'" wissen?\n\nHet rapport verdwijnt uit het overzicht en archief. Dossierregistraties blijven bewaard en de verwijdering wordt gelogd.'))return;
+ button.disabled=true;
+ try{
+  await api('/api/management/reports/'+encodeURIComponent(id),'DELETE');
+  msg('Weekrapport gewist en de verwijdering geregistreerd.','good');
+  await loadReports();
+ }catch(e){msg('Weekrapport niet gewist: '+e.message,'error');button.disabled=false}
+}
+$('reportList').addEventListener('click',handleReportListClick);
+$('reportArchiveList').addEventListener('click',handleReportListClick);
 async function main(){const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());if(!cfg.enabled)throw new Error('Firebase-instellingen ontbreken');const {initializeApp}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');authApp=initializeApp(cfg.firebaseConfig);firebaseAuth=authModule.getAuth(authApp);authModule.onAuthStateChanged(firebaseAuth,async user=>{if(!user){resetReportExport();document.body.classList.remove('can-export');$('reportExportActions').classList.add('hidden');$('app').classList.add('hidden');$('needLogin').classList.remove('hidden');$('authStatus').textContent='Niet aangemeld';$('authBtn').textContent='Google aanmelden';viewData=null;return;}$('authStatus').textContent=user.email||'Google-account';$('authBtn').textContent='Afmelden';try{const data=await api('/api/management/overview');showUser(data)}catch(e){$('app').classList.add('hidden');$('needLogin').classList.remove('hidden');msg('Geen toegang: '+e.message,'error')}});const {setupPortalLogin}=await import('/portal-login.js');setupPortalLogin({button:$('authBtn'),auth:firebaseAuth,authModule,config:cfg,onError:e=>msg('Aanmelding mislukt: '+e.message,'error')});const d=new Date(),start=new Date(d);start.setDate(start.getDate()-13);const isoLocal=x=>[x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-');$('entryDate').value=isoLocal(d);$('periodEnd').value=isoLocal(d);$('periodStart').value=isoLocal(start)}
 main().catch(e=>msg('Beheerportaal kon niet laden: '+e.message,'error'));
 </script><div id="printSheet" aria-hidden="true"></div><script defer src="/bpd-navigation.js"></script>

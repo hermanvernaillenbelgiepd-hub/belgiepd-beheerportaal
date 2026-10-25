@@ -45,8 +45,12 @@ export function parseAutomaticReportId(id){
   const date=utcDay(day),anchor=utcDay(ANCHOR);
   if(date===null||date<anchor||(date-anchor)%(14*MS)!==0)return null;
   const info=fortnightFor(day,m[1]);
-  return automaticFortnightReports(m[1],day,1)[0].id===id?
-    {...automaticFortnightReports(m[1],day,1)[0],periodEnd:info.periodEnd}:null;
+  const base=automaticFortnightReports(m[1],day,1)[0];
+  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+    year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  return base.id===id?
+    {...base,periodEnd:info.periodEnd,
+      status:info.periodEnd<today?'afgesloten_periode':'lopende_periode'}:null;
 }
 const matchesDuty=(person,pattern)=>[person?.call,person?.rank].some(value=>
   pattern.test(String(value||'').trim().toUpperCase().replace(/\s+/g,' ')));
@@ -70,4 +74,24 @@ export function mayReadFortnightReport(actor,dept,roster){
 }
 export function fortnightReportDepartments(actor,roster){
   return DEPTS.filter(d=>mayReadFortnightReport(actor,d,roster));
+}
+
+/**
+ * Reports are readable under service-specific rules, but deleting a police
+ * report from the overview requires an explicitly verified police officer
+ * or corps-leadership grant. This never extends delete rights to other depts.
+ */
+export function mayRemoveWeekReport(actor,dept,roster){
+  return dept==='politie'&&mayReadFortnightReport(actor,dept,roster);
+}
+
+/** Period archive is a navigational grouping, not an immutable snapshot. */
+export function splitReportsByPeriod(reports,today){
+  if(utcDay(today)===null)throw Error('Ongeldige rapportdatum');
+  const active=[],archive=[];
+  for(const report of reports){
+    if(utcDay(report?.periodEnd)===null)continue;
+    (report.periodEnd<today?archive:active).push(report);
+  }
+  return {active,archive};
 }
