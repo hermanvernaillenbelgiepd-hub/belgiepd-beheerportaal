@@ -420,3 +420,115 @@ body.dossier-fire-sheet #overviewSpecialties .fire-specialty-name {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Depannage dossier: four fixed operational specializations (two columns).
+   Icons + labels are visual only; the badge shows the real stored status. */
+body.bpd-unified-dossier .depannage-specialty-list {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  width: 100%;
+  gap: 6px;
+  max-height: none;
+  overflow: visible;
+}
+body.bpd-unified-dossier #sheetSpecialties:has(.depannage-specialty-list) {
+  display: block;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+body.bpd-unified-dossier #specialtyGrid:has(.depannage-specialty-list) {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+body.bpd-unified-dossier .depannage-specialty-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #3b5b7d;
+  border-radius: 6px;
+  background: #193756;
+}
+body.bpd-unified-dossier .depannage-specialty-list.is-compact .depannage-specialty-row {
+  padding: 5px 7px;
+  background: #183352;
+}
+body.bpd-unified-dossier .depannage-specialty-main {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+body.bpd-unified-dossier .depannage-specialty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  color: #c9e0ff;
+  background: #294b71;
+}
+body.bpd-unified-dossier .depannage-specialty-icon svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+}
+body.bpd-unified-dossier .depannage-specialty-name {
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 650;
+  color: #eff6ff;
+  overflow-wrap: anywhere;
+}
+body.bpd-unified-dossier .depannage-specialty-status {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 20px;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.1;
+  border: 1px solid #526b86;
+  border-radius: 5px;
+  background: #263c55;
+  color: #dee9f8;
+}
+body.bpd-unified-dossier .depannage-specialty-status.is-yes {
+  background: #1e5c38;
+  border-color: #348455;
+  color: #e7ffef;
+}
+body.bpd-unified-dossier .depannage-specialty-status.is-stage {
+  background: #705818;
+  border-color: #aa892e;
+  color: #fff2c6;
+}
+body.bpd-unified-dossier .depannage-specialty-status.is-docent {
+  background: #493374;
+  border-color: #7559a3;
+  color: #f0e7ff;
+}
+body.bpd-unified-dossier .depannage-specialty-status.is-warning {
+  background: #704619;
+  border-color: #ab6d29;
+  color: #fff1df;
+}
+body.bpd-unified-dossier .depannage-specialty-status.is-off {
+  background: #522d34;
+  border-color: #8c4c59;
+  color: #ffe0e5;
+}
+@media(max-width:650px) {
+  body.bpd-unified-dossier .depannage-specialty-list {
+    grid-template-columns: minmax(0,1fr);
+  }
+}
