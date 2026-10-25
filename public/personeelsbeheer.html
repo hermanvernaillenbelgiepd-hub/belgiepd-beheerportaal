@@ -2625,7 +2625,7 @@ async function loadSpecialtyState(p){
         const value=document.createElement('span');value.className='specialty-state specialty-'+x.style;
         value.textContent=x.status;cell.title=x.label+' · '+x.status;
         cell.append(icon,label,value);
-        if(data.canEdit){
+        if(data.canEdit&&x.label!=='LRD (Recherche)'){
           const toggle=document.createElement('button');
           toggle.type='button';toggle.className='alt';
           toggle.textContent=['Ja','Docent','INSTRUCTEUR','LEIDING'].includes(x.status)?'Uitvinken':'Aanvinken';
@@ -2651,19 +2651,25 @@ async function loadSpecialtyState(p){
           };
           cell.append(toggle);
         }
+        if(x.label==='LRD (Recherche)'){
+          const info=document.createElement('small');
+          info.textContent='Automatisch via Discord-bot · alleen lezen';
+          cell.append(info);
+        }
         root.append(cell);
       }
     }
     if(!states.length)root.textContent='Geen onderdelen bekend voor deze hulpdienst.';
     $('specialtyStatus').textContent=data.canEdit?
-      'Je kunt de status hieronder aanpassen. Iedere wijziging wordt afzonderlijk gelogd.':
+      'Je kunt de overige specialisaties hieronder aanpassen; LRD wordt uitsluitend door de Discord-bot bepaald. Iedere handmatige wijziging wordt gelogd.':
       'Alle onderdelen zijn alleen-lezen. Aanpassingen vereisen bevoegd officierenkader of korpsleiding.';
     registrationSpecialty=data.canEdit===true&&states.length>0;
     registrationModuleStates.specialty=registrationSpecialty?
       'beschikbaar':!states.length?'geen specialisaties voor deze dienst':
       'alleen bevoegd Officierenkader of Korpsleiding mag aanpassen';
     $('specialtyEdit').hidden=true;
-    $('specialtyLabel').replaceChildren(...states.map(x=>option(x.label,
+    const manualStates=states.filter(x=>x.label!=='LRD (Recherche)');
+    $('specialtyLabel').replaceChildren(...manualStates.map(x=>option(x.label,
       p.dept==='depannage'?depannageSpecialtyMeta(x.label).label:x.label)));
     if(states.length){
       $('specialtyValue').value=states[0].status;
