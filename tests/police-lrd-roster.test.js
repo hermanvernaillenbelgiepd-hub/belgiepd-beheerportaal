@@ -54,36 +54,35 @@ test('Bounded LRD roster reader refreshes and caches verified membership only',a
  assert.equal(calls,2);
 });
 
-test('Public police roster includes verified LRD but never identity or permissions',()=>{
+test('Public police roster hides LRD entirely and exposes only ten legacy columns',()=>{
  const verified=new Set([first]);
  const records=publicPoliceRoster([person(first),person(second)],verified);
  assert.equal(records.length,2);
- assert.deepEqual(PUBLIC_POLICE_SPECIALTIES,SPECIALTY_LABELS.politie);
- assert.equal(records[0].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,'Ja');
- assert.equal(records[1].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,'Niet gecontroleerd');
- assert.equal(records[0].specialties.length,11);
+ assert.deepEqual(PUBLIC_POLICE_SPECIALTIES,
+   SPECIALTY_LABELS.politie.filter(label=>label!==LRD_SPECIALTY_LABEL));
  for(const row of records){
+   assert.equal(row.specialties.length,10);
+   assert.equal(row.specialties.some(s=>s.label===LRD_SPECIALTY_LABEL),false);
    assert.deepEqual(Object.keys(row).sort(),
      ['call','name','rank','series','status','specialties'].sort());
    assert.doesNotMatch(JSON.stringify(row),/111111111111111111|222222222222222222|NO_LEAK|roleIds/);
  }
  const manual=publicPoliceRoster([{...person(second),
    specialties:[{label:LRD_SPECIALTY_LABEL,value:'Ja'}]}]);
- assert.equal(manual[0].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,'Niet gecontroleerd',
-   'Manuele waarden mogen Discord-rolverificatie niet vervangen');
+ assert.equal(manual[0].specialties.some(s=>s.label===LRD_SPECIALTY_LABEL),false);
 });
 
-test('Protected roster displays verified LRD as a presentation-only speciality',()=>{
+test('Protected personnel table omits LRD while individual speciality policy is retained',()=>{
  const source=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
  const server=source('src/server.js'),manager=source('src/personnel-editor-routes.js');
- assert.match(server,/readVerifiedPoliceLrd\(roster\)/);
- assert.match(manager,/lrdDiscordVerified:lrdVerified/);
- assert.match(manager,/lrdChecked/);
  const display=source('public/personnel-list-visuals.js');
- assert.match(display,/LRD \(Recherche\)/);
- assert.match(display,/\(LRD\|RECHERCHE\)/);
  const memberRoute=source('src/member-dashboard-routes.js');
- assert.match(memberRoute,/getVerifiedLrdIds\(snapshot\.data\)/);
- assert.match(memberRoute,/app\.get\('\/api\/member\/personnel-list',memberIdentity/);
- assert.doesNotMatch(memberRoute,/\.post\(/);
+ const managerPage=source('public/personeelsbeheer.html');
+ assert.equal(server.includes('readVerifiedPoliceLrd(roster)'),false);
+ assert.equal(manager.includes('lrdDiscordVerified:lrdVerified'),false);
+ assert.equal(managerPage.includes("x.label!=='LRD (Recherche)'"),true);
+ assert.equal(display.includes("'TO','AE','LRD (Recherche)'"),false);
+ assert.equal(memberRoute.includes('getVerifiedLrdIds(snapshot.data)'),false);
+ assert.equal(memberRoute.includes("app.get('/api/member/personnel-list',memberIdentity"),true);
+ assert.equal(memberRoute.includes('.post('),false);
 });

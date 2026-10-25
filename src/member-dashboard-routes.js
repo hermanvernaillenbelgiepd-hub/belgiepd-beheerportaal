@@ -2,7 +2,6 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
 import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
-import {readVerifiedPoliceLrd,LRD_SPECIALTY_LABEL} from './police-lrd-policy.js';
 
 const discordId=/^\d{15,22}$/;
 const staffRoles=new Set(['basiskader','middenkader','officierenkader','korpsleiding','beheerder']);
@@ -29,7 +28,7 @@ export function newcomerPortalMode(id,managed,roster,legacyApproved=false){
 // Personnel-list access and individual dossier access are separate.
 // Export ONLY roster columns, never Discord IDs, activity, dossiers,
 // source row, sanctions, notes, contact information or audit history.
-export function publicPoliceRoster(rows,verifiedLrdIds=new Set()){
+export function publicPoliceRoster(rows){
   const seen=new Set();
   const visible=[];
   for(const p of rows||[]){
@@ -38,20 +37,14 @@ export function publicPoliceRoster(rows,verifiedLrdIds=new Set()){
     seen.add(p.personId);
     // Only explicitly whitelisted public POLICE specialization statuses;
     // never include identities, role IDs, or protected dossier attributes.
-    // A recently verified Discord LRD role is display-only.
-    // The original ten sheet-based columns stay in their existing order.
     const labels=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
-      'K9','RAGO','Dispatch','TO','AE',LRD_SPECIALTY_LABEL];
+      'K9','RAGO','Dispatch','TO','AE'];
     const safeStatuses=Object.fromEntries(labels.map(label=>{
       const value=Array.isArray(p.specialties)?
         p.specialties.find(x=>x?.label===label)?.value:undefined;
       return [label,typeof value==='string'?value.trim().slice(0,40)||'Niet ingevuld':
         'Niet ingevuld'];
     }));
-    // Discord bot membership wins over old manual/stale specialization values.
-    // If role verification is incomplete, never claim the person lacks LRD.
-    safeStatuses[LRD_SPECIALTY_LABEL]=verifiedLrdIds.has(p.personId)?'Ja':
-      verifiedLrdIds.confirmedIds?.has(p.personId)?'Nee':'Niet gecontroleerd';
     visible.push({
       call:strip(p.call).slice(0,18),name:strip(p.name).slice(0,90),
       rank:strip(p.rank).slice(0,95),series:strip(p.series).slice(0,85),
@@ -75,7 +68,6 @@ export function publicPoliceRoster(rows,verifiedLrdIds=new Set()){
   return visible.slice(0,400);
 }
 export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
-  const getVerifiedLrdIds=readVerifiedPoliceLrd;
   async function memberIdentity(req,res,next){
     res.set('Cache-Control','private, no-store');
     const token=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
@@ -135,20 +127,8 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
   app.get('/api/member/personnel-list',memberIdentity,async(_req,res)=>{
     try{
       const snapshot=await getSnapshot();
-      // An unavailable Discord-role lookup must not take the entire read-only
-      // personnel list offline; no unverified LRD badges are shown on failure.
-      let lrdIds=new Set(),lrdVerificationUnavailable=false;
-      if(!snapshot.stale){
-        try{lrdIds=await getVerifiedLrdIds(snapshot.data);}
-        catch(error){
-          lrdVerificationUnavailable=true;
-          console.error('LRD-rolverificatie:',error?.code||'tijdelijk niet beschikbaar');
-        }
-      }
-      return res.json({records:publicPoliceRoster(snapshot.data,lrdIds),stale:snapshot.stale,
-        readOnly:true,lrdVerificationUnavailable,
-        discordRechercheUnlinked:lrdIds.unlinked||[],
-        discordRechercheComplete:lrdIds.unlinkedAvailable===true});
+      return res.json({records:publicPoliceRoster(snapshot.data),stale:snapshot.stale,
+        readOnly:true});
     }catch(error){
       console.error('Leesbare personeelslijst:',error?.code||'bron niet beschikbaar');
       return res.status(503).json({error:'Personeelslijst momenteel niet beschikbaar'});
