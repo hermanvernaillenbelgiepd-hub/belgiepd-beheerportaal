@@ -37,8 +37,8 @@ test('Bot role shows JA without requiring new portal login; confirmed nonmember 
  assert.deepEqual([...firstCheck],[first]);
  assert.equal(firstCheck.confirmedIds.size,2);
  const view=publicPoliceRoster(roster,firstCheck);
- assert.equal(view[0].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,'Ja');
- assert.equal(view[1].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,'Nee');
+ assert.equal(view[0].specialties.some(s=>s.label===LRD_SPECIALTY_LABEL),false);
+ assert.equal(view[1].specialties.some(s=>s.label===LRD_SPECIALTY_LABEL),false);
  assert.doesNotMatch(JSON.stringify(view),/111111111111111111|222222222222222222/);
  await lookup(roster);
  assert.equal(calls,1,'Short-lived repeated reads must not hammer Discord');
@@ -93,8 +93,7 @@ test('Bot errors cannot fabricate a NEE status from an expired OAuth snapshot',a
  const statuses=await lookup(roster);
  assert.equal(statuses.confirmedIds.size,0);
  const view=publicPoliceRoster(roster,statuses);
- assert.equal(view[0].specialties.find(s=>s.label===LRD_SPECIALTY_LABEL).value,
-   'Niet gecontroleerd');
+ assert.equal(view[0].specialties.some(s=>s.label===LRD_SPECIALTY_LABEL),false);
 });
 
 test('LRD is auto-managed; manual LRD toggles are rejected at the server',()=>{
@@ -152,16 +151,23 @@ test('No complete guild-member enumeration means no invented Discord-only roster
  assert.deepEqual(result.unlinked,[]);
 });
 
-test('Unlinked LRD names appear only in read-only authenticated roster surfaces',()=>{
- const route=readFileSync(new URL('../src/member-dashboard-routes.js',import.meta.url),'utf8');
- const manager=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
- const publicPage=readFileSync(new URL('../public/personeelslijst.html',import.meta.url),'utf8');
- const home=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- const managerPage=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
- assert.match(route,/discordRechercheUnlinked:lrdIds\.unlinked\|\|\[\]/);
- assert.match(route,/app\.get\('\/api\/member\/personnel-list',memberIdentity/);
- assert.match(manager,/discordRechercheUnlinked:allowed\.includes\('politie'\)/);
- assert.match(publicPage,/id="rechercheDiscordOnly"/);
- assert.match(home,/id="memberDiscordRecherche"/);
- assert.match(managerPage,/id="staffDiscordRecherche"/);
+test('Recherche is absent from all personnel list screens and roster API',()=>{
+ const source=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+ const route=source('src/member-dashboard-routes.js');
+ const manager=source('src/personnel-editor-routes.js');
+ const publicPage=source('public/personeelslijst.html');
+ const home=source('public/index.html');
+ const managerPage=source('public/personeelsbeheer.html');
+ const visuals=source('public/personnel-list-visuals.js');
+ assert.equal(route.includes('discordRechercheUnlinked'),false);
+ assert.equal(route.includes("app.get('/api/member/personnel-list',memberIdentity"),true);
+ assert.equal(manager.includes('discordRechercheUnlinked'),false);
+ assert.equal(publicPage.includes('id="rechercheDiscordOnly"'),false);
+ assert.equal(home.includes('id="memberDiscordRecherche"'),false);
+ assert.equal(managerPage.includes('id="staffDiscordRecherche"'),false);
+ assert.equal(managerPage.includes('lrdDiscordVerified'),false);
+ assert.equal(visuals.includes("'TO','AE','LRD (Recherche)'"),false);
+ const publicPeople=publicPoliceRoster(roster);
+ assert.equal(publicPeople[0].specialties.length,10);
+ assert.equal(publicPeople[0].specialties.some(s=>s.label===LRD_SPECIALTY_LABEL),false);
 });
