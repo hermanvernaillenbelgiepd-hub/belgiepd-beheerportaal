@@ -74,7 +74,9 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
 .member-table td:first-child{font-weight:750;color:#193766}
 [hidden]{display:none!important}
 
-/* Lower cadres get a roster-first workspace, not administrative tiles. */
+/* Lower cadres get a roster-first workspace and horizontal navigation. */
+body:has(#memberDashboard:not([hidden])) .portal{display:block}
+body:has(#memberDashboard:not([hidden])) aside{display:none}
 body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 60px}
 #memberDashboard h1{font-size:27px}
 #memberDashboard>.lead{font-size:13px;margin:6px 0 14px;max-width:none}
