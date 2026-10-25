@@ -72,6 +72,10 @@ export function validUserGrant(body){
 // A global high role must never bleed into a second low-ranked department.
 function ceilingIn(actor,dept){
   if(actor?.role==='beheerder')return 4;
+  // Brandweer ZONE and fire command manage service dossiers, not the global
+  // account-approval module. Dedicated board/technical grants remain separate.
+  if(dept==='brandweer'&&
+     (actor?.fireZoneChief===true||roleForDepartment(actor,'brandweer')==='korpsleiding'))return 0;
   if(!['officierenkader','korpsleiding'].includes(actor?.role))return 0;
   const scoped=roleForDepartment(actor,dept);
   if((ranks[scoped]||0)>ranks[actor.role])return 0;

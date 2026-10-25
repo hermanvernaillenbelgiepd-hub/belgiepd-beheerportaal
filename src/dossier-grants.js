@@ -14,6 +14,10 @@ export function dossierGrantScope(actor,boardMember,boardAppointment,dept){
   const technical=actor?.role==='beheerder';
   const board=activeBoardAppointment(boardAppointment)||boardMember===true;
   if(technical||board)return DOSSIER_DEPTS.includes(dept);
+  // A ZONE commander manages fire personnel and dossiers, not delegation of
+  // extra portal access. That remains exclusive to Board/technical control.
+  if(dept==='brandweer'&&
+      (actor?.fireZoneChief===true||roleForDepartment(actor,'brandweer')==='korpsleiding'))return false;
   // Corps leadership is confined to its own authorised service; a verified
   // fire ZONE commander can manage fire delegations without policing rights.
   return DOSSIER_DEPTS.includes(dept)&&actor?.departments?.includes(dept)&&
