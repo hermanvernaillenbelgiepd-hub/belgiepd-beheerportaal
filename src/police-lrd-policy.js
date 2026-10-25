@@ -106,6 +106,39 @@ async function readBotMember(guild,token,id,fetchImpl){
     return member.roles.includes(LRD_DISCORD_ROLE_ID);
   }catch{return null;}
 }
+// Dedicated dossier verification never trusts a stale Sheets value or cached
+// login claims. Only the bot's /guilds/:guild/members/:id response may turn
+// on the Recherche badge in an individual personnel dossier.
+export function createPoliceLrdSubjectVerifier({
+  guildId=()=>process.env.DISCORD_GUILD_ID,
+  botToken=()=>discordBotToken(process.env),
+  fetchImpl=fetch,now=Date.now
+}={}){
+  const cache=new Map(),pending=new Map();
+  return async function subjectHasDiscordLrd(id){
+    const guild=guildId(),token=botToken();
+    if(!DISCORD_ID.test(String(id||''))||
+       !DISCORD_ID.test(String(guild||''))||
+       typeof token!=='string'||token.length<35)return false;
+    const key=guild+':'+id+':'+createHash('sha256').update(token).digest('hex');
+    const stored=cache.get(key),time=now();
+    if(stored&&stored.until>time)return stored.value;
+    if(pending.has(key))return pending.get(key);
+    const task=(async()=>{
+      const result=await readBotMember(guild,token,id,fetchImpl);
+      // On 429, 5xx or network errors, hide LRD instead of displaying a
+      // stale authorization-like badge. Transient failures are never cached.
+      if(result===null)return false;
+      if(cache.size>=1000)cache.clear();
+      cache.set(key,{value:result,until:now()+60000});
+      return result;
+    })();
+    pending.set(key,task);
+    try{return await task}finally{if(pending.get(key)===task)pending.delete(key);}
+  };
+}
+export const verifiedPoliceLrdSubject=createPoliceLrdSubjectVerifier();
+
 export function createPoliceLrdIndex({
   firestore=()=>getFirestore(),guildId=()=>process.env.DISCORD_GUILD_ID,
   now=Date.now,botToken=()=>discordBotToken(process.env),fetchImpl=fetch

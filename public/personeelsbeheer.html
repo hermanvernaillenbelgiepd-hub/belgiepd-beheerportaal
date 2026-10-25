@@ -2653,7 +2653,9 @@ async function loadSpecialtyState(p){
     }
     if(!states.length)root.textContent='Geen onderdelen bekend voor deze hulpdienst.';
     $('specialtyStatus').textContent=data.canEdit?
-      'Je kunt de overige specialisaties hieronder aanpassen; LRD wordt uitsluitend door de Discord-bot bepaald. Iedere handmatige wijziging wordt gelogd.':
+      (states.some(x=>x.label==='LRD (Recherche)')?
+        'Je kunt de overige specialisaties hieronder aanpassen; RECHERCHE wordt uitsluitend door de Discord-bot bepaald. Iedere handmatige wijziging wordt gelogd.':
+        'Je kunt de specialisaties hieronder aanpassen. Iedere wijziging wordt afzonderlijk gelogd.'):
       'Alle onderdelen zijn alleen-lezen. Aanpassingen vereisen bevoegd officierenkader of korpsleiding.';
     registrationSpecialty=data.canEdit===true&&states.length>0;
     registrationModuleStates.specialty=registrationSpecialty?
