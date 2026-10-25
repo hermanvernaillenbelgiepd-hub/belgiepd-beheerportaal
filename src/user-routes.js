@@ -2,6 +2,7 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {roleSummary} from './role-catalog.js';
+import {MANUAL_ROLE_CATALOG} from './manual-role-catalog.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
 import {makeProfileCookie,clearProfileCookie} from './portal-profile-mode.js';
 import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
@@ -26,6 +27,13 @@ const serialize=(id,d)=>({discordId:id,username:String(d.username||'').slice(0,8
   status:d.status||'pending',candidateDepartments:Array.isArray(d.candidateDepartments)?d.candidateDepartments:[],
   departments:Array.isArray(d.departments)?d.departments:[],
   role:d.status==='approved'?d.role:null,
+  // Per-service roles are for displaying the correct service label. They
+  // cannot be used by the client to bypass server-side grant validation.
+  departmentRoles:d.status==='approved'&&d.departmentRoles&&
+    typeof d.departmentRoles==='object'&&!Array.isArray(d.departmentRoles)?
+      Object.fromEntries(Object.entries(d.departmentRoles).filter(([dept,role])=>
+        Array.isArray(d.departments)&&d.departments.includes(dept)&&
+        ['basiskader','middenkader','officierenkader','korpsleiding'].includes(role))):{},
   category:d.status==='approved'&&['burger','technisch_medewerker'].includes(d.category)?d.category:null});
 export function installUserRoutes(app,{requireUser,accessList}){
   const db=()=>ready();
@@ -229,7 +237,7 @@ export function installUserRoutes(app,{requireUser,accessList}){
         users.push(...group);
       }
       return res.json({role:req.bpd.role,departments:req.bpd.departments,
-        users,limited:snap.size===250});
+        users,roleCatalog:MANUAL_ROLE_CATALOG,limited:snap.size===250});
     }catch(e){return fail(res,e)}
   });
   // Classification has no effect on access, roles or department assignments.
