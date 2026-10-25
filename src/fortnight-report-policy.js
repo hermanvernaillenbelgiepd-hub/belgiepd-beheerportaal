@@ -25,7 +25,7 @@ export function automaticFortnightReports(dept,today,number=16){
   const anchor=utcDay(ANCHOR);
   const now=utcDay(today);
   if(now===null)throw Error('Ongeldige rapportdatum');
-  const current=fortnightFor(now,dept);
+  const current=fortnightFor(today,dept);
   let start=utcDay(current.periodStart);
   if(start<anchor)start=anchor;
   const results=[];
