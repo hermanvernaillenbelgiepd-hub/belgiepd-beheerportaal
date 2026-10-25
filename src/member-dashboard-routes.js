@@ -14,6 +14,9 @@ export function newcomerPortalMode(id,managed,roster,legacyApproved=false){
   if(managed?.status==='blocked')return 'blocked';
   const approved=approvedManagedEntry(managed,id);
   if(!approved && !legacyApproved)return 'member';
+  // Approved Basiskader is an ordinary member, not a management dashboard.
+  // A higher verified appointment always remains staff, regardless of call.
+  if(approved?.role==='basiskader')return 'member';
   const police=roster.filter(p=>p.dept==='politie'&&p.personId===id);
   if(police.length===1){
     const n=callNumber(police[0].call);
@@ -91,9 +94,19 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
         e?.discordId===id&&Array.isArray(e.departments)&&staffRoles.has(e.role));
       const mode=newcomerPortalMode(id,req.memberPortal.managed,
         snapshot.data,legacy.length===1&&req.memberPortal.managed===null);
+      const police=snapshot.data.filter(p=>p.personId===id&&p.dept==='politie');
+      // Callsign 100-199 is temporary; 200+ is fixed, including promoted calls.
+      // A verified assigned number also closes the application shortcut.
+      const call=police.length===1?callNumber(police[0].call):null;
+      const hasFixedCallsign=call!==null&&call>=200;
+      const approved=approvedManagedEntry(req.memberPortal.managed,id);
+      const canUseSelfService=Boolean(approved||legacy.length===1&&
+        req.memberPortal.managed===null);
       res.json({
-        mode,hasPersonnelRecord:snapshot.data.some(p=>p.personId===id&&p.dept==='politie'),
-        personnelListAvailable:true,profileAvailable:true,callsignRequestAvailable:true
+        mode,hasPersonnelRecord:police.length===1,
+        personnelListAvailable:true,profileAvailable:true,
+        callsignRequestAvailable:!hasFixedCallsign,
+        hasFixedCallsign,canUseSelfService
       });
     }catch(error){
       console.error('Dashboard voor nieuwe leden:',error?.code||'bron tijdelijk niet beschikbaar');
