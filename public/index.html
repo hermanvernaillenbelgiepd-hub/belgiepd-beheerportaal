@@ -83,7 +83,7 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
   <a class="brand" href="/" aria-label="BelgiumPD startpagina"><span class="brand-icon">BP</span><span><strong>BelgiëPD</strong><small>Beheerportaal</small></span></a>
   <nav id="staffNav" aria-label="Werkruimte" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
-    <a href="/personeelsbeheer.html">♙ &nbsp; Personeelsbeheer</a>
+    <a href="/personeelsbeheer.html">♙ &nbsp; Personeelslijst</a>
     <a href="/dossiercentrum.html">▣ &nbsp; Dossiercentrum</a>
     <a href="/rollen-opleidingen.html">🎓 &nbsp; Opleidingscentrum</a>
     <a href="/registraties.html">▤ &nbsp; Observaties Basiskader</a>
@@ -96,7 +96,9 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
     <a href="/discord-status.html">👤 &nbsp; Mijn profiel</a>
     <a href="/personeelslijst.html">👥 &nbsp; Personeelslijst</a>
-    <a href="/vast-roepnummer-aanvragen.html">🔢 &nbsp; Vast roepnummer aanvragen</a>
+    <a id="memberNavCallsign" href="/vast-roepnummer-aanvragen.html" hidden>🔢 &nbsp; Vast roepnummer aanvragen</a>
+    <a id="memberNavLeave" href="/verlofbeheer.html" hidden>📅 &nbsp; Mijn verlof</a>
+    <a id="memberNavNotices" href="/meldingen.html" hidden>📬 &nbsp; Meldingen</a>
   </nav>
   <div class="side-note"><strong>Beveiligde modules</strong>Meld je aan met je goedgekeurde account. Elke hulpdienst heeft afzonderlijke dossier- en beheersrechten.</div>
 </aside>
@@ -115,7 +117,7 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
   </section>
   <h2 class="section-title">Dagelijks beheer</h2>
   <div class="grid">
-    <a class="module" href="/personeelsbeheer.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelsbeheer</h3><p>Personeelsfiches, rangen, roepnummers en goedgekeurde administratieve wijzigingen.</p><span class="open">Open personeelsbeheer →</span></a>
+    <a class="module" href="/personeelsbeheer.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelslijst</h3><p>Personeel, rangen, roepnummers en administratieve dossiers volgens jouw rechten.</p><span class="open">Open personeelslijst →</span></a>
     <a class="module" href="/dossiercentrum.html"><span class="ico" aria-hidden="true">📁</span><h3>Dossiercentrum</h3><p>Afzonderlijke personeelsdossiers en historiek voor Politie, Brandweer, Ambulance en Depannage.</p><span class="open">Open dossiers →</span></a>
     <a class="module" href="/rollen-opleidingen.html"><span class="ico" aria-hidden="true">🎓</span><h3>Opleidingscentrum</h3><p>Opleidingen registreren, resultaten opvolgen en opleidingshistoriek bekijken per hulpdienst. Toegang volgens je Discord-rol.</p><span class="open">Open opleidingscentrum →</span></a>
     <a class="module" href="/registraties.html"><span class="ico" aria-hidden="true">📝</span><h3>Observaties vanuit Basiskader</h3><p>Basiskader observeert alleen lagere politiegraden. Ontvangen observaties zijn uitsluitend voor bevoegd kader en Bestuur.</p><span class="open">Open observaties →</span></a>
@@ -140,13 +142,16 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
   <section id="memberDashboard" hidden aria-labelledby="memberDashboardTitle">
     <p class="eyebrow">Welkom bij BelgiumPD</p>
     <h1 id="memberDashboardTitle">Jouw startpagina</h1>
-    <p class="lead">Als nieuw lid kun je je eigen status bekijken, de personeelslijst raadplegen en een vast roepnummer aanvragen zodra je aan de voorwaarden voldoet. Een tijdelijk roepnummer hoeft nog geen dossier op te leveren.</p>
+    <p class="lead">Een overzicht van je persoonlijke functies. Geen beheerschermen of afgeschermde dossiers. Verlof en meldingen worden beschikbaar zodra je personeelskoppeling en toegang zijn bevestigd.</p>
     <div class="member-notice" id="memberAccountStatus" role="status">Je Discord-profiel wordt gecontroleerd.</div>
     <h2 class="section-title">Voor jou beschikbaar</h2>
     <div class="grid">
       <a class="module" href="/discord-status.html"><span class="ico" aria-hidden="true">👤</span><h3>Mijn profiel</h3><p>Bekijk je Discord-koppeling, je personeelsstatus en je eigen gegevens.</p><span class="open">Bekijk mijn profiel →</span></a>
       <a class="module" href="/personeelslijst.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelslijst</h3><p>Bekijk roepnummer, naam, rang, reeks en status. Zonder dossiergegevens of wijzigingen.</p><span class="open">Open personeelslijst →</span></a>
-      <a class="module" href="/vast-roepnummer-aanvragen.html"><span class="ico" aria-hidden="true">🔢</span><h3>Vast roepnummer aanvragen</h3><p>Alleen na 5 volledige kalenderdagen op Discord en minstens 10 speeluren, bevestigd door de FiveM-bot.</p><span class="open">Controleer mijn voorwaarden →</span></a>
+      <a class="module" id="memberCallsignTile" href="/vast-roepnummer-aanvragen.html" hidden><span class="ico" aria-hidden="true">🔢</span><h3>Vast roepnummer aanvragen</h3><p>Alleen als je nog geen vast roepnummer hebt; na 5 kalenderdagen en minstens 10 speeluren, bevestigd door de bot.</p><span class="open" id="memberCallsignAction">Controleer mijn voorwaarden →</span></a>
+      <a class="module" id="memberLeaveTile" href="/verlofbeheer.html" hidden><span class="ico" aria-hidden="true">📅</span><h3>Mijn verlof</h3><p>Vraag je eigen verlof aan en bekijk je aanvragen. Geen toegang tot aanvragen van anderen.</p><span class="open">Mijn verlof bekijken →</span></a>
+      <a class="module" id="memberNoticesTile" href="/meldingen.html" hidden><span class="ico" aria-hidden="true">📬</span><h3>Meldingen</h3><p>Volg de beslissingen over je eigen verlofaanvragen, zonder administratieve beoordelingsrechten.</p><span class="open">Mijn meldingen bekijken →</span></a>
+      <div class="module" id="memberTrainingTile" aria-label="Opleiding aanvragen: in ontwikkeling"><span class="ico" aria-hidden="true">🎓</span><h3>Opleiding aanvragen</h3><p>De aanvraagfunctie is in ontwikkeling. Het huidige Opleidingscentrum is bedoeld voor bevoegde opleidingsverantwoordelijken.</p><span class="open">Binnenkort beschikbaar</span></div>
     </div>
     <div class="member-section">
       <div class="member-section-top"><div><h2 class="section-title">Personeelslijst politie</h2><p class="caption">Een beperkt, alleen-lezen overzicht. Geen Discord-ID’s, dossiers of observaties.</p></div>
@@ -167,11 +172,24 @@ const $=id=>document.getElementById(id);
 const staffNav=$('staffNav'),memberNav=$('memberNav'),staffHome=$('staffDashboard');
 const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
 const adminSection=$('adminRights'),adminNavLink=$('adminNavLink'),logoutButton=$('dashboardLogout');
+const simpleIds=['memberNavCallsign','memberCallsignTile','memberNavLeave','memberLeaveTile','memberNavNotices','memberNoticesTile'];
+function resetSimpleModules(){for(const id of simpleIds)$(id).hidden=true}
+function displaySimpleModules(details){
+ const canSelf=details.canUseSelfService===true;
+ const canCall=details.callsignRequestAvailable===true;
+ $('memberNavCallsign').hidden=!canCall;
+ $('memberCallsignTile').hidden=!canCall;
+ $('memberNavLeave').hidden=!canSelf;
+ $('memberLeaveTile').hidden=!canSelf;
+ $('memberNavNotices').hidden=!canSelf;
+ $('memberNoticesTile').hidden=!canSelf;
+}
 let auth,requestNumber=0;
 function show(mode,message=''){
  staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';
  staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';
  guestHome.hidden=mode!=='guest';adminSection.hidden=true;adminNavLink.hidden=true;
+ resetSimpleModules();
  if(message)$('guestMessage').textContent=message;
 }
 function previewRoster(records,stale){
@@ -220,6 +238,7 @@ async function displayAuthenticated(user){
   if(turn!==requestNumber)return;
   if(details.mode==='member'){
     show('member');
+    displaySimpleModules(details);
     $('memberAccountStatus').textContent=details.hasPersonnelRecord?
       'Je Discord-identiteit is bekend. Je beschikt momenteel over de startfuncties voor het Agentenkader.':
       'Je Discord-account is bevestigd. Je kunt de personeelslijst zien en controleren of je een vast roepnummer kunt aanvragen.';
@@ -232,6 +251,12 @@ async function displayAuthenticated(user){
     else $('memberRosterStatus').textContent='Personeelslijst tijdelijk niet beschikbaar. Probeer de volledige lijst.';
     if(eligibility.status==='fulfilled'){
       const c=eligibility.value;
+      if(c.request?.assignedCall){
+        $('memberCallsignTile').hidden=true;
+        $('memberNavCallsign').hidden=true;
+      }else if(c.request){
+        $('memberCallsignAction').textContent='Mijn aanvraag opvolgen →';
+      }
       $('memberAccountStatus').textContent=c.request?
         'Je vaste-roepnummeraanvraag staat op: '+String(c.request.status||'In behandeling')+'. Bekijk Mijn profiel of de aanvraagpagina voor meer informatie.':
         c.eligible&&c.requestsEnabled?
