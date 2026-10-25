@@ -54,6 +54,12 @@ export function fireRecordVisibility(actor,subject,subjectRoles){
     actor?.portalTechnicalMode===true)return 'full';
  return actor?.fireAccessLevel==='leadership'?'leadership':'identity';
 }
+export function fireCanWithdrawSanction(actor,subject,subjectRoles){
+  return actor?.discordId!==subject?.personId&&
+    (actor?.fireZoneChief===true||
+      actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true)&&
+    fireRecordVisibility(actor,subject,subjectRoles)==='full';
+}
 export function fireSanctionLevel(actor){
   if(actor?.fireZoneChief===true||
      actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true)
