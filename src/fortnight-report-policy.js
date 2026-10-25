@@ -64,7 +64,7 @@ export function mayReadFortnightReport(actor,dept,roster){
   if(dept==='ambulance')return ['middenkader','officierenkader','korpsleiding'].includes(scoped)||
     /^DIRMED(?:[- ]?\d{1,4})?$/.test(dutyCode(person));
   if(dept==='depannage')return ['middenkader','officierenkader','korpsleiding'].includes(scoped)&&
-    /^(?:AWV(?:[- ]?\d{1,4})?|ANWV(?:[- ]?\d{1,4})?|AGENTSCHAP WEGEN (?:EN|&) VERKEER)$/.test(dutyCode(person));
+    /^(?:(?:AWV|ANWV)(?:[- ]?\d{1,4}|[ -]LEIDING)?|AGENTSCHAP WEGEN (?:EN|&) VERKEER(?:[ -]\(?LEIDING\)?)?)$/.test(dutyCode(person));
   return false;
 }
 export function fortnightReportDepartments(actor,roster){
