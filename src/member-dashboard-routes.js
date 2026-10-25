@@ -35,10 +35,21 @@ export function publicPoliceRoster(rows){
     if(p?.dept!=='politie'||!discordId.test(strip(p.personId))||!strip(p.name))continue;
     if(seen.has(p.personId))continue;
     seen.add(p.personId);
+    // Exact ten public POLICE specialization statuses; exclude every other
+    // source attribute (Discord ID, activities, notes, case records, etc.).
+    const labels=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
+      'K9','RAGO','Dispatch','TO','AE'];
+    const safeStatuses=Object.fromEntries(labels.map(label=>{
+      const value=Array.isArray(p.specialties)?
+        p.specialties.find(x=>x?.label===label)?.value:undefined;
+      return [label,typeof value==='string'?value.trim().slice(0,40)||'Niet ingevuld':
+        'Niet ingevuld'];
+    }));
     visible.push({
       call:strip(p.call).slice(0,18),name:strip(p.name).slice(0,90),
       rank:strip(p.rank).slice(0,95),series:strip(p.series).slice(0,85),
-      status:strip(p.status).slice(0,30)
+      status:strip(p.status).slice(0,30),
+      specialties:labels.map(label=>({label,value:safeStatuses[label]}))
     });
   }
   const special=call=>strip(call)==='008';
