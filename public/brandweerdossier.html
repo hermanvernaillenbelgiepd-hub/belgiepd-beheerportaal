@@ -278,6 +278,42 @@ function rows(root,values){
   line.append(key,val);root.append(line);
  }
 }
+// Same archive-plus-weekreport flow as the other emergency service dossiers.
+function addFireRetireControl(card,record,containerId){
+ if(current?.canRetire!==true||!record?.id)return;
+ const source=containerId==='leavePeriods'?'leave':
+   ['begeleiding','evaluatie','administratief','waardering','opleiding'].includes(record.type)?
+      'staff':'cases';
+ if(source==='leave'&&record.status!=='approved')return;
+ const permitted=source==='leave'||source==='staff'||
+   ['observatie','sanctie','basisnotitie','notitie','specialisatiebeperking'].includes(record.type);
+ if(!permitted)return;
+ const button=document.createElement('button');
+ button.className='dossier-retire-button';button.type='button';
+ button.textContent='🗑 Wissen';
+ button.title='Intrekken uit het actief dossier, met audit en weekrapport';
+ button.onclick=async()=>{
+   const input=prompt('Motivering voor het wissen (10–500 tekens):');
+   if(input===null)return;
+   const reason=input.trim();
+   if(reason.length<10||reason.length>500){
+     mark('Motivering van 10 tot 500 tekens vereist.',true);return;
+   }
+   if(!confirm('Registratie uit het actieve Brandweerdossier wissen? '+
+       'De intrekking wordt bewaard in de audit en het weekrapport.'))return;
+   button.disabled=true;
+   try{
+     const url=source==='leave'?
+       '/api/leave/requests/'+encodeURIComponent(record.id)+'/retire':
+       '/api/dossier-retirement/brandweer/'+encodeURIComponent(id)+'/'+
+         source+'/'+encodeURIComponent(record.id);
+     await api(url,'POST',source==='leave'?{dept:'brandweer',reason}:{reason});
+     mark('Registratie ingetrokken en opgenomen in het weekrapport.');
+     await load();
+   }catch(e){mark(e.message,true);button.disabled=false}
+ };
+ card.append(button);
+}
 function cards(root,items,heading,text,metadata){
  root.replaceChildren();
  if(!items.length){
@@ -289,7 +325,9 @@ function cards(root,items,heading,text,metadata){
   const title=document.createElement('h3');title.textContent=heading(item);
   const details=document.createElement('p');details.textContent=text(item)||'—';
   const meta=document.createElement('small');meta.textContent=metadata(item)||'';
-  card.append(title,details,meta);root.append(card);
+  card.append(title,details,meta);
+  addFireRetireControl(card,item,root.id);
+  root.append(card);
  }
 }
 function setAvailableTabs(data){
@@ -312,6 +350,11 @@ async function load(){
  try{
   if(!/^[0-9]{15,22}$/.test(id))throw Error('Ongeldige dossierverwijzing');
   const data=await api(endpoint);current=data;
+  try{
+    const access=await api('/api/dossier-retirement/access?dept=brandweer&discordId='+
+      encodeURIComponent(id));
+    data.canRetire=access.canRetire===true;
+  }catch{data.canRetire=false}
   const p=data.person;
   $('mainCard').hidden=false;
   $('title').textContent='Brandweerdossier · '+p.name;
@@ -407,28 +450,6 @@ async function load(){
      x=>x.sanctionType||'Sanctie',x=>x.details,
      x=>(x.eventDate||'—')+' · Ernst '+(x.severity??'—')+
        ' · '+(x.status||'actief'));
-   if(data.canWithdrawSanctions===true){
-     const cardsOnScreen=$('sanctions').querySelectorAll('.record');
-     for(let i=0;i<sanctionEntries.length;i++){
-       const sanction=sanctionEntries[i];
-       if(sanction.status==='ingetrokken'||!sanction.id)continue;
-       const button=document.createElement('button');
-       button.type='button';button.className='alt';
-       button.textContent='Sanctie intrekken';
-       button.onclick=async()=>{
-         const reason=prompt('Reden van intrekking (15–500 tekens):');
-         if(reason===null)return;
-         button.disabled=true;
-         try{
-           await api(endpoint+'/sanctions/'+encodeURIComponent(sanction.id)+'/withdraw',
-             'POST',{reason:reason.trim()});
-           mark('Sanctie ingetrokken en geaudit.');
-           await load();showTab('sancties');
-         }catch(e){mark('Intrekken mislukt: '+e.message,true);button.disabled=false}
-       };
-       cardsOnScreen[i]?.append(button);
-     }
-   }
    cards($('trainings'),data.trainings||[],
      x=>x.courseName||'Opleiding',x=>x.result||'Geen resultaat',
      x=>x.eventDate||'—');
