@@ -54,6 +54,7 @@ label{display:block;margin-top:14px;color:#d5e4f6;font-weight:600}input,select,t
 </details>
 </main>
 <script type="module">
+import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalog.js';
 const $=id=>document.getElementById(id);let auth,mods,profile,editing=null;
 const state=(msg,err=false)=>{$('state').textContent=msg;$('state').classList.toggle('error',err)};
 function text(parent,value,tag='span'){const el=document.createElement(tag);el.textContent=String(value);parent.append(el);return el}
@@ -88,19 +89,16 @@ async function refresh(){
 }
 $('google').onclick=async()=>{try{await mods.signInWithPopup(auth,new mods.GoogleAuthProvider());await refresh()}catch(e){state('Google-aanmelding: '+(e.code||e.message),true)}};
 $('logout').onclick=async()=>{await mods.signOut(auth);await refresh()};
-// Training-only course lists. No Discord role is assigned by a training record.
+// Dienstgebonden opleidingskeuzes. Politie behoudt de huidige catalogus;
+ // Brandweer blijft identiek en krijgt de bestaande ANDERE-mogelijkheid.
 const originalCourses=[...$('course').options].map(o=>({value:o.value,text:o.textContent}));
-const fireCourses=[
-  'Logistiek / Signalisatie','Ladderwagen','Duiker','Bosbestrijding',
-  'Brandweer-AMBU','RED-TEAM','Gevaarlijke stoffen','Basistraining'
-];
 function refreshCourseOptions(){
- const chosen=$('course').value;
- const fire=$('dept').value==='brandweer';
- const options=fire?[
-  {value:'',text:'Kies een Brandweeropleiding…'},
-  ...fireCourses.map(value=>({value,text:value})),
-  {value:'ANDERE',text:'ANDERE (zelf invullen)'}
+ const chosen=$('course').value,dept=$('dept').value;
+ const courses=coursesForDepartment(dept);
+ const options=courses?[
+  {value:'',text:trainingSelectLabels[dept]||'Kies een opleiding…'},
+  ...courses.map(value=>({value,text:value})),
+  ...(dept==='brandweer'?[{value:'ANDERE',text:'ANDERE (zelf invullen)'}]:[])
  ]:originalCourses;
  $('course').replaceChildren(...options.map(o=>new Option(o.text,o.value)));
  $('course').value=options.some(o=>o.value===chosen)?chosen:'';
@@ -138,7 +136,14 @@ $('subjectChoice').onchange=()=>{$('subject').value=$('subjectChoice').value};
 function setCourse(name){
   const course=String(name||'').trim(),select=$('course');
   const known=[...select.options].some(o=>o.value===course&&o.value&&o.value!=='ANDERE');
-  select.value=known?course:course?'ANDERE':'';
+  if(course&&!known&&!Array.from(select.options).some(o=>o.value==='ANDERE')){
+    // Oude registraties mogen bewerkt worden zonder oude politieopleidingen
+    // opnieuw als algemene keuzemogelijkheid aan te bieden.
+    const original=new Option('Bestaande opleiding · '+course,course);
+    original.dataset.legacy='true';
+    select.append(original);
+  }
+  select.value=known?course:course&&[...select.options].some(o=>o.value==='ANDERE')?'ANDERE':course||'';
   $('courseOther').value=known?'':course;
   syncCourseOther();
 }
@@ -155,6 +160,8 @@ function cancelEdit(){
   editing=null;$('dept').disabled=false;$('subjectChoice').disabled=false;
   $('saveTraining').textContent='Registratie bewaren';$('cancelEdit').hidden=true;
   $('editNotice').hidden=true;
+  $('course').value='';
+  refreshCourseOptions();
 }
 $('cancelEdit').onclick=cancelEdit;
 async function showRecords(){
