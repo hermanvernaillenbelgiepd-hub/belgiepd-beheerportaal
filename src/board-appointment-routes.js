@@ -1,9 +1,10 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
+import {isVerifiedTechnicalRoleApprover} from './manual-role-decision-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {
   BOARD_COLLECTION,boardEnabled,boardWritesEnabled,validBoardId,isTechnicalBoardApprover,
-  mayNominateForBoard,mayDecideBoard,hasBoardPermission,validateBoardNomination,
+  mayNominateForBoard,mayDecideBoard,boardDecisionMethod,hasBoardPermission,validateBoardNomination,
   validateBoardDecision,validateBoardRevocation,serializeBoardAppointment
 } from './board-appointment-policy.js';
 
@@ -58,9 +59,17 @@ export function installBoardAppointmentRoutes(app,{requireUser}){
         isTechnicalBoardApprover(req.bpd)||
         (reader&&doc.get('status')==='approved')||
         (manager&&doc.get('requestedByUid')===req.bpd.uid))
-        .map(doc=>serializeBoardAppointment(doc.id,doc.data())).filter(Boolean);
+        .map(doc=>{
+          const item=serializeBoardAppointment(doc.id,doc.data());
+          // Only the existing Board-approver scope can see who submitted a
+          // nomination, never expose arbitrary proposer identities.
+          if(item&&isTechnicalBoardApprover(req.bpd))
+            item.requestedBySelf=doc.get('requestedByUid')===req.bpd.uid;
+          return item;
+        }).filter(Boolean);
       return res.json({appointments:records,canNominate:manager,
-        canDecide:isTechnicalBoardApprover(req.bpd)});
+        canDecide:isTechnicalBoardApprover(req.bpd),
+        canSoloDecide:isVerifiedTechnicalRoleApprover(req.bpd)});
     }catch(e){return fail(res,e)}
   });
 
@@ -113,17 +122,21 @@ export function installBoardAppointmentRoutes(app,{requireUser}){
         ]);
         const data=snap.data();
         if(!mayDecideBoard(req.bpd,req.params.discordId,data))
-          throw fault(403,'Deze aanvraag mag niet door jezelf of voor dit account beslist worden');
+          throw fault(403,'Je kunt jezelf niet aanstellen. Bij een eigen voordracht voor iemand anders is geverifieerd Technisch beheer vereist.');
+        const approvalMethod=boardDecisionMethod(req.bpd,req.params.discordId,data);
         if(payload.decision==='approved'&&(!member.exists||member.get('status')!=='approved'))
           throw fault(409,'Het personeelsaccount van de kandidaat is niet meer goedgekeurd');
         tx.update(ref,{status:payload.decision,
           permissions:payload.decision==='approved'?[...data.requestedPermissions]:[],
           decisionReason:payload.reason,
           approvedByUid:req.bpd.uid,approvedByDiscordId:req.bpd.discordId||null,
+          decisionMethod:approvalMethod,
           decidedAt:FieldValue.serverTimestamp()});
         tx.create(ref.collection('audit').doc(),{action:payload.decision,
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
           reason:payload.reason,
+          requestedByUid:data.requestedByUid,
+          decisionMethod:approvalMethod,
           permissions:payload.decision==='approved'?[...data.requestedPermissions]:[],
           at:FieldValue.serverTimestamp()});
       });

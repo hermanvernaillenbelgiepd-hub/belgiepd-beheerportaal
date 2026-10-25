@@ -586,9 +586,16 @@ async function boardRefresh(){
           button.textContent=label;
           button.className=(decision==='revoke'?'danger':'alt');
           button.onclick=async()=>{
+            const ownProposal=record.requestedBySelf===true;
+            if(ownProposal&&result.canSoloDecide!==true){
+              notice('Voor je eigen voordracht is een onafhankelijke goedkeurder of een geverifieerde technische beheersessie nodig.',true);
+              return;
+            }
             const reason=prompt('Motivering van minimaal 15 tekens:', '');
             if(reason===null)return;
-            if(!confirm('Bestuursaanstelling van '+record.discordId+' '+label.toLowerCase()+'?'))return;
+            if(!confirm('Bestuursaanstelling van '+record.discordId+' '+label.toLowerCase()+
+               (ownProposal?' met technische uitzonderingsbevoegdheid (eigen voordracht)':'')+
+               '? De beslissing wordt gelogd en wijzigt geen operationele rang.'))return;
             button.disabled=true;
             try{
               await api('/api/board/'+encodeURIComponent(record.discordId)+'/'+

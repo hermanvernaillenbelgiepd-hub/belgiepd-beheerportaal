@@ -1,4 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
+import {isVerifiedTechnicalRoleApprover} from './manual-role-decision-policy.js';
 
 // Governance is an appointment alongside the operational role. These
 // capabilities affect ONLY this board registry; they are never portal roles.
@@ -26,11 +27,21 @@ export function mayNominateForBoard(actor,ownAppointment){
     d=>roleForDepartment(actor,d)==='korpsleiding');
   return Boolean(hasCadre||hasBoardPermission(ownAppointment,'board_nomination_propose'));
 }
+// A signed, owner-allowlisted technical session may review a nomination
+// it submitted for somebody ELSE. This never permits self-appointment, and
+// ordinary board approvers still require an independent nominator.
+export function boardDecisionMethod(actor,targetId,nomination){
+  if(!isTechnicalBoardApprover(actor)||!validBoardId(targetId)||
+     actor?.discordId===targetId||actor?.uid==='discord:'+targetId||
+     !nomination||nomination.status!=='pending')return null;
+  const sameNominator=actor.uid===nomination.requestedByUid||
+    actor.discordId===nomination.requestedByDiscordId;
+  if(!sameNominator)return 'independent';
+  return isVerifiedTechnicalRoleApprover(actor)?
+    'verified_technical_single_approver':null;
+}
 export function mayDecideBoard(actor,targetId,nomination){
-  return isTechnicalBoardApprover(actor)&&validBoardId(targetId)&&
-    actor?.discordId!==targetId&&actor?.uid!==('discord:'+targetId)&&
-    !!nomination&&nomination.status==='pending'&&
-    actor.uid!==nomination.requestedByUid;
+  return boardDecisionMethod(actor,targetId,nomination)!==null;
 }
 function cleanReason(value){
   if(typeof value!=='string'||value.trim().length<15||value.trim().length>500)

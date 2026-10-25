@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
 import {
   BOARD_COLLECTION,BOARD_PERMISSIONS,boardEnabled,boardWritesEnabled,
-  isTechnicalBoardApprover,hasBoardPermission,activeBoardAppointment,
+  isTechnicalBoardApprover,boardDecisionMethod,hasBoardPermission,activeBoardAppointment,
   mayNominateForBoard,mayDecideBoard,validateBoardNomination,
   validateBoardDecision,validateBoardRevocation,serializeBoardAppointment
 } from '../src/board-appointment-policy.js';
@@ -61,6 +61,39 @@ test('Independent technical approval forbids self and same requester',()=>{
   assert.equal(mayDecideBoard({...admin,discordId:target},target,pending),false);
   assert.equal(mayDecideBoard(admin,target,{...pending,status:'approved'}),false);
   assert.equal(mayDecideBoard(admin,'not-a-discord-id',pending),false);
+});
+test('Verified technical mode can decide its own nomination for ANOTHER user only',()=>{
+  const ownerId='505659510359064606';
+  const verified={
+    uid:'discord:'+ownerId,discordId:ownerId,role:'beheerder',
+    portalTechnicalMode:true,profileTechnicalAvailable:true
+  };
+  const ownPending={status:'pending',requestedByUid:verified.uid,
+    requestedByDiscordId:verified.discordId,requestedPermissions:['board_registry_read',
+      'board_nomination_propose']};
+  assert.equal(mayDecideBoard(verified,target,ownPending),true);
+  assert.equal(boardDecisionMethod(verified,target,ownPending),
+    'verified_technical_single_approver');
+  assert.equal(mayDecideBoard(verified,verified.discordId,ownPending),false);
+  assert.equal(mayDecideBoard({...verified,portalTechnicalMode:false},target,ownPending),false);
+  assert.equal(mayDecideBoard({...verified,profileTechnicalAvailable:false},target,ownPending),false);
+  assert.equal(mayDecideBoard({...verified,uid:'discord:'+target},target,ownPending),false);
+  assert.equal(mayDecideBoard({...verified,role:'officierenkader'},target,ownPending),false);
+  assert.equal(mayDecideBoard(verified,target,{...ownPending,status:'approved'}),false);
+  assert.equal(boardDecisionMethod(verified,target,{
+    ...ownPending,requestedByUid:'discord:333333333333333333',
+    requestedByDiscordId:'333333333333333333'}),'independent');
+});
+test('Technical exception is recorded on every Board decision transaction',()=>{
+  const routes=readFileSync(new URL('../src/board-appointment-routes.js',import.meta.url),'utf8');
+  const ui=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+  assert.match(routes,/const approvalMethod=boardDecisionMethod\(req\.bpd,req\.params\.discordId,data\)/);
+  assert.match(routes,/decisionMethod:approvalMethod/);
+  assert.match(routes,/requestedByUid:data\.requestedByUid/);
+  assert.match(routes,/canSoloDecide:isVerifiedTechnicalRoleApprover\(req\.bpd\)/);
+  assert.match(ui,/record\.requestedBySelf===true/);
+  assert.match(ui,/technische uitzonderingsbevoegdheid/);
+  assert.match(routes,/actorUid:req\.bpd\.uid/);
 });
 test('Board nomination payload accepts only explicit bounded capabilities and motivation',()=>{
   const payload={discordId:target,permissions:['board_registry_read'],
