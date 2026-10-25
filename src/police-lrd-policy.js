@@ -80,7 +80,7 @@ export async function fetchBotLrdGuildSnapshot(guild,token,{
         // No raw Discord member payloads, role lists or IDs leave the server.
         const raw=[item.nick,item.user?.global_name,item.user?.username]
           .find(v=>typeof v==='string'&&v.trim().length>0)||'Discord-lid';
-        const safe=raw.replace(/[\\x00-\\x1f\\x7f<>]/g,' ').trim().slice(0,80);
+        const safe=raw.replace(/[\x00-\x1f\x7f<>]/g,' ').trim().slice(0,80);
         matched.displayNames.set(id,safe||'Discord-lid');
       }
     }
