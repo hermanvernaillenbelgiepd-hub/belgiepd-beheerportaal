@@ -110,3 +110,14 @@ export function visibleFortnightReports(reports,removedIds,today){
   return reports.filter(report=>
     !removedIds.has(report.id)||isCurrentAutomaticReport(report,today));
 }
+
+/** A manual restart resets only the live report presentation, never the
+ * underlying personnel dossier or immutable audit events. Any record with
+ * missing creation metadata is treated as historical (excluded). */
+export function includedAfterReportRestart(createdAt,restartedAt){
+  if(restartedAt==null)return true;
+  const millis=value=>value?.toMillis?.()||
+    (value instanceof Date?value.getTime():null);
+  const first=millis(createdAt),cutoff=millis(restartedAt);
+  return Number.isFinite(first)&&Number.isFinite(cutoff)&&first>=cutoff;
+}
