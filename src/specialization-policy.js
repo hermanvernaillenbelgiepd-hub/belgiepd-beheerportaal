@@ -64,6 +64,10 @@ export function publicSpecializations(subject,document){
   const savedManual=entry=>!!entry&&typeof entry==='object'&&
     ACCEPTED.has(entry.value)&&entry.source==='manual';
   const items=(SPECIALTY_LABELS[subject.dept]||[]).map(label=>{
+    // Historic manual LRD values are superseded by the independently verified
+    // Discord bot state in the actual roster endpoints.
+    if(subject.dept==='politie'&&label==='LRD (Recherche)')
+      return {label,value:'Niet gecontroleerd',source:'discord-bot',readOnly:true};
     const saved=values[label];
     const legacy=values[fireLegacyAliases[label]];
     // Canonical manual edits always take precedence. A legacy explicit
@@ -86,7 +90,7 @@ export function applySpecialtyOverlays(records,docs){
   }
   return (records||[]).map(person=>{
     const mapped=publicSpecializations(person,byKey.get(person.dept+'_'+person.personId));
-    const legacy=mapped.items.filter(i=>!['Nee','Neen','Niet ingevuld','n.v.t.','NVT',''].includes(i.value))
+    const legacy=mapped.items.filter(i=>!['Nee','Neen','Niet ingevuld','Niet gecontroleerd','n.v.t.','NVT',''].includes(i.value))
       .map(i=>i.label+': '+i.value).join(' · ');
     return {...person,specialties:mapped.items,
       special:legacy||'Geen geregistreerde specialisaties'};
