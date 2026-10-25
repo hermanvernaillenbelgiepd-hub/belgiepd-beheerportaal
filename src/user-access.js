@@ -76,6 +76,9 @@ function ceilingIn(actor,dept){
   // account-approval module. Dedicated board/technical grants remain separate.
   if(dept==='brandweer'&&
      (actor?.fireZoneChief===true||roleForDepartment(actor,'brandweer')==='korpsleiding'))return 0;
+  // Medical leadership and instructors have service workspaces, not general
+  // approval/blocking powers over portal users. Board/technical is distinct.
+  if(dept==='ambulance')return 0;
   if(!['officierenkader','korpsleiding'].includes(actor?.role))return 0;
   const scoped=roleForDepartment(actor,dept);
   if((ranks[scoped]||0)>ranks[actor.role])return 0;
