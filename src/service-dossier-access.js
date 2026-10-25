@@ -89,7 +89,15 @@ export function verifiedServiceReportRoles(actor,member,guildId,now=Date.now()){
 // freshness and known role IDs are checked server-side. This NEVER grants
 // leadership permissions, operational training or management privileges.
 export function verifiedDepannageDisplayFunction(member,guildId,now=Date.now()){
-  const roles=verifiedRoles(member,guildId,now);
+  // Personnel-list labels may use a recent, guild-bound role snapshot for up
+  // to 30 days, whereas *every permission check* remains limited to 15 min.
+  // This function must never be used to grant dossier or operational rights.
+  if(!member||typeof guildId!=='string'||!DISCORD.test(guildId)||
+     member.guildId!==guildId||!Number.isSafeInteger(member.verifiedAt)||
+     member.verifiedAt>now||now-member.verifiedAt>30*24*60*60*1000||
+     !Array.isArray(member.roleIds)||!member.roleIds.every(id=>DISCORD.test(id)))
+    return null;
+  const roles=new Set(member.roleIds);
   if(roles.has(DISCORD_AWV_ROLE))return 'leiding';
   if(roles.has(DISCORD_FAST_ROLE))return 'fast';
   if(roles.has(DISCORD_LSRA_ROLE))return 'lsra';
