@@ -33,7 +33,9 @@ test('Nieuwe leden krijgen alleen leesbare personeelslijst, zonder dossier- of D
  ]);
  assert.deepEqual(records.map(p=>p.call),['930','900','250','008']);
  for(const p of records){
-  assert.deepEqual(Object.keys(p).sort(),['call','name','rank','series','status'].sort());
+  assert.deepEqual(Object.keys(p).sort(),['call','name','rank','series','status','specialties'].sort());
+  assert.equal(p.specialties.length,10);
+  assert.deepEqual(p.specialties.map(x=>x.label),['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE']);
   assert.equal('personId' in p,false);
   assert.equal('discordId' in p,false);
   assert.equal('secret' in p,false);
@@ -72,8 +74,9 @@ test('Dashboard/roster browsercode parses and does not contain new account or do
  const rosterScript=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
  assert.ok(inline&&rosterScript);
  // Inline ES modules contain top-level await; parse using an async wrapper.
- assert.doesNotThrow(()=>new Script('(async()=>{'+inline+'})()'));
- assert.doesNotThrow(()=>new Script('(async()=>{'+rosterScript+'})()'));
+ const withoutImports=code=>code.replace(/^import\\s+[^\\n]+;\\s*$/gm,'');
+ assert.doesNotThrow(()=>new Script('(async()=>{'+withoutImports(inline)+'})()'));
+ assert.doesNotThrow(()=>new Script('(async()=>{'+withoutImports(rosterScript)+'})()'));
  assert.doesNotMatch(inline,/method:\s*'POST'/);
  assert.doesNotMatch(rosterScript,/method:\s*'POST'/);
 });
