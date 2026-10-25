@@ -45,8 +45,12 @@ export function parseAutomaticReportId(id){
   const date=utcDay(day),anchor=utcDay(ANCHOR);
   if(date===null||date<anchor||(date-anchor)%(14*MS)!==0)return null;
   const info=fortnightFor(day,m[1]);
-  return automaticFortnightReports(m[1],day,1)[0].id===id?
-    {...automaticFortnightReports(m[1],day,1)[0],periodEnd:info.periodEnd}:null;
+  const base=automaticFortnightReports(m[1],day,1)[0];
+  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+    year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  return base.id===id?
+    {...base,periodEnd:info.periodEnd,
+      status:info.periodEnd<today?'afgesloten_periode':'lopende_periode'}:null;
 }
 const matchesDuty=(person,pattern)=>[person?.call,person?.rank].some(value=>
   pattern.test(String(value||'').trim().toUpperCase().replace(/\s+/g,' ')));
