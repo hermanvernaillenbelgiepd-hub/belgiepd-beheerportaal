@@ -42,6 +42,12 @@ button.secondary{background:#284669}button.danger{background:#833747}button:disa
 import {TRAINING_REQUEST_COURSE_CATALOG} from '/training-course-catalog.js';
 const $=id=>document.getElementById(id),NAMES={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage'};
 const SERVICE_ORDER=['politie','brandweer','ambulance','depannage'];
+const ADMISSION_NOTICES={
+ politie:'Voor politiegerelateerde opleidingen dient men aangenomen te zijn bij de politie.',
+ brandweer:'Voor brandweergerelateerde opleidingen dient men aangenomen te zijn bij de brandweer.',
+ ambulance:'Voor ambulancerelateerde opleidingen dient men aangenomen te zijn bij de ambulancedienst.',
+ depannage:'Voor depannagegerelateerde opleidingen dient men aangenomen te zijn bij de depannagedienst.'
+};
 let auth,authMod,scopes=[];
 const feedback=(s,bad=false)=>{$('feedback').textContent=s;$('feedback').classList.toggle('error',bad)};
 const el=(tag,value)=>{const e=document.createElement(tag);e.textContent=String(value??'');return e};
@@ -76,9 +82,7 @@ function syncCourse(){
  note.classList.toggle('error',!allowed);
  note.textContent=allowed?
   'Je kunt voor '+NAMES[dept]+' een opleiding aanvragen. Je aanvraag gaat naar de bevoegde dienstleiding.':
-  scope?
-   'Het opleidingsaanbod van '+NAMES[dept]+' is zichtbaar, maar je huidige kader heeft geen recht om zelf een aanvraag in te dienen.':
-   'Het opleidingsaanbod van '+NAMES[dept]+' is zichtbaar. Om een aanvraag in te dienen, moet jouw Discord-ID aan een personeelsfiche van deze hulpdienst gekoppeld zijn.';
+  ADMISSION_NOTICES[dept]||'Je dient eerst aangenomen te zijn bij deze hulpdienst.';
  syncVaria();
 }
 function syncVaria(){
