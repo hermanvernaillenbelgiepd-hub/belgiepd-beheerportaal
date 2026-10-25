@@ -28,6 +28,7 @@ export function policeRequestTier(person){
   if(n!==null&&n>=100&&n<300)return 'agentenkader';
   if(n!==null&&n>=300&&n<600)return 'basiskader';
   if(n!==null&&n>=600&&n<900)return 'middenkader';
+  if(n!==null&&n>=900&&n<1000)return n===900||n===910?'korpsleiding':'officierenkader';
   return null;
 }
 export function personSeries(person){
@@ -45,6 +46,8 @@ export function canSubmitTrainingRequest(person,tier,actorRole=null){
   if(!person||!TRAINING_REQUEST_DEPARTMENTS.includes(person.dept))return false;
   if(person.dept!=='politie')return true;
   if(tier==='agentenkader'||tier==='basiskader')return true;
+  if(tier==='officierenkader'||tier==='korpsleiding')
+    return ['officierenkader','korpsleiding'].includes(actorRole);
   return tier==='middenkader'&&['middenkader','officierenkader','korpsleiding','beheerder'].includes(actorRole);
 }
 export function mayReviewTrainingRequest(actor,request){
