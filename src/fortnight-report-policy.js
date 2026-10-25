@@ -34,7 +34,7 @@ export function automaticFortnightReports(dept,today,number=16){
     results.push({id:'F'+dept+periodStart.replaceAll('-',''),
       dept,title:'Automatisch tweewekelijks rapport · '+dept+' · '+periodStart,
       periodStart,periodEnd,status:now>start+13*MS?'afgesloten_periode':'lopende_periode',
-      source:'automatic',createdBy:{name:'BelgiumPD · Automatisch'}});
+      source:'automatic',createdBy:{name:'BelgiëPD · Automatisch'}});
   }
   return results;
 }
