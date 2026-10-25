@@ -65,7 +65,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
       <div class="sheet-records"><div id="overviewLeave" class="small-rows"></div></div>
     </section>
     <section class="landscape-cell" data-sheet-tile="notes">
-      <h3>Belangrijke notities <button type="button" data-open-tab="notities">Bekijken</button></h3>
+      <h3>Belangrijke notities <span class="fire-inline-actions"><button type="button" data-open-tab="notities">Bekijken</button><button type="button" data-open-tab="nieuw" data-entry-kind="notitie">Toevoegen</button></span></h3>
       <div class="sheet-records">
         <div id="overviewNotesTile" hidden><div id="overviewNotesCount" class="small-rows"></div></div>
         <div class="fire-redacted">Afgeschermd voor jouw Brandweerfunctie.</div>
@@ -98,18 +98,18 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
   </div>
   <div class="dossier-lower-row">
     <section class="landscape-cell" data-sheet-tile="basisNotes">
-      <h3>Notities (basis) <button type="button" data-open-tab="gegevens">Bekijken</button></h3>
+      <h3>Notities (basis) <span class="fire-inline-actions"><button type="button" data-open-tab="basisnotities">Bekijken</button><button type="button" data-open-tab="nieuw" data-entry-kind="basisnotitie">Toevoegen</button></span></h3>
       <div id="overviewBasicNotes" class="sheet-records small-rows"></div>
     </section>
     <section class="landscape-cell" data-sheet-tile="observations">
-      <h3>Observaties <span class="fire-inline-actions"><button type="button" data-open-tab="observaties">Bekijken</button><button type="button" data-open-tab="nieuw">Toevoegen</button></span></h3>
+      <h3>Observaties <span class="fire-inline-actions"><button type="button" data-open-tab="observaties">Bekijken</button><button type="button" data-open-tab="nieuw" data-entry-kind="observatie">Toevoegen</button></span></h3>
       <div class="sheet-records">
         <div id="overviewObservationTile" hidden><div id="overviewObservationCount" class="small-rows"></div></div>
         <div class="fire-redacted">Observaties toevoegen is mogelijk via registratie; inzage is beperkt.</div>
       </div>
     </section>
     <section class="landscape-cell" data-sheet-tile="sanctions">
-      <h3>Sancties <button type="button" data-open-tab="sancties">Bekijken</button></h3>
+      <h3>Sancties <span class="fire-inline-actions"><button type="button" data-open-tab="sancties">Bekijken</button><button type="button" data-open-tab="nieuw" data-entry-kind="sanctie">Toevoegen</button></span></h3>
       <div class="sheet-records">
         <div id="overviewSanctionsTile" hidden><div id="overviewSanctionsCount" class="small-rows"></div></div>
         <div class="fire-redacted">Afgeschermd voor jouw Brandweerfunctie.</div>
@@ -142,6 +142,8 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <p><a href="/verlofbeheer.html">Naar Verlofbeheer</a></p></section>
 <section id="observationsSection" class="card dossier-panel" data-pane="observaties" hidden>
 <h2>Observaties</h2><div id="observations" class="sheet-rows"></div></section>
+<section id="basicNotesSection" class="card dossier-panel" data-pane="basisnotities" hidden>
+<h2>Basisnotities</h2><div id="basicNotes" class="sheet-rows"></div></section>
 <section id="caseSection" class="card dossier-panel" data-pane="notities" hidden>
 <h2>Belangrijke notities</h2><div id="entries" class="sheet-rows"></div></section>
 <section id="sanctionsSection" class="card dossier-panel" data-pane="sancties" hidden>
@@ -225,7 +227,15 @@ function showTab(tab){
 for(const button of $('dossierTabBar').querySelectorAll('[data-tab]'))
  button.onclick=()=>showTab(button.dataset.tab);
 for(const button of document.querySelectorAll('[data-open-tab]'))
- button.onclick=()=>showTab(button.dataset.openTab);
+ button.onclick=()=>{
+   if(!allowedTabs.has(button.dataset.openTab))return;
+   if(button.dataset.entryKind){
+     if(!current?.canWrite?.includes(button.dataset.entryKind))return;
+     showTab('nieuw');
+     $('kind').value=button.dataset.entryKind;
+     selectKind();
+   }else showTab(button.dataset.openTab);
+ };
 function rows(root,values){
  root.replaceChildren();
  for(const [label,value] of values){
@@ -253,7 +263,7 @@ function setAvailableTabs(data){
  allowedTabs.clear();
  for(const tab of ['overzicht','gegevens','verlof'])allowedTabs.add(tab);
  if(data.visibility==='leadership'||data.visibility==='full')
-  for(const tab of ['specialisaties','observaties','notities','sancties','opleidingen','historiek'])
+  for(const tab of ['specialisaties','observaties','basisnotities','notities','sancties','opleidingen','historiek'])
    allowedTabs.add(tab);
  if(Array.isArray(data.canWrite)&&data.canWrite.length)allowedTabs.add('nieuw');
  for(const button of $('dossierTabBar').querySelectorAll('[data-tab]')){
@@ -261,7 +271,8 @@ function setAvailableTabs(data){
  }
  $('dossierTabBar').hidden=true; // Detail access via the same inline sheet buttons as Police.
  for(const button of document.querySelectorAll('[data-open-tab]'))
-   button.hidden=!allowedTabs.has(button.dataset.openTab);
+   button.hidden=!allowedTabs.has(button.dataset.openTab)||
+     Boolean(button.dataset.entryKind&&!data.canWrite.includes(button.dataset.entryKind));
 }
 async function load(){
  if(!auth?.currentUser)return;
@@ -285,8 +296,10 @@ async function load(){
    ['Personeelsstatus',p.status],['Discord-ID',p.discordId]
   ];
   // Basic notes can be summarized only from the server-authorized response.
+  const basicEntries=(data.entries||[]).filter(x=>x.type==='notitie'&&x.noteKind==='basis');
+  const oldBasicNotes=(data.olderNotes||[]).filter(x=>x.type==='begeleiding'||x.type==='evaluatie');
   $('overviewBasicNotes').textContent=advanced?
-    (data.olderNotes||[]).filter(x=>x.type==='begeleiding'||x.type==='evaluatie')
+    [...basicEntries.map(x=>({title:'Basisnotitie',details:x.details})),...oldBasicNotes]
       .slice(0,5).map(x=>(x.title||x.type)+': '+(x.details||'').slice(0,90))
       .join(' | ')||'Geen basisnotities geregistreerd'
     :'Afgeschermd voor jouw Brandweerfunctie.';
@@ -330,7 +343,8 @@ async function load(){
    $('overviewObservationCount').textContent=
      entries.filter(x=>x.type==='observatie').length+' geregistreerde observaties';
    $('overviewNotesCount').textContent=
-     (entries.filter(x=>x.type==='notitie').length+(data.olderNotes||[]).length)+
+     (entries.filter(x=>x.type==='notitie'&&x.noteKind!=='basis').length+
+      (data.olderNotes||[]).filter(x=>!['begeleiding','evaluatie'].includes(x.type)).length)+
      ' geregistreerde notities';
    $('overviewSanctionsCount').textContent=
      entries.filter(x=>x.type==='sanctie').length+' geregistreerde sancties';
@@ -346,8 +360,11 @@ async function load(){
      (x.registeredCall?' ('+x.registeredCall+')':'');
    cards($('observations'),entries.filter(x=>x.type==='observatie'),
      x=>'Observatie · '+(x.eventDate||'—'),x=>x.details,meta);
-   const notes=entries.filter(x=>x.type==='notitie');
-   const historical=(data.olderNotes||[]).map(x=>({
+   const notes=entries.filter(x=>x.type==='notitie'&&x.noteKind!=='basis');
+   cards($('basicNotes'),[...basicEntries,...oldBasicNotes],
+     x=>x.title||'Basisnotitie',x=>x.details,
+     x=>x.eventDate||String(x.createdAt||'').slice(0,10));
+   const historical=(data.olderNotes||[]).filter(x=>!['begeleiding','evaluatie'].includes(x.type)).map(x=>({
      ...x,eventDate:(x.createdAt||'').slice(0,10),
      details:x.details,displayTitle:x.title||x.type
    }));
@@ -384,10 +401,14 @@ async function load(){
   $('entrySection').hidden=true;
   $('kind').replaceChildren();
   for(const x of data.canWrite||[])
-   $('kind').append(new Option(({observatie:'Observatie',notitie:'Notitie',
-     sanctie:'Sanctie'})[x]||x,x));
-  $('sanctionType').querySelectorAll('option').forEach((op,index)=>
-   op.disabled=data.visibility!=='full'&&index>2);
+   $('kind').append(new Option(({observatie:'Observatie',basisnotitie:'Basisnotitie',
+     notitie:'Belangrijke notitie',sanctie:'Sanctie'})[x]||x,x));
+  for(const option of $('sanctionType').querySelectorAll('option'))
+    option.disabled=!(data.sanctionTypes||[]).includes(option.value);
+  const firstAllowed=[...$('sanctionType').options].find(o=>!o.disabled);
+  if(firstAllowed)$('sanctionType').value=firstAllowed.value;
+  $('sanctionReason').replaceChildren(...(data.sanctionReasons||[])
+    .map(reason=>new Option(reason,reason)));
   $('restrictedSpecialty').replaceChildren();
   const course=await api('/api/fire-dossiers/courses');
   for(const x of course.courses||[])
