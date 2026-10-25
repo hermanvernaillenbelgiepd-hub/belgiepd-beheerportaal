@@ -393,3 +393,30 @@ body.dossier-fire-sheet .fire-specialty-empty {
   body.dossier-fire-sheet .fire-specialty-row {gap:6px;padding:6px 7px}
   body.dossier-fire-sheet .fire-specialty-status {font-size:9px;padding:3px 5px}
 }
+
+/* Brandweer: compacte specialisaties in twee kolommen zonder interne scroll.
+   Enkel het overzicht: de volledige specialisatielijst blijft één kolom. */
+body.dossier-fire-sheet #overviewSpecialties .fire-specialty-list.is-compact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+body.dossier-fire-sheet #overviewSpecialties .fire-specialty-row {
+  min-width: 0;
+  height: 100%;
+}
+body.dossier-fire-sheet #overviewSpecialties .fire-specialty-main {
+  min-width: 0;
+}
+body.dossier-fire-sheet #overviewSpecialties .fire-specialty-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media(max-width:700px) {
+  body.dossier-fire-sheet #overviewSpecialties .fire-specialty-list.is-compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
