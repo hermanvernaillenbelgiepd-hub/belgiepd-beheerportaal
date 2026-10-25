@@ -7,7 +7,9 @@ export function isFireZoneDashboard(actor){
   if(!actor||!actor.departments?.includes('brandweer')||
       actor.boardPersonnelAdmin===true||actor.portalTechnicalMode===true||
       actor.role==='beheerder')return false;
-  return (actor.fireZoneChief===true||roleForDepartment(actor,'brandweer')==='korpsleiding')&&
+  const approvedZone=actor.role==='korpsleiding'&&
+    roleForDepartment(actor,'brandweer')==='korpsleiding';
+  return (actor.fireZoneChief===true||approvedZone)&&
     !['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'));
 }
 
