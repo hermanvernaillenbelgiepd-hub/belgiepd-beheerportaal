@@ -64,7 +64,9 @@ test('Recently verified Depannage Discord membership takes priority over a basic
  assert.equal(verifiedDepannageDisplayFunction(member(['1309532438019706969']),
    '123456789123456789',now),null);
  assert.equal(verifiedDepannageDisplayFunction({...member(['1309532438019706969']),
-   verifiedAt:now-901000},guild,now),null);
+   verifiedAt:now-901000},guild,now),'leiding');
+ assert.equal(verifiedDepannageDisplayFunction({...member(['1309532438019706969']),
+   verifiedAt:now-31*24*60*60*1000},guild,now),null);
  const basic={call:'LSRA-15',rank:'LSRA'};
  assert.equal(depannageCallGroup({...basic,verifiedFunction:'leiding'}).group,0);
  assert.equal(globalThis.BPDPersonnelVisuals.depannageFunction({...basic,verifiedFunction:'leiding'}).group,0);
