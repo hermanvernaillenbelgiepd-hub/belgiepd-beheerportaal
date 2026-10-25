@@ -58,8 +58,10 @@ export function installStaffDossierRoutes(app,{requireUser,getSnapshot}){
           manualLeave:process.env.BPD_ENABLE_LEAVE_WRITES==='true'&&
             process.env.BPD_ENABLE_PERSONNEL_MANUAL_LEAVE==='true'&&
             req.bpd.discordId!==staff.personId&&
+            // The Police administrative cadre is the sole entry authority.
+            // The target may belong to ANY emergency service.
             ['middenkader','officierenkader','korpsleiding'].includes(
-              roleForDepartment(req.bpd,staff.dept))
+              roleForDepartment(req.bpd,'politie'))
         },
         profile:normalizeStaffProfile(record.data()?.profile),
         revision:Number.isSafeInteger(record.get('revision'))?record.get('revision'):0,
