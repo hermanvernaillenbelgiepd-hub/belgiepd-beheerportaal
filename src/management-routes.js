@@ -3,7 +3,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {isArchivedTraining} from './training-maintenance.js';
-import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod} from './fortnight-report-policy.js';
+import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports} from './fortnight-report-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
@@ -120,7 +120,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
         year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       // Each elapsed period is listed back to the first automatic report.
       const automated=automaticFortnightReports(dept,today,52);
-      const available=[...automated,...legacy].filter(r=>!hidden.has(r.id)).sort((a,b)=>
+      const available=visibleFortnightReports([...automated,...legacy],hidden,today).sort((a,b)=>
         (b.periodStart||'').localeCompare(a.periodStart||''));
       const {active,archive}=splitReportsByPeriod(available,today);
       res.json({reports:active,archivedReports:archive,
@@ -160,6 +160,10 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       if(!canReadServiceDossier(req.bpd,report.dept)||
         !mayRemoveWeekReport(req.bpd,report.dept,snap.data))
         return res.status(403).json({error:'Alleen Officierenkader en Korpsleiding van Politie mogen weekrapporten wissen'});
+      const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      if(isCurrentAutomaticReport(report,today))
+        return res.status(409).json({error:'Het lopende automatische weekrapport kan niet gewist worden. Het wordt dagelijks uit dossiergegevens opgebouwd.'});
       const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Eigen personeelsfiche is niet gekoppeld'});
       const marker=db().collection('bpd_weekreport_removals').doc(id);
@@ -196,7 +200,10 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       return {status:403,error:'Geen toegang tot deze dienstgebonden rapportage'};
     // A removed report must not be accessible via a guessed direct URL or export.
     const removal=await db().collection('bpd_weekreport_removals').doc(id).get();
-    if(removal.exists)return {status:404,error:'Dit weekrapport is uit het overzicht verwijderd'};
+    const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+      year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    if(removal.exists&&!isCurrentAutomaticReport(report,today))
+      return {status:404,error:'Dit weekrapport is uit het overzicht verwijderd'};
     const allSubjects=snap.data.filter(p=>p.dept===report.dept && validDiscord(p.personId));
     const uniqueIds=[...new Set(allSubjects.map(p=>p.personId))].filter(pid=>uniqueSubject(allSubjects,report.dept,pid));
     const result=[];let truncated=false;
