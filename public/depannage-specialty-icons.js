@@ -1,4 +1,4 @@
-// BelgiumPD Depannage: display mapping only. An icon or label never conveys
+// BelgiëPD Depannage: display mapping only. An icon or label never conveys
 // a qualification, Discord role, or permission to operate equipment.
 const SVG_NS='http://www.w3.org/2000/svg';
 const defs=Object.freeze({
