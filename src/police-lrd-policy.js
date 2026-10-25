@@ -156,11 +156,14 @@ export function createPoliceLrdIndex({
           try{
             const snapshot=await fetchBotLrdGuildSnapshot(guild,token,{fetchImpl});
             if(snapshot){
-              guildMembers=snapshot;listExpires=now()+BOT_CACHE_MS;
+              if(activeConfig===configuration){
+                guildMembers=snapshot;listExpires=now()+BOT_CACHE_MS;
+              }
               for(const id of ids){checked.add(id);if(snapshot.has(id))positive.add(id);}
               source='discord-bot';
             }else{
-              listUnsupportedUntil=now()+10*60*1000;
+              if(activeConfig===configuration)
+                listUnsupportedUntil=now()+10*60*1000;
               canUseDirect=true;
             }
           }catch{/* Bot errors are not evidence that any member lacks LRD. */}
@@ -179,11 +182,13 @@ export function createPoliceLrdIndex({
             for(let j=0;j<batch.length;j++){
               if(verified[j]!==null){
                 successfulReads++;
-                individual.set(batch[j],{present:verified[j],at:now()});
+                if(activeConfig===configuration)
+                  individual.set(batch[j],{present:verified[j],at:now()});
               }
             }
           }
-          if(queue.length&&!successfulReads)directFailureUntil=now()+60000;
+          if(queue.length&&!successfulReads&&activeConfig===configuration)
+            directFailureUntil=now()+60000;
           for(const id of ids){
             const record=individual.get(id);
             if(record&&now()-record.at<BOT_CACHE_MS){
@@ -199,6 +204,7 @@ export function createPoliceLrdIndex({
       // Never let old OAuth evidence override a confirmed bot negative.
       const missing=ids.filter(id=>!checked.has(id));
       if(missing.length)await oauthFallback(missing,guild,positive,checked);
+      if(activeConfig!==configuration)return verifiedMemberIds(roster);
       const value=checkedSet(positive,checked,source);
       const ttl=validBot&&source!=='discord-bot'&&!complete?
         1000:source==='discord-bot'?BOT_CACHE_MS:OAUTH_CACHE_MS;
