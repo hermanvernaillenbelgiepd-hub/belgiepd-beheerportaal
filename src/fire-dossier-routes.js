@@ -1,7 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {fireRecordVisibility,fireMayCreate,fireSanctionLevel,FIRE_COURSES} from './fire-dossier-policy.js';
-import {validateEntry,canChooseSanction,SANCTION_REASONS} from './registrations.js';
+import {validateEntry,canChooseSanction,permittedSanctionTypes,SANCTION_REASONS} from './registrations.js';
 import {validateManagementEntry} from './management-utils.js';
 const ID=new RegExp('^[0-9]{15,22}$');
 const code=(res,status,message)=>res.status(status).json({error:message});
@@ -57,8 +57,10 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      if(s.error)return code(res,s.error,s.message);
      const {person,roles,level}=s;
      const canWrite=allowedTypes.filter(type=>fireMayCreate(req.bpd,person,roles,type));
+     const sanctionTypes=canWrite.includes('sanctie')?
+       permittedSanctionTypes(fireSanctionLevel(req.bpd),10):[];
      if(level==='identity')return res.json({person:publicInfo(person),visibility:level,
-       entries:[],trainings:[],canWrite,canEditSpecialties:false});
+       entries:[],trainings:[],canWrite,sanctionTypes:[],canEditSpecialties:false});
      const db=getFirestore(),casePath='brandweer_'+person.personId;
      const [caseEntries,staffDocument,staffNotes,staffHistory,leaveRows]=await Promise.all([
        db.collection('bpd_cases').doc(casePath).collection('entries')
@@ -100,7 +102,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      }
      return res.json({person:publicInfo(person),visibility:level,entries,trainings,
        leave,profile,olderNotes:oldNotes,dossierHistory,
-       canWrite,canEditSpecialties:(req.bpd.fireZoneChief===true||
+       canWrite,sanctionTypes,sanctionReasons:SANCTION_REASONS,canEditSpecialties:(req.bpd.fireZoneChief===true||
         req.bpd.portalTechnicalMode===true&&req.bpd.profileTechnicalAvailable===true)&&
        req.bpd.discordId!==person.personId,
        specialties:listed(person.specialties).map(x=>({
