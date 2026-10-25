@@ -14,6 +14,22 @@ export const TRAINING_COURSE_CATALOG=Object.freeze({
     'VERPLEEGKUNDIGE','ARTS','MIP'
   ])
 });
+// Openbaar overzicht voor zelfbediening. Zichtbaarheid is geen aanvraagrecht:
+ // de server controleert altijd de eigen personeelsfiche en het kader.
+export const POLICE_REQUEST_COURSES=Object.freeze([
+  'RADIO OPLEIDING (VERPLICHT)','RADIO OPLEIDING (VRIJWILLIG)',
+  'BASISCURSIS','GEWELDBEHEERSING','WAPENGEBRUIK',
+  'VERKEERSBEGELEIDING','VERKEERSCONTROLE','PRIORITAIR RIJDEN',
+  'EHBO VOOR INTERVENIERENDEN','BEVEILIGEN OPENBARE WEG',
+  'K-9','RAGO','MOTARD','MOTARD-OFF ROAD','DISPATCH',
+  'BEVOEGDHEDEN TO','ERT AE-I','ERT AE-T','ERT-AE-F'
+]);
+export const TRAINING_REQUEST_COURSE_CATALOG=Object.freeze({
+  politie:POLICE_REQUEST_COURSES,
+  brandweer:TRAINING_COURSE_CATALOG.brandweer,
+  ambulance:TRAINING_COURSE_CATALOG.ambulance,
+  depannage:TRAINING_COURSE_CATALOG.depannage
+});
 export function coursesForDepartment(dept){
   return TRAINING_COURSE_CATALOG[dept]||null;
 }

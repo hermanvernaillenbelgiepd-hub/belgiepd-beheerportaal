@@ -22,7 +22,7 @@ button.secondary{background:#284669}button.danger{background:#833747}button:disa
 </style></head><body>
 <header><strong>🎓 BelgiumPD · Opleidingscentrum</strong><a href="/">Dashboard</a><a href="/meldingen.html">Meldingen</a><button id="login" type="button">Aanmelden</button></header>
 <main>
-<h1>Opleidingen aanvragen</h1><p>Vraag zelf een opleiding aan binnen je eigen hulpdienst. Agentenkader en Basiskader kiezen uit de politionele opleidingen; Middenkader beschrijft zelf welke opleiding gewenst is.</p>
+<h1>Opleidingen aanvragen</h1><p>Kies Politie, Brandweer, Ambulance of Depannage en bekijk de beschikbare opleidingen. Aanvragen indienen kan uitsluitend voor je eigen gekoppelde hulpdienst en volgens je kaderrechten.</p>
 <div id="feedback" class="status" role="status">Je account en opleidingsmogelijkheden controleren…</div>
 <section id="formPanel" class="card" hidden><h2>Nieuwe aanvraag</h2>
 <form id="requestForm"><div class="two">
@@ -30,6 +30,7 @@ button.secondary{background:#284669}button.danger{background:#833747}button:disa
 <label id="courseWrap">Opleiding<select id="course"></select></label>
 </div>
 <label id="variaWrap" hidden>Gewenste opleiding<textarea id="varia" maxlength="150" placeholder="Welke opleiding wil je aanvragen?"></textarea></label>
+<p id="permissionNote" class="status" role="status" style="grid-column:1/-1" hidden></p>
 <label>Toelichting (optioneel)<textarea id="note" maxlength="500" placeholder="Eventuele motivatie of toelichting"></textarea></label>
 <button id="submit" type="submit">Opleiding aanvragen</button></form>
 <p><small>Je aanvraag wordt zichtbaar bij de bevoegde reekshoofden of dienstleiding. Zodra je aanvraag gelezen is, ontvang je hier een bevestiging. Verdere afspraken verlopen via Discord.</small></p>
@@ -38,8 +39,10 @@ button.secondary{background:#284669}button.danger{background:#833747}button:disa
 <section class="card" id="inboxPanel" hidden><div class="row"><h2>Te behandelen aanvragen</h2><button class="secondary" id="reload" type="button">Vernieuwen</button></div><div id="inbox"></div></section></div>
 </main>
 <script type="module">
+import {TRAINING_REQUEST_COURSE_CATALOG} from '/training-course-catalog.js';
 const $=id=>document.getElementById(id),NAMES={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage'};
-let auth,authMod,scopes=[],requests=[];
+const SERVICE_ORDER=['politie','brandweer','ambulance','depannage'];
+let auth,authMod,scopes=[];
 const feedback=(s,bad=false)=>{$('feedback').textContent=s;$('feedback').classList.toggle('error',bad)};
 const el=(tag,value)=>{const e=document.createElement(tag);e.textContent=String(value??'');return e};
 async function api(url,body){
@@ -54,21 +57,36 @@ async function api(url,body){
 }
 function options(select,items){select.replaceChildren(...items.map(v=>new Option(v.label,v.value)))}
 function syncCourse(){
- const scope=scopes.find(s=>s.department===$('department').value);
- if(!scope)return;
- const custom=scope.department==='politie'&&scope.tier==='middenkader';
+ const dept=$('department').value;
+ const scope=scopes.find(s=>s.department===dept);
+ const allowed=scope?.canRequest===true;
+ const custom=allowed&&dept==='politie'&&scope.tier==='middenkader';
  $('courseWrap').hidden=custom;
+ const catalog=TRAINING_REQUEST_COURSE_CATALOG[dept]||[];
  options($('course'),custom?[{value:'VARIA',label:'Zelf in te vullen'}]:[
   {value:'',label:'Selecteer een opleiding…'},
-  ...scope.courses.map(v=>({value:v,label:v})),
+  ...catalog.map(value=>({value,label:value})),
   {value:'VARIA',label:'VARIA · zelf invullen'}
  ]);
  if(custom)$('course').value='VARIA';
+ $('submit').disabled=!allowed;
+ $('note').disabled=!allowed;
+ const note=$('permissionNote');
+ note.hidden=false;
+ note.classList.toggle('error',!allowed);
+ note.textContent=allowed?
+  'Je kunt voor '+NAMES[dept]+' een opleiding aanvragen. Je aanvraag gaat naar de bevoegde dienstleiding.':
+  scope?
+   'Het opleidingsaanbod van '+NAMES[dept]+' is zichtbaar, maar je huidige kader heeft geen recht om zelf een aanvraag in te dienen.':
+   'Het opleidingsaanbod van '+NAMES[dept]+' is zichtbaar. Om een aanvraag in te dienen, moet jouw Discord-ID aan een personeelsfiche van deze hulpdienst gekoppeld zijn.';
  syncVaria();
 }
 function syncVaria(){
  const custom=$('course').value==='VARIA'||$('courseWrap').hidden;
- $('variaWrap').hidden=!custom;$('varia').required=custom;
+ const allowed=scopes.find(s=>s.department===$('department').value)?.canRequest===true;
+ $('variaWrap').hidden=!custom;
+ $('varia').required=custom&&allowed;
+ $('varia').disabled=!allowed;
  if(!custom)$('varia').value='';
 }
 $('department').onchange=syncCourse;$('course').onchange=syncVaria;
@@ -105,16 +123,17 @@ function entry(r,review=false){
 async function load(){
  try{
   const data=await api('/api/training-requests');
-  scopes=(data.scopes||[]).filter(s=>s.canRequest===true);
+  scopes=data.scopes||[];
   const mine=$('mine');mine.replaceChildren(...(data.mine||[]).map(x=>entry(x)));
   if(!mine.children.length)mine.textContent='Je hebt nog geen opleidingsaanvragen.';
-  $('formPanel').hidden=!scopes.length;
-  if(scopes.length){
-   const selected=$('department').value;
-   options($('department'),scopes.map(s=>({value:s.department,label:NAMES[s.department]||s.department})));
-   if(scopes.some(s=>s.department===selected))$('department').value=selected;
-   syncCourse();
-  }
+  // Toon steeds alle vier de publieke opleidingscatalogi. Toegang tot
+  // indienen wordt afzonderlijk, zowel hier als op de server, gecontroleerd.
+  $('formPanel').hidden=false;
+  const selected=$('department').value;
+  options($('department'),SERVICE_ORDER.map(value=>({value,label:NAMES[value]})));
+  $('department').value=SERVICE_ORDER.includes(selected)?selected:
+    (scopes.find(s=>s.canRequest)?.department||'politie');
+  syncCourse();
   const incoming=data.incoming||[];$('inboxPanel').hidden=!incoming.length;
   $('inbox').replaceChildren(...incoming.map(x=>entry(x,true)));
   feedback('Opleidingsgegevens geladen. Alleen je eigen aanvragen en gemachtigde meldingen zijn zichtbaar.');
@@ -128,7 +147,7 @@ $('requestForm').onsubmit=async event=>{
   $('note').value='';$('varia').value='';
   await load();feedback('Opleidingsaanvraag verzonden. Je kunt de status hier volgen.');
  }catch(e){feedback(e.message,true)}
- finally{$('submit').disabled=false}
+ finally{syncCourse()}
 };
 $('reload').onclick=load;
 async function init(){
