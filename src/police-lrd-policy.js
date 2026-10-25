@@ -106,32 +106,53 @@ async function readBotMember(guild,token,id,fetchImpl){
     return member.roles.includes(LRD_DISCORD_ROLE_ID);
   }catch{return null;}
 }
-// Dedicated dossier verification never trusts a stale Sheets value or cached
-// login claims. Only the bot's /guilds/:guild/members/:id response may turn
-// on the Recherche badge in an individual personnel dossier.
+// Discord's bot API is the primary source for dossier LRD membership.
+// If the bot cannot read this member, only a recent self-authorised Discord
+// OAuth 'guilds.members.read' verification may confirm the role instead.
+// A confirmed bot negative (including 404) ALWAYS overrides OAuth evidence.
+// The result is display-only; it never grants permission or changes Discord.
 export function createPoliceLrdSubjectVerifier({
   guildId=()=>process.env.DISCORD_GUILD_ID,
   botToken=()=>discordBotToken(process.env),
-  fetchImpl=fetch,now=Date.now
+  firestore=()=>getFirestore(),fetchImpl=fetch,now=Date.now
 }={}){
   const cache=new Map(),pending=new Map();
+  async function recentlyVerifiedOAuth(id,guild){
+    try{
+      const snap=await firestore().collection('bpd_discord_auth').doc(id).get();
+      const member=snap?.exists?snap.data():null;
+      return verifiedPoliceLrdRole(member,guild,now())?
+        {verified:true,verifiedAt:member.verifiedAt}:null;
+    }catch{return null;}
+  }
   return async function subjectHasDiscordLrd(id){
     const guild=guildId(),token=botToken();
     if(!DISCORD_ID.test(String(id||''))||
-       !DISCORD_ID.test(String(guild||''))||
-       typeof token!=='string'||token.length<35)return false;
-    const key=guild+':'+id+':'+createHash('sha256').update(token).digest('hex');
+       !DISCORD_ID.test(String(guild||'')))return false;
+    const botConfigured=typeof token==='string'&&token.length>=35;
+    const key=guild+':'+id+':'+(botConfigured?
+      createHash('sha256').update(token).digest('hex'):'no-bot');
     const stored=cache.get(key),time=now();
     if(stored&&stored.until>time)return stored.value;
     if(pending.has(key))return pending.get(key);
     const task=(async()=>{
-      const result=await readBotMember(guild,token,id,fetchImpl);
-      // On 429, 5xx or network errors, hide LRD instead of displaying a
-      // stale authorization-like badge. Transient failures are never cached.
-      if(result===null)return false;
+      const result=botConfigured?await readBotMember(guild,token,id,fetchImpl):null;
+      // Confirmed response from Discord's bot takes precedence, including
+      // removed/absent roles. It is never replaced with cached OAuth data.
+      if(result!==null){
+        if(cache.size>=1000)cache.clear();
+        cache.set(key,{value:result,until:now()+60000});
+        return result;
+      }
+      // No bot membership response: use only fresh user-approved role data.
+      // OAuth access tokens are not persisted; the trusted server stored the
+      // role evidence after Discord's own guild-member OAuth endpoint replied.
+      const oauth=await recentlyVerifiedOAuth(id,guild);
+      if(!oauth)return false;
       if(cache.size>=1000)cache.clear();
-      cache.set(key,{value:result,until:now()+60000});
-      return result;
+      const until=Math.min(now()+30000,oauth.verifiedAt+FRESH_MS);
+      if(until>now())cache.set(key,{value:true,until});
+      return true;
     })();
     pending.set(key,task);
     try{return await task}finally{if(pending.get(key)===task)pending.delete(key);}

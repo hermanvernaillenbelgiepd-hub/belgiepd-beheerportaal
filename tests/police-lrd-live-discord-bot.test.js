@@ -192,20 +192,81 @@ test('Individual dossier renders LRD only after positive verified Discord bot ro
  assert.equal(requests,2);
 });
 
-test('Unknown or failed bot verification never fabricates Recherche membership',async()=>{
+test('Verified fresh Discord OAuth roles fill gaps when bot lookup is unavailable',async()=>{
+ const now=1800000000000;
+ let member={guildId:guild,verifiedAt:now-2000,roleIds:[LRD_DISCORD_ROLE_ID]};
+ let firestoreReads=0;
+ const firestore=()=>({collection:table=>{
+   assert.equal(table,'bpd_discord_auth');
+   return {doc:id=>{
+     assert.equal(id,first);
+     return {get:async()=>{
+       firestoreReads++;
+       return {exists:true,data:()=>member};
+     }};
+   }};
+ }});
  const verify=createPoliceLrdSubjectVerifier({
-   guildId:()=>guild,botToken:()=>token,
+   guildId:()=>guild,botToken:()=>token,now:()=>now,firestore,
+   fetchImpl:async()=>response({message:'Bot has no access'},403)
+ });
+ assert.equal(await verify(first),true,
+   'Recent guild-specific Discord OAuth proof may replace an inaccessible bot');
+ assert.equal(await verify(first),true);
+ assert.equal(firestoreReads,1,'OAuth fallback is briefly cached');
+ const wrongGuild=createPoliceLrdSubjectVerifier({
+   guildId:()=>guild,botToken:()=>null,now:()=>now,firestore:()=>({
+     collection:()=>({doc:()=>({get:async()=>({
+       exists:true,data:()=>({...member,guildId:'different-guild'})})})})
+   })
+ });
+ assert.equal(await wrongGuild(first),false);
+ const expired=createPoliceLrdSubjectVerifier({
+   guildId:()=>guild,botToken:()=>null,now:()=>now,firestore:()=>({
+     collection:()=>({doc:()=>({get:async()=>({
+       exists:true,data:()=>({...member,verifiedAt:now-16*60*1000})})})})
+   })
+ });
+ assert.equal(await expired(first),false);
+ member={...member,roleIds:[]};
+ const noRole=createPoliceLrdSubjectVerifier({
+   guildId:()=>guild,botToken:()=>null,now:()=>now,firestore
+ });
+ assert.equal(await noRole(first),false);
+});
+
+test('Confirmed bot negative wins over even recently verified positive OAuth',async()=>{
+ let firestoreReads=0;
+ const verify=createPoliceLrdSubjectVerifier({
+   guildId:()=>guild,botToken:()=>token,now:()=>1800000000000,
+   firestore:()=>({collection:()=>({doc:()=>({get:async()=>{
+     firestoreReads++;return {exists:true,data:()=>({
+       guildId:guild,verifiedAt:1800000000000,roleIds:[LRD_DISCORD_ROLE_ID]
+     })};
+   }})})}),
+   fetchImpl:async()=>response({user:{id:first},roles:[]})
+ });
+ assert.equal(await verify(first),false);
+ assert.equal(firestoreReads,0,'Bot-confirmed role removal cannot be overridden');
+});
+
+test('Unknown or failed bot verification never fabricates Recherche membership',async()=>{
+ const emptyFirestore=()=>({collection:()=>({doc:()=>({
+   get:async()=>({exists:false})
+ })})});
+ const verify=createPoliceLrdSubjectVerifier({
+   guildId:()=>guild,botToken:()=>token,firestore:emptyFirestore,
    fetchImpl:async()=>response({message:'API temporarily unavailable'},429)
  });
  assert.equal(await verify(first),false);
  const invalidResponse=createPoliceLrdSubjectVerifier({
-   guildId:()=>guild,botToken:()=>token,
+   guildId:()=>guild,botToken:()=>token,firestore:emptyFirestore,
    fetchImpl:async()=>response({user:{id:second},roles:[LRD_DISCORD_ROLE_ID]})
  });
  assert.equal(await invalidResponse(first),false,
    'Other Discord ID must not confer membership');
  const missingToken=createPoliceLrdSubjectVerifier({
-   guildId:()=>guild,botToken:()=>null,
+   guildId:()=>guild,botToken:()=>null,firestore:emptyFirestore,
    fetchImpl:async()=>{throw Error('should not call Discord without credentials')}
  });
  assert.equal(await missingToken(first),false);
