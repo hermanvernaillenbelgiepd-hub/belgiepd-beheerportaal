@@ -146,7 +146,9 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
         }
       }
       return res.json({records:publicPoliceRoster(snapshot.data,lrdIds),stale:snapshot.stale,
-        readOnly:true,lrdVerificationUnavailable});
+        readOnly:true,lrdVerificationUnavailable,
+        discordRechercheUnlinked:lrdIds.unlinked||[],
+        discordRechercheComplete:lrdIds.unlinkedAvailable===true});
     }catch(error){
       console.error('Leesbare personeelslijst:',error?.code||'bron niet beschikbaar');
       return res.status(503).json({error:'Personeelslijst momenteel niet beschikbaar'});
