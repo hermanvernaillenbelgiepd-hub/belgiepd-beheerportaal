@@ -214,6 +214,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   <section id="zoneDashboard" hidden aria-labelledby="zoneDashboardTitle">
     <section class="hero"><div><p class="eyebrow">Brandweer · Zoneleiding</p><h1 id="zoneDashboardTitle">ZONE – Zonecommandant</h1>
     <p class="lead">Beheer de Brandweer binnen jouw eigen dienst. De politionele personeelslijst is uitsluitend ter inzage.</p></div></section>
+    <p id="zoneVerificationNotice" class="member-notice" hidden>Je ZONE-toegang is wel goedgekeurd, maar de officiële personeelsfiche/Discord-controle kon nog niet worden bevestigd. Verifieer Discord opnieuw in Mijn profiel. Tot dan blijven beschermde brandweerdossiers afgeschermd.</p>
     <h2 class="section-title">Brandweerleiding en eigen functies</h2>
     <div class="grid" id="zoneModules">
       <a class="module" href="/personeelslijst.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelslijst Politie</h3><p>Alleen-lezen inzage in de politionele personeelslijst; geen politiedossiers.</p><span class="open">Open →</span></a>
@@ -295,7 +296,9 @@ async function displayAuthenticated(user){
     const token=await user.getIdToken();
     const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
     if(turn!==requestNumber)return;
-    if(ctx.dashboardProfile==='brandweer-zone')show('zone');
+    if(ctx.dashboardProfile==='brandweer-zone'){
+      show('zone');$('zoneVerificationNotice').hidden=ctx.zoneVerified===true;
+    }
     else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
     else{
       show('staff');
@@ -343,7 +346,9 @@ async function displayAuthenticated(user){
   }else if(details.mode==='staff'){
     const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
     if(turn!==requestNumber)return;
-    if(ctx.dashboardProfile==='brandweer-zone')show('zone');
+    if(ctx.dashboardProfile==='brandweer-zone'){
+      show('zone');$('zoneVerificationNotice').hidden=ctx.zoneVerified===true;
+    }
     else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
     else{
       show('staff');
