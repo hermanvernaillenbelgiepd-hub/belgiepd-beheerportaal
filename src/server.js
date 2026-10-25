@@ -19,6 +19,7 @@ import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
+import {canSeeDashboardManagement} from './dashboard-admin-policy.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
@@ -521,12 +522,8 @@ installUserRoutes(app,{requireUser,accessList});
 installManualRoleRoutes(app,{requireUser});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
-  const actor=req.bpd;
-  const higher=['officierenkader','korpsleiding'];
-  const allowed=actor.role==='beheerder'||actor.portalTechnicalMode===true||
-    actor.boardPersonnelAdmin===true||higher.includes(actor.role)||
-    Object.values(actor.departmentRoles||{}).some(role=>higher.includes(role));
-  res.json({visible:allowed});
+  res.set('Cache-Control','no-store');
+  res.json({visible:canSeeDashboardManagement(req.bpd)});
 });
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
