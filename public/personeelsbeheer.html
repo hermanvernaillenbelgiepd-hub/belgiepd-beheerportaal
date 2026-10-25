@@ -1273,7 +1273,15 @@ function render(){
     const name=document.createElement('strong');name.textContent=person.name;
     const source=document.createElement('small');source.className='roster-dept';
     source.textContent=departments[person.dept]||person.dept;
-    nameCol.append(name,source);tr.append(nameCol);
+    nameCol.append(name,source);
+    if(person.dept==='politie'&&person.lrdDiscordVerified===true){
+      const lrd=document.createElement('small');
+      lrd.className='roster-dept discord-verified-cadre';
+      lrd.textContent='LRD · Recherche';
+      lrd.title='Recent geverifieerde Discord-rol 1380843428354592780; alleen ter informatie';
+      nameCol.append(lrd);
+    }
+    tr.append(nameCol);
     const seriesCell=document.createElement('td');
     if(person.dept==='politie'){
       seriesCell.className='roster-series-cell';
@@ -3203,7 +3211,8 @@ async function showPerson(p){
   $('pStatus').replaceChildren(...statuses.map(x=>option(x,x)));
   if(!statuses.includes(p.status))$('pStatus').prepend(option(p.status,p.status+' (bronwaarde)'));
   $('pStatus').value=p.status;
-  const canPromote=promotionsEnabled&&p.canPromote===true&&Boolean(p.nextPromotionRank);
+  const canPromote=promotionsEnabled&&p.canPromote===true&&Boolean(p.nextPromotionRank)&&
+    !(rankChangesEnabled&&p.canChangeRank===true);
   $('promotionPanel').hidden=!canPromote;
   $('promoteFrom').value=p.rank;
   $('promoteTo').value=canPromote?p.nextPromotionRank:'';
