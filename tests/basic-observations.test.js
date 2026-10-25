@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {basicCallLevel,basicAuthor,basicEligibleTarget,
   basicObservationTargets,mayReadBasicInbox} from '../src/basic-observation-policy.js';
+import {canReadServiceDossier} from '../src/service-dossier-access.js';
 
 const ranks=[
   {call:'S150',rank:'Agent van politie'},
@@ -41,6 +42,43 @@ test('1-INP 5xx mag tot en met 4xx observeren, geen middenkader of officieren',(
     ['S150','S258','S302','S485']);
   assert.equal(basicEligibleTarget(ranks[4],ranks[5]),false);
 });
+test('Concrete examples: rank level 500 > 400 > 300, not the exact callsign',()=>{
+ let seq=0;
+ const make=(call,rank)=>({call:String(call),rank,
+   dept:'politie',personId:String(++seq).padStart(18,'1')});
+ const ainp='Aspirant Inspecteur van Politie';
+ const inp='Inspecteur van Politie';
+ const first='Eerste Inspecteur van Politie';
+ for(const [a,b,allowed] of [
+   [make(501,first),make(438,inp),true],
+   [make(450,inp),make(328,ainp),true],
+   [make(320,ainp),make(380,ainp),false],
+   [make(320,ainp),make(310,ainp),false],
+   [make(501,first),make(599,first),false],
+   [make(450,inp),make(400,inp),false],
+   [make(320,ainp),make(450,inp),false],
+   [make(500,first),make(400,inp),true]
+ ])assert.equal(basicEligibleTarget(a,b),allowed,a.call+' naar '+b.call);
+});
+
+test('Basiskader kan ook met toevallig extra dossiergrant geen observaties lezen',()=>{
+ const basic={...actorFor(3),dossierAllowedDepartments:['politie'],
+   dossierFullDepartments:['politie'],dossierManageDepartments:['politie']};
+ assert.equal(basicAuthor(basic,ranks[3]),true);
+ assert.equal(basicObservationTargets(basic,ranks).targets.length,3);
+ assert.equal(mayReadBasicInbox(basic),false);
+ assert.equal(canReadServiceDossier(basic,'politie'),false,
+   'Een extra dossiergrant is nooit een bypass voor Basiskader-observaties');
+ for(const role of ['middenkader','officierenkader','korpsleiding']){
+   const leader={...basic,role,departmentRoles:{politie:role}};
+   assert.equal(canReadServiceDossier(leader,'politie'),true);
+   assert.equal(mayReadBasicInbox(leader),true);
+ }
+ const board={...basic,boardPersonnelAdmin:true};
+ assert.equal(canReadServiceDossier(board,'politie'),true,
+   'Geverifieerd Bestuur is een afzonderlijke rol met eigen privileges');
+});
+
 test('Dubbele personeelsidentiteiten en rollen buiten Basiskader hebben geen schrijfbevoegdheid',()=>{
   assert.equal(basicObservationTargets(actorFor(3),[...ranks,ranks[3]]).targets.length,0);
   assert.equal(basicObservationTargets(actorFor(3,'middenkader'),ranks).targets.length,0);

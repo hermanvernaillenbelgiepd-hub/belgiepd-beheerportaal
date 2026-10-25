@@ -66,8 +66,20 @@ export function deriveServiceDossierDepartments(actor,personnel,member,boardAppo
   return allowed;
 }
 export function canReadServiceDossier(actor,dept){
-  return SERVICE_DOSSIER_DEPARTMENTS.includes(dept)&&
-    Array.isArray(actor?.dossierAllowedDepartments)&&actor.dossierAllowedDepartments.includes(dept);
+  if(!SERVICE_DOSSIER_DEPARTMENTS.includes(dept)||
+     !Array.isArray(actor?.dossierAllowedDepartments)||
+     !actor.dossierAllowedDepartments.includes(dept))return false;
+  // A regular police Basiskader account may SUBMIT observations against a
+  // lower police grade, but must never READ personnel observations/dossiers.
+  // Even a historical or accidentally delegated 'full' dossier grant cannot
+  // override this boundary. Independently verified Board/technical accounts
+  // retain their separate administrative privileges.
+  if(dept==='politie'&&roleForDepartment(actor,'politie')==='basiskader'&&
+     actor?.boardPersonnelAdmin!==true&&
+     !(actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true&&
+       actor?.uid==='discord:'+actor?.discordId&&DISCORD.test(actor?.discordId)))
+    return false;
+  return true;
 }
 
 /** Server-only proof of medical and towing leadership for reading reports.
