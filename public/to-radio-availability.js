@@ -1,4 +1,4 @@
-// BelgiumPD-afspraak: de rode bol in een Sonoran-RADIONAAM betekent
+// BelgiëPD-afspraak: de rode bol in een Sonoran-RADIONAAM betekent
 // dat deze gebruiker streamt. Niet verwarren met een zenderstatus of met
 // willekeurige Sonoran-kleuren. Alleen de letterlijke emoji telt.
 export function radioMarkedStreamer(value){
