@@ -107,6 +107,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <option value="callsign-police" hidden disabled>Politie: Korpsleiding → Agentenkader</option>
 <option value="callsign-fire" hidden disabled>Brandweer: ZONE → OFF → OOFF → BWM → STAG</option>
 <option value="callsign-ambulance" hidden disabled>Ambulance: DIRMED → HARTS → HVPK → HAMB → ARTS → VPK → AMB → STAG</option>
+<option value="callsign-depannage" hidden disabled>Depannage: LEIDING → F.A.S.T → LSRA</option>
 <option value="callsign-desc">Roepnummer aflopend (hoog → laag)</option>
 <option value="callsign-asc">Roepnummer oplopend (laag → hoog)</option>
 <option value="name-asc">Naam alfabetisch A–Z</option>
@@ -117,7 +118,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <div class="pager"><span class="muted" id="count">Nog geen dossiers geladen.</span>
 <button id="clear" class="alt" type="button">Filters wissen</button>
 <button id="refresh" class="alt" type="button">Vernieuwen</button></div>
-<div class="scroller"><table><thead><tr><th>Naam</th><th>Roepnummer</th><th>Graad</th><th>Dienst</th><th>Status</th><th>Discord-ID</th><th>Actie</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="scroller"><table><thead><tr><th>Naam</th><th>Roepnummer</th><th id="dossierFunctionColumn">Graad</th><th>Dienst</th><th>Status</th><th>Discord-ID</th><th>Actie</th></tr></thead><tbody id="rows"></tbody></table></div>
 
 </section>
 <section class="card" id="detail" hidden><h2 id="detailTitle">Dossier</h2><div id="detailService" class="dossier-service-label"></div><p class="muted" id="matchWarning"></p>
@@ -134,7 +135,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <button id="close" type="button" class="alt">Dossier sluiten</button></section>
 </main>
 <script type="module">
-import {filterDossiers,sortDossiers,policeCallGroup,fireCallGroup,ambulanceCallGroup,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
+import {filterDossiers,sortDossiers,policeCallGroup,fireCallGroup,ambulanceCallGroup,depannageCallGroup,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
   from '/dossiercentrum-view.js';
 const $=id=>document.getElementById(id);
 const departments={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage'};
@@ -186,14 +187,18 @@ function closeDossier(){
 function synchronizeDossierSort(dept){
   const order=$('sortOrder'),fireOption=order.querySelector('[value="callsign-fire"]'),
     policeOption=order.querySelector('[value="callsign-police"]'),
-    ambulanceOption=order.querySelector('[value="callsign-ambulance"]');
-  const fire=dept==='brandweer',police=dept==='politie',ambulance=dept==='ambulance';
+    ambulanceOption=order.querySelector('[value="callsign-ambulance"]'),
+    depannageOption=order.querySelector('[value="callsign-depannage"]');
+  const fire=dept==='brandweer',police=dept==='politie',
+    ambulance=dept==='ambulance',depannage=dept==='depannage';
   fireOption.hidden=!fire;fireOption.disabled=!fire;
   policeOption.hidden=!police;policeOption.disabled=!police;
   ambulanceOption.hidden=!ambulance;ambulanceOption.disabled=!ambulance;
-  if(['callsign-bpd','callsign-fire','callsign-police','callsign-ambulance'].includes(order.value)){
+  depannageOption.hidden=!depannage;depannageOption.disabled=!depannage;
+  $('dossierFunctionColumn').textContent=depannage?'Functie':'Graad';
+  if(['callsign-bpd','callsign-fire','callsign-police','callsign-ambulance','callsign-depannage'].includes(order.value)){
     order.value=fire?'callsign-fire':police?'callsign-police':
-      ambulance?'callsign-ambulance':'callsign-bpd';
+      ambulance?'callsign-ambulance':depannage?'callsign-depannage':'callsign-bpd';
   }
 }
 function selectDepartment(dept){
@@ -222,11 +227,12 @@ function render(){
   let previousGroup=null;
   const groupFire=filters.department==='brandweer'&&$('sortOrder').value==='callsign-fire',
     groupPolice=filters.department==='politie'&&$('sortOrder').value==='callsign-police',
-    groupAmbulance=filters.department==='ambulance'&&$('sortOrder').value==='callsign-ambulance';
+    groupAmbulance=filters.department==='ambulance'&&$('sortOrder').value==='callsign-ambulance',
+    groupDepannage=filters.department==='depannage'&&$('sortOrder').value==='callsign-depannage';
   for(const r of sorted){
-    if(groupFire||groupPolice||groupAmbulance){
+    if(groupFire||groupPolice||groupAmbulance||groupDepannage){
       const group=groupFire?fireCallGroup(r.call):groupPolice?policeCallGroup(r):
-        ambulanceCallGroup(r.call);
+        groupAmbulance?ambulanceCallGroup(r.call):depannageCallGroup(r);
       // Korporaals (BWM-01..05) en brandweermannen/-vrouwen
       // (BWM-06..25) horen bij hetzelfde Basiskader.
       const displayedGroup=groupFire&&(group.group===3||group.group===4)?3:group.group;
@@ -240,7 +246,8 @@ function render(){
     }
     const tr=node('tr');
     const call=node('span',r.call||'—','dossier-callsign');
-    const rank=node('span',r.rank||'—','dossier-rank');
+    const rank=node('span',filters.department==='depannage'?
+      depannageCallGroup(r).functionName:r.rank||'—','dossier-rank');
     const status=node('span',r.status||'—','dossier-status');
     const normalizedStatus=String(r.status||'').trim().toLocaleLowerCase('nl-BE');
     status.dataset.active=normalizedStatus==='actief'?'true':
