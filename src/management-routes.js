@@ -3,7 +3,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {isArchivedTraining} from './training-maintenance.js';
-import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart} from './fortnight-report-policy.js';
+import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
@@ -20,6 +20,13 @@ const errorResponse=(res,error)=>{
 export function installManagementRoutes(app,{requireUser,getSnapshot}){
   const db=()=>getFirestore();
   const enabled=()=>process.env.BPD_ENABLE_REGISTRATIONS==='true' && process.env.BPD_ENABLE_MANAGEMENT_WRITES==='true';
+  // Technical profile is a signed, allowlisted, authenticated Discord session.
+  // When its owner has no separate personnel record, audit using their verified
+  // Discord ID instead of blocking the approved technical report operation.
+  const reportAuditActor=(request,roster)=>actorFromPersonnel(request.bpd,roster)||
+    (isVerifiedReportTechnicalAdmin(request.bpd)?{
+      discordId:request.bpd.discordId,name:'Technisch Beheer',
+      call:'—',rank:'Technisch beheer',dept:'algemeen'}:null);
   const cadre=(req,res,next)=>{
     if(req.bpd.portalTechnicalMode!==true&&req.bpd.fireZoneChief!==true&&!CADRE_ROLES.includes(req.bpd.role)&&!req.bpd.dossierFullDepartments?.length)return res.status(403).json({error:'Alleen middenkader en hoger hebben toegang'});
     next();
@@ -164,12 +171,12 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const report=automatic||legacy.data();
       if(!canReadServiceDossier(req.bpd,report.dept)||
         !mayRemoveWeekReport(req.bpd,report.dept,snap.data))
-        return res.status(403).json({error:'Alleen Officierenkader en Korpsleiding van Politie mogen weekrapporten wissen'});
+        return res.status(403).json({error:'Alleen bevoegd Politie-Officierenkader, Korpsleiding of geverifieerd Technisch Beheer mag weekrapporten wissen'});
       const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
         year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       if(isCurrentAutomaticReport(report,today))
         return res.status(409).json({error:'Het lopende automatische weekrapport kan niet gewist worden. Het wordt dagelijks uit dossiergegevens opgebouwd.'});
-      const actor=actorFromPersonnel(req.bpd,snap.data);
+      const actor=reportAuditActor(req,snap.data);
       if(!actor)return res.status(403).json({error:'Eigen personeelsfiche is niet gekoppeld'});
       const marker=db().collection('bpd_weekreport_removals').doc(id);
       try{
@@ -210,8 +217,8 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
         return res.status(409).json({error:'Alleen het lopende automatische rapport kan opnieuw gestart worden'});
       if(!canReadServiceDossier(req.bpd,report.dept)||
          !mayRemoveWeekReport(req.bpd,report.dept,snap.data))
-        return res.status(403).json({error:'Alleen bevoegd Officierenkader of Korpsleiding van Politie mag dit rapport herstarten'});
-      const actor=actorFromPersonnel(req.bpd,snap.data);
+        return res.status(403).json({error:'Alleen bevoegd Politie-Officierenkader, Korpsleiding of geverifieerd Technisch Beheer mag dit rapport herstarten'});
+      const actor=reportAuditActor(req,snap.data);
       if(!actor)return res.status(403).json({error:'Eigen personeelsfiche is niet gekoppeld'});
       const ref=db().collection('bpd_weekreport_restarts').doc(id);
       const audit=ref.collection('events').doc();
