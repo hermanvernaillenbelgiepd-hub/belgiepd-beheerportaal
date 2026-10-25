@@ -9,6 +9,7 @@ import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {leaveCanWithdraw,leaveCanReapply,writeLeaveEvent} from './leave-event-log.js';
 import {actorFromPersonnel} from './registrations.js';
+import {canRetireDossierRecord} from './dossier-retirement-policy.js';
 
 const coll='bpd_leave_requests';
 const grants='bpd_leave_grants';
@@ -285,6 +286,45 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
   });
   // Een eigen nog lopend/voorafgaand verlof intrekken, nooit verwijderen.
   // De originele aanvraag, alle beslissingen en het tijdstip blijven bewaard.
+  // Withdraw an approved leave period only on an independently confirmed
+  // higher-cadre correction. This immediately clears every service's leave
+  // indicator; the same transaction logs audit and all weekreports.
+  app.post('/api/leave/requests/:id/retire',requireUser,requireWrites,async(req,res)=>{
+    const requestId=String(req.params.id||''),dept=String(req.body?.dept||'');
+    if(!validId(requestId)||!['politie','brandweer','ambulance','depannage'].includes(dept))
+      return res.status(400).json({error:'Ongeldige verlofverwijzing'});
+    const reason=typeof req.body?.reason==='string'?req.body.reason.trim():'';
+    if(!req.body||Object.keys(req.body).some(k=>!['dept','reason'].includes(k))||
+      reason.length<10||reason.length>500)
+      return res.status(400).json({error:'Motivering van 10 tot 500 tekens vereist'});
+    try{
+      const {snapshot}=await context(req);
+      const ref=db().collection(coll).doc(requestId);
+      const before=await ref.get();
+      if(!before.exists)throw rejection('Verlofperiode niet gevonden',404);
+      const leave=before.data();
+      const subject=personRecords(snapshot,leave.personDiscordId).find(p=>p.dept===dept);
+      if(!subject||!canRetireDossierRecord(req.bpd,subject))
+        throw rejection('Alleen het bevoegde Officierenkader of Korpsleiding kan deze verlofperiode intrekken',403);
+      const actor=actorFromPersonnel(req.bpd,snapshot);
+      if(!actor)throw rejection('Personeelsidentiteit niet geverifieerd',403);
+      await db().runTransaction(async tx=>{
+        const previous=await tx.get(ref);
+        if(!previous.exists)throw rejection('Verlofperiode bestaat niet',404);
+        const item=previous.data();
+        if(item.personDiscordId!==subject.personId||item.status!=='approved')
+          throw rejection('Alleen een nog goedgekeurde verlofperiode kan worden ingetrokken',409);
+        tx.update(ref,{status:'withdrawn',
+          withdrawnAt:FieldValue.serverTimestamp(),withdrawReason:reason,
+          withdrawnByDiscordId:req.bpd.discordId,withdrawnByUid:req.bpd.uid,
+          updatedAt:FieldValue.serverTimestamp()});
+        writeLeaveEvent(tx,{requestRef:ref,request:item,action:'cadre_retired',
+          actor,actorUid:req.bpd.uid,eventDate:yyyyMmDd(),
+          from:'approved',to:'withdrawn',note:reason});
+      });
+      return res.json({saved:true,retired:true,status:'withdrawn',reportLogged:true});
+    }catch(e){return jsonError(res,e)}
+  });
   app.post('/api/leave/requests/:id/withdraw',requireUser,requireWrites,async(req,res)=>{
     const requestId=String(req.params.id||'');
     if(!validId(requestId))return res.status(400).json({error:'Ongeldig aanvraagnummer'});
