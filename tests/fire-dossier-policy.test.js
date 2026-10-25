@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {FIRE_ROLES,FIRE_COURSES,verifiedFireRoles,fireSubjectClass,fireActorClass,
-  mayOpenFireSubject,fireRecordVisibility,fireMayCreate,fireSanctionLevel}
+  mayOpenFireSubject,fireRecordVisibility,fireMayCreate,fireSanctionLevel,fireCanWithdrawSanction}
   from '../src/fire-dossier-policy.js';
 const guild='1309532437952466984',now=Date.UTC(2026,9,25);
 const member=ids=>verifiedFireRoles({guildId:guild,verifiedAt:now-1000,roleIds:ids},guild,now);
@@ -60,6 +60,19 @@ test('Fire leadership mirrors Police Middenkader registrations and ZONE mirrors 
  assert.equal(fireMayCreate(leader,subject,leadership,'sanctie'),false);
  const readOnlyBoard={boardPersonnelAdmin:true,departments:['brandweer']};
  assert.equal(fireMayCreate(readOnlyBoard,subject,basic,'basisnotitie'),false);
+});
+test('Only ZONE or signed technical mode can withdraw Fire sanctions',()=>{
+ const mid={departments:['brandweer'],fireAccessLevel:'middle'};
+ const leader={departments:['brandweer'],fireAccessLevel:'leadership'};
+ const zone={departments:['brandweer'],fireZoneChief:true,
+   fireAccessLevel:'zone',discordId:'333333333333333333'};
+ assert.equal(fireCanWithdrawSanction(mid,subject,basic),false);
+ assert.equal(fireCanWithdrawSanction(leader,subject,basic),false);
+ assert.equal(fireCanWithdrawSanction(zone,subject,middle),true);
+ assert.equal(fireCanWithdrawSanction(zone,{...subject,personId:zone.discordId},middle),false);
+ assert.equal(fireCanWithdrawSanction(
+   {departments:['brandweer'],portalTechnicalMode:true,profileTechnicalAvailable:false},
+   subject,basic),false);
 });
 test('Handmatige Brandweer-Middenkaderherstel blijft dienstgebonden',()=>{
  const manual={departments:['brandweer'],manualFireRole:'middle'};
