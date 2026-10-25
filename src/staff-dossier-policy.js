@@ -75,7 +75,7 @@ const asIso=value=>{
   return date instanceof Date&&Number.isFinite(date.getTime())?date.toISOString():null;
 };
 export function publicStaffNote(data,id){
-  if(!data||!STAFF_NOTE_TYPES.includes(data.kind))return null;
+  if(!data||data.status==='verwijderd'||!STAFF_NOTE_TYPES.includes(data.kind))return null;
   return {id,kind:data.kind,title:String(data.title||'').slice(0,120),
     details:String(data.details||'').slice(0,1200),
     authorDiscordId:/^\d{15,22}$/.test(data.authorDiscordId||'')?data.authorDiscordId:null,
