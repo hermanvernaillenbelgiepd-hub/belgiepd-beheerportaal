@@ -180,6 +180,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 </section>
 </main>
 <script type="module">
+import {renderFireSpecialties,fireSpecialtyMeta} from '/fire-specialty-icons.js';
 const $=id=>document.getElementById(id);
 const id=new URLSearchParams(location.search).get('discordId')||'';
 let auth,authMod,setupLogin,current;
@@ -335,10 +336,8 @@ async function load(){
     $(tile).hidden=!advanced;
   if(advanced){
    const qualifiers=data.specialties||[];
-   rows($('specialties'),qualifiers.map(x=>[x.label,x.value]));
-   $('overviewSpecialties').textContent=qualifiers.filter(x=>x.value&&
-     !['Nee','Niet ingevuld'].includes(x.value)).slice(0,6)
-     .map(x=>x.label+' · '+x.value).join(' | ')||'Geen actuele kwalificaties';
+   renderFireSpecialties($('specialties'),qualifiers);
+   renderFireSpecialties($('overviewSpecialties'),qualifiers,{compact:true});
    const entries=data.entries||[];
    $('overviewObservationCount').textContent=
      entries.filter(x=>x.type==='observatie').length+' geregistreerde observaties';
@@ -412,9 +411,13 @@ async function load(){
     try{
       const register=await api('/api/personnel/brandweer/'+encodeURIComponent(id)+'/specializations');
       const items=register.items||[];
-      rows($('specialties'),items.map(x=>[x.label,x.value]));
+      renderFireSpecialties($('specialties'),items);
+      renderFireSpecialties($('overviewSpecialties'),items,{compact:true});
       specialtyRevision=register.revision;
-      $('specialtyLabel').replaceChildren(...items.map(x=>new Option(x.label,x.label)));
+      $('specialtyLabel').replaceChildren(...items.map(x=>{
+        const icon=fireSpecialtyMeta(x.label);
+        return new Option(icon.emoji+' '+icon.label,x.label);
+      }));
       $('specialtyEdit').hidden=!register.canEdit;
     }catch(e){
       const warning=document.createElement('p');warning.className='muted';
