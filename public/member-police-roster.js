@@ -1,8 +1,8 @@
 // Shared read-only Police roster used by the lower-cadre home and public
 // personnel-list page. No editing links or dossier references are rendered.
 import './personnel-list-visuals.js';
-import {policeGroupedRoster,policeTierDisplay} from '/police-roster-cadre.js';
-import {policeRosterSeriesBadges} from '/police-roster-series.js';
+import {policeGroupedRoster,policeTierDisplay} from './police-roster-cadre.js';
+import {policeRosterSeriesBadges} from './police-roster-series.js';
 
 export const PUBLIC_POLICE_SPECIALTIES=Object.freeze([
   'Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
