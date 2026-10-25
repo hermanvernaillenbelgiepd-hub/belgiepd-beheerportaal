@@ -1,6 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {validPersonnelKey} from './personnel-editor-policy.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
+import {readVerifiedPoliceLrd,LRD_SPECIALTY_LABEL} from './police-lrd-policy.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,
   specialtyWritesEnabled,canChangeSpecialty,validateSpecialtyChange,
@@ -32,6 +33,18 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
         ref.get(),ref.collection('audit').orderBy('at','desc').limit(40).get()
       ]);
       const state=publicSpecializations(staff,entry.data());
+      if(staff.dept==='politie'){
+        let verified=new Set();
+        try{verified=await readVerifiedPoliceLrd([staff]);}
+        catch(error){
+          console.error('LRD-verificatie niet beschikbaar:',
+            error?.code||'Discord-role lookup');
+        }
+        const status=verified.has(staff.personId)?'Ja':
+          verified.confirmedIds?.has(staff.personId)?'Nee':'Niet gecontroleerd';
+        const slot=state.items.find(x=>x.label===LRD_SPECIALTY_LABEL);
+        if(slot){slot.value=status;slot.source='discord-bot';slot.readOnly=true;}
+      }
       return res.json({...state,canEdit:specialtyWritesEnabled(process.env)&&
         req.bpd.dossierNativeDepartments?.includes(staff.dept)&&canChangeSpecialty(req.bpd,staff),
         history:history.docs.map(doc=>{
