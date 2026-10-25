@@ -170,3 +170,54 @@ test('Recherche is absent from all personnel list screens and roster API',()=>{
  assert.equal(publicPeople[0].specialties.length,10);
  assert.equal(publicPeople[0].specialties.some(s=>s.label===LRD_SPECIALTY_LABEL),false);
 });
+
+test('Individual dossier renders LRD only after positive verified Discord bot role',async()=>{
+ let now=1800000000000,requests=0,roles=[LRD_DISCORD_ROLE_ID];
+ const verify=createPoliceLrdSubjectVerifier({
+   guildId:()=>guild,botToken:()=>token,now:()=>now,
+   fetchImpl:async url=>{
+     requests++;
+     assert.equal(url,'https://discord.com/api/v10/guilds/'+guild+'/members/'+first);
+     return response({user:{id:first},roles});
+   }
+ });
+ assert.equal(await verify(first),true);
+ assert.equal(await verify(first),true);
+ assert.equal(requests,1,'Success cache avoids unnecessary repeated Discord requests');
+ roles=[];
+ now+=61000;
+ assert.equal(await verify(first),false,'Confirmed revocation hides the Recherche badge');
+ assert.equal(requests,2);
+ assert.equal(await verify('invalid-discord-id'),false);
+ assert.equal(requests,2);
+});
+
+test('Unknown or failed bot verification never fabricates Recherche membership',async()=>{
+ const verify=createPoliceLrdSubjectVerifier({
+   guildId:()=>guild,botToken:()=>token,
+   fetchImpl:async()=>response({message:'API temporarily unavailable'},429)
+ });
+ assert.equal(await verify(first),false);
+ const invalidResponse=createPoliceLrdSubjectVerifier({
+   guildId:()=>guild,botToken:()=>token,
+   fetchImpl:async()=>response({user:{id:second},roles:[LRD_DISCORD_ROLE_ID]})
+ });
+ assert.equal(await invalidResponse(first),false,
+   'Other Discord ID must not confer membership');
+ const missingToken=createPoliceLrdSubjectVerifier({
+   guildId:()=>guild,botToken:()=>null,
+   fetchImpl:async()=>{throw Error('should not call Discord without credentials')}
+ });
+ assert.equal(await missingToken(first),false);
+});
+
+test('Dossier specialty is conditional; not present on every police record',()=>{
+ const base=publicSpecializations(firstPerson,{
+   revision:2,values:{[LRD_SPECIALTY_LABEL]:{value:'Ja',source:'manual'}}
+ });
+ assert.equal(base.items.some(item=>item.label===LRD_SPECIALTY_LABEL),false);
+ const route=readFileSync(new URL('../src/specialization-routes.js',import.meta.url),'utf8');
+ assert.match(route,/hasLrd=await verifiedPoliceLrdSubject\(staff\.personId\)/);
+ assert.match(route,/if\(hasLrd\)state\.items\.push/);
+ assert.match(route,/source:'discord-bot',readOnly:true/);
+});
