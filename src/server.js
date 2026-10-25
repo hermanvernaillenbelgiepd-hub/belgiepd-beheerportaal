@@ -79,6 +79,8 @@ app.use('/api/fire-dossiers',express.json({limit:'6kb',strict:true}));
 app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
+// Dossier intrekkingen verwachten uitsluitend een gecontroleerde JSON-motivering.
+app.use('/api/dossier-retirement',express.json({limit:'4kb',strict:true}));
 // Parse TO commands before installing TO routes, retaining strict size limits.
 app.use('/api/to',express.json({limit:'24kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
