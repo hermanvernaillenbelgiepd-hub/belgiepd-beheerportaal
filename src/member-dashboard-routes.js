@@ -40,8 +40,6 @@ export function publicPoliceRoster(rows,verifiedLrdIds=new Set()){
     // never include identities, role IDs, or protected dossier attributes.
     // A recently verified Discord LRD role is display-only.
     // The original ten sheet-based columns stay in their existing order.
-    //
-    // source attribute (Discord ID, activities, notes, case records, etc.).
     const labels=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
       'K9','RAGO','Dispatch','TO','AE',LRD_SPECIALTY_LABEL];
     const safeStatuses=Object.fromEntries(labels.map(label=>{
