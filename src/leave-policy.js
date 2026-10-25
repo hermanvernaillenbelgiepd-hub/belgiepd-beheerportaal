@@ -42,6 +42,50 @@ export function validateLeaveRequest(raw){
   if(typeof note!=='string'||note.trim().length>300)throw new Error('Toelichting mag maximaal 300 tekens bevatten');
   return {startDate,endDate,days,note:note.trim()};
 }
+// Manual leave is a distinct administrative act, not a normal leave request.
+// Only Police middle/higher cadre may write it; other services see the
+// resulting dates but cannot create or approve these records themselves.
+export function validateManualLeaveRequest(raw){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))
+   throw new Error('Ongeldige verlofregistratie');
+ const days=calendarDays(raw.startDate,raw.endDate);
+ const note=raw.note===undefined?'':raw.note;
+ if(typeof note!=='string'||note.trim().length>300)
+   throw new Error('Toelichting mag maximaal 300 tekens bevatten');
+ return {startDate:raw.startDate,endDate:raw.endDate,days,note:note.trim()};
+}
+export function rosterPoliceRole(person){
+ if(person?.dept!=='politie')return null;
+ const call=String(person.call||'').trim().match(/^(?:[a-z]{1,12}[- ]?)?(\d{1,4})$/i);
+ const n=call?Number(call[1]):null;
+ if(n!==null){
+   if(n>=900&&n<=999)return n===900||n===910?'korpsleiding':'officierenkader';
+   if(n>=600&&n<900)return 'middenkader';
+   if(n>=100&&n<600)return 'basiskader';
+   return null;
+ }
+ const rank=String(person.rank||'').toLowerCase();
+ if(rank.includes('hoofdcommissaris'))return 'korpsleiding';
+ if(rank.includes('commissaris'))return 'officierenkader';
+ if(rank.includes('hoofdinspecteur'))return 'middenkader';
+ if(rank.includes('inspecteur')||rank.includes('agent'))return 'basiskader';
+ return null;
+}
+export function mayRegisterCentralManualLeave(actor,personId,days,policeSubjectRole=null,
+  policeSubjectPresent=false){
+ if(!actor||!validDiscordId(actor.discordId)||actor.discordId===personId||
+    !Number.isInteger(days)||days<1||days>LEAVE_MAX_DAYS)return false;
+ const reviewer=roleForDepartment(actor,'politie');
+ if(!['middenkader','officierenkader','korpsleiding'].includes(reviewer))return false;
+ if(reviewer==='middenkader'&&days>30)return false;
+ // Police ranks are protected against equal/lower-ranked reviewers.
+ // Unverified senior subjects are reserved to Korpsleiding (fail closed).
+ if(policeSubjectPresent){
+   if(!policeSubjectRole)return reviewer==='korpsleiding';
+   if((LEAVE_RANK[reviewer]||0)<=(LEAVE_RANK[policeSubjectRole]||0))return false;
+ }
+ return true;
+}
 export function activeGrant(grant,today=new Date().toISOString().slice(0,10)){
   if(!grant||grant.revoked===true||grant.permission!=='VERLOFBEHEER')return null;
   if(!['max30','all'].includes(grant.level))return null;
