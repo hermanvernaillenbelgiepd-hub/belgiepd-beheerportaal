@@ -73,8 +73,36 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
 .member-table th{background:#e8f1fd;color:#24476e;font-weight:800}
 .member-table td:first-child{font-weight:750;color:#193766}
 [hidden]{display:none!important}
+
+/* Lower cadres get a roster-first workspace, not administrative tiles. */
+body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 60px}
+#memberDashboard h1{font-size:27px}
+#memberDashboard>.lead{font-size:13px;margin:6px 0 14px;max-width:none}
+.member-quick-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:12px 0 16px}
+.member-quick-actions a,.member-quick-actions .member-upcoming{
+ display:inline-flex;align-items:center;gap:6px;border:1px solid #a4b7d6;border-radius:8px;
+ background:#fff;color:#183f84;padding:9px 13px;font-size:12px;font-weight:800;
+ white-space:nowrap;text-decoration:none;
+}
+.member-quick-actions a:hover{background:#e6efff;border-color:#5478c8}
+.member-quick-actions a:focus-visible{outline:3px solid #4777e8;outline-offset:2px}
+.member-quick-actions .member-upcoming{color:#6b7794;background:#edf1f7;border-style:dashed}
+.member-roster-primary{margin:10px 0 0;min-width:0}
+.member-roster-top{display:flex;gap:12px;justify-content:space-between;align-items:end;flex-wrap:wrap;margin-bottom:9px}
+.member-roster-top h2{margin:0;font-size:19px}
+.member-roster-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.member-roster-tools label{font-size:11px;font-weight:750}
+.member-roster-tools input{padding:8px 10px;max-width:230px;width:190px;
+ border:1px solid #b3c5db;border-radius:7px;font:inherit;font-size:12px}
+.member-roster-link{font-size:12px;color:#2b51ac;font-weight:800;text-decoration:underline}
+.member-roster-caption{font-size:11px;color:#62758e;margin:3px 0 8px}
+#memberDashboard .member-notice{margin:15px 0 0;font-size:12px;font-weight:550}
+@media(max-width:720px){body:has(#memberDashboard:not([hidden])) main{padding:18px 12px 35px}
+.member-quick-actions{gap:6px}.member-quick-actions a{padding:8px}
+.member-roster-top{align-items:start}.member-roster-tools input{width:150px}}
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
+<link rel="stylesheet" href="/member-police-roster.css">
 </head>
 <body>
 <a class="skip" href="#inhoud">Ga naar inhoud</a>
@@ -140,25 +168,36 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
   <p class="caption">De modules controleren je toegang bij het openen. De startpagina bevat bewust geen personeelsinformatie of fictieve statistieken.</p>
   </div>
   <section id="memberDashboard" hidden aria-labelledby="memberDashboardTitle">
-    <p class="eyebrow">Welkom bij BelgiumPD</p>
-    <h1 id="memberDashboardTitle">Jouw startpagina</h1>
-    <p class="lead">Een overzicht van je persoonlijke functies. Geen beheerschermen of afgeschermde dossiers. Verlof en meldingen worden beschikbaar zodra je personeelskoppeling en toegang zijn bevestigd.</p>
-    <div class="member-notice" id="memberAccountStatus" role="status">Je Discord-profiel wordt gecontroleerd.</div>
-    <h2 class="section-title">Voor jou beschikbaar</h2>
-    <div class="grid">
-      <a class="module" href="/discord-status.html"><span class="ico" aria-hidden="true">👤</span><h3>Mijn profiel</h3><p>Bekijk je Discord-koppeling, je personeelsstatus en je eigen gegevens.</p><span class="open">Bekijk mijn profiel →</span></a>
-      <a class="module" href="/personeelslijst.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelslijst</h3><p>Bekijk roepnummer, naam, rang, reeks en status. Zonder dossiergegevens of wijzigingen.</p><span class="open">Open personeelslijst →</span></a>
-      <a class="module" id="memberCallsignTile" href="/vast-roepnummer-aanvragen.html" hidden><span class="ico" aria-hidden="true">🔢</span><h3>Vast roepnummer aanvragen</h3><p>Alleen als je nog geen vast roepnummer hebt; na 5 kalenderdagen en minstens 10 speeluren, bevestigd door de bot.</p><span class="open" id="memberCallsignAction">Controleer mijn voorwaarden →</span></a>
-      <a class="module" id="memberLeaveTile" href="/verlofbeheer.html" hidden><span class="ico" aria-hidden="true">📅</span><h3>Mijn verlof</h3><p>Vraag je eigen verlof aan en bekijk je aanvragen. Geen toegang tot aanvragen van anderen.</p><span class="open">Mijn verlof bekijken →</span></a>
-      <a class="module" id="memberNoticesTile" href="/meldingen.html" hidden><span class="ico" aria-hidden="true">📬</span><h3>Meldingen</h3><p>Volg de beslissingen over je eigen verlofaanvragen, zonder administratieve beoordelingsrechten.</p><span class="open">Mijn meldingen bekijken →</span></a>
-      <div class="module" id="memberTrainingTile" aria-label="Opleiding aanvragen: in ontwikkeling"><span class="ico" aria-hidden="true">🎓</span><h3>Opleiding aanvragen</h3><p>De aanvraagfunctie is in ontwikkeling. Het huidige Opleidingscentrum is bedoeld voor bevoegde opleidingsverantwoordelijken.</p><span class="open">Binnenkort beschikbaar</span></div>
-    </div>
-    <div class="member-section">
-      <div class="member-section-top"><div><h2 class="section-title">Personeelslijst politie</h2><p class="caption">Een beperkt, alleen-lezen overzicht. Geen Discord-ID’s, dossiers of observaties.</p></div>
-      <a href="/personeelslijst.html" class="member-roster-link">Volledige personeelslijst →</a></div>
-      <p id="memberRosterStatus" class="caption" role="status">Personeelslijst laden…</p>
-      <div class="member-table-wrap"><table class="member-table"><thead><tr><th>CALL</th><th>Naam</th><th>Rang</th><th>Reeks</th><th>Status</th></tr></thead><tbody id="memberRosterRows"></tbody></table></div>
-    </div>
+    <h1 id="memberDashboardTitle">Personeelslijst politie</h1>
+    <p class="lead">Het personeelsbestand, in de bestaande kader- en reeksindeling. Alleen lezen: geen dossiers, administratieve wijzigingen of observaties.</p>
+    <nav class="member-quick-actions" aria-label="Mijn functies">
+      <a href="/discord-status.html">👤 Mijn profiel</a>
+      <a id="memberLeaveTile" href="/verlofbeheer.html" hidden>📅 Mijn verlof</a>
+      <a id="memberNoticesTile" href="/meldingen.html" hidden>📬 Meldingen</a>
+      <a id="memberCallsignTile" href="/vast-roepnummer-aanvragen.html" hidden>🔢 <span id="memberCallsignAction">Vast roepnummer aanvragen</span></a>
+      <span id="memberTrainingTile" class="member-upcoming" title="De aanvraagmodule is nog niet beschikbaar">🎓 Opleiding aanvragen · binnenkort</span>
+    </nav>
+    <section class="member-roster-primary" aria-labelledby="memberRosterTitle">
+      <div class="member-roster-top">
+        <div>
+          <h2 id="memberRosterTitle">Personeelslijst</h2>
+          <p id="memberRosterStatus" class="member-roster-caption" role="status">Personeelslijst laden…</p>
+        </div>
+        <div class="member-roster-tools">
+          <label for="memberRosterSearch">Zoeken</label>
+          <input id="memberRosterSearch" type="search" placeholder="Call, naam, rang of reeks" autocomplete="off">
+          <a href="/personeelslijst.html" class="member-roster-link">Volledige pagina</a>
+        </div>
+      </div>
+      <div class="mr-wrapper"><div class="mr-scroll">
+        <table class="mr-table" aria-label="Leesbare personeelstabel Politie, met specialisatiestatussen">
+          <thead id="memberRosterHead"></thead>
+          <tbody id="memberRosterRows"></tbody>
+        </table>
+      </div></div>
+      <p class="member-roster-caption">De lijst bevat uitsluitend publieke personeels- en kwalificatiestatussen. Dossierinhoud, Discord-ID's en observaties worden niet getoond.</p>
+    </section>
+    <p class="member-notice" id="memberAccountStatus" role="status">Je Discord-profiel wordt gecontroleerd.</p>
   </section>
   <section id="guestDashboard" aria-labelledby="guestDashboardTitle">
     <p class="eyebrow">BelgiumPD</p><h1 id="guestDashboardTitle">Welkom op het beheerportaal</h1>
@@ -168,6 +207,7 @@ h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:
 </main>
 </div></div>
 <script type="module">
+import {renderMemberPoliceRoster} from '/member-police-roster.js';
 const $=id=>document.getElementById(id);
 const staffNav=$('staffNav'),memberNav=$('memberNav'),staffHome=$('staffDashboard');
 const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
@@ -199,20 +239,16 @@ function show(mode,message=''){
  resetSimpleModules();
  if(message)$('guestMessage').textContent=message;
 }
+let memberRecords=[];
 function previewRoster(records,stale){
- const tbody=$('memberRosterRows');tbody.replaceChildren();
- for(const p of records.slice(0,12)){
-  const tr=document.createElement('tr');
-  for(const key of ['call','name','rank','series','status']){
-   const td=document.createElement('td');td.textContent=String(p[key]||'—');tr.append(td);
-  }
-  tbody.append(tr);
- }
- $('memberRosterStatus').textContent=records.length?
-  records.length+' personeelsleden in het openbare ledenoverzicht'+
-  (stale?' (bron niet actueel)':''):
-  'Geen personeelsleden gevonden in de centrale lijst.';
+ memberRecords=Array.isArray(records)?records:[];
+ const count=renderMemberPoliceRoster(
+   $('memberRosterHead'),$('memberRosterRows'),memberRecords,
+   $('memberRosterSearch').value);
+ $('memberRosterStatus').textContent=count+' van '+memberRecords.length+
+   ' personeelsleden zichtbaar'+(stale?' · bron niet actueel':'');
 }
+$('memberRosterSearch').oninput=()=>previewRoster(memberRecords,false);
 async function authorizedFetch(path,token){
  const response=await fetch(path,{headers:{Authorization:'Bearer '+token},cache:'no-store'});
  const data=await response.json().catch(()=>({}));
