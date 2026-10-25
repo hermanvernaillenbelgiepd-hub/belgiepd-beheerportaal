@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer"><title>Opleidingscentrum · BelgiumPD</title>
+<meta name="referrer" content="no-referrer"><title>Opleidingscentrum · BelgiëPD</title>
 <link rel="stylesheet" href="/bpd-navigation.css">
 <style>
 :root{font:15px/1.5 system-ui,Segoe UI,Arial,sans-serif;color:#e7edf7;background:#0a1526}
@@ -20,7 +20,7 @@ button.secondary{background:#284669}button.danger{background:#833747}button:disa
 .pill{display:inline-block;border:1px solid #55759f;border-radius:16px;padding:2px 8px;font-size:12px;margin-left:7px}
 [hidden]{display:none!important}
 </style></head><body>
-<header><strong>🎓 BelgiumPD · Opleidingscentrum</strong><a href="/">Dashboard</a><a href="/meldingen.html">Meldingen</a><button id="login" type="button">Aanmelden</button></header>
+<header><strong>🎓 BelgiëPD · Opleidingscentrum</strong><a href="/">Dashboard</a><a href="/meldingen.html">Meldingen</a><button id="login" type="button">Aanmelden</button></header>
 <main>
 <h1>Opleidingen aanvragen</h1><p>Kies Politie, Brandweer, Ambulance of Depannage en bekijk de beschikbare opleidingen. Aanvragen indienen kan uitsluitend voor je eigen gekoppelde hulpdienst en volgens je kaderrechten.</p>
 <div id="feedback" class="status" role="status">Je account en opleidingsmogelijkheden controleren…</div>
@@ -52,7 +52,7 @@ let auth,authMod,scopes=[];
 const feedback=(s,bad=false)=>{$('feedback').textContent=s;$('feedback').classList.toggle('error',bad)};
 const el=(tag,value)=>{const e=document.createElement(tag);e.textContent=String(value??'');return e};
 async function api(url,body){
- if(!auth?.currentUser)throw Error('Meld je aan met je eigen BelgiumPD-account');
+ if(!auth?.currentUser)throw Error('Meld je aan met je eigen BelgiëPD-account');
  const token=await auth.currentUser.getIdToken();
  const r=await fetch(url,{method:body?'POST':'GET',cache:'no-store',headers:{
   Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})

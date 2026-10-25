@@ -1,4 +1,4 @@
-/* BelgiumPD gedeelde Terug/Home-navigatie, afzonderlijk van paginarechten. */
+/* BelgiëPD gedeelde Terug/Home-navigatie, afzonderlijk van paginarechten. */
 .bpd-global-navigation{
   position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));
   display:flex;align-items:center;gap:7px;z-index:999;

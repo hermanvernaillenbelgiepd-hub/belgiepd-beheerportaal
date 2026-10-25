@@ -1,4 +1,4 @@
-/* BelgiumPD: gedeelde Terug/Home-navigatie, zonder dossierdata te bewaren. */
+/* BelgiëPD: gedeelde Terug/Home-navigatie, zonder dossierdata te bewaren. */
 (function(){
   'use strict';
   if(window.self!==window.top)return; // Geen dubbele knoppen in dossier-iframes.
