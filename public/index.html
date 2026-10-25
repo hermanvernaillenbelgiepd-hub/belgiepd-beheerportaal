@@ -250,7 +250,7 @@ async function displayAuthenticated(user){
     show('member');
     displaySimpleModules(details);
     $('memberAccountStatus').textContent=details.hasPersonnelRecord?
-      'Je Discord-identiteit is bekend. Je beschikt momenteel over de startfuncties voor het Agentenkader.':
+      'Je Discord-identiteit is bekend. Je beschikt over de persoonlijke functies van het Agenten- of Basiskader.':
       'Je Discord-account is bevestigd. Je kunt de personeelslijst zien en controleren of je een vast roepnummer kunt aanvragen.';
     const [roster,eligibility]=await Promise.allSettled([
       authorizedFetch('/api/member/personnel-list',token),
@@ -267,11 +267,13 @@ async function displayAuthenticated(user){
       }else if(c.request){
         $('memberCallsignAction').textContent='Mijn aanvraag opvolgen →';
       }
-      $('memberAccountStatus').textContent=c.request?
-        'Je vaste-roepnummeraanvraag staat op: '+String(c.request.status||'In behandeling')+'. Bekijk Mijn profiel of de aanvraagpagina voor meer informatie.':
-        c.eligible&&c.requestsEnabled?
-          '5 kalenderdagen en 10 speeluren zijn bevestigd: je kunt een vast roepnummer aanvragen.':
-          'Mijn profiel is bereikbaar. Voor een vast roepnummer zijn een botcontrole van 5 kalenderdagen en 10 speeluren vereist.';
+      $('memberAccountStatus').textContent=details.hasFixedCallsign||c.request?.assignedCall?
+        'Je beschikt al over een vast roepnummer. Je kunt je profiel, personeelslijst en persoonlijke functies bekijken.':
+        c.request?
+          'Je vaste-roepnummeraanvraag staat op: '+String(c.request.status||'In behandeling')+'. Bekijk Mijn profiel voor meer informatie.':
+          c.eligible&&c.requestsEnabled?
+            '5 kalenderdagen en 10 speeluren zijn bevestigd: je kunt een vast roepnummer aanvragen.':
+            'Een vast roepnummer aanvragen kan zodra 5 kalenderdagen en 10 speeluren door de bot zijn bevestigd.';
     }
   }else if(details.mode==='staff'){
     const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
