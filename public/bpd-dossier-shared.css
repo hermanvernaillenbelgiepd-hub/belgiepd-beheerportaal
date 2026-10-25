@@ -750,3 +750,42 @@ body.bpd-unified-dossier .police-roster-badge.neutral {
     padding: 2px 5px; font-size: 10px;
   }
 }
+
+/* Explicit service scope at the top of every editable staff dossier. */
+.dossier-service-banner {
+ display:flex;align-items:center;gap:10px;width:100%;
+ border:1px solid #496b95;border-left:5px solid #7ba4d9;
+ background:#1b3554;color:#edf5ff;border-radius:7px;
+ padding:8px 12px;margin:0 0 10px;max-width:100%;
+}
+.dossier-service-banner .service-icon {font-size:23px;line-height:1.25;}
+.dossier-service-banner .service-banner-text {display:flex;flex-direction:column;gap:2px;min-width:0}
+.dossier-service-banner .service-banner-text small {color:#c0d8f2;font-size:10px;letter-spacing:.06em;font-weight:650}
+.dossier-service-banner .service-banner-text strong {font-size:17px;letter-spacing:.045em}
+.dossier-service-banner.service-registration {margin:3px 0 9px;padding:5px 9px;background:#102d4c}
+.dossier-service-banner.service-registration .service-banner-text strong {font-size:14px}
+.dossier-service-banner.service-registration .service-icon {font-size:19px}
+.dossier-service-banner.service-politie {border-left-color:#6aaafa}
+.dossier-service-banner.service-brandweer {border-left-color:#f36c59}
+.dossier-service-banner.service-ambulance {border-left-color:#42c3a4}
+.dossier-service-banner.service-depannage {border-left-color:#f2ba55}
+.dossier-service-banner.service-unknown {border-left-color:#dc6a6a}
+.staff-roster-table .police-kader-divider td {
+ background:#203b5f!important;color:#d8e8ff!important;
+ border-top:2px solid #6585ae!important;border-bottom:1px solid #57749a!important;
+ padding:7px 12px!important;font-weight:800;font-size:12px;
+ text-transform:uppercase;letter-spacing:.055em;text-align:left!important;
+}
+.staff-roster-table .police-kader-divider.kader-korpsleiding td {border-left:5px solid #ddb65e;}
+.staff-roster-table .police-kader-divider.kader-officierenkader td {border-left:5px solid #9d8edb;}
+.staff-roster-table .police-kader-divider.kader-middenkader td {border-left:5px solid #70a8ce;}
+.staff-roster-table .police-kader-divider.kader-basiskader td {border-left:5px solid #88b790;}
+.staff-roster-table .police-kader-divider.kader-agentenkader td {border-left:5px solid #8799b6;}
+.staff-roster-table .police-kader-divider.kader-overig td {border-left:5px solid #8f9eb4;}
+.staff-roster-table .police-kader-divider .kader-person-count {
+ font-weight:550;color:#a9c4e8;font-size:10px;margin-left:9px;
+}
+.staff-roster-table .active-leave-pill {
+ display:inline-flex;align-items:center;gap:4px;border:1px solid #d0a861;
+ background:#5b421e;color:#ffe7a7;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;
+}
