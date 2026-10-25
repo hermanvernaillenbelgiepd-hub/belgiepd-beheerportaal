@@ -521,7 +521,7 @@ installCallsignBotRoutes(app);
 installCallsignSelfServiceRoutes(app,{getSnapshot});
 installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
-installLeaveRoutes(app,{requireUser,getSnapshot,accessList});
+installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
 installManualRoleRoutes(app,{requireUser});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
