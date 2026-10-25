@@ -371,9 +371,33 @@ async function load(){
    cards($('entries'),notes.concat(historical),
      x=>x.displayTitle||'Belangrijke notitie · '+(x.eventDate||'—'),
      x=>x.details,meta);
-   cards($('sanctions'),entries.filter(x=>x.type==='sanctie'),
+   const sanctionEntries=entries.filter(x=>x.type==='sanctie');
+   cards($('sanctions'),sanctionEntries,
      x=>x.sanctionType||'Sanctie',x=>x.details,
-     x=>(x.eventDate||'—')+' · Ernst '+(x.severity??'—'));
+     x=>(x.eventDate||'—')+' · Ernst '+(x.severity??'—')+
+       ' · '+(x.status||'actief'));
+   if(data.canWithdrawSanctions===true){
+     const cardsOnScreen=$('sanctions').querySelectorAll('.record');
+     for(let i=0;i<sanctionEntries.length;i++){
+       const sanction=sanctionEntries[i];
+       if(sanction.status==='ingetrokken'||!sanction.id)continue;
+       const button=document.createElement('button');
+       button.type='button';button.className='alt';
+       button.textContent='Sanctie intrekken';
+       button.onclick=async()=>{
+         const reason=prompt('Reden van intrekking (15–500 tekens):');
+         if(reason===null)return;
+         button.disabled=true;
+         try{
+           await api(endpoint+'/sanctions/'+encodeURIComponent(sanction.id)+'/withdraw',
+             'POST',{reason:reason.trim()});
+           mark('Sanctie ingetrokken en geaudit.');
+           await load();showTab('sancties');
+         }catch(e){mark('Intrekken mislukt: '+e.message,true);button.disabled=false}
+       };
+       cardsOnScreen[i]?.append(button);
+     }
+   }
    cards($('trainings'),data.trainings||[],
      x=>x.courseName||'Opleiding',x=>x.result||'Geen resultaat',
      x=>x.eventDate||'—');
