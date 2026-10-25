@@ -532,3 +532,11 @@ body.bpd-unified-dossier .depannage-specialty-status.is-off {
     grid-template-columns: minmax(0,1fr);
   }
 }
+
+/* Depannage roster header SVGs have the same visual weight as the dossier. */
+.specialty-col-icon .depannage-specialty-svg {
+  display: block;
+  width: 25px;
+  height: 25px;
+  color: #c9deff;
+}
