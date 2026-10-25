@@ -289,7 +289,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
   // Withdraw an approved leave period only on an independently confirmed
   // higher-cadre correction. This immediately clears every service's leave
   // indicator; the same transaction logs audit and all weekreports.
-  app.post('/api/leave/requests/:id/retire',requireUser,requireWrites,async(req,res)=>{
+  app.post('/api/leave/requests/:id/retire',requireDossierUser,requireWrites,async(req,res)=>{
     const requestId=String(req.params.id||''),dept=String(req.body?.dept||'');
     if(!validId(requestId)||!['politie','brandweer','ambulance','depannage'].includes(dept))
       return res.status(400).json({error:'Ongeldige verlofverwijzing'});
