@@ -1154,15 +1154,21 @@ function render(){
   const q=$('search').value.trim().toLowerCase(),dept=$('dept').value;
   const matches=BPDPersonnelVisuals.sortPersonnelRows(
     people.filter(x=>(dept==='all'||dept===x.dept)&&
-      [x.name,x.call,x.discordId,x.rank,x.series,...(x.specialties||[]).map(t=>t.label)]
+      [x.name,x.call,x.discordId,x.rank,x.series,
+        ...(x.dept==='depannage'?[BPDPersonnelVisuals.depannageFunction(x).functionName]:[]),
+        ...(x.specialties||[]).map(t=>t.label)]
         .some(v=>String(v||'').toLowerCase().includes(q))),
-    dept==='ambulance'?'ambulance':dept==='brandweer'?'brandweer':'series-desc'
+    dept==='ambulance'?'ambulance':dept==='brandweer'?'brandweer':
+      dept==='depannage'?'depannage':'series-desc'
   );
   $('count').textContent=matches.length+' fiche(s) zichtbaar';
   const cols=BPDPersonnelVisuals.specialtyColumns(dept);
   const head=$('staffColumnHeaders');head.replaceChildren();
   const line=document.createElement('tr');
-  for(const title of ['CALL','Rangkenteken','Naam van rang','Personeelslid','Reeks','Status']){
+  const titles=dept==='depannage'?
+    ['CALL','Functiegroep','Functie','Personeelslid','Reeks','Status']:
+    ['CALL','Rangkenteken','Naam van rang','Personeelslid','Reeks','Status'];
+  for(const title of titles){
     const th=document.createElement('th');th.textContent=title;line.append(th);
   }
   if(!cols.length){const th=document.createElement('th');th.textContent='Specialisaties';line.append(th)}
@@ -1185,8 +1191,23 @@ function render(){
   const rosterGroups=allPolice?policeGroupedRoster(matches):[];
   const rosterEntries=allPolice?rosterGroups.flatMap(([tier,rows])=>
     [{kind:'kader',tier,count:rows.length},...rows.map(person=>({kind:'person',person}))]):
-    matches.map(person=>({kind:'person',person}));
+    dept==='depannage'?matches.flatMap((person,index)=>{
+      const group=BPDPersonnelVisuals.depannageFunction(person);
+      const previous=index?BPDPersonnelVisuals.depannageFunction(matches[index-1]):null;
+      return [...(!previous||previous.group!==group.group?
+        [{kind:'depannage-groep',label:group.label,group:group.group}]:[]),
+        {kind:'person',person}];
+    }):matches.map(person=>({kind:'person',person}));
   for(const entry of rosterEntries){
+    if(entry.kind==='depannage-groep'){
+      const divider=document.createElement('tr');
+      divider.className='police-kader-divider';
+      const cell=document.createElement('td');
+      cell.colSpan=8+Math.max(cols.length,1);
+      const label=document.createElement('strong');label.textContent=entry.label;
+      cell.append(label);divider.append(cell);body.append(divider);
+      continue;
+    }
     if(entry.kind==='kader'){
       const divider=document.createElement('tr');
       divider.className='police-kader-divider kader-'+entry.tier;
@@ -1202,7 +1223,12 @@ function render(){
     }
     const person=entry.person;
     const tr=document.createElement('tr');
-    const grade=BPDPersonnelVisuals.rankInfo(person.rank,person.dept);
+    const depannageRole=person.dept==='depannage'?
+      BPDPersonnelVisuals.depannageFunction(person):null;
+    const grade=depannageRole?
+      {code:['LEIDING','F.A.S.T','LSRA','OVERIGE'][depannageRole.group],
+       label:depannageRole.functionName,image:null}:
+      BPDPersonnelVisuals.rankInfo(person.rank,person.dept);
     td(tr,person.call||'—');
     const badgeCol=document.createElement('td');
     const gradeDisplay=document.createElement('span');
