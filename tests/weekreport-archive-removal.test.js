@@ -44,7 +44,7 @@ test('report listing, viewing and downloads honor an audited removal marker',()=
   assert.match(api,/await marker\.create\(/);
   assert.match(api,/retainsDossierEntries:true/);
   assert.match(api,/const hidden=new Set\(removals\.docs\.map\(d=>d\.id\)\)/);
-  assert.match(api,/if\(removal\.exists\)return \{status:404/);
+  assert.match(api,/if\(removal\.exists&&!isCurrentAutomaticReport\(report,today\)\)/);
   assert.match(ui,/id="reportArchiveList"/);
   assert.match(ui,/data-delete-report/);
   assert.match(ui,/window\.confirm\('Weekrapport/);
