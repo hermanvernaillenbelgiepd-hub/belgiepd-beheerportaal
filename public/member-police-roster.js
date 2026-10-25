@@ -6,7 +6,7 @@ import {policeRosterSeriesBadges} from './police-roster-series.js';
 
 export const PUBLIC_POLICE_SPECIALTIES=Object.freeze([
   'Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
-  'K9','RAGO','Dispatch','TO','AE','LRD (Recherche)'
+  'K9','RAGO','Dispatch','TO','AE'
 ]);
 const visual=()=>window.BPDPersonnelVisuals;
 function element(tag,text,cls=''){
