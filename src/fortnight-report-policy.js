@@ -66,9 +66,16 @@ export function mayReadFortnightReport(actor,dept,roster){
   const person=ownRecord(actor,dept,roster);
   if(!person)return false;
   if(dept==='brandweer')return actor.fireZoneChief===true;
-  if(dept==='ambulance')return ['middenkader','officierenkader','korpsleiding'].includes(scoped)||
+  // A Police officer who is also an Ambulance member is NOT an AZLS leader.
+  // A protected, uniquely mapped ambulance record and actual medical
+  // leadership (AZLS Discord role or official DIRMED duty) are both required.
+  if(actor.uid!=='discord:'+actor.discordId||actor.portalTechnicalMode===true)
+    return false;
+  if(dept==='ambulance')return actor.reportServiceRoles?.ambulanceAzls===true||
     matchesDuty(person,/^DIRMED(?:[- ]?\d{1,4})?$/);
-  if(dept==='depannage')return ['middenkader','officierenkader','korpsleiding'].includes(scoped)&&
+  // AWV/ANWV duty or the fresh AWV Discord role is service-specific proof,
+  // independent from unrelated Police rank or a generic portal cadre grant.
+  if(dept==='depannage')return actor.reportServiceRoles?.depannageAwv===true||
     matchesDuty(person,/^(?:(?:AWV|ANWV)(?:[- ]?\d{1,4}|[ -]LEIDING)?|AGENTSCHAP WEGEN (?:EN|&) VERKEER(?:[ -]\(?LEIDING\)?)?)$/);
   return false;
 }

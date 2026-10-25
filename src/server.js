@@ -47,7 +47,7 @@ import {installDossierGrantRoutes} from './dossier-grant-routes.js';
 import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,
   verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
-import {deriveServiceDossierDepartments,verifiedFireZoneChief} from './service-dossier-access.js';
+import {deriveServiceDossierDepartments,verifiedFireZoneChief,verifiedServiceReportRoles} from './service-dossier-access.js';
 import {verifiedFireRoles,fireActorClass,FIRE_ROLES} from './fire-dossier-policy.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
 import {installTORadioRoutes} from './to-radio-routes.js';
@@ -417,6 +417,10 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
       (req.bpd.manualFireRole==='zone');
     req.bpd.fireAccessLevel=fireActorClass(req.bpd,
       verifiedFireRoles(member?.data(),process.env.DISCORD_GUILD_ID));
+    // This is evidence of an actual medical/AWV Discord leadership role.
+    // Police officer status or a generic portal cadre never grants access.
+    req.bpd.reportServiceRoles=verifiedServiceReportRoles(req.bpd,
+      member?.exists?member.data():null,process.env.DISCORD_GUILD_ID);
     const original=deriveServiceDossierDepartments(req.bpd,
       roster,member?.exists?member.data():null,
       appointment?.exists?appointment.data():null,process.env.DISCORD_GUILD_ID);
