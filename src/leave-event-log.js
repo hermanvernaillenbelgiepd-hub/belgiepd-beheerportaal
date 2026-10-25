@@ -10,7 +10,8 @@ const TITLE=Object.freeze({
   rejected:'Verlof geweigerd',
   withdrawn:'Verlof ingetrokken',
   board_override:'Verlofbeslissing herzien door Bestuur',
-  manual_approved:'Verlof handmatig goedgekeurd'
+  manual_approved:'Verlof handmatig goedgekeurd',
+  cadre_retired:'Verlofperiode ingetrokken door bevoegd kader'
 });
 export const leaveEventLabel=action=>TITLE[action]||'Verlofwijziging';
 export const leaveCanWithdraw=(request,today)=>{
