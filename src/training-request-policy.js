@@ -28,16 +28,11 @@ export function policeRequestTier(person){
   if(n!==null&&n>=100&&n<300)return 'agentenkader';
   if(n!==null&&n>=300&&n<600)return 'basiskader';
   if(n!==null&&n>=600&&n<900)return 'middenkader';
-  return null;
-}
-// De bestaande politieRequestTier wordt gebruikt voor agent/basis/midden.
-// Een aanvraag uit officierenkader of korpsleiding wordt apart herkend
-// en op de server aan een goedgekeurde dienstrol getoetst.
-export function policeApplicationTier(person){
-  const ordinary=policeRequestTier(person);
-  if(ordinary||person?.dept!=='politie')return ordinary;
-  const n=nCall(person.call);
-  if(n!==null&&n>=900&&n<1000)
+  // Officierenkader and Korpsleiding must match a roster grade, in addition
+  // to their verified, service-scoped management role at submission time.
+  const grade=String(person.rank||'')+' '+String(person.kader||'');
+  if(n!==null&&n>=900&&n<1000&&
+     /commissaris|officierenkader|korpsleiding|\b(?:a-?cp|1-?cp|1-?hcp|cp)\b/i.test(grade))
     return n===900||n===910?'korpsleiding':'officierenkader';
   return null;
 }
