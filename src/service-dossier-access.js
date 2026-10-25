@@ -5,6 +5,8 @@ export const SERVICE_DOSSIER_DEPARTMENTS=Object.freeze(['politie','ambulance','b
 const DISCORD=/^\d{15,22}$/;
 const DISCORD_BOARD_ROLE='1309532438082355251';
 const DISCORD_AWV_ROLE='1309532438019706969';
+const DISCORD_FAST_ROLE='1309532438019706970';
+const DISCORD_LSRA_ROLE='1309532438019706971';
 const DISCORD_AZLS_ROLE='1309532438053130325';
 // A role snapshot is evidence only when fetched for the authenticated guild member.
 // This module never accepts a display name, a radio label or a client-side claim.
@@ -81,4 +83,15 @@ export function verifiedServiceReportRoles(actor,member,guildId,now=Date.now()){
     ambulanceAzls:actor.departments.includes('ambulance')&&roles.has(DISCORD_AZLS_ROLE),
     depannageAwv:actor.departments.includes('depannage')&&roles.has(DISCORD_AWV_ROLE)
   };
+}
+
+// Display-only classification of a Depannage colleague. The Discord guild,
+// freshness and known role IDs are checked server-side. This NEVER grants
+// leadership permissions, operational training or management privileges.
+export function verifiedDepannageDisplayFunction(member,guildId,now=Date.now()){
+  const roles=verifiedRoles(member,guildId,now);
+  if(roles.has(DISCORD_AWV_ROLE))return 'leiding';
+  if(roles.has(DISCORD_FAST_ROLE))return 'fast';
+  if(roles.has(DISCORD_LSRA_ROLE))return 'lsra';
+  return null;
 }
