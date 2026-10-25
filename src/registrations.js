@@ -86,8 +86,8 @@ export function validateEntry(raw){
     // Do not reject older incoming observations without a score.
     const supplied=raw?.score!==undefined&&raw?.score!==null&&String(raw.score).trim()!=='';
     const score=supplied?Number(raw.score):null;
-    if(supplied&&(!Number.isInteger(score)||score<1||score>10))
-      throw new Error('Observatiescore moet tussen 1 en 10 liggen');
+    if(supplied&&(!Number.isInteger(score)||score<0||score>10))
+      throw new Error('Observatiescore moet tussen 0 en 10 liggen');
     return {...common,score};
   }
   const severity=Number(raw.severity);
