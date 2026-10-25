@@ -18,7 +18,7 @@ export const mayReadManagement = (actor,dept) => allowedDept(actor,dept) &&
 // Depannage uses one dedicated cadre case type: specialization restriction.
 // Observations and sanctions are submitted through the formal register.
 export const mayWriteManagement = (actor,dept,type) => (
-  (dept!=='depannage'||type==='specialisatiebeperking')&&(
+  type!=='verlof'&& (dept!=='depannage'||type==='specialisatiebeperking')&&(
   // Delegated case management can add only routine dossier notes.
   // This does not convey sanctions, rank changes or other personnel powers.
   (['notitie','opleiding'].includes(type)&&actor?.dossierFullDepartments?.includes(dept)&&
