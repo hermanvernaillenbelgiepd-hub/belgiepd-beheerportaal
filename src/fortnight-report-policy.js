@@ -2,8 +2,8 @@ import {roleForDepartment} from './leave-policy.js';
 const DEPTS=['politie','ambulance','brandweer','depannage'];
 const MS=86400000;
 // Fixed Monday anchor; every resulting interval has precisely fourteen days.
-// The first automated period starts 26 October 2026.
-const ANCHOR='2026-10-26';
+// The first automated period starts 12 October 2026.
+const ANCHOR='2026-10-12';
 const datestr=d=>new Date(d).toISOString().slice(0,10);
 const utcDay=s=>{
   if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return null;
