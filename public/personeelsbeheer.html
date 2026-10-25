@@ -2024,7 +2024,9 @@ async function loadLinkedPersonnelRecords(p,key){
           div.append(by);
           const body=document.createElement('p');
           body.textContent=String(row.details||'').slice(0,4000);
-          div.append(title,body);cases.append(div);
+          div.append(title,body);
+          attachRetireButton(div,row,'cases');
+          cases.append(div);
         }
         if(data.limited)cases.append(document.createTextNode(' Er kunnen oudere registraties bestaan.'));
       }catch(e){if(same()){
@@ -2935,7 +2937,9 @@ async function loadStaffDossier(p){
       const meta=document.createElement('span');meta.className='subtle';
       meta.textContent=(item.recordedAt?new Date(item.recordedAt).toLocaleString('nl-BE'):'Datum onbekend')+
         ' · Registratie door '+(item.authorDiscordId||'onbekend');
-      div.append(title,body,meta);list.append(div);
+      div.append(title,body,meta);
+      attachRetireButton(div,item,'staff');
+      list.append(div);
     }
     if(result.notesLimited)list.append(document.createTextNode(' Alleen de 60 recentste oudere dossiernotities worden getoond.'));
     void loadStaffTrainingRights(p,key);
