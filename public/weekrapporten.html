@@ -258,7 +258,7 @@ async function handleReportListClick(event){
  const id=button.dataset.deleteReport;
  const report=[...reportItems,...archivedReportItems].find(x=>x.id===id);
  if(!report)return;
- if(!window.confirm('Weekrapport "'+report.title+'" wissen?\\n\\nHet rapport verdwijnt uit het overzicht en archief. Dossierregistraties blijven bewaard en de verwijdering wordt gelogd.'))return;
+ if(!window.confirm('Weekrapport "'+report.title+'" wissen?\n\nHet rapport verdwijnt uit het overzicht en archief. Dossierregistraties blijven bewaard en de verwijdering wordt gelogd.'))return;
  button.disabled=true;
  try{
   await api('/api/management/reports/'+encodeURIComponent(id),'DELETE');
