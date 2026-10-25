@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
+<title>BelgiëPD · Testmodus – Bekijk als</title>
+<style>
+:root{font:15px/1.55 Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#eaf1ff;background:#081429}
+*{box-sizing:border-box}body{margin:0}
+header{display:flex;align-items:center;justify-content:space-between;padding:19px clamp(18px,5vw,60px);background:#102441;border-bottom:1px solid #2d4667;gap:18px;flex-wrap:wrap}
+header strong{font-size:18px}a{color:#b9d2ff;text-decoration:none}a:hover{text-decoration:underline}
+nav{display:flex;gap:20px;flex-wrap:wrap;font-size:13px}
+main{max-width:1280px;margin:auto;padding:30px 22px 72px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#98bdfc;margin:0 0 6px;font-weight:750}
+h1{font-size:clamp(28px,4vw,38px);letter-spacing:-.035em;margin:0 0 8px}
+.lead{color:#aec3df;max-width:82ch;margin:0 0 18px}
+.banner{border:1px solid #536e9a;background:#172d4c;border-radius:12px;padding:14px 16px;margin:16px 0 23px}
+.banner strong{color:#fff}.banner p{margin:5px 0 0;color:#bfd1ed;font-size:13px}
+.banner.error{background:#4c293b;border-color:#a95a77}
+.workspace{display:grid;grid-template-columns:minmax(265px,320px) minmax(0,1fr);gap:20px;align-items:start}
+.panel{border:1px solid #30486b;border-radius:15px;background:#11243f;padding:21px}
+.panel h2{font-size:18px;margin:0 0 15px;color:#f0f5ff}
+label{display:block;font-size:13px;font-weight:700;color:#c8d8ed;margin:15px 0 6px}
+select{display:block;width:100%;min-width:0;background:#08172c;border:1px solid #6480a3;color:#fff;border-radius:9px;padding:11px;font:inherit}
+select:focus-visible,a:focus-visible{outline:3px solid #94b8ff;outline-offset:2px}
+.note{color:#a9c2e2;font-size:12px;margin:15px 0}
+.info{display:grid;gap:10px;margin-top:17px}
+.info-item{padding:11px 12px;background:#1a3454;border-radius:8px;font-size:12px}
+.info-item strong{display:block;color:#fff;font-size:13px;margin-bottom:3px}
+.preview-head{border-bottom:1px solid #3b577b;padding-bottom:14px;margin-bottom:18px}
+.preview-head p{color:#aec4e1;margin:7px 0 0}
+.preview-head h2{font-size:25px;margin:3px 0 0}
+.status{display:inline-flex;gap:6px;border-radius:999px;padding:3px 9px;background:#234665;border:1px solid #5980aa;color:#e6f2ff;font-size:11px;font-weight:750}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.feature{min-width:0;border:1px solid #395271;background:#0d1e36;border-radius:11px;padding:14px}
+.feature strong{display:block;font-size:14px;margin:8px 0 5px}
+.feature p{font-size:12px;line-height:1.55;color:#bed0e8;margin:0}
+.feature .permission{display:inline-block;font-size:11px;border:1px solid #748fae;border-radius:6px;padding:3px 7px;background:#1c3e47;color:#c9f2df}
+.feature[data-state="conditional"] .permission{background:#564526;color:#ffebb7;border-color:#96773d}
+.feature[data-state="no"]{opacity:.69}
+.feature[data-state="no"] .permission{background:#403448;color:#e0d2e4;border-color:#615270}
+#permissionText{font-size:12px;line-height:1.65;color:#adc4df;margin:17px 0 0}
+[hidden]{display:none!important}
+@media(max-width:830px){.workspace{grid-template-columns:1fr}.cards{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header>
+ <strong>🛡️ BelgiëPD <span style="font-size:12px;color:#b6c9e7">/ TESTOMGEVING</span></strong>
+ <nav><a href="/">Startpagina TEST</a><a href="/gebruikersbeheer.html">Mijn portaalprofiel</a></nav>
+</header>
+<main>
+ <p class="eyebrow">Beveiligde demonstratie · TEST</p>
+ <h1>Testmodus – Bekijk als</h1>
+ <p class="lead">Bekijk hoe het portaal er voor een bepaalde hulpdienst en functie uit hoort te zien, zonder je eigen Discord-account te wisselen.</p>
+ <div id="message" class="banner" role="status" aria-live="polite">
+  <strong>Toegang controleren</strong><p>Alleen een geverifieerde technische beheersessie op TEST mag deze voorbeeldweergave openen.</p>
+ </div>
+ <div id="workspace" class="workspace" hidden>
+  <section class="panel" aria-label="Simulatie kiezen">
+   <h2>Functie selecteren</h2>
+   <label for="service">Hulpdienst</label><select id="service" autocomplete="off"></select>
+   <label for="role">Functie / kader</label><select id="role" autocomplete="off"></select>
+   <div class="info">
+    <div class="info-item"><strong>Wat wordt gesimuleerd?</strong>De startpaginamodules en zichtbare functies van de gekozen kaderrol.</div>
+    <div class="info-item"><strong>Wat blijft onveranderd?</strong>Je eigen login, Discord-rollen, rechten, dossiers, weekrapporten en meldingen.</div>
+    <div class="info-item"><strong>Geen echte accountwissel</strong>De knop 'Bekijk als' is een alleen-lezen weergave. Er worden geen API-schrijfacties uitgevoerd.</div>
+   </div>
+  </section>
+  <section class="panel" aria-label="Voorbeeld van gekozen functie">
+   <div class="preview-head">
+    <span class="status">OEFENWEERGAVE · ALLEEN LEZEN</span>
+    <h2 id="roleTitle"></h2>
+    <p id="roleDescription"></p>
+   </div>
+   <div class="cards" id="features"></div>
+   <p id="permissionText">Rechten worden bij echte aanmelding nog steeds afzonderlijk door de server en Discord-verificatie gecontroleerd.</p>
+  </section>
+ </div>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+const text=(tag,content,klass)=>{
+  const element=document.createElement(tag);
+  element.textContent=content;
+  if(klass)element.className=klass;
+  return element;
+};
+const note=(header,body,error=false)=>{
+  $('message').classList.toggle('error',error);
+  $('message').replaceChildren(text('strong',header),text('p',body));
+};
+let catalog=null,groups=[];
+function renderRole(){
+  const role=catalog?.find(x=>x.id===$('role').value);
+  if(!role)return;
+  $('roleTitle').textContent=role.label;
+  $('roleDescription').textContent=role.desc;
+  const cards=$('features');cards.replaceChildren();
+  for(const item of role.modules){
+    const card=document.createElement('div');
+    card.className='feature';card.dataset.state=item.state;
+    const permission=text('span',
+      item.state==='no'?'Niet voor deze rol':
+      item.state==='conditional'?'Na aanvullende verificatie':'Beschikbaar',
+      'permission');
+    card.append(permission,text('strong',item.title),text('p',item.detail));
+    cards.append(card);
+  }
+  $('permissionText').textContent=(role.notes||'')+
+    '  Dit is een voorbeeld van de beoogde startpagina, geen controle van de effectieve live rechten.';
+}
+function renderService(){
+  const options=catalog?.filter(x=>x.group===$('service').value)||[];
+  const role=$('role');role.replaceChildren();
+  for(const item of options){
+    const option=document.createElement('option');
+    option.value=item.id;option.textContent=item.label;role.append(option);
+  }
+  renderRole();
+}
+$('service').addEventListener('change',renderService);
+$('role').addEventListener('change',renderRole);
+async function authorize(user){
+  if(!user){
+    $('workspace').hidden=true;
+    note('Discord-aanmelding vereist','Meld je via Mijn portaalprofiel met je eigen goedgekeurde Discord-account aan.',true);
+    return;
+  }
+  try{
+    const token=await user.getIdToken();
+    const response=await fetch('/api/testmodus/rollen',{
+      method:'GET',headers:{Authorization:'Bearer '+token},
+      cache:'no-store',credentials:'same-origin'});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw Error(data.error||'Je hebt geen toestemming voor deze testweergave.');
+    if(!data.testEnvironment||data.mode!=='read-only-preview')throw Error('Onverwacht simulatieantwoord');
+    catalog=Array.isArray(data.roles)?data.roles:[];
+    groups=Array.isArray(data.groups)?data.groups:[];
+    const services=$('service');services.replaceChildren();
+    for(const group of groups){
+      const option=document.createElement('option');
+      option.value=group.id;option.textContent=group.icon+' '+group.name;
+      services.append(option);
+    }
+    services.value='ambulance';
+    renderService();
+    $('workspace').hidden=false;
+    note('Testmodus geactiveerd','Je bekijkt uitsluitend voorbeeldschermen. Het portaal neemt nergens de identiteit of rechten van een andere gebruiker over.');
+  }catch(err){
+    catalog=null;$('workspace').hidden=true;
+    note('Geen toegang tot de testmodus',err.message||'Verificatie is mislukt.',true);
+  }
+}
+try{
+ const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+ if(!config.enabled)throw Error('Firebase-aanmelding is niet ingeschakeld.');
+ const {initializeApp,getApps,getApp}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+ const {getAuth,onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+ const app=getApps().length?getApp():initializeApp(config.firebaseConfig);
+ onAuthStateChanged(getAuth(app),user=>{void authorize(user)});
+}catch(err){note('Aanmelding niet beschikbaar',err.message||'Probeer opnieuw te verbinden.',true)}
+</script>
+</body>
+</html>
