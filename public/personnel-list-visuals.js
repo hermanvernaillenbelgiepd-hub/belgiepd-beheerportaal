@@ -169,6 +169,22 @@
     return {group:match?order.indexOf(match[1]):99,
       number:match?.[2]!==undefined?Number(match[2]):0};
   };
+  // Brandweer sheet: ZONE, OFF-02..06, OOFF-08..15, BWM-01..25
+  // (first corporals, then firefighters), STAG-01..21. Ascending numbers.
+  const fireSortKey=person=>{
+    const call=String(person?.call||'').trim().toUpperCase().replaceAll(' ','');
+    if(['ZONE','ZONECOMMANDANT','ZONECOMMANDANTE'].includes(call))
+      return {group:0,number:0};
+    const match=call.match(/^(OOFF|OFF|BWM|BMW|STAG)-?(\d{1,4})$/);
+    if(!match)return {group:6,number:999};
+    const prefix=match[1],n=Number(match[2]);
+    if(prefix==='OFF'&&n>=2&&n<=6)return {group:1,number:n};
+    if(prefix==='OOFF'&&n>=8&&n<=15)return {group:2,number:n};
+    if(['BWM','BMW'].includes(prefix)&&n>=1&&n<=5)return {group:3,number:n};
+    if(['BWM','BMW'].includes(prefix)&&n>=6&&n<=25)return {group:4,number:n};
+    if(prefix==='STAG'&&n>=1&&n<=21)return {group:5,number:n};
+    return {group:6,number:999};
+  };
   function comparePersonnel(a,b,mode='call-desc'){
     const nameA=String(a?.name||''),nameB=String(b?.name||'');
     const nameCompare=nameA.localeCompare(nameB,'nl',{numeric:true,sensitivity:'base'});
@@ -177,6 +193,10 @@
       String(a?.discordId||a?.personId||'').localeCompare(String(b?.discordId||b?.personId||''),'nl');
     if(mode==='ambulance'){
       const aa=ambulanceSortKey(a),bb=ambulanceSortKey(b);
+      return aa.group-bb.group||aa.number-bb.number||fallback();
+    }
+    if(mode==='brandweer'){
+      const aa=fireSortKey(a),bb=fireSortKey(b);
       return aa.group-bb.group||aa.number-bb.number||fallback();
     }
     // BelgiumPD: hoogste honderdreeks eerst, binnen die reeks oplopend.
