@@ -10,6 +10,7 @@
 .mr-table th.mr-specialty-head{text-align:center;min-width:89px;white-space:normal}
 .mr-specialty-head small{display:block;font-size:10px;color:#dbeaff}
 .mr-specialty-icon{display:block;font-size:20px;margin-bottom:4px}
+.mr-specialty-image{width:24px;height:26px;object-fit:contain;vertical-align:middle}
 .mr-table td{padding:8px 9px;border-bottom:1px solid #345474;border-right:1px solid #304d6d;
  vertical-align:middle;color:#ebf4ff;background:#102540}
 .mr-table tbody tr.mr-person:nth-of-type(even) td{background:#172f4e}
