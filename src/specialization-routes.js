@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {validPersonnelKey} from './personnel-editor-policy.js';
+import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,
   specialtyWritesEnabled,canChangeSpecialty,validateSpecialtyChange,
@@ -78,6 +79,13 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
           previous:existing.value,value:proposal.value,source:'manual',
           reason:proposal.reason,revision:current+1,actorUid:req.bpd.uid,
           actorDiscordId:req.bpd.discordId||null,at:FieldValue.serverTimestamp()
+        });
+        tx.create(getFirestore().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+          type:'specialization_changed',dept:staff.dept,discordId:staff.personId,
+          name:String(staff.name||'Personeelslid').slice(0,120),
+          label:proposal.label,before:existing.value,after:proposal.value,
+          reason:proposal.reason,actorDiscordId:req.bpd.discordId||null,
+          at:FieldValue.serverTimestamp()
         });
         return current+1;
       });
