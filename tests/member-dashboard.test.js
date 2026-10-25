@@ -34,8 +34,8 @@ test('Nieuwe leden krijgen alleen leesbare personeelslijst, zonder dossier- of D
  assert.deepEqual(records.map(p=>p.call),['930','900','250','008']);
  for(const p of records){
   assert.deepEqual(Object.keys(p).sort(),['call','name','rank','series','status','specialties'].sort());
-  assert.equal(p.specialties.length,11);
-  assert.deepEqual(p.specialties.map(x=>x.label),['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE','LRD (Recherche)']);
+  assert.equal(p.specialties.length,10);
+  assert.deepEqual(p.specialties.map(x=>x.label),['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE']);
   assert.equal('personId' in p,false);
   assert.equal('discordId' in p,false);
   assert.equal('secret' in p,false);
