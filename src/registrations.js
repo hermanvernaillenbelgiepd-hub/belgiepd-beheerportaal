@@ -51,7 +51,11 @@ export function representativeFromPersonnel(persons,dept,id) {
 }
 export const canEditSanction = role => ['officierenkader','korpsleiding'].includes(role);
 export const hasDept = (user,dept) => Boolean(user?.departments?.includes(dept));
-export const maySubmit = (user,type,dept) => hasDept(user,dept) && (
+export const maySubmit = (user,type,dept) => hasDept(user,dept) &&
+  // Agentenkader (100/200) cannot use the formal observation register.
+  // Basiskader Police observations go exclusively through the separate
+  // basic-observations endpoint, which verifies the author's 3xx-5xx rank.
+  !(dept==='politie'&&type==='observatie'&&user?.role==='basiskader') && (
   (user?.dossierFullDepartments?.includes(dept)&&['observatie','sanctie'].includes(type)) ||
   type === 'observatie' || (type === 'sanctie' && (
     (dept === 'politie' && (user.portalTechnicalMode===true||
