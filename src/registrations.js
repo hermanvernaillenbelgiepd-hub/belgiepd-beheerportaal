@@ -29,6 +29,17 @@ export const canChooseSanction=(role,kind,severity=null)=>{
 };
 export const permittedSanctionTypes=(role,severity)=>
   SANCTION_TYPES.filter(kind=>canChooseSanction(role,kind,severity));
+// Depannage's registration vocabulary is deliberately narrower than Police:
+// warnings, suspension and dismissal. Role hierarchy still applies.
+export const DEPANNAGE_SANCTION_TYPES=Object.freeze([
+  'Mondelinge waarschuwing','Officiële waarschuwing','Schorsing','Ontslag'
+]);
+export const permittedDepartmentSanctions=(dept,role,severity)=>
+  permittedSanctionTypes(role,severity).filter(kind=>
+    dept!=='depannage'||DEPANNAGE_SANCTION_TYPES.includes(kind));
+export const canChooseDepartmentSanction=(dept,role,kind,severity)=>
+  permittedDepartmentSanctions(dept,role,severity).includes(kind);
+
 export const canRepresent = (user,type,dept) => type==='observatie' && hasDept(user,dept) && (user?.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(user?.role));
 // Alleen politie-middenkaderleden als mogelijke vertegenwoordigde auteur; het is geen autorisatiebron.
 export const eligibleRepresentative = (person,dept) => dept==='politie' && person?.dept===dept && isDiscordId(person?.personId) && policeKader(person.rank)==='Middenkader';
