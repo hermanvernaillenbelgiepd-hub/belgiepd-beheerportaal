@@ -284,3 +284,112 @@ body.bpd-unified-dossier.dossier-onepage #panel > .sheet-identity strong {
     grid-template-columns: repeat(2,minmax(0,1fr));
   }
 }
+
+/* Brandweer specialisaties: lokaal SVG-pictogram, benaming en statustoestand.
+   Alleen presentatie: geen wijzigingen aan Discord- of dossierautorisatie. */
+body.dossier-fire-sheet .fire-specialty-list {
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  gap: 6px;
+  width: 100%;
+}
+body.dossier-fire-sheet .fire-specialty-list.is-compact {
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+body.dossier-fire-sheet .fire-specialty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: #193756;
+  border: 1px solid #3b5b7d;
+  border-radius: 7px;
+}
+body.dossier-fire-sheet .fire-specialty-list.is-compact .fire-specialty-row {
+  padding: 4px 7px;
+  background: #183352;
+  border-color: #355577;
+}
+body.dossier-fire-sheet .fire-specialty-main {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+body.dossier-fire-sheet .fire-specialty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  color: #c5dcff;
+  background: #294b71;
+  border-radius: 5px;
+}
+body.dossier-fire-sheet .fire-specialty-icon svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+}
+body.dossier-fire-sheet .fire-specialty-name {
+  color: #eff6ff;
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+body.dossier-fire-sheet .fire-specialty-status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 21px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+  border-radius: 5px;
+  border: 1px solid #526b86;
+  color: #dee9f8;
+  background: #263c55;
+}
+body.dossier-fire-sheet .fire-specialty-status.is-yes {
+  background: #1e5c38;
+  border-color: #348455;
+  color: #e7ffef;
+}
+body.dossier-fire-sheet .fire-specialty-status.is-stage {
+  background: #705818;
+  border-color: #aa892e;
+  color: #fff2c6;
+}
+body.dossier-fire-sheet .fire-specialty-status.is-docent {
+  background: #493374;
+  border-color: #7559a3;
+  color: #f0e7ff;
+}
+body.dossier-fire-sheet .fire-specialty-status.is-warning {
+  background: #704619;
+  border-color: #ab6d29;
+  color: #fff1df;
+}
+body.dossier-fire-sheet .fire-specialty-status.is-off {
+  background: #522d34;
+  border-color: #8c4c59;
+  color: #ffe0e5;
+}
+body.dossier-fire-sheet .fire-specialty-empty {
+  color: #a7bad5;
+  font-size: 12px;
+}
+@media(max-width:480px){
+  body.dossier-fire-sheet .fire-specialty-name {font-size:11px}
+  body.dossier-fire-sheet .fire-specialty-row {gap:6px;padding:6px 7px}
+  body.dossier-fire-sheet .fire-specialty-status {font-size:9px;padding:3px 5px}
+}
