@@ -18,7 +18,7 @@ const body={label:'K9',value:'Ja',expectedRevision:0,reason};
 
 test('Catalog exposes all per-service disciplines including SRT and DSU without false source values',()=>{
   const expected=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9',
-    'RAGO','Dispatch','TO','AE'];
+    'RAGO','Dispatch','TO','AE','LRD (Recherche)'];
   assert.deepEqual(SPECIALTY_LABELS.politie,expected);
   assert.equal(allowedSpecialty('politie','K9'),true);
   assert.equal(allowedSpecialty('ambulance','K9'),false);
@@ -84,7 +84,7 @@ test('Browser headings show pictograms and aligned statuses, including negative 
   const path=new URL('../public/personnel-list-visuals.js',import.meta.url);
   const context={window:{}};runInNewContext(readFileSync(path,'utf8'),context);
   const ui=context.window.BPDPersonnelVisuals;
-  assert.equal(ui.specialtyColumns('politie').length,10);
+  assert.equal(ui.specialtyColumns('politie').length,11);
   assert.equal(ui.specialtyColumns('ambulance').length,5);
   assert.equal(ui.specialtyColumns('all').length,0);
   assert.deepEqual([...ui.specialtyColumns('politie')],SPECIALTY_LABELS.politie);
