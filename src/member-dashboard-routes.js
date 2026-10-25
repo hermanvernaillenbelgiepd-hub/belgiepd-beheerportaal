@@ -2,7 +2,7 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
 import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
-import {createPoliceLrdIndex,LRD_SPECIALTY_LABEL} from './police-lrd-policy.js';
+import {readVerifiedPoliceLrd,LRD_SPECIALTY_LABEL} from './police-lrd-policy.js';
 
 const discordId=/^\d{15,22}$/;
 const staffRoles=new Set(['basiskader','middenkader','officierenkader','korpsleiding','beheerder']);
@@ -48,7 +48,10 @@ export function publicPoliceRoster(rows,verifiedLrdIds=new Set()){
       return [label,typeof value==='string'?value.trim().slice(0,40)||'Niet ingevuld':
         'Niet ingevuld'];
     }));
-    if(verifiedLrdIds.has(p.personId))safeStatuses[LRD_SPECIALTY_LABEL]='Ja';
+    // Discord bot membership wins over old manual/stale specialization values.
+    // If role verification is incomplete, never claim the person lacks LRD.
+    safeStatuses[LRD_SPECIALTY_LABEL]=verifiedLrdIds.has(p.personId)?'Ja':
+      verifiedLrdIds.confirmedIds?.has(p.personId)?'Nee':'Niet gecontroleerd';
     visible.push({
       call:strip(p.call).slice(0,18),name:strip(p.name).slice(0,90),
       rank:strip(p.rank).slice(0,95),series:strip(p.series).slice(0,85),
@@ -72,7 +75,7 @@ export function publicPoliceRoster(rows,verifiedLrdIds=new Set()){
   return visible.slice(0,400);
 }
 export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
-  const getVerifiedLrdIds=createPoliceLrdIndex();
+  const getVerifiedLrdIds=readVerifiedPoliceLrd;
   async function memberIdentity(req,res,next){
     res.set('Cache-Control','private, no-store');
     const token=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
