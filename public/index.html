@@ -122,6 +122,16 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a href="/verlofbeheer.html">▦ &nbsp; Verlofbeheer</a>
     <a id="adminNavLink" href="/gebruikersbeheer.html#dienstbeheer" hidden>⚙ &nbsp; Beheer &amp; rollen</a>
   </nav>
+  <nav id="zoneNav" aria-label="Brandweer Zonecommandant" hidden>
+    <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
+    <a href="/personeelslijst.html">👥 &nbsp; Politiepersoneelslijst (lezen)</a>
+    <a href="/personeelsbeheer.html">🚒 &nbsp; Brandweerpersoneel</a>
+    <a href="/dossiercentrum.html">📁 &nbsp; Brandweerdossiers</a>
+    <a href="/opleidingscentrum.html">🎓 &nbsp; Opleidingscentrum</a>
+    <a href="/weekrapporten.html">📋 &nbsp; Brandweerweekrapporten</a>
+    <a href="/verlofbeheer.html">📅 &nbsp; Mijn verlof</a>
+    <a href="/meldingen.html">📬 &nbsp; Meldingen</a>
+  </nav>
   <nav id="memberNav" aria-label="Nieuwe leden" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
     <a href="/discord-status.html">👤 &nbsp; Mijn profiel</a>
@@ -201,6 +211,21 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     </section>
     <p class="member-notice" id="memberAccountStatus" role="status">Je Discord-profiel wordt gecontroleerd.</p>
   </section>
+  <section id="zoneDashboard" hidden aria-labelledby="zoneDashboardTitle">
+    <section class="hero"><div><p class="eyebrow">Brandweer · Zoneleiding</p><h1 id="zoneDashboardTitle">ZONE – Zonecommandant</h1>
+    <p class="lead">Beheer de Brandweer binnen jouw eigen dienst. De politionele personeelslijst is uitsluitend ter inzage.</p></div></section>
+    <h2 class="section-title">Brandweerleiding en eigen functies</h2>
+    <div class="grid" id="zoneModules">
+      <a class="module" href="/personeelslijst.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelslijst Politie</h3><p>Alleen-lezen inzage in de politionele personeelslijst; geen politiedossiers.</p><span class="open">Open →</span></a>
+      <a class="module" href="/personeelsbeheer.html"><span class="ico" aria-hidden="true">🚒</span><h3>Personeelsbeheer Brandweer</h3><p>Beheer personeelsgegevens volgens je geverifieerde ZONE-rechten.</p><span class="open">Open →</span></a>
+      <a class="module" href="/dossiercentrum.html"><span class="ico" aria-hidden="true">📁</span><h3>Brandweerdossiers</h3><p>Brandweerdossiers, observaties, notities, sancties en opleidingen.</p><span class="open">Open →</span></a>
+      <a class="module" href="/opleidingscentrum.html"><span class="ico" aria-hidden="true">🎓</span><h3>Opleidingscentrum Brandweer</h3><p>Opleidingsaanvragen binnen de eigen hulpdienst.</p><span class="open">Open →</span></a>
+      <a class="module" href="/weekrapporten.html"><span class="ico" aria-hidden="true">📋</span><h3>Brandweerweekrapporten</h3><p>Eigen dienstgebonden weekrapporten en archief.</p><span class="open">Open →</span></a>
+      <a class="module" href="/verlofbeheer.html"><span class="ico" aria-hidden="true">📅</span><h3>Mijn verlof</h3><p>Vraag eigen verlof aan en volg je verlofperiodes.</p><span class="open">Open →</span></a>
+      <a class="module" href="/meldingen.html"><span class="ico" aria-hidden="true">📬</span><h3>Meldingen Brandweer</h3><p>Opleidingsaanvragen van brandweerleden en persoonlijke verlofberichten.</p><span class="open">Open →</span></a>
+    </div>
+    <p class="caption">TO-dienstbord, observaties vanuit politiebasiskader, roepnummeraanvragen en algemeen gebruikersbeheer behoren niet tot deze ZONE-werkruimte.</p>
+  </section>
   <section id="guestDashboard" aria-labelledby="guestDashboardTitle">
     <p class="eyebrow">BelgiëPD</p><h1 id="guestDashboardTitle">Welkom op het beheerportaal</h1>
     <p class="lead" id="guestMessage">Meld je aan met je eigen Discord-account via Mijn profiel om je toegelaten startpagina te openen.</p>
@@ -211,7 +236,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
 <script type="module">
 import {renderMemberPoliceRoster} from '/member-police-roster.js';
 const $=id=>document.getElementById(id);
-const staffNav=$('staffNav'),memberNav=$('memberNav'),staffHome=$('staffDashboard');
+const staffNav=$('staffNav'),memberNav=$('memberNav'),zoneNav=$('zoneNav'),staffHome=$('staffDashboard'),zoneHome=$('zoneDashboard');
 const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
 const adminSection=$('adminRights'),adminNavLink=$('adminNavLink'),logoutButton=$('dashboardLogout');
 const simpleIds=['memberTrainingTile','memberNavCallsign','memberCallsignTile','memberNavLeave','memberLeaveTile','memberNavNotices','memberNoticesTile'];
@@ -236,8 +261,8 @@ function showApprovedBasicDashboard(){
 }
 let auth,requestNumber=0;
 function show(mode,message=''){
- staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';
- staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';
+ staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';zoneNav.hidden=mode!=='zone';
+ staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';zoneHome.hidden=mode!=='zone';
  guestHome.hidden=mode!=='guest';adminSection.hidden=true;adminNavLink.hidden=true;
  resetSimpleModules();
  if(message)$('guestMessage').textContent=message;
@@ -270,7 +295,8 @@ async function displayAuthenticated(user){
     const token=await user.getIdToken();
     const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
     if(turn!==requestNumber)return;
-    if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
+    if(ctx.dashboardProfile==='brandweer-zone')show('zone');
+    else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
     else{
       show('staff');
       adminSection.hidden=ctx.visible!==true;
@@ -317,7 +343,8 @@ async function displayAuthenticated(user){
   }else if(details.mode==='staff'){
     const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
     if(turn!==requestNumber)return;
-    if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
+    if(ctx.dashboardProfile==='brandweer-zone')show('zone');
+    else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
     else{
       show('staff');
       adminSection.hidden=ctx.visible!==true;
