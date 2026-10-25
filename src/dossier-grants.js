@@ -18,6 +18,9 @@ export function dossierGrantScope(actor,boardMember,boardAppointment,dept){
   // extra portal access. That remains exclusive to Board/technical control.
   if(dept==='brandweer'&&
       (actor?.fireZoneChief===true||roleForDepartment(actor,'brandweer')==='korpsleiding'))return false;
+  // AZLS leaders can maintain their own ambulance personnel but cannot
+  // issue arbitrary Firestore dossier delegations to other users.
+  if(dept==='ambulance')return false;
   // Corps leadership is confined to its own authorised service; a verified
   // fire ZONE commander can manage fire delegations without policing rights.
   return DOSSIER_DEPTS.includes(dept)&&actor?.departments?.includes(dept)&&
