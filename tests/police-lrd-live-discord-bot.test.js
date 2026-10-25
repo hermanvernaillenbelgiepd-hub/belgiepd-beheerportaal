@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createPoliceLrdIndex,fetchBotLrdGuildSnapshot,
   LRD_DISCORD_ROLE_ID,LRD_SPECIALTY_LABEL} from '../src/police-lrd-policy.js';
 import {publicPoliceRoster} from '../src/member-dashboard-routes.js';
-import {allowedSpecialty,validateSpecialtyChange} from '../src/specialization-policy.js';
+import {allowedSpecialty,validateSpecialtyChange,publicSpecializations} from '../src/specialization-policy.js';
 
 const guild='123456789012345678',token='x'.repeat(40);
 const first='111111111111111111',second='222222222222222222';
@@ -100,6 +100,13 @@ test('Bot errors cannot fabricate a NEE status from an expired OAuth snapshot',a
 test('LRD is auto-managed; manual LRD toggles are rejected at the server',()=>{
  assert.equal(allowedSpecialty('politie',LRD_SPECIALTY_LABEL),false);
  assert.equal(allowedSpecialty('politie','K9'),true);
+ const oldManual=publicSpecializations(firstPerson,{revision:1,values:{
+   [LRD_SPECIALTY_LABEL]:{value:'Ja',source:'manual'}
+ }});
+ const lrd=oldManual.items.find(row=>row.label===LRD_SPECIALTY_LABEL);
+ assert.equal(lrd.value,'Niet gecontroleerd');
+ assert.equal(lrd.readOnly,true);
+
  assert.throws(()=>validateSpecialtyChange({
   label:LRD_SPECIALTY_LABEL,value:'Ja',expectedRevision:0,
   reason:'Manuele activatie mag geen echte rol vervangen'
