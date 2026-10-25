@@ -771,7 +771,7 @@ function availablePersonnelRegistrationKinds(){
     for(const type of casePermissions.typesByDepartment?.[dept]||[]){
       // Opleiding blijft als dossierregistratie beschikbaar wanneer het
       // formele opleidingsregister hier niet actief is, zonder dubbel menu.
-      if(type==='activiteit')continue;
+      if(type==='activiteit'||type==='verlof')continue;
       if(canRegisterOfficialTraining()){
         if(type==='opleiding')continue;
       }
