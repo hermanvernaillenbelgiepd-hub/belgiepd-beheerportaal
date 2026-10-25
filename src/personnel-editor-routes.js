@@ -14,7 +14,6 @@ import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {isPolice9xx} from './verified-police-cadre.js';
 import {displaySeries} from './normalize.js';
-import {LRD_SPECIALTY_LABEL} from './police-lrd-policy.js';
 import {canChangePoliceGrade,allowedPoliceGradeChoices,
   validatePoliceGradeChange,classifyPoliceGradeChange} from './personnel-rank-policy.js';
 
@@ -56,7 +55,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           // Presentation-only specialties from the already-authorized Sheets
           // roster. Do not treat these values as Discord role grants.
           specialties:Array.isArray(p.specialties)?p.specialties.slice(0,16)
-            .filter(x=>x&&typeof x.label==='string'&&typeof x.value==='string')
+            .filter(x=>x&&typeof x.label==='string'&&typeof x.value==='string'&&
+              (p.dept!=='politie'||x.label!=='LRD (Recherche)'))
             .map(x=>({label:x.label.slice(0,64),value:x.value.slice(0,90)})):[],
           revision:Number.isSafeInteger(edit?.revision)?edit.revision:0,
           source:edit?'firestore-overlay':p.source==='firestore-created'?'firestore-created':'google-sheets',
@@ -65,33 +65,14 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           canEditIdentity:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p),
           canEditStatus:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p)};
       });
-      // The same server-verified subject role controls access and the visual
-      // badge. Never display a 24-hour-old role while the access policy
-      // requires a fresh 15-minute role verification.
-      const labelledRecords=records.map(p=>{
-        const lrdVerified=p.dept==='politie'&&
-          req.bpd.policeLrdSubjectIds?.[p.discordId]===true;
-        const specialties=p.specialties.map(item=>({...item}));
-        const lrdChecked=req.bpd.policeLrdCheckedIds?.[p.discordId]===true;
-        if(p.dept==='politie'){
-          const status=lrdVerified?'Ja':lrdChecked?'Nee':'Niet gecontroleerd';
-          const existing=specialties.find(s=>s.label===LRD_SPECIALTY_LABEL);
-          if(existing)existing.value=status;
-          else specialties.push({label:LRD_SPECIALTY_LABEL,value:status});
-        }
-        return {...p,specialties,lrdDiscordVerified:lrdVerified,
-          discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
-            req.bpd.verifiedPoliceSubjectRoles?.[p.discordId]||null:null,
-          verifiedFunction:p.dept==='depannage'?
-            req.bpd.depannageSubjectFunctions?.[p.discordId]||null:null};
-      });
+      const labelledRecords=records.map(p=>({...p,
+        discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
+          req.bpd.verifiedPoliceSubjectRoles?.[p.discordId]||null:null,
+        verifiedFunction:p.dept==='depannage'?
+          req.bpd.depannageSubjectFunctions?.[p.discordId]||null:null}));
       const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
         .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
       return res.json({records:labelledRecords,pendingPersonnel,
-        discordRechercheUnlinked:allowed.includes('politie')&&
-          !snapshot.stale?req.bpd.policeLrdUnlinked||[]:[],
-        discordRechercheComplete:allowed.includes('politie')&&
-          !snapshot.stale&&req.bpd.policeLrdUnlinkedAvailable===true,
         testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
         canViewPersonnelDiagnostics:req.bpd.boardPersonnelAdmin===true,
         role:req.bpd.role,departments:allowed,
