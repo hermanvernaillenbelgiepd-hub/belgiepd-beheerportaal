@@ -18,6 +18,10 @@ export const SPECIALTY_LABELS=Object.freeze(Object.fromEntries(
       ...(dept==='brandweer'?[
         'Logistiek / Signalisatie','Bosbestrijding','Brandweer-AMBU',
         'RED-TEAM','Basistraining'
+      ]:dept==='depannage'?[
+        // No Google Sheets source columns for these two capabilities yet.
+        // Both default to "Niet ingevuld" until an authorized audited update.
+        'CRANE','WEGENWERKEN'
       ]:[])])])
 ));
 const s = value => String(value ?? '').trim();
