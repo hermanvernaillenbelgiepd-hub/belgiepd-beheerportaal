@@ -629,6 +629,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 </main>
 <script src="/personnel-list-visuals.js"></script>
 <script type="module">
+import {renderDepannageSpecialties,depannageSpecialtyMeta} from '/depannage-specialty-icons.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
@@ -1667,6 +1668,12 @@ function sheetIdentity(p){
 }
 function sheetSpecialtyRows(rows){
   const container=$('sheetSpecialties');container.replaceChildren();
+  if(selected?.dept==='depannage'){
+    // Four fixed operational fields. Missing CRANE/WEGENWERKEN values remain
+    // "Niet ingevuld"; presentation never assigns operational qualifications.
+    renderDepannageSpecialties(container,rows,{compact:true});
+    return;
+  }
   const actual=(rows||[]).filter(x=>x.status&&
     !['Niet ingevuld','Onbekend'].includes(String(x.status)));
   if(!actual.length){container.textContent='Nog geen geregistreerde specialisaties.';return}
@@ -2369,13 +2376,17 @@ async function loadSpecialtyState(p){
     specialtyRevision=data.revision;specialtyItems=data.items||[];
     const states=BPDPersonnelVisuals.specialtyStatuses(specialtyItems);
     sheetSpecialtyRows(states);
-    for(const x of states){
-      const cell=document.createElement('div');cell.className='specialty-tile';
-      const icon=specialtyMark(x.label);
-      const label=document.createElement('strong');label.textContent=x.label;
-      const value=document.createElement('span');value.className='specialty-state specialty-'+x.style;
-      value.textContent=x.status;cell.title=x.label+' · '+x.status;
-      cell.append(icon,label,value);root.append(cell);
+    if(p.dept==='depannage'){
+      renderDepannageSpecialties(root,states);
+    }else{
+      for(const x of states){
+        const cell=document.createElement('div');cell.className='specialty-tile';
+        const icon=specialtyMark(x.label);
+        const label=document.createElement('strong');label.textContent=x.label;
+        const value=document.createElement('span');value.className='specialty-state specialty-'+x.style;
+        value.textContent=x.status;cell.title=x.label+' · '+x.status;
+        cell.append(icon,label,value);root.append(cell);
+      }
     }
     if(!states.length)root.textContent='Geen onderdelen bekend voor deze hulpdienst.';
     $('specialtyStatus').textContent=data.canEdit?
@@ -2386,7 +2397,8 @@ async function loadSpecialtyState(p){
       'beschikbaar':!states.length?'geen specialisaties voor deze dienst':
       'alleen bevoegd Officierenkader of Korpsleiding mag aanpassen';
     $('specialtyEdit').hidden=true;
-    $('specialtyLabel').replaceChildren(...states.map(x=>option(x.label,x.label)));
+    $('specialtyLabel').replaceChildren(...states.map(x=>option(x.label,
+      p.dept==='depannage'?depannageSpecialtyMeta(x.label).label:x.label)));
     if(states.length){
       $('specialtyValue').value=states[0].status;
       if(!$('specialtyValue').value)$('specialtyValue').value='Niet ingevuld';
