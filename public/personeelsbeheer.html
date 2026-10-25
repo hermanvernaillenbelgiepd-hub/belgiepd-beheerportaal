@@ -758,6 +758,7 @@ function availablePersonnelRegistrationKinds(){
     if(casePermissions?.writesEnabled===true&&casePermissions.actor&&
        casePermissions.typesByDepartment?.[dept]?.includes('specialisatiebeperking'))
       kinds.push(['case:specialisatiebeperking','Beperking van specialisatie']);
+    if(registrationManualLeave)kinds.push(['leave','Verlofperiode manueel inschrijven']);
     return kinds;
   }
   if(formalPermissions?.writesEnabled===true&&formalPermissions.actor){
@@ -1782,7 +1783,7 @@ function sheetIdentity(p){
   const scoreHeader=$('sheetScoreSummary');
   scoreHeader.hidden=p.dept!=='politie';
   scoreHeader.textContent='Gem. score: gegevens laden…';
-  $('sheetStatus').textContent=p.status||'—';
+  $('sheetStatus').textContent=activeLeaveRosterIds.has(p.discordId)?'🏖️ Verlof':p.status||'—';
   $('sheetDiscordId').textContent=p.discordId||'—';
   $('ficheEditor').hidden=true;$('ficheEditor').open=false;
   $('editPersonnelSummary').hidden=true;
@@ -2011,6 +2012,11 @@ async function loadStaffLeave(p,key){
     // Overzicht: maximaal vijf goedgekeurde verlofperiodes, met lopend verlof eerst.
     // Ingetrokken, geweigerde en lopende aanvragen blijven in de beveiligde detailbron.
     const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels'}).format(new Date());
+    const isApprovedActive=leaves.some(x=>x.status==='approved'&&x.startDate<=today&&x.endDate>=today);
+    if(isApprovedActive)activeLeaveRosterIds.add(p.discordId);
+    else activeLeaveRosterIds.delete(p.discordId);
+    render();
+    $('sheetStatus').textContent=isApprovedActive?'🏖️ Verlof':p.status||'—';
     const periodState=x=>x.startDate<=today&&x.endDate>=today?'Lopend':
       x.startDate>today?'Gepland':'Afgerond';
     const order={Lopend:0,Gepland:1,Afgerond:2};
