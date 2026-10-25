@@ -114,7 +114,7 @@
     politie:['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE'],
     ambulance:['Basis TR','Medicatie','HELI','Motor','MIP'],
     brandweer:['Basis TR','Logistiek','Ladderwagen','Duiker','Signalisatie','RED team','Gevaarlijke stoffen','Grote Boot'],
-    depannage:['Opleiding DEP2K','Opleiding FAST']
+    depannage:['Opleiding DEP2K','Opleiding FAST','CRANE','WEGENWERKEN']
   });
   function specialtyColumns(dept){
     return labelsByService[dept]?[...labelsByService[dept]]:[];
