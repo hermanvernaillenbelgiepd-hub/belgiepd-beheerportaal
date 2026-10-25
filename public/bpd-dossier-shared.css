@@ -685,3 +685,68 @@ body.dossier-onepage #sheetSeries .police-series-4::after {
   body.dossier-onepage .police-score-summary {width:100%;justify-content:flex-start}
   body.dossier-onepage #sheetSeries .dossier-series-heads {font-size:9px}
 }
+
+/* Personnel roster: read-only Police series and leadership decorations.
+   Match the existing dossier identity colors without changing the roster data. */
+body.bpd-unified-dossier .roster-series-cell {
+  min-width: 135px;
+  max-width: 245px;
+  vertical-align: middle;
+}
+body.bpd-unified-dossier .police-roster-series {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+body.bpd-unified-dossier .police-roster-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  width: fit-content;
+  border: 1px solid #647f9b;
+  border-radius: 6px;
+  padding: 3px 7px;
+  color: #e1ebfa;
+  background: #223c59;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+body.bpd-unified-dossier .police-roster-badge.series-1 {
+  color: #ffadad; background: #64252b; border-color: #bd515f;
+}
+body.bpd-unified-dossier .police-roster-badge.series-2 {
+  color: #e5c2ff; background: #49296d; border-color: #9665c3;
+}
+body.bpd-unified-dossier .police-roster-badge.series-3 {
+  color: #b2edff; background: #164b70; border-color: #51a4d6;
+}
+body.bpd-unified-dossier .police-roster-badge.series-4 {
+  color: #ffe989; background: #645016; border-color: #d2ae4c;
+}
+body.bpd-unified-dossier .police-roster-badge.butterfly {
+  color: #f0ddff; background: #43336b; border-color: #a18ddd;
+}
+body.bpd-unified-dossier .police-roster-badge.officer,
+body.bpd-unified-dossier .police-roster-badge.combined {
+  color: #ffffff;
+  background: linear-gradient(110deg,#87365c,#83508c,#347aab,#2b887d);
+  border-color: #c7b3f3;
+}
+body.bpd-unified-dossier .police-roster-badge.corps {
+  color: #ffe89d; background: #57461e; border-color: #e5c36b;
+}
+body.bpd-unified-dossier .police-roster-badge.neutral {
+  color: #c2d4e9; background: #1b314c; border-color: #48627f;
+  font-weight: 600; font-size: 10px;
+}
+@media(max-width:700px) {
+  body.bpd-unified-dossier .roster-series-cell {min-width: 110px;}
+  body.bpd-unified-dossier .police-roster-badge {
+    padding: 2px 5px; font-size: 10px;
+  }
+}
