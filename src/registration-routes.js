@@ -63,7 +63,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const snap=await getSnapshot();
       if(!safeSubject(snap.data,dept,id))return res.status(404).json({error:'Personeelslid niet gevonden'});
       const rows=await db().collection('bpd_cases').doc(docId(dept,id)).collection('entries').orderBy('createdAt','desc').limit(100).get();
-      res.json({entries:rows.docs.map(d=>({id:d.id,...publicEntry(d.data())}))});
+      res.json({entries:rows.docs.map(d=>({id:d.id,...publicEntry(d.data())})),limited:rows.docs.length===100});
     }catch(err){return handleError(res,err)}
   });
   // Alleen bevoegde sanctionerende kaderleden zien de gedetailleerde
