@@ -61,7 +61,14 @@ function renderHeader(thead){
  for(const label of PUBLIC_POLICE_SPECIALTIES){
    const th=element('th',undefined,'mr-specialty-head');
    th.title=label;
-   const pic=element('span',visual().specialtyIcon(label),'mr-specialty-icon');
+   const pic=element('span',undefined,'mr-specialty-icon');
+   const image=visual().specialtyIconImage(label);
+   if(image){
+     const img=document.createElement('img');
+     img.src=image;img.alt='';img.loading='lazy';
+     img.className='mr-specialty-image';
+     pic.append(img);
+   }else pic.textContent=visual().specialtyIcon(label);
    pic.setAttribute('aria-hidden','true');
    th.append(pic,element('small',label));
    tr.append(th);
