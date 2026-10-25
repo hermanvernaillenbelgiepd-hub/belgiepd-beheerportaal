@@ -324,7 +324,7 @@ function renderDiscordOnlyRecherche(data){
   const available=data?.discordRechercheComplete===true;
   const entries=Array.isArray(data?.discordRechercheUnlinked)?
     data.discordRechercheUnlinked:[];
-  root.hidden=!available&&!entries.length;
+  root.hidden=false;
   if(!available){status.textContent='Discord-ledenlijst niet volledig beschikbaar.';return;}
   status.textContent=entries.length+' LRD-leden zonder personeelsfiche';
   for(const p of entries){
