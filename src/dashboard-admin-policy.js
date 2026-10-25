@@ -4,10 +4,11 @@ import {roleForDepartment} from './leave-policy.js';
 // dossier middleware. The global account rank alone is never evidence of
 // Police command, and an independent Board/technical profile stays separate.
 export function isFireZoneDashboard(actor){
-  if(!actor||actor.fireZoneChief!==true||!actor.departments?.includes('brandweer')||
+  if(!actor||!actor.departments?.includes('brandweer')||
       actor.boardPersonnelAdmin===true||actor.portalTechnicalMode===true||
       actor.role==='beheerder')return false;
-  return !['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'));
+  return (actor.fireZoneChief===true||roleForDepartment(actor,'brandweer')==='korpsleiding')&&
+    !['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'));
 }
 
 // Management endpoints apply their own authenticated authorization checks.
