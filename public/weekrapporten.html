@@ -150,8 +150,12 @@ function updateCaseLink(){
 async function loadCases(){updateCaseLink();if(!viewData||!$('casePerson').value||!$('caseDept').value){$('caseList').textContent='Selecteer een personeelslid.';return}const id=$('casePerson').value,dept=$('caseDept').value;$('caseList').textContent='Dossierregistraties laden...';try{const data=await api(`/api/management/cases?dept=${encodeURIComponent(dept)}&discordId=${encodeURIComponent(id)}`);$('caseList').innerHTML=renderWorkbook(data.entries||[]);if(data.limited)msg('Dossieroverzicht toont maximaal 150 recente registraties.','notice')}catch(e){$('caseList').textContent=e.message}}
 function reportCard(r){
  const actions=`<button class="secondary" type="button" data-open-report="${esc(r.id)}">Inhoud bekijken</button>`+
-  (canRemoveReport&&!(r.source==='automatic'&&r.status==='lopende_periode')?`<button class="report-delete secondary" type="button" data-delete-report="${esc(r.id)}">Wissen</button>`:'');
- return `<div class="item"><div class="item-title">${esc(r.title)} <span class="pill">${esc(r.status||'concept')}</span></div><div class="item-meta">${esc(r.periodStart)} t/m ${esc(r.periodEnd)} · ${esc(r.createdBy?.name||'')}</div><div class="buttons">${actions}</div></div>`;
+  (canRemoveReport&&!(r.source==='automatic'&&r.status==='lopende_periode')?`<button class="report-delete secondary" type="button" data-delete-report="${esc(r.id)}">Wissen</button>`:'')+
+  (canRemoveReport&&r.source==='automatic'&&r.status==='lopende_periode'?
+    `<button class="secondary" type="button" data-restart-report="${esc(r.id)}">Rapport opnieuw starten</button>`:'');
+ const restarted=r.restartedAt?
+   `<div class="item-meta">Herstart: ${esc(new Date(r.restartedAt).toLocaleString('nl-BE'))} · Eerdere registraties uitgesloten</div>`:'';
+ return `<div class="item"><div class="item-title">${esc(r.title)} <span class="pill">${esc(r.status||'concept')}</span></div><div class="item-meta">${esc(r.periodStart)} t/m ${esc(r.periodEnd)} · ${esc(r.createdBy?.name||'')}</div>${restarted}<div class="buttons">${actions}</div></div>`;
 }
 function renderReports(){
  $('reportList').innerHTML=reportItems.length?
@@ -195,7 +199,8 @@ function reportSection(section){
 }
 function renderReport(out){
   const summary=`<div class="report-summary"><div class="report-kpi"><span>Registraties</span><strong>${out.recordCount}</strong></div><div class="report-kpi"><span>Rubrieken</span><strong>${out.sections.filter(s=>s.entries.length).length}</strong></div><div class="report-kpi"><span>Testregistraties uitgesloten</span><strong>${out.excludedTestCount||0}</strong></div></div>`;
-  const info=`<h1>${esc(out.report.title)}</h1><div class="report-meta"><strong>BelgiëPD Beheerportaal</strong> · ${esc(out.report.dept)} · ${esc(out.report.periodStart)} t/m ${esc(out.report.periodEnd)}<br/>Opgesteld door ${esc(out.report.createdBy?.name||'BelgiumPD')} · Status: <strong>${esc(out.report.status||'concept')}</strong></div>${summary}<div class="info warn">${esc(out.disclaimer)}</div>`;
+  const restartLabel=out.report.restartedAt?`<p class="muted">Handmatige herstart: ${esc(new Date(out.report.restartedAt).toLocaleString('nl-BE'))}. Eerdere registraties zijn alleen uit deze rapportinhoud uitgesloten.</p>`:'';
+   const info=`<h1>${esc(out.report.title)}</h1><div class="report-meta"><strong>BelgiëPD Beheerportaal</strong> · ${esc(out.report.dept)} · ${esc(out.report.periodStart)} t/m ${esc(out.report.periodEnd)}<br/>Opgesteld door ${esc(out.report.createdBy?.name||'BelgiumPD')} · Status: <strong>${esc(out.report.status||'concept')}</strong></div>${restartLabel}${summary}<div class="info warn">${esc(out.disclaimer)}</div>`;
   const end=out.truncated?'<div class="info warn">Let op: ten minste één dossier bevat meer registraties dan deze weergave kan verwerken. Export is geblokkeerd; dit rapport is onvolledig.</div>':'';
   return info+out.sections.map(reportSection).join('')+end;
 }
@@ -254,6 +259,27 @@ $('caseList').addEventListener('click',async event=>{
 async function handleReportListClick(event){
  const open=event.target.closest('[data-open-report]');
  if(open){await openReport(open.dataset.openReport);return}
+ const restartBtn=event.target.closest('[data-restart-report]');
+ if(restartBtn){
+  if(!canRemoveReport||!viewData?.removeReportDepartments?.includes($('reportDept').value))return;
+  const report=reportItems.find(x=>x.id===restartBtn.dataset.restartReport);
+  if(!report||report.source!=='automatic'||report.status!=='lopende_periode')return;
+  const consent=window.confirm('Het lopende weekrapport opnieuw starten?\\n\\nAlle registraties die vóór de herstart zijn ingevoerd, verdwijnen uit de INHOUD van dit rapport en zijn ook niet meer in de export opgenomen. De oorspronkelijke personeelsdossiers, audit en weekrapportcyclus blijven behouden. De nieuwe periode start op de volgende vaste maandag.');
+  if(!consent)return;
+  const reason=window.prompt('Motivering voor de rapportherstart (10 tot 500 tekens):','Testregistraties uitsluiten en met een schone rapportinhoud starten');
+  if(reason===null)return;
+  if(reason.trim().length<10||reason.trim().length>500){
+   msg('Geef een motivering van 10 tot 500 tekens.','error');return;
+  }
+  restartBtn.disabled=true;
+  try{
+   await api('/api/management/reports/'+encodeURIComponent(report.id)+'/restart','POST',{reason:reason.trim()});
+   await loadReports();
+   await openReport(report.id);
+   msg('Rapport opnieuw gestart. Oudere registraties worden niet meer opgenomen; de onderliggende dossiers blijven bewaard.','good');
+  }catch(e){msg('Rapport niet herstart: '+e.message,'error');restartBtn.disabled=false}
+  return;
+ }
  const button=event.target.closest('[data-delete-report]');
  if(!button||!canRemoveReport||!viewData?.removeReportDepartments?.includes($('reportDept').value))return;
  const id=button.dataset.deleteReport;
