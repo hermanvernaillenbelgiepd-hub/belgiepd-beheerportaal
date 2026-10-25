@@ -33,6 +33,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <header><strong>🚒 BelgiumPD · Brandweerdossier</strong><nav class="buttons"><a href="/dossiercentrum.html">← Dossiercentrum</a><a href="/">Home</a><button id="refresh" class="alt" type="button">Vernieuwen</button><button id="login" class="alt">Aanmelden</button></nav></header>
 <main>
 <section id="panel" class="card">
+<div id="dossierServiceBanner" class="dossier-service-banner" role="status"></div>
 <h1 id="title">Brandweerpersoneelsdossier</h1>
 <div id="message" class="muted" role="status">Aanmelding controleren…</div>
 <div id="mainCard" class="sheet-identity" hidden>
@@ -156,7 +157,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <h2>Administratieve dossierhistoriek</h2>
 <div id="history" class="sheet-rows"></div>
 <p class="muted">Historiek wordt alleen getoond aan bevoegd Brandweerleiding, ZONE en technisch beheer.</p></section>
-<section class="card dossier-panel" data-pane="nieuw" id="entrySection" hidden><h2>Nieuwe registratie</h2>
+<section class="card dossier-panel" data-pane="nieuw" id="entrySection" hidden><div id="registrationServiceBanner" class="dossier-service-banner service-registration" role="status"></div><h2>Nieuwe registratie</h2>
 <form id="entryForm">
 <div class="fieldgrid">
 <div><label for="kind">Type</label><select id="kind"></select></div>
@@ -181,7 +182,10 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 </main>
 <script type="module">
 import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fire-specialty-icons.js';
+import {displayServiceBadge} from '/dossier-service-badge.js';
 const $=id=>document.getElementById(id);
+displayServiceBadge($('dossierServiceBanner'),'brandweer');
+displayServiceBadge($('registrationServiceBanner'),'brandweer',{registration:true});
 const id=new URLSearchParams(location.search).get('discordId')||'';
 let auth,authMod,setupLogin,current;
 const endpoint='/api/fire-dossiers/'+encodeURIComponent(id);
