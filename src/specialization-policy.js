@@ -10,6 +10,8 @@ export function specialtyWritesEnabled(env){
   return specialtyReadEnabled(env)&&env.BPD_ENABLE_PERSONNEL_SPECIALTY_WRITES==='true';
 }
 export function allowedSpecialty(dept,label){
+  // LRD is managed by the actual Discord bot role, never by manual status edits.
+  if(dept==='politie'&&label==='LRD (Recherche)')return false;
   return typeof label==='string'&&SPECIALTY_LABELS[dept]?.includes(label)===true;
 }
 export function canChangeSpecialty(actor,subject){
