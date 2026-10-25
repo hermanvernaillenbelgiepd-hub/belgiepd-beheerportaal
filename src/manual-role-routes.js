@@ -7,11 +7,11 @@ import {USER_COLLECTION,USER_DEPTS,approvedManagedEntry,canChangeUser,isUserMana
 import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {isVerifiedTechnicalRoleApprover,manualRoleDecisionScope} from './manual-role-decision-policy.js';
+import {MANUAL_ROLE_CATALOG,manualRoleChoice,manualRoleLabel} from './manual-role-catalog.js';
 
 const STORE='bpd_manual_role_requests';
 const VALID_ID=/^\d{15,22}$/;
 const RANK={basiskader:1,middenkader:2,officierenkader:3,korpsleiding:4};
-const REQUEST_ROLES=['middenkader','officierenkader','korpsleiding'];
 const error=(status,message)=>Object.assign(new Error(message),{publicStatus:status});
 const respond=(res,e)=>{
   if(e.publicStatus)return res.status(e.publicStatus).json({error:e.message});
@@ -29,7 +29,7 @@ function payload(body){
     Object.keys(body).some(k=>!['discordId','dept','role','reason'].includes(k)))
     throw error(400,'Ongeldige aanvraag');
   const discordId=String(body.discordId||'');
-  if(!VALID_ID.test(discordId)||!USER_DEPTS.includes(body.dept)||!REQUEST_ROLES.includes(body.role))
+  if(!VALID_ID.test(discordId)||!USER_DEPTS.includes(body.dept)||!manualRoleChoice(body.dept,body.role))
     throw error(400,'Gebruik een geldige Discord-ID, hulpdienst en kaderrol');
   return {discordId,dept:body.dept,role:body.role,reason:safeReason(body.reason)};
 }
@@ -50,7 +50,8 @@ async function rights(actor,db){
   const manager=isUserManager(actor);
   return {propose:boardAccess||manager,board:boardAccess,manager};
 }
-const brief=d=>({discordId:d.discordId,dept:d.dept,role:d.role,status:d.status,
+const brief=d=>({discordId:d.discordId,dept:d.dept,role:d.role,
+  roleLabel:manualRoleLabel(d.dept,d.role),status:d.status,
   reason:d.reason,requestedBy:d.requestedBy,decidedBy:d.decidedBy||null});
 export function installManualRoleRoutes(app,{requireUser}){
   app.get('/api/users/manual-role-requests',requireUser,async(req,res)=>{
@@ -62,7 +63,7 @@ export function installManualRoleRoutes(app,{requireUser}){
       const records=snap.docs.map(d=>d.data()).filter(d=>access.board||
         req.bpd.role==='beheerder'||req.bpd.departments?.includes(d.dept))
         .filter(d=>VALID_ID.test(d.discordId)).map(brief);
-      return res.json({requests:records,canPropose:true,
+      return res.json({requests:records,roleCatalog:MANUAL_ROLE_CATALOG,canPropose:true,
         canApprove:access.manager,board:access.board,
         canSoloApprove:access.manager&&isVerifiedTechnicalRoleApprover(req.bpd),
         actorUid:req.bpd.uid});
@@ -91,11 +92,12 @@ export function installManualRoleRoutes(app,{requireUser}){
       await db.runTransaction(async tx=>{
         const current=await tx.get(ref);
         if(current.get('status')==='pending')throw error(409,'Voor deze medewerker en dienst loopt al een verzoek');
-        tx.set(ref,{...data,status:'pending',
+        tx.set(ref,{...data,roleLabel:manualRoleLabel(data.dept,data.role),status:'pending',
           requestedBy:req.bpd.uid,requestedAt:FieldValue.serverTimestamp(),
           expiresAt:new Date(Date.now()+30*86400000)});
         tx.create(ref.collection('audit').doc(),{action:'requested',
           actorUid:req.bpd.uid,reason:data.reason,role:data.role,
+          roleLabel:manualRoleLabel(data.dept,data.role),
           at:FieldValue.serverTimestamp()});
       });
       return res.status(201).json({status:'pending',roleGranted:false});
@@ -154,18 +156,21 @@ export function installManualRoleRoutes(app,{requireUser}){
               departments,departmentRoles,
               username:String(current?.username||verified.get('username')||'Discord-lid').slice(0,80),
               approvedBy:req.bpd.uid,approvedAt:FieldValue.serverTimestamp(),
-              manualRoleRecovery:{dept,role:request.role,approvedBy:req.bpd.uid,
+              manualRoleRecovery:{dept,role:request.role,
+                roleLabel:manualRoleLabel(dept,request.role),approvedBy:req.bpd.uid,
                 requestedBy:request.requestedBy,
                 approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent'},
               approvalSource:FieldValue.delete(),updatedAt:FieldValue.serverTimestamp()
             },{merge:true});
             tx.create(user.collection('audit').doc(),{
               action:'manual_role_recovery',dept,role:request.role,
+              roleLabel:manualRoleLabel(dept,request.role),
               actorUid:req.bpd.uid,requestedBy:request.requestedBy,reason,
               approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent',
               at:FieldValue.serverTimestamp()});
           }
           tx.update(ref,{status:decision,decidedBy:req.bpd.uid,
+            roleLabel:manualRoleLabel(dept,request.role),
             decisionReason:reason,approvalMethod:scope.technicalOverride?
               'verified_technical_single_approver':'independent',
             decidedAt:FieldValue.serverTimestamp()});
