@@ -15,7 +15,7 @@ const person=(call,id=discordId)=>({
   specialties:[{label:'Radio BM',value:'Ja'},{label:'Motor',value:'Stage'}],
   secret:'VERBODEN',discordId:id,notes:'Geheim dossier'
 });
-test('Lower-cadre read-only API exposes exactly public roster and ten specializations',()=>{
+test('Lower-cadre read-only API exposes exactly public roster and eleven specializations',()=>{
  const rows=publicPoliceRoster([person('400'),{
    ...person('900','222222222222222222'),name:'Tweede'
  }]);
@@ -23,7 +23,7 @@ test('Lower-cadre read-only API exposes exactly public roster and ten specializa
  for(const row of rows){
   assert.deepEqual(Object.keys(row).sort(),[
    'call','name','rank','series','status','specialties'].sort());
-  assert.equal(row.specialties.length,10);
+  assert.equal(row.specialties.length,11);
   assert.deepEqual(row.specialties.map(x=>x.label),[...PUBLIC_POLICE_SPECIALTIES]);
   assert.equal(row.specialties.find(x=>x.label==='Radio BM').value,'Ja');
   assert.equal(row.specialties.find(x=>x.label==='Motor').value,'Stage');

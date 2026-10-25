@@ -14,6 +14,7 @@ import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {isPolice9xx} from './verified-police-cadre.js';
 import {displaySeries} from './normalize.js';
+import {LRD_SPECIALTY_LABEL} from './police-lrd-policy.js';
 import {canChangePoliceGrade,allowedPoliceGradeChoices,
   validatePoliceGradeChange,classifyPoliceGradeChange} from './personnel-rank-policy.js';
 
@@ -67,13 +68,21 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       // The same server-verified subject role controls access and the visual
       // badge. Never display a 24-hour-old role while the access policy
       // requires a fresh 15-minute role verification.
-      const labelledRecords=records.map(p=>({...p,
-        lrdDiscordVerified:p.dept==='politie'&&
-          req.bpd.policeLrdSubjectIds?.[p.discordId]===true,
-        discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
-          req.bpd.verifiedPoliceSubjectRoles?.[p.discordId]||null:null,
-        verifiedFunction:p.dept==='depannage'?
-          req.bpd.depannageSubjectFunctions?.[p.discordId]||null:null}));
+      const labelledRecords=records.map(p=>{
+        const lrdVerified=p.dept==='politie'&&
+          req.bpd.policeLrdSubjectIds?.[p.discordId]===true;
+        const specialties=p.specialties.map(item=>({...item}));
+        if(lrdVerified){
+          const existing=specialties.find(s=>s.label===LRD_SPECIALTY_LABEL);
+          if(existing)existing.value='Ja';
+          else specialties.push({label:LRD_SPECIALTY_LABEL,value:'Ja'});
+        }
+        return {...p,specialties,lrdDiscordVerified:lrdVerified,
+          discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
+            req.bpd.verifiedPoliceSubjectRoles?.[p.discordId]||null:null,
+          verifiedFunction:p.dept==='depannage'?
+            req.bpd.depannageSubjectFunctions?.[p.discordId]||null:null};
+      });
       const pendingPersonnel=pending.docs.map(d=>visiblePendingPersonnel(d.id,d.data()))
         .filter(p=>p&&allowed.includes(p.dept)&&canCreatePersonnel(req.bpd,p.dept));
       return res.json({records:labelledRecords,pendingPersonnel,testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
