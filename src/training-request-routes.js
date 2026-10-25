@@ -83,6 +83,12 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
   const applicant=(ctx,dept)=>ctx.persons.filter(p=>p.dept===dept).length===1?
     ctx.persons.find(p=>p.dept===dept):null;
   const tierOf=(ctx,person)=>person.dept==='politie'?policeRequestTier(person):null;
+  const ownRecord=(ctx,person)=>person?.personId===ctx.id&&
+    ctx.persons.filter(p=>p.dept===person.dept).length===1;
+  const maySubmit=(ctx,person)=>canSubmitTrainingRequest(
+    person,tierOf(ctx,person),roleForDepartment(ctx.actor,person.dept),
+    ownRecord(ctx,person)
+  );
   const reviewScope=(ctx,request)=>mayReviewTrainingRequest(ctx.actor,request) ||
     // Reekshoofden mogen uitsluitend aanvragen uit hun eigen reeks bekijken.
     // Hun IDs zijn centraal vastgelegd, niet vanuit de browser opgegeven.
@@ -110,8 +116,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       const scopes=ctx.persons.map(p=>({
         department:p.dept,tier:tierOf(ctx,p),
         courses:requestCourseOptions(p.dept,tierOf(ctx,p)),
-        canRequest:canSubmitTrainingRequest(p,tierOf(ctx,p),
-          roleForDepartment(ctx.actor,p.dept))
+        canRequest:maySubmit(ctx,p)
       }));
       const incoming=[];
       // Normal members only load their own records. Avoid a service-wide
@@ -149,7 +154,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       const person=applicant(ctx,dept);
       if(!person)throw rejection('Geen eenduidige personeelsfiche voor deze hulpdienst');
       const tier=tierOf(ctx,person);
-      if(!canSubmitTrainingRequest(person,tier,roleForDepartment(ctx.actor,dept)))
+      if(!maySubmit(ctx,person))
         throw rejection('Geen aanvraagrecht in dit kader');
       let form;
       try{form=validateTrainingRequestInput(req.body,requestCourseOptions(dept,tier),tier)}
