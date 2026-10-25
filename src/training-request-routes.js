@@ -76,7 +76,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         departments:memberships.filter(d=>persons.some(p=>p.dept===d)),
         departmentRoles:grant?.departmentRoles||{}
       };
-      req.trainingApplicant={id,persons,actor,snapshot:snapshot.data};
+      req.trainingApplicant={id,uid:decoded.uid,persons,actor,snapshot:snapshot.data};
       next();
     }catch(e){error(res,e)}
   }
@@ -204,7 +204,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
           eventDate:localDay(),courseName:isGiven?old.courseName:null,
           details:label+' · '+old.courseName+' · aanvraag '+id,
           reportCategory:isGiven?'opleiding':'activiteit',
-          trainingRequestId:id,registeredBy:by,submittedBy:{uid:'discord:'+ctx.id},
+          trainingRequestId:id,registeredBy:by,submittedBy:{uid:ctx.uid},
           createdAt:stamp,modifiedAt:null
         });
         return status;
