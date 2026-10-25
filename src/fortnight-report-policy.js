@@ -71,3 +71,23 @@ export function mayReadFortnightReport(actor,dept,roster){
 export function fortnightReportDepartments(actor,roster){
   return DEPTS.filter(d=>mayReadFortnightReport(actor,d,roster));
 }
+
+/**
+ * Reports are readable under service-specific rules, but deleting a police
+ * report from the overview requires an explicitly verified police officer
+ * or corps-leadership grant. This never extends delete rights to other depts.
+ */
+export function mayRemoveWeekReport(actor,dept,roster){
+  return dept==='politie'&&mayReadFortnightReport(actor,dept,roster);
+}
+
+/** Period archive is a navigational grouping, not an immutable snapshot. */
+export function splitReportsByPeriod(reports,today){
+  if(utcDay(today)===null)throw Error('Ongeldige rapportdatum');
+  const active=[],archive=[];
+  for(const report of reports){
+    if(utcDay(report?.periodEnd)===null)continue;
+    (report.periodEnd<today?archive:active).push(report);
+  }
+  return {active,archive};
+}
