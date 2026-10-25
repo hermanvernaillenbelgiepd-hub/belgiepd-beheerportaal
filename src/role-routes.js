@@ -128,7 +128,7 @@ function inputRecord(x){
   if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId))throw new Error('Ongeldige dienst of Discord ID');
   if(courseName.length<3 || typeof x?.courseName!=='string' || x.courseName.length>150)throw new Error('Ongeldige opleidingsnaam');
   if(typeof x?.details!=='string'||x.details.length>1600)throw new Error('Omschrijving te lang');
-  if(!['in_opleiding','geslaagd','niet_geslaagd','restricted'].includes(result))throw new Error('Ongeldig opleidingsresultaat');
+  if(!['in_opleiding','geslaagd','niet_geslaagd','stage','restricted'].includes(result))throw new Error('Ongeldig opleidingsresultaat');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)||new Date(eventDate+'T12:00:00Z').toISOString().slice(0,10)!==eventDate||eventDate>new Date().toISOString().slice(0,10))throw new Error('Ongeldige opleidingsdatum');
   return {department,subjectDiscordId:discordId,courseName,details,eventDate,result};
 }
