@@ -50,10 +50,10 @@ test('Personal dashboard contains no links to cadre modules and names Personeels
   assert.ok(block.includes('meldingen.html'));
   assert.ok(block.includes('verlofbeheer.html'));
  }
- assert.match(html,/<h3>Personeelslijst<\/h3>/);
+ assert.match(html,/<h2 id="memberRosterTitle">Personeelslijst<\/h2>/);
  assert.ok(html.includes('id="memberCallsignTile"'));
  assert.ok(html.includes('id="memberTrainingTile"'));
- assert.ok(html.includes('Binnenkort beschikbaar'));
+ assert.match(html,/Opleiding aanvragen · binnenkort/i);
  assert.ok(html.includes("ctx.showAdvancedDashboard!==true"));
  assert.ok(html.includes("c.request?.assignedCall"));
 });
