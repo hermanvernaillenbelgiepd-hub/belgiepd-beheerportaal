@@ -140,6 +140,16 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <h2>Verlof en personeelsstatus</h2>
 <div id="leaveSummary" class="small-rows"></div>
 <div id="leavePeriods" class="sheet-rows"></div>
+<form id="fireManualLeaveForm" hidden>
+  <div class="dossier-service-banner service-brandweer service-registration">
+    <span class="service-icon" aria-hidden="true">🚒</span><span class="service-banner-text"><small>CENTRAAL VERLOF · ALLE HULPDIENSTEN</small><strong>Registratie vanuit Brandweerpersoneelsdossier</strong></span>
+  </div>
+  <h3>Handmatig centraal verlof registreren (uitsluitend politioneel kader)</h3>
+  <div class="fieldgrid"><div><label for="fireLeaveFrom">Vanaf</label><input id="fireLeaveFrom" type="date" required></div>
+  <div><label for="fireLeaveUntil">Tot en met</label><input id="fireLeaveUntil" type="date" required></div></div>
+  <label for="fireLeaveNote">Toelichting voor audit</label><textarea id="fireLeaveNote" rows="2" maxlength="300"></textarea>
+  <button type="submit">Goedkeuren en bij alle diensten registreren</button>
+</form>
 <p><a href="/verlofbeheer.html">Naar Verlofbeheer</a></p></section>
 <section id="observationsSection" class="card dossier-panel" data-pane="observaties" hidden>
 <h2>Observaties</h2><div id="observations" class="sheet-rows"></div></section>
@@ -200,6 +210,24 @@ async function api(url,method='GET',body){
  if(!response.ok)throw Error(data.error||'De aanvraag is niet toegestaan');
  return data;
 }
+$('fireManualLeaveForm').onsubmit=async event=>{
+ event.preventDefault();
+ if(current?.canLogManualLeave!==true)return;
+ const from=$('fireLeaveFrom').value,until=$('fireLeaveUntil').value;
+ if(!from||!until)return;
+ if(!confirm('Centraal verlof registreren? Dit geldt voor alle gekoppelde hulpdiensten en verschijnt in de weekrapporten.'))return;
+ const btn=$('fireManualLeaveForm').querySelector('button[type=submit]');
+ btn.disabled=true;
+ try{
+   await api('/api/leave/manual','POST',{
+     dept:'brandweer',discordId:id,startDate:from,endDate:until,
+     note:$('fireLeaveNote').value.trim()});
+   mark('Verlof centraal geregistreerd, inclusief audit en weekrapport.');
+   $('fireLeaveNote').value='';
+   await load();showTab('verlof');
+ }catch(e){mark(e.message,true)}
+ finally{btn.disabled=false}
+};
 function line(root,heading,detail,meta){
  const box=document.createElement('div');box.className='row';
  const name=document.createElement('strong');name.textContent=heading;
@@ -288,6 +316,11 @@ async function load(){
   $('mainCard').hidden=false;
   $('title').textContent='Brandweerdossier · '+p.name;
   for(const key of ['call','rank','name','series','status'])$(key).textContent=p[key]||'—';
+  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels'}).format(new Date());
+  const activeLeave=(data.leave||[]).some(x=>x.startDate<=today&&x.endDate>=today);
+  const shownStatus=activeLeave?'🏖️ Verlof':p.status||'—';
+  $('status').textContent=shownStatus;
+  $('fireManualLeaveForm').hidden=data.canLogManualLeave!==true;
   $('discord').textContent=p.discordId;
   const advanced=data.visibility==='leadership'||data.visibility==='full';
   const scopes={
@@ -318,11 +351,11 @@ async function load(){
     ['Functie of opdracht',profile.functionTitle]
   ]:[])]);
 
-  rows($('leaveSummary'),[['Personeels-/verlofstatus',p.status]]);
+  rows($('leaveSummary'),[['Personeels-/verlofstatus',shownStatus]]);
   $('overviewLeave').textContent=advanced&&Array.isArray(data.leave)&&data.leave.length
     ?data.leave.slice(0,5).map(x=>(x.startDate||'—')+' t/m '+(x.endDate||'—'))
       .join(' | ')
-    :p.status||'—';
+    :shownStatus;
   if(advanced){
    cards($('leavePeriods'),data.leave||[],
     x=>'Goedgekeurd verlof',x=>(x.startDate||'—')+' t/m '+(x.endDate||'—'),
