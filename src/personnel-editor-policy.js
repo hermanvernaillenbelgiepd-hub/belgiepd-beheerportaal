@@ -185,8 +185,11 @@ export function mergePersonnelEdits(records,editRecords){
   }
   return records.map(p=>{
     const e=byKey.get(p.dept+'_'+p.personId);
-    // Never modify the immutable identity, rank or specialization metadata.
-    return e?{...p,name:e.name,call:e.call,status:e.status,source:'firestore-overlay'}:p;
+    // An explicit, audited server-side rank decision is the only exception
+    // to the otherwise read-only Google Sheets grade. This does not grant roles.
+    return e?{...p,name:e.name,call:e.call,status:e.status,
+      ...(e.approvedRankEdit===true&&typeof e.rank==='string'?{rank:e.rank}:{}),
+      source:'firestore-overlay'}:p;
   });
 }
 
