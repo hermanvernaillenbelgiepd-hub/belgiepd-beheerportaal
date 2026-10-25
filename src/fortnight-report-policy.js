@@ -95,3 +95,18 @@ export function splitReportsByPeriod(reports,today){
   }
   return {active,archive};
 }
+
+/**
+ * An active automatically generated fortnight is never permanently removed:
+ * its data comes from live dossier records. Historical/manual reports may be
+ * hidden, while existing removal audit documents remain untouched.
+ */
+export function isCurrentAutomaticReport(report,today){
+  if(!report||report.source!=='automatic'||!DEPTS.includes(report.dept)||
+     utcDay(today)===null)return false;
+  return report.id===fortnightFor(today,report.dept).id;
+}
+export function visibleFortnightReports(reports,removedIds,today){
+  return reports.filter(report=>
+    !removedIds.has(report.id)||isCurrentAutomaticReport(report,today));
+}
