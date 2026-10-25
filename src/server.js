@@ -507,6 +507,8 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
         const roles=await readVerifiedPoliceLrd(roster);
         for(const id of roles)req.bpd.policeLrdSubjectIds[id]=true;
         for(const id of roles.confirmedIds||[])req.bpd.policeLrdCheckedIds[id]=true;
+        req.bpd.policeLrdUnlinked=roles.unlinked||[];
+        req.bpd.policeLrdUnlinkedAvailable=roles.unlinkedAvailable===true;
       }catch(error){
         console.error('LRD-weergave tijdelijk onbeschikbaar:',
           error?.code||'Discord-role lookup');
