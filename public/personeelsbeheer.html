@@ -381,6 +381,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 </section>
 <section id="panel" class="card" hidden>
 <div class="controls dossier-top-actions" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2>
+<span id="sheetScoreSummary" class="police-score-summary" aria-live="polite" hidden>Gem. score: —</span>
 <div class="controls"><button id="renameLowerPolice" type="button" class="alt" hidden>Naam corrigeren</button><button id="editPersonnelSummary" type="button" class="alt" hidden>Personeelsgegevens wijzigen</button><button class="alt" id="close" type="button">Sluiten</button></div></div>
 <div id="ficheNavigator" class="fiche-navigator" hidden>
   <a id="ficheBackLink" href="/personeelsbeheer.html">← Terug naar personeelslijst</a>
@@ -631,6 +632,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <script type="module">
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
 import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalog.js';
+import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
@@ -1609,7 +1611,11 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
     heading.textContent=[cells[0],cells[1]].filter(value=>value&&value!=='—').join(' · ').slice(0,160)||'Registratie';
     const meta=document.createElement('span');
     meta.textContent=cells.slice(2).filter(value=>value&&value!=='—').join(' · ').slice(0,330);
-    item.append(heading,meta);root.append(item);
+    const score=['formal','observations'].includes(group)&&row.type==='observatie'?
+      makeScoreBadge(row.score):null;
+    if(score)item.append(heading,score,meta);
+    else item.append(heading,meta);
+    root.append(item);
   };
   if(!entries.length){
     const note=document.createElement('span');note.className='overview-no-data';
@@ -1632,6 +1638,37 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
   }
 }
 const sheetWho=row=>row.registeredBy?.name||row.submittedByActor?.name||'Onbekend';
+function makeScoreBadge(score){
+  const value=validObservationScore(score);
+  if(value===null)return null;
+  const badge=document.createElement('span');
+  badge.className='police-score-badge '+scoreClass(value);
+  badge.textContent=scoreLabel(value);
+  badge.title=value===0?
+    'Observatiescore 0: DEGRADATIE-aanduiding. Geen automatische rangwijziging.':
+    'Observatiescore '+value+' op 10';
+  return badge;
+}
+function sheetAverageScore(entries,limited=false){
+  const element=$('sheetScoreSummary');
+  if(selected?.dept!=='politie'){element.hidden=true;return}
+  const summary=observationSummary(entries,{limited});
+  const score=summary.average===null?'—':
+    summary.average.toLocaleString('nl-BE',{minimumFractionDigits:1,maximumFractionDigits:1});
+  element.replaceChildren();
+  const title=document.createElement('span');title.textContent='Gem. score';
+  const value=document.createElement('strong');
+  value.textContent=score==='—'?'Geen scores':score+' / 10';
+  if(summary.average!==null)value.className=scoreClass(Math.round(summary.average))||'';
+  const total=document.createElement('small');
+  total.textContent=summary.count+' observatie'+(summary.count===1?'':'s')+
+    (summary.limited?' · recentste registraties':'');
+  element.append(title,value,total);
+  element.title=summary.limited?
+    'Gemiddelde over de beschikbare recente observaties; oudere scores zijn mogelijk niet volledig geladen.':
+    'Gemiddelde over alle beschikbare observaties met een geldige score (0–10).';
+  element.hidden=false;
+}
 function sheetIdentity(p){
   $('sheetCall').textContent=p.call||'—';
   const rankSlot=$('sheetRank');
@@ -1652,7 +1689,17 @@ function sheetIdentity(p){
   seriesSlot.replaceChildren();
   const seriesTitle=document.createElement('span');
   seriesTitle.textContent=p.series||'—';
+  if(p.dept==='politie'&&seriesNumber(p.series)!==null)
+    seriesTitle.className='police-series-chip '+seriesClass(p.series);
   seriesSlot.append(seriesTitle);
+  const designation=policeDesignation(p);
+  if(designation){
+    const chip=document.createElement('span');
+    chip.className='police-designation '+designation.kind;
+    chip.textContent=designation.icon+' '+designation.text;
+    chip.title='Visuele functieaanduiding (geen toekenning van bevoegdheden)';
+    seriesSlot.append(chip);
+  }
   // Reekshoofden zijn zichtbare contactnamen, nooit een bron van toegangsrechten.
   // Reekshoofden: expliciet beheerde namen/Discord-identiteiten.
   // Middenkaderrol 1563579538074767423 wordt hier niet als bevoegdheid gebruikt.
@@ -1676,20 +1723,36 @@ function sheetIdentity(p){
     ]
   };
   const seriesRelief={name:'RX',id:'528568826481344522'};
-  const seriesMatch=String(p.series||'').match(/(?:reeks|serie|series)\s*0?([123])\b/i);
-  const heads=p.dept==='politie'&&seriesMatch?seriesHeads[seriesMatch[1]]:null;
-  if(heads){
+  const group=p.dept==='politie'?seriesNumber(p.series):null;
+  const heads=group!==null?seriesHeads[String(group)]:null;
+  if(heads?.length){
     const line=document.createElement('small');
     line.className='dossier-series-heads';
-    line.textContent='Reekshoofden: '+heads.map(x=>x.name).join(', ');
-    line.title=heads.map(x=>x.name+' · '+x.id).join(' | ');
+    const caption=document.createElement('span');
+    caption.textContent='Reekshoofden:';
+    line.append(caption);
+    for(const head of heads){
+      const chip=document.createElement('span');
+      chip.className='police-series-head '+seriesClass(p.series);
+      chip.textContent=head.name;
+      chip.title='Reekshoofd · '+head.id;
+      line.append(chip);
+    }
     seriesSlot.append(line);
+  }
+  if(p.dept==='politie'&&group!==null){
     const relief=document.createElement('small');
     relief.className='dossier-series-heads';
-    relief.textContent='Vlinder: '+seriesRelief.name;
-    relief.title=seriesRelief.id+' · inzetbaar in alle reeksen';
+    const butterfly=document.createElement('span');
+    butterfly.className='police-designation butterfly';
+    butterfly.textContent='🦋 Vlinder · '+seriesRelief.name;
+    butterfly.title=seriesRelief.id+' · inzetbaar in alle reeksen';
+    relief.append(butterfly);
     seriesSlot.append(relief);
   }
+  const scoreHeader=$('sheetScoreSummary');
+  scoreHeader.hidden=p.dept!=='politie';
+  scoreHeader.textContent='Gem. score: gegevens laden…';
   $('sheetStatus').textContent=p.status||'—';
   $('sheetDiscordId').textContent=p.discordId||'—';
   $('ficheEditor').hidden=true;$('ficheEditor').open=false;
@@ -1792,6 +1855,7 @@ function sheetCaseRows(entries,limited){
 }
 function sheetFormalRows(entries,limited){
   const list=Array.isArray(entries)?entries:[];
+  sheetAverageScore(list,limited);
   // Observaties en sancties hebben afzonderlijke kolommen in het leesblad.
   const preview=x=>[x.eventDate||'—',x.type==='sanctie'?
       String(x.sanctionType||'Maatregel'):'Observatie',
@@ -1800,7 +1864,7 @@ function sheetFormalRows(entries,limited){
         [Array.isArray(x.restrictedSpecialties)?x.restrictedSpecialties.join(', '):'',
           x.endDate?'tot en met '+x.endDate:''].filter(Boolean).join(' · '):''
     ].filter(Boolean).join(' · '),
-    x.type==='sanctie'?'Ernst '+(x.severity??'—'):'Score '+(x.score??'—'),
+    x.type==='sanctie'?'Ernst '+(x.severity??'—'):'—',
     'Door '+sheetWho(x)];
   sheetSetRows('formal',list,preview,'Geen zichtbare registraties.',limited);
   sheetSetRows('observations',list.filter(x=>x.type==='observatie'),preview,
@@ -2244,7 +2308,8 @@ $('staffFormalForm').onsubmit=async event=>{
     eventTime:$('formalTime').value,details:$('formalDetails').value,
     otherPlayers:$('formalPlayers').value,evidenceUrl:$('formalEvidence').value};
   if(!isSanction){
-    const score=Number($('formalScore').value);
+    const value=$('formalScore').value.trim();
+    const score=value!==''?Number(value):NaN;
     if(!Number.isInteger(score)||score<0||score>10)
       return notice('Kies een observatiescore van 0 tot 10 (0 = DEGRADATIE).',true);
     data.score=score;
@@ -2345,9 +2410,9 @@ async function loadStaffFormalRecords(p,key){
         (row.modifiedAt?' · bijgewerkt '+new Date(row.modifiedAt).toLocaleString('nl-BE'):'');
       const details=document.createElement('p');
       details.textContent=String(row.details||row.description||row.reason||'').slice(0,6000);
-      if(row.type==='observatie'&&Number.isInteger(row.score))
-        details.textContent='Score '+row.score+'/10 · '+details.textContent;
-      item.append(title,author,details);
+      const score=row.type==='observatie'?makeScoreBadge(row.score):null;
+      if(score)item.append(title,score,author,details);
+      else item.append(title,author,details);
       if(row.type==='sanctie'){
         const reasons=document.createElement('div');reasons.className='subtle';
         reasons.textContent='Ernst '+(row.severity||'—')+'/10 · '+(row.reasons||[]).join(', ');
@@ -2374,8 +2439,13 @@ async function loadStaffFormalRecords(p,key){
     }
     if(data.entries?.length===100)root.append(document.createTextNode(
       ' Het register toont maximaal de 100 recentste registraties.'));
-  }catch(e){if(sameDossier(key))root.textContent=
-    'Formele registraties niet zichtbaar met de huidige bevoegdheden: '+e.message}
+  }catch(e){if(sameDossier(key)){
+    root.textContent='Formele registraties niet zichtbaar met de huidige bevoegdheden: '+e.message;
+    if(p.dept==='politie'){
+      const badge=$('sheetScoreSummary');badge.hidden=false;
+      badge.textContent='Gem. score: niet beschikbaar';
+    }
+  }}
 }
 function showStaffRoles(roleData,rosterSeries){
   const root=$('staffDiscordRoles');root.replaceChildren();
