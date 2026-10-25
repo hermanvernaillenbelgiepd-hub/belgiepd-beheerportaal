@@ -115,3 +115,53 @@ test('LRD is auto-managed; manual LRD toggles are rejected at the server',()=>{
  assert.match(page,/x\.label!=='LRD \(Recherche\)'/);
  assert.match(page,/Automatisch via Discord-bot/);
 });
+
+test('Discord LRD members absent from Sheets appear separately without inventing dossiers',async()=>{
+ const unknown='333333333333333333';
+ const reader=createPoliceLrdIndex({
+   firestore:staleDb,guildId:()=>guild,botToken:()=>token,now:()=>1800000000000,
+   fetchImpl:async()=>response([
+     {user:{id:first,username:'Linked officer'},roles:[LRD_DISCORD_ROLE_ID]},
+     {user:{id:unknown,username:'Recherche volunteer'},nick:'Recherche-specialist',
+       roles:[LRD_DISCORD_ROLE_ID]}
+   ])
+ });
+ const result=await reader(roster);
+ assert.equal(result.has(first),true);
+ assert.equal(result.unlinkedAvailable,true);
+ assert.deepEqual(result.unlinked,[{name:'Recherche-specialist',status:'Niet gekoppeld'}]);
+ assert.equal(JSON.stringify(result.unlinked).includes(unknown),false);
+ assert.equal(result.unlinked[0].call,undefined);
+ assert.equal(result.unlinked[0].rank,undefined);
+ assert.equal(result.unlinked[0].discordId,undefined);
+ // There is no artificial Police personnel entry.
+ const staff=publicPoliceRoster(roster,result);
+ assert.equal(staff.length,2);
+ const cached=await reader(roster);
+ assert.deepEqual(cached.unlinked,result.unlinked);
+});
+
+test('No complete guild-member enumeration means no invented Discord-only roster',async()=>{
+ const reader=createPoliceLrdIndex({
+   firestore:staleDb,guildId:()=>guild,botToken:()=>token,now:()=>1800000000000,
+   fetchImpl:async url=>url.includes('members?')?response({},403):
+     response({user:{id:url.split('/').at(-1)},roles:[LRD_DISCORD_ROLE_ID]})
+ });
+ const result=await reader(roster);
+ assert.equal(result.unlinkedAvailable,false);
+ assert.deepEqual(result.unlinked,[]);
+});
+
+test('Unlinked LRD names appear only in read-only authenticated roster surfaces',()=>{
+ const route=readFileSync(new URL('../src/member-dashboard-routes.js',import.meta.url),'utf8');
+ const manager=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ const publicPage=readFileSync(new URL('../public/personeelslijst.html',import.meta.url),'utf8');
+ const home=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const managerPage=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ assert.match(route,/discordRechercheUnlinked:lrdIds\.unlinked\|\|\[\]/);
+ assert.match(route,/app\.get\('\/api\/member\/personnel-list',memberIdentity/);
+ assert.match(manager,/discordRechercheUnlinked:allowed\.includes\('politie'\)/);
+ assert.match(publicPage,/id="rechercheDiscordOnly"/);
+ assert.match(home,/id="memberDiscordRecherche"/);
+ assert.match(managerPage,/id="staffDiscordRecherche"/);
+});

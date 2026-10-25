@@ -353,6 +353,12 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 </div>
 <p class="subtle"><span id="count">Nog geen personeelsgegevens geladen.</span></p>
 <div class="scroller staff-roster-holder"><table class="staff-roster-table"><thead id="staffColumnHeaders"></thead><tbody id="results"></tbody></table></div>
+<section id="staffDiscordRecherche" class="panel" hidden aria-label="Discord-rechercheleden zonder dossier">
+<h3>🔎 Recherche via Discord – niet gekoppeld aan personeelslijst</h3>
+<p class="subtle">Deze personen hebben volgens de bot de LRD-rol, maar geen gekoppelde politionele personeelsfiche. Ze krijgen hierdoor geen officiële rang, roepnummer of dossierrechten.</p>
+<p id="staffDiscordRechercheStatus" class="subtle"></p>
+<ul id="staffDiscordRechercheNames"></ul>
+</section>
 
 </section>
 <section id="newPanel" class="card" hidden>
@@ -1394,11 +1400,31 @@ async function checkAccessStatus(){
       (data.automatic?' · Gekoppeld aan je geverifieerde Middenkaderrol.':'');
   }catch(e){root.textContent='Statuscontrole: '+e.message}
 }
+function renderUnlinkedDiscordRecherche(data){
+  const root=$('staffDiscordRecherche'),status=$('staffDiscordRechercheStatus');
+  const list=$('staffDiscordRechercheNames');list.replaceChildren();
+  const available=data.discordRechercheComplete===true;
+  const people=Array.isArray(data.discordRechercheUnlinked)?
+    data.discordRechercheUnlinked:[];
+  root.hidden=false;
+  if(!available){
+    status.textContent='De Discord-ledenlijst kon niet volledig worden gecontroleerd.';
+    return;
+  }
+  status.textContent=people.length+' LRD-leden zonder politionele personeelsfiche';
+  for(const person of people){
+    if(typeof person.name!=='string')continue;
+    const li=document.createElement('li');
+    li.textContent=person.name+' · LRD: JA · Niet gekoppeld';
+    list.append(li);
+  }
+}
 async function load(){
-  if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+  if(!auth?.currentUser){$('staffDiscordRecherche').hidden=true;people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     const data=await request('/api/personnel/overview');
     $('accessHelp').hidden=true;
+    renderUnlinkedDiscordRecherche(data);
     people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
     $('newBtn').hidden=!Object.keys(createRanks).length;

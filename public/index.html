@@ -218,6 +218,11 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
         </table>
       </div></div>
       <p class="member-roster-caption">De lijst bevat uitsluitend publieke personeels- en kwalificatiestatussen. Dossierinhoud, Discord-ID's en observaties worden niet getoond.</p>
+      <section id="memberDiscordRecherche" class="member-roster-primary" hidden aria-label="LRD-leden zonder personeelsfiche">
+      <h3>🔎 LRD via Discord – niet gekoppeld aan de personeelslijst</h3>
+      <p class="member-roster-caption">Deze leden hebben een geverifieerde recherche-rol op Discord, maar geen officiële politionele personeelsfiche.</p>
+      <p id="memberDiscordRechercheStatus" role="status"></p><ul id="memberDiscordRechercheNames"></ul>
+      </section>
     </section>
     <p class="member-notice" id="memberAccountStatus" role="status">Je Discord-profiel wordt gecontroleerd.</p>
   </section>
@@ -313,6 +318,22 @@ function show(mode,message=''){
  resetSimpleModules();
  if(message)$('guestMessage').textContent=message;
 }
+function renderDiscordOnlyRecherche(data){
+  const root=$('memberDiscordRecherche'),status=$('memberDiscordRechercheStatus');
+  const list=$('memberDiscordRechercheNames');list.replaceChildren();
+  const available=data?.discordRechercheComplete===true;
+  const entries=Array.isArray(data?.discordRechercheUnlinked)?
+    data.discordRechercheUnlinked:[];
+  root.hidden=false;
+  if(!available){status.textContent='Discord-ledenlijst niet volledig beschikbaar.';return;}
+  status.textContent=entries.length+' LRD-leden zonder personeelsfiche';
+  for(const p of entries){
+    if(typeof p.name!=='string')continue;
+    const li=document.createElement('li');
+    li.textContent=p.name+' · LRD: JA · Niet gekoppeld';
+    list.append(li);
+  }
+}
 let memberRecords=[];
 function previewRoster(records,stale){
  memberRecords=Array.isArray(records)?records:[];
@@ -371,7 +392,10 @@ async function displayAuthenticated(user){
       authorizedFetch('/api/callsigns/self/status',token)
     ]);
     if(turn!==requestNumber)return;
-    if(roster.status==='fulfilled')previewRoster(roster.value.records||[],roster.value.stale===true);
+    if(roster.status==='fulfilled'){
+       previewRoster(roster.value.records||[],roster.value.stale===true);
+       renderDiscordOnlyRecherche(roster.value);
+     }
     else $('memberRosterStatus').textContent='Personeelslijst tijdelijk niet beschikbaar. Probeer de volledige lijst.';
     if(eligibility.status==='fulfilled'){
       const c=eligibility.value;

@@ -499,12 +499,16 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     // No Discord role, dossier grant or cadre can be changed here.
     req.bpd.policeLrdSubjectIds=Object.create(null);
     req.bpd.policeLrdCheckedIds=Object.create(null);
+    req.bpd.policeLrdUnlinked=[];
+    req.bpd.policeLrdUnlinkedAvailable=false;
     if(req.path==='/api/personnel/overview'&&scope.departments.includes('politie')&&
        !snapshot.stale){
       try{
         const roles=await readVerifiedPoliceLrd(roster);
         for(const id of roles)req.bpd.policeLrdSubjectIds[id]=true;
         for(const id of roles.confirmedIds||[])req.bpd.policeLrdCheckedIds[id]=true;
+        req.bpd.policeLrdUnlinked=roles.unlinked||[];
+        req.bpd.policeLrdUnlinkedAvailable=roles.unlinkedAvailable===true;
       }catch(error){
         console.error('LRD-weergave tijdelijk onbeschikbaar:',
           error?.code||'Discord-role lookup');
