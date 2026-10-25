@@ -636,6 +636,7 @@ import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalo
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {displayServiceBadge,serviceIdentity} from '/dossier-service-badge.js';
+import {policeGroupedRoster,policeOperationalTier,policeTierDisplay} from '/police-roster-cadre.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
@@ -1180,7 +1181,26 @@ function render(){
     const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');
     c.colSpan=8+cols.length;body.append(tr);return;
   }
-  for(const person of matches){
+  const allPolice=matches.every(person=>person.dept==='politie');
+  const rosterGroups=allPolice?policeGroupedRoster(matches):[];
+  const rosterEntries=allPolice?rosterGroups.flatMap(([tier,rows])=>
+    [{kind:'kader',tier,count:rows.length},...rows.map(person=>({kind:'person',person}))]):
+    matches.map(person=>({kind:'person',person}));
+  for(const entry of rosterEntries){
+    if(entry.kind==='kader'){
+      const divider=document.createElement('tr');
+      divider.className='police-kader-divider kader-'+entry.tier;
+      const cell=document.createElement('td');
+      cell.colSpan=8+Math.max(cols.length,1);
+      const label=document.createElement('strong');
+      label.textContent=policeTierDisplay(entry.tier).label;
+      const total=document.createElement('span');
+      total.className='kader-person-count';
+      total.textContent=entry.count+' personeels'+(entry.count===1?'lid':'leden');
+      cell.append(label,total);divider.append(cell);body.append(divider);
+      continue;
+    }
+    const person=entry.person;
     const tr=document.createElement('tr');
     const grade=BPDPersonnelVisuals.rankInfo(person.rank,person.dept);
     td(tr,person.call||'—');
