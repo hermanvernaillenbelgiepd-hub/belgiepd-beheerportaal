@@ -48,7 +48,8 @@ export function parseAutomaticReportId(id){
   return automaticFortnightReports(m[1],day,1)[0].id===id?
     {...automaticFortnightReports(m[1],day,1)[0],periodEnd:info.periodEnd}:null;
 }
-const dutyCode=p=>String(p?.call||p?.rank||'').trim().toUpperCase().replace(/\s+/g,' ');
+const matchesDuty=(person,pattern)=>[person?.call,person?.rank].some(value=>
+  pattern.test(String(value||'').trim().toUpperCase().replace(/\s+/g,' ')));
 const ownRecord=(actor,dept,roster)=>{
   if(!actor?.departments?.includes(dept)||!/^\d{15,22}$/.test(actor.discordId||''))return null;
   const mine=(roster||[]).filter(p=>p.dept===dept&&p.personId===actor.discordId);
@@ -62,9 +63,9 @@ export function mayReadFortnightReport(actor,dept,roster){
   if(!person)return false;
   if(dept==='brandweer')return actor.fireZoneChief===true;
   if(dept==='ambulance')return ['middenkader','officierenkader','korpsleiding'].includes(scoped)||
-    /^DIRMED(?:[- ]?\d{1,4})?$/.test(dutyCode(person));
+    matchesDuty(person,/^DIRMED(?:[- ]?\d{1,4})?$/);
   if(dept==='depannage')return ['middenkader','officierenkader','korpsleiding'].includes(scoped)&&
-    /^(?:(?:AWV|ANWV)(?:[- ]?\d{1,4}|[ -]LEIDING)?|AGENTSCHAP WEGEN (?:EN|&) VERKEER(?:[ -]\(?LEIDING\)?)?)$/.test(dutyCode(person));
+    matchesDuty(person,/^(?:(?:AWV|ANWV)(?:[- ]?\d{1,4}|[ -]LEIDING)?|AGENTSCHAP WEGEN (?:EN|&) VERKEER(?:[ -]\(?LEIDING\)?)?)$/);
   return false;
 }
 export function fortnightReportDepartments(actor,roster){
