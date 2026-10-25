@@ -132,6 +132,16 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a href="/verlofbeheer.html">📅 &nbsp; Mijn verlof</a>
     <a href="/meldingen.html">📬 &nbsp; Meldingen</a>
   </nav>
+  <nav id="ambulanceNav" aria-label="AZLS Ambulance" hidden>
+    <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
+    <a href="/personeelslijst.html">👥 &nbsp; Politiepersoneelslijst (lezen)</a>
+    <a id="ambulanceNavStaff" href="/personeelsbeheer.html" hidden>🚑 &nbsp; Ambulancepersoneel</a>
+    <a id="ambulanceNavDossiers" href="/dossiercentrum.html" hidden>📁 &nbsp; Ambulancedossiers</a>
+    <a href="/opleidingscentrum.html">🎓 &nbsp; Opleidingscentrum</a>
+    <a id="ambulanceNavReports" href="/weekrapporten.html" hidden>📋 &nbsp; Ambulanceweekrapporten</a>
+    <a href="/verlofbeheer.html">📅 &nbsp; Mijn verlof</a>
+    <a href="/meldingen.html">📬 &nbsp; Meldingen</a>
+  </nav>
   <nav id="memberNav" aria-label="Nieuwe leden" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
     <a href="/discord-status.html">👤 &nbsp; Mijn profiel</a>
@@ -227,6 +237,24 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     </div>
     <p class="caption">TO-dienstbord, observaties vanuit politiebasiskader, roepnummeraanvragen en algemeen gebruikersbeheer behoren niet tot deze ZONE-werkruimte.</p>
   </section>
+  <section id="ambulanceDashboard" hidden aria-labelledby="ambulanceDashboardTitle">
+    <section class="hero"><div><p class="eyebrow">Ambulance · AZLS</p>
+      <h1 id="ambulanceDashboardTitle">Ambulance / AZLS</h1>
+      <p class="lead">Je ambulancewerkruimte bevat uitsluitend de diensten en bevoegdheden van je eigen functie. De politiepersoneelslijst blijft alleen ter inzage.</p>
+    </div></section>
+    <p id="ambulanceVerificationNotice" class="member-notice" hidden>Je portaalkader is gekend. Om beschermde ambulancedossiers en dienstgebonden rapporten te openen, moet je officiële ambulanceleidingfunctie via je gekoppelde personeelsfiche en Discord worden geverifieerd. Vernieuw de Discord-verificatie in Mijn profiel indien nodig.</p>
+    <h2 class="section-title">Ambulanceleiding en eigen functies</h2>
+    <div class="grid" id="ambulanceModules">
+      <a class="module" href="/personeelslijst.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelslijst Politie</h3><p>Raadpleeg de politionele personeelslijst zonder toegang tot politiedossiers.</p><span class="open">Open →</span></a>
+      <a class="module" href="/personeelsbeheer.html" id="ambulanceCardStaff" hidden><span class="ico" aria-hidden="true">🚑</span><h3>Personeelsbeheer Ambulance</h3><p>Beheer ambulancepersoneel binnen de bevestigde AZLS-leidingrechten.</p><span class="open">Open →</span></a>
+      <a class="module" href="/dossiercentrum.html" id="ambulanceCardDossiers" hidden><span class="ico" aria-hidden="true">📁</span><h3>Ambulancedossiers</h3><p>Dienstgebonden ambulancedossiers, opleidingen, notities en historiek.</p><span class="open">Open →</span></a>
+      <a class="module" href="/opleidingscentrum.html"><span class="ico" aria-hidden="true">🎓</span><h3>Opleidingscentrum AZLS</h3><p>Aanvragen voor ambulanceopleidingen en de eigen opleidingsfunctie.</p><span class="open">Open →</span></a>
+      <a class="module" href="/weekrapporten.html" id="ambulanceCardReports" hidden><span class="ico" aria-hidden="true">📋</span><h3>Ambulanceweekrapporten</h3><p>Enkel de rapporten en het archief van de ambulancedienst.</p><span class="open">Open →</span></a>
+      <a class="module" href="/verlofbeheer.html"><span class="ico" aria-hidden="true">📅</span><h3>Mijn verlof</h3><p>Vraag zelf verlof aan en bekijk je verlofperiodes.</p><span class="open">Open →</span></a>
+      <a class="module" href="/meldingen.html"><span class="ico" aria-hidden="true">📬</span><h3>Meldingen Ambulance</h3><p>Opleidingsaanvragen van ambulanceleden en persoonlijke verlofbeslissingen.</p><span class="open">Open →</span></a>
+    </div>
+    <p class="caption">TO-dienstbord, politionele observaties, vaste-roepnummeraanvragen en algemeen gebruikers- of toegangsbeheer behoren niet tot deze AZLS-werkruimte. Medisch instructeurs zien alleen onderdelen waarvoor ze gemachtigd zijn.</p>
+  </section>
   <section id="guestDashboard" aria-labelledby="guestDashboardTitle">
     <p class="eyebrow">BelgiëPD</p><h1 id="guestDashboardTitle">Welkom op het beheerportaal</h1>
     <p class="lead" id="guestMessage">Meld je aan met je eigen Discord-account via Mijn profiel om je toegelaten startpagina te openen.</p>
@@ -237,7 +265,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
 <script type="module">
 import {renderMemberPoliceRoster} from '/member-police-roster.js';
 const $=id=>document.getElementById(id);
-const staffNav=$('staffNav'),memberNav=$('memberNav'),zoneNav=$('zoneNav'),staffHome=$('staffDashboard'),zoneHome=$('zoneDashboard');
+const staffNav=$('staffNav'),memberNav=$('memberNav'),zoneNav=$('zoneNav'),ambulanceNav=$('ambulanceNav'),staffHome=$('staffDashboard'),zoneHome=$('zoneDashboard'),ambulanceHome=$('ambulanceDashboard');
 const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
 const adminSection=$('adminRights'),adminNavLink=$('adminNavLink'),logoutButton=$('dashboardLogout');
 const simpleIds=['memberTrainingTile','memberNavCallsign','memberCallsignTile','memberNavLeave','memberLeaveTile','memberNavNotices','memberNoticesTile'];
@@ -253,6 +281,23 @@ function displaySimpleModules(details){
  $('memberNavNotices').hidden=!canSelf;
  $('memberNoticesTile').hidden=!canSelf;
 }
+function showAmbulanceDashboard(ctx){
+  show('ambulance');
+  const tier=ctx.ambulanceTier;
+  $('ambulanceDashboardTitle').textContent=tier==='korpsleiding'?
+    'DIR-MED – Directeur Medisch':tier==='officierenkader'?
+      'AZLS – Ambulanceleiding':'AZLS – Medisch instructeur';
+  const canManage=ctx.ambulanceCanManagePersonnel===true;
+  const canOpen=ctx.ambulanceCanOpenDossier===true;
+  const canReport=ctx.ambulanceReportVerified===true;
+  for(const [name,visible] of [
+    ['ambulanceCardStaff',canManage],['ambulanceNavStaff',canManage],
+    ['ambulanceCardDossiers',canOpen],['ambulanceNavDossiers',canOpen],
+    ['ambulanceCardReports',canReport],['ambulanceNavReports',canReport]])
+    $(name).hidden=!visible;
+  $('ambulanceVerificationNotice').hidden=
+    !(['officierenkader','korpsleiding'].includes(tier)&&!canReport);
+}
 function showApprovedBasicDashboard(){
  show('member');
  // Emergency/legacy login cannot use Discord-only callsign verification.
@@ -262,8 +307,8 @@ function showApprovedBasicDashboard(){
 }
 let auth,requestNumber=0;
 function show(mode,message=''){
- staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';zoneNav.hidden=mode!=='zone';
- staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';zoneHome.hidden=mode!=='zone';
+ staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';zoneNav.hidden=mode!=='zone';ambulanceNav.hidden=mode!=='ambulance';
+ staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';zoneHome.hidden=mode!=='zone';ambulanceHome.hidden=mode!=='ambulance';
  guestHome.hidden=mode!=='guest';adminSection.hidden=true;adminNavLink.hidden=true;
  resetSimpleModules();
  if(message)$('guestMessage').textContent=message;
@@ -299,6 +344,7 @@ async function displayAuthenticated(user){
     if(ctx.dashboardProfile==='brandweer-zone'){
       show('zone');$('zoneVerificationNotice').hidden=ctx.zoneVerified===true;
     }
+    else if(ctx.dashboardProfile==='ambulance-azls')showAmbulanceDashboard(ctx);
     else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
     else{
       show('staff');
@@ -349,6 +395,7 @@ async function displayAuthenticated(user){
     if(ctx.dashboardProfile==='brandweer-zone'){
       show('zone');$('zoneVerificationNotice').hidden=ctx.zoneVerified===true;
     }
+    else if(ctx.dashboardProfile==='ambulance-azls')showAmbulanceDashboard(ctx);
     else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
     else{
       show('staff');

@@ -19,7 +19,8 @@ import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
-import {canSeeDashboardManagement,canSeeAdvancedDashboard,isFireZoneDashboard} from './dashboard-admin-policy.js';
+import {canSeeDashboardManagement,canSeeAdvancedDashboard,isFireZoneDashboard,ambulanceDashboardTier} from './dashboard-admin-policy.js';
+import {mayReadFortnightReport} from './fortnight-report-policy.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
@@ -421,6 +422,9 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     // Police officer status or a generic portal cadre never grants access.
     req.bpd.reportServiceRoles=verifiedServiceReportRoles(req.bpd,
       member?.exists?member.data():null,process.env.DISCORD_GUILD_ID);
+    // Report access is based on independent guild verification and a unique
+    // ambulance staff record; a portal rank is not sufficient by itself.
+    req.bpd.ambulanceReportVerified=mayReadFortnightReport(req.bpd,'ambulance',roster);
     const original=deriveServiceDossierDepartments(req.bpd,
       roster,member?.exists?member.data():null,
       appointment?.exists?appointment.data():null,process.env.DISCORD_GUILD_ID);
@@ -556,8 +560,16 @@ app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   res.set('Cache-Control','no-store');
   res.json({visible:canSeeDashboardManagement(req.bpd),
     showAdvancedDashboard:canSeeAdvancedDashboard(req.bpd),
-    dashboardProfile:isFireZoneDashboard(req.bpd)?'brandweer-zone':null,
+    dashboardProfile:isFireZoneDashboard(req.bpd)?'brandweer-zone':
+      ambulanceDashboardTier(req.bpd)?'ambulance-azls':null,
     zoneVerified:req.bpd.fireZoneChief===true,
+    ambulanceTier:ambulanceDashboardTier(req.bpd),
+    ambulanceReportVerified:req.bpd.ambulanceReportVerified===true,
+    ambulanceCanOpenDossier:req.bpd.dossierAllowedDepartments?.includes('ambulance')===true,
+    ambulanceCanManagePersonnel:req.bpd.ambulanceReportVerified===true&&
+      ['officierenkader','korpsleiding'].includes(ambulanceDashboardTier(req.bpd))&&
+      req.bpd.dossierNativeDepartments?.includes('ambulance')===true&&
+      req.bpd.dossierAllowedDepartments?.includes('ambulance')===true,
     allowedDepartments:req.bpd.dossierAllowedDepartments||[]});
 });
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
