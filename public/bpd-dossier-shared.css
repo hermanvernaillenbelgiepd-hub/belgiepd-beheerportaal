@@ -540,3 +540,148 @@ body.bpd-unified-dossier .depannage-specialty-status.is-off {
   height: 25px;
   color: #c9deff;
 }
+
+/* BelgiumPD politie: observatiescores 0-10, gemiddelde en reeksfuncties.
+   Decoratieve labels veranderen geen dossiergegevens of Discord-rollen. */
+body.dossier-onepage .police-score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  min-width: 63px;
+  padding: 3px 8px;
+  margin: 3px 0 4px;
+  font-weight: 800;
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  border: 1px solid #ffffff39;
+  border-radius: 6px;
+}
+body.dossier-onepage .police-score-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid #4c688b;
+  border-radius: 7px;
+  background: #1a3657;
+  color: #e7f3ff;
+  font-size: 11px;
+  font-weight: 650;
+  max-width: 100%;
+}
+body.dossier-onepage .police-score-summary strong {
+  font-size: 13px;
+  font-weight: 850;
+  color: #fff;
+  white-space: nowrap;
+}
+body.dossier-onepage .police-score-summary small {
+  color: #b6cbe5;
+  font-size: 10px;
+}
+body.dossier-onepage .police-score-badge.police-score-0 {background:#727987;color:#ffffff;}
+body.dossier-onepage .police-score-summary strong.police-score-0 {color:#727987;}
+body.dossier-onepage .police-score-badge.police-score-1 {background:#991b1b;color:#ffffff;}
+body.dossier-onepage .police-score-summary strong.police-score-1 {color:#991b1b;}
+body.dossier-onepage .police-score-badge.police-score-2 {background:#bd2727;color:#ffffff;}
+body.dossier-onepage .police-score-summary strong.police-score-2 {color:#bd2727;}
+body.dossier-onepage .police-score-badge.police-score-3 {background:#dc4526;color:#ffffff;}
+body.dossier-onepage .police-score-summary strong.police-score-3 {color:#dc4526;}
+body.dossier-onepage .police-score-badge.police-score-4 {background:#ea6b20;color:#ffffff;}
+body.dossier-onepage .police-score-summary strong.police-score-4 {color:#ea6b20;}
+body.dossier-onepage .police-score-badge.police-score-5 {background:#e79a13;color:#172433;}
+body.dossier-onepage .police-score-summary strong.police-score-5 {color:#e79a13;}
+body.dossier-onepage .police-score-badge.police-score-6 {background:#d9b92e;color:#172433;}
+body.dossier-onepage .police-score-summary strong.police-score-6 {color:#d9b92e;}
+body.dossier-onepage .police-score-badge.police-score-7 {background:#a3c849;color:#172433;}
+body.dossier-onepage .police-score-summary strong.police-score-7 {color:#a3c849;}
+body.dossier-onepage .police-score-badge.police-score-8 {background:#69bf54;color:#172433;}
+body.dossier-onepage .police-score-summary strong.police-score-8 {color:#69bf54;}
+body.dossier-onepage .police-score-badge.police-score-9 {background:#2f9950;color:#ffffff;}
+body.dossier-onepage .police-score-summary strong.police-score-9 {color:#2f9950;}
+body.dossier-onepage .police-score-badge.police-score-10 {background:#16783d;color:#ffffff;}
+body.dossier-onepage .police-score-summary strong.police-score-10 {color:#16783d;}
+
+body.dossier-onepage #sheetSeries {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+body.dossier-onepage #sheetSeries .police-series-chip,
+body.dossier-onepage #sheetSeries .police-series-head {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  width: max-content;
+  border-radius: 5px;
+  border: 1px solid currentColor;
+  padding: 2px 7px;
+  font-weight: 800;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+body.dossier-onepage #sheetSeries .police-series-1 {color:#ff8585;background:#64252b;}
+body.dossier-onepage #sheetSeries .police-series-2 {color:#e0b7ff;background:#49296d;}
+body.dossier-onepage #sheetSeries .police-series-3 {color:#b0eaff;background:#164b70;}
+body.dossier-onepage #sheetSeries .police-series-4 {color:#ffe989;background:#645016;}
+body.dossier-onepage #sheetSeries .dossier-series-heads {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.4;
+  margin-top: 2px;
+  max-width: 100%;
+  font-size: 10px;
+}
+body.dossier-onepage #sheetSeries .dossier-series-heads > span:first-child:not(.police-designation) {
+  color:#b6cde9;
+}
+body.dossier-onepage #sheetSeries .police-series-head {
+  font-size: 10px;
+  padding: 1px 5px;
+}
+body.dossier-onepage #sheetSeries .police-designation {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 6px;
+  padding: 2px 7px;
+  border: 1px solid #6885a2;
+  font-size: 11px;
+  color: #e8f2ff;
+  background: #253b5a;
+  line-height: 1.3;
+}
+body.dossier-onepage #sheetSeries .police-designation.butterfly {
+  background: #343263;
+  border-color: #b39bef;
+  color: #f2eaff;
+}
+body.dossier-onepage #sheetSeries .police-designation.officer {
+  background: linear-gradient(100deg,#71354d,#78456e,#395c8e,#367a79);
+  border-color: #c7b3f3;
+  color: #ffffff;
+}
+body.dossier-onepage #sheetSeries .police-designation.corps {
+  background: #57461e;
+  border-color: #e7c46a;
+  color: #ffe69a;
+}
+body.dossier-onepage #sheetSeries .police-series-4::after {
+  content:' · reserve';
+  text-transform: lowercase;
+  font-size: 9px;
+}
+@media(max-width:740px) {
+  body.dossier-onepage .police-score-summary {width:100%;justify-content:flex-start}
+  body.dossier-onepage #sheetSeries .dossier-series-heads {font-size:9px}
+}
