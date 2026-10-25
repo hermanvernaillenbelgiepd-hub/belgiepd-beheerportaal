@@ -33,30 +33,11 @@ tbody tr:nth-child(2n){background:#183450}
 <div class="mr-wrapper"><div class="mr-scroll"><table class="mr-table">
   <thead id="rosterHead"></thead><tbody id="rows"></tbody>
 </table></div></div>
-<section class="panel" id="rechercheDiscordOnly" hidden aria-label="Rechercheleden zonder personeelsfiche">
-<h2>🔎 LRD – via Discord, nog niet in personeelslijst</h2>
-<p>Deze leden hebben volgens de Discord-bot de rol LRD, maar er bestaat geen gekoppelde politionele personeelsfiche. Dit is geen rang, aanstelling of dossier.</p>
-<p id="rechercheDiscordStatus" role="status"></p>
-<ul id="rechercheDiscordNames"></ul>
-</section>
 </div>
 </main><script type="module">
 import {renderMemberPoliceRoster} from '/member-police-roster.js';
 const $=id=>document.getElementById(id);
 let auth=null,people=[];
-function showUnlinkedRecherche(data){
- const root=$('rechercheDiscordOnly'),status=$('rechercheDiscordStatus'),list=$('rechercheDiscordNames');
- list.replaceChildren();
- const complete=data.discordRechercheComplete===true;
- const people=Array.isArray(data.discordRechercheUnlinked)?data.discordRechercheUnlinked:[];
- root.hidden=false;
- if(!complete){status.textContent='Discord-ledenlijst kon niet volledig worden gecontroleerd.';return;}
- status.textContent=people.length+' rechercheleden zonder politionele personeelsfiche';
- for(const p of people){
-   if(typeof p.name!=='string')continue;
-   const li=document.createElement('li');li.textContent=p.name+' · LRD: JA · Niet gekoppeld';list.append(li);
- }
-}
 const idToken=()=>auth?.currentUser?.uid?.startsWith('discord:')?auth.currentUser.getIdToken():null;
 function render(){
  const q=$('search').value;
@@ -73,7 +54,6 @@ async function load(){
   if(!res.ok)throw Error(data.error||'Geen toegang');
   $('discordLogin').hidden=true;
   people=Array.isArray(data.records)?data.records:[];
-  showUnlinkedRecherche(data);
   render();
   if(data.stale)$('message').textContent+=' · Let op: brongegevens momenteel niet actueel';
  }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
@@ -88,7 +68,7 @@ try{
  const app=getApps().length?getApp():initializeApp(config.firebaseConfig);auth=getAuth(app);
  onAuthStateChanged(auth,user=>{
   if(user?.uid?.startsWith('discord:'))load();
-  else {people=[];$('rechercheDiscordOnly').hidden=true;$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
+  else {people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script></body></html>
