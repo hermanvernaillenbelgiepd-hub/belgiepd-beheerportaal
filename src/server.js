@@ -499,6 +499,8 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     // No Discord role, dossier grant or cadre can be changed here.
     req.bpd.policeLrdSubjectIds=Object.create(null);
     req.bpd.policeLrdCheckedIds=Object.create(null);
+    req.bpd.policeLrdUnlinked=[];
+    req.bpd.policeLrdUnlinkedAvailable=false;
     if(req.path==='/api/personnel/overview'&&scope.departments.includes('politie')&&
        !snapshot.stale){
       try{
