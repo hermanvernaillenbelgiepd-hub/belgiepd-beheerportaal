@@ -380,6 +380,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Firestore registratie; Google Sheets en Discord-rollen blijven ongewijzigd</span></div></form>
 </section>
 <section id="panel" class="card" hidden>
+<div id="dossierServiceBanner" class="dossier-service-banner" role="status"></div>
 <div class="controls dossier-top-actions" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2>
 <span id="sheetScoreSummary" class="police-score-summary" aria-live="polite" hidden>Gem. score: —</span>
 <div class="controls"><button id="renameLowerPolice" type="button" class="alt" hidden>Naam corrigeren</button><button id="editPersonnelSummary" type="button" class="alt" hidden>Personeelsgegevens wijzigen</button><button class="alt" id="close" type="button">Sluiten</button></div></div>
@@ -634,6 +635,7 @@ import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon
 import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalog.js';
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
+import {displayServiceBadge,serviceIdentity} from '/dossier-service-badge.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
@@ -827,7 +829,7 @@ function displaySelectedRegistration(){
       'Wijziging met audit opslaan':'Registratie opslaan';
   $('registrationKindHint').textContent='Registratie voor '+selected.name+
     ' · '+(selected.call||selected.discordId)+
-    ' · '+(selected.dept||'')+'; jouw serverrechten bepalen wat bewaard mag worden.';
+    ' · '+serviceIdentity(selected.dept).label+'; jouw serverrechten bepalen wat bewaard mag worden.';
 }
 function refreshPersonnelRegistrationOptions(){
   const pick=$('registrationKind');
@@ -961,6 +963,7 @@ function setupDossierTabs(){
       </div>
     </details>
     <section class="landscape-formal-entry registration-hub" id="formalInlineArea" hidden>
+      <div id="registrationServiceBanner" class="dossier-service-banner service-registration" role="status"></div>
       <h3>Registratie toevoegen</h3>
       <div class="registration-hub-heading">
         <label for="registrationKind">Wat wil je registreren?
@@ -3011,6 +3014,8 @@ async function showPerson(p){
   }
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
+  displayServiceBadge($('dossierServiceBanner'),p.dept);
+  displayServiceBadge($('registrationServiceBanner'),p.dept,{registration:true});
   if(!sameSelected)refreshStaffTrainingCourses(p.dept);
   $('renameLowerPolice').hidden=!(p.canRename===true&&writesEnabled);
   $('sheetTrainingRegisterLink').href='/rollen-opleidingen.html?'+new URLSearchParams({
