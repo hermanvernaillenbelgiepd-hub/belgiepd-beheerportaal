@@ -34,7 +34,8 @@ test('ZONE retains full own service personnel, report and training request autho
  const fireMember={dept:'brandweer',personId:'222222222222222222',call:'BWM-06',rank:'Brandweerman'};
  assert.equal(canViewPersonnel(zone,'brandweer'),true);
  assert.equal(canEditGeneralPersonnelInfo(zone,fireMember),true);
- assert.equal(mayReadFortnightReport(zone,'brandweer',[fireMember]),true);
+ const roster=[{dept:'brandweer',personId:id,call:'ZONE',rank:'Zonecommandant'},fireMember];
+ assert.equal(mayReadFortnightReport(zone,'brandweer',roster),true);
  assert.equal(mayReviewTrainingRequest(zone,{
   department:'brandweer',applicantDiscordId:fireMember.personId,applicantTier:'basiskader'
  }),true);
