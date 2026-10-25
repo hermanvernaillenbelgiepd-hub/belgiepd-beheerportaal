@@ -61,7 +61,7 @@ export function mayReadFortnightReport(actor,dept,roster){
   const person=ownRecord(actor,dept,roster);
   if(!person)return false;
   if(dept==='brandweer')return actor.fireZoneChief===true;
-  if(dept==='ambulance')return ['officierenkader','korpsleiding'].includes(scoped)||
+  if(dept==='ambulance')return ['middenkader','officierenkader','korpsleiding'].includes(scoped)||
     /^DIRMED(?:[- ]?\d{1,4})?$/.test(dutyCode(person));
   if(dept==='depannage')return ['middenkader','officierenkader','korpsleiding'].includes(scoped)&&
     /^(?:AWV(?:[- ]?\d{1,4})?|ANWV(?:[- ]?\d{1,4})?|AGENTSCHAP WEGEN (?:EN|&) VERKEER)$/.test(dutyCode(person));
