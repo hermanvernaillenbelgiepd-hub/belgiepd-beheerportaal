@@ -70,8 +70,8 @@ test('Promotions and demotions appear in the recent staff activity history',()=>
  assert.equal(staffActivityEvent('d1',{...data,type:'demotion'}).type,'demotion');
  assert.equal(staffActivityEvent('d2',{...data,type:'rank_changed'}).type,'rank_changed');
 });
-test('LRD role matches existing Discord role and is an editable police specialty',()=>{
- assert.ok(SPECIALTY_LABELS.politie.includes('LRD (Recherche)'));
+test('LRD Discord role exists but is not a default police specialty',()=>{
+ assert.equal(SPECIALTY_LABELS.politie.includes('LRD (Recherche)'),false);
  const roles=roleSummary(['1380843428354592780']);
  assert.ok(roles.roles.some(r=>r.name==='LRD (Lokale Recherche)'));
  assert.equal(roles.policeRank,null);
