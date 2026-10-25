@@ -4,7 +4,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {approvedManagedEntry,USER_COLLECTION,verifiedDiscordIdentity} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
 import {
-  TRAINING_REQUEST_DEPARTMENTS,policeRequestTier,personSeries,
+  TRAINING_REQUEST_DEPARTMENTS,SERIES_LEADERS,policeRequestTier,personSeries,
   requestCourseOptions,canSubmitTrainingRequest,mayReviewTrainingRequest,
   validateTrainingRequestInput,nextTrainingRequestStatus
 } from './training-request-policy.js';
@@ -114,16 +114,27 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
           roleForDepartment(ctx.actor,p.dept))
       }));
       const incoming=[];
-      // Query is scoped to departments already present in the verifiable
-      // personnel roster. Final row-level permission checks happen server-side.
-      for(const department of new Set(ctx.actor.departments.concat(
-        ctx.persons.some(p=>p.dept==='politie')?['politie']:[]))){
-        const rows=await db().collection('bpd_training_requests')
-          .where('department','==',department).limit(200).get();
+      // Normal members only load their own records. Avoid a service-wide
+      // Firestore scan on every login; this also protects Firestore quotas.
+      for(const person of ctx.persons){
+        const dept=person.dept,rank=roleForDepartment(ctx.actor,dept);
+        const highPolice=dept==='politie'&&['officierenkader','korpsleiding'].includes(rank);
+        const series=personSeries(person);
+        const seriesLead=dept==='politie'&&series&&SERIES_LEADERS[series]?.includes(ctx.id);
+        const serviceLead=dept!=='politie'&&
+          ['middenkader','officierenkader','korpsleiding'].includes(rank);
+        if(!highPolice&&!seriesLead&&!serviceLead)continue;
+        let query=db().collection('bpd_training_requests');
+        // A reekshoofd sees only the own series. That single-field query
+        // uses Firestore's automatic index, without requiring a composite.
+        query=seriesLead&&!highPolice?
+          query.where('series','==',series):
+          query.where('department','==',dept);
+        const rows=await query.limit(200).get();
         for(const doc of rows.docs){
           const request={id:doc.id,...doc.data()};
-          if(request.status!=='gewist'&&reviewScope(ctx,request))
-            incoming.push(exposed(request));
+          if(request.department!==dept||request.status==='gewist')continue;
+          if(reviewScope(ctx,request))incoming.push(exposed(request));
         }
       }
       incoming.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
