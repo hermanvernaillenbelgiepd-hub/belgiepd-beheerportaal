@@ -68,6 +68,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       // badge. Never display a 24-hour-old role while the access policy
       // requires a fresh 15-minute role verification.
       const labelledRecords=records.map(p=>({...p,
+        lrdDiscordVerified:p.dept==='politie'&&
+          req.bpd.policeLrdSubjectIds?.[p.discordId]===true,
         discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
           req.bpd.verifiedPoliceSubjectRoles?.[p.discordId]||null:null,
         verifiedFunction:p.dept==='depannage'?
