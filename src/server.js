@@ -19,6 +19,7 @@ import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
+import {verifiedPoliceLrdRole} from './police-lrd-policy.js';
 import {canSeeDashboardManagement,canSeeAdvancedDashboard,isFireZoneDashboard,ambulanceDashboardTier} from './dashboard-admin-policy.js';
 import {mayReadFortnightReport} from './fortnight-report-policy.js';
 import { installManagementRoutes } from './management-routes.js';
@@ -506,12 +507,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
         group.forEach((id,index)=>{
           if(!docs[index]?.exists)return;
           const member=docs[index].data();
-          if(member.guildId!==process.env.DISCORD_GUILD_ID||
-             !Number.isSafeInteger(member.verifiedAt)||
-             member.verifiedAt>Date.now()||
-             Date.now()-member.verifiedAt>15*60*1000||
-             !Array.isArray(member.roleIds))return;
-          if(member.roleIds.includes('1380843428354592780'))
+          if(verifiedPoliceLrdRole(member,process.env.DISCORD_GUILD_ID))
             req.bpd.policeLrdSubjectIds[id]=true;
         });
       }
