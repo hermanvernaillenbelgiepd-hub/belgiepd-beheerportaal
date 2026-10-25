@@ -16,8 +16,9 @@ export const SPECIALTY_LABELS=Object.freeze(Object.fromEntries(
   Object.entries(specs).map(([dept,spec])=>[dept,
     Object.freeze([...spec.specialties.map(([,label])=>label),
       ...(dept==='brandweer'?[
-        'Logistiek / Signalisatie','Bosbestrijding','Brandweer-AMBU',
-        'RED-TEAM','Basistraining'
+        // RED team and Basis TR already exist as actual Google Sheets fields.
+        // Do not add display-alias fields RED-TEAM / Basistraining twice.
+        'Logistiek / Signalisatie','Bosbestrijding','Brandweer-AMBU'
       ]:dept==='depannage'?[
         // No Google Sheets source columns for these two capabilities yet.
         // Both default to "Niet ingevuld" until an authorized audited update.
