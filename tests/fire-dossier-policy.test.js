@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {FIRE_ROLES,FIRE_COURSES,verifiedFireRoles,fireSubjectClass,fireActorClass,
-  mayOpenFireSubject,fireRecordVisibility,fireMayCreate}
+  mayOpenFireSubject,fireRecordVisibility,fireMayCreate,fireSanctionLevel}
   from '../src/fire-dossier-policy.js';
 const guild='1309532437952466984',now=Date.UTC(2026,9,25);
 const member=ids=>verifiedFireRoles({guildId:guild,verifiedAt:now-1000,roleIds:ids},guild,now);
@@ -43,6 +43,23 @@ test('ZONE can see higher staff, Bestuur reads without operational write powers'
  assert.equal(fireMayCreate(zone,subject,middle,'sanctie'),true);
  assert.equal(mayOpenFireSubject(board,subject,middle),true);
  assert.equal(fireMayCreate(board,subject,basic,'observatie'),false);
+});
+test('Fire leadership mirrors Police Middenkader registrations and ZONE mirrors Corps',()=>{
+ const mid={departments:['brandweer'],fireAccessLevel:'middle'};
+ const leader={departments:['brandweer'],fireAccessLevel:'leadership'};
+ const zone={departments:['brandweer'],fireAccessLevel:'zone',fireZoneChief:true};
+ for(const type of ['basisnotitie','notitie','observatie','sanctie']){
+   assert.equal(fireMayCreate(mid,subject,basic,type),type==='observatie');
+   assert.equal(fireMayCreate(leader,subject,basic,type),true);
+   assert.equal(fireMayCreate(zone,subject,middle,type),true);
+ }
+ assert.equal(fireSanctionLevel(leader),'middenkader');
+ assert.equal(fireSanctionLevel(zone),'korpsleiding');
+ assert.equal(fireSanctionLevel(mid),null);
+ assert.equal(fireMayCreate(leader,subject,middle,'notitie'),false);
+ assert.equal(fireMayCreate(leader,subject,leadership,'sanctie'),false);
+ const readOnlyBoard={boardPersonnelAdmin:true,departments:['brandweer']};
+ assert.equal(fireMayCreate(readOnlyBoard,subject,basic,'basisnotitie'),false);
 });
 test('Handmatige Brandweer-Middenkaderherstel blijft dienstgebonden',()=>{
  const manual={departments:['brandweer'],manualFireRole:'middle'};
