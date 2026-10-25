@@ -1406,7 +1406,7 @@ function renderUnlinkedDiscordRecherche(data){
   const available=data.discordRechercheComplete===true;
   const people=Array.isArray(data.discordRechercheUnlinked)?
     data.discordRechercheUnlinked:[];
-  root.hidden=!available&&!people.length;
+  root.hidden=false;
   if(!available){
     status.textContent='De Discord-ledenlijst kon niet volledig worden gecontroleerd.';
     return;
