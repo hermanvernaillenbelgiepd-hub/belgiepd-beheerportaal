@@ -192,9 +192,11 @@ export function mergePersonnelEdits(records,editRecords){
     const e=byKey.get(p.dept+'_'+p.personId);
     // An explicit, audited server-side rank decision is the only exception
     // to the otherwise read-only Google Sheets grade. This does not grant roles.
-    return e?{...p,name:e.name,call:e.call,status:e.status,
-      ...(e.approvedRankEdit===true&&typeof e.rank==='string'?{rank:e.rank}:{}),
-      source:'firestore-overlay'}:p;
+    if(!e)return p;
+    const officialRank=e.approvedRankEdit===true&&typeof e.rank==='string'?e.rank:p.rank;
+    return {...p,name:e.name,call:e.call,status:e.status,rank:officialRank,
+      ...(p.dept==='politie'?{kader:policeKader(officialRank,e.call)}:{}),
+      source:'firestore-overlay'};
   });
 }
 
