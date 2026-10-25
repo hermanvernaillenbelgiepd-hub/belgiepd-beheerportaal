@@ -15,7 +15,10 @@ export const allowedDept = (actor,dept) => ['politie','ambulance','brandweer','d
 export const mayReadManagement = (actor,dept) => allowedDept(actor,dept) &&
   (CADRE_ROLES.includes(roleForDepartment(actor,dept))||
    actor?.dossierFullDepartments?.includes(dept));
+// Depannage uses one dedicated cadre case type: specialization restriction.
+// Observations and sanctions are submitted through the formal register.
 export const mayWriteManagement = (actor,dept,type) => (
+  (dept!=='depannage'||type==='specialisatiebeperking')&&(
   // Delegated case management can add only routine dossier notes.
   // This does not convey sanctions, rank changes or other personnel powers.
   (['notitie','opleiding'].includes(type)&&actor?.dossierFullDepartments?.includes(dept)&&
@@ -28,6 +31,7 @@ export const mayWriteManagement = (actor,dept,type) => (
     !['naamswijziging','personeelsbeweging','promotievoorstel'].includes(type) ||
     HIGH_ROLES.includes(roleForDepartment(actor,dept))
   ))
+  )
 );
 export const mayDecide = actor => actor?.portalTechnicalMode===true||actor?.fireZoneChief===true||HIGH_ROLES.includes(actor?.role);
 // Rapportinhoud raadplegen kan vanaf middenkader; bestanden exporteren alleen voor hogere kaderrollen, binnen de toegestane dienst.
