@@ -19,7 +19,7 @@ import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
-import {canSeeDashboardManagement,canSeeAdvancedDashboard} from './dashboard-admin-policy.js';
+import {canSeeDashboardManagement,canSeeAdvancedDashboard,isFireZoneDashboard} from './dashboard-admin-policy.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
@@ -555,7 +555,9 @@ installManualRoleRoutes(app,{requireUser});
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   res.set('Cache-Control','no-store');
   res.json({visible:canSeeDashboardManagement(req.bpd),
-    showAdvancedDashboard:canSeeAdvancedDashboard(req.bpd)});
+    showAdvancedDashboard:canSeeAdvancedDashboard(req.bpd),
+    dashboardProfile:isFireZoneDashboard(req.bpd)?'brandweer-zone':null,
+    allowedDepartments:req.bpd.dossierAllowedDepartments||[]});
 });
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
