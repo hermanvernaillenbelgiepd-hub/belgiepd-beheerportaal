@@ -22,14 +22,18 @@ export function verifiedPoliceLrdRole(member,guildId,now=Date.now()){
     member.verifiedAt<=now&&now-member.verifiedAt<=FRESH_MS&&
     Array.isArray(member.roleIds)&&member.roleIds.includes(LRD_DISCORD_ROLE_ID));
 }
-function checkedSet(positive,checked,source='unknown'){
+function checkedSet(positive,checked,source='unknown',unlinked=[]){
   const value=new Set(positive);
   // No Discord IDs or role payloads are sent directly to the client.
   value.confirmedIds=new Set(checked);
   value.source=source;
+  // Bot-verified people not yet present in the police roster. The UI only
+  // receives a bounded display name and an unlinked marker, never a Discord ID.
+  value.unlinked=unlinked.map(person=>({name:person.name,status:'Niet gekoppeld'}));
+  value.unlinkedAvailable=source==='discord-bot';
   return value;
 }
-const clone=value=>checkedSet(value,value.confirmedIds||[],value.source);
+const clone=value=>checkedSet(value,value.confirmedIds||[],value.source,value.unlinked||[]);
 async function boundedJSON(response){
   const declared=response.headers?.get?.('content-length');
   if(declared&&/^\d+$/.test(declared)&&Number(declared)>MAX_BYTES)
@@ -47,6 +51,7 @@ export async function fetchBotLrdGuildSnapshot(guild,token,{
   if(!DISCORD_ID.test(guild)||typeof token!=='string'||token.length<35)
     throw Error('Discord bot not configured');
   const matched=new Set(),seen=new Set();
+  matched.displayNames=new Map();
   let after='';
   for(let page=0;page<BOT_LIST_MAX_PAGES;page++){
     const url='https://discord.com/api/v10/guilds/'+guild+'/members?limit='+
@@ -69,7 +74,15 @@ export async function fetchBotLrdGuildSnapshot(guild,token,{
       if(seen.has(id))throw Error('Duplicate Discord member');
       seen.add(id);
       last=id;
-      if(item.roles.includes(LRD_DISCORD_ROLE_ID))matched.add(id);
+      if(item.roles.includes(LRD_DISCORD_ROLE_ID)){
+        matched.add(id);
+        // Only keep the nickname or Discord display name for LRD holders.
+        // No raw Discord member payloads, role lists or IDs leave the server.
+        const raw=[item.nick,item.user?.global_name,item.user?.username]
+          .find(v=>typeof v==='string'&&v.trim().length>0)||'Discord-lid';
+        const safe=raw.replace(/[\\x00-\\x1f\\x7f<>]/g,' ').trim().slice(0,80);
+        matched.displayNames.set(id,safe||'Discord-lid');
+      }
     }
     if(rows.length<BOT_LIST_PAGE_SIZE)return matched;
     if(!last||last===after)throw Error('Discord member cursor did not advance');
@@ -205,7 +218,17 @@ export function createPoliceLrdIndex({
       const missing=ids.filter(id=>!checked.has(id));
       if(missing.length)await oauthFallback(missing,guild,positive,checked);
       if(activeConfig!==configuration)return verifiedMemberIds(roster);
-      const value=checkedSet(positive,checked,source);
+      // Do not assume Discord-only people are staff. Display them in a
+      // separate, read-only reconciliation list, never in the dossier roster.
+      // Only complete guild enumerations can identify unlinked members.
+      const linkedIds=new Set(ids);
+      const unlinked=source==='discord-bot'&&guildMembers?.displayNames?
+        [...guildMembers.displayNames.entries()]
+          .filter(([id])=>!linkedIds.has(id))
+          .slice(0,200)
+          .map(([,name])=>({name}))
+          .sort((a,b)=>a.name.localeCompare(b.name,'nl-BE')):[];
+      const value=checkedSet(positive,checked,source,unlinked);
       const ttl=validBot&&source!=='discord-bot'&&!complete?
         1000:source==='discord-bot'?BOT_CACHE_MS:OAUTH_CACHE_MS;
       if(activeConfig===configuration)
