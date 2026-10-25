@@ -409,6 +409,19 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 </div>
 <div class="controls" style="margin-top:14px"><button id="promoteSave" type="submit">Promotie registreren</button></div>
 </form></section>
+<section id="rankChangePanel" hidden style="border-top:1px solid #3b5374;margin-top:14px;padding-top:12px">
+<h3>Rangwissel of degradatie</h3>
+<p class="subtle">Alleen bevoegd Officierenkader of Korpsleiding. Kies de nieuwe rang én een passend vrij roepnummer. Deze actie vereist een motivering en wordt gelogd. Discord-rangrollen worden niet automatisch gewijzigd.</p>
+<form id="rankChangeForm">
+<div class="grid">
+<div><label for="rankChangeFrom">Huidige rang</label><input id="rankChangeFrom" disabled></div>
+<div><label for="rankChangeTo">Nieuwe rang</label><select id="rankChangeTo" required></select></div>
+<div><label for="rankChangeCall">Nieuw roepnummer (passende rangreeks)</label><input id="rankChangeCall" required maxlength="12" autocomplete="off" placeholder="bv. 438"></div>
+<div style="grid-column:1/-1"><label for="rankChangeReason">Verplichte motivering (20–500 tekens)</label>
+<textarea id="rankChangeReason" required minlength="20" maxlength="500" rows="3"></textarea></div>
+</div>
+<div class="controls"><button type="submit" id="rankChangeSave">Rangwijziging bevestigen</button></div>
+</form></section>
 <section class="dossier-head" id="staffDossierSection">
 <h2>Administratief personeelsdossier</h2>
 <p class="subtle">Aanstellingsgegevens, functie en administratieve opvolging. Het officiële personeelsbestand, de rang en de bestaande opleidingen worden hierdoor niet overschreven.</p>
@@ -641,6 +654,7 @@ document.body.classList.add('dossier-onepage');
 let activeLeaveRosterIds=new Set();
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
 let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
+let rankChangesEnabled=false,rankChoices=[];
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
 const initialQuery=new URLSearchParams(window.location.search);
 const dossierEmbedded=initialQuery.get('embed')==='1';
@@ -1016,7 +1030,7 @@ function setupDossierTabs(){
     openDossierTab(button.dataset.openSheet);
     if(button.dataset.formalAction)startFormalRegistration(button.dataset.formalAction);
   });
-  panes.gegevens.append($('editForm'),$('promotionPanel'));
+  panes.gegevens.append($('editForm'),$('promotionPanel'),$('rankChangePanel'));
   const source=$('staffDossierSection'),nodes=[...source.children];
   // Oude administratieve rubrieken horen niet onder Overzicht.
   let section='gegevens';
@@ -1050,7 +1064,8 @@ function setupDossierTabs(){
   const inlineForms=[
     ['gegevens','editForm'],
     ['gegevens','staffProfileForm'],
-    ['movements','promotionPanel']
+    ['movements','promotionPanel'],
+    ['movements','rankChangePanel']
   ];
   for(const [tile,form] of inlineForms){
     const cell=sheet.querySelector('[data-sheet-tile="'+tile+'"]');
@@ -1372,11 +1387,11 @@ async function checkAccessStatus(){
   }catch(e){root.textContent='Statuscontrole: '+e.message}
 }
 async function load(){
-  if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+  if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     const data=await request('/api/personnel/overview');
     $('accessHelp').hidden=true;
-    people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;testMode=data.testMode===true;
+    people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
     $('newBtn').hidden=!Object.keys(createRanks).length;
     if($('newPanel').hidden===false&&!Object.keys(createRanks).length)$('newPanel').hidden=true;
@@ -3193,6 +3208,13 @@ async function showPerson(p){
   $('promoteFrom').value=p.rank;
   $('promoteTo').value=canPromote?p.nextPromotionRank:'';
   $('promoteReason').value='';
+  const canChangeRank=rankChangesEnabled&&p.canChangeRank===true&&rankChoices.length>0;
+  $('rankChangePanel').hidden=!canChangeRank;
+  $('rankChangeFrom').value=p.rank;
+  $('rankChangeTo').replaceChildren(option('','Kies de nieuwe rang…'),
+    ...rankChoices.filter(x=>x!==p.rank).map(x=>option(x,x)));
+  $('rankChangeTo').value='';$('rankChangeCall').value=p.call;
+  $('rankChangeReason').value='';
   const canChangeStatus=p.canEditStatus===true&&writesEnabled;
   const canChangeIdentity=p.canEditIdentity===true&&writesEnabled;
   $('pName').disabled=!canChangeIdentity;
@@ -3217,6 +3239,7 @@ async function showPerson(p){
       const div=document.createElement('div');div.className='history';
       const strong=document.createElement('strong');
       const eventLabels={create:'Personeelsfiche aangemaakt',entry_rank:'Instaprang geregistreerd',
+        demotion:'Degradatie',rank_change:'Rangwissel',
         exceptional_entry_rank:'Uitzonderlijke instaprang',promotion:'Politiepromotie geregistreerd',link_discord:'Discord-koppeling goedgekeurd',
         edit:'Personeelsfiche gewijzigd'};
       const label=eventLabels[change.action]||(change.revision!=null?'Revisie '+change.revision:'Dossierregistratie');
@@ -3240,6 +3263,26 @@ async function showPerson(p){
   }catch(e){$('history').textContent='Geschiedenis niet beschikbaar: '+e.message}
   if(!dossierEmbedded&&!ficheMode)$('panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
+$('rankChangeForm').onsubmit=async ev=>{
+  ev.preventDefault();
+  if(!selected||!rankChangesEnabled||selected.canChangeRank!==true)return;
+  const person=selected,rank=$('rankChangeTo').value,call=$('rankChangeCall').value.trim();
+  if(!rank||!call)return;
+  if(!confirm('Definitieve rangwijziging voor '+person.name+'?\\n'+
+      person.rank+' ('+person.call+') → '+rank+' ('+call+')\\n'+
+      'Deze beslissing wordt gelogd. Discord-rollen blijven ongewijzigd.'))return;
+  const button=$('rankChangeSave');button.disabled=true;
+  try{
+    const outcome=await request('/api/personnel/politie/'+
+      encodeURIComponent(person.discordId)+'/rank-change',{
+      method:'POST',body:{expectedRank:person.rank,newRank:rank,newCall:call,
+        reason:$('rankChangeReason').value.trim(),expectedRevision:person.revision}
+    });
+    await load();
+    notice((outcome.type==='demotion'?'Degradatie':'Rangwijziging')+
+      ' geregistreerd met historiek. Controleer afzonderlijk de Discord-rangrol.');
+  }catch(e){notice(e.message,true)}finally{button.disabled=false}
+};
 $('promotionForm').onsubmit=async ev=>{
   ev.preventDefault();
   if(!selected||!promotionsEnabled||!selected.canPromote||!selected.nextPromotionRank)return;
