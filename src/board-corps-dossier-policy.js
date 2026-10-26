@@ -13,7 +13,7 @@ export function verifiedBoardCorpsDossierAdmin(actor){
   const id=actor?.discordId;
   return Boolean(ID.test(String(id||''))&&actor.uid==='discord:'+id&&
     actor.portalTechnicalMode!==true&&
-    actor.boardPersonnelAdmin===true&&
+    actor.boardPersonnelAdmin===true&&actor.dossierSourceFresh===true&&
     actor.role==='korpsleiding'&&
     actor.departments?.includes('politie')&&
     roleForDepartment(actor,'politie')==='korpsleiding'&&
