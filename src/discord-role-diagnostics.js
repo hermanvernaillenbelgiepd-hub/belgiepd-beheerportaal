@@ -45,9 +45,58 @@ async function probe(url,token,{fetchImpl=fetch,limit=MAX_RESPONSE_BYTES}={}){
     return {status:'ok',data};
   }catch{return safeResponse;}
 }
+// Optional, explicitly requested board-only diagnostic. Discord's official
+// List Guild Members endpoint requires GUILD_MEMBERS. We count responses
+// in server memory and return ONLY aggregated totals, never member identities.
+// A 1000-member result is not proof of full coverage: use after-pagination.
+export async function collectDiscordCoverage({
+  env=process.env,fetchImpl=fetch
+}={}){
+  const guild=String(env.DISCORD_GUILD_ID||''),token=discordBotToken(env);
+  const summary={status:'not_configured',membersCount:null,
+    rechercheMembers:null,pages:0,completeCoverageVerified:false};
+  if(!isDiscordId(guild)||!token)return summary;
+  const seen=new Set();
+  let after='',members=0,recherche=0;
+  const PAGE_LIMIT=1000,MAX_PAGES=3;
+  for(let page=0;page<MAX_PAGES;page++){
+    const url='https://discord.com/api/v10/guilds/'+guild+
+      '/members?limit='+PAGE_LIMIT+(after?'&after='+after:'');
+    const result=await probe(url,token,{fetchImpl,limit:2*1024*1024});
+    if(result.status!=='ok')return {...summary,status:result.status};
+    const rows=result.data;
+    if(!Array.isArray(rows)||rows.length>PAGE_LIMIT)
+      return {...summary,status:'invalid_response'};
+    let high=after?BigInt(after):0n;
+    for(const item of rows){
+      const memberId=item?.user?.id;
+      if(!isDiscordId(memberId)||seen.has(memberId)||
+         !Array.isArray(item.roles)||item.roles.length>500||
+         item.roles.some(role=>!isDiscordId(role)))
+        return {...summary,status:'invalid_response'};
+      const number=BigInt(memberId);
+      if(number<=BigInt(after||'0'))
+        return {...summary,status:'invalid_response'};
+      seen.add(memberId);
+      if(number>high)high=number;
+      members++;
+      if(item.roles.includes('1380843428354592780'))recherche++;
+    }
+    if(rows.length<PAGE_LIMIT)
+      return {...summary,status:'ok',membersCount:members,
+        rechercheMembers:recherche,pages:page+1,completeCoverageVerified:true};
+    if(high===BigInt(after||'0'))return {...summary,status:'invalid_response'};
+    after=String(high);
+  }
+  // We intentionally stop at three pages (3000 users). Do not claim that the
+  // server is fully checked when Discord may have additional pages.
+  return {...summary,status:'partial',membersCount:members,
+    rechercheMembers:recherche,pages:MAX_PAGES,completeCoverageVerified:false};
+}
+
 export async function collectDiscordDiagnosis({
   env=process.env,ownId,ownMember=null,accessSource='',
-  fetchImpl=fetch,at=Date.now()
+  fetchImpl=fetch,at=Date.now(),coverage=false
 }={}){
   const guild=String(env.DISCORD_GUILD_ID||''),token=discordBotToken(env);
   const botConfigured=Boolean(token),guildConfigured=isDiscordId(guild);
@@ -65,7 +114,9 @@ export async function collectDiscordDiagnosis({
         rechercheRole:'unknown'},
       memberListing:{status:'not_configured',sampleCount:null,
         completeCoverageVerified:false},
-      ownMember:{status:'not_configured',roleAgreement:'unknown'}
+      ownMember:{status:'not_configured',roleAgreement:'unknown'},
+      fullCoverage:{status:'not_run',membersCount:null,rechercheMembers:null,
+        pages:0,completeCoverageVerified:false}
     },
     notes:[]};
   if(!botConfigured||!guildConfigured){
@@ -108,6 +159,16 @@ export async function collectDiscordDiagnosis({
       roleAgreement:cached?(same?'match':'different'):'not_comparable'};
   }else result.probes.ownMember={status:mine.status==='ok'?'invalid_response':
     mine.status,roleAgreement:'unknown'};
+  if(coverage){
+    result.probes.fullCoverage=await collectDiscordCoverage({env,fetchImpl});
+    const full=result.probes.fullCoverage;
+    if(full.status==='ok')
+      result.notes.push('De Discord-ledenlijst is via alle teruggegeven pagina’s gelezen. De telling is een momentopname, geen permanente synchronisatie.');
+    else if(full.status==='partial')
+      result.notes.push('De gecontroleerde limiet van 3000 leden is bereikt. Verdere Discord-leden zijn niet getest.');
+    else
+      result.notes.push('De uitgebreide ledenlijstcontrole is niet geslaagd. Controleer Server Members Intent en botautorisatie.');
+  }
   if(result.probes.memberListing.status!=='ok')
     result.notes.push('De bot kan de ledenlijst niet betrouwbaar testen. Controleer Server Members Intent en de bottoegang in Discord.');
   else result.notes.push('Een geslaagde aanvraag van één lid bevestigt geen volledige ledenlijst of voortdurende synchronisatie.');
