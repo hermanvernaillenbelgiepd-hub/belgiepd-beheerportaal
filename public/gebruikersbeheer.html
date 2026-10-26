@@ -310,7 +310,9 @@ function render(){
     detail.textContent=u.category?
       'Administratieve aanduiding; bestaande dienstrechten blijven behouden':
       'Toegekende dienst(en): '+(u.departments||[]).map(d=>deptNames[d]||d).join(', ');
-    departmentWrap.append(detail);
+    // Assigned services are displayed once in the badges below.
+    // The dropdown above only chooses the edit target.
+    detail.hidden=true;
     // Explicitly show *all* independently approved services; the selector
     // above chooses which single service to edit, it is not the full list.
     const assignments=document.createElement('div');
@@ -328,10 +330,6 @@ function render(){
     if(boardAssigned){
       const label=document.createElement('span');label.className='service-assignment board';
       label.textContent='Bestuur · '+(u.board.discord?'Discord geverifieerd':'Portaalbenoeming goedgekeurd');
-      assignments.append(label);
-    }else if(u.status==='approved'){
-      const label=document.createElement('small');label.className='muted';
-      label.textContent='Bestuur: niet recent bevestigd in het portaal (los van de politierang)';
       assignments.append(label);
     }
     departmentWrap.append(assignments);
@@ -351,28 +349,16 @@ function render(){
       const chosen=currentServiceFunction(u,dept.value);
       const title=serviceFunctionOption(dept.value,chosen)?.label||
         accountCadreLabel(dept.value,saved);
-      explanation.textContent=saved?
-        'Huidige functie: '+title+' · Formele dienstfunctie wordt afzonderlijk geverifieerd':
-        'Geen bestaande functie voor deze dienst';
-      if((u.departments||[]).length>1)
-        explanation.textContent+=' · Andere: '+u.departments
-          .filter(d=>d!==dept.value).map(d=>{
-            const f=serviceFunctionOption(d,currentServiceFunction(u,d));
-            return (deptNames[d]||d)+': '+(f?.label||u.departmentRoles?.[d]||'—');
-          }).join(', ');
+      explanation.textContent=saved?'':'Nog niet toegekend aan deze hulpdienst';
+      rank.title=saved?'Huidige functie: '+title+
+        '. Wijzigingen gelden alleen voor deze hulpdienst.':
+        'Deze dienstfunctie is nog niet toegekend.';
     };
     updateAccountRoleExplanation();
     functionWrap.append(explanation);
-    if(u.board?.discord||u.board?.appointed){
-      const origin=document.createElement('small');origin.className='muted';
-      origin.textContent=' · BESTUUR: '+[
-        u.board.discord?'Discord (geverifieerd)':null,
-        u.board.appointed?'portaal (goedgekeurd)':null
-      ].filter(Boolean).join(' + ');
-      functionWrap.append(origin);
-    }
+    // Bestuur staat reeds als afzonderlijk label bij de toegewezen diensten.
     cell(row,functionWrap);
-    const actions=document.createElement('div');actions.className='controls';
+    const actions=document.createElement('div');actions.className='account-actions';
     const approve=document.createElement('button');
     const refreshButton=()=>approve.textContent=
       dept.value==='bestuur'?'Bestuur voordragen':
@@ -444,6 +430,11 @@ function render(){
       }catch(e){notice(e.message,true)}finally{approve.disabled=false}
     };
     actions.append(approve);
+    const more=document.createElement('details');more.className='account-more';
+    const moreSummary=document.createElement('summary');moreSummary.textContent='⋯ Meer';
+    moreSummary.setAttribute('aria-label','Meer acties voor '+(u.username||u.discordId));
+    const moreBody=document.createElement('div');moreBody.className='account-more-items';
+    more.append(moreSummary,moreBody);
     // Deliberately separate Board from operational service functions.
     // The existing Board nomination workflow always performs the actual
     // permission checks; this button merely navigates to that workflow.
@@ -455,7 +446,7 @@ function render(){
       boardAdd.onclick=()=>{
         dept.value='bestuur';dept.onchange();approve.click();
       };
-      actions.append(boardAdd);
+      moreBody.append(boardAdd);
     }
     if(u.status==='approved'&&(u.departments||[]).length<serviceDepartments.length){
       const extraToggle=document.createElement('button');
@@ -512,7 +503,7 @@ function render(){
           await loadAdmin();
         }catch(error){notice(error.message,true);extraSave.disabled=false;}
       };
-      actions.append(extraToggle,extraEditor);
+      moreBody.append(extraToggle,extraEditor);
     }
     const revoke=document.createElement('button');revoke.type='button';
     revoke.className='alt';revoke.textContent='Alleen deze dienst intrekken';
@@ -535,7 +526,7 @@ function render(){
         await loadAdmin();
       }catch(e){notice(e.message,true)}finally{revoke.disabled=false}
     };
-    actions.append(revoke);
+    moreBody.append(revoke);
     if(/^\d{15,22}$/.test(String(u.discordId||''))){
       const personnel=document.createElement('a');
       personnel.href='/personeelsbeheer.html?discordId='+encodeURIComponent(u.discordId);
@@ -553,8 +544,9 @@ function render(){
         block.disabled=true;
         try{await api('/api/users/'+encodeURIComponent(u.discordId)+'/block',{method:'POST',body:{reason}});notice('Toegang geblokkeerd.');await loadAdmin()}
         catch(e){notice(e.message,true)}finally{block.disabled=false}
-      };actions.append(block);
+      };moreBody.append(block);
     }
+    if(moreBody.childElementCount)actions.append(more);
     cell(row,actions);list.append(row);
   }
 }
