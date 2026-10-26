@@ -24,7 +24,7 @@ small,.muted{color:#a9bfdb}h1{font-size:clamp(25px,4vw,36px);margin:0 0 8px}h2{f
 #notice.bad{background:#4b2b3a;border-color:#a15e78}
 #notes{padding-left:22px;color:#c8d8ec}#notes li{margin:7px 0}
 [hidden]{display:none!important}
-</style></head><body>
+</style><link rel="stylesheet" href="/bpd-navigation.css"></head><body>
 <header><strong>🛡️ BelgiumPD / MAIN · Bestuur</strong>
 <nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/discord-status.html">Mijn Discord</a></nav>
 </header><main>
@@ -156,4 +156,4 @@ try{
   onAuthStateChanged(getAuth(firebase),user=>{currentUser=user;void refresh()});
 }catch(error){showNotice('Aanmelding niet beschikbaar: '+error.message,true)}
 </script>
-</body></html>
+<script defer src="/bpd-navigation.js"></script></body></html>
