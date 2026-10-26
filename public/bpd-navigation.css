@@ -130,3 +130,61 @@ body.bpd-shell > header button{padding:7px 10px;font-size:12px;min-height:30px}
  .portal>aside nav{display:flex;overflow-x:auto;flex-direction:row}
  .portal>aside nav a{flex:none}
 }
+
+
+/* Uniforme, subtiele paginahoofdingen in alle dienstschermen (MAIN).
+   Uitsluitend typografie en verticale ruimte. Geen wijzigingen aan formulieren,
+   diensten, interactieve knoppen, rapportweergave op papier of toegangsrechten. */
+@media screen{
+  body.bpd-shell > header strong{
+    font-size:13px;line-height:1.25;font-weight:700;letter-spacing:0
+  }
+  body.bpd-shell > main:not(.workspace){
+    margin-top:10px;padding-top:12px
+  }
+  body.bpd-shell > main > h1,
+  body.bpd-shell > main > .intro h1,
+  body.bpd-shell > main > .personnel-overview h1,
+  body.bpd-shell > main > .heading > div:first-child > h1,
+  body.bpd-shell > main > #panel > h1,
+  body.bpd-shell > main.workspace > .page-heading h1,
+  .portal > .surface > main h1,
+  .portal #memberDashboard h1{
+    font-size:18px;line-height:1.27;letter-spacing:-.015em;
+    font-weight:750;margin:0 0 5px
+  }
+  body.bpd-shell > main > h1 + p,
+  body.bpd-shell > main > .intro > div:first-child > p,
+  body.bpd-shell > main > .heading > div:first-child > .intro{
+    margin:4px 0 10px;font-size:12px;line-height:1.45
+  }
+  body.bpd-shell > main > .intro{
+    margin-bottom:12px
+  }
+  /* Het TO-dienstbord behoudt zijn eigen bediening en roosterschikking. */
+  body.bpd-shell > main.workspace{padding-top:14px}
+  body.bpd-shell > main.workspace > .page-heading{
+    margin-bottom:12px;gap:12px
+  }
+  body.bpd-shell > main.workspace > .page-heading h1{
+    margin:3px 0 4px
+  }
+  /* Zelfde subtiele paginatitel voor de startschermen van iedere dienst. */
+  .portal > .surface > main{padding-top:15px}
+  body:has(#memberDashboard:not([hidden])) .portal > .surface > main{
+    padding-top:15px
+  }
+  .portal .hero{gap:12px;padding-bottom:16px}
+  .portal .hero-icon{width:48px;height:48px;border-radius:12px}
+  .portal .hero-icon svg{width:26px;height:26px}
+  .portal .eyebrow{font-size:10px;margin-bottom:4px}
+  .portal .lead{font-size:12px;line-height:1.45;margin:5px 0 0}
+  @media(max-width:700px){
+    body.bpd-shell > main:not(.workspace){margin-top:7px;padding-top:9px}
+    body.bpd-shell > main.workspace{padding-top:10px}
+    .portal > .surface > main{padding-top:11px}
+    body:has(#memberDashboard:not([hidden])) .portal > .surface > main{
+      padding-top:11px
+    }
+  }
+}
