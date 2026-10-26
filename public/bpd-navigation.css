@@ -111,3 +111,20 @@ body:has(#memberDashboard:not([hidden])) .portal main{
  body:has(#memberDashboard:not([hidden])) .portal{display:block}
  body:has(#memberDashboard:not([hidden])) .portal>aside{position:relative}
 }
+
+/* Match the original home sidebar width and compact topbar with the shared
+   shell, without overriding the homepage's role-specific navigation. */
+.portal{grid-template-columns:232px minmax(0,1fr)}
+.portal>aside{padding:20px 12px 18px;gap:16px}
+.portal>aside nav{gap:3px}
+.portal>aside nav a{padding:8px 11px;min-height:35px;font-size:12px}
+.portal .topbar{min-height:56px;padding:11px clamp(12px,1.5vw,25px)}
+body.bpd-shell > header a{font-size:12px}
+body.bpd-shell > header nav a{white-space:nowrap}
+body.bpd-shell > header button{padding:7px 10px;font-size:12px;min-height:30px}
+@media(max-width:850px){
+ .portal{display:block}
+ .portal>aside{padding:13px 12px}
+ .portal>aside nav{display:flex;overflow-x:auto;flex-direction:row}
+ .portal>aside nav a{flex:none}
+}
