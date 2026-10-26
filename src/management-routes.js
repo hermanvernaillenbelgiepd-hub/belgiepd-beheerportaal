@@ -5,6 +5,7 @@ import {createWeekReportDocx} from './report-export.js';
 import {isArchivedTraining} from './training-maintenance.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
+import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
@@ -59,6 +60,8 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     const dept=asString(req.body?.dept),id=asString(req.body?.discordId),type=asString(req.body?.type);
     if(!canReadServiceDossier(req.bpd,dept)||!mayWriteManagement(req.bpd,dept,type))return res.status(403).json({error:'Geen bevoegdheid om deze categorie te registreren'});
     if(!validDiscord(id))return res.status(400).json({error:'Ongeldige Discord ID'});
+    if(verifiedBoardCorpsDossierAdmin(req.bpd)&&id===req.bpd.discordId)
+      return res.status(403).json({error:'Dossierregistraties over jezelf zijn niet toegestaan'});
     try{
       const data=validateManagementEntry(req.body),snap=await getSnapshot();
       const subject=uniqueSubject(snap.data,dept,id);
