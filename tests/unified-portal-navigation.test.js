@@ -67,3 +67,19 @@ test('Staff roster and read-only personnel table are shorter, never less informa
   // Shared read-only roster never receives edit actions from these CSS changes.
   assert.doesNotMatch(readonly,/\/api\//);
 });
+
+test('Extra low roster rows override prior minimum heights without hiding data',()=>{
+  const staff=read('personeelsbeheer.html');
+  const member=read('member-police-roster.css');
+  assert.match(staff,/tbody tr:not\(\.police-kader-divider\)\{height:30px\}/);
+  assert.match(staff,/height:20px!important;max-height:20px!important/);
+  assert.match(staff,/height:27px!important;min-height:27px!important/);
+  assert.match(staff,/\.discord-copy-tools\{\s*display:inline-flex/);
+  assert.match(staff,/\.roster-open\{\s*min-height:24px/);
+  assert.match(member,/tbody tr\.mr-person\{height:28px\}/);
+  assert.match(member,/tbody tr\.mr-person>td\{\s*padding:3px 5px/);
+  assert.match(member,/\.mr-specialty\{padding:3px 2px/);
+  // Protected dossier rows, reports and their server-side rights are untouched.
+  assert.match(staff,/\.dossier-sheet \.sheet-identity/);
+  assert.match(staff,/\.staff-roster-table tbody tr\.police-kader-divider td/);
+});
