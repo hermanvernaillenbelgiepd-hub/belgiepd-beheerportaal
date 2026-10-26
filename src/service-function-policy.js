@@ -36,7 +36,9 @@ export function choiceFor(department,functionId){
   return SERVICE_FUNCTIONS[department]?.find(item=>item.id===functionId)||null;
 }
 export function defaultFunction(department,role){
-  return SERVICE_FUNCTIONS[department]?.find(item=>item.role===role)?.id||null;
+  const choices=SERVICE_FUNCTIONS[department]||[];
+  return choices.find(item=>item.id===role)?.id||
+    choices.find(item=>item.role===role)?.id||null;
 }
 const ID=/^\d{15,22}$/;
 export function parseServiceFunctionChange(body){
