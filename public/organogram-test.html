@@ -80,6 +80,17 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 [data-dept="ambulance"]{--accent:#82deb0;--accentbg:#235a4c}
 [data-dept="depannage"]{--accent:#ffd28c;--accentbg:#66502d}
 [data-dept="alle"]{--accent:#a3b5ff;--accentbg:#31436b}
+/* Alleen na expliciete geverifieerde aanvraag zichtbare dienstcontext. */
+.header-auth{font-size:11px;padding:6px 9px;border-radius:7px;border:1px solid #567ba9;background:#1a365a;color:#e1efff}
+.header-auth:hover:not(:disabled){background:#294a78}
+.internal-access{border:1px solid #4773a0;border-radius:8px;background:#0f2544;padding:10px;margin:10px 0}
+.internal-access[hidden]{display:none!important}
+.internal-access h3{margin:0 0 6px;font-size:12px}
+.scope-list{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+.scope-item{border:1px solid #5c83b1;background:#25456c;border-radius:7px;padding:4px 7px;font-size:11px}
+.internal-dossier-link{display:inline-block;padding:6px 8px;margin:5px 0;background:#3054b0;border-radius:6px;color:#fff;text-decoration:none;font-size:11px;font-weight:700}
+.internal-person{border-top:1px solid #385577;padding-top:8px}
+.scope-disclaimer{font-size:10px!important;color:#9fb8d8!important}
 @media(min-width:1550px){.branchset{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:850px){.layout{grid-template-columns:1fr}.side{position:static}}
 @media(max-width:520px){.filters{gap:5px}.filter{padding:6px 7px;font-size:11px}.search{flex-basis:100%;max-width:none}.people{grid-template-columns:1fr}main{padding-inline:10px}}
@@ -89,6 +100,8 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 <header class="topbar">
  <a class="brand" href="/" aria-label="Terug naar BelgiëPD TEST"><span class="brandmark">BP</span> BelgiëPD · Organogram</a>
  <span class="env">TEST · PROEFVERSIE</span>
+ <button id="login" class="header-auth" type="button" hidden>Aanmelding laden…</button>
+ <button id="internalToggle" class="header-auth" type="button" aria-controls="internalPanel" aria-expanded="false" disabled>🔒 Interne weergave</button>
  <a class="back" href="/">← TEST-startpagina</a>
 </header>
 <main>
@@ -113,11 +126,19 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   <aside class="card side" aria-label="Personeelskaart en privacy">
    <h2>Publieke personeelskaart</h2>
    <div id="detail" class="detail"><p>Kies een personeelskaart om de openbare basisgegevens te bekijken.</p></div>
+   <section id="internalPanel" class="internal-access" hidden aria-label="Beveiligde interne diensten">
+    <h3>🔒 Geverifieerde interne inzage</h3>
+    <p id="internalMessage" role="status">Nog niet geverifieerd.</p>
+    <div id="internalDepartments" class="scope-list"></div>
+    <p id="internalPerson" class="internal-person">Kies een personeelskaart om de dienstcontext te bekijken.</p>
+    <a class="internal-dossier-link" href="/dossiercentrum.html">Open beveiligd dossiercentrum →</a>
+    <p class="scope-disclaimer">De server beslist bij het openen van elke fiche en iedere wijziging opnieuw. Deze proefpagina verleent zelf geen dossier- of schrijfrechten.</p>
+   </section>
    <h3>Uniformfoto, specialisaties en onderscheidingen</h3>
    <p>De huidige openbare bron bevat deze gegevens nog niet. In deze proefversie gebruiken we alleen een herkenbaar dienstpictogram, geen verzonnen onderscheidingen of personeelsfoto’s.</p>
    <div class="locked">
     <strong>🔒 Interne laag blijft afgeschermd</strong>
-    <p>Observaties, sancties, administratieve wijzigingen, dossieraudit en Discord-ID's worden niet opgehaald. Een organogramfunctie is nooit een dossierrecht.</p>
+    <p>Observaties, sancties, administratieve wijzigingen, dossieraudit en Discord-ID's worden hier niet getoond. De interne dienstscope verschijnt uitsluitend na een nieuwe servercontrole. Een organogramfunctie is nooit een dossierrecht.</p>
     <a href="/dossiercentrum.html">Bestaand beveiligd dossiercentrum</a>
    </div>
    <h3>Voor de definitieve versie</h3>
@@ -136,6 +157,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
  ];
  const $=id=>document.getElementById(id);
  const viewState={service:'alle',query:'',people:[],demo:false,selected:null};
+ let auth=null,authModule=null,accessGeneration=0,internalVisible=false,allowedDepartments=[];
  const demo=[
   {dept:'politie',name:'Voorbeeldagent (fictief)',call:'DEMO-POL',rank:'Inspecteur',status:'DEMO'},
   {dept:'brandweer',name:'Voorbeeldbrandweerlid (fictief)',call:'DEMO-BW',rank:'Brandweerlid',status:'DEMO'},
@@ -151,6 +173,99 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
  const serviceLabel=dept=>services.find(s=>s.id===dept)?.title||'Onbekend';
  const serviceIcon=dept=>services.find(s=>s.id===dept)?.icon||'👤';
  const rankName=x=>String(x.rank||'Functie nog niet bekend').trim()||'Functie nog niet bekend';
+ const allowedService=dept=>allowedDepartments.includes(dept);
+ function clearInternal(){
+  ++accessGeneration;
+  internalVisible=false;
+  allowedDepartments=[];
+  $('internalPanel').hidden=true;
+  $('internalDepartments').replaceChildren();
+  $('internalPerson').textContent='Kies een personeelskaart om de dienstcontext te bekijken.';
+  $('internalToggle').textContent='🔒 Interne weergave';
+  $('internalToggle').setAttribute('aria-expanded','false');
+ }
+ function updateInternalPerson(){
+  if(!internalVisible)return;
+  const person=viewState.selected;
+  const target=$('internalPerson');
+  if(!person){
+   target.textContent='Kies een personeelskaart om de dienstcontext te bekijken.';
+   return;
+  }
+  target.textContent=allowedService(person.dept)?
+   'Dienstcontext '+serviceLabel(person.dept)+': deze hulpdienst staat in je geverifieerde dossierbereik. Open het Dossiercentrum; toegang tot deze specifieke fiche en wijzigingen worden daar opnieuw gecontroleerd.':
+   'Dienstcontext '+serviceLabel(person.dept)+': deze hulpdienst behoort niet tot jouw geverifieerde dossierbereik.';
+ }
+ async function openInternal(){
+  if(internalVisible){
+   clearInternal();
+   $('internalToggle').disabled=!auth?.currentUser||viewState.demo;
+   return;
+  }
+  const user=auth?.currentUser;
+  if(!user||viewState.demo)return;
+  const current=++accessGeneration;
+  const toggle=$('internalToggle');
+  toggle.disabled=true;
+  try{
+   const token=await user.getIdToken();
+   if(current!==accessGeneration||auth?.currentUser?.uid!==user.uid)return;
+   const response=await fetch('/api/dossiercentrum/overview',{
+    cache:'no-store',headers:{Authorization:'Bearer '+token}
+   });
+   const payload=await response.json().catch(()=>({}));
+   if(current!==accessGeneration||auth?.currentUser?.uid!==user.uid)return;
+   if(!response.ok)throw Error(payload.error||'Geen interne dossierinzage');
+   if(payload.readOnly!==true||!Array.isArray(payload.departments))throw Error('Onverwachte serverrespons');
+   const verified=[...new Set(payload.departments.filter(d=>services.some(s=>s.id===d)))];
+   if(!verified.length)throw Error('Geen dossierdiensten toegelaten');
+   allowedDepartments=verified;
+   internalVisible=true;
+   $('internalPanel').hidden=false;
+   $('internalMessage').textContent='Alleen de hieronder vermelde hulpdiensten zijn door de bestaande servercontrole vrijgegeven.';
+   $('internalDepartments').replaceChildren(...verified.map(d=>node('span','scope-item',serviceLabel(d))));
+   toggle.textContent='🔓 Interne weergave sluiten';
+   toggle.setAttribute('aria-expanded','true');
+   updateInternalPerson();
+  }catch(error){
+   if(current===accessGeneration&&auth?.currentUser?.uid===user.uid){
+    clearInternal();
+    $('internalMessage').textContent=error.message;
+    $('internalPanel').hidden=false;
+    $('internalDepartments').replaceChildren();
+    $('internalPerson').textContent='Er is geen interne profielinformatie geladen.';
+   }
+  }finally{
+   toggle.disabled=!auth?.currentUser||viewState.demo;
+  }
+ }
+ async function startInternalLogin(){
+  try{
+   const response=await fetch('/api/client-config',{cache:'no-store'});
+   if(!response.ok)throw Error('Aanmeldconfiguratie tijdelijk niet beschikbaar');
+   const config=await response.json();
+   if(!config.enabled)throw Error('Firebase-aanmelding is niet beschikbaar op TEST');
+   const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+   authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+   const app=appModule.getApps()[0]||appModule.initializeApp(config.firebaseConfig);
+   auth=authModule.getAuth(app);
+   const {setupPortalLogin}=await import('/portal-login.js');
+   const button=$('login');
+   button.hidden=false;
+   setupPortalLogin({button,auth,authModule,config,
+    onError:error=>{$('internalMessage').textContent='Aanmelden mislukt: '+error.message;
+     $('internalPanel').hidden=false;}});
+   authModule.onAuthStateChanged(auth,user=>{
+    clearInternal();
+    $('internalToggle').disabled=!user||viewState.demo;
+   });
+  }catch(error){
+   $('internalToggle').disabled=true;
+   $('internalMessage').textContent='Interne weergave niet beschikbaar: '+error.message;
+   $('internalPanel').hidden=false;
+  }
+ }
+ $('internalToggle').addEventListener('click',openInternal);
  function displayPerson(person){
   viewState.selected=person;
   const root=$('detail');root.replaceChildren();
@@ -170,6 +285,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   }
   root.append(wrap,defs);
   if(viewState.demo)root.append(node('p','','Fictief voorbeeld: dit is geen echt personeelsdossier.'));
+  updateInternalPerson();
  }
  function render(){
   const query=viewState.query.trim().toLocaleLowerCase('nl');
@@ -256,6 +372,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
     .map(p=>({dept:p.dept,name:String(p.name||'').slice(0,120),call:String(p.call||'').slice(0,24),
      rank:String(p.rank||'').slice(0,80),status:String(p.status||'').slice(0,50)}));
    viewState.demo=false;
+   $('internalToggle').disabled=!auth?.currentUser;
    notice.className='notice'+(data.sourceStale?' warn':'');
    notice.textContent=data.sourceStale?
     'De openbare bron meldt verouderde gegevens; controleer actuele rangen bij de personeelslijst.':
@@ -263,6 +380,8 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   }catch(error){
    viewState.people=demo;
    viewState.demo=true;
+   clearInternal();
+   $('internalToggle').disabled=true;
    notice.className='notice warn';
    notice.textContent='De openbare personeelsbron kon niet worden geladen. Je ziet uitsluitend FICTIEVE demo-kaarten. ('+error.message+')';
   }
@@ -273,12 +392,13 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   if(!btn)return;
   viewState.service=btn.dataset.view;viewState.selected=null;
   $('detail').replaceChildren(node('p','','Kies een personeelskaart om de openbare basisgegevens te bekijken.'));
+  updateInternalPerson();
   render();
  });
  $('search').addEventListener('input',event=>{
   viewState.query=event.target.value;render();
  });
- load();
+ load().finally(startInternalLogin);
 })();
 </script>
 </body>
