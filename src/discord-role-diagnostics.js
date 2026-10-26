@@ -26,7 +26,8 @@ export function ageStatus(member,guild,at=Date.now()){
   if(member?.guildId!==guild||!Number.isSafeInteger(member?.verifiedAt)||
     member.verifiedAt<=0||member.verifiedAt>at)return {status:'missing',ageMinutes:null};
   const age=Math.floor((at-member.verifiedAt)/60000);
-  return {status:age<=15?'fresh':'stale',ageMinutes:Math.max(0,Math.min(age,100000))};
+  return {status:at-member.verifiedAt<=15*60000?'fresh':'stale',
+    ageMinutes:Math.max(0,Math.min(age,100000))};
 }
 const safeResponse={status:'unavailable'};
 async function probe(url,token,{fetchImpl=fetch,limit=MAX_RESPONSE_BYTES}={}){
