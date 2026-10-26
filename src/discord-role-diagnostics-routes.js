@@ -39,19 +39,24 @@ export function installDiscordDiagnosticRoutes(app,{
       if(!access)return res.status(403).json({
         error:'Alleen geverifieerd Bestuur of formeel aangesteld Bestuur kan deze diagnose bekijken'
       });
-      const at=now(),key=id;
+      // Full guild pagination is never triggered by routine page loads.
+      // It requires an explicit action from an already authorised board user.
+      const coverage=req.query?.coverage==='1';
+      const at=now(),key=id+':'+(coverage?'coverage':'quick');
       const found=cache.get(key);
       if(found&&at<found.expires&&found.access===access)
         return res.json(found.report);
       let job=pending.get(key);
       if(!job){
-        job=collect({env,ownId:id,ownMember:member,accessSource:access,at});
+        job=collect({env,ownId:id,ownMember:member,accessSource:access,at,
+          coverage});
         pending.set(key,job);
       }
       let report;
       try{report=await job}finally{if(pending.get(key)===job)pending.delete(key);}
       if(cache.size>100)cache.clear();
-      cache.set(key,{report,access,expires:now()+45000});
+      cache.set(key,{report,access,
+        expires:now()+(coverage?10*60*1000:45000)});
       return res.json(report);
     }catch(error){
       // No Firestore raw messages, IDs, bot credentials or HTTP bodies.
