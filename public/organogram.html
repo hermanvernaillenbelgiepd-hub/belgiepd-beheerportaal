@@ -277,7 +277,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   'Operationele ploeg':'Uitvoering'
  };
  const realPeople=[];
- const policePeople=[];
+ const directoryPeople=[];
  let securedPeople=[],authGeneration=0;
  let publicLoadError='',publicLoaded=false,publicStale=false;
  function policeNumber(call){
@@ -330,7 +330,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   return portrait;
  }
  function setView(demoView){
-  if(!demoView&&!policePeople.length){
+  if(!demoView&&!directoryPeople.length){
    $('status').textContent=publicLoadError||'Personeelsgegevens vereisen een geldige Discord-aanmelding.';
    $('status').className='notice warn';
    return;
@@ -347,7 +347,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   $('internalToggle').disabled=!auth?.currentUser;
   $('internalPanel').hidden=true;
   const label=demoView?'FICTIEVE demo · geen echte medewerkers, bevoegdheden of onderscheidingen':
-   'Geverifieerde politiepersoneelsgegevens · geen leidingrelaties of extra bevoegdheden';
+   'Geverifieerde personeelsgegevens van alle vier de diensten · geen dossierinformatie of extra bevoegdheden';
   $('status').textContent=label+(publicStale&&!demoView?' · De personeelsbron kan verouderd zijn.':'');
   $('status').className='notice'+(demoView?' warn':publicStale?' warn':'');
   render();
@@ -390,7 +390,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
  async function openInternal(){
   if(internalVisible){
    clearInternal();
-   publicLoaded=policePeople.length>0;
+   publicLoaded=directoryPeople.length>0;
    setView(!publicLoaded);
    $('internalToggle').disabled=!auth?.currentUser;
    return;
@@ -421,7 +421,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    allowedDepartments=verified;
    internalVisible=true;
    const unique=new Map();
-   for(const person of [...policePeople,...securedPeople]){
+   for(const person of [...directoryPeople,...securedPeople]){
     const key=[person.dept,person.call,person.name].join('|');
     if(!unique.has(key))unique.set(key,person);
    }
@@ -459,7 +459,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    const response=await fetch('/api/client-config',{cache:'no-store'});
    if(!response.ok)throw Error('Aanmeldconfiguratie tijdelijk niet beschikbaar');
    const config=await response.json();
-   if(!config.enabled)throw Error('Firebase-aanmelding is niet beschikbaar op TEST');
+   if(!config.enabled)throw Error('Firebase-aanmelding is niet beschikbaar');
    const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
    authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
    const app=appModule.getApps()[0]||appModule.initializeApp(config.firebaseConfig);
@@ -473,16 +473,16 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    authModule.onAuthStateChanged(auth,user=>{
     const generation=++authGeneration;
     clearInternal();
-    policePeople.splice(0);realPeople.splice(0);
+    directoryPeople.splice(0);realPeople.splice(0);
     publicLoaded=false;setView(true);
     $('internalToggle').disabled=!user;
-    if(user?.uid?.startsWith('discord:'))loadPolice(user,generation);
+    if(user?.uid?.startsWith('discord:'))loadDirectory(user,generation);
     else if(user){
      $('status').className='notice warn';
      $('status').textContent='Beheeraccount: gebruik de knop Interne weergave om enkel server-geautoriseerde diensten te bekijken. De gewone ledenlijst vereist Discord-verificatie.';
     }else{
      $('status').className='notice warn';
-     $('status').textContent='Niet aangemeld: alleen fictieve voorbeeldpersonen. Meld je aan met Discord voor echte politiegegevens.';
+     $('status').textContent='Niet aangemeld: alleen fictieve voorbeeldpersonen. Meld je aan met Discord voor echte personeelsgegevens.';
     }
    });
   }catch(error){
@@ -605,37 +605,38 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    }
    group.append(body);$('tree').append(group);
   }
-  $('source').textContent=(viewState.demo?'FICTIEF VISUEEL VOORBEELD':internalVisible?'GEVERIFIEERDE DOSSIERDIENSTEN':'GEVERIFIEERDE POLITIEPERSONEELSLIJST')+
+  $('source').textContent=(viewState.demo?'FICTIEF VISUEEL VOORBEELD':internalVisible?'GEVERIFIEERDE DOSSIERDIENSTEN':'GEVERIFIEERD ORGANOGRAM ALLE HULPDIENSTEN')+
    ' · '+visible+' getoonde registraties · Groepering per rang/functie (indicatief, geen bevelslijnen).';
  }
- async function loadPolice(user,generation){
+ async function loadDirectory(user,generation){
   try{
    if(!user?.uid?.startsWith('discord:'))throw Error('Discord-verificatie vereist');
    const token=await user.getIdToken();
    if(generation!==authGeneration||auth?.currentUser?.uid!==user.uid)return;
-   const response=await fetch('/api/member/personnel-list',{
+   const response=await fetch('/api/member/organogram-roster',{
     headers:{Authorization:'Bearer '+token},cache:'no-store'
    });
    const data=await response.json().catch(()=>({}));
    if(generation!==authGeneration||auth?.currentUser?.uid!==user.uid)return;
-   if(!response.ok)throw Error(data.error||'Personeelslijst niet beschikbaar');
-   if(data.readOnly!==true||!Array.isArray(data.records))throw Error('Ongeldige personeelslijstrespons');
-   const safe=data.records.map(r=>({
-    dept:'politie',name:String(r.name||'').slice(0,90),call:String(r.call||'').slice(0,18),
-    rank:String(r.rank||'').slice(0,95),status:String(r.status||'').slice(0,30),
+   if(!response.ok)throw Error(data.error||'Organogramoverzicht niet beschikbaar');
+   if(data.readOnly!==true||!Array.isArray(data.records))
+    throw Error('Ongeldige organogramrespons');
+   const departments=new Set(['politie','brandweer','ambulance','depannage']);
+   const safe=data.records.filter(r=>departments.has(r?.dept)).map(r=>({
+    dept:r.dept,name:String(r.name||'').slice(0,90),
+    call:String(r.call||'').slice(0,24),rank:String(r.rank||'').slice(0,95),
     specialties:(Array.isArray(r.specialties)?r.specialties:[])
-     .filter(x=>x&&typeof x.label==='string'&&typeof x.value==='string'&&
-      x.value.trim()&&x.value.trim()!=='Niet ingevuld')
-     .slice(0,10).map(x=>x.label.slice(0,40)+': '+x.value.slice(0,40))
+     .filter(x=>x&&typeof x.label==='string'&&x.value==='Ja')
+     .slice(0,12).map(x=>x.label.slice(0,40)+': Ja')
    }));
-   policePeople.splice(0,policePeople.length,...safe);
+   directoryPeople.splice(0,directoryPeople.length,...safe);
    realPeople.splice(0,realPeople.length,...safe);
    publicLoaded=true;publicStale=data.stale===true;publicLoadError='';
    if(!internalVisible)setView(false);
   }catch(error){
    if(generation!==authGeneration||auth?.currentUser?.uid!==user.uid)return;
-   publicLoaded=false;realPeople.splice(0);policePeople.splice(0);
-   publicLoadError='Personeelsgegevens niet beschikbaar: '+error.message;
+   publicLoaded=false;realPeople.splice(0);directoryPeople.splice(0);
+   publicLoadError='Organogramoverzicht niet beschikbaar: '+error.message;
    if(!internalVisible){
     setView(true);
     $('status').className='notice warn';

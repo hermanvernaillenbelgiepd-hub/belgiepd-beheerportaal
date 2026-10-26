@@ -78,6 +78,37 @@ export function publicPoliceRoster(rows){
   });
   return visible.slice(0,400);
 }
+// Directory for authenticated and guild-verified members; display fields only.
+// A directory entry never authorizes service dossier access or modifications.
+const ORGANOGRAM_DEPARTMENTS=new Set(['politie','brandweer','ambulance','depannage']);
+const ORGANOGRAM_BADGES=Object.freeze({
+  politie:['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE'],
+  brandweer:['Basis TR','Logistiek','Ladderwagen','Duiker','Signalisatie','RED team','Gevaarlijke stoffen','Grote Boot'],
+  ambulance:['Basis TR','Medicatie','HELI','Motor','MIP'],
+  depannage:['Opleiding DEP2K','Opleiding FAST']
+});
+export function publicOrganogramRoster(rows){
+  const seen=new Set(),visible=[];
+  for(const p of rows||[]){
+    if(!p||!ORGANOGRAM_DEPARTMENTS.has(p.dept)||
+       !discordId.test(strip(p.personId))||!strip(p.name))continue;
+    const key=p.dept+':'+p.personId;
+    if(seen.has(key))continue;
+    seen.add(key);
+    const allowed=ORGANOGRAM_BADGES[p.dept]||[];
+    const specialties=(Array.isArray(p.specialties)?p.specialties:[])
+      .filter(x=>x&&allowed.includes(x.label)&&
+        /^(ja|behaald|voltooid|geslaagd|true|yes)$/i.test(strip(x.value)))
+      .slice(0,12).map(x=>({label:x.label,value:'Ja'}));
+    visible.push({dept:p.dept,name:strip(p.name).slice(0,90),
+      call:strip(p.call).slice(0,24),rank:strip(p.rank).slice(0,95),
+      specialties});
+  }
+  visible.sort((a,b)=>a.dept.localeCompare(b.dept,'nl')||
+    a.call.localeCompare(b.call,'nl',{numeric:true})||a.name.localeCompare(b.name,'nl'));
+  return visible.slice(0,1200);
+}
+
 export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
   async function memberIdentity(req,res,next){
     res.set('Cache-Control','private, no-store');
@@ -152,6 +183,18 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
     }catch(error){
       console.error('Dashboard voor nieuwe leden:',error?.code||'bron tijdelijk niet beschikbaar');
       res.status(503).json({error:'Het dashboard kan momenteel niet worden geladen'});
+    }
+  });
+  // All four services are visible as an organizational directory, not as dossiers.
+  // memberIdentity requires a verified Discord guild identity on EACH request.
+  app.get('/api/member/organogram-roster',memberIdentity,async(_req,res)=>{
+    try{
+      const snapshot=await getSnapshot();
+      return res.json({records:publicOrganogramRoster(snapshot.data),
+        stale:snapshot.stale,readOnly:true});
+    }catch(error){
+      console.error('Organogramoverzicht:',error?.code||'bron niet beschikbaar');
+      return res.status(503).json({error:'Organogram momenteel niet beschikbaar'});
     }
   });
   app.get('/api/member/personnel-list',memberIdentity,async(_req,res)=>{
