@@ -413,6 +413,12 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
         ?db.collection('bpd_dossier_testers').doc(id).get():Promise.resolve(null)
     ]);
     const roster=snapshot.stale?[]:snapshot.data;
+    // This verifies a basic Ambulance employee's own OFFICIAL roster
+    // mapping for dashboard presentation only. It must never unlock
+    // protected service dossiers, report endpoints or grants.
+    req.bpd.ambulancePersonnelVerified=Boolean(valid&&
+      req.bpd.uid==='discord:'+id&&req.bpd.departments?.includes('ambulance')&&
+      roster.filter(p=>p.dept==='ambulance'&&p.personId===id).length===1);
     // Server-only, freshly checked ZONE leadership, scoped exclusively to fire.
     req.bpd.fireZoneChief=verifiedFireZoneChief(req.bpd,roster,
       member?.exists?member.data():null,process.env.DISCORD_GUILD_ID)||

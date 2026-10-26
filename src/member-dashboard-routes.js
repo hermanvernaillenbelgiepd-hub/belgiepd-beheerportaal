@@ -25,6 +25,17 @@ export function newcomerPortalMode(id,managed,roster,legacyApproved=false){
   }
   return 'staff';
 }
+// Presentation-only classification of an approved Ambulance account.
+// Discord membership, a radio label, or a single spreadsheet row must
+// NEVER authorize protected medical dossiers or report access.
+export function ambulanceMemberWorkspaceStatus(id,grant,roster,stale=false){
+  const approved=discordId.test(String(id||''))&&
+    Array.isArray(grant?.departments)&&grant.departments.includes('ambulance');
+  const matches=Array.isArray(roster)?roster.filter(p=>
+    p?.dept==='ambulance'&&p?.personId===id):[];
+  const available=approved&&matches.length===1&&stale!==true;
+  return {available,needsReview:approved&&!available};
+}
 // Personnel-list access and individual dossier access are separate.
 // Export ONLY roster columns, never Discord IDs, activity, dossiers,
 // source row, sanctions, notes, contact information or audit history.
@@ -90,7 +101,14 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
         return res.status(403).json({error:'Vernieuw eerst je Discord-verificatie'});
       if(managed.get('status')==='blocked')
         return res.status(403).json({error:'Je portaaltoegang is geblokkeerd'});
-      req.memberPortal={id,managed:managed.exists?managed.data():null};
+      // Only the authenticated user's own, guild-verified Discord roles
+      // inform this explanatory status; they never approve portal access.
+      const roles=identity.data()?.roleIds;
+      const ambulanceIds=['1309532438053130323','1309532437977497697',
+        '1309532438053130325'];
+      req.memberPortal={id,managed:managed.exists?managed.data():null,
+        ambulanceDiscordRoleSeen:Array.isArray(roles)&&
+          ambulanceIds.some(role=>roles.includes(role))};
       next();
     }catch(error){
       console.error('Nieuwe-leden-aanmelding:',error?.code||'controle mislukt');
@@ -113,8 +131,20 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       const approved=approvedManagedEntry(req.memberPortal.managed,id);
       const canUseSelfService=Boolean(approved||legacy.length===1&&
         req.memberPortal.managed===null);
+      const grant=approved||(
+        legacy.length===1&&req.memberPortal.managed===null?legacy[0]:null);
+      // A basic Ambulance employee may have an ordinary 'member' portal
+      // account. Show their service workspace only after an APPROVED
+      // Ambulance grant and exactly one linked official personnel record.
+      // This is presentation only: it never grants dossier or report access.
+      const ambulance=ambulanceMemberWorkspaceStatus(
+        id,grant,snapshot.data,snapshot.stale);
       res.json({
         mode,hasPersonnelRecord:police.length===1,
+        ambulanceWorkspaceAvailable:ambulance.available,
+        ambulanceLinkNeedsReview:ambulance.needsReview,
+        ambulanceApprovalNeedsReview:req.memberPortal.ambulanceDiscordRoleSeen===true&&
+          !grant?.departments?.includes('ambulance'),
         personnelListAvailable:true,profileAvailable:true,
         callsignRequestAvailable:!hasFixedCallsign,
         hasFixedCallsign,canUseSelfService

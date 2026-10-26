@@ -243,7 +243,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
       <p class="lead">Je ambulancewerkruimte bevat uitsluitend de diensten en bevoegdheden van je eigen functie. De politiepersoneelslijst blijft alleen ter inzage.</p>
     </div></section>
     <p id="ambulanceVerificationNotice" class="member-notice" hidden>Je portaalkader is gekend. Om beschermde ambulancedossiers en dienstgebonden rapporten te openen, moet je officiële ambulanceleidingfunctie via je gekoppelde personeelsfiche en Discord worden geverifieerd. Vernieuw de Discord-verificatie in Mijn profiel indien nodig.</p>
-    <h2 class="section-title">Ambulanceleiding en eigen functies</h2>
+    <h2 class="section-title">Ambulance · mijn dienst en functies</h2>
     <div class="grid" id="ambulanceModules">
       <a class="module" href="/personeelslijst.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelslijst Politie</h3><p>Raadpleeg de politionele personeelslijst zonder toegang tot politiedossiers.</p><span class="open">Open →</span></a>
       <a class="module" href="/personeelsbeheer.html" id="ambulanceCardStaff" hidden><span class="ico" aria-hidden="true">🚑</span><h3>Personeelsbeheer Ambulance</h3><p>Beheer ambulancepersoneel binnen de bevestigde AZLS-leidingrechten.</p><span class="open">Open →</span></a>
@@ -286,7 +286,8 @@ function showAmbulanceDashboard(ctx){
   const tier=ctx.ambulanceTier;
   $('ambulanceDashboardTitle').textContent=tier==='korpsleiding'?
     'DIR-MED – Directeur Medisch':tier==='officierenkader'?
-      'AZLS – Ambulanceleiding':'AZLS – Medisch instructeur';
+      'AZLS – Ambulanceleiding':tier==='personeel'?
+        'AZLS – Ambulancepersoneel':'AZLS – Medisch instructeur';
   const canManage=ctx.ambulanceCanManagePersonnel===true;
   const canOpen=ctx.ambulanceCanOpenDossier===true;
   const canReport=ctx.ambulanceReportVerified===true;
@@ -361,6 +362,22 @@ async function displayAuthenticated(user){
   const details=await authorizedFetch('/api/member/dashboard',token);
   if(turn!==requestNumber)return;
   if(details.mode==='member'){
+    // Server-recognised Ambulance roster and approval may provide a basic
+    // AZLS workspace without changing the member's operational privileges.
+    if(details.ambulanceWorkspaceAvailable===true){
+      try{
+        const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
+        if(turn!==requestNumber)return;
+        if(ctx.dashboardProfile==='ambulance-azls'&&
+          ctx.ambulanceTier==='personeel'){
+          showAmbulanceDashboard(ctx);
+          return;
+        }
+      }catch{
+        // Preserve safe basic self-service when the protected roster
+        // or session check is temporarily unavailable.
+      }
+    }
     show('member');
     displaySimpleModules(details);
     $('memberAccountStatus').textContent=details.hasPersonnelRecord?
@@ -391,6 +408,12 @@ async function displayAuthenticated(user){
             '5 kalenderdagen en 10 speeluren zijn bevestigd: je kunt een vast roepnummer aanvragen.':
             'Een vast roepnummer aanvragen kan zodra 5 kalenderdagen en 10 speeluren door de bot zijn bevestigd.';
     }
+    if(details.ambulanceLinkNeedsReview===true)
+      $('memberAccountStatus').textContent=
+        'Je Ambulance-portaaltoegang is goedgekeurd, maar je officiële personeelsfiche is niet eenduidig aan je Discord-ID gekoppeld of de personeelsbron is niet actueel. Laat dit door bevoegd beheer controleren.';
+    else if(details.ambulanceApprovalNeedsReview===true)
+      $('memberAccountStatus').textContent=
+        'Bij je laatste Discord-verificatie werd een Ambulance-rol gevonden, maar Ambulance is nog niet als goedgekeurde hulpdienst aan je portaalaccount gekoppeld. Vraag bevoegd beheer om je diensttoegang te controleren.';
   }else if(details.mode==='staff'){
     const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
     if(turn!==requestNumber)return;

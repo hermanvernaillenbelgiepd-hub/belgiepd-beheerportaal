@@ -23,6 +23,12 @@ export function ambulanceDashboardTier(actor){
       ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie')))
     return null;
   const tier=roleForDepartment(actor,'ambulance');
+  // Basic AZLS personnel receive their own work dashboard, not the
+  // generic Police newcomer dashboard. Only a unique verified official
+  // Ambulance roster link and approved service grant qualify. This tier
+  // is a display flag and confers NO dossier, personnel-edit or report rights.
+  if(tier==='basiskader')return actor.ambulancePersonnelVerified===true&&
+    actor.uid==='discord:'+actor.discordId?'personeel':null;
   const rank={middenkader:2,officierenkader:3,korpsleiding:4};
   if(!rank[tier]||!rank[actor.role]||rank[tier]>rank[actor.role])return null;
   return tier;
