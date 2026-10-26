@@ -288,9 +288,9 @@ function showAmbulanceDashboard(ctx,linkState=null){
     'DIR-MED – Directeur Medisch':tier==='officierenkader'?
       'AZLS – Ambulanceleiding':tier==='middenkader'?
       'AZLS – Medisch instructeur':'AZLS – Ambulancepersoneel';
-  const canManage=ctx.ambulanceCanManagePersonnel===true;
-  const canOpen=ctx.ambulanceCanOpenDossier===true;
-  const canReport=ctx.ambulanceReportVerified===true;
+  const canManage=tier!=='basiskader'&&ctx.ambulanceCanManagePersonnel===true;
+  const canOpen=tier!=='basiskader'&&ctx.ambulanceCanOpenDossier===true;
+  const canReport=tier!=='basiskader'&&ctx.ambulanceReportVerified===true;
   for(const [name,visible] of [
     ['ambulanceCardStaff',canManage],['ambulanceNavStaff',canManage],
     ['ambulanceCardDossiers',canOpen],['ambulanceNavDossiers',canOpen],
