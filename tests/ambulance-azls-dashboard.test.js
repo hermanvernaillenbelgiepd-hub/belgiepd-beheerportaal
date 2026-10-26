@@ -47,7 +47,13 @@ test('AZLS leading and instructor levels remain separately approved',()=>{
    [{...roster[0],call:'HARTS-01'},roster[1]]),true);
  assert.equal(mayReadFortnightReport(actor('officierenkader'),'ambulance',
    [{...roster[0],call:'AMB-01'},roster[1]]),false);
- assert.equal(ambulanceDashboardTier(actor('basiskader')),null);
+ assert.equal(ambulanceDashboardTier(actor('basiskader')),'basiskader');
+ assert.equal(canSeeDashboardManagement(actor('basiskader')),false);
+ assert.equal(isUserManager(actor('basiskader')),false);
+ assert.equal(canReadBoard(actor('basiskader')),false);
+ assert.equal(mayReadFortnightReport(actor('basiskader'),'ambulance',roster),false);
+ assert.equal(mayReviewTrainingRequest(actor('basiskader'),
+   {department:'ambulance',applicantDiscordId:colleague,applicantTier:'basiskader'}),false);
 });
 
 test('Police higher command, separately verified Board and technical manager retain independent workspaces',()=>{
@@ -82,4 +88,22 @@ test('Only the verified server context reveals medical leadership controls on da
  for(const restricted of ['/registraties.html','/to-dienstbord.html',
    '/vast-roepnummer-aanvragen.html','/gebruikersbeheer.html','/roepnummers.html'])
    assert.ok(!section.includes('href="'+restricted+'"'),'Forbidden '+restricted);
+});
+
+test('Approved ordinary AZLS members get an own service workspace, never management',()=>{
+ const baseline=actor('basiskader');
+ assert.equal(ambulanceDashboardTier(baseline),'basiskader');
+ assert.equal(ambulanceDashboardTier({...baseline,departments:['politie']}),null);
+ assert.equal(ambulanceDashboardTier({...baseline,departmentRoles:{ambulance:'middenkader'}}),null,
+   'A department tier above the approved global rank is not honoured');
+ assert.equal(ambulanceDashboardTier({...baseline,portalTechnicalMode:true}),null);
+ assert.equal(dossierGrantScope(baseline,false,null,'ambulance'),false);
+ assert.equal(canSeeUser(baseline,{status:'approved',departments:['ambulance']}),false);
+ const page=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const route=readFileSync(new URL('../src/member-dashboard-routes.js',import.meta.url),'utf8');
+ assert.match(page,/details\.ambulanceApproved===true/);
+ assert.match(page,/showAmbulanceDashboard\(ctx,details\.ambulanceLinkState\)/);
+ assert.match(page,/AZLS – Ambulancepersoneel/);
+ assert.match(page,/ambulanceDiscordRecognized===true&&details\.ambulanceApproved!==true/);
+ assert.match(route,/ambulanceApproved,ambulanceLinkState,ambulanceDiscordRecognized/);
 });
