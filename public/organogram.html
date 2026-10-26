@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Organogram · proefversie · BelgiëPD</title>
+<style>
+:root{font:13px/1.42 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#e9f1ff;background:#091425;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-width:320px}
+button,input{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid #b5d5ff;outline-offset:2px}
+button:disabled{opacity:.6;cursor:not-allowed}
+a{color:#b7d6ff}
+.topbar{display:flex;gap:13px;align-items:center;flex-wrap:wrap;padding:10px clamp(14px,2vw,26px);background:#101f3b;border-bottom:1px solid #365073}
+.brand{display:flex;align-items:center;gap:9px;color:#fff;text-decoration:none;font-weight:850;font-size:14px}
+.brandmark{display:grid;place-items:center;background:#3657ca;border:1px solid #7796e6;border-radius:8px;width:32px;height:33px;font-size:11px}
+.env{border:1px solid #927c39;border-radius:6px;color:#ffe59a;background:#3d331c;padding:3px 7px;font-size:10px;font-weight:750;letter-spacing:.07em}
+.topbar a.back{margin-left:auto;text-decoration:none;font-size:12px}
+main{max-width:1540px;margin:0 auto;padding:15px clamp(12px,2vw,26px) 42px}
+h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
+.lead{max-width:105ch;margin:0;color:#afc5e4;font-size:12px}
+.notice{background:#183a43;border:1px solid #286c75;border-radius:8px;padding:8px 11px;margin-top:11px;color:#d6fffa;font-size:12px}
+.notice.warn{background:#45351d;border-color:#88652d;color:#ffe6b6}
+.notice.danger{background:#482832;border-color:#a05063;color:#ffe1e7}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 315px;gap:14px;align-items:start;margin-top:12px}
+.card{background:#132642;border:1px solid #345477;border-radius:10px;padding:12px 14px}
+.filters{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin:8px 0 12px}
+.filter{background:#152e50;color:#c6ddff;border:1px solid #46658b;padding:7px 10px;border-radius:7px;font-size:12px}
+.filter[aria-pressed="true"]{background:#365ed4;border-color:#7399ff;color:white}
+.search{margin-left:auto;max-width:245px;min-width:145px;flex:1;background:#081a30;color:#fff;border:1px solid #4b6b8e;border-radius:7px;padding:7px 9px}
+.source{color:#aac2df;font-size:11px;margin:5px 0}
+.tree-root{max-width:260px;margin:0 auto 19px;text-align:center;border:1px solid #688fc4;background:#254371;color:#fff;border-radius:9px;padding:11px;font-weight:800;position:relative}
+.tree-root small{display:block;color:#c6dcfc;font-size:10px;font-weight:450;margin-top:3px}
+.tree-root:after{content:"";position:absolute;left:50%;top:100%;height:19px;border-left:1px solid #6184b2}
+.branchset{display:grid;grid-template-columns:1fr;gap:10px}
+.service{border:1px solid #365779;border-radius:9px;background:#10223a;min-width:0}
+.service>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;padding:9px 11px;font-size:13px;font-weight:800}
+.service>summary::-webkit-details-marker{display:none}
+.service>summary:after{content:"⌄";margin-left:auto;color:#c4d7f5}
+.service:not([open])>summary:after{content:"›"}
+.service .service-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:7px;background:var(--accentbg,#243e67);font-size:16px}
+.service .quantity{font-size:10px;font-weight:650;color:#b5cae7;background:#233b5a;border-radius:30px;padding:2px 7px}
+.service-body{padding:0 10px 11px}
+.service-caption{font-size:11px;color:#a5bddd;margin:2px 0 9px}
+.rank-group{border-left:2px solid var(--accent,#83acde);margin:7px 0;padding-left:9px}
+.rank-group>summary{cursor:pointer;padding:5px 1px;font-weight:750;font-size:12px;color:#ebf3ff}
+.rank-group .rank-count{font-size:10px;color:#a8c0e2;font-weight:500;margin-left:6px}
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));gap:7px;margin:5px 0 8px}
+.person{display:flex;align-items:center;gap:8px;min-width:0;text-align:left;border:1px solid #3a587c;border-radius:8px;background:#182f4d;color:#e7f0ff;padding:7px}
+.person:hover{background:#254668;border-color:#719ad7}
+.person[aria-pressed="true"]{border-color:#a5c7ff;box-shadow:0 0 0 1px #91b8f7}
+.avatar{display:grid;place-items:center;flex:none;width:37px;height:41px;border-radius:7px;background:var(--accentbg,#284064);border:1px solid #6684ac;font-size:20px}
+.identity{min-width:0;display:block}
+.identity strong,.identity small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.identity strong{font-size:12px}
+.identity small{font-size:10px;color:#bdd0ec}
+.more{border:1px solid #526e92;background:#1b3657;color:#cfe3ff;border-radius:6px;padding:6px 9px;font-size:11px}
+.empty{color:#afc3e0;margin:10px 0}
+.side{position:sticky;top:10px}
+.side h2{margin:0 0 7px;font-size:15px}
+.side h3{font-size:12px;margin:13px 0 5px;color:#c6dfff}
+.side p{margin:5px 0;color:#b2c8e6;font-size:11px}
+.detail{border-bottom:1px solid #395879;padding-bottom:10px;margin-bottom:10px}
+.detail-head{display:flex;align-items:center;gap:10px}
+.detail-head .avatar{width:55px;height:61px;font-size:28px}
+.detail-head strong{font-size:13px}
+.kv{display:grid;grid-template-columns:95px 1fr;gap:4px 8px;margin:10px 0;font-size:11px}
+.kv dt{color:#9fb8da}.kv dd{margin:0;overflow-wrap:anywhere}
+.locked{background:#0c1c31;border:1px dashed #49678b;border-radius:8px;padding:10px}
+.locked strong{font-size:12px}
+.locked a{font-size:11px}
+.sr-only{position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden}
+:root{--accent:#90b6ee;--accentbg:#233b61}
+[data-dept="politie"]{--accent:#86baff;--accentbg:#234a76}
+[data-dept="brandweer"]{--accent:#ff9a9e;--accentbg:#6c2d3b}
+[data-dept="ambulance"]{--accent:#82deb0;--accentbg:#235a4c}
+[data-dept="depannage"]{--accent:#ffd28c;--accentbg:#66502d}
+[data-dept="alle"]{--accent:#a3b5ff;--accentbg:#31436b}
+/* Alleen na expliciete geverifieerde aanvraag zichtbare dienstcontext. */
+.header-auth{font-size:11px;padding:6px 9px;border-radius:7px;border:1px solid #567ba9;background:#1a365a;color:#e1efff}
+.header-auth:hover:not(:disabled){background:#294a78}
+.internal-access{border:1px solid #4773a0;border-radius:8px;background:#0f2544;padding:10px;margin:10px 0}
+.internal-access[hidden]{display:none!important}
+.internal-access h3{margin:0 0 6px;font-size:12px}
+.scope-list{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+.scope-item{border:1px solid #5c83b1;background:#25456c;border-radius:7px;padding:4px 7px;font-size:11px}
+.internal-dossier-link{display:inline-block;padding:6px 8px;margin:5px 0;background:#3054b0;border-radius:6px;color:#fff;text-decoration:none;font-size:11px;font-weight:700}
+.internal-person{border-top:1px solid #385577;padding-top:8px}
+.scope-disclaimer{font-size:10px!important;color:#9fb8d8!important}
+@media(min-width:1550px){.branchset{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.side{position:static}}
+@media(max-width:520px){.filters{gap:5px}.filter{padding:6px 7px;font-size:11px}.search{flex-basis:100%;max-width:none}.people{grid-template-columns:1fr}main{padding-inline:10px}}
+
+/* Organogram visual v2 — standalone TEST preview, no rights or write changes. */
+.preview-switch{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:11px 0 3px}
+.view-mode{padding:7px 11px;border-radius:8px;background:#182e4b;color:#b7cdee;border:1px solid #3a587f;font-size:11px;font-weight:800}
+.view-mode[aria-pressed=true]{background:#315ac7;border-color:#7ea1f7;color:white}
+.demo-warning{background:#56411f;color:#ffe6b6;border:1px solid #98743b;border-radius:7px;padding:5px 9px;font-size:10px;font-weight:800}
+.demo-warning[hidden]{display:none}
+.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:10px 0}
+.metric{background:#122b48;border:1px solid #385777;padding:9px 10px;border-radius:9px;min-width:0}
+.metric b{font-size:19px;line-height:1.1;display:block;color:#f6faff}
+.metric small{font-size:10px;color:#adc3e1;white-space:nowrap;display:block;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.tree-root{max-width:340px;margin:5px auto 24px;padding:12px 15px;border-color:#8faeff;background:linear-gradient(135deg,#294f89,#1a3458);box-shadow:0 4px 20px #05102138}
+.tree-root:after{height:24px}
+.tree-root small{font-size:11px}
+.branchset{position:relative;gap:12px}
+.service{border-color:#41658e;box-shadow:0 4px 20px #07122242;overflow:hidden}
+.service>summary{background:#1b3658;padding:11px 12px}
+.service>summary .quantity{margin-left:auto}
+.service>summary:after{margin-left:0}
+.service .service-icon{width:35px;height:35px}
+.service-body{padding:7px 13px 13px;border-top:2px solid var(--accent,#80a9e4)}
+.tier-group{border-left:2px solid var(--accent,#81ace6);margin:12px 0 0 11px;padding:0 0 1px 15px;position:relative}
+.tier-group:before{content:"";position:absolute;width:14px;top:15px;left:-1px;border-top:2px solid var(--accent,#81ace6)}
+.tier-group>summary{list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px;cursor:pointer;color:#e5f1ff;background:#1a3555;border:1px solid #3d5e81;padding:7px 10px;border-radius:7px}
+.tier-group>summary::-webkit-details-marker{display:none}
+.tier-label{font-size:12px;font-weight:800}
+.tier-label small{font-size:10px;color:#aec9ea;font-weight:500}
+.tier-count{margin-left:auto;font-size:10px;background:#2b496c;color:#d8eaff;padding:3px 7px;border-radius:30px}
+.tier-group:not([open])>summary{background:#142a46}
+.tier-group:not([open])>summary:after{content:"›";color:#aac4e5}
+.tier-group[open]>summary:after{content:"⌄";color:#aac4e5}
+.people{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:7px;padding:8px 0 5px}
+.person{padding:8px;min-height:68px;align-items:center;background:#1a3352}
+.person .portrait{width:44px;height:48px;border-radius:7px}
+.person .identity small{white-space:normal;max-height:2.6em;line-height:1.25}
+.person .identity em{font-size:9px;display:inline-flex;padding:2px 5px;border-radius:4px;margin-top:4px;background:#274967;color:#d4e9ff;font-style:normal}
+.person .identity em.demo-tag{background:#68501f;color:#ffe8ae}
+.portrait{display:block;width:53px;height:60px;background:linear-gradient(160deg,var(--accentbg,#274d72),#081b33);border:1px solid #6d8fb3;border-radius:8px;position:relative;overflow:hidden;flex:none}
+.portrait:before{content:"";position:absolute;z-index:2;background:#e1ad87;width:15px;height:17px;border-radius:45% 45% 38% 38%;top:16%;left:calc(50% - 7.5px);box-shadow:0 0 0 2px #08182950}
+.portrait:after{content:"";position:absolute;background:var(--uniform,#33578c);width:80%;height:57%;border-radius:43% 43% 0 0;bottom:-8%;left:10%;border:2px solid #ffffff22}
+.portrait .cap{position:absolute;z-index:3;width:25px;height:9px;left:calc(50% - 12.5px);top:10%;background:var(--uniform,#244775);border-bottom:2px solid #d9ebff77;border-radius:7px 7px 2px 2px}
+.portrait .badge-mark{position:absolute;z-index:3;left:54%;top:69%;font-size:9px;color:#dff3ff}
+.portrait .collar{position:absolute;z-index:3;left:calc(50% - 5px);bottom:27%;width:10px;height:11px;border-left:2px solid #e5f1ffcc;border-right:2px solid #e5f1ffcc;transform:skewY(16deg)}
+[data-dept=brandweer] .portrait{--uniform:#a3323e}
+[data-dept=ambulance] .portrait{--uniform:#277a5b}
+[data-dept=depannage] .portrait{--uniform:#a36f22}
+[data-dept=politie] .portrait{--uniform:#365ab0}
+.portrait.large{width:95px;height:109px;border-radius:12px}
+.portrait.large:before{width:28px;height:30px;left:calc(50% - 14px)}
+.portrait.large .cap{width:46px;height:13px;left:calc(50% - 23px)}
+.portrait.large .collar{width:17px;height:16px;left:calc(50% - 8.5px)}
+.portrait.large .badge-mark{font-size:15px}
+.profile-title{display:flex;align-items:center;gap:11px;border-bottom:1px solid #3d5778;padding:6px 0 12px;margin-bottom:12px}
+.profile-title h3{font-size:15px;margin:0 0 4px;color:#fff;line-height:1.25}
+.profile-title p{margin:0;font-size:11px}
+.profile-section{margin-top:12px;padding-top:10px;border-top:1px solid #314e71}
+.profile-section h3{font-size:11px!important;text-transform:uppercase;letter-spacing:.07em;color:#acc4e5;margin:0 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{display:inline-block;padding:4px 7px;border-radius:5px;background:#21436b;border:1px solid #4b709c;color:#d5eaff;font-size:10px;font-weight:700}
+.chip.gold{background:#53401e;border-color:#8e7334;color:#ffe29c}
+.chip.ghost{background:#0c2037;color:#94acca;border-style:dashed}
+.profile-notice{font-size:10px;color:#a4bddc;margin:9px 0 0}
+.source-note{display:block;color:#98b2d6;font-size:10px;line-height:1.35;margin-top:8px}
+.empty-person{padding:12px;color:#a6bedf}
+@media(min-width:1370px){.branchset{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1100px){.metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:850px){.metrics{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:550px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.portrait.large{width:70px;height:84px}.profile-title{align-items:flex-start}}
+
+</style>
+</head>
+<body>
+<header class="topbar">
+ <a class="brand" href="/" aria-label="Terug naar BelgiëPD"><span class="brandmark">BP</span> BelgiëPD · Organogram</a>
+ <span class="env">MAIN · PROEFVERSIE</span>
+ <button id="login" class="header-auth" type="button" hidden>Aanmelding laden…</button>
+ <button id="internalToggle" class="header-auth" type="button" aria-controls="internalPanel" aria-expanded="false" disabled>🔒 Interne weergave</button>
+ <a class="back" href="/">← Startpagina</a>
+</header>
+<main>
+ <h1>Organogram van de hulpdiensten</h1>
+ <p class="lead">Proefopstelling van één organisatie met afzonderlijke dienststructuren. Zonder login zie je alleen fictieve voorbeelden. De personeelslijst van Politie vereist geverifieerde Discord-aanmelding. Andere dienstgegevens vereisen afzonderlijk bevestigde inzagerechten.</p>
+
+ <div class="preview-switch" role="group" aria-label="Weergavemodus">
+  <button id="realMode" class="view-mode" type="button" aria-pressed="true">Personeelsgegevens (na login)</button>
+  <button id="demoMode" class="view-mode" type="button" aria-pressed="false">Visueel voorbeeld met fictieve profielen</button>
+  <span id="demoWarning" class="demo-warning" hidden>FICTIEVE VOORBEELDDATA · GEEN ECHTE PERSONEN</span>
+ </div>
+ <div id="metrics" class="metrics" aria-label="Overzicht per hulpdienst"></div>
+ <div class="notice" id="status" role="status" aria-live="polite">Organogramproef laden…</div>
+ <div class="layout">
+  <section class="card" aria-label="Organogram en dienstkeuze">
+   <div class="filters" id="filters" role="group" aria-label="Hulpdienst">
+    <button class="filter" data-view="alle" aria-pressed="true">Overzicht</button>
+    <button class="filter" data-view="politie" aria-pressed="false">Politie</button>
+    <button class="filter" data-view="brandweer" aria-pressed="false">Brandweer</button>
+    <button class="filter" data-view="ambulance" aria-pressed="false">Ambulance</button>
+    <button class="filter" data-view="depannage" aria-pressed="false">Depannage</button>
+    <label class="sr-only" for="search">Zoek op naam, roepnummer of rang</label>
+    <input id="search" class="search" type="search" placeholder="Zoek naam, call of rang" autocomplete="off">
+   </div>
+   <p class="source" id="source">De takken zijn voorlopig gegroepeerd op de geregistreerde rang. Echte leidingrelaties vereisen later een apart, gevalideerd organogrambeheer.</p>
+   <div class="tree-root">BelgiëPD<small>Gezamenlijke organisatie · gescheiden dienstfuncties</small></div>
+   <div class="branchset" id="tree" aria-live="polite"></div>
+  </section>
+  <aside class="card side" aria-label="Personeelskaart en privacy">
+   <h2>Personeelskaart · <span id="profileType">Openbare gegevens</span></h2>
+   <div id="detail" class="detail"><p>Kies een personeelskaart om de openbare basisgegevens te bekijken.</p></div>
+   <section id="internalPanel" class="internal-access" hidden aria-label="Beveiligde interne diensten">
+    <h3>🔒 Geverifieerde interne inzage</h3>
+    <p id="internalMessage" role="status">Nog niet geverifieerd.</p>
+    <div id="internalDepartments" class="scope-list"></div>
+    <p id="internalPerson" class="internal-person">Kies een personeelskaart om de dienstcontext te bekijken.</p>
+    <a class="internal-dossier-link" href="/dossiercentrum.html">Open beveiligd dossiercentrum →</a>
+    <p class="scope-disclaimer">De server beslist bij het openen van elke fiche en iedere wijziging opnieuw. Deze proefpagina verleent zelf geen dossier- of schrijfrechten.</p>
+   </section>
+   <h3>Geüniformeerde profielen</h3>
+   <p>De silhouetten zijn voorlopige, door CSS getekende uniformillustraties. In de voorbeeldstand zie je hoe specialisaties en onderscheidingen later op de kaart kunnen verschijnen.</p>
+   <div class="locked">
+    <strong>🔒 Interne laag blijft afgeschermd</strong>
+    <p>Observaties, sancties, administratieve wijzigingen, dossieraudit en Discord-ID's worden hier niet getoond. De interne dienstscope verschijnt uitsluitend na een nieuwe servercontrole. Een organogramfunctie is nooit een dossierrecht.</p>
+    <a href="/dossiercentrum.html">Bestaand beveiligd dossiercentrum</a>
+   </div>
+   <h3>Voor de definitieve versie</h3>
+   <p>Per persoon één identiteit, dienstgebonden rollen en roepnummers. De leidingrelatie en publieke onderscheiding worden alleen via expliciete, gecontroleerde registratie toegevoegd.</p>
+  </aside>
+ </div>
+</main>
+<script>
+(function(){
+ 'use strict';
+ const services=[
+  {id:'politie',title:'Politie',icon:'👮'},
+  {id:'brandweer',title:'Brandweer',icon:'🚒'},
+  {id:'ambulance',title:'Ambulance',icon:'🚑'},
+  {id:'depannage',title:'Depannage',icon:'🛠️'}
+ ];
+ const $=id=>document.getElementById(id);
+ const viewState={service:'alle',query:'',people:[],demo:false,selected:null};
+ let auth=null,authModule=null,accessGeneration=0,internalVisible=false,allowedDepartments=[];
+ const demo=[
+  {dept:'politie',name:'Noor Vermeulen',call:'900',rank:'Eerste hoofdcommissaris',status:'Actief',specialties:['Korpsleiding','Beleidsvoering'],awards:['Dienstmedaille']},
+  {dept:'politie',name:'Arno Claes',call:'920',rank:'Commissaris',status:'Actief',specialties:['Officierenkader'],awards:['Eervolle vermelding']},
+  {dept:'politie',name:'Milan Dubois',call:'701',rank:'Hoofdinspecteur',status:'Actief',specialties:['Dispatch','RAGO'],awards:[]},
+  {dept:'politie',name:'Lena Janssens',call:'610',rank:'Aspirant-hoofdinspecteur',status:'Actief',specialties:['Motard'],awards:[]},
+  {dept:'politie',name:'Elias Peeters',call:'520',rank:'Eerste inspecteur',status:'Actief',specialties:['K-9','Prioritair rijden'],awards:['Uitstekende dienst']},
+  {dept:'politie',name:'Yara Maes',call:'417',rank:'Inspecteur',status:'Actief',specialties:['EHBO','Dispatch'],awards:[]},
+  {dept:'politie',name:'Simon De Smet',call:'331',rank:'Aspirant-inspecteur',status:'In opleiding',specialties:['Radio'],awards:[]},
+  {dept:'politie',name:'Aya Wouters',call:'214',rank:'Agent van politie',status:'Actief',specialties:['Radio BM'],awards:[]},
+  {dept:'brandweer',name:'Eva De Vos',call:'ZONE',rank:'Zonecommandant',status:'Actief',specialties:['Zoneleiding'],awards:['25 jaar dienst']},
+  {dept:'brandweer',name:'Dries Lambert',call:'KAP-03',rank:'Kapitein',status:'Actief',specialties:['Gevaarlijke stoffen','Commandovoering'],awards:[]},
+  {dept:'brandweer',name:'Mila Martens',call:'SERG-08',rank:'Sergeant',status:'Actief',specialties:['Duiker','Red-team'],awards:[]},
+  {dept:'brandweer',name:'Simon De Smet',call:'BW-21',rank:'Brandweerman',status:'Actief',specialties:['Ladderwagen','Logistiek'],awards:[]},
+  {dept:'ambulance',name:'Sofie Verbeek',call:'AZLS-01',rank:'AZLS Leiding',status:'Actief',specialties:['Medische coördinatie'],awards:['Verdienstelijke inzet']},
+  {dept:'ambulance',name:'Jules Goossens',call:'DIRMED-02',rank:'DIRMED',status:'Actief',specialties:['MIP'],awards:[]},
+  {dept:'ambulance',name:'Lotte Van Damme',call:'HARTS-01',rank:'Hoofdarts',status:'Actief',specialties:['MUG-HELI'],awards:[]},
+  {dept:'ambulance',name:'Yara Maes',call:'HVPK-09',rank:'Verpleegkundige',status:'Actief',specialties:['PIT','PIT-motor'],awards:[]},
+  {dept:'depannage',name:'Kobe Willems',call:'AWV-01',rank:'Agentschap Wegen en Verkeer - leiding',status:'Actief',specialties:['Verkeersveiligheid'],awards:['5 jaar dienst']},
+  {dept:'depannage',name:'Mara Diels',call:'DEPK-02',rank:'Depannagetechnicus',status:'Actief',specialties:['F.A.S.T','CRANE'],awards:[]},
+  {dept:'depannage',name:'Max De Winter',call:'LSRA-11',rank:'Depannagetechnicus',status:'Actief',specialties:['Wegenwerken','Takeling'],awards:[]}
+ ];
+ const tiers={
+  politie:['Korpsleiding','Officierenkader','Middenkader','Basiskader','Agentenkader','Overig'],
+  brandweer:['Zoneleiding','Officieren','Middenkader','Operationeel personeel','Overig'],
+  ambulance:['Medische leiding','Medische coördinatie','Zorgteams','Overig'],
+  depannage:['Leiding / AWV','Operationele ploeg','Overig']
+ };
+ const tierSubtitle={
+  'Korpsleiding':'Strategische leiding',
+  'Officierenkader':'Operationele coördinatie',
+  'Middenkader':'Aansturing en begeleiding',
+  'Basiskader':'Interventie en uitvoering',
+  'Agentenkader':'Basisoperationeel',
+  'Zoneleiding':'Zonale leiding',
+  'Officieren':'Coördinatie',
+  'Operationeel personeel':'Inzet',
+  'Medische leiding':'Strategische zorg',
+  'Medische coördinatie':'Coördinatie',
+  'Zorgteams':'Medische interventie',
+  'Leiding / AWV':'Organisatie en verkeersveiligheid',
+  'Operationele ploeg':'Uitvoering'
+ };
+ const realPeople=[];
+ const policePeople=[];
+ let securedPeople=[],authGeneration=0;
+ let publicLoadError='',publicLoaded=false,publicStale=false;
+ function policeNumber(call){
+  const value=String(call||'').trim().toUpperCase();
+  const match=value.match(/^(?:[A-Z]+[- ]?)?(\d{3})(?:\b|$)/);
+  return match?Number(match[1]):null;
+ }
+ function tier(person){
+  const dept=person.dept;
+  const name=String(person.rank||'').toLocaleLowerCase('nl');
+  const call=String(person.call||'').toLocaleLowerCase('nl');
+  if(dept==='politie'){
+   const n=policeNumber(person.call);
+   if(n!==null){
+    if(n===900||n===910)return 'Korpsleiding';
+    if(n>=920&&n<=999)return 'Officierenkader';
+    if(n>=600&&n<900)return 'Middenkader';
+    if(n>=300&&n<600)return 'Basiskader';
+    if(n>=100&&n<300)return 'Agentenkader';
+   }
+   if(/hoofdcommissaris|korpschef|korpsleiding|eerste commissaris/.test(name))return 'Korpsleiding';
+   if(/commissaris|officier/.test(name))return 'Officierenkader';
+   if(/hoofdinspecteur/.test(name))return 'Middenkader';
+   if(/inspecteur/.test(name))return 'Basiskader';
+   if(/agent/.test(name))return 'Agentenkader';
+   return 'Overig';
+  }
+  if(dept==='brandweer'){
+   if(/zone|zonechef|commandant|chef/.test(name+' '+call))return 'Zoneleiding';
+   if(/kolonel|majoor|kapitein|luitenant|^kol|^maj|^kap|^lt/.test(name+' '+call))return 'Officieren';
+   if(/adjunct|sergeant|^adj|^serg|ooff/.test(name+' '+call))return 'Middenkader';
+   return name||call?'Operationeel personeel':'Overig';
+  }
+  if(dept==='ambulance'){
+   if(/azls|leiding/.test(name+' '+call))return 'Medische leiding';
+   if(/dirmed|hoofdarts|harts/.test(name+' '+call))return 'Medische coördinatie';
+   return name||call?'Zorgteams':'Overig';
+  }
+  if(dept==='depannage'){
+   if(/\bawv\b|agentschap|leiding|coördinat/.test(name+' '+call))return 'Leiding / AWV';
+   return name||call?'Operationele ploeg':'Overig';
+  }
+  return 'Overig';
+ }
+ function createPortrait(person,large=false){
+  const portrait=node('span',large?'portrait large':'portrait');
+  portrait.dataset.dept=person.dept;
+  portrait.setAttribute('aria-hidden','true');
+  portrait.append(node('span','cap'),node('span','collar'),node('span','badge-mark','✦'));
+  return portrait;
+ }
+ function setView(demoView){
+  if(!demoView&&!policePeople.length){
+   $('status').textContent=publicLoadError||'Personeelsgegevens vereisen een geldige Discord-aanmelding.';
+   $('status').className='notice warn';
+   return;
+  }
+  viewState.demo=demoView;
+  viewState.people=demoView?demo:realPeople;
+  viewState.selected=null;
+  $('detail').replaceChildren(node('p','empty','Selecteer een profielkaart voor meer gegevens.'));
+  $('profileType').textContent=demoView?'FICTIEVE demo':'Openbare gegevens';
+  $('demoWarning').hidden=!demoView;
+  $('realMode').setAttribute('aria-pressed',String(!demoView));
+  $('demoMode').setAttribute('aria-pressed',String(demoView));
+  clearInternal();
+  $('internalToggle').disabled=!auth?.currentUser;
+  $('internalPanel').hidden=true;
+  const label=demoView?'FICTIEVE demo · geen echte medewerkers, bevoegdheden of onderscheidingen':
+   'Geverifieerde politiepersoneelsgegevens · geen leidingrelaties of extra bevoegdheden';
+  $('status').textContent=label+(publicStale&&!demoView?' · De personeelsbron kan verouderd zijn.':'');
+  $('status').className='notice'+(demoView?' warn':publicStale?' warn':'');
+  render();
+ }
+ $('realMode').addEventListener('click',()=>setView(false));
+ $('demoMode').addEventListener('click',()=>setView(true));
+ const node=(tag,cls,text)=>{
+  const element=document.createElement(tag);
+  if(cls)element.className=cls;
+  if(text!==undefined)element.textContent=String(text);
+  return element;
+ };
+ const serviceLabel=dept=>services.find(s=>s.id===dept)?.title||'Onbekend';
+ const serviceIcon=dept=>services.find(s=>s.id===dept)?.icon||'👤';
+ const rankName=x=>String(x.rank||'Functie nog niet bekend').trim()||'Functie nog niet bekend';
+ const allowedService=dept=>allowedDepartments.includes(dept);
+ function clearInternal(){
+  ++accessGeneration;
+  internalVisible=false;
+  allowedDepartments=[];
+  securedPeople=[];
+  $('internalPanel').hidden=true;
+  $('internalDepartments').replaceChildren();
+  $('internalPerson').textContent='Kies een personeelskaart om de dienstcontext te bekijken.';
+  $('internalToggle').textContent='🔒 Interne weergave';
+  $('internalToggle').setAttribute('aria-expanded','false');
+ }
+ function updateInternalPerson(){
+  if(!internalVisible)return;
+  const person=viewState.selected;
+  const target=$('internalPerson');
+  if(!person){
+   target.textContent='Kies een personeelskaart om de dienstcontext te bekijken.';
+   return;
+  }
+  target.textContent=allowedService(person.dept)?
+   'Dienstcontext '+serviceLabel(person.dept)+': deze hulpdienst staat in je geverifieerde dossierbereik. Open het Dossiercentrum; toegang tot deze specifieke fiche en wijzigingen worden daar opnieuw gecontroleerd.':
+   'Dienstcontext '+serviceLabel(person.dept)+': deze hulpdienst behoort niet tot jouw geverifieerde dossierbereik.';
+ }
+ async function openInternal(){
+  if(internalVisible){
+   clearInternal();
+   publicLoaded=policePeople.length>0;
+   setView(!publicLoaded);
+   $('internalToggle').disabled=!auth?.currentUser;
+   return;
+  }
+  const user=auth?.currentUser;
+  if(!user)return;
+  const current=++accessGeneration;
+  const toggle=$('internalToggle');
+  toggle.disabled=true;
+  try{
+   const token=await user.getIdToken();
+   if(current!==accessGeneration||auth?.currentUser?.uid!==user.uid)return;
+   const response=await fetch('/api/dossiercentrum/overview',{
+    cache:'no-store',headers:{Authorization:'Bearer '+token}
+   });
+   const payload=await response.json().catch(()=>({}));
+   if(current!==accessGeneration||auth?.currentUser?.uid!==user.uid)return;
+   if(!response.ok)throw Error(payload.error||'Geen interne dossierinzage');
+   if(payload.readOnly!==true||!Array.isArray(payload.departments))throw Error('Onverwachte serverrespons');
+   const verified=[...new Set(payload.departments.filter(d=>services.some(s=>s.id===d)))];
+   if(!verified.length)throw Error('Geen dossierdiensten toegelaten');
+   // The server response is scoped; project only the allowed display fields.
+   securedPeople=(Array.isArray(payload.rows)?payload.rows:[])
+    .filter(r=>r&&verified.includes(r.dept)&&typeof r.name==='string')
+    .map(r=>({dept:r.dept,name:String(r.name).slice(0,120),
+     call:String(r.call||'').slice(0,24),rank:String(r.rank||'').slice(0,80),
+     status:String(r.status||'').slice(0,50)}));
+   allowedDepartments=verified;
+   internalVisible=true;
+   const unique=new Map();
+   for(const person of [...policePeople,...securedPeople]){
+    const key=[person.dept,person.call,person.name].join('|');
+    if(!unique.has(key))unique.set(key,person);
+   }
+   viewState.people=[...unique.values()];
+   viewState.demo=false;
+   viewState.selected=null;
+   $('detail').replaceChildren(node('p','empty','Selecteer een persoon uit een toegelaten hulpdienst.'));
+   $('profileType').textContent='Geverifieerde dienstgegevens';
+   $('demoWarning').hidden=true;
+   $('realMode').setAttribute('aria-pressed','true');
+   $('demoMode').setAttribute('aria-pressed','false');
+   $('status').className='notice';
+   $('status').textContent='INTERNE WEERGAVE: enkel dienstinformatie binnen je door de server bevestigde inzagerechten.';
+   render();
+   $('internalPanel').hidden=false;
+   $('internalMessage').textContent='Alleen de hieronder vermelde hulpdiensten zijn door de bestaande servercontrole vrijgegeven.';
+   $('internalDepartments').replaceChildren(...verified.map(d=>node('span','scope-item',serviceLabel(d))));
+   toggle.textContent='🔓 Interne weergave sluiten';
+   toggle.setAttribute('aria-expanded','true');
+   updateInternalPerson();
+  }catch(error){
+   if(current===accessGeneration&&auth?.currentUser?.uid===user.uid){
+    clearInternal();
+    $('internalMessage').textContent=error.message;
+    $('internalPanel').hidden=false;
+    $('internalDepartments').replaceChildren();
+    $('internalPerson').textContent='Er is geen interne profielinformatie geladen.';
+   }
+  }finally{
+   toggle.disabled=!auth?.currentUser;
+  }
+ }
+ async function startInternalLogin(){
+  try{
+   const response=await fetch('/api/client-config',{cache:'no-store'});
+   if(!response.ok)throw Error('Aanmeldconfiguratie tijdelijk niet beschikbaar');
+   const config=await response.json();
+   if(!config.enabled)throw Error('Firebase-aanmelding is niet beschikbaar op TEST');
+   const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+   authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+   const app=appModule.getApps()[0]||appModule.initializeApp(config.firebaseConfig);
+   auth=authModule.getAuth(app);
+   const {setupPortalLogin}=await import('/portal-login.js');
+   const button=$('login');
+   button.hidden=false;
+   setupPortalLogin({button,auth,authModule,config,
+    onError:error=>{$('internalMessage').textContent='Aanmelden mislukt: '+error.message;
+     $('internalPanel').hidden=false;}});
+   authModule.onAuthStateChanged(auth,user=>{
+    const generation=++authGeneration;
+    clearInternal();
+    policePeople.splice(0);realPeople.splice(0);
+    publicLoaded=false;setView(true);
+    $('internalToggle').disabled=!user;
+    if(user?.uid?.startsWith('discord:'))loadPolice(user,generation);
+    else if(user){
+     $('status').className='notice warn';
+     $('status').textContent='Beheeraccount: gebruik de knop Interne weergave om enkel server-geautoriseerde diensten te bekijken. De gewone ledenlijst vereist Discord-verificatie.';
+    }else{
+     $('status').className='notice warn';
+     $('status').textContent='Niet aangemeld: alleen fictieve voorbeeldpersonen. Meld je aan met Discord voor echte politiegegevens.';
+    }
+   });
+  }catch(error){
+   $('internalToggle').disabled=true;
+   $('internalMessage').textContent='Interne weergave niet beschikbaar: '+error.message;
+   $('internalPanel').hidden=false;
+  }
+ }
+ $('internalToggle').addEventListener('click',openInternal);
+ function displayPerson(person){
+  viewState.selected=person;
+  const root=$('detail');root.replaceChildren();
+  const heading=node('div','profile-title');
+  heading.dataset.dept=person.dept;
+  const portrait=createPortrait(person,true);
+  const info=node('div');
+  info.append(node('h3','',person.name||'Naam onbekend'),
+   node('p','',serviceLabel(person.dept)+' · '+(person.call||'—')),
+   node('p','',rankName(person)));
+  heading.append(portrait,info);root.append(heading);
+  const defs=node('dl','kv');
+  for(const [k,v] of [
+   ['Roepnummer',person.call||'—'],['Hulpdienst',serviceLabel(person.dept)],
+   ['Rang / functie',rankName(person)],['Status',person.status||'Niet vermeld'],
+   ['Niveau',tier(person)+' (indicatief)']
+  ]){defs.append(node('dt','',k),node('dd','',v));}
+  root.append(defs);
+  const section=(heading,values,award)=>{
+   const box=node('div','profile-section');
+   box.append(node('h3','',heading));
+   const chips=node('div','chips');
+   if(Array.isArray(values)&&values.length){
+    values.forEach(v=>chips.append(node('span',award?'chip gold':'chip',v)));
+   }else chips.append(node('span','chip ghost','Nog niet publiek gekoppeld'));
+   box.append(chips);root.append(box);
+  };
+  section('Specialisaties',person.specialties,false);
+  section('Onderscheidingen',person.awards,true);
+  root.append(node('p','profile-notice',
+   viewState.demo?'FICTIEF VOORBEELD: naam, roepnummer, badges en onderscheiding zijn volledig verzonnen.':
+   'Voor echte personen toont dit scherm alleen de vrijgegeven openbare basisgegevens.'));
+  updateInternalPerson();
+ }
+ function renderMetrics(){
+  const box=$('metrics');box.replaceChildren();
+  const total=viewState.people.length;
+  const counts=[['Totaal',total],...services.map(s=>[s.title,viewState.people.filter(p=>p.dept===s.id).length])];
+  for(const [name,n] of counts){
+   const cell=node('div','metric');
+   cell.append(node('b','',n),node('small','',name));box.append(cell);
+  }
+ }
+ function render(){
+  const query=viewState.query.trim().toLocaleLowerCase('nl');
+  const selectedServices=services.filter(s=>viewState.service==='alle'||s.id===viewState.service);
+  $('filters').querySelectorAll('button[data-view]').forEach(b=>
+   b.setAttribute('aria-pressed',String(b.dataset.view===viewState.service)));
+  renderMetrics();
+  $('tree').replaceChildren();
+  let visible=0;
+  for(const service of selectedServices){
+   const rows=viewState.people.filter(p=>p.dept===service.id&&
+    (!query||[p.name,p.call,p.rank,...(viewState.demo?p.specialties||[]:[])]
+     .some(v=>String(v||'').toLocaleLowerCase('nl').includes(query))));
+   visible+=rows.length;
+   const group=node('details','service');group.open=true;group.dataset.dept=service.id;
+   const summary=node('summary','');
+   const symbol=node('span','service-icon',service.icon);
+   symbol.setAttribute('aria-hidden','true');
+   summary.append(symbol,node('span','',service.title),node('span','quantity',rows.length+' medewerkers'));
+   group.append(summary);
+   const body=node('div','service-body');
+   if(!rows.length){
+    body.append(node('p','empty-person','Geen personen gevonden binnen deze selectie.'));
+   }else{
+    body.append(node('p','service-caption','Indeling in kaders en functieniveaus · GEEN officiële bevelslijn.'));
+    const byTier=new Map();
+    rows.forEach(p=>{const label=tier(p);if(!byTier.has(label))byTier.set(label,[]);byTier.get(label).push(p)});
+    const order=tiers[service.id]||['Overig'];
+    for(const [idx,label] of order.entries()){
+     const members=byTier.get(label)||[];
+     if(!members.length)continue;
+     const tierBox=node('details','tier-group');
+     tierBox.open=rows.length<=22||idx===0;
+     const head=node('summary','');
+     const name=node('span','tier-label',label);
+     const subtitle=tierSubtitle[label];
+     if(subtitle)name.append(node('small','', ' · '+subtitle));
+     head.append(name,node('span','tier-count',members.length+' personen'));
+     tierBox.append(head);
+     const grid=node('div','people');
+     const sorted=[...members].sort((a,b)=>String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true}));
+     let shown=0;const batchSize=16;
+     const more=node('button','more');more.type='button';
+     const appendBatch=()=>{
+      const batch=sorted.slice(shown,shown+batchSize);
+      batch.forEach(person=>{
+       const btn=node('button','person');btn.type='button';btn.dataset.dept=person.dept;
+       btn.setAttribute('aria-label',(person.name||'Naam onbekend')+' · '+(person.call||'geen roepnummer'));
+       btn.setAttribute('aria-pressed',String(viewState.selected===person));
+       const identity=node('span','identity');
+       identity.append(node('strong','',person.name||'Naam onbekend'),
+        node('small','',(person.call||'—')+' · '+rankName(person)));
+       if(viewState.demo)identity.append(node('em','demo-tag','VOORBEELD'));
+       btn.append(createPortrait(person),identity);
+       btn.addEventListener('click',()=>{
+        displayPerson(person);
+        document.querySelectorAll('.person[aria-pressed=true]').forEach(v=>v.setAttribute('aria-pressed','false'));
+        btn.setAttribute('aria-pressed','true');
+       });
+       grid.append(btn);
+      });
+      shown+=batch.length;
+      if(shown<sorted.length){more.textContent='Toon '+(sorted.length-shown)+' overige profielen';grid.append(more)}
+     };
+     more.addEventListener('click',()=>{more.remove();appendBatch()});
+     appendBatch();
+     tierBox.append(grid);body.append(tierBox);
+    }
+   }
+   group.append(body);$('tree').append(group);
+  }
+  $('source').textContent=(viewState.demo?'FICTIEF VISUEEL VOORBEELD':internalVisible?'GEVERIFIEERDE DOSSIERDIENSTEN':'GEVERIFIEERDE POLITIEPERSONEELSLIJST')+
+   ' · '+visible+' getoonde registraties · Groepering per rang/functie (indicatief, geen bevelslijnen).';
+ }
+ async function loadPolice(user,generation){
+  try{
+   if(!user?.uid?.startsWith('discord:'))throw Error('Discord-verificatie vereist');
+   const token=await user.getIdToken();
+   if(generation!==authGeneration||auth?.currentUser?.uid!==user.uid)return;
+   const response=await fetch('/api/member/personnel-list',{
+    headers:{Authorization:'Bearer '+token},cache:'no-store'
+   });
+   const data=await response.json().catch(()=>({}));
+   if(generation!==authGeneration||auth?.currentUser?.uid!==user.uid)return;
+   if(!response.ok)throw Error(data.error||'Personeelslijst niet beschikbaar');
+   if(data.readOnly!==true||!Array.isArray(data.records))throw Error('Ongeldige personeelslijstrespons');
+   const safe=data.records.map(r=>({
+    dept:'politie',name:String(r.name||'').slice(0,90),call:String(r.call||'').slice(0,18),
+    rank:String(r.rank||'').slice(0,95),status:String(r.status||'').slice(0,30),
+    specialties:(Array.isArray(r.specialties)?r.specialties:[])
+     .filter(x=>x&&typeof x.label==='string'&&typeof x.value==='string'&&
+      x.value.trim()&&x.value.trim()!=='Niet ingevuld')
+     .slice(0,10).map(x=>x.label.slice(0,40)+': '+x.value.slice(0,40))
+   }));
+   policePeople.splice(0,policePeople.length,...safe);
+   realPeople.splice(0,realPeople.length,...safe);
+   publicLoaded=true;publicStale=data.stale===true;publicLoadError='';
+   if(!internalVisible)setView(false);
+  }catch(error){
+   if(generation!==authGeneration||auth?.currentUser?.uid!==user.uid)return;
+   publicLoaded=false;realPeople.splice(0);policePeople.splice(0);
+   publicLoadError='Personeelsgegevens niet beschikbaar: '+error.message;
+   if(!internalVisible){
+    setView(true);
+    $('status').className='notice warn';
+    $('status').textContent=publicLoadError+' · Alleen fictieve voorbeelden worden getoond.';
+   }
+  }
+ }
+ $('filters').addEventListener('click',event=>{
+  const btn=event.target.closest('button[data-view]');
+  if(!btn)return;
+  viewState.service=btn.dataset.view;viewState.selected=null;
+  $('detail').replaceChildren(node('p','','Kies een personeelskaart om de openbare basisgegevens te bekijken.'));
+  updateInternalPerson();
+  render();
+ });
+ $('search').addEventListener('input',event=>{
+  viewState.query=event.target.value;render();
+ });
+ setView(true);
+ startInternalLogin();
+})();
+</script>
+</body>
+</html>
