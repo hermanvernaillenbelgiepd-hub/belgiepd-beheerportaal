@@ -560,7 +560,7 @@ installCallsignSelfServiceRoutes(app,{getSnapshot});
 installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
-installUserRoutes(app,{requireUser,accessList});
+installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installManualRoleRoutes(app,{requireUser});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{

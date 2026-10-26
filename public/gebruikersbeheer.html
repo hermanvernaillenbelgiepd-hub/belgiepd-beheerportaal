@@ -58,9 +58,18 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <p class="muted">Onder <strong>Hulpdienst / categorie</strong> kun je Politie, Ambulance, Brandweer en Depannage kiezen. Burger en Technisch medewerker zijn administratieve labels en geven geen nieuwe bevoegdheden. Bestuur opent de afzonderlijke voordrachtprocedure. Korpsleiding kan de categorie Burger beheren voor eigen politieaccounts; het label Technisch medewerker vereist technisch beheer.</p>
 <p class="muted"><strong>BESTUUR</strong> is nu een afzonderlijke functiekeuze: Korpsleiding kan hiermee een voordracht voor een goedgekeurd account starten. De aanstelling vereist daarna onafhankelijke goedkeuring door technisch beheer. De operationele rang en de Discord-rol veranderen niet.</p>
 <p class="muted"><strong>AGENTENKADER</strong>: tijdelijke roepnummers 100–199 en vaste roepnummers 200–299. <strong>BASISKADER</strong>: vanaf roepnummer 300 (rekening houdend met een eventuele hogere rang). <strong>BESTUUR</strong> is een afzonderlijke functie onder het tabblad Bestuur. Deze indeling verleent nooit automatisch Discord- of dossierrechten.</p>
-<div class="controls"><label for="filter">Filter</label><select id="filter" style="width:auto"><option value="all">Alle statussen</option><option value="pending">Nieuwe aanvragen</option><option value="approved">Goedgekeurd</option><option value="blocked">Geblokkeerd</option></select><span id="count" class="muted"></span></div>
+<p class="muted">Functies worden <strong>afzonderlijk per hulpdienst</strong> bewaard. Een wijziging bij Ambulance wist geen Politie- of Brandweerfunctie. De beschermde dienstrechten vragen nog altijd officiële verificatie van Discord en personeelsfiche.</p>
+<div class="controls"><label for="filter">Filter</label><select id="filter" style="width:auto"><option value="all">Alle statussen</option><option value="pending">Nieuwe aanvragen</option><option value="approved">Goedgekeurd</option><option value="blocked">Geblokkeerd</option></select><label for="accountSearch">Zoek naam/Discord-ID</label><input type="search" id="accountSearch" placeholder="Zoeken" style="max-width:240px"><span id="count" class="muted"></span></div>
 <div class="scroller"><table><thead><tr><th>Discord-lid</th><th>Status</th><th>Hulpdienst / categorie</th><th>Functie</th><th>Beslissing</th></tr></thead><tbody id="list"></tbody></table></div>
-<p id="more" class="muted" hidden>Het overzicht is begrensd tot 250 accounts. Een paginering volgt bij verdere groei.</p></section>
+<p id="more" class="muted" hidden>Het overzicht is begrensd tot 250 accounts. Een paginering volgt bij verdere groei.</p>
+<section id="knownIdsSection" hidden>
+<h3>Gekende Discord-ID’s · technisch beheer</h3>
+<p class="muted">Alleen ID’s uit portaalaanmeldingen, gekende portaalaccounts en gekoppelde personeelsfiches. Dit is geen volledige Discord-serverledenlijst. Deze lijst wijzigt geen rechten.</p>
+<div class="controls"><button type="button" id="knownIdsReload" class="alt">Gekende ID’s ophalen</button><label for="knownIdsSearch">Filter</label><input id="knownIdsSearch" type="search" placeholder="Discord-ID of hulpdienst" style="max-width:250px"><span id="knownIdsCount" class="muted"></span></div>
+<div class="scroller"><table><thead><tr><th>Discord-ID</th><th>Gekend via</th><th>Hulpdienst(en)</th><th>Portaalstatus</th></tr></thead><tbody id="knownIdsRows"></tbody></table></div>
+<div class="controls"><button type="button" class="alt" id="knownIdsPrev">Vorige 200</button><button type="button" class="alt" id="knownIdsNext">Volgende 200</button><span id="knownIdsPage" class="muted"></span></div>
+<p id="knownIdsWarning" class="muted"></p>
+</section></section>
 <section id="manualRoleSection" class="card" hidden>
 <h2>🔐 Handmatige kaderrollen via Discord-ID</h2>
 <p>Alleen voor een mislukte rolsynchronisatie. Een aanvraag geeft nog geen toegang. Een andere, bevoegde persoon moet de aanvraag goedkeuren. Bestuur kan een aanvraag voorstellen, maar kent hiermee geen operationele rol aan zichzelf toe. Voor een bestuursaanstelling gebruik je het afzonderlijke tabblad Bestuur.</p>
@@ -164,6 +173,7 @@ const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
 let boardWritesEnabled=false;
 let accountRoleCatalog=null;
+let serviceFunctionCatalog=null,knownIds=[],knownIdsPage=0;
 const roles=['basiskader','middenkader','officierenkader','korpsleiding','bestuur'];
 const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
   depannage:'Depannage',burger:'Burger (administratieve categorie)',
@@ -190,10 +200,27 @@ function accountCadreLabel(dept,role){
   const match=accountRoleCatalog?.[dept]?.find(option=>option.role===role);
   return match?.label||roleNames[role]||role;
 }
+function serviceFunctionOption(dept,id){
+  return serviceFunctionCatalog?.[dept]?.find(x=>x.id===id)||null;
+}
+function currentServiceFunction(u,dept){
+  const saved=u.serviceFunctions?.[dept];
+  if(serviceFunctionOption(dept,saved))return saved;
+  const cadre=u.departmentRoles?.[dept]||(u.departments?.includes(dept)?u.role:null);
+  const choices=serviceFunctionCatalog?.[dept]||[];
+  return choices.find(x=>x.id===cadre)?.id||
+    choices.find(x=>x.role===cadre)?.id||null;
+}
 function setAccountCadreOptions(select,dept,preferred){
   select.replaceChildren();
-  for(const role of roles)select.append(option(role,accountCadreLabel(dept,role)));
-  select.value=roles.includes(preferred)?preferred:'basiskader';
+  if(!serviceDepartments.includes(dept)){
+    select.append(option('bestuur','BESTUUR (afzonderlijke functie)'));
+    select.value='bestuur';return;
+  }
+  for(const entry of serviceFunctionCatalog?.[dept]||[])
+    select.append(option(entry.id,entry.label));
+  const choices=serviceFunctionCatalog?.[dept]||[];
+  select.value=choices.some(x=>x.id===preferred)?preferred:(choices[0]?.id||'');
 }
 const dossierGrants=setupDossierGrantUI({api,notice,$,option,cell});
 let tabChoice=window.location.hash==='#dienstbeheer'?'services':
@@ -222,7 +249,9 @@ for(const b of $('manageTabs').querySelectorAll('button[data-tab]'))
 
 function render(){
   const list=$('list');list.replaceChildren();
-  const matches=items.filter(x=>$('filter').value==='all'||x.status===$('filter').value);
+  const q=$('accountSearch').value.trim().toLowerCase();
+  const matches=items.filter(x=>($('filter').value==='all'||x.status===$('filter').value)&&
+    (!q||String(x.discordId||'').includes(q)||String(x.username||'').toLowerCase().includes(q)));
   $('count').textContent=matches.length+' gebruiker(s)';
   if(!matches.length){const row=document.createElement('tr');const td=cell(row,'Geen gebruikers in dit overzicht.');td.colSpan=5;list.append(row);return}
   for(const u of matches){
@@ -252,16 +281,25 @@ function render(){
       u.departmentRoles?.[department]||
       (u.departments?.includes(department)?u.role:null);
     const isBoard=Boolean(u.board?.discord||u.board?.appointed);
-    const selectedRole=isBoard?'bestuur':accountDepartmentRole(dept.value)||'basiskader';
+    const selectedRole=isBoard&&dept.value==='bestuur'?'bestuur':
+      currentServiceFunction(u,dept.value);
     setAccountCadreOptions(rank,dept.value,selectedRole);
     const functionWrap=document.createElement('div');functionWrap.append(rank);
     const explanation=document.createElement('small');explanation.className='muted';
     const updateAccountRoleExplanation=()=>{
       const saved=accountDepartmentRole(dept.value);
+      const chosen=currentServiceFunction(u,dept.value);
+      const title=serviceFunctionOption(dept.value,chosen)?.label||
+        accountCadreLabel(dept.value,saved);
       explanation.textContent=saved?
-        'Huidig portaalkader: '+accountCadreLabel(dept.value,saved)+
-          ' · Formele dienstfunctie wordt afzonderlijk geverifieerd':
-        'Geen bestaande kadergoedkeuring voor deze dienst';
+        'Huidige functie: '+title+' · Formele dienstfunctie wordt afzonderlijk geverifieerd':
+        'Geen bestaande functie voor deze dienst';
+      if((u.departments||[]).length>1)
+        explanation.textContent+=' · Andere: '+u.departments
+          .filter(d=>d!==dept.value).map(d=>{
+            const f=serviceFunctionOption(d,currentServiceFunction(u,d));
+            return (deptNames[d]||d)+': '+(f?.label||u.departmentRoles?.[d]||'—');
+          }).join(', ');
     };
     updateAccountRoleExplanation();
     functionWrap.append(explanation);
@@ -285,7 +323,8 @@ function render(){
     dept.onchange=()=>{
       // Do not silently carry a high Police rank into another service.
       const previous=accountDepartmentRole(dept.value);
-      setAccountCadreOptions(rank,dept.value,isBoard?'bestuur':previous||'basiskader');
+      setAccountCadreOptions(rank,dept.value,
+        currentServiceFunction(u,dept.value));
       updateAccountRoleExplanation();
       refreshButton();
     };
@@ -323,21 +362,50 @@ function render(){
         }catch(e){notice(e.message,true)}finally{approve.disabled=false}
         return;
       }
-      if(dept.value==='brandweer'&&rank.value==='korpsleiding'&&
+      if(dept.value==='brandweer'&&rank.value==='zone'&&
         !confirm('ZONE – Zonecommandant selecteren? Dit herstelt uitsluitend het portaal-kader Korpsleiding voor Brandweer. De officiële ZONE-functie en volledige brandweerbevoegdheid vereisen daarnaast de bestaande controle van de gekoppelde personeelsfiche en Discord-verificatie. Verdergaan?'))return;
       const reason=prompt('Reden voor goedkeuring/wijziging (minimaal 8 tekens):',
         'Toegang na controle van Discord en personeelsfunctie');
       if(reason===null)return;
-      if(u.status==='approved'&&!u.departments?.includes(dept.value)&&
-        !confirm('Je kiest een andere hulpdienst. Dit vervangt de huidige diensttoewijzing en kan bestaande dienstrechten wijzigen. Doorgaan?'))return;
+      const chosenFunction=serviceFunctionOption(dept.value,rank.value);
+      if(!chosenFunction)return notice('Selecteer eerst een geldige functie voor de gekozen hulpdienst.',true);
       approve.disabled=true;
       try{
-        await api('/api/users/'+encodeURIComponent(u.discordId)+'/approve',{
-          method:'POST',body:{role:rank.value,departments:[dept.value],reason}});
-        notice('Operationele diensttoewijzing bijgewerkt.');await loadAdmin();
+        const action=u.status==='approved'?'service-function':'approve';
+        const payload=u.status==='approved'?
+          {department:dept.value,functionId:chosenFunction.id,reason}:
+          {role:chosenFunction.role,departments:[dept.value],functionId:chosenFunction.id,reason};
+        await api('/api/users/'+encodeURIComponent(u.discordId)+'/'+action,{
+          method:'POST',body:payload});
+        notice(u.status==='approved'?
+          'Functie bij '+(deptNames[dept.value]||dept.value)+' gewijzigd. Andere hulpdiensten blijven behouden.':
+          'Nieuwe portaaltoegang goedgekeurd.');
+        await loadAdmin();
       }catch(e){notice(e.message,true)}finally{approve.disabled=false}
     };
     actions.append(approve);
+    const revoke=document.createElement('button');revoke.type='button';
+    revoke.className='alt';revoke.textContent='Alleen deze dienst intrekken';
+    const syncRevoke=()=>{revoke.hidden=u.status!=='approved'||
+      !(u.departments||[]).includes(dept.value)||(u.departments||[]).length<2||
+      !serviceDepartments.includes(dept.value)};
+    const onDepartmentChange=dept.onchange;
+    dept.onchange=()=>{onDepartmentChange();syncRevoke()};
+    syncRevoke();
+    revoke.onclick=async()=>{
+      if(!confirm('Alleen '+(deptNames[dept.value]||dept.value)+
+        ' van '+(u.username||u.discordId)+' intrekken? Andere diensten blijven behouden.'))return;
+      const reason=prompt('Motivering voor dienstintrekking (minimaal 8 tekens):');
+      if(reason===null)return;
+      revoke.disabled=true;
+      try{
+        await api('/api/users/'+encodeURIComponent(u.discordId)+'/service-revoke',{
+          method:'POST',body:{department:dept.value,reason}});
+        notice('Diensttoegang ingetrokken. Andere hulpdiensten bleven behouden.');
+        await loadAdmin();
+      }catch(e){notice(e.message,true)}finally{revoke.disabled=false}
+    };
+    actions.append(revoke);
     if(/^\d{15,22}$/.test(String(u.discordId||''))){
       const personnel=document.createElement('a');
       personnel.href='/personeelsbeheer.html?discordId='+encodeURIComponent(u.discordId);
@@ -360,6 +428,49 @@ function render(){
     cell(row,actions);list.append(row);
   }
 }
+function renderKnownIds(){
+  const q=$('knownIdsSearch').value.trim().toLowerCase();
+  const list=knownIds.filter(entry=>!q||
+    entry.discordId.includes(q)||
+    entry.departments.some(dept=>(deptNames[dept]||dept).toLowerCase().includes(q))||
+    entry.sources.some(source=>source.toLowerCase().includes(q)));
+  const pages=Math.max(1,Math.ceil(list.length/200));
+  knownIdsPage=Math.max(0,Math.min(knownIdsPage,pages-1));
+  const body=$('knownIdsRows');body.replaceChildren();
+  const named={portaal:'Portaalaccount',eigen_discord_verificatie:'Discord-login',
+    personeelsfiche:'Personeelsfiche'};
+  for(const entry of list.slice(knownIdsPage*200,(knownIdsPage+1)*200)){
+    const row=document.createElement('tr');
+    cell(row,entry.discordId);
+    cell(row,entry.sources.map(x=>named[x]||x).join(', '));
+    cell(row,entry.departments.map(x=>deptNames[x]||x).join(', ')||'Nog niet gekoppeld');
+    cell(row,entry.status==='approved'?'Goedgekeurd':
+      entry.status==='pending'?'In aanvraag':
+      entry.status==='blocked'?'Geblokkeerd':'Geen goedgekeurd account');
+    body.append(row);
+  }
+  $('knownIdsCount').textContent=list.length+' gekende ID(’s)';
+  $('knownIdsPage').textContent='Pagina '+(knownIdsPage+1)+' van '+pages;
+  $('knownIdsPrev').disabled=knownIdsPage===0;
+  $('knownIdsNext').disabled=knownIdsPage>=pages-1;
+}
+async function loadKnownIds(){
+  const button=$('knownIdsReload');button.disabled=true;
+  try{
+    const result=await api('/api/users/known-ids');
+    knownIds=result.users||[];knownIdsPage=0;
+    renderKnownIds();
+    $('knownIdsWarning').textContent=result.limited?
+      'Overzicht is begrensd of personeelsbron is niet actueel. Dit is geen volledige serverledenlijst.':
+      'Dit zijn uitsluitend identiteiten die het portaal kent, niet alle Discord-serverleden.';
+  }catch(error){notice('Gekende ID’s: '+error.message,true)}
+  finally{button.disabled=false}
+}
+$('knownIdsReload').onclick=loadKnownIds;
+$('knownIdsSearch').oninput=()=>{knownIdsPage=0;renderKnownIds()};
+$('knownIdsPrev').onclick=()=>{knownIdsPage--;renderKnownIds()};
+$('knownIdsNext').onclick=()=>{knownIdsPage++;renderKnownIds()};
+
 async function loadAdmin(){
   try{
     // Server-side role calculation, never a browser-side grant.
@@ -374,6 +485,8 @@ async function loadAdmin(){
     }
     const data=await api('/api/users/overview');items=data.users||[];
     accountRoleCatalog=data.roleCatalog||null;
+    serviceFunctionCatalog=data.functionCatalog||null;
+    $('knownIdsSection').hidden=context.canViewKnownIds!==true;
     $('admin').dataset.authorized='yes';$('admin').hidden=false;$('more').hidden=!data.limited;render();
     notice('Aangemeld als '+context.role+'. Gebruikersbeheer geladen ('+items.length+' zichtbare accounts).');
   }catch(e){
@@ -762,7 +875,7 @@ async function refresh(){
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();showManageTabs()};$('filter').onchange=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
