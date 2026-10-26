@@ -7,9 +7,11 @@ const MAIN_SERVICE_ID='srv-dbaj7njbc2fs73bjt4fg';
 export function discordDiagnosticsMainOnly(env=process.env){
   // The privileged endpoint is opt-in for the canonical MAIN service only.
   // Never enable it on TEST or arbitrary forks, even if copied by mistake.
-  return env.RENDER_SERVICE_ID===MAIN_SERVICE_ID||
-    (env.RENDER_GIT_BRANCH==='main'&&
-     env.RENDER_SERVICE_NAME==='belgiepd-beheerportaal');
+  // An explicit Render service identity overrides branch/name fallbacks.
+  // A fork may have a branch called main, but must never gain this surface.
+  if(env.RENDER_SERVICE_ID)return env.RENDER_SERVICE_ID===MAIN_SERVICE_ID;
+  return env.RENDER_GIT_BRANCH==='main'&&
+    env.RENDER_SERVICE_NAME==='belgiepd-beheerportaal';
 }
 export function installDiscordDiagnosticRoutes(app,{
   requireUser,firestore=()=>getFirestore(),env=process.env,
