@@ -163,6 +163,19 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 @media(max-width:850px){.metrics{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media(max-width:550px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.portrait.large{width:70px;height:84px}.profile-title{align-items:flex-start}}
 
+
+/* Dienst- en graadgebonden uniforme avatarillustraties op TEST.
+   Vrije proefillustraties, geen officiële graadkentekens of persoonlijke foto's. */
+.portrait.uniform-art{background:#102742;isolation:isolate;border-color:#7491b3;box-shadow:inset 0 0 0 1px #ffffff14}
+.portrait.uniform-art::before,.portrait.uniform-art::after{content:none!important;display:none!important}
+.portrait.uniform-art svg{display:block;width:100%;height:100%;object-fit:cover}
+.portrait.uniform-art .cap,.portrait.uniform-art .collar,.portrait.uniform-art .badge-mark{display:none}
+.person .portrait.uniform-art{border-radius:8px;overflow:hidden}
+.profile-title .portrait.uniform-art{border-radius:11px}
+.uniform-info{font-size:10px!important;color:#a9c7e8!important;margin:8px 0 0!important}
+.rankkey{display:inline-flex;align-items:center;gap:4px;margin:6px 0 2px;padding:3px 7px;border:1px solid #56799e;background:#1b3a59;border-radius:6px;color:#dceeff;font-size:10px;font-weight:700}
+@media(prefers-reduced-motion:reduce){.person:hover{transition:none}}
+
 </style>
 </head>
 <body>
@@ -211,7 +224,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
     <p class="scope-disclaimer">De server beslist bij het openen van elke fiche en iedere wijziging opnieuw. Deze proefpagina verleent zelf geen dossier- of schrijfrechten.</p>
    </section>
    <h3>Geüniformeerde profielen</h3>
-   <p>De silhouetten zijn voorlopige, door CSS getekende uniformillustraties. In de voorbeeldstand zie je hoe specialisaties en onderscheidingen later op de kaart kunnen verschijnen.</p>
+   <p>De uniformportretten worden automatisch gekozen uit de geregistreerde dienst, rang en callsign. Ze zijn gestileerd, niet persoonsgebonden en tonen geen officiële graadkentekens. Echte portretfoto’s zijn nog niet gekoppeld.</p>
    <div class="locked">
     <strong>🔒 Interne laag blijft afgeschermd</strong>
     <p>Observaties, sancties, administratieve wijzigingen, dossieraudit en Discord-ID's worden hier niet getoond. De interne dienstscope verschijnt uitsluitend na een nieuwe servercontrole. Een organogramfunctie is nooit een dossierrecht.</p>
@@ -320,12 +333,158 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   }
   return 'Overig';
  }
+ // Illustrative uniforms follow official roster call/rank labels, never guessed personal photos.
+ // Generic sleeve stripes are DESIGN elements and are not official insignia.
+ function uniformGrade(person){
+  const dept=person.dept;
+  const rank=String(person.rank||'').toLocaleLowerCase('nl');
+  const call=String(person.call||'').toUpperCase().trim();
+  const text=(call+' '+rank).toLocaleLowerCase('nl');
+  const out=(label,short,stripes=1,leader=false,medical=false)=>
+    ({label,short,stripes,leader,medical});
+  if(dept==='politie'){
+   const n=policeNumber(person.call);
+   if(n===900||n===910||/hoofdcommissaris|korpschef|\b1-hcp\b|\b1-cp\b/.test(rank))
+    return out('Korpsleiding','KL',4,true);
+   if(n!==null&&n>=920&&n<=999||/commissaris|officierenkader/.test(rank))
+    return out('Officierenkader','OFF',3,true);
+   if(n!==null&&n>=800&&n<900)return out('Eerste hoofdinspecteur','1-HINP',3);
+   if(n!==null&&n>=700&&n<800)return out('Hoofdinspecteur','HINP',2);
+   if(n!==null&&n>=600&&n<700)return out('Aspirant-hoofdinspecteur','A-HINP',1);
+   if(n!==null&&n>=500&&n<600)return out('Eerste inspecteur','1-INP',3);
+   if(n!==null&&n>=400&&n<500)return out('Inspecteur','INP',2);
+   if(n!==null&&n>=300&&n<400)return out('Aspirant-inspecteur','A-INP',1);
+   if(n!==null&&n>=200&&n<300)return out('Agentenkader · vast','AP',2);
+   if(n!==null&&n>=100&&n<200)return out('Agentenkader · tijdelijk','T-AP',1);
+   if(/hoofdinspecteur/.test(rank))return out('Middenkader','HINP',2);
+   if(/inspecteur/.test(rank))return out('Basiskader','INP',2);
+   if(/agent van politie|\bap\b/.test(rank))return out('Agentenkader','AP',1);
+   return out('Graad onbekend','POL',0);
+  }
+  if(dept==='brandweer'){
+   if(/^(?:ZONE)(?:[-\s]|$)/.test(call)||/zonechef|zonecommandant/.test(rank))
+    return out('Zoneleiding','ZONE',4,true);
+   if(/^(?:OFF)(?:[-\s]|$)/.test(call)||/kolonel|majoor|kapitein|luitenant/.test(rank))
+    return out('Officieren','OFF',3,true);
+   if(/^(?:OOFF|SERG|ADJ)(?:[-\s]|$)/.test(call)||/sergeant|adjudant|onderofficier/.test(rank))
+    return out('Middenkader','OOFF',2);
+   return out('Operationeel brandweerpersoneel','BW',1);
+  }
+  if(dept==='ambulance'){
+   if(/^AZLS(?:[-\s]|$)/.test(call)||/azls.+leiding|ambulanceleiding/.test(rank))
+    return out('AZLS-leiding','AZLS',4,true,true);
+   if(/^DIRMED(?:[-\s]|$)/.test(call)||/\bdirmed\b|directeur medisch/.test(rank))
+    return out('Medische directie','DIRMED',3,true,true);
+   if(/^HARTS(?:[-\s]|$)/.test(call)||/hoofdarts/.test(rank))
+    return out('Hoofdarts','HARTS',3,true,true);
+   if(/^(?:ARTS)(?:[-\s]|$)/.test(call)||/\barts\b/.test(rank))
+    return out('Arts','ARTS',2,false,true);
+   if(/^(?:HVPK|VPK)(?:[-\s]|$)/.test(call)||/verpleegkundige/.test(rank))
+    return out('Verpleegkundige','VPK',2,false,true);
+   if(/^(?:HAMB|AMB)(?:[-\s]|$)/.test(call)||/ambulancier/.test(rank))
+    return out('Ambulancier','AMB',1,false,true);
+   return out('Ambulancedienst','AMB',1,false,true);
+  }
+  if(dept==='depannage'){
+   if(/^AWV(?:[-\s]|$)/.test(call)||/agentschap wegen|wegen en verkeer|leiding/.test(rank))
+    return out('AWV / leiding','AWV',3,true);
+   if(/^LSRA(?:[-\s]|$)/.test(call))return out('LSRA-depannage','LSRA',1);
+   if(/^DEPK(?:[-\s]|$)/.test(call))return out('Depannageploeg','DEPK',1);
+   return out('Depannage','DEP',1);
+  }
+  return out('Onbekend','?',0);
+ }
  function createPortrait(person,large=false){
-  const portrait=node('span',large?'portrait large':'portrait');
-  portrait.dataset.dept=person.dept;
-  portrait.setAttribute('aria-hidden','true');
-  portrait.append(node('span','cap'),node('span','collar'),node('span','badge-mark','✦'));
-  return portrait;
+  const grade=uniformGrade(person);
+  const dept=person.dept;
+  const palette={
+   politie:{bg:'#172c54',back:'#203e73',fabric:'#213d78',side:'#152850',trim:'#7fa9ff',highlight:'#c1dafa',label:'POL'},
+   brandweer:{bg:'#412332',back:'#542b38',fabric:'#a42f3b',side:'#612934',trim:'#f6c665',highlight:'#ffe9b8',label:'BW'},
+   ambulance:{bg:'#153c43',back:'#185257',fabric:'#287b65',side:'#15513f',trim:'#b6e7df',highlight:'#e7fff9',label:'AMB'},
+   depannage:{bg:'#4b3822',back:'#5e4324',fabric:'#e5ad37',side:'#815b29',trim:'#fff4b4',highlight:'#fffbed',label:'AWV'}
+  }[dept]||{bg:'#1c2940',back:'#304365',fabric:'#355274',side:'#263a55',trim:'#b7cbea',highlight:'#e3eeff',label:'BP'};
+  const outer=node('span',large?'portrait uniform-art large':'portrait uniform-art');
+  outer.dataset.dept=dept;
+  outer.setAttribute('role','img');
+  outer.setAttribute('aria-label','Gestileerde uniformillustratie '+serviceLabel(dept)+' · '+grade.label+'. Geen persoonlijke foto of officieel graadkenteken.');
+  outer.title=serviceLabel(dept)+' · '+grade.label+' · illustratie';
+  const ns='http://www.w3.org/2000/svg';
+  const vector=document.createElementNS(ns,'svg');
+  vector.setAttribute('viewBox','0 0 120 140');
+  vector.setAttribute('xmlns',ns);
+  vector.setAttribute('aria-hidden','true');
+  vector.setAttribute('focusable','false');
+  const shape=(kind,attributes,text)=>{
+   const element=document.createElementNS(ns,kind);
+   for(const [key,value] of Object.entries(attributes))element.setAttribute(key,String(value));
+   if(text!==undefined)element.textContent=text;
+   vector.append(element);return element;
+  };
+  const r=(x,y,width,height,fill,rx=0)=>shape('rect',{x,y,width,height,fill,rx});
+  const path=(d,fill,extra={})=>shape('path',{d,fill,...extra});
+  const txt=(x,y,t,size=11,fill='#f8fcff',weight=700)=>
+   shape('text',{x,y,fill,'font-size':size,'font-weight':weight,
+    'font-family':'Inter,Segoe UI,Arial,sans-serif','text-anchor':'middle'},t);
+  r(0,0,120,140,palette.bg);
+  path('M0 0 H120 V40 Q60 65 0 39 Z',palette.back);
+  shape('circle',{cx:62,cy:44,r:39,fill:'#ffffff',opacity:'.035'});
+  path('M0 140 V113 Q8 93 34 86 L49 81 H71 L87 86 Q113 94 120 115 V140 Z',palette.side);
+  path('M12 140 L15 101 Q25 88 48 87 L72 87 Q98 88 106 101 L110 140 Z',palette.fabric);
+  path('M48 85 L72 85 L69 96 L60 101 L51 96 Z','#e5bb97');
+  r(50,74,20,15,'#c99273',3);
+  shape('ellipse',{cx:60,cy:51,rx:21,ry:28,fill:'#e2b492'});
+  shape('ellipse',{cx:40,cy:52,rx:3,ry:6,fill:'#cb8f6f'});
+  shape('ellipse',{cx:80,cy:52,rx:3,ry:6,fill:'#cb8f6f'});
+  path('M43 36 Q60 23 77 36 L79 26 Q63 15 46 23 Z','#28334a');
+  r(47,53,8,2,'#594537',1);r(65,53,8,2,'#594537',1);
+  path('M58 58 L57 65 L63 65','none',{stroke:'#bb8a6c','stroke-width':'1.5'});
+  path('M53 70 Q60 74 68 70','none',{stroke:'#a16d59','stroke-width':'1.8','stroke-linecap':'round'});
+  if(dept==='politie'){
+   path('M35 37 Q34 20 58 17 Q83 17 84 37 Z',grade.leader?'#25365e':'#294a88');
+   r(35,35,49,7,grade.leader?'#bc9847':'#243963',3);
+   path('M30 42 Q60 34 90 42 L86 47 Q60 45 34 47 Z','#172b4e');
+   txt(60,34,'✦',12,grade.leader?'#f6db83':'#d7e7ff');
+  }else if(dept==='brandweer'){
+   path('M31 42 Q32 10 60 13 Q86 13 89 42 Z',grade.leader?'#e9e5d9':'#e2a528');
+   r(27,39,67,8,grade.leader?'#e3d7c1':'#f4bb36',3);
+   r(38,34,44,4,grade.leader?'#ae9d77':'#ddd8be',2);
+   txt(60,29,'BW',9,grade.leader?'#5b4340':'#533d2e');
+  }else if(dept==='ambulance'){
+   if(grade.leader){
+    path('M38 32 Q57 18 81 32 L84 40 Q60 34 37 40 Z','#e9eff0');
+    txt(60,33,'+',12,'#308b78');
+   }
+  }else if(dept==='depannage'){
+   path('M32 42 Q34 14 60 15 Q85 15 88 42 Z','#f0bf44');
+   r(29,38,63,8,'#eac13d',3);
+   r(45,21,29,5,'#d7e6d8',2);
+  }
+  // Service-specific collars, reflective elements and patch.
+  path('M46 86 L59 102 L49 117 L36 91 Z',palette.side);
+  path('M74 86 L61 102 L71 117 L84 91 Z',palette.side);
+  if(dept==='brandweer'||dept==='depannage'){
+   r(14,116,93,5,dept==='brandweer'?'#dfc989':'#f7f4d0',2);
+   r(14,126,93,4,'#778c9c',2);
+  }else if(dept==='ambulance'){
+   r(28,108,4,24,'#e8f4ea',1);r(89,108,4,24,'#e8f4ea',1);
+   shape('circle',{cx:95,cy:105,r:11,fill:'#f0fff9',opacity:'.95'});
+   txt(95,109,'+',16,'#23836c');
+  }else{
+   r(15,108,5,28,'#5d83b7',2);
+  }
+  shape('circle',{cx:29,cy:109,r:11,fill:palette.back,stroke:palette.trim,'stroke-width':'1.5'});
+  txt(29,113,palette.label,dept==='depannage'?7.5:8,palette.highlight);
+  // Decorative rank lines: deliberately NOT actual Belgian insignia.
+  if(grade.stripes){
+   for(let i=0;i<Math.min(4,grade.stripes);i++){
+    r(77,96+i*4,21,2,grade.leader?'#f0cb6c':palette.trim,1);
+   }
+  }else r(80,101,18,2,'#6c82a2',1);
+  if(grade.leader)path('M20 98 L25 93 L30 98 L25 103 Z','#e5c571');
+  r(22,128,76,11,'#0c1a2fa8',4);
+  txt(60,136,grade.short,Math.max(8,grade.short.length>5?9:10),palette.highlight);
+  outer.append(vector);
+  return outer;
  }
  function setView(demoView){
   if(!demoView&&!publicLoaded){
@@ -465,11 +624,13 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    node('p','',serviceLabel(person.dept)+' · '+(person.call||'—')),
    node('p','',rankName(person)));
   heading.append(portrait,info);root.append(heading);
+  root.append(node('p','uniform-info','Afbeelding volgens dienst en geregistreerde rang. Gestileerd voorbeelduniform; geen officiële graadkentekens.'));
   const defs=node('dl','kv');
   for(const [k,v] of [
    ['Roepnummer',person.call||'—'],['Hulpdienst',serviceLabel(person.dept)],
    ['Rang / functie',rankName(person)],['Status',person.status||'Niet vermeld'],
-   ['Niveau',tier(person)+' (indicatief)']
+   ['Niveau',tier(person)+' (indicatief)'],
+   ['Uniformillustratie',uniformGrade(person).label+' · geen persoonlijke foto']
   ]){defs.append(node('dt','',k),node('dd','',v));}
   root.append(defs);
   const section=(heading,values,award)=>{
@@ -549,6 +710,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
        identity.append(node('strong','',person.name||'Naam onbekend'),
         node('small','',(person.call||'—')+' · '+rankName(person)));
        if(viewState.demo)identity.append(node('em','demo-tag','VOORBEELD'));
+       else identity.append(node('em','',uniformGrade(person).label));
        btn.append(createPortrait(person),identity);
        btn.addEventListener('click',()=>{
         displayPerson(person);
