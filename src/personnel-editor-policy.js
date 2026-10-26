@@ -4,6 +4,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {policeKader} from './normalize.js';
 import {isPolice9xx} from './verified-police-cadre.js';
 import {mayOpenFireSubject} from './fire-dossier-policy.js';
+import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 
 // Persistent overlays never contain identity, rank or permissions.
 // They can be merged with source Sheets only after a controlled rollout.
@@ -80,6 +81,12 @@ export function canEditPersonnel(actor,person){
   // Een expliciet berekende dienstscope mag geen andere dienst openen;
   // oudere correct goedgekeurde kaderaccounts zonder scopeveld behouden hun
   // dienstrol. Bestuur alléén geeft nooit operationele schrijfrechten.
+  // Dual-verified Board+Police Corps may correct personnel files across
+  // services, including protected 9xx subjects, but never their OWN file.
+  // Does not grant portal-role edits or Discord-rank changes.
+  if(verifiedBoardCorpsDossierAdmin(actor)&&
+     actor?.dossierNativeDepartments?.includes(person.dept)&&
+     canReadServiceDossier(actor,person.dept))return true;
   if(Array.isArray(actor?.dossierNativeDepartments)&&
      !actor.dossierNativeDepartments.includes(person.dept))return false;
   const scoped=roleForDepartment(actor,person.dept);
