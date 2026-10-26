@@ -1,4 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
+import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 // Nieuwe interne dossierregistraties en concept-weekrapporten.
 // Geen Google Sheets-writes, geen clientvertrouwen bij rollen of auteurs.
 export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging','activiteit','specialisatiebeperking']);
@@ -12,13 +13,17 @@ export const RECORD_LABELS = Object.freeze({
   specialisatiewijziging:'Specialisatiewijziging'
 });
 export const validDiscord = id => /^\d{15,22}$/.test(String(id??''));
-export const allowedDept = (actor,dept) => ['politie','ambulance','brandweer','depannage'].includes(dept) && actor?.departments?.includes(dept);
+export const allowedDept = (actor,dept) => ['politie','ambulance','brandweer','depannage'].includes(dept) &&
+  (actor?.departments?.includes(dept)||verifiedBoardCorpsDossierAdmin(actor)&&
+   actor?.dossierAllowedDepartments?.includes(dept));
 export const mayReadManagement = (actor,dept) => allowedDept(actor,dept) &&
   (CADRE_ROLES.includes(roleForDepartment(actor,dept))||
    actor?.dossierFullDepartments?.includes(dept));
 // Depannage uses one dedicated cadre case type: specialization restriction.
 // Observations and sanctions are submitted through the formal register.
-export const mayWriteManagement = (actor,dept,type) => (
+export const mayWriteManagement = (actor,dept,type) =>
+  verifiedBoardCorpsDossierAdmin(actor)&&allowedDept(actor,dept)&&
+    MANAGEMENT_TYPES.includes(type)&&type!=='verlof'?true:(
   type!=='verlof'&& (dept!=='depannage'||type==='specialisatiebeperking')&&(
   // Delegated case management can add only routine dossier notes.
   // This does not convey sanctions, rank changes or other personnel powers.
