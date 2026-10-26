@@ -43,7 +43,7 @@ const serialize=(id,d)=>({discordId:id,username:String(d.username||'').slice(0,8
       d.departments?.includes(dept)&&
       choiceFor(dept,func)?.role===d.departmentRoles?.[dept])):{},
   category:d.status==='approved'&&['burger','technisch_medewerker'].includes(d.category)?d.category:null});
-export function installUserRoutes(app,{requireUser,accessList}){
+export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
   const db=()=>ready();
   const collection=()=>db().collection(USER_COLLECTION);
   async function discordSubject(req){
@@ -147,7 +147,8 @@ export function installUserRoutes(app,{requireUser,accessList}){
     const depts=req.bpd.departments||[];
     res.json({role:req.bpd.role,profileMode:req.bpd.portalTechnicalMode===true?'technisch':'politie',departments:depts,
       departmentRoles:Object.fromEntries(depts.map(dept=>[dept,roleForDepartment(req.bpd,dept)||'geen'])),
-      canManageUsers:isUserManager(req.bpd),canManageTO:req.bpd.role==='beheerder'});
+      canManageUsers:isUserManager(req.bpd),canManageTO:req.bpd.role==='beheerder',
+      canViewKnownIds:isVerifiedTechnicalRoleApprover(req.bpd)});
   });
   const admin=(req,res,next)=>isUserManager(req.bpd)?next():denial(res,403,'Alleen officierenkader, korpsleiding en beheer kunnen gebruikers beheren');
   // Independent TO rights: no police or other personnel role is modified.
@@ -246,6 +247,58 @@ export function installUserRoutes(app,{requireUser,accessList}){
       }
       return res.json({role:req.bpd.role,departments:req.bpd.departments,
         users,roleCatalog:MANUAL_ROLE_CATALOG,limited:snap.size===250});
+    }catch(e){return fail(res,e)}
+  });
+  // Technical manager's union of KNOWN identities, not the full Discord guild.
+  // Only IDs from portal accounts, user-verified guild logins and the official
+  // personnel source are included. Do not return role IDs, names, tokens,
+  // email addresses, source row content or any other personal data.
+  app.get('/api/users/known-ids',requireUser,async(req,res)=>{
+    res.set('Cache-Control','private, no-store');
+    if(!isVerifiedTechnicalRoleApprover(req.bpd))
+      return denial(res,403,'Alleen geverifieerd technisch beheer mag gekende Discord-ID’s raadplegen');
+    try{
+      const LIMIT=501;
+      const [accounts,identities,roster]=await Promise.all([
+        collection().limit(LIMIT).get(),
+        db().collection('bpd_discord_auth').limit(LIMIT).get(),
+        getSnapshot()
+      ]);
+      const known=new Map();
+      const append=(id,source,dept,status)=>{
+        if(!validId(id))return;
+        if(!known.has(id))known.set(id,{discordId:id,sources:new Set(),
+          departments:new Set(),status:'geen_portaalaccount'});
+        const item=known.get(id);item.sources.add(source);
+        if(USER_DEPTS.includes(dept))item.departments.add(dept);
+        if(status)item.status=status;
+      };
+      for(const doc of accounts.docs){
+        const data=doc.data();
+        append(doc.id,'portaal',null,
+          ['approved','pending','blocked'].includes(data?.status)?data.status:'onbekend');
+        for(const dept of data?.departments||[])append(doc.id,'portaal',dept);
+      }
+      for(const doc of identities.docs){
+        if(doc.data()?.guildId!==process.env.DISCORD_GUILD_ID)continue;
+        append(doc.id,'eigen_discord_verificatie');
+      }
+      if(!roster.stale){
+        for(const person of roster.data||[]){
+          if(USER_DEPTS.includes(person?.dept))
+            append(person.personId,'personeelsfiche',person.dept);
+        }
+      }
+      const items=[...known.values()].sort((a,b)=>a.discordId.localeCompare(b.discordId))
+        .slice(0,1000).map(x=>({
+          discordId:x.discordId,sources:[...x.sources],
+          departments:[...x.departments],status:x.status
+        }));
+      return res.json({users:items,count:items.length,readOnly:true,
+        coverage:'alleen_gekende_portaal_leden_en_fiches',
+        limited:accounts.size===LIMIT||identities.size===LIMIT||
+          known.size>1000||roster.stale===true,
+        rosterStale:roster.stale===true});
     }catch(e){return fail(res,e)}
   });
   // Classification has no effect on access, roles or department assignments.
