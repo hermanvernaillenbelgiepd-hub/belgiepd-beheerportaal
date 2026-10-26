@@ -35,11 +35,14 @@ small,.muted{color:#a9bfdb}h1{font-size:clamp(25px,4vw,36px);margin:0 0 8px}h2{f
 <div class="panel" id="content" hidden>
  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center">
   <div><h2>Diagnose-overzicht</h2><small id="timestamp"></small></div>
-  <button type="button" id="refresh">Diagnose opnieuw controleren</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+   <button type="button" id="refresh">Snelle diagnose</button>
+   <button type="button" id="coverageRefresh">Volledige ledenlijst testen</button>
+  </div>
  </div>
  <div id="cards" class="grid"></div>
  <section><h2>Wat vraagt aandacht?</h2><ul id="notes"></ul></section>
- <p class="muted">Een succesvolle test met één lid bewijst niet dat de bot alle Discord-leden kan uitlezen. De resultaten worden kort gecachet om Discord niet te overbelasten.</p>
+ <p class="muted">De uitgebreide controle wordt alleen op verzoek uitgevoerd en stopt na maximaal 3000 leden of zodra de laatste pagina is bereikt. Er worden enkel totalen getoond, geen Discord-ID’s, namen of persoonlijke rollen. De uitkomst blijft maximaal 10 minuten in de cache.</p>
 </div>
 <section class="panel">
  <h2>Herstelacties</h2>
@@ -53,9 +56,10 @@ const make=(tag,text)=>{const element=document.createElement(tag);element.textCo
 const labelStatus={ok:'Bereikbaar',not_configured:'Niet ingesteld',
   unauthorized:'401 · Ongeldige botautorisatie',forbidden:'403 · Geen toegang',
   rate_limited:'429 · Limiet bereikt',not_found:'404 · Niet gevonden',
-  unavailable:'Tijdelijk niet beschikbaar',invalid_response:'Ongeldig antwoord'};
+  unavailable:'Tijdelijk niet beschikbaar',invalid_response:'Ongeldig antwoord',
+  partial:'Onvolledig · limiet bereikt',not_run:'Niet uitgevoerd'};
 const statusClass=s=>s==='ok'?'ok':s==='not_configured'||s==='unavailable'||
- s==='rate_limited'?'warn':'error';
+ s==='rate_limited'||s==='partial'||s==='not_run'?'warn':'error';
 const showNotice=(message,error=false)=>{$('notice').textContent=message;$('notice').classList.toggle('bad',error)};
 function addCard(title,status,details){
   const panel=make('section','');panel.className='kpi';
@@ -86,6 +90,17 @@ function render(data){
   addCard('Discord-ledenlijst',listing.status,listing.status==='ok'?
     'Aanvraag van één lid is toegestaan. Volledige dekking NIET bewezen.':
     'De bot kan de ledenlijst niet via deze test lezen.');
+  const full=p.fullCoverage||{status:'not_run'};
+  addCard('Uitgebreide ledenlijstcontrole',full.status,
+    full.status==='ok'&&full.completeCoverageVerified===true?
+      'Alle '+String(full.membersCount)+' opgehaalde leden gecontroleerd over '+
+      String(full.pages)+' pagina’s. '+String(full.rechercheMembers)+
+      ' leden met de LRD-rol (momentopname).':
+    full.status==='partial'?
+      String(full.membersCount)+' leden getest; de limiet van 3000 is bereikt. Volledige dekking niet bewezen.':
+    full.status==='not_run'?
+      'Nog niet getest. Kies bovenaan “Volledige ledenlijst testen”.':
+      'De volledige ledenlijst kon niet worden uitgelezen. Controleer bottoegang en Server Members Intent.');
   addCard('Mijn lidmaatschap via bot',member.status,member.roleAgreement==='different'?
     'De rollen wijken af van mijn opgeslagen Discord-verificatie.':
     member.roleAgreement==='match'?'Mijn botrollen komen overeen met mijn verificatie.':
@@ -103,15 +118,19 @@ function render(data){
   showNotice('Bestuurstoegang bevestigd. Dit is uitsluitend een technische diagnose op TEST.');
 }
 let currentUser=null,request=0;
-async function refresh(){
+async function refresh(coverage=false){
   const sequence=++request;
   if(!currentUser?.uid?.startsWith('discord:')){
     $('content').hidden=true;showNotice('Meld je met je eigen goedgekeurde Discord-account aan via Gebruikersbeheer.',true);return;
   }
-  $('refresh').disabled=true;showNotice('Veilige Discord-diagnose uitvoeren…');
+  $('refresh').disabled=true;
+  $('coverageRefresh').disabled=true;
+  showNotice(coverage?'Begrensde ledenlijstcontrole uitvoeren…':
+    'Veilige Discord-diagnose uitvoeren…');
   try{
     const token=await currentUser.getIdToken();
-    const response=await fetch('/api/board/discord-diagnostics',{
+    const response=await fetch('/api/board/discord-diagnostics'+
+      (coverage?'?coverage=1':''),{
       headers:{Authorization:'Bearer '+token},cache:'no-store',credentials:'same-origin'});
     const data=await response.json().catch(()=>({}));
     if(sequence!==request)return;
@@ -121,9 +140,13 @@ async function refresh(){
     if(sequence!==request)return;
     $('content').hidden=true;
     showNotice(error.message||'De diagnose kon niet worden uitgevoerd.',true);
-  }finally{if(sequence===request)$('refresh').disabled=false}
+  }finally{if(sequence===request){
+    $('refresh').disabled=false;
+    $('coverageRefresh').disabled=false;
+  }}
 }
-$('refresh').onclick=refresh;
+$('refresh').onclick=()=>void refresh(false);
+$('coverageRefresh').onclick=()=>void refresh(true);
 try{
   const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
   if(!config.enabled)throw Error('De Discord-aanmelding is niet geconfigureerd.');
