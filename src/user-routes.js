@@ -2,6 +2,9 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {roleSummary} from './role-catalog.js';
+import {isVerifiedTechnicalRoleApprover} from './manual-role-decision-policy.js';
+import {SERVICE_FUNCTIONS,choiceFor,parseServiceFunctionChange,parseServiceRevoke,
+  applyServiceFunction,removeServiceFunction,mayEditServiceFunction} from './service-function-policy.js';
 import {MANUAL_ROLE_CATALOG} from './manual-role-catalog.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
 import {makeProfileCookie,clearProfileCookie} from './portal-profile-mode.js';
@@ -34,6 +37,11 @@ const serialize=(id,d)=>({discordId:id,username:String(d.username||'').slice(0,8
       Object.fromEntries(Object.entries(d.departmentRoles).filter(([dept,role])=>
         Array.isArray(d.departments)&&d.departments.includes(dept)&&
         ['basiskader','middenkader','officierenkader','korpsleiding'].includes(role))):{},
+  serviceFunctions:d.status==='approved'&&d.serviceFunctions&&
+    typeof d.serviceFunctions==='object'&&!Array.isArray(d.serviceFunctions)?
+    Object.fromEntries(Object.entries(d.serviceFunctions).filter(([dept,func])=>
+      d.departments?.includes(dept)&&
+      choiceFor(dept,func)?.role===d.departmentRoles?.[dept])):{},
   category:d.status==='approved'&&['burger','technisch_medewerker'].includes(d.category)?d.category:null});
 export function installUserRoutes(app,{requireUser,accessList}){
   const db=()=>ready();
@@ -285,6 +293,89 @@ export function installUserRoutes(app,{requireUser,accessList}){
           at:FieldValue.serverTimestamp()});
       });
       return res.json({ok:true,status:'approved'});
+    }catch(e){return fail(res,e)}
+  });
+  // Per-service changes preserve every OTHER department and its role.
+  // Formal Discord roles, medical licences and independent protected dossier
+  // permissions are never written by this route.
+  app.post('/api/users/:discordId/service-function',requireUser,admin,async(req,res)=>{
+    const target=req.params.discordId;
+    if(!validId(target))return denial(res,400,'Ongeldige Discord-ID');
+    let change;
+    try{change=parseServiceFunctionChange(req.body)}
+    catch(e){return denial(res,400,e.message)}
+    try{
+      const ref=collection().doc(target);
+      await db().runTransaction(async tx=>{
+        const snap=await tx.get(ref),data=snap.data();
+        const approved=approvedManagedEntry(data,target);
+        if(!approved)throw publicError('Alleen bestaande, goedgekeurde portaalaccounts kunnen gewijzigd worden',409);
+        const technical=isVerifiedTechnicalRoleApprover(req.bpd);
+        if(!mayEditServiceFunction(req.bpd,target,approved,change.department,change.role,{technical}))
+          throw publicError('Je mag deze hulpdienst of functie niet wijzigen');
+        const previous=approved.departmentRoles[change.department]||null;
+        if(!approved.departments.includes(change.department)){
+          const identity=await tx.get(db().collection('bpd_discord_auth').doc(target));
+          const member=identity.data();
+          if(member?.guildId!==process.env.DISCORD_GUILD_ID||
+             !Number.isSafeInteger(member?.verifiedAt)||
+             Date.now()-member.verifiedAt>7*86400000||
+             member.verifiedAt>Date.now()||
+             !Array.isArray(member.roleIds))
+            throw publicError('De medewerker moet eerst zijn eigen Discord-lidmaatschap opnieuw verifiëren',409);
+        }
+        const updated=applyServiceFunction({
+          ...approved,serviceFunctions:data.serviceFunctions
+        },change);
+        const clearRecovery=data.manualRoleRecovery?.dept===change.department&&
+          data.manualRoleRecovery.role!==change.role;
+        tx.update(ref,{...updated,approvalSource:FieldValue.delete(),
+          ...(clearRecovery?{manualRoleRecovery:FieldValue.delete()}:{}),
+          updatedAt:FieldValue.serverTimestamp(),approvedBy:req.bpd.uid});
+        tx.create(ref.collection('audit').doc(),{
+          action:'service_function_update',department:change.department,
+          previousRole:previous,role:change.role,functionId:change.functionId,
+          reason:change.reason,actorUid:req.bpd.uid,
+          actorDiscordId:req.bpd.discordId||'',
+          at:FieldValue.serverTimestamp()});
+      });
+      return res.json({saved:true,department:change.department,
+        functionId:change.functionId,discordRoleChanged:false});
+    }catch(e){return fail(res,e)}
+  });
+  app.post('/api/users/:discordId/service-revoke',requireUser,admin,async(req,res)=>{
+    const target=req.params.discordId;
+    if(!validId(target))return denial(res,400,'Ongeldige Discord-ID');
+    let change;
+    try{change=parseServiceRevoke(req.body)}
+    catch(e){return denial(res,400,e.message)}
+    try{
+      const ref=collection().doc(target);
+      await db().runTransaction(async tx=>{
+        const snap=await tx.get(ref),data=snap.data();
+        const approved=approvedManagedEntry(data,target);
+        if(!approved)throw publicError('Het account is niet goedgekeurd',409);
+        if(!mayEditServiceFunction(req.bpd,target,approved,change.department,null,{
+          technical:isVerifiedTechnicalRoleApprover(req.bpd)}))
+          throw publicError('Je mag deze diensttoegang niet intrekken');
+        if(approved.departments.length<2)
+          throw publicError('Dit is de laatste hulpdienst. Gebruik Blokkeer om alle portaaltoegang in te trekken',409);
+        const updated=removeServiceFunction({
+          ...approved,serviceFunctions:data.serviceFunctions
+        },change.department);
+        tx.update(ref,{...updated,approvalSource:FieldValue.delete(),
+          ...(data.manualRoleRecovery?.dept===change.department?
+            {manualRoleRecovery:FieldValue.delete()}:{}),
+          updatedAt:FieldValue.serverTimestamp()});
+        tx.create(ref.collection('audit').doc(),{
+          action:'service_function_revoke',department:change.department,
+          previousRole:approved.departmentRoles[change.department],
+          reason:change.reason,actorUid:req.bpd.uid,
+          actorDiscordId:req.bpd.discordId||'',
+          at:FieldValue.serverTimestamp()});
+      });
+      return res.json({saved:true,revokedDepartment:change.department,
+        otherDepartmentsPreserved:true,discordRoleChanged:false});
     }catch(e){return fail(res,e)}
   });
   app.post('/api/users/:discordId/block',requireUser,admin,async(req,res)=>{
