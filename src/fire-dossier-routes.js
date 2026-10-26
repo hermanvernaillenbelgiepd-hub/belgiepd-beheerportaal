@@ -1,6 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {fireRecordVisibility,fireMayCreate,fireSanctionLevel,fireCanWithdrawSanction,FIRE_COURSES} from './fire-dossier-policy.js';
+import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 import {validateEntry,canChooseSanction,permittedSanctionTypes,SANCTION_REASONS} from './registrations.js';
 import {validateManagementEntry} from './management-utils.js';
 import {mayRegisterCentralManualLeave,rosterPoliceRole} from './leave-policy.js';
