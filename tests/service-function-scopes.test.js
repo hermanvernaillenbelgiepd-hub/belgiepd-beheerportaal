@@ -35,6 +35,7 @@ test('All requested functions are present in each help service',()=>{
   assert.equal(choiceFor('ambulance','arts').role,'basiskader');
   assert.equal(choiceFor('politie','agentenkader').role,'basiskader');
   assert.equal(defaultFunction('brandweer','officierenkader'),'bw-leiding');
+  assert.equal(defaultFunction('politie','basiskader'),'basiskader');
 });
 test('A member may be Police middle, Ambulance leadership and Fire basic in one account',()=>{
   const change=parseServiceFunctionChange({
