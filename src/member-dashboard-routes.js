@@ -101,7 +101,14 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
         return res.status(403).json({error:'Vernieuw eerst je Discord-verificatie'});
       if(managed.get('status')==='blocked')
         return res.status(403).json({error:'Je portaaltoegang is geblokkeerd'});
-      req.memberPortal={id,managed:managed.exists?managed.data():null};
+      // Only the authenticated user's own, guild-verified Discord roles
+      // inform this explanatory status; they never approve portal access.
+      const roles=identity.data()?.roleIds;
+      const ambulanceIds=['1309532438053130323','1309532437977497697',
+        '1309532438053130325'];
+      req.memberPortal={id,managed:managed.exists?managed.data():null,
+        ambulanceDiscordRoleSeen:Array.isArray(roles)&&
+          ambulanceIds.some(role=>roles.includes(role))};
       next();
     }catch(error){
       console.error('Nieuwe-leden-aanmelding:',error?.code||'controle mislukt');
@@ -136,6 +143,8 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
         mode,hasPersonnelRecord:police.length===1,
         ambulanceWorkspaceAvailable:ambulance.available,
         ambulanceLinkNeedsReview:ambulance.needsReview,
+        ambulanceApprovalNeedsReview:req.memberPortal.ambulanceDiscordRoleSeen===true&&
+          !grant?.departments?.includes('ambulance'),
         personnelListAvailable:true,profileAvailable:true,
         callsignRequestAvailable:!hasFixedCallsign,
         hasFixedCallsign,canUseSelfService
