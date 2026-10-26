@@ -212,13 +212,17 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
            return code(res,403,'Deze sanctiemaatregel is niet toegestaan voor jouw Brandweerfunctie');
        }
      }
-     const writer=s.snap.data.filter(p=>p.dept==='brandweer'&&p.personId===req.bpd.discordId);
-     if(writer.length!==1)return code(res,403,'Eigen Brandweerfiche moet gekoppeld zijn');
+     let writer=s.snap.data.filter(p=>p.dept==='brandweer'&&p.personId===req.bpd.discordId);
+     // Verified Board+Corps writes as their OWN official Police identity
+     // when they have no Fire personnel role. Never impersonate Fire cadre.
+     if(writer.length!==1&&verifiedBoardCorpsDossierAdmin(req.bpd))
+       writer=s.snap.data.filter(p=>p.dept==='politie'&&p.personId===req.bpd.discordId);
+     if(writer.length!==1)return code(res,403,'Eigen officiële personeelsfiche moet gekoppeld zijn');
      const db=getFirestore(),at=FieldValue.serverTimestamp();
      const collection=db.collection('bpd_cases').doc('brandweer_'+s.person.personId).collection('entries');
      const entry=collection.doc(),audit=db.collection('bpd_notices').doc('brandweer').collection('events').doc();
      const actor={discordId:req.bpd.discordId,name:writer[0].name,call:writer[0].call,
-       rank:writer[0].rank,dept:'brandweer'};
+       rank:writer[0].rank,dept:writer[0].dept};
      const batch=db.batch();
      batch.create(entry,{...values,dept:'brandweer',
        subjectDiscordId:s.person.personId,subjectNameAtCreation:s.person.name,
