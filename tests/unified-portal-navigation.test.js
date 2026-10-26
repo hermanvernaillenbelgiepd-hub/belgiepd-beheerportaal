@@ -83,3 +83,20 @@ test('Extra low roster rows override prior minimum heights without hiding data',
   assert.match(staff,/\.dossier-sheet \.sheet-identity/);
   assert.match(staff,/\.staff-roster-table tbody tr\.police-kader-divider td/);
 });
+
+test('Personnel page has slim title bar and compact roster controls',()=>{
+  const staff=read('personeelsbeheer.html');
+  assert.match(staff,/<div class="personnel-overview"><h1>Centraal personeelsbeheer<\/h1>/);
+  assert.match(staff,/\.personnel-overview h1\{font-size:20px/);
+  assert.match(staff,/\.personnel-overview p\{font-size:11\.5px/);
+  assert.match(staff,/<section class="card staff-list-panel">/);
+  assert.match(staff,/<div class="controls staff-list-head"/);
+  assert.match(staff,/\.staff-list-panel\{padding:12px 14px/);
+  assert.match(staff,/\.staff-list-head h2\{font-size:16px/);
+  assert.match(staff,/\.staff-list-panel \.staff-filters input,/);
+  assert.match(staff,/\.staff-list-panel>p\.subtle\{font-size:10\.5px/);
+  // Compactification is a view-only edit: all original controls remain.
+  for(const id of ['newBtn','reload','dept','search','count','results',
+    'staffColumnHeaders'])
+    assert.ok(staff.includes('id="'+id+'"'),id+' must be retained');
+});
