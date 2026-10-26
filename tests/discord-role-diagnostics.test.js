@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
-  ageStatus,diagnosticState,diagnosisAccess,collectDiscordDiagnosis
+  ageStatus,diagnosticState,diagnosisAccess,collectDiscordDiagnosis,
+  collectDiscordCoverage
 } from '../src/discord-role-diagnostics.js';
 import {
   discordDiagnosticsTestOnly,installDiscordDiagnosticRoutes
@@ -179,4 +180,92 @@ test('Board link is hidden until independent board evidence is present',()=>{
  assert.match(page,/getIdToken\(\)/);
  assert.match(page,/\/api\/board\/discord-diagnostics/);
  assert.match(server,/installDiscordDiagnosticRoutes\(app,\{requireUser\}\)/);
+});
+
+test('Explicit complete Discord member scan follows after cursor and reveals only totals',async()=>{
+ const all=Array.from({length:1002},(_,i)=>({
+   user:{id:String(100000000000000000n+BigInt(i))},
+   roles:i===5||i===1000?['1380843428354592780']:[]
+ }));
+ let requests=[];
+ const api=async(url,options)=>{
+   requests.push(url);
+   assert.equal(options.method,'GET');
+   assert.equal(options.headers.Authorization,'Bot '+token);
+   assert.equal(options.redirect,'error');
+   return response(requests.length===1?all.slice(0,1000):all.slice(1000));
+ };
+ const full=await collectDiscordCoverage({env,fetchImpl:api});
+ assert.deepEqual(full,{status:'ok',membersCount:1002,rechercheMembers:2,
+   pages:2,completeCoverageVerified:true});
+ assert.match(requests[0],/members\\?limit=1000$/);
+ assert.match(requests[1],/after=100000000000000999$/);
+ const payload=JSON.stringify(full);
+ assert.equal(payload.includes(id),false);
+ assert.equal(payload.includes(guild),false);
+ assert.equal(payload.includes(token),false);
+ assert.equal(payload.includes(all[1000].user.id),false);
+});
+
+test('Bounded member census does not claim all members when scan limit reached',async()=>{
+ let calls=0;
+ const full=await collectDiscordCoverage({env,fetchImpl:async()=>{
+   const start=100000000000000000n+BigInt(calls++)*1000n;
+   return response(Array.from({length:1000},(_,i)=>({
+     user:{id:String(start+BigInt(i))},roles:[]
+   })));
+ }});
+ assert.equal(full.status,'partial');
+ assert.equal(full.completeCoverageVerified,false);
+ assert.equal(full.membersCount,3000);
+ assert.equal(calls,3,'More than 3 requests would over-scan Discord');
+});
+
+test('403 and invalid paged member list fail closed without leaking partial census',async()=>{
+ const forbidden=await collectDiscordCoverage({
+   env,fetchImpl:async()=>response({message:'Missing Access'},403)
+ });
+ assert.equal(forbidden.status,'forbidden');
+ assert.equal(forbidden.membersCount,null);
+ const malformed=await collectDiscordCoverage({
+   env,fetchImpl:async()=>response([{user:{id:'not-a-discord-id'},roles:[]}])
+ });
+ assert.equal(malformed.status,'invalid_response');
+ assert.equal(malformed.completeCoverageVerified,false);
+ const invalidRole=await collectDiscordCoverage({
+   env,fetchImpl:async()=>response([{user:{id},roles:['invalid-role']}])
+ });
+ assert.equal(invalidRole.status,'invalid_response');
+});
+
+test('Extended member census is opt-in and per-user cached without bypassing Board',async()=>{
+ let scans=0;
+ const collect=async({coverage})=>{
+   if(coverage)scans++;
+   return {environment:'TEST',mode:'alleen-lezen',
+     probes:{fullCoverage:{status:coverage?'ok':'not_run'}}};
+ };
+ const {handler,res}=appAndResponse({
+   firestore:()=>dbFor(member(),null),collect
+ });
+ await handler({bpd:actor,query:{}},res);
+ assert.equal(scans,0);
+ await handler({bpd:actor,query:{coverage:'1'}},res);
+ assert.equal(scans,1);
+ await handler({bpd:actor,query:{coverage:'1'}},res);
+ assert.equal(scans,1,'Repeated full scan within cache must not hit Discord');
+ const unauthorized=appAndResponse({
+   firestore:()=>dbFor(member([]),null),collect
+ });
+ await unauthorized.handler({bpd:actor,query:{coverage:'1'}},unauthorized.res);
+ assert.equal(unauthorized.res.statusCode,403);
+ assert.equal(scans,1);
+});
+
+test('Board TEST page offers explicit scan and never renders identities',()=>{
+ const html=readFileSync(new URL('../public/discord-diagnose.html',import.meta.url),'utf8');
+ assert.match(html,/id="coverageRefresh"/);
+ assert.match(html,/\\?coverage=1/);
+ assert.match(html,/full\\.completeCoverageVerified===true/);
+ assert.doesNotMatch(html,/data\\.probes\\.fullCoverage\\.memberIds/);
 });
