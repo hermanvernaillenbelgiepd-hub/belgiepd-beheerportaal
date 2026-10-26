@@ -219,6 +219,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
       </div></div>
       <p class="member-roster-caption">De lijst bevat uitsluitend publieke personeels- en kwalificatiestatussen. Dossierinhoud, Discord-ID's en observaties worden niet getoond.</p>
     </section>
+    <p class="member-notice" id="ambulanceApprovalNotice" hidden>Bij je laatste Discord-verificatie is een ambulancerol herkend, maar je portaalaccount is niet voor Ambulance goedgekeurd. Vraag de bevoegde leiding of Bestuur om de Ambulance-diensttoegang te controleren. Je krijgt hierdoor niet automatisch toegang tot personeelsdossiers.</p>
     <p class="member-notice" id="memberAccountStatus" role="status">Je Discord-profiel wordt gecontroleerd.</p>
   </section>
   <section id="zoneDashboard" hidden aria-labelledby="zoneDashboardTitle">
@@ -304,6 +305,7 @@ function showAmbulanceDashboard(ctx){
 }
 function showApprovedBasicDashboard(){
  show('member');
+ $('ambulanceApprovalNotice').hidden=true;
  // Emergency/legacy login cannot use Discord-only callsign verification.
  displaySimpleModules({canUseSelfService:true,callsignRequestAvailable:false,hasPersonnelRecord:true});
  $('memberAccountStatus').textContent='Je account heeft gewone personeelsrechten. Je ziet de personeelslijst en je persoonlijke functies.';
@@ -367,6 +369,7 @@ async function displayAuthenticated(user){
   if(details.mode==='member'){
     show('member');
     displaySimpleModules(details);
+    $('ambulanceApprovalNotice').hidden=details.ambulanceAccessNeedsApproval!==true;
     $('memberAccountStatus').textContent=details.hasPersonnelRecord?
       'Je Discord-identiteit is bekend. Je beschikt over de persoonlijke functies van het Agenten- of Basiskader.':
       'Je Discord-account is bevestigd. Je kunt de personeelslijst zien en controleren of je een vast roepnummer kunt aanvragen.';
