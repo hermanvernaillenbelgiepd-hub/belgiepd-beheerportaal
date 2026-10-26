@@ -413,6 +413,12 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
         ?db.collection('bpd_dossier_testers').doc(id).get():Promise.resolve(null)
     ]);
     const roster=snapshot.stale?[]:snapshot.data;
+    // Display-only diagnostic of the own AZLS personnel link. Never grants
+    // ambulance dossier, roster-editing or reporting permissions.
+    req.bpd.ambulancePersonnelLinked=Boolean(valid&&
+      req.bpd.uid==='discord:'+id&&
+      req.bpd.departments?.includes('ambulance')&&
+      roster.filter(p=>p.dept==='ambulance'&&p.personId===id).length===1);
     // Server-only, freshly checked ZONE leadership, scoped exclusively to fire.
     req.bpd.fireZoneChief=verifiedFireZoneChief(req.bpd,roster,
       member?.exists?member.data():null,process.env.DISCORD_GUILD_ID)||
@@ -565,6 +571,7 @@ app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
       ambulanceDashboardTier(req.bpd)?'ambulance-azls':null,
     zoneVerified:req.bpd.fireZoneChief===true,
     ambulanceTier:ambulanceDashboardTier(req.bpd),
+    ambulancePersonnelLinked:req.bpd.ambulancePersonnelLinked===true,
     ambulanceReportVerified:req.bpd.ambulanceReportVerified===true,
     ambulanceCanOpenDossier:req.bpd.dossierAllowedDepartments?.includes('ambulance')===true,
     ambulanceCanManagePersonnel:req.bpd.ambulanceReportVerified===true&&
