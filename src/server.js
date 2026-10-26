@@ -413,6 +413,8 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
       valid&&process.env.FIREBASE_PROJECT_ID==='belgiepd-test'
         ?db.collection('bpd_dossier_testers').doc(id).get():Promise.resolve(null)
     ]);
+    // Restrict exceptional cross-service dossier WRITES if the official roster is stale.
+    req.bpd.dossierSourceFresh=snapshot.stale!==true;
     const roster=snapshot.stale?[]:snapshot.data;
     // This verifies a basic Ambulance employee's own OFFICIAL roster
     // mapping for dashboard presentation only. It must never unlock
