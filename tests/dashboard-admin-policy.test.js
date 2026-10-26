@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {canSeeDashboardManagement} from '../src/dashboard-admin-policy.js';
+import {canSeeDashboardManagement,ambulanceDashboardTier} from '../src/dashboard-admin-policy.js';
 
 test('Basiskader en Middenkader zien geen Rollen en beheer op het dashboard',()=>{
   const roles=['basiskader','middenkader'];
@@ -52,4 +52,29 @@ test('Dashboard management link is hidden until a successful server decision',()
   // Opleidingscentrum remains separate; Middenkader trainers retain their
   // established training permissions.
   assert.match(html,/href="\/rollen-opleidingen\.html"/);
+});
+
+test('AZLS Basiskader sees ambulance home without acquiring dossier/report/management rights',()=>{
+ const normal={role:'basiskader',uid:'discord:111111111111111111',
+   discordId:'111111111111111111',departments:['ambulance'],
+   departmentRoles:{ambulance:'basiskader'}};
+ assert.equal(ambulanceDashboardTier(normal),'basiskader');
+ assert.equal(canSeeDashboardManagement(normal),false);
+ assert.equal(ambulanceDashboardTier({...normal,departments:['politie'],
+   departmentRoles:{politie:'basiskader'}}),null);
+ assert.equal(ambulanceDashboardTier({...normal,boardPersonnelAdmin:true}),null);
+ assert.equal(ambulanceDashboardTier({...normal,portalTechnicalMode:true}),null);
+ assert.equal(ambulanceDashboardTier({...normal,role:'middenkader',
+   departmentRoles:{ambulance:'middenkader'}}),'middenkader');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ assert.match(html,/id="ambulanceDashboard" hidden/);
+ assert.match(html,/id="ambulanceLinkNotice"[^>]*hidden/);
+ assert.match(html,/ctx\.ambulancePersonnelLinked===true/);
+ assert.match(html,/ctx\.ambulanceCanOpenDossier===true/);
+ assert.match(html,/ctx\.ambulanceReportVerified===true/);
+ assert.match(html,/ctx\.ambulanceCanManagePersonnel===true/);
+ assert.match(server,/ambulancePersonnelLinked:req\.bpd\.ambulancePersonnelLinked===true/);
+ assert.match(server,/req\.bpd\.ambulancePersonnelLinked=Boolean/);
+ assert.match(server,/dossierAllowedDepartments\?\.includes\('ambulance'\)===true/);
 });
