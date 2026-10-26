@@ -1,4 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
+import {choiceFor} from './service-function-policy.js';
 // Bevoegdheden zijn expliciete, door het portaal goedgekeurde gegevens.
 // Alleen expliciet ingeschakelde, recent geverifieerde Politie-Middenkader
 // kan automatisch beperkte dienstgebonden portaaltoegang krijgen.
@@ -65,8 +66,15 @@ export function validUserGrant(body){
      new Set(departments).size!==departments.length)throw new Error('Ongeldige functie of hulpdiensten');
   const reason=typeof body?.reason==='string'?body.reason.trim():'';
   if(reason.length<8||reason.length>300)throw new Error('Reden moet 8 tot 300 tekens bevatten');
+  // Optional specialised portal function for a single new service account.
+  // It cannot claim a cadre different from the approved role.
+  const functionId=body?.functionId;
+  if(functionId!==undefined&&
+     (departments.length!==1||choiceFor(departments[0],functionId)?.role!==role))
+    throw new Error('De geselecteerde dienstfunctie komt niet overeen met het portaalkader');
   return {role,departments:[...departments],
-    departmentRoles:Object.fromEntries(departments.map(d=>[d,role])),reason};
+    departmentRoles:Object.fromEntries(departments.map(d=>[d,role])),reason,
+    ...(functionId===undefined?{}:{functionId})};
 }
 // Each approver may only manage the rank formally held in the TARGET service.
 // A global high role must never bleed into a second low-ranked department.
