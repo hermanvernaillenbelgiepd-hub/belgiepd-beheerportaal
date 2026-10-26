@@ -118,7 +118,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      return res.json({person:publicInfo(person),visibility:level,entries,trainings,
        leave,canLogManualLeave,profile,olderNotes:oldNotes,dossierHistory,
        canWrite,sanctionTypes,sanctionReasons:SANCTION_REASONS,
-       canWithdrawSanctions:fireCanWithdrawSanction(req.bpd,person,roles),canEditSpecialties:(req.bpd.fireZoneChief===true||
+       canWithdrawSanctions:fireCanWithdrawSanction(req.bpd,person,roles),canEditSpecialties:(verifiedBoardCorpsDossierAdmin(req.bpd)||req.bpd.fireZoneChief===true||
         req.bpd.portalTechnicalMode===true&&req.bpd.profileTechnicalAvailable===true)&&
        req.bpd.discordId!==person.personId,
        specialties:listed(person.specialties).map(x=>({
