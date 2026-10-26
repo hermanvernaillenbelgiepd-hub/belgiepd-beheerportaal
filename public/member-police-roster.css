@@ -54,3 +54,26 @@
 .mr-table th:first-child{min-width:74px}.mr-table th:nth-child(3){min-width:164px}
 .mr-table th:nth-child(4){min-width:152px}.mr-table th:nth-child(5){min-width:125px}
 .mr-table th:nth-child(6){min-width:95px}
+
+/* Compact shared READ-ONLY personnel rows on the start page and
+   /personeelslijst.html; no change to visible columns or permission scopes. */
+.mr-table{min-width:1280px}
+.mr-table th{padding:7px 6px;font-size:9px;line-height:1.12}
+.mr-table td{padding:5px 6px;line-height:1.16;font-size:11px}
+.mr-table td.mr-call{font-size:12px}
+.mr-rank{gap:4px;font-size:10px}
+.mr-insignia{width:33px;max-height:17px}
+.mr-series-badge{padding:2px 5px;font-size:9px}
+.mr-status{padding:2px 5px;font-size:10px}
+.mr-table td.mr-specialty-cell{padding:3px 3px}
+.mr-specialty{padding:4px 3px;font-size:9px}
+.mr-specialty-head small{font-size:9px}
+.mr-specialty-icon{font-size:15px;margin-bottom:2px}
+.mr-specialty-image{width:21px;height:22px}
+.mr-table th.mr-specialty-head{min-width:76px}
+.mr-table tr.mr-divider td{padding:5px 9px;font-size:10px}
+.mr-table th:first-child{min-width:61px}
+.mr-table th:nth-child(3){min-width:132px}
+.mr-table th:nth-child(4){min-width:120px}
+.mr-table th:nth-child(5){min-width:100px}
+.mr-table th:nth-child(6){min-width:80px}
