@@ -94,7 +94,15 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
         return res.status(403).json({error:'Vernieuw eerst je Discord-verificatie'});
       if(managed.get('status')==='blocked')
         return res.status(403).json({error:'Je portaaltoegang is geblokkeerd'});
-      req.memberPortal={id,managed:managed.exists?managed.data():null};
+      // Advisory only: self-authorized Discord roles help identify a pending
+      // ambulance account. Never treat this as a service/dossier grant.
+      const roles=new Set(identity.data()?.roleIds||[]);
+      const ambulanceDiscordRole=['1309532438053130323',
+        '1309532437977497697','1309532438053130325']
+        .some(role=>roles.has(role));
+      const policeDiscordRole=roles.has('1309532438053130326');
+      req.memberPortal={id,managed:managed.exists?managed.data():null,
+        ambulanceDiscordRole,policeDiscordRole};
       next();
     }catch(error){
       console.error('Nieuwe-leden-aanmelding:',error?.code||'controle mislukt');
@@ -115,12 +123,23 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       const call=police.length===1?callNumber(police[0].call):null;
       const hasFixedCallsign=call!==null&&call>=200;
       const approved=approvedManagedEntry(req.memberPortal.managed,id);
-      const canUseSelfService=Boolean(approved||legacy.length===1&&
-        req.memberPortal.managed===null);
+      const legacyApproved=legacy.length===1&&req.memberPortal.managed===null;
+      const canUseSelfService=Boolean(approved||legacyApproved);
+      const ambulanceApproved=Boolean(approved?.departments.includes('ambulance')||
+        legacyApproved&&legacy[0]?.departments.includes('ambulance'));
+      const ambulanceAccessNeedsApproval=req.memberPortal.ambulanceDiscordRole===true&&
+        !ambulanceApproved;
+      const policeApplicant=police.length===1||
+        req.memberPortal.policeDiscordRole===true||
+        approved?.departments.includes('politie')===true;
       res.json({
         mode,hasPersonnelRecord:police.length===1,
         personnelListAvailable:true,profileAvailable:true,
-        callsignRequestAvailable:!hasFixedCallsign,
+        // An ambulance-only person must not see Police callsign shortcuts
+        // just because no police callsign is linked yet.
+        callsignRequestAvailable:!hasFixedCallsign&&
+          !(req.memberPortal.ambulanceDiscordRole===true&&!policeApplicant),
+        ambulanceAccessNeedsApproval,
         hasFixedCallsign,canUseSelfService
       });
     }catch(error){
