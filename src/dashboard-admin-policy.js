@@ -14,16 +14,16 @@ export function isFireZoneDashboard(actor){
 }
 
 // AZLS service staff must not inherit generic Police/admin dashboard cards.
-// Only approved, service-scoped cadres get a service-specific workspace.
-// This is a presentation classification, NOT proof of the DIR-MED function
-// or an entitlement to review medical dossiers and reports.
+// Every approved service-scoped Ambulance tier (including Basiskader) receives
+// the AZLS home. This is navigation only, NOT evidence of medical leadership
+// or permission to open protected personnel dossiers and reports.
 export function ambulanceDashboardTier(actor){
   if(!actor||actor.role==='beheerder'||actor.boardPersonnelAdmin===true||
       actor.portalTechnicalMode===true||!actor.departments?.includes('ambulance')||
       ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie')))
     return null;
   const tier=roleForDepartment(actor,'ambulance');
-  const rank={middenkader:2,officierenkader:3,korpsleiding:4};
+  const rank={basiskader:1,middenkader:2,officierenkader:3,korpsleiding:4};
   if(!rank[tier]||!rank[actor.role]||rank[tier]>rank[actor.role])return null;
   return tier;
 }
