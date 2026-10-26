@@ -113,8 +113,21 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       const approved=approvedManagedEntry(req.memberPortal.managed,id);
       const canUseSelfService=Boolean(approved||legacy.length===1&&
         req.memberPortal.managed===null);
+      const grant=approved||(
+        legacy.length===1&&req.memberPortal.managed===null?legacy[0]:null);
+      // A basic Ambulance employee may have an ordinary 'member' portal
+      // account. Show their service workspace only after an APPROVED
+      // Ambulance grant and exactly one linked official personnel record.
+      // This is presentation only: it never grants dossier or report access.
+      const ambulanceApproved=grant?.departments?.includes('ambulance')===true;
+      const ambulanceRecords=snapshot.data.filter(p=>
+        p.dept==='ambulance'&&p.personId===id);
+      const ambulanceWorkspaceAvailable=ambulanceApproved&&
+        ambulanceRecords.length===1&&!snapshot.stale;
       res.json({
         mode,hasPersonnelRecord:police.length===1,
+        ambulanceWorkspaceAvailable,
+        ambulanceLinkNeedsReview:ambulanceApproved&&!ambulanceWorkspaceAvailable,
         personnelListAvailable:true,profileAvailable:true,
         callsignRequestAvailable:!hasFixedCallsign,
         hasFixedCallsign,canUseSelfService
