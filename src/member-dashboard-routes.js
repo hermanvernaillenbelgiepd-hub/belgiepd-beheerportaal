@@ -14,8 +14,12 @@ export function newcomerPortalMode(id,managed,roster,legacyApproved=false){
   if(managed?.status==='blocked')return 'blocked';
   const approved=approvedManagedEntry(managed,id);
   if(!approved && !legacyApproved)return 'member';
-  // Approved Basiskader is an ordinary member, not a management dashboard.
-  // A higher verified appointment always remains staff, regardless of call.
+  // A formally approved Ambulance member needs an ambulance-specific
+  // workspace, even if their general portal tier is Basiskader.
+  // This is navigation only: operational dossier/report rights are still
+  // checked separately by the protected API against official records.
+  if(approved?.departments.includes('ambulance'))return 'staff';
+  // Approved Police Basiskader is an ordinary member, not management.
   if(approved?.role==='basiskader')return 'member';
   const police=roster.filter(p=>p.dept==='politie'&&p.personId===id);
   if(police.length===1){
