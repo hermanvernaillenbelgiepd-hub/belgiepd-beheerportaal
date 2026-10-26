@@ -35,6 +35,18 @@ test('Goedgekeurd Ambulancepersoneel met Basiskader krijgt dienstwerkruimte, gee
  assert.equal(newcomerPortalMode(id,{...ambulance,departments:['politie'],
    departmentRoles:{politie:'basiskader'}},[]),'member');
 });
+test('Ambulance Discord role cannot grant unapproved portal or dossier privileges',()=>{
+ const route=read('src/member-dashboard-routes.js');
+ const html=read('public/index.html');
+ assert.match(route,/ambulanceAccessNeedsApproval=req\.memberPortal\.ambulanceDiscordRole===true/);
+ assert.match(route,/!ambulanceApproved/);
+ assert.match(route,/amb[u]?lanceDiscordRole===true|ambulanceDiscordRole===true/);
+ assert.match(route,/callsignRequestAvailable:!hasFixedCallsign&&/);
+ assert.match(html,/id="ambulanceApprovalNotice" hidden/);
+ assert.match(html,/details\.ambulanceAccessNeedsApproval!==true/);
+ assert.match(html,/ctx\.ambulancePersonnelLinked===true/);
+ assert.match(route,/approvedManagedEntry\(req\.memberPortal\.managed,id\)/);
+});
 test('Nieuwe leden krijgen alleen leesbare personeelslijst, zonder dossier- of Discord-ID',()=>{
  const records=publicPoliceRoster([
   {dept:'brandweer',personId:id,name:'Niet tonen',call:'900'},
