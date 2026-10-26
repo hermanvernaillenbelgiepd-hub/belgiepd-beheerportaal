@@ -118,7 +118,7 @@ export async function collectDiscordDiagnosis({
     },
     notes:[]};
   if(!botConfigured||!guildConfigured){
-    result.notes.push('Bot- of Discord-serverinstelling ontbreekt. Controleer de beveiligde Render-omgevingsvariabelen op TEST.');
+    result.notes.push('Bot- of Discord-serverinstelling ontbreekt. Controleer de beveiligde Render-omgevingsvariabelen op MAIN.');
     return result;
   }
   const root='https://discord.com/api/v10';
