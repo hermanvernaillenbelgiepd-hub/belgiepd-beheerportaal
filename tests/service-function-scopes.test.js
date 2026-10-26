@@ -112,3 +112,21 @@ test('Mutation is scoped, audited and independently gated; known IDs never imply
   assert.match(ui,/service-revoke/);
   assert.match(ui,/Andere hulpdiensten blijven behouden/);
 });
+
+test('User editor exposes existing functions and distinct, correctly gated add controls',()=>{
+  const html=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+  const board=readFileSync(new URL('../src/board-appointment-routes.js',import.meta.url),'utf8');
+  assert.match(html,/const assignments=document\.createElement\('div'\)/);
+  assert.match(html,/for\(const activeDept of u\.departments\|\|\[\]\)/);
+  assert.match(html,/u\.board\?\.discord\|\|u\.board\?\.appointed/);
+  assert.match(html,/boardAdd\.textContent='\+ Bestuur voordragen'/);
+  assert.match(html,/dept\.value='bestuur';dept\.onchange\(\);approve\.click\(\)/);
+  assert.match(html,/extraToggle\.textContent='\+ Tweede hulpdienst \/ functie'/);
+  assert.match(html,/canAddExtraService=context\.canViewKnownIds===true/);
+  assert.match(html,/serviceDepartments\.filter\(d=>!\(u\.departments\|\|\[\]\)\.includes\(d\)\)/);
+  assert.match(html,/Extra hulpdienst en functie toegevoegd; alle bestaande functies behouden/);
+  assert.match(html,/method:'POST',body:\{department:extraDept\.value,functionId:chosen\.id,reason\}/);
+  assert.match(board,/Je kunt jezelf niet voordragen/);
+  assert.match(board,/De kandidaat moet eerst een goedgekeurd portaalaccount hebben/);
+  assert.match(board,/Alleen technisch beheer kan bestuursaanstellingen goedkeuren/);
+});
