@@ -50,6 +50,7 @@ test('AZLS member workspace does not show protected modules without independent 
  const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
  const route=readFileSync(new URL('../src/member-dashboard-routes.js',import.meta.url),'utf8');
  assert.match(html,/details\.ambulanceWorkspaceAvailable===true/);
+ assert.match(html,/details\.ambulanceApprovalNeedsReview===true/);
  assert.match(html,/ctx\.dashboardProfile==='ambulance-azls'/);
  assert.match(html,/ctx\.ambulanceTier==='personeel'/);
  assert.match(html,/AZLS – Ambulancepersoneel/);
@@ -59,6 +60,8 @@ test('AZLS member workspace does not show protected modules without independent 
  assert.match(server,/req\.bpd\.ambulancePersonnelVerified=Boolean\(valid/);
  assert.match(server,/roster\.filter\(p=>p\.dept==='ambulance'&&p\.personId===id\)\.length===1/);
  assert.match(route,/ambulanceMemberWorkspaceStatus\(/);
+ assert.match(route,/ambulanceDiscordRoleSeen/);
+ assert.match(route,/!grant\?\.departments\?\.includes\('ambulance'\)/);
  const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
  assert.ok(script);
  assert.doesNotThrow(()=>new Script('(async()=>{'+
