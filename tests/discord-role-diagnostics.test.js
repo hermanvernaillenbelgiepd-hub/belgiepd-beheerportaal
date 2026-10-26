@@ -13,7 +13,7 @@ import {activeBoardAppointment} from '../src/board-appointment-policy.js';
 const guild='123456789012345678';
 const id='222222222222222222';
 const token='TOKEN_CONFIDENTIAL_DO_NOT_EXPOSE_123456';
-const at=1800000000000;
+const at=Date.now();
 const boardId='1309532438082355251';
 const member=(roles=[boardId])=>({
  guildId:guild,roleIds:roles,verifiedAt:at-5000
