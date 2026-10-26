@@ -101,11 +101,13 @@ test('Mutation is scoped, audited and independently gated; known IDs never imply
   assert.match(routes,/\.collection\('bpd_discord_auth'\)\.limit\(LIMIT\)\.get\(\)/);
   assert.match(routes,/coverage:'alleen_gekende_portaal_leden_en_fiches'/);
   assert.match(routes,/otherDepartmentsPreserved:true/);
+  assert.match(routes,/if\(data\.status==='approved'\)/);
+  assert.match(routes,/Wijzig een goedgekeurd account per afzonderlijke hulpdienst/);
   assert.match(server,/installUserRoutes\(app,\{requireUser,accessList,getSnapshot\}\)/);
   assert.match(ui,/id="knownIdsSection" hidden/);
   assert.match(ui,/id="knownIdsReload"/);
   assert.match(ui,/id="accountSearch"/);
-  assert.match(ui,/\/service-function'/);
-  assert.match(ui,/\/service-revoke'/);
+  assert.match(ui,/service-function/);
+  assert.match(ui,/service-revoke/);
   assert.match(ui,/Andere hulpdiensten blijven behouden/);
 });
