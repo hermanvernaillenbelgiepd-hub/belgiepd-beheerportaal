@@ -1,4 +1,5 @@
 import { policeKader,SPECIALTY_LABELS } from './normalize.js';
+import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 // Autorisatie en validatie: geen client-claims over rol of de identiteit van de indiener.
 export const ALLOWED_ROLES = ['basiskader','middenkader','officierenkader','korpsleiding','burger','beheerder'];
 export const SANCTION_REASONS = [
@@ -50,7 +51,8 @@ export function representativeFromPersonnel(persons,dept,id) {
   const p=matches[0];return {discordId:p.personId,name:p.name,call:p.call,rank:p.rank,dept:p.dept};
 }
 export const canEditSanction = role => ['officierenkader','korpsleiding'].includes(role);
-export const hasDept = (user,dept) => Boolean(user?.departments?.includes(dept));
+export const hasDept = (user,dept) => Boolean(user?.departments?.includes(dept)||
+  verifiedBoardCorpsDossierAdmin(user)&&user?.dossierAllowedDepartments?.includes(dept));
 export const maySubmit = (user,type,dept) => hasDept(user,dept) &&
   // Agentenkader (100/200) cannot use the formal observation register.
   // Basiskader Police observations go exclusively through the separate
