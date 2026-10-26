@@ -24,6 +24,7 @@ import {mayReadFortnightReport} from './fortnight-report-policy.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
+import {installDiscordDiagnosticRoutes} from './discord-role-diagnostics-routes.js';
 import { installRoleRoutes } from './role-routes.js';
 import {installTrainingRequestRoutes} from './training-request-routes.js';
 import { createTestPersonnel } from './test-personnel.js';
@@ -574,6 +575,9 @@ app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
 });
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
+// Read-only, rate-bounded Discord bot health for independently verified Board.
+// No user-list identities or secrets leave the service.
+installDiscordDiagnosticRoutes(app,{requireUser});
 installDiscordPersonalProfileRoutes(app,{getSnapshot});
 // More-specific activity endpoints MUST precede /api/personnel/:dept/:discordId.
 // That broad POST edit route otherwise intercepts retrospective audit submissions.
