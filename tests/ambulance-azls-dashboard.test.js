@@ -104,6 +104,8 @@ test('Approved ordinary AZLS members get an own service workspace, never managem
  assert.match(page,/details\.ambulanceApproved===true/);
  assert.match(page,/showAmbulanceDashboard\(ctx,details\.ambulanceLinkState\)/);
  assert.match(page,/AZLS – Ambulancepersoneel/);
+ assert.match(page,/const canOpen=tier!=='basiskader'&&ctx\.ambulanceCanOpenDossier===true/);
+ assert.match(page,/const canReport=tier!=='basiskader'&&ctx\.ambulanceReportVerified===true/);
  assert.match(page,/ambulanceDiscordRecognized===true&&details\.ambulanceApproved!==true/);
  assert.match(route,/ambulanceApproved,ambulanceLinkState,ambulanceDiscordRecognized/);
 });
