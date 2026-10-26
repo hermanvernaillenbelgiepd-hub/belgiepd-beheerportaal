@@ -207,7 +207,9 @@ function currentServiceFunction(u,dept){
   const saved=u.serviceFunctions?.[dept];
   if(serviceFunctionOption(dept,saved))return saved;
   const cadre=u.departmentRoles?.[dept]||(u.departments?.includes(dept)?u.role:null);
-  return serviceFunctionCatalog?.[dept]?.find(x=>x.role===cadre)?.id||null;
+  const choices=serviceFunctionCatalog?.[dept]||[];
+  return choices.find(x=>x.id===cadre)?.id||
+    choices.find(x=>x.role===cadre)?.id||null;
 }
 function setAccountCadreOptions(select,dept,preferred){
   select.replaceChildren();
