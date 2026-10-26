@@ -21,6 +21,20 @@ test('Nieuw of voorlopig Agentenkader krijgt beperkte startpagina zonder kaderre
  assert.equal(newcomerPortalMode(id,{status:'blocked'},[]),'blocked');
  assert.equal(newcomerPortalMode(id,{status:'approved',discordId:id,role:'korpsleiding',departments:['politie'],departmentRoles:{politie:'korpsleiding'}},[member('900')]),'staff');
 });
+test('Goedgekeurd Ambulancepersoneel met Basiskader krijgt dienstwerkruimte, geen politionele rechten',()=>{
+ const ambulance={status:'approved',discordId:id,role:'basiskader',
+   departments:['ambulance'],departmentRoles:{ambulance:'basiskader'}};
+ assert.equal(newcomerPortalMode(id,ambulance,[]),'staff',
+   'A uniquely approved ambulance service should not be sent to the Police Basiskader home');
+ assert.equal(newcomerPortalMode(id,ambulance,[member('250')]),'staff',
+   'Secondary police callsign must not suppress ambulance service workspace');
+ assert.equal(newcomerPortalMode(id,{...ambulance,status:'pending'},[]),'member');
+ assert.equal(newcomerPortalMode(id,{...ambulance,status:'blocked'},[]),'blocked');
+ assert.equal(newcomerPortalMode(id,approved,[]),'member',
+   'Unrelated Police Basiskader dashboard must stay unchanged');
+ assert.equal(newcomerPortalMode(id,{...ambulance,departments:['politie'],
+   departmentRoles:{politie:'basiskader'}},[]),'member');
+});
 test('Nieuwe leden krijgen alleen leesbare personeelslijst, zonder dossier- of Discord-ID',()=>{
  const records=publicPoliceRoster([
   {dept:'brandweer',personId:id,name:'Niet tonen',call:'900'},
