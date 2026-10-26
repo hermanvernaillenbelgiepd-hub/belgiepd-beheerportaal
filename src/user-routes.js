@@ -337,9 +337,10 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
         const data=doc.data();
         if(!canChangeUser(req.bpd,req.params.discordId,data,grant))
           throw publicError('Je mag deze medewerker, functie of hulpdienst niet wijzigen');
-        if(data.status==='approved'&&
-           (data.departments.length!==grant.departments.length||
-            !grant.departments.every(dept=>data.departments.includes(dept))))
+        // The legacy approval endpoint is ONLY for pending accounts. Existing
+        // multi-department accounts must use an isolated service update instead
+        // of replacing and accidentally wiping their other departments.
+        if(data.status==='approved')
           throw publicError('Wijzig een goedgekeurd account per afzonderlijke hulpdienst',409);
         const audit=ref.collection('audit').doc();
         tx.update(ref,{status:'approved',role:grant.role,departments:grant.departments,
