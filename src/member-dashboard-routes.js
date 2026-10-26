@@ -25,6 +25,17 @@ export function newcomerPortalMode(id,managed,roster,legacyApproved=false){
   }
   return 'staff';
 }
+// Presentation-only classification of an approved Ambulance account.
+// Discord membership, a radio label, or a single spreadsheet row must
+// NEVER authorize protected medical dossiers or report access.
+export function ambulanceMemberWorkspaceStatus(id,grant,roster,stale=false){
+  const approved=discordId.test(String(id||''))&&
+    Array.isArray(grant?.departments)&&grant.departments.includes('ambulance');
+  const matches=Array.isArray(roster)?roster.filter(p=>
+    p?.dept==='ambulance'&&p?.personId===id):[];
+  const available=approved&&matches.length===1&&stale!==true;
+  return {available,needsReview:approved&&!available};
+}
 // Personnel-list access and individual dossier access are separate.
 // Export ONLY roster columns, never Discord IDs, activity, dossiers,
 // source row, sanctions, notes, contact information or audit history.
@@ -119,15 +130,12 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       // account. Show their service workspace only after an APPROVED
       // Ambulance grant and exactly one linked official personnel record.
       // This is presentation only: it never grants dossier or report access.
-      const ambulanceApproved=grant?.departments?.includes('ambulance')===true;
-      const ambulanceRecords=snapshot.data.filter(p=>
-        p.dept==='ambulance'&&p.personId===id);
-      const ambulanceWorkspaceAvailable=ambulanceApproved&&
-        ambulanceRecords.length===1&&!snapshot.stale;
+      const ambulance=ambulanceMemberWorkspaceStatus(
+        id,grant,snapshot.data,snapshot.stale);
       res.json({
         mode,hasPersonnelRecord:police.length===1,
-        ambulanceWorkspaceAvailable,
-        ambulanceLinkNeedsReview:ambulanceApproved&&!ambulanceWorkspaceAvailable,
+        ambulanceWorkspaceAvailable:ambulance.available,
+        ambulanceLinkNeedsReview:ambulance.needsReview,
         personnelListAvailable:true,profileAvailable:true,
         callsignRequestAvailable:!hasFixedCallsign,
         hasFixedCallsign,canUseSelfService
