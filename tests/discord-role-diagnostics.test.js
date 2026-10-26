@@ -81,6 +81,9 @@ test('Only the canonical Render MAIN service exposes the diagnostic endpoint',()
  assert.equal(discordDiagnosticsMainOnly({RENDER_GIT_BRANCH:'main',
    RENDER_SERVICE_NAME:'belgiepd-beheerportaal'}),true);
  assert.equal(discordDiagnosticsMainOnly({RENDER_SERVICE_ID:'srv-other'}),false);
+ assert.equal(discordDiagnosticsMainOnly({RENDER_SERVICE_ID:'srv-other',
+   RENDER_GIT_BRANCH:'main',RENDER_SERVICE_NAME:'belgiepd-beheerportaal'}),false,
+   'A different service identity must not be rescued by a main branch name');
 });
 
 test('Discord diagnostics probe only fixed read endpoints, never leak token or IDs',async()=>{
@@ -144,7 +147,7 @@ test('Without bot secrets no Discord requests are initiated',async()=>{
 
 test('Only board-scoped bearer identity can call the API; reads cached per user',async()=>{
  let calls=0;
- const collect=async()=>{calls++;return {environment:'TEST',mode:'alleen-lezen'}};
+ const collect=async()=>{calls++;return {environment:'MAIN',mode:'alleen-lezen'}};
  const {handler,res}=appAndResponse({
    firestore:()=>dbFor(member(),null),collect
  });
@@ -244,7 +247,7 @@ test('Extended member census is opt-in and per-user cached without bypassing Boa
  let scans=0;
  const collect=async({coverage})=>{
    if(coverage)scans++;
-   return {environment:'TEST',mode:'alleen-lezen',
+   return {environment:'MAIN',mode:'alleen-lezen',
      probes:{fullCoverage:{status:coverage?'ok':'not_run'}}};
  };
  const {handler,res}=appAndResponse({
