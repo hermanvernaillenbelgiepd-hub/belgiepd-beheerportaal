@@ -19,6 +19,34 @@ button.secondary{background:#284669}button.danger{background:#833747}button:disa
 .status{padding:10px;border-radius:9px;background:#244d42;color:#d7f9e8;margin:15px 0}.error{background:#673747;color:#ffe0e3}
 .pill{display:inline-block;border:1px solid #55759f;border-radius:16px;padding:2px 8px;font-size:12px;margin-left:7px}
 [hidden]{display:none!important}
+
+/* Compacte opleidingsaanvraag binnen de gedeelde portaalnavigatie.
+   Enkel presentatie: aanvragen, catalogi, validatie en autorisatie blijven gelijk. */
+main{margin:14px auto;padding-bottom:28px}
+main h1{font-size:19px;line-height:1.3;letter-spacing:-.01em;margin:0 0 3px}
+main>p{font-size:12px;line-height:1.4;margin:5px 0 8px}
+main .card{padding:14px 16px;margin:10px 0;border-radius:10px}
+main h2{font-size:15px;line-height:1.3;margin:0 0 10px}
+main .two{gap:10px 14px}
+main label{font-size:12px;line-height:1.35;margin:5px 0 8px}
+main select,main input,main textarea{
+ padding:7px 9px;border-radius:6px;margin:4px 0 0;
+ font-size:12px;line-height:1.35}
+main select,main input{min-height:34px}
+main textarea{min-height:54px;resize:vertical}
+main button{font-size:12px;line-height:1.35;padding:7px 11px;border-radius:7px}
+main .status{padding:7px 10px;margin:9px 0;font-size:12px;line-height:1.35;border-radius:7px}
+main .entry{padding:9px 0;font-size:12px}
+main #formPanel form>label{margin-top:7px}
+main #formPanel>p{margin:8px 0 0;line-height:1.35}
+main #formPanel>p small{font-size:11px}
+main #requestForm>button{margin-top:5px}
+main .row h2{margin:0}
+@media(max-width:700px){
+ main{margin:10px auto;padding-bottom:20px}
+ main .card{padding:12px}
+ main .two{gap:4px}
+}
 </style></head><body>
 <header><strong>🎓 BelgiëPD · Opleidingscentrum</strong><a href="/">Dashboard</a><a href="/meldingen.html">Meldingen</a><button id="login" type="button">Aanmelden</button></header>
 <main>
