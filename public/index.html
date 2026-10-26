@@ -365,12 +365,17 @@ async function displayAuthenticated(user){
     // Server-recognised Ambulance roster and approval may provide a basic
     // AZLS workspace without changing the member's operational privileges.
     if(details.ambulanceWorkspaceAvailable===true){
-      const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
-      if(turn!==requestNumber)return;
-      if(ctx.dashboardProfile==='ambulance-azls'&&
-        ctx.ambulanceTier==='personeel'){
-        showAmbulanceDashboard(ctx);
-        return;
+      try{
+        const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
+        if(turn!==requestNumber)return;
+        if(ctx.dashboardProfile==='ambulance-azls'&&
+          ctx.ambulanceTier==='personeel'){
+          showAmbulanceDashboard(ctx);
+          return;
+        }
+      }catch{
+        // Preserve safe basic self-service when the protected roster
+        // or session check is temporarily unavailable.
       }
     }
     show('member');
@@ -406,6 +411,9 @@ async function displayAuthenticated(user){
     if(details.ambulanceLinkNeedsReview===true)
       $('memberAccountStatus').textContent=
         'Je Ambulance-portaaltoegang is goedgekeurd, maar je officiële personeelsfiche is niet eenduidig aan je Discord-ID gekoppeld of de personeelsbron is niet actueel. Laat dit door bevoegd beheer controleren.';
+    else if(details.ambulanceApprovalNeedsReview===true)
+      $('memberAccountStatus').textContent=
+        'Bij je laatste Discord-verificatie werd een Ambulance-rol gevonden, maar Ambulance is nog niet als goedgekeurde hulpdienst aan je portaalaccount gekoppeld. Vraag bevoegd beheer om je diensttoegang te controleren.';
   }else if(details.mode==='staff'){
     const ctx=await authorizedFetch('/api/dashboard/admin-visibility',token);
     if(turn!==requestNumber)return;
