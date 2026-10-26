@@ -425,6 +425,42 @@ function render(){
     cell(row,actions);list.append(row);
   }
 }
+function renderKnownIds(){
+  const q=$('knownIdsSearch').value.trim().toLowerCase();
+  const list=knownIds.filter(entry=>!q||
+    entry.discordId.includes(q)||
+    entry.departments.some(dept=>(deptNames[dept]||dept).toLowerCase().includes(q))||
+    entry.sources.some(source=>source.toLowerCase().includes(q)));
+  const body=$('knownIdsRows');body.replaceChildren();
+  const named={portaal:'Portaalaccount',eigen_discord_verificatie:'Discord-login',
+    personeelsfiche:'Personeelsfiche'};
+  for(const entry of list.slice(0,200)){
+    const row=document.createElement('tr');
+    cell(row,entry.discordId);
+    cell(row,entry.sources.map(x=>named[x]||x).join(', '));
+    cell(row,entry.departments.map(x=>deptNames[x]||x).join(', ')||'Nog niet gekoppeld');
+    cell(row,entry.status==='approved'?'Goedgekeurd':
+      entry.status==='pending'?'In aanvraag':
+      entry.status==='blocked'?'Geblokkeerd':'Geen goedgekeurd account');
+    body.append(row);
+  }
+  $('knownIdsCount').textContent=list.length+' gekende ID(’s), maximaal 200 rijen per weergave';
+}
+async function loadKnownIds(){
+  const button=$('knownIdsReload');button.disabled=true;
+  try{
+    const result=await api('/api/users/known-ids');
+    knownIds=result.users||[];
+    renderKnownIds();
+    $('knownIdsWarning').textContent=result.limited?
+      'Overzicht is begrensd of personeelsbron is niet actueel. Dit is geen volledige serverledenlijst.':
+      'Dit zijn uitsluitend identiteiten die het portaal kent, niet alle Discord-serverleden.';
+  }catch(error){notice('Gekende ID’s: '+error.message,true)}
+  finally{button.disabled=false}
+}
+$('knownIdsReload').onclick=loadKnownIds;
+$('knownIdsSearch').oninput=renderKnownIds;
+
 async function loadAdmin(){
   try{
     // Server-side role calculation, never a browser-side grant.
