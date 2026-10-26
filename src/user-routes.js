@@ -246,7 +246,8 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
         users.push(...group);
       }
       return res.json({role:req.bpd.role,departments:req.bpd.departments,
-        users,roleCatalog:MANUAL_ROLE_CATALOG,limited:snap.size===250});
+        users,roleCatalog:MANUAL_ROLE_CATALOG,functionCatalog:SERVICE_FUNCTIONS,
+        limited:snap.size===250});
     }catch(e){return fail(res,e)}
   });
   // Technical manager's union of KNOWN identities, not the full Discord guild.
