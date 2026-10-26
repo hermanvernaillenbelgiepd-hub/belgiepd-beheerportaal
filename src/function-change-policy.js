@@ -1,6 +1,7 @@
 import {ROLE_CATALOG} from './role-catalog.js';
 import {roleForDepartment} from './leave-policy.js';
 import {canEditPersonnel} from './personnel-editor-policy.js';
+import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 
 // Alleen operationele specialisaties zijn dossierfuncties. Reeks-, kader-,
 // bestuurs- en toegangsmachtigingen kunnen hiermee NOOIT worden gewijzigd.
@@ -20,6 +21,11 @@ export function verifiedFunctionalRoleIds(member,dept,guildId,now=Date.now()){
   return [...new Set(member.roleIds)].filter(id=>functionRole(id)?.dept===dept);
 }
 export function canRecordFunctionChange(actor,subject){
+  if(verifiedBoardCorpsDossierAdmin(actor)&&
+     FUNCTION_DEPARTMENTS.includes(subject?.dept)&&
+     actor?.dossierNativeDepartments?.includes(subject.dept)&&
+     actor.discordId!==subject.personId)
+    return canEditPersonnel(actor,subject);
   if(!FUNCTION_DEPARTMENTS.includes(subject?.dept)||!ID.test(String(subject?.personId||''))||
     !actor?.dossierNativeDepartments?.includes(subject.dept)||
     !actor?.departments?.includes(subject.dept)||
