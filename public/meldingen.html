@@ -14,6 +14,41 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 .message{background:#eaf1fc;border-radius:9px;padding:12px;color:#194481}
 .message.error{background:#ffebee;color:#953341}
 [hidden]{display:none!important}
+
+/* Compacte verlofmeldingen en beslisrijen voor alle diensten.
+   Opleidingsmeldingen en beslislogica blijven ongewijzigd. */
+#personalPanel,#reviewPanel,#overridePanel{
+ padding:14px 16px;margin:10px 0;border-radius:10px
+}
+#personalPanel h2,#reviewPanel h2,#overridePanel h2{
+ font-size:15px;line-height:1.3;margin:0 0 7px
+}
+#personalPanel>p,#overridePanel>p{
+ font-size:12px;line-height:1.4;margin:5px 0 9px
+}
+#reviewPanel>.actions{margin:0 0 6px;gap:8px}
+#reviewPanel>.actions h2{margin:0}
+#personalList .item,#reviewList .item,#overrideList .item{
+ padding:8px 0;font-size:12px;line-height:1.35
+}
+#personalList .item strong,#reviewList .item strong,#overrideList .item strong{
+ font-size:12px;font-weight:700
+}
+#reviewList .item p,#overrideList .item p{
+ margin:3px 0 0;font-size:11px;line-height:1.35
+}
+#reviewList .item .actions,#overrideList .item .actions{
+ gap:6px;margin-top:6px
+}
+#reviewList .item button,#overrideList .item button,#reviewPanel #reload{
+ padding:6px 10px;font-size:11px;line-height:1.3;border-radius:6px;
+ min-height:30px
+}
+#reviewPanel #reviewCount{padding:2px 6px;font-size:10px}
+@media(max-width:700px){
+ #personalPanel,#reviewPanel,#overridePanel{padding:12px}
+ #reviewPanel>.actions{flex-wrap:wrap}
+}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
 <header><strong>🛡️ BelgiëPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
