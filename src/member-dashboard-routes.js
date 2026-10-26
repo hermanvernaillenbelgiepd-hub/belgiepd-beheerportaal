@@ -90,7 +90,8 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
         return res.status(403).json({error:'Vernieuw eerst je Discord-verificatie'});
       if(managed.get('status')==='blocked')
         return res.status(403).json({error:'Je portaaltoegang is geblokkeerd'});
-      req.memberPortal={id,managed:managed.exists?managed.data():null};
+      req.memberPortal={id,managed:managed.exists?managed.data():null,
+        verifiedGuildMember:identity.data()};
       next();
     }catch(error){
       console.error('Nieuwe-leden-aanmelding:',error?.code||'controle mislukt');
@@ -111,13 +112,33 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       const call=police.length===1?callNumber(police[0].call):null;
       const hasFixedCallsign=call!==null&&call>=200;
       const approved=approvedManagedEntry(req.memberPortal.managed,id);
+      // The Discord role may suggest which service needs approval, but NEVER
+      // determines portal permissions or grants membership by itself.
+      const ownRoles=req.memberPortal.verifiedGuildMember;
+      const fresh=Number.isSafeInteger(ownRoles?.verifiedAt)&&
+        ownRoles.verifiedAt<=Date.now()&&
+        Date.now()-ownRoles.verifiedAt<=15*60*1000;
+      const ambulanceDiscordRecognized=fresh&&[
+        '1309532438053130323','1309532437977497697'
+      ].some(role=>ownRoles.roleIds?.includes(role))===true;
+      const approvedDepartments=approved?.departments||
+        (legacy.length===1&&req.memberPortal.managed===null?
+          legacy[0].departments:[]);
+      const ambulanceApproved=approvedDepartments.includes('ambulance');
+      const ambulanceEntries=snapshot.data.filter(p=>
+        p.dept==='ambulance'&&p.personId===id);
+      const ambulanceLinkState=!ambulanceApproved?'niet-toegewezen':
+        ambulanceEntries.length===1?'gekoppeld':
+        ambulanceEntries.length>1?'dubbel':'ontbreekt';
       const canUseSelfService=Boolean(approved||legacy.length===1&&
         req.memberPortal.managed===null);
       res.json({
         mode,hasPersonnelRecord:police.length===1,
         personnelListAvailable:true,profileAvailable:true,
-        callsignRequestAvailable:!hasFixedCallsign,
-        hasFixedCallsign,canUseSelfService
+        callsignRequestAvailable:!hasFixedCallsign&&
+          (!ambulanceApproved||approvedDepartments.includes('politie')),
+        hasFixedCallsign,canUseSelfService,
+        ambulanceApproved,ambulanceLinkState,ambulanceDiscordRecognized
       });
     }catch(error){
       console.error('Dashboard voor nieuwe leden:',error?.code||'bron tijdelijk niet beschikbaar');
