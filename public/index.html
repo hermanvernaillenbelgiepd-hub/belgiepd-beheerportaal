@@ -242,6 +242,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
       <h1 id="ambulanceDashboardTitle">Ambulance / AZLS</h1>
       <p class="lead">Je ambulancewerkruimte bevat uitsluitend de diensten en bevoegdheden van je eigen functie. De politiepersoneelslijst blijft alleen ter inzage.</p>
     </div></section>
+    <p id="ambulanceLinkNotice" class="member-notice" hidden>Je ambulancefunctie is op het portaal goedgekeurd, maar je officiële ambulancepersoneelsfiche is nog niet eenduidig aan jouw Discord-ID gekoppeld. Laat de dienstleiding je personeelsfiche en portaaltoegang controleren. Tot dan blijven beschermde functies afgeschermd.</p>
     <p id="ambulanceVerificationNotice" class="member-notice" hidden>Je portaalkader is gekend. Om beschermde ambulancedossiers en dienstgebonden rapporten te openen, moet je officiële ambulanceleidingfunctie via je gekoppelde personeelsfiche en Discord worden geverifieerd. Vernieuw de Discord-verificatie in Mijn profiel indien nodig.</p>
     <h2 class="section-title">Ambulanceleiding en eigen functies</h2>
     <div class="grid" id="ambulanceModules">
@@ -286,7 +287,8 @@ function showAmbulanceDashboard(ctx){
   const tier=ctx.ambulanceTier;
   $('ambulanceDashboardTitle').textContent=tier==='korpsleiding'?
     'DIR-MED – Directeur Medisch':tier==='officierenkader'?
-      'AZLS – Ambulanceleiding':'AZLS – Medisch instructeur';
+      'AZLS – Ambulanceleiding':tier==='middenkader'?
+        'AZLS – Opleiding en begeleiding':'Ambulance – Personeelslid';
   const canManage=ctx.ambulanceCanManagePersonnel===true;
   const canOpen=ctx.ambulanceCanOpenDossier===true;
   const canReport=ctx.ambulanceReportVerified===true;
@@ -295,8 +297,10 @@ function showAmbulanceDashboard(ctx){
     ['ambulanceCardDossiers',canOpen],['ambulanceNavDossiers',canOpen],
     ['ambulanceCardReports',canReport],['ambulanceNavReports',canReport]])
     $(name).hidden=!visible;
+  $('ambulanceLinkNotice').hidden=ctx.ambulancePersonnelLinked===true;
   $('ambulanceVerificationNotice').hidden=
-    !(['officierenkader','korpsleiding'].includes(tier)&&!canReport);
+    !(['officierenkader','korpsleiding'].includes(tier)&&
+      ctx.ambulancePersonnelLinked===true&&!canReport);
 }
 function showApprovedBasicDashboard(){
  show('member');
