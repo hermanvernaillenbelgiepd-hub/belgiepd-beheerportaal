@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Organogram · TEST-proefversie · BelgiëPD</title>
+<style>
+:root{font:13px/1.42 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#e9f1ff;background:#091425;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-width:320px}
+button,input{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid #b5d5ff;outline-offset:2px}
+button:disabled{opacity:.6;cursor:not-allowed}
+a{color:#b7d6ff}
+.topbar{display:flex;gap:13px;align-items:center;flex-wrap:wrap;padding:10px clamp(14px,2vw,26px);background:#101f3b;border-bottom:1px solid #365073}
+.brand{display:flex;align-items:center;gap:9px;color:#fff;text-decoration:none;font-weight:850;font-size:14px}
+.brandmark{display:grid;place-items:center;background:#3657ca;border:1px solid #7796e6;border-radius:8px;width:32px;height:33px;font-size:11px}
+.env{border:1px solid #927c39;border-radius:6px;color:#ffe59a;background:#3d331c;padding:3px 7px;font-size:10px;font-weight:750;letter-spacing:.07em}
+.topbar a.back{margin-left:auto;text-decoration:none;font-size:12px}
+main{max-width:1540px;margin:0 auto;padding:15px clamp(12px,2vw,26px) 42px}
+h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
+.lead{max-width:105ch;margin:0;color:#afc5e4;font-size:12px}
+.notice{background:#183a43;border:1px solid #286c75;border-radius:8px;padding:8px 11px;margin-top:11px;color:#d6fffa;font-size:12px}
+.notice.warn{background:#45351d;border-color:#88652d;color:#ffe6b6}
+.notice.danger{background:#482832;border-color:#a05063;color:#ffe1e7}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 315px;gap:14px;align-items:start;margin-top:12px}
+.card{background:#132642;border:1px solid #345477;border-radius:10px;padding:12px 14px}
+.filters{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin:8px 0 12px}
+.filter{background:#152e50;color:#c6ddff;border:1px solid #46658b;padding:7px 10px;border-radius:7px;font-size:12px}
+.filter[aria-pressed="true"]{background:#365ed4;border-color:#7399ff;color:white}
+.search{margin-left:auto;max-width:245px;min-width:145px;flex:1;background:#081a30;color:#fff;border:1px solid #4b6b8e;border-radius:7px;padding:7px 9px}
+.source{color:#aac2df;font-size:11px;margin:5px 0}
+.tree-root{max-width:260px;margin:0 auto 19px;text-align:center;border:1px solid #688fc4;background:#254371;color:#fff;border-radius:9px;padding:11px;font-weight:800;position:relative}
+.tree-root small{display:block;color:#c6dcfc;font-size:10px;font-weight:450;margin-top:3px}
+.tree-root:after{content:"";position:absolute;left:50%;top:100%;height:19px;border-left:1px solid #6184b2}
+.branchset{display:grid;grid-template-columns:1fr;gap:10px}
+.service{border:1px solid #365779;border-radius:9px;background:#10223a;min-width:0}
+.service>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;padding:9px 11px;font-size:13px;font-weight:800}
+.service>summary::-webkit-details-marker{display:none}
+.service>summary:after{content:"⌄";margin-left:auto;color:#c4d7f5}
+.service:not([open])>summary:after{content:"›"}
+.service .service-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:7px;background:var(--accentbg,#243e67);font-size:16px}
+.service .quantity{font-size:10px;font-weight:650;color:#b5cae7;background:#233b5a;border-radius:30px;padding:2px 7px}
+.service-body{padding:0 10px 11px}
+.service-caption{font-size:11px;color:#a5bddd;margin:2px 0 9px}
+.rank-group{border-left:2px solid var(--accent,#83acde);margin:7px 0;padding-left:9px}
+.rank-group>summary{cursor:pointer;padding:5px 1px;font-weight:750;font-size:12px;color:#ebf3ff}
+.rank-group .rank-count{font-size:10px;color:#a8c0e2;font-weight:500;margin-left:6px}
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));gap:7px;margin:5px 0 8px}
+.person{display:flex;align-items:center;gap:8px;min-width:0;text-align:left;border:1px solid #3a587c;border-radius:8px;background:#182f4d;color:#e7f0ff;padding:7px}
+.person:hover{background:#254668;border-color:#719ad7}
+.person[aria-pressed="true"]{border-color:#a5c7ff;box-shadow:0 0 0 1px #91b8f7}
+.avatar{display:grid;place-items:center;flex:none;width:37px;height:41px;border-radius:7px;background:var(--accentbg,#284064);border:1px solid #6684ac;font-size:20px}
+.identity{min-width:0;display:block}
+.identity strong,.identity small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.identity strong{font-size:12px}
+.identity small{font-size:10px;color:#bdd0ec}
+.more{border:1px solid #526e92;background:#1b3657;color:#cfe3ff;border-radius:6px;padding:6px 9px;font-size:11px}
+.empty{color:#afc3e0;margin:10px 0}
+.side{position:sticky;top:10px}
+.side h2{margin:0 0 7px;font-size:15px}
+.side h3{font-size:12px;margin:13px 0 5px;color:#c6dfff}
+.side p{margin:5px 0;color:#b2c8e6;font-size:11px}
+.detail{border-bottom:1px solid #395879;padding-bottom:10px;margin-bottom:10px}
+.detail-head{display:flex;align-items:center;gap:10px}
+.detail-head .avatar{width:55px;height:61px;font-size:28px}
+.detail-head strong{font-size:13px}
+.kv{display:grid;grid-template-columns:95px 1fr;gap:4px 8px;margin:10px 0;font-size:11px}
+.kv dt{color:#9fb8da}.kv dd{margin:0;overflow-wrap:anywhere}
+.locked{background:#0c1c31;border:1px dashed #49678b;border-radius:8px;padding:10px}
+.locked strong{font-size:12px}
+.locked a{font-size:11px}
+.sr-only{position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden}
+:root{--accent:#90b6ee;--accentbg:#233b61}
+[data-dept="politie"]{--accent:#86baff;--accentbg:#234a76}
+[data-dept="brandweer"]{--accent:#ff9a9e;--accentbg:#6c2d3b}
+[data-dept="ambulance"]{--accent:#82deb0;--accentbg:#235a4c}
+[data-dept="depannage"]{--accent:#ffd28c;--accentbg:#66502d}
+[data-dept="alle"]{--accent:#a3b5ff;--accentbg:#31436b}
+@media(min-width:1550px){.branchset{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.side{position:static}}
+@media(max-width:520px){.filters{gap:5px}.filter{padding:6px 7px;font-size:11px}.search{flex-basis:100%;max-width:none}.people{grid-template-columns:1fr}main{padding-inline:10px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+ <a class="brand" href="/" aria-label="Terug naar BelgiëPD TEST"><span class="brandmark">BP</span> BelgiëPD · Organogram</a>
+ <span class="env">TEST · PROEFVERSIE</span>
+ <a class="back" href="/">← TEST-startpagina</a>
+</header>
+<main>
+ <h1>Organogram van de hulpdiensten</h1>
+ <p class="lead">Proefopstelling van één organisatie met afzonderlijke dienststructuren. Deze pagina toont uitsluitend bestaande openbare basisgegevens; dossierbevoegdheden worden hier niet gewijzigd of nagebootst.</p>
+ <div class="notice" id="status" role="status" aria-live="polite">Openbare personeelslijst laden…</div>
+ <div class="layout">
+  <section class="card" aria-label="Organogram en dienstkeuze">
+   <div class="filters" id="filters" role="group" aria-label="Hulpdienst">
+    <button class="filter" data-view="alle" aria-pressed="true">Overzicht</button>
+    <button class="filter" data-view="politie" aria-pressed="false">Politie</button>
+    <button class="filter" data-view="brandweer" aria-pressed="false">Brandweer</button>
+    <button class="filter" data-view="ambulance" aria-pressed="false">Ambulance</button>
+    <button class="filter" data-view="depannage" aria-pressed="false">Depannage</button>
+    <label class="sr-only" for="search">Zoek op naam, roepnummer of rang</label>
+    <input id="search" class="search" type="search" placeholder="Zoek naam, call of rang" autocomplete="off">
+   </div>
+   <p class="source" id="source">De takken zijn voorlopig gegroepeerd op de geregistreerde rang. Echte leidingrelaties vereisen later een apart, gevalideerd organogrambeheer.</p>
+   <div class="tree-root">BelgiëPD<small>Gezamenlijke organisatie · gescheiden dienstfuncties</small></div>
+   <div class="branchset" id="tree" aria-live="polite"></div>
+  </section>
+  <aside class="card side" aria-label="Personeelskaart en privacy">
+   <h2>Publieke personeelskaart</h2>
+   <div id="detail" class="detail"><p>Kies een personeelskaart om de openbare basisgegevens te bekijken.</p></div>
+   <h3>Uniformfoto, specialisaties en onderscheidingen</h3>
+   <p>De huidige openbare bron bevat deze gegevens nog niet. In deze proefversie gebruiken we alleen een herkenbaar dienstpictogram, geen verzonnen onderscheidingen of personeelsfoto’s.</p>
+   <div class="locked">
+    <strong>🔒 Interne laag blijft afgeschermd</strong>
+    <p>Observaties, sancties, administratieve wijzigingen, dossieraudit en Discord-ID's worden niet opgehaald. Een organogramfunctie is nooit een dossierrecht.</p>
+    <a href="/dossiercentrum.html">Bestaand beveiligd dossiercentrum</a>
+   </div>
+   <h3>Voor de definitieve versie</h3>
+   <p>Per persoon één identiteit, dienstgebonden rollen en roepnummers. De leidingrelatie en publieke onderscheiding worden alleen via expliciete, gecontroleerde registratie toegevoegd.</p>
+  </aside>
+ </div>
+</main>
+<script>
+(function(){
+ 'use strict';
+ const services=[
+  {id:'politie',title:'Politie',icon:'👮'},
+  {id:'brandweer',title:'Brandweer',icon:'🚒'},
+  {id:'ambulance',title:'Ambulance',icon:'🚑'},
+  {id:'depannage',title:'Depannage',icon:'🛠️'}
+ ];
+ const $=id=>document.getElementById(id);
+ const viewState={service:'alle',query:'',people:[],demo:false,selected:null};
+ const demo=[
+  {dept:'politie',name:'Voorbeeldagent (fictief)',call:'DEMO-POL',rank:'Inspecteur',status:'DEMO'},
+  {dept:'brandweer',name:'Voorbeeldbrandweerlid (fictief)',call:'DEMO-BW',rank:'Brandweerlid',status:'DEMO'},
+  {dept:'ambulance',name:'Voorbeeldambulancier (fictief)',call:'DEMO-AMB',rank:'Ambulancier',status:'DEMO'},
+  {dept:'depannage',name:'Voorbeelddepannage (fictief)',call:'DEMO-DEP',rank:'Wegenwachter',status:'DEMO'}
+ ];
+ const node=(tag,cls,text)=>{
+  const element=document.createElement(tag);
+  if(cls)element.className=cls;
+  if(text!==undefined)element.textContent=String(text);
+  return element;
+ };
+ const serviceLabel=dept=>services.find(s=>s.id===dept)?.title||'Onbekend';
+ const serviceIcon=dept=>services.find(s=>s.id===dept)?.icon||'👤';
+ const rankName=x=>String(x.rank||'Functie nog niet bekend').trim()||'Functie nog niet bekend';
+ function displayPerson(person){
+  viewState.selected=person;
+  const root=$('detail');root.replaceChildren();
+  const wrap=node('div','detail-head');
+  wrap.dataset.dept=person.dept;
+  const avatar=node('span','avatar',serviceIcon(person.dept));
+  avatar.setAttribute('aria-hidden','true');
+  const label=node('div','');
+  label.append(node('strong','',person.name||'Naam onbekend'),node('p','',person.call||'Geen roepnummer'));
+  wrap.append(avatar,label);
+  const defs=node('dl','kv');
+  for(const [k,v] of [
+   ['Hulpdienst',serviceLabel(person.dept)],['Rang / functie',rankName(person)],
+   ['Status',person.status||'Niet vermeld'],['Specialisaties','Nog niet publiek gekoppeld'],
+   ['Onderscheidingen','Nog niet publiek gekoppeld'],['Afbeelding','Dienstpictogram (tijdelijk)']]){
+   defs.append(node('dt','',k),node('dd','',v));
+  }
+  root.append(wrap,defs);
+  if(viewState.demo)root.append(node('p','','Fictief voorbeeld: dit is geen echt personeelsdossier.'));
+ }
+ function render(){
+  const query=viewState.query.trim().toLocaleLowerCase('nl');
+  const depts=services.filter(s=>viewState.service==='alle'||s.id===viewState.service);
+  $('filters').querySelectorAll('button[data-view]').forEach(b=>
+   b.setAttribute('aria-pressed',String(b.dataset.view===viewState.service)));
+  $('tree').replaceChildren();
+  let visible=0;
+  for(const service of depts){
+   const rows=viewState.people.filter(p=>p.dept===service.id&&
+    (!query||[p.name,p.call,p.rank].some(v=>String(v||'').toLocaleLowerCase('nl').includes(query))));
+   visible+=rows.length;
+   const section=node('details','service');
+   section.open=true;section.dataset.dept=service.id;
+   const summary=node('summary','');
+   const symbol=node('span','service-icon',service.icon);
+   symbol.setAttribute('aria-hidden','true');
+   summary.append(symbol,node('span','',service.title),node('span','quantity',rows.length+' leden'));
+   section.append(summary);
+   const body=node('div','service-body');
+   if(!rows.length){body.append(node('p','empty','Geen personeelsleden binnen deze selectie.'))}
+   else{
+    body.append(node('p','service-caption','Weergave volgens geregistreerde rang. Geen officiële bevelslijnen of extra rechten.'));
+    const groups=new Map();
+    for(const person of rows){
+     const label=rankName(person);
+     if(!groups.has(label))groups.set(label,[]);
+     groups.get(label).push(person);
+    }
+    const ordered=[...groups].sort((a,b)=>a[0].localeCompare(b[0],'nl'));
+    for(const [rank,people] of ordered){
+     const group=node('details','rank-group');group.open=ordered.length<5;
+     const title=node('summary','',rank);
+     title.append(node('span','rank-count','('+people.length+')'));group.append(title);
+     const grid=node('div','people');
+     const orderedPeople=[...people].sort((a,b)=>String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true}));
+     let shown=0,limit=20;
+     const appendBatch=()=>{
+      for(const person of orderedPeople.slice(shown,shown+limit)){
+       const btn=node('button','person');
+       btn.type='button';btn.dataset.dept=person.dept;
+       btn.setAttribute('aria-label',(person.name||'Naam onbekend')+', '+(person.call||'geen roepnummer')+', '+rank);
+       btn.setAttribute('aria-pressed',String(viewState.selected===person));
+       const avatar=node('span','avatar',serviceIcon(person.dept));
+       avatar.setAttribute('aria-hidden','true');
+       const details=node('span','identity');
+       details.append(node('strong','',person.name||'Naam onbekend'),
+        node('small','',(person.call||'—')+' · '+rank));
+       btn.append(avatar,details);
+       btn.addEventListener('click',()=>{
+        displayPerson(person);
+        document.querySelectorAll('.person[aria-pressed="true"]').forEach(x=>x.setAttribute('aria-pressed','false'));
+        btn.setAttribute('aria-pressed','true');
+       });
+       grid.append(btn);
+      }
+      shown+=limit;
+      if(shown<orderedPeople.length){
+       more.textContent='Toon meer ('+(orderedPeople.length-shown)+' resterend)';
+       grid.append(more);
+      }
+     };
+     const more=node('button','more','Toon meer');
+     more.type='button';
+     more.addEventListener('click',()=>{more.remove();appendBatch()});
+     appendBatch();
+     group.append(grid);body.append(group);
+    }
+   }
+   section.append(body);$('tree').append(section);
+  }
+  $('source').textContent=(viewState.demo?'FICTIEVE VOORBEELDGEGEVENS · ':'Bestaande openbare personeelsbron · ')+
+    visible+' zichtbare registraties · Groepering per geregistreerde rang, niet per leidinggevende.';
+ }
+ async function load(){
+  const notice=$('status');
+  try{
+   const controller=new AbortController();
+   const response=await fetch('/api/dossiercentrum/public-roster',{cache:'no-store',signal:controller.signal});
+   if(!response.ok)throw Error('Openbare bron niet beschikbaar (HTTP '+response.status+')');
+   const data=await response.json();
+   if(!Array.isArray(data.rows)||data.public!==true)throw Error('Onverwacht antwoord van publieke bron');
+   viewState.people=data.rows.filter(p=>p&&services.some(s=>s.id===p.dept))
+    .map(p=>({dept:p.dept,name:String(p.name||'').slice(0,120),call:String(p.call||'').slice(0,24),
+     rank:String(p.rank||'').slice(0,80),status:String(p.status||'').slice(0,50)}));
+   viewState.demo=false;
+   notice.className='notice'+(data.sourceStale?' warn':'');
+   notice.textContent=data.sourceStale?
+    'De openbare bron meldt verouderde gegevens; controleer actuele rangen bij de personeelslijst.':
+    'Alleen-lezen: openbare personeelsgegevens geladen. Geen interne dossiers, Discord-ID’s of schrijfbevoegdheden.';
+  }catch(error){
+   viewState.people=demo;
+   viewState.demo=true;
+   notice.className='notice warn';
+   notice.textContent='De openbare personeelsbron kon niet worden geladen. Je ziet uitsluitend FICTIEVE demo-kaarten. ('+error.message+')';
+  }
+  render();
+ }
+ $('filters').addEventListener('click',event=>{
+  const btn=event.target.closest('button[data-view]');
+  if(!btn)return;
+  viewState.service=btn.dataset.view;viewState.selected=null;
+  $('detail').replaceChildren(node('p','','Kies een personeelskaart om de openbare basisgegevens te bekijken.'));
+  render();
+ });
+ $('search').addEventListener('input',event=>{
+  viewState.query=event.target.value;render();
+ });
+ load();
+})();
+</script>
+</body>
+</html>
