@@ -337,13 +337,21 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
         const data=doc.data();
         if(!canChangeUser(req.bpd,req.params.discordId,data,grant))
           throw publicError('Je mag deze medewerker, functie of hulpdienst niet wijzigen');
+        if(data.status==='approved'&&
+           (data.departments.length!==grant.departments.length||
+            !grant.departments.every(dept=>data.departments.includes(dept))))
+          throw publicError('Wijzig een goedgekeurd account per afzonderlijke hulpdienst',409);
         const audit=ref.collection('audit').doc();
         tx.update(ref,{status:'approved',role:grant.role,departments:grant.departments,
-          departmentRoles:grant.departmentRoles,approvalSource:FieldValue.delete(),
+          departmentRoles:grant.departmentRoles,
+          serviceFunctions:grant.functionId?
+            {[grant.departments[0]]:grant.functionId}:{},
+          approvalSource:FieldValue.delete(),
           category:FieldValue.delete(),updatedAt:FieldValue.serverTimestamp(),
           approvedAt:FieldValue.serverTimestamp(),approvedBy:req.bpd.uid});
         tx.create(audit,{action:'approve',actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||'',
           reason:grant.reason,role:grant.role,departments:grant.departments,
+          functionId:grant.functionId||null,
           at:FieldValue.serverTimestamp()});
       });
       return res.json({ok:true,status:'approved'});
