@@ -49,6 +49,7 @@ import {installDossierGrantRoutes} from './dossier-grant-routes.js';
 import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,
   verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
+import {verifiedBoardCorpsDossierAdmin,BOARD_CORPS_DOSSIER_DEPTS} from './board-corps-dossier-policy.js';
 import {deriveServiceDossierDepartments,verifiedFireZoneChief,verifiedServiceReportRoles,verifiedDepannageDisplayFunction} from './service-dossier-access.js';
 import {verifiedFireRoles,fireActorClass,FIRE_ROLES} from './fire-dossier-policy.js';
 import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js';
@@ -412,6 +413,8 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
       valid&&process.env.FIREBASE_PROJECT_ID==='belgiepd-test'
         ?db.collection('bpd_dossier_testers').doc(id).get():Promise.resolve(null)
     ]);
+    // Restrict exceptional cross-service dossier WRITES if the official roster is stale.
+    req.bpd.dossierSourceFresh=snapshot.stale!==true;
     const roster=snapshot.stale?[]:snapshot.data;
     // This verifies a basic Ambulance employee's own OFFICIAL roster
     // mapping for dashboard presentation only. It must never unlock
@@ -438,13 +441,20 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     const native=deriveServiceDossierDepartments(req.bpd,
       roster,member?.exists?member.data():null,
       null,process.env.DISCORD_GUILD_ID,Date.now(),false);
-    const scope=applyDossierGrants(req.bpd,original,
-      grants.filter(d=>d.exists).map(d=>d.data()),tester?.exists?tester.data():null);
+    // Set independently verified Board status BEFORE scope derivation.
+    // Otherwise a verified dual-office holder would incorrectly retain
+    // read-only Board status for the full dossier scope.
     req.bpd.boardPersonnelAdmin=Boolean(valid&&req.bpd.uid==='discord:'+id&&(
       verifyBoardDiscordRole(member?.exists?member.data():null,process.env.DISCORD_GUILD_ID)||
       activeBoardAppointment(appointment?.exists?appointment.data():null)
     ));
-    req.bpd.dossierNativeDepartments=native;
+    const scope=applyDossierGrants(req.bpd,original,
+      grants.filter(d=>d.exists).map(d=>d.data()),tester?.exists?tester.data():null);
+    // Both Board and operational Korpsleiding are independently server-verifiable.
+    // This exception affects protected dossier work only, not portal or Discord roles.
+    req.bpd.boardCorpsDossierAdmin=verifiedBoardCorpsDossierAdmin(req.bpd);
+    req.bpd.dossierNativeDepartments=req.bpd.boardCorpsDossierAdmin?
+      [...BOARD_CORPS_DOSSIER_DEPTS]:native;
     req.bpd.dossierAllowedDepartments=scope.departments;
     req.bpd.dossierManageDepartments=scope.manageDepartments;
     req.bpd.dossierFullDepartments=scope.fullDepartments;

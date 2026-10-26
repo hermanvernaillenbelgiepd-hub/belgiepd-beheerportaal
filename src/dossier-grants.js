@@ -1,5 +1,6 @@
 import {roleForDepartment} from './leave-policy.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
+import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 export const DOSSIER_GRANT_COLLECTION='bpd_dossier_delegations';
 export const DOSSIER_GRANT_AUDIT='bpd_dossier_delegations_audit';
 export const DOSSIER_DEPTS=Object.freeze(['politie','ambulance','brandweer','depannage']);
@@ -48,6 +49,9 @@ export function dossierGrantReason(body){
   return reason;
 }
 export function applyDossierGrants(actor,defaults,docs=[],tester=null){
+  if(verifiedBoardCorpsDossierAdmin(actor))
+    return {departments:[...DOSSIER_DEPTS],manageDepartments:[...DOSSIER_DEPTS],
+      fullDepartments:[...DOSSIER_DEPTS],tester:false};
   // Technical mode requires an authorised Discord ID and signed session.
   // It is intentionally separate from ordinary operational permissions.
   if(actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true&&

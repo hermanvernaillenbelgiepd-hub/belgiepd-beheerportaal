@@ -1,5 +1,6 @@
 import {canEditPersonnel,validPersonnelKey} from './personnel-editor-policy.js';
 import {roleForDepartment} from './leave-policy.js';
+import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 import {SPECIALTY_LABELS} from './normalize.js';
 
 export const PERSONNEL_SPECIALIZATIONS_COLLECTION='bpd_personnel_specializations';
@@ -15,6 +16,10 @@ export function allowedSpecialty(dept,label){
   return typeof label==='string'&&SPECIALTY_LABELS[dept]?.includes(label)===true;
 }
 export function canChangeSpecialty(actor,subject){
+  if(verifiedBoardCorpsDossierAdmin(actor)&&subject&&
+     actor.discordId!==subject.personId&&
+     actor.dossierNativeDepartments?.includes(subject.dept))
+    return canEditPersonnel(actor,subject);
   if(actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true&&
      actor?.uid==='discord:'+actor?.discordId&&
      actor?.discordId!==subject?.personId)

@@ -1,3 +1,4 @@
+import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 export const FIRE_ROLES=Object.freeze({member:'1309532438053130324',middle:'1554906632897560787',leadership:'1395115819020714105',teacher:'1309532437952466989'});
 export const FIRE_COURSES=Object.freeze([
 {name:'Logistiek / Signalisatie',roleId:'1309532437952466986'},
@@ -56,17 +57,20 @@ export function fireRecordVisibility(actor,subject,subjectRoles){
 }
 export function fireCanWithdrawSanction(actor,subject,subjectRoles){
   return actor?.discordId!==subject?.personId&&
-    (actor?.fireZoneChief===true||
+    (verifiedBoardCorpsDossierAdmin(actor)||actor?.fireZoneChief===true||
       actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true)&&
     fireRecordVisibility(actor,subject,subjectRoles)==='full';
 }
 export function fireSanctionLevel(actor){
-  if(actor?.fireZoneChief===true||
+  if(verifiedBoardCorpsDossierAdmin(actor)||actor?.fireZoneChief===true||
      actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true)
     return 'korpsleiding';
   return actor?.fireAccessLevel==='leadership'?'middenkader':null;
 }
 export function fireMayCreate(actor,subject,subjectRoles,type){
+ if(verifiedBoardCorpsDossierAdmin(actor))
+   return actor.discordId!==subject?.personId&&
+     ['observatie','basisnotitie','notitie','sanctie'].includes(type);
  const scope=fireRecordVisibility(actor,subject,subjectRoles);
  if(actor?.boardPersonnelAdmin===true&&!actor?.fireZoneChief&&
     actor?.portalTechnicalMode!==true)return false;
