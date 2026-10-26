@@ -21,6 +21,12 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 .personnel-quicklink{display:inline-flex;align-items:center;justify-content:center;border:1px solid #547ab1;background:#203a5d;color:#deebff;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;text-decoration:none}
 .personnel-quicklink:hover{background:#30507b;color:white}
 .personnel-quicklink:focus-visible{outline:2px solid #9dc5ff;outline-offset:2px}
+.service-assignments{display:flex;flex-direction:column;gap:5px;margin-top:9px}
+.service-assignment{display:block;border-left:3px solid #6796d8;padding:4px 8px;background:#172e4b;border-radius:4px;color:#dbe9ff;font-size:12px}
+.service-assignment.board{border-left-color:#bb9aff}
+.extra-service-editor{min-width:260px;max-width:380px;border:1px solid #537397;background:#192f4d;border-radius:9px;padding:12px}
+.extra-service-editor label{margin-top:7px}
+.extra-service-editor select{margin-bottom:6px}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head>
 <body>
@@ -173,7 +179,7 @@ const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
 let boardWritesEnabled=false;
 let accountRoleCatalog=null;
-let serviceFunctionCatalog=null,knownIds=[],knownIdsPage=0;
+let serviceFunctionCatalog=null,knownIds=[],knownIdsPage=0,canAddExtraService=false;
 const roles=['basiskader','middenkader','officierenkader','korpsleiding','bestuur'];
 const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
   depannage:'Depannage',burger:'Burger (administratieve categorie)',
@@ -275,6 +281,30 @@ function render(){
       'Administratieve aanduiding; bestaande dienstrechten blijven behouden':
       'Toegekende dienst(en): '+(u.departments||[]).map(d=>deptNames[d]||d).join(', ');
     departmentWrap.append(detail);
+    // Explicitly show *all* independently approved services; the selector
+    // above chooses which single service to edit, it is not the full list.
+    const assignments=document.createElement('div');
+    assignments.className='service-assignments';
+    for(const activeDept of u.departments||[]){
+      const entry=document.createElement('span');
+      entry.className='service-assignment';
+      const chosenId=currentServiceFunction(u,activeDept);
+      const name=serviceFunctionOption(activeDept,chosenId)?.label||
+        accountCadreLabel(activeDept,u.departmentRoles?.[activeDept]||u.role);
+      entry.textContent=(deptNames[activeDept]||activeDept)+' · '+name;
+      assignments.append(entry);
+    }
+    const boardAssigned=Boolean(u.board?.discord||u.board?.appointed);
+    if(boardAssigned){
+      const label=document.createElement('span');label.className='service-assignment board';
+      label.textContent='Bestuur · '+(u.board.discord?'Discord geverifieerd':'Portaalbenoeming goedgekeurd');
+      assignments.append(label);
+    }else if(u.status==='approved'){
+      const label=document.createElement('small');label.className='muted';
+      label.textContent='Bestuur: niet recent bevestigd in het portaal (los van de politierang)';
+      assignments.append(label);
+    }
+    departmentWrap.append(assignments);
     cell(row,departmentWrap);
     const rank=document.createElement('select');
     const accountDepartmentRole=department=>
@@ -384,6 +414,76 @@ function render(){
       }catch(e){notice(e.message,true)}finally{approve.disabled=false}
     };
     actions.append(approve);
+    // Deliberately separate Board from operational service functions.
+    // The existing Board nomination workflow always performs the actual
+    // permission checks; this button merely navigates to that workflow.
+    if(u.status==='approved'&&!isBoard){
+      const boardAdd=document.createElement('button');
+      boardAdd.type='button';boardAdd.className='alt';
+      boardAdd.textContent='+ Bestuur voordragen';
+      boardAdd.title='Bestuur is een afzonderlijke aanstelling, geen tweede operationele rang';
+      boardAdd.onclick=()=>{
+        dept.value='bestuur';dept.onchange();approve.click();
+      };
+      actions.append(boardAdd);
+    }
+    if(u.status==='approved'&&(u.departments||[]).length<serviceDepartments.length){
+      const extraToggle=document.createElement('button');
+      extraToggle.type='button';extraToggle.className='alt';
+      extraToggle.textContent='+ Tweede hulpdienst / functie';
+      const extraEditor=document.createElement('div');
+      extraEditor.className='extra-service-editor';extraEditor.hidden=true;
+      const extraDescription=document.createElement('small');
+      extraDescription.textContent='Voeg één bijkomende hulpdienst toe. Bestaande functies blijven behouden.';
+      const extraDeptLabel=document.createElement('label');
+      extraDeptLabel.textContent='Extra hulpdienst';
+      const extraDept=document.createElement('select');
+      extraDeptLabel.append(extraDept);
+      const extraRoleLabel=document.createElement('label');
+      extraRoleLabel.textContent='Functie in de extra hulpdienst';
+      const extraRole=document.createElement('select');
+      extraRoleLabel.append(extraRole);
+      const extraSave=document.createElement('button');
+      extraSave.type='button';extraSave.textContent='Extra functie toevoegen';
+      const extraCancel=document.createElement('button');
+      extraCancel.type='button';extraCancel.className='alt';extraCancel.textContent='Annuleren';
+      extraCancel.onclick=()=>{extraEditor.hidden=true};
+      extraEditor.append(extraDescription,extraDeptLabel,extraRoleLabel,extraSave,extraCancel);
+      const resetExtraRole=()=>{
+        extraRole.replaceChildren();
+        for(const entry of serviceFunctionCatalog?.[extraDept.value]||[])
+          extraRole.append(option(entry.id,entry.label));
+      };
+      extraDept.onchange=resetExtraRole;
+      extraToggle.onclick=()=>{
+        if(!canAddExtraService){
+          notice('Een extra hulpdienst toevoegen vereist een geverifieerde technische beheersessie. Activeer indien bevoegd je technische modus bij Mijn portaalprofiel. Bestuur toevoegen verloopt apart via de bestuursvoordracht.',true);
+          return;
+        }
+        extraDept.replaceChildren();
+        for(const available of serviceDepartments.filter(d=>!(u.departments||[]).includes(d)))
+          extraDept.append(option(available,deptNames[available]));
+        resetExtraRole();extraEditor.hidden=!extraEditor.hidden;
+        if(!extraEditor.hidden)extraDept.focus();
+      };
+      extraSave.onclick=async()=>{
+        if(!canAddExtraService)return notice('Alleen geverifieerd technisch beheer kan een hulpdienst toevoegen.',true);
+        const chosen=serviceFunctionOption(extraDept.value,extraRole.value);
+        if(!chosen)return notice('Kies een geldige hulpdienstfunctie.',true);
+        const reason=prompt('Motivering voor extra hulpdienst (minimaal 8 tekens):');
+        if(reason===null)return;
+        if(!confirm((deptNames[extraDept.value]||extraDept.value)+' · '+chosen.label+
+          ' toevoegen aan '+(u.username||u.discordId)+'? Politie en alle andere bestaande functies blijven behouden.'))return;
+        extraSave.disabled=true;
+        try{
+          await api('/api/users/'+encodeURIComponent(u.discordId)+'/service-function',{
+            method:'POST',body:{department:extraDept.value,functionId:chosen.id,reason}});
+          notice('Extra hulpdienst en functie toegevoegd; alle bestaande functies behouden.');
+          await loadAdmin();
+        }catch(error){notice(error.message,true);extraSave.disabled=false;}
+      };
+      actions.append(extraToggle,extraEditor);
+    }
     const revoke=document.createElement('button');revoke.type='button';
     revoke.className='alt';revoke.textContent='Alleen deze dienst intrekken';
     const syncRevoke=()=>{revoke.hidden=u.status!=='approved'||
@@ -487,6 +587,7 @@ async function loadAdmin(){
     accountRoleCatalog=data.roleCatalog||null;
     serviceFunctionCatalog=data.functionCatalog||null;
     $('knownIdsSection').hidden=context.canViewKnownIds!==true;
+    canAddExtraService=context.canViewKnownIds===true;
     $('admin').dataset.authorized='yes';$('admin').hidden=false;$('more').hidden=!data.limited;render();
     notice('Aangemeld als '+context.role+'. Gebruikersbeheer geladen ('+items.length+' zichtbare accounts).');
   }catch(e){
