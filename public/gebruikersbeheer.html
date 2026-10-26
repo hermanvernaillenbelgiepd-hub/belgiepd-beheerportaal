@@ -371,7 +371,7 @@ function render(){
         const action=u.status==='approved'?'service-function':'approve';
         const payload=u.status==='approved'?
           {department:dept.value,functionId:chosenFunction.id,reason}:
-          {role:chosenFunction.role,departments:[dept.value],reason};
+          {role:chosenFunction.role,departments:[dept.value],functionId:chosenFunction.id,reason};
         await api('/api/users/'+encodeURIComponent(u.discordId)+'/'+action,{
           method:'POST',body:payload});
         notice(u.status==='approved'?
