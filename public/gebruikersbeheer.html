@@ -67,6 +67,7 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <p class="muted">Alleen ID’s uit portaalaanmeldingen, gekende portaalaccounts en gekoppelde personeelsfiches. Dit is geen volledige Discord-serverledenlijst. Deze lijst wijzigt geen rechten.</p>
 <div class="controls"><button type="button" id="knownIdsReload" class="alt">Gekende ID’s ophalen</button><label for="knownIdsSearch">Filter</label><input id="knownIdsSearch" type="search" placeholder="Discord-ID of hulpdienst" style="max-width:250px"><span id="knownIdsCount" class="muted"></span></div>
 <div class="scroller"><table><thead><tr><th>Discord-ID</th><th>Gekend via</th><th>Hulpdienst(en)</th><th>Portaalstatus</th></tr></thead><tbody id="knownIdsRows"></tbody></table></div>
+<div class="controls"><button type="button" class="alt" id="knownIdsPrev">Vorige 200</button><button type="button" class="alt" id="knownIdsNext">Volgende 200</button><span id="knownIdsPage" class="muted"></span></div>
 <p id="knownIdsWarning" class="muted"></p>
 </section></section>
 <section id="manualRoleSection" class="card" hidden>
@@ -172,7 +173,7 @@ const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
 let boardWritesEnabled=false;
 let accountRoleCatalog=null;
-let serviceFunctionCatalog=null,knownIds=[];
+let serviceFunctionCatalog=null,knownIds=[],knownIdsPage=0;
 const roles=['basiskader','middenkader','officierenkader','korpsleiding','bestuur'];
 const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
   depannage:'Depannage',burger:'Burger (administratieve categorie)',
@@ -431,10 +432,12 @@ function renderKnownIds(){
     entry.discordId.includes(q)||
     entry.departments.some(dept=>(deptNames[dept]||dept).toLowerCase().includes(q))||
     entry.sources.some(source=>source.toLowerCase().includes(q)));
+  const pages=Math.max(1,Math.ceil(list.length/200));
+  knownIdsPage=Math.max(0,Math.min(knownIdsPage,pages-1));
   const body=$('knownIdsRows');body.replaceChildren();
   const named={portaal:'Portaalaccount',eigen_discord_verificatie:'Discord-login',
     personeelsfiche:'Personeelsfiche'};
-  for(const entry of list.slice(0,200)){
+  for(const entry of list.slice(knownIdsPage*200,(knownIdsPage+1)*200)){
     const row=document.createElement('tr');
     cell(row,entry.discordId);
     cell(row,entry.sources.map(x=>named[x]||x).join(', '));
@@ -444,13 +447,16 @@ function renderKnownIds(){
       entry.status==='blocked'?'Geblokkeerd':'Geen goedgekeurd account');
     body.append(row);
   }
-  $('knownIdsCount').textContent=list.length+' gekende ID(’s), maximaal 200 rijen per weergave';
+  $('knownIdsCount').textContent=list.length+' gekende ID(’s)';
+  $('knownIdsPage').textContent='Pagina '+(knownIdsPage+1)+' van '+pages;
+  $('knownIdsPrev').disabled=knownIdsPage===0;
+  $('knownIdsNext').disabled=knownIdsPage>=pages-1;
 }
 async function loadKnownIds(){
   const button=$('knownIdsReload');button.disabled=true;
   try{
     const result=await api('/api/users/known-ids');
-    knownIds=result.users||[];
+    knownIds=result.users||[];knownIdsPage=0;
     renderKnownIds();
     $('knownIdsWarning').textContent=result.limited?
       'Overzicht is begrensd of personeelsbron is niet actueel. Dit is geen volledige serverledenlijst.':
@@ -459,7 +465,9 @@ async function loadKnownIds(){
   finally{button.disabled=false}
 }
 $('knownIdsReload').onclick=loadKnownIds;
-$('knownIdsSearch').oninput=renderKnownIds;
+$('knownIdsSearch').oninput=()=>{knownIdsPage=0;renderKnownIds()};
+$('knownIdsPrev').onclick=()=>{knownIdsPage--;renderKnownIds()};
+$('knownIdsNext').onclick=()=>{knownIdsPage++;renderKnownIds()};
 
 async function loadAdmin(){
   try{
