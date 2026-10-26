@@ -20,7 +20,7 @@ td,th{padding:11px 13px;border-bottom:1px solid #315075}
 tbody tr:nth-child(2n){background:#183450}
 .call{font-weight:800;color:#fff}small{font-size:11px;color:#a7c6e9}
 [hidden]{display:none!important}
-</style><link rel="stylesheet" href="/member-police-roster.css"></head><body>
+</style><link rel="stylesheet" href="/member-police-roster.css"><link rel="stylesheet" href="/bpd-navigation.css"></head><body>
 <header><strong>🛡️ BelgiëPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
 <main><h1>Personeelslijst politie</h1>
 <p>Personeelsleden met rangkenteken, reeks en geregistreerde specialisatiestatus. Alleen lezen: geen dossiers, observaties, Discord-ID’s, sancties of wijzigingen.</p>
@@ -71,4 +71,4 @@ try{
   else {people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
-</script></body></html>
+</script><script defer src="/bpd-navigation.js"></script></body></html>
