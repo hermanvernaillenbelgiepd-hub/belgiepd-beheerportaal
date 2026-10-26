@@ -1,5 +1,5 @@
 /* BelgiëPD: compacte Terug-knop in het bestaande bovenmenu.
-   Geen position:fixed panel: tabellen en formulieren blijven volledig zichtbaar. */
+   Geen zwevend paneel: tabellen en formulieren blijven volledig zichtbaar. */
 .bpd-inline-navigation{
   display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
   margin:0 7px 0 0;padding:0;
