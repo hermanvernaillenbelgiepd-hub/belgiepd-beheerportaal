@@ -24,6 +24,7 @@ import { installRoleRoutes } from './role-routes.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
 import { installUserRoutes } from './user-routes.js';
+import {installDiscordDiagnosticRoutes} from './discord-role-diagnostics-routes.js';
 import {installBoardAppointmentRoutes} from './board-appointment-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
@@ -404,6 +405,8 @@ installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache
 installCallsignBotRoutes(app);
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList});
+// TEST-only read-only board diagnostics, independent of operational dossier rights.
+installDiscordDiagnosticRoutes(app,{requireUser});
 app.get('/api/testmodus/rollen',requireUser,(req,res)=>{
   res.set('Cache-Control','private, no-store');
   if(!isRolePreviewAuthorized(req.bpd,process.env.FIREBASE_PROJECT_ID))

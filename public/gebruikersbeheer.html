@@ -120,6 +120,8 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 <h2>Bestuur · afzonderlijke bestuursfunctie</h2>
 <p>De <strong>Discord-rol Bestuur</strong> en een <strong>formele bestuursaanstelling</strong> zijn twee afzonderlijke zaken. Een recent geverifieerde Discord-rol kan toegang geven tot dossier- en hulpdienstbeheer zonder bestuursaanstelling in dit register. Een formele bestuursaanstelling wordt apart goedgekeurd door technisch beheer; er worden daarbij geen personeels-, Discord- of portaalrollen toegekend.</p>
 <div id="boardOwn" class="muted">Bestuursstatus controleren…</div>
+<p id="discordDiagnosticsLaunch" hidden><a class="personnel-quicklink" href="/discord-diagnose.html">🔎 Discord-bot & rollencontrole · TEST</a>
+<small>Technische diagnose voor geverifieerd Bestuur. Uitsluitend ter inzage; geen tokens of ledenlijsten.</small></p>
 <p id="boardDiscordStatus" class="muted" hidden></p>
 <p id="boardHelp" class="muted" hidden></p>
 <div class="controls"><button type="button" id="boardBotRefresh" class="alt">↻ Mijn Discord-rollen via bot vernieuwen</button></div>
@@ -517,6 +519,7 @@ function boardCell(root,value){
   const td=document.createElement('td');td.textContent=String(value||'—');root.append(td);return td;
 }
 async function boardRefresh(){
+  $('discordDiagnosticsLaunch').hidden=true;
   if(!auth?.currentUser){$('boardSection').hidden=true;return}
   let flag;
   try{flag=await fetch('/api/board/status',{cache:'no-store'}).then(r=>r.json())}
@@ -532,6 +535,7 @@ async function boardRefresh(){
     const own=await api('/api/board/me');
     const entry=own.appointment;
     const verified=own.discordBoardVerified===true;
+    $('discordDiagnosticsLaunch').hidden=!(verified||entry?.status==='approved');
     $('boardOwn').textContent=entry?
       'Formele bestuursaanstelling: Bestuur ('+entry.status+') · '+
       (entry.permissions.map(k=>boardLabels[k]||k).join(', ')||'Geen bijkomende bestuursbevoegdheden'):

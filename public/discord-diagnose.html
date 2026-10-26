@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="nl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
+<title>BelgiumPD TEST · Discord-rolcontrole voor Bestuur</title>
+<style>
+:root{color-scheme:dark;font:15px/1.55 Inter,system-ui,Segoe UI,Arial,sans-serif;background:#071428;color:#eaf1ff}
+*{box-sizing:border-box}body{margin:0}a{color:#bcd5ff}button{font:inherit;cursor:pointer;color:white;background:#345de1;border:1px solid #7498ff;border-radius:9px;padding:10px 16px;font-weight:750}
+button:disabled{opacity:.55;cursor:wait}
+header{padding:19px clamp(16px,4vw,55px);background:#102342;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:1px solid #355276}
+nav{display:flex;gap:16px;font-size:13px}main{max-width:1240px;margin:auto;padding:28px 20px 70px}
+small,.muted{color:#a9bfdb}h1{font-size:clamp(25px,4vw,36px);margin:0 0 8px}h2{font-size:18px;margin:0 0 9px}
+.lead{max-width:88ch;color:#bbcae1}.tag{font-size:12px;font-weight:850;letter-spacing:.09em;color:#9bc5ff}
+.panel{padding:19px;border:1px solid #334e73;border-radius:13px;background:#122540;margin:18px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:14px;margin:16px 0}
+.kpi{background:#0b1b32;border:1px solid #354e71;border-radius:11px;padding:17px;min-width:0}
+.kpi h3{font-size:14px;margin:0 0 5px;color:#dce9fc}
+.kpi p{font-size:13px;color:#b6c8e5;margin:8px 0 0}
+.state{display:inline-block;padding:3px 10px;border-radius:30px;background:#34445a;border:1px solid #657892;font-size:12px;font-weight:800}
+.state.ok{background:#144d40;border-color:#3ba98b}
+.state.warn{background:#665021;border-color:#a98b40}
+.state.error{background:#603443;border-color:#aa5d75}
+#notice{padding:15px 17px;border:1px solid #54739b;border-radius:11px;background:#193455}
+#notice.bad{background:#4b2b3a;border-color:#a15e78}
+#notes{padding-left:22px;color:#c8d8ec}#notes li{margin:7px 0}
+[hidden]{display:none!important}
+</style></head><body>
+<header><strong>🛡️ BelgiumPD / TEST · Bestuur</strong>
+<nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/discord-status.html">Mijn Discord</a></nav>
+</header><main>
+<p class="tag">TESTOMGEVING · BESTUUR · ALLEEN LEZEN</p>
+<h1>Discord-bot en rollencontrole</h1>
+<p class="lead">Controle van botverbinding, serverrollen, beperkte ledenlijsttoegang en jouw eigen rolverificatie. De pagina wijzigt geen Discord-rollen, personeelsgegevens of portaalrechten. Geen tokens of volledige ledenlijsten worden getoond.</p>
+<div id="notice" role="status" aria-live="polite">Je Discord- en bestuursrechten worden gecontroleerd.</div>
+<div class="panel" id="content" hidden>
+ <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center">
+  <div><h2>Diagnose-overzicht</h2><small id="timestamp"></small></div>
+  <button type="button" id="refresh">Diagnose opnieuw controleren</button>
+ </div>
+ <div id="cards" class="grid"></div>
+ <section><h2>Wat vraagt aandacht?</h2><ul id="notes"></ul></section>
+ <p class="muted">Een succesvolle test met één lid bewijst niet dat de bot alle Discord-leden kan uitlezen. De resultaten worden kort gecachet om Discord niet te overbelasten.</p>
+</div>
+<section class="panel">
+ <h2>Herstelacties</h2>
+ <p>Controleer in de Discord Developer Portal bij <strong>Bot → Privileged Gateway Intents</strong> of Server Members Intent ingeschakeld is. Controleer vervolgens of de BelgiumPD-bot tot de juiste server behoort, en laat leden via <a href="/discord-status.html">Mijn Discord</a> hun eigen rollen verifiëren.</p>
+ <p class="muted">De status van deze instelling is niet rechtstreeks vanuit de Discord-API af te lezen; deze pagina test wat de bot feitelijk kan ophalen.</p>
+</section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+const make=(tag,text)=>{const element=document.createElement(tag);element.textContent=text;return element};
+const labelStatus={ok:'Bereikbaar',not_configured:'Niet ingesteld',
+  unauthorized:'401 · Ongeldige botautorisatie',forbidden:'403 · Geen toegang',
+  rate_limited:'429 · Limiet bereikt',not_found:'404 · Niet gevonden',
+  unavailable:'Tijdelijk niet beschikbaar',invalid_response:'Ongeldig antwoord'};
+const statusClass=s=>s==='ok'?'ok':s==='not_configured'||s==='unavailable'||
+ s==='rate_limited'?'warn':'error';
+const showNotice=(message,error=false)=>{$('notice').textContent=message;$('notice').classList.toggle('bad',error)};
+function addCard(title,status,details){
+  const panel=make('section','');panel.className='kpi';
+  panel.append(make('h3',title));
+  const badge=make('span',labelStatus[status]||String(status||'Onbekend'));
+  badge.className='state '+statusClass(status);panel.append(badge);
+  panel.append(make('p',details));$('cards').append(panel);
+}
+function render(data){
+  if(data.environment!=='TEST'||data.mode!=='alleen-lezen')throw Error('Onverwacht antwoord van de server');
+  $('cards').replaceChildren();$('notes').replaceChildren();
+  const conf=data.configuration||{},own=data.ownVerification||{},p=data.probes||{};
+  const id=p.botIdentity||{},roles=p.guildRoles||{},listing=p.memberListing||{},member=p.ownMember||{};
+  addCard('Discord-bot',conf.botConfigured?'ok':'not_configured',
+    conf.botConfigured?'Bot-token is ingesteld (de sleutel blijft verborgen).':'De bot-token ontbreekt op TEST.');
+  addCard('Bot-identiteit',id.status,'Discord accepteert de botidentiteit en de token.');
+  addCard('Discord-server',conf.guildConfigured?'ok':'not_configured',
+    'De ingestelde Discord-server-ID is syntactisch geldig.');
+  addCard('Discord OAuth',conf.oauthConfigured?'ok':'not_configured',
+    'Discord-logininstellingen voor gebruikersverificatie.');
+  addCard('Serverrollen',roles.status,roles.status==='ok'?
+    String(roles.catalogRecognized)+' gekende rollen herkend in '+String(roles.totalRoles)+' Discord-rollen.':
+    'De serverrollen konden niet betrouwbaar worden opgehaald.');
+  const special=roles.rechercheRole==='present'?'LRD-rol in Discord gevonden':
+    roles.rechercheRole==='absent'?'LRD-rol niet gevonden':'LRD-rol niet controleerbaar';
+  addCard('Recherche-rol (LRD)',roles.rechercheRole==='present'?'ok':
+    roles.rechercheRole==='absent'?'not_found':'unavailable',special);
+  addCard('Discord-ledenlijst',listing.status,listing.status==='ok'?
+    'Aanvraag van één lid is toegestaan. Volledige dekking NIET bewezen.':
+    'De bot kan de ledenlijst niet via deze test lezen.');
+  addCard('Mijn lidmaatschap via bot',member.status,member.roleAgreement==='different'?
+    'De rollen wijken af van mijn opgeslagen Discord-verificatie.':
+    member.roleAgreement==='match'?'Mijn botrollen komen overeen met mijn verificatie.':
+    'De rolgegevens konden niet volledig worden vergeleken.');
+  addCard('Mijn opgeslagen rolverificatie',own.status==='fresh'?'ok':
+    own.status==='stale'?'unavailable':'not_configured',
+    own.status==='fresh'?String(own.ageMinutes)+' minuten geleden · '+
+      String(own.roleCount??'?')+' rol(len) opgeslagen.':
+      'Opnieuw aanmelden met Discord voor recente verificatie.');
+  const notes=Array.isArray(data.notes)?data.notes:[];
+  if(!notes.length)$('notes').append(make('li','Geen specifieke aanvullende waarschuwingen.'));
+  for(const item of notes.slice(0,8))$('notes').append(make('li',String(item).slice(0,330)));
+  $('timestamp').textContent='Gecontroleerd: '+new Date(data.checkedAt).toLocaleString('nl-BE');
+  $('content').hidden=false;
+  showNotice('Bestuurstoegang bevestigd. Dit is uitsluitend een technische diagnose op TEST.');
+}
+let currentUser=null,request=0;
+async function refresh(){
+  const sequence=++request;
+  if(!currentUser?.uid?.startsWith('discord:')){
+    $('content').hidden=true;showNotice('Meld je met je eigen goedgekeurde Discord-account aan via Gebruikersbeheer.',true);return;
+  }
+  $('refresh').disabled=true;showNotice('Veilige Discord-diagnose uitvoeren…');
+  try{
+    const token=await currentUser.getIdToken();
+    const response=await fetch('/api/board/discord-diagnostics',{
+      headers:{Authorization:'Bearer '+token},cache:'no-store',credentials:'same-origin'});
+    const data=await response.json().catch(()=>({}));
+    if(sequence!==request)return;
+    if(!response.ok)throw Error(data.error||'De diagnostische gegevens zijn niet toegankelijk.');
+    render(data);
+  }catch(error){
+    if(sequence!==request)return;
+    $('content').hidden=true;
+    showNotice(error.message||'De diagnose kon niet worden uitgevoerd.',true);
+  }finally{if(sequence===request)$('refresh').disabled=false}
+}
+$('refresh').onclick=refresh;
+try{
+  const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+  if(!config.enabled)throw Error('De Discord-aanmelding is niet geconfigureerd.');
+  const {initializeApp,getApp,getApps}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  const {getAuth,onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  const firebase=getApps().length?getApp():initializeApp(config.firebaseConfig);
+  onAuthStateChanged(getAuth(firebase),user=>{currentUser=user;void refresh()});
+}catch(error){showNotice('Aanmelding niet beschikbaar: '+error.message,true)}
+</script>
+</body></html>
