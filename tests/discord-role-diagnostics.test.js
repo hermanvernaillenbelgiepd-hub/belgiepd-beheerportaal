@@ -198,7 +198,7 @@ test('Explicit complete Discord member scan follows after cursor and reveals onl
  const full=await collectDiscordCoverage({env,fetchImpl:api});
  assert.deepEqual(full,{status:'ok',membersCount:1002,rechercheMembers:2,
    pages:2,completeCoverageVerified:true});
- assert.match(requests[0],/members\\?limit=1000$/);
+ assert.match(requests[0],/members\?limit=1000$/);
  assert.match(requests[1],/after=100000000000000999$/);
  const payload=JSON.stringify(full);
  assert.equal(payload.includes(id),false);
@@ -266,6 +266,6 @@ test('Board TEST page offers explicit scan and never renders identities',()=>{
  const html=readFileSync(new URL('../public/discord-diagnose.html',import.meta.url),'utf8');
  assert.match(html,/id="coverageRefresh"/);
  assert.match(html,/\\?coverage=1/);
- assert.match(html,/full\\.completeCoverageVerified===true/);
- assert.doesNotMatch(html,/data\\.probes\\.fullCoverage\\.memberIds/);
+ assert.match(html,/full\.completeCoverageVerified===true/);
+ assert.doesNotMatch(html,/data\.probes\.fullCoverage\.memberIds/);
 });
