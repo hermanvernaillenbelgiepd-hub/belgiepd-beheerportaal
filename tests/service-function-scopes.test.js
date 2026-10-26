@@ -130,3 +130,25 @@ test('User editor exposes existing functions and distinct, correctly gated add c
   assert.match(board,/De kandidaat moet eerst een goedgekeurd portaalaccount hebben/);
   assert.match(board,/Alleen technisch beheer kan bestuursaanstellingen goedkeuren/);
 });
+
+test('Compact account UI keeps all authorised controls behind progressive disclosure',()=>{
+  const html=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+  const start=html.indexOf('function render(){');
+  const end=html.indexOf('function renderKnownIds(){',start);
+  const render=html.slice(start,end);
+  assert.match(html,/\.manage-tabs\{position:sticky/);
+  assert.ok(html.indexOf('<nav id="manageTabs"')<html.indexOf('class="card self-card"'));
+  assert.match(html,/<details class="admin-guide">/);
+  assert.match(html,/class="scroller account-scroller"/);
+  assert.match(html,/\.service-assignments\{display:flex;flex-wrap:wrap/);
+  assert.match(render,/const more=document\.createElement\('details'\)/);
+  assert.match(render,/moreSummary\.textContent='⋯ Meer'/);
+  assert.match(render,/actions\.append\(approve\)/);
+  assert.match(render,/actions\.append\(personnel\)/);
+  for(const control of ['boardAdd','extraToggle,extraEditor','revoke','block'])
+    assert.ok(render.includes('moreBody.append('+control+')'));
+  assert.match(render,/if\(moreBody\.childElementCount\)actions\.append\(more\)/);
+  // Secondary service and Board additions must use their existing audited routes.
+  assert.match(render,/service-function/);
+  assert.match(render,/dept\.value='bestuur';dept\.onchange\(\);approve\.click\(\)/);
+});
