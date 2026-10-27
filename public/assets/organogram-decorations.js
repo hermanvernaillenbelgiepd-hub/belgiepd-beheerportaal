@@ -32,13 +32,37 @@
   if(!demo)block.append(node('p','bpd-no-awards','Tijdelijke onderscheidingen verdwijnen automatisch na hun einddatum; de historiek blijft bestaan.'));
   root.append(block);
  }
+ // Each awarded medal carries its small ribbon ABOVE the rank and a
+ // hanging pendant BELOW it. Ribbon-only distinctions have no pendant.
+ function hangingMedal(item){
+  const medal=node('span','bpd-hanging-medal');
+  medal.dataset.catalog=['kroon_blauw','ereteken_zilver','ereteken_rood',
+    'dienstmedaille_zilver','dienstmedaille_goud'].includes(item.id)?item.id:'other';
+  medal.title=String(item.label||'Onderscheiding').slice(0,90);
+  const fabric=node('span','bpd-medal-hanger');
+  fabric.dataset.color=item.color;
+  const pendant=node('span','bpd-medal-pendant',
+    item.id==='kroon_blauw'?'♛':item.id==='ereteken_rood'||item.id==='ereteken_zilver'?'✦':'✧');
+  medal.append(fabric,pendant);
+  return medal;
+ }
  function uniformRack(awards){
-  const valid=(Array.isArray(awards)?awards:[]).filter(x=>x&&typeof x==='object'&&x.color);
+  const valid=(Array.isArray(awards)?awards:[])
+   .filter(x=>x&&typeof x==='object'&&typeof x.color==='string'&&
+    ['ribbon','medal','badge'].includes(x.kind))
+   .sort((a,b)=>(Number(a.priority)||999)-(Number(b.priority)||999));
   if(!valid.length)return null;
-  const rack=node('span','bpd-uniform-rack');
-  rack.setAttribute('aria-hidden','true');
-  valid.slice(0,4).forEach(x=>rack.append(ribbon(x)));
-  return rack;
+  const top=node('span','bpd-uniform-ribbons');
+  top.setAttribute('aria-hidden','true');
+  valid.slice(0,4).forEach(x=>top.append(ribbon(x)));
+  const medals=valid.filter(x=>x.kind==='medal').slice(0,3);
+  let bottom=null;
+  if(medals.length){
+   bottom=node('span','bpd-uniform-medals');
+   bottom.setAttribute('aria-hidden','true');
+   medals.forEach(x=>bottom.append(hangingMedal(x)));
+  }
+  return {top,bottom};
  }
  async function manager(root,person,auth,refresh){
   if(!auth?.currentUser||!person||person.dept!=='politie')return;
