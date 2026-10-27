@@ -43,10 +43,17 @@ test('shoulder trim: heavy gold 900/910, thin gold officer, hairline silver midd
    assert.equal(vector.tag,'svg');
    assert.equal(vector.attrs.viewBox,'0 0 720 765');
    const fabrics=vector.children.filter(x=>x.tag==='path'&&x.attrs.fill!=='none');
-   assert.equal(fabrics.length,2,'one long band per shoulder for '+call);
-   const xSpan=x=>{const m=String(x.attrs.d).match(/M(\d+) (\d+) L(\d+) (\d+)/);
+   assert.equal(fabrics.length,2,'one patch per shoulder for '+call);
+   const xSpan=x=>{const m=String(x.attrs.d).match(/M([\d.]+) ([\d.]+) L([\d.]+) ([\d.]+)/);
     assert.ok(m);return Math.abs(Number(m[3])-Number(m[1]));};
-   assert.ok(fabrics.every(x=>xSpan(x)>=60),'bands must be long, not squares');
+   const expected={ 'gold-thick':66,'gold-thin':53,'silver-thin':49 }[trim];
+   assert.ok(fabrics.every(x=>Math.abs(xSpan(x)-expected)<.01),
+    'correct shoulder width and sloping direction for '+call);
+   const highlights=vector.children.filter(x=>x.tag==='path'&&x.attrs.fill==='none');
+   assert.equal(highlights.length,trim==='silver-thin'?2:4);
+   const sample=fabrics[0].attrs.d;
+   assert.ok(sample.includes(' L'),call);
+   assert.equal(fabrics[0].attrs.fill,trim==='silver-thin'?'#becedb':'#deb650');
   }
  }
  assert.equal(p.trimFor(p.gradeFor({dept:'politie',call:'TEST-X',rank:'Commissaris van Politie'})),'gold-thin');
@@ -91,10 +98,36 @@ test('narrow shoulder bands replace previous square or outlined epaulettes',()=>
  assert.match(source,/const shoulder=makeShoulderTrim\(trim\)/);
  assert.match(source,/if\(shoulder\)outer\.append\(shoulder\)/);
  assert.match(source,/trim==='silver-thin'\|\|trim==='silver-none'/);
- assert.match(source,/const thickness=\{/);
+ assert.match(source,/const geometry=\{/);
  assert.doesNotMatch(source,/if\(trim!=='gold-thick'\)/);
  assert.doesNotMatch(source,/if\(trim==='gold-thin'\)ctx\.stroke/);
  assert.match(css,/\.bpd-police-formal>\.bpd-shoulder-trim/);
  const page=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(page,/shoulder-bands-20261027/);
+ assert.match(page,/shoulder-caps-20261027/);
+});
+
+test('shoulder depth differs by cadre, silver metalwork is retained, lower cadres have no bands',()=>{
+ const {BPDPoliceUniform:p}=displayTools();
+ const data=[
+  ['900','gold-thick',31],['910','gold-thick',31],
+  ['920','gold-thin',15],['930','gold-thin',15],
+  ['600','silver-thin',4],['700','silver-thin',4],['800','silver-thin',4]
+ ];
+ for(const [call,trim,depth] of data){
+  const photo=p.makePortrait({dept:'politie',call});
+  const trimElement=photo.children.find(e=>e.className==='bpd-shoulder-trim');
+  assert.ok(trimElement);
+  const path=trimElement.children[0].children.find(e=>e.attrs.fill!=='none');
+  const coords=[...String(path.attrs.d).matchAll(/[ML]([0-9.]+) ([0-9.]+)/g)]
+    .map(x=>[Number(x[1]),Number(x[2])]);
+  assert.equal(coords.length,4,call);
+  assert.ok(Math.abs(coords[2][1]-coords[1][1]-depth)<.01,call);
+  assert.equal(trimElement.dataset.trim,trim);
+ }
+ const source=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
+ assert.match(source,/trim==='silver-thin'\|\|trim==='silver-none'/);
+ for(const call of ['100','200','300','400','500']){
+  const photo=p.makePortrait({dept:'politie',call});
+  assert.ok(!photo.children.some(e=>e.className==='bpd-shoulder-trim'),call);
+ }
 });

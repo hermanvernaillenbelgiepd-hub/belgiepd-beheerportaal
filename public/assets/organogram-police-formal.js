@@ -222,41 +222,59 @@
   preparedUniforms.set(trim,pending);
   return pending;
  }
- // Narrow, lengthwise shoulder seams on TOP of the garment, never
- // freestanding square patches. Sized in the same reference coordinates
- // as the underlying 720x765 Belgian formal uniform.
+ // Shoulderpieces follow the ORIGINAL cap/epaulette orientation:
+ // the visible trapezoid runs from outer/front shoulder to the rear edge.
+ // Match the user's Belgian uniform closeups: full gold, narrower gold,
+ // hairline silver, or plain cloth. No squares or upright ribbons.
  function makeShoulderTrim(trim){
-  const thickness={
-   'gold-thick':10,'gold-thin':5,'silver-thin':3
-  }[trim]||0;
-  if(!thickness)return null; // base and agent cadres have bare shoulders
+  const geometry={
+   'gold-thick':{length:66,depth:31,offset:8},
+   'gold-thin':{length:53,depth:15,offset:5},
+   'silver-thin':{length:49,depth:4,offset:2}
+  }[trim];
+  if(!geometry)return null; // basiskader and agentenkader: no shoulder stripe
   const gold=trim.startsWith('gold-');
-  const metal=gold?'#dbb55d':'#bfcdda';
-  const light=gold?'#f8dc9a':'#f0f5fa';
-  const dark=gold?'#9b772f':'#778b9d';
+  const metal=gold?'#deb650':'#becedb';
+  const highlight=gold?'#ffdf86':'#f0f6fc';
+  const shade=gold?'#977329':'#8396a6';
   const wrap=document.createElement('span');
   wrap.className='bpd-shoulder-trim';
   wrap.setAttribute('aria-hidden','true');
   wrap.dataset.trim=trim;
   const svg=svgEl('svg',{viewBox:'0 0 720 765',
    preserveAspectRatio:'none',focusable:'false'});
-  function band(ax,ay,bx,by){
-   // Four vertices: a tapered sewn strip extending front-to-back.
-   const x2=bx,y2=by+thickness,x1=ax,y1=ay+thickness;
+  // Top edge sits on the shoulder cap of the ORIGINAL 720x765 jacket.
+  // Depth changes, but slope/orientation are IDENTICAL for all cadres.
+  const g=geometry;
+  const leftPoints=[
+   [11,133], [11+g.length,133-g.length*.33],
+   [11+g.length+g.offset,133-g.length*.33+g.depth],
+   [11+g.offset,133+g.depth]
+  ];
+  function draw(pts){
+   const coords=pts.map(([x,y])=>[Number(x.toFixed(2)),Number(y.toFixed(2))]);
+   const d=coords.map(([x,y],i)=>(i?'L':'M')+x+' '+y).join(' ')+' Z';
+   svg.append(svgEl('path',{d,fill:metal,stroke:shade,
+    'stroke-width':g.depth<6?'.7':'1.2','stroke-linejoin':'round'}));
+   // Follow the seam along the full shoulder edge; never an upright bar.
+   const [a,b,c,e]=coords;
    svg.append(svgEl('path',{
-    d:'M'+ax+' '+ay+' L'+bx+' '+by+
-      ' L'+x2+' '+y2+' L'+x1+' '+y1+' Z',
-    fill:metal,stroke:dark,'stroke-width':'.75',
-    'stroke-linejoin':'round'
+    d:'M'+(a[0]+1)+' '+(a[1]+1)+' L'+(b[0]-1)+' '+(b[1]+1),
+    fill:'none',stroke:highlight,'stroke-width':g.depth<6?'.55':'1.5',
+    'stroke-linecap':'round',opacity:'.95'
    }));
-   svg.append(svgEl('path',{
-    d:'M'+(ax+1)+' '+(ay+1)+' L'+(bx-1)+' '+(by+1),
-    fill:'none',stroke:light,'stroke-width':'.9',
-    'stroke-linecap':'round',opacity:'.88'
-   }));
+   if(g.depth>7){
+    // Subtle woven highlights on the fabric itself, not a square overlay.
+    const inner=coords.map(([x,y],i)=>[x,y+(i<2?g.depth*.31:-g.depth*.31)]);
+    svg.append(svgEl('path',{
+     d:'M'+inner[0][0]+' '+inner[0][1]+' L'+inner[1][0]+' '+inner[1][1],
+     fill:'none',stroke:shade,'stroke-width':'.7',opacity:'.5'
+    }));
+   }
   }
-  band(20,132,81,111); // left shoulder, close to cord attachment
-  band(639,111,700,132); // right shoulder, same perspective
+  draw(leftPoints);
+  // Right shoulder mirrors the same broad, front-to-back gold/silver cap.
+  draw(leftPoints.map(([x,y])=>[720-x,y]).reverse());
   wrap.append(svg);
   return wrap;
  }
