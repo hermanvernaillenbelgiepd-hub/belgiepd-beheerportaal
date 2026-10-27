@@ -17,11 +17,67 @@
 .bpd-award[data-kind=medal] .bpd-ribbon:before{content:"✦";color:#fff2b8;font-size:10px;text-shadow:0 1px 2px #000c}
 .bpd-award[data-kind=badge] .bpd-ribbon:before{content:"✒";color:#e4e8eb}
 .bpd-no-awards{font-size:10px;color:#a9c3e0}
-.bpd-uniform-rack{position:absolute;z-index:4;left:37%;top:55%;width:23%;display:flex;gap:1px;align-items:center;
- pointer-events:none;transform:scale(.92);transform-origin:top left}
-.bpd-uniform-rack .bpd-ribbon{width:10px;height:5px;border-width:.5px;border-radius:0}
-.bpd-uniform-rack .bpd-ribbon:before,.bpd-uniform-rack .bpd-ribbon:after{display:none}
-.portrait.large .bpd-uniform-rack{gap:1px}
+/* Narrow, separate strips on the ACTUAL right-chest positions. No broad
+   opaque backing: original pocket seams and fabric remain uninterrupted. */
+.bpd-police-formal>.bpd-uniform-ribbons{
+ position:absolute;z-index:5;left:58.7%;top:52.75%;width:20.4%;height:3.45%;
+ display:flex;justify-content:flex-start;gap:3%;align-items:stretch;
+ pointer-events:none;
+}
+.bpd-uniform-ribbons>.bpd-ribbon{
+ display:block;flex:1 1 0;min-width:0;max-width:24%;
+ width:auto;height:100%;margin:0;padding:0;
+ border:1px solid #e0d4a077;border-radius:1px;
+ box-shadow:0 1px 1px #0c142377;
+}
+.bpd-uniform-ribbons>.bpd-ribbon::before{display:none}
+.bpd-police-formal>.bpd-uniform-medals{
+ position:absolute;z-index:5;left:58.7%;top:66.3%;width:22%;height:15%;
+ display:flex;justify-content:center;gap:4%;align-items:flex-start;
+ pointer-events:none;
+}
+.bpd-uniform-medals>.bpd-hanging-medal{
+ display:flex;position:relative;flex:0 1 30%;min-width:0;max-width:30%;
+ height:100%;flex-direction:column;align-items:center;justify-content:flex-start;
+ filter:drop-shadow(0 1px 1px #0009);
+}
+.bpd-medal-hanger{
+ display:block;width:64%;height:42%;flex:none;
+ border:1px solid #c4a869;
+ background:linear-gradient(90deg,#d6ae55 0 19%,#86243e 19% 81%,#e7bb5f 81% 100%);
+}
+.bpd-medal-hanger[data-color=blue],.bpd-medal-hanger[data-color=blue-gold]{
+ background:linear-gradient(90deg,#d6b061 0 19%,#183d76 19% 81%,#d6b061 81% 100%);
+}
+.bpd-medal-hanger[data-color=silver]{
+ border-color:#d6dce4;background:linear-gradient(90deg,#e5e8ee 0 19%,#274672 19% 81%,#e5e8ee 81% 100%);
+}
+.bpd-medal-hanger[data-color=gold]{
+ background:linear-gradient(90deg,#edc977 0 19%,#aa813f 19% 81%,#edc977 81% 100%);
+}
+.bpd-medal-pendant{
+ display:flex;align-items:center;justify-content:center;flex:none;
+ width:88%;aspect-ratio:1/1;margin-top:-1px;border-radius:50%;
+ border:1px solid #f4d585;color:#fff6d8;
+ background:radial-gradient(circle at 25% 20%,#f5db95,#926619);
+ font-size:clamp(3px,.6vw,9px);line-height:1;
+ box-shadow:inset 0 0 2px #553d1e;
+}
+.bpd-hanging-medal[data-medal=ereteken_rood] .bpd-medal-pendant,
+.bpd-hanging-medal[data-medal=ereteken_zilver] .bpd-medal-pendant{
+ border-radius:0;clip-path:polygon(30% 0,70% 0,70% 30%,100% 30%,100% 70%,70% 70%,70% 100%,30% 100%,30% 70%,0 70%,0 30%,30% 30%);
+}
+.bpd-hanging-medal[data-medal=ereteken_rood] .bpd-medal-pendant{
+ background:linear-gradient(145deg,#ffd48b,#942034 40%,#5c1028 65%,#ddb16b);
+}
+.bpd-hanging-medal[data-medal=ereteken_zilver] .bpd-medal-pendant,
+.bpd-hanging-medal[data-medal=dienstmedaille_zilver] .bpd-medal-pendant{
+ border-color:#d5e1f1;background:radial-gradient(circle at 30% 24%,#f3f8ff,#8195ac);
+ color:#283b56;
+}
+/* For compact staff cards, show medal/ribbon geometry without text overlap. */
+.person .bpd-medal-pendant{font-size:3px}
+
 .bpd-awards-control{margin-top:13px;border:1px solid #6182a9;border-radius:8px;padding:9px;background:#122e4a}
 .bpd-awards-control>summary{font-size:11px;font-weight:700;color:#f0f7ff;cursor:pointer}
 .bpd-awards-control label{display:block;font-size:10px;margin:8px 0 3px;color:#bbd4f2}

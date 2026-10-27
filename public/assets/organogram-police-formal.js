@@ -6,6 +6,7 @@
   {key:'1hcp',label:'Eerste hoofdcommissaris',abbr:'1-HCP',kind:'crown',count:3,line:true},
   {key:'1cp',label:'Eerste commissaris',abbr:'1-CP',kind:'crown',count:2,line:true},
   {key:'acp',label:'Aspirant-commissaris',abbr:'A-CP',kind:'crown',count:1},
+  {key:'cp',label:'Commissaris',abbr:'CP',kind:'crown',count:2},
   {key:'1hinp',label:'Eerste hoofdinspecteur',abbr:'1-HINP',kind:'silverCrown',count:2,line:true},
   {key:'hinp',label:'Hoofdinspecteur',abbr:'HINP',kind:'silverCrown',count:2},
   {key:'ahinp',label:'Aspirant-hoofdinspecteur',abbr:'A-HINP',kind:'silverCrown',count:1},
@@ -34,6 +35,7 @@
   if(/eerste hoofdcommissaris|1hcp/.test(rank))return byKey['1hcp'];
   if(/eerste commissaris|1cp/.test(rank))return byKey['1cp'];
   if(/aspirant.commissaris|a.cp/.test(rank))return byKey.acp;
+  if(/commissaris/.test(rank))return byKey.cp;
   if(/eerste hoofdinspecteur|1.hinp/.test(rank))return byKey['1hinp'];
   if(/aspirant.hoofdinspecteur|a.hinp/.test(rank))return byKey.ahinp;
   if(/hoofdinspecteur/.test(rank))return byKey.hinp;
@@ -97,12 +99,91 @@
   useBelgianBadgeArtwork(badge,grade);
   return badge;
  }
+
+ // Uniform accents follow the verified BelgiumPD display-grade mapping.
+ // Operational permissions remain entirely server-side and independent.
+ function trimFor(grade){
+  return grade?.key==='1hcp'||grade?.key==='1cp'?'gold-thick':
+   grade?.key==='acp'||grade?.key==='cp'?'gold-thin':'silver';
+ }
+ const preparedUniforms=new Map();
+ function preparedUniform(trim){
+  if(preparedUniforms.has(trim))return preparedUniforms.get(trim);
+  if(typeof Image==='undefined'||typeof document?.createElement!=='function')
+   return Promise.resolve(BASE);
+  const pending=new Promise(resolve=>{
+   const photo=new Image();
+   photo.onload=()=>{
+    try{
+     const canvas=document.createElement('canvas');
+     const w=photo.naturalWidth,h=photo.naturalHeight;
+     if(!w||!h||!canvas.getContext){resolve(BASE);return}
+     canvas.width=w;canvas.height=h;
+     const ctx=canvas.getContext('2d',{willReadFrequently:true});
+     if(!ctx){resolve(BASE);return}
+     ctx.drawImage(photo,0,0,w,h);
+     const pixels=ctx.getImageData(0,0,w,h),v=pixels.data;
+     // Paint out the fixed red-ribbon medal below the original rank
+     // using nearby navy cloth. The medal only reappears when awarded.
+     const x0=Math.floor(w*134/240),x1=Math.ceil(w*165/240),
+       y0=Math.floor(h*167/255),y1=Math.ceil(h*215/255);
+     for(let y=y0;y<y1;y++){
+      const sx=Math.min(w-1,Math.floor(w*183/240));
+      const si=(y*w+sx)*4;
+      const cloth=[v[si],v[si+1],v[si+2]];
+      for(let x=x0;x<x1;x++){
+       const p=(y*w+x)*4;
+       v[p]=cloth[0];v[p+1]=cloth[1];v[p+2]=cloth[2];
+      }
+     }
+     // Lower cadres use silver cord, collar, necklace and cuff details.
+     // Select yellow/gold pixels only; protect navy cloth, white shirt
+     // and burgundy tie from undesired desaturation.
+     if(trim==='silver')for(let i=0;i<v.length;i+=4){
+      const r=v[i],g=v[i+1],b=v[i+2];
+      if(r>90&&g>75&&r>g*1.04&&g>b*1.10&&r-b>31){
+       const light=Math.min(230,Math.round(r*.26+g*.54+b*.20+25));
+       v[i]=Math.min(255,light+7);
+       v[i+1]=Math.min(255,light+13);
+       v[i+2]=Math.min(255,light+21);
+      }
+     }
+     ctx.putImageData(pixels,0,0);
+     // The original gold epaulettes are reserved for 1-CP / 1-HCP.
+     // A-CP and CP receive only a THIN gold shoulder edge.
+     if(trim!=='gold-thick'){
+      const scaleX=w/240,scaleY=h/255;
+      const polygons=[
+       [[0,40],[22,35],[29,57],[5,64]],
+       [[217,35],[240,40],[235,64],[210,57]]
+      ];
+      ctx.fillStyle='#1d3659';
+      ctx.strokeStyle=trim==='gold-thin'?'#ebc66e':'#d0deeb';
+      ctx.lineWidth=Math.max(.8,scaleX*(trim==='gold-thin'?1.15:.85));
+      for(const pts of polygons){
+       ctx.beginPath();
+       pts.forEach(([x,y],i)=>i?ctx.lineTo(x*scaleX,y*scaleY):
+         ctx.moveTo(x*scaleX,y*scaleY));
+       ctx.closePath();ctx.fill();ctx.stroke();
+      }
+     }
+     resolve(canvas.toDataURL('image/webp',.87));
+    }catch(_){resolve(BASE)}
+   };
+   photo.onerror=()=>resolve(BASE);
+   photo.src=BASE;
+  });
+  preparedUniforms.set(trim,pending);
+  return pending;
+ }
  function makePortrait(person,large=false){
   if(person?.dept!=='politie')return null;
   const grade=gradeFor(person);
+  const trim=trimFor(grade);
   const outer=document.createElement('span');
   outer.className='portrait bpd-police-formal'+(large?' large':'');
   outer.dataset.dept='politie';
+  outer.dataset.trim=trim;
   outer.setAttribute('role','img');
   outer.setAttribute('aria-label','Belgisch geïnspireerd formeel politie-uniform'+(grade?' · '+grade.label:'')+' · sjabloon, geen persoonlijke foto');
   const image=document.createElement('img');
@@ -112,21 +193,21 @@
   image.decoding='async';
   image.draggable=false;
   outer.append(image);
+  // Replace the artwork with the matching gold/silver variant as it loads.
+  // All three variants keep identical geometry and can share overlays.
+  void preparedUniform(trim).then(src=>{if(src&&image.src!==src)image.src=src});
+  // Decorations are independent pieces; no large rectangular patch masks
+  // the uniform or its grade again.
+  const rack=window.BPDDecorations?.uniformRack(person.awards);
+  if(rack?.ribbons)outer.append(rack.ribbons);
   // Replace the original 1-HCP chest insignia completely with a dynamic patch.
   const patch=document.createElement('span');
   patch.className='bpd-chest-insignia';
   patch.setAttribute('aria-hidden','true');
   useBelgianBadgeArtwork(patch,grade);
   outer.append(patch);
-  // Mask the original image's fixed 1-HCP medal; only explicitly assigned
-  // awards may be represented by the removable overlay below.
-  const cover=document.createElement('span');
-  cover.className='bpd-original-medal-mask';
-  cover.setAttribute('aria-hidden','true');
-  outer.append(cover);
-  const rack=window.BPDDecorations?.uniformRack(person.awards);
-  if(rack)outer.append(rack);
+  if(rack?.medals)outer.append(rack.medals);
   return outer;
  }
- window.BPDPoliceUniform=Object.freeze({gradeFor,makeBadge,makePortrait,asset:BASE});
+ window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,asset:BASE});
 })();

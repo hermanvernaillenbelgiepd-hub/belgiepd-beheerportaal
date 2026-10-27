@@ -32,13 +32,36 @@
   if(!demo)block.append(node('p','bpd-no-awards','Tijdelijke onderscheidingen verdwijnen automatisch na hun einddatum; de historiek blijft bestaan.'));
   root.append(block);
  }
+ function hangingMedal(item){
+  const medal=node('span','bpd-hanging-medal');
+  const id=String(item.id||'');
+  medal.dataset.medal=['kroon_blauw','ereteken_zilver','ereteken_rood',
+    'dienstmedaille_zilver','dienstmedaille_goud'].includes(id)?id:'other';
+  medal.title=String(item.label||'Onderscheiding').slice(0,90);
+  const fabric=node('span','bpd-medal-hanger');
+  fabric.dataset.color=String(item.color||'');
+  const emblem=node('span','bpd-medal-pendant',
+    id==='kroon_blauw'?'♛':id.startsWith('ereteken')?'✦':'✧');
+  medal.append(fabric,emblem);
+  return medal;
+ }
  function uniformRack(awards){
-  const valid=(Array.isArray(awards)?awards:[]).filter(x=>x&&typeof x==='object'&&x.color);
+  const valid=(Array.isArray(awards)?awards:[])
+   .filter(x=>x&&typeof x==='object'&&typeof x.color==='string'&&
+     ['ribbon','medal','badge'].includes(x.kind))
+   .sort((a,b)=>(Number(a.priority)||999)-(Number(b.priority)||999));
   if(!valid.length)return null;
-  const rack=node('span','bpd-uniform-rack');
-  rack.setAttribute('aria-hidden','true');
-  valid.slice(0,4).forEach(x=>rack.append(ribbon(x)));
-  return rack;
+  const ribbons=node('span','bpd-uniform-ribbons');
+  ribbons.setAttribute('aria-hidden','true');
+  valid.slice(0,4).forEach(x=>ribbons.append(ribbon(x)));
+  const hanging=valid.filter(x=>x.kind==='medal').slice(0,3);
+  let medals=null;
+  if(hanging.length){
+    medals=node('span','bpd-uniform-medals');
+    medals.setAttribute('aria-hidden','true');
+    hanging.forEach(x=>medals.append(hangingMedal(x)));
+  }
+  return {ribbons,medals};
  }
  async function manager(root,person,auth,refresh){
   if(!auth?.currentUser||!person||person.dept!=='politie')return;

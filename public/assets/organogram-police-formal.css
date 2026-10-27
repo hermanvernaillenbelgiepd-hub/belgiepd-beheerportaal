@@ -1,18 +1,23 @@
 /* Shared formal BelgiumPD Police uniform portrait, TEST/MAIN; visuals only. */
 .portrait.bpd-police-formal{display:block;position:relative;overflow:hidden;
   border:1px solid #6f8cb0;border-radius:8px;background:#11223d;isolation:isolate;
-  width:60px;height:72px;flex:none}
+  width:67px;height:77px;flex:none}
 .portrait.bpd-police-formal::before,.portrait.bpd-police-formal::after{
   content:none!important;display:none!important}
 .bpd-police-formal>img{width:100%;height:100%;display:block;object-fit:fill}
-.bpd-police-formal>.bpd-chest-insignia{position:absolute;z-index:3;pointer-events:none;
-  left:59%;top:57%;width:19.6%;height:7.1%;display:block;
-  background:#101826;overflow:hidden}
+/* Exact uniform placement: award ribbons above, Belgian grade center,
+   hanging decorations beneath. Each is independent; no opaque chest box. */
+.bpd-police-formal>.bpd-chest-insignia{
+ position:absolute;z-index:6;pointer-events:none;display:block;
+ left:58.6%;top:57.4%;width:20.1%;height:7.4%;
+ background:#101826;overflow:hidden;border-radius:1px;
+ box-shadow:0 0 0 .4px #aab9c4;
+}
 .bpd-chest-insignia svg{display:block;width:100%;height:100%}
 .person:has(.bpd-police-formal){min-height:90px}
-.person .portrait.bpd-police-formal{width:60px;height:72px}
+.person .portrait.bpd-police-formal{width:67px;height:77px}
 .profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{
-  width:112px;height:132px;border-radius:10px}
+  width:136px;height:153px;border-radius:10px}
 .bpd-grade-badge{display:inline-block;vertical-align:middle;flex:none;
   width:85px;height:40px;border:1px solid #799bc2;background:#101826;
   border-radius:5px;overflow:hidden}
@@ -23,13 +28,13 @@
 .bpd-formal-grade b{font-size:11px;color:#eff6ff}
 .bpd-formal-grade small{display:block;font-size:10px;color:#aec9eb}
 .person .identity>.bpd-grade-badge{display:block;margin-top:5px}
-@media(max-width:520px){.person .portrait.bpd-police-formal{width:52px;height:64px}
- .profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{width:95px;height:116px}}
+@media(max-width:520px){.person .portrait.bpd-police-formal{width:57px;height:65px}
+ .profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{width:112px;height:127px}}
 
 /* Cropped panels from the supplied Belgian police rank reference. */
 .bpd-photo-rank{background-image:url('/assets/bpd-belgian-police-grade-reference.webp');
  background-repeat:no-repeat;background-size:100% 1000%!important;
  background-position:0 var(--bpd-grade-y,0%)!important}
 .bpd-photo-rank svg{display:none!important}
-.bpd-original-medal-mask{position:absolute;z-index:4;left:61%;top:69%;
- width:15%;height:17%;background:#203d64;border-radius:0;pointer-events:none}
+/* Baked-in original 1-HCP medallion is cleared in the image preparation step,
+   instead of hiding the decoration area behind a visible rectangle. */
