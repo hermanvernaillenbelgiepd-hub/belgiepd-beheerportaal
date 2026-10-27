@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>BelgiumPD · Vier politie-uniformen · TEST</title>
+<style>
+:root{font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#eaf2fc;background:#091626;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0}button,input{font:inherit}a{color:#b9d8ff}
+.bar{background:#122441;border-bottom:1px solid #42618a;display:flex;align-items:center;gap:14px;padding:12px 22px;flex-wrap:wrap}
+.bar strong{font-size:16px}.bar .label{border:1px solid #caac52;color:#ffe8a6;padding:2px 7px;border-radius:4px;font-weight:800;font-size:10px}.bar a{margin-left:auto;font-size:12px}
+main{max-width:1250px;margin:auto;padding:20px 18px 50px}h1{margin:0;font-size:23px}p{margin:5px 0 14px;color:#b6cbe6}.notice{background:#173940;border:1px solid #3f747b;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:17px}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.panel{background:#142740;border:1px solid #3d6087;border-radius:13px;overflow:hidden}.panel header{padding:12px 15px;background:#1d3658;border-bottom:1px solid #42648a;display:flex;gap:12px;align-items:center;justify-content:space-between}.panel h2{font-size:17px;margin:0}.panel header span{color:#a9c1e0;font-size:11px}
+.picture{position:relative;width:min(94%,390px);aspect-ratio:872/1213;max-height:none;margin:12px auto 5px;isolation:isolate}.picture>img{width:100%;height:100%;display:block;object-fit:contain}.picture .nameplate{position:absolute;left:23.61%;top:36.94%;width:15.85%;height:4.7%;z-index:2;pointer-events:none}.picture .rankplate{position:absolute;left:58.35%;top:36.89%;width:15.37%;height:4.8%;z-index:2;pointer-events:none}.picture svg{width:100%;height:100%;display:block}.picture .example-awards{position:absolute;left:58.4%;top:42.8%;width:15.6%;height:8%;pointer-events:none;display:none;z-index:3}.picture[data-medals="true"] .example-awards{display:block}
+.controls{background:#10213a;padding:12px 14px 15px;border-top:1px solid #315174;display:grid;grid-template-columns:1fr 120px;gap:9px}.controls label{display:grid;gap:4px;color:#b5ceeb;font-size:11px}.controls input[type=text]{width:100%;min-width:0;background:#081b31;border:1px solid #516f94;border-radius:6px;color:white;padding:7px 8px}.controls .full{grid-column:1/-1}.controls .inline{display:flex;gap:8px;align-items:center}.controls small{color:#9bb7d8;font-size:11px}.rank{padding:0 14px 11px;color:#d4eaff;font-size:12px;font-weight:700}
+.legend{margin:17px 0;padding:13px 16px;border:1px solid #456385;border-radius:8px;background:#10213a;font-size:12px;color:#c4d9f0}.legend b{color:white}input:focus-visible,a:focus-visible{outline:2px solid #a7c9ff;outline-offset:2px}
+@media(max-width:800px){.cards{grid-template-columns:1fr}.bar a{margin-left:0}}@media(max-width:430px){main{padding:15px 8px}.controls{grid-template-columns:1fr 95px}}
+</style>
+</head><body>
+<nav class="bar"><strong>BelgiumPD · Politie-uniformen</strong><span class="label">UITSLUITEND TEST</span><a href="/organogram-test.html">Terug naar TEST-organogram</a></nav>
+<main>
+<h1>Vier vaste uniformuitvoeringen</h1>
+<p>Dezelfde originele ceremonievest, telkens als afzonderlijk afgewerkte afbeelding. Alleen naam en roepnummer, borstgraad en een fictief onderscheidingvoorbeeld zijn hier als dynamische elementen aangebracht.</p>
+<div class="notice"><b>Visuele proef · geen personeelswijzigingen.</b> Alle namen, roepnummers en eretekens hieronder dienen enkel om de vier uitvoeringen te vergelijken. Aanpassingen worden nergens opgeslagen. MAIN blijft ongewijzigd.</div>
+<section class="cards" id="uniformCards" aria-label="Uniformvarianten per politiekader"></section>
+<div class="legend"><b>Vaste ontwerpregels:</b> korpsleiding: brede gouden schouderstukken en goud; officierenkader: smallere gouden schouderstukken en goud; middenkader: uiterst smalle zilveren schouderrand en zilveren metalen accenten; basis- en agentenkader: geen schouderstuk en zilveren metalen accenten. Bij roepnummerwijziging schakelen het uniform en de borstgraad automatisch naar het overeenkomstige kader.</div>
+</main>
+<script>
+(()=>{'use strict';
+const files={
+ 'gold-wide':'/assets/bpd-uniform-korpsleiding-test.webp',
+ 'gold-slim':'/assets/bpd-uniform-officierenkader-test.webp',
+ 'silver-hair':'/assets/bpd-uniform-middenkader-test.webp',
+ 'silver-none':'/assets/bpd-uniform-basiskader-test.webp'
+};
+const presets=[
+ {title:'Korpsleiding',description:'Brede gouden schouderstukken · goud',call:'900',name:'Voorbeeld KL'},
+ {title:'Officierenkader',description:'Smallere gouden schouderstukken · goud',call:'920',name:'Voorbeeld OK'},
+ {title:'Middenkader',description:'Zeer dunne zilveren rand · zilver',call:'700',name:'Voorbeeld MK'},
+ {title:'Basis- en agentenkader',description:'Geen schouderstukken · zilver',call:'400',name:'Voorbeeld BK'}
+];
+const ns='http://www.w3.org/2000/svg';
+function svg(tag,attrs){const el=document.createElementNS(ns,tag);Object.entries(attrs||{}).forEach(([a,b])=>el.setAttribute(a,String(b)));return el}
+function gradeFor(call){
+ const m=String(call||'').trim().toUpperCase().match(/^(?:[A-Z]+[- ])?(\d{3})$/);const n=m?Number(m[1]):null;
+ if(n===900)return {trim:'gold-wide',symbol:'crown',count:3,line:true,label:'Eerste hoofdcommissaris'};
+ if(n===910)return {trim:'gold-wide',symbol:'crown',count:2,line:true,label:'Eerste commissaris'};
+ if(n===920||n===930)return {trim:'gold-slim',symbol:'crown',count:1,line:false,label:'Aspirant-commissaris'};
+ if(n>=800&&n<900)return {trim:'silver-hair',symbol:'crown',count:2,line:true,label:'Eerste hoofdinspecteur'};
+ if(n>=700&&n<800)return {trim:'silver-hair',symbol:'crown',count:2,line:false,label:'Hoofdinspecteur'};
+ if(n>=600&&n<700)return {trim:'silver-hair',symbol:'crown',count:1,line:false,label:'Aspirant-hoofdinspecteur'};
+ if(n>=500&&n<600)return {trim:'silver-none',symbol:'star',count:2,line:true,label:'Eerste inspecteur'};
+ if(n>=400&&n<500)return {trim:'silver-none',symbol:'star',count:2,line:false,label:'Inspecteur'};
+ if(n>=300&&n<400)return {trim:'silver-none',symbol:'star',count:1,line:false,label:'Aspirant-inspecteur'};
+ if(n>=100&&n<300)return {trim:'silver-none',symbol:'bars',count:2,line:false,label:'Agent van politie'};
+ return {trim:'silver-none',symbol:null,count:0,line:false,label:'Onbekende graad'};
+}
+function nameplate(name,call){
+ const image=svg('svg',{viewBox:'0 0 320 100',preserveAspectRatio:'none','aria-hidden':'true'});
+ image.append(svg('rect',{width:320,height:100,fill:'#101a29'}));
+ const metal='#d4dde6';
+ for(let i=0;i<4;i++){const x=i*21-6;image.append(svg('path',{d:`M${x} 100 L${x+43} 0`,stroke:metal,'stroke-width':3,fill:'none'}));}
+ image.append(svg('line',{x1:90,y1:50,x2:312,y2:50,stroke:metal,'stroke-width':2.7}));
+ const clean=String(name||'NAAM').trim().slice(0,32);
+ const n=svg('text',{x:198,y:36,'text-anchor':'middle',fill:'#e5ecf4','font-family':'system-ui,Arial', 'font-weight':800,'font-size':clean.length>17?14:21});n.textContent=clean;image.append(n);
+ const c=svg('text',{x:198,y:78,'text-anchor':'middle',fill:'#d6dfe8','font-family':'system-ui,Arial','font-weight':750,'font-size':14});c.textContent='BELGIEPD - '+String(call||'---').slice(0,18);image.append(c);
+ return image;
+}
+function gradeBadge(rank){
+ const image=svg('svg',{viewBox:'0 0 320 100',preserveAspectRatio:'none','aria-hidden':'true'});
+ image.append(svg('rect',{width:320,height:100,fill:'#111b2b'}));
+ for(let i=0;i<7;i++){const x=259+i*13;image.append(svg('path',{d:`M${x} 0 L${x-28} 100`,stroke:'#b4c2d0','stroke-width':2,opacity:'.8',fill:'none'}));}
+ const metal=rank.trim.startsWith('gold')?'#e7bd57':'#d3dde8';
+ if(rank.symbol==='bars')for(const x of [105,156])image.append(svg('rect',{x,y:19,width:8,height:60,fill:metal}));
+ if(rank.symbol==='star'||rank.symbol==='crown'){
+  const centres=rank.count===1?[125]:rank.count===2?[93,156]:[64,126,188];
+  for(const x of centres){
+   if(rank.symbol==='star'){
+    let pts=[];for(let i=0;i<10;i++){const a=(i*36-90)*Math.PI/180,r=i%2?12:22;pts.push((x+Math.cos(a)*r).toFixed(1)+','+(45+Math.sin(a)*r).toFixed(1));}
+    image.append(svg('polygon',{points:pts.join(' '),fill:metal,stroke:'#99a9b7','stroke-width':1}));
+   }else{
+    image.append(svg('path',{d:`M${x-22} 51 L${x-24} 24 L${x-13} 36 L${x} 17 L${x+13} 36 L${x+24} 24 L${x+22} 51 Z`,fill:metal,stroke:rank.trim.startsWith('gold')?'#a78335':'#90a2b3','stroke-width':1}));
+    image.append(svg('rect',{x:x-22,y:52,width:44,height:7,rx:1,fill:metal}));
+   }
+  }
+ }
+ if(rank.line)image.append(svg('line',{x1:rank.count===3?34:58,y1:72,x2:rank.count===3?212:190,y2:72,stroke:metal,'stroke-width':4}));
+ return image;
+}
+function sampleMedals(){
+ const image=svg('svg',{viewBox:'0 0 120 100','aria-hidden':'true'});
+ for(let i=0;i<3;i++){
+  image.append(svg('rect',{x:10+i*36,y:0,width:16,height:28,fill:['#8d1c34','#273da2','#961b34'][i]}));
+  image.append(svg('circle',{cx:18+i*36,cy:40,r:12,fill:['#e7c16c','#bbc7d4','#dab06d'][i],stroke:'#60718a','stroke-width':2}));
+ }
+ return image;
+}
+const root=document.getElementById('uniformCards');
+for(const preset of presets){
+ const panel=document.createElement('article');panel.className='panel';
+ panel.innerHTML='<header><h2></h2><span></span></header><div class="picture"><img alt="Uniformvoorbeeld"><div class="nameplate"></div><div class="rankplate"></div><div class="example-awards"></div></div><div class="controls"><label>Naam (alleen voorbeeld)<input type="text" maxlength="32"></label><label>Roepnummer<input type="text" maxlength="18"></label><label class="full inline"><input type="checkbox"> Fictieve onderscheidingen tonen</label><small class="full">Aanpassingen worden niet opgeslagen.</small></div><div class="rank" aria-live="polite"></div>';
+ panel.querySelector('h2').textContent=preset.title;panel.querySelector('header span').textContent=preset.description;
+ const p=panel.querySelector('.picture'),img=p.querySelector('img');
+ const name=panel.querySelectorAll('input[type=text]')[0],call=panel.querySelectorAll('input[type=text]')[1],medal=panel.querySelector('input[type=checkbox]');
+ const nm=p.querySelector('.nameplate'),badge=p.querySelector('.rankplate'),aw=p.querySelector('.example-awards');aw.append(sampleMedals());
+ name.value=preset.name;call.value=preset.call;
+ function update(){const rank=gradeFor(call.value);img.src=files[rank.trim];img.alt='Ceremonieel politie-uniform: '+rank.label;
+  nm.replaceChildren(nameplate(name.value,call.value));badge.replaceChildren(gradeBadge(rank));
+  panel.querySelector('.rank').textContent='Voorbeeldgraad: '+rank.label+' · '+(call.value||'—');p.dataset.medals=String(medal.checked);
+ }
+ [name,call].forEach(input=>input.addEventListener('input',update));medal.addEventListener('change',update);update();root.append(panel);
+}
+})();
+</script>
+</body></html>
