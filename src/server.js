@@ -82,7 +82,7 @@ app.use('/api/dossier-grants',express.json({limit:'4kb',strict:true}));
 app.use('/api/fire-dossiers',express.json({limit:'6kb',strict:true}));
 app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
-app.use('/api/personnel-awards',express.json({limit:'4kb',strict:true}));
+app.use('/api/personnel-awards',express.json({limit:'180kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
 // Dossier intrekkingen verwachten uitsluitend een gecontroleerde JSON-motivering.
 app.use('/api/dossier-retirement',express.json({limit:'4kb',strict:true}));

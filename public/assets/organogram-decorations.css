@@ -93,3 +93,17 @@
 .bpd-awards-history small{display:block;color:#a5bbd7;font-size:10px}
 .bpd-awards-error{color:#ffbebd!important;font-size:11px}
 .bpd-awards-success{color:#aef6d4!important;font-size:11px}
+
+/* Custom medal uploads are compact, readable images; the grade panel remains above medals. */
+.bpd-ribbon{overflow:hidden}
+.bpd-ribbon>.bpd-award-art{position:absolute;inset:0;width:100%;height:100%;
+ object-fit:cover;display:block;border:0;z-index:2;pointer-events:none}
+.bpd-uniform-medals>.bpd-hanging-medal:has(.bpd-medal-art){
+ justify-content:flex-start;align-items:center;overflow:visible}
+.bpd-uniform-medals .bpd-medal-art{display:block;position:relative;
+ max-width:110%;width:110%;height:auto;max-height:100%;object-fit:contain;flex:none}
+.bpd-awards-guidance{font-size:10px;color:#b4c9e5;margin-top:8px}
+.bpd-catalog-upload{max-width:100%;margin:9px 0}
+.bpd-catalog-upload[open]{border-color:#84a9df}
+.bpd-catalog-upload input[type=file]{width:100%}
+.bpd-catalog-upload>summary{cursor:pointer}

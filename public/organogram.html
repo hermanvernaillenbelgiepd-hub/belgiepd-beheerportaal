@@ -164,8 +164,8 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 @media(max-width:550px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.portrait.large{width:70px;height:84px}.profile-title{align-items:flex-start}}
 
 </style>
-<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=3">
-<link rel="stylesheet" href="/assets/organogram-decorations.css?v=3">
+<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=5">
+<link rel="stylesheet" href="/assets/organogram-decorations.css?v=5">
 </head>
 <body>
 <header class="topbar">
@@ -185,6 +185,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   <span id="demoWarning" class="demo-warning" hidden>FICTIEVE VOORBEELDDATA · GEEN ECHTE PERSONEN</span>
  </div>
  <div id="metrics" class="metrics" aria-label="Overzicht per hulpdienst"></div>
+ <div id="awardAdminTools" aria-label="Beheer van eretekens"></div>
  <div class="notice" id="status" role="status" aria-live="polite">Organogramproef laden…</div>
  <div class="layout">
   <section class="card" aria-label="Organogram en dienstkeuze">
@@ -226,8 +227,8 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   </aside>
  </div>
 </main>
-<script src="/assets/organogram-police-formal.js?v=4"></script>
-<script src="/assets/organogram-decorations.js?v=3"></script>
+<script src="/assets/organogram-police-formal.js?v=5"></script>
+<script src="/assets/organogram-decorations.js?v=5"></script>
 <script>
 (function(){
  'use strict';
@@ -485,6 +486,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
     directoryPeople.splice(0);realPeople.splice(0);
     publicLoaded=false;setView(true);
     $('internalToggle').disabled=!user;
+    void window.BPDDecorations?.uploadTools(auth,$('awardAdminTools'));
     if(user?.uid?.startsWith('discord:'))loadDirectory(user,generation);
     else if(user){
      $('status').className='notice warn';
@@ -659,7 +661,10 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
        ['ribbon','medal','badge'].includes(x.kind)&&typeof x.color==='string')
      .slice(0,30).map(x=>({id:String(x.id||'').slice(0,60),
        label:x.label.slice(0,90),kind:x.kind,color:x.color.slice(0,30),
-       priority:Number(x.priority)||999}))
+       priority:Number(x.priority)||999,
+       imageUrl:typeof x.imageUrl==='string'&&
+        /^\/api\/personnel-awards\/catalog-image\/custom_[a-f0-9-]{36}$/i.test(x.imageUrl)?
+        x.imageUrl:undefined}))
    }));
    directoryPeople.splice(0,directoryPeople.length,...safe);
    realPeople.splice(0,realPeople.length,...safe);

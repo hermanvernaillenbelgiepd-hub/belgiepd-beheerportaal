@@ -2,7 +2,8 @@ import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
-import {PERSONNEL_DECORATIONS_COLLECTION,CATALOG_BY_ID,expirationDate} from './personnel-decoration-policy.js';
+import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
+ CATALOG_BY_ID,customCatalogItem,expirationDate} from './personnel-decoration-policy.js';
 import {isArchivedTraining} from './training-maintenance.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
@@ -370,8 +371,12 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     }
     // Expiry is derived on report assembly (Brussels calendar); no destructive cron writes.
     if(report.dept==='politie'){
-      const awards=await db().collection(PERSONNEL_DECORATIONS_COLLECTION)
-        .where('dept','==','politie').limit(501).get();
+      const [awards,uploadedCatalog]=await Promise.all([
+       db().collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(501).get(),
+       db().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get()
+      ]);
+      const catalog=new Map([...CATALOG_BY_ID,...uploadedCatalog.docs
+       .map(doc=>[doc.id,customCatalogItem(doc)]).filter(([,item])=>item)]);
       if(awards.size>500)truncated=true;
       for(const doc of awards.docs.slice(0,500)){
         const pid=doc.get('discordId');
@@ -379,7 +384,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
         const person=uniqueSubject(allSubjects,'politie',pid);
         if(!person)continue;
         for(const award of (Array.isArray(doc.get('entries'))?doc.get('entries'):[])){
-          if(!award?.endDate||!CATALOG_BY_ID.has(award.catalogId))continue;
+          if(!award?.endDate||!catalog.has(award.catalogId))continue;
           const date=expirationDate(award.endDate);
           if(!date||date<report.periodStart||date>report.periodEnd||date>today||
              award.revokedAt&&award.revokedAt.slice(0,10)<=award.endDate)continue;
@@ -389,7 +394,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
             subjectCallAtCreation:person.call,
             registeredBy:{name:'BelgiumPD · automatische geldigheidscontrole',call:''},
             details:'Tijdelijke onderscheiding verlopen: '+
-              CATALOG_BY_ID.get(award.catalogId).label+' · Einddatum: '+award.endDate,
+              catalog.get(award.catalogId).label+' · Einddatum: '+award.endDate,
             source:'bpd_personnel_decorations'});
         }
       }

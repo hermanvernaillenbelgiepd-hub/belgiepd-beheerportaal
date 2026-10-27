@@ -9,7 +9,7 @@
    hanging decorations beneath. Each is independent; no opaque chest box. */
 .bpd-police-formal>.bpd-chest-insignia{
  position:absolute;z-index:6;pointer-events:none;display:block;
- left:58.6%;top:57.4%;width:20.1%;height:7.4%;
+ left:57.8%;top:56.4%;width:22.1%;height:8.45%;
  background:#101826;overflow:hidden;border-radius:1px;
  box-shadow:0 0 0 .4px #aab9c4;
 }
@@ -17,7 +17,7 @@
 .person:has(.bpd-police-formal){min-height:90px}
 .person .portrait.bpd-police-formal{width:67px;height:77px}
 .profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{
-  width:136px;height:153px;border-radius:10px}
+  width:156px;height:170px;border-radius:10px}
 .bpd-grade-badge{display:inline-block;vertical-align:middle;flex:none;
   width:85px;height:40px;border:1px solid #799bc2;background:#101826;
   border-radius:5px;overflow:hidden}
@@ -29,12 +29,33 @@
 .bpd-formal-grade small{display:block;font-size:10px;color:#aec9eb}
 .person .identity>.bpd-grade-badge{display:block;margin-top:5px}
 @media(max-width:520px){.person .portrait.bpd-police-formal{width:57px;height:65px}
- .profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{width:112px;height:127px}}
+ .profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{width:128px;height:139px}}
 
-/* Cropped panels from the supplied Belgian police rank reference. */
-.bpd-photo-rank{background-image:url('/assets/bpd-belgian-police-grade-reference.webp');
- background-repeat:no-repeat;background-size:100% 1000%!important;
- background-position:0 var(--bpd-grade-y,0%)!important}
+/* Display the real Belgian police grade row as a clipped image.
+   A proportional sprite works inside both the readable badge and the chest panel. */
+.bpd-photo-rank{position:relative;background:#131d2c!important;isolation:isolate}
 .bpd-photo-rank svg{display:none!important}
+.bpd-photo-rank>.bpd-insignia-sprite{
+ position:absolute;z-index:1;left:0;width:100%;height:1000%;
+ max-width:none;max-height:none;object-fit:fill;
+ top:var(--bpd-rank-top,0%);
+ display:block;pointer-events:none;
+}
+.bpd-police-formal>.bpd-silver-nameplate{
+ position:absolute;z-index:6;left:19.3%;top:58.6%;width:18.8%;height:5.7%;
+ display:flex;align-items:center;justify-content:center;overflow:hidden;
+ padding:0 1px;color:#dfe8f3;background:#0e1728;
+ border:1px solid #aebfcc;border-left:3px solid #bfcbd9;
+ box-shadow:0 0 0 .5px #344e6e;pointer-events:none;
+}
+.bpd-silver-nameplate::before{
+ content:"";position:absolute;left:1px;top:0;bottom:0;width:12%;
+ background:repeating-linear-gradient(135deg,#d0dce7 0 1px,#253752 1px 2px);
+}
+.bpd-nameplate-text{
+ max-width:89%;overflow:hidden;white-space:nowrap;text-overflow:clip;
+ font-size:clamp(2px,.45vw,6px);font-weight:750;letter-spacing:-.02em;
+ transform:scale(.98);text-shadow:0 0 1px #071123;
+}
 /* Baked-in original 1-HCP medallion is cleared in the image preparation step,
    instead of hiding the decoration area behind a visible rectangle. */

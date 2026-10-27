@@ -12,6 +12,12 @@
   elem.dataset.color=['red','silver','gold','blue-silver','blue-gold','red-gold','blue-white','red-black','gold-blue'].includes(item?.color)?
    item.color:'blue-gold';
   elem.setAttribute('aria-hidden','true');
+  if(typeof item?.imageUrl==='string'&&
+     /^\/api\/personnel-awards\/catalog-image\/custom_[a-f0-9-]{36}$/i.test(item.imageUrl)){
+   const img=node('img','bpd-award-art');
+   img.src=item.imageUrl;img.alt='';img.loading='lazy';img.decoding='async';
+   elem.append(img);
+  }
   return elem;
  }
  function renderAwards(root,awards,demo=false){
@@ -42,7 +48,12 @@
   fabric.dataset.color=String(item.color||'');
   const emblem=node('span','bpd-medal-pendant',
     id==='kroon_blauw'?'♛':id.startsWith('ereteken')?'✦':'✧');
-  medal.append(fabric,emblem);
+  if(typeof item?.imageUrl==='string'&&
+    /^\/api\/personnel-awards\/catalog-image\/custom_[a-f0-9-]{36}$/i.test(item.imageUrl)){
+    const img=node('img','bpd-medal-art');
+    img.src=item.imageUrl;img.alt='';img.loading='lazy';img.decoding='async';
+    medal.append(img);
+  }else medal.append(fabric,emblem);
   return medal;
  }
  function uniformRack(awards){
@@ -73,9 +84,20 @@
    const response=await fetch('/api/personnel-awards/manage?'+params,{
     headers:{Authorization:'Bearer '+token},cache:'no-store'
    });
-   if(response.status===403||response.status===401||response.status===404)return;
+   if(response.status===403||response.status===401||response.status===404){
+    // Information only; the authorization check remains exclusively on the server.
+    if(root.isConnected&&root.dataset.personKey===identity)
+     root.append(node('p','bpd-awards-guidance',
+      'Toekennen is alleen mogelijk voor lagere, toegankelijke politiedossiers. Niet voor je eigen dossier, of voor afgeschermde hogere rangen.'));
+    return;
+   }
    const data=await response.json().catch(()=>({}));
-   if(!response.ok||!data.canManage||!Array.isArray(data.catalog))return;
+   if(!response.ok||!data.canManage||!Array.isArray(data.catalog)){
+    if(root.isConnected&&root.dataset.personKey===identity)
+     root.append(node('p','bpd-awards-guidance',
+      'Toekennen tijdelijk niet beschikbaar. Controleer je Discord-aanmelding.'));
+    return;
+   }
    if(auth.currentUser?.uid!==ownerUid||!root.isConnected||root.dataset.personKey!==identity)return;
    const panel=node('details','bpd-awards-control');
    panel.append(node('summary','','Onderscheiding toekennen / intrekken · Officierenkader en Korpsleiding'));
@@ -84,6 +106,16 @@
     const o=node('option','',item.label);o.value=item.id;catalogue.append(o);
    });
    panel.append(node('label','','Onderscheiding'),catalogue);
+   const catalogueRefresh=e=>{
+    if(!root.isConnected||root.dataset.personKey!==identity){
+     document.removeEventListener('bpd-decoration-uploaded',catalogueRefresh);return;
+    }
+    const item=e?.detail;if(!item?.id||!item?.label)return;
+    if([...catalogue.options].some(x=>x.value===item.id))return;
+    const option=node('option','',item.label);option.value=item.id;
+    catalogue.append(option);catalogue.value=item.id;
+   };
+   document.addEventListener('bpd-decoration-uploaded',catalogueRefresh);
    const dates=node('div','bpd-inline'),startBox=node('div'),endBox=node('div');
    const start=node('input');start.type='date';start.value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const end=node('input');end.type='date';end.min=start.value;
@@ -143,5 +175,80 @@
    root.append(panel);
   }catch(_){/* Gated UI fails closed; ordinary member view remains unchanged. */}
  }
- window.BPDDecorations=Object.freeze({renderAwards,uniformRack,manager});
+ async function uploadTools(auth,target){
+  if(!target)return;
+  target.replaceChildren();
+  const user=auth?.currentUser;
+  if(!user||!String(user.uid||'').startsWith('discord:'))return;
+  const uid=user.uid;
+  try{
+   const token=await user.getIdToken();
+   const response=await fetch('/api/personnel-awards/catalog-access',{
+    headers:{Authorization:'Bearer '+token},cache:'no-store'});
+   if(!response.ok||!((await response.json()).canUpload)||auth.currentUser?.uid!==uid)return;
+   const details=node('details','bpd-awards-control bpd-catalog-upload');
+   details.append(node('summary','','Eigen ereteken uploaden · Officierenkader / Korpsleiding'));
+   details.append(node('p','bpd-no-awards',
+    'PNG, JPG of WebP. Eerst toevoegen aan de catalogus; daarna kun je het toekennen aan een toegestaan personeelsdossier.'));
+   const label=node('input');label.type='text';label.maxLength=80;label.placeholder='Naam van de onderscheiding';
+   const kind=node('select');
+   for(const [value,title] of [['ribbon','Erelint / lintje'],['medal','Hangende medaille'],['badge','Ereteken / insigne']]){
+    const opt=node('option','',title);opt.value=value;kind.append(opt);
+   }
+   const color=node('select');
+   for(const [value,title] of [['blue-gold','Blauw/goud'],['red-gold','Rood/goud'],
+     ['silver','Zilver'],['gold','Goud'],['red','Rood'],['blue','Blauw']]){
+    const opt=node('option','',title);opt.value=value;color.append(opt);
+   }
+   const file=node('input');file.type='file';file.accept='image/png,image/jpeg,image/webp';
+   const notice=node('p','bpd-awards-guidance');
+   const save=node('button','','Afbeelding uploaden');save.type='button';
+   details.append(node('label','','Naam'),label,node('label','','Soort'),kind,
+    node('label','','Lintkleur'),color,node('label','','Afbeeldingsbestand'),file,save,notice);
+   const encodeImage=selected=>new Promise((resolve,reject)=>{
+    if(!selected||selected.size>8*1024*1024)return reject(Error('Kies een afbeelding kleiner dan 8 MB'));
+    const reader=new FileReader();
+    reader.onerror=()=>reject(Error('Afbeelding kon niet gelezen worden'));
+    reader.onload=()=>{
+     const photo=new Image();
+     photo.onerror=()=>reject(Error('Geen geldig afbeeldingsbestand'));
+     photo.onload=()=>{
+      const canvas=document.createElement('canvas');
+      const side=220;canvas.width=side;canvas.height=side;
+      const ctx=canvas.getContext('2d');
+      const scale=Math.min(side/photo.width,side/photo.height);
+      const w=photo.width*scale,h=photo.height*scale;
+      ctx.clearRect(0,0,side,side);
+      ctx.drawImage(photo,(side-w)/2,(side-h)/2,w,h);
+      const encoded=canvas.toDataURL('image/webp',.8);
+      if(encoded.length>108000)reject(Error('Afbeelding te groot na verkleinen'));
+      else resolve(encoded);
+     };
+     photo.src=reader.result;
+    };
+    reader.readAsDataURL(selected);
+   });
+   save.addEventListener('click',async()=>{
+    if(auth.currentUser?.uid!==uid)return;
+    save.disabled=true;notice.textContent='Afbeelding verwerken en opslaan…';notice.className='bpd-awards-guidance';
+    try{
+     const imageDataUri=await encodeImage(file.files?.[0]);
+     const bearer=await auth.currentUser.getIdToken();
+     const response=await fetch('/api/personnel-awards/catalog-upload',{
+      method:'POST',headers:{Authorization:'Bearer '+bearer,'Content-Type':'application/json'},
+      body:JSON.stringify({label:label.value.trim(),kind:kind.value,color:color.value,imageDataUri})
+     });
+     const data=await response.json().catch(()=>({}));
+     if(!response.ok)throw Error(data.error||'Upload mislukt');
+     document.dispatchEvent(new CustomEvent('bpd-decoration-uploaded',{detail:data.item}));
+     notice.className='bpd-awards-success';
+     notice.textContent='Toegevoegd aan catalogus. Kies een lager personeelsdossier en open Toekennen.';
+     label.value='';file.value='';
+    }catch(err){notice.className='bpd-awards-error';notice.textContent=err.message;}
+    finally{save.disabled=false}
+   });
+   if(auth.currentUser?.uid===uid)target.append(details);
+  }catch(_){/* Hide upload controls without verified police permissions. */}
+ }
+ window.BPDDecorations=Object.freeze({renderAwards,uniformRack,manager,uploadTools});
 })();

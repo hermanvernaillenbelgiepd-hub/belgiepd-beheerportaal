@@ -2,6 +2,20 @@ import {roleForDepartment} from './leave-policy.js';
 import {canEditPersonnel,canReadPersonnelSubject,validPersonnelKey} from './personnel-editor-policy.js';
 
 export const PERSONNEL_DECORATIONS_COLLECTION='bpd_personnel_decorations';
+export const PERSONNEL_DECORATION_CATALOG_COLLECTION='bpd_personnel_decoration_catalog';
+const CUSTOM_ID=/^custom_[0-9a-f-]{36}$/i;
+export const isCustomDecorationId=id=>typeof id==='string'&&CUSTOM_ID.test(id);
+export function customCatalogItem(doc){
+ const o=doc?.data?.()||doc||{},id=String(doc?.id||o.id||'');
+ if(!isCustomDecorationId(id)||o.disabled===true||typeof o.label!=='string'||
+  !['ribbon','medal','badge'].includes(o.kind)||o.label.length<3||o.label.length>80)return null;
+ return {id,label:o.label,kind:o.kind,color:typeof o.color==='string'?o.color:'blue',
+  priority:Number.isInteger(o.priority)?o.priority:150,
+  imageUrl:'/api/personnel-awards/catalog-image/'+id};
+}
+export const lookupCatalog=(id,extras)=>CATALOG_BY_ID.get(id)||
+ (extras instanceof Map?extras.get(id):null);
+
 export const DECORATION_CATALOG=Object.freeze([
  {id:'kroon_blauw',label:'Blauw erelint met kroon',kind:'medal',color:'blue',priority:10},
  {id:'ereteken_zilver',label:'Zilveren erekruis',kind:'medal',color:'silver',priority:20},
@@ -24,11 +38,11 @@ export const brusselsToday=(now=new Date())=>new Intl.DateTimeFormat('sv-SE',{
 }).format(now);
 const validDate=s=>typeof s==='string'&&DATE.test(s)&&!Number.isNaN(Date.parse(s+'T00:00:00Z'))&&
  new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;
-export function validateDecoration(payload,today=brusselsToday()){
+export function validateDecoration(payload,today=brusselsToday(),catalog=CATALOG_BY_ID){
  if(!payload||typeof payload!=='object'||Array.isArray(payload)||
    Object.keys(payload).some(k=>!['catalogId','startDate','endDate','public','reason'].includes(k)))
    throw Error('Ongeldige onderscheidinggegevens');
- if(!CATALOG_BY_ID.has(payload.catalogId))throw Error('Kies een bekende onderscheiding');
+ if(!catalog.has(payload.catalogId))throw Error('Kies een bekende onderscheiding');
  const startDate=payload.startDate||today,endDate=payload.endDate||null;
  if(!validDate(startDate)||endDate!==null&&!validDate(endDate)||
     endDate!==null&&endDate<startDate)throw Error('Controleer de geldigheidsdatums');
@@ -40,17 +54,18 @@ export function validateDecoration(payload,today=brusselsToday()){
    throw Error('Motivering van 10 tot 500 tekens vereist');
  return {catalogId:payload.catalogId,startDate,endDate,public:payload.public,reason};
 }
+export function canManagePoliceDecorationCatalog(actor){
+ if(!ID.test(actor?.discordId||'')||actor?.uid!=='discord:'+actor.discordId||
+    actor.portalTechnicalMode===true)return false;
+ return Boolean(actor?.departments?.includes('politie')&&
+    actor?.dossierNativeDepartments?.includes('politie')&&
+    actor?.dossierAllowedDepartments?.includes('politie')&&
+    ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
+    ['officierenkader','korpsleiding'].includes(actor?.role));
+}
 export function canManagePoliceDecoration(actor,subject){
  if(!subject||subject.dept!=='politie'||!validPersonnelKey('politie',subject.personId)||
-    !ID.test(actor?.discordId||'')||actor.uid!=='discord:'+actor.discordId||
-    actor.portalTechnicalMode===true)return false;
- // Board is NEVER an independent write grant. Officer appointment and
- // native Police service dossier scope must be independently verified.
- if(!actor?.departments?.includes('politie')||
-    !actor?.dossierNativeDepartments?.includes('politie')||
-    !actor?.dossierAllowedDepartments?.includes('politie')||
-    !['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))||
-    !['officierenkader','korpsleiding'].includes(actor.role))return false;
+    !canManagePoliceDecorationCatalog(actor))return false;
  return canReadPersonnelSubject(actor,subject)&&canEditPersonnel(actor,subject);
 }
 export const awardKey=(dept,id)=>validPersonnelKey(dept,id)?dept+'_'+id:null;
@@ -58,16 +73,16 @@ export function isDecorationActive(entry,today=brusselsToday()){
  return Boolean(entry&&!entry.revokedAt&&validDate(entry.startDate)&&entry.startDate<=today&&
    (!entry.endDate||validDate(entry.endDate)&&entry.endDate>=today));
 }
-export function publicDecorations(entries,today=brusselsToday()){
+export function publicDecorations(entries,today=brusselsToday(),extras=new Map()){
  return (Array.isArray(entries)?entries:[])
-  .filter(a=>a?.public===true&&isDecorationActive(a,today)&&CATALOG_BY_ID.has(a.catalogId))
-  .sort((a,b)=>CATALOG_BY_ID.get(a.catalogId).priority-CATALOG_BY_ID.get(b.catalogId).priority)
-  .slice(0,30).map(a=>({...CATALOG_BY_ID.get(a.catalogId)}));
+  .filter(a=>a?.public===true&&isDecorationActive(a,today)&&lookupCatalog(a.catalogId,extras))
+  .sort((a,b)=>lookupCatalog(a.catalogId,extras).priority-lookupCatalog(b.catalogId,extras).priority)
+  .slice(0,30).map(a=>({...lookupCatalog(a.catalogId,extras)}));
 }
-export function manageDecorations(entries,today=brusselsToday()){
- return (Array.isArray(entries)?entries:[]).filter(a=>a&&CATALOG_BY_ID.has(a.catalogId))
+export function manageDecorations(entries,today=brusselsToday(),extras=new Map()){
+ return (Array.isArray(entries)?entries:[]).filter(a=>a&&lookupCatalog(a.catalogId,extras))
   .map(a=>({id:a.id,catalogId:a.catalogId,
-    label:CATALOG_BY_ID.get(a.catalogId).label,public:a.public===true,
+    label:lookupCatalog(a.catalogId,extras).label,public:a.public===true,
     startDate:a.startDate,endDate:a.endDate||null,reason:a.reason,
     state:a.revokedAt?'ingetrokken':isDecorationActive(a,today)?'actief':
        a.startDate>today?'gepland':'verlopen',revokedAt:a.revokedAt||null}))

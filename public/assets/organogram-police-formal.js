@@ -86,7 +86,14 @@
   const index=spriteOrder.indexOf(grade.key);
   if(index<0){container.append(drawing(grade));return}
   container.classList.add('bpd-photo-rank');
-  container.style.setProperty('--bpd-grade-y',(100*index/9).toFixed(3)+'%');
+  container.style.setProperty('--bpd-rank-top',String(-100*index)+'%');
+  // A dedicated image element guarantees the correct row is rendered on
+  // the tiny chest patch instead of relying on browser background rounding.
+  const art=document.createElement('img');
+  art.src='/assets/bpd-belgian-police-grade-reference.webp';
+  art.alt='';art.loading='lazy';art.decoding='async';
+  art.className='bpd-insignia-sprite';
+  container.append(art);
  }
  function makeBadge(person,large=false){
   const grade=gradeFor(person);
@@ -138,6 +145,18 @@
       for(let x=x0;x<x1;x++){
        const p=(y*w+x)*4;
        v[p]=cloth[0];v[p+1]=cloth[1];v[p+2]=cloth[2];
+      }
+     }
+     // The left nameplate is SILVER in all cadres, including Korpsleiding.
+     // Only its original ochre pixel accents are recoloured, not the coat.
+     for(let y=Math.floor(h*137/255);y<Math.ceil(h*172/255);y++){
+      for(let x=Math.floor(w*36/240);x<Math.ceil(w*97/240);x++){
+       const p=(y*w+x)*4,r=v[p],g=v[p+1],bb=v[p+2];
+       if(r>75&&g>55&&r>g*1.05&&g>bb*1.08){
+        const lum=Math.round(r*.30+g*.56+bb*.14);
+        v[p]=Math.min(255,lum+8);v[p+1]=Math.min(255,lum+15);
+        v[p+2]=Math.min(255,lum+24);
+       }
       }
      }
      // Lower cadres use silver cord, collar, necklace and cuff details.
@@ -207,6 +226,16 @@
   image.decoding='async';
   image.draggable=false;
   outer.append(image);
+  // Replacement nameplate sits inside the original rectangular pocket label.
+  // Only the nameplate details change from ochre/gold to silver.
+  const nameplate=document.createElement('span');
+  nameplate.className='bpd-silver-nameplate';
+  nameplate.setAttribute('aria-hidden','true');
+  const plateText=document.createElement('span');
+  plateText.className='bpd-nameplate-text';
+  plateText.textContent=String(person.name||'POLITIE').trim().slice(0,16);
+  nameplate.append(plateText);
+  outer.append(nameplate);
   // Keep identical geometry across all four shoulder variants.
   // Decorations and rank patches remain separate and untouched.
   void preparedUniform(trim).then(src=>{if(src&&image.src!==src)image.src=src});
