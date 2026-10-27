@@ -249,7 +249,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
  let auth=null,authModule=null,accessGeneration=0,internalVisible=false,allowedDepartments=[];
  const demo=[
   {dept:'politie',name:'Noor Vermeulen',call:'900',rank:'Eerste hoofdcommissaris',status:'Actief',specialties:['Korpsleiding','Beleidsvoering'],awards:['Dienstmedaille']},
-  {dept:'politie',name:'Arno Claes',call:'920',rank:'Commissaris',status:'Actief',specialties:['Officierenkader'],awards:['Eervolle vermelding']},
+  {dept:'politie',name:'Arno Claes',call:'920',rank:'Aspirant-commissaris',status:'Actief',specialties:['Officierenkader'],awards:['Eervolle vermelding']},
   {dept:'politie',name:'Milan Dubois',call:'701',rank:'Hoofdinspecteur',status:'Actief',specialties:['Dispatch','RAGO'],awards:[]},
   {dept:'politie',name:'Lena Janssens',call:'610',rank:'Aspirant-hoofdinspecteur',status:'Actief',specialties:['Motard'],awards:[]},
   {dept:'politie',name:'Elias Peeters',call:'520',rank:'Eerste inspecteur',status:'Actief',specialties:['K-9','Prioritair rijden'],awards:['Uitstekende dienst']},
@@ -344,21 +344,29 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
     ({label,short,stripes,leader,medical});
   if(dept==='politie'){
    const n=policeNumber(person.call);
-   if(n===900||n===910||/hoofdcommissaris|korpschef|\b1-hcp\b|\b1-cp\b/.test(rank))
-    return out('Korpsleiding','KL',4,true);
-   if(n!==null&&n>=920&&n<=999||/commissaris|officierenkader/.test(rank))
-    return out('Officierenkader','OFF',3,true);
+   if(n===900)return out('Eerste hoofdcommissaris','1-HCP',4,true);
+   if(n===910)return out('Eerste commissaris','1-CP',3,true);
+   if(n===920||n===930)return out('Aspirant-commissaris','A-CP',1,true);
+   if(/eerste hoofdcommissaris|\b1-hcp\b/.test(rank))
+    return out('Eerste hoofdcommissaris','1-HCP',4,true);
+   if(/eerste commissaris|\b1-cp\b/.test(rank))
+    return out('Eerste commissaris','1-CP',3,true);
+   if(/aspirant.commissaris|\ba-cp\b/.test(rank))
+    return out('Aspirant-commissaris','A-CP',1,true);
+   if(/hoofdcommissaris|korpschef/.test(rank))
+    return out('Hoofdcommissaris','HCP',3,true);
+   if(/commissaris|officierenkader/.test(rank))
+    return out('Commissaris','CP',2,true);
    if(n!==null&&n>=800&&n<900)return out('Eerste hoofdinspecteur','1-HINP',3);
    if(n!==null&&n>=700&&n<800)return out('Hoofdinspecteur','HINP',2);
    if(n!==null&&n>=600&&n<700)return out('Aspirant-hoofdinspecteur','A-HINP',1);
    if(n!==null&&n>=500&&n<600)return out('Eerste inspecteur','1-INP',3);
    if(n!==null&&n>=400&&n<500)return out('Inspecteur','INP',2);
    if(n!==null&&n>=300&&n<400)return out('Aspirant-inspecteur','A-INP',1);
-   if(n!==null&&n>=200&&n<300)return out('Agentenkader · vast','AP',2);
-   if(n!==null&&n>=100&&n<200)return out('Agentenkader · tijdelijk','T-AP',1);
+   if(n!==null&&n>=100&&n<300)return out('Agent van politie','AP',2);
    if(/hoofdinspecteur/.test(rank))return out('Middenkader','HINP',2);
    if(/inspecteur/.test(rank))return out('Basiskader','INP',2);
-   if(/agent van politie|\bap\b/.test(rank))return out('Agentenkader','AP',1);
+   if(/agent van politie|\bap\b/.test(rank))return out('Agent van politie','AP',2);
    return out('Graad onbekend','POL',0);
   }
   if(dept==='brandweer'){
@@ -519,7 +527,23 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
  };
  const serviceLabel=dept=>services.find(s=>s.id===dept)?.title||'Onbekend';
  const serviceIcon=dept=>services.find(s=>s.id===dept)?.icon||'👤';
- const rankName=x=>String(x.rank||'Functie nog niet bekend').trim()||'Functie nog niet bekend';
+ // BelgiumPD-specific display grade, NOT an authorization source.
+ const policeGradeByCall=call=>{
+  const n=policeNumber(call);
+  if(n===900)return 'Eerste hoofdcommissaris';
+  if(n===910)return 'Eerste commissaris';
+  if(n===920||n===930)return 'Aspirant-commissaris';
+  if(n!==null&&n>=800&&n<900)return 'Eerste hoofdinspecteur';
+  if(n!==null&&n>=700&&n<800)return 'Hoofdinspecteur';
+  if(n!==null&&n>=600&&n<700)return 'Aspirant-hoofdinspecteur';
+  if(n!==null&&n>=500&&n<600)return 'Eerste inspecteur';
+  if(n!==null&&n>=400&&n<500)return 'Inspecteur';
+  if(n!==null&&n>=300&&n<400)return 'Aspirant-inspecteur';
+  if(n!==null&&n>=100&&n<300)return 'Agent van politie';
+  return null;
+ };
+ const rankName=x=>x.dept==='politie'&&policeGradeByCall(x.call)||
+  String(x.rank||'Functie nog niet bekend').trim()||'Functie nog niet bekend';
  const allowedService=dept=>allowedDepartments.includes(dept);
  function clearInternal(){
   ++accessGeneration;
@@ -628,7 +652,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   const defs=node('dl','kv');
   for(const [k,v] of [
    ['Roepnummer',person.call||'—'],['Hulpdienst',serviceLabel(person.dept)],
-   ['Rang / functie',rankName(person)],['Status',person.status||'Niet vermeld'],
+   ['BelgiumPD-graad',rankName(person)],['Status',person.status||'Niet vermeld'],
    ['Niveau',tier(person)+' (indicatief)'],
    ['Uniformillustratie',uniformGrade(person).label+' · geen persoonlijke foto']
   ]){defs.append(node('dt','',k),node('dd','',v));}
