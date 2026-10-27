@@ -194,33 +194,24 @@
       }
      }
      ctx.putImageData(pixels,0,0);
-     // Gouden schouderstukken van het basismodel uitsluitend voor 1-CP/1-HCP.
-     // Officieren A-CP/CP: dunne gouden omranding.
-     // Middenkader: uitsluitend een haarfijne zilveren bovenbies.
-     // Basis- en agentenkader: geen schouderband of omranding.
-     if(trim!=='gold-thick'){
-      const scaleX=w/240,scaleY=h/255;
-      const polygons=[
-       [[0,40],[22,35],[29,57],[5,64]],
-       [[217,35],[240,40],[235,64],[210,57]]
-      ];
-      ctx.fillStyle='#1d3659';
-      ctx.strokeStyle=trim==='gold-thin'?'#ebc66e':'#d0deeb';
-      ctx.lineWidth=Math.max(.65,scaleX*(trim==='gold-thin'?1.15:.65));
-      for(const pts of polygons){
-       ctx.beginPath();
-       pts.forEach(([x,y],i)=>i?ctx.lineTo(x*scaleX,y*scaleY):
-         ctx.moveTo(x*scaleX,y*scaleY));
-       ctx.closePath();ctx.fill();
-       if(trim==='gold-thin')ctx.stroke();
-       if(trim==='silver-thin'){
-        // Only the upper seam: NO filled silver epaulette or outlined square.
-        ctx.beginPath();
-        ctx.moveTo(pts[0][0]*scaleX,pts[0][1]*scaleY);
-        ctx.lineTo(pts[1][0]*scaleX,pts[1][1]*scaleY);
-        ctx.stroke();
-       }
-      }
+     // All grades (including 900/910) must lose the OLD golden square
+     // epaulettes baked into the original jacket illustration. Restore the
+     // surrounding navy fabric in a shaped area, with a notch at left to
+     // preserve the genuine shoulder cord. Then a slim SVG band is drawn
+     // OVER this cleaned material in portrait coordinates.
+     // These coordinates come from the 720×765 uniform reference.
+     const scaleX=w/720,scaleY=h/765;
+     const cleanupPolygons=[
+      [[0,119],[75,103],[91,183],[42,190],[28,168],[22,141],[0,141]],
+      [[635,101],[719,120],[719,184],[643,195],[612,117]]
+     ];
+     ctx.fillStyle='#1c3761';
+     for(const pts of cleanupPolygons){
+      ctx.beginPath();
+      pts.forEach(([x,y],i)=>i?ctx.lineTo(x*scaleX,y*scaleY):
+        ctx.moveTo(x*scaleX,y*scaleY));
+      ctx.closePath();
+      ctx.fill();
      }
      resolve(canvas.toDataURL('image/webp',.87));
     }catch(_){resolve(BASE)}
@@ -230,6 +221,44 @@
   });
   preparedUniforms.set(trim,pending);
   return pending;
+ }
+ // Narrow, lengthwise shoulder seams on TOP of the garment, never
+ // freestanding square patches. Sized in the same reference coordinates
+ // as the underlying 720x765 Belgian formal uniform.
+ function makeShoulderTrim(trim){
+  const thickness={
+   'gold-thick':10,'gold-thin':5,'silver-thin':3
+  }[trim]||0;
+  if(!thickness)return null; // base and agent cadres have bare shoulders
+  const gold=trim.startsWith('gold-');
+  const metal=gold?'#dbb55d':'#bfcdda';
+  const light=gold?'#f8dc9a':'#f0f5fa';
+  const dark=gold?'#9b772f':'#778b9d';
+  const wrap=document.createElement('span');
+  wrap.className='bpd-shoulder-trim';
+  wrap.setAttribute('aria-hidden','true');
+  wrap.dataset.trim=trim;
+  const svg=svgEl('svg',{viewBox:'0 0 720 765',
+   preserveAspectRatio:'none',focusable:'false'});
+  function band(ax,ay,bx,by){
+   // Four vertices: a tapered sewn strip extending front-to-back.
+   const x2=bx,y2=by+thickness,x1=ax,y1=ay+thickness;
+   svg.append(svgEl('path',{
+    d:'M'+ax+' '+ay+' L'+bx+' '+by+
+      ' L'+x2+' '+y2+' L'+x1+' '+y1+' Z',
+    fill:metal,stroke:dark,'stroke-width':'.75',
+    'stroke-linejoin':'round'
+   }));
+   svg.append(svgEl('path',{
+    d:'M'+(ax+1)+' '+(ay+1)+' L'+(bx-1)+' '+(by+1),
+    fill:'none',stroke:light,'stroke-width':'.9',
+    'stroke-linecap':'round',opacity:'.88'
+   }));
+  }
+  band(20,132,81,111); // left shoulder, close to cord attachment
+  band(639,111,700,132); // right shoulder, same perspective
+  wrap.append(svg);
+  return wrap;
  }
  function nameplateData(person){
   const name=String(person?.name||'NAAM ONBEKEND').trim().slice(0,64)||'NAAM ONBEKEND';
@@ -296,6 +325,8 @@
   image.decoding='async';
   image.draggable=false;
   outer.append(image);
+  const shoulder=makeShoulderTrim(trim);
+  if(shoulder)outer.append(shoulder);
   // BelgiumPD nameplate is shared by real staff cards and the fictitious
   // demo. Always derive both fields from the CURRENT public roster entry.
   const currentNameplate=makeNameplate(person);

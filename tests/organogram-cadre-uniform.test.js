@@ -35,6 +35,19 @@ test('shoulder trim: heavy gold 900/910, thin gold officer, hairline silver midd
   const rendered=p.makePortrait(person);
   assert.equal(rendered.dataset.trim,trim,call);
   assert.ok(rendered.children.some(x=>x.className.includes('bpd-chest-insignia')),call);
+  const seams=rendered.children.filter(x=>x.className==='bpd-shoulder-trim');
+  assert.equal(seams.length,trim==='silver-none'?0:1,'incorrect shoulder trim: '+call);
+  if(seams.length){
+   assert.equal(seams[0].dataset.trim,trim);
+   const vector=seams[0].children[0];
+   assert.equal(vector.tag,'svg');
+   assert.equal(vector.attrs.viewBox,'0 0 720 765');
+   const fabrics=vector.children.filter(x=>x.tag==='path'&&x.attrs.fill!=='none');
+   assert.equal(fabrics.length,2,'one long band per shoulder for '+call);
+   const xSpan=x=>{const m=String(x.attrs.d).match(/M(\d+) (\d+) L(\d+) (\d+)/);
+    assert.ok(m);return Math.abs(Number(m[3])-Number(m[1]));};
+   assert.ok(fabrics.every(x=>xSpan(x)>=60),'bands must be long, not squares');
+  }
  }
  assert.equal(p.trimFor(p.gradeFor({dept:'politie',call:'TEST-X',rank:'Commissaris van Politie'})),'gold-thin');
 });
@@ -50,9 +63,9 @@ test('ribbons, insignia, medals are distinct ordered elements, no broad rectangu
  const out=p.makePortrait(person,true);
  assert.equal(out.dataset.trim,'silver-thin');
  assert.deepEqual([...out.children].map(x=>x.className),
-  ['','bpd-personal-nameplate','bpd-uniform-ribbons','bpd-chest-insignia bpd-vector-rank','bpd-uniform-medals']);
- assert.equal(out.children[2].children.length,4);
- assert.equal(out.children[4].children.length,3);
+  ['','bpd-shoulder-trim','bpd-personal-nameplate','bpd-uniform-ribbons','bpd-chest-insignia bpd-vector-rank','bpd-uniform-medals']);
+ assert.equal(out.children[3].children.length,4);
+ assert.equal(out.children[5].children.length,3);
  const noAwards=p.makePortrait({dept:'politie',call:'300',awards:[]});
  assert.equal(noAwards.children.length,3);
  assert.match(noAwards.children[1].className,/bpd-personal-nameplate/);
@@ -71,13 +84,17 @@ test('uniform is presentation-only; granting and expiring retain server policy',
  assert.match(backend,/canManagePoliceDecoration/);
 });
 
-test('silver-only lower cadre details preserve the clean bare shoulders',()=>{
+test('narrow shoulder bands replace previous square or outlined epaulettes',()=>{
  const source=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
+ assert.match(source,/const cleanupPolygons=\[/);
+ assert.match(source,/const shoulder=makeShoulderTrim\(trim\)/);
+ assert.match(source,/if\(shoulder\)outer\.append\(shoulder\)/);
  assert.match(source,/trim==='silver-thin'\|\|trim==='silver-none'/);
- assert.match(source,/if\(trim==='silver-thin'\)\{/);
- assert.match(source,/if\(trim==='gold-thin'\)ctx\.stroke\(\)/);
- assert.match(source,/ctx\.moveTo\(pts\[0\]\[0\]\*scaleX,pts\[0\]\[1\]\*scaleY\)/);
- // Base and agent shoulder polygons must be filled with navy, never
- // stroked in silver. The only silver stroke branch is middle cadre.
- assert.doesNotMatch(source,/trim==='silver-none'\)\s*ctx\.stroke/);
+ assert.match(source,/const thickness=\{/);
+ assert.doesNotMatch(source,/if\(trim!=='gold-thick'\)/);
+ assert.doesNotMatch(source,/if\(trim==='gold-thin'\)ctx\.stroke/);
+ assert.match(css,/\.bpd-police-formal>\.bpd-shoulder-trim/);
+ const page=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
+ assert.match(page,/shoulder-bands-20261027/);
 });
