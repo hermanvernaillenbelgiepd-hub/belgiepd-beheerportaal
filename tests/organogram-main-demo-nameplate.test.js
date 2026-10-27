@@ -22,7 +22,7 @@ function uniform(){
  runInNewContext(js,env,{filename:'organogram-police-formal.js'});
  return env.window.BPDPoliceUniform;
 }
-test('MAIN regular organogram: name in black box, BELGIEPD and callsign below',()=>{
+test('MAIN uniform: name above a silver line, BELGIEPD and callsign below, no nested name box',()=>{
  const ui=uniform();
  const person={dept:'politie',name:'Thijs',call:'900'};
  const plate=ui.makeNameplate(person,true);
@@ -54,18 +54,20 @@ test('promotion, callsign and name changes dynamically update the nameplate and 
  assert.equal(ui.makeNameplate(after).children[1].children[0].children[0].textContent,'Nieuwe Naam');
  assert.notEqual(ui.gradeFor(before).key,ui.gradeFor(after).key);
 });
-test('MAIN page shows enlarged nameplate in both real and demo views',()=>{
+test('MAIN page shows one nameplate on the uniform and no redundant detail preview',()=>{
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
  const style=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
- assert.match(html,/get\('demo'\)==='naamplaat'/);
  assert.match(html,/makePortrait\(person,large\)/);
- assert.match(html,/if\(person\.dept==='politie'\)/);
- assert.match(html,/viewState\.demo\?'Naamplaat · FICTIEF VOORBEELD':'Naamplaat · BelgiumPD'/);
- assert.match(html,/makeNameplate\(person,true\)/);
- assert.match(html,/!internalVisible&&!demoNameplateRequested/);
- assert.match(style,/\.bpd-nameplate-zoom/);
+ assert.doesNotMatch(html,/bpd-nameplate-preview/);
+ assert.doesNotMatch(html,/makeNameplate\(person,true\)/);
+ assert.match(html,/naambord-zilver-3/);
+ assert.match(style,/\.bpd-personal-nameplate/);
  assert.match(style,/\.bpd-nameplate-stripes/);
  assert.match(style,/\.bpd-nameplate-bottom/);
+ assert.match(style,/\.bpd-nameplate-top\s*\{[^}]*border:0;border-bottom:1px solid #abb7c3/);
+ assert.doesNotMatch(style,/\.bpd-nameplate-zoom/);
+ assert.doesNotMatch(style,/border:1px solid #283345;background:#03070e/);
+ assert.doesNotMatch(style,/border:1px solid #526277/);
  const inline=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
  assert.ok(inline);
  assert.doesNotThrow(()=>new Function(inline));

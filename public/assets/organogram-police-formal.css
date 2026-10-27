@@ -61,70 +61,50 @@
    instead of hiding the decoration area behind a visible rectangle. */
 
 
-/* MAIN · uitsluitend DEMOWEERGAVE: Belgisch geïnspireerde zilveren textielnaamplaat.
- * Zwart naamvak boven, BELGIEPD - actuele call onder; zilveren diagonalen links.
- * Eén component wordt op borsthoogte en vergroot in de fiche weergegeven. */
-.bpd-personal-nameplate{
+/* Eén donkerblauwe geborduurde BelgiumPD-naamplaat, naar referentiefoto:
+   links zilveren schuine lijnen, naam BOVEN zilveren scheidingslijn,
+   BELGIEPD - actuele roepnummer ONDER die lijn. GEEN binnenvak.
+   Deze plaat vervangt de eerdere aparte naamvak-demonstratie. */
+.bpd-personal-nameplate {
  position:absolute;left:19.4%;top:56.4%;width:22.3%;height:9.1%;z-index:7;
  display:flex;overflow:hidden;isolation:isolate;
- border:1px solid #a7b4c2;border-radius:1px;
- color:#eff4f9;background:#0e1727;
- box-shadow:0 0 0 1px #344a67,0 1px 1px #071322bb;
+ border:1px solid #7e909f;border-radius:1px;
+ color:#cdd5df;background:#0d1421;
+ box-shadow:0 0 0 .5px #28394b,0 1px 1px #071322aa;
  pointer-events:none;container-type:inline-size;
 }
-.bpd-personal-nameplate:before{
- content:"";position:absolute;inset:0;z-index:0;opacity:.20;
- background:repeating-linear-gradient(0deg,#fff1 0 1px,#0002 1px 3px);
+.bpd-personal-nameplate::before {
+ content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+ background:repeating-linear-gradient(0deg,#e6ebf00a 0 1px,#04091522 1px 3px);
 }
-.bpd-nameplate-stripes{
- position:relative;z-index:1;flex:0 0 24%;min-width:0;
- border-right:1px solid #bcc6d0;
- background:repeating-linear-gradient(117deg,#162339 0 17%,
-   #bac7d7 18% 21%,#14213a 22% 34%);
+.bpd-nameplate-stripes {
+ position:relative;z-index:1;flex:0 0 25%;min-width:0;
+ border-right:0;
+ background:
+  repeating-linear-gradient(115deg,
+   #0e1726 0 11%,#aebbc8 12% 14%,#111c2c 15% 24%);
 }
-.bpd-nameplate-copy{
+.bpd-nameplate-copy {
  position:relative;z-index:1;display:flex;flex-direction:column;
- justify-content:stretch;flex:1;min-width:0;padding:1% 1% 2%;
+ justify-content:stretch;flex:1;min-width:0;padding:2% 4% 3% 2%;
+ background:transparent;
 }
-.bpd-nameplate-top{
+.bpd-nameplate-top {
  display:flex;align-items:center;justify-content:center;
- flex:0 0 53%;min-height:0;
- border:1px solid #283345;background:#03070e;overflow:hidden;
+ flex:0 0 50%;min-height:0;min-width:0;overflow:hidden;
+ border:0;border-bottom:1px solid #abb7c3;
+ border-radius:0;background:transparent;box-shadow:none;
 }
-.bpd-nameplate-name{
- color:#f2f7fd;text-align:center;
+.bpd-nameplate-name {
+ color:#d8e0e8;text-align:center;text-shadow:0 0 .3px #e3e9f0;
  white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;
- font:750 clamp(1.6px,6.3cqw,6px)/1.1 system-ui,sans-serif;
+ font:700 clamp(1.6px,6.2cqw,6px)/1.1 system-ui,sans-serif;
 }
-.bpd-nameplate-bottom{
+.bpd-nameplate-bottom {
  display:flex;align-items:center;justify-content:center;
- flex:1;min-height:0;white-space:nowrap;overflow:hidden;
- color:#dce6ef;font:750 clamp(1.3px,5.2cqw,5px)/1.0 system-ui,sans-serif;
- letter-spacing:0;text-shadow:0 .4px 1px #000;
+ flex:1;min-height:0;min-width:0;white-space:nowrap;overflow:hidden;
+ color:#cbd7e2;font:700 clamp(1.3px,4.9cqw,5px)/1 system-ui,sans-serif;
+ letter-spacing:0;text-shadow:0 0 .3px #e3e9f0;
 }
-.bpd-police-formal>.bpd-personal-nameplate{
- position:absolute; /* breast plate coordinates relative to existing uniform */
-}
-.bpd-nameplate-zoom{
- position:relative!important;left:auto!important;top:auto!important;
- width:min(100%,275px)!important;height:auto!important;aspect-ratio:3.1/1;
- margin:7px 0 5px;flex:none;border:2px solid #b6c6d8;border-radius:4px;
- box-shadow:0 2px 6px #0008;pointer-events:auto;
-}
-.bpd-nameplate-zoom .bpd-nameplate-stripes{border-right:2px solid #a5b7c7}
-.bpd-nameplate-zoom .bpd-nameplate-copy{padding:5px 7px 5px 4px}
-.bpd-nameplate-zoom .bpd-nameplate-top{border:1px solid #526277;border-radius:2px}
-.bpd-nameplate-zoom .bpd-nameplate-name{
- font-size:clamp(10px,4cqw,15px);letter-spacing:.03em;text-overflow:ellipsis;
-}
-.bpd-nameplate-zoom .bpd-nameplate-bottom{
- font-size:clamp(9px,3.8cqw,13px);letter-spacing:.03em;
-}
-.bpd-nameplate-preview{border-top:1px solid #375371;padding:10px 0 6px}
-.bpd-nameplate-preview .bpd-preview-heading{
- font-size:11px;font-weight:750;color:#d6eaff;text-transform:uppercase;
-}
-.bpd-nameplate-preview small{display:block;font-size:10px;color:#a9c1dd;margin-top:3px}
-@media(max-width:520px){
- .bpd-nameplate-zoom{width:min(100%,255px)!important}
-}
+/* De plaat staat rechtstreeks op de oorspronkelijke linker borstpositie. */
+.bpd-police-formal>.bpd-personal-nameplate{position:absolute}

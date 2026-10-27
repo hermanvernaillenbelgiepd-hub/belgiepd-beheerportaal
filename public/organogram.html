@@ -164,7 +164,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 @media(max-width:550px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.portrait.large{width:70px;height:84px}.profile-title{align-items:flex-start}}
 
 </style>
-<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=main-naamplaat-demo-1">
+<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=naambord-zilver-3">
 <link rel="stylesheet" href="/assets/organogram-decorations.css?v=5">
 </head>
 <body>
@@ -521,18 +521,6 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    node('p','',serviceLabel(person.dept)+' · '+(person.call||'—')),
    node('p','',rankName(person)));
   heading.append(portrait,info);root.append(heading);
-  // The same nameplate is visible, enlarged, for actual staff and demo
-  // profiles; this page is read-only and never changes personnel records.
-  if(person.dept==='politie'){
-   const sample=node('section','bpd-nameplate-preview');
-   sample.append(node('div','bpd-preview-heading',
-     viewState.demo?'Naamplaat · FICTIEF VOORBEELD':'Naamplaat · BelgiumPD'));
-   const plate=window.BPDPoliceUniform?.makeNameplate(person,true);
-   if(plate)sample.append(plate);
-   sample.append(node('small','',
-    'Naam en roepnummer komen uit de huidige personeelslijst. Na promotie of naamswijziging worden ze automatisch opnieuw opgebouwd.'));
-   root.append(sample);
-  }
   const badge=window.BPDPoliceUniform?.makeBadge(person,true);
   if(badge){
    const row=node('div','bpd-formal-grade');
