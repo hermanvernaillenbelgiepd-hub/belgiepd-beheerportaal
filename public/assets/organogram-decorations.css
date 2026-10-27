@@ -17,58 +17,11 @@
 .bpd-award[data-kind=medal] .bpd-ribbon:before{content:"✦";color:#fff2b8;font-size:10px;text-shadow:0 1px 2px #000c}
 .bpd-award[data-kind=badge] .bpd-ribbon:before{content:"✒";color:#e4e8eb}
 .bpd-no-awards{font-size:10px;color:#a9c3e0}
-/* On the uniform: honour ribbons TOP, official Belgian grade CENTER,
-   hanging medals BOTTOM. No decoration is allowed inside the grade zone. */
-.bpd-uniform-assembly>.bpd-uniform-ribbons{
- position:absolute;z-index:2;left:3%;top:4%;width:94%;height:16%;
- display:flex;justify-content:flex-start;align-items:stretch;gap:3%;
-}
-.bpd-uniform-ribbons>.bpd-ribbon{
- display:block;flex:1 1 0;width:auto;min-width:0;max-width:23.5%;height:100%;
- padding:0;margin:0;border:1px solid #e6d9b075;border-radius:1px;
- box-shadow:0 1px 1px #0d1320aa;
-}
-.bpd-uniform-ribbons>.bpd-ribbon::before{display:none}
-.bpd-uniform-assembly>.bpd-uniform-medals{
- position:absolute;z-index:2;left:3%;top:62%;width:94%;height:36%;
- display:flex;justify-content:center;align-items:flex-start;gap:4%;
-}
-.bpd-uniform-medals>.bpd-hanging-medal{
- display:flex;position:relative;flex:0 1 29%;max-width:29%;height:100%;
- flex-direction:column;align-items:center;justify-content:flex-start;
- filter:drop-shadow(0 1px 1px #0009);
-}
-.bpd-medal-hanger{display:block;width:68%;height:38%;flex:none;
- background:linear-gradient(90deg,#e9c366 0 19%,#731d35 19% 81%,#e9c366 81% 100%);
- border:1px solid #b99c60;box-shadow:inset 0 0 1px #111;}
-.bpd-medal-hanger[data-color=blue],.bpd-medal-hanger[data-color=blue-gold]{
- background:linear-gradient(90deg,#f1c65c 0 19%,#17386c 19% 81%,#f1c65c 81% 100%);}
-.bpd-medal-hanger[data-color=silver]{
- background:linear-gradient(90deg,#dce1e8 0 19%,#27436f 19% 81%,#dce1e8 81% 100%);}
-.bpd-medal-hanger[data-color=gold]{
- background:linear-gradient(90deg,#f1cb7d 0 19%,#b98a3c 19% 81%,#f1cb7d 81% 100%);}
-.bpd-medal-pendant{
- display:flex;align-items:center;justify-content:center;flex:none;
- width:95%;aspect-ratio:1/1;margin-top:-1px;border-radius:50%;
- color:#fff6d9;font-size:clamp(3px,1vw,8px);line-height:1;
- border:1px solid #f7dc91;background:radial-gradient(circle at 32% 24%,#ecce82,#86601c);
- box-shadow:inset 0 0 2px #392616;
-}
-.bpd-hanging-medal[data-catalog=ereteken_rood] .bpd-medal-pendant{
- background:linear-gradient(135deg,#e6b85a,#981f35 35%,#77172e 65%,#c58a44);
- clip-path:polygon(30% 0,70% 0,70% 30%,100% 30%,100% 70%,70% 70%,70% 100%,30% 100%,30% 70%,0 70%,0 30%,30% 30%);
-}
-.bpd-hanging-medal[data-catalog=ereteken_zilver] .bpd-medal-pendant,
-.bpd-hanging-medal[data-catalog=dienstmedaille_zilver] .bpd-medal-pendant{
- border-color:#ddeaf5;background:radial-gradient(circle at 30% 25%,#f4f8fd,#7991a8);
- color:#203449;
-}
-.bpd-hanging-medal[data-catalog=ereteken_zilver] .bpd-medal-pendant{
- clip-path:polygon(30% 0,70% 0,70% 30%,100% 30%,100% 70%,70% 70%,70% 100%,30% 100%,30% 70%,0 70%,0 30%,30% 30%);
-}
-/* The smaller staff tiles retain a legible order rather than scaled trophies. */
-.person .bpd-medal-pendant{font-size:3px;border-width:.5px}
-
+.bpd-uniform-rack{position:absolute;z-index:4;left:37%;top:55%;width:23%;display:flex;gap:1px;align-items:center;
+ pointer-events:none;transform:scale(.92);transform-origin:top left}
+.bpd-uniform-rack .bpd-ribbon{width:10px;height:5px;border-width:.5px;border-radius:0}
+.bpd-uniform-rack .bpd-ribbon:before,.bpd-uniform-rack .bpd-ribbon:after{display:none}
+.portrait.large .bpd-uniform-rack{gap:1px}
 .bpd-awards-control{margin-top:13px;border:1px solid #6182a9;border-radius:8px;padding:9px;background:#122e4a}
 .bpd-awards-control>summary{font-size:11px;font-weight:700;color:#f0f7ff;cursor:pointer}
 .bpd-awards-control label{display:block;font-size:10px;margin:8px 0 3px;color:#bbd4f2}

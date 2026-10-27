@@ -112,22 +112,20 @@
   image.decoding='async';
   image.draggable=false;
   outer.append(image);
-  // One fixed chest area keeps the ordering invariant:
-  // small ribbons ABOVE the Belgian grade plate, hanging medals BELOW.
-  // Its backing also hides the fixed 1-HCP insignia/medal baked into the
-  // original uniform illustration, avoiding unearned honours.
-  const zone=document.createElement('span');
-  zone.className='bpd-uniform-assembly';
-  zone.setAttribute('aria-hidden','true');
-  const rack=window.BPDDecorations?.uniformRack(person.awards);
-  if(rack?.top)zone.append(rack.top);
+  // Replace the original 1-HCP chest insignia completely with a dynamic patch.
   const patch=document.createElement('span');
   patch.className='bpd-chest-insignia';
   patch.setAttribute('aria-hidden','true');
   useBelgianBadgeArtwork(patch,grade);
-  zone.append(patch);
-  if(rack?.bottom)zone.append(rack.bottom);
-  outer.append(zone);
+  outer.append(patch);
+  // Mask the original image's fixed 1-HCP medal; only explicitly assigned
+  // awards may be represented by the removable overlay below.
+  const cover=document.createElement('span');
+  cover.className='bpd-original-medal-mask';
+  cover.setAttribute('aria-hidden','true');
+  outer.append(cover);
+  const rack=window.BPDDecorations?.uniformRack(person.awards);
+  if(rack)outer.append(rack);
   return outer;
  }
  window.BPDPoliceUniform=Object.freeze({gradeFor,makeBadge,makePortrait,asset:BASE});
