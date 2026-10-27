@@ -199,7 +199,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 .rank-badge-text small{font-size:10px;color:#b0c8e7}
 
 </style>
-<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=1">
+<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=nameplate-test-1">
 </head>
 <body>
 <header class="topbar">
@@ -262,7 +262,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   </aside>
  </div>
 </main>
-<script src="/assets/organogram-police-formal.js?v=1"></script>
+<script src="/assets/organogram-police-formal.js?v=nameplate-test-1"></script>
 <script>
 (function(){
  'use strict';
@@ -769,6 +769,14 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    node('p','',serviceLabel(person.dept)+' · '+(person.call||'—')),
    node('p','',rankName(person)));
   heading.append(portrait,info);root.append(heading);
+  if(person.dept==='politie'){
+   const nameplatePreview=node('section','bpd-nameplate-preview');
+   nameplatePreview.append(node('div','bpd-preview-heading','Naamplaat · PROEFVERSIE'));
+   const plate=window.BPDPoliceUniform?.makeNameplate(person,true);
+   if(plate)nameplatePreview.append(plate);
+   nameplatePreview.append(node('small','','Zwart naamvak · zilveren strepen · BELGIEPD - roepnummer. De tekst volgt automatisch naamswijzigingen en promoties.'));
+   root.append(nameplatePreview);
+  }
   const gradeBadge=window.BPDPoliceUniform?.makeBadge(person,true);
   if(gradeBadge){
    const rankBox=node('div','rank-badge-wrap');

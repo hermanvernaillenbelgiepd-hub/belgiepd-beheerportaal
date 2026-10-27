@@ -89,6 +89,41 @@
   badge.append(drawing(grade));
   return badge;
  }
+ // Formal nameplate: identical field mapping for staff tile, personnel card
+ // and zoomed detail. This is presentation-only, never an editable identity.
+ function nameplateData(person){
+  const name=String(person?.name||'NAAM ONBEKEND').trim().slice(0,64)||'NAAM ONBEKEND';
+  const call=String(person?.call||'—').trim().slice(0,24)||'—';
+  return {name,call,bottom:'BELGIEPD - '+call};
+ }
+ function makeNameplate(person,zoom=false){
+  if(person?.dept!=='politie')return null;
+  const details=nameplateData(person);
+  const plate=document.createElement('span');
+  plate.className='bpd-personal-nameplate'+(zoom?' bpd-nameplate-zoom':'');
+  plate.setAttribute('role','img');
+  plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
+  plate.title=details.name+' · '+details.bottom;
+  plate.dataset.call=details.call;
+  const stripes=document.createElement('span');
+  stripes.className='bpd-nameplate-stripes';
+  stripes.setAttribute('aria-hidden','true');
+  const copy=document.createElement('span');
+  copy.className='bpd-nameplate-copy';
+  const top=document.createElement('span');
+  top.className='bpd-nameplate-top';
+  const nametag=document.createElement('span');
+  nametag.className='bpd-nameplate-name';
+  nametag.textContent=details.name;
+  nametag.title=details.name;
+  top.append(nametag);
+  const footer=document.createElement('span');
+  footer.className='bpd-nameplate-bottom';
+  footer.textContent=details.bottom;
+  copy.append(top,footer);
+  plate.append(stripes,copy);
+  return plate;
+ }
  function makePortrait(person,large=false){
   if(person?.dept!=='politie')return null;
   const grade=gradeFor(person);
@@ -104,6 +139,10 @@
   image.decoding='async';
   image.draggable=false;
   outer.append(image);
+  // The silver nameplate is anchored to the ORIGINAL nameplate at breast height.
+  // Nothing in this overlay writes personnel records.
+  const nameplate=makeNameplate(person);
+  if(nameplate)outer.append(nameplate);
   // Replace the original 1-HCP chest insignia completely with a dynamic patch.
   const patch=document.createElement('span');
   patch.className='bpd-chest-insignia';
@@ -112,5 +151,5 @@
   outer.append(patch);
   return outer;
  }
- window.BPDPoliceUniform=Object.freeze({gradeFor,makeBadge,makePortrait,asset:BASE});
+ window.BPDPoliceUniform=Object.freeze({gradeFor,makeBadge,makePortrait,makeNameplate,nameplateData,asset:BASE});
 })();
