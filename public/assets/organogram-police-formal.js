@@ -78,6 +78,14 @@
   }
   return svg;
  }
+ const spriteOrder=['ap','ainp','inp','1inp','ahinp','hinp','1hinp','acp','1cp','1hcp'];
+ function useBelgianBadgeArtwork(container,grade){
+  if(!grade){container.append(drawing(grade));return}
+  const index=spriteOrder.indexOf(grade.key);
+  if(index<0){container.append(drawing(grade));return}
+  container.classList.add('bpd-photo-rank');
+  container.style.setProperty('--bpd-grade-y',(100*index/9).toFixed(3)+'%');
+ }
  function makeBadge(person,large=false){
   const grade=gradeFor(person);
   if(!grade)return null;
@@ -86,7 +94,7 @@
   badge.setAttribute('role','img');
   badge.setAttribute('aria-label','BelgiumPD-graadteken '+grade.label);
   badge.title=grade.abbr+' · '+grade.label;
-  badge.append(drawing(grade));
+  useBelgianBadgeArtwork(badge,grade);
   return badge;
  }
  function makePortrait(person,large=false){
@@ -108,8 +116,16 @@
   const patch=document.createElement('span');
   patch.className='bpd-chest-insignia';
   patch.setAttribute('aria-hidden','true');
-  patch.append(drawing(grade));
+  useBelgianBadgeArtwork(patch,grade);
   outer.append(patch);
+  // Mask the original image's fixed 1-HCP medal; only explicitly assigned
+  // awards may be represented by the removable overlay below.
+  const cover=document.createElement('span');
+  cover.className='bpd-original-medal-mask';
+  cover.setAttribute('aria-hidden','true');
+  outer.append(cover);
+  const rack=window.BPDDecorations?.uniformRack(person.awards);
+  if(rack)outer.append(rack);
   return outer;
  }
  window.BPDPoliceUniform=Object.freeze({gradeFor,makeBadge,makePortrait,asset:BASE});

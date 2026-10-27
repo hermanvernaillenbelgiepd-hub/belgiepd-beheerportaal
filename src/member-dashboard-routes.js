@@ -2,6 +2,7 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
 import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
+import {PERSONNEL_DECORATIONS_COLLECTION,awardKey,publicDecorations} from './personnel-decoration-policy.js';
 
 const discordId=/^\d{15,22}$/;
 const staffRoles=new Set(['basiskader','middenkader','officierenkader','korpsleiding','beheerder']);
@@ -87,7 +88,7 @@ const ORGANOGRAM_BADGES=Object.freeze({
   ambulance:['Basis TR','Medicatie','HELI','Motor','MIP'],
   depannage:['Opleiding DEP2K','Opleiding FAST']
 });
-export function publicOrganogramRoster(rows){
+export function publicOrganogramRoster(rows,decorations=new Map()){
   const seen=new Set(),visible=[];
   for(const p of rows||[]){
     if(!p||!ORGANOGRAM_DEPARTMENTS.has(p.dept)||
@@ -100,9 +101,11 @@ export function publicOrganogramRoster(rows){
       .filter(x=>x&&allowed.includes(x.label)&&
         /^(ja|behaald|voltooid|geslaagd|true|yes)$/i.test(strip(x.value)))
       .slice(0,12).map(x=>({label:x.label,value:'Ja'}));
+    const publicAwards=p.dept==='politie'?
+      publicDecorations(decorations.get(awardKey(p.dept,p.personId))||[]):[];
     visible.push({dept:p.dept,name:strip(p.name).slice(0,90),
       call:strip(p.call).slice(0,24),rank:strip(p.rank).slice(0,95),
-      specialties});
+      specialties,awards:publicAwards});
   }
   visible.sort((a,b)=>a.dept.localeCompare(b.dept,'nl')||
     a.call.localeCompare(b.call,'nl',{numeric:true})||a.name.localeCompare(b.name,'nl'));
@@ -189,8 +192,12 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
   // memberIdentity requires a verified Discord guild identity on EACH request.
   app.get('/api/member/organogram-roster',memberIdentity,async(_req,res)=>{
     try{
-      const snapshot=await getSnapshot();
-      return res.json({records:publicOrganogramRoster(snapshot.data),
+      const [snapshot,decorations]=await Promise.all([
+        getSnapshot(),
+        getFirestore().collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(500).get()
+      ]);
+      const byPerson=new Map(decorations.docs.map(d=>[d.id,d.get('entries')||[]]));
+      return res.json({records:publicOrganogramRoster(snapshot.data,byPerson),
         stale:snapshot.stale,readOnly:true});
     }catch(error){
       console.error('Organogramoverzicht:',error?.code||'bron niet beschikbaar');

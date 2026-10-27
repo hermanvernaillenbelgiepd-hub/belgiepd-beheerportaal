@@ -10,7 +10,7 @@ export const RECORD_LABELS = Object.freeze({
   opleiding:'Opleidingen en resultaten', activiteit:'Dienstactiviteit',
   specialisatiebeperking:'Specialisatiebeperking', naamswijziging:'Naamswijziging',
   promotievoorstel:'Promotievoorstel', personeelsbeweging:'Personeelsbeweging',
-  specialisatiewijziging:'Specialisatiewijziging'
+  specialisatiewijziging:'Specialisatiewijziging', onderscheiding:'Onderscheidingen'
 });
 export const validDiscord = id => /^\d{15,22}$/.test(String(id??''));
 export const allowedDept = (actor,dept) => ['politie','ambulance','brandweer','depannage'].includes(dept) &&

@@ -25,3 +25,11 @@
 .person .identity>.bpd-grade-badge{display:block;margin-top:5px}
 @media(max-width:520px){.person .portrait.bpd-police-formal{width:52px;height:64px}
  .profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{width:95px;height:116px}}
+
+/* Cropped panels from the supplied Belgian police rank reference. */
+.bpd-photo-rank{background-image:url('/assets/bpd-belgian-police-grade-reference.webp');
+ background-repeat:no-repeat;background-size:100% 1000%!important;
+ background-position:0 var(--bpd-grade-y,0%)!important}
+.bpd-photo-rank svg{display:none!important}
+.bpd-original-medal-mask{position:absolute;z-index:4;left:61%;top:69%;
+ width:15%;height:17%;background:#203d64;border-radius:0;pointer-events:none}

@@ -2,6 +2,7 @@ import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
+import {PERSONNEL_DECORATIONS_COLLECTION,CATALOG_BY_ID,expirationDate} from './personnel-decoration-policy.js';
 import {isArchivedTraining} from './training-maintenance.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
@@ -328,7 +329,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       year:'numeric',month:'2-digit',day:'2-digit'});
     const subjectIds=new Set(uniqueIds);
     const movements=new Set(['promotion','demotion','rank_changed',
-      'callsign_changed','name_changed','specialization_changed']);
+      'callsign_changed','name_changed','specialization_changed','award_granted','award_revoked']);
     for(const entry of personnelChanges.docs.slice(0,500)){
       const change=entry.data();
       if(change.dept!==report.dept||!movements.has(change.type)||
@@ -340,12 +341,13 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const person=uniqueSubject(allSubjects,report.dept,change.discordId);
       if(!person)continue;
       const author=allSubjects.find(p=>p.personId===change.actorDiscordId);
-      const category=change.type==='specialization_changed'?
-        'specialisatiewijziging':'personeelsbeweging';
+      const category=change.type.startsWith('award_')?'onderscheiding':
+        change.type==='specialization_changed'?'specialisatiewijziging':'personeelsbeweging';
       const description={
         promotion:'Promotie',demotion:'Degradatie',rank_changed:'Rangwissel',
         callsign_changed:'Roepnummerwijziging',name_changed:'Naamswijziging',
-        specialization_changed:'Specialisatiewijziging'
+        specialization_changed:'Specialisatiewijziging',
+        award_granted:'Onderscheiding toegekend',award_revoked:'Onderscheiding ingetrokken'
       }[change.type];
       const before=String(change.before||'').slice(0,120),
         after=String(change.after||'').slice(0,120),
@@ -365,6 +367,32 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
         registeredBy:{name:author?.name||'Discord-ID '+String(change.actorDiscordId||'onbekend'),
           call:author?.call||''},
         details,source:'bpd_personnel_activity'});
+    }
+    // Expiry is derived on report assembly (Brussels calendar); no destructive cron writes.
+    if(report.dept==='politie'){
+      const awards=await db().collection(PERSONNEL_DECORATIONS_COLLECTION)
+        .where('dept','==','politie').limit(501).get();
+      if(awards.size>500)truncated=true;
+      for(const doc of awards.docs.slice(0,500)){
+        const pid=doc.get('discordId');
+        if(!subjectIds.has(pid))continue;
+        const person=uniqueSubject(allSubjects,'politie',pid);
+        if(!person)continue;
+        for(const award of (Array.isArray(doc.get('entries'))?doc.get('entries'):[])){
+          if(!award?.endDate||!CATALOG_BY_ID.has(award.catalogId))continue;
+          const date=expirationDate(award.endDate);
+          if(!date||date<report.periodStart||date>report.periodEnd||date>today||
+             award.revokedAt&&award.revokedAt.slice(0,10)<=award.endDate)continue;
+          if(resetAt?.toMillis?.()&&Date.parse(date+'T23:59:59Z')<resetAt.toMillis())continue;
+          result.push({id:'decoration-expired:'+award.id,type:'onderscheiding',eventDate:date,
+            subjectDiscordId:pid,subjectNameAtCreation:person.name,
+            subjectCallAtCreation:person.call,
+            registeredBy:{name:'BelgiumPD · automatische geldigheidscontrole',call:''},
+            details:'Tijdelijke onderscheiding verlopen: '+
+              CATALOG_BY_ID.get(award.catalogId).label+' · Einddatum: '+award.endDate,
+            source:'bpd_personnel_decorations'});
+        }
+      }
     }
     const sections=reportSections(result,report.periodStart,report.periodEnd);
     const excludedTestCount=result.filter(e=>isTestRecord(e) && e.eventDate>=report.periodStart && e.eventDate<=report.periodEnd).length;

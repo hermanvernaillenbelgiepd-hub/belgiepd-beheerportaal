@@ -165,6 +165,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 
 </style>
 <link rel="stylesheet" href="/assets/organogram-police-formal.css?v=1">
+<link rel="stylesheet" href="/assets/organogram-decorations.css?v=1">
 </head>
 <body>
 <header class="topbar">
@@ -218,12 +219,15 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
     <p>Observaties, sancties, administratieve wijzigingen, dossieraudit en Discord-ID's worden hier niet getoond. De interne dienstscope verschijnt uitsluitend na een nieuwe servercontrole. Een organogramfunctie is nooit een dossierrecht.</p>
     <a href="/dossiercentrum.html">Bestaand beveiligd dossiercentrum</a>
    </div>
+   <h3>Onderscheidingen en bevoegdheden</h3>
+   <p>Alleen geverifieerde politie-officieren en korpsleiding kunnen voor lagere graden onderscheidingen toekennen of intrekken. Na een einddatum verdwijnen tijdelijke onderscheidingen automatisch; toekenningen en intrekkingen blijven gelogd.</p>
    <h3>Voor de definitieve versie</h3>
    <p>Per persoon één identiteit, dienstgebonden rollen en roepnummers. De leidingrelatie en publieke onderscheiding worden alleen via expliciete, gecontroleerde registratie toegevoegd.</p>
   </aside>
  </div>
 </main>
 <script src="/assets/organogram-police-formal.js?v=1"></script>
+<script src="/assets/organogram-decorations.js?v=1"></script>
 <script>
 (function(){
  'use strict';
@@ -500,6 +504,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
  function displayPerson(person){
   viewState.selected=person;
   const root=$('detail');root.replaceChildren();
+  root.dataset.personKey=String(person.call||'')+'|'+String(person.name||'');
   const heading=node('div','profile-title');
   heading.dataset.dept=person.dept;
   const portrait=createPortrait(person,true);
@@ -533,7 +538,13 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    box.append(chips);root.append(box);
   };
   section('Specialisaties',person.specialties,false);
-  section('Onderscheidingen',person.awards,true);
+  if(window.BPDDecorations)window.BPDDecorations.renderAwards(root,person.awards||[],viewState.demo);
+   else section('Onderscheidingen',person.awards||[],true);
+   if(!viewState.demo&&person.dept==='politie'&&auth?.currentUser){
+    void window.BPDDecorations?.manager(root,person,auth,async()=>{
+      if(auth?.currentUser)await loadDirectory(auth.currentUser,authGeneration);
+    });
+   }
   root.append(node('p','profile-notice',
    viewState.demo?'FICTIEF VOORBEELD: naam, roepnummer, badges en onderscheiding zijn volledig verzonnen.':
    'Voor echte personen toont dit scherm alleen de vrijgegeven openbare basisgegevens.'));
@@ -642,7 +653,13 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
     call:String(r.call||'').slice(0,24),rank:String(r.rank||'').slice(0,95),
     specialties:(Array.isArray(r.specialties)?r.specialties:[])
      .filter(x=>x&&typeof x.label==='string'&&x.value==='Ja')
-     .slice(0,12).map(x=>x.label.slice(0,40)+': Ja')
+     .slice(0,12).map(x=>x.label.slice(0,40)+': Ja'),
+    awards:(Array.isArray(r.awards)?r.awards:[])
+     .filter(x=>x&&typeof x.label==='string'&&
+       ['ribbon','medal','badge'].includes(x.kind)&&typeof x.color==='string')
+     .slice(0,30).map(x=>({id:String(x.id||'').slice(0,60),
+       label:x.label.slice(0,90),kind:x.kind,color:x.color.slice(0,30),
+       priority:Number(x.priority)||999}))
    }));
    directoryPeople.splice(0,directoryPeople.length,...safe);
    realPeople.splice(0,realPeople.length,...safe);
