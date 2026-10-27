@@ -61,12 +61,15 @@
    instead of hiding the decoration area behind a visible rectangle. */
 
 
-/* Schaalbare zilvergeborduurde naamplaat direct op de linkerborst.
-   Naam, scheidingslijn en BELGIEPD - call zijn vectoren (geen pixels). */
+/* Existing uniform's actual stitched left chest plate at 240 x 255.
+   Outer stitched frame: about x=37..94, y=137..168.
+   Only its INNER textile area is replaced, preserving the original border:
+   measured from the uniform reference at 720 x 765: x=128..267,
+   y=430..489. The nameplate is NOT a separate larger panel. */
 .bpd-personal-nameplate{
- position:absolute;left:20%;top:55.3%;width:22.3%;height:8.8%;z-index:7;
+ position:absolute;left:17.778%;top:56.209%;width:19.306%;height:7.712%;z-index:7;
  display:block;overflow:hidden;pointer-events:none;
- border:0;border-radius:1px;background:transparent;
+ border:0;border-radius:0;background:transparent;
 }
 .bpd-personal-nameplate>.bpd-nameplate-vector{
  display:block;width:100%;height:100%;max-width:100%;max-height:100%;

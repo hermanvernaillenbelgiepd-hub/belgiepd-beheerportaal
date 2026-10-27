@@ -63,7 +63,7 @@ test('MAIN page shows one nameplate on the uniform and no redundant detail previ
  assert.match(html,/makePortrait\(person,large\)/);
  assert.doesNotMatch(html,/bpd-nameplate-preview/);
  assert.doesNotMatch(html,/makeNameplate\(person,true\)/);
- assert.match(html,/vector-graden-20261027/);
+ assert.match(html,/stitched-inset-20261027/);
  assert.match(style,/\.bpd-personal-nameplate/);
  assert.match(style,/\.bpd-personal-nameplate>\.bpd-nameplate-vector/);
  assert.doesNotMatch(style,/\.bpd-nameplate-top\s*\{/);
@@ -96,4 +96,23 @@ test('person cards display the grade ON the breast, not as a floating duplicate'
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
  assert.match(html,/btn\.append\(createPortrait\(person\),identity\)/);
  assert.doesNotMatch(html,/if\(badge\)identity\.append\(badge\)/);
+});
+
+test('nameplate uses original stitched frame, no large second black panel',()=>{
+ const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
+ const block=css.match(/\.bpd-personal-nameplate\s*\{([^}]+)\}/)?.[1]||'';
+ for(const [name,expected] of [
+  ['left','17.778%'],['top','56.209%'],['width','19.306%'],['height','7.712%']
+ ]){
+  assert.match(block,new RegExp(name+':'+expected.replace('.','\\.')+';'));
+ }
+ // Existing blue stitched boundary is preserved because the SVG draws
+ // no second rectangular border around the overlay.
+ const start=js.indexOf(' function makeNameplate(');
+ const end=js.indexOf(' function makePortrait(',start);
+ const renderer=js.slice(start,end);
+ assert.match(renderer,/details\.bottom/);
+ assert.doesNotMatch(renderer,/x:1\.2,y:1\.2,width:317\.6/);
+ assert.match(renderer,/x1:90,y1:49,x2:310,y2:49/);
 });

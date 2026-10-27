@@ -249,32 +249,33 @@
   plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
   plate.title=details.name+' · '+details.bottom;
   plate.dataset.call=details.call;
-  // SVG keeps the embroidered silver text and diagonal seams crisp even
-  // when the browser zooms in. One single patch: no nested dark name box.
+  // The original illustrated uniform ALREADY has a sewn nameplate frame.
+  // Paint ONLY inside its existing inner textile opening. Its stitches,
+  // border and blue surrounds remain part of the base uniform illustration.
+  // SVG content is sharp at zoom and follows current name and callsign.
   const svg=svgEl('svg',{viewBox:'0 0 320 100',preserveAspectRatio:'none',
     'aria-hidden':'true',focusable:'false',class:'bpd-nameplate-vector'});
   const add=(tag,attrs)=>{const e=svgEl(tag,attrs);svg.append(e);return e};
-  add('rect',{x:0,y:0,width:320,height:100,fill:'#0d1522'});
-  add('rect',{x:0,y:0,width:80,height:100,fill:'#101b2b'});
+  add('rect',{x:0,y:0,width:320,height:100,fill:'#0f1928'});
+  add('rect',{x:0,y:0,width:80,height:100,fill:'#101a2b'});
   const stroke='#b9c6d4';
   for(let i=0;i<4;i++){
-   const x=i*20-17;
-   add('path',{d:'M'+x+' 100 L'+(x+37)+' 0',fill:'none',
+   const x=i*22-10;
+   add('path',{d:'M'+x+' 100 L'+(x+43)+' 0',fill:'none',
     stroke,'stroke-width':3.5,opacity:'.94'});
   }
-  // Threading and seam borders are deliberately silver, never ochre.
-  add('rect',{x:1.2,y:1.2,width:317.6,height:97.6,fill:'none',
-   stroke:'#b0bdca','stroke-width':2});
-  add('line',{x1:94,y1:50,x2:305,y2:50,stroke,
+  // No drawn external border: it would produce a second nameplate.
+  // Only the inner silver dividing thread belongs to this overlay.
+  add('line',{x1:90,y1:49,x2:310,y2:49,stroke,
    'stroke-width':2.6});
   const name=details.name.length>27?details.name.slice(0,26)+'…':details.name;
   const nameSize=name.length>21?14:name.length>16?17:21;
-  const first=add('text',{x:199,y:37,'text-anchor':'middle',
+  const first=add('text',{x:199,y:34,'text-anchor':'middle',
    'font-family':'system-ui,Segoe UI,Arial,sans-serif',
    'font-size':nameSize,'font-weight':750,
    fill:'#e2ebf5','letter-spacing':'.2'});
   first.textContent=name;
-  const second=add('text',{x:199,y:77,'text-anchor':'middle',
+  const second=add('text',{x:199,y:76,'text-anchor':'middle',
    'font-family':'system-ui,Segoe UI,Arial,sans-serif',
    'font-size':16,'font-weight':750,
    fill:'#d9e3ed','letter-spacing':'.2'});
