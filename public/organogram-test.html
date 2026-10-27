@@ -199,6 +199,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 .rank-badge-text small{font-size:10px;color:#b0c8e7}
 
 </style>
+<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=1">
 </head>
 <body>
 <header class="topbar">
@@ -261,6 +262,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   </aside>
  </div>
 </main>
+<script src="/assets/organogram-police-formal.js?v=1"></script>
 <script>
 (function(){
  'use strict';
@@ -520,6 +522,8 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   }
  }
  function createPortrait(person,large=false){
+  const formal=window.BPDPoliceUniform?.makePortrait(person,large);
+  if(formal)return formal;
   const grade=uniformGrade(person);
   const dept=person.dept;
   const palette={
@@ -765,16 +769,18 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    node('p','',serviceLabel(person.dept)+' · '+(person.call||'—')),
    node('p','',rankName(person)));
   heading.append(portrait,info);root.append(heading);
-  const gradeBadge=makeRankPatch(person);
+  const gradeBadge=window.BPDPoliceUniform?.makeBadge(person,true);
   if(gradeBadge){
    const rankBox=node('div','rank-badge-wrap');
    const label=node('div','rank-badge-text');
    label.append(node('strong','',rankName(person)),
-    node('small','','Belgisch politie-graadteken · visuele referentie'));
+    node('small','','Formeel politie-uniform · graad wisselt automatisch'));
    rankBox.append(gradeBadge,label);
    root.append(rankBox);
   }
-  root.append(node('p','uniform-info','Afbeelding volgens dienst en geregistreerde rang. Gestileerd voorbeelduniform; geen officiële graadkentekens.'));
+  root.append(node('p','uniform-info',person.dept==='politie'?
+   'Formeel politie-uniform volgens jouw voorbeeld · de graad volgt automatisch het roepnummer. Decoraties op het sjabloon zijn illustratief.':
+   'Voorlopige uniformillustratie volgens dienst en functie.'));
   const defs=node('dl','kv');
   for(const [k,v] of [
    ['Roepnummer',person.call||'—'],['Hulpdienst',serviceLabel(person.dept)],
@@ -862,7 +868,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
         node('small','',(person.call||'—')+' · '+rankName(person)));
        if(viewState.demo)identity.append(node('em','demo-tag','VOORBEELD'));
        else identity.append(node('em','',uniformGrade(person).label));
-       const patch=makeRankPatch(person);
+       const patch=window.BPDPoliceUniform?.makeBadge(person);
        if(patch)identity.append(patch);
        btn.append(createPortrait(person),identity);
        btn.addEventListener('click',()=>{

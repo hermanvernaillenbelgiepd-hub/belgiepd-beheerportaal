@@ -1,0 +1,27 @@
+/* Shared formal BelgiumPD Police uniform portrait, TEST/MAIN; visuals only. */
+.portrait.bpd-police-formal{display:block;position:relative;overflow:hidden;
+  border:1px solid #6f8cb0;border-radius:8px;background:#11223d;isolation:isolate;
+  width:60px;height:72px;flex:none}
+.portrait.bpd-police-formal::before,.portrait.bpd-police-formal::after{
+  content:none!important;display:none!important}
+.bpd-police-formal>img{width:100%;height:100%;display:block;object-fit:fill}
+.bpd-police-formal>.bpd-chest-insignia{position:absolute;z-index:3;pointer-events:none;
+  left:59%;top:57%;width:19.6%;height:7.1%;display:block;
+  background:#101826;overflow:hidden}
+.bpd-chest-insignia svg{display:block;width:100%;height:100%}
+.person:has(.bpd-police-formal){min-height:90px}
+.person .portrait.bpd-police-formal{width:60px;height:72px}
+.profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{
+  width:112px;height:132px;border-radius:10px}
+.bpd-grade-badge{display:inline-block;vertical-align:middle;flex:none;
+  width:85px;height:40px;border:1px solid #799bc2;background:#101826;
+  border-radius:5px;overflow:hidden}
+.bpd-grade-badge svg{width:100%;height:100%;display:block}
+.bpd-grade-badge-large{width:133px;height:61px}
+.bpd-formal-grade{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  margin:8px 0;color:#c6dbf6}
+.bpd-formal-grade b{font-size:11px;color:#eff6ff}
+.bpd-formal-grade small{display:block;font-size:10px;color:#aec9eb}
+.person .identity>.bpd-grade-badge{display:block;margin-top:5px}
+@media(max-width:520px){.person .portrait.bpd-police-formal{width:52px;height:64px}
+ .profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{width:95px;height:116px}}
