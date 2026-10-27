@@ -50,7 +50,7 @@ test('ribbons, insignia, medals are distinct ordered elements, no broad rectangu
  const out=p.makePortrait(person,true);
  assert.equal(out.dataset.trim,'silver-thin');
  assert.deepEqual([...out.children].map(x=>x.className),
-  ['','bpd-personal-nameplate','bpd-uniform-ribbons','bpd-chest-insignia bpd-photo-rank','bpd-uniform-medals']);
+  ['','bpd-personal-nameplate','bpd-uniform-ribbons','bpd-chest-insignia bpd-vector-rank','bpd-uniform-medals']);
  assert.equal(out.children[2].children.length,4);
  assert.equal(out.children[4].children.length,3);
  const noAwards=p.makePortrait({dept:'politie',call:'300',awards:[]});

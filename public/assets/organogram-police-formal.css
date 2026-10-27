@@ -9,7 +9,7 @@
    hanging decorations beneath. Each is independent; no opaque chest box. */
 .bpd-police-formal>.bpd-chest-insignia{
  position:absolute;z-index:6;pointer-events:none;display:block;
- left:57.8%;top:56.4%;width:22.1%;height:8.45%;
+ left:57.8%;top:55.4%;width:22.1%;height:8.6%;
  background:#101826;overflow:hidden;border-radius:1px;
  box-shadow:0 0 0 .4px #aab9c4;
 }
@@ -31,15 +31,15 @@
 @media(max-width:520px){.person .portrait.bpd-police-formal{width:57px;height:65px}
  .profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{width:128px;height:139px}}
 
-/* Display the real Belgian police grade row as a clipped image.
-   A proportional sprite works inside both the readable badge and the chest panel. */
-.bpd-photo-rank{position:relative;background:#131d2c!important;isolation:isolate}
-.bpd-photo-rank svg{display:none!important}
-.bpd-photo-rank>.bpd-insignia-sprite{
- position:absolute;z-index:1;left:0;width:100%;height:1000%;
- max-width:none;max-height:none;object-fit:fill;
- top:var(--bpd-rank-top,0%);
- display:block;pointer-events:none;
+/* Resolution-independent BelgiumPD rank graphics.
+   Intrinsic SVG remains sharp at normal size and at browser zoom. */
+.bpd-vector-rank{position:relative;background:#0e1929;overflow:hidden}
+.bpd-vector-rank>.bpd-grade-vector{
+ display:block;width:100%;height:100%;max-width:100%;max-height:100%;
+ shape-rendering:geometricPrecision;
+}
+.bpd-police-formal>.bpd-chest-insignia.bpd-vector-rank{
+ background:#0e1929;box-shadow:0 0 0 .4px #bac6d2;
 }
 .bpd-police-formal>.bpd-silver-nameplate{
  position:absolute;z-index:6;left:19.3%;top:58.6%;width:18.8%;height:5.7%;
@@ -61,50 +61,18 @@
    instead of hiding the decoration area behind a visible rectangle. */
 
 
-/* Eén donkerblauwe geborduurde BelgiumPD-naamplaat, naar referentiefoto:
-   links zilveren schuine lijnen, naam BOVEN zilveren scheidingslijn,
-   BELGIEPD - actuele roepnummer ONDER die lijn. GEEN binnenvak.
-   Deze plaat vervangt de eerdere aparte naamvak-demonstratie. */
-.bpd-personal-nameplate {
- position:absolute;left:19.4%;top:56.4%;width:22.3%;height:9.1%;z-index:7;
- display:flex;overflow:hidden;isolation:isolate;
- border:1px solid #7e909f;border-radius:1px;
- color:#cdd5df;background:#0d1421;
- box-shadow:0 0 0 .5px #28394b,0 1px 1px #071322aa;
- pointer-events:none;container-type:inline-size;
+/* Schaalbare zilvergeborduurde naamplaat direct op de linkerborst.
+   Naam, scheidingslijn en BELGIEPD - call zijn vectoren (geen pixels). */
+.bpd-personal-nameplate{
+ position:absolute;left:20%;top:55.3%;width:22.3%;height:8.8%;z-index:7;
+ display:block;overflow:hidden;pointer-events:none;
+ border:0;border-radius:1px;background:transparent;
 }
-.bpd-personal-nameplate::before {
- content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
- background:repeating-linear-gradient(0deg,#e6ebf00a 0 1px,#04091522 1px 3px);
+.bpd-personal-nameplate>.bpd-nameplate-vector{
+ display:block;width:100%;height:100%;max-width:100%;max-height:100%;
+ shape-rendering:geometricPrecision;
 }
-.bpd-nameplate-stripes {
- position:relative;z-index:1;flex:0 0 25%;min-width:0;
- border-right:0;
- background:
-  repeating-linear-gradient(115deg,
-   #0e1726 0 11%,#aebbc8 12% 14%,#111c2c 15% 24%);
+.bpd-nameplate-zoom{
+ position:relative!important;left:auto!important;top:auto!important;
+ width:min(100%,280px)!important;height:auto!important;aspect-ratio:3.2/1;
 }
-.bpd-nameplate-copy {
- position:relative;z-index:1;display:flex;flex-direction:column;
- justify-content:stretch;flex:1;min-width:0;padding:2% 4% 3% 2%;
- background:transparent;
-}
-.bpd-nameplate-top {
- display:flex;align-items:center;justify-content:center;
- flex:0 0 50%;min-height:0;min-width:0;overflow:hidden;
- border:0;border-bottom:1px solid #abb7c3;
- border-radius:0;background:transparent;box-shadow:none;
-}
-.bpd-nameplate-name {
- color:#d8e0e8;text-align:center;text-shadow:0 0 .3px #e3e9f0;
- white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;
- font:700 clamp(1.6px,6.2cqw,6px)/1.1 system-ui,sans-serif;
-}
-.bpd-nameplate-bottom {
- display:flex;align-items:center;justify-content:center;
- flex:1;min-height:0;min-width:0;white-space:nowrap;overflow:hidden;
- color:#cbd7e2;font:700 clamp(1.3px,4.9cqw,5px)/1 system-ui,sans-serif;
- letter-spacing:0;text-shadow:0 0 .3px #e3e9f0;
-}
-/* De plaat staat rechtstreeks op de oorspronkelijke linker borstpositie. */
-.bpd-police-formal>.bpd-personal-nameplate{position:absolute}

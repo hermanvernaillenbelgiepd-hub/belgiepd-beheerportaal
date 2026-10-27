@@ -57,10 +57,10 @@ test('portret toont borstgraad en zilveren naamplaat; upload is geen ongeauthent
  const ui=readFileSync(new URL('../public/assets/organogram-decorations.js',import.meta.url),'utf8');
  const backend=readFileSync(new URL('../src/personnel-decoration-routes.js',import.meta.url),'utf8');
  const roster=readFileSync(new URL('../src/member-dashboard-routes.js',import.meta.url),'utf8');
- assert.match(uniform,/bpd-insignia-sprite/);
+ assert.match(uniform,/bpd-grade-vector/);
  assert.match(uniform,/makeNameplate\(person\)/);
- assert.match(uniform,/container\.style\.setProperty\('--bpd-rank-top'/);
- assert.match(style,/\.bpd-photo-rank>\.bpd-insignia-sprite/);
+ assert.match(uniform,/container\.append\(drawing\(grade\)\)/);
+ assert.match(style,/\.bpd-vector-rank>\.bpd-grade-vector/);
  assert.match(style,/\.bpd-personal-nameplate/);
  assert.match(ui,/catalog-upload/);
  assert.match(backend,/app\.post\('\/api\/personnel-awards\/catalog-upload',requireUser/);

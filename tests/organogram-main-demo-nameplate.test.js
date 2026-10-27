@@ -28,9 +28,12 @@ test('MAIN uniform: name above a silver line, BELGIEPD and callsign below, no ne
  const plate=ui.makeNameplate(person,true);
  assert.match(plate.className,/bpd-personal-nameplate/);
  assert.match(plate.className,/bpd-nameplate-zoom/);
- assert.equal(plate.children[0].className,'bpd-nameplate-stripes');
- assert.equal(plate.children[1].children[0].children[0].textContent,'Thijs');
- assert.equal(plate.children[1].children[1].textContent,'BELGIEPD - 900');
+ const art=plate.children[0];
+ assert.equal(art.tag,'svg');
+ assert.equal(art.attrs.viewBox,'0 0 320 100');
+ const labels=art.children.filter(x=>x.tag==='text').map(x=>x.textContent);
+ assert.deepEqual(labels,['Thijs','BELGIEPD - 900']);
+ assert.equal(art.children.filter(x=>x.tag==='line'&&x.attrs.y1==='50').length,1);
 });
 test('all police portraits in real and demo views use the new silver nameplate',()=>{
  const ui=uniform();
@@ -41,8 +44,8 @@ test('all police portraits in real and demo views use the new silver nameplate',
  assert.ok(!classes.includes('bpd-silver-nameplate'));
  assert.ok(classes.includes('bpd-chest-insignia'));
  const nameplate=portrait.children.find(x=>x.className==='bpd-personal-nameplate');
- assert.equal(nameplate.children[1].children[0].children[0].textContent,'Mxxx_');
- assert.equal(nameplate.children[1].children[1].textContent,'BELGIEPD - 660');
+ assert.deepEqual(nameplate.children[0].children.filter(x=>x.tag==='text')
+  .map(x=>x.textContent),['Mxxx_','BELGIEPD - 660']);
  assert.equal(ui.makePortrait({dept:'brandweer',name:'X',call:'ZONE'}),null);
 });
 test('promotion, callsign and name changes dynamically update the nameplate and grade',()=>{
@@ -51,7 +54,7 @@ test('promotion, callsign and name changes dynamically update the nameplate and 
  const after={...before,name:'Nieuwe Naam',call:'710'};
  assert.equal(ui.nameplateData(before).bottom,'BELGIEPD - 620');
  assert.equal(ui.nameplateData(after).bottom,'BELGIEPD - 710');
- assert.equal(ui.makeNameplate(after).children[1].children[0].children[0].textContent,'Nieuwe Naam');
+ assert.equal(ui.makeNameplate(after).children[0].children.filter(x=>x.tag==='text')[0].textContent,'Nieuwe Naam');
  assert.notEqual(ui.gradeFor(before).key,ui.gradeFor(after).key);
 });
 test('MAIN page shows one nameplate on the uniform and no redundant detail preview',()=>{
@@ -60,15 +63,37 @@ test('MAIN page shows one nameplate on the uniform and no redundant detail previ
  assert.match(html,/makePortrait\(person,large\)/);
  assert.doesNotMatch(html,/bpd-nameplate-preview/);
  assert.doesNotMatch(html,/makeNameplate\(person,true\)/);
- assert.match(html,/naambord-zilver-3/);
+ assert.match(html,/vector-graden-20261027/);
  assert.match(style,/\.bpd-personal-nameplate/);
- assert.match(style,/\.bpd-nameplate-stripes/);
- assert.match(style,/\.bpd-nameplate-bottom/);
- assert.match(style,/\.bpd-nameplate-top\s*\{[^}]*border:0;border-bottom:1px solid #abb7c3/);
- assert.doesNotMatch(style,/\.bpd-nameplate-zoom/);
+ assert.match(style,/\.bpd-personal-nameplate>\.bpd-nameplate-vector/);
+ assert.doesNotMatch(style,/\.bpd-nameplate-top\s*\{/);
  assert.doesNotMatch(style,/border:1px solid #283345;background:#03070e/);
- assert.doesNotMatch(style,/border:1px solid #526277/);
  const inline=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
  assert.ok(inline);
  assert.doesNotThrow(()=>new Function(inline));
+});
+
+test('all four first grades have a crisp SVG underline; regular grades do not',()=>{
+ const ui=uniform();
+ for(const [call,underlined] of [
+  ['500',true],['800',true],['910',true],['900',true],
+  ['400',false],['700',false],['920',false],['300',false],
+  ['200',false]
+ ]){
+  const badge=ui.makeBadge({dept:'politie',call});
+  assert.ok(badge);
+  assert.match(badge.className,/bpd-vector-rank/);
+  const svg=badge.children[0];
+  assert.equal(svg.tag,'svg');
+  assert.equal(svg.attrs.viewBox,'0 0 160 70');
+  const rule=svg.children.filter(n=>n.tag==='line'&&n.attrs.y1==='58'&&n.attrs.y2==='58');
+  assert.equal(rule.length,underlined?1:0,'incorrect underline for callsign '+call);
+  // An inserted bitmap would become blurred when browser zoom changes.
+  assert.equal(svg.children.filter(n=>n.tag==='image').length,0);
+ }
+});
+test('person cards display the grade ON the breast, not as a floating duplicate',()=>{
+ const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
+ assert.match(html,/btn\.append\(createPortrait\(person\),identity\)/);
+ assert.doesNotMatch(html,/if\(badge\)identity\.append\(badge\)/);
 });

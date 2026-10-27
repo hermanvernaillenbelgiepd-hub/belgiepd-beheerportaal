@@ -164,7 +164,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 @media(max-width:550px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.portrait.large{width:70px;height:84px}.profile-title{align-items:flex-start}}
 
 </style>
-<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=naambord-zilver-3">
+<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=vector-graden-20261027">
 <link rel="stylesheet" href="/assets/organogram-decorations.css?v=5">
 </head>
 <body>
@@ -227,7 +227,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   </aside>
  </div>
 </main>
-<script src="/assets/organogram-police-formal.js?v=main-naamplaat-live-2"></script>
+<script src="/assets/organogram-police-formal.js?v=vector-graden-20261027"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script>
 (function(){
@@ -619,8 +619,8 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
        identity.append(node('strong','',person.name||'Naam onbekend'),
         node('small','',(person.call||'—')+' · '+rankName(person)));
        if(viewState.demo)identity.append(node('em','demo-tag','VOORBEELD'));
-       const badge=window.BPDPoliceUniform?.makeBadge(person);
-       if(badge)identity.append(badge);
+       // Rank already sits on the chest of the uniform. Avoid a second,
+       // formerly blurred and misplaced badge beside the person's name.
        btn.append(createPortrait(person),identity);
        btn.addEventListener('click',()=>{
         displayPerson(person);

@@ -52,48 +52,74 @@
   return v;
  }
  function drawing(grade){
-  const svg=svgEl('svg',{viewBox:'0 0 128 58','aria-hidden':'true',focusable:'false'});
+  // Vector artwork: do not upscale the old low-resolution 10-row raster.
+  // This is a BelgiumPD drawing following the Belgian symbol conventions.
+  const svg=svgEl('svg',{viewBox:'0 0 160 70',preserveAspectRatio:'xMidYMid meet',
+    'aria-hidden':'true',focusable:'false',class:'bpd-grade-vector'});
   const add=(tag,attrs)=>svg.append(svgEl(tag,attrs));
-  add('rect',{width:128,height:58,fill:'#101826'});
-  add('rect',{x:95,y:0,width:33,height:58,fill:'#152b43'});
-  for(let i=0;i<4;i++)add('path',{d:'M'+(104+i*7)+' 0 L'+(91+i*7)+' 58',stroke:'#ce9b34','stroke-width':2,fill:'none'});
+  add('rect',{x:0,y:0,width:160,height:70,fill:'#0e1929'});
+  add('rect',{x:127,y:0,width:33,height:70,fill:'#182b3f'});
+  for(let k=0;k<5;k++){
+   const x=131+k*7;
+   add('path',{d:'M'+x+' 0 L'+(x-18)+' 70',stroke:'#9eb4c8',
+    'stroke-width':'1.4',fill:'none',opacity:'.95'});
+  }
+  // Subtle sewn edge; every unit is resolution-independent.
+  add('path',{d:'M1 1 H159 V69 H1 Z',stroke:'#8d9daa','stroke-width':.8,
+   fill:'none',opacity:'.75'});
   if(!grade)return svg;
-  const metal=grade.kind==='crown'?'#efca72':'#e5ebf4';
-  if(grade.kind==='bars'){
-   for(const x of [35,65])add('rect',{x,y:11,width:6,height:35,rx:1,fill:metal});
-  }else{
-   const xs=grade.count===1?[47]:grade.count===2?[31,66]:[19,47,75];
-   for(const x of xs){
-    if(grade.kind==='star'){
-     const points=[];
-     for(let k=0;k<10;k++){const a=k*Math.PI/5-Math.PI/2,r=k%2?5:11;
-      points.push((x+Math.cos(a)*r).toFixed(1)+','+((grade.line?22:30)+Math.sin(a)*r).toFixed(1));}
-     add('polygon',{points:points.join(' '),fill:metal,stroke:'#fff','stroke-width':.5});
-    }else{
-     const y=grade.line?24:30;
-     const d='M'+(x-11)+' '+(y+5)+' L'+(x-11)+' '+(y-6)+' L'+(x-5)+' '+(y-1)+' L'+x+' '+(y-12)+' L'+(x+5)+' '+(y-1)+' L'+(x+11)+' '+(y-6)+' L'+(x+11)+' '+(y+5)+' Z';
-     add('path',{d,fill:metal,stroke:'#fffa','stroke-width':.6});
-     add('rect',{x:x-11,y:y+5,width:22,height:5,rx:1,fill:metal});
-    }
+  const metal=grade.kind==='crown'?'#e9c56f':'#e0e8f3';
+  const outline=grade.kind==='crown'?'#9f782a':'#91a5b9';
+  const shadow=grade.kind==='crown'?'#b38b35':'#a8b6c8';
+  function crown(cx,cy){
+   // Crown silhouette with three raised points, jewels and a lined base.
+   const left=cx-11,right=cx+11;
+   add('path',{
+    d:'M'+left+' '+(cy+6)+' L'+(left-1)+' '+(cy-6)+
+      ' L'+(cx-6)+' '+(cy-1)+' L'+cx+' '+(cy-13)+
+      ' L'+(cx+6)+' '+(cy-1)+' L'+(right+1)+' '+(cy-6)+
+      ' L'+right+' '+(cy+6)+' Q'+cx+' '+(cy+10)+' '+left+' '+(cy+6)+' Z',
+    fill:metal,stroke:outline,'stroke-width':1,'stroke-linejoin':'round'});
+   add('path',{d:'M'+(left+2)+' '+(cy+2)+' Q'+cx+' '+(cy+6)+' '+(right-2)+' '+(cy+2),
+     stroke:shadow,'stroke-width':1.2,fill:'none'});
+   for(const bx of [cx-9,cx,cx+9])add('circle',{
+    cx:bx,cy:cy-7,r:1.35,fill:'#f8f5e5',stroke:outline,'stroke-width':.4});
+   add('rect',{x:left,y:cy+7,width:22,height:4,rx:.8,fill:metal,stroke:outline,'stroke-width':.65});
+   add('rect',{x:left+2,y:cy+8.2,width:18,height:.85,fill:shadow});
+  }
+  function star(cx,cy){
+   const pts=[];
+   for(let k=0;k<10;k++){
+    const a=k*Math.PI/5-Math.PI/2,r=k%2?6.7:13;
+    pts.push((cx+Math.cos(a)*r).toFixed(2)+','+(cy+Math.sin(a)*r).toFixed(2));
    }
-   if(grade.line)add('rect',{x:grade.count===3?5:15,y:47,width:grade.count===3?85:66,height:3,rx:1,fill:metal});
+   add('polygon',{points:pts.join(' '),fill:metal,stroke:outline,
+    'stroke-width':1,'stroke-linejoin':'round'});
+   add('circle',{cx,cy,r:2.1,fill:'#fff',opacity:'.75'});
+  }
+  if(grade.kind==='bars'){
+   for(const x of [54,82])add('rect',{x,y:15,width:7,height:39,rx:.8,
+    fill:metal,stroke:outline,'stroke-width':.6});
+  }else{
+   const positions=grade.count===1?[63]:grade.count===2?[44,82]:[31,63,95];
+   for(const cx of positions){
+    if(grade.kind==='star')star(cx,grade.line?27:34);
+    else crown(cx,grade.line?27:33);
+   }
+  }
+  // "Eerste" is always represented by a line UNDER the badges.
+  // In particular: 1-INP, 1-HINP, 1-CP and 1-HCP.
+  if(grade.line){
+   add('line',{x1:grade.count===3?17:25,y1:58,
+    x2:grade.count===3?111:103,y2:58,
+    stroke:metal,'stroke-width':3.1,'stroke-linecap':'square'});
   }
   return svg;
  }
- const spriteOrder=['ap','ainp','inp','1inp','ahinp','hinp','1hinp','acp','1cp','1hcp'];
  function useBelgianBadgeArtwork(container,grade){
-  if(!grade){container.append(drawing(grade));return}
-  const index=spriteOrder.indexOf(grade.key);
-  if(index<0){container.append(drawing(grade));return}
-  container.classList.add('bpd-photo-rank');
-  container.style.setProperty('--bpd-rank-top',String(-100*index)+'%');
-  // A dedicated image element guarantees the correct row is rendered on
-  // the tiny chest patch instead of relying on browser background rounding.
-  const art=document.createElement('img');
-  art.src='/assets/bpd-belgian-police-grade-reference.webp';
-  art.alt='';art.loading='lazy';art.decoding='async';
-  art.className='bpd-insignia-sprite';
-  container.append(art);
+  container.classList.add('bpd-vector-rank');
+  container.dataset.grade=grade?.key||'unknown';
+  container.append(drawing(grade));
  }
  function makeBadge(person,large=false){
   const grade=gradeFor(person);
@@ -223,23 +249,37 @@
   plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
   plate.title=details.name+' · '+details.bottom;
   plate.dataset.call=details.call;
-  const stripes=document.createElement('span');
-  stripes.className='bpd-nameplate-stripes';
-  stripes.setAttribute('aria-hidden','true');
-  const copy=document.createElement('span');
-  copy.className='bpd-nameplate-copy';
-  const top=document.createElement('span');
-  top.className='bpd-nameplate-top';
-  const nametag=document.createElement('span');
-  nametag.className='bpd-nameplate-name';
-  nametag.textContent=details.name;
-  nametag.title=details.name;
-  top.append(nametag);
-  const footer=document.createElement('span');
-  footer.className='bpd-nameplate-bottom';
-  footer.textContent=details.bottom;
-  copy.append(top,footer);
-  plate.append(stripes,copy);
+  // SVG keeps the embroidered silver text and diagonal seams crisp even
+  // when the browser zooms in. One single patch: no nested dark name box.
+  const svg=svgEl('svg',{viewBox:'0 0 320 100',preserveAspectRatio:'none',
+    'aria-hidden':'true',focusable:'false',class:'bpd-nameplate-vector'});
+  const add=(tag,attrs)=>{const e=svgEl(tag,attrs);svg.append(e);return e};
+  add('rect',{x:0,y:0,width:320,height:100,fill:'#0d1522'});
+  add('rect',{x:0,y:0,width:80,height:100,fill:'#101b2b'});
+  const stroke='#b9c6d4';
+  for(let i=0;i<4;i++){
+   const x=i*20-17;
+   add('path',{d:'M'+x+' 100 L'+(x+37)+' 0',fill:'none',
+    stroke,'stroke-width':3.5,opacity:'.94'});
+  }
+  // Threading and seam borders are deliberately silver, never ochre.
+  add('rect',{x:1.2,y:1.2,width:317.6,height:97.6,fill:'none',
+   stroke:'#b0bdca','stroke-width':2});
+  add('line',{x1:94,y1:50,x2:305,y2:50,stroke,
+   'stroke-width':2.6});
+  const name=details.name.length>27?details.name.slice(0,26)+'…':details.name;
+  const nameSize=name.length>21?14:name.length>16?17:21;
+  const first=add('text',{x:199,y:37,'text-anchor':'middle',
+   'font-family':'system-ui,Segoe UI,Arial,sans-serif',
+   'font-size':nameSize,'font-weight':750,
+   fill:'#e2ebf5','letter-spacing':'.2'});
+  first.textContent=name;
+  const second=add('text',{x:199,y:77,'text-anchor':'middle',
+   'font-family':'system-ui,Segoe UI,Arial,sans-serif',
+   'font-size':16,'font-weight':750,
+   fill:'#d9e3ed','letter-spacing':'.2'});
+  second.textContent=details.bottom;
+  plate.append(svg);
   return plate;
  }
  function makePortrait(person,large=false){
