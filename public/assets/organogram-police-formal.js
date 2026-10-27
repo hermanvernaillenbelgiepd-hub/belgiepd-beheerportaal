@@ -54,6 +54,26 @@
  // Each police rank is now one physically separate 512x160 transparent
  // WebP asset. Never crop a tall montage: that caused adjacent badges
  // to leak into the personnel cards at several browser zoom levels.
+ // Normalized bounding boxes (left, top, right, bottom) measured in
+ // each 512x160 transparent source file. Different embroidered frames had
+ // unequal transparent margins, which made the middle/officer badges look
+ // visibly narrower than the basic cadre even with identical CSS sizes.
+ // Scale only their *rendered* pixels into one identical inner frame.
+ const GRADE_ALPHA_BOUNDS=Object.freeze({
+  ap:[3,4,509,156],
+  ainp:[3,6,509,153],
+  inp:[3,6,509,153],
+  '1inp':[31,3,481,157],
+  ahinp:[39,3,472,157],
+  hinp:[30,3,482,157],
+  '1hinp':[27,3,484,157],
+  acp:[37,3,474,157],
+  cp:[28,3,483,156],
+  '1cp':[25,3,487,157],
+  '1hcp':[24,3,487,157]
+ });
+ // Same exterior patch dimensions, embroidered rim and margins for all ranks.
+ const NORMALIZED_GRADE_FRAME=Object.freeze({x:16,y:4,width:480,height:152});
  const GRADE_ASSETS=Object.freeze({
   ap:'/assets/bpd-rank-ap-clean-20261027.webp',
   ainp:'/assets/bpd-rank-ainp-clean-20261027.webp',
@@ -73,9 +93,22 @@
    'aria-hidden':'true',focusable:'false',class:'bpd-grade-vector'});
   const source=grade?GRADE_ASSETS[grade.key]:null;
   if(!source)return svg;
+  const bounds=GRADE_ALPHA_BOUNDS[grade.key];
+  if(!bounds)return svg;
+  const [left,top,right,bottom]=bounds;
+  const frame=NORMALIZED_GRADE_FRAME;
+  const scaleX=frame.width/(right-left);
+  const scaleY=frame.height/(bottom-top);
+  // Keep a single isolated image per grade. No sprite, no neighboring rank:
+  // the source's visible bounding box maps to exactly the same frame for
+  // agent, basic, middle, officer and corps leadership alike.
   svg.append(svgEl('image',{
-   href:source,x:0,y:0,width:512,height:160,
-   preserveAspectRatio:'xMidYMid meet'
+   href:source,
+   x:Number((frame.x-left*scaleX).toFixed(4)),
+   y:Number((frame.y-top*scaleY).toFixed(4)),
+   width:Number((512*scaleX).toFixed(4)),
+   height:Number((160*scaleY).toFixed(4)),
+   preserveAspectRatio:'none'
   }));
   return svg;
  }

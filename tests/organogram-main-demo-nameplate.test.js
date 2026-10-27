@@ -63,7 +63,7 @@ test('MAIN page shows one nameplate on the uniform and no redundant detail previ
  assert.match(html,/makePortrait\(person,large\)/);
  assert.doesNotMatch(html,/bpd-nameplate-preview/);
  assert.doesNotMatch(html,/makeNameplate\(person,true\)/);
- assert.match(html,/individual-grades-20261027/);
+ assert.match(html,/uniform-graden-20261027/);
  assert.match(style,/\.bpd-personal-nameplate/);
  assert.match(style,/\.bpd-personal-nameplate>\.bpd-nameplate-vector/);
  assert.doesNotMatch(style,/\.bpd-nameplate-top\s*\{/);
@@ -95,10 +95,26 @@ test('all police grades load one completely isolated rank image, never a cropped
   const art=svg.children[0];
   assert.equal(art.tag,'image');
   assert.equal(art.attrs.href,'/assets/bpd-rank-'+key+'-clean-20261027.webp');
-  assert.equal(art.attrs.x,'0',call);
-  assert.equal(art.attrs.y,'0',call);
-  assert.equal(art.attrs.width,'512',call);
-  assert.equal(art.attrs.height,'160',call);
+  // The 11 source files contain different transparent margins.
+  // Every displayed embroidered frame must occupy the SAME 480x152 box
+  // inside the same 512x160 SVG for all police cadres.
+  const bounds={
+   ap:[3,4,509,156],ainp:[3,6,509,153],inp:[3,6,509,153],
+   '1inp':[31,3,481,157],ahinp:[39,3,472,157],
+   hinp:[30,3,482,157],'1hinp':[27,3,484,157],
+   acp:[37,3,474,157],cp:[28,3,483,156],
+   '1cp':[25,3,487,157],'1hcp':[24,3,487,157]
+  }[key];
+  const [left,top,right,bottom]=bounds;
+  const scaleX=Number(art.attrs.width)/512;
+  const scaleY=Number(art.attrs.height)/160;
+  const approx=(actual,expected)=>assert.ok(Math.abs(actual-expected)<.02,
+   key+': expected '+expected+', got '+actual);
+  approx(Number(art.attrs.x)+left*scaleX,16);
+  approx(Number(art.attrs.y)+top*scaleY,4);
+  approx((right-left)*scaleX,480);
+  approx((bottom-top)*scaleY,152);
+  assert.equal(art.attrs.preserveAspectRatio,'none',key);
   assetNames.add(art.attrs.href);
   // A single file must be a real photographic badge, not an HTML 404.
   const file=readFileSync(new URL('../public'+art.attrs.href,import.meta.url));
