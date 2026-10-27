@@ -229,6 +229,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 </main>
 <script src="/assets/organogram-police-formal.js?v=uniform-graden-20261027"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
+<script src="/personnel-list-visuals.js"></script>
 <script>
 (function(){
  'use strict';
@@ -606,7 +607,13 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
      head.append(name,node('span','tier-count',members.length+' personen'));
      tierBox.append(head);
      const grid=node('div','people');
-     const sorted=[...members].sort((a,b)=>String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true}));
+     // Police uses the SAME official display order as the personnel list:
+     // highest hundred-series first, ascending calls within that series,
+     // 900 → 910 → 920 → 930 and management call 008 last.
+     // Other services retain their existing presentation order.
+     const sorted=service.id==='politie'&&window.BPDPersonnelVisuals
+      ?window.BPDPersonnelVisuals.sortPersonnelRows(members,'series-desc')
+      :[...members].sort((a,b)=>String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true}));
      let shown=0;const batchSize=16;
      const more=node('button','more');more.type='button';
      const appendBatch=()=>{

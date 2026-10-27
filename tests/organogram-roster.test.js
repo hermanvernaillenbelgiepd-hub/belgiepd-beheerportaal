@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Script} from 'node:vm';
+import {Script,runInNewContext} from 'node:vm';
 import {publicOrganogramRoster} from '../src/member-dashboard-routes.js';
 const id='111111111111111111';
 const sample=['politie','brandweer','ambulance','depannage'].map(dept=>({
@@ -35,4 +35,24 @@ test('Organogramroute vereist Discord-verificatie en bevat geen schrijfacties',(
   const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
   assert.ok(script);
   assert.doesNotThrow(()=>new Script(script));
+});
+
+test('Organogram gebruikt exact de BelgiumPD-reekssortering van de personeelslijst',()=>{
+ const page=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
+ const shared=readFileSync(new URL('../public/personnel-list-visuals.js',import.meta.url),'utf8');
+ assert.match(page,/<script src="\/personnel-list-visuals\.js"><\/script>/);
+ assert.match(page,/window\.BPDPersonnelVisuals\.sortPersonnelRows\(members,'series-desc'\)/);
+ assert.match(page,/service\.id==='politie'/);
+ assert.match(page,/\:\[\.\.\.members\]\.sort/);
+ const context={window:{}};
+ runInNewContext(shared,context);
+ const api=context.window.BPDPersonnelVisuals;
+ const calls=['008','501','720','920','100','300','700','930','900','200','600',
+  '910','500','800','710','400','S-540','210','420'];
+ const rows=calls.map(call=>({dept:'politie',call,name:'Lid '+call}));
+ const sorted=api.sortPersonnelRows(rows,'series-desc').map(x=>x.call);
+ assert.deepEqual([...sorted],
+  ['900','910','920','930','800','700','710','720','600',
+   '500','501','S-540','400','420','300','200','210','100','008']);
+ assert.equal(calls[0],'008','de bronlijst wordt niet gemuteerd');
 });
