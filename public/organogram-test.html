@@ -176,6 +176,28 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 .rankkey{display:inline-flex;align-items:center;gap:4px;margin:6px 0 2px;padding:3px 7px;border:1px solid #56799e;background:#1b3a59;border-radius:6px;color:#dceeff;font-size:10px;font-weight:700}
 @media(prefers-reduced-motion:reduce){.person:hover{transition:none}}
 
+
+/* Distinct Belgian-inspired rank plates — TEST only. */
+.grade-guide{margin:11px 0;border:1px solid #628ec1;border-radius:9px;background:#112c4b;padding:10px}
+.grade-guide[hidden]{display:none!important}
+.grade-guide-title{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.grade-guide-title strong{font-size:12px;color:#eff6ff}
+.grade-guide-title small{font-size:10px;color:#adcaec}
+.grade-gallery{display:flex;overflow-x:auto;gap:8px;padding:0 0 8px;scrollbar-width:thin}
+.grade-gallery-card{display:flex;flex:0 0 118px;flex-direction:column;align-items:center;gap:4px;padding:7px 5px;background:#1d3a5a;border:1px solid #52749e;border-radius:7px}
+.grade-gallery-card strong{font-size:10px}
+.grade-gallery-card small{font-size:9px;color:#a9c5eb;line-height:1.2;text-align:center}
+.rank-patch{display:block;flex:none;width:80px;height:37px;overflow:hidden;border:1px solid #7695b8;border-radius:5px;background:#141d31}
+.rank-patch svg{display:block;width:100%;height:100%}
+.grade-gallery-card .rank-patch{width:96px;height:45px}
+.person .identity .rank-patch{margin-top:5px}
+.person:has(.rank-patch){min-height:100px}
+.rank-badge-wrap{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:8px 0}
+.rank-badge-wrap .rank-patch{width:137px;height:63px;border-color:#c6d7eb}
+.rank-badge-text{display:flex;flex-direction:column;gap:3px}
+.rank-badge-text strong{font-size:11px;color:#f4f8ff}
+.rank-badge-text small{font-size:10px;color:#b0c8e7}
+
 </style>
 </head>
 <body>
@@ -196,6 +218,10 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   <span id="demoWarning" class="demo-warning" hidden>FICTIEVE VOORBEELDDATA · GEEN ECHTE PERSONEN</span>
  </div>
  <div id="metrics" class="metrics" aria-label="Overzicht per hulpdienst"></div>
+ <section id="gradeGuide" class="grade-guide" aria-label="Belgische politiegraden, visueel referentieoverzicht">
+  <div class="grade-guide-title"><strong>NIEUW OP TEST · Belgische politie-graadkentekens</strong><small>Nagetekende visuele referentie; geen officiële uniformfoto</small></div>
+  <div id="gradeGallery" class="grade-gallery"></div>
+ </section>
  <div class="notice" id="status" role="status" aria-live="polite">Openbare personeelslijst laden…</div>
  <div class="layout">
   <section class="card" aria-label="Organogram en dienstkeuze">
@@ -224,7 +250,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
     <p class="scope-disclaimer">De server beslist bij het openen van elke fiche en iedere wijziging opnieuw. Deze proefpagina verleent zelf geen dossier- of schrijfrechten.</p>
    </section>
    <h3>Geüniformeerde profielen</h3>
-   <p>De uniformportretten worden automatisch gekozen uit de geregistreerde dienst, rang en callsign. Ze zijn gestileerd, niet persoonsgebonden en tonen geen officiële graadkentekens. Echte portretfoto’s zijn nog niet gekoppeld.</p>
+   <p>De portretten zijn gestileerde uniformillustraties. <strong>Nieuw op TEST:</strong> de politiekaarten hebben herkenbare Belgische graadtekens met sterren en kronen, opnieuw getekend voor dit organogram. Er worden geen persoonlijke foto’s gebruikt.</p>
    <div class="locked">
     <strong>🔒 Interne laag blijft afgeschermd</strong>
     <p>Observaties, sancties, administratieve wijzigingen, dossieraudit en Discord-ID's worden hier niet getoond. De interne dienstscope verschijnt uitsluitend na een nieuwe servercontrole. Een organogramfunctie is nooit een dossierrecht.</p>
@@ -250,6 +276,9 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
  const demo=[
   {dept:'politie',name:'Noor Vermeulen',call:'900',rank:'Eerste hoofdcommissaris',status:'Actief',specialties:['Korpsleiding','Beleidsvoering'],awards:['Dienstmedaille']},
   {dept:'politie',name:'Arno Claes',call:'920',rank:'Aspirant-commissaris',status:'Actief',specialties:['Officierenkader'],awards:['Eervolle vermelding']},
+  {dept:'politie',name:'Bram Vervoort',call:'910',rank:'Eerste commissaris',status:'Actief',specialties:['Korpsleiding'],awards:[]},
+  {dept:'politie',name:'Celine De Backer',call:'930',rank:'Aspirant-commissaris',status:'Actief',specialties:['Officierenkader'],awards:[]},
+  {dept:'politie',name:'Louise Verstraete',call:'150',rank:'Agent van politie',status:'Actief',specialties:['Radio BM'],awards:[]},
   {dept:'politie',name:'Milan Dubois',call:'701',rank:'Hoofdinspecteur',status:'Actief',specialties:['Dispatch','RAGO'],awards:[]},
   {dept:'politie',name:'Lena Janssens',call:'610',rank:'Aspirant-hoofdinspecteur',status:'Actief',specialties:['Motard'],awards:[]},
   {dept:'politie',name:'Elias Peeters',call:'520',rank:'Eerste inspecteur',status:'Actief',specialties:['K-9','Prioritair rijden'],awards:['Uitstekende dienst']},
@@ -401,6 +430,94 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    return out('Depannage','DEP',1);
   }
   return out('Onbekend','?',0);
+ }
+
+ // These original vector approximations refer to the user-supplied Belgian insignia
+ // guide. They are presentational; server-side dossier access is unchanged.
+ function policeRankMark(person){
+  if(person.dept!=='politie')return null;
+  const grade=policeGradeByCall(person.call);
+  const spec={
+   'Agent van politie':['bars',2,false],
+   'Aspirant-inspecteur':['star',1,false],
+   'Inspecteur':['star',2,false],
+   'Eerste inspecteur':['star',2,true],
+   'Aspirant-hoofdinspecteur':['silverCrown',1,false],
+   'Hoofdinspecteur':['silverCrown',2,false],
+   'Eerste hoofdinspecteur':['silverCrown',2,true],
+   'Aspirant-commissaris':['goldCrown',1,false],
+   'Eerste commissaris':['goldCrown',2,true],
+   'Eerste hoofdcommissaris':['goldCrown',3,true]
+  }[grade];
+  return spec?{label:grade,kind:spec[0],count:spec[1],line:spec[2]}:null;
+ }
+ function makeRankPatch(person){
+  const mark=policeRankMark(person);
+  if(!mark)return null;
+  const ns='http://www.w3.org/2000/svg';
+  const elem=(tag,attrs={})=>{
+   const el=document.createElementNS(ns,tag);
+   for(const [k,v] of Object.entries(attrs))el.setAttribute(k,String(v));
+   return el;
+  };
+  const badge=node('span','rank-patch');
+  badge.setAttribute('role','img');
+  badge.setAttribute('aria-label','Belgisch politie-rangteken, schematische weergave: '+mark.label);
+  badge.title=mark.label;
+  const svg=elem('svg',{viewBox:'0 0 128 58','aria-hidden':'true',focusable:'false'});
+  const add=(tag,attrs)=>svg.append(elem(tag,attrs));
+  add('rect',{width:128,height:58,fill:'#1b2434'});
+  add('rect',{x:90,width:38,height:58,fill:'#25415c'});
+  for(let i=0;i<5;i++)add('path',{d:'M'+(98+i*7)+' 0 L'+(84+i*7)+' 58',
+    stroke:'#779ab7','stroke-width':1.1,opacity:.55,fill:'none'});
+  add('rect',{x:.5,y:.5,width:127,height:57,fill:'none',stroke:'#7789a2','stroke-width':1,opacity:.5});
+  if(mark.kind==='bars'){
+   for(let i=0;i<2;i++)add('rect',{x:32+i*29,y:12,width:6,height:34,rx:1,fill:'#e7e9ed'});
+  }else{
+   const metal=mark.kind==='goldCrown'?'#efcf7c':'#e1e7ee';
+   const xs=mark.count===1?[48]:mark.count===2?[29,66]:[18,46,74];
+   for(const x of xs){
+    if(mark.kind==='star'){
+     const points=[];
+     for(let k=0;k<10;k++){
+      const r=k%2===0?12:5.5,angle=k*Math.PI/5-Math.PI/2;
+      const y=mark.line?22:28;
+      points.push((x+Math.cos(angle)*r).toFixed(1)+','+(y+Math.sin(angle)*r).toFixed(1));
+     }
+     add('polygon',{points:points.join(' '),fill:metal,stroke:'#ffffff','stroke-width':.7});
+    }else{
+     const y=mark.line?22:29;
+     const d='M'+(x-10)+' '+(y+7)+' L'+(x-10)+' '+(y-5)+
+       ' L'+(x-5)+' '+(y-1)+' L'+x+' '+(y-12)+
+       ' L'+(x+5)+' '+(y-1)+' L'+(x+10)+' '+(y-5)+
+       ' L'+(x+10)+' '+(y+7)+' Z';
+     add('path',{d,fill:metal,stroke:'#ffffffb9','stroke-width':.7});
+     add('rect',{x:x-11,y:y+7,width:22,height:5,rx:1,fill:metal});
+     for(const dx of [-10,0,10])add('circle',{cx:x+dx,cy:y+(dx===0?-12:-5),r:1.7,fill:metal});
+    }
+   }
+   if(mark.line)add('rect',{x:mark.count===3?6:13,y:46,width:mark.count===3?82:68,height:3,rx:1,fill:metal});
+  }
+  badge.append(svg);
+  return badge;
+ }
+ function renderGradeGuide(){
+  const guide=$('gradeGuide');
+  guide.hidden=!['alle','politie'].includes(viewState.service);
+  if(guide.hidden)return;
+  const gallery=$('gradeGallery');
+  if(gallery.childElementCount)return;
+  for(const [call,short] of [
+   ['200','AP'],['300','A-INP'],['400','INP'],['500','1-INP'],
+   ['600','A-HINP'],['700','HINP'],['800','1-HINP'],
+   ['920','A-CP'],['910','1-CP'],['900','1-HCP']
+  ]){
+   const card=node('div','grade-gallery-card');
+   const badge=makeRankPatch({dept:'politie',call});
+   if(badge)card.append(badge);
+   card.append(node('strong','',short),node('small','',policeGradeByCall(call)));
+   gallery.append(card);
+  }
  }
  function createPortrait(person,large=false){
   const grade=uniformGrade(person);
@@ -648,6 +765,15 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    node('p','',serviceLabel(person.dept)+' · '+(person.call||'—')),
    node('p','',rankName(person)));
   heading.append(portrait,info);root.append(heading);
+  const gradeBadge=makeRankPatch(person);
+  if(gradeBadge){
+   const rankBox=node('div','rank-badge-wrap');
+   const label=node('div','rank-badge-text');
+   label.append(node('strong','',rankName(person)),
+    node('small','','Belgisch politie-graadteken · visuele referentie'));
+   rankBox.append(gradeBadge,label);
+   root.append(rankBox);
+  }
   root.append(node('p','uniform-info','Afbeelding volgens dienst en geregistreerde rang. Gestileerd voorbeelduniform; geen officiële graadkentekens.'));
   const defs=node('dl','kv');
   for(const [k,v] of [
@@ -688,6 +814,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   $('filters').querySelectorAll('button[data-view]').forEach(b=>
    b.setAttribute('aria-pressed',String(b.dataset.view===viewState.service)));
   renderMetrics();
+  renderGradeGuide();
   $('tree').replaceChildren();
   let visible=0;
   for(const service of selectedServices){
@@ -735,6 +862,8 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
         node('small','',(person.call||'—')+' · '+rankName(person)));
        if(viewState.demo)identity.append(node('em','demo-tag','VOORBEELD'));
        else identity.append(node('em','',uniformGrade(person).label));
+       const patch=makeRankPatch(person);
+       if(patch)identity.append(patch);
        btn.append(createPortrait(person),identity);
        btn.addEventListener('click',()=>{
         displayPerson(person);
