@@ -129,14 +129,13 @@
   return badge;
  }
 
- // Uniform accents follow the verified BelgiumPD display-grade mapping.
- // Operational permissions remain entirely server-side and independent.
- // Distinct shoulder bands. Silver fittings (cord, cuffs, collar, buttons)
- // remain consistent across middle, basic and agent cadres.
+ // Four accepted uniform groups: existing gold epaulettes ONLY for
+ // Korpsleiding; no shoulder overlays for officers, middle, basic or agents.
+ // Gold/silver cords, buttons and collar accents remain cadre-specific.
+ // Display rank does not grant permissions.
  function trimFor(grade){
   if(grade?.key==='1hcp'||grade?.key==='1cp')return 'gold-thick';
-  if(grade?.key==='acp'||grade?.key==='cp')return 'gold-thin';
-  if(['ahinp','hinp','1hinp'].includes(grade?.key))return 'silver-thin';
+  if(grade?.key==='acp'||grade?.key==='cp')return 'gold-none';
   return 'silver-none';
  }
  const preparedUniforms=new Map();
@@ -184,7 +183,7 @@
      // Lower cadres use silver cord, collar, necklace and cuff details.
      // Select yellow/gold pixels only; protect navy cloth, white shirt
      // and burgundy tie from undesired desaturation.
-     if(trim==='silver-thin'||trim==='silver-none')for(let i=0;i<v.length;i+=4){
+     if(trim==='silver-none')for(let i=0;i<v.length;i+=4){
       const r=v[i],g=v[i+1],b=v[i+2];
       if(r>90&&g>75&&r>g*1.04&&g>b*1.10&&r-b>31){
        const light=Math.min(230,Math.round(r*.26+g*.54+b*.20+25));
@@ -194,24 +193,51 @@
       }
      }
      ctx.putImageData(pixels,0,0);
-     // All grades (including 900/910) must lose the OLD golden square
-     // epaulettes baked into the original jacket illustration. Restore the
-     // surrounding navy fabric in a shaped area, with a notch at left to
-     // preserve the genuine shoulder cord. Then a slim SVG band is drawn
-     // OVER this cleaned material in portrait coordinates.
-     // These coordinates come from the 720×765 uniform reference.
-     const scaleX=w/720,scaleY=h/765;
-     const cleanupPolygons=[
-      [[0,119],[75,103],[91,183],[42,190],[28,168],[22,141],[0,141]],
-      [[635,101],[719,120],[719,184],[643,195],[612,117]]
-     ];
-     ctx.fillStyle='#1c3761';
-     for(const pts of cleanupPolygons){
-      ctx.beginPath();
-      pts.forEach(([x,y],i)=>i?ctx.lineTo(x*scaleX,y*scaleY):
-        ctx.moveTo(x*scaleX,y*scaleY));
-      ctx.closePath();
-      ctx.fill();
+     // The reference jacket ALREADY contains the correct broad golden
+     // epaulettes for Korpsleiding (900/910). Keep those original pixels;
+     // drawing a second trapezoid over them caused the doubled shoulder.
+     // For every other cadre, remove only the baked-in gold epaulettes.
+     // Use feathered sampling from adjacent navy cloth, not flat polygon
+     // fills: hard-edged solid fills previously looked like raised blocks.
+     if(trim!=='gold-thick'){
+      const scaleX=w/720,scaleY=h/765;
+      const cleanupPolygons=[
+       [[0,119],[75,103],[91,183],[42,190],[28,168],[22,141],[0,141]],
+       [[635,101],[719,120],[719,184],[643,195],[612,117]]
+      ];
+      const shape=document.createElement('canvas');
+      shape.width=w;shape.height=h;
+      const shapeCtx=shape.getContext('2d');
+      const feather=document.createElement('canvas');
+      feather.width=w;feather.height=h;
+      const featherCtx=feather.getContext('2d',{willReadFrequently:true});
+      if(shapeCtx&&featherCtx){
+       shapeCtx.fillStyle='#fff';
+       for(const pts of cleanupPolygons){
+        shapeCtx.beginPath();
+        pts.forEach(([x,y],i)=>i?shapeCtx.lineTo(x*scaleX,y*scaleY):
+         shapeCtx.moveTo(x*scaleX,y*scaleY));
+        shapeCtx.closePath();
+        shapeCtx.fill();
+       }
+       featherCtx.filter='blur('+Math.max(2,Math.round(w/120))+'px)';
+       featherCtx.drawImage(shape,0,0);
+       const alpha=featherCtx.getImageData(0,0,w,h).data;
+       const fabric=ctx.getImageData(0,0,w,h);
+       const original=new Uint8ClampedArray(fabric.data);
+       const leftSample=Math.min(w-1,Math.round(w*.18));
+       const rightSample=Math.min(w-1,Math.round(w*.82));
+       for(let y=0;y<h;y++){
+        for(let x=0;x<w;x++){
+         const p=(y*w+x)*4,a=alpha[p+3]/255;
+         if(a===0)continue;
+         const donor=(y*w+(x<w/2?leftSample:rightSample))*4;
+         for(let ch=0;ch<3;ch++)
+          fabric.data[p+ch]=Math.round(original[p+ch]*(1-a)+original[donor+ch]*a);
+        }
+       }
+       ctx.putImageData(fabric,0,0);
+      }
      }
      resolve(canvas.toDataURL('image/webp',.87));
     }catch(_){resolve(BASE)}
@@ -222,62 +248,8 @@
   preparedUniforms.set(trim,pending);
   return pending;
  }
- // Shoulderpieces follow the ORIGINAL cap/epaulette orientation:
- // the visible trapezoid runs from outer/front shoulder to the rear edge.
- // Match the user's Belgian uniform closeups: full gold, narrower gold,
- // hairline silver, or plain cloth. No squares or upright ribbons.
- function makeShoulderTrim(trim){
-  const geometry={
-   'gold-thick':{length:66,depth:31,offset:8},
-   'gold-thin':{length:53,depth:15,offset:5},
-   'silver-thin':{length:49,depth:4,offset:2}
-  }[trim];
-  if(!geometry)return null; // basiskader and agentenkader: no shoulder stripe
-  const gold=trim.startsWith('gold-');
-  const metal=gold?'#deb650':'#becedb';
-  const highlight=gold?'#ffdf86':'#f0f6fc';
-  const shade=gold?'#977329':'#8396a6';
-  const wrap=document.createElement('span');
-  wrap.className='bpd-shoulder-trim';
-  wrap.setAttribute('aria-hidden','true');
-  wrap.dataset.trim=trim;
-  const svg=svgEl('svg',{viewBox:'0 0 720 765',
-   preserveAspectRatio:'none',focusable:'false'});
-  // Top edge sits on the shoulder cap of the ORIGINAL 720x765 jacket.
-  // Depth changes, but slope/orientation are IDENTICAL for all cadres.
-  const g=geometry;
-  const leftPoints=[
-   [11,133], [11+g.length,133-g.length*.33],
-   [11+g.length+g.offset,133-g.length*.33+g.depth],
-   [11+g.offset,133+g.depth]
-  ];
-  function draw(pts){
-   const coords=pts.map(([x,y])=>[Number(x.toFixed(2)),Number(y.toFixed(2))]);
-   const d=coords.map(([x,y],i)=>(i?'L':'M')+x+' '+y).join(' ')+' Z';
-   svg.append(svgEl('path',{d,fill:metal,stroke:shade,
-    'stroke-width':g.depth<6?'.7':'1.2','stroke-linejoin':'round'}));
-   // Follow the seam along the full shoulder edge; never an upright bar.
-   const [a,b,c,e]=coords;
-   svg.append(svgEl('path',{
-    d:'M'+(a[0]+1)+' '+(a[1]+1)+' L'+(b[0]-1)+' '+(b[1]+1),
-    fill:'none',stroke:highlight,'stroke-width':g.depth<6?'.55':'1.5',
-    'stroke-linecap':'round',opacity:'.95'
-   }));
-   if(g.depth>7){
-    // Subtle woven highlights on the fabric itself, not a square overlay.
-    const inner=coords.map(([x,y],i)=>[x,y+(i<2?g.depth*.31:-g.depth*.31)]);
-    svg.append(svgEl('path',{
-     d:'M'+inner[0][0]+' '+inner[0][1]+' L'+inner[1][0]+' '+inner[1][1],
-     fill:'none',stroke:shade,'stroke-width':'.7',opacity:'.5'
-    }));
-   }
-  }
-  draw(leftPoints);
-  // Right shoulder mirrors the same broad, front-to-back gold/silver cap.
-  draw(leftPoints.map(([x,y])=>[720-x,y]).reverse());
-  wrap.append(svg);
-  return wrap;
- }
+ // No generated shoulderpieces: corps leadership keeps the original
+ // gold epaulettes in BASE; all other cadres have plain jacket shoulders.
  function nameplateData(person){
   const name=String(person?.name||'NAAM ONBEKEND').trim().slice(0,64)||'NAAM ONBEKEND';
   const call=String(person?.call||'—').trim().slice(0,24)||'—';
@@ -343,14 +315,12 @@
   image.decoding='async';
   image.draggable=false;
   outer.append(image);
-  const shoulder=makeShoulderTrim(trim);
-  if(shoulder)outer.append(shoulder);
   // BelgiumPD nameplate is shared by real staff cards and the fictitious
   // demo. Always derive both fields from the CURRENT public roster entry.
   const currentNameplate=makeNameplate(person);
   if(currentNameplate)outer.append(currentNameplate);
-  // Keep identical geometry across all four shoulder variants.
-  // Decorations and rank patches remain separate and untouched.
+  // All four cadres share the same jacket geometry and exact embroidered
+  // rank plates supplied earlier; none use synthetic stars or crowns.
   void preparedUniform(trim).then(src=>{if(src&&image.src!==src)image.src=src});
   // Decorations are independent pieces; no large rectangular patch masks
   // the uniform or its grade again.
