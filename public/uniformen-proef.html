@@ -20,23 +20,25 @@ main{max-width:1250px;margin:auto;padding:20px 18px 50px}h1{margin:0;font-size:2
 <nav class="bar"><strong>BelgiumPD · Politie-uniformen</strong><span class="label">UITSLUITEND TEST</span><a href="/organogram-test.html">Terug naar TEST-organogram</a></nav>
 <main>
 <h1>Vier vaste uniformuitvoeringen</h1>
-<p>Dezelfde originele ceremonievest, telkens als afzonderlijk afgewerkte afbeelding. Alleen de Korpsleiding behoudt schouderstukken. De officieren en het middenkader hebben een gladde schoudernaad, met respectievelijk gouden en zilveren uniformaccenten. Alleen naam, roepnummer, borstgraad en een fictief onderscheidingvoorbeeld zijn dynamisch.</p>
+<p>Dezelfde originele ceremonievest, telkens als afzonderlijk afgewerkte afbeelding. Alleen de Korpsleiding behoudt schouderstukken. Alle vier kaders hebben een gladde schoudernaad, zonder schouderstukken. Korpsleiding en officieren behouden de gouden uniformaccenten; midden-, basis- en agentenkader behouden de zilveren uniformaccenten. Alleen naam, roepnummer, borstgraad en een fictief onderscheidingvoorbeeld zijn dynamisch.</p>
 <div class="notice"><b>Visuele proef · geen personeelswijzigingen.</b> Alle namen, roepnummers en eretekens hieronder dienen enkel om de vier uitvoeringen te vergelijken. Aanpassingen worden nergens opgeslagen. MAIN blijft ongewijzigd.</div>
 <section class="cards" id="uniformCards" aria-label="Uniformvarianten per politiekader"></section>
-<div class="legend"><b>Vaste ontwerpregels:</b> korpsleiding: brede gouden schouderstukken en goud; officierenkader: geen schouderstukken, gouden koord en accenten; middenkader: geen schouderstukken, zilveren koord en accenten; basis- en agentenkader: geen schouderstukken, zilveren accenten. Bij roepnummerwijziging schakelen het uniform en de borstgraad automatisch naar het overeenkomstige kader.</div>
+<div class="legend"><b>Vaste ontwerpregels:</b> alle politiekaders: geen schouderstukken. Korpsleiding en officierenkader: gouden koord, knopen en kraagaccenten. Middenkader, basis- en agentenkader: zilveren koord, knopen en kraagaccenten. Bij roepnummerwijziging schakelen het uniform en de borstgraad automatisch naar het overeenkomstige kader.</div>
 </main>
 <script>
 (()=>{'use strict';
 const files={
- 'gold-wide':'/assets/bpd-uniform-korpsleiding-test.webp?v=schouders-v4',
- 'gold-slim':'/assets/bpd-uniform-officierenkader-test.webp?v=schouders-geen-ok-mk',
+ // Both gold cadres share the ONE clean ceremonial jacket. Their chest
+ // rank, name and awards remain dynamically distinct.
+ 'gold-wide':'/assets/bpd-uniform-officierenkader-test.webp?v=schouders-geen-alle-20261027',
+ 'gold-slim':'/assets/bpd-uniform-officierenkader-test.webp?v=schouders-geen-alle-20261027',
  // Middenkader has the SAME unadorned shoulders as basiskader and is already
  // silver throughout (cord, buttons, collar details): use its clean image.
- 'silver-hair':'/assets/bpd-uniform-basiskader-test.webp?v=schouders-geen-ok-mk',
- 'silver-none':'/assets/bpd-uniform-basiskader-test.webp?v=schouders-geen-ok-mk'
+ 'silver-hair':'/assets/bpd-uniform-basiskader-test.webp?v=schouders-geen-alle-20261027',
+ 'silver-none':'/assets/bpd-uniform-basiskader-test.webp?v=schouders-geen-alle-20261027'
 };
 const presets=[
- {title:'Korpsleiding',description:'Brede gouden schouderstukken · goud',call:'900',name:'Voorbeeld KL'},
+ {title:'Korpsleiding',description:'Geen schouderstukken · gouden accenten',call:'900',name:'Voorbeeld KL'},
  {title:'Officierenkader',description:'Geen schouderstukken · gouden accenten',call:'920',name:'Voorbeeld OK'},
  {title:'Middenkader',description:'Geen schouderstukken · zilveren accenten',call:'700',name:'Voorbeeld MK'},
  {title:'Basis- en agentenkader',description:'Geen schouderstukken · zilver',call:'400',name:'Voorbeeld BK'}
@@ -45,10 +47,10 @@ const presets=[
 // One flattened jacket image with the officer's former thin shoulder boards
 // replaced by uniform-blue cloth. No extra stacked browser overlays.
 // The gold collar, cord, buttons and decorations remain in the same image.
-let cleanOfficerPromise;
-function officerWithoutShoulders(){
- if(cleanOfficerPromise)return cleanOfficerPromise;
- cleanOfficerPromise=new Promise(resolve=>{
+let cleanGoldUniformPromise;
+function goldUniformWithoutShoulders(){
+ if(cleanGoldUniformPromise)return cleanGoldUniformPromise;
+ cleanGoldUniformPromise=new Promise(resolve=>{
   const original=new Image();
   original.onload=()=>{
    try{
@@ -57,8 +59,9 @@ function officerWithoutShoulders(){
     const ctx=canvas.getContext('2d');
     if(!ctx)throw Error('Canvas niet beschikbaar');
     ctx.drawImage(original,0,0);
-    // Uniform template reference: 872 × 1213. Restrict erasure to the two
-    // narrow shoulder pieces. Preserve the cord fastening BELOW the seam.
+    // Uniform template reference: 872 × 1213. Remove the two remaining
+    // original shoulder pieces for BOTH gold cadres, without touching the
+    // golden cord fastening, collar accents, decorations or chest badges.
     const sx=canvas.width/872,sy=canvas.height/1213;
     const cloth=[[78,148],[140,126],[145,157],[87,174],[76,177]];
     const other=[[727,125],[795,147],[795,177],[719,154]];
@@ -83,7 +86,7 @@ function officerWithoutShoulders(){
   original.onerror=()=>resolve(null);
   original.src=files['gold-slim'];
  });
- return cleanOfficerPromise;
+ return cleanGoldUniformPromise;
 }
 const ns='http://www.w3.org/2000/svg';
 function svg(tag,attrs){const el=document.createElementNS(ns,tag);Object.entries(attrs||{}).forEach(([a,b])=>el.setAttribute(a,String(b)));return el}
@@ -154,10 +157,10 @@ for(const preset of presets){
  function update(){
   const rank=gradeFor(call.value),generation=++imageGeneration;
   img.alt='Ceremonieel politie-uniform: '+rank.label;
-  if(rank.trim==='gold-slim'){
-   // Never flash the old image with a gold shoulderpiece while loading.
+  if(rank.trim==='gold-slim'||rank.trim==='gold-wide'){
+   // Never flash a gold shoulderpiece, including on 900 and 910.
    img.style.visibility='hidden';
-   officerWithoutShoulders().then(url=>{
+   goldUniformWithoutShoulders().then(url=>{
     if(generation!==imageGeneration)return;
     if(url){img.src=url;img.style.visibility='visible';}
     else panel.querySelector('.rank').textContent='Uniform kon niet verwerkt worden; laad deze pagina opnieuw.';
