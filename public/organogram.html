@@ -164,6 +164,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 @media(max-width:550px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.portrait.large{width:70px;height:84px}.profile-title{align-items:flex-start}}
 
 </style>
+<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=1">
 </head>
 <body>
 <header class="topbar">
@@ -222,6 +223,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   </aside>
  </div>
 </main>
+<script src="/assets/organogram-police-formal.js?v=1"></script>
 <script>
 (function(){
  'use strict';
@@ -323,6 +325,8 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   return 'Overig';
  }
  function createPortrait(person,large=false){
+  const formal=window.BPDPoliceUniform?.makePortrait(person,large);
+  if(formal)return formal;
   const portrait=node('span',large?'portrait large':'portrait');
   portrait.dataset.dept=person.dept;
   portrait.setAttribute('aria-hidden','true');
@@ -362,7 +366,8 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
  };
  const serviceLabel=dept=>services.find(s=>s.id===dept)?.title||'Onbekend';
  const serviceIcon=dept=>services.find(s=>s.id===dept)?.icon||'👤';
- const rankName=x=>String(x.rank||'Functie nog niet bekend').trim()||'Functie nog niet bekend';
+ const rankName=x=>window.BPDPoliceUniform?.gradeFor(x)?.label||
+    String(x.rank||'Functie nog niet bekend').trim()||'Functie nog niet bekend';
  const allowedService=dept=>allowedDepartments.includes(dept);
  function clearInternal(){
   ++accessGeneration;
@@ -503,6 +508,14 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    node('p','',serviceLabel(person.dept)+' · '+(person.call||'—')),
    node('p','',rankName(person)));
   heading.append(portrait,info);root.append(heading);
+  const badge=window.BPDPoliceUniform?.makeBadge(person,true);
+  if(badge){
+   const row=node('div','bpd-formal-grade');
+   const note=node('span');
+   note.append(node('b','',rankName(person)),
+    node('small','','Formeel uniform · automatische Belgische graad'));
+   row.append(badge,note);root.append(row);
+  }
   const defs=node('dl','kv');
   for(const [k,v] of [
    ['Roepnummer',person.call||'—'],['Hulpdienst',serviceLabel(person.dept)],
@@ -587,6 +600,8 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
        identity.append(node('strong','',person.name||'Naam onbekend'),
         node('small','',(person.call||'—')+' · '+rankName(person)));
        if(viewState.demo)identity.append(node('em','demo-tag','VOORBEELD'));
+       const badge=window.BPDPoliceUniform?.makeBadge(person);
+       if(badge)identity.append(badge);
        btn.append(createPortrait(person),identity);
        btn.addEventListener('click',()=>{
         displayPerson(person);
