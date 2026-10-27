@@ -63,7 +63,7 @@ test('MAIN page shows one nameplate on the uniform and no redundant detail previ
  assert.match(html,/makePortrait\(person,large\)/);
  assert.doesNotMatch(html,/bpd-nameplate-preview/);
  assert.doesNotMatch(html,/makeNameplate\(person,true\)/);
- assert.match(html,/stitched-inset-20261027/);
+ assert.match(html,/individual-grades-20261027/);
  assert.match(style,/\.bpd-personal-nameplate/);
  assert.match(style,/\.bpd-personal-nameplate>\.bpd-nameplate-vector/);
  assert.doesNotMatch(style,/\.bpd-nameplate-top\s*\{/);
@@ -73,42 +73,44 @@ test('MAIN page shows one nameplate on the uniform and no redundant detail previ
  assert.doesNotThrow(()=>new Function(inline));
 });
 
-test('all eleven police ranks use the full-resolution embroidered user artwork',()=>{
+test('all police grades load one completely isolated rank image, never a cropped sprite',()=>{
  const ui=uniform();
- // Actual row order in the first transparent image supplied by the user.
  const variants=[
-  ['200','ap',0],['300','ainp',1],['400','inp',2],
-  ['500','1inp',3],['600','ahinp',4],['700','hinp',5],
-  ['920','acp',6],['930','acp',6],['800','1hinp',7],
-  ['999','1hcp',10], // explicit rank fallback below must not grant access
-  ['910','1cp',9],['900','1hcp',10]
+  ['200','ap'],['300','ainp'],['400','inp'],['500','1inp'],
+  ['600','ahinp'],['700','hinp'],['800','1hinp'],
+  ['920','acp'],['930','acp'],['910','1cp'],['900','1hcp'],
+  ['TEST-P101','cp']
  ];
- for(const [call,key,index] of variants){
-  if(call==='999')continue;
-  const person={dept:'politie',call};
+ const assetNames=new Set();
+ for(const [call,key] of variants){
+  const person={dept:'politie',call,rank:key==='cp'?'Commissaris':''};
   assert.equal(ui.gradeFor(person)?.key,key,call);
   const badge=ui.makeBadge(person);
   assert.ok(badge);
   assert.match(badge.className,/bpd-vector-rank/);
-  const vector=badge.children[0];
-  assert.equal(vector.tag,'svg');
-  assert.equal(vector.attrs.viewBox,'0 0 160 70');
-  const crop=vector.children.find(x=>x.tag==='svg');
-  assert.ok(crop,call);
-  assert.equal(crop.attrs.viewBox,'0 0 512 160');
-  assert.equal(crop.children.length,1);
-  const art=crop.children[0];
+  const svg=badge.children[0];
+  assert.equal(svg.tag,'svg');
+  assert.equal(svg.attrs.viewBox,'0 0 512 160');
+  assert.equal(svg.children.length,1,'exactly one picture for '+call);
+  const art=svg.children[0];
   assert.equal(art.tag,'image');
-  assert.equal(art.attrs.href,
-   '/assets/bpd-highres-embroidered-ranks-20261027.webp');
-  assert.equal(art.attrs.y,String(-160*index),call);
-  assert.equal(art.attrs.height,'1760');
+  assert.equal(art.attrs.href,'/assets/bpd-rank-'+key+'-clean-20261027.webp');
+  assert.equal(art.attrs.x,'0',call);
+  assert.equal(art.attrs.y,'0',call);
+  assert.equal(art.attrs.width,'512',call);
+  assert.equal(art.attrs.height,'160',call);
+  assetNames.add(art.attrs.href);
+  // A single file must be a real photographic badge, not an HTML 404.
+  const file=readFileSync(new URL('../public'+art.attrs.href,import.meta.url));
+  assert.equal(file.toString('ascii',0,4),'RIFF',key);
+  assert.equal(file.toString('ascii',8,12),'WEBP',key);
+  assert.ok(file.length>15000&&file.length<100000,key);
  }
- const data=readFileSync(new URL(
-  '../public/assets/bpd-highres-embroidered-ranks-20261027.webp',import.meta.url));
- assert.equal(data.toString('ascii',0,4),'RIFF');
- assert.equal(data.toString('ascii',8,12),'WEBP');
- assert.ok(data.length>80000,'full-resolution sprite unexpectedly tiny');
+ assert.equal(assetNames.size,11,'all 11 independently stored badges must be covered');
+ const source=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
+ assert.doesNotMatch(source,/HIGHRES_GRADE_SPRITE/);
+ assert.doesNotMatch(source,/gradeSpriteIndices/);
+ assert.doesNotMatch(source,/y:-160\*index/);
 });
 test('person cards display the grade ON the breast, not as a floating duplicate',()=>{
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');

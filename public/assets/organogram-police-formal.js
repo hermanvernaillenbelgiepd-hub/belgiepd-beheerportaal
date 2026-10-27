@@ -51,31 +51,32 @@
   for(const [k,x] of Object.entries(attrs||{}))v.setAttribute(k,String(x));
   return v;
  }
- const HIGHRES_GRADE_SPRITE='/assets/bpd-highres-embroidered-ranks-20261027.webp';
- // Badge indices follow the source artwork, separated into individual
- // 512x160 tiles. No role or permission is derived from these display keys.
- const gradeSpriteIndices=Object.freeze({
-  ap:0,ainp:1,inp:2,'1inp':3,ahinp:4,hinp:5,
-  acp:6,'1hinp':7,cp:8,'1cp':9,'1hcp':10
+ // Each police rank is now one physically separate 512x160 transparent
+ // WebP asset. Never crop a tall montage: that caused adjacent badges
+ // to leak into the personnel cards at several browser zoom levels.
+ const GRADE_ASSETS=Object.freeze({
+  ap:'/assets/bpd-rank-ap-clean-20261027.webp',
+  ainp:'/assets/bpd-rank-ainp-clean-20261027.webp',
+  inp:'/assets/bpd-rank-inp-clean-20261027.webp',
+  '1inp':'/assets/bpd-rank-1inp-clean-20261027.webp',
+  ahinp:'/assets/bpd-rank-ahinp-clean-20261027.webp',
+  hinp:'/assets/bpd-rank-hinp-clean-20261027.webp',
+  '1hinp':'/assets/bpd-rank-1hinp-clean-20261027.webp',
+  acp:'/assets/bpd-rank-acp-clean-20261027.webp',
+  cp:'/assets/bpd-rank-cp-clean-20261027.webp',
+  '1cp':'/assets/bpd-rank-1cp-clean-20261027.webp',
+  '1hcp':'/assets/bpd-rank-1hcp-clean-20261027.webp'
  });
  function drawing(grade){
-  // Render full photographic patches from the chosen embroidery artwork.
-  // The original 512x160 detail is retained; zoom uses the same sharp asset.
-  const svg=svgEl('svg',{viewBox:'0 0 160 70',
+  const svg=svgEl('svg',{viewBox:'0 0 512 160',
    preserveAspectRatio:'xMidYMid meet',
    'aria-hidden':'true',focusable:'false',class:'bpd-grade-vector'});
-  svg.append(svgEl('rect',{x:0,y:0,width:160,height:70,fill:'#0d1625'}));
-  const index=grade?gradeSpriteIndices[grade.key]:undefined;
-  if(!Number.isInteger(index))return svg;
-  const slot=svgEl('svg',{x:0,y:0,width:160,height:70,
-   viewBox:'0 0 512 160',preserveAspectRatio:'xMidYMid meet',
-   overflow:'hidden'});
-  slot.append(svgEl('image',{
-   href:HIGHRES_GRADE_SPRITE,
-   x:0,y:-160*index,width:512,height:1760,
-   preserveAspectRatio:'none'
+  const source=grade?GRADE_ASSETS[grade.key]:null;
+  if(!source)return svg;
+  svg.append(svgEl('image',{
+   href:source,x:0,y:0,width:512,height:160,
+   preserveAspectRatio:'xMidYMid meet'
   }));
-  svg.append(slot);
   return svg;
  }
  function useBelgianBadgeArtwork(container,grade){

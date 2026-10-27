@@ -19,10 +19,10 @@
 .profile-title .portrait.bpd-police-formal,.portrait.bpd-police-formal.large{
   width:156px;height:170px;border-radius:10px}
 .bpd-grade-badge{display:inline-block;vertical-align:middle;flex:none;
-  width:85px;height:40px;border:1px solid #799bc2;background:#101826;
-  border-radius:5px;overflow:hidden}
+  width:100px;height:auto;aspect-ratio:16/5;
+  border:0;background:transparent;border-radius:3px;overflow:hidden}
 .bpd-grade-badge svg{width:100%;height:100%;display:block}
-.bpd-grade-badge-large{width:133px;height:61px}
+.bpd-grade-badge-large{width:170px;height:auto;aspect-ratio:16/5}
 .bpd-formal-grade{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
   margin:8px 0;color:#c6dbf6}
 .bpd-formal-grade b{font-size:11px;color:#eff6ff}
@@ -80,13 +80,7 @@
  width:min(100%,280px)!important;height:auto!important;aspect-ratio:3.2/1;
 }
 
-/* Exact crowns and star textures reproduced from user-provided Belgian
-   rank photographs. Only these photographic symbols are raster images;
-   grade spacing, bars, silver diagonal strokes and first-rank lines are SVG. */
-.bpd-grade-vector>svg{overflow:hidden}
-.bpd-grade-vector image{image-rendering:auto}
-
-/* Full-resolution embroidered rank photos. Unlike the previous tiny icon
-   sheet, each sprite row retains 512×160 pixels of source detail. */
-.bpd-grade-vector>svg{overflow:hidden}
-.bpd-grade-vector image{image-rendering:auto}
+/* Isolated photographic badge per rank, never a tall image montage.
+   The image itself includes the embroidered outer border: no second box. */
+.bpd-grade-vector>image{image-rendering:auto}
+.bpd-grade-badge>.bpd-grade-vector{display:block;width:100%;height:100%}
