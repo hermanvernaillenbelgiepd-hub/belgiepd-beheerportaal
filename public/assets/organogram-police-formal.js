@@ -51,52 +51,31 @@
   for(const [k,x] of Object.entries(attrs||{}))v.setAttribute(k,String(x));
   return v;
  }
+ const HIGHRES_GRADE_SPRITE='/assets/bpd-highres-embroidered-ranks-20261027.webp';
+ // Badge indices follow the source artwork, separated into individual
+ // 512x160 tiles. No role or permission is derived from these display keys.
+ const gradeSpriteIndices=Object.freeze({
+  ap:0,ainp:1,inp:2,'1inp':3,ahinp:4,hinp:5,
+  acp:6,'1hinp':7,cp:8,'1cp':9,'1hcp':10
+ });
  function drawing(grade){
-  // Belgian police rank graphics: official-style stripe geometry with crown
-  // and star silhouettes CUT OUT OF THE USER-SUPPLIED REFERENCE IMAGES.
-  // One transparent WebP sprite (gold crown, silver crown, silver star).
-  // The SVG itself controls spacing, display-grade and first-rank underline.
-  const svg=svgEl('svg',{viewBox:'0 0 160 70',preserveAspectRatio:'xMidYMid meet',
+  // Render full photographic patches from the chosen embroidery artwork.
+  // The original 512x160 detail is retained; zoom uses the same sharp asset.
+  const svg=svgEl('svg',{viewBox:'0 0 160 70',
+   preserveAspectRatio:'xMidYMid meet',
    'aria-hidden':'true',focusable:'false',class:'bpd-grade-vector'});
-  const add=(tag,attrs,parent=svg)=>{const el=svgEl(tag,attrs);parent.append(el);return el};
-  add('rect',{x:0,y:0,width:160,height:70,fill:'#202224'});
-  add('path',{d:'M127 0 H160 V70 H109 Z',fill:'#212527'});
-  // The diagonal lines belong on the RIGHT, as in the supplied Belgian
-  // police rank photos. They are SILVER for every rank.
-  for(let k=0;k<7;k++){
-   const x=129+k*6.4;
-   add('path',{d:'M'+x+' 0 L'+(x-20)+' 70',stroke:'#a4adb3',
-    'stroke-width':1.15,fill:'none',opacity:'.85'});
-  }
-  if(!grade)return svg;
-  if(grade.kind==='bars'){
-   // AP: exactly two silver vertical bars.
-   for(const x of [56,86]){
-    add('rect',{x,y:16,width:6.6,height:40,rx:.45,
-      fill:'#cbd0d6',stroke:'#9da7b1','stroke-width':.6});
-    add('rect',{x:x+.7,y:17,width:1.6,height:37,fill:'#f2f4f6',opacity:'.63'});
-   }
-  }else{
-   const row=grade.kind==='crown'?0:grade.kind==='silverCrown'?1:2;
-   const positions=grade.count===1?[64]:grade.count===2?[43,85]:[23,63,103];
-   for(const x of positions){
-    // Native SVG viewport crops ONE row from the three-row WebP sprite.
-    // This preserves the uploaded crown/star texture, unlike synthetic
-    // simplified crown polygons, while scaling cleanly to staff cards.
-    const viewport=add('svg',{x:x-19,y:grade.line?12:16,width:38,height:34,
-      viewBox:'0 0 64 45',preserveAspectRatio:'xMidYMid meet',overflow:'hidden'});
-    add('image',{href:'/assets/bpd-grade-symbols-from-user-20261027.webp',
-      x:0,y:-row*45,width:64,height:135,preserveAspectRatio:'none'},viewport);
-   }
-  }
-  // Underline ONLY when the grade itself is "Eerste":
-  // 500=1-INP; 800=1-HINP; 910=1-CP; 900=1-HCP.
-  if(grade.line){
-   const x1=grade.count===3?10:23,x2=grade.count===3?117:104;
-   add('line',{x1,y1:59,x2,y2:59,
-    stroke:grade.kind==='crown'?'#d6ad4a':'#c8ced4',
-    'stroke-width':2.8,'stroke-linecap':'square'});
-  }
+  svg.append(svgEl('rect',{x:0,y:0,width:160,height:70,fill:'#0d1625'}));
+  const index=grade?gradeSpriteIndices[grade.key]:undefined;
+  if(!Number.isInteger(index))return svg;
+  const slot=svgEl('svg',{x:0,y:0,width:160,height:70,
+   viewBox:'0 0 512 160',preserveAspectRatio:'xMidYMid meet',
+   overflow:'hidden'});
+  slot.append(svgEl('image',{
+   href:HIGHRES_GRADE_SPRITE,
+   x:0,y:-160*index,width:512,height:1760,
+   preserveAspectRatio:'none'
+  }));
+  svg.append(slot);
   return svg;
  }
  function useBelgianBadgeArtwork(container,grade){
