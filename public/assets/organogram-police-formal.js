@@ -52,67 +52,50 @@
   return v;
  }
  function drawing(grade){
-  // Vector artwork: do not upscale the old low-resolution 10-row raster.
-  // This is a BelgiumPD drawing following the Belgian symbol conventions.
+  // Belgian police rank graphics: official-style stripe geometry with crown
+  // and star silhouettes CUT OUT OF THE USER-SUPPLIED REFERENCE IMAGES.
+  // One transparent WebP sprite (gold crown, silver crown, silver star).
+  // The SVG itself controls spacing, display-grade and first-rank underline.
   const svg=svgEl('svg',{viewBox:'0 0 160 70',preserveAspectRatio:'xMidYMid meet',
-    'aria-hidden':'true',focusable:'false',class:'bpd-grade-vector'});
-  const add=(tag,attrs)=>svg.append(svgEl(tag,attrs));
-  add('rect',{x:0,y:0,width:160,height:70,fill:'#0e1929'});
-  add('rect',{x:127,y:0,width:33,height:70,fill:'#182b3f'});
-  for(let k=0;k<5;k++){
-   const x=131+k*7;
-   add('path',{d:'M'+x+' 0 L'+(x-18)+' 70',stroke:'#9eb4c8',
-    'stroke-width':'1.4',fill:'none',opacity:'.95'});
+   'aria-hidden':'true',focusable:'false',class:'bpd-grade-vector'});
+  const add=(tag,attrs,parent=svg)=>{const el=svgEl(tag,attrs);parent.append(el);return el};
+  add('rect',{x:0,y:0,width:160,height:70,fill:'#202224'});
+  add('path',{d:'M127 0 H160 V70 H109 Z',fill:'#212527'});
+  // The diagonal lines belong on the RIGHT, as in the supplied Belgian
+  // police rank photos. They are SILVER for every rank.
+  for(let k=0;k<7;k++){
+   const x=129+k*6.4;
+   add('path',{d:'M'+x+' 0 L'+(x-20)+' 70',stroke:'#a4adb3',
+    'stroke-width':1.15,fill:'none',opacity:'.85'});
   }
-  // Subtle sewn edge; every unit is resolution-independent.
-  add('path',{d:'M1 1 H159 V69 H1 Z',stroke:'#8d9daa','stroke-width':.8,
-   fill:'none',opacity:'.75'});
   if(!grade)return svg;
-  const metal=grade.kind==='crown'?'#e9c56f':'#e0e8f3';
-  const outline=grade.kind==='crown'?'#9f782a':'#91a5b9';
-  const shadow=grade.kind==='crown'?'#b38b35':'#a8b6c8';
-  function crown(cx,cy){
-   // Crown silhouette with three raised points, jewels and a lined base.
-   const left=cx-11,right=cx+11;
-   add('path',{
-    d:'M'+left+' '+(cy+6)+' L'+(left-1)+' '+(cy-6)+
-      ' L'+(cx-6)+' '+(cy-1)+' L'+cx+' '+(cy-13)+
-      ' L'+(cx+6)+' '+(cy-1)+' L'+(right+1)+' '+(cy-6)+
-      ' L'+right+' '+(cy+6)+' Q'+cx+' '+(cy+10)+' '+left+' '+(cy+6)+' Z',
-    fill:metal,stroke:outline,'stroke-width':1,'stroke-linejoin':'round'});
-   add('path',{d:'M'+(left+2)+' '+(cy+2)+' Q'+cx+' '+(cy+6)+' '+(right-2)+' '+(cy+2),
-     stroke:shadow,'stroke-width':1.2,fill:'none'});
-   for(const bx of [cx-9,cx,cx+9])add('circle',{
-    cx:bx,cy:cy-7,r:1.35,fill:'#f8f5e5',stroke:outline,'stroke-width':.4});
-   add('rect',{x:left,y:cy+7,width:22,height:4,rx:.8,fill:metal,stroke:outline,'stroke-width':.65});
-   add('rect',{x:left+2,y:cy+8.2,width:18,height:.85,fill:shadow});
-  }
-  function star(cx,cy){
-   const pts=[];
-   for(let k=0;k<10;k++){
-    const a=k*Math.PI/5-Math.PI/2,r=k%2?6.7:13;
-    pts.push((cx+Math.cos(a)*r).toFixed(2)+','+(cy+Math.sin(a)*r).toFixed(2));
-   }
-   add('polygon',{points:pts.join(' '),fill:metal,stroke:outline,
-    'stroke-width':1,'stroke-linejoin':'round'});
-   add('circle',{cx,cy,r:2.1,fill:'#fff',opacity:'.75'});
-  }
   if(grade.kind==='bars'){
-   for(const x of [54,82])add('rect',{x,y:15,width:7,height:39,rx:.8,
-    fill:metal,stroke:outline,'stroke-width':.6});
+   // AP: exactly two silver vertical bars.
+   for(const x of [56,86]){
+    add('rect',{x,y:16,width:6.6,height:40,rx:.45,
+      fill:'#cbd0d6',stroke:'#9da7b1','stroke-width':.6});
+    add('rect',{x:x+.7,y:17,width:1.6,height:37,fill:'#f2f4f6',opacity:'.63'});
+   }
   }else{
-   const positions=grade.count===1?[63]:grade.count===2?[44,82]:[31,63,95];
-   for(const cx of positions){
-    if(grade.kind==='star')star(cx,grade.line?27:34);
-    else crown(cx,grade.line?27:33);
+   const row=grade.kind==='crown'?0:grade.kind==='silverCrown'?1:2;
+   const positions=grade.count===1?[64]:grade.count===2?[43,85]:[23,63,103];
+   for(const x of positions){
+    // Native SVG viewport crops ONE row from the three-row WebP sprite.
+    // This preserves the uploaded crown/star texture, unlike synthetic
+    // simplified crown polygons, while scaling cleanly to staff cards.
+    const viewport=add('svg',{x:x-19,y:grade.line?12:16,width:38,height:34,
+      viewBox:'0 0 64 45',preserveAspectRatio:'xMidYMid meet',overflow:'hidden'});
+    add('image',{href:'/assets/bpd-grade-symbols-from-user-20261027.webp',
+      x:0,y:-row*45,width:64,height:135,preserveAspectRatio:'none'},viewport);
    }
   }
-  // "Eerste" is always represented by a line UNDER the badges.
-  // In particular: 1-INP, 1-HINP, 1-CP and 1-HCP.
+  // Underline ONLY when the grade itself is "Eerste":
+  // 500=1-INP; 800=1-HINP; 910=1-CP; 900=1-HCP.
   if(grade.line){
-   add('line',{x1:grade.count===3?17:25,y1:58,
-    x2:grade.count===3?111:103,y2:58,
-    stroke:metal,'stroke-width':3.1,'stroke-linecap':'square'});
+   const x1=grade.count===3?10:23,x2=grade.count===3?117:104;
+   add('line',{x1,y1:59,x2,y2:59,
+    stroke:grade.kind==='crown'?'#d6ad4a':'#c8ced4',
+    'stroke-width':2.8,'stroke-linecap':'square'});
   }
   return svg;
  }

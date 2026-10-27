@@ -73,24 +73,45 @@ test('MAIN page shows one nameplate on the uniform and no redundant detail previ
  assert.doesNotThrow(()=>new Function(inline));
 });
 
-test('all four first grades have a crisp SVG underline; regular grades do not',()=>{
+test('rank badges use user-provided gold/silver crowns and stars with exact count and first-grade underline',()=>{
  const ui=uniform();
- for(const [call,underlined] of [
-  ['500',true],['800',true],['910',true],['900',true],
-  ['400',false],['700',false],['920',false],['300',false],
-  ['200',false]
- ]){
-  const badge=ui.makeBadge({dept:'politie',call});
-  assert.ok(badge);
+ const rowByGrade={ap:null,ainp:2,inp:2,'1inp':2,
+   ahinp:1,hinp:1,'1hinp':1,acp:0,cp:0,'1cp':0,'1hcp':0};
+ const expected=[
+  ['200','ap',2,false],
+  ['300','ainp',1,false],['400','inp',2,false],['500','1inp',2,true],
+  ['600','ahinp',1,false],['700','hinp',2,false],['800','1hinp',2,true],
+  ['920','acp',1,false],['930','acp',1,false],
+  ['910','1cp',2,true],['900','1hcp',3,true]
+ ];
+ for(const [call,key,count,underline] of expected){
+  const person={dept:'politie',call};
+  assert.equal(ui.gradeFor(person)?.key,key,call);
+  const badge=ui.makeBadge(person);
+  assert.ok(badge,call);
   assert.match(badge.className,/bpd-vector-rank/);
   const svg=badge.children[0];
   assert.equal(svg.tag,'svg');
   assert.equal(svg.attrs.viewBox,'0 0 160 70');
-  const rule=svg.children.filter(n=>n.tag==='line'&&n.attrs.y1==='58'&&n.attrs.y2==='58');
-  assert.equal(rule.length,underlined?1:0,'incorrect underline for callsign '+call);
-  // An inserted bitmap would become blurred when browser zoom changes.
-  assert.equal(svg.children.filter(n=>n.tag==='image').length,0);
+  const rules=svg.children.filter(n=>n.tag==='line'&&n.attrs.y1==='59'&&n.attrs.y2==='59');
+  assert.equal(rules.length,underline?1:0,'wrong underline for '+call);
+  const photographic=svg.children.filter(n=>n.tag==='svg');
+  const bars=svg.children.filter(n=>n.tag==='rect'&&n.attrs.height==='40');
+  assert.equal(photographic.length,key==='ap'?0:count,call);
+  assert.equal(bars.length,key==='ap'?2:0,call);
+  for(const icon of photographic){
+   assert.equal(icon.attrs.viewBox,'0 0 64 45');
+   assert.equal(icon.children[0].tag,'image');
+   assert.equal(icon.children[0].attrs.href,
+     '/assets/bpd-grade-symbols-from-user-20261027.webp');
+   assert.equal(icon.children[0].attrs.y,String(-rowByGrade[key]*45));
+  }
  }
+ // The uploaded sprite must be a genuine WebP asset, not missing HTML.
+ const image=readFileSync(new URL('../public/assets/bpd-grade-symbols-from-user-20261027.webp',import.meta.url));
+ assert.equal(image.toString('ascii',0,4),'RIFF');
+ assert.equal(image.toString('ascii',8,12),'WEBP');
+ assert.ok(image.length>2500&&image.length<20000);
 });
 test('person cards display the grade ON the breast, not as a floating duplicate',()=>{
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
