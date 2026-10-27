@@ -164,7 +164,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
 @media(max-width:550px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.portrait.large{width:70px;height:84px}.profile-title{align-items:flex-start}}
 
 </style>
-<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=5">
+<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=main-naamplaat-demo-1">
 <link rel="stylesheet" href="/assets/organogram-decorations.css?v=5">
 </head>
 <body>
@@ -227,7 +227,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   </aside>
  </div>
 </main>
-<script src="/assets/organogram-police-formal.js?v=5"></script>
+<script src="/assets/organogram-police-formal.js?v=main-naamplaat-demo-1"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script>
 (function(){
@@ -240,6 +240,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
  ];
  const $=id=>document.getElementById(id);
  const viewState={service:'alle',query:'',people:[],demo:false,selected:null};
+ const demoNameplateRequested=new URLSearchParams(window.location.search).get('demo')==='naamplaat';
  let auth=null,authModule=null,accessGeneration=0,internalVisible=false,allowedDepartments=[];
  const demo=[
   {dept:'politie',name:'Noor Vermeulen',call:'900',rank:'Eerste hoofdcommissaris',status:'Actief',specialties:['Korpsleiding','Beleidsvoering'],awards:['Dienstmedaille']},
@@ -330,7 +331,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   return 'Overig';
  }
  function createPortrait(person,large=false){
-  const formal=window.BPDPoliceUniform?.makePortrait(person,large);
+  const formal=window.BPDPoliceUniform?.makePortrait(person,large,viewState.demo);
   if(formal)return formal;
   const portrait=node('span',large?'portrait large':'portrait');
   portrait.dataset.dept=person.dept;
@@ -360,6 +361,11 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   $('status').textContent=label+(publicStale&&!demoView?' · De personeelsbron kan verouderd zijn.':'');
   $('status').className='notice'+(demoView?' warn':publicStale?' warn':'');
   render();
+  if(demoView&&demoNameplateRequested){
+   const example=demo.find(p=>p.dept==='politie'&&p.call==='900')||
+     demo.find(p=>p.dept==='politie');
+   if(example)displayPerson(example);
+  }
  }
  $('realMode').addEventListener('click',()=>setView(false));
  $('demoMode').addEventListener('click',()=>setView(true));
@@ -515,6 +521,17 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    node('p','',serviceLabel(person.dept)+' · '+(person.call||'—')),
    node('p','',rankName(person)));
   heading.append(portrait,info);root.append(heading);
+  // Exaggerated detail only in MAIN's fictitious demonstration,
+  // without affecting the live personnel cards or saved records.
+  if(viewState.demo&&person.dept==='politie'){
+   const sample=node('section','bpd-nameplate-preview');
+   sample.append(node('div','bpd-preview-heading','Naamplaat · DEMO op MAIN'));
+   const plate=window.BPDPoliceUniform?.makeNameplate(person,true);
+   if(plate)sample.append(plate);
+   sample.append(node('small','',
+    'Boven: naam · Onder: BELGIEPD - roepnummer. Na promotie of naamswijziging volgen beide velden de actuele personeelslijst.'));
+   root.append(sample);
+  }
   const badge=window.BPDPoliceUniform?.makeBadge(person,true);
   if(badge){
    const row=node('div','bpd-formal-grade');
@@ -669,7 +686,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    directoryPeople.splice(0,directoryPeople.length,...safe);
    realPeople.splice(0,realPeople.length,...safe);
    publicLoaded=true;publicStale=data.stale===true;publicLoadError='';
-   if(!internalVisible)setView(false);
+   if(!internalVisible&&!demoNameplateRequested)setView(false);
   }catch(error){
    if(generation!==authGeneration||auth?.currentUser?.uid!==user.uid)return;
    publicLoaded=false;realPeople.splice(0);directoryPeople.splice(0);

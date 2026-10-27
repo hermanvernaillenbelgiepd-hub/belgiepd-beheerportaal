@@ -209,7 +209,40 @@
   preparedUniforms.set(trim,pending);
   return pending;
  }
- function makePortrait(person,large=false){
+ function nameplateData(person){
+  const name=String(person?.name||'NAAM ONBEKEND').trim().slice(0,64)||'NAAM ONBEKEND';
+  const call=String(person?.call||'—').trim().slice(0,24)||'—';
+  return {name,call,bottom:'BELGIEPD - '+call};
+ }
+ function makeNameplate(person,zoom=false){
+  if(person?.dept!=='politie')return null;
+  const details=nameplateData(person);
+  const plate=document.createElement('span');
+  plate.className='bpd-personal-nameplate'+(zoom?' bpd-nameplate-zoom':'');
+  plate.setAttribute('role','img');
+  plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
+  plate.title=details.name+' · '+details.bottom;
+  plate.dataset.call=details.call;
+  const stripes=document.createElement('span');
+  stripes.className='bpd-nameplate-stripes';
+  stripes.setAttribute('aria-hidden','true');
+  const copy=document.createElement('span');
+  copy.className='bpd-nameplate-copy';
+  const top=document.createElement('span');
+  top.className='bpd-nameplate-top';
+  const nametag=document.createElement('span');
+  nametag.className='bpd-nameplate-name';
+  nametag.textContent=details.name;
+  nametag.title=details.name;
+  top.append(nametag);
+  const footer=document.createElement('span');
+  footer.className='bpd-nameplate-bottom';
+  footer.textContent=details.bottom;
+  copy.append(top,footer);
+  plate.append(stripes,copy);
+  return plate;
+ }
+ function makePortrait(person,large=false,demoNameplate=false){
   if(person?.dept!=='politie')return null;
   const grade=gradeFor(person);
   const trim=trimFor(grade);
@@ -226,16 +259,21 @@
   image.decoding='async';
   image.draggable=false;
   outer.append(image);
-  // Replacement nameplate sits inside the original rectangular pocket label.
-  // Only the nameplate details change from ochre/gold to silver.
-  const nameplate=document.createElement('span');
-  nameplate.className='bpd-silver-nameplate';
-  nameplate.setAttribute('aria-hidden','true');
-  const plateText=document.createElement('span');
-  plateText.className='bpd-nameplate-text';
-  plateText.textContent=String(person.name||'POLITIE').trim().slice(0,16);
-  nameplate.append(plateText);
-  outer.append(nameplate);
+  // MAIN DEMO ONLY: preview the BelgiumPD embroidered-style nameplate
+  // on the uniform. The verified/real person view keeps its existing plate.
+  if(demoNameplate){
+   const previewPlate=makeNameplate(person);
+   if(previewPlate)outer.append(previewPlate);
+  }else{
+   const nameplate=document.createElement('span');
+   nameplate.className='bpd-silver-nameplate';
+   nameplate.setAttribute('aria-hidden','true');
+   const plateText=document.createElement('span');
+   plateText.className='bpd-nameplate-text';
+   plateText.textContent=String(person.name||'POLITIE').trim().slice(0,16);
+   nameplate.append(plateText);
+   outer.append(nameplate);
+  }
   // Keep identical geometry across all four shoulder variants.
   // Decorations and rank patches remain separate and untouched.
   void preparedUniform(trim).then(src=>{if(src&&image.src!==src)image.src=src});
@@ -252,5 +290,5 @@
   if(rack?.medals)outer.append(rack.medals);
   return outer;
  }
- window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,asset:BASE});
+ window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,makeNameplate,nameplateData,asset:BASE});
 })();
