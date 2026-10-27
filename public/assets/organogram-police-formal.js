@@ -102,9 +102,13 @@
 
  // Uniform accents follow the verified BelgiumPD display-grade mapping.
  // Operational permissions remain entirely server-side and independent.
+ // Distinct shoulder bands. Silver fittings (cord, cuffs, collar, buttons)
+ // remain consistent across middle, basic and agent cadres.
  function trimFor(grade){
-  return grade?.key==='1hcp'||grade?.key==='1cp'?'gold-thick':
-   grade?.key==='acp'||grade?.key==='cp'?'gold-thin':'silver';
+  if(grade?.key==='1hcp'||grade?.key==='1cp')return 'gold-thick';
+  if(grade?.key==='acp'||grade?.key==='cp')return 'gold-thin';
+  if(['ahinp','hinp','1hinp'].includes(grade?.key))return 'silver-thin';
+  return 'silver-none';
  }
  const preparedUniforms=new Map();
  function preparedUniform(trim){
@@ -139,7 +143,7 @@
      // Lower cadres use silver cord, collar, necklace and cuff details.
      // Select yellow/gold pixels only; protect navy cloth, white shirt
      // and burgundy tie from undesired desaturation.
-     if(trim==='silver')for(let i=0;i<v.length;i+=4){
+     if(trim==='silver-thin'||trim==='silver-none')for(let i=0;i<v.length;i+=4){
       const r=v[i],g=v[i+1],b=v[i+2];
       if(r>90&&g>75&&r>g*1.04&&g>b*1.10&&r-b>31){
        const light=Math.min(230,Math.round(r*.26+g*.54+b*.20+25));
@@ -149,8 +153,10 @@
       }
      }
      ctx.putImageData(pixels,0,0);
-     // The original gold epaulettes are reserved for 1-CP / 1-HCP.
-     // A-CP and CP receive only a THIN gold shoulder edge.
+     // Gouden schouderstukken van het basismodel uitsluitend voor 1-CP/1-HCP.
+     // Officieren A-CP/CP: dunne gouden omranding.
+     // Middenkader: uitsluitend een haarfijne zilveren bovenbies.
+     // Basis- en agentenkader: geen schouderband of omranding.
      if(trim!=='gold-thick'){
       const scaleX=w/240,scaleY=h/255;
       const polygons=[
@@ -159,12 +165,20 @@
       ];
       ctx.fillStyle='#1d3659';
       ctx.strokeStyle=trim==='gold-thin'?'#ebc66e':'#d0deeb';
-      ctx.lineWidth=Math.max(.8,scaleX*(trim==='gold-thin'?1.15:.85));
+      ctx.lineWidth=Math.max(.65,scaleX*(trim==='gold-thin'?1.15:.65));
       for(const pts of polygons){
        ctx.beginPath();
        pts.forEach(([x,y],i)=>i?ctx.lineTo(x*scaleX,y*scaleY):
          ctx.moveTo(x*scaleX,y*scaleY));
-       ctx.closePath();ctx.fill();ctx.stroke();
+       ctx.closePath();ctx.fill();
+       if(trim==='gold-thin')ctx.stroke();
+       if(trim==='silver-thin'){
+        // Only the upper seam: NO filled silver epaulette or outlined square.
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0]*scaleX,pts[0][1]*scaleY);
+        ctx.lineTo(pts[1][0]*scaleX,pts[1][1]*scaleY);
+        ctx.stroke();
+       }
       }
      }
      resolve(canvas.toDataURL('image/webp',.87));
@@ -193,8 +207,8 @@
   image.decoding='async';
   image.draggable=false;
   outer.append(image);
-  // Replace the artwork with the matching gold/silver variant as it loads.
-  // All three variants keep identical geometry and can share overlays.
+  // Keep identical geometry across all four shoulder variants.
+  // Decorations and rank patches remain separate and untouched.
   void preparedUniform(trim).then(src=>{if(src&&image.src!==src)image.src=src});
   // Decorations are independent pieces; no large rectangular patch masks
   // the uniform or its grade again.
