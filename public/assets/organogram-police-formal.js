@@ -242,7 +242,7 @@
   plate.append(stripes,copy);
   return plate;
  }
- function makePortrait(person,large=false,demoNameplate=false){
+ function makePortrait(person,large=false){
   if(person?.dept!=='politie')return null;
   const grade=gradeFor(person);
   const trim=trimFor(grade);
@@ -259,21 +259,10 @@
   image.decoding='async';
   image.draggable=false;
   outer.append(image);
-  // MAIN DEMO ONLY: preview the BelgiumPD embroidered-style nameplate
-  // on the uniform. The verified/real person view keeps its existing plate.
-  if(demoNameplate){
-   const previewPlate=makeNameplate(person);
-   if(previewPlate)outer.append(previewPlate);
-  }else{
-   const nameplate=document.createElement('span');
-   nameplate.className='bpd-silver-nameplate';
-   nameplate.setAttribute('aria-hidden','true');
-   const plateText=document.createElement('span');
-   plateText.className='bpd-nameplate-text';
-   plateText.textContent=String(person.name||'POLITIE').trim().slice(0,16);
-   nameplate.append(plateText);
-   outer.append(nameplate);
-  }
+  // BelgiumPD nameplate is shared by real staff cards and the fictitious
+  // demo. Always derive both fields from the CURRENT public roster entry.
+  const currentNameplate=makeNameplate(person);
+  if(currentNameplate)outer.append(currentNameplate);
   // Keep identical geometry across all four shoulder variants.
   // Decorations and rank patches remain separate and untouched.
   void preparedUniform(trim).then(src=>{if(src&&image.src!==src)image.src=src});

@@ -227,7 +227,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   </aside>
  </div>
 </main>
-<script src="/assets/organogram-police-formal.js?v=main-naamplaat-demo-1"></script>
+<script src="/assets/organogram-police-formal.js?v=main-naamplaat-live-2"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script>
 (function(){
@@ -331,7 +331,7 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
   return 'Overig';
  }
  function createPortrait(person,large=false){
-  const formal=window.BPDPoliceUniform?.makePortrait(person,large,viewState.demo);
+  const formal=window.BPDPoliceUniform?.makePortrait(person,large);
   if(formal)return formal;
   const portrait=node('span',large?'portrait large':'portrait');
   portrait.dataset.dept=person.dept;
@@ -521,15 +521,16 @@ h1{font-size:19px;line-height:1.25;margin:0 0 4px;letter-spacing:-.02em}
    node('p','',serviceLabel(person.dept)+' · '+(person.call||'—')),
    node('p','',rankName(person)));
   heading.append(portrait,info);root.append(heading);
-  // Exaggerated detail only in MAIN's fictitious demonstration,
-  // without affecting the live personnel cards or saved records.
-  if(viewState.demo&&person.dept==='politie'){
+  // The same nameplate is visible, enlarged, for actual staff and demo
+  // profiles; this page is read-only and never changes personnel records.
+  if(person.dept==='politie'){
    const sample=node('section','bpd-nameplate-preview');
-   sample.append(node('div','bpd-preview-heading','Naamplaat · DEMO op MAIN'));
+   sample.append(node('div','bpd-preview-heading',
+     viewState.demo?'Naamplaat · FICTIEF VOORBEELD':'Naamplaat · BelgiumPD'));
    const plate=window.BPDPoliceUniform?.makeNameplate(person,true);
    if(plate)sample.append(plate);
    sample.append(node('small','',
-    'Boven: naam · Onder: BELGIEPD - roepnummer. Na promotie of naamswijziging volgen beide velden de actuele personeelslijst.'));
+    'Naam en roepnummer komen uit de huidige personeelslijst. Na promotie of naamswijziging worden ze automatisch opnieuw opgebouwd.'));
    root.append(sample);
   }
   const badge=window.BPDPoliceUniform?.makeBadge(person,true);

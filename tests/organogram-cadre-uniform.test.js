@@ -50,12 +50,13 @@ test('ribbons, insignia, medals are distinct ordered elements, no broad rectangu
  const out=p.makePortrait(person,true);
  assert.equal(out.dataset.trim,'silver-thin');
  assert.deepEqual([...out.children].map(x=>x.className),
-  ['','bpd-uniform-ribbons','bpd-chest-insignia bpd-photo-rank','bpd-uniform-medals']);
- assert.equal(out.children[1].children.length,4);
- assert.equal(out.children[3].children.length,3);
+  ['','bpd-personal-nameplate','bpd-uniform-ribbons','bpd-chest-insignia bpd-photo-rank','bpd-uniform-medals']);
+ assert.equal(out.children[2].children.length,4);
+ assert.equal(out.children[4].children.length,3);
  const noAwards=p.makePortrait({dept:'politie',call:'300',awards:[]});
- assert.equal(noAwards.children.length,2);
- assert.match(noAwards.children[1].className,/bpd-chest-insignia/);
+ assert.equal(noAwards.children.length,3);
+ assert.match(noAwards.children[1].className,/bpd-personal-nameplate/);
+ assert.match(noAwards.children[2].className,/bpd-chest-insignia/);
 });
 test('uniform is presentation-only; granting and expiring retain server policy',()=>{
  const root=new URL('../public/assets/',import.meta.url);

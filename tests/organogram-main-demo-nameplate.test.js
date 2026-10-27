@@ -22,7 +22,7 @@ function uniform(){
  runInNewContext(js,env,{filename:'organogram-police-formal.js'});
  return env.window.BPDPoliceUniform;
 }
-test('MAIN demo: name in black box, BELGIEPD and callsign below',()=>{
+test('MAIN regular organogram: name in black box, BELGIEPD and callsign below',()=>{
  const ui=uniform();
  const person={dept:'politie',name:'Thijs',call:'900'};
  const plate=ui.makeNameplate(person,true);
@@ -32,18 +32,18 @@ test('MAIN demo: name in black box, BELGIEPD and callsign below',()=>{
  assert.equal(plate.children[1].children[0].children[0].textContent,'Thijs');
  assert.equal(plate.children[1].children[1].textContent,'BELGIEPD - 900');
 });
-test('MAIN demo only: original real-nameplate not changed',()=>{
+test('all police portraits in real and demo views use the new silver nameplate',()=>{
  const ui=uniform();
  const sample={dept:'politie',name:'Mxxx_',call:'660'};
- const demo=ui.makePortrait(sample,true,true);
- const real=ui.makePortrait(sample,true,false);
- const classes=item=>item.children.map(x=>x.className);
- assert.ok(classes(demo).includes('bpd-personal-nameplate'));
- assert.ok(!classes(demo).includes('bpd-silver-nameplate'));
- assert.ok(classes(real).includes('bpd-silver-nameplate'));
- assert.ok(!classes(real).includes('bpd-personal-nameplate'));
- assert.ok(classes(demo).includes('bpd-chest-insignia'));
- assert.ok(classes(real).includes('bpd-chest-insignia'));
+ const portrait=ui.makePortrait(sample,true);
+ const classes=portrait.children.map(x=>x.className);
+ assert.ok(classes.includes('bpd-personal-nameplate'));
+ assert.ok(!classes.includes('bpd-silver-nameplate'));
+ assert.ok(classes.includes('bpd-chest-insignia'));
+ const nameplate=portrait.children.find(x=>x.className==='bpd-personal-nameplate');
+ assert.equal(nameplate.children[1].children[0].children[0].textContent,'Mxxx_');
+ assert.equal(nameplate.children[1].children[1].textContent,'BELGIEPD - 660');
+ assert.equal(ui.makePortrait({dept:'brandweer',name:'X',call:'ZONE'}),null);
 });
 test('promotion, callsign and name changes dynamically update the nameplate and grade',()=>{
  const ui=uniform();
@@ -54,12 +54,13 @@ test('promotion, callsign and name changes dynamically update the nameplate and 
  assert.equal(ui.makeNameplate(after).children[1].children[0].children[0].textContent,'Nieuwe Naam');
  assert.notEqual(ui.gradeFor(before).key,ui.gradeFor(after).key);
 });
-test('MAIN page only displays detail in demo, and opens requested demo preview',()=>{
+test('MAIN page shows enlarged nameplate in both real and demo views',()=>{
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
  const style=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
  assert.match(html,/get\('demo'\)==='naamplaat'/);
- assert.match(html,/makePortrait\(person,large,viewState\.demo\)/);
- assert.match(html,/if\(viewState\.demo&&person\.dept==='politie'\)/);
+ assert.match(html,/makePortrait\(person,large\)/);
+ assert.match(html,/if\(person\.dept==='politie'\)/);
+ assert.match(html,/viewState\.demo\?'Naamplaat · FICTIEF VOORBEELD':'Naamplaat · BelgiumPD'/);
  assert.match(html,/makeNameplate\(person,true\)/);
  assert.match(html,/!internalVisible&&!demoNameplateRequested/);
  assert.match(style,/\.bpd-nameplate-zoom/);
