@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Hiërarchisch organogram · BelgiumPD MAIN</title>
+<style>
+:root{font:13px/1.4 Inter,system-ui,"Segoe UI",sans-serif;color:#e9f3ff;background:#091728;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;min-width:320px}button,input{font:inherit}
+button{cursor:pointer}button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid #b1d6ff;outline-offset:2px}
+header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12px,3vw,30px);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{color:white;text-decoration:none;font-weight:850;font-size:15px}.tag{color:#ffe6a5;background:#544220;border:1px solid #967238;border-radius:6px;padding:3px 7px;font-size:11px;font-weight:800}
+.back{margin-left:auto;color:#c3ddff}main{max-width:1550px;margin:auto;padding:16px clamp(12px,2.5vw,30px) 38px}h1{font-size:22px;margin:4px 0 5px}
+.lead{color:#bbd0e8;margin:0 0 13px;max-width:850px}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;border:1px solid #304d70;background:#142741;border-radius:10px;padding:9px;margin:12px 0}
+.toolbar button{border:1px solid #446589;background:#1b3451;color:#dceeff;border-radius:7px;padding:7px 10px}
+.toolbar button[aria-pressed=true]{background:#2b5591;border-color:#88b9ee;color:white}
+.toolbar input{margin-left:auto;min-width:145px;flex:1;max-width:265px;color:white;background:#0b1c30;border:1px solid #547291;border-radius:7px;padding:7px 9px}
+.notice{font-size:11px;padding:9px 11px;border-radius:8px;background:#123547;color:#d9fff2;border:1px solid #306b73;margin:10px 0}
+.notice.warn{background:#392f21;color:#ffe8bb;border-color:#8c713c}
+.board-wrap{display:flex;flex-direction:column;align-items:center;margin:18px 0 6px}
+.board{min-width:200px;max-width:360px;text-align:center;background:#254467;border:1px solid #9ab7d5;padding:12px 18px;border-radius:13px;box-shadow:0 6px 25px #04101d70}
+.board strong{display:block;font-size:15px}.board small{color:#c0d6ee}.trunk{height:23px;border-left:2px solid #6d96bf}
+.fork{width:calc(100% - 14%);border-top:2px solid #6d96bf;max-width:1270px}
+.service-grid{display:grid;grid-template-columns:repeat(5,minmax(185px,1fr));gap:13px}
+.service{min-width:0;position:relative;border:1px solid #436080;background:#132b47;border-radius:13px;overflow:visible}
+.service:before{content:"";position:absolute;height:14px;border-left:2px solid #6d96bf;top:-14px;left:50%}
+.service[open]{background:#142d4b;border-color:#6287ac}
+.service>summary{list-style:none;padding:11px 11px;display:flex;align-items:center;gap:7px;cursor:pointer}
+.service>summary::-webkit-details-marker{display:none}.service .icon{font-size:19px}
+.service-title{font-weight:850;white-space:normal}.count{font-size:10px;color:#b7cfe8;display:block}
+.chevron{margin-left:auto;color:#bfd6f2}.service[open] .chevron{transform:rotate(90deg)}
+.service-body{padding:4px 10px 12px;border-top:1px solid #3a5878}
+.level{margin:10px auto 0;max-width:100%;position:relative}
+.level:before{content:"";display:block;height:12px;border-left:2px solid #587a9b;margin:0 auto}
+.level-title{padding:7px 8px;border:1px solid #537392;background:#1d3958;border-radius:8px;font-size:11px;text-align:center;font-weight:850}
+.level-caption{color:#b6cde9;font-size:10px}
+.persons{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:6px}
+.person{border:1px solid #496884;border-radius:7px;background:#132841;color:#f2f8ff;padding:6px;min-width:0;max-width:100%;text-align:left;display:flex;align-items:center;gap:5px}
+.person:hover{border-color:#9ac3ef;background:#204361}.person b{font-size:10px;display:block;overflow:hidden;text-overflow:ellipsis}.person small{font-size:9px;color:#aac6e3;display:block}
+.person .num{background:#2b4360;border-radius:4px;font-size:9px;padding:2px 4px}
+.person .flag{font-size:9px;color:#ffe3a4;background:#544222;border-radius:4px;padding:2px 4px}
+.gaps{color:#91aeca;font-size:10px;text-align:center;padding:6px 2px}
+.spec-heading{display:flex;align-items:center;gap:8px;margin:17px 0 4px;font-size:11px;font-weight:900;color:#cce4ff}
+.spec-heading:before{content:"";width:10px;height:10px;border:1px solid #91b5d8;border-radius:2px;transform:rotate(45deg)}
+.spec-list{display:grid;grid-template-columns:1fr;gap:8px}
+.specialty{border:1px solid #3c5879;background:#0d233a;border-radius:9px;overflow:hidden}
+.specialty summary{padding:8px;font-weight:800;font-size:11px;cursor:pointer;list-style:none;background:#1b3654}
+.specialty summary::-webkit-details-marker{display:none}
+.specialty summary small{color:#b5cce8;font-size:9px;font-weight:500}
+.specialty-content{padding:8px}.group-title{font-size:10px;font-weight:800;color:#a8c7ed;margin:6px 0 4px}
+.specialty .persons{justify-content:flex-start}
+.specialty-nested{margin:8px 0 2px 12px;border-color:#5b7293;background:#112c48}
+.specialty-nested>summary{background:#254866}
+.specialty-branch-count{color:#b7d1eb;font-size:10px;font-weight:500;margin-left:4px}
+.specialty-content>.gaps{padding:9px;color:#91aeca;text-align:left}
+.specialty-parent>summary{background:#244563}
+.specialty-parent>.specialty-content{padding:7px}
+.police-service-intro{color:#b9d3ee;font-size:10px;margin:5px 0 3px}
+.panel{margin-top:14px;padding:10px 13px;background:#10263f;border:1px solid #395a7b;border-radius:10px;color:#b7cfe8;min-height:42px}
+.footer{font-size:11px;color:#aabed6;margin-top:15px;max-width:950px}
+.hidden{display:none!important}
+.manager{border:1px solid #557da4;border-radius:11px;background:#152e4c;padding:13px;margin:12px 0}
+.manager h2{font-size:15px;margin:0 0 5px}.manager-note{font-size:11px;color:#c7d9ec;margin:3px 0 10px}
+.manager-grid{display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:9px}
+.manager label{display:block;font-weight:750;font-size:11px;margin:5px 0}
+.manager select,.manager textarea,.manager input[type=number]{width:100%;background:#0b1d31;color:#f0f7ff;border:1px solid #6689aa;border-radius:6px;padding:8px}
+.manager textarea{min-height:60px}
+.manager .checks{display:flex;flex-wrap:wrap;gap:7px;margin:7px 0}
+.manager .checks label{display:flex;align-items:center;gap:6px;border:1px solid #3c5977;padding:5px 8px;border-radius:5px;font-size:11px;font-weight:500}
+.manager .checks input{accent-color:#8abdf7}
+.manager button{background:#2d609c;color:white;border:1px solid #9ac3ef;padding:8px 13px;border-radius:7px}
+.manager button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:630px){.manager-grid{grid-template-columns:1fr}}
+@media(max-width:1250px){.service-grid{grid-template-columns:repeat(3,minmax(180px,1fr))}.fork{display:none}.service:before{display:none}}
+@media(max-width:760px){.service-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}.toolbar input{max-width:none}.level-title{font-size:10px}}
+@media(max-width:440px){.service-grid{grid-template-columns:1fr}.service-body{padding:4px 12px 13px}}
+</style>
+<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=unified-gold-navy-frame-20261028">
+<style>
+.person .portrait{display:block;position:relative;overflow:hidden;flex:0 0 70px;width:70px;height:66px;border:1px solid #5b7da6;border-radius:7px;background:#0b223a}
+.person .portrait.bpd-police-formal{width:70px;height:66px}
+.person{min-height:76px}
+.person .flag{align-self:flex-start}
+</style>
+</head>
+<body>
+<header>
+ <a class="brand" href="/">BelgiumPD · Beheerportaal</a>
+ <span class="tag">MAIN · ORGANOGRAM</span>
+ <a class="back" href="/organogram.html">Klassiek organogram</a>
+</header>
+<main>
+ <h1>Organogram van BelgiumPD</h1>
+ <p class="lead">Eén Bestuur boven alle diensten. In het algemene overzicht alleen de dienstleidingen. Open één dienst voor specialisaties, instructeurs en leden. Handmatige posities kun je altijd terugdraaien. Een persoon kan in meerdere diensttakken voorkomen zonder duplicatie van het personeelsdossier.</p>
+ <nav class="toolbar" aria-label="Organogramweergave">
+  <button type="button" data-view="alle" aria-pressed="true">Alle diensten</button>
+  <button type="button" data-view="politie">Politie</button>
+  <button type="button" data-view="brandweer">Brandweer</button>
+  <button type="button" data-view="ambulance">Ambulance</button>
+  <button type="button" data-view="depannage">Depannage</button>
+  <button type="button" data-view="burger">Burger</button>
+  <button type="button" id="demo-toggle" aria-pressed="true">Voorbeeldgegevens</button>
+  <button type="button" id="manage-toggle">⚙ Handmatige functies</button>
+  <button type="button" id="login">Aanmelden</button>
+  <input type="search" id="search" placeholder="Zoek naam, rang of specialisatie" aria-label="Doorzoek organogram">
+ </nav>
+ <div id="source" class="notice warn">Voorbeeldgegevens laden …</div>
+ <section id="manage" class="manager" hidden aria-label="Handmatig organogrambeheer">
+  <h2>Handmatige functies · noodregeling</h2>
+  <p class="manager-note">Selecteer een bestaand personeelslid of een goedgekeurd bestuursaccount. Handmatige keuzes blijven in Firestore bewaard bij uitval van de Discord-sync. Dit geeft geen dossier- of beheersrechten.</p>
+  <div class="manager-grid">
+   <label>Persoon <select id="manage-person"><option value="">Kies personeelslid</option></select></label>
+   <label>Leiding/kader (alleen organogram) <select id="manage-tier">
+    <option value="none">Automatisch volgens rang</option>
+   </select></label>
+   <label>Bestuursweergave <select id="manage-board">
+    <option value="none">Geen bestuursfunctie</option>
+    <option value="bestuur">Bestuur</option>
+    <option value="bestuur-ai">Bestuur ad interim</option>
+   </select></label>
+  </div>
+  <label>Opleidingsfuncties</label>
+  <div id="manage-roles" class="checks">
+   <label><input id="manage-instructor" type="checkbox"> Instructeur</label>
+   <label><input id="manage-teacher" type="checkbox"> Docent</label>
+  </div>
+  <label>Specialisaties (meerdere mogelijk)</label>
+  <div id="manage-specialties" class="checks"></div>
+  <label>Motivering voor logboek <textarea id="manage-reason" maxlength="300" placeholder="Waarom wordt deze functie handmatig ingesteld?"></textarea></label>
+  <div class="manager-grid">
+   <label>Weergavevolgorde <input type="number" id="manage-order" min="0" max="999" step="1" value="0"></label>
+   <p class="manager-note">0 = oorspronkelijke rangvolgorde. 1 = eerste positie, 2 = tweede positie. Instructeurs/docenten blijven vóór gewone leden.</p>
+  </div>
+  <button type="button" id="manage-save">Wijziging bewaren</button>
+  <button type="button" id="manage-undo" disabled>↩ Vorige instelling herstellen</button>
+  <p id="manage-status" class="manager-note" role="status">Alleen technisch beheer kan deze functies wijzigen.</p>
+ </section>
+ <div class="board-wrap">
+  <div class="board"><strong>👑 BESTUUR</strong><small>Overkoepelende leiding over alle diensten</small><div class="gaps">Bestuursleden worden pas met geverifieerde functiegegevens ingevuld</div><div id="board-members" class="persons" aria-label="Bestuursleden"></div></div>
+  <div class="trunk"></div><div class="fork"></div>
+ </div>
+ <div id="services" class="service-grid" aria-live="polite"></div>
+ <div id="selected" class="panel" aria-live="polite">Selecteer een persoon om de beschikbare basisgegevens te bekijken.</div>
+ <p class="footer">Dit organogram is uitsluitend een visuele weergave, geen officiële bevelslijn en geen bron van toegangsrechten. Docent/instructeur wordt alleen getoond als die functie expliciet in de bron is bevestigd. Geen toegang tot dossiers, observaties of sancties via deze pagina. Burger staat al onder Bestuur, maar beschermde burgergegevens worden niet automatisch vrijgegeven.</p>
+</main>
+<script src="/assets/organogram-police-formal.js?v=unified-gold-navy-frame-20261028"></script>
+<script src="/assets/organogram-decorations.js?v=5"></script>
+<script type="module">
+import {SERVICES,hierarchy,orderedMembers,isTeacher,specialtyNames} from '/assets/organogram-hierarchie-model.js';
+const $=id=>document.getElementById(id);
+const fixtures=[
+ {dept:'politie',name:'Voorbeeld Korpschef',call:'900',rank:'Eerste hoofdcommissaris'},
+ {dept:'politie',name:'Voorbeeld Officier',call:'920',rank:'Commissaris'},
+ {dept:'politie',name:'Voorbeeld Hoofdinspecteur',call:'700',rank:'Hoofdinspecteur'},
+ {dept:'politie',name:'Voorbeeld Docent',call:'510',rank:'Eerste inspecteur',teachingRoles:['docent'],specialties:['Dispatch','RAGO']},
+ {dept:'politie',name:'Voorbeeld Instructeur',call:'620',rank:'Aspirant-hoofdinspecteur',teachingRoles:['instructeur'],specialties:['Motard']},
+ {dept:'politie',name:'Voorbeeld Motard',call:'440',rank:'Inspecteur',specialties:['Motard']},
+ {dept:'politie',name:'Voorbeeld Agent',call:'220',rank:'Agent van politie'},
+ {dept:'politie',name:'Voorbeeld Radio/BM',call:'455',rank:'Inspecteur',
+  specialties:['Radio BM']},
+ {dept:'politie',name:'Voorbeeld Signalisatie',call:'335',rank:'Aspirant-inspecteur',
+  specialties:['Signalisatie']},
+ {dept:'politie',name:'Voorbeeld K9',call:'485',rank:'Inspecteur',
+  specialties:['K9']},
+ {dept:'politie',name:'Voorbeeld Recherche',call:'810',rank:'Eerste hoofdinspecteur',
+  specialties:['Lokale Recherche']},
+ {dept:'brandweer',name:'Voorbeeld Zonechef',call:'ZONE',rank:'Zonecommandant'},
+ {dept:'brandweer',name:'Voorbeeld Kapitein',call:'OFF-04',rank:'Kapitein'},
+ {dept:'brandweer',name:'Voorbeeld Sergeant',call:'OOFF-12',rank:'Sergeant',teachingRoles:['instructeur'],specialties:['Duiker']},
+ {dept:'brandweer',name:'Voorbeeld Brandweerman',call:'BWM-07',rank:'Brandweerman',specialties:['Duiker','Ladderwagen']},
+ {dept:'ambulance',name:'Voorbeeld AZLS',call:'AZLS-01',rank:'AZLS leiding'},
+ {dept:'ambulance',name:'Voorbeeld DIRMED',call:'DIRMED-01',rank:'DIRMED'},
+ {dept:'ambulance',name:'Voorbeeld Medisch Instructeur',call:'VPK-02',rank:'Verpleegkundige',teachingRoles:['instructeur'],specialties:['MIP']},
+ {dept:'ambulance',name:'Voorbeeld PIT-lid',call:'HVPK-03',rank:'Verpleegkundige',specialties:['MIP','PIT']},
+ {dept:'depannage',name:'Voorbeeld AWV',call:'AWV-01',rank:'Agentschap Wegen en Verkeer leiding'},
+ {dept:'depannage',name:'Voorbeeld FAST',call:'FAST-02',rank:'Technicus',teachingRoles:['instructeur'],specialties:['FAST']},
+ {dept:'depannage',name:'Voorbeeld Takelaar',call:'LSRA-10',rank:'Depannagetechnicus',specialties:['FAST']},
+ {dept:'burger',name:'Voorbeeld Burgerraad',call:'BUR-01',rank:'Burgerraad'},
+ {dept:'burger',name:'Voorbeeld Burgerlid',call:'BUR-10',rank:'Burger',specialties:['Burgerproject']}
+];
+const state={view:'alle',query:'',demo:true,live:[],board:[],loaded:false};
+let auth=null,authModule=null,adminPeople=[],adminSpecialties={},adminLeadership={},activeAdminPerson=null;
+function el(tag,cls,text){
+ const n=document.createElement(tag);
+ if(cls)n.className=cls;
+ if(text!==undefined)n.textContent=text;
+ return n;
+}
+function person(p){
+ const b=el('button','person');b.type='button';
+ b.append(el('span','num',p.call||'—'));
+ const portrait=window.BPDPoliceUniform?.makePortrait?.(p);
+ if(portrait)b.append(portrait);
+ const label=el('span');label.append(el('b','',p.name),el('small','',p.rank||'Lid'));b.append(label);
+ if(isTeacher(p))b.append(el('span','flag',p.teachingRoles?.some(x=>x.toLocaleLowerCase('nl')==='docent')?'Docent':'Instructeur'));
+ if(String(p.source||'').includes('handmatig'))b.append(el('span','flag','Handmatig'));
+ b.setAttribute('aria-label',p.name+' '+(p.call||''));
+ b.addEventListener('click',()=>{
+  const details=[p.name,p.call||'geen roepnummer',p.rank||'Lid',SERVICES.find(s=>s.id===p.dept)?.name||p.dept];
+  $('selected').textContent=details.join(' · ')+(isTeacher(p)?' · Docent/instructeur':'')
+  +(p.source?' · Bron: '+p.source:'')+' · Leesweergave, geen dossierwijziging';
+ });return b;
+}
+function peopleList(rows){
+ const list=el('div','persons');for(const p of orderedMembers(rows))list.append(person(p));return list;
+}
+function serviceCard(item,settings,solo){
+ const box=el('details','service');box.dataset.dept=settings.id;
+ box.open=true;
+ const summary=el('summary');summary.append(el('span','icon',settings.icon));
+ const txt=el('span');txt.append(el('span','service-title',settings.name),el('span','count',item.count+' registraties'));
+ summary.append(txt,el('span','chevron','›'));box.append(summary);
+ if(!solo){
+  // In the global chart, clicking a service navigates to its detailed view.
+  // Specializations are deliberately not rendered in the global DOM.
+  summary.title='Open '+settings.name+' met specialisaties';
+  summary.setAttribute('aria-label','Bekijk '+settings.name+' inclusief specialisaties');
+  summary.addEventListener('click',event=>{
+   event.preventDefault();
+   state.view=settings.id;
+   render();
+  });
+ }
+ const body=el('div','service-body');
+ if(settings.id==='burger'&&!state.demo&&!item.count){
+  body.append(el('div','gaps','Burgerraad en burgers blijven onder Bestuur; er is momenteel geen openbare burgerlijst beschikbaar.'));
+ }
+ for(const level of item.leadership){
+  const block=el('div','level');
+  block.append(el('div','level-title',level.label));
+  if(level.members.length)block.append(peopleList(level.members));
+  else block.append(el('div','gaps','Nog geen vrijgegeven registraties'));
+  body.append(block);
+ }
+ if(solo){
+  body.append(el('div','spec-heading','SPECIALISATIES / PLOEGEN'));
+  if(settings.id==='politie'){
+   body.append(el('p','police-service-intro',
+    'Interventiedienst → Radio/BM; daarna de specialisaties in vaste BelgiumPD-volgorde.'));
+  }
+  const specs=el('div','spec-list');
+  if(!item.branches.length)specs.append(el('div','gaps',state.demo?'Geen leden':'Geen vrijgegeven specialisaties of overige leden'));
+  for(const branch of item.branches)specs.append(specialtyBranch(branch,settings.id==='politie'));
+  body.append(specs);
+ }
+ box.append(body);
+ return box;
+}
+function specialtyBranch(branch,isPolice,nested=false){
+ const card=el('details','specialty'+(nested?' specialty-nested':
+  branch.children?.length?' specialty-parent':''));
+ const total=[...new Set([...(branch.members||[]),
+  ...(branch.children||[]).flatMap(child=>child.members||[])])].length;
+ card.open=isPolice?(branch.label==='INTERVENTIEDIENST'||nested):true;
+ const title=el('summary','',branch.label);
+ title.append(el('span','specialty-branch-count',' · '+total));
+ card.append(title);
+ const content=el('div','specialty-content');
+ const tutors=(branch.members||[]).filter(isTeacher);
+ const members=(branch.members||[]).filter(p=>!isTeacher(p));
+ if(tutors.length)content.append(el('div','group-title','Docenten / instructeurs'),peopleList(tutors));
+ if(members.length)content.append(el('div','group-title','Leden in rangvolgorde'),peopleList(members));
+ for(const child of branch.children||[])content.append(specialtyBranch(child,isPolice,true));
+ if(!tutors.length&&!members.length&&!branch.children?.length)
+  content.append(el('div','gaps','Nog geen geregistreerde leden'));
+ card.append(content);
+ return card;
+}
+function filteredRows(){
+ const rows=state.demo?fixtures:state.live;
+ if(!state.query)return rows;
+ const needle=state.query.toLocaleLowerCase('nl');
+ return rows.filter(p=>[p.name,p.call,p.rank,...specialtyNames(p)].some(t=>String(t||'').toLocaleLowerCase('nl').includes(needle)));
+}
+function render(){
+ document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===state.view)));
+ $('demo-toggle').setAttribute('aria-pressed',String(state.demo));
+ $('services').replaceChildren();
+ $('board-members').replaceChildren();
+ if(!state.demo&&state.board.length){
+  for(const item of state.board){
+   const chip=el('span','person');
+   chip.append(el('b','',item.name));
+   chip.append(el('small','',item.role==='bestuur-ai'?'Bestuur ad interim':'Bestuur'));
+   $('board-members').append(chip);
+  }
+ }else{
+  $('board-members').append(el('span','gaps',state.demo?'Fictief voorbeeld: geen echte bestuursnamen': 'Nog geen bestuursleden met een geverifieerde of handmatig geregistreerde functie'));
+ }
+ const dataset=hierarchy(filteredRows());
+ const solo=state.view!=='alle';
+ for(let i=0;i<SERVICES.length;i++){
+  if(solo&&SERVICES[i].id!==state.view)continue;
+  $('services').append(serviceCard(dataset[i],SERVICES[i],solo));
+ }
+ $('services').style.gridTemplateColumns=solo?'minmax(0,850px)':'';
+}
+document.querySelector('.toolbar').addEventListener('click',event=>{
+ const btn=event.target.closest('button');if(!btn)return;
+ if(btn.dataset.view)state.view=btn.dataset.view;
+ else if(btn.id==='demo-toggle'&&state.loaded)state.demo=!state.demo;
+ render();
+});
+$('search').addEventListener('input',event=>{state.query=event.target.value;render()});
+async function loadPublic(){
+ try{
+  const response=await authFetch('/api/organogram/hierarchie');
+  const payload=response;
+  if(payload.readOnly!==true||!Array.isArray(payload.records))throw Error('Geen vrijgegeven organogramlijst');
+  const approved=new Set(['politie','brandweer','ambulance','depannage','burger']);
+  state.live=payload.records.filter(p=>p&&approved.has(p.dept)&&p.name)
+   .map(p=>({dept:p.dept,name:String(p.name).slice(0,90),
+    call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
+    specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
+    teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
+    boardRole:p.boardRole||'none',leadershipTier:p.leadershipTier||'none',displayOrder:Number(p.displayOrder)||0,source:String(p.source||'personeelslijst').slice(0,35)}));
+  state.board=Array.isArray(payload.board)?payload.board.slice(0,50):[];
+  state.loaded=true;
+  state.demo=false;
+  $('source').className='notice'+(payload.stale||!payload.syncAvailable?' warn':'');
+  $('source').textContent='MAIN · '
+   +(state.demo?'FICTIEVE VOORBEELDEN · ':'')
+   +state.live.length+' geregistreerde dienstfuncties · '
+   +(payload.syncAvailable?'Discord-sync gecontroleerd.':'Discord-sync tijdelijk onvolledig; handmatige functies blijven behouden.')
+   +(payload.stale?' · Personeelsbron is mogelijk verouderd.':'');
+ }catch(error){
+  state.loaded=false;state.live=[];state.board=[];state.demo=true;
+  $('source').className='notice warn';
+  $('source').textContent=auth?.currentUser?
+   'Organogramgegevens tijdelijk niet beschikbaar: '+error.message:
+   'Meld je aan om echte personeelsgegevens te zien. De fictieve demonstratie blijft herkenbaar.';
+ }
+ render();
+}
+async function setupManagement(){
+ try{
+  const response=await fetch('/api/client-config',{cache:'no-store'});
+  const config=await response.json();
+  if(!response.ok||!config.enabled)throw Error('Aanmelding tijdelijk niet beschikbaar');
+  const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  const app=appModule.getApps()[0]||appModule.initializeApp(config.firebaseConfig);
+  auth=authModule.getAuth(app);
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:$('login'),auth,authModule,config,
+   onError:e=>{$('manage-status').textContent='Aanmelden: '+e.message;}});
+  authModule.onAuthStateChanged(auth,user=>{
+   if(!user){adminPeople=[];activeAdminPerson=null;$('manage').hidden=true;}
+   void loadPublic();
+  });
+ }catch(e){$('manage-status').textContent=e.message;}
+}
+function selectedAdmin(){
+ const value=$('manage-person').value;
+ if(value==='')return null;
+ return adminPeople[Number(value)]||null;
+}
+function fillAdminPerson(){
+ const p=selectedAdmin();activeAdminPerson=p;
+ $('manage-specialties').replaceChildren();
+ $('manage-tier').replaceChildren();
+ $('manage-tier').append(Object.assign(el('option','','Automatisch volgens rang'),{value:'none'}));
+ if(!p)return;
+ for(const level of adminLeadership[p.dept]||[]){
+  const option=el('option','',level);option.value=level;$('manage-tier').append(option);
+ }
+ const values=p.placement||{};
+ $('manage-board').value=values.boardRole||'none';
+ $('manage-tier').value=values.leadershipTier||'none';
+ $('manage-order').value=String(values.displayOrder||0);
+ $('manage-undo').disabled=!p.undoAvailable;
+ $('manage-instructor').checked=(values.teachingRoles||[]).includes('instructeur');
+ $('manage-teacher').checked=(values.teachingRoles||[]).includes('docent');
+ $('manage-instructor').disabled=p.dept==='bestuur';
+ $('manage-teacher').disabled=p.dept==='bestuur';
+ for(const specialty of adminSpecialties[p.dept]||[]){
+  const label=el('label');const input=el('input');input.type='checkbox';
+  input.value=specialty;input.checked=(values.specialties||[]).includes(specialty);
+  label.append(input,document.createTextNode(' '+specialty));$('manage-specialties').append(label);
+ }
+ $('manage-status').textContent=(values.boardRole||values.teachingRoles?.length||values.specialties?.length)
+  ?'Bestaande handmatige registratie geladen.':'Nog geen handmatige registratie. Automatische rollen kunnen daarnaast actief zijn.';
+}
+async function authFetch(url,options={}){
+ if(!auth?.currentUser)throw Error('Meld je eerst aan met je eigen portaalaccount');
+ const token=await auth.currentUser.getIdToken();
+ const response=await fetch(url,{...options,cache:'no-store',
+  headers:{...(options.headers||{}),Authorization:'Bearer '+token}});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'Geen toegang');
+ return data;
+}
+$('manage-toggle').addEventListener('click',async()=>{
+ if(!$('manage').hidden){$('manage').hidden=true;return;}
+ $('manage').hidden=false;
+ $('manage-status').textContent='Geverifieerde beheerlijst laden…';
+ try{
+  const result=await authFetch('/api/organogram/placements/admin');
+  if(result.displayOnly!==true)throw Error('Ongeldig antwoord');
+  adminPeople=result.people||[];adminSpecialties=result.specialties||{};adminLeadership=result.leadershipLevels||{};
+  const dropdown=$('manage-person');
+  dropdown.replaceChildren(el('option','','Kies een personeelslid…'));
+  for(let i=0;i<adminPeople.length;i++){
+   const p=adminPeople[i];const option=el('option','',
+    (p.dept==='bestuur'?'BESTUUR (account)':p.dept.toUpperCase())+' · '+p.name+' · '+(p.call||p.personId));
+   option.value=String(i);dropdown.append(option);
+  }
+  dropdown.selectedIndex=0;activeAdminPerson=null;
+  $('manage-status').textContent=adminPeople.length+' bestaande registraties beschikbaar. Selecteer iemand en bewaar een handmatige weergavefunctie.';
+ }catch(e){$('manage-status').textContent='Beheer alleen na geldige technische aanmelding: '+e.message;}
+});
+$('manage-person').addEventListener('change',fillAdminPerson);
+$('manage-save').addEventListener('click',async()=>{
+ const p=activeAdminPerson;
+ if(!p){$('manage-status').textContent='Selecteer eerst een personeelslid.';return}
+ const save=$('manage-save');save.disabled=true;
+ try{
+  const boardRole=$('manage-board').value;
+  const leadershipTier=$('manage-tier').value;
+  const displayOrder=Number($('manage-order').value);
+  const teachingRoles=[
+   ...($('manage-instructor').checked?['instructeur']:[]),
+   ...($('manage-teacher').checked?['docent']:[])
+  ];
+  const specialties=[...$('manage-specialties').querySelectorAll('input:checked')].map(x=>x.value);
+  const reason=$('manage-reason').value.trim();
+  await authFetch('/api/organogram/placements/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.personId),
+   {method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({boardRole,leadershipTier,displayOrder,teachingRoles,specialties,reason})});
+  p.placement={boardRole,leadershipTier,displayOrder,teachingRoles,specialties};
+  p.undoAvailable=true;
+  $('manage-undo').disabled=false;
+  $('manage-reason').value='';
+  $('manage-status').textContent='Handmatige functie opgeslagen en gelogd. Geen operationele rechten gewijzigd.';
+  state.demo=false;
+  await loadPublic();
+ }catch(e){$('manage-status').textContent='Niet opgeslagen: '+e.message;}
+ finally{save.disabled=false}
+});
+
+render();setupManagement();
+$('manage-undo').addEventListener('click',async()=>{
+ const p=activeAdminPerson;if(!p?.undoAvailable)return;
+ const reason=$('manage-reason').value.trim();
+ if(reason.length<8||reason.length>300){$('manage-status').textContent='Geef eerst een motivering van 8 tot 300 tekens.';return}
+ if(!window.confirm('Vorige organograminstelling herstellen voor '+p.name+'?'))return;
+ const button=$('manage-undo');button.disabled=true;
+ try{
+  await authFetch('/api/organogram/placements/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.personId)+'/undo',
+   {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason})});
+  const selected=$('manage-person').value;
+  const fresh=await authFetch('/api/organogram/placements/admin');
+  adminPeople=fresh.people||[];adminSpecialties=fresh.specialties||{};adminLeadership=fresh.leadershipLevels||{};
+  $('manage-person').value=selected;fillAdminPerson();$('manage-reason').value='';
+  await loadPublic();
+  $('manage-status').textContent='Vorige instelling hersteld en gelogd. Geen bevoegdheden veranderd.';
+ }catch(e){$('manage-status').textContent='Herstellen mislukt: '+e.message;}
+ finally{button.disabled=!activeAdminPerson?.undoAvailable}
+});
+</script>
+</body>
+</html>
