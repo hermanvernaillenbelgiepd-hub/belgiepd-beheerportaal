@@ -26,14 +26,45 @@ test('Bestuur has exactly five child service branches, in the agreed order',()=>
 test('police leadership precedes specializations and rank sorting within teacher group',()=>{
  const p=serviceHierarchy(sample,'politie');
  assert.deepEqual(p.leadership.map(l=>l.members.map(p=>p.call)),[['900'],['920'],['700','750']]);
- const motard=p.branches.find(s=>s.label==='Motard');
+ const motard=p.branches.find(s=>s.label==='MOTARD');
  assert.ok(motard);
  assert.deepEqual(motard.members.map(m=>m.call),['500','400','750']);
  assert.equal(isTeacher(motard.members[0]),true);
  assert.equal(isTeacher(motard.members[1]),true);
  assert.equal(isTeacher(motard.members[2]),false);
- const dispatch=p.branches.find(s=>s.label==='Dispatch');
+ const dispatch=p.branches.find(s=>s.label==='DISP');
  assert.deepEqual(dispatch.members.map(m=>m.call),['400']);
+});
+test('police specialties follow the explicitly agreed hierarchy and RADIO/BM is under INTERVENTIEDIENST',()=>{
+ const p=serviceHierarchy([
+  ...sample,
+  {dept:'politie',name:'Radio lid',call:'310',rank:'Aspirant inspecteur',
+   specialties:['Radio BM']},
+  {dept:'politie',name:'Rechercher',call:'670',rank:'Aspirant hoofdinspecteur',
+   specialties:['Lokale Recherche']}
+ ],'politie');
+ assert.deepEqual(p.branches.slice(0,10).map(s=>s.label),[
+  'INTERVENTIEDIENST','SIGNALISATIE','MOTARD','SEMI ANONIEM','K9',
+  'RAGO','DISP','TO','AE','RECHERCHE'
+ ]);
+ assert.equal(p.branches[0].children[0].label,'RADIO/BM');
+ assert.deepEqual(p.branches[0].children[0].members.map(p=>p.call),['310']);
+ assert.deepEqual(p.branches[9].members.map(p=>p.call),['670']);
+ assert.equal(p.branches.some(s=>s.label==='Radio BM'),false);
+ assert.equal(p.branches.some(s=>s.label==='Dispatch'),false);
+});
+test('legacy aliases map to the new categories without losing specializations',()=>{
+ const p=serviceHierarchy([
+  {dept:'politie',name:'A',call:'350',specialties:['Motor','SIV/WPR','Dispatch']},
+  {dept:'politie',name:'B',call:'450',specialties:['K-9','Semi-anonieme','Terreinondersteuner']},
+  {dept:'politie',name:'C',call:'500',specialties:['AE-T','RAGO']},
+  {dept:'politie',name:'D',call:'600',specialties:['EHBO']},
+  {dept:'politie',name:'E',call:'700',specialties:['Motor','Motard']}
+ ],'politie');
+ const labels=['SIGNALISATIE','MOTARD','SEMI ANONIEM','K9','RAGO','DISP','TO','AE'];
+ for(const label of labels)assert.ok(p.branches.some(x=>x.label===label&&x.members.length),label);
+ assert.deepEqual(p.branches.find(x=>x.label==='MOTARD').members.map(x=>x.call),['700','350']);
+ assert.ok(p.branches.some(x=>x.label==='Overige specialisaties'&&x.children.some(c=>c.label==='EHBO')));
 });
 test('an ordinary 700 never jumps ahead of a lower-rank authorized instructor',()=>{
  const p=orderedMembers(sample.filter(s=>s.dept==='politie'&&['700','400','500'].includes(s.call)));
