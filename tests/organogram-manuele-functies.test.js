@@ -13,7 +13,7 @@ test('only known service/person IDs and validated display fields can be assigned
  assert.equal(personKey('unknown',ID),null);
  assert.equal(personKey('politie','Voorbeeld'),null);
  const value=validatePlacement({boardRole:'none',leadershipTier:'none',teachingRoles:['instructeur','docent'],
-  specialties:['Motor','K9'],reason:'Tijdelijke handmatige synchronisatie.'},'politie');
+  specialties:['MOTARD','K9'],reason:'Tijdelijke handmatige synchronisatie.'},'politie');
  assert.deepEqual(value.teachingRoles,['instructeur','docent']);
  assert.throws(()=>validatePlacement({...value,specialties:['K9','K9']},'politie'));
  assert.throws(()=>validatePlacement({...value,specialties:['Duiker']},'politie'));
@@ -35,7 +35,7 @@ test('verified role sync adds explicit instructor & board; stale sync is ignored
  const present=verifiedSyncRoles({guildId:GUILD,roleIds,verifiedAt},'politie',GUILD,verifiedAt+1000);
  assert.equal(present.boardRole,'bestuur');
  assert.deepEqual(present.teachingRoles,['instructeur']);
- assert.deepEqual(present.specialties,['Motor']);
+ assert.deepEqual(present.specialties,['MOTARD']);
  assert.equal(present.synced,true);
  const failed=verifiedSyncRoles({guildId:GUILD,roleIds,verifiedAt:verifiedAt-9*86400000},
   'politie',GUILD,verifiedAt);
@@ -43,6 +43,17 @@ test('verified role sync adds explicit instructor & board; stale sync is ignored
  assert.equal(failed.boardRole,'none');
  assert.deepEqual(failed.teachingRoles,[]);
  assert.equal(verifiedSyncRoles({guildId:'wrong',roleIds,verifiedAt},'politie',GUILD).synced,false);
+});
+test('verified member Discord roles populate only established police branches',()=>{
+ const verifiedAt=Date.now();
+ const roles=['1358148694297415741','1309532437977497699','1309532437977497700',
+  '1309532438019706963','1309542190409580594','1309532438019706962',
+  '1380843428354592780','1537606324886442035'];
+ const result=verifiedSyncRoles({guildId:GUILD,roleIds:roles,verifiedAt},
+  'politie',GUILD,verifiedAt);
+ assert.deepEqual(result.specialties,['MOTARD','K9','RAGO','DISP','AE','TO','RECHERCHE']);
+ assert.equal(result.teachingRoles.length,0);
+ assert.equal(result.specialties.includes('RADIO/BM'),false);
 });
 test('manual role remains visible when the Discord sync has failed',()=>{
  const manual=manualDisplay({dept:'politie',status:'active',boardRole:'bestuur-ai',
