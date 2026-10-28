@@ -107,3 +107,9 @@
 .bpd-catalog-upload[open]{border-color:#84a9df}
 .bpd-catalog-upload input[type=file]{width:100%}
 .bpd-catalog-upload>summary{cursor:pointer}
+
+/* Separate awards continue to follow the current validated staff record. */
+.bpd-police-formal[data-uniform="silver"]>.bpd-uniform-ribbons{
+ left:53.4%;top:32.2%;width:12.2%;height:2.8%}
+.bpd-police-formal[data-uniform="silver"]>.bpd-uniform-medals{
+ left:53.5%;top:45.8%;width:15.8%;height:16%}

@@ -84,3 +84,20 @@
    The image itself includes the embroidered outer border: no second box. */
 .bpd-grade-vector>image{image-rendering:auto}
 .bpd-grade-badge>.bpd-grade-vector{display:block;width:100%;height:100%}
+
+/* New 1295x1215 silver uniform: one artwork for calls 100–899. */
+.person .portrait.bpd-police-formal[data-uniform="silver"],
+.portrait.bpd-police-formal[data-uniform="silver"]{width:67px;height:63px}
+.profile-title .portrait.bpd-police-formal[data-uniform="silver"],
+.portrait.bpd-police-formal.large[data-uniform="silver"]{width:156px;height:146px}
+/* Matching cloth-panel inset coordinates. Live SVG labels and original
+   embroidered rank assets remain above this silver background. */
+.bpd-police-formal[data-uniform="silver"]>.bpd-personal-nameplate{
+ left:31.15%;top:36.85%;width:11.1%;height:4.55%;background:#0d1b2b}
+.bpd-police-formal[data-uniform="silver"]>.bpd-chest-insignia{
+ left:53.25%;top:36.85%;width:11.35%;height:4.55%;border-radius:0;box-shadow:none}
+@media(max-width:520px){
+ .person .portrait.bpd-police-formal[data-uniform="silver"]{width:57px;height:54px}
+ .profile-title .portrait.bpd-police-formal[data-uniform="silver"],
+ .portrait.bpd-police-formal.large[data-uniform="silver"]{width:128px;height:120px}
+}
