@@ -125,7 +125,8 @@ export function mergePlacement(person,manual,auto){
  return {dept:person.dept,name:strip(person.name).slice(0,90),
   call:strip(person.call).slice(0,24),rank:strip(person.rank).slice(0,95),
   boardRole,leadershipTier:manual?.leadershipTier||'none',teachingRoles:[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])],
-  specialties:[...new Set([...(manual?.specialties||[]),...(auto?.specialties||[]),...specialtyValues])].slice(0,12),
+  specialties:[...new Set([...(manual?.specialties||[]),...(auto?.specialties||[]),...specialtyValues]
+   .map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
   source:manual&&auto?.synced?'handmatig + Discord':manual?'handmatig':auto?.synced?'Discord':'personeelslijst'};
 }
 export const canManagePlacements=actor=>actor?.role==='beheerder'&&
