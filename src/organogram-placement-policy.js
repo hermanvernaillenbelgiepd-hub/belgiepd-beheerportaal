@@ -19,7 +19,6 @@ export function validatePlacement(body,dept){
     Object.keys(body).some(k=>!['boardRole','teachingRoles','specialties','reason'].includes(k)))
    throw Error('Ongeldige organograminstelling');
  const boardRole=body.boardRole;
- if(dept==='bestuur'&&boardRole==='none')throw Error('Kies een bestuursfunctie');
  if(dept==='bestuur'&&((body.teachingRoles||[]).length||(body.specialties||[]).length))throw Error('Bestuur heeft geen dienstspecialisaties');
  if(!['none','bestuur','bestuur-ai'].includes(boardRole))throw Error('Kies een geldige bestuursweergave');
  const teachingRoles=body.teachingRoles,specialties=body.specialties;
