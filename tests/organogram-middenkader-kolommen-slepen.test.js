@@ -91,5 +91,5 @@ test('middle-cadre drag does not change callsigns or service roles or ordinary s
  assert.doesNotMatch(part,/tx\.set\(.*USER_COLLECTION/);
  assert.doesNotMatch(part,/tx\.update\(.*departmentRoles/);
  assert.match(part,/accessRightsChanged:false/);
- assert.match(part,/canManagePlacements/);
+ assert.match(part,/requireUser,manager/);
 });
