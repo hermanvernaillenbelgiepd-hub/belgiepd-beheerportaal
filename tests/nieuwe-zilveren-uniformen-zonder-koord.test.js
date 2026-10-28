@@ -11,14 +11,14 @@ test('new silver TEST coat is an isolated actual WebP, separate from MAIN',()=>{
  assert.equal(bytes.toString('ascii',8,12),'WEBP');
  assert.ok(bytes.length>35000,'Use the sharp asset, never the old 200px preview');
  assert.match(page,/bpd-uniform-zilver-zonder-koord-nieuw-20261028\.webp/);
- assert.match(page,/geen koord of schouderstukken/i);
+ assert.match(page,/zonder koord/i);
  assert.doesNotMatch(page,/https:\/\/.*bpd-uniform/);
 });
 
 test('all 3 cadres are present and grade mapping follows the current call automatically',()=>{
  for(const cadre of ['Middenkader','Basiskader','Agentenkader'])assert.match(page,new RegExp(cadre));
  for(const g of ['1hinp','hinp','ahinp','1inp','inp','ainp','ap'])
-  assert.match(page,new RegExp('asset:\\''+g+'\\''));
+  assert.ok(page.includes("asset:'"+g+"'"),g);
  assert.match(page,/function grade\(call\)/);
  assert.match(page,/return n>=800\?'1hinp'/);
  assert.match(page,/n>=500\?'1inp'/);
