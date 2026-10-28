@@ -116,6 +116,8 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  overflow-wrap:anywhere;hyphens:auto
 }
 .police-specialty-tab-count{font-size:9px;color:#c5d9ef;font-weight:550}
+.police-specialty-tab:disabled{opacity:.67;cursor:default}
+.police-instructor-sync-note{font-size:10px;color:#bed4ec;padding:7px 3px}
 .police-specialty-detail{min-width:0;margin-top:9px}
 .police-specialty-detail:empty{display:none}
 .police-specialty-detail>.specialty{width:100%;border-color:#658bad}
@@ -673,6 +675,16 @@ function policeInterventions(branches){
   if(!active)return;
   const selected=branches.find(branch=>branch.label===active);
   if(!selected)return;
+  // Een specialisatie zonder personen heeft alleen een teller op de knop.
+  // Open nooit een leeg paneel met dubbele "geen leden"-meldingen.
+  const registered=(selected.members||[]).length+
+   (selected.children||[]).reduce((sum,child)=>sum+(child.members||[]).length,0);
+  if(!registered){
+   state.specialtyOpen[selected.label]=false;
+   active=null;
+   for(const [,button] of tabs)button.setAttribute('aria-expanded','false');
+   return;
+  }
   const card=specialtyBranch(selected,true);
   card.open=true;
   card.addEventListener('toggle',()=>{
@@ -688,9 +700,11 @@ function policeInterventions(branches){
   const button=el('button','police-specialty-tab');
   button.type='button';
   button.setAttribute('aria-controls',detail.id);
-  button.title=branch.label+' · Klik voor de ledenlijst';
   const total=new Set([...(branch.members||[]),
    ...(branch.children||[]).flatMap(child=>child.members||[])]).size;
+  button.disabled=total===0;
+  button.title=total?branch.label+' · Klik voor de ledenlijst':
+   branch.label+' · Nog geen geregistreerde leden';
   button.append(el('span','police-specialty-tab-name',branch.label),
    el('span','police-specialty-tab-count',String(total)));
   button.addEventListener('click',()=>{
@@ -897,12 +911,17 @@ function specialtyBranch(branch,isPolice,nested=false){
   !hasInstructorSection||(isPolice?!isSpecialtyInstructor(p,branch.label):!isTeacher(p)));
  if(isPolice){
   const columns=el('div','police-specialty-role-grid');
-  // Een instructeurssectie is uitsluitend relevant als deze specialisatie
-  // daadwerkelijk geverifieerde instructeurs/docenten heeft.
-  if(hasInstructorSection&&tutors.length){
+  // Motard heeft een eigen, geverifieerde Discord-instructeursrol en dus
+  // altijd een instructeurssectie. Geen generieke docentrol gebruiken om
+  // onterecht instructeur te worden in meerdere specialisaties.
+  const motardHasInstructors=isPolice&&policeSpecialtyName(branch.label)==='MOTARD';
+  if(hasInstructorSection&&(tutors.length||motardHasInstructors)){
    const instructorColumn=el('section','police-specialty-role-column');
    instructorColumn.append(el('div','group-title instructors','INSTRUCTEURS & DOCENTEN'));
-   instructorColumn.append(specialtyPeopleList(tutors,false,branch.label));
+   if(tutors.length)instructorColumn.append(
+    specialtyPeopleList(tutors,false,branch.label));
+   else instructorColumn.append(el('p','police-instructor-sync-note',
+    'Motard-instructeurs verschijnen hier zodra hun Discord-instructeursrol is herkend.'));
    columns.append(instructorColumn);
   }
   if(members.length){
@@ -920,7 +939,7 @@ function specialtyBranch(branch,isPolice,nested=false){
    peopleList(members));
  }
  for(const child of branch.children||[])content.append(specialtyBranch(child,isPolice,true));
- if(!tutors.length&&!members.length&&!branch.children?.length)
+ if(!tutors.length&&!members.length&&!branch.children?.length&&!isPolice)
   content.append(el('div','gaps','Nog geen geregistreerde leden'));
  card.append(content);
  return card;
