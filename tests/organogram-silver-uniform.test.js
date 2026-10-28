@@ -114,5 +114,5 @@ test('exact approved silver coordinates and woven texture, no obsolete separate 
  assert.match(css,/\.bpd-silver-cloth-rank>\.bpd-silver-grade-art/);
  assert.doesNotMatch(css,/transform:translateY\(-6%\) scale\(1\.68\)/);
  assert.match(css,/\.bpd-gold-stage/);
- assert.match(html,/navy-corrected-image-20261028/);
+ assert.match(html,/unified-gold-navy-frame-20261028/);
 });
