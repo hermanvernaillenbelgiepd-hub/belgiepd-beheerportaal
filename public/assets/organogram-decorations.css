@@ -108,8 +108,9 @@
 .bpd-catalog-upload input[type=file]{width:100%}
 .bpd-catalog-upload>summary{cursor:pointer}
 
-/* Separate awards continue to follow the current validated staff record. */
+/* Active awards remain live and share the same 1.42x top-centre zoom
+   as the silver uniform and its dynamically selected name/rank plates. */
 .bpd-police-formal[data-uniform="silver"]>.bpd-uniform-ribbons{
- left:53.4%;top:32.2%;width:12.2%;height:2.8%}
+ left:54.828%;top:45.724%;width:17.324%;height:3.976%}
 .bpd-police-formal[data-uniform="silver"]>.bpd-uniform-medals{
- left:53.5%;top:45.8%;width:15.8%;height:16%}
+ left:54.97%;top:65.036%;width:22.436%;height:22.72%}
