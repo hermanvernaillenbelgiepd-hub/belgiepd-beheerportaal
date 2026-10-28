@@ -7,6 +7,8 @@
  // The user-approved gold uniform from the TEST preview, stored as its own
  // image so that no canvas recolouring or shoulder masking touches the art.
  const GOLD_BASE='/assets/bpd-gold-officer-corps-approved-20261028.webp';
+ // Self-contained colour-matched officer image; corps retains original gold.
+ const OFFICER_NAVY_BASE='/assets/bpd-officieren-marine-match-20261028.svg';
  const ranks=[
   {key:'1hcp',label:'Eerste hoofdcommissaris',abbr:'1-HCP',kind:'crown',count:3,line:true},
   {key:'1cp',label:'Eerste commissaris',abbr:'1-CP',kind:'crown',count:2,line:true},
@@ -247,7 +249,7 @@
    stage.className='bpd-gold-stage';
    const img=document.createElement('img');
    img.className='bpd-gold-coat';
-   img.src=GOLD_BASE;
+   img.src=trim==='gold-none'?OFFICER_NAVY_BASE:GOLD_BASE;
    img.alt='';
    img.loading=large?'eager':'lazy';
    img.decoding='async';
