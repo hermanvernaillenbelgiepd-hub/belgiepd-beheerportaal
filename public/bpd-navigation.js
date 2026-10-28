@@ -41,6 +41,7 @@
   const NAV=Object.freeze({
     home:{href:'/',icon:'⌂',label:'Startpagina',short:'Start'},
     personnel:{href:'/personeelslijst.html',icon:'♟',label:'Personeelslijst',short:'Personeel'},
+    organogram:{href:'/organogram-hierarchie.html',icon:'🌳',label:'Organogram',short:'Organogram'},
     dossiers:{href:'/dossiercentrum.html',icon:'▣',label:'Dossiercentrum',short:'Dossiers'},
     education:{href:'/opleidingscentrum.html',icon:'🎓',label:'Opleidingscentrum',short:'Opleiding'},
     observations:{href:'/registraties.html',icon:'▤',label:'Observaties Basiskader',short:'Observaties'},
@@ -51,8 +52,8 @@
     notifications:{href:'/meldingen.html',icon:'✉',label:'Meldingen',short:'Meldingen'},
     profile:{href:'/discord-status.html',icon:'♙',label:'Mijn profiel',short:'Profiel'}
   });
-  const SAFE=['home','personnel','education','leave','profile'];
-  const STAFF=['home','personnel','dossiers','education','observations',
+  const SAFE=['home','personnel','organogram','education','leave','profile'];
+  const STAFF=['home','personnel','organogram','dossiers','education','observations',
     'reports','to','leave','admin'];
   const currentPage=(href)=>{
     const target=new URL(href,window.location.origin).pathname;
@@ -181,7 +182,7 @@
       renderQuick(items,top);
     }
     // Hide privileged links until the CURRENT authenticated user is checked.
-    show(['home','personnel','profile']);
+    show(['home','personnel','organogram','profile']);
     addSmallBack();
     verifyIdentity(show);
   }
@@ -198,7 +199,7 @@
       let request=0;
       authSdk.onAuthStateChanged(authSdk.getAuth(apps[0]),async user=>{
         const turn=++request;
-        if(!user){show(['home','personnel','profile']);return}
+        if(!user){show(['home','personnel','organogram','profile']);return}
         try{
           const token=await user.getIdToken();
           const [context,member]=await Promise.all([
@@ -209,11 +210,11 @@
           ]);
           if(turn!==request)return;
           if(context?.dashboardProfile==='brandweer-zone'){
-            const pages=['home','personnel','dossiers','education','reports','leave','notifications'];
+            const pages=['home','personnel','organogram','dossiers','education','reports','leave','notifications'];
             show(pages);return;
           }
           if(context?.dashboardProfile==='ambulance-azls'){
-            const pages=['home','personnel'];
+            const pages=['home','personnel','organogram'];
             if(context.ambulanceCanOpenDossier===true)pages.push('dossiers');
             pages.push('education');
             if(context.ambulanceReportVerified===true)pages.push('reports');

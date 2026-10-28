@@ -80,6 +80,12 @@ body:has(#memberDashboard:not([hidden])) aside{display:none}
 body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 60px}
 #memberDashboard h1{font-size:27px}
 #memberDashboard>.lead{font-size:13px;margin:6px 0 14px;max-width:none}
+.member-roster-tabs{display:flex;align-items:center;gap:6px;margin:12px 0 10px;border-bottom:1px solid #c6d6ec;padding-bottom:5px}
+.member-roster-tabs a{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border:1px solid transparent;border-radius:8px 8px 5px 5px;font-size:13px;font-weight:800;color:#294879;text-decoration:none}
+.member-roster-tabs a:hover{background:#eaf1ff}
+.member-roster-tabs a[aria-current="page"]{background:#244e90;border-color:#244e90;color:#fff}
+.member-roster-tabs a:focus-visible{outline:3px solid #6b9aff;outline-offset:2px}
+@media(max-width:430px){.member-roster-tabs a{padding:8px 10px;font-size:12px}}
 .member-quick-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:12px 0 16px}
 .member-quick-actions a,.member-quick-actions .member-upcoming{
  display:inline-flex;align-items:center;gap:6px;border:1px solid #a4b7d6;border-radius:8px;
@@ -224,9 +230,12 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   <section id="memberDashboard" hidden aria-labelledby="memberDashboardTitle">
     <h1 id="memberDashboardTitle">Personeelslijst politie</h1>
     <p class="lead">Het personeelsbestand, in de bestaande kader- en reeksindeling. Alleen lezen: geen dossiers, administratieve wijzigingen of observaties.</p>
+    <nav class="member-roster-tabs" aria-label="Kies personeelsweergave">
+      <a href="/" aria-current="page">👥 Personeelslijst</a>
+      <a href="/organogram-hierarchie.html">🌳 ORGANOGRAM</a>
+    </nav>
     <nav class="member-quick-actions" aria-label="Mijn functies">
       <a href="/discord-status.html">👤 Mijn profiel</a>
-      <a href="/organogram-hierarchie.html">🌳 Organogram</a>
       <a id="memberLeaveTile" href="/verlofbeheer.html" hidden>📅 Mijn verlof</a>
       <a id="memberNoticesTile" href="/meldingen.html" hidden>📬 Meldingen</a>
       <a id="memberCallsignTile" href="/vast-roepnummer-aanvragen.html" hidden>🔢 <span id="memberCallsignAction">Vast roepnummer aanvragen</span></a>

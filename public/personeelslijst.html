@@ -19,11 +19,20 @@ th{position:sticky;top:0;background:#24466b;text-align:left;color:#e5f2ff}
 td,th{padding:11px 13px;border-bottom:1px solid #315075}
 tbody tr:nth-child(2n){background:#183450}
 .call{font-weight:800;color:#fff}small{font-size:11px;color:#a7c6e9}
+.roster-view-tabs{display:flex;align-items:center;gap:6px;margin:13px 0 15px;border-bottom:1px solid #405d7c;padding-bottom:6px}
+.roster-view-tabs a{display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;border-radius:7px;padding:8px 13px;color:#c4dfff;text-decoration:none;font-size:13px;font-weight:800}
+.roster-view-tabs a:hover{background:#1d3d60}
+.roster-view-tabs a[aria-current="page"]{background:#295587;border-color:#7aade0;color:white}
+.roster-view-tabs a:focus-visible{outline:2px solid #b1d6ff;outline-offset:2px}
 [hidden]{display:none!important}
 </style><link rel="stylesheet" href="/member-police-roster.css"><link rel="stylesheet" href="/bpd-navigation.css"></head><body>
 <header><strong>🛡️ BelgiëPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
 <main><h1>Personeelslijst politie</h1>
 <p>Personeelsleden met rangkenteken, reeks en geregistreerde specialisatiestatus. Alleen lezen: geen dossiers, observaties, Discord-ID’s, sancties of wijzigingen.</p>
+<nav class="roster-view-tabs" aria-label="Kies personeelsweergave">
+  <a href="/personeelslijst.html" aria-current="page">👥 Personeelslijst</a>
+  <a href="/organogram-hierarchie.html">🌳 ORGANOGRAM</a>
+</nav>
 <div class="panel">
 <a class="login-link" id="discordLogin" href="/auth/discord/start?return=%2Fpersoneelslijst.html" hidden>Inloggen met Discord om personeelslijst te bekijken →</a>
 <div class="filters"><div><label for="search">Zoeken</label><input id="search" placeholder="Roepnummer, naam, rang of reeks"></div>
