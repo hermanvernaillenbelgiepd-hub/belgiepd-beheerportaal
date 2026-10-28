@@ -192,6 +192,55 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person{min-height:76px}
 .person .flag{align-self:flex-start}
 
+/* Uniforme, gecentreerde kaderopstelling: maximaal drie leden naast
+   elkaar; vanaf vier leden twee kolommen van dezelfde kaartbreedte. */
+#services .level-body{container-type:inline-size}
+#services .personnel-card-grid.cadre-personnel-grid{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,218px));
+ justify-content:center;
+ justify-items:stretch;
+ align-items:stretch;
+ gap:8px;
+ width:100%;
+ margin:8px auto 5px;
+}
+#services .personnel-card-grid.cadre-columns-1{
+ grid-template-columns:minmax(0,218px);
+}
+#services .personnel-card-grid.cadre-columns-3{
+ grid-template-columns:repeat(3,minmax(0,218px));
+}
+#services .personnel-card-grid.cadre-personnel-grid>.person{
+ width:100%;
+ max-width:218px;
+ height:100%;
+ flex:none;
+}
+#services .personnel-card-grid.cadre-columns-2>.person:last-child:nth-child(odd){
+ grid-column:1 / -1;
+ justify-self:center;
+ width:100%;
+}
+@container (max-width:570px){
+ #services .personnel-card-grid.cadre-columns-3{
+  grid-template-columns:repeat(2,minmax(0,218px));
+ }
+ #services .personnel-card-grid.cadre-columns-3>.person:last-child{
+  grid-column:1 / -1;
+  justify-self:center;
+ }
+}
+@container (max-width:365px){
+ #services .personnel-card-grid.cadre-personnel-grid{
+  grid-template-columns:minmax(0,218px);
+ }
+ #services .personnel-card-grid.cadre-personnel-grid>.person{
+  grid-column:auto;
+  justify-self:center;
+ }
+}
+
 /* Eén echte kaartmaat in alle kaders, reeksen en specialisaties.
    Flex-wrapping houdt ook de laatste rij 218px breed: geen 1fr-strekking.
    Een kolom die smaller is dan de kaartbreedte mag de kaart verkleinen. */
@@ -443,6 +492,12 @@ function peopleList(rows,rankOnly=false,compact=false,specialtyLabel=null){
  for(const p of rankOnly?orderedSpecialtyMembers(rows):orderedMembers(rows))list.append(person(p,compact,specialtyLabel));
  return list;
 }
+function cadrePeopleList(rows){
+ const list=peopleList(rows);
+ const columns=rows.length<=3?rows.length:2;
+ list.classList.add('cadre-personnel-grid','cadre-columns-'+columns);
+ return list;
+}
 function policeInterventions(branches){
  const section=el('details','police-intervention-group');
  section.open=state.specializationsOpen;
@@ -655,7 +710,7 @@ function serviceCard(item,settings,solo){
    // Specializations remain nested within the collapsible middle cadre.
    levelBody.append(policeInterventions(item.branches));
   }
-  else if(level.members.length)levelBody.append(peopleList(level.members));
+  else if(level.members.length)levelBody.append(cadrePeopleList(level.members));
   else levelBody.append(el('div','gaps','Nog geen vrijgegeven registraties'));
   block.append(levelBody);
   body.append(block);
