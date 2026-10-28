@@ -65,7 +65,9 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  width:calc(80% + 10.4px);height:17px;max-width:none;
  border-top:2px solid #86acd1
 }
-.board-wrap.board-single-service .trunk,.board-wrap.board-single-service .fork{display:none}
+.board-wrap.board-single-service .trunk,
+.board-wrap.board-single-service .fork,
+.board-wrap.board-single-service + .service-grid .service:before{display:none}
 .board-wrap.board-single-service{margin-bottom:12px}
 .service-grid{display:grid;grid-template-columns:repeat(5,minmax(185px,1fr));gap:13px}
 .service{min-width:0;position:relative;border:1px solid #436080;background:#132b47;border-radius:13px;overflow:visible}
