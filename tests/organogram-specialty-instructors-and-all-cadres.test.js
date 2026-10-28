@@ -23,7 +23,7 @@ test('police structure restores basiskader and agentenkader, below middenkader',
  ]);
  assert.deepEqual(p.leadership[3].members.map(x=>x.call),['500','401','310']);
  assert.deepEqual(p.leadership[4].members.map(x=>x.call),['220','100']);
- assert.match(html,/block\.append\(policeInterventions\(item\.branches\)\)/);
+ assert.match(html,/levelBody\.append\(policeInterventions\(item\.branches\)\)/);
  assert.match(html,/for\(const level of item\.leadership\)/);
 });
 test('generic instructor role does NOT confer instructor status in every specialty',()=>{
