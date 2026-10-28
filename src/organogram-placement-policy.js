@@ -71,6 +71,18 @@ const INSTRUCTORS=Object.freeze({
  ambulance:Object.freeze({'1309532437952466988':'MIP'}),
  depannage:Object.freeze({}),burger:Object.freeze({})
 });
+// Known full-membership Discord roles. We deliberately exclude training-only
+// IO/selection roles and never assume somebody belongs to an unverified unit.
+const POLICE_MEMBER_ROLES=Object.freeze({
+ '1358148694297415741':'MOTARD',
+ '1309532437977497699':'K9',
+ '1309532437977497700':'RAGO',
+ '1309532438019706963':'DISP',
+ '1309542190409580594':'AE',
+ '1310674604821581894':'AE',
+ '1309532438019706962':'TO',
+ '1380843428354592780':'RECHERCHE'
+});
 export const BOARD_DISCORD_ROLE='1309532438082355251';
 export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
  if(!identity||!DISPLAY_DEPTS.includes(dept)||!ID.test(guildId)||
@@ -81,9 +93,12 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
  const roles=new Set(identity.roleIds);
  const instructorNames=Object.entries(INSTRUCTORS[dept]||{})
   .filter(([id])=>roles.has(id)).map(([,name])=>name);
+ const memberNames=dept==='politie'?Object.entries(POLICE_MEMBER_ROLES)
+  .filter(([id])=>roles.has(id)).map(([,name])=>name):[];
  return {boardRole:roles.has(BOARD_DISCORD_ROLE)?'bestuur':'none',
   teachingRoles:instructorNames.length?['instructeur']:[],
-  specialties:instructorNames.filter(x=>SPECIALTIES[dept]?.includes(x)),
+  specialties:[...new Set([...instructorNames,...memberNames])]
+   .filter(x=>SPECIALTIES[dept]?.includes(x)),
   synced:true};
 }
 export function mergePlacement(person,manual,auto){
