@@ -20,10 +20,19 @@ test('slight color darkening targets only the officer coat, not its independent 
  const scoped=css.slice(css.indexOf('/* Officers (920/930'));
  assert.ok(scoped.startsWith('/* Officers (920/930'),'scoped color change exists');
  assert.match(scoped,/\.portrait\.bpd-police-formal\[data-trim="gold-none"\]>\.bpd-gold-stage>\.bpd-gold-coat\s*\{/);
- assert.match(scoped,/filter:brightness\(\.92\) saturate\(1\.02\)/);
+ assert.match(scoped,/filter:url\(#bpd-officer-navy-match\)/);
+ assert.doesNotMatch(scoped,/filter:brightness/);
+ const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
+ assert.match(html,/<filter id="bpd-officer-navy-match"/);
+ assert.match(html,/result="bpdBlueMatte"/);
+ assert.match(html,/result="bpdMatchedNavy"/);
+ assert.match(html,/operator="in" result="bpdRecoloredBlue"/);
+ assert.match(html,/operator="out" result="bpdUntouchedNonBlue"/);
+ assert.match(html,/0 1 0 0 -0\.090/);
+ assert.match(html,/0 0 1 0 -0\.090/);
  assert.doesNotMatch(scoped,/\.bpd-gold-stage\s*\{|\.bpd-gold-nameplate\s*\{|\.bpd-gold-cloth-rank\s*\{|\.bpd-silver-coat\s*\{/);
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(html,/darker-officers-20261028/);
+ assert.match(html,/navy-matched-officers-20261028/);
 });
 test('officers are gold-none, corps leaders gold-thick, and other cadres silver-none',()=>{
  const ui=app();
