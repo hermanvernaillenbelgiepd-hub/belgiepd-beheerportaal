@@ -258,7 +258,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  min-width:0;
  margin:7px 0 2px;
 }
-#services .personnel-card-grid>.person{
+#services .personnel-card-grid .person{
  display:flex;
  flex:0 1 218px;
  width:218px;
@@ -273,22 +273,22 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  background:#142e4a;
  box-sizing:border-box;
 }
-#services .personnel-card-grid>.person:hover{
+#services .personnel-card-grid .person:hover{
  border-color:#9bc4ef;
  background:#204261;
 }
-#services .personnel-card-grid>.person .num{
+#services .personnel-card-grid .person .num{
  flex:0 0 32px;
  min-width:32px;
  text-align:center;
  font-variant-numeric:tabular-nums;
 }
-#services .personnel-card-grid>.person .identity{
+#services .personnel-card-grid .person .identity{
  min-width:0;
  flex:1 1 0;
  overflow:hidden;
 }
-#services .personnel-card-grid>.person .identity b{
+#services .personnel-card-grid .person .identity b{
  display:-webkit-box;
  -webkit-box-orient:vertical;
  -webkit-line-clamp:2;
@@ -298,7 +298,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  line-height:1.25;
  font-size:11px;
 }
-#services .personnel-card-grid>.person .identity small{
+#services .personnel-card-grid .person .identity small{
  display:-webkit-box;
  -webkit-box-orient:vertical;
  -webkit-line-clamp:2;
@@ -308,7 +308,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  line-height:1.25;
  font-size:9px;
 }
-#services .personnel-card-grid>.person .person-heading{
+#services .personnel-card-grid .person .person-heading{
  display:flex;
  flex-wrap:wrap;
  align-items:center;
@@ -316,11 +316,11 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  row-gap:3px;
  min-width:0;
 }
-#services .personnel-card-grid>.person .portrait{
+#services .personnel-card-grid .person .portrait{
  flex-shrink:0;
 }
 /* Uniformen zelf blijven identiek, alleen hun zichtbare formaat is gelijk. */
-#services .personnel-card-grid>.person .portrait.bpd-police-formal{
+#services .personnel-card-grid .person .portrait.bpd-police-formal{
  width:56px!important;
  height:62px!important;
  flex:0 0 56px!important;
@@ -335,7 +335,67 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 }
 @media(max-width:580px){
  #services .personnel-card-grid{gap:6px}
- #services .personnel-card-grid>.person{flex-basis:218px}
+ #services .personnel-card-grid .person{flex-basis:218px}
+}
+
+/* Basis- en Agentenkader: 3 naast elkaar staande PAAREN, elk 2 kaarten.
+   De set blijft gecentreerd als er nog geen volledige rij van 6 is. */
+#services .personnel-card-grid.cadre-personnel-grid.cadre-three-pairs{
+ display:flex;
+ flex-direction:row;
+ flex-wrap:wrap;
+ justify-content:center;
+ align-items:stretch;
+ align-content:flex-start;
+ gap:12px 24px;
+ width:100%;
+ max-width:1380px;
+ margin:8px auto 5px;
+}
+#services .cadre-three-pairs>.cadre-person-pair{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,218px));
+ gap:8px;
+ flex:0 1 444px;
+ width:444px;
+ max-width:100%;
+ min-width:0;
+ justify-content:center;
+ align-items:stretch;
+}
+#services .cadre-three-pairs>.cadre-person-pair>.person{
+ width:100%;
+ max-width:218px;
+ min-width:0;
+ height:100%;
+ flex:none;
+}
+#services .cadre-three-pairs>.cadre-person-pair>.person:only-child{
+ grid-column:1 / -1;
+ justify-self:center;
+}
+/* Op desktops passen drie groepen ook op een smaller breed paneel.
+   Bij minder ruimte twee groepen; op mobiel één groep of één kaart. */
+@container (min-width:1080px){
+ #services .cadre-three-pairs>.cadre-person-pair{
+  flex:0 0 calc((100% - 48px)/3);
+  width:calc((100% - 48px)/3);
+ }
+}
+@container (min-width:740px) and (max-width:1079px){
+ #services .cadre-three-pairs>.cadre-person-pair{
+  flex:0 0 calc((100% - 24px)/2);
+  width:calc((100% - 24px)/2);
+ }
+}
+@container (max-width:460px){
+ #services .cadre-three-pairs>.cadre-person-pair{
+  grid-template-columns:minmax(0,218px);
+  justify-content:center;
+ }
+ #services .cadre-three-pairs>.cadre-person-pair>.person:only-child{
+  grid-column:auto;
+ }
 }
 </style>
 </head>
@@ -498,8 +558,21 @@ function peopleList(rows,rankOnly=false,compact=false,specialtyLabel=null){
  for(const p of rankOnly?orderedSpecialtyMembers(rows):orderedMembers(rows))list.append(person(p,compact,specialtyLabel));
  return list;
 }
-function cadrePeopleList(rows){
+function cadrePeopleList(rows,levelLabel=''){
  const list=peopleList(rows);
+ // Basiskader en Agentenkader: drie groepen van twee kaarten, met extra
+ // tussenruimte per groep; behoud de bestaande gesorteerde volgorde.
+ if(['Basiskader','Agentenkader'].includes(levelLabel)){
+  const cards=Array.from(list.children);
+  list.replaceChildren();
+  list.classList.add('cadre-personnel-grid','cadre-three-pairs');
+  for(let i=0;i<cards.length;i+=2){
+   const pair=el('div','cadre-person-pair');
+   pair.append(...cards.slice(i,i+2));
+   list.append(pair);
+  }
+  return list;
+ }
  const columns=rows.length<=3?rows.length:2;
  list.classList.add('cadre-personnel-grid','cadre-columns-'+columns);
  return list;
@@ -716,7 +789,7 @@ function serviceCard(item,settings,solo){
    // Specializations remain nested within the collapsible middle cadre.
    levelBody.append(policeInterventions(item.branches));
   }
-  else if(level.members.length)levelBody.append(cadrePeopleList(level.members));
+  else if(level.members.length)levelBody.append(cadrePeopleList(level.members,level.label));
   else levelBody.append(el('div','gaps','Nog geen vrijgegeven registraties'));
   block.append(levelBody);
   body.append(block);
