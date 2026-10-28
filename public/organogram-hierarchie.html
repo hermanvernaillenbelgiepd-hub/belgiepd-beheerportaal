@@ -905,13 +905,12 @@ function specialtyBranch(branch,isPolice,nested=false){
    instructorColumn.append(specialtyPeopleList(tutors,false,branch.label));
    columns.append(instructorColumn);
   }
-  const memberColumn=el('section','police-specialty-role-column');
-  memberColumn.append(el('div','group-title members','LEDEN · RANGVOLGORDE'));
-  if(members.length)memberColumn.append(
-   specialtyPeopleList(members,true,branch.label));
-  else memberColumn.append(el('div','gaps','Geen overige leden'));
-  columns.append(memberColumn);
-  content.append(columns);
+  if(members.length){
+   const memberColumn=el('section','police-specialty-role-column');
+   memberColumn.append(specialtyPeopleList(members,true,branch.label));
+   columns.append(memberColumn);
+  }
+  if(columns.childElementCount)content.append(columns);
  }else{
   if(tutors.length)content.append(
    el('div','group-title instructors','Docenten / instructeurs'),
