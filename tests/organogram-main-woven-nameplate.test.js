@@ -46,20 +46,24 @@ test('gold portraits show woven plate with current uppercase name and callsign',
  assert.equal(label.children[0].textContent,'NIEUWE NAAM');
  assert.equal(label.children[1].textContent,'BELGIEPD - 910');
 });
-test('woven patch is gold-only and does not change silver uniforms or medal handling',()=>{
+test('same approved woven patch is used independently by gold and silver',()=>{
  const ui=load();
  const silver=ui.makePortrait({dept:'politie',call:'720',name:'Jones',awards:[]});
  assert.equal(silver.dataset.uniform,'silver');
- assert.ok(!silver.children.some(x=>x.className.includes('bpd-gold-nameplate')));
- const rank=silver.children.find(x=>x.className.includes('bpd-chest-insignia'));
- assert.ok(rank.className.includes('bpd-vector-rank'));
+ const stage=silver.children[0];
+ assert.equal(stage.className,'bpd-silver-stage');
+ const name=stage.children.find(x=>x.className.includes('bpd-silver-woven-nameplate'));
+ assert.equal(name.children[0].textContent,'JONES');
+ assert.equal(name.children[1].textContent,'BELGIEPD - 720');
+ const rank=stage.children.find(x=>x.className.includes('bpd-silver-cloth-rank'));
+ assert.equal(rank.dataset.grade,'hinp');
+ assert.equal(rank.children[0].src,'/assets/bpd-rank-hinp-clean-20261027.webp');
  const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
- const block=css.slice(css.indexOf('/* User-approved woven textile nameplate'));
- assert.match(block,/bpd-naamplaat-geweven-leeg-20261028\.webp/);
- assert.match(block,/aspect-ratio:1032\/381/);
- assert.match(block,/top:20%;height:25%/);
- assert.match(block,/top:57%;height:28%/);
- assert.doesNotMatch(block,/\[data-uniform="silver"\]/);
+ assert.match(css,/bpd-naamplaat-geweven-leeg-20261028\\.webp/);
+ assert.match(css,/aspect-ratio:1032\\/381/);
+ assert.match(css,/top:20%;height:25%/); // gold
+ assert.match(css,/top:57%;height:28%/); // gold
+ assert.match(css,/left:10\\.25%;top:56\\.2%;width:27\\.75%/); // silver
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(html,/woven-nameplate-main-20261028/);
+ assert.match(html,/approved-silver-no-cord-main-20261028/);
 });
