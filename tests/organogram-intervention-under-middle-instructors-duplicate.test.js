@@ -39,18 +39,18 @@ test('specializations are a child of police middle-cadre in service-only view',(
  assert.match(html,/police-intervention-group/);
  assert.match(html,/SPECIALISATIES · POLITIE/);
 });
-test('instructors appear in both instructor section and ALL members of that specialization',()=>{
+test('instructors appear in their own section and not in the ordinary members of the same specialization',()=>{
  const branch=serviceHierarchy([instructor,student],'politie').branches.find(x=>x.label==='MOTARD');
  assert.ok(branch);
  const card=mockBranch(branch);
  const nodes=flatten(card);
  const people=nodes.filter(n=>n.tag==='person');
- assert.equal(people.filter(p=>p.label==='Dezelfde instructeur').length,2);
+ assert.equal(people.filter(p=>p.label==='Dezelfde instructeur').length,1);
  assert.equal(people.filter(p=>p.label==='Hoofdinspecteur motard').length,1);
  assert.equal(nodes.filter(n=>n.label==='INSTRUCTEURS & DOCENTEN').length,1);
  assert.equal(nodes.filter(n=>n.label==='LEDEN · RANGVOLGORDE').length,1);
  const order=nodes.find(n=>n.tag==='list'&&n.label==='members');
- assert.deepEqual(order.children.map(x=>x.label),['Hoofdinspecteur motard','Dezelfde instructeur']);
+ assert.deepEqual(order.children.map(x=>x.label),['Hoofdinspecteur motard']);
 });
 test('an instructor may show in several specialties, while member identity is shared',()=>{
  const p=serviceHierarchy([instructor,student],'politie');
