@@ -17,7 +17,7 @@ function renderSpecialty(branch,isPolice=true){
  const end=src.indexOf('function filteredRows(',begin);
  assert.ok(begin>0&&end>begin);
  const context={
-  el:node,
+  el:node,state:{specialtyOpen:{}},
   isTeacher:p=>(p.teachingRoles||[]).includes('instructeur'),
   isSpecialtyInstructor,
   peopleList:(rows,rankOnly,compact,specialty)=>{
@@ -38,7 +38,7 @@ const mk=(call,specialties,teaching=[])=>({
  teacherSpecialties:[]});
 test('police specialization has two inner role columns side by side',()=>{
  assert.match(html,/\.police-specialty-role-grid\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
- assert.match(html,/\.police-specialty-grid\{display:grid;grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,505px\)/);
+ assert.match(html,/\.police-intervention-group \.police-specialty-grid\{[\s\S]*?display:flex;flex-wrap:nowrap/);
  assert.match(html,/@media\(max-width:800px\)\{\.police-specialty-role-grid\{grid-template-columns:1fr\}\}/);
 });
 test('assigned instructor appears only on the left, others only on the right',()=>{
