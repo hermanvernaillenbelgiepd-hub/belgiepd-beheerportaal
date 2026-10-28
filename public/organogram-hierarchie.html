@@ -463,6 +463,58 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   grid-column:auto;
  }
 }
+/* More room for names: teaching badges move below the rank. */
+#services .personnel-card-grid .person{padding:7px 6px;column-gap:5px;min-height:95px}
+#services .personnel-card-grid .person .num{flex:0 0 27px;min-width:27px;padding:2px;font-size:9px}
+#services .personnel-card-grid .person .portrait.bpd-police-formal{
+ width:48px!important;height:58px!important;flex:0 0 48px!important
+}
+#services .personnel-card-grid .person .identity{
+ flex:1 1 0;min-width:0;overflow:visible;display:flex;flex-direction:column;gap:2px
+}
+#services .personnel-card-grid .person .identity b{
+ display:block;white-space:normal;word-break:normal;overflow-wrap:anywhere;
+ font-size:11px;line-height:1.2;-webkit-line-clamp:unset;overflow:visible
+}
+#services .personnel-card-grid .person .person-heading{display:block}
+#services .personnel-card-grid .person .identity small{
+ font-size:9px;line-height:1.22;-webkit-line-clamp:2;overflow:hidden
+}
+#services .personnel-card-grid .person .person-role-flags{
+ display:flex;gap:3px;flex-wrap:wrap;margin-top:3px;min-width:0
+}
+#services .personnel-card-grid .person .person-role-flags .flag{
+ position:static;display:inline-block;max-width:100%;white-space:normal;
+ overflow-wrap:anywhere;font-size:8px;line-height:1.15;padding:2px 4px
+}
+.person-profile-dialog{
+ width:min(660px,calc(100vw - 24px));max-width:660px;max-height:85vh;overflow:auto;
+ border:1px solid #7599bc;border-radius:13px;padding:0;background:#10243d;
+ color:#edf7ff;box-shadow:0 20px 70px #000a
+}
+.person-profile-dialog::backdrop{background:#020a17c9}
+.person-profile-shell{padding:18px 20px 20px}
+.person-profile-top{display:flex;justify-content:space-between;align-items:start;gap:12px;border-bottom:1px solid #3c5c7f;padding-bottom:10px}
+.person-profile-top h2{margin:0;font-size:18px}
+.person-profile-close{background:#294b70;color:#eaf5ff;border:1px solid #7297ba;border-radius:7px;padding:6px 10px;font-size:12px}
+.person-profile-overview{display:flex;align-items:center;gap:13px;min-width:0;margin:15px 0}
+.person-profile-overview .portrait.bpd-police-formal{width:92px!important;height:105px!important;flex:0 0 92px!important}
+.person-profile-name{font-size:19px;font-weight:850;overflow-wrap:anywhere;line-height:1.22}
+.person-profile-rank{font-size:12px;color:#c1dbf4;margin-top:4px}
+.person-profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:13px 0}
+.person-profile-fact{border:1px solid #3b5b7c;background:#173452;border-radius:8px;padding:9px 10px;min-width:0}
+.person-profile-fact small{display:block;color:#adcae8;font-size:10px;margin-bottom:3px}
+.person-profile-fact strong{font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.person-profile-dialog h3{font-size:13px;font-weight:850;color:#c9e4ff;margin:16px 0 8px}
+.person-profile-specialties{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:8px}
+.person-profile-specialty{border:1px solid #42668a;border-radius:8px;background:#183651;padding:9px 10px}
+.person-profile-specialty>strong{font-size:12px}
+.person-profile-specialty-role{display:block;color:#b7d9f7;font-size:10px;margin-top:3px}
+.person-profile-note{font-size:11px;color:#a9c8e7;margin:12px 0 0;line-height:1.5}
+@media(max-width:520px){
+ .person-profile-shell{padding:13px}.person-profile-grid{grid-template-columns:1fr}
+ .person-profile-overview .portrait.bpd-police-formal{width:67px!important;height:78px!important;flex-basis:67px!important}
+}
 </style>
 </head>
 <body>
@@ -537,6 +589,15 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  <div id="selected" class="panel" aria-live="polite">Selecteer een persoon om de beschikbare basisgegevens te bekijken.</div>
  <p class="footer">Dit organogram is uitsluitend een visuele weergave, geen officiële bevelslijn en geen bron van toegangsrechten. Docent/instructeur wordt alleen getoond als die functie expliciet in de bron is bevestigd. Geen toegang tot dossiers, observaties of sancties via deze pagina. Burger staat al onder Bestuur, maar beschermde burgergegevens worden niet automatisch vrijgegeven.</p>
 </main>
+<dialog class="person-profile-dialog" id="person-profile" aria-labelledby="person-profile-title">
+ <div class="person-profile-shell">
+  <div class="person-profile-top">
+   <h2 id="person-profile-title">Personeelsprofiel</h2>
+   <button type="button" id="person-profile-close" class="person-profile-close">✕ Sluiten</button>
+  </div>
+  <div id="person-profile-content"></div>
+ </div>
+</dialog>
 <script src="/assets/organogram-police-formal.js?v=unified-gold-navy-frame-20261028"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
@@ -595,33 +656,78 @@ const POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS=new Set(['SIGNALISATIE','RADIO/BM',
 function supportsSpecialtyInstructors(label){
  return !POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS.has(policeSpecialtyName(label));
 }
+// Read-only details: never request dossiers or leave records.
+function openPersonProfile(p){
+ const dialog=$('person-profile'),content=$('person-profile-content');
+ content.replaceChildren();
+ const overview=el('div','person-profile-overview');
+ const portrait=window.BPDPoliceUniform?.makePortrait?.(p);
+ if(portrait)overview.append(portrait);
+ const identity=el('div');
+ identity.append(el('div','person-profile-name',p.name||'Onbekend'),
+  el('div','person-profile-rank',p.rank||'Rang niet geregistreerd'));
+ overview.append(identity);content.append(overview);
+ const grid=el('div','person-profile-grid');
+ function fact(label,value){
+  const row=el('div','person-profile-fact');
+  row.append(el('small','',label),el('strong','',String(value||'Niet geregistreerd')));
+  grid.append(row);
+ }
+ fact('Roepnummer',p.call||'—');
+ fact('Dienst',SERVICES.find(x=>x.id===p.dept)?.name||p.dept);
+ fact('Personeelsstatus',p.status||'Niet beschikbaar in het organogram');
+ const teaching=(Array.isArray(p.teachingRoles)?p.teachingRoles:[])
+  .filter(x=>x==='instructeur'||x==='docent');
+ fact('Opleidingsfunctie',teaching.length?teaching.map(x=>x==='instructeur'?'Instructeur':'Docent').join(' · '):'Geen geregistreerde functie');
+ content.append(grid,el('h3','','Specialisaties'));
+ const names=[...new Set(specialtyNames(p)
+  .map(name=>p.dept==='politie'?policeSpecialtyName(name):name).filter(Boolean))];
+ if(names.length){
+  const list=el('div','person-profile-specialties');
+  for(const name of names){
+   const item=el('div','person-profile-specialty');
+   item.append(el('strong','',name));
+   const roles=p.dept==='politie'&&supportsSpecialtyInstructors(name)?
+    specialtyInstructorRoles(p,name):[];
+   const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
+   item.append(el('span','person-profile-specialty-role',role));
+   list.append(item);
+  }
+  content.append(list);
+ }else content.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
+ content.append(el('p','person-profile-note',
+  'Dit profiel toont uitsluitend vrijgegeven personeelsgegevens. Verlofdetails en de datum van toetreding tot een specialisatie zijn hier niet beschikbaar.'));
+ if(!dialog.open)dialog.showModal();
+}
+$('person-profile-close').addEventListener('click',()=>$('person-profile').close());
+$('person-profile').addEventListener('click',event=>{
+ if(event.target===event.currentTarget)event.currentTarget.close();
+});
 function person(p,compact=false,specialtyLabel=null){
  const b=el('button','person'+(compact?' person-compact':''));b.type='button';
  b.append(el('span','num',p.call||'—'));
  const portrait=window.BPDPoliceUniform?.makePortrait?.(p);
  if(portrait)b.append(portrait);
  const label=el('span','identity');
+ const name=el('b','',p.name||'Onbekend');name.title=p.name||'';
  if(compact){
-  const heading=el('span','person-heading');
-  heading.append(el('b','',p.name));
-  const roles=specialtyLabel?
-   (supportsSpecialtyInstructors(specialtyLabel)?specialtyInstructorRoles(p,specialtyLabel):[]):
-   (Array.isArray(p.teachingRoles)?p.teachingRoles.map(x=>String(x).toLowerCase()):[]);
-  if(roles.includes('instructeur'))heading.append(el('span','flag instructor','INSTRUCTEUR'));
-  if(roles.includes('docent'))heading.append(el('span','flag teacher','DOCENT'));
+  const heading=el('span','person-heading');heading.append(name);
   label.append(heading,el('small','',p.rank||'Lid'));
- }else{
-  label.append(el('b','',p.name),el('small','',p.rank||'Lid'));
- }
+ }else label.append(name,el('small','',p.rank||'Lid'));
+ const roles=compact&&specialtyLabel?
+  (supportsSpecialtyInstructors(specialtyLabel)?specialtyInstructorRoles(p,specialtyLabel):[]):
+  (Array.isArray(p.teachingRoles)?p.teachingRoles.map(x=>String(x).toLowerCase()):[]);
+ const flags=el('span','person-role-flags');
+ if(roles.includes('instructeur'))flags.append(el('span','flag instructor','INSTRUCTEUR'));
+ if(roles.includes('docent'))flags.append(el('span','flag teacher','DOCENT'));
+ if(!compact&&String(p.source||'').includes('handmatig'))
+  flags.append(el('span','flag','Handmatig'));
+ if(flags.childElementCount)label.append(flags);
  b.append(label);
- if(!compact&&isTeacher(p))b.append(el('span','flag',p.teachingRoles?.some(x=>String(x).toLowerCase()==='docent')?'Docent':'Instructeur'));
- if(!compact&&String(p.source||'').includes('handmatig'))b.append(el('span','flag','Handmatig'));
- b.setAttribute('aria-label',p.name+' '+(p.call||''));
- b.addEventListener('click',()=>{
-  const details=[p.name,p.call||'geen roepnummer',p.rank||'Lid',SERVICES.find(s=>s.id===p.dept)?.name||p.dept];
-  $('selected').textContent=details.join(' · ')+(isTeacher(p)?' · Docent/instructeur':'')
-  +(p.source?' · Bron: '+p.source:'')+' · Leesweergave, geen dossierwijziging';
- });return b;
+ b.setAttribute('aria-label',(p.name||'')+' '+(p.call||'')+' · Open profiel');
+ b.title=(p.name||'')+' · Klik om het profiel te bekijken';
+ b.addEventListener('click',()=>openPersonProfile(p));
+ return b;
 }
 function peopleList(rows,rankOnly=false,compact=false,specialtyLabel=null){
  const list=el('div','persons personnel-card-grid');
@@ -1017,6 +1123,7 @@ async function loadPublic(){
   state.live=payload.records.filter(p=>p&&approved.has(p.dept)&&p.name)
    .map(p=>({dept:p.dept,name:String(p.name).slice(0,90),
     call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
+    status:typeof p.status==='string'?p.status.slice(0,30):'',
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
     instructorSpecialties:Array.isArray(p.instructorSpecialties)?p.instructorSpecialties.slice(0,12):[],
