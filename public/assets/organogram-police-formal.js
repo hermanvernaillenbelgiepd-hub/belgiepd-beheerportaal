@@ -4,11 +4,64 @@
  const BASE='/assets/organogram-police-formal.webp';
  // Approved cord-free silver jacket from TEST, shared by middle, basic and agent cadres.
  const SILVER_BASE='/assets/bpd-uniform-zilver-zonder-koord-nieuw-20261028.webp';
- // The user-approved gold uniform from the TEST preview, stored as its own
- // image so that no canvas recolouring or shoulder masking touches the art.
+ // A single source jacket for corps leadership AND the officer cadre.
+ // Native pixel recolouring is done once, without SVG/CSS image filters;
+ // the approved golden trim remains unaffected. No rank data is changed.
  const GOLD_BASE='/assets/bpd-gold-officer-corps-approved-20261028.webp';
- // Self-contained colour-matched officer image; corps retains original gold.
- const OFFICER_NAVY_BASE='/assets/bpd-officieren-marine-match-20261028.svg';
+ let matchedGoldSource=null, matchedGoldPromise=null;
+ function matchedGoldNavy(){
+  if(matchedGoldSource)return Promise.resolve(matchedGoldSource);
+  if(matchedGoldPromise)return matchedGoldPromise;
+  matchedGoldPromise=new Promise(resolve=>{
+   const done=src=>{matchedGoldSource=src;resolve(src);};
+   try{
+    const raw=new Image();
+    raw.onerror=()=>done(GOLD_BASE);
+    raw.onload=()=>{
+     try{
+      const canvas=document.createElement('canvas');
+      canvas.width=raw.naturalWidth;canvas.height=raw.naturalHeight;
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      if(!ctx)throw Error('No canvas 2D context');
+      ctx.drawImage(raw,0,0);
+      const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const data=pixels.data;
+      // The two original blue samples are RGB(28,56,96) and (1,33,74).
+      // Restrict adjustment to blue-dominant cloth pixels: white/red/gold
+      // collar, shoulder details, braids and medal stay original.
+      for(let i=0;i<data.length;i+=4){
+       const r=data[i],g=data[i+1],b=data[i+2];
+       if(data[i+3]===0)continue;
+       const blue=Math.max(0,Math.min(1,(b-r-18)/20));
+       const redLimit=Math.max(0,Math.min(1,(160-r)/40));
+       const greenLimit=Math.max(0,Math.min(1,(180-g)/40));
+       const strength=blue*redLimit*greenLimit;
+       if(strength===0)continue;
+       data[i]=Math.max(0,r-27*strength);
+       data[i+1]=Math.max(0,g-23*strength);
+       data[i+2]=Math.max(0,b-22*strength);
+      }
+      ctx.putImageData(pixels,0,0);
+      done(canvas.toDataURL('image/webp',.9));
+     }catch(_err){done(GOLD_BASE)}
+    };
+    raw.src=GOLD_BASE;
+   }catch(_err){done(GOLD_BASE)}
+  });
+  return matchedGoldPromise;
+ }
+ function setMatchedGoldCoat(img){
+  // The static URL is a safe fallback for non-browser renderers and tests.
+  img.src=GOLD_BASE;
+  if(typeof Image!=='function')return;
+  img.style.opacity='0';
+  matchedGoldNavy().then(src=>{
+   img.onload=()=>{img.style.opacity='1'};
+   img.onerror=()=>{img.onload=null;img.src=GOLD_BASE;img.style.opacity='1'};
+   img.src=src;
+   if(img.complete&&img.naturalWidth>0)img.style.opacity='1';
+  }).catch(()=>{img.src=GOLD_BASE;img.style.opacity='1'});
+ }
  const ranks=[
   {key:'1hcp',label:'Eerste hoofdcommissaris',abbr:'1-HCP',kind:'crown',count:3,line:true},
   {key:'1cp',label:'Eerste commissaris',abbr:'1-CP',kind:'crown',count:2,line:true},
@@ -249,7 +302,7 @@
    stage.className='bpd-gold-stage';
    const img=document.createElement('img');
    img.className='bpd-gold-coat';
-   img.src=trim==='gold-none'?OFFICER_NAVY_BASE:GOLD_BASE;
+   setMatchedGoldCoat(img);
    img.alt='';
    img.loading=large?'eager':'lazy';
    img.decoding='async';

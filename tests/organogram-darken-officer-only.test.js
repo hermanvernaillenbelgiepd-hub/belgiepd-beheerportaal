@@ -15,21 +15,20 @@ function app(){
  }
  return scope.window.BPDPoliceUniform;
 }
-test('colour-matched officer coat is embedded as its own static SVG image',()=>{
+test('one shared gold coat is rasterised into navy pixels for officers and corps',()=>{
  const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
- const svg=readFileSync(new URL('../public/assets/bpd-officieren-marine-match-20261028.svg',import.meta.url),'utf8');
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
  const js=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
- assert.match(svg,/data:image\/webp;base64,/);
- assert.match(svg,/<filter id="officer-navy"/);
- assert.match(svg,/result="navyOnly"/);
- assert.match(svg,/result="recolored"/);
- assert.match(svg,/result="nonBlue"/);
- assert.match(js,/OFFICER_NAVY_BASE/);
- assert.match(js,/trim==='gold-none'\?OFFICER_NAVY_BASE:GOLD_BASE/);
+ assert.match(js,/function matchedGoldNavy\(\)/);
+ assert.match(js,/canvas\.getContext\('2d'/);
+ assert.match(js,/ctx\.putImageData\(pixels,0,0\)/);
+ assert.match(js,/toDataURL\('image\/webp',\.9\)/);
+ assert.match(js,/setMatchedGoldCoat\(img\)/);
+ assert.doesNotMatch(js,/OFFICER_NAVY_BASE/);
+ assert.doesNotMatch(js,/bpd-officieren-marine-match-20261028\.svg/);
  assert.doesNotMatch(css,/filter:url\(#bpd-officer-navy-match\)/);
- assert.doesNotMatch(html,/id="bpd-officer-navy-match"/);
- assert.match(html,/navy-corrected-image-20261028/);
+ assert.match(html,/unified-gold-navy-frame-20261028/);
+ assert.match(css,/Gold and silver frames: fixed identical geometry/);
 });
 test('officers are gold-none, corps leaders gold-thick, and other cadres silver-none',()=>{
  const ui=app();
@@ -38,6 +37,6 @@ test('officers are gold-none, corps leaders gold-thick, and other cadres silver-
   const portrait=ui.makePortrait(person);
   assert.equal(portrait.dataset.trim,trim,call);
   assert.equal(portrait.children[0].children[0].src,
-   trim==='silver-none'?ui.silverAsset:trim==='gold-none'?'/assets/bpd-officieren-marine-match-20261028.svg':ui.asset,call);
+   trim==='silver-none'?ui.silverAsset:ui.asset,call);
  }
 });

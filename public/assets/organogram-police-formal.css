@@ -291,6 +291,35 @@
  }
 }
 
-/* Officer blue is now matched INSIDE its own SVG picture asset.
-   No page-level image filters: they were ignored on some browsers.
-   Gold corps and all separately drawn rank/name/medal layers are untouched. */
+/* Gold and silver jacket pixels are now matched using one shared native
+   canvas-produced WebP, without SVG/CSS filters. */
+
+/* Gold and silver frames: fixed identical geometry in roster and detail.
+   Some parent flex layouts previously made one jacket look wider. Keep the
+   portrait and all its overlays on exactly the same responsive canvas.
+   This deliberately does not resize individual grade/name embroidery. */
+.person .portrait.bpd-police-formal[data-uniform],
+.person .portrait.bpd-police-formal[data-uniform="gold"],
+.person .portrait.bpd-police-formal[data-uniform="silver"]{
+ box-sizing:border-box;flex:0 0 70px;
+ width:70px;min-width:70px;max-width:70px;height:66px;
+}
+.profile-title .portrait.bpd-police-formal[data-uniform],
+.portrait.bpd-police-formal.large[data-uniform]{
+ box-sizing:border-box;flex:0 0 156px;
+ width:156px;min-width:156px;max-width:156px;height:146px;
+}
+.portrait.bpd-police-formal[data-uniform="gold"]>.bpd-gold-stage,
+.portrait.bpd-police-formal[data-uniform="silver"]>.bpd-silver-stage{
+ width:120%;height:auto;aspect-ratio:603/469;
+ top:50%;left:50%;transform:translate(-50%,-50%);
+}
+@media(max-width:520px){
+ .person .portrait.bpd-police-formal[data-uniform]{
+  flex-basis:58px;width:58px;min-width:58px;max-width:58px;height:55px;
+ }
+ .profile-title .portrait.bpd-police-formal[data-uniform],
+ .portrait.bpd-police-formal.large[data-uniform]{
+  flex-basis:128px;width:128px;min-width:128px;max-width:128px;height:120px;
+ }
+}
