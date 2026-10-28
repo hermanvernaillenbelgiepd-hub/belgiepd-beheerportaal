@@ -573,6 +573,67 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  .person-profile-shell{padding:13px}.person-profile-grid{grid-template-columns:1fr}
  .person-profile-overview .portrait.bpd-police-formal{width:67px!important;height:78px!important;flex-basis:67px!important}
 }
+/* Middenkader: beide reeksen exact dezelfde binnenmarges en een gecentreerd
+   raster. Elke kaart vult een gelijke gridcel; resterende kaarten blijven netjes. */
+#services .middle-cadre-columns .middle-cadre-lane{
+ padding:12px 14px 14px;
+ container-type:inline-size;
+}
+#services .middle-cadre-columns .middle-cadre-lane>.middle-cadre-heading{
+ margin:0 0 9px;
+ padding-bottom:9px;
+}
+#services .middle-cadre-columns .middle-cadre-lane .persons.personnel-card-grid{
+ display:grid;
+ grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:10px;
+ justify-content:center;
+ justify-items:stretch;
+ align-items:stretch;
+ align-content:start;
+ width:100%;
+ max-width:674px;
+ margin:9px auto 0;
+}
+#services .middle-cadre-columns .middle-cadre-lane .persons.personnel-card-grid>.person{
+ display:flex;
+ box-sizing:border-box;
+ width:100%;
+ max-width:none;
+ min-width:0;
+ min-height:95px;
+ height:100%;
+ flex:none;
+}
+/* Een alleenstaand laatste lid (bv. RX) in de middelste kolom. */
+#services .middle-cadre-columns .middle-cadre-lane .persons.personnel-card-grid>.person:last-child:nth-child(3n + 1){
+ grid-column:2;
+}
+@container (max-width:650px){
+ #services .middle-cadre-columns .middle-cadre-lane .persons.personnel-card-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  max-width:446px;
+ }
+ #services .middle-cadre-columns .middle-cadre-lane .persons.personnel-card-grid>.person:last-child:nth-child(3n + 1){
+  grid-column:auto;
+ }
+ #services .middle-cadre-columns .middle-cadre-lane .persons.personnel-card-grid>.person:last-child:nth-child(2n + 1){
+  grid-column:1 / -1;
+  justify-self:center;
+  width:min(100%,218px);
+ }
+}
+@container (max-width:385px){
+ #services .middle-cadre-columns .middle-cadre-lane .persons.personnel-card-grid{
+  grid-template-columns:minmax(0,218px);
+  max-width:218px;
+ }
+ #services .middle-cadre-columns .middle-cadre-lane .persons.personnel-card-grid>.person:last-child{
+  grid-column:auto;
+  justify-self:stretch;
+  width:100%;
+ }
+}
 </style>
 </head>
 <body>
