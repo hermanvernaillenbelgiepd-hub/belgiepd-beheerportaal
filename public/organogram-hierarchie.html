@@ -192,27 +192,31 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person{min-height:76px}
 .person .flag{align-self:flex-start}
 
-/* Gelijke personeelskaarten in alle diensten en specialisaties.
-   auto-fill (niet auto-fit) houdt ook de laatste, onvolledige rij op
-   precies dezelfde kolombreedtes als de rijen erboven. */
-#services .personnel-card-grid{
- display:grid;
- grid-template-columns:repeat(auto-fill,minmax(min(100%,198px),1fr));
- grid-auto-rows:minmax(92px,auto);
+/* Eén echte kaartmaat in alle kaders, reeksen en specialisaties.
+   Flex-wrapping houdt ook de laatste rij 218px breed: geen 1fr-strekking.
+   Een kolom die smaller is dan de kaartbreedte mag de kaart verkleinen. */
+#services .personnel-card-grid,
+#services .police-intervention-group .police-specialty-detail .persons.personnel-card-grid,
+#services .middle-cadre-lane .persons.personnel-card-grid{
+ display:flex;
+ flex-direction:row;
+ flex-wrap:wrap;
  gap:8px;
  align-items:stretch;
- justify-content:stretch;
+ justify-content:flex-start;
+ align-content:flex-start;
  width:100%;
  min-width:0;
  margin:7px 0 2px;
 }
 #services .personnel-card-grid>.person{
  display:flex;
- width:100%;
+ flex:0 1 218px;
+ width:218px;
  min-width:0;
- max-width:none;
- min-height:92px;
- height:100%;
+ max-width:100%;
+ min-height:88px;
+ height:auto;
  align-items:center;
  padding:7px 8px;
  gap:7px;
@@ -266,11 +270,23 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 #services .personnel-card-grid>.person .portrait{
  flex-shrink:0;
 }
+/* Uniformen zelf blijven identiek, alleen hun zichtbare formaat is gelijk. */
+#services .personnel-card-grid>.person .portrait.bpd-police-formal{
+ width:56px!important;
+ height:62px!important;
+ flex:0 0 56px!important;
+}
+/* Alle personeelskaarten zijn ook binnen speciale diensten en smalle
+   middenkaderkolommen nooit volledige paginabrede lijstregels. */
+#services .police-intervention-group .police-specialty-detail .persons.personnel-card-grid>.person,
+#services .middle-cadre-lane .persons.personnel-card-grid>.person{
+ flex:0 1 218px;
+ width:218px;
+ max-width:100%;
+}
 @media(max-width:580px){
- #services .personnel-card-grid{
-  grid-template-columns:repeat(auto-fill,minmax(min(100%,185px),1fr));
-  gap:6px;
- }
+ #services .personnel-card-grid{gap:6px}
+ #services .personnel-card-grid>.person{flex-basis:218px}
 }
 </style>
 </head>
@@ -505,7 +521,7 @@ function canDragMiddle(p,series){
 function middleLane(series,label,rows){
  const box=el('div','middle-cadre-lane');
  const heading=el('div','middle-cadre-heading',label);
- const list=el('div','persons');
+ const list=el('div','persons personnel-card-grid');
  list.dataset.middleSeries=series;
  for(const p of orderedPoliceMiddle(rows)){
   const card=person(p);
