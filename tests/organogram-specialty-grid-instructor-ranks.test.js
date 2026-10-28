@@ -74,7 +74,7 @@ test('visual instructor label sits beside name, on instructor card and member ca
  const docent=scope.makePerson(mk(500,{teachingRoles:['docent']}),true);
  assert.ok(flat(docent).some(el=>el.cls==='flag teacher'&&el.text==='DOCENT'));
 });
-test('specialty group renders instructor section above all members with duplicate card',()=>{
+test('specialty group renders instructor and ordinary members beside each other without duplicates',()=>{
  const a=mk(500,{teachingRoles:['instructeur'],instructorSpecialties:['INTERVENTIEDIENST']});
  const b=mk(501),c=mk(400);
  const source=script.slice(script.indexOf('function specialtyBranch('),script.indexOf('function filteredRows('));
@@ -92,9 +92,11 @@ test('specialty group renders instructor section above all members with duplicat
  assert.deepEqual(titles,['INSTRUCTEURS & DOCENTEN','LEDEN · RANGVOLGORDE']);
  assert.deepEqual(nodes.find(n=>n.tag==='list'&&n.text==='teachers').children.map(n=>n.text),['500']);
  assert.deepEqual(nodes.find(n=>n.tag==='list'&&n.text==='members').children.map(n=>n.text),[
-  '500','501','400']);
- assert.equal(nodes.filter(n=>n.tag==='person'&&n.text==='500').length,2);
+  '501','400']);
+ assert.equal(nodes.filter(n=>n.tag==='person'&&n.text==='500').length,1);
  assert.ok(nodes.some(n=>n.text==='RADIO/BM inbegrepen'));
+ assert.ok(nodes.some(n=>n.cls==='police-specialty-role-grid'));
+ assert.equal(nodes.filter(n=>n.cls==='police-specialty-role-column').length,2);
 });
 test('other services, manual settings, undo, and main classic organogram are not changed',()=>{
  assert.match(html,/if\(solo&&settings\.id!=='politie'\)/);
