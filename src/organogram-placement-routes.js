@@ -257,7 +257,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  // including after page refresh. Never expose IDs or history to ordinary staff.
  app.get('/api/organogram/middenkader/last-order',requireUser,manager,async(req,res)=>{
   try{
-   const snap=await store().collection(MID_ORDER_COLLECTION).limit(100).get();
+   const snap=await store().collection(MID_ORDER_COLLECTION).orderBy('createdAt','desc').limit(100).get();
    const entries=snap.docs.filter(d=>d.get('status')==='active'&&
     d.get('actorUid')===req.bpd.uid);
    entries.sort((a,b)=>
