@@ -55,7 +55,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  // Discord identifiers, access grants, source documents or audit history.
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
   try{
-   const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(validRow).slice(0,1200);
+   const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(p=>validRow(p)&&p.dept!=='burger').slice(0,1200);
    const manualSnap=await db.collection(COLLECTION).limit(1500).get();
    if(manualSnap.size>=1500)return res.status(503).json({error:'Organogramregisterlimiet bereikt'});
    const manual=manualMap(manualSnap.docs);
