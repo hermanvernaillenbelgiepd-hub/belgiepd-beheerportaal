@@ -73,7 +73,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .gaps{color:#91aeca;font-size:10px;text-align:center;padding:6px 2px}
 .spec-heading{display:flex;align-items:center;gap:8px;margin:17px 0 4px;font-size:11px;font-weight:900;color:#cce4ff}
 .spec-heading:before{content:"";width:10px;height:10px;border:1px solid #91b5d8;border-radius:2px;transform:rotate(45deg)}
-.spec-list{display:grid;grid-template-columns:1fr;gap:8px}
+.spec-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:9px;align-items:start}
 .specialty{border:1px solid #3c5879;background:#0d233a;border-radius:9px;overflow:hidden}
 .specialty summary{padding:8px;font-weight:800;font-size:11px;cursor:pointer;list-style:none;background:#1b3654}
 .specialty summary::-webkit-details-marker{display:none}
@@ -96,36 +96,31 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .police-intervention-content{min-width:0}
 .police-intervention-group .spec-heading{margin:0 0 7px}
 .police-intervention-group .spec-list{margin-top:11px}
-/* Keep EVERY specialty in one uninterrupted horizontal row. Wide panels
-   expand within this same row; scroll controls reach off-screen specialties. */
+/* Responsive grid: all specialties are placed side by side without sideways scrolling. */
 .police-intervention-group .police-specialty-grid{
- display:flex;flex-wrap:nowrap;gap:9px;align-items:flex-start;
- max-width:100%;min-width:0;padding:4px 2px 12px;overflow-x:auto;overflow-y:hidden;
- scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:#6c9bcb #10243d;
- overscroll-behavior-inline:contain
+ display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;
+ align-items:start;max-width:100%;min-width:0;margin-top:10px;padding:2px 0 9px;overflow:visible
 }
 .police-intervention-group .police-specialty-grid>.specialty{
- flex:0 0 188px;min-width:0;scroll-snap-align:start;transition:flex-basis .15s ease;
+ width:100%;min-width:0;min-height:0;align-self:start
 }
-.police-intervention-group .police-specialty-grid>.specialty[open]{
- flex-basis:min(520px,calc(100vw - 80px))
-}
-.specialty-strip-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:7px 0}
-.specialty-strip-tools .specialty-strip-hint{font-size:11px;color:#c0d8f2}
-.specialty-strip-buttons{display:flex;gap:5px;flex-shrink:0}
-.specialty-strip-buttons button{border:1px solid #749dce;background:#254b75;color:#edf8ff;border-radius:7px;padding:5px 10px;cursor:pointer}
-.specialty-strip-buttons button:hover{background:#39669a}
-.specialty-strip-buttons button:focus-visible{outline:2px solid #bbdaff;outline-offset:2px}
+@media(max-width:1180px){.police-intervention-group .police-specialty-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:900px){.police-intervention-group .police-specialty-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.police-intervention-group .police-specialty-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:430px){.police-intervention-group .police-specialty-grid{grid-template-columns:minmax(0,1fr)}}
 .police-specialty-grid>.specialty{min-width:0;margin:0;border:1px solid #52799b;border-radius:10px;background:#10243d}
 .police-specialty-grid>.specialty>summary{display:flex;align-items:center;justify-content:space-between;gap:7px;
   border-bottom:1px solid #416586;background:#204468;padding:10px 11px;font-weight:850;font-size:12px}
 .police-specialty-grid>.specialty:not([open])>summary{border-bottom:0}
+.police-specialty-grid>.specialty>summary::after{content:'▸';color:#c8def7;margin-left:auto;flex-shrink:0}
+.police-specialty-grid>.specialty[open]>summary::after{content:'▾'}
+.police-specialty-grid>.specialty>summary:focus-visible{outline:2px solid #b1d6ff;outline-offset:-2px}
 .police-specialty-grid>.specialty>.specialty-content{padding:8px 9px 11px}
-.police-specialty-role-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:9px}
+.police-specialty-role-grid{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;gap:8px}
 .police-specialty-role-column{min-width:0}
 .police-specialty-role-grid .group-title{margin:4px 0 8px}
 .police-specialty-role-grid .person{min-width:0}
-@media(max-width:800px){.police-specialty-role-grid{grid-template-columns:1fr}}
+/* Instructeurs eerst, leden daaronder. */
 
 .police-specialty-grid .specialty-note{margin:3px 0 7px;color:#a9d6f7;font-size:10px}
 .police-intervention-group .police-specialty-grid .persons{display:flex;flex-direction:column;flex-wrap:nowrap;gap:4px;align-items:stretch}
@@ -143,7 +138,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .police-specialty-grid .group-title{margin:9px 0 5px}
 .police-specialty-grid .group-title.instructors{background:#54401d;border-color:#ac8740}
 .police-specialty-grid .group-title.members{background:#1a3856}
-@media(max-width:700px){.police-intervention-group .police-specialty-grid>.specialty{flex-basis:166px}.police-intervention-group .police-specialty-grid>.specialty[open]{flex-basis:min(520px,calc(100vw - 75px))}}
+
 
 .police-intervention-group .specialty{margin:0}
 .police-intervention-group .group-title{display:block;padding:4px 7px;background:#1b3656;border-radius:5px}
@@ -200,6 +195,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   <button type="button" data-view="depannage">Depannage</button>
   <button type="button" data-view="burger">Burger</button>
   <button type="button" id="demo-toggle" aria-pressed="true">Voorbeeldgegevens</button>
+   <button type="button" id="toggle-cadres" aria-label="Alle zichtbare kaders inklappen">▴ Alle kaders inklappen</button>
   <button type="button" id="manage-toggle">⚙ Handmatige functies</button>
   <button type="button" id="login">Aanmelden</button>
   <input type="search" id="search" placeholder="Zoek naam, rang of specialisatie" aria-label="Doorzoek organogram">
@@ -343,22 +339,9 @@ function policeInterventions(branches){
  section.append(el('summary','','SPECIALISATIES · POLITIE'));
  const body=el('div','police-intervention-content');
  body.append(el('p','police-service-intro',
-  'Alle specialisaties staan in één rij. Klik op een kaart om deze open of dicht te klappen. Instructeurs staan links, overige leden rechts.'));
+  'Specialisaties naast elkaar: klik op een kaart om deze open of dicht te klappen. Instructeurs staan bovenaan, overige leden eronder (zonder dubbels).'));
  const specs=el('div','spec-list police-specialty-grid');
- specs.tabIndex=0;
- specs.setAttribute('aria-label','Horizontale rij politiespecialisaties');
- const tools=el('div','specialty-strip-tools');
- tools.append(el('span','specialty-strip-hint','Schuif horizontaal om alle specialisaties te zien'));
- const buttons=el('div','specialty-strip-buttons');
- for(const [label,direction] of [['←',-1],['→',1]]){
-  const button=el('button','',label);button.type='button';
-  button.setAttribute('aria-label',direction<0?'Vorige specialisaties':'Volgende specialisaties');
-  button.addEventListener('click',()=>{
-   specs.scrollBy({left:direction*Math.max(280,Math.round(specs.clientWidth*.75)),behavior:'smooth'});
-  });
-  buttons.append(button);
- }
- tools.append(buttons);body.append(tools);
+ specs.setAttribute('aria-label','Overzicht politiespecialisaties');
  for(const branch of branches)specs.append(specialtyBranch(branch,true));
  body.append(specs);section.append(body);
  return section;
@@ -493,9 +476,11 @@ function serviceCard(item,settings,solo){
  for(const level of item.leadership){
   const key=settings.id+':'+level.label;
   const block=el('details','level');
+  block.dataset.cadreKey=key;
   block.open=state.cadreOpen[key]??true;
-  block.addEventListener('toggle',()=>{state.cadreOpen[key]=block.open;});
+  block.addEventListener('toggle',()=>{state.cadreOpen[key]=block.open;syncCadreToggle();});
   const heading=el('summary','level-title');
+  heading.title=level.label+' in- of uitklappen';
   heading.append(el('span','',level.label),el('span','level-count',level.members.length+' leden'));
   block.append(heading);
   const levelBody=el('div','level-body');
@@ -572,6 +557,23 @@ function filteredRows(){
  const needle=state.query.toLocaleLowerCase('nl');
  return rows.filter(p=>[p.name,p.call,p.rank,...specialtyNames(p)].some(t=>String(t||'').toLocaleLowerCase('nl').includes(needle)));
 }
+function syncCadreToggle(){
+ const levels=[...$('services').querySelectorAll('details.level')];
+ const button=$('toggle-cadres');
+ const collapse=levels.some(level=>level.open);
+ button.disabled=!levels.length;
+ button.textContent=collapse?'▴ Alle kaders inklappen':'▾ Alle kaders uitklappen';
+ button.setAttribute('aria-label',collapse?'Alle zichtbare kaders inklappen':'Alle zichtbare kaders uitklappen');
+}
+$('toggle-cadres').addEventListener('click',()=>{
+ const levels=[...$('services').querySelectorAll('details.level')];
+ const open=!levels.some(level=>level.open);
+ for(const level of levels){
+  state.cadreOpen[level.dataset.cadreKey]=open;
+  level.open=open;
+ }
+ syncCadreToggle();
+});
 function render(){
  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===state.view)));
  $('demo-toggle').setAttribute('aria-pressed',String(state.demo));
@@ -594,9 +596,11 @@ function render(){
   $('services').append(serviceCard(dataset[i],SERVICES[i],solo));
  }
  $('services').style.gridTemplateColumns=solo?'minmax(0,1130px)':'';
+ syncCadreToggle();
 }
 document.querySelector('.toolbar').addEventListener('click',event=>{
  const btn=event.target.closest('button');if(!btn)return;
+ if(btn.id==='toggle-cadres')return;
  if(btn.dataset.view)state.view=btn.dataset.view;
  else if(btn.id==='demo-toggle'&&state.loaded)state.demo=!state.demo;
  render();
