@@ -12,7 +12,9 @@ export const LEADERSHIP_LEVELS=Object.freeze({
 export const SPECIALTIES=Object.freeze({
  bestuur:[],
  politie:['INTERVENTIEDIENST','RADIO/BM','SIGNALISATIE','MOTARD','SEMI ANONIEM',
-  'K9','RAGO','DISP','TO','AE','RECHERCHE'],
+  'K9','RAGO','DISP','TO','AE','RECHERCHE',
+  // Historical specializations not silently deleted when an existing record is edited.
+  'Prioritair rijden','EHBO'],
  brandweer:['Duiker','Ladderwagen','Logistiek','Signalisatie','RED team','Gevaarlijke stoffen','Bosbestrijding'],
  ambulance:['MIP','HELI','PIT','PIT-MOTOR','Medicatie','Basis TR'],
  depannage:['F.A.S.T','CRANE','Wegenwerken','LSRA','Signalisatie'],
@@ -25,6 +27,15 @@ const LEGACY_POLICE_SPECIALTIES=Object.freeze([
  'Motard','Semi-anoniem','Semi-anonieme','K-9','Lokale Recherche',
  'Prioritair rijden','EHBO'
 ]);
+const POLICE_DISPLAY_ALIASES=new Map([
+ ['Motor','MOTARD'],['Motard','MOTARD'],
+ ['SIV/WPR','SIGNALISATIE'],['Signalisatie','SIGNALISATIE'],
+ ['Dispatch','DISP'],['Radio BM','RADIO/BM'],
+ ['Semi-anoniem','SEMI ANONIEM'],['Semi-anonieme','SEMI ANONIEM'],
+ ['K-9','K9'],['Lokale Recherche','RECHERCHE']
+]);
+const normalizedStoredSpecialty=(dept,label)=>
+ dept==='politie'?(POLICE_DISPLAY_ALIASES.get(label)||label):label;
 const validStoredSpecialty=(dept,label)=>SPECIALTIES[dept]?.includes(label)||
  (dept==='politie'&&LEGACY_POLICE_SPECIALTIES.includes(label));
 const ID=/^\d{15,22}$/;
@@ -58,7 +69,8 @@ export function manualDisplay(raw,dept){
  const boardRole=['bestuur','bestuur-ai'].includes(raw.boardRole)?raw.boardRole:'none';
  const teachingRoles=Array.isArray(raw.teachingRoles)?[...new Set(raw.teachingRoles.filter(x=>['docent','instructeur'].includes(x)))]:[];
  const specialties=Array.isArray(raw.specialties)?
-  [...new Set(raw.specialties.filter(x=>validStoredSpecialty(dept,x)))].slice(0,12):[];
+  [...new Set(raw.specialties.filter(x=>validStoredSpecialty(dept,x))
+    .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,12):[];
  const leadershipTier=LEADERSHIP_LEVELS[dept]?.includes(raw.leadershipTier)?raw.leadershipTier:'none';
  return {boardRole,leadershipTier,teachingRoles,specialties};
 }
@@ -106,7 +118,8 @@ export function mergePlacement(person,manual,auto){
  const specialtyValues=Array.isArray(person.specialties)?
   person.specialties.filter(x=>x&&typeof x.label==='string'&&
    /^(ja|behaald|voltooid|geslaagd|true)$/i.test(strip(x.value))&&
-   validStoredSpecialty(person.dept,x.label)).map(x=>x.label):[];
+   validStoredSpecialty(person.dept,x.label))
+    .map(x=>normalizedStoredSpecialty(person.dept,x.label)):[];
  const boardRole=manual?.boardRole&&manual.boardRole!=='none'?
   manual.boardRole:auto?.boardRole||'none';
  return {dept:person.dept,name:strip(person.name).slice(0,90),
