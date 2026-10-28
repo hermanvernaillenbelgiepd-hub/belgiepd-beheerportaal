@@ -290,3 +290,11 @@
   width:128px;height:120px;border-radius:17px;
  }
 }
+
+/* Officers (920/930 and display fallback CP/A-CP): slightly deeper navy to
+   match the other coats. Filter only the base photo, NOT the independently
+   rendered embroidered name/rank patches, ribbons or medals.
+   Corps leadership (gold-thick) and the three silver cadres are unchanged. */
+.portrait.bpd-police-formal[data-trim="gold-none"]>.bpd-gold-stage>.bpd-gold-coat{
+ filter:brightness(.92) saturate(1.02);
+}
