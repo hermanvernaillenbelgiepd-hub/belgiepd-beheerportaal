@@ -14,6 +14,11 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .brand{color:white;text-decoration:none;font-weight:850;font-size:15px}.tag{color:#ffe6a5;background:#544220;border:1px solid #967238;border-radius:6px;padding:3px 7px;font-size:11px;font-weight:800}
 .back{margin-left:auto;color:#c3ddff}main{max-width:1550px;margin:auto;padding:16px clamp(12px,2.5vw,30px) 38px}h1{font-size:22px;margin:4px 0 5px}
 .lead{color:#bbd0e8;margin:0 0 13px;max-width:850px}
+.roster-view-tabs{display:flex;align-items:center;gap:6px;border-bottom:1px solid #405d7c;margin:12px 0 11px;padding-bottom:6px}
+.roster-view-tabs a{display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;border-radius:7px;padding:8px 13px;color:#c4dfff;text-decoration:none;font-size:12px;font-weight:850}
+.roster-view-tabs a:hover{background:#1d3d60}
+.roster-view-tabs a[aria-current="page"]{background:#295587;border-color:#7aade0;color:#fff}
+.roster-view-tabs a:focus-visible{outline:2px solid #b1d6ff;outline-offset:2px}
 .toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;border:1px solid #304d70;background:#142741;border-radius:10px;padding:9px;margin:12px 0}
 .toolbar button{border:1px solid #446589;background:#1b3451;color:#dceeff;border-radius:7px;padding:7px 10px}
 .toolbar button[aria-pressed=true]{background:#2b5591;border-color:#88b9ee;color:white}
@@ -469,6 +474,10 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 <main>
  <h1>Organogram van BelgiumPD</h1>
  <p class="lead">Eén Bestuur boven alle diensten. In het algemene overzicht alleen de dienstleidingen. Open één dienst voor specialisaties, instructeurs en leden. Handmatige posities kun je altijd terugdraaien. Een persoon kan in meerdere diensttakken voorkomen zonder duplicatie van het personeelsdossier.</p>
+ <nav class="roster-view-tabs" aria-label="Kies personeelsweergave">
+   <a href="/personeelslijst.html">👥 Personeelslijst</a>
+   <a href="/organogram-hierarchie.html" aria-current="page">🌳 ORGANOGRAM</a>
+ </nav>
  <nav class="toolbar" aria-label="Organogramweergave">
   <button type="button" data-view="alle" aria-pressed="true">Alle diensten</button>
   <button type="button" data-view="politie">Politie</button>
