@@ -97,6 +97,19 @@ export function isTeacher(p){
  const flags=Array.isArray(p?.teachingRoles)?p.teachingRoles:[];
  return flags.some(x=>['instructeur','docent'].includes(lower(x)));
 }
+// In the full membership roster of each specialisation, show everybody
+// (including instructors) by operational rank. The instructor list above
+// it has its own priority and may intentionally repeat the same person.
+export function orderedSpecialtyMembers(rows){
+ return [...rows].sort((a,b)=>
+  rankWeight(b)-rankWeight(a)||
+  ((numeric(a.call)!==null&&numeric(b.call)!==null&&
+   Math.floor(numeric(a.call)/100)===Math.floor(numeric(b.call)/100))?
+   numeric(a.call)-numeric(b.call):0)||
+  clean(a.call).localeCompare(clean(b.call),'nl',{numeric:true})||
+  clean(a.name).localeCompare(clean(b.name),'nl')
+ );
+}
 export function orderedMembers(rows){
  return [...rows].sort((a,b)=>
   Number(isTeacher(b))-Number(isTeacher(a))||

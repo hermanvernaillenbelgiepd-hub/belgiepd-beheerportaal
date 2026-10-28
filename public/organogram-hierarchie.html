@@ -75,6 +75,14 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .specialty-parent>summary{background:#244563}
 .specialty-parent>.specialty-content{padding:7px}
 .police-service-intro{color:#b9d3ee;font-size:10px;margin:5px 0 3px}
+.police-intervention-group{margin:16px 0 4px 12px;padding:12px;border:1px solid #5b82ae;border-left:3px solid #94bde9;border-radius:10px;background:#102b48}
+.police-intervention-group .spec-heading{margin:0 0 7px}
+.police-intervention-group .spec-list{margin-top:11px}
+.police-intervention-group .specialty{margin:0}
+.police-intervention-group .group-title{display:block;padding:4px 7px;background:#1b3656;border-radius:5px}
+.police-intervention-group .group-title.instructors{color:#ffdc92;border:1px solid #7b632f}
+.police-intervention-group .persons{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:6px}
+@media(max-width:580px){.police-intervention-group{margin-left:0;padding:9px}.police-intervention-group .persons{grid-template-columns:1fr}}
 .panel{margin-top:14px;padding:10px 13px;background:#10263f;border:1px solid #395a7b;border-radius:10px;color:#b7cfe8;min-height:42px}
 .footer{font-size:11px;color:#aabed6;margin-top:15px;max-width:950px}
 .hidden{display:none!important}
@@ -165,7 +173,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 <script src="/assets/organogram-police-formal.js?v=unified-gold-navy-frame-20261028"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
-import {SERVICES,hierarchy,orderedMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,specialtyNames} from '/assets/organogram-hierarchie-model.js';
+import {SERVICES,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,specialtyNames} from '/assets/organogram-hierarchie-model.js';
 const $=id=>document.getElementById(id);
 const fixtures=[
  {dept:'politie',name:'Voorbeeld Korpschef',call:'900',rank:'Eerste hoofdcommissaris'},
@@ -221,8 +229,21 @@ function person(p){
   +(p.source?' · Bron: '+p.source:'')+' · Leesweergave, geen dossierwijziging';
  });return b;
 }
-function peopleList(rows){
- const list=el('div','persons');for(const p of orderedMembers(rows))list.append(person(p));return list;
+function peopleList(rows,rankOnly=false){
+ const list=el('div','persons');
+ for(const p of rankOnly?orderedSpecialtyMembers(rows):orderedMembers(rows))list.append(person(p));
+ return list;
+}
+function policeInterventions(branches){
+ const section=el('section','police-intervention-group');
+ section.setAttribute('aria-label','Interventiedienst en specialisaties onder Middenkader');
+ section.append(el('div','spec-heading','INTERVENTIEDIENST & SPECIALISATIES'));
+ section.append(el('p','police-service-intro',
+  'Per specialisatie: eerst docenten en instructeurs, vervolgens alle leden volgens rang. Een instructeur staat ook in de ledenlijst.'));
+ const specs=el('div','spec-list');
+ for(const branch of branches)specs.append(specialtyBranch(branch,true));
+ section.append(specs);
+ return section;
 }
 function canDragMiddle(p,series){
  return managerReady&&!state.demo&&!state.query&&!dragSaving&&
@@ -353,21 +374,21 @@ function serviceCard(item,settings,solo){
  for(const level of item.leadership){
   const block=el('div','level');
   block.append(el('div','level-title',level.label));
-  if(solo&&settings.id==='politie'&&level.label==='Middenkader')
+  if(solo&&settings.id==='politie'&&level.label==='Middenkader'){
    block.append(middleCadreLayout(level.members));
+   // The intervention service and every specialization belong beneath the
+   // police middle cadre. Do not render a second set further down the page.
+   block.append(policeInterventions(item.branches));
+  }
   else if(level.members.length)block.append(peopleList(level.members));
   else block.append(el('div','gaps','Nog geen vrijgegeven registraties'));
   body.append(block);
  }
- if(solo){
+ if(solo&&settings.id!=='politie'){
   body.append(el('div','spec-heading','SPECIALISATIES / PLOEGEN'));
-  if(settings.id==='politie'){
-   body.append(el('p','police-service-intro',
-    'Interventiedienst → Radio/BM; daarna de specialisaties in vaste BelgiumPD-volgorde.'));
-  }
   const specs=el('div','spec-list');
   if(!item.branches.length)specs.append(el('div','gaps',state.demo?'Geen leden':'Geen vrijgegeven specialisaties of overige leden'));
-  for(const branch of item.branches)specs.append(specialtyBranch(branch,settings.id==='politie'));
+  for(const branch of item.branches)specs.append(specialtyBranch(branch,false));
   body.append(specs);
  }
  box.append(body);
@@ -384,9 +405,14 @@ function specialtyBranch(branch,isPolice,nested=false){
  card.append(title);
  const content=el('div','specialty-content');
  const tutors=(branch.members||[]).filter(isTeacher);
- const members=(branch.members||[]).filter(p=>!isTeacher(p));
- if(tutors.length)content.append(el('div','group-title','Docenten / instructeurs'),peopleList(tutors));
- if(members.length)content.append(el('div','group-title','Leden in rangvolgorde'),peopleList(members));
+ // Every qualified instructor is ALSO a member of their specialization.
+ // Keep two independently rendered cards pointing to the same person.
+ const members=isPolice?(branch.members||[]):
+  (branch.members||[]).filter(p=>!isTeacher(p));
+ if(tutors.length)content.append(el('div','group-title instructors','Docenten / instructeurs'),peopleList(tutors));
+ if(members.length)content.append(el('div','group-title',
+  isPolice?'Alle leden met deze specialisatie · rangvolgorde':'Leden in rangvolgorde'),
+  peopleList(members,isPolice));
  for(const child of branch.children||[])content.append(specialtyBranch(child,isPolice,true));
  if(!tutors.length&&!members.length&&!branch.children?.length)
   content.append(el('div','gaps','Nog geen geregistreerde leden'));
