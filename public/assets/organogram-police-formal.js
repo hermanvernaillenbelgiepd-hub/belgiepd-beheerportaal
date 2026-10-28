@@ -2,6 +2,8 @@
 (function(){
  'use strict';
  const BASE='/assets/organogram-police-formal.webp';
+ // Approved silver base shared by middle, basic and agent cadres.
+ const SILVER_BASE='/assets/bpd-uniform-zilver-dynamisch-20261028.webp';
  const ranks=[
   {key:'1hcp',label:'Eerste hoofdcommissaris',abbr:'1-HCP',kind:'crown',count:3,line:true},
   {key:'1cp',label:'Eerste commissaris',abbr:'1-CP',kind:'crown',count:2,line:true},
@@ -302,14 +304,16 @@
   if(person?.dept!=='politie')return null;
   const grade=gradeFor(person);
   const trim=trimFor(grade);
+  const isSilver=trim==='silver-none';
   const outer=document.createElement('span');
   outer.className='portrait bpd-police-formal'+(large?' large':'');
   outer.dataset.dept='politie';
   outer.dataset.trim=trim;
+  outer.dataset.uniform=isSilver?'silver':'gold';
   outer.setAttribute('role','img');
   outer.setAttribute('aria-label','Belgisch geïnspireerd formeel politie-uniform'+(grade?' · '+grade.label:'')+' · sjabloon, geen persoonlijke foto');
   const image=document.createElement('img');
-  image.src=BASE;
+  image.src=isSilver?SILVER_BASE:BASE;
   image.alt='';
   image.loading=large?'eager':'lazy';
   image.decoding='async';
@@ -321,7 +325,9 @@
   if(currentNameplate)outer.append(currentNameplate);
   // All four cadres share the same jacket geometry and exact embroidered
   // rank plates supplied earlier; none use synthetic stars or crowns.
-  void preparedUniform(trim).then(src=>{if(src&&image.src!==src)image.src=src});
+  // Silver jacket has native silver cord, buttons and collar insignia.
+  // No shoulder masks or recolouring; the gold jacket keeps legacy cleanup.
+  if(!isSilver)void preparedUniform(trim).then(src=>{if(src&&image.src!==src)image.src=src});
   // Decorations are independent pieces; no large rectangular patch masks
   // the uniform or its grade again.
   const rack=window.BPDDecorations?.uniformRack(person.awards);
@@ -335,5 +341,5 @@
   if(rack?.medals)outer.append(rack.medals);
   return outer;
  }
- window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,makeNameplate,nameplateData,asset:BASE});
+ window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,makeNameplate,nameplateData,asset:BASE,silverAsset:SILVER_BASE});
 })();
