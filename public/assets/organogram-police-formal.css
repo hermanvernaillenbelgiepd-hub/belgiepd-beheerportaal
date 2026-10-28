@@ -291,12 +291,6 @@
  }
 }
 
-/* Officers (920/930 and fallback CP/A-CP): match the silver cadres'
-   cloth colour without dulling gold embroidery. Their original jacket navy
-   samples RGB 28/56/96; silver is approximately 1/33/73. A bounded SVG mask
-   selects only blue-dominant fabric (B > R); gold, white, red and non-blue
-   details pass through the source unchanged. The rank/name/medal DOM layers
-   remain OUTSIDE this image-only filter. All other cadres are untouched. */
-.portrait.bpd-police-formal[data-trim="gold-none"]>.bpd-gold-stage>.bpd-gold-coat{
- filter:url(#bpd-officer-navy-match);
-}
+/* Officer blue is now matched INSIDE its own SVG picture asset.
+   No page-level image filters: they were ignored on some browsers.
+   Gold corps and all separately drawn rank/name/medal layers are untouched. */
