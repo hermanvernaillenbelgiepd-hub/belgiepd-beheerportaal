@@ -100,14 +100,13 @@
 .bpd-police-formal[data-uniform="silver"]>img{
  transform:translateY(-6%) scale(1.68);transform-origin:50% 0;
 }
-/* Live cloth overlays follow precisely the jacket's 1.68x zoom and -6%
-   vertical offset. Original source coordinates: x' = 50 + 1.68*(x-50),
-   y' = 1.68*y - 6, widths/heights multiplied by 1.68.
-   No independent plate movement; promotion/demotion remains data-driven. */
+/* Live cloth labels remain data-driven. The nameplate is shorter and
+   the embroidered rank is 2.6% higher, both optically centred on the
+   actual sewn backing of the silver jacket. Gold remains unchanged. */
 .bpd-police-formal[data-uniform="silver"]>.bpd-personal-nameplate{
- left:18.332%;top:55.908%;width:18.648%;height:7.644%;background:#0d1b2b}
+ left:18.332%;top:56.25%;width:18.648%;height:6.444%;background:#0d1b2b}
 .bpd-police-formal[data-uniform="silver"]>.bpd-chest-insignia{
- left:55.46%;top:58.25%;width:19.068%;height:7.644%;
+ left:55.46%;top:55.65%;width:19.068%;height:7.644%;
  border-radius:0;box-shadow:none}
 @media(max-width:520px){
  .person .portrait.bpd-police-formal[data-uniform="silver"]{width:57px;height:65px}
