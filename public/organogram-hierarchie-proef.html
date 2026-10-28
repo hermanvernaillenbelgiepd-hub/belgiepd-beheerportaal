@@ -162,10 +162,12 @@ function person(p){
  b.append(el('span','num',p.call||'—'));
  const label=el('span');label.append(el('b','',p.name),el('small','',p.rank||'Lid'));b.append(label);
  if(isTeacher(p))b.append(el('span','flag',p.teachingRoles?.some(x=>x.toLocaleLowerCase('nl')==='docent')?'Docent':'Instructeur'));
+ if(String(p.source||'').includes('handmatig'))b.append(el('span','flag','Handmatig'));
  b.setAttribute('aria-label',p.name+' '+(p.call||''));
  b.addEventListener('click',()=>{
   const details=[p.name,p.call||'geen roepnummer',p.rank||'Lid',SERVICES.find(s=>s.id===p.dept)?.name||p.dept];
-  $('selected').textContent=details.join(' · ')+(isTeacher(p)?' · Docent/instructeur':'')+' · Leesweergave, geen dossierwijziging';
+  $('selected').textContent=details.join(' · ')+(isTeacher(p)?' · Docent/instructeur':'')
+  +(p.source?' · Bron: '+p.source:'')+' · Leesweergave, geen dossierwijziging';
  });return b;
 }
 function peopleList(rows){
@@ -250,7 +252,7 @@ async function loadPublic(){
     call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
-    boardRole:p.boardRole||'none'}));
+    boardRole:p.boardRole||'none',source:String(p.source||'personeelslijst').slice(0,35)}));
   state.board=Array.isArray(payload.board)?payload.board.slice(0,50):[];
   state.loaded=true;
   $('source').className='notice'+(payload.stale||!payload.syncAvailable?' warn':'');
