@@ -85,19 +85,30 @@
 .bpd-grade-vector>image{image-rendering:auto}
 .bpd-grade-badge>.bpd-grade-vector{display:block;width:100%;height:100%}
 
-/* New 1295x1215 silver uniform: one artwork for calls 100–899. */
+/* Silver uniform: same portrait/card dimensions as the gold uniform.
+   Only the actual silver jacket AND its live overlays are visually zoomed.
+   Do not change this scale independently from the nameplate, embroidered
+   cloth rank plate, and decoration coordinates below. Source: 200x188 WebP. */
 .person .portrait.bpd-police-formal[data-uniform="silver"],
-.portrait.bpd-police-formal[data-uniform="silver"]{width:67px;height:63px}
+.portrait.bpd-police-formal[data-uniform="silver"]{width:67px;height:77px}
 .profile-title .portrait.bpd-police-formal[data-uniform="silver"],
-.portrait.bpd-police-formal.large[data-uniform="silver"]{width:156px;height:146px}
-/* Matching cloth-panel inset coordinates. Live SVG labels and original
-   embroidered rank assets remain above this silver background. */
+.portrait.bpd-police-formal.large[data-uniform="silver"]{width:156px;height:170px}
+/* Scale around the top centre: keep the collar at the top and crop the
+   lower jacket, matching the approved gold-cadre torso framing.
+   This is NOT an independently moved name/rank plate. */
+.bpd-police-formal[data-uniform="silver"]>img{
+ transform:scale(1.42);transform-origin:50% 0;
+}
+/* Scale-linked original cloth inset positions:
+   x' = 50 + 1.42*(x-50), y' = 1.42*y, w' = 1.42*w, h' = 1.42*h.
+   Name/grade panels are at their ORIGINAL positions on the jacket. */
 .bpd-police-formal[data-uniform="silver"]>.bpd-personal-nameplate{
- left:31.15%;top:36.85%;width:11.1%;height:4.55%;background:#0d1b2b}
+ left:23.233%;top:52.327%;width:15.762%;height:6.461%;background:#0d1b2b}
 .bpd-police-formal[data-uniform="silver"]>.bpd-chest-insignia{
- left:53.25%;top:36.85%;width:11.35%;height:4.55%;border-radius:0;box-shadow:none}
+ left:54.615%;top:52.327%;width:16.117%;height:6.461%;
+ border-radius:0;box-shadow:none}
 @media(max-width:520px){
- .person .portrait.bpd-police-formal[data-uniform="silver"]{width:57px;height:54px}
+ .person .portrait.bpd-police-formal[data-uniform="silver"]{width:57px;height:65px}
  .profile-title .portrait.bpd-police-formal[data-uniform="silver"],
- .portrait.bpd-police-formal.large[data-uniform="silver"]{width:128px;height:120px}
+ .portrait.bpd-police-formal.large[data-uniform="silver"]{width:128px;height:139px}
 }
