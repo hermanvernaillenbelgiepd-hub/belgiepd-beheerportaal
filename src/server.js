@@ -44,6 +44,7 @@ import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialty
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierRetirementRoutes} from './dossier-retirement-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
+import {installOrganogramPlacementRoutes} from './organogram-placement-routes.js';
 import {installPersonnelDecorationRoutes} from './personnel-decoration-routes.js';
 import {installFireDossierRoutes} from './fire-dossier-routes.js';
 import {installDossierGrantRoutes} from './dossier-grant-routes.js';
@@ -81,6 +82,7 @@ app.use('/api/users',express.json({limit:'4kb',strict:true}));
 app.use('/api/dossier-grants',express.json({limit:'4kb',strict:true}));
 app.use('/api/fire-dossiers',express.json({limit:'6kb',strict:true}));
 app.use('/api/board',express.json({limit:'4kb',strict:true}));
+app.use('/api/organogram',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel-awards',express.json({limit:'180kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
@@ -607,6 +609,7 @@ installReceivedRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapsho
 installStaffDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installDossierRetirementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installDossierCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installOrganogramPlacementRoutes(app,{requireUser,getSnapshot});
 installPersonnelDecorationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installFireDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 // TO duty board uses MAIN Firestore data and the existing authenticated actor.
