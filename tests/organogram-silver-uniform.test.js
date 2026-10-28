@@ -21,11 +21,14 @@ function ui(){
  return scope.window.BPDPoliceUniform;
 }
 test('the chosen silver artwork is a genuine, local WebP asset',()=>{
- const p='/assets/bpd-uniform-zilver-dynamisch-20261028.webp';
+ const p='/assets/bpd-uniform-zilver-hd-20261028.webp';
  const b=readFileSync(new URL('../public'+p,import.meta.url));
  assert.equal(b.toString('ascii',0,4),'RIFF');
  assert.equal(b.toString('ascii',8,12),'WEBP');
- assert.ok(b.length>3000&&b.length<250000);
+ assert.ok(b.length>9000&&b.length<250000);
+ assert.equal(b.toString('ascii',12,16),'VP8 ');
+ const w=b.readUInt16LE(26)&0x3fff,h=b.readUInt16LE(28)&0x3fff;
+ assert.ok(w>=500&&h>=450,'Never ship a 200x188 preview again');
  assert.equal(ui().silverAsset,p);
 });
 test('cadres 100-899 use the silver coat immediately, without a golden flash',()=>{
@@ -82,7 +85,7 @@ test('new coordinates are limited to silver uniforms, preserving existing gold a
  assert.match(css,/\[data-uniform="silver"\]>\.bpd-chest-insignia/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-ribbons/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-medals/);
- assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/silver-parity-168-20261028/);
+ assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/silver-hd-rank-20261028/);
 });
 
 test('silver jacket zoom matches golden card heights without moving plates independently',()=>{
@@ -106,9 +109,9 @@ test('silver jacket zoom matches golden card heights without moving plates indep
  assert.equal(round(11.1*zoom),18.648);
  assert.equal(round(11.35*zoom),19.068);
  assert.match(block,/left:18.332%;top:55.908%;width:18.648%;height:7.644%/);
- assert.match(block,/left:55.46%;top:55.908%;width:19.068%;height:7.644%/);
+ assert.match(block,/left:55.46%;top:58.25%;width:19.068%;height:7.644%/);
  assert.match(decorations,/left:55.712%;top:48.096%;width:20.496%;height:4.704%/);
  assert.match(decorations,/left:55.88%;top:70.944%;width:26.544%;height:26.88%/);
  const page=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(page,/silver-parity-168-20261028/);
+ assert.match(page,/silver-hd-rank-20261028/);
 });
