@@ -374,6 +374,20 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  grid-column:1 / -1;
  justify-self:center;
 }
+/* Op desktops passen drie groepen ook op een smaller breed paneel.
+   Bij minder ruimte twee groepen; op mobiel één groep of één kaart. */
+@container (min-width:1080px){
+ #services .cadre-three-pairs>.cadre-person-pair{
+  flex:0 0 calc((100% - 48px)/3);
+  width:calc((100% - 48px)/3);
+ }
+}
+@container (min-width:740px) and (max-width:1079px){
+ #services .cadre-three-pairs>.cadre-person-pair{
+  flex:0 0 calc((100% - 24px)/2);
+  width:calc((100% - 24px)/2);
+ }
+}
 @container (max-width:460px){
  #services .cadre-three-pairs>.cadre-person-pair{
   grid-template-columns:minmax(0,218px);
