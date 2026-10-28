@@ -75,10 +75,11 @@ test('visual instructor label sits beside name, on instructor card and member ca
  assert.ok(flat(docent).some(el=>el.cls==='flag teacher'&&el.text==='DOCENT'));
 });
 test('specialty group renders instructor section above all members with duplicate card',()=>{
- const a=mk(500,{teachingRoles:['instructeur']});
+ const a=mk(500,{teachingRoles:['instructeur'],instructorSpecialties:['INTERVENTIEDIENST']});
  const b=mk(501),c=mk(400);
  const source=script.slice(script.indexOf('function specialtyBranch('),script.indexOf('function filteredRows('));
  const sandbox={el:domNode,isTeacher:p=>p.teachingRoles?.includes('instructeur'),
+  isSpecialtyInstructor:(p,label)=>(p.instructorSpecialties||[]).includes(label),
   peopleList:(rows,rankOnly,compact)=>{
    const node=domNode('list','persons',rankOnly?'members':'teachers');
    node.children=(rankOnly?orderedSpecialtyMembers(rows):rows).map(p=>domNode('person','',p.call));

@@ -4,7 +4,7 @@ export const COLLECTION='bpd_organogram_display_placements';
 export const DEPTS=Object.freeze(['politie','brandweer','ambulance','depannage','burger']);
 export const DISPLAY_DEPTS=Object.freeze(['bestuur',...DEPTS]);
 export const LEADERSHIP_LEVELS=Object.freeze({
- bestuur:[],politie:['Korpsleiding','Officierenkader','Middenkader'],
+ bestuur:[],politie:['Korpsleiding','Officierenkader','Middenkader','Basiskader','Agentenkader'],
  brandweer:['Zoneleiding','Officieren','Middenkader'],
  ambulance:['AZLS-leiding','Medische coördinatie'],
  depannage:['Leiding / AWV'],burger:['Burgerraad']
@@ -43,7 +43,7 @@ const strip=v=>String(v??'').trim();
 export const personKey=(dept,id)=>DISPLAY_DEPTS.includes(dept)&&ID.test(String(id||''))?dept+'_'+id:null;
 export function validatePlacement(body,dept){
  if(!DISPLAY_DEPTS.includes(dept)||!body||typeof body!=='object'||Array.isArray(body)||
-    Object.keys(body).some(k=>!['boardRole','leadershipTier','teachingRoles','specialties','displayOrder','reason'].includes(k)))
+    Object.keys(body).some(k=>!['boardRole','leadershipTier','teachingRoles','specialties','instructorSpecialties','teacherSpecialties','displayOrder','reason'].includes(k)))
    throw Error('Ongeldige organograminstelling');
  const boardRole=body.boardRole;
  const leadershipTier=body.leadershipTier;
@@ -55,6 +55,17 @@ export function validatePlacement(body,dept){
  if(dept==='bestuur'&&((body.teachingRoles||[]).length||(body.specialties||[]).length))throw Error('Bestuur heeft geen dienstspecialisaties');
  if(!['none','bestuur','bestuur-ai'].includes(boardRole))throw Error('Kies een geldige bestuursweergave');
  const teachingRoles=body.teachingRoles,specialties=body.specialties;
+ const instructorSpecialties=body.instructorSpecialties??[];
+ const teacherSpecialties=body.teacherSpecialties??[];
+ const validTeachingList=(list)=>Array.isArray(list)&&list.length<=12&&
+  new Set(list).size===list.length&&list.every(x=>typeof x==='string'&&SPECIALTIES[dept].includes(x));
+ if(!validTeachingList(instructorSpecialties)||!validTeachingList(teacherSpecialties))
+  throw Error('Kies uitsluitend geldige instructeur-/docentspecialisaties van de dienst');
+ if(dept==='bestuur'&&(instructorSpecialties.length||teacherSpecialties.length))
+  throw Error('Bestuur heeft geen opleidingsspecialisaties');
+ if(instructorSpecialties.some(x=>!specialties.includes(x))||
+    teacherSpecialties.some(x=>!specialties.includes(x)))
+  throw Error('Een instructeur of docent moet ook lid zijn van de specialisatie');
  if(!Array.isArray(teachingRoles)||teachingRoles.length>2||
     teachingRoles.some(x=>!['docent','instructeur'].includes(x))||
     new Set(teachingRoles).size!==teachingRoles.length)
@@ -65,7 +76,8 @@ export function validatePlacement(body,dept){
    throw Error('Kies uitsluitend specialisaties van deze dienst');
  const reason=strip(body.reason);
  if(reason.length<8||reason.length>300)throw Error('Motivering van 8 tot 300 tekens verplicht');
- return {boardRole,leadershipTier,displayOrder,teachingRoles:[...teachingRoles],specialties:[...specialties],reason};
+ return {boardRole,leadershipTier,displayOrder,teachingRoles:[...teachingRoles],specialties:[...specialties],
+  instructorSpecialties:[...instructorSpecialties],teacherSpecialties:[...teacherSpecialties],reason};
 }
 export function manualDisplay(raw,dept){
  if(!raw||raw.status!=='active'||raw.dept!==dept)return null;
@@ -76,7 +88,11 @@ export function manualDisplay(raw,dept){
     .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,12):[];
  const leadershipTier=LEADERSHIP_LEVELS[dept]?.includes(raw.leadershipTier)?raw.leadershipTier:'none';
  const displayOrder=Number.isSafeInteger(raw.displayOrder)&&raw.displayOrder>=1&&raw.displayOrder<=999?raw.displayOrder:0;
- return {boardRole,leadershipTier,displayOrder,teachingRoles,specialties};
+ const selected=list=>Array.isArray(list)?[...new Set(list.filter(x=>validStoredSpecialty(dept,x))
+  .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,12):[];
+ return {boardRole,leadershipTier,displayOrder,teachingRoles,specialties,
+  instructorSpecialties:selected(raw.instructorSpecialties),
+  teacherSpecialties:selected(raw.teacherSpecialties)};
 }
 const INSTRUCTORS=Object.freeze({
  politie:Object.freeze({
@@ -105,7 +121,7 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
     identity.guildId!==guildId||!Number.isSafeInteger(identity.verifiedAt)||
     identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||
     !Array.isArray(identity.roleIds)||identity.roleIds.some(x=>!ID.test(x)))
-  return {boardRole:'none',teachingRoles:[],specialties:[],synced:false};
+  return {boardRole:'none',teachingRoles:[],specialties:[],instructorSpecialties:[],teacherSpecialties:[],synced:false};
  const roles=new Set(identity.roleIds);
  const instructorNames=Object.entries(INSTRUCTORS[dept]||{})
   .filter(([id])=>roles.has(id)).map(([,name])=>name);
@@ -113,6 +129,8 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
   .filter(([id])=>roles.has(id)).map(([,name])=>name):[];
  return {boardRole:roles.has(BOARD_DISCORD_ROLE)?'bestuur':'none',
   teachingRoles:instructorNames.length?['instructeur']:[],
+  instructorSpecialties:instructorNames.filter(x=>SPECIALTIES[dept]?.includes(x)),
+  teacherSpecialties:[],
   specialties:[...new Set([...instructorNames,...memberNames])]
    .filter(x=>SPECIALTIES[dept]?.includes(x)),
   synced:true};
@@ -128,7 +146,12 @@ export function mergePlacement(person,manual,auto){
   manual.boardRole:auto?.boardRole||'none';
  return {dept:person.dept,name:strip(person.name).slice(0,90),
   call:strip(person.call).slice(0,24),rank:strip(person.rank).slice(0,95),
-  boardRole,leadershipTier:manual?.leadershipTier||'none',displayOrder:manual?.displayOrder||0,teachingRoles:[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])],
+  boardRole,leadershipTier:manual?.leadershipTier||'none',displayOrder:manual?.displayOrder||0,
+  teachingRoles:[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])],
+  instructorSpecialties:[...new Set([...(manual?.instructorSpecialties||[]),
+   ...(auto?.instructorSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
+  teacherSpecialties:[...new Set([...(manual?.teacherSpecialties||[]),
+   ...(auto?.teacherSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
   specialties:[...new Set([...(manual?.specialties||[]),...(auto?.specialties||[]),...specialtyValues]
    .map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
   source:manual&&auto?.synced?'handmatig + Discord':manual?'handmatig':auto?.synced?'Discord':'personeelslijst'};

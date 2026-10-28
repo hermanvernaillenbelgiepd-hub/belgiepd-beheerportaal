@@ -119,6 +119,12 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .manager .checks{display:flex;flex-wrap:wrap;gap:7px;margin:7px 0}
 .manager .checks label{display:flex;align-items:center;gap:6px;border:1px solid #3c5977;padding:5px 8px;border-radius:5px;font-size:11px;font-weight:500}
 .manager .checks input{accent-color:#8abdf7}
+.manager #manage-specialties{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:6px}
+.manage-specialty-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;border:1px solid #3d5e81;border-radius:7px;padding:4px 7px;background:#0b2138}
+.manager .checks .manage-specialty-row>label{border:0;padding:4px 2px;margin:0}
+.manager .checks .manage-specialty-row>label:first-child{font-weight:800;margin-right:auto}
+.manage-specialty-role{color:#ffe5a5}
+
 .manager button{background:#2d609c;color:white;border:1px solid #9ac3ef;padding:8px 13px;border-radius:7px}
 .manager button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:630px){.manager-grid{grid-template-columns:1fr}}
@@ -175,7 +181,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
    <label><input id="manage-instructor" type="checkbox"> Instructeur</label>
    <label><input id="manage-teacher" type="checkbox"> Docent</label>
   </div>
-  <label>Specialisaties (meerdere mogelijk)</label>
+  <label>Specialisaties (lidmaatschap en, bij politie, de instructeur-/docentfunctie per specialisatie)</label>
   <div id="manage-specialties" class="checks"></div>
   <label>Motivering voor logboek <textarea id="manage-reason" maxlength="300" placeholder="Waarom wordt deze functie handmatig ingesteld?"></textarea></label>
   <div class="manager-grid">
@@ -197,7 +203,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 <script src="/assets/organogram-police-formal.js?v=unified-gold-navy-frame-20261028"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
-import {SERVICES,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,specialtyNames} from '/assets/organogram-hierarchie-model.js';
+import {SERVICES,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames} from '/assets/organogram-hierarchie-model.js';
 const $=id=>document.getElementById(id);
 const fixtures=[
  {dept:'politie',name:'Voorbeeld Korpschef',call:'900',rank:'Eerste hoofdcommissaris'},
@@ -246,7 +252,7 @@ function el(tag,cls,text){
  if(text!==undefined)n.textContent=text;
  return n;
 }
-function person(p,compact=false){
+function person(p,compact=false,specialtyLabel=null){
  const b=el('button','person'+(compact?' person-compact':''));b.type='button';
  b.append(el('span','num',p.call||'—'));
  const portrait=window.BPDPoliceUniform?.makePortrait?.(p);
@@ -255,7 +261,8 @@ function person(p,compact=false){
  if(compact){
   const heading=el('span','person-heading');
   heading.append(el('b','',p.name));
-  const roles=Array.isArray(p.teachingRoles)?p.teachingRoles.map(x=>String(x).toLowerCase()):[];
+  const roles=specialtyLabel?specialtyInstructorRoles(p,specialtyLabel):
+   (Array.isArray(p.teachingRoles)?p.teachingRoles.map(x=>String(x).toLowerCase()):[]);
   if(roles.includes('instructeur'))heading.append(el('span','flag instructor','INSTRUCTEUR'));
   if(roles.includes('docent'))heading.append(el('span','flag teacher','DOCENT'));
   label.append(heading,el('small','',p.rank||'Lid'));
@@ -272,9 +279,9 @@ function person(p,compact=false){
   +(p.source?' · Bron: '+p.source:'')+' · Leesweergave, geen dossierwijziging';
  });return b;
 }
-function peopleList(rows,rankOnly=false,compact=false){
+function peopleList(rows,rankOnly=false,compact=false,specialtyLabel=null){
  const list=el('div','persons');
- for(const p of rankOnly?orderedSpecialtyMembers(rows):orderedMembers(rows))list.append(person(p,compact));
+ for(const p of rankOnly?orderedSpecialtyMembers(rows):orderedMembers(rows))list.append(person(p,compact,specialtyLabel));
  return list;
 }
 function policeInterventions(branches){
@@ -282,7 +289,7 @@ function policeInterventions(branches){
  section.setAttribute('aria-label','Interventiedienst en specialisaties onder Middenkader');
  section.append(el('div','spec-heading','SPECIALISATIES · POLITIE'));
  section.append(el('p','police-service-intro',
-  'Interventiedienst (inclusief RADIO/BM) staat naast de andere specialisaties. Eerst instructeurs en docenten, daarna alle leden op rang; een instructeur kan in beide lijsten staan.'));
+  'Instructeurs en docenten verschijnen alleen bij hun toegewezen specialisatie. Daarna volgen alle leden in rangvolgorde; dezelfde persoon mag in beide lijsten staan.'));
  const specs=el('div','spec-list police-specialty-grid');
  for(const branch of branches)specs.append(specialtyBranch(branch,true));
  section.append(specs);
@@ -448,16 +455,16 @@ function specialtyBranch(branch,isPolice,nested=false){
  card.append(title);
  const content=el('div','specialty-content');
  if(isPolice&&branch.note)content.append(el('p','specialty-note',branch.note));
- const tutors=(branch.members||[]).filter(isTeacher);
+ const tutors=(branch.members||[]).filter(p=>isPolice?isSpecialtyInstructor(p,branch.label):isTeacher(p));
  // Every qualified instructor is ALSO a member of their specialization.
  // Keep two independently rendered cards pointing to the same person.
  const members=isPolice?(branch.members||[]):
   (branch.members||[]).filter(p=>!isTeacher(p));
  if(tutors.length)content.append(el('div','group-title instructors','INSTRUCTEURS & DOCENTEN'),
-  peopleList(tutors,false,isPolice));
+  peopleList(tutors,false,isPolice,isPolice?branch.label:null));
  if(members.length)content.append(el('div',isPolice?'group-title members':'group-title',
   isPolice?'LEDEN · RANGVOLGORDE':'Leden in rangvolgorde'),
-  peopleList(members,isPolice,isPolice));
+  peopleList(members,isPolice,isPolice,isPolice?branch.label:null));
  for(const child of branch.children||[])content.append(specialtyBranch(child,isPolice,true));
  if(!tutors.length&&!members.length&&!branch.children?.length)
   content.append(el('div','gaps','Nog geen geregistreerde leden'));
@@ -511,6 +518,8 @@ async function loadPublic(){
     call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
+    instructorSpecialties:Array.isArray(p.instructorSpecialties)?p.instructorSpecialties.slice(0,12):[],
+    teacherSpecialties:Array.isArray(p.teacherSpecialties)?p.teacherSpecialties.slice(0,12):[],
     boardRole:p.boardRole||'none',leadershipTier:p.leadershipTier||'none',displayOrder:Number(p.displayOrder)||0,
     personId:/^\d{15,22}$/.test(String(p.personId||''))?String(p.personId):null,
     source:String(p.source||'personeelslijst').slice(0,35)}));
@@ -574,9 +583,24 @@ function fillAdminPerson(){
  $('manage-instructor').disabled=p.dept==='bestuur';
  $('manage-teacher').disabled=p.dept==='bestuur';
  for(const specialty of adminSpecialties[p.dept]||[]){
+  const entry=el('div','manage-specialty-row');
   const label=el('label');const input=el('input');input.type='checkbox';
-  input.value=specialty;input.checked=(values.specialties||[]).includes(specialty);
-  label.append(input,document.createTextNode(' '+specialty));$('manage-specialties').append(label);
+  input.value=specialty;input.dataset.role='member';
+  input.checked=(values.specialties||[]).includes(specialty);
+  label.append(input,document.createTextNode(' '+specialty));entry.append(label);
+  if(p.dept==='politie'){
+   for(const [role,visible] of [['instructor','Instructeur'],['teacher','Docent']]){
+    const choice=el('label','manage-specialty-role');
+    const flag=el('input');flag.type='checkbox';flag.value=specialty;
+    flag.dataset.role=role;
+    flag.checked=(role==='instructor'?values.instructorSpecialties||[]:values.teacherSpecialties||[]).includes(specialty);
+    flag.addEventListener('change',()=>{
+     if(flag.checked)input.checked=true;
+    });
+    choice.append(flag,document.createTextNode(' '+visible));entry.append(choice);
+   }
+  }
+  $('manage-specialties').append(entry);
  }
  $('manage-status').textContent=(values.boardRole||values.teachingRoles?.length||values.specialties?.length)
   ?'Bestaande handmatige registratie geladen.':'Nog geen handmatige registratie. Automatische rollen kunnen daarnaast actief zijn.';
@@ -625,12 +649,17 @@ $('manage-save').addEventListener('click',async()=>{
    ...($('manage-instructor').checked?['instructeur']:[]),
    ...($('manage-teacher').checked?['docent']:[])
   ];
-  const specialties=[...$('manage-specialties').querySelectorAll('input:checked')].map(x=>x.value);
+  const instructorSpecialties=[...$('manage-specialties').querySelectorAll('input[data-role="instructor"]:checked')].map(x=>x.value);
+  const teacherSpecialties=[...$('manage-specialties').querySelectorAll('input[data-role="teacher"]:checked')].map(x=>x.value);
+  const selected=[...$('manage-specialties').querySelectorAll('input[data-role="member"]:checked')].map(x=>x.value);
+  const specialties=[...new Set([...selected,...instructorSpecialties,...teacherSpecialties])];
   const reason=$('manage-reason').value.trim();
   await authFetch('/api/organogram/placements/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.personId),
    {method:'PUT',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({boardRole,leadershipTier,displayOrder,teachingRoles,specialties,reason})});
-  p.placement={boardRole,leadershipTier,displayOrder,teachingRoles,specialties};
+    body:JSON.stringify({boardRole,leadershipTier,displayOrder,teachingRoles,specialties,
+     instructorSpecialties,teacherSpecialties,reason})});
+  p.placement={boardRole,leadershipTier,displayOrder,teachingRoles,specialties,
+   instructorSpecialties,teacherSpecialties};
   p.undoAvailable=true;
   $('manage-undo').disabled=false;
   $('manage-reason').value='';

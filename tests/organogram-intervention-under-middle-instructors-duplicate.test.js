@@ -8,7 +8,7 @@ import {orderedSpecialtyMembers,orderedMembers,serviceHierarchy}
 const html=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
 const source=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
 const instructor={dept:'politie',call:'400',name:'Dezelfde instructeur',
- teachingRoles:['instructeur'],specialties:['Motor','Dispatch']};
+ teachingRoles:['instructeur'],instructorSpecialties:['MOTARD'],specialties:['Motor','Dispatch']};
 const student={dept:'politie',call:'700',name:'Hoofdinspecteur motard',
  teachingRoles:[],specialties:['Motor']};
 function node(tag,cls='',label=''){
@@ -20,6 +20,7 @@ function mockBranch(branch){
  const start=source.indexOf('function specialtyBranch(');
  const end=source.indexOf('function filteredRows(',start);
  const sandbox={el:node,isTeacher:p=>p.teachingRoles?.includes('instructeur'),
+  isSpecialtyInstructor:(p,label)=>(p.instructorSpecialties||[]).includes(label),
   peopleList:(rows,rankOnly)=>{
    const group=node('list','persons',rankOnly?'members':'staff');
    group.children.push(...(rankOnly?orderedSpecialtyMembers(rows):orderedMembers(rows))
@@ -58,7 +59,7 @@ test('an instructor may show in several specialties, while member identity is sh
  assert.ok(motard);assert.ok(dispatch);
  assert.equal(motard.members[0],dispatch.members[0]);
  const selected=mockBranch(dispatch);
- assert.equal(flatten(selected).filter(n=>n.tag==='person'&&n.label===instructor.name).length,2);
+ assert.equal(flatten(selected).filter(n=>n.tag==='person'&&n.label===instructor.name).length,1);
 });
 test('teacher priority is retained in instructor section but not artificially elevated in member rank list',()=>{
  assert.deepEqual(orderedMembers([instructor,student]).map(p=>p.call),['400','700']);

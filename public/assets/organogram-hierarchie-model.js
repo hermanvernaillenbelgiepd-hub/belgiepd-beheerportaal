@@ -2,7 +2,7 @@
 // No identity is ever inferred from a name. Each service registration is
 // retained, including repeated names or the same person in two services.
 export const SERVICES=Object.freeze([
- {id:'politie',name:'Politie',icon:'👮',levels:['Korpsleiding','Officierenkader','Middenkader']},
+ {id:'politie',name:'Politie',icon:'👮',levels:['Korpsleiding','Officierenkader','Middenkader','Basiskader','Agentenkader']},
  {id:'brandweer',name:'Brandweer',icon:'🚒',levels:['Zoneleiding','Officieren','Middenkader']},
  {id:'ambulance',name:'Ambulance (AZLS)',icon:'🚑',levels:['AZLS-leiding','Medische coördinatie']},
  {id:'depannage',name:'Depannage',icon:'🛠',levels:['Leiding / AWV']},
@@ -157,6 +157,21 @@ export function policeSpecialtyName(name){
  const normalized=lower(name).replace(/\s+/g,' ').trim();
  return policeNames.get(normalized)||clean(name);
 }
+// Instruction roles are tied to a verified specialty, not to the member's
+// generic DOCENT/INSTRUCTEUR flag (which would label every membership).
+export function specialtyInstructorRoles(person,specialty){
+ if(person?.dept!=='politie')return [];
+ const name=policeSpecialtyName(specialty);
+ const normalize=list=>(Array.isArray(list)?list:[]).map(policeSpecialtyName).map(x=>
+  x==='RADIO/BM'?'INTERVENTIEDIENST':x);
+ const own=[];
+ if(normalize(person.instructorSpecialties).includes(name))own.push('instructeur');
+ if(normalize(person.teacherSpecialties).includes(name))own.push('docent');
+ return own;
+}
+export function isSpecialtyInstructor(person,specialty){
+ return specialtyInstructorRoles(person,specialty).length>0;
+}
 export function policeSpecializationBranches(rows){
  // This only changes the visible grouping. Existing assignments, cadre ranks,
  // permission grants, and cross-service profiles remain untouched.
@@ -204,7 +219,7 @@ export function serviceHierarchy(people,dept){
  if(!settings)throw Error('Onbekende dienst');
  const rows=(people||[]).filter(p=>p&&p.dept===dept&&clean(p.name));
  const leadership=settings.levels.map(label=>({
-  label,members:orderedMembers(rows.filter(p=>getTier(p)===label))
+  label,members:(dept==='politie'&&['Basiskader','Agentenkader'].includes(label)?orderedSpecialtyMembers:orderedMembers)(rows.filter(p=>getTier(p)===label))
  }));
  const groups=new Map();
  for(const person of rows){
