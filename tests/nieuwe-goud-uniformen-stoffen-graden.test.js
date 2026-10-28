@@ -48,7 +48,7 @@ test('all four gold cadre ranks switch to their corresponding actual embroidered
   assert.equal(plate.children[0].alt,label,call);
   assert.match(plate.attrs['aria-label'],/geborduurde gradenplaat/i,call);
   const name=p.children.find(x=>x.className==='bpd-new-nameplate');
-  assert.equal(name.children[0].textContent,'Bijgewerkte Naam',call);
+  assert.equal(name.children[0].textContent,'BIJGEWERKTE NAAM',call);
   assert.equal(name.children[1].textContent,'BELGIEPD - '+call,call);
   assert.ok(p.children.some(x=>x.className==='bpd-new-awarded-medal'),call);
  }
@@ -68,4 +68,29 @@ test('local cloth grades are exact isolated WebP images and contain no server wr
  const isolated=page.match(/<script>\/\* Visual preview, no writes or personnel permissions; later reusable by the organogram\. \*\/([\s\S]*?)<\/script>/)?.[1];
  assert.ok(isolated);
  assert.doesNotMatch(isolated,/(?:fetch\s*\(|XMLHttpRequest|localStorage|sessionStorage|\/api\/)/);
+});
+
+test('fabric nameplate has no baked-in personal name and changes with roster fields',()=>{
+ const ref='/assets/bpd-naamplaat-geweven-leeg-20261028.webp';
+ assert.match(page,/bpd-naamplaat-geweven-leeg-20261028\.webp/);
+ assert.match(page,/\.bpd-new-nameplate::after\{/);
+ assert.match(page,/left:30%;width:60%;top:50%/);
+ assert.match(page,/\.bpd-new-name\{top:20%/);
+ assert.match(page,/\.bpd-new-call\{top:57%/);
+ const bytes=readFileSync(new URL('../public'+ref,import.meta.url));
+ assert.equal(bytes.toString('ascii',0,4),'RIFF');
+ assert.equal(bytes.toString('ascii',8,12),'WEBP');
+ assert.ok(bytes.length>15000&&bytes.length<120000);
+ const ui=preview();
+ const before=ui.makePortrait({dept:'politie',name:'Jones',call:'920'});
+ const after=ui.makePortrait({dept:'politie',name:'Nieuwe Naam',call:'900'});
+ const nameBefore=before.children.find(x=>x.className==='bpd-new-nameplate');
+ const nameAfter=after.children.find(x=>x.className==='bpd-new-nameplate');
+ assert.equal(nameBefore.children[0].textContent,'JONES');
+ assert.equal(nameBefore.children[1].textContent,'BELGIEPD - 920');
+ assert.equal(nameAfter.children[0].textContent,'NIEUWE NAAM');
+ assert.equal(nameAfter.children[1].textContent,'BELGIEPD - 900');
+ const plateBefore=before.children.find(x=>x.className==='bpd-new-rankplate');
+ const plateAfter=after.children.find(x=>x.className==='bpd-new-rankplate');
+ assert.notEqual(plateBefore.dataset.grade,plateAfter.dataset.grade);
 });
