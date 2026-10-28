@@ -111,7 +111,7 @@ const policeNames=new Map([
  ['lokale recherche','RECHERCHE'],['recherche','RECHERCHE'],['lrd','RECHERCHE']
 ]);
 export function policeSpecialtyName(name){
- const normalized=lower(name).replace(/\\s+/g,' ').trim();
+ const normalized=lower(name).replace(/\s+/g,' ').trim();
  return policeNames.get(normalized)||clean(name);
 }
 export function policeSpecializationBranches(rows){
