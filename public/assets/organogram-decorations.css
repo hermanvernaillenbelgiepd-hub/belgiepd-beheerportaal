@@ -108,9 +108,9 @@
 .bpd-catalog-upload input[type=file]{width:100%}
 .bpd-catalog-upload>summary{cursor:pointer}
 
-/* Active awards remain live and share the same 1.42x top-centre zoom
-   as the silver uniform and its dynamically selected name/rank plates. */
+/* Active awards use the same 1.68x zoom and -6% offset as the silver
+   jacket, so promotions and staff-award changes do not shift their anchors. */
 .bpd-police-formal[data-uniform="silver"]>.bpd-uniform-ribbons{
- left:54.828%;top:45.724%;width:17.324%;height:3.976%}
+ left:55.712%;top:48.096%;width:20.496%;height:4.704%}
 .bpd-police-formal[data-uniform="silver"]>.bpd-uniform-medals{
- left:54.97%;top:65.036%;width:22.436%;height:22.72%}
+ left:55.88%;top:70.944%;width:26.544%;height:26.88%}

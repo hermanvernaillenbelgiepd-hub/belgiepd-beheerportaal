@@ -82,7 +82,7 @@ test('new coordinates are limited to silver uniforms, preserving existing gold a
  assert.match(css,/\[data-uniform="silver"\]>\.bpd-chest-insignia/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-ribbons/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-medals/);
- assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/silver-uniform-zoom-20261028/);
+ assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/silver-parity-168-20261028/);
 });
 
 test('silver jacket zoom matches golden card heights without moving plates independently',()=>{
@@ -93,21 +93,22 @@ test('silver jacket zoom matches golden card heights without moving plates indep
  assert.match(block,/\{width:156px;height:170px\}/);
  assert.match(block,/\{width:57px;height:65px\}/);
  assert.match(block,/\{width:128px;height:139px\}/);
- assert.match(block,/transform:scale\(1\.42\);transform-origin:50% 0/);
+ assert.match(block,/transform:translateY\(-6%\) scale\(1\.68\);transform-origin:50% 0/);
  // Confirm overlays follow precisely the same zoom as the photo.
- const zoom=1.42;
+ const zoom=1.68;
+ const verticalOffset=-6;
  const round=n=>Number(n.toFixed(3));
  const x=n=>round(50+(n-50)*zoom);
- const y=n=>round(n*zoom);
- assert.equal(x(31.15),23.233);
- assert.equal(y(36.85),52.327);
- assert.equal(x(53.25),54.615);
- assert.equal(round(11.1*zoom),15.762);
- assert.equal(round(11.35*zoom),16.117);
- assert.match(block,/left:23\.233%;top:52\.327%;width:15\.762%;height:6\.461%/);
- assert.match(block,/left:54\.615%;top:52\.327%;width:16\.117%;height:6\.461%/);
- assert.match(decorations,/left:54\.828%;top:45\.724%;width:17\.324%;height:3\.976%/);
- assert.match(decorations,/left:54\.97%;top:65\.036%;width:22\.436%;height:22\.72%/);
+ const y=n=>round(n*zoom+verticalOffset);
+ assert.equal(x(31.15),18.332);
+ assert.equal(y(36.85),55.908);
+ assert.equal(x(53.25),55.46);
+ assert.equal(round(11.1*zoom),18.648);
+ assert.equal(round(11.35*zoom),19.068);
+ assert.match(block,/left:18.332%;top:55.908%;width:18.648%;height:7.644%/);
+ assert.match(block,/left:55.46%;top:55.908%;width:19.068%;height:7.644%/);
+ assert.match(decorations,/left:55.712%;top:48.096%;width:20.496%;height:4.704%/);
+ assert.match(decorations,/left:55.88%;top:70.944%;width:26.544%;height:26.88%/);
  const page=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(page,/silver-uniform-zoom-20261028/);
+ assert.match(page,/silver-parity-168-20261028/);
 });
