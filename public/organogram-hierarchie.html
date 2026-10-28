@@ -191,6 +191,87 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person .portrait.bpd-police-formal{width:70px;height:66px}
 .person{min-height:76px}
 .person .flag{align-self:flex-start}
+
+/* Gelijke personeelskaarten in alle diensten en specialisaties.
+   auto-fill (niet auto-fit) houdt ook de laatste, onvolledige rij op
+   precies dezelfde kolombreedtes als de rijen erboven. */
+#services .personnel-card-grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fill,minmax(min(100%,198px),1fr));
+ grid-auto-rows:minmax(92px,auto);
+ gap:8px;
+ align-items:stretch;
+ justify-content:stretch;
+ width:100%;
+ min-width:0;
+ margin:7px 0 2px;
+}
+#services .personnel-card-grid>.person{
+ display:flex;
+ width:100%;
+ min-width:0;
+ max-width:none;
+ min-height:92px;
+ height:100%;
+ align-items:center;
+ padding:7px 8px;
+ gap:7px;
+ border-color:#496f94;
+ background:#142e4a;
+ box-sizing:border-box;
+}
+#services .personnel-card-grid>.person:hover{
+ border-color:#9bc4ef;
+ background:#204261;
+}
+#services .personnel-card-grid>.person .num{
+ flex:0 0 32px;
+ min-width:32px;
+ text-align:center;
+ font-variant-numeric:tabular-nums;
+}
+#services .personnel-card-grid>.person .identity{
+ min-width:0;
+ flex:1 1 0;
+ overflow:hidden;
+}
+#services .personnel-card-grid>.person .identity b{
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:2;
+ overflow:hidden;
+ white-space:normal;
+ overflow-wrap:anywhere;
+ line-height:1.25;
+ font-size:11px;
+}
+#services .personnel-card-grid>.person .identity small{
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:2;
+ overflow:hidden;
+ white-space:normal;
+ overflow-wrap:anywhere;
+ line-height:1.25;
+ font-size:9px;
+}
+#services .personnel-card-grid>.person .person-heading{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ column-gap:5px;
+ row-gap:3px;
+ min-width:0;
+}
+#services .personnel-card-grid>.person .portrait{
+ flex-shrink:0;
+}
+@media(max-width:580px){
+ #services .personnel-card-grid{
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,185px),1fr));
+  gap:6px;
+ }
+}
 </style>
 </head>
 <body>
@@ -342,7 +423,7 @@ function person(p,compact=false,specialtyLabel=null){
  });return b;
 }
 function peopleList(rows,rankOnly=false,compact=false,specialtyLabel=null){
- const list=el('div','persons');
+ const list=el('div','persons personnel-card-grid');
  for(const p of rankOnly?orderedSpecialtyMembers(rows):orderedMembers(rows))list.append(person(p,compact,specialtyLabel));
  return list;
 }
