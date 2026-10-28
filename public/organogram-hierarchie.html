@@ -132,7 +132,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .police-specialty-grid>.specialty>summary:focus-visible{outline:2px solid #b1d6ff;outline-offset:-2px}
 .police-specialty-grid>.specialty>.specialty-content{padding:8px 9px 11px}
 .police-specialty-role-grid{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;gap:8px}
-.police-specialty-role-column{min-width:0}
+.police-specialty-role-column{min-width:0;container-type:inline-size}
 .police-specialty-role-grid .group-title{margin:4px 0 8px}
 .police-specialty-role-grid .person{min-width:0}
 /* Instructeurs eerst, leden daaronder. */
@@ -153,6 +153,65 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .police-specialty-detail .group-title{margin:9px 0 5px}
 .police-specialty-detail .group-title.instructors{background:#54401d;border-color:#ac8740}
 .police-specialty-detail .group-title.members{background:#1a3856}
+
+/* Politiespecialisaties: groepeer leden telkens per twee, met een zichtbare
+   extra horizontale scheiding na elk duo. Op breed scherm drie duo's per rij. */
+#services .police-intervention-group .police-specialty-detail .persons.personnel-card-grid.specialty-paired-list{
+ display:flex;
+ flex-direction:row;
+ flex-wrap:wrap;
+ justify-content:center;
+ align-items:stretch;
+ align-content:flex-start;
+ gap:10px 22px;
+ width:100%;
+ min-width:0;
+ margin:7px auto 3px;
+}
+#services .police-specialty-detail .specialty-paired-list>.specialty-person-pair{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;
+ flex:0 0 calc((100% - 44px)/3);
+ width:calc((100% - 44px)/3);
+ min-width:0;
+ align-items:stretch;
+}
+#services .police-specialty-detail .specialty-paired-list>.specialty-person-pair>.person{
+ flex:none;
+ width:100%;
+ min-width:0;
+ max-width:100%;
+ height:100%;
+}
+#services .police-specialty-detail .specialty-paired-list>.specialty-person-pair>.person:only-child{
+ grid-column:1 / -1;
+ justify-self:center;
+ width:calc((100% - 7px)/2);
+}
+@container (max-width:1050px){
+ #services .police-specialty-detail .specialty-paired-list>.specialty-person-pair{
+  flex-basis:calc((100% - 22px)/2);
+  width:calc((100% - 22px)/2);
+ }
+}
+@container (max-width:675px){
+ #services .police-specialty-detail .specialty-paired-list>.specialty-person-pair{
+  flex-basis:min(100%,444px);
+  width:min(100%,444px);
+ }
+}
+@container (max-width:360px){
+ #services .police-specialty-detail .specialty-paired-list>.specialty-person-pair{
+  grid-template-columns:minmax(0,1fr);
+  max-width:218px;
+ }
+ #services .police-specialty-detail .specialty-paired-list>.specialty-person-pair>.person:only-child{
+  grid-column:auto;
+  width:100%;
+ }
+}
+
 
 
 .police-intervention-group .specialty{margin:0}
@@ -558,6 +617,18 @@ function peopleList(rows,rankOnly=false,compact=false,specialtyLabel=null){
  for(const p of rankOnly?orderedSpecialtyMembers(rows):orderedMembers(rows))list.append(person(p,compact,specialtyLabel));
  return list;
 }
+function specialtyPeopleList(rows,rankOnly,specialtyLabel){
+ const list=peopleList(rows,rankOnly,true,specialtyLabel);
+ const cards=Array.from(list.children);
+ list.replaceChildren();
+ list.classList.add('specialty-paired-list');
+ for(let i=0;i<cards.length;i+=2){
+  const pair=el('div','specialty-person-pair');
+  pair.append(...cards.slice(i,i+2));
+  list.append(pair);
+ }
+ return list;
+}
 function cadrePeopleList(rows,levelLabel=''){
  const list=peopleList(rows);
  // Basiskader en Agentenkader: drie groepen van twee kaarten, met extra
@@ -826,18 +897,18 @@ function specialtyBranch(branch,isPolice,nested=false){
   !hasInstructorSection||(isPolice?!isSpecialtyInstructor(p,branch.label):!isTeacher(p)));
  if(isPolice){
   const columns=el('div','police-specialty-role-grid');
-  if(hasInstructorSection){
+  // Een instructeurssectie is uitsluitend relevant als deze specialisatie
+  // daadwerkelijk geverifieerde instructeurs/docenten heeft.
+  if(hasInstructorSection&&tutors.length){
    const instructorColumn=el('section','police-specialty-role-column');
    instructorColumn.append(el('div','group-title instructors','INSTRUCTEURS & DOCENTEN'));
-   if(tutors.length)instructorColumn.append(
-    peopleList(tutors,false,true,branch.label));
-   else instructorColumn.append(el('div','gaps','Geen instructeurs geregistreerd'));
+   instructorColumn.append(specialtyPeopleList(tutors,false,branch.label));
    columns.append(instructorColumn);
   }
   const memberColumn=el('section','police-specialty-role-column');
   memberColumn.append(el('div','group-title members','LEDEN · RANGVOLGORDE'));
   if(members.length)memberColumn.append(
-   peopleList(members,true,true,branch.label));
+   specialtyPeopleList(members,true,branch.label));
   else memberColumn.append(el('div','gaps','Geen overige leden'));
   columns.append(memberColumn);
   content.append(columns);
