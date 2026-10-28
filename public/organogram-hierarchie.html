@@ -96,28 +96,33 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .police-intervention-content{min-width:0}
 .police-intervention-group .spec-heading{margin:0 0 7px}
 .police-intervention-group .spec-list{margin-top:11px}
-/* Alle specialisaties blijven op EEN horizontale rij. Geen wrapping
-   naar een tweede rij; op smallere schermen horizontaal verschuifbaar. */
+/* Alle tien hoofdknoppen samen zichtbaar; geen horizontaal schuiven. */
 .police-intervention-group .police-specialty-grid{
- display:flex;flex-wrap:nowrap;align-items:flex-start;gap:7px;
- min-width:0;max-width:100%;margin-top:7px;padding:2px 1px 12px;
- overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;
- scrollbar-color:#6c9bcb #10243d;scroll-snap-type:x proximity;
- overscroll-behavior-inline:contain
+ display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;
+ align-items:stretch;min-width:0;max-width:100%;margin-top:8px;padding:0;overflow:visible
 }
-.police-intervention-group .police-specialty-grid>.specialty{
- flex:0 0 117px;min-width:0;max-width:none;align-self:flex-start;
- scroll-snap-align:start
+.police-specialty-tab{
+ display:flex;flex-direction:column;justify-content:center;align-items:center;
+ min-width:0;min-height:48px;width:100%;gap:2px;padding:6px 3px;
+ border:1px solid #52799b;border-radius:7px;background:#204468;color:#e9f4ff;
+ text-align:center;line-height:1.2;cursor:pointer
 }
-.police-intervention-group .police-specialty-grid>.specialty[open]{
- flex-basis:min(485px,calc(100vw - 100px))
+.police-specialty-tab:hover,.police-specialty-tab[aria-expanded="true"]{
+ background:#32618d;border-color:#9ac7f3
 }
-.police-specialty-scroll-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 0}
-.police-specialty-scroll-tools span{font-size:10px;color:#a9c6e6}
-.police-specialty-scroll-tools .scroll-buttons{display:flex;gap:5px;flex-shrink:0}
-.police-specialty-scroll-tools button{background:#214668;color:#e8f5ff;border:1px solid #628ab2;border-radius:6px;padding:3px 9px;font-size:12px}
-.police-specialty-scroll-tools button:hover{background:#32638d}
-.police-specialty-scroll-tools button:focus-visible{outline:2px solid #b1d6ff;outline-offset:2px}
+.police-specialty-tab:focus-visible{outline:2px solid #b1d6ff;outline-offset:2px}
+.police-specialty-tab-name{
+ max-width:100%;font-size:clamp(8px,.75vw,11px);font-weight:850;
+ overflow-wrap:anywhere;hyphens:auto
+}
+.police-specialty-tab-count{font-size:9px;color:#c5d9ef;font-weight:550}
+.police-specialty-detail{min-width:0;margin-top:9px}
+.police-specialty-detail:empty{display:none}
+.police-specialty-detail>.specialty{width:100%;border-color:#658bad}
+.police-specialty-detail>.specialty>summary{background:#294e72;font-size:12px}
+.police-specialty-extra{margin-top:10px;color:#bed8f4;font-size:11px}
+.police-specialty-extra>summary{cursor:pointer;padding:5px 0;font-weight:800}
+.police-specialty-extra-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:6px;margin-top:7px}
 .police-specialty-grid>.specialty{min-width:0;margin:0;border:1px solid #52799b;border-radius:10px;background:#10243d}
 .police-specialty-grid>.specialty>summary{display:flex;align-items:center;justify-content:space-between;gap:7px;
   border-bottom:1px solid #416586;background:#204468;padding:10px 11px;font-weight:850;font-size:12px}
@@ -132,22 +137,22 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .police-specialty-role-grid .person{min-width:0}
 /* Instructeurs eerst, leden daaronder. */
 
-.police-specialty-grid .specialty-note{margin:3px 0 7px;color:#a9d6f7;font-size:10px}
-.police-intervention-group .police-specialty-grid .persons{display:flex;flex-direction:column;flex-wrap:nowrap;gap:4px;align-items:stretch}
-.police-specialty-grid .person{min-height:42px;width:100%;padding:4px 7px;gap:7px;max-width:none;border-radius:6px}
-.police-specialty-grid .person .num{font-size:10px;min-width:32px;text-align:center;flex-shrink:0}
-.police-specialty-grid .person .portrait{width:39px!important;height:43px!important;flex:0 0 39px}
-.police-specialty-grid .person .portrait.bpd-police-formal{width:39px!important;height:43px!important}
-.police-specialty-grid .person b{font-size:11px;overflow-wrap:anywhere}
-.police-specialty-grid .person small{font-size:9px}
-.police-specialty-grid .person .person-heading{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.police-specialty-grid .person .identity{min-width:0;flex:1}
-.police-specialty-grid .person .flag{font-size:9px;font-weight:850;line-height:1.3;white-space:nowrap}
-.police-specialty-grid .person .flag.instructor{color:#ffebb9;border:1px solid #a48238;background:#51411e}
-.police-specialty-grid .person .flag.teacher{color:#d1f3ff;border:1px solid #4489a5;background:#173e53}
-.police-specialty-grid .group-title{margin:9px 0 5px}
-.police-specialty-grid .group-title.instructors{background:#54401d;border-color:#ac8740}
-.police-specialty-grid .group-title.members{background:#1a3856}
+.police-specialty-detail .specialty-note{margin:3px 0 7px;color:#a9d6f7;font-size:10px}
+.police-intervention-group .police-specialty-detail .persons{display:flex;flex-direction:column;flex-wrap:nowrap;gap:4px;align-items:stretch}
+.police-specialty-detail .person{min-height:42px;width:100%;padding:4px 7px;gap:7px;max-width:none;border-radius:6px}
+.police-specialty-detail .person .num{font-size:10px;min-width:32px;text-align:center;flex-shrink:0}
+.police-specialty-detail .person .portrait{width:39px!important;height:43px!important;flex:0 0 39px}
+.police-specialty-detail .person .portrait.bpd-police-formal{width:39px!important;height:43px!important}
+.police-specialty-detail .person b{font-size:11px;overflow-wrap:anywhere}
+.police-specialty-detail .person small{font-size:9px}
+.police-specialty-detail .person .person-heading{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.police-specialty-detail .person .identity{min-width:0;flex:1}
+.police-specialty-detail .person .flag{font-size:9px;font-weight:850;line-height:1.3;white-space:nowrap}
+.police-specialty-detail .person .flag.instructor{color:#ffebb9;border:1px solid #a48238;background:#51411e}
+.police-specialty-detail .person .flag.teacher{color:#d1f3ff;border:1px solid #4489a5;background:#173e53}
+.police-specialty-detail .group-title{margin:9px 0 5px}
+.police-specialty-detail .group-title.instructors{background:#54401d;border-color:#ac8740}
+.police-specialty-detail .group-title.members{background:#1a3856}
 
 
 .police-intervention-group .specialty{margin:0}
@@ -259,7 +264,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 <script src="/assets/organogram-police-formal.js?v=unified-gold-navy-frame-20261028"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
-import {SERVICES,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames} from '/assets/organogram-hierarchie-model.js';
+import {SERVICES,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
 const $=id=>document.getElementById(id);
 const fixtures=[
  {dept:'politie',name:'Voorbeeld Korpschef',call:'900',rank:'Eerste hoofdcommissaris'},
@@ -349,23 +354,65 @@ function policeInterventions(branches){
  section.append(el('summary','','SPECIALISATIES · POLITIE'));
  const body=el('div','police-intervention-content');
  body.append(el('p','police-service-intro',
-  'Specialisaties naast elkaar: klik op een kaart om deze open of dicht te klappen. Instructeurs staan bovenaan, overige leden eronder (zonder dubbels).'));
+  'Alle tien specialisaties zijn tegelijk zichtbaar op één rij. Klik op een knop om de instructeurs en leden eronder te bekijken.'));
  const specs=el('div','spec-list police-specialty-grid');
- specs.setAttribute('aria-label','Alle politiespecialisaties op één horizontale rij');
- const scrollTools=el('div','police-specialty-scroll-tools');
- scrollTools.append(el('span','','Alle specialisaties staan op één rij'));
- const buttons=el('div','scroll-buttons');
- for(const [label,direction] of [['←',-1],['→',1]]){
-  const button=el('button','',label);button.type='button';
-  button.setAttribute('aria-label',direction<0?'Schuif naar vorige specialisaties':'Schuif naar volgende specialisaties');
-  button.addEventListener('click',()=>{
-   specs.scrollBy({left:direction*Math.max(270,Math.round(specs.clientWidth*.8)),behavior:'smooth'});
+ specs.setAttribute('role','group');
+ specs.setAttribute('aria-label','Tien politiespecialisaties naast elkaar');
+ const detail=el('div','police-specialty-detail');
+ detail.id='police-specialty-detail';
+ const mainLabels=new Set(POLICE_BRANCH_ORDER);
+ const primary=branches.filter(branch=>mainLabels.has(branch.label));
+ const others=branches.filter(branch=>!mainLabels.has(branch.label));
+ let active=branches.find(branch=>state.specialtyOpen[branch.label])?.label||null;
+ const tabs=[];
+ function showSelection(){
+  for(const [branch,button] of tabs)button.setAttribute('aria-expanded',String(branch.label===active));
+  detail.replaceChildren();
+  if(!active)return;
+  const selected=branches.find(branch=>branch.label===active);
+  if(!selected)return;
+  const card=specialtyBranch(selected,true);
+  card.open=true;
+  card.addEventListener('toggle',()=>{
+   if(!card.open&&active===selected.label){
+    state.specialtyOpen[selected.label]=false;
+    active=null;
+    showSelection();
+   }
   });
-  buttons.append(button);
+  detail.append(card);
  }
- scrollTools.append(buttons);body.append(scrollTools);
- for(const branch of branches)specs.append(specialtyBranch(branch,true));
- body.append(specs);section.append(body);
+ function addTab(branch,parent){
+  const button=el('button','police-specialty-tab');
+  button.type='button';
+  button.setAttribute('aria-controls',detail.id);
+  button.title=branch.label+' · Klik voor de ledenlijst';
+  const total=new Set([...(branch.members||[]),
+   ...(branch.children||[]).flatMap(child=>child.members||[])]).size;
+  button.append(el('span','police-specialty-tab-name',branch.label),
+   el('span','police-specialty-tab-count',String(total)));
+  button.addEventListener('click',()=>{
+   const next=active===branch.label?null:branch.label;
+   for(const candidate of branches)state.specialtyOpen[candidate.label]=candidate.label===next;
+   active=next;
+   showSelection();
+  });
+  tabs.push([branch,button]);
+  parent.append(button);
+ }
+ for(const branch of primary)addTab(branch,specs);
+ body.append(specs);
+ if(others.length){
+  const extra=el('details','police-specialty-extra');
+  extra.append(el('summary','','Overige specialisaties en categorieën ('+others.length+')'));
+  const additional=el('div','police-specialty-extra-grid');
+  for(const branch of others)addTab(branch,additional);
+  extra.append(additional);
+  body.append(extra);
+ }
+ body.append(detail);
+ section.append(body);
+ showSelection();
  return section;
 }
 function canDragMiddle(p,series){
@@ -617,7 +664,7 @@ function render(){
   if(solo&&SERVICES[i].id!==state.view)continue;
   $('services').append(serviceCard(dataset[i],SERVICES[i],solo));
  }
- $('services').style.gridTemplateColumns=solo?'minmax(0,1130px)':'';
+ $('services').style.gridTemplateColumns=solo?'minmax(0,1450px)':'';
  syncCadreToggle();
 }
 document.querySelector('.toolbar').addEventListener('click',event=>{
