@@ -31,7 +31,6 @@ test('slight color darkening targets only the officer coat, not its independent 
  assert.match(html,/0 1 0 0 -0\.090/);
  assert.match(html,/0 0 1 0 -0\.090/);
  assert.doesNotMatch(scoped,/\.bpd-gold-stage\s*\{|\.bpd-gold-nameplate\s*\{|\.bpd-gold-cloth-rank\s*\{|\.bpd-silver-coat\s*\{/);
- const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
  assert.match(html,/navy-matched-officers-20261028/);
 });
 test('officers are gold-none, corps leaders gold-thick, and other cadres silver-none',()=>{
