@@ -72,7 +72,7 @@ test('promotion, demotion and name updates select the new uniform and real cloth
   const name=holder.children.find(x=>x.className.includes('bpd-personal-nameplate'));
   assert.ok(name,call);
   if(gold){
-   assert.equal(name.children[0].textContent,'Nieuwe Naam',call);
+   assert.equal(name.children[0].textContent,'NIEUWE NAAM',call);
    assert.equal(name.children[1].textContent,'BELGIEPD - '+call,call);
   }else{
    const labels=name.children[0].children.filter(x=>x.tag==='text').map(x=>x.textContent);
@@ -100,7 +100,7 @@ test('new coordinates are limited to silver uniforms, preserving existing gold a
  assert.match(css,/\[data-uniform="silver"\]>\.bpd-chest-insignia/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-ribbons/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-medals/);
- assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/approved-gold-main-20261028/);
+ assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/woven-nameplate-main-20261028/);
 });
 
 test('silver jacket zoom matches golden card heights without moving plates independently',()=>{
@@ -128,7 +128,7 @@ test('silver jacket zoom matches golden card heights without moving plates indep
  assert.match(decorations,/left:55.712%;top:48.096%;width:20.496%;height:4.704%/);
  assert.match(decorations,/left:55.88%;top:70.944%;width:26.544%;height:26.88%/);
  const page=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(page,/approved-gold-main-20261028/);
+ assert.match(page,/woven-nameplate-main-20261028/);
 });
 
 test('silver rank panel is higher and nameplate shorter, with centred insets',()=>{
