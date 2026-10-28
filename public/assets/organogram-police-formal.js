@@ -134,10 +134,10 @@
   return badge;
  }
 
- // Four accepted uniform groups: existing gold epaulettes ONLY for
- // Korpsleiding; no shoulder overlays for officers, middle, basic or agents.
- // Gold/silver cords, buttons and collar accents remain cadre-specific.
- // Display rank does not grant permissions.
+ // Rank-specific presentation only: gold 900-930, cord-free silver 100-899.
+ // Both base images are fixed photographic/graphic coats. Real name, call,
+ // award and embroidered grade panels remain separate live display layers.
+ // This visual lookup MUST NEVER grant any personnel permissions.
  function trimFor(grade){
   if(grade?.key==='1hcp'||grade?.key==='1cp')return 'gold-thick';
   if(grade?.key==='acp'||grade?.key==='cp')return 'gold-none';
