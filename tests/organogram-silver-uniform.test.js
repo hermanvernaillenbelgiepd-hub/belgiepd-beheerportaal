@@ -85,7 +85,7 @@ test('new coordinates are limited to silver uniforms, preserving existing gold a
  assert.match(css,/\[data-uniform="silver"\]>\.bpd-chest-insignia/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-ribbons/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-medals/);
- assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/silver-hd-rank-20261028/);
+ assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/silver-plates-centered-20261028/);
 });
 
 test('silver jacket zoom matches golden card heights without moving plates independently',()=>{
@@ -108,10 +108,31 @@ test('silver jacket zoom matches golden card heights without moving plates indep
  assert.equal(x(53.25),55.46);
  assert.equal(round(11.1*zoom),18.648);
  assert.equal(round(11.35*zoom),19.068);
- assert.match(block,/left:18.332%;top:55.908%;width:18.648%;height:7.644%/);
- assert.match(block,/left:55.46%;top:58.25%;width:19.068%;height:7.644%/);
+ assert.match(block,/left:18.332%;top:56.25%;width:18.648%;height:6.444%/);
+ assert.match(block,/left:55.46%;top:55.65%;width:19.068%;height:7.644%/);
  assert.match(decorations,/left:55.712%;top:48.096%;width:20.496%;height:4.704%/);
  assert.match(decorations,/left:55.88%;top:70.944%;width:26.544%;height:26.88%/);
  const page=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(page,/silver-hd-rank-20261028/);
+ assert.match(page,/silver-plates-centered-20261028/);
+});
+
+test('silver rank panel is higher and nameplate shorter, with centred insets',()=>{
+ const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
+ const silver=css.slice(css.indexOf('/* Silver uniform: same portrait/card dimensions'));
+ const extract=(key)=>{
+  const start=silver.indexOf('.bpd-police-formal[data-uniform="silver"]>'+key+'{');
+  assert.ok(start>=0,key);
+  const block=silver.slice(start,silver.indexOf('}',start));
+  const match=block.match(/left:([0-9.]+)%;top:([0-9.]+)%;width:([0-9.]+)%;height:([0-9.]+)%/);
+  assert.ok(match,key);
+  return match.slice(1).map(Number);
+ };
+ const name=extract('.bpd-personal-nameplate'),rank=extract('.bpd-chest-insignia');
+ assert.equal(name[0],18.332);
+ assert.equal(rank[0],55.46);
+ assert.equal(rank[1],55.65);
+ assert.ok(name[3]<rank[3]);
+ assert.ok(Math.abs((name[1]+name[3]/2)-(rank[1]+rank[3]/2))<.001);
+ assert.equal(name[2],18.648);
+ assert.equal(rank[2],19.068);
 });
