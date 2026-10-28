@@ -41,13 +41,13 @@ test('instructors are shown first, then every eligible member by actual rank',()
  assert.equal(people.length,4);
 });
 test('specialization cards are side by side and compact, responsive on mobile',()=>{
- assert.match(html,/police-specialty-grid\{display:grid;grid-template-columns:repeat\(auto-fit,minmax/);
+ assert.match(html,/\.police-intervention-group \.police-specialty-grid\{[\s\S]*?display:flex;flex-wrap:nowrap/);
  assert.match(html,/\.police-intervention-group \.police-specialty-grid \.persons\{display:flex;flex-direction:column/);
- assert.match(html,/@media\(max-width:700px\)\{\.police-specialty-grid\{grid-template-columns:1fr\}\}/);
+ assert.match(html,/@media\(max-width:700px\)\{\.police-intervention-group \.police-specialty-grid>\.specialty/);
  assert.match(html,/minmax\(0,1130px\)/);
  assert.match(html,/className/);
  assert.match(html,/spec-list police-specialty-grid/);
- assert.match(html,/card\.open=true/);
+ assert.match(html,/card\.open=isPolice\?\(state\.specialtyOpen\[specialtyKey\]\?\?false\):true/);
 });
 function domNode(tag,cls='',text=''){
  return {tag,cls,text,children:[],attributes:{},events:{},
@@ -78,7 +78,7 @@ test('specialty group renders instructor and ordinary members beside each other 
  const a=mk(500,{teachingRoles:['instructeur'],instructorSpecialties:['INTERVENTIEDIENST']});
  const b=mk(501),c=mk(400);
  const source=script.slice(script.indexOf('function specialtyBranch('),script.indexOf('function filteredRows('));
- const sandbox={el:domNode,isTeacher:p=>p.teachingRoles?.includes('instructeur'),
+ const sandbox={el:domNode,state:{specialtyOpen:{}},isTeacher:p=>p.teachingRoles?.includes('instructeur'),
   isSpecialtyInstructor:(p,label)=>(p.instructorSpecialties||[]).includes(label),
   peopleList:(rows,rankOnly,compact)=>{
    const node=domNode('list','persons',rankOnly?'members':'teachers');
