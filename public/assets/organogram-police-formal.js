@@ -2,8 +2,8 @@
 (function(){
  'use strict';
  const BASE='/assets/organogram-police-formal.webp';
- // Approved silver base shared by middle, basic and agent cadres.
- const SILVER_BASE='/assets/bpd-uniform-zilver-hd-20261028.webp';
+ // Approved cord-free silver jacket from TEST, shared by middle, basic and agent cadres.
+ const SILVER_BASE='/assets/bpd-uniform-zilver-zonder-koord-nieuw-20261028.webp';
  // The user-approved gold uniform from the TEST preview, stored as its own
  // image so that no canvas recolouring or shoulder masking touches the art.
  const GOLD_BASE='/assets/bpd-gold-officer-corps-approved-20261028.webp';
@@ -134,10 +134,10 @@
   return badge;
  }
 
- // Four accepted uniform groups: existing gold epaulettes ONLY for
- // Korpsleiding; no shoulder overlays for officers, middle, basic or agents.
- // Gold/silver cords, buttons and collar accents remain cadre-specific.
- // Display rank does not grant permissions.
+ // Rank-specific presentation only: gold 900-930, cord-free silver 100-899.
+ // Both base images are fixed photographic/graphic coats. Real name, call,
+ // award and embroidered grade panels remain separate live display layers.
+ // This visual lookup MUST NEVER grant any personnel permissions.
  function trimFor(grade){
   if(grade?.key==='1hcp'||grade?.key==='1cp')return 'gold-thick';
   if(grade?.key==='acp'||grade?.key==='cp')return 'gold-none';
@@ -210,6 +210,23 @@
   plate.append(first,second);
   return plate;
  }
+ function makeSilverWovenNameplate(person){
+  // Same woven cloth as gold, with TEST-approved silver-coat positioning.
+  const details=nameplateData(person);
+  const plate=document.createElement('span');
+  plate.className='bpd-personal-nameplate bpd-silver-woven-nameplate';
+  plate.dataset.call=details.call;
+  plate.setAttribute('role','img');
+  plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
+  const name=document.createElement('span');
+  name.className='bpd-silver-woven-name';
+  name.textContent=details.name.toLocaleUpperCase('nl');
+  const call=document.createElement('span');
+  call.className='bpd-silver-woven-call';
+  call.textContent=details.bottom;
+  plate.append(name,call);
+  return plate;
+ }
  function makePortrait(person,large=false){
   if(person?.dept!=='politie')return null;
   const grade=gradeFor(person);
@@ -257,24 +274,36 @@
    return outer;
   }
 
-  // Preserve the approved silver model, rank drawing and existing layout.
+  // Approved silver TEST artwork and its proven name/grade coordinates.
+  // All layers share ONE native 603:469 stage; no old pixel zoom is applied.
+  const stage=document.createElement('span');
+  stage.className='bpd-silver-stage';
   const image=document.createElement('img');
+  image.className='bpd-silver-coat';
   image.src=SILVER_BASE;
   image.alt='';
   image.loading=large?'eager':'lazy';
   image.decoding='async';
   image.draggable=false;
-  outer.append(image);
-  const nameplate=makeNameplate(person);
-  if(nameplate)outer.append(nameplate);
+  stage.append(image);
+  stage.append(makeSilverWovenNameplate(person));
   const rack=window.BPDDecorations?.uniformRack(person.awards);
-  if(rack?.ribbons)outer.append(rack.ribbons);
+  if(rack?.ribbons)stage.append(rack.ribbons);
   const patch=document.createElement('span');
-  patch.className='bpd-chest-insignia';
-  patch.setAttribute('aria-hidden','true');
-  useBelgianBadgeArtwork(patch,grade);
-  outer.append(patch);
-  if(rack?.medals)outer.append(rack.medals);
+  patch.className='bpd-chest-insignia bpd-silver-cloth-rank';
+  patch.dataset.grade=grade?.key||'unknown';
+  patch.setAttribute('role','img');
+  patch.setAttribute('aria-label','Geborduurde gradenplaat: '+(grade?.label||'Onbekend'));
+  const patchImage=document.createElement('img');
+  patchImage.className='bpd-silver-grade-art';
+  patchImage.src=GRADE_ASSETS[grade?.key]||GRADE_ASSETS.ap;
+  patchImage.alt='';
+  patchImage.loading='eager';
+  patchImage.decoding='async';
+  patch.append(patchImage);
+  stage.append(patch);
+  if(rack?.medals)stage.append(rack.medals);
+  outer.append(stage);
   return outer;
  }
  window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,makeNameplate,nameplateData,asset:GOLD_BASE,legacyAsset:BASE,silverAsset:SILVER_BASE});

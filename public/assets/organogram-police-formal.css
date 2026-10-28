@@ -85,38 +85,6 @@
 .bpd-grade-vector>image{image-rendering:auto}
 .bpd-grade-badge>.bpd-grade-vector{display:block;width:100%;height:100%}
 
-/* Silver uniform: same portrait/card dimensions as the gold uniform.
-   Only the actual silver jacket AND its live overlays are visually zoomed.
-   Do not change this scale independently from the nameplate, embroidered
-   cloth rank plate, and decoration coordinates below. Source: 200x188 WebP. */
-.person .portrait.bpd-police-formal[data-uniform="silver"],
-.portrait.bpd-police-formal[data-uniform="silver"]{width:67px;height:77px}
-.profile-title .portrait.bpd-police-formal[data-uniform="silver"],
-.portrait.bpd-police-formal.large[data-uniform="silver"]{width:156px;height:170px}
-/* Screenshots confirm equal card sizes but smaller silver jacket artwork.
-   Enlarge 18% beyond the earlier 1.42x zoom (now 1.68x), then move the
-   entire artwork up 6% to keep the collar aligned with gold. This applies
-   ONLY to silver; it does not change the fixed card size or gold uniform. */
-.bpd-police-formal[data-uniform="silver"]>img{
- transform:translateY(-6%) scale(1.68);transform-origin:50% 0;
-}
-/* Live cloth labels remain data-driven. The nameplate is shorter and
-   the embroidered rank is 2.6% higher, both optically centred on the
-   actual sewn backing of the silver jacket. Gold remains unchanged. */
-.bpd-police-formal[data-uniform="silver"]>.bpd-personal-nameplate{
- left:18.332%;top:56.25%;width:18.648%;height:6.444%;background:#0d1b2b}
-.bpd-police-formal[data-uniform="silver"]>.bpd-chest-insignia{
- left:55.46%;top:55.65%;width:19.068%;height:7.644%;
- border-radius:0;box-shadow:none}
-@media(max-width:520px){
- .person .portrait.bpd-police-formal[data-uniform="silver"]{width:57px;height:65px}
- .profile-title .portrait.bpd-police-formal[data-uniform="silver"],
- .portrait.bpd-police-formal.large[data-uniform="silver"]{width:128px;height:139px}
-}
-
-/* Silver embroidered rank badge centred inside the existing sewn frame.
-   Nameplate and awarded distinctions keep their own prior geometry. */
-
 /* New approved gold formal dress coat from TEST, rendered at native 603:469.
    No re-colouring, shoulder-mask, or stretched pixel artwork is applied.
    Its name, 512x160 cloth grade and awarded distinctions remain dynamic. */
@@ -218,4 +186,72 @@
 .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call{
  top:57%;height:28%;font-size:clamp(2px,7.9cqw,9px);
  letter-spacing:0;
+}
+
+/* Approved cord-free silver coat from TEST. Its 603:469 canvas uses the same
+   stage scaling as the approved gold model, so shoulder/body sizes match.
+   Never scale the coat separately from the dynamic fabric plates. */
+.bpd-police-formal[data-uniform="silver"]>.bpd-silver-stage{
+ position:absolute;z-index:1;display:block;
+ width:115%;height:auto;aspect-ratio:603/469;
+ left:50%;top:50%;transform:translate(-50%,-50%);
+ pointer-events:none;overflow:visible;
+}
+.bpd-silver-stage>.bpd-silver-coat{
+ display:block;width:100%;height:100%;object-fit:contain;
+}
+/* Position copied unchanged from the FINAL approved TEST layout:
+   name +0.8% x / +0.6% y; rank +1.8% x / +1.2% y.
+   The approved navy woven patch has no fixed name or call printed on it. */
+.bpd-silver-stage>.bpd-personal-nameplate.bpd-silver-woven-nameplate{
+ position:absolute;z-index:7;
+ left:10.25%;top:56.2%;width:27.75%;height:auto;
+ aspect-ratio:1032/381;container-type:inline-size;
+ background:#0c111d url('/assets/bpd-naamplaat-geweven-leeg-20261028.webp')
+  center / 100% 100% no-repeat;
+ display:block;overflow:hidden;border:0;border-radius:1px;padding:0;
+ box-shadow:0 0 0 .5px #ced3e0;
+}
+.bpd-silver-stage>.bpd-silver-woven-nameplate::after{
+ position:absolute;content:"";left:30%;width:60%;top:50%;
+ height:1%;min-height:.5px;background:#e1e9ee;
+ pointer-events:none;
+}
+.bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name,
+.bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
+ position:absolute;left:30%;width:60%;margin:0;padding:0;
+ display:flex;align-items:center;justify-content:center;
+ color:#f2f4f7;text-align:center;
+ font-family:system-ui,Segoe UI,Arial,sans-serif;font-weight:800;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ text-shadow:0 0 1px #fff,0 1px 1px #050505;line-height:1;
+}
+.bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name{
+ top:18%;height:28%;font-size:clamp(3px,10cqw,13px);
+}
+.bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
+ top:56%;height:28%;font-size:clamp(3px,7.1cqw,10px);
+}
+/* Original textile crown/star/stroke is preserved at 512:160;
+   object-fit:contain avoids stretching it inside the approved backing. */
+.bpd-silver-stage>.bpd-chest-insignia.bpd-silver-cloth-rank{
+ position:absolute;z-index:7;left:62.3%;top:56.75%;
+ width:26.6%;height:12.25%;display:block;
+ border:1px solid #64768c;border-radius:1px;
+ background:#0e1728;box-shadow:none;overflow:hidden;
+ box-sizing:border-box;
+}
+.bpd-silver-cloth-rank>.bpd-silver-grade-art{
+ display:block;width:100%;height:100%;object-fit:contain;
+ image-rendering:auto;
+}
+/* Dynamic, awarded ribbon/medal rack shares this silver stage. */
+.bpd-silver-stage>.bpd-uniform-ribbons{
+ position:absolute;z-index:5;left:65%;top:52%;
+ width:23%;height:3%;display:flex;gap:2%;pointer-events:none;
+}
+.bpd-silver-stage>.bpd-uniform-medals{
+ position:absolute;z-index:5;left:63%;top:70%;
+ width:26%;height:20%;display:flex;justify-content:center;gap:4%;
+ pointer-events:none;
 }

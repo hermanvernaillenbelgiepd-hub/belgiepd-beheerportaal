@@ -35,17 +35,18 @@ test('MAIN uniform: name above a silver line, BELGIEPD and callsign below, no ne
  assert.deepEqual(labels,['Thijs','BELGIEPD - 900']);
  assert.equal(art.children.filter(x=>x.tag==='line'&&x.attrs.y1==='49').length,1);
 });
-test('all police portraits in real and demo views use the new silver nameplate',()=>{
+test('silver uniforms render the dynamic woven nameplate inside the approved stage',()=>{
  const ui=uniform();
  const sample={dept:'politie',name:'Mxxx_',call:'660'};
  const portrait=ui.makePortrait(sample,true);
- const classes=portrait.children.map(x=>x.className);
- assert.ok(classes.includes('bpd-personal-nameplate'));
- assert.ok(!classes.includes('bpd-silver-nameplate'));
- assert.ok(classes.includes('bpd-chest-insignia'));
- const nameplate=portrait.children.find(x=>x.className==='bpd-personal-nameplate');
- assert.deepEqual(nameplate.children[0].children.filter(x=>x.tag==='text')
-  .map(x=>x.textContent),['Mxxx_','BELGIEPD - 660']);
+ assert.equal(portrait.dataset.uniform,'silver');
+ const stage=portrait.children[0];
+ assert.equal(stage.className,'bpd-silver-stage');
+ const nameplate=stage.children.find(x=>x.className.includes('bpd-silver-woven-nameplate'));
+ assert.ok(nameplate);
+ assert.equal(nameplate.children[0].textContent,'MXXX_');
+ assert.equal(nameplate.children[1].textContent,'BELGIEPD - 660');
+ assert.ok(stage.children.some(x=>x.className.includes('bpd-chest-insignia')));
  assert.equal(ui.makePortrait({dept:'brandweer',name:'X',call:'ZONE'}),null);
 });
 test('promotion, callsign and name changes dynamically update the nameplate and grade',()=>{
@@ -63,7 +64,7 @@ test('MAIN page shows one nameplate on the uniform and no redundant detail previ
  assert.match(html,/makePortrait\(person,large\)/);
  assert.doesNotMatch(html,/bpd-nameplate-preview/);
  assert.doesNotMatch(html,/makeNameplate\(person,true\)/);
- assert.match(html,/woven-nameplate-main-20261028/);
+ assert.match(html,/approved-silver-no-cord-main-20261028/);
  assert.match(style,/\.bpd-personal-nameplate/);
  assert.match(style,/\.bpd-personal-nameplate>\.bpd-nameplate-vector/);
  assert.doesNotMatch(style,/\.bpd-nameplate-top\s*\{/);
