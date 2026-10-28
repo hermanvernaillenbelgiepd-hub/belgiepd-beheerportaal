@@ -59,11 +59,11 @@ test('same approved woven patch is used independently by gold and silver',()=>{
  assert.equal(rank.dataset.grade,'hinp');
  assert.equal(rank.children[0].src,'/assets/bpd-rank-hinp-clean-20261027.webp');
  const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
- assert.match(css,/bpd-naamplaat-geweven-leeg-20261028\\.webp/);
- assert.match(css,/aspect-ratio:1032\\/381/);
+ assert.match(css,/bpd-naamplaat-geweven-leeg-20261028\.webp/);
+ assert.match(css,/aspect-ratio:1032\/381/);
  assert.match(css,/top:20%;height:25%/); // gold
  assert.match(css,/top:57%;height:28%/); // gold
- assert.match(css,/left:10\\.25%;top:56\\.2%;width:27\\.75%/); // silver
+ assert.match(css,/left:10\.25%;top:56\.2%;width:27\.75%/); // silver
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
  assert.match(html,/approved-silver-no-cord-main-20261028/);
 });
