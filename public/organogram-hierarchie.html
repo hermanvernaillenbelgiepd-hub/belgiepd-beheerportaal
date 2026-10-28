@@ -557,6 +557,27 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-overview .portrait.bpd-police-formal{width:92px!important;height:105px!important;flex:0 0 92px!important}
 .person-profile-name{font-size:19px;font-weight:850;overflow-wrap:anywhere;line-height:1.22}
 .person-profile-rank{font-size:12px;color:#c1dbf4;margin-top:4px}
+.person-profile-grade{
+ display:flex;align-items:center;gap:12px;min-width:0;
+ margin:0 0 14px;padding:11px 12px;border:1px solid #385a7a;
+ background:#152e49;border-radius:9px
+}
+.person-profile-grade .bpd-grade-badge{
+ width:156px;max-width:45%;height:auto;flex-shrink:0
+}
+.person-profile-grade .person-profile-grade-info{min-width:0}
+.person-profile-grade-info strong{
+ display:block;font-size:12px;line-height:1.35;overflow-wrap:anywhere
+}
+.person-profile-grade-info small{
+ display:block;margin-top:3px;font-size:10px;color:#b8d3ef;line-height:1.4
+}
+.person-profile-fact.person-profile-status{
+ border-color:#6689b0;background:#1c3d5f
+}
+.person-profile-fact.person-profile-status strong{
+ font-size:13px;color:#f3faff
+}
 .person-profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:13px 0}
 .person-profile-fact{border:1px solid #3b5b7c;background:#173452;border-radius:8px;padding:9px 10px;min-width:0}
 .person-profile-fact small{display:block;color:#adcae8;font-size:10px;margin-bottom:3px}
@@ -718,7 +739,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 <script src="/assets/organogram-police-formal.js?v=unified-gold-navy-frame-20261028"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
-import {SERVICES,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
+import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
 const $=id=>document.getElementById(id);
 const fixtures=[
  {dept:'politie',name:'Voorbeeld Korpschef',call:'900',rank:'Eerste hoofdcommissaris'},
@@ -784,15 +805,31 @@ function openPersonProfile(p){
  identity.append(el('div','person-profile-name',p.name||'Onbekend'),
   el('div','person-profile-rank',p.rank||'Rang niet geregistreerd'));
  overview.append(identity);content.append(overview);
+ if(p.dept==='politie'){
+  // Same public badge and grade mapping as the existing verified personnel card.
+  const rank=window.BPDPoliceUniform?.gradeFor?.(p);
+  const badge=window.BPDPoliceUniform?.makeBadge?.(p,true);
+  if(badge){
+   const grade=el('div','person-profile-grade');
+   const detail=el('div','person-profile-grade-info');
+   detail.append(el('strong','',rank?.label||p.rank||'Rang niet geregistreerd'),
+    el('small','','Formeel uniform · automatisch weergegeven Belgisch graadteken'));
+   grade.append(badge,detail);
+   content.append(grade);
+  }
+ }
  const grid=el('div','person-profile-grid');
  function fact(label,value){
   const row=el('div','person-profile-fact');
   row.append(el('small','',label),el('strong','',String(value||'Niet geregistreerd')));
+  if(label==='Personeelsstatus')row.classList.add('person-profile-status');
   grid.append(row);
  }
  fact('Roepnummer',p.call||'—');
  fact('Dienst',SERVICES.find(x=>x.id===p.dept)?.name||p.dept);
- fact('Personeelsstatus',p.status||'Niet beschikbaar in het organogram');
+ fact('Rang / functie',window.BPDPoliceUniform?.gradeFor?.(p)?.label||p.rank||'Niet geregistreerd');
+ fact('Niveau (indicatief)',getTier(p));
+ fact('Personeelsstatus',p.status||'Niet vermeld');
  const teaching=(Array.isArray(p.teachingRoles)?p.teachingRoles:[])
   .filter(x=>x==='instructeur'||x==='docent');
  fact('Opleidingsfunctie',teaching.length?teaching.map(x=>x==='instructeur'?'Instructeur':'Docent').join(' · '):'Geen geregistreerde functie');
@@ -813,7 +850,7 @@ function openPersonProfile(p){
   content.append(list);
  }else content.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
  content.append(el('p','person-profile-note',
-  'Dit profiel toont uitsluitend vrijgegeven personeelsgegevens. Verlofdetails en de datum van toetreding tot een specialisatie zijn hier niet beschikbaar.'));
+  'Alle informatie is alleen-lezen. De niveau-indeling is indicatief en verleent geen bevoegdheden. Verlofdetails en de datum van toetreding tot een specialisatie zijn hier niet beschikbaar.'));
  if(!dialog.open)dialog.showModal();
 }
 $('person-profile-close').addEventListener('click',()=>$('person-profile').close());

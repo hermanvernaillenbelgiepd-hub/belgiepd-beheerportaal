@@ -106,6 +106,9 @@ export function publicOrganogramRoster(rows,decorations=new Map(),customCatalog=
       publicDecorations(decorations.get(awardKey(p.dept,p.personId))||[],undefined,customCatalog):[];
     visible.push({dept:p.dept,name:strip(p.name).slice(0,90),
       call:strip(p.call).slice(0,24),rank:strip(p.rank).slice(0,95),
+      // Align the older public personnel card with the hierarchy profile:
+      // only the already-public police personnel status may be shown.
+      status:p.dept==='politie'?strip(p.status).slice(0,30):'',
       specialties,awards:publicAwards});
   }
   visible.sort((a,b)=>a.dept.localeCompare(b.dept,'nl')||
