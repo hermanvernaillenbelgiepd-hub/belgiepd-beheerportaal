@@ -82,7 +82,7 @@ test('new coordinates are limited to silver uniforms, preserving existing gold a
  assert.match(css,/\[data-uniform="silver"\]>\.bpd-chest-insignia/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-ribbons/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-medals/);
- assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/silver-uniform-20261028/);
+ assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/silver-uniform-zoom-20261028/);
 });
 
 test('silver jacket zoom matches golden card heights without moving plates independently',()=>{
