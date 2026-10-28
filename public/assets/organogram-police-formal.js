@@ -202,7 +202,8 @@
   plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
   const first=document.createElement('span');
   first.className='bpd-gold-name';
-  first.textContent=details.name;
+  // Same dynamic uppercase embroidery as the user-approved TEST preview.
+  first.textContent=details.name.toLocaleUpperCase('nl');
   const second=document.createElement('span');
   second.className='bpd-gold-call';
   second.textContent=details.bottom;

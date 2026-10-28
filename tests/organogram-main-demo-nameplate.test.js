@@ -63,7 +63,7 @@ test('MAIN page shows one nameplate on the uniform and no redundant detail previ
  assert.match(html,/makePortrait\(person,large\)/);
  assert.doesNotMatch(html,/bpd-nameplate-preview/);
  assert.doesNotMatch(html,/makeNameplate\(person,true\)/);
- assert.match(html,/approved-gold-main-20261028/);
+ assert.match(html,/woven-nameplate-main-20261028/);
  assert.match(style,/\.bpd-personal-nameplate/);
  assert.match(style,/\.bpd-personal-nameplate>\.bpd-nameplate-vector/);
  assert.doesNotMatch(style,/\.bpd-nameplate-top\s*\{/);

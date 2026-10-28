@@ -181,3 +181,41 @@
  width:24%;height:19%;display:flex;justify-content:center;gap:4%;
  pointer-events:none;
 }
+
+/* User-approved woven textile nameplate from TEST, for the new gold jacket.
+   Underlay has NO baked-in name or callsign. Live text remains DOM-driven.
+   Silver 100-899 keeps its existing independent nameplate and CSS. */
+.bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate{
+ left:21.2%;top:60.2%;width:20.1%;height:auto;
+ aspect-ratio:1032/381;container-type:inline-size;
+ overflow:hidden;display:block;padding:0;
+ background:#0c111d url('/assets/bpd-naamplaat-geweven-leeg-20261028.webp')
+  center / 100% 100% no-repeat;
+ border:0;border-radius:1px;
+ box-shadow:0 0 0 .35px #8e9aa8;
+}
+.bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate::before{
+ content:none;display:none;
+}
+.bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate::after{
+ position:absolute;content:"";left:30%;top:50%;width:60%;
+ height:1.15%;min-height:.6px;background:#e3e5e6;
+ box-shadow:0 0 1px #fff8;pointer-events:none;
+}
+.bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-name,
+.bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call{
+ position:absolute;left:30%;width:60%;margin:0;
+ display:flex;align-items:center;justify-content:center;
+ color:#f3f4f5;text-align:center;
+ font-family:system-ui,Segoe UI,Arial,sans-serif;font-weight:800;
+ line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ text-shadow:0 0 .5px #f0f0f0,0 1px 1px #000;letter-spacing:.025em;
+ border:0;padding:0;
+}
+.bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-name{
+ top:20%;height:25%;font-size:clamp(2px,10cqw,12px);
+}
+.bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call{
+ top:57%;height:28%;font-size:clamp(2px,7.9cqw,9px);
+ letter-spacing:0;
+}
