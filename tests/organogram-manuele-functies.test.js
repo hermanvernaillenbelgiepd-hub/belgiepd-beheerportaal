@@ -62,7 +62,7 @@ test('manual role remains visible when the Discord sync has failed',()=>{
  const merged=mergePlacement(sample,manual,offline);
  assert.equal(merged.boardRole,'bestuur-ai');
  assert.deepEqual(merged.teachingRoles,['docent']);
- assert.deepEqual(merged.specialties,['Dispatch','Motor']);
+ assert.deepEqual(merged.specialties,['DISP','MOTARD']);
  assert.equal(merged.source,'handmatig');
  assert.equal(Object.hasOwn(merged,'personId'),false);
  assert.equal(Object.hasOwn(merged,'roleIds'),false);
@@ -76,7 +76,7 @@ test('manual and Discord roles coexist; manual flags do not create portal access
  const merged=mergePlacement(sample,manual,auto);
  assert.equal(merged.boardRole,'bestuur');
  assert.deepEqual(merged.teachingRoles,['docent','instructeur']);
- assert.deepEqual(merged.specialties,['K9','Motor']);
+ assert.deepEqual(merged.specialties,['K9','MOTARD']);
  assert.equal(merged.source,'handmatig + Discord');
  assert.equal(canManagePlacements({role:'korpsleiding',uid:'discord:'+ID}),false);
  assert.equal(canManagePlacements({role:'beheerder',uid:'discord:'+ID}),true);
