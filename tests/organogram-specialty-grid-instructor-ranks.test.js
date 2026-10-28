@@ -100,7 +100,7 @@ test('specialty group renders instructor and ordinary members beside each other 
 });
 test('other services, manual settings, undo, and main classic organogram are not changed',()=>{
  assert.match(html,/if\(solo&&settings\.id!=='politie'\)/);
- assert.match(html,/block\.append\(policeInterventions\(item\.branches\)\)/);
+ assert.match(html,/levelBody\.append\(policeInterventions\(item\.branches\)\)/);
  assert.match(html,/manage-instructor/);
  assert.match(html,/manage-undo/);
  assert.match(html,/undoLastMiddleDrag/);
