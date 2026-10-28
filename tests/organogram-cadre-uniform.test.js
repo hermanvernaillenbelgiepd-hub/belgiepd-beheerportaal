@@ -61,7 +61,8 @@ test('the chest and separate grade badge use the genuine isolated embroidered as
   assert.equal(chest.dataset.grade,grade);
   assert.equal(chest.children[0].src,expected,'cloth rank '+call);
   assert.equal(portrait.children[0].children[0].src,
-   portrait.dataset.uniform==='gold'?p.asset:p.silverAsset);
+   portrait.dataset.uniform==='silver'?p.silverAsset:
+   portrait.dataset.trim==='gold-none'?'/assets/bpd-officieren-marine-match-20261028.svg':p.asset);
   const badge=p.makeBadge(person);
   assert.equal(badge.children[0].children[0].attrs.href,expected,'badge '+call);
  }
@@ -105,7 +106,7 @@ test('old gold canvas masks are removed; approved image is not recoloured',()=>{
  assert.doesNotMatch(css,/\.bpd-police-formal>\.bpd-shoulder-trim/);
  assert.match(css,/\.bpd-gold-stage>/);
  assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),
-  /navy-matched-officers-20261028/);
+  /navy-corrected-image-20261028/);
 });
 
 test('uniform presentation does not confer or change service permissions',()=>{
