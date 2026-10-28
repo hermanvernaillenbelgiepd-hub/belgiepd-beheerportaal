@@ -99,6 +99,9 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   <p class="manager-note">Selecteer een bestaand personeelslid of een goedgekeurd bestuursaccount. Handmatige keuzes blijven in Firestore bewaard bij uitval van de Discord-sync. Dit geeft geen dossier- of beheersrechten.</p>
   <div class="manager-grid">
    <label>Persoon <select id="manage-person"><option value="">Kies personeelslid</option></select></label>
+   <label>Leiding/kader (alleen organogram) <select id="manage-tier">
+    <option value="none">Automatisch volgens rang</option>
+   </select></label>
    <label>Bestuursweergave <select id="manage-board">
     <option value="none">Geen bestuursfunctie</option>
     <option value="bestuur">Bestuur</option>
@@ -150,7 +153,7 @@ const fixtures=[
  {dept:'burger',name:'Voorbeeld Burgerlid',call:'BUR-10',rank:'Burger',specialties:['Burgerproject']}
 ];
 const state={view:'alle',query:'',demo:true,live:[],board:[],loaded:false};
-let auth=null,authModule=null,adminPeople=[],adminSpecialties={},activeAdminPerson=null;
+let auth=null,authModule=null,adminPeople=[],adminSpecialties={},adminLeadership={},activeAdminPerson=null;
 function el(tag,cls,text){
  const n=document.createElement(tag);
  if(cls)n.className=cls;
@@ -252,7 +255,7 @@ async function loadPublic(){
     call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
-    boardRole:p.boardRole||'none',source:String(p.source||'personeelslijst').slice(0,35)}));
+    boardRole:p.boardRole||'none',leadershipTier:p.leadershipTier||'none',source:String(p.source||'personeelslijst').slice(0,35)}));
   state.board=Array.isArray(payload.board)?payload.board.slice(0,50):[];
   state.loaded=true;
   $('source').className='notice'+(payload.stale||!payload.syncAvailable?' warn':'');
@@ -307,9 +310,15 @@ function selectedAdmin(){
 function fillAdminPerson(){
  const p=selectedAdmin();activeAdminPerson=p;
  $('manage-specialties').replaceChildren();
+ $('manage-tier').replaceChildren();
+ $('manage-tier').append(Object.assign(el('option','','Automatisch volgens rang'),{value:'none'}));
  if(!p)return;
+ for(const level of adminLeadership[p.dept]||[]){
+  const option=el('option','',level);option.value=level;$('manage-tier').append(option);
+ }
  const values=p.placement||{};
  $('manage-board').value=values.boardRole||'none';
+ $('manage-tier').value=values.leadershipTier||'none';
  $('manage-instructor').checked=(values.teachingRoles||[]).includes('instructeur');
  $('manage-teacher').checked=(values.teachingRoles||[]).includes('docent');
  $('manage-instructor').disabled=p.dept==='bestuur';
@@ -338,7 +347,7 @@ $('manage-toggle').addEventListener('click',async()=>{
  try{
   const result=await authFetch('/api/organogram/placements/admin');
   if(result.displayOnly!==true)throw Error('Ongeldig antwoord');
-  adminPeople=result.people||[];adminSpecialties=result.specialties||{};
+  adminPeople=result.people||[];adminSpecialties=result.specialties||{};adminLeadership=result.leadershipLevels||{};
   const dropdown=$('manage-person');
   dropdown.replaceChildren(el('option','','Kies een personeelslid…'));
   for(let i=0;i<adminPeople.length;i++){
@@ -357,6 +366,7 @@ $('manage-save').addEventListener('click',async()=>{
  const save=$('manage-save');save.disabled=true;
  try{
   const boardRole=$('manage-board').value;
+  const leadershipTier=$('manage-tier').value;
   const teachingRoles=[
    ...($('manage-instructor').checked?['instructeur']:[]),
    ...($('manage-teacher').checked?['docent']:[])
@@ -365,8 +375,8 @@ $('manage-save').addEventListener('click',async()=>{
   const reason=$('manage-reason').value.trim();
   await authFetch('/api/organogram/placements/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.personId),
    {method:'PUT',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({boardRole,teachingRoles,specialties,reason})});
-  p.placement={boardRole,teachingRoles,specialties};
+    body:JSON.stringify({boardRole,leadershipTier,teachingRoles,specialties,reason})});
+  p.placement={boardRole,leadershipTier,teachingRoles,specialties};
   $('manage-reason').value='';
   $('manage-status').textContent='Handmatige functie opgeslagen en gelogd. Geen operationele rechten gewijzigd.';
   state.demo=false;
