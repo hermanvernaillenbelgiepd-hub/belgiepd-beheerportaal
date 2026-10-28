@@ -46,3 +46,15 @@ test('new independent proof never writes data, accesses secured APIs or changes 
  const html=readFileSync(new URL('organogram-test.html',root),'utf8');
  assert.ok(html.includes('organogram-police-formal.js'), 'existing TEST organogram remains present');
 });
+
+test('subtle positioning changes only the silver preview textile plates',()=>{
+ const name=page.match(/\.nameplate\{left:([\d.]+)%;top:([\d.]+)%;width:([\d.]+)%/);
+ const grade=page.match(/\.gradeplate\{left:([\d.]+)%;top:([\d.]+)%;width:([\d.]+)%/);
+ assert.ok(name&&grade,'both badge positions are explicit');
+ assert.deepEqual(name.slice(1).map(Number),[10.25,56.2,27.75]);
+ assert.deepEqual(grade.slice(1).map(Number),[62.3,56.75,26.6]);
+ // No coat resizing and no changes to personnel or rank logic.
+ assert.match(page,/\.coat\{display:block;width:100%;height:100%;object-fit:contain\}/);
+ assert.match(page,/function grade\(call\)/);
+ assert.match(page,/person-call'\)\.textContent='BELGIEPD - '\+call/);
+});
