@@ -14,7 +14,7 @@ const student={dept:'politie',call:'700',name:'Hoofdinspecteur motard',
 function node(tag,cls='',label=''){
  return {tag,cls,label,children:[],
   append(...xs){this.children.push(...xs)},
-  setAttribute(key,value){this[key]=value}};
+  setAttribute(key,value){this[key]=value},addEventListener(){}};
 }
 function mockBranch(branch){
  const start=source.indexOf('function specialtyBranch(');
@@ -33,8 +33,8 @@ function mockBranch(branch){
 const flatten=n=>[n,...(n.children||[]).flatMap(flatten)];
 test('specializations are a child of police middle-cadre in service-only view',()=>{
  assert.match(html,/solo&&settings\.id==='politie'&&level\.label==='Middenkader'/);
- assert.match(html,/block\.append\(middleCadreLayout\(level\.members\)\)/);
- assert.match(html,/block\.append\(policeInterventions\(item\.branches\)\)/);
+ assert.match(html,/levelBody\.append\(middleCadreLayout\(level\.members\)\)/);
+ assert.match(html,/levelBody\.append\(policeInterventions\(item\.branches\)\)/);
  assert.match(html,/if\(solo&&settings\.id!=='politie'\)/);
  assert.match(html,/police-intervention-group/);
  assert.match(html,/SPECIALISATIES · POLITIE/);
