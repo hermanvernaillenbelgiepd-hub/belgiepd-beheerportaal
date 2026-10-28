@@ -19,7 +19,7 @@ function node(tag,cls='',label=''){
 function mockBranch(branch){
  const start=source.indexOf('function specialtyBranch(');
  const end=source.indexOf('function filteredRows(',start);
- const sandbox={el:node,isTeacher:p=>p.teachingRoles?.includes('instructeur'),
+ const sandbox={el:node,state:{specialtyOpen:{}},isTeacher:p=>p.teachingRoles?.includes('instructeur'),
   isSpecialtyInstructor:(p,label)=>(p.instructorSpecialties||[]).includes(label),
   peopleList:(rows,rankOnly)=>{
    const group=node('list','persons',rankOnly?'members':'staff');
