@@ -37,6 +37,22 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .level:before{content:"";display:block;height:12px;border-left:2px solid #587a9b;margin:0 auto}
 .level-title{padding:7px 8px;border:1px solid #537392;background:#1d3958;border-radius:8px;font-size:11px;text-align:center;font-weight:850}
 .level-caption{color:#b6cde9;font-size:10px}
+/* Police middle cadre: 700 (left), 600 (right). 800 remains a distinct
+   higher-rank group above the columns when present. */
+.middle-cadre-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:9px 0 5px}
+.middle-cadre-lane{min-width:0;background:#0d2239;border:1px solid #3a6184;border-radius:9px;padding:8px}
+.middle-cadre-heading{font-size:11px;font-weight:850;margin:0 0 8px;color:#d8eaff;text-align:center;border-bottom:1px solid #3a5b7e;padding-bottom:7px}
+.middle-cadre-lane .persons{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:5px}
+.middle-cadre-lane .person{width:100%;max-width:none}
+.middle-cadre-lane .person[draggable=true]{cursor:grab;touch-action:pan-y}
+.middle-cadre-lane .person[draggable=true]:active{cursor:grabbing}
+.middle-cadre-lane .person.drag-moving{opacity:.55}
+.middle-cadre-lane .person.drop-target{outline:2px dashed #92c5ff;outline-offset:1px}
+.middle-cadre-extra{margin:8px 0;padding:8px;border-radius:9px;border:1px solid #506b8c;background:#102944}
+.middle-cadre-tips{color:#bad4ee;font-size:10px;margin:6px 0 4px}
+.middle-cadre-undo{background:#284b7c;border:1px solid #84b3ea;border-radius:7px;color:#edf7ff;padding:5px 9px;font-size:10px;cursor:pointer;margin:5px 0}
+@media(max-width:580px){.middle-cadre-columns{grid-template-columns:1fr}}
+
 .persons{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:6px}
 .person{border:1px solid #496884;border-radius:7px;background:#132841;color:#f2f8ff;padding:6px;min-width:0;max-width:100%;text-align:left;display:flex;align-items:center;gap:5px}
 .person:hover{border-color:#9ac3ef;background:#204361}.person b{font-size:10px;display:block;overflow:hidden;text-overflow:ellipsis}.person small{font-size:9px;color:#aac6e3;display:block}
@@ -149,7 +165,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 <script src="/assets/organogram-police-formal.js?v=unified-gold-navy-frame-20261028"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
-import {SERVICES,hierarchy,orderedMembers,isTeacher,specialtyNames} from '/assets/organogram-hierarchie-model.js';
+import {SERVICES,hierarchy,orderedMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,specialtyNames} from '/assets/organogram-hierarchie-model.js';
 const $=id=>document.getElementById(id);
 const fixtures=[
  {dept:'politie',name:'Voorbeeld Korpschef',call:'900',rank:'Eerste hoofdcommissaris'},
@@ -183,6 +199,7 @@ const fixtures=[
 ];
 const state={view:'alle',query:'',demo:true,live:[],board:[],loaded:false};
 let auth=null,authModule=null,adminPeople=[],adminSpecialties={},adminLeadership={},activeAdminPerson=null;
+let managerReady=false,dragPerson=null,dragSaving=false,lastMidBatchId=null;
 function el(tag,cls,text){
  const n=document.createElement(tag);
  if(cls)n.className=cls;
@@ -206,6 +223,111 @@ function person(p){
 }
 function peopleList(rows){
  const list=el('div','persons');for(const p of orderedMembers(rows))list.append(person(p));return list;
+}
+function canDragMiddle(p,series){
+ return managerReady&&!state.demo&&!state.query&&!dragSaving&&
+  state.view==='politie'&&p.dept==='politie'&&
+  /^\d{15,22}$/.test(String(p.personId||''))&&
+  policeMiddleSeries(p)===series;
+}
+function middleLane(series,label,rows){
+ const box=el('div','middle-cadre-lane');
+ const heading=el('div','middle-cadre-heading',label);
+ const list=el('div','persons');
+ list.dataset.middleSeries=series;
+ for(const p of orderedPoliceMiddle(rows)){
+  const card=person(p);
+  if(canDragMiddle(p,series)){
+   card.draggable=true;
+   card.dataset.personId=p.personId;
+   card.title='Sleep binnen '+label+' om de weergavevolgorde te wijzigen';
+   card.addEventListener('dragstart',event=>{
+    dragPerson={id:p.personId,series};
+    event.dataTransfer?.setData('text/plain',p.personId);
+    if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+    card.classList.add('drag-moving');
+   });
+   card.addEventListener('dragend',()=>{
+    dragPerson=null;card.classList.remove('drag-moving');
+    for(const child of list.querySelectorAll('.drop-target'))child.classList.remove('drop-target');
+   });
+   card.addEventListener('dragover',event=>{
+    if(!dragPerson||dragPerson.series!==series)return;
+    event.preventDefault();card.classList.add('drop-target');
+   });
+   card.addEventListener('dragleave',()=>card.classList.remove('drop-target'));
+  }
+  list.append(card);
+ }
+ list.addEventListener('dragover',event=>{
+  if(dragPerson?.series===series)event.preventDefault();
+ });
+ list.addEventListener('drop',async event=>{
+  if(!dragPerson||dragPerson.series!==series||dragSaving)return;
+  event.preventDefault();
+  const nodes=[...list.querySelectorAll('.person[data-person-id]')];
+  const ids=nodes.map(node=>node.dataset.personId);
+  const moved=dragPerson.id;
+  const oldIndex=ids.indexOf(moved);
+  if(oldIndex<0)return;
+  const target=event.target.closest('.person[data-person-id]');
+  const targetIndex=target?ids.indexOf(target.dataset.personId):ids.length-1;
+  if(targetIndex<0||targetIndex===oldIndex)return;
+  ids.splice(oldIndex,1);
+  ids.splice(targetIndex,0,moved);
+  if(ids.length<2)return;
+  const reason=$('manage-reason').value.trim();
+  if(reason.length<8||reason.length>300){
+   $('manage-status').textContent='Vul eerst bij ⚙ Handmatige functies een motivering van 8 tot 300 tekens in.';
+   return;
+  }
+  dragSaving=true;
+  $('manage-status').textContent='Nieuwe kolomvolgorde bewaren…';
+  try{
+   const result=await authFetch('/api/organogram/middenkader/order',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({series,personIds:ids,reason})});
+   lastMidBatchId=result.batchId;
+   state.demo=false;
+   await loadPublic();
+   $('manage-status').textContent='Volgorde opgeslagen. Via "Vorige kolomvolgorde herstellen" kun je deze verplaatsing ongedaan maken.';
+  }catch(error){$('manage-status').textContent='Niet verplaatst: '+error.message;}
+  finally{dragSaving=false;dragPerson=null;}
+ });
+ box.append(heading,list);
+ if(!rows.length)box.append(el('div','gaps','Geen leden in deze reeks'));
+ return box;
+}
+function middleCadreLayout(rows){
+ const columns=policeMiddleColumns(rows);
+ const wrap=el('div','middle-cadre');
+ if(columns['800'].length){
+  const upper=el('div','middle-cadre-extra');
+  upper.append(el('div','middle-cadre-heading','800-reeks · Eerste hoofdinspecteurs'));
+  upper.append(peopleList(columns['800']));
+  wrap.append(upper);
+ }
+ const grid=el('div','middle-cadre-columns');
+ grid.append(middleLane('700','700-reeks · Hoofdinspecteurs',columns['700']));
+ grid.append(middleLane('600','600-reeks · Aspirant-hoofdinspecteurs',columns['600']));
+ wrap.append(grid);
+ if(columns.other.length){
+  const other=el('div','middle-cadre-extra');
+  other.append(el('div','middle-cadre-heading','Overige handmatig toegewezen middenkaderleden'),
+   peopleList(columns.other));
+  wrap.append(other);
+ }
+ const msg=el('p','middle-cadre-tips',managerReady?
+  'Je kunt de kaarten binnen hun eigen reeks verslepen. Motivering onder ⚙ Handmatige functies verplicht.':
+  'Automatisch gesorteerd op roepnummer: 700, 710 … links; 600, 610 … rechts.');
+ wrap.append(msg);
+ if(managerReady&&lastMidBatchId){
+  const undo=el('button','middle-cadre-undo','↩ Vorige kolomvolgorde herstellen');
+  undo.type='button';
+  undo.addEventListener('click',undoLastMiddleDrag);
+  wrap.append(undo);
+ }
+ return wrap;
 }
 function serviceCard(item,settings,solo){
  const box=el('details','service');box.dataset.dept=settings.id;
@@ -231,7 +353,9 @@ function serviceCard(item,settings,solo){
  for(const level of item.leadership){
   const block=el('div','level');
   block.append(el('div','level-title',level.label));
-  if(level.members.length)block.append(peopleList(level.members));
+  if(solo&&settings.id==='politie'&&level.label==='Middenkader')
+   block.append(middleCadreLayout(level.members));
+  else if(level.members.length)block.append(peopleList(level.members));
   else block.append(el('div','gaps','Nog geen vrijgegeven registraties'));
   body.append(block);
  }
@@ -316,7 +440,9 @@ async function loadPublic(){
     call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
-    boardRole:p.boardRole||'none',leadershipTier:p.leadershipTier||'none',displayOrder:Number(p.displayOrder)||0,source:String(p.source||'personeelslijst').slice(0,35)}));
+    boardRole:p.boardRole||'none',leadershipTier:p.leadershipTier||'none',displayOrder:Number(p.displayOrder)||0,
+    personId:/^\d{15,22}$/.test(String(p.personId||''))?String(p.personId):null,
+    source:String(p.source||'personeelslijst').slice(0,35)}));
   state.board=Array.isArray(payload.board)?payload.board.slice(0,50):[];
   state.loaded=true;
   state.demo=false;
@@ -348,7 +474,7 @@ async function setupManagement(){
   setupPortalLogin({button:$('login'),auth,authModule,config,
    onError:e=>{$('manage-status').textContent='Aanmelden: '+e.message;}});
   authModule.onAuthStateChanged(auth,user=>{
-   if(!user){adminPeople=[];activeAdminPerson=null;$('manage').hidden=true;}
+   if(!user){adminPeople=[];activeAdminPerson=null;managerReady=false;lastMidBatchId=null;$('manage').hidden=true;}
    void loadPublic();
   });
  }catch(e){$('manage-status').textContent=e.message;}
@@ -394,13 +520,16 @@ async function authFetch(url,options={}){
  return data;
 }
 $('manage-toggle').addEventListener('click',async()=>{
- if(!$('manage').hidden){$('manage').hidden=true;return;}
+ if(!$('manage').hidden){$('manage').hidden=true;managerReady=false;render();return;}
  $('manage').hidden=false;
  $('manage-status').textContent='Geverifieerde beheerlijst laden…';
  try{
   const result=await authFetch('/api/organogram/placements/admin');
   if(result.displayOnly!==true)throw Error('Ongeldig antwoord');
   adminPeople=result.people||[];adminSpecialties=result.specialties||{};adminLeadership=result.leadershipLevels||{};
+  managerReady=true;
+  await loadLastMidOrder();render();
+  $('manage-status').textContent='Beheer actief. Voor verslepen: vul hieronder eerst een motivering in. Sleep daarna een middenkaderkaart binnen de eigen kolom.';
   const dropdown=$('manage-person');
   dropdown.replaceChildren(el('option','','Kies een personeelslid…'));
   for(let i=0;i<adminPeople.length;i++){
@@ -441,6 +570,30 @@ $('manage-save').addEventListener('click',async()=>{
  finally{save.disabled=false}
 });
 
+async function loadLastMidOrder(){
+ try{
+  const result=await authFetch('/api/organogram/middenkader/last-order');
+  lastMidBatchId=result.batch?.id||null;
+ }catch(_e){lastMidBatchId=null;}
+}
+async function undoLastMiddleDrag(){
+ if(!lastMidBatchId||dragSaving)return;
+ const reason=$('manage-reason').value.trim();
+ if(reason.length<8||reason.length>300){
+  $('manage-status').textContent='Vul eerst een motivering in om de vorige volgorde te herstellen.';
+  return;
+ }
+ if(!window.confirm('De laatste versleepactie en de vorige kolomvolgorde herstellen?'))return;
+ dragSaving=true;
+ try{
+  await authFetch('/api/organogram/middenkader/order/'+encodeURIComponent(lastMidBatchId)+'/undo',{
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason})});
+  await loadLastMidOrder();
+  await loadPublic();
+  $('manage-status').textContent='Vorige kolomvolgorde hersteld en gelogd.';
+ }catch(e){$('manage-status').textContent='Herstellen mislukt: '+e.message;}
+ finally{dragSaving=false;}
+}
 render();setupManagement();
 $('manage-undo').addEventListener('click',async()=>{
  const p=activeAdminPerson;if(!p?.undoAvailable)return;

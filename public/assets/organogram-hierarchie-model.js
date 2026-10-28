@@ -65,6 +65,32 @@ const rankWeight=(p)=>{
  };
  return scores[tier]??1;
 };
+// Police middle-cadre layout: the 700 and 600 series are independent
+// numerical lanes. The less common 800 series retains a dedicated group.
+// Visual manual order never changes anyone's actual police grade.
+export function policeMiddleSeries(person){
+ if(person?.dept!=='politie'||getTier(person)!=='Middenkader')return null;
+ const n=numeric(person.call);
+ if(n===null||n<600||n>=900)return null;
+ return String(Math.floor(n/100)*100);
+}
+export function orderedPoliceMiddle(rows){
+ return [...rows].sort((a,b)=>
+  ((a.displayOrder||0)!==(b.displayOrder||0)?
+    (a.displayOrder||1000)-(b.displayOrder||1000):0)||
+  (numeric(a.call)??9999)-(numeric(b.call)??9999)||
+  clean(a.name).localeCompare(clean(b.name),'nl'));
+}
+export function policeMiddleColumns(rows){
+ const columns={'600':[],'700':[],'800':[],other:[]};
+ for(const person of rows){
+  const series=policeMiddleSeries(person);
+  columns[series||'other'].push(person);
+ }
+ for(const key of ['600','700','800','other'])
+  columns[key]=orderedPoliceMiddle(columns[key]);
+ return columns;
+}
 export function isTeacher(p){
  // Explicit presentation metadata only; never interpret free-text names,
  // position/rank or specialty as proof of instructor status.
