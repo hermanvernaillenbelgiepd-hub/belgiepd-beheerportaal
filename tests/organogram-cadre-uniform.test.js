@@ -105,7 +105,7 @@ test('old gold canvas masks are removed; approved image is not recoloured',()=>{
  assert.doesNotMatch(css,/\.bpd-police-formal>\.bpd-shoulder-trim/);
  assert.match(css,/\.bpd-gold-stage>/);
  assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),
-  /approved-silver-no-cord-main-20261028/);
+  /soft-portrait-frames-20261028/);
 });
 
 test('uniform presentation does not confer or change service permissions',()=>{
