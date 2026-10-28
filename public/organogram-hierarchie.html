@@ -198,65 +198,77 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .police-specialty-detail .group-title.instructors{background:#54401d;border-color:#ac8740}
 .police-specialty-detail .group-title.members{background:#1a3856}
 
-/* Politiespecialisaties: groepeer leden telkens per twee, met een zichtbare
-   extra horizontale scheiding na elk duo. Op breed scherm drie duo's per rij. */
-#services .police-intervention-group .police-specialty-detail .persons.personnel-card-grid.specialty-paired-list{
- display:flex;
- flex-direction:row;
- flex-wrap:wrap;
- justify-content:center;
- align-items:stretch;
- align-content:flex-start;
- gap:10px 22px;
- width:100%;
- min-width:0;
- margin:7px auto 3px;
+/* Compact specialty section: instructors in their own slim row and
+   members in a real three-pair grid. Incomplete final rows stay aligned. */
+#services .police-specialty-detail .police-specialty-role-grid{
+ display:grid;grid-template-columns:minmax(0,1fr);row-gap:12px
 }
-#services .police-specialty-detail .specialty-paired-list>.specialty-person-pair{
- display:grid;
- grid-template-columns:repeat(2,minmax(0,1fr));
- gap:7px;
- flex:0 0 calc((100% - 44px)/3);
- width:calc((100% - 44px)/3);
- min-width:0;
- align-items:stretch;
+#services .police-specialty-detail .police-instructors-panel{
+ display:grid;grid-template-columns:165px minmax(0,1fr);
+ align-items:center;gap:12px;min-width:0;
+ padding:10px 11px;border:1px solid #765f32;border-left:3px solid #b38c45;
+ border-radius:8px;background:#182b3b
 }
-#services .police-specialty-detail .specialty-paired-list>.specialty-person-pair>.person{
- flex:none;
- width:100%;
- min-width:0;
- max-width:100%;
- height:100%;
+#services .police-specialty-detail .police-instructors-panel>.group-title.instructors{
+ margin:0;padding:3px 0;background:transparent;border:0;
+ font-size:10px;line-height:1.5;color:#ffdd9f;letter-spacing:.025em
 }
-#services .police-specialty-detail .specialty-paired-list>.specialty-person-pair>.person:only-child{
- grid-column:1 / -1;
- justify-self:center;
- width:calc((100% - 7px)/2);
+/* Instructor cards align immediately beside the title: no tall empty band. */
+#services .police-intervention-group .police-specialty-detail
+ .police-instructors-panel .persons.personnel-card-grid.specialty-paired-list{
+ display:flex;flex-wrap:wrap;flex-direction:row;align-items:stretch;
+ justify-content:flex-start;gap:8px;margin:0;width:100%;min-width:0
 }
-@container (max-width:1050px){
- #services .police-specialty-detail .specialty-paired-list>.specialty-person-pair{
-  flex-basis:calc((100% - 22px)/2);
-  width:calc((100% - 22px)/2);
+#services .police-specialty-detail .police-instructors-panel .specialty-person-pair{
+ display:flex;flex:0 1 auto;flex-wrap:wrap;gap:8px;align-items:stretch;
+ width:auto;min-width:0
+}
+#services .police-specialty-detail .police-instructors-panel .specialty-person-pair>.person{
+ flex:0 1 218px;width:218px;max-width:100%;height:auto;min-width:0
+}
+#services .police-specialty-detail .police-instructors-panel .police-instructor-sync-note{
+ margin:0;font-size:10px;line-height:1.5
+}
+#services .police-specialty-detail .police-members-panel{min-width:0}
+#services .police-intervention-group .police-specialty-detail
+ .police-members-panel .persons.personnel-card-grid.specialty-paired-list{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:10px 20px;align-items:stretch;justify-content:center;
+ width:100%;max-width:1380px;min-width:0;margin:2px auto 4px
+}
+#services .police-specialty-detail .police-members-panel .specialty-person-pair{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;min-width:0;align-items:stretch
+}
+#services .police-specialty-detail .police-members-panel .specialty-person-pair>.person{
+ display:flex;flex:none;width:100%;max-width:100%;min-width:0;
+ min-height:95px;height:100%
+}
+/* An odd last card stays on the left of its pair, not in a distant centre. */
+#services .police-specialty-detail .police-members-panel
+ .specialty-person-pair>.person:only-child{
+ grid-column:1;justify-self:stretch;width:100%
+}
+@container (max-width:1080px){
+ #services .police-intervention-group .police-specialty-detail
+  .police-members-panel .persons.personnel-card-grid.specialty-paired-list{
+  grid-template-columns:repeat(2,minmax(0,1fr))
  }
 }
-@container (max-width:675px){
- #services .police-specialty-detail .specialty-paired-list>.specialty-person-pair{
-  flex-basis:min(100%,444px);
-  width:min(100%,444px);
+@container (max-width:705px){
+ #services .police-intervention-group .police-specialty-detail
+  .police-members-panel .persons.personnel-card-grid.specialty-paired-list{
+  grid-template-columns:minmax(0,1fr);max-width:460px
+ }
+ #services .police-specialty-detail .police-instructors-panel{
+  grid-template-columns:minmax(0,1fr);gap:5px
  }
 }
-@container (max-width:360px){
- #services .police-specialty-detail .specialty-paired-list>.specialty-person-pair{
-  grid-template-columns:minmax(0,1fr);
-  max-width:218px;
- }
- #services .police-specialty-detail .specialty-paired-list>.specialty-person-pair>.person:only-child{
-  grid-column:auto;
-  width:100%;
+@container (max-width:355px){
+ #services .police-specialty-detail .police-members-panel .specialty-person-pair{
+  grid-template-columns:minmax(0,1fr)
  }
 }
-
-
 
 .police-intervention-group .specialty{margin:0}
 .police-intervention-group .group-title{display:block;padding:4px 7px;background:#1b3656;border-radius:5px}
@@ -1077,7 +1089,7 @@ function specialtyBranch(branch,isPolice,nested=false){
   // onterecht instructeur te worden in meerdere specialisaties.
   const motardHasInstructors=isPolice&&policeSpecialtyName(branch.label)==='MOTARD';
   if(hasInstructorSection&&(tutors.length||motardHasInstructors)){
-   const instructorColumn=el('section','police-specialty-role-column');
+   const instructorColumn=el('section','police-specialty-role-column police-instructors-panel');
    instructorColumn.append(el('div','group-title instructors','INSTRUCTEURS & DOCENTEN'));
    if(tutors.length)instructorColumn.append(
     specialtyPeopleList(tutors,false,branch.label));
@@ -1086,7 +1098,7 @@ function specialtyBranch(branch,isPolice,nested=false){
    columns.append(instructorColumn);
   }
   if(members.length){
-   const memberColumn=el('section','police-specialty-role-column');
+   const memberColumn=el('section','police-specialty-role-column police-members-panel');
    memberColumn.append(specialtyPeopleList(members,true,branch.label));
    columns.append(memberColumn);
   }
