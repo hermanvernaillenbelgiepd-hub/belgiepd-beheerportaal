@@ -116,3 +116,68 @@
 
 /* Silver embroidered rank badge centred inside the existing sewn frame.
    Nameplate and awarded distinctions keep their own prior geometry. */
+
+/* New approved gold formal dress coat from TEST, rendered at native 603:469.
+   No re-colouring, shoulder-mask, or stretched pixel artwork is applied.
+   Its name, 512x160 cloth grade and awarded distinctions remain dynamic. */
+.bpd-police-formal[data-uniform="gold"]>.bpd-gold-stage{
+ position:absolute;z-index:1;display:block;
+ width:115%;height:auto;aspect-ratio:603/469;
+ left:50%;top:50%;transform:translate(-50%,-50%);
+ pointer-events:none;overflow:visible;
+}
+.bpd-gold-stage>.bpd-gold-coat{
+ display:block;width:100%;height:100%;object-fit:contain;
+}
+.bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate{
+ position:absolute;left:21.2%;top:58.9%;width:20.1%;height:12.1%;
+ z-index:6;border:2px solid #a88946;border-radius:3px;
+ background:#0f192a;box-shadow:inset 0 0 0 1px #442f18,0 1px 2px #0006;
+ display:flex;flex-direction:column;justify-content:center;align-items:center;
+ padding:1%;overflow:hidden;box-sizing:border-box;
+}
+.bpd-gold-nameplate::before{
+ position:absolute;content:"";inset:7% auto 7% 3%;width:23%;
+ border-right:1px solid #b99344;
+ background:repeating-linear-gradient(115deg,transparent 0 5px,
+ #b99446 5px 7px,transparent 7px 10px);
+ opacity:.83;
+}
+.bpd-gold-nameplate>.bpd-gold-name,
+.bpd-gold-nameplate>.bpd-gold-call{
+ display:block;position:relative;width:73%;margin-left:25%;
+ text-align:center;color:#ffdf98;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ text-shadow:0 1px #000;
+ font-family:system-ui,Segoe UI,Arial,sans-serif;line-height:1.15;
+}
+.bpd-gold-nameplate>.bpd-gold-name{
+ font-weight:750;font-size:clamp(2px,.57vw,9px);
+ padding-bottom:2%;border-bottom:1px solid #ac8541;
+}
+.bpd-gold-nameplate>.bpd-gold-call{
+ font-size:clamp(2px,.41vw,6px);font-weight:650;padding-top:2%;
+}
+/* Preserve the real embroidered border and crowns with 'contain'—never
+   stretch the 512x160 rank fabric into the visual chest frame. */
+.bpd-gold-stage>.bpd-chest-insignia.bpd-gold-cloth-rank{
+ position:absolute;z-index:7;left:56.2%;top:58.9%;
+ width:19.5%;height:12.1%;display:block;
+ overflow:hidden;border:0;border-radius:1px;
+ background:#111b2b;box-shadow:none;
+}
+.bpd-gold-cloth-rank>.bpd-gold-grade-art{
+ display:block;width:100%;height:100%;object-fit:contain;
+ image-rendering:auto;
+}
+/* Reuse the real personnel-award components; only their gold-coat anchors
+   differ from the existing (unchanged) silver uniform geometry. */
+.bpd-gold-stage>.bpd-uniform-ribbons{
+ position:absolute;z-index:5;left:58%;top:53.6%;
+ width:17%;height:3%;display:flex;gap:2%;pointer-events:none;
+}
+.bpd-gold-stage>.bpd-uniform-medals{
+ position:absolute;z-index:5;left:56.5%;top:71.2%;
+ width:24%;height:19%;display:flex;justify-content:center;gap:4%;
+ pointer-events:none;
+}
