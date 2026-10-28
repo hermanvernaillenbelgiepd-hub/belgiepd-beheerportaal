@@ -298,7 +298,9 @@ async function setupManagement(){
  }catch(e){$('manage-status').textContent=e.message;}
 }
 function selectedAdmin(){
- return adminPeople[Number($('manage-person').value)]||null;
+ const value=$('manage-person').value;
+ if(value==='')return null;
+ return adminPeople[Number(value)]||null;
 }
 function fillAdminPerson(){
  const p=selectedAdmin();activeAdminPerson=p;
