@@ -4,13 +4,19 @@
 <style>.bpd-new-portrait{position:relative;isolation:isolate;aspect-ratio:603/469;width:100%;overflow:hidden;background:#102844;border:1px solid #40638b;border-radius:11px}
 .bpd-new-portrait>*{box-sizing:border-box}
 .bpd-new-coat{display:block;width:100%;height:100%;object-fit:contain}
-.bpd-new-nameplate,.bpd-new-rankplate{position:absolute;top:58.9%;height:12.1%;background:#0f192a;border:2px solid #a88946;border-radius:3px;box-shadow:inset 0 0 0 1px #442f18,0 1px 2px #0006}
-.bpd-new-nameplate{left:21.2%;width:20.1%;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:1%;overflow:hidden}
-.bpd-new-nameplate::before{position:absolute;content:"";inset:7% auto 7% 3%;width:23%;border-right:1px solid #b99344;background:repeating-linear-gradient(115deg,transparent 0 5px,#b99446 5px 7px,transparent 7px 10px);opacity:.83}
-.bpd-new-name,.bpd-new-call{display:block;position:relative;width:73%;margin-left:25%;text-align:center;color:#ffdf98;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px #000;font-size:clamp(5px,.88vw,11px)}
-.bpd-new-name{font-weight:750;padding-bottom:2%;border-bottom:1px solid #ac8541}
-.bpd-new-call{font-size:clamp(4px,.62vw,8px);padding-top:3%;font-weight:600}
-.bpd-new-rankplate{left:56.2%;width:19.5%;overflow:hidden;border:0;background:#111b2b;box-shadow:none}
+.bpd-new-nameplate,.bpd-new-rankplate{position:absolute}
+.bpd-new-nameplate{left:21.2%;top:60.2%;width:20.1%;aspect-ratio:1032/381;height:auto;container-type:inline-size;overflow:hidden;
+ background:#0c111d url('/assets/bpd-naamplaat-geweven-leeg-20261028.webp') center/100% 100% no-repeat;
+ border:0;border-radius:1px;box-shadow:0 0 0 .35px #8e9aa8;pointer-events:none}
+.bpd-new-nameplate::after{position:absolute;content:"";left:30%;width:60%;top:50%;height:1.15%;min-height:.6px;
+ background:#e3e5e6;box-shadow:0 0 1px #fff8;pointer-events:none}
+.bpd-new-name,.bpd-new-call{position:absolute;left:30%;width:60%;display:flex;align-items:center;justify-content:center;
+ text-align:center;color:#f3f4f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ font-family:system-ui,Segoe UI,Arial,sans-serif;line-height:1;font-weight:800;
+ text-shadow:0 0 .5px #f0f0f0,0 1px 1px #000;letter-spacing:.025em}
+.bpd-new-name{top:20%;height:25%;font-size:clamp(2px,10cqw,12px)}
+.bpd-new-call{top:57%;height:28%;font-size:clamp(2px,7.9cqw,9px);letter-spacing:0}
+.bpd-new-rankplate{left:56.2%;top:58.9%;height:12.1%;width:19.5%;overflow:hidden;border:0;background:#111b2b;box-shadow:none}
 .bpd-new-rankplate>img{width:100%;height:100%;object-fit:contain;display:block;image-rendering:auto}
 .bpd-new-awarded-medal{position:absolute;z-index:3;left:59.2%;top:71.2%;width:4.9%;height:19%;display:flex;flex-direction:column;align-items:center}
 .bpd-new-medal-ribbon{width:85%;height:54%;display:block;background:repeating-linear-gradient(90deg,#b5253e 0 23%,#12214c 23% 28%,#b5253e 28% 48%,#12214c 48% 53%);clip-path:polygon(0 0,100% 0,100% 90%,50% 100%,0 90%)}
@@ -23,7 +29,7 @@
 *{box-sizing:border-box}body{background:#09192c;color:#eaf4ff;font-family:system-ui,Segoe UI,Arial,sans-serif;margin:0;padding:22px}.wrap{max-width:1150px;margin:auto}h1{font-size:22px;margin:0 0 7px}.intro{font-size:13px;color:#abc5df;margin:0 0 18px;line-height:1.5}.tag{font-size:11px;display:inline-block;background:#365077;color:#e6f1ff;padding:3px 7px;border-radius:5px;margin-left:6px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.panel{border:1px solid #365476;border-radius:12px;background:#142742;overflow:hidden}.panel h2{font-size:14px;font-weight:750;margin:0;padding:12px 15px;background:#1c3757;border-bottom:1px solid #365476}.photo{padding:10px}.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 15px 15px}.controls label{display:flex;flex-direction:column;font-size:11px;color:#bcd3ef;gap:5px}.controls input,.controls select{font-size:13px;background:#0c1a2d;border:1px solid #507297;color:#fff;padding:8px;border-radius:5px;min-width:0}.controls .check{display:flex;flex-direction:row;align-items:center;gap:6px;grid-column:1/-1}.controls .check input{width:16px;height:16px}.note{margin-top:16px;border-top:1px solid #365476;padding:12px 0;font-size:12px;color:#a6bfdc;line-height:1.5}@media(max-width:800px){.grid{grid-template-columns:1fr}body{padding:12px}}
 </style></head><body><main class="wrap">
 <h1>Nieuwe gouden uniformen <span class="tag">TEST – visuele proef</span></h1>
-<p class="intro">De aangeleverde gouden vest is het uitgangspunt voor officierenkader en korpsleiding. De voorbeeldnaam, originele geborduurde BelgiumPD-gradenplaat en optionele onderscheidingen zijn afzonderlijke lagen. Deze proef wijzigt geen personeelsgegevens of rechten. De originele stoffen graadplaten komen uit lokale TEST-bestanden en wisselen automatisch bij elke graadkeuze.</p>
+<p class="intro">De aangeleverde gouden vest is het uitgangspunt voor officierenkader en korpsleiding. De nieuwe geweven naamplaat heeft de zilveren borduurlijnen van het aangeleverde voorbeeld en toont naam boven de streep en BELGIEPD - roepnummer eronder. De originele geborduurde BelgiumPD-gradenplaat en optionele onderscheidingen zijn afzonderlijke lagen. Deze proef wijzigt geen personeelsgegevens of rechten. De originele stoffen graadplaten komen uit lokale TEST-bestanden en wisselen automatisch bij elke graadkeuze.</p>
 <div class="grid">
  <section class="panel" data-card="officer"><h2>Officierenkader</h2><div class="photo"></div><div class="controls"><label>Naam<input name="name" value="Voorbeeld officier" maxlength="44"></label><label>Roepnummer<select name="call"><option value="920">920 – A-CP</option><option value="930">930 – A-CP</option></select></label><label class="check"><input type="checkbox" name="medal">Medaille tonen (proef)</label></div></section>
  <section class="panel" data-card="corps"><h2>Korpsleiding</h2><div class="photo"></div><div class="controls"><label>Naam<input name="name" value="Voorbeeld korpsleiding" maxlength="44"></label><label>Roepnummer<select name="call"><option value="900">900 – 1-HCP</option><option value="910">910 – 1-CP</option></select></label><label class="check"><input type="checkbox" name="medal">Medaille tonen (proef)</label></div></section>
@@ -56,7 +62,7 @@
   img.decoding='async';root.append(img);
   const left=document.createElement('div');left.className='bpd-new-nameplate';
   const name=document.createElement('span');name.className='bpd-new-name';
-  name.textContent=String(p.name||'VOORBEELD').slice(0,44);
+  name.textContent=String(p.name||'VOORBEELD').trim().slice(0,44).toLocaleUpperCase('nl');
   const badge=document.createElement('span');badge.className='bpd-new-call';badge.textContent='BELGIEPD - '+call;
   left.append(name,badge);root.append(left);
   const right=document.createElement('div');right.className='bpd-new-rankplate';
