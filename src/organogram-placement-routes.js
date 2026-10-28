@@ -1,5 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
+import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
+ from './organogram-mid-order-policy.js';
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
  validatePlacement,manualDisplay,verifiedSyncRoles,mergePlacement,canManagePlacements
 } from './organogram-placement-policy.js';
@@ -76,7 +78,10 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const override=manualDisplay(manual.get(key),p.dept);
     const synced=verifiedSyncRoles(roles.entries.get(p.personId),p.dept,process.env.DISCORD_GUILD_ID);
     const merged=mergePlacement(p,override,synced);
-    records.push(safePublic(merged));
+    // IDs are only returned to verified technical beheer for drag-and-drop.
+    // Other logged-in users receive exactly the same non-identifying fields.
+    records.push(canManagePlacements(_req.bpd)?
+     {...safePublic(merged),personId:p.personId}:safePublic(merged));
     if(merged.boardRole!=='none'){
      const old=boardById.get(p.personId);
      if(!old||merged.boardRole==='bestuur-ai')
@@ -198,6 +203,105 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       specialties:restored.specialties},reason,actorUid:req.bpd.uid,
      at:FieldValue.serverTimestamp()
     });
+   });
+   return res.json({restored:true,displayOnly:true,accessRightsChanged:false});
+  }catch(e){return respond(res,e)}
+ });
+
+ // Dragging is confined to the SAME 600/700/800 rank series, and never
+ // mutates the original callsign, police rank or operational permissions.
+ app.post('/api/organogram/middenkader/order',requireUser,manager,async(req,res)=>{
+  let payload;
+  try{payload=validMidOrder(req.body)}catch(e){return res.status(400).json({error:e.message})}
+  try{
+   const snapshot=await getSnapshot();
+   if(snapshot.stale)throw fault(409,'Personeelslijst is verouderd; probeer na synchronisatie opnieuw');
+   const rows=snapshot.data.filter(p=>p?.dept==='politie'&&idOK(p.personId)&&
+    callMiddleSeries(p.call)===payload.series);
+   const rosterIds=rows.map(p=>p.personId);
+   const expected=new Set(rosterIds);
+   if(expected.size!==rosterIds.length||expected.size!==payload.personIds.length||
+    payload.personIds.some(id=>!expected.has(id)))
+    throw fault(409,'De reeks is intussen gewijzigd. Vernieuw de pagina en probeer opnieuw');
+   const db=store(),refs=payload.personIds.map(id=>
+    db.collection(COLLECTION).doc(personKey('politie',id)));
+   const batchRef=db.collection(MID_ORDER_COLLECTION).doc();
+   await db.runTransaction(async tx=>{
+    const snapshots=await Promise.all(refs.map(ref=>tx.get(ref)));
+    const entries=[];
+    for(let i=0;i<refs.length;i++){
+     const before=snapshots[i],personId=payload.personIds[i];
+     const previous=before.exists?before.data():null;
+     entries.push({personId,previous,nextOrder:i+1});
+    }
+    for(let i=0;i<refs.length;i++){
+     const {personId,previous}=entries[i],ref=refs[i],displayOrder=i+1;
+     tx.set(ref,{...(previous||{}),dept:'politie',personId,
+      status:'active',displayOrder,lastReorderBatchId:batchRef.id,
+      updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid,displayOnly:true});
+     tx.create(ref.collection('audit').doc(),{
+      action:'middle_cadre_drag_order',previousOrder:previous?.displayOrder||0,
+      nextOrder:displayOrder,series:payload.series,reason:payload.reason,
+      batchId:batchRef.id,actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()
+     });
+    }
+    tx.create(batchRef,{status:'active',dept:'politie',series:payload.series,
+     entries,actorUid:req.bpd.uid,reason:payload.reason,
+     createdAt:FieldValue.serverTimestamp(),displayOnly:true});
+   });
+   return res.json({saved:true,batchId:batchRef.id,series:payload.series,
+    displayOnly:true,accessRightsChanged:false});
+  }catch(e){return respond(res,e)}
+ });
+ // Retrieve the most recent undoable drag operation for a technical manager,
+ // including after page refresh. Never expose IDs or history to ordinary staff.
+ app.get('/api/organogram/middenkader/last-order',requireUser,manager,async(req,res)=>{
+  try{
+   const snap=await store().collection(MID_ORDER_COLLECTION).limit(100).get();
+   const entries=snap.docs.filter(d=>d.get('status')==='active'&&
+    d.get('actorUid')===req.bpd.uid);
+   entries.sort((a,b)=>
+    (b.get('createdAt')?.toMillis?.()||0)-(a.get('createdAt')?.toMillis?.()||0));
+   const latest=entries[0];
+   return res.json({batch:latest?{id:latest.id,series:latest.get('series'),
+    count:(latest.get('entries')||[]).length}:null});
+  }catch(e){return respond(res,e)}
+ });
+ app.post('/api/organogram/middenkader/order/:batchId/undo',requireUser,manager,async(req,res)=>{
+  const batchId=String(req.params.batchId||'');
+  if(!/^[A-Za-z0-9]{15,40}$/.test(batchId))
+   return res.status(400).json({error:'Ongeldig herstelnummer'});
+  const reason=String(req.body?.reason||'').trim();
+  if(reason.length<8||reason.length>300)
+   return res.status(400).json({error:'Motivering van 8 tot 300 tekens verplicht'});
+  try{
+   const db=store(),ref=db.collection(MID_ORDER_COLLECTION).doc(batchId);
+   await db.runTransaction(async tx=>{
+    const batch=await tx.get(ref);
+    if(!batch.exists||batch.get('status')!=='active')
+     throw fault(409,'Deze verplaatsing is al hersteld of niet beschikbaar');
+    const entries=batch.get('entries')||[];
+    if(!entries.length||entries.length>100||entries.some(e=>!idOK(e.personId)))
+     throw fault(409,'Herstelgegevens zijn onvolledig');
+    const personRefs=entries.map(e=>db.collection(COLLECTION)
+     .doc(personKey('politie',e.personId)));
+    const current=await Promise.all(personRefs.map(r=>tx.get(r)));
+    for(const snap of current){
+     if(!snap.exists||snap.get('lastReorderBatchId')!==batchId)
+      throw fault(409,'Er zijn intussen nieuwe wijzigingen. Herstel eerst de recentste verplaatsing');
+    }
+    for(let i=0;i<entries.length;i++){
+     const {previous,personId}=entries[i],personRef=personRefs[i];
+     if(previous)tx.set(personRef,previous);
+     else tx.delete(personRef);
+     tx.create(personRef.collection('audit').doc(),{
+      action:'middle_cadre_drag_undo',batchId,personId,
+      restoredOrder:previous?.displayOrder||0,reason,
+      actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()
+     });
+    }
+    tx.update(ref,{status:'undone',undoneAt:FieldValue.serverTimestamp(),
+     undoneBy:req.bpd.uid,undoReason:reason});
    });
    return res.json({restored:true,displayOnly:true,accessRightsChanged:false});
   }catch(e){return respond(res,e)}
