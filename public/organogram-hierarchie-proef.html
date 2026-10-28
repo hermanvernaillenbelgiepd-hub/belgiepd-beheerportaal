@@ -55,6 +55,18 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .panel{margin-top:14px;padding:10px 13px;background:#10263f;border:1px solid #395a7b;border-radius:10px;color:#b7cfe8;min-height:42px}
 .footer{font-size:11px;color:#aabed6;margin-top:15px;max-width:950px}
 .hidden{display:none!important}
+.manager{border:1px solid #557da4;border-radius:11px;background:#152e4c;padding:13px;margin:12px 0}
+.manager h2{font-size:15px;margin:0 0 5px}.manager-note{font-size:11px;color:#c7d9ec;margin:3px 0 10px}
+.manager-grid{display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:9px}
+.manager label{display:block;font-weight:750;font-size:11px;margin:5px 0}
+.manager select,.manager textarea{width:100%;background:#0b1d31;color:#f0f7ff;border:1px solid #6689aa;border-radius:6px;padding:8px}
+.manager textarea{min-height:60px}
+.manager .checks{display:flex;flex-wrap:wrap;gap:7px;margin:7px 0}
+.manager .checks label{display:flex;align-items:center;gap:6px;border:1px solid #3c5977;padding:5px 8px;border-radius:5px;font-size:11px;font-weight:500}
+.manager .checks input{accent-color:#8abdf7}
+.manager button{background:#2d609c;color:white;border:1px solid #9ac3ef;padding:8px 13px;border-radius:7px}
+.manager button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:630px){.manager-grid{grid-template-columns:1fr}}
 @media(max-width:1250px){.service-grid{grid-template-columns:repeat(3,minmax(180px,1fr))}.fork{display:none}.service:before{display:none}}
 @media(max-width:760px){.service-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}.toolbar input{max-width:none}.level-title{font-size:10px}}
 @media(max-width:440px){.service-grid{grid-template-columns:1fr}.service-body{padding:4px 12px 13px}}
@@ -77,11 +89,35 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   <button type="button" data-view="depannage">Depannage</button>
   <button type="button" data-view="burger">Burger</button>
   <button type="button" id="demo-toggle" aria-pressed="true">Voorbeeldgegevens</button>
+  <button type="button" id="manage-toggle">⚙ Handmatige functies</button>
+  <button type="button" id="login">Aanmelden</button>
   <input type="search" id="search" placeholder="Zoek naam, rang of specialisatie" aria-label="Doorzoek organogram">
  </nav>
  <div id="source" class="notice warn">Voorbeeldgegevens laden …</div>
+ <section id="manage" class="manager" hidden aria-label="Handmatig organogrambeheer">
+  <h2>Handmatige functies · noodregeling</h2>
+  <p class="manager-note">Selecteer een bestaand personeelslid of een goedgekeurd bestuursaccount. Handmatige keuzes blijven in Firestore bewaard bij uitval van de Discord-sync. Dit geeft geen dossier- of beheersrechten.</p>
+  <div class="manager-grid">
+   <label>Persoon <select id="manage-person"><option value="">Kies personeelslid</option></select></label>
+   <label>Bestuursweergave <select id="manage-board">
+    <option value="none">Geen bestuursfunctie</option>
+    <option value="bestuur">Bestuur</option>
+    <option value="bestuur-ai">Bestuur ad interim</option>
+   </select></label>
+  </div>
+  <label>Opleidingsfuncties</label>
+  <div id="manage-roles" class="checks">
+   <label><input id="manage-instructor" type="checkbox"> Instructeur</label>
+   <label><input id="manage-teacher" type="checkbox"> Docent</label>
+  </div>
+  <label>Specialisaties (meerdere mogelijk)</label>
+  <div id="manage-specialties" class="checks"></div>
+  <label>Motivering voor logboek <textarea id="manage-reason" maxlength="300" placeholder="Waarom wordt deze functie handmatig ingesteld?"></textarea></label>
+  <button type="button" id="manage-save">Wijziging bewaren</button>
+  <p id="manage-status" class="manager-note" role="status">Alleen technisch beheer kan deze functies wijzigen.</p>
+ </section>
  <div class="board-wrap">
-  <div class="board"><strong>👑 BESTUUR</strong><small>Overkoepelende leiding over alle diensten</small><div class="gaps">Bestuursleden worden pas met geverifieerde functiegegevens ingevuld</div></div>
+  <div class="board"><strong>👑 BESTUUR</strong><small>Overkoepelende leiding over alle diensten</small><div class="gaps">Bestuursleden worden pas met geverifieerde functiegegevens ingevuld</div><div id="board-members" class="persons" aria-label="Bestuursleden"></div></div>
   <div class="trunk"></div><div class="fork"></div>
  </div>
  <div id="services" class="service-grid" aria-live="polite"></div>
@@ -113,7 +149,8 @@ const fixtures=[
  {dept:'burger',name:'Voorbeeld Burgerraad',call:'BUR-01',rank:'Burgerraad'},
  {dept:'burger',name:'Voorbeeld Burgerlid',call:'BUR-10',rank:'Burger',specialties:['Burgerproject']}
 ];
-const state={view:'alle',query:'',demo:true,live:[],loaded:false};
+const state={view:'alle',query:'',demo:true,live:[],board:[],loaded:false};
+let auth=null,authModule=null,adminPeople=[],adminSpecialties={},activeAdminPerson=null;
 function el(tag,cls,text){
  const n=document.createElement(tag);
  if(cls)n.className=cls;
@@ -176,6 +213,17 @@ function render(){
  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===state.view)));
  $('demo-toggle').setAttribute('aria-pressed',String(state.demo));
  $('services').replaceChildren();
+ $('board-members').replaceChildren();
+ if(!state.demo&&state.board.length){
+  for(const item of state.board){
+   const chip=el('span','person');
+   chip.append(el('b','',item.name));
+   chip.append(el('small','',item.role==='bestuur-ai'?'Bestuur ad interim':'Bestuur'));
+   $('board-members').append(chip);
+  }
+ }else{
+  $('board-members').append(el('span','gaps',state.demo?'Fictief voorbeeld: geen echte bestuursnamen': 'Nog geen bestuursleden met een geverifieerde of handmatig geregistreerde functie'));
+ }
  const dataset=hierarchy(filteredRows());
  const solo=state.view!=='alle';
  for(let i=0;i<SERVICES.length;i++){
@@ -193,26 +241,137 @@ document.querySelector('.toolbar').addEventListener('click',event=>{
 $('search').addEventListener('input',event=>{state.query=event.target.value;render()});
 async function loadPublic(){
  try{
-  const response=await fetch('/api/dossiercentrum/public-roster',{cache:'no-store'});
+  const response=await fetch('/api/organogram/hierarchie',{cache:'no-store'});
   const payload=await response.json();
-  if(!response.ok||payload.public!==true||!Array.isArray(payload.rows))throw Error('Geen vrijgegeven openbare lijst');
-  const approved=new Set(['politie','brandweer','ambulance','depannage']);
-  state.live=payload.rows.filter(p=>p&&approved.has(p.dept)&&p.name)
-   .map(p=>({dept:p.dept,name:String(p.name).slice(0,90),call:String(p.call||'').slice(0,24),
-    rank:String(p.rank||'').slice(0,95),
-    // The public roster does NOT supply instructor roles or specialties.
-    // Never guess them from calls, ranks or names.
-    specialties:[],teachingRoles:[]}));
+  if(!response.ok||payload.readOnly!==true||!Array.isArray(payload.records))throw Error('Geen vrijgegeven organogramlijst');
+  const approved=new Set(['politie','brandweer','ambulance','depannage','burger']);
+  state.live=payload.records.filter(p=>p&&approved.has(p.dept)&&p.name)
+   .map(p=>({dept:p.dept,name:String(p.name).slice(0,90),
+    call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
+    specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
+    teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
+    boardRole:p.boardRole||'none'}));
+  state.board=Array.isArray(payload.board)?payload.board.slice(0,50):[];
   state.loaded=true;
-  $('source').className='notice';
-  $('source').textContent='TEST · FICTIEVE DEMONSTRATIE · Openbare personeelslijst beschikbaar. Kies "Voorbeeldgegevens" om om te schakelen. Instructeurs en specialisaties vereisen een vrijgegeven, geverifieerde bron.';
+  $('source').className='notice'+(payload.stale||!payload.syncAvailable?' warn':'');
+  $('source').textContent='TEST · '
+   +(state.demo?'FICTIEVE VOORBEELDEN · ':'')
+   +state.live.length+' geregistreerde dienstfuncties · '
+   +(payload.syncAvailable?'Discord-sync gecontroleerd.':'Discord-sync tijdelijk onvolledig; handmatige functies blijven behouden.')
+   +(payload.stale?' · Personeelsbron is mogelijk verouderd.':'');
  }catch(_error){
-  $('source').className='notice warn';
-  $('source').textContent='TEST · FICTIEVE DEMONSTRATIE · Geen openbare personeelsbron beschikbaar. Er worden geen werkelijke personen of functies verzonnen.';
+  try{
+   const fallback=await fetch('/api/dossiercentrum/public-roster',{cache:'no-store'});
+   const payload=await fallback.json();
+   if(!fallback.ok||payload.public!==true||!Array.isArray(payload.rows))throw Error();
+   const approved=new Set(['politie','brandweer','ambulance','depannage']);
+   state.live=payload.rows.filter(p=>p&&approved.has(p.dept)&&p.name)
+    .map(p=>({dept:p.dept,name:String(p.name).slice(0,90),
+     call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
+     specialties:[],teachingRoles:[]}));
+   state.board=[];
+   state.loaded=true;
+   $('source').className='notice warn';
+   $('source').textContent='TEST · Organogramfuncties tijdelijk onbereikbaar. Alleen openbare personeelsgegevens; geen aannames over instructeurs of Bestuur.';
+  }catch(_err){
+   $('source').className='notice warn';
+   $('source').textContent='TEST · Geen openbare personeelsbron beschikbaar. Er worden geen echte rollen verzonnen.';
+  }
  }
  render();
 }
-render();loadPublic();
+async function setupManagement(){
+ try{
+  const response=await fetch('/api/client-config',{cache:'no-store'});
+  const config=await response.json();
+  if(!response.ok||!config.enabled)throw Error('Aanmelding tijdelijk niet beschikbaar');
+  const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  const app=appModule.getApps()[0]||appModule.initializeApp(config.firebaseConfig);
+  auth=authModule.getAuth(app);
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:$('login'),auth,authModule,config,
+   onError:e=>{$('manage-status').textContent='Aanmelden: '+e.message;}});
+  authModule.onAuthStateChanged(auth,user=>{
+   if(!user){adminPeople=[];activeAdminPerson=null;$('manage').hidden=true;}
+  });
+ }catch(e){$('manage-status').textContent=e.message;}
+}
+function selectedAdmin(){
+ return adminPeople[Number($('manage-person').value)]||null;
+}
+function fillAdminPerson(){
+ const p=selectedAdmin();activeAdminPerson=p;
+ $('manage-specialties').replaceChildren();
+ if(!p)return;
+ const values=p.placement||{};
+ $('manage-board').value=values.boardRole||'none';
+ $('manage-instructor').checked=(values.teachingRoles||[]).includes('instructeur');
+ $('manage-teacher').checked=(values.teachingRoles||[]).includes('docent');
+ $('manage-instructor').disabled=p.dept==='bestuur';
+ $('manage-teacher').disabled=p.dept==='bestuur';
+ for(const specialty of adminSpecialties[p.dept]||[]){
+  const label=el('label');const input=el('input');input.type='checkbox';
+  input.value=specialty;input.checked=(values.specialties||[]).includes(specialty);
+  label.append(input,document.createTextNode(' '+specialty));$('manage-specialties').append(label);
+ }
+ $('manage-status').textContent=(values.boardRole||values.teachingRoles?.length||values.specialties?.length)
+  ?'Bestaande handmatige registratie geladen.':'Nog geen handmatige registratie. Automatische rollen kunnen daarnaast actief zijn.';
+}
+async function authFetch(url,options={}){
+ if(!auth?.currentUser)throw Error('Meld je eerst aan met je eigen portaalaccount');
+ const token=await auth.currentUser.getIdToken();
+ const response=await fetch(url,{...options,cache:'no-store',
+  headers:{...(options.headers||{}),Authorization:'Bearer '+token}});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'Geen toegang');
+ return data;
+}
+$('manage-toggle').addEventListener('click',async()=>{
+ if(!$('manage').hidden){$('manage').hidden=true;return;}
+ $('manage').hidden=false;
+ $('manage-status').textContent='Geverifieerde beheerlijst laden…';
+ try{
+  const result=await authFetch('/api/organogram/placements/admin');
+  if(result.displayOnly!==true)throw Error('Ongeldig antwoord');
+  adminPeople=result.people||[];adminSpecialties=result.specialties||{};
+  const dropdown=$('manage-person');
+  dropdown.replaceChildren(el('option','','Kies een personeelslid…'));
+  for(let i=0;i<adminPeople.length;i++){
+   const p=adminPeople[i];const option=el('option','',
+    (p.dept==='bestuur'?'BESTUUR (account)':p.dept.toUpperCase())+' · '+p.name+' · '+(p.call||p.personId));
+   option.value=String(i);dropdown.append(option);
+  }
+  dropdown.selectedIndex=0;activeAdminPerson=null;
+  $('manage-status').textContent=adminPeople.length+' bestaande registraties beschikbaar. Selecteer iemand en bewaar een handmatige weergavefunctie.';
+ }catch(e){$('manage-status').textContent='Beheer alleen na geldige technische aanmelding: '+e.message;}
+});
+$('manage-person').addEventListener('change',fillAdminPerson);
+$('manage-save').addEventListener('click',async()=>{
+ const p=activeAdminPerson;
+ if(!p){$('manage-status').textContent='Selecteer eerst een personeelslid.';return}
+ const save=$('manage-save');save.disabled=true;
+ try{
+  const boardRole=$('manage-board').value;
+  const teachingRoles=[
+   ...($('manage-instructor').checked?['instructeur']:[]),
+   ...($('manage-teacher').checked?['docent']:[])
+  ];
+  const specialties=[...$('manage-specialties').querySelectorAll('input:checked')].map(x=>x.value);
+  const reason=$('manage-reason').value.trim();
+  await authFetch('/api/organogram/placements/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.personId),
+   {method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({boardRole,teachingRoles,specialties,reason})});
+  p.placement={boardRole,teachingRoles,specialties};
+  $('manage-reason').value='';
+  $('manage-status').textContent='Handmatige functie opgeslagen en gelogd. Geen operationele rechten gewijzigd.';
+  state.demo=false;
+  await loadPublic();
+ }catch(e){$('manage-status').textContent='Niet opgeslagen: '+e.message;}
+ finally{save.disabled=false}
+});
+
+render();loadPublic();setupManagement();
 </script>
 </body>
 </html>
