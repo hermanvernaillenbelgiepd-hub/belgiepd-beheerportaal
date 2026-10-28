@@ -25,6 +25,7 @@ function ui(){
 function find(el,cls){return el.children.find(x=>x.className.includes(cls))}
 const SILVER='/assets/bpd-uniform-zilver-zonder-koord-nieuw-20261028.webp';
 const GOLD='/assets/bpd-gold-officer-corps-approved-20261028.webp';
+const OFFICER='/assets/bpd-officieren-marine-match-20261028.svg';
 
 test('approved cord-free TEST coat is copied byte-for-byte onto MAIN as a standalone WebP',()=>{
  const bytes=readFileSync(new URL('../public'+SILVER,import.meta.url));
@@ -66,7 +67,7 @@ test('promotions and demotions retain dynamically separate gold and silver image
  const p=ui();
  const chain=[
   ['700','hinp','silver',SILVER],
-  ['920','acp','gold',GOLD],
+  ['920','acp','gold',OFFICER],
   ['900','1hcp','gold',GOLD],
   ['600','ahinp','silver',SILVER],
   ['300','ainp','silver',SILVER]
@@ -113,5 +114,5 @@ test('exact approved silver coordinates and woven texture, no obsolete separate 
  assert.match(css,/\.bpd-silver-cloth-rank>\.bpd-silver-grade-art/);
  assert.doesNotMatch(css,/transform:translateY\(-6%\) scale\(1\.68\)/);
  assert.match(css,/\.bpd-gold-stage/);
- assert.match(html,/navy-matched-officers-20261028/);
+ assert.match(html,/navy-corrected-image-20261028/);
 });
