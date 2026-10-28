@@ -3,6 +3,12 @@
 export const COLLECTION='bpd_organogram_display_placements';
 export const DEPTS=Object.freeze(['politie','brandweer','ambulance','depannage','burger']);
 export const DISPLAY_DEPTS=Object.freeze(['bestuur',...DEPTS]);
+export const LEADERSHIP_LEVELS=Object.freeze({
+ bestuur:[],politie:['Korpsleiding','Officierenkader','Middenkader'],
+ brandweer:['Zoneleiding','Officieren','Middenkader'],
+ ambulance:['AZLS-leiding','Medische coördinatie'],
+ depannage:['Leiding / AWV'],burger:['Burgerraad']
+});
 export const SPECIALTIES=Object.freeze({
  bestuur:[],
  politie:['Motor','SIV/WPR','K9','RAGO','Dispatch','AE','Radio BM','Signalisatie','TO','Prioritair rijden','EHBO'],
@@ -16,9 +22,12 @@ const strip=v=>String(v??'').trim();
 export const personKey=(dept,id)=>DISPLAY_DEPTS.includes(dept)&&ID.test(String(id||''))?dept+'_'+id:null;
 export function validatePlacement(body,dept){
  if(!DISPLAY_DEPTS.includes(dept)||!body||typeof body!=='object'||Array.isArray(body)||
-    Object.keys(body).some(k=>!['boardRole','teachingRoles','specialties','reason'].includes(k)))
+    Object.keys(body).some(k=>!['boardRole','leadershipTier','teachingRoles','specialties','reason'].includes(k)))
    throw Error('Ongeldige organograminstelling');
  const boardRole=body.boardRole;
+ const leadershipTier=body.leadershipTier;
+ if(leadershipTier!=='none'&&!LEADERSHIP_LEVELS[dept]?.includes(leadershipTier))
+  throw Error('Kies uitsluitend een leidingniveau van deze dienst');
  if(dept==='bestuur'&&((body.teachingRoles||[]).length||(body.specialties||[]).length))throw Error('Bestuur heeft geen dienstspecialisaties');
  if(!['none','bestuur','bestuur-ai'].includes(boardRole))throw Error('Kies een geldige bestuursweergave');
  const teachingRoles=body.teachingRoles,specialties=body.specialties;
@@ -32,7 +41,7 @@ export function validatePlacement(body,dept){
    throw Error('Kies uitsluitend specialisaties van deze dienst');
  const reason=strip(body.reason);
  if(reason.length<8||reason.length>300)throw Error('Motivering van 8 tot 300 tekens verplicht');
- return {boardRole,teachingRoles:[...teachingRoles],specialties:[...specialties],reason};
+ return {boardRole,leadershipTier,teachingRoles:[...teachingRoles],specialties:[...specialties],reason};
 }
 export function manualDisplay(raw,dept){
  if(!raw||raw.status!=='active'||raw.dept!==dept)return null;
@@ -40,7 +49,8 @@ export function manualDisplay(raw,dept){
  const teachingRoles=Array.isArray(raw.teachingRoles)?[...new Set(raw.teachingRoles.filter(x=>['docent','instructeur'].includes(x)))]:[];
  const specialties=Array.isArray(raw.specialties)?
   [...new Set(raw.specialties.filter(x=>SPECIALTIES[dept]?.includes(x)))].slice(0,12):[];
- return {boardRole,teachingRoles,specialties};
+ const leadershipTier=LEADERSHIP_LEVELS[dept]?.includes(raw.leadershipTier)?raw.leadershipTier:'none';
+ return {boardRole,leadershipTier,teachingRoles,specialties};
 }
 const INSTRUCTORS=Object.freeze({
  politie:Object.freeze({
@@ -76,7 +86,7 @@ export function mergePlacement(person,manual,auto){
   manual.boardRole:auto?.boardRole||'none';
  return {dept:person.dept,name:strip(person.name).slice(0,90),
   call:strip(person.call).slice(0,24),rank:strip(person.rank).slice(0,95),
-  boardRole,teachingRoles:[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])],
+  boardRole,leadershipTier:manual?.leadershipTier||'none',teachingRoles:[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])],
   specialties:[...new Set([...(manual?.specialties||[]),...(auto?.specialties||[]),...specialtyValues])].slice(0,12),
   source:manual&&auto?.synced?'handmatig + Discord':manual?'handmatig':auto?.synced?'Discord':'personeelslijst'};
 }
