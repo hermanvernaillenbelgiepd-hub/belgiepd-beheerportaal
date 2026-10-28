@@ -11,12 +11,22 @@ export const LEADERSHIP_LEVELS=Object.freeze({
 });
 export const SPECIALTIES=Object.freeze({
  bestuur:[],
- politie:['Motor','SIV/WPR','K9','RAGO','Dispatch','AE','Radio BM','Signalisatie','TO','Prioritair rijden','EHBO'],
+ politie:['INTERVENTIEDIENST','RADIO/BM','SIGNALISATIE','MOTARD','SEMI ANONIEM',
+  'K9','RAGO','DISP','TO','AE','RECHERCHE'],
  brandweer:['Duiker','Ladderwagen','Logistiek','Signalisatie','RED team','Gevaarlijke stoffen','Bosbestrijding'],
  ambulance:['MIP','HELI','PIT','PIT-MOTOR','Medicatie','Basis TR'],
  depannage:['F.A.S.T','CRANE','Wegenwerken','LSRA','Signalisatie'],
  burger:['Burgerproject','Burger IO']
 });
+// Historic manual labels remain readable but are not offered for new assignments.
+// The display model maps them to the new stable BelgiumPD police branches.
+const LEGACY_POLICE_SPECIALTIES=Object.freeze([
+ 'Motor','SIV/WPR','Dispatch','Radio BM','Signalisatie',
+ 'Motard','Semi-anoniem','Semi-anonieme','K-9','Lokale Recherche',
+ 'Prioritair rijden','EHBO'
+]);
+const validStoredSpecialty=(dept,label)=>SPECIALTIES[dept]?.includes(label)||
+ (dept==='politie'&&LEGACY_POLICE_SPECIALTIES.includes(label));
 const ID=/^\d{15,22}$/;
 const strip=v=>String(v??'').trim();
 export const personKey=(dept,id)=>DISPLAY_DEPTS.includes(dept)&&ID.test(String(id||''))?dept+'_'+id:null;
@@ -48,15 +58,15 @@ export function manualDisplay(raw,dept){
  const boardRole=['bestuur','bestuur-ai'].includes(raw.boardRole)?raw.boardRole:'none';
  const teachingRoles=Array.isArray(raw.teachingRoles)?[...new Set(raw.teachingRoles.filter(x=>['docent','instructeur'].includes(x)))]:[];
  const specialties=Array.isArray(raw.specialties)?
-  [...new Set(raw.specialties.filter(x=>SPECIALTIES[dept]?.includes(x)))].slice(0,12):[];
+  [...new Set(raw.specialties.filter(x=>validStoredSpecialty(dept,x)))].slice(0,12):[];
  const leadershipTier=LEADERSHIP_LEVELS[dept]?.includes(raw.leadershipTier)?raw.leadershipTier:'none';
  return {boardRole,leadershipTier,teachingRoles,specialties};
 }
 const INSTRUCTORS=Object.freeze({
  politie:Object.freeze({
-  '1359656762289946755':'Motor','1345302115689431061':'K9',
+  '1359656762289946755':'MOTARD','1345302115689431061':'K9',
   '1393050551188721865':'RAGO','1337156006597103746':'AE',
-  '1393050971604516904':'Dispatch'}),
+  '1393050971604516904':'DISP'}),
  brandweer:Object.freeze({'1309532437952466989':'Basis TR'}),
  ambulance:Object.freeze({'1309532437952466988':'MIP'}),
  depannage:Object.freeze({}),burger:Object.freeze({})
@@ -81,7 +91,7 @@ export function mergePlacement(person,manual,auto){
  const specialtyValues=Array.isArray(person.specialties)?
   person.specialties.filter(x=>x&&typeof x.label==='string'&&
    /^(ja|behaald|voltooid|geslaagd|true)$/i.test(strip(x.value))&&
-   SPECIALTIES[person.dept]?.includes(x.label)).map(x=>x.label):[];
+   validStoredSpecialty(person.dept,x.label)).map(x=>x.label):[];
  const boardRole=manual?.boardRole&&manual.boardRole!=='none'?
   manual.boardRole:auto?.boardRole||'none';
  return {dept:person.dept,name:strip(person.name).slice(0,90),
