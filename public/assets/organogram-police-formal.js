@@ -3,7 +3,7 @@
  'use strict';
  const BASE='/assets/organogram-police-formal.webp';
  // Approved silver base shared by middle, basic and agent cadres.
- const SILVER_BASE='/assets/bpd-uniform-zilver-dynamisch-20261028.webp';
+ const SILVER_BASE='/assets/bpd-uniform-zilver-hd-20261028.webp';
  const ranks=[
   {key:'1hcp',label:'Eerste hoofdcommissaris',abbr:'1-HCP',kind:'crown',count:3,line:true},
   {key:'1cp',label:'Eerste commissaris',abbr:'1-CP',kind:'crown',count:2,line:true},
