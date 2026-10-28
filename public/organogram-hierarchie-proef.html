@@ -183,28 +183,6 @@ function person(p){
 function peopleList(rows){
  const list=el('div','persons');for(const p of orderedMembers(rows))list.append(person(p));return list;
 }
-function specialtyBranch(branch,isPolice,nested=false){
- const card=el('details','specialty'+(nested?' specialty-nested':
-  branch.children?.length?' specialty-parent':''));
- const total=[...new Set([...(branch.members||[]),
-  ...(branch.children||[]).flatMap(child=>child.members||[])])].length;
- card.open=isPolice?(branch.label==='INTERVENTIEDIENST'||nested):
-  branch.members?.length<=4;
- const title=el('summary');
- title.append(document.createTextNode(branch.label));
- title.append(el('span','specialty-branch-count',' · '+total));
- card.append(title);
- const content=el('div','specialty-content');
- const tutors=(branch.members||[]).filter(isTeacher);
- const members=(branch.members||[]).filter(p=>!isTeacher(p));
- if(tutors.length)content.append(el('div','group-title','Docenten / instructeurs'),peopleList(tutors));
- if(members.length)content.append(el('div','group-title','Leden in rangvolgorde'),peopleList(members));
- for(const child of branch.children||[])content.append(specialtyBranch(child,isPolice,true));
- if(!tutors.length&&!members.length&&!branch.children?.length)
-  content.append(el('div','gaps','Nog geen geregistreerde leden'));
- card.append(content);
- return card;
-}
 function serviceCard(item,settings,solo){
  const box=el('details','service');box.dataset.dept=settings.id;
  box.open=true;
@@ -246,6 +224,27 @@ function serviceCard(item,settings,solo){
  }
  box.append(body);
  return box;
+}
+function specialtyBranch(branch,isPolice,nested=false){
+ const card=el('details','specialty'+(nested?' specialty-nested':
+  branch.children?.length?' specialty-parent':''));
+ const total=[...new Set([...(branch.members||[]),
+  ...(branch.children||[]).flatMap(child=>child.members||[])])].length;
+ card.open=isPolice?(branch.label==='INTERVENTIEDIENST'||nested):
+  branch.members?.length<=4;
+ const title=el('summary','',branch.label);
+ title.append(el('span','specialty-branch-count',' · '+total));
+ card.append(title);
+ const content=el('div','specialty-content');
+ const tutors=(branch.members||[]).filter(isTeacher);
+ const members=(branch.members||[]).filter(p=>!isTeacher(p));
+ if(tutors.length)content.append(el('div','group-title','Docenten / instructeurs'),peopleList(tutors));
+ if(members.length)content.append(el('div','group-title','Leden in rangvolgorde'),peopleList(members));
+ for(const child of branch.children||[])content.append(specialtyBranch(child,isPolice,true));
+ if(!tutors.length&&!members.length&&!branch.children?.length)
+  content.append(el('div','gaps','Nog geen geregistreerde leden'));
+ card.append(content);
+ return card;
 }
 function filteredRows(){
  const rows=state.demo?fixtures:state.live;
