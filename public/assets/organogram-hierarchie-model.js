@@ -178,12 +178,15 @@ export function policeSpecializationBranches(rows){
    }
   }
  }
+ // Interventiedienst is a full specialization alongside the others.
+ // RADIO/BM is a qualification within it, not an extra nested card.
+ // If someone has BOTH assignments, display them only once per list.
  const branches=POLICE_BRANCH_ORDER.map(label=>({
   label,
-  members:orderedMembers(groups.get(label)||[]),
-  ...(label==='INTERVENTIEDIENST'?{
-   children:[{label:'RADIO/BM',members:orderedMembers(groups.get('RADIO/BM')||[])}]
-  }:{})
+  members:orderedMembers(label==='INTERVENTIEDIENST'?
+   [...new Set([...(groups.get(label)||[]),...(groups.get('RADIO/BM')||[])])]:
+   groups.get(label)||[]),
+  ...(label==='INTERVENTIEDIENST'?{note:'RADIO/BM inbegrepen'}:{})
  }));
  const additional=[...extra].sort(([a],[b])=>a.localeCompare(b,'nl'))
   .map(([label,members])=>({label,members:orderedMembers(members)}));
