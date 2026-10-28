@@ -55,18 +55,13 @@ test('the chest and separate grade badge use the genuine isolated embroidered as
   const person={dept:'politie',call};
   const expected='/assets/bpd-rank-'+grade+'-clean-20261027.webp';
   const portrait=p.makePortrait(person);
-  const holder=['900','910','920','930'].includes(call)?portrait.children[0]:portrait;
+  const holder=portrait.children[0];
   const chest=holder.children.find(x=>x.className.includes('bpd-chest-insignia'));
   assert.ok(chest,'chest rank on '+call);
-  if(holder===portrait){
-   const chestImage=chest.children[0].children[0];
-   assert.equal(chestImage.tag,'image');
-   assert.equal(chestImage.attrs.href,expected,'chest '+call);
-  }else{
-   assert.equal(chest.dataset.grade,grade);
-   assert.equal(chest.children[0].src,expected,'gold cloth rank '+call);
-   assert.equal(portrait.children[0].children[0].src,p.asset);
-  }
+  assert.equal(chest.dataset.grade,grade);
+  assert.equal(chest.children[0].src,expected,'cloth rank '+call);
+  assert.equal(portrait.children[0].children[0].src,
+   portrait.dataset.uniform==='gold'?p.asset:p.silverAsset);
   const badge=p.makeBadge(person);
   assert.equal(badge.children[0].children[0].attrs.href,expected,'badge '+call);
  }
@@ -83,16 +78,21 @@ test('ribbons, rank plate and medals are independent layers without shoulder mas
  ]};
  const out=p.makePortrait(person,true);
  assert.equal(out.dataset.trim,'silver-none');
- assert.deepEqual([...out.children].map(x=>x.className),[
-  '', 'bpd-personal-nameplate', 'bpd-uniform-ribbons',
-  'bpd-chest-insignia bpd-vector-rank', 'bpd-uniform-medals'
+ assert.equal(out.children.length,1);
+ assert.equal(out.children[0].className,'bpd-silver-stage');
+ assert.deepEqual([...out.children[0].children].map(x=>x.className),[
+  'bpd-silver-coat', 'bpd-personal-nameplate bpd-silver-woven-nameplate',
+  'bpd-uniform-ribbons', 'bpd-chest-insignia bpd-silver-cloth-rank',
+  'bpd-uniform-medals'
  ]);
- assert.equal(out.children[2].children.length,4);
- assert.equal(out.children[4].children.length,3);
+ assert.equal(out.children[0].children[2].children.length,4);
+ assert.equal(out.children[0].children[4].children.length,3);
  const noAwards=p.makePortrait({dept:'politie',call:'300',awards:[]});
- assert.equal(noAwards.children.length,3);
- assert.match(noAwards.children[1].className,/bpd-personal-nameplate/);
- assert.match(noAwards.children[2].className,/bpd-chest-insignia/);
+ assert.equal(noAwards.children.length,1);
+ const stage=noAwards.children[0];
+ assert.equal(stage.children.length,3);
+ assert.match(stage.children[1].className,/bpd-silver-woven-nameplate/);
+ assert.match(stage.children[2].className,/bpd-silver-cloth-rank/);
 });
 
 test('old gold canvas masks are removed; approved image is not recoloured',()=>{
@@ -105,7 +105,7 @@ test('old gold canvas masks are removed; approved image is not recoloured',()=>{
  assert.doesNotMatch(css,/\.bpd-police-formal>\.bpd-shoulder-trim/);
  assert.match(css,/\.bpd-gold-stage>/);
  assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),
-  /woven-nameplate-main-20261028/);
+  /approved-silver-no-cord-main-20261028/);
 });
 
 test('uniform presentation does not confer or change service permissions',()=>{
