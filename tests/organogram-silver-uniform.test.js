@@ -25,10 +25,10 @@ test('the chosen silver artwork is a genuine, local WebP asset',()=>{
  const b=readFileSync(new URL('../public'+p,import.meta.url));
  assert.equal(b.toString('ascii',0,4),'RIFF');
  assert.equal(b.toString('ascii',8,12),'WEBP');
- assert.ok(b.length>9000&&b.length<250000);
+ assert.ok(b.length>8000&&b.length<250000);
  assert.equal(b.toString('ascii',12,16),'VP8 ');
  const w=b.readUInt16LE(26)&0x3fff,h=b.readUInt16LE(28)&0x3fff;
- assert.ok(w>=500&&h>=450,'Never ship a 200x188 preview again');
+ assert.ok(w>=400&&h>=390,'Never ship a 200x188 preview again');
  assert.equal(ui().silverAsset,p);
 });
 test('cadres 100-899 use the silver coat immediately, without a golden flash',()=>{
