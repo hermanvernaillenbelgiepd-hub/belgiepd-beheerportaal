@@ -165,7 +165,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 <script src="/assets/organogram-police-formal.js?v=unified-gold-navy-frame-20261028"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
-import {SERVICES,hierarchy,orderedMembers,policeMiddleColumns,orderedPoliceMiddle,isTeacher,specialtyNames} from '/assets/organogram-hierarchie-model.js';
+import {SERVICES,hierarchy,orderedMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,specialtyNames} from '/assets/organogram-hierarchie-model.js';
 const $=id=>document.getElementById(id);
 const fixtures=[
  {dept:'politie',name:'Voorbeeld Korpschef',call:'900',rank:'Eerste hoofdcommissaris'},
@@ -227,8 +227,8 @@ function peopleList(rows){
 function canDragMiddle(p,series){
  return managerReady&&!state.demo&&!state.query&&!dragSaving&&
   state.view==='politie'&&p.dept==='politie'&&
-  /^\\d{15,22}$/.test(String(p.personId||''))&&
-  String(Math.floor(Number(p.call)/100)*100)===series;
+  /^\d{15,22}$/.test(String(p.personId||''))&&
+  policeMiddleSeries(p)===series;
 }
 function middleLane(series,label,rows){
  const box=el('div','middle-cadre-lane');
@@ -353,7 +353,7 @@ function serviceCard(item,settings,solo){
  for(const level of item.leadership){
   const block=el('div','level');
   block.append(el('div','level-title',level.label));
-  if(level.members.length&&solo&&settings.id==='politie'&&level.label==='Middenkader')
+  if(solo&&settings.id==='politie'&&level.label==='Middenkader')
    block.append(middleCadreLayout(level.members));
   else if(level.members.length)block.append(peopleList(level.members));
   else block.append(el('div','gaps','Nog geen vrijgegeven registraties'));
@@ -529,6 +529,7 @@ $('manage-toggle').addEventListener('click',async()=>{
   adminPeople=result.people||[];adminSpecialties=result.specialties||{};adminLeadership=result.leadershipLevels||{};
   managerReady=true;
   await loadLastMidOrder();render();
+  $('manage-status').textContent='Beheer actief. Voor verslepen: vul hieronder eerst een motivering in. Sleep daarna een middenkaderkaart binnen de eigen kolom.';
   const dropdown=$('manage-person');
   dropdown.replaceChildren(el('option','','Kies een personeelslid…'));
   for(let i=0;i<adminPeople.length;i++){
