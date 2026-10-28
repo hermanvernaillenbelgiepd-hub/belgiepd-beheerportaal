@@ -65,5 +65,5 @@ test('same approved woven patch is used independently by gold and silver',()=>{
  assert.match(css,/top:57%;height:28%/); // gold
  assert.match(css,/left:10\.25%;top:56\.2%;width:27\.75%/); // silver
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(html,/approved-silver-no-cord-main-20261028/);
+ assert.match(html,/soft-portrait-frames-20261028/);
 });
