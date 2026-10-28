@@ -96,18 +96,28 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .police-intervention-content{min-width:0}
 .police-intervention-group .spec-heading{margin:0 0 7px}
 .police-intervention-group .spec-list{margin-top:11px}
-/* Responsive grid: all specialties are placed side by side without sideways scrolling. */
+/* Alle specialisaties blijven op EEN horizontale rij. Geen wrapping
+   naar een tweede rij; op smallere schermen horizontaal verschuifbaar. */
 .police-intervention-group .police-specialty-grid{
- display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;
- align-items:start;max-width:100%;min-width:0;margin-top:10px;padding:2px 0 9px;overflow:visible
+ display:flex;flex-wrap:nowrap;align-items:flex-start;gap:7px;
+ min-width:0;max-width:100%;margin-top:7px;padding:2px 1px 12px;
+ overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;
+ scrollbar-color:#6c9bcb #10243d;scroll-snap-type:x proximity;
+ overscroll-behavior-inline:contain
 }
 .police-intervention-group .police-specialty-grid>.specialty{
- width:100%;min-width:0;min-height:0;align-self:start
+ flex:0 0 117px;min-width:0;max-width:none;align-self:flex-start;
+ scroll-snap-align:start
 }
-@media(max-width:1180px){.police-intervention-group .police-specialty-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:900px){.police-intervention-group .police-specialty-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:650px){.police-intervention-group .police-specialty-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:430px){.police-intervention-group .police-specialty-grid{grid-template-columns:minmax(0,1fr)}}
+.police-intervention-group .police-specialty-grid>.specialty[open]{
+ flex-basis:min(485px,calc(100vw - 100px))
+}
+.police-specialty-scroll-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 0}
+.police-specialty-scroll-tools span{font-size:10px;color:#a9c6e6}
+.police-specialty-scroll-tools .scroll-buttons{display:flex;gap:5px;flex-shrink:0}
+.police-specialty-scroll-tools button{background:#214668;color:#e8f5ff;border:1px solid #628ab2;border-radius:6px;padding:3px 9px;font-size:12px}
+.police-specialty-scroll-tools button:hover{background:#32638d}
+.police-specialty-scroll-tools button:focus-visible{outline:2px solid #b1d6ff;outline-offset:2px}
 .police-specialty-grid>.specialty{min-width:0;margin:0;border:1px solid #52799b;border-radius:10px;background:#10243d}
 .police-specialty-grid>.specialty>summary{display:flex;align-items:center;justify-content:space-between;gap:7px;
   border-bottom:1px solid #416586;background:#204468;padding:10px 11px;font-weight:850;font-size:12px}
@@ -341,7 +351,19 @@ function policeInterventions(branches){
  body.append(el('p','police-service-intro',
   'Specialisaties naast elkaar: klik op een kaart om deze open of dicht te klappen. Instructeurs staan bovenaan, overige leden eronder (zonder dubbels).'));
  const specs=el('div','spec-list police-specialty-grid');
- specs.setAttribute('aria-label','Overzicht politiespecialisaties');
+ specs.setAttribute('aria-label','Alle politiespecialisaties op één horizontale rij');
+ const scrollTools=el('div','police-specialty-scroll-tools');
+ scrollTools.append(el('span','','Alle specialisaties staan op één rij'));
+ const buttons=el('div','scroll-buttons');
+ for(const [label,direction] of [['←',-1],['→',1]]){
+  const button=el('button','',label);button.type='button';
+  button.setAttribute('aria-label',direction<0?'Schuif naar vorige specialisaties':'Schuif naar volgende specialisaties');
+  button.addEventListener('click',()=>{
+   specs.scrollBy({left:direction*Math.max(270,Math.round(specs.clientWidth*.8)),behavior:'smooth'});
+  });
+  buttons.append(button);
+ }
+ scrollTools.append(buttons);body.append(scrollTools);
  for(const branch of branches)specs.append(specialtyBranch(branch,true));
  body.append(specs);section.append(body);
  return section;
