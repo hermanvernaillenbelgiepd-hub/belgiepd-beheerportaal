@@ -36,7 +36,7 @@ test('specializations are a child of police middle-cadre in service-only view',(
  assert.match(html,/block\.append\(policeInterventions\(item\.branches\)\)/);
  assert.match(html,/if\(solo&&settings\.id!=='politie'\)/);
  assert.match(html,/police-intervention-group/);
- assert.match(html,/INTERVENTIEDIENST & SPECIALISATIES/);
+ assert.match(html,/SPECIALISATIES · POLITIE/);
 });
 test('instructors appear in both instructor section and ALL members of that specialization',()=>{
  const branch=serviceHierarchy([instructor,student],'politie').branches.find(x=>x.label==='MOTARD');
@@ -46,8 +46,8 @@ test('instructors appear in both instructor section and ALL members of that spec
  const people=nodes.filter(n=>n.tag==='person');
  assert.equal(people.filter(p=>p.label==='Dezelfde instructeur').length,2);
  assert.equal(people.filter(p=>p.label==='Hoofdinspecteur motard').length,1);
- assert.equal(nodes.filter(n=>n.label==='Docenten / instructeurs').length,1);
- assert.equal(nodes.filter(n=>n.label==='Alle leden met deze specialisatie · rangvolgorde').length,1);
+ assert.equal(nodes.filter(n=>n.label==='INSTRUCTEURS & DOCENTEN').length,1);
+ assert.equal(nodes.filter(n=>n.label==='LEDEN · RANGVOLGORDE').length,1);
  const order=nodes.find(n=>n.tag==='list'&&n.label==='members');
  assert.deepEqual(order.children.map(x=>x.label),['Hoofdinspecteur motard','Dezelfde instructeur']);
 });
