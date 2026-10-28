@@ -12,7 +12,7 @@ test('only known service/person IDs and validated display fields can be assigned
  assert.equal(personKey('bestuur',ID),'bestuur_'+ID);
  assert.equal(personKey('unknown',ID),null);
  assert.equal(personKey('politie','Voorbeeld'),null);
- const value=validatePlacement({boardRole:'none',teachingRoles:['instructeur','docent'],
+ const value=validatePlacement({boardRole:'none',leadershipTier:'none',teachingRoles:['instructeur','docent'],
   specialties:['Motor','K9'],reason:'Tijdelijke handmatige synchronisatie.'},'politie');
  assert.deepEqual(value.teachingRoles,['instructeur','docent']);
  assert.throws(()=>validatePlacement({...value,specialties:['K9','K9']},'politie'));
@@ -20,9 +20,12 @@ test('only known service/person IDs and validated display fields can be assigned
  assert.throws(()=>validatePlacement({...value,role:'beheerder'},'politie'));
  assert.throws(()=>validatePlacement({...value,reason:'kort'},'politie'));
  assert.throws(()=>validatePlacement({...value,teachingRoles:['bestuur']},'politie'));
- assert.doesNotThrow(()=>validatePlacement({boardRole:'bestuur-ai',teachingRoles:[],
+ assert.throws(()=>validatePlacement({...value,leadershipTier:'AZLS-leiding'},'politie'));
+ assert.doesNotThrow(()=>validatePlacement({...value,leadershipTier:'Middenkader'},'politie'));
+
+ assert.doesNotThrow(()=>validatePlacement({boardRole:'bestuur-ai',leadershipTier:'none',teachingRoles:[],
   specialties:[],reason:'Handmatige bestuursweergave'},'bestuur'));
- assert.doesNotThrow(()=>validatePlacement({boardRole:'none',teachingRoles:[],
+ assert.doesNotThrow(()=>validatePlacement({boardRole:'none',leadershipTier:'none',teachingRoles:[],
   specialties:[],reason:'Functie ingetrokken'},'bestuur'));
  assert.throws(()=>validatePlacement({...value,teachingRoles:['docent']},'bestuur'));
 });
