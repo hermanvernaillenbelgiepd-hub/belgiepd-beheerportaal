@@ -1,6 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
-import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,personKey,
+import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
  validatePlacement,manualDisplay,verifiedSyncRoles,mergePlacement,canManagePlacements
 } from './organogram-placement-policy.js';
 
@@ -36,7 +36,7 @@ async function identityMap(db,ids,guild){
 const manualMap=docs=>new Map(docs.map(d=>[d.id,d.data()]));
 const safePublic=p=>({
  dept:p.dept,name:p.name,call:p.call,rank:p.rank,specialties:p.specialties,
- teachingRoles:p.teachingRoles,boardRole:p.boardRole,source:p.source
+ teachingRoles:p.teachingRoles,boardRole:p.boardRole,leadershipTier:p.leadershipTier,source:p.source
 });
 export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const store=()=>getFirestore();
@@ -106,7 +106,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     placement:manualDisplay(manual.get(personKey(p.dept,p.personId)),p.dept)
    }));
    return res.json({readOnly:false,displayOnly:true,people:[...accounts,...people],
-    specialties:SPECIALTIES,stale:snapshot.stale===true});
+    specialties:SPECIALTIES,leadershipLevels:LEADERSHIP_LEVELS,stale:snapshot.stale===true});
   }catch(e){return respond(res,e)}
  });
  app.put('/api/organogram/placements/:dept/:personId',requireUser,manager,async(req,res)=>{
@@ -129,16 +129,18 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    await db.runTransaction(async tx=>{
     const before=await tx.get(ref);
     const saved={dept,personId,status:'active',boardRole:values.boardRole,
+     leadershipTier:values.leadershipTier,
      teachingRoles:values.teachingRoles,specialties:values.specialties,
      updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid,displayOnly:true};
     tx.set(ref,saved);
     tx.create(ref.collection('audit').doc(),{
      action:'manual_display_assignment',previous:before.exists?{
       boardRole:before.get('boardRole')||'none',
+      leadershipTier:before.get('leadershipTier')||'none',
       teachingRoles:before.get('teachingRoles')||[],
       specialties:before.get('specialties')||[]
      }:null,next:{boardRole:values.boardRole,teachingRoles:values.teachingRoles,
-      specialties:values.specialties},reason:values.reason,
+      specialties:values.specialties,leadershipTier:values.leadershipTier},reason:values.reason,
      actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
    });
    syncCache.expires=0; // New manual override should take effect immediately.
