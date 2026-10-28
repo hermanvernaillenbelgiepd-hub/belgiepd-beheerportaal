@@ -80,7 +80,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 </header>
 <main>
  <h1>Organogram van BelgiumPD</h1>
- <p class="lead">Eén Bestuur boven alle diensten. Per dienst: eigen leiding, daarna specialisaties, met instructeurs/docenten vóór de leden en telkens in rangvolgorde. Een persoon kan in meerdere diensttakken voorkomen zonder duplicatie van het personeelsdossier.</p>
+ <p class="lead">Eén Bestuur boven alle diensten. In het algemene overzicht alleen de dienstleidingen; open één dienst voor specialisaties, instructeurs/docenten en leden in rangvolgorde. Een persoon kan in meerdere diensttakken voorkomen zonder duplicatie van het personeelsdossier.</p>
  <nav class="toolbar" aria-label="Organogramweergave">
   <button type="button" data-view="alle" aria-pressed="true">Alle diensten</button>
   <button type="button" data-view="politie">Politie</button>
@@ -178,10 +178,21 @@ function peopleList(rows){
 }
 function serviceCard(item,settings,solo){
  const box=el('details','service');box.dataset.dept=settings.id;
- box.open=solo||settings.id==='politie';
+ box.open=true;
  const summary=el('summary');summary.append(el('span','icon',settings.icon));
  const txt=el('span');txt.append(el('span','service-title',settings.name),el('span','count',item.count+' registraties'));
  summary.append(txt,el('span','chevron','›'));box.append(summary);
+ if(!solo){
+  // In the global chart, clicking a service navigates to its detailed view.
+  // Specializations are deliberately not rendered in the global DOM.
+  summary.title='Open '+settings.name+' met specialisaties';
+  summary.setAttribute('aria-label','Bekijk '+settings.name+' inclusief specialisaties');
+  summary.addEventListener('click',event=>{
+   event.preventDefault();
+   state.view=settings.id;
+   render();
+  });
+ }
  const body=el('div','service-body');
  if(settings.id==='burger'&&!state.demo&&!item.count){
   body.append(el('div','gaps','Burgerraad en burgers blijven onder Bestuur; er is momenteel geen openbare burgerlijst beschikbaar.'));
@@ -193,8 +204,9 @@ function serviceCard(item,settings,solo){
   else block.append(el('div','gaps','Nog geen vrijgegeven registraties'));
   body.append(block);
  }
- body.append(el('div','spec-heading','SPECIALISATIES / PLOEGEN'));
- const specs=el('div','spec-list');
+ if(solo){
+  body.append(el('div','spec-heading','SPECIALISATIES / PLOEGEN'));
+  const specs=el('div','spec-list');
  if(!item.branches.length)specs.append(el('div','gaps',state.demo?'Geen leden':'Geen vrijgegeven specialisaties of overige leden'));
  for(const branch of item.branches){
   const card=el('details','specialty');card.open=solo||item.branches.length<=4;
@@ -205,7 +217,9 @@ function serviceCard(item,settings,solo){
   if(members.length)content.append(el('div','group-title','Leden in rangvolgorde'),peopleList(members));
   card.append(content);specs.append(card);
  }
- body.append(specs);box.append(body);
+  body.append(specs);
+ }
+ box.append(body);
  return box;
 }
 function filteredRows(){
