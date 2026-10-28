@@ -82,10 +82,13 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const override=manualDisplay(manual.get(key),p.dept);
     const synced=verifiedSyncRoles(roles.entries.get(p.personId),p.dept,process.env.DISCORD_GUILD_ID);
     const merged=mergePlacement(p,override,synced);
-    // IDs are only returned to verified technical beheer for drag-and-drop.
-    // Other logged-in users receive exactly the same non-identifying fields.
+    // Reuse only the public police status already visible in the member
+    // personnel list. No leave history, dossier fields or sensitive data.
+    const display={...safePublic(merged),
+     status:p.dept==='politie'?String(p.status||'').trim().slice(0,30):''};
+    // IDs remain limited to verified technical beheer for drag-and-drop.
     records.push(canManagePlacements(_req.bpd)?
-     {...safePublic(merged),personId:p.personId}:safePublic(merged));
+     {...display,personId:p.personId}:display);
     if(merged.boardRole!=='none'){
      const old=boardById.get(p.personId);
      if(!old||merged.boardRole==='bestuur-ai')
