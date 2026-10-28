@@ -66,3 +66,12 @@ test('the new TEST page has no form to mutate personnel and distinguishes demo v
  assert.match(s,/teachingRoles:\[\]/);
  assert.doesNotMatch(s,/\bfetch\([^)]*method:\s*['"](?:POST|PUT|PATCH|DELETE)/);
 });
+
+test('handmatig leidingniveau beïnvloedt uitsluitend de gekozen diensttak',()=>{
+ assert.equal(getTier({dept:'politie',call:'450',rank:'Inspecteur',
+  leadershipTier:'Middenkader'}),'Middenkader');
+ assert.equal(getTier({dept:'ambulance',call:'VPK-01',rank:'Verpleegkundige',
+  leadershipTier:'Middenkader'}),'Zorgteams');
+ assert.equal(getTier({dept:'politie',call:'450',rank:'Inspecteur',
+  leadershipTier:'none'}),'Basiskader');
+});
