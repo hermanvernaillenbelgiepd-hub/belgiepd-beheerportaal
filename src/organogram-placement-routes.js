@@ -45,13 +45,18 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/organogram/hierarchie',async(_req,res)=>{
   try{
    const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(validRow).slice(0,1200);
-   const [manualSnap,usersSnap]=await Promise.all([
-    db.collection(COLLECTION).limit(1500).get(),
-    db.collection(USER_COLLECTION).where('status','==','approved').limit(500).get()
-   ]);
+   const manualSnap=await db.collection(COLLECTION).limit(1500).get();
    if(manualSnap.size>=1500)return res.status(503).json({error:'Organogramregisterlimiet bereikt'});
    const manual=manualMap(manualSnap.docs);
-   const byId=new Map(usersSnap.docs.map(d=>[d.id,d.data()]));
+   const boardOnly=manualSnap.docs.filter(d=>d.get('dept')==='bestuur'&&
+    d.get('status')==='active'&&['bestuur','bestuur-ai'].includes(d.get('boardRole')))
+    .map(d=>d.get('personId')).filter(idOK).slice(0,100);
+   const byId=new Map();
+   for(const ids of chunks(boardOnly,100)){
+    const accounts=await db.getAll(...ids.map(id=>db.collection(USER_COLLECTION).doc(id)));
+    for(const account of accounts)if(account.exists&&account.get('status')==='approved')
+     byId.set(account.id,account.data());
+   }
    const peopleIds=roster.map(p=>p.personId);
    const roles=await identityMap(db,peopleIds,process.env.DISCORD_GUILD_ID);
    const records=[],boardById=new Map();
