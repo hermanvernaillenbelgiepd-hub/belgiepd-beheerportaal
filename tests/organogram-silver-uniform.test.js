@@ -43,7 +43,8 @@ test('cadres 100-899 use the silver coat immediately, without a golden flash',()
  for(const call of ['900','910','920','930']){
   const p=system.makePortrait({dept:'politie',call,name:'Voorbeeld',awards:[]});
   assert.equal(p.dataset.uniform,'gold',call);
-  assert.equal(p.children[0].src,system.asset,call);
+  assert.equal(p.children[0].className,'bpd-gold-stage',call);
+  assert.equal(p.children[0].children[0].src,system.asset,call);
  }
 });
 test('promotion, demotion and name updates select the new uniform and real cloth plate',()=>{
@@ -58,12 +59,25 @@ test('promotion, demotion and name updates select the new uniform and real cloth
   const person={dept:'politie',call,name:'Nieuwe Naam',awards:[]};
   const p=system.makePortrait(person);
   assert.equal(p.dataset.uniform,uniform,call);
-  const plate=p.children.find(x=>x.className.includes('bpd-chest-insignia'));
-  assert.equal(plate.children[0].children[0].attrs.href,
-   '/assets/bpd-rank-'+grade+'-clean-20261027.webp',call);
-  const name=p.children.find(x=>x.className==='bpd-personal-nameplate');
-  const text=name.children[0].children.filter(x=>x.tag==='text').map(x=>x.textContent);
-  assert.deepEqual(text,['Nieuwe Naam','BELGIEPD - '+call]);
+  const gold=uniform==='gold',holder=gold?p.children[0]:p;
+  const plate=holder.children.find(x=>x.className.includes('bpd-chest-insignia'));
+  assert.ok(plate,call);
+  if(gold){
+   assert.equal(plate.dataset.grade,grade,call);
+   assert.equal(plate.children[0].src,'/assets/bpd-rank-'+grade+'-clean-20261027.webp',call);
+  }else{
+   assert.equal(plate.children[0].children[0].attrs.href,
+    '/assets/bpd-rank-'+grade+'-clean-20261027.webp',call);
+  }
+  const name=holder.children.find(x=>x.className.includes('bpd-personal-nameplate'));
+  assert.ok(name,call);
+  if(gold){
+   assert.equal(name.children[0].textContent,'Nieuwe Naam',call);
+   assert.equal(name.children[1].textContent,'BELGIEPD - '+call,call);
+  }else{
+   const labels=name.children[0].children.filter(x=>x.tag==='text').map(x=>x.textContent);
+   assert.deepEqual(labels,['Nieuwe Naam','BELGIEPD - '+call]);
+  }
  }
 });
 test('awards and medals remain independent of uniform choice',()=>{
@@ -74,8 +88,9 @@ test('awards and medals remain independent of uniform choice',()=>{
  ];
  for(const call of ['500','700','900']){
   const p=system.makePortrait({dept:'politie',call,name:'Test',awards});
-  assert.ok(p.children.some(x=>x.className==='bpd-uniform-ribbons'),call);
-  assert.ok(p.children.some(x=>x.className==='bpd-uniform-medals'),call);
+  const holder=p.dataset.uniform==='gold'?p.children[0]:p;
+  assert.ok(holder.children.some(x=>x.className==='bpd-uniform-ribbons'),call);
+  assert.ok(holder.children.some(x=>x.className==='bpd-uniform-medals'),call);
  }
 });
 test('new coordinates are limited to silver uniforms, preserving existing gold artwork',()=>{
@@ -85,7 +100,7 @@ test('new coordinates are limited to silver uniforms, preserving existing gold a
  assert.match(css,/\[data-uniform="silver"\]>\.bpd-chest-insignia/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-ribbons/);
  assert.match(decorationCss,/\[data-uniform="silver"\]>\.bpd-uniform-medals/);
- assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/silver-plates-centered-20261028/);
+ assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),/approved-gold-main-20261028/);
 });
 
 test('silver jacket zoom matches golden card heights without moving plates independently',()=>{
@@ -113,7 +128,7 @@ test('silver jacket zoom matches golden card heights without moving plates indep
  assert.match(decorations,/left:55.712%;top:48.096%;width:20.496%;height:4.704%/);
  assert.match(decorations,/left:55.88%;top:70.944%;width:26.544%;height:26.88%/);
  const page=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(page,/silver-plates-centered-20261028/);
+ assert.match(page,/approved-gold-main-20261028/);
 });
 
 test('silver rank panel is higher and nameplate shorter, with centred insets',()=>{

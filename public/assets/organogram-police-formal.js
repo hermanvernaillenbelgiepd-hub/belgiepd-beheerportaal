@@ -4,6 +4,9 @@
  const BASE='/assets/organogram-police-formal.webp';
  // Approved silver base shared by middle, basic and agent cadres.
  const SILVER_BASE='/assets/bpd-uniform-zilver-hd-20261028.webp';
+ // The user-approved gold uniform from the TEST preview, stored as its own
+ // image so that no canvas recolouring or shoulder masking touches the art.
+ const GOLD_BASE='/assets/bpd-gold-officer-corps-approved-20261028.webp';
  const ranks=[
   {key:'1hcp',label:'Eerste hoofdcommissaris',abbr:'1-HCP',kind:'crown',count:3,line:true},
   {key:'1cp',label:'Eerste commissaris',abbr:'1-CP',kind:'crown',count:2,line:true},
@@ -140,118 +143,8 @@
   if(grade?.key==='acp'||grade?.key==='cp')return 'gold-none';
   return 'silver-none';
  }
- const preparedUniforms=new Map();
- function preparedUniform(trim){
-  if(preparedUniforms.has(trim))return preparedUniforms.get(trim);
-  if(typeof Image==='undefined'||typeof document?.createElement!=='function')
-   return Promise.resolve(BASE);
-  const pending=new Promise(resolve=>{
-   const photo=new Image();
-   photo.onload=()=>{
-    try{
-     const canvas=document.createElement('canvas');
-     const w=photo.naturalWidth,h=photo.naturalHeight;
-     if(!w||!h||!canvas.getContext){resolve(BASE);return}
-     canvas.width=w;canvas.height=h;
-     const ctx=canvas.getContext('2d',{willReadFrequently:true});
-     if(!ctx){resolve(BASE);return}
-     ctx.drawImage(photo,0,0,w,h);
-     const pixels=ctx.getImageData(0,0,w,h),v=pixels.data;
-     // Paint out the fixed red-ribbon medal below the original rank
-     // using nearby navy cloth. The medal only reappears when awarded.
-     const x0=Math.floor(w*134/240),x1=Math.ceil(w*165/240),
-       y0=Math.floor(h*167/255),y1=Math.ceil(h*215/255);
-     for(let y=y0;y<y1;y++){
-      const sx=Math.min(w-1,Math.floor(w*183/240));
-      const si=(y*w+sx)*4;
-      const cloth=[v[si],v[si+1],v[si+2]];
-      for(let x=x0;x<x1;x++){
-       const p=(y*w+x)*4;
-       v[p]=cloth[0];v[p+1]=cloth[1];v[p+2]=cloth[2];
-      }
-     }
-     // The left nameplate is SILVER in all cadres, including Korpsleiding.
-     // Only its original ochre pixel accents are recoloured, not the coat.
-     for(let y=Math.floor(h*137/255);y<Math.ceil(h*172/255);y++){
-      for(let x=Math.floor(w*36/240);x<Math.ceil(w*97/240);x++){
-       const p=(y*w+x)*4,r=v[p],g=v[p+1],bb=v[p+2];
-       if(r>75&&g>55&&r>g*1.05&&g>bb*1.08){
-        const lum=Math.round(r*.30+g*.56+bb*.14);
-        v[p]=Math.min(255,lum+8);v[p+1]=Math.min(255,lum+15);
-        v[p+2]=Math.min(255,lum+24);
-       }
-      }
-     }
-     // Lower cadres use silver cord, collar, necklace and cuff details.
-     // Select yellow/gold pixels only; protect navy cloth, white shirt
-     // and burgundy tie from undesired desaturation.
-     if(trim==='silver-none')for(let i=0;i<v.length;i+=4){
-      const r=v[i],g=v[i+1],b=v[i+2];
-      if(r>90&&g>75&&r>g*1.04&&g>b*1.10&&r-b>31){
-       const light=Math.min(230,Math.round(r*.26+g*.54+b*.20+25));
-       v[i]=Math.min(255,light+7);
-       v[i+1]=Math.min(255,light+13);
-       v[i+2]=Math.min(255,light+21);
-      }
-     }
-     ctx.putImageData(pixels,0,0);
-     // The reference jacket ALREADY contains the correct broad golden
-     // epaulettes for Korpsleiding (900/910). Keep those original pixels;
-     // drawing a second trapezoid over them caused the doubled shoulder.
-     // For every other cadre, remove only the baked-in gold epaulettes.
-     // Use feathered sampling from adjacent navy cloth, not flat polygon
-     // fills: hard-edged solid fills previously looked like raised blocks.
-     if(trim!=='gold-thick'){
-      const scaleX=w/720,scaleY=h/765;
-      const cleanupPolygons=[
-       [[0,119],[75,103],[91,183],[42,190],[28,168],[22,141],[0,141]],
-       [[635,101],[719,120],[719,184],[643,195],[612,117]]
-      ];
-      const shape=document.createElement('canvas');
-      shape.width=w;shape.height=h;
-      const shapeCtx=shape.getContext('2d');
-      const feather=document.createElement('canvas');
-      feather.width=w;feather.height=h;
-      const featherCtx=feather.getContext('2d',{willReadFrequently:true});
-      if(shapeCtx&&featherCtx){
-       shapeCtx.fillStyle='#fff';
-       for(const pts of cleanupPolygons){
-        shapeCtx.beginPath();
-        pts.forEach(([x,y],i)=>i?shapeCtx.lineTo(x*scaleX,y*scaleY):
-         shapeCtx.moveTo(x*scaleX,y*scaleY));
-        shapeCtx.closePath();
-        shapeCtx.fill();
-       }
-       featherCtx.filter='blur('+Math.max(2,Math.round(w/120))+'px)';
-       featherCtx.drawImage(shape,0,0);
-       const alpha=featherCtx.getImageData(0,0,w,h).data;
-       const fabric=ctx.getImageData(0,0,w,h);
-       const original=new Uint8ClampedArray(fabric.data);
-       const leftSample=Math.min(w-1,Math.round(w*.18));
-       const rightSample=Math.min(w-1,Math.round(w*.82));
-       for(let y=0;y<h;y++){
-        for(let x=0;x<w;x++){
-         const p=(y*w+x)*4,a=alpha[p+3]/255;
-         if(a===0)continue;
-         const donor=(y*w+(x<w/2?leftSample:rightSample))*4;
-         for(let ch=0;ch<3;ch++)
-          fabric.data[p+ch]=Math.round(original[p+ch]*(1-a)+original[donor+ch]*a);
-        }
-       }
-       ctx.putImageData(fabric,0,0);
-      }
-     }
-     resolve(canvas.toDataURL('image/webp',.87));
-    }catch(_){resolve(BASE)}
-   };
-   photo.onerror=()=>resolve(BASE);
-   photo.src=BASE;
-  });
-  preparedUniforms.set(trim,pending);
-  return pending;
- }
- // No generated shoulderpieces: corps leadership keeps the original
- // gold epaulettes in BASE; all other cadres have plain jacket shoulders.
+ // Old canvas-only shoulder masking has been retired for the approved gold
+ // artwork. Cloth badges, name and awards remain separate dynamic layers.
  function nameplateData(person){
   const name=String(person?.name||'NAAM ONBEKEND').trim().slice(0,64)||'NAAM ONBEKEND';
   const call=String(person?.call||'—').trim().slice(0,24)||'—';
@@ -300,6 +193,22 @@
   plate.append(svg);
   return plate;
  }
+ function makeGoldNameplate(person){
+  const details=nameplateData(person);
+  const plate=document.createElement('span');
+  plate.className='bpd-personal-nameplate bpd-gold-nameplate';
+  plate.dataset.call=details.call;
+  plate.setAttribute('role','img');
+  plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
+  const first=document.createElement('span');
+  first.className='bpd-gold-name';
+  first.textContent=details.name;
+  const second=document.createElement('span');
+  second.className='bpd-gold-call';
+  second.textContent=details.bottom;
+  plate.append(first,second);
+  return plate;
+ }
  function makePortrait(person,large=false){
   if(person?.dept!=='politie')return null;
   const grade=gradeFor(person);
@@ -312,27 +221,53 @@
   outer.dataset.uniform=isSilver?'silver':'gold';
   outer.setAttribute('role','img');
   outer.setAttribute('aria-label','Belgisch geïnspireerd formeel politie-uniform'+(grade?' · '+grade.label:'')+' · sjabloon, geen persoonlijke foto');
+
+  if(!isSilver){
+   // Fit the approved 603:469 coat AS-IS; scale all dynamic panels together.
+   // This stage is purely visual and never modifies personnel records.
+   const stage=document.createElement('span');
+   stage.className='bpd-gold-stage';
+   const img=document.createElement('img');
+   img.className='bpd-gold-coat';
+   img.src=GOLD_BASE;
+   img.alt='';
+   img.loading=large?'eager':'lazy';
+   img.decoding='async';
+   img.draggable=false;
+   stage.append(img);
+   stage.append(makeGoldNameplate(person));
+   const rack=window.BPDDecorations?.uniformRack(person.awards);
+   if(rack?.ribbons)stage.append(rack.ribbons);
+   const chest=document.createElement('span');
+   chest.className='bpd-chest-insignia bpd-gold-cloth-rank';
+   chest.dataset.grade=grade?.key||'unknown';
+   chest.setAttribute('aria-label','Geborduurde gradenplaat: '+(grade?.label||'Onbekend'));
+   chest.setAttribute('role','img');
+   const patchImage=document.createElement('img');
+   patchImage.className='bpd-gold-grade-art';
+   patchImage.src=GRADE_ASSETS[grade?.key]||GRADE_ASSETS.acp;
+   patchImage.alt='';
+   patchImage.loading='eager';
+   patchImage.decoding='async';
+   chest.append(patchImage);
+   stage.append(chest);
+   if(rack?.medals)stage.append(rack.medals);
+   outer.append(stage);
+   return outer;
+  }
+
+  // Preserve the approved silver model, rank drawing and existing layout.
   const image=document.createElement('img');
-  image.src=isSilver?SILVER_BASE:BASE;
+  image.src=SILVER_BASE;
   image.alt='';
   image.loading=large?'eager':'lazy';
   image.decoding='async';
   image.draggable=false;
   outer.append(image);
-  // BelgiumPD nameplate is shared by real staff cards and the fictitious
-  // demo. Always derive both fields from the CURRENT public roster entry.
-  const currentNameplate=makeNameplate(person);
-  if(currentNameplate)outer.append(currentNameplate);
-  // All four cadres share the same jacket geometry and exact embroidered
-  // rank plates supplied earlier; none use synthetic stars or crowns.
-  // Silver jacket has native silver cord, buttons and collar insignia.
-  // No shoulder masks or recolouring; the gold jacket keeps legacy cleanup.
-  if(!isSilver)void preparedUniform(trim).then(src=>{if(src&&image.src!==src)image.src=src});
-  // Decorations are independent pieces; no large rectangular patch masks
-  // the uniform or its grade again.
+  const nameplate=makeNameplate(person);
+  if(nameplate)outer.append(nameplate);
   const rack=window.BPDDecorations?.uniformRack(person.awards);
   if(rack?.ribbons)outer.append(rack.ribbons);
-  // Replace the original 1-HCP chest insignia completely with a dynamic patch.
   const patch=document.createElement('span');
   patch.className='bpd-chest-insignia';
   patch.setAttribute('aria-hidden','true');
@@ -341,5 +276,5 @@
   if(rack?.medals)outer.append(rack.medals);
   return outer;
  }
- window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,makeNameplate,nameplateData,asset:BASE,silverAsset:SILVER_BASE});
+ window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,makeNameplate,nameplateData,asset:GOLD_BASE,legacyAsset:BASE,silverAsset:SILVER_BASE});
 })();

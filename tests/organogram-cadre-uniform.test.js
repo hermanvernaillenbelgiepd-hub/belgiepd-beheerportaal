@@ -55,11 +55,18 @@ test('the chest and separate grade badge use the genuine isolated embroidered as
   const person={dept:'politie',call};
   const expected='/assets/bpd-rank-'+grade+'-clean-20261027.webp';
   const portrait=p.makePortrait(person);
-  const chest=portrait.children.find(x=>x.className.includes('bpd-chest-insignia'));
+  const holder=['900','910','920','930'].includes(call)?portrait.children[0]:portrait;
+  const chest=holder.children.find(x=>x.className.includes('bpd-chest-insignia'));
   assert.ok(chest,'chest rank on '+call);
-  const chestImage=chest.children[0].children[0];
-  assert.equal(chestImage.tag,'image');
-  assert.equal(chestImage.attrs.href,expected,'chest '+call);
+  if(holder===portrait){
+   const chestImage=chest.children[0].children[0];
+   assert.equal(chestImage.tag,'image');
+   assert.equal(chestImage.attrs.href,expected,'chest '+call);
+  }else{
+   assert.equal(chest.dataset.grade,grade);
+   assert.equal(chest.children[0].src,expected,'gold cloth rank '+call);
+   assert.equal(portrait.children[0].children[0].src,p.asset);
+  }
   const badge=p.makeBadge(person);
   assert.equal(badge.children[0].children[0].attrs.href,expected,'badge '+call);
  }
@@ -88,18 +95,17 @@ test('ribbons, rank plate and medals are independent layers without shoulder mas
  assert.match(noAwards.children[2].className,/bpd-chest-insignia/);
 });
 
-test('no extra shoulder pieces or flat navy blocks; original corps epaulettes retained',()=>{
+test('old gold canvas masks are removed; approved image is not recoloured',()=>{
  const source=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
  const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
- assert.match(source,/if\(trim!=='gold-thick'\)/);
- assert.match(source,/cleanupPolygons/);
- assert.match(source,/const leftSample=/);
- assert.match(source,/featherCtx\.drawImage/);
- assert.doesNotMatch(source,/makeShoulderTrim/);
- assert.doesNotMatch(source,/ctx\.fillStyle='#1c3761'/);
+ assert.match(source,/const GOLD_BASE=/);
+ assert.match(source,/bpd-gold-stage/);
+ assert.doesNotMatch(source,/preparedUniform\(/);
+ assert.doesNotMatch(source,/cleanupPolygons/);
  assert.doesNotMatch(css,/\.bpd-police-formal>\.bpd-shoulder-trim/);
- const page=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(page,/real-rank-plates-four-cadres-20261027/);
+ assert.match(css,/\.bpd-gold-stage>/);
+ assert.match(readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8'),
+  /approved-gold-main-20261028/);
 });
 
 test('uniform presentation does not confer or change service permissions',()=>{

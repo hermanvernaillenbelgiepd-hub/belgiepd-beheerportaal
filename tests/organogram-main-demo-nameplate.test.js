@@ -33,7 +33,7 @@ test('MAIN uniform: name above a silver line, BELGIEPD and callsign below, no ne
  assert.equal(art.attrs.viewBox,'0 0 320 100');
  const labels=art.children.filter(x=>x.tag==='text').map(x=>x.textContent);
  assert.deepEqual(labels,['Thijs','BELGIEPD - 900']);
- assert.equal(art.children.filter(x=>x.tag==='line'&&x.attrs.y1==='50').length,1);
+ assert.equal(art.children.filter(x=>x.tag==='line'&&x.attrs.y1==='49').length,1);
 });
 test('all police portraits in real and demo views use the new silver nameplate',()=>{
  const ui=uniform();
@@ -63,7 +63,7 @@ test('MAIN page shows one nameplate on the uniform and no redundant detail previ
  assert.match(html,/makePortrait\(person,large\)/);
  assert.doesNotMatch(html,/bpd-nameplate-preview/);
  assert.doesNotMatch(html,/makeNameplate\(person,true\)/);
- assert.match(html,/uniform-graden-20261027/);
+ assert.match(html,/approved-gold-main-20261028/);
  assert.match(style,/\.bpd-personal-nameplate/);
  assert.match(style,/\.bpd-personal-nameplate>\.bpd-nameplate-vector/);
  assert.doesNotMatch(style,/\.bpd-nameplate-top\s*\{/);
