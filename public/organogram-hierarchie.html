@@ -410,7 +410,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 <script src="/assets/organogram-police-formal.js?v=unified-gold-navy-frame-20261028"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
-import {SERVICES,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
+import {SERVICES,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
 const $=id=>document.getElementById(id);
 const fixtures=[
  {dept:'politie',name:'Voorbeeld Korpschef',call:'900',rank:'Eerste hoofdcommissaris'},
@@ -460,6 +460,11 @@ function el(tag,cls,text){
  if(text!==undefined)n.textContent=text;
  return n;
 }
+// Alleen visuele presentatie: dit zijn kwalificaties zonder instructeurslijst.
+const POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS=new Set(['SIGNALISATIE','RADIO/BM','SEMI ANONIEM']);
+function supportsSpecialtyInstructors(label){
+ return !POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS.has(policeSpecialtyName(label));
+}
 function person(p,compact=false,specialtyLabel=null){
  const b=el('button','person'+(compact?' person-compact':''));b.type='button';
  b.append(el('span','num',p.call||'—'));
@@ -469,7 +474,8 @@ function person(p,compact=false,specialtyLabel=null){
  if(compact){
   const heading=el('span','person-heading');
   heading.append(el('b','',p.name));
-  const roles=specialtyLabel?specialtyInstructorRoles(p,specialtyLabel):
+  const roles=specialtyLabel?
+   (supportsSpecialtyInstructors(specialtyLabel)?specialtyInstructorRoles(p,specialtyLabel):[]):
    (Array.isArray(p.teachingRoles)?p.teachingRoles.map(x=>String(x).toLowerCase()):[]);
   if(roles.includes('instructeur'))heading.append(el('span','flag instructor','INSTRUCTEUR'));
   if(roles.includes('docent'))heading.append(el('span','flag teacher','DOCENT'));
@@ -506,7 +512,7 @@ function policeInterventions(branches){
  section.append(el('summary','','SPECIALISATIES · POLITIE'));
  const body=el('div','police-intervention-content');
  body.append(el('p','police-service-intro',
-  'Alle tien specialisaties zijn tegelijk zichtbaar op één rij. Klik op een knop om de instructeurs en leden eronder te bekijken.'));
+  'Alle tien specialisaties zijn tegelijk zichtbaar op één rij. Klik op een knop om de leden en, waar van toepassing, instructeurs te bekijken.'));
  const specs=el('div','spec-list police-specialty-grid');
  specs.setAttribute('role','group');
  specs.setAttribute('aria-label','Tien politiespecialisaties naast elkaar');
@@ -738,25 +744,29 @@ function specialtyBranch(branch,isPolice,nested=false){
  card.append(title);
  const content=el('div','specialty-content');
  if(isPolice&&branch.note)content.append(el('p','specialty-note',branch.note));
+ const hasInstructorSection=!isPolice||supportsSpecialtyInstructors(branch.label);
  const tutors=(branch.members||[]).filter(p=>
-  isPolice?isSpecialtyInstructor(p,branch.label):isTeacher(p));
- // Each person has exactly ONE visible placement in a specialization card:
- // instructor/docent on the left, or ordinary member on the right.
+  hasInstructorSection&&(isPolice?isSpecialtyInstructor(p,branch.label):isTeacher(p)));
+ // Signalisatie, RADIO/BM en Semi-anoniem: alleen leden in rangvolgorde.
+ // Iedereen blijft zichtbaar, ook als er ooit een instructeursrol is opgeslagen.
  const members=(branch.members||[]).filter(p=>
-  isPolice?!isSpecialtyInstructor(p,branch.label):!isTeacher(p));
+  !hasInstructorSection||(isPolice?!isSpecialtyInstructor(p,branch.label):!isTeacher(p)));
  if(isPolice){
   const columns=el('div','police-specialty-role-grid');
-  const instructorColumn=el('section','police-specialty-role-column');
-  instructorColumn.append(el('div','group-title instructors','INSTRUCTEURS & DOCENTEN'));
-  if(tutors.length)instructorColumn.append(
-   peopleList(tutors,false,true,branch.label));
-  else instructorColumn.append(el('div','gaps','Geen instructeurs geregistreerd'));
+  if(hasInstructorSection){
+   const instructorColumn=el('section','police-specialty-role-column');
+   instructorColumn.append(el('div','group-title instructors','INSTRUCTEURS & DOCENTEN'));
+   if(tutors.length)instructorColumn.append(
+    peopleList(tutors,false,true,branch.label));
+   else instructorColumn.append(el('div','gaps','Geen instructeurs geregistreerd'));
+   columns.append(instructorColumn);
+  }
   const memberColumn=el('section','police-specialty-role-column');
   memberColumn.append(el('div','group-title members','LEDEN · RANGVOLGORDE'));
   if(members.length)memberColumn.append(
    peopleList(members,true,true,branch.label));
   else memberColumn.append(el('div','gaps','Geen overige leden'));
-  columns.append(instructorColumn,memberColumn);
+  columns.append(memberColumn);
   content.append(columns);
  }else{
   if(tutors.length)content.append(
