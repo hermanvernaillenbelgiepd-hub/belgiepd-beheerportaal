@@ -16,6 +16,9 @@ const numeric=call=>{
 };
 export function getTier(p){
  const rank=lower(p?.rank),call=lower(p?.call),dept=p?.dept;
+ const deptSettings=SERVICES.find(s=>s.id===dept);
+ // Manually assigned placement changes only the visual tree, never rank/access.
+ if(deptSettings?.levels.includes(p?.leadershipTier))return p.leadershipTier;
  if(dept==='politie'){
   const n=numeric(p.call);
   if(n===900||n===910)return 'Korpsleiding';
