@@ -230,8 +230,7 @@ function specialtyBranch(branch,isPolice,nested=false){
   branch.children?.length?' specialty-parent':''));
  const total=[...new Set([...(branch.members||[]),
   ...(branch.children||[]).flatMap(child=>child.members||[])])].length;
- card.open=isPolice?(branch.label==='INTERVENTIEDIENST'||nested):
-  branch.members?.length<=4;
+ card.open=isPolice?(branch.label==='INTERVENTIEDIENST'||nested):true;
  const title=el('summary','',branch.label);
  title.append(el('span','specialty-branch-count',' · '+total));
  card.append(title);
