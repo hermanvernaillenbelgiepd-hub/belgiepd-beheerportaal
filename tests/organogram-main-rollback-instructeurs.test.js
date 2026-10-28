@@ -22,7 +22,7 @@ test('Main preserves approved uniforms and keeps classic page as a rollback view
  assert.match(home,/\/organogram-hierarchie\.html/);
  assert.doesNotMatch(home,/href="\/organogram\.html"/);
 });
-test('police has fixed specialization order, radio/BM under intervention, with teachers first',()=>{
+test('police has fixed specialization order, radio/BM included in intervention, with teachers first',()=>{
  const p=serviceHierarchy([
   {dept:'politie',name:'Hoofd',call:'900',rank:'Hoofdcommissaris'},
   {dept:'politie',name:'Instructeur',call:'450',teachingRoles:['instructeur'],specialties:['Radio BM'],displayOrder:3},
@@ -34,7 +34,9 @@ test('police has fixed specialization order, radio/BM under intervention, with t
  assert.deepEqual(p.branches.slice(0,10).map(x=>x.label),
   ['INTERVENTIEDIENST','SIGNALISATIE','MOTARD','SEMI ANONIEM',
    'K9','RAGO','DISP','TO','AE','RECHERCHE']);
- assert.deepEqual(p.branches[0].children[0].members.map(x=>x.call),['450','700']);
+ assert.deepEqual(p.branches[0].members.map(x=>x.call),['450','700']);
+ assert.equal(p.branches[0].note,'RADIO/BM inbegrepen');
+ assert.equal(p.branches[0].children,undefined);
  assert.equal(p.branches[9].members[0].call,'600');
  assert.equal(policeSpecialtyName('SIV/WPR'),'SIGNALISATIE');
  assert.equal(policeSpecialtyName('Motor'),'MOTARD');
