@@ -15,23 +15,21 @@ function app(){
  }
  return scope.window.BPDPoliceUniform;
 }
-test('slight color darkening targets only the officer coat, not its independent patches',()=>{
+test('colour-matched officer coat is embedded as its own static SVG image',()=>{
  const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
- const scoped=css.slice(css.indexOf('/* Officers (920/930'));
- assert.ok(scoped.startsWith('/* Officers (920/930'),'scoped color change exists');
- assert.match(scoped,/\.portrait\.bpd-police-formal\[data-trim="gold-none"\]>\.bpd-gold-stage>\.bpd-gold-coat\s*\{/);
- assert.match(scoped,/filter:url\(#bpd-officer-navy-match\)/);
- assert.doesNotMatch(scoped,/filter:brightness/);
+ const svg=readFileSync(new URL('../public/assets/bpd-officieren-marine-match-20261028.svg',import.meta.url),'utf8');
  const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(html,/<filter id="bpd-officer-navy-match"/);
- assert.match(html,/result="bpdBlueMatte"/);
- assert.match(html,/result="bpdMatchedNavy"/);
- assert.match(html,/operator="in" result="bpdRecoloredBlue"/);
- assert.match(html,/operator="out" result="bpdUntouchedNonBlue"/);
- assert.match(html,/0 1 0 0 -0\.090/);
- assert.match(html,/0 0 1 0 -0\.090/);
- assert.doesNotMatch(scoped,/\.bpd-gold-stage\s*\{|\.bpd-gold-nameplate\s*\{|\.bpd-gold-cloth-rank\s*\{|\.bpd-silver-coat\s*\{/);
- assert.match(html,/navy-matched-officers-20261028/);
+ const js=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
+ assert.match(svg,/data:image\/webp;base64,/);
+ assert.match(svg,/<filter id="officer-navy"/);
+ assert.match(svg,/result="navyOnly"/);
+ assert.match(svg,/result="recolored"/);
+ assert.match(svg,/result="nonBlue"/);
+ assert.match(js,/OFFICER_NAVY_BASE/);
+ assert.match(js,/trim==='gold-none'\?OFFICER_NAVY_BASE:GOLD_BASE/);
+ assert.doesNotMatch(css,/filter:url\(#bpd-officer-navy-match\)/);
+ assert.doesNotMatch(html,/id="bpd-officer-navy-match"/);
+ assert.match(html,/navy-corrected-image-20261028/);
 });
 test('officers are gold-none, corps leaders gold-thick, and other cadres silver-none',()=>{
  const ui=app();
@@ -40,6 +38,6 @@ test('officers are gold-none, corps leaders gold-thick, and other cadres silver-
   const portrait=ui.makePortrait(person);
   assert.equal(portrait.dataset.trim,trim,call);
   assert.equal(portrait.children[0].children[0].src,
-   trim==='silver-none'?ui.silverAsset:ui.asset,call);
+   trim==='silver-none'?ui.silverAsset:trim==='gold-none'?'/assets/bpd-officieren-marine-match-20261028.svg':ui.asset,call);
  }
 });
