@@ -16,7 +16,9 @@ test('Organogram geeft vier dienstregistraties weer zonder IDs of dossierinhoud'
   assert.deepEqual(new Set(rows.map(p=>p.dept)),new Set(['politie','brandweer','ambulance','depannage']));
   assert.equal(rows.length,4);
   for(const row of rows){
-    assert.deepEqual(Object.keys(row).sort(),['dept','name','call','rank','specialties'].sort());
+    assert.deepEqual(Object.keys(row).sort(),['dept','name','call','rank','status','specialties','awards'].sort());
+    assert.equal(row.status,row.dept==='politie'?'Verlof':'');
+    assert.deepEqual(row.awards,[]);
     assert.equal(row.specialties.length,1);
     assert.equal(row.specialties[0].value,'Ja');
     assert.ok(!JSON.stringify(row).includes(id));
