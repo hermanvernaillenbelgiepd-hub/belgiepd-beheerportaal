@@ -462,57 +462,55 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  #services .personnel-card-grid .person{flex-basis:218px}
 }
 
-/* Basis- en Agentenkader: 3 naast elkaar staande PAAREN, elk 2 kaarten.
-   De set blijft gecentreerd als er nog geen volledige rij van 6 is. */
+/* Basis- en Agentenkader: drie even brede, vaste duo-kolommen per rij.
+   Anders dan bij flex-centrering springt een onvolledige laatste rij niet
+   naar het midden en blijven alle kaarten in hetzelfde raster. */
 #services .personnel-card-grid.cadre-personnel-grid.cadre-three-pairs{
- display:flex;
- flex-direction:row;
- flex-wrap:wrap;
+ display:grid;
+ grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:12px 24px;
  justify-content:center;
  align-items:stretch;
- align-content:flex-start;
- gap:12px 24px;
+ align-content:start;
  width:100%;
  max-width:1380px;
  margin:8px auto 5px;
 }
 #services .cadre-three-pairs>.cadre-person-pair{
  display:grid;
- grid-template-columns:repeat(2,minmax(0,218px));
+ grid-template-columns:repeat(2,minmax(0,1fr));
  gap:8px;
- flex:0 1 444px;
- width:444px;
- max-width:100%;
+ width:100%;
  min-width:0;
- justify-content:center;
  align-items:stretch;
 }
 #services .cadre-three-pairs>.cadre-person-pair>.person{
+ display:flex;
  width:100%;
  max-width:218px;
  min-width:0;
  height:100%;
  flex:none;
 }
+/* One remaining member starts at the left edge of the next duo. */
 #services .cadre-three-pairs>.cadre-person-pair>.person:only-child{
- grid-column:1 / -1;
- justify-self:center;
+ grid-column:1;
+ justify-self:start;
+ width:100%;
 }
-/* Op desktops passen drie groepen ook op een smaller breed paneel.
-   Bij minder ruimte twee groepen; op mobiel één groep of één kaart. */
-@container (min-width:1080px){
- #services .cadre-three-pairs>.cadre-person-pair{
-  flex:0 0 calc((100% - 48px)/3);
-  width:calc((100% - 48px)/3);
+@container (max-width:1090px){
+ #services .personnel-card-grid.cadre-personnel-grid.cadre-three-pairs{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  max-width:912px;
  }
 }
-@container (min-width:740px) and (max-width:1079px){
- #services .cadre-three-pairs>.cadre-person-pair{
-  flex:0 0 calc((100% - 24px)/2);
-  width:calc((100% - 24px)/2);
+@container (max-width:540px){
+ #services .personnel-card-grid.cadre-personnel-grid.cadre-three-pairs{
+  grid-template-columns:minmax(0,1fr);
+  max-width:444px;
  }
 }
-@container (max-width:460px){
+@container (max-width:310px){
  #services .cadre-three-pairs>.cadre-person-pair{
   grid-template-columns:minmax(0,218px);
   justify-content:center;
