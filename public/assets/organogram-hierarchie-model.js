@@ -92,6 +92,67 @@ export function specialtyNames(p){
  }).filter(s=>s&&!forbidden.has(lower(s)));
  return [...new Set(names)].slice(0,12);
 }
+export const POLICE_BRANCH_ORDER=Object.freeze([
+ 'INTERVENTIEDIENST','SIGNALISATIE','MOTARD','SEMI ANONIEM','K9',
+ 'RAGO','DISP','TO','AE','RECHERCHE'
+]);
+const policeNames=new Map([
+ ['interventiedienst','INTERVENTIEDIENST'],
+ ['radio/bm','RADIO/BM'],['radio bm','RADIO/BM'],['radio','RADIO/BM'],
+ ['signalisatie','SIGNALISATIE'],['siv/wpr','SIGNALISATIE'],
+ ['motard','MOTARD'],['motor','MOTARD'],['motard-off road','MOTARD'],
+ ['semi anoniem','SEMI ANONIEM'],['semi-anoniem','SEMI ANONIEM'],
+ ['semi anonieme','SEMI ANONIEM'],['semi-anonieme','SEMI ANONIEM'],
+ ['k9','K9'],['k-9','K9'],
+ ['rago','RAGO'],
+ ['dispatch','DISP'],['disp','DISP'],
+ ['to','TO'],['t.o.','TO'],['terreinondersteuner','TO'],
+ ['ae','AE'],['ae-i','AE'],['ae-t','AE'],['ae-f','AE'],
+ ['lokale recherche','RECHERCHE'],['recherche','RECHERCHE'],['lrd','RECHERCHE']
+]);
+export function policeSpecialtyName(name){
+ const normalized=lower(name).replace(/\\s+/g,' ').trim();
+ return policeNames.get(normalized)||clean(name);
+}
+export function policeSpecializationBranches(rows){
+ // This only changes the visible grouping. Existing assignments, cadre ranks,
+ // permission grants, and cross-service profiles remain untouched.
+ const groups=new Map([...POLICE_BRANCH_ORDER,'RADIO/BM'].map(label=>[label,[]]));
+ const extra=new Map();
+ const unassigned=[];
+ for(const person of rows){
+  const original=specialtyNames(person);
+  if(!original.length){
+   if(!SERVICES[0].levels.includes(getTier(person)))unassigned.push(person);
+   continue;
+  }
+  const names=[...new Set(original.map(policeSpecialtyName))];
+  for(const name of names){
+   if(groups.has(name))groups.get(name).push(person);
+   else{
+    if(!extra.has(name))extra.set(name,[]);
+    extra.get(name).push(person);
+   }
+  }
+ }
+ const branches=POLICE_BRANCH_ORDER.map(label=>({
+  label,
+  members:orderedMembers(groups.get(label)||[]),
+  ...(label==='INTERVENTIEDIENST'?{
+   children:[{label:'RADIO/BM',members:orderedMembers(groups.get('RADIO/BM')||[])}]
+  }:{})
+ }));
+ const additional=[...extra].sort(([a],[b])=>a.localeCompare(b,'nl'))
+  .map(([label,members])=>({label,members:orderedMembers(members)}));
+ if(additional.length)branches.push({
+  label:'Overige specialisaties',members:[],children:additional
+ });
+ if(unassigned.length)branches.push({
+  label:'Overige leden (geen geregistreerde specialisatie)',
+  members:orderedMembers(unassigned)
+ });
+ return branches;
+}
 export function serviceHierarchy(people,dept){
  const settings=SERVICES.find(s=>s.id===dept);
  if(!settings)throw Error('Onbekende dienst');
@@ -109,9 +170,10 @@ export function serviceHierarchy(people,dept){
    groups.get(spec).push(person);
   }
  }
- const branches=[...groups].map(([label,members])=>({
-  label,members:orderedMembers(members)
- })).sort((a,b)=>a.label.localeCompare(b.label,'nl'));
+ const branches=dept==='politie'?policeSpecializationBranches(rows):
+  [...groups].map(([label,members])=>({
+   label,members:orderedMembers(members)
+  })).sort((a,b)=>a.label.localeCompare(b.label,'nl'));
  return {dept,title:settings.name,leadership,branches,count:rows.length};
 }
 export function hierarchy(people){
