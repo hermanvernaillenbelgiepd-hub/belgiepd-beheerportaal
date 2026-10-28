@@ -2,7 +2,9 @@
 // grants, operational rank, board appointments or the personnel master.
 export const COLLECTION='bpd_organogram_display_placements';
 export const DEPTS=Object.freeze(['politie','brandweer','ambulance','depannage','burger']);
+export const DISPLAY_DEPTS=Object.freeze(['bestuur',...DEPTS]);
 export const SPECIALTIES=Object.freeze({
+ bestuur:[],
  politie:['Motor','SIV/WPR','K9','RAGO','Dispatch','AE','Radio BM','Signalisatie','TO','Prioritair rijden','EHBO'],
  brandweer:['Duiker','Ladderwagen','Logistiek','Signalisatie','RED team','Gevaarlijke stoffen','Bosbestrijding'],
  ambulance:['MIP','HELI','PIT','PIT-MOTOR','Medicatie','Basis TR'],
@@ -11,12 +13,14 @@ export const SPECIALTIES=Object.freeze({
 });
 const ID=/^\d{15,22}$/;
 const strip=v=>String(v??'').trim();
-export const personKey=(dept,id)=>DEPTS.includes(dept)&&ID.test(String(id||''))?dept+'_'+id:null;
+export const personKey=(dept,id)=>DISPLAY_DEPTS.includes(dept)&&ID.test(String(id||''))?dept+'_'+id:null;
 export function validatePlacement(body,dept){
- if(!DEPTS.includes(dept)||!body||typeof body!=='object'||Array.isArray(body)||
+ if(!DISPLAY_DEPTS.includes(dept)||!body||typeof body!=='object'||Array.isArray(body)||
     Object.keys(body).some(k=>!['boardRole','teachingRoles','specialties','reason'].includes(k)))
    throw Error('Ongeldige organograminstelling');
  const boardRole=body.boardRole;
+ if(dept==='bestuur'&&boardRole==='none')throw Error('Kies een bestuursfunctie');
+ if(dept==='bestuur'&&((body.teachingRoles||[]).length||(body.specialties||[]).length))throw Error('Bestuur heeft geen dienstspecialisaties');
  if(!['none','bestuur','bestuur-ai'].includes(boardRole))throw Error('Kies een geldige bestuursweergave');
  const teachingRoles=body.teachingRoles,specialties=body.specialties;
  if(!Array.isArray(teachingRoles)||teachingRoles.length>2||
@@ -50,7 +54,7 @@ const INSTRUCTORS=Object.freeze({
 });
 export const BOARD_DISCORD_ROLE='1309532438082355251';
 export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
- if(!identity||!DEPTS.includes(dept)||!ID.test(guildId)||
+ if(!identity||!DISPLAY_DEPTS.includes(dept)||!ID.test(guildId)||
     identity.guildId!==guildId||!Number.isSafeInteger(identity.verifiedAt)||
     identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||
     !Array.isArray(identity.roleIds)||identity.roleIds.some(x=>!ID.test(x)))
