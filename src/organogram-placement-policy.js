@@ -12,7 +12,7 @@ export const LEADERSHIP_LEVELS=Object.freeze({
 export const SPECIALTIES=Object.freeze({
  bestuur:[],
  politie:['INTERVENTIEDIENST','RADIO/BM','SIGNALISATIE','MOTARD','SEMI ANONIEM',
-  'K9','RAGO','DISP','TO','AE','RECHERCHE',
+  'K9','RAGO','RAGO-IO','DISP','TO','AE','RECHERCHE',
   // Historical specializations not silently deleted when an existing record is edited.
   'Prioritair rijden','EHBO'],
  brandweer:['Duiker','Ladderwagen','Logistiek','Signalisatie','RED team','Gevaarlijke stoffen','Bosbestrijding'],
@@ -113,6 +113,7 @@ const INSTRUCTORS=Object.freeze({
 });
 // Known full-membership Discord roles. We deliberately exclude training-only
 // IO/selection roles and never assume somebody belongs to an unverified unit.
+export const RAGO_IO_DISCORD_ROLE='1490841316656156802';
 const POLICE_MEMBER_ROLES=Object.freeze({
  '1358148694297415741':'MOTARD',
  '1309532437977497699':'K9',
@@ -135,6 +136,11 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
   .filter(([id])=>roles.has(id)).map(([,name])=>name);
  const memberNames=dept==='politie'?Object.entries(POLICE_MEMBER_ROLES)
   .filter(([id])=>roles.has(id)).map(([,name])=>name):[];
+ // RAGO-IO is a training membership only, NOT the full RAGO unit role.
+ // Existing RAGO full members may retain their trainee role in Discord.
+ if(dept==='politie'&&roles.has(RAGO_IO_DISCORD_ROLE)&&
+    !memberNames.includes('RAGO')&&!instructorNames.includes('RAGO'))
+  memberNames.push('RAGO-IO');
  return {boardRole:roles.has(BOARD_DISCORD_ROLE)?'bestuur':'none',
   teachingRoles:instructorNames.length?['instructeur']:[],
   instructorSpecialties:instructorNames.filter(x=>SPECIALTIES[dept]?.includes(x)),
@@ -161,8 +167,12 @@ export function mergePlacement(person,manual,auto){
    ...(auto?.instructorSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
   teacherSpecialties:[...new Set([...(manual?.teacherSpecialties||[]),
    ...(auto?.teacherSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
-  specialties:[...new Set([...(manual?.specialties||[]),...(auto?.specialties||[]),...specialtyValues]
-   .map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
+  specialties:(()=>{
+   const found=[...new Set([...(manual?.specialties||[]),...(auto?.specialties||[]),...specialtyValues]
+    .map(label=>normalizedStoredSpecialty(person.dept,label)))];
+   // A verified full RAGO specialization supersedes its IO training badge.
+   return found.filter(label=>label!=='RAGO-IO'||!found.includes('RAGO')).slice(0,12);
+  })(),
   source:manual&&auto?.synced?'handmatig + Discord':manual?'handmatig':auto?.synced?'Discord':'personeelslijst'};
 }
 export const canManagePlacements=actor=>actor?.role==='beheerder'&&
