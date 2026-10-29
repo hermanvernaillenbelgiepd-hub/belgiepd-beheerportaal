@@ -297,6 +297,49 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .manager .checks .manage-specialty-row>label{border:0;padding:4px 2px;margin:0}
 .manager .checks .manage-specialty-row>label:first-child{font-weight:800;margin-right:auto}
 .manage-specialty-role{color:#ffe5a5}
+.manage-specialty-layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:12px;align-items:start;margin:8px 0 12px}
+.manage-specialty-layout #manage-specialties{margin:0}
+.manage-specialty-preview{position:sticky;top:10px;background:#0b2138;border:1px solid #597da3;border-radius:9px;padding:12px;min-width:0}
+.manage-specialty-preview h3{font-size:12px;margin:0 0 7px}
+.manage-specialty-preview .patch-art{display:flex;min-height:86px;justify-content:center;align-items:center;background:#081b30;border:1px solid #344f6f;border-radius:7px;margin:9px 0;padding:9px;overflow:hidden}
+.manage-specialty-preview .patch-art img{display:block;width:100%;max-width:255px;height:auto;max-height:125px;object-fit:contain}
+.manage-specialty-preview .patch-art .patch-empty{text-align:center;color:#94b6d7;font-size:11px;line-height:1.5}
+.manage-specialty-preview p{font-size:11px;color:#c8ddf0;margin:5px 0}
+.manage-specialty-preview .patch-meta{font-variant-numeric:tabular-nums;color:#a9cee9}
+.manage-specialty-preview .patch-role{color:#ffdf99;font-weight:750}
+.manage-specialty-row .manage-preview-button{font-size:10px;white-space:nowrap;padding:4px 7px;background:#244667;border:1px solid #597ca4}
+.manage-specialty-row .manage-preview-button[aria-pressed="true"]{border-color:#f1c56e;color:#ffe7ad}
+.k9-manager .manage-specialty-preview{margin:10px 0;position:static}
+.manage-specialty-preview .patch-art .k9-patch-preview{
+ display:block;width:170px;height:53.125px;max-width:100%;aspect-ratio:16/5;
+ border:1px solid #607f9e;border-radius:5px;
+ background:#0b1525 url('/assets/k9-patches-geborduurd-20261029.webp') no-repeat;
+ background-size:90.625% 300%;
+}
+.manage-specialty-preview .patch-art .k9-patch-preview.role-instructeur{background-position:50% 0%}
+.manage-specialty-preview .patch-art .k9-patch-preview.role-geleider{background-position:50% 50%}
+.manage-specialty-preview .patch-art .k9-patch-preview.role-geleider_in_stage{background-position:50% 100%}
+.person-profile-dialog.police-person-profile .person-profile-specialty-rago-io{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,170px);
+ grid-template-rows:auto auto;gap:3px 8px;align-content:center;min-height:74px
+}
+.person-profile-specialty-rago-io>strong{grid-column:1;grid-row:1;align-self:end}
+.person-profile-specialty-rago-io>.person-profile-specialty-role{grid-column:1;grid-row:2;align-self:start}
+.person-profile-specialty-rago-io .rago-io-badge{
+ display:block;grid-column:2;grid-row:1 / span 2;
+ width:170px;max-width:100%;height:53.125px;
+ object-fit:contain;border-radius:5px;align-self:center
+}
+@media(max-width:380px){
+ .person-profile-dialog.police-person-profile .person-profile-specialty-rago-io{
+  grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto
+ }
+ .person-profile-specialty-rago-io>strong{grid-row:1}
+ .person-profile-specialty-rago-io>.rago-io-badge{grid-column:1;grid-row:2}
+ .person-profile-specialty-rago-io>.person-profile-specialty-role{grid-column:1;grid-row:3}
+}
+@media(max-width:850px){.manage-specialty-layout{grid-template-columns:minmax(0,1fr)}.manage-specialty-preview{position:static}}
+
 
 .manager button{background:#2d609c;color:white;border:1px solid #9ac3ef;padding:8px 13px;border-radius:7px}
 .manager button:disabled{opacity:.55;cursor:not-allowed}
@@ -993,6 +1036,10 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
    </select></label>
   </div>
   <p id="k9-current">Selecteer een personeelslid.</p>
+  <aside id="k9-badge-preview" class="manage-specialty-preview" aria-live="polite">
+   <h3>K9-patchvoorbeeld</h3><div class="patch-art"><span class="patch-empty">Kies een K9-functie voor de voorbeeldweergave.</span></div>
+   <p>Alleen de weergegeven patch; rechten wijzigen niet.</p>
+  </aside>
   <button type="button" id="k9-verify-now" disabled>↻ Discord-rol nu controleren</button>
   <p id="k9-verify-result" role="status" aria-live="polite"></p>
   <label>Motivering <textarea id="k9-reason" maxlength="300" rows="2" placeholder="Motivering van minstens 8 tekens"></textarea></label>
@@ -1025,7 +1072,16 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   </div>
   <p class="manager-note">STAGE en LID zijn exclusieve, handmatige weergavelabels. Ze wijzigen geen aanstelling, opleidingsstatus, specialisatielidmaatschap of rechten.</p>
   <label>Specialisaties (lidmaatschap en, bij politie, de instructeur-/docentfunctie per specialisatie)</label>
-  <div id="manage-specialties" class="checks"></div>
+  <div class="manage-specialty-layout">
+   <div id="manage-specialties" class="checks"></div>
+   <aside id="manage-specialty-preview" class="manage-specialty-preview" aria-live="polite">
+    <h3>Patchvoorbeeld</h3>
+    <p id="manage-patch-title">Kies een specialisatie om de badge te bekijken.</p>
+    <div id="manage-patch-art" class="patch-art"><span class="patch-empty">Nog geen specialisatie geselecteerd.</span></div>
+    <p id="manage-patch-role"></p>
+    <p id="manage-patch-meta" class="patch-meta"></p>
+   </aside>
+  </div>
   <label>Motivering voor logboek <textarea id="manage-reason" maxlength="300" placeholder="Waarom wordt deze functie handmatig ingesteld?"></textarea></label>
   <div class="manager-grid">
    <label>Weergavevolgorde <input type="number" id="manage-order" min="0" max="999" step="1" value="0"></label>
@@ -1112,7 +1168,7 @@ function el(tag,cls,text){
  return n;
 }
 // Alleen visuele presentatie: dit zijn kwalificaties zonder instructeurslijst.
-const POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS=new Set(['SIGNALISATIE','RADIO/BM','SEMI ANONIEM']);
+const POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS=new Set(['SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO']);
 function supportsSpecialtyInstructors(label){
  return !POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS.has(policeSpecialtyName(label));
 }
@@ -1216,6 +1272,15 @@ function openPersonProfile(p){
      item.append(el('span','person-profile-specialty-role',
       'K9-functie niet bevestigd · controleer de Discord-synchronisatie'));
     }
+   }else if(p.dept==='politie'&&name==='RAGO-IO'){
+    // Stage badge. This displays training only, not a full RAGO appointment.
+    item.classList.add('person-profile-specialty-rago-io');
+    item.append(el('span','person-profile-specialty-role','RAGO-IO · in opleiding'));
+    const patch=el('img','rago-io-badge');
+    patch.src=RAGO_IO_PATCH;
+    patch.alt='RAGO-IO: Federale Politie Dienst Luchtsteun';
+    patch.loading='lazy';patch.width=170;patch.height=72;
+    item.append(patch);
    }else{
     const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
     item.append(el('span','person-profile-specialty-role',role));
@@ -1707,6 +1772,72 @@ async function setupManagement(){
   });
  }catch(e){$('manage-status').textContent=e.message;}
 }
+const RAGO_IO_ROLE_ID='1490841316656156802';
+const RAGO_IO_PATCH='/assets/rago-io-belgische-luchtsteun-20261029.svg';
+const K9_PATCH_ROLE_LABELS={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
+ geleider_in_stage:'GELEIDER IN STAGE'};
+let focusedAdminSpecialty='';
+function drawBadgePreview(box,specialty,k9Role=''){
+ box.replaceChildren();
+ if(specialty==='RAGO-IO'){
+  const img=el('img');
+  img.src=RAGO_IO_PATCH;
+  img.alt='Belgische geborduurde RAGO-IO-patch met vlam, vleugel en okerkleurige tekst';
+  img.width=220;img.height=94;
+  img.loading='lazy';box.append(img);return true;
+ }
+ if(specialty==='K9'&&Object.hasOwn(K9_PATCH_ROLE_LABELS,k9Role)){
+  const patch=el('span','k9-patch-preview role-'+k9Role);
+  patch.setAttribute('role','img');
+  patch.setAttribute('aria-label','K9-patch '+K9_PATCH_ROLE_LABELS[k9Role]);
+  box.append(patch);return true;
+ }
+ box.append(el('span','patch-empty',specialty==='K9'?
+  'Nog geen K9-functie bevestigd. Kies de functie in K9-beheer.':
+  'Voor deze specialisatie is nog geen officiële patch gekoppeld.'));
+ return false;
+}
+function refreshAdminBadgePreview(specialty=focusedAdminSpecialty){
+ focusedAdminSpecialty=specialty;
+ const person=selectedAdmin();
+ const title=$('manage-patch-title'),art=$('manage-patch-art');
+ const role=$('manage-patch-role'),meta=$('manage-patch-meta');
+ const choices=[...$('manage-specialties').querySelectorAll('button[data-preview-specialty]')];
+ for(const b of choices)b.setAttribute('aria-pressed',String(b.dataset.previewSpecialty===specialty));
+ if(!person||!specialty){
+  title.textContent='Kies een specialisatie om de badge te bekijken.';
+  role.textContent='';meta.textContent='';
+  drawBadgePreview(art,'');return;
+ }
+ title.textContent=specialty;
+ const entry=choices.find(b=>b.dataset.previewSpecialty===specialty)?.closest('.manage-specialty-row');
+ const checked=entry?.querySelector('input[data-role="member"]')?.checked;
+ const teacher=entry?.querySelector('input[data-role="teacher"]')?.checked;
+ const instructor=entry?.querySelector('input[data-role="instructor"]')?.checked;
+ const known=state.live.find(p=>p.personId===person.personId&&p.dept===person.dept);
+ const k9Role=known?.k9Role||'';
+ drawBadgePreview(art,specialty,k9Role);
+ if(specialty==='RAGO-IO'){
+  role.textContent='Opleidingsstatus: RAGO-IO'+(checked?' · handmatig geselecteerd':'');
+  meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · weergave, geen bevoegdheid';
+ }else if(specialty==='K9'){
+  role.textContent='K9: '+(K9_PATCH_ROLE_LABELS[k9Role]||'geen functie bevestigd');
+  meta.textContent='K9-functies zijn afzonderlijk wijzigbaar via K9-beheer.';
+ }else{
+  role.textContent=instructor?'Functie: Instructeur':teacher?'Functie: Docent':
+   checked?'Functie: Lid':'Nog niet geselecteerd';
+  meta.textContent='Voor deze specialisatie is nog geen afbeelding beschikbaar.';
+ }
+}
+function refreshK9BadgePreview(){
+ const value=$('k9-role').value;
+ const index=$('k9-person').value;
+ const person=index===''?null:k9People[Number(index)];
+ const role=value||(person?.manual||person?.automatic||'');
+ const box=$('k9-badge-preview').querySelector('.patch-art');
+ drawBadgePreview(box,'K9',role);
+}
+$('k9-role').addEventListener('change',refreshK9BadgePreview);
 function selectedAdmin(){
  const value=$('manage-person').value;
  if(value==='')return null;
@@ -1717,7 +1848,8 @@ function fillAdminPerson(){
  $('manage-specialties').replaceChildren();
  $('manage-tier').replaceChildren();
  $('manage-tier').append(Object.assign(el('option','','Automatisch volgens rang'),{value:'none'}));
- if(!p)return;
+ focusedAdminSpecialty='';
+ if(!p){refreshAdminBadgePreview();return;}
  for(const level of adminLeadership[p.dept]||[]){
   const option=el('option','',level);option.value=level;$('manage-tier').append(option);
  }
@@ -1740,7 +1872,7 @@ function fillAdminPerson(){
   input.value=specialty;input.dataset.role='member';
   input.checked=(values.specialties||[]).includes(specialty);
   label.append(input,document.createTextNode(' '+specialty));entry.append(label);
-  if(p.dept==='politie'){
+  if(p.dept==='politie'&&supportsSpecialtyInstructors(specialty)){
    for(const [role,visible] of [['instructor','Instructeur'],['teacher','Docent']]){
     const choice=el('label','manage-specialty-role');
     const flag=el('input');flag.type='checkbox';flag.value=specialty;
@@ -1752,8 +1884,16 @@ function fillAdminPerson(){
     choice.append(flag,document.createTextNode(' '+visible));entry.append(choice);
    }
   }
+  const show=el('button','manage-preview-button','Bekijk patch');
+  show.type='button';show.dataset.previewSpecialty=specialty;
+  show.setAttribute('aria-pressed','false');
+  show.addEventListener('click',()=>refreshAdminBadgePreview(specialty));
+  entry.append(show);
+  entry.addEventListener('change',()=>refreshAdminBadgePreview(specialty));
   $('manage-specialties').append(entry);
  }
+ const first=(values.specialties||[]).find(x=>(adminSpecialties[p.dept]||[]).includes(x))||'';
+ refreshAdminBadgePreview(first);
  $('manage-status').textContent=(values.boardRole||values.teachingRoles?.length||values.specialties?.length)
   ?'Bestaande handmatige registratie geladen.':'Nog geen handmatige registratie. Automatische rollen kunnen daarnaast actief zijn.';
 }
@@ -1788,8 +1928,9 @@ $('k9-person').addEventListener('change',()=>{
  const p=index===''?null:k9People[Number(index)];
  $('k9-verify-now').disabled=!p;
  $('k9-verify-result').textContent='';
- if(!p){$('k9-current').textContent='Selecteer een politielid.';$('k9-role').value='';return;}
+ if(!p){$('k9-current').textContent='Selecteer een politielid.';$('k9-role').value='';refreshK9BadgePreview();return;}
  $('k9-role').value=p.manual||'';
+ refreshK9BadgePreview();
  const values={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
   geleider_in_stage:'GELEIDER IN STAGE'};
  const source={bot:'Live gecontroleerd via Discord-bot',
