@@ -587,6 +587,27 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-specialty{border:1px solid #42668a;border-radius:8px;background:#183651;padding:9px 10px}
 .person-profile-specialty>strong{font-size:12px}
 .person-profile-specialty-role{display:block;color:#b7d9f7;font-size:10px;margin-top:3px}
+/* K9 pilot: originele aangeleverde specialisatiepatch */
+.person-profile-specialty.person-profile-specialty-k9{
+ display:flex;flex-direction:column;align-items:flex-start;gap:7px;
+ border-color:#6c88a7;padding:11px
+}
+.person-profile-specialty-k9 .person-profile-specialty-patch{
+ display:block;box-sizing:border-box;
+ width:100%;max-width:245px;height:auto;aspect-ratio:280/98;
+ object-fit:contain;border:1px solid #708198;border-radius:5px;
+ background:#343840;box-shadow:0 3px 10px #0004
+}
+.person-profile-specialty-k9 .person-profile-specialty-role{margin-top:0}
+.person-profile-specialty-k9 .person-profile-specialty-instructor{
+ display:inline-flex;align-items:center;gap:4px;
+ padding:4px 9px;border:1px solid #c29c49;border-radius:5px;
+ background:#614816;color:#fff0be;font-size:10px;
+ font-weight:850;letter-spacing:.055em;line-height:1.25
+}
+.person-profile-specialty-k9 .person-profile-specialty-instructor.is-teacher{
+ border-color:#8bacd0;background:#294e75;color:#e4f3ff
+}
 .person-profile-note{font-size:11px;color:#a9c8e7;margin:12px 0 0;line-height:1.5}
 @media(max-width:520px){
  .person-profile-shell{padding:13px}.person-profile-grid{grid-template-columns:1fr}
@@ -843,8 +864,25 @@ function openPersonProfile(p){
    item.append(el('strong','',name));
    const roles=p.dept==='politie'&&supportsSpecialtyInstructors(name)?
     specialtyInstructorRoles(p,name):[];
-   const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
-   item.append(el('span','person-profile-specialty-role',role));
+   // K9: gebruik de aangeleverde patch en alleen echte K9-instructeursrollen.
+   if(p.dept==='politie'&&name==='K9'){
+    item.classList.add('person-profile-specialty-k9');
+    const patch=el('img','person-profile-specialty-patch');
+    patch.src='/assets/k9-specialisatie-patch-20261029.webp';
+    patch.alt='K9-specialisatiepatch met twee pootafdrukken en rangstrepen';
+    patch.width=280;patch.height=98;patch.loading='lazy';
+    item.append(patch);
+    if(roles.includes('instructeur')){
+     item.append(el('span','person-profile-specialty-instructor','INSTRUCTEUR'));
+    }else if(roles.includes('docent')){
+     item.append(el('span','person-profile-specialty-instructor is-teacher','DOCENT'));
+    }else{
+     item.append(el('span','person-profile-specialty-role','Geregistreerd lid'));
+    }
+   }else{
+    const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
+    item.append(el('span','person-profile-specialty-role',role));
+   }
    list.append(item);
   }
   content.append(list);
