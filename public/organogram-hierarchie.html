@@ -1058,7 +1058,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
     <div id="police-specialty-preview-art" class="patch-art"><span class="patch-empty">Nog geen specialisatie geselecteerd.</span></div>
     <p id="police-specialty-preview-role"></p>
     <p id="police-specialty-preview-meta" class="patch-meta"></p>
-    <label id="police-k9-label" hidden>Handmatige K9-functie
+    <label id="police-k9-label" hidden>K9-functie
      <select id="police-k9-role" disabled>
       <option value="">Automatisch volgens Discord</option>
       <option value="instructeur">INSTRUCTEUR</option>
@@ -1962,6 +1962,9 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
   meta=$('police-specialty-preview-meta'),
   art=$('police-specialty-preview-art');
  title.textContent=specialty||'Kies een specialisatie.';
+ const showK9=Boolean(person&&specialty==='K9');
+ $('police-k9-label').hidden=!showK9;
+ $('police-k9-role').disabled=!showK9;
  if(!person||!specialty){
   role.textContent='';meta.textContent='';
   drawBadgePreview(art,'');return;
@@ -1993,7 +1996,8 @@ function fillPoliceSpecialtyPerson(){
  $('police-k9-verify').disabled=!person;
  $('police-k9-verify-result').textContent='';
  $('police-k9-role').value=person?.k9Manual||'';
- $('police-k9-role').disabled=!person;
+ $('police-k9-role').disabled=true;
+ $('police-k9-label').hidden=true;
  $('police-specialty-save').disabled=!person;
  if(!person){previewPoliceSpecialty('');return}
  const active=new Set(person.specialties||[]),
@@ -2098,7 +2102,8 @@ $('police-specialty-toggle').addEventListener('click',()=>{
 });
 $('police-k9-role').addEventListener('change',()=>{
  const v=$('police-k9-role').value;
- if(v)$('police-specialty-choices').querySelector('input[data-role="member"][value="K9"]').checked=true;
+ const member=$('police-specialty-choices').querySelector('input[data-role="member"][value="K9"]');
+ if(v&&member)member.checked=true;
  previewPoliceSpecialty('K9');
 });
 $('police-k9-verify').addEventListener('click',async()=>{
