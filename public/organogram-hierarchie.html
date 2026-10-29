@@ -695,6 +695,59 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .k9-manager #k9-role-save{margin-top:10px}
 .k9-manager [hidden],#k9-toggle[hidden]{display:none!important}
 @media(max-width:650px){.k9-manager-grid{grid-template-columns:minmax(0,1fr)}}
+/* Breed tweekoloms personeelsprofiel op desktop; compact zonder afkappen.
+   Bij kleine vensters of uitzonderlijk veel specialisaties blijft scroll mogelijk. */
+.person-profile-dialog{
+ width:min(1260px,calc(100vw - 32px));
+ max-width:1260px;
+ max-height:calc(100vh - 24px);
+ max-height:calc(100dvh - 24px);
+ box-sizing:border-box;
+ overflow:auto;
+}
+.person-profile-shell{padding:14px 18px 16px}
+.person-profile-top{
+ position:sticky;top:0;z-index:2;background:#10243d;
+ padding:0 0 9px;margin-bottom:11px
+}
+.person-profile-layout{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
+ gap:20px;
+ align-items:start
+}
+.person-profile-main,.person-profile-specialty-panel{min-width:0}
+.person-profile-overview{margin:0 0 11px}
+.person-profile-overview .portrait.bpd-police-formal{
+ width:82px!important;height:94px!important;flex:0 0 82px!important
+}
+.person-profile-grade{margin:0 0 11px;padding:9px 11px}
+.person-profile-grade .bpd-grade-badge{width:148px}
+.person-profile-grid{gap:8px;margin:0}
+.person-profile-fact{padding:8px 10px}
+.person-profile-dialog h3{margin:2px 0 9px}
+.person-profile-specialties{
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;
+}
+.person-profile-specialty{padding:8px 9px}
+.person-profile-note{margin:9px 0 0;font-size:10px}
+@media(max-width:850px){
+ .person-profile-dialog{width:min(740px,calc(100vw - 20px))}
+ .person-profile-shell{padding:13px}
+ .person-profile-layout{grid-template-columns:minmax(0,1fr);gap:15px}
+ .person-profile-specialties{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .person-profile-overview .portrait.bpd-police-formal{
+  width:76px!important;height:88px!important;flex:0 0 76px!important
+ }
+}
+@media(max-width:520px){
+ .person-profile-dialog{width:calc(100vw - 12px)}
+ .person-profile-specialties{grid-template-columns:minmax(0,1fr)}
+ .person-profile-overview .portrait.bpd-police-formal{
+  width:67px!important;height:78px!important;flex:0 0 67px!important
+ }
+}
 </style>
 </head>
 <body>
@@ -864,13 +917,18 @@ function supportsSpecialtyInstructors(label){
 function openPersonProfile(p){
  const dialog=$('person-profile'),content=$('person-profile-content');
  content.replaceChildren();
+ const layout=el('div','person-profile-layout');
+ const primary=el('section','person-profile-main');
+ const secondary=el('section','person-profile-specialty-panel');
+ layout.append(primary,secondary);
+ content.append(layout);
  const overview=el('div','person-profile-overview');
  const portrait=window.BPDPoliceUniform?.makePortrait?.(p);
  if(portrait)overview.append(portrait);
  const identity=el('div');
  identity.append(el('div','person-profile-name',p.name||'Onbekend'),
   el('div','person-profile-rank',p.rank||'Rang niet geregistreerd'));
- overview.append(identity);content.append(overview);
+ overview.append(identity);primary.append(overview);
  if(p.dept==='politie'){
   // Same public badge and grade mapping as the existing verified personnel card.
   const rank=window.BPDPoliceUniform?.gradeFor?.(p);
@@ -881,7 +939,7 @@ function openPersonProfile(p){
    detail.append(el('strong','',rank?.label||p.rank||'Rang niet geregistreerd'),
     el('small','','Formeel uniform · automatisch weergegeven Belgisch graadteken'));
    grade.append(badge,detail);
-   content.append(grade);
+   primary.append(grade);
   }
  }
  const grid=el('div','person-profile-grid');
@@ -901,7 +959,8 @@ function openPersonProfile(p){
  fact('Opleidingsfunctie',teaching.length?teaching.map(x=>x==='instructeur'?'Instructeur':'Docent').join(' · '):'Geen geregistreerde functie');
  if(Array.isArray(p.displayLabels)&&p.displayLabels.length)
   fact('Extra weergavelabel',p.displayLabels.map(x=>x.toUpperCase()).join(' · '));
- content.append(grid,el('h3','','Specialisaties'));
+ primary.append(grid);
+ secondary.append(el('h3','','Specialisaties'));
  const names=[...new Set(specialtyNames(p)
   .map(name=>p.dept==='politie'?policeSpecialtyName(name):name).filter(Boolean))];
  if(names.length){
@@ -941,9 +1000,9 @@ function openPersonProfile(p){
    }
    list.append(item);
   }
-  content.append(list);
- }else content.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
- content.append(el('p','person-profile-note',
+  secondary.append(list);
+ }else secondary.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
+ secondary.append(el('p','person-profile-note',
   'Alle informatie is alleen-lezen. De niveau-indeling is indicatief en verleent geen bevoegdheden. Verlofdetails en de datum van toetreding tot een specialisatie zijn hier niet beschikbaar.'));
  if(!dialog.open)dialog.showModal();
 }
