@@ -600,9 +600,12 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 }
 .person-profile-specialty-k9 .person-profile-specialty-role{margin-top:0}
 .person-profile-specialty-k9 .person-profile-specialty-patch.k9-role-patch{
- max-width:290px;aspect-ratio:760/337;
- border:0;background:#101928
+ width:100%;max-width:290px;aspect-ratio:290/100;
+ height:auto;object-fit:cover;border:0;background:#101928
 }
+.person-profile-specialty-k9 .k9-patch-instructeur{object-position:center top}
+.person-profile-specialty-k9 .k9-patch-geleider{object-position:center center}
+.person-profile-specialty-k9 .k9-patch-geleider_in_stage{object-position:center bottom}
 .person-profile-specialty-k9 .person-profile-specialty-instructor{
  display:inline-flex;align-items:center;gap:4px;
  padding:4px 9px;border:1px solid #c29c49;border-radius:5px;
@@ -903,11 +906,11 @@ function openPersonProfile(p){
     const roleLabels={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
      geleider_in_stage:'GELEIDER IN STAGE'};
     if(roleLabels[role]){
-     // Elke rol heeft een eigen patch, met twee pootafdrukken,
-     // scheidingsstreep en functie eronder; geen ongewenste onderlijn.
-     patch.src='/assets/k9-patch-'+role+'.svg';
-     patch.classList.add('k9-role-patch');
-     patch.width=760;patch.height=337;
+     // Echte geborduurde patches in één verticale afbeelding:
+     // instructeur bovenaan, geleider centraal, geleider in stage onderaan.
+     patch.src='/assets/k9-patches-geborduurd-20261029.webp';
+     patch.classList.add('k9-role-patch','k9-patch-'+role);
+     patch.width=290;patch.height=100;
      patch.alt='K9-patch: '+roleLabels[role];
     }else{
      patch.src='/assets/k9-specialisatie-patch-20261029.webp';
