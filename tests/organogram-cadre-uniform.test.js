@@ -119,3 +119,23 @@ test('uniform presentation does not confer or change service permissions',()=>{
  assert.match(backend,/isDecorationActive/);
  assert.match(backend,/canManagePoliceDecoration/);
 });
+
+test('all police rank patches have the same large profile dimensions as the standard heading',()=>{
+ const html=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
+ const shared=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
+ const badges=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
+ // Standard large badge is 170px, with the native 512/160 = 16:5 shape.
+ assert.match(shared,/\.bpd-grade-badge-large\{width:170px;height:auto;aspect-ratio:16\/5\}/);
+ const profile=html.match(/\.person-profile-grade \.bpd-grade-badge\{\s*width:170px;[\s\S]*?\n\}/)?.[0];
+ assert.ok(profile,'the final profile override must enforce a shared rank plate size');
+ assert.match(profile,/height:53\.125px/);
+ assert.match(profile,/min-width:170px/);
+ assert.match(profile,/max-width:none/);
+ assert.match(profile,/flex:0 0 170px/);
+ assert.match(profile,/aspect-ratio:16 \/ 5/);
+ assert.match(html,/\.person-profile-grade \.bpd-grade-badge>\.bpd-grade-vector\{\s*display:block;width:100%;height:100%/);
+ // All grade-specific image bounds are normalized within the same frame.
+ assert.match(badges,/NORMALIZED_GRADE_FRAME=Object\.freeze\(\{x:16,y:4,width:480,height:152\}\)/);
+ // Smaller screens may shrink the whole patch without stretching/cropping it.
+ assert.match(html,/flex:0 0 min\(170px,40vw\)/);
+});
