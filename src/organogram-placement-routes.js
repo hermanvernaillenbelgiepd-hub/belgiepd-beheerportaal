@@ -148,14 +148,25 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
   try{
    const db=store(),snapshot=await getSnapshot();
    const people=snapshot.data.filter(p=>validRow(p)&&p.dept==='politie').slice(0,1200);
-   const [snap,roles]=await Promise.all([
+   const [snap,roles,placementSnap]=await Promise.all([
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
-    identityMap(db,people.map(p=>p.personId),process.env.DISCORD_GUILD_ID)
+    identityMap(db,people.map(p=>p.personId),process.env.DISCORD_GUILD_ID),
+    db.collection(COLLECTION).limit(1500).get()
    ]);
-   const manual=manualMap(snap.docs);
+   const manual=manualMap(snap.docs),placements=manualMap(placementSnap.docs);
+   const k9Candidates=people.filter(p=>{
+    const override=manualDisplay(placements.get(personKey(p.dept,p.personId)),p.dept);
+    const auto=verifiedSyncRoles(roles.entries.get(p.personId),p.dept,process.env.DISCORD_GUILD_ID);
+    const merged=mergePlacement(p,override,auto);
+    return knownK9Candidate(p,merged,roles.entries.get(p.personId),
+     manual.get(p.personId)?.role||'',Object.values(K9_ROLE_IDS));
+   }).map(p=>p.personId);
+   const liveK9=await refreshK9DisplayRoles(k9Candidates);
    return res.json({people:people.map(p=>({
     personId:p.personId,name:safeName(p.name),call:String(p.call||'').slice(0,24),
-    automatic:verifiedK9DisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID),
+    automatic:liveK9.roles.has(p.personId)?
+     liveK9.roles.get(p.personId):
+     verifiedK9DisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID),
     manual:manual.get(p.personId)?.role||''
    })),readOnly:false});
   }catch(e){return respond(res,e)}
