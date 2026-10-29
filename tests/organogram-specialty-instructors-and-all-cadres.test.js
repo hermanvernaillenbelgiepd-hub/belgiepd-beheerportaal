@@ -152,7 +152,16 @@ test('public profile aligns specialty cards with public facts and selects each K
  assert.ok(html.includes('min-height:68px;'));
  assert.ok(html.includes('grid-column:1 / -1;'));
  assert.ok(html.includes("background-image:url('/assets/k9-patches-geborduurd-20261029.webp')"));
- assert.ok(html.includes('background-size:100% 300%'));
+ assert.ok(html.includes('background-size:90.625% 300%'));
+ assert.ok(html.includes('background-origin:border-box;'));
+ // Both patch types render inside an identical 170 x 53.125 outer frame.
+ assert.ok(html.includes('width:170px;max-width:100%;'));
+ assert.ok(html.includes('height:53.125px;aspect-ratio:16/5;'));
+ assert.ok(html.includes('grid-template-columns:minmax(0,1fr) minmax(0,170px);'));
+ // The 290:100 source preserves its native pixel proportions:
+ // scaled width=170*(2.9/3.2)=154.0625, height=53.125.
+ assert.equal(170*0.90625/53.125,2.9);
+ assert.ok(html.includes('width:min(170px,40vw);height:auto;aspect-ratio:16/5'));
  assert.ok(html.includes('k9-patch-instructeur{background-position:50% 0%}'));
  assert.ok(html.includes('k9-patch-geleider{background-position:50% 50%}'));
  assert.ok(html.includes('k9-patch-geleider_in_stage{background-position:50% 100%}'));
