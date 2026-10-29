@@ -6,8 +6,9 @@ import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
  validatePlacement,manualDisplay,verifiedSyncRoles,mergePlacement,canManagePlacements
 } from './organogram-placement-policy.js';
 import {organogramReekshoofdTitle,policeOrganogramDossierUrl} from './organogram-profile-display.js';
-import {K9_ROLE_COLLECTION,canEditK9Display,verifiedK9DisplayRole,
+import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
  validManualK9Role,effectiveK9DisplayRole} from './k9-display-role.js';
+import {refreshK9DisplayRoles,knownK9Candidate} from './k9-live-discord-sync.js';
 
 const idOK=id=>/^\d{15,22}$/.test(String(id||''));
 const fault=(code,msg)=>Object.assign(new Error(msg),{publicStatus:code});
@@ -84,14 +85,28 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    }
    const peopleIds=roster.map(p=>p.personId);
    const roles=await identityMap(db,peopleIds,process.env.DISCORD_GUILD_ID);
-   const records=[],boardById=new Map();
-   for(const p of roster){
+   const prepared=roster.map(p=>{
     const key=personKey(p.dept,p.personId);
     const override=manualDisplay(manual.get(key),p.dept);
     const synced=verifiedSyncRoles(roles.entries.get(p.personId),p.dept,process.env.DISCORD_GUILD_ID);
-    const merged=mergePlacement(p,override,synced);
+    return {p,merged:mergePlacement(p,override,synced)};
+   });
+   // A member's own login only refreshes their own Discord identity. For
+   // K9 candidates, the server bot now checks their roles independently.
+   // Results never update the identity/role snapshots used for permissions.
+   const k9Candidates=prepared.filter(({p,merged})=>knownK9Candidate(
+    p,merged,roles.entries.get(p.personId),
+    k9Manual.get(p.personId)?.role||'',Object.values(K9_ROLE_IDS)
+   )).map(({p})=>p.personId);
+   const liveK9=await refreshK9DisplayRoles(k9Candidates);
+   const records=[],boardById=new Map();
+   for(const {p,merged} of prepared){
     if(p.dept==='politie'){
-     const auto=verifiedK9DisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID);
+     // A verified bot result (even no current K9 role) supersedes the old
+     // snapshot. On bot/API failure use only still-verified OAuth data.
+     const auto=liveK9.roles.has(p.personId)?
+      liveK9.roles.get(p.personId):
+      verifiedK9DisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID);
      merged.k9Role=effectiveK9DisplayRole(k9Manual.get(p.personId)?.role||'',auto);
      if(merged.k9Role&&!merged.specialties.includes('K9'))merged.specialties.push('K9');
     }
