@@ -2099,6 +2099,41 @@ $('police-k9-role').addEventListener('change',()=>{
  if(v)$('police-specialty-choices').querySelector('input[data-role="member"][value="K9"]').checked=true;
  previewPoliceSpecialty('K9');
 });
+$('police-k9-verify').addEventListener('click',async()=>{
+ const person=currentPoliceSpecialtyPerson();
+ if(!person)return;
+ const button=$('police-k9-verify'),display=$('police-k9-verify-result');
+ const personId=person.personId;
+ button.disabled=true;
+ display.textContent='Discord controleert de actuele K9-functie…';
+ const names={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
+  geleider_in_stage:'GELEIDER IN STAGE'};
+ const explanations={
+  no_k9_role:'Discord bevestigt dit lid, maar geen K9-, K9-IO- of K9-instructeursrol.',
+  not_in_guild:'Discord vindt dit personeels-ID niet op de ingestelde server.',
+  bot_unconfigured:'Discord-bot of server-ID niet ingesteld op MAIN.',
+  discord_forbidden:'Discord-bot heeft onvoldoende toegang.',
+  discord_limited:'Discord beperkt momenteel de aanvragen. Probeer later opnieuw.',
+  discord_unavailable:'Discord is momenteel niet bereikbaar.',
+  invalid_member:'Discord stuurde ongeldige lidmaatschapsgegevens terug.',
+  network_error:'De verbinding met Discord is mislukt.',
+  invalid_person:'Ongeldig personeels-ID.'
+ };
+ try{
+  const result=await authFetch('/api/organogram/k9/'+encodeURIComponent(personId)+'/verify',{
+   method:'POST'
+  });
+  if(result.checked){
+   person.k9Automatic=result.automatic||'';
+   previewPoliceSpecialty('K9');
+   await loadPublic();
+  }
+  display.textContent=result.status==='ok'?
+   'Live bevestigd: '+(names[result.automatic]||'onbekend'):
+   (explanations[result.status]||'Discord-rol niet bevestigd.');
+ }catch(e){display.textContent='Controle mislukt: '+e.message}
+ finally{button.disabled=!currentPoliceSpecialtyPerson()}
+});
 $('police-specialty-save').addEventListener('click',async()=>{
  const person=currentPoliceSpecialtyPerson();
  if(!person)return;
