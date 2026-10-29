@@ -1763,7 +1763,7 @@ async function loadPublic(){
    .map(p=>({dept:p.dept,name:String(p.name).slice(0,90),
     call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
     status:typeof p.status==='string'?p.status.slice(0,30):'',
-    specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
+    specialties:Array.isArray(p.specialties)?p.specialties.slice(0,20):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
     displayLabels:Array.isArray(p.displayLabels)?p.displayLabels.filter(x=>['stage','lid'].includes(x)).slice(0,1):[],
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
