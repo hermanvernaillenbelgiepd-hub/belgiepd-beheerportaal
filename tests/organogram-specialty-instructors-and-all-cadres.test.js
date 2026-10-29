@@ -135,8 +135,8 @@ test('personnel profile uses wide two-column desktop layout with accessible mobi
  assert.match(html,/\.person-profile-specialties\{\s*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
  assert.match(html,/@media\(max-width:850px\)/);
  assert.match(html,/@media\(max-width:520px\)/);
- assert.match(script,/layout\.append\(primary,secondary\)/);
- assert.match(script,/primary\.append\(overview\)/);
+ assert.match(script,/layout\.append\(intro,primary,secondary\)/);
+ assert.match(script,/intro\.append\(overview\)/);
  assert.match(script,/primary\.append\(grid\)/);
  assert.match(script,/secondary\.append\(list\)/);
  assert.match(script,/dialog\.showModal\(\)/);
