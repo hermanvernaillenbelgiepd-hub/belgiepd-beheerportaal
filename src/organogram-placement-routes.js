@@ -5,6 +5,7 @@ import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
  validatePlacement,manualDisplay,verifiedSyncRoles,mergePlacement,canManagePlacements
 } from './organogram-placement-policy.js';
+import {organogramReekshoofdTitle,policeOrganogramDossierUrl} from './organogram-profile-display.js';
 import {K9_ROLE_COLLECTION,canEditK9Display,verifiedK9DisplayRole,
  validManualK9Role,effectiveK9DisplayRole} from './k9-display-role.js';
 
@@ -97,7 +98,11 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
-     status:p.dept==='politie'?String(p.status||'').trim().slice(0,30):''};
+     status:p.dept==='politie'?String(p.status||'').trim().slice(0,30):'',
+     reekshoofdReeks:organogramReekshoofdTitle(p),
+     // URL only for this signed-in police officer/corps with subject-level
+     // dossier access; never send an ID or usable URL to other viewers.
+     dossierUrl:policeOrganogramDossierUrl(_req.bpd,p)};
     // IDs remain limited to verified technical beheer for drag-and-drop.
     records.push(canManagePlacements(_req.bpd)?
      {...display,personId:p.personId}:display);
