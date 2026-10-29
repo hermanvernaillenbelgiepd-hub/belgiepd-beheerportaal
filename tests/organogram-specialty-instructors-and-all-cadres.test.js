@@ -135,13 +135,35 @@ test('personnel profile uses wide two-column desktop layout with accessible mobi
  assert.match(html,/\.person-profile-specialties\{\s*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
  assert.match(html,/@media\(max-width:850px\)/);
  assert.match(html,/@media\(max-width:520px\)/);
- assert.match(script,/layout\.append\(primary,secondary\)/);
- assert.match(script,/primary\.append\(overview\)/);
+ assert.match(script,/layout\.append\(intro,primary,secondary\)/);
+ assert.match(script,/intro\.append\(overview\)/);
  assert.match(script,/primary\.append\(grid\)/);
  assert.match(script,/secondary\.append\(list\)/);
  assert.match(script,/dialog\.showModal\(\)/);
  assert.match(script,/event\.currentTarget\.close\(\)/);
 });
+test('public profile aligns specialty cards with public facts and selects each K9 patch stripe',()=>{
+ assert.ok(html.includes('"intro ."'));
+ assert.ok(html.includes('"details specials"'));
+ assert.ok(html.includes('grid-template-columns:repeat(2,minmax(0,1fr))'));
+ assert.ok(html.includes('grid-area:details;min-width:0;padding-top:26px'));
+ assert.ok(html.includes('grid-area:specials;min-width:0'));
+ assert.ok(html.includes('height:18px;'));
+ assert.ok(html.includes('min-height:68px;'));
+ assert.ok(html.includes('grid-column:1 / -1;'));
+ assert.ok(html.includes("background-image:url('/assets/k9-patches-geborduurd-20261029.webp')"));
+ assert.ok(html.includes('background-size:100% 300%'));
+ assert.ok(html.includes('k9-patch-instructeur{background-position:50% 0%}'));
+ assert.ok(html.includes('k9-patch-geleider{background-position:50% 50%}'));
+ assert.ok(html.includes('k9-patch-geleider_in_stage{background-position:50% 100%}'));
+ assert.ok(script.includes("const patch=el('span','k9-role-patch k9-patch-'+role)"));
+ assert.ok(script.includes("patch.setAttribute('aria-label','K9-patch: '+roleLabels[role])"));
+ assert.ok(script.includes("const role=p.k9Role||(roles.includes('instructeur')?'instructeur':'')"));
+ assert.ok(script.includes("const patch=el('img','person-profile-specialty-patch')"));
+ assert.ok(html.includes('grid-template-areas:"intro" "details" "specials"'));
+ assert.ok(script.includes('layout.append(intro,primary,secondary)'));
+});
+
 test('grid and original uniform/drag controls remain available',()=>{
  assert.match(html,/spec-list police-specialty-grid/);
  assert.match(html,/middleCadreLayout\(level\.members\)/);
