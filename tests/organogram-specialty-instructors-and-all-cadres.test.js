@@ -71,6 +71,39 @@ test('manual specialties are validated, independently checked and reversible',()
  assert.deepEqual(specialtyInstructorRoles(merged,'MOTARD'),['docent']);
  assert.deepEqual(specialtyInstructorRoles(merged,'SIGNALISATIE'),[]);
 });
+test('STAGE and LID are exclusive manual presentation labels, not teaching functions',()=>{
+ const basePlacement={boardRole:'none',leadershipTier:'none',displayOrder:0,
+  teachingRoles:['docent'],specialties:['K9'],instructorSpecialties:[],
+  teacherSpecialties:['K9'],reason:'Handmatige organogramweergave'};
+ const stage=validatePlacement({...basePlacement,displayLabels:['stage']},'politie');
+ assert.deepEqual(stage.displayLabels,['stage']);
+ const stored=manualDisplay({...stage,dept:'politie',status:'active'},'politie');
+ assert.deepEqual(stored.displayLabels,['stage']);
+ const merged=mergePlacement(base('Stage',570),stored,{boardRole:'none',
+  specialties:['K9'],teachingRoles:[],instructorSpecialties:[],
+  teacherSpecialties:[],synced:true});
+ assert.deepEqual(merged.displayLabels,['stage']);
+ assert.deepEqual(merged.teachingRoles,['docent']);
+ assert.deepEqual(specialtyInstructorRoles(merged,'K9'),['docent']);
+ assert.deepEqual(validatePlacement({...basePlacement,displayLabels:['lid']},'politie').displayLabels,['lid']);
+ assert.deepEqual(validatePlacement(basePlacement,'politie').displayLabels,[]);
+ assert.throws(()=>validatePlacement({...basePlacement,displayLabels:['stage','lid']},'politie'));
+ assert.throws(()=>validatePlacement({...basePlacement,displayLabels:['admin']},'politie'));
+ assert.throws(()=>validatePlacement({...basePlacement,displayLabels:'stage'},'politie'));
+ assert.throws(()=>validatePlacement({...basePlacement,displayLabels:['lid']},'bestuur'));
+});
+test('management links to the roster and stores display labels without authorizing personnel edits',()=>{
+ assert.match(html,/href="\/personeelslijst\.html" target="_blank"/);
+ assert.match(html,/id="manage-stage"/);
+ assert.match(html,/id="manage-member"/);
+ assert.match(html,/flag stage/);
+ assert.match(html,/flag member/);
+ assert.match(script,/displayLabels:\s*Array\.isArray\(p\.displayLabels\)/);
+ assert.match(script,/body:JSON\.stringify\(\{boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties/);
+ assert.match(route,/displayLabels:values\.displayLabels/);
+ assert.match(route,/displayLabels:restored\.displayLabels/);
+ assert.match(route,/canManagePlacements\(req\.bpd\)/);
+});
 test('legacy general instructor check does not invent specialisation assignment',()=>{
  const old=manualDisplay({
   dept:'politie',status:'active',boardRole:'none',
