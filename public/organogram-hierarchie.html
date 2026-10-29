@@ -2042,6 +2042,7 @@ async function loadPoliceSpecialtyEditor(expectedUid){
    !Array.isArray(data.specialties))throw Error('Geen bevoegdheid');
   policeSpecialtyPeople=data.people;policeSpecialtyNames=data.specialties;
   $('police-specialty-search').value='';
+  $('police-specialty-person').value='';
   populatePoliceSpecialtyPeople();
   $('police-specialty-choices').replaceChildren();
   $('police-specialty-toggle').hidden=false;
