@@ -13,18 +13,22 @@ export function canEditK9Display(actor){
   actor.uid!=='discord:'+actor.discordId)return false;
  return ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'));
 }
+// This is a display-only role resolution: never use it for portal permissions.
+export function k9RoleFromRoleIds(roleIds){
+ if(!Array.isArray(roleIds)||roleIds.some(id=>!ID.test(String(id))))return '';
+ const roles=new Set(roleIds);
+ // Instructors > full handlers (even if K9-IO remains) > K9-IO trainees.
+ if(roles.has(K9_ROLE_IDS.instructeur))return 'instructeur';
+ if(roles.has(K9_ROLE_IDS.geleider))return 'geleider';
+ if(roles.has(K9_ROLE_IDS.geleider_in_stage))return 'geleider_in_stage';
+ return '';
+}
 export function verifiedK9DisplayRole(identity,guildId,now=Date.now()){
  if(!identity||!ID.test(String(guildId||''))||identity.guildId!==guildId||
   !Array.isArray(identity.roleIds)||identity.roleIds.some(id=>!ID.test(String(id)))||
   !Number.isSafeInteger(identity.verifiedAt)||identity.verifiedAt>now+60000||
   now-identity.verifiedAt>7*86400000)return '';
- const roles=new Set(identity.roleIds);
- // Volwaardige K9-leden kunnen ook de opleidingsrol K9-IO behouden.
- // Prioriteit: INSTRUCTEUR > GELEIDER > GELEIDER IN STAGE.
- if(roles.has(K9_ROLE_IDS.instructeur))return 'instructeur';
- if(roles.has(K9_ROLE_IDS.geleider))return 'geleider';
- if(roles.has(K9_ROLE_IDS.geleider_in_stage))return 'geleider_in_stage';
- return '';
+ return k9RoleFromRoleIds(identity.roleIds);
 }
 export function validManualK9Role(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||
