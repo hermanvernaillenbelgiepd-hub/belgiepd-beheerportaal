@@ -311,12 +311,13 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .police-specialty-editor #police-specialty-search{display:block;width:100%;margin-top:5px;
  padding:9px 12px;background:#0b2138;color:#eaf4ff;border:1px solid #597da3;border-radius:7px;box-sizing:border-box}
 .police-specialty-editor #police-specialty-search-count{margin:6px 0 14px}
-.police-specialty-editor #police-k9-label{display:block;margin-top:12px;font-size:11px}
+.police-specialty-editor #police-k9-label{margin-top:12px;font-size:11px}
+.police-specialty-editor #police-k9-label[hidden],.police-specialty-editor #police-k9-verify[hidden]{display:none!important}
 .police-specialty-editor #police-k9-role{margin-top:5px}
 
 .manage-specialty-preview{position:sticky;top:10px;background:#0b2138;border:1px solid #597da3;border-radius:9px;padding:12px;min-width:0}
 .manage-specialty-preview h3{font-size:12px;margin:0 0 7px}
-.manage-specialty-preview .patch-art{display:flex;min-height:86px;justify-content:center;align-items:center;background:#081b30;border:1px solid #344f6f;border-radius:7px;margin:9px 0;padding:9px;overflow:hidden}
+.manage-specialty-preview .patch-art{display:flex;min-height:86px;justify-content:center;align-items:center;background:transparent;border:0;border-radius:0;margin:9px 0;padding:0;overflow:hidden}
 .manage-specialty-preview .patch-art img{display:block;width:100%;max-width:255px;height:auto;max-height:125px;object-fit:contain}
 .manage-specialty-preview .patch-art .patch-empty{text-align:center;color:#94b6d7;font-size:11px;line-height:1.5}
 .manage-specialty-preview p{font-size:11px;color:#c8ddf0;margin:5px 0}
@@ -1057,7 +1058,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
     <div id="police-specialty-preview-art" class="patch-art"><span class="patch-empty">Nog geen specialisatie geselecteerd.</span></div>
     <p id="police-specialty-preview-role"></p>
     <p id="police-specialty-preview-meta" class="patch-meta"></p>
-    <label id="police-k9-label">Handmatige K9-functie
+    <label id="police-k9-label" hidden>Handmatige K9-functie
      <select id="police-k9-role" disabled>
       <option value="">Automatisch volgens Discord</option>
       <option value="instructeur">INSTRUCTEUR</option>
@@ -1065,9 +1066,9 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
       <option value="geleider_in_stage">GELEIDER IN STAGE</option>
      </select>
     </label>
-    <p class="manager-note">De K9-patch volgt de geverifieerde of handmatige functie.</p>
-    <button type="button" id="police-k9-verify" disabled>↻ K9-rol via Discord controleren</button>
-    <p id="police-k9-verify-result" role="status" aria-live="polite"></p>
+    <p class="manager-note" hidden>De K9-patch volgt de geverifieerde of handmatige functie.</p>
+    <button type="button" id="police-k9-verify" hidden disabled>↻ K9-rol via Discord controleren</button>
+    <p id="police-k9-verify-result" hidden role="status" aria-live="polite"></p>
    </aside>
   </div>
   <label>Motivering voor het logboek
@@ -1969,11 +1970,11 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
  const checked=row?.querySelector('input[data-role="member"]')?.checked;
  const instructor=row?.querySelector('input[data-role="instructor"]')?.checked;
  const teacher=row?.querySelector('input[data-role="teacher"]')?.checked;
- const k9Role=$('police-k9-role').value||person.k9Automatic||'';
+ const k9Role=specialty==='K9'?($('police-k9-role').value||person.k9Automatic||''):'';
  drawBadgePreview(art,specialty,k9Role);
  if(specialty==='K9'){
   role.textContent='K9 · '+(K9_PATCH_ROLE_LABELS[k9Role]||'functie niet bevestigd');
-  meta.textContent='De K9-functie kan rechts handmatig worden gekozen.';
+  meta.textContent='K9-patch volgens de geregistreerde functie.';
  }else if(specialty==='RAGO-IO'){
   role.textContent='RAGO-IO · '+(checked?'geselecteerd':'in opleiding');
   meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · geen volwaardige RAGO-functie';
@@ -2032,7 +2033,7 @@ function fillPoliceSpecialtyPerson(){
  }
  $('police-specialty-reason').value='';
  $('police-specialty-status').textContent='Handmatige keuzes geladen. Automatische Discord-rollen blijven daarnaast bestaan.';
- previewPoliceSpecialty([...active][0]||'K9');
+ previewPoliceSpecialty('');
 }
 async function loadPoliceSpecialtyEditor(expectedUid){
  try{
