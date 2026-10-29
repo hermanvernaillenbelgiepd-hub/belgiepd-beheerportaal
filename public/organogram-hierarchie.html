@@ -1979,6 +1979,8 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
 function fillPoliceSpecialtyPerson(){
  const person=currentPoliceSpecialtyPerson(),area=$('police-specialty-choices');
  area.replaceChildren();policeSpecialtyFocus='';
+ $('police-k9-verify').disabled=!person;
+ $('police-k9-verify-result').textContent='';
  $('police-k9-role').value=person?.k9Manual||'';
  $('police-k9-role').disabled=!person;
  $('police-specialty-save').disabled=!person;
@@ -2029,22 +2031,54 @@ async function loadPoliceSpecialtyEditor(expectedUid){
   if(data.canEdit!==true||data.displayOnly!==true||!Array.isArray(data.people)||
    !Array.isArray(data.specialties))throw Error('Geen bevoegdheid');
   policeSpecialtyPeople=data.people;policeSpecialtyNames=data.specialties;
-  const picker=$('police-specialty-person');
-  picker.replaceChildren(Object.assign(el('option','','Kies een politielid…'),{value:''}));
-  data.people.forEach((p,i)=>{
-   const option=el('option','',(p.call||'—')+' · '+p.name);
-   option.value=String(i);picker.append(option);
-  });
-  picker.value='';$('police-specialty-choices').replaceChildren();
+  $('police-specialty-search').value='';
+  populatePoliceSpecialtyPeople();
+  $('police-specialty-choices').replaceChildren();
   $('police-specialty-toggle').hidden=false;
   $('police-specialty-save').disabled=true;
  }catch(_e){
   if(auth?.currentUser?.uid!==expectedUid)return;
   policeSpecialtyPeople=[];policeSpecialtyNames=[];
+  $('police-specialty-search').value='';
+  populatePoliceSpecialtyPeople();
   $('police-specialty-toggle').hidden=true;
   $('police-specialty-editor').hidden=true;
  }
 }
+function populatePoliceSpecialtyPeople(){
+ const picker=$('police-specialty-person'),term=$('police-specialty-search').value.trim()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl-BE');
+ const before=picker.value,matched=[];
+ policeSpecialtyPeople.forEach((p,i)=>{
+  const name=((p.call||'')+' '+(p.name||'')).normalize('NFD')
+   .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl-BE');
+  if(!term||name.includes(term))matched.push([i,p]);
+ });
+ picker.replaceChildren(Object.assign(el('option','','Kies een politielid…'),{value:''}));
+ for(const [i,p] of matched){
+  const option=el('option','',(p.call||'—')+' · '+p.name);
+  option.value=String(i);picker.append(option);
+ }
+ if(!matched.length&&term){
+  const option=el('option','','Geen politiemedewerkers gevonden');
+  option.disabled=true;picker.append(option);
+ }
+ // Keep original personnel indexes, independent of the filtered order.
+ const same=before!==''&&matched.some(([i])=>String(i)===before);
+ picker.value=same?before:'';
+ if(before&&!same)fillPoliceSpecialtyPerson();
+ $('police-specialty-search-count').textContent=term?
+  matched.length+' politiemedewerker'+(matched.length===1?'':'s')+' gevonden':
+  policeSpecialtyPeople.length+' politiemedewerkers beschikbaar';
+}
+$('police-specialty-search').addEventListener('input',populatePoliceSpecialtyPeople);
+$('police-specialty-search').addEventListener('keydown',event=>{
+ if(event.key!=='Enter')return;
+ const select=$('police-specialty-person');
+ const option=[...select.options].find(o=>o.value!==''&&!o.disabled);
+ if(!option)return;
+ event.preventDefault();select.value=option.value;fillPoliceSpecialtyPerson();
+});
 $('police-specialty-person').addEventListener('change',fillPoliceSpecialtyPerson);
 $('police-specialty-toggle').addEventListener('click',()=>{
  $('police-specialty-editor').hidden=!$('police-specialty-editor').hidden;
