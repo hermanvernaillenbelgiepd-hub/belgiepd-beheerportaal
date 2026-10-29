@@ -1150,7 +1150,7 @@ function el(tag,cls,text){
  return n;
 }
 // Alleen visuele presentatie: dit zijn kwalificaties zonder instructeurslijst.
-const POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS=new Set(['SIGNALISATIE','RADIO/BM','SEMI ANONIEM']);
+const POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS=new Set(['SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO']);
 function supportsSpecialtyInstructors(label){
  return !POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS.has(policeSpecialtyName(label));
 }
@@ -1854,7 +1854,7 @@ function fillAdminPerson(){
   input.value=specialty;input.dataset.role='member';
   input.checked=(values.specialties||[]).includes(specialty);
   label.append(input,document.createTextNode(' '+specialty));entry.append(label);
-  if(p.dept==='politie'){
+  if(p.dept==='politie'&&supportsSpecialtyInstructors(specialty)){
    for(const [role,visible] of [['instructor','Instructeur'],['teacher','Docent']]){
     const choice=el('label','manage-specialty-role');
     const flag=el('input');flag.type='checkbox';flag.value=specialty;
