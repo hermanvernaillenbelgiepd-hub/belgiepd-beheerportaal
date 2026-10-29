@@ -13,13 +13,13 @@ const WORKERS=8;
 const cache=new Map();
 const pending=new Map();
 
-async function verifyK9Member(id,guild,token,fetchImpl,now){
+async function verifyK9Member(id,guild,token,fetchImpl,now,{force=false}={}){
  const key=guild+':'+id;
  const cached=cache.get(key);
- if(cached&&cached.expires>now)return cached.result;
+ if(!force&&cached&&cached.expires>now)return cached.result;
  if(pending.has(key))return pending.get(key);
  const task=(async()=>{
-  let result={verified:false,role:''},ttl=ERROR_TTL_MS;
+  let result={verified:false,role:'',status:'network_error'},ttl=ERROR_TTL_MS;
   try{
    const response=await fetchImpl(
     'https://discord.com/api/v10/guilds/'+guild+'/members/'+id,{
@@ -28,16 +28,24 @@ async function verifyK9Member(id,guild,token,fetchImpl,now){
      signal:AbortSignal.timeout(3500),redirect:'error'
     });
    if(response.status===404){
-    // Discord confirmed the account is not a guild member; do not keep a
-    // previously verified role as current.
-    result={verified:true,role:''};ttl=NOT_FOUND_TTL_MS;
+    // A verified absence clears previously displayed automatic K9 roles.
+    result={verified:true,role:'',status:'not_in_guild'};ttl=NOT_FOUND_TTL_MS;
+   }else if(response.status===401||response.status===403){
+    result={verified:false,role:'',status:'discord_forbidden'};
+   }else if(response.status===429){
+    result={verified:false,role:'',status:'discord_limited'};
    }else if(response.ok){
     const payload=await response.json();
     const member=verifiedBotMember(payload,id);
     if(member){
-     result={verified:true,role:k9RoleFromRoleIds(member.roleIds)};
+     const role=k9RoleFromRoleIds(member.roleIds);
+     result={verified:true,role,status:role?'ok':'no_k9_role'};
      ttl=SUCCESS_TTL_MS;
+    }else{
+     result={verified:false,role:'',status:'invalid_member'};
     }
+   }else{
+    result={verified:false,role:'',status:'discord_unavailable'};
    }
   }catch{
    // The cached Firebase proof remains the fallback on bot/API failures.
@@ -70,6 +78,20 @@ export async function refreshK9DisplayRoles(ids,{
  });
  await Promise.all(workers);
  return {available:true,roles,checked:unique.length};
+}
+
+// A deliberate, officer/korps-only single-member check, bypassing short-term
+// caches. The caller validates permissions and roster membership first.
+// Only a safe status and a mapped K9 function leave this module.
+export async function verifyK9DisplayRoleNow(personId,{
+ env=process.env,fetchImpl=fetch,now=Date.now()
+}={}){
+ const guild=String(env.DISCORD_GUILD_ID||''),token=discordBotToken(env);
+ if(!isDiscordId(personId))return {status:'invalid_person',role:'',verified:false};
+ if(!isDiscordId(guild)||!token)
+  return {status:'bot_unconfigured',role:'',verified:false};
+ const result=await verifyK9Member(personId,guild,token,fetchImpl,now,{force:true});
+ return {status:result.status,role:result.role,verified:result.verified};
 }
 
 // Candidates come from roster/registered K9 memberships, explicitly set
