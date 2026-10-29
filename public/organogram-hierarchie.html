@@ -320,7 +320,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .manage-specialty-preview .patch-art{display:flex;min-height:86px;justify-content:center;align-items:center;background:transparent;border:0;border-radius:0;margin:9px 0;padding:0;overflow:hidden}
 .manage-specialty-preview .patch-art img{display:block;width:100%;max-width:255px;height:auto;max-height:125px;object-fit:contain}
 .manage-specialty-preview .patch-art .patch-empty{text-align:center;color:#94b6d7;font-size:11px;line-height:1.5}
-.person-profile-specialty-rago-io .rago-instructor-badge{height:auto!important;max-height:85px;object-fit:contain}
+.person-profile-specialty-rago-io .rago-instructor-badge{object-fit:contain}
 .manage-specialty-preview p{font-size:11px;color:#c8ddf0;margin:5px 0}
 .manage-specialty-preview .patch-meta{font-variant-numeric:tabular-nums;color:#a9cee9}
 .manage-specialty-preview .patch-role{color:#ffdf99;font-weight:750}
@@ -1010,6 +1010,42 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   width:min(170px,55vw);height:auto;aspect-ratio:16 / 5
  }
 }
+/* Eenzelfde badgeformaat voor alle specialisatiepatches als het gradenplaatje.
+   Een afwijkende bronverhouding blijft volledig zichtbaar via object-fit:contain.
+   De K9-sprite behoudt per rol de juiste positie, zonder afbeelding te rekken. */
+.person-profile-dialog.police-person-profile .person-profile-specialty .person-profile-specialty-badge{
+ display:block;
+ box-sizing:border-box;
+ width:170px;
+ height:53.125px;
+ min-width:0;
+ max-width:100%;
+ aspect-ratio:16 / 5;
+ flex:none;
+ align-self:center;
+ justify-self:end;
+ grid-column:2;
+ grid-row:1 / span 2;
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty img.person-profile-specialty-badge{
+ object-fit:contain;
+ object-position:center;
+ background:transparent;
+ border:0;
+ border-radius:0;
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty .k9-role-patch.person-profile-specialty-badge{
+ background-size:90.625% 300%;
+}
+@media(max-width:380px){
+ .person-profile-dialog.police-person-profile .person-profile-specialty .person-profile-specialty-badge{
+  grid-column:1;
+  grid-row:2;
+  justify-self:start;
+  width:min(170px,40vw);
+  height:auto;
+ }
+}
 </style>
 </head>
 <body>
@@ -1292,7 +1328,7 @@ function openPersonProfile(p){
     const roleLabels={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
      geleider_in_stage:'GELEIDER IN STAGE'};
     if(Object.hasOwn(roleLabels,role)){
-     const patch=el('span','k9-role-patch k9-patch-'+role);
+     const patch=el('span','person-profile-specialty-badge k9-role-patch k9-patch-'+role);
      patch.setAttribute('role','img');
      patch.setAttribute('aria-label','K9-patch: '+roleLabels[role]);
      item.append(patch);
@@ -1311,12 +1347,12 @@ function openPersonProfile(p){
     const isRagoInstructor=full&&roles.some(r=>r==='instructeur'||r==='docent');
     item.append(el('span','person-profile-specialty-role',
      isRagoInstructor?'RAGO · INSTRUCTEUR':full?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'));
-    const patch=el('img','rago-io-badge');
+    const patch=el('img','person-profile-specialty-badge rago-io-badge');
     patch.src=full?(isRagoInstructor?RAGO_INSTRUCTOR_PATCH:RAGO_PATCH):RAGO_IO_PATCH;
     patch.alt=isRagoInstructor?'RAGO instructeur: Federale Politie Dienst Luchtsteun':
      full?'RAGO volwaardig: Federale Politie Dienst Luchtsteun':
      'RAGO-IO: Federale Politie Dienst Luchtsteun';
-    patch.loading='lazy';patch.width=170;patch.height=80;
+    patch.loading='lazy';patch.width=170;patch.height=53;
     if(isRagoInstructor)patch.classList.add('rago-instructor-badge');
     item.append(patch);
    }else{
