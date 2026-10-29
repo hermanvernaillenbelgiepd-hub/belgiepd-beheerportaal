@@ -110,7 +110,7 @@ test('targeted role check is gated by OFF/KL permission and only matches an exis
  assert.match(route,/snapshot\.data\.some\(p=>validRow\(p\)&&p\.dept==='politie'&&p\.personId===personId\)/);
  assert.match(route,/k9VerificationCooldown\.get\(key\)/);
  assert.match(route,/return res\.json\(\{checked:result\.verified,status:result\.status/);
- assert.match(page,/id="k9-verify-now"/);
+ assert.match(page,/id="police-k9-verify"/);
  assert.match(page,/method:'POST'/);
  assert.match(page,/no_k9_role:'Discord bevestigt dit serverlid/);
 });
