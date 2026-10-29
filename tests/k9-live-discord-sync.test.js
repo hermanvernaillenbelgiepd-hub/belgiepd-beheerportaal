@@ -15,6 +15,8 @@ test('K9 candidates include existing K9 registrations and previous K9/IO snapsho
  assert.equal(knownK9Candidate(member(ids[0]),{specialties:['K9']},null,'',Object.values(K9_ROLE_IDS)),true);
  assert.equal(knownK9Candidate(member(ids[0]),{specialties:[]},{roleIds:[K9_ROLE_IDS.geleider_in_stage]},'',Object.values(K9_ROLE_IDS)),true);
  assert.equal(knownK9Candidate(member(ids[0]),{specialties:[]},null,'geleider',Object.values(K9_ROLE_IDS)),true);
+ assert.equal(knownK9Candidate({...member(ids[0]),specialties:[{label:'K9-IO',value:'Ja'}]},
+  {specialties:[]},null,'',Object.values(K9_ROLE_IDS)),true);
  assert.equal(knownK9Candidate(member(ids[0]),{specialties:['MOTARD']},null,'',Object.values(K9_ROLE_IDS)),false);
  assert.equal(knownK9Candidate({...member(ids[0]),dept:'brandweer'},{specialties:['K9']},null,'',Object.values(K9_ROLE_IDS)),false);
 });
