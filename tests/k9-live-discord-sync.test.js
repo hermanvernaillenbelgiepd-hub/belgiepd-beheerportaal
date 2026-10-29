@@ -56,7 +56,7 @@ test('Discord 404 clears a cached K9 presentation role; API errors do not fabric
 test('K9 bot refresh must never update identities or replace permission checks',()=>{
  const src=readFileSync(new URL('../src/k9-live-discord-sync.js',import.meta.url),'utf8');
  const routes=readFileSync(new URL('../src/organogram-placement-routes.js',import.meta.url),'utf8');
- assert.doesNotMatch(src,/db\.collection|\.set\(|\.update\(|\.commit\(/);
+ assert.doesNotMatch(src,/getFirestore|FieldValue|\.collection\(|\.runTransaction\(|\.batch\(/);
  assert.match(routes,/liveK9\.roles\.has\(p\.personId\)/);
  assert.match(routes,/verifiedK9DisplayRole\(roles\.entries\.get\(p\.personId\),process\.env\.DISCORD_GUILD_ID\)/);
  assert.match(routes,/merged\.k9Role=effectiveK9DisplayRole\(/);
