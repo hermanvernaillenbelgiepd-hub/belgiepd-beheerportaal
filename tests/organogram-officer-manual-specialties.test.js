@@ -70,3 +70,31 @@ test('only authorized users get the hidden manual-specialty UI and badge preview
  assert.match(html,/id="police-specialty-preview-art"/);
  assert.match(html,/id="police-k9-role" disabled/);
 });
+
+test('search by name or callsign retains stable person index and one unified editor',()=>{
+ assert.match(html,/id="police-specialty-search"/);
+ assert.match(html,/placeholder="Typ naam of roepnummer…"/);
+ assert.match(html,/id="police-specialty-search-count"/);
+ assert.match(script,/function populatePoliceSpecialtyPeople\(\)/);
+ assert.match(script,/normalize\('NFD'\)/);
+ assert.match(script,/name\.includes\(term\)/);
+ assert.match(script,/option\.value=String\(i\)/);
+ assert.match(script,/picker\.value=same\?before:''/);
+ assert.match(script,/addEventListener\('keydown',event=>/);
+ assert.match(script,/event\.preventDefault\(\);select\.value=option\.value;fillPoliceSpecialtyPerson\(\)/);
+ assert.match(html,/>Specialisaties bewaren<\/button>/);
+ assert.match(html,/id="police-k9-verify"/);
+ assert.match(script,/\$\('police-k9-verify'\)\.addEventListener\('click',async\(\)=>/);
+ assert.doesNotMatch(html,/id="k9-toggle"/);
+ assert.doesNotMatch(html,/id="k9-manager"/);
+ assert.doesNotMatch(script,/loadK9Editor\(\)/);
+});
+test('RAGO full role has its own wing patch, and RAGO-IO remains training only',()=>{
+ assert.match(html,/const RAGO_DISCORD_ROLE_ID='1309532437977497700'/);
+ assert.match(html,/const RAGO_PATCH='\/assets\/rago-volwaardig-luchtsteun-wing-20261029\.webp'/);
+ assert.match(html,/const RAGO_IO_PATCH='\/assets\/rago-io-belgische-luchtsteun-geborduurd-20261029\.webp'/);
+ assert.match(script,/img\.src=specialty==='RAGO'\?RAGO_PATCH:RAGO_IO_PATCH/);
+ assert.match(script,/patch\.src=full\?RAGO_PATCH:RAGO_IO_PATCH/);
+ assert.match(script,/full\?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'/);
+ assert.match(script,/meta\.textContent='Discord-rol: '\+RAGO_DISCORD_ROLE_ID/);
+});
