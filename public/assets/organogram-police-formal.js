@@ -3,11 +3,11 @@
  'use strict';
  const BASE='/assets/organogram-police-formal.webp';
  // Approved cord-free silver jacket from TEST, shared by middle, basic and agent cadres.
- const SILVER_BASE='/assets/bpd-uniform-zilver-zonder-koord-nieuw-20261028.webp';
+ const SILVER_BASE='/assets/bpd-uniform-zilver-zonder-medaille-rood-20261029.svg';
  // A single source jacket for corps leadership AND the officer cadre.
  // Native pixel recolouring is done once, without SVG/CSS image filters;
  // the approved golden trim remains unaffected. No rank data is changed.
- const GOLD_BASE='/assets/bpd-gold-officer-corps-approved-20261028.webp';
+ const GOLD_BASE='/assets/bpd-gold-officer-corps-zonder-medaille-rood-20261029.svg';
  let matchedGoldSource=null, matchedGoldPromise=null;
  function matchedGoldNavy(){
   if(matchedGoldSource)return Promise.resolve(matchedGoldSource);
@@ -28,7 +28,7 @@
       const data=pixels.data;
       // The two original blue samples are RGB(28,56,96) and (1,33,74).
       // Restrict adjustment to blue-dominant cloth pixels: white/red/gold
-      // collar, shoulder details, braids and medal stay original.
+      // collar, tie, shoulder details and braids stay original.
       for(let i=0;i<data.length;i+=4){
        const r=data[i],g=data[i+1],b=data[i+2];
        if(data[i+3]===0)continue;
@@ -190,7 +190,7 @@
  }
 
  // Rank-specific presentation only: gold 900-930, cord-free silver 100-899.
- // Both base images are fixed photographic/graphic coats. Real name, call,
+ // Both base images show the standard navy tie without fixed red neck ribbon or medal. Real name, call,
  // award and embroidered grade panels remain separate live display layers.
  // This visual lookup MUST NEVER grant any personnel permissions.
  function trimFor(grade){
