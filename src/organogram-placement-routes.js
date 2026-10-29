@@ -8,7 +8,7 @@ import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
 import {organogramReekshoofdTitle,policeOrganogramDossierUrl} from './organogram-profile-display.js';
 import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
  validManualK9Role,effectiveK9DisplayRole} from './k9-display-role.js';
-import {refreshK9DisplayRoles,knownK9Candidate} from './k9-live-discord-sync.js';
+import {refreshK9DisplayRoles,knownK9Candidate,verifyK9DisplayRoleNow} from './k9-live-discord-sync.js';
 
 const idOK=id=>/^\d{15,22}$/.test(String(id||''));
 const fault=(code,msg)=>Object.assign(new Error(msg),{publicStatus:code});
@@ -62,6 +62,7 @@ const safePublic=p=>({
 });
 export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const store=()=>getFirestore();
+ const k9VerificationCooldown=new Map();
  // All returned attributes are display-only. Public output NEVER includes
  // Discord identifiers, access grants, source documents or audit history.
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
@@ -172,6 +173,35 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       'snapshot':'niet_bevestigd',
     manual:manual.get(p.personId)?.role||''
    })),readOnly:false});
+  }catch(e){return respond(res,e)}
+ });
+ // Targeted Discord check for one real police employee. The caller's
+ // authenticated OFF/KL role is checked on every request; never trust a
+ // posted guild, role list, Discord ID or any other client-supplied data.
+ app.post('/api/organogram/k9/:personId/verify',requireUser,async(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  if(!canEditK9Display(req.bpd))
+   return res.status(403).json({error:'Alleen politie Officierenkader en Korpsleiding'});
+  const personId=String(req.params.personId||'');
+  if(!idOK(personId))return res.status(400).json({error:'Ongeldig personeelslid'});
+  try{
+   const snapshot=await getSnapshot();
+   if(!snapshot.data.some(p=>validRow(p)&&p.dept==='politie'&&p.personId===personId))
+    return res.status(404).json({error:'Geen gekoppeld politielid'});
+   const now=Date.now(),key=req.bpd.uid+':'+personId;
+   const prev=k9VerificationCooldown.get(key);
+   if(prev&&now-prev<45000)
+    return res.status(429).json({error:'Deze Discord-controle is net uitgevoerd. Probeer na 45 seconden opnieuw.'});
+   k9VerificationCooldown.set(key,now);
+   if(k9VerificationCooldown.size>1000){
+    for(const [k,t] of k9VerificationCooldown)if(now-t>45000)k9VerificationCooldown.delete(k);
+    if(k9VerificationCooldown.size>1000)
+     k9VerificationCooldown.delete(k9VerificationCooldown.keys().next().value);
+   }
+   const result=await verifyK9DisplayRoleNow(personId);
+   return res.json({checked:result.verified,status:result.status,
+    automatic:result.verified?result.role:'',
+    displayOnly:true,permissionsChanged:false});
   }catch(e){return respond(res,e)}
  });
  app.put('/api/organogram/k9/:personId',requireUser,async(req,res)=>{
