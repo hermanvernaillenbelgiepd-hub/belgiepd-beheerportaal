@@ -65,6 +65,8 @@ export function validatePlacement(body,dept){
   throw Error('Kies uitsluitend geldige instructeur-/docentspecialisaties van de dienst');
  if(dept==='bestuur'&&(instructorSpecialties.length||teacherSpecialties.length))
   throw Error('Bestuur heeft geen opleidingsspecialisaties');
+ if(dept==='politie'&&(instructorSpecialties.includes('RAGO-IO')||teacherSpecialties.includes('RAGO-IO')))
+  throw Error('RAGO-IO is een opleidingsstatus, geen instructeursfunctie');
  if(instructorSpecialties.some(x=>!specialties.includes(x))||
     teacherSpecialties.some(x=>!specialties.includes(x)))
   throw Error('Een instructeur of docent moet ook lid zijn van de specialisatie');
