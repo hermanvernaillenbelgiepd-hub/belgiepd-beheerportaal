@@ -320,6 +320,12 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .manage-specialty-preview .patch-art{display:flex;min-height:86px;justify-content:center;align-items:center;background:transparent;border:0;border-radius:0;margin:9px 0;padding:0;overflow:hidden}
 .manage-specialty-preview .patch-art img{display:block;width:100%;max-width:255px;height:auto;max-height:125px;object-fit:contain}
 .manage-specialty-preview .patch-art .patch-empty{text-align:center;color:#94b6d7;font-size:11px;line-height:1.5}
+.rago-instructor-patch{display:flex;flex-direction:column;align-items:center;justify-content:center;max-width:255px;width:100%;background:transparent}
+.rago-instructor-patch img{display:block!important;width:100%!important;max-height:none!important;height:auto!important;object-fit:contain;background:transparent}
+.rago-instructor-patch .rago-instructor-label{box-sizing:border-box;display:block;width:97%;margin-top:-3px;padding:3px 3px 4px;background:#090d13;border:2px solid #be8136;border-top:0;border-radius:0 0 8px 8px;text-align:center;color:#d79545;font-size:12px;font-weight:850;letter-spacing:1.4px;line-height:1.05;text-shadow:0 1px 1px #000}
+.person-profile-specialty-rago-io .rago-instructor-patch{width:170px;max-width:100%;grid-column:2;grid-row:1 / span 2;align-self:center}
+.person-profile-specialty-rago-io .rago-instructor-patch img{height:auto!important}
+.person-profile-specialty-rago-io .rago-instructor-patch .rago-instructor-label{font-size:9px;letter-spacing:.8px}
 .manage-specialty-preview p{font-size:11px;color:#c8ddf0;margin:5px 0}
 .manage-specialty-preview .patch-meta{font-variant-numeric:tabular-nums;color:#a9cee9}
 .manage-specialty-preview .patch-role{color:#ffdf99;font-weight:750}
@@ -1307,14 +1313,19 @@ function openPersonProfile(p){
     // Different patches: verified full RAGO versus training role RAGO-IO.
     item.classList.add('person-profile-specialty-rago-io');
     const full=name==='RAGO';
+    const isRagoInstructor=full&&roles.some(r=>r==='instructeur'||r==='docent');
     item.append(el('span','person-profile-specialty-role',
-     full?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'));
+     isRagoInstructor?'RAGO · INSTRUCTEUR':full?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'));
     const patch=el('img','rago-io-badge');
     patch.src=full?RAGO_PATCH:RAGO_IO_PATCH;
     patch.alt=full?'RAGO: Federale Politie Dienst Luchtsteun':
      'RAGO-IO: Federale Politie Dienst Luchtsteun';
     patch.loading='lazy';patch.width=170;patch.height=72;
-    item.append(patch);
+    if(isRagoInstructor){
+     const variant=el('div','rago-instructor-patch');
+     variant.append(patch,el('span','rago-instructor-label','INSTRUCTEUR'));
+     item.append(variant);
+    }else item.append(patch);
    }else{
     const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
     item.append(el('span','person-profile-specialty-role',role));
@@ -1823,7 +1834,7 @@ const RAGO_DISCORD_ROLE_ID='1309532437977497700';
 const K9_PATCH_ROLE_LABELS={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
  geleider_in_stage:'GELEIDER IN STAGE'};
 let focusedAdminSpecialty='';
-function drawBadgePreview(box,specialty,k9Role=''){
+function drawBadgePreview(box,specialty,k9Role='',ragoInstructor=false){
  box.replaceChildren();
  if(specialty==='RAGO-IO'||specialty==='RAGO'){
   const img=el('img');
@@ -1832,7 +1843,13 @@ function drawBadgePreview(box,specialty,k9Role=''){
    'Volwaardige RAGO-luchtsteunpatch met Belgische vlam en okerkleurige vleugels':
    'Belgische geborduurde RAGO-IO-patch met vlam, vleugel en okerkleurige tekst';
   img.width=220;img.height=94;
-  img.loading='lazy';box.append(img);return true;
+  img.loading='lazy';
+  if(specialty==='RAGO'&&ragoInstructor){
+   const variant=el('div','rago-instructor-patch');
+   variant.append(img,el('span','rago-instructor-label','INSTRUCTEUR'));
+   box.append(variant);
+  }else box.append(img);
+  return true;
  }
  if(specialty==='K9'&&Object.hasOwn(K9_PATCH_ROLE_LABELS,k9Role)){
   const patch=el('span','k9-patch-preview role-'+k9Role);
@@ -1864,10 +1881,13 @@ function refreshAdminBadgePreview(specialty=focusedAdminSpecialty){
  const instructor=entry?.querySelector('input[data-role="instructor"]')?.checked;
  const known=state.live.find(p=>p.personId===person.personId&&p.dept===person.dept);
  const k9Role=known?.k9Role||'';
- drawBadgePreview(art,specialty,k9Role);
+ drawBadgePreview(art,specialty,k9Role,Boolean(instructor||teacher));
  if(specialty==='RAGO-IO'){
   role.textContent='Opleidingsstatus: RAGO-IO'+(checked?' · handmatig geselecteerd':'');
   meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · weergave, geen bevoegdheid';
+ }else if(specialty==='RAGO'){
+  role.textContent=instructor||teacher?'RAGO · INSTRUCTEUR':'RAGO · VOLWAARDIG';
+  meta.textContent='Discord-rol: '+RAGO_DISCORD_ROLE_ID+' · instructeur indien geregistreerd';
  }else if(specialty==='K9'){
   role.textContent='K9: '+(K9_PATCH_ROLE_LABELS[k9Role]||'geen functie bevestigd');
   meta.textContent='K9-functies worden beheerd via Handmatige specialisaties.';
@@ -1974,7 +1994,7 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
  const instructor=row?.querySelector('input[data-role="instructor"]')?.checked;
  const teacher=row?.querySelector('input[data-role="teacher"]')?.checked;
  const k9Role=specialty==='K9'?($('police-k9-role').value||person.k9Automatic||''):'';
- drawBadgePreview(art,specialty,k9Role);
+ drawBadgePreview(art,specialty,k9Role,Boolean(instructor||teacher));
  if(specialty==='K9'){
   role.textContent='K9 · '+(K9_PATCH_ROLE_LABELS[k9Role]||'functie niet bevestigd');
   meta.textContent='K9-patch volgens de geregistreerde functie.';
@@ -1982,7 +2002,7 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
   role.textContent='RAGO-IO · '+(checked?'geselecteerd':'in opleiding');
   meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · geen volwaardige RAGO-functie';
  }else if(specialty==='RAGO'){
-  role.textContent='RAGO · '+(checked?'volwaardig lid geselecteerd':'volwaardige specialisatie');
+  role.textContent='RAGO · '+(instructor||teacher?'INSTRUCTEUR':checked?'volwaardig lid geselecteerd':'volwaardige specialisatie');
   meta.textContent='Discord-rol: '+RAGO_DISCORD_ROLE_ID+' · volwaardige RAGO-functie';
  }else{
   role.textContent=instructor?'INSTRUCTEUR':teacher?'DOCENT':
