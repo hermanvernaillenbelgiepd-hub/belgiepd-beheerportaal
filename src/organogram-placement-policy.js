@@ -43,7 +43,7 @@ const strip=v=>String(v??'').trim();
 export const personKey=(dept,id)=>DISPLAY_DEPTS.includes(dept)&&ID.test(String(id||''))?dept+'_'+id:null;
 export function validatePlacement(body,dept){
  if(!DISPLAY_DEPTS.includes(dept)||!body||typeof body!=='object'||Array.isArray(body)||
-    Object.keys(body).some(k=>!['boardRole','leadershipTier','teachingRoles','specialties','instructorSpecialties','teacherSpecialties','displayOrder','reason'].includes(k)))
+    Object.keys(body).some(k=>!['boardRole','leadershipTier','teachingRoles','displayLabels','specialties','instructorSpecialties','teacherSpecialties','displayOrder','reason'].includes(k)))
    throw Error('Ongeldige organograminstelling');
  const boardRole=body.boardRole;
  const leadershipTier=body.leadershipTier;
@@ -52,9 +52,11 @@ export function validatePlacement(body,dept){
   throw Error('Volgorde moet een geheel getal tussen 0 en 999 zijn (0 = automatisch)');
  if(leadershipTier!=='none'&&!LEADERSHIP_LEVELS[dept]?.includes(leadershipTier))
   throw Error('Kies uitsluitend een leidingniveau van deze dienst');
- if(dept==='bestuur'&&((body.teachingRoles||[]).length||(body.specialties||[]).length))throw Error('Bestuur heeft geen dienstspecialisaties');
+ if(dept==='bestuur'&&((body.teachingRoles||[]).length||(body.displayLabels||[]).length||(body.specialties||[]).length))
+  throw Error('Bestuur heeft geen dienstspecialisaties of personeelslabels');
  if(!['none','bestuur','bestuur-ai'].includes(boardRole))throw Error('Kies een geldige bestuursweergave');
  const teachingRoles=body.teachingRoles,specialties=body.specialties;
+ const displayLabels=body.displayLabels??[];
  const instructorSpecialties=body.instructorSpecialties??[];
  const teacherSpecialties=body.teacherSpecialties??[];
  const validTeachingList=(list)=>Array.isArray(list)&&list.length<=12&&
@@ -66,6 +68,10 @@ export function validatePlacement(body,dept){
  if(instructorSpecialties.some(x=>!specialties.includes(x))||
     teacherSpecialties.some(x=>!specialties.includes(x)))
   throw Error('Een instructeur of docent moet ook lid zijn van de specialisatie');
+ if(!Array.isArray(displayLabels)||displayLabels.length>1||
+     displayLabels.some(x=>!['stage','lid'].includes(x))||
+     new Set(displayLabels).size!==displayLabels.length)
+  throw Error('Kies STAGE of LID als weergavelabel (niet beide)');
  if(!Array.isArray(teachingRoles)||teachingRoles.length>2||
     teachingRoles.some(x=>!['docent','instructeur'].includes(x))||
     new Set(teachingRoles).size!==teachingRoles.length)
@@ -76,13 +82,15 @@ export function validatePlacement(body,dept){
    throw Error('Kies uitsluitend specialisaties van deze dienst');
  const reason=strip(body.reason);
  if(reason.length<8||reason.length>300)throw Error('Motivering van 8 tot 300 tekens verplicht');
- return {boardRole,leadershipTier,displayOrder,teachingRoles:[...teachingRoles],specialties:[...specialties],
+ return {boardRole,leadershipTier,displayOrder,teachingRoles:[...teachingRoles],displayLabels:[...displayLabels],specialties:[...specialties],
   instructorSpecialties:[...instructorSpecialties],teacherSpecialties:[...teacherSpecialties],reason};
 }
 export function manualDisplay(raw,dept){
  if(!raw||raw.status!=='active'||raw.dept!==dept)return null;
  const boardRole=['bestuur','bestuur-ai'].includes(raw.boardRole)?raw.boardRole:'none';
  const teachingRoles=Array.isArray(raw.teachingRoles)?[...new Set(raw.teachingRoles.filter(x=>['docent','instructeur'].includes(x)))]:[];
+ const displayLabels=Array.isArray(raw.displayLabels)?
+  [...new Set(raw.displayLabels.filter(x=>['stage','lid'].includes(x)))].slice(0,1):[];
  const specialties=Array.isArray(raw.specialties)?
   [...new Set(raw.specialties.filter(x=>validStoredSpecialty(dept,x))
     .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,12):[];
@@ -90,7 +98,7 @@ export function manualDisplay(raw,dept){
  const displayOrder=Number.isSafeInteger(raw.displayOrder)&&raw.displayOrder>=1&&raw.displayOrder<=999?raw.displayOrder:0;
  const selected=list=>Array.isArray(list)?[...new Set(list.filter(x=>validStoredSpecialty(dept,x))
   .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,12):[];
- return {boardRole,leadershipTier,displayOrder,teachingRoles,specialties,
+ return {boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties,
   instructorSpecialties:selected(raw.instructorSpecialties),
   teacherSpecialties:selected(raw.teacherSpecialties)};
 }
@@ -148,6 +156,7 @@ export function mergePlacement(person,manual,auto){
   call:strip(person.call).slice(0,24),rank:strip(person.rank).slice(0,95),
   boardRole,leadershipTier:manual?.leadershipTier||'none',displayOrder:manual?.displayOrder||0,
   teachingRoles:[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])],
+  displayLabels:[...(manual?.displayLabels||[])],
   instructorSpecialties:[...new Set([...(manual?.instructorSpecialties||[]),
    ...(auto?.instructorSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
   teacherSpecialties:[...new Set([...(manual?.teacherSpecialties||[]),
