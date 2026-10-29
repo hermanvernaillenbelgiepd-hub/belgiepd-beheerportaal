@@ -1254,6 +1254,15 @@ function openPersonProfile(p){
      item.append(el('span','person-profile-specialty-role',
       'K9-functie niet bevestigd · controleer de Discord-synchronisatie'));
     }
+   }else if(p.dept==='politie'&&name==='RAGO-IO'){
+    // Stage badge. This displays training only, not a full RAGO appointment.
+    item.classList.add('person-profile-specialty-rago-io');
+    item.append(el('span','person-profile-specialty-role','RAGO-IO · in opleiding'));
+    const patch=el('img','rago-io-badge');
+    patch.src=RAGO_IO_PATCH;
+    patch.alt='RAGO-IO: Federale Politie Dienst Luchtsteun';
+    patch.loading='lazy';patch.width=170;patch.height=72;
+    item.append(patch);
    }else{
     const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
     item.append(el('span','person-profile-specialty-role',role));
@@ -1746,7 +1755,7 @@ async function setupManagement(){
  }catch(e){$('manage-status').textContent=e.message;}
 }
 const RAGO_IO_ROLE_ID='1490841316656156802';
-const RAGO_IO_PATCH='/assets/rago-io-belgische-luchtsteun-20261029.webp';
+const RAGO_IO_PATCH='/assets/rago-io-belgische-luchtsteun-20261029.svg';
 const K9_PATCH_ROLE_LABELS={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
  geleider_in_stage:'GELEIDER IN STAGE'};
 let focusedAdminSpecialty='';
