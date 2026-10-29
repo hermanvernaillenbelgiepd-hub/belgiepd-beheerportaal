@@ -674,6 +674,15 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   width:100%;
  }
 }
+.k9-manager{border:1px solid #597a9e;border-radius:11px;padding:13px 15px;margin:10px 0;background:#142b46}
+.k9-manager h2{margin:0 0 5px;font-size:16px}
+.k9-manager p{font-size:11px;color:#b4cde6;line-height:1.5}
+.k9-manager-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.k9-manager-grid label{font-size:12px}
+.k9-manager-grid select,.k9-manager textarea{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid #607d9f;border-radius:7px;color:#e5f2ff;background:#0e2137}
+.k9-manager #k9-role-save{margin-top:10px}
+.k9-manager [hidden],#k9-toggle[hidden]{display:none!important}
+@media(max-width:650px){.k9-manager-grid{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -699,10 +708,28 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   <button type="button" id="demo-toggle" aria-pressed="true">Voorbeeldgegevens</button>
    <button type="button" id="toggle-cadres" aria-label="Alle zichtbare kaders inklappen">▴ Alle kaders inklappen</button>
   <button type="button" id="manage-toggle">⚙ Handmatige functies</button>
+  <button type="button" id="k9-toggle" hidden>🐾 K9-functies beheren</button>
   <button type="button" id="login">Aanmelden</button>
   <input type="search" id="search" placeholder="Zoek naam, rang of specialisatie" aria-label="Doorzoek organogram">
  </nav>
  <div id="source" class="notice warn">Voorbeeldgegevens laden …</div>
+ <section id="k9-manager" class="k9-manager" hidden aria-label="K9-functies beheren">
+  <h2>K9-functies · Officierenkader en Korpsleiding</h2>
+  <p>Automatische Discord-rol, of een handmatige functie met voorrang en logging. De handmatige instellingen zijn niet zichtbaar voor andere leden.</p>
+  <div class="k9-manager-grid">
+   <label>Personeelslid <select id="k9-person"><option value="">Selecteer politielid</option></select></label>
+   <label>K9-functie <select id="k9-role">
+    <option value="">Automatisch volgens Discord</option>
+    <option value="instructeur">INSTRUCTEUR</option>
+    <option value="geleider">GELEIDER</option>
+    <option value="geleider_in_stage">GELEIDER IN STAGE</option>
+   </select></label>
+  </div>
+  <p id="k9-current">Selecteer een personeelslid.</p>
+  <label>Motivering <textarea id="k9-reason" maxlength="300" rows="2" placeholder="Motivering van minstens 8 tekens"></textarea></label>
+  <button type="button" id="k9-role-save">K9-functie opslaan</button>
+  <p id="k9-result" role="status"></p>
+ </section>
  <section id="manage" class="manager" hidden aria-label="Handmatig organogrambeheer">
   <h2>Handmatige functies · noodregeling</h2>
   <p class="manager-note">Selecteer een bestaand personeelslid of een goedgekeurd bestuursaccount. Handmatige keuzes blijven in Firestore bewaard bij uitval van de Discord-sync. Dit geeft geen dossier- of beheersrechten.</p>
@@ -872,13 +899,16 @@ function openPersonProfile(p){
     patch.alt='K9-specialisatiepatch met twee pootafdrukken en rangstrepen';
     patch.width=280;patch.height=98;patch.loading='lazy';
     item.append(patch);
-    if(roles.includes('instructeur')){
+    // Eén consistente echte K9-patch, zonder ongewenste witte lijn onderaan.
+    const role=p.k9Role||(roles.includes('instructeur')?'instructeur':'');
+    if(role==='instructeur'){
      item.append(el('span','person-profile-specialty-instructor','INSTRUCTEUR'));
+    }else if(role==='geleider'||role==='geleider_in_stage'){
+     item.append(el('span','person-profile-specialty-instructor',
+      role==='geleider'?'GELEIDER':'GELEIDER IN STAGE'));
     }else if(roles.includes('docent')){
      item.append(el('span','person-profile-specialty-instructor is-teacher','DOCENT'));
-    }else{
-     item.append(el('span','person-profile-specialty-role','Geregistreerd lid'));
-    }
+    }else item.append(el('span','person-profile-specialty-role','Geregistreerd lid'));
    }else{
     const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
     item.append(el('span','person-profile-specialty-role',role));
@@ -1320,6 +1350,7 @@ async function loadPublic(){
     status:typeof p.status==='string'?p.status.slice(0,30):'',
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
+    k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
     instructorSpecialties:Array.isArray(p.instructorSpecialties)?p.instructorSpecialties.slice(0,12):[],
     teacherSpecialties:Array.isArray(p.teacherSpecialties)?p.teacherSpecialties.slice(0,12):[],
     boardRole:p.boardRole||'none',leadershipTier:p.leadershipTier||'none',displayOrder:Number(p.displayOrder)||0,
@@ -1358,6 +1389,9 @@ async function setupManagement(){
   authModule.onAuthStateChanged(auth,user=>{
    if(!user){adminPeople=[];activeAdminPerson=null;managerReady=false;lastMidBatchId=null;$('manage').hidden=true;}
    void loadPublic();
+   if(user)void loadK9Editor();else{
+    k9People=[];$('k9-toggle').hidden=true;$('k9-manager').hidden=true;
+   }
   });
  }catch(e){$('manage-status').textContent=e.message;}
 }
@@ -1416,6 +1450,54 @@ async function authFetch(url,options={}){
  if(!response.ok)throw Error(data.error||'Geen toegang');
  return data;
 }
+let k9People=[];
+async function loadK9Editor(){
+ try{
+  const data=await authFetch('/api/organogram/k9/admin');
+  if(!data||!Array.isArray(data.people))throw Error('Geen K9-beheergegevens');
+  k9People=data.people;$('k9-toggle').hidden=false;
+  const sel=$('k9-person');
+  sel.replaceChildren(Object.assign(el('option','','Kies een politielid…'),{value:''}));
+  k9People.forEach((p,i)=>{
+   const o=el('option','',(p.call||'—')+' · '+p.name);o.value=String(i);sel.append(o);
+  });
+  sel.value='';$('k9-role').value='';
+ }catch(e){k9People=[];$('k9-toggle').hidden=true;$('k9-manager').hidden=true}
+}
+$('k9-toggle').addEventListener('click',()=>{
+ $('k9-manager').hidden=!$('k9-manager').hidden;
+});
+$('k9-person').addEventListener('change',()=>{
+ const index=$('k9-person').value;
+ const p=index===''?null:k9People[Number(index)];
+ if(!p){$('k9-current').textContent='Selecteer een politielid.';$('k9-role').value='';return;}
+ $('k9-role').value=p.manual||'';
+ const values={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
+  geleider_in_stage:'GELEIDER IN STAGE'};
+ $('k9-current').textContent='Discord: '+(values[p.automatic]||'Geen rol')+
+  ' · Handmatig: '+(values[p.manual]||'Automatisch')+
+  ' · Effectief: '+(values[p.manual||p.automatic]||'Geen K9-functie');
+});
+$('k9-role-save').addEventListener('click',async()=>{
+ const index=$('k9-person').value;
+ const p=index===''?null:k9People[Number(index)];
+ if(!p){$('k9-result').textContent='Selecteer een politielid.';return;}
+ const reason=$('k9-reason').value.trim();
+ if(reason.length<8||reason.length>300){
+  $('k9-result').textContent='Motivering van 8 tot 300 tekens verplicht.';return;
+ }
+ const button=$('k9-role-save');button.disabled=true;
+ try{
+  await authFetch('/api/organogram/k9/'+encodeURIComponent(p.personId),{
+   method:'PUT',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({role:$('k9-role').value,reason})
+  });
+  p.manual=$('k9-role').value;$('k9-reason').value='';
+  $('k9-result').textContent='K9-functie opgeslagen en gelogd.';
+  $('k9-person').dispatchEvent(new Event('change'));await loadPublic();
+ }catch(e){$('k9-result').textContent='Niet opgeslagen: '+e.message}
+ finally{button.disabled=false}
+});
 $('manage-toggle').addEventListener('click',async()=>{
  if(!$('manage').hidden){$('manage').hidden=true;managerReady=false;render();return;}
  $('manage').hidden=false;
