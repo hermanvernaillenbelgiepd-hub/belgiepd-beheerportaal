@@ -177,6 +177,24 @@ test('public profile aligns specialty cards with public facts and selects each K
  assert.ok(script.includes('layout.append(intro,primary,secondary)'));
 });
 
+test('police specializations match the compact rank frame, including K9, without changing other services',()=>{
+ const gradeFrame=html.match(/\.person-profile-grade\{\s*display:inline-flex;[\s\S]*?\n\}/)?.[0];
+ assert.ok(gradeFrame);
+ assert.match(gradeFrame,/width:fit-content/);
+ assert.match(html,/--police-specialty-card-width:320px/);
+ assert.match(html,/--police-specialty-card-height:74px/);
+ assert.match(html,/\.person-profile-dialog\.police-person-profile \.person-profile-specialty\{\s*width:min\(100%,var\(--police-specialty-card-width\)\)/);
+ assert.match(html,/min-height:var\(--police-specialty-card-height\)/);
+ assert.match(html,/\.person-profile-dialog\.police-person-profile \.person-profile-specialty\.person-profile-specialty-k9\{\s*grid-column:auto/);
+ assert.match(html,/grid-template-columns:minmax\(0,1fr\) 170px/);
+ assert.match(html,/\.person-profile-dialog\.police-person-profile \.person-profile-specialty-k9 \.k9-role-patch\{\s*grid-column:2;grid-row:1 \/ span 2;\s*width:170px;height:53\.125px/);
+ assert.match(html,/@media\(max-width:700px\)/);
+ assert.match(html,/@media\(max-width:380px\)/);
+ assert.match(script,/dialog\.classList\.toggle\('police-person-profile',p\.dept==='politie'\)/);
+ // Non-police services continue using their original responsive card rules.
+ assert.match(html,/\.person-profile-specialty\{border:1px solid #42668a/);
+ assert.match(script,/const role=p\.k9Role;/);
+});
 test('grid and original uniform/drag controls remain available',()=>{
  assert.match(html,/spec-list police-specialty-grid/);
  assert.match(html,/middleCadreLayout\(level\.members\)/);
