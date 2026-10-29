@@ -1010,103 +1010,69 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   width:min(170px,55vw);height:auto;aspect-ratio:16 / 5
  }
 }
-/* Eenzelfde badgeformaat voor alle specialisatiepatches als het gradenplaatje.
-   Een afwijkende bronverhouding blijft volledig zichtbaar via object-fit:contain.
-   De K9-sprite behoudt per rol de juiste positie, zonder afbeelding te rekken. */
-.person-profile-dialog.police-person-profile .person-profile-specialty .person-profile-specialty-badge{
+/* Eén centrale badge-maat voor alle bestaande en toekomstige specialisaties.
+   Gelijk aan het officiële gradenplaatje. Nieuwe badges krijgen automatisch
+   de klasse in normalizeSpecialtyBadges; previewbeelden volgen dezelfde maat. */
+:root{
+ --bpd-specialty-badge-width:170px;
+ --bpd-specialty-badge-height:53.125px;
+ --bpd-specialty-badge-ratio:16 / 5;
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty-has-badge{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) var(--bpd-specialty-badge-width);
+ grid-template-rows:auto auto;
+ align-content:center;
+ gap:3px 8px;
+ min-height:var(--police-specialty-card-height,74px);
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty-has-badge>strong{
+ grid-column:1;grid-row:1;align-self:end;justify-self:start;text-align:left;
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty-has-badge>.person-profile-specialty-role{
+ grid-column:1;grid-row:2;align-self:start;justify-self:start;text-align:left;
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty-has-badge>.person-profile-specialty-badge{
+ grid-column:2;grid-row:1 / span 2;align-self:center;justify-self:end;
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty .person-profile-specialty-badge,
+.manage-specialty-preview .patch-art .person-profile-specialty-badge,
+.manage-specialty-preview .patch-art>img,
+.manage-specialty-preview .patch-art>[role="img"]{
  display:block;
  box-sizing:border-box;
- width:170px;
- height:53.125px;
+ width:var(--bpd-specialty-badge-width);
+ height:var(--bpd-specialty-badge-height);
  min-width:0;
  max-width:100%;
- aspect-ratio:16 / 5;
+ aspect-ratio:var(--bpd-specialty-badge-ratio);
  flex:none;
- align-self:center;
- justify-self:end;
- grid-column:2;
- grid-row:1 / span 2;
 }
-.person-profile-dialog.police-person-profile .person-profile-specialty img.person-profile-specialty-badge{
- object-fit:contain;
+.person-profile-dialog.police-person-profile .person-profile-specialty img.person-profile-specialty-badge,
+.manage-specialty-preview .patch-art>img{
+ object-fit:fill;
  object-position:center;
  background:transparent;
  border:0;
- border-radius:0;
 }
-.person-profile-dialog.police-person-profile .person-profile-specialty .k9-role-patch.person-profile-specialty-badge{
- background-size:90.625% 300%;
-}
-@media(max-width:380px){
- .person-profile-dialog.police-person-profile .person-profile-specialty .person-profile-specialty-badge{
-  grid-column:1;
-  grid-row:2;
-  justify-self:start;
-  width:min(170px,40vw);
-  height:auto;
- }
-}
-
-/* Personenprofiel: de zichtbare specialisatieplaat krijgt net als het
-   officiële graadteken exact 170 x 53,125 px (16:5). De RAGO-bronnen
-   waren smaller van verhouding en werden door contain visueel verkleind. */
-.person-profile-dialog.police-person-profile .person-profile-specialty.person-profile-specialty-rago-io{
- display:grid;
- grid-template-columns:minmax(0,1fr) 170px;
- grid-template-rows:auto auto;
- align-content:center;
- align-items:center;
- gap:3px 8px;
- min-height:var(--police-specialty-card-height);
-}
-.person-profile-dialog.police-person-profile .person-profile-specialty-rago-io>strong{
- grid-column:1;grid-row:1;
- justify-self:start;align-self:end;
- text-align:left;
-}
-.person-profile-dialog.police-person-profile .person-profile-specialty-rago-io>.person-profile-specialty-role{
- grid-column:1;grid-row:2;
- justify-self:start;align-self:start;
- text-align:left;
-}
-.person-profile-dialog.police-person-profile .person-profile-specialty img.person-profile-specialty-badge{
- width:170px;
- height:53.125px;
- min-width:170px;
- max-width:170px;
- aspect-ratio:16 / 5;
- object-fit:fill;
- object-position:center;
- grid-column:2;
- grid-row:1 / span 2;
- justify-self:end;
- align-self:center;
-}
-.person-profile-dialog.police-person-profile .person-profile-specialty .k9-role-patch.person-profile-specialty-badge{
- width:170px;
- height:53.125px;
+.person-profile-dialog.police-person-profile .person-profile-specialty .k9-role-patch.person-profile-specialty-badge,
+.manage-specialty-preview .patch-art .k9-patch-preview{
  background-size:100% 300%;
 }
 @media(max-width:380px){
- .person-profile-dialog.police-person-profile .person-profile-specialty.person-profile-specialty-rago-io{
-  grid-template-columns:minmax(0,1fr);
-  grid-template-rows:auto auto auto;
+ .person-profile-dialog.police-person-profile .person-profile-specialty-has-badge{
+  grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;
  }
- .person-profile-dialog.police-person-profile .person-profile-specialty-rago-io>strong{
+ .person-profile-dialog.police-person-profile .person-profile-specialty-has-badge>strong{
   grid-column:1;grid-row:1;
  }
- .person-profile-dialog.police-person-profile .person-profile-specialty-rago-io>img.person-profile-specialty-badge,
- .person-profile-dialog.police-person-profile .person-profile-specialty-k9>.k9-role-patch.person-profile-specialty-badge{
-  grid-column:1;grid-row:2;
-  width:min(170px,55vw);
-  min-width:0;
-  max-width:100%;
-  height:auto;
-  aspect-ratio:16 / 5;
-  justify-self:start;
- }
- .person-profile-dialog.police-person-profile .person-profile-specialty-rago-io>.person-profile-specialty-role{
+ .person-profile-dialog.police-person-profile .person-profile-specialty-has-badge>.person-profile-specialty-role{
   grid-column:1;grid-row:3;
+ }
+ .person-profile-dialog.police-person-profile .person-profile-specialty-has-badge>.person-profile-specialty-badge{
+  grid-column:1;grid-row:2;justify-self:start;
+  width:min(var(--bpd-specialty-badge-width),55vw);
+  height:auto;
  }
 }
 </style>
@@ -1298,6 +1264,14 @@ function el(tag,cls,text){
  if(text!==undefined)n.textContent=text;
  return n;
 }
+// Central policy: every image or role=img added to a specialty card
+// automatically becomes a 170 x 53.125 px badge, including future patches.
+function normalizeSpecialtyBadges(card){
+ const badges=card.querySelectorAll('img,[role="img"]');
+ if(!badges.length)return;
+ card.classList.add('person-profile-specialty-has-badge');
+ for(const badge of badges)badge.classList.add('person-profile-specialty-badge');
+}
 // Alleen visuele presentatie: dit zijn kwalificaties zonder instructeurslijst.
 const POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS=new Set(['SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO']);
 function supportsSpecialtyInstructors(label){
@@ -1422,6 +1396,7 @@ function openPersonProfile(p){
     const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
     item.append(el('span','person-profile-specialty-role',role));
    }
+   normalizeSpecialtyBadges(item);
    list.append(item);
   }
   secondary.append(list);
@@ -1936,10 +1911,11 @@ function drawBadgePreview(box,specialty,k9Role='',ragoInstructor=false){
    (ragoInstructor?'RAGO-instructeurspatch met geïntegreerd INSTRUCTEUR, volledige vleugels en okeroranje strepen':'Volwaardige RAGO-luchtsteunpatch met Belgische vlam en okerkleurige vleugels'):
    'Belgische geborduurde RAGO-IO-patch met vlam, vleugel en okerkleurige tekst';
   img.width=240;img.height=110;
+  img.classList.add('person-profile-specialty-badge');
   img.loading='lazy';box.append(img);return true;
  }
  if(specialty==='K9'&&Object.hasOwn(K9_PATCH_ROLE_LABELS,k9Role)){
-  const patch=el('span','k9-patch-preview role-'+k9Role);
+  const patch=el('span','person-profile-specialty-badge k9-patch-preview role-'+k9Role);
   patch.setAttribute('role','img');
   patch.setAttribute('aria-label','K9-patch '+K9_PATCH_ROLE_LABELS[k9Role]);
   box.append(patch);return true;
