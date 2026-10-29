@@ -1302,13 +1302,16 @@ function openPersonProfile(p){
      item.append(el('span','person-profile-specialty-role',
       'K9-functie niet bevestigd · controleer de Discord-synchronisatie'));
     }
-   }else if(p.dept==='politie'&&name==='RAGO-IO'){
-    // Stage badge. This displays training only, not a full RAGO appointment.
+   }else if(p.dept==='politie'&&(name==='RAGO-IO'||name==='RAGO')){
+    // Different patches: verified full RAGO versus training role RAGO-IO.
     item.classList.add('person-profile-specialty-rago-io');
-    item.append(el('span','person-profile-specialty-role','RAGO-IO · in opleiding'));
+    const full=name==='RAGO';
+    item.append(el('span','person-profile-specialty-role',
+     full?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'));
     const patch=el('img','rago-io-badge');
-    patch.src=RAGO_IO_PATCH;
-    patch.alt='RAGO-IO: Federale Politie Dienst Luchtsteun';
+    patch.src=full?RAGO_PATCH:RAGO_IO_PATCH;
+    patch.alt=full?'RAGO: Federale Politie Dienst Luchtsteun':
+     'RAGO-IO: Federale Politie Dienst Luchtsteun';
     patch.loading='lazy';patch.width=170;patch.height=72;
     item.append(patch);
    }else{
@@ -1814,15 +1817,19 @@ async function setupManagement(){
 }
 const RAGO_IO_ROLE_ID='1490841316656156802';
 const RAGO_IO_PATCH='/assets/rago-io-belgische-luchtsteun-geborduurd-20261029.webp';
+const RAGO_PATCH='/assets/rago-volwaardig-luchtsteun-wing-20261029.webp';
+const RAGO_DISCORD_ROLE_ID='1309532437977497700';
 const K9_PATCH_ROLE_LABELS={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
  geleider_in_stage:'GELEIDER IN STAGE'};
 let focusedAdminSpecialty='';
 function drawBadgePreview(box,specialty,k9Role=''){
  box.replaceChildren();
- if(specialty==='RAGO-IO'){
+ if(specialty==='RAGO-IO'||specialty==='RAGO'){
   const img=el('img');
-  img.src=RAGO_IO_PATCH;
-  img.alt='Belgische geborduurde RAGO-IO-patch met vlam, vleugel en okerkleurige tekst';
+  img.src=specialty==='RAGO'?RAGO_PATCH:RAGO_IO_PATCH;
+  img.alt=specialty==='RAGO'?
+   'Volwaardige RAGO-luchtsteunpatch met Belgische vlam en okerkleurige vleugels':
+   'Belgische geborduurde RAGO-IO-patch met vlam, vleugel en okerkleurige tekst';
   img.width=220;img.height=94;
   img.loading='lazy';box.append(img);return true;
  }
@@ -1970,6 +1977,9 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
  }else if(specialty==='RAGO-IO'){
   role.textContent='RAGO-IO · '+(checked?'geselecteerd':'in opleiding');
   meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · geen volwaardige RAGO-functie';
+ }else if(specialty==='RAGO'){
+  role.textContent='RAGO · '+(checked?'volwaardig lid geselecteerd':'volwaardige specialisatie');
+  meta.textContent='Discord-rol: '+RAGO_DISCORD_ROLE_ID+' · volwaardige RAGO-functie';
  }else{
   role.textContent=instructor?'INSTRUCTEUR':teacher?'DOCENT':
    checked?'Geregistreerd lid':'Niet handmatig geselecteerd';
