@@ -91,7 +91,7 @@ export function validatePlacement(body,dept){
 // placement properties (board, tier, global labels and order) are not editable.
 export function validatePoliceSpecialtyEdit(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||
-  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','reason'].includes(k)))
+  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','motardRole','reason'].includes(k)))
   throw Error('Ongeldige specialisatiewijziging');
  const specialties=body.specialties,ins=body.instructorSpecialties,teachers=body.teacherSpecialties;
  const allowed=SPECIALTIES.politie;
@@ -110,11 +110,20 @@ export function validatePoliceSpecialtyEdit(body){
   throw Error('Ongeldige K9-functie');
  if(k9Role&&!specialties.includes('K9'))
   throw Error('Selecteer K9-lidmaatschap voor deze functie');
+ const motardRole=String(body.motardRole??'');
+ if(!['','in_opleiding','volwaardig','instructeur'].includes(motardRole))
+  throw Error('Ongeldige MOTARD-functie');
+ if(motardRole&&!specialties.includes('MOTARD'))
+  throw Error('Selecteer eerst MOTARD-lidmaatschap');
+ if(motardRole==='instructeur'&&!ins.includes('MOTARD'))
+  throw Error('MOTARD-instructeur vereist de instructeursselectie');
+ if(motardRole&&motardRole!=='instructeur'&&ins.includes('MOTARD'))
+  throw Error('MOTARD heeft één functieniveau tegelijk');
  const reason=strip(body.reason);
  if(reason.length<8||reason.length>300)
   throw Error('Motivering van 8 tot 300 tekens verplicht');
  return {specialties:[...specialties],instructorSpecialties:[...ins],
-  teacherSpecialties:[...teachers],k9Role,reason};
+  teacherSpecialties:[...teachers],k9Role,motardRole,reason};
 }
 export function manualDisplay(raw,dept){
  if(!raw||raw.status!=='active'||raw.dept!==dept)return null;
@@ -145,6 +154,7 @@ const INSTRUCTORS=Object.freeze({
 // Known full-membership Discord roles. We deliberately exclude training-only
 // IO/selection roles and never assume somebody belongs to an unverified unit.
 export const RAGO_IO_DISCORD_ROLE='1490841316656156802';
+export const MOTARD_IO_DISCORD_ROLE='1365602771855740958';
 const POLICE_MEMBER_ROLES=Object.freeze({
  '1358148694297415741':'MOTARD',
  '1309532437977497699':'K9',
@@ -172,6 +182,10 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
  if(dept==='politie'&&roles.has(RAGO_IO_DISCORD_ROLE)&&
     !memberNames.includes('RAGO')&&!instructorNames.includes('RAGO'))
   memberNames.push('RAGO-IO');
+ // MOTARD trainee role is display-only and does not constitute full training.
+ if(dept==='politie'&&roles.has(MOTARD_IO_DISCORD_ROLE)&&
+    !memberNames.includes('MOTARD')&&!instructorNames.includes('MOTARD'))
+  memberNames.push('MOTARD');
  return {boardRole:roles.has(BOARD_DISCORD_ROLE)?'bestuur':'none',
   teachingRoles:instructorNames.length?['instructeur']:[],
   instructorSpecialties:instructorNames.filter(x=>SPECIALTIES[dept]?.includes(x)),
