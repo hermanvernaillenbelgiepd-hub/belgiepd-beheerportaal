@@ -128,6 +128,20 @@ test('rendered specialization labels depend on exact instructor assignments',()=
  assert.match(route,/action:'manual_display_undo'/);
  assert.doesNotThrow(()=>new Script(script.replace(/^import[^\n]+\n/m,'')));
 });
+test('personnel profile uses wide two-column desktop layout with accessible mobile fallback',()=>{
+ assert.match(html,/\.person-profile-dialog\{\s*width:min\(1260px,calc\(100vw - 32px\)\)/);
+ assert.match(html,/max-height:calc\(100dvh - 24px\)/);
+ assert.match(html,/\.person-profile-layout\{\s*display:grid;\s*grid-template-columns:minmax\(0,1fr\) minmax\(0,1\.05fr\)/);
+ assert.match(html,/\.person-profile-specialties\{\s*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(html,/@media\(max-width:850px\)/);
+ assert.match(html,/@media\(max-width:520px\)/);
+ assert.match(script,/layout\.append\(primary,secondary\)/);
+ assert.match(script,/primary\.append\(overview\)/);
+ assert.match(script,/primary\.append\(grid\)/);
+ assert.match(script,/secondary\.append\(list\)/);
+ assert.match(script,/dialog\.showModal\(\)/);
+ assert.match(script,/event\.currentTarget\.close\(\)/);
+});
 test('grid and original uniform/drag controls remain available',()=>{
  assert.match(html,/spec-list police-specialty-grid/);
  assert.match(html,/middleCadreLayout\(level\.members\)/);
