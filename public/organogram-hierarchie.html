@@ -879,6 +879,8 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
    </select></label>
   </div>
   <p id="k9-current">Selecteer een personeelslid.</p>
+  <button type="button" id="k9-verify-now" disabled>↻ Discord-rol nu controleren</button>
+  <p id="k9-verify-result" role="status" aria-live="polite"></p>
   <label>Motivering <textarea id="k9-reason" maxlength="300" rows="2" placeholder="Motivering van minstens 8 tekens"></textarea></label>
   <button type="button" id="k9-role-save">K9-functie opslaan</button>
   <p id="k9-result" role="status"></p>
@@ -1660,7 +1662,7 @@ async function loadK9Editor(){
   k9People.forEach((p,i)=>{
    const o=el('option','',(p.call||'—')+' · '+p.name);o.value=String(i);sel.append(o);
   });
-  sel.value='';$('k9-role').value='';
+  sel.value='';$('k9-role').value='';$('k9-verify-now').disabled=true;
  }catch(e){k9People=[];$('k9-toggle').hidden=true;$('k9-manager').hidden=true}
 }
 $('k9-toggle').addEventListener('click',()=>{
@@ -1669,6 +1671,8 @@ $('k9-toggle').addEventListener('click',()=>{
 $('k9-person').addEventListener('change',()=>{
  const index=$('k9-person').value;
  const p=index===''?null:k9People[Number(index)];
+ $('k9-verify-now').disabled=!p;
+ $('k9-verify-result').textContent='';
  if(!p){$('k9-current').textContent='Selecteer een politielid.';$('k9-role').value='';return;}
  $('k9-role').value=p.manual||'';
  const values={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
@@ -1680,6 +1684,44 @@ $('k9-person').addEventListener('change',()=>{
   ' · Bron: '+(source[p.automaticSource]||source.niet_bevestigd)+
   ' · Handmatig: '+(values[p.manual]||'Automatisch')+
   ' · Effectief: '+(values[p.manual||p.automatic]||'Geen K9-functie');
+});
+$('k9-verify-now').addEventListener('click',async()=>{
+ const index=$('k9-person').value;
+ const p=index===''?null:k9People[Number(index)];
+ if(!p)return;
+ const button=$('k9-verify-now'),display=$('k9-verify-result');
+ const selectedId=p.personId;
+ button.disabled=true;display.textContent='Discord controleert de actuele K9-rollen…';
+ try{
+  const result=await authFetch('/api/organogram/k9/'+encodeURIComponent(selectedId)+'/verify',{
+   method:'POST'
+  });
+  const labels={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
+   geleider_in_stage:'GELEIDER IN STAGE'};
+  const reasons={
+   ok:'Discord heeft de K9-functie bevestigd: '+(labels[result.automatic]||'onbekend')+'.',
+   no_k9_role:'Discord bevestigt dit serverlid, maar geen K9-, K9-IO- of K9-instructeursrol. Controleer zijn Discord-roltoewijzing.',
+   not_in_guild:'Discord vindt deze personeelsidentiteit niet op de ingestelde server. Controleer het Discord-ID in de personeelslijst.',
+   bot_unconfigured:'De Discord-bot of server-ID is niet ingesteld op MAIN. Controleer de beveiligde Render-instellingen.',
+   discord_forbidden:'De Discord-bot heeft geen toegang tot dit lid of onvoldoende rechten.',
+   discord_limited:'Discord beperkt momenteel de aanvragen. Probeer later opnieuw.',
+   discord_unavailable:'De Discord API is momenteel niet beschikbaar.',
+   invalid_member:'Discord stuurde onvolledige of ongeldige lidmaatschapsgegevens terug.',
+   network_error:'De Discord-verbinding is mislukt of verlopen. Probeer later opnieuw.',
+   invalid_person:'Ongeldig personeels-ID.'
+  };
+  // Refresh only the matched identity, not the manual drop-down. A failed
+  // Discord probe must never replace an otherwise valid verified role.
+  if(result.checked){
+   p.automatic=result.automatic||'';
+   p.automaticSource='bot';
+   if($('k9-person').value===index)$('k9-person').dispatchEvent(new Event('change'));
+   await loadPublic();
+  }
+  display.textContent=reasons[result.status]||'Discord-controle niet bevestigd. Controleer de roltoewijzing.';
+ }catch(e){
+  display.textContent='Discord-controle mislukt: '+e.message;
+ }finally{button.disabled=!$('k9-person').value}
 });
 $('k9-role-save').addEventListener('click',async()=>{
  const index=$('k9-person').value;

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {refreshK9DisplayRoles,knownK9Candidate} from '../src/k9-live-discord-sync.js';
+import {refreshK9DisplayRoles,knownK9Candidate,verifyK9DisplayRoleNow} from '../src/k9-live-discord-sync.js';
 import {K9_ROLE_IDS,verifiedK9DisplayRole,effectiveK9DisplayRole} from '../src/k9-display-role.js';
 
 const guild='123456789012345678';
@@ -63,4 +63,54 @@ test('K9 bot refresh must never update identities or replace permission checks',
  assert.match(routes,/verifiedK9DisplayRole\(roles\.entries\.get\(p\.personId\),process\.env\.DISCORD_GUILD_ID\)/);
  assert.match(routes,/merged\.k9Role=effectiveK9DisplayRole\(/);
  assert.match(routes,/app\.get\('\/api\/organogram\/hierarchie',requireUser/);
+});
+
+test('targeted verified check gives a safe reason, bypasses cache and refreshes matching badge',async()=>{
+ const id='777777777777777777';
+ let roles=[K9_ROLE_IDS.geleider_in_stage],count=0;
+ const fetchImpl=async(url,options)=>{
+  count++;
+  assert.equal(url.split('/').at(-1),id);
+  assert.equal(options.method,'GET');
+  assert.equal(options.redirect,'error');
+  return response(id,roles);
+ };
+ const first=await verifyK9DisplayRoleNow(id,{env,fetchImpl});
+ assert.deepEqual(first,{status:'ok',role:'geleider_in_stage',verified:true});
+ roles=[K9_ROLE_IDS.geleider,K9_ROLE_IDS.geleider_in_stage];
+ const fresh=await verifyK9DisplayRoleNow(id,{env,fetchImpl});
+ assert.deepEqual(fresh,{status:'ok',role:'geleider',verified:true});
+ assert.equal(count,2,'a targeted check must bypass the display cache');
+ const cached=await refreshK9DisplayRoles([id],{env,fetchImpl});
+ assert.equal(cached.roles.get(id),'geleider');
+ assert.equal(count,2,'normal view uses latest verified targeted result');
+});
+test('targeted check distinguishes Discord absence, configuration and transport errors',async()=>{
+ const id='888888888888888888';
+ const forbidden=await verifyK9DisplayRoleNow(id,{env,
+  fetchImpl:async()=>({ok:false,status:403})});
+ assert.deepEqual(forbidden,{status:'discord_forbidden',role:'',verified:false});
+ const missing=await verifyK9DisplayRoleNow(id,{env,
+  fetchImpl:async()=>({ok:false,status:404})});
+ assert.deepEqual(missing,{status:'not_in_guild',role:'',verified:true});
+ const noRole=await verifyK9DisplayRoleNow(id,{env,
+  fetchImpl:async()=>response(id,[])});
+ assert.deepEqual(noRole,{status:'no_k9_role',role:'',verified:true});
+ const unconfigured=await verifyK9DisplayRoleNow(id,{env:{}});
+ assert.deepEqual(unconfigured,{status:'bot_unconfigured',role:'',verified:false});
+ const unreachable=await verifyK9DisplayRoleNow(id,{env,
+  fetchImpl:async()=>{throw Error('network')}} );
+ assert.deepEqual(unreachable,{status:'network_error',role:'',verified:false});
+});
+test('targeted role check is gated by OFF/KL permission and only matches an existing police employee',()=>{
+ const route=readFileSync(new URL('../src/organogram-placement-routes.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
+ assert.match(route,/app\.post\('\/api\/organogram\/k9\/:personId\/verify',requireUser/);
+ assert.match(route,/if\(!canEditK9Display\(req\.bpd\)\)/);
+ assert.match(route,/snapshot\.data\.some\(p=>validRow\(p\)&&p\.dept==='politie'&&p\.personId===personId\)/);
+ assert.match(route,/k9VerificationCooldown\.get\(key\)/);
+ assert.match(route,/return res\.json\(\{checked:result\.verified,status:result\.status/);
+ assert.match(page,/id="k9-verify-now"/);
+ assert.match(page,/method:'POST'/);
+ assert.match(page,/no_k9_role:'Discord bevestigt dit serverlid/);
 });
