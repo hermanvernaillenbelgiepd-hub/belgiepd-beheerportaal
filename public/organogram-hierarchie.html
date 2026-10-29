@@ -1078,6 +1078,32 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   height:auto;
  }
 }
+/* K9: selecteerbare, expliciet getoonde drie officiële functiepatches. */
+.police-specialty-editor .k9-variant-picker[hidden]{display:none!important}
+.police-specialty-editor .k9-variant-picker{
+ display:grid;gap:5px;margin:8px 0 4px;
+}
+.police-specialty-editor .k9-variant-button{
+ display:flex;align-items:center;justify-content:flex-start;gap:9px;
+ border:1px solid #476989;background:#112a43;border-radius:6px;
+ color:#eaf3fe;padding:4px 7px;min-width:0;
+ font-size:10px;font-weight:750;text-align:left;
+}
+.police-specialty-editor .k9-variant-button[aria-pressed="true"]{
+ border-color:#f2c77d;background:#24405a;
+}
+.police-specialty-editor .k9-variant-image{
+ display:block;flex:0 0 126px;width:126px;height:39.375px;
+ box-sizing:border-box;
+ background:#0d1625 url('/assets/k9-patches-geborduurd-20261029.webp') no-repeat;
+ background-size:100% 300%;border:1px solid #567493;border-radius:4px;
+}
+.police-specialty-editor .k9-variant-image.role-instructeur{background-position:50% 0%}
+.police-specialty-editor .k9-variant-image.role-geleider{background-position:50% 50%}
+.police-specialty-editor .k9-variant-image.role-geleider_in_stage{background-position:50% 100%}
+.police-specialty-editor .k9-variant-picker small{
+ color:#b7d1e9;font-size:10px;line-height:1.4;
+}
 </style>
 </head>
 <body>
@@ -1135,6 +1161,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
       <option value="geleider_in_stage">GELEIDER IN STAGE</option>
      </select>
     </label>
+    <div id="police-k9-variants" class="k9-variant-picker" hidden aria-label="Beschikbare K9-patchvarianten"></div>
     <p class="manager-note" hidden>De K9-patch volgt de geverifieerde of handmatige functie.</p>
     <button type="button" id="police-k9-verify" hidden disabled>↻ K9-rol via Discord controleren</button>
     <p id="police-k9-verify-result" hidden role="status" aria-live="polite"></p>
@@ -2060,12 +2087,40 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
  const checked=row?.querySelector('input[data-role="member"]')?.checked;
  const instructor=row?.querySelector('input[data-role="instructor"]')?.checked;
  const teacher=row?.querySelector('input[data-role="teacher"]')?.checked;
- const k9Role=specialty==='K9'?($('police-k9-role').value||person.k9Automatic||''):'';
+ const k9Role=specialty==='K9'?
+  ($('police-k9-role').value||(instructor?'instructeur':'')||person.k9Automatic||''):'';
+ const variants=$('police-k9-variants');
+ variants.hidden=!showK9;
+ variants.replaceChildren();
+ if(showK9){
+  for(const [value,label] of Object.entries(K9_PATCH_ROLE_LABELS)){
+   const button=el('button','k9-variant-button');
+   button.type='button';button.setAttribute('aria-pressed',String(k9Role===value));
+   button.setAttribute('aria-label','Selecteer K9-functie '+label);
+   const image=el('span','k9-variant-image role-'+value);
+   image.setAttribute('role','img');image.setAttribute('aria-label','K9-patch '+label);
+   button.append(image,el('span','',label));
+   button.addEventListener('click',()=>{
+    $('police-k9-role').value=value;
+    const k9Row=buttons.find(b=>b.dataset.previewSpecialty==='K9')?.closest('.manage-specialty-row');
+    const member=k9Row?.querySelector('input[data-role="member"]');
+    const instructorFlag=k9Row?.querySelector('input[data-role="instructor"]');
+    if(member)member.checked=true;
+    if(instructorFlag)instructorFlag.checked=value==='instructeur';
+    previewPoliceSpecialty('K9');
+   });
+   variants.append(button);
+  }
+  variants.append(el('small','','Selecteer één patch. Pas na ‘Specialisaties bewaren’ wordt de functie geregistreerd en gelogd.'));
+ }
  drawBadgePreview(art,specialty,k9Role,Boolean(instructor||teacher));
  if(specialty==='RAGO'&&(instructor||teacher))title.textContent='RAGO · INSTRUCTEUR';
  if(specialty==='K9'){
-  role.textContent='K9 · '+(K9_PATCH_ROLE_LABELS[k9Role]||'functie niet bevestigd');
-  meta.textContent='K9-patch volgens de geregistreerde functie.';
+  role.textContent='K9 · '+(K9_PATCH_ROLE_LABELS[k9Role]||'functie nog niet gekozen');
+  meta.textContent=$('police-k9-role').value?'Handmatig geselecteerd — nog niet opgeslagen.':
+   instructor?'Instructeur aangevinkt — bewaar om de K9-instructeurspatch toe te kennen.':
+   k9Role?'Geverifieerde Discord-functie; geen handmatige override ingesteld.':
+   'Kies hieronder Instructeur, Geleider of Geleider in stage.';
  }else if(specialty==='RAGO-IO'){
   role.textContent='RAGO-IO · '+(checked?'geselecteerd':'in opleiding');
   meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · geen volwaardige RAGO-functie';
@@ -2103,7 +2158,13 @@ function fillPoliceSpecialtyPerson(){
     const flag=el('label','manage-specialty-role'),box=el('input');
     box.type='checkbox';box.dataset.role=kind;box.value=specialty;
     box.checked=(kind==='instructor'?instructor:teacher).has(specialty);
-    box.addEventListener('change',()=>{if(box.checked)member.checked=true});
+    box.addEventListener('change',()=>{
+     if(box.checked)member.checked=true;
+     if(specialty==='K9'&&kind==='instructor'){
+      if(box.checked)$('police-k9-role').value='instructeur';
+      else if($('police-k9-role').value==='instructeur')$('police-k9-role').value='';
+     }
+    });
     flag.append(box,document.createTextNode(' '+display));row.append(flag);
    }
   }
@@ -2190,8 +2251,11 @@ $('police-specialty-toggle').addEventListener('click',()=>{
 });
 $('police-k9-role').addEventListener('change',()=>{
  const v=$('police-k9-role').value;
- const member=$('police-specialty-choices').querySelector('input[data-role="member"][value="K9"]');
+ const area=$('police-specialty-choices');
+ const member=area.querySelector('input[data-role="member"][value="K9"]');
+ const instructor=area.querySelector('input[data-role="instructor"][value="K9"]');
  if(v&&member)member.checked=true;
+ if(instructor)instructor.checked=v==='instructeur';
  previewPoliceSpecialty('K9');
 });
 $('police-k9-verify').addEventListener('click',async()=>{
@@ -2237,7 +2301,10 @@ $('police-specialty-save').addEventListener('click',async()=>{
  const specialtySet=new Set([...pick('member'),...pick('instructor'),...pick('teacher')]);
  const specialties=[...specialtySet],instructorSpecialties=pick('instructor'),
   teacherSpecialties=pick('teacher');
- const k9Role=specialtySet.has('K9')?$('police-k9-role').value:'';
+ // An instructor checkbox is itself a deliberate K9 role selection.
+ // Keep the manual display role and logged instructor registration in sync.
+ const k9Role=specialtySet.has('K9')?
+  ($('police-k9-role').value||(instructorSpecialties.includes('K9')?'instructeur':'')):'';
  const reason=$('police-specialty-reason').value.trim();
  if(reason.length<8||reason.length>300){
   $('police-specialty-status').textContent='Motivering van 8 tot 300 tekens verplicht.';return;
