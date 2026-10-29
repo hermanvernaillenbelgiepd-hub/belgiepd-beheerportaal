@@ -19,10 +19,18 @@ test('K9 role permission is strictly police officer/command scoped',()=>{
  assert.equal(canEditK9Display({role:'officierenkader',departments:['ambulance']}),false);
  assert.equal(canEditK9Display({...actor('officierenkader'),uid:'discord:222222222222222222'}),false);
 });
-test('verified K9 roles prioritize instructor, stage, handler',()=>{
+test('verified K9 roles prioritize instructor, full handler, then trainee',()=>{
+ assert.deepEqual(K9_ROLE_IDS,{
+  instructeur:'1345302115689431061',
+  geleider:'1309532437977497699',
+  geleider_in_stage:'1345297414612979713'
+ });
  assert.equal(verifiedK9DisplayRole(identity(K9_ROLE_IDS.geleider),guild,now),'geleider');
  assert.equal(verifiedK9DisplayRole(identity(K9_ROLE_IDS.geleider_in_stage),guild,now),'geleider_in_stage');
- assert.equal(verifiedK9DisplayRole(identity(K9_ROLE_IDS.geleider,K9_ROLE_IDS.geleider_in_stage),guild,now),'geleider_in_stage');
+ // Volwaardige K9-leden behouden soms de opleidingsrol K9-IO.
+ assert.equal(verifiedK9DisplayRole(identity(K9_ROLE_IDS.geleider,K9_ROLE_IDS.geleider_in_stage),guild,now),'geleider');
+ assert.equal(verifiedK9DisplayRole(identity(K9_ROLE_IDS.geleider_in_stage,K9_ROLE_IDS.geleider),guild,now),'geleider');
+ assert.equal(verifiedK9DisplayRole(identity(K9_ROLE_IDS.instructeur,K9_ROLE_IDS.geleider,K9_ROLE_IDS.geleider_in_stage),guild,now),'instructeur');
  assert.equal(verifiedK9DisplayRole(identity(K9_ROLE_IDS.geleider,K9_ROLE_IDS.instructeur),guild,now),'instructeur');
  assert.equal(verifiedK9DisplayRole({...identity(K9_ROLE_IDS.instructeur),guildId:'999999999999999999'},guild,now),'');
  assert.equal(verifiedK9DisplayRole({...identity(K9_ROLE_IDS.instructeur),verifiedAt:now-8*86400000},guild,now),'');

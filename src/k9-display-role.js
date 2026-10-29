@@ -19,10 +19,11 @@ export function verifiedK9DisplayRole(identity,guildId,now=Date.now()){
   !Number.isSafeInteger(identity.verifiedAt)||identity.verifiedAt>now+60000||
   now-identity.verifiedAt>7*86400000)return '';
  const roles=new Set(identity.roleIds);
- // K9-instructeur gaat voor stagiair, daarna volwaardige K9-geleider.
+ // Volwaardige K9-leden kunnen ook de opleidingsrol K9-IO behouden.
+ // Prioriteit: INSTRUCTEUR > GELEIDER > GELEIDER IN STAGE.
  if(roles.has(K9_ROLE_IDS.instructeur))return 'instructeur';
- if(roles.has(K9_ROLE_IDS.geleider_in_stage))return 'geleider_in_stage';
  if(roles.has(K9_ROLE_IDS.geleider))return 'geleider';
+ if(roles.has(K9_ROLE_IDS.geleider_in_stage))return 'geleider_in_stage';
  return '';
 }
 export function validManualK9Role(body){
