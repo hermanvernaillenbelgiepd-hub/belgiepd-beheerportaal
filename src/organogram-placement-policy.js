@@ -91,7 +91,7 @@ export function validatePlacement(body,dept){
 // placement properties (board, tier, global labels and order) are not editable.
 export function validatePoliceSpecialtyEdit(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||
-  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','motardRole','reason'].includes(k)))
+  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','motardRole','dispRole','reason'].includes(k)))
   throw Error('Ongeldige specialisatiewijziging');
  const specialties=body.specialties,ins=body.instructorSpecialties,teachers=body.teacherSpecialties;
  const allowed=SPECIALTIES.politie;
@@ -119,11 +119,20 @@ export function validatePoliceSpecialtyEdit(body){
   throw Error('MOTARD-instructeur vereist de instructeursselectie');
  if(motardRole&&motardRole!=='instructeur'&&ins.includes('MOTARD'))
   throw Error('MOTARD heeft één functieniveau tegelijk');
+ const dispRole=String(body.dispRole??'');
+ if(!['','in_opleiding','volwaardig','instructeur'].includes(dispRole))
+  throw Error('Ongeldige DISP-functie');
+ if(dispRole&&!specialties.includes('DISP'))
+  throw Error('Selecteer eerst DISP-lidmaatschap');
+ if(dispRole==='instructeur'&&!ins.includes('DISP'))
+  throw Error('DISP-instructeur vereist de instructeursselectie');
+ if(dispRole&&dispRole!=='instructeur'&&ins.includes('DISP'))
+  throw Error('DISP heeft één functieniveau tegelijk');
  const reason=strip(body.reason);
  if(reason.length<8||reason.length>300)
   throw Error('Motivering van 8 tot 300 tekens verplicht');
  return {specialties:[...specialties],instructorSpecialties:[...ins],
-  teacherSpecialties:[...teachers],k9Role,motardRole,reason};
+  teacherSpecialties:[...teachers],k9Role,motardRole,dispRole,reason};
 }
 export function manualDisplay(raw,dept){
  if(!raw||raw.status!=='active'||raw.dept!==dept)return null;
@@ -155,6 +164,7 @@ const INSTRUCTORS=Object.freeze({
 // IO/selection roles and never assume somebody belongs to an unverified unit.
 export const RAGO_IO_DISCORD_ROLE='1490841316656156802';
 export const MOTARD_IO_DISCORD_ROLE='1365602771855740958';
+export const DISP_SELECTION_DISCORD_ROLE='1337852029611016233';
 const POLICE_MEMBER_ROLES=Object.freeze({
  '1358148694297415741':'MOTARD',
  '1309532437977497699':'K9',
@@ -186,6 +196,10 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
  if(dept==='politie'&&roles.has(MOTARD_IO_DISCORD_ROLE)&&
     !memberNames.includes('MOTARD')&&!instructorNames.includes('MOTARD'))
   memberNames.push('MOTARD');
+ // Dispatch Selectie is in training only; never classified as full DISP.
+ if(dept==='politie'&&roles.has(DISP_SELECTION_DISCORD_ROLE)&&
+    !memberNames.includes('DISP')&&!instructorNames.includes('DISP'))
+  memberNames.push('DISP');
  return {boardRole:roles.has(BOARD_DISCORD_ROLE)?'bestuur':'none',
   teachingRoles:instructorNames.length?['instructeur']:[],
   instructorSpecialties:instructorNames.filter(x=>SPECIALTIES[dept]?.includes(x)),
