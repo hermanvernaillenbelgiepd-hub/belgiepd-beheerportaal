@@ -1673,7 +1673,11 @@ $('k9-person').addEventListener('change',()=>{
  $('k9-role').value=p.manual||'';
  const values={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
   geleider_in_stage:'GELEIDER IN STAGE'};
+ const source={bot:'Live gecontroleerd via Discord-bot',
+  snapshot:'Laatst bevestigde Discord-aanmelding',
+  niet_bevestigd:'Discord-rol nog niet geverifieerd'};
  $('k9-current').textContent='Discord: '+(values[p.automatic]||'Geen rol')+
+  ' · Bron: '+(source[p.automaticSource]||source.niet_bevestigd)+
   ' · Handmatig: '+(values[p.manual]||'Automatisch')+
   ' · Effectief: '+(values[p.manual||p.automatic]||'Geen K9-functie');
 });
