@@ -748,6 +748,110 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   width:67px!important;height:78px!important;flex:0 0 67px!important
  }
 }
+/* Profiel in twee even brede kolommen. Rechtsboven blijft ruimte voor
+   naam en graad links; de kaarten beginnen exact op dezelfde hoogte. */
+.person-profile-layout{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ grid-template-areas:
+  "intro ."
+  "details specials";
+ gap:10px 18px;
+ align-items:start
+}
+.person-profile-intro{grid-area:intro;min-width:0}
+.person-profile-main{grid-area:details;min-width:0;padding-top:26px}
+.person-profile-specialty-panel{grid-area:specials;min-width:0}
+.person-profile-dialog .person-profile-specialty-panel>h3{
+ margin:0 0 8px;
+ height:18px;
+ line-height:18px;
+}
+.person-profile-specialties{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;
+ align-items:stretch
+}
+.person-profile-fact,.person-profile-specialty{
+ box-sizing:border-box;
+ min-height:68px;
+ border-radius:8px;
+ padding:9px 11px;
+}
+.person-profile-specialty{
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ gap:3px
+}
+.person-profile-specialty>strong{line-height:1.35}
+.person-profile-specialty-role{line-height:1.4;margin-top:0}
+.person-profile-specialty.person-profile-specialty-k9{
+ grid-column:1 / -1;
+ display:grid;
+ grid-template-columns:minmax(0,1fr) minmax(0,280px);
+ grid-template-rows:auto auto;
+ align-content:center;
+ justify-content:space-between;
+ gap:5px 14px;
+ min-height:135px;
+ padding:11px 13px
+}
+.person-profile-specialty-k9>strong{
+ grid-row:1;grid-column:1;
+ align-self:end
+}
+.person-profile-specialty-k9>.person-profile-specialty-role{
+ grid-row:2;grid-column:1;align-self:start
+}
+/* Beeldsprite met 3 exact even hoge stroken; background-position selecteert
+   de juiste, volledige K9-patch, zonder foutieve schaal of afgesneden tekst. */
+.person-profile-specialty-k9 .k9-role-patch{
+ display:block;box-sizing:border-box;
+ grid-column:2;grid-row:1 / span 2;
+ align-self:center;
+ width:100%;max-width:280px;
+ aspect-ratio:290/100;
+ background-image:url('/assets/k9-patches-geborduurd-20261029.webp');
+ background-repeat:no-repeat;
+ background-size:100% 300%;
+ border:1px solid #567493;
+ border-radius:5px;
+ box-shadow:0 2px 9px #0006
+}
+.person-profile-specialty-k9 .k9-role-patch.k9-patch-instructeur{background-position:50% 0%}
+.person-profile-specialty-k9 .k9-role-patch.k9-patch-geleider{background-position:50% 50%}
+.person-profile-specialty-k9 .k9-role-patch.k9-patch-geleider_in_stage{background-position:50% 100%}
+.person-profile-specialty-k9 img.person-profile-specialty-patch{
+ grid-column:2;grid-row:1 / span 2;
+ justify-self:end;align-self:center;
+ max-width:280px
+}
+@media(max-width:850px){
+ .person-profile-layout{
+  grid-template-columns:minmax(0,1fr);
+  grid-template-areas:"intro" "details" "specials";
+  row-gap:10px
+ }
+ .person-profile-main{padding-top:0}
+ .person-profile-dialog .person-profile-specialty-panel>h3{margin-top:7px}
+}
+@media(max-width:520px){
+ .person-profile-specialties{grid-template-columns:minmax(0,1fr)}
+ .person-profile-specialty.person-profile-specialty-k9{
+  grid-column:auto;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto auto auto;
+  gap:8px
+ }
+ .person-profile-specialty-k9>strong{grid-column:1;grid-row:1}
+ .person-profile-specialty-k9>.person-profile-specialty-role{grid-column:1;grid-row:3}
+ .person-profile-specialty-k9 .k9-role-patch,
+ .person-profile-specialty-k9 img.person-profile-specialty-patch{
+  grid-column:1;grid-row:2;justify-self:start
+ }
+}
 </style>
 </head>
 <body>
@@ -918,9 +1022,10 @@ function openPersonProfile(p){
  const dialog=$('person-profile'),content=$('person-profile-content');
  content.replaceChildren();
  const layout=el('div','person-profile-layout');
+ const intro=el('section','person-profile-intro');
  const primary=el('section','person-profile-main');
  const secondary=el('section','person-profile-specialty-panel');
- layout.append(primary,secondary);
+ layout.append(intro,primary,secondary);
  content.append(layout);
  const overview=el('div','person-profile-overview');
  const portrait=window.BPDPoliceUniform?.makePortrait?.(p);
@@ -928,7 +1033,7 @@ function openPersonProfile(p){
  const identity=el('div');
  identity.append(el('div','person-profile-name',p.name||'Onbekend'),
   el('div','person-profile-rank',p.rank||'Rang niet geregistreerd'));
- overview.append(identity);primary.append(overview);
+ overview.append(identity);intro.append(overview);
  if(p.dept==='politie'){
   // Same public badge and grade mapping as the existing verified personnel card.
   const rank=window.BPDPoliceUniform?.gradeFor?.(p);
@@ -939,7 +1044,7 @@ function openPersonProfile(p){
    detail.append(el('strong','',rank?.label||p.rank||'Rang niet geregistreerd'),
     el('small','','Formeel uniform · automatisch weergegeven Belgisch graadteken'));
    grade.append(badge,detail);
-   primary.append(grade);
+   intro.append(grade);
   }
  }
  const grid=el('div','person-profile-grid');
@@ -974,23 +1079,23 @@ function openPersonProfile(p){
    if(p.dept==='politie'&&name==='K9'){
     item.classList.add('person-profile-specialty-k9');
     const role=p.k9Role||(roles.includes('instructeur')?'instructeur':'');
-    const patch=el('img','person-profile-specialty-patch');
     const roleLabels={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
      geleider_in_stage:'GELEIDER IN STAGE'};
     if(roleLabels[role]){
-     // Echte geborduurde patches in één verticale afbeelding:
-     // instructeur bovenaan, geleider centraal, geleider in stage onderaan.
-     patch.src='/assets/k9-patches-geborduurd-20261029.webp';
-     patch.classList.add('k9-role-patch','k9-patch-'+role);
-     patch.width=290;patch.height=100;
-     patch.alt='K9-patch: '+roleLabels[role];
+     // Gebruik een expliciete 1-uit-3 achtergrondstrook; een gewoon
+     // img-element kan de drie geborduurde patches niet betrouwbaar uitsnijden.
+     const patch=el('span','k9-role-patch k9-patch-'+role);
+     patch.setAttribute('role','img');
+     patch.setAttribute('aria-label','K9-patch: '+roleLabels[role]);
+     item.append(patch);
+     item.append(el('span','person-profile-specialty-role',roleLabels[role]));
     }else{
+     const patch=el('img','person-profile-specialty-patch');
      patch.src='/assets/k9-specialisatie-patch-20261029.webp';
      patch.width=280;patch.height=98;
      patch.alt='K9-specialisatiepatch met twee pootafdrukken';
-    }
-    patch.loading='lazy';item.append(patch);
-    if(!roleLabels[role]){
+     patch.loading='lazy';
+     item.append(patch);
      item.append(el('span','person-profile-specialty-role',
       roles.includes('docent')?'DOCENT':'Geregistreerd lid'));
     }
