@@ -87,6 +87,35 @@ export function validatePlacement(body,dept){
  return {boardRole,leadershipTier,displayOrder,teachingRoles:[...teachingRoles],displayLabels:[...displayLabels],specialties:[...specialties],
   instructorSpecialties:[...instructorSpecialties],teacherSpecialties:[...teacherSpecialties],reason};
 }
+// OFF/KL may maintain police specialization *display* only. Other manual
+// placement properties (board, tier, global labels and order) are not editable.
+export function validatePoliceSpecialtyEdit(body){
+ if(!body||typeof body!=='object'||Array.isArray(body)||
+  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','reason'].includes(k)))
+  throw Error('Ongeldige specialisatiewijziging');
+ const specialties=body.specialties,ins=body.instructorSpecialties,teachers=body.teacherSpecialties;
+ const allowed=SPECIALTIES.politie;
+ const valid=list=>Array.isArray(list)&&list.length<=allowed.length&&
+  list.every(x=>typeof x==='string'&&allowed.includes(x))&&
+  new Set(list).size===list.length;
+ if(!valid(specialties)||!valid(ins)||!valid(teachers))
+  throw Error('Selecteer uitsluitend bestaande politie-specialisaties');
+ const withoutInstruction=new Set(['SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO']);
+ if([...ins,...teachers].some(x=>withoutInstruction.has(x)))
+  throw Error('Deze specialisatie heeft geen instructeur- of docentfunctie');
+ if([...ins,...teachers].some(x=>!specialties.includes(x)))
+  throw Error('Een instructeur of docent moet ook lid zijn van de specialisatie');
+ const k9Role=String(body.k9Role??'');
+ if(!['','instructeur','geleider','geleider_in_stage'].includes(k9Role))
+  throw Error('Ongeldige K9-functie');
+ if(k9Role&&!specialties.includes('K9'))
+  throw Error('Selecteer K9-lidmaatschap voor deze functie');
+ const reason=strip(body.reason);
+ if(reason.length<8||reason.length>300)
+  throw Error('Motivering van 8 tot 300 tekens verplicht');
+ return {specialties:[...specialties],instructorSpecialties:[...ins],
+  teacherSpecialties:[...teachers],k9Role,reason};
+}
 export function manualDisplay(raw,dept){
  if(!raw||raw.status!=='active'||raw.dept!==dept)return null;
  const boardRole=['bestuur','bestuur-ai'].includes(raw.boardRole)?raw.boardRole:'none';
