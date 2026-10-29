@@ -79,6 +79,13 @@ export async function refreshK9DisplayRoles(ids,{
 export function knownK9Candidate(person,merged,oldIdentity,manualRole,roleIds){
  if(person?.dept!=='politie'||!isDiscordId(person.personId))return false;
  if(manualRole||merged?.specialties?.includes('K9'))return true;
+ // Some roster feeds record K9-IO as a training-only specialty. Use it
+ // exclusively to discover whom to verify, never to award a K9 function.
+ const raw=Array.isArray(person.specialties)?person.specialties:[];
+ if(raw.some(item=>{
+  const label=typeof item==='string'?item:String(item?.label||'');
+  return /^K-?9[\s_-]*IO$/i.test(label.trim());
+ }))return true;
  const roles=Array.isArray(oldIdentity?.roleIds)?oldIdentity.roleIds:[];
  return roleIds.some(id=>roles.includes(id));
 }
