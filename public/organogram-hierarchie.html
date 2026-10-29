@@ -1010,9 +1010,10 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   width:min(170px,55vw);height:auto;aspect-ratio:16 / 5
  }
 }
-/* Eén centrale badge-maat voor alle bestaande en toekomstige specialisaties.
-   Gelijk aan het officiële gradenplaatje. Nieuwe badges krijgen automatisch
-   de klasse in normalizeSpecialtyBadges; previewbeelden volgen dezelfde maat. */
+/* Eén centrale 16:5 badge-maat voor alle huidige en toekomstige specialisaties.
+   Bronnen voor RAGO-IO, volwaardig en instructeur zijn ook naar 16:5
+   genormaliseerd zodat de zichtbare rand de volledige badgebox vult.
+   Nieuwe badges krijgen automatisch hun klasse in normalizeSpecialtyBadges. */
 :root{
  --bpd-specialty-badge-width:170px;
  --bpd-specialty-badge-height:53.125px;
@@ -1895,9 +1896,9 @@ async function setupManagement(){
  }catch(e){$('manage-status').textContent=e.message;}
 }
 const RAGO_IO_ROLE_ID='1490841316656156802';
-const RAGO_IO_PATCH='/assets/rago-io-belgische-luchtsteun-geborduurd-20261029.webp';
-const RAGO_PATCH='/assets/rago-volwaardig-oker-20261029.svg?v=20261029-clean-2';
-const RAGO_INSTRUCTOR_PATCH='/assets/rago-instructeur-oker-20261029.svg?v=20261029-unified-4';
+const RAGO_IO_PATCH='/assets/rago-io-uniform-16x5-20261029.svg?v=badge-equal-v1';
+const RAGO_PATCH='/assets/rago-volwaardig-oker-20261029.svg?v=badge-equal-v1';
+const RAGO_INSTRUCTOR_PATCH='/assets/rago-instructeur-oker-20261029.svg?v=badge-equal-v1';
 const RAGO_DISCORD_ROLE_ID='1309532437977497700';
 const K9_PATCH_ROLE_LABELS={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
  geleider_in_stage:'GELEIDER IN STAGE'};
