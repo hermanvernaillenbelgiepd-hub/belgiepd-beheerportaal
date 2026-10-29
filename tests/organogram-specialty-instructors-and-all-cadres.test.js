@@ -142,6 +142,28 @@ test('personnel profile uses wide two-column desktop layout with accessible mobi
  assert.match(script,/dialog\.showModal\(\)/);
  assert.match(script,/event\.currentTarget\.close\(\)/);
 });
+test('public profile aligns specialty cards with public facts and selects each K9 patch stripe',()=>{
+ // Equal-width left/right and an intentionally empty top-right area.
+ assert.match(html,/grid-template-areas:\s*"intro \\."\s*"details specials"/);
+ assert.match(html,/\.person-profile-layout\{\s*display:grid;\s*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(html,/\.person-profile-main\{grid-area:details;min-width:0;padding-top:26px\}/);
+ assert.match(html,/\.person-profile-dialog \.person-profile-specialty-panel>h3\{\s*margin:0 0 8px;\s*height:18px/);
+ assert.match(html,/\.person-profile-fact,\.person-profile-specialty\{\s*box-sizing:border-box;\s*min-height:68px/);
+ // K9 is a full-width feature tile; its real patch is clipped to one of
+ // three separate rows in the vertical sprite, not shrunk as one img.
+ assert.match(html,/\.person-profile-specialty\.person-profile-specialty-k9\{\s*grid-column:1 \/ -1/);
+ assert.match(html,/background-image:url\('\/assets\/k9-patches-geborduurd-20261029\.webp'\)/);
+ assert.match(html,/background-size:100% 300%/);
+ assert.match(html,/\.k9-role-patch\.k9-patch-instructeur\{background-position:50% 0%\}/);
+ assert.match(html,/\.k9-role-patch\.k9-patch-geleider\{background-position:50% 50%\}/);
+ assert.match(html,/\.k9-role-patch\.k9-patch-geleider_in_stage\{background-position:50% 100%\}/);
+ assert.match(script,/const patch=el\('span','k9-role-patch k9-patch-'\+role\)/);
+ assert.match(script,/patch\.setAttribute\('aria-label','K9-patch: '\+roleLabels\[role\]\)/);
+ assert.match(script,/const role=p\.k9Role\|\|\(roles\.includes\('instructeur'\)\?'instructeur':''\)/);
+ assert.match(script,/const patch=el\('img','person-profile-specialty-patch'\)/);
+ assert.match(html,/@media\(max-width:850px\)/);
+ assert.match(html,/grid-template-areas:"intro" "details" "specials"/);
+});
 test('grid and original uniform/drag controls remain available',()=>{
  assert.match(html,/spec-list police-specialty-grid/);
  assert.match(html,/middleCadreLayout\(level\.members\)/);
