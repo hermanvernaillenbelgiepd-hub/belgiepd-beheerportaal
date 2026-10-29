@@ -703,7 +703,16 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-overview .portrait.bpd-police-formal{
  width:82px!important;height:94px!important;flex:0 0 82px!important
 }
-.person-profile-grade{margin:0 0 11px;padding:9px 11px}
+/* Het officiële graadteken blijft 170 × 53,125 px.
+   Enkel het omringende profielkader sluit nu aan op de inhoud. */
+.person-profile-grade{
+ display:inline-flex;
+ width:fit-content;
+ max-width:100%;
+ box-sizing:border-box;
+ margin:0 0 11px;
+ padding:9px 11px;
+}
 /* Alle politiegraden in het profiel hebben exact hetzelfde buitenformaat.
    170px is de standaard grote maat uit organogram-police-formal.css.
    De 512:160 SVG blijft volledig zichtbaar, zonder rekken of bijsnijden. */

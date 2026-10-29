@@ -139,3 +139,17 @@ test('all police rank patches have the same large profile dimensions as the stan
  // Smaller screens may shrink the whole patch without stretching/cropping it.
  assert.match(html,/flex:0 0 min\(170px,40vw\)/);
 });
+
+test('rank patch container hugs the title without shrinking or cropping the badge',()=>{
+ const html=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
+ const container=html.match(/\.person-profile-grade\{\s*display:inline-flex;[\s\S]*?\n\}/)?.[0];
+ assert.ok(container,'grade container should be inline-flex and shrink to fit');
+ assert.match(container,/width:fit-content/);
+ assert.match(container,/max-width:100%/);
+ assert.match(container,/box-sizing:border-box/);
+ const patch=html.match(/\.person-profile-grade \.bpd-grade-badge\{\s*width:170px;[\s\S]*?\n\}/)?.[0];
+ assert.ok(patch);
+ assert.match(patch,/height:53\.125px/);
+ assert.match(patch,/flex:0 0 170px/);
+ assert.match(html,/\.person-profile-grade \.person-profile-grade-info\{min-width:0\}/);
+});
