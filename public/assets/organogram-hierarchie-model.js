@@ -162,6 +162,11 @@ export function policeSpecialtyName(name){
 export function specialtyInstructorRoles(person,specialty){
  if(person?.dept!=='politie')return [];
  const name=policeSpecialtyName(specialty);
+ // K9's resolved display role includes officer/KL overrides. If set,
+ // it takes precedence over the instructor-only Discord specialty list.
+ if(name==='K9'&&['instructeur','geleider','geleider_in_stage'].includes(person.k9Role)){
+  return person.k9Role==='instructeur'?['instructeur']:[];
+ }
  const normalize=list=>(Array.isArray(list)?list:[]).map(policeSpecialtyName).map(x=>
   x==='RADIO/BM'?'INTERVENTIEDIENST':x);
  const own=[];
