@@ -17,13 +17,14 @@ const respond=(res,e)=>{
 };
 const safeName=x=>String(x||'').trim().slice(0,90);
 const DEFAULT_PLACEMENT=Object.freeze({boardRole:'none',leadershipTier:'none',
- displayOrder:0,teachingRoles:[],specialties:[],
+ displayOrder:0,teachingRoles:[],displayLabels:[],specialties:[],
  instructorSpecialties:[],teacherSpecialties:[]});
 const rawDisplay=snap=>snap?.exists?{
  boardRole:snap.get('boardRole')||'none',
  leadershipTier:snap.get('leadershipTier')||'none',
  displayOrder:snap.get('displayOrder')||0,
  teachingRoles:snap.get('teachingRoles')||[],
+ displayLabels:snap.get('displayLabels')||[],
  specialties:snap.get('specialties')||[],
  instructorSpecialties:snap.get('instructorSpecialties')||[],
  teacherSpecialties:snap.get('teacherSpecialties')||[]
@@ -54,7 +55,7 @@ async function identityMap(db,ids,guild){
 const manualMap=docs=>new Map(docs.map(d=>[d.id,d.data()]));
 const safePublic=p=>({
  dept:p.dept,name:p.name,call:p.call,rank:p.rank,specialties:p.specialties,
- teachingRoles:p.teachingRoles,instructorSpecialties:p.instructorSpecialties,
+ teachingRoles:p.teachingRoles,displayLabels:p.displayLabels||[],instructorSpecialties:p.instructorSpecialties,
  teacherSpecialties:p.teacherSpecialties,k9Role:p.k9Role||'',boardRole:p.boardRole,leadershipTier:p.leadershipTier,displayOrder:p.displayOrder,source:p.source
 });
 export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
@@ -206,7 +207,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const saved={dept,personId,status:'active',boardRole:values.boardRole,
      leadershipTier:values.leadershipTier,displayOrder:values.displayOrder,
      undo:rawDisplay(before),
-     teachingRoles:values.teachingRoles,specialties:values.specialties,
+     teachingRoles:values.teachingRoles,displayLabels:values.displayLabels,specialties:values.specialties,
      instructorSpecialties:values.instructorSpecialties,teacherSpecialties:values.teacherSpecialties,
      updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid,displayOnly:true};
     tx.set(ref,saved);
@@ -216,11 +217,12 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       leadershipTier:before.get('leadershipTier')||'none',
       displayOrder:before.get('displayOrder')||0,
       teachingRoles:before.get('teachingRoles')||[],
+      displayLabels:before.get('displayLabels')||[],
       specialties:before.get('specialties')||[],
       instructorSpecialties:before.get('instructorSpecialties')||[],
       teacherSpecialties:before.get('teacherSpecialties')||[]
      }:null,next:{boardRole:values.boardRole,teachingRoles:values.teachingRoles,
-      specialties:values.specialties,instructorSpecialties:values.instructorSpecialties,
+      displayLabels:values.displayLabels,specialties:values.specialties,instructorSpecialties:values.instructorSpecialties,
       teacherSpecialties:values.teacherSpecialties,leadershipTier:values.leadershipTier,
       displayOrder:values.displayOrder},reason:values.reason,
      actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
@@ -253,7 +255,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     tx.set(ref,{
      dept,personId,status:'active',boardRole:restored.boardRole,
      leadershipTier:restored.leadershipTier,displayOrder:restored.displayOrder,
-     teachingRoles:restored.teachingRoles,specialties:restored.specialties,
+     teachingRoles:restored.teachingRoles,displayLabels:restored.displayLabels,specialties:restored.specialties,
      instructorSpecialties:restored.instructorSpecialties,teacherSpecialties:restored.teacherSpecialties,
      undo:current,updatedAt:FieldValue.serverTimestamp(),
      updatedBy:req.bpd.uid,displayOnly:true
@@ -262,7 +264,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
      action:'manual_display_undo',previous:current,
      next:{boardRole:restored.boardRole,leadershipTier:restored.leadershipTier,
       displayOrder:restored.displayOrder,teachingRoles:restored.teachingRoles,
-      specialties:restored.specialties,instructorSpecialties:restored.instructorSpecialties,
+      displayLabels:restored.displayLabels,specialties:restored.specialties,instructorSpecialties:restored.instructorSpecialties,
       teacherSpecialties:restored.teacherSpecialties},reason,actorUid:req.bpd.uid,
      at:FieldValue.serverTimestamp()
     });

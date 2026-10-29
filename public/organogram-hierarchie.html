@@ -286,6 +286,11 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .manager textarea{min-height:60px}
 .manager .checks{display:flex;flex-wrap:wrap;gap:7px;margin:7px 0}
 .manager .checks label{display:flex;align-items:center;gap:6px;border:1px solid #3c5977;padding:5px 8px;border-radius:5px;font-size:11px;font-weight:500}
+.manager .manage-links{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 12px}
+.manager .manage-links a{color:#d6ecff;font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.manager .manage-links a:focus-visible{outline:2px solid #b1d6ff;outline-offset:3px}
+.person-role-flags .flag.stage{color:#ffe6ad;border:1px solid #bb985a;background:#564325}
+.person-role-flags .flag.member{color:#e0f5ff;border:1px solid #608eb4;background:#26496b}
 .manager .checks input{accent-color:#8abdf7}
 .manager #manage-specialties{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:6px}
 .manage-specialty-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;border:1px solid #3d5e81;border-radius:7px;padding:4px 7px;background:#0b2138}
@@ -751,11 +756,17 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
     <option value="bestuur-ai">Bestuur ad interim</option>
    </select></label>
   </div>
-  <label>Opleidingsfuncties</label>
+  <nav class="manage-links" aria-label="Personeelslijst raadplegen">
+   <a href="/personeelslijst.html" target="_blank" rel="noopener noreferrer">👥 Open personeelslijst (nieuw tabblad)</a>
+  </nav>
+  <label>Functies en labels (alleen organogramweergave)</label>
   <div id="manage-roles" class="checks">
    <label><input id="manage-instructor" type="checkbox"> Instructeur</label>
    <label><input id="manage-teacher" type="checkbox"> Docent</label>
+   <label><input id="manage-stage" type="checkbox"> STAGE</label>
+   <label><input id="manage-member" type="checkbox"> LID</label>
   </div>
+  <p class="manager-note">STAGE en LID zijn exclusieve, handmatige weergavelabels. Ze wijzigen geen aanstelling, opleidingsstatus, specialisatielidmaatschap of rechten.</p>
   <label>Specialisaties (lidmaatschap en, bij politie, de instructeur-/docentfunctie per specialisatie)</label>
   <div id="manage-specialties" class="checks"></div>
   <label>Motivering voor logboek <textarea id="manage-reason" maxlength="300" placeholder="Waarom wordt deze functie handmatig ingesteld?"></textarea></label>
@@ -888,6 +899,8 @@ function openPersonProfile(p){
  const teaching=(Array.isArray(p.teachingRoles)?p.teachingRoles:[])
   .filter(x=>x==='instructeur'||x==='docent');
  fact('Opleidingsfunctie',teaching.length?teaching.map(x=>x==='instructeur'?'Instructeur':'Docent').join(' · '):'Geen geregistreerde functie');
+ if(Array.isArray(p.displayLabels)&&p.displayLabels.length)
+  fact('Extra weergavelabel',p.displayLabels.map(x=>x.toUpperCase()).join(' · '));
  content.append(grid,el('h3','','Specialisaties'));
  const names=[...new Set(specialtyNames(p)
   .map(name=>p.dept==='politie'?policeSpecialtyName(name):name).filter(Boolean))];
@@ -955,6 +968,9 @@ function person(p,compact=false,specialtyLabel=null){
  const flags=el('span','person-role-flags');
  if(roles.includes('instructeur'))flags.append(el('span','flag instructor','INSTRUCTEUR'));
  if(roles.includes('docent'))flags.append(el('span','flag teacher','DOCENT'));
+ const displayLabels=Array.isArray(p.displayLabels)?p.displayLabels:[];
+ if(displayLabels.includes('stage'))flags.append(el('span','flag stage','STAGE'));
+ if(displayLabels.includes('lid'))flags.append(el('span','flag member','LID'));
  if(!compact&&String(p.source||'').includes('handmatig'))
   flags.append(el('span','flag','Handmatig'));
  if(flags.childElementCount)label.append(flags);
@@ -1363,6 +1379,7 @@ async function loadPublic(){
     status:typeof p.status==='string'?p.status.slice(0,30):'',
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
+    displayLabels:Array.isArray(p.displayLabels)?p.displayLabels.filter(x=>['stage','lid'].includes(x)).slice(0,1):[],
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
     instructorSpecialties:Array.isArray(p.instructorSpecialties)?p.instructorSpecialties.slice(0,12):[],
     teacherSpecialties:Array.isArray(p.teacherSpecialties)?p.teacherSpecialties.slice(0,12):[],
@@ -1429,8 +1446,12 @@ function fillAdminPerson(){
  $('manage-undo').disabled=!p.undoAvailable;
  $('manage-instructor').checked=(values.teachingRoles||[]).includes('instructeur');
  $('manage-teacher').checked=(values.teachingRoles||[]).includes('docent');
+ $('manage-stage').checked=(values.displayLabels||[]).includes('stage');
+ $('manage-member').checked=(values.displayLabels||[]).includes('lid');
  $('manage-instructor').disabled=p.dept==='bestuur';
  $('manage-teacher').disabled=p.dept==='bestuur';
+ $('manage-stage').disabled=p.dept==='bestuur';
+ $('manage-member').disabled=p.dept==='bestuur';
  for(const specialty of adminSpecialties[p.dept]||[]){
   const entry=el('div','manage-specialty-row');
   const label=el('label');const input=el('input');input.type='checkbox';
@@ -1534,6 +1555,13 @@ $('manage-toggle').addEventListener('click',async()=>{
  }catch(e){$('manage-status').textContent='Beheer alleen na geldige technische aanmelding: '+e.message;}
 });
 $('manage-person').addEventListener('change',fillAdminPerson);
+// STAGE en LID sluiten elkaar uit; personeel-/specialisatierechten blijven gelijk.
+$('manage-stage').addEventListener('change',()=>{
+ if($('manage-stage').checked)$('manage-member').checked=false;
+});
+$('manage-member').addEventListener('change',()=>{
+ if($('manage-member').checked)$('manage-stage').checked=false;
+});
 $('manage-save').addEventListener('click',async()=>{
  const p=activeAdminPerson;
  if(!p){$('manage-status').textContent='Selecteer eerst een personeelslid.';return}
@@ -1546,6 +1574,10 @@ $('manage-save').addEventListener('click',async()=>{
    ...($('manage-instructor').checked?['instructeur']:[]),
    ...($('manage-teacher').checked?['docent']:[])
   ];
+  const displayLabels=[
+   ...($('manage-stage').checked?['stage']:[]),
+   ...($('manage-member').checked?['lid']:[])
+  ];
   const instructorSpecialties=[...$('manage-specialties').querySelectorAll('input[data-role="instructor"]:checked')].map(x=>x.value);
   const teacherSpecialties=[...$('manage-specialties').querySelectorAll('input[data-role="teacher"]:checked')].map(x=>x.value);
   const selected=[...$('manage-specialties').querySelectorAll('input[data-role="member"]:checked')].map(x=>x.value);
@@ -1553,9 +1585,9 @@ $('manage-save').addEventListener('click',async()=>{
   const reason=$('manage-reason').value.trim();
   await authFetch('/api/organogram/placements/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.personId),
    {method:'PUT',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({boardRole,leadershipTier,displayOrder,teachingRoles,specialties,
+    body:JSON.stringify({boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties,
      instructorSpecialties,teacherSpecialties,reason})});
-  p.placement={boardRole,leadershipTier,displayOrder,teachingRoles,specialties,
+  p.placement={boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties,
    instructorSpecialties,teacherSpecialties};
   p.undoAvailable=true;
   $('manage-undo').disabled=false;
