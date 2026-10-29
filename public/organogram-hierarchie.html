@@ -1104,6 +1104,43 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .police-specialty-editor .k9-variant-picker small{
  color:#b7d1e9;font-size:10px;line-height:1.4;
 }
+
+/* MOTARD: K9 formaat 170 x 53.125 px, met dezelfde stepped curved stripes. */
+.person-profile-dialog.police-person-profile .person-profile-specialty .motard-role-patch,
+.manage-specialty-preview .patch-art .motard-patch-preview{
+ display:block;box-sizing:border-box;width:170px;height:53.125px;
+ max-width:100%;aspect-ratio:16/5;border:1px solid #567493;border-radius:5px;
+ background:#0d1625 url('/assets/bpd-motard-badges-20261029.svg?v=1') no-repeat;
+ background-size:100% 300%;box-shadow:0 2px 9px #0006;
+}
+.person-profile-specialty .motard-patch-volwaardig,
+.manage-specialty-preview .motard-patch-preview.role-volwaardig{background-position:50% 0%}
+.person-profile-specialty .motard-patch-in_opleiding,
+.manage-specialty-preview .motard-patch-preview.role-in_opleiding{background-position:50% 50%}
+.person-profile-specialty .motard-patch-instructeur,
+.manage-specialty-preview .motard-patch-preview.role-instructeur{background-position:50% 100%}
+.police-specialty-editor #police-motard-label[hidden],
+.police-specialty-editor .motard-variant-picker[hidden]{display:none!important}
+.police-specialty-editor #police-motard-label{display:block;margin-top:12px;font-size:11px}
+.police-specialty-editor .motard-variant-picker{display:grid;gap:5px;margin:8px 0 5px}
+.police-specialty-editor .motard-variant-button{
+ display:flex;align-items:center;gap:9px;min-width:0;
+ border:1px solid #476989;border-radius:6px;background:#112a43;
+ color:#eaf3fe;padding:4px 7px;font-size:10px;font-weight:750;text-align:left;
+}
+.police-specialty-editor .motard-variant-button[aria-pressed="true"]{
+ border-color:#f2c77d;background:#24405a;
+}
+.police-specialty-editor .motard-variant-image{
+ display:block;flex:0 0 126px;width:126px;height:39.375px;
+ box-sizing:border-box;border:1px solid #567493;border-radius:4px;
+ background:#0d1625 url('/assets/bpd-motard-badges-20261029.svg?v=1') no-repeat;
+ background-size:100% 300%;
+}
+.police-specialty-editor .motard-variant-image.role-volwaardig{background-position:50% 0%}
+.police-specialty-editor .motard-variant-image.role-in_opleiding{background-position:50% 50%}
+.police-specialty-editor .motard-variant-image.role-instructeur{background-position:50% 100%}
+.police-specialty-editor .motard-variant-picker small{font-size:10px;color:#b7d1e9}
 </style>
 </head>
 <body>
@@ -1162,6 +1199,15 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
      </select>
     </label>
     <div id="police-k9-variants" class="k9-variant-picker" hidden aria-label="Beschikbare K9-patchvarianten"></div>
+    <label id="police-motard-label" hidden>MOTARD-functie
+     <select id="police-motard-role" disabled>
+      <option value="">Automatisch volgens Discord</option>
+      <option value="in_opleiding">IN OPLEIDING</option>
+      <option value="volwaardig">MOTARD · VOLWAARDIG</option>
+      <option value="instructeur">MOTARD · INSTRUCTEUR</option>
+     </select>
+    </label>
+    <div id="police-motard-variants" class="motard-variant-picker" hidden aria-label="Beschikbare MOTARD-patchvarianten"></div>
     <p class="manager-note" hidden>De K9-patch volgt de geverifieerde of handmatige functie.</p>
     <button type="button" id="police-k9-verify" hidden disabled>↻ K9-rol via Discord controleren</button>
     <p id="police-k9-verify-result" hidden role="status" aria-live="polite"></p>
@@ -1407,6 +1453,15 @@ function openPersonProfile(p){
      item.append(el('span','person-profile-specialty-role',
       'K9-functie niet bevestigd · controleer de Discord-synchronisatie'));
     }
+   }else if(p.dept==='politie'&&name==='MOTARD'){
+    const level=Object.hasOwn(MOTARD_PATCH_ROLE_LABELS,p.motardRole)?
+     p.motardRole:roles.some(r=>r==='instructeur')?'instructeur':'volwaardig';
+    item.classList.add('person-profile-specialty-motard');
+    const patch=el('span','person-profile-specialty-badge motard-role-patch motard-patch-'+level);
+    patch.setAttribute('role','img');
+    patch.setAttribute('aria-label','MOTARD-patch: '+MOTARD_PATCH_ROLE_LABELS[level]);
+    item.append(patch);
+    item.append(el('span','person-profile-specialty-role',MOTARD_PATCH_ROLE_LABELS[level]));
    }else if(p.dept==='politie'&&(name==='RAGO-IO'||name==='RAGO')){
     // Different patches: verified full RAGO versus training role RAGO-IO.
     item.classList.add('person-profile-specialty-rago-io');
@@ -1868,6 +1923,7 @@ async function loadPublic(){
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
     displayLabels:Array.isArray(p.displayLabels)?p.displayLabels.filter(x=>['stage','lid'].includes(x)).slice(0,1):[],
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
+    motardRole:['in_opleiding','volwaardig','instructeur'].includes(p.motardRole)?p.motardRole:'',
     reekshoofdReeks:typeof p.reekshoofdReeks==='string'?p.reekshoofdReeks.slice(0,20):'',
     dossierUrl:typeof p.dossierUrl==='string'?p.dossierUrl.slice(0,270):'',
     instructorSpecialties:Array.isArray(p.instructorSpecialties)?p.instructorSpecialties.slice(0,12):[],
@@ -1931,8 +1987,16 @@ const RAGO_INSTRUCTOR_PATCH='/assets/rago-instructeur-oker-20261029.svg?v=neutra
 const RAGO_DISCORD_ROLE_ID='1309532437977497700';
 const K9_PATCH_ROLE_LABELS={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
  geleider_in_stage:'GELEIDER IN STAGE'};
+const MOTARD_PATCH_ROLE_LABELS=Object.freeze({
+ volwaardig:'MOTARD · VOLWAARDIG',in_opleiding:'MOTARD · IN OPLEIDING',
+ instructeur:'MOTARD · INSTRUCTEUR'
+});
+const MOTARD_DISCORD_ROLE_IDS=Object.freeze({
+ instructeur:'1359656762289946755',volwaardig:'1358148694297415741',
+ in_opleiding:'1365602771855740958'
+});
 let focusedAdminSpecialty='';
-function drawBadgePreview(box,specialty,k9Role='',ragoInstructor=false){
+function drawBadgePreview(box,specialty,k9Role='',ragoInstructor=false,motardRole=''){
  box.replaceChildren();
  if(specialty==='RAGO-IO'||specialty==='RAGO'){
   const img=el('img');
@@ -1943,6 +2007,12 @@ function drawBadgePreview(box,specialty,k9Role='',ragoInstructor=false){
   img.width=240;img.height=110;
   img.classList.add('person-profile-specialty-badge');
   img.loading='lazy';box.append(img);return true;
+ }
+ if(specialty==='MOTARD'&&Object.hasOwn(MOTARD_PATCH_ROLE_LABELS,motardRole)){
+  const patch=el('span','person-profile-specialty-badge motard-patch-preview role-'+motardRole);
+  patch.setAttribute('role','img');
+  patch.setAttribute('aria-label','MOTARD-patch '+MOTARD_PATCH_ROLE_LABELS[motardRole]);
+  box.append(patch);return true;
  }
  if(specialty==='K9'&&Object.hasOwn(K9_PATCH_ROLE_LABELS,k9Role)){
   const patch=el('span','person-profile-specialty-badge k9-patch-preview role-'+k9Role);
@@ -1974,7 +2044,9 @@ function refreshAdminBadgePreview(specialty=focusedAdminSpecialty){
  const instructor=entry?.querySelector('input[data-role="instructor"]')?.checked;
  const known=state.live.find(p=>p.personId===person.personId&&p.dept===person.dept);
  const k9Role=known?.k9Role||'';
- drawBadgePreview(art,specialty,k9Role,Boolean(instructor||teacher));
+ const motardRole=known?.motardRole||(instructor&&specialty==='MOTARD'?'instructeur':
+  checked&&specialty==='MOTARD'?'volwaardig':'');
+ drawBadgePreview(art,specialty,k9Role,Boolean(instructor||teacher),motardRole);
  if(specialty==='RAGO'&&(instructor||teacher))title.textContent='RAGO · INSTRUCTEUR';
  if(specialty==='RAGO-IO'){
   role.textContent='Opleidingsstatus: RAGO-IO'+(checked?' · handmatig geselecteerd':'');
@@ -1985,6 +2057,9 @@ function refreshAdminBadgePreview(specialty=focusedAdminSpecialty){
  }else if(specialty==='K9'){
   role.textContent='K9: '+(K9_PATCH_ROLE_LABELS[k9Role]||'geen functie bevestigd');
   meta.textContent='K9-functies worden beheerd via Handmatige specialisaties.';
+ }else if(specialty==='MOTARD'){
+  role.textContent=MOTARD_PATCH_ROLE_LABELS[motardRole]||'Geen MOTARD-functie bevestigd';
+  meta.textContent='Drie functieniveaus via Handmatige specialisaties.';
  }else{
   role.textContent=instructor?'Functie: Instructeur':teacher?'Functie: Docent':
    checked?'Functie: Lid':'Nog niet geselecteerd';
