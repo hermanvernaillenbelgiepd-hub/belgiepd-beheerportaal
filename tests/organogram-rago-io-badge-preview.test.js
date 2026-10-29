@@ -6,7 +6,7 @@ import {SPECIALTIES,RAGO_IO_DISCORD_ROLE,verifiedSyncRoles,mergePlacement,valida
 import {specialtyNames,policeSpecialtyName} from '../public/assets/organogram-hierarchie-model.js';
 
 const html=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
-const badge=readFileSync(new URL('../public/assets/rago-io-belgische-luchtsteun-20261029.svg',import.meta.url),'utf8');
+const badge=readFileSync(new URL('../public/assets/rago-io-belgische-luchtsteun-geborduurd-20261029.webp',import.meta.url));
 const guild='123456789012345678',now=Date.now();
 const id=roleIds=>({guildId:guild,verifiedAt:now,roleIds});
 const p={dept:'politie',name:'Test',call:'450',rank:'Inspecteur',specialties:[]};
@@ -38,7 +38,7 @@ test('badge preview uses matching artwork and does not persist until explicit sa
  assert.match(html,/data\.previewSpecialty=specialty/);
  assert.match(html,/show\.addEventListener\('click',\(\)=>refreshAdminBadgePreview\(specialty\)\)/);
  assert.match(html,/entry\.addEventListener\('change',\(\)=>refreshAdminBadgePreview\(specialty\)\)/);
- assert.match(html,/const RAGO_IO_PATCH='\/assets\/rago-io-belgische-luchtsteun-20261029\.svg'/);
+ assert.ok(html.includes("const RAGO_IO_PATCH='/assets/rago-io-belgische-luchtsteun-geborduurd-20261029.webp'"));
  assert.match(html,/patch\.src=RAGO_IO_PATCH/);
  assert.match(html,/img\.src=RAGO_IO_PATCH/);
  assert.match(html,/id="k9-badge-preview"/);
@@ -48,10 +48,12 @@ test('badge preview uses matching artwork and does not persist until explicit sa
  assert.match(html,/if\(p\.dept==='politie'&&supportsSpecialtyInstructors\(specialty\)\)/);
  assert.doesNotMatch(html,/fetch\(RAGO_IO_PATCH/);
 });
-test('Belgian patch contains flame, wing, ochre stripes and both requested lines',()=>{
- assert.match(badge,/FEDERALE POLITIE/);
- assert.match(badge,/DIENST LUCHTSTEUN/);
- assert.match(badge,/RAGO-IO/);
- assert.match(badge,/vlam in het schild/);
- assert.match(badge,/gevleugeld insigne/);
+test('approved embroidered WebP replaces the incorrect vector illustration everywhere',()=>{
+ assert.equal(badge.subarray(0,4).toString('ascii'),'RIFF');
+ assert.equal(badge.subarray(8,12).toString('ascii'),'WEBP');
+ assert.ok(badge.length>4000);
+ assert.ok(html.includes('/assets/rago-io-belgische-luchtsteun-geborduurd-20261029.webp'));
+ assert.ok(!html.includes('/assets/rago-io-belgische-luchtsteun-20261029.svg'));
+ assert.match(html,/patch\\.src=RAGO_IO_PATCH/);
+ assert.match(html,/img\\.src=RAGO_IO_PATCH/);
 });
