@@ -167,6 +167,9 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     automatic:liveK9.roles.has(p.personId)?
      liveK9.roles.get(p.personId):
      verifiedK9DisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID),
+    automaticSource:liveK9.roles.has(p.personId)?'bot':
+     verifiedK9DisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID)?
+      'snapshot':'niet_bevestigd',
     manual:manual.get(p.personId)?.role||''
    })),readOnly:false});
   }catch(e){return respond(res,e)}
