@@ -9,6 +9,7 @@ import {organogramReekshoofdTitle,policeOrganogramDossierUrl} from './organogram
 import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
  validManualK9Role,effectiveK9DisplayRole} from './k9-display-role.js';
 import {refreshK9DisplayRoles,knownK9Candidate,verifyK9DisplayRoleNow} from './k9-live-discord-sync.js';
+import {MOTARD_DISPLAY_COLLECTION,verifiedMotardDisplayRole,effectiveMotardDisplayRole} from './motard-display-role.js';
 
 const idOK=id=>/^\d{15,22}$/.test(String(id||''));
 const fault=(code,msg)=>Object.assign(new Error(msg),{publicStatus:code});
@@ -58,7 +59,7 @@ const manualMap=docs=>new Map(docs.map(d=>[d.id,d.data()]));
 const safePublic=p=>({
  dept:p.dept,name:p.name,call:p.call,rank:p.rank,specialties:p.specialties,
  teachingRoles:p.teachingRoles,displayLabels:p.displayLabels||[],instructorSpecialties:p.instructorSpecialties,
- teacherSpecialties:p.teacherSpecialties,k9Role:p.k9Role||'',boardRole:p.boardRole,leadershipTier:p.leadershipTier,displayOrder:p.displayOrder,source:p.source
+ teacherSpecialties:p.teacherSpecialties,k9Role:p.k9Role||'',motardRole:p.motardRole||'',boardRole:p.boardRole,leadershipTier:p.leadershipTier,displayOrder:p.displayOrder,source:p.source
 });
 export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const store=()=>getFirestore();
@@ -68,13 +69,15 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
   try{
    const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(p=>validRow(p)&&p.dept!=='burger').slice(0,1200);
-   const [manualSnap,k9Snap]=await Promise.all([
+   const [manualSnap,k9Snap,motardSnap]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
-    db.collection(K9_ROLE_COLLECTION).limit(1500).get()
+    db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
+    db.collection(MOTARD_DISPLAY_COLLECTION).limit(1500).get()
    ]);
    if(manualSnap.size>=1500)return res.status(503).json({error:'Organogramregisterlimiet bereikt'});
    const manual=manualMap(manualSnap.docs);
    const k9Manual=manualMap(k9Snap.docs);
+   const motardManual=manualMap(motardSnap.docs);
    const boardOnly=manualSnap.docs.filter(d=>d.get('dept')==='bestuur'&&
     d.get('status')==='active'&&['bestuur','bestuur-ai'].includes(d.get('boardRole')))
     .map(d=>d.get('personId')).filter(idOK).slice(0,100);
@@ -110,6 +113,13 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       verifiedK9DisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID);
      merged.k9Role=effectiveK9DisplayRole(k9Manual.get(p.personId)?.role||'',auto);
      if(merged.k9Role&&!merged.specialties.includes('K9'))merged.specialties.push('K9');
+     const motardAuto=verifiedMotardDisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID);
+     merged.motardRole=effectiveMotardDisplayRole(motardManual.get(p.personId)?.role||'',motardAuto);
+     // Preserve existing member/instructor displays where no explicit
+     // MOTARD role was ever stored. Never infer an IO trainee as full.
+     if(!merged.motardRole&&merged.specialties.includes('MOTARD'))
+      merged.motardRole=merged.instructorSpecialties.includes('MOTARD')?'instructeur':'volwaardig';
+     if(merged.motardRole&&!merged.specialties.includes('MOTARD'))merged.specialties.push('MOTARD');
     }
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
@@ -235,13 +245,14 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
   try{
    const db=store(),snapshot=await getSnapshot();
    const people=snapshot.data.filter(p=>validRow(p)&&p.dept==='politie').slice(0,1200);
-   const [placements,k9Snap,identities]=await Promise.all([
+   const [placements,k9Snap,motardSnap,identities]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
+    db.collection(MOTARD_DISPLAY_COLLECTION).limit(1500).get(),
     identityMap(db,people.map(p=>p.personId),process.env.DISCORD_GUILD_ID)
    ]);
    if(placements.size>=1500||k9Snap.size>=1500)throw fault(503,'Registerlimiet bereikt');
-   const pm=manualMap(placements.docs),km=manualMap(k9Snap.docs);
+   const pm=manualMap(placements.docs),km=manualMap(k9Snap.docs),mm=manualMap(motardSnap.docs);
    return res.json({displayOnly:true,canEdit:true,specialties:SPECIALTIES.politie,
     people:people.map(p=>{
      const v=manualDisplay(pm.get(personKey('politie',p.personId)),'politie');
@@ -252,6 +263,9 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       teacherSpecialties:v?.teacherSpecialties||[],
       k9Manual:km.get(p.personId)?.role||'',
       k9Automatic:verifiedK9DisplayRole(identities.entries.get(p.personId),
+       process.env.DISCORD_GUILD_ID),
+      motardManual:mm.get(p.personId)?.role||'',
+      motardAutomatic:verifiedMotardDisplayRole(identities.entries.get(p.personId),
        process.env.DISCORD_GUILD_ID)};
     })});
   }catch(e){return respond(res,e)}
@@ -272,8 +286,9 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     return res.status(409).json({error:'Geen gekoppeld politielid'});
    const db=store(),ref=db.collection(COLLECTION).doc(personKey('politie',personId));
    const k9Ref=db.collection(K9_ROLE_COLLECTION).doc(personId);
+   const motardRef=db.collection(MOTARD_DISPLAY_COLLECTION).doc(personId);
    await db.runTransaction(async tx=>{
-    const [old,oldK9]=await Promise.all([tx.get(ref),tx.get(k9Ref)]);
+    const [old,oldK9,oldMotard]=await Promise.all([tx.get(ref),tx.get(k9Ref),tx.get(motardRef)]);
     const previous=rawDisplay(old);
     const preserve=manualDisplay(old.data(),'politie')||DEFAULT_PLACEMENT;
     const next=validatePlacement({...preserve,
@@ -301,6 +316,15 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       displayOnly:true});
      tx.create(k9Ref.collection('audit').doc(),{action:'k9_display_role',
       previous:oldRole,next:values.k9Role,reason:values.reason,
+      actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+    }
+    const previousMotardRole=oldMotard.exists?oldMotard.get('role')||'':'';
+    if(previousMotardRole!==values.motardRole){
+     tx.set(motardRef,{dept:'politie',personId,role:values.motardRole,
+      updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid,
+      displayOnly:true});
+     tx.create(motardRef.collection('audit').doc(),{action:'motard_display_role',
+      previous:previousMotardRole,next:values.motardRole,reason:values.reason,
       actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
     }
    });
