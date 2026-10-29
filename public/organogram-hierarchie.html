@@ -796,12 +796,12 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-specialty.person-profile-specialty-k9{
  grid-column:1 / -1;
  display:grid;
- grid-template-columns:minmax(0,1fr) minmax(0,280px);
+ grid-template-columns:minmax(0,1fr) minmax(0,170px);
  grid-template-rows:auto auto;
  align-content:center;
  justify-content:space-between;
  gap:5px 14px;
- min-height:135px;
+ min-height:94px;
  padding:11px 13px
 }
 .person-profile-specialty-k9>strong{
@@ -811,17 +811,22 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-specialty-k9>.person-profile-specialty-role{
  grid-row:2;grid-column:1;align-self:start
 }
-/* Beeldsprite met 3 exact even hoge stroken; background-position selecteert
-   de juiste, volledige K9-patch, zonder foutieve schaal of afgesneden tekst. */
+/* Alle zichtbare functieplaatjes hebben exact hetzelfde buitenformaat als
+   de politiegraden (170 x 53,125 px / 16:5). De K9-bron heeft een andere
+   natuurlijke verhouding (290:100). Daarom gebruiken we een gecentreerde,
+   NIET vervormde achtergrond van 90,625% breed binnen hetzelfde kader.
+   Een drieledige sprite wordt per functie exact in 1 van de 3 stroken getoond. */
 .person-profile-specialty-k9 .k9-role-patch{
  display:block;box-sizing:border-box;
  grid-column:2;grid-row:1 / span 2;
  align-self:center;
- width:100%;max-width:280px;
- aspect-ratio:290/100;
+ width:170px;max-width:100%;
+ height:53.125px;aspect-ratio:16/5;
+ background-color:#0d1625;
  background-image:url('/assets/k9-patches-geborduurd-20261029.webp');
  background-repeat:no-repeat;
- background-size:100% 300%;
+ background-origin:border-box;
+ background-size:90.625% 300%;
  border:1px solid #567493;
  border-radius:5px;
  box-shadow:0 2px 9px #0006
@@ -857,7 +862,8 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  .person-profile-specialty-k9>strong{grid-column:1;grid-row:1}
  .person-profile-specialty-k9>.person-profile-specialty-role{grid-column:1;grid-row:3}
  .person-profile-specialty-k9 .k9-role-patch{
-  grid-column:1;grid-row:2;justify-self:start
+  grid-column:1;grid-row:2;justify-self:start;
+  width:min(170px,40vw);height:auto;aspect-ratio:16/5
  }
 }
 </style>
