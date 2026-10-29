@@ -59,7 +59,7 @@ export function validatePlacement(body,dept){
  const displayLabels=body.displayLabels??[];
  const instructorSpecialties=body.instructorSpecialties??[];
  const teacherSpecialties=body.teacherSpecialties??[];
- const validTeachingList=(list)=>Array.isArray(list)&&list.length<=12&&
+ const validTeachingList=(list)=>Array.isArray(list)&&list.length<=SPECIALTIES[dept].length&&
   new Set(list).size===list.length&&list.every(x=>typeof x==='string'&&SPECIALTIES[dept].includes(x));
  if(!validTeachingList(instructorSpecialties)||!validTeachingList(teacherSpecialties))
   throw Error('Kies uitsluitend geldige instructeur-/docentspecialisaties van de dienst');
@@ -78,7 +78,7 @@ export function validatePlacement(body,dept){
     teachingRoles.some(x=>!['docent','instructeur'].includes(x))||
     new Set(teachingRoles).size!==teachingRoles.length)
    throw Error('Kies docent/instructeur zonder dubbele functies');
- if(!Array.isArray(specialties)||specialties.length>12||
+ if(!Array.isArray(specialties)||specialties.length>SPECIALTIES[dept].length||
     specialties.some(x=>typeof x!=='string'||!SPECIALTIES[dept].includes(x))||
     new Set(specialties).size!==specialties.length)
    throw Error('Kies uitsluitend specialisaties van deze dienst');
@@ -86,6 +86,35 @@ export function validatePlacement(body,dept){
  if(reason.length<8||reason.length>300)throw Error('Motivering van 8 tot 300 tekens verplicht');
  return {boardRole,leadershipTier,displayOrder,teachingRoles:[...teachingRoles],displayLabels:[...displayLabels],specialties:[...specialties],
   instructorSpecialties:[...instructorSpecialties],teacherSpecialties:[...teacherSpecialties],reason};
+}
+// OFF/KL may maintain police specialization *display* only. Other manual
+// placement properties (board, tier, global labels and order) are not editable.
+export function validatePoliceSpecialtyEdit(body){
+ if(!body||typeof body!=='object'||Array.isArray(body)||
+  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','reason'].includes(k)))
+  throw Error('Ongeldige specialisatiewijziging');
+ const specialties=body.specialties,ins=body.instructorSpecialties,teachers=body.teacherSpecialties;
+ const allowed=SPECIALTIES.politie;
+ const valid=list=>Array.isArray(list)&&list.length<=allowed.length&&
+  list.every(x=>typeof x==='string'&&allowed.includes(x))&&
+  new Set(list).size===list.length;
+ if(!valid(specialties)||!valid(ins)||!valid(teachers))
+  throw Error('Selecteer uitsluitend bestaande politie-specialisaties');
+ const withoutInstruction=new Set(['SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO']);
+ if([...ins,...teachers].some(x=>withoutInstruction.has(x)))
+  throw Error('Deze specialisatie heeft geen instructeur- of docentfunctie');
+ if([...ins,...teachers].some(x=>!specialties.includes(x)))
+  throw Error('Een instructeur of docent moet ook lid zijn van de specialisatie');
+ const k9Role=String(body.k9Role??'');
+ if(!['','instructeur','geleider','geleider_in_stage'].includes(k9Role))
+  throw Error('Ongeldige K9-functie');
+ if(k9Role&&!specialties.includes('K9'))
+  throw Error('Selecteer K9-lidmaatschap voor deze functie');
+ const reason=strip(body.reason);
+ if(reason.length<8||reason.length>300)
+  throw Error('Motivering van 8 tot 300 tekens verplicht');
+ return {specialties:[...specialties],instructorSpecialties:[...ins],
+  teacherSpecialties:[...teachers],k9Role,reason};
 }
 export function manualDisplay(raw,dept){
  if(!raw||raw.status!=='active'||raw.dept!==dept)return null;
@@ -95,11 +124,11 @@ export function manualDisplay(raw,dept){
   [...new Set(raw.displayLabels.filter(x=>['stage','lid'].includes(x)))].slice(0,1):[];
  const specialties=Array.isArray(raw.specialties)?
   [...new Set(raw.specialties.filter(x=>validStoredSpecialty(dept,x))
-    .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,12):[];
+    .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,SPECIALTIES[dept].length):[];
  const leadershipTier=LEADERSHIP_LEVELS[dept]?.includes(raw.leadershipTier)?raw.leadershipTier:'none';
  const displayOrder=Number.isSafeInteger(raw.displayOrder)&&raw.displayOrder>=1&&raw.displayOrder<=999?raw.displayOrder:0;
  const selected=list=>Array.isArray(list)?[...new Set(list.filter(x=>validStoredSpecialty(dept,x))
-  .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,12):[];
+  .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,SPECIALTIES[dept].length):[];
  return {boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties,
   instructorSpecialties:selected(raw.instructorSpecialties),
   teacherSpecialties:selected(raw.teacherSpecialties)};
@@ -166,14 +195,14 @@ export function mergePlacement(person,manual,auto){
   teachingRoles:[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])],
   displayLabels:[...(manual?.displayLabels||[])],
   instructorSpecialties:[...new Set([...(manual?.instructorSpecialties||[]),
-   ...(auto?.instructorSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
+   ...(auto?.instructorSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
   teacherSpecialties:[...new Set([...(manual?.teacherSpecialties||[]),
-   ...(auto?.teacherSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
+   ...(auto?.teacherSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
   specialties:(()=>{
    const found=[...new Set([...(manual?.specialties||[]),...(auto?.specialties||[]),...specialtyValues]
     .map(label=>normalizedStoredSpecialty(person.dept,label)))];
    // A verified full RAGO specialization supersedes its IO training badge.
-   return found.filter(label=>label!=='RAGO-IO'||!found.includes('RAGO')).slice(0,12);
+   return found.filter(label=>label!=='RAGO-IO'||!found.includes('RAGO')).slice(0,SPECIALTIES[person.dept]?.length||12);
   })(),
   source:manual&&auto?.synced?'handmatig + Discord':manual?'handmatig':auto?.synced?'Discord':'personeelslijst'};
 }

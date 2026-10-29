@@ -3,7 +3,7 @@ import {USER_COLLECTION} from './user-access.js';
 import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
  from './organogram-mid-order-policy.js';
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
- validatePlacement,manualDisplay,verifiedSyncRoles,mergePlacement,canManagePlacements
+ validatePlacement,validatePoliceSpecialtyEdit,manualDisplay,verifiedSyncRoles,mergePlacement,canManagePlacements
 } from './organogram-placement-policy.js';
 import {organogramReekshoofdTitle,policeOrganogramDossierUrl} from './organogram-profile-display.js';
 import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
@@ -222,6 +222,89 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
      previous:old.exists?old.get('role')||'':'',next:input.role,
      reason:input.reason,actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
    });
+   return res.json({saved:true,displayOnly:true,accessRightsChanged:false});
+  }catch(e){return respond(res,e)}
+ });
+
+ // This editor is separate from the technical board/cadre placement endpoints.
+ // Only genuine Discord-authenticated police OFF/KL may read or change it.
+ app.get('/api/organogram/police-specialties/admin',requireUser,async(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  if(!canEditK9Display(req.bpd))
+   return res.status(403).json({error:'Alleen politie Officierenkader en Korpsleiding'});
+  try{
+   const db=store(),snapshot=await getSnapshot();
+   const people=snapshot.data.filter(p=>validRow(p)&&p.dept==='politie').slice(0,1200);
+   const [placements,k9Snap,identities]=await Promise.all([
+    db.collection(COLLECTION).limit(1500).get(),
+    db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
+    identityMap(db,people.map(p=>p.personId),process.env.DISCORD_GUILD_ID)
+   ]);
+   if(placements.size>=1500||k9Snap.size>=1500)throw fault(503,'Registerlimiet bereikt');
+   const pm=manualMap(placements.docs),km=manualMap(k9Snap.docs);
+   return res.json({displayOnly:true,canEdit:true,specialties:SPECIALTIES.politie,
+    people:people.map(p=>{
+     const v=manualDisplay(pm.get(personKey('politie',p.personId)),'politie');
+     return {personId:p.personId,name:safeName(p.name),
+      call:String(p.call||'').slice(0,24),
+      specialties:v?.specialties||[],
+      instructorSpecialties:v?.instructorSpecialties||[],
+      teacherSpecialties:v?.teacherSpecialties||[],
+      k9Manual:km.get(p.personId)?.role||'',
+      k9Automatic:verifiedK9DisplayRole(identities.entries.get(p.personId),
+       process.env.DISCORD_GUILD_ID)};
+    })});
+  }catch(e){return respond(res,e)}
+ });
+ app.put('/api/organogram/police-specialties/:personId',requireUser,async(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  if(!canEditK9Display(req.bpd))
+   return res.status(403).json({error:'Alleen politie Officierenkader en Korpsleiding'});
+  const personId=String(req.params.personId||'');
+  if(!idOK(personId))return res.status(400).json({error:'Ongeldig personeelslid'});
+  let values;
+  try{values=validatePoliceSpecialtyEdit(req.body)}
+  catch(e){return res.status(400).json({error:e.message})}
+  try{
+   const snapshot=await getSnapshot();
+   if(snapshot.stale)throw fault(409,'Personeelsbron verouderd: niet veilig om te wijzigen');
+   if(!snapshot.data.some(p=>validRow(p)&&p.dept==='politie'&&p.personId===personId))
+    return res.status(409).json({error:'Geen gekoppeld politielid'});
+   const db=store(),ref=db.collection(COLLECTION).doc(personKey('politie',personId));
+   const k9Ref=db.collection(K9_ROLE_COLLECTION).doc(personId);
+   await db.runTransaction(async tx=>{
+    const [old,oldK9]=await Promise.all([tx.get(ref),tx.get(k9Ref)]);
+    const previous=rawDisplay(old);
+    const preserve=manualDisplay(old.data(),'politie')||DEFAULT_PLACEMENT;
+    const next=validatePlacement({...preserve,
+     specialties:values.specialties,instructorSpecialties:values.instructorSpecialties,
+     teacherSpecialties:values.teacherSpecialties,reason:values.reason},'politie');
+    tx.set(ref,{...(old.data()||{}),dept:'politie',personId,status:'active',
+     boardRole:next.boardRole,leadershipTier:next.leadershipTier,
+     displayOrder:next.displayOrder,teachingRoles:next.teachingRoles,
+     displayLabels:next.displayLabels,specialties:next.specialties,
+     instructorSpecialties:next.instructorSpecialties,
+     teacherSpecialties:next.teacherSpecialties,undo:previous,
+     updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid,displayOnly:true});
+    tx.create(ref.collection('audit').doc(),{action:'police_specialty_display',
+     previous:{specialties:previous.specialties,
+      instructorSpecialties:previous.instructorSpecialties,
+      teacherSpecialties:previous.teacherSpecialties},
+     next:{specialties:values.specialties,
+      instructorSpecialties:values.instructorSpecialties,
+      teacherSpecialties:values.teacherSpecialties},
+     reason:values.reason,actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+    const oldRole=oldK9.exists?oldK9.get('role')||'':'';
+    if(oldRole!==values.k9Role){
+     tx.set(k9Ref,{dept:'politie',personId,role:values.k9Role,
+      updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid,
+      displayOnly:true});
+     tx.create(k9Ref.collection('audit').doc(),{action:'k9_display_role',
+      previous:oldRole,next:values.k9Role,reason:values.reason,
+      actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+    }
+   });
+   syncCache.expires=0;
    return res.json({saved:true,displayOnly:true,accessRightsChanged:false});
   }catch(e){return respond(res,e)}
  });

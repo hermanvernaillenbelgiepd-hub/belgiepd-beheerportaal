@@ -133,7 +133,7 @@ export function specialtyNames(p){
   if(s&&typeof s==='object'&&/^(ja|behaald|voltooid|geslaagd|true)$/i.test(clean(s.value)))return clean(s.label);
   return '';
  }).filter(s=>s&&!forbidden.has(lower(s)));
- return [...new Set(names)].slice(0,12);
+ return [...new Set(names)].slice(0,20);
 }
 export const POLICE_BRANCH_ORDER=Object.freeze([
  'INTERVENTIEDIENST','SIGNALISATIE','MOTARD','SEMI ANONIEM','K9',

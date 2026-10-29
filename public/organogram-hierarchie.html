@@ -299,6 +299,17 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .manage-specialty-role{color:#ffe5a5}
 .manage-specialty-layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:12px;align-items:start;margin:8px 0 12px}
 .manage-specialty-layout #manage-specialties{margin:0}
+.police-specialty-editor[hidden],#police-specialty-toggle[hidden],
+#manage-toggle[hidden]{display:none!important}
+.police-specialty-editor #police-specialty-choices{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));
+ gap:7px;align-content:start
+}
+.police-specialty-editor .manage-specialty-row{min-width:0}
+.police-specialty-editor #police-specialty-person{max-width:640px}
+.police-specialty-editor #police-k9-label{display:block;margin-top:12px;font-size:11px}
+.police-specialty-editor #police-k9-role{margin-top:5px}
+
 .manage-specialty-preview{position:sticky;top:10px;background:#0b2138;border:1px solid #597da3;border-radius:9px;padding:12px;min-width:0}
 .manage-specialty-preview h3{font-size:12px;margin:0 0 7px}
 .manage-specialty-preview .patch-art{display:flex;min-height:86px;justify-content:center;align-items:center;background:#081b30;border:1px solid #344f6f;border-radius:7px;margin:9px 0;padding:9px;overflow:hidden}
@@ -1017,12 +1028,42 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   <button type="button" data-view="burger">Burger</button>
   <button type="button" id="demo-toggle" aria-pressed="true">Voorbeeldgegevens</button>
    <button type="button" id="toggle-cadres" aria-label="Alle zichtbare kaders inklappen">▴ Alle kaders inklappen</button>
-  <button type="button" id="manage-toggle">⚙ Handmatige functies</button>
+  <button type="button" id="police-specialty-toggle" hidden>⚙ Handmatige specialisaties</button>
+  <button type="button" id="manage-toggle" hidden>⚙ Technisch beheer</button>
   <button type="button" id="k9-toggle" hidden>🐾 K9-functies beheren</button>
   <button type="button" id="login">Aanmelden</button>
   <input type="search" id="search" placeholder="Zoek naam, rang of specialisatie" aria-label="Doorzoek organogram">
  </nav>
  <div id="source" class="notice warn">Voorbeeldgegevens laden …</div>
+ <section id="police-specialty-editor" class="manager police-specialty-editor" hidden aria-label="Handmatige politiespecialisaties">
+  <h2>Handmatige politiespecialisaties · Officierenkader en Korpsleiding</h2>
+  <p class="manager-note">Alle politie-specialisaties inclusief K9. Handmatige weergave zonder wijziging van Discord-rollen, aanstellingen of dossierbevoegdheden.</p>
+  <label>Politiemedewerker <select id="police-specialty-person"><option value="">Kies een politielid</option></select></label>
+  <div class="manage-specialty-layout">
+   <div id="police-specialty-choices" class="checks"></div>
+   <aside class="manage-specialty-preview" aria-live="polite">
+    <h3>Patchvoorbeeld</h3>
+    <p id="police-specialty-preview-title">Kies een specialisatie.</p>
+    <div id="police-specialty-preview-art" class="patch-art"><span class="patch-empty">Nog geen specialisatie geselecteerd.</span></div>
+    <p id="police-specialty-preview-role"></p>
+    <p id="police-specialty-preview-meta" class="patch-meta"></p>
+    <label id="police-k9-label">Handmatige K9-functie
+     <select id="police-k9-role" disabled>
+      <option value="">Automatisch volgens Discord</option>
+      <option value="instructeur">INSTRUCTEUR</option>
+      <option value="geleider">GELEIDER</option>
+      <option value="geleider_in_stage">GELEIDER IN STAGE</option>
+     </select>
+    </label>
+    <p class="manager-note">De K9-patch volgt de geverifieerde of handmatige functie.</p>
+   </aside>
+  </div>
+  <label>Motivering voor het logboek
+   <textarea id="police-specialty-reason" maxlength="300" placeholder="Waarom wordt de functie handmatig ingesteld?"></textarea>
+  </label>
+  <button type="button" id="police-specialty-save">Specialisaties en K9 bewaren</button>
+  <p id="police-specialty-status" class="manager-note" role="status" aria-live="polite"></p>
+ </section>
  <section id="k9-manager" class="k9-manager" hidden aria-label="K9-functies beheren">
   <h2>K9-functies · Officierenkader en Korpsleiding</h2>
   <p>Automatische Discord-rol, of een handmatige functie met voorrang en logging. De handmatige instellingen zijn niet zichtbaar voor andere leden.</p>
@@ -1722,7 +1763,7 @@ async function loadPublic(){
    .map(p=>({dept:p.dept,name:String(p.name).slice(0,90),
     call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
     status:typeof p.status==='string'?p.status.slice(0,30):'',
-    specialties:Array.isArray(p.specialties)?p.specialties.slice(0,12):[],
+    specialties:Array.isArray(p.specialties)?p.specialties.slice(0,20):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
     displayLabels:Array.isArray(p.displayLabels)?p.displayLabels.filter(x=>['stage','lid'].includes(x)).slice(0,1):[],
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
@@ -1764,9 +1805,20 @@ async function setupManagement(){
   setupPortalLogin({button:$('login'),auth,authModule,config,
    onError:e=>{$('manage-status').textContent='Aanmelden: '+e.message;}});
   authModule.onAuthStateChanged(auth,user=>{
-   if(!user){adminPeople=[];activeAdminPerson=null;managerReady=false;lastMidBatchId=null;$('manage').hidden=true;}
+   if(!user){
+    adminPeople=[];activeAdminPerson=null;managerReady=false;lastMidBatchId=null;
+    $('manage').hidden=true;$('manage-toggle').hidden=true;
+    policeSpecialtyPeople=[];$('police-specialty-toggle').hidden=true;
+    $('police-specialty-editor').hidden=true;
+   }
    void loadPublic();
-   if(user)void loadK9Editor();else{
+   if(user){
+    void loadK9Editor();
+    void loadPoliceSpecialtyEditor(user.uid);
+    void authFetch('/api/organogram/middenkader/last-order')
+     .then(()=>{$('manage-toggle').hidden=false})
+     .catch(()=>{$('manage-toggle').hidden=true;$('manage').hidden=true});
+   }else{
     k9People=[];$('k9-toggle').hidden=true;$('k9-manager').hidden=true;
    }
   });
@@ -1906,6 +1958,151 @@ async function authFetch(url,options={}){
  if(!response.ok)throw Error(data.error||'Geen toegang');
  return data;
 }
+let policeSpecialtyPeople=[],policeSpecialtyNames=[],policeSpecialtyFocus='';
+function currentPoliceSpecialtyPerson(){
+ const value=$('police-specialty-person').value;
+ return value===''?null:policeSpecialtyPeople[Number(value)]||null;
+}
+function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
+ policeSpecialtyFocus=specialty;
+ const person=currentPoliceSpecialtyPerson(),buttons=[
+  ...$('police-specialty-choices').querySelectorAll('button[data-preview-specialty]')
+ ];
+ for(const b of buttons)b.setAttribute('aria-pressed',
+  String(b.dataset.previewSpecialty===specialty));
+ const title=$('police-specialty-preview-title'),
+  role=$('police-specialty-preview-role'),
+  meta=$('police-specialty-preview-meta'),
+  art=$('police-specialty-preview-art');
+ title.textContent=specialty||'Kies een specialisatie.';
+ if(!person||!specialty){
+  role.textContent='';meta.textContent='';
+  drawBadgePreview(art,'');return;
+ }
+ const row=buttons.find(b=>b.dataset.previewSpecialty===specialty)?.closest('.manage-specialty-row');
+ const checked=row?.querySelector('input[data-role="member"]')?.checked;
+ const instructor=row?.querySelector('input[data-role="instructor"]')?.checked;
+ const teacher=row?.querySelector('input[data-role="teacher"]')?.checked;
+ const k9Role=$('police-k9-role').value||person.k9Automatic||'';
+ drawBadgePreview(art,specialty,k9Role);
+ if(specialty==='K9'){
+  role.textContent='K9 · '+(K9_PATCH_ROLE_LABELS[k9Role]||'functie niet bevestigd');
+  meta.textContent='De K9-functie kan rechts handmatig worden gekozen.';
+ }else if(specialty==='RAGO-IO'){
+  role.textContent='RAGO-IO · '+(checked?'geselecteerd':'in opleiding');
+  meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · geen volwaardige RAGO-functie';
+ }else{
+  role.textContent=instructor?'INSTRUCTEUR':teacher?'DOCENT':
+   checked?'Geregistreerd lid':'Niet handmatig geselecteerd';
+  meta.textContent='De getoonde patch is uitsluitend een voorbeeld.';
+ }
+}
+function fillPoliceSpecialtyPerson(){
+ const person=currentPoliceSpecialtyPerson(),area=$('police-specialty-choices');
+ area.replaceChildren();policeSpecialtyFocus='';
+ $('police-k9-role').value=person?.k9Manual||'';
+ $('police-k9-role').disabled=!person;
+ $('police-specialty-save').disabled=!person;
+ if(!person){previewPoliceSpecialty('');return}
+ const active=new Set(person.specialties||[]),
+  instructor=new Set(person.instructorSpecialties||[]),
+  teacher=new Set(person.teacherSpecialties||[]);
+ if(person.k9Manual)active.add('K9');
+ for(const specialty of policeSpecialtyNames){
+  const row=el('div','manage-specialty-row');
+  const label=el('label'),member=el('input');
+  member.type='checkbox';member.dataset.role='member';member.value=specialty;
+  member.checked=active.has(specialty);
+  label.append(member,document.createTextNode(' '+specialty));row.append(label);
+  if(supportsSpecialtyInstructors(specialty)){
+   for(const [kind,display] of [['instructor','Instructeur'],['teacher','Docent']]){
+    const flag=el('label','manage-specialty-role'),box=el('input');
+    box.type='checkbox';box.dataset.role=kind;box.value=specialty;
+    box.checked=(kind==='instructor'?instructor:teacher).has(specialty);
+    box.addEventListener('change',()=>{if(box.checked)member.checked=true});
+    flag.append(box,document.createTextNode(' '+display));row.append(flag);
+   }
+  }
+  member.addEventListener('change',()=>{
+   if(!member.checked){
+    row.querySelectorAll('input[data-role="instructor"],input[data-role="teacher"]')
+     .forEach(input=>{input.checked=false});
+    if(specialty==='K9')$('police-k9-role').value='';
+   }
+   previewPoliceSpecialty(specialty);
+  });
+  const preview=el('button','manage-preview-button','Bekijk patch');
+  preview.type='button';preview.dataset.previewSpecialty=specialty;
+  preview.setAttribute('aria-pressed','false');
+  preview.addEventListener('click',()=>previewPoliceSpecialty(specialty));
+  row.append(preview);
+  row.addEventListener('change',()=>previewPoliceSpecialty(specialty));
+  area.append(row);
+ }
+ $('police-specialty-reason').value='';
+ $('police-specialty-status').textContent='Handmatige keuzes geladen. Automatische Discord-rollen blijven daarnaast bestaan.';
+ previewPoliceSpecialty([...active][0]||'K9');
+}
+async function loadPoliceSpecialtyEditor(expectedUid){
+ try{
+  const data=await authFetch('/api/organogram/police-specialties/admin');
+  if(!auth?.currentUser||auth.currentUser.uid!==expectedUid)return;
+  if(data.canEdit!==true||data.displayOnly!==true||!Array.isArray(data.people)||
+   !Array.isArray(data.specialties))throw Error('Geen bevoegdheid');
+  policeSpecialtyPeople=data.people;policeSpecialtyNames=data.specialties;
+  const picker=$('police-specialty-person');
+  picker.replaceChildren(Object.assign(el('option','','Kies een politielid…'),{value:''}));
+  data.people.forEach((p,i)=>{
+   const option=el('option','',(p.call||'—')+' · '+p.name);
+   option.value=String(i);picker.append(option);
+  });
+  picker.value='';$('police-specialty-choices').replaceChildren();
+  $('police-specialty-toggle').hidden=false;
+  $('police-specialty-save').disabled=true;
+ }catch(_e){
+  if(auth?.currentUser?.uid!==expectedUid)return;
+  policeSpecialtyPeople=[];policeSpecialtyNames=[];
+  $('police-specialty-toggle').hidden=true;
+  $('police-specialty-editor').hidden=true;
+ }
+}
+$('police-specialty-person').addEventListener('change',fillPoliceSpecialtyPerson);
+$('police-specialty-toggle').addEventListener('click',()=>{
+ $('police-specialty-editor').hidden=!$('police-specialty-editor').hidden;
+ if(!$('police-specialty-editor').hidden)fillPoliceSpecialtyPerson();
+});
+$('police-k9-role').addEventListener('change',()=>{
+ const v=$('police-k9-role').value;
+ if(v)$('police-specialty-choices').querySelector('input[data-role="member"][value="K9"]').checked=true;
+ previewPoliceSpecialty('K9');
+});
+$('police-specialty-save').addEventListener('click',async()=>{
+ const person=currentPoliceSpecialtyPerson();
+ if(!person)return;
+ const area=$('police-specialty-choices'),pick=role=>[
+  ...area.querySelectorAll('input[data-role="'+role+'"]:checked')].map(x=>x.value);
+ const specialtySet=new Set([...pick('member'),...pick('instructor'),...pick('teacher')]);
+ const specialties=[...specialtySet],instructorSpecialties=pick('instructor'),
+  teacherSpecialties=pick('teacher');
+ const k9Role=specialtySet.has('K9')?$('police-k9-role').value:'';
+ const reason=$('police-specialty-reason').value.trim();
+ if(reason.length<8||reason.length>300){
+  $('police-specialty-status').textContent='Motivering van 8 tot 300 tekens verplicht.';return;
+ }
+ const button=$('police-specialty-save');button.disabled=true;
+ try{
+  await authFetch('/api/organogram/police-specialties/'+encodeURIComponent(person.personId),{
+   method:'PUT',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({specialties,instructorSpecialties,teacherSpecialties,k9Role,reason})
+  });
+  person.specialties=specialties;person.instructorSpecialties=instructorSpecialties;
+  person.teacherSpecialties=teacherSpecialties;person.k9Manual=k9Role;
+  $('police-specialty-reason').value='';
+  $('police-specialty-status').textContent='Specialisaties en K9-functie opgeslagen en gelogd.';
+  await loadPublic();
+ }catch(e){$('police-specialty-status').textContent='Niet opgeslagen: '+e.message}
+ finally{button.disabled=false}
+});
 let k9People=[];
 async function loadK9Editor(){
  try{
