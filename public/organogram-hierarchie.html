@@ -583,6 +583,14 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-fact.person-profile-status strong{
  font-size:13px;color:#f3faff
 }
+.person-profile-dossier-link{
+ display:inline-flex;align-items:center;justify-content:center;
+ padding:9px 13px;margin-top:11px;background:#2d609c;
+ border:1px solid #97c4f4;border-radius:8px;color:#fff;
+ font-weight:800;font-size:12px;text-decoration:none
+}
+.person-profile-dossier-link:hover{background:#396fae}
+.person-profile-dossier-link:focus-visible{outline:3px solid #d7eaff;outline-offset:3px}
 .person-profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:13px 0}
 .person-profile-fact{border:1px solid #3b5b7c;background:#173452;border-radius:8px;padding:9px 10px;min-width:0}
 .person-profile-fact small{display:block;color:#adcae8;font-size:10px;margin-bottom:3px}
@@ -947,8 +955,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   <div class="trunk"></div><div class="fork"></div>
  </div>
  <div id="services" class="service-grid" aria-live="polite"></div>
- <div id="selected" class="panel" aria-live="polite">Selecteer een persoon om de beschikbare basisgegevens te bekijken.</div>
- <p class="footer">Dit organogram is uitsluitend een visuele weergave, geen officiële bevelslijn en geen bron van toegangsrechten. Docent/instructeur wordt alleen getoond als die functie expliciet in de bron is bevestigd. Geen toegang tot dossiers, observaties of sancties via deze pagina. Burger staat al onder Bestuur, maar beschermde burgergegevens worden niet automatisch vrijgegeven.</p>
+
 </main>
 <dialog class="person-profile-dialog" id="person-profile" aria-labelledby="person-profile-title">
  <div class="person-profile-shell">
@@ -1041,8 +1048,7 @@ function openPersonProfile(p){
   if(badge){
    const grade=el('div','person-profile-grade');
    const detail=el('div','person-profile-grade-info');
-   detail.append(el('strong','',rank?.label||p.rank||'Rang niet geregistreerd'),
-    el('small','','Formeel uniform · automatisch weergegeven Belgisch graadteken'));
+   detail.append(el('strong','',rank?.label||p.rank||'Rang niet geregistreerd'));
    grade.append(badge,detail);
    intro.append(grade);
   }
@@ -1061,10 +1067,31 @@ function openPersonProfile(p){
  fact('Personeelsstatus',p.status||'Niet vermeld');
  const teaching=(Array.isArray(p.teachingRoles)?p.teachingRoles:[])
   .filter(x=>x==='instructeur'||x==='docent');
- fact('Opleidingsfunctie',teaching.length?teaching.map(x=>x==='instructeur'?'Instructeur':'Docent').join(' · '):'Geen geregistreerde functie');
+ const trainingRoles=teaching.map(x=>x==='instructeur'?'Instructeur':'Docent');
+ if(p.dept==='politie'&&p.reekshoofdReeks)
+  trainingRoles.push('Reekshoofd – '+p.reekshoofdReeks);
+ fact('Opleidingsfunctie',trainingRoles.length?trainingRoles.join(' · '):'Geen geregistreerde functie');
  if(Array.isArray(p.displayLabels)&&p.displayLabels.length)
   fact('Extra weergavelabel',p.displayLabels.map(x=>x.toUpperCase()).join(' · '));
  primary.append(grid);
+ // De server stuurt deze link alleen voor een bevoegde officier/korpsleider
+ // met rechten op het specifieke personeelsdossier.
+ if(p.dept==='politie'&&typeof p.dossierUrl==='string'&&
+    p.dossierUrl.startsWith('/personeelsbeheer.html?')){
+  const url=new URL(p.dossierUrl,location.origin);
+  const allowed=url.origin===location.origin&&
+   url.pathname==='/personeelsbeheer.html'&&
+   url.searchParams.get('fiche')==='1'&&
+   url.searchParams.get('dept')==='politie'&&
+   url.searchParams.get('from')==='organogram';
+  if(allowed){
+   const open=el('a','person-profile-dossier-link','📁 Open personeelsdossier');
+   open.href=url.pathname+url.search;
+   open.target='_blank';
+   open.rel='noopener noreferrer';
+   primary.append(open);
+  }
+ }
  secondary.append(el('h3','','Specialisaties'));
  const names=[...new Set(specialtyNames(p)
   .map(name=>p.dept==='politie'?policeSpecialtyName(name):name).filter(Boolean))];
@@ -1107,8 +1134,7 @@ function openPersonProfile(p){
   }
   secondary.append(list);
  }else secondary.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
- secondary.append(el('p','person-profile-note',
-  'Alle informatie is alleen-lezen. De niveau-indeling is indicatief en verleent geen bevoegdheden. Verlofdetails en de datum van toetreding tot een specialisatie zijn hier niet beschikbaar.'));
+
  if(!dialog.open)dialog.showModal();
 }
 $('person-profile-close').addEventListener('click',()=>$('person-profile').close());
@@ -1545,6 +1571,8 @@ async function loadPublic(){
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
     displayLabels:Array.isArray(p.displayLabels)?p.displayLabels.filter(x=>['stage','lid'].includes(x)).slice(0,1):[],
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
+    reekshoofdReeks:typeof p.reekshoofdReeks==='string'?p.reekshoofdReeks.slice(0,20):'',
+    dossierUrl:typeof p.dossierUrl==='string'?p.dossierUrl.slice(0,270):'',
     instructorSpecialties:Array.isArray(p.instructorSpecialties)?p.instructorSpecialties.slice(0,12):[],
     teacherSpecialties:Array.isArray(p.teacherSpecialties)?p.teacherSpecialties.slice(0,12):[],
     boardRole:p.boardRole||'none',leadershipTier:p.leadershipTier||'none',displayOrder:Number(p.displayOrder)||0,
