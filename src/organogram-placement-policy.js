@@ -59,7 +59,7 @@ export function validatePlacement(body,dept){
  const displayLabels=body.displayLabels??[];
  const instructorSpecialties=body.instructorSpecialties??[];
  const teacherSpecialties=body.teacherSpecialties??[];
- const validTeachingList=(list)=>Array.isArray(list)&&list.length<=12&&
+ const validTeachingList=(list)=>Array.isArray(list)&&list.length<=SPECIALTIES[dept].length&&
   new Set(list).size===list.length&&list.every(x=>typeof x==='string'&&SPECIALTIES[dept].includes(x));
  if(!validTeachingList(instructorSpecialties)||!validTeachingList(teacherSpecialties))
   throw Error('Kies uitsluitend geldige instructeur-/docentspecialisaties van de dienst');
@@ -78,7 +78,7 @@ export function validatePlacement(body,dept){
     teachingRoles.some(x=>!['docent','instructeur'].includes(x))||
     new Set(teachingRoles).size!==teachingRoles.length)
    throw Error('Kies docent/instructeur zonder dubbele functies');
- if(!Array.isArray(specialties)||specialties.length>12||
+ if(!Array.isArray(specialties)||specialties.length>SPECIALTIES[dept].length||
     specialties.some(x=>typeof x!=='string'||!SPECIALTIES[dept].includes(x))||
     new Set(specialties).size!==specialties.length)
    throw Error('Kies uitsluitend specialisaties van deze dienst');
@@ -124,11 +124,11 @@ export function manualDisplay(raw,dept){
   [...new Set(raw.displayLabels.filter(x=>['stage','lid'].includes(x)))].slice(0,1):[];
  const specialties=Array.isArray(raw.specialties)?
   [...new Set(raw.specialties.filter(x=>validStoredSpecialty(dept,x))
-    .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,12):[];
+    .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,SPECIALTIES[dept].length):[];
  const leadershipTier=LEADERSHIP_LEVELS[dept]?.includes(raw.leadershipTier)?raw.leadershipTier:'none';
  const displayOrder=Number.isSafeInteger(raw.displayOrder)&&raw.displayOrder>=1&&raw.displayOrder<=999?raw.displayOrder:0;
  const selected=list=>Array.isArray(list)?[...new Set(list.filter(x=>validStoredSpecialty(dept,x))
-  .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,12):[];
+  .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,SPECIALTIES[dept].length):[];
  return {boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties,
   instructorSpecialties:selected(raw.instructorSpecialties),
   teacherSpecialties:selected(raw.teacherSpecialties)};
@@ -195,14 +195,14 @@ export function mergePlacement(person,manual,auto){
   teachingRoles:[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])],
   displayLabels:[...(manual?.displayLabels||[])],
   instructorSpecialties:[...new Set([...(manual?.instructorSpecialties||[]),
-   ...(auto?.instructorSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
+   ...(auto?.instructorSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
   teacherSpecialties:[...new Set([...(manual?.teacherSpecialties||[]),
-   ...(auto?.teacherSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,12),
+   ...(auto?.teacherSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
   specialties:(()=>{
    const found=[...new Set([...(manual?.specialties||[]),...(auto?.specialties||[]),...specialtyValues]
     .map(label=>normalizedStoredSpecialty(person.dept,label)))];
    // A verified full RAGO specialization supersedes its IO training badge.
-   return found.filter(label=>label!=='RAGO-IO'||!found.includes('RAGO')).slice(0,12);
+   return found.filter(label=>label!=='RAGO-IO'||!found.includes('RAGO')).slice(0,SPECIALTIES[person.dept]?.length||12);
   })(),
   source:manual&&auto?.synced?'handmatig + Discord':manual?'handmatig':auto?.synced?'Discord':'personeelslijst'};
 }
