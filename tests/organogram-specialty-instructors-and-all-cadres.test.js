@@ -167,8 +167,12 @@ test('public profile aligns specialty cards with public facts and selects each K
  assert.ok(html.includes('k9-patch-geleider_in_stage{background-position:50% 100%}'));
  assert.ok(script.includes("const patch=el('span','k9-role-patch k9-patch-'+role)"));
  assert.ok(script.includes("patch.setAttribute('aria-label','K9-patch: '+roleLabels[role])"));
- assert.ok(script.includes("const role=p.k9Role||(roles.includes('instructeur')?'instructeur':'')"));
- assert.ok(script.includes("const patch=el('img','person-profile-specialty-patch')"));
+ // Only explicitly verified or manually assigned K9 roles may show a patch:
+ // the obsolete generic patch is intentionally no longer rendered.
+ assert.ok(script.includes("const role=p.k9Role;"));
+ assert.ok(script.includes("if(Object.hasOwn(roleLabels,role))"));
+ assert.ok(script.includes("K9-functie niet bevestigd"));
+ assert.ok(!script.includes("k9-specialisatie-patch-20261029.webp"));
  assert.ok(html.includes('grid-template-areas:"intro" "details" "specials"'));
  assert.ok(script.includes('layout.append(intro,primary,secondary)'));
 });
