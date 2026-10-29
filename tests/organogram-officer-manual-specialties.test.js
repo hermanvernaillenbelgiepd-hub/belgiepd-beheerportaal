@@ -66,7 +66,7 @@ test('only authorized users get the hidden manual-specialty UI and badge preview
  assert.match(script,/drawBadgePreview\(art,specialty,k9Role\)/);
  assert.match(script,/const k9Role=specialtySet\.has\('K9'\)\?/);
  assert.match(script,/method:'PUT',headers:\{'Content-Type':'application\/json'\}/);
- assert.match(script,/\$\('police-specialty-status'\)\.textContent='Specialisaties en K9-functie opgeslagen en gelogd/);
+ assert.match(script,/\$\('police-specialty-status'\)\.textContent='Specialisaties opgeslagen en gelogd/);
  assert.match(html,/id="police-specialty-preview-art"/);
  assert.match(html,/id="police-k9-role" disabled/);
 });
