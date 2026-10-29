@@ -1046,6 +1046,69 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   height:auto;
  }
 }
+
+/* Personenprofiel: de zichtbare specialisatieplaat krijgt net als het
+   officiële graadteken exact 170 x 53,125 px (16:5). De RAGO-bronnen
+   waren smaller van verhouding en werden door contain visueel verkleind. */
+.person-profile-dialog.police-person-profile .person-profile-specialty.person-profile-specialty-rago-io{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) 170px;
+ grid-template-rows:auto auto;
+ align-content:center;
+ align-items:center;
+ gap:3px 8px;
+ min-height:var(--police-specialty-card-height);
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty-rago-io>strong{
+ grid-column:1;grid-row:1;
+ justify-self:start;align-self:end;
+ text-align:left;
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty-rago-io>.person-profile-specialty-role{
+ grid-column:1;grid-row:2;
+ justify-self:start;align-self:start;
+ text-align:left;
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty img.person-profile-specialty-badge{
+ width:170px;
+ height:53.125px;
+ min-width:170px;
+ max-width:170px;
+ aspect-ratio:16 / 5;
+ object-fit:fill;
+ object-position:center;
+ grid-column:2;
+ grid-row:1 / span 2;
+ justify-self:end;
+ align-self:center;
+}
+.person-profile-dialog.police-person-profile .person-profile-specialty .k9-role-patch.person-profile-specialty-badge{
+ width:170px;
+ height:53.125px;
+ background-size:100% 300%;
+}
+@media(max-width:380px){
+ .person-profile-dialog.police-person-profile .person-profile-specialty.person-profile-specialty-rago-io{
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto auto auto;
+ }
+ .person-profile-dialog.police-person-profile .person-profile-specialty-rago-io>strong{
+  grid-column:1;grid-row:1;
+ }
+ .person-profile-dialog.police-person-profile .person-profile-specialty-rago-io>img.person-profile-specialty-badge,
+ .person-profile-dialog.police-person-profile .person-profile-specialty-k9>.k9-role-patch.person-profile-specialty-badge{
+  grid-column:1;grid-row:2;
+  width:min(170px,55vw);
+  min-width:0;
+  max-width:100%;
+  height:auto;
+  aspect-ratio:16 / 5;
+  justify-self:start;
+ }
+ .person-profile-dialog.police-person-profile .person-profile-specialty-rago-io>.person-profile-specialty-role{
+  grid-column:1;grid-row:3;
+ }
+}
 </style>
 </head>
 <body>
