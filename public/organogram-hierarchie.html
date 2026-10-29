@@ -599,6 +599,10 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  background:#343840;box-shadow:0 3px 10px #0004
 }
 .person-profile-specialty-k9 .person-profile-specialty-role{margin-top:0}
+.person-profile-specialty-k9 .person-profile-specialty-patch.k9-role-patch{
+ max-width:290px;aspect-ratio:760/337;
+ border:0;background:#101928
+}
 .person-profile-specialty-k9 .person-profile-specialty-instructor{
  display:inline-flex;align-items:center;gap:4px;
  padding:4px 9px;border:1px solid #c29c49;border-radius:5px;
@@ -894,21 +898,27 @@ function openPersonProfile(p){
    // K9: gebruik de aangeleverde patch en alleen echte K9-instructeursrollen.
    if(p.dept==='politie'&&name==='K9'){
     item.classList.add('person-profile-specialty-k9');
-    const patch=el('img','person-profile-specialty-patch');
-    patch.src='/assets/k9-specialisatie-patch-20261029.webp';
-    patch.alt='K9-specialisatiepatch met twee pootafdrukken en rangstrepen';
-    patch.width=280;patch.height=98;patch.loading='lazy';
-    item.append(patch);
-    // Eén consistente echte K9-patch, zonder ongewenste witte lijn onderaan.
     const role=p.k9Role||(roles.includes('instructeur')?'instructeur':'');
-    if(role==='instructeur'){
-     item.append(el('span','person-profile-specialty-instructor','INSTRUCTEUR'));
-    }else if(role==='geleider'||role==='geleider_in_stage'){
-     item.append(el('span','person-profile-specialty-instructor',
-      role==='geleider'?'GELEIDER':'GELEIDER IN STAGE'));
-    }else if(roles.includes('docent')){
-     item.append(el('span','person-profile-specialty-instructor is-teacher','DOCENT'));
-    }else item.append(el('span','person-profile-specialty-role','Geregistreerd lid'));
+    const patch=el('img','person-profile-specialty-patch');
+    const roleLabels={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
+     geleider_in_stage:'GELEIDER IN STAGE'};
+    if(roleLabels[role]){
+     // Elke rol heeft een eigen patch, met twee pootafdrukken,
+     // scheidingsstreep en functie eronder; geen ongewenste onderlijn.
+     patch.src='/assets/k9-patch-'+role+'.svg';
+     patch.classList.add('k9-role-patch');
+     patch.width=760;patch.height=337;
+     patch.alt='K9-patch: '+roleLabels[role];
+    }else{
+     patch.src='/assets/k9-specialisatie-patch-20261029.webp';
+     patch.width=280;patch.height=98;
+     patch.alt='K9-specialisatiepatch met twee pootafdrukken';
+    }
+    patch.loading='lazy';item.append(patch);
+    if(!roleLabels[role]){
+     item.append(el('span','person-profile-specialty-role',
+      roles.includes('docent')?'DOCENT':'Geregistreerd lid'));
+    }
    }else{
     const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
     item.append(el('span','person-profile-specialty-role',role));
