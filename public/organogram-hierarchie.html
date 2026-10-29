@@ -1313,7 +1313,8 @@ function openPersonProfile(p){
      isRagoInstructor?'RAGO · INSTRUCTEUR':full?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'));
     const patch=el('img','rago-io-badge');
     patch.src=full?(isRagoInstructor?RAGO_INSTRUCTOR_PATCH:RAGO_PATCH):RAGO_IO_PATCH;
-    patch.alt=full?'RAGO: Federale Politie Dienst Luchtsteun':
+    patch.alt=isRagoInstructor?'RAGO instructeur: Federale Politie Dienst Luchtsteun':
+     full?'RAGO volwaardig: Federale Politie Dienst Luchtsteun':
      'RAGO-IO: Federale Politie Dienst Luchtsteun';
     patch.loading='lazy';patch.width=170;patch.height=72;
     if(isRagoInstructor)patch.classList.add('rago-instructor-badge');
@@ -1938,8 +1939,8 @@ function fillAdminPerson(){
   entry.addEventListener('change',()=>refreshAdminBadgePreview(specialty));
   $('manage-specialties').append(entry);
  }
- const first=(values.specialties||[]).find(x=>(adminSpecialties[p.dept]||[]).includes(x))||'';
- refreshAdminBadgePreview(first);
+ // Start met een neutraal patchvoorbeeld, onafhankelijk van vorige functies.
+ refreshAdminBadgePreview('');
  $('manage-status').textContent=(values.boardRole||values.teachingRoles?.length||values.specialties?.length)
   ?'Bestaande handmatige registratie geladen.':'Nog geen handmatige registratie. Automatische rollen kunnen daarnaast actief zijn.';
 }
