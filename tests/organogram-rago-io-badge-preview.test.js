@@ -41,7 +41,7 @@ test('badge preview uses matching artwork and does not persist until explicit sa
  assert.ok(html.includes("const RAGO_IO_PATCH='/assets/rago-io-belgische-luchtsteun-geborduurd-20261029.webp'"));
  assert.match(html,/patch\.src=RAGO_IO_PATCH/);
  assert.match(html,/img\.src=RAGO_IO_PATCH/);
- assert.match(html,/id="k9-badge-preview"/);
+ assert.match(html,/id="police-specialty-preview-art"/);
  assert.match(html,/k9-patch-preview role-/);
  assert.match(html,/role-geleider_in_stage\{background-position:50% 100%\}/);
  assert.match(html,/Voor deze specialisatie is nog geen officiële patch gekoppeld/);

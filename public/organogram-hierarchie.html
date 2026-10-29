@@ -307,6 +307,10 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 }
 .police-specialty-editor .manage-specialty-row{min-width:0}
 .police-specialty-editor #police-specialty-person{max-width:640px}
+.police-specialty-editor .police-specialty-person-search{display:block;max-width:640px;margin:10px 0}
+.police-specialty-editor #police-specialty-search{display:block;width:100%;margin-top:5px;
+ padding:9px 12px;background:#0b2138;color:#eaf4ff;border:1px solid #597da3;border-radius:7px;box-sizing:border-box}
+.police-specialty-editor #police-specialty-search-count{margin:6px 0 14px}
 .police-specialty-editor #police-k9-label{display:block;margin-top:12px;font-size:11px}
 .police-specialty-editor #police-k9-role{margin-top:5px}
 
@@ -1030,7 +1034,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
    <button type="button" id="toggle-cadres" aria-label="Alle zichtbare kaders inklappen">▴ Alle kaders inklappen</button>
   <button type="button" id="police-specialty-toggle" hidden>⚙ Handmatige specialisaties</button>
   <button type="button" id="manage-toggle" hidden>⚙ Technisch beheer</button>
-  <button type="button" id="k9-toggle" hidden>🐾 K9-functies beheren</button>
+  
   <button type="button" id="login">Aanmelden</button>
   <input type="search" id="search" placeholder="Zoek naam, rang of specialisatie" aria-label="Doorzoek organogram">
  </nav>
@@ -1038,7 +1042,13 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  <section id="police-specialty-editor" class="manager police-specialty-editor" hidden aria-label="Handmatige politiespecialisaties">
   <h2>Handmatige politiespecialisaties · Officierenkader en Korpsleiding</h2>
   <p class="manager-note">Alle politie-specialisaties inclusief K9. Handmatige weergave zonder wijziging van Discord-rollen, aanstellingen of dossierbevoegdheden.</p>
-  <label>Politiemedewerker <select id="police-specialty-person"><option value="">Kies een politielid</option></select></label>
+  <label class="police-specialty-person-search">Zoek politiemedewerker op naam of roepnummer
+   <input type="search" id="police-specialty-search" placeholder="Typ naam of roepnummer…" autocomplete="off" aria-controls="police-specialty-person">
+  </label>
+  <label>Politiemedewerker
+   <select id="police-specialty-person"><option value="">Kies een politielid</option></select>
+  </label>
+  <p id="police-specialty-search-count" class="manager-note" role="status" aria-live="polite"></p>
   <div class="manage-specialty-layout">
    <div id="police-specialty-choices" class="checks"></div>
    <aside class="manage-specialty-preview" aria-live="polite">
@@ -1056,36 +1066,15 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
      </select>
     </label>
     <p class="manager-note">De K9-patch volgt de geverifieerde of handmatige functie.</p>
+    <button type="button" id="police-k9-verify" disabled>↻ K9-rol via Discord controleren</button>
+    <p id="police-k9-verify-result" role="status" aria-live="polite"></p>
    </aside>
   </div>
   <label>Motivering voor het logboek
    <textarea id="police-specialty-reason" maxlength="300" placeholder="Waarom wordt de functie handmatig ingesteld?"></textarea>
   </label>
-  <button type="button" id="police-specialty-save">Specialisaties en K9 bewaren</button>
+  <button type="button" id="police-specialty-save">Specialisaties bewaren</button>
   <p id="police-specialty-status" class="manager-note" role="status" aria-live="polite"></p>
- </section>
- <section id="k9-manager" class="k9-manager" hidden aria-label="K9-functies beheren">
-  <h2>K9-functies · Officierenkader en Korpsleiding</h2>
-  <p>Automatische Discord-rol, of een handmatige functie met voorrang en logging. De handmatige instellingen zijn niet zichtbaar voor andere leden.</p>
-  <div class="k9-manager-grid">
-   <label>Personeelslid <select id="k9-person"><option value="">Selecteer politielid</option></select></label>
-   <label>K9-functie <select id="k9-role">
-    <option value="">Automatisch volgens Discord</option>
-    <option value="instructeur">INSTRUCTEUR</option>
-    <option value="geleider">GELEIDER</option>
-    <option value="geleider_in_stage">GELEIDER IN STAGE</option>
-   </select></label>
-  </div>
-  <p id="k9-current">Selecteer een personeelslid.</p>
-  <aside id="k9-badge-preview" class="manage-specialty-preview" aria-live="polite">
-   <h3>K9-patchvoorbeeld</h3><div class="patch-art"><span class="patch-empty">Kies een K9-functie voor de voorbeeldweergave.</span></div>
-   <p>Alleen de weergegeven patch; rechten wijzigen niet.</p>
-  </aside>
-  <button type="button" id="k9-verify-now" disabled>↻ Discord-rol nu controleren</button>
-  <p id="k9-verify-result" role="status" aria-live="polite"></p>
-  <label>Motivering <textarea id="k9-reason" maxlength="300" rows="2" placeholder="Motivering van minstens 8 tekens"></textarea></label>
-  <button type="button" id="k9-role-save">K9-functie opslaan</button>
-  <p id="k9-result" role="status"></p>
  </section>
  <section id="manage" class="manager" hidden aria-label="Handmatig organogrambeheer">
   <h2>Handmatige functies · noodregeling</h2>
@@ -1313,13 +1302,16 @@ function openPersonProfile(p){
      item.append(el('span','person-profile-specialty-role',
       'K9-functie niet bevestigd · controleer de Discord-synchronisatie'));
     }
-   }else if(p.dept==='politie'&&name==='RAGO-IO'){
-    // Stage badge. This displays training only, not a full RAGO appointment.
+   }else if(p.dept==='politie'&&(name==='RAGO-IO'||name==='RAGO')){
+    // Different patches: verified full RAGO versus training role RAGO-IO.
     item.classList.add('person-profile-specialty-rago-io');
-    item.append(el('span','person-profile-specialty-role','RAGO-IO · in opleiding'));
+    const full=name==='RAGO';
+    item.append(el('span','person-profile-specialty-role',
+     full?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'));
     const patch=el('img','rago-io-badge');
-    patch.src=RAGO_IO_PATCH;
-    patch.alt='RAGO-IO: Federale Politie Dienst Luchtsteun';
+    patch.src=full?RAGO_PATCH:RAGO_IO_PATCH;
+    patch.alt=full?'RAGO: Federale Politie Dienst Luchtsteun':
+     'RAGO-IO: Federale Politie Dienst Luchtsteun';
     patch.loading='lazy';patch.width=170;patch.height=72;
     item.append(patch);
    }else{
@@ -1813,28 +1805,31 @@ async function setupManagement(){
    }
    void loadPublic();
    if(user){
-    void loadK9Editor();
     void loadPoliceSpecialtyEditor(user.uid);
     void authFetch('/api/organogram/middenkader/last-order')
      .then(()=>{$('manage-toggle').hidden=false})
      .catch(()=>{$('manage-toggle').hidden=true;$('manage').hidden=true});
    }else{
-    k9People=[];$('k9-toggle').hidden=true;$('k9-manager').hidden=true;
+    $('police-specialty-search').value='';
    }
   });
  }catch(e){$('manage-status').textContent=e.message;}
 }
 const RAGO_IO_ROLE_ID='1490841316656156802';
 const RAGO_IO_PATCH='/assets/rago-io-belgische-luchtsteun-geborduurd-20261029.webp';
+const RAGO_PATCH='/assets/rago-volwaardig-luchtsteun-wing-20261029.webp';
+const RAGO_DISCORD_ROLE_ID='1309532437977497700';
 const K9_PATCH_ROLE_LABELS={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
  geleider_in_stage:'GELEIDER IN STAGE'};
 let focusedAdminSpecialty='';
 function drawBadgePreview(box,specialty,k9Role=''){
  box.replaceChildren();
- if(specialty==='RAGO-IO'){
+ if(specialty==='RAGO-IO'||specialty==='RAGO'){
   const img=el('img');
-  img.src=RAGO_IO_PATCH;
-  img.alt='Belgische geborduurde RAGO-IO-patch met vlam, vleugel en okerkleurige tekst';
+  img.src=specialty==='RAGO'?RAGO_PATCH:RAGO_IO_PATCH;
+  img.alt=specialty==='RAGO'?
+   'Volwaardige RAGO-luchtsteunpatch met Belgische vlam en okerkleurige vleugels':
+   'Belgische geborduurde RAGO-IO-patch met vlam, vleugel en okerkleurige tekst';
   img.width=220;img.height=94;
   img.loading='lazy';box.append(img);return true;
  }
@@ -1874,22 +1869,13 @@ function refreshAdminBadgePreview(specialty=focusedAdminSpecialty){
   meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · weergave, geen bevoegdheid';
  }else if(specialty==='K9'){
   role.textContent='K9: '+(K9_PATCH_ROLE_LABELS[k9Role]||'geen functie bevestigd');
-  meta.textContent='K9-functies zijn afzonderlijk wijzigbaar via K9-beheer.';
+  meta.textContent='K9-functies worden beheerd via Handmatige specialisaties.';
  }else{
   role.textContent=instructor?'Functie: Instructeur':teacher?'Functie: Docent':
    checked?'Functie: Lid':'Nog niet geselecteerd';
   meta.textContent='Voor deze specialisatie is nog geen afbeelding beschikbaar.';
  }
 }
-function refreshK9BadgePreview(){
- const value=$('k9-role').value;
- const index=$('k9-person').value;
- const person=index===''?null:k9People[Number(index)];
- const role=value||(person?.manual||person?.automatic||'');
- const box=$('k9-badge-preview').querySelector('.patch-art');
- drawBadgePreview(box,'K9',role);
-}
-$('k9-role').addEventListener('change',refreshK9BadgePreview);
 function selectedAdmin(){
  const value=$('manage-person').value;
  if(value==='')return null;
@@ -1991,6 +1977,9 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
  }else if(specialty==='RAGO-IO'){
   role.textContent='RAGO-IO · '+(checked?'geselecteerd':'in opleiding');
   meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · geen volwaardige RAGO-functie';
+ }else if(specialty==='RAGO'){
+  role.textContent='RAGO · '+(checked?'volwaardig lid geselecteerd':'volwaardige specialisatie');
+  meta.textContent='Discord-rol: '+RAGO_DISCORD_ROLE_ID+' · volwaardige RAGO-functie';
  }else{
   role.textContent=instructor?'INSTRUCTEUR':teacher?'DOCENT':
    checked?'Geregistreerd lid':'Niet handmatig geselecteerd';
@@ -2000,6 +1989,8 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
 function fillPoliceSpecialtyPerson(){
  const person=currentPoliceSpecialtyPerson(),area=$('police-specialty-choices');
  area.replaceChildren();policeSpecialtyFocus='';
+ $('police-k9-verify').disabled=!person;
+ $('police-k9-verify-result').textContent='';
  $('police-k9-role').value=person?.k9Manual||'';
  $('police-k9-role').disabled=!person;
  $('police-specialty-save').disabled=!person;
@@ -2050,22 +2041,55 @@ async function loadPoliceSpecialtyEditor(expectedUid){
   if(data.canEdit!==true||data.displayOnly!==true||!Array.isArray(data.people)||
    !Array.isArray(data.specialties))throw Error('Geen bevoegdheid');
   policeSpecialtyPeople=data.people;policeSpecialtyNames=data.specialties;
-  const picker=$('police-specialty-person');
-  picker.replaceChildren(Object.assign(el('option','','Kies een politielid…'),{value:''}));
-  data.people.forEach((p,i)=>{
-   const option=el('option','',(p.call||'—')+' · '+p.name);
-   option.value=String(i);picker.append(option);
-  });
-  picker.value='';$('police-specialty-choices').replaceChildren();
+  $('police-specialty-search').value='';
+  $('police-specialty-person').value='';
+  populatePoliceSpecialtyPeople();
+  $('police-specialty-choices').replaceChildren();
   $('police-specialty-toggle').hidden=false;
   $('police-specialty-save').disabled=true;
  }catch(_e){
   if(auth?.currentUser?.uid!==expectedUid)return;
   policeSpecialtyPeople=[];policeSpecialtyNames=[];
+  $('police-specialty-search').value='';
+  populatePoliceSpecialtyPeople();
   $('police-specialty-toggle').hidden=true;
   $('police-specialty-editor').hidden=true;
  }
 }
+function populatePoliceSpecialtyPeople(){
+ const picker=$('police-specialty-person'),term=$('police-specialty-search').value.trim()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl-BE');
+ const before=picker.value,matched=[];
+ policeSpecialtyPeople.forEach((p,i)=>{
+  const name=((p.call||'')+' '+(p.name||'')).normalize('NFD')
+   .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl-BE');
+  if(!term||name.includes(term))matched.push([i,p]);
+ });
+ picker.replaceChildren(Object.assign(el('option','','Kies een politielid…'),{value:''}));
+ for(const [i,p] of matched){
+  const option=el('option','',(p.call||'—')+' · '+p.name);
+  option.value=String(i);picker.append(option);
+ }
+ if(!matched.length&&term){
+  const option=el('option','','Geen politiemedewerkers gevonden');
+  option.disabled=true;picker.append(option);
+ }
+ // Keep original personnel indexes, independent of the filtered order.
+ const same=before!==''&&matched.some(([i])=>String(i)===before);
+ picker.value=same?before:'';
+ if(before&&!same)fillPoliceSpecialtyPerson();
+ $('police-specialty-search-count').textContent=term?
+  matched.length+' politiemedewerker'+(matched.length===1?'':'s')+' gevonden':
+  policeSpecialtyPeople.length+' politiemedewerkers beschikbaar';
+}
+$('police-specialty-search').addEventListener('input',populatePoliceSpecialtyPeople);
+$('police-specialty-search').addEventListener('keydown',event=>{
+ if(event.key!=='Enter')return;
+ const select=$('police-specialty-person');
+ const option=[...select.options].find(o=>o.value!==''&&!o.disabled);
+ if(!option)return;
+ event.preventDefault();select.value=option.value;fillPoliceSpecialtyPerson();
+});
 $('police-specialty-person').addEventListener('change',fillPoliceSpecialtyPerson);
 $('police-specialty-toggle').addEventListener('click',()=>{
  $('police-specialty-editor').hidden=!$('police-specialty-editor').hidden;
@@ -2075,6 +2099,41 @@ $('police-k9-role').addEventListener('change',()=>{
  const v=$('police-k9-role').value;
  if(v)$('police-specialty-choices').querySelector('input[data-role="member"][value="K9"]').checked=true;
  previewPoliceSpecialty('K9');
+});
+$('police-k9-verify').addEventListener('click',async()=>{
+ const person=currentPoliceSpecialtyPerson();
+ if(!person)return;
+ const button=$('police-k9-verify'),display=$('police-k9-verify-result');
+ const personId=person.personId;
+ button.disabled=true;
+ display.textContent='Discord controleert de actuele K9-functie…';
+ const names={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
+  geleider_in_stage:'GELEIDER IN STAGE'};
+ const explanations={
+  no_k9_role:'Discord bevestigt dit lid, maar geen K9-, K9-IO- of K9-instructeursrol.',
+  not_in_guild:'Discord vindt dit personeels-ID niet op de ingestelde server.',
+  bot_unconfigured:'Discord-bot of server-ID niet ingesteld op MAIN.',
+  discord_forbidden:'Discord-bot heeft onvoldoende toegang.',
+  discord_limited:'Discord beperkt momenteel de aanvragen. Probeer later opnieuw.',
+  discord_unavailable:'Discord is momenteel niet bereikbaar.',
+  invalid_member:'Discord stuurde ongeldige lidmaatschapsgegevens terug.',
+  network_error:'De verbinding met Discord is mislukt.',
+  invalid_person:'Ongeldig personeels-ID.'
+ };
+ try{
+  const result=await authFetch('/api/organogram/k9/'+encodeURIComponent(personId)+'/verify',{
+   method:'POST'
+  });
+  if(result.checked){
+   person.k9Automatic=result.automatic||'';
+   previewPoliceSpecialty('K9');
+   await loadPublic();
+  }
+  display.textContent=result.status==='ok'?
+   'Live bevestigd: '+(names[result.automatic]||'onbekend'):
+   (explanations[result.status]||'Discord-rol niet bevestigd.');
+ }catch(e){display.textContent='Controle mislukt: '+e.message}
+ finally{button.disabled=!currentPoliceSpecialtyPerson()}
 });
 $('police-specialty-save').addEventListener('click',async()=>{
  const person=currentPoliceSpecialtyPerson();
@@ -2098,102 +2157,9 @@ $('police-specialty-save').addEventListener('click',async()=>{
   person.specialties=specialties;person.instructorSpecialties=instructorSpecialties;
   person.teacherSpecialties=teacherSpecialties;person.k9Manual=k9Role;
   $('police-specialty-reason').value='';
-  $('police-specialty-status').textContent='Specialisaties en K9-functie opgeslagen en gelogd.';
+  $('police-specialty-status').textContent='Specialisaties opgeslagen en gelogd.';
   await loadPublic();
  }catch(e){$('police-specialty-status').textContent='Niet opgeslagen: '+e.message}
- finally{button.disabled=false}
-});
-let k9People=[];
-async function loadK9Editor(){
- try{
-  const data=await authFetch('/api/organogram/k9/admin');
-  if(!data||!Array.isArray(data.people))throw Error('Geen K9-beheergegevens');
-  k9People=data.people;$('k9-toggle').hidden=false;
-  const sel=$('k9-person');
-  sel.replaceChildren(Object.assign(el('option','','Kies een politielid…'),{value:''}));
-  k9People.forEach((p,i)=>{
-   const o=el('option','',(p.call||'—')+' · '+p.name);o.value=String(i);sel.append(o);
-  });
-  sel.value='';$('k9-role').value='';$('k9-verify-now').disabled=true;
- }catch(e){k9People=[];$('k9-toggle').hidden=true;$('k9-manager').hidden=true}
-}
-$('k9-toggle').addEventListener('click',()=>{
- $('k9-manager').hidden=!$('k9-manager').hidden;
-});
-$('k9-person').addEventListener('change',()=>{
- const index=$('k9-person').value;
- const p=index===''?null:k9People[Number(index)];
- $('k9-verify-now').disabled=!p;
- $('k9-verify-result').textContent='';
- if(!p){$('k9-current').textContent='Selecteer een politielid.';$('k9-role').value='';refreshK9BadgePreview();return;}
- $('k9-role').value=p.manual||'';
- refreshK9BadgePreview();
- const values={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
-  geleider_in_stage:'GELEIDER IN STAGE'};
- const source={bot:'Live gecontroleerd via Discord-bot',
-  snapshot:'Laatst bevestigde Discord-aanmelding',
-  niet_bevestigd:'Discord-rol nog niet geverifieerd'};
- $('k9-current').textContent='Discord: '+(values[p.automatic]||'Geen rol')+
-  ' · Bron: '+(source[p.automaticSource]||source.niet_bevestigd)+
-  ' · Handmatig: '+(values[p.manual]||'Automatisch')+
-  ' · Effectief: '+(values[p.manual||p.automatic]||'Geen K9-functie');
-});
-$('k9-verify-now').addEventListener('click',async()=>{
- const index=$('k9-person').value;
- const p=index===''?null:k9People[Number(index)];
- if(!p)return;
- const button=$('k9-verify-now'),display=$('k9-verify-result');
- const selectedId=p.personId;
- button.disabled=true;display.textContent='Discord controleert de actuele K9-rollen…';
- try{
-  const result=await authFetch('/api/organogram/k9/'+encodeURIComponent(selectedId)+'/verify',{
-   method:'POST'
-  });
-  const labels={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
-   geleider_in_stage:'GELEIDER IN STAGE'};
-  const reasons={
-   ok:'Discord heeft de K9-functie bevestigd: '+(labels[result.automatic]||'onbekend')+'.',
-   no_k9_role:'Discord bevestigt dit serverlid, maar geen K9-, K9-IO- of K9-instructeursrol. Controleer zijn Discord-roltoewijzing.',
-   not_in_guild:'Discord vindt deze personeelsidentiteit niet op de ingestelde server. Controleer het Discord-ID in de personeelslijst.',
-   bot_unconfigured:'De Discord-bot of server-ID is niet ingesteld op MAIN. Controleer de beveiligde Render-instellingen.',
-   discord_forbidden:'De Discord-bot heeft geen toegang tot dit lid of onvoldoende rechten.',
-   discord_limited:'Discord beperkt momenteel de aanvragen. Probeer later opnieuw.',
-   discord_unavailable:'De Discord API is momenteel niet beschikbaar.',
-   invalid_member:'Discord stuurde onvolledige of ongeldige lidmaatschapsgegevens terug.',
-   network_error:'De Discord-verbinding is mislukt of verlopen. Probeer later opnieuw.',
-   invalid_person:'Ongeldig personeels-ID.'
-  };
-  // Refresh only the matched identity, not the manual drop-down. A failed
-  // Discord probe must never replace an otherwise valid verified role.
-  if(result.checked){
-   p.automatic=result.automatic||'';
-   p.automaticSource='bot';
-   if($('k9-person').value===index)$('k9-person').dispatchEvent(new Event('change'));
-   await loadPublic();
-  }
-  display.textContent=reasons[result.status]||'Discord-controle niet bevestigd. Controleer de roltoewijzing.';
- }catch(e){
-  display.textContent='Discord-controle mislukt: '+e.message;
- }finally{button.disabled=!$('k9-person').value}
-});
-$('k9-role-save').addEventListener('click',async()=>{
- const index=$('k9-person').value;
- const p=index===''?null:k9People[Number(index)];
- if(!p){$('k9-result').textContent='Selecteer een politielid.';return;}
- const reason=$('k9-reason').value.trim();
- if(reason.length<8||reason.length>300){
-  $('k9-result').textContent='Motivering van 8 tot 300 tekens verplicht.';return;
- }
- const button=$('k9-role-save');button.disabled=true;
- try{
-  await authFetch('/api/organogram/k9/'+encodeURIComponent(p.personId),{
-   method:'PUT',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({role:$('k9-role').value,reason})
-  });
-  p.manual=$('k9-role').value;$('k9-reason').value='';
-  $('k9-result').textContent='K9-functie opgeslagen en gelogd.';
-  $('k9-person').dispatchEvent(new Event('change'));await loadPublic();
- }catch(e){$('k9-result').textContent='Niet opgeslagen: '+e.message}
  finally{button.disabled=false}
 });
 $('manage-toggle').addEventListener('click',async()=>{
