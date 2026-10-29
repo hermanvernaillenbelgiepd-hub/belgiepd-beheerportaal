@@ -5,6 +5,8 @@ import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
  validatePlacement,manualDisplay,verifiedSyncRoles,mergePlacement,canManagePlacements
 } from './organogram-placement-policy.js';
+import {K9_ROLE_COLLECTION,canEditK9Display,verifiedK9DisplayRole,
+ validManualK9Role,effectiveK9DisplayRole} from './k9-display-role.js';
 
 const idOK=id=>/^\d{15,22}$/.test(String(id||''));
 const fault=(code,msg)=>Object.assign(new Error(msg),{publicStatus:code});
@@ -53,7 +55,7 @@ const manualMap=docs=>new Map(docs.map(d=>[d.id,d.data()]));
 const safePublic=p=>({
  dept:p.dept,name:p.name,call:p.call,rank:p.rank,specialties:p.specialties,
  teachingRoles:p.teachingRoles,instructorSpecialties:p.instructorSpecialties,
- teacherSpecialties:p.teacherSpecialties,boardRole:p.boardRole,leadershipTier:p.leadershipTier,displayOrder:p.displayOrder,source:p.source
+ teacherSpecialties:p.teacherSpecialties,k9Role:p.k9Role||'',boardRole:p.boardRole,leadershipTier:p.leadershipTier,displayOrder:p.displayOrder,source:p.source
 });
 export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const store=()=>getFirestore();
@@ -62,9 +64,13 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
   try{
    const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(p=>validRow(p)&&p.dept!=='burger').slice(0,1200);
-   const manualSnap=await db.collection(COLLECTION).limit(1500).get();
+   const [manualSnap,k9Snap]=await Promise.all([
+    db.collection(COLLECTION).limit(1500).get(),
+    db.collection(K9_ROLE_COLLECTION).limit(1500).get()
+   ]);
    if(manualSnap.size>=1500)return res.status(503).json({error:'Organogramregisterlimiet bereikt'});
    const manual=manualMap(manualSnap.docs);
+   const k9Manual=manualMap(k9Snap.docs);
    const boardOnly=manualSnap.docs.filter(d=>d.get('dept')==='bestuur'&&
     d.get('status')==='active'&&['bestuur','bestuur-ai'].includes(d.get('boardRole')))
     .map(d=>d.get('personId')).filter(idOK).slice(0,100);
@@ -82,6 +88,11 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const override=manualDisplay(manual.get(key),p.dept);
     const synced=verifiedSyncRoles(roles.entries.get(p.personId),p.dept,process.env.DISCORD_GUILD_ID);
     const merged=mergePlacement(p,override,synced);
+    if(p.dept==='politie'){
+     const auto=verifiedK9DisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID);
+     merged.k9Role=effectiveK9DisplayRole(k9Manual.get(p.personId)?.role||'',auto);
+     if(merged.k9Role&&!merged.specialties.includes('K9'))merged.specialties.push('K9');
+    }
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
@@ -108,6 +119,45 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    }
    return res.json({readOnly:true,stale:snapshot.stale===true,
     syncAvailable:!roles.failed,records,board:[...boardById.values()].slice(0,50)});
+  }catch(e){return respond(res,e)}
+ });
+ // K9 role editing is independent of the technical-only placement editor.
+ app.get('/api/organogram/k9/admin',requireUser,async(req,res)=>{
+  if(!canEditK9Display(req.bpd))return res.status(403).json({error:'Alleen politie Officierenkader en Korpsleiding'});
+  try{
+   const db=store(),snapshot=await getSnapshot();
+   const people=snapshot.data.filter(p=>validRow(p)&&p.dept==='politie').slice(0,1200);
+   const [snap,roles]=await Promise.all([
+    db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
+    identityMap(db,people.map(p=>p.personId),process.env.DISCORD_GUILD_ID)
+   ]);
+   const manual=manualMap(snap.docs);
+   return res.json({people:people.map(p=>({
+    personId:p.personId,name:safeName(p.name),call:String(p.call||'').slice(0,24),
+    automatic:verifiedK9DisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID),
+    manual:manual.get(p.personId)?.role||''
+   })),readOnly:false});
+  }catch(e){return respond(res,e)}
+ });
+ app.put('/api/organogram/k9/:personId',requireUser,async(req,res)=>{
+  if(!canEditK9Display(req.bpd))return res.status(403).json({error:'Alleen politie Officierenkader en Korpsleiding'});
+  const personId=String(req.params.personId||'');
+  if(!idOK(personId))return res.status(400).json({error:'Ongeldig personeelslid'});
+  let input;try{input=validManualK9Role(req.body)}catch(e){return res.status(400).json({error:e.message})}
+  try{
+   const db=store(),snapshot=await getSnapshot();
+   if(!snapshot.data.some(p=>validRow(p)&&p.dept==='politie'&&p.personId===personId))
+    return res.status(409).json({error:'Geen gekoppeld politielid'});
+   const ref=db.collection(K9_ROLE_COLLECTION).doc(personId);
+   await db.runTransaction(async tx=>{
+    const old=await tx.get(ref);
+    tx.set(ref,{dept:'politie',personId,role:input.role,updatedBy:req.bpd.uid,
+     updatedAt:FieldValue.serverTimestamp(),displayOnly:true});
+    tx.create(ref.collection('audit').doc(),{action:'k9_display_role',
+     previous:old.exists?old.get('role')||'':'',next:input.role,
+     reason:input.reason,actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+   });
+   return res.json({saved:true,displayOnly:true,accessRightsChanged:false});
   }catch(e){return respond(res,e)}
  });
  // Only technical management receives the IDs necessary for a precise manual
