@@ -8,6 +8,72 @@
  // Native pixel recolouring is done once, without SVG/CSS image filters;
  // the approved golden trim remains unaffected. No rank data is changed.
  const GOLD_BASE='/assets/bpd-gold-officer-corps-zonder-medaille-rood-20261029.svg';
+ // Both approved source coats have small baked-in burgundy pixels at the
+ // shirt/tie junction. The SVG overlays remove the medal and most of the red
+ // ribbon, but leave red antialiased wedges on certain screen sizes.
+ // Recolour only visibly red pixels in the central *base artwork*;
+ // do not touch the separately rendered rank, name, specialty or award layers.
+ function cleanBakedInNeckRed(pixels,width,height){
+  const data=pixels.data;
+  const x0=Math.floor(width*.33),x1=Math.ceil(width*.67);
+  const y0=Math.floor(height*.045),y1=Math.ceil(height*.56);
+  for(let y=y0;y<y1;y++){
+   for(let x=x0;x<x1;x++){
+    const i=(y*width+x)*4;
+    const r=data[i],g=data[i+1],b=data[i+2];
+    if(data[i+3]===0||r<60)continue;
+    // Red fabric and its pink anti-aliased edges, not white shirt or blue tie.
+    const chroma=r-Math.max(g,b);
+    if(chroma<9||r<g*1.055||r<b*1.055)continue;
+    const amount=Math.min(1,Math.max(0,(chroma-6)/13));
+    // Above the upper lapel: white shirt. Beneath it: uniform navy.
+    const shirt=y<height*.30;
+    const target=shirt?[239,243,248]:[13,36,62];
+    data[i]=Math.round(r*(1-amount)+target[0]*amount);
+    data[i+1]=Math.round(g*(1-amount)+target[1]*amount);
+    data[i+2]=Math.round(b*(1-amount)+target[2]*amount);
+   }
+  }
+ }
+ // Silver cadres use exactly the same cleanup as the officer uniform.
+ let matchedSilverSource=null,matchedSilverPromise=null;
+ function matchedSilverNavy(){
+  if(matchedSilverSource)return Promise.resolve(matchedSilverSource);
+  if(matchedSilverPromise)return matchedSilverPromise;
+  matchedSilverPromise=new Promise(resolve=>{
+   const done=src=>{matchedSilverSource=src;resolve(src);};
+   try{
+    const raw=new Image();
+    raw.onerror=()=>done(SILVER_BASE);
+    raw.onload=()=>{
+     try{
+      const canvas=document.createElement('canvas');
+      canvas.width=raw.naturalWidth;canvas.height=raw.naturalHeight;
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      if(!ctx)throw Error('No canvas 2D context');
+      ctx.drawImage(raw,0,0);
+      const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
+      cleanBakedInNeckRed(pixels,canvas.width,canvas.height);
+      ctx.putImageData(pixels,0,0);
+      done(canvas.toDataURL('image/webp',.93));
+     }catch(_err){done(SILVER_BASE)}
+    };
+    raw.src=SILVER_BASE;
+   }catch(_err){done(SILVER_BASE)}
+  });
+  return matchedSilverPromise;
+ }
+ function setMatchedSilverCoat(img){
+  img.src=SILVER_BASE;
+  if(typeof Image!=='function')return;
+  img.style.opacity='0';
+  matchedSilverNavy().then(src=>{
+   img.onload=()=>{img.style.opacity='1'};
+   img.onerror=()=>{img.onload=null;img.src=SILVER_BASE;img.style.opacity='1'};
+   img.src=src;
+   if(img.complete&&img.naturalWidth>0)img.style.opacity='1';
+  }).catch(()=>{img.src=SILVER_BASE;img.style.opacity='1'});
+ }
  let matchedGoldSource=null, matchedGoldPromise=null;
  function matchedGoldNavy(){
   if(matchedGoldSource)return Promise.resolve(matchedGoldSource);
@@ -41,6 +107,7 @@
        data[i+1]=Math.max(0,g-23*strength);
        data[i+2]=Math.max(0,b-22*strength);
       }
+      cleanBakedInNeckRed(pixels,canvas.width,canvas.height);
       ctx.putImageData(pixels,0,0);
       done(canvas.toDataURL('image/webp',.9));
      }catch(_err){done(GOLD_BASE)}
@@ -335,7 +402,7 @@
   stage.className='bpd-silver-stage';
   const image=document.createElement('img');
   image.className='bpd-silver-coat';
-  image.src=SILVER_BASE;
+  setMatchedSilverCoat(image);
   image.alt='';
   image.loading=large?'eager':'lazy';
   image.decoding='async';
