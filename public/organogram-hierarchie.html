@@ -297,6 +297,31 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .manager .checks .manage-specialty-row>label{border:0;padding:4px 2px;margin:0}
 .manager .checks .manage-specialty-row>label:first-child{font-weight:800;margin-right:auto}
 .manage-specialty-role{color:#ffe5a5}
+.manage-specialty-layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:12px;align-items:start;margin:8px 0 12px}
+.manage-specialty-layout #manage-specialties{margin:0}
+.manage-specialty-preview{position:sticky;top:10px;background:#0b2138;border:1px solid #597da3;border-radius:9px;padding:12px;min-width:0}
+.manage-specialty-preview h3{font-size:12px;margin:0 0 7px}
+.manage-specialty-preview .patch-art{display:flex;min-height:86px;justify-content:center;align-items:center;background:#081b30;border:1px solid #344f6f;border-radius:7px;margin:9px 0;padding:9px;overflow:hidden}
+.manage-specialty-preview .patch-art img{display:block;width:100%;max-width:255px;height:auto;max-height:125px;object-fit:contain}
+.manage-specialty-preview .patch-art .patch-empty{text-align:center;color:#94b6d7;font-size:11px;line-height:1.5}
+.manage-specialty-preview p{font-size:11px;color:#c8ddf0;margin:5px 0}
+.manage-specialty-preview .patch-meta{font-variant-numeric:tabular-nums;color:#a9cee9}
+.manage-specialty-preview .patch-role{color:#ffdf99;font-weight:750}
+.manage-specialty-row .manage-preview-button{font-size:10px;white-space:nowrap;padding:4px 7px;background:#244667;border:1px solid #597ca4}
+.manage-specialty-row .manage-preview-button[aria-pressed="true"]{border-color:#f1c56e;color:#ffe7ad}
+.k9-manager .manage-specialty-preview{margin:10px 0;position:static}
+.manage-specialty-preview .patch-art .k9-patch-preview{
+ display:block;width:170px;height:53.125px;max-width:100%;aspect-ratio:16/5;
+ border:1px solid #607f9e;border-radius:5px;
+ background:#0b1525 url('/assets/k9-patches-geborduurd-20261029.webp') no-repeat;
+ background-size:90.625% 300%;
+}
+.manage-specialty-preview .patch-art .k9-patch-preview.role-instructeur{background-position:50% 0%}
+.manage-specialty-preview .patch-art .k9-patch-preview.role-geleider{background-position:50% 50%}
+.manage-specialty-preview .patch-art .k9-patch-preview.role-geleider_in_stage{background-position:50% 100%}
+.person-profile-specialty-rago-io .rago-io-badge{width:170px;max-width:100%;height:auto;object-fit:contain;border-radius:5px}
+@media(max-width:850px){.manage-specialty-layout{grid-template-columns:minmax(0,1fr)}.manage-specialty-preview{position:static}}
+
 
 .manager button{background:#2d609c;color:white;border:1px solid #9ac3ef;padding:8px 13px;border-radius:7px}
 .manager button:disabled{opacity:.55;cursor:not-allowed}
@@ -993,6 +1018,10 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
    </select></label>
   </div>
   <p id="k9-current">Selecteer een personeelslid.</p>
+  <aside id="k9-badge-preview" class="manage-specialty-preview" aria-live="polite">
+   <h3>K9-patchvoorbeeld</h3><div class="patch-art"><span class="patch-empty">Kies een K9-functie voor de voorbeeldweergave.</span></div>
+   <p>Alleen de weergegeven patch; rechten wijzigen niet.</p>
+  </aside>
   <button type="button" id="k9-verify-now" disabled>↻ Discord-rol nu controleren</button>
   <p id="k9-verify-result" role="status" aria-live="polite"></p>
   <label>Motivering <textarea id="k9-reason" maxlength="300" rows="2" placeholder="Motivering van minstens 8 tekens"></textarea></label>
@@ -1025,7 +1054,16 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   </div>
   <p class="manager-note">STAGE en LID zijn exclusieve, handmatige weergavelabels. Ze wijzigen geen aanstelling, opleidingsstatus, specialisatielidmaatschap of rechten.</p>
   <label>Specialisaties (lidmaatschap en, bij politie, de instructeur-/docentfunctie per specialisatie)</label>
-  <div id="manage-specialties" class="checks"></div>
+  <div class="manage-specialty-layout">
+   <div id="manage-specialties" class="checks"></div>
+   <aside id="manage-specialty-preview" class="manage-specialty-preview" aria-live="polite">
+    <h3>Patchvoorbeeld</h3>
+    <p id="manage-patch-title">Kies een specialisatie om de badge te bekijken.</p>
+    <div id="manage-patch-art" class="patch-art"><span class="patch-empty">Nog geen specialisatie geselecteerd.</span></div>
+    <p id="manage-patch-role"></p>
+    <p id="manage-patch-meta" class="patch-meta"></p>
+   </aside>
+  </div>
   <label>Motivering voor logboek <textarea id="manage-reason" maxlength="300" placeholder="Waarom wordt deze functie handmatig ingesteld?"></textarea></label>
   <div class="manager-grid">
    <label>Weergavevolgorde <input type="number" id="manage-order" min="0" max="999" step="1" value="0"></label>
