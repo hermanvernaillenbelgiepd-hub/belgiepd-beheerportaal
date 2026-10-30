@@ -1,5 +1,5 @@
 // Operational uniform composition: one grade, one preview, one save.
-import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,normalizeVisual,policeCallSeries,ambulanceFunction} from '/uniform-profile-policy.js';
+import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction} from '/uniform-profile-policy.js';
 export function setupUniformComposer({api,$}){
  const dept=$('composeDept'),grade=$('composeGrade'),panel=$('composePreview'),
   gallery=$('composeGallery'),types=$('composeTypes'),save=$('composeSave'),notice=$('composeStatus');
@@ -70,8 +70,7 @@ export function setupUniformComposer({api,$}){
   const prefix=dept.value==='politie'?'SANTO-':
    dept.value==='ambulance'?'AZLS-':'';
   const rawCall=String(match?.call||prefix+grade.value).trim().toUpperCase();
-  const number=dept.value==='politie'?
-   /^(?:SANTO[ -]?|S)?([0-9]{3})\*?$/i.exec(rawCall)?.[1]:'';
+  const number=dept.value==='politie'?policeCallDigits(rawCall):'';
   return {name:String(match?.name||'VOORBEELD').trim().toUpperCase(),
    call:number||rawCall};
  }
