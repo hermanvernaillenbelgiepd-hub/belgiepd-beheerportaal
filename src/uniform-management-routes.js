@@ -89,7 +89,7 @@ export function validateUniformNameplate(input){
 }
 export function validateUniformCoat(input){
  if(!input||Array.isArray(input)||typeof input!=='object'||
-  Object.keys(input).some(k=>!['department','variant','offsetX','offsetY','zoom','reason'].includes(k)))
+  Object.keys(input).some(k=>!['department','variant','offsetX','offsetY','zoom','canvasWidth','canvasHeight','keepAspectRatio','reason'].includes(k)))
   throw err(400,'Ongeldige uniformpositie');
  const department=String(input.department||''),variant=String(input.variant||'');
  if(!UNIFORM_VARIANTS[department]?.includes(variant))throw err(400,'Onbekende hulpdienst of uniformvariant');
@@ -99,13 +99,21 @@ export function validateUniformCoat(input){
  }
  if(Math.abs(input.offsetX)>50||Math.abs(input.offsetY)>50||
    input.zoom<50||input.zoom>200)throw err(400,'Uniformpositie of zoom buiten veilige grenzen');
+ const canvasWidth=input.canvasWidth===undefined?603:input.canvasWidth;
+ const canvasHeight=input.canvasHeight===undefined?469:input.canvasHeight;
+ const keepAspectRatio=input.keepAspectRatio===undefined?true:input.keepAspectRatio;
+ if(!Number.isInteger(canvasWidth)||!Number.isInteger(canvasHeight)||
+  canvasWidth<160||canvasWidth>4096||canvasHeight<160||canvasHeight>4096||
+  canvasWidth*canvasHeight>8000000)
+  throw err(400,'Canvas moet tussen 160 en 4096 px liggen, maximaal 8 megapixel');
+ if(typeof keepAspectRatio!=='boolean')throw err(400,'Ongeldige beeldverhoudingsinstelling');
  const reason=typeof input.reason==='string'?input.reason.trim():'';
  if(reason.length<8||reason.length>300||/[<>\x00-\x1f]/.test(reason))
   throw err(400,'Motivering van 8–300 tekens verplicht');
  return {department,variant,key:department+'_'+variant,
   offsetX:Math.round(input.offsetX*100)/100,
   offsetY:Math.round(input.offsetY*100)/100,
-  zoom:Math.round(input.zoom*100)/100,reason};
+  zoom:Math.round(input.zoom*100)/100,canvasWidth,canvasHeight,keepAspectRatio,reason};
 }
 export function installUniformManagementRoutes(app,{requireUser}){
  app.get('/api/uniform-management/layouts',requireUser,async(req,res)=>{
@@ -147,6 +155,9 @@ export function installUniformManagementRoutes(app,{requireUser}){
      saved.zoom>=50&&saved.zoom<=200;
     return {key,department:key.split('_')[0],variant:key.split('_')[1],
      ...(valid?{offsetX:saved.offsetX,offsetY:saved.offsetY,zoom:saved.zoom}:defaults),
+     canvasWidth:valid&&Number.isInteger(saved.canvasWidth)&&saved.canvasWidth>=160&&saved.canvasWidth<=4096?saved.canvasWidth:603,
+     canvasHeight:valid&&Number.isInteger(saved.canvasHeight)&&saved.canvasHeight>=160&&saved.canvasHeight<=4096?saved.canvasHeight:469,
+     keepAspectRatio:valid&&typeof saved.keepAspectRatio==='boolean'?saved.keepAspectRatio:true,
      configured:valid};
    });
    res.set('Cache-Control','private, no-store');
@@ -162,12 +173,15 @@ export function installUniformManagementRoutes(app,{requireUser}){
    const db=getFirestore(),ref=db.collection(UNIFORM_COATS).doc(data.key);
    await db.runTransaction(async tx=>{
     const old=await tx.get(ref),previous=old.exists?old.data():null;
-    const current={offsetX:data.offsetX,offsetY:data.offsetY,zoom:data.zoom};
+    const current={offsetX:data.offsetX,offsetY:data.offsetY,zoom:data.zoom,
+     canvasWidth:data.canvasWidth,canvasHeight:data.canvasHeight,keepAspectRatio:data.keepAspectRatio};
     tx.set(ref,{department:data.department,variant:data.variant,...current,
      updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid});
     tx.create(db.collection(UNIFORM_LAYOUT_AUDIT).doc(),{
      action:'uniform_coat_transform',key:data.key,
-     previous:previous?{offsetX:previous.offsetX,offsetY:previous.offsetY,zoom:previous.zoom}:null,
+     previous:previous?{offsetX:previous.offsetX,offsetY:previous.offsetY,zoom:previous.zoom,
+      canvasWidth:previous.canvasWidth||603,canvasHeight:previous.canvasHeight||469,
+      keepAspectRatio:previous.keepAspectRatio??true}:null,
      current,reason:data.reason,actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
    });
    return res.json({saved:true,key:data.key,permissionsChanged:false});
