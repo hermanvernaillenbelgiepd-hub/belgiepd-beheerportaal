@@ -362,6 +362,16 @@ header button{padding:7px 10px;font-size:12px}
 
 
 
+/* Allow the flat textile to cover the former frame baked into uploaded
+   uniform artwork; a clipped editor box would reveal that frame again. */
+.compose-layer[data-kind="name"]{
+ overflow:visible!important;box-shadow:none!important;
+ outline:none;
+}
+.compose-layer[data-kind="name"].active{
+ outline:1px dashed #6f92af;
+}
+
 /* The operational organogram and Uniformatelier share one flat woven design.
    Keep the upper name, separator and BELGIEPD-CALL below the line, without
    a second screen-shaped inset or an additional rounded border. */
