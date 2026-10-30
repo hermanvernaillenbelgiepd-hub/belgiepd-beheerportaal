@@ -31,8 +31,8 @@ test('historical woven nametag image and CSS hatch no longer appear in active st
  assert.doesNotMatch(css,/url\(['"]?\/assets\/bpd-naamplaat-geweven-leeg-20261028\.webp/);
  assert.doesNotMatch(css,/background:repeating-linear-gradient\(115deg/);
  assert.doesNotMatch(css,/background:repeating-linear-gradient\(135deg,#d0dce7/);
- assert.match(css,/\.bpd-nameplate-mirrored-grade/);
- assert.match(css,/\.bpd-nameplate-text-field/);
+ assert.match(css,/\.bpd-woven-nameplate/);
+ assert.doesNotMatch(script,/bpd-nameplate-mirrored-grade|bpd-nameplate-text-field/);
 });
 test('old gold/silver positional overrides cannot cover or duplicate current nameplate',()=>{
  assert.doesNotMatch(script,/\bapplyUniformNameplatePlacement\(plate,'gold'\)/);

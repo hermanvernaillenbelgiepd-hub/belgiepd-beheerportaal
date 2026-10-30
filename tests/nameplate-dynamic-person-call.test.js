@@ -32,7 +32,8 @@ test('nameplate uses individual member name and BELGIEPD - numeric CALL (without
   const plate=v.children[0].children.find(x=>x.className.includes('nameplate'));
   assert.equal(plate.children[0].textContent,person.name.toUpperCase());
   assert.equal(plate.children[1].textContent,'BELGIEPD - '+person.expected);
-  assert.equal(plate.children.length,4);
+  assert.equal(plate.children.length,2);
+  assert.match(plate.className,/bpd-woven-nameplate/);
   assert.doesNotMatch(plate.children.map(x=>x.textContent||'').join(' '),/V\. NAAM|DIENST|FUNCTIE/i);
  }
 });

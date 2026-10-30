@@ -24,13 +24,13 @@ const load=(withCoat=true)=>{
 const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
 const renderer=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
 
-test('nameplate vector follows live staff name and callsign',()=>{
+test('one woven nameplate follows live staff name and CALL',()=>{
  const ui=load(false);
  const p=ui.makeNameplate({dept:'politie',call:'900',name:'Thijs'},true);
- const svg=p.children[0];
- assert.equal(svg.tag,'svg');
- const labels=svg.children.filter(x=>x.tag==='text').map(x=>x.textContent);
- assert.deepEqual(labels,['Thijs','BELGIEPD - 900']);
+ assert.equal(p.children.length,2);
+ assert.equal(p.children[0].textContent,'THIJS');
+ assert.equal(p.children[1].textContent,'BELGIEPD - 900');
+ assert.match(p.className,/bpd-woven-nameplate/);
  assert.match(p.className,/bpd-nameplate-metal-gold/);
 });
 test('traditional grade assets stay isolated from the retired coat bitmap',()=>{

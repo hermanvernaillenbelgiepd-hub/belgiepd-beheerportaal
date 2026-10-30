@@ -136,30 +136,17 @@ export function setupUniformComposer({api,$}){
     const gold=dept.value==='politie'&&!lowPoliceGrade&&(
      ['900','910','920','930'].includes(grade.value)||
      /\b(?:ACP|CP|1-?CP|HCP|1-?HCP|Korpschef)\b/i.test(level));
-   const plate=el('span','compose-nameplate '+(gold?'compose-metal-gold':'compose-metal-silver'));
+    const plate=el('span','compose-nameplate '+
+     (gold?'compose-metal-gold':'compose-metal-silver')+
+     (dept.value==='politie'?' compose-woven-nameplate':''));
     const name=el('strong','compose-name',member.name);
-    // The reference's DIENST field is the live BELGIEPD - CALL line;
-    // there is no generic FUNCTIE row on the actual police nameplate.
+    // The actual person name and numeric CALL are displayed at runtime.
+    // Do not resurrect the old mirrored-rank/inner-screen nameplate.
     const callLabel=dept.value==='politie'?'BELGIEPD - '+member.call:member.call;
     const call=el('small','compose-call',callLabel);
     name.style.setProperty('--name-length-factor',
      String(Math.max(.53,Math.min(1,15/Math.max(1,member.name.length)))));
     plate.append(name,call);
-    if(dept.value==='politie'){
-     // Mirror the SAME rank drawing used for this grade. Keep only its
-     // decorative left edge and hide all crowns/stars below the name field.
-     const rankKey={'100':'ap','200':'ap','300':'ainp','400':'inp',
-      '500':'1inp','600':'ahinp','700':'hinp','800':'1hinp',
-      '900':'1hcp','910':'1cp','920':'acp','930':'acp'}[grade.value]||'ap';
-     const rankImage=asset('rank',draft.assets.rank)?.imageUrl||
-      '/assets/bpd-rank-'+rankKey+'-clean-20261027.webp';
-     const flipped=el('img','compose-nameplate-mirrored-grade');
-     flipped.src=rankImage;flipped.alt='';flipped.draggable=false;
-     flipped.setAttribute('aria-hidden','true');
-     const textField=el('span','compose-nameplate-text-field');
-     textField.setAttribute('aria-hidden','true');
-     plate.append(flipped,textField);
-    }
     box.append(plate);
     box.setAttribute('aria-label','Naamplaat: '+member.name+' · '+callLabel);
    }else if(url){
