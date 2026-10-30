@@ -7,10 +7,10 @@ export const UNIFORM_LAYOUTS='bpd_uniform_visual_layouts';
 export const UNIFORM_LAYOUT_AUDIT='bpd_uniform_visual_layout_audit';
 export const UNIFORM_NAMEPLATES='bpd_uniform_nameplate_layouts';
 export const UNIFORM_COATS='bpd_uniform_coat_layouts';
-export const UNIFORM_SERVICES=Object.freeze(['politie','brandweer','ambulance','depannage','burger']);
+export const UNIFORM_SERVICES=Object.freeze(['politie','brandweer','ambulance','depannage','burger','beveiliging']);
 export const UNIFORM_VARIANTS=Object.freeze({
  politie:['silver','gold'],
- brandweer:['default'],ambulance:['default'],depannage:['default'],burger:['default']
+ brandweer:['default'],ambulance:['default'],depannage:['default'],burger:['default'],beveiliging:['default']
 });
 const DEFAULTS=Object.freeze({
  politie_silver:{left:62.3,top:56.75,width:26.6,height:12.25},
@@ -18,7 +18,8 @@ const DEFAULTS=Object.freeze({
  brandweer_default:{left:62,top:55,width:24,height:12},
  ambulance_default:{left:62,top:55,width:24,height:12},
  depannage_default:{left:62,top:55,width:24,height:12},
- burger_default:{left:62,top:55,width:24,height:12}
+ burger_default:{left:62,top:55,width:24,height:12},
+ beveiliging_default:{left:62,top:55,width:24,height:12}
 });
 const NAMEPLATE_DEFAULTS=Object.freeze({
  politie_silver:{left:10.25,top:56.2,width:27.75,height:13.15},
@@ -26,14 +27,15 @@ const NAMEPLATE_DEFAULTS=Object.freeze({
  brandweer_default:{left:11,top:55,width:27,height:12},
  ambulance_default:{left:11,top:55,width:27,height:12},
  depannage_default:{left:11,top:55,width:27,height:12},
- burger_default:{left:11,top:55,width:27,height:12}
+ burger_default:{left:11,top:55,width:27,height:12},
+ beveiliging_default:{left:11,top:55,width:27,height:12}
 });
 const COAT_DEFAULTS=Object.freeze(Object.fromEntries(
  Object.keys(DEFAULTS).map(key=>[key,{offsetX:0,offsetY:0,zoom:100}])
 ));
 const defaultPrefix=department=>({
  politie:'BELGIEPD',brandweer:'BRANDWEER',ambulance:'AZLS',
- depannage:'DEPANNAGE',burger:'BURGER'
+ depannage:'DEPANNAGE',burger:'BURGER',beveiliging:'BEVEILIGING'
 })[department]||'BELGIEPD';
 const err=(status,message)=>Object.assign(new Error(message),{publicStatus:status});
 const error=(res,e)=>{
