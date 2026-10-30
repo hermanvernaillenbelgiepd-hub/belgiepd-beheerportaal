@@ -32,7 +32,7 @@ export function setupUniformManagementUI({api,$,notice}){
    $p('uniformValue'+label).value=value.toFixed(1)+'%';
    $p('uniformValue'+label).textContent=value.toFixed(1)+'%';
   }
-  const url=images.get(imageKey())||builtin();
+  const url=imageData||images.get(imageKey())||builtin();
   coat.hidden=!url;coat.src=url||'';
   frame.classList.toggle('uniform-empty',!url);
  }
