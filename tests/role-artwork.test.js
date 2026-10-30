@@ -18,6 +18,7 @@ test('role-logo editor validates Discord IDs, variants and reason',()=>{
  assert.throws(()=>validateRoleArtwork(make({variant:'../admin'})),/Discord/);
  assert.throws(()=>validateRoleArtwork(make({reason:'kort'})),/Motivering/);
  assert.throws(()=>validateRoleArtwork(make({label:'<img onerror=alert(1)>'})),/Naam/);
+ assert.throws(()=>validateRoleArtwork(make({department:'onbekend'})),/Ongeldige hulpdienst/);
 });
 test('role-logo editor enforces image signatures and size',()=>{
  const fake=Buffer.from('this is not a WebP').toString('base64');
