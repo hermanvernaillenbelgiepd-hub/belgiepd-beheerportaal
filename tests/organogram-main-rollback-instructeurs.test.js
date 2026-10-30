@@ -13,11 +13,11 @@ test('Main preserves approved uniforms and keeps classic page as a rollback view
  const classic=txt('../public/organogram.html');
  const next=txt('../public/organogram-hierarchie.html');
  const home=txt('../public/index.html');
- assert.match(classic,/unified-gold-navy-frame-20261028/);
+ assert.match(classic,/classic-metal-nameplate-20261030/);
  assert.match(classic,/Nieuw organogram/);
  assert.match(next,/Klassiek organogram/);
- assert.match(next,/\/assets\/organogram-police-formal\.js\?v=unified-gold-navy-frame-20261028/);
- assert.match(next,/\/assets\/organogram-police-formal\.css\?v=unified-gold-navy-frame-20261028/);
+ assert.match(next,/\/assets\/organogram-police-formal\.js\?v=classic-metal-nameplate-20261030/);
+ assert.match(next,/\/assets\/organogram-police-formal\.css\?v=classic-metal-nameplate-20261030/);
  assert.match(next,/BPDPoliceUniform\?\.makePortrait/);
  assert.match(home,/\/organogram-hierarchie\.html/);
  assert.doesNotMatch(home,/href="\/organogram\.html"/);
