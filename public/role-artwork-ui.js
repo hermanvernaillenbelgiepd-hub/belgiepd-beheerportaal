@@ -48,14 +48,14 @@ export function setupRoleArtworkUI({api,$,notice}){
    kindSelect.value==='specialty'?specialties:[['default','Standaard voor deze hulpdienst']];
   if(!role)for(const [code,name] of known)codePreset.add(new Option(name,code));
  };
- kindSelect.onchange=()=>{showKind();setPreview('');};
+ kindSelect.onchange=()=>{showKind();configureCanvas();void setPreview('');};
  codePreset.onchange=()=>{
   const preset=(kindSelect.value==='rank'?grades:
    kindSelect.value==='specialty'?specialties:[['default','Standaard']]).find(x=>x[0]===codePreset.value);
   if(!preset)return;
   $p('roleArtworkCode').value=preset[0];
   $p('roleArtworkLabel').value=preset[1];
-  setPreview('');
+  void setPreview('');
  };
  showKind();
  const select=$p('roleArtworkPreset');
@@ -71,6 +71,18 @@ export function setupRoleArtworkUI({api,$,notice}){
  const image=$p('roleArtworkPreview');
  const cropSection=$p('roleArtworkCropSection');
  const canvas=$p('roleArtworkCropCanvas'),ctx=canvas.getContext('2d',{alpha:true});
+ function configureCanvas(){
+  const kind=kindSelect.value;
+  const size=['medal','award'].includes(kind)?[320,400]:
+   ['helmet','logo','profession','pictogram','patch'].includes(kind)?[320,320]:
+   kind==='uniform'?[603,469]:[512,160];
+  canvas.width=size[0];canvas.height=size[1];
+  canvas.style.aspectRatio=size[0]+'/'+size[1];
+  const label=$p('roleArtworkFormatLabel');
+  label.textContent='Voorbeeld ('+size[0]+' × '+size[1]+' px bronverhouding)';
+  image.style.maxHeight='115px';
+ }
+ configureCanvas();
  const zoom=$p('roleArtworkZoom'),zoomValue=$p('roleArtworkZoomValue');
  const fit=$p('roleArtworkFit');
  canvas.tabIndex=0;
@@ -121,6 +133,7 @@ export function setupRoleArtworkUI({api,$,notice}){
     loaded.naturalWidth>8192||loaded.naturalHeight>8192)
     throw Error('De afbeelding is te groot of kan niet worden gelezen.');
    sourceImage=loaded;
+   configureCanvas();
    zoom.value='100';fit.value=defaultFit();
    offsetX=offsetY=0;
    cropSection.hidden=false;
@@ -179,7 +192,7 @@ export function setupRoleArtworkUI({api,$,notice}){
  const list=$p('roleArtworkList');
  function selectItem(row){
   kindSelect.value=row.kind||'role';
-  showKind();
+  showKind();configureCanvas();
   $p('roleArtworkCode').value=row.code||'';
   codePreset.value=row.code||'';
   $p('roleArtworkRoleId').value=row.roleId||'';
@@ -194,7 +207,7 @@ export function setupRoleArtworkUI({api,$,notice}){
  select.onchange=()=>{
   const preset=presets.find(p=>p[0]+'|'+p[1]===select.value);
   if(!preset)return;
-  kindSelect.value='role';showKind();
+  kindSelect.value='role';showKind();configureCanvas();
   $p('roleArtworkRoleId').value=preset[0];
   $p('roleArtworkDepartment').value='politie';
   $p('roleArtworkVariant').value=preset[1];
