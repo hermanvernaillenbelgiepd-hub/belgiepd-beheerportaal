@@ -30,6 +30,7 @@ export function setupRoleArtworkUI({api,$,notice}){
  const list=$p('roleArtworkList');
  function selectItem(row){
   $p('roleArtworkRoleId').value=row.roleId;
+  $p('roleArtworkDepartment').value=row.department||'politie';
   $p('roleArtworkVariant').value=row.variant;
   $p('roleArtworkLabel').value=row.label;
   select.value='';
@@ -41,6 +42,7 @@ export function setupRoleArtworkUI({api,$,notice}){
   const preset=presets.find(p=>p[0]+'|'+p[1]===select.value);
   if(!preset)return;
   $p('roleArtworkRoleId').value=preset[0];
+  $p('roleArtworkDepartment').value='politie';
   $p('roleArtworkVariant').value=preset[1];
   $p('roleArtworkLabel').value=preset[2];
   setPreview('');
@@ -89,7 +91,7 @@ export function setupRoleArtworkUI({api,$,notice}){
    const body=document.createElement('div');
    const name=document.createElement('strong');name.textContent=row.label;
    const details=document.createElement('small');
-   details.textContent=row.roleId+' · '+row.variant+' · '+(row.active?'ACTIEF':'NIET ACTIEF');
+   details.textContent=(row.department||'politie').toUpperCase()+' · '+row.roleId+' · '+row.variant+' · '+(row.active?'ACTIEF':'NIET ACTIEF');
    body.append(name,details);
    const btn=document.createElement('button');btn.type='button';btn.className='alt';btn.textContent='Bewerken';
    btn.onclick=()=>selectItem(row);
@@ -113,6 +115,7 @@ export function setupRoleArtworkUI({api,$,notice}){
   if(busy)return;
   const roleId=$p('roleArtworkRoleId').value.trim(),variant=$p('roleArtworkVariant').value.trim();
   const label=$p('roleArtworkLabel').value.trim(),reason=$p('roleArtworkReason').value.trim();
+  const department=$p('roleArtworkDepartment').value;
   if(!/^\d{15,22}$/.test(roleId)||!/^[a-z][a-z0-9_]{0,39}$/.test(variant)){
    message('Geef een geldig Discord-rol-ID en variant op.',true);return;
   }
@@ -120,7 +123,7 @@ export function setupRoleArtworkUI({api,$,notice}){
   if(reason.length<8){message('Geef een motivering van minstens 8 tekens.',true);return}
   busy=true;upload.disabled=true;
   try{
-   await api('/api/role-artwork',{method:'PUT',body:{roleId,variant,label,reason,dataUrl:previewData}});
+   await api('/api/role-artwork',{method:'PUT',body:{roleId,variant,department,label,reason,dataUrl:previewData}});
    message('Logo opgeslagen in Firebase. Het is meteen beschikbaar in het portaal.');
    $p('roleArtworkFile').value='';setPreview('');
    await reload();
