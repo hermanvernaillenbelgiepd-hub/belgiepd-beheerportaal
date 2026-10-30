@@ -37,8 +37,8 @@ Een nieuwe gradenplaat verschijnt op de bestaande plaats voor de graad. Voor hel
 Een basisuniform mag meerdere graden of functies bedienen. Het uniform bepaalt
 nooit zelf de graad. De visuele rang-/functieaanduiding wordt altijd apart gekozen.
 
-**Politie**: de configureerbare uniformgroep `basis_tm_ahinp` omvat 100-, 200-,
-300-, 400-, 500- en 600-reeksen (tot en met Aspirant Hoofdinspecteur).
+**Politie**: de configureerbare uniformgroep `basis_tm_ahinp` omvat 300-, 400-, 500- en 600-reeksen (tot en met Aspirant Hoofdinspecteur).
+Agentenkader (100/200) heeft een aparte configureerbare uniformgroep `agentenkader`.
 Dit is een kledinggroep, **niet** een organisatorisch kader: A-HINP blijft
 Middenkader. De aparte optionele groepen `hinp_1hinp` en `officieren`
 zijn beschikbaar, zonder dat ze bestaande uniformen automatisch vervangen.
