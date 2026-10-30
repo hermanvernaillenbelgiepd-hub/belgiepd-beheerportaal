@@ -80,6 +80,9 @@ header button{padding:7px 10px;font-size:12px}
 #uniformSection .uniform-preview-frame>img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
 #uniformSection .uniform-preview-grade{position:absolute;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px dashed #e6bd73;background:#141d2e;color:#ffe6a4;cursor:grab;touch-action:none;outline-offset:3px;font-size:10px;font-weight:750;text-align:center;padding:3px;z-index:1}
 #uniformSection .uniform-preview-grade:active{cursor:grabbing}
+#uniformSection .uniform-preview-grade>img{width:100%;height:100%;display:block;object-fit:contain}
+#uniformSection .uniform-preview-grade>img[hidden]{display:none!important}
+#uniformSection .uniform-preview-grade>span[hidden]{display:none!important}
 #uniformSection .uniform-preview-grade>span{overflow:hidden;line-height:1.2;overflow-wrap:anywhere}
 #uniformSection .uniform-empty-note{display:none;position:absolute;left:9px;top:8px;max-width:70%;font-size:10px;color:#a2bddb}
 #uniformSection .uniform-empty .uniform-empty-note{display:block}
@@ -296,6 +299,7 @@ header button{padding:7px 10px;font-size:12px}
  <div class="grid">
   <div><label for="uniformDept">Hulpdienst</label><select id="uniformDept"></select></div>
   <div><label for="uniformVariant">Uniformtype</label><select id="uniformVariant"></select></div>
+  <div><label for="uniformGradePreview">Voorbeeld gradenteken</label><select id="uniformGradePreview"></select><small>Je kunt een bestaand gradenteken gebruiken om de plaatsing te beoordelen.</small></div>
   <div><label for="uniformFile">Nieuw uniform uploaden (PNG, JPG, WebP)</label><input id="uniformFile" type="file" accept="image/png,image/jpeg,image/webp"><small>De jas wordt opgeslagen als afbeelding van 603 × 469 pixels. De gradenplaat staat er afzonderlijk bovenop.</small></div>
   <div><label for="uniformReason">Motivering voor het logboek (min. 8 tekens)</label><input id="uniformReason" maxlength="300" placeholder="Waarom pas je het uniform of de gradenplaat aan?"></div>
  </div>
@@ -305,7 +309,7 @@ header button{padding:7px 10px;font-size:12px}
    <div id="uniformPreviewFrame" class="uniform-preview-frame uniform-empty">
     <img id="uniformPreviewCoat" alt="Uniformvoorbeeld" hidden>
     <span id="uniformPreviewPatch" class="uniform-preview-grade" tabindex="0" role="img" aria-label="Versleepbaar gradenteken in het uniform">
-     <span id="uniformPreviewPatchLabel">Voorbeeld gradenplaat</span>
+     <img id="uniformPreviewGradeImage" alt="" hidden><span id="uniformPreviewPatchLabel">Voorbeeld gradenplaat</span>
     </span>
     <span class="uniform-empty-note">Nog geen uniformfoto voor deze hulpdienst. Upload een afbeelding.</span>
    </div>
