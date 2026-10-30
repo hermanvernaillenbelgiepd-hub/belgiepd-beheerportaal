@@ -71,6 +71,6 @@ test('both live and atelier grade stripe colors are identical and cache is fresh
  assert.match(composer,/compose-rank-metal-gold/);
  assert.match(composer,/compose-rank-metal-silver/);
  assert.match(composer,/AHCP/);
- assert.match(read('organogram-hierarchie.html'),/rank-metal-20261031-v1/);
- assert.match(admin,/uniform-composer-ui\.js\?v=rank-metal-20261031-v1/);
+ assert.match(read('organogram-hierarchie.html'),/rank-artwork-thread-20261031-v2/);
+ assert.match(admin,/uniform-composer-ui\.js\?v=rank-artwork-thread-20261031-v2/);
 });
