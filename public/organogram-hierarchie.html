@@ -2087,16 +2087,16 @@ function roleArtworkUrl(roleId,variant='standard'){
 function applyRoleArtworkManifest(manifest){
  const accepted=new Map();
  for(const entry of Array.isArray(manifest)?manifest:[]){
-  if(!/^\\d{15,22}_[a-z][a-z0-9_]{0,39}$/.test(String(entry?.key||'')))continue;
+  if(!/^\d{15,22}_[a-z][a-z0-9_]{0,39}$/.test(String(entry?.key||'')))continue;
   const url=String(entry.imageUrl||'');
-  if(!/^\\/api\\/role-artwork\\/file\\/\\d{15,22}_[a-z][a-z0-9_]{0,39}\\?v=[a-zA-Z0-9-]+$/.test(url))continue;
+  if(!/^\/api\/role-artwork\/file\/\d{15,22}_[a-z][a-z0-9_]{0,39}\?v=[a-zA-Z0-9-]+$/.test(url))continue;
   accepted.set(entry.key,url);
  }
  roleArtworkUrls=accepted;
  let css='';
  for(const [id,variant,selectors] of ROLE_ARTWORK_SLOTS){
   const url=roleArtworkUrl(id,variant);
-  if(url)css+=selectors.join(',')+'{background-image:url("'+url+'")!important;background-size:100% 100%!important;background-position:center!important;}\\n';
+  if(url)css+=selectors.join(',')+'{background-image:url("'+url+'")!important;background-size:100% 100%!important;background-position:center!important;}\n';
  }
  let style=document.getElementById('bpd-role-artwork-overrides');
  if(!style){style=document.createElement('style');style.id='bpd-role-artwork-overrides';document.head.append(style)}
