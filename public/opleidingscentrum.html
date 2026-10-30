@@ -208,7 +208,7 @@ async function load(){
    // Training-request reviewers are independent from training-registration grants.
   }
   canRegister=Object.values(registrationRights?.permissions||{}).some(p=>
-    p?.['training.log']===true||p?.['training.review']===true);
+    p?.['training.log']===true);
   $('registerTab').hidden=!(canReview||canRegister);
   $('trainingRegisterSection').hidden=!canRegister;
   $('inboxPanel').hidden=!canReview;
