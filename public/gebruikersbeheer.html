@@ -164,14 +164,18 @@ header button{padding:7px 10px;font-size:12px}
 #uniformQuickSection h3{margin:0 0 8px}
 #uniformQuickSection h4{margin:15px 0 5px;font-size:14px}
 #uniformQuickSection .uniform-quick-list{display:grid;gap:5px;max-height:440px;overflow:auto;padding-right:5px}
-#uniformQuickSection .uniform-quick-row{display:grid;grid-template-columns:minmax(190px,1.2fr) minmax(180px,1fr) auto;gap:9px;align-items:center;padding:7px 9px;border:1px solid #3a5470;border-radius:7px}
+#uniformQuickSection .uniform-quick-row{display:grid;grid-template-columns:minmax(190px,1.2fr) minmax(170px,1fr) 48px auto;gap:9px;align-items:center;padding:7px 9px;border:1px solid #3a5470;border-radius:7px}
+#uniformQuickSection .uniform-quick-preview{width:44px;height:44px;object-fit:contain;border:1px solid #536983;border-radius:5px;background:#08172a}
+#uniformQuickSection .uniform-quick-preview[hidden]{display:none}
+#uniformQuickSection .uniform-quick-actions{display:flex;gap:5px;flex-wrap:wrap}
 #uniformQuickSection .uniform-quick-row-label{font-size:12px;font-weight:750;line-height:1.35}
 #uniformQuickSection .uniform-quick-row select{min-width:0;width:100%;font-size:12px}
 #uniformQuickSection .uniform-quick-row button{font-size:11px;padding:7px 10px}
 #uniformQuickSection .uniform-quick-header{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
 #uniformQuickSection .uniform-quick-header>label{min-width:210px;max-width:330px;flex:1}
-@media(max-width:680px){#uniformQuickSection .uniform-quick-row{grid-template-columns:minmax(0,1fr) auto}
-#uniformQuickSection .uniform-quick-row-label{grid-column:1/-1}}
+@media(max-width:680px){#uniformQuickSection .uniform-quick-row{grid-template-columns:minmax(0,1fr) 52px auto}
+#uniformQuickSection .uniform-quick-row-label{grid-column:1/-1}
+#uniformQuickSection .uniform-quick-actions{grid-column:1/-1;justify-content:flex-end}}
 
 #libraryPanel,#libraryAssignmentPanel{padding:16px;margin:18px 0;border:1px solid #476889;border-radius:11px;background:#11283f}
 #libraryPanel h3,#libraryAssignmentPanel h3{margin:0 0 8px}
@@ -395,7 +399,7 @@ header button{padding:7px 10px;font-size:12px}
   <div><label for="libraryUploadReason">Reden voor toevoegen / vervangen / herstellen</label><input id="libraryUploadReason" maxlength="300" placeholder="Minstens acht tekens"></div>
  </div>
  <img class="library-preview" id="libraryPreview" alt="Voorbeeld van het gekozen afbeeldingsbestand" hidden>
- <div class="controls"><button type="button" id="libraryUpload">Afbeelding met versiegeschiedenis bewaren</button></div>
+ <div class="controls"><button type="button" id="libraryUpload">Afbeelding met versiegeschiedenis bewaren</button><button type="button" class="alt" id="libraryBackToUniform">Terug naar eenvoudig uniformbeheer</button></div>
  <div id="libraryUploadStatus" class="muted" role="status" aria-live="polite"></div>
  <h4>Afbeeldingen in deze categorie <small id="libraryCount"></small></h4>
  <div id="libraryList" class="artwork-list"></div>
