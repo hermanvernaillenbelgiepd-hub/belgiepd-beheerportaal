@@ -1,7 +1,7 @@
 // BelgiumPD uniform preview/editor. Uniforms and grade coordinates are strictly visual.
 export function setupUniformManagementUI({api,$,notice}){
  const DEPTS=[['politie','Politie'],['brandweer','Brandweer'],
-  ['ambulance','Ambulance'],['depannage','Depannage'],['burger','Burger']];
+  ['ambulance','Ambulance'],['depannage','Depannage'],['burger','Burger'],['beveiliging','Beveiligingsagent (voorbereiding)']];
  const names=Object.fromEntries(DEPTS);
  const $p=id=>$(id),dept=$p('uniformDept'),variant=$p('uniformVariant');
  const frame=$p('uniformPreviewFrame'),coat=$p('uniformPreviewCoat');
@@ -28,7 +28,7 @@ export function setupUniformManagementUI({api,$,notice}){
  };
  const nameDefaultFor=key=>nameDefaults[key]||{left:11,top:55,width:27,height:12};
  const prefixFor=()=>({politie:'BELGIEPD',brandweer:'BRANDWEER',
-  ambulance:'AZLS',depannage:'DEPANNAGE',burger:'BURGER'})[dept.value]||'BELGIEPD';
+  ambulance:'AZLS',depannage:'DEPANNAGE',burger:'BURGER',beveiliging:'BEVEILIGING'})[dept.value]||'BELGIEPD';
  const key=()=>dept.value+'_'+variant.value;
  const imageKey=()=> 'uniform_'+key();
  const builtin=()=>dept.value==='politie'?
