@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateUniformLayout,validateUniformNameplate,UNIFORM_VARIANTS} from '../src/uniform-management-routes.js';
+import {validateUniformLayout,validateUniformNameplate,validateUniformCoat,UNIFORM_VARIANTS} from '../src/uniform-management-routes.js';
 
 const sample={department:'politie',variant:'silver',
  left:62.3,top:56.75,width:26.6,height:12.25,reason:'Aangepast na controle van de uniformfoto'};
@@ -46,4 +46,32 @@ test('nameplate placement rejects invalid sizes and privilege fields',()=>{
  assert.throws(()=>validateUniformNameplate({...sample,height:1}),/binnen het uniform/);
  assert.throws(()=>validateUniformNameplate({...sample,role:'beheerder'}),/Ongeldige/);
  assert.throws(()=>validateUniformNameplate({...sample,reason:'kort'}),/Motivering/);
+});
+
+test('uniform coats can be independently panned and zoomed per service and variant',()=>{
+ const basic={department:'politie',variant:'silver',offsetX:-12.5,offsetY:6,zoom:125,
+  reason:'Uniform gecentreerd voor de grotere profielfoto'};
+ assert.deepEqual(
+  Object.fromEntries(['offsetX','offsetY','zoom'].map(k=>[k,validateUniformCoat(basic)[k]])),
+  {offsetX:-12.5,offsetY:6,zoom:125});
+ for(const department of ['brandweer','ambulance','depannage','burger']){
+  assert.equal(validateUniformCoat({...basic,department,variant:'default'}).key,department+'_default');
+ }
+ assert.equal(validateUniformCoat({...basic,variant:'gold'}).key,'politie_gold');
+ assert.throws(()=>validateUniformCoat({...basic,offsetX:60}),/buiten veilige grenzen/);
+ assert.throws(()=>validateUniformCoat({...basic,zoom:250}),/buiten veilige grenzen/);
+ assert.throws(()=>validateUniformCoat({...basic,zoom:NaN}),/Ongeldige/);
+ assert.throws(()=>validateUniformCoat({...basic,roles:['bestuur']}),/Ongeldige/);
+});
+test('nameplate typography and footer prefix are visual and preserve personal identity',()=>{
+ const data={...sample,nameScale:175,callScale:125,prefix:'BELGIEPD / SANTO'};
+ const result=validateUniformNameplate(data);
+ assert.equal(result.nameScale,175);
+ assert.equal(result.callScale,125);
+ assert.equal(result.prefix,'BELGIEPD / SANTO');
+ assert.equal(Object.hasOwn(result,'personName'),false);
+ assert.throws(()=>validateUniformNameplate({...data,nameScale:300}),/Lettergrootte/);
+ assert.throws(()=>validateUniformNameplate({...data,callScale:25}),/Lettergrootte/);
+ assert.throws(()=>validateUniformNameplate({...data,prefix:'<script>'}),/naamplaattekst/);
+ assert.throws(()=>validateUniformNameplate({...data,call:'fake'}),/Ongeldige naamplaatinstellingen/);
 });
