@@ -1464,8 +1464,8 @@ function supportsSpecialtyInstructors(label){
 // Read-only details: never request dossiers or leave records.
 
 let serviceUniformArtworks=new Map(),serviceRankArtworks=new Map(),serviceUniformLayouts=new Map();
-let serviceNameplateLayouts=new Map(),serviceCoatLayouts=new Map();
-function setServiceUniformData(artworks,layouts,nameplates=[],coats=[]){
+let serviceNameplateLayouts=new Map(),serviceCoatLayouts=new Map(),serviceVisibilityLayouts=new Map();
+function setServiceUniformData(artworks,layouts,nameplates=[],coats=[],visibility=[]){
  const uniforms=new Map(),ranks=new Map(),positions=new Map();
  for(const entry of Array.isArray(artworks)?artworks:[]){
   const key=String(entry?.key||''),url=String(entry?.imageUrl||'');
@@ -1499,6 +1499,9 @@ function setServiceUniformData(artworks,layouts,nameplates=[],coats=[]){
   coatPositions.set(item.key,item);
  }
  serviceCoatLayouts=coatPositions;
+ serviceVisibilityLayouts=new Map((Array.isArray(visibility)?visibility:[])
+  .filter(row=>['brandweer_default','ambulance_default','depannage_default'].includes(row?.key))
+  .map(row=>[row.key,row]));
 }
 function serviceRankKey(rank){
  return String(rank||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -1553,7 +1556,8 @@ function makeServiceUniformPortrait(person){
  }else{
   badge.append(el('span','bpd-service-grade-fallback',String(person.rank||'').slice(0,32)));
  }
- stage.append(badge);
+ const serviceVisibility=serviceVisibilityLayouts.get(dept+'_default');
+ if(serviceVisibility?.showGradePlate!==false)stage.append(badge);
  const namePosition=serviceNameplateLayouts.get(dept+'_default')||
   {left:11,top:55,width:27,height:12};
  const nameplate=el('span','bpd-service-nameplate');
@@ -1568,7 +1572,7 @@ function makeServiceUniformPortrait(person){
  nameLine.style.transform='scale('+((namePosition.nameScale??100)/100)+')';
  callLine.style.transform='scale('+((namePosition.callScale??100)/100)+')';
  nameplate.append(nameLine,callLine);
- stage.append(nameplate);
+ if(serviceVisibility?.showNamePlate!==false)stage.append(nameplate);
  if(src)window.BPDVisualAssets?.appendTo?.(stage,person,'default');
  outer.append(stage);
  return outer;
@@ -2165,9 +2169,9 @@ async function loadPublic(){
    authFetch('/api/uniform-assignments').catch(()=>({assignments:[]}))
   ]);
   window.BPDUniformAssignments?.setData?.(assignmentData?.assignments,artworkManifest?.artworks);
-  window.BPDVisualAssets?.setData?.(artworkManifest?.artworks,visualLayers?.layers);
+  window.BPDVisualAssets?.setData?.(artworkManifest?.artworks,visualLayers?.layers,uniformLayoutData?.visibility);
   applyRoleArtworkManifest(artworkManifest?.artworks);
-  setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats);
+  setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats,uniformLayoutData?.visibility);
   window.BPDPoliceUniform?.setGradeArtworkManifest?.(artworkManifest?.artworks);
   window.BPDPoliceUniform?.setUniformManagementData?.(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats);
   const payload=response;
