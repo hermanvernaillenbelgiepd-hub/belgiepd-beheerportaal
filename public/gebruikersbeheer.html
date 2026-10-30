@@ -75,6 +75,13 @@ header button{padding:7px 10px;font-size:12px}
 #roleArtworkSection .artwork-crop-controls select{width:auto;min-width:170px}
 #roleArtworkSection .artwork-crop-controls button{padding:8px 10px}
 #uniformSection[hidden]{display:none!important}
+/* Retired uniform panels are permanently removed from the visible interface.
+   Existing images, positional overrides and personal mappings are not deleted. */
+#retiredUniformManagement,
+#retiredUniformManagement[hidden],
+#retiredUniformManagement details,
+#retiredUniformManagement section{display:none!important}
+
 #uniformSection .uniform-assignment-card{padding:15px;margin:18px 0;border:1px solid #426587;background:#10243b;border-radius:11px}
 #uniformSection .uniform-assignment-card h3{margin:0 0 8px}
 #uniformSection .uniform-assignment-list{display:grid;gap:6px;max-height:350px;overflow:auto}
@@ -510,10 +517,10 @@ header button{padding:7px 10px;font-size:12px}
 </section>
 
 <section id="uniformSection" class="card" data-authorized="no" hidden>
- <h2>🧥 Uniformbeheer per hulpdienst</h2>
+ <h2>🧥 Uniformatelier per hulpdienst</h2>
 
 <section id="uniformComposer" class="uniform-composer" hidden>
- <h3>Uniformatelier — één uniform per graad samenstellen</h3>
+ <h3>Uniform samenstellen per graad</h3>
  <p class="muted">Afbeeldingen worden centraal in Firebase bewaard. Kies een graad en de onderdelen met hun tekening. Sleep de naam, gradenplaat en eretekens op hun plaats. Bewaar alles met één klik.</p>
  <div class="compose-head">
   <label>Hulpdienst <select id="composeDept"></select></label>
@@ -558,6 +565,9 @@ header button{padding:7px 10px;font-size:12px}
  <p id="composeStatus" class="muted" role="status" aria-live="polite"></p>
 </section>
 
+<!-- Legacy editors retained as non-interactive, hidden backing structures solely
+     for compatibility during the migration of existing personnel visuals. -->
+<div id="retiredUniformManagement" hidden inert aria-hidden="true">
 <details class="uniform-legacy-editor"><summary><strong>Oude uniformtoewijzingen (geavanceerd)</strong></summary>
 <section id="uniformQuickSection" hidden>
  <h3>Uniform kiezen en gradenplaten visueel toewijzen</h3>
@@ -780,6 +790,7 @@ header button{padding:7px 10px;font-size:12px}
  <div id="uniformStatus" class="muted" role="status" aria-live="polite">Uniformbeheer laden…</div>
  <p class="muted">Deze instellingen dienen voor de positionering van bestaande uniformvarianten. De nieuwe afbeeldingen kies je bovenaan per uniform en graad. Een oude uniformafbeelding wordt niet automatisch opnieuw geselecteerd.</p>
 </details>
+</div>
 </section>
 </main>
 <script type="module">
