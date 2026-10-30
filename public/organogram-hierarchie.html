@@ -1220,6 +1220,22 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   height:133px!important;flex:0 0 116px!important;
  }
 }
+
+/* Service nameplates are dynamic and independent from rank patches. */
+.person-profile-dialog .person-profile-overview .bpd-service-nameplate{
+ position:absolute;z-index:4;box-sizing:border-box;display:flex;flex-direction:column;
+ justify-content:center;align-items:center;overflow:hidden;pointer-events:none;
+ padding:1%;border:1px solid #b9c5d5;border-radius:2px;background:#101a29;
+ color:#f0f4f7;box-shadow:0 0 0 1px #263547
+}
+.person-profile-dialog .person-profile-overview .bpd-service-nameplate>span{
+ display:block;max-width:100%;width:100%;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap;text-align:center;line-height:1.1;font-family:system-ui,Segoe UI,Arial,sans-serif;
+ font-size:clamp(4px,.58vw,10px);font-weight:800;text-shadow:0 1px #000
+}
+.person-profile-dialog .person-profile-overview .bpd-service-nameplate>.bpd-service-call{
+ font-size:clamp(3px,.42vw,8px);color:#bcd1e2;margin-top:3%
+}
 </style>
 </head>
 <body>
@@ -1375,7 +1391,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   <div id="person-profile-content"></div>
  </div>
 </dialog>
-<script src="/assets/organogram-police-formal.js?v=uniform-layouts-20261030"></script>
+<script src="/assets/organogram-police-formal.js?v=editable-nameplates-20261030"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
@@ -1444,7 +1460,8 @@ function supportsSpecialtyInstructors(label){
 // Read-only details: never request dossiers or leave records.
 
 let serviceUniformArtworks=new Map(),serviceRankArtworks=new Map(),serviceUniformLayouts=new Map();
-function setServiceUniformData(artworks,layouts){
+let serviceNameplateLayouts=new Map();
+function setServiceUniformData(artworks,layouts,nameplates=[]){
  const uniforms=new Map(),ranks=new Map(),positions=new Map();
  for(const entry of Array.isArray(artworks)?artworks:[]){
   const key=String(entry?.key||''),url=String(entry?.imageUrl||'');
@@ -1458,7 +1475,17 @@ function setServiceUniformData(artworks,layouts){
   if(item.left+item.width>100||item.top+item.height>100)continue;
   positions.set(item.key,item);
  }
+ const names=new Map();
+ for(const item of Array.isArray(nameplates)?nameplates:[]){
+  if(!/^(?:brandweer|ambulance|depannage|burger)_default$/.test(String(item?.key||''))||
+   item.configured!==true)continue;
+  if(!['left','top','width','height'].every(k=>Number.isFinite(item[k])&&
+   item[k]>=0&&item[k]<=100))continue;
+  if(item.left+item.width>100||item.top+item.height>100)continue;
+  names.set(item.key,item);
+ }
  serviceUniformArtworks=uniforms;serviceRankArtworks=ranks;serviceUniformLayouts=positions;
+ serviceNameplateLayouts=names;
 }
 function serviceRankKey(rank){
  return String(rank||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -1488,6 +1515,16 @@ function makeServiceUniformPortrait(person){
   badge.append(el('span','bpd-service-grade-fallback',String(person.rank||'').slice(0,32)));
  }
  stage.append(badge);
+ const namePosition=serviceNameplateLayouts.get(dept+'_default')||
+  {left:11,top:55,width:27,height:12};
+ const nameplate=el('span','bpd-service-nameplate');
+ for(const k of ['left','top','width','height'])
+  nameplate.style[k]=namePosition[k]+'%';
+ nameplate.setAttribute('role','img');
+ nameplate.setAttribute('aria-label','Naamplaat van '+(person.name||'Onbekend'));
+ nameplate.append(el('span','bpd-service-name',String(person.name||'Onbekend').toUpperCase()));
+ nameplate.append(el('span','bpd-service-call',String(person.call||'').toUpperCase()));
+ stage.append(nameplate);
  outer.append(stage);
  return outer;
 }
@@ -2067,9 +2104,9 @@ async function loadPublic(){
    authFetch('/api/uniform-management/layouts').catch(()=>({layouts:[]}))
   ]);
   applyRoleArtworkManifest(artworkManifest?.artworks);
-  setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts);
+  setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates);
   window.BPDPoliceUniform?.setGradeArtworkManifest?.(artworkManifest?.artworks);
-  window.BPDPoliceUniform?.setUniformManagementData?.(artworkManifest?.artworks,uniformLayoutData?.layouts);
+  window.BPDPoliceUniform?.setUniformManagementData?.(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates);
   const payload=response;
   if(payload.readOnly!==true||!Array.isArray(payload.records))throw Error('Geen vrijgegeven organogramlijst');
   const approved=new Set(['politie','brandweer','ambulance','depannage','burger']);
