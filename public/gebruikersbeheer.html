@@ -77,7 +77,10 @@ header button{padding:7px 10px;font-size:12px}
 #uniformSection[hidden]{display:none!important}
 #uniformSection .uniform-editor-columns{display:grid;grid-template-columns:minmax(250px,1fr) minmax(200px,.8fr);gap:19px;align-items:start;margin:14px 0}
 #uniformSection .uniform-preview-frame{width:min(100%,603px);aspect-ratio:603/469;border-radius:11px;border:1px solid #6686a8;background:#0c1a2d;position:relative;overflow:hidden;user-select:none;touch-action:none}
-#uniformSection .uniform-preview-frame>img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
+#uniformSection .uniform-preview-frame>img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;cursor:grab;user-select:none;transform-origin:center;will-change:transform}
+#uniformSection .uniform-preview-frame>img:active{cursor:grabbing}
+#uniformSection .uniform-preview-frame{cursor:grab}
+#uniformSection .uniform-preview-frame:active{cursor:grabbing}
 #uniformSection .uniform-preview-grade{position:absolute;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px dashed #e6bd73;background:#141d2e;color:#ffe6a4;cursor:grab;touch-action:none;outline-offset:3px;font-size:10px;font-weight:750;text-align:center;padding:3px;z-index:1}
 #uniformSection .uniform-preview-grade:active{cursor:grabbing}
 #uniformSection .uniform-preview-nameplate{
@@ -324,7 +327,7 @@ header button{padding:7px 10px;font-size:12px}
  <div class="uniform-editor-columns">
   <div>
    <div id="uniformPreviewFrame" class="uniform-preview-frame uniform-empty">
-    <img id="uniformPreviewCoat" alt="Uniformvoorbeeld" hidden>
+    <img id="uniformPreviewCoat" alt="Uniformvoorbeeld – versleep het uniforme zelf" draggable="false" hidden>
     <span id="uniformPreviewPatch" class="uniform-preview-grade" tabindex="0" role="img" aria-label="Versleepbaar gradenteken in het uniform">
      <img id="uniformPreviewGradeImage" alt="" hidden><span id="uniformPreviewPatchLabel">Voorbeeld gradenplaat</span>
     </span>
@@ -333,9 +336,18 @@ header button{padding:7px 10px;font-size:12px}
     </span>
     <span class="uniform-empty-note">Nog geen uniformfoto voor deze hulpdienst. Upload een afbeelding.</span>
    </div>
-   <small>Je kunt de gradenplaat én naamplaat elk afzonderlijk verslepen met de muis of de pijltjestoetsen. Beide worden per hulpdienst en uniformtype bewaard.</small>
+   <small>Versleep de jas via het vrije uniformoppervlak. De gradenplaat en naamplaat zijn afzonderlijk versleepbaar. Je kunt de elementen ook met de schuifregelaars aanpassen.</small>
   </div>
   <div class="uniform-sliders">
+   <h3>Uniform zelf – verschuiven en schalen</h3>
+   <label for="uniformCoatX">Uniform horizontaal <output id="uniformCoatValueX">0%</output></label>
+   <input type="range" id="uniformCoatX" min="-50" max="50" step=".5" value="0">
+   <label for="uniformCoatY">Uniform verticaal <output id="uniformCoatValueY">0%</output></label>
+   <input type="range" id="uniformCoatY" min="-50" max="50" step=".5" value="0">
+   <label for="uniformCoatZoom">Uniformgrootte <output id="uniformCoatValueZoom">100%</output></label>
+   <input type="range" id="uniformCoatZoom" min="50" max="200" step="1" value="100">
+   <div class="controls"><button id="uniformCoatReset" type="button" class="alt">Uniform centreren</button></div>
+   <h3>Gradenplaat – eigen positie en afmetingen</h3>
    <label for="uniformX">Horizontale positie <output id="uniformValueX">0%</output></label>
    <input type="range" id="uniformX" min="0" max="90" step=".25" value="62">
    <label for="uniformY">Verticale positie <output id="uniformValueY">0%</output></label>
@@ -356,13 +368,24 @@ header button{padding:7px 10px;font-size:12px}
    <input type="range" id="uniformNameW" min="3" max="75" step=".25" value="27">
    <label for="uniformNameH">Hoogte naamplaat <output id="uniformNameValueH">12%</output></label>
    <input type="range" id="uniformNameH" min="2" max="50" step=".25" value="12">
+   <label for="uniformNameFont">Naamtekst – grootte <output id="uniformNameFontValue">100%</output></label>
+   <input type="range" id="uniformNameFont" min="50" max="250" step="5" value="100">
+   <label for="uniformCallFont">Roepnummerregel – grootte <output id="uniformCallFontValue">100%</output></label>
+   <input type="range" id="uniformCallFont" min="50" max="250" step="5" value="100">
+   <label for="uniformNamePrefix">Tekst vóór roepnummer</label>
+   <input id="uniformNamePrefix" type="text" maxlength="30" placeholder="Bijv. BELGIEPD">
+   <label for="uniformNameExample">Voorbeeldnaam (wijzigt geen personeelsgegevens)</label>
+   <input id="uniformNameExample" maxlength="40" value="VOORBEELD NAAM" placeholder="Bijv. HUBERT">
+   <label for="uniformCallExample">Voorbeeldroepnummer (wijzigt geen personeelsgegevens)</label>
+   <input id="uniformCallExample" maxlength="24" value="610" placeholder="Bijv. 610">
    <div class="controls">
-    <button id="uniformNameReset" class="alt" type="button">Standaardpositie naamplaat</button>
+    <button id="uniformNameReset" class="alt" type="button">Standaardpositie en tekstgrootte naamplaat</button>
    </div>
   </div>
  </div>
  <div class="controls">
   <button id="uniformSaveImage" type="button">Uniformafbeelding bewaren</button>
+  <button id="uniformSaveCoat" type="button" class="alt">Uniformpositie en grootte bewaren</button>
   <button id="uniformSavePosition" type="button" class="alt">Gradenplaat bewaren</button>
   <button id="uniformSaveNameplate" type="button" class="alt">Naamplaat bewaren</button>
   <button id="uniformReload" type="button" class="alt">Opnieuw laden</button>
