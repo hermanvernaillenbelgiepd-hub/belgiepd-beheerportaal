@@ -25,7 +25,7 @@ const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',i
 const renderer=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
 
 test('classic woven nameplate has diagonal side-stitches, separator, and gold/silver metal',()=>{
- assert.match(css,/repeating-linear-gradient\(129deg/);
+ assert.match(css,/repeating-linear-gradient\(128deg/);
  assert.match(css,/bpd-nameplate-metal-gold/);
  assert.match(css,/bpd-nameplate-metal-silver/);
  assert.match(css,/background:var\(--thread\)/);
