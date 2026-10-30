@@ -3,7 +3,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {isUserManager} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
-import {policeUniformGroup,ambulanceFunction,normalizeVisual} from '../public/uniform-profile-policy.js';
+import {policeUniformGroup,ambulanceFunction} from '../public/uniform-profile-policy.js';
 
 export const UNIFORM_ASSIGNMENTS='bpd_uniform_visual_assignments';
 export const UNIFORM_ASSIGNMENT_AUDIT='bpd_uniform_assignment_audit';
