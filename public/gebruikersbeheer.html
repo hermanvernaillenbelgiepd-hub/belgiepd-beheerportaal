@@ -507,14 +507,16 @@ header button{padding:7px 10px;font-size:12px}
  
 
  <section class="uniform-assignment-card">
- <h3>Uniformtoewijzingen — per hulpdienst, kader, graad of personeelslid</h3>
- <p class="muted">Een nieuw uniform upload je eerst via de centrale bibliotheek (soort <strong>Uniform</strong>). Hier kies je wie het uniform krijgt en of de specialisatiebadges een <strong>Lokale</strong> of <strong>Federale</strong> uitvoering gebruiken. Een toewijzing verandert geen rang, dienst of specialisatie.</p>
+ <h3>Basisuniform koppelen — één uniform voor meerdere graden</h3>
+ <p class="muted">Upload eerst een basisuniform in de bibliotheek. Gebruik bij de politie <strong>Uniformgroep — Agent t.e.m. A-HINP</strong> om één jas voor meerdere graden te selecteren. De gradenplaten worden hieronder apart per callreeks gekoppeld. Brandweer volgt de graad, ambulance de hoedanigheid. Een toewijzing verandert nooit de personeelsrang of functie.</p>
  <div class="grid">
   <div><label for="uniformAssignDept">Hulpdienst</label><select id="uniformAssignDept"></select></div>
   <div><label for="uniformAssignScope">Doelgroep</label><select id="uniformAssignScope">
    <option value="service">Iedereen van de hulpdienst</option>
    <option value="cadre">Kader / functiegroep</option>
    <option value="rank">Graad of functie</option>
+   <option value="group">Uniformgroep (Politie: Agent t.e.m. A-HINP)</option>
+   <option value="function">Hoedanigheid (Ambulance)</option>
    <option value="person">Individueel personeelslid</option>
   </select></div>
   <div><label for="uniformAssignTarget">Kies kader / graad / persoon</label><select id="uniformAssignTarget"></select></div>
@@ -534,22 +536,24 @@ header button{padding:7px 10px;font-size:12px}
  <div id="uniformAssignStatus" class="muted" aria-live="polite">Uniformtoewijzingen laden…</div>
  <h4>Huidige toewijzingen</h4>
  <div id="uniformAssignList" class="uniform-assignment-list"></div>
- <small>Volgorde: persoonlijk → graad → kader → hulpdienst. Persoonlijke koppelingen gebruiken bij voorkeur de vaste personeels-ID; als die nog ontbreekt, wordt het roepnummer gebruikt en moet de koppeling bij een roepnummerwijziging opnieuw worden nagekeken.</small>
+ <small>Volgorde uniform: persoon → specifieke graad → hoedanigheid / uniformgroep → kader → hulpdienst. Bij politie hoort A-HINP (600-reeks) bij de groep met het basisuniform, hoewel deze graad organisatorisch Middenkader is. Persoonlijke koppelingen gebruiken bij voorkeur de vaste personeels-ID.</small>
  </section>
 
 <section id="libraryAssignmentPanel" hidden aria-label="Graden, helmen en beroepstekens koppelen">
- <h3>Graden, helmen en logo's selecteren per dienst, graad of persoon</h3>
- <p class="muted">Kies een geüploade afbeelding en de doelgroep. Een persoonlijke keuze gaat voor de graad, daarna het kader en vervolgens de algemene dienstkeuze. Deze koppelingen zijn uitsluitend visueel.</p>
+ <h3>Gradenplaten en beroepstekens koppelen — los van het basisuniform</h3>
+ <p class="muted"><strong>Politie:</strong> graadteken per callreeks (100, 200, 300, 400, 500, 600, 700, 800, 900, 910, 920, 930). <strong>Brandweer:</strong> gradenplaat of helm per graad. <strong>Ambulance:</strong> beroepsteken per hoedanigheid (Ambulancier, VPK, Arts, DIRMED). De jas blijft hierbij ongewijzigd.</p>
  <div class="grid">
   <div><label for="libraryAssignDept">Hulpdienst</label><select id="libraryAssignDept"></select></div>
   <div><label for="libraryAssignKind">Soort afbeelding</label><select id="libraryAssignKind"></select></div>
   <div><label for="libraryAssignScope">Voor wie?</label><select id="libraryAssignScope">
    <option value="service">Iedereen van de dienst</option>
    <option value="cadre">Een kader / functiegroep</option>
-   <option value="rank">Een graad</option>
+   <option value="rank">Een graad (o.a. Brandweer)</option>
+   <option value="call">Callreeks (Politie)</option>
+   <option value="function">Hoedanigheid (Ambulance)</option>
    <option value="person">Een personeelslid</option>
   </select></div>
-  <div><label for="libraryAssignTarget">Graad, kader of personeels-ID</label><input id="libraryAssignTarget" maxlength="40" placeholder="default" value="default">
+  <div><label for="libraryAssignTarget">Callreeks, graad, functie of personeels-ID</label><input id="libraryAssignTarget" list="libraryAssignPresets" maxlength="40" placeholder="default" value="default"><datalist id="libraryAssignPresets"></datalist>
    <small>Bij een graad gebruik je de naam (bijv. sergeant). Bij een persoon de Discord-ID of call_roepnummer.</small></div>
   <div><label for="libraryAssignAsset">Geüploade afbeelding</label><select id="libraryAssignAsset"><option value="">Kies een afbeelding</option></select></div>
   <div><label for="libraryAssignReason">Motivering voor logboek</label><input id="libraryAssignReason" maxlength="300" placeholder="Minstens acht tekens"></div>
