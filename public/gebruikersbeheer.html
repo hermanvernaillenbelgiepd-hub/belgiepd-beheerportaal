@@ -62,6 +62,7 @@ header button{padding:7px 10px;font-size:12px}
 .extra-service-editor select{margin-bottom:6px}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 <style>
+#roleArtworkSection [hidden]{display:none!important}
 #roleArtworkSection .artwork-preview{height:83px;display:flex;align-items:center;justify-content:center;border:1px dashed #5c7593;border-radius:9px;background:#0b192b}
 #roleArtworkSection .artwork-preview img{width:170px;height:53.125px;object-fit:fill;max-width:100%;border-radius:4px}
 #roleArtworkSection .artwork-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:9px;margin:14px 0}
@@ -223,10 +224,17 @@ header button{padding:7px 10px;font-size:12px}
 <h2>🎨 Rollenlogo’s & specialisatiepatches</h2>
 <p>Upload logo’s op de website en koppel ze aan een Discord-rol. De afbeeldingen worden permanent in Firebase bewaard. Een nieuw logo verandert <strong>nooit</strong> Discord-rollen, lidmaatschappen of toegangsrechten.</p>
 <div class="grid">
- <div><label for="roleArtworkPreset">Bestaande specialisatie / rol</label><select id="roleArtworkPreset"></select></div>
+ <div><label for="roleArtworkKind">Wat wil je aanpassen?</label><select id="roleArtworkKind">
+ <option value="role">Discord-rol / functiepatch</option>
+ <option value="rank">Gradenteken op personeelslijst en profiel</option>
+ <option value="specialty">Specialisatiepictogram op personeelslijst</option>
+ </select></div>
+ <div id="roleArtworkPresetWrap"><label for="roleArtworkPreset">Bestaande specialisatie / rol</label><select id="roleArtworkPreset"></select></div>
+ <div id="roleArtworkCodeWrap" hidden><label for="roleArtworkCodePreset">Bestaande graad / specialisatie</label><select id="roleArtworkCodePreset"></select>
+ <label for="roleArtworkCode">Code van graad / specialisatie</label><input id="roleArtworkCode" maxlength="40" pattern="[a-z0-9_]{1,40}" placeholder="Bijv. ainp of motard"><small>Dezelfde code wordt gebruikt voor alle leden van die graad of specialisatie.</small></div>
  <div><label for="roleArtworkDepartment">Hulpdienst</label><select id="roleArtworkDepartment"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option></select></div>
- <div><label for="roleArtworkRoleId">Discord-rol-ID</label><input id="roleArtworkRoleId" maxlength="22" inputmode="numeric" pattern="[0-9]{15,22}" placeholder="Bijv. 1358148694297415741"></div>
- <div><label for="roleArtworkVariant">Variant</label><select id="roleArtworkVariant"><option value="standard">Standaard / rol</option><option value="instructeur">Instructeur (aparte badge bij gedeelde rol)</option></select></div>
+ <div id="roleArtworkRoleIdWrap"><label for="roleArtworkRoleId">Discord-rol-ID</label><input id="roleArtworkRoleId" maxlength="22" inputmode="numeric" pattern="[0-9]{15,22}" placeholder="Bijv. 1358148694297415741"></div>
+ <div id="roleArtworkVariantWrap"><label for="roleArtworkVariant">Variant</label><select id="roleArtworkVariant"><option value="standard">Standaard / rol</option><option value="instructeur">Instructeur (aparte badge bij gedeelde rol)</option></select></div>
  <div><label for="roleArtworkLabel">Naam van het logo</label><input id="roleArtworkLabel" maxlength="75" placeholder="Bijv. MOTARD · Volwaardig"></div>
  <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Automatisch naar 16:5 omgezet. Maximaal 5 MB bronbestand.</small></div>
  <div><label>Voorbeeld (170 × 53,125 px)</label><div class="artwork-preview"><img id="roleArtworkPreview" width="170" height="53" alt="Voorbeeld van de gekozen patch" hidden></div></div>
