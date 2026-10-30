@@ -142,7 +142,7 @@ export function setupUniformLibraryUI({api,$}){
    for(const item of [...select.options])item.hidden=!authorized.includes(item.value);
    if(!authorized.includes(select.value))select.value=authorized[0]||'';
   }
-  updateCatalog();fillAssets();updateRules();
+  updateScopes();fillRuleTargets();updateCatalog();fillAssets();updateRules();
   $('libraryPanel').hidden=!authorized.length;
   $('libraryAssignmentPanel').hidden=!authorized.length;
   return Boolean(authorized.length);
