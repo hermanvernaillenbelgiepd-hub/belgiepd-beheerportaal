@@ -5,6 +5,7 @@ import {roleForDepartment} from './leave-policy.js';
 
 export const UNIFORM_LAYOUTS='bpd_uniform_visual_layouts';
 export const UNIFORM_LAYOUT_AUDIT='bpd_uniform_visual_layout_audit';
+export const UNIFORM_NAMEPLATES='bpd_uniform_nameplate_layouts';
 export const UNIFORM_SERVICES=Object.freeze(['politie','brandweer','ambulance','depannage','burger']);
 export const UNIFORM_VARIANTS=Object.freeze({
  politie:['silver','gold'],
@@ -17,6 +18,14 @@ const DEFAULTS=Object.freeze({
  ambulance_default:{left:62,top:55,width:24,height:12},
  depannage_default:{left:62,top:55,width:24,height:12},
  burger_default:{left:62,top:55,width:24,height:12}
+});
+const NAMEPLATE_DEFAULTS=Object.freeze({
+ politie_silver:{left:10.25,top:56.2,width:27.75,height:13.15},
+ politie_gold:{left:21.2,top:58.9,width:20.1,height:12.1},
+ brandweer_default:{left:11,top:55,width:27,height:12},
+ ambulance_default:{left:11,top:55,width:27,height:12},
+ depannage_default:{left:11,top:55,width:27,height:12},
+ burger_default:{left:11,top:55,width:27,height:12}
 });
 const err=(status,message)=>Object.assign(new Error(message),{publicStatus:status});
 const error=(res,e)=>{
@@ -49,20 +58,61 @@ export function validateUniformLayout(input){
   throw err(400,'Motivering van 8–300 tekens verplicht');
  return {department,variant,key:department+'_'+variant,...coords,reason};
 }
+export function validateUniformNameplate(input){
+ const placement=validateUniformLayout(input);
+ return placement;
+}
 export function installUniformManagementRoutes(app,{requireUser}){
  app.get('/api/uniform-management/layouts',requireUser,async(req,res)=>{
   try{
-   const snaps=await getFirestore().collection(UNIFORM_LAYOUTS).limit(20).get();
+   const db=getFirestore();
+   const [snaps,nameSnap]=await Promise.all([
+    db.collection(UNIFORM_LAYOUTS).limit(20).get(),
+    db.collection(UNIFORM_NAMEPLATES).limit(20).get()
+   ]);
    const stored=new Map(snaps.docs.map(d=>[d.id,d.data()]));
+   const nameStored=new Map(nameSnap.docs.map(d=>[d.id,d.data()]));
    const layouts=Object.entries(DEFAULTS).map(([key,defaultLayout])=>{
     const row=stored.get(key);
     const placement=row&&['left','top','width','height'].every(k=>typeof row[k]==='number')
      ?Object.fromEntries(['left','top','width','height'].map(k=>[k,row[k]])):defaultLayout;
     return {key,department:key.split('_')[0],variant:key.split('_')[1],...placement};
    });
+   const nameplates=Object.entries(NAMEPLATE_DEFAULTS).map(([key,defaults])=>{
+    const saved=nameStored.get(key);
+    const valid=Boolean(saved)&&['left','top','width','height'].every(
+     k=>typeof saved[k]==='number'&&Number.isFinite(saved[k])&&saved[k]>=0&&saved[k]<=100
+    )&&saved.left+saved.width<=100&&saved.top+saved.height<=100;
+    const place=valid?Object.fromEntries(
+     ['left','top','width','height'].map(k=>[k,saved[k]])):defaults;
+    return {key,department:key.split('_')[0],variant:key.split('_')[1],
+     ...place,configured:valid};
+   });
    res.set('Cache-Control','private, no-store');
-   return res.json({layouts,canEdit:req.bpd?.role==='beheerder',
+   return res.json({layouts,nameplates,canEdit:req.bpd?.role==='beheerder',
     editableDepartments:UNIFORM_SERVICES.filter(d=>mayEdit(req.bpd,d))});
+  }catch(e){return error(res,e)}
+ });
+ app.put('/api/uniform-management/nameplate',requireUser,async(req,res)=>{
+  let data;try{data=validateUniformNameplate(req.body)}catch(e){return error(res,e)}
+  if(!mayEdit(req.bpd,data.department))
+   return res.status(403).json({error:'Geen toestemming om naamplaten van deze hulpdienst te wijzigen'});
+  try{
+   const db=getFirestore(),ref=db.collection(UNIFORM_NAMEPLATES).doc(data.key);
+   await db.runTransaction(async tx=>{
+    const old=await tx.get(ref);
+    const previous=old.exists?old.data():null;
+    const next={left:data.left,top:data.top,width:data.width,height:data.height};
+    tx.set(ref,{department:data.department,variant:data.variant,...next,
+     updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid});
+    tx.create(db.collection(UNIFORM_LAYOUT_AUDIT).doc(),{
+     action:'uniform_nameplate_placement',key:data.key,
+     previous:previous?Object.fromEntries(
+      ['left','top','width','height'].map(k=>[k,previous[k]??null])):null,
+     current:next,reason:data.reason,actorUid:req.bpd.uid,
+     at:FieldValue.serverTimestamp()});
+   });
+   return res.json({saved:true,key:data.key,permissionsChanged:false});
   }catch(e){return error(res,e)}
  });
  app.put('/api/uniform-management/layout',requireUser,async(req,res)=>{
