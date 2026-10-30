@@ -454,6 +454,7 @@
   call.textContent=details.bottom;
   call.style.transform='scale('+(details.callScale/100)+')';
   plate.append(name,call);
+  window.BPDNameplateFit?.watch(plate);
   return plate;
  }
  function makeNameplate(person,zoom=false){return makeWovenNameplate(person,zoom);}
