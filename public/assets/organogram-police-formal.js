@@ -246,6 +246,18 @@
   node.style.width=layout.width+'%';
   node.style.height=layout.height+'%';
  }
+ function adaptAssignedUniform(stage,img){
+  const apply=()=>{
+   if(!img.naturalWidth||!img.naturalHeight)return;
+   const ratio=img.naturalWidth/img.naturalHeight;
+   stage.style.aspectRatio=img.naturalWidth+'/'+img.naturalHeight;
+   stage.style.width=Math.min(120,Math.max(30,ratio*(226/198)*98))+'%';
+   stage.style.height='auto';
+   img.style.objectFit='contain';
+  };
+  img.addEventListener('load',apply,{once:true});
+  if(img.complete&&img.naturalWidth)apply();
+ }
  function applyUniformCanvas(stage,img,variant){
   const cfg=uniformCoatOverrides.get(variant);
   if(!cfg||!Number.isInteger(cfg.canvasWidth)||!Number.isInteger(cfg.canvasHeight)||
@@ -475,6 +487,7 @@
    img.decoding='async';
    img.draggable=false;
    applyUniformCanvas(stage,img,'gold');
+   if(individualGold)adaptAssignedUniform(stage,img);
    applyUniformCoatPlacement(img,'gold');
    stage.append(img);
    const plate=makeGoldNameplate(person);
@@ -517,6 +530,7 @@
   image.decoding='async';
   image.draggable=false;
   applyUniformCanvas(stage,image,'silver');
+  if(individualSilver)adaptAssignedUniform(stage,image);
   applyUniformCoatPlacement(image,'silver');
   stage.append(image);
   const nameplate=makeSilverWovenNameplate(person);
