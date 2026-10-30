@@ -50,5 +50,5 @@ test('visual-only grade mapping is used in profiles and accessible illustrated g
  assert.match(ui,/uniform-grade-choices/);
  assert.match(resolver,/coatChoices\.find/);
  assert.match(portal,/api\/uniform-grade-choices/);
- assert.match(ui,/!\\['silver','gold'\\]\.includes\(x.code\)/);
+ assert.ok(ui.includes("!['silver','gold'].includes(x.code)"));
 });
