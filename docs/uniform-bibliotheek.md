@@ -85,3 +85,42 @@ een nieuw uniform is geüpload en voor de betrokken groep is geselecteerd; dat
 voorkomt onbedoeld lege profielen. Bestaande afbeeldingen worden niet van
 Firebase gewist. Na het koppelen van een nieuw uniform wordt dat onmiddellijk
 boven de oude fallback getoond.
+
+
+## Uniformatelier: één opmaak per graad
+
+Het nieuwe hoofdscherm in **Gebruikersbeheer → Uniformbeheer** combineert
+de centrale afbeeldingenbibliotheek met één visuele uniformopmaak per graad.
+De medewerker kiest hulpdienst, graad of hoedanigheid, vervolgens de afbeelding
+van het basisuniform en de afzonderlijke gradenplaat / naamplaat / helm /
+beroepsteken / logo. De elementen kunnen in het livevoorbeeld worden versleept;
+X- en Y-positie, breedte, hoogte en zichtbaarheid zijn per laag bewaarbaar.
+**Volledig uniform bewaren** schrijft de volledige opmaak met één beveiligd
+verzoek weg.
+
+De afbeeldingen zelf blijven in de bestaande Firebase-catalogi:
+- `bpd_role_artwork_meta` + `bpd_role_artwork_images` voor gebruikelijke
+  WebP-afbeeldingen; nieuwe grotere bestanden kunnen naar Cloud Storage
+  indien de betreffende bucket correct geconfigureerd is.
+- `bpd_personnel_decoration_catalog` voor geüploade officiële
+  politie-eretekens, lintjes en medailles.
+- `bpd_uniform_compositions` bevat uitsluitend de afbeeldingcodes
+  en positie-instellingen per graad / hoedanigheid.
+- `bpd_uniform_composition_audit` registreert elke wijziging.
+
+Medailles en erelinten kunnen op de voorbeeldjas worden geplaatst. De
+positie wordt bewaard, **niet** een generieke toekenning. Het daadwerkelijke
+personeelsprofiel toont uitsluitend de persoonlijk toegekende, nog actieve
+onderscheidingen via het afzonderlijk gecontroleerde eretekensysteem.
+Hetzelfde geldt voor specialisaties: een visueel sjabloon geeft geen bevoegdheid.
+
+De compositiekeuze krijgt voorrang op de algemene uniformgroep en bestaande
+dienstgradenplaat; een expliciete persoonlijke uitzondering blijft mogelijk.
+De niet-geselecteerde oude uniformafbeeldingen worden niet meer aangeboden
+in de nieuwe keuzelijst. De bestanden blijven voorlopig als herstelmogelijkheid
+opgeslagen; bestaande profielen worden niet verwijderd.
+
+**TEST/MAIN:** wijzigingen aan Firestore en live portretten eerst technisch
+verifiëren en de Render-deploystatus controleren. Als Cloud Storage niet is
+ingesteld, verwerkt de bestaande backend afbeeldingen tot maximaal 140 KB WebP
+voor uniformen en platen, en maximaal 80 KB voor eigen eretekens.
