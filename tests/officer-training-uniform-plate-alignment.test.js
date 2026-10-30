@@ -47,7 +47,7 @@ test('live nameplate and grade share coat transform and factory slots match edit
  for(const value of ['27.2','34.7','15.8','55.3','15.6'])
   assert.ok(formal.includes(value)&&studio.includes(value),'Shared coordinate '+value);
  assert.match(css,/\.bpd-assigned-coat/);
- assert.match(css,/\.bpd-gold-nameplate>\.bpd-gold-name/);
+ assert.match(css,/\.bpd-woven-nameplate>\.bpd-woven-name/);
  assert.match(css,/\.bpd-silver-grade-art/);
  assert.match(studio,/panel\.style\.aspectRatio=pic\.naturalWidth\+'\/'\+pic\.naturalHeight/);
  assert.match(admin,/id="composeSnapChest"/);
