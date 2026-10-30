@@ -5,30 +5,26 @@ import {runInNewContext} from 'node:vm';
 
 const read=path=>readFileSync(new URL('../public/'+path,import.meta.url),'utf8');
 const css=read('assets/organogram-police-formal.css');
-const studioCss=read('gebruikersbeheer.html');
+const admin=read('gebruikersbeheer.html');
 const renderer=read('assets/organogram-police-formal.js');
-const studio=read('uniform-composer-ui.js');
-const finalCss=css.slice(css.indexOf('/* Grade-plaque-based nameplate'));
-const studioFinal=studioCss.slice(studioCss.indexOf('/* Uniformatelier: the actual current grade art'));
+const composer=read('uniform-composer-ui.js');
+const finalCss=css.slice(css.indexOf('/* BelgiumPD – single flat textile nameplate'));
+const studioFinal=admin.slice(admin.indexOf('/* The operational organogram and Uniformatelier share'));
 
-test('actual mirrored grade plaque replaces hand-drawn left stripes in both UIs',()=>{
- assert.match(finalCss,/\.bpd-nameplate-mirrored-grade/);
- assert.match(finalCss,/object-fit:fill;transform:scaleX\(-1\)/);
- assert.match(finalCss,/\.bpd-nameplate-text-field/);
- assert.match(finalCss,/background:linear-gradient\(160deg,#111b2e,#060d1b\)/);
- assert.match(finalCss,/\.bpd-nameplate-left-accent\{display:none!important\}/);
- assert.doesNotMatch(finalCss,/clip-path:inset\(0 76%/);
- assert.doesNotMatch(finalCss,/repeating-linear-gradient/);
- assert.match(studioFinal,/\.compose-nameplate-mirrored-grade/);
- assert.match(studioFinal,/transform:scaleX\(-1\)/);
- assert.match(studioFinal,/\.compose-nameplate-text-field/);
- assert.doesNotMatch(studioFinal,/clip-path:inset\(0 76%/);
- assert.doesNotMatch(studioFinal,/repeating-linear-gradient/);
+test('flat reference-style nameplate replaces the nested mirrored grade image in both views',()=>{
+ assert.match(finalCss,/bpd-woven-nameplate::before/);
+ assert.match(finalCss,/repeating-linear-gradient/);
+ assert.match(finalCss,/border:0!important;border-radius:0!important/);
+ assert.match(finalCss,/transform:scale\(1\.32,1\.42\)/);
+ assert.match(studioFinal,/compose-woven-nameplate::before/);
+ assert.match(studioFinal,/background-color:#122542/);
+ assert.doesNotMatch(renderer,/bpd-nameplate-mirrored-grade|bpd-nameplate-text-field/);
+ assert.doesNotMatch(composer,/compose-nameplate-mirrored-grade|compose-nameplate-text-field/);
 });
 
 class Node{
  constructor(tag){this.tag=tag;this.className='';this.children=[];this.dataset={};this.attrs={};
-  this.textContent='';this.src='';this.style={};this.classList={add:c=>{this.className+=' '+c}}}
+  this.textContent='';this.src='';this.style={setProperty(){}};this.classList={add:c=>{this.className+=' '+c}};}
  append(...xs){this.children.push(...xs)}
  setAttribute(k,v){this.attrs[k]=v}
  addEventListener(){}
@@ -41,34 +37,36 @@ function uniform(){
  runInNewContext(renderer,{window:win,document:doc});
  return win.BPDPoliceUniform;
 }
-test('mirrored grade art actually powers the nameplate; stars/crowns remain masked',()=>{
+test('nameplate is one woven element, actual grade stays separate for every cadre',()=>{
  const ui=uniform();
- for(const [call,key,tone] of [['900','1hcp','gold'],['910','1cp','gold'],
+ const cases=[['900','1hcp','gold'],['910','1cp','gold'],
   ['920','acp','gold'],['930','acp','gold'],['800','1hinp','silver'],
   ['700','hinp','silver'],['600','ahinp','silver'],['500','1inp','silver'],
-  ['400','inp','silver'],['300','ainp','silver'],['200','ap','silver']]){
+  ['400','inp','silver'],['300','ainp','silver'],['200','ap','silver']];
+ for(const [call,grade,tone] of cases){
   const portrait=ui.makePortrait({dept:'politie',call,name:'RX',awards:[]});
-  const plate=portrait.children[0].children.find(n=>n.className.includes('nameplate'));
-  assert.match(plate.className,new RegExp('bpd-nameplate-metal-'+tone));
+  const nodes=portrait.children[0].children;
+  const plate=nodes.find(n=>n.className.includes('bpd-woven-nameplate'));
+  const rank=nodes.find(n=>n.className.includes('cloth-rank'));
+  assert.ok(plate&&rank,call);
+  assert.match(plate.className,new RegExp('bpd-nameplate-metal-'+tone),call);
+  assert.equal(plate.children.length,2,call);
   assert.equal(plate.children[0].textContent,'RX');
   assert.equal(plate.children[1].textContent,'BELGIEPD - '+call);
-  const base=plate.children[2],cover=plate.children[3];
-  assert.equal(base.className,'bpd-nameplate-mirrored-grade');
-  assert.equal(base.src,'/assets/bpd-rank-'+key+'-clean-20261027.webp');
-  assert.equal(cover.className,'bpd-nameplate-text-field');
-  assert.equal(cover.attrs['aria-hidden'],'true');
+  assert.equal(rank.dataset.grade,grade,call);
+  assert.equal(rank.children[0].src,'/assets/bpd-rank-'+grade+'-clean-20261027.webp',call);
  }
 });
-test('rank labels without numbered calls honor gold/silver boundary as well',()=>{
+test('non-numbered display ranks still select gold/silver properly',()=>{
  const ui=uniform();
  const gold=ui.makeNameplate({dept:'politie',rank:'Korpschef',name:'Chef'});
  const silver=ui.makeNameplate({dept:'politie',rank:'Eerste Hoofdinspecteur',name:'HINP'});
  assert.match(gold.className,/bpd-nameplate-metal-gold/);
  assert.match(silver.className,/bpd-nameplate-metal-silver/);
 });
-test('updated scripts and styles are independently cache-busted',()=>{
+test('new live and studio assets are cache-busted',()=>{
  const hierarchy=read('organogram-hierarchie.html');
- assert.match(hierarchy,/organogram-police-formal\.css\?v=uniform-grade-call-sync-20261030/);
- assert.match(hierarchy,/organogram-police-formal\.js\?v=uniform-grade-call-sync-20261030/);
- assert.match(studioCss,/uniform-composer-ui\.js\?v=uniform-grade-call-sync-20261030/);
+ assert.match(hierarchy,/organogram-police-formal\.css\?v=flat-woven-nameplate-20261030-r2/);
+ assert.match(hierarchy,/organogram-police-formal\.js\?v=flat-woven-nameplate-20261030-r2/);
+ assert.match(admin,/uniform-composer-ui\.js\?v=flat-woven-nameplate-20261030-r2/);
 });
