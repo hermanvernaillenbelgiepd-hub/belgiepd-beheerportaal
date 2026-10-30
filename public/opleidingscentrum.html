@@ -143,8 +143,12 @@ function syncCourse(){
  const note=$('permissionNote');
  note.hidden=false;
  note.classList.toggle('error',!allowed);
- note.textContent=allowed?
-  'Je kunt voor '+NAMES[dept]+' een opleiding aanvragen. Je aanvraag gaat naar de bevoegde dienstleiding.':
+ note.textContent=dept==='politie'&&scope?.tier==='korpsleiding'?
+  'Korpsleiding is de hoogste operationele graad. Zelf een opleiding aanvragen is hier niet mogelijk; een bevoegde leidinggevende registreert een gevolgde opleiding rechtstreeks in het tweede luik.':
+  allowed&&dept==='politie'&&scope?.tier==='officierenkader'?
+  'Je aanvraag vanuit het Officierenkader komt uitsluitend bij de Korpsleiding terecht.':
+  allowed?
+  'Je kunt voor '+NAMES[dept]+' een opleiding aanvragen. De bevoegde leiding ontvangt je aanvraag.':
   ADMISSION_NOTICES[dept]||'Je dient eerst aangenomen te zijn bij deze hulpdienst.';
  syncVaria();
 }
