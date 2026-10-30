@@ -74,7 +74,7 @@ test('real uploaded coat renders woven gold/silver nameplates and current rank',
   assert.equal(plate.children[1].textContent,'BELGIEPD - '+call);
  }
  const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
- assert.match(css,/repeating-linear-gradient\(128deg/);
+ assert.match(css,/bpd-naamplaat-foto-basis-20261030\.svg/);
  assert.match(css,/var\(--thread\)/);
 });
 
@@ -83,10 +83,10 @@ test('one reference-style cloth plate replaces the old double name screen',()=>{
  const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
  const admin=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
  const renderer=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
- const tail=css.slice(css.indexOf('/* BelgiumPD – single flat textile nameplate'));
- const ui=admin.slice(admin.indexOf('/* The operational organogram and Uniformatelier share'));
+ const tail=css.slice(css.indexOf('/* ONLY active police nameplate artwork'));
+ const ui=admin.slice(admin.indexOf('/* ONLY current BelgiumPD police nameplate design.'));
  assert.match(tail,/\.bpd-woven-nameplate::before/);
- assert.match(tail,/repeating-linear-gradient\(128deg/);
+ assert.match(tail,/bpd-naamplaat-foto-basis-20261030\.svg/);
  assert.match(tail,/border:0!important;border-radius:0!important/);
  assert.match(ui,/\.compose-woven-nameplate::before/);
  assert.match(ui,/border:0!important/);
