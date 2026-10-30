@@ -1337,6 +1337,17 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  }
 }
 
+
+/* Embedded personnel card for roster: exact same read-only profile renderer. */
+html.roster-card-embed body{background:#09182c;margin:0}
+html.roster-card-embed body>header,
+html.roster-card-embed body>main{display:none!important}
+html.roster-card-embed .person-profile-dialog{
+ width:calc(100vw - 10px);max-width:1120px;max-height:calc(100dvh - 10px);
+ margin:auto;padding:0;overflow:auto
+}
+html.roster-card-embed .person-profile-dialog::backdrop{background:transparent}
+html.roster-card-embed .person-profile-shell{padding:12px}
 </style>
 </head>
 <body>
@@ -1488,6 +1499,17 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
 import '/uniform-assignment-display.js?v=uniform-compositions-20261030';
 const $=id=>document.getElementById(id);
+const cardParams=new URLSearchParams(location.search);
+const isEmbeddedCard=cardParams.get('embedded')==='1';
+const requestedCard=isEmbeddedCard&&cardParams.get('dienst')==='politie'&&
+ /^[a-z0-9 *_-]{1,24}$/i.test(cardParams.get('kaart')||'')?
+ {dept:'politie',call:cardParams.get('kaart')||'',
+  name:String(cardParams.get('naam')||'').slice(0,90)}:null;
+if(isEmbeddedCard)document.documentElement.classList.add('roster-card-embed');
+function notifyCardParent(status){
+ if(isEmbeddedCard&&window.parent!==window)
+  window.parent.postMessage({type:'bpd-organogram-card',status},location.origin);
+}
 const fixtures=[
  {dept:'politie',name:'Voorbeeld Korpschef',call:'900',rank:'Eerste hoofdcommissaris'},
  {dept:'politie',name:'Voorbeeld Officier',call:'920',rank:'Commissaris'},
@@ -1863,6 +1885,7 @@ function openPersonProfile(p){
  if(!dialog.open)dialog.showModal();
 }
 $('person-profile-close').addEventListener('click',()=>$('person-profile').close());
+$('person-profile').addEventListener('close',()=>notifyCardParent('closed'));
 $('person-profile').addEventListener('click',event=>{
  if(event.target===event.currentTarget)event.currentTarget.close();
 });
@@ -2332,6 +2355,16 @@ async function loadPublic(){
    'Meld je aan om echte personeelsgegevens te zien. De fictieve demonstratie blijft herkenbaar.';
  }
  render();
+ if(requestedCard){
+  if(!state.demo){
+   const person=state.live.find(p=>p.dept===requestedCard.dept&&
+    p.call.toLocaleLowerCase('nl-BE')===requestedCard.call.toLocaleLowerCase('nl-BE')&&
+    (!requestedCard.name||p.name.toLocaleLowerCase('nl-BE')===
+     requestedCard.name.toLocaleLowerCase('nl-BE')));
+   if(person){openPersonProfile(person);notifyCardParent('ready');}
+   else notifyCardParent('not-found');
+  }else notifyCardParent('unavailable');
+ }
 }
 async function setupManagement(){
  try{
