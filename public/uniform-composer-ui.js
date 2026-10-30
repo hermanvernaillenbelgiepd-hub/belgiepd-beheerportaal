@@ -88,6 +88,14 @@ export function setupUniformComposer({api,$}){
   notify('Naam en gradenplaat zijn op de borstvlakken geplaatst. Sleep ze eventueel bij en bewaar het volledige uniform.');
  }
  $('composeSnapChest').onclick=snapChest;
+ function goldPoliceGrade(){
+  if(dept.value!=='politie')return false;
+  const n=Number(grade.value);
+  if(Number.isInteger(n)&&n>=100&&n<900)return false;
+  if(['900','910','920','930'].includes(grade.value))return true;
+  const label=String(grade.value||'')+' '+String(grade.selectedOptions[0]?.textContent||'');
+  return /\\b(?:A-?HCP|AHCP|HCP|1-?HCP|ACP|CP|1-?CP|Korpschef)\\b|(?:aspirant[-_ ]?hoofdcommissaris|hoofdcommissaris|aspirant[-_ ]?commissaris|commissaris)/i.test(label);
+ }
  function draw(){
   panel.replaceChildren();
   const coat=asset('uniform',draft.assets.uniform);
@@ -125,17 +133,13 @@ export function setupUniformComposer({api,$}){
    if(['ribbons','medals'].includes(kind))
     url=awards.find(x=>x.id===sampleAward&&x.kind===(kind==='medals'?'medal':'ribbon'))?.imageUrl||'';
    if(!url&&kind!=='name'&&kind!=='rank'&&kind!==active)continue;
+   if(kind==='rank'&&dept.value==='politie'){
+    // The same gold/silver metal rule applies to the right edge of the rank.
+    box.classList.add(goldPoliceGrade()?'compose-rank-metal-gold':'compose-rank-metal-silver');
+   }
    if(kind==='name'){
     const member=sampleMember();
-    const level=grade.selectedOptions[0]?.textContent||'';
-    // HINP, 1-HINP and every lower grade are always SILVER. Officer
-    // and corps names are GOLD, as in the live personnel portraits.
-    const policeRankNumber=Number(grade.value);
-    const lowPoliceGrade=dept.value==='politie'&&Number.isFinite(policeRankNumber)&&
-     policeRankNumber>=100&&policeRankNumber<900;
-    const gold=dept.value==='politie'&&!lowPoliceGrade&&(
-     ['900','910','920','930'].includes(grade.value)||
-     /\b(?:ACP|CP|1-?CP|HCP|1-?HCP|Korpschef)\b/i.test(level));
+    const gold=goldPoliceGrade();
     const plate=el('span','compose-nameplate '+
      (gold?'compose-metal-gold':'compose-metal-silver')+
      (dept.value==='politie'?' compose-woven-nameplate':''));
