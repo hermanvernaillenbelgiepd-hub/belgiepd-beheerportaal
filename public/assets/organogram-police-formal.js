@@ -202,8 +202,8 @@
  // Same exterior patch dimensions, embroidered rim and margins for all ranks.
  const NORMALIZED_GRADE_FRAME=Object.freeze({x:16,y:4,width:480,height:152});
  let uniformArtworkOverrides=new Map(),uniformPlacementOverrides=new Map();
- let uniformNameplateOverrides=new Map();
- function setUniformManagementData(items,layouts,nameplates=[]){
+ let uniformNameplateOverrides=new Map(),uniformCoatOverrides=new Map();
+ function setUniformManagementData(items,layouts,nameplates=[],coats=[]){
   const uniformImages=new Map(),uniformCoords=new Map();
   for(const row of Array.isArray(items)?items:[]){
    const key=String(row?.key||''),url=String(row?.imageUrl||'');
@@ -229,6 +229,14 @@
   }
   uniformArtworkOverrides=uniformImages;uniformPlacementOverrides=uniformCoords;
   uniformNameplateOverrides=nameCoords;
+  const coatCoords=new Map();
+  for(const row of Array.isArray(coats)?coats:[]){
+   if(!/^politie_(gold|silver)$/.test(String(row?.key||''))||row.configured!==true)continue;
+   if(![row.offsetX,row.offsetY,row.zoom].every(Number.isFinite)||
+    Math.abs(row.offsetX)>50||Math.abs(row.offsetY)>50||row.zoom<50||row.zoom>200)continue;
+   coatCoords.set(row.variant,row);
+  }
+  uniformCoatOverrides=coatCoords;
  }
  function applyUniformInsigniaPlacement(node,variant){
   const layout=uniformPlacementOverrides.get(variant);
@@ -237,6 +245,17 @@
   node.style.top=layout.top+'%';
   node.style.width=layout.width+'%';
   node.style.height=layout.height+'%';
+ }
+ function applyUniformCoatPlacement(node,variant){
+  const placement=uniformCoatOverrides.get(variant);
+  if(!placement)return;
+  node.style.transform='translate('+placement.offsetX+'%,'+placement.offsetY+'%) scale('+(placement.zoom/100)+')';
+  node.style.transformOrigin='center';
+ }
+ function nameplateTextData(person,variant){
+  const base=nameplateData(person),cfg=uniformNameplateOverrides.get(variant);
+  return {...base,bottom:(cfg?.prefix||'BELGIEPD')+' - '+base.call,
+   nameScale:cfg?.nameScale??100,callScale:cfg?.callScale??100};
  }
  function applyUniformNameplatePlacement(node,variant){
   const layout=uniformNameplateOverrides.get(variant);
@@ -377,7 +396,7 @@
   return plate;
  }
  function makeGoldNameplate(person){
-  const details=nameplateData(person);
+  const details=nameplateTextData(person,'gold');
   const plate=document.createElement('span');
   plate.className='bpd-personal-nameplate bpd-gold-nameplate';
   plate.dataset.call=details.call;
@@ -387,15 +406,17 @@
   first.className='bpd-gold-name';
   // Same dynamic uppercase embroidery as the user-approved TEST preview.
   first.textContent=details.name.toLocaleUpperCase('nl');
+  first.style.transform='scale('+(details.nameScale/100)+')';
   const second=document.createElement('span');
   second.className='bpd-gold-call';
   second.textContent=details.bottom;
+  second.style.transform='scale('+(details.callScale/100)+')';
   plate.append(first,second);
   return plate;
  }
  function makeSilverWovenNameplate(person){
   // Same woven cloth as gold, with TEST-approved silver-coat positioning.
-  const details=nameplateData(person);
+  const details=nameplateTextData(person,'silver');
   const plate=document.createElement('span');
   plate.className='bpd-personal-nameplate bpd-silver-woven-nameplate';
   plate.dataset.call=details.call;
@@ -404,9 +425,11 @@
   const name=document.createElement('span');
   name.className='bpd-silver-woven-name';
   name.textContent=details.name.toLocaleUpperCase('nl');
+  name.style.transform='scale('+(details.nameScale/100)+')';
   const call=document.createElement('span');
   call.className='bpd-silver-woven-call';
   call.textContent=details.bottom;
+  call.style.transform='scale('+(details.callScale/100)+')';
   plate.append(name,call);
   return plate;
  }
@@ -436,6 +459,7 @@
    img.loading=large?'eager':'lazy';
    img.decoding='async';
    img.draggable=false;
+   applyUniformCoatPlacement(img,'gold');
    stage.append(img);
    const plate=makeGoldNameplate(person);
    applyUniformNameplatePlacement(plate,'gold');
@@ -473,6 +497,7 @@
   image.loading=large?'eager':'lazy';
   image.decoding='async';
   image.draggable=false;
+  applyUniformCoatPlacement(image,'silver');
   stage.append(image);
   const nameplate=makeSilverWovenNameplate(person);
   applyUniformNameplatePlacement(nameplate,'silver');
