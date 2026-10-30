@@ -1583,7 +1583,8 @@ function makeServiceUniformPortrait(person){
  // DIRMED is a medical function inscription, not a rank or a separate coat.
  // A customized profession image from the library can replace this default text.
  if(dept==='ambulance'&&selected?.profession==='dirmed'&&
-    !selected?.elementUrls?.profession&&serviceVisibility?.showProfessionBadge!==false){
+    !window.BPDVisualAssets?.hasProfessionLayer?.(person,'default')&&
+    serviceVisibility?.showProfessionBadge!==false){
   const professionText=el('span','bpd-service-profession-text','DIRMED');
   professionText.setAttribute('aria-label','Medische functie: DIRMED');
   stage.append(professionText);
