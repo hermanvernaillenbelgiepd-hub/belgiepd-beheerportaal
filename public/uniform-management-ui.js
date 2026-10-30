@@ -35,10 +35,9 @@ export function setupUniformManagementUI({api,$,notice}){
   const url=images.get(imageKey())||builtin();
   coat.hidden=!url;coat.src=url||'';
   frame.classList.toggle('uniform-empty',!url);
-  $p('uniformFile').value='';
-  imageData='';
  }
  function useLayout(){
+  imageData='';$p('uniformFile').value='';
   const pos=layouts.get(key())||defaultFor(key());
   x.value=pos.left;y.value=pos.top;w.value=pos.width;h.value=pos.height;
   render();
