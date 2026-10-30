@@ -61,12 +61,16 @@ test('both live and atelier grade stripe colors are identical and cache is fresh
  for(const source of [css,admin]){
   assert.match(source,/#ffd65a/);
   assert.match(source,/#e0e7ef/);
-  assert.match(source,/rank-edge-thread/);
-  assert.match(source,/130deg/);
+  // Recolor only real embroidered artwork; never add another stripe drawing.
+  assert.match(source,/mix-blend-mode:color/);
+  assert.match(source,/#ffd044/);
+  const rankRules=source.slice(source.indexOf('Rank\'s RIGHT threads')>=0?
+   source.indexOf('Rank\'s RIGHT threads'):source.indexOf('Only tint the ORIGINAL embroidered lines'));
+  assert.doesNotMatch(rankRules,/repeating-linear-gradient/);
  }
  assert.match(composer,/compose-rank-metal-gold/);
  assert.match(composer,/compose-rank-metal-silver/);
  assert.match(composer,/AHCP/);
- assert.match(read('organogram-hierarchie.html'),/rank-metal-20261031-v1/);
- assert.match(admin,/uniform-composer-ui\.js\?v=rank-metal-20261031-v1/);
+ assert.match(read('organogram-hierarchie.html'),/rank-artwork-thread-20261031-v2/);
+ assert.match(admin,/uniform-composer-ui\.js\?v=rank-artwork-thread-20261031-v2/);
 });

@@ -344,20 +344,16 @@ header button{padding:7px 10px;font-size:12px}
  top:58%;font-size:clamp(4px,7.6cqw,12px);
 }
 
-/* Exactly the same gold/silver right-side embroidery as the personnel card.
-   Keep the real grade image independently replaceable. */
-.compose-layer[data-kind="rank"].compose-rank-metal-gold{--rank-edge-thread:#ffd65a}
-.compose-layer[data-kind="rank"].compose-rank-metal-silver{--rank-edge-thread:#e0e7ef}
-.compose-layer[data-kind="rank"].compose-rank-metal-gold::after,
+/* Only tint the ORIGINAL embroidered lines in the rank artwork.
+   The former pseudo-element drew duplicate stripes beside the real ones. */
+.compose-layer[data-kind="rank"].compose-rank-metal-gold{isolation:isolate}
+.compose-layer[data-kind="rank"].compose-rank-metal-gold::after{
+ content:"";position:absolute;right:0;top:0;bottom:0;width:36%;
+ z-index:3;pointer-events:none;background-color:#ffd044;
+ mix-blend-mode:color;box-shadow:none;border:0;
+}
 .compose-layer[data-kind="rank"].compose-rank-metal-silver::after{
- content:"";position:absolute;z-index:3;pointer-events:none;
- right:0;top:0;bottom:0;width:18%;
- background:
-  repeating-linear-gradient(130deg,
-    transparent 0 5px,var(--rank-edge-thread) 5px 6.5px,
-    transparent 6.5px 12px),
-  #111b2b;
- border:0;box-shadow:none;
+ content:none!important;display:none!important;
 }
 
 </style>
@@ -869,7 +865,7 @@ import {setupUniformManagementUI} from '/uniform-management-ui.js?v=optional-uni
 import {setupVisualLayerUI} from '/visual-layer-ui.js?v=optional-uniform-pieces-20261030';
 import {setupUniformAssignmentUI} from '/uniform-assignment-ui.js';
 import {setupUniformQuickUI} from '/uniform-quick-ui.js?v=illustrated-uniform-20261030';
-import {setupUniformComposer} from '/uniform-composer-ui.js?v=rank-metal-20261031-v1';
+import {setupUniformComposer} from '/uniform-composer-ui.js?v=rank-artwork-thread-20261031-v2';
 import {setupUniformLibraryUI} from '/uniform-library-ui.js?v=cloud-library-20261030';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);

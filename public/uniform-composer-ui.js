@@ -133,8 +133,8 @@ export function setupUniformComposer({api,$}){
    if(['ribbons','medals'].includes(kind))
     url=awards.find(x=>x.id===sampleAward&&x.kind===(kind==='medals'?'medal':'ribbon'))?.imageUrl||'';
    if(!url&&kind!=='name'&&kind!=='rank'&&kind!==active)continue;
-   if(kind==='rank'&&dept.value==='politie'){
-    // The same gold/silver metal rule applies to the right edge of the rank.
+   if(kind==='rank'&&dept.value==='politie'&&url){
+    // Tint only the original threads on an actual uploaded grade image.
     box.classList.add(goldPoliceGrade()?'compose-rank-metal-gold':'compose-rank-metal-silver');
    }
    if(kind==='name'){
