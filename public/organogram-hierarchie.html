@@ -374,7 +374,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  .board #board-members .board-member{min-height:78px}
 }
 </style>
-<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=chest-align-20261030">
+<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=classic-metal-nameplate-20261030">
 <style>
 .person .portrait{display:block;position:relative;overflow:hidden;flex:0 0 70px;width:70px;height:66px;border:1px solid #5b7da6;border-radius:7px;background:#0b223a}
 .person .portrait.bpd-police-formal{width:70px;height:66px}
@@ -1493,11 +1493,11 @@ html.roster-card-embed .person-profile-shell{padding:12px}
  </div>
 </dialog>
 <script src="/visual-layers-render.js?v=optional-uniform-pieces-20261030"></script>
-<script src="/assets/organogram-police-formal.js?v=whole-stage-coat-scale-20261030"></script>
+<script src="/assets/organogram-police-formal.js?v=classic-metal-nameplate-20261030"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
-import '/uniform-assignment-display.js?v=uniform-compositions-20261030';
+import '/uniform-assignment-display.js?v=studio-coats-only-20261030';
 const $=id=>document.getElementById(id);
 const cardParams=new URLSearchParams(location.search);
 const isEmbeddedCard=cardParams.get('embedded')==='1';
@@ -1620,7 +1620,8 @@ function serviceRankKey(rank){
 function makeServiceUniformPortrait(person){
  const dept=String(person?.dept||''),key='uniform_'+dept+'_default';
  const selected=window.BPDUniformAssignments?.forPerson?.(person);
- const src=selected?.uniformUrl||serviceUniformArtworks.get(key);
+ // Old service-default uniforms are retired; display the service icon until an atelier coat is chosen.
+ const src=selected?.uniformUrl||'';
  const iconFallback=window.BPDVisualAssets?.baseIcon?.(dept);
  if(!src&&!iconFallback)return null;
  const outer=el('span','portrait bpd-service-uniform');
