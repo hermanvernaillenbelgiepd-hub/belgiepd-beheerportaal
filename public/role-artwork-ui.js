@@ -50,7 +50,7 @@ export function setupRoleArtworkUI({api,$,notice}){
    kindSelect.value==='specialty'?specialties:[['default','Standaard voor deze hulpdienst']];
   if(!role)for(const [code,name] of known)codePreset.add(new Option(name,code));
  };
- kindSelect.onchange=()=>{badgeStyle.value='';showKind();configureCanvas();void setPreview('');};
+ kindSelect.onchange=()=>{badgeStyle.value='';showKind();configureCanvas();void setPreview('');void reload().catch(e=>message(e.message,true));};
  codePreset.onchange=()=>{
   const preset=(kindSelect.value==='rank'?grades:
    kindSelect.value==='specialty'?specialties:[['default','Standaard']]).find(x=>x[0]===codePreset.value);
@@ -242,8 +242,11 @@ export function setupRoleArtworkUI({api,$,notice}){
  async function reload(){
   const result=await api('/api/role-artwork/manage');
   list.replaceChildren();
-  const rows=result.artworks||[];
-  $p('roleArtworkCount').textContent=rows.length+' opgeslagen logo(s)';
+  // This tab is dedicated to role and specialty artwork. Existing coats and
+  // rank pictures remain preserved for personnel and the uniform studio.
+  const visibleKinds=new Set(['role','specialty','logo','pictogram','patch']);
+  const rows=(result.artworks||[]).filter(row=>visibleKinds.has(row.kind)&&row.kind===kindSelect.value);
+  $p('roleArtworkCount').textContent=rows.length+' '+(labels[kindSelect.value]||'logo')+'-afbeelding(en)';
   for(const row of rows){
    const card=document.createElement('div');card.className='artwork-item';
    const pic=document.createElement('img');pic.alt=row.label;pic.loading='lazy';
@@ -268,7 +271,7 @@ export function setupRoleArtworkUI({api,$,notice}){
    };
    card.append(pic,body,btn,off);list.append(card);
   }
-  if(!rows.length)list.textContent='Nog geen logo’s opgeslagen. Upload je eerste logo hierboven.';
+  if(!rows.length)list.textContent='Geen afbeeldingen in deze categorie. Kies een andere soort of upload een nieuwe badge.';
  }
  const upload=$p('roleArtworkSave');
  upload.onclick=async()=>{

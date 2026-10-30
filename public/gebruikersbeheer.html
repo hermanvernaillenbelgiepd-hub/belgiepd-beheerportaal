@@ -75,6 +75,13 @@ header button{padding:7px 10px;font-size:12px}
 #roleArtworkSection .artwork-crop-controls select{width:auto;min-width:170px}
 #roleArtworkSection .artwork-crop-controls button{padding:8px 10px}
 #uniformSection[hidden]{display:none!important}
+/* Retired uniform panels are permanently removed from the visible interface.
+   Existing images, positional overrides and personal mappings are not deleted. */
+#retiredUniformManagement,
+#retiredUniformManagement[hidden],
+#retiredUniformManagement details,
+#retiredUniformManagement section{display:none!important}
+
 #uniformSection .uniform-assignment-card{padding:15px;margin:18px 0;border:1px solid #426587;background:#10243b;border-radius:11px}
 #uniformSection .uniform-assignment-card h3{margin:0 0 8px}
 #uniformSection .uniform-assignment-list{display:grid;gap:6px;max-height:350px;overflow:auto}
@@ -435,21 +442,21 @@ header button{padding:7px 10px;font-size:12px}
 </section>
 
 <section id="roleArtworkSection" class="card" data-authorized="no" hidden>
-<h2>🎨 Centrale bibliotheek — uniformen, graden & insignes</h2>
-<p>Upload of vervang logo’s, graden, medailles, helmen, beroepstekens en pictogrammen per hulpdienst. De afbeeldingen worden permanent in Firebase bewaard. Een nieuw logo verandert <strong>nooit</strong> Discord-rollen, lidmaatschappen of toegangsrechten.</p>
+<h2>🎨 Rollenlogo’s, specialisatiebadges en dienstlogo’s</h2>
+<p>Hier beheer je de pictogrammen en patches van rollen en specialisaties. <strong>Uniformen, gradenplaten, helmen, beroepstekens en eretekens</strong> upload en positioneer je in het <strong>Uniformatelier</strong>. Bestaande afbeeldingen blijven veilig bewaard in Firebase; deze bibliotheek wijzigt geen Discord-rollen, lidmaatschappen of rechten.</p>
 <div class="grid">
  <div><label for="roleArtworkKind">Wat wil je aanpassen?</label><select id="roleArtworkKind">
  <option value="role">Discord-rol / functiepatch</option>
- <option value="rank">Gradenteken op personeelslijst en profiel</option>
- <option value="uniform">Nieuw uniform (koppelbaar per dienst, kader, graad of persoon)</option>
+
+
  <option value="specialty">Specialisatiepictogram op personeelslijst</option>
- <option value="medal">Medaille / onderscheiding (alleen bibliotheek)</option>
- <option value="helmet">Helm (Brandweer)</option>
- <option value="profession">Beroepsteken (Ambulance)</option>
+
+
+
  <option value="logo">Dienstlogo (Depannage en andere diensten)</option>
  <option value="pictogram">Basispictogram (Burger / toekomstige diensten)</option>
  <option value="patch">Overige uniformpatch</option>
- <option value="award">Ereteken / lintje (alleen bibliotheek)</option>
+
  </select></div>
  <div id="roleArtworkPresetWrap"><label for="roleArtworkPreset">Bestaande specialisatie / rol</label><select id="roleArtworkPreset"></select></div>
  <div id="roleArtworkBadgeStyleWrap" hidden><label for="roleArtworkBadgeStyle">Uitvoering specialisatiebadge</label><select id="roleArtworkBadgeStyle"><option value="">Algemeen / bestaande versie</option><option value="lokaal">Lokaal</option><option value="federaal">Federaal</option></select></div>
@@ -459,7 +466,7 @@ header button{padding:7px 10px;font-size:12px}
  <div id="roleArtworkRoleIdWrap"><label for="roleArtworkRoleId">Discord-rol-ID</label><input id="roleArtworkRoleId" maxlength="22" inputmode="numeric" pattern="[0-9]{15,22}" placeholder="Bijv. 1358148694297415741"></div>
  <div id="roleArtworkVariantWrap"><label for="roleArtworkVariant">Variant</label><select id="roleArtworkVariant"><option value="standard">Standaard / rol</option><option value="instructeur">Instructeur (aparte badge bij gedeelde rol)</option></select></div>
  <div><label for="roleArtworkLabel">Naam van het logo</label><input id="roleArtworkLabel" maxlength="75" placeholder="Bijv. MOTARD · Volwaardig"></div>
- <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 5 MB. Graden- en rolpatches blijven 16:5; medailles worden verticaal bewaard, helmen en logo’s vierkant. Je kunt de uitsnede verslepen en schalen.</small></div>
+ <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 5 MB. Rolpatches blijven 16:5. Dienstlogo’s en pictogrammen worden passend uitgesneden. Je kunt de uitsnede verslepen en schalen.</small></div>
  <div><label id="roleArtworkFormatLabel">Voorbeeld (170 × 53,125 px)</label><div class="artwork-preview"><img id="roleArtworkPreview" width="170" height="53" alt="Voorbeeld van de gekozen patch" hidden></div></div>
 </div>
 <div class="artwork-crop-section" id="roleArtworkCropSection" hidden>
@@ -510,10 +517,10 @@ header button{padding:7px 10px;font-size:12px}
 </section>
 
 <section id="uniformSection" class="card" data-authorized="no" hidden>
- <h2>🧥 Uniformbeheer per hulpdienst</h2>
+ <h2>🧥 Uniformatelier per hulpdienst</h2>
 
 <section id="uniformComposer" class="uniform-composer" hidden>
- <h3>Uniformatelier — één uniform per graad samenstellen</h3>
+ <h3>Uniform samenstellen per graad</h3>
  <p class="muted">Afbeeldingen worden centraal in Firebase bewaard. Kies een graad en de onderdelen met hun tekening. Sleep de naam, gradenplaat en eretekens op hun plaats. Bewaar alles met één klik.</p>
  <div class="compose-head">
   <label>Hulpdienst <select id="composeDept"></select></label>
@@ -558,6 +565,9 @@ header button{padding:7px 10px;font-size:12px}
  <p id="composeStatus" class="muted" role="status" aria-live="polite"></p>
 </section>
 
+<!-- Legacy editors retained as non-interactive, hidden backing structures solely
+     for compatibility during the migration of existing personnel visuals. -->
+<div id="retiredUniformManagement" hidden inert aria-hidden="true">
 <details class="uniform-legacy-editor"><summary><strong>Oude uniformtoewijzingen (geavanceerd)</strong></summary>
 <section id="uniformQuickSection" hidden>
  <h3>Uniform kiezen en gradenplaten visueel toewijzen</h3>
@@ -780,6 +790,7 @@ header button{padding:7px 10px;font-size:12px}
  <div id="uniformStatus" class="muted" role="status" aria-live="polite">Uniformbeheer laden…</div>
  <p class="muted">Deze instellingen dienen voor de positionering van bestaande uniformvarianten. De nieuwe afbeeldingen kies je bovenaan per uniform en graad. Een oude uniformafbeelding wordt niet automatisch opnieuw geselecteerd.</p>
 </details>
+</div>
 </section>
 </main>
 <script type="module">
@@ -1590,13 +1601,13 @@ async function refresh(){
   try{if(await dossierGrants.load())$('dossierGrantSection').dataset.authorized='yes'}catch(e){notice('Dienstbeheer: '+e.message,true)}
   await loadLeaveGrantManager();
   await roleArtwork.load();
-  await uniformManagement.load();
-  await visualLayerManagement.load();
-  await uniformAssignments.load();await uniformQuick.load();await uniformComposer.load();await uniformLibrary.load();
+  // Retired uniform editors are not loaded; their data remains unchanged.
+  
+  await uniformComposer.load();await uniformLibrary.load();
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformManagement.load();await visualLayerManagement.load();await uniformAssignments.load();await uniformQuick.load();await uniformComposer.load();await uniformLibrary.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformComposer.load();await uniformLibrary.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());

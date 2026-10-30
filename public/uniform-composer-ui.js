@@ -226,6 +226,8 @@ export function setupUniformComposer({api,$}){
   oldAssignments=prior.assignments||[];
   people=persons.records||[];awards=catalog.catalog||[];
   visibleDepts=rights.editableDepartments||[];
+  // The atelier alone determines the visibility of the uniform tab.
+  $('uniformSection').dataset.authorized=visibleDepts.length?'yes':'no';
   cloudReady=Boolean(rights.storageReady);
   dept.replaceChildren();
   for(const [value,title]of services)if(visibleDepts.includes(value))dept.append(new Option(title,value));
@@ -314,5 +316,5 @@ export function setupUniformComposer({api,$}){
   if(dirty()&&!window.confirm('Niet-opgeslagen uniformopmaak verwerpen?'))return;
   load(true).catch(e=>notify(e.message,true));
  };
- return {load:()=>load().catch(e=>{notify(e.message,true);return false})};
+ return {load:()=>load().catch(e=>{$('uniformSection').dataset.authorized='no';notify(e.message,true);return false})};
 }
