@@ -57,6 +57,24 @@ function forPerson(p){
    const image=found&&assetUrls.get(kind+'_'+dept+'_'+found.assetCode);
    if(image){elementCodes[kind]=found.assetCode;elementUrls[kind]=image;break;}
   }
+  // A well-named upload works immediately: no manual image-to-uniform link.
+  // Explicit per-person / per-grade selection above always takes priority.
+  if(!elementUrls[kind]){
+   const rankCode=nameCode(p.rank);
+   const policeRankAliases={'100':'ap','200':'ap','300':'ainp',
+    '400':'inp','500':'1inp','600':'ahinp','700':'hinp',
+    '800':'1hinp','900':'1hcp','910':'1cp','920':'acp','930':'acp'};
+   const candidates=kind==='rank'?
+    (dept==='politie'?[series,policeRankAliases[series],rankCode]:[rankCode]):
+    kind==='helmet'&&dept==='brandweer'?[rankCode]:
+    kind==='profession'&&dept==='ambulance'?[functionCode]:
+    [];
+   for(const guessed of candidates){
+    if(!guessed)continue;
+    const url=assetUrls.get(kind+'_'+dept+'_'+guessed);
+    if(url){elementCodes[kind]=guessed;elementUrls[kind]=url;break;}
+   }
+  }
  }
  return {uniformCode,badgeStyle,uniformGroup:group,callSeries:series,profession:functionCode,elementCodes,elementUrls,
   rankUrl:elementUrls.rank||'',
