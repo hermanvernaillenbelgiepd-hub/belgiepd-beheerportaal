@@ -1,7 +1,8 @@
 // Presentation-only uniform grouping; never alters operational ranks or access.
 // Stable names are used for explicitly configurable image assignment rules.
 export const POLICE_UNIFORM_GROUPS=Object.freeze([
- {code:'basis_tm_ahinp',label:'Basisuniform — Agent t.e.m. A-HINP'},
+ {code:'agentenkader',label:'Agentenkader — 100/200'},
+ {code:'basis_tm_ahinp',label:'Basiskader t.e.m. A-HINP — 300/400/500/600'},
  {code:'hinp_1hinp',label:'HINP en 1-HINP'},
  {code:'officieren',label:'Officierenkader en Korpsleiding'}
 ]);
@@ -40,12 +41,14 @@ export function policeUniformGroup(person){
  if(person?.dept!=='politie')return '';
  const series=policeCallSeries(person.call);
  const n=Number(series);
- if(series&&n>=100&&n<=600)return 'basis_tm_ahinp';
+ if(series&&(n===100||n===200))return 'agentenkader';
+ if(series&&n>=300&&n<=600)return 'basis_tm_ahinp';
  if(series&&n>=700&&n<=800)return 'hinp_1hinp';
  if(series&&n>=900&&n<=930)return 'officieren';
  // For legacy records with no usable call, infer display group from a known rank.
  const rank=normalizeVisual(person.rank);
- if(['agent_van_politie','aspirant_inspecteur','inspecteur','eerste_inspecteur',
+ if(rank==='agent_van_politie'||rank==='ap')return 'agentenkader';
+ if(['aspirant_inspecteur','inspecteur','eerste_inspecteur',
   'aspirant_hoofdinspecteur','a_hinp'].includes(rank))return 'basis_tm_ahinp';
  if(['hoofdinspecteur','eerste_hoofdinspecteur'].includes(rank))return 'hinp_1hinp';
  if(['aspirant_commissaris','commissaris','eerste_commissaris',
