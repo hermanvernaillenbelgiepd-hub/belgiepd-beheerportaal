@@ -10,7 +10,7 @@ export const ROLE_ARTWORK_AUDIT='bpd_role_artwork_audit';
 const ID=/^\d{15,22}$/;
 const VARIANT=/^[a-z][a-z0-9_]{0,39}$/;
 const DEPTS=['politie','brandweer','ambulance','depannage','burger'];
-const ARTWORK_KEY=/^(?:\d{15,22}_[a-z][a-z0-9_]{0,39}|(?:rank|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39})$/;
+const ARTWORK_KEY=/^(?:\d{15,22}_[a-z][a-z0-9_]{0,39}|(?:rank|specialty|uniform)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39})$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const MAX_BYTES=140*1024;
 const keyFor=(roleId,variant)=>roleId+'_'+variant;
@@ -68,8 +68,8 @@ export function validatePersonnelArtwork(body){
  const kind=String(body.kind||'');
  const department=String(body.department||'politie');
  const code=String(body.code||'').toLowerCase().trim();
- if(!['rank','specialty'].includes(kind)||!DEPTS.includes(department)||!CODE.test(code))
-  throw fail(400,'Ongeldige graad, specialisatie of hulpdienst');
+ if(!['rank','specialty','uniform'].includes(kind)||!DEPTS.includes(department)||!CODE.test(code))
+  throw fail(400,'Ongeldige graad, specialisatie, uniform of hulpdienst');
  // Reuse all binary/motivation/label checks from the role uploader while
  // avoiding the need for a fake Discord role ID.
  const validated=validateRoleArtwork({
