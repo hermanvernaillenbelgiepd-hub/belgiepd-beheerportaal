@@ -34,6 +34,6 @@ test('one simple editor replaces repeated manual art-to-coat linking',()=>{
  assert.match(quick,/getUniformTargets\(/);
  assert.match(quick,/getMarkTargets\(/);
  assert.match(quick,/openUploader\(/);
- assert.match(display,/matching group or medical function/);
+ assert.match(display,/Conventional group codes allow a single image upload/);
  assert.match(layers,/One sensible initial placement/);
 });
