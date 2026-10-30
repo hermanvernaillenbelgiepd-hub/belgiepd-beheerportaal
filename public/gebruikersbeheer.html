@@ -327,6 +327,39 @@ header button{padding:7px 10px;font-size:12px}
  justify-content:center;overflow:hidden;white-space:nowrap;text-align:center
 }
 
+
+/* Uniformatelier parity: a separate thin gold/silver emblem to the left of
+   the black name-and-call area. Never use the old hatch-filled corner. */
+.compose-layer .compose-nameplate{
+ background:linear-gradient(90deg,transparent 0 19%,#101a2b 19%,#070e1b 100%)!important;
+ border:0!important;border-radius:0;isolation:isolate;
+ box-shadow:none!important;padding:1% 4% 1% 22%;
+}
+.compose-layer .compose-nameplate::before{
+ content:none!important;display:none!important;background:none!important;
+}
+.compose-layer .compose-nameplate::after{
+ left:22%;width:74%;
+}
+.compose-layer .compose-nameplate>.compose-name,
+.compose-layer .compose-nameplate>.compose-call{
+ z-index:3;
+}
+.compose-layer .compose-nameplate>.compose-nameplate-left-accent{
+ position:absolute;left:1.5%;top:9%;width:15%;height:82%;
+ z-index:2;background:none!important;display:block;pointer-events:none;
+ overflow:visible;
+}
+.compose-layer .compose-nameplate>.compose-nameplate-left-accent>.compose-nameplate-left-accent-stripe{
+ position:absolute;top:4%;height:91%;width:1.25px;
+ transform:skewX(-24deg);background:var(--plate-thread);
+ border-radius:1px;opacity:.96;
+}
+.compose-layer .compose-nameplate>.compose-nameplate-left-accent>.compose-nameplate-left-accent-stripe:nth-child(1){left:12%}
+.compose-layer .compose-nameplate>.compose-nameplate-left-accent>.compose-nameplate-left-accent-stripe:nth-child(2){left:36%}
+.compose-layer .compose-nameplate>.compose-nameplate-left-accent>.compose-nameplate-left-accent-stripe:nth-child(3){left:60%}
+.compose-layer .compose-nameplate>.compose-nameplate-left-accent>.compose-nameplate-left-accent-stripe:nth-child(4){left:84%}
+
 </style>
 </head>
 <body>
