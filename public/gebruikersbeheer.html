@@ -183,6 +183,41 @@ header button{padding:7px 10px;font-size:12px}
 #uniformQuickSection .uniform-grade-choice img{display:block;width:100%;height:65px;object-fit:contain}
 #uniformQuickSection .uniform-grade-choice small{font-size:11px;text-align:center;overflow-wrap:anywhere}
 #uniformQuickSection .uniform-grade-blank{font-size:30px;color:#a7c5e5}
+
+.uniform-composer{border:1px solid #6585a9;background:#10283e;border-radius:10px;padding:15px;margin:10px 0 19px}
+.uniform-composer[hidden]{display:none}
+.compose-head{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:12px 0}
+.compose-head label{min-width:220px;flex:1;max-width:400px}
+.compose-head select{width:100%;margin-top:4px}
+.compose-layout{display:grid;grid-template-columns:minmax(270px,1fr) minmax(280px,1fr);gap:14px}
+.compose-view,.compose-library{border:1px solid #3e607f;border-radius:9px;background:#091e32;padding:10px;min-width:0}
+.compose-canvas{position:relative;width:100%;aspect-ratio:603/469;background:#152d47;border:1px solid #5c7898;border-radius:9px;overflow:hidden;touch-action:none}
+.compose-coat{position:absolute;width:100%;height:100%;inset:0;object-fit:contain;pointer-events:none}
+.compose-empty{display:grid;place-items:center;color:#b9d2ea;height:100%}
+.compose-layer{position:absolute;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;user-select:none;outline:1px dashed #8cacc9;background:#10243f70;font-size:10px;color:#fff;overflow:hidden}
+.compose-layer.active{outline:2px solid #ffdf90;background:#10243f20}
+.compose-layer img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.compose-types{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px}
+.compose-type{padding:6px 9px;font-size:12px}
+.compose-type.active{background:#326db1;color:#fff}
+.compose-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-height:300px;overflow-y:auto}
+.compose-choice{border:1px solid #507699;border-radius:7px;background:#15334f;padding:7px;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:86px;color:#e7f2ff;font-size:11px}
+.compose-choice.active{outline:2px solid #c0e0ff;background:#275b8a}
+.compose-choice img{display:block;width:100%;height:65px;object-fit:contain}
+.compose-choice small{text-align:center;overflow-wrap:anywhere}
+.compose-symbol{font-size:29px}
+.compose-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:10px 0}
+.compose-controls[hidden]{display:none}
+.compose-controls label{display:flex;flex-direction:column;gap:3px;font-size:12px}
+.compose-controls input[type=range]{width:100%}
+.compose-buttons{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px}
+.compose-upload{display:flex;flex-wrap:wrap;gap:9px;align-items:end;background:#152e48;border:1px solid #59799d;border-radius:9px;padding:12px;margin:8px 0}
+.compose-upload[hidden]{display:none}
+.compose-upload label{display:flex;flex-direction:column;gap:4px;font-size:12px;min-width:165px;flex:1}
+.compose-upload input,.compose-upload select{max-width:100%}
+@media(max-width:850px){.compose-layout{grid-template-columns:1fr}.compose-gallery{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:500px){.compose-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 #uniformSection .uniform-legacy-editor{margin-top:18px;border:1px solid #4b6b8e;border-radius:9px;padding:10px;background:#0e2239}
 #uniformSection .uniform-legacy-editor>summary{font-size:13px;cursor:pointer;color:#d4e9ff;padding:4px}
 #uniformSection .uniform-legacy-editor[open]>summary{margin-bottom:14px}
@@ -431,6 +466,54 @@ header button{padding:7px 10px;font-size:12px}
 
 <section id="uniformSection" class="card" data-authorized="no" hidden>
  <h2>🧥 Uniformbeheer per hulpdienst</h2>
+
+<section id="uniformComposer" class="uniform-composer" hidden>
+ <h3>Uniformatelier — één uniform per graad samenstellen</h3>
+ <p class="muted">Afbeeldingen worden centraal in Firebase bewaard. Kies een graad en de onderdelen met hun tekening. Sleep de naam, gradenplaat en eretekens op hun plaats. Bewaar alles met één klik.</p>
+ <div class="compose-head">
+  <label>Hulpdienst <select id="composeDept"></select></label>
+  <label>Graad of hoedanigheid <select id="composeGrade"></select></label>
+  <button type="button" class="alt" id="composeRefresh">Vernieuwen</button>
+  <button type="button" class="alt" id="composeUploadLink">+ Afbeelding uploaden</button>
+ </div>
+ <div id="composeUploadPanel" class="compose-upload" hidden>
+  <label>Soort afbeelding <select id="composeUploadKind">
+   <option value="uniform">Uniform</option><option value="rank">Gradenplaat</option>
+   <option value="helmet">Helm</option><option value="profession">Beroepsteken</option>
+   <option value="logo">Logo</option><option value="medal">Medaille</option>
+   <option value="ribbon">Erelint</option>
+  </select></label>
+  <label>Naam <input id="composeUploadName" maxlength="75" placeholder="Bijv. Hoofdinspecteur"></label>
+  <label>PNG, JPG of WebP <input id="composeUploadFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
+  <button type="button" id="composeUploadSave">Afbeelding toevoegen</button>
+  <button type="button" id="composeUploadClose" class="alt">Sluiten</button>
+ </div>
+ <div class="compose-layout">
+  <section class="compose-view">
+   <h4>Uniformvoorbeeld</h4><p id="composeGradeTitle" class="muted"></p>
+   <div id="composePreview" class="compose-canvas" aria-label="Uniformafbeelding met versleepbare onderdelen"></div>
+   <div id="composePosition" class="compose-controls" hidden>
+    <label>Links/rechts <output id="composeTextleft"></output><input id="composeX" type="range" min="0" max="98" step=".25"></label>
+    <label>Omhoog/omlaag <output id="composeTexttop"></output><input id="composeY" type="range" min="0" max="98" step=".25"></label>
+    <label>Breedte <output id="composeTextwidth"></output><input id="composeW" type="range" min="2" max="90" step=".25"></label>
+    <label>Hoogte <output id="composeTextheight"></output><input id="composeH" type="range" min="2" max="90" step=".25"></label>
+    <label><input type="checkbox" id="composeVisible" checked> Onderdeel zichtbaar</label>
+   </div>
+  </section>
+  <section class="compose-library">
+   <h4>Onderdelen kiezen</h4><div id="composeTypes" class="compose-types"></div>
+   <h4 id="composeGalleryTitle">Afbeeldingen</h4><div id="composeGallery" class="compose-gallery"></div>
+   <small>Bij medailles kun je de positie met een voorbeeldtekening bepalen. Het toekennen van eretekens aan personeelsleden blijft afzonderlijk en bevoegdheidsgebonden.</small>
+  </section>
+ </div>
+ <div class="compose-buttons">
+  <button type="button" id="composeSave">Volledig uniform bewaren</button>
+  <span id="composePending" class="muted">Alles opgeslagen</span>
+ </div>
+ <p id="composeStatus" class="muted" role="status" aria-live="polite"></p>
+</section>
+
+<details class="uniform-legacy-editor"><summary><strong>Oude uniformtoewijzingen (geavanceerd)</strong></summary>
 <section id="uniformQuickSection" hidden>
  <h3>Uniform kiezen en gradenplaten visueel toewijzen</h3>
  <p class="muted">Kies bovenaan het gewenste nieuwe uniform per groep. Open daarna onderaan dat uniform en kies bij iedere graad een tekening uit de afbeeldingenlijst. De oude standaarduniformen worden niet meer als nieuwe keuze aangeboden. Aanpassen van naam- en gradenplaatpositie blijft afzonderlijk mogelijk.</p>
@@ -447,7 +530,7 @@ header button{padding:7px 10px;font-size:12px}
  <div id="uniformQuickMarks" class="uniform-quick-list" aria-label="Gradentekens en beroepen per graad"></div>
  <p id="uniformQuickStatus" class="muted" role="status" aria-live="polite">Overzicht laden…</p>
  <small>Een nieuwe afbeelding upload je éénmaal in de centrale bibliotheek. Standaardtekeningen en bestaande koppelingen blijven behouden zolang je niets verandert.</small>
- </section>
+ </section></details>
  <details class="uniform-legacy-editor"><summary><strong>Geavanceerd: naamplaat, gradenplaat, grootte en positie aanpassen</strong></summary>
  <p>Beheer de uniformafbeelding en de exacte plaats van het gradenteken zonder een codewijziging. Dit verandert uitsluitend de <strong>weergave</strong>, niet de Discord-rollen, rangen of dossierbevoegdheden.</p>
  <div class="grid">
@@ -661,6 +744,7 @@ import {setupUniformManagementUI} from '/uniform-management-ui.js?v=optional-uni
 import {setupVisualLayerUI} from '/visual-layer-ui.js?v=optional-uniform-pieces-20261030';
 import {setupUniformAssignmentUI} from '/uniform-assignment-ui.js';
 import {setupUniformQuickUI} from '/uniform-quick-ui.js?v=illustrated-uniform-20261030';
+import {setupUniformComposer} from '/uniform-composer-ui.js?v=one-grade-editor-20261030';
 import {setupUniformLibraryUI} from '/uniform-library-ui.js?v=cloud-library-20261030';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
@@ -722,6 +806,7 @@ const uniformManagement=setupUniformManagementUI({api,$,notice});
 const visualLayerManagement=setupVisualLayerUI({api,$,notice});
 const uniformAssignments=setupUniformAssignmentUI({api,$,notice});
 const uniformQuick=setupUniformQuickUI({api,$,notice});
+const uniformComposer=setupUniformComposer({api,$,notice});
 const uniformLibrary=setupUniformLibraryUI({api,$,notice});
 let tabChoice=window.location.hash==='#dienstbeheer'?'services':
   window.location.hash==='#verlofmachtigingen'?'leave':'accounts';
@@ -1462,11 +1547,11 @@ async function refresh(){
   await roleArtwork.load();
   await uniformManagement.load();
   await visualLayerManagement.load();
-  await uniformAssignments.load();await uniformQuick.load();await uniformLibrary.load();
+  await uniformAssignments.load();await uniformQuick.load();await uniformComposer.load();await uniformLibrary.load();
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformManagement.load();await visualLayerManagement.load();await uniformAssignments.load();await uniformQuick.load();await uniformLibrary.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformManagement.load();await visualLayerManagement.load();await uniformAssignments.load();await uniformQuick.load();await uniformComposer.load();await uniformLibrary.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());

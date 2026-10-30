@@ -458,6 +458,14 @@
   plate.append(name,call);
   return plate;
  }
+ function applyCompositePlace(node,person,kind){
+  const data=window.BPDUniformAssignments?.forPerson?.(person)?.visualLayout?.[kind];
+  if(!node||!data)return;
+  if(data.visible===false){node.style.display='none';return;}
+  for(const prop of ['left','top','width','height'])
+   if(typeof data[prop]==='number'&&data[prop]>=0&&data[prop]<=100)
+    node.style[prop]=data[prop]+'%';
+ }
  function makePortrait(person,large=false){
   if(person?.dept!=='politie')return null;
   const grade=gradeFor(person);
@@ -492,9 +500,10 @@
    stage.append(img);
    const plate=makeGoldNameplate(person);
    applyUniformNameplatePlacement(plate,'gold');
+   applyCompositePlace(plate,person,'name');
    stage.append(plate);
    const rack=window.BPDDecorations?.uniformRack(person.awards);
-   if(rack?.ribbons)stage.append(rack.ribbons);
+   if(rack?.ribbons){applyCompositePlace(rack.ribbons,person,'ribbons');stage.append(rack.ribbons);}
    const chest=document.createElement('span');
    chest.className='bpd-chest-insignia bpd-gold-cloth-rank';
    chest.dataset.grade=grade?.key||'unknown';
@@ -508,8 +517,9 @@
    patchImage.decoding='async';
    chest.append(patchImage);
    applyUniformInsigniaPlacement(chest,'gold');
+   applyCompositePlace(chest,person,'rank');
    stage.append(chest);
-   if(rack?.medals)stage.append(rack.medals);
+   if(rack?.medals){applyCompositePlace(rack.medals,person,'medals');stage.append(rack.medals);}
    window.BPDVisualAssets?.appendTo?.(stage,person,'gold');
    outer.append(stage);
    return outer;
@@ -535,9 +545,10 @@
   stage.append(image);
   const nameplate=makeSilverWovenNameplate(person);
   applyUniformNameplatePlacement(nameplate,'silver');
+   applyCompositePlace(nameplate,person,'name');
   stage.append(nameplate);
   const rack=window.BPDDecorations?.uniformRack(person.awards);
-  if(rack?.ribbons)stage.append(rack.ribbons);
+  if(rack?.ribbons){applyCompositePlace(rack.ribbons,person,'ribbons');stage.append(rack.ribbons);}
   const patch=document.createElement('span');
   patch.className='bpd-chest-insignia bpd-silver-cloth-rank';
   patch.dataset.grade=grade?.key||'unknown';
@@ -551,8 +562,9 @@
   patchImage.decoding='async';
   patch.append(patchImage);
   applyUniformInsigniaPlacement(patch,'silver');
+   applyCompositePlace(patch,person,'rank');
   stage.append(patch);
-  if(rack?.medals)stage.append(rack.medals);
+  if(rack?.medals){applyCompositePlace(rack.medals,person,'medals');stage.append(rack.medals);}
   window.BPDVisualAssets?.appendTo?.(stage,person,'silver');
   outer.append(stage);
   return outer;

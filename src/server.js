@@ -32,6 +32,7 @@ import {installUniformAssignmentRoutes} from './uniform-assignment-routes.js';
 import {installVisualLayerRoutes} from './visual-layer-routes.js';
 import {installUniformLibraryRoutes} from './uniform-library-routes.js';
 import {installUniformGradeRoutes} from './uniform-grade-routes.js';
+import {installUniformCompositionRoutes} from './uniform-composition-routes.js';
 import {installTrainingRequestRoutes} from './training-request-routes.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
@@ -85,6 +86,7 @@ app.use('/api/role-artwork',express.json({limit:'230kb',strict:true}));
 app.use('/api/uniform-management',express.json({limit:'4kb',strict:true}));
 app.use('/api/uniform-library',express.json({limit:'6mb',strict:true}));
 app.use('/api/uniform-assignments',express.json({limit:'4kb',strict:true}));
+app.use('/api/uniform-compositions',express.json({limit:'16kb',strict:true}));
 app.use('/api/visual-layers',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
@@ -592,6 +594,7 @@ installUniformAssignmentRoutes(app,{requireUser});
 installVisualLayerRoutes(app,{requireUser});
 installUniformLibraryRoutes(app,{requireUser});
 installUniformGradeRoutes(app,{requireUser});
+installUniformCompositionRoutes(app,{requireUser});
 installManualRoleRoutes(app,{requireUser});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{

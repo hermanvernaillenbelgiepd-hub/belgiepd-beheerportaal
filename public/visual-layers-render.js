@@ -54,7 +54,7 @@
  function hasProfessionLayer(person,variant){
   const visual=window.BPDUniformAssignments?.forPerson?.(person);
   return Boolean(visual?.elementUrls?.profession)&&
-   layerAllowed(person.dept,'profession');
+   visual?.visualLayout?.profession?.visible!==false&&layerAllowed(person.dept,'profession');
  }
  function appendTo(stage,person,variant){
   if(!stage||!person)return;
@@ -69,10 +69,13 @@
     // A display rule must never impersonate an actual earned specialization.
     if(!hasAssignment(person,layer))continue;
    }else if(selected?layer.code!==selected:!hasAssignment(person,layer))continue;
+   const placement=window.BPDUniformAssignments?.forPerson?.(person)?.visualLayout?.[layer.kind];
+   if(placement?.visible===false)continue;
+   const at=placement||layer;
    const wrapper=document.createElement('span');
    wrapper.className='bpd-custom-uniform-layer';
    wrapper.style.cssText='position:absolute;pointer-events:none;display:block;overflow:hidden;'+
-    'left:'+layer.left+'%;top:'+layer.top+'%;width:'+layer.width+'%;height:'+layer.height+
+    'left:'+at.left+'%;top:'+at.top+'%;width:'+at.width+'%;height:'+at.height+
     '%;z-index:'+layer.zIndex+';';
    const img=document.createElement('img');
    img.src=layer.src;img.alt='';img.loading='lazy';
@@ -85,18 +88,21 @@
   const selected=window.BPDUniformAssignments?.forPerson?.(person);
   const defaults={
    helmet:{left:19,top:2,width:62,height:34,zIndex:9},
-   profession:{left:52,top:43,width:23,height:13,zIndex:9}
+   profession:{left:52,top:43,width:23,height:13,zIndex:9},
+   logo:{left:72,top:26,width:14,height:14,zIndex:9}
   };
   for(const [kind,position] of Object.entries(defaults)){
    const url=selected?.elementUrls?.[kind];
+   if(selected?.visualLayout?.[kind]?.visible===false)continue;
+   const coords=selected?.visualLayout?.[kind]||position;
    if(!url||drawn.has(kind)||!layerAllowed(person.dept,kind)||
     (kind==='helmet'&&person.dept!=='brandweer')||
     (kind==='profession'&&person.dept!=='ambulance'))continue;
    const frame=document.createElement('span');
    frame.className='bpd-custom-uniform-layer';
    frame.style.cssText='position:absolute;pointer-events:none;display:block;overflow:hidden;'+
-    'left:'+position.left+'%;top:'+position.top+'%;width:'+position.width+'%;height:'+
-    position.height+'%;z-index:'+position.zIndex+';';
+    'left:'+coords.left+'%;top:'+coords.top+'%;width:'+coords.width+'%;height:'+
+    coords.height+'%;z-index:'+position.zIndex+';';
    const img=document.createElement('img');
    img.src=url;img.alt='';img.loading='lazy';
    img.style.cssText='display:block;width:100%;height:100%;object-fit:contain';
