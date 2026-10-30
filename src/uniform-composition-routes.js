@@ -49,6 +49,8 @@ export function validateComposition(body){
   assets[kind]=value;
  }
  if(!assets.uniform)throw bad(400,'Kies een basisuniform voor deze graad');
+ if(['silver','gold','default'].includes(assets.uniform))
+  throw bad(400,'Het oude standaarduniform kan niet meer worden geselecteerd');
  if(!body.layers||Array.isArray(body.layers)||typeof body.layers!=='object'||
   Object.keys(body.layers).some(k=>!LAYERS.includes(k)))
   throw bad(400,'Ongeldige uniformeigenschappen');
