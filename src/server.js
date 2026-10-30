@@ -28,6 +28,7 @@ import {installDiscordDiagnosticRoutes} from './discord-role-diagnostics-routes.
 import { installRoleRoutes } from './role-routes.js';
 import {installRoleArtworkRoutes} from './role-artwork-routes.js';
 import {installUniformManagementRoutes} from './uniform-management-routes.js';
+import {installUniformAssignmentRoutes} from './uniform-assignment-routes.js';
 import {installVisualLayerRoutes} from './visual-layer-routes.js';
 import {installTrainingRequestRoutes} from './training-request-routes.js';
 import { createTestPersonnel } from './test-personnel.js';
@@ -80,6 +81,7 @@ app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/role-artwork',express.json({limit:'230kb',strict:true}));
 app.use('/api/uniform-management',express.json({limit:'4kb',strict:true}));
+app.use('/api/uniform-assignments',express.json({limit:'4kb',strict:true}));
 app.use('/api/visual-layers',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
@@ -583,6 +585,7 @@ installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installRoleArtworkRoutes(app,{requireUser});
 installUniformManagementRoutes(app,{requireUser});
+installUniformAssignmentRoutes(app,{requireUser});
 installVisualLayerRoutes(app,{requireUser});
 installManualRoleRoutes(app,{requireUser});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
