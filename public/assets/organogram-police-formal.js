@@ -502,7 +502,7 @@
    chest.setAttribute('role','img');
    const patchImage=document.createElement('img');
    patchImage.className='bpd-gold-grade-art';
-   patchImage.src=window.BPDUniformAssignments?.forPerson?.(person)?.rankUrl||gradeArt(grade)||GRADE_ASSETS.acp;
+   patchImage.src=window.BPDUniformAssignments?.forPerson?.(person)?.rankUrl||gradeArtworkOverrides.get(window.BPDUniformAssignments?.forPerson?.(person)?.callSeries)||gradeArt(grade)||GRADE_ASSETS.acp;
    patchImage.alt='';
    patchImage.loading='eager';
    patchImage.decoding='async';
@@ -545,7 +545,7 @@
   patch.setAttribute('aria-label','Geborduurde gradenplaat: '+(grade?.label||'Onbekend'));
   const patchImage=document.createElement('img');
   patchImage.className='bpd-silver-grade-art';
-  patchImage.src=window.BPDUniformAssignments?.forPerson?.(person)?.rankUrl||gradeArt(grade)||GRADE_ASSETS.ap;
+  patchImage.src=window.BPDUniformAssignments?.forPerson?.(person)?.rankUrl||gradeArtworkOverrides.get(window.BPDUniformAssignments?.forPerson?.(person)?.callSeries)||gradeArt(grade)||GRADE_ASSETS.ap;
   patchImage.alt='';
   patchImage.loading='eager';
   patchImage.decoding='async';
