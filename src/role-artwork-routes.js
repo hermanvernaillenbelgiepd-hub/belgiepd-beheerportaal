@@ -122,14 +122,14 @@ export function installRoleArtworkRoutes(app,{requireUser}){
  });
  app.get('/api/role-artwork/manifest',requireUser,async(_req,res)=>{
   try{
-   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(350).get();
+   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(1200).get();
    res.set('Cache-Control','private, no-store');
    return res.json({artworks:snap.docs.filter(d=>d.get('active')===true).map(metaData)});
   }catch(e){return error(res,e)}
  });
  app.get('/api/role-artwork/manage',requireUser,allowed,async(_req,res)=>{
   try{
-   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(350).get();
+   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(1200).get();
    res.set('Cache-Control','private, no-store');
    return res.json({canEdit:true,artworks:snap.docs.filter(d=>mayEditDepartment(_req.bpd,d.get('department')||'politie')).map(d=>({...metaData(d),
     active:d.get('active')===true,updatedBy:d.get('updatedBy')||''}))});
