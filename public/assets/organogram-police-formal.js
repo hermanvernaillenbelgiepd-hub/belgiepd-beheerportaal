@@ -447,110 +447,33 @@
   return /\b(?:ACP|CP|1-?CP|HCP|1-?HCP)\b|\b(?:hoofdcommissaris|commissaris)\b/i.test(title);
  }
  const metalClass=person=>goldLettering(person)?' bpd-nameplate-metal-gold':' bpd-nameplate-metal-silver';
- function makeNameplate(person,zoom=false){
+ // One unified woven nameplate for every police grade. The uploaded coat may
+ // contain an obsolete rounded badge underneath; the solid flat plate above
+ // is sized by CSS to cover it completely. Real rank insignia stays on its
+ // own chest panel and is never painted into the nameplate again.
+ function makeWovenNameplate(person,zoom=false){
   if(person?.dept!=='politie')return null;
-  const details=nameplateData(person);
+  const variant=goldLettering(person)?'gold':'silver';
+  const details=nameplateTextData(person,variant);
   const plate=document.createElement('span');
-  plate.className='bpd-personal-nameplate'+metalClass(person)+(zoom?' bpd-nameplate-zoom':'');
+  plate.className='bpd-personal-nameplate bpd-woven-nameplate'+
+   metalClass(person)+(zoom?' bpd-nameplate-zoom':'');
+  plate.dataset.call=details.call;
   plate.setAttribute('role','img');
   plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
   plate.title=details.name+' · '+details.bottom;
-  plate.dataset.call=details.call;
-  // The original illustrated uniform ALREADY has a sewn nameplate frame.
-  // Paint ONLY inside its existing inner textile opening. Its stitches,
-  // border and blue surrounds remain part of the base uniform illustration.
-  // SVG content is sharp at zoom and follows current name and callsign.
-  const svg=svgEl('svg',{viewBox:'0 0 320 100',preserveAspectRatio:'none',
-    'aria-hidden':'true',focusable:'false',class:'bpd-nameplate-vector'});
-  const add=(tag,attrs)=>{const e=svgEl(tag,attrs);svg.append(e);return e};
-  add('rect',{x:0,y:0,width:320,height:100,fill:'#0f1928'});
-  add('rect',{x:0,y:0,width:80,height:100,fill:'#101a2b'});
-  const stroke=goldLettering(person)?'#f0cf7a':'#d8e2ee';
-  for(let i=0;i<4;i++){
-   const x=i*22-10;
-   add('path',{d:'M'+x+' 100 L'+(x+43)+' 0',fill:'none',
-    stroke,'stroke-width':3.5,opacity:'.94'});
-  }
-  // No drawn external border: it would produce a second nameplate.
-  // Only the inner silver dividing thread belongs to this overlay.
-  add('line',{x1:90,y1:49,x2:310,y2:49,stroke,
-   'stroke-width':2.6});
-  const name=details.name.length>27?details.name.slice(0,26)+'…':details.name;
-  const nameSize=name.length>21?14:name.length>16?17:21;
-  const first=add('text',{x:199,y:34,'text-anchor':'middle',
-   'font-family':'system-ui,Segoe UI,Arial,sans-serif',
-   'font-size':nameSize,'font-weight':750,
-   fill:stroke,'letter-spacing':'.2'});
-  first.textContent=name;
-  const second=add('text',{x:199,y:76,'text-anchor':'middle',
-   'font-family':'system-ui,Segoe UI,Arial,sans-serif',
-   'font-size':16,'font-weight':750,
-   fill:stroke,'letter-spacing':'.2'});
-  second.textContent=details.bottom;
-  plate.append(svg);
-  return plate;
- }
- // Build the nameplate from that member's *actual rank plaque*: mirror the
- // rank drawing so the diagonal fabric side sits on the LEFT, but reveal only
- // its left-hand edge. The actual rank symbols remain on the separate grade
- // plaque and cannot show through the name-and-CALL field.
- function addMirroredRankNameplate(plate,person){
-  const visual=window.BPDUniformAssignments?.forPerson?.(person);
-  const currentGrade=gradeFor(person);
-  const rankUrl=visual?.rankUrl||
-   gradeArtworkOverrides.get(visual?.callSeries)||
-   gradeArt(currentGrade)||GRADE_ASSETS.ap;
-  const base=document.createElement('img');
-  base.className='bpd-nameplate-mirrored-grade';
-  base.src=rankUrl;
-  base.alt='';
-  base.draggable=false;
-  base.setAttribute('aria-hidden','true');
-  const field=document.createElement('span');
-  field.className='bpd-nameplate-text-field';
-  field.setAttribute('aria-hidden','true');
-  plate.append(base,field);
- }
- function makeGoldNameplate(person){
-  const details=nameplateTextData(person,'gold');
-  const plate=document.createElement('span');
-  plate.className='bpd-personal-nameplate bpd-gold-nameplate'+metalClass(person);
-  plate.dataset.call=details.call;
-  plate.setAttribute('role','img');
-  plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
-  const first=document.createElement('span');
-  first.className='bpd-gold-name';
-  // Same dynamic uppercase embroidery as the user-approved TEST preview.
-  first.textContent=details.name.toLocaleUpperCase('nl');
-  first.style.transform='scale('+(details.nameScale/100)+')';
-  const second=document.createElement('span');
-  second.className='bpd-gold-call';
-  second.textContent=details.bottom;
-  second.style.transform='scale('+(details.callScale/100)+')';
-  plate.append(first,second);
-  addMirroredRankNameplate(plate,person);
-  return plate;
- }
- function makeSilverWovenNameplate(person){
-  // Same woven cloth as gold, with TEST-approved silver-coat positioning.
-  const details=nameplateTextData(person,'silver');
-  const plate=document.createElement('span');
-  plate.className='bpd-personal-nameplate bpd-silver-woven-nameplate'+metalClass(person);
-  plate.dataset.call=details.call;
-  plate.setAttribute('role','img');
-  plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
   const name=document.createElement('span');
-  name.className='bpd-silver-woven-name';
+  name.className='bpd-woven-name';
   name.textContent=details.name.toLocaleUpperCase('nl');
   name.style.transform='scale('+(details.nameScale/100)+')';
   const call=document.createElement('span');
-  call.className='bpd-silver-woven-call';
+  call.className='bpd-woven-call';
   call.textContent=details.bottom;
   call.style.transform='scale('+(details.callScale/100)+')';
   plate.append(name,call);
-  addMirroredRankNameplate(plate,person);
   return plate;
  }
+ function makeNameplate(person,zoom=false){return makeWovenNameplate(person,zoom);}
  function applyCompositePlace(node,person,kind){
   const data=window.BPDUniformAssignments?.forPerson?.(person)?.visualLayout?.[kind];
   if(!node||!data)return;
@@ -603,7 +526,7 @@
    if(individualGold)adaptAssignedUniform(stage,img);
    applyUniformCoatPlacement(img,'gold',stage);
    stage.append(img);
-   const plate=makeGoldNameplate(person);
+   const plate=makeWovenNameplate(person);
    // Old per-coat nameplate coordinates have been retired.
    // Only a saved Uniformatelier name layer may reposition this plate.
    applyCompositePlace(plate,person,'name');
@@ -648,7 +571,7 @@
   if(individualSilver)adaptAssignedUniform(stage,image);
   applyUniformCoatPlacement(image,'silver',stage);
   stage.append(image);
-  const nameplate=makeSilverWovenNameplate(person);
+  const nameplate=makeWovenNameplate(person);
   // Old per-coat nameplate coordinates have been retired.
   // Only a saved Uniformatelier name layer may reposition this plate.
    applyCompositePlace(nameplate,person,'name');
