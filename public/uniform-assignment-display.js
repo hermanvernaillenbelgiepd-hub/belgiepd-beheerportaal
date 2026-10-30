@@ -21,9 +21,11 @@ function setData(assignments,artworks){
 }
 function forPerson(p){
  const dept=String(p?.dept||'');
- const id=UID.test(String(p.personId||''))?String(p.personId):'';
+ const id=UID.test(String(p?.personId||''))?String(p.personId):'';
+ const callCode=nameCode(p?.call);
  const matching=(scope,selector)=>rules.find(r=>r.department===dept&&r.scope===scope&&r.selector===selector);
  const ordered=[...(id?[matching('person',id)]:[]),
+  ...(callCode?[matching('person','call_'+callCode)]:[]),
   matching('rank',nameCode(p.rank)),matching('cadre',nameCode(getTier(p))),
   matching('service','default')];
  let uniformCode='',badgeStyle='';
