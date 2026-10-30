@@ -500,7 +500,8 @@
  object-fit:fill;transform:scaleX(-1);
  /* Only the decorative stripes of the flipped actual rank drawing survive.
     The source's crowns and stars never appear on the nameplate. */
- clip-path:inset(0 76% 0 0);
+ /* Full mirrored image behind the opaque text panel: the right-hand
+    grade pattern now appears on the left, with rank symbols hidden. */
  pointer-events:none;
 }
 .bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-text-field{
