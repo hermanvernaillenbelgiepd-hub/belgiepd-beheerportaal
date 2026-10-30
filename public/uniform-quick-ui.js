@@ -83,9 +83,18 @@ export function setupUniformQuickUI({api,$}){
   const thumb=document.createElement('img');thumb.className='uniform-quick-preview';
   thumb.alt='Voorbeeld van '+label;thumb.hidden=true;
   const updatePreview=()=>{
-   const match=candidates(kind).find(x=>x.code===select.value);
+   const auto=target.selector;
+   const policeAliases={'100':'ap','200':'ap','300':'ainp','400':'inp',
+    '500':'1inp','600':'ahinp','700':'hinp','800':'1hinp',
+    '900':'1hcp','910':'1cp','920':'acp','930':'acp'};
+   const attempts=select.value?[select.value]:
+    kind==='rank'&&dept.value==='politie'?
+     [auto,policeAliases[auto]]:[auto];
+   const match=candidates(kind).find(x=>attempts.includes(x.code));
    if(!match){thumb.hidden=true;thumb.removeAttribute('src');return;}
    thumb.src=match.imageUrl;thumb.hidden=false;
+   thumb.title=select.value?'Geselecteerde afbeelding: '+match.label:
+    'Automatisch herkend: '+match.label;
   };
   select.addEventListener('change',updatePreview);updatePreview();
   const buttons=document.createElement('span');buttons.className='uniform-quick-actions';
