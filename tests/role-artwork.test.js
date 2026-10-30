@@ -60,3 +60,24 @@ test('new personnel badges reject malformed type and dangerous code',()=>{
  assert.throws(()=>validatePersonnelArtwork({...base,department:'root'}),/Ongeldige graad/);
  assert.throws(()=>validatePersonnelArtwork({...base,roleId:'1358148694297415741'}),/Ongeldige graad/);
 });
+
+test('new service asset types are uploadable without creating roles or awarding medals',()=>{
+ const fixture=readFileSync(new URL('../public/assets/k9-patches-geborduurd-20261029.webp',import.meta.url));
+ const dataUrl='data:image/webp;base64,'+fixture.toString('base64');
+ for(const [kind,department,code] of [
+  ['medal','brandweer','dienstmedaille'],
+  ['helmet','brandweer','default'],
+  ['profession','ambulance','vpk'],
+  ['logo','depannage','default'],
+  ['pictogram','burger','default'],
+  ['rank','beveiliging','beveiligingsagent'],
+  ['patch','politie','default'],
+  ['award','ambulance','eredienst']
+ ]){
+  const asset=validatePersonnelArtwork({kind,department,code,label:'Test '+kind,
+   reason:'Controle van nieuwe visuele categorie',dataUrl});
+  assert.equal(asset.key,kind+'_'+department+'_'+code);
+  assert.equal(Object.hasOwn(asset,'roleId'),false);
+  assert.equal(Object.hasOwn(asset,'awarded'),false);
+ }
+});
