@@ -98,7 +98,7 @@ export function installPersonnelDecorationRoutes(app,{requireUser,getSnapshot}){
    const subject=validateIdentity(snap,call,name);
    if(!subject)return res.status(404).json({error:'Personeelsregistratie niet uniek gevonden; vernieuw de lijst'});
    if(!canManagePoliceDecoration(req.bpd,subject))
-     return res.status(403).json({error:'Alleen geverifieerd officierenkader of korpsleiding mag voor lagere politiegraden onderscheidingen beheren'});
+     return res.status(403).json({error:'Alleen geverifieerd Officierenkader of Korpsleiding mag aan politiepersoneel onderscheidingen toekennen of intrekken'});
    req.decorationSubject=subject;
    return next();
   }catch(error){return failure(res,error)}
