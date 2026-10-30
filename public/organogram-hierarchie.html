@@ -1605,6 +1605,13 @@ function makeServiceUniformPortrait(person){
  outer.setAttribute('role','img');
  outer.setAttribute('aria-label','Uniformvoorbeeld van '+dept+' · '+(person.rank||''));
  const stage=el('span','bpd-service-stage');
+ const composite=selected?.visualLayout||null;
+ const positionElement=(node,kind)=>{
+  const placement=composite?.[kind];if(!placement)return;
+  for(const axis of ['left','top','width','height'])
+   if(typeof placement[axis]==='number')node.style[axis]=placement[axis]+'%';
+  if(placement.visible===false)node.style.display='none';
+ };
  const img=el('img','bpd-service-coat');img.src=src||iconFallback;img.alt='';img.loading='lazy';
  if(selected?.uniformUrl){
   const apply=()=>{
@@ -1639,6 +1646,7 @@ function makeServiceUniformPortrait(person){
   {left:62,top:55,width:24,height:12};
  const badge=el('span','bpd-service-grade');
  for(const k of ['left','top','width','height'])badge.style[k]=place[k]+'%';
+ positionElement(badge,'rank');
  if(rankImage){
   const mark=el('img','');mark.src=rankImage;mark.alt='';mark.loading='lazy';badge.append(mark);
  }else{
@@ -1651,6 +1659,7 @@ function makeServiceUniformPortrait(person){
  const nameplate=el('span','bpd-service-nameplate');
  for(const k of ['left','top','width','height'])
   nameplate.style[k]=namePosition[k]+'%';
+ positionElement(nameplate,'name');
  nameplate.setAttribute('role','img');
  nameplate.setAttribute('aria-label','Naamplaat van '+(person.name||'Onbekend'));
  const nameLine=el('span','bpd-service-name',String(person.name||'Onbekend').toUpperCase());
