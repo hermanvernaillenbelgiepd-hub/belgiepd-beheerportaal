@@ -28,14 +28,14 @@ test('soft frames are near-square at all four supported sizes, without visible t
 });
 test('rank plates and woven names are not changed by the new photo frame',()=>{
  const js=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
- assert.match(js,/bpd-uniform-zilver-zonder-koord-nieuw-20261028\.webp/);
- assert.match(js,/bpd-gold-officer-corps-approved-20261028\.webp/);
- assert.match(js,/function makeSilverWovenNameplate\(person\)/);
- assert.match(js,/function makeGoldNameplate\(person\)/);
+ assert.match(js,/bpd-uniform-zilver-zonder-medaille-rood-20261029\.svg/);
+ assert.match(js,/bpd-gold-officer-corps-zonder-medaille-rood-20261029\.svg/);
+ assert.match(js,/function makeWovenNameplate\(person,zoom=false\)/);
+ assert.doesNotMatch(js,/function makeGoldNameplate|function makeSilverWovenNameplate/);
  assert.match(js,/GRADE_ASSETS\[grade\?\.key\]/);
  assert.match(css,/left:10\.25%;top:56\.2%;width:27\.75%/);
  assert.match(css,/left:62\.3%;top:56\.75%;\s*width:26\.6%;height:12\.25%/);
- assert.match(html,/flat-woven-nameplate-20261030-r2/);
+ assert.match(html,/photo-nameplate-20261030-v1/);
 });
 test('visual frame applies without changes to data, awards or officer class',()=>{
  assert.match(after,/\.portrait\.bpd-police-formal\[data-uniform="gold"\]>.bpd-gold-stage/);
