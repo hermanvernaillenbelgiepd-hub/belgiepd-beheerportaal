@@ -416,16 +416,15 @@
   return {name,call,bottom:'BELGIEPD - '+call};
  }
  function goldLettering(person){
-  // Rank-specific visual rule: HINP / 1-HINP and every lower police
-  // grade are SILVER. Only ACP, CP, 1-CP, HCP, 1-HCP, Korpschef
-  // are GOLD. A photo of a golden coat never changes this decision.
+  // Gold: ACP, CP, 1CP, AHCP, HCP, 1HCP.
+  // Everything below that threshold, including AHINP, HINP, 1HINP, is silver.
+  // Visual only: never use this color decision to authorize portal access.
   const key=gradeFor(person)?.key||'';
-  const lower=new Set(['ap','ainp','inp','1inp','ahinp','hinp','1hinp']);
-  if(lower.has(key))return false;
-  if(['acp','cp','1cp','hcp','1hcp'].includes(key))return true;
-  const title=String(person?.rank||'');
-  if(/\bkorpschef\b/i.test(title))return true;
-  return /\b(?:ACP|CP|1-?CP|HCP|1-?HCP)\b|\b(?:hoofdcommissaris|commissaris)\b/i.test(title);
+  if(['ap','ainp','inp','1inp','ahinp','hinp','1hinp'].includes(key))return false;
+  if(['acp','cp','1cp','ahcp','hcp','1hcp'].includes(key))return true;
+  const title=String(person?.rank||'').trim();
+  if(/\b(?:A-?HCP|AHCP|HCP|1-?HCP|ACP|CP|1-?CP|Korpschef)\b/i.test(title))return true;
+  return /\b(?:aspirant[- ]?hoofdcommissaris|(?:eerste[- ]?)?hoofdcommissaris|aspirant[- ]?commissaris|(?:eerste[- ]?)?commissaris)\b/i.test(title);
  }
  const metalClass=person=>goldLettering(person)?' bpd-nameplate-metal-gold':' bpd-nameplate-metal-silver';
  // One unified woven nameplate for every police grade. The uploaded coat may
@@ -465,8 +464,11 @@
  function makePortrait(person,large=false){
   if(person?.dept!=='politie')return null;
   const grade=gradeFor(person);
-  const trim=trimFor(grade);
-  const isSilver=trim==='silver-none';
+  const isSilver=!goldLettering(person);
+  // A recognized AHCP/HCP title without a standard call is still gold.
+  const gradeTrim=trimFor(grade);
+  const trim=isSilver?'silver-none':
+   (gradeTrim==='silver-none'?'gold-none':gradeTrim);
   const coatUrl=window.BPDUniformAssignments?.forPerson?.(person)?.uniformUrl||'';
   const outer=document.createElement('span');
   outer.className='portrait bpd-police-formal'+(large?' large':'');
@@ -514,7 +516,7 @@
    const rack=window.BPDDecorations?.uniformRack(person.awards);
    if(rack?.ribbons){applyCompositePlace(rack.ribbons,person,'ribbons');stage.append(rack.ribbons);}
    const chest=document.createElement('span');
-   chest.className='bpd-chest-insignia bpd-gold-cloth-rank';
+   chest.className='bpd-chest-insignia bpd-gold-cloth-rank bpd-rank-metal-gold';
    chest.dataset.grade=grade?.key||'unknown';
    chest.setAttribute('aria-label','Geborduurde gradenplaat: '+(grade?.label||'Onbekend'));
    chest.setAttribute('role','img');
@@ -559,7 +561,7 @@
   const rack=window.BPDDecorations?.uniformRack(person.awards);
   if(rack?.ribbons){applyCompositePlace(rack.ribbons,person,'ribbons');stage.append(rack.ribbons);}
   const patch=document.createElement('span');
-  patch.className='bpd-chest-insignia bpd-silver-cloth-rank';
+  patch.className='bpd-chest-insignia bpd-silver-cloth-rank bpd-rank-metal-silver';
   patch.dataset.grade=grade?.key||'unknown';
   patch.setAttribute('role','img');
   patch.setAttribute('aria-label','Geborduurde gradenplaat: '+(grade?.label||'Onbekend'));
