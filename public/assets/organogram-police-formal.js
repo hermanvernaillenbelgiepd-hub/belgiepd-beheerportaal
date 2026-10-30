@@ -321,7 +321,10 @@
  }
  function nameplateTextData(person,variant){
   const base=nameplateData(person),cfg=uniformNameplateOverrides.get(variant);
-  return {...base,bottom:(cfg?.prefix||'BELGIEPD')+' - '+base.call,
+  // Uniformatelier personal-name template: never show the sample labels
+  // "V. NAAM", "DIENST" or "FUNCTIE" on a member's actual nameplate.
+  // Historical prefix overrides must not replace the agreed BELGIEPD line.
+  return {...base,bottom:'BELGIEPD - '+base.call,
    nameScale:cfg?.nameScale??100,callScale:cfg?.callScale??100};
  }
  function applyUniformNameplatePlacement(node,variant){
@@ -416,7 +419,11 @@
  // artwork. Cloth badges, name and awards remain separate dynamic layers.
  function nameplateData(person){
   const name=String(person?.name||'NAAM ONBEKEND').trim().slice(0,64)||'NAAM ONBEKEND';
-  const call=String(person?.call||'—').trim().slice(0,24)||'—';
+  const rawCall=String(person?.call||'—').trim().slice(0,24)||'—';
+  // Accept roster calls ("900") and radio calls ("SANTO-900"/"S900").
+  // The nameplate displays the numerical CALL, never its radio prefix.
+  const match=/^(?:SANTO[ -]?|S)?([0-9]{3})\*?$/i.exec(rawCall);
+  const call=match?match[1]:rawCall;
   return {name,call,bottom:'BELGIEPD - '+call};
  }
  function goldLettering(person){
