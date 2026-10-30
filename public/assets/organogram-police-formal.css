@@ -236,12 +236,22 @@
 .bpd-police-formal .bpd-silver-stage>.bpd-woven-nameplate{
  left:10.25%;top:56.2%;width:27.75%;height:auto;
 }
-.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-gold{--thread:#ffd65a;--line-thread:#e0e7ef}
-.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-silver{--thread:#e0e7ef;--line-thread:#e0e7ef}
+/* Match the exact specificity of the base plate selector above. Previously
+   the base rule won over the officer gold variable and made THIJS white. */
+.bpd-police-formal .bpd-gold-stage>.bpd-personal-nameplate.bpd-woven-nameplate.bpd-nameplate-metal-gold,
+.bpd-police-formal .bpd-silver-stage>.bpd-personal-nameplate.bpd-woven-nameplate.bpd-nameplate-metal-gold{
+ --thread:#ffd65a;
+ --line-thread:#ffd65a;
+}
+.bpd-police-formal .bpd-gold-stage>.bpd-personal-nameplate.bpd-woven-nameplate.bpd-nameplate-metal-silver,
+.bpd-police-formal .bpd-silver-stage>.bpd-personal-nameplate.bpd-woven-nameplate.bpd-nameplate-metal-silver{
+ --thread:#e0e7ef;
+ --line-thread:#e0e7ef;
+}
 /* Actual woven photo already has SILVER diagonal embroidery at the left.
    Keep its original stitching visible at every rank (no gold overlay).
    Gold lettering remains a separate user-approved officer decoration. */
-/* Original silver divider thread; officer lettering may remain gold. */
+/* Gold divider for officers, silver for lower grades; diagonals stay silver. */
 .bpd-police-formal .bpd-woven-nameplate::after{
  content:"";display:block;position:absolute;left:30%;right:9%;top:49%;
  height:1px;min-height:0;z-index:2;background:var(--line-thread,#e0e7ef);
