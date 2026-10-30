@@ -21,9 +21,10 @@ export function setupUniformAssignmentUI({api,$}){
     .filter(([code])=>Boolean(code))).entries()].map(([a,b])=>[a,b]):
    scope.value==='rank'?[...new Map(current.map(p=>[clean(p.rank),String(p.rank||'')])
     .filter(([code])=>Boolean(code))).entries()].map(([a,b])=>[a,b]):
-   current.filter(p=>/^\d{15,22}$/.test(String(p.personId||'')))
-    .map(p=>[String(p.personId),String(p.name||'Onbekend')+
-     ' · '+String(p.call||'')+' · '+String(p.rank||'')]);
+   current.filter(p=>/^\d{15,22}$/.test(String(p.personId||''))||Boolean(clean(p.call)))
+    .map(p=>[/^\d{15,22}$/.test(String(p.personId||''))?String(p.personId):'call_'+clean(p.call),
+     String(p.name||'Onbekend')+' · '+String(p.call||'')+' · '+String(p.rank||'')+
+     (/^\d{15,22}$/.test(String(p.personId||''))?'':' · koppeling via roepnummer')]);
   const seen=new Set();
   for(const [id,label]of entries.sort((a,b)=>a[1].localeCompare(b[1],'nl'))){
    if(seen.has(id))continue;seen.add(id);target.add(new Option(label,id));
@@ -52,7 +53,7 @@ export function setupUniformAssignmentUI({api,$}){
   for(const r of rows){
    const row=document.createElement('div');row.className='uniform-assignment-row';
    const label=document.createElement('span');
-   const member=people.find(p=>p.personId===r.selector&&p.dept===r.department);
+   const member=people.find(p=>(p.personId===r.selector||'call_'+clean(p.call)===r.selector)&&p.dept===r.department);
    label.textContent=(r.scope==='person'?(member?member.name+' · '+member.call:r.selector):
     r.scope==='service'?'Hulpdienst':r.selector.replace(/_/g,' '))+
     ' · Uniform: '+(r.uniformCode||'standaard')+
