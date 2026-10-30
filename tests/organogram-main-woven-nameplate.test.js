@@ -25,7 +25,7 @@ const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',i
 const renderer=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
 
 test('classic woven nameplate has diagonal side-stitches, separator, and gold/silver metal',()=>{
- assert.match(css,/repeating-linear-gradient\(128deg/);
+ assert.match(css,/bpd-naamplaat-foto-basis-20261030\.svg/);
  assert.match(css,/bpd-nameplate-metal-gold/);
  assert.match(css,/bpd-nameplate-metal-silver/);
  assert.match(css,/background:var\(--thread\)/);
@@ -42,7 +42,7 @@ test('gold and silver plate text follows actual grade and call',()=>{
   assert.equal(plate.children[1].textContent,'BELGIEPD - '+call);
  }
 });
-test('old static nameplate WebP may remain archived but no coat image is loaded without atelier composition',()=>{
+test('old static nameplate WebP was removed but no coat image is loaded without atelier composition',()=>{
  const view=load(false).makePortrait({dept:'politie',call:'900',name:'RX'});
  assert.match(view.className,/bpd-uniform-missing/);
  assert.equal(view.children[0].textContent,'Geen nieuw uniform ingesteld');
