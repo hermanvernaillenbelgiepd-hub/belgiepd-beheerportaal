@@ -31,8 +31,8 @@ export function setupVisualLayerUI({api,$}){
   variantSelect.replaceChildren();
   for(const v of validVariants())variantSelect.add(new Option(
    v==='silver'?'Zilveren uniform':v==='gold'?'Gouden uniform':'Standaarduniform',v));
-  variantSelect.value=validVariants().includes(variant.value)?variant.value:
-   validVariants().includes(old)?old:validVariants()[0];
+  variantSelect.value=validVariants().includes(old)?old:
+   validVariants().includes(variant.value)?variant.value:validVariants()[0];
  }
  function setAssetOptions(){
   selected=null;
