@@ -1486,7 +1486,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
-import '/uniform-assignment-display.js?v=1';
+import '/uniform-assignment-display.js?v=coat-grades-20261030';
 const $=id=>document.getElementById(id);
 const fixtures=[
  {dept:'politie',name:'Voorbeeld Korpschef',call:'900',rank:'Eerste hoofdcommissaris'},
@@ -2262,15 +2262,16 @@ document.querySelector('.toolbar').addEventListener('click',event=>{
 $('search').addEventListener('input',event=>{state.query=event.target.value;render()});
 async function loadPublic(){
  try{
-  const [response,artworkManifest,uniformLayoutData,visualLayers,assignmentData,libraryRules]=await Promise.all([
+  const [response,artworkManifest,uniformLayoutData,visualLayers,assignmentData,libraryRules,uniformGrades]=await Promise.all([
    authFetch('/api/organogram/hierarchie'),
    authFetch('/api/role-artwork/manifest').catch(()=>({artworks:[]})),
    authFetch('/api/uniform-management/layouts').catch(()=>({layouts:[]})),
    authFetch('/api/visual-layers').catch(()=>({layers:[]})),
    authFetch('/api/uniform-assignments').catch(()=>({assignments:[]})),
-   authFetch('/api/uniform-library/rules').catch(()=>({rules:[]}))
+   authFetch('/api/uniform-library/rules').catch(()=>({rules:[]})),
+   authFetch('/api/uniform-grade-choices').catch(()=>({choices:[]}))
   ]);
-  window.BPDUniformAssignments?.setData?.(assignmentData?.assignments,artworkManifest?.artworks,libraryRules?.rules);
+  window.BPDUniformAssignments?.setData?.(assignmentData?.assignments,artworkManifest?.artworks,libraryRules?.rules,uniformGrades?.choices);
   window.BPDVisualAssets?.setData?.(artworkManifest?.artworks,visualLayers?.layers,uniformLayoutData?.visibility);
   applyRoleArtworkManifest(artworkManifest?.artworks);
   setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats,uniformLayoutData?.visibility);

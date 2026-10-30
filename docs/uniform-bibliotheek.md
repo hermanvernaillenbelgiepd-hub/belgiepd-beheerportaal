@@ -62,3 +62,26 @@ Voor getekende helmen en beroepsbadges blijft de bestaande instelling
 Selectievolgorde: persoonlijk > callreeks/hoedanigheid > graad > kader > dienst.
 Uniformselectie: persoonlijk > specifieke graad > hoedanigheid/uniformgroep >
 kader > dienst.
+
+## Geïllustreerde gradenkeuze per uniform
+
+Onder **Uniformbeheer > Eenvoudig beheer** verschijnt voortaan een lijst van de
+daadwerkelijk geüploade uniformen. Open de kaart van een uniform en selecteer
+per politiereeks (100, 200, ... 930), brandweergraad of ambulancehoedanigheid
+een afbeelding via **Bekijk alle tekeningen**. De selectie toont een
+miniatuurafbeelding en naam, met een zichtbare actuele keuze. De wijziging wordt
+afzonderlijk bewaard onder `bpd_uniform_grade_choices` en gelogd in
+`bpd_uniform_grade_choice_audit`.
+
+De toewijzingsvolgorde is **persoonlijke uitzondering > gekozen gradenplaat voor
+het werkelijk gedragen uniform > algemene keuze voor graad of dienst >
+officiële bestaande graadtekening**. Het basisuniform bepaalt nooit een
+personeelsrang of bevoegdheid.
+
+Oude `silver`- en `gold`-uniformitems zijn uit de **nieuwe** keuzelijst
+weggehaald. De oude automatische statische preview is gestopt. Voor bestaande
+personeelsportretten blijft de laatst bekende coat als veilige fallback totdat
+een nieuw uniform is geüpload en voor de betrokken groep is geselecteerd; dat
+voorkomt onbedoeld lege profielen. Bestaande afbeeldingen worden niet van
+Firebase gewist. Na het koppelen van een nieuw uniform wordt dat onmiddellijk
+boven de oude fallback getoond.

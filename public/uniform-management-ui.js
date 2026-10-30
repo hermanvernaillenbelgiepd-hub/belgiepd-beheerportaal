@@ -60,9 +60,9 @@ export function setupUniformManagementUI({api,$,notice}){
   ambulance:'AZLS',depannage:'DEPANNAGE',burger:'BURGER',beveiliging:'BEVEILIGING'})[dept.value]||'BELGIEPD';
  const key=()=>dept.value+'_'+variant.value;
  const imageKey=()=> 'uniform_'+key();
- const builtin=()=>dept.value==='politie'?
-  variant.value==='gold'?'/assets/bpd-gold-officer-corps-zonder-medaille-rood-20261029.svg':
-   '/assets/bpd-uniform-zilver-zonder-medaille-rood-20261029.svg':'';
+ // Retired static coats are not shown as if they were selectable/uploaded.
+ // Use the actual saved coat or show the explicit "upload" empty state.
+ const builtin=()=>'';
  const message=(s,error=false)=>{status.textContent=s;status.classList.toggle('error',error)};
  function updateGradeChoices(){
   const previous=gradePreview.value;
