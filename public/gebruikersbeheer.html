@@ -104,6 +104,22 @@ header button{padding:7px 10px;font-size:12px}
 #uniformSection .uniform-layer-preview>img{display:block;max-width:100%;max-height:100%;object-fit:contain;pointer-events:none}
 #uniformSection .uniform-layer-preview:active{cursor:grabbing}
 #uniformSection .uniform-extra-layers input[type="checkbox"]{width:20px;height:20px;margin:4px 0}
+#uniformSection .uniform-elements-section{margin:16px 0;padding:14px;border:1px solid #46688b;border-radius:10px;background:#0d213b}
+#uniformSection .uniform-elements-section h3{margin:0 0 6px;font-size:15px}
+#uniformSection .uniform-elements-section p{margin:3px 0 12px}
+#uniformSection .uniform-elements-grid{display:flex;flex-wrap:wrap;gap:9px 14px}
+#uniformSection .uniform-elements-grid label{display:flex;align-items:center;gap:7px;margin:0;padding:8px 11px;border:1px solid #365470;border-radius:7px;cursor:pointer}
+#uniformSection .uniform-elements-grid input[type=checkbox]{width:17px;height:17px;margin:0;accent-color:#87bdf9}
+#uniformSection #uniformElementVisibilitySection[hidden],
+#uniformSection #uniformHelmetToggle[hidden],
+#uniformSection #uniformProfessionToggle[hidden],
+#uniformSection #uniformGradeControls[hidden],
+#uniformSection #uniformNameControls[hidden],
+#uniformSection #uniformPreviewPatch[hidden],
+#uniformSection #uniformPreviewNameplate[hidden],
+#uniformSection #uniformLayerPreview[hidden]{display:none!important}
+#uniformSection .uniform-element-controls{display:grid;gap:8px}
+#uniformSection .uniform-element-controls>h3{margin:10px 0 0}
 #uniformSection .uniform-preview-grade:active{cursor:grabbing}
 #uniformSection .uniform-preview-nameplate{
  position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -371,6 +387,19 @@ header button{padding:7px 10px;font-size:12px}
   </div>
   <div><label for="uniformReason">Motivering voor het logboek (min. 8 tekens)</label><input id="uniformReason" maxlength="300" placeholder="Waarom pas je het uniform of de gradenplaat aan?"></div>
  </div>
+ <section id="uniformElementVisibilitySection" class="uniform-elements-section" hidden>
+  <h3>Onderdelen tonen of verbergen</h3>
+  <p class="muted">Vink aan welke onderdelen op het uniform en in het personeelsprofiel zichtbaar moeten zijn. De plaatsing en afbeeldingen blijven bewaard wanneer je iets uitzet.</p>
+  <div class="uniform-elements-grid">
+   <label><input id="uniformShowGrade" type="checkbox" checked> <span>Gradenplaat tonen</span></label>
+   <label><input id="uniformShowName" type="checkbox" checked> <span>Naamplaat tonen</span></label>
+   <label><input id="uniformShowExtraLogo" type="checkbox" checked> <span>Extra logo’s en patches tonen</span></label>
+   <label id="uniformHelmetToggle"><input id="uniformShowHelmet" type="checkbox" checked> <span>Brandweerhelm tonen</span></label>
+   <label id="uniformProfessionToggle"><input id="uniformShowProfession" type="checkbox" checked> <span>Beroepsteken tonen</span></label>
+  </div>
+  <div class="controls"><button id="uniformVisibilitySave" type="button">Zichtbare onderdelen bewaren</button></div>
+  <div id="uniformVisibilityStatus" class="muted" role="status" aria-live="polite"></div>
+ </section>
  <h3>Livevoorbeeld – versleep de gradenplaat en de naamplaat afzonderlijk</h3>
  <div class="uniform-editor-columns">
   <div>
@@ -396,6 +425,7 @@ header button{padding:7px 10px;font-size:12px}
    <label for="uniformCoatZoom">Uniformgrootte <output id="uniformCoatValueZoom">100%</output></label>
    <input type="range" id="uniformCoatZoom" min="50" max="200" step="1" value="100">
    <div class="controls"><button id="uniformCoatReset" type="button" class="alt">Uniform centreren</button></div>
+   <div id="uniformGradeControls" class="uniform-element-controls">
    <h3>Gradenplaat – eigen positie en afmetingen</h3>
    <label for="uniformX">Horizontale positie <output id="uniformValueX">0%</output></label>
    <input type="range" id="uniformX" min="0" max="90" step=".25" value="62">
@@ -408,6 +438,8 @@ header button{padding:7px 10px;font-size:12px}
    <div class="controls">
     <button id="uniformReset" class="alt" type="button">Standaardpositie gradenplaat</button>
    </div>
+   </div>
+   <div id="uniformNameControls" class="uniform-element-controls">
    <h3>Naamplaat – eigen positie en afmetingen</h3>
    <label for="uniformNameX">Horizontale positie <output id="uniformNameValueX">0%</output></label>
    <input type="range" id="uniformNameX" min="0" max="95" step=".25" value="21">
@@ -429,6 +461,7 @@ header button{padding:7px 10px;font-size:12px}
    <input id="uniformCallExample" maxlength="24" value="610" placeholder="Bijv. 610">
    <div class="controls">
     <button id="uniformNameReset" class="alt" type="button">Standaardpositie en tekstgrootte naamplaat</button>
+   </div>
    </div>
   </div>
  </div>
