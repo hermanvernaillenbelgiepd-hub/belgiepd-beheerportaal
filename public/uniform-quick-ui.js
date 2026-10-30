@@ -11,7 +11,7 @@ export function setupUniformQuickUI({api,$}){
   reason=$('uniformQuickReason'),status=$('uniformQuickStatus');
  const services=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
   ['depannage','Depannage'],['burger','Burger']];
- let artwork=[],uniformAssignments=[],markRules=[],coatGrades=[],people=[],editable=[],cloudReady=false;
+ let artwork=[],uniformAssignments=[],markRules=[],coatGrades=[],people=[],editable=[],cloudReady=false,openCoatCode='';
  const message=(s,bad=false)=>{status.textContent=s;status.classList.toggle('error',bad)};
  const option=(value,label)=>new Option(label,value);
  const titles={rank:'Gradenplaat',helmet:'Helm',profession:'Beroepsteken'};
@@ -21,7 +21,7 @@ export function setupUniformQuickUI({api,$}){
   r.scope==='cadre'?r.selector.replace(/_/g,' '):r.selector;
  function getUniformTargets(){
   if(dept.value==='politie')return [
-   {scope:'service',selector:'default',label:'Algemeen standaarduniform (terugval)'},
+   {scope:'service',selector:'default',label:'Uniform voor politie (algemeen)'},
    ...POLICE_UNIFORM_GROUPS.map(x=>({scope:'group',selector:x.code,label:x.label}))
   ];
   if(dept.value==='ambulance')return [
@@ -61,7 +61,7 @@ export function setupUniformQuickUI({api,$}){
  function makeSelect(kind,selected,aria){
   const select=document.createElement('select');
   select.setAttribute('aria-label',aria);
-  select.append(option('','Automatisch / standaard'));
+  select.append(option('',kind==='uniform'?'Geen nieuw uniform gekozen':'Automatisch / standaard'));
   for(const a of candidates(kind))select.append(option(a.code,a.label+' ('+a.code+')'));
   select.value=[...select.options].some(o=>o.value===selected)?selected:'';
   return select;
@@ -197,7 +197,7 @@ export function setupUniformQuickUI({api,$}){
     if(!code&&!badgeStyle){
      if(currentRule)await api('/api/uniform-assignments',{method:'DELETE',body});
     }else await api('/api/uniform-assignments',{method:'PUT',body});
-   }));
+   },true));
   }
   makeHeading(marks,'2 · Kies de gradenplaat bij ieder uniform',
    'Open een geüpload uniform en kies per graad of functie een afbeelding uit de galerij. De tekening is meteen zichtbaar. Het oude standaarduniform staat niet in deze lijst.');
@@ -209,6 +209,8 @@ export function setupUniformQuickUI({api,$}){
   }
   for(const coat of uniformAssets){
    const block=document.createElement('details');block.className='uniform-grade-coat';
+   block.open=openCoatCode===coat.code;
+   block.addEventListener('toggle',()=>{if(block.open)openCoatCode=coat.code});
    const summary=document.createElement('summary');
    const photo=document.createElement('img');photo.src=coat.imageUrl;photo.alt=coat.label;
    photo.loading='lazy';
