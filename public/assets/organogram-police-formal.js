@@ -246,6 +246,19 @@
   node.style.width=layout.width+'%';
   node.style.height=layout.height+'%';
  }
+ function applyUniformCanvas(stage,img,variant){
+  const cfg=uniformCoatOverrides.get(variant);
+  if(!cfg||!Number.isInteger(cfg.canvasWidth)||!Number.isInteger(cfg.canvasHeight)||
+   cfg.canvasWidth<160||cfg.canvasHeight<160||cfg.canvasWidth>4096||cfg.canvasHeight>4096)return;
+  const ratio=cfg.canvasWidth/cfg.canvasHeight;
+  // Detail portrait (198×226): fit a vertical coat inside the available
+  // portrait without cropping it; previous 603×469 defaults remain unchanged.
+  const width=Math.min(120,Math.max(30,ratio*(226/198)*98));
+  stage.style.aspectRatio=cfg.canvasWidth+'/'+cfg.canvasHeight;
+  stage.style.width=width+'%';
+  stage.style.height='auto';
+  img.style.objectFit=cfg.keepAspectRatio===false?'fill':'contain';
+ }
  function applyUniformCoatPlacement(node,variant){
   const placement=uniformCoatOverrides.get(variant);
   if(!placement)return;
@@ -459,6 +472,7 @@
    img.loading=large?'eager':'lazy';
    img.decoding='async';
    img.draggable=false;
+   applyUniformCanvas(stage,img,'gold');
    applyUniformCoatPlacement(img,'gold');
    stage.append(img);
    const plate=makeGoldNameplate(person);
@@ -498,6 +512,7 @@
   image.loading=large?'eager':'lazy';
   image.decoding='async';
   image.draggable=false;
+  applyUniformCanvas(stage,image,'silver');
   applyUniformCoatPlacement(image,'silver');
   stage.append(image);
   const nameplate=makeSilverWovenNameplate(person);
