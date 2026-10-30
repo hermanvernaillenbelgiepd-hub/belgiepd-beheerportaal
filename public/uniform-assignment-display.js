@@ -58,7 +58,7 @@ function forPerson(p){
    if(image){elementCodes[kind]=found.assetCode;elementUrls[kind]=image;break;}
   }
  }
- return {uniformCode,badgeStyle,uniformGroup:group,profession:functionCode,elementCodes,elementUrls,
+ return {uniformCode,badgeStyle,uniformGroup:group,callSeries:series,profession:functionCode,elementCodes,elementUrls,
   rankUrl:elementUrls.rank||'',
   uniformUrl:uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
 }
