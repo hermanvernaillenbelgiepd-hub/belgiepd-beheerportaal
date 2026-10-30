@@ -64,22 +64,46 @@ export function setupUniformQuickUI({api,$}){
   select.value=[...select.options].some(o=>o.value===selected)?selected:'';
   return select;
  }
+ function openUploader(kind,target,label){
+  const tab=document.querySelector('#manageTabs button[data-tab="artwork"]');
+  if(tab)tab.click();
+  const dep=$('libraryDept'),type=$('libraryKind'),
+   code=$('libraryCode'),name=$('libraryLabel');
+  if(dep){dep.value=dept.value;dep.dispatchEvent(new Event('change'));}
+  if(type){type.value=kind;type.dispatchEvent(new Event('change'));}
+  if(code)code.value=target.selector==='default'?'default':target.selector;
+  if(name)name.value=label.slice(0,75);
+  const panel=$('libraryPanel');
+  if(panel&&!panel.hidden)panel.scrollIntoView({behavior:'smooth',block:'start'});
+ }
  function makeRow(label,kind,target,selected,handler){
   const line=document.createElement('div');line.className='uniform-quick-row';
   const title=document.createElement('span');title.className='uniform-quick-row-label';title.textContent=label;
   const select=makeSelect(kind,selected,label+' — '+(titles[kind]||'Uniform'));
+  const thumb=document.createElement('img');thumb.className='uniform-quick-preview';
+  thumb.alt='Voorbeeld van '+label;thumb.hidden=true;
+  const updatePreview=()=>{
+   const match=candidates(kind).find(x=>x.code===select.value);
+   if(!match){thumb.hidden=true;thumb.removeAttribute('src');return;}
+   thumb.src=match.imageUrl;thumb.hidden=false;
+  };
+  select.addEventListener('change',updatePreview);updatePreview();
+  const buttons=document.createElement('span');buttons.className='uniform-quick-actions';
+  const upload=document.createElement('button');upload.type='button';upload.className='alt';
+  upload.textContent='Upload';upload.title='Upload een nieuwe afbeelding voor '+label;
+  upload.onclick=()=>openUploader(kind,target,label);
   const save=document.createElement('button');save.type='button';save.textContent='Bewaren';save.className='alt';
   save.onclick=async()=>{
    if(reason.value.trim().length<8){message('Vul eerst een motivering van minstens acht tekens in.',true);return;}
    save.disabled=true;
    try{
     await handler(select.value,target);
-    message('Instelling voor '+label+' opgeslagen. De personeelsrechten veranderen niet.');
     await reload(true);
+    message('Instelling voor '+label+' opgeslagen. De personeelsrechten veranderen niet.');
    }catch(e){message('Bewaren mislukt: '+e.message,true)}
    finally{save.disabled=false;}
   };
-  line.append(title,select,save);return line;
+  buttons.append(upload,save);line.append(title,select,thumb,buttons);return line;
  }
  function makeUploadLink(){
   const b=document.createElement('button');b.type='button';b.className='alt';
@@ -162,6 +186,13 @@ export function setupUniformQuickUI({api,$}){
   if(!editable.length)return false;
   render();return true;
  }
+ const back=$('libraryBackToUniform');
+ if(back)back.onclick=()=>{
+  const tab=document.querySelector('#manageTabs button[data-tab="uniform"]');
+  if(tab)tab.click();
+  void reload(true).then(()=>section.scrollIntoView({behavior:'smooth',block:'start'}))
+   .catch(e=>message(e.message,true));
+ };
  dept.addEventListener('change',render);
  $('uniformQuickRefresh').onclick=()=>reload(true).then(()=>message('Overzicht vernieuwd.'))
   .catch(e=>message(e.message,true));
