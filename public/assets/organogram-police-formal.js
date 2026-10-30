@@ -420,11 +420,16 @@
   return {name,call,bottom:'BELGIEPD - '+call};
  }
  function goldLettering(person){
-  // BelgiumPD visual distinction by actual rank, not by uniform image.
+  // Rank-specific visual rule: HINP / 1-HINP and every lower police
+  // grade are SILVER. Only ACP, CP, 1-CP, HCP, 1-HCP, Korpschef
+  // are GOLD. A photo of a golden coat never changes this decision.
   const key=gradeFor(person)?.key||'';
-  return ['acp','cp','1cp','hcp','1hcp'].includes(key)||
-   /\b(?:ACP|CP|1-?CP|HCP|1-?HCP|korpschef)\b|\b(?:hoofdcommissaris|commissaris)\b/i.test(String(person?.rank||''))||
-   /^\s*(?:SANTO[- ]?)?9(?:0|1|2|3)\d\s*$/i.test(String(person?.call||''));
+  const lower=new Set(['ap','ainp','inp','1inp','ahinp','hinp','1hinp']);
+  if(lower.has(key))return false;
+  if(['acp','cp','1cp','hcp','1hcp'].includes(key))return true;
+  const title=String(person?.rank||'');
+  if(/\bkorpschef\b/i.test(title))return true;
+  return /\b(?:ACP|CP|1-?CP|HCP|1-?HCP)\b|\b(?:hoofdcommissaris|commissaris)\b/i.test(title);
  }
  const metalClass=person=>goldLettering(person)?' bpd-nameplate-metal-gold':' bpd-nameplate-metal-silver';
  function makeNameplate(person,zoom=false){
