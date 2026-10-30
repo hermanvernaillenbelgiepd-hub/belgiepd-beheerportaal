@@ -50,13 +50,15 @@ export function requestCourseOptions(dept,tier){
 export function canSubmitTrainingRequest(person,tier,actorRole=null,verifiedOwnRecord=false){
   if(!person||!TRAINING_REQUEST_DEPARTMENTS.includes(person.dept))return false;
   if(person.dept!=='politie')return true;
-  // Een opleidingsaanvraag voor JEZELF is geen beheerdershandeling.
-  // De server mag dit uitsluitend toestaan wanneer de aangemelde Discord-ID
-  // exact één actuele politiepersoneelsfiche heeft. Dit verleent geen
-  // lees-, dossier- of beoordelingsrechten aan de aanvrager.
+  // Korpsleiding is de hoogste operationele graad. Een opleidingsaanvraag
+  // voor zichzelf kan nooit naar een hogere beoordelaar worden doorgestuurd.
+  // Dit geldt ook voor één geverifieerde eigen personeelsfiche.
+  if(tier==='korpsleiding')return false;
+  // Een eigen opleidingsaanvraag verleent geen dossier-/beheerdersrechten.
+  // De eigen-registratie-uitzondering is alleen toegestaan tot OFFICIERENKADER.
   if(verifiedOwnRecord===true)return true;
   if(tier==='agentenkader'||tier==='basiskader')return true;
-  if(tier==='officierenkader'||tier==='korpsleiding')
+  if(tier==='officierenkader')
     return ['officierenkader','korpsleiding'].includes(actorRole);
   return tier==='middenkader'&&['middenkader','officierenkader','korpsleiding','beheerder'].includes(actorRole);
 }
@@ -68,6 +70,11 @@ export function mayReviewTrainingRequest(actor,request){
   // Technisch beheer heeft enkel toegang binnen uitdrukkelijk toegekende diensten.
   if(!actor.departments?.includes(dept))return false;
   if(dept==='politie'){
+    // Officierenkader mag nooit een aanvraag van het eigen kader afhandelen.
+    // Nieuwe aanvragen van Korpsleiding zijn geblokkeerd; voor historische
+    // aanvragen behoudt een ander Korpsleidingslid de bestaande afhandeling.
+    if(['officierenkader','korpsleiding'].includes(request.applicantTier))
+      return scoped==='korpsleiding';
     if(['officierenkader','korpsleiding'].includes(scoped))return true;
     if(request.applicantTier==='middenkader')return false;
     return ['agentenkader','basiskader'].includes(request.applicantTier)&&

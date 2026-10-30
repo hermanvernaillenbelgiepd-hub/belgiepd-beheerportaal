@@ -323,3 +323,45 @@
   flex-basis:128px;width:128px;min-width:128px;max-width:128px;height:120px;
  }
 }
+
+
+/* Portrait-oriented uploaded coats have pre-drawn chest recesses.
+   The woven plate spans the *whole* recess; older landscape assets keep their
+   long-approved fabric formatting. All lettering stays live DOM text. */
+.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage>.bpd-gold-nameplate,
+.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage>.bpd-silver-woven-nameplate{
+ background:#0b1424;border:1px solid #93a9c0;border-radius:1px;
+ box-shadow:inset 0 0 1px #364b67,0 0 .5px #abbace;
+ container-type:inline-size;box-sizing:border-box;
+}
+.bpd-police-formal.bpd-assigned-coat .bpd-gold-nameplate::after,
+.bpd-police-formal.bpd-assigned-coat .bpd-silver-woven-nameplate::after{
+ left:5%;width:90%;top:51%;height:1px;min-height:0;opacity:.9
+}
+.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-name,
+.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name,
+.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call,
+.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
+ position:absolute;left:3%;width:94%;margin:0;padding:0;
+ text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ color:#f4f6fa;font-family:system-ui,Segoe UI,Arial,sans-serif;
+ transform-origin:center;font-weight:900;letter-spacing:0;line-height:1
+}
+.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-name,
+.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name{
+ top:10%;height:38%;font-size:clamp(5px,14cqw,15px)
+}
+.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call,
+.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
+ top:56%;height:38%;font-size:clamp(4px,10.5cqw,12px)
+}
+.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage>.bpd-chest-insignia,
+.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage>.bpd-chest-insignia{
+ box-sizing:border-box;border:1px solid #7188a5;
+ background:#0a1525;overflow:hidden;display:flex;align-items:center;
+ justify-content:center
+}
+.bpd-police-formal.bpd-assigned-coat .bpd-gold-cloth-rank>.bpd-gold-grade-art,
+.bpd-police-formal.bpd-assigned-coat .bpd-silver-cloth-rank>.bpd-silver-grade-art{
+ display:block;width:100%;height:100%;object-fit:fill
+}

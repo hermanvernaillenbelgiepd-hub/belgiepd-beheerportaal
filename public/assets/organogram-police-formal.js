@@ -271,11 +271,51 @@
   stage.style.height='auto';
   img.style.objectFit=cfg.keepAspectRatio===false?'fill':'contain';
  }
- function applyUniformCoatPlacement(node,variant){
+ function applyUniformCoatPlacement(node,variant,stage=null,assigned=false){
   const placement=uniformCoatOverrides.get(variant);
   if(!placement)return;
-  node.style.transform='translate('+placement.offsetX+'%,'+placement.offsetY+'%) scale('+(placement.zoom/100)+')';
-  node.style.transformOrigin='center';
+  const move='translate('+placement.offsetX+'%,'+placement.offsetY+'%) scale('+(placement.zoom/100)+')';
+  if(assigned&&stage){
+   // One shared transform for coat, name, rank and awarded decorations.
+   // Previously just the coat was enlarged, leaving the insignia tiny.
+   stage.style.transform='translate(-50%,-50%) '+move;
+   stage.style.transformOrigin='center';
+   node.style.transform='';
+  }else{
+   node.style.transform=move;
+   node.style.transformOrigin='center';
+  }
+ }
+ function factoryChestPlacement(pos,kind){
+  if(!pos)return true;
+  const close=(a,b)=>Math.abs(Number(a)-b)<0.65;
+  // Respect intentional manual positions, but repair the legacy defaults.
+  return kind==='name'?
+   (close(pos.left,18)&&close(pos.top,56)&&close(pos.width,27)&&close(pos.height,11))||
+   (close(pos.left,21.2)&&close(pos.top,60.2)&&close(pos.width,20.1)):
+   (close(pos.left,57)&&close(pos.top,56)&&close(pos.width,25)&&close(pos.height,10))||
+   (close(pos.left,56.2)&&close(pos.top,58.9)&&close(pos.width,19.5));
+ }
+ function snapAssignedPortraitPlates(image,person,nameplate,rankplate){
+  const apply=()=>{
+   if(!image.naturalWidth||!image.naturalHeight||
+      image.naturalHeight/image.naturalWidth<1.04)return;
+   const layout=window.BPDUniformAssignments?.forPerson?.(person)?.visualLayout;
+   // Chest slots of the new portrait coat; percentages refer to the
+   // actual image, not to the retired 603:469 landscape backdrop.
+   const slots=[
+    [nameplate,'name',{left:27.2,top:34.7,width:15.8,height:7.9}],
+    [rankplate,'rank',{left:55.3,top:34.7,width:15.6,height:7.9}]
+   ];
+   for(const [node,kind,slot] of slots){
+    if(layout?.[kind]?.visible===false||
+       !factoryChestPlacement(layout?.[kind],kind))continue;
+    for(const axis of ['left','top','width','height'])
+     node.style[axis]=slot[axis]+'%';
+   }
+  };
+  image.addEventListener('load',apply,{once:true});
+  if(image.complete&&image.naturalWidth)apply();
  }
  function nameplateTextData(person,variant){
   const base=nameplateData(person),cfg=uniformNameplateOverrides.get(variant);
@@ -476,6 +516,7 @@
   outer.dataset.dept='politie';
   outer.dataset.trim=trim;
   outer.dataset.uniform=isSilver?'silver':'gold';
+  if(window.BPDUniformAssignments?.forPerson?.(person)?.uniformUrl)outer.classList.add('bpd-assigned-coat');
   outer.setAttribute('role','img');
   outer.setAttribute('aria-label','Belgisch geïnspireerd formeel politie-uniform'+(grade?' · '+grade.label:'')+' · sjabloon, geen persoonlijke foto');
 
@@ -496,7 +537,7 @@
    img.draggable=false;
    applyUniformCanvas(stage,img,'gold');
    if(individualGold)adaptAssignedUniform(stage,img);
-   applyUniformCoatPlacement(img,'gold');
+   applyUniformCoatPlacement(img,'gold',stage,Boolean(individualGold));
    stage.append(img);
    const plate=makeGoldNameplate(person);
    applyUniformNameplatePlacement(plate,'gold');
@@ -520,6 +561,7 @@
    applyCompositePlace(chest,person,'rank');
    stage.append(chest);
    if(rack?.medals){applyCompositePlace(rack.medals,person,'medals');stage.append(rack.medals);}
+   if(individualGold)snapAssignedPortraitPlates(img,person,plate,chest);
    window.BPDVisualAssets?.appendTo?.(stage,person,'gold');
    outer.append(stage);
    return outer;
@@ -541,7 +583,7 @@
   image.draggable=false;
   applyUniformCanvas(stage,image,'silver');
   if(individualSilver)adaptAssignedUniform(stage,image);
-  applyUniformCoatPlacement(image,'silver');
+  applyUniformCoatPlacement(image,'silver',stage,Boolean(individualSilver));
   stage.append(image);
   const nameplate=makeSilverWovenNameplate(person);
   applyUniformNameplatePlacement(nameplate,'silver');
@@ -565,6 +607,7 @@
    applyCompositePlace(patch,person,'rank');
   stage.append(patch);
   if(rack?.medals){applyCompositePlace(rack.medals,person,'medals');stage.append(rack.medals);}
+  if(individualSilver)snapAssignedPortraitPlates(image,person,nameplate,patch);
   window.BPDVisualAssets?.appendTo?.(stage,person,'silver');
   outer.append(stage);
   return outer;

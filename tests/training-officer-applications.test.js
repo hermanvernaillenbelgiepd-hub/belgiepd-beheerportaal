@@ -20,7 +20,8 @@ test('officer cadre has a training request tier based on the personnel roster',(
 test('senior training applications require an explicitly approved senior role',()=>{
  assert.equal(canSubmitTrainingRequest(officer,policeRequestTier(officer),'officierenkader'),true);
  assert.equal(canSubmitTrainingRequest(officer,policeRequestTier(officer),'korpsleiding'),true);
- assert.equal(canSubmitTrainingRequest(commander,policeRequestTier(commander),'korpsleiding'),true);
+ assert.equal(canSubmitTrainingRequest(commander,policeRequestTier(commander),'korpsleiding'),false);
+ assert.equal(canSubmitTrainingRequest(commander,policeRequestTier(commander),null,true),false);
  assert.equal(canSubmitTrainingRequest(officer,policeRequestTier(officer),'basiskader'),false);
  assert.equal(canSubmitTrainingRequest(officer,policeRequestTier(officer),null),false);
 });
@@ -44,5 +45,11 @@ test('a police officer cannot approve a personal training request',()=>{
  const request={department:'politie',applicantTier:'officierenkader',
   applicantDiscordId:actor.discordId};
  assert.equal(mayReviewTrainingRequest(actor,request),false);
- assert.equal(mayReviewTrainingRequest(actor,{...request,applicantDiscordId:'123456789012345679'}),true);
+ assert.equal(mayReviewTrainingRequest(actor,{...request,applicantDiscordId:'123456789012345679'}),false);
+ const chief={...actor,role:'korpsleiding',departmentRoles:{politie:'korpsleiding'},
+  discordId:'123456789012345680'};
+ assert.equal(mayReviewTrainingRequest(chief,{...request,applicantDiscordId:'123456789012345679'}),true);
+ assert.equal(mayReviewTrainingRequest(chief,{...request,applicantTier:'korpsleiding',
+  applicantDiscordId:'123456789012345679'}),true); // Historical pending applications only.
+ assert.equal(mayReviewTrainingRequest(chief,{...request,applicantDiscordId:chief.discordId}),false);
 });
