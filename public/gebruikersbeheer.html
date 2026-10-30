@@ -211,6 +211,10 @@ header button{padding:7px 10px;font-size:12px}
 .compose-controls label{display:flex;flex-direction:column;gap:3px;font-size:12px}
 .compose-controls input[type=range]{width:100%}
 .compose-buttons{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px}
+.compose-upload{display:flex;flex-wrap:wrap;gap:9px;align-items:end;background:#152e48;border:1px solid #59799d;border-radius:9px;padding:12px;margin:8px 0}
+.compose-upload[hidden]{display:none}
+.compose-upload label{display:flex;flex-direction:column;gap:4px;font-size:12px;min-width:165px;flex:1}
+.compose-upload input,.compose-upload select{max-width:100%}
 @media(max-width:850px){.compose-layout{grid-template-columns:1fr}.compose-gallery{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:500px){.compose-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
@@ -471,6 +475,18 @@ header button{padding:7px 10px;font-size:12px}
   <label>Graad of hoedanigheid <select id="composeGrade"></select></label>
   <button type="button" class="alt" id="composeRefresh">Vernieuwen</button>
   <button type="button" class="alt" id="composeUploadLink">+ Afbeelding uploaden</button>
+ </div>
+ <div id="composeUploadPanel" class="compose-upload" hidden>
+  <label>Soort afbeelding <select id="composeUploadKind">
+   <option value="uniform">Uniform</option><option value="rank">Gradenplaat</option>
+   <option value="helmet">Helm</option><option value="profession">Beroepsteken</option>
+   <option value="logo">Logo</option><option value="medal">Medaille</option>
+   <option value="ribbon">Erelint</option>
+  </select></label>
+  <label>Naam <input id="composeUploadName" maxlength="75" placeholder="Bijv. Hoofdinspecteur"></label>
+  <label>PNG, JPG of WebP <input id="composeUploadFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
+  <button type="button" id="composeUploadSave">Afbeelding toevoegen</button>
+  <button type="button" id="composeUploadClose" class="alt">Sluiten</button>
  </div>
  <div class="compose-layout">
   <section class="compose-view">
