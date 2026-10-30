@@ -82,6 +82,13 @@ header button{padding:7px 10px;font-size:12px}
 #uniformSection .uniform-preview-frame{cursor:grab}
 #uniformSection .uniform-preview-frame:active{cursor:grabbing}
 #uniformSection .uniform-preview-grade{position:absolute;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px dashed #e6bd73;background:#141d2e;color:#ffe6a4;cursor:grab;touch-action:none;outline-offset:3px;font-size:10px;font-weight:750;text-align:center;padding:3px;z-index:1}
+#uniformSection .uniform-extra-layers{margin:18px 0;padding:14px;border:1px solid #476687;border-radius:10px;background:#10243d}
+#uniformSection .uniform-extra-layers .uniform-sliders{max-width:480px;margin:12px 0}
+#uniformSection .uniform-extra-layers [hidden]{display:none!important}
+#uniformSection .uniform-layer-preview{position:absolute;z-index:8;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px dashed #80d4c6;background:#0828383d;cursor:grab;touch-action:none}
+#uniformSection .uniform-layer-preview>img{display:block;max-width:100%;max-height:100%;object-fit:contain;pointer-events:none}
+#uniformSection .uniform-layer-preview:active{cursor:grabbing}
+#uniformSection .uniform-extra-layers input[type="checkbox"]{width:20px;height:20px;margin:4px 0}
 #uniformSection .uniform-preview-grade:active{cursor:grabbing}
 #uniformSection .uniform-preview-nameplate{
  position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -271,18 +278,25 @@ header button{padding:7px 10px;font-size:12px}
 </section>
 
 <section id="roleArtworkSection" class="card" data-authorized="no" hidden>
-<h2>🎨 Rollenlogo’s & specialisatiepatches</h2>
-<p>Upload logo’s op de website en koppel ze aan een Discord-rol. De afbeeldingen worden permanent in Firebase bewaard. Een nieuw logo verandert <strong>nooit</strong> Discord-rollen, lidmaatschappen of toegangsrechten.</p>
+<h2>🎨 Centrale bibliotheek — uniformen, graden & insignes</h2>
+<p>Upload of vervang logo’s, graden, medailles, helmen, beroepstekens en pictogrammen per hulpdienst. De afbeeldingen worden permanent in Firebase bewaard. Een nieuw logo verandert <strong>nooit</strong> Discord-rollen, lidmaatschappen of toegangsrechten.</p>
 <div class="grid">
  <div><label for="roleArtworkKind">Wat wil je aanpassen?</label><select id="roleArtworkKind">
  <option value="role">Discord-rol / functiepatch</option>
  <option value="rank">Gradenteken op personeelslijst en profiel</option>
  <option value="specialty">Specialisatiepictogram op personeelslijst</option>
+ <option value="medal">Medaille / onderscheiding (alleen bibliotheek)</option>
+ <option value="helmet">Helm (Brandweer)</option>
+ <option value="profession">Beroepsteken (Ambulance)</option>
+ <option value="logo">Dienstlogo (Depannage en andere diensten)</option>
+ <option value="pictogram">Basispictogram (Burger / toekomstige diensten)</option>
+ <option value="patch">Overige uniformpatch</option>
+ <option value="award">Ereteken / lintje (alleen bibliotheek)</option>
  </select></div>
  <div id="roleArtworkPresetWrap"><label for="roleArtworkPreset">Bestaande specialisatie / rol</label><select id="roleArtworkPreset"></select></div>
  <div id="roleArtworkCodeWrap" hidden><label for="roleArtworkCodePreset">Bestaande graad / specialisatie</label><select id="roleArtworkCodePreset"></select>
- <label for="roleArtworkCode">Code van graad / specialisatie</label><input id="roleArtworkCode" maxlength="40" pattern="[a-z0-9_]{1,40}" placeholder="Bijv. ainp of motard"><small>Dezelfde code wordt gebruikt voor alle leden van die graad of specialisatie.</small></div>
- <div><label for="roleArtworkDepartment">Hulpdienst</label><select id="roleArtworkDepartment"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option></select></div>
+ <label for="roleArtworkCode">Code of herkenningsnaam</label><input id="roleArtworkCode" maxlength="40" pattern="[a-z0-9_]{1,40}" placeholder="Bijv. ainp of motard"><small>Bijvoorbeeld <code>default</code> voor een algemeen dienstlogo of <code>zonecommandant</code> voor een specifieke graad. Nieuwe codes kun je zelf invoeren.</small></div>
+ <div><label for="roleArtworkDepartment">Hulpdienst</label><select id="roleArtworkDepartment"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="beveiliging">Beveiligingsagent (voorbereiding)</option></select></div>
  <div id="roleArtworkRoleIdWrap"><label for="roleArtworkRoleId">Discord-rol-ID</label><input id="roleArtworkRoleId" maxlength="22" inputmode="numeric" pattern="[0-9]{15,22}" placeholder="Bijv. 1358148694297415741"></div>
  <div id="roleArtworkVariantWrap"><label for="roleArtworkVariant">Variant</label><select id="roleArtworkVariant"><option value="standard">Standaard / rol</option><option value="instructeur">Instructeur (aparte badge bij gedeelde rol)</option></select></div>
  <div><label for="roleArtworkLabel">Naam van het logo</label><input id="roleArtworkLabel" maxlength="75" placeholder="Bijv. MOTARD · Volwaardig"></div>
@@ -310,7 +324,7 @@ header button{padding:7px 10px;font-size:12px}
 <div id="roleArtworkStatus" class="muted" role="status" aria-live="polite">Nog geen afbeelding geselecteerd.</div>
 <h3>Opgeslagen logo’s <small id="roleArtworkCount"></small></h3>
 <div id="roleArtworkList" class="artwork-list" aria-live="polite"></div>
-<p class="muted">K-9-, MOTARD-, DISP- en RAGO-logo’s worden na opslaan automatisch gebruikt. Je kunt ook afbeeldingen voor nieuwe Discord-rollen bewaren; voor een volledig nieuwe specialisatie moet de organogramfunctie eenmalig worden geregistreerd.</p>
+<p class="muted">De bibliotheek bewaart nieuwe graden, medailles en dienstonderdelen. Via <strong>Uniformbeheer → Extra lagen</strong> bepaal je per uniform waar een geüpload onderdeel verschijnt. Een medaille krijgt pas een drager na een afzonderlijke, bevoegde toekenning; uploaden kent niemand een medaille toe. Beveiligingsagent is een voorbereidende visuele categorie en geeft nog geen nieuwe dienstrechten.</p>
 </section>
 
 <section id="uniformSection" class="card" data-authorized="no" hidden>
@@ -331,6 +345,7 @@ header button{padding:7px 10px;font-size:12px}
     <span id="uniformPreviewPatch" class="uniform-preview-grade" tabindex="0" role="img" aria-label="Versleepbaar gradenteken in het uniform">
      <img id="uniformPreviewGradeImage" alt="" hidden><span id="uniformPreviewPatchLabel">Voorbeeld gradenplaat</span>
     </span>
+    <span id="uniformLayerPreview" class="uniform-layer-preview" hidden tabindex="0" role="img" aria-label="Versleepbaar extra uniformonderdeel"><img id="uniformLayerImage" alt="Geselecteerd uniformonderdeel"></span>
     <span id="uniformPreviewNameplate" class="uniform-preview-nameplate" tabindex="0" role="img" aria-label="Versleepbare naamplaat in het uniform">
      <span id="uniformPreviewName">VOORBEELD NAAM</span><span id="uniformPreviewCall">BELGIEPD · 610</span>
     </span>
@@ -390,6 +405,31 @@ header button{padding:7px 10px;font-size:12px}
   <button id="uniformSaveNameplate" type="button" class="alt">Naamplaat bewaren</button>
   <button id="uniformReload" type="button" class="alt">Opnieuw laden</button>
  </div>
+ 
+ <section class="uniform-extra-layers">
+  <h3>Extra lagen — helmen, beroepstekens, medailles en dienstlogo’s</h3>
+  <p class="muted">Upload eerst een onderdeel onder <strong>Rollenlogo’s & patches</strong>. Selecteer het hier om op het uniform te plaatsen. Medailles worden niet aan personeel toegekend door de upload of laaginstellingen.</p>
+  <div class="grid">
+   <div><label for="visualLayerAsset">Opgeslagen onderdeel</label><select id="visualLayerAsset"><option value="">Kies een afbeelding</option></select></div>
+   <div><label for="visualLayerVariant">Uniformvariant</label><select id="visualLayerVariant"></select></div>
+  </div>
+  <div id="visualLayerControls" class="uniform-sliders" hidden>
+   <label for="visualLayerX">Horizontale positie <output id="visualLayerValueX">0%</output></label>
+   <input id="visualLayerX" type="range" min="0" max="98" step=".25" value="20">
+   <label for="visualLayerY">Verticale positie <output id="visualLayerValueY">0%</output></label>
+   <input id="visualLayerY" type="range" min="0" max="98" step=".25" value="25">
+   <label for="visualLayerW">Breedte <output id="visualLayerValueW">25%</output></label>
+   <input id="visualLayerW" type="range" min="2" max="90" step=".25" value="25">
+   <label for="visualLayerH">Hoogte <output id="visualLayerValueH">20%</output></label>
+   <input id="visualLayerH" type="range" min="2" max="90" step=".25" value="20">
+   <label for="visualLayerZ">Laagvolgorde <output id="visualLayerValueZ">8</output></label>
+   <input id="visualLayerZ" type="range" min="1" max="20" step="1" value="8">
+   <label for="visualLayerVisible">Zichtbaar op uniform</label>
+   <input id="visualLayerVisible" type="checkbox" checked>
+   <div class="controls"><button id="visualLayerSave" type="button">Laagpositie bewaren</button></div>
+  </div>
+  <div id="visualLayerStatus" class="muted" aria-live="polite">Selecteer eerst een opgeslagen afbeelding.</div>
+ </section>
  <div id="uniformStatus" class="muted" role="status" aria-live="polite">Uniformbeheer laden…</div>
  <p class="muted">Bij politie blijven de zilveren en gouden uniformen apart instelbaar. Voor andere hulpdiensten verschijnen nieuwe uniformeportretten pas nadat je een basisafbeelding hebt geüpload. Een bijhorende gradenplaat wordt pas getoond als er een bijpassend gradenteken is geregistreerd.</p>
 </section>
@@ -398,6 +438,7 @@ header button{padding:7px 10px;font-size:12px}
 import {setupDossierGrantUI} from '/dossier-grants-ui.js';
 import {setupRoleArtworkUI} from '/role-artwork-ui.js';
 import {setupUniformManagementUI} from '/uniform-management-ui.js?v=uniform-pan-text-20261030';
+import {setupVisualLayerUI} from '/visual-layer-ui.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
@@ -455,6 +496,7 @@ function setAccountCadreOptions(select,dept,preferred){
 const dossierGrants=setupDossierGrantUI({api,notice,$,option,cell});
 const roleArtwork=setupRoleArtworkUI({api,$,notice});
 const uniformManagement=setupUniformManagementUI({api,$,notice});
+const visualLayerManagement=setupVisualLayerUI({api,$,notice});
 let tabChoice=window.location.hash==='#dienstbeheer'?'services':
   window.location.hash==='#verlofmachtigingen'?'leave':'accounts';
 function showManageTabs(){
@@ -1193,10 +1235,11 @@ async function refresh(){
   await loadLeaveGrantManager();
   await roleArtwork.load();
   await uniformManagement.load();
+  await visualLayerManagement.load();
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformManagement.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformManagement.load();await visualLayerManagement.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
