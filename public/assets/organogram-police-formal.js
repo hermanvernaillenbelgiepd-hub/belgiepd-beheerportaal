@@ -596,7 +596,8 @@
    applyUniformCoatPlacement(img,'gold',stage);
    stage.append(img);
    const plate=makeGoldNameplate(person);
-   applyUniformNameplatePlacement(plate,'gold');
+   // Old per-coat nameplate coordinates have been retired.
+   // Only a saved Uniformatelier name layer may reposition this plate.
    applyCompositePlace(plate,person,'name');
    stage.append(plate);
    const rack=window.BPDDecorations?.uniformRack(person.awards);
@@ -640,7 +641,8 @@
   applyUniformCoatPlacement(image,'silver',stage);
   stage.append(image);
   const nameplate=makeSilverWovenNameplate(person);
-  applyUniformNameplatePlacement(nameplate,'silver');
+  // Old per-coat nameplate coordinates have been retired.
+  // Only a saved Uniformatelier name layer may reposition this plate.
    applyCompositePlace(nameplate,person,'name');
   stage.append(nameplate);
   const rack=window.BPDDecorations?.uniformRack(person.awards);
