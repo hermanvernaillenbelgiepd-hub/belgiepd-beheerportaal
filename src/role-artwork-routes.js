@@ -70,7 +70,7 @@ export function validatePersonnelArtwork(body){
  const department=String(body.department||'politie');
  const code=String(body.code||'').toLowerCase().trim();
  if(!VISUAL_ARTWORK_KINDS.includes(kind)||!DEPTS.includes(department)||!CODE.test(code))
-  throw fail(400,'Ongeldig visueel assettype, code of hulpdienst');
+  throw fail(400,'Ongeldige graad, specialisatie, assetsoort, code of hulpdienst');
  // Reuse all binary/motivation/label checks from the role uploader while
  // avoiding the need for a fake Discord role ID.
  const validated=validateRoleArtwork({
@@ -104,14 +104,14 @@ export function installRoleArtworkRoutes(app,{requireUser}){
  });
  app.get('/api/role-artwork/manifest',requireUser,async(_req,res)=>{
   try{
-   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(150).get();
+   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(350).get();
    res.set('Cache-Control','private, no-store');
    return res.json({artworks:snap.docs.filter(d=>d.get('active')===true).map(metaData)});
   }catch(e){return error(res,e)}
  });
  app.get('/api/role-artwork/manage',requireUser,allowed,async(_req,res)=>{
   try{
-   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(150).get();
+   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(350).get();
    res.set('Cache-Control','private, no-store');
    return res.json({canEdit:true,artworks:snap.docs.filter(d=>mayEditDepartment(_req.bpd,d.get('department')||'politie')).map(d=>({...metaData(d),
     active:d.get('active')===true,updatedBy:d.get('updatedBy')||''}))});
