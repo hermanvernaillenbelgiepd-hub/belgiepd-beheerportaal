@@ -2,12 +2,14 @@
 import {randomUUID} from 'node:crypto';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {isUserManager} from './user-access.js';
+import {roleForDepartment} from './leave-policy.js';
 
 export const ROLE_ARTWORK_META='bpd_role_artwork_meta';
 export const ROLE_ARTWORK_IMAGES='bpd_role_artwork_images';
 export const ROLE_ARTWORK_AUDIT='bpd_role_artwork_audit';
 const ID=/^\d{15,22}$/;
 const VARIANT=/^[a-z][a-z0-9_]{0,39}$/;
+const DEPTS=['politie','brandweer','ambulance','depannage','burger'];
 const MAX_BYTES=140*1024;
 const keyFor=(roleId,variant)=>roleId+'_'+variant;
 const fail=(code,message)=>Object.assign(new Error(message),{publicStatus:code});
@@ -18,18 +20,26 @@ const error=(res,e)=>{
 };
 const allowed=(req,res,next)=>isUserManager(req.bpd)?next():
  res.status(403).json({error:'Alleen gemachtigd Officierenkader, Korpsleiding en beheer'});
+const mayEditDepartment=(actor,department)=>{
+ if(actor?.role==='beheerder')return true;
+ return isUserManager(actor)&&actor?.departments?.includes(department)===true&&
+  ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,department));
+};
 const metaData=d=>{
  const v=d.data();
  return {key:d.id,roleId:v.roleId,variant:v.variant,label:v.label,
+  department:v.department||'politie',
   imageUrl:'/api/role-artwork/file/'+d.id+'?v='+encodeURIComponent(v.version),
   updatedAt:v.updatedAt?.toDate?.()?.toISOString()||null};
 };
 export function validateRoleArtwork(body){
  if(!body||Array.isArray(body)||typeof body!=='object'||
-  Object.keys(body).some(x=>!['roleId','variant','label','dataUrl','reason'].includes(x)))
+  Object.keys(body).some(x=>!['roleId','variant','label','department','dataUrl','reason'].includes(x)))
   throw fail(400,'Ongeldige logoaanvraag');
  const roleId=String(body.roleId||'').trim(),variant=String(body.variant||'').trim();
  const label=typeof body.label==='string'?body.label.trim():'';
+ const department=String(body.department||'politie').trim();
+ if(!DEPTS.includes(department))throw fail(400,'Ongeldige hulpdienst voor het rollenlogo');
  const reason=typeof body.reason==='string'?body.reason.trim():'';
  if(!ID.test(roleId)||!VARIANT.test(variant))throw fail(400,'Ongeldig Discord-rol-ID of variant');
  if(label.length<2||label.length>75||/[<>\x00-\x1f]/.test(label))throw fail(400,'Naam moet 2–75 tekens bevatten');
@@ -45,7 +55,7 @@ export function validateRoleArtwork(body){
   !['VP8 ','VP8L','VP8X'].includes(data.toString('ascii',12,16))||
   data.readUInt32LE(4)!==data.length-8)
   throw fail(400,'Ongeldige of te grote WebP-afbeelding');
- return {roleId,variant,label,reason,key:keyFor(roleId,variant),base64:match[1]};
+ return {roleId,variant,label,department,reason,key:keyFor(roleId,variant),base64:match[1]};
 }
 export function installRoleArtworkRoutes(app,{requireUser}){
  // Serve approved image bytes without exposing credentials; assets are decorative,
@@ -79,12 +89,13 @@ export function installRoleArtworkRoutes(app,{requireUser}){
   try{
    const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(150).get();
    res.set('Cache-Control','private, no-store');
-   return res.json({canEdit:true,artworks:snap.docs.map(d=>({...metaData(d),
+   return res.json({canEdit:true,artworks:snap.docs.filter(d=>mayEditDepartment(_req.bpd,d.get('department')||'politie')).map(d=>({...metaData(d),
     active:d.get('active')===true,updatedBy:d.get('updatedBy')||''}))});
   }catch(e){return error(res,e)}
  });
  app.put('/api/role-artwork',requireUser,allowed,async(req,res)=>{
   let input;try{input=validateRoleArtwork(req.body)}catch(e){return error(res,e)}
+  if(!mayEditDepartment(req.bpd,input.department))return res.status(403).json({error:'Geen logobeheerrechten voor deze hulpdienst'});
   try{
    const db=getFirestore(),ref=db.collection(ROLE_ARTWORK_META).doc(input.key);
    const assetId=randomUUID(),asset=db.collection(ROLE_ARTWORK_IMAGES).doc(assetId);
@@ -93,10 +104,11 @@ export function installRoleArtworkRoutes(app,{requireUser}){
    await db.runTransaction(async tx=>{
     const before=await tx.get(ref);
     const old=before.exists?before.data():null;
+    if(old&&!mayEditDepartment(req.bpd,old.department||'politie'))throw fail(403,'Geen recht op dit bestaande logo');
     // Existing assets are retained for audit/recovery; only the metadata pointer changes.
     tx.create(asset,{key:input.key,base64:input.base64,mime:'image/webp',
      createdAt:FieldValue.serverTimestamp(),createdBy:req.bpd.uid});
-    tx.set(ref,{roleId:input.roleId,variant:input.variant,label:input.label,
+    tx.set(ref,{roleId:input.roleId,variant:input.variant,label:input.label,department:input.department,
      active:true,version,assetId,updatedAt:FieldValue.serverTimestamp(),
      updatedBy:req.bpd.uid});
     tx.create(audit,{key:input.key,action:old?'replace':'upload',label:input.label,
@@ -116,6 +128,7 @@ export function installRoleArtworkRoutes(app,{requireUser}){
    await db.runTransaction(async tx=>{
     const old=await tx.get(ref);
     if(!old.exists)throw fail(404,'Geen logo gevonden');
+    if(!mayEditDepartment(req.bpd,old.get('department')||'politie'))throw fail(403,'Geen recht op dit logo');
     tx.update(ref,{active:false,updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid});
     tx.create(db.collection(ROLE_ARTWORK_AUDIT).doc(),{
      key,action:'deactivate',previousAssetId:old.get('assetId')||null,
