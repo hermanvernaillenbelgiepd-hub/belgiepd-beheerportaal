@@ -316,12 +316,12 @@ header button{padding:7px 10px;font-size:12px}
  aspect-ratio:1251/435;container-type:inline-size;
  transform:scale(1.4,1.48);transform-origin:center center;
 }
-.compose-layer .compose-nameplate.compose-woven-nameplate.compose-metal-gold{--plate-thread:#edcf80}
+.compose-layer .compose-nameplate.compose-woven-nameplate.compose-metal-gold{--plate-thread:#ffd65a}
 .compose-layer .compose-nameplate.compose-woven-nameplate.compose-metal-silver{--plate-thread:#e0e7ef}
 .compose-layer .compose-nameplate.compose-woven-nameplate.compose-metal-gold::before{
  content:"";display:block;position:absolute;left:0;top:0;bottom:0;
- width:38%;z-index:1;background:#d1ad5f;mix-blend-mode:color;
- opacity:.9;pointer-events:none;
+ width:38%;z-index:1;background:#ffd24b;mix-blend-mode:color;
+ opacity:1;pointer-events:none;
 }
 .compose-layer .compose-nameplate.compose-woven-nameplate::after{
  content:"";display:block;position:absolute;left:30%;right:9%;top:49%;
@@ -342,6 +342,22 @@ header button{padding:7px 10px;font-size:12px}
 }
 .compose-layer .compose-nameplate.compose-woven-nameplate>.compose-call{
  top:58%;font-size:clamp(4px,7.6cqw,12px);
+}
+
+/* Exactly the same gold/silver right-side embroidery as the personnel card.
+   Keep the real grade image independently replaceable. */
+.compose-layer[data-kind="rank"].compose-rank-metal-gold{--rank-edge-thread:#ffd65a}
+.compose-layer[data-kind="rank"].compose-rank-metal-silver{--rank-edge-thread:#e0e7ef}
+.compose-layer[data-kind="rank"].compose-rank-metal-gold::after,
+.compose-layer[data-kind="rank"].compose-rank-metal-silver::after{
+ content:"";position:absolute;z-index:3;pointer-events:none;
+ right:0;top:0;bottom:0;width:18%;
+ background:
+  repeating-linear-gradient(130deg,
+    transparent 0 5px,var(--rank-edge-thread) 5px 6.5px,
+    transparent 6.5px 12px),
+  #111b2b;
+ border:0;box-shadow:none;
 }
 
 </style>
