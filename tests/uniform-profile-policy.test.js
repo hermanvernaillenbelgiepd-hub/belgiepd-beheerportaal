@@ -38,7 +38,8 @@ test('police call-based rank assets are separate from uniforms',()=>{
  const assignment=validateLibraryRule({department:'politie',kind:'rank',scope:'call',
   selector:'600',assetCode:'ahinp',reason:'Aspirant hoofdinspecteur eigen gradenplaat'});
  assert.equal(assignment.key,'politie_rank_call_600');
- assert.throws(()=>validateLibraryRule({...assignment,selector:'650'}),/doelgroep/);
+ const {key:ignored,...payload}=assignment;
+ assert.throws(()=>validateLibraryRule({...payload,selector:'650'}),/doelgroep/);
 });
 test('fire helmet and plate remain linked to grade independent of call prefix',()=>{
  const person={dept:'brandweer',call:'OOFF-12',rank:'Sergeant'};
@@ -59,5 +60,6 @@ test('ambulance functions resolve badges and DIRMED text from calls and ranks',(
   scope:'function',selector:'dirmed',assetCode:'dirmed_opschrift',
   reason:'Functieaanduiding DIRMED op uniform'});
  assert.equal(rule.key,'ambulance_profession_function_dirmed');
- assert.throws(()=>validateLibraryRule({...rule,department:'brandweer'}),/doelgroep/);
+ const {key:ignored,...payload}=rule;
+ assert.throws(()=>validateLibraryRule({...payload,department:'brandweer'}),/doelgroep/);
 });
