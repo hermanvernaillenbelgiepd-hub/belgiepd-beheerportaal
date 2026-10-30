@@ -464,8 +464,11 @@
  function makePortrait(person,large=false){
   if(person?.dept!=='politie')return null;
   const grade=gradeFor(person);
-  const trim=trimFor(grade);
   const isSilver=!goldLettering(person);
+  // A recognized AHCP/HCP title without a standard call is still gold.
+  const gradeTrim=trimFor(grade);
+  const trim=isSilver?'silver-none':
+   (gradeTrim==='silver-none'?'gold-none':gradeTrim);
   const coatUrl=window.BPDUniformAssignments?.forPerson?.(person)?.uniformUrl||'';
   const outer=document.createElement('span');
   outer.className='portrait bpd-police-formal'+(large?' large':'');
