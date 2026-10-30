@@ -40,8 +40,9 @@ export function validateRoleArtwork(body){
  if(!match||match[1].length>Math.ceil(MAX_BYTES*4/3)+8)
   throw fail(400,'Upload een WebP-afbeelding van maximaal 140 KB');
  const data=Buffer.from(match[1],'base64');
- if(!data.length||data.length>MAX_BYTES||data.toString('base64')!==match[1]||
+ if(data.length<30||data.length>MAX_BYTES||data.toString('base64')!==match[1]||
   data.toString('ascii',0,4)!=='RIFF'||data.toString('ascii',8,12)!=='WEBP'||
+  !['VP8 ','VP8L','VP8X'].includes(data.toString('ascii',12,16))||
   data.readUInt32LE(4)!==data.length-8)
   throw fail(400,'Ongeldige of te grote WebP-afbeelding');
  return {roleId,variant,label,reason,key:keyFor(roleId,variant),base64:match[1]};
