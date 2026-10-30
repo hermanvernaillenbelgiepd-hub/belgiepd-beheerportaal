@@ -44,6 +44,13 @@ function forPerson(p){
    assetUrls.has('uniform_'+dept+'_'+entry.uniformCode))uniformCode=entry.uniformCode;
   if(!badgeStyle&&['lokaal','federaal'].includes(entry.badgeStyle))badgeStyle=entry.badgeStyle;
  }
+ // Conventional group codes allow a single image upload to be used directly.
+ // Existing explicit assignments still take precedence.
+ if(!uniformCode){
+  const expected=dept==='politie'&&group?group:
+   dept==='ambulance'&&functionCode?functionCode:'';
+  if(expected&&assetUrls.has('uniform_'+dept+'_'+expected))uniformCode=expected;
+ }
  const elementCodes={},elementUrls={};
  for(const kind of ['rank','helmet','profession','logo','pictogram','patch']){
   for(const [scope,selector] of [
