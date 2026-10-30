@@ -31,6 +31,10 @@ export function setupRoleArtworkUI({api,$,notice}){
  ['ladderwagen','Ladderwagen'],['duiker','Duiker'],['fast','F.A.S.T.'],
  ['logistiek','Logistiek']
  ];
+ const extraTypes=new Set(['medal','helmet','profession','logo','pictogram','patch','award']);
+ const labels={role:'Discord-rol',rank:'Graad',specialty:'Specialisatie',uniform:'Uniform',
+  medal:'Medaille',helmet:'Helm',profession:'Beroepsteken',logo:'Dienstlogo',
+  pictogram:'Pictogram',patch:'Uniformpatch',award:'Ereteken'};
  const $p=id=>$(id);
  const kindSelect=$p('roleArtworkKind'),codePreset=$p('roleArtworkCodePreset');
  const showKind=()=>{
@@ -40,12 +44,14 @@ export function setupRoleArtworkUI({api,$,notice}){
   $p('roleArtworkVariantWrap').hidden=!role;
   $p('roleArtworkCodeWrap').hidden=role;
   codePreset.replaceChildren(new Option('Kies een bestaande optie of vul een code in',''));
-  const known=kindSelect.value==='rank'?grades:specialties;
+  const known=kindSelect.value==='rank'?grades:
+   kindSelect.value==='specialty'?specialties:[['default','Standaard voor deze hulpdienst']];
   if(!role)for(const [code,name] of known)codePreset.add(new Option(name,code));
  };
  kindSelect.onchange=()=>{showKind();setPreview('');};
  codePreset.onchange=()=>{
-  const preset=(kindSelect.value==='rank'?grades:specialties).find(x=>x[0]===codePreset.value);
+  const preset=(kindSelect.value==='rank'?grades:
+   kindSelect.value==='specialty'?specialties:[['default','Standaard']]).find(x=>x[0]===codePreset.value);
   if(!preset)return;
   $p('roleArtworkCode').value=preset[0];
   $p('roleArtworkLabel').value=preset[1];
@@ -68,7 +74,7 @@ export function setupRoleArtworkUI({api,$,notice}){
  const zoom=$p('roleArtworkZoom'),zoomValue=$p('roleArtworkZoomValue');
  const fit=$p('roleArtworkFit');
  canvas.tabIndex=0;
- const defaultFit=()=>kindSelect.value==='specialty'?'contain':'cover';
+ const defaultFit=()=>kindSelect.value!=='role'&&kindSelect.value!=='uniform'&&kindSelect.value!=='rank'?'contain':'cover';
  function clearPreview(){
   loadRevision++;
   if(ownedObjectUrl){URL.revokeObjectURL(ownedObjectUrl);ownedObjectUrl=''}
@@ -222,7 +228,7 @@ export function setupRoleArtworkUI({api,$,notice}){
    const body=document.createElement('div');
    const name=document.createElement('strong');name.textContent=row.label;
    const details=document.createElement('small');
-   details.textContent=(row.department||'politie').toUpperCase()+' · '+(row.kind==='rank'?'GRAAD '+row.code:row.kind==='specialty'?'SPECIALISATIE '+row.code:row.roleId+' · '+row.variant)+' · '+(row.active?'ACTIEF':'NIET ACTIEF');
+   details.textContent=(row.department||'politie').toUpperCase()+' · '+(row.kind==='role'?row.roleId+' · '+row.variant:(labels[row.kind]||row.kind)+' · '+row.code)+' · '+(row.active?'ACTIEF':'NIET ACTIEF');
    body.append(name,details);
    const btn=document.createElement('button');btn.type='button';btn.className='alt';btn.textContent='Bewerken';
    btn.onclick=()=>selectItem(row);
@@ -252,8 +258,8 @@ export function setupRoleArtworkUI({api,$,notice}){
    if(!/^\d{15,22}$/.test(roleId)||!/^[a-z][a-z0-9_]{0,39}$/.test(variant)){
     message('Geef een geldig Discord-rol-ID en variant op.',true);return;
    }
-  }else if(!['rank','specialty'].includes(kind)||!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code)){
-   message('Kies een graad/specialisatie of voer een geldige code in.',true);return;
+  }else if(!['rank','specialty','uniform',...extraTypes].includes(kind)||!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code)){
+   message('Kies een onderdeel of voer een geldige code in.',true);return;
   }
   if(!previewData.startsWith('data:image/webp;base64,')){message('Selecteer eerst een nieuwe afbeelding om te uploaden.',true);return}
   if(reason.length<8){message('Geef een motivering van minstens 8 tekens.',true);return}
