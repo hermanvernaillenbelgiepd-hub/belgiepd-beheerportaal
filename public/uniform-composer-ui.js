@@ -1,5 +1,5 @@
 // Operational uniform composition: one grade, one preview, one save.
-import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,normalizeVisual,policeUniformGroup,policeCallSeries,ambulanceFunction} from '/uniform-profile-policy.js';
+import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,normalizeVisual,policeCallSeries,ambulanceFunction} from '/uniform-profile-policy.js';
 export function setupUniformComposer({api,$}){
  const dept=$('composeDept'),grade=$('composeGrade'),panel=$('composePreview'),
   gallery=$('composeGallery'),types=$('composeTypes'),save=$('composeSave'),notice=$('composeStatus');
@@ -9,7 +9,7 @@ export function setupUniformComposer({api,$}){
   medals:[57,70,24,19],helmet:[19,4,62,32],profession:[55,42,24,12],logo:[72,26,14,14]};
  const services=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
   ['depannage','Depannage'],['burger','Burger']];
- let images=[],templates=[],people=[],awards=[],oldAssignments=[],draft=null,baseline='',active='uniform',
+ let images=[],templates=[],people=[],awards=[],draft=null,baseline='',active='uniform',
   sampleAward='',busy=false,visibleDepts=[],cloudReady=false,previousDept='',previousGrade='';
  const el=(tag,cls,text)=>{const v=document.createElement(tag);v.className=cls||'';
   if(text!==undefined)v.textContent=text;return v;};
@@ -32,16 +32,9 @@ export function setupUniformComposer({api,$}){
  function initialize(){
   const scope=grade.selectedOptions[0]?.dataset.scope||'rank';
   const saved=templates.find(x=>x.department===dept.value&&x.scope===scope&&x.selector===grade.value);
-  const group=dept.value==='politie'?
-   policeUniformGroup({dept:'politie',call:grade.value}):'';
-  const fallbacks=[
-   [scope,grade.value],...(group?[['group',group]]:[]),
-   ['service','default']
-  ];
-  const inherited=fallbacks.map(([sc,sel])=>oldAssignments.find(x=>
-   x.department===dept.value&&x.scope===sc&&x.selector===sel)?.uniformCode)
-   .find(code=>code&&images.some(x=>x.department===dept.value&&
-    x.kind==='uniform'&&x.code===code))||'';
+  // New atelier starts with saved compositions only. Never resurrect coats
+  // from the retired per-service or per-cadre assignment system.
+  const inherited='';
   const policeRank={'100':'ap','200':'ap','300':'ainp','400':'inp','500':'1inp',
    '600':'ahinp','700':'hinp','800':'1hinp','900':'1hcp','910':'1cp',
    '920':'acp','930':'acp'};
@@ -132,7 +125,11 @@ export function setupUniformComposer({api,$}){
    if(!url&&kind!=='name'&&kind!=='rank'&&kind!==active)continue;
    if(kind==='name'){
     const member=sampleMember();
-    const plate=el('span','compose-nameplate');
+    const level=grade.selectedOptions[0]?.textContent||'';
+   const gold=dept.value==='politie'&&(
+    ['900','910','920','930'].includes(grade.value)||
+    /\b(?:ACP|CP|1CP|HCP|1HCP|Korpschef)\b/i.test(level));
+   const plate=el('span','compose-nameplate '+(gold?'compose-metal-gold':'compose-metal-silver'));
     const name=el('strong','compose-name',member.name);
     const call=el('small','compose-call',member.call);
     name.style.setProperty('--name-length-factor',
@@ -188,7 +185,7 @@ export function setupUniformComposer({api,$}){
   const medal=['medals','ribbons'].includes(active);
   const list=medal?awards.filter(x=>x.kind===(active==='medals'?'medal':'ribbon')):
    images.filter(x=>x.department===dept.value&&x.kind===active&&x.active!==false&&
-    (active!=='uniform'||!['silver','gold'].includes(x.code)));
+    (active!=='uniform'||!['silver','gold','default'].includes(x.code)));
   if(active!=='uniform'&&!medal){
    const clear=el('button','compose-choice','Automatisch / verbergen');
    clear.type='button';clear.onclick=()=>{draft.assets[active]='';render()};gallery.append(clear);
@@ -251,13 +248,13 @@ export function setupUniformComposer({api,$}){
  };
  async function load(preserve=false){
   const before=dept.value,previous=grade.value;
-  const [media,records,persons,rights,catalog,prior]=await Promise.all([
+  const [media,records,persons,rights,catalog]=await Promise.all([
    api('/api/role-artwork/manage'),api('/api/uniform-compositions'),
    api('/api/organogram/hierarchie').catch(()=>({records:[]})),
-   api('/api/uniform-library/status'),api('/api/uniform-compositions/award-catalog'),
-   api('/api/uniform-assignments')]);
+   api('/api/uniform-library/status'),api('/api/uniform-compositions/award-catalog')]);
   images=media.artworks||[];templates=records.compositions||[];
-  oldAssignments=prior.assignments||[];
+
+
   people=persons.records||[];awards=catalog.catalog||[];
   visibleDepts=rights.editableDepartments||[];
   // The atelier alone determines the visibility of the uniform tab.

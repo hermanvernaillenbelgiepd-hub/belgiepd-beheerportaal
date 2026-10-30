@@ -2,41 +2,45 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
-
-class El{
- constructor(tag){this.tag=tag;this.children=[];this.attrs={};this.dataset={};this.className='';this.src='';this.textContent='';this.style={setProperty(){}};this.classList={add(k){this.className+=' '+k}}}
- append(...nodes){this.children.push(...nodes)}
+class FakeElement{
+ constructor(tag){this.tag=tag;this.children=[];this.attrs={};this.dataset={};
+ this.className='';this.src='';this.textContent='';this.style={setProperty(){}};
+ this.classList={add:s=>{this.className+=' '+s}};this.complete=false}
+ append(...list){this.children.push(...list)}
  setAttribute(k,v){this.attrs[k]=v}
+ addEventListener(){}
 }
-function app(){
- const scope={window:{},document:{createElement:t=>new El(t),createElementNS:(_ns,t)=>new El(t)}};
- for(const file of ['organogram-decorations.js','organogram-police-formal.js']){
-  runInNewContext(readFileSync(new URL('../public/assets/'+file,import.meta.url),'utf8'),scope);
+const load=(withCoat=true)=>{
+ const env={window:{BPDUniformAssignments:{forPerson:()=>({
+  uniformUrl:withCoat?'/api/role-artwork/file/uniform_politie_new_coat?v=123':'',
+  rankUrl:'',visualLayout:null})}},document:{
+  createElement:t=>new FakeElement(t),
+  createElementNS:(_ns,t)=>new FakeElement(t)
+ }};
+ for(const filename of ['organogram-decorations.js','organogram-police-formal.js'])
+  runInNewContext(readFileSync(new URL('../public/assets/'+filename,import.meta.url),'utf8'),env);
+ return env.window.BPDPoliceUniform;
+};
+const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
+const renderer=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
+
+test('historical built-in gold/silver coats are no longer requested or rasterized',()=>{
+ for(const call of ['900','920','700','300']){
+  const view=load(false).makePortrait({dept:'politie',call,name:'Voorbeeld'});
+  assert.match(view.className,/bpd-uniform-missing/);
+  assert.ok(!view.children.some(x=>x.src));
  }
- return scope.window.BPDPoliceUniform;
-}
-test('one shared gold coat is rasterised into navy pixels for officers and corps',()=>{
- const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
- const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- const js=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
- assert.match(js,/function matchedGoldNavy\(\)/);
- assert.match(js,/canvas\.getContext\('2d'/);
- assert.match(js,/ctx\.putImageData\(pixels,0,0\)/);
- assert.match(js,/toDataURL\('image\/webp',\.9\)/);
- assert.match(js,/setMatchedGoldCoat\(img\)/);
- assert.doesNotMatch(js,/OFFICER_NAVY_BASE/);
- assert.doesNotMatch(js,/bpd-officieren-marine-match-20261028\.svg/);
- assert.doesNotMatch(css,/filter:url\(#bpd-officer-navy-match\)/);
- assert.match(html,/unified-gold-navy-frame-20261028/);
- assert.match(css,/Gold and silver frames: fixed identical geometry/);
+ assert.match(renderer,/if\(!coatUrl\)/);
+ assert.doesNotMatch(renderer,/else setMatchedGoldCoat\(img\)/);
+ assert.doesNotMatch(renderer,/else setMatchedSilverCoat\(image\)/);
 });
-test('officers are gold-none, corps leaders gold-thick, and other cadres silver-none',()=>{
- const ui=app();
- for(const [call,trim] of [['920','gold-none'],['930','gold-none'],['900','gold-thick'],['910','gold-thick'],['800','silver-none'],['500','silver-none'],['200','silver-none']]){
-  const person={dept:'politie',call,name:'Jones'};
-  const portrait=ui.makePortrait(person);
-  assert.equal(portrait.dataset.trim,trim,call);
-  assert.equal(portrait.children[0].children[0].src,
-   trim==='silver-none'?ui.silverAsset:ui.asset,call);
+test('officer/corps gold nameplate and lower cadres silver do not depend on the old coat',()=>{
+ const ui=load(true);
+ for(const [call,trim,color] of [['900','gold-thick','gold'],['910','gold-thick','gold'],
+  ['920','gold-none','gold'],['930','gold-none','gold'],['800','silver-none','silver']]){
+  const view=ui.makePortrait({dept:'politie',call,name:'RX',awards:[]});
+  assert.equal(view.dataset.trim,trim);
+  const plate=view.children[0].children.find(x=>x.className.includes('nameplate'));
+  assert.match(plate.className,new RegExp('metal-'+color));
  }
 });

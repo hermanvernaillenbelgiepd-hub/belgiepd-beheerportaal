@@ -88,7 +88,7 @@
     // Information only; the authorization check remains exclusively on the server.
     if(root.isConnected&&root.dataset.personKey===identity)
      root.append(node('p','bpd-awards-guidance',
-      'Toekennen is alleen mogelijk voor lagere, toegankelijke politiedossiers. Niet voor je eigen dossier, of voor afgeschermde hogere rangen.'));
+      'Alleen geverifieerd Officierenkader en Korpsleiding kunnen politieonderscheidingen beheren. Dit geeft geen toegang tot afgeschermde dossiers.'));
     return;
    }
    const data=await response.json().catch(()=>({}));

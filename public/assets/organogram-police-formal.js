@@ -419,11 +419,19 @@
   const call=String(person?.call||'—').trim().slice(0,24)||'—';
   return {name,call,bottom:'BELGIEPD - '+call};
  }
+ function goldLettering(person){
+  // BelgiumPD visual distinction by actual rank, not by uniform image.
+  const key=gradeFor(person)?.key||'';
+  return ['acp','cp','1cp','hcp','1hcp'].includes(key)||
+   /\bkorpschef\b|\bhoofdcommissaris\b|\bcommissaris\b/i.test(String(person?.rank||''))||
+   /^\s*(?:SANTO[- ]?)?9(?:0|1|2|3)\d\s*$/i.test(String(person?.call||''));
+ }
+ const metalClass=person=>goldLettering(person)?' bpd-nameplate-metal-gold':' bpd-nameplate-metal-silver';
  function makeNameplate(person,zoom=false){
   if(person?.dept!=='politie')return null;
   const details=nameplateData(person);
   const plate=document.createElement('span');
-  plate.className='bpd-personal-nameplate'+(zoom?' bpd-nameplate-zoom':'');
+  plate.className='bpd-personal-nameplate'+metalClass(person)+(zoom?' bpd-nameplate-zoom':'');
   plate.setAttribute('role','img');
   plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
   plate.title=details.name+' · '+details.bottom;
@@ -437,7 +445,7 @@
   const add=(tag,attrs)=>{const e=svgEl(tag,attrs);svg.append(e);return e};
   add('rect',{x:0,y:0,width:320,height:100,fill:'#0f1928'});
   add('rect',{x:0,y:0,width:80,height:100,fill:'#101a2b'});
-  const stroke='#b9c6d4';
+  const stroke=goldLettering(person)?'#f0cf7a':'#d8e2ee';
   for(let i=0;i<4;i++){
    const x=i*22-10;
    add('path',{d:'M'+x+' 100 L'+(x+43)+' 0',fill:'none',
@@ -452,12 +460,12 @@
   const first=add('text',{x:199,y:34,'text-anchor':'middle',
    'font-family':'system-ui,Segoe UI,Arial,sans-serif',
    'font-size':nameSize,'font-weight':750,
-   fill:'#e2ebf5','letter-spacing':'.2'});
+   fill:stroke,'letter-spacing':'.2'});
   first.textContent=name;
   const second=add('text',{x:199,y:76,'text-anchor':'middle',
    'font-family':'system-ui,Segoe UI,Arial,sans-serif',
    'font-size':16,'font-weight':750,
-   fill:'#d9e3ed','letter-spacing':'.2'});
+   fill:stroke,'letter-spacing':'.2'});
   second.textContent=details.bottom;
   plate.append(svg);
   return plate;
@@ -465,7 +473,7 @@
  function makeGoldNameplate(person){
   const details=nameplateTextData(person,'gold');
   const plate=document.createElement('span');
-  plate.className='bpd-personal-nameplate bpd-gold-nameplate';
+  plate.className='bpd-personal-nameplate bpd-gold-nameplate'+metalClass(person);
   plate.dataset.call=details.call;
   plate.setAttribute('role','img');
   plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
@@ -485,7 +493,7 @@
   // Same woven cloth as gold, with TEST-approved silver-coat positioning.
   const details=nameplateTextData(person,'silver');
   const plate=document.createElement('span');
-  plate.className='bpd-personal-nameplate bpd-silver-woven-nameplate';
+  plate.className='bpd-personal-nameplate bpd-silver-woven-nameplate'+metalClass(person);
   plate.dataset.call=details.call;
   plate.setAttribute('role','img');
   plate.setAttribute('aria-label','Naamplaat: '+details.name+', '+details.bottom);
@@ -513,12 +521,25 @@
   const grade=gradeFor(person);
   const trim=trimFor(grade);
   const isSilver=trim==='silver-none';
+  const coatUrl=window.BPDUniformAssignments?.forPerson?.(person)?.uniformUrl||'';
   const outer=document.createElement('span');
   outer.className='portrait bpd-police-formal'+(large?' large':'');
   outer.dataset.dept='politie';
   outer.dataset.trim=trim;
   outer.dataset.uniform=isSilver?'silver':'gold';
-  if(window.BPDUniformAssignments?.forPerson?.(person)?.uniformUrl)outer.classList.add('bpd-assigned-coat');
+  if(coatUrl)outer.classList.add('bpd-assigned-coat');
+  // Retired built-in gold/silver coat pictures must never be requested again.
+  // If the staff member has no current uploaded coat, display an honest empty
+  // placeholder rather than silently reloading the former uniform.
+  if(!coatUrl){
+   outer.classList.add('bpd-uniform-missing');
+   const info=document.createElement('span');
+   info.className='bpd-uniform-missing-label';
+   info.textContent='Geen nieuw uniform ingesteld';
+   outer.append(info);
+   outer.setAttribute('aria-label','Geen nieuw uniform ingesteld · '+(grade?.label||'Politie'));
+   return outer;
+  }
   outer.setAttribute('role','img');
   outer.setAttribute('aria-label','Belgisch geïnspireerd formeel politie-uniform'+(grade?' · '+grade.label:'')+' · sjabloon, geen persoonlijke foto');
 
@@ -529,10 +550,8 @@
    stage.className='bpd-gold-stage';
    const img=document.createElement('img');
    img.className='bpd-gold-coat';
-   const individualGold=window.BPDUniformAssignments?.forPerson?.(person)?.uniformUrl;
-   if(individualGold)img.src=individualGold;
-   else if(uniformArtworkOverrides.has('gold'))img.src=uniformArtworkOverrides.get('gold');
-   else setMatchedGoldCoat(img);
+   const individualGold=coatUrl;
+   img.src=coatUrl;
    img.alt='';
    img.loading=large?'eager':'lazy';
    img.decoding='async';
@@ -575,10 +594,8 @@
   stage.className='bpd-silver-stage';
   const image=document.createElement('img');
   image.className='bpd-silver-coat';
-  const individualSilver=window.BPDUniformAssignments?.forPerson?.(person)?.uniformUrl;
-  if(individualSilver)image.src=individualSilver;
-  else if(uniformArtworkOverrides.has('silver'))image.src=uniformArtworkOverrides.get('silver');
-  else setMatchedSilverCoat(image);
+  const individualSilver=coatUrl;
+  image.src=coatUrl;
   image.alt='';
   image.loading=large?'eager':'lazy';
   image.decoding='async';

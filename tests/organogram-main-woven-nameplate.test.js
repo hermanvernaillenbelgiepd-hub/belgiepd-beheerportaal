@@ -2,68 +2,48 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
-class El{
- constructor(tag){
-  this.tag=tag;this.children=[];this.attrs={};this.dataset={};this.src='';
-  this.className='';this.textContent='';this.style={setProperty(){}};
-  this.classList={add:k=>{this.className+=(this.className?' ':'')+k}};
- }
- append(...n){this.children.push(...n)}
+class FakeElement{
+ constructor(tag){this.tag=tag;this.children=[];this.attrs={};this.dataset={};
+ this.className='';this.src='';this.textContent='';this.style={setProperty(){}};
+ this.classList={add:s=>{this.className+=' '+s}};this.complete=false}
+ append(...list){this.children.push(...list)}
  setAttribute(k,v){this.attrs[k]=v}
+ addEventListener(){}
 }
-function load(){
- const env={window:{},document:{
-  createElement:tag=>new El(tag),
-  createElementNS:(_ns,tag)=>new El(tag)}};
- for(const filename of ['organogram-decorations.js','organogram-police-formal.js']){
+const load=(withCoat=true)=>{
+ const env={window:{BPDUniformAssignments:{forPerson:()=>({
+  uniformUrl:withCoat?'/api/role-artwork/file/uniform_politie_new_coat?v=123':'',
+  rankUrl:'',visualLayout:null})}},document:{
+  createElement:t=>new FakeElement(t),
+  createElementNS:(_ns,t)=>new FakeElement(t)
+ }};
+ for(const filename of ['organogram-decorations.js','organogram-police-formal.js'])
   runInNewContext(readFileSync(new URL('../public/assets/'+filename,import.meta.url),'utf8'),env);
- }
  return env.window.BPDPoliceUniform;
-}
-test('the TEST-approved blank textile nameplate exists on MAIN as real WebP',()=>{
- const asset=readFileSync(new URL('../public/assets/bpd-naamplaat-geweven-leeg-20261028.webp',import.meta.url));
- assert.equal(asset.toString('ascii',0,4),'RIFF');
- assert.equal(asset.toString('ascii',8,12),'WEBP');
- assert.ok(asset.length>40000&&asset.length<65000);
+};
+const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
+const renderer=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
+
+test('classic woven nameplate has diagonal side-stitches, separator, and gold/silver metal',()=>{
+ assert.match(css,/repeating-linear-gradient\(129deg/);
+ assert.match(css,/bpd-nameplate-metal-gold/);
+ assert.match(css,/bpd-nameplate-metal-silver/);
+ assert.match(css,/background:var\(--thread\)/);
 });
-test('gold portraits show woven plate with current uppercase name and callsign',()=>{
+test('gold and silver plate text follows actual grade and call',()=>{
  const ui=load();
- for(const [call,grade] of [['900','1hcp'],['910','1cp'],['920','acp'],['930','acp']]){
-  const person={dept:'politie',name:'Jones',call,awards:[]};
-  const portrait=ui.makePortrait(person);
-  assert.equal(portrait.dataset.uniform,'gold',call);
-  const stage=portrait.children[0];
-  const name=stage.children.find(x=>x.className.includes('bpd-gold-nameplate'));
-  assert.ok(name,call);
-  assert.equal(name.children[0].textContent,'JONES',call);
-  assert.equal(name.children[1].textContent,'BELGIEPD - '+call,call);
-  const cloth=stage.children.find(x=>x.className.includes('bpd-gold-cloth-rank'));
-  assert.equal(cloth.dataset.grade,grade,call);
-  assert.equal(cloth.children[0].src,'/assets/bpd-rank-'+grade+'-clean-20261027.webp',call);
+ for(const [call,color] of [['900','gold'],['910','gold'],['920','gold'],
+  ['930','gold'],['700','silver'],['400','silver']]){
+  const view=ui.makePortrait({dept:'politie',name:'RX',call,awards:[]});
+  const plate=view.children[0].children.find(x=>x.className.includes('nameplate'));
+  assert.ok(plate,call);
+  assert.match(plate.className,new RegExp('metal-'+color),call);
+  assert.equal(plate.children[0].textContent,'RX');
+  assert.equal(plate.children[1].textContent,'BELGIEPD - '+call);
  }
- const after=ui.makePortrait({dept:'politie',name:'Nieuwe Naam',call:'910'});
- const label=after.children[0].children.find(x=>x.className.includes('bpd-gold-nameplate'));
- assert.equal(label.children[0].textContent,'NIEUWE NAAM');
- assert.equal(label.children[1].textContent,'BELGIEPD - 910');
 });
-test('same approved woven patch is used independently by gold and silver',()=>{
- const ui=load();
- const silver=ui.makePortrait({dept:'politie',call:'720',name:'Jones',awards:[]});
- assert.equal(silver.dataset.uniform,'silver');
- const stage=silver.children[0];
- assert.equal(stage.className,'bpd-silver-stage');
- const name=stage.children.find(x=>x.className.includes('bpd-silver-woven-nameplate'));
- assert.equal(name.children[0].textContent,'JONES');
- assert.equal(name.children[1].textContent,'BELGIEPD - 720');
- const rank=stage.children.find(x=>x.className.includes('bpd-silver-cloth-rank'));
- assert.equal(rank.dataset.grade,'hinp');
- assert.equal(rank.children[0].src,'/assets/bpd-rank-hinp-clean-20261027.webp');
- const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
- assert.match(css,/bpd-naamplaat-geweven-leeg-20261028\.webp/);
- assert.match(css,/aspect-ratio:1032\/381/);
- assert.match(css,/top:20%;height:25%/); // gold
- assert.match(css,/top:57%;height:28%/); // gold
- assert.match(css,/left:10\.25%;top:56\.2%;width:27\.75%/); // silver
- const html=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
- assert.match(html,/unified-gold-navy-frame-20261028/);
+test('old static nameplate WebP may remain archived but no coat image is loaded without atelier composition',()=>{
+ const view=load(false).makePortrait({dept:'politie',call:'900',name:'RX'});
+ assert.match(view.className,/bpd-uniform-missing/);
+ assert.equal(view.children[0].textContent,'Geen nieuw uniform ingesteld');
 });
