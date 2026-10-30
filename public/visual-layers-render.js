@@ -56,7 +56,10 @@
    // Explicit library selection overrides automatic rank/specialty/default matching.
    // It does not apply to awards: those always need real personnel award data.
    const selected=window.BPDUniformAssignments?.forPerson?.(person)?.elementCodes?.[layer.kind];
-   if(selected?layer.code!==selected:!hasAssignment(person,layer))continue;
+   if(layer.kind==='specialty'){
+    // A display rule must never impersonate an actual earned specialization.
+    if(!hasAssignment(person,layer))continue;
+   }else if(selected?layer.code!==selected:!hasAssignment(person,layer))continue;
    const wrapper=document.createElement('span');
    wrapper.className='bpd-custom-uniform-layer';
    wrapper.style.cssText='position:absolute;pointer-events:none;display:block;overflow:hidden;'+
