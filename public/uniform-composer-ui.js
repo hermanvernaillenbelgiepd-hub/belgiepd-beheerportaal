@@ -1,5 +1,5 @@
 // Operational uniform composition: one grade, one preview, one save.
-import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,normalizeVisual} from '/uniform-profile-policy.js';
+import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,normalizeVisual,policeUniformGroup} from '/uniform-profile-policy.js';
 export function setupUniformComposer({api,$}){
  const dept=$('composeDept'),grade=$('composeGrade'),panel=$('composePreview'),
   gallery=$('composeGallery'),types=$('composeTypes'),save=$('composeSave'),notice=$('composeStatus');
@@ -9,7 +9,7 @@ export function setupUniformComposer({api,$}){
   medals:[57,70,24,19],helmet:[19,4,62,32],profession:[55,42,24,12],logo:[72,26,14,14]};
  const services=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
   ['depannage','Depannage'],['burger','Burger']];
- let images=[],templates=[],people=[],awards=[],draft=null,baseline='',active='uniform',
+ let images=[],templates=[],people=[],awards=[],oldAssignments=[],draft=null,baseline='',active='uniform',
   sampleAward='',busy=false,visibleDepts=[],cloudReady=false,previousDept='',previousGrade='';
  const el=(tag,cls,text)=>{const v=document.createElement(tag);v.className=cls||'';
   if(text!==undefined)v.textContent=text;return v;};
@@ -32,8 +32,18 @@ export function setupUniformComposer({api,$}){
  function initialize(){
   const scope=grade.selectedOptions[0]?.dataset.scope||'rank';
   const saved=templates.find(x=>x.department===dept.value&&x.scope===scope&&x.selector===grade.value);
+  const group=dept.value==='politie'?
+   policeUniformGroup({dept:'politie',call:grade.value}):'';
+  const fallbacks=[
+   [scope,grade.value],...(group?[['group',group]]:[]),
+   ['service','default']
+  ];
+  const inherited=fallbacks.map(([sc,sel])=>oldAssignments.find(x=>
+   x.department===dept.value&&x.scope===sc&&x.selector===sel)?.uniformCode)
+   .find(code=>code&&images.some(x=>x.department===dept.value&&
+    x.kind==='uniform'&&x.code===code))||'';
   draft={department:dept.value,scope,selector:grade.value,
-   assets:{uniform:'',rank:'',helmet:'',profession:'',logo:'',...(saved?.assets||{})},
+   assets:{uniform:inherited,rank:'',helmet:'',profession:'',logo:'',...(saved?.assets||{})},
    layers:Object.fromEntries(Object.entries(defaults).map(([k,v])=>[k,{
     left:v[0],top:v[1],width:v[2],height:v[3],visible:true,...(saved?.layers?.[k]||{})}]))};
   baseline=JSON.stringify(draft);active='uniform';previousDept=dept.value;previousGrade=grade.value;render();
@@ -55,7 +65,7 @@ export function setupUniformComposer({api,$}){
   panel.replaceChildren();
   const coat=asset('uniform',draft.assets.uniform);
   if(coat){const pic=el('img','compose-coat');pic.src=coat.imageUrl;pic.alt=coat.label;panel.append(pic)}
-  else panel.append(el('p','compose-empty','Kies een basisuniform.'));
+  else{panel.append(el('p','compose-empty','Kies een basisuniform.'));return;}
   for(const [kind,position]of Object.entries(draft.layers)){
    const box=el('div','compose-layer'+(kind===active?' active':''));box.dataset.kind=kind;
    box.style.cssText='left:'+position.left+'%;top:'+position.top+'%;width:'+position.width+
@@ -169,11 +179,13 @@ export function setupUniformComposer({api,$}){
  };
  async function load(preserve=false){
   const before=dept.value,previous=grade.value;
-  const [media,records,persons,rights,catalog]=await Promise.all([
+  const [media,records,persons,rights,catalog,prior]=await Promise.all([
    api('/api/role-artwork/manage'),api('/api/uniform-compositions'),
    api('/api/organogram/hierarchie').catch(()=>({records:[]})),
-   api('/api/uniform-library/status'),api('/api/uniform-compositions/award-catalog')]);
+   api('/api/uniform-library/status'),api('/api/uniform-compositions/award-catalog'),
+   api('/api/uniform-assignments')]);
   images=media.artworks||[];templates=records.compositions||[];
+  oldAssignments=prior.assignments||[];
   people=persons.records||[];awards=catalog.catalog||[];
   visibleDepts=rights.editableDepartments||[];
   cloudReady=Boolean(rights.storageReady);
