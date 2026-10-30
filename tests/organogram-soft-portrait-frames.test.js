@@ -35,7 +35,7 @@ test('rank plates and woven names are not changed by the new photo frame',()=>{
  assert.match(js,/GRADE_ASSETS\[grade\?\.key\]/);
  assert.match(css,/left:10\.25%;top:56\.2%;width:27\.75%/);
  assert.match(css,/left:62\.3%;top:56\.75%;\s*width:26\.6%;height:12\.25%/);
- assert.match(html,/rank-artwork-thread-20261031-v2/);
+ assert.match(html,/officer-gold-writing-20261031-v4/);
 });
 test('visual frame applies without changes to data, awards or officer class',()=>{
  assert.match(after,/\.portrait\.bpd-police-formal\[data-uniform="gold"\]>.bpd-gold-stage/);
