@@ -377,7 +377,8 @@ header button{padding:7px 10px;font-size:12px}
 .compose-layer .compose-nameplate>.compose-nameplate-mirrored-grade{
  position:absolute;inset:0;display:block;z-index:0;
  width:100%;height:100%;object-fit:fill;
- transform:scaleX(-1);clip-path:inset(0 76% 0 0);
+ transform:scaleX(-1);/* Full mirrored image behind the opaque text panel: the right-hand
+    grade pattern now appears on the left, with rank symbols hidden. */
  pointer-events:none;
 }
 .compose-layer .compose-nameplate>.compose-nameplate-text-field{
