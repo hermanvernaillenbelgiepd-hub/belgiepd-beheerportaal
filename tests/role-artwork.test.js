@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {validateRoleArtwork} from '../src/role-artwork-routes.js';
 
 const base={
@@ -26,9 +27,8 @@ test('role-logo editor enforces image signatures and size',()=>{
  assert.throws(()=>validateRoleArtwork(make({dataUrl:'data:image/webp;base64,'+huge.toString('base64')})),/140 KB/);
 });
 test('role-logo slot is a role ID plus display variant, not a permission',()=>{
- const pseudo=Buffer.alloc(20,0);pseudo.write('RIFF',0);
- pseudo.writeUInt32LE(pseudo.length-8,4);pseudo.write('WEBP',8);
- const result=validateRoleArtwork(make({dataUrl:'data:image/webp;base64,'+pseudo.toString('base64')}));
+ const fixture=readFileSync(new URL('../public/assets/k9-patches-geborduurd-20261029.webp',import.meta.url));
+ const result=validateRoleArtwork(make({dataUrl:'data:image/webp;base64,'+fixture.toString('base64')}));
  assert.equal(result.key,'1358148694297415741_standard');
  assert.equal(result.roleId,base.roleId);
  assert.equal(Object.hasOwn(result,'permissions'),false);
