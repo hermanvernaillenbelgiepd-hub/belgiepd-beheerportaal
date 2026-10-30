@@ -1,11 +1,11 @@
 // Operational uniform composition: one grade, one preview, one save.
-import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,normalizeVisual,policeUniformGroup} from '/uniform-profile-policy.js';
+import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,normalizeVisual,policeUniformGroup,policeCallSeries,ambulanceFunction} from '/uniform-profile-policy.js';
 export function setupUniformComposer({api,$}){
  const dept=$('composeDept'),grade=$('composeGrade'),panel=$('composePreview'),
   gallery=$('composeGallery'),types=$('composeTypes'),save=$('composeSave'),notice=$('composeStatus');
  const kindNames={uniform:'Uniform',rank:'Gradenplaat',name:'Naamplaat',ribbons:'Erelint',
   medals:'Medaille',helmet:'Helm',profession:'Beroepsteken',logo:'Logo'};
- const defaults={name:[18,56,22,10],rank:[57,56,23,12],ribbons:[57,51,21,5],
+ const defaults={name:[18,56,27,11],rank:[57,56,25,10],ribbons:[57,51,21,5],
   medals:[57,70,24,19],helmet:[19,4,62,32],profession:[55,42,24,12],logo:[72,26,14,14]};
  const services=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
   ['depannage','Depannage'],['burger','Burger']];
@@ -69,6 +69,20 @@ export function setupUniformComposer({api,$}){
   save.disabled=busy||!draft?.assets.uniform||!dirty();
   $('composePending').textContent=dirty()?'Niet opgeslagen':'Alles opgeslagen';
  }
+ function sampleMember(){
+  const match=people.find(p=>p.dept===dept.value&&(
+   draft.scope==='call'?policeCallSeries(p.call)===grade.value:
+   draft.scope==='function'?ambulanceFunction(p)===grade.value:
+    normalizeVisual(p.rank)===grade.value));
+  const prefix=dept.value==='politie'?'SANTO-':
+   dept.value==='ambulance'?'AZLS-':'';
+  return {name:String(match?.name||'VOORBEELD').trim().toUpperCase(),
+   call:String(match?.call||prefix+grade.value).trim().toUpperCase()};
+ }
+ function displayRank(){
+  const label=grade.selectedOptions[0]?.textContent||'';
+  return dept.value==='politie'?label.split(' · ').slice(1).join(' · ')||label:label;
+ }
  function draw(){
   panel.replaceChildren();
   const coat=asset('uniform',draft.assets.uniform);
@@ -81,9 +95,25 @@ export function setupUniformComposer({api,$}){
    const code=draft.assets[kind];let url=asset(kind,code)?.imageUrl||'';
    if(['ribbons','medals'].includes(kind))
     url=awards.find(x=>x.id===sampleAward&&x.kind===(kind==='medals'?'medal':'ribbon'))?.imageUrl||'';
-   if(url){const img=el('img');img.src=url;img.alt='';box.append(img)}
-   else box.append(el('span','',kind==='name'?'NAAM / CALL':kind==='medals'?'✦':
-    kind==='ribbons'?'▰':kind==='rank'?'GRAAD':kindNames[kind]));
+   if(!url&&kind!=='name'&&kind!=='rank'&&kind!==active)continue;
+   if(kind==='name'){
+    const member=sampleMember();
+    const plate=el('span','compose-nameplate');
+    const name=el('strong','compose-name',member.name);
+    const call=el('small','compose-call',member.call);
+    name.style.setProperty('--name-length-factor',
+     String(Math.max(.53,Math.min(1,15/Math.max(1,member.name.length)))));
+    plate.append(name,call);box.append(plate);
+    box.setAttribute('aria-label','Naamplaat: '+member.name+' · '+member.call);
+   }else if(url){
+    const img=el('img');img.src=url;img.alt=kindNames[kind];
+    img.className=kind==='rank'?'compose-rank-image':'compose-art';
+    box.append(img);
+   }else{
+    const text=kind==='rank'?displayRank():
+     kind==='medals'?'✦':kind==='ribbons'?'▰':kindNames[kind];
+    box.append(el('span',kind==='rank'?'compose-rank-caption':'compose-placeholder',text));
+   }
    box.title=kindNames[kind]+' verplaatsen';
    box.onpointerdown=e=>{
     e.preventDefault();active=kind;box.setPointerCapture(e.pointerId);
