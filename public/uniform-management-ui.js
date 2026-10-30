@@ -13,10 +13,13 @@ export function setupUniformManagementUI({api,$,notice}){
  const nx=$p('uniformNameX'),ny=$p('uniformNameY');
  const nw=$p('uniformNameW'),nh=$p('uniformNameH');
  const cx=$p('uniformCoatX'),cy=$p('uniformCoatY'),cz=$p('uniformCoatZoom');
+ const canvasWidth=$p('uniformCanvasWidth'),canvasHeight=$p('uniformCanvasHeight');
+ const keepAspect=$p('uniformKeepAspect'),originalInfo=$p('uniformOriginalInfo');
  const nf=$p('uniformNameFont'),cf=$p('uniformCallFont');
  const prefix=$p('uniformNamePrefix'),exampleName=$p('uniformNameExample'),
   exampleCall=$p('uniformCallExample');
  let layouts=new Map(),nameLayouts=new Map(),coatLayouts=new Map(),images=new Map(),rankAssets=[],authorized=[],drag=null,imageData='';
+ let sourceImage=null,sourceWidth=0,sourceHeight=0,lockedRatio=603/469,sourceRevision=0;
  const defaults={
   politie_silver:{left:62.3,top:56.75,width:26.6,height:12.25},
   politie_gold:{left:56.2,top:58.9,width:19.5,height:12.1}
@@ -52,7 +55,32 @@ export function setupUniformManagementUI({api,$,notice}){
    (gradePreview.options[1]?.value||'');
  }
  gradePreview.addEventListener('change',render);
+ function validCanvas(){
+  const width=Number(canvasWidth.value),height=Number(canvasHeight.value);
+  return Number.isInteger(width)&&Number.isInteger(height)&&
+   width>=160&&height>=160&&width<=4096&&height<=4096&&
+   width*height<=8000000;
+ }
+ function canvasConfig(){
+  return {canvasWidth:Number(canvasWidth.value),canvasHeight:Number(canvasHeight.value),
+   keepAspectRatio:keepAspect.checked};
+ }
+ function fitOriginal(){
+  if(!sourceWidth||!sourceHeight){
+   message('Selecteer eerst een uniformfoto om de originele afmetingen te gebruiken.',true);return false;
+  }
+  const scale=Math.min(1,4096/sourceWidth,4096/sourceHeight,
+   Math.sqrt(8000000/(sourceWidth*sourceHeight)));
+  const width=Math.max(160,Math.round(sourceWidth*scale));
+  const height=Math.max(160,Math.round(sourceHeight*scale));
+  canvasWidth.value=width;canvasHeight.value=height;
+  lockedRatio=width/height;keepAspect.checked=true;return true;
+ }
  function render(){
+  if(validCanvas()){
+   frame.style.aspectRatio=canvasWidth.value+'/'+canvasHeight.value;
+   coat.style.objectFit=keepAspect.checked?'contain':'fill';
+  }
   coat.style.transform='translate('+cx.value+'%,'+cy.value+'%) scale('+(Number(cz.value)/100)+')';
   for(const [label,control] of [['X',cx],['Y',cy],['Zoom',cz]]){
    const value=Number(control.value).toFixed(label==='Zoom'?0:1)+'%';
@@ -75,8 +103,6 @@ export function setupUniformManagementUI({api,$,notice}){
   nameplate.style.width=nw.value+'%';nameplate.style.height=nh.value+'%';
   nameplate.classList.toggle('gold',dept.value==='politie'&&variant.value==='gold');
   nameplate.classList.toggle('silver',dept.value!=='politie'||variant.value==='silver');
-  $p('uniformPreviewCall').textContent=dept.value==='politie'?'BELGIEPD · 610':
-   names[dept.value].toUpperCase()+' · 001';
   for(const [label,control] of [['X',nx],['Y',ny],['W',nw],['H',nh]]){
    const value=Number(control.value).toFixed(1)+'%';
    $p('uniformNameValue'+label).value=value;
@@ -97,7 +123,9 @@ export function setupUniformManagementUI({api,$,notice}){
   frame.classList.toggle('uniform-empty',!url);
  }
  function useLayout(){
+  sourceRevision++;sourceImage=null;sourceWidth=sourceHeight=0;
   imageData='';$p('uniformFile').value='';
+  originalInfo.textContent='Geen nieuwe bronfoto geselecteerd';
   const pos=layouts.get(key())||defaultFor(key());
   x.value=pos.left;y.value=pos.top;w.value=pos.width;h.value=pos.height;
   const namePos=nameLayouts.get(key())||nameDefaultFor(key());
@@ -106,6 +134,10 @@ export function setupUniformManagementUI({api,$,notice}){
   prefix.value=namePos.prefix||prefixFor();
   const coatPos=coatLayouts.get(key())||{offsetX:0,offsetY:0,zoom:100};
   cx.value=coatPos.offsetX;cy.value=coatPos.offsetY;cz.value=coatPos.zoom;
+  canvasWidth.value=coatPos.canvasWidth||603;
+  canvasHeight.value=coatPos.canvasHeight||469;
+  keepAspect.checked=coatPos.keepAspectRatio!==false;
+  lockedRatio=Number(canvasWidth.value)/Number(canvasHeight.value);
   updateGradeChoices();render();
  }
  function variants(){
@@ -240,35 +272,74 @@ export function setupUniformManagementUI({api,$,notice}){
   cx.value=cy.value=0;cz.value=100;render();
   message('Uniform gecentreerd. Klik Uniformpositie en grootte bewaren.');
  };
+ function encodeSource(){
+  if(!sourceImage){render();return}
+  if(!validCanvas()){
+   imageData='';message('Canvas: 160–4096 px per zijde, maximaal 8 megapixel.',true);render();return;
+  }
+  const {canvasWidth:width,canvasHeight:height}=canvasConfig();
+  const downsample=Math.min(1,1800/Math.max(width,height),Math.sqrt(2500000/(width*height)));
+  const outW=Math.max(1,Math.round(width*downsample)),outH=Math.max(1,Math.round(height*downsample));
+  const canvas=document.createElement('canvas');
+  canvas.width=outW;canvas.height=outH;
+  const ctx=canvas.getContext('2d',{alpha:true});
+  if(!ctx){message('Afbeeldingsverwerking niet beschikbaar.',true);return}
+  const ratio=keepAspect.checked?
+   Math.min(outW/sourceImage.naturalWidth,outH/sourceImage.naturalHeight):null;
+  if(keepAspect.checked){
+   const drawnW=sourceImage.naturalWidth*ratio,drawnH=sourceImage.naturalHeight*ratio;
+   ctx.drawImage(sourceImage,(outW-drawnW)/2,(outH-drawnH)/2,drawnW,drawnH);
+  }else ctx.drawImage(sourceImage,0,0,outW,outH);
+  let encoded='';
+  for(const q of [.90,.80,.68,.55,.42,.28,.18]){
+   const data=canvas.toDataURL('image/webp',q);
+   if(data.startsWith('data:image/webp;base64,')&&data.length<180000){
+    encoded=data;break;
+   }
+  }
+  if(!encoded){
+   imageData='';message('Deze afbeelding is te gedetailleerd voor de online opslag. Kies kleinere afmetingen.',true);
+   render();return;
+  }
+  imageData=encoded;render();
+  message('Volledige uniformafbeelding klaar. Bewaar het uniform om ook het formaat te publiceren.');
+ }
+ function canvasChanged(axis){
+  if(keepAspect.checked&&lockedRatio>0){
+   if(axis==='width'&&Number(canvasWidth.value)>=160){
+    canvasHeight.value=Math.round(Number(canvasWidth.value)/lockedRatio);
+   }else if(axis==='height'&&Number(canvasHeight.value)>=160){
+    canvasWidth.value=Math.round(Number(canvasHeight.value)*lockedRatio);
+   }
+  }
+  if(sourceImage)encodeSource();else render();
+ }
+ canvasWidth.addEventListener('change',()=>canvasChanged('width'));
+ canvasHeight.addEventListener('change',()=>canvasChanged('height'));
+ keepAspect.addEventListener('change',()=>{
+  if(keepAspect.checked&&validCanvas())lockedRatio=Number(canvasWidth.value)/Number(canvasHeight.value);
+  if(sourceImage)encodeSource();else render();
+ });
+ $p('uniformOriginalSize').onclick=()=>{
+  if(fitOriginal())encodeSource();
+ };
  $p('uniformFile').addEventListener('change',async()=>{
   const file=$p('uniformFile').files?.[0];
   if(!file)return;
   if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>5*1024*1024){
    message('Gebruik PNG, JPG of WebP van maximaal 5 MB.',true);return;
   }
+  const revision=++sourceRevision;
   const blob=URL.createObjectURL(file);
   try{
    const img=new Image();img.src=blob;await img.decode();
+   if(revision!==sourceRevision)return;
    if(!img.naturalWidth||!img.naturalHeight||img.naturalWidth>8192||img.naturalHeight>8192)
     throw Error('Afbeeldingsafmetingen zijn ongeldig');
-   const canvas=document.createElement('canvas');
-   canvas.width=603;canvas.height=469;
-   const ctx=canvas.getContext('2d');if(!ctx)throw Error('Voorbeeldverwerking niet beschikbaar');
-   const scale=Math.max(603/img.naturalWidth,469/img.naturalHeight);
-   const iw=img.naturalWidth*scale,ih=img.naturalHeight*scale;
-   ctx.drawImage(img,(603-iw)/2,(469-ih)/2,iw,ih);
-   imageData='';
-   for(const q of [.9,.75,.55,.42]){
-    const data=canvas.toDataURL('image/webp',q);
-    if(data.startsWith('data:image/webp;base64,')&&data.length<180000){
-     imageData=data;break;
-    }
-   }
-   if(!imageData)throw Error('Uniform is te groot; kies een afbeelding met minder details.');
-   coat.src=imageData;coat.hidden=false;
-   frame.classList.remove('uniform-empty');
-   message('Uniform geladen in het voorbeeld. Klik Uniform bewaren om de afbeelding te publiceren.');
-  }catch(e){imageData='';message(e.message,true)}
+   sourceImage=img;sourceWidth=img.naturalWidth;sourceHeight=img.naturalHeight;
+   originalInfo.textContent='Origineel: '+sourceWidth+' × '+sourceHeight+' px';
+   if(fitOriginal())encodeSource();
+  }catch(e){if(revision===sourceRevision){sourceImage=null;imageData='';message(e.message,true)}}
   finally{URL.revokeObjectURL(blob)}
  });
  async function reload(){
@@ -302,25 +373,38 @@ export function setupUniformManagementUI({api,$,notice}){
   if(motivation.length<8){message('Geef een motivering van minstens 8 tekens.',true);return}
   const button=$p('uniformSaveImage');button.disabled=true;
   try{
+   if(!validCanvas()){message('Corrigeer eerst de canvasafmetingen.',true);return}
+   const chosenKey=key();
    await api('/api/role-artwork/personnel',{method:'PUT',body:{
     kind:'uniform',department:dept.value,code:variant.value,
     label:names[dept.value]+' · '+variant.selectedOptions[0]?.textContent,
     reason:motivation,dataUrl:imageData}});
-   message('Uniformafbeelding gepubliceerd; bestaande graad- en functieplaatjes blijven behouden.');
-   await reload();
+   const positions={department:dept.value,variant:variant.value,
+    offsetX:Number(cx.value),offsetY:Number(cy.value),zoom:Number(cz.value),
+    ...canvasConfig(),reason:motivation};
+   try{
+    await api('/api/uniform-management/coat',{method:'PUT',body:positions});
+    coatLayouts.set(chosenKey,{...positions,configured:true});
+    message('Uniform én canvasafmetingen opgeslagen. Gradenplaat en naamplaat blijven afzonderlijk instelbaar.');
+    await reload();
+   }catch(error){
+    message('Afbeelding opgeslagen, maar het canvasformaat kon niet worden bewaard: '+error.message,true);
+   }
   }catch(e){message('Uniform bewaren mislukt: '+e.message,true)}
   finally{button.disabled=false}
  };
  $p('uniformSaveCoat').onclick=async()=>{
   const motivation=reason.value.trim();
   if(motivation.length<8){message('Geef een motivering van minstens 8 tekens.',true);return}
+  if(!validCanvas()){message('Corrigeer eerst de canvasafmetingen.',true);return}
   const values={department:dept.value,variant:variant.value,
-   offsetX:Number(cx.value),offsetY:Number(cy.value),zoom:Number(cz.value),reason:motivation};
+   offsetX:Number(cx.value),offsetY:Number(cy.value),zoom:Number(cz.value),
+   ...canvasConfig(),reason:motivation};
   const button=$p('uniformSaveCoat');button.disabled=true;
   try{
    await api('/api/uniform-management/coat',{method:'PUT',body:values});
    coatLayouts.set(key(),{...values,configured:true});
-   message('Uniformpositie en grootte opgeslagen. Naamplaat en gradenplaat blijven apart instelbaar.');
+   message('Canvasformaat, uniformpositie en grootte opgeslagen. Naamplaat en gradenplaat blijven apart instelbaar.');
   }catch(e){message('Uniformpositie bewaren mislukt: '+e.message,true)}
   finally{button.disabled=false}
  };
