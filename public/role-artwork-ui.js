@@ -37,18 +37,20 @@ export function setupRoleArtworkUI({api,$,notice}){
   pictogram:'Pictogram',patch:'Uniformpatch',award:'Ereteken'};
  const $p=id=>$(id);
  const kindSelect=$p('roleArtworkKind'),codePreset=$p('roleArtworkCodePreset');
+ const badgeStyle=$p('roleArtworkBadgeStyle');
  const showKind=()=>{
   const role=kindSelect.value==='role';
   $p('roleArtworkPresetWrap').hidden=!role;
   $p('roleArtworkRoleIdWrap').hidden=!role;
   $p('roleArtworkVariantWrap').hidden=!role;
   $p('roleArtworkCodeWrap').hidden=role;
+  $p('roleArtworkBadgeStyleWrap').hidden=kindSelect.value!=='specialty';
   codePreset.replaceChildren(new Option('Kies een bestaande optie of vul een code in',''));
   const known=kindSelect.value==='rank'?grades:
    kindSelect.value==='specialty'?specialties:[['default','Standaard voor deze hulpdienst']];
   if(!role)for(const [code,name] of known)codePreset.add(new Option(name,code));
  };
- kindSelect.onchange=()=>{showKind();configureCanvas();void setPreview('');};
+ kindSelect.onchange=()=>{badgeStyle.value='';showKind();configureCanvas();void setPreview('');};
  codePreset.onchange=()=>{
   const preset=(kindSelect.value==='rank'?grades:
    kindSelect.value==='specialty'?specialties:[['default','Standaard']]).find(x=>x[0]===codePreset.value);
@@ -193,8 +195,10 @@ export function setupRoleArtworkUI({api,$,notice}){
  function selectItem(row){
   kindSelect.value=row.kind||'role';
   showKind();configureCanvas();
-  $p('roleArtworkCode').value=row.code||'';
-  codePreset.value=row.code||'';
+  const styleMatch=row.kind==='specialty'?/^(.+)_(lokaal|federaal)$/.exec(row.code||''):null;
+  badgeStyle.value=styleMatch?styleMatch[2]:'';
+  $p('roleArtworkCode').value=styleMatch?styleMatch[1]:(row.code||'');
+  codePreset.value=styleMatch?styleMatch[1]:(row.code||'');
   $p('roleArtworkRoleId').value=row.roleId||'';
   $p('roleArtworkDepartment').value=row.department||'politie';
   $p('roleArtworkVariant').value=row.variant||'standard';
@@ -264,7 +268,9 @@ export function setupRoleArtworkUI({api,$,notice}){
  upload.onclick=async()=>{
   if(busy)return;
   const roleId=$p('roleArtworkRoleId').value.trim(),variant=$p('roleArtworkVariant').value.trim();
-  const kind=kindSelect.value,code=$p('roleArtworkCode').value.trim().toLowerCase();
+  const kind=kindSelect.value;
+  const codeBase=$p('roleArtworkCode').value.trim().toLowerCase();
+  const code=kind==='specialty'&&badgeStyle.value?codeBase+'_'+badgeStyle.value:codeBase;
   const label=$p('roleArtworkLabel').value.trim(),reason=$p('roleArtworkReason').value.trim();
   const department=$p('roleArtworkDepartment').value;
   if(kind==='role'){
@@ -272,7 +278,7 @@ export function setupRoleArtworkUI({api,$,notice}){
     message('Geef een geldig Discord-rol-ID en variant op.',true);return;
    }
   }else if(!['rank','specialty','uniform',...extraTypes].includes(kind)||!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code)){
-   message('Kies een onderdeel of voer een geldige code in.',true);return;
+   message('Kies een onderdeel en een geldige korte code (max. 40 tekens inclusief lokaal/federaal).',true);return;
   }
   if(!previewData.startsWith('data:image/webp;base64,')){message('Selecteer eerst een nieuwe afbeelding om te uploaden.',true);return}
   if(reason.length<8){message('Geef een motivering van minstens 8 tekens.',true);return}
