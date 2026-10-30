@@ -48,17 +48,11 @@ function forPerson(p){
  let uniformCode='',badgeStyle='';
  for(const entry of ordered){
   if(!entry)continue;
-  if(!uniformCode&&CODE.test(entry.uniformCode||'')&&
-   assetUrls.has('uniform_'+dept+'_'+entry.uniformCode))uniformCode=entry.uniformCode;
   if(!badgeStyle&&['lokaal','federaal'].includes(entry.badgeStyle))badgeStyle=entry.badgeStyle;
  }
- // Conventional group codes allow a single image upload to be used directly.
- // Existing explicit assignments still take precedence.
- if(!uniformCode){
-  const expected=dept==='politie'&&group?group:
-   dept==='ambulance'&&functionCode?functionCode:'';
-  if(expected&&assetUrls.has('uniform_'+dept+'_'+expected))uniformCode=expected;
- }
+ // The old service/cadre/group and individual coat assignment fallbacks are
+ // retired. Only a saved Uniformatelier composition may select a coat.
+ // Personnel ranks, badges and historical assignments remain in Firestore.
  // An actual rank/function gets its own composed coat, with personal exceptions
  // taking precedence. The template is visual only; it never determines authority.
  const compScope=dept==='politie'?'call':dept==='ambulance'?'function':'rank';
@@ -66,11 +60,10 @@ function forPerson(p){
   compScope==='function'?functionCode:nameCode(p.rank);
  const composition=compositions.find(x=>x.department===dept&&
   x.scope===compScope&&x.selector===compSelector);
- const personUniform=ordered.slice(0,2).some(x=>x?.uniformCode&&
-  assetUrls.has('uniform_'+dept+'_'+x.uniformCode));
- if(composition?.assets?.uniform&&!personUniform&&
-  assetUrls.has('uniform_'+dept+'_'+composition.assets.uniform))
-  uniformCode=composition.assets.uniform;
+ const activeCoat=composition?.assets?.uniform||'';
+ if(CODE.test(activeCoat)&&!['gold','silver','default'].includes(activeCoat)&&
+  assetUrls.has('uniform_'+dept+'_'+activeCoat))
+  uniformCode=activeCoat;
  const elementCodes={},elementUrls={};
  for(const kind of ['rank','helmet','profession','logo','pictogram','patch']){
   const coatScope=dept==='politie'&&kind==='rank'&&series?'call':
