@@ -3,11 +3,12 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {isUserManager} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
+import {policeUniformGroup,ambulanceFunction} from '../public/uniform-profile-policy.js';
 
 export const UNIFORM_ASSIGNMENTS='bpd_uniform_visual_assignments';
 export const UNIFORM_ASSIGNMENT_AUDIT='bpd_uniform_assignment_audit';
 const DEPTS=new Set(['politie','brandweer','ambulance','depannage','burger']);
-const SCOPES=new Set(['service','cadre','rank','person']);
+const SCOPES=new Set(['service','cadre','rank','person','group','function']);
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const UID=/^\d{15,22}$/;
 const fail=(status,message)=>Object.assign(new Error(message),{statusCode:status});
@@ -32,7 +33,9 @@ export function validateUniformAssignment(body){
   throw fail(400,'Ongeldige uniformtoewijzing');
  const department=String(body.department||''),scope=String(body.scope||'');
  const selector=selectorFor(scope,body.selector);
- if(!DEPTS.has(department)||!SCOPES.has(scope)||!selector)
+ if(!DEPTS.has(department)||!SCOPES.has(scope)||!selector||
+  (scope==='group'&&(department!=='politie'||!['agentenkader','basis_tm_ahinp','hinp_1hinp','officieren'].includes(selector)))||
+  (scope==='function'&&(department!=='ambulance'||!['ambulancier','vpk','arts','dirmed'].includes(selector))))
   throw fail(400,'Ongeldige hulpdienst, doelgroep of personeels-ID');
  const uniformCode=String(body.uniformCode||'').trim().toLowerCase();
  const badgeStyle=String(body.badgeStyle||'').trim().toLowerCase();
@@ -53,10 +56,15 @@ export function resolveUniformAssignment(person,assignments){
  const fallbackCall=norm(person?.call);
  const find=(scope,selector)=>assignments.find(r=>r&&r.department===dept&&
   r.scope===scope&&r.selector===selector);
+ const group=policeUniformGroup(person);
+ const functionCode=ambulanceFunction(person);
  const order=[
   ...(personId?[find('person',personId)]:[]),
   ...(fallbackCall?[find('person','call_'+fallbackCall)]:[]),
-  find('rank',norm(person.rank)),find('cadre',norm(person.tier)),
+  find('rank',norm(person.rank)),
+  ...(functionCode?[find('function',functionCode)]:[]),
+  ...(group?[find('group',group)]:[]),
+  find('cadre',norm(person.tier)),
   find('service','default')
  ];
  let uniformCode='',badgeStyle='';

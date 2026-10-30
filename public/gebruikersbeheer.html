@@ -159,6 +159,33 @@ header button{padding:7px 10px;font-size:12px}
 #roleArtworkSection .artwork-item small{font-size:10px;overflow-wrap:anywhere}
 #roleArtworkSection .artwork-item button{padding:5px 9px;font-size:11px}
 #roleArtworkSection .error{color:#ffc1cc}
+#uniformQuickSection{margin:14px 0 20px;padding:15px;border:1px solid #547898;background:#102842;border-radius:11px}
+#uniformQuickSection[hidden]{display:none!important}
+#uniformQuickSection h3{margin:0 0 8px}
+#uniformQuickSection h4{margin:15px 0 5px;font-size:14px}
+#uniformQuickSection .uniform-quick-list{display:grid;gap:5px;max-height:440px;overflow:auto;padding-right:5px}
+#uniformQuickSection .uniform-quick-row{display:grid;grid-template-columns:minmax(190px,1.2fr) minmax(170px,1fr) 48px auto;gap:9px;align-items:center;padding:7px 9px;border:1px solid #3a5470;border-radius:7px}
+#uniformQuickSection .uniform-quick-preview{width:44px;height:44px;object-fit:contain;border:1px solid #536983;border-radius:5px;background:#08172a}
+#uniformQuickSection .uniform-quick-preview[hidden]{display:none}
+#uniformQuickSection .uniform-quick-actions{display:flex;gap:5px;flex-wrap:wrap}
+#uniformQuickSection .uniform-quick-row-label{font-size:12px;font-weight:750;line-height:1.35}
+#uniformQuickSection .uniform-quick-row select{min-width:0;width:100%;font-size:12px}
+#uniformQuickSection .uniform-quick-row button{font-size:11px;padding:7px 10px}
+#uniformQuickSection .uniform-quick-header{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+#uniformQuickSection .uniform-quick-header>label{min-width:210px;max-width:330px;flex:1}
+@media(max-width:680px){#uniformQuickSection .uniform-quick-row{grid-template-columns:minmax(0,1fr) 52px auto}
+#uniformQuickSection .uniform-quick-row-label{grid-column:1/-1}
+#uniformQuickSection .uniform-quick-actions{grid-column:1/-1;justify-content:flex-end}}
+
+#libraryPanel,#libraryAssignmentPanel{padding:16px;margin:18px 0;border:1px solid #476889;border-radius:11px;background:#11283f}
+#libraryPanel h3,#libraryAssignmentPanel h3{margin:0 0 8px}
+#libraryPanel .artwork-item img{object-fit:contain}
+#libraryPanel .artwork-list{max-height:360px;overflow:auto}
+#libraryPanel .library-preview{display:block;max-width:280px;max-height:180px;object-fit:contain;margin:9px 0}
+#libraryPanel .library-preview[hidden]{display:none}
+#libraryPanel select,#libraryAssignmentPanel select{max-width:100%}
+#libraryAssignmentPanel .uniform-assignment-list{max-height:240px}
+
 </style>
 </head>
 <body>
@@ -358,10 +385,50 @@ header button{padding:7px 10px;font-size:12px}
 <h3>Opgeslagen logo’s <small id="roleArtworkCount"></small></h3>
 <div id="roleArtworkList" class="artwork-list" aria-live="polite"></div>
 <p class="muted">De bibliotheek bewaart nieuwe graden, medailles en dienstonderdelen. Via <strong>Uniformbeheer → Extra lagen</strong> bepaal je per uniform waar een geüpload onderdeel verschijnt. Een medaille krijgt pas een drager na een afzonderlijke, bevoegde toekenning; uploaden kent niemand een medaille toe. Beveiligingsagent is een voorbereidende visuele categorie en geeft nog geen nieuwe dienstrechten.</p>
+
+<section id="libraryPanel" hidden aria-label="Versiebeheer Cloud Storage">
+ <h3>📁 Bibliotheek met originele afbeeldingen en versies</h3>
+ <p class="muted">Bewaart PNG, JPG en WebP zonder de bronafbeelding te vervormen. Iedere vervanging krijgt een eigen versie; de bestaande kleinere WebP-bibliotheek blijft bruikbaar.</p>
+ <div id="libraryStorageNote" class="muted" role="status">Opslaginstellingen controleren…</div>
+ <div class="grid">
+  <div><label for="libraryDept">Hulpdienst</label><select id="libraryDept"></select></div>
+  <div><label for="libraryKind">Onderdeel</label><select id="libraryKind"></select></div>
+  <div><label for="libraryCode">Unieke code</label><input id="libraryCode" maxlength="40" placeholder="bijv. sergeant of interventiehelm"></div>
+  <div><label for="libraryLabel">Naam / omschrijving</label><input id="libraryLabel" maxlength="75" placeholder="bijv. Sergeant - brandweer"></div>
+  <div><label for="libraryFile">Originele afbeelding</label><input id="libraryFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 4 MB; transparantie blijft behouden. Geen SVG.</small></div>
+  <div><label for="libraryUploadReason">Reden voor toevoegen / vervangen / herstellen</label><input id="libraryUploadReason" maxlength="300" placeholder="Minstens acht tekens"></div>
+ </div>
+ <img class="library-preview" id="libraryPreview" alt="Voorbeeld van het gekozen afbeeldingsbestand" hidden>
+ <div class="controls"><button type="button" id="libraryUpload">Afbeelding met versiegeschiedenis bewaren</button><button type="button" class="alt" id="libraryBackToUniform">Terug naar eenvoudig uniformbeheer</button></div>
+ <div id="libraryUploadStatus" class="muted" role="status" aria-live="polite"></div>
+ <h4>Afbeeldingen in deze categorie <small id="libraryCount"></small></h4>
+ <div id="libraryList" class="artwork-list"></div>
+ <h4>Eerdere versies herstellen</h4>
+ <input id="libraryVersionKey" type="hidden">
+ <div class="grid"><div><label for="libraryVersions">Versie</label><select id="libraryVersions"><option value="">Kies een vorige versie</option></select></div></div>
+ <div class="controls"><button type="button" id="libraryRestore" class="alt">Geselecteerde versie herstellen</button></div>
+</section>
 </section>
 
 <section id="uniformSection" class="card" data-authorized="no" hidden>
  <h2>🧥 Uniformbeheer per hulpdienst</h2>
+<section id="uniformQuickSection" hidden>
+ <h3>Uniformen en gradentekens — eenvoudig beheer</h3>
+ <p class="muted">Kies één basisuniform per groep. Daarna kies je apart een gradenplaat of beroepsteken per graad of functie. Je hoeft die afbeeldingen niet aan elkaar te koppelen. Het portaal combineert ze automatisch voor elk personeelslid.</p>
+ <div class="uniform-quick-header">
+  <label for="uniformQuickDept">Hulpdienst
+   <select id="uniformQuickDept"></select>
+  </label>
+  <label for="uniformQuickReason">Motivering bij bewaren
+   <input id="uniformQuickReason" maxlength="300" placeholder="Waarom pas je dit onderdeel aan?">
+  </label>
+  <button id="uniformQuickRefresh" type="button" class="alt">Overzicht vernieuwen</button>
+ </div>
+ <div id="uniformQuickCoats" class="uniform-quick-list" aria-label="Basisuniformen per groep"></div>
+ <div id="uniformQuickMarks" class="uniform-quick-list" aria-label="Gradentekens en beroepen per graad"></div>
+ <p id="uniformQuickStatus" class="muted" role="status" aria-live="polite">Overzicht laden…</p>
+ <small>Een nieuwe afbeelding upload je éénmaal in de centrale bibliotheek. Standaardtekeningen en bestaande koppelingen blijven behouden zolang je niets verandert.</small>
+ </section>
  <p>Beheer de uniformafbeelding en de exacte plaats van het gradenteken zonder een codewijziging. Dit verandert uitsluitend de <strong>weergave</strong>, niet de Discord-rollen, rangen of dossierbevoegdheden.</p>
  <div class="grid">
   <div>
@@ -474,15 +541,17 @@ header button{padding:7px 10px;font-size:12px}
  </div>
  
 
- <section class="uniform-assignment-card">
- <h3>Uniformtoewijzingen — per hulpdienst, kader, graad of personeelslid</h3>
- <p class="muted">Een nieuw uniform upload je eerst via de centrale bibliotheek (soort <strong>Uniform</strong>). Hier kies je wie het uniform krijgt en of de specialisatiebadges een <strong>Lokale</strong> of <strong>Federale</strong> uitvoering gebruiken. Een toewijzing verandert geen rang, dienst of specialisatie.</p>
+ <details class="uniform-assignment-card"><summary><strong>Geavanceerd: individuele uniform- en badgekoppelingen</strong></summary><div>
+ <h3>Basisuniform koppelen — één uniform voor meerdere graden</h3>
+ <p class="muted">Upload eerst een basisuniform in de bibliotheek. Gebruik bij de politie <strong>Uniformgroep — Basiskader t.e.m. A-HINP (300–600)</strong> om één jas voor meerdere graden te selecteren. De gradenplaten worden hieronder apart per callreeks gekoppeld. Brandweer volgt de graad, ambulance de hoedanigheid. Een toewijzing verandert nooit de personeelsrang of functie.</p>
  <div class="grid">
   <div><label for="uniformAssignDept">Hulpdienst</label><select id="uniformAssignDept"></select></div>
   <div><label for="uniformAssignScope">Doelgroep</label><select id="uniformAssignScope">
    <option value="service">Iedereen van de hulpdienst</option>
    <option value="cadre">Kader / functiegroep</option>
    <option value="rank">Graad of functie</option>
+   <option value="group">Uniformgroep (Politie: Basiskader t.e.m. A-HINP (300–600))</option>
+   <option value="function">Hoedanigheid (Ambulance)</option>
    <option value="person">Individueel personeelslid</option>
   </select></div>
   <div><label for="uniformAssignTarget">Kies kader / graad / persoon</label><select id="uniformAssignTarget"></select></div>
@@ -502,8 +571,39 @@ header button{padding:7px 10px;font-size:12px}
  <div id="uniformAssignStatus" class="muted" aria-live="polite">Uniformtoewijzingen laden…</div>
  <h4>Huidige toewijzingen</h4>
  <div id="uniformAssignList" class="uniform-assignment-list"></div>
- <small>Volgorde: persoonlijk → graad → kader → hulpdienst. Persoonlijke koppelingen gebruiken bij voorkeur de vaste personeels-ID; als die nog ontbreekt, wordt het roepnummer gebruikt en moet de koppeling bij een roepnummerwijziging opnieuw worden nagekeken.</small>
- </section>
+ <small>Volgorde uniform: persoon → specifieke graad → hoedanigheid / uniformgroep → kader → hulpdienst. Bij politie hoort A-HINP (600-reeks) bij de groep met het basisuniform, hoewel deze graad organisatorisch Middenkader is. Persoonlijke koppelingen gebruiken bij voorkeur de vaste personeels-ID.</small>
+ </div></details>
+
+<details class="uniform-assignment-card"><summary><strong>Geavanceerd: handmatige graad-/functieafwijkingen</strong></summary>
+<section id="libraryAssignmentPanel" hidden aria-label="Graden, helmen en beroepstekens koppelen">
+ <h3>Gradenplaten en beroepstekens koppelen — los van het basisuniform</h3>
+ <p class="muted"><strong>Politie:</strong> graadteken per callreeks (100, 200, 300, 400, 500, 600, 700, 800, 900, 910, 920, 930). <strong>Brandweer:</strong> gradenplaat of helm per graad. <strong>Ambulance:</strong> beroepsteken per hoedanigheid (Ambulancier, VPK, Arts, DIRMED). De jas blijft hierbij ongewijzigd.</p>
+ <div class="grid">
+  <div><label for="libraryAssignDept">Hulpdienst</label><select id="libraryAssignDept"></select></div>
+  <div><label for="libraryAssignKind">Soort afbeelding</label><select id="libraryAssignKind"></select></div>
+  <div><label for="libraryAssignScope">Voor wie?</label><select id="libraryAssignScope">
+   <option value="service">Iedereen van de dienst</option>
+   <option value="cadre">Een kader / functiegroep</option>
+   <option value="rank">Een graad (o.a. Brandweer)</option>
+   <option value="call">Callreeks (Politie)</option>
+   <option value="function">Hoedanigheid (Ambulance)</option>
+   <option value="person">Een personeelslid</option>
+  </select></div>
+  <div><label for="libraryAssignTarget">Callreeks, graad, functie of personeels-ID</label><input id="libraryAssignTarget" list="libraryAssignPresets" maxlength="40" placeholder="default" value="default"><datalist id="libraryAssignPresets"></datalist>
+   <small>Bij een graad gebruik je de naam (bijv. sergeant). Bij een persoon de Discord-ID of call_roepnummer.</small></div>
+  <div><label for="libraryAssignAsset">Geüploade afbeelding</label><select id="libraryAssignAsset"><option value="">Kies een afbeelding</option></select></div>
+  <div><label for="libraryAssignReason">Motivering voor logboek</label><input id="libraryAssignReason" maxlength="300" placeholder="Minstens acht tekens"></div>
+ </div>
+ <div class="controls">
+  <button type="button" id="libraryFromUniformSelection" class="alt">Gebruik doelgroep uit Uniformtoewijzingen hierboven</button>
+  <button type="button" id="libraryAssignSave">Afbeelding koppelen</button>
+  <button type="button" id="libraryAssignRemove" class="alt">Koppeling verwijderen</button>
+  <button type="button" id="libraryAssignmentRefresh" class="alt">Vernieuwen</button>
+ </div>
+ <div id="libraryAssignStatus" class="muted" role="status" aria-live="polite"></div>
+ <h4>Bestaande koppelingen</h4><div id="libraryRuleList" class="uniform-assignment-list"></div>
+ <small>Opgelet: het opladen of koppelen van medailles en eretekens kent ze nooit toe. De bestaande personeels- en onderscheidingsrechten blijven leidend.</small>
+</section></details>
  <section class="uniform-extra-layers">
   <h3>Extra lagen — helmen, beroepstekens, medailles en dienstlogo’s</h3>
   <p class="muted">Upload eerst een onderdeel onder <strong>Rollenlogo’s & patches</strong>. Selecteer het hier om op het uniform te plaatsen. Medailles worden niet aan personeel toegekend door de upload of laaginstellingen.</p>
@@ -539,6 +639,8 @@ import {setupRoleArtworkUI} from '/role-artwork-ui.js';
 import {setupUniformManagementUI} from '/uniform-management-ui.js?v=optional-uniform-pieces-20261030';
 import {setupVisualLayerUI} from '/visual-layer-ui.js?v=optional-uniform-pieces-20261030';
 import {setupUniformAssignmentUI} from '/uniform-assignment-ui.js';
+import {setupUniformQuickUI} from '/uniform-quick-ui.js?v=easy-uniform-20261030';
+import {setupUniformLibraryUI} from '/uniform-library-ui.js?v=cloud-library-20261030';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
@@ -598,6 +700,8 @@ const roleArtwork=setupRoleArtworkUI({api,$,notice});
 const uniformManagement=setupUniformManagementUI({api,$,notice});
 const visualLayerManagement=setupVisualLayerUI({api,$,notice});
 const uniformAssignments=setupUniformAssignmentUI({api,$,notice});
+const uniformQuick=setupUniformQuickUI({api,$,notice});
+const uniformLibrary=setupUniformLibraryUI({api,$,notice});
 let tabChoice=window.location.hash==='#dienstbeheer'?'services':
   window.location.hash==='#verlofmachtigingen'?'leave':'accounts';
 function showManageTabs(){
@@ -1337,11 +1441,11 @@ async function refresh(){
   await roleArtwork.load();
   await uniformManagement.load();
   await visualLayerManagement.load();
-  await uniformAssignments.load();
+  await uniformAssignments.load();await uniformQuick.load();await uniformLibrary.load();
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformManagement.load();await visualLayerManagement.load();await uniformAssignments.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformManagement.load();await visualLayerManagement.load();await uniformAssignments.load();await uniformQuick.load();await uniformLibrary.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());

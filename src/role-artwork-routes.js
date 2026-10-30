@@ -1,6 +1,7 @@
 // Portaal-native badge/logo storage. Images have NO relation to access permissions.
 import {randomUUID} from 'node:crypto';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getStorage} from 'firebase-admin/storage';
 import {isUserManager} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
 
@@ -90,6 +91,23 @@ export function installRoleArtworkRoutes(app,{requireUser}){
   try{
    const db=getFirestore(),meta=await db.collection(ROLE_ARTWORK_META).doc(key).get();
    if(!meta.exists||meta.get('active')!==true)return res.sendStatus(404);
+   // New library files live in Cloud Storage; legacy WebP records remain in Firestore.
+   const storagePath=meta.get('storagePath');
+   if(typeof storagePath==='string'&&storagePath){
+    const department=meta.get('department'),kind=meta.get('kind'),code=meta.get('code');
+    const prefix='uniformbibliotheek/'+department+'/'+kind+'/'+code+'/';
+    if(!storagePath.startsWith(prefix)||!/^[a-f0-9-]{36}\.(?:webp|png|jpg)$/.test(storagePath.slice(prefix.length)))
+     return res.sendStatus(404);
+    const bucketName=process.env.BPD_UNIFORM_LIBRARY_BUCKET||process.env.FIREBASE_STORAGE_BUCKET;
+    if(!bucketName)return res.sendStatus(503);
+    const mime=meta.get('mime');
+    if(!['image/webp','image/png','image/jpeg'].includes(mime))return res.sendStatus(404);
+    const [bytes]=await getStorage().bucket(bucketName).file(storagePath).download();
+    if(!bytes||bytes.length>4*1024*1024)return res.sendStatus(404);
+    res.set({'Content-Type':mime,'X-Content-Type-Options':'nosniff',
+     'Cross-Origin-Resource-Policy':'same-origin','Cache-Control':'public, max-age=180'});
+    return res.send(bytes);
+   }
    const assetId=meta.get('assetId');
    if(typeof assetId!=='string'||!/^[a-f0-9-]{36}$/.test(assetId))return res.sendStatus(404);
    const asset=await db.collection(ROLE_ARTWORK_IMAGES).doc(assetId).get();
@@ -104,14 +122,14 @@ export function installRoleArtworkRoutes(app,{requireUser}){
  });
  app.get('/api/role-artwork/manifest',requireUser,async(_req,res)=>{
   try{
-   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(350).get();
+   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(1200).get();
    res.set('Cache-Control','private, no-store');
    return res.json({artworks:snap.docs.filter(d=>d.get('active')===true).map(metaData)});
   }catch(e){return error(res,e)}
  });
  app.get('/api/role-artwork/manage',requireUser,allowed,async(_req,res)=>{
   try{
-   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(350).get();
+   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(1200).get();
    res.set('Cache-Control','private, no-store');
    return res.json({canEdit:true,artworks:snap.docs.filter(d=>mayEditDepartment(_req.bpd,d.get('department')||'politie')).map(d=>({...metaData(d),
     active:d.get('active')===true,updatedBy:d.get('updatedBy')||''}))});
@@ -129,6 +147,15 @@ export function installRoleArtworkRoutes(app,{requireUser}){
     const before=await tx.get(ref),previous=before.exists?before.data():null;
     if(previous&&!mayEditDepartment(req.bpd,previous.department||'politie'))
      throw fail(403,'Geen toegang tot dit bestaande logo');
+    // An old-style WebP replacement must not orphan the current Cloud version.
+    if(previous?.storagePath){
+     tx.create(db.collection('bpd_uniform_library_versions').doc(),{
+      key:input.key,kind:previous.kind,department:previous.department,
+      code:previous.code,label:previous.label,storagePath:previous.storagePath,
+      assetId:null,mime:previous.mime||'image/webp',
+      version:previous.version,createdBy:previous.updatedBy||'',
+      createdAt:FieldValue.serverTimestamp(),historic:true});
+    }
     tx.create(asset,{key:input.key,base64:input.base64,mime:'image/webp',
      createdAt:FieldValue.serverTimestamp(),createdBy:req.bpd.uid});
     tx.set(ref,{kind:input.kind,code:input.code,department:input.department,

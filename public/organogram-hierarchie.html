@@ -1236,19 +1236,118 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-dialog .person-profile-overview .bpd-service-nameplate>.bpd-service-call{
  font-size:clamp(3px,.42vw,8px);color:#bcd1e2;margin-top:3%
 }
+.person-profile-dialog .person-profile-overview .bpd-service-profession-text{
+ position:absolute;left:12%;top:43%;width:34%;height:8%;z-index:5;
+ display:flex;align-items:center;justify-content:center;
+ background:#102d44;border:1px solid #8ba9c0;border-radius:2px;
+ color:#f0f8ff;font-size:clamp(5px,.63vw,11px);font-weight:900;
+ letter-spacing:.04em;pointer-events:none
+}
 .person-profile-dialog .person-profile-overview .bpd-custom-uniform-layer{position:absolute;display:block;pointer-events:none}
 .person-profile-dialog .person-profile-overview .bpd-custom-uniform-layer>img{width:100%;height:100%;object-fit:contain}
+
+/* Operational profile: the uniform owns two thirds of the open staff card.
+   Awards remain distinct from specializations; no board or education rows. */
+.person-profile-dialog.operational-profile .person-profile-layout{
+ display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,1fr);
+ grid-template-areas:"details specials";gap:18px;align-items:start
+}
+.person-profile-dialog.operational-profile .person-profile-main{
+ grid-area:details;padding:0;min-width:0
+}
+.person-profile-dialog.operational-profile .person-profile-specialty-panel{
+ grid-area:specials;min-width:0;display:flex;flex-direction:column;gap:12px
+}
+.person-profile-dialog.operational-profile .person-profile-intro{min-width:0}
+.person-profile-dialog.operational-profile .person-profile-overview{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:7px;margin:0 0 11px;padding:12px 9px 9px;
+ border:1px solid #385a78;border-radius:10px;background:#0d2239
+}
+.person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-police-formal[data-uniform],
+.person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-service-uniform{
+ display:block;position:relative;box-sizing:border-box;
+ width:min(100%,470px)!important;min-width:0!important;max-width:100%!important;
+ height:min(56vh,480px)!important;flex:0 0 auto!important;
+ border:1px solid #6689ad;border-radius:11px;background:#10243b;overflow:hidden
+}
+.person-profile-dialog.operational-profile .person-profile-overview .person-profile-name{
+ text-align:center;font-size:21px;line-height:1.24
+}
+.person-profile-dialog.operational-profile .person-profile-overview .person-profile-rank{
+ text-align:center;font-size:12px
+}
+.person-profile-dialog.operational-profile .person-profile-grade{
+ display:flex;margin:9px auto 12px;justify-content:center;
+ width:fit-content;max-width:100%
+}
+.person-profile-dialog.operational-profile .person-profile-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0
+}
+.person-profile-dialog.operational-profile .person-profile-grid .person-profile-fact{
+ min-height:66px;display:flex;flex-direction:column;justify-content:center
+}
+.person-profile-dialog.operational-profile .person-profile-grid .person-profile-fact.person-profile-call{
+ grid-column:1/-1;text-align:center;background:#20507e;border:1px solid #83b5e8
+}
+.person-profile-dialog.operational-profile .person-profile-call small{
+ color:#d4e9ff;font-weight:850;letter-spacing:.08em;text-transform:uppercase
+}
+.person-profile-dialog.operational-profile .person-profile-call strong{
+ font-size:clamp(22px,2.8vw,31px);font-weight:900;letter-spacing:.04em;
+ font-variant-numeric:tabular-nums;color:#fff
+}
+.person-profile-dialog.operational-profile .person-profile-awards-panel{
+ border:1px solid #4b698b;border-radius:9px;background:#142c45;
+ padding:10px 12px;min-width:0
+}
+.person-profile-dialog.operational-profile .person-profile-awards-panel>.bpd-awards{
+ border:0;padding:0;margin:0
+}
+.person-profile-dialog.operational-profile .person-profile-specialization-box{
+ min-width:0;border:1px solid #426288;border-radius:9px;
+ padding:10px 11px;background:#112b45
+}
+.person-profile-dialog.operational-profile .person-profile-specialization-box>h3{
+ margin:0 0 8px;height:auto;line-height:1.4
+}
+.person-profile-dialog.operational-profile .person-profile-specialties{
+ grid-template-columns:minmax(0,1fr);gap:7px
+}
+.person-profile-dialog.operational-profile .person-profile-specialty{
+ width:100%;max-width:100%
+}
+.person-profile-dialog.operational-profile .bpd-awards-control{
+ overflow-wrap:anywhere
+}
+.person-profile-dialog.operational-profile .person-profile-dossier-link{margin-top:10px}
+@media(max-width:920px){
+ .person-profile-dialog.operational-profile .person-profile-layout{
+  grid-template-columns:minmax(0,1fr);grid-template-areas:"details" "specials"
+ }
+ .person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-police-formal[data-uniform],
+ .person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-service-uniform{
+  width:min(100%,360px)!important;height:min(48vh,380px)!important
+ }
+}
+@media(max-width:540px){
+ .person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-police-formal[data-uniform],
+ .person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-service-uniform{
+  width:min(100%,300px)!important;height:min(43vh,335px)!important
+ }
+}
+
 </style>
 </head>
 <body>
 <header>
  <a class="brand" href="/">BelgiumPD · Beheerportaal</a>
  <span class="tag">MAIN · ORGANOGRAM</span>
- <a class="back" href="/organogram.html">Klassiek organogram</a>
+ <a class="back" href="/personeelslijst.html">Personeelslijst</a>
 </header>
 <main>
  <h1>Organogram van BelgiumPD</h1>
- <p class="lead">Eén Bestuur boven alle diensten. In het algemene overzicht alleen de dienstleidingen. Open één dienst voor specialisaties, instructeurs en leden. Handmatige posities kun je altijd terugdraaien. Een persoon kan in meerdere diensttakken voorkomen zonder duplicatie van het personeelsdossier.</p>
+ <p class="lead">Operationeel organogram per hulpdienst: leiding, kaders, specialisaties en personeelsleden. Open een personeelsprofiel voor uniform, CALL, rang, status, eretekens en specialisaties. Handmatige correcties blijven uitsluitend visueel en worden gelogd.</p>
  <nav class="roster-view-tabs" aria-label="Kies personeelsweergave">
    <a href="/personeelslijst.html">👥 Personeelslijst</a>
    <a href="/organogram-hierarchie.html" aria-current="page">🌳 ORGANOGRAM</a>
@@ -1327,13 +1426,13 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  </section>
  <section id="manage" class="manager" hidden aria-label="Handmatig organogrambeheer">
   <h2>Handmatige functies · noodregeling</h2>
-  <p class="manager-note">Selecteer een bestaand personeelslid of een goedgekeurd bestuursaccount. Handmatige keuzes blijven in Firestore bewaard bij uitval van de Discord-sync. Dit geeft geen dossier- of beheersrechten.</p>
+  <p class="manager-note">Selecteer een operationeel personeelslid. Handmatige correcties blijven in Firestore bewaard bij uitval van de Discord-sync en geven geen dossier- of beheersrechten.</p>
   <div class="manager-grid">
    <label>Persoon <select id="manage-person"><option value="">Kies personeelslid</option></select></label>
    <label>Leiding/kader (alleen organogram) <select id="manage-tier">
     <option value="none">Automatisch volgens rang</option>
    </select></label>
-   <label>Bestuursweergave <select id="manage-board">
+   <label hidden>Bestuursweergave (niet in operationeel organogram) <select id="manage-board">
     <option value="none">Geen bestuursfunctie</option>
     <option value="bestuur">Bestuur</option>
     <option value="bestuur-ai">Bestuur ad interim</option>
@@ -1370,17 +1469,6 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   <button type="button" id="manage-undo" disabled>↩ Vorige instelling herstellen</button>
   <p id="manage-status" class="manager-note" role="status">Alleen technisch beheer kan deze functies wijzigen.</p>
  </section>
- <div class="board-wrap">
-  <details class="board" id="board-panel" open>
-   <summary><strong>👑 BESTUUR</strong></summary>
-   <div class="board-details">
-    <small class="board-subtitle">Overkoepelende leiding over alle diensten</small>
-    <div class="board-verification-note" id="board-verification-note">Bestuursleden worden pas met geverifieerde functiegegevens ingevuld</div>
-    <div id="board-members" class="persons" aria-label="Bestuursleden"></div>
-   </div>
-  </details>
-  <div class="trunk"></div><div class="fork"></div>
- </div>
  <div id="services" class="service-grid" aria-live="polite"></div>
 
 </main>
@@ -1545,7 +1633,7 @@ function makeServiceUniformPortrait(person){
  stage.append(img);
  const grade=serviceRankKey(person.rank);
  const simple=grade.split('_')[0];
- const rankImage=serviceRankArtworks.get('rank_'+dept+'_'+grade)||
+ const rankImage=selected?.rankUrl||serviceRankArtworks.get('rank_'+dept+'_'+grade)||
   serviceRankArtworks.get('rank_'+dept+'_'+simple);
  const place=serviceUniformLayouts.get(dept+'_default')||
   {left:62,top:55,width:24,height:12};
@@ -1573,6 +1661,15 @@ function makeServiceUniformPortrait(person){
  callLine.style.transform='scale('+((namePosition.callScale??100)/100)+')';
  nameplate.append(nameLine,callLine);
  if(serviceVisibility?.showNamePlate!==false)stage.append(nameplate);
+ // DIRMED is a medical function inscription, not a rank or a separate coat.
+ // A customized profession image from the library can replace this default text.
+ if(dept==='ambulance'&&selected?.profession==='dirmed'&&
+    !window.BPDVisualAssets?.hasProfessionLayer?.(person,'default')&&
+    serviceVisibility?.showProfessionBadge!==false){
+  const professionText=el('span','bpd-service-profession-text','DIRMED');
+  professionText.setAttribute('aria-label','Medische functie: DIRMED');
+  stage.append(professionText);
+ }
  if(src)window.BPDVisualAssets?.appendTo?.(stage,person,'default');
  outer.append(stage);
  return outer;
@@ -1580,12 +1677,14 @@ function makeServiceUniformPortrait(person){
 function openPersonProfile(p){
  const dialog=$('person-profile'),content=$('person-profile-content');
  dialog.classList.toggle('police-person-profile',p.dept==='politie');
+ dialog.classList.add('operational-profile');
  content.replaceChildren();
  const layout=el('div','person-profile-layout');
  const intro=el('section','person-profile-intro');
  const primary=el('section','person-profile-main');
  const secondary=el('section','person-profile-specialty-panel');
- layout.append(intro,primary,secondary);
+ primary.append(intro);
+ layout.append(primary,secondary);
  content.append(layout);
  const overview=el('div','person-profile-overview');
  const portrait=p.dept==='politie'?
@@ -1612,19 +1711,14 @@ function openPersonProfile(p){
   const row=el('div','person-profile-fact');
   row.append(el('small','',label),el('strong','',String(value||'Niet geregistreerd')));
   if(label==='Personeelsstatus')row.classList.add('person-profile-status');
+  if(label==='CALL')row.classList.add('person-profile-call');
   grid.append(row);
  }
- fact('Roepnummer',p.call||'—');
+ fact('CALL',p.call||'—');
  fact('Dienst',SERVICES.find(x=>x.id===p.dept)?.name||p.dept);
  fact('Rang / functie',window.BPDPoliceUniform?.gradeFor?.(p)?.label||p.rank||'Niet geregistreerd');
  fact('Niveau (indicatief)',getTier(p));
  fact('Personeelsstatus',p.status||'Niet vermeld');
- const teaching=(Array.isArray(p.teachingRoles)?p.teachingRoles:[])
-  .filter(x=>x==='instructeur'||x==='docent');
- const trainingRoles=teaching.map(x=>x==='instructeur'?'Instructeur':'Docent');
- if(p.dept==='politie'&&p.reekshoofdReeks)
-  trainingRoles.push('Reekshoofd – '+p.reekshoofdReeks);
- fact('Opleidingsfunctie',trainingRoles.length?trainingRoles.join(' · '):'Geen geregistreerde functie');
  if(Array.isArray(p.displayLabels)&&p.displayLabels.length)
   fact('Extra weergavelabel',p.displayLabels.map(x=>x.toUpperCase()).join(' · '));
  primary.append(grid);
@@ -1646,7 +1740,27 @@ function openPersonProfile(p){
    primary.append(open);
   }
  }
- secondary.append(el('h3','','Specialisaties'));
+ // Public distinctions are displayed before specializations.
+ // The legacy secure manager checks police officer rights on every request.
+ const awardsBox=el('section','person-profile-awards-panel');
+ window.BPDDecorations?.renderAwards?.(awardsBox,p.awards||[],state.demo);
+ secondary.append(awardsBox);
+ if(!state.demo&&p.dept==='politie'&&auth?.currentUser){
+  const awardManager=el('div','person-profile-award-manager');
+  awardManager.dataset.personKey=String(p.call||'')+'|'+String(p.name||'');
+  secondary.append(awardManager);
+  void window.BPDDecorations?.manager?.(awardManager,p,auth,async()=>{
+   await loadPublic();
+   const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
+   if(latest&&dialog.open)openPersonProfile(latest);
+  });
+  const uploadBox=el('div','person-profile-award-upload');
+  secondary.append(uploadBox);
+  void window.BPDDecorations?.uploadTools?.(auth,uploadBox);
+ }
+ const specBox=el('section','person-profile-specialization-box');
+ specBox.append(el('h3','','Specialisaties'));
+ secondary.append(specBox);
  const names=[...new Set(specialtyNames(p)
   .map(name=>p.dept==='politie'?policeSpecialtyName(name):name).filter(Boolean))];
  if(names.length){
@@ -1734,8 +1848,8 @@ function openPersonProfile(p){
    normalizeSpecialtyBadges(item);
    list.append(item);
   }
-  secondary.append(list);
- }else secondary.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
+  specBox.append(list);
+ }else specBox.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
 
  if(!dialog.open)dialog.showModal();
 }
@@ -2129,21 +2243,8 @@ function render(){
  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===state.view)));
  $('demo-toggle').setAttribute('aria-pressed',String(state.demo));
  $('services').replaceChildren();
- $('board-members').replaceChildren();
- $('board-verification-note').hidden=!state.demo&&state.board.length>0;
- if(!state.demo&&state.board.length){
-  for(const item of state.board){
-   const chip=el('span','person board-member');
-   chip.append(el('b','',item.name));
-   chip.append(el('small','',item.role==='bestuur-ai'?'Bestuur ad interim':'Bestuur'));
-   $('board-members').append(chip);
-  }
- }else{
-  $('board-members').append(el('span','gaps',state.demo?'Fictief voorbeeld: geen echte bestuursnamen': 'Nog geen bestuursleden met een geverifieerde of handmatig geregistreerde functie'));
- }
  const dataset=hierarchy(filteredRows());
  const solo=state.view!=='alle';
- document.querySelector('.board-wrap').classList.toggle('board-single-service',solo);
  for(let i=0;i<SERVICES.length;i++){
   if(solo&&SERVICES[i].id!==state.view)continue;
   $('services').append(serviceCard(dataset[i],SERVICES[i],solo));
@@ -2161,14 +2262,15 @@ document.querySelector('.toolbar').addEventListener('click',event=>{
 $('search').addEventListener('input',event=>{state.query=event.target.value;render()});
 async function loadPublic(){
  try{
-  const [response,artworkManifest,uniformLayoutData,visualLayers,assignmentData]=await Promise.all([
+  const [response,artworkManifest,uniformLayoutData,visualLayers,assignmentData,libraryRules]=await Promise.all([
    authFetch('/api/organogram/hierarchie'),
    authFetch('/api/role-artwork/manifest').catch(()=>({artworks:[]})),
    authFetch('/api/uniform-management/layouts').catch(()=>({layouts:[]})),
    authFetch('/api/visual-layers').catch(()=>({layers:[]})),
-   authFetch('/api/uniform-assignments').catch(()=>({assignments:[]}))
+   authFetch('/api/uniform-assignments').catch(()=>({assignments:[]})),
+   authFetch('/api/uniform-library/rules').catch(()=>({rules:[]}))
   ]);
-  window.BPDUniformAssignments?.setData?.(assignmentData?.assignments,artworkManifest?.artworks);
+  window.BPDUniformAssignments?.setData?.(assignmentData?.assignments,artworkManifest?.artworks,libraryRules?.rules);
   window.BPDVisualAssets?.setData?.(artworkManifest?.artworks,visualLayers?.layers,uniformLayoutData?.visibility);
   applyRoleArtworkManifest(artworkManifest?.artworks);
   setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats,uniformLayoutData?.visibility);
@@ -2181,6 +2283,14 @@ async function loadPublic(){
    .map(p=>({dept:p.dept,name:String(p.name).slice(0,90),
     call:String(p.call||'').slice(0,24),rank:String(p.rank||'').slice(0,95),
     status:typeof p.status==='string'?p.status.slice(0,30):'',
+    awards:(Array.isArray(p.awards)?p.awards:[])
+     .filter(x=>x&&typeof x.label==='string'&&['ribbon','medal','badge'].includes(x.kind)&&typeof x.color==='string')
+     .slice(0,30).map(x=>({id:String(x.id||'').slice(0,60),
+      label:x.label.slice(0,90),kind:x.kind,color:x.color.slice(0,30),
+      priority:Number(x.priority)||999,
+      imageUrl:typeof x.imageUrl==='string'&&
+       /^\/api\/personnel-awards\/catalog-image\/custom_[a-f0-9-]{36}$/i.test(x.imageUrl)?
+       x.imageUrl:undefined})),
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,20):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
     displayLabels:Array.isArray(p.displayLabels)?p.displayLabels.filter(x=>['stage','lid'].includes(x)).slice(0,1):[],
@@ -2194,7 +2304,7 @@ async function loadPublic(){
     boardRole:p.boardRole||'none',leadershipTier:p.leadershipTier||'none',displayOrder:Number(p.displayOrder)||0,
     personId:/^\d{15,22}$/.test(String(p.personId||''))?String(p.personId):null,
     source:String(p.source||'personeelslijst').slice(0,35)}));
-  state.board=Array.isArray(payload.board)?payload.board.slice(0,50):[];
+  state.board=[]; // Geen bestuur in het operationele organogram.
   state.loaded=true;
   state.demo=false;
   $('source').className='notice'+(payload.stale||!payload.syncAvailable?' warn':'');
@@ -2853,7 +2963,7 @@ $('manage-toggle').addEventListener('click',async()=>{
  try{
   const result=await authFetch('/api/organogram/placements/admin');
   if(result.displayOnly!==true)throw Error('Ongeldig antwoord');
-  adminPeople=result.people||[];adminSpecialties=result.specialties||{};adminLeadership=result.leadershipLevels||{};
+  adminPeople=(result.people||[]).filter(p=>p.dept!=='bestuur');adminSpecialties=result.specialties||{};adminLeadership=result.leadershipLevels||{};
   managerReady=true;
   await loadLastMidOrder();render();
   $('manage-status').textContent='Beheer actief. Voor verslepen: vul hieronder eerst een motivering in. Sleep daarna een middenkaderkaart binnen de eigen kolom.';
@@ -2949,7 +3059,7 @@ $('manage-undo').addEventListener('click',async()=>{
    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason})});
   const selected=$('manage-person').value;
   const fresh=await authFetch('/api/organogram/placements/admin');
-  adminPeople=fresh.people||[];adminSpecialties=fresh.specialties||{};adminLeadership=fresh.leadershipLevels||{};
+  adminPeople=(fresh.people||[]).filter(p=>p.dept!=='bestuur');adminSpecialties=fresh.specialties||{};adminLeadership=fresh.leadershipLevels||{};
   $('manage-person').value=selected;fillAdminPerson();$('manage-reason').value='';
   await loadPublic();
   $('manage-status').textContent='Vorige instelling hersteld en gelogd. Geen bevoegdheden veranderd.';

@@ -1,20 +1,26 @@
 // Client-side visual-only resolver. Scoped assignments never confer rank or roles.
 import {getTier} from '/assets/organogram-hierarchie-model.js';
+import {policeUniformGroup,ambulanceFunction,policeCallSeries} from '/uniform-profile-policy.js';
 const UID=/^\d{15,22}$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const nameCode=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
-let rules=[],assetUrls=new Map();
-function setData(assignments,artworks){
+let rules=[],elementRules=[],assetUrls=new Map();
+function setData(assignments,artworks,visualRules=[]){
  rules=(Array.isArray(assignments)?assignments:[]).filter(x=>
   x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
-  ['service','cadre','rank','person'].includes(x.scope)&&
+  ['service','cadre','rank','person','group','function'].includes(x.scope)&&
   (CODE.test(x.selector||'')||UID.test(x.selector||'')));
+ elementRules=(Array.isArray(visualRules)?visualRules:[]).filter(x=>
+  x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
+  ['rank','helmet','profession','logo','pictogram','patch'].includes(x.kind)&&
+  ['service','cadre','rank','person','call','function'].includes(x.scope)&&
+  CODE.test(x.assetCode||''));
  assetUrls=new Map();
  for(const row of Array.isArray(artworks)?artworks:[]){
   const key=String(row?.key||''),url=String(row?.imageUrl||'');
-  if(!/^(?:uniform|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}$/.test(key)||
-   !/^\/api\/role-artwork\/file\/(?:uniform|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}\?v=[a-zA-Z0-9-]+$/.test(url))
+  if(!/^(?:uniform|rank|helmet|profession|logo|pictogram|patch|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}$/.test(key)||
+   !/^\/api\/role-artwork\/file\/(?:uniform|rank|helmet|profession|logo|pictogram|patch|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}\?v=[a-zA-Z0-9-]+$/.test(url))
    continue;
   assetUrls.set(key,url);
  }
@@ -24,10 +30,13 @@ function forPerson(p){
  const id=UID.test(String(p?.personId||''))?String(p.personId):'';
  const callCode=nameCode(p?.call);
  const matching=(scope,selector)=>rules.find(r=>r.department===dept&&r.scope===scope&&r.selector===selector);
+ const group=policeUniformGroup(p),functionCode=ambulanceFunction(p),series=policeCallSeries(p.call);
  const ordered=[...(id?[matching('person',id)]:[]),
   ...(callCode?[matching('person','call_'+callCode)]:[]),
-  matching('rank',nameCode(p.rank)),matching('cadre',nameCode(getTier(p))),
-  matching('service','default')];
+  matching('rank',nameCode(p.rank)),
+  ...(functionCode?[matching('function',functionCode)]:[]),
+  ...(group?[matching('group',group)]:[]),
+  matching('cadre',nameCode(getTier(p))),matching('service','default')];
  let uniformCode='',badgeStyle='';
  for(const entry of ordered){
   if(!entry)continue;
@@ -35,8 +44,48 @@ function forPerson(p){
    assetUrls.has('uniform_'+dept+'_'+entry.uniformCode))uniformCode=entry.uniformCode;
   if(!badgeStyle&&['lokaal','federaal'].includes(entry.badgeStyle))badgeStyle=entry.badgeStyle;
  }
- return {uniformCode,badgeStyle,uniformUrl:uniformCode?
-  assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
+ // Conventional group codes allow a single image upload to be used directly.
+ // Existing explicit assignments still take precedence.
+ if(!uniformCode){
+  const expected=dept==='politie'&&group?group:
+   dept==='ambulance'&&functionCode?functionCode:'';
+  if(expected&&assetUrls.has('uniform_'+dept+'_'+expected))uniformCode=expected;
+ }
+ const elementCodes={},elementUrls={};
+ for(const kind of ['rank','helmet','profession','logo','pictogram','patch']){
+  for(const [scope,selector] of [
+   ...(id?[['person',id]]:[]),
+   ...(callCode?[['person','call_'+callCode]]:[]),
+   ...(series&&dept==='politie'?[['call',series]]:[]),
+   ...(functionCode&&dept==='ambulance'?[['function',functionCode]]:[]),
+   ['rank',nameCode(p.rank)],['cadre',nameCode(getTier(p))],['service','default']]){
+   const found=elementRules.find(x=>x.department===dept&&x.kind===kind&&
+    x.scope===scope&&x.selector===selector);
+   const image=found&&assetUrls.get(kind+'_'+dept+'_'+found.assetCode);
+   if(image){elementCodes[kind]=found.assetCode;elementUrls[kind]=image;break;}
+  }
+  // A well-named upload works immediately: no manual image-to-uniform link.
+  // Explicit per-person / per-grade selection above always takes priority.
+  if(!elementUrls[kind]){
+   const rankCode=nameCode(p.rank);
+   const policeRankAliases={'100':'ap','200':'ap','300':'ainp',
+    '400':'inp','500':'1inp','600':'ahinp','700':'hinp',
+    '800':'1hinp','900':'1hcp','910':'1cp','920':'acp','930':'acp'};
+   const candidates=kind==='rank'?
+    (dept==='politie'?[series,policeRankAliases[series],rankCode]:[rankCode]):
+    kind==='helmet'&&dept==='brandweer'?[rankCode]:
+    kind==='profession'&&dept==='ambulance'?[functionCode]:
+    [];
+   for(const guessed of candidates){
+    if(!guessed)continue;
+    const url=assetUrls.get(kind+'_'+dept+'_'+guessed);
+    if(url){elementCodes[kind]=guessed;elementUrls[kind]=url;break;}
+   }
+  }
+ }
+ return {uniformCode,badgeStyle,uniformGroup:group,callSeries:series,profession:functionCode,elementCodes,elementUrls,
+  rankUrl:elementUrls.rank||'',
+  uniformUrl:uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
 }
 function specialtyImage(p,name,variant=''){
  const info=forPerson(p);

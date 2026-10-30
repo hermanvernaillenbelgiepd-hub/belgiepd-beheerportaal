@@ -1,4 +1,5 @@
 import {getTier} from '/assets/organogram-hierarchie-model.js';
+import {POLICE_UNIFORM_GROUPS,AMBULANCE_FUNCTIONS} from '/uniform-profile-policy.js';
 export function setupUniformAssignmentUI({api,$}){
  const get=id=>$(id),dept=get('uniformAssignDept'),scope=get('uniformAssignScope');
  const target=get('uniformAssignTarget'),asset=get('uniformAssignImage');
@@ -11,6 +12,13 @@ export function setupUniformAssignmentUI({api,$}){
   .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
  const message=(s,bad=false)=>{status.textContent=s;status.classList.toggle('error',bad)};
  const key=()=>dept.value+'_'+scope.value+'_'+target.value;
+ const groupScope=[...scope.options].find(x=>x.value==='group');
+ const functionScope=[...scope.options].find(x=>x.value==='function');
+ function showScopes(){
+  if(groupScope){groupScope.hidden=dept.value!=='politie';groupScope.disabled=dept.value!=='politie';}
+  if(functionScope){functionScope.hidden=dept.value!=='ambulance';functionScope.disabled=dept.value!=='ambulance';}
+  if(scope.selectedOptions[0]?.disabled)scope.value='service';
+ }
  const rule=()=>rules.find(r=>r.key===key());
  function rebuildTargets(){
   const old=target.value;
@@ -21,6 +29,8 @@ export function setupUniformAssignmentUI({api,$}){
     .filter(([code])=>Boolean(code))).entries()].map(([a,b])=>[a,b]):
    scope.value==='rank'?[...new Map(current.map(p=>[clean(p.rank),String(p.rank||'')])
     .filter(([code])=>Boolean(code))).entries()].map(([a,b])=>[a,b]):
+   scope.value==='group'&&dept.value==='politie'?POLICE_UNIFORM_GROUPS.map(x=>[x.code,x.label]):
+   scope.value==='function'&&dept.value==='ambulance'?AMBULANCE_FUNCTIONS:
    current.filter(p=>/^\d{15,22}$/.test(String(p.personId||''))||Boolean(clean(p.call)))
     .map(p=>[/^\d{15,22}$/.test(String(p.personId||''))?String(p.personId):'call_'+clean(p.call),
      String(p.name||'Onbekend')+' · '+String(p.call||'')+' · '+String(p.rank||'')+
@@ -82,10 +92,10 @@ export function setupUniformAssignmentUI({api,$}){
   for(const [code,label]of departments)if(allowed.includes(code))dept.add(new Option(label,code));
   if(allowed.includes(oldDept))dept.value=oldDept;
   if(!dept.options.length)throw Error('Geen beheertoegang voor uniformtoewijzingen.');
-  rebuildAssets();rebuildTargets();showRules();
+  showScopes();rebuildAssets();rebuildTargets();showRules();
   message('Toewijzingen geladen. Enkel bewuste wijzigingen worden gepubliceerd.');
  }
- dept.addEventListener('change',()=>{rebuildAssets();rebuildTargets();showRules()});
+ dept.addEventListener('change',()=>{showScopes();rebuildAssets();rebuildTargets();showRules()});
  scope.addEventListener('change',rebuildTargets);
  target.addEventListener('change',applyRule);
  const payload=()=>({department:dept.value,scope:scope.value,selector:target.value,
