@@ -57,13 +57,119 @@ export function setupRoleArtworkUI({api,$,notice}){
  presets.forEach(([roleId,variant,label])=>{
   const item=new Option(label,roleId+'|'+variant);select.append(item);
  });
- let previewData='',busy=false;
- const message=(t,bad=false)=>{const el=$p('roleArtworkStatus');el.textContent=t;el.classList.toggle('error',bad)};
- const image=$p('roleArtworkPreview');
- const setPreview=data=>{
-  previewData=data;
-  image.hidden=!data;image.src=data||'';
+ let previewData='',busy=false,sourceImage=null,ownedObjectUrl='',loadRevision=0;
+ let offsetX=0,offsetY=0,dragging=null;
+ const message=(t,bad=false)=>{
+  const el=$p('roleArtworkStatus');el.textContent=t;el.classList.toggle('error',bad);
  };
+ const image=$p('roleArtworkPreview');
+ const cropSection=$p('roleArtworkCropSection');
+ const canvas=$p('roleArtworkCropCanvas'),ctx=canvas.getContext('2d',{alpha:true});
+ const zoom=$p('roleArtworkZoom'),zoomValue=$p('roleArtworkZoomValue');
+ const fit=$p('roleArtworkFit');
+ canvas.tabIndex=0;
+ const defaultFit=()=>kindSelect.value==='specialty'?'contain':'cover';
+ function clearPreview(){
+  loadRevision++;
+  if(ownedObjectUrl){URL.revokeObjectURL(ownedObjectUrl);ownedObjectUrl=''}
+  sourceImage=null;dragging=null;previewData='';
+  offsetX=offsetY=0;
+  image.hidden=true;image.removeAttribute('src');
+  cropSection.hidden=true;
+  ctx?.clearRect(0,0,canvas.width,canvas.height);
+ }
+ function renderCrop(){
+  if(!sourceImage||!ctx)return;
+  const width=canvas.width,height=canvas.height;
+  ctx.clearRect(0,0,width,height);
+  const sx=width/sourceImage.naturalWidth,sy=height/sourceImage.naturalHeight;
+  const base=fit.value==='contain'?Math.min(sx,sy):Math.max(sx,sy);
+  const scale=base*Number(zoom.value)/100;
+  const w=sourceImage.naturalWidth*scale,h=sourceImage.naturalHeight*scale;
+  ctx.drawImage(sourceImage,(width-w)/2+offsetX,(height-h)/2+offsetY,w,h);
+  zoomValue.value=String(zoom.value)+'%';
+  zoomValue.textContent=zoomValue.value;
+  // The thumbnail is a faithful preview of the saved pixels, not a CSS zoom.
+  previewData='';
+  for(const quality of [.9,.77,.6,.45]){
+   const encoded=canvas.toDataURL('image/webp',quality);
+   if(encoded.startsWith('data:image/webp;base64,')&&encoded.length<180000){
+    previewData=encoded;break;
+   }
+  }
+  image.src=previewData||canvas.toDataURL('image/png');
+  image.hidden=false;
+ }
+ async function setPreview(src='',asObjectUrl=false){
+  clearPreview();
+  if(!src)return;
+  const revision=loadRevision;
+  if(asObjectUrl)ownedObjectUrl=src;
+  const loaded=new Image();
+  loaded.decoding='async';
+  loaded.src=src;
+  try{
+   await loaded.decode();
+   if(revision!==loadRevision)return;
+   if(!loaded.naturalWidth||!loaded.naturalHeight||
+    loaded.naturalWidth>8192||loaded.naturalHeight>8192)
+    throw Error('De afbeelding is te groot of kan niet worden gelezen.');
+   sourceImage=loaded;
+   zoom.value='100';fit.value=defaultFit();
+   offsetX=offsetY=0;
+   cropSection.hidden=false;
+   renderCrop();
+  }catch(e){
+   if(revision===loadRevision)clearPreview();
+   throw e;
+  }
+ }
+ // Pointer dragging works with mouse, touch and stylus; coordinates are
+ // converted from responsive CSS size back to the 512 × 160 pixel crop.
+ canvas.addEventListener('pointerdown',e=>{
+  if(!sourceImage||e.button>0)return;
+  dragging={id:e.pointerId,x:e.clientX,y:e.clientY};
+  canvas.setPointerCapture(e.pointerId);
+  e.preventDefault();
+ });
+ canvas.addEventListener('pointermove',e=>{
+  if(!dragging||dragging.id!==e.pointerId||!sourceImage)return;
+  const rect=canvas.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  offsetX+=(e.clientX-dragging.x)*canvas.width/rect.width;
+  offsetY+=(e.clientY-dragging.y)*canvas.height/rect.height;
+  dragging.x=e.clientX;dragging.y=e.clientY;
+  renderCrop();e.preventDefault();
+ });
+ const stopDrag=e=>{if(dragging?.id===e.pointerId)dragging=null;};
+ canvas.addEventListener('pointerup',stopDrag);
+ canvas.addEventListener('pointercancel',stopDrag);
+ canvas.addEventListener('lostpointercapture',stopDrag);
+ canvas.addEventListener('keydown',e=>{
+  if(!sourceImage)return;
+  const step=e.shiftKey?18:4;
+  switch(e.key){
+   case 'ArrowLeft':offsetX-=step;break;
+   case 'ArrowRight':offsetX+=step;break;
+   case 'ArrowUp':offsetY-=step;break;
+   case 'ArrowDown':offsetY+=step;break;
+   default:return;
+  }
+  e.preventDefault();renderCrop();
+ });
+ zoom.addEventListener('input',renderCrop);
+ fit.addEventListener('change',()=>{offsetX=offsetY=0;renderCrop()});
+ $p('roleArtworkCropReset').addEventListener('click',()=>{
+  zoom.value='100';fit.value=defaultFit();offsetX=offsetY=0;renderCrop();
+ });
+ canvas.addEventListener('wheel',e=>{
+  if(!sourceImage)return;
+  e.preventDefault();
+  const step=e.deltaY<0?10:-10;
+  zoom.value=String(Math.max(Number(zoom.min),
+   Math.min(Number(zoom.max),Number(zoom.value)+step)));
+  renderCrop();
+ },{passive:false});
  const list=$p('roleArtworkList');
  function selectItem(row){
   kindSelect.value=row.kind||'role';
@@ -75,7 +181,7 @@ export function setupRoleArtworkUI({api,$,notice}){
   $p('roleArtworkVariant').value=row.variant||'standard';
   $p('roleArtworkLabel').value=row.label;
   select.value='';
-  setPreview(row.active?row.imageUrl:'');
+  void setPreview(row.active?row.imageUrl:'').catch(e=>message('Afbeelding openen mislukt: '+e.message,true));
   $p('roleArtworkFile').value='';
   message('Geselecteerd: '+row.label+'. Je kunt nu een vervangende afbeelding uploaden.');
  }
@@ -89,39 +195,20 @@ export function setupRoleArtworkUI({api,$,notice}){
   $p('roleArtworkLabel').value=preset[2];
   setPreview('');
  };
- async function convert(file){
-  if(!file||!['image/png','image/jpeg','image/webp'].includes(file.type))
-   throw Error('Kies een PNG, JPG of WebP (geen SVG).');
-  if(file.size>5*1024*1024)throw Error('Bronbestand is groter dan 5 MB.');
-  const blob=URL.createObjectURL(file);
-  try{
-   const img=new Image();
-   img.src=blob;await img.decode();
-   if(!img.naturalWidth||!img.naturalHeight||img.naturalWidth>8192||img.naturalHeight>8192)
-    throw Error('Afbeelding te groot of beschadigd.');
-   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=160;
-   const ctx=canvas.getContext('2d');if(!ctx)throw Error('Afbeeldingsverwerking niet beschikbaar.');
-   // Whole pictogram must remain visible, while grade/patch uploads fill the
-   // existing 16:5 badge shape. Transparent corners remain transparent.
-   const scale=(kindSelect.value==='specialty'?Math.min:Math.max)(
-    canvas.width/img.naturalWidth,canvas.height/img.naturalHeight);
-   const w=img.naturalWidth*scale,h=img.naturalHeight*scale;
-   ctx.drawImage(img,(512-w)/2,(160-h)/2,w,h);
-   let data='';
-   for(const quality of [.9,.75,.55]){
-    data=canvas.toDataURL('image/webp',quality);
-    if(data.startsWith('data:image/webp;base64,')&&data.length<180000)break;
-   }
-   if(!data.startsWith('data:image/webp;base64,')||data.length>=180000)
-    throw Error('De afbeelding kan niet veilig naar WebP (max. 140 KB) worden omgezet.');
-   return data;
-  }finally{URL.revokeObjectURL(blob)}
- }
  $p('roleArtworkFile').onchange=async()=>{
   const file=$p('roleArtworkFile').files?.[0];
   if(!file)return;
-  try{setPreview(await convert(file));message('Voorbeeld klaar (170 × 53,125 px op de site). Klik Opslaan om te publiceren.')}
-  catch(e){setPreview('');message(e.message,true)}
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)){
+   clearPreview();message('Kies een PNG, JPG of WebP (geen SVG).',true);return;
+  }
+  if(file.size>5*1024*1024){
+   clearPreview();message('Bronbestand is groter dan 5 MB.',true);return;
+  }
+  const src=URL.createObjectURL(file);
+  try{
+   await setPreview(src,true);
+   message('Sleep het logo en kies de grootte. Het kleine voorbeeld toont het uiteindelijke resultaat. Daarna kun je opslaan.');
+  }catch(e){message('Afbeelding openen mislukt: '+e.message,true)}
  };
  async function reload(){
   const result=await api('/api/role-artwork/manage');
@@ -177,7 +264,7 @@ export function setupRoleArtworkUI({api,$,notice}){
     {kind,code,department,label,reason,dataUrl:previewData};
    await api(endpoint,{method:'PUT',body});
    message('Logo opgeslagen in Firebase. Het is meteen beschikbaar in het portaal.');
-   $p('roleArtworkFile').value='';setPreview('');
+   $p('roleArtworkFile').value='';await setPreview('');
    await reload();
   }catch(e){message('Opslaan mislukt: '+e.message,true)}
   finally{busy=false;upload.disabled=false}
