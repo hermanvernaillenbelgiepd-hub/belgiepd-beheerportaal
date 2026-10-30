@@ -6,9 +6,10 @@ export function setupUniformManagementUI({api,$,notice}){
  const $p=id=>$(id),dept=$p('uniformDept'),variant=$p('uniformVariant');
  const frame=$p('uniformPreviewFrame'),coat=$p('uniformPreviewCoat');
  const patch=$p('uniformPreviewPatch'),patchLabel=$p('uniformPreviewPatchLabel');
+ const gradePreview=$p('uniformGradePreview'),gradePicture=$p('uniformPreviewGradeImage');
  const status=$p('uniformStatus'),reason=$p('uniformReason');
  const x=$p('uniformX'),y=$p('uniformY'),w=$p('uniformW'),h=$p('uniformH');
- let layouts=new Map(),images=new Map(),authorized=[],drag=null,imageData='';
+ let layouts=new Map(),images=new Map(),rankAssets=[],authorized=[],drag=null,imageData='';
  const defaults={
   politie_silver:{left:62.3,top:56.75,width:26.6,height:12.25},
   politie_gold:{left:56.2,top:58.9,width:19.5,height:12.1}
@@ -20,12 +21,32 @@ export function setupUniformManagementUI({api,$,notice}){
   variant.value==='gold'?'/assets/bpd-gold-officer-corps-zonder-medaille-rood-20261029.svg':
    '/assets/bpd-uniform-zilver-zonder-medaille-rood-20261029.svg':'';
  const message=(s,error=false)=>{status.textContent=s;status.classList.toggle('error',error)};
+ function updateGradeChoices(){
+  const previous=gradePreview.value;
+  gradePreview.replaceChildren(new Option('Voorbeeld zonder officiële afbeelding',''));
+  const custom=rankAssets.filter(a=>a.department===dept.value&&a.active);
+  for(const row of custom)gradePreview.append(new Option(row.label+' ('+row.code+')',row.imageUrl));
+  if(dept.value==='politie'){
+   const builtin=variant.value==='gold'?
+    [['Aspirant-commissaris','/assets/bpd-rank-acp-clean-20261027.webp'],
+     ['Commissaris','/assets/bpd-rank-cp-clean-20261027.webp']]:
+    [['Aspirant-hoofdinspecteur','/assets/bpd-rank-ahinp-clean-20261027.webp'],
+     ['Inspecteur','/assets/bpd-rank-inp-clean-20261027.webp']];
+   for(const [name,url] of builtin)gradePreview.append(new Option(name+' · voorbeeld',url));
+  }
+  gradePreview.value=[...gradePreview.options].some(o=>o.value===previous)?previous:
+   (gradePreview.options[1]?.value||'');
+ }
+ gradePreview.addEventListener('change',render);
  function render(){
-  const values=layouts.get(key())||defaultFor(key());
   const changed={left:Number(x.value),top:Number(y.value),
    width:Number(w.value),height:Number(h.value)};
   patch.style.left=changed.left+'%';patch.style.top=changed.top+'%';
   patch.style.width=changed.width+'%';patch.style.height=changed.height+'%';
+  const gradeSrc=gradePreview.value;
+  gradePicture.hidden=!gradeSrc;
+  gradePicture.src=gradeSrc||'';
+  patchLabel.hidden=Boolean(gradeSrc);
   patchLabel.textContent='Voorbeeld gradenplaat';
   for(const [label,value] of [['X',changed.left],['Y',changed.top],
    ['W',changed.width],['H',changed.height]]){
@@ -40,7 +61,7 @@ export function setupUniformManagementUI({api,$,notice}){
   imageData='';$p('uniformFile').value='';
   const pos=layouts.get(key())||defaultFor(key());
   x.value=pos.left;y.value=pos.top;w.value=pos.width;h.value=pos.height;
-  render();
+  updateGradeChoices();render();
  }
  function variants(){
   variant.replaceChildren();
@@ -126,6 +147,7 @@ export function setupUniformManagementUI({api,$,notice}){
   finally{URL.revokeObjectURL(blob)}
  });
  async function reload(){
+  const previousDept=dept.value,previousVariant=variant.value;
   const [positions,assets]=await Promise.all([
    api('/api/uniform-management/layouts'),
    api('/api/role-artwork/manage')
@@ -133,12 +155,17 @@ export function setupUniformManagementUI({api,$,notice}){
   layouts=new Map((positions.layouts||[]).map(r=>[r.key,r]));
   images=new Map((assets.artworks||[]).filter(a=>a.active&&a.kind==='uniform')
    .map(a=>[a.key,a.imageUrl]));
+  rankAssets=(assets.artworks||[]).filter(a=>a.kind==='rank'&&a.active);
   authorized=positions.editableDepartments||[];
   dept.replaceChildren();
   for(const [value,label] of DEPTS)
    if(authorized.includes(value))dept.append(new Option(label,value));
   if(!dept.options.length)throw Error('Geen hulpdienst met uniformbeheerrechten.');
+  if(authorized.includes(previousDept))dept.value=previousDept;
   variants();
+  if([...variant.options].some(o=>o.value===previousVariant)){
+   variant.value=previousVariant;useLayout();
+  }
   message('Uniformbeheer geladen. Wijzigingen zijn pas actief na bewaren.');
  }
  $p('uniformReload').onclick=()=>reload().catch(e=>message(e.message,true));
