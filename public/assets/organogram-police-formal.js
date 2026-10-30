@@ -423,8 +423,8 @@
   if(['ap','ainp','inp','1inp','ahinp','hinp','1hinp'].includes(key))return false;
   if(['acp','cp','1cp','ahcp','hcp','1hcp'].includes(key))return true;
   const title=String(person?.rank||'').trim();
-  if(/\\b(?:A-?HCP|AHCP|HCP|1-?HCP|ACP|CP|1-?CP|Korpschef)\\b/i.test(title))return true;
-  return /\\b(?:aspirant[- ]?hoofdcommissaris|(?:eerste[- ]?)?hoofdcommissaris|aspirant[- ]?commissaris|(?:eerste[- ]?)?commissaris)\\b/i.test(title);
+  if(/\b(?:A-?HCP|AHCP|HCP|1-?HCP|ACP|CP|1-?CP|Korpschef)\b/i.test(title))return true;
+  return /\b(?:aspirant[- ]?hoofdcommissaris|(?:eerste[- ]?)?hoofdcommissaris|aspirant[- ]?commissaris|(?:eerste[- ]?)?commissaris)\b/i.test(title);
  }
  const metalClass=person=>goldLettering(person)?' bpd-nameplate-metal-gold':' bpd-nameplate-metal-silver';
  // One unified woven nameplate for every police grade. The uploaded coat may
