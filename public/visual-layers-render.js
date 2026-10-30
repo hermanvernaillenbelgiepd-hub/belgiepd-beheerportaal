@@ -1,13 +1,13 @@
 // Purely visual per-service layers; never grants badges, medals or permissions.
 (function(){
  'use strict';
- let active=new Map(),layers=[];
+ let active=new Map(),layers=[],visibilityByDept=new Map();
  const allowed=new Set(['helmet','profession','logo','pictogram','patch','specialty','medal','award']);
  const keyPattern=/^(?:medal|helmet|profession|logo|pictogram|patch|award|specialty)_(?:politie|brandweer|ambulance|depannage|burger|beveiliging)_[a-z0-9][a-z0-9_]{0,39}$/;
  const urlPattern=/^\/api\/role-artwork\/file\/(?:medal|helmet|profession|logo|pictogram|patch|award|specialty)_(?:politie|brandweer|ambulance|depannage|burger|beveiliging)_[a-z0-9][a-z0-9_]{0,39}\?v=[a-zA-Z0-9-]+$/;
  const code=s=>String(s||'').toLowerCase().normalize('NFD')
   .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
- function setData(artworks,config){
+ function setData(artworks,config,visibility=[]){
   const data=new Map(),current=[];
   for(const row of Array.isArray(artworks)?artworks:[]){
    if(!keyPattern.test(row?.key||'')||!urlPattern.test(row?.imageUrl||''))continue;
@@ -22,6 +22,19 @@
    current.push({...l,src:data.get(l.assetKey).url});
   }
   active=data;layers=current;
+  visibilityByDept=new Map((Array.isArray(visibility)?visibility:[])
+   .filter(row=>['brandweer_default','ambulance_default','depannage_default'].includes(row?.key))
+   .map(row=>[row.department,row]));
+ }
+ function layerAllowed(department,kind){
+  const settings=visibilityByDept.get(department);
+  if(!settings)return true;
+  if(kind==='helmet')return settings.showHelmet!==false;
+  if(kind==='profession')return settings.showProfessionBadge!==false;
+  if(['logo','pictogram','patch','specialty'].includes(kind))
+   return settings.showExtraLogo!==false;
+  // Medals and awards require individual assignment, not a generic logo toggle.
+  return true;
  }
  function hasAssignment(person,layer){
   if(layer.code==='default'&&!['medal','award','specialty'].includes(layer.kind))return true;
@@ -38,7 +51,8 @@
  function appendTo(stage,person,variant){
   if(!stage||!person)return;
   for(const layer of layers){
-   if(layer.department!==person.dept||layer.variant!==variant||!hasAssignment(person,layer))continue;
+   if(layer.department!==person.dept||layer.variant!==variant||
+    !layerAllowed(person.dept,layer.kind)||!hasAssignment(person,layer))continue;
    const wrapper=document.createElement('span');
    wrapper.className='bpd-custom-uniform-layer';
    wrapper.style.cssText='position:absolute;pointer-events:none;display:block;overflow:hidden;'+
