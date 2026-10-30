@@ -66,7 +66,7 @@ test('non-numbered display ranks still select gold/silver properly',()=>{
 });
 test('new live and studio assets are cache-busted',()=>{
  const hierarchy=read('organogram-hierarchie.html');
- assert.match(hierarchy,/organogram-police-formal\.css\?v=rank-artwork-thread-20261031-v2/);
- assert.match(hierarchy,/organogram-police-formal\.js\?v=rank-artwork-thread-20261031-v2/);
- assert.match(admin,/uniform-composer-ui\.js\?v=rank-artwork-thread-20261031-v2/);
+ assert.match(hierarchy,/organogram-police-formal\.css\?v=officer-gold-writing-20261031-v4/);
+ assert.match(hierarchy,/organogram-police-formal\.js\?v=officer-gold-writing-20261031-v4/);
+ assert.match(admin,/uniform-composer-ui\.js\?v=officer-gold-writing-20261031-v4/);
 });
