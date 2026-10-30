@@ -74,6 +74,21 @@ header button{padding:7px 10px;font-size:12px}
 #roleArtworkSection .artwork-crop-controls input[type="range"]{width:min(240px,100%);accent-color:#79b1ff;padding:0;cursor:ew-resize}
 #roleArtworkSection .artwork-crop-controls select{width:auto;min-width:170px}
 #roleArtworkSection .artwork-crop-controls button{padding:8px 10px}
+#uniformSection[hidden]{display:none!important}
+#uniformSection .uniform-editor-columns{display:grid;grid-template-columns:minmax(250px,1fr) minmax(200px,.8fr);gap:19px;align-items:start;margin:14px 0}
+#uniformSection .uniform-preview-frame{width:min(100%,603px);aspect-ratio:603/469;border-radius:11px;border:1px solid #6686a8;background:#0c1a2d;position:relative;overflow:hidden;user-select:none;touch-action:none}
+#uniformSection .uniform-preview-frame>img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
+#uniformSection .uniform-preview-grade{position:absolute;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px dashed #e6bd73;background:#141d2e;color:#ffe6a4;cursor:grab;touch-action:none;outline-offset:3px;font-size:10px;font-weight:750;text-align:center;padding:3px;z-index:1}
+#uniformSection .uniform-preview-grade:active{cursor:grabbing}
+#uniformSection .uniform-preview-grade>span{overflow:hidden;line-height:1.2;overflow-wrap:anywhere}
+#uniformSection .uniform-empty-note{display:none;position:absolute;left:9px;top:8px;max-width:70%;font-size:10px;color:#a2bddb}
+#uniformSection .uniform-empty .uniform-empty-note{display:block}
+#uniformSection .uniform-sliders{display:grid;gap:8px;align-items:start}
+#uniformSection .uniform-sliders label{display:flex;justify-content:space-between;align-items:center;margin:0;gap:8px}
+#uniformSection .uniform-sliders input[type="range"]{width:100%;accent-color:#91bded;padding:0;margin:0 0 6px}
+#uniformSection .uniform-sliders output{font-size:11px;color:#f6d69d;white-space:nowrap}
+#uniformSection .error{color:#ffb5c2}
+@media(max-width:750px){#uniformSection .uniform-editor-columns{grid-template-columns:minmax(0,1fr)}}
 #roleArtworkSection .artwork-preview{height:83px;display:flex;align-items:center;justify-content:center;border:1px dashed #5c7593;border-radius:9px;background:#0b192b}
 #roleArtworkSection .artwork-preview img{width:170px;height:53.125px;object-fit:fill;max-width:100%;border-radius:4px}
 #roleArtworkSection .artwork-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:9px;margin:14px 0}
@@ -95,6 +110,7 @@ header button{padding:7px 10px;font-size:12px}
 <button type="button" data-tab="manual" hidden>🔐 Handmatig rolherstel</button>
 <button type="button" data-tab="services" hidden>🛡️ Beheertoegang hulpdiensten</button>
 <button type="button" data-tab="artwork" hidden>🎨 Rollenlogo’s & patches</button>
+<button type="button" data-tab="uniform" hidden>🧥 Uniformbeheer</button>
 <button type="button" data-tab="to" hidden>📻 TO-rechten</button>
 <button type="button" data-tab="board" hidden>🏛️ Bestuur</button>
 <button type="button" data-tab="leave" hidden>📅 VERLOFBEHEER</button>
@@ -273,10 +289,55 @@ header button{padding:7px 10px;font-size:12px}
 <div id="roleArtworkList" class="artwork-list" aria-live="polite"></div>
 <p class="muted">K-9-, MOTARD-, DISP- en RAGO-logo’s worden na opslaan automatisch gebruikt. Je kunt ook afbeeldingen voor nieuwe Discord-rollen bewaren; voor een volledig nieuwe specialisatie moet de organogramfunctie eenmalig worden geregistreerd.</p>
 </section>
+
+<section id="uniformSection" class="card" data-authorized="no" hidden>
+ <h2>🧥 Uniformbeheer per hulpdienst</h2>
+ <p>Beheer de uniformafbeelding en de exacte plaats van het gradenteken zonder een codewijziging. Dit verandert uitsluitend de <strong>weergave</strong>, niet de Discord-rollen, rangen of dossierbevoegdheden.</p>
+ <div class="grid">
+  <div><label for="uniformDept">Hulpdienst</label><select id="uniformDept"></select></div>
+  <div><label for="uniformVariant">Uniformtype</label><select id="uniformVariant"></select></div>
+  <div><label for="uniformFile">Nieuw uniform uploaden (PNG, JPG, WebP)</label><input id="uniformFile" type="file" accept="image/png,image/jpeg,image/webp"><small>De jas wordt opgeslagen als afbeelding van 603 × 469 pixels. De gradenplaat staat er afzonderlijk bovenop.</small></div>
+  <div><label for="uniformReason">Motivering voor het logboek (min. 8 tekens)</label><input id="uniformReason" maxlength="300" placeholder="Waarom pas je het uniform of de gradenplaat aan?"></div>
+ </div>
+ <h3>Livevoorbeeld – versleep het gradenteken</h3>
+ <div class="uniform-editor-columns">
+  <div>
+   <div id="uniformPreviewFrame" class="uniform-preview-frame uniform-empty">
+    <img id="uniformPreviewCoat" alt="Uniformvoorbeeld" hidden>
+    <span id="uniformPreviewPatch" class="uniform-preview-grade" tabindex="0" role="img" aria-label="Versleepbaar gradenteken in het uniform">
+     <span id="uniformPreviewPatchLabel">Voorbeeld gradenplaat</span>
+    </span>
+    <span class="uniform-empty-note">Nog geen uniformfoto voor deze hulpdienst. Upload een afbeelding.</span>
+   </div>
+   <small>Versleep de gradenplaat met de muis of de pijltjestoetsen. De getoonde plaats wordt bewaard per hulpdienst en per uniformtype.</small>
+  </div>
+  <div class="uniform-sliders">
+   <label for="uniformX">Horizontale positie <output id="uniformValueX">0%</output></label>
+   <input type="range" id="uniformX" min="0" max="90" step=".25" value="62">
+   <label for="uniformY">Verticale positie <output id="uniformValueY">0%</output></label>
+   <input type="range" id="uniformY" min="0" max="90" step=".25" value="55">
+   <label for="uniformW">Breedte gradenplaat <output id="uniformValueW">24%</output></label>
+   <input type="range" id="uniformW" min="3" max="75" step=".25" value="24">
+   <label for="uniformH">Hoogte gradenplaat <output id="uniformValueH">12%</output></label>
+   <input type="range" id="uniformH" min="2" max="50" step=".25" value="12">
+   <div class="controls">
+    <button id="uniformReset" class="alt" type="button">Standaardpositie</button>
+   </div>
+  </div>
+ </div>
+ <div class="controls">
+  <button id="uniformSaveImage" type="button">Uniformafbeelding bewaren</button>
+  <button id="uniformSavePosition" type="button" class="alt">Positie en formaat gradenplaat bewaren</button>
+  <button id="uniformReload" type="button" class="alt">Opnieuw laden</button>
+ </div>
+ <div id="uniformStatus" class="muted" role="status" aria-live="polite">Uniformbeheer laden…</div>
+ <p class="muted">Bij politie blijven de zilveren en gouden uniformen apart instelbaar. Voor andere hulpdiensten verschijnen nieuwe uniformeportretten pas nadat je een basisafbeelding hebt geüpload. Een bijhorende gradenplaat wordt pas getoond als er een bijpassend gradenteken is geregistreerd.</p>
+</section>
 </main>
 <script type="module">
 import {setupDossierGrantUI} from '/dossier-grants-ui.js';
 import {setupRoleArtworkUI} from '/role-artwork-ui.js';
+import {setupUniformManagementUI} from '/uniform-management-ui.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
@@ -333,11 +394,12 @@ function setAccountCadreOptions(select,dept,preferred){
 }
 const dossierGrants=setupDossierGrantUI({api,notice,$,option,cell});
 const roleArtwork=setupRoleArtworkUI({api,$,notice});
+const uniformManagement=setupUniformManagementUI({api,$,notice});
 let tabChoice=window.location.hash==='#dienstbeheer'?'services':
   window.location.hash==='#verlofmachtigingen'?'leave':'accounts';
 function showManageTabs(){
   const mapping={accounts:'admin',manual:'manualRoleSection',services:'dossierGrantSection',to:'toSection',
-    board:'boardSection',leave:'leaveGrantSection',artwork:'roleArtworkSection'};
+    board:'boardSection',leave:'leaveGrantSection',artwork:'roleArtworkSection',uniform:'uniformSection'};
   const active=Object.keys(mapping).filter(k=>$(mapping[k]).dataset.authorized==='yes');
   $('manageTabs').hidden=!active.length;
   if(!active.includes(tabChoice))tabChoice=active[0]||'accounts';
@@ -1035,7 +1097,7 @@ $('leaveGrantRevoke').onclick=async()=>{
 };
 $('leaveGrantReload').onclick=()=>loadLeaveGrantManager().then(showManageTabs);
 async function refresh(){
-  for(const name of ['admin','manualRoleSection','toSection','boardSection','dossierGrantSection','leaveGrantSection','roleArtworkSection'])$(name).dataset.authorized='no';
+  for(const name of ['admin','manualRoleSection','toSection','boardSection','dossierGrantSection','leaveGrantSection','roleArtworkSection','uniformSection'])$(name).dataset.authorized='no';
   dossierGrants.reset();
   if(!auth?.currentUser){$('profileSwitcher').hidden=true;$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;$('toSection').hidden=true;return}
   const isDiscord=auth.currentUser.uid.startsWith('discord:');
@@ -1070,10 +1132,11 @@ async function refresh(){
   try{if(await dossierGrants.load())$('dossierGrantSection').dataset.authorized='yes'}catch(e){notice('Dienstbeheer: '+e.message,true)}
   await loadLeaveGrantManager();
   await roleArtwork.load();
+  await uniformManagement.load();
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformManagement.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
