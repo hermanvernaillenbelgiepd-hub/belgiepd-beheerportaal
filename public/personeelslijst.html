@@ -63,6 +63,12 @@ async function load(){
   if(!res.ok)throw Error(data.error||'Geen toegang');
   $('discordLogin').hidden=true;
   people=Array.isArray(data.records)?data.records:[];
+  try{
+   const artwork=await fetch('/api/role-artwork/manifest',{
+    headers:{Authorization:'Bearer '+token},cache:'no-store'
+   }).then(r=>{if(!r.ok)throw Error('Logo-overzicht tijdelijk niet beschikbaar');return r.json()});
+   window.BPDPersonnelVisuals?.setArtworkManifest?.(artwork.artworks);
+  }catch(_err){window.BPDPersonnelVisuals?.setArtworkManifest?.([])}
   render();
   if(data.stale)$('message').textContent+=' · Let op: brongegevens momenteel niet actueel';
  }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
