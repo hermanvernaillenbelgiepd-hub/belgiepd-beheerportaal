@@ -291,10 +291,10 @@
   const close=(a,b)=>Math.abs(Number(a)-b)<0.65;
   // Respect intentional manual positions, but repair the legacy defaults.
   return kind==='name'?
-   (close(pos.left,18)&&close(pos.top,56))||
-   (close(pos.left,21.2)&&close(pos.top,60.2)):
-   (close(pos.left,57)&&close(pos.top,56))||
-   (close(pos.left,56.2)&&close(pos.top,58.9));
+   (close(pos.left,18)&&close(pos.top,56)&&close(pos.width,27)&&close(pos.height,11))||
+   (close(pos.left,21.2)&&close(pos.top,60.2)&&close(pos.width,20.1)):
+   (close(pos.left,57)&&close(pos.top,56)&&close(pos.width,25)&&close(pos.height,10))||
+   (close(pos.left,56.2)&&close(pos.top,58.9)&&close(pos.width,19.5));
  }
  function snapAssignedPortraitPlates(image,person,nameplate,rankplate){
   const apply=()=>{
