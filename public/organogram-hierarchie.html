@@ -1245,6 +1245,98 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 }
 .person-profile-dialog .person-profile-overview .bpd-custom-uniform-layer{position:absolute;display:block;pointer-events:none}
 .person-profile-dialog .person-profile-overview .bpd-custom-uniform-layer>img{width:100%;height:100%;object-fit:contain}
+
+/* Operational profile: the uniform owns two thirds of the open staff card.
+   Awards remain distinct from specializations; no board or education rows. */
+.person-profile-dialog.operational-profile .person-profile-layout{
+ display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,1fr);
+ grid-template-areas:"details specials";gap:18px;align-items:start
+}
+.person-profile-dialog.operational-profile .person-profile-main{
+ grid-area:details;padding:0;min-width:0
+}
+.person-profile-dialog.operational-profile .person-profile-specialty-panel{
+ grid-area:specials;min-width:0;display:flex;flex-direction:column;gap:12px
+}
+.person-profile-dialog.operational-profile .person-profile-intro{min-width:0}
+.person-profile-dialog.operational-profile .person-profile-overview{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:7px;margin:0 0 11px;padding:12px 9px 9px;
+ border:1px solid #385a78;border-radius:10px;background:#0d2239
+}
+.person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-police-formal[data-uniform],
+.person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-service-uniform{
+ display:block;position:relative;box-sizing:border-box;
+ width:min(100%,470px)!important;min-width:0!important;max-width:100%!important;
+ height:min(56vh,480px)!important;flex:0 0 auto!important;
+ border:1px solid #6689ad;border-radius:11px;background:#10243b;overflow:hidden
+}
+.person-profile-dialog.operational-profile .person-profile-overview .person-profile-name{
+ text-align:center;font-size:21px;line-height:1.24
+}
+.person-profile-dialog.operational-profile .person-profile-overview .person-profile-rank{
+ text-align:center;font-size:12px
+}
+.person-profile-dialog.operational-profile .person-profile-grade{
+ display:flex;margin:9px auto 12px;justify-content:center;
+ width:fit-content;max-width:100%
+}
+.person-profile-dialog.operational-profile .person-profile-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0
+}
+.person-profile-dialog.operational-profile .person-profile-grid .person-profile-fact{
+ min-height:66px;display:flex;flex-direction:column;justify-content:center
+}
+.person-profile-dialog.operational-profile .person-profile-grid .person-profile-fact.person-profile-call{
+ grid-column:1/-1;text-align:center;background:#20507e;border:1px solid #83b5e8
+}
+.person-profile-dialog.operational-profile .person-profile-call small{
+ color:#d4e9ff;font-weight:850;letter-spacing:.08em;text-transform:uppercase
+}
+.person-profile-dialog.operational-profile .person-profile-call strong{
+ font-size:clamp(22px,2.8vw,31px);font-weight:900;letter-spacing:.04em;
+ font-variant-numeric:tabular-nums;color:#fff
+}
+.person-profile-dialog.operational-profile .person-profile-awards-panel{
+ border:1px solid #4b698b;border-radius:9px;background:#142c45;
+ padding:10px 12px;min-width:0
+}
+.person-profile-dialog.operational-profile .person-profile-awards-panel>.bpd-awards{
+ border:0;padding:0;margin:0
+}
+.person-profile-dialog.operational-profile .person-profile-specialization-box{
+ min-width:0;border:1px solid #426288;border-radius:9px;
+ padding:10px 11px;background:#112b45
+}
+.person-profile-dialog.operational-profile .person-profile-specialization-box>h3{
+ margin:0 0 8px;height:auto;line-height:1.4
+}
+.person-profile-dialog.operational-profile .person-profile-specialties{
+ grid-template-columns:minmax(0,1fr);gap:7px
+}
+.person-profile-dialog.operational-profile .person-profile-specialty{
+ width:100%;max-width:100%
+}
+.person-profile-dialog.operational-profile .bpd-awards-control{
+ overflow-wrap:anywhere
+}
+.person-profile-dialog.operational-profile .person-profile-dossier-link{margin-top:10px}
+@media(max-width:920px){
+ .person-profile-dialog.operational-profile .person-profile-layout{
+  grid-template-columns:minmax(0,1fr);grid-template-areas:"details" "specials"
+ }
+ .person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-police-formal[data-uniform],
+ .person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-service-uniform{
+  width:min(100%,360px)!important;height:min(48vh,380px)!important
+ }
+}
+@media(max-width:540px){
+ .person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-police-formal[data-uniform],
+ .person-profile-dialog.operational-profile .person-profile-overview .portrait.bpd-service-uniform{
+  width:min(100%,300px)!important;height:min(43vh,335px)!important
+ }
+}
+
 </style>
 </head>
 <body>
@@ -1596,12 +1688,14 @@ function makeServiceUniformPortrait(person){
 function openPersonProfile(p){
  const dialog=$('person-profile'),content=$('person-profile-content');
  dialog.classList.toggle('police-person-profile',p.dept==='politie');
+ dialog.classList.add('operational-profile');
  content.replaceChildren();
  const layout=el('div','person-profile-layout');
  const intro=el('section','person-profile-intro');
  const primary=el('section','person-profile-main');
  const secondary=el('section','person-profile-specialty-panel');
- layout.append(intro,primary,secondary);
+ primary.append(intro);
+ layout.append(primary,secondary);
  content.append(layout);
  const overview=el('div','person-profile-overview');
  const portrait=p.dept==='politie'?
@@ -1628,19 +1722,14 @@ function openPersonProfile(p){
   const row=el('div','person-profile-fact');
   row.append(el('small','',label),el('strong','',String(value||'Niet geregistreerd')));
   if(label==='Personeelsstatus')row.classList.add('person-profile-status');
+  if(label==='CALL')row.classList.add('person-profile-call');
   grid.append(row);
  }
- fact('Roepnummer',p.call||'—');
+ fact('CALL',p.call||'—');
  fact('Dienst',SERVICES.find(x=>x.id===p.dept)?.name||p.dept);
  fact('Rang / functie',window.BPDPoliceUniform?.gradeFor?.(p)?.label||p.rank||'Niet geregistreerd');
  fact('Niveau (indicatief)',getTier(p));
  fact('Personeelsstatus',p.status||'Niet vermeld');
- const teaching=(Array.isArray(p.teachingRoles)?p.teachingRoles:[])
-  .filter(x=>x==='instructeur'||x==='docent');
- const trainingRoles=teaching.map(x=>x==='instructeur'?'Instructeur':'Docent');
- if(p.dept==='politie'&&p.reekshoofdReeks)
-  trainingRoles.push('Reekshoofd – '+p.reekshoofdReeks);
- fact('Opleidingsfunctie',trainingRoles.length?trainingRoles.join(' · '):'Geen geregistreerde functie');
  if(Array.isArray(p.displayLabels)&&p.displayLabels.length)
   fact('Extra weergavelabel',p.displayLabels.map(x=>x.toUpperCase()).join(' · '));
  primary.append(grid);
@@ -1662,7 +1751,27 @@ function openPersonProfile(p){
    primary.append(open);
   }
  }
- secondary.append(el('h3','','Specialisaties'));
+ // Public distinctions are displayed before specializations.
+ // The legacy secure manager checks police officer rights on every request.
+ const awardsBox=el('section','person-profile-awards-panel');
+ window.BPDDecorations?.renderAwards?.(awardsBox,p.awards||[],state.demo);
+ secondary.append(awardsBox);
+ if(!state.demo&&p.dept==='politie'&&auth?.currentUser){
+  const awardManager=el('div','person-profile-award-manager');
+  awardManager.dataset.personKey=String(p.call||'')+'|'+String(p.name||'');
+  secondary.append(awardManager);
+  void window.BPDDecorations?.manager?.(awardManager,p,auth,async()=>{
+   await loadPublic();
+   const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
+   if(latest&&dialog.open)openPersonProfile(latest);
+  });
+  const uploadBox=el('div','person-profile-award-upload');
+  secondary.append(uploadBox);
+  void window.BPDDecorations?.uploadTools?.(auth,uploadBox);
+ }
+ const specBox=el('section','person-profile-specialization-box');
+ specBox.append(el('h3','','Specialisaties'));
+ secondary.append(specBox);
  const names=[...new Set(specialtyNames(p)
   .map(name=>p.dept==='politie'?policeSpecialtyName(name):name).filter(Boolean))];
  if(names.length){
@@ -1750,8 +1859,8 @@ function openPersonProfile(p){
    normalizeSpecialtyBadges(item);
    list.append(item);
   }
-  secondary.append(list);
- }else secondary.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
+  specBox.append(list);
+ }else specBox.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
 
  if(!dialog.open)dialog.showModal();
 }
