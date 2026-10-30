@@ -48,10 +48,8 @@
  border:1px solid #aebfcc;border-left:3px solid #bfcbd9;
  box-shadow:0 0 0 .5px #344e6e;pointer-events:none;
 }
-.bpd-silver-nameplate::before{
- content:"";position:absolute;left:1px;top:0;bottom:0;width:12%;
- background:repeating-linear-gradient(135deg,#d0dce7 0 1px,#253752 1px 2px);
-}
+/* Old silver-nameplate hatch deleted; only the dynamic mirrored rank art
+   supplies the decorative fabric edge. */
 .bpd-nameplate-text{
  max-width:89%;overflow:hidden;white-space:nowrap;text-overflow:clip;
  font-size:clamp(2px,.45vw,6px);font-weight:750;letter-spacing:-.02em;
@@ -104,13 +102,8 @@
  display:flex;flex-direction:column;justify-content:center;align-items:center;
  padding:1%;overflow:hidden;box-sizing:border-box;
 }
-.bpd-gold-nameplate::before{
- position:absolute;content:"";inset:7% auto 7% 3%;width:23%;
- border-right:1px solid #b99344;
- background:repeating-linear-gradient(115deg,transparent 0 5px,
- #b99446 5px 7px,transparent 7px 10px);
- opacity:.83;
-}
+/* Retired gold-nameplate imitation corner removed. The current nameplate
+   mirrors the actual rank artwork and masks its stars/crowns. */
 .bpd-gold-nameplate>.bpd-gold-name,
 .bpd-gold-nameplate>.bpd-gold-call{
  display:block;position:relative;width:73%;margin-left:25%;
@@ -157,7 +150,7 @@
  left:21.2%;top:60.2%;width:20.1%;height:auto;
  aspect-ratio:1032/381;container-type:inline-size;
  overflow:hidden;display:block;padding:0;
- background:#0c111d url('/assets/bpd-naamplaat-geweven-leeg-20261028.webp')
+ background:#0b1425
   center / 100% 100% no-repeat;
  border:0;border-radius:1px;
  box-shadow:0 0 0 .35px #8e9aa8;
@@ -207,7 +200,7 @@
  position:absolute;z-index:7;
  left:10.25%;top:56.2%;width:27.75%;height:auto;
  aspect-ratio:1032/381;container-type:inline-size;
- background:#0c111d url('/assets/bpd-naamplaat-geweven-leeg-20261028.webp')
+ background:#0b1425
   center / 100% 100% no-repeat;
  display:block;overflow:hidden;border:0;border-radius:1px;padding:0;
  box-shadow:0 0 0 .5px #ced3e0;

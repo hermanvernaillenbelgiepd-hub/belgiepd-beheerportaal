@@ -68,7 +68,7 @@ test('rank labels without numbered calls honor gold/silver boundary as well',()=
 });
 test('updated scripts and styles are independently cache-busted',()=>{
  const hierarchy=read('organogram-hierarchie.html');
- assert.match(hierarchy,/organogram-police-formal\.css\?v=mirrored-grade-nameplate-20261030/);
- assert.match(hierarchy,/organogram-police-formal\.js\?v=mirrored-grade-nameplate-20261030/);
- assert.match(studioCss,/uniform-composer-ui\.js\?v=mirrored-grade-nameplate-20261030/);
+ assert.match(hierarchy,/organogram-police-formal\.css\?v=retire-double-nameplates-20261030/);
+ assert.match(hierarchy,/organogram-police-formal\.js\?v=retire-double-nameplates-20261030/);
+ assert.match(studioCss,/uniform-composer-ui\.js\?v=retire-double-nameplates-20261030/);
 });
