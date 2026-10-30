@@ -159,6 +159,15 @@ header button{padding:7px 10px;font-size:12px}
 #roleArtworkSection .artwork-item small{font-size:10px;overflow-wrap:anywhere}
 #roleArtworkSection .artwork-item button{padding:5px 9px;font-size:11px}
 #roleArtworkSection .error{color:#ffc1cc}
+#libraryPanel,#libraryAssignmentPanel{padding:16px;margin:18px 0;border:1px solid #476889;border-radius:11px;background:#11283f}
+#libraryPanel h3,#libraryAssignmentPanel h3{margin:0 0 8px}
+#libraryPanel .artwork-item img{object-fit:contain}
+#libraryPanel .artwork-list{max-height:360px;overflow:auto}
+#libraryPanel .library-preview{display:block;max-width:280px;max-height:180px;object-fit:contain;margin:9px 0}
+#libraryPanel .library-preview[hidden]{display:none}
+#libraryPanel select,#libraryAssignmentPanel select{max-width:100%}
+#libraryAssignmentPanel .uniform-assignment-list{max-height:240px}
+
 </style>
 </head>
 <body>
@@ -358,6 +367,29 @@ header button{padding:7px 10px;font-size:12px}
 <h3>Opgeslagen logo’s <small id="roleArtworkCount"></small></h3>
 <div id="roleArtworkList" class="artwork-list" aria-live="polite"></div>
 <p class="muted">De bibliotheek bewaart nieuwe graden, medailles en dienstonderdelen. Via <strong>Uniformbeheer → Extra lagen</strong> bepaal je per uniform waar een geüpload onderdeel verschijnt. Een medaille krijgt pas een drager na een afzonderlijke, bevoegde toekenning; uploaden kent niemand een medaille toe. Beveiligingsagent is een voorbereidende visuele categorie en geeft nog geen nieuwe dienstrechten.</p>
+
+<section id="libraryPanel" hidden aria-label="Versiebeheer Cloud Storage">
+ <h3>📁 Bibliotheek met originele afbeeldingen en versies</h3>
+ <p class="muted">Bewaart PNG, JPG en WebP zonder de bronafbeelding te vervormen. Iedere vervanging krijgt een eigen versie; de bestaande kleinere WebP-bibliotheek blijft bruikbaar.</p>
+ <div id="libraryStorageNote" class="muted" role="status">Opslaginstellingen controleren…</div>
+ <div class="grid">
+  <div><label for="libraryDept">Hulpdienst</label><select id="libraryDept"></select></div>
+  <div><label for="libraryKind">Onderdeel</label><select id="libraryKind"></select></div>
+  <div><label for="libraryCode">Unieke code</label><input id="libraryCode" maxlength="40" placeholder="bijv. sergeant of interventiehelm"></div>
+  <div><label for="libraryLabel">Naam / omschrijving</label><input id="libraryLabel" maxlength="75" placeholder="bijv. Sergeant - brandweer"></div>
+  <div><label for="libraryFile">Originele afbeelding</label><input id="libraryFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 4 MB; transparantie blijft behouden. Geen SVG.</small></div>
+  <div><label for="libraryUploadReason">Reden voor toevoegen / vervangen / herstellen</label><input id="libraryUploadReason" maxlength="300" placeholder="Minstens acht tekens"></div>
+ </div>
+ <img class="library-preview" id="libraryPreview" alt="Voorbeeld van het gekozen afbeeldingsbestand" hidden>
+ <div class="controls"><button type="button" id="libraryUpload">Afbeelding met versiegeschiedenis bewaren</button></div>
+ <div id="libraryUploadStatus" class="muted" role="status" aria-live="polite"></div>
+ <h4>Afbeeldingen in deze categorie <small id="libraryCount"></small></h4>
+ <div id="libraryList" class="artwork-list"></div>
+ <h4>Eerdere versies herstellen</h4>
+ <input id="libraryVersionKey" type="hidden">
+ <div class="grid"><div><label for="libraryVersions">Versie</label><select id="libraryVersions"><option value="">Kies een vorige versie</option></select></div></div>
+ <div class="controls"><button type="button" id="libraryRestore" class="alt">Geselecteerde versie herstellen</button></div>
+</section>
 </section>
 
 <section id="uniformSection" class="card" data-authorized="no" hidden>
@@ -504,6 +536,34 @@ header button{padding:7px 10px;font-size:12px}
  <div id="uniformAssignList" class="uniform-assignment-list"></div>
  <small>Volgorde: persoonlijk → graad → kader → hulpdienst. Persoonlijke koppelingen gebruiken bij voorkeur de vaste personeels-ID; als die nog ontbreekt, wordt het roepnummer gebruikt en moet de koppeling bij een roepnummerwijziging opnieuw worden nagekeken.</small>
  </section>
+
+<section id="libraryAssignmentPanel" hidden aria-label="Graden, helmen en beroepstekens koppelen">
+ <h3>Graden, helmen en logo's selecteren per dienst, graad of persoon</h3>
+ <p class="muted">Kies een geüploade afbeelding en de doelgroep. Een persoonlijke keuze gaat voor de graad, daarna het kader en vervolgens de algemene dienstkeuze. Deze koppelingen zijn uitsluitend visueel.</p>
+ <div class="grid">
+  <div><label for="libraryAssignDept">Hulpdienst</label><select id="libraryAssignDept"></select></div>
+  <div><label for="libraryAssignKind">Soort afbeelding</label><select id="libraryAssignKind"></select></div>
+  <div><label for="libraryAssignScope">Voor wie?</label><select id="libraryAssignScope">
+   <option value="service">Iedereen van de dienst</option>
+   <option value="cadre">Een kader / functiegroep</option>
+   <option value="rank">Een graad</option>
+   <option value="person">Een personeelslid</option>
+  </select></div>
+  <div><label for="libraryAssignTarget">Graad, kader of personeels-ID</label><input id="libraryAssignTarget" maxlength="40" placeholder="default" value="default">
+   <small>Bij een graad gebruik je de naam (bijv. sergeant). Bij een persoon de Discord-ID of call_roepnummer.</small></div>
+  <div><label for="libraryAssignAsset">Geüploade afbeelding</label><select id="libraryAssignAsset"><option value="">Kies een afbeelding</option></select></div>
+  <div><label for="libraryAssignReason">Motivering voor logboek</label><input id="libraryAssignReason" maxlength="300" placeholder="Minstens acht tekens"></div>
+ </div>
+ <div class="controls">
+  <button type="button" id="libraryFromUniformSelection" class="alt">Gebruik doelgroep uit Uniformtoewijzingen hierboven</button>
+  <button type="button" id="libraryAssignSave">Afbeelding koppelen</button>
+  <button type="button" id="libraryAssignRemove" class="alt">Koppeling verwijderen</button>
+  <button type="button" id="libraryAssignmentRefresh" class="alt">Vernieuwen</button>
+ </div>
+ <div id="libraryAssignStatus" class="muted" role="status" aria-live="polite"></div>
+ <h4>Bestaande koppelingen</h4><div id="libraryRuleList" class="uniform-assignment-list"></div>
+ <small>Opgelet: het opladen of koppelen van medailles en eretekens kent ze nooit toe. De bestaande personeels- en onderscheidingsrechten blijven leidend.</small>
+</section>
  <section class="uniform-extra-layers">
   <h3>Extra lagen — helmen, beroepstekens, medailles en dienstlogo’s</h3>
   <p class="muted">Upload eerst een onderdeel onder <strong>Rollenlogo’s & patches</strong>. Selecteer het hier om op het uniform te plaatsen. Medailles worden niet aan personeel toegekend door de upload of laaginstellingen.</p>
@@ -539,6 +599,7 @@ import {setupRoleArtworkUI} from '/role-artwork-ui.js';
 import {setupUniformManagementUI} from '/uniform-management-ui.js?v=optional-uniform-pieces-20261030';
 import {setupVisualLayerUI} from '/visual-layer-ui.js?v=optional-uniform-pieces-20261030';
 import {setupUniformAssignmentUI} from '/uniform-assignment-ui.js';
+import {setupUniformLibraryUI} from '/uniform-library-ui.js?v=cloud-library-20261030';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
@@ -598,6 +659,7 @@ const roleArtwork=setupRoleArtworkUI({api,$,notice});
 const uniformManagement=setupUniformManagementUI({api,$,notice});
 const visualLayerManagement=setupVisualLayerUI({api,$,notice});
 const uniformAssignments=setupUniformAssignmentUI({api,$,notice});
+const uniformLibrary=setupUniformLibraryUI({api,$,notice});
 let tabChoice=window.location.hash==='#dienstbeheer'?'services':
   window.location.hash==='#verlofmachtigingen'?'leave':'accounts';
 function showManageTabs(){
@@ -1337,11 +1399,11 @@ async function refresh(){
   await roleArtwork.load();
   await uniformManagement.load();
   await visualLayerManagement.load();
-  await uniformAssignments.load();
+  await uniformAssignments.load();await uniformLibrary.load();
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformManagement.load();await visualLayerManagement.load();await uniformAssignments.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformManagement.load();await visualLayerManagement.load();await uniformAssignments.load();await uniformLibrary.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
