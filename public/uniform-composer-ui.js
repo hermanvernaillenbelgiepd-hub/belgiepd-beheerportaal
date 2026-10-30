@@ -83,11 +83,45 @@ export function setupUniformComposer({api,$}){
   const label=grade.selectedOptions[0]?.textContent||'';
   return dept.value==='politie'?label.split(' · ').slice(1).join(' · ')||label:label;
  }
+ const slots={
+  name:{left:27.2,top:34.7,width:15.8,height:7.9},
+  rank:{left:55.3,top:34.7,width:15.6,height:7.9}
+ };
+ function snapChest(){
+  for(const kind of ['name','rank'])Object.assign(draft.layers[kind],slots[kind]);
+  render();
+  notify('Naam en gradenplaat zijn op de borstvlakken geplaatst. Sleep ze eventueel bij en bewaar het volledige uniform.');
+ }
+ $('composeSnapChest').onclick=snapChest;
  function draw(){
   panel.replaceChildren();
   const coat=asset('uniform',draft.assets.uniform);
-  if(coat){const pic=el('img','compose-coat');pic.src=coat.imageUrl;pic.alt=coat.label;panel.append(pic)}
-  else{panel.append(el('p','compose-empty','Kies een basisuniform.'));return;}
+  if(coat){
+   const pic=el('img','compose-coat');pic.src=coat.imageUrl;pic.alt=coat.label;panel.append(pic);
+   const onImage=()=>{
+    if(pic!==panel.querySelector('.compose-coat')||!pic.naturalWidth||!pic.naturalHeight)return;
+    // The editor and the live portrait must use the same natural image
+    // coordinates; the old landscape preview caused visibly wrong offsets.
+    panel.style.aspectRatio=pic.naturalWidth+'/'+pic.naturalHeight;
+    const portrait=pic.naturalHeight/pic.naturalWidth>1.04&&dept.value==='politie';
+    $('composeSnapChest').hidden=!portrait;
+    const factory=(p,kind)=>{
+     const near=(a,b)=>Math.abs(Number(a)-b)<0.65;
+     return kind==='name'?near(p.left,18)&&near(p.top,56):
+      near(p.left,57)&&near(p.top,56);
+    };
+    if(portrait&&!templates.some(x=>x.department===dept.value&&x.scope===draft.scope&&x.selector===draft.selector)&&
+       factory(draft.layers.name,'name')&&factory(draft.layers.rank,'rank')){
+     for(const kind of ['name','rank'])Object.assign(draft.layers[kind],slots[kind]);
+     render();
+    }
+   };
+   pic.addEventListener('load',onImage,{once:true});
+   if(pic.complete&&pic.naturalWidth)onImage();
+  }else{
+   panel.style.aspectRatio='603/469';$('composeSnapChest').hidden=true;
+   panel.append(el('p','compose-empty','Kies een basisuniform.'));return;
+  }
   for(const [kind,position]of Object.entries(draft.layers)){
    const box=el('div','compose-layer'+(kind===active?' active':''));box.dataset.kind=kind;
    box.style.cssText='left:'+position.left+'%;top:'+position.top+'%;width:'+position.width+
