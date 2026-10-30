@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {validateRoleArtwork} from '../src/role-artwork-routes.js';
+import {validateRoleArtwork,validatePersonnelArtwork} from '../src/role-artwork-routes.js';
 
 const base={
  roleId:'1358148694297415741',variant:'standard',
@@ -33,4 +33,30 @@ test('role-logo slot is a role ID plus display variant, not a permission',()=>{
  assert.equal(result.key,'1358148694297415741_standard');
  assert.equal(result.roleId,base.roleId);
  assert.equal(Object.hasOwn(result,'permissions'),false);
+});
+
+test('rank and specialization imagery use display-only keys with no Discord role ID',()=>{
+ const fixture=readFileSync(new URL('../public/assets/k9-patches-geborduurd-20261029.webp',import.meta.url));
+ const dataUrl='data:image/webp;base64,'+fixture.toString('base64');
+ const rank=validatePersonnelArtwork({kind:'rank',department:'politie',
+  code:'ainp',label:'Aspirant-inspecteur',reason:'Nieuw gradenplaatje geregistreerd',dataUrl});
+ assert.equal(rank.key,'rank_politie_ainp');
+ assert.equal(rank.department,'politie');
+ assert.equal(rank.kind,'rank');
+ assert.equal(Object.hasOwn(rank,'roleId'),false);
+ const badge=validatePersonnelArtwork({kind:'specialty',department:'politie',
+  code:'motard',label:'MOTARD',reason:'Motardpictogram vervangen',dataUrl});
+ assert.equal(badge.key,'specialty_politie_motard');
+ assert.equal(badge.kind,'specialty');
+ assert.equal(Object.hasOwn(badge,'permissions'),false);
+});
+test('new personnel badges reject malformed type and dangerous code',()=>{
+ const fixture=readFileSync(new URL('../public/assets/k9-patches-geborduurd-20261029.webp',import.meta.url));
+ const base={kind:'rank',department:'politie',code:'ainp',
+  label:'Aspirant-inspecteur',reason:'Nieuwe afbeelding na controle',
+  dataUrl:'data:image/webp;base64,'+fixture.toString('base64')};
+ assert.throws(()=>validatePersonnelArtwork({...base,kind:'staff_grant'}),/Ongeldige graad/);
+ assert.throws(()=>validatePersonnelArtwork({...base,code:'../../secret'}),/Ongeldige graad/);
+ assert.throws(()=>validatePersonnelArtwork({...base,department:'root'}),/Ongeldige graad/);
+ assert.throws(()=>validatePersonnelArtwork({...base,roleId:'1358148694297415741'}),/Ongeldige graad/);
 });
