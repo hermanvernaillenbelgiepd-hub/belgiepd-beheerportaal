@@ -8,16 +8,16 @@ const css=read('assets/organogram-police-formal.css');
 const admin=read('gebruikersbeheer.html');
 const renderer=read('assets/organogram-police-formal.js');
 const composer=read('uniform-composer-ui.js');
-const finalCss=css.slice(css.indexOf('/* BelgiumPD – single flat textile nameplate'));
-const studioFinal=admin.slice(admin.indexOf('/* The operational organogram and Uniformatelier share'));
+const finalCss=css.slice(css.indexOf('/* ONLY active police nameplate artwork'));
+const studioFinal=admin.slice(admin.indexOf('/* ONLY current BelgiumPD police nameplate design.'));
 
 test('flat reference-style nameplate replaces the nested mirrored grade image in both views',()=>{
  assert.match(finalCss,/bpd-woven-nameplate::before/);
- assert.match(finalCss,/repeating-linear-gradient/);
+ assert.match(finalCss,/bpd-naamplaat-foto-basis-20261030\.svg/);
  assert.match(finalCss,/border:0!important;border-radius:0!important/);
- assert.match(finalCss,/transform:scale\(1\.32,1\.42\)/);
+ assert.match(finalCss,/transform:scale\(1\.4,1\.48\)/);
  assert.match(studioFinal,/compose-woven-nameplate::before/);
- assert.match(studioFinal,/background-color:#122542/);
+ assert.match(studioFinal,/bpd-naamplaat-foto-basis-20261030\.svg/);
  assert.doesNotMatch(renderer,/bpd-nameplate-mirrored-grade|bpd-nameplate-text-field/);
  assert.doesNotMatch(composer,/compose-nameplate-mirrored-grade|compose-nameplate-text-field/);
 });
@@ -66,7 +66,7 @@ test('non-numbered display ranks still select gold/silver properly',()=>{
 });
 test('new live and studio assets are cache-busted',()=>{
  const hierarchy=read('organogram-hierarchie.html');
- assert.match(hierarchy,/organogram-police-formal\.css\?v=flat-woven-nameplate-20261030-r2/);
- assert.match(hierarchy,/organogram-police-formal\.js\?v=flat-woven-nameplate-20261030-r2/);
- assert.match(admin,/uniform-composer-ui\.js\?v=flat-woven-nameplate-20261030-r2/);
+ assert.match(hierarchy,/organogram-police-formal\.css\?v=photo-nameplate-20261030-v1/);
+ assert.match(hierarchy,/organogram-police-formal\.js\?v=photo-nameplate-20261030-v1/);
+ assert.match(admin,/uniform-composer-ui\.js\?v=photo-nameplate-20261030-v1/);
 });
