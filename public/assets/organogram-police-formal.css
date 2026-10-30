@@ -209,7 +209,7 @@
 }
 .bpd-police-formal.bpd-assigned-coat .bpd-gold-cloth-rank>.bpd-gold-grade-art,
 .bpd-police-formal.bpd-assigned-coat .bpd-silver-cloth-rank>.bpd-silver-grade-art{
- display:block;width:100%;height:100%;object-fit:fill
+ display:block;width:100%;height:100%;object-fit:contain
 }
 
 
@@ -280,5 +280,38 @@
  border:0;box-shadow:none;
 }
 .bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-silver::after{
+ content:none!important;display:none!important;
+}
+
+/* All existing BelgiumPD police grades (100/200/300/400/500/600/700/800/
+   900/910/920/930) share a single unframed, undistorted artwork treatment.
+   Preserve each grade's original crown/star/bars. No synthetic diagonal
+   strokes: lower grades retain original SILVER threads; officer grades use
+   the same color-only gold tint for the artwork's existing right threads. */
+.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-gold,
+.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-silver{
+ border:0!important;border-radius:0!important;
+ box-shadow:none!important;box-sizing:border-box;
+}
+.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-gold>img,
+.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-silver>img{
+ width:100%;height:100%;object-fit:contain!important;
+ image-rendering:auto;
+}
+/* Standalone ranks in personnel lists and detail cards have the SAME
+   untouched embroidery and the SAME rank-dependent metal treatment. */
+.bpd-grade-badge.bpd-grade-metal-gold,
+.bpd-grade-badge.bpd-grade-metal-silver{
+ position:relative;isolation:isolate;box-sizing:border-box;
+ border:0!important;border-radius:0!important;box-shadow:none!important;
+ overflow:hidden;
+}
+.bpd-grade-badge.bpd-grade-metal-gold::after{
+ content:"";position:absolute;z-index:3;pointer-events:none;
+ right:0;top:0;bottom:0;width:36%;
+ background-color:#ffd044;mix-blend-mode:color;
+ border:0;box-shadow:none;
+}
+.bpd-grade-badge.bpd-grade-metal-silver::after{
  content:none!important;display:none!important;
 }
