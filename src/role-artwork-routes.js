@@ -10,6 +10,8 @@ export const ROLE_ARTWORK_AUDIT='bpd_role_artwork_audit';
 const ID=/^\d{15,22}$/;
 const VARIANT=/^[a-z][a-z0-9_]{0,39}$/;
 const DEPTS=['politie','brandweer','ambulance','depannage','burger'];
+const ARTWORK_KEY=/^(?:\d{15,22}_[a-z][a-z0-9_]{0,39}|(?:rank|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39})$/;
+const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const MAX_BYTES=140*1024;
 const keyFor=(roleId,variant)=>roleId+'_'+variant;
 const fail=(code,message)=>Object.assign(new Error(message),{publicStatus:code});
@@ -27,8 +29,8 @@ const mayEditDepartment=(actor,department)=>{
 };
 const metaData=d=>{
  const v=d.data();
- return {key:d.id,roleId:v.roleId,variant:v.variant,label:v.label,
-  department:v.department||'politie',
+ return {key:d.id,roleId:v.roleId||'',variant:v.variant||'',label:v.label,
+  kind:v.kind||'role',code:v.code||'',department:v.department||'politie',
   imageUrl:'/api/role-artwork/file/'+d.id+'?v='+encodeURIComponent(v.version),
   updatedAt:v.updatedAt?.toDate?.()?.toISOString()||null};
 };
@@ -57,12 +59,33 @@ export function validateRoleArtwork(body){
   throw fail(400,'Ongeldige of te grote WebP-afbeelding');
  return {roleId,variant,label,department,reason,key:keyFor(roleId,variant),base64:match[1]};
 }
+// Grade and specialty logos are independent visual resources; they are not
+// bound to Discord roles, rank changes or a dossier authorization.
+export function validatePersonnelArtwork(body){
+ if(!body||Array.isArray(body)||typeof body!=='object'||
+  Object.keys(body).some(x=>!['kind','department','code','label','reason','dataUrl'].includes(x)))
+  throw fail(400,'Ongeldige graad- of specialisatie-upload');
+ const kind=String(body.kind||'');
+ const department=String(body.department||'politie');
+ const code=String(body.code||'').toLowerCase().trim();
+ if(!['rank','specialty'].includes(kind)||!DEPTS.includes(department)||!CODE.test(code))
+  throw fail(400,'Ongeldige graad, specialisatie of hulpdienst');
+ // Reuse all binary/motivation/label checks from the role uploader while
+ // avoiding the need for a fake Discord role ID.
+ const validated=validateRoleArtwork({
+  roleId:'100000000000000',variant:'standard',department,
+  label:body.label,reason:body.reason,dataUrl:body.dataUrl
+ });
+ return {kind,department,code,label:validated.label,
+  reason:validated.reason,key:kind+'_'+department+'_'+code,
+  base64:validated.base64};
+}
 export function installRoleArtworkRoutes(app,{requireUser}){
  // Serve approved image bytes without exposing credentials; assets are decorative,
  // and role IDs/photos stored here never constitute grants or verified roles.
  app.get('/api/role-artwork/file/:key',async(req,res)=>{
   const key=String(req.params.key||'');
-  if(!/^\d{15,22}_[a-z][a-z0-9_]{0,39}$/.test(key))return res.sendStatus(404);
+  if(!ARTWORK_KEY.test(key))return res.sendStatus(404);
   try{
    const db=getFirestore(),meta=await db.collection(ROLE_ARTWORK_META).doc(key).get();
    if(!meta.exists||meta.get('active')!==true)return res.sendStatus(404);
@@ -93,6 +116,31 @@ export function installRoleArtworkRoutes(app,{requireUser}){
     active:d.get('active')===true,updatedBy:d.get('updatedBy')||''}))});
   }catch(e){return error(res,e)}
  });
+ app.put('/api/role-artwork/personnel',requireUser,allowed,async(req,res)=>{
+  let input;try{input=validatePersonnelArtwork(req.body)}catch(e){return error(res,e)}
+  if(!mayEditDepartment(req.bpd,input.department))
+   return res.status(403).json({error:'Geen logobeheerrechten voor deze hulpdienst'});
+  try{
+   const db=getFirestore(),ref=db.collection(ROLE_ARTWORK_META).doc(input.key);
+   const assetId=randomUUID(),asset=db.collection(ROLE_ARTWORK_IMAGES).doc(assetId);
+   const version=Date.now().toString(36)+'-'+assetId.slice(0,8);
+   await db.runTransaction(async tx=>{
+    const before=await tx.get(ref),previous=before.exists?before.data():null;
+    if(previous&&!mayEditDepartment(req.bpd,previous.department||'politie'))
+     throw fail(403,'Geen toegang tot dit bestaande logo');
+    tx.create(asset,{key:input.key,base64:input.base64,mime:'image/webp',
+     createdAt:FieldValue.serverTimestamp(),createdBy:req.bpd.uid});
+    tx.set(ref,{kind:input.kind,code:input.code,department:input.department,
+     label:input.label,active:true,version,assetId,
+     updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid});
+    tx.create(db.collection(ROLE_ARTWORK_AUDIT).doc(),{
+     key:input.key,action:previous?'replace_personnel_art':'upload_personnel_art',
+     previousAssetId:previous?.assetId||null,newAssetId:assetId,
+     actorUid:req.bpd.uid,reason:input.reason,at:FieldValue.serverTimestamp()});
+   });
+   return res.json({saved:true,key:input.key,version,permissionsChanged:false});
+  }catch(e){return error(res,e)}
+ });
  app.put('/api/role-artwork',requireUser,allowed,async(req,res)=>{
   let input;try{input=validateRoleArtwork(req.body)}catch(e){return error(res,e)}
   if(!mayEditDepartment(req.bpd,input.department))return res.status(403).json({error:'Geen logobeheerrechten voor deze hulpdienst'});
@@ -120,7 +168,7 @@ export function installRoleArtworkRoutes(app,{requireUser}){
  });
  app.delete('/api/role-artwork/:key',requireUser,allowed,async(req,res)=>{
   const key=String(req.params.key||''),reason=String(req.body?.reason||'').trim();
-  if(!/^\d{15,22}_[a-z][a-z0-9_]{0,39}$/.test(key)||
+  if(!ARTWORK_KEY.test(key)||
    reason.length<8||reason.length>300||/[<>\x00-\x1f]/.test(reason))
    return res.status(400).json({error:'Ongeldig rolslot of motivering (8–300 tekens)'});
   try{
