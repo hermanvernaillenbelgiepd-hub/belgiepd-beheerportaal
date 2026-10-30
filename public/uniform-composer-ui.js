@@ -10,7 +10,7 @@ export function setupUniformComposer({api,$}){
  const services=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
   ['depannage','Depannage'],['burger','Burger']];
  let images=[],templates=[],people=[],awards=[],draft=null,baseline='',active='uniform',
-  sampleAward='',busy=false,visibleDepts=[],cloudReady=false;
+  sampleAward='',busy=false,visibleDepts=[],cloudReady=false,previousDept='',previousGrade='';
  const el=(tag,cls,text)=>{const v=document.createElement(tag);v.className=cls||'';
   if(text!==undefined)v.textContent=text;return v;};
  const notify=(msg,bad=false)=>{notice.textContent=msg;notice.classList.toggle('error',bad)};
@@ -29,7 +29,7 @@ export function setupUniformComposer({api,$}){
    assets:{uniform:'',rank:'',helmet:'',profession:'',logo:'',...(saved?.assets||{})},
    layers:Object.fromEntries(Object.entries(defaults).map(([k,v])=>[k,{
     left:v[0],top:v[1],width:v[2],height:v[3],visible:true,...(saved?.layers?.[k]||{})}]))};
-  baseline=JSON.stringify(draft);active='uniform';render();
+  baseline=JSON.stringify(draft);active='uniform';previousDept=dept.value;previousGrade=grade.value;render();
  }
  function loadRanks(previous=''){
   grade.replaceChildren();
@@ -138,8 +138,18 @@ export function setupUniformComposer({api,$}){
   };
  }
  $('composeVisible').onchange=e=>{draft.layers[active].visible=e.target.checked;render()};
- dept.onchange=()=>loadRanks();
- grade.onchange=initialize;
+ dept.onchange=()=>{
+  if(dirty()&&!window.confirm('Niet-opgeslagen uniformopmaak verwerpen?')){
+   dept.value=previousDept;return;
+  }
+  loadRanks();
+ };
+ grade.onchange=()=>{
+  if(dirty()&&!window.confirm('Niet-opgeslagen uniformopmaak verwerpen?')){
+   grade.value=previousGrade;return;
+  }
+  initialize();
+ };
  save.onclick=async()=>{
   if(!draft||busy)return;busy=true;updateSave();
   try{
@@ -237,11 +247,15 @@ export function setupUniformComposer({api,$}){
     if(!['medal','ribbon'].includes(kind))draft.assets[kind]=code;
    }
    uploadPanel.hidden=true;$('composeUploadFile').value='';$('composeUploadName').value='';
+   active=kind==='medal'?'medals':kind==='ribbon'?'ribbons':kind;
    render();notify('Afbeelding opgeslagen. Kies de plaats en klik op Volledig uniform bewaren.');
   }catch(e){notify(e.message,true)}
   finally{button.disabled=false}
  };
 
- $('composeRefresh').onclick=()=>load(true).catch(e=>notify(e.message,true));
+ $('composeRefresh').onclick=()=>{
+  if(dirty()&&!window.confirm('Niet-opgeslagen uniformopmaak verwerpen?'))return;
+  load(true).catch(e=>notify(e.message,true));
+ };
  return {load:()=>load().catch(e=>{notify(e.message,true);return false})};
 }
