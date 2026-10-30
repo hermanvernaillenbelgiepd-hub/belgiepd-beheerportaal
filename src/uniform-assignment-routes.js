@@ -23,7 +23,7 @@ const error=(res,e)=>{
 export function selectorFor(scope,raw){
  const value=String(raw||'').trim().toLowerCase();
  if(scope==='service')return value==='default'?'default':null;
- if(scope==='person')return UID.test(value)?value:null;
+ if(scope==='person')return UID.test(value)||/^call_[a-z0-9][a-z0-9_]{0,34}$/.test(value)?value:null;
  return CODE.test(value)?value:null;
 }
 export function validateUniformAssignment(body){
@@ -49,11 +49,13 @@ export function resolveUniformAssignment(person,assignments){
  if(!DEPTS.has(dept))return {uniformCode:'',badgeStyle:''};
  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
- const personId=UID.test(String(person.personId||''))?String(person.personId):null;
+ const personId=UID.test(String(person?.personId||''))?String(person.personId):null;
+ const fallbackCall=norm(person?.call);
  const find=(scope,selector)=>assignments.find(r=>r&&r.department===dept&&
   r.scope===scope&&r.selector===selector);
  const order=[
   ...(personId?[find('person',personId)]:[]),
+  ...(fallbackCall?[find('person','call_'+fallbackCall)]:[]),
   find('rank',norm(person.rank)),find('cadre',norm(person.tier)),
   find('service','default')
  ];
