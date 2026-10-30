@@ -47,10 +47,23 @@ main .row h2{margin:0}
  main .card{padding:12px}
  main .two{gap:4px}
 }
+.education-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px}
+.education-tabs button{background:#1c3a5f;border:1px solid #547fa8;min-width:190px;text-align:left}
+.education-tabs button[aria-selected=true]{background:#3268b5;border-color:#9bc7f1}
+.education-tabs button[hidden],#requestPane[hidden],#registerPane[hidden]{display:none}
+#registerPane #inboxPanel{margin:12px 0}
+#registerPane .training-frame{border:1px solid #52749a;background:#0b1d32;border-radius:10px;width:100%;height:870px;min-height:65vh}
+#registerPane .training-frame[hidden]{display:none}
+@media(max-width:650px){.education-tabs button{flex:1;min-width:140px}#registerPane .training-frame{height:900px}}
 </style></head><body>
 <header><strong>🎓 BelgiëPD · Opleidingscentrum</strong><a href="/">Dashboard</a><a href="/meldingen.html">Meldingen</a><button id="login" type="button">Aanmelden</button></header>
 <main>
-<h1>Opleidingen aanvragen</h1><p>Kies Politie, Brandweer, Ambulance of Depannage en bekijk de beschikbare opleidingen. Aanvragen indienen kan uitsluitend voor je eigen gekoppelde hulpdienst en volgens je kaderrechten.</p>
+<h1>Opleidingscentrum</h1><p>Vraag zelf opleidingen aan of registreer en behandel opleidingen met de juiste dienstbevoegdheid.</p>
+<nav class="education-tabs" aria-label="Luik kiezen">
+ <button type="button" id="requestTab" role="tab" aria-selected="true" aria-controls="requestPane">Opleiding aanvragen</button>
+ <button type="button" id="registerTab" role="tab" aria-selected="false" aria-controls="registerPane" hidden>Opleiding registreren / behandelen</button>
+</nav>
+<div id="requestPane" role="tabpanel" aria-labelledby="requestTab">
 <div id="feedback" class="status" role="status">Je account en opleidingsmogelijkheden controleren…</div>
 <section id="formPanel" class="card" hidden><h2>Nieuwe aanvraag</h2>
 <form id="requestForm"><div class="two">
@@ -63,8 +76,17 @@ main .row h2{margin:0}
 <button id="submit" type="submit">Opleiding aanvragen</button></form>
 <p><small>Je aanvraag wordt zichtbaar bij de bevoegde reekshoofden of dienstleiding. Zodra je aanvraag gelezen is, ontvang je hier een bevestiging. Verdere afspraken verlopen via Discord.</small></p>
 </section>
-<div class="two"><section class="card"><h2>Mijn opleidingsaanvragen</h2><div id="mine">Nog geen gegevens.</div></section>
-<section class="card" id="inboxPanel" hidden><div class="row"><h2>Te behandelen aanvragen</h2><button class="secondary" id="reload" type="button">Vernieuwen</button></div><div id="inbox"></div></section></div>
+<section class="card"><h2>Mijn opleidingsaanvragen</h2><div id="mine">Nog geen gegevens.</div></section>
+</div>
+<div id="registerPane" role="tabpanel" aria-labelledby="registerTab" hidden>
+ <p>Voor gemachtigde leiding, instructeurs, Middenkader, Officierenkader en Korpsleiding binnen hun eigen hulpdienst.</p>
+ <section class="card" id="inboxPanel" hidden><div class="row"><h2>Te behandelen aanvragen</h2><button class="secondary" id="reload" type="button">Vernieuwen</button></div><div id="inbox"></div></section>
+ <section class="card" id="trainingRegisterSection" hidden>
+  <h2>Opleidingen registreren</h2>
+  <p>Gebruik het bestaande beveiligde register voor opleidingsresultaten, registraties en historiek. Rechten en logging blijven hetzelfde.</p>
+  <iframe id="trainingRegisterFrame" class="training-frame" title="Beveiligd opleidingsregister" loading="lazy" referrerpolicy="same-origin" hidden></iframe>
+ </section>
+</div>
 </main>
 <script type="module">
 import {TRAINING_REQUEST_COURSE_CATALOG} from '/training-course-catalog.js';
@@ -76,9 +98,22 @@ const ADMISSION_NOTICES={
  ambulance:'Voor ambulancerelateerde opleidingen dient men aangenomen te zijn bij de ambulancedienst.',
  depannage:'Voor depannagegerelateerde opleidingen dient men aangenomen te zijn bij de depannagedienst.'
 };
-let auth,authMod,scopes=[];
+let auth,authMod,scopes=[],canRegister=false,canReview=false,currentPane='request';
 const feedback=(s,bad=false)=>{$('feedback').textContent=s;$('feedback').classList.toggle('error',bad)};
 const el=(tag,value)=>{const e=document.createElement(tag);e.textContent=String(value??'');return e};
+function showPane(pane){
+ if(pane==='register'&&$('registerTab').hidden)pane='request';
+ currentPane=pane;
+ $('requestPane').hidden=pane!=='request';$('registerPane').hidden=pane!=='register';
+ $('requestTab').setAttribute('aria-selected',String(pane==='request'));
+ $('registerTab').setAttribute('aria-selected',String(pane==='register'));
+ if(pane==='register'&&canRegister){
+  const frame=$('trainingRegisterFrame');frame.hidden=false;
+  if(!frame.getAttribute('src'))frame.src='/rollen-opleidingen.html?embedded=1';
+ }
+}
+$('requestTab').onclick=()=>showPane('request');
+$('registerTab').onclick=()=>showPane('register');
 async function api(url,body){
  if(!auth?.currentUser)throw Error('Meld je aan met je eigen BelgiëPD-account');
  const token=await auth.currentUser.getIdToken();
@@ -166,10 +201,26 @@ async function load(){
   $('department').value=SERVICE_ORDER.includes(selected)?selected:
     (scopes.find(s=>s.canRequest)?.department||'politie');
   syncCourse();
-  const incoming=data.incoming||[];$('inboxPanel').hidden=!incoming.length;
+  const incoming=data.incoming||[];
+  canReview=data.canReviewTraining===true;
+  let registrationRights=null;
+  try{registrationRights=await api('/api/roles/me')}catch(_e){
+   // Training-request reviewers are independent from training-registration grants.
+  }
+  canRegister=Object.values(registrationRights?.permissions||{}).some(p=>
+    p?.['training.log']===true||p?.['training.review']===true);
+  $('registerTab').hidden=!(canReview||canRegister);
+  $('trainingRegisterSection').hidden=!canRegister;
+  $('inboxPanel').hidden=!canReview;
   $('inbox').replaceChildren(...incoming.map(x=>entry(x,true)));
-  feedback('Opleidingsgegevens geladen. Alleen je eigen aanvragen en gemachtigde meldingen zijn zichtbaar.');
- }catch(e){$('formPanel').hidden=$('inboxPanel').hidden=true;feedback(e.message,true)}
+  if(canReview&&!incoming.length)$('inbox').textContent='Geen actieve opleidingsaanvragen.';
+  showPane(currentPane);
+  feedback('Opleidingsgegevens geladen. Aanvragen en registratie worden afzonderlijk gecontroleerd.');
+ }catch(e){
+  $('formPanel').hidden=$('inboxPanel').hidden=true;
+  $('registerTab').hidden=true;canRegister=canReview=false;
+  showPane('request');feedback(e.message,true)
+ }
 }
 $('requestForm').onsubmit=async event=>{
  event.preventDefault();$('submit').disabled=true;
