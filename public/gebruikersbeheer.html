@@ -61,6 +61,17 @@ header button{padding:7px 10px;font-size:12px}
 .extra-service-editor label{margin-top:7px}
 .extra-service-editor select{margin-bottom:6px}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
+<style>
+#roleArtworkSection .artwork-preview{height:83px;display:flex;align-items:center;justify-content:center;border:1px dashed #5c7593;border-radius:9px;background:#0b192b}
+#roleArtworkSection .artwork-preview img{width:170px;height:53.125px;object-fit:fill;max-width:100%;border-radius:4px}
+#roleArtworkSection .artwork-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:9px;margin:14px 0}
+#roleArtworkSection .artwork-item{display:flex;align-items:center;flex-wrap:wrap;gap:9px;border:1px solid #344c68;background:#0c1c31;border-radius:9px;padding:9px}
+#roleArtworkSection .artwork-item img{width:120px;height:37.5px;object-fit:fill;background:#111c2c;border-radius:4px}
+#roleArtworkSection .artwork-item>div{flex:1;min-width:150px;display:grid;gap:3px}
+#roleArtworkSection .artwork-item small{font-size:10px;overflow-wrap:anywhere}
+#roleArtworkSection .artwork-item button{padding:5px 9px;font-size:11px}
+#roleArtworkSection .error{color:#ffc1cc}
+</style>
 </head>
 <body>
 <header><div><strong>🛡️ BelgiëPD</strong> / Gebruikersbeheer</div><nav><a href="/">Dashboard</a><a href="/discord-status.html">Mijn Discord</a><button id="login">Aanmelden</button></nav></header>
@@ -71,6 +82,7 @@ header button{padding:7px 10px;font-size:12px}
 <button type="button" data-tab="accounts" hidden>👥 Personeelsaccounts</button>
 <button type="button" data-tab="manual" hidden>🔐 Handmatig rolherstel</button>
 <button type="button" data-tab="services" hidden>🛡️ Beheertoegang hulpdiensten</button>
+<button type="button" data-tab="artwork" hidden>🎨 Rollenlogo’s & patches</button>
 <button type="button" data-tab="to" hidden>📻 TO-rechten</button>
 <button type="button" data-tab="board" hidden>🏛️ Bestuur</button>
 <button type="button" data-tab="leave" hidden>📅 VERLOFBEHEER</button>
@@ -206,9 +218,30 @@ header button{padding:7px 10px;font-size:12px}
 <h3>Bestaande verlofmachtigingen</h3>
 <div id="leaveGrantRecords" class="scroller" aria-live="polite">Nog geen machtigingen geladen.</div>
 </section>
+
+<section id="roleArtworkSection" class="card" data-authorized="no" hidden>
+<h2>🎨 Rollenlogo’s & specialisatiepatches</h2>
+<p>Upload logo’s op de website en koppel ze aan een Discord-rol. De afbeeldingen worden permanent in Firebase bewaard. Een nieuw logo verandert <strong>nooit</strong> Discord-rollen, lidmaatschappen of toegangsrechten.</p>
+<div class="grid">
+ <div><label for="roleArtworkPreset">Bestaande specialisatie / rol</label><select id="roleArtworkPreset"></select></div>
+ <div><label for="roleArtworkRoleId">Discord-rol-ID</label><input id="roleArtworkRoleId" maxlength="22" inputmode="numeric" pattern="[0-9]{15,22}" placeholder="Bijv. 1358148694297415741"></div>
+ <div><label for="roleArtworkVariant">Variant</label><select id="roleArtworkVariant"><option value="standard">Standaard / rol</option><option value="instructeur">Instructeur (aparte badge bij gedeelde rol)</option></select></div>
+ <div><label for="roleArtworkLabel">Naam van het logo</label><input id="roleArtworkLabel" maxlength="75" placeholder="Bijv. MOTARD · Volwaardig"></div>
+ <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Automatisch naar 16:5 omgezet. Maximaal 5 MB bronbestand.</small></div>
+ <div><label>Voorbeeld (170 × 53,125 px)</label><div class="artwork-preview"><img id="roleArtworkPreview" width="170" height="53" alt="Voorbeeld van de gekozen patch" hidden></div></div>
+</div>
+<label for="roleArtworkReason">Motivering voor het logboek (minimaal 8 tekens)</label>
+<textarea id="roleArtworkReason" maxlength="300" rows="2" placeholder="Waarom krijgt deze rol een nieuw logo?"></textarea>
+<div class="controls"><button type="button" id="roleArtworkSave">Logo uploaden / vervangen</button><button class="alt" type="button" id="roleArtworkReload">Overzicht vernieuwen</button></div>
+<div id="roleArtworkStatus" class="muted" role="status" aria-live="polite">Nog geen afbeelding geselecteerd.</div>
+<h3>Opgeslagen logo’s <small id="roleArtworkCount"></small></h3>
+<div id="roleArtworkList" class="artwork-list" aria-live="polite"></div>
+<p class="muted">K-9-, MOTARD-, DISP- en RAGO-logo’s worden na opslaan automatisch gebruikt. Je kunt ook afbeeldingen voor nieuwe Discord-rollen bewaren; voor een volledig nieuwe specialisatie moet de organogramfunctie eenmalig worden geregistreerd.</p>
+</section>
 </main>
 <script type="module">
 import {setupDossierGrantUI} from '/dossier-grants-ui.js';
+import {setupRoleArtworkUI} from '/role-artwork-ui.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 let auth=null,authMod=null,items=[];
@@ -264,11 +297,12 @@ function setAccountCadreOptions(select,dept,preferred){
   select.value=choices.some(x=>x.id===preferred)?preferred:(choices[0]?.id||'');
 }
 const dossierGrants=setupDossierGrantUI({api,notice,$,option,cell});
+const roleArtwork=setupRoleArtworkUI({api,$,notice});
 let tabChoice=window.location.hash==='#dienstbeheer'?'services':
   window.location.hash==='#verlofmachtigingen'?'leave':'accounts';
 function showManageTabs(){
   const mapping={accounts:'admin',manual:'manualRoleSection',services:'dossierGrantSection',to:'toSection',
-    board:'boardSection',leave:'leaveGrantSection'};
+    board:'boardSection',leave:'leaveGrantSection',artwork:'roleArtworkSection'};
   const active=Object.keys(mapping).filter(k=>$(mapping[k]).dataset.authorized==='yes');
   $('manageTabs').hidden=!active.length;
   if(!active.includes(tabChoice))tabChoice=active[0]||'accounts';
@@ -966,7 +1000,7 @@ $('leaveGrantRevoke').onclick=async()=>{
 };
 $('leaveGrantReload').onclick=()=>loadLeaveGrantManager().then(showManageTabs);
 async function refresh(){
-  for(const name of ['admin','manualRoleSection','toSection','boardSection','dossierGrantSection','leaveGrantSection'])$(name).dataset.authorized='no';
+  for(const name of ['admin','manualRoleSection','toSection','boardSection','dossierGrantSection','leaveGrantSection','roleArtworkSection'])$(name).dataset.authorized='no';
   dossierGrants.reset();
   if(!auth?.currentUser){$('profileSwitcher').hidden=true;$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;$('toSection').hidden=true;return}
   const isDiscord=auth.currentUser.uid.startsWith('discord:');
@@ -1000,10 +1034,11 @@ async function refresh(){
   await boardRefresh();
   try{if(await dossierGrants.load())$('dossierGrantSection').dataset.authorized='yes'}catch(e){notice('Dienstbeheer: '+e.message,true)}
   await loadLeaveGrantManager();
+  await roleArtwork.load();
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
+$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
