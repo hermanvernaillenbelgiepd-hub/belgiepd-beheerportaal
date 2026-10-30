@@ -54,7 +54,7 @@ test('AHINP, HINP, 1HINP and all lower ranks keep original silver embroidery',()
    /bpd-rank-metal-silver/,person.rank);
  }
 });
-test('real crowns untouched and all diagonal threads silver, without synthetic stripes',()=>{
+test('gold writing and divider coexist with silver diagonal stitches and original crowns',()=>{
  const css=read('assets/organogram-police-formal.css');
  const admin=read('gebruikersbeheer.html');
  const composer=read('uniform-composer-ui.js');
@@ -64,8 +64,10 @@ test('real crowns untouched and all diagonal threads silver, without synthetic s
   assert.match(source,/content:none!important;display:none!important/);
   assert.match(source,/object-fit:contain/);
  }
- // Gold nameplate text remains; photographic diagonal strokes are silver.
+ // Gold = both written lines and divider for officers. Photographic diagonals stay silver.
+ assert.match(css,/--line-thread:#ffd65a/);
  assert.match(css,/--line-thread:#e0e7ef/);
+ assert.match(admin,/--plate-line-thread:#ffd65a/);
  assert.match(admin,/--plate-line-thread:#e0e7ef/);
  assert.doesNotMatch(css,/background:#ffd24b/);
  assert.doesNotMatch(admin,/background:#ffd24b/);
@@ -74,6 +76,6 @@ test('real crowns untouched and all diagonal threads silver, without synthetic s
  assert.match(admin,/compose-rank-metal-gold::after,[\s\S]*?content:none!important/);
  assert.match(composer,/compose-rank-metal-gold/);
  assert.match(composer,/compose-rank-metal-silver/);
- assert.match(read('organogram-hierarchie.html'),/all-police-grades-20261031-v3/);
- assert.match(admin,/uniform-composer-ui\\.js\\?v=all-police-grades-20261031-v3/);
+ assert.match(read('organogram-hierarchie.html'),/officer-gold-writing-20261031-v4/);
+ assert.match(admin,/uniform-composer-ui\\.js\\?v=officer-gold-writing-20261031-v4/);
 });
