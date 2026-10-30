@@ -24,13 +24,17 @@ export function normalizeVisual(value){
  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
 }
-export function policeCallSeries(call){
+// Shared, strictly numeric display interpretation. Never changes a person's
+// actual roepnummer or the authorization source of their rank.
+export function policeCallDigits(call){
  const raw=String(call||'').trim().toUpperCase();
- // Accept 400, SANTO-400 or SANTO 400; never infer rank from an ID.
- const match=/(?:^|[\s-])([1-9][0-9]{2})(?:$|\s|\*)/.exec(raw)||/^S([1-9][0-9]{2})(?:\*)?$/.exec(raw);
- if(!match)return '';
- const number=Number(match[1]);
- if(number<100||number>999)return '';
+ const match=/^(?:SANTO[ -]?|S)?([1-9][0-9]{2})\*?$/.exec(raw);
+ return match?match[1]:'';
+}
+export function policeCallSeries(call){
+ const digits=policeCallDigits(call);
+ if(!digits)return '';
+ const number=Number(digits);
  if(number>=900){
   const decade=Math.floor(number/10)*10;
   return ['900','910','920','930'].includes(String(decade))?String(decade):'';

@@ -143,13 +143,21 @@
   {key:'ap',label:'Agent van politie',abbr:'AP',kind:'bars',count:2}
  ];
  const byKey=Object.fromEntries(ranks.map(x=>[x.key,x]));
+ function policeCallDigits(call){
+  const raw=String(call||'').trim().toUpperCase();
+  // Accept personnel and radio formats, including coupled crews.
+  // All rank/nameplate surfaces must interpret the same real CALL.
+  const matched=/^(?:SANTO[ -]?|S)?([1-9][0-9]{2})\*?$/.exec(raw);
+  return matched?matched[1]:'';
+ }
  function gradeFor(person){
   if(!person||person.dept!=='politie')return null;
-  const c=String(person.call||'').trim().toUpperCase();
-  const m=c.match(/^(?:[A-Z]+[- ])?(\d{3})$/),n=m?Number(m[1]):null;
-  if(n===900)return byKey['1hcp'];
-  if(n===910)return byKey['1cp'];
-  if(n===920||n===930)return byKey.acp;
+  const digits=policeCallDigits(person.call);
+  const n=digits?Number(digits):null;
+  // Officer corps runs in tens; 100-899 run in hundreds.
+  if(n!==null&&n>=900&&n<910)return byKey['1hcp'];
+  if(n!==null&&n>=910&&n<920)return byKey['1cp'];
+  if(n!==null&&n>=920&&n<940)return byKey.acp;
   if(n!==null&&n>=800&&n<900)return byKey['1hinp'];
   if(n!==null&&n>=700&&n<800)return byKey.hinp;
   if(n!==null&&n>=600&&n<700)return byKey.ahinp;
@@ -157,7 +165,8 @@
   if(n!==null&&n>=400&&n<500)return byKey.inp;
   if(n!==null&&n>=300&&n<400)return byKey.ainp;
   if(n!==null&&n>=100&&n<300)return byKey.ap;
-  // Fallback for legacy TEST calls like TEST-P101: read display rank, never privileges.
+  // A legacy TEST callsign can use the displayed rank as a visual-only
+  // fallback. It must never grant cadre or dossier permissions.
   const rank=String(person.rank||'').toLocaleLowerCase('nl');
   if(/eerste hoofdcommissaris|1hcp/.test(rank))return byKey['1hcp'];
   if(/eerste commissaris|1cp/.test(rank))return byKey['1cp'];
@@ -422,8 +431,7 @@
   const rawCall=String(person?.call||'—').trim().slice(0,24)||'—';
   // Accept roster calls ("900") and radio calls ("SANTO-900"/"S900").
   // The nameplate displays the numerical CALL, never its radio prefix.
-  const match=/^(?:SANTO[ -]?|S)?([0-9]{3})\*?$/i.exec(rawCall);
-  const call=match?match[1]:rawCall;
+  const call=policeCallDigits(rawCall)||rawCall;
   return {name,call,bottom:'BELGIEPD - '+call};
  }
  function goldLettering(person){
