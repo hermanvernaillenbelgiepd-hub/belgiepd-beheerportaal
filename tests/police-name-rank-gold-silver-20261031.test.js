@@ -18,7 +18,7 @@ function renderer(){
   {window:win,document:{createElement:t=>new El(t),createElementNS:(_ns,t)=>new El(t)}});
  return win.BPDPoliceUniform;
 }
-test('officers and higher leadership: nameplate left and rank right have gold metal',()=>{
+test('officer crowns stay gold but the original diagonal threads remain silver',()=>{
  const ui=renderer();
  const officers=[
   {call:'920',rank:'ACP'},{call:'910',rank:'1CP'},{call:'900',rank:'1HCP'},
@@ -37,7 +37,7 @@ test('officers and higher leadership: nameplate left and rank right have gold me
   assert.match(grade.className,/bpd-rank-metal-gold/,person.rank);
  }
 });
-test('AHINP, HINP, 1HINP and all lower ranks stay silver on both plaques',()=>{
+test('AHINP, HINP, 1HINP and all lower ranks keep original silver embroidery',()=>{
  const ui=renderer();
  for(const person of [
   {call:'800',rank:'1HINP'},{call:'700',rank:'HINP'},
@@ -54,23 +54,26 @@ test('AHINP, HINP, 1HINP and all lower ranks stay silver on both plaques',()=>{
    /bpd-rank-metal-silver/,person.rank);
  }
 });
-test('both live and atelier grade stripe colors are identical and cache is fresh',()=>{
+test('real crowns untouched and all diagonal threads silver, without synthetic stripes',()=>{
  const css=read('assets/organogram-police-formal.css');
  const admin=read('gebruikersbeheer.html');
  const composer=read('uniform-composer-ui.js');
  for(const source of [css,admin]){
-  assert.match(source,/#ffd65a/);
   assert.match(source,/#e0e7ef/);
-  // Recolor only real embroidered artwork; never add another stripe drawing.
-  assert.match(source,/mix-blend-mode:color/);
-  assert.match(source,/#ffd044/);
-  const rankRules=source.slice(source.indexOf('Rank\'s RIGHT threads')>=0?
-   source.indexOf('Rank\'s RIGHT threads'):source.indexOf('Only tint the ORIGINAL embroidered lines'));
-  assert.doesNotMatch(rankRules,/repeating-linear-gradient/);
+  assert.doesNotMatch(source,/#ffd044/);
+  assert.match(source,/content:none!important;display:none!important/);
+  assert.match(source,/object-fit:contain/);
  }
+ // Gold nameplate text remains; photographic diagonal strokes are silver.
+ assert.match(css,/--line-thread:#e0e7ef/);
+ assert.match(admin,/--plate-line-thread:#e0e7ef/);
+ assert.doesNotMatch(css,/background:#ffd24b/);
+ assert.doesNotMatch(admin,/background:#ffd24b/);
+ assert.match(css,/bpd-grade-metal-gold::after,[\s\S]*?content:none!important/);
+ assert.match(css,/bpd-rank-metal-gold::after,[\s\S]*?content:none!important/);
+ assert.match(admin,/compose-rank-metal-gold::after,[\s\S]*?content:none!important/);
  assert.match(composer,/compose-rank-metal-gold/);
  assert.match(composer,/compose-rank-metal-silver/);
- assert.match(composer,/AHCP/);
- assert.match(read('organogram-hierarchie.html'),/rank-artwork-thread-20261031-v2/);
- assert.match(admin,/uniform-composer-ui\.js\?v=rank-artwork-thread-20261031-v2/);
+ assert.match(read('organogram-hierarchie.html'),/all-police-grades-20261031-v3/);
+ assert.match(admin,/uniform-composer-ui\\.js\\?v=all-police-grades-20261031-v3/);
 });
