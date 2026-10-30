@@ -433,3 +433,45 @@
  display:block;text-align:center;color:#c4d7e8;font-size:clamp(8px,1.05vw,14px);
  line-height:1.25;overflow-wrap:anywhere;
 }
+
+
+/* FINAL left accent — the ornament is a separate four-line insignia at the
+   left of the dark text panel, NOT a repeating gradient or filled corner.
+   Its thread color comes from the personnel rank's gold/silver class. */
+.bpd-police-formal .bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate,
+.bpd-police-formal .bpd-silver-stage>.bpd-personal-nameplate.bpd-silver-woven-nameplate{
+ background:linear-gradient(90deg,transparent 0 19%,#101a2b 19%,#070e1b 100%)!important;
+ border:0!important;border-radius:0!important;
+ box-shadow:none!important;
+}
+.bpd-police-formal .bpd-gold-stage>.bpd-gold-nameplate::before,
+.bpd-police-formal .bpd-silver-stage>.bpd-silver-woven-nameplate::before{
+ content:none!important;display:none!important;
+ background:none!important;
+}
+.bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-left-accent{
+ position:absolute;left:1.5%;top:9%;width:15%;height:82%;
+ z-index:2;pointer-events:none;display:block;
+ background:none!important;border:0;overflow:visible;
+}
+.bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-left-accent>.bpd-nameplate-left-accent-stripe{
+ position:absolute;top:4%;width:1.25px;height:91%;
+ transform:skewX(-24deg);
+ background:var(--thread);border-radius:1px;
+ box-shadow:0 0 .5px currentColor;
+ opacity:.96;
+}
+.bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-left-accent>.bpd-nameplate-left-accent-stripe:nth-child(1){left:12%}
+.bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-left-accent>.bpd-nameplate-left-accent-stripe:nth-child(2){left:36%}
+.bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-left-accent>.bpd-nameplate-left-accent-stripe:nth-child(3){left:60%}
+.bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-left-accent>.bpd-nameplate-left-accent-stripe:nth-child(4){left:84%}
+.bpd-police-formal .bpd-gold-stage>.bpd-gold-nameplate::after,
+.bpd-police-formal .bpd-silver-stage>.bpd-silver-woven-nameplate::after{
+ left:22%;width:74%;
+}
+.bpd-police-formal .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-name,
+.bpd-police-formal .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call,
+.bpd-police-formal .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name,
+.bpd-police-formal .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
+ left:22%;width:74%;z-index:3;
+}
