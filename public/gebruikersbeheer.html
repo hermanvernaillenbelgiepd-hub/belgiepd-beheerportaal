@@ -80,6 +80,23 @@ header button{padding:7px 10px;font-size:12px}
 #uniformSection .uniform-preview-frame>img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
 #uniformSection .uniform-preview-grade{position:absolute;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px dashed #e6bd73;background:#141d2e;color:#ffe6a4;cursor:grab;touch-action:none;outline-offset:3px;font-size:10px;font-weight:750;text-align:center;padding:3px;z-index:1}
 #uniformSection .uniform-preview-grade:active{cursor:grabbing}
+#uniformSection .uniform-preview-nameplate{
+ position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ box-sizing:border-box;border:1px dashed #b3d0e8;border-radius:2px;
+ background:#101a2a;color:#f2f3f8;z-index:2;cursor:grab;touch-action:none;
+ outline-offset:3px;overflow:hidden;text-align:center;font-size:clamp(6px,.75vw,11px);
+ font-weight:800;white-space:nowrap;padding:1px;line-height:1.18
+}
+#uniformSection .uniform-preview-nameplate:active{cursor:grabbing}
+#uniformSection .uniform-preview-nameplate>span{display:block;max-width:100%;text-overflow:ellipsis;overflow:hidden}
+#uniformSection .uniform-preview-nameplate #uniformPreviewCall{font-size:.73em;color:#b8d0e9}
+#uniformSection .uniform-preview-nameplate.silver{
+ background:#0c111d;border-color:#b8c3d6;color:#f2f4f7
+}
+#uniformSection .uniform-preview-nameplate.gold{
+ background:#111827;border-color:#c59a51;color:#ffdf98
+}
+
 #uniformSection .uniform-preview-grade>img{width:100%;height:100%;display:block;object-fit:contain}
 #uniformSection .uniform-preview-grade>img[hidden]{display:none!important}
 #uniformSection .uniform-preview-grade>span[hidden]{display:none!important}
@@ -303,7 +320,7 @@ header button{padding:7px 10px;font-size:12px}
   <div><label for="uniformFile">Nieuw uniform uploaden (PNG, JPG, WebP)</label><input id="uniformFile" type="file" accept="image/png,image/jpeg,image/webp"><small>De jas wordt opgeslagen als afbeelding van 603 × 469 pixels. De gradenplaat staat er afzonderlijk bovenop.</small></div>
   <div><label for="uniformReason">Motivering voor het logboek (min. 8 tekens)</label><input id="uniformReason" maxlength="300" placeholder="Waarom pas je het uniform of de gradenplaat aan?"></div>
  </div>
- <h3>Livevoorbeeld – versleep het gradenteken</h3>
+ <h3>Livevoorbeeld – versleep de gradenplaat en de naamplaat afzonderlijk</h3>
  <div class="uniform-editor-columns">
   <div>
    <div id="uniformPreviewFrame" class="uniform-preview-frame uniform-empty">
@@ -311,9 +328,12 @@ header button{padding:7px 10px;font-size:12px}
     <span id="uniformPreviewPatch" class="uniform-preview-grade" tabindex="0" role="img" aria-label="Versleepbaar gradenteken in het uniform">
      <img id="uniformPreviewGradeImage" alt="" hidden><span id="uniformPreviewPatchLabel">Voorbeeld gradenplaat</span>
     </span>
+    <span id="uniformPreviewNameplate" class="uniform-preview-nameplate" tabindex="0" role="img" aria-label="Versleepbare naamplaat in het uniform">
+     <span id="uniformPreviewName">VOORBEELD NAAM</span><span id="uniformPreviewCall">BELGIEPD · 610</span>
+    </span>
     <span class="uniform-empty-note">Nog geen uniformfoto voor deze hulpdienst. Upload een afbeelding.</span>
    </div>
-   <small>Versleep de gradenplaat met de muis of de pijltjestoetsen. De getoonde plaats wordt bewaard per hulpdienst en per uniformtype.</small>
+   <small>Je kunt de gradenplaat én naamplaat elk afzonderlijk verslepen met de muis of de pijltjestoetsen. Beide worden per hulpdienst en uniformtype bewaard.</small>
   </div>
   <div class="uniform-sliders">
    <label for="uniformX">Horizontale positie <output id="uniformValueX">0%</output></label>
@@ -325,13 +345,26 @@ header button{padding:7px 10px;font-size:12px}
    <label for="uniformH">Hoogte gradenplaat <output id="uniformValueH">12%</output></label>
    <input type="range" id="uniformH" min="2" max="50" step=".25" value="12">
    <div class="controls">
-    <button id="uniformReset" class="alt" type="button">Standaardpositie</button>
+    <button id="uniformReset" class="alt" type="button">Standaardpositie gradenplaat</button>
+   </div>
+   <h3>Naamplaat – eigen positie en afmetingen</h3>
+   <label for="uniformNameX">Horizontale positie <output id="uniformNameValueX">0%</output></label>
+   <input type="range" id="uniformNameX" min="0" max="95" step=".25" value="21">
+   <label for="uniformNameY">Verticale positie <output id="uniformNameValueY">0%</output></label>
+   <input type="range" id="uniformNameY" min="0" max="95" step=".25" value="56">
+   <label for="uniformNameW">Breedte naamplaat <output id="uniformNameValueW">27%</output></label>
+   <input type="range" id="uniformNameW" min="3" max="75" step=".25" value="27">
+   <label for="uniformNameH">Hoogte naamplaat <output id="uniformNameValueH">12%</output></label>
+   <input type="range" id="uniformNameH" min="2" max="50" step=".25" value="12">
+   <div class="controls">
+    <button id="uniformNameReset" class="alt" type="button">Standaardpositie naamplaat</button>
    </div>
   </div>
  </div>
  <div class="controls">
   <button id="uniformSaveImage" type="button">Uniformafbeelding bewaren</button>
-  <button id="uniformSavePosition" type="button" class="alt">Positie en formaat gradenplaat bewaren</button>
+  <button id="uniformSavePosition" type="button" class="alt">Gradenplaat bewaren</button>
+  <button id="uniformSaveNameplate" type="button" class="alt">Naamplaat bewaren</button>
   <button id="uniformReload" type="button" class="alt">Opnieuw laden</button>
  </div>
  <div id="uniformStatus" class="muted" role="status" aria-live="polite">Uniformbeheer laden…</div>
