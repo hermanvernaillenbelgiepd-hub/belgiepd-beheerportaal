@@ -1394,7 +1394,7 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  </div>
 </dialog>
 <script src="/visual-layers-render.js?v=20261030"></script>
-<script src="/assets/organogram-police-formal.js?v=service-assets-20261030"></script>
+<script src="/assets/organogram-police-formal.js?v=flexible-canvas-20261030"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
@@ -1514,6 +1514,14 @@ function makeServiceUniformPortrait(person){
  const stage=el('span','bpd-service-stage');
  const img=el('img','bpd-service-coat');img.src=src||iconFallback;img.alt='';img.loading='lazy';
  const coatPosition=serviceCoatLayouts.get(dept+'_default');
+ if(coatPosition&&Number.isInteger(coatPosition.canvasWidth)&&Number.isInteger(coatPosition.canvasHeight)&&
+  coatPosition.canvasWidth>=160&&coatPosition.canvasHeight>=160&&
+  coatPosition.canvasWidth<=4096&&coatPosition.canvasHeight<=4096){
+  const ratio=coatPosition.canvasWidth/coatPosition.canvasHeight;
+  stage.style.aspectRatio=coatPosition.canvasWidth+'/'+coatPosition.canvasHeight;
+  stage.style.width=Math.min(120,Math.max(30,ratio*(226/198)*98))+'%';
+  img.style.objectFit=coatPosition.keepAspectRatio===false?'fill':'contain';
+ }
  if(coatPosition){
   img.style.transform='translate('+coatPosition.offsetX+'%,'+coatPosition.offsetY+'%) scale('+(coatPosition.zoom/100)+')';
   img.style.transformOrigin='center';
