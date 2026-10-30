@@ -19,7 +19,7 @@ function setData(assignments,artworks,visualRules=[]){
  for(const row of Array.isArray(artworks)?artworks:[]){
   const key=String(row?.key||''),url=String(row?.imageUrl||'');
   if(!/^(?:uniform|rank|helmet|profession|logo|pictogram|patch|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}$/.test(key)||
-   !/^\/api\/role-artwork\/file\/(?:uniform|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}\?v=[a-zA-Z0-9-]+$/.test(url))
+   !/^\/api\/role-artwork\/file\/(?:uniform|rank|helmet|profession|logo|pictogram|patch|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}\?v=[a-zA-Z0-9-]+$/.test(url))
    continue;
   assetUrls.set(key,url);
  }
