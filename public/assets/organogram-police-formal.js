@@ -423,7 +423,7 @@
   // BelgiumPD visual distinction by actual rank, not by uniform image.
   const key=gradeFor(person)?.key||'';
   return ['acp','cp','1cp','hcp','1hcp'].includes(key)||
-   /\bkorpschef\b|\bhoofdcommissaris\b|\bcommissaris\b/i.test(String(person?.rank||''))||
+   /\b(?:ACP|CP|1-?CP|HCP|1-?HCP|korpschef)\b|\b(?:hoofdcommissaris|commissaris)\b/i.test(String(person?.rank||''))||
    /^\s*(?:SANTO[- ]?)?9(?:0|1|2|3)\d\s*$/i.test(String(person?.call||''));
  }
  const metalClass=person=>goldLettering(person)?' bpd-nameplate-metal-gold':' bpd-nameplate-metal-silver';

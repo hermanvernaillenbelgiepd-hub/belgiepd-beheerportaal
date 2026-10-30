@@ -128,7 +128,7 @@ export function setupUniformComposer({api,$}){
     const level=grade.selectedOptions[0]?.textContent||'';
    const gold=dept.value==='politie'&&(
     ['900','910','920','930'].includes(grade.value)||
-    /\b(?:ACP|CP|1CP|HCP|1HCP|Korpschef)\b/i.test(level));
+    /\b(?:ACP|CP|1-?CP|HCP|1-?HCP|Korpschef)\b/i.test(level));
    const plate=el('span','compose-nameplate '+(gold?'compose-metal-gold':'compose-metal-silver'));
     const name=el('strong','compose-name',member.name);
     const call=el('small','compose-call',member.call);

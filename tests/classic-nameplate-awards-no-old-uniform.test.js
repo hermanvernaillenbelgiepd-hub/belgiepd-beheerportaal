@@ -77,3 +77,21 @@ test('real uploaded coat renders woven gold/silver nameplates and current rank',
  assert.match(css,/repeating-linear-gradient\(129deg/);
  assert.match(css,/var\(--thread\)/);
 });
+
+
+test('police nameplate has diagonal embroidery ONLY at left, with rank-linked gold/silver',()=>{
+ const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
+ const admin=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+ const tail=css.slice(css.indexOf('/* BelgiumPD woven police nameplate (left striped'));
+ const ui=admin.slice(admin.indexOf('/* Classic BelgiumPD nameplate: left diagonal embroidery'));
+ assert.ok(tail.length>2000&&ui.length>650);
+ assert.match(tail,/\.bpd-nameplate-metal-gold[\s\S]*?--thread:#f2cf77/);
+ assert.match(tail,/\.bpd-nameplate-metal-silver[\s\S]*?--thread:#d8e1ee/);
+ assert.match(tail,/background-size:18% 100%;background-repeat:no-repeat;\s*background-position:left center/);
+ assert.doesNotMatch(tail,/background-position:left center,right center/);
+ assert.match(tail,/position:absolute;left:20%;width:76%/);
+ assert.match(ui,/\.compose-nameplate\.compose-metal-gold[\s\S]*?--plate-thread:#f2ce78/);
+ assert.match(ui,/\.compose-nameplate\.compose-metal-silver[\s\S]*?--plate-thread:#d9e2ed/);
+ assert.match(ui,/background-size:18% 100%;\s*background-position:left center/);
+ assert.doesNotMatch(ui,/background-position:left center,right center/);
+});

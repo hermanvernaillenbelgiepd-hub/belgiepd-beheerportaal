@@ -367,8 +367,9 @@
 }
 
 
-/* BelgiumPD woven police nameplate (reinstated 30 October 2026).
-   Officers ACP / CP / 1-CP / HCP / 1-HCP / Korpschef use golden threads.
+/* BelgiumPD woven police nameplate (left striped, 30 October 2026).
+   Officer ranks ACP / CP / 1-CP / HCP / 1-HCP / Korpschef have
+   gold left-hand diagonal threads. All other ranks have silver threads.
    All other ranks use silver, independent of the chosen coat artwork.
    Deliberately no baked-in historical bitmap so no old art is requested. */
 .bpd-police-formal .bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate,
@@ -393,15 +394,14 @@
  content:"";display:block!important;position:absolute;
  inset:0;width:100%;height:100%;border:0;opacity:.86;z-index:0;
  background-image:
- repeating-linear-gradient(129deg,transparent 0 3px,var(--thread) 3px 4px,transparent 4px 7px),
  repeating-linear-gradient(129deg,transparent 0 3px,var(--thread) 3px 4px,transparent 4px 7px);
- background-size:18% 100%,18% 100%;background-repeat:no-repeat;
- background-position:left center,right center;pointer-events:none
+ background-size:18% 100%;background-repeat:no-repeat;
+ background-position:left center;pointer-events:none
 }
 .bpd-police-formal .bpd-gold-stage>.bpd-gold-nameplate::after,
 .bpd-police-formal .bpd-silver-stage>.bpd-silver-woven-nameplate::after{
  content:"";display:block;position:absolute;
- left:20%;top:50%;width:60%;height:1px;min-height:0;
+ left:20%;top:50%;width:76%;height:1px;min-height:0;
  background:var(--thread);box-shadow:0 0 1px #fff5;
  z-index:1;pointer-events:none
 }
@@ -409,7 +409,7 @@
 .bpd-police-formal .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call,
 .bpd-police-formal .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name,
 .bpd-police-formal .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
- position:absolute;left:20%;width:60%;margin:0;padding:0;box-sizing:border-box;
+ position:absolute;left:20%;width:76%;margin:0;padding:0;box-sizing:border-box;
  display:flex;align-items:center;justify-content:center;
  z-index:2;color:var(--thread)!important;
  text-align:center;font-family:system-ui,Segoe UI,Arial,sans-serif;
