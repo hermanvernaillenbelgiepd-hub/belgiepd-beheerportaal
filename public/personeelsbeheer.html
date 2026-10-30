@@ -1485,6 +1485,10 @@ async function load(){
   if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     const data=await request('/api/personnel/overview');
+    try{
+     const artwork=await request('/api/role-artwork/manifest');
+     BPDPersonnelVisuals.setArtworkManifest(artwork.artworks);
+    }catch(_err){BPDPersonnelVisuals.setArtworkManifest([])}
     $('accessHelp').hidden=true;
     people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
