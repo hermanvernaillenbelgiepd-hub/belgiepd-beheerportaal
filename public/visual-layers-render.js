@@ -46,7 +46,17 @@
     code(typeof a==='string'?a:a?.code||a?.id||a?.name)===layer.code);
   }
   if(layer.kind==='specialty')return specialties.includes(layer.code);
+  // Medical qualifications are display identities, not personnel grades.
+  if(layer.kind==='profession'&&person.dept==='ambulance'&&
+   window.BPDUniformAssignments?.forPerson?.(person)?.profession===layer.code)return true;
   return code(person.rank)===layer.code||specialties.includes(layer.code);
+ }
+ function hasProfessionLayer(person,variant){
+  const visual=window.BPDUniformAssignments?.forPerson?.(person);
+  return layers.some(layer=>layer.kind==='profession'&&
+   layer.department===person?.dept&&layer.variant===variant&&
+   layerAllowed(person.dept,layer.kind)&&
+   (layer.code===visual?.profession||layer.code===visual?.elementCodes?.profession));
  }
  function appendTo(stage,person,variant){
   if(!stage||!person)return;
@@ -75,5 +85,5 @@
   const e=active.get('pictogram_'+dept+'_default');
   return e?.url||null;
  }
- window.BPDVisualAssets=Object.freeze({setData,appendTo,baseIcon});
+ window.BPDVisualAssets=Object.freeze({setData,appendTo,baseIcon,hasProfessionLayer});
 })();
