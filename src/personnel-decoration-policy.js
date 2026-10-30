@@ -1,5 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
-import {canEditPersonnel,canReadPersonnelSubject,validPersonnelKey} from './personnel-editor-policy.js';
+import {validPersonnelKey} from './personnel-editor-policy.js';
 
 export const PERSONNEL_DECORATIONS_COLLECTION='bpd_personnel_decorations';
 export const PERSONNEL_DECORATION_CATALOG_COLLECTION='bpd_personnel_decoration_catalog';
@@ -64,9 +64,13 @@ export function canManagePoliceDecorationCatalog(actor){
     ['officierenkader','korpsleiding'].includes(actor?.role));
 }
 export function canManagePoliceDecoration(actor,subject){
- if(!subject||subject.dept!=='politie'||!validPersonnelKey('politie',subject.personId)||
-    !canManagePoliceDecorationCatalog(actor))return false;
- return canReadPersonnelSubject(actor,subject)&&canEditPersonnel(actor,subject);
+ // Award administration is deliberately separate from reading or editing
+ // restricted 9xx dossiers. Verified police officers/corps may award any
+ // uniquely identified police member, including Korpsleiding.
+ // Never extend dossier-read, personnel-edit or Discord-role permissions.
+ return Boolean(subject&&subject.dept==='politie'&&
+  validPersonnelKey('politie',subject.personId)&&
+  canManagePoliceDecorationCatalog(actor));
 }
 export const awardKey=(dept,id)=>validPersonnelKey(dept,id)?dept+'_'+id:null;
 export function isDecorationActive(entry,today=brusselsToday()){
