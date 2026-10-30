@@ -201,6 +201,33 @@
  });
  // Same exterior patch dimensions, embroidered rim and margins for all ranks.
  const NORMALIZED_GRADE_FRAME=Object.freeze({x:16,y:4,width:480,height:152});
+ let uniformArtworkOverrides=new Map(),uniformPlacementOverrides=new Map();
+ function setUniformManagementData(items,layouts){
+  const uniformImages=new Map(),uniformCoords=new Map();
+  for(const row of Array.isArray(items)?items:[]){
+   const key=String(row?.key||''),url=String(row?.imageUrl||'');
+   if(!/^uniform_politie_(silver|gold)$/.test(key)||
+    !/^\/api\/role-artwork\/file\/uniform_politie_(silver|gold)\?v=[a-zA-Z0-9-]+$/.test(url))
+    continue;
+   uniformImages.set(key.slice('uniform_politie_'.length),url);
+  }
+  for(const entry of Array.isArray(layouts)?layouts:[]){
+   if(!/^politie_(silver|gold)$/.test(entry?.key||''))continue;
+   if(!['left','top','width','height'].every(k=>typeof entry[k]==='number'&&
+    entry[k]>=0&&entry[k]<=100))continue;
+   if(entry.left+entry.width>100||entry.top+entry.height>100)continue;
+   uniformCoords.set(entry.variant,entry);
+  }
+  uniformArtworkOverrides=uniformImages;uniformPlacementOverrides=uniformCoords;
+ }
+ function applyUniformInsigniaPlacement(node,variant){
+  const layout=uniformPlacementOverrides.get(variant);
+  if(!layout)return;
+  node.style.left=layout.left+'%';
+  node.style.top=layout.top+'%';
+  node.style.width=layout.width+'%';
+  node.style.height=layout.height+'%';
+ }
  let gradeArtworkOverrides=new Map();
  function setGradeArtworkManifest(items){
   const next=new Map();
@@ -385,7 +412,8 @@
    stage.className='bpd-gold-stage';
    const img=document.createElement('img');
    img.className='bpd-gold-coat';
-   setMatchedGoldCoat(img);
+   if(uniformArtworkOverrides.has('gold'))img.src=uniformArtworkOverrides.get('gold');
+   else setMatchedGoldCoat(img);
    img.alt='';
    img.loading=large?'eager':'lazy';
    img.decoding='async';
@@ -406,6 +434,7 @@
    patchImage.loading='eager';
    patchImage.decoding='async';
    chest.append(patchImage);
+   applyUniformInsigniaPlacement(chest,'gold');
    stage.append(chest);
    if(rack?.medals)stage.append(rack.medals);
    outer.append(stage);
@@ -418,7 +447,8 @@
   stage.className='bpd-silver-stage';
   const image=document.createElement('img');
   image.className='bpd-silver-coat';
-  setMatchedSilverCoat(image);
+  if(uniformArtworkOverrides.has('silver'))image.src=uniformArtworkOverrides.get('silver');
+  else setMatchedSilverCoat(image);
   image.alt='';
   image.loading=large?'eager':'lazy';
   image.decoding='async';
@@ -439,10 +469,11 @@
   patchImage.loading='eager';
   patchImage.decoding='async';
   patch.append(patchImage);
+  applyUniformInsigniaPlacement(patch,'silver');
   stage.append(patch);
   if(rack?.medals)stage.append(rack.medals);
   outer.append(stage);
   return outer;
  }
- window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,makeNameplate,nameplateData,setGradeArtworkManifest,asset:GOLD_BASE,legacyAsset:BASE,silverAsset:SILVER_BASE});
+ window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,makeNameplate,nameplateData,setGradeArtworkManifest,setUniformManagementData,asset:GOLD_BASE,legacyAsset:BASE,silverAsset:SILVER_BASE});
 })();
