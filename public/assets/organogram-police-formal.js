@@ -211,7 +211,7 @@
  // Same exterior patch dimensions, embroidered rim and margins for all ranks.
  const NORMALIZED_GRADE_FRAME=Object.freeze({x:16,y:4,width:480,height:152});
  let uniformArtworkOverrides=new Map(),uniformPlacementOverrides=new Map();
- let uniformNameplateOverrides=new Map(),uniformCoatOverrides=new Map();
+ let uniformCoatOverrides=new Map();
  function setUniformManagementData(items,layouts,nameplates=[],coats=[]){
   const uniformImages=new Map(),uniformCoords=new Map();
   for(const row of Array.isArray(items)?items:[]){
@@ -228,16 +228,9 @@
    if(entry.left+entry.width>100||entry.top+entry.height>100)continue;
    uniformCoords.set(entry.variant,entry);
   }
-  const nameCoords=new Map();
-  for(const entry of Array.isArray(nameplates)?nameplates:[]){
-   if(!/^politie_(silver|gold)$/.test(String(entry?.key||''))||entry.configured!==true)continue;
-   if(!['left','top','width','height'].every(k=>typeof entry[k]==='number'&&
-    Number.isFinite(entry[k])&&entry[k]>=0&&entry[k]<=100))continue;
-   if(entry.left+entry.width>100||entry.top+entry.height>100)continue;
-   nameCoords.set(entry.variant,entry);
-  }
   uniformArtworkOverrides=uniformImages;uniformPlacementOverrides=uniformCoords;
-  uniformNameplateOverrides=nameCoords;
+  // Historical nameplate templates/coordinates are retired; a single
+  // photographic textile and the member's live identity are authoritative.
   const coatCoords=new Map();
   for(const row of Array.isArray(coats)?coats:[]){
    if(!/^politie_(gold|silver)$/.test(String(row?.key||''))||row.configured!==true)continue;
@@ -328,21 +321,9 @@
   image.addEventListener('load',apply,{once:true});
   if(image.complete&&image.naturalWidth)apply();
  }
- function nameplateTextData(person,variant){
-  const base=nameplateData(person),cfg=uniformNameplateOverrides.get(variant);
-  // Uniformatelier personal-name template: never show the sample labels
-  // "V. NAAM", "DIENST" or "FUNCTIE" on a member's actual nameplate.
-  // Historical prefix overrides must not replace the agreed BELGIEPD line.
-  return {...base,bottom:'BELGIEPD - '+base.call,
-   nameScale:cfg?.nameScale??100,callScale:cfg?.callScale??100};
- }
- function applyUniformNameplatePlacement(node,variant){
-  const layout=uniformNameplateOverrides.get(variant);
-  if(!layout)return;
-  node.style.left=layout.left+'%';
-  node.style.top=layout.top+'%';
-  node.style.width=layout.width+'%';
-  node.style.height=layout.height+'%';
+ function nameplateTextData(person){
+  const base=nameplateData(person);
+  return {...base,bottom:'BELGIEPD - '+base.call,nameScale:100,callScale:100};
  }
  let gradeArtworkOverrides=new Map();
  function setGradeArtworkManifest(items){
@@ -453,8 +434,7 @@
  // own chest panel and is never painted into the nameplate again.
  function makeWovenNameplate(person,zoom=false){
   if(person?.dept!=='politie')return null;
-  const variant=goldLettering(person)?'gold':'silver';
-  const details=nameplateTextData(person,variant);
+  const details=nameplateTextData(person);
   const plate=document.createElement('span');
   plate.className='bpd-personal-nameplate bpd-woven-nameplate'+
    metalClass(person)+(zoom?' bpd-nameplate-zoom':'');
