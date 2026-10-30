@@ -1,5 +1,6 @@
 // Cloud-backed uniform image library and visual-only assignment editor.
 // Does not modify personnel ranks, Discord membership or awards.
+import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS} from '/uniform-profile-policy.js';
 export function setupUniformLibraryUI({api,$}){
  const departments=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
   ['depannage','Depannage'],['burger','Burger'],['beveiliging','Beveiliging (voorbereiding)']];
@@ -9,6 +10,25 @@ export function setupUniformLibraryUI({api,$}){
   ['medal','Medaille (alleen bibliotheek)'],['award','Ereteken (alleen bibliotheek)']];
  const ruleKinds=kinds.filter(([k])=>!['uniform','medal','award','specialty'].includes(k));
  const mk=(value,label)=>new Option(label,value);
+ const callScope=document.querySelector('#libraryAssignScope option[value="call"]');
+ const functionScope=document.querySelector('#libraryAssignScope option[value="function"]');
+ function updateScopes(){
+  const dept=ruleDept.value;
+  for(const [option,show] of [[callScope,dept==='politie'],
+   [functionScope,dept==='ambulance']]){
+   if(option){option.hidden=!show;option.disabled=!show;}
+  }
+  if(ruleScope.selectedOptions[0]?.disabled)ruleScope.value='rank';
+ }
+ const presets=()=>{
+  const list=$('libraryAssignPresets');if(!list)return;
+  list.replaceChildren();
+  const choices=ruleScope.value==='call'&&ruleDept.value==='politie'?POLICE_CALL_GRADES:
+   ruleScope.value==='function'&&ruleDept.value==='ambulance'?AMBULANCE_FUNCTIONS:[];
+  for(const [code,label]of choices){
+   const option=document.createElement('option');option.value=code;option.label=label;list.append(option);
+  }
+ };
  const uploadDept=$('libraryDept'),uploadKind=$('libraryKind'),
   ruleDept=$('libraryAssignDept'),ruleKind=$('libraryAssignKind'),
   ruleScope=$('libraryAssignScope'),ruleTarget=$('libraryAssignTarget'),
@@ -36,8 +56,11 @@ export function setupUniformLibraryUI({api,$}){
  function fillRuleTargets(){
   const scope=ruleScope.value;
   ruleTarget.placeholder=scope==='person'?'Discord-ID of call_reepnummer':
+   scope==='call'?'bijv. 400, 500 of 600':
+   scope==='function'?'ambulancier, vpk, arts of dirmed':
    scope==='rank'?'bijv. sergeant of hoofdinspecteur':
     scope==='cadre'?'bijv. basiskader of middenkader':'default';
+  presets();
   ruleTarget.disabled=scope==='service';
   if(scope==='service')ruleTarget.value='default';
   else if(ruleTarget.value==='default')ruleTarget.value='';
@@ -126,10 +149,10 @@ export function setupUniformLibraryUI({api,$}){
  }
  uploadDept.onchange=()=>{updateCatalog();$('libraryVersionKey').value='';$('libraryVersions').replaceChildren(mk('','Kies een vorige versie'))};
  uploadKind.onchange=uploadDept.onchange;
- ruleDept.onchange=()=>{fillAssets();updateRules()};
+ ruleDept.onchange=()=>{updateScopes();fillRuleTargets();fillAssets();updateRules()};
  ruleKind.onchange=ruleDept.onchange;
  ruleScope.onchange=fillRuleTargets;
- fillRuleTargets();
+ updateScopes();fillRuleTargets();
  let blobUrl='';
  file.onchange=()=>{
   if(blobUrl)URL.revokeObjectURL(blobUrl);
