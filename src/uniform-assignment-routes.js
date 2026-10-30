@@ -34,7 +34,7 @@ export function validateUniformAssignment(body){
  const department=String(body.department||''),scope=String(body.scope||'');
  const selector=selectorFor(scope,body.selector);
  if(!DEPTS.has(department)||!SCOPES.has(scope)||!selector||
-  (scope==='group'&&(department!=='politie'||!['basis_tm_ahinp','hinp_1hinp','officieren'].includes(selector)))||
+  (scope==='group'&&(department!=='politie'||!['agentenkader','basis_tm_ahinp','hinp_1hinp','officieren'].includes(selector)))||
   (scope==='function'&&(department!=='ambulance'||!['ambulancier','vpk','arts','dirmed'].includes(selector))))
   throw fail(400,'Ongeldige hulpdienst, doelgroep of personeels-ID');
  const uniformCode=String(body.uniformCode||'').trim().toLowerCase();
