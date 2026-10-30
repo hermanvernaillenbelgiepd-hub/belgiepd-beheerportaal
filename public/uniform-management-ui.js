@@ -137,7 +137,7 @@ export function setupUniformManagementUI({api,$,notice}){
  );
  // Drag the empty uniform area without stealing nameplate/grade pointer events.
  frame.addEventListener('pointerdown',e=>{
-  if(e.button>0||e.target.closest('#uniformPreviewNameplate,#uniformPreviewPatch'))return;
+  if(e.button>0||e.target.closest('#uniformPreviewNameplate,#uniformPreviewPatch,#uniformLayerPreview'))return;
   drag={id:e.pointerId,which:'coat',startX:e.clientX,startY:e.clientY,
    x:Number(cx.value),y:Number(cy.value)};
   frame.setPointerCapture(e.pointerId);e.preventDefault();
