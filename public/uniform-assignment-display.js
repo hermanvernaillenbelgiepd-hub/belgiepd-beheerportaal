@@ -12,7 +12,7 @@ function setData(assignments,artworks,visualRules=[]){
   (CODE.test(x.selector||'')||UID.test(x.selector||'')));
  elementRules=(Array.isArray(visualRules)?visualRules:[]).filter(x=>
   x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
-  ['rank','helmet','profession','logo','pictogram','patch','specialty'].includes(x.kind)&&
+  ['rank','helmet','profession','logo','pictogram','patch'].includes(x.kind)&&
   ['service','cadre','rank','person'].includes(x.scope)&&
   CODE.test(x.assetCode||''));
  assetUrls=new Map();
@@ -41,7 +41,7 @@ function forPerson(p){
   if(!badgeStyle&&['lokaal','federaal'].includes(entry.badgeStyle))badgeStyle=entry.badgeStyle;
  }
  const elementCodes={},elementUrls={};
- for(const kind of ['rank','helmet','profession','logo','pictogram','patch','specialty']){
+ for(const kind of ['rank','helmet','profession','logo','pictogram','patch']){
   for(const [scope,selector] of [
    ...(id?[['person',id]]:[]),
    ...(callCode?[['person','call_'+callCode]]:[]),
