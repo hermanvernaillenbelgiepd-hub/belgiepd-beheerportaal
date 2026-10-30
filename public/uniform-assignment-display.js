@@ -4,16 +4,21 @@ const UID=/^\d{15,22}$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const nameCode=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
-let rules=[],assetUrls=new Map();
-function setData(assignments,artworks){
+let rules=[],elementRules=[],assetUrls=new Map();
+function setData(assignments,artworks,visualRules=[]){
  rules=(Array.isArray(assignments)?assignments:[]).filter(x=>
   x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
   ['service','cadre','rank','person'].includes(x.scope)&&
   (CODE.test(x.selector||'')||UID.test(x.selector||'')));
+ elementRules=(Array.isArray(visualRules)?visualRules:[]).filter(x=>
+  x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
+  ['rank','helmet','profession','logo','pictogram','patch','specialty'].includes(x.kind)&&
+  ['service','cadre','rank','person'].includes(x.scope)&&
+  CODE.test(x.assetCode||''));
  assetUrls=new Map();
  for(const row of Array.isArray(artworks)?artworks:[]){
   const key=String(row?.key||''),url=String(row?.imageUrl||'');
-  if(!/^(?:uniform|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}$/.test(key)||
+  if(!/^(?:uniform|rank|helmet|profession|logo|pictogram|patch|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}$/.test(key)||
    !/^\/api\/role-artwork\/file\/(?:uniform|specialty)_(?:politie|brandweer|ambulance|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}\?v=[a-zA-Z0-9-]+$/.test(url))
    continue;
   assetUrls.set(key,url);
@@ -35,8 +40,21 @@ function forPerson(p){
    assetUrls.has('uniform_'+dept+'_'+entry.uniformCode))uniformCode=entry.uniformCode;
   if(!badgeStyle&&['lokaal','federaal'].includes(entry.badgeStyle))badgeStyle=entry.badgeStyle;
  }
- return {uniformCode,badgeStyle,uniformUrl:uniformCode?
-  assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
+ const elementCodes={},elementUrls={};
+ for(const kind of ['rank','helmet','profession','logo','pictogram','patch','specialty']){
+  for(const [scope,selector] of [
+   ...(id?[['person',id]]:[]),
+   ...(callCode?[['person','call_'+callCode]]:[]),
+   ['rank',nameCode(p.rank)],['cadre',nameCode(getTier(p))],['service','default']]){
+   const found=elementRules.find(x=>x.department===dept&&x.kind===kind&&
+    x.scope===scope&&x.selector===selector);
+   const image=found&&assetUrls.get(kind+'_'+dept+'_'+found.assetCode);
+   if(image){elementCodes[kind]=found.assetCode;elementUrls[kind]=image;break;}
+  }
+ }
+ return {uniformCode,badgeStyle,elementCodes,elementUrls,
+  rankUrl:elementUrls.rank||'',
+  uniformUrl:uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
 }
 function specialtyImage(p,name,variant=''){
  const info=forPerson(p);
