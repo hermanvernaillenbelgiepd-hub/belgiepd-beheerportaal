@@ -51,13 +51,14 @@ test('all personnel and radio calls resolve identical grade and nameplate identi
   assert.match(plate.className,new RegExp('metal-'+tone),call);
   assert.equal(plate.children[0].textContent,'RX',call);
   assert.equal(plate.children[1].textContent,'BELGIEPD - '+digits,call);
-  assert.equal(plate.children[2].src,'/assets/bpd-rank-'+grade+'-clean-20261027.webp',call);
+  assert.equal(plate.children.length,2,call);
+  assert.match(plate.className,/bpd-woven-nameplate/,call);
   assert.equal(patch.dataset.grade,grade,call);
-  assert.equal(patch.children[0].src,plate.children[2].src,call);
+  assert.equal(patch.children[0].src,'/assets/bpd-rank-'+grade+'-clean-20261027.webp',call);
   assert.equal(stage.children.filter(x=>x.className.includes('personal-nameplate')).length,1,call);
  }
 });
-test('specific uploaded grade artwork is identical on nameplate and rank panel',()=>{
+test('specific uploaded grade artwork only changes the separate rank panel',()=>{
  const ui=renderer();
  const person={dept:'politie',call:'SANTO-710*',name:'Voorbeeld',
   customRankUrl:'/api/role-artwork/file/rank_politie_eigen_patch?v=123'};
@@ -65,7 +66,8 @@ test('specific uploaded grade artwork is identical on nameplate and rank panel',
  const nodes=p.children[0].children;
  const plate=nodes.find(x=>x.className.includes('personal-nameplate'));
  const rank=nodes.find(x=>x.className.includes('cloth-rank'));
- assert.equal(plate.children[2].src,person.customRankUrl);
+ assert.equal(plate.children.length,2);
+ assert.match(plate.className,/bpd-woven-nameplate/);
  assert.equal(rank.children[0].src,person.customRankUrl);
 });
 test('invalid identifiers and other service calls never masquerade as police ranks',()=>{
