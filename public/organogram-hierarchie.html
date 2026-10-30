@@ -1343,11 +1343,11 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 <header>
  <a class="brand" href="/">BelgiumPD · Beheerportaal</a>
  <span class="tag">MAIN · ORGANOGRAM</span>
- <a class="back" href="/organogram.html">Klassiek organogram</a>
+ <a class="back" href="/personeelslijst.html">Personeelslijst</a>
 </header>
 <main>
  <h1>Organogram van BelgiumPD</h1>
- <p class="lead">Eén Bestuur boven alle diensten. In het algemene overzicht alleen de dienstleidingen. Open één dienst voor specialisaties, instructeurs en leden. Handmatige posities kun je altijd terugdraaien. Een persoon kan in meerdere diensttakken voorkomen zonder duplicatie van het personeelsdossier.</p>
+ <p class="lead">Operationeel organogram per hulpdienst: leiding, kaders, specialisaties en personeelsleden. Open een personeelsprofiel voor uniform, CALL, rang, status, eretekens en specialisaties. Handmatige correcties blijven uitsluitend visueel en worden gelogd.</p>
  <nav class="roster-view-tabs" aria-label="Kies personeelsweergave">
    <a href="/personeelslijst.html">👥 Personeelslijst</a>
    <a href="/organogram-hierarchie.html" aria-current="page">🌳 ORGANOGRAM</a>
@@ -1426,13 +1426,13 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  </section>
  <section id="manage" class="manager" hidden aria-label="Handmatig organogrambeheer">
   <h2>Handmatige functies · noodregeling</h2>
-  <p class="manager-note">Selecteer een bestaand personeelslid of een goedgekeurd bestuursaccount. Handmatige keuzes blijven in Firestore bewaard bij uitval van de Discord-sync. Dit geeft geen dossier- of beheersrechten.</p>
+  <p class="manager-note">Selecteer een operationeel personeelslid. Handmatige correcties blijven in Firestore bewaard bij uitval van de Discord-sync en geven geen dossier- of beheersrechten.</p>
   <div class="manager-grid">
    <label>Persoon <select id="manage-person"><option value="">Kies personeelslid</option></select></label>
    <label>Leiding/kader (alleen organogram) <select id="manage-tier">
     <option value="none">Automatisch volgens rang</option>
    </select></label>
-   <label>Bestuursweergave <select id="manage-board">
+   <label hidden>Bestuursweergave (niet in operationeel organogram) <select id="manage-board">
     <option value="none">Geen bestuursfunctie</option>
     <option value="bestuur">Bestuur</option>
     <option value="bestuur-ai">Bestuur ad interim</option>
@@ -1469,17 +1469,6 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   <button type="button" id="manage-undo" disabled>↩ Vorige instelling herstellen</button>
   <p id="manage-status" class="manager-note" role="status">Alleen technisch beheer kan deze functies wijzigen.</p>
  </section>
- <div class="board-wrap">
-  <details class="board" id="board-panel" open>
-   <summary><strong>👑 BESTUUR</strong></summary>
-   <div class="board-details">
-    <small class="board-subtitle">Overkoepelende leiding over alle diensten</small>
-    <div class="board-verification-note" id="board-verification-note">Bestuursleden worden pas met geverifieerde functiegegevens ingevuld</div>
-    <div id="board-members" class="persons" aria-label="Bestuursleden"></div>
-   </div>
-  </details>
-  <div class="trunk"></div><div class="fork"></div>
- </div>
  <div id="services" class="service-grid" aria-live="polite"></div>
 
 </main>
@@ -2254,21 +2243,8 @@ function render(){
  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===state.view)));
  $('demo-toggle').setAttribute('aria-pressed',String(state.demo));
  $('services').replaceChildren();
- $('board-members').replaceChildren();
- $('board-verification-note').hidden=!state.demo&&state.board.length>0;
- if(!state.demo&&state.board.length){
-  for(const item of state.board){
-   const chip=el('span','person board-member');
-   chip.append(el('b','',item.name));
-   chip.append(el('small','',item.role==='bestuur-ai'?'Bestuur ad interim':'Bestuur'));
-   $('board-members').append(chip);
-  }
- }else{
-  $('board-members').append(el('span','gaps',state.demo?'Fictief voorbeeld: geen echte bestuursnamen': 'Nog geen bestuursleden met een geverifieerde of handmatig geregistreerde functie'));
- }
  const dataset=hierarchy(filteredRows());
  const solo=state.view!=='alle';
- document.querySelector('.board-wrap').classList.toggle('board-single-service',solo);
  for(let i=0;i<SERVICES.length;i++){
   if(solo&&SERVICES[i].id!==state.view)continue;
   $('services').append(serviceCard(dataset[i],SERVICES[i],solo));
@@ -2320,7 +2296,7 @@ async function loadPublic(){
     boardRole:p.boardRole||'none',leadershipTier:p.leadershipTier||'none',displayOrder:Number(p.displayOrder)||0,
     personId:/^\d{15,22}$/.test(String(p.personId||''))?String(p.personId):null,
     source:String(p.source||'personeelslijst').slice(0,35)}));
-  state.board=Array.isArray(payload.board)?payload.board.slice(0,50):[];
+  state.board=[]; // Geen bestuur in het operationele organogram.
   state.loaded=true;
   state.demo=false;
   $('source').className='notice'+(payload.stale||!payload.syncAvailable?' warn':'');
@@ -2979,7 +2955,7 @@ $('manage-toggle').addEventListener('click',async()=>{
  try{
   const result=await authFetch('/api/organogram/placements/admin');
   if(result.displayOnly!==true)throw Error('Ongeldig antwoord');
-  adminPeople=result.people||[];adminSpecialties=result.specialties||{};adminLeadership=result.leadershipLevels||{};
+  adminPeople=(result.people||[]).filter(p=>p.dept!=='bestuur');adminSpecialties=result.specialties||{};adminLeadership=result.leadershipLevels||{};
   managerReady=true;
   await loadLastMidOrder();render();
   $('manage-status').textContent='Beheer actief. Voor verslepen: vul hieronder eerst een motivering in. Sleep daarna een middenkaderkaart binnen de eigen kolom.';
@@ -3075,7 +3051,7 @@ $('manage-undo').addEventListener('click',async()=>{
    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason})});
   const selected=$('manage-person').value;
   const fresh=await authFetch('/api/organogram/placements/admin');
-  adminPeople=fresh.people||[];adminSpecialties=fresh.specialties||{};adminLeadership=fresh.leadershipLevels||{};
+  adminPeople=(fresh.people||[]).filter(p=>p.dept!=='bestuur');adminSpecialties=fresh.specialties||{};adminLeadership=fresh.leadershipLevels||{};
   $('manage-person').value=selected;fillAdminPerson();$('manage-reason').value='';
   await loadPublic();
   $('manage-status').textContent='Vorige instelling hersteld en gelogd. Geen bevoegdheden veranderd.';
