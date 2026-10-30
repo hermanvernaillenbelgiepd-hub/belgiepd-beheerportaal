@@ -1187,8 +1187,12 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  height:226px!important;flex:0 0 198px!important;
  border-radius:12px;overflow:hidden;border:1px solid #6688a9;background:#10243b
 }
-.person-profile-dialog .person-profile-overview .portrait.bpd-service-uniform>img.bpd-service-coat{
- display:block;width:100%;height:100%;object-fit:contain
+.person-profile-dialog .person-profile-overview .portrait.bpd-service-uniform>.bpd-service-stage{
+ position:absolute;display:block;width:120%;height:auto;aspect-ratio:603/469;
+ left:50%;top:50%;transform:translate(-50%,-50%);
+}
+.person-profile-dialog .person-profile-overview .bpd-service-stage>img.bpd-service-coat{
+ display:block;width:100%;height:100%;object-fit:fill
 }
 .person-profile-dialog .person-profile-overview .bpd-service-grade{
  position:absolute;display:flex;align-items:center;justify-content:center;z-index:3;
@@ -1467,8 +1471,9 @@ function makeServiceUniformPortrait(person){
  const outer=el('span','portrait bpd-service-uniform');
  outer.setAttribute('role','img');
  outer.setAttribute('aria-label','Uniformvoorbeeld van '+dept+' · '+(person.rank||''));
+ const stage=el('span','bpd-service-stage');
  const img=el('img','bpd-service-coat');img.src=src;img.alt='';img.loading='lazy';
- outer.append(img);
+ stage.append(img);
  const grade=serviceRankKey(person.rank);
  const simple=grade.split('_')[0];
  const rankImage=serviceRankArtworks.get('rank_'+dept+'_'+grade)||
@@ -1482,7 +1487,8 @@ function makeServiceUniformPortrait(person){
  }else{
   badge.append(el('span','bpd-service-grade-fallback',String(person.rank||'').slice(0,32)));
  }
- outer.append(badge);
+ stage.append(badge);
+ outer.append(stage);
  return outer;
 }
 function openPersonProfile(p){
