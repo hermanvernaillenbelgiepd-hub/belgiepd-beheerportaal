@@ -147,6 +147,15 @@ export function installRoleArtworkRoutes(app,{requireUser}){
     const before=await tx.get(ref),previous=before.exists?before.data():null;
     if(previous&&!mayEditDepartment(req.bpd,previous.department||'politie'))
      throw fail(403,'Geen toegang tot dit bestaande logo');
+    // An old-style WebP replacement must not orphan the current Cloud version.
+    if(previous?.storagePath){
+     tx.create(db.collection('bpd_uniform_library_versions').doc(),{
+      key:input.key,kind:previous.kind,department:previous.department,
+      code:previous.code,label:previous.label,storagePath:previous.storagePath,
+      assetId:null,mime:previous.mime||'image/webp',
+      version:previous.version,createdBy:previous.updatedBy||'',
+      createdAt:FieldValue.serverTimestamp(),historic:true});
+    }
     tx.create(asset,{key:input.key,base64:input.base64,mime:'image/webp',
      createdAt:FieldValue.serverTimestamp(),createdBy:req.bpd.uid});
     tx.set(ref,{kind:input.kind,code:input.code,department:input.department,
