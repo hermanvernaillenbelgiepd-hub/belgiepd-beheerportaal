@@ -135,11 +135,21 @@ export function setupUniformComposer({api,$}){
     name.style.setProperty('--name-length-factor',
      String(Math.max(.53,Math.min(1,15/Math.max(1,member.name.length)))));
     plate.append(name,call);
-    const accent=el('span','compose-nameplate-left-accent');
-    accent.setAttribute('aria-hidden','true');
-    for(let index=0;index<4;index++)
-     accent.append(el('span','compose-nameplate-left-accent-stripe'));
-    plate.append(accent);
+    if(dept.value==='politie'){
+     // Mirror the SAME rank drawing used for this grade. Keep only its
+     // decorative left edge and hide all crowns/stars below the name field.
+     const rankKey={'100':'ap','200':'ap','300':'ainp','400':'inp',
+      '500':'1inp','600':'ahinp','700':'hinp','800':'1hinp',
+      '900':'1hcp','910':'1cp','920':'acp','930':'acp'}[grade.value]||'ap';
+     const rankImage=asset('rank',draft.assets.rank)?.imageUrl||
+      '/assets/bpd-rank-'+rankKey+'-clean-20261027.webp';
+     const flipped=el('img','compose-nameplate-mirrored-grade');
+     flipped.src=rankImage;flipped.alt='';flipped.draggable=false;
+     flipped.setAttribute('aria-hidden','true');
+     const textField=el('span','compose-nameplate-text-field');
+     textField.setAttribute('aria-hidden','true');
+     plate.append(flipped,textField);
+    }
     box.append(plate);
     box.setAttribute('aria-label','Naamplaat: '+member.name+' · '+member.call);
    }else if(url){
