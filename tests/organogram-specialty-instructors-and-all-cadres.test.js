@@ -200,6 +200,7 @@ test('grid and original uniform/drag controls remain available',()=>{
  assert.match(html,/middleCadreLayout\(level\.members\)/);
  assert.match(html,/canDragMiddle\(p,series\)/);
  assert.match(html,/unified-gold-navy-frame-20261028/);
- assert.match(html,/Klassiek organogram/);
+ assert.doesNotMatch(html,/Klassiek organogram/);
+ assert.match(html,/Operationeel organogram per hulpdienst/);
  assert.match(html,/undoLastMiddleDrag/);
 });
