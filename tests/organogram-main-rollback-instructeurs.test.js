@@ -9,13 +9,14 @@ import {validatePlacement,manualDisplay,mergePlacement,canManagePlacements,
 
 const txt=path=>readFileSync(new URL(path,import.meta.url),'utf8');
 const id='111111111111111111',guild='222222222222222222';
-test('Main preserves approved uniforms and keeps classic page as a rollback view',()=>{
+test('Main has only the operational hierarchy with fresh woven-nameplate renderer',()=>{
  const classic=txt('../public/organogram.html');
  const next=txt('../public/organogram-hierarchie.html');
  const home=txt('../public/index.html');
  assert.match(classic,/classic-metal-nameplate-20261030/);
  assert.match(classic,/Nieuw organogram/);
- assert.match(next,/Klassiek organogram/);
+ assert.doesNotMatch(next,/Klassiek organogram/);
+ assert.match(classic,/location\.replace\('\/organogram-hierarchie\.html'/);
  assert.match(next,/\/assets\/organogram-police-formal\.js\?v=classic-metal-nameplate-20261030/);
  assert.match(next,/\/assets\/organogram-police-formal\.css\?v=classic-metal-nameplate-20261030/);
  assert.match(next,/BPDPoliceUniform\?\.makePortrait/);
