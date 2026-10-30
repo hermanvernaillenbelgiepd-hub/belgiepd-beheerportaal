@@ -203,9 +203,9 @@
 
 .bpd-police-formal.bpd-assigned-coat .bpd-gold-stage>.bpd-chest-insignia,
 .bpd-police-formal.bpd-assigned-coat .bpd-silver-stage>.bpd-chest-insignia{
- box-sizing:border-box;border:1px solid #7188a5;
- background:#0a1525;overflow:hidden;display:flex;align-items:center;
- justify-content:center
+ box-sizing:border-box;border:0;box-shadow:none;
+ border-radius:0;background:#0a1525;overflow:hidden;
+ display:flex;align-items:center;justify-content:center
 }
 .bpd-police-formal.bpd-assigned-coat .bpd-gold-cloth-rank>.bpd-gold-grade-art,
 .bpd-police-formal.bpd-assigned-coat .bpd-silver-cloth-rank>.bpd-silver-grade-art{
@@ -263,20 +263,22 @@
 .bpd-police-formal .bpd-woven-nameplate>.bpd-woven-name{top:14%;font-size:clamp(5px,12cqw,17px)}
 .bpd-police-formal .bpd-woven-nameplate>.bpd-woven-call{top:58%;font-size:clamp(4px,7.6cqw,12px)}
 
-/* Consistent embroidered right-edge lines on the SEPARATE rank plaque.
-   Gold only for officer/chief grades; HINP and every lower grade stay silver.
-   This overlay affects decoration only; the uploaded rank artwork remains
-   unchanged and can still be replaced from the Uniformatelier. */
-.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-gold{--rank-edge-thread:#ffd65a}
-.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-silver{--rank-edge-thread:#e0e7ef}
-.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-gold::after,
-.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-silver::after{
+/* Rank's RIGHT threads are part of the actual selected rank artwork.
+   Do NOT draw new diagonal strokes: the previous 18% striped panel caused
+   the original silver threads AND a second gold set to show side by side.
+   Only recolor the EXISTING threads on officer rank art. For silver grades,
+   the uploaded art is displayed completely unchanged.
+   mix-blend-mode:color preserves the underlying embroidery luminance, so
+   no line is created where the original rank image has no stitched thread. */
+.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-gold{
+ isolation:isolate;
+}
+.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-gold::after{
  content:"";position:absolute;z-index:3;pointer-events:none;
- top:0;bottom:0;right:0;width:18%;box-sizing:border-box;
- background:
-  repeating-linear-gradient(130deg,
-    transparent 0 5px,var(--rank-edge-thread) 5px 6.5px,
-    transparent 6.5px 12px),
-  #111b2b;
+ top:0;bottom:0;right:0;width:36%;
+ background-color:#ffd044;mix-blend-mode:color;
  border:0;box-shadow:none;
+}
+.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-silver::after{
+ content:none!important;display:none!important;
 }
