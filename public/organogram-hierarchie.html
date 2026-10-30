@@ -1236,6 +1236,8 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-dialog .person-profile-overview .bpd-service-nameplate>.bpd-service-call{
  font-size:clamp(3px,.42vw,8px);color:#bcd1e2;margin-top:3%
 }
+.person-profile-dialog .person-profile-overview .bpd-custom-uniform-layer{position:absolute;display:block;pointer-events:none}
+.person-profile-dialog .person-profile-overview .bpd-custom-uniform-layer>img{width:100%;height:100%;object-fit:contain}
 </style>
 </head>
 <body>
@@ -1391,7 +1393,8 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
   <div id="person-profile-content"></div>
  </div>
 </dialog>
-<script src="/assets/organogram-police-formal.js?v=editable-uniform-pan-text-20261030"></script>
+<script src="/visual-layers-render.js?v=20261030"></script>
+<script src="/assets/organogram-police-formal.js?v=service-assets-20261030"></script>
 <script src="/assets/organogram-decorations.js?v=5"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
@@ -1503,12 +1506,13 @@ function serviceRankKey(rank){
 function makeServiceUniformPortrait(person){
  const dept=String(person?.dept||''),key='uniform_'+dept+'_default';
  const src=serviceUniformArtworks.get(key);
- if(!src)return null;
+ const iconFallback=window.BPDVisualAssets?.baseIcon?.(dept);
+ if(!src&&!iconFallback)return null;
  const outer=el('span','portrait bpd-service-uniform');
  outer.setAttribute('role','img');
  outer.setAttribute('aria-label','Uniformvoorbeeld van '+dept+' · '+(person.rank||''));
  const stage=el('span','bpd-service-stage');
- const img=el('img','bpd-service-coat');img.src=src;img.alt='';img.loading='lazy';
+ const img=el('img','bpd-service-coat');img.src=src||iconFallback;img.alt='';img.loading='lazy';
  const coatPosition=serviceCoatLayouts.get(dept+'_default');
  if(coatPosition){
   img.style.transform='translate('+coatPosition.offsetX+'%,'+coatPosition.offsetY+'%) scale('+(coatPosition.zoom/100)+')';
@@ -1544,6 +1548,7 @@ function makeServiceUniformPortrait(person){
  callLine.style.transform='scale('+((namePosition.callScale??100)/100)+')';
  nameplate.append(nameLine,callLine);
  stage.append(nameplate);
+ window.BPDVisualAssets?.appendTo?.(stage,person,'default');
  outer.append(stage);
  return outer;
 }
@@ -2117,11 +2122,13 @@ document.querySelector('.toolbar').addEventListener('click',event=>{
 $('search').addEventListener('input',event=>{state.query=event.target.value;render()});
 async function loadPublic(){
  try{
-  const [response,artworkManifest,uniformLayoutData]=await Promise.all([
+  const [response,artworkManifest,uniformLayoutData,visualLayers]=await Promise.all([
    authFetch('/api/organogram/hierarchie'),
    authFetch('/api/role-artwork/manifest').catch(()=>({artworks:[]})),
-   authFetch('/api/uniform-management/layouts').catch(()=>({layouts:[]}))
+   authFetch('/api/uniform-management/layouts').catch(()=>({layouts:[]})),
+   authFetch('/api/visual-layers').catch(()=>({layers:[]}))
   ]);
+  window.BPDVisualAssets?.setData?.(artworkManifest?.artworks,visualLayers?.layers);
   applyRoleArtworkManifest(artworkManifest?.artworks);
   setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats);
   window.BPDPoliceUniform?.setGradeArtworkManifest?.(artworkManifest?.artworks);
