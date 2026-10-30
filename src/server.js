@@ -26,6 +26,7 @@ import { installDiscordOAuth } from './discord-oauth.js';
 import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
 import {installDiscordDiagnosticRoutes} from './discord-role-diagnostics-routes.js';
 import { installRoleRoutes } from './role-routes.js';
+import {installRoleArtworkRoutes} from './role-artwork-routes.js';
 import {installTrainingRequestRoutes} from './training-request-routes.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
@@ -75,6 +76,7 @@ app.use('/api/callsigns',express.json({limit:'12kb',strict:true,
   verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
+app.use('/api/role-artwork',express.json({limit:'230kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
@@ -575,6 +577,7 @@ installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
+installRoleArtworkRoutes(app,{requireUser});
 installManualRoleRoutes(app,{requireUser});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
