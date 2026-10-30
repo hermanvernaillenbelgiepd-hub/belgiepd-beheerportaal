@@ -185,7 +185,7 @@ export function setupUniformComposer({api,$}){
   const medal=['medals','ribbons'].includes(active);
   const list=medal?awards.filter(x=>x.kind===(active==='medals'?'medal':'ribbon')):
    images.filter(x=>x.department===dept.value&&x.kind===active&&x.active!==false&&
-    (active!=='uniform'||!['silver','gold'].includes(x.code)));
+    (active!=='uniform'||!['silver','gold','default'].includes(x.code)));
   if(active!=='uniform'&&!medal){
    const clear=el('button','compose-choice','Automatisch / verbergen');
    clear.type='button';clear.onclick=()=>{draft.assets[active]='';render()};gallery.append(clear);
