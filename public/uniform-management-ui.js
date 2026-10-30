@@ -4,6 +4,16 @@ export function setupUniformManagementUI({api,$,notice}){
   ['ambulance','Ambulance'],['depannage','Depannage'],['burger','Burger'],['beveiliging','Beveiligingsagent (voorbereiding)']];
  const names=Object.fromEntries(DEPTS);
  const $p=id=>$(id),dept=$p('uniformDept'),variant=$p('uniformVariant');
+ const deptAccessHelp=$p('uniformDeptAccessHelp'),
+  deptAccessText=$p('uniformDeptAccessText'),
+  technicalShortcut=$p('uniformSwitchTechnical');
+ technicalShortcut.onclick=()=>{
+  const switcher=$p('profileSwitcher'),select=$p('profileMode'),apply=$p('profileApply');
+  if(!switcher||switcher.hidden)return;
+  select.value='technisch';
+  switcher.scrollIntoView({behavior:'smooth',block:'center'});
+  apply.focus({preventScroll:true});
+ };
  const frame=$p('uniformPreviewFrame'),coat=$p('uniformPreviewCoat');
  const patch=$p('uniformPreviewPatch'),patchLabel=$p('uniformPreviewPatchLabel');
  const nameplate=$p('uniformPreviewNameplate');
@@ -356,15 +366,34 @@ export function setupUniformManagementUI({api,$,notice}){
   rankAssets=(assets.artworks||[]).filter(a=>a.kind==='rank'&&a.active);
   authorized=positions.editableDepartments||[];
   dept.replaceChildren();
-  for(const [value,label] of DEPTS)
-   if(authorized.includes(value))dept.append(new Option(label,value));
-  if(!dept.options.length)throw Error('Geen hulpdienst met uniformbeheerrechten.');
+  // List all service names so the distinction between an absent service and
+  // missing management permissions is obvious. The backend remains authoritative.
+  for(const [value,label] of DEPTS){
+   const permitted=authorized.includes(value);
+   const option=new Option(permitted?label:label+' · geen beheerrechten',value);
+   option.disabled=!permitted;
+   dept.append(option);
+  }
+  if(!authorized.some(value=>DEPTS.some(([id])=>id===value)))
+   throw Error('Geen hulpdienst met uniformbeheerrechten.');
+  const missing=DEPTS.filter(([value])=>value!=='beveiliging'&&!authorized.includes(value));
+  deptAccessHelp.hidden=missing.length===0;
+  if(missing.length){
+   const current=DEPTS.filter(([value])=>authorized.includes(value)).map(([,label])=>label);
+   const hasTechnicalSwitch=!$p('profileSwitcher').hidden;
+   deptAccessText.textContent='Je kunt momenteel '+(current.join(', ')||'geen hulpdienst')+
+    ' beheren. Andere hulpdiensten worden pas bewerkbaar wanneer je het juiste portaalprofiel hebt geactiveerd.';
+   technicalShortcut.hidden=!hasTechnicalSwitch;
+  }else technicalShortcut.hidden=true;
   if(authorized.includes(previousDept))dept.value=previousDept;
   variants();
   if([...variant.options].some(o=>o.value===previousVariant)){
    variant.value=previousVariant;useLayout();
   }
-  message('Uniformbeheer geladen. Wijzigingen zijn pas actief na bewaren.');
+  message(missing.length
+   ?'Uniformbeheer geladen voor '+authorized.filter(value=>DEPTS.some(([id])=>id===value)).length+
+     ' hulpdienst(en). Kies bovenaan Technisch beheer als je hiervoor bevoegd bent.'
+   :'Uniformbeheer geladen. Wijzigingen zijn pas actief na bewaren.');
  }
  $p('uniformReload').onclick=()=>reload().catch(e=>message(e.message,true));
  $p('uniformSaveImage').onclick=async()=>{
