@@ -21,6 +21,18 @@ export function setupUniformManagementUI({api,$,notice}){
  const frame=$p('uniformPreviewFrame'),coat=$p('uniformPreviewCoat');
  const patch=$p('uniformPreviewPatch'),patchLabel=$p('uniformPreviewPatchLabel');
  const nameplate=$p('uniformPreviewNameplate');
+ const visibleSection=$p('uniformElementVisibilitySection');
+ const visibleStatus=$p('uniformVisibilityStatus');
+ const gradeControls=$p('uniformGradeControls'),nameControls=$p('uniformNameControls');
+ const flags={
+  showGradePlate:$p('uniformShowGrade'),
+  showNamePlate:$p('uniformShowName'),
+  showExtraLogo:$p('uniformShowExtraLogo'),
+  showHelmet:$p('uniformShowHelmet'),
+  showProfessionBadge:$p('uniformShowProfession')
+ };
+ const optionalDepts=['brandweer','ambulance','depannage'];
+ const allVisible=()=>Object.fromEntries(Object.keys(flags).map(key=>[key,true]));
  const gradePreview=$p('uniformGradePreview'),gradePicture=$p('uniformPreviewGradeImage');
  const status=$p('uniformStatus'),reason=$p('uniformReason');
  const x=$p('uniformX'),y=$p('uniformY'),w=$p('uniformW'),h=$p('uniformH');
@@ -32,7 +44,7 @@ export function setupUniformManagementUI({api,$,notice}){
  const nf=$p('uniformNameFont'),cf=$p('uniformCallFont');
  const prefix=$p('uniformNamePrefix'),exampleName=$p('uniformNameExample'),
   exampleCall=$p('uniformCallExample');
- let layouts=new Map(),nameLayouts=new Map(),coatLayouts=new Map(),images=new Map(),rankAssets=[],authorized=[],drag=null,imageData='';
+ let layouts=new Map(),nameLayouts=new Map(),coatLayouts=new Map(),visibilityLayouts=new Map(),images=new Map(),rankAssets=[],authorized=[],drag=null,imageData='';
  let sourceImage=null,sourceWidth=0,sourceHeight=0,lockedRatio=603/469,sourceRevision=0;
  const defaults={
   politie_silver:{left:62.3,top:56.75,width:26.6,height:12.25},
@@ -90,6 +102,30 @@ export function setupUniformManagementUI({api,$,notice}){
   canvasWidth.value=width;canvasHeight.value=height;
   lockedRatio=width/height;keepAspect.checked=true;return true;
  }
+ function selectedFlags(){
+  if(!optionalDepts.includes(dept.value))return allVisible();
+  return Object.fromEntries(Object.entries(flags).map(([key,control])=>[key,control.checked]));
+ }
+ function updateVisibleControls(){
+  const configurable=optionalDepts.includes(dept.value);
+  visibleSection.hidden=!configurable;
+  $p('uniformHelmetToggle').hidden=dept.value!=='brandweer';
+  $p('uniformProfessionToggle').hidden=dept.value!=='ambulance';
+  const current=selectedFlags();
+  patch.hidden=!current.showGradePlate;
+  nameplate.hidden=!current.showNamePlate;
+  gradeControls.hidden=!current.showGradePlate;
+  nameControls.hidden=!current.showNamePlate;
+  $p('uniformSavePosition').hidden=!current.showGradePlate;
+  $p('uniformSaveNameplate').hidden=!current.showNamePlate;
+  document.dispatchEvent(new CustomEvent('bpd:uniform-visibility-change',{detail:{
+   department:dept.value,variant:variant.value,...current
+  }}));
+ }
+ for(const checkbox of Object.values(flags))
+  checkbox.addEventListener('change',()=>{updateVisibleControls();
+   visibleStatus.textContent='Voorbeeld aangepast. Klik Zichtbare onderdelen bewaren om te publiceren.';
+  });
  function render(){
   if(validCanvas()){
    frame.style.aspectRatio=canvasWidth.value+'/'+canvasHeight.value;
@@ -135,6 +171,7 @@ export function setupUniformManagementUI({api,$,notice}){
   const url=imageData||images.get(imageKey())||builtin();
   coat.hidden=!url;coat.src=url||'';
   frame.classList.toggle('uniform-empty',!url);
+  updateVisibleControls();
  }
  function useLayout(){
   sourceRevision++;sourceImage=null;sourceWidth=sourceHeight=0;
@@ -152,6 +189,12 @@ export function setupUniformManagementUI({api,$,notice}){
   canvasHeight.value=coatPos.canvasHeight||469;
   keepAspect.checked=coatPos.keepAspectRatio!==false;
   lockedRatio=Number(canvasWidth.value)/Number(canvasHeight.value);
+  const stored=visibilityLayouts.get(key())||allVisible();
+  for(const [field,checkbox] of Object.entries(flags))
+   checkbox.checked=stored[field]!==false;
+  visibleStatus.textContent=optionalDepts.includes(dept.value)?
+   'Zichtbare onderdelen laden of aanpassen en afzonderlijk bewaren.':
+   'Voor Politie blijven de bestaande uniformonderdelen ongewijzigd.';
   updateGradeChoices();render();
  }
  function variants(){
@@ -365,6 +408,7 @@ export function setupUniformManagementUI({api,$,notice}){
   layouts=new Map((positions.layouts||[]).map(r=>[r.key,r]));
   nameLayouts=new Map((positions.nameplates||[]).map(r=>[r.key,r]));
   coatLayouts=new Map((positions.coats||[]).map(r=>[r.key,r]));
+  visibilityLayouts=new Map((positions.visibility||[]).map(r=>[r.key,r]));
   images=new Map((assets.artworks||[]).filter(a=>a.active&&a.kind==='uniform')
    .map(a=>[a.key,a.imageUrl]));
   rankAssets=(assets.artworks||[]).filter(a=>a.kind==='rank'&&a.active);
@@ -443,6 +487,23 @@ export function setupUniformManagementUI({api,$,notice}){
    message('Canvasformaat, uniformpositie en grootte opgeslagen. Naamplaat en gradenplaat blijven apart instelbaar.');
   }catch(e){message('Uniformpositie bewaren mislukt: '+e.message,true)}
   finally{button.disabled=false}
+ };
+ $p('uniformVisibilitySave').onclick=async()=>{
+  if(!optionalDepts.includes(dept.value))return;
+  const motivation=reason.value.trim();
+  if(motivation.length<8){
+   visibleStatus.textContent='Vul eerst de motivering van minstens 8 tekens bovenaan in.';
+   return;
+  }
+  const payload={department:dept.value,variant:variant.value,
+   ...selectedFlags(),reason:motivation};
+  const btn=$p('uniformVisibilitySave');btn.disabled=true;
+  try{
+   await api('/api/uniform-management/visibility',{method:'PUT',body:payload});
+   visibilityLayouts.set(key(),payload);
+   visibleStatus.textContent='Zichtbaarheid opgeslagen voor '+names[dept.value]+'. Posities en afbeeldingen zijn behouden.';
+  }catch(e){visibleStatus.textContent='Bewaren mislukt: '+e.message}
+  finally{btn.disabled=false}
  };
  $p('uniformSaveNameplate').onclick=async()=>{
   const motivation=reason.value.trim();
