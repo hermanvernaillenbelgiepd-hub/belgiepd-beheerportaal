@@ -5,8 +5,8 @@ const UID=/^\d{15,22}$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const nameCode=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
-let rules=[],elementRules=[],coatChoices=[],assetUrls=new Map();
-function setData(assignments,artworks,visualRules=[],uniformGradeChoices=[]){
+let rules=[],elementRules=[],coatChoices=[],compositions=[],assetUrls=new Map();
+function setData(assignments,artworks,visualRules=[],uniformGradeChoices=[],savedCompositions=[]){
  rules=(Array.isArray(assignments)?assignments:[]).filter(x=>
   x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
   ['service','cadre','rank','person','group','function'].includes(x.scope)&&
@@ -20,6 +20,10 @@ function setData(assignments,artworks,visualRules=[],uniformGradeChoices=[]){
   x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
   ['rank','helmet','profession'].includes(x.kind)&&CODE.test(x.uniformCode||'')&&
   CODE.test(x.assetCode||'')&&CODE.test(x.selector||''));
+ compositions=(Array.isArray(savedCompositions)?savedCompositions:[]).filter(x=>
+  x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
+  x.assets&&x.layers&&
+  ['call','rank','function'].includes(x.scope));
  assetUrls=new Map();
  for(const row of Array.isArray(artworks)?artworks:[]){
   const key=String(row?.key||''),url=String(row?.imageUrl||'');
@@ -55,6 +59,18 @@ function forPerson(p){
    dept==='ambulance'&&functionCode?functionCode:'';
   if(expected&&assetUrls.has('uniform_'+dept+'_'+expected))uniformCode=expected;
  }
+ // An actual rank/function gets its own composed coat, with personal exceptions
+ // taking precedence. The template is visual only; it never determines authority.
+ const compScope=dept==='politie'?'call':dept==='ambulance'?'function':'rank';
+ const compSelector=compScope==='call'?series:
+  compScope==='function'?functionCode:nameCode(p.rank);
+ const composition=compositions.find(x=>x.department===dept&&
+  x.scope===compScope&&x.selector===compSelector);
+ const personUniform=ordered.slice(0,2).some(x=>x?.uniformCode&&
+  assetUrls.has('uniform_'+dept+'_'+x.uniformCode));
+ if(composition?.assets?.uniform&&!personUniform&&
+  assetUrls.has('uniform_'+dept+'_'+composition.assets.uniform))
+  uniformCode=composition.assets.uniform;
  const elementCodes={},elementUrls={};
  for(const kind of ['rank','helmet','profession','logo','pictogram','patch']){
   const coatScope=dept==='politie'&&kind==='rank'&&series?'call':
@@ -98,7 +114,18 @@ function forPerson(p){
    }
   }
  }
- return {uniformCode,badgeStyle,uniformGroup:group,callSeries:series,profession:functionCode,elementCodes,elementUrls,
+ if(composition?.assets){
+  for(const kind of ['rank','helmet','profession','logo']){
+   const selected=composition.assets[kind];
+   const url=selected&&assetUrls.get(kind+'_'+dept+'_'+selected);
+   const personal=elementRules.find(x=>x.department===dept&&x.kind===kind&&
+    x.scope==='person'&&
+    (x.selector===id||x.selector==='call_'+callCode));
+   if(url&&!personal){elementCodes[kind]=selected;elementUrls[kind]=url;}
+  }
+ }
+ return {uniformCode,badgeStyle,uniformGroup:group,callSeries:series,profession:functionCode,
+  visualLayout:composition?.layers||null,elementCodes,elementUrls,
   rankUrl:elementUrls.rank||'',
   uniformUrl:uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
 }
