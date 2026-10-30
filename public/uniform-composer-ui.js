@@ -126,9 +126,14 @@ export function setupUniformComposer({api,$}){
    if(kind==='name'){
     const member=sampleMember();
     const level=grade.selectedOptions[0]?.textContent||'';
-   const gold=dept.value==='politie'&&(
-    ['900','910','920','930'].includes(grade.value)||
-    /\b(?:ACP|CP|1-?CP|HCP|1-?HCP|Korpschef)\b/i.test(level));
+    // HINP, 1-HINP and every lower grade are always SILVER. Officer
+    // and corps names are GOLD, as in the live personnel portraits.
+    const policeRankNumber=Number(grade.value);
+    const lowPoliceGrade=dept.value==='politie'&&Number.isFinite(policeRankNumber)&&
+     policeRankNumber>=100&&policeRankNumber<900;
+    const gold=dept.value==='politie'&&!lowPoliceGrade&&(
+     ['900','910','920','930'].includes(grade.value)||
+     /\b(?:ACP|CP|1-?CP|HCP|1-?HCP|Korpschef)\b/i.test(level));
    const plate=el('span','compose-nameplate '+(gold?'compose-metal-gold':'compose-metal-silver'));
     const name=el('strong','compose-name',member.name);
     const call=el('small','compose-call',member.call);
