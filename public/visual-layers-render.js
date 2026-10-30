@@ -53,13 +53,12 @@
  }
  function hasProfessionLayer(person,variant){
   const visual=window.BPDUniformAssignments?.forPerson?.(person);
-  return layers.some(layer=>layer.kind==='profession'&&
-   layer.department===person?.dept&&layer.variant===variant&&
-   layerAllowed(person.dept,layer.kind)&&
-   (layer.code===visual?.profession||layer.code===visual?.elementCodes?.profession));
+  return Boolean(visual?.elementUrls?.profession)&&
+   layerAllowed(person.dept,'profession');
  }
  function appendTo(stage,person,variant){
   if(!stage||!person)return;
+  const drawn=new Set();
   for(const layer of layers){
    if(layer.department!==person.dept||layer.variant!==variant||
     !layerAllowed(person.dept,layer.kind))continue;
@@ -78,7 +77,30 @@
    const img=document.createElement('img');
    img.src=layer.src;img.alt='';img.loading='lazy';
    img.style.cssText='display:block;width:100%;height:100%;object-fit:contain';
-   wrapper.append(img);stage.append(wrapper);
+   wrapper.append(img);stage.append(wrapper);drawn.add(layer.kind);
+  }
+  // One sensible initial placement per type when no custom layer was configured.
+  // No manual badge-to-coat linking is required. Managers can later refine
+  // positions in Uniformbeheer > Extra lagen.
+  const selected=window.BPDUniformAssignments?.forPerson?.(person);
+  const defaults={
+   helmet:{left:19,top:2,width:62,height:34,zIndex:9},
+   profession:{left:52,top:43,width:23,height:13,zIndex:9}
+  };
+  for(const [kind,position] of Object.entries(defaults)){
+   const url=selected?.elementUrls?.[kind];
+   if(!url||drawn.has(kind)||!layerAllowed(person.dept,kind)||
+    (kind==='helmet'&&person.dept!=='brandweer')||
+    (kind==='profession'&&person.dept!=='ambulance'))continue;
+   const frame=document.createElement('span');
+   frame.className='bpd-custom-uniform-layer';
+   frame.style.cssText='position:absolute;pointer-events:none;display:block;overflow:hidden;'+
+    'left:'+position.left+'%;top:'+position.top+'%;width:'+position.width+'%;height:'+
+    position.height+'%;z-index:'+position.zIndex+';';
+   const img=document.createElement('img');
+   img.src=url;img.alt='';img.loading='lazy';
+   img.style.cssText='display:block;width:100%;height:100%;object-fit:contain';
+   frame.append(img);stage.append(frame);
   }
  }
  function baseIcon(dept){
