@@ -183,6 +183,10 @@ header button{padding:7px 10px;font-size:12px}
 #uniformQuickSection .uniform-grade-choice img{display:block;width:100%;height:65px;object-fit:contain}
 #uniformQuickSection .uniform-grade-choice small{font-size:11px;text-align:center;overflow-wrap:anywhere}
 #uniformQuickSection .uniform-grade-blank{font-size:30px;color:#a7c5e5}
+#uniformSection .uniform-legacy-editor{margin-top:18px;border:1px solid #4b6b8e;border-radius:9px;padding:10px;background:#0e2239}
+#uniformSection .uniform-legacy-editor>summary{font-size:13px;cursor:pointer;color:#d4e9ff;padding:4px}
+#uniformSection .uniform-legacy-editor[open]>summary{margin-bottom:14px}
+
 
 #uniformQuickSection .uniform-quick-row select{min-width:0;width:100%;font-size:12px}
 #uniformQuickSection .uniform-quick-row button{font-size:11px;padding:7px 10px}
@@ -444,6 +448,7 @@ header button{padding:7px 10px;font-size:12px}
  <p id="uniformQuickStatus" class="muted" role="status" aria-live="polite">Overzicht laden…</p>
  <small>Een nieuwe afbeelding upload je éénmaal in de centrale bibliotheek. Standaardtekeningen en bestaande koppelingen blijven behouden zolang je niets verandert.</small>
  </section>
+ <details class="uniform-legacy-editor"><summary><strong>Geavanceerd: naamplaat, gradenplaat, grootte en positie aanpassen</strong></summary>
  <p>Beheer de uniformafbeelding en de exacte plaats van het gradenteken zonder een codewijziging. Dit verandert uitsluitend de <strong>weergave</strong>, niet de Discord-rollen, rangen of dossierbevoegdheden.</p>
  <div class="grid">
   <div>
@@ -645,7 +650,8 @@ header button{padding:7px 10px;font-size:12px}
   <div id="visualLayerStatus" class="muted" aria-live="polite">Selecteer eerst een opgeslagen afbeelding.</div>
  </section>
  <div id="uniformStatus" class="muted" role="status" aria-live="polite">Uniformbeheer laden…</div>
- <p class="muted">Bij politie blijven de zilveren en gouden uniformen apart instelbaar. Voor andere hulpdiensten verschijnen nieuwe uniformeportretten pas nadat je een basisafbeelding hebt geüpload. Een bijhorende gradenplaat wordt pas getoond als er een bijpassend gradenteken is geregistreerd.</p>
+ <p class="muted">Deze instellingen dienen voor de positionering van bestaande uniformvarianten. De nieuwe afbeeldingen kies je bovenaan per uniform en graad. Een oude uniformafbeelding wordt niet automatisch opnieuw geselecteerd.</p>
+</details>
 </section>
 </main>
 <script type="module">
@@ -654,7 +660,7 @@ import {setupRoleArtworkUI} from '/role-artwork-ui.js';
 import {setupUniformManagementUI} from '/uniform-management-ui.js?v=optional-uniform-pieces-20261030';
 import {setupVisualLayerUI} from '/visual-layer-ui.js?v=optional-uniform-pieces-20261030';
 import {setupUniformAssignmentUI} from '/uniform-assignment-ui.js';
-import {setupUniformQuickUI} from '/uniform-quick-ui.js?v=easy-uniform-20261030';
+import {setupUniformQuickUI} from '/uniform-quick-ui.js?v=illustrated-uniform-20261030';
 import {setupUniformLibraryUI} from '/uniform-library-ui.js?v=cloud-library-20261030';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
