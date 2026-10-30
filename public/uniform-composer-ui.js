@@ -152,6 +152,7 @@ export function setupUniformComposer({api,$}){
      String(Math.max(.53,Math.min(1,15/Math.max(1,member.name.length)))));
     plate.append(name,call);
     box.append(plate);
+    window.BPDNameplateFit?.watch(plate);
     box.setAttribute('aria-label','Naamplaat: '+member.name+' · '+callLabel);
    }else if(url){
     const img=el('img');img.src=url;img.alt=kindNames[kind];
