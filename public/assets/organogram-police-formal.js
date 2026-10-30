@@ -271,18 +271,20 @@
   stage.style.height='auto';
   img.style.objectFit=cfg.keepAspectRatio===false?'fill':'contain';
  }
- function applyUniformCoatPlacement(node,variant,stage=null,assigned=false){
+ function applyUniformCoatPlacement(node,variant,stage=null){
   const placement=uniformCoatOverrides.get(variant);
   if(!placement)return;
-  const move='translate('+placement.offsetX+'%,'+placement.offsetY+'%) scale('+(placement.zoom/100)+')';
-  if(assigned&&stage){
-   // One shared transform for coat, name, rank and awarded decorations.
-   // Previously just the coat was enlarged, leaving the insignia tiny.
-   stage.style.transform='translate(-50%,-50%) '+move;
+  const scale=placement.zoom/100;
+  // Always transform the full scene, including nameplate, rank and awards.
+  // Old 603:469 fallback uniforms previously zoomed only the jacket image,
+  // causing the decorations to remain tiny inside the stitched chest slots.
+  if(stage){
+   stage.style.transform='translate(-50%,-50%) translate('+
+    placement.offsetX+'%,'+placement.offsetY+'%) scale('+scale+')';
    stage.style.transformOrigin='center';
    node.style.transform='';
   }else{
-   node.style.transform=move;
+   node.style.transform='translate('+placement.offsetX+'%,'+placement.offsetY+'%) scale('+scale+')';
    node.style.transformOrigin='center';
   }
  }
@@ -537,7 +539,7 @@
    img.draggable=false;
    applyUniformCanvas(stage,img,'gold');
    if(individualGold)adaptAssignedUniform(stage,img);
-   applyUniformCoatPlacement(img,'gold',stage,Boolean(individualGold));
+   applyUniformCoatPlacement(img,'gold',stage);
    stage.append(img);
    const plate=makeGoldNameplate(person);
    applyUniformNameplatePlacement(plate,'gold');
@@ -583,7 +585,7 @@
   image.draggable=false;
   applyUniformCanvas(stage,image,'silver');
   if(individualSilver)adaptAssignedUniform(stage,image);
-  applyUniformCoatPlacement(image,'silver',stage,Boolean(individualSilver));
+  applyUniformCoatPlacement(image,'silver',stage);
   stage.append(image);
   const nameplate=makeSilverWovenNameplate(person);
   applyUniformNameplatePlacement(nameplate,'silver');
