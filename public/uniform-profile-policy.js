@@ -26,7 +26,7 @@ export function normalizeVisual(value){
 export function policeCallSeries(call){
  const raw=String(call||'').trim().toUpperCase();
  // Accept 400, SANTO-400 or SANTO 400; never infer rank from an ID.
- const match=/(?:^|[\s-])([1-9][0-9]{2})(?:$|\s|\*)/.exec(raw);
+ const match=/(?:^|[\s-])([1-9][0-9]{2})(?:$|\s|\*)/.exec(raw)||/^S([1-9][0-9]{2})(?:\*)?$/.exec(raw);
  if(!match)return '';
  const number=Number(match[1]);
  if(number<100||number>999)return '';
