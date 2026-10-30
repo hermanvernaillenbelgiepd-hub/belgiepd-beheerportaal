@@ -388,7 +388,11 @@
   const grade=gradeFor(person);
   if(!grade)return null;
   const badge=document.createElement('span');
-  badge.className='bpd-grade-badge'+(large?' bpd-grade-badge-large':'');
+  // Use the same grade-dependent metal tone as the uniform's rank plaque.
+  // This stays presentation-only and never changes the grade or access level.
+  badge.className='bpd-grade-badge'+
+   (goldLettering(person)?' bpd-grade-metal-gold':' bpd-grade-metal-silver')+
+   (large?' bpd-grade-badge-large':'');
   badge.setAttribute('role','img');
   badge.setAttribute('aria-label','BelgiumPD-graadteken '+grade.label);
   badge.title=grade.abbr+' · '+grade.label;
