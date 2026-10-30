@@ -1515,8 +1515,19 @@ function makeServiceUniformPortrait(person){
  outer.setAttribute('aria-label','Uniformvoorbeeld van '+dept+' · '+(person.rank||''));
  const stage=el('span','bpd-service-stage');
  const img=el('img','bpd-service-coat');img.src=src||iconFallback;img.alt='';img.loading='lazy';
+ if(selected?.uniformUrl){
+  const apply=()=>{
+   if(!img.naturalWidth||!img.naturalHeight)return;
+   const ratio=img.naturalWidth/img.naturalHeight;
+   stage.style.aspectRatio=img.naturalWidth+'/'+img.naturalHeight;
+   stage.style.width=Math.min(120,Math.max(30,ratio*(226/198)*98))+'%';
+   img.style.objectFit='contain';
+  };
+  img.addEventListener('load',apply,{once:true});
+  if(img.complete&&img.naturalWidth)apply();
+ }
  const coatPosition=serviceCoatLayouts.get(dept+'_default');
- if(coatPosition&&Number.isInteger(coatPosition.canvasWidth)&&Number.isInteger(coatPosition.canvasHeight)&&
+ if(!selected?.uniformUrl&&coatPosition&&Number.isInteger(coatPosition.canvasWidth)&&Number.isInteger(coatPosition.canvasHeight)&&
   coatPosition.canvasWidth>=160&&coatPosition.canvasHeight>=160&&
   coatPosition.canvasWidth<=4096&&coatPosition.canvasHeight<=4096){
   const ratio=coatPosition.canvasWidth/coatPosition.canvasHeight;
