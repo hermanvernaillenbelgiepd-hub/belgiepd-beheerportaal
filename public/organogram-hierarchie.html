@@ -1548,7 +1548,7 @@ function makeServiceUniformPortrait(person){
  callLine.style.transform='scale('+((namePosition.callScale??100)/100)+')';
  nameplate.append(nameLine,callLine);
  stage.append(nameplate);
- window.BPDVisualAssets?.appendTo?.(stage,person,'default');
+ if(src)window.BPDVisualAssets?.appendTo?.(stage,person,'default');
  outer.append(stage);
  return outer;
 }
