@@ -56,3 +56,20 @@ test('one-screen UI saves complete template without awarding medals',()=>{
  assert.match(display,/visualLayout:composition/);
  assert.match(layers,/visualLayout\?\.\[layer\.kind\]/);
 });
+
+
+test('uniform atelier fills nameplate with person name and call and fills rank image frame',()=>{
+ const ui=readFileSync(new URL('../public/uniform-composer-ui.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+ assert.match(ui,/function sampleMember\(\)/);
+ assert.match(ui,/policeCallSeries\(p\.call\)===grade\.value/);
+ assert.match(ui,/ambulanceFunction\(p\)===grade\.value/);
+ assert.match(ui,/el\('strong','compose-name',member\.name\)/);
+ assert.match(ui,/el\('small','compose-call',member\.call\)/);
+ assert.match(ui,/className=kind==='rank'\?'compose-rank-image'/);
+ assert.match(ui,/kind==='rank'\?displayRank\(\)/);
+ assert.match(html,/\.compose-layer \.compose-nameplate\{/);
+ assert.match(html,/\.compose-nameplate>\.compose-name\{/);
+ assert.match(html,/\.compose-layer>\.compose-rank-image\{/);
+ assert.match(html,/object-fit:fill/);
+});
