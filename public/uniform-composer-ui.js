@@ -69,8 +69,11 @@ export function setupUniformComposer({api,$}){
     normalizeVisual(p.rank)===grade.value));
   const prefix=dept.value==='politie'?'SANTO-':
    dept.value==='ambulance'?'AZLS-':'';
+  const rawCall=String(match?.call||prefix+grade.value).trim().toUpperCase();
+  const number=dept.value==='politie'?
+   /^(?:SANTO[ -]?|S)?([0-9]{3})\*?$/i.exec(rawCall)?.[1]:'';
   return {name:String(match?.name||'VOORBEELD').trim().toUpperCase(),
-   call:String(match?.call||prefix+grade.value).trim().toUpperCase()};
+   call:number||rawCall};
  }
  function displayRank(){
   const label=grade.selectedOptions[0]?.textContent||'';
@@ -136,7 +139,10 @@ export function setupUniformComposer({api,$}){
      /\b(?:ACP|CP|1-?CP|HCP|1-?HCP|Korpschef)\b/i.test(level));
    const plate=el('span','compose-nameplate '+(gold?'compose-metal-gold':'compose-metal-silver'));
     const name=el('strong','compose-name',member.name);
-    const call=el('small','compose-call',member.call);
+    // The reference's DIENST field is the live BELGIEPD - CALL line;
+    // there is no generic FUNCTIE row on the actual police nameplate.
+    const callLabel=dept.value==='politie'?'BELGIEPD - '+member.call:member.call;
+    const call=el('small','compose-call',callLabel);
     name.style.setProperty('--name-length-factor',
      String(Math.max(.53,Math.min(1,15/Math.max(1,member.name.length)))));
     plate.append(name,call);
@@ -156,7 +162,7 @@ export function setupUniformComposer({api,$}){
      plate.append(flipped,textField);
     }
     box.append(plate);
-    box.setAttribute('aria-label','Naamplaat: '+member.name+' · '+member.call);
+    box.setAttribute('aria-label','Naamplaat: '+member.name+' · '+callLabel);
    }else if(url){
     const img=el('img');img.src=url;img.alt=kindNames[kind];
     img.className=kind==='rank'?'compose-rank-image':'compose-art';
