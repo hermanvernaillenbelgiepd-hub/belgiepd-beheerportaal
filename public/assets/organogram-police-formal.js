@@ -202,7 +202,8 @@
  // Same exterior patch dimensions, embroidered rim and margins for all ranks.
  const NORMALIZED_GRADE_FRAME=Object.freeze({x:16,y:4,width:480,height:152});
  let uniformArtworkOverrides=new Map(),uniformPlacementOverrides=new Map();
- function setUniformManagementData(items,layouts){
+ let uniformNameplateOverrides=new Map();
+ function setUniformManagementData(items,layouts,nameplates=[]){
   const uniformImages=new Map(),uniformCoords=new Map();
   for(const row of Array.isArray(items)?items:[]){
    const key=String(row?.key||''),url=String(row?.imageUrl||'');
@@ -218,10 +219,27 @@
    if(entry.left+entry.width>100||entry.top+entry.height>100)continue;
    uniformCoords.set(entry.variant,entry);
   }
+  const nameCoords=new Map();
+  for(const entry of Array.isArray(nameplates)?nameplates:[]){
+   if(!/^politie_(silver|gold)$/.test(String(entry?.key||''))||entry.configured!==true)continue;
+   if(!['left','top','width','height'].every(k=>typeof entry[k]==='number'&&
+    Number.isFinite(entry[k])&&entry[k]>=0&&entry[k]<=100))continue;
+   if(entry.left+entry.width>100||entry.top+entry.height>100)continue;
+   nameCoords.set(entry.variant,entry);
+  }
   uniformArtworkOverrides=uniformImages;uniformPlacementOverrides=uniformCoords;
+  uniformNameplateOverrides=nameCoords;
  }
  function applyUniformInsigniaPlacement(node,variant){
   const layout=uniformPlacementOverrides.get(variant);
+  if(!layout)return;
+  node.style.left=layout.left+'%';
+  node.style.top=layout.top+'%';
+  node.style.width=layout.width+'%';
+  node.style.height=layout.height+'%';
+ }
+ function applyUniformNameplatePlacement(node,variant){
+  const layout=uniformNameplateOverrides.get(variant);
   if(!layout)return;
   node.style.left=layout.left+'%';
   node.style.top=layout.top+'%';
@@ -419,7 +437,9 @@
    img.decoding='async';
    img.draggable=false;
    stage.append(img);
-   stage.append(makeGoldNameplate(person));
+   const plate=makeGoldNameplate(person);
+   applyUniformNameplatePlacement(plate,'gold');
+   stage.append(plate);
    const rack=window.BPDDecorations?.uniformRack(person.awards);
    if(rack?.ribbons)stage.append(rack.ribbons);
    const chest=document.createElement('span');
@@ -454,7 +474,9 @@
   image.decoding='async';
   image.draggable=false;
   stage.append(image);
-  stage.append(makeSilverWovenNameplate(person));
+  const nameplate=makeSilverWovenNameplate(person);
+  applyUniformNameplatePlacement(nameplate,'silver');
+  stage.append(nameplate);
   const rack=window.BPDDecorations?.uniformRack(person.awards);
   if(rack?.ribbons)stage.append(rack.ribbons);
   const patch=document.createElement('span');
