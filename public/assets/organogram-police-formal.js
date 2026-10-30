@@ -466,7 +466,9 @@
    stage.className='bpd-gold-stage';
    const img=document.createElement('img');
    img.className='bpd-gold-coat';
-   if(uniformArtworkOverrides.has('gold'))img.src=uniformArtworkOverrides.get('gold');
+   const individualGold=window.BPDUniformAssignments?.forPerson?.(person)?.uniformUrl;
+   if(individualGold)img.src=individualGold;
+   else if(uniformArtworkOverrides.has('gold'))img.src=uniformArtworkOverrides.get('gold');
    else setMatchedGoldCoat(img);
    img.alt='';
    img.loading=large?'eager':'lazy';
@@ -506,7 +508,9 @@
   stage.className='bpd-silver-stage';
   const image=document.createElement('img');
   image.className='bpd-silver-coat';
-  if(uniformArtworkOverrides.has('silver'))image.src=uniformArtworkOverrides.get('silver');
+  const individualSilver=window.BPDUniformAssignments?.forPerson?.(person)?.uniformUrl;
+  if(individualSilver)image.src=individualSilver;
+  else if(uniformArtworkOverrides.has('silver'))image.src=uniformArtworkOverrides.get('silver');
   else setMatchedSilverCoat(image);
   image.alt='';
   image.loading=large?'eager':'lazy';
