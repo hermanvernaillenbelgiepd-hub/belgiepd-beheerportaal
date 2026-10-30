@@ -475,3 +475,50 @@
 .bpd-police-formal .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
  left:22%;width:74%;z-index:3;
 }
+
+
+/* Grade-plaque-based nameplate: reverse the same current-rank drawing.
+   Its diagonal woven edge becomes the LEFT section. Mask the mirrored
+   crowns/stars completely with an opaque, readable name-and-CALL field.
+   No CSS-drawn imitation stripes are used in this final design. */
+.bpd-police-formal .bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate,
+.bpd-police-formal .bpd-silver-stage>.bpd-personal-nameplate.bpd-silver-woven-nameplate{
+ position:absolute;isolation:isolate;overflow:hidden;
+ background:#0b1425!important;border:1px solid #8398af!important;
+ border-radius:2px!important;box-shadow:none!important;
+}
+.bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-left-accent{display:none!important}
+.bpd-police-formal .bpd-gold-stage>.bpd-gold-nameplate::before,
+.bpd-police-formal .bpd-silver-stage>.bpd-silver-woven-nameplate::before,
+.bpd-police-formal .bpd-gold-stage>.bpd-gold-nameplate::after,
+.bpd-police-formal .bpd-silver-stage>.bpd-silver-woven-nameplate::after{
+ content:none!important;display:none!important;background:none!important;
+}
+.bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-mirrored-grade{
+ position:absolute;inset:0;display:block;z-index:0;
+ width:100%;height:100%;max-width:none;max-height:none;
+ object-fit:fill;transform:scaleX(-1);
+ /* Only the decorative stripes of the flipped actual rank drawing survive.
+    The source's crowns and stars never appear on the nameplate. */
+ clip-path:inset(0 76% 0 0);
+ pointer-events:none;
+}
+.bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-text-field{
+ position:absolute;left:24%;top:0;right:0;bottom:0;
+ box-sizing:border-box;z-index:1;
+ background:linear-gradient(160deg,#111b2e,#060d1b);
+ border-left:1px solid var(--thread);pointer-events:none;
+}
+.bpd-police-formal .bpd-personal-nameplate>.bpd-nameplate-text-field::after{
+ content:"";position:absolute;left:5%;right:5%;top:50%;
+ height:1px;background:var(--thread);opacity:.9;
+}
+.bpd-police-formal .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-name,
+.bpd-police-formal .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call,
+.bpd-police-formal .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name,
+.bpd-police-formal .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
+ position:absolute;left:28%;width:68%;z-index:2;
+ background:none!important;color:var(--thread)!important;
+ text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ font-weight:850;text-shadow:0 1px 1px #000;
+}
