@@ -12,7 +12,11 @@ export function setupUniformManagementUI({api,$,notice}){
  const x=$p('uniformX'),y=$p('uniformY'),w=$p('uniformW'),h=$p('uniformH');
  const nx=$p('uniformNameX'),ny=$p('uniformNameY');
  const nw=$p('uniformNameW'),nh=$p('uniformNameH');
- let layouts=new Map(),nameLayouts=new Map(),images=new Map(),rankAssets=[],authorized=[],drag=null,imageData='';
+ const cx=$p('uniformCoatX'),cy=$p('uniformCoatY'),cz=$p('uniformCoatZoom');
+ const nf=$p('uniformNameFont'),cf=$p('uniformCallFont');
+ const prefix=$p('uniformNamePrefix'),exampleName=$p('uniformNameExample'),
+  exampleCall=$p('uniformCallExample');
+ let layouts=new Map(),nameLayouts=new Map(),coatLayouts=new Map(),images=new Map(),rankAssets=[],authorized=[],drag=null,imageData='';
  const defaults={
   politie_silver:{left:62.3,top:56.75,width:26.6,height:12.25},
   politie_gold:{left:56.2,top:58.9,width:19.5,height:12.1}
@@ -23,6 +27,8 @@ export function setupUniformManagementUI({api,$,notice}){
   politie_gold:{left:21.2,top:58.9,width:20.1,height:12.1}
  };
  const nameDefaultFor=key=>nameDefaults[key]||{left:11,top:55,width:27,height:12};
+ const prefixFor=()=>({politie:'BELGIEPD',brandweer:'BRANDWEER',
+  ambulance:'AZLS',depannage:'DEPANNAGE',burger:'BURGER'})[dept.value]||'BELGIEPD';
  const key=()=>dept.value+'_'+variant.value;
  const imageKey=()=> 'uniform_'+key();
  const builtin=()=>dept.value==='politie'?
@@ -47,6 +53,20 @@ export function setupUniformManagementUI({api,$,notice}){
  }
  gradePreview.addEventListener('change',render);
  function render(){
+  coat.style.transform='translate('+cx.value+'%,'+cy.value+'%) scale('+(Number(cz.value)/100)+')';
+  for(const [label,control] of [['X',cx],['Y',cy],['Zoom',cz]]){
+   const value=Number(control.value).toFixed(label==='Zoom'?0:1)+'%';
+   const dest=$p('uniformCoatValue'+label);dest.value=value;dest.textContent=value;
+  }
+  const nameText=$p('uniformPreviewName'),callText=$p('uniformPreviewCall');
+  nameText.textContent=exampleName.value.trim()||'VOORBEELD NAAM';
+  callText.textContent=(prefix.value.trim()||prefixFor())+' · '+(exampleCall.value.trim()||'610');
+  nameText.style.transform='scale('+(Number(nf.value)/100)+')';
+  callText.style.transform='scale('+(Number(cf.value)/100)+')';
+  for(const [label,control]of [['uniformNameFontValue',nf],['uniformCallFontValue',cf]]){
+   const target=$p(label),value=Number(control.value).toFixed(0)+'%';
+   target.value=value;target.textContent=value;
+  }
   const changed={left:Number(x.value),top:Number(y.value),
    width:Number(w.value),height:Number(h.value)};
   patch.style.left=changed.left+'%';patch.style.top=changed.top+'%';
@@ -82,6 +102,10 @@ export function setupUniformManagementUI({api,$,notice}){
   x.value=pos.left;y.value=pos.top;w.value=pos.width;h.value=pos.height;
   const namePos=nameLayouts.get(key())||nameDefaultFor(key());
   nx.value=namePos.left;ny.value=namePos.top;nw.value=namePos.width;nh.value=namePos.height;
+  nf.value=namePos.nameScale??100;cf.value=namePos.callScale??100;
+  prefix.value=namePos.prefix||prefixFor();
+  const coatPos=coatLayouts.get(key())||{offsetX:0,offsetY:0,zoom:100};
+  cx.value=coatPos.offsetX;cy.value=coatPos.offsetY;cz.value=coatPos.zoom;
   updateGradeChoices();render();
  }
  function variants(){
@@ -108,6 +132,40 @@ export function setupUniformManagementUI({api,$,notice}){
   render();
  };
  [nx,ny,nw,nh].forEach(t=>t.addEventListener('input',constrainName));
+ [cx,cy,cz,nf,cf,prefix,exampleName,exampleCall].forEach(
+  control=>control.addEventListener('input',render)
+ );
+ // Drag the empty uniform area without stealing nameplate/grade pointer events.
+ frame.addEventListener('pointerdown',e=>{
+  if(e.button>0||e.target.closest('#uniformPreviewNameplate,#uniformPreviewPatch'))return;
+  drag={id:e.pointerId,which:'coat',startX:e.clientX,startY:e.clientY,
+   x:Number(cx.value),y:Number(cy.value)};
+  frame.setPointerCapture(e.pointerId);e.preventDefault();
+ });
+ frame.addEventListener('pointermove',e=>{
+  if(!drag||drag.which!=='coat'||drag.id!==e.pointerId)return;
+  const rect=frame.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  cx.value=String(Math.max(-50,Math.min(50,
+   drag.x+(e.clientX-drag.startX)*100/rect.width)));
+  cy.value=String(Math.max(-50,Math.min(50,
+   drag.y+(e.clientY-drag.startY)*100/rect.height)));
+  render();e.preventDefault();
+ });
+ const stopCoat=e=>{if(drag?.id===e.pointerId&&drag.which==='coat')drag=null};
+ frame.addEventListener('pointerup',stopCoat);
+ frame.addEventListener('pointercancel',stopCoat);
+ frame.addEventListener('lostpointercapture',stopCoat);
+ frame.tabIndex=0;
+ frame.addEventListener('keydown',e=>{
+  if(e.target!==frame)return;
+  const move={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+  if(!move)return;
+  e.preventDefault();const speed=e.shiftKey?3:0.5;
+  cx.value=String(Math.max(-50,Math.min(50,Number(cx.value)+move[0]*speed)));
+  cy.value=String(Math.max(-50,Math.min(50,Number(cy.value)+move[1]*speed)));
+  render();
+ });
  nameplate.addEventListener('pointerdown',e=>{
   if(e.button>0)return;
   drag={id:e.pointerId,which:'nameplate',startX:e.clientX,startY:e.clientY,
@@ -175,7 +233,12 @@ export function setupUniformManagementUI({api,$,notice}){
  $p('uniformNameReset').onclick=()=>{
   const pos=nameDefaultFor(key());
   nx.value=pos.left;ny.value=pos.top;nw.value=pos.width;nh.value=pos.height;
+  nf.value=cf.value=100;prefix.value=prefixFor();
   render();message('Standaardpositie naamplaat geselecteerd. Klik Naamplaat bewaren om ze toe te passen.');
+ };
+ $p('uniformCoatReset').onclick=()=>{
+  cx.value=cy.value=0;cz.value=100;render();
+  message('Uniform gecentreerd. Klik Uniformpositie en grootte bewaren.');
  };
  $p('uniformFile').addEventListener('change',async()=>{
   const file=$p('uniformFile').files?.[0];
@@ -216,6 +279,7 @@ export function setupUniformManagementUI({api,$,notice}){
   ]);
   layouts=new Map((positions.layouts||[]).map(r=>[r.key,r]));
   nameLayouts=new Map((positions.nameplates||[]).map(r=>[r.key,r]));
+  coatLayouts=new Map((positions.coats||[]).map(r=>[r.key,r]));
   images=new Map((assets.artworks||[]).filter(a=>a.active&&a.kind==='uniform')
    .map(a=>[a.key,a.imageUrl]));
   rankAssets=(assets.artworks||[]).filter(a=>a.kind==='rank'&&a.active);
@@ -247,17 +311,31 @@ export function setupUniformManagementUI({api,$,notice}){
   }catch(e){message('Uniform bewaren mislukt: '+e.message,true)}
   finally{button.disabled=false}
  };
+ $p('uniformSaveCoat').onclick=async()=>{
+  const motivation=reason.value.trim();
+  if(motivation.length<8){message('Geef een motivering van minstens 8 tekens.',true);return}
+  const values={department:dept.value,variant:variant.value,
+   offsetX:Number(cx.value),offsetY:Number(cy.value),zoom:Number(cz.value),reason:motivation};
+  const button=$p('uniformSaveCoat');button.disabled=true;
+  try{
+   await api('/api/uniform-management/coat',{method:'PUT',body:values});
+   coatLayouts.set(key(),{...values,configured:true});
+   message('Uniformpositie en grootte opgeslagen. Naamplaat en gradenplaat blijven apart instelbaar.');
+  }catch(e){message('Uniformpositie bewaren mislukt: '+e.message,true)}
+  finally{button.disabled=false}
+ };
  $p('uniformSaveNameplate').onclick=async()=>{
   const motivation=reason.value.trim();
   if(motivation.length<8){message('Geef een motivering van minstens 8 tekens.',true);return}
   const values={department:dept.value,variant:variant.value,
    left:Number(nx.value),top:Number(ny.value),width:Number(nw.value),height:Number(nh.value),
+   nameScale:Number(nf.value),callScale:Number(cf.value),prefix:prefix.value.trim(),
    reason:motivation};
   const button=$p('uniformSaveNameplate');button.disabled=true;
   try{
    await api('/api/uniform-management/nameplate',{method:'PUT',body:values});
    nameLayouts.set(key(),{...values,configured:true});
-   message('Naamplaat opgeslagen voor deze hulpdienst en dit uniformtype. De gradenplaat blijft ongewijzigd.');
+   message('Naamplaat, tekstgroottes en opschrift opgeslagen. De gradenplaat blijft ongewijzigd.');
   }catch(e){message('Naamplaat bewaren mislukt: '+e.message,true)}
   finally{button.disabled=false}
  };
