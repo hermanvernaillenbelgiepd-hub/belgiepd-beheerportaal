@@ -20,13 +20,42 @@
     ['AP','Agent van politie','AP LP.svg',/^(?:AP|AGP|AGENT)/]
   ];
   const imgRoot='https://commons.wikimedia.org/wiki/Special:FilePath/';
+  const logoOverrides=new Map();
+  const safeCode=raw=>String(raw||'').toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_')
+    .replace(/^_+|_+$/g,'').slice(0,40);
+  function specialtyArtworkCode(label){
+    const value=String(label||'').trim().toLowerCase();
+    if(/^(?:motor|motard)$/.test(value))return 'motard';
+    if(/^(?:k-?9|honden|hondengeleider)$/.test(value))return 'k9';
+    if(/^(?:dispatch|dispatching|meldkamer)$/.test(value))return 'disp';
+    if(/^rago(?:-io)?$/.test(value))return 'rago';
+    if(/^radio(?:\s*[/ -]?\s*bm)?$/.test(value))return 'radio_bm';
+    if(/^siv\s*[/ -]?\s*wpr$/.test(value))return 'siv_wpr';
+    if(/^(?:semi-?anoniem|semi-?ano\.?)$/.test(value))return 'semi_ano';
+    if(/^lrd$/.test(value))return 'recherche';
+    return safeCode(label);
+  }
+  function setArtworkManifest(records){
+    logoOverrides.clear();
+    for(const row of Array.isArray(records)?records:[]){
+      const key=String(row?.key||''),url=String(row?.imageUrl||'');
+      if(!/^(?:rank|specialty)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}$/.test(key))continue;
+      if(!/^\/api\/role-artwork\/file\/(?:rank|specialty)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}\?v=[A-Za-z0-9-]+$/.test(url))continue;
+      logoOverrides.set(key,url);
+    }
+  }
+  function artwork(kind,dept,code){
+    return logoOverrides.get(kind+'_'+String(dept||'politie')+'_'+code)||null;
+  }
   function rankInfo(raw,dept){
     const value=String(raw||'').trim().slice(0,90);
-    if(dept!=='politie')return {label:value||'Niet ingevuld',image:null,code:null};
+    if(dept!=='politie')return {label:value||'Niet ingevuld',
+      image:artwork('rank',dept,safeCode(value)),code:null};
     const norm=value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()
       .replace(/[().]/g,' ').replace(/\s+/g,' ').trim();
     const row=rankRows.find(r=>r[3].test(norm));
-    return row?{label:row[1],image:imgRoot+encodeURIComponent(row[2]),code:row[0]}:
+    return row?{label:row[1],image:artwork('rank','politie',row[0].toLowerCase())||imgRoot+encodeURIComponent(row[2]),code:row[0]}:
       {label:value||'Rang onbekend',image:null,code:null};
   }
   const noStatus=/^(?:|NEE|NVT|N\.V\.T\.|NIET INGEVULD|NIET BEHAALD|GEEN|NEEN|NO|0|FALSE|-|—|ONBEKEND|NIET VAN TOEPASSING)$/i;
@@ -51,7 +80,9 @@
   ];
   // Central image registry: replace the emoji only for the exact requested skill.
   // Keep an emoji fallback if the asset fails to load.
-  function specialtyIconImage(label){
+  function specialtyIconImage(label,dept='politie'){
+    const manual=artwork('specialty',dept,specialtyArtworkCode(label));
+    if(manual)return manual;
     return /^signalisatie$/i.test(String(label||'').trim())
       ?'/assets/icons/signalisatie.svg':null;
   }
@@ -258,6 +289,7 @@
   }
   root.BPDPersonnelVisuals=Object.freeze({
     rankInfo,specialtyBadges,specialtyIcon,specialtyIconImage,qualification,specialtyStatuses,
+    setArtworkManifest,specialtyArtworkCode,
     specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre,depannageFunction,comparePersonnel,sortPersonnelRows
   });
 })(typeof window==='object'?window:globalThis);
