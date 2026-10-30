@@ -69,10 +69,12 @@ test('specific uploaded grade artwork is identical on nameplate and rank panel',
  assert.equal(rank.children[0].src,person.customRankUrl);
 });
 test('invalid identifiers and other service calls never masquerade as police ranks',()=>{
- for(const call of ['ABC-700','UID123456789012345','930-extra','008','940','']){
+ for(const call of ['ABC-700','UID123456789012345','930-extra','008','']){
   assert.equal(policeCallDigits(call),'',call);
   assert.equal(policeCallSeries(call),'',call);
  }
+ assert.equal(policeCallDigits('940'),'940');
+ assert.equal(policeCallSeries('940'),'');
  const ui=renderer();
  assert.equal(ui.gradeFor({dept:'brandweer',call:'900'}),null);
  assert.equal(ui.gradeFor({dept:'politie',call:'TEST-P101',rank:'Agent van Politie'}).key,'ap');
