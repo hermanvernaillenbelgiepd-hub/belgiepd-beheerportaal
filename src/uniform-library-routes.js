@@ -79,11 +79,17 @@ export function validateLibraryUpload(body){
   throw err(400,'Ongeldige of te grote afbeelding');
  const mime='image/'+match[1];
  const valid=mime==='image/png'?
-  bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])):
+  bytes.length>=33&&
+  bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))&&
+  bytes.readUInt32BE(8)===13&&bytes.toString('ascii',12,16)==='IHDR'&&
+  bytes.readUInt32BE(16)>0&&bytes.readUInt32BE(20)>0&&
+  bytes.readUInt32BE(16)<=8192&&bytes.readUInt32BE(20)<=8192&&
+  bytes.readUInt32BE(16)*bytes.readUInt32BE(20)<=40000000:
   mime==='image/jpeg'?
    bytes[0]===255&&bytes[1]===216&&bytes[bytes.length-2]===255&&bytes[bytes.length-1]===217:
    bytes.toString('ascii',0,4)==='RIFF'&&bytes.toString('ascii',8,12)==='WEBP'&&
-   bytes.readUInt32LE(4)===bytes.length-8;
+   bytes.readUInt32LE(4)===bytes.length-8&&
+   ['VP8 ','VP8L','VP8X'].includes(bytes.toString('ascii',12,16));
  if(!valid)throw err(400,'Bestandstype en afbeeldingsinhoud komen niet overeen');
  return {department,kind,code,label,reason,bytes,mime,key:kind+'_'+department+'_'+code};
 }
