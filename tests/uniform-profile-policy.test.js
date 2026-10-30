@@ -7,9 +7,10 @@ import {validateUniformAssignment,resolveUniformAssignment}
 import {validateLibraryRule} from '../src/uniform-library-routes.js';
 
 test('police calls have distinct grade markers while retaining one lower uniform',()=>{
- const samples=['200','S302','SANTO-485','501','SANTO-600*','SANTO 630'];
+ const samples=['S302','SANTO-485','501','SANTO-600*','SANTO 630'];
  for(const call of samples)
   assert.equal(policeUniformGroup({dept:'politie',call}),'basis_tm_ahinp');
+ assert.equal(policeUniformGroup({dept:'politie',call:'200'}),'agentenkader');
  assert.equal(policeCallSeries('S302'),'300');
  assert.equal(policeCallSeries('SANTO-485'),'400');
  assert.equal(policeCallSeries('SANTO-600*'),'600');
@@ -22,8 +23,9 @@ test('police calls have distinct grade markers while retaining one lower uniform
 test('a configurable uniform group includes aspirant-head inspector but not HINP',()=>{
  const rules=[{department:'politie',scope:'group',selector:'basis_tm_ahinp',
   uniformCode:'basisjas',badgeStyle:''}];
- for(const call of ['200','400','500','600'])
+ for(const call of ['300','400','500','600'])
   assert.equal(resolveUniformAssignment({dept:'politie',call},rules).uniformCode,'basisjas');
+ assert.equal(resolveUniformAssignment({dept:'politie',call:'200'},rules).uniformCode,'');
  assert.equal(resolveUniformAssignment({dept:'politie',call:'700'},rules).uniformCode,'');
  assert.equal(resolveUniformAssignment({dept:'politie',call:'920'},rules).uniformCode,'');
  const data=validateUniformAssignment({department:'politie',scope:'group',
