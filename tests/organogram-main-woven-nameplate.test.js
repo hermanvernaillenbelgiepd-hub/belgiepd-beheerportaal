@@ -28,7 +28,7 @@ test('classic woven nameplate has diagonal side-stitches, separator, and gold/si
  assert.match(css,/bpd-naamplaat-foto-basis-20261030\.svg/);
  assert.match(css,/bpd-nameplate-metal-gold/);
  assert.match(css,/bpd-nameplate-metal-silver/);
- assert.match(css,/background:var\(--thread\)/);
+ assert.match(css,/--line-thread:#e0e7ef/);
 });
 test('gold and silver plate text follows actual grade and call',()=>{
  const ui=load();

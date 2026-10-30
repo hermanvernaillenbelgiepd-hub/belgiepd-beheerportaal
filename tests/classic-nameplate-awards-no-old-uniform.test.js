@@ -75,7 +75,7 @@ test('real uploaded coat renders woven gold/silver nameplates and current rank',
  }
  const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
  assert.match(css,/bpd-naamplaat-foto-basis-20261030\.svg/);
- assert.match(css,/var\(--thread\)/);
+ assert.match(css,/--line-thread:#e0e7ef/);
 });
 
 
