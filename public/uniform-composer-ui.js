@@ -42,8 +42,16 @@ export function setupUniformComposer({api,$}){
    x.department===dept.value&&x.scope===sc&&x.selector===sel)?.uniformCode)
    .find(code=>code&&images.some(x=>x.department===dept.value&&
     x.kind==='uniform'&&x.code===code))||'';
+  const policeRank={'100':'ap','200':'ap','300':'ainp','400':'inp','500':'1inp',
+   '600':'ahinp','700':'hinp','800':'1hinp','900':'1hcp','910':'1cp',
+   '920':'acp','930':'acp'};
+  const kind=dept.value==='ambulance'?'profession':'rank';
+  const suggested=[grade.value,policeRank[grade.value]].filter(Boolean)
+   .map(code=>images.find(x=>x.department===dept.value&&x.kind===kind&&x.code===code&&
+    x.active!==false)?.code).find(Boolean)||'';
   draft={department:dept.value,scope,selector:grade.value,
-   assets:{uniform:inherited,rank:'',helmet:'',profession:'',logo:'',...(saved?.assets||{})},
+   assets:{uniform:inherited,rank:kind==='rank'?suggested:'',helmet:'',
+    profession:kind==='profession'?suggested:'',logo:'',...(saved?.assets||{})},
    layers:Object.fromEntries(Object.entries(defaults).map(([k,v])=>[k,{
     left:v[0],top:v[1],width:v[2],height:v[3],visible:true,...(saved?.layers?.[k]||{})}]))};
   baseline=JSON.stringify(draft);active='uniform';previousDept=dept.value;previousGrade=grade.value;render();
