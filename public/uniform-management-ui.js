@@ -9,10 +9,14 @@ export function setupUniformManagementUI({api,$,notice}){
   technicalShortcut=$p('uniformSwitchTechnical');
  technicalShortcut.onclick=()=>{
   const switcher=$p('profileSwitcher'),select=$p('profileMode'),apply=$p('profileApply');
-  if(!switcher||switcher.hidden)return;
+  if(!switcher||switcher.hidden||!select||!apply){
+   message('Je account heeft geen actief technisch beheerprofiel. Meld je met je geverifieerde Discord-account aan of vraag technische toegang aan de bevoegde beheerder.',true);
+   return;
+  }
+  // Reuse the existing audited profile-switch handler, including its explicit
+  // confirmation and the server-side, Discord-verified authorization check.
   select.value='technisch';
-  switcher.scrollIntoView({behavior:'smooth',block:'center'});
-  apply.focus({preventScroll:true});
+  apply.click();
  };
  const frame=$p('uniformPreviewFrame'),coat=$p('uniformPreviewCoat');
  const patch=$p('uniformPreviewPatch'),patchLabel=$p('uniformPreviewPatchLabel');
@@ -381,9 +385,12 @@ export function setupUniformManagementUI({api,$,notice}){
   if(missing.length){
    const current=DEPTS.filter(([value])=>authorized.includes(value)).map(([,label])=>label);
    const hasTechnicalSwitch=!$p('profileSwitcher').hidden;
-   deptAccessText.textContent='Je kunt momenteel '+(current.join(', ')||'geen hulpdienst')+
-    ' beheren. Andere hulpdiensten worden pas bewerkbaar wanneer je het juiste portaalprofiel hebt geactiveerd.';
+   deptAccessText.textContent='Actieve beheerrechten: '+(current.join(', ')||'geen hulpdienst')+
+    '. '+(hasTechnicalSwitch
+     ?'Voor alle diensten kun je hieronder je geautoriseerde technische profiel inschakelen.'
+     :'Een technisch profiel is in deze sessie niet beschikbaar. Meld je aan via je geverifieerde Discord-account; verschijnt de technische modus dan nog niet, laat de technische machtiging controleren.');
    technicalShortcut.hidden=!hasTechnicalSwitch;
+   technicalShortcut.textContent='Technisch beheer activeren (alle hulpdiensten)';
   }else technicalShortcut.hidden=true;
   if(authorized.includes(previousDept))dept.value=previousDept;
   variants();
@@ -391,9 +398,9 @@ export function setupUniformManagementUI({api,$,notice}){
    variant.value=previousVariant;useLayout();
   }
   message(missing.length
-   ?'Uniformbeheer geladen voor '+authorized.filter(value=>DEPTS.some(([id])=>id===value)).length+
-     ' hulpdienst(en). Kies bovenaan Technisch beheer als je hiervoor bevoegd bent.'
-   :'Uniformbeheer geladen. Wijzigingen zijn pas actief na bewaren.');
+   ?'Uniformbeheer: '+authorized.filter(value=>DEPTS.some(([id])=>id===value)).length+
+     ' hulpdienst(en) beschikbaar. Controleer de knop onder Hulpdienst om de geautoriseerde technische modus te activeren.'
+   :'Uniformbeheer geladen voor alle hulpdiensten. Wijzigingen zijn pas actief na bewaren.');
  }
  $p('uniformReload').onclick=()=>reload().catch(e=>message(e.message,true));
  $p('uniformSaveImage').onclick=async()=>{
