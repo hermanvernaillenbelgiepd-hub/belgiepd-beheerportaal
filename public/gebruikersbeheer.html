@@ -75,9 +75,15 @@ header button{padding:7px 10px;font-size:12px}
 #roleArtworkSection .artwork-crop-controls select{width:auto;min-width:170px}
 #roleArtworkSection .artwork-crop-controls button{padding:8px 10px}
 #uniformSection[hidden]{display:none!important}
+#uniformSection .uniform-canvas-config{grid-column:1/-1;display:grid;gap:9px;padding:12px;border:1px solid #426487;border-radius:9px;background:#101f35}
+#uniformSection .uniform-canvas-config h3{font-size:14px;margin:0}
+#uniformSection .uniform-canvas-config .grid{margin:0}
+#uniformSection .uniform-canvas-lock{display:flex;align-items:center;gap:8px;margin:0}
+#uniformSection .uniform-canvas-lock input{width:18px;height:18px;margin:0;accent-color:#7ab4fa}
+#uniformSection .uniform-canvas-config input[type=number]{width:100%;max-width:250px}
 #uniformSection .uniform-editor-columns{display:grid;grid-template-columns:minmax(250px,1fr) minmax(200px,.8fr);gap:19px;align-items:start;margin:14px 0}
 #uniformSection .uniform-preview-frame{width:min(100%,603px);aspect-ratio:603/469;border-radius:11px;border:1px solid #6686a8;background:#0c1a2d;position:relative;overflow:hidden;user-select:none;touch-action:none}
-#uniformSection .uniform-preview-frame>img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;cursor:grab;user-select:none;transform-origin:center;will-change:transform}
+#uniformSection .uniform-preview-frame>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;cursor:grab;user-select:none;transform-origin:center;will-change:transform}
 #uniformSection .uniform-preview-frame>img:active{cursor:grabbing}
 #uniformSection .uniform-preview-frame{cursor:grab}
 #uniformSection .uniform-preview-frame:active{cursor:grabbing}
@@ -334,7 +340,18 @@ header button{padding:7px 10px;font-size:12px}
   <div><label for="uniformDept">Hulpdienst</label><select id="uniformDept"></select></div>
   <div><label for="uniformVariant">Uniformtype</label><select id="uniformVariant"></select></div>
   <div><label for="uniformGradePreview">Voorbeeld gradenteken</label><select id="uniformGradePreview"></select><small>Je kunt een bestaand gradenteken gebruiken om de plaatsing te beoordelen.</small></div>
-  <div><label for="uniformFile">Nieuw uniform uploaden (PNG, JPG, WebP)</label><input id="uniformFile" type="file" accept="image/png,image/jpeg,image/webp"><small>De jas wordt opgeslagen als afbeelding van 603 × 469 pixels. De gradenplaat staat er afzonderlijk bovenop.</small></div>
+  <div><label for="uniformFile">Nieuw uniform uploaden (PNG, JPG, WebP)</label><input id="uniformFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Gebruik ook grote, verticale uniformen. Originele verhouding en instelbaar formaat; de gradenplaat en naamplaat blijven aparte lagen.</small></div>
+  <div class="uniform-canvas-config">
+   <h3>Afmetingen van de uniformafbeelding</h3>
+   <div class="controls"><button id="uniformOriginalSize" type="button" class="alt">Gebruik originele afmetingen</button>
+   <span id="uniformOriginalInfo" class="muted">Nog geen nieuw uniform geselecteerd</span></div>
+   <div class="grid">
+    <div><label for="uniformCanvasWidth">Canvasbreedte (px)</label><input id="uniformCanvasWidth" type="number" min="160" max="4096" step="1" value="603"></div>
+    <div><label for="uniformCanvasHeight">Canvashoogte (px)</label><input id="uniformCanvasHeight" type="number" min="160" max="4096" step="1" value="469"></div>
+   </div>
+   <label class="uniform-canvas-lock"><input id="uniformKeepAspect" type="checkbox" checked> Beeldverhouding behouden</label>
+   <small>Het canvas mag maximaal 8 megapixel bevatten. Grote afbeeldingen worden voor de online opslag geoptimaliseerd zonder de gekozen verhouding te wijzigen.</small>
+  </div>
   <div><label for="uniformReason">Motivering voor het logboek (min. 8 tekens)</label><input id="uniformReason" maxlength="300" placeholder="Waarom pas je het uniform of de gradenplaat aan?"></div>
  </div>
  <h3>Livevoorbeeld – versleep de gradenplaat en de naamplaat afzonderlijk</h3>
@@ -400,7 +417,7 @@ header button{padding:7px 10px;font-size:12px}
  </div>
  <div class="controls">
   <button id="uniformSaveImage" type="button">Uniformafbeelding bewaren</button>
-  <button id="uniformSaveCoat" type="button" class="alt">Uniformpositie en grootte bewaren</button>
+  <button id="uniformSaveCoat" type="button" class="alt">Uniformformaat, positie en grootte bewaren</button>
   <button id="uniformSavePosition" type="button" class="alt">Gradenplaat bewaren</button>
   <button id="uniformSaveNameplate" type="button" class="alt">Naamplaat bewaren</button>
   <button id="uniformReload" type="button" class="alt">Opnieuw laden</button>
