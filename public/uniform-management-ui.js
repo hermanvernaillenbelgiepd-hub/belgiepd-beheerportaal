@@ -6,15 +6,23 @@ export function setupUniformManagementUI({api,$,notice}){
  const $p=id=>$(id),dept=$p('uniformDept'),variant=$p('uniformVariant');
  const frame=$p('uniformPreviewFrame'),coat=$p('uniformPreviewCoat');
  const patch=$p('uniformPreviewPatch'),patchLabel=$p('uniformPreviewPatchLabel');
+ const nameplate=$p('uniformPreviewNameplate');
  const gradePreview=$p('uniformGradePreview'),gradePicture=$p('uniformPreviewGradeImage');
  const status=$p('uniformStatus'),reason=$p('uniformReason');
  const x=$p('uniformX'),y=$p('uniformY'),w=$p('uniformW'),h=$p('uniformH');
- let layouts=new Map(),images=new Map(),rankAssets=[],authorized=[],drag=null,imageData='';
+ const nx=$p('uniformNameX'),ny=$p('uniformNameY');
+ const nw=$p('uniformNameW'),nh=$p('uniformNameH');
+ let layouts=new Map(),nameLayouts=new Map(),images=new Map(),rankAssets=[],authorized=[],drag=null,imageData='';
  const defaults={
   politie_silver:{left:62.3,top:56.75,width:26.6,height:12.25},
   politie_gold:{left:56.2,top:58.9,width:19.5,height:12.1}
  };
  const defaultFor=key=>defaults[key]||{left:62,top:55,width:24,height:12};
+ const nameDefaults={
+  politie_silver:{left:10.25,top:56.2,width:27.75,height:13.15},
+  politie_gold:{left:21.2,top:58.9,width:20.1,height:12.1}
+ };
+ const nameDefaultFor=key=>nameDefaults[key]||{left:11,top:55,width:27,height:12};
  const key=()=>dept.value+'_'+variant.value;
  const imageKey=()=> 'uniform_'+key();
  const builtin=()=>dept.value==='politie'?
@@ -43,6 +51,17 @@ export function setupUniformManagementUI({api,$,notice}){
    width:Number(w.value),height:Number(h.value)};
   patch.style.left=changed.left+'%';patch.style.top=changed.top+'%';
   patch.style.width=changed.width+'%';patch.style.height=changed.height+'%';
+  nameplate.style.left=nx.value+'%';nameplate.style.top=ny.value+'%';
+  nameplate.style.width=nw.value+'%';nameplate.style.height=nh.value+'%';
+  nameplate.classList.toggle('gold',dept.value==='politie'&&variant.value==='gold');
+  nameplate.classList.toggle('silver',dept.value!=='politie'||variant.value==='silver');
+  $p('uniformPreviewCall').textContent=dept.value==='politie'?'BELGIEPD · 610':
+   names[dept.value].toUpperCase()+' · 001';
+  for(const [label,control] of [['X',nx],['Y',ny],['W',nw],['H',nh]]){
+   const value=Number(control.value).toFixed(1)+'%';
+   $p('uniformNameValue'+label).value=value;
+   $p('uniformNameValue'+label).textContent=value;
+  }
   const gradeSrc=gradePreview.value;
   gradePicture.hidden=!gradeSrc;
   gradePicture.src=gradeSrc||'';
@@ -61,6 +80,8 @@ export function setupUniformManagementUI({api,$,notice}){
   imageData='';$p('uniformFile').value='';
   const pos=layouts.get(key())||defaultFor(key());
   x.value=pos.left;y.value=pos.top;w.value=pos.width;h.value=pos.height;
+  const namePos=nameLayouts.get(key())||nameDefaultFor(key());
+  nx.value=namePos.left;ny.value=namePos.top;nw.value=namePos.width;nh.value=namePos.height;
   updateGradeChoices();render();
  }
  function variants(){
@@ -80,14 +101,50 @@ export function setupUniformManagementUI({api,$,notice}){
   render();
  };
  [x,y,w,h].forEach(t=>t.addEventListener('input',constrain));
+ const constrainName=()=>{
+  const width=Number(nw.value),height=Number(nh.value);
+  if(Number(nx.value)+width>100)nx.value=String(Math.max(0,100-width));
+  if(Number(ny.value)+height>100)ny.value=String(Math.max(0,100-height));
+  render();
+ };
+ [nx,ny,nw,nh].forEach(t=>t.addEventListener('input',constrainName));
+ nameplate.addEventListener('pointerdown',e=>{
+  if(e.button>0)return;
+  drag={id:e.pointerId,which:'nameplate',startX:e.clientX,startY:e.clientY,
+   x:Number(nx.value),y:Number(ny.value)};
+  nameplate.setPointerCapture(e.pointerId);e.preventDefault();
+ });
+ nameplate.addEventListener('pointermove',e=>{
+  if(!drag||drag.id!==e.pointerId||drag.which!=='nameplate')return;
+  const rect=frame.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  nx.value=String(Math.max(0,Math.min(100-Number(nw.value),
+   drag.x+(e.clientX-drag.startX)*100/rect.width)));
+  ny.value=String(Math.max(0,Math.min(100-Number(nh.value),
+   drag.y+(e.clientY-drag.startY)*100/rect.height)));
+  render();e.preventDefault();
+ });
+ nameplate.addEventListener('pointerup',e=>{if(drag?.id===e.pointerId)drag=null});
+ nameplate.addEventListener('pointercancel',e=>{if(drag?.id===e.pointerId)drag=null});
+ nameplate.addEventListener('lostpointercapture',e=>{if(drag?.id===e.pointerId)drag=null});
+ nameplate.addEventListener('keydown',e=>{
+  const moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
+  if(!moves[e.key])return;
+  e.preventDefault();const step=e.shiftKey?3:0.5;
+  nx.value=String(Math.max(0,Math.min(100-Number(nw.value),
+   Number(nx.value)+moves[e.key][0]*step)));
+  ny.value=String(Math.max(0,Math.min(100-Number(nh.value),
+   Number(ny.value)+moves[e.key][1]*step)));
+  render();
+ });
  patch.addEventListener('pointerdown',e=>{
   if(e.button>0)return;
-  drag={id:e.pointerId,startX:e.clientX,startY:e.clientY,
+  drag={id:e.pointerId,which:'grade',startX:e.clientX,startY:e.clientY,
    x:Number(x.value),y:Number(y.value)};
   patch.setPointerCapture(e.pointerId);e.preventDefault();
  });
  patch.addEventListener('pointermove',e=>{
-  if(!drag||drag.id!==e.pointerId)return;
+  if(!drag||drag.id!==e.pointerId||drag.which!=='grade')return;
   const rect=frame.getBoundingClientRect();
   if(!rect.width||!rect.height)return;
   x.value=String(Math.max(0,Math.min(100-Number(w.value),
@@ -114,6 +171,11 @@ export function setupUniformManagementUI({api,$,notice}){
   const pos=defaultFor(key());
   x.value=pos.left;y.value=pos.top;w.value=pos.width;h.value=pos.height;
   render();message('Standaardpositie geselecteerd. Klik Positie bewaren om ze toe te passen.');
+ };
+ $p('uniformNameReset').onclick=()=>{
+  const pos=nameDefaultFor(key());
+  nx.value=pos.left;ny.value=pos.top;nw.value=pos.width;nh.value=pos.height;
+  render();message('Standaardpositie naamplaat geselecteerd. Klik Naamplaat bewaren om ze toe te passen.');
  };
  $p('uniformFile').addEventListener('change',async()=>{
   const file=$p('uniformFile').files?.[0];
@@ -153,6 +215,7 @@ export function setupUniformManagementUI({api,$,notice}){
    api('/api/role-artwork/manage')
   ]);
   layouts=new Map((positions.layouts||[]).map(r=>[r.key,r]));
+  nameLayouts=new Map((positions.nameplates||[]).map(r=>[r.key,r]));
   images=new Map((assets.artworks||[]).filter(a=>a.active&&a.kind==='uniform')
    .map(a=>[a.key,a.imageUrl]));
   rankAssets=(assets.artworks||[]).filter(a=>a.kind==='rank'&&a.active);
@@ -182,6 +245,20 @@ export function setupUniformManagementUI({api,$,notice}){
    message('Uniformafbeelding gepubliceerd; bestaande graad- en functieplaatjes blijven behouden.');
    await reload();
   }catch(e){message('Uniform bewaren mislukt: '+e.message,true)}
+  finally{button.disabled=false}
+ };
+ $p('uniformSaveNameplate').onclick=async()=>{
+  const motivation=reason.value.trim();
+  if(motivation.length<8){message('Geef een motivering van minstens 8 tekens.',true);return}
+  const values={department:dept.value,variant:variant.value,
+   left:Number(nx.value),top:Number(ny.value),width:Number(nw.value),height:Number(nh.value),
+   reason:motivation};
+  const button=$p('uniformSaveNameplate');button.disabled=true;
+  try{
+   await api('/api/uniform-management/nameplate',{method:'PUT',body:values});
+   nameLayouts.set(key(),{...values,configured:true});
+   message('Naamplaat opgeslagen voor deze hulpdienst en dit uniformtype. De gradenplaat blijft ongewijzigd.');
+  }catch(e){message('Naamplaat bewaren mislukt: '+e.message,true)}
   finally{button.disabled=false}
  };
  $p('uniformSavePosition').onclick=async()=>{
