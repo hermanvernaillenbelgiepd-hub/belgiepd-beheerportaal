@@ -18,9 +18,16 @@ export function setupUniformComposer({api,$}){
  function ranks(){
   if(dept.value==='politie')return POLICE_CALL_GRADES.map(([code,title])=>['call',code,code+' · '+title]);
   if(dept.value==='ambulance')return AMBULANCE_FUNCTIONS.map(([code,title])=>['function',code,title]);
-  return [...new Map(people.filter(x=>x.dept===dept.value&&x.rank)
-   .map(x=>[normalizeVisual(x.rank),x.rank])).entries()]
-   .sort((a,b)=>a[1].localeCompare(b[1],'nl')).map(([code,title])=>['rank',code,title]);
+  const base=dept.value==='brandweer'?
+   ['Zonecommandant','Kolonel','Majoor','Kapitein','Luitenant',
+    'Adjudant','Sergeant','Korporaal','Brandweerman','Stagiair']:
+   dept.value==='depannage'?
+    ['Leiding','F.A.S.T','LSRA','Depannagetechnicus']:
+    ['Burgerraad','Burger'];
+  const all=new Map(base.map(label=>[normalizeVisual(label),label]));
+  for(const person of people.filter(x=>x.dept===dept.value&&x.rank))
+   all.set(normalizeVisual(person.rank),String(person.rank));
+  return [...all].filter(([code])=>code).map(([code,title])=>['rank',code,title]);
  }
  function initialize(){
   const scope=grade.selectedOptions[0]?.dataset.scope||'rank';
