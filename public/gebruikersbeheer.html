@@ -81,6 +81,9 @@ header button{padding:7px 10px;font-size:12px}
 #uniformSection .uniform-assignment-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:9px;border:1px solid #375371;border-radius:6px}
 #uniformSection .uniform-assignment-row>span{flex:1;min-width:190px;font-size:12px}
 #uniformSection .uniform-assignment-row button{font-size:11px;padding:5px 9px}
+#uniformSection #uniformDeptAccessHelp{display:block;margin-top:7px;line-height:1.6}
+#uniformSection #uniformDeptAccessHelp[hidden],#uniformSection #uniformSwitchTechnical[hidden]{display:none!important}
+#uniformSection #uniformSwitchTechnical{display:inline-block;margin:7px 0 0;padding:5px 10px;font-size:12px}
 #uniformSection .uniform-canvas-config{grid-column:1/-1;display:grid;gap:9px;padding:12px;border:1px solid #426487;border-radius:9px;background:#101f35}
 #uniformSection .uniform-canvas-config h3{font-size:14px;margin:0}
 #uniformSection .uniform-canvas-config .grid{margin:0}
@@ -345,7 +348,13 @@ header button{padding:7px 10px;font-size:12px}
  <h2>🧥 Uniformbeheer per hulpdienst</h2>
  <p>Beheer de uniformafbeelding en de exacte plaats van het gradenteken zonder een codewijziging. Dit verandert uitsluitend de <strong>weergave</strong>, niet de Discord-rollen, rangen of dossierbevoegdheden.</p>
  <div class="grid">
-  <div><label for="uniformDept">Hulpdienst</label><select id="uniformDept"></select></div>
+  <div>
+    <label for="uniformDept">Hulpdienst</label><select id="uniformDept"></select>
+    <small id="uniformDeptAccessHelp" hidden>
+      <span id="uniformDeptAccessText"></span>
+      <button type="button" id="uniformSwitchTechnical" class="alt" hidden>Ga naar Technisch beheer</button>
+    </small>
+  </div>
   <div><label for="uniformVariant">Uniformtype</label><select id="uniformVariant"></select></div>
   <div><label for="uniformGradePreview">Voorbeeld gradenteken</label><select id="uniformGradePreview"></select><small>Je kunt een bestaand gradenteken gebruiken om de plaatsing te beoordelen.</small></div>
   <div><label for="uniformFile">Nieuw uniform uploaden (PNG, JPG, WebP)</label><input id="uniformFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Gebruik ook grote, verticale uniformen. Originele verhouding en instelbaar formaat; de gradenplaat en naamplaat blijven aparte lagen.</small></div>
