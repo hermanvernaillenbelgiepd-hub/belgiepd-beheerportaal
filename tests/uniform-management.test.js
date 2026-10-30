@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateUniformLayout,validateUniformNameplate,validateUniformCoat,UNIFORM_VARIANTS} from '../src/uniform-management-routes.js';
+import {validateUniformLayout,validateUniformNameplate,validateUniformCoat,validateUniformVisibility,UNIFORM_VARIANTS} from '../src/uniform-management-routes.js';
 
 const sample={department:'politie',variant:'silver',
  left:62.3,top:56.75,width:26.6,height:12.25,reason:'Aangepast na controle van de uniformfoto'};
@@ -103,4 +103,29 @@ test('custom uniform canvas rejects extreme sizes and unknown metadata',()=>{
   reason:'Uniformpositie van voor de canvasupgrade'});
  assert.equal(legacy.canvasWidth,603);
  assert.equal(legacy.canvasHeight,469);
+});
+
+test('Ambulance, Brandweer and Depannage can each hide uniform components independently',()=>{
+ const fields={showGradePlate:false,showNamePlate:true,showExtraLogo:false,
+  showHelmet:false,showProfessionBadge:true};
+ for(const department of ['brandweer','ambulance','depannage']){
+  const result=validateUniformVisibility({department,variant:'default',...fields,
+   reason:'Uniformcomponenten op verzoek van de dienst aanpassen'});
+  assert.equal(result.key,department+'_default');
+  assert.equal(result.showGradePlate,false);
+  assert.equal(result.showNamePlate,true);
+  assert.equal(result.showExtraLogo,false);
+ }
+});
+test('uniform visibility changes cannot grant roles or affect police uniforms',()=>{
+ const good={department:'brandweer',variant:'default',
+  showGradePlate:true,showNamePlate:false,showExtraLogo:true,
+  showHelmet:true,showProfessionBadge:false,
+  reason:'Naamplaat hoeft op dit uniform niet aanwezig te zijn'};
+ assert.equal(validateUniformVisibility(good).showNamePlate,false);
+ for(const change of [
+  {department:'politie'},{department:'burger'}, {variant:'silver'},
+  {showGradePlate:'false'},{showHelmet:1},{showProfessionBadge:null},
+  {reason:'kort'},{grantRoles:true},{personId:'123456789012345678'}
+ ])assert.throws(()=>validateUniformVisibility({...good,...change}));
 });
