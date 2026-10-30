@@ -5,8 +5,8 @@ const UID=/^\d{15,22}$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const nameCode=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
-let rules=[],elementRules=[],assetUrls=new Map();
-function setData(assignments,artworks,visualRules=[]){
+let rules=[],elementRules=[],coatChoices=[],assetUrls=new Map();
+function setData(assignments,artworks,visualRules=[],uniformGradeChoices=[]){
  rules=(Array.isArray(assignments)?assignments:[]).filter(x=>
   x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
   ['service','cadre','rank','person','group','function'].includes(x.scope)&&
@@ -16,6 +16,10 @@ function setData(assignments,artworks,visualRules=[]){
   ['rank','helmet','profession','logo','pictogram','patch'].includes(x.kind)&&
   ['service','cadre','rank','person','call','function'].includes(x.scope)&&
   CODE.test(x.assetCode||''));
+ coatChoices=(Array.isArray(uniformGradeChoices)?uniformGradeChoices:[]).filter(x=>
+  x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
+  ['rank','helmet','profession'].includes(x.kind)&&CODE.test(x.uniformCode||'')&&
+  CODE.test(x.assetCode||'')&&CODE.test(x.selector||''));
  assetUrls=new Map();
  for(const row of Array.isArray(artworks)?artworks:[]){
   const key=String(row?.key||''),url=String(row?.imageUrl||'');
@@ -53,14 +57,25 @@ function forPerson(p){
  }
  const elementCodes={},elementUrls={};
  for(const kind of ['rank','helmet','profession','logo','pictogram','patch']){
+  const coatScope=dept==='politie'&&kind==='rank'&&series?'call':
+   dept==='brandweer'&&['rank','helmet'].includes(kind)?'rank':
+   dept==='ambulance'&&kind==='profession'&&functionCode?'function':'';
+  const coatSelector=coatScope==='call'?series:coatScope==='rank'?nameCode(p.rank):
+   coatScope==='function'?functionCode:'';
+  // Personal overrides remain highest priority. Then the image chosen for
+  // this actual uniform, finally the old service-wide rank fallback.
   for(const [scope,selector] of [
    ...(id?[['person',id]]:[]),
    ...(callCode?[['person','call_'+callCode]]:[]),
+   ...(uniformCode&&coatScope&&coatSelector?[['uniform',coatSelector]]:[]),
    ...(series&&dept==='politie'?[['call',series]]:[]),
    ...(functionCode&&dept==='ambulance'?[['function',functionCode]]:[]),
    ['rank',nameCode(p.rank)],['cadre',nameCode(getTier(p))],['service','default']]){
-   const found=elementRules.find(x=>x.department===dept&&x.kind===kind&&
-    x.scope===scope&&x.selector===selector);
+   const found=scope==='uniform'?
+    coatChoices.find(x=>x.department===dept&&x.uniformCode===uniformCode&&
+     x.kind===kind&&x.scope===coatScope&&x.selector===selector):
+    elementRules.find(x=>x.department===dept&&x.kind===kind&&
+     x.scope===scope&&x.selector===selector);
    const image=found&&assetUrls.get(kind+'_'+dept+'_'+found.assetCode);
    if(image){elementCodes[kind]=found.assetCode;elementUrls[kind]=image;break;}
   }
