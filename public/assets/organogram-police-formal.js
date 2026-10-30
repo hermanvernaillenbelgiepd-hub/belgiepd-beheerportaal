@@ -201,6 +201,19 @@
  });
  // Same exterior patch dimensions, embroidered rim and margins for all ranks.
  const NORMALIZED_GRADE_FRAME=Object.freeze({x:16,y:4,width:480,height:152});
+ let gradeArtworkOverrides=new Map();
+ function setGradeArtworkManifest(items){
+  const next=new Map();
+  for(const x of Array.isArray(items)?items:[]){
+   const key=String(x?.key||''),url=String(x?.imageUrl||'');
+   const m=/^rank_politie_([a-z0-9][a-z0-9_]{0,39})$/.exec(key);
+   if(!m||!/^\/api\/role-artwork\/file\/rank_politie_[a-z0-9][a-z0-9_]{0,39}\?v=[A-Za-z0-9-]+$/.test(url))
+    continue;
+   next.set(m[1],url);
+  }
+  gradeArtworkOverrides=next;
+ }
+ const gradeArt=grade=>gradeArtworkOverrides.get(grade?.key)||GRADE_ASSETS[grade?.key]||null;
  const GRADE_ASSETS=Object.freeze({
   ap:'/assets/bpd-rank-ap-clean-20261027.webp',
   ainp:'/assets/bpd-rank-ainp-clean-20261027.webp',
@@ -218,10 +231,13 @@
   const svg=svgEl('svg',{viewBox:'0 0 512 160',
    preserveAspectRatio:'xMidYMid meet',
    'aria-hidden':'true',focusable:'false',class:'bpd-grade-vector'});
-  const source=grade?GRADE_ASSETS[grade.key]:null;
+  const source=gradeArt(grade);
   if(!source)return svg;
   const bounds=GRADE_ALPHA_BOUNDS[grade.key];
-  if(!bounds)return svg;
+  if(!bounds){svg.append(svgEl('image',{href:source,x:0,y:0,width:512,height:160,preserveAspectRatio:'none'}));return svg;}
+  if(gradeArtworkOverrides.has(grade?.key)){
+   svg.append(svgEl('image',{href:source,x:0,y:0,width:512,height:160,preserveAspectRatio:'none'}));return svg;
+  }
   const [left,top,right,bottom]=bounds;
   const frame=NORMALIZED_GRADE_FRAME;
   const scaleX=frame.width/(right-left);
@@ -385,7 +401,7 @@
    chest.setAttribute('role','img');
    const patchImage=document.createElement('img');
    patchImage.className='bpd-gold-grade-art';
-   patchImage.src=GRADE_ASSETS[grade?.key]||GRADE_ASSETS.acp;
+   patchImage.src=gradeArt(grade)||GRADE_ASSETS.acp;
    patchImage.alt='';
    patchImage.loading='eager';
    patchImage.decoding='async';
@@ -418,7 +434,7 @@
   patch.setAttribute('aria-label','Geborduurde gradenplaat: '+(grade?.label||'Onbekend'));
   const patchImage=document.createElement('img');
   patchImage.className='bpd-silver-grade-art';
-  patchImage.src=GRADE_ASSETS[grade?.key]||GRADE_ASSETS.ap;
+  patchImage.src=gradeArt(grade)||GRADE_ASSETS.ap;
   patchImage.alt='';
   patchImage.loading='eager';
   patchImage.decoding='async';
@@ -428,5 +444,5 @@
   outer.append(stage);
   return outer;
  }
- window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,makeNameplate,nameplateData,asset:GOLD_BASE,legacyAsset:BASE,silverAsset:SILVER_BASE});
+ window.BPDPoliceUniform=Object.freeze({gradeFor,trimFor,makeBadge,makePortrait,makeNameplate,nameplateData,setGradeArtworkManifest,asset:GOLD_BASE,legacyAsset:BASE,silverAsset:SILVER_BASE});
 })();
