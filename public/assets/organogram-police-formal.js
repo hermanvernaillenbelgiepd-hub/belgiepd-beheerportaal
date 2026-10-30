@@ -420,11 +420,16 @@
   return {name,call,bottom:'BELGIEPD - '+call};
  }
  function goldLettering(person){
-  // BelgiumPD visual distinction by actual rank, not by uniform image.
+  // Rank-specific visual rule: HINP / 1-HINP and every lower police
+  // grade are SILVER. Only ACP, CP, 1-CP, HCP, 1-HCP, Korpschef
+  // are GOLD. A photo of a golden coat never changes this decision.
   const key=gradeFor(person)?.key||'';
-  return ['acp','cp','1cp','hcp','1hcp'].includes(key)||
-   /\b(?:ACP|CP|1-?CP|HCP|1-?HCP|korpschef)\b|\b(?:hoofdcommissaris|commissaris)\b/i.test(String(person?.rank||''))||
-   /^\s*(?:SANTO[- ]?)?9(?:0|1|2|3)\d\s*$/i.test(String(person?.call||''));
+  const lower=new Set(['ap','ainp','inp','1inp','ahinp','hinp','1hinp']);
+  if(lower.has(key))return false;
+  if(['acp','cp','1cp','hcp','1hcp'].includes(key))return true;
+  const title=String(person?.rank||'');
+  if(/\bkorpschef\b/i.test(title))return true;
+  return /\b(?:ACP|CP|1-?CP|HCP|1-?HCP)\b|\b(?:hoofdcommissaris|commissaris)\b/i.test(title);
  }
  const metalClass=person=>goldLettering(person)?' bpd-nameplate-metal-gold':' bpd-nameplate-metal-silver';
  function makeNameplate(person,zoom=false){
@@ -470,18 +475,26 @@
   plate.append(svg);
   return plate;
  }
- // Clean, discrete left-side police accent. Unlike the retired repeating
- // gradient it is not a filled or hatched corner INSIDE the name text panel.
- function appendNameplateSideAccent(plate){
-  const accent=document.createElement('span');
-  accent.className='bpd-nameplate-left-accent';
-  accent.setAttribute('aria-hidden','true');
-  for(let index=0;index<4;index++){
-   const stripe=document.createElement('span');
-   stripe.className='bpd-nameplate-left-accent-stripe';
-   accent.append(stripe);
-  }
-  plate.append(accent);
+ // Build the nameplate from that member's *actual rank plaque*: mirror the
+ // rank drawing so the diagonal fabric side sits on the LEFT, but reveal only
+ // its left-hand edge. The actual rank symbols remain on the separate grade
+ // plaque and cannot show through the name-and-CALL field.
+ function addMirroredRankNameplate(plate,person){
+  const visual=window.BPDUniformAssignments?.forPerson?.(person);
+  const currentGrade=gradeFor(person);
+  const rankUrl=visual?.rankUrl||
+   gradeArtworkOverrides.get(visual?.callSeries)||
+   gradeArt(currentGrade)||GRADE_ASSETS.ap;
+  const base=document.createElement('img');
+  base.className='bpd-nameplate-mirrored-grade';
+  base.src=rankUrl;
+  base.alt='';
+  base.draggable=false;
+  base.setAttribute('aria-hidden','true');
+  const field=document.createElement('span');
+  field.className='bpd-nameplate-text-field';
+  field.setAttribute('aria-hidden','true');
+  plate.append(base,field);
  }
  function makeGoldNameplate(person){
   const details=nameplateTextData(person,'gold');
@@ -500,7 +513,7 @@
   second.textContent=details.bottom;
   second.style.transform='scale('+(details.callScale/100)+')';
   plate.append(first,second);
-  appendNameplateSideAccent(plate);
+  addMirroredRankNameplate(plate,person);
   return plate;
  }
  function makeSilverWovenNameplate(person){
@@ -520,7 +533,7 @@
   call.textContent=details.bottom;
   call.style.transform='scale('+(details.callScale/100)+')';
   plate.append(name,call);
-  appendNameplateSideAccent(plate);
+  addMirroredRankNameplate(plate,person);
   return plate;
  }
  function applyCompositePlace(node,person,kind){
