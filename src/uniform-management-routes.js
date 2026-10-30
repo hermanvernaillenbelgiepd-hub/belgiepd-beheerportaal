@@ -7,6 +7,9 @@ export const UNIFORM_LAYOUTS='bpd_uniform_visual_layouts';
 export const UNIFORM_LAYOUT_AUDIT='bpd_uniform_visual_layout_audit';
 export const UNIFORM_NAMEPLATES='bpd_uniform_nameplate_layouts';
 export const UNIFORM_COATS='bpd_uniform_coat_layouts';
+export const UNIFORM_VISIBILITY='bpd_uniform_element_visibility';
+export const UNIFORM_VISIBILITY_KEYS=Object.freeze(['showGradePlate','showNamePlate','showExtraLogo','showHelmet','showProfessionBadge']);
+const OPTIONAL_DISPLAY_SERVICES=Object.freeze(['brandweer','ambulance','depannage']);
 export const UNIFORM_SERVICES=Object.freeze(['politie','brandweer','ambulance','depannage','burger','beveiliging']);
 export const UNIFORM_VARIANTS=Object.freeze({
  politie:['silver','gold'],
@@ -115,18 +118,37 @@ export function validateUniformCoat(input){
   offsetY:Math.round(input.offsetY*100)/100,
   zoom:Math.round(input.zoom*100)/100,canvasWidth,canvasHeight,keepAspectRatio,reason};
 }
+// Only visual presentation flags; personnel privileges, ranks and grants are untouched.
+export function validateUniformVisibility(input){
+ if(!input||Array.isArray(input)||typeof input!=='object'||
+  Object.keys(input).some(key=>!['department','variant','reason',...UNIFORM_VISIBILITY_KEYS].includes(key)))
+  throw err(400,'Ongeldige uniformeigenschappen');
+ const department=String(input.department||''),variant=String(input.variant||'');
+ if(!OPTIONAL_DISPLAY_SERVICES.includes(department)||variant!=='default')
+  throw err(400,'Elementen zijn uitsluitend per uniform van Brandweer, Ambulance of Depannage instelbaar');
+ for(const key of UNIFORM_VISIBILITY_KEYS){
+  if(typeof input[key]!=='boolean')throw err(400,'Alle weergaveschakelaars moeten aan of uit staan');
+ }
+ const reason=typeof input.reason==='string'?input.reason.trim():'';
+ if(reason.length<8||reason.length>300||/[<>\x00-\x1f]/.test(reason))
+  throw err(400,'Motivering van 8–300 tekens verplicht');
+ return {key:department+'_default',department,variant,
+  ...Object.fromEntries(UNIFORM_VISIBILITY_KEYS.map(key=>[key,input[key]])),reason};
+}
 export function installUniformManagementRoutes(app,{requireUser}){
  app.get('/api/uniform-management/layouts',requireUser,async(req,res)=>{
   try{
    const db=getFirestore();
-   const [snaps,nameSnap,coatSnap]=await Promise.all([
+   const [snaps,nameSnap,coatSnap,visibilitySnap]=await Promise.all([
     db.collection(UNIFORM_LAYOUTS).limit(20).get(),
     db.collection(UNIFORM_NAMEPLATES).limit(20).get(),
-    db.collection(UNIFORM_COATS).limit(20).get()
+    db.collection(UNIFORM_COATS).limit(20).get(),
+    db.collection(UNIFORM_VISIBILITY).limit(20).get()
    ]);
    const stored=new Map(snaps.docs.map(d=>[d.id,d.data()]));
    const nameStored=new Map(nameSnap.docs.map(d=>[d.id,d.data()]));
    const coatStored=new Map(coatSnap.docs.map(d=>[d.id,d.data()]));
+   const visibleStored=new Map(visibilitySnap.docs.map(d=>[d.id,d.data()]));
    const layouts=Object.entries(DEFAULTS).map(([key,defaultLayout])=>{
     const row=stored.get(key);
     const placement=row&&['left','top','width','height'].every(k=>typeof row[k]==='number')
@@ -160,9 +182,35 @@ export function installUniformManagementRoutes(app,{requireUser}){
      keepAspectRatio:valid&&typeof saved.keepAspectRatio==='boolean'?saved.keepAspectRatio:true,
      configured:valid};
    });
+   const visibility=Object.keys(DEFAULTS).map(key=>{
+    const saved=visibleStored.get(key)||{};
+    return {key,department:key.split('_')[0],variant:key.split('_')[1],
+     ...Object.fromEntries(UNIFORM_VISIBILITY_KEYS.map(field=>[field,
+      typeof saved[field]==='boolean'?saved[field]:true]))};
+   });
    res.set('Cache-Control','private, no-store');
-   return res.json({layouts,nameplates,coats,canEdit:req.bpd?.role==='beheerder',
+   return res.json({layouts,nameplates,coats,visibility,canEdit:req.bpd?.role==='beheerder',
     editableDepartments:UNIFORM_SERVICES.filter(d=>mayEdit(req.bpd,d))});
+  }catch(e){return error(res,e)}
+ });
+ app.put('/api/uniform-management/visibility',requireUser,async(req,res)=>{
+  let data;try{data=validateUniformVisibility(req.body)}catch(e){return error(res,e)}
+  if(!mayEdit(req.bpd,data.department))
+   return res.status(403).json({error:'Geen machtiging voor dit uniform'});
+  try{
+   const db=getFirestore(),ref=db.collection(UNIFORM_VISIBILITY).doc(data.key);
+   const current=Object.fromEntries(UNIFORM_VISIBILITY_KEYS.map(field=>[field,data[field]]));
+   await db.runTransaction(async tx=>{
+    const old=await tx.get(ref);
+    const previous=old.exists?old.data():null;
+    tx.set(ref,{department:data.department,variant:data.variant,...current,
+     updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid});
+    tx.create(db.collection(UNIFORM_LAYOUT_AUDIT).doc(),{
+     action:'uniform_element_visibility',key:data.key,
+     previous:previous?Object.fromEntries(UNIFORM_VISIBILITY_KEYS.map(field=>[field,previous[field]??true])):null,
+     current,reason:data.reason,actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+   });
+   return res.json({saved:true,key:data.key,permissionsChanged:false});
   }catch(e){return error(res,e)}
  });
  app.put('/api/uniform-management/coat',requireUser,async(req,res)=>{
