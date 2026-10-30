@@ -28,8 +28,8 @@ test('soft frames are near-square at all four supported sizes, without visible t
 });
 test('rank plates and woven names are not changed by the new photo frame',()=>{
  const js=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
- assert.match(js,/bpd-uniform-zilver-zonder-koord-nieuw-20261028\.webp/);
- assert.match(js,/bpd-gold-officer-corps-approved-20261028\.webp/);
+ assert.match(js,/bpd-uniform-zilver-zonder-medaille-rood-20261029\.svg/);
+ assert.match(js,/bpd-gold-officer-corps-zonder-medaille-rood-20261029\.svg/);
  assert.match(js,/function makeWovenNameplate\(person,zoom=false\)/);
  assert.doesNotMatch(js,/function makeGoldNameplate|function makeSilverWovenNameplate/);
  assert.match(js,/GRADE_ASSETS\[grade\?\.key\]/);
