@@ -470,6 +470,19 @@
   plate.append(svg);
   return plate;
  }
+ // Clean, discrete left-side police accent. Unlike the retired repeating
+ // gradient it is not a filled or hatched corner INSIDE the name text panel.
+ function appendNameplateSideAccent(plate){
+  const accent=document.createElement('span');
+  accent.className='bpd-nameplate-left-accent';
+  accent.setAttribute('aria-hidden','true');
+  for(let index=0;index<4;index++){
+   const stripe=document.createElement('span');
+   stripe.className='bpd-nameplate-left-accent-stripe';
+   accent.append(stripe);
+  }
+  plate.append(accent);
+ }
  function makeGoldNameplate(person){
   const details=nameplateTextData(person,'gold');
   const plate=document.createElement('span');
@@ -487,6 +500,7 @@
   second.textContent=details.bottom;
   second.style.transform='scale('+(details.callScale/100)+')';
   plate.append(first,second);
+  appendNameplateSideAccent(plate);
   return plate;
  }
  function makeSilverWovenNameplate(person){
@@ -506,6 +520,7 @@
   call.textContent=details.bottom;
   call.style.transform='scale('+(details.callScale/100)+')';
   plate.append(name,call);
+  appendNameplateSideAccent(plate);
   return plate;
  }
  function applyCompositePlace(node,person,kind){
