@@ -6,6 +6,10 @@ import {validateLibraryUpload,validateLibraryRule,bucketName,
 
 const png=Buffer.alloc(45);
 Buffer.from([137,80,78,71,13,10,26,10]).copy(png);
+png.writeUInt32BE(13,8);
+png.write('IHDR',12,'ascii');
+png.writeUInt32BE(1,16);
+png.writeUInt32BE(1,20);
 const upload=(values={})=>({department:'brandweer',kind:'helmet',
  code:'sergeant',label:'Brandweerhelm Sergeant',
  reason:'Nieuwe kwaliteitsafbeelding voor de brandweer',
