@@ -1525,7 +1525,10 @@ function openPersonProfile(p){
     item.append(el('span','person-profile-specialty-role',
      isRagoInstructor?'RAGO · INSTRUCTEUR':full?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'));
     const patch=el('img','person-profile-specialty-badge rago-io-badge');
-    patch.src=full?(isRagoInstructor?RAGO_INSTRUCTOR_PATCH:RAGO_PATCH):RAGO_IO_PATCH;
+    patch.src=full?(isRagoInstructor?
+     (roleArtworkUrl(RAGO_DISCORD_ROLE_ID,'instructeur')||RAGO_INSTRUCTOR_PATCH):
+     (roleArtworkUrl(RAGO_DISCORD_ROLE_ID)||RAGO_PATCH)):
+     (roleArtworkUrl(RAGO_IO_ROLE_ID)||RAGO_IO_PATCH);
     patch.alt=isRagoInstructor?'RAGO instructeur: Federale Politie Dienst Luchtsteun':
      full?'RAGO volwaardig: Federale Politie Dienst Luchtsteun':
      'RAGO-IO: Federale Politie Dienst Luchtsteun';
@@ -1966,7 +1969,11 @@ document.querySelector('.toolbar').addEventListener('click',event=>{
 $('search').addEventListener('input',event=>{state.query=event.target.value;render()});
 async function loadPublic(){
  try{
-  const response=await authFetch('/api/organogram/hierarchie');
+  const [response,artworkManifest]=await Promise.all([
+   authFetch('/api/organogram/hierarchie'),
+   authFetch('/api/role-artwork/manifest').catch(()=>({artworks:[]}))
+  ]);
+  applyRoleArtworkManifest(artworkManifest?.artworks);
   const payload=response;
   if(payload.readOnly!==true||!Array.isArray(payload.records))throw Error('Geen vrijgegeven organogramlijst');
   const approved=new Set(['politie','brandweer','ambulance','depannage','burger']);
@@ -2060,11 +2067,50 @@ const DISP_DISCORD_ROLE_IDS=Object.freeze({
  in_opleiding:'1337852029611016233'
 });
 let focusedAdminSpecialty='';
+const ROLE_ARTWORK_SLOTS=[
+ ['1345302115689431061','standard',['.k9-role-patch.k9-patch-instructeur','.k9-patch-preview.role-instructeur','.k9-variant-image.role-instructeur']],
+ ['1309532437977497699','standard',['.k9-role-patch.k9-patch-geleider','.k9-patch-preview.role-geleider','.k9-variant-image.role-geleider']],
+ ['1345297414612979713','standard',['.k9-role-patch.k9-patch-geleider_in_stage','.k9-patch-preview.role-geleider_in_stage','.k9-variant-image.role-geleider_in_stage']],
+ ['1359656762289946755','standard',['.motard-role-patch.motard-patch-instructeur','.motard-patch-preview.role-instructeur','.motard-variant-image.role-instructeur']],
+ ['1358148694297415741','standard',['.motard-role-patch.motard-patch-volwaardig','.motard-patch-preview.role-volwaardig','.motard-variant-image.role-volwaardig']],
+ ['1365602771855740958','standard',['.motard-role-patch.motard-patch-in_opleiding','.motard-patch-preview.role-in_opleiding','.motard-variant-image.role-in_opleiding']],
+ ['1393050971604516904','standard',['.disp-role-patch.disp-patch-instructeur','.disp-patch-preview.role-instructeur','.disp-variant-image.role-instructeur']],
+ ['1309532438019706963','standard',['.disp-role-patch.disp-patch-volwaardig','.disp-patch-preview.role-volwaardig','.disp-variant-image.role-volwaardig']],
+ ['1337852029611016233','standard',['.disp-role-patch.disp-patch-in_opleiding','.disp-patch-preview.role-in_opleiding','.disp-variant-image.role-in_opleiding']]
+];
+// Artwork manifest is presentation-only; the trusted Discord role mapping
+// above remains unchanged for membership and all API permissions.
+let roleArtworkUrls=new Map();
+function roleArtworkUrl(roleId,variant='standard'){
+ return roleArtworkUrls.get(roleId+'_'+variant)||'';
+}
+function applyRoleArtworkManifest(manifest){
+ const accepted=new Map();
+ for(const entry of Array.isArray(manifest)?manifest:[]){
+  if(!/^\\d{15,22}_[a-z][a-z0-9_]{0,39}$/.test(String(entry?.key||'')))continue;
+  const url=String(entry.imageUrl||'');
+  if(!/^\\/api\\/role-artwork\\/file\\/\\d{15,22}_[a-z][a-z0-9_]{0,39}\\?v=[a-zA-Z0-9-]+$/.test(url))continue;
+  accepted.set(entry.key,url);
+ }
+ roleArtworkUrls=accepted;
+ let css='';
+ for(const [id,variant,selectors] of ROLE_ARTWORK_SLOTS){
+  const url=roleArtworkUrl(id,variant);
+  if(url)css+=selectors.join(',')+'{background-image:url("'+url+'")!important;background-size:100% 100%!important;background-position:center!important;}\\n';
+ }
+ let style=document.getElementById('bpd-role-artwork-overrides');
+ if(!style){style=document.createElement('style');style.id='bpd-role-artwork-overrides';document.head.append(style)}
+ style.textContent=css;
+}
+
 function drawBadgePreview(box,specialty,k9Role='',ragoInstructor=false,motardRole='',dispRole=''){
  box.replaceChildren();
  if(specialty==='RAGO-IO'||specialty==='RAGO'){
   const img=el('img');
-  img.src=specialty==='RAGO'?(ragoInstructor?RAGO_INSTRUCTOR_PATCH:RAGO_PATCH):RAGO_IO_PATCH;
+  img.src=specialty==='RAGO'?(ragoInstructor?
+   (roleArtworkUrl(RAGO_DISCORD_ROLE_ID,'instructeur')||RAGO_INSTRUCTOR_PATCH):
+   (roleArtworkUrl(RAGO_DISCORD_ROLE_ID)||RAGO_PATCH)):
+   (roleArtworkUrl(RAGO_IO_ROLE_ID)||RAGO_IO_PATCH);
   img.alt=specialty==='RAGO'?
    (ragoInstructor?'RAGO-instructeurspatch met geïntegreerd INSTRUCTEUR, volledige vleugels en okeroranje strepen':'Volwaardige RAGO-luchtsteunpatch met Belgische vlam en okerkleurige vleugels'):
    'Belgische geborduurde RAGO-IO-patch met vlam, vleugel en okerkleurige tekst';
