@@ -94,7 +94,7 @@ export function setupUniformComposer({api,$}){
   if(Number.isInteger(n)&&n>=100&&n<900)return false;
   if(['900','910','920','930'].includes(grade.value))return true;
   const label=String(grade.value||'')+' '+String(grade.selectedOptions[0]?.textContent||'');
-  return /\\b(?:A-?HCP|AHCP|HCP|1-?HCP|ACP|CP|1-?CP|Korpschef)\\b|(?:aspirant[-_ ]?hoofdcommissaris|hoofdcommissaris|aspirant[-_ ]?commissaris|commissaris)/i.test(label);
+  return /\b(?:A-?HCP|AHCP|HCP|1-?HCP|ACP|CP|1-?CP|Korpschef)\b|(?:aspirant[-_ ]?hoofdcommissaris|hoofdcommissaris|aspirant[-_ ]?commissaris|commissaris)/i.test(label);
  }
  function draw(){
   panel.replaceChildren();
