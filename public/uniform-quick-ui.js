@@ -11,7 +11,7 @@ export function setupUniformQuickUI({api,$}){
   reason=$('uniformQuickReason'),status=$('uniformQuickStatus');
  const services=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
   ['depannage','Depannage'],['burger','Burger']];
- let artwork=[],uniformAssignments=[],markRules=[],people=[],editable=[],cloudReady=false;
+ let artwork=[],uniformAssignments=[],markRules=[],coatGrades=[],people=[],editable=[],cloudReady=false;
  const message=(s,bad=false)=>{status.textContent=s;status.classList.toggle('error',bad)};
  const option=(value,label)=>new Option(label,value);
  const titles={rank:'Gradenplaat',helmet:'Helm',profession:'Beroepsteken'};
@@ -53,7 +53,9 @@ export function setupUniformQuickUI({api,$}){
   return [];
  }
  function candidates(kind){
-  return artwork.filter(x=>x.department===dept.value&&x.kind===kind&&x.active!==false)
+  return artwork.filter(x=>x.department===dept.value&&x.kind===kind&&x.active!==false&&
+   // Old built-in police coat variants are no longer selectable as new coats.
+   (kind!=='uniform'||!['silver','gold'].includes(x.code)))
    .sort((a,b)=>String(a.label).localeCompare(String(b.label),'nl'));
  }
  function makeSelect(kind,selected,aria){
@@ -90,7 +92,37 @@ export function setupUniformQuickUI({api,$}){
   const panel=$('libraryPanel');
   if(panel&&!panel.hidden)panel.scrollIntoView({behavior:'smooth',block:'start'});
  }
- function makeRow(label,kind,target,selected,handler){
+ function illustratedPicker(select,kind,label){
+  const box=document.createElement('div');box.className='uniform-grade-gallery';box.hidden=true;
+  const choices=[{code:'',label:'Automatisch / standaard',imageUrl:''},...candidates(kind)];
+  for(const asset of choices){
+   const btn=document.createElement('button');btn.type='button';
+   btn.className='uniform-grade-choice';btn.setAttribute('aria-label',asset.label);
+   btn.setAttribute('aria-pressed',String(select.value===asset.code));
+   if(asset.imageUrl){
+    const img=document.createElement('img');img.src=asset.imageUrl;
+    img.loading='lazy';img.alt=asset.label;btn.append(img);
+   }else{
+    const placeholder=document.createElement('span');placeholder.className='uniform-grade-blank';
+    placeholder.textContent='↺';btn.append(placeholder);
+   }
+   const name=document.createElement('small');name.textContent=asset.label;btn.append(name);
+   btn.onclick=()=>{
+    select.value=asset.code;select.dispatchEvent(new Event('change'));
+    for(const child of box.querySelectorAll('.uniform-grade-choice'))
+     child.setAttribute('aria-pressed',String(child===btn));
+    box.hidden=true;
+   };
+   box.append(btn);
+  }
+  const trigger=document.createElement('button');trigger.type='button';trigger.className='alt';
+  trigger.textContent='🖼 Bekijk alle tekeningen';
+  trigger.setAttribute('aria-expanded','false');
+  trigger.setAttribute('aria-label','Toon gradenplaten met afbeelding voor '+label);
+  trigger.onclick=()=>{box.hidden=!box.hidden;trigger.setAttribute('aria-expanded',String(!box.hidden))};
+  return {trigger,box};
+ }
+ function makeRow(label,kind,target,selected,handler,illustrated=false){
   const line=document.createElement('div');line.className='uniform-quick-row';
   const title=document.createElement('span');title.className='uniform-quick-row-label';title.textContent=label;
   const select=makeSelect(kind,selected,label+' — '+(titles[kind]||'Uniform'));
@@ -126,7 +158,12 @@ export function setupUniformQuickUI({api,$}){
    }catch(e){message('Bewaren mislukt: '+e.message,true)}
    finally{save.disabled=false;}
   };
-  buttons.append(upload,save);line.append(title,select,thumb,buttons);return line;
+  buttons.append(upload,save);line.append(title,select,thumb,buttons);
+  if(illustrated){
+   const {trigger,box}=illustratedPicker(select,kind,label);
+   buttons.prepend(trigger);line.append(box);
+  }
+  return line;
  }
  function makeUploadLink(){
   const b=document.createElement('button');b.type='button';b.className='alt';
@@ -162,43 +199,77 @@ export function setupUniformQuickUI({api,$}){
     }else await api('/api/uniform-assignments',{method:'PUT',body});
    }));
   }
-  makeHeading(marks,'2 · Graden en functieaanduidingen kiezen',
-   dept.value==='politie'?'Kies per callreeks de gradenplaat, onafhankelijk van het basisuniform.':
-   dept.value==='brandweer'?'Kies per brandweergraad de gradenplaat en eventueel de helm.':
-   dept.value==='ambulance'?'Kies per hoedanigheid het beroepsteken; het basisuniform blijft gelijk.':
-   'Voor deze hulpdienst volstaat doorgaans het basisuniform en het gewone logobeheer.');
-  const targets=getMarkTargets();
-  if(!targets.length){const p=document.createElement('p');p.className='muted';
-   p.textContent=dept.value==='brandweer'?
-    'Er zijn nog geen brandweergraden in de personeelsbron gevonden. Je kunt bestaande graden in het uitgebreide beheer blijven instellen.':
-    'Geen afzonderlijke gradentekens voor deze categorie.';marks.append(p);}
-  for(const t of targets){
+  makeHeading(marks,'2 · Kies de gradenplaat bij ieder uniform',
+   'Open een geüpload uniform en kies per graad of functie een afbeelding uit de galerij. De tekening is meteen zichtbaar. Het oude standaarduniform staat niet in deze lijst.');
+  const uniformAssets=candidates('uniform');
+  if(!uniformAssets.length){
+   const note=document.createElement('p');note.className='muted';
+   note.textContent='Er zijn nog geen nieuwe uniformen geüpload voor deze hulpdienst. Upload eerst een uniform in de bibliotheek; oudere ingebouwde uniformen worden niet opnieuw aangeboden.';
+   marks.append(note);
+  }
+  for(const coat of uniformAssets){
+   const block=document.createElement('details');block.className='uniform-grade-coat';
+   const summary=document.createElement('summary');
+   const photo=document.createElement('img');photo.src=coat.imageUrl;photo.alt=coat.label;
+   photo.loading='lazy';
+   const caption=document.createElement('span');caption.textContent=coat.label+' — gradenplaten kiezen';
+   summary.append(photo,caption);
+   block.append(summary);
+   const content=document.createElement('div');content.className='uniform-grade-coat-rows';
+   for(const target of getMarkTargets()){
+    for(const kind of target.kinds){
+     const current=coatGrades.find(x=>x.department===dept.value&&x.uniformCode===coat.code&&
+      x.kind===kind&&x.scope===target.scope&&x.selector===target.selector);
+     const label=target.label+(target.kinds.length>1?' · '+titles[kind]:'');
+     const row=makeRow(label,kind,target,current?.assetCode||'',async(assetCode,t)=>{
+      const body={department:dept.value,uniformCode:coat.code,kind,
+       scope:t.scope,selector:t.selector,assetCode,reason:reason.value.trim()};
+      if(assetCode)await api('/api/uniform-grade-choices',{method:'PUT',body});
+      else if(current)await api('/api/uniform-grade-choices',{method:'DELETE',body});
+     },true);
+     content.append(row);
+    }
+   }
+   if(!content.children.length){
+    const note=document.createElement('p');note.className='muted';
+    note.textContent='Voor deze dienst worden er geen afzonderlijke gradenplaten aan uniformen gekoppeld.';
+    content.append(note);
+   }
+   block.append(content);marks.append(block);
+  }
+  const advanced=document.createElement('details');advanced.className='uniform-grade-advanced';
+  const summary=document.createElement('summary');summary.textContent='Geavanceerd: algemene gradenplaat per graad (onafhankelijk van uniform)';
+  advanced.append(summary);
+  for(const t of getMarkTargets()){
    for(const kind of t.kinds){
     const current=markRules.find(r=>r.department===dept.value&&r.kind===kind&&
      r.scope===t.scope&&r.selector===t.selector);
     const label=t.label+(t.kinds.length>1?' · '+titles[kind]:'');
-    marks.append(makeRow(label,kind,t,current?.assetCode||'',async(code,target)=>{
+    advanced.append(makeRow(label,kind,t,current?.assetCode||'',async(code,target)=>{
      const body={department:dept.value,kind,scope:target.scope,selector:target.selector,
       assetCode:code,reason:reason.value.trim()};
      if(code)await api('/api/uniform-library/rules',{method:'PUT',body});
      else if(current)await api('/api/uniform-library/rules',{method:'DELETE',body});
-    }));
+    },true));
    }
   }
+  marks.append(advanced);
   const footer=document.createElement('div');footer.className='controls';
   footer.append(makeUploadLink());marks.append(footer);
  }
  async function reload(keep=false){
   const prev=dept.value;
-  const [a,r,u,p,l]=await Promise.all([
+  const [a,r,u,p,l,g]=await Promise.all([
    api('/api/role-artwork/manage'),
    api('/api/uniform-library/rules'),
    api('/api/uniform-assignments'),
    api('/api/organogram/hierarchie').catch(()=>({records:[]})),
-   api('/api/uniform-library/status')
+   api('/api/uniform-library/status'),
+   api('/api/uniform-grade-choices')
   ]);
   artwork=a.artworks||[];
   markRules=r.rules||[];
+  coatGrades=g.choices||[];
   uniformAssignments=u.assignments||[];
   people=p.records||[];
   editable=(l.editableDepartments||[]).filter(d=>(u.editableDepartments||[]).includes(d));
