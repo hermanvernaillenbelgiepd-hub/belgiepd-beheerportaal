@@ -18,7 +18,12 @@ export const UNIFORM_LIBRARY_RULE_KINDS=Object.freeze([
  'rank','helmet','profession','logo','pictogram','patch'
 ]);
 const DEPTS=['politie','brandweer','ambulance','depannage','burger','beveiliging'];
-const SCOPES=['service','cadre','rank','person'];
+const SCOPES=['service','cadre','rank','person','call','function'];
+const POLICE_SERIES=new Set(['100','200','300','400','500','600','700','800','900','910','920','930']);
+const AMBULANCE_FUNCTIONS=new Set(['ambulancier','vpk','arts','dirmed']);
+const validScopedType=(department,scope,selector)=>
+ scope==='call'?department==='politie'&&POLICE_SERIES.has(selector):
+ scope==='function'?department==='ambulance'&&AMBULANCE_FUNCTIONS.has(selector):true;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const PERSON=/^\d{15,22}$/;
 const KEY=/^(rank|uniform|specialty|medal|helmet|profession|logo|pictogram|patch|award)_(politie|brandweer|ambulance|depannage|burger|beveiliging)_([a-z0-9][a-z0-9_]{0,39})$/;
@@ -102,6 +107,7 @@ export function validateLibraryRule(body){
  const selector=String(body.selector||'').trim().toLowerCase();
  const assetCode=String(body.assetCode||'').trim().toLowerCase();
  if(!UNIFORM_LIBRARY_RULE_KINDS.includes(kind)||!SCOPES.includes(scope)||
+   !validScopedType(department,scope,selector)||
    !(scope==='person'?(PERSON.test(selector)||/^call_[a-z0-9][a-z0-9_]{0,34}$/.test(selector)):
      scope==='service'?selector==='default':CODE.test(selector))||!CODE.test(assetCode))
   throw err(400,'Ongeldige soort, doelgroep of afbeeldingscode');
@@ -239,7 +245,7 @@ export function installUniformLibraryRoutes(app,{requireUser}){
    scope=String(b.scope||''),selector=String(b.selector||'').trim().toLowerCase();
   let reason;try{reason=reasonOf(b.reason)}catch(e){return fail(res,e)}
   if(!DEPTS.includes(department)||!UNIFORM_LIBRARY_RULE_KINDS.includes(kind)||
-   !SCOPES.includes(scope)||!(scope==='person'?(PERSON.test(selector)||/^call_[a-z0-9][a-z0-9_]{0,34}$/.test(selector)):
+   !SCOPES.includes(scope)||!validScopedType(department,scope,selector)||!(scope==='person'?(PERSON.test(selector)||/^call_[a-z0-9][a-z0-9_]{0,34}$/.test(selector)):
    scope==='service'?selector==='default':CODE.test(selector)))
    return res.status(400).json({error:'Ongeldige doelgroep'});
   if(!canEditLibrary(req.bpd,department))return res.status(403).json({error:'Geen koppelrechten'});
