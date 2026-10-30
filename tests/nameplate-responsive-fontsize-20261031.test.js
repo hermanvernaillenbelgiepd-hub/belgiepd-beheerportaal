@@ -6,7 +6,7 @@ import {runInNewContext} from 'node:vm';
 const file=readFileSync(new URL('../public/assets/bpd-nameplate-autofit.js',import.meta.url),'utf8');
 function load(){
  const context={font:'10px Arial',measureText(value){
-  const fontSize=Number.parseFloat(this.font.match(/(\\d+(?:\\.\\d+)?)px/)?.[1]||'10');
+  const fontSize=Number.parseFloat(this.font.match(/(\d+(?:\.\d+)?)px/)?.[1]||'10');
   // Approximate actual Arial glyph widths, with wide/narrow differences.
   return {width:[...String(value)].reduce((sum,ch)=>
    sum+fontSize*(/[MW@]/i.test(ch)?.88:/[iIl1. ,:-]/.test(ch)?.29:.57),0)};
@@ -67,6 +67,6 @@ test('the same single autofit script is loaded before live and atelier renderers
  }
  const code=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
  const studio=readFileSync(new URL('../public/uniform-composer-ui.js',import.meta.url),'utf8');
- assert.match(code,/BPDNameplateFit\\?\\.watch\\(plate\\)/);
- assert.match(studio,/BPDNameplateFit\\?\\.watch\\(plate\\)/);
+ assert.match(code,/BPDNameplateFit\?\.watch\(plate\)/);
+ assert.match(studio,/BPDNameplateFit\?\.watch\(plate\)/);
 });
