@@ -63,6 +63,17 @@ header button{padding:7px 10px;font-size:12px}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 <style>
 #roleArtworkSection [hidden]{display:none!important}
+#roleArtworkSection .artwork-crop-section{margin:14px 0;padding:14px;border:1px solid #486789;border-radius:10px;background:#0c1c32}
+#roleArtworkSection .artwork-crop-section h3{margin:0 0 5px;font-size:15px}
+#roleArtworkSection .artwork-crop-section p{margin:4px 0 12px}
+#roleArtworkSection .artwork-crop-canvas-wrap{max-width:512px;margin:0 auto;border:1px solid #7d93af;border-radius:7px;overflow:hidden;background-color:#152940;background-image:conic-gradient(#1d3652 25%,#10253c 0 50%,#1d3652 0 75%,#10253c 0);background-size:20px 20px}
+#roleArtworkSection #roleArtworkCropCanvas{display:block;width:100%;height:auto;aspect-ratio:16/5;cursor:grab;touch-action:none;user-select:none}
+#roleArtworkSection #roleArtworkCropCanvas:active{cursor:grabbing}
+#roleArtworkSection .artwork-crop-controls{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap;margin-top:13px}
+#roleArtworkSection .artwork-crop-controls>label{margin:0}
+#roleArtworkSection .artwork-crop-controls input[type="range"]{width:min(240px,100%);accent-color:#79b1ff;padding:0;cursor:ew-resize}
+#roleArtworkSection .artwork-crop-controls select{width:auto;min-width:170px}
+#roleArtworkSection .artwork-crop-controls button{padding:8px 10px}
 #roleArtworkSection .artwork-preview{height:83px;display:flex;align-items:center;justify-content:center;border:1px dashed #5c7593;border-radius:9px;background:#0b192b}
 #roleArtworkSection .artwork-preview img{width:170px;height:53.125px;object-fit:fill;max-width:100%;border-radius:4px}
 #roleArtworkSection .artwork-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:9px;margin:14px 0}
@@ -236,8 +247,23 @@ header button{padding:7px 10px;font-size:12px}
  <div id="roleArtworkRoleIdWrap"><label for="roleArtworkRoleId">Discord-rol-ID</label><input id="roleArtworkRoleId" maxlength="22" inputmode="numeric" pattern="[0-9]{15,22}" placeholder="Bijv. 1358148694297415741"></div>
  <div id="roleArtworkVariantWrap"><label for="roleArtworkVariant">Variant</label><select id="roleArtworkVariant"><option value="standard">Standaard / rol</option><option value="instructeur">Instructeur (aparte badge bij gedeelde rol)</option></select></div>
  <div><label for="roleArtworkLabel">Naam van het logo</label><input id="roleArtworkLabel" maxlength="75" placeholder="Bijv. MOTARD · Volwaardig"></div>
- <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Automatisch naar 16:5 omgezet. Maximaal 5 MB bronbestand.</small></div>
+ <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 5 MB. De gekozen uitsnede wordt opgeslagen als transparante WebP in verhouding 16:5.</small></div>
  <div><label>Voorbeeld (170 × 53,125 px)</label><div class="artwork-preview"><img id="roleArtworkPreview" width="170" height="53" alt="Voorbeeld van de gekozen patch" hidden></div></div>
+</div>
+<div class="artwork-crop-section" id="roleArtworkCropSection" hidden>
+ <h3>Formaat en positie instellen</h3>
+ <p class="muted">Sleep het logo in het kader naar de juiste positie. Gebruik de schuifregelaar om het groter of kleiner te maken. Alleen wat je binnen dit kader ziet, wordt opgeslagen.</p>
+ <div class="artwork-crop-canvas-wrap">
+  <canvas id="roleArtworkCropCanvas" width="512" height="160" role="img" aria-label="Versleepbaar voorbeeld van de definitieve patchuitsnede"></canvas>
+ </div>
+ <div class="artwork-crop-controls">
+  <label for="roleArtworkZoom">Grootte: <output id="roleArtworkZoomValue" for="roleArtworkZoom">100%</output></label>
+  <input id="roleArtworkZoom" type="range" min="25" max="400" step="1" value="100" aria-label="Grootte van het logo">
+  <label for="roleArtworkFit">Uitsnede</label>
+  <select id="roleArtworkFit"><option value="contain">Hele logo zichtbaar</option><option value="cover">Kader volledig vullen</option></select>
+  <button type="button" class="alt" id="roleArtworkCropReset">Centreren en herstellen</button>
+ </div>
+ <small>Het uiteindelijke formaat op de personeelslijst blijft 170 × 53,125 px. Dit verandert geen graad, rol of bevoegdheid.</small>
 </div>
 <label for="roleArtworkReason">Motivering voor het logboek (minimaal 8 tekens)</label>
 <textarea id="roleArtworkReason" maxlength="300" rows="2" placeholder="Waarom krijgt deze rol een nieuw logo?"></textarea>
