@@ -75,3 +75,32 @@ test('nameplate typography and footer prefix are visual and preserve personal id
  assert.throws(()=>validateUniformNameplate({...data,prefix:'<script>'}),/naamplaattekst/);
  assert.throws(()=>validateUniformNameplate({...data,call:'fake'}),/Ongeldige naamplaatinstellingen/);
 });
+
+test('tall original uniform canvases preserve 872×1212 portrait geometry',()=>{
+ const input={department:'politie',variant:'gold',offsetX:0,offsetY:0,zoom:100,
+  canvasWidth:872,canvasHeight:1212,keepAspectRatio:true,
+  reason:'Portretuniform in oorspronkelijke verhouding bewaren'};
+ const cfg=validateUniformCoat(input);
+ assert.equal(cfg.key,'politie_gold');
+ assert.equal(cfg.canvasWidth,872);
+ assert.equal(cfg.canvasHeight,1212);
+ assert.equal(cfg.keepAspectRatio,true);
+ assert.equal(cfg.canvasWidth/cfg.canvasHeight,872/1212);
+ assert.equal(validateUniformCoat({...input,keepAspectRatio:false}).keepAspectRatio,false);
+});
+test('custom uniform canvas rejects extreme sizes and unknown metadata',()=>{
+ const base={department:'ambulance',variant:'default',offsetX:0,offsetY:0,zoom:100,
+  canvasWidth:872,canvasHeight:1212,keepAspectRatio:true,
+  reason:'Gewijzigde afmetingen voor een uniform'};
+ for(const invalid of [
+  {canvasWidth:0},{canvasHeight:8192},{canvasWidth:NaN},
+  {canvasWidth:4000,canvasHeight:4000},{canvasWidth:412.5},
+  {keepAspectRatio:'true'},{permissions:['beheerder']}
+ ])assert.throws(()=>validateUniformCoat({...base,...invalid}));
+ // Existing API users still default to the historical 603x469 canvas.
+ const legacy=validateUniformCoat({
+  department:'politie',variant:'silver',offsetX:0,offsetY:0,zoom:100,
+  reason:'Uniformpositie van voor de canvasupgrade'});
+ assert.equal(legacy.canvasWidth,603);
+ assert.equal(legacy.canvasHeight,469);
+});
