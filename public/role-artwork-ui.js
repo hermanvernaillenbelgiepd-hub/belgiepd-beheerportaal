@@ -75,9 +75,15 @@ export function setupRoleArtworkUI({api,$,notice}){
  const canvas=$p('roleArtworkCropCanvas'),ctx=canvas.getContext('2d',{alpha:true});
  function configureCanvas(){
   const kind=kindSelect.value;
-  const size=['medal','award'].includes(kind)?[320,400]:
+  const nativeSize=sourceImage&&kind==='uniform'?(()=>{
+   const limit=Math.min(1,1200/Math.max(sourceImage.naturalWidth,sourceImage.naturalHeight),
+    Math.sqrt(1200000/(sourceImage.naturalWidth*sourceImage.naturalHeight)));
+   return [Math.max(1,Math.round(sourceImage.naturalWidth*limit)),
+    Math.max(1,Math.round(sourceImage.naturalHeight*limit))];
+  })():null;
+  const size=nativeSize||(['medal','award'].includes(kind)?[320,400]:
    ['helmet','logo','profession','pictogram','patch'].includes(kind)?[320,320]:
-   kind==='uniform'?[603,469]:[512,160];
+   kind==='uniform'?[603,469]:[512,160]);
   canvas.width=size[0];canvas.height=size[1];
   canvas.style.aspectRatio=size[0]+'/'+size[1];
   const label=$p('roleArtworkFormatLabel');
