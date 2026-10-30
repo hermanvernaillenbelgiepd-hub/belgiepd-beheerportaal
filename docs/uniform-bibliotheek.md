@@ -31,3 +31,34 @@ Een nieuwe gradenplaat verschijnt op de bestaande plaats voor de graad. Voor hel
 - Upload, vervanging, herstel en individuele toewijzing testen.
 - Oude afbeeldingen, de politieportretten en alle hulpdiensten visueel controleren.
 - Pas na expliciete controle en akkoord MAIN bijwerken en MAIN-bucket configureren.
+
+## Uniformgroepen versus herkenningstekens
+
+Een basisuniform mag meerdere graden of functies bedienen. Het uniform bepaalt
+nooit zelf de graad. De visuele rang-/functieaanduiding wordt altijd apart gekozen.
+
+**Politie**: de configureerbare uniformgroep `basis_tm_ahinp` omvat 100-, 200-,
+300-, 400-, 500- en 600-reeksen (tot en met Aspirant Hoofdinspecteur).
+Dit is een kledinggroep, **niet** een organisatorisch kader: A-HINP blijft
+Middenkader. De aparte optionele groepen `hinp_1hinp` en `officieren`
+zijn beschikbaar, zonder dat ze bestaande uniformen automatisch vervangen.
+De gradenplaat kan geselecteerd worden per callreeks: 100, 200, 300, 400, 500,
+600, 700, 800, 900, 910, 920 en 930; expliciete individuele afwijkingen
+blijven mogelijk.
+
+**Brandweer**: het uniform blijft herbruikbaar per dienst of kader, terwijl een
+gradenteken of helm gekoppeld wordt aan de naam van de effectieve graad,
+bijvoorbeeld `sergeant` of `adjudant`.
+
+**Ambulance**: het beroepsteken wordt gekoppeld aan de functiecode
+`ambulancier`, `vpk`, `arts` of `dirmed`.
+AMB/HAMB gebruiken ambulancier, VPK/HVPK gebruiken vpk, ARTS/HARTS gebruiken
+arts en DIRMED krijgt de aanduiding DIRMED. Zonder geüploade passende
+functielaag wordt voor DIRMED een tekstopschrift getoond. Dit wijzigt
+geen erkende beroepskwalificatie.
+
+Voor getekende helmen en beroepsbadges blijft de bestaande instelling
+**Uniformbeheer > Extra lagen** noodzakelijk om de plaats te bepalen.
+Selectievolgorde: persoonlijk > callreeks/hoedanigheid > graad > kader > dienst.
+Uniformselectie: persoonlijk > specifieke graad > hoedanigheid/uniformgroep >
+kader > dienst.
