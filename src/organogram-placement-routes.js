@@ -11,6 +11,8 @@ import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
 import {refreshK9DisplayRoles,knownK9Candidate,verifyK9DisplayRoleNow} from './k9-live-discord-sync.js';
 import {MOTARD_DISPLAY_COLLECTION,verifiedMotardDisplayRole,effectiveMotardDisplayRole} from './motard-display-role.js';
 import {DISP_DISPLAY_COLLECTION,verifiedDispDisplayRole,effectiveDispDisplayRole} from './disp-display-role.js';
+import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
+ awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
 const idOK=id=>/^\d{15,22}$/.test(String(id||''));
 const fault=(code,msg)=>Object.assign(new Error(msg),{publicStatus:code});
@@ -70,17 +72,23 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
   try{
    const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(p=>validRow(p)&&p.dept!=='burger').slice(0,1200);
-   const [manualSnap,k9Snap,motardSnap,dispSnap]=await Promise.all([
+   const [manualSnap,k9Snap,motardSnap,dispSnap,decorationSnap,catalogSnap]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
     db.collection(MOTARD_DISPLAY_COLLECTION).limit(1500).get(),
-    db.collection(DISP_DISPLAY_COLLECTION).limit(1500).get()
+    db.collection(DISP_DISPLAY_COLLECTION).limit(1500).get(),
+    db.collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(500).get(),
+    db.collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get()
    ]);
    if(manualSnap.size>=1500)return res.status(503).json({error:'Organogramregisterlimiet bereikt'});
    const manual=manualMap(manualSnap.docs);
    const k9Manual=manualMap(k9Snap.docs);
    const motardManual=manualMap(motardSnap.docs);
    const dispManual=manualMap(dispSnap.docs);
+   // Public award projection: no private history, hidden items or revoked medals.
+   const decorationEntries=new Map(decorationSnap.docs.map(d=>[d.id,d.get('entries')||[]]));
+   const customCatalog=new Map(catalogSnap.docs.map(d=>[d.id,customCatalogItem(d)])
+    .filter(([,item])=>Boolean(item)));
    const boardOnly=manualSnap.docs.filter(d=>d.get('dept')==='bestuur'&&
     d.get('status')==='active'&&['bestuur','bestuur-ai'].includes(d.get('boardRole')))
     .map(d=>d.get('personId')).filter(idOK).slice(0,100);
@@ -134,6 +142,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
+     awards:p.dept==='politie'?publicDecorations(
+      decorationEntries.get(awardKey(p.dept,p.personId))||[],undefined,customCatalog):[],
      status:p.dept==='politie'?String(p.status||'').trim().slice(0,30):'',
      reekshoofdReeks:organogramReekshoofdTitle(p),
      // URL only for this signed-in police officer/corps with subject-level
