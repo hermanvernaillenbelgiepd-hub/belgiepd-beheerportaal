@@ -134,7 +134,13 @@ export function setupUniformComposer({api,$}){
     const call=el('small','compose-call',member.call);
     name.style.setProperty('--name-length-factor',
      String(Math.max(.53,Math.min(1,15/Math.max(1,member.name.length)))));
-    plate.append(name,call);box.append(plate);
+    plate.append(name,call);
+    const accent=el('span','compose-nameplate-left-accent');
+    accent.setAttribute('aria-hidden','true');
+    for(let index=0;index<4;index++)
+     accent.append(el('span','compose-nameplate-left-accent-stripe'));
+    plate.append(accent);
+    box.append(plate);
     box.setAttribute('aria-label','Naamplaat: '+member.name+' · '+member.call);
    }else if(url){
     const img=el('img');img.src=url;img.alt=kindNames[kind];
