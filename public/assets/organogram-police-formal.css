@@ -236,20 +236,16 @@
 .bpd-police-formal .bpd-silver-stage>.bpd-woven-nameplate{
  left:10.25%;top:56.2%;width:27.75%;height:auto;
 }
-.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-gold{--thread:#ffd65a}
-.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-silver{--thread:#e0e7ef}
-/* Only gold-grade personnel need a thread tint over the white photographic
-   diagonal embroidery. Use color blend so the dark textile remains dark. */
-.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-gold::before{
- content:"";display:block;position:absolute;left:0;top:0;bottom:0;
- width:38%;z-index:1;background:#ffd24b;mix-blend-mode:color;opacity:1;
- pointer-events:none;
-}
-/* Delicate silver/gold horizontal embroidered separator. */
+.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-gold{--thread:#ffd65a;--line-thread:#e0e7ef}
+.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-silver{--thread:#e0e7ef;--line-thread:#e0e7ef}
+/* Actual woven photo already has SILVER diagonal embroidery at the left.
+   Keep its original stitching visible at every rank (no gold overlay).
+   Gold lettering remains a separate user-approved officer decoration. */
+/* Original silver divider thread; officer lettering may remain gold. */
 .bpd-police-formal .bpd-woven-nameplate::after{
  content:"";display:block;position:absolute;left:30%;right:9%;top:49%;
- height:1px;min-height:0;z-index:2;background:var(--thread);
- box-shadow:0 0 1px var(--thread);opacity:.94;pointer-events:none;
+ height:1px;min-height:0;z-index:2;background:var(--line-thread,#e0e7ef);
+ box-shadow:0 0 1px var(--line-thread,#e0e7ef);opacity:.94;pointer-events:none;
 }
 .bpd-police-formal .bpd-woven-nameplate>.bpd-woven-name,
 .bpd-police-formal .bpd-woven-nameplate>.bpd-woven-call{
@@ -263,31 +259,18 @@
 .bpd-police-formal .bpd-woven-nameplate>.bpd-woven-name{top:14%;font-size:clamp(5px,12cqw,17px)}
 .bpd-police-formal .bpd-woven-nameplate>.bpd-woven-call{top:58%;font-size:clamp(4px,7.6cqw,12px)}
 
-/* Rank's RIGHT threads are part of the actual selected rank artwork.
-   Do NOT draw new diagonal strokes: the previous 18% striped panel caused
-   the original silver threads AND a second gold set to show side by side.
-   Only recolor the EXISTING threads on officer rank art. For silver grades,
-   the uploaded art is displayed completely unchanged.
-   mix-blend-mode:color preserves the underlying embroidery luminance, so
-   no line is created where the original rank image has no stitched thread. */
-.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-gold{
- isolation:isolate;
-}
-.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-gold::after{
- content:"";position:absolute;z-index:3;pointer-events:none;
- top:0;bottom:0;right:0;width:36%;
- background-color:#ffd044;mix-blend-mode:color;
- border:0;box-shadow:none;
-}
+/* On all police grades, show the original grade artwork UNMODIFIED.
+   The source asset already contains golden crowns and silver side stitches.
+   No overlay, no synthetic stripe and no recoloring of the gold crowns. */
+.bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-gold::after,
 .bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-silver::after{
  content:none!important;display:none!important;
 }
-
 /* All existing BelgiumPD police grades (100/200/300/400/500/600/700/800/
    900/910/920/930) share a single unframed, undistorted artwork treatment.
    Preserve each grade's original crown/star/bars. No synthetic diagonal
-   strokes: lower grades retain original SILVER threads; officer grades use
-   the same color-only gold tint for the artwork's existing right threads. */
+   strokes: all grades retain their original SILVER side threads and officer
+   crowns remain gold in the original uploaded artwork. */
 .bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-gold,
 .bpd-police-formal .bpd-chest-insignia.bpd-rank-metal-silver{
  border:0!important;border-radius:0!important;
@@ -306,12 +289,7 @@
  border:0!important;border-radius:0!important;box-shadow:none!important;
  overflow:hidden;
 }
-.bpd-grade-badge.bpd-grade-metal-gold::after{
- content:"";position:absolute;z-index:3;pointer-events:none;
- right:0;top:0;bottom:0;width:36%;
- background-color:#ffd044;mix-blend-mode:color;
- border:0;box-shadow:none;
-}
+.bpd-grade-badge.bpd-grade-metal-gold::after,
 .bpd-grade-badge.bpd-grade-metal-silver::after{
  content:none!important;display:none!important;
 }
