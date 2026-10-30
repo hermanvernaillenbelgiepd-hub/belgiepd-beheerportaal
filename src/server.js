@@ -31,6 +31,7 @@ import {installUniformManagementRoutes} from './uniform-management-routes.js';
 import {installUniformAssignmentRoutes} from './uniform-assignment-routes.js';
 import {installVisualLayerRoutes} from './visual-layer-routes.js';
 import {installUniformLibraryRoutes} from './uniform-library-routes.js';
+import {installUniformGradeRoutes} from './uniform-grade-routes.js';
 import {installTrainingRequestRoutes} from './training-request-routes.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
@@ -590,6 +591,7 @@ installUniformManagementRoutes(app,{requireUser});
 installUniformAssignmentRoutes(app,{requireUser});
 installVisualLayerRoutes(app,{requireUser});
 installUniformLibraryRoutes(app,{requireUser});
+installUniformGradeRoutes(app,{requireUser});
 installManualRoleRoutes(app,{requireUser});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
