@@ -481,6 +481,7 @@
    applyUniformInsigniaPlacement(chest,'gold');
    stage.append(chest);
    if(rack?.medals)stage.append(rack.medals);
+   window.BPDVisualAssets?.appendTo?.(stage,person,'gold');
    outer.append(stage);
    return outer;
   }
@@ -519,6 +520,7 @@
   applyUniformInsigniaPlacement(patch,'silver');
   stage.append(patch);
   if(rack?.medals)stage.append(rack.medals);
+  window.BPDVisualAssets?.appendTo?.(stage,person,'silver');
   outer.append(stage);
   return outer;
  }
