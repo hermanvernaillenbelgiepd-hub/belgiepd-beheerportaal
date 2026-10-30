@@ -41,43 +41,20 @@
 .bpd-police-formal>.bpd-chest-insignia.bpd-vector-rank{
  background:#0d1625;box-shadow:0 0 0 .4px #bac6d2;
 }
-.bpd-police-formal>.bpd-silver-nameplate{
- position:absolute;z-index:6;left:19.3%;top:58.6%;width:18.8%;height:5.7%;
- display:flex;align-items:center;justify-content:center;overflow:hidden;
- padding:0 1px;color:#dfe8f3;background:#0e1728;
- border:1px solid #aebfcc;border-left:3px solid #bfcbd9;
- box-shadow:0 0 0 .5px #344e6e;pointer-events:none;
-}
-/* Old silver-nameplate hatch deleted; only the dynamic mirrored rank art
-   supplies the decorative fabric edge. */
-.bpd-nameplate-text{
- max-width:89%;overflow:hidden;white-space:nowrap;text-overflow:clip;
- font-size:clamp(2px,.45vw,6px);font-weight:750;letter-spacing:-.02em;
- transform:scale(.98);text-shadow:0 0 1px #071123;
-}
 /* Baked-in original 1-HCP medallion is cleared in the image preparation step,
    instead of hiding the decoration area behind a visible rectangle. */
 
 
-/* Existing uniform's actual stitched left chest plate at 240 x 255.
-   Outer stitched frame: about x=37..94, y=137..168.
-   Only its INNER textile area is replaced, preserving the original border:
-   measured from the uniform reference at 720 x 765: x=128..267,
-   y=430..489. The nameplate is NOT a separate larger panel. */
 .bpd-personal-nameplate{
- position:absolute;left:17.778%;top:56.209%;width:19.306%;height:7.712%;z-index:7;
- display:block;overflow:hidden;pointer-events:none;
- border:0;border-radius:0;background:transparent;
-}
-.bpd-personal-nameplate>.bpd-nameplate-vector{
- display:block;width:100%;height:100%;max-width:100%;max-height:100%;
- shape-rendering:geometricPrecision;
+ position:absolute;display:block;z-index:12;box-sizing:border-box;
+ overflow:hidden;pointer-events:none;border:0;border-radius:0;
+ background:transparent;
 }
 .bpd-nameplate-zoom{
  position:relative!important;left:auto!important;top:auto!important;
- width:min(100%,280px)!important;height:auto!important;aspect-ratio:3.2/1;
+ width:min(100%,320px)!important;height:auto!important;
+ aspect-ratio:1251 / 435;
 }
-
 /* Isolated photographic badge per rank, never a tall image montage.
    The image itself includes the embroidered outer border: no second box. */
 .bpd-grade-vector>image{image-rendering:auto}
@@ -94,30 +71,6 @@
 }
 .bpd-gold-stage>.bpd-gold-coat{
  display:block;width:100%;height:100%;object-fit:contain;
-}
-.bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate{
- position:absolute;left:21.2%;top:58.9%;width:20.1%;height:12.1%;
- z-index:6;border:2px solid #a88946;border-radius:3px;
- background:#0f192a;box-shadow:inset 0 0 0 1px #442f18,0 1px 2px #0006;
- display:flex;flex-direction:column;justify-content:center;align-items:center;
- padding:1%;overflow:hidden;box-sizing:border-box;
-}
-/* Retired gold-nameplate imitation corner removed. The current nameplate
-   mirrors the actual rank artwork and masks its stars/crowns. */
-.bpd-gold-nameplate>.bpd-gold-name,
-.bpd-gold-nameplate>.bpd-gold-call{
- display:block;position:relative;width:73%;margin-left:25%;
- text-align:center;color:#ffdf98;
- white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
- text-shadow:0 1px #000;
- font-family:system-ui,Segoe UI,Arial,sans-serif;line-height:1.15;
-}
-.bpd-gold-nameplate>.bpd-gold-name{
- font-weight:750;font-size:clamp(2px,.57vw,9px);
- padding-bottom:2%;border-bottom:1px solid #ac8541;
-}
-.bpd-gold-nameplate>.bpd-gold-call{
- font-size:clamp(2px,.41vw,6px);font-weight:650;padding-top:2%;
 }
 /* Preserve the real embroidered border and crowns with 'contain'—never
    stretch the 512x160 rank fabric into the visual chest frame. */
@@ -143,44 +96,6 @@
  pointer-events:none;
 }
 
-/* User-approved woven textile nameplate from TEST, for the new gold jacket.
-   Underlay has NO baked-in name or callsign. Live text remains DOM-driven.
-   Silver 100-899 keeps its existing independent nameplate and CSS. */
-.bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate{
- left:21.2%;top:60.2%;width:20.1%;height:auto;
- aspect-ratio:1032/381;container-type:inline-size;
- overflow:hidden;display:block;padding:0;
- background:#0b1425
-  center / 100% 100% no-repeat;
- border:0;border-radius:1px;
- box-shadow:0 0 0 .35px #8e9aa8;
-}
-.bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate::before{
- content:none;display:none;
-}
-.bpd-gold-stage>.bpd-personal-nameplate.bpd-gold-nameplate::after{
- position:absolute;content:"";left:30%;top:50%;width:60%;
- height:1.15%;min-height:.6px;background:#e3e5e6;
- box-shadow:0 0 1px #fff8;pointer-events:none;
-}
-.bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-name,
-.bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call{
- position:absolute;left:30%;width:60%;margin:0;
- display:flex;align-items:center;justify-content:center;
- color:#f3f4f5;text-align:center;
- font-family:system-ui,Segoe UI,Arial,sans-serif;font-weight:800;
- line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
- text-shadow:0 0 .5px #f0f0f0,0 1px 1px #000;letter-spacing:.025em;
- border:0;padding:0;
-}
-.bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-name{
- top:20%;height:25%;font-size:clamp(2px,10cqw,12px);
-}
-.bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call{
- top:57%;height:28%;font-size:clamp(2px,7.9cqw,9px);
- letter-spacing:0;
-}
-
 /* Approved cord-free silver coat from TEST. Its 603:469 canvas uses the same
    stage scaling as the approved gold model, so shoulder/body sizes match.
    Never scale the coat separately from the dynamic fabric plates. */
@@ -192,38 +107,6 @@
 }
 .bpd-silver-stage>.bpd-silver-coat{
  display:block;width:100%;height:100%;object-fit:contain;
-}
-/* Position copied unchanged from the FINAL approved TEST layout:
-   name +0.8% x / +0.6% y; rank +1.8% x / +1.2% y.
-   The approved navy woven patch has no fixed name or call printed on it. */
-.bpd-silver-stage>.bpd-personal-nameplate.bpd-silver-woven-nameplate{
- position:absolute;z-index:7;
- left:10.25%;top:56.2%;width:27.75%;height:auto;
- aspect-ratio:1032/381;container-type:inline-size;
- background:#0b1425
-  center / 100% 100% no-repeat;
- display:block;overflow:hidden;border:0;border-radius:1px;padding:0;
- box-shadow:0 0 0 .5px #ced3e0;
-}
-.bpd-silver-stage>.bpd-silver-woven-nameplate::after{
- position:absolute;content:"";left:30%;width:60%;top:50%;
- height:1%;min-height:.5px;background:#e1e9ee;
- pointer-events:none;
-}
-.bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name,
-.bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
- position:absolute;left:30%;width:60%;margin:0;padding:0;
- display:flex;align-items:center;justify-content:center;
- color:#f2f4f7;text-align:center;
- font-family:system-ui,Segoe UI,Arial,sans-serif;font-weight:800;
- white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
- text-shadow:0 0 1px #fff,0 1px 1px #050505;line-height:1;
-}
-.bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name{
- top:18%;height:28%;font-size:clamp(3px,10cqw,13px);
-}
-.bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
- top:56%;height:28%;font-size:clamp(3px,7.1cqw,10px);
 }
 /* Original textile crown/star/stroke is preserved at 512:160;
    object-fit:contain avoids stretching it inside the approved backing. */
@@ -318,36 +201,6 @@
 }
 
 
-/* Portrait-oriented uploaded coats have pre-drawn chest recesses.
-   The woven plate spans the *whole* recess; older landscape assets keep their
-   long-approved fabric formatting. All lettering stays live DOM text. */
-.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage>.bpd-gold-nameplate,
-.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage>.bpd-silver-woven-nameplate{
- background:#0b1424;border:1px solid #93a9c0;border-radius:1px;
- box-shadow:inset 0 0 1px #364b67,0 0 .5px #abbace;
- container-type:inline-size;box-sizing:border-box;
-}
-.bpd-police-formal.bpd-assigned-coat .bpd-gold-nameplate::after,
-.bpd-police-formal.bpd-assigned-coat .bpd-silver-woven-nameplate::after{
- left:5%;width:90%;top:51%;height:1px;min-height:0;opacity:.9
-}
-.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-name,
-.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name,
-.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call,
-.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
- position:absolute;left:3%;width:94%;margin:0;padding:0;
- text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
- color:#f4f6fa;font-family:system-ui,Segoe UI,Arial,sans-serif;
- transform-origin:center;font-weight:900;letter-spacing:0;line-height:1
-}
-.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-name,
-.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-name{
- top:10%;height:38%;font-size:clamp(5px,14cqw,15px)
-}
-.bpd-police-formal.bpd-assigned-coat .bpd-gold-stage .bpd-gold-nameplate>.bpd-gold-call,
-.bpd-police-formal.bpd-assigned-coat .bpd-silver-stage .bpd-silver-woven-nameplate>.bpd-silver-woven-call{
- top:56%;height:38%;font-size:clamp(4px,10.5cqw,12px)
-}
 .bpd-police-formal.bpd-assigned-coat .bpd-gold-stage>.bpd-chest-insignia,
 .bpd-police-formal.bpd-assigned-coat .bpd-silver-stage>.bpd-chest-insignia{
  box-sizing:border-box;border:1px solid #7188a5;
@@ -360,71 +213,52 @@
 }
 
 
-/* BelgiumPD – single flat textile nameplate, based on the supplied Belgian
-   woven reference. No overlapping nameplate images, rounded frame, glassy
-   inner panel, separate ornamental rank bitmap or duplicate border.
-   The actual grade artwork remains on the separate chest grade plate. */
+/* ONLY active police nameplate artwork, from the uploaded photo.
+   The underlying textile was prepared without the fixed person's name,
+   black obscuring patch, separator or old police zone; these are live DOM text.
+   Real chest-grade artwork and awarded medals remain separate layers. */
 .bpd-police-formal .bpd-gold-stage>.bpd-personal-nameplate.bpd-woven-nameplate,
 .bpd-police-formal .bpd-silver-stage>.bpd-personal-nameplate.bpd-woven-nameplate{
- --thread:#d8e1ed;
- position:absolute;z-index:12;isolation:isolate;box-sizing:border-box;
- display:block;overflow:hidden;pointer-events:none;
- background-color:#122542!important;
- background-image:repeating-linear-gradient(90deg,
-  #ffffff0b 0 1px,transparent 1px 3px)!important;
- background-blend-mode:soft-light;
+ --thread:#dfe7f0;
+ position:absolute;z-index:12;isolation:isolate;display:block;
+ box-sizing:border-box;overflow:hidden;pointer-events:none;
+ background:#101522 url('/assets/bpd-naamplaat-foto-basis-20261030.svg') center / 100% 100% no-repeat!important;
  border:0!important;border-radius:0!important;outline:0!important;
- padding:0!important;box-shadow:none!important;
- container-type:inline-size;
- aspect-ratio:3.15 / 1;
+ box-shadow:none!important;padding:0!important;
+ aspect-ratio:1251/435;container-type:inline-size;
  min-width:0;min-height:0;
- transform:scale(1.32,1.42);
- transform-origin:center center;
+ /* cover the frame baked into older uploaded coat artwork */
+ transform:scale(1.4,1.48);transform-origin:center center;
 }
 .bpd-police-formal .bpd-gold-stage>.bpd-woven-nameplate{
- left:21.2%;top:58.9%;width:20.1%;height:12.1%;
+ left:21.2%;top:60.2%;width:20.1%;height:auto;
 }
 .bpd-police-formal .bpd-silver-stage>.bpd-woven-nameplate{
  left:10.25%;top:56.2%;width:27.75%;height:auto;
- aspect-ratio:1032 / 381;
 }
-.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-gold{
- --thread:#e7c972;
+.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-gold{--thread:#edcf80}
+.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-silver{--thread:#e0e7ef}
+/* Only gold-grade personnel need a thread tint over the white photographic
+   diagonal embroidery. Use color blend so the dark textile remains dark. */
+.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-gold::before{
+ content:"";display:block;position:absolute;left:0;top:0;bottom:0;
+ width:38%;z-index:1;background:#d1ad5f;mix-blend-mode:color;opacity:.9;
+ pointer-events:none;
 }
-.bpd-police-formal .bpd-woven-nameplate.bpd-nameplate-metal-silver{
- --thread:#e0e7ef;
-}
-/* The reference's diagonal embroidered stripes occupy the LEFT third.
-   They are decorative textile threads, not a flipped rank bitmap. */
-.bpd-police-formal .bpd-woven-nameplate::before{
- content:""!important;display:block!important;position:absolute;
- inset:0 auto 0 0;width:32%;height:100%;z-index:0;opacity:.98;
- background:repeating-linear-gradient(128deg,
-  transparent 0 6px,var(--thread) 6px 8px,
-  transparent 8px 14px)!important;
- border:0!important;border-radius:0!important;pointer-events:none;
-}
-/* One fine embroidered separator only, beneath the member name. */
+/* Delicate silver/gold horizontal embroidered separator. */
 .bpd-police-formal .bpd-woven-nameplate::after{
- content:""!important;display:block!important;position:absolute;
- left:35%;right:3%;top:49%;height:1px;min-height:0;z-index:1;
- background:var(--thread)!important;opacity:.94;
- border:0!important;box-shadow:none!important;pointer-events:none;
+ content:"";display:block;position:absolute;left:30%;right:9%;top:49%;
+ height:1px;min-height:0;z-index:2;background:var(--thread);
+ box-shadow:0 0 1px var(--thread);opacity:.94;pointer-events:none;
 }
 .bpd-police-formal .bpd-woven-nameplate>.bpd-woven-name,
 .bpd-police-formal .bpd-woven-nameplate>.bpd-woven-call{
- position:absolute;left:34%;width:63%;margin:0;padding:0;
- height:36%;box-sizing:border-box;display:flex;align-items:center;
- justify-content:center;color:var(--thread)!important;
- background:none!important;border:0!important;z-index:2;
- font-family:system-ui,Segoe UI,Arial,sans-serif;font-weight:850;
- line-height:1;letter-spacing:0;white-space:nowrap;overflow:hidden;
- text-overflow:ellipsis;text-align:center;text-shadow:0 1px 1px #08111c;
- transform-origin:center center;
+ position:absolute;left:31%;width:62%;margin:0;padding:0;box-sizing:border-box;
+ height:30%;display:flex;align-items:center;justify-content:center;
+ color:var(--thread)!important;background:none!important;border:0!important;
+ font:850 clamp(5px,11cqw,17px)/1 system-ui,Segoe UI,Arial,sans-serif;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;
+ text-shadow:0 .4px .7px #020a12;transform-origin:center center;z-index:3;
 }
-.bpd-police-formal .bpd-woven-nameplate>.bpd-woven-name{
- top:8%;font-size:clamp(5px,11.5cqw,17px);
-}
-.bpd-police-formal .bpd-woven-nameplate>.bpd-woven-call{
- top:57%;font-size:clamp(4px,8cqw,12px);
-}
+.bpd-police-formal .bpd-woven-nameplate>.bpd-woven-name{top:14%;font-size:clamp(5px,12cqw,17px)}
+.bpd-police-formal .bpd-woven-nameplate>.bpd-woven-call{top:58%;font-size:clamp(4px,7.6cqw,12px)}
