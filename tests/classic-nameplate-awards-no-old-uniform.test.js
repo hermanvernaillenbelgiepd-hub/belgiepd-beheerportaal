@@ -74,21 +74,22 @@ test('real uploaded coat renders woven gold/silver nameplates and current rank',
   assert.equal(plate.children[1].textContent,'BELGIEPD - '+call);
  }
  const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
- assert.match(css,/repeating-linear-gradient\(129deg/);
+ assert.match(css,/repeating-linear-gradient\(128deg/);
  assert.match(css,/var\(--thread\)/);
 });
 
 
-test('final woven nameplate mirrors the real rank plaque instead of drawing stripes',()=>{
+test('one reference-style cloth plate replaces the old double name screen',()=>{
  const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
  const admin=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
- const tail=css.slice(css.indexOf('/* Grade-plaque-based nameplate'));
- const ui=admin.slice(admin.indexOf('/* Uniformatelier: the actual current grade art'));
- assert.match(tail,/\.bpd-nameplate-mirrored-grade/);
- assert.match(tail,/transform:scaleX\(-1\)/);
- assert.match(tail,/\.bpd-nameplate-text-field/);
- assert.match(ui,/\.compose-nameplate-mirrored-grade/);
- assert.match(ui,/\.compose-nameplate-text-field/);
- assert.doesNotMatch(tail,/repeating-linear-gradient/);
- assert.doesNotMatch(ui,/repeating-linear-gradient/);
+ const renderer=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
+ const tail=css.slice(css.indexOf('/* BelgiumPD – single flat textile nameplate'));
+ const ui=admin.slice(admin.indexOf('/* The operational organogram and Uniformatelier share'));
+ assert.match(tail,/\.bpd-woven-nameplate::before/);
+ assert.match(tail,/repeating-linear-gradient\(128deg/);
+ assert.match(tail,/border:0!important;border-radius:0!important/);
+ assert.match(ui,/\.compose-woven-nameplate::before/);
+ assert.match(ui,/border:0!important/);
+ assert.doesNotMatch(renderer,/addMirroredRankNameplate|bpd-nameplate-text-field/);
+ assert.doesNotMatch(ui,/compose-nameplate-mirrored-grade|compose-nameplate-text-field/);
 });
