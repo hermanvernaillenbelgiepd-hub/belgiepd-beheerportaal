@@ -48,6 +48,16 @@ export function setupVisualLayerUI({api,$}){
   return item||{...(defaults[selected?.kind]||defaults.patch),
    visible:!['medal','award'].includes(selected?.kind)};
  }
+ function selectedLayerVisible(){
+  if(!selected||!['brandweer','ambulance','depannage'].includes(dept.value))return true;
+  const checkboxId=selected.kind==='helmet'?'uniformShowHelmet':
+   selected.kind==='profession'?'uniformShowProfession':
+   ['logo','pictogram','patch','specialty'].includes(selected.kind)?'uniformShowExtraLogo':'';
+  return !checkboxId||$(checkboxId)?.checked!==false;
+ }
+ document.addEventListener('bpd:uniform-visibility-change',e=>{
+  if(selected&&e.detail?.department===dept.value)render();
+ });
  function render(){
   if(!selected)return;
   const data=Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,Number(v.value)]));
@@ -56,7 +66,9 @@ export function setupVisualLayerUI({api,$}){
   preview.style.zIndex=data.zIndex;
   preview.style.opacity=visible.checked?'1':'.55';
   previewImg.src=selected.imageUrl;
-  preview.hidden=false;control.hidden=false;
+  const enabled=selectedLayerVisible();
+  preview.hidden=!enabled;control.hidden=!enabled;
+  if(!enabled)message('Dit onderdeel is verborgen voor deze hulpdienst. Schakel het bovenaan weer in om de positie te wijzigen.');
   for(const [key,field]of Object.entries(fields)){
    const out=$('visualLayerValue'+({left:'X',top:'Y',width:'W',height:'H',zIndex:'Z'}[key]));
    const val=Number(field.value).toFixed(key==='zIndex'?0:1)+(key==='zIndex'?'':'%');
@@ -71,7 +83,7 @@ export function setupVisualLayerUI({api,$}){
   for(const [k,field]of Object.entries(fields))field.value=row[k];
   visible.checked=row.visible!==false;
   render();
-  message('Sleep de patch op de uniformfoto, stel de grootte in en bewaar de laag.');
+  if(selectedLayerVisible())message('Sleep de patch op de uniformfoto, stel de grootte in en bewaar de laag.');
  }
  const bound=()=>{
   if(Number(fields.left.value)+Number(fields.width.value)>100)
