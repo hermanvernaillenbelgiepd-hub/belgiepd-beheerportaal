@@ -11,7 +11,7 @@ export function setupUniformQuickUI({api,$}){
   reason=$('uniformQuickReason'),status=$('uniformQuickStatus');
  const services=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
   ['depannage','Depannage'],['burger','Burger']];
- let artwork=[],uniformAssignments=[],markRules=[],people=[],editable=[];
+ let artwork=[],uniformAssignments=[],markRules=[],people=[],editable=[],cloudReady=false;
  const message=(s,bad=false)=>{status.textContent=s;status.classList.toggle('error',bad)};
  const option=(value,label)=>new Option(label,value);
  const titles={rank:'Gradenplaat',helmet:'Helm',profession:'Beroepsteken'};
@@ -67,11 +67,25 @@ export function setupUniformQuickUI({api,$}){
  function openUploader(kind,target,label){
   const tab=document.querySelector('#manageTabs button[data-tab="artwork"]');
   if(tab)tab.click();
+  const codeValue=target.selector==='default'?'default':target.selector;
+  if(!cloudReady){
+   // Original Firebase-backed uploader remains available without a bucket.
+   const type=$('roleArtworkKind'),dep=$('roleArtworkDepartment'),
+    code=$('roleArtworkCode'),name=$('roleArtworkLabel');
+   if(type){type.value=kind;type.dispatchEvent(new Event('change'));}
+   if(dep)dep.value=dept.value;
+   if(code)code.value=codeValue;
+   if(name)name.value=label.slice(0,75);
+   const legacy=$('roleArtworkSection');
+   if(legacy&&!legacy.hidden)legacy.scrollIntoView({behavior:'smooth',block:'start'});
+   message('Open het bestaande uploadformulier; Cloud Storage is nog niet ingericht.');
+   return;
+  }
   const dep=$('libraryDept'),type=$('libraryKind'),
    code=$('libraryCode'),name=$('libraryLabel');
   if(dep){dep.value=dept.value;dep.dispatchEvent(new Event('change'));}
   if(type){type.value=kind;type.dispatchEvent(new Event('change'));}
-  if(code)code.value=target.selector==='default'?'default':target.selector;
+  if(code)code.value=codeValue;
   if(name)name.value=label.slice(0,75);
   const panel=$('libraryPanel');
   if(panel&&!panel.hidden)panel.scrollIntoView({behavior:'smooth',block:'start'});
@@ -188,6 +202,7 @@ export function setupUniformQuickUI({api,$}){
   uniformAssignments=u.assignments||[];
   people=p.records||[];
   editable=(l.editableDepartments||[]).filter(d=>(u.editableDepartments||[]).includes(d));
+  cloudReady=Boolean(l.storageReady);
   dept.replaceChildren();
   for(const [key,label] of services)if(editable.includes(key))dept.append(option(key,label));
   if(keep&&editable.includes(prev))dept.value=prev;
