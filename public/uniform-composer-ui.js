@@ -10,7 +10,7 @@ export function setupUniformComposer({api,$}){
  const services=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
   ['depannage','Depannage'],['burger','Burger']];
  let images=[],templates=[],people=[],awards=[],draft=null,baseline='',active='uniform',
-  sampleAward='',busy=false,visibleDepts=[];
+  sampleAward='',busy=false,visibleDepts=[],cloudReady=false;
  const el=(tag,cls,text)=>{const v=document.createElement(tag);v.className=cls||'';
   if(text!==undefined)v.textContent=text;return v;};
  const notify=(msg,bad=false)=>{notice.textContent=msg;notice.classList.toggle('error',bad)};
@@ -159,12 +159,89 @@ export function setupUniformComposer({api,$}){
   images=media.artworks||[];templates=records.compositions||[];
   people=persons.records||[];awards=catalog.catalog||[];
   visibleDepts=rights.editableDepartments||[];
+  cloudReady=Boolean(rights.storageReady);
   dept.replaceChildren();
   for(const [value,title]of services)if(visibleDepts.includes(value))dept.append(new Option(title,value));
   dept.value=visibleDepts.includes(before)?before:visibleDepts[0]||'';
   $('uniformComposer').hidden=!visibleDepts.length;
   if(visibleDepts.length)loadRanks(preserve?previous:'');
  }
+ const uploadPanel=$('composeUploadPanel');
+ $('composeUploadLink').onclick=()=>{
+  uploadPanel.hidden=!uploadPanel.hidden;
+  const type=active==='medals'?'medal':active==='ribbons'?'ribbon':active==='name'?'rank':active;
+  $('composeUploadKind').value=type;
+  if(!uploadPanel.hidden)$('composeUploadName').focus();
+ };
+ $('composeUploadClose').onclick=()=>{uploadPanel.hidden=true};
+ const toDataUrl=file=>new Promise((ok,fail)=>{
+  const read=new FileReader();read.onload=()=>ok(String(read.result));
+  read.onerror=()=>fail(Error('Afbeelding kan niet gelezen worden'));
+  read.readAsDataURL(file);
+ });
+ const toWebp=(file,small=false)=>new Promise((ok,fail)=>{
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onerror=()=>{URL.revokeObjectURL(url);fail(Error('Ongeldige afbeelding'))};
+  img.onload=()=>{
+   URL.revokeObjectURL(url);
+   let ratio=Math.min(1,(small?220:1600)/Math.max(img.width,img.height));
+   const max=small?80*1024:140*1024;
+   for(let i=0;i<12;i++){
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(img.width*ratio));
+    canvas.height=Math.max(1,Math.round(img.height*ratio));
+    canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+    for(const q of [.9,.75,.6,.48,.35]){
+     const uri=canvas.toDataURL('image/webp',q);
+     if(uri.startsWith('data:image/webp;base64,')&&uri.length*3/4<max){
+      ok(uri);return;
+     }
+    }
+    ratio*=.8;
+   }
+   fail(Error('Afbeelding blijft te groot. Kies een kleinere afbeelding.'));
+  };
+  img.src=url;
+ });
+ $('composeUploadSave').onclick=async()=>{
+  const file=$('composeUploadFile').files?.[0],name=$('composeUploadName').value.trim();
+  const kind=$('composeUploadKind').value;
+  if(!file||name.length<3||name.length>75||
+   !['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>8*1024*1024){
+   notify('Selecteer een PNG, JPG of WebP (max. 8 MB) en geef een naam.',true);return;
+  }
+  const before=structuredClone(draft),department=dept.value,scope=grade.dataset.scope,
+   gradeCode=grade.value,slug=normalizeVisual(name).slice(0,22)||'afbeelding',
+   code=(slug+'_'+Date.now().toString(36)).slice(0,40);
+  const reason='Uniformatelier: afbeelding '+name+' toegevoegd';
+  const button=$('composeUploadSave');button.disabled=true;
+  try{
+   if(kind==='medal'||kind==='ribbon'){
+    if(department!=='politie')throw Error('Eretekencatalogus is voorlopig alleen voor politie.');
+    const imageDataUri=await toWebp(file,true);
+    const result=await api('/api/personnel-awards/catalog-upload',{method:'POST',body:{
+     label:name,kind,color:'blue-gold',imageDataUri}});
+    sampleAward=result.item?.id||'';
+    active=kind==='medal'?'medals':'ribbons';
+   }else{
+    const dataUrl=cloudReady&&file.size<=4*1024*1024?
+     await toDataUrl(file):await toWebp(file);
+    const url=dataUrl.startsWith('data:image/webp;base64,')&&!cloudReady?
+     '/api/role-artwork/personnel':'/api/uniform-library/assets';
+    await api(url,{method:'PUT',body:{kind,code,department,label:name,reason,dataUrl}});
+    active=kind;
+   }
+   await load(true);
+   if(draft&&draft.department===department&&draft.scope===scope&&draft.selector===gradeCode){
+    draft=before;
+    if(!['medal','ribbon'].includes(kind))draft.assets[kind]=code;
+   }
+   uploadPanel.hidden=true;$('composeUploadFile').value='';$('composeUploadName').value='';
+   render();notify('Afbeelding opgeslagen. Kies de plaats en klik op Volledig uniform bewaren.');
+  }catch(e){notify(e.message,true)}
+  finally{button.disabled=false}
+ };
+
  $('composeRefresh').onclick=()=>load(true).catch(e=>notify(e.message,true));
  return {load:()=>load().catch(e=>{notify(e.message,true);return false})};
 }
