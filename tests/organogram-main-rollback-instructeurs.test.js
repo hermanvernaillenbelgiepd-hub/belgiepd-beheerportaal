@@ -13,12 +13,12 @@ test('Main has only the operational hierarchy with fresh woven-nameplate rendere
  const classic=txt('../public/organogram.html');
  const next=txt('../public/organogram-hierarchie.html');
  const home=txt('../public/index.html');
- assert.match(classic,/classic-metal-nameplate-20261030/);
+ assert.match(classic,/retire-double-nameplates-20261030/);
  assert.match(classic,/Nieuw organogram/);
  assert.doesNotMatch(next,/Klassiek organogram/);
  assert.match(classic,/location\.replace\('\/organogram-hierarchie\.html'/);
- assert.match(next,/\/assets\/organogram-police-formal\.js\?v=classic-metal-nameplate-20261030/);
- assert.match(next,/\/assets\/organogram-police-formal\.css\?v=classic-metal-nameplate-20261030/);
+ assert.match(next,/\/assets\/organogram-police-formal\.js\?v=retire-double-nameplates-20261030/);
+ assert.match(next,/\/assets\/organogram-police-formal\.css\?v=retire-double-nameplates-20261030/);
  assert.match(next,/BPDPoliceUniform\?\.makePortrait/);
  assert.match(home,/\/organogram-hierarchie\.html/);
  assert.doesNotMatch(home,/href="\/organogram\.html"/);
