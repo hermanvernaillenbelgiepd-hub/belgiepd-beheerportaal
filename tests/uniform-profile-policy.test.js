@@ -31,7 +31,8 @@ test('a configurable uniform group includes aspirant-head inspector but not HINP
  const data=validateUniformAssignment({department:'politie',scope:'group',
   selector:'basis_tm_ahinp',uniformCode:'basisjas',reason:'Basisjas voor de callgroepen'});
  assert.equal(data.key,'politie_group_basis_tm_ahinp');
- assert.throws(()=>validateUniformAssignment({...data,department:'ambulance'}),/doelgroep/);
+ const {key:ignored,...input}=data;
+ assert.throws(()=>validateUniformAssignment({...input,department:'ambulance'}),/doelgroep/);
 });
 test('police call-based rank assets are separate from uniforms',()=>{
  const person={dept:'politie',call:'SANTO-600',rank:'Aspirant Hoofdinspecteur'};
