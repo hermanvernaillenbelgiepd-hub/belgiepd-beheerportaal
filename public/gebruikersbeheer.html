@@ -413,6 +413,7 @@ header button{padding:7px 10px;font-size:12px}
    <div><label for="visualLayerAsset">Opgeslagen onderdeel</label><select id="visualLayerAsset"><option value="">Kies een afbeelding</option></select></div>
    <div><label for="visualLayerVariant">Uniformvariant</label><select id="visualLayerVariant"></select></div>
   </div>
+  <div class="controls"><button id="visualLayerReload" type="button" class="alt">Geüploade onderdelen vernieuwen</button></div>
   <div id="visualLayerControls" class="uniform-sliders" hidden>
    <label for="visualLayerX">Horizontale positie <output id="visualLayerValueX">0%</output></label>
    <input id="visualLayerX" type="range" min="0" max="98" step=".25" value="20">
@@ -426,7 +427,7 @@ header button{padding:7px 10px;font-size:12px}
    <input id="visualLayerZ" type="range" min="1" max="20" step="1" value="8">
    <label for="visualLayerVisible">Zichtbaar op uniform</label>
    <input id="visualLayerVisible" type="checkbox" checked>
-   <div class="controls"><button id="visualLayerSave" type="button">Laagpositie bewaren</button><button id="visualLayerReload" type="button" class="alt">Geüploade onderdelen vernieuwen</button></div>
+   <div class="controls"><button id="visualLayerSave" type="button">Laagpositie bewaren</button></div>
   </div>
   <div id="visualLayerStatus" class="muted" aria-live="polite">Selecteer eerst een opgeslagen afbeelding.</div>
  </section>
