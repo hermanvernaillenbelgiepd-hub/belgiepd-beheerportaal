@@ -120,7 +120,7 @@ header button{padding:7px 10px;font-size:12px}
 #uniformSection .error{color:#ffb5c2}
 @media(max-width:750px){#uniformSection .uniform-editor-columns{grid-template-columns:minmax(0,1fr)}}
 #roleArtworkSection .artwork-preview{height:83px;display:flex;align-items:center;justify-content:center;border:1px dashed #5c7593;border-radius:9px;background:#0b192b}
-#roleArtworkSection .artwork-preview img{width:170px;height:53.125px;object-fit:fill;max-width:100%;border-radius:4px}
+#roleArtworkSection .artwork-preview img{width:auto;height:auto;max-width:100%;max-height:115px;object-fit:contain;border-radius:4px}
 #roleArtworkSection .artwork-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:9px;margin:14px 0}
 #roleArtworkSection .artwork-item{display:flex;align-items:center;flex-wrap:wrap;gap:9px;border:1px solid #344c68;background:#0c1c31;border-radius:9px;padding:9px}
 #roleArtworkSection .artwork-item img{width:120px;height:37.5px;object-fit:fill;background:#111c2c;border-radius:4px}
@@ -300,8 +300,8 @@ header button{padding:7px 10px;font-size:12px}
  <div id="roleArtworkRoleIdWrap"><label for="roleArtworkRoleId">Discord-rol-ID</label><input id="roleArtworkRoleId" maxlength="22" inputmode="numeric" pattern="[0-9]{15,22}" placeholder="Bijv. 1358148694297415741"></div>
  <div id="roleArtworkVariantWrap"><label for="roleArtworkVariant">Variant</label><select id="roleArtworkVariant"><option value="standard">Standaard / rol</option><option value="instructeur">Instructeur (aparte badge bij gedeelde rol)</option></select></div>
  <div><label for="roleArtworkLabel">Naam van het logo</label><input id="roleArtworkLabel" maxlength="75" placeholder="Bijv. MOTARD · Volwaardig"></div>
- <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 5 MB. De gekozen uitsnede wordt opgeslagen als transparante WebP in verhouding 16:5.</small></div>
- <div><label>Voorbeeld (170 × 53,125 px)</label><div class="artwork-preview"><img id="roleArtworkPreview" width="170" height="53" alt="Voorbeeld van de gekozen patch" hidden></div></div>
+ <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 5 MB. Graden- en rolpatches blijven 16:5; medailles worden verticaal bewaard, helmen en logo’s vierkant. Je kunt de uitsnede verslepen en schalen.</small></div>
+ <div><label id="roleArtworkFormatLabel">Voorbeeld (170 × 53,125 px)</label><div class="artwork-preview"><img id="roleArtworkPreview" width="170" height="53" alt="Voorbeeld van de gekozen patch" hidden></div></div>
 </div>
 <div class="artwork-crop-section" id="roleArtworkCropSection" hidden>
  <h3>Formaat en positie instellen</h3>
