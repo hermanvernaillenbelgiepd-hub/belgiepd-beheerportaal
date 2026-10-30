@@ -75,7 +75,7 @@ function renderHeader(thead){
  }
  thead.replaceChildren(tr);
 }
-export function renderMemberPoliceRoster(thead,tbody,records,query=''){
+export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonClick=null){
  const q=String(query).trim().toLocaleLowerCase('nl-BE');
  const people=(Array.isArray(records)?records:[])
    .filter(p=>[p.call,p.name,p.rank,p.series,p.status,
@@ -96,7 +96,16 @@ export function renderMemberPoliceRoster(thead,tbody,records,query=''){
      addCell(tr,person.call||'—','mr-call');
      addCell(tr,rankCell(person),'mr-rank-cell');
      addCell(tr,visual().rankInfo(person.rank,'politie').label);
-     addCell(tr,element('strong',person.name||'—'));
+     const nameCell=element('strong',person.name||'—');
+     if(typeof onPersonClick==='function'){
+      const nameButton=element('button',undefined,'mr-person-open');
+      nameButton.type='button';
+      nameButton.textContent=person.name||'—';
+      nameButton.setAttribute('aria-label','Open personeelskaart van '+(person.name||'')+
+       ' ('+(person.call||'onbekende call')+')');
+      nameButton.addEventListener('click',()=>onPersonClick(person));
+      addCell(tr,nameButton,'mr-name-cell');
+     }else addCell(tr,nameCell);
      addCell(tr,seriesCell(person));
      addCell(tr,element('span',person.status||'Onbekend','mr-status'));
      for(const label of PUBLIC_POLICE_SPECIALTIES){

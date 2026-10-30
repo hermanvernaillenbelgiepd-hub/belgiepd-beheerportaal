@@ -24,6 +24,21 @@ tbody tr:nth-child(2n){background:#183450}
 .roster-view-tabs a:hover{background:#1d3d60}
 .roster-view-tabs a[aria-current="page"]{background:#295587;border-color:#7aade0;color:white}
 .roster-view-tabs a:focus-visible{outline:2px solid #b1d6ff;outline-offset:2px}
+
+.mr-person-open{border:0;background:transparent;box-shadow:none;color:#cbe6ff;text-align:left;
+ padding:2px 3px;font:inherit;font-weight:850;text-decoration:underline;
+ text-decoration-color:#7096bf;text-underline-offset:3px;cursor:pointer}
+.mr-person-open:hover,.mr-person-open:focus-visible{color:#fff;text-decoration-color:#cce8ff}
+.roster-profile-dialog{width:min(1180px,calc(100vw - 20px));height:min(900px,calc(100dvh - 24px));
+ max-height:calc(100dvh - 24px);padding:0;border:1px solid #6a95bb;border-radius:13px;
+ background:#09172a;color:#eef7ff;overflow:hidden}
+.roster-profile-dialog::backdrop{background:#010814cc}
+.roster-profile-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;
+ padding:8px 13px;background:#142b47;border-bottom:1px solid #436588}
+.roster-profile-bar strong{font-size:14px}
+.roster-profile-bar button{padding:5px 10px}
+.roster-profile-dialog iframe{display:block;border:0;width:100%;height:calc(100% - 54px);background:#09172a}
+.roster-profile-note{margin:0;padding:10px}
 [hidden]{display:none!important}
 </style><link rel="stylesheet" href="/member-police-roster.css"><link rel="stylesheet" href="/bpd-navigation.css"></head><body>
 <header><strong>🛡️ BelgiëPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
@@ -43,14 +58,52 @@ tbody tr:nth-child(2n){background:#183450}
   <thead id="rosterHead"></thead><tbody id="rows"></tbody>
 </table></div></div>
 </div>
-</main><script type="module">
+</main>
+<dialog id="rosterProfile" class="roster-profile-dialog" aria-labelledby="rosterProfileTitle">
+ <div class="roster-profile-bar">
+  <strong id="rosterProfileTitle">Personeelskaart</strong>
+  <button id="rosterProfileClose" type="button" aria-label="Personeelskaart sluiten">✕ Sluiten</button>
+ </div>
+ <p id="rosterProfileStatus" class="roster-profile-note" role="status">Personeelskaart laden…</p>
+ <iframe id="rosterProfileFrame" title="Personeelskaart uit het operationele organogram"
+  referrerpolicy="same-origin"></iframe>
+</dialog>
+<script type="module">
 import {renderMemberPoliceRoster} from '/member-police-roster.js';
 const $=id=>document.getElementById(id);
 let auth=null,people=[];
 const idToken=()=>auth?.currentUser?.uid?.startsWith('discord:')?auth.currentUser.getIdToken():null;
+function openRosterProfile(person){
+ if(!auth?.currentUser)return;
+ const call=String(person?.call||'').trim(),name=String(person?.name||'').trim();
+ if(!call||!name)return;
+ const params=new URLSearchParams({embedded:'1',dienst:'politie',kaart:call,naam:name});
+ $('rosterProfileTitle').textContent='Personeelskaart · '+call+' · '+name;
+ $('rosterProfileStatus').textContent='Personeelskaart laden…';
+ $('rosterProfileStatus').hidden=false;
+ $('rosterProfileFrame').src='/organogram-hierarchie.html?'+params.toString();
+ $('rosterProfile').showModal();
+}
+$('rosterProfileClose').onclick=()=>$('rosterProfile').close();
+$('rosterProfile').addEventListener('close',()=>{
+ $('rosterProfileFrame').removeAttribute('src');
+});
+$('rosterProfile').addEventListener('click',event=>{
+ if(event.target===event.currentTarget)event.currentTarget.close();
+});
+window.addEventListener('message',event=>{
+ if(event.origin!==location.origin||event.source!==$('rosterProfileFrame').contentWindow||
+  event.data?.type!=='bpd-organogram-card')return;
+ if(event.data.status==='closed')$('rosterProfile').close();
+ else if(event.data.status==='ready')$('rosterProfileStatus').hidden=true;
+ else if(event.data.status==='not-found')
+  $('rosterProfileStatus').textContent='Deze persoon is niet gevonden in het actuele organogram.';
+ else if(event.data.status==='unavailable')
+  $('rosterProfileStatus').textContent='De personeelskaart is momenteel niet beschikbaar.';
+});
 function render(){
  const q=$('search').value;
- const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),people,q);
+ const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),people,q,openRosterProfile);
  $('message').textContent=count+' van '+people.length+' personeelsleden zichtbaar';
 }
 async function load(){
