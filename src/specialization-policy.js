@@ -10,10 +10,11 @@ export function specialtyReadEnabled(env){return env.BPD_ENABLE_PERSONNEL_SPECIA
 export function specialtyWritesEnabled(env){
   return specialtyReadEnabled(env)&&env.BPD_ENABLE_PERSONNEL_SPECIALTY_WRITES==='true';
 }
-export function allowedSpecialty(dept,label){
+export function allowedSpecialty(dept,label,additional=[]){
   // LRD is managed by the actual Discord bot role, never by manual status edits.
   if(dept==='politie'&&label==='LRD (Recherche)')return false;
-  return typeof label==='string'&&SPECIALTY_LABELS[dept]?.includes(label)===true;
+  return typeof label==='string'&&
+  (SPECIALTY_LABELS[dept]?.includes(label)===true||additional.includes(label));
 }
 export function canChangeSpecialty(actor,subject){
   if(verifiedBoardCorpsDossierAdmin(actor)&&subject&&
@@ -39,11 +40,11 @@ export function canChangeSpecialty(actor,subject){
   if(!['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie')))return false;
   return canEditPersonnel(actor,subject);
 }
-export function validateSpecialtyChange(body,dept){
+export function validateSpecialtyChange(body,dept,additional=[]){
   if(!body||typeof body!=='object'||Array.isArray(body)||
     Object.keys(body).some(k=>!['label','value','reason','expectedRevision'].includes(k)))
     throw Error('Ongeldige specialisatiewijziging');
-  if(!allowedSpecialty(dept,body.label))throw Error('Onbekende specialisatie voor deze hulpdienst');
+  if(!allowedSpecialty(dept,body.label,additional))throw Error('Onbekende specialisatie voor deze hulpdienst');
   if(!ACCEPTED.has(body.value))throw Error('Kies een toegestane specialisatiestatus');
   const reason=typeof body.reason==='string'?body.reason.trim():'';
   if(reason.length<15||reason.length>500||/[\x00-\x1f\x7f<>]/.test(reason))
@@ -52,10 +53,10 @@ export function validateSpecialtyChange(body,dept){
     throw Error('Vernieuw eerst de specialisatiegegevens');
   return {label:body.label,value:body.value,reason,expectedRevision:body.expectedRevision};
 }
-export function publicSpecializations(subject,document){
+export function publicSpecializations(subject,document,additional=[]){
   const source=Array.isArray(subject?.specialties)?subject.specialties:[];
   const canonical=Object.fromEntries(source
-    .filter(x=>allowedSpecialty(subject.dept,x?.label))
+    .filter(x=>allowedSpecialty(subject.dept,x?.label,additional))
     .map(x=>[x.label,typeof x.value==='string'?x.value.slice(0,90):'Niet ingevuld']));
   const values=document?.values&&typeof document.values==='object'&&!Array.isArray(document.values)
     ?document.values:{};
@@ -68,7 +69,9 @@ export function publicSpecializations(subject,document){
   }:{};
   const savedManual=entry=>!!entry&&typeof entry==='object'&&
     ACCEPTED.has(entry.value)&&entry.source==='manual';
-  const items=(SPECIALTY_LABELS[subject.dept]||[]).map(label=>{
+  const labels=[...(SPECIALTY_LABELS[subject.dept]||[]),
+  ...additional.filter(label=>!SPECIALTY_LABELS[subject.dept]?.includes(label))];
+  const items=labels.map(label=>{
     const saved=values[label];
     const legacy=values[fireLegacyAliases[label]];
     // Canonical manual edits always take precedence. A legacy explicit
@@ -81,7 +84,7 @@ export function publicSpecializations(subject,document){
   return {items,revision:Number.isSafeInteger(document?.revision)&&document.revision>=0
     ?document.revision:0};
 }
-export function applySpecialtyOverlays(records,docs){
+export function applySpecialtyOverlays(records,docs,configs={}){
   const byKey=new Map();
   for(const entry of docs||[]){
     const doc=entry?.data?entry.data():entry;
@@ -90,7 +93,8 @@ export function applySpecialtyOverlays(records,docs){
     byKey.set(doc.dept+'_'+doc.discordId,doc);
   }
   return (records||[]).map(person=>{
-    const mapped=publicSpecializations(person,byKey.get(person.dept+'_'+person.personId));
+    const extra=(configs?.[person.dept]?.customSpecialties||[]).map(x=>x.label);
+    const mapped=publicSpecializations(person,byKey.get(person.dept+'_'+person.personId),extra);
     const legacy=mapped.items.filter(i=>!['Nee','Neen','Niet ingevuld','Niet gecontroleerd','n.v.t.','NVT',''].includes(i.value))
       .map(i=>i.label+': '+i.value).join(' · ');
     return {...person,specialties:mapped.items,
