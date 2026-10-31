@@ -74,9 +74,9 @@ test('uploaded fire badges are selected by specialty code, not by personnel or a
  assert.equal(api.fireSpecialtyPatchUrl('Ladderwagen'),'');
  assert.equal(api.fireSpecialtyPatchUrl('Logistiek'),'');
 });
-test('non-fire specialties keep their existing header behavior and no patch',()=>{
+test('unrelated service specializations keep the original header without a patch',()=>{
  const api=view();
- const other=api.specialtyBranch({label:'Ambulance opleiding',members:[]},false,false,'ambulance');
+ const other=api.specialtyBranch({label:'Depannage opleiding',members:[]},false,false,'depannage');
  assert.doesNotMatch(other.children[0].className,/fire-specialty/);
  assert.ok(!other.children[0].children.some(child=>child.className==='fire-specialty-patch'));
 });
@@ -86,9 +86,9 @@ test('uploaded specialty badges are manageable from the existing role artwork se
   assert.match(uploader,new RegExp("'"+code+"'"));
  }
  assert.match(admin,/Specialisatiepatch \(organogram en personeelslijst\)/);
- assert.match(admin,/role-artwork-ui\.js\?v=fire-specialty-patches-20261031/);
+ assert.match(admin,/role-artwork-ui\.js\?v=ambulance-specialty-patches-20261031/);
  assert.ok(uploader.includes("kind==='specialty'&&$p('roleArtworkDepartment').value==='brandweer'?[320,320]"));
  assert.ok(uploader.includes("$p('roleArtworkDepartment').addEventListener('change'"));
- assert.ok(admin.includes("Brandweer-specialisatiepatches krijgen een vierkant formaat"));
+ assert.ok(admin.includes("Brandweer- en ambulance-specialisatiepatches krijgen een vierkant formaat"));
  assert.match(html,/setFireSpecialtyPatchArtworks\(artworkManifest\?\.artworks\)/);
 });
