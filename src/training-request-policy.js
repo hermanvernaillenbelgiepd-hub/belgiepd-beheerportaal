@@ -121,7 +121,7 @@ export function validTrainingSchedule(body){
  const start=body.startAt,end=body.endAt,location=body.location;
  // Require an explicit timezone offset in the ISO timestamp. Prevent DST
  // ambiguity and never silently assume UTC for an event in Brussels.
- const stamp=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})$/;
+ const stamp=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/;
  if(typeof start!=='string'||typeof end!=='string'||!stamp.test(start)||!stamp.test(end))
   throw Error('Gebruik een datum en uur met tijdzone');
  const from=Date.parse(start),to=Date.parse(end);
