@@ -1348,6 +1348,67 @@ html.roster-card-embed .person-profile-dialog{
 }
 html.roster-card-embed .person-profile-dialog::backdrop{background:transparent}
 html.roster-card-embed .person-profile-shell{padding:12px}
+
+/* Brandweer organogram thumbnails render the SAME actual uniform composite
+   (including dynamic name, BRANDWEER · ZONE, grade and optional insignia)
+   as the expanded personnel profile. The former CSS applied only to dialogs. */
+#services .person>.portrait.bpd-service-uniform{
+ position:relative;box-sizing:border-box;display:block;
+ width:56px!important;min-width:56px;max-width:56px;
+ height:62px!important;flex:0 0 56px!important;
+ border:1px solid #6688a9;border-radius:6px;
+ background:#10243b;overflow:hidden;isolation:isolate;
+}
+#services .person>.portrait.bpd-service-uniform>.bpd-service-stage{
+ display:block;position:absolute;width:120%;height:auto;
+ aspect-ratio:603/469;left:50%;top:50%;
+ transform:translate(-50%,-50%);
+}
+#services .person .bpd-service-stage>.bpd-service-coat{
+ display:block;width:100%;height:100%;object-fit:contain;
+}
+#services .person .bpd-service-stage>.bpd-service-grade{
+ position:absolute;z-index:3;box-sizing:border-box;display:flex;
+ align-items:center;justify-content:center;overflow:hidden;
+ background:#0c192b;border-radius:1px;pointer-events:none;
+}
+#services .person .bpd-service-stage>.bpd-service-grade>img{
+ width:100%;height:100%;object-fit:contain;
+}
+#services .person .bpd-service-stage .bpd-service-grade-fallback{
+ color:#e4edf9;font-size:clamp(2px,.7cqw,6px);font-weight:800;
+ text-align:center;white-space:nowrap;overflow:hidden;
+}
+#services .person .bpd-service-stage>.bpd-service-nameplate{
+ position:absolute;z-index:4;box-sizing:border-box;display:flex;
+ flex-direction:column;align-items:center;justify-content:center;
+ overflow:hidden;pointer-events:none;
+ padding:1%;background:#101a29;color:#f0f4f7;
+ border:1px solid #b9c5d5;border-radius:1px;
+}
+#services .person .bpd-service-stage>.bpd-service-nameplate>span{
+ display:block;max-width:100%;width:100%;overflow:hidden;
+ white-space:nowrap;text-align:center;line-height:1.05;
+ font-family:system-ui,Segoe UI,Arial,sans-serif;
+ font-weight:800;font-size:clamp(2px,.56cqw,6px);
+ text-overflow:clip;
+}
+#services .person .bpd-service-stage>.bpd-service-nameplate>.bpd-service-call{
+ color:#bcd1e2;margin-top:2%;
+ font-size:clamp(2px,.46cqw,5px);
+}
+#services .person .bpd-service-stage>.bpd-service-profession-text{
+ position:absolute;left:12%;top:43%;width:34%;height:8%;
+ display:flex;align-items:center;justify-content:center;z-index:5;
+ color:#f0f8ff;background:#102d44;
+ font-size:4px;font-weight:900;
+}
+#services .person .bpd-service-stage>.bpd-custom-uniform-layer{
+ position:absolute;display:block;pointer-events:none;
+}
+#services .person .bpd-service-stage>.bpd-custom-uniform-layer>img{
+ width:100%;height:100%;object-fit:contain;
+}
 </style>
 </head>
 <body>
@@ -1894,7 +1955,11 @@ $('person-profile').addEventListener('click',event=>{
 function person(p,compact=false,specialtyLabel=null){
  const b=el('button','person'+(compact?' person-compact':''));b.type='button';
  b.append(el('span','num',p.call||'—'));
- const portrait=window.BPDPoliceUniform?.makePortrait?.(p);
+ // Use the SAME fire-service uniform and nameplate as the expanded profile.
+ // The former overview called the police renderer only, so fire members
+ // had no portrait even though their nameplate existed in the open profile.
+ const portrait=p.dept==='brandweer'?
+  makeServiceUniformPortrait(p):window.BPDPoliceUniform?.makePortrait?.(p);
  if(portrait)b.append(portrait);
  const label=el('span','identity');
  const name=el('b','',p.name||'Onbekend');name.title=p.name||'';
