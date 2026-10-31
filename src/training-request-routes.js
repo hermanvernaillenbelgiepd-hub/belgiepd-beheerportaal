@@ -214,7 +214,8 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
           const request={id:doc.id,...doc.data()};
           if(request.department!==dept||
             !ACTIVE_TRAINING_REQUEST_STATUSES.includes(request.status))continue;
-          if(reviewScope(ctx,request))incoming.push(exposed(request));
+          if(reviewScope(ctx,request))incoming.push({...exposed(request),
+            canSchedule:scheduleScope(ctx,request.department)});
         }
       }
       incoming.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
@@ -296,7 +297,8 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
           throw rejection('Deze opleiding is al in de kalender opgenomen',409);
         if(action==='uitgevoerd'&&
            (!eventSnap.exists||eventSnap.get('status')!=='gepland'||
-             eventSnap.get('requestId')!==id))
+             eventSnap.get('requestId')!==id||
+             Date.parse(eventSnap.get('startAt')||'')>Date.now()))
           throw rejection('Geen geldige geplande opleiding gevonden',409);
         const trainees=ctx.snapshot.filter(p=>p.dept===old.department&&
           p.personId===old.applicantDiscordId);
