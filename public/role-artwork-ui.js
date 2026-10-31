@@ -30,8 +30,7 @@ export function setupRoleArtworkUI({api,$,notice}){
  ['medicatie','Medicatie'],['heli','MUG-HELI'],['mip','MIP'],
  ['ladderwagen','Ladderwagen'],['duiker','Duiker'],['fast','F.A.S.T.'],
  ['logistiek','Logistiek'],['gevaarlijke_stoffen','Gevaarlijke stoffen'],
- ['red_team','RED-team'],['overige_leden','Overige leden (geen specialisatie)'],
- ['basis_tr','Basis training (Brandweer)']
+ ['red_team','RED-team'],['overige_leden','Overige leden (geen specialisatie)']
  ];
  const extraTypes=new Set(['medal','helmet','profession','logo','pictogram','patch','award']);
  const labels={role:'Discord-rol',rank:'Graad',specialty:'Specialisatie',uniform:'Uniform',
