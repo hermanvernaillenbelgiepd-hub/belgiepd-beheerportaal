@@ -1306,7 +1306,7 @@ function render(){
   const body=$('results');body.replaceChildren();
   if(!matches.length){
     const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');
-    c.colSpan=8+cols.length;body.append(tr);return;
+    c.colSpan=8+Math.max(cols.length,1);body.append(tr);return;
   }
   const allPolice=matches.every(person=>person.dept==='politie');
   const rosterGroups=allPolice?policeGroupedRoster(matches):[];
