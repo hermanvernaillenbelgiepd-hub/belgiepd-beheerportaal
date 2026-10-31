@@ -126,11 +126,14 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
   // Published events from all services are visible across the whole portal.
   app.get('/api/training-calendar',identity,async(req,res)=>{
     try{
-      const rows=await db().collection('bpd_training_calendar_events').limit(350).get();
+      const rows=await db().collection('bpd_training_calendar_events')
+        .where('startAt','>=',String(new Date().getUTCFullYear()-1)+'-01-01T00:00:00.000Z')
+        .orderBy('startAt').limit(350).get();
       const result=rows.docs.map(d=>eventSummary({id:d.id,...d.data()}))
-        .filter(d=>['gepland','uitgevoerd'].includes(d.status))
-        .sort((a,b)=>a.startAt.localeCompare(b.startAt));
-      res.json({events:result,limited:rows.docs.length===350});
+        .filter(d=>['gepland','uitgevoerd'].includes(d.status));
+      const canScheduleDepartments=TRAINING_REQUEST_DEPARTMENTS
+        .filter(dept=>scheduleScope(req.trainingApplicant,dept));
+      res.json({events:result,canScheduleDepartments,limited:rows.docs.length===350});
     }catch(e){error(res,e)}
   });
   // Authorized instructors/leaders can publish a standalone course without
@@ -236,15 +239,35 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       try{form=validateTrainingRequestInput(req.body,requestCourseOptions(dept,tier),tier)}
       catch(e){throw rejection(e.message,400)}
       const ref=db().collection('bpd_training_requests').doc();
-      await ref.create({
-        department:dept,applicantDiscordId:ctx.id,
-        applicantName:String(person.name||'').slice(0,100),
-        applicantCall:String(person.call||'').slice(0,30),
-        applicantTier:tier,series:personSeries(person),
-        courseName:form.courseName,isVaria:form.isVaria,
-        note:form.note,status:'nieuw',
-        createdAt:FieldValue.serverTimestamp(),
-        updatedAt:FieldValue.serverTimestamp()
+      const stamp=FieldValue.serverTimestamp();
+      const activity=db().collection('bpd_cases')
+        .doc(dept+'_'+ctx.id).collection('entries').doc();
+      const actor={discordId:ctx.id,name:person.name||'',
+        call:person.call||''};
+      await db().runTransaction(async tx=>{
+        tx.create(ref,{
+          department:dept,applicantDiscordId:ctx.id,
+          applicantName:String(person.name||'').slice(0,100),
+          applicantCall:String(person.call||'').slice(0,30),
+          applicantTier:tier,series:personSeries(person),
+          courseName:form.courseName,isVaria:form.isVaria,
+          note:form.note,status:'nieuw',createdAt:stamp,updatedAt:stamp
+        });
+        tx.create(ref.collection('audit').doc(),{
+          action:'aangevraagd',previousStatus:null,nextStatus:'nieuw',
+          by:actor,at:stamp
+        });
+        tx.create(activity,{
+          type:'activiteit',dept,subjectDiscordId:ctx.id,
+          subjectNameAtCreation:person.name||'',
+          subjectCallAtCreation:person.call||'',
+          eventDate:localDay(),
+          courseName:null,
+          details:'Opleiding aangevraagd · '+form.courseName+' · aanvraag '+ref.id,
+          reportCategory:'activiteit',trainingRequestId:ref.id,
+          registeredBy:actor,submittedBy:{uid:ctx.uid},
+          createdAt:stamp,modifiedAt:null
+        });
       });
       return res.status(201).json({saved:true,id:ref.id,status:'nieuw'});
     }catch(e){error(res,e)}
