@@ -1,0 +1,20 @@
+/* Portal roster name hover/focus preview shared across public and management lists. */
+.roster-name-preview-anchor{cursor:help;text-decoration:underline;text-decoration-style:dotted;
+ text-decoration-color:#709cc8;text-underline-offset:3px}
+.roster-name-preview-anchor:focus-visible{outline:2px solid #8dc4ff;outline-offset:3px;border-radius:2px}
+.roster-name-preview{position:fixed;z-index:12000;width:max-content;min-width:230px;max-width:min(350px,calc(100vw - 20px));
+ pointer-events:none;color:#edf5ff;background:#102d4b;border:1px solid #6d9bce;border-radius:10px;
+ box-shadow:0 12px 28px #010a18c9;padding:12px 14px;
+ font:12px/1.45 Inter,"Segoe UI",Arial,sans-serif;overflow-wrap:anywhere}
+.roster-name-preview-title{display:block;color:#fff;font-size:14px;margin-bottom:8px}
+.roster-name-preview-meta{display:grid;gap:4px}
+.roster-name-preview-line{display:flex;justify-content:space-between;align-items:start;gap:14px}
+.roster-name-preview-line>span{color:#acc8e8}
+.roster-name-preview-line>strong{text-align:right;font-weight:700;color:#f6faff}
+.roster-name-preview-specs{margin-top:9px;padding-top:8px;border-top:1px solid #466688}
+.roster-name-preview-caption{display:block;color:#acc8e8;font-size:11px;margin-bottom:5px}
+.roster-name-preview-tags{display:flex;flex-wrap:wrap;gap:4px}
+.roster-name-preview-tag{font-size:10px;background:#234c70;border:1px solid #416e99;
+ padding:2px 6px;border-radius:5px;color:#ecf7ff}
+.roster-name-preview>small{display:block;margin-top:9px;color:#b8d0ec}
+@media(hover:none){.roster-name-preview-anchor{cursor:default}}
