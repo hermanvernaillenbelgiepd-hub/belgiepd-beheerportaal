@@ -1512,17 +1512,62 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 }
 
 
-/* Embedded personnel card for roster: exact same read-only profile renderer. */
-html.roster-card-embed body{background:#09182c;margin:0}
+/* Embedded roster card: the parent Personeelsbeheer dialog is the sole
+   visible modal. Flatten the original organogram dialog without scaling or
+   modifying its uniform artwork. */
+html.roster-card-embed,html.roster-card-embed body{
+ width:100%;height:100%;min-height:0;margin:0;background:#10243d;overflow:hidden
+}
 html.roster-card-embed body>header,
 html.roster-card-embed body>main{display:none!important}
 html.roster-card-embed .person-profile-dialog{
- width:calc(100vw - 10px);max-width:1120px;max-height:calc(100dvh - 10px);
- margin:auto;padding:0;overflow:auto
+ box-sizing:border-box;width:100vw;max-width:none;min-width:0;
+ height:100dvh;max-height:100dvh;min-height:0;
+ margin:0;padding:0;border:0;border-radius:0;background:#10243d;
+ overflow:hidden;box-shadow:none
 }
 html.roster-card-embed .person-profile-dialog::backdrop{background:transparent}
-html.roster-card-embed .person-profile-shell{padding:12px}
-
+html.roster-card-embed .person-profile-shell{
+ box-sizing:border-box;width:100%;height:100%;padding:12px 19px;
+ overflow-y:auto;overscroll-behavior:contain
+}
+html.roster-card-embed .person-profile-top{display:none!important}
+html.roster-card-embed .person-profile-layout{align-items:start}
+html.roster-card-embed .person-profile-dialog.operational-profile
+ .person-profile-overview .portrait.bpd-police-formal[data-uniform],
+html.roster-card-embed .person-profile-dialog.operational-profile
+ .person-profile-overview .portrait.bpd-service-uniform{
+ width:min(100%,470px)!important;max-width:470px!important;
+ height:min(51dvh,470px)!important;min-height:285px!important
+}
+html.roster-card-embed .person-profile-dialog.operational-profile
+ .person-profile-overview{padding:8px;gap:5px;margin:0 0 7px}
+html.roster-card-embed .person-profile-dialog.operational-profile
+ .person-profile-overview .person-profile-name{font-size:19px}
+html.roster-card-embed .person-profile-dialog.operational-profile
+ .person-profile-grid .person-profile-fact{min-height:53px;padding:6px 9px}
+html.roster-card-embed .person-profile-dialog.operational-profile
+ .person-profile-grade{margin:5px auto 8px}
+@media(min-width:1040px) and (min-height:790px){
+ html.roster-card-embed .person-profile-shell{overflow:hidden}
+}
+@media(max-width:920px){
+ html.roster-card-embed .person-profile-shell{padding:9px;overflow-y:auto}
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-overview .portrait.bpd-police-formal[data-uniform],
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-overview .portrait.bpd-service-uniform{
+  width:min(100%,360px)!important;height:min(43dvh,380px)!important;min-height:240px!important
+ }
+}
+@media(max-width:540px){
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-overview .portrait.bpd-police-formal[data-uniform],
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-overview .portrait.bpd-service-uniform{
+  width:min(100%,300px)!important;height:min(42dvh,340px)!important;min-height:200px!important
+ }
+}
 /* Brandweer organogram thumbnails render the SAME actual uniform composite
    (including dynamic name, BRANDWEER · ZONE, grade and optional insignia)
    as the expanded personnel profile. The former CSS applied only to dialogs. */
