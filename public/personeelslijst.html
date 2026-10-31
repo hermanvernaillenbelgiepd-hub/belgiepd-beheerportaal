@@ -45,6 +45,13 @@ tbody tr:nth-child(2n){background:#183450}
 /* Admin-configurable SHARED dimensions. All regular members see the saved
    dimensions but never the editing controls. CSS applies only to this page. */
 .roster-personnel-page .mr-table{min-width:var(--mr-custom-table-width,1280px)}
+.roster-personnel-page .mr-wrapper{font-family:var(--mr-custom-font-family,Inter,"Segoe UI",Arial,sans-serif)}
+.roster-personnel-page .mr-table th{
+ font-size:clamp(9px,calc(var(--mr-custom-text-size,11px) - 1px),16px)
+}
+.roster-personnel-page .mr-table .mr-status{
+ font-family:var(--mr-custom-font-family,Inter,"Segoe UI",Arial,sans-serif)
+}
 .roster-personnel-page .mr-table th:nth-child(3){min-width:var(--mr-custom-rank-column,165px)}
 .roster-personnel-page .mr-table th:nth-child(4){min-width:var(--mr-custom-name-column,150px)}
 .roster-personnel-page .mr-table tbody tr.mr-person{
@@ -127,6 +134,17 @@ tbody tr:nth-child(2n){background:#183450}
    <label for="rosterLayout-textSize">Lettergrootte
     <output id="rosterLayoutValue-textSize">11 px</output>
     <input id="rosterLayout-textSize" type="range" min="9" max="16" step="1" value="11">
+   </label>
+   <label for="rosterLayout-fontFamily">Lettertype
+    <select id="rosterLayout-fontFamily" aria-label="Lettertype voor de personeelslijst">
+     <option value="inter">Inter / standaard</option>
+     <option value="segoe">Segoe UI</option>
+     <option value="arial">Arial</option>
+     <option value="verdana">Verdana</option>
+     <option value="tahoma">Tahoma</option>
+     <option value="georgia">Georgia</option>
+     <option value="mono">Monospace</option>
+    </select>
    </label>
    <label for="rosterLayout-insigniaWidth">Gradenplaatbreedte
     <output id="rosterLayoutValue-insigniaWidth">30 px</output>
