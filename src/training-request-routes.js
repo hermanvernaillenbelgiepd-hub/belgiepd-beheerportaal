@@ -106,7 +106,15 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       mayReviewTrainingRequest({
         ...ctx.actor,departments:['politie'],
         departmentRoles:{politie:'basiskader'}
-      },request));
+      },request))||
+    // Independently verified service instructors may treat training requests
+    // for their own service; police officer/corps applications stay protected.
+    (ctx.persons.some(p=>p.dept===request.department)&&
+      (TRAINING_ROLE_IDS[request.department]?.instructors||[])
+        .some(id=>ctx.verifiedRoleIds.includes(id))&&
+      (request.department!=='politie'||
+        !['officierenkader','korpsleiding'].includes(request.applicantTier))&&
+      request.applicantDiscordId!==ctx.id);
   // Scheduling is distinct from being a reekshoofd or reading a request.
   // A genuine instructor role or verified service leadership is required.
   const scheduleScope=(ctx,dept)=>ctx.persons.some(p=>p.dept===dept)&&
@@ -220,7 +228,9 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         const seriesLead=dept==='politie'&&series&&SERIES_LEADERS[series]?.includes(ctx.id);
         const serviceLead=dept!=='politie'&&
           ['middenkader','officierenkader','korpsleiding'].includes(rank);
-        if(!highPolice&&!seriesLead&&!serviceLead)continue;
+        const verifiedInstructor=(TRAINING_ROLE_IDS[dept]?.instructors||[])
+          .some(id=>ctx.verifiedRoleIds.includes(id));
+        if(!highPolice&&!seriesLead&&!serviceLead&&!verifiedInstructor)continue;
         // This is a verified reviewer, even if the current queue is empty.
         canReviewTraining=true;
         let query=db().collection('bpd_training_requests');
