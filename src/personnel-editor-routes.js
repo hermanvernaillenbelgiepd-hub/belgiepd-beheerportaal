@@ -13,6 +13,7 @@ import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {isPolice9xx} from './verified-police-cadre.js';
+import {checkServiceEnrollment} from './service-enrollment-policy.js';
 import {displaySeries} from './normalize.js';
 import {canChangePoliceGrade,allowedPoliceGradeChoices,
   validatePoliceGradeChange,classifyPoliceGradeChange} from './personnel-rank-policy.js';
@@ -102,6 +103,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       // Reject intake rather than trusting a stale cached personnel roster.
       const snap=await getSnapshot({forceRefresh:true});
       if(snap.stale)return error(res,503,'De actuele personeelsbron kan niet worden gecontroleerd. Probeer later opnieuw.');
+      const enrollment=checkServiceEnrollment(snap.data,proposed.dept,proposed.discordId);
+      if(!enrollment.allowed)return error(res,409,enrollment.reason);
       try{uniqueNewPerson(snap.data,proposed)}
       catch(e){return error(res,409,e.message)}
       const store=getFirestore();
@@ -227,6 +230,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         return error(res,403,'Deze koppeling mag niet worden goedgekeurd of Discord moet opnieuw verifiëren');
       const snap=await getSnapshot({forceRefresh:true});
       if(snap.stale)return error(res,503,'De actuele personeelsbron kan niet worden gecontroleerd. Probeer later opnieuw.');
+      const enrollment=checkServiceEnrollment(snap.data,record.dept,discordId);
+      if(!enrollment.allowed)return error(res,409,enrollment.reason);
       if(snap.data.some(p=>p.dept===record.dept&&p.personId===discordId))
         return error(res,409,'Deze Discord-ID heeft al een personeelsfiche in deze hulpdienst');
       const created=store.collection(CREATED_PERSONNEL_COLLECTION).doc(record.dept+'_'+discordId);
