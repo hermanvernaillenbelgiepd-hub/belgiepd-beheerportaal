@@ -1,4 +1,4 @@
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, FieldPath } from 'firebase-admin/firestore';
 import {canDecide, canReview, checkApplicant, eligibility, isDiscordId} from './callsign-utils.js';
 import {getPolicePlan, performPoliceSync} from './callsign-sync.js';
 import {initialFixedCallSpecialties,PERSONNEL_SPECIALIZATIONS_COLLECTION} from './specialization-policy.js';
@@ -90,25 +90,55 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
       const specialtyCurrent=await specialtyRef.get();
       const defaults=initialFixedCallSpecialties({discordId:id,status:'approved',
         assignedCall:plan.call,sync:synced});
-      // Avoid overriding separately reviewed qualifications on existing dossiers.
-      if(defaults&&!specialtyCurrent.exists){
-        const at=FieldValue.serverTimestamp();
-        batch.create(specialtyRef,{dept:'politie',discordId:id,revision:1,
-          values:defaults,source:'approved_fixed_callsign',
-          updatedAt:at,updatedByUid:req.bpd.uid,updatedByDiscordId:req.bpd.discordId});
-        for(const label of Object.keys(defaults)){
-          batch.create(specialtyRef.collection('audit').doc(),{
-            action:'initial_fixed_callsign_specialty',label,
-            previous:'Niet ingevuld',value:'Ja',source:'automatic',
-            reason:'Automatisch na gecontroleerde en gesynchroniseerde uitgifte van vast roepnummer 200–299',
-            revision:1,actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,at});
-          batch.create(store.collection('bpd_cases').doc('politie_'+id).collection('entries').doc(),{
-            type:'activiteit',reportCategory:'activiteit',dept:'politie',
-            subjectDiscordId:id,subjectNameAtCreation:plan.name,
-            subjectCallAtCreation:String(plan.call),eventDate:new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Brussels'}),
-            details:label+': automatisch op Ja na gecontroleerde uitgifte vast roepnummer '+plan.call,
-            registeredBy:approvedBy,source:'automatic_fixed_callsign_specialty',
-            createdAt:at,modifiedAt:null});
+      // Set new members' RADIO/BM and SIV/WPR to Ja, including when an
+      // otherwise empty specialization register was created beforehand.
+      // Preserve any explicit/manual review (including Nee or Niet ingevuld).
+      if(defaults){
+        const existing=specialtyCurrent.data();
+        const values=existing?.values&&typeof existing.values==='object'?
+          existing.values:{};
+        const added=Object.fromEntries(Object.entries(defaults).filter(([label])=>{
+          const old=values[label];
+          return !old || (old.source!=='manual'&&
+            (old.value===undefined||old.value===null||old.value==='Niet ingevuld'));
+        }));
+        if(Object.keys(added).length){
+          const at=FieldValue.serverTimestamp();
+          const revision=specialtyCurrent.exists?
+            (Number.isSafeInteger(existing?.revision)?existing.revision:0)+1:1;
+          if(!specialtyCurrent.exists){
+            batch.create(specialtyRef,{dept:'politie',discordId:id,revision,
+              values:added,source:'approved_fixed_callsign',
+              updatedAt:at,updatedByUid:req.bpd.uid,
+              updatedByDiscordId:req.bpd.discordId});
+          }else{
+            // FieldPath handles spaces and slashes in official skill labels.
+            // The updateTime precondition avoids overwriting concurrent edits.
+            const fields=Object.entries(added).flatMap(([label,value])=>
+              [new FieldPath('values',label),value]);
+            batch.update(specialtyRef,...fields,
+              new FieldPath('revision'),revision,
+              new FieldPath('updatedAt'),at,
+              new FieldPath('updatedByUid'),req.bpd.uid,
+              new FieldPath('updatedByDiscordId'),req.bpd.discordId,
+              {lastUpdateTime:specialtyCurrent.updateTime});
+          }
+          for(const label of Object.keys(added)){
+            batch.create(specialtyRef.collection('audit').doc(),{
+              action:'initial_fixed_callsign_specialty',label,
+              previous:values[label]?.value||'Niet ingevuld',
+              value:'Ja',source:'automatic',
+              reason:'Automatisch na gecontroleerde en gesynchroniseerde uitgifte van vast roepnummer 200–299',
+              revision,actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,at});
+            batch.create(caseRef.collection('entries').doc(),{
+              type:'activiteit',reportCategory:'activiteit',dept:'politie',
+              subjectDiscordId:id,subjectNameAtCreation:plan.name,
+              subjectCallAtCreation:String(plan.call),
+              eventDate:new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Brussels'}),
+              details:label+': automatisch op Ja na gecontroleerde uitgifte vast roepnummer '+plan.call,
+              registeredBy:approvedBy,source:'automatic_fixed_callsign_specialty',
+              createdAt:at,modifiedAt:null});
+          }
         }
       }
       batch.update(request,{status:'approved',assignedCall:plan.call,sync:synced,syncedAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
