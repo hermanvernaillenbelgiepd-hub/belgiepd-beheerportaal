@@ -499,7 +499,7 @@ body.dossier-embed #notice{margin:0 0 10px}
 body.dossier-embed #accessHelp{margin:10px 0}
 </style><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/roster-name-preview.css">
 </head>
-<body class="bpd-unified-dossier"><header><div><strong>🛡️ BelgiëPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollen-opleidingen.html">Opleidingen</a><a href="/weekrapporten.html">Weekrapporten</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
+<body class="bpd-unified-dossier"><header><div><strong>🛡️ BelgiëPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html" data-personnel-staff hidden>Gebruikersbeheer</a><a href="/rollen-opleidingen.html" data-personnel-staff hidden>Opleidingen</a><a href="/weekrapporten.html" data-personnel-staff hidden>Weekrapporten</a><a href="/dossiercentrum.html" data-personnel-staff hidden>Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><div class="personnel-overview"><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p></div>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
 <section id="accessHelp" class="card" hidden>
@@ -1986,7 +1986,9 @@ function initializeRosterEditor(){
 
 async function load(){
   if(!auth?.currentUser){
-    personnelManagementAllowed=false;updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+    personnelManagementAllowed=false;
+    for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=true;
+    updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     try{
       const cfg=await request('/api/roster-columns');
@@ -2015,6 +2017,7 @@ async function load(){
     }catch(_err){BPDPersonnelVisuals.setArtworkManifest([])}
     $('accessHelp').hidden=true;
     personnelManagementAllowed=true;
+    for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=false;
     $('accessHelp').hidden=true;
     people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
@@ -2078,6 +2081,7 @@ async function load(){
     }
   }catch(e){
     people=[];personnelManagementAllowed=false;
+    for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=true;
     $('panel').hidden=true;render();updatePersonnelView();
     if(!dossierEmbedded&&!ficheMode){
       $('accessHelp').hidden=true;
