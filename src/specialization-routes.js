@@ -1,4 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {extraSpecialtyLabels} from './roster-column-config.js';
 import {validPersonnelKey} from './personnel-editor-policy.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {verifiedPoliceLrdSubject,LRD_SPECIALTY_LABEL} from './police-lrd-policy.js';
@@ -29,10 +30,11 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
       const staff=await subject(req);
       const ref=getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
         .doc(staff.dept+'_'+staff.personId);
-      const [entry,history]=await Promise.all([
-        ref.get(),ref.collection('audit').orderBy('at','desc').limit(40).get()
+      const [entry,history,customLabels]=await Promise.all([
+        ref.get(),ref.collection('audit').orderBy('at','desc').limit(40).get(),
+        extraSpecialtyLabels(staff.dept)
       ]);
-      const state=publicSpecializations(staff,entry.data());
+      const state=publicSpecializations(staff,entry.data(),customLabels);
       if(staff.dept==='politie'){
         // LRD is optional. An absent/failed bot verification must not leave a
         // fake "Niet gecontroleerd" specialty on every police dossier.
@@ -65,9 +67,14 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
   app.post('/api/personnel/:dept/:discordId/specializations',requireUser,async(req,res)=>{
     if(!specialtyWritesEnabled(process.env))
       return error(res,503,'Specialisatiewijzigingen zijn nog niet geactiveerd');
-    let proposal;
-    try{proposal=validateSpecialtyChange(req.body,req.params.dept)}
-    catch(e){return error(res,400,e.message)}
+    let proposal,customLabels;
+    try{
+      customLabels=await extraSpecialtyLabels(req.params.dept);
+      proposal=validateSpecialtyChange(req.body,req.params.dept,customLabels);
+    }catch(e){
+      if(e.code)return handleError(res,e);
+      return error(res,400,e.message);
+    }
     try{
       const staff=await subject(req);
       if(!req.bpd.dossierNativeDepartments?.includes(req.params.dept)||!canChangeSpecialty(req.bpd,staff))
@@ -80,7 +87,7 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
         const current=Number.isSafeInteger(data.revision)?data.revision:0;
         if(current!==proposal.expectedRevision)
           throw failure(409,'De specialisaties zijn intussen gewijzigd. Vernieuw het dossier.');
-        const existing=publicSpecializations(staff,data).items.find(x=>x.label===proposal.label);
+        const existing=publicSpecializations(staff,data,customLabels).items.find(x=>x.label===proposal.label);
         if(!existing||existing.value===proposal.value)
           throw failure(409,'Geen nieuwe specialisatiestatus om te registreren');
         const values={...(data.values&&typeof data.values==='object'&&!Array.isArray(data.values)
