@@ -92,6 +92,14 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
  <p>Uitsluitend je eigen aanvragen en beslissingen. Bekijk <a href="/verlofbeheer.html">Mijn verlof</a> om een nieuwe aanvraag te doen.</p>
  <div id="personalList"></div>
 </section>
+<section id="seriesLeavePanel" class="panel" hidden>
+ <h2>📅 Verlofmeldingen · mijn politiereeks</h2>
+ <p>Alleen ter opvolging voor de bevoegde reekshoofden. Beslissingsbevoegdheid verandert niet.
+ Na goedkeuring verdwijnt de aanvraag uit de openstaande meldingen.</p>
+ <div id="seriesLeaveList"></div>
+ <details><summary>Recent automatisch goedgekeurde verloven (72 uur)</summary>
+  <div id="seriesLeaveAutomatic"></div></details>
+</section>
 <section id="reviewPanel" class="panel" hidden>
  <div class="actions" style="justify-content:space-between;align-items:center"><h2>Te behandelen verlofaanvragen <span id="reviewCount" class="pill">0</span></h2><button id="reload" type="button">↻ Vernieuwen</button></div>
  <div id="reviewList"></div>
@@ -101,9 +109,11 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
   <p>Alleen geverifieerd Bestuur of technisch beheer. Een herziening moet gemotiveerd worden en wordt gelogd.</p>
   <div id="overrideList"></div>
 </section>
+<p><a href="/opleidingskalender.html">📅 Globale multidisciplinaire opleidingskalender</a></p>
 <section class="panel" id="trainingPersonalPanel" hidden><h2>🎓 Mijn opleidingsaanvragen</h2><div id="trainingPersonal"></div><p><a href="/opleidingscentrum.html">Nieuwe opleiding aanvragen</a></p></section>
 <section class="panel" id="trainingReviewPanel" hidden><div class="actions" style="justify-content:space-between;align-items:center"><h2>🎓 Opleidingen te behandelen <span id="trainingCount" class="pill">0</span></h2><button type="button" id="trainingReload">↻ Vernieuwen</button></div><div id="trainingReview"></div></section></main>
 <script type="module">
+import {TRAINING_ACTIONS,availableTrainingActions,trainingActionData,trainingStateText} from '/training-request-actions.js?v=20261031';
 const $=id=>document.getElementById(id);let auth,authMod,writesEnabled=false;
 function feedback(msg,bad=false){$('feedback').textContent=msg;$('feedback').classList.toggle('error',bad)}
 async function api(url,body){
@@ -188,6 +198,44 @@ async function load(){
   feedback(writesEnabled?'Je kunt aanvragen behandelen binnen je eigen bevoegdheid.':'De verlofmodule staat momenteel op alleen-lezen.');
  }catch(e){feedback(e.message,true)}
 }
+async function loadSeriesLeave(){
+ const panel=$('seriesLeavePanel');
+ panel.hidden=true;
+ $('seriesLeaveList').replaceChildren();
+ $('seriesLeaveAutomatic').replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const result=await api('/api/leave/series-notifications');
+  if(!(result.series||[]).length)return;
+  panel.hidden=false;
+  const pending=result.pending||[];
+  const pendingEl=$('seriesLeaveList');
+  if(!pending.length)pendingEl.textContent='Geen openstaande verlofaanvragen uit jouw reeks.';
+  for(const record of pending){
+   const row=document.createElement('div');row.className='item';
+   const title=document.createElement('strong');
+   title.textContent=(record.subjectCall||'')+' · '+record.subjectName+
+     ' · reeks '+record.series;
+   const dates=document.createElement('p');
+   dates.textContent=record.startDate+' t/m '+record.endDate+' · Wacht op bevoegde beslissing';
+   row.append(title,dates);pendingEl.append(row);
+  }
+  const recent=$('seriesLeaveAutomatic');
+  const approved=result.recentAutomatic||[];
+  if(!approved.length)recent.textContent='Geen recente automatische goedkeuringen.';
+  for(const record of approved){
+   const row=document.createElement('div');row.className='item';
+   const title=document.createElement('strong');
+   title.textContent=record.subjectCall+' · '+record.subjectName;
+   const dates=document.createElement('p');
+   dates.textContent=record.startDate+' t/m '+record.endDate+' · AUTOMATISCH GOEDGEKEURD';
+   row.append(title,dates);recent.append(row);
+  }
+ }catch(e){
+  // This informational panel must never disrupt authorized leave decisions.
+  panel.hidden=true;
+ }
+}
 async function loadTraining(){
  $('trainingReviewPanel').hidden=true;$('trainingPersonalPanel').hidden=true;
  if(!auth?.currentUser)return;
@@ -198,11 +246,7 @@ async function loadTraining(){
    const row=document.createElement('div');row.className='item';
    const title=document.createElement('strong');title.textContent=r.courseName+' · '+r.department;
    row.append(title);const message=document.createElement('p');
-   message.textContent=r.status==='gelezen'?
-     'GELEZEN · De bevoegde reekshoofden of leiding hebben je aanvraag ontvangen en gelezen. Zij nemen contact met je op via Discord.':
-     r.status==='gegeven'?'GEGEVEN · De opleiding werd als gegeven geregistreerd.':
-     r.status==='gewist'?'GEWIST · De aanvraag is uit de actieve meldingen verwijderd.':
-     'NIEUW · Je aanvraag is verzonden en wacht op behandeling.';
+   message.textContent=trainingStateText(r);
    row.append(message);own.append(row);
   }
   if(!own.children.length)own.textContent='Geen opleidingsaanvragen.';
@@ -216,18 +260,21 @@ async function loadTraining(){
     const note=document.createElement('p');note.textContent=r.note||'Geen toelichting';
     const status=document.createElement('p');status.textContent='Status: '+r.status;
     const actions=document.createElement('div');actions.className='actions';
-    for(const [action,label] of [['gelezen','GELEZEN'],['gegeven','GEGEVEN'],['wissen','WISSEN']]){
-      if(action==='gelezen'&&r.status!=='nieuw')continue;
-      if(action==='gegeven'&&r.status==='gegeven')continue;
+    for(const [action,label] of TRAINING_ACTIONS){
+      if(!availableTrainingActions(r).includes(action))continue;
       const b=document.createElement('button');b.type='button';b.textContent=label;
-      if(action==='gegeven')b.className='primary';
+      if(action==='gepland'||action==='uitgevoerd')b.className='primary';
       b.onclick=async()=>{
-        if(action==='wissen'&&!confirm('Aanvraag wissen? De verwijdering blijft in de audit en het weekrapport.'))return;
+        const data=trainingActionData(action);
+        if(!data)return;
         b.disabled=true;
-        try{await api('/api/training-requests/'+encodeURIComponent(r.id)+'/action',{action});
-          feedback('Opleidingsaanvraag '+label.toLowerCase()+' en gelogd.');await loadTraining();
+        try{
+          await api('/api/training-requests/'+encodeURIComponent(r.id)+'/action',data);
+          feedback('Opleidingsaanvraag '+label.toLowerCase()+' en gelogd.');
+          await loadTraining();
         }catch(e){feedback(e.message,true);b.disabled=false}
-      };actions.append(b);
+      };
+      actions.append(b);
     }
     row.append(title,note,status,actions);target.append(row);
   }
