@@ -76,6 +76,6 @@ test('gold writing and divider coexist with silver diagonal stitches and origina
  assert.match(admin,/compose-rank-metal-gold::after,[\s\S]*?content:none!important/);
  assert.match(composer,/compose-rank-metal-gold/);
  assert.match(composer,/compose-rank-metal-silver/);
- assert.match(read('organogram-hierarchie.html'),/officer-gold-writing-20261031-v4/);
- assert.match(admin,/uniform-composer-ui\\.js\\?v=officer-gold-writing-20261031-v4/);
+ assert.match(read('organogram-hierarchie.html'),/name-autofit-20261031-v5/);
+ assert.match(admin,/uniform-composer-ui\\.js\\?v=name-autofit-20261031-v5/);
 });
