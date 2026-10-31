@@ -16,7 +16,7 @@ const columnBounds=Object.freeze({
  summary:[110,400],file:[65,180],discord:[175,360]
 });
 const allowedKeys=Object.keys(ROSTER_WIDTH_DEFAULTS);
-const allowedBody=['expectedRevision','widths','customSpecialties'];
+const allowedBody=['expectedRevision','widths','customSpecialties','specialtyWidths'];
 export function canEditRosterColumns(actor){
  return Boolean(actor&&actor.uid==='discord:'+actor.discordId&&
   actor.departments?.includes('politie')&&
@@ -41,7 +41,14 @@ export function rosterConfig(value){
        public:x.public===true
      }))
    :[];
- return {widths,customSpecialties,
+ const specialtyWidths={};
+ const incoming=value?.specialtyWidths;
+ if(incoming&&typeof incoming==='object'&&!Array.isArray(incoming)){
+  for(const [label,width] of Object.entries(incoming))
+    if(label.length<=64&&Number.isSafeInteger(width)&&width>=60&&width<=300)
+      specialtyWidths[label]=width;
+ }
+ return {widths,customSpecialties,specialtyWidths,
   revision:Number.isSafeInteger(value?.revision)&&value.revision>=0?value.revision:0};
 }
 export function validateRosterConfig(input,dept){
@@ -85,7 +92,19 @@ export function validateRosterConfig(input,dept){
    used.add(key);codes.add(code);
    return {label,code,icon,public:item.public};
  });
- return {widths,customSpecialties,expectedRevision:input.expectedRevision};
+ const rawSpecialtyWidths=input.specialtyWidths||{};
+ if(!rawSpecialtyWidths||typeof rawSpecialtyWidths!=='object'||
+    Array.isArray(rawSpecialtyWidths)||Object.keys(rawSpecialtyWidths).length>60)
+   throw Error('Ongeldige specialisatiebreedtes');
+ const allowedSpecialtyLabels=new Set([...(SPECIALTY_LABELS[dept]||[]),
+   ...customSpecialties.map(x=>x.label)]);
+ const specialtyWidths={};
+ for(const [label,width] of Object.entries(rawSpecialtyWidths)){
+   if(!allowedSpecialtyLabels.has(label)||!Number.isSafeInteger(width)||
+      width<60||width>300)throw Error('Ongeldige breedte voor '+label);
+   specialtyWidths[label]=width;
+ }
+ return {widths,customSpecialties,specialtyWidths,expectedRevision:input.expectedRevision};
 }
 export async function loadRosterConfigs(db=getFirestore()){
  const refs=ROSTER_DEPARTMENTS.map(dept=>db.collection(ROSTER_COLUMN_COLLECTION).doc(dept));
@@ -123,7 +142,8 @@ export function installRosterColumnRoutes(app,{requireUser}){
     if(old.revision!==validated.expectedRevision)
      throw Object.assign(new Error('Instellingen werden intussen gewijzigd. Vernieuw de pagina.'),{status:409});
     const next=old.revision+1;
-    tx.set(ref,{widths:validated.widths,customSpecialties:validated.customSpecialties,
+    tx.set(ref,{widths:validated.widths,specialtyWidths:validated.specialtyWidths,
+     customSpecialties:validated.customSpecialties,
      revision:next,updatedBy:req.bpd.discordId,updatedAt:FieldValue.serverTimestamp()});
     tx.create(db.collection('bpd_roster_column_audit').doc(),{
      dept:req.params.dept,actorDiscordId:req.bpd.discordId,
@@ -132,6 +152,7 @@ export function installRosterColumnRoutes(app,{requireUser}){
     return next;
    });
    res.json({saved:true,config:{widths:validated.widths,
+    specialtyWidths:validated.specialtyWidths,
     customSpecialties:validated.customSpecialties,revision}});
   }catch(e){
    if(e.status)return res.status(e.status).json({error:e.message});
