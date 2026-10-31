@@ -476,6 +476,19 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .pill.roster-status-half{background:#b45b13;color:#fff3e5;border-color:#de8934}
 .staff-roster-table .pill.roster-status-nonactive{background:#7044a1;color:#f5ecff;border-color:#966bc8}
 .staff-roster-table .pill.roster-status-removed{background:#58616d;color:#f3f6f9;border-color:#7c8692}
+/* Unified entry: general directory first, restricted dossiers only by explicit tab. */
+#personnelUnifiedNav{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:10px 0 14px}
+#personnelUnifiedNav button,#personnelUnifiedNav a{padding:8px 13px;border:1px solid #527ba5;
+ background:#1d395b;color:#e8f3ff;border-radius:7px;text-decoration:none;
+ font-size:12px;font-weight:750;cursor:pointer}
+#personnelUnifiedNav button[aria-selected="true"]{background:#315f99;border-color:#8bb6ea}
+#personnelPublicView{padding:12px;overflow:hidden}
+#personnelDirectoryFrame{display:block;width:100%;height:min(82vh,1100px);min-height:590px;
+ border:0;border-radius:9px;background:#09162a}
+#personnelPublicView[hidden],#staffManagePanel[hidden],
+#personnelUnifiedNav[hidden]{display:none!important}
+@media(max-width:720px){#personnelPublicView{padding:4px}
+ #personnelDirectoryFrame{height:78vh;min-height:540px}}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -499,7 +512,17 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <div id="accessDetail" class="subtle"></div>
 </section>
 <div id="mode" class="warn" hidden></div>
-<section class="card staff-list-panel"><div class="controls staff-list-head" style="justify-content:space-between"><h2>Personeelslijst</h2><div class="controls"><button id="newBtn" type="button" hidden>Nieuw personeelslid</button><button class="alt" id="reload" type="button">Vernieuwen</button></div></div>
+<nav id="personnelUnifiedNav" aria-label="Personeelsweergaven">
+ <button id="personnelPublicTab" type="button" aria-selected="true" aria-controls="personnelPublicView">👥 Algemene personeelslijst</button>
+ <button id="personnelManageTab" type="button" hidden aria-selected="false" aria-controls="staffManagePanel">⚙ Personeelsbeheer</button>
+ <a href="/organogram-hierarchie.html">🌳 Organogram per dienst</a>
+</nav>
+<section id="personnelPublicView" class="card" aria-label="Algemene personeelslijst">
+ <iframe id="personnelDirectoryFrame" src="/personeelslijst.html?embed=1"
+  title="Algemene personeelslijst, alleen lezen" loading="eager"
+  referrerpolicy="same-origin"></iframe>
+</section>
+<section id="staffManagePanel" class="card staff-list-panel" hidden><div class="controls staff-list-head" style="justify-content:space-between"><h2>Personeelslijst</h2><div class="controls"><button id="newBtn" type="button" hidden>Nieuw personeelslid</button><button class="alt" id="reload" type="button">Vernieuwen</button></div></div>
 <div class="grid staff-filters">
  <div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div>
  <div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div>
@@ -864,9 +887,35 @@ let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
 let rankChangesEnabled=false,rankChoices=[];
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
 let rosterConfigs=Object.create(null),rosterCanEdit=false;
+let personnelManagementAllowed=false;
+let personnelManagementRequested=false;
 const initialQuery=new URLSearchParams(window.location.search);
 const dossierEmbedded=initialQuery.get('embed')==='1';
 const ficheMode=!dossierEmbedded&&initialQuery.get('fiche')==='1';
+personnelManagementRequested=ficheMode||dossierEmbedded||
+  (initialQuery.has('discordId')&&initialQuery.has('dept'))||
+  window.location.hash==='#rosterColumnDetails';
+function updatePersonnelView(){
+  const privileged=personnelManagementAllowed&&personnelManagementRequested;
+  $('personnelUnifiedNav').hidden=dossierEmbedded||ficheMode;
+  $('personnelManageTab').hidden=!personnelManagementAllowed;
+  $('personnelPublicView').hidden=privileged||dossierEmbedded||ficheMode;
+  $('staffManagePanel').hidden=!privileged||dossierEmbedded||ficheMode;
+  $('personnelPublicTab').setAttribute('aria-selected',String(!privileged));
+  $('personnelManageTab').setAttribute('aria-selected',String(privileged));
+  if(!privileged&&!ficheMode&&!dossierEmbedded){
+    $('panel').hidden=true;
+    $('newPanel').hidden=true;
+    $('promotionPanel').hidden=true;
+  }
+}
+$('personnelPublicTab').onclick=()=>{
+ personnelManagementRequested=false;updatePersonnelView();
+};
+$('personnelManageTab').onclick=()=>{
+ if(!personnelManagementAllowed)return;
+ personnelManagementRequested=true;updatePersonnelView();
+};
 if(ficheMode){
   document.body.classList.add('dossier-standalone');
   $('ficheNavigator').hidden=false;
@@ -1935,7 +1984,8 @@ function initializeRosterEditor(){
 }
 
 async function load(){
-  if(!auth?.currentUser){$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+  if(!auth?.currentUser){
+    personnelManagementAllowed=false;updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     try{
       const cfg=await request('/api/roster-columns');
@@ -1962,6 +2012,8 @@ async function load(){
      const artwork=await request('/api/role-artwork/manifest');
      BPDPersonnelVisuals.setArtworkManifest(artwork.artworks);
     }catch(_err){BPDPersonnelVisuals.setArtworkManifest([])}
+    $('accessHelp').hidden=true;
+    personnelManagementAllowed=true;
     $('accessHelp').hidden=true;
     people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
@@ -1995,7 +2047,7 @@ async function load(){
       if(todayLeave.limited===true)
         notice('Niet alle verlofperiodes zijn geladen; de actuele status kan onvolledig zijn.',true);
     }catch{/* Keep ordinary status when verified leave is unavailable. */}
-    render();updateFicheColleagues();
+    render();updateFicheColleagues();updatePersonnelView();
     if(prefill&&/^\d{15,22}$/.test(prefill)){
       const matching=people.filter(p=>p.discordId===prefill&&
         (!targetDept||p.dept===targetDept));
@@ -2024,7 +2076,14 @@ async function load(){
       else if(!still)$('panel').hidden=true;
     }
   }catch(e){
-    people=[];$('panel').hidden=true;render();notice(e.message,true);
+    people=[];personnelManagementAllowed=false;
+    $('panel').hidden=true;render();updatePersonnelView();
+    if(!dossierEmbedded&&!ficheMode){
+      $('accessHelp').hidden=true;
+      $('notice').hidden=true;
+      return;
+    }
+    notice(e.message,true);
     const denied=/403|koppeling|goedgekeurd|goedgekeurde|niet gemachtigd|kaderrechten|Geen toegelaten hulpdienst/i.test(e.message||'');
     $('accessHelp').hidden=!denied;
     if(denied)void checkAccessStatus();
@@ -3955,6 +4014,7 @@ $('newBtn').onclick=()=>{
   $('newForm').reset();
   $('newDept').replaceChildren(...Object.keys(createRanks).map(key=>option(key,departments[key]||key)));
   refreshNewRanks();$('newPanel').hidden=false;
+  personnelManagementRequested=true;updatePersonnelView();
   $('newPanel').scrollIntoView({behavior:'smooth',block:'start'});
 };
 $('newClose').onclick=()=>{$('newPanel').hidden=true};
