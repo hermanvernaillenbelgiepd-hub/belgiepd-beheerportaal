@@ -1552,11 +1552,13 @@ html.roster-card-embed .person-profile-dialog.operational-profile
    qualification badges, retain one accessible scroll instead of clipping it. */
 @media(max-width:920px){
  html.roster-card-embed .person-profile-shell{padding:9px;overflow-y:auto}
+ /* Do not shrink the artwork simply because the dialog is narrower;
+    the one-column layout still has room for the full 470px uniform. */
  html.roster-card-embed .person-profile-dialog.operational-profile
   .person-profile-overview .portrait.bpd-police-formal[data-uniform],
  html.roster-card-embed .person-profile-dialog.operational-profile
   .person-profile-overview .portrait.bpd-service-uniform{
-  width:min(100%,360px)!important;height:min(43dvh,380px)!important;min-height:240px!important
+  width:min(100%,470px)!important;height:min(51dvh,470px)!important;min-height:285px!important
  }
 }
 @media(max-width:540px){
