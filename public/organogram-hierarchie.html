@@ -1548,9 +1548,8 @@ html.roster-card-embed .person-profile-dialog.operational-profile
  .person-profile-grid .person-profile-fact{min-height:53px;padding:6px 9px}
 html.roster-card-embed .person-profile-dialog.operational-profile
  .person-profile-grade{margin:5px auto 8px}
-@media(min-width:1040px) and (min-height:790px){
- html.roster-card-embed .person-profile-shell{overflow:hidden}
-}
+/* Normally all content fits on a desktop. When a profile contains many
+   qualification badges, retain one accessible scroll instead of clipping it. */
 @media(max-width:920px){
  html.roster-card-embed .person-profile-shell{padding:9px;overflow-y:auto}
  html.roster-card-embed .person-profile-dialog.operational-profile
