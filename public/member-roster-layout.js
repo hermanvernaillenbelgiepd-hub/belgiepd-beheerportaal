@@ -58,7 +58,8 @@ export function parseRosterLayout(value){
 }
 export function rosterPresetName(layout){
  for(const [name,preset] of Object.entries(ROSTER_PRESETS)){
-  if(Object.keys(controls).every(key=>preset[key]===layout[key]))return name;
+  if(preset.fontFamily===layout.fontFamily&&
+    Object.keys(controls).every(key=>preset[key]===layout[key]))return name;
  }
  return 'custom';
 }
