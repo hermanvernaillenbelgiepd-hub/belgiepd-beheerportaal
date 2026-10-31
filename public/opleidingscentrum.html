@@ -58,7 +58,7 @@ main .row h2{margin:0}
 </style></head><body>
 <header><strong>🎓 BelgiëPD · Opleidingscentrum</strong><a href="/">Dashboard</a><a href="/meldingen.html">Meldingen</a><button id="login" type="button">Aanmelden</button></header>
 <main>
-<h1>Opleidingscentrum</h1><p>Vraag zelf opleidingen aan of registreer en behandel opleidingen met de juiste dienstbevoegdheid.</p>
+<h1>Opleidingscentrum</h1><p><a href="/opleidingskalender.html">📅 Multidisciplinaire opleidingskalender (alle hulpdiensten)</a></p><p>Vraag zelf opleidingen aan of registreer en behandel opleidingen met de juiste dienstbevoegdheid.</p>
 <nav class="education-tabs" aria-label="Luik kiezen">
  <button type="button" id="requestTab" role="tab" aria-selected="true" aria-controls="requestPane">Opleiding aanvragen</button>
  <button type="button" id="registerTab" role="tab" aria-selected="false" aria-controls="registerPane" hidden>Opleiding registreren / behandelen</button>
@@ -90,6 +90,7 @@ main .row h2{margin:0}
 </main>
 <script type="module">
 import {TRAINING_REQUEST_COURSE_CATALOG} from '/training-course-catalog.js';
+import {TRAINING_LABELS,TRAINING_ACTIONS,availableTrainingActions,trainingActionData,trainingStateText} from '/training-request-actions.js?v=20261031';
 const $=id=>document.getElementById(id),NAMES={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage'};
 const SERVICE_ORDER=['politie','brandweer','ambulance','depannage'];
 const ADMISSION_NOTICES={
@@ -165,24 +166,24 @@ function entry(r,review=false){
  const node=el('div','');node.className='entry';
  const head=el('strong',(review?(r.applicantCall||'—')+' · '+r.applicantName+' · ':'')+
    (NAMES[r.department]||r.department)+' · '+r.courseName);node.append(head);
- const status=el('span',({nieuw:'NIEUW',gelezen:'GELEZEN',gegeven:'GEGEVEN',gewist:'GEWIST'})[r.status]||r.status);
+ const status=el('span',TRAINING_LABELS[r.status]||r.status);
  status.className='pill';node.append(status);
  if(r.note)node.append(el('p',r.note));
- if(!review&&r.status==='gelezen')node.append(el('p','De bevoegde reekshoofden of leiding hebben je aanvraag goed ontvangen en gelezen. Ze nemen contact op via Discord.'));
- if(!review&&r.status==='gegeven')node.append(el('p','De opleiding is als gegeven geregistreerd.'));
- if(!review&&r.status==='gewist')node.append(el('p','De aanvraag werd uit de actieve meldingen verwijderd; de historiek blijft bewaard.'));
+ if(!review)node.append(el('p',trainingStateText(r)));
  if(review){
   const row=el('div','');row.className='row';
-  for(const [action,label] of [['gelezen','GELEZEN'],['gegeven','GEGEVEN'],['wissen','WISSEN']]){
-   if(action==='gelezen'&&r.status!=='nieuw')continue;
-   if(action==='gegeven'&&r.status==='gegeven')continue;
+  for(const [action,label] of TRAINING_ACTIONS){
+   if(!availableTrainingActions(r).includes(action))continue;
    const button=el('button',label);
-   if(action==='wissen')button.className='danger';
+   if(action==='wissen'||action==='afgewezen')button.className='danger';
    button.onclick=async()=>{
-    if(action==='wissen'&&!confirm('Aanvraag wissen? De actie blijft in het weekrapport en de audit bewaard.'))return;
+    const body=trainingActionData(action);
+    if(!body)return;
     button.disabled=true;
-    try{await api('/api/training-requests/'+encodeURIComponent(r.id)+'/action',{action});
-      feedback('Aanvraag '+label.toLowerCase()+' en gelogd.');await load();
+    try{
+     await api('/api/training-requests/'+encodeURIComponent(r.id)+'/action',body);
+     feedback('Opleidingsaanvraag '+label.toLowerCase()+' geregistreerd en gelogd.');
+     await load();
     }catch(e){feedback(e.message,true);button.disabled=false}
    };
    row.append(button);

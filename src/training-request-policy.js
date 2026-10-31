@@ -96,12 +96,40 @@ export function validateTrainingRequestInput(body,options,tier){
   if(free&&(varia.length<3||varia.length>150))throw Error('Vul een opleidingsnaam van 3 tot 150 tekens in');
   return {courseName:free?varia:course,isVaria:free,note};
 }
-export const TRAINING_REQUEST_STATUSES=Object.freeze(['nieuw','gelezen','gegeven','gewist']);
+// Old 'gegeven' remains readable as a completed legacy request. New
+// completed training must pass through a real, scheduled calendar session.
+export const TRAINING_REQUEST_STATUSES=Object.freeze([
+ 'nieuw','gelezen','gepland','afgewezen','uitgevoerd','gegeven','gewist'
+]);
+export const ACTIVE_TRAINING_REQUEST_STATUSES=Object.freeze(['nieuw','gelezen','gepland']);
 export function nextTrainingRequestStatus(oldStatus,action){
-  if(!TRAINING_REQUEST_STATUSES.includes(oldStatus))throw Error('Onbekende aanvraagstatus');
-  if(oldStatus==='gewist')throw Error('Deze aanvraag is reeds verwijderd');
-  if(action==='gelezen'&&oldStatus==='nieuw')return 'gelezen';
-  if(action==='gegeven'&&['nieuw','gelezen'].includes(oldStatus))return 'gegeven';
-  if(action==='wissen')return 'gewist';
-  throw Error('Deze handeling is voor deze aanvraagstatus niet mogelijk');
+ if(!TRAINING_REQUEST_STATUSES.includes(oldStatus))throw Error('Onbekende aanvraagstatus');
+ if(oldStatus==='gewist')throw Error('Deze aanvraag is reeds gearchiveerd');
+ if(action==='gelezen'&&oldStatus==='nieuw')return 'gelezen';
+ if(action==='gepland'&&['nieuw','gelezen'].includes(oldStatus))return 'gepland';
+ if(action==='afgewezen'&&['nieuw','gelezen'].includes(oldStatus))return 'afgewezen';
+ if(action==='uitgevoerd'&&oldStatus==='gepland')return 'uitgevoerd';
+ if(action==='wissen'&&['uitgevoerd','gegeven'].includes(oldStatus))return 'gewist';
+ // Compatibility for historical records/tests only. New API blocks 'gegeven'.
+ if(action==='gegeven'&&['nieuw','gelezen'].includes(oldStatus))return 'gegeven';
+ throw Error('Deze handeling is voor deze aanvraagstatus niet mogelijk');
+}
+export function validTrainingSchedule(body){
+ if(!body||typeof body!=='object'||Array.isArray(body))throw Error('Ongeldige planning');
+ const allowed=['startAt','endAt','location'];
+ if(Object.keys(body).some(x=>!allowed.includes(x)))throw Error('Onbekende planningsvelden');
+ const start=body.startAt,end=body.endAt,location=body.location;
+ // Require an explicit timezone offset in the ISO timestamp. Prevent DST
+ // ambiguity and never silently assume UTC for an event in Brussels.
+ const stamp=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+ if(typeof start!=='string'||typeof end!=='string'||!stamp.test(start)||!stamp.test(end))
+  throw Error('Gebruik een datum en uur met tijdzone');
+ const from=Date.parse(start),to=Date.parse(end);
+ if(!Number.isFinite(from)||!Number.isFinite(to)||to<=from||to-from>24*3600*1000)
+  throw Error('Ongeldige begin- of eindtijd');
+ if(from<Date.now()-10*60*1000)throw Error('Plan geen opleiding in het verleden');
+ if(typeof location!=='string'||location.trim().length<2||location.trim().length>120)
+  throw Error('Vul een locatie in (maximaal 120 tekens)');
+ return {startAt:new Date(from).toISOString(),endAt:new Date(to).toISOString(),
+  location:location.trim()};
 }

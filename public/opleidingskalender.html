@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="nl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Multidisciplinaire opleidingskalender · BelgiëPD</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<style>
+:root{font:14px/1.5 Inter,system-ui,Segoe UI,Arial,sans-serif;color:#e5f2ff;background:#091a2c}
+*{box-sizing:border-box}body{margin:0}
+header{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:14px 22px;background:#102a44;border-bottom:1px solid #375674}
+header nav{display:flex;gap:14px;align-items:center}a{color:#a8ddf6}
+button,select,input{font:inherit;border:1px solid #577b9b;border-radius:7px;padding:9px 10px;background:#183750;color:#eef8ff}
+button{cursor:pointer}button:hover{background:#285273}button:disabled{opacity:.4;cursor:default}
+main{max-width:1240px;margin:auto;padding:17px 16px}
+h1{font-size:21px;margin:0 0 5px}h2{font-size:16px;margin:0 0 12px}
+p{margin:5px 0 12px;color:#bcd2e4}
+.card{background:#132f4b;border:1px solid #3b5e7d;border-radius:10px;padding:14px;margin:12px 0}
+.filters{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.filters label{font-size:12px;font-weight:700}
+.events{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.event{background:#10283e;border:1px solid #446c8e;border-radius:9px;padding:12px}
+.event strong{display:block;font-size:14px;line-height:1.25;margin-bottom:7px}
+.event .meta{color:#b7d0e5;font-size:11px;margin:4px 0}
+.tag{display:inline-block;background:#285f7b;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:750}
+.tag.politie{background:#235f9a}.tag.brandweer{background:#923e40}
+.tag.ambulance{background:#317e61}.tag.depannage{background:#946526}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:11px}
+.form-grid label{display:flex;flex-direction:column;gap:5px;font-size:12px}
+#feedback{font-size:12px;color:#dce9f4}
+#feedback.error{color:#ffbdc1}
+[hidden]{display:none!important}
+</style>
+</head><body>
+<header>
+ <strong>📅 BelgiëPD · Opleidingskalender</strong>
+ <nav><a href="/">Dashboard</a><a href="/opleidingscentrum.html">Opleidingscentrum</a>
+ <button id="login" type="button">Aanmelden</button></nav>
+</header>
+<main>
+ <h1>Multidisciplinaire opleidingskalender</h1>
+ <p>Alle gepubliceerde opleidingen van Politie, Brandweer, Ambulance (AZLS) en Depannage samen.
+ Alleen bevoegde instructeurs en dienstleiding mogen opleidingen inplannen.
+ Persoonlijke aanvragen en beoordelingen staan niet in deze kalender.</p>
+ <div id="feedback" role="status" aria-live="polite">Kalender laden…</div>
+ <section class="card">
+  <div class="filters">
+   <label for="dept">Dienst</label>
+   <select id="dept"><option value="">Alle hulpdiensten</option>
+    <option value="politie">Politie</option><option value="brandweer">Brandweer</option>
+    <option value="ambulance">Ambulance (AZLS)</option>
+    <option value="depannage">Depannage</option></select>
+   <label for="period">Periode</label>
+   <select id="period"><option value="upcoming">Toekomstige opleidingen</option>
+    <option value="all">Alle opleidingen</option><option value="history">Afgelopen opleidingen</option></select>
+   <button type="button" id="reload">↻ Vernieuwen</button>
+  </div>
+ </section>
+ <section id="createPanel" class="card" hidden>
+  <h2>Opleiding aankondigen</h2>
+  <p>Alleen in je eigen, geverifieerde dienst. Datum/uur worden opgeslagen met de
+     tijdzone en automatisch gepubliceerd voor alle hulpdiensten. Een afbeelding kan later gekoppeld worden.</p>
+  <form id="newEvent"><div class="form-grid">
+   <label>Organiserende dienst<select id="organizer" required></select></label>
+   <label>Opleidingsnaam<input id="course" maxlength="150" minlength="3" required></label>
+   <label>Begintijd<input type="datetime-local" id="begin" required></label>
+   <label>Eindtijd<input type="datetime-local" id="end" required></label>
+   <label>Locatie<input id="location" maxlength="120" required></label>
+  </div><p><button type="submit" id="publish">Publiceer opleiding</button></p></form>
+ </section>
+ <section class="card"><h2>Opleidingen</h2><div id="events" class="events"></div></section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+const names={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance (AZLS)',depannage:'Depannage'};
+let auth,authMod,events=[],allowed=[];
+function tell(text,error=false){$('feedback').textContent=text;$('feedback').classList.toggle('error',error)}
+async function api(url,payload){
+ if(!auth?.currentUser)throw Error('Meld je aan met je BelgiumPD-account');
+ const token=await auth.currentUser.getIdToken();
+ const response=await fetch(url,{method:payload?'POST':'GET',cache:'no-store',
+  headers:{Authorization:'Bearer '+token,...(payload?{'Content-Type':'application/json'}:{})},
+  ...(payload?{body:JSON.stringify(payload)}:{})});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'De kalender kon niet worden geladen');
+ return data;
+}
+const format=t=>new Date(t).toLocaleString('nl-BE',{
+ timeZone:'Europe/Brussels',year:'numeric',month:'long',
+ day:'numeric',hour:'2-digit',minute:'2-digit'});
+function render(){
+ const filter=$('dept').value,period=$('period').value,target=$('events');
+ const now=Date.now();
+ const shown=events.filter(x=>(!filter||x.department===filter)&&
+  (period==='all'||(period==='upcoming'?Date.parse(x.endAt)>=now:Date.parse(x.endAt)<now)));
+ target.replaceChildren();
+ for(const event of shown){
+  const card=document.createElement('article');card.className='event';
+  const heading=document.createElement('strong');
+  heading.textContent=event.courseName;
+  const dept=document.createElement('span');dept.className='tag '+event.department;
+  dept.textContent=names[event.department]||event.department;
+  const date=document.createElement('p');date.className='meta';
+  date.textContent=format(event.startAt)+' – '+format(event.endAt);
+  const loc=document.createElement('p');loc.className='meta';
+  loc.textContent='📍 '+event.location;
+  const organizer=document.createElement('p');organizer.className='meta';
+  organizer.textContent='Georganiseerd door '+(event.organizerName||'dienstleiding');
+  card.append(heading,dept,date,loc,organizer);target.append(card);
+ }
+ if(!shown.length)target.textContent='Geen opleidingen gevonden voor deze selectie.';
+}
+async function load(){
+ try{
+  const data=await api('/api/training-calendar');
+  events=data.events||[];allowed=data.canScheduleDepartments||[];
+  $('createPanel').hidden=!allowed.length;
+  $('organizer').replaceChildren(...allowed.map(x=>new Option(names[x]||x,x)));
+  render();
+  tell(data.limited?'Kalender geladen (maximum resultaten bereikt).':
+   'Opleidingskalender geladen · '+events.length+' opleidingen');
+ }catch(e){
+  events=[];allowed=[];$('createPanel').hidden=true;
+  render();tell(e.message,true);
+ }
+}
+$('dept').onchange=render;$('period').onchange=render;$('reload').onclick=load;
+$('newEvent').onsubmit=async event=>{
+ event.preventDefault();
+ if(!allowed.includes($('organizer').value))return;
+ const from=new Date($('begin').value),to=new Date($('end').value);
+ if(!Number.isFinite(from.getTime())||!Number.isFinite(to.getTime())){
+  tell('Ongeldige datum en uur',true);return;
+ }
+ $('publish').disabled=true;
+ try{
+  await api('/api/training-calendar',{
+   department:$('organizer').value,courseName:$('course').value,
+   startAt:from.toISOString(),endAt:to.toISOString(),
+   location:$('location').value
+  });
+  $('course').value='';$('location').value='';
+  await load();tell('Opleiding gepubliceerd voor alle hulpdiensten.');
+ }catch(e){tell(e.message,true)}
+ finally{$('publish').disabled=false}
+};
+async function init(){
+ const conf=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+ if(!conf.enabled)throw Error('Firebase is niet geconfigureerd');
+ const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+ authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+ auth=authMod.getAuth(appModule.initializeApp(conf.firebaseConfig));
+ const {setupPortalLogin}=await import('/portal-login.js');
+ setupPortalLogin({button:$('login'),auth,authModule:authMod,config:conf,
+  onError:e=>tell(e.message,true)});
+ authMod.onAuthStateChanged(auth,()=>load());
+}
+init().catch(e=>tell(e.message,true));
+</script><script defer src="/bpd-navigation.js"></script>
+</body></html>
