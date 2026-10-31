@@ -907,6 +907,7 @@ function updatePersonnelView(){
     $('panel').hidden=true;
     $('newPanel').hidden=true;
     $('promotionPanel').hidden=true;
+    selected=null; // Never reopen a previously selected dossier under the public list.
   }
 }
 $('personnelPublicTab').onclick=()=>{
