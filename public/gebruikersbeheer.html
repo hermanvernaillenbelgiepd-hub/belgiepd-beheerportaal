@@ -505,7 +505,7 @@ header button{padding:7px 10px;font-size:12px}
  <option value="role">Discord-rol / functiepatch</option>
 
 
- <option value="specialty">Specialisatiepictogram op personeelslijst</option>
+ <option value="specialty">Specialisatiepatch (organogram en personeelslijst)</option>
 
 
 
@@ -517,12 +517,12 @@ header button{padding:7px 10px;font-size:12px}
  <div id="roleArtworkPresetWrap"><label for="roleArtworkPreset">Bestaande specialisatie / rol</label><select id="roleArtworkPreset"></select></div>
  <div id="roleArtworkBadgeStyleWrap" hidden><label for="roleArtworkBadgeStyle">Uitvoering specialisatiebadge</label><select id="roleArtworkBadgeStyle"><option value="">Algemeen / bestaande versie</option><option value="lokaal">Lokaal</option><option value="federaal">Federaal</option></select></div>
  <div id="roleArtworkCodeWrap" hidden><label for="roleArtworkCodePreset">Bestaande graad / specialisatie</label><select id="roleArtworkCodePreset"></select>
- <label for="roleArtworkCode">Code of herkenningsnaam</label><input id="roleArtworkCode" maxlength="40" pattern="[a-z0-9_]{1,40}" placeholder="Bijv. ainp of motard"><small>Bijvoorbeeld <code>default</code> voor een algemeen dienstlogo of <code>zonecommandant</code> voor een specifieke graad. Nieuwe codes kun je zelf invoeren.</small></div>
+ <label for="roleArtworkCode">Code of herkenningsnaam</label><input id="roleArtworkCode" maxlength="40" pattern="[a-z0-9_]{1,40}" placeholder="Bijv. ainp of motard"><small>Brandweerpatches: kies bijvoorbeeld <code>duiker</code>, <code>gevaarlijke_stoffen</code>, <code>ladderwagen</code>, <code>logistiek</code>, <code>red_team</code> of <code>signalisatie</code>. Selecteer de hulpdienst <strong>Brandweer</strong> en badge-uitvoering <strong>Algemeen</strong>. De patch verschijnt dan automatisch naast de specialisatienaam in het organogram. Nieuwe codes kun je zelf invoeren.</small></div>
  <div><label for="roleArtworkDepartment">Hulpdienst</label><select id="roleArtworkDepartment"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="beveiliging">Beveiligingsagent (voorbereiding)</option></select></div>
  <div id="roleArtworkRoleIdWrap"><label for="roleArtworkRoleId">Discord-rol-ID</label><input id="roleArtworkRoleId" maxlength="22" inputmode="numeric" pattern="[0-9]{15,22}" placeholder="Bijv. 1358148694297415741"></div>
  <div id="roleArtworkVariantWrap"><label for="roleArtworkVariant">Variant</label><select id="roleArtworkVariant"><option value="standard">Standaard / rol</option><option value="instructeur">Instructeur (aparte badge bij gedeelde rol)</option></select></div>
  <div><label for="roleArtworkLabel">Naam van het logo</label><input id="roleArtworkLabel" maxlength="75" placeholder="Bijv. MOTARD · Volwaardig"></div>
- <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 5 MB. Rolpatches blijven 16:5. Dienstlogo’s en pictogrammen worden passend uitgesneden. Je kunt de uitsnede verslepen en schalen.</small></div>
+ <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 5 MB. Rolpatches blijven 16:5. Brandweer-specialisatiepatches krijgen een vierkant formaat; dienstlogo’s en pictogrammen worden passend uitgesneden. Je kunt de uitsnede verslepen en schalen.</small></div>
  <div><label id="roleArtworkFormatLabel">Voorbeeld (170 × 53,125 px)</label><div class="artwork-preview"><img id="roleArtworkPreview" width="170" height="53" alt="Voorbeeld van de gekozen patch" hidden></div></div>
 </div>
 <div class="artwork-crop-section" id="roleArtworkCropSection" hidden>
@@ -853,7 +853,7 @@ header button{padding:7px 10px;font-size:12px}
 <script src="/assets/bpd-nameplate-autofit.js?v=name-autofit-20261031-v5"></script>
 <script type="module">
 import {setupDossierGrantUI} from '/dossier-grants-ui.js';
-import {setupRoleArtworkUI} from '/role-artwork-ui.js';
+import {setupRoleArtworkUI} from '/role-artwork-ui.js?v=fire-specialty-patches-20261031';
 import {setupUniformManagementUI} from '/uniform-management-ui.js?v=optional-uniform-pieces-20261030';
 import {setupVisualLayerUI} from '/visual-layer-ui.js?v=optional-uniform-pieces-20261030';
 import {setupUniformAssignmentUI} from '/uniform-assignment-ui.js';
