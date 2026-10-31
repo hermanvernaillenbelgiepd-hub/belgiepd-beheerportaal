@@ -87,5 +87,8 @@ test('uploaded specialty badges are manageable from the existing role artwork se
  }
  assert.match(admin,/Specialisatiepatch \(organogram en personeelslijst\)/);
  assert.match(admin,/role-artwork-ui\.js\?v=fire-specialty-patches-20261031/);
+ assert.ok(uploader.includes("kind==='specialty'&&$p('roleArtworkDepartment').value==='brandweer'?[320,320]"));
+ assert.ok(uploader.includes("$p('roleArtworkDepartment').addEventListener('change'"));
+ assert.ok(admin.includes("Brandweer-specialisatiepatches krijgen een vierkant formaat"));
  assert.match(html,/setFireSpecialtyPatchArtworks\(artworkManifest\?\.artworks\)/);
 });
