@@ -415,6 +415,24 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .roster-add-row .roster-inline-check{display:flex;align-items:center;gap:6px}
 .roster-inline-check input{width:auto}
 .roster-add-row input[type=file]{font-size:10px;padding:6px}
+/* Typography applies only to the roster table, not dossier forms or navigation. */
+.staff-roster-table,
+.staff-roster-table button{font-family:var(--roster-font-family,Inter,"Segoe UI",Arial,sans-serif)}
+.staff-roster-table thead th{font-size:clamp(9px,calc(var(--roster-font-size,11px) - 1px),17px)!important}
+.staff-roster-table tbody tr:not(.police-kader-divider)>td{
+  font-size:var(--roster-font-size,11px)!important;
+  line-height:1.18;
+}
+.staff-roster-table .rank-code,
+.staff-roster-table .pill,
+.staff-roster-table .active-leave-pill,
+.staff-roster-table .specialty-status-col .specialty-state{
+  font-size:clamp(9px,calc(var(--roster-font-size,11px) - 1px),16px)!important;
+}
+.roster-font-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:12px 0 6px}
+.roster-font-controls label{min-width:180px;flex:1 1 180px}
+.roster-font-controls input,.roster-font-controls select{margin-top:5px;padding:6px 8px;font-size:12px}
+
  /* Consistent status colors in the staff roster. */
 .staff-roster-table .pill.roster-status-active{background:#17663f;color:#e4ffef;border-color:#28885a}
 .staff-roster-table .pill.roster-status-leave{background:#245a9c;color:#eaf5ff;border-color:#4284cf}
@@ -458,6 +476,22 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
   <p class="subtle">De afmetingen gelden voor iedereen. Alleen geverifieerd Officierenkader en Korpsleiding kunnen wijzigingen bewaren. Bestaande specialisaties blijven behouden.</p>
   <label for="rosterColumnDept">Hulpdienst</label>
   <select id="rosterColumnDept"></select>
+  <div class="roster-font-controls" aria-label="Lettertype en tekstgrootte">
+   <label for="rosterFontFamily">Lettertype
+    <select id="rosterFontFamily">
+     <option value="inter">Inter / standaard</option>
+     <option value="segoe">Segoe UI</option>
+     <option value="arial">Arial</option>
+     <option value="verdana">Verdana</option>
+     <option value="tahoma">Tahoma</option>
+     <option value="georgia">Georgia</option>
+     <option value="mono">Monospace</option>
+    </select>
+   </label>
+   <label for="rosterFontSize">Lettergrootte (9–18 px)
+    <input id="rosterFontSize" type="number" min="9" max="18" step="1" value="11">
+   </label>
+  </div>
   <div id="rosterWidthFields" class="roster-width-grid"></div>
   <div class="controls" style="justify-content:space-between;margin:12px 0 6px">
    <h3 style="margin:0">Extra specialisatiekolommen</h3>
@@ -1293,6 +1327,15 @@ function specialtyMark(label){
   return mark;
 }
 // Adjust dimensions here only; do not duplicate column widths in CSS.
+const ROSTER_FONTS=Object.freeze({
+ inter:'Inter,"Segoe UI",Arial,sans-serif',
+ segoe:'"Segoe UI",Arial,sans-serif',
+ arial:'Arial,Helvetica,sans-serif',
+ verdana:'Verdana,Geneva,sans-serif',
+ tahoma:'Tahoma,Arial,sans-serif',
+ georgia:'Georgia,serif',
+ mono:'Consolas,"Courier New",monospace'
+});
 const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
   call:78,grade:116,rank:164,name:190,series:108,status:108,
   specialty:82,summary:180,file:76,discord:224
@@ -1313,6 +1356,11 @@ function render(){
   const cols=[...BPDPersonnelVisuals.specialtyColumns(dept),...custom.map(x=>x.label)];
   const head=$('staffColumnHeaders');head.replaceChildren();
   const table=head.closest('table');
+  const font=rosterConfigs[dept]||{};
+  table.style.setProperty('--roster-font-family',ROSTER_FONTS[font.fontFamily]||ROSTER_FONTS.inter);
+  table.style.setProperty('--roster-font-size',
+    (Number.isSafeInteger(font.fontSize)&&font.fontSize>=9&&font.fontSize<=18?
+      font.fontSize:11)+'px');
   // Match every visible header/body column, including the specialty fallback,
   // Fiche and Discord-ID. Keeping widths in a colgroup prevents drift.
   const w=rosterConfigs[dept]?.widths||ROSTER_COLUMN_WIDTH_DEFAULTS;
@@ -1567,6 +1615,8 @@ function rosterEditorRender(){
  const dept=rosterEditorDepartment,cfg=rosterConfigs[dept];
  if(!cfg)return;
  const widths=cfg.widths||ROSTER_COLUMN_WIDTH_DEFAULTS;
+ $('rosterFontFamily').value=ROSTER_FONTS[cfg.fontFamily]?cfg.fontFamily:'inter';
+ $('rosterFontSize').value=Number.isSafeInteger(cfg.fontSize)?cfg.fontSize:11;
  const fields=$('rosterWidthFields');fields.replaceChildren();
  for(const [key,caption] of Object.entries(ROSTER_WIDTH_LABELS)){
   const label=document.createElement('label');
@@ -1628,6 +1678,19 @@ function initializeRosterEditor(){
   rosterEditorInit=true;
   selector.replaceChildren(...Object.keys(departments).map(dept=>
     new Option(departments[dept],dept)));
+  $('rosterFontFamily').onchange=()=>{
+   const cfg=rosterConfigs[rosterEditorDepartment];
+   cfg.fontFamily=$('rosterFontFamily').value;
+   render();rosterEditorFeedback('Lettertype als voorbeeld aangepast. Klik op Bewaren.');
+  };
+  $('rosterFontSize').onchange=()=>{
+   const input=$('rosterFontSize');
+   if(!input.checkValidity()){
+    rosterEditorFeedback('Kies een lettergrootte van 9 tot 18 px.',true);return;
+   }
+   rosterConfigs[rosterEditorDepartment].fontSize=Number(input.value);
+   render();rosterEditorFeedback('Lettergrootte als voorbeeld aangepast. Klik op Bewaren.');
+  };
   selector.onchange=()=>{
    rosterEditorDepartment=selector.value;rosterEditorRender();
   };
@@ -1666,6 +1729,7 @@ function initializeRosterEditor(){
    try{
     const result=await request('/api/roster-columns/'+dept,{
       method:'PUT',body:{expectedRevision:cfg.revision,widths:cfg.widths,
+        fontFamily:cfg.fontFamily||'inter',fontSize:cfg.fontSize||11,
         specialtyWidths:cfg.specialtyWidths||{},
         customSpecialties:cfg.customSpecialties}
     });
