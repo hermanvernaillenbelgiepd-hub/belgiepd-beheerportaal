@@ -1,7 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {actorFromPersonnel,validateEntry} from './registrations.js';
-import {basicObservationTargets,basicEligibleTarget,mayReadBasicInbox} from './basic-observation-policy.js';
-import {receivedAuthor,receivedAccess} from './received-registration-policy.js';
+import {basicObservationTargets,mayReadBasicInbox} from './basic-observation-policy.js';
+import {receivedAccess} from './received-registration-policy.js';
 
 const POL='politie';
 const ID=/^\d{15,22}$/;
@@ -54,18 +54,15 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
       if(!author||author.discordId!==access.author.personId)
         return err(res,403,'Eigen personeelsidentiteit kon niet worden bevestigd');
       const validated=validateEntry({...body,type:'observatie'});
+      // Strictly separate from bpd_cases and staff dossier entries.
       const target=targets[0],db=getFirestore();
-      const item=db.collection('bpd_cases').doc(POL+'_'+target.personId).collection('entries').doc();
-      const notification=db.collection('bpd_notices').doc(POL).collection('events').doc();
-      const time=FieldValue.serverTimestamp(),batch=db.batch();
-      batch.create(item,{...validated,dept:POL,subjectDiscordId:target.personId,
+      const item=db.collection('bpd_basic_observations').doc();
+      await item.create({...validated,dept:POL,subjectDiscordId:target.personId,
         subjectNameAtCreation:target.name,subjectCallAtCreation:target.call,
-        registeredBy:author,submittedByActor:author,onBehalfOf:null,onBehalfReason:'',
+        registeredBy:author,submittedByActor:author,
         submittedBy:{uid:req.bpd.uid,email:req.bpd.email},
-        source:'observatie-vanuit-basiskader',createdAt:time,modifiedAt:null});
-      batch.create(notification,{caseId:POL+'_'+target.personId,
-        entryId:item.id,type:'observatie',dept:POL,createdAt:time});
-      await batch.commit();
+        source:'observatie-vanuit-basiskader',
+        createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
       return res.status(201).json({saved:true,reference:item.id});
     }catch(e){
       if(e.status)return err(res,e.status,e.message);
@@ -75,52 +72,33 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
       return err(res,503,'Beveiligde observatie kon niet worden opgeslagen');
     }
   });
-  // Leest uit het BESTAANDE dossier- en meldingenregister (inclusief ouder werk).
-  // Geen nieuwe opslag of niet-afgeschermde cross-person zoekopdracht.
+  // Exclusive inbox for observations from the basic cadre. Never read dossier entries.
   app.get('/api/basic-observations/inbox',requireUser,async(req,res)=>{
     if(!mayReadBasicInbox(req.bpd))
-      return err(res,403,'Alleen Middenkader, Officierenkader, Korpsleiding en Bestuur mogen deze observaties bekijken');
+      return err(res,403,'Alleen Middenkader, Officierenkader en Korpsleiding mogen deze observaties bekijken');
     try{
       const roster=await latestSubjects(getSnapshot);
       const people=roster.filter(p=>p.dept===POL);
-      const db=getFirestore();
-      const events=db.collection('bpd_notices').doc(POL).collection('events');
+      const db=getFirestore(),records=db.collection('bpd_basic_observations');
       const cursor=String(req.query.cursor||'');
       if(cursor&&!/^[A-Za-z0-9_-]{12,32}$/.test(cursor))
         return err(res,400,'Ongeldige pagina-verwijzing');
-      let query=events.orderBy('createdAt','desc').limit(160);
+      let query=records.orderBy('createdAt','desc').limit(160);
       if(cursor){
-        const previous=await events.doc(cursor).get();
+        const previous=await records.doc(cursor).get();
         if(!previous.exists)return err(res,400,'Pagina-verwijzing niet gevonden');
         query=query.startAfter(previous);
       }
-      const notices=await query.get();
-      const picked=notices.docs.map(d=>d.data()).filter(e=>e.type==='observatie'&&
-        typeof e.caseId==='string'&&/^politie_\d{15,22}$/.test(e.caseId)&&
-        typeof e.entryId==='string'&&/^[A-Za-z0-9_-]{12,32}$/.test(e.entryId));
-      const refs=picked.map(e=>db.collection('bpd_cases').doc(e.caseId)
-        .collection('entries').doc(e.entryId));
-      const snapshots=[];
-      for(let i=0;i<refs.length;i+=80)
-        snapshots.push(...await db.getAll(...refs.slice(i,i+80)));
-      const rows=[];
-      for(let i=0;i<snapshots.length;i++){
-        const item=snapshots[i];
-        if(!item.exists)continue;
-        const e=item.data();
-        if(e.type!=='observatie')continue;
-        const author=receivedAuthor(e,people);
-        // De indeling gebruikt de door de server opgeslagen rang bij indiening,
-        // niet een door de aanvrager of browser gekozen kadercategorie.
-        if(author?.bucket!=='basiskader'||!/^[345]\d\d$/.test(
-          String(author.call||'').replace(/^S[- ]?/i,'')))continue;
-        const targetId=e.subjectDiscordId;
-        if(!ID.test(targetId))continue;
-        const subject=staffCount(people,targetId);
+      const snapshots=await query.get(),rows=[];
+      for(const doc of snapshots.docs){
+        const e=doc.data(),author=e.submittedByActor||e.registeredBy;
+        if(e.type!=='observatie'||e.dept!==POL||
+           !/^[345]\\d\\d$/.test(String(author?.call||'').replace(/^S[- ]?/i,'')))continue;
+        const subject=staffCount(people,e.subjectDiscordId);
         if(subject.length!==1)continue;
         if(!req.bpd.boardPersonnelAdmin&&
            !receivedAccess(req.bpd,subject[0]).includes('basiskader'))continue;
-        rows.push({id:item.id,eventDate:txt(e.eventDate,10),
+        rows.push({id:doc.id,eventDate:txt(e.eventDate,10),
           eventTime:txt(e.eventTime,5),createdAt:iso(e.createdAt),
           details:txt(e.details,6000),testRecord:e.testRecord===true,
           actor:{name:txt(author.name,120),call:txt(author.call,30),rank:txt(author.rank,120)},
@@ -129,8 +107,8 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
       }
       res.set('Cache-Control','private, no-store');
       return res.json({entries:rows,
-        nextCursor:notices.docs.length===160?notices.docs[notices.docs.length-1].id:null,
-        description:'Ontvangen observaties vanuit Basiskader; uitsluitend aan bevoegde kaderleden en Bestuur. Oudere meldingen kunnen per pagina worden bijgeladen.'});
+        nextCursor:snapshots.docs.length===160?snapshots.docs[snapshots.docs.length-1].id:null,
+        description:'Afzonderlijk en beveiligd register van observaties vanuit Basiskader.'});
     }catch(e){
       if(e.status)return err(res,e.status,e.message);
       console.error('Basiskader ontvangen observaties:',e.code||e.message);
