@@ -55,6 +55,26 @@ table{min-width:1110px}
   border-spacing:0;
 }
 .staff-roster-table col{box-sizing:border-box}
+/* Only authorised roster editors receive drag handles on column headers. */
+.staff-roster-table thead th.roster-resizable{padding-right:15px!important}
+.staff-roster-table .roster-resize-handle{
+ position:absolute;top:0;right:0;bottom:0;width:12px;z-index:5;
+ padding:0!important;margin:0;border:0;border-radius:0;background:transparent;
+ cursor:col-resize;touch-action:none;user-select:none;
+}
+.staff-roster-table .roster-resize-handle::after{
+ content:"";position:absolute;top:16%;bottom:16%;left:5px;width:2px;
+ border-radius:3px;background:#90baff;opacity:.6;
+}
+.staff-roster-table .roster-resize-handle:hover::after,
+.staff-roster-table .roster-resize-handle:focus-visible::after,
+.staff-roster-table .roster-resize-handle.roster-resize-active::after{
+ background:#ffe69a;opacity:1;width:3px;
+}
+.staff-roster-table .roster-resize-handle:focus-visible{outline:2px solid #ffe69a;outline-offset:-2px}
+html.roster-resizing,html.roster-resizing *{cursor:col-resize!important;user-select:none!important}
+#rosterResizeHelp{margin:6px 0 10px;color:#b9d7f6;font-size:11px}
+
 /* Desktop roster uses the complete browser width, with real specialization columns. */
 main{max-width:1900px;padding-inline:clamp(10px,1.3vw,24px)}
 header{padding-inline:clamp(15px,2vw,34px)}
@@ -538,6 +558,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  </details>
 </div>
 <p class="subtle"><span id="count">Nog geen personeelsgegevens geladen.</span></p>
+<p id="rosterResizeHelp" hidden>↔ Sleep de rechterrand van een kolomkop om de breedte te wijzigen. Pijltjestoetsen werken ook. Klik daarna op <strong>Instellingen bewaren voor iedereen</strong>.</p>
 <div class="scroller staff-roster-holder"><table class="staff-roster-table"><thead id="staffColumnHeaders"></thead><tbody id="results"></tbody></table></div>
 </section>
 <section id="newPanel" class="card" hidden>
@@ -1361,10 +1382,113 @@ const ROSTER_FONTS=Object.freeze({
  georgia:'Georgia,serif',
  mono:'Consolas,"Courier New",monospace'
 });
+const ROSTER_RESIZE_LIMITS=Object.freeze({
+ call:[60,200],grade:[75,250],rank:[105,380],name:[120,430],
+ series:[95,240],status:[95,240],specialty:[60,300],
+ summary:[110,400],file:[65,180],discord:[175,360]
+});
 const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
   call:78,grade:116,rank:164,name:190,series:108,status:108,
   specialty:82,summary:180,file:76,discord:224
 });
+// Resize only modifies this browser's preview. Server-side permissions and
+// revision checks still apply when the officer explicitly clicks Save.
+function rosterDragHandles({dept,cols,headers,colgroup,table,widths}){
+ const allowed=rosterCanEdit&&!dossierEmbedded&&!ficheMode&&
+  auth?.currentUser&&rosterConfigs[dept];
+ const hint=$('rosterResizeHelp');
+ hint.hidden=!rosterCanEdit||dossierEmbedded||ficheMode;
+ if(!hint.hidden)hint.firstChild.textContent=allowed?
+  '↔ Sleep de rechterrand van een kolomkop om de breedte te wijzigen. Pijltjestoetsen werken ook. Klik daarna op ':
+  'Selecteer eerst één hulpdienst om de kolombreedtes te verslepen. ';
+ if(!allowed)return;
+ const cfg=rosterConfigs[dept],primary=['call','grade','rank','name','series','status'];
+ const descriptors=[
+  ...primary.map((key,i)=>({key,title:headers.children[i].textContent})),
+  ...(cols.length?cols.map(label=>({specialty:label,title:label})):
+    [{key:'summary',title:'Specialisaties'}]),
+  {key:'file',title:'Fiche'},{key:'discord',title:'Discord-ID'}
+ ];
+ if(descriptors.length!==widths.length||headers.children.length!==widths.length)return;
+ for(let index=0;index<descriptors.length;index++){
+  const th=headers.children[index],part=descriptors[index];
+  const key=part.key||'specialty',range=ROSTER_RESIZE_LIMITS[key];
+  const col=colgroup.children[index];
+  const current=()=>part.specialty?
+    (cfg.specialtyWidths?.[part.specialty]||cfg.widths.specialty):
+    cfg.widths[part.key];
+  const change=value=>{
+   const safe=Math.max(range[0],Math.min(range[1],Math.round(value)));
+   if(safe===current())return false;
+   if(part.specialty){
+    cfg.specialtyWidths ||= {};
+    cfg.specialtyWidths[part.specialty]=safe;
+   }else cfg.widths[part.key]=safe;
+   widths[index]=safe;
+   col.style.width=safe+'px';
+   table.style.setProperty('--roster-required-width',
+     widths.reduce((total,width)=>total+width,0)+'px');
+   return true;
+  };
+  th.classList.add('roster-resizable');
+  const handle=document.createElement('button');
+  handle.type='button';handle.className='roster-resize-handle';
+  handle.title=part.title+' verslepen om de breedte te wijzigen';
+  handle.setAttribute('aria-label','Breedte van '+part.title+
+    ' wijzigen: sleep of druk op de pijltoetsen');
+  handle.dataset.rosterResizeIndex=String(index);
+  let activePointer=null,startingX=0,startingValue=0,dragRatio=1,changed=false;
+  const finish=(event,cancelled)=>{
+   if(activePointer===null||event.pointerId!==activePointer)return;
+   const pointer=activePointer;activePointer=null;
+   if(handle.hasPointerCapture(pointer))handle.releasePointerCapture(pointer);
+   handle.classList.remove('roster-resize-active');
+   document.documentElement.classList.remove('roster-resizing');
+   if(cancelled)change(startingValue);
+   if(changed&&!cancelled){
+    rosterEditorDepartment=dept;
+    render(); // one redraw after dragging, never per pointer move
+    if(rosterEditorInit){
+     $('rosterColumnDept').value=dept;
+     rosterEditorRender();
+    }
+    rosterEditorFeedback(part.title+' gewijzigd naar '+current()+
+      ' px als voorbeeld. Klik op "Instellingen bewaren voor iedereen".');
+   }
+  };
+  handle.addEventListener('pointerdown',event=>{
+   if(event.button!==0||activePointer!==null)return;
+   event.preventDefault();event.stopPropagation();
+   activePointer=event.pointerId;startingX=event.clientX;
+   startingValue=current();changed=false;
+   const displayed=col.getBoundingClientRect().width;
+   dragRatio=displayed>0?startingValue/displayed:1;
+   handle.setPointerCapture(event.pointerId);
+   handle.classList.add('roster-resize-active');
+   document.documentElement.classList.add('roster-resizing');
+  });
+  handle.addEventListener('pointermove',event=>{
+   if(activePointer!==event.pointerId)return;
+   if(change(startingValue+(event.clientX-startingX)*dragRatio))changed=true;
+  });
+  handle.addEventListener('pointerup',event=>finish(event,false));
+  handle.addEventListener('pointercancel',event=>finish(event,true));
+  handle.addEventListener('keydown',event=>{
+   if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
+   event.preventDefault();event.stopPropagation();
+   const direction=event.key==='ArrowRight'?1:-1;
+   if(!change(current()+direction*(event.shiftKey?1:5)))return;
+   rosterEditorDepartment=dept;
+   if(rosterEditorInit){
+    $('rosterColumnDept').value=dept;
+    rosterEditorRender();
+   }
+   rosterEditorFeedback(part.title+' gewijzigd naar '+current()+
+     ' px als voorbeeld. Klik op "Instellingen bewaren voor iedereen".');
+  });
+  th.append(handle);
+ }
+}
 function render(){
   const q=$('search').value.trim().toLowerCase(),dept=$('dept').value;
   const matches=BPDPersonnelVisuals.sortPersonnelRows(
@@ -1425,6 +1549,7 @@ function render(){
   }
   const last=document.createElement('th');last.textContent='Fiche';line.append(last);
   const discordHeader=document.createElement('th');discordHeader.textContent='Discord-ID';discordHeader.className='discord-id-head';line.append(discordHeader);head.append(line);
+  rosterDragHandles({dept,cols,headers:line,colgroup,table,widths});
   const body=$('results');body.replaceChildren();
   if(!matches.length){
     const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');
