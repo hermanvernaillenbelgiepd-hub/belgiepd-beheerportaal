@@ -61,6 +61,7 @@ export function clearRosterLayout(wrapper){
  for(const name of Object.values(cssVars))wrapper.style.removeProperty(name);
 }
 let activeToken=null;
+let sessionGeneration=0;
 let savedLayout={...ROSTER_DEFAULT};
 let authorized=false;
 let listening=false;
@@ -138,6 +139,7 @@ function attachEvents(){
  });
 }
 export function logoutRosterLayout(){
+ sessionGeneration++;
  authorized=false;activeToken=null;
  const tools=byId('rosterLayoutTools');
  if(tools)tools.hidden=true;
@@ -152,11 +154,14 @@ export function logoutRosterLayout(){
 export async function loadRosterLayout(token){
  logoutRosterLayout();
  if(typeof token!=='string'||!token)return;
+ const generation=sessionGeneration;
  try{
   const response=await fetch('/api/member/personnel-layout',{
    headers:{Authorization:'Bearer '+token},cache:'no-store'
   });
   const data=await response.json();
+  // A logout or account switch may have happened while the fetch ran.
+  if(generation!==sessionGeneration)return;
   if(!response.ok)throw Error(data.error||'Instellingen niet beschikbaar');
   savedLayout=parseRosterLayout(data.layout);
   show(savedLayout);
@@ -171,7 +176,8 @@ export async function loadRosterLayout(token){
    status('Standaardafmetingen · alleen Officierenkader en Korpsleiding kunnen bewaren');
   }
  }catch(_error){
-  // Fail closed: nobody gets layout editing controls on an auth/API failure.
+  // Fail closed and do not overwrite the UI of a newer session.
+  if(generation!==sessionGeneration)return;
   logoutRosterLayout();
  }
 }
