@@ -16,7 +16,9 @@ const columnBounds=Object.freeze({
  summary:[110,400],file:[65,180],discord:[175,360]
 });
 const allowedKeys=Object.keys(ROSTER_WIDTH_DEFAULTS);
-const allowedBody=['expectedRevision','widths','customSpecialties','specialtyWidths'];
+export const ROSTER_FONT_FAMILIES=Object.freeze(['inter','segoe','arial','verdana','tahoma','georgia','mono']);
+export const ROSTER_FONT_DEFAULT=Object.freeze({fontFamily:'inter',fontSize:11});
+const allowedBody=['expectedRevision','widths','customSpecialties','specialtyWidths','fontFamily','fontSize'];
 export function canEditRosterColumns(actor){
  // A real authenticated Discord identity is mandatory for all changes.
  if(!actor?.discordId||actor.uid!=='discord:'+actor.discordId)return false;
@@ -55,7 +57,11 @@ export function rosterConfig(value){
     if(label.length<=64&&Number.isSafeInteger(width)&&width>=60&&width<=300)
       specialtyWidths[label]=width;
  }
- return {widths,customSpecialties,specialtyWidths,
+ const fontFamily=ROSTER_FONT_FAMILIES.includes(value?.fontFamily)?
+   value.fontFamily:ROSTER_FONT_DEFAULT.fontFamily;
+ const fontSize=Number.isSafeInteger(value?.fontSize)&&
+  value.fontSize>=9&&value.fontSize<=18?value.fontSize:ROSTER_FONT_DEFAULT.fontSize;
+ return {widths,customSpecialties,specialtyWidths,fontFamily,fontSize,
   revision:Number.isSafeInteger(value?.revision)&&value.revision>=0?value.revision:0};
 }
 export function validateRosterConfig(input,dept){
@@ -111,7 +117,13 @@ export function validateRosterConfig(input,dept){
       width<60||width>300)throw Error('Ongeldige breedte voor '+label);
    specialtyWidths[label]=width;
  }
- return {widths,customSpecialties,specialtyWidths,expectedRevision:input.expectedRevision};
+ const fontFamily=input.fontFamily??ROSTER_FONT_DEFAULT.fontFamily;
+ const fontSize=input.fontSize??ROSTER_FONT_DEFAULT.fontSize;
+ if(!ROSTER_FONT_FAMILIES.includes(fontFamily)||!Number.isSafeInteger(fontSize)||
+    fontSize<9||fontSize>18)
+   throw Error('Gebruik een toegestaan lettertype en een lettergrootte van 9–18 px');
+ return {widths,customSpecialties,specialtyWidths,fontFamily,fontSize,
+  expectedRevision:input.expectedRevision};
 }
 export async function loadRosterConfigs(db=getFirestore()){
  const refs=ROSTER_DEPARTMENTS.map(dept=>db.collection(ROSTER_COLUMN_COLLECTION).doc(dept));
@@ -150,6 +162,7 @@ export function installRosterColumnRoutes(app,{requireUser}){
      throw Object.assign(new Error('Instellingen werden intussen gewijzigd. Vernieuw de pagina.'),{status:409});
     const next=old.revision+1;
     tx.set(ref,{widths:validated.widths,specialtyWidths:validated.specialtyWidths,
+     fontFamily:validated.fontFamily,fontSize:validated.fontSize,
      customSpecialties:validated.customSpecialties,
      revision:next,updatedBy:req.bpd.discordId,updatedAt:FieldValue.serverTimestamp()});
     tx.create(db.collection('bpd_roster_column_audit').doc(),{
@@ -159,7 +172,8 @@ export function installRosterColumnRoutes(app,{requireUser}){
     return next;
    });
    res.json({saved:true,config:{widths:validated.widths,
-    specialtyWidths:validated.specialtyWidths,
+    specialtyWidths:validated.specialtyWidths,fontFamily:validated.fontFamily,
+    fontSize:validated.fontSize,
     customSpecialties:validated.customSpecialties,revision}});
   }catch(e){
    if(e.status)return res.status(e.status).json({error:e.message});
