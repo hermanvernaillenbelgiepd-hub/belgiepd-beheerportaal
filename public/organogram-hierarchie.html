@@ -134,6 +134,43 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  overflow:visible;
  padding:1px 0 6px;
 }
+
+/* Brandweer: dedicated editable specialty patch space in every header.
+   The thumbnail never changes the 7-column desktop layout or member cards.
+   Images come exclusively from the existing authorized Firebase artwork
+   manifest. A neutral placeholder is shown until a patch is uploaded. */
+#services .service[data-dept="brandweer"]>.service-body>.spec-list>.specialty>summary.fire-specialty-title{
+ display:flex;align-items:center;gap:6px;
+ padding:5px 6px;
+ min-width:0;min-height:48px;box-sizing:border-box;
+}
+#services .service[data-dept="brandweer"] .fire-specialty-patch{
+ display:grid;place-items:center;flex:0 0 32px;
+ width:32px;height:32px;min-width:32px;
+ border:1px solid #6486a8;border-radius:5px;
+ background:#102842;overflow:hidden;
+}
+#services .service[data-dept="brandweer"] .fire-specialty-patch>img{
+ display:block;width:100%;height:100%;
+ object-fit:contain;object-position:center;
+}
+#services .service[data-dept="brandweer"] .fire-specialty-patch-placeholder{
+ color:#7399b9;font-size:18px;font-weight:450;line-height:1;
+}
+#services .service[data-dept="brandweer"] .fire-specialty-title-text{
+ display:flex;flex:1 1 auto;min-width:0;min-height:32px;
+ flex-direction:column;justify-content:center;align-items:flex-start;
+ gap:1px;
+}
+#services .service[data-dept="brandweer"] .fire-specialty-title-name{
+ font-size:10px;font-weight:850;line-height:1.15;
+ overflow-wrap:anywhere;hyphens:auto;
+}
+#services .service[data-dept="brandweer"] .fire-specialty-title-text>.specialty-branch-count{
+ display:block;margin:0;font-size:9px;line-height:1.1;
+ color:#bdd3e7;font-weight:700;
+}
+
 .service[data-dept="brandweer"]>.service-body>.spec-list>.specialty{
  box-sizing:border-box;
  width:100%;
@@ -1744,6 +1781,69 @@ function supportsSpecialtyInstructors(label){
 
 let serviceUniformArtworks=new Map(),serviceRankArtworks=new Map(),serviceUniformLayouts=new Map();
 let serviceNameplateLayouts=new Map(),serviceCoatLayouts=new Map(),serviceVisibilityLayouts=new Map();
+
+/* Fire specialty images reuse the protected role-artwork upload library.
+   These images are decorative: they never grant a specialisation or role. */
+let fireSpecialtyPatchArtworks=new Map();
+function fireSpecialtyPatchCode(label){
+ const key=String(label||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+ const aliases={
+  gevaarlijke_stoffen:'gevaarlijke_stoffen',
+  red_team:'red_team',
+  redteam:'red_team',
+  overige_leden_geen_geregistreerde_specialisatie:'overige_leden',
+  overige_leden:'overige_leden',
+  basis_training:'basis_tr',
+  basistraining:'basis_tr'
+ };
+ return aliases[key]||key.slice(0,40);
+}
+function setFireSpecialtyPatchArtworks(artworks){
+ const map=new Map();
+ for(const item of Array.isArray(artworks)?artworks:[]){
+  if(item?.kind!=='specialty'||item.department!=='brandweer')continue;
+  const code=String(item.code||'');
+  if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code))continue;
+  const url=String(item.imageUrl||'');
+  if(!/^\/api\/role-artwork\/file\/specialty_brandweer_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url))continue;
+  map.set(code,url);
+ }
+ fireSpecialtyPatchArtworks=map;
+}
+function fireSpecialtyPatchUrl(label){
+ const code=fireSpecialtyPatchCode(label);
+ const aliases=code==='gevaarlijke_stoffen'?['gevaarlijkestoffen']:
+  code==='red_team'?['redteam']:[];
+ for(const k of [code,...aliases]){
+  for(const candidate of [k,k+'_lokaal',k+'_federaal']){
+   const url=fireSpecialtyPatchArtworks.get(candidate);
+   if(url)return url;
+  }
+ }
+ return '';
+}
+function makeFireSpecialtyPatch(label){
+ const slot=el('span','fire-specialty-patch');
+ const url=fireSpecialtyPatchUrl(label);
+ if(url){
+  const img=el('img');
+  img.src=url;
+  img.alt='';
+  img.loading='lazy';
+  img.decoding='async';
+  img.onerror=()=>{slot.replaceChildren(el('span','fire-specialty-patch-placeholder','◇'));};
+  slot.append(img);
+  slot.title='Specialisatiepatch: '+label;
+ }else{
+  const placeholder=el('span','fire-specialty-patch-placeholder','◇');
+  placeholder.setAttribute('aria-hidden','true');
+  slot.append(placeholder);
+  slot.title='Nog geen specialisatiepatch: '+label+' · upload via Afbeeldingen & badges';
+ }
+ return slot;
+}
+
 function setServiceUniformData(artworks,layouts,nameplates=[],coats=[],visibility=[]){
  const uniforms=new Map(),ranks=new Map(),positions=new Map();
  for(const entry of Array.isArray(artworks)?artworks:[]){
@@ -2369,13 +2469,13 @@ function serviceCard(item,settings,solo){
    specs.setAttribute('aria-label','Brandweerspecialisaties op één rij, inclusief overige leden');
   }
   if(!item.branches.length)specs.append(el('div','gaps',state.demo?'Geen leden':'Geen vrijgegeven specialisaties of overige leden'));
-  for(const branch of item.branches)specs.append(specialtyBranch(branch,false));
+  for(const branch of item.branches)specs.append(specialtyBranch(branch,false,false,settings.id));
   body.append(specs);
  }
  box.append(body);
  return box;
 }
-function specialtyBranch(branch,isPolice,nested=false){
+function specialtyBranch(branch,isPolice,nested=false,department=''){
  const card=el('details','specialty'+(nested?' specialty-nested':
   branch.children?.length?' specialty-parent':''));
  const total=[...new Set([...(branch.members||[]),
@@ -2383,8 +2483,16 @@ function specialtyBranch(branch,isPolice,nested=false){
  const specialtyKey=branch.label;
  card.open=isPolice?(state.specialtyOpen[specialtyKey]??false):true;
  if(isPolice)card.addEventListener('toggle',()=>{state.specialtyOpen[specialtyKey]=card.open;});
- const title=el('summary','',branch.label);
- title.append(el('span','specialty-branch-count',' · '+total));
+ const title=el('summary',department==='brandweer'?'fire-specialty-title':'');
+ if(department==='brandweer'){
+  const text=el('span','fire-specialty-title-text');
+  text.append(el('span','fire-specialty-title-name',branch.label),
+   el('span','specialty-branch-count',total+' leden'));
+  title.append(makeFireSpecialtyPatch(branch.label),text);
+ }else{
+  title.append(document.createTextNode(branch.label),
+   el('span','specialty-branch-count',' · '+total));
+ }
  card.append(title);
  const content=el('div','specialty-content');
  if(isPolice&&branch.note)content.append(el('p','specialty-note',branch.note));
@@ -2424,7 +2532,7 @@ function specialtyBranch(branch,isPolice,nested=false){
    el('div','group-title','Leden in rangvolgorde'),
    peopleList(members));
  }
- for(const child of branch.children||[])content.append(specialtyBranch(child,isPolice,true));
+ for(const child of branch.children||[])content.append(specialtyBranch(child,isPolice,true,department));
  if(!tutors.length&&!members.length&&!branch.children?.length&&!isPolice)
   content.append(el('div','gaps','Nog geen geregistreerde leden'));
  card.append(content);
@@ -2489,6 +2597,7 @@ async function loadPublic(){
   window.BPDUniformAssignments?.setData?.(assignmentData?.assignments,artworkManifest?.artworks,libraryRules?.rules,uniformGrades?.choices,compositions?.compositions);
   window.BPDVisualAssets?.setData?.(artworkManifest?.artworks,visualLayers?.layers,uniformLayoutData?.visibility);
   applyRoleArtworkManifest(artworkManifest?.artworks);
+  setFireSpecialtyPatchArtworks(artworkManifest?.artworks);
   setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats,uniformLayoutData?.visibility);
   window.BPDPoliceUniform?.setGradeArtworkManifest?.(artworkManifest?.artworks);
   window.BPDPoliceUniform?.setUniformManagementData?.(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats);
