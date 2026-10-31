@@ -172,7 +172,7 @@ tbody tr:nth-child(2n){background:#183450}
   referrerpolicy="same-origin"></iframe>
 </dialog>
 <script type="module">
-import {renderMemberPoliceRoster} from '/member-police-roster.js';
+import {renderMemberPoliceRoster,setPublicRosterSpecialties} from '/member-police-roster.js';
 import {loadRosterLayout,logoutRosterLayout} from '/member-roster-layout.js?v=20261031-officer-only';
 const $=id=>document.getElementById(id);
 let auth=null,people=[];
@@ -220,6 +220,7 @@ async function load(){
   if(!res.ok)throw Error(data.error||'Geen toegang');
   $('discordLogin').hidden=true;
   people=Array.isArray(data.records)?data.records:[];
+  setPublicRosterSpecialties(data.customSpecialties);
   try{
    const artwork=await fetch('/api/role-artwork/manifest',{
     headers:{Authorization:'Bearer '+token},cache:'no-store'
@@ -243,7 +244,7 @@ try{
  const app=getApps().length?getApp():initializeApp(config.firebaseConfig);auth=getAuth(app);
  onAuthStateChanged(auth,user=>{
   if(user?.uid?.startsWith('discord:'))load();
-  else {logoutRosterLayout();people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
+  else {logoutRosterLayout();setPublicRosterSpecialties([]);people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script><script defer src="/bpd-navigation.js"></script></body></html>
