@@ -159,7 +159,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   </nav>
   <nav id="zoneNav" aria-label="Brandweer Zonecommandant" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
-    <a href="/personeelslijst.html">👥 &nbsp; Algemene personeelslijst (lezen)</a>
+    <a href="/personeelsbeheer.html">👥 &nbsp; Personeelsbeheer (lijst)</a>
     <a href="/personeelsbeheer.html">🚒 &nbsp; Brandweerpersoneel</a>
     <a href="/dossiercentrum.html">📁 &nbsp; Brandweerdossiers</a>
     <a href="/organogram-hierarchie.html">♧ &nbsp; Organogram</a>
@@ -171,7 +171,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   </nav>
   <nav id="ambulanceNav" aria-label="AZLS Ambulance" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
-    <a href="/personeelslijst.html">👥 &nbsp; Algemene personeelslijst (lezen)</a>
+    <a href="/personeelsbeheer.html">👥 &nbsp; Personeelsbeheer (lijst)</a>
     <a id="ambulanceNavStaff" href="/personeelsbeheer.html" hidden>🚑 &nbsp; Ambulancepersoneel</a>
     <a id="ambulanceNavDossiers" href="/dossiercentrum.html" hidden>📁 &nbsp; Ambulancedossiers</a>
     <a href="/organogram-hierarchie.html">♧ &nbsp; Organogram</a>
@@ -184,7 +184,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   <nav id="memberNav" aria-label="Nieuwe leden" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
     <a href="/discord-status.html">👤 &nbsp; Mijn profiel</a>
-    <a href="/personeelslijst.html">👥 &nbsp; Personeelslijst</a>
+    <a href="/personeelsbeheer.html">👥 &nbsp; Personeelsbeheer</a>
     <a href="/organogram-hierarchie.html">♧ &nbsp; Organogram</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
     <a id="memberNavCallsign" href="/vast-roepnummer-aanvragen.html" hidden>🔢 &nbsp; Vast roepnummer aanvragen</a>
@@ -254,7 +254,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
         <div class="member-roster-tools">
           <label for="memberRosterSearch">Zoeken</label>
           <input id="memberRosterSearch" type="search" placeholder="Call, naam, rang of reeks" autocomplete="off">
-          <a href="/personeelslijst.html" class="member-roster-link">Volledige pagina</a>
+          <a href="/personeelsbeheer.html" class="member-roster-link">Open Personeelsbeheer</a>
         </div>
       </div>
       <div class="mr-wrapper"><div class="mr-scroll">
@@ -273,7 +273,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <p id="zoneVerificationNotice" class="member-notice" hidden>Je ZONE-toegang is wel goedgekeurd, maar de officiële personeelsfiche/Discord-controle kon nog niet worden bevestigd. Verifieer Discord opnieuw in Mijn profiel. Tot dan blijven beschermde brandweerdossiers afgeschermd.</p>
     <h2 class="section-title">Brandweerleiding en eigen functies</h2>
     <div class="grid" id="zoneModules">
-      <a class="module" href="/personeelslijst.html"><span class="ico" aria-hidden="true">👥</span><h3>Algemene personeelslijst</h3><p>Alleen-lezen inzage in de algemene personeelslijst; geen politiedossiers.</p><span class="open">Open →</span></a>
+      <a class="module" href="/personeelsbeheer.html"><span class="ico" aria-hidden="true">👥</span><h3>Algemene personeelslijst</h3><p>Alleen-lezen inzage in de algemene personeelslijst; geen politiedossiers.</p><span class="open">Open →</span></a>
       <a class="module" href="/personeelsbeheer.html"><span class="ico" aria-hidden="true">🚒</span><h3>Personeelsbeheer Brandweer</h3><p>Beheer personeelsgegevens volgens je geverifieerde ZONE-rechten.</p><span class="open">Open →</span></a>
       <a class="module" href="/dossiercentrum.html"><span class="ico" aria-hidden="true">📁</span><h3>Brandweerdossiers</h3><p>Brandweerdossiers, observaties, notities, sancties en opleidingen.</p><span class="open">Open →</span></a>
       <a class="module" href="/organogram-hierarchie.html"><span class="ico" aria-hidden="true">🌳</span><h3>Organogram · alle diensten</h3><p>Bekijk de boomstructuur per dienst; interne gegevens enkel volgens rechten.</p><span class="open">Bekijk organogram →</span></a>
@@ -292,7 +292,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <p id="ambulanceVerificationNotice" class="member-notice" hidden>Je portaalkader is gekend. Om beschermde ambulancedossiers en dienstgebonden rapporten te openen, moet je officiële ambulanceleidingfunctie via je gekoppelde personeelsfiche en Discord worden geverifieerd. Vernieuw de Discord-verificatie in Mijn profiel indien nodig.</p>
     <h2 class="section-title">Ambulance · mijn dienst en functies</h2>
     <div class="grid" id="ambulanceModules">
-      <a class="module" href="/personeelslijst.html"><span class="ico" aria-hidden="true">👥</span><h3>Algemene personeelslijst</h3><p>Raadpleeg de algemene personeelslijst zonder toegang tot politiedossiers.</p><span class="open">Open →</span></a>
+      <a class="module" href="/personeelsbeheer.html"><span class="ico" aria-hidden="true">👥</span><h3>Algemene personeelslijst</h3><p>Raadpleeg de algemene personeelslijst zonder toegang tot politiedossiers.</p><span class="open">Open →</span></a>
       <a class="module" href="/personeelsbeheer.html" id="ambulanceCardStaff" hidden><span class="ico" aria-hidden="true">🚑</span><h3>Personeelsbeheer Ambulance</h3><p>Beheer ambulancepersoneel binnen de bevestigde AZLS-leidingrechten.</p><span class="open">Open →</span></a>
       <a class="module" href="/dossiercentrum.html" id="ambulanceCardDossiers" hidden><span class="ico" aria-hidden="true">📁</span><h3>Ambulancedossiers</h3><p>Dienstgebonden ambulancedossiers, opleidingen, notities en historiek.</p><span class="open">Open →</span></a>
       <a class="module" href="/opleidingscentrum.html"><span class="ico" aria-hidden="true">🎓</span><h3>Opleidingscentrum AZLS</h3><p>Aanvragen voor ambulanceopleidingen en de eigen opleidingsfunctie.</p><span class="open">Open →</span></a>
