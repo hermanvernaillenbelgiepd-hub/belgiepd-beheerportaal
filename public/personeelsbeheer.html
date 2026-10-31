@@ -485,6 +485,29 @@ header{padding-inline:clamp(15px,2vw,34px)}
 #personnelPublicView{padding:12px;overflow:hidden}
 #personnelDirectoryFrame{display:block;width:100%;height:min(82vh,1100px);min-height:590px;
  border:0;border-radius:9px;background:#09162a}
+
+/* Unified large top-level staff card; no second dialog in the roster iframe. */
+#personnelCardDialog{box-sizing:border-box;width:min(1320px,calc(100vw - 26px));
+ height:calc(100dvh - 22px);max-width:1320px;max-height:calc(100dvh - 22px);
+ padding:0;margin:auto;border:1px solid #688bb2;border-radius:11px;
+ background:#10243d;color:#eef6ff;overflow:hidden;box-shadow:0 14px 60px #010712e5}
+#personnelCardDialog::backdrop{background:#010814db}
+#personnelCardDialog .personnel-card-bar{box-sizing:border-box;
+ display:flex;align-items:center;gap:10px;justify-content:space-between;
+ padding:8px 13px;background:#183650;border-bottom:1px solid #55759a;min-height:48px}
+#personnelCardTitle{font-size:13px;font-weight:800;overflow-wrap:anywhere}
+#personnelCardCommands{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+#personnelCardCommands button{padding:5px 10px;border:1px solid #6689b2;border-radius:6px;
+ background:#24486f;color:white;font-size:11px;font-weight:700;cursor:pointer}
+#personnelCardCommands button:hover{background:#34669a}
+#personnelCardId{font-size:11px;color:#d3e8fd;font-variant-numeric:tabular-nums}
+#personnelCardFrame{display:block;width:100%;height:calc(100% - 48px);border:0;background:#10243d}
+#personnelCardInfo{position:absolute;top:54px;left:18px;font-size:12px;color:#f4e4a0;pointer-events:none}
+@media(max-width:690px){
+ #personnelCardDialog{width:calc(100vw - 8px);height:calc(100dvh - 8px);max-height:calc(100dvh - 8px)}
+ #personnelCardDialog .personnel-card-bar{min-height:61px;align-items:start;flex-wrap:wrap;padding:6px}
+ #personnelCardFrame{height:calc(100% - 61px)}
+}
 #personnelPublicView[hidden],#staffManagePanel[hidden],
 #personnelUnifiedNav[hidden]{display:none!important}
 @media(max-width:720px){#personnelPublicView{padding:4px}
@@ -522,6 +545,19 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
   title="Algemene personeelslijst, alleen lezen" loading="eager"
   referrerpolicy="same-origin"></iframe>
 </section>
+<dialog id="personnelCardDialog" aria-labelledby="personnelCardTitle">
+ <div class="personnel-card-bar">
+  <strong id="personnelCardTitle">Personeelskaart</strong>
+  <div id="personnelCardCommands">
+   <span id="personnelCardId" hidden></span>
+   <button id="personnelCardCopyId" type="button" hidden>DC-ID kopiëren</button>
+   <button id="personnelCardPing" type="button" hidden>@ Ping kopiëren</button>
+   <button id="personnelCardClose" type="button">✕ Sluiten</button>
+  </div>
+ </div>
+ <p id="personnelCardInfo" role="status">Personeelskaart laden…</p>
+ <iframe id="personnelCardFrame" title="Personeelskaart met uniform, rang en specialisaties" referrerpolicy="same-origin"></iframe>
+</dialog>
 <section id="staffManagePanel" class="card staff-list-panel" hidden><div class="controls staff-list-head" style="justify-content:space-between"><h2>Personeelslijst</h2><div class="controls"><button id="newBtn" type="button" hidden>Nieuw personeelslid</button><button class="alt" id="reload" type="button">Vernieuwen</button></div></div>
 <div class="grid staff-filters">
  <div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div>
