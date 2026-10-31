@@ -8,7 +8,7 @@ export const AZLS_RANK_ORDER=Object.freeze([
 ]);
 export const SERVICES=Object.freeze([
  {id:'politie',name:'Politie',icon:'👮',levels:['Korpsleiding','Officierenkader','Middenkader','Basiskader','Agentenkader']},
- {id:'brandweer',name:'Brandweer',icon:'🚒',levels:['Zoneleiding','Officieren','Middenkader']},
+ {id:'brandweer',name:'Brandweer',icon:'🚒',levels:['Zoneleiding','Officieren','Middenkader','Basiskader','Stagiairs']},
  {id:'ambulance',name:'Ambulance (AZLS)',icon:'🚑',levels:AZLS_RANK_ORDER},
  {id:'depannage',name:'Depannage',icon:'🛠',levels:['Leiding / AWV']},
  {id:'burger',name:'Burger',icon:'🏛',levels:['Burgerraad']}
@@ -58,10 +58,22 @@ export function getTier(p){
   return 'Agentenkader';
  }
  if(dept==='brandweer'){
-  if(/zonechef|zonecommand|^zone\b/.test(rank+' '+call))return 'Zoneleiding';
-  if(/kolonel|majoor|kapitein|luitenant|^off[- ]/.test(rank+' '+call))return 'Officieren';
-  if(/adjudant|sergeant|^ooff[- ]/.test(rank+' '+call))return 'Middenkader';
-  return 'Operationele leden';
+  // Explicit call-prefix tests come first. OFF and OOFF are distinct series;
+  // STAG must never be folded into BWM, even when rank text is incomplete.
+  const fireCall=call.replace(/\s+/g,'').replace(/[._]/g,'-');
+  if(/^(?:zonechef|zonecommand|zone)(?:-|\d|$)/.test(fireCall))return 'Zoneleiding';
+  if(/^ooff(?:-|\d|$)/.test(fireCall))return 'Middenkader';
+  if(/^off(?:-|\d|$)/.test(fireCall))return 'Officieren';
+  if(/^bwm(?:-|\d|$)/.test(fireCall))return 'Basiskader';
+  if(/^stag(?:-|\d|$)/.test(fireCall))return 'Stagiairs';
+  // A rank is the fallback when no recognized fire-service call is available.
+  if(/zonechef|zonecommandant|zonecommandante/.test(rank))return 'Zoneleiding';
+  if(/kolonel|majoor|kapitein|luitenant/.test(rank))return 'Officieren';
+  if(/adjudant|sergeant/.test(rank))return 'Middenkader';
+  if(/korporaal|brandweerman|brandweervrouw|brandweer(?:man|vrouw)/.test(rank))
+   return 'Basiskader';
+  if(/stagiair|stagiaire|\bstage\b/.test(rank))return 'Stagiairs';
+  return 'Overige brandweerleden';
  }
  if(dept==='ambulance'){
   return ambulanceOrganogramRank(p)||'Overige AZLS-leden';
@@ -82,7 +94,8 @@ const rankWeight=(p)=>{
  }
  const tier=getTier(p);
  const scores={
-  Zoneleiding:8,Officieren:7,Middenkader:6,'Operationele leden':3,
+  Zoneleiding:10,Officieren:9,Middenkader:8,Basiskader:7,Stagiairs:6,
+  'Overige brandweerleden':5,'Operationele leden':3,
   DIRMED:12,HARTS:11,HVPK:10,HAMB:9,ARTS:8,VPK:7,AMB:6,STAG:5,
   'Overige AZLS-leden':4,
   'Leiding / AWV':8,Burgerraad:8,Burgerleden:3
@@ -258,12 +271,20 @@ export function serviceHierarchy(people,dept){
    label:'Overige AZLS-leden',members:orderedMembers(other)
   });
  }
+ // Unknown historic fire ranks must not disappear from the cadre overview.
+ if(dept==='brandweer'){
+  const other=rows.filter(p=>getTier(p)==='Overige brandweerleden');
+  if(other.length)leadership.push({
+   label:'Overige brandweerleden',members:orderedMembers(other)
+  });
+ }
  const groups=new Map();
  for(const person of rows){
   const specs=specialtyNames(person);
   // AZLS specialties remain a separate membership list below the rank tree:
   // an AMB without a specialisation must still appear among 'Overige leden'.
-  if(!specs.length&&settings.levels.includes(getTier(person))&&dept!=='ambulance')continue;
+  if(!specs.length&&settings.levels.includes(getTier(person))&&
+     dept!=='ambulance'&&dept!=='brandweer')continue;
   const names=specs.length?specs:['Overige leden (geen geregistreerde specialisatie)'];
   for(const spec of names){
    if(!groups.has(spec))groups.set(spec,[]);
