@@ -1565,10 +1565,15 @@ function rosterEditorRender(){
   const label=document.createElement('label');
   const name=document.createElement('span');name.textContent=caption;
   const input=document.createElement('input');input.type='number';
-  input.min=key==='discord'?'175':key==='summary'?'110':key==='status'||key==='series'?'95':'55';
-  input.max='430';input.step='1';input.value=widths[key];
+  const limits={
+   call:[60,200],grade:[75,250],rank:[105,380],name:[120,430],
+   series:[95,240],status:[95,240],specialty:[60,220],
+   summary:[110,400],file:[65,180],discord:[175,360]
+  }[key];
+  input.min=limits[0];input.max=limits[1];input.step='1';input.value=widths[key];
   input.setAttribute('aria-label','Breedte '+caption+' in pixels');
   input.onchange=()=>{
+    if(!input.checkValidity()){rosterEditorFeedback('Breedte moet tussen '+limits[0]+' en '+limits[1]+' px liggen.',true);return;}
     cfg.widths[key]=Number(input.value);
     render();rosterEditorFeedback('Voorbeeld aangepast. Bewaar om dit voor iedereen te gebruiken.');
   };
@@ -1697,7 +1702,7 @@ function initializeRosterEditor(){
 }
 
 async function load(){
-  if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+  if(!auth?.currentUser){$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     try{
       const cfg=await request('/api/roster-columns');
