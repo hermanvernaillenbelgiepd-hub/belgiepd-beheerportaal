@@ -117,42 +117,110 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .spec-heading:before{content:"";width:10px;height:10px;border:1px solid #91b5d8;border-radius:2px;transform:rotate(45deg)}
 .spec-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:9px;align-items:start}
 
-/* Brandweer: all specialties and 'Overige leden' share ONE horizontal row,
-   exactly like the compact police specialties. Never wrap to a second line;
-   any future overflow stays scrollable INSIDE this section, not the whole page.
-   Scope to the fire service so ambulance/depannage/burger remain untouched. */
+/* Brandweer: fit every current specialty (including RED-team and 'Overige')
+   in one EQUAL-WIDTH desktop row. The actual branch count is provided by the
+   renderer. Only fall back to scrolling when the viewport is too narrow or
+   when there are more than eight branches to remain legible. */
 .service[data-dept="brandweer"]>.service-body>.spec-list{
  display:grid;
- grid-template-columns:none;
- grid-auto-flow:column;
- grid-auto-columns:270px;
+ grid-template-columns:repeat(var(--fire-specialty-count,6),minmax(0,1fr));
+ grid-auto-flow:row;
  align-items:start;
- justify-content:start;
- gap:9px;
+ justify-content:stretch;
+ gap:6px;
+ width:100%;
  min-width:0;
  max-width:100%;
- overflow-x:auto;
- overflow-y:hidden;
- overscroll-behavior-inline:contain;
- -webkit-overflow-scrolling:touch;
- padding:1px 1px 10px;
- scrollbar-width:thin;
- scrollbar-color:#607fa4 #10243b;
+ overflow:visible;
+ padding:1px 0 6px;
 }
 .service[data-dept="brandweer"]>.service-body>.spec-list>.specialty{
  box-sizing:border-box;
- width:270px;
+ width:100%;
  min-width:0;
- max-width:none;
+ max-width:100%;
  margin:0;
 }
-@media(max-width:650px){
+.service[data-dept="brandweer"]>.service-body>.spec-list>.specialty>summary{
+ padding:7px 6px;
+ font-size:10px;
+ overflow-wrap:anywhere;
+}
+.service[data-dept="brandweer"]>.service-body>.spec-list>.specialty>.specialty-content{
+ padding:6px 5px 8px;
+}
+.service[data-dept="brandweer"]>.service-body>.spec-list .group-title{
+ font-size:9px;
+}
+/* Only on compact fire specialty cards: allow the existing uniform/rank image
+   and entire personnel card to scale to its narrower column. */
+#services .service[data-dept="brandweer"]>.service-body>.spec-list .persons.personnel-card-grid{
+ display:flex;
+ flex-direction:column;
+ flex-wrap:nowrap;
+ align-items:stretch;
+ gap:5px;
+ width:100%;
+ min-width:0;
+ margin:6px 0 2px;
+}
+#services .service[data-dept="brandweer"]>.service-body>.spec-list .persons.personnel-card-grid>.person{
+ box-sizing:border-box;
+ display:flex;
+ flex:0 0 auto;
+ width:100%;
+ max-width:100%;
+ min-width:0;
+ min-height:74px;
+ padding:5px 4px;
+ gap:4px;
+}
+#services .service[data-dept="brandweer"]>.service-body>.spec-list .person .num{
+ flex:0 0 24px;
+ min-width:24px;
+ font-size:8px;
+ padding:2px;
+ overflow-wrap:anywhere;
+}
+#services .service[data-dept="brandweer"]>.service-body>.spec-list .person>.portrait.bpd-service-uniform{
+ flex:0 0 44px!important;
+ width:44px!important;
+ min-width:44px!important;
+ max-width:44px!important;
+ height:52px!important;
+}
+#services .service[data-dept="brandweer"]>.service-body>.spec-list .person .identity{
+ flex:1 1 0;
+ min-width:0;
+ overflow-wrap:anywhere;
+}
+#services .service[data-dept="brandweer"]>.service-body>.spec-list .person .identity b{
+ font-size:10px;
+ line-height:1.2;
+}
+#services .service[data-dept="brandweer"]>.service-body>.spec-list .person .identity small{
+ font-size:8px;
+}
+/* Unusually many specialties or tablet/mobile: one row is retained, but
+   local horizontal scrolling prevents unreadably narrow cards. */
+@media(max-width:1050px){
  .service[data-dept="brandweer"]>.service-body>.spec-list{
-  grid-auto-columns:240px;
+  grid-template-columns:none;
+  grid-auto-flow:column;
+  grid-auto-columns:205px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  overscroll-behavior-inline:contain;
+  scrollbar-width:thin;
  }
- .service[data-dept="brandweer"]>.service-body>.spec-list>.specialty{
-  width:240px;
- }
+}
+.service[data-dept="brandweer"]>.service-body>.spec-list.fire-specs-overflow{
+ grid-template-columns:none;
+ grid-auto-flow:column;
+ grid-auto-columns:minmax(180px,1fr);
+ overflow-x:auto;
+ overflow-y:hidden;
+ scrollbar-width:thin;
 }
 
 .specialty{border:1px solid #3c5879;background:#0d233a;border-radius:9px;overflow:hidden}
@@ -2293,9 +2361,12 @@ function serviceCard(item,settings,solo){
   body.append(el('div','spec-heading','SPECIALISATIES / PLOEGEN'));
   const specs=el('div','spec-list');
   if(settings.id==='brandweer'){
+   const branchCount=Math.max(1,item.branches.length);
+   specs.style.setProperty('--fire-specialty-count',String(branchCount));
+   if(branchCount>8)specs.classList.add('fire-specs-overflow');
    specs.tabIndex=0;
    specs.setAttribute('role','group');
-   specs.setAttribute('aria-label','Brandweerspecialisaties op één horizontale rij; scroll horizontaal voor meer');
+   specs.setAttribute('aria-label','Brandweerspecialisaties op één rij, inclusief overige leden');
   }
   if(!item.branches.length)specs.append(el('div','gaps',state.demo?'Geen leden':'Geen vrijgegeven specialisaties of overige leden'));
   for(const branch of item.branches)specs.append(specialtyBranch(branch,false));
