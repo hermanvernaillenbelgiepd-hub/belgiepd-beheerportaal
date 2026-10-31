@@ -167,7 +167,9 @@ export function installRosterColumnRoutes(app,{requireUser}){
      revision:next,updatedBy:req.bpd.discordId,updatedAt:FieldValue.serverTimestamp()});
     tx.create(db.collection('bpd_roster_column_audit').doc(),{
      dept:req.params.dept,actorDiscordId:req.bpd.discordId,
-     before:old,after:{...validated,expectedRevision:undefined},
+     before:old,after:(({
+       expectedRevision:discardRevision,...settings
+      })=>settings)(validated),
      at:FieldValue.serverTimestamp()});
     return next;
    });
