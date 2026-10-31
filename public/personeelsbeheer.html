@@ -401,7 +401,21 @@ header{padding-inline:clamp(15px,2vw,34px)}
   display:flex;align-items:center;flex-wrap:wrap;gap:3px;
 }
 
-/* Consistent status colors in the staff roster. */
+/* Column configuration editor, isolated from dossiers and regular users. */
+.roster-column-panel{border:1px solid #42648d;border-radius:8px;padding:11px;background:#0e2540;margin:9px 0}
+.roster-column-panel>summary{font-weight:800;font-size:12px;cursor:pointer}
+.roster-column-panel>label{max-width:300px;margin:10px 0}
+.roster-width-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:7px;margin-top:9px}
+.roster-width-grid label{display:grid;grid-template-columns:minmax(0,1fr) 65px;gap:7px;margin:0;font-size:11px;align-items:center}
+.roster-width-grid input{padding:5px 7px;min-width:0}
+.roster-custom-list{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
+.roster-custom-list button{background:#253f63;padding:6px 9px;font-size:11px}
+.roster-add-row{display:flex;flex-wrap:wrap;align-items:end;gap:9px}
+.roster-add-row>label{flex:1 1 170px}
+.roster-add-row .roster-inline-check{display:flex;align-items:center;gap:6px}
+.roster-inline-check input{width:auto}
+.roster-add-row input[type=file]{font-size:10px;padding:6px}
+ /* Consistent status colors in the staff roster. */
 .staff-roster-table .pill.roster-status-active{background:#17663f;color:#e4ffef;border-color:#28885a}
 .staff-roster-table .pill.roster-status-leave{background:#245a9c;color:#eaf5ff;border-color:#4284cf}
 .staff-roster-table .pill.roster-status-inactive{background:#962f37;color:#ffebec;border-color:#c25059}
@@ -435,6 +449,31 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <div class="grid staff-filters">
  <div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div>
  <div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div>
+</div>
+<div id="rosterColumnAdmin" hidden>
+ <details id="rosterColumnDetails" class="roster-column-panel">
+  <summary>⚙ Kolombreedtes en specialisaties beheren</summary>
+  <p class="subtle">De afmetingen gelden voor iedereen. Alleen geverifieerd Officierenkader en Korpsleiding kunnen wijzigingen bewaren. Bestaande specialisaties blijven behouden.</p>
+  <label for="rosterColumnDept">Hulpdienst</label>
+  <select id="rosterColumnDept"></select>
+  <div id="rosterWidthFields" class="roster-width-grid"></div>
+  <div class="controls" style="justify-content:space-between;margin:12px 0 6px">
+   <h3 style="margin:0">Extra specialisatiekolommen</h3>
+  </div>
+  <div id="rosterCustomSpecialties" class="roster-custom-list"></div>
+  <div class="roster-add-row">
+   <label>Naam van specialisatie<input id="rosterNewSpecialty" maxlength="64" placeholder="Nieuwe specialisatie"></label>
+   <label>Pictogram (optioneel)<input id="rosterNewIcon" maxlength="10" placeholder="🏷️"></label>
+   <label class="roster-inline-check"><input id="rosterNewPublic" type="checkbox"> Ook tonen in de leesbare politiepersoneelslijst</label>
+   <label>Eigen pictogram (optioneel, WebP max. 140 KB)<input id="rosterNewImage" type="file" accept="image/webp"></label>
+   <button id="rosterAddSpecialty" type="button" class="alt">+ Specialisatie toevoegen</button>
+  </div>
+  <div class="controls" style="margin-top:12px">
+   <button id="rosterSaveConfig" type="button">Kolommen bewaren voor iedereen</button>
+   <button id="rosterResetConfig" type="button" class="alt">Opgeslagen instellingen terugzetten</button>
+  </div>
+  <p id="rosterConfigFeedback" class="subtle" role="status" aria-live="polite"></p>
+ </details>
 </div>
 <p class="subtle"><span id="count">Nog geen personeelsgegevens geladen.</span></p>
 <div class="scroller staff-roster-holder"><table class="staff-roster-table"><thead id="staffColumnHeaders"></thead><tbody id="results"></tbody></table></div>
@@ -740,6 +779,7 @@ let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=
 let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
 let rankChangesEnabled=false,rankChoices=[];
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
+let rosterConfigs=Object.create(null),rosterCanEdit=false;
 const initialQuery=new URLSearchParams(window.location.search);
 const dossierEmbedded=initialQuery.get('embed')==='1';
 const ficheMode=!dossierEmbedded&&initialQuery.get('fiche')==='1';
@@ -1250,7 +1290,7 @@ function specialtyMark(label){
   return mark;
 }
 // Adjust dimensions here only; do not duplicate column widths in CSS.
-const ROSTER_COLUMN_WIDTHS=Object.freeze({
+const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
   call:78,grade:116,rank:164,name:190,series:108,status:108,
   specialty:82,specialtySummary:180,file:76,discord:224
 });
@@ -1266,12 +1306,13 @@ function render(){
       dept==='depannage'?'depannage':'series-desc'
   );
   $('count').textContent=matches.length+' fiche(s) zichtbaar';
-  const cols=BPDPersonnelVisuals.specialtyColumns(dept);
+  const custom=(rosterConfigs[dept]?.customSpecialties||[]);
+  const cols=[...BPDPersonnelVisuals.specialtyColumns(dept),...custom.map(x=>x.label)];
   const head=$('staffColumnHeaders');head.replaceChildren();
   const table=head.closest('table');
   // Match every visible header/body column, including the specialty fallback,
   // Fiche and Discord-ID. Keeping widths in a colgroup prevents drift.
-  const w=ROSTER_COLUMN_WIDTHS;
+  const w=rosterConfigs[dept]?.widths||ROSTER_COLUMN_WIDTH_DEFAULTS;
   const widths=[w.call,w.grade,w.rank,w.name,w.series,w.status,
     ...(cols.length?cols.map(()=>w.specialty):[w.specialtySummary]),
     w.file,w.discord];
@@ -1502,9 +1543,148 @@ async function checkAccessStatus(){
       (data.automatic?' · Gekoppeld aan je geverifieerde Middenkaderrol.':'');
   }catch(e){root.textContent='Statuscontrole: '+e.message}
 }
+
+const ROSTER_WIDTH_LABELS={
+ call:'CALL',grade:'Rangkenteken',rank:'Rangnaam',name:'Personeelslid',
+ series:'Reeks',status:'Status',specialty:'Iedere specialisatie',
+ summary:'Samenvatting specialisaties',file:'Fiche',discord:'Discord-ID'
+};
+let rosterEditorDepartment='politie',rosterEditorInit=false,rosterImagePending=new Map();
+function rosterEditorFeedback(message,error=false){
+ const target=$('rosterConfigFeedback');
+ target.textContent=message;target.style.color=error?'#ffb6c0':'#bad2ee';
+}
+function rosterEditorRender(){
+ if(!rosterCanEdit)return;
+ const dept=rosterEditorDepartment,cfg=rosterConfigs[dept];
+ if(!cfg)return;
+ const widths=cfg.widths||ROSTER_COLUMN_WIDTH_DEFAULTS;
+ const fields=$('rosterWidthFields');fields.replaceChildren();
+ for(const [key,caption] of Object.entries(ROSTER_WIDTH_LABELS)){
+  const label=document.createElement('label');
+  const name=document.createElement('span');name.textContent=caption;
+  const input=document.createElement('input');input.type='number';
+  input.min=key==='discord'?'175':key==='summary'?'110':key==='status'||key==='series'?'95':'55';
+  input.max='430';input.step='1';input.value=widths[key];
+  input.setAttribute('aria-label','Breedte '+caption+' in pixels');
+  input.onchange=()=>{
+    cfg.widths[key]=Number(input.value);
+    render();rosterEditorFeedback('Voorbeeld aangepast. Bewaar om dit voor iedereen te gebruiken.');
+  };
+  label.append(name,input);fields.append(label);
+ }
+ const target=$('rosterCustomSpecialties');target.replaceChildren();
+ for(const item of cfg.customSpecialties||[]){
+  const remove=document.createElement('button');remove.type='button';
+  remove.textContent=(item.icon||'🏷️')+' '+item.label+' ×';
+  remove.title='Deze kolom verwijderen (bestaande opleidingsregistraties blijven in de audit)';
+  remove.onclick=()=>{
+    if(!confirm('Kolom "'+item.label+'" verbergen? Bestaande personeelsgegevens blijven bewaard.'))return;
+    cfg.customSpecialties=cfg.customSpecialties.filter(x=>x.code!==item.code);
+    render();rosterEditorRender();
+  };
+  target.append(remove);
+ }
+ if(!target.children.length)target.textContent='Nog geen extra specialisaties.';
+}
+function initializeRosterEditor(){
+ const selector=$('rosterColumnDept');
+ if(!rosterEditorInit){
+  rosterEditorInit=true;
+  selector.replaceChildren(...Object.keys(departments).map(dept=>
+    new Option(departments[dept],dept)));
+  selector.onchange=()=>{
+   rosterEditorDepartment=selector.value;rosterEditorRender();
+  };
+  $('rosterAddSpecialty').onclick=()=>{
+   const cfg=rosterConfigs[rosterEditorDepartment];
+   const label=$('rosterNewSpecialty').value.trim();
+   const code=label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+     .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
+   if(label.length<2||label.length>64||!code){
+    rosterEditorFeedback('Vul een geldige specialisatienaam in.',true);return;
+   }
+   if((cfg.customSpecialties||[]).some(x=>x.code===code||x.label.toLowerCase()===label.toLowerCase())||
+     BPDPersonnelVisuals.specialtyColumns(rosterEditorDepartment)
+       .some(x=>x.toLowerCase()===label.toLowerCase())){
+    rosterEditorFeedback('Deze specialisatie bestaat al.',true);return;
+   }
+   if(cfg.customSpecialties.length>=20){
+    rosterEditorFeedback('Maximum 20 extra specialisaties per dienst.',true);return;
+   }
+   const file=$('rosterNewImage').files[0];
+   if(file&&(file.type!=='image/webp'||file.size>140*1024)){
+    rosterEditorFeedback('Gebruik WebP van maximaal 140 KB.',true);return;
+   }
+   cfg.customSpecialties.push({label,code,icon:$('rosterNewIcon').value.trim(),
+     public:$('rosterNewPublic').checked});
+   if(file)rosterImagePending.set(rosterEditorDepartment+':'+code,file);
+   $('rosterNewSpecialty').value='';$('rosterNewIcon').value='';
+   $('rosterNewImage').value='';$('rosterNewPublic').checked=false;
+   rosterEditorRender();render();
+   rosterEditorFeedback('Kolom toegevoegd als voorbeeld. Klik op Bewaren.');
+  };
+  $('rosterResetConfig').onclick=()=>load().catch(e=>rosterEditorFeedback(e.message,true));
+  $('rosterSaveConfig').onclick=async()=>{
+   const cfg=rosterConfigs[rosterEditorDepartment],dept=rosterEditorDepartment;
+   const btn=$('rosterSaveConfig');btn.disabled=true;
+   try{
+    const result=await request('/api/roster-columns/'+dept,{
+      method:'PUT',body:{expectedRevision:cfg.revision,widths:cfg.widths,
+        customSpecialties:cfg.customSpecialties}
+    });
+    rosterConfigs[dept]=result.config;
+    const pending=Array.from(rosterImagePending.entries()).filter(([key])=>key.startsWith(dept+':'));
+    const uploadErrors=[];
+    for(const [key,file] of pending){
+      const code=key.slice(dept.length+1);
+      const item=result.config.customSpecialties.find(x=>x.code===code);
+      if(!item){rosterImagePending.delete(key);continue;}
+      try{
+        const dataUrl=await new Promise((resolve,reject)=>{
+         const reader=new FileReader();reader.onload=()=>resolve(reader.result);
+         reader.onerror=()=>reject(Error('Kon pictogram niet lezen'));
+         reader.readAsDataURL(file);
+        });
+        await request('/api/role-artwork/personnel',{method:'PUT',
+          body:{kind:'specialty',department:dept,code:item.code,label:item.label,
+            reason:'Pictogram voor nieuwe specialisatie '+item.label,dataUrl}});
+        rosterImagePending.delete(key);
+      }catch(e){uploadErrors.push(item.label+': '+e.message)}
+    }
+    if(pending.length){
+      try{const manifest=await request('/api/role-artwork/manifest');
+       BPDPersonnelVisuals.setArtworkManifest(manifest.artworks);}
+      catch{/* Image is optional; keep emoji fallback */ }
+    }
+    render();rosterEditorRender();
+    rosterEditorFeedback(uploadErrors.length?
+      'Breedtes en kolommen bewaard, maar afbeelding uploaden mislukte: '+uploadErrors.join('; '):
+      'Bewaard voor iedereen. Specialisatiestatussen kunnen in bevoegde personeelsdossiers worden bijgewerkt.',
+       uploadErrors.length>0);
+   }catch(e){rosterEditorFeedback('Niet opgeslagen: '+e.message,true)}
+   finally{btn.disabled=false}
+  };
+ }
+ if(!rosterConfigs[rosterEditorDepartment])
+  rosterEditorDepartment='politie';
+ selector.value=rosterEditorDepartment;
+ rosterEditorRender();
+}
+
 async function load(){
   if(!auth?.currentUser){people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
+    try{
+      const cfg=await request('/api/roster-columns');
+      rosterConfigs=cfg.departments||Object.create(null);
+      rosterCanEdit=cfg.canEdit===true;
+      $('rosterColumnAdmin').hidden=!rosterCanEdit||dossierEmbedded||ficheMode;
+      if(rosterCanEdit)initializeRosterEditor();
+    }catch(_error){
+      rosterCanEdit=false;rosterConfigs=Object.create(null);
+      $('rosterColumnAdmin').hidden=true;
+    }
     const data=await request('/api/personnel/overview');
     try{
      const artwork=await request('/api/role-artwork/manifest');
