@@ -1697,6 +1697,33 @@ html.roster-card-embed .person-profile-shell{padding:12px}
  scrollbar-width:thin;
 }
 
+
+/* AZLS hierarchy: real eight-grade seniority order, above specialties.
+   Empty categories remain accessible as slim collapsed rows. */
+#services .service[data-dept="ambulance"] .azls-ranks-heading{
+ display:flex;align-items:center;gap:7px;
+ margin:11px 0 6px;padding:0 2px;
+ font-weight:900;font-size:11px;letter-spacing:.025em;
+ color:#d5f2f1;
+}
+#services .service[data-dept="ambulance"] .azls-ranks-heading::before{
+ content:"";display:block;width:9px;height:9px;
+ transform:rotate(45deg);border:1px solid #84c5c3;
+}
+#services .service[data-dept="ambulance"] .level{
+ margin:7px 0 0;
+}
+#services .service[data-dept="ambulance"] .level>summary.level-title{
+ padding:8px 10px;border-color:#437d90;
+ background:#1b3c58;text-align:left;font-size:11px;
+}
+#services .service[data-dept="ambulance"] .level>summary.level-title .level-count{
+ color:#b9d9e7;
+}
+#services .service[data-dept="ambulance"] .level-body{
+ padding:6px 5px 7px;
+}
+
 </style>
 </head>
 <body>
@@ -2671,11 +2698,16 @@ function serviceCard(item,settings,solo){
  if(settings.id==='burger'&&!state.demo&&!item.count){
   body.append(el('div','gaps','Burgerraad en burgers blijven onder Bestuur; er is momenteel geen openbare burgerlijst beschikbaar.'));
  }
+ // Rank structure above the speciality cards. Empty AZLS ranks stay
+ // available as collapsed headers, not tall empty 'leadership' panels.
+ if(solo&&settings.id==='ambulance'){
+  body.append(el('div','azls-ranks-heading','RANGSTRUCTUUR · AZLS'));
+ }
  for(const level of item.leadership){
   const key=settings.id+':'+level.label;
   const block=el('details','level');
   block.dataset.cadreKey=key;
-  block.open=state.cadreOpen[key]??true;
+  block.open=state.cadreOpen[key]??(settings.id!=='ambulance'||level.members.length>0);
   block.addEventListener('toggle',()=>{state.cadreOpen[key]=block.open;syncCadreToggle();});
   const heading=el('summary','level-title');
   heading.title=level.label+' in- of uitklappen';
@@ -2688,7 +2720,7 @@ function serviceCard(item,settings,solo){
    levelBody.append(policeInterventions(item.branches));
   }
   else if(level.members.length)levelBody.append(cadrePeopleList(level.members,level.label));
-  else levelBody.append(el('div','gaps','Nog geen vrijgegeven registraties'));
+  else if(settings.id!=='ambulance')levelBody.append(el('div','gaps','Nog geen vrijgegeven registraties'));
   block.append(levelBody);
   body.append(block);
  }
