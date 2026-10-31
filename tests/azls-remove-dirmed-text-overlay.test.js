@@ -32,6 +32,7 @@ function render(person,{professionAsset=false}={}){
  };
  const api=runInNewContext(functionCode+'\nmakeServiceUniformPortrait',{
   window:win,el:(...args)=>new El(...args),
+  serviceRankKey:rank=>String(rank||'').toLowerCase().replace(/[^a-z0-9]+/g,'_'),
   serviceCoatLayouts:new Map(),serviceRankArtworks:new Map(),
   serviceUniformLayouts:new Map(),serviceNameplateLayouts:new Map(),
   serviceVisibilityLayouts:new Map()
