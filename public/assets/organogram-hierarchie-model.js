@@ -1,10 +1,15 @@
 // BelgiumPD hierarchy preview: presentation only, never an access control.
 // No identity is ever inferred from a name. Each service registration is
 // retained, including repeated names or the same person in two services.
+// Operational AZLS display order. Callsigns determine visible placement;
+// old manual tier labels are not authorization and are never used for access.
+export const AZLS_RANK_ORDER=Object.freeze([
+ 'DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','STAG'
+]);
 export const SERVICES=Object.freeze([
  {id:'politie',name:'Politie',icon:'👮',levels:['Korpsleiding','Officierenkader','Middenkader','Basiskader','Agentenkader']},
  {id:'brandweer',name:'Brandweer',icon:'🚒',levels:['Zoneleiding','Officieren','Middenkader']},
- {id:'ambulance',name:'Ambulance (AZLS)',icon:'🚑',levels:['AZLS-leiding','Medische coördinatie']},
+ {id:'ambulance',name:'Ambulance (AZLS)',icon:'🚑',levels:AZLS_RANK_ORDER},
  {id:'depannage',name:'Depannage',icon:'🛠',levels:['Leiding / AWV']},
  {id:'burger',name:'Burger',icon:'🏛',levels:['Burgerraad']}
 ]);
@@ -14,6 +19,26 @@ const numeric=call=>{
  const match=clean(call).match(/(?:^|[- ])(\d{3})(?:\b|$)/);
  return match?Number(match[1]):null;
 };
+// Match an exact ambulance call series first. Never match ARTS inside HARTS,
+// VPK inside HVPK or AMB inside HAMB, and never invent a rank from a specialty.
+export function ambulanceOrganogramRank(p){
+ const call=lower(p?.call).replace(/\s+/g,'').replace(/[._]/g,'-');
+ const matched=call.match(/^(dir-?med|harts|hvpk|hamb|arts|vpk|amb|stag)(?:-|\d|$)/);
+ if(matched){
+  const name=matched[1].replace(/-/g,'').toUpperCase();
+  if(AZLS_RANK_ORDER.includes(name))return name;
+ }
+ const rank=lower(p?.rank);
+ if(/\bdir[-_. ]?med\b|\bdirecteur\b|medisch directeur/.test(rank))return 'DIRMED';
+ if(/hoofd[- ]?arts|hoofdarts/.test(rank))return 'HARTS';
+ if(/hoofd[- ]?verpleegkundige|hoofdverpleegkundige/.test(rank))return 'HVPK';
+ if(/hoofd[- ]?ambulancier|hoofdambulancier/.test(rank))return 'HAMB';
+ if(/\barts\b|\bdoctor\b/.test(rank))return 'ARTS';
+ if(/verpleegkundige|\bvpk\b/.test(rank))return 'VPK';
+ if(/ambulancier|\bamb\b/.test(rank))return 'AMB';
+ if(/stagiair|stagiaire|\bstag\b|\bstage\b/.test(rank))return 'STAG';
+ return null;
+}
 export function getTier(p){
  const rank=lower(p?.rank),call=lower(p?.call),dept=p?.dept;
  const deptSettings=SERVICES.find(s=>s.id===dept);
@@ -39,9 +64,7 @@ export function getTier(p){
   return 'Operationele leden';
  }
  if(dept==='ambulance'){
-  if(/azls.{0,3}leiding|^azls[- ]/.test(rank+' '+call))return 'AZLS-leiding';
-  if(/dir.?med|hoofdarts|harts/.test(rank+' '+call))return 'Medische coördinatie';
-  return 'Zorgteams';
+  return ambulanceOrganogramRank(p)||'Overige AZLS-leden';
  }
  if(dept==='depannage'){
   if(/\bawv\b|agentschap|leiding/.test(rank+' '+call))return 'Leiding / AWV';
@@ -60,7 +83,8 @@ const rankWeight=(p)=>{
  const tier=getTier(p);
  const scores={
   Zoneleiding:8,Officieren:7,Middenkader:6,'Operationele leden':3,
-  'AZLS-leiding':8,'Medische coördinatie':7,Zorgteams:4,
+  DIRMED:12,HARTS:11,HVPK:10,HAMB:9,ARTS:8,VPK:7,AMB:6,STAG:5,
+  'Overige AZLS-leden':4,
   'Leiding / AWV':8,Burgerraad:8,Burgerleden:3
  };
  return scores[tier]??1;
@@ -226,10 +250,20 @@ export function serviceHierarchy(people,dept){
  const leadership=settings.levels.map(label=>({
   label,members:(dept==='politie'&&['Basiskader','Agentenkader'].includes(label)?orderedSpecialtyMembers:orderedMembers)(rows.filter(p=>getTier(p)===label))
  }));
+ // Keep unknown historic/incomplete AZLS call registrations visible, but
+ // never mislabel them as a medical rank. Show only if such entries exist.
+ if(dept==='ambulance'){
+  const other=rows.filter(p=>getTier(p)==='Overige AZLS-leden');
+  if(other.length)leadership.push({
+   label:'Overige AZLS-leden',members:orderedMembers(other)
+  });
+ }
  const groups=new Map();
  for(const person of rows){
   const specs=specialtyNames(person);
-  if(!specs.length&&settings.levels.includes(getTier(person)))continue;
+  // AZLS specialties remain a separate membership list below the rank tree:
+  // an AMB without a specialisation must still appear among 'Overige leden'.
+  if(!specs.length&&settings.levels.includes(getTier(person))&&dept!=='ambulance')continue;
   const names=specs.length?specs:['Overige leden (geen geregistreerde specialisatie)'];
   for(const spec of names){
    if(!groups.has(spec))groups.set(spec,[]);
