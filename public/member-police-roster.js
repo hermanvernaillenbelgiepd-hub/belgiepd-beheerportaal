@@ -21,6 +21,20 @@ function addCell(row,child,cls=''){
  else if(child)td.append(child);
  row.append(td);return td;
 }
+// Status styling is a view concern only; never normalize or write back a
+// personnel status. Unknown statuses stay neutral (not 'Verwijderd').
+export function policeRosterStatusStyle(value){
+ const status=String(value??'').trim().toLocaleUpperCase('nl-BE')
+  .replace(/\s+/g,' ');
+ if(status==='ACTIEF')return 'actief';
+ if(status==='VERLOF')return 'verlof';
+ if(status==='INACTIEF')return 'inactief';
+ if(/^50\s*\/\s*50$/.test(status))return 'fifty-fifty';
+ if(status==='NON-ACTIEF'||status==='NON ACTIEF'||status==='NONACTIEF')
+  return 'non-actief';
+ if(status==='VERWIJDERD')return 'verwijderd';
+ return 'onbekend';
+}
 function specialTag(value){
  const state=String(value||'Niet ingevuld').trim();
  const upper=state.toLocaleUpperCase('nl-BE');
@@ -107,7 +121,9 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
       addCell(tr,nameButton,'mr-name-cell');
      }else addCell(tr,nameCell);
      addCell(tr,seriesCell(person));
-     addCell(tr,element('span',person.status||'Onbekend','mr-status'));
+     const status=String(person.status||'Onbekend').trim()||'Onbekend';
+     addCell(tr,element('span',status,
+       'mr-status mr-status--'+policeRosterStatusStyle(status)),'mr-status-cell');
      for(const label of PUBLIC_POLICE_SPECIALTIES){
        const info=visual().specialtyStateFor(person,label);
        const value=String(info.status||'Niet ingevuld');
