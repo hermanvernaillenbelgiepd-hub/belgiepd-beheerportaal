@@ -8,6 +8,22 @@ export const PUBLIC_POLICE_SPECIALTIES=Object.freeze([
   'Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
   'K9','RAGO','Dispatch','TO','AE'
 ]);
+let customPublicSpecialties=[];
+export function setPublicRosterSpecialties(items=[]){
+ const base=new Set(PUBLIC_POLICE_SPECIALTIES.map(x=>x.toLocaleLowerCase('nl-BE')));
+ customPublicSpecialties=[];
+ for(const x of Array.isArray(items)?items:[]){
+  if(!x||typeof x.label!=='string'||x.public!==true)continue;
+  const label=x.label.trim(),key=label.toLocaleLowerCase('nl-BE');
+  if(!label||label.length>64||base.has(key))continue;
+  base.add(key);
+  customPublicSpecialties.push({label,icon:typeof x.icon==='string'?x.icon.slice(0,10):''});
+  if(customPublicSpecialties.length===20)break;
+ }
+}
+const visibleSpecialties=()=>[
+ ...PUBLIC_POLICE_SPECIALTIES,...customPublicSpecialties.map(x=>x.label)
+];
 const visual=()=>window.BPDPersonnelVisuals;
 function element(tag,text,cls=''){
  const n=document.createElement(tag);
@@ -72,7 +88,7 @@ function renderHeader(thead){
  for(const title of ['CALL','RANGKENTEKEN','NAAM VAN RANG',
    'PERSONEELSLID','REEKS','STATUS'])
    tr.append(element('th',title));
- for(const label of PUBLIC_POLICE_SPECIALTIES){
+ for(const label of visibleSpecialties()){
    const th=element('th',undefined,'mr-specialty-head');
    th.title=label;
    const pic=element('span',undefined,'mr-specialty-icon');
@@ -82,7 +98,7 @@ function renderHeader(thead){
      img.src=image;img.alt='';img.loading='lazy';
      img.className='mr-specialty-image';
      pic.append(img);
-   }else pic.textContent=visual().specialtyIcon(label);
+   }else pic.textContent=customPublicSpecialties.find(x=>x.label===label)?.icon||visual().specialtyIcon(label);
    pic.setAttribute('aria-hidden','true');
    th.append(pic,element('small',label));
    tr.append(th);
@@ -101,7 +117,7 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
  const groups=policeGroupedRoster(people);
  for(const [tier,rows] of groups){
    const title=element('tr',undefined,'mr-divider mr-'+tier);
-   const cell=element('td');cell.colSpan=6+PUBLIC_POLICE_SPECIALTIES.length;
+   const cell=element('td');cell.colSpan=6+visibleSpecialties().length;
    cell.append(element('strong',policeTierDisplay(tier).label));
    cell.append(element('small',rows.length+' personeelsleden','mr-count'));
    title.append(cell);frag.append(title);
@@ -124,7 +140,7 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
      const status=String(person.status||'Onbekend').trim()||'Onbekend';
      addCell(tr,element('span',status,
        'mr-status mr-status--'+policeRosterStatusStyle(status)),'mr-status-cell');
-     for(const label of PUBLIC_POLICE_SPECIALTIES){
+     for(const label of visibleSpecialties()){
        const info=visual().specialtyStateFor(person,label);
        const value=String(info.status||'Niet ingevuld');
        const td=addCell(tr,element('span',value,'mr-specialty mr-'+specialTag(value)),
@@ -138,7 +154,7 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
  if(!people.length){
    const empty=element('tr');
    const cell=element('td','Geen personeelsleden gevonden.');
-   cell.colSpan=6+PUBLIC_POLICE_SPECIALTIES.length;
+   cell.colSpan=6+visibleSpecialties().length;
    empty.append(cell);tbody.append(empty);
  }
  return people.length;
