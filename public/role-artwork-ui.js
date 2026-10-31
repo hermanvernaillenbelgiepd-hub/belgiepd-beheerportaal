@@ -30,7 +30,9 @@ export function setupRoleArtworkUI({api,$,notice}){
  ['medicatie','Medicatie'],['heli','MUG-HELI'],['mip','MIP'],
  ['ladderwagen','Ladderwagen'],['duiker','Duiker'],['fast','F.A.S.T.'],
  ['logistiek','Logistiek'],['gevaarlijke_stoffen','Gevaarlijke stoffen'],
- ['red_team','RED-team'],['overige_leden','Overige leden (geen specialisatie)']
+ ['red_team','RED-team'],['overige_leden','Overige leden (geen specialisatie)'],
+ ['mug_heli','MUG-HELI'],['pit','PIT'],['pit_motor','PIT-MOTOR'],
+ ['verpleegkundige','Verpleegkundige'],['arts','Arts'],['amb','Ambulancier']
  ];
  const extraTypes=new Set(['medal','helmet','profession','logo','pictogram','patch','award']);
  const labels={role:'Discord-rol',rank:'Graad',specialty:'Specialisatie',uniform:'Uniform',
@@ -86,6 +88,7 @@ export function setupRoleArtworkUI({api,$,notice}){
    ['helmet','logo','profession','pictogram','patch'].includes(kind)?[320,320]:
    kind==='uniform'?[603,469]:
    kind==='specialty'&&$p('roleArtworkDepartment').value==='brandweer'?[320,320]:
+   kind==='specialty'&&$p('roleArtworkDepartment').value==='ambulance'?[320,320]:
    [512,160]);
   canvas.width=size[0];canvas.height=size[1];
   canvas.style.aspectRatio=size[0]+'/'+size[1];
