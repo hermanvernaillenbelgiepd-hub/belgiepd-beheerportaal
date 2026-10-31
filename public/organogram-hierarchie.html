@@ -2490,7 +2490,7 @@ function specialtyBranch(branch,isPolice,nested=false,department=''){
    el('span','specialty-branch-count',total+' leden'));
   title.append(makeFireSpecialtyPatch(branch.label),text);
  }else{
-  title.append(document.createTextNode(branch.label),
+  title.append(el('span','specialty-heading-name',branch.label),
    el('span','specialty-branch-count',' · '+total));
  }
  card.append(title);
