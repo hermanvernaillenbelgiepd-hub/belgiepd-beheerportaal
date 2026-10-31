@@ -44,19 +44,21 @@ table{min-width:1110px}
 #specialtyEdit{margin-top:14px;border-top:1px solid #354c6c;padding-top:12px}
 #specialtyAuditPanel{margin:14px 0}#specialtyAuditPanel summary{cursor:pointer;font-weight:700}
 
+/* Single source of truth for table geometry. Each department can have a
+   different number of specialty columns, so JS builds a matching <colgroup>.
+   No nth-child percentage widths: they compressed badges and icons on MAIN. */
+.staff-roster-table{
+  width:max(100%,var(--roster-required-width,1330px));
+  min-width:0;
+  table-layout:fixed;
+  border-collapse:collapse;
+  border-spacing:0;
+}
+.staff-roster-table col{box-sizing:border-box}
 /* Desktop roster uses the complete browser width, with real specialization columns. */
 main{max-width:1900px;padding-inline:clamp(10px,1.3vw,24px)}
 header{padding-inline:clamp(15px,2vw,34px)}
-.staff-roster-holder{overflow-x:visible}
-.staff-roster-table{table-layout:fixed;width:100%;min-width:0}
 .staff-roster-table th,.staff-roster-table td{padding:9px 3px;font-size:clamp(9px,.75vw,12px);overflow-wrap:anywhere}
-.staff-roster-table th:nth-child(1){width:6%}
-.staff-roster-table th:nth-child(2){width:6%}
-.staff-roster-table th:nth-child(3){width:10%}
-.staff-roster-table th:nth-child(4){width:11%}
-.staff-roster-table th:nth-child(5){width:6%}
-.staff-roster-table th:nth-child(6){width:7%}
-.staff-roster-table th:last-child{width:4.8%}
 .staff-roster-table .rank-insignia{max-width:100%;width:60px;height:30px}
 .specialty-col-head{text-align:center;vertical-align:middle;letter-spacing:0!important}
 .specialty-col-icon{display:block;font-size:17px;line-height:1.4}
@@ -66,7 +68,6 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .pill{padding:3px 5px;font-size:10px;white-space:normal}
 .staff-roster-table .roster-open{padding:5px;font-size:10px}
 .specialty-summary{display:flex;flex-wrap:wrap;gap:3px}
-@media(max-width:920px){.staff-roster-holder{overflow-x:auto}.staff-roster-table{min-width:1000px}}
 
 /* Shared pictogram asset, displayed consistently in rosters and dossiers. */
 .specialty-col-icon{display:flex;align-items:center;justify-content:center;min-height:38px}
@@ -76,18 +77,10 @@ header{padding-inline:clamp(15px,2vw,34px)}
 
 /* MAIN: rustigere personeelslijst met duidelijk zichtbare graadkentekens. */
 .staff-roster-holder{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#6783aa #142842}
-.staff-roster-table{width:100%;min-width:1520px;table-layout:fixed;border-collapse:separate;border-spacing:0}
 .staff-roster-table th,.staff-roster-table td{padding:12px 7px;font-size:12px;overflow-wrap:normal;vertical-align:middle}
 .staff-roster-table thead th{position:sticky;top:0;z-index:2;background:#152b49;line-height:1.35}
 .staff-roster-table tbody tr:nth-child(even){background:rgba(110,153,207,.035)}
 .staff-roster-table tbody tr:hover{background:rgba(89,139,201,.12)}
-.staff-roster-table th:nth-child(1){width:6%}
-.staff-roster-table th:nth-child(2){width:9%}
-.staff-roster-table th:nth-child(3){width:12%}
-.staff-roster-table th:nth-child(4){width:12%}
-.staff-roster-table th:nth-child(5){width:8%}
-.staff-roster-table th:nth-child(6){width:7%}
-.staff-roster-table th:last-child{width:5%}
 .staff-roster-table td:nth-child(2){text-align:center;padding:7px 6px}
 .staff-roster-table .rank-insignia{display:block;width:112px;max-width:100%;height:58px;object-fit:contain;object-position:center;margin:auto;padding:4px 6px;border-radius:8px;background:#1a2b45;border:1px solid #354966;image-rendering:auto}
 .staff-roster-table td:nth-child(3){font-size:12px;line-height:1.45;overflow-wrap:break-word}
@@ -95,11 +88,9 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .specialty-col-label{font-size:10px;line-height:1.2}
 .staff-roster-table .specialty-status-col{padding:10px 5px}
 .staff-roster-table .specialty-status-col .specialty-state{display:inline-flex;align-items:center;justify-content:center;max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;word-break:normal;text-align:center;line-height:1.25;font-size:10px;padding:5px 4px;box-sizing:border-box}
-@media(max-width:920px){.staff-roster-table{min-width:1520px}}
 
 /* MAIN: rustige aaneengesloten personeelslijst, zonder losse vakjes. */
 .staff-roster-holder{overflow-x:auto}
-.staff-roster-table{min-width:1570px;border-spacing:0;border-collapse:collapse}
 .staff-roster-table thead th{background:#193453;border:0;border-bottom:2px solid #54749b;border-radius:0;padding:12px 9px}
 .staff-roster-table tbody td{background:transparent;border:0;border-bottom:1px solid #324866;border-radius:0;padding:12px 9px;transition:background-color .15s}
 .staff-roster-table thead th+th{border-left:1px solid #456184}
@@ -109,9 +100,6 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table tbody tr:nth-child(even) td,.staff-roster-table tbody tr:hover td{background:transparent;border-color:#405b7e}
 .staff-roster-table td:nth-child(2){background:transparent}
 .staff-roster-table .rank-insignia{border-color:#3d5878;background:#1c3552}
-.staff-roster-table th:nth-child(1){width:4.5%}
-.staff-roster-table th:nth-child(5){width:6%}
-.staff-roster-table th:last-child{width:13%}
 .staff-roster-table .discord-id-head,.staff-roster-table .discord-id-cell{text-align:left}
 .staff-roster-table .discord-id-cell code{user-select:text;cursor:text;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:#d5e7ff;background:transparent;border:0;padding:0}
 .staff-roster-table .discord-id-missing{font-size:10px;color:#a9bdd3}
@@ -119,25 +107,15 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .discord-copy-btn{font-size:10px;font-weight:700;padding:4px 7px;border:1px solid #4b6f9a;border-radius:5px;background:#234468;color:#f2f7ff;white-space:nowrap}
 .staff-roster-table .discord-copy-btn:hover{background:#315b88;border-color:#79a0d1}
 .staff-roster-table .discord-copy-btn:focus-visible{outline:2px solid #a6c7ff;outline-offset:2px}
-@media(max-width:920px){.staff-roster-table{min-width:1570px}}
 /* Sorteren blijft compact naast zoeken en filteren, ook op kleinere schermen. */
 .staff-filters{grid-template-columns:minmax(180px,1fr) minmax(240px,1.5fr)}
 @media(max-width:760px){.staff-filters{grid-template-columns:minmax(0,1fr)}}
 /* Geen openknop of deeplink voor dossiers die alleen in de lijst mogen staan. */
 .roster-protected{display:inline-block;color:#b1c3d7;font-size:11px;font-weight:600;white-space:nowrap}
 /* Compacter CALL, rang, rangnaam, personeelslid en status; extra ruimte voor specialisaties. */
-.staff-roster-table{min-width:1450px}
-.staff-roster-table th:nth-child(1){width:3.8%}
-.staff-roster-table th:nth-child(2){width:7.3%}
-.staff-roster-table th:nth-child(3){width:9%}
-.staff-roster-table th:nth-child(4){width:9%}
-.staff-roster-table th:nth-child(6){width:5%}
-.staff-roster-table th:nth-child(5){width:5.5%}
-.staff-roster-table th:last-child{width:13%}
 .staff-roster-table th:nth-child(-n+6),.staff-roster-table td:nth-child(-n+6){padding-left:5px;padding-right:5px}
 .staff-roster-table .rank-insignia{width:94px;height:52px;max-width:100%;padding:3px}
 .staff-roster-table td:nth-child(3),.staff-roster-table td:nth-child(4){overflow-wrap:anywhere;line-height:1.35}
-@media(max-width:920px){.staff-roster-table{min-width:1450px}}
 .discord-verified-cadre{font-weight:700;color:#99c6ff;white-space:nowrap;font-size:10px}
 
 /* MAIN: een volledig handmatig bewerkbare datum en een optionele kalenderkeuze. */
@@ -239,7 +217,6 @@ header{padding-inline:clamp(15px,2vw,34px)}
 
 
 /* Compacte, volledig uitgelijnde personeelsmatrix (MAIN). */
-.staff-roster-table{border-collapse:collapse;border-spacing:0}
 .staff-roster-table thead th{padding:7px 6px;line-height:1.15;vertical-align:middle}
 .staff-roster-table tbody tr{height:46px}
 .staff-roster-table tbody td{padding:5px 6px;line-height:1.18;vertical-align:middle;border-bottom:1px solid #506c8d}
@@ -262,7 +239,6 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table td:nth-child(5){line-height:1.2}
 
 /* Spreadsheetmatrix: lage personeelsrijen, volledig gevulde specialisatiecellen. */
-.staff-roster-table{border-collapse:collapse;border-spacing:0}
 .staff-roster-table tbody tr{height:35px}
 .staff-roster-table tbody td{padding:2px 5px;line-height:1.08;vertical-align:middle;border-bottom:1px solid #47627f}
 .staff-roster-table .specialty-status-col{padding:0!important;vertical-align:middle;text-align:center}
@@ -327,7 +303,6 @@ header{padding-inline:clamp(15px,2vw,34px)}
 /* Consistent compact operational roster (MAIN). Keep pictograms, status,
    department separators, sorting and Discord-ID copy functionality. */
 .staff-roster-holder{max-width:100%;overflow-x:auto;scrollbar-width:thin}
-.staff-roster-table{min-width:1330px;table-layout:fixed}
 .staff-roster-table thead th{padding:7px 5px!important;font-size:10px;
  line-height:1.15;vertical-align:middle}
 .staff-roster-table tbody td{padding:5px 5px!important;
@@ -348,13 +323,6 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .discord-copy-tools{gap:3px;margin-top:2px}
 .staff-roster-table .discord-copy-btn{padding:2px 5px;font-size:9px}
 .staff-roster-table .roster-open{padding:4px 6px;font-size:10px}
-.staff-roster-table th:nth-child(2){width:6%}
-.staff-roster-table th:nth-child(3){width:8%}
-.staff-roster-table th:nth-child(4){width:9%}
-.staff-roster-table th:nth-child(5){width:5%}
-.staff-roster-table th:nth-child(6){width:5%}
-.staff-roster-table th:last-child{width:13%}
-@media(max-width:930px){.staff-roster-table{min-width:1330px}}
 /* MAIN: extra lage personeelsrijen. Het vorige thema liet statuscellen
    minimaal 34px en rangafbeeldingen 33px hoog; die maakten elke rij hoger
    dan de geplande compacte tabel. Alleen de personeelslijst wordt geraakt. */
@@ -1281,6 +1249,11 @@ function specialtyMark(label){
   mark.setAttribute('aria-hidden','true');
   return mark;
 }
+// Adjust dimensions here only; do not duplicate column widths in CSS.
+const ROSTER_COLUMN_WIDTHS=Object.freeze({
+  call:78,grade:116,rank:164,name:190,series:108,status:108,
+  specialty:82,specialtySummary:180,file:76,discord:224
+});
 function render(){
   const q=$('search').value.trim().toLowerCase(),dept=$('dept').value;
   const matches=BPDPersonnelVisuals.sortPersonnelRows(
@@ -1295,6 +1268,23 @@ function render(){
   $('count').textContent=matches.length+' fiche(s) zichtbaar';
   const cols=BPDPersonnelVisuals.specialtyColumns(dept);
   const head=$('staffColumnHeaders');head.replaceChildren();
+  const table=head.closest('table');
+  // Match every visible header/body column, including the specialty fallback,
+  // Fiche and Discord-ID. Keeping widths in a colgroup prevents drift.
+  const w=ROSTER_COLUMN_WIDTHS;
+  const widths=[w.call,w.grade,w.rank,w.name,w.series,w.status,
+    ...(cols.length?cols.map(()=>w.specialty):[w.specialtySummary]),
+    w.file,w.discord];
+  const colgroup=document.createElement('colgroup');
+  for(const width of widths){
+    const col=document.createElement('col');
+    col.style.width=width+'px';
+    colgroup.append(col);
+  }
+  table.querySelector('colgroup')?.remove();
+  table.insertBefore(colgroup,head);
+  table.style.setProperty('--roster-required-width',
+    widths.reduce((sum,width)=>sum+width,0)+'px');
   const line=document.createElement('tr');
   const titles=dept==='depannage'?
     ['CALL','Functiegroep','Functie','Personeelslid','Reeks','Status']:
