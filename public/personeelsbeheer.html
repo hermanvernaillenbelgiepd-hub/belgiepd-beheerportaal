@@ -1338,7 +1338,11 @@ function render(){
   for(const label of cols){
     const th=document.createElement('th');th.className='specialty-col-head';th.title=label;
     const pict=document.createElement('span');pict.className='specialty-col-icon';
-    pict.append(specialtyMark(label));pict.setAttribute('aria-hidden','true');
+    const addition=custom.find(x=>x.label===label);
+    if(addition?.icon&&!BPDPersonnelVisuals.specialtyIconImage(label))
+      pict.textContent=addition.icon;
+    else pict.append(specialtyMark(label));
+    pict.setAttribute('aria-hidden','true');
     const name=document.createElement('span');name.className='specialty-col-label';
     name.textContent=dept==='depannage'?depannageSpecialtyMeta(label).label:label;
     th.append(pict,name);line.append(th);
