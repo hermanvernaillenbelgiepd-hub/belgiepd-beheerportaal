@@ -91,3 +91,49 @@
 .mr-table tbody tr.mr-person>td.mr-specialty-cell{padding:2px}
 .mr-specialty{padding:3px 2px;font-size:9px;line-height:1.1}
 .mr-table tr.mr-divider td{padding:5px 8px}
+
+/* Fixed-size status chips throughout the member dashboard and personnel list.
+   The badge dimensions are identical for all states, regardless of text length.
+   Unknown values remain neutral; no personnel data is modified. */
+.mr-table .mr-status{
+ box-sizing:border-box;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ vertical-align:middle;
+ width:104px;
+ min-width:104px;
+ max-width:104px;
+ height:24px;
+ min-height:24px;
+ max-height:24px;
+ padding:0 5px;
+ margin:0;
+ border:1px solid #627991;
+ border-radius:5px;
+ background:#324960;
+ color:#e7eef6;
+ font-weight:800;
+ font-size:11px;
+ line-height:1;
+ text-align:center;
+ white-space:nowrap;
+}
+.mr-table .mr-status--actief{
+ background:#1d6847;border-color:#3ca873;color:#ebfff2;
+}
+.mr-table .mr-status--verlof{
+ background:#21588c;border-color:#5a9ada;color:#f0f8ff;
+}
+.mr-table .mr-status--inactief{
+ background:#88323b;border-color:#d36a70;color:#fff0f2;
+}
+.mr-table .mr-status--fifty-fifty{
+ background:#995c1e;border-color:#dfa24d;color:#fff4e2;
+}
+.mr-table .mr-status--non-actief{
+ background:#633f86;border-color:#aa83d8;color:#f8f1ff;
+}
+.mr-table .mr-status--verwijderd{
+ background:#505a67;border-color:#919ba8;color:#f5f6f7;
+}
