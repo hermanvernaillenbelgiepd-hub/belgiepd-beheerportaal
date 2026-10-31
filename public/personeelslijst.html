@@ -40,7 +40,55 @@ tbody tr:nth-child(2n){background:#183450}
 .roster-profile-dialog iframe{display:block;border:0;width:100%;height:calc(100% - 54px);background:#09172a}
 .roster-profile-note{margin:0;padding:10px}
 [hidden]{display:none!important}
-</style><link rel="stylesheet" href="/member-police-roster.css"><link rel="stylesheet" href="/bpd-navigation.css"></head><body>
+</style><link rel="stylesheet" href="/member-police-roster.css"><style>
+
+/* Admin-configurable SHARED dimensions. All regular members see the saved
+   dimensions but never the editing controls. CSS applies only to this page. */
+.roster-personnel-page .mr-table{min-width:var(--mr-custom-table-width,1280px)}
+.roster-personnel-page .mr-table th:nth-child(3){min-width:var(--mr-custom-rank-column,165px)}
+.roster-personnel-page .mr-table th:nth-child(4){min-width:var(--mr-custom-name-column,150px)}
+.roster-personnel-page .mr-table tbody tr.mr-person{
+ height:var(--mr-custom-row-height,28px)
+}
+.roster-personnel-page .mr-table tbody tr.mr-person>td{
+ padding-top:var(--mr-custom-cell-padding,3px);
+ padding-bottom:var(--mr-custom-cell-padding,3px);
+ font-size:var(--mr-custom-text-size,11px);
+}
+.roster-personnel-page .mr-table tbody tr.mr-person>td.mr-call{
+ font-size:var(--mr-custom-text-size,11px);
+}
+.roster-personnel-page .mr-table .mr-insignia{
+ width:var(--mr-custom-insignia-width,30px);
+ max-height:calc(var(--mr-custom-insignia-width,30px) * .55);
+}
+.roster-personnel-page .mr-table .mr-rank,
+.roster-personnel-page .mr-table .mr-status,
+.roster-personnel-page .mr-table .mr-series-badge,
+.roster-personnel-page .mr-table .mr-person-open{
+ font-size:var(--mr-custom-text-size,11px);
+}
+.roster-personnel-page .mr-table .mr-specialty{
+ font-size:clamp(8px,calc(var(--mr-custom-text-size,11px) - 2px),14px);
+}
+.roster-layout-tools{margin:0 0 12px}
+.roster-layout-toggle{padding:7px 11px;background:#233f61;border-color:#6d97bb;font-size:12px}
+.roster-layout-panel{background:#0d223a;border:1px solid #3d6185;border-radius:9px;
+ padding:12px;margin:9px 0 0}
+.roster-layout-panel h2{font-size:14px;margin:0 0 4px;color:#f0f7ff}
+.roster-layout-panel p{font-size:11px;margin:0 0 9px}
+.roster-layout-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+ gap:11px 14px}
+.roster-layout-fields label{display:block;font-size:11px;margin:0}
+.roster-layout-fields output{float:right;color:#e5f2ff;font-size:10px;font-variant-numeric:tabular-nums}
+.roster-layout-fields input[type=range]{display:block;width:100%;margin:7px 0 0;
+ padding:0;accent-color:#70b5e5;cursor:pointer}
+.roster-layout-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+.roster-layout-actions button{font-size:11px;padding:7px 10px}
+.roster-layout-actions .roster-layout-secondary{background:#1b3554}
+.roster-layout-panel select{padding:7px 9px;font-size:12px}
+#rosterLayoutStatus{margin:5px 0 0;color:#c3dced;font-size:11px}
+</style><link rel="stylesheet" href="/bpd-navigation.css"></head><body class="roster-personnel-page">
 <header><strong>🛡️ BelgiëPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
 <main><h1>Personeelslijst politie</h1>
 <p>Personeelsleden met rangkenteken, reeks en geregistreerde specialisatiestatus. Alleen lezen: geen dossiers, observaties, Discord-ID’s, sancties of wijzigingen.</p>
@@ -53,6 +101,57 @@ tbody tr:nth-child(2n){background:#183450}
 <div class="filters"><div><label for="search">Zoeken</label><input id="search" placeholder="Roepnummer, naam, rang of reeks"></div>
 <div><label>Vaste kaderindeling</label><small>Korpsleiding → Officierenkader → Middenkader → Basiskader → Agentenkader</small></div>
 <button id="refresh" type="button">Vernieuwen</button></div>
+<section class="roster-layout-tools" id="rosterLayoutTools" hidden aria-label="Personeelslijstafmetingen">
+ <button id="rosterLayoutToggle" class="roster-layout-toggle" type="button"
+  aria-controls="rosterLayoutPanel" aria-expanded="false">⚙ Weergave aanpassen</button>
+ <div id="rosterLayoutPanel" class="roster-layout-panel" hidden>
+  <h2>Personeelslijst · afmetingen instellen</h2>
+  <p>Alleen Officierenkader en Korpsleiding kunnen deze standaardafmetingen voor iedereen bewaren.</p>
+  <label for="rosterLayoutPreset">Voorinstelling</label>
+  <select id="rosterLayoutPreset">
+   <option value="compact">Compact</option>
+   <option value="standard">Standaard</option>
+   <option value="ruim">Ruim</option>
+   <option value="custom" disabled>Aangepast</option>
+  </select>
+  <div class="roster-layout-fields">
+   <label for="rosterLayout-rowHeight">Rijhoogte
+    <output id="rosterLayoutValue-rowHeight">28 px</output>
+    <input id="rosterLayout-rowHeight" type="range" min="26" max="64" step="1" value="28">
+   </label>
+   <label for="rosterLayout-textSize">Lettergrootte
+    <output id="rosterLayoutValue-textSize">11 px</output>
+    <input id="rosterLayout-textSize" type="range" min="9" max="16" step="1" value="11">
+   </label>
+   <label for="rosterLayout-insigniaWidth">Gradenplaatbreedte
+    <output id="rosterLayoutValue-insigniaWidth">30 px</output>
+    <input id="rosterLayout-insigniaWidth" type="range" min="24" max="75" step="1" value="30">
+   </label>
+   <label for="rosterLayout-tableWidth">Totale tabelbreedte
+    <output id="rosterLayoutValue-tableWidth">1280 px</output>
+    <input id="rosterLayout-tableWidth" type="range" min="1120" max="2500" step="20" value="1280">
+   </label>
+   <label for="rosterLayout-cellPadding">Verticale tussenruimte
+    <output id="rosterLayoutValue-cellPadding">3 px</output>
+    <input id="rosterLayout-cellPadding" type="range" min="1" max="12" step="1" value="3">
+   </label>
+   <label for="rosterLayout-nameColumn">Kolombreedte personeelsnaam
+    <output id="rosterLayoutValue-nameColumn">150 px</output>
+    <input id="rosterLayout-nameColumn" type="range" min="115" max="340" step="1" value="150">
+   </label>
+   <label for="rosterLayout-rankColumn">Kolombreedte rangnaam
+    <output id="rosterLayoutValue-rankColumn">165 px</output>
+    <input id="rosterLayout-rankColumn" type="range" min="130" max="340" step="1" value="165">
+   </label>
+  </div>
+  <div class="roster-layout-actions">
+   <button id="rosterLayoutSave" type="button" disabled>Afmetingen bewaren voor iedereen</button>
+   <button id="rosterLayoutCancel" class="roster-layout-secondary" type="button">Opgeslagen maten terugzetten</button>
+   <button id="rosterLayoutReset" class="roster-layout-secondary" type="button">Oorspronkelijke maten</button>
+  </div>
+  <p id="rosterLayoutStatus" role="status" aria-live="polite"></p>
+ </div>
+</section>
 <p id="message" role="status" aria-live="polite">Personeelslijst laden…</p>
 <div class="mr-wrapper"><div class="mr-scroll"><table class="mr-table">
   <thead id="rosterHead"></thead><tbody id="rows"></tbody>
@@ -70,6 +169,7 @@ tbody tr:nth-child(2n){background:#183450}
 </dialog>
 <script type="module">
 import {renderMemberPoliceRoster} from '/member-police-roster.js';
+import {loadRosterLayout,logoutRosterLayout} from '/member-roster-layout.js?v=20261031-officer-only';
 const $=id=>document.getElementById(id);
 let auth=null,people=[];
 const idToken=()=>auth?.currentUser?.uid?.startsWith('discord:')?auth.currentUser.getIdToken():null;
@@ -123,6 +223,7 @@ async function load(){
    window.BPDPersonnelVisuals?.setArtworkManifest?.(artwork.artworks);
   }catch(_err){window.BPDPersonnelVisuals?.setArtworkManifest?.([])}
   render();
+  await loadRosterLayout(token);
   if(data.stale)$('message').textContent+=' · Let op: brongegevens momenteel niet actueel';
  }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
  finally{$('refresh').disabled=false}
@@ -136,7 +237,7 @@ try{
  const app=getApps().length?getApp():initializeApp(config.firebaseConfig);auth=getAuth(app);
  onAuthStateChanged(auth,user=>{
   if(user?.uid?.startsWith('discord:'))load();
-  else {people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
+  else {logoutRosterLayout();people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script><script defer src="/bpd-navigation.js"></script></body></html>
