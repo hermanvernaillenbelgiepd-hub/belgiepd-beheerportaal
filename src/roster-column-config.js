@@ -18,9 +18,16 @@ const columnBounds=Object.freeze({
 const allowedKeys=Object.keys(ROSTER_WIDTH_DEFAULTS);
 const allowedBody=['expectedRevision','widths','customSpecialties','specialtyWidths'];
 export function canEditRosterColumns(actor){
- return Boolean(actor&&actor.uid==='discord:'+actor.discordId&&
-  actor.departments?.includes('politie')&&
-  ['officierenkader','korpsleiding'].includes(actor.discordPoliceRank)&&
+ // A real authenticated Discord identity is mandatory for all changes.
+ if(!actor?.discordId||actor.uid!=='discord:'+actor.discordId)return false;
+ // The approved technical profile can manage the display for all services.
+ // This does not authorize any personnel, dossier or Discord mutations.
+ if(actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true&&
+    actor.role==='beheerder')return true;
+ // Use the same fresh, verified Discord officer evidence as the existing
+ // shared personnel-list layout editor, plus the actual scoped portal grant.
+ return Boolean(actor.departments?.includes('politie')&&
+  actor.discordRosterEditorVerified===true&&
   ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie')));
 }
 export function rosterConfig(value){
