@@ -76,6 +76,7 @@ function seriesCell(person){
 function rankCell(person){
  const info=visual().rankInfo(person.rank,'politie');
  const wrap=element('span',undefined,'mr-rank');
+ if(person.hasPoliceEntry===false){wrap.textContent='—';return wrap;}
  if(info.image){
    const img=document.createElement('img');
    img.src=info.image;img.alt='';img.loading='lazy';img.referrerPolicy='no-referrer';
@@ -127,9 +128,11 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
      const tr=element('tr',undefined,'mr-person');
      addCell(tr,person.call||'—','mr-call');
      addCell(tr,rankCell(person),'mr-rank-cell');
-     addCell(tr,visual().rankInfo(person.rank,'politie').label);
+     addCell(tr,person.hasPoliceEntry===false?'—':visual().rankInfo(person.rank,'politie').label);
      const nameCell=element('strong',person.name||'—');
-     if(typeof onPersonClick==='function'){
+     const nameWrapper=element('span',undefined,'mr-person-name-wrap');
+     const clickable=typeof onPersonClick==='function'&&person.hasPoliceEntry!==false;
+     if(clickable){
       const nameButton=element('button',undefined,'mr-person-open');
       nameButton.type='button';
       nameButton.textContent=person.name||'—';
@@ -137,11 +140,16 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
        ' ('+(person.call||'onbekende call')+')');
       nameButton.addEventListener('click',()=>onPersonClick(person));
       attachRosterNamePreview(nameButton,person,{clickHint:true});
-      addCell(tr,nameButton,'mr-name-cell');
+      nameWrapper.append(nameButton);
      }else{
        attachRosterNamePreview(nameCell,person);
-       addCell(tr,nameCell);
+       nameWrapper.append(nameCell);
      }
+     const affiliations=Array.isArray(person.services)?person.services:[];
+     if(affiliations.length>1||person.hasPoliceEntry===false)
+       nameWrapper.append(element('small','Diensten: '+affiliations.join(' · '),
+         'mr-person-affiliations'));
+     addCell(tr,nameWrapper,'mr-name-cell');
      addCell(tr,seriesCell(person));
      const status=String(person.status||'Onbekend').trim()||'Onbekend';
      addCell(tr,element('span',status,
