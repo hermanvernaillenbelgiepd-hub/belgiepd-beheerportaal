@@ -6,7 +6,8 @@ const tiers=Object.freeze({
  middenkader:{order:2,label:'MIDDENKADER'},
  basiskader:{order:3,label:'BASISKADER'},
  agentenkader:{order:4,label:'AGENTENKADER'},
- overig:{order:5,label:'OVERIGE / BESTUUR'}
+ overig:{order:5,label:'OVERIGE / BESTUUR'},
+ zonderPolitie:{order:6,label:'NOG GEEN POLITIE-INSCHRIJVING'}
 });
 const callNumber=call=>{
  const match=String(call??'').trim().match(/^(?:[a-z]{1,12}[- ]?)?(\d{1,4})$/i);
@@ -14,6 +15,7 @@ const callNumber=call=>{
 };
 export function policeOperationalTier(person){
  if(person?.dept!=='politie')return null;
+ if(person?.hasPoliceEntry===false)return 'zonderPolitie';
  if(person?.discordCadre==='Korpsleiding')return 'korpsleiding';
  if(person?.discordCadre==='Officierenkader')return 'officierenkader';
  const call=callNumber(person.call);
