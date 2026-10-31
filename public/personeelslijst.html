@@ -214,6 +214,13 @@ if(directoryEmbedded){
 const idToken=()=>auth?.currentUser?.uid?.startsWith('discord:')?auth.currentUser.getIdToken():null;
 function openRosterProfile(person){
  if(!auth?.currentUser)return;
+ if(directoryEmbedded&&window.parent!==window){
+  const call=String(person?.call||'').trim(),name=String(person?.name||'').trim();
+  if(!call||!name)return;
+  // The outer, full-size Personeelsbeheer dialog owns the only visible card.
+  window.parent.postMessage({type:'bpd-directory-profile-open',call,name},location.origin);
+  return;
+ }
  const call=String(person?.call||'').trim(),name=String(person?.name||'').trim();
  if(!call||!name)return;
  const params=new URLSearchParams({embedded:'1',dienst:'politie',kaart:call,naam:name});
