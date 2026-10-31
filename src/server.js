@@ -91,6 +91,7 @@ app.use('/api/visual-layers',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
+app.use('/api/member',express.json({limit:'3kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
 app.use('/api/dossier-grants',express.json({limit:'4kb',strict:true}));
 app.use('/api/fire-dossiers',express.json({limit:'6kb',strict:true}));
