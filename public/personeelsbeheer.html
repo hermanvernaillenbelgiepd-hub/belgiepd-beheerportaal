@@ -953,6 +953,74 @@ $('personnelManageTab').onclick=()=>{
  if(!personnelManagementAllowed)return;
  personnelManagementRequested=true;updatePersonnelView();
 };
+// Only the authenticated manager overview may disclose Discord identity.
+// The public list sends a call/name, never an ID.
+let personnelCardDiscordId='';
+const cardDialog=$('personnelCardDialog');
+function closeUnifiedCard(){if(cardDialog.open)cardDialog.close();}
+function clearUnifiedCard(){
+ personnelCardDiscordId='';
+ $('personnelCardFrame').removeAttribute('src');
+ for(const key of ['personnelCardId','personnelCardCopyId','personnelCardPing'])$(key).hidden=true;
+}
+function openUnifiedCard(call,name){
+ if(dossierEmbedded||ficheMode||typeof call!=='string'||typeof name!=='string'||
+   !/^[a-zA-Z0-9 *_-]{1,24}$/.test(call)||!name.trim()||name.length>90)return;
+ closeUnifiedCard();clearUnifiedCard();
+ $('personnelCardTitle').textContent='Personeelskaart · '+call+' · '+name;
+ $('personnelCardInfo').textContent='Personeelskaart laden…';
+ $('personnelCardInfo').hidden=false;
+ const matches=personnelManagementAllowed?
+  people.filter(p=>p.dept==='politie'&&
+   String(p.call||'').trim().toLocaleLowerCase('nl-BE')===call.toLocaleLowerCase('nl-BE')&&
+   String(p.name||'').trim().toLocaleLowerCase('nl-BE')===name.trim().toLocaleLowerCase('nl-BE')):[];
+ const id=matches.length===1?String(matches[0].discordId||''):'';
+ if(/^\d{15,22}$/.test(id)){
+  personnelCardDiscordId=id;
+  $('personnelCardId').textContent='DC-ID: '+id;
+  for(const key of ['personnelCardId','personnelCardCopyId','personnelCardPing'])$(key).hidden=false;
+ }
+ const params=new URLSearchParams({embedded:'1',dienst:'politie',kaart:call,naam:name});
+ $('personnelCardFrame').src='/organogram-hierarchie.html?'+params;
+ cardDialog.showModal();
+}
+$('personnelCardClose').onclick=closeUnifiedCard;
+cardDialog.addEventListener('close',clearUnifiedCard);
+cardDialog.addEventListener('click',e=>{if(e.target===cardDialog)closeUnifiedCard();});
+async function copyCardValue(value,button,success){
+ const original=button.textContent;
+ try{
+  await navigator.clipboard.writeText(value);
+  button.textContent=success;
+ }catch{button.textContent='Kopiëren mislukt';}
+ window.setTimeout(()=>{button.textContent=original},1600);
+}
+$('personnelCardCopyId').onclick=()=>{
+ if(personnelCardDiscordId)void copyCardValue(personnelCardDiscordId,
+  $('personnelCardCopyId'),'Gekopieerd');
+};
+$('personnelCardPing').onclick=()=>{
+ if(personnelCardDiscordId)void copyCardValue('<@'+personnelCardDiscordId+'>',
+  $('personnelCardPing'),'Ping gekopieerd');
+};
+window.addEventListener('message',event=>{
+ if(event.origin!==location.origin)return;
+ if(event.source===$('personnelDirectoryFrame').contentWindow&&
+    event.data?.type==='bpd-directory-profile-open'){
+   openUnifiedCard(event.data.call,event.data.name);
+   return;
+ }
+ if(event.source!==$('personnelCardFrame').contentWindow||
+    event.data?.type!=='bpd-organogram-card'||!cardDialog.open)return;
+ switch(event.data.status){
+  case 'closed':closeUnifiedCard();break;
+  case 'ready':$('personnelCardInfo').hidden=true;break;
+  case 'not-found':$('personnelCardInfo').textContent=
+    'Deze persoon is niet gevonden in het actuele organogram.';break;
+  case 'unavailable':$('personnelCardInfo').textContent=
+    'De personeelskaart is momenteel niet beschikbaar.';break;
+ }
+});
 if(ficheMode){
   document.body.classList.add('dossier-standalone');
   $('ficheNavigator').hidden=false;
