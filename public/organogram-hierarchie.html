@@ -171,6 +171,43 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  color:#bdd3e7;font-weight:700;
 }
 
+/* Ambulance: dedicated editable specialty patch space in every header.
+   The thumbnail never changes the 7-column desktop layout or member cards.
+   Images come exclusively from the existing authorized Firebase artwork
+   manifest. A neutral placeholder is shown until a patch is uploaded. */
+#services .service[data-dept="ambulance"]>.service-body>.spec-list>.specialty>summary.fire-specialty-title{
+ display:flex;align-items:center;gap:6px;
+ padding:5px 6px;
+ min-width:0;min-height:60px;box-sizing:border-box;
+}
+#services .service[data-dept="ambulance"] .fire-specialty-patch{
+ display:grid;place-items:center;flex:0 0 32px;
+ width:32px;height:32px;min-width:32px;
+ border:1px solid #6486a8;border-radius:5px;
+ background:#102842;overflow:hidden;
+}
+#services .service[data-dept="ambulance"] .fire-specialty-patch>img{
+ display:block;width:100%;height:100%;
+ object-fit:contain;object-position:center;
+}
+#services .service[data-dept="ambulance"] .fire-specialty-patch-placeholder{
+ color:#7399b9;font-size:18px;font-weight:450;line-height:1;
+}
+#services .service[data-dept="ambulance"] .fire-specialty-title-text{
+ display:flex;flex:1 1 auto;min-width:0;min-height:32px;
+ flex-direction:column;justify-content:center;align-items:flex-start;
+ gap:1px;
+}
+#services .service[data-dept="ambulance"] .fire-specialty-title-name{
+ font-size:10px;font-weight:850;line-height:1.15;
+ overflow-wrap:anywhere;hyphens:auto;
+}
+#services .service[data-dept="ambulance"] .fire-specialty-title-text>.specialty-branch-count{
+ display:block;margin:0;font-size:9px;line-height:1.1;
+ color:#bdd3e7;font-weight:700;
+}
+
+
 .service[data-dept="brandweer"]>.service-body>.spec-list>.specialty{
  box-sizing:border-box;
  width:100%;
@@ -1844,6 +1881,66 @@ function makeFireSpecialtyPatch(label){
  return slot;
 }
 
+/* AZLS patches use the exact same guarded Firebase upload format as fire
+   patches, but in a separate ambulance-only artwork namespace. */
+let ambulanceSpecialtyPatchArtworks=new Map();
+function ambulanceSpecialtyPatchCode(label){
+ const key=String(label||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+ const aliases={
+  mugheli:'mug_heli',mug_heli:'mug_heli',
+  pitmotor:'pit_motor',pit_motor:'pit_motor',
+  basis_training:'basis_tr',basistraining:'basis_tr',
+  overige_leden_geen_geregistreerde_specialisatie:'overige_leden',
+  overige_leden:'overige_leden'
+ };
+ return aliases[key]||key.slice(0,40);
+}
+function setAmbulanceSpecialtyPatchArtworks(artworks){
+ const map=new Map();
+ for(const item of Array.isArray(artworks)?artworks:[]){
+  if(item?.kind!=='specialty'||item.department!=='ambulance')continue;
+  const code=String(item.code||'');
+  if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code))continue;
+  const url=String(item.imageUrl||'');
+  if(!/^\/api\/role-artwork\/file\/specialty_ambulance_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url))continue;
+  map.set(code,url);
+ }
+ ambulanceSpecialtyPatchArtworks=map;
+}
+function ambulanceSpecialtyPatchUrl(label){
+ const code=ambulanceSpecialtyPatchCode(label);
+ const aliases=code==='mug_heli'?['heli','mugheli']:
+  code==='pit_motor'?['pitmotor']:[];
+ for(const k of [code,...aliases]){
+  for(const candidate of [k,k+'_lokaal',k+'_federaal']){
+   const url=ambulanceSpecialtyPatchArtworks.get(candidate);
+   if(url)return url;
+  }
+ }
+ return '';
+}
+function makeAmbulanceSpecialtyPatch(label){
+ const slot=el('span','fire-specialty-patch');
+ const url=ambulanceSpecialtyPatchUrl(label);
+ if(url){
+  const img=el('img');
+  img.src=url;
+  img.alt='';
+  img.loading='lazy';
+  img.decoding='async';
+  img.onerror=()=>{slot.replaceChildren(el('span','fire-specialty-patch-placeholder','◇'));};
+  slot.append(img);
+  slot.title='AZLS-specialisatiepatch: '+label;
+ }else{
+  const placeholder=el('span','fire-specialty-patch-placeholder','◇');
+  placeholder.setAttribute('aria-hidden','true');
+  slot.append(placeholder);
+  slot.title='Nog geen AZLS-specialisatiepatch: '+label+' · upload via Afbeeldingen & badges';
+ }
+ return slot;
+}
+
 function setServiceUniformData(artworks,layouts,nameplates=[],coats=[],visibility=[]){
  const uniforms=new Map(),ranks=new Map(),positions=new Map();
  for(const entry of Array.isArray(artworks)?artworks:[]){
@@ -2483,12 +2580,13 @@ function specialtyBranch(branch,isPolice,nested=false,department=''){
  const specialtyKey=branch.label;
  card.open=isPolice?(state.specialtyOpen[specialtyKey]??false):true;
  if(isPolice)card.addEventListener('toggle',()=>{state.specialtyOpen[specialtyKey]=card.open;});
- const title=el('summary',department==='brandweer'?'fire-specialty-title':'');
- if(department==='brandweer'){
+ const title=el('summary',['brandweer','ambulance'].includes(department)?'fire-specialty-title':'');
+ if(department==='brandweer'||department==='ambulance'){
   const text=el('span','fire-specialty-title-text');
   text.append(el('span','fire-specialty-title-name',branch.label),
    el('span','specialty-branch-count',total+' leden'));
-  title.append(makeFireSpecialtyPatch(branch.label),text);
+  title.append(department==='brandweer'?makeFireSpecialtyPatch(branch.label):
+   makeAmbulanceSpecialtyPatch(branch.label),text);
  }else{
   title.append(el('span','specialty-heading-name',branch.label),
    el('span','specialty-branch-count',' · '+total));
@@ -2598,6 +2696,7 @@ async function loadPublic(){
   window.BPDVisualAssets?.setData?.(artworkManifest?.artworks,visualLayers?.layers,uniformLayoutData?.visibility);
   applyRoleArtworkManifest(artworkManifest?.artworks);
   setFireSpecialtyPatchArtworks(artworkManifest?.artworks);
+  setAmbulanceSpecialtyPatchArtworks(artworkManifest?.artworks);
   setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats,uniformLayoutData?.visibility);
   window.BPDPoliceUniform?.setGradeArtworkManifest?.(artworkManifest?.artworks);
   window.BPDPoliceUniform?.setUniformManagementData?.(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats);
