@@ -79,8 +79,22 @@ export function installCallsignSelfServiceRoutes(app,{getSnapshot}){
     try{
       const snap=await getSnapshot();
       if(snap.stale)return res.status(503).json({error:'Personeelslijst is tijdelijk niet actueel'});
-      if(snap.data.some(p=>p.dept==='politie'&&p.personId===id))
-        return res.status(409).json({error:'Je staat al in de politiepersoneelslijst'});
+      const currentPolice=snap.data.filter(p=>p.dept==='politie'&&p.personId===id);
+      if(currentPolice.length>1)
+        return res.status(409).json({error:'Meerdere politieregistraties gevonden; laat Officierenkader je dossier controleren'});
+      if(currentPolice.length===1){
+        const existing=currentPolice[0],rawCall=String(existing.call||'').trim();
+        // An existing temporary 101–199 recruit should still be able to
+        // request a permanent 200-series callsign for the SAME Discord ID.
+        if(!/^1\d{2}$/.test(rawCall)||Number(rawCall)<101||
+           String(existing.name||'').trim().toLocaleLowerCase('nl-BE')!==
+             data.name.toLocaleLowerCase('nl-BE'))
+          return res.status(409).json({error:
+            'Je politieregistratie heeft al een vast roepnummer of wijkt af. Contacteer Officierenkader.'});
+        if(data.temporaryCall&&data.temporaryCall!==rawCall)
+          return res.status(409).json({error:'Je tijdelijk roepnummer komt niet overeen met je personeelsregistratie'});
+        data.temporaryCall=rawCall;
+      }
       if(data.temporaryCall&&snap.data.some(p=>p.dept==='politie'&&String(p.call||'')===data.temporaryCall&&p.personId!==id))
         return res.status(409).json({error:'Dit tijdelijke roepnummer wordt al gebruikt. Kies een ander nummer'});
       if(data.temporaryCall){
