@@ -1712,7 +1712,7 @@ async function load(){
       const cfg=await request('/api/roster-columns');
       rosterConfigs=cfg.departments||Object.create(null);
       rosterCanEdit=cfg.canEdit===true;
-      $('rosterColumnAdmin').hidden=!rosterCanEdit||dossierEmbedded||ficheMode;
+      $('rosterColumnAdmin').hidden=dossierEmbedded||ficheMode;
       if(rosterCanEdit)initializeRosterEditor();
     }catch(_error){
       rosterCanEdit=false;rosterConfigs=Object.create(null);
