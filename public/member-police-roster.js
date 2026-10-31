@@ -3,6 +3,7 @@
 import './personnel-list-visuals.js';
 import {policeGroupedRoster,policeTierDisplay} from './police-roster-cadre.js';
 import {policeRosterSeriesBadges} from './police-roster-series.js';
+import {attachRosterNamePreview,dismissRosterNamePreview} from './roster-name-preview.js';
 
 export const PUBLIC_POLICE_SPECIALTIES=Object.freeze([
   'Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
@@ -106,6 +107,7 @@ function renderHeader(thead){
  thead.replaceChildren(tr);
 }
 export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonClick=null){
+ dismissRosterNamePreview();
  const q=String(query).trim().toLocaleLowerCase('nl-BE');
  const people=(Array.isArray(records)?records:[])
    .filter(p=>[p.call,p.name,p.rank,p.series,p.status,
@@ -134,8 +136,12 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
       nameButton.setAttribute('aria-label','Open personeelskaart van '+(person.name||'')+
        ' ('+(person.call||'onbekende call')+')');
       nameButton.addEventListener('click',()=>onPersonClick(person));
+      attachRosterNamePreview(nameButton,person,{clickHint:true});
       addCell(tr,nameButton,'mr-name-cell');
-     }else addCell(tr,nameCell);
+     }else{
+       attachRosterNamePreview(nameCell,person);
+       addCell(tr,nameCell);
+     }
      addCell(tr,seriesCell(person));
      const status=String(person.status||'Onbekend').trim()||'Onbekend';
      addCell(tr,element('span',status,
