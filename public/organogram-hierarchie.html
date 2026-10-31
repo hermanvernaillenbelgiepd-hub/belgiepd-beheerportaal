@@ -116,6 +116,45 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .spec-heading{display:flex;align-items:center;gap:8px;margin:17px 0 4px;font-size:11px;font-weight:900;color:#cce4ff}
 .spec-heading:before{content:"";width:10px;height:10px;border:1px solid #91b5d8;border-radius:2px;transform:rotate(45deg)}
 .spec-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:9px;align-items:start}
+
+/* Brandweer: all specialties and 'Overige leden' share ONE horizontal row,
+   exactly like the compact police specialties. Never wrap to a second line;
+   any future overflow stays scrollable INSIDE this section, not the whole page.
+   Scope to the fire service so ambulance/depannage/burger remain untouched. */
+.service[data-dept="brandweer"]>.service-body>.spec-list{
+ display:grid;
+ grid-template-columns:none;
+ grid-auto-flow:column;
+ grid-auto-columns:270px;
+ align-items:start;
+ justify-content:start;
+ gap:9px;
+ min-width:0;
+ max-width:100%;
+ overflow-x:auto;
+ overflow-y:hidden;
+ overscroll-behavior-inline:contain;
+ -webkit-overflow-scrolling:touch;
+ padding:1px 1px 10px;
+ scrollbar-width:thin;
+ scrollbar-color:#607fa4 #10243b;
+}
+.service[data-dept="brandweer"]>.service-body>.spec-list>.specialty{
+ box-sizing:border-box;
+ width:270px;
+ min-width:0;
+ max-width:none;
+ margin:0;
+}
+@media(max-width:650px){
+ .service[data-dept="brandweer"]>.service-body>.spec-list{
+  grid-auto-columns:240px;
+ }
+ .service[data-dept="brandweer"]>.service-body>.spec-list>.specialty{
+  width:240px;
+ }
+}
+
 .specialty{border:1px solid #3c5879;background:#0d233a;border-radius:9px;overflow:hidden}
 .specialty summary{padding:8px;font-weight:800;font-size:11px;cursor:pointer;list-style:none;background:#1b3654}
 .specialty summary::-webkit-details-marker{display:none}
@@ -2253,6 +2292,11 @@ function serviceCard(item,settings,solo){
  if(solo&&settings.id!=='politie'){
   body.append(el('div','spec-heading','SPECIALISATIES / PLOEGEN'));
   const specs=el('div','spec-list');
+  if(settings.id==='brandweer'){
+   specs.tabIndex=0;
+   specs.setAttribute('role','group');
+   specs.setAttribute('aria-label','Brandweerspecialisaties op één horizontale rij; scroll horizontaal voor meer');
+  }
   if(!item.branches.length)specs.append(el('div','gaps',state.demo?'Geen leden':'Geen vrijgegeven specialisaties of overige leden'));
   for(const branch of item.branches)specs.append(specialtyBranch(branch,false));
   body.append(specs);
