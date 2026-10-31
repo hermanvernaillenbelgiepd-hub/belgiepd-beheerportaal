@@ -63,10 +63,14 @@ tbody tr:nth-child(2n){background:#183450}
  max-height:calc(var(--mr-custom-insignia-width,30px) * .55);
 }
 .roster-personnel-page .mr-table .mr-rank,
-.roster-personnel-page .mr-table .mr-status,
 .roster-personnel-page .mr-table .mr-series-badge,
 .roster-personnel-page .mr-table .mr-person-open{
  font-size:var(--mr-custom-text-size,11px);
+}
+/* Limit only the text inside a fixed-size status chip so longer labels
+   such as NON-ACTIEF never get cut off when officers enlarge other text. */
+.roster-personnel-page .mr-table .mr-status{
+ font-size:min(var(--mr-custom-text-size,11px),12px);
 }
 .roster-personnel-page .mr-table .mr-specialty{
  font-size:clamp(8px,calc(var(--mr-custom-text-size,11px) - 2px),14px);
