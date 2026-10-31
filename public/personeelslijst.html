@@ -207,6 +207,9 @@ if(directoryEmbedded){
  document.body.classList.add('roster-embedded');
  $('discordLogin').href='/auth/discord/start?return=%2Fpersoneelsbeheer.html';
  $('discordLogin').target='_top';
+ const adminSettingsLink=document.querySelector(
+   'a[href="/personeelsbeheer.html#rosterColumnDetails"]');
+ if(adminSettingsLink)adminSettingsLink.target='_top';
 }
 const idToken=()=>auth?.currentUser?.uid?.startsWith('discord:')?auth.currentUser.getIdToken():null;
 function openRosterProfile(person){
