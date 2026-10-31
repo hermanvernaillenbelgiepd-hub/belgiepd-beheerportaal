@@ -5,7 +5,7 @@ export const DEPTS=Object.freeze(['politie','brandweer','ambulance','depannage',
 export const DISPLAY_DEPTS=Object.freeze(['bestuur',...DEPTS]);
 export const LEADERSHIP_LEVELS=Object.freeze({
  bestuur:[],politie:['Korpsleiding','Officierenkader','Middenkader','Basiskader','Agentenkader'],
- brandweer:['Zoneleiding','Officieren','Middenkader'],
+ brandweer:['Zoneleiding','Officieren','Middenkader','Basiskader','Stagiairs'],
  ambulance:['DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','STAG'],
  depannage:['Leiding / AWV'],burger:['Burgerraad']
 });
