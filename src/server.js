@@ -247,6 +247,13 @@ async function requireUser(req,res,next){
     const canSwitch=eligibleForTechnicalProfile(verified,actor,discordMember,process.env);
     actor.profileTechnicalAvailable=canSwitch;
     actor.discordPoliceRank=verifiedPoliceRank(discordMember,process.env.DISCORD_GUILD_ID);
+    // Identical verified officer proof as the shared personnel-list layout
+    // editor (up to 24 hours), not the much shorter 15-minute dossier freshness
+    // marker. Neither a callsign nor a saved role grants this permission.
+    actor.discordRosterEditorVerified=Boolean(
+      discordId&&verified.uid==='discord:'+discordId&&
+      verifiedOfficerCadre(discordMember,process.env.DISCORD_GUILD_ID)
+    );
     req.bpd=canSwitch&&technicalCookieIsValid(req.headers.cookie,verified.uid,discordId,
       process.env.BPD_PORTAL_PROFILE_SIGNING_KEY)?technicalActor(actor):actor;
     next();
