@@ -419,6 +419,20 @@ header{padding-inline:clamp(15px,2vw,34px)}
 }
 
 
+/* Equal badge widths in REEKS and STATUS; preserve row height and tones. */
+.staff-roster-table .roster-series-cell .police-roster-badge,
+.staff-roster-table .roster-series-cell .police-roster-series > *,
+.staff-roster-table .pill,
+.staff-roster-table .active-leave-pill{
+  box-sizing:border-box;width:90px;min-width:90px;max-width:90px;
+  min-height:20px;display:inline-flex;align-items:center;justify-content:center;
+  text-align:center;vertical-align:middle;white-space:nowrap;
+  padding:2px 4px;font-size:9.5px;line-height:1.1;
+}
+.staff-roster-table .roster-series-cell .police-roster-series{
+  display:flex;align-items:center;flex-wrap:wrap;gap:3px;
+}
+
 /* Consistent status colors in the staff roster. */
 .staff-roster-table .pill.roster-status-active{background:#17663f;color:#e4ffef;border-color:#28885a}
 .staff-roster-table .pill.roster-status-leave{background:#245a9c;color:#eaf5ff;border-color:#4284cf}
