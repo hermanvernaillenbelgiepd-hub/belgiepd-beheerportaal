@@ -1292,7 +1292,7 @@ function specialtyMark(label){
 // Adjust dimensions here only; do not duplicate column widths in CSS.
 const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
   call:78,grade:116,rank:164,name:190,series:108,status:108,
-  specialty:82,specialtySummary:180,file:76,discord:224
+  specialty:82,summary:180,file:76,discord:224
 });
 function render(){
   const q=$('search').value.trim().toLowerCase(),dept=$('dept').value;
@@ -1314,7 +1314,8 @@ function render(){
   // Fiche and Discord-ID. Keeping widths in a colgroup prevents drift.
   const w=rosterConfigs[dept]?.widths||ROSTER_COLUMN_WIDTH_DEFAULTS;
   const widths=[w.call,w.grade,w.rank,w.name,w.series,w.status,
-    ...(cols.length?cols.map(()=>w.specialty):[w.specialtySummary]),
+    ...(cols.length?cols.map(label=>
+      rosterConfigs[dept]?.specialtyWidths?.[label]||w.specialty):[w.summary]),
     w.file,w.discord];
   const colgroup=document.createElement('colgroup');
   for(const width of widths){
@@ -1573,6 +1574,27 @@ function rosterEditorRender(){
   };
   label.append(name,input);fields.append(label);
  }
+ const existing=[
+  ...BPDPersonnelVisuals.specialtyColumns(dept),
+  ...(cfg.customSpecialties||[]).map(x=>x.label)
+ ];
+ cfg.specialtyWidths ||= {};
+ const caption=document.createElement('h4');caption.textContent='Breedte per specialisatie';
+ caption.style.margin='9px 0 5px';
+ fields.append(caption);
+ for(const labelText of existing){
+  const label=document.createElement('label');
+  const title=document.createElement('span');title.textContent=labelText;
+  const input=document.createElement('input');input.type='number';
+  input.min='60';input.max='300';input.step='1';
+  input.value=cfg.specialtyWidths[labelText]||widths.specialty;
+  input.setAttribute('aria-label','Breedte specialisatie '+labelText);
+  input.onchange=()=>{
+    cfg.specialtyWidths[labelText]=Number(input.value);
+    render();rosterEditorFeedback('Specialisatiebreedte aangepast als voorbeeld. Bewaar om toe te passen.');
+  };
+  label.append(title,input);fields.append(label);
+ }
  const target=$('rosterCustomSpecialties');target.replaceChildren();
  for(const item of cfg.customSpecialties||[]){
   const remove=document.createElement('button');remove.type='button';
@@ -1581,6 +1603,7 @@ function rosterEditorRender(){
   remove.onclick=()=>{
     if(!confirm('Kolom "'+item.label+'" verbergen? Bestaande personeelsgegevens blijven bewaard.'))return;
     cfg.customSpecialties=cfg.customSpecialties.filter(x=>x.code!==item.code);
+    delete cfg.specialtyWidths[item.label];
     render();rosterEditorRender();
   };
   target.append(remove);
@@ -1631,6 +1654,7 @@ function initializeRosterEditor(){
    try{
     const result=await request('/api/roster-columns/'+dept,{
       method:'PUT',body:{expectedRevision:cfg.revision,widths:cfg.widths,
+        specialtyWidths:cfg.specialtyWidths||{},
         customSpecialties:cfg.customSpecialties}
     });
     rosterConfigs[dept]=result.config;
