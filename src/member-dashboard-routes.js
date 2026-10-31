@@ -46,44 +46,68 @@ export function ambulanceMemberWorkspaceStatus(id,grant,roster,stale=false){
 // Personnel-list access and individual dossier access are separate.
 // Export ONLY roster columns, never Discord IDs, activity, dossiers,
 // source row, sanctions, notes, contact information or audit history.
+// One read-only directory entry per Discord identity, with Police as its
+// primary registration if present. Other service enrollments never create a
+// fictional police callsign, rank, dossier, or permission.
 export function publicPoliceRoster(rows,extraPublicLabels=[]){
-  const seen=new Set();
-  const visible=[];
-  for(const p of rows||[]){
-    if(p?.dept!=='politie'||!discordId.test(strip(p.personId))||!strip(p.name))continue;
-    if(seen.has(p.personId))continue;
-    seen.add(p.personId);
-    // Only explicitly whitelisted public POLICE specialization statuses;
-    // never include identities, role IDs, or protected dossier attributes.
-    const labels=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
-      'K9','RAGO','Dispatch','TO','AE',...extraPublicLabels];
-    const safeStatuses=Object.fromEntries(labels.map(label=>{
-      const value=Array.isArray(p.specialties)?
-        p.specialties.find(x=>x?.label===label)?.value:undefined;
-      return [label,typeof value==='string'?value.trim().slice(0,40)||'Niet ingevuld':
-        'Niet ingevuld'];
-    }));
-    visible.push({
-      call:strip(p.call).slice(0,18),name:strip(p.name).slice(0,90),
-      rank:strip(p.rank).slice(0,95),series:strip(p.series).slice(0,85),
-      status:strip(p.status).slice(0,30),
-      specialties:labels.map(label=>({label,value:safeStatuses[label]}))
-    });
-  }
-  const special=call=>strip(call)==='008';
-  visible.sort((a,b)=>{
-    if(special(a.call)!==special(b.call))return special(a.call)?1:-1;
-    const x=callNumber(a.call),y=callNumber(b.call);
-    if((x===null)!==(y===null))return x===null?1:-1;
-    if(x!==null&&y!==null){
-      const groupDiff=Math.floor(y/100)-Math.floor(x/100);
-      if(groupDiff)return groupDiff;
-      if(x!==y)return x-y;
-    }
-    return a.call.localeCompare(b.call,'nl',{numeric:true})||
-      a.name.localeCompare(b.name,'nl');
-  });
-  return visible.slice(0,400);
+ const byIdentity=new Map();
+ const whitelist=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
+   'K9','RAGO','Dispatch','TO','AE',...extraPublicLabels];
+ const serviceNames={politie:'Politie',brandweer:'Brandweer',
+   ambulance:'Ambulance',depannage:'Depannage'};
+ for(const person of rows||[]){
+   if(!person||!serviceNames[person.dept]||
+      !discordId.test(strip(person.personId))||!strip(person.name))continue;
+   const id=strip(person.personId);
+   let combined=byIdentity.get(id);
+   if(!combined){
+     combined={police:null,others:[],services:new Set()};
+     byIdentity.set(id,combined);
+   }
+   combined.services.add(person.dept);
+   if(person.dept==='politie'){
+     if(!combined.police)combined.police=person;
+   }else if(!combined.others.some(p=>p.dept===person.dept))
+     combined.others.push(person);
+ }
+ const visible=[];
+ for(const combined of byIdentity.values()){
+   const primary=combined.police||combined.others[0];
+   if(!primary)continue;
+   const hasPoliceEntry=Boolean(combined.police);
+   const statuses=Object.fromEntries(whitelist.map(label=>{
+     const value=hasPoliceEntry&&Array.isArray(primary.specialties)?
+       primary.specialties.find(x=>x?.label===label)?.value:undefined;
+     return [label,typeof value==='string'?value.trim().slice(0,40)||'Niet ingevuld':
+       'Niet ingevuld'];
+   }));
+   visible.push({
+     call:hasPoliceEntry?strip(primary.call).slice(0,18):'—',
+     name:strip(primary.name).slice(0,90),
+     rank:hasPoliceEntry?strip(primary.rank).slice(0,95):'—',
+     series:hasPoliceEntry?strip(primary.series).slice(0,85):'—',
+     status:hasPoliceEntry?strip(primary.status).slice(0,30):'Nog geen politie-inschrijving',
+     hasPoliceEntry,
+     services:Object.keys(serviceNames).filter(dept=>combined.services.has(dept))
+       .map(dept=>serviceNames[dept]),
+     specialties:whitelist.map(label=>({label,value:statuses[label]}))
+   });
+ }
+ const special=call=>strip(call)==='008';
+ visible.sort((a,b)=>{
+   if(a.hasPoliceEntry!==b.hasPoliceEntry)return a.hasPoliceEntry?-1:1;
+   if(special(a.call)!==special(b.call))return special(a.call)?1:-1;
+   const x=callNumber(a.call),y=callNumber(b.call);
+   if((x===null)!==(y===null))return x===null?1:-1;
+   if(x!==null&&y!==null){
+     const groupDiff=Math.floor(y/100)-Math.floor(x/100);
+     if(groupDiff)return groupDiff;
+     if(x!==y)return x-y;
+   }
+   return a.call.localeCompare(b.call,'nl',{numeric:true})||
+     a.name.localeCompare(b.name,'nl');
+ });
+ return visible.slice(0,1200);
 }
 // Directory for authenticated and guild-verified members; display fields only.
 // A directory entry never authorizes service dossier access or modifications.
