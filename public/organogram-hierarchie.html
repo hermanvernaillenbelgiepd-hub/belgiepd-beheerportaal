@@ -1590,6 +1590,113 @@ html.roster-card-embed .person-profile-shell{padding:12px}
 #services .person .bpd-service-stage>.bpd-custom-uniform-layer>img{
  width:100%;height:100%;object-fit:contain;
 }
+
+/* AZLS organogram: one aligned compact card system for medical coordination
+   and for all specialties, reusing actual uploaded portrait artwork.
+   Keep other services and profile modals unchanged. */
+#services .service[data-dept="ambulance"]>.service-body>.spec-list{
+ display:grid;
+ grid-template-columns:repeat(var(--azls-specialty-count,5),minmax(0,1fr));
+ gap:8px;
+ width:100%;max-width:100%;min-width:0;
+ align-items:start;
+ overflow:visible;
+}
+#services .service[data-dept="ambulance"]>.service-body>.spec-list>.specialty{
+ box-sizing:border-box;min-width:0;width:100%;max-width:100%;
+}
+#services .service[data-dept="ambulance"]>.service-body>.spec-list>.specialty>.specialty-content{
+ padding:8px 7px 10px;
+}
+#services .service[data-dept="ambulance"]>.service-body>.spec-list .group-title{
+ margin:5px 0 7px;
+ font-size:10px;line-height:1.3;
+}
+#services .service[data-dept="ambulance"]>.service-body>.spec-list .persons.personnel-card-grid{
+ display:flex;flex-direction:column;flex-wrap:nowrap;
+ align-items:stretch;justify-content:flex-start;
+ gap:7px;width:100%;min-width:0;margin:0;
+}
+#services .service[data-dept="ambulance"]>.service-body>.spec-list .persons.personnel-card-grid>.person{
+ display:flex;align-items:center;box-sizing:border-box;
+ flex:0 0 auto;width:100%;min-width:0;max-width:none;
+ min-height:82px;height:auto;
+ padding:7px 6px;gap:7px;
+ border-radius:7px;
+}
+#services .service[data-dept="ambulance"] .person>.portrait.azls-compact-portrait{
+ display:flex;align-items:center;justify-content:center;
+ flex:0 0 48px!important;
+ width:48px!important;min-width:48px!important;max-width:48px!important;
+ height:55px!important;
+ box-sizing:border-box;
+ border:1px solid #4c8b9c;border-radius:5px;
+ overflow:hidden;background:#0f3046;
+ color:#afdfdf;
+}
+#services .service[data-dept="ambulance"] .person .azls-compact-rank{
+ display:block;width:100%;height:100%;object-fit:contain;
+}
+#services .service[data-dept="ambulance"] .person .azls-compact-symbol{
+ display:block;font-size:25px;line-height:1;
+ font-family:Arial,sans-serif;font-weight:600;
+ color:#9bdad7;
+}
+#services .service[data-dept="ambulance"] .person>.portrait.bpd-service-uniform{
+ flex:0 0 48px!important;
+ width:48px!important;min-width:48px!important;max-width:48px!important;
+ height:55px!important;
+ border-color:#4c8b9c;
+}
+#services .service[data-dept="ambulance"] .person .num{
+ display:block;box-sizing:border-box;
+ flex:0 0 30px;min-width:30px;max-width:30px;
+ padding:3px 2px;font-size:9px;text-align:center;
+ white-space:normal;overflow-wrap:anywhere;
+}
+#services .service[data-dept="ambulance"] .person .identity{
+ display:flex;flex:1 1 0;flex-direction:column;
+ justify-content:center;min-width:0;
+ overflow:visible;overflow-wrap:anywhere;
+}
+#services .service[data-dept="ambulance"] .person .identity b{
+ font-size:11px;line-height:1.24;
+ display:block;white-space:normal;overflow-wrap:anywhere;
+ word-break:normal;text-overflow:clip;
+}
+#services .service[data-dept="ambulance"] .person .identity small{
+ font-size:9px;line-height:1.3;white-space:normal;
+ overflow-wrap:anywhere;
+}
+#services .service[data-dept="ambulance"] .person .person-role-flags{
+ display:flex;flex-wrap:wrap;gap:3px;
+ margin-top:4px;
+}
+#services .service[data-dept="ambulance"] .person .flag{
+ font-size:8px;line-height:1.2;padding:2px 3px;
+}
+/* Medical leadership keeps two clean centered cards instead of spanning the
+   whole row; both use the same AZLS visual identity as the specialties. */
+#services .service[data-dept="ambulance"] .level-body .person{
+ min-height:82px;height:auto;
+}
+/* A narrow screen still retains one scrollable row of readable specialties.
+   Additional AZLS specialties >7 are also protected from becoming too slim. */
+@media (max-width:1100px){
+ #services .service[data-dept="ambulance"]>.service-body>.spec-list{
+  grid-template-columns:none;grid-auto-flow:column;
+  grid-auto-columns:235px;overflow-x:auto;overflow-y:hidden;
+  overscroll-behavior-inline:contain;scrollbar-width:thin;
+  padding-bottom:9px;
+ }
+}
+#services .service[data-dept="ambulance"]>.service-body>.spec-list.azls-specs-overflow{
+ grid-template-columns:none;grid-auto-flow:column;
+ grid-auto-columns:minmax(210px,1fr);
+ overflow-x:auto;overflow-y:hidden;
+ scrollbar-width:thin;
+}
+
 </style>
 </head>
 <body>
@@ -2256,14 +2363,45 @@ $('person-profile').addEventListener('close',()=>notifyCardParent('closed'));
 $('person-profile').addEventListener('click',event=>{
  if(event.target===event.currentTarget)event.currentTarget.close();
 });
+/* AZLS thumbnails use uploaded uniform and rank assets, without pretending
+   a generic medical pictogram is an official degree or assignment. When an
+   actual coat is missing show the real uploaded grade, otherwise a neutral
+   medical placeholder; never leave a person card visually empty. */
+function makeAzlsCompactPortrait(person){
+ const selected=window.BPDUniformAssignments?.forPerson?.(person);
+ if(selected?.uniformUrl)return makeServiceUniformPortrait(person);
+ const grade=serviceRankKey(person?.rank);
+ const art=selected?.rankUrl||
+  serviceRankArtworks.get('rank_ambulance_'+grade)||
+  serviceRankArtworks.get('rank_ambulance_'+grade.split('_')[0]);
+ const wrapper=el('span','portrait azls-compact-portrait');
+ wrapper.setAttribute('role','img');
+ wrapper.setAttribute('aria-label',art?
+  'AZLS-gradenafbeelding: '+String(person?.rank||''):
+  'Ambulancedienst (gradenafbeelding nog niet ingesteld)');
+ if(art){
+  const img=el('img','azls-compact-rank');
+  img.src=art;img.alt='';img.loading='lazy';img.decoding='async';
+  img.onerror=()=>{
+   wrapper.replaceChildren(el('span','azls-compact-symbol','✚'));
+   wrapper.classList.add('azls-compact-fallback');
+  };
+  wrapper.append(img);
+ }else{
+  wrapper.classList.add('azls-compact-fallback');
+  wrapper.append(el('span','azls-compact-symbol','✚'));
+ }
+ return wrapper;
+}
 function person(p,compact=false,specialtyLabel=null){
  const b=el('button','person'+(compact?' person-compact':''));b.type='button';
  b.append(el('span','num',p.call||'—'));
  // Use the SAME fire-service uniform and nameplate as the expanded profile.
  // The former overview called the police renderer only, so fire members
  // had no portrait even though their nameplate existed in the open profile.
- const portrait=p.dept==='brandweer'?
-  makeServiceUniformPortrait(p):window.BPDPoliceUniform?.makePortrait?.(p);
+ const portrait=p.dept==='brandweer'?makeServiceUniformPortrait(p):
+  p.dept==='ambulance'?makeAzlsCompactPortrait(p):
+  window.BPDPoliceUniform?.makePortrait?.(p);
  if(portrait)b.append(portrait);
  const label=el('span','identity');
  const name=el('b','',p.name||'Onbekend');name.title=p.name||'';
@@ -2557,6 +2695,11 @@ function serviceCard(item,settings,solo){
  if(solo&&settings.id!=='politie'){
   body.append(el('div','spec-heading','SPECIALISATIES / PLOEGEN'));
   const specs=el('div','spec-list');
+  if(settings.id==='ambulance'){
+   const branchCount=Math.max(1,item.branches.length);
+   specs.style.setProperty('--azls-specialty-count',String(branchCount));
+   if(branchCount>7)specs.classList.add('azls-specs-overflow');
+  }
   if(settings.id==='brandweer'){
    const branchCount=Math.max(1,item.branches.length);
    specs.style.setProperty('--fire-specialty-count',String(branchCount));
