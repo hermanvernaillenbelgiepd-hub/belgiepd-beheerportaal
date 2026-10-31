@@ -2,6 +2,10 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
 import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
+import {verifiedOfficerCadre} from './verified-police-cadre.js';
+import {PERSONNEL_ROSTER_DEFAULT,validatePersonnelRosterLayout,
+ savedPersonnelRosterLayout} from './personnel-roster-layout-policy.js';
+
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
   awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
@@ -145,6 +149,10 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       const ambulanceIds=['1309532438053130323','1309532437977497697',
         '1309532438053130325'];
       req.memberPortal={id,managed:managed.exists?managed.data():null,
+        // Verified official Discord roles only; this authorizes layout
+        // preferences, NEVER dossiers or personnel record mutations.
+        canEditRosterLayout:!!verifiedOfficerCadre(identity.data(),
+          process.env.DISCORD_GUILD_ID),
         ambulanceDiscordRoleSeen:Array.isArray(roles)&&
           ambulanceIds.some(role=>roles.includes(role))};
       next();
@@ -209,6 +217,42 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
     }catch(error){
       console.error('Organogramoverzicht:',error?.code||'bron niet beschikbaar');
       return res.status(503).json({error:'Organogram momenteel niet beschikbaar'});
+    }
+  });
+  // Shared roster presentation only. Reading is allowed to all verified
+  // Discord members; writing is restricted on the server to actual verified
+  // Officierenkader / Korpsleiding (not the editable roster or callsign).
+  const layoutDoc=()=>getFirestore().collection('bpd_portal_visual_settings')
+   .doc('police_personnel_roster');
+  app.get('/api/member/personnel-layout',memberIdentity,async(req,res)=>{
+    try{
+      const snap=await layoutDoc().get();
+      return res.json({
+        layout:snap.exists?savedPersonnelRosterLayout(snap.get('layout')):
+          {...PERSONNEL_ROSTER_DEFAULT},
+        canEdit:req.memberPortal.canEditRosterLayout===true
+      });
+    }catch(error){
+      console.error('Personeelslijstafmetingen lezen:',error?.code||'niet beschikbaar');
+      return res.status(503).json({error:'De personeelslijstinstellingen zijn niet beschikbaar'});
+    }
+  });
+  app.put('/api/member/personnel-layout',memberIdentity,async(req,res)=>{
+    if(req.memberPortal.canEditRosterLayout!==true)
+      return res.status(403).json({error:'Alleen Officierenkader en Korpsleiding kunnen afmetingen wijzigen'});
+    let layout;
+    try{layout=validatePersonnelRosterLayout(req.body?.layout);}
+    catch(error){return res.status(400).json({error:error.message});}
+    try{
+      await layoutDoc().set({
+        layout,
+        modifiedBy:req.memberPortal.id,
+        updatedAt:new Date().toISOString()
+      });
+      return res.json({saved:true,layout});
+    }catch(error){
+      console.error('Personeelslijstafmetingen opslaan:',error?.code||'niet beschikbaar');
+      return res.status(503).json({error:'De afmetingen konden niet worden opgeslagen'});
     }
   });
   app.get('/api/member/personnel-list',memberIdentity,async(_req,res)=>{
