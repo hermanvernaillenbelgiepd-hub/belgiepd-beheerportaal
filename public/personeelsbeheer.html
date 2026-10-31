@@ -964,9 +964,9 @@ function clearUnifiedCard(){
  for(const key of ['personnelCardId','personnelCardCopyId','personnelCardPing'])$(key).hidden=true;
 }
 function openUnifiedCard(call,name){
- if(dossierEmbedded||ficheMode||typeof call!=='string'||typeof name!=='string'||
+ if(cardDialog.open||dossierEmbedded||ficheMode||typeof call!=='string'||typeof name!=='string'||
    !/^[a-zA-Z0-9 *_-]{1,24}$/.test(call)||!name.trim()||name.length>90)return;
- closeUnifiedCard();clearUnifiedCard();
+ clearUnifiedCard();
  $('personnelCardTitle').textContent='Personeelskaart · '+call+' · '+name;
  $('personnelCardInfo').textContent='Personeelskaart laden…';
  $('personnelCardInfo').hidden=false;
@@ -977,7 +977,7 @@ function openUnifiedCard(call,name){
  const id=matches.length===1?String(matches[0].discordId||''):'';
  if(/^\d{15,22}$/.test(id)){
   personnelCardDiscordId=id;
-  $('personnelCardId').textContent='DC-ID: '+id;
+  $('personnelCardId').textContent='Discord-ID (DC-ID): '+id;
   for(const key of ['personnelCardId','personnelCardCopyId','personnelCardPing'])$(key).hidden=false;
  }
  const params=new URLSearchParams({embedded:'1',dienst:'politie',kaart:call,naam:name});
@@ -2090,7 +2090,7 @@ function initializeRosterEditor(){
 
 async function load(){
   if(!auth?.currentUser){
-    personnelManagementAllowed=false;
+    personnelManagementAllowed=false;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=true;
     updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
@@ -2184,7 +2184,7 @@ async function load(){
       else if(!still)$('panel').hidden=true;
     }
   }catch(e){
-    people=[];personnelManagementAllowed=false;
+    people=[];personnelManagementAllowed=false;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=true;
     $('panel').hidden=true;render();updatePersonnelView();
     if(!dossierEmbedded&&!ficheMode){
