@@ -418,6 +418,14 @@ header{padding-inline:clamp(15px,2vw,34px)}
  .staff-list-head h2{font-size:14px}
 }
 
+
+/* Consistent status colors in the staff roster. */
+.staff-roster-table .pill.roster-status-active{background:#17663f;color:#e4ffef;border-color:#28885a}
+.staff-roster-table .pill.roster-status-leave{background:#245a9c;color:#eaf5ff;border-color:#4284cf}
+.staff-roster-table .pill.roster-status-inactive{background:#962f37;color:#ffebec;border-color:#c25059}
+.staff-roster-table .pill.roster-status-half{background:#b45b13;color:#fff3e5;border-color:#de8934}
+.staff-roster-table .pill.roster-status-nonactive{background:#7044a1;color:#f5ecff;border-color:#966bc8}
+.staff-roster-table .pill.roster-status-removed{background:#58616d;color:#f3f6f9;border-color:#7c8692}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -1383,7 +1391,16 @@ function render(){
       label.className='active-leave-pill';label.textContent='🏖️ Verlof';
       label.title='Vandaag valt binnen een goedgekeurde verlofperiode (centrale verlofmodule)';
     }else{
-      label.className='pill';label.textContent=person.status||'Onbekend';
+      const status=String(person.status||'Onbekend').trim();
+      const normalized=status.toUpperCase().replace(/[\s_-]+/g,' ');
+      const tone=normalized==='ACTIEF'?'active':
+        normalized==='VERLOF'?'leave':
+        normalized==='INACTIEF'?'inactive':
+        normalized==='50/50'?'half':
+        normalized==='NON ACTIEF'?'nonactive':
+        normalized==='VERWIJDERD'?'removed':'other';
+      label.className='pill roster-status-'+tone;
+      label.textContent=status;
     }
     personStatus.append(label);tr.append(personStatus);
     if(!cols.length){
