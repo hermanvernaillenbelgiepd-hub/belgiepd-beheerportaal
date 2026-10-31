@@ -10,6 +10,7 @@ class El {
  constructor(tag,cls='',text=''){
   this.tag=tag;this.className=cls;this.textContent=text;this.children=[];
   this.attrs={};this.style={};this.title='';this.dataset={};this.loading='';
+  this.classList={add:name=>{this.className+=' '+name;}};
  }
  append(...xs){this.children.push(...xs)}
  setAttribute(key,value){this.attrs[key]=value}
@@ -27,7 +28,8 @@ const run=(code,other={})=>runInNewContext(code,{el,window:{
 },serviceCoatLayouts:new Map(),serviceNameplateLayouts:new Map(),serviceRankArtworks:new Map(),
  serviceUniformLayouts:new Map(),serviceVisibilityLayouts:new Map(),...other});
 test('roster uses the exact service portrait factory used in the expanded profile for brandweer',()=>{
- assert.match(page,/const portrait=p\.dept==='brandweer'\?\s*makeServiceUniformPortrait\(p\):window\.BPDPoliceUniform/);
+ assert.match(page,/const portrait=p\.dept==='brandweer'\?makeServiceUniformPortrait\(p\):/);
+ assert.match(page,/p\.dept==='ambulance'\?makeAzlsCompactPortrait\(p\):/);
  assert.match(page,/window\.BPDPoliceUniform\?\.makePortrait\?\.\(p,true\):makeServiceUniformPortrait\(p\)/);
 });
 test('brandweer small card now shows the live nameplate and grade on the actual uniform',()=>{
@@ -50,6 +52,7 @@ test('other services retain their existing compact presentation',()=>{
  const police=api.person({dept:'politie',name:'Test',call:'300',rank:'Aspirant Inspecteur'});
  assert.ok(police.children.some(x=>x.className.includes('bpd-police-formal')));
  const ambulance=api.person({dept:'ambulance',name:'Test',call:'AMB-01',rank:'AMB'});
+ assert.ok(ambulance.children.some(x=>x.className.includes('azls-compact-portrait')));
  assert.ok(!ambulance.children.some(x=>x.className.includes('bpd-service-uniform')));
 });
 test('service uniform styles apply to the organogram thumbnail, not only the open dialog',()=>{
