@@ -1684,18 +1684,26 @@ function rosterEditorRender(){
  }
  const target=$('rosterCustomSpecialties');target.replaceChildren();
  for(const item of cfg.customSpecialties||[]){
+  const row=document.createElement('div');row.className='roster-custom-item';
+  const title=document.createElement('span');
+  title.textContent=(item.icon||'🏷️')+' '+item.label;
   const remove=document.createElement('button');remove.type='button';
-  remove.textContent=(item.icon||'🏷️')+' '+item.label+' ×';
-  remove.title='Deze kolom verwijderen (bestaande opleidingsregistraties blijven in de audit)';
+  remove.textContent='Verwijderen';
+  remove.setAttribute('aria-label','Specialisatie '+item.label+' verwijderen');
+  remove.title='Verwijder deze specialisatiekolom uit '+(departments[dept]||dept);
   remove.onclick=()=>{
-    if(!confirm('Kolom "'+item.label+'" verbergen? Bestaande personeelsgegevens blijven bewaard.'))return;
+    if(!confirm('Specialisatie "'+item.label+'" verwijderen uit '+(departments[dept]||dept)+
+      '? De kolom verdwijnt pas voor iedereen nadat je op "Instellingen bewaren voor iedereen" klikt. Bestaande dossierregistraties en historiek blijven behouden.'))return;
     cfg.customSpecialties=cfg.customSpecialties.filter(x=>x.code!==item.code);
     delete cfg.specialtyWidths[item.label];
+    rosterImagePending.delete(dept+':'+item.code);
     render();rosterEditorRender();
+    rosterEditorFeedback('Specialisatie "'+item.label+
+      '" uit het voorbeeld verwijderd. Klik op "Instellingen bewaren voor iedereen" om de verwijdering definitief toe te passen.');
   };
-  target.append(remove);
+  row.append(title,remove);target.append(row);
  }
- if(!target.children.length)target.textContent='Nog geen extra specialisaties.';
+ if(!target.children.length)target.textContent='Geen toegevoegde specialisaties voor deze hulpdienst.';
 }
 function initializeRosterEditor(){
  const selector=$('rosterColumnDept');
