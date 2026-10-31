@@ -1716,10 +1716,20 @@ async function load(){
       rosterConfigs=cfg.departments||Object.create(null);
       rosterCanEdit=cfg.canEdit===true;
       $('rosterColumnAdmin').hidden=dossierEmbedded||ficheMode;
+      $('rosterColumnEditorContent').hidden=!rosterCanEdit;
+      $('rosterColumnAccessMessage').hidden=rosterCanEdit;
       if(rosterCanEdit)initializeRosterEditor();
-    }catch(_error){
+      else $('rosterColumnAccessMessage').textContent=
+        'Deze instellingen vereisen een geverifieerde leidinggevende of een goedgekeurd technisch beheerprofiel. Controleer je portaalrechten.';
+      if(location.hash==='#rosterColumnDetails')$('rosterColumnDetails').open=true;
+    }catch(error){
       rosterCanEdit=false;rosterConfigs=Object.create(null);
-      $('rosterColumnAdmin').hidden=true;
+      $('rosterColumnAdmin').hidden=dossierEmbedded||ficheMode;
+      $('rosterColumnEditorContent').hidden=true;
+      $('rosterColumnAccessMessage').hidden=false;
+      $('rosterColumnAccessMessage').textContent=
+        'Instellingen niet beschikbaar: '+error.message;
+      if(location.hash==='#rosterColumnDetails')$('rosterColumnDetails').open=true;
     }
     const data=await request('/api/personnel/overview');
     try{
