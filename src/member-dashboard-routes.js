@@ -1,6 +1,7 @@
 import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
+import {ROSTER_COLUMN_COLLECTION,rosterConfig} from './roster-column-config.js';
 import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
 import {verifiedOfficerCadre} from './verified-police-cadre.js';
 import {PERSONNEL_ROSTER_DEFAULT,validatePersonnelRosterLayout,
@@ -45,7 +46,7 @@ export function ambulanceMemberWorkspaceStatus(id,grant,roster,stale=false){
 // Personnel-list access and individual dossier access are separate.
 // Export ONLY roster columns, never Discord IDs, activity, dossiers,
 // source row, sanctions, notes, contact information or audit history.
-export function publicPoliceRoster(rows){
+export function publicPoliceRoster(rows,extraPublicLabels=[]){
   const seen=new Set();
   const visible=[];
   for(const p of rows||[]){
@@ -55,7 +56,7 @@ export function publicPoliceRoster(rows){
     // Only explicitly whitelisted public POLICE specialization statuses;
     // never include identities, role IDs, or protected dossier attributes.
     const labels=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
-      'K9','RAGO','Dispatch','TO','AE'];
+      'K9','RAGO','Dispatch','TO','AE',...extraPublicLabels];
     const safeStatuses=Object.fromEntries(labels.map(label=>{
       const value=Array.isArray(p.specialties)?
         p.specialties.find(x=>x?.label===label)?.value:undefined;
@@ -257,9 +258,16 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
   });
   app.get('/api/member/personnel-list',memberIdentity,async(_req,res)=>{
     try{
-      const snapshot=await getSnapshot();
-      return res.json({records:publicPoliceRoster(snapshot.data),stale:snapshot.stale,
-        readOnly:true});
+      const [snapshot,settings]=await Promise.all([
+        getSnapshot(),
+        getFirestore().collection(ROSTER_COLUMN_COLLECTION).doc('politie').get()
+      ]);
+      const customSpecialties=rosterConfig(settings.data()).customSpecialties
+        .filter(x=>x.public===true);
+      return res.json({
+        records:publicPoliceRoster(snapshot.data,customSpecialties.map(x=>x.label)),
+        customSpecialties,stale:snapshot.stale,readOnly:true
+      });
     }catch(error){
       console.error('Leesbare personeelslijst:',error?.code||'bron niet beschikbaar');
       return res.status(503).json({error:'Personeelslijst momenteel niet beschikbaar'});
