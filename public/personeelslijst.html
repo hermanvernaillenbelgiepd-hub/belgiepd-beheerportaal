@@ -223,7 +223,9 @@ async function load(){
    window.BPDPersonnelVisuals?.setArtworkManifest?.(artwork.artworks);
   }catch(_err){window.BPDPersonnelVisuals?.setArtworkManifest?.([])}
   render();
-  await loadRosterLayout(token);
+  // Do not start an officer-only layout request after the user signed out.
+  if(auth?.currentUser?.uid?.startsWith('discord:'))
+   await loadRosterLayout(token);
   if(data.stale)$('message').textContent+=' · Let op: brongegevens momenteel niet actueel';
  }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
  finally{$('refresh').disabled=false}
