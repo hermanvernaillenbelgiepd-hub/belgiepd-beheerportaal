@@ -59,6 +59,11 @@ test('authenticated shared calendar excludes individual application notes and ID
  assert.match(route,/attendanceConfirmed!==true/);
  assert.match(route,/eventSnap\.get\('requestId'\)!==id/);
  assert.doesNotMatch(route,/\['gelezen','gegeven','wissen'\]\.includes\(action\)/);
+ const server=read('src/server.js');
+ assert.match(server,/app\.use\('\/api\/training-calendar',express\.json/);
+ assert.match(route,/verifiedInstructor/);
+ assert.match(route,/request\.applicantDiscordId!==ctx\.id/);
+ assert.match(route,/!\['officierenkader','korpsleiding'\]\.includes\(request\.applicantTier\)/);
 });
 test('each life-cycle action is recorded in both dossier and audit, and calendar is public across services',()=>{
  const route=read('src/training-request-routes.js');
