@@ -12,7 +12,9 @@ export async function getPolicePlan(personnelSpreadsheetId,request,options={}) {
 export async function performPoliceSync(personnelSpreadsheetId,plan) {
   // Een vlak vóór de schrijfoperatie uitgevoerde hercontrole. Google Sheets biedt geen cross-service transactie.
   const fresh=await getPolicePlan(personnelSpreadsheetId,plan,{preferredCall:plan.call});
-  if(fresh.policeRow!==plan.policeRow||fresh.infoRow!==plan.infoRow)throw new Error('Google Sheet is tussentijds gewijzigd; synchronisatie geannuleerd');
+  if(fresh.policeRow!==plan.policeRow||fresh.infoRow!==plan.infoRow||
+     fresh.temporaryPoliceRow!==plan.temporaryPoliceRow)
+    throw new Error('Google Sheet is tussentijds gewijzigd; synchronisatie geannuleerd');
   const auth=new google.auth.GoogleAuth({scopes:['https://www.googleapis.com/auth/spreadsheets']});
   const sheets=google.sheets({version:'v4',auth});
   const body={valueInputOption:'RAW',data:policeSheetUpdates(plan).filter(u=>!u.range.startsWith('PolitieInfo!O'))};
@@ -25,7 +27,17 @@ export async function performPoliceSync(personnelSpreadsheetId,plan) {
     if(attempt) await new Promise(resolve=>setTimeout(resolve,attempt*750));
     const verify=await sheets.spreadsheets.values.batchGet({spreadsheetId:personnelSpreadsheetId,ranges:[`POLITIE!D${plan.policeRow}`,`POLITIE!R${plan.policeRow}`,`PolitieInfo!A${plan.infoRow}`,`PolitieInfo!P${plan.infoRow}`],valueRenderOption:'FORMATTED_VALUE'});
     const [name,linkedId,infoName,infoId]=(verify.data.valueRanges||[]).map(x=>String(x.values?.[0]?.[0]??''));
-    if(name===plan.name&&infoName===plan.name&&infoId===plan.discordId&&linkedId===plan.discordId){verified=true;break;}
+    let oldSlotCleared=true;
+    if(Number.isInteger(plan.temporaryPoliceRow)){
+      const legacy=await sheets.spreadsheets.values.get({
+        spreadsheetId:personnelSpreadsheetId,
+        range:`POLITIE!D${plan.temporaryPoliceRow}`,
+        valueRenderOption:'FORMATTED_VALUE'
+      });
+      oldSlotCleared=String(legacy.data.values?.[0]?.[0]??'')==='';
+    }
+    if(name===plan.name&&infoName===plan.name&&infoId===plan.discordId&&
+       linkedId===plan.discordId&&oldSlotCleared){verified=true;break;}
   }
   if(!verified)throw new Error('Bronbestand nog niet volledig bijgewerkt; handmatige controle nodig');
   return {call:plan.call,discordId:plan.discordId,policeRow:plan.policeRow,infoRow:plan.infoRow,internalLink:plan.internalLink};
