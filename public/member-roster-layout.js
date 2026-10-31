@@ -1,18 +1,28 @@
 // Visual-only shared police roster sizing controls. The server decides whether
 // the authenticated member is Officierenkader / Korpsleiding. DOM hiding is NOT
 // a permission check: all saves are independently authorized by the API.
+export const ROSTER_FONT_OPTIONS=Object.freeze({
+ inter:'Inter,"Segoe UI",Arial,sans-serif',
+ segoe:'"Segoe UI",Arial,sans-serif',
+ arial:'Arial,Helvetica,sans-serif',
+ verdana:'Verdana,Geneva,sans-serif',
+ tahoma:'Tahoma,Arial,sans-serif',
+ georgia:'Georgia,serif',
+ mono:'Consolas,"Courier New",monospace'
+});
 export const ROSTER_DEFAULT=Object.freeze({
+ fontFamily:'inter',
  rowHeight:28,textSize:11,insigniaWidth:30,tableWidth:1280,
  cellPadding:3,nameColumn:150,rankColumn:165
 });
 export const ROSTER_PRESETS=Object.freeze({
  compact:Object.freeze({...ROSTER_DEFAULT}),
  standard:Object.freeze({
-  rowHeight:36,textSize:12,insigniaWidth:40,tableWidth:1520,
+  fontFamily:'inter',rowHeight:36,textSize:12,insigniaWidth:40,tableWidth:1520,
   cellPadding:5,nameColumn:176,rankColumn:192
  }),
  ruim:Object.freeze({
-  rowHeight:46,textSize:14,insigniaWidth:56,tableWidth:1820,
+  fontFamily:'inter',rowHeight:46,textSize:14,insigniaWidth:56,tableWidth:1820,
   cellPadding:8,nameColumn:218,rankColumn:240
  })
 });
@@ -42,6 +52,8 @@ export function parseRosterLayout(value){
   result[key]=Number.isSafeInteger(n)&&n>=config.min&&n<=config.max?
    n:ROSTER_DEFAULT[key];
  }
+ result.fontFamily=Object.hasOwn(ROSTER_FONT_OPTIONS,value.fontFamily)?
+  value.fontFamily:ROSTER_DEFAULT.fontFamily;
  return result;
 }
 export function rosterPresetName(layout){
@@ -55,10 +67,12 @@ export function applyRosterLayout(wrapper,layout){
  const safe=parseRosterLayout(layout);
  for(const [key,cssName] of Object.entries(cssVars))
   wrapper.style.setProperty(cssName,String(safe[key])+controls[key].unit);
+ wrapper.style.setProperty('--mr-custom-font-family',ROSTER_FONT_OPTIONS[safe.fontFamily]);
 }
 export function clearRosterLayout(wrapper){
  if(!wrapper)return;
  for(const name of Object.values(cssVars))wrapper.style.removeProperty(name);
+ wrapper.style.removeProperty('--mr-custom-font-family');
 }
 let activeToken=null;
 let sessionGeneration=0;
@@ -67,8 +81,11 @@ let authorized=false;
 let listening=false;
 const byId=id=>document.getElementById(id);
 function status(text){const node=byId('rosterLayoutStatus');if(node)node.textContent=text;}
-function values(){return Object.fromEntries(Object.keys(controls).map(key=>
- [key,Number(byId('rosterLayout-'+key).value)]));}
+function values(){
+ return {...Object.fromEntries(Object.keys(controls).map(key=>
+  [key,Number(byId('rosterLayout-'+key).value)])),
+  fontFamily:byId('rosterLayout-fontFamily').value};
+}
 function show(layout){
  const safe=parseRosterLayout(layout);
  for(const key of Object.keys(controls)){
@@ -77,6 +94,7 @@ function show(layout){
   if(field)field.value=String(safe[key]);
   if(output)output.textContent=String(safe[key])+' '+controls[key].unit;
  }
+ byId('rosterLayout-fontFamily').value=safe.fontFamily;
  const preset=byId('rosterLayoutPreset');
  if(preset)preset.value=rosterPresetName(safe);
  applyRosterLayout(document.querySelector('.roster-personnel-page .mr-wrapper'),safe);
@@ -98,6 +116,11 @@ function attachEvents(){
    status('Voorbeeld aangepast · nog niet opgeslagen voor alle leden');
   });
  }
+ byId('rosterLayout-fontFamily').addEventListener('change',()=>{
+  if(!authorized)return;
+  show(values());
+  status('Lettertype aangepast als voorbeeld · klik op Bewaren voor alle leden');
+ });
  byId('rosterLayoutPreset').addEventListener('change',event=>{
   if(!authorized)return;
   const preset=ROSTER_PRESETS[event.target.value];
