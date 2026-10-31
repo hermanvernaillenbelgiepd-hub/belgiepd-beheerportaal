@@ -84,7 +84,9 @@ export function setupRoleArtworkUI({api,$,notice}){
   })():null;
   const size=nativeSize||(['medal','award'].includes(kind)?[320,400]:
    ['helmet','logo','profession','pictogram','patch'].includes(kind)?[320,320]:
-   kind==='uniform'?[603,469]:[512,160]);
+   kind==='uniform'?[603,469]:
+   kind==='specialty'&&$p('roleArtworkDepartment').value==='brandweer'?[320,320]:
+   [512,160]);
   canvas.width=size[0];canvas.height=size[1];
   canvas.style.aspectRatio=size[0]+'/'+size[1];
   const label=$p('roleArtworkFormatLabel');
@@ -92,6 +94,9 @@ export function setupRoleArtworkUI({api,$,notice}){
   image.style.maxHeight='115px';
  }
  configureCanvas();
+ $p('roleArtworkDepartment').addEventListener('change',()=>{
+  configureCanvas();void setPreview('');
+ });
  const zoom=$p('roleArtworkZoom'),zoomValue=$p('roleArtworkZoomValue');
  const fit=$p('roleArtworkFit');
  canvas.tabIndex=0;
@@ -208,6 +213,7 @@ export function setupRoleArtworkUI({api,$,notice}){
   codePreset.value=styleMatch?styleMatch[1]:(row.code||'');
   $p('roleArtworkRoleId').value=row.roleId||'';
   $p('roleArtworkDepartment').value=row.department||'politie';
+  configureCanvas();
   $p('roleArtworkVariant').value=row.variant||'standard';
   $p('roleArtworkLabel').value=row.label;
   select.value='';
