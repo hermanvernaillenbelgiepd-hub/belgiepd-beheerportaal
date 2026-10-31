@@ -40,7 +40,7 @@
   }
   const NAV=Object.freeze({
     home:{href:'/',icon:'⌂',label:'Startpagina',short:'Start'},
-    personnel:{href:'/personeelslijst.html',icon:'♟',label:'Personeelslijst',short:'Personeel'},
+    personnel:{href:'/personeelsbeheer.html',icon:'♟',label:'Personeelsbeheer',short:'Personeel'},
     organogram:{href:'/organogram-hierarchie.html',icon:'🌳',label:'Organogram',short:'Organogram'},
     dossiers:{href:'/dossiercentrum.html',icon:'▣',label:'Dossiercentrum',short:'Dossiers'},
     education:{href:'/opleidingscentrum.html',icon:'🎓',label:'Opleidingscentrum',short:'Opleiding'},
@@ -59,7 +59,7 @@
   const currentPage=(href)=>{
     const target=new URL(href,window.location.origin).pathname;
     if(target===here)return true;
-    return target==='/personeelslijst.html'&&here==='/personeelsbeheer.html';
+    return target==='/personeelsbeheer.html'&&here==='/personeelslijst.html';
   };
   function linkFor(item,compact=false){
     const link=document.createElement('a');
@@ -175,10 +175,7 @@
     if(header)header.after(top);
     else(document.querySelector('body > main')||document.body).before(top);
     function show(list){
-      const items=list.map(key=>key==='personnel'
-        ?{...NAV.personnel,href:list.includes('dossiers')?
-            '/personeelsbeheer.html':'/personeelslijst.html'}
-        :NAV[key]).filter(Boolean);
+      const items=list.map(key=>NAV[key]).filter(Boolean);
       links.replaceChildren(...items.map(item=>linkFor(item)));
       renderQuick(items,top);
     }
