@@ -3,10 +3,12 @@ import {getAuth} from 'firebase-admin/auth';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {approvedManagedEntry,USER_COLLECTION,verifiedDiscordIdentity} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
+import {TRAINING_ROLE_IDS} from './role-catalog.js';
 import {
   TRAINING_REQUEST_DEPARTMENTS,SERIES_LEADERS,policeRequestTier,personSeries,
   requestCourseOptions,canSubmitTrainingRequest,mayReviewTrainingRequest,
-  validateTrainingRequestInput,nextTrainingRequestStatus
+  validateTrainingRequestInput,nextTrainingRequestStatus,validTrainingSchedule,
+  ACTIVE_TRAINING_REQUEST_STATUSES
 } from './training-request-policy.js';
 
 const validId=id=>/^\d{15,22}$/.test(String(id||''));
@@ -76,7 +78,15 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         departments:memberships.filter(d=>persons.some(p=>p.dept===d)),
         departmentRoles:grant?.departmentRoles||{}
       };
-      req.trainingApplicant={id,uid:decoded.uid,persons,actor,snapshot:snapshot.data};
+      // A fresh guild-role snapshot permits instructor-only scheduling, but
+      // never confers access to another department's course management.
+      const guild=await db().collection('bpd_discord_auth').doc(id).get();
+      const verified=guild.exists&&guild.get('guildId')===process.env.DISCORD_GUILD_ID&&
+       Array.isArray(guild.get('roleIds'))&&Number.isSafeInteger(guild.get('verifiedAt'))&&
+       Date.now()-guild.get('verifiedAt')<24*60*60*1000&&
+       guild.get('verifiedAt')<=Date.now()+60_000;
+      req.trainingApplicant={id,uid:decoded.uid,persons,actor,snapshot:snapshot.data,
+        verifiedRoleIds:verified?guild.get('roleIds'):[]};
       next();
     }catch(e){error(res,e)}
   }
@@ -97,6 +107,62 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         ...ctx.actor,departments:['politie'],
         departmentRoles:{politie:'basiskader'}
       },request));
+  // Scheduling is distinct from being a reekshoofd or reading a request.
+  // A genuine instructor role or verified service leadership is required.
+  const scheduleScope=(ctx,dept)=>ctx.persons.some(p=>p.dept===dept)&&
+    (['middenkader','officierenkader','korpsleiding'].includes(
+      roleForDepartment(ctx.actor,dept))||
+    (TRAINING_ROLE_IDS[dept]?.instructors||[]).some(id=>
+      ctx.verifiedRoleIds.includes(id))||
+    (TRAINING_ROLE_IDS[dept]?.leadership||[]).some(id=>
+      ctx.verifiedRoleIds.includes(id)));
+  const eventSummary=(doc)=>({
+    id:doc.id,department:doc.department,courseName:doc.courseName,
+    startAt:doc.startAt,endAt:doc.endAt,location:doc.location,
+    status:doc.status,organizerName:doc.organizerName||'',
+    imageAssetCode:doc.imageAssetCode||null
+    // Never expose applicant ID, private note or evaluation in shared calendar.
+  });
+  // Published events from all services are visible across the whole portal.
+  app.get('/api/training-calendar',identity,async(req,res)=>{
+    try{
+      const rows=await db().collection('bpd_training_calendar_events').limit(350).get();
+      const result=rows.docs.map(d=>eventSummary({id:d.id,...d.data()}))
+        .filter(d=>['gepland','uitgevoerd'].includes(d.status))
+        .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+      res.json({events:result,limited:rows.docs.length===350});
+    }catch(e){error(res,e)}
+  });
+  // Authorized instructors/leaders can publish a standalone course without
+  // manufacturing a trainee request. Enrollment can be linked later.
+  app.post('/api/training-calendar',identity,async(req,res)=>{
+    try{
+      const ctx=req.trainingApplicant;
+      const dept=String(req.body?.department||'');
+      if(!TRAINING_REQUEST_DEPARTMENTS.includes(dept)||!scheduleScope(ctx,dept))
+        throw rejection('Geen opleidingsplanningsrecht voor deze dienst');
+      const allowed=['department','courseName','startAt','endAt','location'];
+      if(!req.body||Object.keys(req.body).some(key=>!allowed.includes(key)))
+        throw rejection('Ongeldige gegevens voor de opleidingskalender',400);
+      const courseName=String(req.body.courseName||'').trim();
+      if(courseName.length<3||courseName.length>150)
+        throw rejection('Opleidingsnaam moet tussen 3 en 150 tekens bevatten',400);
+      let plan;
+      try{plan=validTrainingSchedule({startAt:req.body.startAt,endAt:req.body.endAt,
+        location:req.body.location});}
+      catch(e){throw rejection(e.message,400)}
+      const who=ctx.persons.find(p=>p.dept===dept);
+      const ref=db().collection('bpd_training_calendar_events').doc();
+      await ref.create({
+        department:dept,courseName,...plan,status:'gepland',
+        organizerId:ctx.id,organizerName:String(who?.name||'Instructeur').slice(0,100),
+        imageAssetCode:null,requestId:null,
+        createdBy:{discordId:ctx.id,name:who?.name||'',call:who?.call||''},
+        createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()
+      });
+      res.status(201).json({saved:true,id:ref.id});
+    }catch(e){error(res,e)}
+  });
   const exposed=x=>({
     id:x.id,department:x.department,courseName:x.courseName,
     note:x.note||'',applicantDiscordId:x.applicantDiscordId,
@@ -104,7 +170,12 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
     applicantTier:x.applicantTier||null,series:x.series||null,
     status:x.status,createdAt:iso(x.createdAt),updatedAt:iso(x.updatedAt),
     reviewedBy:x.reviewedBy||null,reviewedAt:iso(x.reviewedAt),
-    givenBy:x.givenBy||null,givenAt:iso(x.givenAt)
+    givenBy:x.givenBy||null,givenAt:iso(x.givenAt),
+    plannedBy:x.plannedBy||null,plannedAt:iso(x.plannedAt),
+    calendarId:x.calendarId||null,scheduledStartAt:x.scheduledStartAt||null,
+    scheduledEndAt:x.scheduledEndAt||null,scheduledLocation:x.scheduledLocation||null,
+    rejectedBy:x.rejectedBy||null,rejectionReason:x.rejectionReason||null,
+    executedBy:x.executedBy||null,executedAt:iso(x.executedAt)
   });
   app.get('/api/training-requests',identity,async(req,res)=>{
     try{
@@ -141,7 +212,8 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         const rows=await query.limit(200).get();
         for(const doc of rows.docs){
           const request={id:doc.id,...doc.data()};
-          if(request.department!==dept||request.status==='gewist')continue;
+          if(request.department!==dept||
+            !ACTIVE_TRAINING_REQUEST_STATUSES.includes(request.status))continue;
           if(reviewScope(ctx,request))incoming.push(exposed(request));
         }
       }
@@ -180,56 +252,116 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
     const id=String(req.params.id||'');
     if(!/^[A-Za-z0-9]{12,40}$/.test(id))
       return res.status(400).json({error:'Ongeldige aanvraagverwijzing'});
-    const action=req.body?.action;
-    if(!['gelezen','gegeven','wissen'].includes(action)||
-      Object.keys(req.body||{}).some(k=>k!=='action'))
+    const body=req.body||{},action=body.action;
+    if(!['gelezen','gepland','afgewezen','uitgevoerd','wissen'].includes(action))
       return res.status(400).json({error:'Ongeldige actie'});
+    const permitted=action==='gepland'?['action','startAt','endAt','location']:
+      action==='afgewezen'?['action','reason']:
+      action==='uitgevoerd'?['action','attendanceConfirmed']:
+      ['action'];
+    if(Object.keys(body).some(k=>!permitted.includes(k)))
+      return res.status(400).json({error:'Ongeldige bijkomende gegevens'});
+    let schedule=null,reason='';
+    if(action==='gepland'){
+      try{schedule=validTrainingSchedule({
+        startAt:body.startAt,endAt:body.endAt,location:body.location
+      });}catch(e){return res.status(400).json({error:e.message})}
+    }
+    if(action==='afgewezen'){
+      reason=typeof body.reason==='string'?body.reason.trim():'';
+      if(reason.length<5||reason.length>400)
+        return res.status(400).json({error:'Motivatie afwijzing: 5 tot 400 tekens'});
+    }
+    if(action==='uitgevoerd'&&body.attendanceConfirmed!==true)
+      return res.status(400).json({error:'Bevestig eerst de effectieve deelname'});
     try{
       const ctx=req.trainingApplicant;
       const ref=db().collection('bpd_training_requests').doc(id);
+      const calendar=db().collection('bpd_training_calendar_events').doc(id);
       const changed=await db().runTransaction(async tx=>{
-        const current=await tx.get(ref);
-        if(!current.exists)throw rejection('Aanvraag niet gevonden',404);
-        const old=current.data();
-        if(!reviewScope(ctx,old))throw rejection('Je mag deze aanvraag niet behandelen');
+        const request=await tx.get(ref);
+        if(!request.exists)throw rejection('Aanvraag niet gevonden',404);
+        const old=request.data();
+        if(!reviewScope(ctx,old))throw rejection('Geen toegang tot deze reeks of dienst');
+        if(['gepland','uitgevoerd'].includes(action)&&
+           !scheduleScope(ctx,old.department))
+          throw rejection('Alleen bevoegde instructeurs of dienstleiding kunnen plannen/uitvoeren');
         let status;
         try{status=nextTrainingRequestStatus(old.status,action)}
         catch(e){throw rejection(e.message,409)}
-        const person=ctx.snapshot.filter(p=>p.dept===old.department&&
+        // Transactional guard: a session may never be silently overwritten.
+        const eventSnap=['gepland','uitgevoerd'].includes(action)?
+          await tx.get(calendar):null;
+        if(action==='gepland'&&eventSnap.exists)
+          throw rejection('Deze opleiding is al in de kalender opgenomen',409);
+        if(action==='uitgevoerd'&&
+           (!eventSnap.exists||eventSnap.get('status')!=='gepland'||
+             eventSnap.get('requestId')!==id))
+          throw rejection('Geen geldige geplande opleiding gevonden',409);
+        const trainees=ctx.snapshot.filter(p=>p.dept===old.department&&
           p.personId===old.applicantDiscordId);
-        if(person.length!==1)throw rejection('Personeelsfiche is niet eenduidig',409);
-        const who=ctx.snapshot.find(p=>p.personId===ctx.id&&p.dept===old.department);
-        if(!who)throw rejection('Je eigen personeelsfiche is niet gevonden');
-        const stamp=FieldValue.serverTimestamp();
+        if(trainees.length!==1)throw rejection('Personeelsfiche is niet eenduidig',409);
+        const who=ctx.persons.find(p=>p.dept===old.department);
+        if(!who)throw rejection('Eigen personeelsfiche niet gevonden',403);
+        const now=FieldValue.serverTimestamp();
         const by={discordId:ctx.id,name:who.name,call:who.call};
-        const update={status,updatedAt:stamp};
-        if(action==='gelezen'){update.reviewedAt=stamp;update.reviewedBy=by}
-        if(action==='gegeven'){update.givenAt=stamp;update.givenBy=by}
-        if(action==='wissen'){update.deletedAt=stamp;update.deletedBy=by}
-        const audit=ref.collection('audit').doc();
+        const changes={status,updatedAt:now};
+        if(action==='gelezen'){changes.reviewedAt=now;changes.reviewedBy=by}
+        if(action==='gepland'){
+          Object.assign(changes,{plannedAt:now,plannedBy:by,calendarId:id,
+            scheduledStartAt:schedule.startAt,scheduledEndAt:schedule.endAt,
+            scheduledLocation:schedule.location});
+          tx.create(calendar,{
+            requestId:id,department:old.department,courseName:old.courseName,
+            ...schedule,status:'gepland',organizerId:ctx.id,
+            organizerName:who.name,imageAssetCode:null,createdBy:by,
+            createdAt:now,updatedAt:now
+          });
+        }
+        if(action==='afgewezen'){changes.rejectedAt=now;changes.rejectedBy=by;
+          changes.rejectionReason=reason}
+        if(action==='uitgevoerd'){
+          changes.executedAt=now;changes.executedBy=by;
+          changes.attendanceConfirmed=true;
+          tx.update(calendar,{status:'uitgevoerd',updatedAt:now,
+            confirmedAt:now,confirmedBy:by});
+        }
+        if(action==='wissen'){changes.deletedAt=now;changes.deletedBy=by}
+        const label={
+          gelezen:'Opleidingsaanvraag gelezen',
+          gepland:'Opleiding gepland',
+          afgewezen:'Opleidingsaanvraag afgewezen',
+          uitgevoerd:'Opleiding uitgevoerd · deelname bevestigd',
+          wissen:'Uit actieve aanvragen gearchiveerd'
+        }[action];
+        tx.update(ref,changes);
+        tx.create(ref.collection('audit').doc(),{
+          action,previousStatus:old.status,nextStatus:status,
+          reason:reason||null,
+          scheduledStartAt:schedule?.startAt||old.scheduledStartAt||null,
+          by,at:now
+        });
         const activity=db().collection('bpd_cases')
           .doc(old.department+'_'+old.applicantDiscordId)
           .collection('entries').doc();
-        const isGiven=action==='gegeven';
-        const label=action==='gelezen'?'Opleidingsaanvraag gelezen':
-          isGiven?'Opleiding gegeven':'Opleidingsaanvraag gewist';
-        tx.update(ref,update);
-        tx.create(audit,{action,previousStatus:old.status,nextStatus:status,
-          by,at:stamp});
         tx.create(activity,{
-          type:isGiven?'opleiding':'activiteit',
+          type:action==='uitgevoerd'?'opleiding':'activiteit',
           dept:old.department,subjectDiscordId:old.applicantDiscordId,
-          subjectNameAtCreation:person[0].name,
-          subjectCallAtCreation:person[0].call,
-          eventDate:localDay(),courseName:isGiven?old.courseName:null,
-          details:label+' · '+old.courseName+' · aanvraag '+id,
-          reportCategory:isGiven?'opleiding':'activiteit',
+          subjectNameAtCreation:trainees[0].name,
+          subjectCallAtCreation:trainees[0].call,
+          eventDate:localDay(),
+          courseName:action==='uitgevoerd'?old.courseName:null,
+          details:label+' · '+old.courseName+' · aanvraag '+id+
+            (schedule?' · '+schedule.startAt+' · '+schedule.location:'')+
+            (reason?' · reden: '+reason:''),
+          reportCategory:action==='uitgevoerd'?'opleiding':'activiteit',
           trainingRequestId:id,registeredBy:by,submittedBy:{uid:ctx.uid},
-          createdAt:stamp,modifiedAt:null
+          createdAt:now,modifiedAt:null
         });
         return status;
       });
       res.json({saved:true,status:changed});
     }catch(e){error(res,e)}
   });
+
 }
