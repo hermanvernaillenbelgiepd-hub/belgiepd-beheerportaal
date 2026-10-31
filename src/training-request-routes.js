@@ -156,12 +156,29 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       catch(e){throw rejection(e.message,400)}
       const who=ctx.persons.find(p=>p.dept===dept);
       const ref=db().collection('bpd_training_calendar_events').doc();
-      await ref.create({
-        department:dept,courseName,...plan,status:'gepland',
-        organizerId:ctx.id,organizerName:String(who?.name||'Instructeur').slice(0,100),
-        imageAssetCode:null,requestId:null,
-        createdBy:{discordId:ctx.id,name:who?.name||'',call:who?.call||''},
-        createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()
+      const by={discordId:ctx.id,name:who?.name||'',call:who?.call||''};
+      const stamp=FieldValue.serverTimestamp();
+      const audit=ref.collection('audit').doc();
+      const activity=db().collection('bpd_cases')
+        .doc(dept+'_'+ctx.id).collection('entries').doc();
+      await db().runTransaction(async tx=>{
+        tx.create(ref,{
+          department:dept,courseName,...plan,status:'gepland',
+          organizerId:ctx.id,organizerName:String(who?.name||'Instructeur').slice(0,100),
+          imageAssetCode:null,requestId:null,createdBy:by,
+          createdAt:stamp,updatedAt:stamp
+        });
+        tx.create(audit,{action:'aangekondigd',by,at:stamp});
+        tx.create(activity,{
+          type:'activiteit',dept,subjectDiscordId:ctx.id,
+          subjectNameAtCreation:who?.name||'',
+          subjectCallAtCreation:who?.call||'',eventDate:localDay(),
+          courseName:null,reportCategory:'activiteit',
+          details:'Opleiding aangekondigd · '+courseName+' · '+plan.startAt+
+            ' · '+plan.location+' · kalender '+ref.id,
+          trainingCalendarId:ref.id,registeredBy:by,
+          submittedBy:{uid:ctx.uid},createdAt:stamp,modifiedAt:null
+        });
       });
       res.status(201).json({saved:true,id:ref.id});
     }catch(e){error(res,e)}
@@ -216,7 +233,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         for(const doc of rows.docs){
           const request={id:doc.id,...doc.data()};
           if(request.department!==dept||
-            !ACTIVE_TRAINING_REQUEST_STATUSES.includes(request.status))continue;
+            !([...ACTIVE_TRAINING_REQUEST_STATUSES,'uitgevoerd','gegeven'].includes(request.status)))continue;
           if(reviewScope(ctx,request))incoming.push({...exposed(request),
             canSchedule:scheduleScope(ctx,request.department)});
         }
