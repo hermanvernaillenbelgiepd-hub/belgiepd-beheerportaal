@@ -76,6 +76,12 @@ app.use((_req,res,next)=>{res.set('X-Content-Type-Options','nosniff');res.set('R
 // Firestore data intact for audit; the retired public HTML cannot be served.
 app.get(['/burgerdossier.html','/solliciteren.html','/sollicitatiebeheer.html'],(_req,res)=>
   res.status(410).type('text/plain').send('Deze pagina is buiten gebruik.'));
+// One canonical personnel entry. Keep the old read-only document available
+// ONLY as the sandboxed same-origin directory embedded in that entry.
+app.get('/personeelslijst.html',(req,res,next)=>{
+ if(req.query.embed==='1')return next();
+ res.redirect(302,'/personeelsbeheer.html');
+});
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
 app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
