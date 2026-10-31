@@ -9,6 +9,7 @@ import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {leaveCanWithdraw,leaveCanReapply,writeLeaveEvent} from './leave-event-log.js';
 import {actorFromPersonnel} from './registrations.js';
+import {SERIES_LEADERS,personSeries} from './training-request-policy.js';
 import {canRetireDossierRecord} from './dossier-retirement-policy.js';
 
 const coll='bpd_leave_requests';
@@ -115,6 +116,46 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       return res.json({canReview:board||mayReviewLeaveNotifications(req.bpd,delegated),
         canOverride:board,writesEnabled:writes()});
     }catch(e){return jsonError(res,e)}
+  });
+  // Read-only police series notifications. An official series leader can
+  // see the status and dates for their series, but gains NO right to decide.
+  // Approved requests leave the pending list immediately. Recent auto-
+  // approvals remain informational for 72h, not as pending work.
+  app.get('/api/leave/series-notifications',requireUser,async(req,res)=>{
+    try{
+      if(!req.bpd?.departments?.includes('politie'))
+        return res.json({series:[],pending:[],recentAutomatic:[]});
+      const owner=req.bpd.discordId;
+      const assigned=Object.entries(SERIES_LEADERS)
+        .filter(([,ids])=>ids.includes(owner)).map(([series])=>series);
+      if(!assigned.length)
+        return res.json({series:[],pending:[],recentAutomatic:[]});
+      const {snapshot}=await context(req);
+      const policePeople=new Map(snapshot.filter(p=>p.dept==='politie'&&p.personId)
+        .map(p=>[p.personId,p]));
+      if(!policePeople.has(owner))
+        return res.status(403).json({error:'Je politionele personeelsfiche ontbreekt'});
+      const results=await db().collection(coll)
+        .where('subjectDepartments','array-contains','politie')
+        .limit(250).get();
+      const pending=[],recentAutomatic=[],now=Date.now();
+      for(const d of results.docs){
+        const r=d.data(),subject=policePeople.get(r.personDiscordId);
+        if(!subject||!assigned.includes(personSeries(subject))||owner===r.personDiscordId)
+          continue;
+        const summary={id:d.id,subjectName:subject.name,
+          subjectCall:subject.call,series:personSeries(subject),
+          startDate:r.startDate,endDate:r.endDate,days:r.days,
+          status:r.status,autoApproved:r.autoApproved===true};
+        if(r.status==='pending')pending.push(summary);
+        if(r.status==='approved'&&r.autoApproved===true){
+          const when=r.createdAt?.toMillis?.()||0;
+          if(when>0&&now-when<=72*60*60*1000)recentAutomatic.push(summary);
+        }
+      }
+      res.json({series:assigned,pending:pending.slice(0,100),
+        recentAutomatic:recentAutomatic.slice(0,50),limited:results.size===250});
+    }catch(e){jsonError(res,e)}
   });
   app.get('/api/leave/requests',requireUser,async(req,res)=>{
     try {
