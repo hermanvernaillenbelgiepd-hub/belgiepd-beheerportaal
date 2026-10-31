@@ -45,6 +45,7 @@ import {eligibleForTechnicalProfile,verifiedPoliceRank,technicalCookieIsValid,te
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
+import {installRosterColumnRoutes,loadRosterConfigs} from './roster-column-config.js';
 import {installFunctionChangeRoutes} from './function-change-routes.js';
 import {installReceivedRegistrationRoutes} from './received-registration-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
@@ -99,6 +100,7 @@ app.use('/api/fire-dossiers',express.json({limit:'6kb',strict:true}));
 app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/organogram',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
+app.use('/api/roster-columns',express.json({limit:'16kb',strict:true}));
 app.use('/api/personnel-awards',express.json({limit:'180kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
 // Dossier intrekkingen verwachten uitsluitend een gecontroleerde JSON-motivering.
@@ -324,12 +326,13 @@ async function getSourceSnapshot(forceRefresh=false){
 async function getSnapshot({forceRefresh=false}={}){
   const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
-  const [created,edits,specialties]=await Promise.all([
+  const [created,edits,specialties,rosterConfigs]=await Promise.all([
     on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(500).get():null,
     process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'
       ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null,
     specialtyReadEnabled(process.env)
-      ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null
+      ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null,
+    specialtyReadEnabled(process.env)?loadRosterConfigs():null
   ]);
   if(created?.size===500||edits?.size===400||specialties?.size===600)throw Error('Te veel personeelsrecords; migratiecontrole nodig');
   const added=(created?.docs||[]).map(d=>asCreatedPersonnel(d.data())).filter(Boolean);
@@ -338,7 +341,7 @@ async function getSnapshot({forceRefresh=false}={}){
   const extra=added.filter(p=>!keys.has(p.dept+':'+p.personId));
   const combined=base.data.concat(extra);
   const personnel=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
-  return {...base,data:specialties?applySpecialtyOverlays(personnel,specialties.docs):personnel};
+  return {...base,data:specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel};
 }
 app.get('/api/client-config',(_req,res)=>{
   const {FIREBASE_PROJECT_ID,FIREBASE_API_KEY,FIREBASE_AUTH_DOMAIN}=process.env;
@@ -587,6 +590,7 @@ installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache
 installCallsignBotRoutes(app);
 installCallsignSelfServiceRoutes(app,{getSnapshot});
 installMemberDashboardRoutes(app,{getSnapshot,accessList});
+installRosterColumnRoutes(app,{requireUser});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
