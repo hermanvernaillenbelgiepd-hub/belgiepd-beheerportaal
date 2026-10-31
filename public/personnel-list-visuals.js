@@ -115,7 +115,7 @@
   function specialtyStatuses(stored){
     if(!Array.isArray(stored))return [];
     const seen=new Set(),out=[];
-    for(const item of stored.slice(0,20)){
+    for(const item of stored.slice(0,60)){
       if(!item||typeof item.label!=='string')continue;
       const label=item.label.trim().slice(0,64);
       const key=label.toLocaleLowerCase('nl-BE');
