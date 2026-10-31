@@ -39,8 +39,26 @@ export function planPoliceSheetSync({policeRows, infoRows, name, discordId, pref
   if(n.length<2||n.length>80||/^[=+@-]/.test(n)||/[\n\r]/.test(n)||!isDiscordId(id))throw new Error('Ongeldige aanvraaggegevens');
   if(!Array.isArray(policeRows)||!Array.isArray(infoRows))throw new Error('Brongegevens ontbreken');
   const norm=v=>s(v).toLocaleLowerCase('nl');
-  if(infoRows.some(r=>s(r?.[15])===id) || policeRows.some(r=>s(r?.[17])===id))throw new Error('Discord ID bestaat al in de personeelsadministratie');
-  if(infoRows.some(r=>norm(r?.[0])===norm(n)) || policeRows.some(r=>norm(r?.[3])===norm(n)))throw new Error('Personeelsnaam bestaat al; controleer handmatig of dit een andere speler is');
+  // Existing recruits can already have a 101–199 temporary police record.
+  // Move their verified identity into a free permanent slot, preserving the
+  // existing PolitieInfo identity row and the Discord-linked dossier.
+  const identityPolice=policeRows.map((row,i)=>({row,i:i+1}))
+    .filter(x=>s(x.row?.[17])===id);
+  const temporary=identityPolice.length===1&&
+    /^1\d{2}$/.test(s(identityPolice[0].row?.[0]))&&
+    norm(identityPolice[0].row?.[3])===norm(n)&&
+    /Agent van Politie\s*\(AP\)/i.test(s(identityPolice[0].row?.[2]))
+      ?identityPolice[0]:null;
+  if(identityPolice.length&&(!temporary||identityPolice.length!==1))
+    throw new Error('Discord ID bestaat al met een niet-tijdelijk of dubbel politieroepnummer');
+  const identityInfo=infoRows.map((row,i)=>({row,i:i+1}))
+    .filter(x=>s(x.row?.[15])===id);
+  if(identityInfo.length>1||identityInfo.length&&!temporary||
+    identityInfo.length&&norm(identityInfo[0].row?.[0])!==norm(n))
+    throw new Error('Discord ID bestaat al in PolitieInfo; handmatige controle nodig');
+  if(policeRows.some((row,i)=>norm(row?.[3])===norm(n)&&i+1!==temporary?.i)||
+    infoRows.some((row,i)=>norm(row?.[0])===norm(n)&&i+1!==identityInfo[0]?.i))
+    throw new Error('Personeelsnaam bestaat al; controleer handmatig of dit een andere speler is');
   const slots=policeRows.map((r,i)=>({row:i+1,call:Number(s(r?.[0])),rawCall:s(r?.[0]),name:s(r?.[3]),rank:s(r?.[2])}))
     .filter(x=>Number.isInteger(x.call)&&x.call>=200&&x.call<=299&&String(x.call)===x.rawCall&&/Agent van Politie\s*\(AP\)/i.test(x.rank));
   const counts=new Map();for(const x of slots)counts.set(x.call,(counts.get(x.call)||0)+1);
@@ -53,10 +71,15 @@ export function planPoliceSheetSync({policeRows, infoRows, name, discordId, pref
   if(!selected)throw new Error('Geen vrij, uniek roepnummer beschikbaar (of gevraagde nummer is bezet)');
   let lastOccupied=0;
   for(let i=0;i<infoRows.length;i++)if((infoRows[i]||[]).some(v=>s(v)!==''))lastOccupied=i+1;
-  const infoRow=lastOccupied+1;
+  const infoRow=identityInfo[0]?.i||lastOccupied+1;
   if(infoRow>658)throw new Error('PolitieInfo heeft geen vrije rij meer; controleer de spreadsheet');
-  if((infoRows[infoRow-1]||[]).some(v=>s(v)!==''))throw new Error('Doelrij in PolitieInfo is niet leeg');
-  return {call:selected.call,policeRow:selected.row,infoRow,discordId:id,name:n,rank:'Agent van Politie (AP)',remainingFree:candidates.length,internalLink:`/registraties.html?dept=politie&discordId=${encodeURIComponent(id)}`};
+  if(!identityInfo.length&&(infoRows[infoRow-1]||[]).some(v=>s(v)!==''))
+    throw new Error('Doelrij in PolitieInfo is niet leeg');
+  return {call:selected.call,policeRow:selected.row,infoRow,
+    temporaryPoliceRow:temporary?.i||null,temporaryCall:temporary?s(temporary.row[0]):null,
+    discordId:id,name:n,rank:'Agent van Politie (AP)',
+    remainingFree:candidates.length,
+    internalLink:`/registraties.html?dept=politie&discordId=${encodeURIComponent(id)}`};
 }
 export function policeSheetUpdates(plan){
   return [
@@ -64,6 +87,8 @@ export function policeSheetUpdates(plan){
     {range:`PolitieInfo!C${plan.infoRow}`,values:[['Actief']]},
     {range:`PolitieInfo!P${plan.infoRow}`,values:[[plan.discordId]]},
     {range:`PolitieInfo!O${plan.infoRow}`,values:[[ `=IFERROR(XLOOKUP(A${plan.infoRow},POLITIE!D:D,POLITIE!A:A,"",0),"")` ]]},
-    {range:`POLITIE!D${plan.policeRow}`,values:[[plan.name]]}
+    {range:`POLITIE!D${plan.policeRow}`,values:[[plan.name]]},
+    ...(Number.isInteger(plan.temporaryPoliceRow)?
+      [{range:`POLITIE!D${plan.temporaryPoliceRow}`,values:[['']]}]:[])
   ];
 }
