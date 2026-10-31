@@ -2193,15 +2193,8 @@ function makeServiceUniformPortrait(person){
  callLine.style.transform='scale('+((namePosition.callScale??100)/100)+')';
  nameplate.append(nameLine,callLine);
  if(serviceVisibility?.showNamePlate!==false)stage.append(nameplate);
- // DIRMED is a medical function inscription, not a rank or a separate coat.
- // A customized profession image from the library can replace this default text.
- if(dept==='ambulance'&&selected?.profession==='dirmed'&&
-    !window.BPDVisualAssets?.hasProfessionLayer?.(person,'default')&&
-    serviceVisibility?.showProfessionBadge!==false){
-  const professionText=el('span','bpd-service-profession-text','DIRMED');
-  professionText.setAttribute('aria-label','Medische functie: DIRMED');
-  stage.append(professionText);
- }
+ // No synthetic DIRMED text badge: keep the original AZLS coat unobstructed.
+ // An actual uploaded profession badge is still applied by BPDVisualAssets.
  if(src)window.BPDVisualAssets?.appendTo?.(stage,person,'default');
  outer.append(stage);
  return outer;
