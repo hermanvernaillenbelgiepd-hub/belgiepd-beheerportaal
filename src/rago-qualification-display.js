@@ -60,7 +60,10 @@ export function overlayVerifiedRagoRoster(records,documents,guildId,now=Date.now
 export function suppressSupersededRagoMatches(matches){
  if(!Array.isArray(matches))return [];
  const rago=matches.filter(x=>x.label==='RAGO');
- if(rago.length<2)return matches;
+ if(!rago.length)return matches;
+ if(rago.length===1)return matches.map(x=>
+  x.label==='RAGO'&&x.roleId===RAGO_IO_DISCORD_ROLE?
+   {...x,value:'AANGEMELD'}:x);
  const ranks={
   [RAGO_IO_DISCORD_ROLE]:1,
   [RAGO_FULL_DISCORD_ROLE]:2,
