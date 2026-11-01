@@ -16,8 +16,9 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   return alt[raw]||raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
    .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
  };
- const values=['Niet ingevuld','Ja','Nee','Stage','INSTRUCTEUR','LEIDING',
-  'Docent','AANGEMELD','RESTRICTED','OPLEIDING!','GESCHORST','INACTIEF'];
+ const values=['Nee','Stage','Ja','Docent','Niet ingevuld','AANGEMELD',
+  'RESTRICTED','ONTSLAG','INSTRUCTEUR','PLAVA','GPC','INACTIEF',
+  'MUG-HELI','SPECIALISATIE','LEIDING','OPLEIDING!','GESCHORST','BLACKLISTED'];
  const setAvailable=(value)=>{
   $('specialtyLinkPanel').hidden=!value;
   $('specialtyLinkAdd').disabled=!value||!config?.canEdit;
@@ -103,7 +104,8 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   }catch(e){
    $('specialtyLinkPanel').hidden=false;
    $('specialtyLinkStatus').textContent='Koppelingen niet beschikbaar: '+e.message;
-   $('specialtyLinkRows').replaceChildren();setAvailable(false);
+   $('specialtyLinkRows').replaceChildren();
+   $('specialtyLinkAdd').disabled=true;$('specialtyLinkSave').disabled=true;
   }
  }
  async function loadVerified(person){
