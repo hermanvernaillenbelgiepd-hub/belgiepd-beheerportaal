@@ -154,3 +154,10 @@
  object-fit:contain;background:#050b13;
 }
 .mr-table th.mr-specialty-head--patch img{max-width:none;}
+
+/* Six approved neutral patches bundled as one file. Each header shows
+   exactly one of the six equal-height strips, never a role status. */
+.mr-table .mr-specialty-banner--sprite{
+ background-size:100% 600%;background-repeat:no-repeat;
+ background-color:#050b13;
+}
