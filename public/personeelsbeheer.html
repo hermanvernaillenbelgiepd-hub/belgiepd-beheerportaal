@@ -1037,8 +1037,6 @@ function openUnifiedCard(call,name){
   for(const key of ['personnelCardId','personnelCardCopyId','personnelCardPing'])$(key).hidden=false;
  }
  const params=new URLSearchParams({embedded:'1',dienst:'politie',kaart:call,naam:name});
- // Internal cards use the verified DC-ID; call/name remain only legacy hints.
- if(/^\d{15,22}$/.test(id))params.set('dcId',id);
  $('personnelCardFrame').src='/organogram-hierarchie.html?'+params;
  cardDialog.showModal();
 }
