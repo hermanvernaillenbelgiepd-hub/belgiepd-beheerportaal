@@ -527,6 +527,41 @@ header{padding-inline:clamp(15px,2vw,34px)}
  background-size:100% 600%;background-repeat:no-repeat;
  background-color:#050b13;
 }
+
+/* Responsive police overview: no forced horizontal scrolling on desktop.
+   The rank name is present in the insignia tooltip and full personnel fiche.
+   Other service rosters retain their independently configured widths. */
+.staff-roster-table.roster-police-compact{
+ width:100%;table-layout:fixed;
+}
+.staff-roster-table.roster-police-compact th,
+.staff-roster-table.roster-police-compact td{
+ min-width:0;overflow-wrap:anywhere;
+}
+.staff-roster-table.roster-police-compact th.specialty-col-head--patch{
+ min-width:0!important;padding:0!important;
+}
+.staff-roster-table.roster-police-compact .specialty-neutral-banner{
+ max-width:100%;width:100%;object-fit:contain;
+}
+.staff-roster-table.roster-police-compact .roster-series-cell,
+.staff-roster-table.roster-police-compact .discord-id-cell{
+ font-size:10px;line-height:1.1;
+}
+.staff-roster-table.roster-police-compact .discord-id-cell code{
+ white-space:normal;overflow-wrap:anywhere;font-size:9px;
+}
+.staff-roster-table.roster-police-compact .pill,
+.staff-roster-table.roster-police-compact .specialty-state{
+ max-width:100%;min-width:0;white-space:normal;
+ font-size:clamp(8px,.62vw,10px);
+}
+.staff-roster-table.roster-police-compact .rank-inline{
+ max-width:100%;overflow:hidden;
+}
+@media (max-width:1199px){
+ .staff-roster-table.roster-police-compact{min-width:1100px}
+}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -1569,7 +1604,7 @@ const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
 });
 // Resize only modifies this browser's preview. Server-side permissions and
 // revision checks still apply when the officer explicitly clicks Save.
-function rosterDragHandles({dept,cols,headers,colgroup,table,widths}){
+function rosterDragHandles({dept,cols,headers,colgroup,table,widths,showRankName}){
  const allowed=rosterCanEdit&&!dossierEmbedded&&!ficheMode&&
   auth?.currentUser&&rosterConfigs[dept];
  const hint=$('rosterResizeHelp');
@@ -1578,7 +1613,9 @@ function rosterDragHandles({dept,cols,headers,colgroup,table,widths}){
   '↔ Sleep de rechterrand van een kolomkop om de breedte te wijzigen. Pijltjestoetsen werken ook. Klik daarna op ':
   'Selecteer eerst één hulpdienst om de kolombreedtes te verslepen. ';
  if(!allowed)return;
- const cfg=rosterConfigs[dept],primary=['call','grade','rank','name','series','status'];
+ const cfg=rosterConfigs[dept],primary=showRankName?
+  ['call','grade','rank','name','series','status']:
+  ['call','grade','name','series','status'];
  const descriptors=[
   ...primary.map((key,i)=>({key,title:headers.children[i].textContent})),
   ...(cols.length?cols.map(label=>({specialty:label,title:label})):
@@ -1683,6 +1720,11 @@ function render(){
   const custom=(rosterConfigs[dept]?.customSpecialties||[])
    .filter(item=>!/^ae[-_ ]?(?:i|t|teamleader|instructeur)$/i.test(item.label));
   const cols=[...BPDPersonnelVisuals.specialtyColumns(dept),...custom.map(x=>x.label)];
+  // Only the police personnel overview hides the redundant grade name.
+  // Full grade title remains available on the insignia tooltip and in dossiers.
+  const showRankName=dept!=='politie',policeCompact=!showRankName;
+  const baseColumnCount=showRankName?6:5;
+  const fullColumnCount=baseColumnCount+Math.max(cols.length,1)+2;
   const head=$('staffColumnHeaders');head.replaceChildren();
   const table=head.closest('table');
   const font=rosterConfigs[dept]||{};
@@ -1693,24 +1735,42 @@ function render(){
   // Match every visible header/body column, including the specialty fallback,
   // Fiche and Discord-ID. Keeping widths in a colgroup prevents drift.
   const w=rosterConfigs[dept]?.widths||ROSTER_COLUMN_WIDTH_DEFAULTS;
-  const widths=[w.call,w.grade,w.rank,w.name,w.series,w.status,
+  const widths=[w.call,w.grade,...(showRankName?[w.rank]:[]),
+    w.name,w.series,w.status,
     ...(cols.length?cols.map(label=>
       rosterConfigs[dept]?.specialtyWidths?.[label]||w.specialty):[w.summary]),
     w.file,w.discord];
+  // Existing Firestore configuration is preserved. For the police list only,
+  // cap oversized column weights and distribute the total over the available
+  // table width. All cells stay aligned without cropping qualifications.
+  const compactWidths=policeCompact?[
+    Math.min(w.call,60),Math.min(w.grade,94),Math.min(w.name,150),
+    Math.min(w.series,84),Math.min(w.status,92),
+    ...(cols.length?cols.map(label=>Math.min(
+      rosterConfigs[dept]?.specialtyWidths?.[label]||w.specialty,125)):
+      [Math.min(w.summary,150)]),
+    Math.min(w.file,72),Math.min(w.discord,168)
+  ]:widths;
+  const compactTotal=compactWidths.reduce((sum,width)=>sum+width,0);
   const colgroup=document.createElement('colgroup');
-  for(const width of widths){
+  for(const width of compactWidths){
     const col=document.createElement('col');
-    col.style.width=width+'px';
+    col.style.width=policeCompact?
+      (100*width/compactTotal).toFixed(4)+'%':width+'px';
     colgroup.append(col);
   }
   table.querySelector('colgroup')?.remove();
   table.insertBefore(colgroup,head);
-  table.style.setProperty('--roster-required-width',
+  table.classList.toggle('roster-police-compact',policeCompact);
+  table.style.minWidth=policeCompact?'1100px':'0';
+  table.style.setProperty('--roster-required-width',policeCompact?'0px':
     widths.reduce((sum,width)=>sum+width,0)+'px');
   const line=document.createElement('tr');
   const titles=dept==='depannage'?
     ['CALL','Functiegroep','Functie','Personeelslid','Reeks','Status']:
-    ['CALL','Rangkenteken','Naam van rang','Personeelslid','Reeks','Status'];
+    policeCompact?
+      ['CALL','Rangkenteken','Personeelslid','Reeks','Status']:
+      ['CALL','Rangkenteken','Naam van rang','Personeelslid','Reeks','Status'];
   for(const title of titles){
     const th=document.createElement('th');th.textContent=title;line.append(th);
   }
@@ -1747,11 +1807,11 @@ function render(){
   }
   const last=document.createElement('th');last.textContent='Fiche';line.append(last);
   const discordHeader=document.createElement('th');discordHeader.textContent='Discord-ID';discordHeader.className='discord-id-head';line.append(discordHeader);head.append(line);
-  rosterDragHandles({dept,cols,headers:line,colgroup,table,widths});
+  rosterDragHandles({dept,cols,headers:line,colgroup,table,widths,showRankName});
   const body=$('results');body.replaceChildren();
   if(!matches.length){
     const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');
-    c.colSpan=8+Math.max(cols.length,1);body.append(tr);return;
+    c.colSpan=fullColumnCount;body.append(tr);return;
   }
   const allPolice=matches.every(person=>person.dept==='politie');
   const rosterGroups=allPolice?policeGroupedRoster(matches):[];
@@ -1769,7 +1829,7 @@ function render(){
       const divider=document.createElement('tr');
       divider.className='police-kader-divider';
       const cell=document.createElement('td');
-      cell.colSpan=8+Math.max(cols.length,1);
+      cell.colSpan=fullColumnCount;
       const label=document.createElement('strong');label.textContent=entry.label;
       cell.append(label);divider.append(cell);body.append(divider);
       continue;
@@ -1778,7 +1838,7 @@ function render(){
       const divider=document.createElement('tr');
       divider.className='police-kader-divider kader-'+entry.tier;
       const cell=document.createElement('td');
-      cell.colSpan=8+Math.max(cols.length,1);
+      cell.colSpan=fullColumnCount;
       const label=document.createElement('strong');
       label.textContent=policeTierDisplay(entry.tier).label;
       const total=document.createElement('span');
@@ -1812,13 +1872,15 @@ function render(){
     gradeDisplay.append(gradeCode);
     badgeCol.append(gradeDisplay);
     tr.append(badgeCol);
-    const rankCell=td(tr,grade.label);
-    if(person.discordCadre==='Korpsleiding'||person.discordCadre==='Officierenkader'){
-      const cadre=document.createElement('small');
-      cadre.className='roster-dept discord-verified-cadre';
-      cadre.textContent='Discord: '+person.discordCadre;
-      cadre.title='Recent geverifieerde Discord-kaderrol · uitsluitend ter informatie';
-      rankCell.append(cadre);
+    if(showRankName){
+      const rankCell=td(tr,grade.label);
+      if(person.discordCadre==='Korpsleiding'||person.discordCadre==='Officierenkader'){
+        const cadre=document.createElement('small');
+        cadre.className='roster-dept discord-verified-cadre';
+        cadre.textContent='Discord: '+person.discordCadre;
+        cadre.title='Recent geverifieerde Discord-kaderrol · uitsluitend ter informatie';
+        rankCell.append(cadre);
+      }
     }
     const nameCol=document.createElement('td');
     const name=document.createElement('strong');name.textContent=person.name;
