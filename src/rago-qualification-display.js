@@ -42,7 +42,7 @@ export function overlayVerifiedRagoRoster(records,documents,guildId,now=Date.now
  for(const doc of documents){
   const identity=typeof doc?.data==='function'?doc.data():doc;
   const id=typeof doc?.id==='string'?doc.id:identity?.discordId;
-  if(!/^\\d{15,22}$/.test(String(id||'')))continue;
+  if(!/^\d{15,22}$/.test(String(id||'')))continue;
   const qualification=verifiedRagoQualification(identity,guildId,now);
   if(qualification)verified.set(id,qualification);
  }
