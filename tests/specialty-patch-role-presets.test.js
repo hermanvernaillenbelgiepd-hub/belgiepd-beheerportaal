@@ -34,6 +34,10 @@ test('confirmed Discord role IDs map once to a single qualification and level',(
 test('existing curated mappings are never overwritten by presets',()=>{
  const custom=[{label:'AE',roleId:'1310674604821581894',level:'Eigen tekst',value:'Ja',assetKey:''}];
  assert.deepEqual(defaultSpecialtyRoleLinks('politie',custom,true),custom);
+ const upgraded=defaultSpecialtyRoleLinks('politie',custom,false);
+ assert.equal(upgraded.length,14);
+ assert.equal(upgraded[0].level,'Eigen tekst');
+ assert.equal(upgraded.filter(x=>x.roleId===custom[0].roleId).length,1);
  assert.equal(defaultSpecialtyRoleLinks('politie',[],false).length,14);
  assert.deepEqual(defaultSpecialtyRoleLinks('brandweer',[],false),[]);
 });
