@@ -2367,6 +2367,14 @@ function openPersonProfile(p){
     patch.setAttribute('aria-label','DISP-patch: '+DISP_PATCH_ROLE_LABELS[level]);
     item.append(patch);
     item.append(el('span','person-profile-specialty-role',DISP_PATCH_ROLE_LABELS[level]));
+   }else if(p.dept==='politie'&&name==='AE'){
+    // One AE specialty, with verified Discord levels visible INSIDE it.
+    // A user may be both an instructor and a teamleader; show both roles.
+    const aeRoles=Array.isArray(p.aeRoles)?p.aeRoles:[];
+    const levels=aeRoles.map(level=>AE_LEVEL_LABELS[level]).filter(Boolean);
+    if(!levels.length&&roles.includes('instructeur'))levels.push('AE-INSTRUCTEUR');
+    item.append(el('span','person-profile-specialty-role',
+      levels.length?levels.join(' · '):'AE-lid · functieniveau niet geverifieerd'));
    }else if(p.dept==='politie'&&(name==='RAGO-IO'||name==='RAGO')){
     // Different patches: verified full RAGO versus training role RAGO-IO.
     item.classList.add('person-profile-specialty-rago-io');
@@ -2394,7 +2402,7 @@ function openPersonProfile(p){
    const functionVariant=name==='K9'?p.k9Role:
     name==='MOTARD'?p.motardRole:name==='DISP'?p.dispRole:
     name==='RAGO'?roles.some(r=>r==='instructeur'||r==='docent')?'instructeur':'volwaardig':
-    name==='RAGO-IO'?'in_opleiding':'';
+    name==='RAGO-IO'?'in_opleiding':name==='AE'?p.aeRole:'';
    const verified=name!=='K9'||['instructeur','geleider','geleider_in_stage'].includes(p.k9Role);
    const alternative=verified?window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant):'';
    if(alternative){
@@ -2468,6 +2476,14 @@ function person(p,compact=false,specialtyLabel=null){
  const flags=el('span','person-role-flags');
  if(roles.includes('instructeur'))flags.append(el('span','flag instructor','INSTRUCTEUR'));
  if(roles.includes('docent'))flags.append(el('span','flag teacher','DOCENT'));
+ if(compact&&p.dept==='politie'&&policeSpecialtyName(specialtyLabel)==='AE'){
+  if(p.aeTeamleader)flags.append(el('span','flag ae-lead','TEAMLEADER / LEIDING'));
+  for(const level of p.aeRoles||[]){
+   if(level==='teamleader')continue;
+   if(level==='instructeur'&&roles.includes('instructeur'))continue;
+   if(AE_LEVEL_LABELS[level])flags.append(el('span','flag ae-level',AE_LEVEL_LABELS[level]));
+  }
+ }
  const displayLabels=Array.isArray(p.displayLabels)?p.displayLabels:[];
  if(displayLabels.includes('stage'))flags.append(el('span','flag stage','STAGE'));
  if(displayLabels.includes('lid'))flags.append(el('span','flag member','LID'));
@@ -2796,14 +2812,22 @@ function specialtyBranch(branch,isPolice,nested=false,department=''){
  const content=el('div','specialty-content');
  if(isPolice&&branch.note)content.append(el('p','specialty-note',branch.note));
  const hasInstructorSection=!isPolice||supportsSpecialtyInstructors(branch.label);
- const tutors=(branch.members||[]).filter(p=>
+ const aeBranch=isPolice&&policeSpecialtyName(branch.label)==='AE';
+ const teamleaders=aeBranch?(branch.members||[]).filter(p=>p.aeTeamleader===true):[];
+ const tutors=(branch.members||[]).filter(p=>!teamleaders.includes(p)&&
   hasInstructorSection&&(isPolice?isSpecialtyInstructor(p,branch.label):isTeacher(p)));
  // Signalisatie, RADIO/BM en Semi-anoniem: alleen leden in rangvolgorde.
  // Iedereen blijft zichtbaar, ook als er ooit een instructeursrol is opgeslagen.
- const members=(branch.members||[]).filter(p=>
-  !hasInstructorSection||(isPolice?!isSpecialtyInstructor(p,branch.label):!isTeacher(p)));
+ const members=(branch.members||[]).filter(p=>!teamleaders.includes(p)&&
+  !tutors.includes(p));
  if(isPolice){
   const columns=el('div','police-specialty-role-grid');
+  if(teamleaders.length){
+   const leadership=el('section','police-specialty-role-column police-teamleader-panel');
+   leadership.append(el('div','group-title ae-leadership','TEAMLEADERS / LEIDING'));
+   leadership.append(specialtyPeopleList(teamleaders,false,branch.label));
+   columns.append(leadership);
+  }
   // Motard heeft een eigen, geverifieerde Discord-instructeursrol en dus
   // altijd een instructeurssectie. Geen generieke docentrol gebruiken om
   // onterecht instructeur te worden in meerdere specialisaties.
@@ -2832,7 +2856,7 @@ function specialtyBranch(branch,isPolice,nested=false,department=''){
    peopleList(members));
  }
  for(const child of branch.children||[])content.append(specialtyBranch(child,isPolice,true,department));
- if(!tutors.length&&!members.length&&!branch.children?.length&&!isPolice)
+ if(!teamleaders.length&&!tutors.length&&!members.length&&!branch.children?.length&&!isPolice)
   content.append(el('div','gaps','Nog geen geregistreerde leden'));
  card.append(content);
  return card;
@@ -2922,6 +2946,9 @@ async function loadPublic(){
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
     motardRole:['in_opleiding','volwaardig','instructeur'].includes(p.motardRole)?p.motardRole:'',
     dispRole:['in_opleiding','volwaardig','instructeur'].includes(p.dispRole)?p.dispRole:'',
+    aeRole:['ae_i','ae_t','teamleader','instructeur'].includes(p.aeRole)?p.aeRole:'',
+    aeRoles:Array.isArray(p.aeRoles)?p.aeRoles.filter(x=>['ae_i','ae_t','teamleader','instructeur'].includes(x)):[],
+    aeTeamleader:p.aeTeamleader===true,
     reekshoofdReeks:typeof p.reekshoofdReeks==='string'?p.reekshoofdReeks.slice(0,20):'',
     dossierUrl:typeof p.dossierUrl==='string'?p.dossierUrl.slice(0,270):'',
     instructorSpecialties:Array.isArray(p.instructorSpecialties)?p.instructorSpecialties.slice(0,12):[],
@@ -2993,6 +3020,10 @@ const RAGO_IO_PATCH='/assets/rago-definitief-in-opleiding-20261030.svg?v=approve
 const RAGO_PATCH='/assets/rago-definitief-volwaardig-20261030.svg?v=approved-three';
 const RAGO_INSTRUCTOR_PATCH='/assets/rago-definitief-instructeur-20261030.svg?v=approved-three';
 const RAGO_DISCORD_ROLE_ID='1309532437977497700';
+const AE_LEVEL_LABELS=Object.freeze({
+ ae_i:'AE-I',ae_t:'AE-T',teamleader:'TEAMLEADER / LEIDING',
+ instructeur:'AE-INSTRUCTEUR'
+});
 const K9_PATCH_ROLE_LABELS={instructeur:'INSTRUCTEUR',geleider:'GELEIDER',
  geleider_in_stage:'GELEIDER IN STAGE'};
 const MOTARD_PATCH_ROLE_LABELS=Object.freeze({
