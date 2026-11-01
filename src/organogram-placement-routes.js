@@ -177,10 +177,17 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       merged.dispRole=merged.instructorSpecialties.includes('DISP')?'instructeur':'volwaardig';
      if(merged.dispRole&&!merged.specialties.includes('DISP'))merged.specialties.push('DISP');
     }
+    // Verified, approved role mappings can add a *display-only*
+    // specialization to the organogram, even when the legacy sheet was
+    // not updated yet. The personnel dossier remains unchanged.
+    const specialtyPatches=mappedPatches(p);
+    for(const link of specialtyPatches){
+     if(!merged.specialties.includes(link.label))merged.specialties.push(link.label);
+    }
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
-     specialtyPatches:mappedPatches(p),
+     specialtyPatches,
      awards:p.dept==='politie'?publicDecorations(
       decorationEntries.get(awardKey(p.dept,p.personId))||[],undefined,customCatalog):[],
      status:p.dept==='politie'?String(p.status||'').trim().slice(0,30):'',
