@@ -98,7 +98,10 @@ export function setupPatchBulkImport({root,api,notify,canUpload,cloudReady,after
    for(const item of valid){
     try{
      status.textContent='Upload '+(saved+errors.length+1)+' / '+valid.length+': '+item.meta.label;
-     const dataUrl=await fileData(item.file);
+     // Browsers may label a .webp as octet-stream. The server still validates
+     // the RIFF/WEBP bytes, so normalizing the data-URL MIME is safe here.
+     const dataUrl=(await fileData(item.file)).replace(
+       /^data:[^;]*;base64,/, 'data:image/webp;base64,');
      const meta=item.meta;
      const payload=meta.kind==='role'?
       {department:'politie',roleId:meta.roleId,variant:'standard',label:meta.label,
