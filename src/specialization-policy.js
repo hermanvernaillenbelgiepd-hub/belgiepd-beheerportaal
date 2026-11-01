@@ -35,6 +35,22 @@ export function canChangeSpecialty(actor,subject){
     actor?.dossierAllowedDepartments?.includes('brandweer')&&
     actor?.dossierNativeDepartments?.includes('brandweer')&&
     actor?.discordId!==subject.personId);
+  // Verified local management for medical and towing services.
+  // A Police officer role alone never grants a different department's edits.
+  if(['ambulance','depannage'].includes(subject?.dept)){
+    const dept=subject.dept;
+    const confirmed=dept==='ambulance'?
+      actor?.reportServiceRoles?.ambulanceAzls===true:
+      actor?.reportServiceRoles?.depannageAwv===true;
+    const scopedLeadership=['officierenkader','korpsleiding'].includes(actor?.role)&&
+      ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,dept))&&
+      canEditPersonnel(actor,subject);
+    return Boolean(actor?.uid==='discord:'+actor?.discordId&&
+      actor?.departments?.includes(dept)&&
+      actor?.dossierNativeDepartments?.includes(dept)&&
+      actor?.dossierAllowedDepartments?.includes(dept)&&
+      actor?.discordId!==subject.personId&&(confirmed||scopedLeadership));
+  }
   if(subject?.dept!=='politie')return false;
   if(!['officierenkader','korpsleiding'].includes(actor?.role))return false;
   if(!['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie')))return false;
