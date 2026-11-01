@@ -79,7 +79,7 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   $('specialtyLinkStatus').textContent=config.labels.length+' specialisaties · '+
    config.roles.length+' Discord-rollen in de dienstcatalogus · '+
    draft.length+' koppelingen'+(config.canEdit?' · bewerkbaar':' · alleen lezen');
-  const roles=[['','Kies een Discord-rol'],
+  const roles=[['','Geen Discord-rol — handmatige specialisatie / patch'],
    ...config.roles.map(x=>[x.id,x.name+' · '+x.id])];
   const labels=config.labels.map(x=>[x,x]);
   const assets=[['','Geen afbeelding'],...config.assets.map(x=>[x.key,x.label+' · '+x.key])];
@@ -89,14 +89,16 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
     const group=el('label',title);
     const input=select(choices,row[key]);input.disabled=!config.canEdit;
     input.onchange=()=>{
+     const previousRoleId=row.roleId;
      row[key]=input.value;
-     if(key==='label')row.assetKey='';
+     if(key==='label'||key==='roleId'&&previousRoleId&&
+       row.assetKey?.startsWith(previousRoleId+'_'))row.assetKey='';
      render();
     };
     group.append(input);wrap.append(group);
    };
    field('Specialisatie',labels,'label');
-   field('Discord-rol',roles,'roleId');
+   field('Discord-rol (optioneel)',roles,'roleId');
    const level=el('label','Functieniveau');
    const levelInput=el('input');levelInput.value=row.level;levelInput.maxLength=45;
    levelInput.disabled=!config.canEdit;levelInput.placeholder='bv. Teamleader / Leiding';
@@ -112,6 +114,11 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
    if(asset){const img=el('img');img.src=asset.imageUrl;img.alt=asset.label;img.loading='lazy';
     preview.append(img)}
    else preview.textContent='Geen patch gekozen';
+   if(row.assetKey&&/^\d{15,22}_/.test(row.assetKey)&&
+      (!row.roleId||!row.assetKey.startsWith(row.roleId+'_')))
+    preview.append(el('span','Deze oude patch hoort bij een andere Discord-rol. Kies een algemene patch.'));
+   if(!row.roleId)preview.append(el('span',
+     'Handmatig: geen Discord-rol nodig. Toekennen gebeurt per personeelsdossier.'));
    patch.append(preview);wrap.append(patch);
    const remove=el('button','Wissen');remove.type='button';remove.className='alt';
    remove.disabled=!config.canEdit;
@@ -175,9 +182,9 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
  }
  $('specialtyLinkAdd').onclick=()=>{
   if(!config?.canEdit||draft.length>=120)return;
-  const role=config.roles.find(x=>!draft.some(item=>item.roleId===x.id));
-  if(!role||!config.labels.length)return notify('Geen vrije Discord-rol meer in de dienstcatalogus.',true);
-  draft.push({roleId:role.id,label:config.labels[0],level:role.name,value:'Ja',assetKey:''});
+  const label=config.labels.find(x=>!draft.some(item=>!item.roleId&&item.label===x));
+  if(!label)return notify('Alle specialisaties hebben al een handmatige patchkoppeling.',true);
+  draft.push({roleId:'',label,level:'Handmatig toegekend',value:'Ja',assetKey:''});
   render();
  };
  $('specialtyLinkSave').onclick=async()=>{
@@ -185,8 +192,9 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   const reason=$('specialtyLinkReason').value.trim();
   if(reason.length<8||!$('specialtyLinkReviewed').checked)
    return notify('Vul een motivering in en bevestig de controle van rollen en afbeeldingen.',true);
-  if(!confirm('Alle rol-/patchkoppelingen voor '+getDepartment()+
-    ' bewaren? Discord-rollen en personeelsbevoegdheden veranderen niet.'))return;
+  if(!confirm('Alle specialisatie- en patchkoppelingen voor '+getDepartment()+
+    ' bewaren? Een Discord-rol is niet verplicht. Handmatige toekenningen '+
+    'blijven per personeelslid.'))return;
   const b=$('specialtyLinkSave');b.disabled=true;
   try{
    await api('/api/specialty-links/'+encodeURIComponent(getDepartment()),'PUT',{
