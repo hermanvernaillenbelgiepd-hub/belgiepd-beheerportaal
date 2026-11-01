@@ -95,7 +95,7 @@ let visualCatalog=null;
 const $=id=>document.getElementById(id);
 const depts=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
  ['depannage','Depannage'],['burger','Burger']];
-const levels=['Niet ingevuld','Ja','Nee','Stage','INSTRUCTEUR','Docent','AANGEMELD','RESTRICTED','OPLEIDING!','GESCHORST','INACTIEF'];
+const levels=['Niet ingevuld','Ja','Nee','Stage','INSTRUCTEUR','LEIDING','Docent','AANGEMELD','RESTRICTED','OPLEIDING!','GESCHORST','INACTIEF'];
 const make=(tag,label)=>{const x=document.createElement(tag);x.textContent=label;return x};
 const option=(value,label)=>{const x=make('option',label);x.value=value;return x};
 const alertUser=(message,bad=false)=>{$('feedback').textContent=message;$('feedback').classList.toggle('bad',bad)};
@@ -241,6 +241,8 @@ async function loadSpecialties(p){
 }
 function updateArtwork(){
  const raw=String($('specialty').value||'').trim().toLowerCase();
+ const leadershipOption=[...$('specialtyValue').options].find(x=>x.value==='LEIDING');
+ if(leadershipOption)leadershipOption.textContent=raw==='ae'?'TEAMLEADER / LEIDING (AE)':'LEIDING';
  const aliases={'motor':'motard','semi-ano.':'semi_ano','semi-anoniem':'semi_ano',
   'dispatch':'disp','rago-io':'rago','k-9':'k9','radio bm':'radio_bm','siv/wpr':'siv_wpr'};
  const code=aliases[raw]||raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
