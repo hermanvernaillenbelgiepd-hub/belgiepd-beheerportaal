@@ -157,7 +157,13 @@ function renderVisualEditor(){
  $('visualK9').value=person.k9Manual||'';
  $('visualMotard').value=person.motardManual||'';
  $('visualDisp').value=person.dispManual||'';
- $('visualHelp').textContent='Bestaande handmatige functieniveaus zijn ingevuld. Controleer wijzigingen alvorens te bewaren.';
+ const aeLabels={ae_i:'AE-I',ae_t:'AE-T',
+  teamleader:'TEAMLEADER / LEIDING',instructeur:'AE-INSTRUCTEUR'};
+ const verifiedAe=(person.aeRoles||[]).map(role=>aeLabels[role]).filter(Boolean);
+ $('visualHelp').textContent='Bestaande handmatige functieniveaus zijn ingevuld. '+
+  (verifiedAe.length?'Geverifieerde AE Discord-rollen: '+verifiedAe.join(' · ')+'. ':
+   'AE Discord-functieniveau: niet recent geverifieerd. ')+
+  'AE-functies komen rechtstreeks van Discord. De personeelslijst toont uitsluitend AE, zonder aparte kolommen.';
  $('policeVisualPanel').hidden=false;
 }
 $('visualSave').onclick=async()=>{
