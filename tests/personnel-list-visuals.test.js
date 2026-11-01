@@ -225,3 +225,20 @@ test('Six approved neutral patch slices remain visible without Firebase image re
   assert.equal(img.subarray(0,4).toString(),'RIFF');
   assert.equal(img.subarray(8,12).toString(),'WEBP');
 });
+
+test('Motard and RAGO do not regress to stale Firebase header art for any member',()=>{
+ const api=visuals();
+ const stale=(key)=>({key,imageUrl:'/api/role-artwork/file/'+key+'?v=old-111'});
+ api.setArtworkManifest([
+  stale('specialty_politie_motard'),stale('patch_politie_rago'),
+  stale('1358148694297415741_standard'),
+  stale('1309532437977497700_standard')
+ ]);
+ for(const [label,position] of [['Motor',0],['RAGO',60]]){
+  const banner=api.specialtyBannerDisplay(label);
+  assert.equal(banner.type,'sprite');
+  assert.equal(banner.position,position);
+  assert.equal(banner.url,'/assets/neutral-specialisatiepatches-20261101.webp');
+ }
+ assert.equal(api.specialtyBannerDisplay('Motor','brandweer'),null);
+});

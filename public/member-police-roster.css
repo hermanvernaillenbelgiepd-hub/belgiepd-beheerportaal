@@ -167,11 +167,11 @@
 .mr-table{
  width:100%;min-width:0;table-layout:fixed;
 }
-.mr-table th:first-child{width:4.5%;min-width:0}
+.mr-table th:first-child{width:3.7%;min-width:0}
 .mr-table th:nth-child(2){width:6.5%;min-width:0}
 .mr-table th:nth-child(3){width:12%;min-width:0}
-.mr-table th:nth-child(4){width:7%;min-width:0}
-.mr-table th:nth-child(5){width:7.5%;min-width:0}
+.mr-table th:nth-child(4){width:4.8%;min-width:0}
+.mr-table th:nth-child(5){width:6.1%;min-width:0}
 .mr-table th.mr-specialty-head{
  min-width:0;overflow-wrap:anywhere;
 }
@@ -195,4 +195,25 @@
 }
 @media(max-width:1099px){
  .mr-table{min-width:1100px}
+}
+
+/* Make CALL, REEKS and STATUS genuinely narrow in the read-only roster.
+   Specialization banners receive the recovered space; values can wrap. */
+.mr-table th:first-child,.mr-table td.mr-call{
+ padding-inline:2px;
+}
+.mr-table td.mr-status-cell{
+ padding-inline:2px;
+}
+.mr-table .mr-series{
+ justify-content:center;gap:2px;
+}
+.mr-table .mr-series-badge{
+ padding:2px 3px;max-width:100%;min-width:0;
+ white-space:normal;overflow-wrap:anywhere;text-align:center;
+}
+.mr-table td.mr-status-cell .mr-status{
+ display:block;width:100%;max-width:100%;
+ overflow-wrap:anywhere;white-space:normal;
+ padding-inline:1px;
 }

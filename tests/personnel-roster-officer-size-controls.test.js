@@ -62,7 +62,11 @@ test('only authenticated, verified managers see size controls; all readers see s
  assert.match(script,/if\(generation!==sessionGeneration\)return/);
  assert.match(server,/app\.use\('\/api\/member',express\.json\(\{limit:'3kb'/);
  assert.match(html,/--mr-custom-text-size/);
- assert.match(html,/--mr-custom-table-width/);
+ // Legacy saved width stays in the verified officer editor, but it must
+ // not force horizontal scrolling in the public desktop list.
+ assert.match(script,/tableWidth:'--mr-custom-table-width'/);
+ assert.doesNotMatch(html,/\.mr-table\{min-width:var\(--mr-custom-table-width/);
+ assert.match(html,/\.roster-personnel-page \.mr-table\{width:100%;min-width:0/);
 });
 test('all controlled pixels can be applied without editing any member data',()=>{
  const values=new Map();

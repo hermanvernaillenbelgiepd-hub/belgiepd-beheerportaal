@@ -44,7 +44,12 @@ tbody tr:nth-child(2n){background:#183450}
 
 /* Admin-configurable SHARED dimensions. All regular members see the saved
    dimensions but never the editing controls. CSS applies only to this page. */
-.roster-personnel-page .mr-table{min-width:var(--mr-custom-table-width,1280px)}
+/* Keep saved layout settings for other dimensions, but never force a
+   desktop horizontal scrollbar because of an old total-width setting. */
+.roster-personnel-page .mr-table{width:100%;min-width:0;table-layout:fixed}
+@media(max-width:1099px){
+ .roster-personnel-page .mr-table{min-width:1100px}
+}
 .roster-personnel-page .mr-wrapper{font-family:var(--mr-custom-font-family,Inter,"Segoe UI",Arial,sans-serif)}
 .roster-personnel-page .mr-table th{
  font-size:clamp(9px,calc(var(--mr-custom-text-size,11px) - 1px),16px)
@@ -52,8 +57,21 @@ tbody tr:nth-child(2n){background:#183450}
 .roster-personnel-page .mr-table .mr-status{
  font-family:var(--mr-custom-font-family,Inter,"Segoe UI",Arial,sans-serif)
 }
-.roster-personnel-page .mr-table th:nth-child(3){min-width:var(--mr-custom-rank-column,165px)}
-.roster-personnel-page .mr-table th:nth-child(4){min-width:var(--mr-custom-name-column,150px)}
+/* The rank-name column was removed; columns 3/4 are now member/series.
+   Never apply the former rank/name minimum widths to the wrong columns. */
+.roster-personnel-page .mr-table th:nth-child(3),
+.roster-personnel-page .mr-table th:nth-child(4){min-width:0}
+.roster-personnel-page .mr-table th:first-child{width:3.7%;min-width:0}
+.roster-personnel-page .mr-table th:nth-child(4){width:4.8%}
+.roster-personnel-page .mr-table th:nth-child(5){width:6.1%}
+.roster-personnel-page .mr-table td.mr-call{padding-inline:2px}
+.roster-personnel-page .mr-table td.mr-status-cell{padding-inline:2px}
+.roster-personnel-page .mr-table td.mr-status-cell .mr-status{
+ max-width:100%;width:100%;white-space:normal;overflow-wrap:anywhere
+}
+/* Legacy rangnaam width control remains in saved settings for compatibility,
+   but there is no longer a separate rangnaam column to resize. */
+.roster-layout-fields label[for="rosterLayout-rankColumn"]{display:none}
 .roster-personnel-page .mr-table tbody tr.mr-person{
  height:var(--mr-custom-row-height,28px)
 }
@@ -117,7 +135,6 @@ body.roster-embedded .roster-profile-dialog{max-height:90vh}
 <div class="panel">
 <a class="login-link" id="discordLogin" href="/auth/discord/start?return=%2Fpersoneelslijst.html" hidden>Inloggen met Discord om personeelslijst te bekijken →</a>
 <div class="filters"><div><label for="search">Zoeken</label><input id="search" placeholder="Roepnummer, naam, rang of reeks"></div>
-<div><label>Vaste kaderindeling</label><small>Korpsleiding → Officierenkader → Middenkader → Basiskader → Agentenkader</small></div>
 <button id="refresh" type="button">Vernieuwen</button></div>
 <section class="roster-layout-tools" id="rosterLayoutTools" hidden aria-label="Personeelslijstafmetingen">
  <button id="rosterLayoutToggle" class="roster-layout-toggle" type="button"
