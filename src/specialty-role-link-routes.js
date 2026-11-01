@@ -11,6 +11,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {SPECIALTY_STATES,allSpecialtyLabels} from './specialization-policy.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
+import {suppressSupersededRagoMatches} from './rago-qualification-display.js';
 
 export const SPECIALTY_ROLE_LINKS='bpd_specialty_role_links';
 export const SPECIALTY_ROLE_LINK_AUDIT='bpd_specialty_role_link_audit';
@@ -208,7 +209,7 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
    });
    res.set('Cache-Control','private, no-store');
    return res.json({verified,verifiedAt:verified?new Date(data.verifiedAt).toISOString():null,
-     matches:linked,displayOnly:true,discordRolesChanged:false});
+     matches:suppressSupersededRagoMatches(linked),displayOnly:true,discordRolesChanged:false});
   }catch(e){return respond(res,e)}
  });
 }
