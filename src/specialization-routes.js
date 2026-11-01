@@ -50,7 +50,7 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
             Number.isSafeInteger(roles.verifiedAt)&&
             roles.verifiedAt<=now+60000&&now-roles.verifiedAt<=7*86400000&&
             Array.isArray(roles.roleIds)&&
-            roles.roleIds.every(x=>/^\\d{15,22}$/.test(x));
+            roles.roleIds.every(x=>/^\d{15,22}$/.test(x));
           if(verified){
             const saved=Array.isArray(linksDoc.get('links'))?linksDoc.get('links'):[];
             const links=defaultSpecialtyRoleLinks('politie',saved,
