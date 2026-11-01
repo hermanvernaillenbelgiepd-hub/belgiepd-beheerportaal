@@ -45,6 +45,7 @@ import {eligibleForTechnicalProfile,verifiedPoliceRank,technicalCookieIsValid,te
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
+import {installSpecialtyRoleLinkRoutes} from './specialty-role-link-routes.js';
 import {installRosterColumnRoutes,loadRosterConfigs} from './roster-column-config.js';
 import {installFunctionChangeRoutes} from './function-change-routes.js';
 import {installReceivedRegistrationRoutes} from './received-registration-routes.js';
@@ -107,6 +108,7 @@ app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/organogram',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
 app.use('/api/roster-columns',express.json({limit:'16kb',strict:true}));
+app.use('/api/specialty-links',express.json({limit:'28kb',strict:true}));
 app.use('/api/personnel-awards',express.json({limit:'180kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
 // Dossier intrekkingen verwachten uitsluitend een gecontroleerde JSON-motivering.
@@ -643,6 +645,7 @@ installDiscordPersonalProfileRoutes(app,{getSnapshot});
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
 installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installSpecialtyRoleLinkRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installFunctionChangeRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installReceivedRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installStaffDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
