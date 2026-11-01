@@ -93,7 +93,7 @@ function renderHeader(thead){
  for(const label of visibleSpecialties()){
    const th=element('th',undefined,'mr-specialty-head');
    th.title=label;
-   const image=visual().specialtyIconImage(label);
+   const image=visual().specialtyBannerImage(label);
    const fallback=()=>{
      th.classList.remove('mr-specialty-head--patch');
      th.replaceChildren();
