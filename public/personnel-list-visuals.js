@@ -21,6 +21,24 @@
   ];
   const imgRoot='https://commons.wikimedia.org/wiki/Special:FilePath/';
   const logoOverrides=new Map();
+  // Approved visual roles are a fallback only when the neutral library patch
+  // has not yet been uploaded. Neither choice changes someone's qualifications.
+  const roleArtworkFallbacks=Object.freeze({
+    motard:'1358148694297415741_standard',
+    k9:'1309532437977497699_standard',
+    rago:'1309532437977497700_standard',
+    disp:'1309532438019706963_standard',
+    ae:'1310674604821581894_standard'
+  });
+  const specialtyArtworkAliases=Object.freeze({
+    motard:['motard','motor','motard_lokaal'],
+    semi_ano:['semi_ano','semi_anoniem','semi_anoniem_lokaal','semi_ano_lokaal'],
+    k9:['k9','k_9','k9_geleider'],
+    rago:['rago','rago_federaal','luchtsteun'],
+    disp:['disp','dispatch','dispatching'],
+    ae:['ae','arrestatie_eenheid','arrestatie_eenheid_lokaal'],
+    siv_wpr:['siv_wpr','wpr','siv']
+  });
   const safeCode=raw=>String(raw||'').toLowerCase().normalize('NFD')
     .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_')
     .replace(/^_+|_+$/g,'').slice(0,40);
@@ -40,8 +58,9 @@
     logoOverrides.clear();
     for(const row of Array.isArray(records)?records:[]){
       const key=String(row?.key||''),url=String(row?.imageUrl||'');
-      if(!/^(?:rank|specialty)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}$/.test(key))continue;
-      if(!/^\/api\/role-artwork\/file\/(?:rank|specialty)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}\?v=[A-Za-z0-9-]+$/.test(url))continue;
+      if(!/^(?:(?:rank|specialty|patch)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
+      if(url!=='/api/role-artwork/file/'+key+'?v='+String(row?.imageUrl||'').split('?v=')[1]||
+        !/^\/api\/role-artwork\/file\/[a-z0-9_]+\?v=[A-Za-z0-9-]+$/.test(url))continue;
       logoOverrides.set(key,url);
     }
   }
@@ -89,7 +108,17 @@
   // Only a complete, approved library patch may cover a whole column header.
   // The built-in Signalisatie icon is a small fallback, not a full-width patch.
   function specialtyBannerImage(label,dept='politie'){
-    return artwork('specialty',dept,specialtyArtworkCode(label));
+    const code=specialtyArtworkCode(label);
+    const names=specialtyArtworkAliases[code]||[code];
+    for(const alias of names){
+      const neutral=artwork('specialty',dept,alias)||artwork('patch',dept,alias);
+      if(neutral)return neutral;
+    }
+    if(dept==='politie'){
+      const role=roleArtworkFallbacks[code];
+      if(role&&logoOverrides.has(role))return logoOverrides.get(role);
+    }
+    return null;
   }
   function specialtyIcon(label){
     return specialtyCatalog.find(([pattern])=>pattern.test(String(label||'')))?.[1]||'🏷️';
