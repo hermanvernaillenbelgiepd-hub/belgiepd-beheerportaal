@@ -105,20 +105,40 @@
     return /^signalisatie$/i.test(String(label||'').trim())
       ?'/assets/icons/signalisatie.svg':null;
   }
-  // Only a complete, approved library patch may cover a whole column header.
-  // The built-in Signalisatie icon is a small fallback, not a full-width patch.
-  function specialtyBannerImage(label,dept='politie'){
+  // A custom neutral library image always wins. The bundled, approved neutral
+  // patch strip fills only missing police headers; no rank/role changes occur.
+  const neutralPatchStrip='/assets/neutral-specialisatiepatches-20261101.webp';
+  const neutralPatchPositions=Object.freeze({
+    motard:0,semi_ano:1,k9:2,rago:3,disp:4,ae:5
+  });
+  function librarySpecialtyBanner(label,dept='politie'){
     const code=specialtyArtworkCode(label);
     const names=specialtyArtworkAliases[code]||[code];
     for(const alias of names){
       const neutral=artwork('specialty',dept,alias)||artwork('patch',dept,alias);
       if(neutral)return neutral;
     }
+    return null;
+  }
+  function specialtyBannerImage(label,dept='politie'){
+    const neutral=librarySpecialtyBanner(label,dept);
+    if(neutral)return neutral;
+    const code=specialtyArtworkCode(label);
     if(dept==='politie'){
       const role=roleArtworkFallbacks[code];
       if(role&&logoOverrides.has(role))return logoOverrides.get(role);
     }
     return null;
+  }
+  function specialtyBannerDisplay(label,dept='politie'){
+    const neutral=librarySpecialtyBanner(label,dept);
+    if(neutral)return {type:'image',url:neutral};
+    const code=specialtyArtworkCode(label);
+    if(dept==='politie'&&Number.isInteger(neutralPatchPositions[code]))
+      return {type:'sprite',url:neutralPatchStrip,
+        position:neutralPatchPositions[code]*20};
+    const image=specialtyBannerImage(label,dept);
+    return image?{type:'image',url:image}:null;
   }
   function specialtyIcon(label){
     return specialtyCatalog.find(([pattern])=>pattern.test(String(label||'')))?.[1]||'🏷️';
@@ -323,7 +343,7 @@
   }
   root.BPDPersonnelVisuals=Object.freeze({
     rankInfo,specialtyBadges,specialtyIcon,specialtyIconImage,specialtyBannerImage,qualification,specialtyStatuses,
-    setArtworkManifest,specialtyArtworkCode,
+    setArtworkManifest,specialtyArtworkCode,specialtyBannerDisplay,
     specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre,depannageFunction,comparePersonnel,sortPersonnelRows
   });
 })(typeof window==='object'?window:globalThis);
