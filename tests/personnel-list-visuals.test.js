@@ -201,3 +201,27 @@ test('Neutral specialty patches fill all roster headers using library aliases be
   assert.equal(api.specialtyBannerImage('K9'),null);
   assert.equal(api.specialtyBannerImage('Onbekend'),null);
 });
+
+test('Six approved neutral patch slices remain visible without Firebase image records',()=>{
+  const api=visuals();
+  for(const [name,position] of [
+    ['Motor',0],['Semi-ano.',20],['K9',40],
+    ['RAGO',60],['Dispatch',80],['AE',100]
+  ]){
+    const banner=api.specialtyBannerDisplay(name);
+    assert.equal(banner.type,'sprite',name);
+    assert.equal(banner.position,position,name);
+    assert.equal(banner.url,'/assets/neutral-specialisatiepatches-20261101.webp');
+  }
+  assert.equal(api.specialtyBannerDisplay('Semi-ano.','brandweer'),null);
+  assert.equal(api.specialtyBannerDisplay('Niet Bestaand'),null);
+  const record={key:'patch_politie_semi_anoniem',
+    imageUrl:'/api/role-artwork/file/patch_politie_semi_anoniem?v=1-abc'};
+  api.setArtworkManifest([record]);
+  assert.equal(api.specialtyBannerDisplay('Semi-ano.').type,'image');
+  assert.equal(api.specialtyBannerDisplay('Semi-ano.').url,record.imageUrl);
+  assert.equal(api.specialtyBannerDisplay('RAGO').position,60);
+  const img=readFileSync(new URL('../public/assets/neutral-specialisatiepatches-20261101.webp',import.meta.url));
+  assert.equal(img.subarray(0,4).toString(),'RIFF');
+  assert.equal(img.subarray(8,12).toString(),'WEBP');
+});
