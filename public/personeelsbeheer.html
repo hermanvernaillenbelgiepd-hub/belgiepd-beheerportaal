@@ -1744,8 +1744,8 @@ function render(){
   // cap oversized column weights and distribute the total over the available
   // table width. All cells stay aligned without cropping qualifications.
   const compactWidths=policeCompact?[
-    Math.min(w.call,60),Math.min(w.grade,94),Math.min(w.name,150),
-    Math.min(w.series,84),Math.min(w.status,92),
+    Math.min(w.call,44),Math.min(w.grade,94),Math.min(w.name,150),
+    Math.min(w.series,62),Math.min(w.status,76),
     ...(cols.length?cols.map(label=>Math.min(
       rosterConfigs[dept]?.specialtyWidths?.[label]||w.specialty,125)):
       [Math.min(w.summary,150)]),
