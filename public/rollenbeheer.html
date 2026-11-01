@@ -34,6 +34,12 @@ button.alt{background:#26455f}
 .specialty-map-preview span{font-size:11px;color:#c4d9ef}
 @media(max-width:1050px){.specialty-map-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.specialty-map-row{grid-template-columns:1fr}}
+.specialty-person-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:12px 0}
+.specialty-person-item{background:#0c243d;border:1px solid #4b6b8d;border-radius:8px;padding:8px;display:flex;align-items:center;gap:9px;min-height:70px;text-align:left}
+.specialty-person-item strong{display:block;font-size:12px}
+.specialty-person-item small{display:block;color:#acc8e7;font-size:10px;margin-top:3px}
+.specialty-person-item img{width:96px;height:34px;object-fit:contain;margin-left:auto}
+.specialty-person-item:hover,.specialty-person-item:focus-visible{background:#26486b;outline:1px solid #83add9}
 </style><link rel="stylesheet" href="/bpd-navigation.css"></head>
 <body><header><h1>🛡️ Rollen & specialisaties</h1>
 <nav><a href="/beeldbibliotheek.html">Beeldbibliotheek</a><a href="/gebruikersbeheer.html">Accountrollen</a><a href="/personeelsbeheer.html">Personeelsbeheer</a>
@@ -72,6 +78,7 @@ button.alt{background:#26455f}
 <section id="specialtyPanel" hidden>
 <h2>3. Specialisatie toekennen / wijzigen</h2>
 <p class="help">Deze wijziging wordt in het personeelsdossier en activiteitenlog geregistreerd. Het is geen automatische Discord-roltoekenning.</p>
+<div id="specialtyPersonList" class="specialty-person-grid" aria-label="Alle specialisaties van het geselecteerde personeelslid"></div>
 <div class="grid">
  <label>Specialisatie<select id="specialty"></select></label>
  <label>Status<select id="specialtyValue"></select></label>
@@ -267,10 +274,12 @@ async function loadSpecialties(p){
    'Statuswijzigingen worden per personeelslid gelogd; bestaande bevoegdheden worden niet via een afbeelding toegewezen.':
    'Alleen bevoegde leidinggevenden van deze dienst kunnen dit specialisatieregister wijzigen.';
   updateArtwork();
+  specialtyLinksUI.renderPersonList(data.items||[]);
  }catch(e){
   if(selected!==p)return;
   $('specialtyPanel').hidden=false;$('specialtySave').disabled=true;
   $('specialty').replaceChildren();
+  $('specialtyPersonList').replaceChildren();
   $('specialtyHelp').textContent=e.message;
   alertUser('Specialisaties: '+e.message,true);
  }
@@ -292,6 +301,7 @@ function updateArtwork(){
  specialtyLinksUI.updatePreview();
 }
 $('specialty').onchange=updateArtwork;
+$('specialtyValue').onchange=()=>{$('specialtyConfirmImage').checked=false};
 $('dept').onchange=()=>{selected=null;choosePeople();void specialtyLinksUI.load()};
 $('search').oninput=choosePeople;$('person').onchange=updateSelection;
 $('specialtySave').onclick=async()=>{
