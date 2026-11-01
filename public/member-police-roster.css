@@ -161,3 +161,38 @@
  background-size:100% 600%;background-repeat:no-repeat;
  background-color:#050b13;
 }
+
+/* Desktop member roster: keep every specialization visible without horizontal
+   scrolling. Removing the duplicate rank-name column leaves five fixed fields. */
+.mr-table{
+ width:100%;min-width:0;table-layout:fixed;
+}
+.mr-table th:first-child{width:4.5%;min-width:0}
+.mr-table th:nth-child(2){width:6.5%;min-width:0}
+.mr-table th:nth-child(3){width:12%;min-width:0}
+.mr-table th:nth-child(4){width:7%;min-width:0}
+.mr-table th:nth-child(5){width:7.5%;min-width:0}
+.mr-table th.mr-specialty-head{
+ min-width:0;overflow-wrap:anywhere;
+}
+.mr-table th.mr-specialty-head--patch{
+ min-width:0!important;width:auto!important;padding:0!important;
+}
+.mr-table td,.mr-table th{overflow-wrap:anywhere;}
+.mr-table .mr-status{
+ width:100%;min-width:0;max-width:100%;
+ padding-inline:2px;font-size:clamp(8px,.65vw,10px);
+}
+.mr-table .mr-specialty{
+ padding-inline:1px;white-space:normal;overflow-wrap:anywhere;
+ font-size:clamp(8px,.62vw,10px);
+}
+.mr-table .mr-specialty-banner{
+ max-width:100%;width:100%;height:auto;object-fit:contain;
+}
+.mr-table .mr-person-name-wrap,.mr-table .mr-rank{
+ min-width:0;max-width:100%;overflow-wrap:anywhere;
+}
+@media(max-width:1099px){
+ .mr-table{min-width:1100px}
+}
