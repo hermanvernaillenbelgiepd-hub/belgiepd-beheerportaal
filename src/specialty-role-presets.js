@@ -2,6 +2,9 @@
 // The assetKey stays empty until an approved image is uploaded to the image library.
 // Levels remain distinct even when several roles share one specialization column.
 export const POLICE_ROLE_PATCH_PRESETS=Object.freeze([
+ ['1345297414612979713','K9','Geleider in stage','Stage'],
+ ['1309532437977497699','K9','Geleider','Ja'],
+ ['1345302115689431061','K9','Instructeur','INSTRUCTEUR'],
  ['1337852029611016233','Dispatch','Selectie / in opleiding','Stage'],
  ['1309532438019706963','Dispatch','Volwaardig','Ja'],
  ['1393050971604516904','Dispatch','Instructeur','INSTRUCTEUR'],
