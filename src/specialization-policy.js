@@ -17,7 +17,7 @@ export const allSpecialtyLabels=(dept,additional=[])=>[...new Set([
 // Manual restrictions (e.g. radio misuse or loss of qualification) override defaults.
 export function automaticPoliceSpecialties(subject){
  if(subject?.dept!=='politie')return {};
- const match=String(subject.call||'').trim().match(/(?:^|[-\\s])([0-9]{3})$/);
+ const match=String(subject.call||'').trim().match(/(?:^|[-\s])([0-9]{3})$/);
  const call=match?Number(match[1]):null;
  if(call===null||call<200||call>999)return {};
  return {
