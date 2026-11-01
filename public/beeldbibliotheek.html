@@ -68,6 +68,23 @@ button:disabled{opacity:.5;cursor:not-allowed}button.secondary{background:#25425
  <p id="slotNote" class="hint" role="status"></p>
  <div class="actions"><button id="upload" type="button">Afbeelding opslaan in bibliotheek</button><button class="secondary" id="clear" type="button">Selectie leegmaken</button><a class="action-link" href="/rollenbeheer.html">Naar rollenbeheer</a></div>
 </section>
+<section class="panel" id="patchBulkImport">
+ <h2>BelgiumPD-specialisatiepatches in één keer importeren</h2>
+ <p>Pak de goedgekeurde ZIP eerst uit en selecteer alle WebP-bestanden samen.
+ De bestandsnamen koppelen automatisch de juiste neutrale specialisatie en de 17 bekende Discord-rolvarianten.
+ Er wordt niets aan Discord-rechten gewijzigd. Bestaande patches worden met audit en versiehistoriek vervangen.</p>
+ <div class="grid">
+  <label>Goedgekeurde WebP-patches selecteren
+   <input type="file" multiple accept="image/webp,.webp" data-patches-input>
+  </label>
+  <label>Motivering (auditlog)
+   <input maxlength="300" placeholder="Bijv. Goedkeuring uniforme specialisatiepatchen" data-patches-reason>
+  </label>
+ </div>
+ <p class="hint" data-patches-status>Kies de uitgepakte WebP-bestanden.</p>
+ <details><summary>Bestanden en gekoppelde rol-ID's controleren</summary><ul data-patches-preview></ul></details>
+ <button type="button" data-patches-save disabled>Alle herkende patches opslaan</button>
+</section>
 <section class="panel">
  <h2>Opgeslagen afbeeldingen <small id="count"></small></h2>
  <div id="items" class="items"></div>
@@ -81,6 +98,7 @@ button:disabled{opacity:.5;cursor:not-allowed}button.secondary{background:#25425
 </section>
 </div></main>
 <script type="module">
+import {setupPatchBulkImport} from '/patch-bulk-import.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 const departments=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
@@ -273,5 +291,9 @@ async function start(){
   authMod.onAuthStateChanged(auth,()=>{load().catch(e=>notify(e.message,true))});
  }catch(e){notify(e.message,true)}
 }
+setupPatchBulkImport({
+ root:$('patchBulkImport'),api,notify,canUpload:()=>allowed.includes('politie'),
+ cloudReady:()=>storageReady,afterUpload:load
+});
 start();
 </script><script defer src="/bpd-navigation.js"></script></body></html>
