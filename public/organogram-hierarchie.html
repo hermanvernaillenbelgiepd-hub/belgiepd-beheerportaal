@@ -1918,15 +1918,12 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
 import '/uniform-assignment-display.js?v=studio-coats-only-20261030';
-import {findOrganogramCardPerson} from '/assets/organogram-card-identity.js';
 const $=id=>document.getElementById(id);
 const cardParams=new URLSearchParams(location.search);
 const isEmbeddedCard=cardParams.get('embedded')==='1';
-const requestedDCId=String(cardParams.get('dcId')||'');
 const requestedCard=isEmbeddedCard&&cardParams.get('dienst')==='politie'&&
- (/^\d{15,22}$/.test(requestedDCId)||
-  /^[a-z0-9 *_-]{1,24}$/i.test(cardParams.get('kaart')||''))?
- {dept:'politie',dcId:requestedDCId,call:cardParams.get('kaart')||'',
+ /^[a-z0-9 *_-]{1,24}$/i.test(cardParams.get('kaart')||'')?
+ {dept:'politie',call:cardParams.get('kaart')||'',
   name:String(cardParams.get('naam')||'').slice(0,90)}:null;
 if(isEmbeddedCard)document.documentElement.classList.add('roster-card-embed');
 function notifyCardParent(status){
@@ -3006,7 +3003,10 @@ async function loadPublic(){
  render();
  if(requestedCard){
   if(!state.demo){
-   const person=findOrganogramCardPerson(state.live,requestedCard);
+   const person=state.live.find(p=>p.dept===requestedCard.dept&&
+    p.call.toLocaleLowerCase('nl-BE')===requestedCard.call.toLocaleLowerCase('nl-BE')&&
+    (!requestedCard.name||p.name.toLocaleLowerCase('nl-BE')===
+     requestedCard.name.toLocaleLowerCase('nl-BE')));
    if(person){openPersonProfile(person);notifyCardParent('ready');}
    else notifyCardParent('not-found');
   }else notifyCardParent('unavailable');
