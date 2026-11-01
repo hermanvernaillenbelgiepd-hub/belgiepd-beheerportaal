@@ -45,6 +45,33 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
    'Nog geen patch gekoppeld. Controleer de specialisatie en status.';
   $('specialtyConfirmImage').checked=false;
  }
+ function renderPersonList(items){
+  const root=$('specialtyPersonList');root.replaceChildren();
+  if(!Array.isArray(items))return;
+  for(const spec of items){
+   const tile=el('button');tile.type='button';tile.className='specialty-person-item';
+   const info=el('span');
+   info.append(el('strong',spec.label),el('small',
+     String(spec.value||'Niet ingevuld')+' · '+(spec.source==='manual'?'Handmatig':'Geregistreerd')));
+   tile.append(info);
+   const pic=currentArtwork(spec.label);
+   if(pic){
+    const image=el('img');image.src=pic.imageUrl;image.alt='Patch '+pic.label;
+    image.loading='lazy';tile.append(image);
+   }
+   if(spec.readOnly)tile.title='Alleen via geverifieerde Discord-rol';
+   tile.onclick=()=>{
+    const found=[...$('specialty').options].find(x=>x.value===spec.label);
+    if(!found)return notify('Deze functie wordt uitsluitend via Discord geverifieerd.',true);
+    $('specialty').value=spec.label;
+    $('specialtyValue').value=spec.value;
+    if(!$('specialtyValue').value)$('specialtyValue').value='Niet ingevuld';
+    updatePreview();
+    $('specialty').scrollIntoView({behavior:'smooth',block:'nearest'});
+   };
+   root.append(tile);
+  }
+ }
  function render(){
   const root=$('specialtyLinkRows');root.replaceChildren();
   setAvailable(Boolean(config));
@@ -170,5 +197,5 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   }catch(e){notify(e.message,true)}
   finally{b.disabled=false}
  };
- return {load,loadVerified,updatePreview};
+ return {load,loadVerified,updatePreview,renderPersonList};
 }
