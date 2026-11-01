@@ -121,6 +121,30 @@ export function publicSpecializations(subject,document,additional=[]){
   return {items,revision:Number.isSafeInteger(document?.revision)&&document.revision>=0
     ?document.revision:0};
 }
+// Use verified, fresh role data only for dossier presentation. An explicitly
+// managed restriction or qualification remains authoritative over Discord.
+// This neither persists values nor grants operational or portal access.
+export function applyVerifiedSpecialtyRoleDisplay(state,roleIds,links){
+ if(!state||!Array.isArray(state.items)||!Array.isArray(roleIds)||!Array.isArray(links))
+  return state;
+ const valid=new Set(roleIds.filter(x=>/^\d{15,22}$/.test(String(x))));
+ const priority={Stage:1,Ja:2,LEIDING:3,INSTRUCTEUR:4};
+ const best=new Map();
+ for(const link of links){
+  if(!valid.has(link?.roleId)||!Object.hasOwn(priority,link.value))continue;
+  const prev=best.get(link.label);
+  if(!prev||priority[link.value]>priority[prev.value])best.set(link.label,link);
+ }
+ for(const item of state.items){
+  const match=best.get(item.label);
+  if(!match||item.source==='manual')continue;
+  item.value=match.value;
+  item.source='discord-verified';
+  item.level=String(match.level||'').slice(0,45);
+  item.roleId=match.roleId;
+ }
+ return state;
+}
 export function applySpecialtyOverlays(records,docs,configs={}){
   const byKey=new Map();
   for(const entry of docs||[]){
