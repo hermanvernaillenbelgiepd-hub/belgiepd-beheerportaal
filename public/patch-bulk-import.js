@@ -33,8 +33,8 @@ export function setupPatchBulkImport({root,api,notify,canUpload,cloudReady,after
  const reason=root.querySelector('[data-patches-reason]');
  let selected=[];
  const parseName=name=>{
-  const stem=String(name).replace(/\\.webp$/i,'');
-  const role=/^(\\d{15,22})_standard$/.exec(stem);
+  const stem=String(name).replace(/\.webp$/i,'');
+  const role=/^(\d{15,22})_standard$/.exec(stem);
   if(role&&roleNames[role[1]])return {
    filename:name,kind:'role',roleId:role[1],variant:'standard',
    label:roleNames[role[1]],department:'politie'
@@ -76,7 +76,7 @@ export function setupPatchBulkImport({root,api,notify,canUpload,cloudReady,after
    if(!meta)error=file.name+' is geen gekende rol- of neutrale specialisatiepatch';
    else if(seen.has(key))error=file.name+' komt dubbel voor';
    else if(file.size>140*1024||file.size<40)error=file.name+' is groter dan 140 KB of leeg';
-   else if(!/\\.webp$/i.test(file.name))error=file.name+' is geen WebP';
+   else if(!/\.webp$/i.test(file.name))error=file.name+' is geen WebP';
    if(key)seen.add(key);
    return {file,meta,error};
   });
