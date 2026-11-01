@@ -358,7 +358,10 @@ async function getSnapshot({forceRefresh=false}={}){
   const combined=base.data.concat(extra);
   const personnel=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
   let visible=specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel;
-  if(specialties&&process.env.DISCORD_GUILD_ID){
+  // RAGO is a read-only projection of verified Discord roles, not a write to
+  // the optional specialization register. It must also work when that register
+  // is disabled, e.g. in the member-facing personnel roster.
+  if(process.env.DISCORD_GUILD_ID){
     // Only recently verified Discord guild snapshots can annotate RAGO. The
     // Sheets, manual dossier overrides and Discord roles are not modified.
     try{
