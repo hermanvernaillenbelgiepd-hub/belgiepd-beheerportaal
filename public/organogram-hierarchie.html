@@ -2420,7 +2420,7 @@ function openPersonProfile(p){
    const matchedArtwork=verified&&Array.isArray(p.specialtyPatches)?
     p.specialtyPatches.find(entry=>
       (p.dept==='politie'?policeSpecialtyName(entry.label):entry.label)===name&&
-      /^\/api\/role-artwork\/file\/(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(entry.imageUrl)) :null;
+      /^\/api\/role-artwork\/file\/(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})\?v=[a-zA-Z0-9-]+$/.test(entry.imageUrl)) :null;
    const alternative=verified?(matchedArtwork?.imageUrl||
     window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)) :'';
    if(alternative){
@@ -2972,7 +2972,7 @@ async function loadPublic(){
     specialtyPatches:Array.isArray(p.specialtyPatches)?
      p.specialtyPatches.filter(x=>x&&typeof x.label==='string'&&
        typeof x.level==='string'&&typeof x.imageUrl==='string'&&
-       /^\/api\/role-artwork\/file\/(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(x.imageUrl)).slice(0,20):[],
+       /^\/api\/role-artwork\/file\/(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})\?v=[a-zA-Z0-9-]+$/.test(x.imageUrl)).slice(0,20):[],
     aeRole:['ae_i','ae_t','teamleader','instructeur'].includes(p.aeRole)?p.aeRole:'',
     aeRoles:Array.isArray(p.aeRoles)?p.aeRoles.filter(x=>['ae_i','ae_t','teamleader','instructeur'].includes(x)):[],
     aeTeamleader:p.aeTeamleader===true,
