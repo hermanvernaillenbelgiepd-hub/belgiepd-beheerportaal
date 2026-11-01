@@ -6,6 +6,8 @@ import {automaticPoliceSpecialties,publicSpecializations,allowedSpecialty,
  initialFixedCallSpecialties,applyVerifiedSpecialtyRoleDisplay} from '../src/specialization-policy.js';
 
 const roles={
+ '1345297414612979713':'K9','1309532437977497699':'K9',
+ '1345302115689431061':'K9',
  '1337852029611016233':'Dispatch','1309532438019706963':'Dispatch',
  '1393050971604516904':'Dispatch','1309542190409580594':'AE',
  '1310674604821581894':'AE','1337775768083632158':'AE',
@@ -20,9 +22,9 @@ const police=call=>({dept:'politie',personId:'123456789012345678',call,
 const status=(subject,label,doc)=>publicSpecializations(subject,doc).items.find(x=>x.label===label);
 
 test('confirmed Discord role IDs map once to a single qualification and level',()=>{
- assert.equal(POLICE_ROLE_PATCH_PRESETS.length,14);
+ assert.equal(POLICE_ROLE_PATCH_PRESETS.length,17);
  assert.deepEqual(Object.fromEntries(POLICE_ROLE_PATCH_PRESETS.map(x=>[x.roleId,x.label])),roles);
- assert.equal(new Set(POLICE_ROLE_PATCH_PRESETS.map(x=>x.roleId)).size,14);
+ assert.equal(new Set(POLICE_ROLE_PATCH_PRESETS.map(x=>x.roleId)).size,17);
  for(const preset of POLICE_ROLE_PATCH_PRESETS){
   assert.equal(ROLE_CATALOG.some(x=>x.id===preset.roleId),true,preset.roleId);
   assert.equal(preset.assetKey,'');
@@ -35,10 +37,10 @@ test('existing curated mappings are never overwritten by presets',()=>{
  const custom=[{label:'AE',roleId:'1310674604821581894',level:'Eigen tekst',value:'Ja',assetKey:''}];
  assert.deepEqual(defaultSpecialtyRoleLinks('politie',custom,true),custom);
  const upgraded=defaultSpecialtyRoleLinks('politie',custom,false);
- assert.equal(upgraded.length,14);
+ assert.equal(upgraded.length,17);
  assert.equal(upgraded[0].level,'Eigen tekst');
  assert.equal(upgraded.filter(x=>x.roleId===custom[0].roleId).length,1);
- assert.equal(defaultSpecialtyRoleLinks('politie',[],false).length,14);
+ assert.equal(defaultSpecialtyRoleLinks('politie',[],false).length,17);
  assert.deepEqual(defaultSpecialtyRoleLinks('brandweer',[],false),[]);
 });
 test('automatic privileges start at fixed callsign, A-INP and INP thresholds',()=>{
