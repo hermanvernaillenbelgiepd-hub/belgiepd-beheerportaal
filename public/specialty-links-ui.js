@@ -82,8 +82,22 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   const roles=[['','Geen Discord-rol — handmatige specialisatie / patch'],
    ...config.roles.map(x=>[x.id,x.name+' · '+x.id])];
   const labels=config.labels.map(x=>[x,x]);
-  const assets=[['','Geen afbeelding'],...config.assets.map(x=>[x.key,x.label+' · '+x.key])];
   for(const row of draft){
+   // Images uploaded for the whole department can be used without a role.
+   // A legacy role-specific badge is valid only for the exact same role ID.
+   const targetCode=codes(row.label),dept=getDepartment();
+   const compatible=config.assets.filter(x=>!/^\d{15,22}_/.test(x.key)||
+     row.roleId&&x.key.startsWith(row.roleId+'_'));
+   const matches=image=>{
+    const suffix=image.key.replace(new RegExp('^(?:specialty|patch)_'+dept+'_'),'');
+    const acceptable=new Set([targetCode,targetCode+'_lokaal',targetCode+'_federaal',
+     ...(targetCode==='semi_ano'?['semi_anoniem','semi_anoniem_lokaal']:[]),
+     ...(targetCode==='wpr'?['siv_wpr']:[])]);
+    return acceptable.has(suffix);
+   };
+   const assets=[['','Geen afbeelding'],
+    ...compatible.sort((x,y)=>Number(matches(y))-Number(matches(x)))
+      .map(x=>[x.key,(matches(x)?'✓ ':'')+x.label+' · '+x.key])];
    const wrap=el('div');wrap.className='specialty-map-row';
    const field=(title,choices,key)=>{
     const group=el('label',title);
@@ -114,6 +128,8 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
    if(asset){const img=el('img');img.src=asset.imageUrl;img.alt=asset.label;img.loading='lazy';
     preview.append(img)}
    else preview.textContent='Geen patch gekozen';
+   if(asset&&!/^\d{15,22}_/.test(asset.key)&&!matches(asset))
+    preview.append(el('span','Let op: deze afbeelding heeft geen herkenbare code voor '+row.label+'. Controleer zorgvuldig.'));
    if(row.assetKey&&/^\d{15,22}_/.test(row.assetKey)&&
       (!row.roleId||!row.assetKey.startsWith(row.roleId+'_')))
     preview.append(el('span','Deze oude patch hoort bij een andere Discord-rol. Kies een algemene patch.'));
