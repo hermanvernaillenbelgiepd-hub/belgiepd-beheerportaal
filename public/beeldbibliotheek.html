@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beeldbibliotheek · BelgiumPD</title>
+<style>
+:root{font-family:Inter,"Segoe UI",Arial,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:#0a192d;color:#eaf3ff;font-size:13px}
+body>header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 22px;background:#122b46;border-bottom:1px solid #375f81;flex-wrap:wrap}
+header h1{margin:0;font-size:20px}header nav{display:flex;flex-wrap:wrap;gap:8px}a{color:#b9ddff}
+header a,.action-link{border:1px solid #476b94;border-radius:7px;padding:8px 11px;text-decoration:none;color:#eaf3ff}
+main{max-width:1320px;margin:18px auto;padding:0 18px 30px}h2{font-size:16px;margin:0 0 10px}
+p{line-height:1.5;color:#c1d5ed}small,.hint{font-size:11px;color:#a9c8e9}
+.panel{background:#112940;border:1px solid #395878;border-radius:11px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px}
+label{display:flex;flex-direction:column;gap:5px;font-weight:650;min-width:0}
+input,select,button{font:inherit}input,select{width:100%;min-width:0;color:#f0f6ff;border:1px solid #557498;border-radius:7px;background:#0c2036;padding:9px}
+button{background:#28639e;color:white;border:1px solid #5496c6;padding:9px 14px;border-radius:7px;cursor:pointer;font-weight:700}
+button:disabled{opacity:.5;cursor:not-allowed}button.secondary{background:#25425f}button.danger{background:#66313b;border-color:#995462}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+#message{padding:11px;border:1px solid #476b8d;border-radius:7px;margin:12px 0}
+#message.bad{border-color:#c46b77;color:#ffbbbd}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:11px;margin-top:12px}
+.asset{border:1px solid #476684;border-radius:9px;padding:11px;background:#0d2339;min-width:0}
+.asset img{display:block;width:100%;height:112px;object-fit:contain;background:#071728;border-radius:6px;margin-bottom:8px}
+.asset strong{display:block;overflow-wrap:anywhere}
+.asset small{display:block;margin:3px 0 8px;overflow-wrap:anywhere}
+.asset .actions{margin-top:7px}
+#preview{display:block;max-width:100%;max-height:160px;object-fit:contain;margin:10px auto}
+[hidden]{display:none!important}
+</style><link rel="stylesheet" href="/bpd-navigation.css"></head>
+<body><header><h1>📁 Beeldbibliotheek</h1><nav><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollenbeheer.html">Rollen & specialisaties</a><a href="/personeelsbeheer.html">Personeelsbeheer</a><button id="login" type="button">Aanmelden</button></nav></header>
+<main>
+<p>Één afbeeldingsbibliotheek per hulpdienst. Upload hier patches, graden, specialisatiebadges, uniformfoto's en logo's. <strong>Hiermee ken je niemand een rang, rol of specialisatie toe.</strong> Bestaande Uniformbeheer-instellingen worden niet aangepast.</p>
+<div id="message" role="status" aria-live="polite">Aanmelding controleren…</div>
+<div id="editor" hidden>
+<section class="panel">
+ <h2>Afbeelding toevoegen of vervangen</h2>
+ <div class="grid">
+  <label>Hulpdienst<select id="dept"></select></label>
+  <label>Categorie<select id="kind"></select></label>
+  <label>Zoeken op naam of code<input id="search" placeholder="Zoek in de beeldbibliotheek"></label>
+ </div>
+ <div class="grid" style="margin-top:12px">
+  <label>Code (uniek binnen dienst en categorie)<input id="code" maxlength="40" placeholder="bijvoorbeeld: terreinondersteuner"></label>
+  <label>Naam van de afbeelding<input id="label" maxlength="75" placeholder="bijvoorbeeld: Terreinondersteuner"></label>
+  <label>Afbeelding (PNG, JPEG, WebP)<input id="file" type="file" accept="image/png,image/jpeg,image/webp"></label>
+  <label>Motivering voor auditlog<input id="reason" maxlength="300" placeholder="Minstens 8 tekens"></label>
+ </div>
+ <img id="preview" alt="Afbeelding vóór upload" hidden>
+ <p id="storageNote" class="hint"></p>
+ <div class="actions"><button id="upload" type="button">Afbeelding opslaan in bibliotheek</button><button class="secondary" id="clear" type="button">Selectie leegmaken</button><a class="action-link" href="/rollenbeheer.html">Naar rollenbeheer</a></div>
+</section>
+<section class="panel">
+ <h2>Opgeslagen afbeeldingen <small id="count"></small></h2>
+ <div id="items" class="items"></div>
+</section>
+<section class="panel" id="versionsPanel" hidden>
+ <h2>Versiegeschiedenis <small id="versionName"></small></h2>
+ <div class="grid"><label>Oudere afbeelding<select id="versions"></select></label>
+ <label>Reden voor herstel<input id="restoreReason" maxlength="300" placeholder="Minstens 8 tekens"></label></div>
+ <div class="actions"><button id="restore" type="button">Vorige versie herstellen</button></div>
+ <p class="hint">Een herstel wijzigt alleen de actieve afbeelding. Vorige versies en de auditgeschiedenis blijven bestaan.</p>
+</section>
+</div></main>
+<script type="module">
+let setupPortalLogin;
+const $=id=>document.getElementById(id);
+const departments=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
+ ['depannage','Depannage'],['burger','Burger'],['beveiliging','Beveiliging']];
+const kinds=[['specialty','Specialisatiebadge'],['rank','Gradenplaat / rangteken'],['patch','Patch'],
+ ['uniform','Uniformfoto'],['helmet','Helm'],['profession','Beroepsteken'],
+ ['logo','Dienstlogo'],['pictogram','Pictogram'],['medal','Medaille'],['award','Ereteken']];
+const labelFor=(list,value)=>list.find(x=>x[0]===value)?.[1]||value;
+const make=(tag,txt)=>{const x=document.createElement(tag);x.textContent=txt;return x};
+const opt=(value,label)=>{const x=make('option',label);x.value=value;return x};
+for(const [id,options] of [['dept',departments],['kind',kinds]])
+ for(const [value,label] of options)$(id).append(opt(value,label));
+let auth=null,authMod=null,allowed=[],assets=[],storageReady=false,previewUrl='';
+const notify=(text,bad=false)=>{$('message').textContent=text;$('message').classList.toggle('bad',bad)};
+function normalized(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+ .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40)}
+async function api(path,method='GET',body){
+ if(!auth?.currentUser)throw Error('Meld je eerst aan.');
+ const token=await auth.currentUser.getIdToken();
+ const r=await fetch(path,{method,cache:'no-store',
+  headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},
+  ...(body?{body:JSON.stringify(body)}:{})});
+ const data=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(data.error||'Serverfout ('+r.status+')');
+ return data;
+}
+function selectedKey(){return $('kind').value+'_'+$('dept').value+'_'+normalized($('code').value)}
+function clearFile(){
+ $('code').value='';$('label').value='';$('file').value='';$('preview').hidden=true;
+ if(previewUrl)URL.revokeObjectURL(previewUrl);
+ previewUrl='';
+}
+$('clear').onclick=clearFile;
+$('file').onchange=()=>{
+ if(previewUrl)URL.revokeObjectURL(previewUrl);
+ previewUrl='';
+ const f=$('file').files?.[0];
+ if(!f){$('preview').hidden=true;return}
+ previewUrl=URL.createObjectURL(f);$('preview').src=previewUrl;$('preview').hidden=false;
+};
+function draw(){
+ const dept=$('dept').value,kind=$('kind').value,q=$('search').value.trim().toLocaleLowerCase('nl');
+ const visible=assets.filter(x=>x.department===dept&&x.kind===kind&&
+  (x.label+' '+x.code).toLocaleLowerCase('nl').includes(q)).sort((a,b)=>
+    String(a.label).localeCompare(String(b.label),'nl'));
+ $('count').textContent=visible.length+' afbeeldingen';const target=$('items');target.replaceChildren();
+ if(!visible.length){target.textContent='Voor deze hulpdienst en categorie zijn nog geen afbeeldingen opgeslagen.';return}
+ for(const item of visible){
+  const card=make('article','');card.className='asset';
+  if(item.active){const img=make('img','');img.alt=item.label;img.src=item.imageUrl;
+   img.loading='lazy';card.append(img)}
+  const name=make('strong',item.label),meta=make('small',item.code+(item.active?'':' · Gearchiveerd'));
+  const actions=make('div','');actions.className='actions';
+  const pick=make('button','Selecteren');pick.type='button';pick.className='secondary';
+  pick.onclick=()=>{$('dept').value=item.department;$('kind').value=item.kind;
+   $('code').value=item.code;$('label').value=item.label;
+   notify('Geselecteerd: '+item.label+'. Upload een bestand met dezelfde code om de afbeelding te vervangen.');
+   void versions(item)};
+  actions.append(pick);
+  const archive=make('button','Archiveren');archive.type='button';archive.className='danger';
+  archive.hidden=!item.active;
+  archive.onclick=async()=>{
+   const reason=prompt('Waarom wil je deze afbeelding archiveren? (minimaal 8 tekens)');
+   if(reason===null)return;
+   if(!confirm('Afbeelding '+item.label+' archiveren? Bestaande personeelsrechten veranderen niet.'))return;
+   try{await api('/api/role-artwork/'+encodeURIComponent(item.key),'DELETE',{reason});
+    notify('Afbeelding gearchiveerd. Bestaande historie blijft behouden.');await load()}
+   catch(e){notify(e.message,true)}
+  };
+  actions.append(archive);
+  card.append(name,meta,actions);target.append(card);
+ }
+}
+async function versions(item){
+ $('versionsPanel').hidden=true;$('versions').replaceChildren(opt('','Kies een oude versie'));
+ $('versionName').textContent=item.label;
+ if(!storageReady)return;
+ try{
+  const data=await api('/api/uniform-library/versions?key='+encodeURIComponent(item.key));
+  for(const x of data.versions||[])
+   $('versions').append(opt(x.id,(x.date?new Date(x.date).toLocaleString('nl-BE')+' · ':'')+x.label));
+  $('versionsPanel').dataset.key=item.key;
+  $('versionsPanel').hidden=!(data.versions||[]).length;
+ }catch(e){notify('Versiehistoriek: '+e.message,true)}
+}
+$('restore').onclick=async()=>{
+ const key=$('versionsPanel').dataset.key,versionId=$('versions').value,
+  reason=$('restoreReason').value.trim();
+ if(!versionId||reason.length<8)return notify('Selecteer een versie en vul een reden van minstens 8 tekens in.',true);
+ if(!confirm('Een vorige versie van deze afbeelding herstellen?'))return;
+ try{await api('/api/uniform-library/restore','POST',{key,versionId,reason});
+  notify('Afbeelding hersteld.');$('versionsPanel').hidden=true;await load()}
+ catch(e){notify(e.message,true)}
+};
+async function reader(file){return await new Promise((ok,no)=>{
+ const r=new FileReader();r.onload=()=>ok(String(r.result));r.onerror=()=>no(Error('Afbeelding lezen mislukt'));r.readAsDataURL(file);
+})}
+async function webpLegacy(file){
+ // Older Firestore artwork stores WebP only (140 KB). The original PNG/JPG
+ // remains untouched locally. Cloud Storage stores unmodified source bytes.
+ const img=await createImageBitmap(file);let result='';
+ try{
+  const max=1400,scale=Math.min(1,max/img.width,max/img.height);
+  let w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale));
+  for(let attempt=0;attempt<12;attempt++){
+   const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+   canvas.getContext('2d').drawImage(img,0,0,w,h);
+   result=canvas.toDataURL('image/webp',Math.max(.44,.88-attempt*.04));
+   if(result.startsWith('data:image/webp;')&&result.length<188000)return result;
+   w=Math.max(50,Math.round(w*.8));h=Math.max(25,Math.round(h*.8));
+  }
+  throw Error('Afbeelding is te groot voor de oude opslag. Gebruik een compactere WebP.');
+ }finally{img.close()}
+}
+$('upload').onclick=async()=>{
+ const f=$('file').files?.[0],department=$('dept').value,kind=$('kind').value,
+  code=normalized($('code').value),label=$('label').value.trim(),reason=$('reason').value.trim();
+ if(!allowed.includes(department))return notify('Geen uploadbevoegdheid voor deze dienst.',true);
+ if(!f||!['image/png','image/jpeg','image/webp'].includes(f.type))return notify('Kies een PNG-, JPEG- of WebP-bestand.',true);
+ if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code)||label.length<2||reason.length<8)
+  return notify('Controleer code, naam en motivering (minimaal 8 tekens).',true);
+ if(f.size>4*1024*1024)return notify('De maximale bestandsgrootte is 4 MB.',true);
+ const save=$('upload');save.disabled=true;
+ try{
+  if(storageReady){
+   await api('/api/uniform-library/assets','PUT',{department,kind,code,label,reason,dataUrl:await reader(f)});
+   notify('Originele afbeelding en versiegeschiedenis veilig opgeslagen in de bibliotheek.');
+  }else{
+   await api('/api/role-artwork/personnel','PUT',{department,kind,code,label,reason,dataUrl:await webpLegacy(f)});
+   notify('Afbeelding opgeslagen in de bestaande WebP-bibliotheek. Cloud Storage is nog niet geconfigureerd.');
+  }
+  clearFile();await load();
+ }catch(e){notify('Upload mislukt: '+e.message,true)}
+ finally{save.disabled=false}
+};
+$('dept').onchange=draw;$('kind').onchange=draw;$('search').oninput=draw;
+async function load(){
+ if(!auth?.currentUser){$('editor').hidden=true;return}
+ try{
+  const [status,manifest]=await Promise.all([
+   api('/api/uniform-library/status'),api('/api/role-artwork/manage')]);
+  allowed=status.editableDepartments||[];
+  storageReady=status.storageReady===true;
+  assets=(manifest.artworks||[]).filter(x=>x.kind!=='role');
+  $('editor').hidden=!allowed.length;
+  for(const x of $('dept').options)x.disabled=!allowed.includes(x.value);
+  if(!allowed.includes($('dept').value))$('dept').value=allowed[0]||'';
+  $('storageNote').textContent=storageReady?
+   'Cloud Storage actief: PNG, JPEG en WebP tot 4 MB met versiegeschiedenis.':
+   'Cloud Storage niet ingesteld: uploads worden als compacte WebP in de bestaande Firestore-bibliotheek opgeslagen (max. 140 KB).';
+  notify(allowed.length?'Bibliotheek geladen. Uploaden en rollen toekennen zijn gescheiden.':
+   'Je hebt geen bibliotheekrechten.',!allowed.length);
+  draw();
+ }catch(e){$('editor').hidden=true;notify('Bibliotheek laden mislukt: '+e.message,true)}
+}
+async function start(){
+ try{
+  const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(x=>x.json());
+  if(!cfg.enabled)throw Error('Firebase is niet ingesteld');
+  ({setupPortalLogin}=await import('/portal-login.js'));
+  const app=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  auth=authMod.getAuth(app.initializeApp(cfg.firebaseConfig));
+  setupPortalLogin({button:$('login'),auth,authModule:authMod,config:cfg,onError:e=>notify(e.message,true)});
+  authMod.onAuthStateChanged(auth,()=>{load().catch(e=>notify(e.message,true))});
+ }catch(e){notify(e.message,true)}
+}
+start();
+</script><script defer src="/bpd-navigation.js"></script></body></html>
