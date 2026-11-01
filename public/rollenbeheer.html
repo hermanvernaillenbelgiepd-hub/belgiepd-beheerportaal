@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rollen & specialisaties · BelgiumPD</title>
+<style>
+:root{font-family:Inter,"Segoe UI",Arial,sans-serif;color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;background:#0b1b30;color:#eaf3ff;font-size:13px}
+body>header{background:#142d48;border-bottom:1px solid #456889;display:flex;
+ align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;flex-wrap:wrap}
+h1{font-size:20px;margin:0}h2{font-size:16px;margin:0 0 8px}
+header nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+header a,.link{padding:8px 10px;border:1px solid #486b91;border-radius:7px;text-decoration:none;color:#dceeff}
+main{max-width:1280px;margin:20px auto;padding:0 16px 40px}
+section{padding:16px;border:1px solid #3d5d80;background:#122b45;border-radius:11px;margin:0 0 14px}
+p,.help{color:#c2d6ed;line-height:1.5}.grid{display:grid;
+grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+label{display:flex;flex-direction:column;gap:5px;font-weight:650;min-width:0}
+input,select,button,textarea{font:inherit}
+input,select,textarea{width:100%;padding:9px;border:1px solid #53779d;border-radius:7px;background:#0b2037;color:white}
+textarea{min-height:75px}
+button{border:1px solid #619fd5;border-radius:7px;padding:9px 13px;background:#285e96;color:white;font-weight:700;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.alt{background:#26455f}
+#feedback{padding:12px;border:1px solid #4b718d;border-radius:8px;margin:13px 0}
+#feedback.bad{color:#ffbec5;border-color:#aa5c67}
+.status{font-size:11px;color:#b8d2e9}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 0}
+.state{border:1px solid #52718e;border-radius:8px;background:#0d2237;padding:9px;margin:12px 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chips span{padding:4px 7px;border:1px solid #496a8e;border-radius:5px}
+.card-pic{max-height:70px;width:auto;max-width:210px;object-fit:contain}
+[hidden]{display:none!important}
+</style><link rel="stylesheet" href="/bpd-navigation.css"></head>
+<body><header><h1>🛡️ Rollen & specialisaties</h1>
+<nav><a href="/beeldbibliotheek.html">Beeldbibliotheek</a><a href="/gebruikersbeheer.html">Accountrollen</a><a href="/personeelsbeheer.html">Personeelsbeheer</a>
+<button id="login" type="button">Aanmelden</button></nav></header>
+<main>
+<p>Dit scherm kent <strong>personeelsrangen en specialisatiestatussen</strong> toe via de bestaande beveiligde dossierregistratie. Afbeeldingen worden uitsluitend beheerd in de <a href="/beeldbibliotheek.html">aparte Beeldbibliotheek</a>. Discord-rollen en portaaltoegangen pas je afzonderlijk aan in <a href="/gebruikersbeheer.html">Gebruikersbeheer</a>.</p>
+<div id="feedback" role="status" aria-live="polite">Aanmeldrechten controleren…</div>
+<div id="manager" hidden>
+<section>
+<h2>1. Personeelslid selecteren</h2>
+<div class="grid">
+ <label>Hulpdienst<select id="dept"></select></label>
+ <label>Personeel zoeken<input id="search" placeholder="Naam, roepnummer of Discord-ID"></label>
+ <label>Personeelslid<select id="person"><option value="">Kies eerst een persoon</option></select></label>
+</div>
+<div id="identity" class="state" hidden></div>
+</section>
+<section id="specialtyPanel" hidden>
+<h2>2. Specialisatie toekennen / wijzigen</h2>
+<p class="help">Deze wijziging wordt in het personeelsdossier en activiteitenlog geregistreerd. Het is geen automatische Discord-roltoekenning.</p>
+<div class="grid">
+ <label>Specialisatie<select id="specialty"></select></label>
+ <label>Status<select id="specialtyValue"></select></label>
+ <label>Motivering (min. 15 tekens)<textarea id="specialtyReason" maxlength="500" placeholder="Waarom wijzigt de kwalificatie?"></textarea></label>
+</div>
+<div class="actions"><button id="specialtySave" type="button">Specialisatie bewaren</button>
+<img id="specialtyImage" class="card-pic" alt="Gekoppelde specialisatieplaat" hidden></div>
+<p id="specialtyHelp" class="status"></p>
+</section>
+<section id="rankPanel" hidden>
+<h2>3. Rang / roepnummer wijzigen (Politie)</h2>
+<p class="help">Alleen bij een bevoegd personeelsdossier. Rang en roepnummer worden samen gewijzigd en gelogd. Discord-kaderrollen wijzigen niet automatisch.</p>
+<div class="grid">
+<label>Nieuwe rang<select id="newRank"></select></label>
+<label>Nieuw roepnummer<input id="newCall" placeholder="Bijvoorbeeld 480" maxlength="24"></label>
+<label>Motivering (20–500 tekens)<textarea id="rankReason" maxlength="500" placeholder="Motivering voor rangwijziging"></textarea></label>
+</div>
+<div class="actions"><button id="rankSave" type="button">Rangwijziging registreren</button></div>
+<p id="rankHelp" class="status"></p>
+</section>
+<section>
+<h2>Verdere beheertaken</h2>
+<p>Specialisaties en functies die uitsluitend via actuele Discord-rollen bepaald worden, blijven onder de Discord-verificatie vallen. Voor verlof, notities, officiële sancties en overige dossiergegevens gebruik je het bestaande Personeelsbeheer.</p>
+<div class="actions"><a class="link" href="/gebruikersbeheer.html">Discord-/portaalrollen beheren</a>
+<a class="link" href="/personeelsbeheer.html">Volledig personeelsdossier openen</a></div>
+</section>
+</div>
+</main>
+<script type="module">
+let setupPortalLogin,auth=null,authMod=null,people=[],overview=null,selected=null,specialtyData=null,artworks=[];
+const $=id=>document.getElementById(id);
+const depts=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
+ ['depannage','Depannage'],['burger','Burger']];
+const levels=['Niet ingevuld','Ja','Nee','Stage','INSTRUCTEUR','Docent','AANGEMELD','RESTRICTED','OPLEIDING!','GESCHORST','INACTIEF'];
+const make=(tag,label)=>{const x=document.createElement(tag);x.textContent=label;return x};
+const option=(value,label)=>{const x=make('option',label);x.value=value;return x};
+const alertUser=(message,bad=false)=>{$('feedback').textContent=message;$('feedback').classList.toggle('bad',bad)};
+for(const [v,label] of depts)$('dept').append(option(v,label));
+for(const v of levels)$('specialtyValue').append(option(v,v));
+async function api(path,method='GET',body){
+ if(!auth?.currentUser)throw Error('Meld je aan met je goedgekeurde Discord-account.');
+ const token=await auth.currentUser.getIdToken();
+ const response=await fetch(path,{method,cache:'no-store',
+  headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},
+  ...(body?{body:JSON.stringify(body)}:{})});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'Verzoek geweigerd ('+response.status+')');
+ return data;
+}
+const key=x=>x.dept+'_'+x.discordId;
+function choosePeople(){
+ const dept=$('dept').value,query=$('search').value.trim().toLowerCase();
+ const records=people.filter(x=>x.dept===dept&&(x.name+' '+x.call+' '+x.discordId).toLowerCase().includes(query))
+  .sort((a,b)=>String(a.call).localeCompare(String(b.call),'nl',{numeric:true}));
+ const old=$('person').value;
+ $('person').replaceChildren(option('','Selecteer een personeelslid'));
+ for(const p of records)$('person').append(option(key(p),p.call+' · '+p.name+' · '+p.rank));
+ if(records.some(x=>key(x)===old))$('person').value=old;
+ else selected=null;
+ if(!selected){$('specialtyPanel').hidden=true;$('rankPanel').hidden=true;$('identity').hidden=true}
+}
+function updateSelection(){
+ const p=people.find(x=>key(x)===$('person').value);
+ selected=p||null;specialtyData=null;
+ $('specialtyPanel').hidden=true;$('rankPanel').hidden=true;
+ $('identity').hidden=!p;
+ if(!p)return;
+ $('identity').textContent=p.call+' · '+p.name+' · '+p.rank+
+  ' · '+(p.dept||'').toUpperCase()+' · '+p.status;
+ void loadSpecialties(p);
+}
+async function loadSpecialties(p){
+ try{
+  const data=await api('/api/personnel/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId)+'/specializations');
+  if(selected!==p)return;
+  specialtyData=data;
+  $('specialty').replaceChildren();
+  for(const entry of data.items||[]){if(entry.readOnly)continue;
+    $('specialty').append(option(entry.label,entry.label+' · '+entry.value));}
+  const editable=data.canEdit===true;
+  $('specialtyPanel').hidden=false;
+  $('specialtySave').disabled=!editable||!$('specialty').options.length;
+  $('specialtyHelp').textContent=editable?
+   'Statuswijzigingen worden per personeelslid gelogd; bestaande bevoegdheden worden niet via een afbeelding toegewezen.':
+   'Alleen bevoegde leidinggevenden van deze dienst kunnen dit specialisatieregister wijzigen.';
+  updateArtwork();
+  const rankEditable=p.dept==='politie'&&p.canChangeRank===true&&overview?.rankChangesEnabled===true;
+  $('rankPanel').hidden=p.dept!=='politie';
+  $('newRank').replaceChildren(option('','Kies een andere rang'));
+  for(const rank of overview?.rankOptions||[])$('newRank').append(option(rank,rank));
+  $('rankSave').disabled=!rankEditable;
+  $('rankHelp').textContent=rankEditable?'Rang en nieuw roepnummer moeten overeenkomen met de politierangen.':
+   'Rangwijzigingen zijn hier niet beschikbaar voor jouw account of deze personeelsfiche.';
+ }catch(e){
+  if(selected!==p)return;
+  $('specialtyPanel').hidden=false;$('specialtySave').disabled=true;
+  $('specialty').replaceChildren();
+  $('specialtyHelp').textContent=e.message;
+  $('rankPanel').hidden=true;
+  alertUser('Specialisaties: '+e.message,true);
+ }
+}
+function updateArtwork(){
+ const row=artworks.find(x=>x.department===selected?.dept&&x.kind==='specialty'&&
+  x.code===String($('specialty').value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')&&x.active);
+ $('specialtyImage').hidden=!row;
+ if(row)$('specialtyImage').src=row.imageUrl;
+ const picked=specialtyData?.items?.find(x=>x.label===$('specialty').value);
+ $('specialtyValue').value=levels.includes(picked?.value)?picked.value:'Niet ingevuld';
+}
+$('specialty').onchange=updateArtwork;
+$('dept').onchange=()=>{selected=null;choosePeople()};
+$('search').oninput=choosePeople;$('person').onchange=updateSelection;
+$('specialtySave').onclick=async()=>{
+ const p=selected,state=specialtyData,label=$('specialty').value,value=$('specialtyValue').value,
+  reason=$('specialtyReason').value.trim();
+ if(!p||!state?.canEdit)return;
+ if(reason.length<15)return alertUser('Een motivering van minstens 15 tekens is vereist.',true);
+ if(!confirm('Specialisatie '+label+' van '+p.name+' wijzigen naar '+value+'? Dit wordt gelogd.'))return;
+ const b=$('specialtySave');b.disabled=true;
+ try{
+  await api('/api/personnel/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId)+
+   '/specializations','POST',{label,value,reason,expectedRevision:state.revision});
+  alertUser('Specialisatie bijgewerkt, inclusief dossierhistoriek. Discord-rol niet gewijzigd.');
+  $('specialtyReason').value='';await loadSpecialties(p);
+ }catch(e){alertUser(e.message,true)}finally{b.disabled=!(specialtyData?.canEdit===true)}
+};
+$('rankSave').onclick=async()=>{
+ const p=selected,newRank=$('newRank').value,newCall=$('newCall').value.trim(),
+  reason=$('rankReason').value.trim();
+ if(!p||!p.canChangeRank||!overview?.rankChangesEnabled)return;
+ if(reason.length<20||!newRank||!newCall)return alertUser('Vul een rang, passend roepnummer en motivering van minstens 20 tekens in.',true);
+ if(!confirm('Definitief wijzigen voor '+p.name+'?\n'+p.rank+' ('+p.call+') → '+newRank+' ('+newCall+
+   ')\nRegistratie wordt gelogd. Discord-rollen blijven ongewijzigd.'))return;
+ const b=$('rankSave');b.disabled=true;
+ try{
+  await api('/api/personnel/politie/'+encodeURIComponent(p.discordId)+'/rank-change','POST',
+   {expectedRank:p.rank,newRank,newCall,reason,expectedRevision:p.revision});
+  alertUser('Rangwijziging geregistreerd en gelogd. Controleer afzonderlijk de Discord-kaderrol.');
+  $('rankReason').value='';$('newCall').value='';await load();
+ }catch(e){alertUser(e.message,true)}finally{b.disabled=false}
+};
+async function load(){
+ if(!auth?.currentUser){$('manager').hidden=true;return}
+ try{
+  overview=await api('/api/personnel/overview');
+  people=overview.records||[];
+  try{const manifest=await api('/api/role-artwork/manifest');artworks=manifest.artworks||[]}
+  catch{artworks=[]}
+  $('manager').hidden=false;
+  for(const d of $('dept').options)d.disabled=!(overview.departments||[]).includes(d.value);
+  if(!(overview.departments||[]).includes($('dept').value))$('dept').value=overview.departments?.[0]||'politie';
+  choosePeople();
+  alertUser('Personeelsleden geladen. Kies een medewerker om kwalificaties of rang te beheren.');
+ }catch(e){$('manager').hidden=true;alertUser('Geen beheertoegang: '+e.message,true)}
+}
+async function start(){
+ try{
+  const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+  if(!cfg.enabled)throw Error('Firebase is niet ingesteld');
+  ({setupPortalLogin}=await import('/portal-login.js'));
+  const app=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  auth=authMod.getAuth(app.initializeApp(cfg.firebaseConfig));
+  setupPortalLogin({button:$('login'),auth,authModule:authMod,config:cfg,onError:e=>alertUser(e.message,true)});
+  authMod.onAuthStateChanged(auth,()=>{selected=null;load().catch(e=>alertUser(e.message,true))});
+ }catch(e){alertUser(e.message,true)}
+}start();
+</script><script defer src="/bpd-navigation.js"></script></body></html>
