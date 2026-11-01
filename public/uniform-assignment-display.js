@@ -144,15 +144,23 @@ function specialtyImage(p,name,variant=''){
  const base=SPECIALTY_CODES[normalized]||nameCode(name);
  if(!CODE.test(base))return '';
  const suffix=nameCode(variant),style=forPerson(p).badgeStyle;
- const bases=[...(suffix?[base+'_'+suffix]:[]),base];
+ const codes=[...new Set([base,nameCode(name)])].filter(x=>CODE.test(x));
+ const fallbackStyles=dept==='politie'?
+  (base==='rago'?['federaal','lokaal']:['lokaal','federaal']):[];
+ const styles=[...new Set([style,...fallbackStyles])].filter(Boolean);
  const candidates=[];
- // An explicitly chosen visual variant wins. Uploaded plain specialty assets
- // are the fallback, whether or not Uniformbeheer assigned a badge style.
- for(const part of bases){
-  if(style)candidates.push('specialty_'+dept+'_'+part+'_'+style);
-  candidates.push('specialty_'+dept+'_'+part);
-  if(style)candidates.push('patch_'+dept+'_'+part+'_'+style);
-  candidates.push('patch_'+dept+'_'+part);
+ // Prefer explicitly uploaded variants, then general patches. Names used
+ // before the central library (e.g. semi_anoniem vs semi_ano) stay supported.
+ for(const code of codes){
+  const bases=[...(suffix?[code+'_'+suffix]:[]),code];
+  for(const part of bases){
+   for(const visualStyle of styles)
+    candidates.push('specialty_'+dept+'_'+part+'_'+visualStyle);
+   candidates.push('specialty_'+dept+'_'+part);
+   for(const visualStyle of styles)
+    candidates.push('patch_'+dept+'_'+part+'_'+visualStyle);
+   candidates.push('patch_'+dept+'_'+part);
+  }
  }
  return candidates.map(key=>assetUrls.get(key)).find(Boolean)||'';
 }
