@@ -122,15 +122,38 @@ function forPerson(p){
   rankUrl:elementUrls.rank||'',
   uniformUrl:uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
 }
+// Specialization badges are independent of uniform selection. A newly uploaded
+// image with code "to" must work without a local/federal uniform badge style.
+const SPECIALTY_CODES=Object.freeze({
+ 'semi anoniem':'semi_ano','semi-anoniem':'semi_ano','semi-ano.':'semi_ano',
+ 'semi_anoniem':'semi_ano','semi_ano':'semi_ano',
+ 'terreinondersteuner':'to','t.o.':'to','to':'to',
+ 'arrestatie-eenheid':'ae','arrestatie eenheid':'ae','ae':'ae',
+ 'ae-i':'ae','ae-t':'ae','ae-teamleader':'ae','ae-instructeur':'ae',
+ 'radio/bm':'radio_bm','radio bm':'radio_bm',
+ 'siv/wpr':'wpr','wpr':'wpr',
+ 'motor':'motard','motard':'motard',
+ 'dispatch':'disp','disp':'disp',
+ 'k-9':'k9','k9':'k9','rago':'rago',
+ 'signalisatie':'signalisatie'
+});
 function specialtyImage(p,name,variant=''){
- const info=forPerson(p);
- if(!info.badgeStyle)return '';
- const dept=String(p?.dept||''),base=nameCode(name);
- const specific=variant?nameCode(base+'_'+variant):'';
- const choices=[
-  ...(specific?['specialty_'+dept+'_'+specific+'_'+info.badgeStyle]:[]),
-  'specialty_'+dept+'_'+base+'_'+info.badgeStyle
- ];
- return choices.map(k=>assetUrls.get(k)).find(Boolean)||'';
+ const dept=String(p?.dept||'');
+ if(!['politie','brandweer','ambulance','depannage','burger'].includes(dept))return '';
+ const normalized=String(name||'').trim().toLowerCase();
+ const base=SPECIALTY_CODES[normalized]||nameCode(name);
+ if(!CODE.test(base))return '';
+ const suffix=nameCode(variant),style=forPerson(p).badgeStyle;
+ const bases=[...(suffix?[base+'_'+suffix]:[]),base];
+ const candidates=[];
+ // An explicitly chosen visual variant wins. Uploaded plain specialty assets
+ // are the fallback, whether or not Uniformbeheer assigned a badge style.
+ for(const part of bases){
+  if(style)candidates.push('specialty_'+dept+'_'+part+'_'+style);
+  candidates.push('specialty_'+dept+'_'+part);
+  if(style)candidates.push('patch_'+dept+'_'+part+'_'+style);
+  candidates.push('patch_'+dept+'_'+part);
+ }
+ return candidates.map(key=>assetUrls.get(key)).find(Boolean)||'';
 }
 window.BPDUniformAssignments=Object.freeze({setData,forPerson,specialtyImage});
