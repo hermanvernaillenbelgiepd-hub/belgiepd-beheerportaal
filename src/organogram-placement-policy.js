@@ -233,9 +233,15 @@ export function mergePlacement(person,manual,auto){
  const specialtyValues=Array.isArray(person.specialties)?
   person.specialties.filter(x=>x&&typeof x.label==='string'&&
    (/^(ja|behaald|voltooid|geslaagd|true)$/i.test(strip(x.value))||
-     (person.dept==='politie'&&x.label==='AE'&&/^(instructeur|leiding|teamleader|ae[-_ ]?[it])$/i.test(strip(x.value))))&&
+     (person.dept==='politie'&&x.label==='AE'&&/^(instructeur|leiding|teamleader|ae[-_ ]?[it])$/i.test(strip(x.value)))||
+     // Explicitly registered RAGO 'Aangemeld' is training only, NEVER full RAGO.
+     // This display-only fallback works if an existing verified Discord role
+     // is unavailable; it does not grant permissions or write to Firestore.
+     (person.dept==='politie'&&x.label==='RAGO'&&/^aangemeld$/i.test(strip(x.value))))&&
    validStoredSpecialty(person.dept,x.label))
-    .map(x=>normalizedStoredSpecialty(person.dept,x.label)):[];
+    .map(x=>person.dept==='politie'&&x.label==='RAGO'&&
+      /^aangemeld$/i.test(strip(x.value))?'RAGO-IO':
+      normalizedStoredSpecialty(person.dept,x.label)):[];
  const boardRole=manual?.boardRole&&manual.boardRole!=='none'?
   manual.boardRole:auto?.boardRole||'none';
  return {dept:person.dept,name:strip(person.name).slice(0,90),
