@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {ROLE_CATALOG} from '../src/role-catalog.js';
 import {POLICE_ROLE_PATCH_PRESETS,defaultSpecialtyRoleLinks} from '../src/specialty-role-presets.js';
 import {automaticPoliceSpecialties,publicSpecializations,allowedSpecialty,
- initialFixedCallSpecialties} from '../src/specialization-policy.js';
+ initialFixedCallSpecialties,applyVerifiedSpecialtyRoleDisplay} from '../src/specialization-policy.js';
 
 const roles={
  '1337852029611016233':'Dispatch','1309532438019706963':'Dispatch',
@@ -83,4 +83,25 @@ test('new police status labels are native even without Sheets columns',()=>{
  assert.equal(defaults['Burgermeldingen'].value,'Ja');
  assert.equal(initialFixedCallSpecialties({discordId:'123456789012345678',status:'verified',
   assignedCall:230,sync:{call:230,discordId:'123456789012345678'}}),null);
+});
+
+test('verified Discord roles project only visual levels; manual restrictions win',()=>{
+ const id='123456789012345678',state=publicSpecializations(police('430'),{
+  values:{AE:{value:'Nee',source:'manual'}}
+ });
+ const links=[
+  {roleId:'1309542190409580594',label:'AE',value:'Stage',level:'AE-I'},
+  {roleId:'1337156006597103746',label:'AE',value:'INSTRUCTEUR',level:'Instructeur'},
+  {roleId:'1358148694297415741',label:'Motor',value:'Ja',level:'Volwaardig'}
+ ];
+ applyVerifiedSpecialtyRoleDisplay(state,[
+  '1309542190409580594','1337156006597103746','1358148694297415741'
+ ],links);
+ assert.equal(state.items.find(x=>x.label==='AE').value,'Nee');
+ assert.equal(state.items.find(x=>x.label==='AE').source,'manual');
+ assert.equal(state.items.find(x=>x.label==='Motor').value,'Ja');
+ assert.equal(state.items.find(x=>x.label==='Motor').source,'discord-verified');
+ const noProof=publicSpecializations(police('430'),null);
+ applyVerifiedSpecialtyRoleDisplay(noProof,['not-valid'],links);
+ assert.notEqual(noProof.items.find(x=>x.label==='Motor').source,'discord-verified');
 });
