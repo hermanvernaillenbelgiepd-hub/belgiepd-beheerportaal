@@ -45,6 +45,25 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
    'Nog geen patch gekoppeld. Controleer de specialisatie en status.';
   $('specialtyConfirmImage').checked=false;
  }
+ function renderVerifiedRoleTiles(){
+  const root=$('specialtyPersonList');
+  root.querySelectorAll('.specialty-verified-role').forEach(tile=>tile.remove());
+  if(!verified?.verified||!Array.isArray(verified.matches))return;
+  for(const match of verified.matches){
+   const tile=el('div');tile.className='specialty-person-item specialty-verified-role';
+   const info=el('span');
+   info.append(el('strong',match.label+' · '+(match.level||match.value)),
+     el('small','Geverifieerde Discord-rol · '+match.roleId));
+   tile.append(info);
+   const asset=config?.assets?.find(x=>x.key===match.assetKey)||currentArtwork(match.label);
+   if(asset){
+    const img=el('img');img.src=asset.imageUrl;img.alt='Patch '+asset.label;
+    img.loading='lazy';tile.append(img);
+   }
+   tile.title='Alleen weergave na actuele Discord-verificatie; geen handmatige rechtentoekenning';
+   root.append(tile);
+  }
+ }
  function renderPersonList(items){
   const root=$('specialtyPersonList');root.replaceChildren();
   if(!Array.isArray(items))return;
@@ -71,6 +90,7 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
    };
    root.append(tile);
   }
+  renderVerifiedRoleTiles();
  }
  function render(){
   const root=$('specialtyLinkRows');root.replaceChildren();
@@ -191,6 +211,7 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
     $('specialtyVerified').append(chosen);
    }
    updatePreview();
+   renderVerifiedRoleTiles();
   }catch(e){if(getPerson()===person){
     $('specialtyVerified').hidden=false;
     $('specialtyVerified').textContent='Discord-verificatie niet beschikbaar: '+e.message;
