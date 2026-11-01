@@ -194,9 +194,21 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
      cleanLinks(doc.get('links')),
      doc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION))
      .filter(x=>x.roleId&&have.has(x.roleId));
+   // Visual-only role badges use an exact verified role ID and never imply
+   // an authorization. Do not reuse somebody else's image by role title.
+   const candidates=matches.filter(x=>!x.assetKey);
+   const images=candidates.length?await db.getAll(...candidates.map(x=>
+     db.collection(ROLE_ARTWORK_META).doc(x.roleId+'_standard'))):[];
+   const linked=matches.map(x=>{
+     if(x.assetKey)return x;
+     const index=candidates.indexOf(x),asset=images[index];
+     return asset?.exists&&asset.get('active')===true&&
+       asset.get('department')===dept?
+       {...x,assetKey:x.roleId+'_standard'}:x;
+   });
    res.set('Cache-Control','private, no-store');
    return res.json({verified,verifiedAt:verified?new Date(data.verifiedAt).toISOString():null,
-     matches,displayOnly:true,discordRolesChanged:false});
+     matches:linked,displayOnly:true,discordRolesChanged:false});
   }catch(e){return respond(res,e)}
  });
 }
