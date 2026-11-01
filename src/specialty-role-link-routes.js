@@ -9,7 +9,8 @@ import {extraSpecialtyLabels} from './roster-column-config.js';
 import {canEditLibrary} from './uniform-library-routes.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
-import {SPECIALTY_STATES} from './specialization-policy.js';
+import {SPECIALTY_STATES,allSpecialtyLabels} from './specialization-policy.js';
+import {defaultSpecialtyRoleLinks} from './specialty-role-presets.js';
 
 export const SPECIALTY_ROLE_LINKS='bpd_specialty_role_links';
 export const SPECIALTY_ROLE_LINK_AUDIT='bpd_specialty_role_link_audit';
@@ -95,7 +96,7 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
    ]);
    const roles=rolesFor(dept);
    const allowedIds=new Set(roles.map(r=>r.id));
-   const labels=[...new Set([...(SPECIALTY_LABELS[dept]||[]),...extra])];
+   const labels=allSpecialtyLabels(dept,extra);
    const allowedLabels=new Set(labels);
    const allAssets=assets.docs.filter(d=>d.get('active')===true&&
      (['specialty','patch'].includes(d.get('kind'))||
@@ -103,8 +104,16 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
         d.id.startsWith(d.get('roleId')+'_'))&&ASSET.test(d.id))
     .map(d=>({key:d.id,label:String(d.get('label')||d.get('code')||'').slice(0,75),
       imageUrl:'/api/role-artwork/file/'+d.id+'?v='+encodeURIComponent(d.get('version')||'1')}));
-   const links=cleanLinks(doc.get('links')).filter(x=>
-     (x.roleId===''||allowedIds.has(x.roleId))&&allowedLabels.has(x.label));
+   const defaults=defaultSpecialtyRoleLinks(dept,cleanLinks(doc.get('links')),doc.exists);
+   const links=cleanLinks(defaults).filter(x=>
+     (x.roleId===''||allowedIds.has(x.roleId))&&allowedLabels.has(x.label))
+     .map(x=>{
+       // A role artwork's visual slot is tied to its exact Discord ID.
+       // Never guess a badge from another role or specialisation.
+       if(x.assetKey||!x.roleId)return x;
+       const matching=allAssets.find(a=>a.key===x.roleId+'_standard');
+       return matching?{...x,assetKey:matching.key}:x;
+     });
    res.set('Cache-Control','private, no-store');
    return res.json({dept,labels,roles,assets:allAssets,links,
     revision:Number.isSafeInteger(doc.get('revision'))?doc.get('revision'):0,
@@ -118,7 +127,7 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
    return res.status(403).json({error:'Alleen bevoegde dienstleiding kan koppelingen aanpassen'});
   try{
    const [extras,db]=await Promise.all([extraSpecialtyLabels(dept),Promise.resolve(getFirestore())]);
-   const labels=[...new Set([...(SPECIALTY_LABELS[dept]||[]),...extras])];
+   const labels=allSpecialtyLabels(dept,extras);
    const input=validateSpecialtyRoleLinks(req.body,dept,labels,rolesFor(dept));
    const assets=[...new Set(input.links.map(l=>l.assetKey).filter(Boolean))];
    if(assets.length){
@@ -178,7 +187,9 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
      at-data.verifiedAt<=7*86400000&&
      Array.isArray(data.roleIds)&&data.roleIds.every(x=>ID.test(x));
    const have=new Set(verified?data.roleIds:[]);
-   const matches=cleanLinks(doc.get('links')).filter(x=>x.roleId&&have.has(x.roleId));
+   const matches=cleanLinks(defaultSpecialtyRoleLinks(dept,
+     cleanLinks(doc.get('links')),doc.exists))
+     .filter(x=>x.roleId&&have.has(x.roleId));
    res.set('Cache-Control','private, no-store');
    return res.json({verified,verifiedAt:verified?new Date(data.verifiedAt).toISOString():null,
      matches,displayOnly:true,discordRolesChanged:false});
