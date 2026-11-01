@@ -170,3 +170,34 @@ test('Personeelsbeheer behoudt sorteerkeuze bij laden, vernieuwen en filteren',(
   assert.match(html,/\$\('rosterSort'\)\.onchange=render/);
   assert.match(html,/BPDPersonnelVisuals\.comparePersonnel\(a,b,'call-desc'\)/);
 });
+
+test('Neutral specialty patches fill all roster headers using library aliases before role images',()=>{
+  const api=visuals();
+  const record=key=>({key,imageUrl:'/api/role-artwork/file/'+key+'?v=20261101-silver'});
+  api.setArtworkManifest([
+    record('patch_politie_motor'),
+    record('specialty_politie_semi_anoniem'),
+    record('1309532437977497699_standard'),
+    record('1309532437977497700_standard'),
+    record('specialty_politie_dispatch'),
+    record('patch_politie_arrestatie_eenheid')
+  ]);
+  for(const [label,key] of [
+    ['Motor','patch_politie_motor'],
+    ['Semi-ano.','specialty_politie_semi_anoniem'],
+    ['K9','1309532437977497699_standard'],
+    ['RAGO','1309532437977497700_standard'],
+    ['Dispatch','specialty_politie_dispatch'],
+    ['AE','patch_politie_arrestatie_eenheid']
+  ]){
+    assert.equal(api.specialtyBannerImage(label),record(key).imageUrl,label);
+  }
+  assert.equal(api.specialtyBannerImage('RAGO','ambulance'),null);
+  api.setArtworkManifest([record('specialty_politie_k9'),
+    record('1309532437977497699_standard')]);
+  assert.equal(api.specialtyBannerImage('K9'),record('specialty_politie_k9').imageUrl);
+  api.setArtworkManifest([{key:'specialty_politie_k9',
+    imageUrl:'https://attacker.example/asset.webp'}]);
+  assert.equal(api.specialtyBannerImage('K9'),null);
+  assert.equal(api.specialtyBannerImage('Onbekend'),null);
+});
