@@ -10,7 +10,7 @@ import {canEditLibrary} from './uniform-library-routes.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {SPECIALTY_STATES,allSpecialtyLabels} from './specialization-policy.js';
-import {defaultSpecialtyRoleLinks} from './specialty-role-presets.js';
+import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
 
 export const SPECIALTY_ROLE_LINKS='bpd_specialty_role_links';
 export const SPECIALTY_ROLE_LINK_AUDIT='bpd_specialty_role_link_audit';
@@ -104,7 +104,8 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
         d.id.startsWith(d.get('roleId')+'_'))&&ASSET.test(d.id))
     .map(d=>({key:d.id,label:String(d.get('label')||d.get('code')||'').slice(0,75),
       imageUrl:'/api/role-artwork/file/'+d.id+'?v='+encodeURIComponent(d.get('version')||'1')}));
-   const defaults=defaultSpecialtyRoleLinks(dept,cleanLinks(doc.get('links')),doc.exists);
+   const defaults=defaultSpecialtyRoleLinks(dept,cleanLinks(doc.get('links')),
+     doc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION);
    const links=cleanLinks(defaults).filter(x=>
      (x.roleId===''||allowedIds.has(x.roleId))&&allowedLabels.has(x.label))
      .map(x=>{
@@ -154,7 +155,9 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
     const revision=old.exists&&Number.isSafeInteger(old.get('revision'))?old.get('revision'):0;
     if(revision!==input.expectedRevision)
       throw fail(409,'De koppelingen zijn intussen aangepast. Vernieuw eerst de lijst.');
-    tx.set(ref,{department:dept,links:input.links,revision:revision+1,
+    tx.set(ref,{department:dept,links:input.links,
+      presetVersion:dept==='politie'?POLICE_PATCH_PRESET_VERSION:0,
+      revision:revision+1,
       updatedByUid:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
     tx.create(db.collection(SPECIALTY_ROLE_LINK_AUDIT).doc(),{
       dept,actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
@@ -188,7 +191,8 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
      Array.isArray(data.roleIds)&&data.roleIds.every(x=>ID.test(x));
    const have=new Set(verified?data.roleIds:[]);
    const matches=cleanLinks(defaultSpecialtyRoleLinks(dept,
-     cleanLinks(doc.get('links')),doc.exists))
+     cleanLinks(doc.get('links')),
+     doc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION))
      .filter(x=>x.roleId&&have.has(x.roleId));
    res.set('Cache-Control','private, no-store');
    return res.json({verified,verifiedAt:verified?new Date(data.verifiedAt).toISOString():null,
