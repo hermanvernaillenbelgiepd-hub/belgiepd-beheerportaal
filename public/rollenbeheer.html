@@ -28,6 +28,12 @@ button.alt{background:#26455f}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chips span{padding:4px 7px;border:1px solid #496a8e;border-radius:5px}
 .card-pic{max-height:70px;width:auto;max-width:210px;object-fit:contain}
 [hidden]{display:none!important}
+.specialty-map-row{display:grid;grid-template-columns:minmax(135px,1.1fr) minmax(180px,1.4fr) minmax(120px,1fr) minmax(140px,1.1fr) minmax(165px,1.4fr) auto;gap:8px;align-items:end;padding:9px 0;border-bottom:1px solid #3a5573}
+.specialty-map-row label{font-size:11px;min-width:0}.specialty-map-preview{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.specialty-map-preview img{max-width:170px;height:53px;object-fit:contain;background:#091a2b;border-radius:5px}
+.specialty-map-preview span{font-size:11px;color:#c4d9ef}
+@media(max-width:1050px){.specialty-map-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.specialty-map-row{grid-template-columns:1fr}}
 </style><link rel="stylesheet" href="/bpd-navigation.css"></head>
 <body><header><h1>🛡️ Rollen & specialisaties</h1>
 <nav><a href="/beeldbibliotheek.html">Beeldbibliotheek</a><a href="/gebruikersbeheer.html">Accountrollen</a><a href="/personeelsbeheer.html">Personeelsbeheer</a>
@@ -45,20 +51,43 @@ button.alt{background:#26455f}
 </div>
 <div id="identity" class="state" hidden></div>
 </section>
+<section id="specialtyLinkPanel" hidden>
+<h2>2. Discord-rollen en afbeeldingen koppelen</h2>
+<p class="help">Een koppeling verbindt één bestaande Discord-rol met een specialisatie en een afbeelding uit de Beeldbibliotheek. De koppeling is <strong>enkel een gecontroleerde weergave</strong> en kent niemand automatisch een Discord-rol of dossierbevoegdheid toe.</p>
+<div id="specialtyLinkStatus" class="status" role="status">Koppelingen laden…</div>
+<div id="specialtyLinkRows"></div>
+<div class="actions">
+ <button type="button" class="alt" id="specialtyLinkAdd">+ Discord-rol koppelen</button>
+ <a class="link" href="/beeldbibliotheek.html">Nieuwe patch uploaden</a>
+</div>
+<div class="grid" style="margin-top:12px">
+ <label>Motivering voor gewijzigde koppelingen<input id="specialtyLinkReason" maxlength="300" placeholder="Minstens acht tekens"></label>
+ <label style="flex-direction:row;align-items:center;gap:8px">
+  <input type="checkbox" id="specialtyLinkReviewed" style="width:auto">
+  Ik heb de geselecteerde afbeeldingen en rol-ID's gecontroleerd
+ </label>
+</div>
+<div class="actions"><button type="button" id="specialtyLinkSave">Gecontroleerde koppelingen bewaren</button></div>
+</section>
 <section id="specialtyPanel" hidden>
-<h2>2. Specialisatie toekennen / wijzigen</h2>
+<h2>3. Specialisatie toekennen / wijzigen</h2>
 <p class="help">Deze wijziging wordt in het personeelsdossier en activiteitenlog geregistreerd. Het is geen automatische Discord-roltoekenning.</p>
 <div class="grid">
  <label>Specialisatie<select id="specialty"></select></label>
  <label>Status<select id="specialtyValue"></select></label>
  <label>Motivering (min. 15 tekens)<textarea id="specialtyReason" maxlength="500" placeholder="Waarom wijzigt de kwalificatie?"></textarea></label>
 </div>
+<div id="specialtyVerified" class="state" hidden></div>
 <div class="actions"><button id="specialtySave" type="button">Specialisatie bewaren</button>
 <img id="specialtyImage" class="card-pic" alt="Gekoppelde specialisatieplaat" hidden></div>
+<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin-top:10px">
+ <input id="specialtyConfirmImage" type="checkbox" style="width:auto">
+ Afbeelding, specialisatie en status gecontroleerd (ook wanneer er nog geen afbeelding is geüpload)
+</label>
 <p id="specialtyHelp" class="status"></p>
 </section>
 <section id="policeVisualPanel" hidden>
-<h2>3. Politiespecialisaties en functievarianten (Organogram)</h2>
+<h2>4. Politiespecialisaties en functievarianten (Organogram)</h2>
 <p class="help">Hier registreer je handmatige specialisatieweergaven zoals K-9 Geleider, Motard In opleiding of Dispatcher. Dit zijn <strong>alleen visuele organogramfuncties</strong>; ze veranderen geen Discord-rollen of bevoegdheden.</p>
 <div id="policeVisualChoices" class="chips" role="group" aria-label="Organogramspecialisaties"></div>
 <div class="grid" style="margin-top:12px">
@@ -71,7 +100,7 @@ button.alt{background:#26455f}
 <p id="visualHelp" class="status"></p>
 </section>
 <section id="rankPanel" hidden>
-<h2>4. Rang / roepnummer wijzigen (Politie)</h2>
+<h2>5. Rang / roepnummer wijzigen (Politie)</h2>
 <p class="help">Alleen bij een bevoegd personeelsdossier. Rang en roepnummer worden samen gewijzigd en gelogd. Discord-kaderrollen wijzigen niet automatisch.</p>
 <div class="grid">
 <label>Nieuwe rang<select id="newRank"></select></label>
