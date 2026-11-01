@@ -137,18 +137,36 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const synced=verifiedSyncRoles(roles.entries.get(p.personId),p.dept,process.env.DISCORD_GUILD_ID);
     return {p,merged:mergePlacement(p,override,synced)};
    });
-   const mappedPatches=(p)=>{
+   // A qualification can have a shared patch WITHOUT a Discord role.
+   // Shared patches are only shown for a qualification already present in the
+   // Sheets/manual personnel register or the controlled organogram.
+   // Role-specific versions require a recent guild-verified role snapshot.
+   const mappedPatches=(p,merged)=>{
     const identity=roles.entries.get(p.personId),now=Date.now();
-    if(!identity||identity.guildId!==process.env.DISCORD_GUILD_ID||
-       !Number.isSafeInteger(identity.verifiedAt)||
-       identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||
-       !Array.isArray(identity.roleIds)||!identity.roleIds.every(idOK))return [];
-    const verified=new Set(identity.roleIds);
-    return (mapped.get(p.dept)||[]).filter(x=>
-      verified.has(x.roleId)&&assetUrls.has(x.assetKey)&&
-      !['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value))
-     .map(x=>({label:x.label,level:String(x.level||x.value||'').slice(0,45),
-       imageUrl:assetUrls.get(x.assetKey)})).slice(0,20);
+    const trustworthy=identity&&identity.guildId===process.env.DISCORD_GUILD_ID&&
+      Number.isSafeInteger(identity.verifiedAt)&&
+      identity.verifiedAt<=now+60000&&now-identity.verifiedAt<=7*86400000&&
+      Array.isArray(identity.roleIds)&&identity.roleIds.every(idOK);
+    const verified=new Set(trustworthy?identity.roleIds:[]);
+    const active=new Set(merged.specialties||[]);
+    const normalizedLabel=label=>{
+      const aliases={'Motor':'MOTARD','Motard':'MOTARD','Semi-ano.':'SEMI ANONIEM',
+       'Semi-anoniem':'SEMI ANONIEM','Dispatch':'DISP','Radio BM':'RADIO/BM',
+       'Signalisatie':'SIGNALISATIE','SIV/WPR':'SIGNALISATIE','K-9':'K9'};
+      return aliases[label]||label;
+    };
+    const all=mapped.get(p.dept)||[];
+    const valid=x=>assetUrls.has(x.assetKey)&&
+      !['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value);
+    const rolespecific=all.filter(x=>x.roleId&&verified.has(x.roleId)&&valid(x));
+    const manual=all.filter(x=>!x.roleId&&valid(x)&&
+      active.has(normalizedLabel(x.label))&&
+      !rolespecific.some(y=>normalizedLabel(y.label)===normalizedLabel(x.label)));
+    return [...rolespecific,...manual].map(x=>({
+      label:x.label,level:String(x.level||x.value||'').slice(0,45),
+      imageUrl:assetUrls.get(x.assetKey),
+      source:x.roleId?'discord':'registered'
+    })).slice(0,20);
    };
    // A member's own login only refreshes their own Discord identity. For
    // K9 candidates, the server bot now checks their roles independently.
@@ -186,7 +204,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Verified, approved role mappings can add a *display-only*
     // specialization to the organogram, even when the legacy sheet was
     // not updated yet. The personnel dossier remains unchanged.
-    const specialtyPatches=mappedPatches(p);
+    const specialtyPatches=mappedPatches(p,merged);
     for(const link of specialtyPatches){
      if(!merged.specialties.includes(link.label))merged.specialties.push(link.label);
     }
