@@ -25,7 +25,9 @@ const respond=(res,e)=>{
 function rolesFor(dept){
  return ROLE_CATALOG.filter(x=>(x.dept===dept||
    dept==='politie'&&x.dept==='dispatch')&&
-   (x.kind==='specialisatie'||x.kind==='lidmaatschap'))
+   (x.kind==='specialisatie'||
+     x.dept==='depannage'&&x.kind==='lidmaatschap'||
+     dept==='politie'&&x.dept==='dispatch'))
   .map(x=>({id:x.id,name:x.name,kind:x.kind,stage:x.stage}));
 }
 function canManage(actor,dept){
