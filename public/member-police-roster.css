@@ -142,3 +142,15 @@
 .mr-person-name-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
 .mr-person-affiliations{font-size:10px;line-height:1.3;color:#afd4ff;white-space:normal}
 .mr-table tr.mr-divider.mr-zonderPolitie td{background:#35445c!important;color:#e5eeff!important}
+
+/* A neutral, approved patch fills the entire specialty heading; no extra frame.
+   Existing per-person status cells retain their meaning and colors. */
+.mr-table th.mr-specialty-head--patch{
+ padding:0!important;min-width:125px!important;width:125px;
+ background:#050b13;white-space:normal;vertical-align:middle;
+}
+.mr-table .mr-specialty-banner{
+ display:block;width:100%;height:auto;aspect-ratio:16/5;
+ object-fit:contain;background:#050b13;
+}
+.mr-table th.mr-specialty-head--patch img{max-width:none;}
