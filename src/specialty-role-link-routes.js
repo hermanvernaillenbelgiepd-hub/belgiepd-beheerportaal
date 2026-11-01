@@ -40,8 +40,10 @@ function canManage(actor,dept){
    dept==='ambulance'&&actor.reportServiceRoles?.ambulanceAzls===true||
    dept==='depannage'&&actor.reportServiceRoles?.depannageAwv===true;
 }
+// A role ID is OPTIONAL: some qualifications are awarded manually to
+// Agentenkader/Basiskader without any separate Discord role.
 const cleanLinks=list=>Array.isArray(list)?list.filter(x=>x&&typeof x.label==='string'&&
-  ID.test(x.roleId)&&typeof x.level==='string'&&x.level.length<=45&&
+  (x.roleId===''||ID.test(x.roleId))&&typeof x.level==='string'&&x.level.length<=45&&
   SPECIALTY_STATES.includes(x.value)&&(!x.assetKey||ASSET.test(x.assetKey)))
   .slice(0,120).map(x=>({label:x.label,roleId:x.roleId,
    level:x.level,value:x.value,assetKey:x.assetKey||''})):[];
@@ -60,14 +62,20 @@ export function validateSpecialtyRoleLinks(body,dept,labels,roles){
   const label=String(x.label||''),roleId=String(x.roleId||'');
   const level=String(x.level||'').trim(),value=String(x.value||'');
   const assetKey=String(x.assetKey||'');
-  if(!allowedLabels.has(label)||!allowedRoles.has(roleId)||
+  // A generic library badge may be linked without a Discord role; an older
+  // role-specific image must match the EXACT selected role ID.
+  if(!allowedLabels.has(label)||(roleId!==''&&!allowedRoles.has(roleId))||
      level.length>45||/[<>\x00-\x1f]/.test(level)||
      !SPECIALTY_STATES.includes(value)||
      (assetKey&&(!ASSET.test(assetKey)||
-       (!assetKey.includes('_'+dept+'_')&&!assetKey.startsWith(roleId+'_')))))
+       (!assetKey.includes('_'+dept+'_')&&
+         !(roleId&&assetKey.startsWith(roleId+'_')))))))
    throw fail(400,'Kies een bestaande specialisatie, Discord-rol, status en afbeelding van dezelfde dienst');
-  if(seen.has(roleId))throw fail(400,'Een Discord-rol kan binnen een dienst maar één specialisatiekoppeling krijgen');
-  seen.add(roleId);
+  const unique=roleId||'manual:'+label;
+  if(seen.has(unique))throw fail(400,roleId?
+    'Een Discord-rol kan binnen een dienst maar één specialisatiekoppeling krijgen':
+    'Deze specialisatie heeft al een koppeling zonder Discord-rol');
+  seen.add(unique);
   return {label,roleId,level,value,assetKey};
  });
  return {expectedRevision:body.expectedRevision,reason,links};
@@ -96,7 +104,7 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
     .map(d=>({key:d.id,label:String(d.get('label')||d.get('code')||'').slice(0,75),
       imageUrl:'/api/role-artwork/file/'+d.id+'?v='+encodeURIComponent(d.get('version')||'1')}));
    const links=cleanLinks(doc.get('links')).filter(x=>
-     allowedIds.has(x.roleId)&&allowedLabels.has(x.label));
+     (x.roleId===''||allowedIds.has(x.roleId))&&allowedLabels.has(x.label));
    res.set('Cache-Control','private, no-store');
    return res.json({dept,labels,roles,assets:allAssets,links,
     revision:Number.isSafeInteger(doc.get('revision'))?doc.get('revision'):0,
@@ -123,6 +131,13 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
           docs[i].id.startsWith(String(docs[i].get('roleId')||'')+'_')))
       throw fail(400,'Kies een actieve specialisatiepatch uit de bibliotheek van deze dienst');
     }
+   }
+   // Legacy role-linked artwork can only be used with its own Discord role.
+   // A generic patch is service-wide and can be used without a role.
+   for(const link of input.links){
+    if(/^\d{15,22}_/.test(link.assetKey)&&
+       (!link.roleId||!link.assetKey.startsWith(link.roleId+'_')))
+      throw fail(400,'Een Discord-rolgebonden patch mag enkel bij diezelfde Discord-rol gebruikt worden');
    }
    const ref=db.collection(SPECIALTY_ROLE_LINKS).doc(dept);
    const result=await db.runTransaction(async tx=>{
@@ -163,7 +178,7 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
      at-data.verifiedAt<=7*86400000&&
      Array.isArray(data.roleIds)&&data.roleIds.every(x=>ID.test(x));
    const have=new Set(verified?data.roleIds:[]);
-   const matches=cleanLinks(doc.get('links')).filter(x=>have.has(x.roleId));
+   const matches=cleanLinks(doc.get('links')).filter(x=>x.roleId&&have.has(x.roleId));
    res.set('Cache-Control','private, no-store');
    return res.json({verified,verifiedAt:verified?new Date(data.verifiedAt).toISOString():null,
      matches,displayOnly:true,discordRolesChanged:false});
