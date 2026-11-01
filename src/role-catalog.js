@@ -11,7 +11,7 @@ export const ROLE_CATALOG=Object.freeze([
     ['1335578488664490057','Middenkader (leidinggevende)'],['1473474238664020151','Officierenkader'],
     ['1562710901080068229','Korpsleiding']]),
   ...make('politie','specialisatie',[
-    ['1537606324886442035','Motard-IO','opleiding'],['1358148694297415741','Motard'],
+    ['1365602771855740958','Motard-IO','opleiding'],['1358148694297415741','Motard'],
     ['1359656762289946755','Motard-instructeur'],['1508506242299985980','PIT-MOTOR'],
     ['1309542190409580594','AE-I (SRT)'],['1310674604821581894','AE-T (DSU)'],
     ['1337156006597103746','AE-instructeur'],
@@ -21,7 +21,7 @@ export const ROLE_CATALOG=Object.freeze([
     ['1309532437977497700','RAGO'],['1393050551188721865','RAGO-instructeur'],
     ['1309532438019706962','Terreinondersteuner']]),
   ...make('dispatch','lidmaatschap',[
-    ['1560699777509752894','Dispatch selectie','opleiding'],
+    ['1337852029611016233','Dispatch selectie','opleiding'],
     ['1309532438019706963','Dispatch']]),
   ...make('dispatch','specialisatie', [['1393050971604516904','Dispatch-instructeur']]),
   ...make('depannage','lidmaatschap',[

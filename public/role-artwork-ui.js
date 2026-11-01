@@ -12,7 +12,12 @@ export function setupRoleArtworkUI({api,$,notice}){
  ['1337852029611016233','standard','DISP · Selectie / in opleiding'],
  ['1490841316656156802','standard','RAGO · In opleiding'],
  ['1309532437977497700','standard','RAGO · Volwaardig'],
- ['1309532437977497700','instructeur','RAGO · Instructeur']
+ ['1393050551188721865','standard','RAGO · Instructeur'],
+ ['1309542190409580594','standard','AE · AE-I'],
+ ['1310674604821581894','standard','AE · AE-T'],
+ ['1337775768083632158','standard','AE · Teamleader'],
+ ['1337156006597103746','standard','AE · Instructeur'],
+ ['1309532438019706962','standard','Terreinondersteuner']
  ];
  const grades=[
  ['ap','Agent van Politie'],['aap','Aspirant-agent'],['1ap','Eerste agent'],
@@ -23,7 +28,8 @@ export function setupRoleArtworkUI({api,$,notice}){
  ['hcp','Hoofdcommissaris'],['1hcp','Eerste hoofdcommissaris']
  ];
  const specialties=[
- ['radio_bm','Radio BM'],['siv_wpr','SIV/WPR'],['signalisatie','Signalisatie'],
+ ['radio_bm','Radio BM'],['siv_wpr','SIV/WPR'],['burgermeldingen','Burgermeldingen'],
+ ['terreinondersteuner','Terreinondersteuner'],['signalisatie','Signalisatie'],
  ['motard','MOTARD / Motor'],['semi_ano','Semi-anoniem'],['k9','K-9'],
  ['rago','RAGO'],['disp','DISPATCH'],['to','TO'],['ae','AE'],
  ['recherche','Recherche'],['ehbo','EHBO'],['basis_tr','Basisopleiding'],

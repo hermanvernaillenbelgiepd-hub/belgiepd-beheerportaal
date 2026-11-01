@@ -93,16 +93,25 @@ function renderHeader(thead){
  for(const label of visibleSpecialties()){
    const th=element('th',undefined,'mr-specialty-head');
    th.title=label;
-   const pic=element('span',undefined,'mr-specialty-icon');
-   const image=visual().specialtyIconImage(label);
+   const image=visual().specialtyBannerImage(label);
+   const fallback=()=>{
+     th.classList.remove('mr-specialty-head--patch');
+     th.replaceChildren();
+     const pic=element('span',undefined,'mr-specialty-icon');
+     pic.textContent=customPublicSpecialties.find(x=>x.label===label)?.icon||
+       visual().specialtyIcon(label);
+     pic.setAttribute('aria-hidden','true');
+     th.append(pic,element('small',label));
+   };
    if(image){
      const img=document.createElement('img');
-     img.src=image;img.alt='';img.loading='lazy';
-     img.className='mr-specialty-image';
-     pic.append(img);
-   }else pic.textContent=customPublicSpecialties.find(x=>x.label===label)?.icon||visual().specialtyIcon(label);
-   pic.setAttribute('aria-hidden','true');
-   th.append(pic,element('small',label));
+     img.src=image;img.alt=label;img.loading='lazy';
+     img.className='mr-specialty-banner';
+     img.onerror=()=>fallback();
+     th.classList.add('mr-specialty-head--patch');
+     th.setAttribute('aria-label',label);
+     th.append(img);
+   }else fallback();
    tr.append(th);
  }
  thead.replaceChildren(tr);

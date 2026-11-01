@@ -86,6 +86,11 @@
     return /^signalisatie$/i.test(String(label||'').trim())
       ?'/assets/icons/signalisatie.svg':null;
   }
+  // Only a complete, approved library patch may cover a whole column header.
+  // The built-in Signalisatie icon is a small fallback, not a full-width patch.
+  function specialtyBannerImage(label,dept='politie'){
+    return artwork('specialty',dept,specialtyArtworkCode(label));
+  }
   function specialtyIcon(label){
     return specialtyCatalog.find(([pattern])=>pattern.test(String(label||'')))?.[1]||'🏷️';
   }
@@ -288,7 +293,7 @@
     return [...rows].sort((a,b)=>comparePersonnel(a,b,mode));
   }
   root.BPDPersonnelVisuals=Object.freeze({
-    rankInfo,specialtyBadges,specialtyIcon,specialtyIconImage,qualification,specialtyStatuses,
+    rankInfo,specialtyBadges,specialtyIcon,specialtyIconImage,specialtyBannerImage,qualification,specialtyStatuses,
     setArtworkManifest,specialtyArtworkCode,
     specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre,depannageFunction,comparePersonnel,sortPersonnelRows
   });
