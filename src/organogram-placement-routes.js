@@ -94,14 +94,20 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       x&&idOK(x.roleId)&&typeof x.label==='string'&&x.label.length<=90)]));
    const assetKeys=[...new Set([...mapped.values()].flat()
       .map(x=>String(x.assetKey||'')).filter(x=>
-       /^(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}$/.test(x)))].slice(0,300);
+       /^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,300);
    const assetUrls=new Map();
    for(const group of chunks(assetKeys,100)){
     const docs=await db.getAll(...group.map(key=>db.collection(ROLE_ARTWORK_META).doc(key)));
     for(const asset of docs){
      if(!asset.exists||asset.get('active')!==true||!asset.get('version'))continue;
      const key=asset.id,dept=asset.get('department');
-     if(!key.includes('_'+dept+'_')||!['patch','specialty'].includes(asset.get('kind')))continue;
+     const isSpecialtyAsset=key.includes('_'+dept+'_')&&
+      ['patch','specialty'].includes(asset.get('kind'));
+     const isLegacyRoleAsset=(asset.get('kind')||'role')==='role'&&
+      key.startsWith(String(asset.get('roleId')||'')+'_')&&
+      /^(?:\d{15,22})_[a-z][a-z0-9_]{0,39}$/.test(key);
+     if(!['politie','brandweer','ambulance','depannage'].includes(dept)||
+       !(isSpecialtyAsset||isLegacyRoleAsset))continue;
      assetUrls.set(key,'/api/role-artwork/file/'+key+'?v='+
       encodeURIComponent(asset.get('version')));
     }
