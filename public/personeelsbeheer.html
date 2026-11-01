@@ -521,6 +521,12 @@ header{padding-inline:clamp(15px,2vw,34px)}
  display:block;width:100%;height:auto;aspect-ratio:16/5;
  object-fit:contain;background:#050b13;
 }
+
+.staff-roster-table .specialty-neutral-banner--sprite{
+ display:block;width:100%;aspect-ratio:16/5;
+ background-size:100% 600%;background-repeat:no-repeat;
+ background-color:#050b13;
+}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -1719,13 +1725,23 @@ function render(){
     pict.setAttribute('aria-hidden','true');
     const name=document.createElement('span');name.className='specialty-col-label';
     name.textContent=dept==='depannage'?depannageSpecialtyMeta(label).label:label;
-    const neutral=dept==='politie'?BPDPersonnelVisuals.specialtyBannerImage(label,dept):null;
-    if(neutral){
-      const image=document.createElement('img');image.src=neutral;
-      image.alt=label;image.className='specialty-neutral-banner';image.loading='lazy';
-      image.onerror=()=>{th.classList.remove('specialty-col-head--patch');th.replaceChildren(pict,name)};
+    const banner=dept==='politie'?BPDPersonnelVisuals.specialtyBannerDisplay(label,dept):null;
+    if(banner){
       th.classList.add('specialty-col-head--patch');
-      th.setAttribute('aria-label',label);th.append(image);
+      th.setAttribute('aria-label',label);
+      if(banner.type==='sprite'){
+        const image=document.createElement('span');
+        image.className='specialty-neutral-banner specialty-neutral-banner--sprite';
+        image.style.backgroundImage='url("'+banner.url+'")';
+        image.style.backgroundPosition='center '+banner.position+'%';
+        image.setAttribute('aria-hidden','true');
+        th.append(image);
+      }else{
+        const image=document.createElement('img');image.src=banner.url;
+        image.alt=label;image.className='specialty-neutral-banner';image.loading='lazy';
+        image.onerror=()=>{th.classList.remove('specialty-col-head--patch');th.replaceChildren(pict,name)};
+        th.append(image);
+      }
     }else th.append(pict,name);
     line.append(th);
   }
