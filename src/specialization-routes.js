@@ -6,7 +6,8 @@ import {verifiedPoliceLrdSubject,LRD_SPECIALTY_LABEL} from './police-lrd-policy.
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,
   specialtyWritesEnabled,canChangeSpecialty,validateSpecialtyChange,
-  publicSpecializations} from './specialization-policy.js';
+  publicSpecializations,applyVerifiedSpecialtyRoleDisplay} from './specialization-policy.js';
+import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
 const error=(res,status,message)=>res.status(status).json({error:message});
 const failure=(code,message)=>Object.assign(new Error(message),{httpStatus:code});
 function handleError(res,e){
@@ -36,6 +37,30 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
       ]);
       const state=publicSpecializations(staff,entry.data(),customLabels);
       if(staff.dept==='politie'){
+        // Only verified guild roles may influence displayed specializations.
+        // Never write such derived data to Firestore or the weekreport.
+        try{
+          const db=getFirestore();
+          const [identity,linksDoc]=await Promise.all([
+            db.collection('bpd_discord_auth').doc(staff.personId).get(),
+            db.collection('bpd_specialty_role_links').doc('politie').get()
+          ]);
+          const roles=identity.data()||{},now=Date.now();
+          const verified=roles.guildId===process.env.DISCORD_GUILD_ID&&
+            Number.isSafeInteger(roles.verifiedAt)&&
+            roles.verifiedAt<=now+60000&&now-roles.verifiedAt<=7*86400000&&
+            Array.isArray(roles.roleIds)&&
+            roles.roleIds.every(x=>/^\\d{15,22}$/.test(x));
+          if(verified){
+            const saved=Array.isArray(linksDoc.get('links'))?linksDoc.get('links'):[];
+            const links=defaultSpecialtyRoleLinks('politie',saved,
+              linksDoc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION);
+            applyVerifiedSpecialtyRoleDisplay(state,roles.roleIds,links);
+          }
+        }catch(e){
+          // Degraded Discord verification must not fabricate qualifications.
+          console.error('Visuele Discord-specialisaties:',e?.code||'niet beschikbaar');
+        }
         // LRD is optional. An absent/failed bot verification must not leave a
         // fake "Niet gecontroleerd" specialty on every police dossier.
         // No manual or Sheets value can activate this Discord-only function.
