@@ -697,6 +697,10 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <h3>Specialisaties en bevoegdheden</h3>
 <p class="subtle">Alle onderdelen staan naast elkaar met hun geregistreerde status. Bevoegd officierenkader en korpsleiding kunnen de status met motivering wijzigen. Deze wijziging kent geen Discord-rol toe; een botkoppeling komt later.</p>
 <div id="specialtyStatus" role="status" class="subtle">Specialisaties laden…</div>
+<a id="specialtyRoleEditorLink" class="alt" href="/rollenbeheer.html" hidden
+ style="display:inline-block;margin:8px 0;padding:7px 11px;border:1px solid #6688b0;border-radius:7px;color:#dceeff;text-decoration:none">
+ 🛡️ Specialisaties en patches toekennen · Rollenbeheer
+</a>
 <div id="specialtyGrid" class="specialty-ledger" aria-label="Alle specialisaties"></div>
 <form id="specialtyEdit" hidden>
 <div class="grid">
@@ -3348,6 +3352,7 @@ async function loadSpecialtyState(p){
   const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
   const root=$('specialtyGrid');root.replaceChildren();
   $('specialtyEdit').hidden=true;
+  $('specialtyRoleEditorLink').hidden=true;
   $('specialtyAudit').replaceChildren();
   $('specialtyStatus').textContent='Specialisatiestatussen laden…';
   try{
@@ -3408,6 +3413,9 @@ async function loadSpecialtyState(p){
         'Je kunt de specialisaties hieronder aanpassen. Iedere wijziging wordt afzonderlijk gelogd.'):
       'Alle onderdelen zijn alleen-lezen. Aanpassingen vereisen bevoegd officierenkader of korpsleiding.';
     registrationSpecialty=data.canEdit===true&&states.length>0;
+    $('specialtyRoleEditorLink').hidden=!data.canEdit;
+    if(data.canEdit)$('specialtyRoleEditorLink').href='/rollenbeheer.html?'+
+      new URLSearchParams({dept:p.dept,person:p.discordId});
     registrationModuleStates.specialty=registrationSpecialty?
       'beschikbaar':!states.length?'geen specialisaties voor deze dienst':
       'alleen bevoegd Officierenkader of Korpsleiding mag aanpassen';
