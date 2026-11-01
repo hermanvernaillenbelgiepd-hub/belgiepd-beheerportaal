@@ -102,3 +102,16 @@ test('all major RAGO displays derive from one verified role projection, not spre
  assert.match(linked,/matches:suppressSupersededRagoMatches\(linked\)/);
  assert.doesNotMatch(server,/setCustomUserClaims/);
 });
+
+test('MAIN roster verifies RAGO roles even when optional specialization register is off',()=>{
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ assert.match(server,/if\(process\.env\.DISCORD_GUILD_ID\)\{/);
+ assert.doesNotMatch(server,/if\(specialties\s*&&\s*process\.env\.DISCORD_GUILD_ID\)/);
+ assert.match(server,/visible=overlayVerifiedRagoRoster\(visible,roleDocs\.docs/);
+ // A sheet-only personnel record must still accept a recently verified role,
+ // without changing the Sheets source or granting operational authorization.
+ const source=person();
+ const out=overlayVerifiedRagoRoster([source],[doc(actor,[RAGO_IO_DISCORD_ROLE])],guild,now);
+ assert.equal(out[0].specialties.find(s=>s.label==='RAGO').value,'AANGEMELD');
+ assert.equal(source.specialties.find(s=>s.label==='RAGO').value,'Nee');
+});
