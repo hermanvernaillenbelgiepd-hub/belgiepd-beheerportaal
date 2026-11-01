@@ -2414,13 +2414,26 @@ function openPersonProfile(p){
     name==='RAGO'?roles.some(r=>r==='instructeur'||r==='docent')?'instructeur':'volwaardig':
     name==='RAGO-IO'?'in_opleiding':name==='AE'?p.aeRole:'';
    const verified=name!=='K9'||['instructeur','geleider','geleider_in_stage'].includes(p.k9Role);
-   const alternative=verified?window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant):'';
+   // Role-specific library artwork has priority only when the server has
+   // recently verified the matching Discord role. Otherwise use the existing
+   // manual/general specialty badge, never alter Uniformbeheer.
+   const matchedArtwork=verified&&Array.isArray(p.specialtyPatches)?
+    p.specialtyPatches.find(entry=>
+      (p.dept==='politie'?policeSpecialtyName(entry.label):entry.label)===name&&
+      /^\/api\/role-artwork\/file\/(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(entry.imageUrl)) :null;
+   const alternative=verified?(matchedArtwork?.imageUrl||
+    window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)) :'';
    if(alternative){
     item.querySelectorAll('.person-profile-specialty-badge,.rago-io-badge').forEach(x=>x.remove());
     const badge=el('img','person-profile-specialty-badge');
     badge.src=alternative;badge.alt=name+' · '+(window.BPDUniformAssignments?.forPerson?.(p).badgeStyle||'');
     badge.width=170;badge.height=53;badge.loading='lazy';item.append(badge);
    }
+   if(matchedArtwork?.level&&
+     ![...item.querySelectorAll('.person-profile-specialty-role')].some(x=>
+       x.textContent?.includes(matchedArtwork.level)))
+    item.append(el('span','person-profile-specialty-role',
+      'Discord geverifieerd: '+matchedArtwork.level));
    normalizeSpecialtyBadges(item);
    list.append(item);
   }
@@ -2956,6 +2969,10 @@ async function loadPublic(){
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
     motardRole:['in_opleiding','volwaardig','instructeur'].includes(p.motardRole)?p.motardRole:'',
     dispRole:['in_opleiding','volwaardig','instructeur'].includes(p.dispRole)?p.dispRole:'',
+    specialtyPatches:Array.isArray(p.specialtyPatches)?
+     p.specialtyPatches.filter(x=>x&&typeof x.label==='string'&&
+       typeof x.level==='string'&&typeof x.imageUrl==='string'&&
+       /^\/api\/role-artwork\/file\/(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(x.imageUrl)).slice(0,20):[],
     aeRole:['ae_i','ae_t','teamleader','instructeur'].includes(p.aeRole)?p.aeRole:'',
     aeRoles:Array.isArray(p.aeRoles)?p.aeRoles.filter(x=>['ae_i','ae_t','teamleader','instructeur'].includes(x)):[],
     aeTeamleader:p.aeTeamleader===true,
