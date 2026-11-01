@@ -6,6 +6,26 @@ import {SPECIALTY_LABELS} from './normalize.js';
 export const PERSONNEL_SPECIALIZATIONS_COLLECTION='bpd_personnel_specializations';
 export const SPECIALTY_STATES=Object.freeze(["Nee","Stage","Ja","Docent","Niet ingevuld","AANGEMELD","RESTRICTED","ONTSLAG","INSTRUCTEUR","PLAVA","GPC","INACTIEF","MUG-HELI","SPECIALISATIE","LEIDING","OPLEIDING!","GESCHORST","BLACKLISTED"]);
 const ACCEPTED=new Set(SPECIALTY_STATES);
+// Qualifications without a dedicated Google Sheets column are native portal records.
+export const PORTAL_POLICE_SPECIALTIES=Object.freeze(['Burgermeldingen','Terreinondersteuner']);
+export const allSpecialtyLabels=(dept,additional=[])=>[...new Set([
+ ...(SPECIALTY_LABELS[dept]||[]),
+ ...(dept==='politie'?PORTAL_POLICE_SPECIALTIES:[]),
+ ...additional
+])];
+// The callsign is checked on the police record, never inferred from Discord roles.
+// Manual restrictions (e.g. radio misuse or loss of qualification) override defaults.
+export function automaticPoliceSpecialties(subject){
+ if(subject?.dept!=='politie')return {};
+ const match=String(subject.call||'').trim().match(/(?:^|[-\\s])([0-9]{3})$/);
+ const call=match?Number(match[1]):null;
+ if(call===null||call<200||call>999)return {};
+ return {
+  'Burgermeldingen':'Ja','SIV/WPR':'Ja',
+  ...(call>=300?{'Signalisatie':'Ja'}:{}),
+  ...(call>=400?{'Semi-ano.':'Ja'}:{})
+ };
+}
 export function specialtyReadEnabled(env){return env.BPD_ENABLE_PERSONNEL_SPECIALTIES==='true'}
 export function specialtyWritesEnabled(env){
   return specialtyReadEnabled(env)&&env.BPD_ENABLE_PERSONNEL_SPECIALTY_WRITES==='true';
@@ -14,7 +34,7 @@ export function allowedSpecialty(dept,label,additional=[]){
   // LRD is managed by the actual Discord bot role, never by manual status edits.
   if(dept==='politie'&&label==='LRD (Recherche)')return false;
   return typeof label==='string'&&
-  (SPECIALTY_LABELS[dept]?.includes(label)===true||additional.includes(label));
+  (allSpecialtyLabels(dept,additional).includes(label));
 }
 export function canChangeSpecialty(actor,subject){
   if(verifiedBoardCorpsDossierAdmin(actor)&&subject&&
@@ -85,8 +105,8 @@ export function publicSpecializations(subject,document,additional=[]){
   }:{};
   const savedManual=entry=>!!entry&&typeof entry==='object'&&
     ACCEPTED.has(entry.value)&&entry.source==='manual';
-  const labels=[...(SPECIALTY_LABELS[subject.dept]||[]),
-  ...additional.filter(label=>!SPECIALTY_LABELS[subject.dept]?.includes(label))];
+  const labels=allSpecialtyLabels(subject.dept,additional);
+  const automatic=automaticPoliceSpecialties(subject);
   const items=labels.map(label=>{
     const saved=values[label];
     const legacy=values[fireLegacyAliases[label]];
@@ -94,8 +114,9 @@ export function publicSpecializations(subject,document,additional=[]){
     // value is kept unless it is only an empty placeholder.
     const actual=savedManual(saved)?saved:
       savedManual(legacy)&&legacy.value!=='Niet ingevuld'?legacy:null;
-    return {label,value:actual?actual.value:(canonical[label]||'Niet ingevuld'),
-      source:actual?'manual':'google-sheets'};
+    const derived=!actual&&automatic[label];
+    return {label,value:actual?actual.value:(derived||canonical[label]||'Niet ingevuld'),
+      source:actual?'manual':derived?'automatic-call':'google-sheets'};
   });
   return {items,revision:Number.isSafeInteger(document?.revision)&&document.revision>=0
     ?document.revision:0};
@@ -121,7 +142,7 @@ export function applySpecialtyOverlays(records,docs,configs={}){
 // Safe initial qualifications for a newly registered police officer.
 // This does not grant Discord roles, operational rank or module access.
 // Never apply to an unverified / unsynchronized callsign request.
-export const INITIAL_POLICE_SPECIALTIES=Object.freeze(['Radio BM','SIV/WPR']);
+export const INITIAL_POLICE_SPECIALTIES=Object.freeze(['Radio BM','SIV/WPR','Burgermeldingen']);
 export function initialFixedCallSpecialties(assignment){
   const call=Number(assignment?.assignedCall);
   if(assignment?.status!=='approved'||!Number.isSafeInteger(call)||
