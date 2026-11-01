@@ -80,6 +80,7 @@ button.alt{background:#26455f}
 <div id="specialtyVerified" class="state" hidden></div>
 <div class="actions"><button id="specialtySave" type="button">Specialisatie bewaren</button>
 <img id="specialtyImage" class="card-pic" alt="Gekoppelde specialisatieplaat" hidden></div>
+<p id="specialtyImageName" class="status">Patch controleren in de Beeldbibliotheek.</p>
 <label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin-top:10px">
  <input id="specialtyConfirmImage" type="checkbox" style="width:auto">
  Afbeelding, specialisatie en status gecontroleerd (ook wanneer er nog geen afbeelding is geüpload)
@@ -119,8 +120,10 @@ button.alt{background:#26455f}
 </div>
 </main>
 <script type="module">
+import {createSpecialtyLinksUI} from '/specialty-links-ui.js';
 let setupPortalLogin,auth=null,authMod=null,people=[],overview=null,selected=null,specialtyData=null,artworks=[];
 let visualCatalog=null;
+const startingParams=new URLSearchParams(location.search);
 const $=id=>document.getElementById(id);
 const depts=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
  ['depannage','Depannage'],['burger','Burger']];
@@ -140,6 +143,9 @@ async function api(path,method='GET',body){
  if(!response.ok)throw Error(data.error||'Verzoek geweigerd ('+response.status+')');
  return data;
 }
+const specialtyLinksUI=createSpecialtyLinksUI({api,notify:alertUser,
+ getDepartment:()=>$('dept').value,getPerson:()=>selected,
+ selectedSpecialty:()=>$('specialty').value});
 const key=x=>x.dept+'_'+x.discordId;
 function choosePeople(){
  const dept=$('dept').value,query=$('search').value.trim().toLowerCase();
@@ -244,6 +250,7 @@ function updateSelection(){
   'Rangwijzigingen zijn niet geactiveerd of je hebt geen rechten voor deze fiche.';
  renderVisualEditor();
  void loadSpecialties(p);
+ void specialtyLinksUI.loadVerified(p);
 }
 async function loadSpecialties(p){
  try{
@@ -282,22 +289,26 @@ function updateArtwork(){
  if(row)$('specialtyImage').src=row.imageUrl;
  const picked=specialtyData?.items?.find(x=>x.label===$('specialty').value);
  $('specialtyValue').value=levels.includes(picked?.value)?picked.value:'Niet ingevuld';
+ specialtyLinksUI.updatePreview();
 }
 $('specialty').onchange=updateArtwork;
-$('dept').onchange=()=>{selected=null;choosePeople()};
+$('dept').onchange=()=>{selected=null;choosePeople();void specialtyLinksUI.load()};
 $('search').oninput=choosePeople;$('person').onchange=updateSelection;
 $('specialtySave').onclick=async()=>{
  const p=selected,state=specialtyData,label=$('specialty').value,value=$('specialtyValue').value,
   reason=$('specialtyReason').value.trim();
  if(!p||!state?.canEdit)return;
  if(reason.length<15)return alertUser('Een motivering van minstens 15 tekens is vereist.',true);
+ if(!$('specialtyConfirmImage').checked)
+  return alertUser('Controleer eerst de specialisatie, status en bijbehorende afbeelding.',true);
  if(!confirm('Specialisatie '+label+' van '+p.name+' wijzigen naar '+value+'? Dit wordt gelogd.'))return;
  const b=$('specialtySave');b.disabled=true;
  try{
   await api('/api/personnel/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId)+
    '/specializations','POST',{label,value,reason,expectedRevision:state.revision});
   alertUser('Specialisatie bijgewerkt, inclusief dossierhistoriek. Discord-rol niet gewijzigd.');
-  $('specialtyReason').value='';await loadSpecialties(p);
+  $('specialtyReason').value='';$('specialtyConfirmImage').checked=false;
+  await loadSpecialties(p);
  }catch(e){alertUser(e.message,true)}finally{b.disabled=!(specialtyData?.canEdit===true)}
 };
 $('rankSave').onclick=async()=>{
@@ -326,7 +337,16 @@ async function load(){
   for(const d of $('dept').options)d.disabled=!(overview.departments||[]).includes(d.value);
   if(!(overview.departments||[]).includes($('dept').value))$('dept').value=overview.departments?.[0]||'politie';
   await loadVisualCatalog();
+  if(startingParams.has('dept')&&(overview.departments||[]).includes(startingParams.get('dept')))
+   $('dept').value=startingParams.get('dept');
   choosePeople();
+  await specialtyLinksUI.load();
+  if(startingParams.has('person')){
+   const wanted=$('dept').value+'_'+startingParams.get('person');
+   if([...$('person').options].some(x=>x.value===wanted)){
+    $('person').value=wanted;updateSelection();
+   }
+  }
   alertUser('Personeelsleden geladen. Kies een medewerker om kwalificaties of rang te beheren.');
  }catch(e){$('manager').hidden=true;alertUser('Geen beheertoegang: '+e.message,true)}
 }
