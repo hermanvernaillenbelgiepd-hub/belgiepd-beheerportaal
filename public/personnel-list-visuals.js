@@ -59,8 +59,8 @@
     for(const row of Array.isArray(records)?records:[]){
       const key=String(row?.key||''),url=String(row?.imageUrl||'');
       if(!/^(?:(?:rank|specialty|patch)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
-      if(url!=='/api/role-artwork/file/'+key+'?v='+String(row?.imageUrl||'').split('?v=')[1]||
-        !/^\/api\/role-artwork\/file\/[a-z0-9_]+\?v=[A-Za-z0-9-]+$/.test(url))continue;
+      const prefix='/api/role-artwork/file/'+key+'?v=';
+      if(!url.startsWith(prefix)||!/^[A-Za-z0-9-]+$/.test(url.slice(prefix.length)))continue;
       logoOverrides.set(key,url);
     }
   }
