@@ -24,7 +24,7 @@ export const SPECIALTIES=Object.freeze({
 // The display model maps them to the new stable BelgiumPD police branches.
 const LEGACY_POLICE_SPECIALTIES=Object.freeze([
  'Motor','SIV/WPR','Dispatch','Radio BM','Signalisatie',
- 'Motard','Semi-anoniem','Semi-anonieme','K-9','Lokale Recherche',
+ 'Motard','Semi-anoniem','Semi-anonieme','Semi-ano.','K-9','Lokale Recherche',
  'Prioritair rijden','EHBO'
 ]);
 const POLICE_DISPLAY_ALIASES=new Map([
@@ -32,6 +32,7 @@ const POLICE_DISPLAY_ALIASES=new Map([
  ['SIV/WPR','SIGNALISATIE'],['Signalisatie','SIGNALISATIE'],
  ['Dispatch','DISP'],['Radio BM','RADIO/BM'],
  ['Semi-anoniem','SEMI ANONIEM'],['Semi-anonieme','SEMI ANONIEM'],
+ ['Semi-ano.','SEMI ANONIEM'],
  ['K-9','K9'],['Lokale Recherche','RECHERCHE']
 ]);
 const normalizedStoredSpecialty=(dept,label)=>
