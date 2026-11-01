@@ -93,7 +93,7 @@ function renderHeader(thead){
  for(const label of visibleSpecialties()){
    const th=element('th',undefined,'mr-specialty-head');
    th.title=label;
-   const image=visual().specialtyBannerImage(label);
+   const banner=visual().specialtyBannerDisplay(label);
    const fallback=()=>{
      th.classList.remove('mr-specialty-head--patch');
      th.replaceChildren();
@@ -103,14 +103,23 @@ function renderHeader(thead){
      pic.setAttribute('aria-hidden','true');
      th.append(pic,element('small',label));
    };
-   if(image){
-     const img=document.createElement('img');
-     img.src=image;img.alt=label;img.loading='lazy';
-     img.className='mr-specialty-banner';
-     img.onerror=()=>fallback();
+   if(banner){
      th.classList.add('mr-specialty-head--patch');
      th.setAttribute('aria-label',label);
-     th.append(img);
+     if(banner.type==='sprite'){
+       const tile=element('span',undefined,
+         'mr-specialty-banner mr-specialty-banner--sprite');
+       tile.style.backgroundImage='url("'+banner.url+'")';
+       tile.style.backgroundPosition='center '+banner.position+'%';
+       tile.setAttribute('aria-hidden','true');
+       th.append(tile);
+     }else{
+       const img=document.createElement('img');
+       img.src=banner.url;img.alt=label;img.loading='lazy';
+       img.className='mr-specialty-banner';
+       img.onerror=()=>fallback();
+       th.append(img);
+     }
    }else fallback();
    tr.append(th);
  }
