@@ -172,8 +172,21 @@ const POLICE_MEMBER_ROLES=Object.freeze({
  '1309532438019706963':'DISP',
  '1309542190409580594':'AE',
  '1310674604821581894':'AE',
+ '1337775768083632158':'AE',
  '1309532438019706962':'TO',
  '1380843428354592780':'RECHERCHE'
+});
+// The four current AE roles share one public specialty: AE. Function level
+// is derived only from recent, guild-bound verified Discord role snapshots.
+export const AE_DISCORD_ROLES=Object.freeze({
+ ae_i:'1309542190409580594',
+ ae_t:'1310674604821581894',
+ teamleader:'1337775768083632158',
+ instructeur:'1337156006597103746'
+});
+export const AE_DISPLAY_LABELS=Object.freeze({
+ ae_i:'AE-I',ae_t:'AE-T',
+ teamleader:'TEAMLEADER / LEIDING',instructeur:'AE-INSTRUCTEUR'
 });
 export const BOARD_DISCORD_ROLE='1309532438082355251';
 export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
@@ -181,8 +194,14 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
     identity.guildId!==guildId||!Number.isSafeInteger(identity.verifiedAt)||
     identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||
     !Array.isArray(identity.roleIds)||identity.roleIds.some(x=>!ID.test(x)))
-  return {boardRole:'none',teachingRoles:[],specialties:[],instructorSpecialties:[],teacherSpecialties:[],synced:false};
+  return {boardRole:'none',teachingRoles:[],specialties:[],instructorSpecialties:[],
+    teacherSpecialties:[],aeRoles:[],aeTeamleader:false,aeRole:'',synced:false};
  const roles=new Set(identity.roleIds);
+ const aeRoles=dept==='politie'?Object.entries(AE_DISCORD_ROLES)
+  .filter(([,id])=>roles.has(id)).map(([label])=>label):[];
+ const aeRole=aeRoles.includes('teamleader')?'teamleader':
+  aeRoles.includes('instructeur')?'instructeur':
+  aeRoles.includes('ae_t')?'ae_t':aeRoles.includes('ae_i')?'ae_i':'';
  const instructorNames=Object.entries(INSTRUCTORS[dept]||{})
   .filter(([id])=>roles.has(id)).map(([,name])=>name);
  const memberNames=dept==='politie'?Object.entries(POLICE_MEMBER_ROLES)
@@ -203,7 +222,7 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
  return {boardRole:roles.has(BOARD_DISCORD_ROLE)?'bestuur':'none',
   teachingRoles:instructorNames.length?['instructeur']:[],
   instructorSpecialties:instructorNames.filter(x=>SPECIALTIES[dept]?.includes(x)),
-  teacherSpecialties:[],
+  teacherSpecialties:[],aeRoles,aeTeamleader:aeRoles.includes('teamleader'),aeRole,
   specialties:[...new Set([...instructorNames,...memberNames])]
    .filter(x=>SPECIALTIES[dept]?.includes(x)),
   synced:true};
@@ -212,7 +231,8 @@ export function mergePlacement(person,manual,auto){
  // Explicit manual entries supplement verified roles, never grant rights.
  const specialtyValues=Array.isArray(person.specialties)?
   person.specialties.filter(x=>x&&typeof x.label==='string'&&
-   /^(ja|behaald|voltooid|geslaagd|true)$/i.test(strip(x.value))&&
+   (/^(ja|behaald|voltooid|geslaagd|true)$/i.test(strip(x.value))||
+     (person.dept==='politie'&&x.label==='AE'&&/^(instructeur|leiding|teamleader|ae[-_ ]?[it])$/i.test(strip(x.value))))&&
    validStoredSpecialty(person.dept,x.label))
     .map(x=>normalizedStoredSpecialty(person.dept,x.label)):[];
  const boardRole=manual?.boardRole&&manual.boardRole!=='none'?
@@ -222,6 +242,7 @@ export function mergePlacement(person,manual,auto){
   boardRole,leadershipTier:manual?.leadershipTier||'none',displayOrder:manual?.displayOrder||0,
   teachingRoles:[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])],
   displayLabels:[...(manual?.displayLabels||[])],
+  aeRole:auto?.aeRole||'',aeRoles:auto?.aeRoles||[],aeTeamleader:auto?.aeTeamleader===true,
   instructorSpecialties:[...new Set([...(manual?.instructorSpecialties||[]),
    ...(auto?.instructorSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
   teacherSpecialties:[...new Set([...(manual?.teacherSpecialties||[]),
