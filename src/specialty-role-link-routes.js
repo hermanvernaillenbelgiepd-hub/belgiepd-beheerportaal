@@ -64,13 +64,13 @@ export function validateSpecialtyRoleLinks(body,dept,labels,roles){
   const assetKey=String(x.assetKey||'');
   // A generic library badge may be linked without a Discord role; an older
   // role-specific image must match the EXACT selected role ID.
+  const assetBelongs=!assetKey||(ASSET.test(assetKey)&&(
+    assetKey.includes('_'+dept+'_')||
+    roleId!==''&&assetKey.startsWith(roleId+'_')));
   if(!allowedLabels.has(label)||(roleId!==''&&!allowedRoles.has(roleId))||
      level.length>45||/[<>\x00-\x1f]/.test(level)||
-     !SPECIALTY_STATES.includes(value)||
-     (assetKey&&(!ASSET.test(assetKey)||
-       (!assetKey.includes('_'+dept+'_')&&
-         !(roleId&&assetKey.startsWith(roleId+'_')))))))
-   throw fail(400,'Kies een bestaande specialisatie, Discord-rol, status en afbeelding van dezelfde dienst');
+     !SPECIALTY_STATES.includes(value)||!assetBelongs)
+    throw fail(400,'Kies een bestaande specialisatie, optionele Discord-rol, status en afbeelding van dezelfde dienst');
   const unique=roleId||'manual:'+label;
   if(seen.has(unique))throw fail(400,roleId?
     'Een Discord-rol kan binnen een dienst maar één specialisatiekoppeling krijgen':
