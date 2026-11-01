@@ -1659,7 +1659,10 @@ function render(){
       dept==='depannage'?'depannage':'series-desc'
   );
   $('count').textContent=matches.length+' fiche(s) zichtbaar';
-  const custom=(rosterConfigs[dept]?.customSpecialties||[]);
+  // AE-I, AE-T, AE-Teamleader and AE-Instructeur are function levels,
+  // never additional public or management roster columns.
+  const custom=(rosterConfigs[dept]?.customSpecialties||[])
+   .filter(item=>!/^ae[-_ ]?(?:i|t|teamleader|instructeur)$/i.test(item.label));
   const cols=[...BPDPersonnelVisuals.specialtyColumns(dept),...custom.map(x=>x.label)];
   const head=$('staffColumnHeaders');head.replaceChildren();
   const table=head.closest('table');
@@ -1827,10 +1830,15 @@ function render(){
     }
     for(const specialty of cols){
       const status=BPDPersonnelVisuals.specialtyStateFor(person,specialty);
+      // Keep qualification level in the dossier, but show only AE membership
+      // in the column, not AE-I/T/Teamleader/Instructeur.
+      const shown=person.dept==='politie'&&specialty==='AE'&&
+        /^(instructeur|leiding|teamleader|ae[-_ ]?(?:i|t|teamleader|instructeur)|stage|aangemeld)$/i.test(status.status)?
+        {status:'Ja',style:'yes'}:status;
       const cell=document.createElement('td');cell.className='specialty-status-col';
-      const chip=document.createElement('span');chip.className='specialty-state specialty-'+status.style;
-      chip.textContent=status.status==='Niet ingevuld'?'—':status.status;
-      chip.title=specialty+' · '+status.status;
+      const chip=document.createElement('span');chip.className='specialty-state specialty-'+shown.style;
+      chip.textContent=shown.status==='Niet ingevuld'?'—':shown.status;
+      chip.title=specialty+' · '+shown.status;
       cell.append(chip);tr.append(cell);
     }
     const cell=document.createElement('td');
