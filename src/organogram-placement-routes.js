@@ -62,7 +62,9 @@ const manualMap=docs=>new Map(docs.map(d=>[d.id,d.data()]));
 const safePublic=p=>({
  dept:p.dept,name:p.name,call:p.call,rank:p.rank,specialties:p.specialties,
  teachingRoles:p.teachingRoles,displayLabels:p.displayLabels||[],instructorSpecialties:p.instructorSpecialties,
- teacherSpecialties:p.teacherSpecialties,k9Role:p.k9Role||'',motardRole:p.motardRole||'',dispRole:p.dispRole||'',boardRole:p.boardRole,leadershipTier:p.leadershipTier,displayOrder:p.displayOrder,source:p.source
+ teacherSpecialties:p.teacherSpecialties,k9Role:p.k9Role||'',motardRole:p.motardRole||'',dispRole:p.dispRole||'',
+ aeRole:p.aeRole||'',aeRoles:Array.isArray(p.aeRoles)?p.aeRoles:[],
+ aeTeamleader:p.aeTeamleader===true,boardRole:p.boardRole,leadershipTier:p.leadershipTier,displayOrder:p.displayOrder,source:p.source
 });
 export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const store=()=>getFirestore();
@@ -277,7 +279,9 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    return res.json({displayOnly:true,canEdit:true,specialties:SPECIALTIES.politie,
     people:people.map(p=>{
      const v=manualDisplay(pm.get(personKey('politie',p.personId)),'politie');
+     const verified=verifiedSyncRoles(identities.entries.get(p.personId),'politie',process.env.DISCORD_GUILD_ID);
      return {personId:p.personId,name:safeName(p.name),
+      aeRole:verified.aeRole,aeRoles:verified.aeRoles,aeTeamleader:verified.aeTeamleader,
       call:String(p.call||'').slice(0,24),
       specialties:v?.specialties||[],
       instructorSpecialties:v?.instructorSpecialties||[],
