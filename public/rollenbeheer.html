@@ -57,8 +57,21 @@ button.alt{background:#26455f}
 <img id="specialtyImage" class="card-pic" alt="Gekoppelde specialisatieplaat" hidden></div>
 <p id="specialtyHelp" class="status"></p>
 </section>
+<section id="policeVisualPanel" hidden>
+<h2>3. Politiespecialisaties en functievarianten (Organogram)</h2>
+<p class="help">Hier registreer je handmatige specialisatieweergaven zoals K-9 Geleider, Motard In opleiding of Dispatcher. Dit zijn <strong>alleen visuele organogramfuncties</strong>; ze veranderen geen Discord-rollen of bevoegdheden.</p>
+<div id="policeVisualChoices" class="chips" role="group" aria-label="Organogramspecialisaties"></div>
+<div class="grid" style="margin-top:12px">
+ <label>K-9-functie<select id="visualK9"><option value="">Geen handmatige functie</option><option value="geleider_in_stage">Geleider in stage</option><option value="geleider">Geleider</option><option value="instructeur">Instructeur</option></select></label>
+ <label>Motard-functie<select id="visualMotard"><option value="">Geen handmatige functie</option><option value="in_opleiding">In opleiding</option><option value="volwaardig">Volwaardig</option><option value="instructeur">Instructeur</option></select></label>
+ <label>Dispatch-functie<select id="visualDisp"><option value="">Geen handmatige functie</option><option value="in_opleiding">In opleiding</option><option value="volwaardig">Volwaardig</option><option value="instructeur">Instructeur</option></select></label>
+ <label>Motivering (min. 8 tekens)<input id="visualReason" maxlength="300" placeholder="Reden van de functieaanpassing"></label>
+</div>
+<div class="actions"><button id="visualSave" type="button">Organogramfuncties bewaren</button></div>
+<p id="visualHelp" class="status"></p>
+</section>
 <section id="rankPanel" hidden>
-<h2>3. Rang / roepnummer wijzigen (Politie)</h2>
+<h2>4. Rang / roepnummer wijzigen (Politie)</h2>
 <p class="help">Alleen bij een bevoegd personeelsdossier. Rang en roepnummer worden samen gewijzigd en gelogd. Discord-kaderrollen wijzigen niet automatisch.</p>
 <div class="grid">
 <label>Nieuwe rang<select id="newRank"></select></label>
@@ -78,6 +91,7 @@ button.alt{background:#26455f}
 </main>
 <script type="module">
 let setupPortalLogin,auth=null,authMod=null,people=[],overview=null,selected=null,specialtyData=null,artworks=[];
+let visualCatalog=null;
 const $=id=>document.getElementById(id);
 const depts=[['politie','Politie'],['brandweer','Brandweer'],['ambulance','Ambulance'],
  ['depannage','Depannage'],['burger','Burger']];
@@ -109,6 +123,75 @@ function choosePeople(){
  else selected=null;
  if(!selected){$('specialtyPanel').hidden=true;$('rankPanel').hidden=true;$('identity').hidden=true}
 }
+async function loadVisualCatalog(){
+ visualCatalog=null;$('policeVisualPanel').hidden=true;
+ try{visualCatalog=await api('/api/organogram/police-specialties/admin')}
+ catch{return}
+}
+function renderVisualEditor(){
+ $('policeVisualPanel').hidden=true;
+ if(!selected||selected.dept!=='politie'||!visualCatalog?.canEdit)return;
+ const person=visualCatalog.people?.find(p=>p.personId===selected.discordId);
+ if(!person)return;
+ const box=$('policeVisualChoices');box.replaceChildren();
+ const selectedSpecs=new Set(person.specialties||[]);
+ const ins=new Set(person.instructorSpecialties||[]);
+ const teacher=new Set(person.teacherSpecialties||[]);
+ for(const spec of visualCatalog.specialties||[]){
+  const wrap=document.createElement('label');
+  wrap.style.cssText='display:flex;gap:6px;align-items:center;border:1px solid #52718e;padding:7px;border-radius:5px';
+  const check=document.createElement('input');check.type='checkbox';check.value=spec;
+  check.checked=selectedSpecs.has(spec);check.style.width='auto';check.dataset.roleSpec='member';
+  wrap.append(check,make('span',spec));box.append(wrap);
+  if(!['SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO'].includes(spec)){
+   for(const [kind,values] of [['Instructeur',ins],['Docent',teacher]]){
+    const tag=document.createElement('label');
+    tag.style.cssText='display:flex;gap:5px;align-items:center;font-size:11px';
+    const child=document.createElement('input');child.type='checkbox';child.value=spec;
+    child.style.width='auto';child.dataset.roleSpec=kind.toLowerCase();
+    child.checked=values.has(spec);
+    tag.append(child,make('span',kind+' · '+spec));box.append(tag);
+   }
+  }
+ }
+ $('visualK9').value=person.k9Manual||'';
+ $('visualMotard').value=person.motardManual||'';
+ $('visualDisp').value=person.dispManual||'';
+ $('visualHelp').textContent='Bestaande handmatige functieniveaus zijn ingevuld. Controleer wijzigingen alvorens te bewaren.';
+ $('policeVisualPanel').hidden=false;
+}
+$('visualSave').onclick=async()=>{
+ if(!selected||!visualCatalog?.canEdit)return;
+ const reason=$('visualReason').value.trim(),person=selected,choices=$('policeVisualChoices');
+ if(reason.length<8)return alertUser('Geef een motivering van minstens acht tekens.',true);
+ const chosen=type=>[...choices.querySelectorAll('input[data-role-spec="'+type+'"]:checked')].map(x=>x.value);
+ const membership=new Set(chosen('member'));
+ const instructors=chosen('instructeur'),teachers=chosen('docent');
+ const k9Role=$('visualK9').value,motardRole=$('visualMotard').value,dispRole=$('visualDisp').value;
+ for(const spec of [...instructors,...teachers])membership.add(spec);
+ if(k9Role)membership.add('K9');
+ if(motardRole)membership.add('MOTARD');
+ if(dispRole)membership.add('DISP');
+ if(motardRole==='instructeur'&&!instructors.includes('MOTARD'))instructors.push('MOTARD');
+ if(dispRole==='instructeur'&&!instructors.includes('DISP'))instructors.push('DISP');
+ if(motardRole&&motardRole!=='instructeur'){
+  const i=instructors.indexOf('MOTARD');if(i>=0)instructors.splice(i,1);
+ }
+ if(dispRole&&dispRole!=='instructeur'){
+  const i=instructors.indexOf('DISP');if(i>=0)instructors.splice(i,1);
+ }
+ const body={specialties:[...membership],instructorSpecialties:instructors,
+  teacherSpecialties:teachers,k9Role,motardRole,dispRole,reason};
+ if(!confirm('Handmatige organisatiefuncties voor '+person.name+
+  ' wijzigen? Alle bestaande selecties worden mee opgeslagen. Dit geeft geen Discord-rollen.'))return;
+ const btn=$('visualSave');btn.disabled=true;
+ try{
+  await api('/api/organogram/police-specialties/'+encodeURIComponent(person.discordId),'PUT',body);
+  alertUser('Organogramfuncties met auditlog bijgewerkt; operationele rechten zijn niet gewijzigd.');
+  $('visualReason').value='';await loadVisualCatalog();renderVisualEditor();
+ }catch(e){alertUser(e.message,true)}
+ finally{btn.disabled=false}
+};
 function updateSelection(){
  const p=people.find(x=>key(x)===$('person').value);
  selected=p||null;specialtyData=null;
@@ -124,6 +207,7 @@ function updateSelection(){
  $('rankSave').disabled=!allowed;
  $('rankHelp').textContent=allowed?'Kies een rang en bijbehorend roepnummer.':
   'Rangwijzigingen zijn niet geactiveerd of je hebt geen rechten voor deze fiche.';
+ renderVisualEditor();
  void loadSpecialties(p);
 }
 async function loadSpecialties(p){
@@ -204,6 +288,7 @@ async function load(){
   $('manager').hidden=false;
   for(const d of $('dept').options)d.disabled=!(overview.departments||[]).includes(d.value);
   if(!(overview.departments||[]).includes($('dept').value))$('dept').value=overview.departments?.[0]||'politie';
+  await loadVisualCatalog();
   choosePeople();
   alertUser('Personeelsleden geladen. Kies een medewerker om kwalificaties of rang te beheren.');
  }catch(e){$('manager').hidden=true;alertUser('Geen beheertoegang: '+e.message,true)}
