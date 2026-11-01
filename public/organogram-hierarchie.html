@@ -2429,7 +2429,7 @@ function openPersonProfile(p){
     badge.src=alternative;badge.alt=name+' · '+(window.BPDUniformAssignments?.forPerson?.(p).badgeStyle||'');
     badge.width=170;badge.height=53;badge.loading='lazy';item.append(badge);
    }
-   if(matchedArtwork?.level&&
+   if(matchedArtwork?.level&&matchedArtwork.source==='discord'&&
      ![...item.querySelectorAll('.person-profile-specialty-role')].some(x=>
        x.textContent?.includes(matchedArtwork.level)))
     item.append(el('span','person-profile-specialty-role',
@@ -2971,7 +2971,8 @@ async function loadPublic(){
     dispRole:['in_opleiding','volwaardig','instructeur'].includes(p.dispRole)?p.dispRole:'',
     specialtyPatches:Array.isArray(p.specialtyPatches)?
      p.specialtyPatches.filter(x=>x&&typeof x.label==='string'&&
-       typeof x.level==='string'&&typeof x.imageUrl==='string'&&
+       typeof x.level==='string'&&['discord','registered'].includes(x.source)&&
+       typeof x.imageUrl==='string'&&
        /^\/api\/role-artwork\/file\/(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})\?v=[a-zA-Z0-9-]+$/.test(x.imageUrl)).slice(0,20):[],
     aeRole:['ae_i','ae_t','teamleader','instructeur'].includes(p.aeRole)?p.aeRole:'',
     aeRoles:Array.isArray(p.aeRoles)?p.aeRoles.filter(x=>['ae_i','ae_t','teamleader','instructeur'].includes(x)):[],
