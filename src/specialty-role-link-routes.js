@@ -15,7 +15,7 @@ export const SPECIALTY_ROLE_LINKS='bpd_specialty_role_links';
 export const SPECIALTY_ROLE_LINK_AUDIT='bpd_specialty_role_link_audit';
 const DEPTS=Object.freeze(['politie','brandweer','ambulance','depannage']);
 const ID=/^\d{15,22}$/;
-const ASSET=/^(?:specialty|patch)_(politie|brandweer|ambulance|depannage)_[a-z0-9][a-z0-9_]{0,39}$/;
+const ASSET=/^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9][a-z0-9_]{0,39}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/;
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 const respond=(res,e)=>{
  if(e.status)return res.status(e.status).json({error:e.message});
@@ -63,7 +63,8 @@ export function validateSpecialtyRoleLinks(body,dept,labels,roles){
   if(!allowedLabels.has(label)||!allowedRoles.has(roleId)||
      level.length>45||/[<>\x00-\x1f]/.test(level)||
      !SPECIALTY_STATES.includes(value)||
-     (assetKey&&(!ASSET.test(assetKey)||!assetKey.includes('_'+dept+'_'))))
+     (assetKey&&(!ASSET.test(assetKey)||
+       (!assetKey.includes('_'+dept+'_')&&!assetKey.startsWith(roleId+'_')))))
    throw fail(400,'Kies een bestaande specialisatie, Discord-rol, status en afbeelding van dezelfde dienst');
   if(seen.has(roleId))throw fail(400,'Een Discord-rol kan binnen een dienst maar één specialisatiekoppeling krijgen');
   seen.add(roleId);
@@ -89,7 +90,9 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
    const labels=[...new Set([...(SPECIALTY_LABELS[dept]||[]),...extra])];
    const allowedLabels=new Set(labels);
    const allAssets=assets.docs.filter(d=>d.get('active')===true&&
-     ['specialty','patch'].includes(d.get('kind'))&&ASSET.test(d.id))
+     (['specialty','patch'].includes(d.get('kind'))||
+       (d.get('kind')||'role')==='role'&&d.get('roleId')&&
+        d.id.startsWith(d.get('roleId')+'_'))&&ASSET.test(d.id))
     .map(d=>({key:d.id,label:String(d.get('label')||d.get('code')||'').slice(0,75),
       imageUrl:'/api/role-artwork/file/'+d.id+'?v='+encodeURIComponent(d.get('version')||'1')}));
    const links=cleanLinks(doc.get('links')).filter(x=>
@@ -115,7 +118,9 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
     for(let i=0;i<docs.length;i++){
      if(!docs[i].exists||docs[i].get('active')!==true||
         docs[i].get('department')!==dept||
-        !['specialty','patch'].includes(docs[i].get('kind')))
+        !(['specialty','patch'].includes(docs[i].get('kind'))||
+          (docs[i].get('kind')||'role')==='role'&&
+          docs[i].id.startsWith(String(docs[i].get('roleId')||'')+'_')))
       throw fail(400,'Kies een actieve specialisatiepatch uit de bibliotheek van deze dienst');
     }
    }
