@@ -1,5 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
+import {SPECIALTY_ROLE_LINKS} from './specialty-role-link-routes.js';
+import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
 import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
  from './organogram-mid-order-policy.js';
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
@@ -83,6 +85,27 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     db.collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get()
    ]);
    if(manualSnap.size>=1500)return res.status(503).json({error:'Organogramregisterlimiet bereikt'});
+   // The per-service mapping is visual-only. It can select a library patch
+   // for a recently verified Discord role without changing personnel rights.
+   const linkDocs=await db.getAll(...['politie','brandweer','ambulance','depannage']
+     .map(dept=>db.collection(SPECIALTY_ROLE_LINKS).doc(dept)));
+   const mapped=new Map(linkDocs.filter(d=>d.exists).map(d=>[d.id,
+    (Array.isArray(d.get('links'))?d.get('links'):[]).filter(x=>
+      x&&idOK(x.roleId)&&typeof x.label==='string'&&x.label.length<=90)]));
+   const assetKeys=[...new Set([...mapped.values()].flat()
+      .map(x=>String(x.assetKey||'')).filter(x=>
+       /^(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}$/.test(x)))].slice(0,300);
+   const assetUrls=new Map();
+   for(const group of chunks(assetKeys,100)){
+    const docs=await db.getAll(...group.map(key=>db.collection(ROLE_ARTWORK_META).doc(key)));
+    for(const asset of docs){
+     if(!asset.exists||asset.get('active')!==true||!asset.get('version'))continue;
+     const key=asset.id,dept=asset.get('department');
+     if(!key.includes('_'+dept+'_')||!['patch','specialty'].includes(asset.get('kind')))continue;
+     assetUrls.set(key,'/api/role-artwork/file/'+key+'?v='+
+      encodeURIComponent(asset.get('version')));
+    }
+   }
    const manual=manualMap(manualSnap.docs);
    const k9Manual=manualMap(k9Snap.docs);
    const motardManual=manualMap(motardSnap.docs);
@@ -108,6 +131,19 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const synced=verifiedSyncRoles(roles.entries.get(p.personId),p.dept,process.env.DISCORD_GUILD_ID);
     return {p,merged:mergePlacement(p,override,synced)};
    });
+   const mappedPatches=(p)=>{
+    const identity=roles.entries.get(p.personId),now=Date.now();
+    if(!identity||identity.guildId!==process.env.DISCORD_GUILD_ID||
+       !Number.isSafeInteger(identity.verifiedAt)||
+       identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||
+       !Array.isArray(identity.roleIds)||!identity.roleIds.every(idOK))return [];
+    const verified=new Set(identity.roleIds);
+    return (mapped.get(p.dept)||[]).filter(x=>
+      verified.has(x.roleId)&&assetUrls.has(x.assetKey)&&
+      !['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value))
+     .map(x=>({label:x.label,level:String(x.level||x.value||'').slice(0,45),
+       imageUrl:assetUrls.get(x.assetKey)})).slice(0,20);
+   };
    // A member's own login only refreshes their own Discord identity. For
    // K9 candidates, the server bot now checks their roles independently.
    // Results never update the identity/role snapshots used for permissions.
@@ -144,6 +180,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
+     specialtyPatches:mappedPatches(p),
      awards:p.dept==='politie'?publicDecorations(
       decorationEntries.get(awardKey(p.dept,p.personId))||[],undefined,customCatalog):[],
      status:p.dept==='politie'?String(p.status||'').trim().slice(0,30):'',
