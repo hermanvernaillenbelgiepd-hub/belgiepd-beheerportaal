@@ -20,7 +20,11 @@ export const POLICE_ROLE_PATCH_PRESETS=Object.freeze([
  roleId,label,level,value,assetKey:''
 })));
 export const policeRolePatchPresets=()=>POLICE_ROLE_PATCH_PRESETS.map(x=>({...x}));
-export function defaultSpecialtyRoleLinks(dept,stored,hasSavedConfig){
- if(hasSavedConfig)return stored;
- return dept==='politie'?policeRolePatchPresets():stored;
+// Upgrades an old manually saved mapping once, while leaving its entries intact.
+// After saving presetVersion=1, deleted/changed presets are NOT reinserted.
+export const POLICE_PATCH_PRESET_VERSION=1;
+export function defaultSpecialtyRoleLinks(dept,stored,alreadyApplied){
+ if(dept!=='politie'||alreadyApplied)return stored;
+ const known=new Set(stored.map(x=>x.roleId).filter(Boolean));
+ return [...stored,...policeRolePatchPresets().filter(x=>!known.has(x.roleId))];
 }
