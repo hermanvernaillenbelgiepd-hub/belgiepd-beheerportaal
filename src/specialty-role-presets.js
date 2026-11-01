@@ -12,7 +12,7 @@ export const POLICE_ROLE_PATCH_PRESETS=Object.freeze([
  ['1310674604821581894','AE','AE-T','Ja'],
  ['1337775768083632158','AE','Teamleader','LEIDING'],
  ['1337156006597103746','AE','Instructeur','INSTRUCTEUR'],
- ['1490841316656156802','RAGO','In opleiding (halve wing)','Stage'],
+ ['1490841316656156802','RAGO','In opleiding (halve wing)','AANGEMELD'],
  ['1309532437977497700','RAGO','Volwaardig (volledige wing)','Ja'],
  ['1393050551188721865','RAGO','Instructeur (volledige wing)','INSTRUCTEUR'],
  ['1365602771855740958','Motor','In opleiding','Stage'],

@@ -50,6 +50,7 @@ import {installRosterColumnRoutes,loadRosterConfigs} from './roster-column-confi
 import {installFunctionChangeRoutes} from './function-change-routes.js';
 import {installReceivedRegistrationRoutes} from './received-registration-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
+import {RAGO_DISPLAY_ROLE_IDS,overlayVerifiedRagoRoster} from './rago-qualification-display.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierRetirementRoutes} from './dossier-retirement-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
@@ -356,7 +357,22 @@ async function getSnapshot({forceRefresh=false}={}){
   const extra=added.filter(p=>!keys.has(p.dept+':'+p.personId));
   const combined=base.data.concat(extra);
   const personnel=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
-  return {...base,data:specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel};
+  let visible=specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel;
+  if(specialties&&process.env.DISCORD_GUILD_ID){
+    // Only recently verified Discord guild snapshots can annotate RAGO. The
+    // Sheets, manual dossier overrides and Discord roles are not modified.
+    try{
+      const roleDocs=await getFirestore().collection('bpd_discord_auth')
+        .where('roleIds','array-contains-any',RAGO_DISPLAY_ROLE_IDS)
+        .limit(500).get();
+      if(roleDocs.size<500)
+        visible=overlayVerifiedRagoRoster(visible,roleDocs.docs,process.env.DISCORD_GUILD_ID);
+      else console.warn('RAGO-specialisaties: limiet bereikt, toon geregistreerde basisstatus');
+    }catch(err){
+      console.warn('RAGO-status niet recent verifieerbaar:',err?.code||'databasecontrole');
+    }
+  }
+  return {...base,data:visible};
 }
 app.get('/api/client-config',(_req,res)=>{
   const {FIREBASE_PROJECT_ID,FIREBASE_API_KEY,FIREBASE_AUTH_DOMAIN}=process.env;
