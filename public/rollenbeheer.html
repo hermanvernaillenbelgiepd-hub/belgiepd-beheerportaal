@@ -117,6 +117,13 @@ function updateSelection(){
  if(!p)return;
  $('identity').textContent=p.call+' · '+p.name+' · '+p.rank+
   ' · '+(p.dept||'').toUpperCase()+' · '+p.status;
+ const allowed=p.dept==='politie'&&p.canChangeRank===true&&overview?.rankChangesEnabled===true;
+ $('rankPanel').hidden=p.dept!=='politie';
+ $('newRank').replaceChildren(option('','Kies een andere rang'));
+ for(const rank of overview?.rankOptions||[])$('newRank').append(option(rank,rank));
+ $('rankSave').disabled=!allowed;
+ $('rankHelp').textContent=allowed?'Kies een rang en bijbehorend roepnummer.':
+  'Rangwijzigingen zijn niet geactiveerd of je hebt geen rechten voor deze fiche.';
  void loadSpecialties(p);
 }
 async function loadSpecialties(p){
@@ -134,26 +141,22 @@ async function loadSpecialties(p){
    'Statuswijzigingen worden per personeelslid gelogd; bestaande bevoegdheden worden niet via een afbeelding toegewezen.':
    'Alleen bevoegde leidinggevenden van deze dienst kunnen dit specialisatieregister wijzigen.';
   updateArtwork();
-  const rankEditable=p.dept==='politie'&&p.canChangeRank===true&&overview?.rankChangesEnabled===true;
-  $('rankPanel').hidden=p.dept!=='politie';
-  $('newRank').replaceChildren(option('','Kies een andere rang'));
-  for(const rank of overview?.rankOptions||[])$('newRank').append(option(rank,rank));
-  $('rankSave').disabled=!rankEditable;
-  $('rankHelp').textContent=rankEditable?'Rang en nieuw roepnummer moeten overeenkomen met de politierangen.':
-   'Rangwijzigingen zijn hier niet beschikbaar voor jouw account of deze personeelsfiche.';
  }catch(e){
   if(selected!==p)return;
   $('specialtyPanel').hidden=false;$('specialtySave').disabled=true;
   $('specialty').replaceChildren();
   $('specialtyHelp').textContent=e.message;
-  $('rankPanel').hidden=true;
   alertUser('Specialisaties: '+e.message,true);
  }
 }
 function updateArtwork(){
+ const raw=String($('specialty').value||'').trim().toLowerCase();
+ const aliases={'motor':'motard','semi-ano.':'semi_ano','semi-anoniem':'semi_ano',
+  'dispatch':'disp','rago-io':'rago','k-9':'k9','radio bm':'radio_bm','siv/wpr':'siv_wpr'};
+ const code=aliases[raw]||raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
  const row=artworks.find(x=>x.department===selected?.dept&&x.kind==='specialty'&&
-  x.code===String($('specialty').value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-  .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')&&x.active);
+  x.code===code&&x.active);
  $('specialtyImage').hidden=!row;
  if(row)$('specialtyImage').src=row.imageUrl;
  const picked=specialtyData?.items?.find(x=>x.label===$('specialty').value);
