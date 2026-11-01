@@ -8,6 +8,7 @@ import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,
   specialtyWritesEnabled,canChangeSpecialty,validateSpecialtyChange,
   publicSpecializations,applyVerifiedSpecialtyRoleDisplay} from './specialization-policy.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
+import {verifiedRagoQualification,overlayVerifiedRagoItems} from './rago-qualification-display.js';
 const error=(res,status,message)=>res.status(status).json({error:message});
 const failure=(code,message)=>Object.assign(new Error(message),{httpStatus:code});
 function handleError(res,e){
@@ -56,6 +57,8 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
             const links=defaultSpecialtyRoleLinks('politie',saved,
               linksDoc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION);
             applyVerifiedSpecialtyRoleDisplay(state,roles.roleIds,links);
+            const rago=verifiedRagoQualification(roles,process.env.DISCORD_GUILD_ID,now);
+            if(rago)state.items=overlayVerifiedRagoItems(state.items,rago);
           }
         }catch(e){
           // Degraded Discord verification must not fabricate qualifications.
