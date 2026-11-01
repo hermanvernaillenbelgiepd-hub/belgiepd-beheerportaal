@@ -2,6 +2,7 @@ import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
 import {ROSTER_COLUMN_COLLECTION,rosterConfig} from './roster-column-config.js';
+import {AE_DISCORD_ROLES,verifiedSyncRoles} from './organogram-placement-policy.js';
 import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
 import {verifiedOfficerCadre} from './verified-police-cadre.js';
 import {PERSONNEL_ROSTER_DEFAULT,validatePersonnelRosterLayout,
@@ -49,10 +50,11 @@ export function ambulanceMemberWorkspaceStatus(id,grant,roster,stale=false){
 // One read-only directory entry per Discord identity, with Police as its
 // primary registration if present. Other service enrollments never create a
 // fictional police callsign, rank, dossier, or permission.
-export function publicPoliceRoster(rows,extraPublicLabels=[]){
+export function publicPoliceRoster(rows,extraPublicLabels=[],verifiedAeMembers=new Set()){
  const byIdentity=new Map();
  const whitelist=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
-   'K9','RAGO','Dispatch','TO','AE',...extraPublicLabels];
+   'K9','RAGO','Dispatch','TO','AE',...extraPublicLabels.filter(label=>
+    !/^ae(?:[-_ ]?(?:i|t|teamleader|instructeur))$/i.test(label))];
  const serviceNames={politie:'Politie',brandweer:'Brandweer',
    ambulance:'Ambulance',depannage:'Depannage'};
  for(const person of rows||[]){
@@ -81,6 +83,14 @@ export function publicPoliceRoster(rows,extraPublicLabels=[]){
      return [label,typeof value==='string'?value.trim().slice(0,40)||'Niet ingevuld':
        'Niet ingevuld'];
    }));
+   // Public overview has exactly one AE column; levels belong inside the
+   // AE-specialization detail. No role IDs or leadership status are exposed.
+   const rawAe=String(statuses.AE||'Niet ingevuld');
+   if(hasPoliceEntry){
+    if(verifiedAeMembers.has(strip(primary.personId))||
+       /^(ja|instructeur|leiding|teamleader|ae[-_ ]?(?:i|t|teamleader|instructeur)|ae-f|stage|aangemeld)$/i.test(rawAe))
+      statuses.AE='Ja';
+   }
    visible.push({
      call:hasPoliceEntry?strip(primary.call).slice(0,18):'—',
      name:strip(primary.name).slice(0,90),
@@ -287,9 +297,27 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
         getFirestore().collection(ROSTER_COLUMN_COLLECTION).doc('politie').get()
       ]);
       const customSpecialties=rosterConfig(settings.data()).customSpecialties
-        .filter(x=>x.public===true);
+        .filter(x=>x.public===true&&
+         !/^ae(?:[-_ ]?(?:i|t|teamleader|instructeur))$/i.test(x.label));
+      // Guild-verifiable AE membership is a display signal only; never use
+      // these role IDs to grant permissions or rewrite dossier records.
+      let verifiedAeMembers=new Set();
+      try{
+       const result=await getFirestore().collection('bpd_discord_auth')
+        .where('roleIds','array-contains-any',Object.values(AE_DISCORD_ROLES))
+        .limit(500).get();
+       if(result.size<500){
+        verifiedAeMembers=new Set(result.docs
+         .filter(doc=>verifiedSyncRoles(doc.data(),'politie',
+          process.env.DISCORD_GUILD_ID).aeRole!=='')
+         .map(doc=>doc.id));
+       }else console.warn('AE-personeelslijst: Discord-selectie limiet bereikt; alleen geregistreerde dossierstatus wordt getoond');
+      }catch(error){
+       console.warn('AE-personeelslijst: Discord-verificatie tijdelijk niet beschikbaar',
+        error?.code||'sync_error');
+      }
       return res.json({
-        records:publicPoliceRoster(snapshot.data,customSpecialties.map(x=>x.label)),
+        records:publicPoliceRoster(snapshot.data,customSpecialties.map(x=>x.label),verifiedAeMembers),
         customSpecialties,stale:snapshot.stale,readOnly:true
       });
     }catch(error){
