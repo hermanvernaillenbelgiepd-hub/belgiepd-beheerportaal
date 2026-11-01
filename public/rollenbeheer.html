@@ -58,19 +58,19 @@ button.alt{background:#26455f}
 <div id="identity" class="state" hidden></div>
 </section>
 <section id="specialtyLinkPanel" hidden>
-<h2>2. Discord-rollen en afbeeldingen koppelen</h2>
-<p class="help">Een koppeling verbindt één bestaande Discord-rol met een specialisatie en een afbeelding uit de Beeldbibliotheek. De koppeling is <strong>enkel een gecontroleerde weergave</strong> en kent niemand automatisch een Discord-rol of dossierbevoegdheid toe.</p>
+<h2>2. Specialisaties, patches en optionele Discord-rollen koppelen</h2>
+<p class="help">Een specialisatie kan <strong>zonder Discord-rol</strong> bestaan. Kies dan <strong>Geen Discord-rol — handmatige specialisatie / patch</strong> en koppel de bijpassende afbeelding. Officierenkader en Korpsleiding kunnen deze vervolgens per personeelslid toekennen, ook aan Agentenkader of Basiskader. Heeft een specialisatie wél een aparte Discord-rol, dan kun je die daarnaast selecteren. Dit verleent nooit automatisch toegangsrechten.</p>
 <div id="specialtyLinkStatus" class="status" role="status">Koppelingen laden…</div>
 <div id="specialtyLinkRows"></div>
 <div class="actions">
- <button type="button" class="alt" id="specialtyLinkAdd">+ Discord-rol koppelen</button>
+ <button type="button" class="alt" id="specialtyLinkAdd">+ Specialisatie / patch koppelen</button>
  <a class="link" href="/beeldbibliotheek.html">Nieuwe patch uploaden</a>
 </div>
 <div class="grid" style="margin-top:12px">
- <label>Motivering voor gewijzigde koppelingen<input id="specialtyLinkReason" maxlength="300" placeholder="Minstens acht tekens"></label>
+ <label>Motivering voor wijziging van de koppelingen<input id="specialtyLinkReason" maxlength="300" placeholder="Minstens acht tekens"></label>
  <label style="flex-direction:row;align-items:center;gap:8px">
   <input type="checkbox" id="specialtyLinkReviewed" style="width:auto">
-  Ik heb de geselecteerde afbeeldingen en rol-ID's gecontroleerd
+  Ik heb de specialisatie, afbeelding en eventuele Discord-rol gecontroleerd
  </label>
 </div>
 <div class="actions"><button type="button" id="specialtyLinkSave">Gecontroleerde koppelingen bewaren</button></div>
