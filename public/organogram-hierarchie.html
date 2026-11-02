@@ -2659,6 +2659,9 @@ function openPersonProfile(p){
    // Role-specific library artwork has priority only when the server has
    // recently verified the matching Discord role. Otherwise use the existing
    // manual/general specialty badge, never alter Uniformbeheer.
+   const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',
+    teamleader:'1337775768083632158',instructeur:'1337156006597103746'};
+   const aeSpecific=name==='AE'&&Object.hasOwn(aeRoleIds,functionVariant);
    const matchedArtwork=verified&&Array.isArray(p.specialtyPatches)?
     p.specialtyPatches.find(entry=>
       (p.dept==='politie'?policeSpecialtyName(entry.label):entry.label)===name&&
@@ -2668,9 +2671,6 @@ function openPersonProfile(p){
    // displayed BURGERMELDINGEN here; only an explicitly role-linked patch is safe.
    // AE badges must follow the confirmed or manual function, not silently
    // fall back to the generic Arrestatie-Eenheid patch for a Teamleader.
-   const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',
-    teamleader:'1337775768083632158',instructeur:'1337156006597103746'};
-   const aeSpecific=name==='AE'&&Object.hasOwn(aeRoleIds,functionVariant);
    const aeLevelImage=aeSpecific?(
     window.BPDUniformAssignments?.specialtyVariantImage?.(p,name,functionVariant)||
     roleArtworkUrl(aeRoleIds[functionVariant])):'';
@@ -3302,8 +3302,16 @@ async function loadPublic(){
     p.call.toLocaleLowerCase('nl-BE')===requestedCard.call.toLocaleLowerCase('nl-BE')&&
     (!requestedCard.name||p.name.toLocaleLowerCase('nl-BE')===
      requestedCard.name.toLocaleLowerCase('nl-BE')));
-   if(person){openPersonProfile(person);notifyCardParent('ready');}
-   else notifyCardParent('not-found');
+   if(person){
+    try{
+     openPersonProfile(person);
+     notifyCardParent('ready');
+    }catch(error){
+     console.error('Personeelskaart kon niet worden opgebouwd:',error);
+     notifyCardParent('unavailable');
+    }
+   }
+   else notifyCardParent(state.loaded?'not-found':'unavailable');
   }else notifyCardParent('unavailable');
  }
 }

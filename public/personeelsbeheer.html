@@ -1035,9 +1035,12 @@ $('personnelManageTab').onclick=()=>{
 // Only the authenticated manager overview may disclose Discord identity.
 // The public list sends a call/name, never an ID.
 let personnelCardDiscordId='';
+let personnelCardLoadTimer=0;
 const cardDialog=$('personnelCardDialog');
 function closeUnifiedCard(){if(cardDialog.open)cardDialog.close();}
 function clearUnifiedCard(){
+ window.clearTimeout(personnelCardLoadTimer);
+ personnelCardLoadTimer=0;
  personnelCardDiscordId='';
  $('personnelCardFrame').removeAttribute('src');
  for(const key of ['personnelCardId','personnelCardCopyId','personnelCardPing'])$(key).hidden=true;
@@ -1062,6 +1065,11 @@ function openUnifiedCard(call,name){
  const params=new URLSearchParams({embedded:'1',dienst:'politie',kaart:call,naam:name});
  $('personnelCardFrame').src='/organogram-hierarchie.html?'+params;
  cardDialog.showModal();
+ personnelCardLoadTimer=window.setTimeout(()=>{
+  if(cardDialog.open&&!$('personnelCardInfo').hidden)
+   $('personnelCardInfo').textContent=
+    'De personeelskaart reageert niet. Sluit dit venster en probeer opnieuw.';
+ },15000);
 }
 $('personnelCardClose').onclick=closeUnifiedCard;
 cardDialog.addEventListener('close',clearUnifiedCard);
@@ -1091,6 +1099,10 @@ window.addEventListener('message',event=>{
  }
  if(event.source!==$('personnelCardFrame').contentWindow||
     event.data?.type!=='bpd-organogram-card'||!cardDialog.open)return;
+ if(['ready','not-found','unavailable'].includes(event.data.status)){
+  window.clearTimeout(personnelCardLoadTimer);
+  personnelCardLoadTimer=0;
+ }
  switch(event.data.status){
   case 'closed':closeUnifiedCard();break;
   case 'ready':$('personnelCardInfo').hidden=true;break;

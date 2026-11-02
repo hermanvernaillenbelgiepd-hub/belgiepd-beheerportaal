@@ -220,6 +220,7 @@ import {loadRosterLayout,logoutRosterLayout} from '/member-roster-layout.js?v=20
 const $=id=>document.getElementById(id);
 let auth=null,people=[],discordSearchRows=[],discordSearchId='';
 let discordSearchTimeout=null,discordSearchRequest=0;
+let rosterProfileLoadTimer=0;
 const directoryEmbedded=new URLSearchParams(window.location.search).get('embed')==='1';
 if(directoryEmbedded){
  document.body.classList.add('roster-embedded');
@@ -247,9 +248,17 @@ function openRosterProfile(person){
  $('rosterProfileStatus').hidden=false;
  $('rosterProfileFrame').src='/organogram-hierarchie.html?'+params.toString();
  $('rosterProfile').showModal();
+ window.clearTimeout(rosterProfileLoadTimer);
+ rosterProfileLoadTimer=window.setTimeout(()=>{
+  if($('rosterProfile').open&&!$('rosterProfileStatus').hidden)
+   $('rosterProfileStatus').textContent=
+    'De personeelskaart reageert niet. Sluit dit venster en probeer opnieuw.';
+ },15000);
 }
 $('rosterProfileClose').onclick=()=>$('rosterProfile').close();
 $('rosterProfile').addEventListener('close',()=>{
+ window.clearTimeout(rosterProfileLoadTimer);
+ rosterProfileLoadTimer=0;
  $('rosterProfileFrame').removeAttribute('src');
 });
 $('rosterProfile').addEventListener('click',event=>{
@@ -258,6 +267,10 @@ $('rosterProfile').addEventListener('click',event=>{
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==$('rosterProfileFrame').contentWindow||
   event.data?.type!=='bpd-organogram-card')return;
+ if(['ready','not-found','unavailable'].includes(event.data.status)){
+  window.clearTimeout(rosterProfileLoadTimer);
+  rosterProfileLoadTimer=0;
+ }
  if(event.data.status==='closed')$('rosterProfile').close();
  else if(event.data.status==='ready')$('rosterProfileStatus').hidden=true;
  else if(event.data.status==='not-found')
