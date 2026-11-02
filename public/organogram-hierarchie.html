@@ -2135,8 +2135,8 @@ function el(tag,cls,text){
  if(text!==undefined)n.textContent=text;
  return n;
 }
-// Central policy: every image or role=img added to a specialty card
-// automatically becomes a 170 x 53.125 px badge, including future patches.
+// Central badge selector. Police patches retain 16:5 sizing; fire-service
+// artwork keeps its original aspect ratio via scoped profile presentation.
 function normalizeSpecialtyBadges(card){
  const badges=card.querySelectorAll('img,[role="img"]');
  if(!badges.length)return;
@@ -2728,6 +2728,11 @@ function openPersonProfile(p){
        x.textContent?.toLowerCase().includes(badgeLevel.toLowerCase())))
     item.append(el('span','person-profile-specialty-role',badgeLevel));
    normalizeSpecialtyBadges(item);
+   // Display-only: all fire-service patches use the same full-width profile
+   // presentation. Cards without an image stay in the compact two-column grid.
+   // This changes no specialty, role or personnel membership data.
+   if(p.dept==='brandweer'&&item.querySelector('img.person-profile-specialty-badge'))
+    item.classList.add('person-profile-specialty-fire-badged');
    list.append(item);
   }
   specBox.append(list);

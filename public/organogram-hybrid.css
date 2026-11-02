@@ -509,3 +509,66 @@ html:not([data-bpd-theme="dark"]) main > .manager :is(.manager-note,label,h2,h3)
   }
  }
 }
+
+
+/* Uniforme BRANDWEER-specialisatiekaarten (Duiker, Ladderwagen en volgende).
+   Each uploaded or approved badge spans a full row with its original aspect.
+   Do not modify image pixels, personal specialties, Discord roles or uniforms.
+   Empty specialty cards remain two per row. */
+@media screen {
+ html .person-profile-dialog.operational-profile
+  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged{
+   grid-column:1 / -1;
+   display:grid!important;
+   grid-template-columns:minmax(0,1fr) minmax(0,238px)!important;
+   grid-template-rows:auto auto;
+   min-height:125px;
+   padding:11px 13px;
+   gap:5px 16px;
+   align-items:center;
+   align-content:center;
+ }
+ html .person-profile-dialog.operational-profile
+  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged>strong{
+   grid-column:1;grid-row:1;align-self:end;justify-self:start;
+   font-size:13px;line-height:1.4;
+ }
+ html .person-profile-dialog.operational-profile
+  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged>.person-profile-specialty-role{
+   grid-column:1;grid-row:2;align-self:start;justify-self:start;
+ }
+ html .person-profile-dialog.operational-profile
+  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged img.person-profile-specialty-badge{
+   display:block!important;box-sizing:border-box;
+   grid-column:2;grid-row:1 / span 2;
+   align-self:center;justify-self:end;
+   width:min(230px,100%)!important;
+   min-width:0!important;max-width:100%!important;
+   height:auto!important;min-height:0!important;max-height:none!important;
+   aspect-ratio:auto!important;
+   object-fit:contain!important;object-position:center;
+   background:#111822;
+   border:1px solid #5e7795;border-radius:6px;
+   box-shadow:0 2px 8px #0b1e3550;
+ }
+ @media(max-width:570px){
+  html .person-profile-dialog.operational-profile
+   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged{
+   grid-template-columns:minmax(0,1fr)!important;
+   grid-template-rows:auto auto auto;
+   gap:7px;justify-items:start;
+  }
+  html .person-profile-dialog.operational-profile
+   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged>strong{
+   grid-column:1;grid-row:1;align-self:center;
+  }
+  html .person-profile-dialog.operational-profile
+   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged img.person-profile-specialty-badge{
+   grid-column:1;grid-row:2;justify-self:start;
+  }
+  html .person-profile-dialog.operational-profile
+   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged>.person-profile-specialty-role{
+   grid-column:1;grid-row:3;
+  }
+ }
+}
