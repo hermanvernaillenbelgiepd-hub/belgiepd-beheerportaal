@@ -1,5 +1,13 @@
 import test from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+// Validate real ES-module syntax (imports and top-level await included).
+function assertModuleSyntax(source){
+ const result=spawnSync(process.execPath,['--check','--input-type=module'],
+  {input:source,encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+}
+
 import {readFileSync} from 'node:fs';
 import {Script,runInNewContext} from 'node:vm';
 import {serviceHierarchy,specialtyInstructorRoles,isSpecialtyInstructor,orderedSpecialtyMembers}
@@ -126,7 +134,7 @@ test('rendered specialization labels depend on exact instructor assignments',()=
  assert.match(route,/instructorSpecialties:values\.instructorSpecialties/);
  assert.match(route,/teacherSpecialties:restored\.teacherSpecialties/);
  assert.match(route,/action:'manual_display_undo'/);
- assert.doesNotThrow(()=>new Script(script.replace(/^import[^\n]+\n/m,'')));
+ assertModuleSyntax(script);
 });
 test('personnel profile uses wide two-column desktop layout with accessible mobile fallback',()=>{
  assert.match(html,/\.person-profile-dialog\{\s*width:min\(1260px,calc\(100vw - 32px\)\)/);
