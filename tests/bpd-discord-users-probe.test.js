@@ -30,11 +30,19 @@ test('calls only the fixed HTTPS URL using a server-side bearer token, then repo
  assert.ok(!JSON.stringify(res).includes(token));
  assert.ok(!JSON.stringify(res).includes('Private'));
 });
-test('accepts wrapped data/users and does not trust numeric Discord IDs',async()=>{
+test('accepts wrapped data/users, preserves numeric IDs and rejects invalid short IDs',async()=>{
  const fetchImpl=async()=>response({data:{users:[{discord_id:member,roles:[{id}]}]}});
  assert.equal((await probeBelgiumPdDiscordUsers({env:{BPD_DISCORD_USERS_API_TOKEN:token},fetchImpl})).status,'ok');
- const invalid=async()=>response([{discord_id:123456789012345678,roles:[{id}]}]);
- assert.equal((await probeBelgiumPdDiscordUsers({env:{BPD_DISCORD_USERS_API_TOKEN:token},fetchImpl:invalid})).status,'unexpected_schema');
+ // Raw JSON is essential: constructing a JS Number first would round the ID.
+ const raw='[{"discord_id":123456789012345678,"roles":[{"id":1309532437952466986}]}]';
+ const numerical=async()=>response(raw);
+ assert.equal((await probeBelgiumPdDiscordUsers({
+  env:{BPD_DISCORD_USERS_API_TOKEN:token},fetchImpl:numerical
+ })).status,'ok');
+ const invalid=async()=>response([{discord_id:123456,roles:[{id}]}]);
+ assert.equal((await probeBelgiumPdDiscordUsers({
+  env:{BPD_DISCORD_USERS_API_TOKEN:token},fetchImpl:invalid
+ })).status,'unexpected_schema');
 });
 test('reports failed tokens and failed schema without leaking API content',async()=>{
  const env={BPD_DISCORD_USERS_API_TOKEN:token};
