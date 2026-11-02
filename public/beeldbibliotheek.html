@@ -25,6 +25,25 @@ button:disabled{opacity:.5;cursor:not-allowed}button.secondary{background:#25425
 .asset small{display:block;margin:3px 0 8px;overflow-wrap:anywhere}
 .asset .actions{margin-top:7px}
 #preview{display:block;max-width:100%;max-height:160px;object-fit:contain;margin:10px auto}
+.link-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(265px,0.8fr);gap:15px}
+.link-column{min-width:0}
+.link-option{display:flex;gap:9px;align-items:center;flex-direction:row;padding:10px;
+ border:1px solid #527293;border-radius:8px;background:#183750;margin:10px 0;font-weight:750}
+.link-option input{width:17px;height:17px;min-width:17px;accent-color:#3d82ce}
+.link-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px;margin:9px 0 13px}
+.link-preview{display:flex;align-items:center;gap:12px;background:#0b2136;border:1px solid #41658a;
+ padding:10px;border-radius:9px;min-height:96px}
+.link-preview img{width:154px;max-width:50%;height:76px;object-fit:contain;flex:0 0 auto;
+ background:#071728;border-radius:6px}
+.link-overview{padding:12px;border-radius:8px;background:#18334d;border:1px solid #405f81}
+.link-overview p{margin:6px 0;font-size:12px}
+.link-subtle{font-size:11px;line-height:1.5}
+#linkStatus{padding:9px;margin:10px 0 0;border-radius:8px;border:1px solid #527293}
+#linkStatus.bad{color:#ffccd0;border-color:#d37280}
+@media(max-width:840px){.link-layout{grid-template-columns:minmax(0,1fr)}}
+html:not([data-bpd-theme="dark"]) .link-option{background:#eaf2fc;border-color:#bdd0e7;color:#234364}
+html:not([data-bpd-theme="dark"]) :is(.link-overview,.link-preview){background:#f5f8fd;color:#173557;border-color:#d3dfed}
+html:not([data-bpd-theme="dark"]) #linkStatus.bad{color:#a02232}
 [hidden]{display:none!important}
 </style><link rel="stylesheet" href="/bpd-navigation.css"></head>
 <body><header><h1>📁 Beeldbibliotheek</h1><nav><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollenbeheer.html">Rollen & specialisaties</a><a href="/personeelsbeheer.html">Personeelsbeheer</a><button id="login" type="button">Aanmelden</button></nav></header>
@@ -67,6 +86,58 @@ button:disabled{opacity:.5;cursor:not-allowed}button.secondary{background:#25425
  afbeeldingsuploads wijzigen nooit specialisatierechten.</p>
  <p id="slotNote" class="hint" role="status"></p>
  <div class="actions"><button id="upload" type="button">Afbeelding opslaan in bibliotheek</button><button class="secondary" id="clear" type="button">Selectie leegmaken</button><a class="action-link" href="/rollenbeheer.html">Naar rollenbeheer</a></div>
+</section>
+<section class="panel" id="linkPanel">
+ <h2>2 · Afbeelding koppelen aan een hulpdienst, rang of Discord-rol</h2>
+ <p>De afbeelding hoort automatisch bij de gekozen hulpdienst. Je kunt daarnaast een <strong>visuele rangkoppeling</strong> of <strong>Discord-rolpatch</strong> instellen. Dit wijzigt nooit een daadwerkelijke rang, Discord-rol, specialisatie of toegangsrecht.</p>
+ <div class="link-layout">
+  <div class="link-column">
+   <label>Geselecteerde afbeelding uit de bibliotheek
+    <select id="linkAsset"><option value="">Upload eerst een afbeelding of selecteer een bestaande</option></select>
+   </label>
+   <label class="link-option"><input id="linkRankEnabled" type="checkbox"> Automatisch tonen bij een bepaalde rang</label>
+   <div id="rankLinkFields" class="link-fields" hidden>
+    <label>Rangnaam (zoals in personeelsfiche)
+     <input id="linkRank" list="linkRankPresets" maxlength="80" placeholder="Bijvoorbeeld: Adjudant">
+     <datalist id="linkRankPresets"></datalist>
+    </label>
+   </div>
+   <label class="link-option"><input id="linkRoleEnabled" type="checkbox"> Visueel koppelen aan een Discord-rol (optioneel)</label>
+   <div id="roleLinkFields" class="link-fields" hidden>
+    <label>Discord-rol-ID <input id="linkRoleId" inputmode="numeric" pattern="[0-9]{15,22}" maxlength="22" placeholder="15–22 cijfers"></label>
+    <label>Patchvariant
+     <select id="linkVariant">
+      <option value="standard">Standaard</option>
+      <option value="in_opleiding">In opleiding</option>
+      <option value="volwaardig">Volwaardig</option>
+      <option value="instructeur">Instructeur</option>
+      <option value="teamleader">Teamleader</option>
+     </select>
+    </label>
+   </div>
+   <label>Motivering voor de koppeling
+    <input id="linkReason" maxlength="300" placeholder="Bijvoorbeeld: officiële afbeelding gekoppeld aan functie">
+   </label>
+   <div class="actions">
+    <button id="linkSave" type="button">Gekozen koppelingen bewaren</button>
+    <button id="linkClear" type="button" class="secondary">Keuzes wissen</button>
+   </div>
+   <p id="linkStatus" role="status" aria-live="polite">Selecteer een afbeelding om de mogelijke koppelingen te bekijken.</p>
+  </div>
+  <div class="link-column">
+   <div class="link-preview">
+    <img id="linkPreview" alt="Geselecteerde afbeelding" hidden>
+    <div><strong id="linkImageName">Geen afbeelding gekozen</strong>
+     <p id="linkImageMeta" class="hint">Eerst uploaden of een bestaande afbeelding selecteren.</p>
+    </div>
+   </div>
+   <div id="linkOverview" class="link-overview" style="margin-top:11px">
+    <strong>Bestaande visuele koppelingen</strong>
+    <p>Hier verschijnen de koppelingen van de gekozen afbeelding.</p>
+   </div>
+   <p class="hint">Een rangkoppeling is beschikbaar voor gradenplaten, helmen, beroepsinsignes, logo's, pictogrammen en patches. Voor een specialisatiebadge kun je een Discord-rol koppelen. Uniformen worden verder samengesteld in Uniformatelier; eretekens blijven persoonlijk toegekend.</p>
+  </div>
+ </div>
 </section>
 <section class="panel" id="patchBulkImport">
  <h2>BelgiumPD-specialisatiepatches in één keer importeren</h2>
@@ -111,7 +182,7 @@ const make=(tag,txt)=>{const x=document.createElement(tag);x.textContent=txt;ret
 const opt=(value,label)=>{const x=make('option',label);x.value=value;return x};
 for(const [id,options] of [['dept',departments],['kind',kinds]])
  for(const [value,label] of options)$(id).append(opt(value,label));
-let auth=null,authMod=null,allowed=[],assets=[],storageReady=false,previewUrl='';
+let auth=null,authMod=null,allowed=[],assets=[],roleAssets=[],visualRules=[],storageReady=false,previewUrl='';
 const notify=(text,bad=false)=>{$('message').textContent=text;$('message').classList.toggle('bad',bad)};
 function normalized(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40)}
@@ -178,8 +249,8 @@ function draw(){
   pick.onclick=()=>{$('dept').value=item.department;$('kind').value=item.kind;
    $('code').value=item.code;$('label').value=item.label;
    $('policePreset').value=item.department==='politie'?item.code:'';
-   updateSlotNote();
-   notify('Geselecteerd: '+item.label+'. Upload een bestand met dezelfde code om de afbeelding te vervangen.');
+   updateSlotNote();drawLinkAssets(item.key);
+   notify('Geselecteerd: '+item.label+'. Je kunt de afbeelding nu koppelen of vervangen.');
    void versions(item)};
   actions.append(pick);
   const archive=make('button','Archiveren');archive.type='button';archive.className='danger';
@@ -254,20 +325,135 @@ $('upload').onclick=async()=>{
    await api('/api/role-artwork/personnel','PUT',{department,kind,code,label,reason,dataUrl:await webpLegacy(f)});
    notify('Afbeelding opgeslagen in de bestaande WebP-bibliotheek. Cloud Storage is nog niet geconfigureerd.');
   }
-  clearFile();await load();
+  const uploadedKey=kind+'_'+department+'_'+code;
+  clearFile();await load();drawLinkAssets(uploadedKey);
+  linkNotice('Afbeelding opgeslagen. Kies nu optioneel een rang en/of Discord-rol.');
  }catch(e){notify('Upload mislukt: '+e.message,true)}
  finally{save.disabled=false}
 };
-$('dept').onchange=()=>{updatePreset();draw()};
-$('kind').onchange=()=>{updatePreset();draw()};$('search').oninput=draw;
+$('dept').onchange=()=>{updatePreset();draw();drawLinkAssets()};
+$('kind').onchange=()=>{updatePreset();draw();drawLinkAssets()};$('search').oninput=draw;
+
+const RANK_LINK_KINDS=new Set(['rank','helmet','profession','logo','pictogram','patch']);
+const ROLE_LINK_KINDS=new Set(['specialty','patch']);
+const RANK_PRESETS={
+ politie:['Agent van Politie','Aspirant Inspecteur','Inspecteur','Eerste Inspecteur',
+  'Aspirant Hoofdinspecteur','Hoofdinspecteur','Eerste Hoofdinspecteur',
+  'Aspirant Commissaris','Eerste Commissaris','Eerste Hoofdcommissaris'],
+ brandweer:['Zonecommandant','Kolonel','Majoor','Kapitein','Luitenant','Adjudant',
+  'Sergeant','Korporaal','Brandweerman','Stagiair'],
+ ambulance:['DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','STAG']
+};
+const linkNotice=(text,bad=false)=>{
+ $('linkStatus').textContent=text;$('linkStatus').classList.toggle('bad',bad);
+};
+const currentLinkItem=()=>assets.find(x=>x.key===$('linkAsset').value&&x.active);
+function updateLinkChoices(){
+ const item=currentLinkItem(),rankAllowed=!!item&&RANK_LINK_KINDS.has(item.kind);
+ const roleAllowed=!!item&&ROLE_LINK_KINDS.has(item.kind);
+ for(const [id,okay] of [['linkRankEnabled',rankAllowed],['linkRoleEnabled',roleAllowed]]){
+  $(id).disabled=!okay;if(!okay)$(id).checked=false;
+ }
+ $('rankLinkFields').hidden=!rankAllowed||!$('linkRankEnabled').checked;
+ $('roleLinkFields').hidden=!roleAllowed||!$('linkRoleEnabled').checked;
+ $('linkSave').disabled=!item;
+ $('linkPreview').hidden=!item;
+ $('linkPreview').removeAttribute('src');
+ if(item)$('linkPreview').src=item.imageUrl;
+ $('linkImageName').textContent=item?.label||'Geen afbeelding gekozen';
+ $('linkImageMeta').textContent=item?
+  labelFor(departments,item.department)+' · '+labelFor(kinds,item.kind)+' · '+item.code:
+  'Selecteer een afbeelding uit de bibliotheek.';
+ const options=$('linkRankPresets');options.replaceChildren();
+ for(const label of RANK_PRESETS[item?.department]||[])options.append(opt(normalized(label),label));
+ const overview=$('linkOverview');
+ overview.replaceChildren(make('strong','Bestaande visuele koppelingen'));
+ if(!item){overview.append(make('p','Geen afbeelding geselecteerd.'));return;}
+ const matchingRules=visualRules.filter(r=>r.department===item.department&&
+  r.kind===item.kind&&r.assetCode===item.code);
+ const matchingRoles=roleAssets.filter(r=>r.active&&r.department===item.department&&
+  r.sourceArtworkKey===item.key);
+ if(!matchingRules.length&&!matchingRoles.length){
+  overview.append(make('p','Nog geen expliciete koppelingen. De afbeelding blijft gewoon opgeslagen.'));return;
+ }
+ for(const rule of matchingRules){
+  overview.append(make('p','Rang / doelgroep: '+rule.scope+' · '+rule.selector));
+ }
+ for(const role of matchingRoles){
+  overview.append(make('p','Discord-rol: '+role.roleId+' · '+role.variant));
+ }
+}
+function drawLinkAssets(preferred=''){
+ const select=$('linkAsset'),old=preferred||select.value;
+ const active=assets.filter(x=>x.active&&x.department===$('dept').value&&x.kind===$('kind').value)
+  .sort((a,b)=>String(a.label).localeCompare(String(b.label),'nl'));
+ select.replaceChildren(opt('','Kies een opgeslagen afbeelding'));
+ for(const item of active)select.append(opt(item.key,item.label+' ('+item.code+')'));
+ select.value=active.some(x=>x.key===old)?old:'';
+ updateLinkChoices();
+}
+$('linkAsset').onchange=updateLinkChoices;
+for(const [id] of [['linkRankEnabled'],['linkRoleEnabled']])
+ $(id).onchange=updateLinkChoices;
+$('linkClear').onclick=()=>{
+ $('linkRankEnabled').checked=false;$('linkRoleEnabled').checked=false;
+ $('linkRank').value='';$('linkRoleId').value='';$('linkVariant').value='standard';
+ $('linkReason').value='';updateLinkChoices();
+ linkNotice('Keuzes gewist. Bestaande koppelingen zijn behouden.');
+};
+$('linkSave').onclick=async()=>{
+ const item=currentLinkItem(),reason=$('linkReason').value.trim();
+ const withRank=$('linkRankEnabled').checked,withRole=$('linkRoleEnabled').checked;
+ if(!item)return linkNotice('Kies eerst een actieve afbeelding.',true);
+ if(!withRank&&!withRole)return linkNotice('Vink rang en/of Discord-rol aan om te koppelen.',true);
+ if(reason.length<8||reason.length>300)return linkNotice('Motivering van 8 tot 300 tekens verplicht.',true);
+ const rank=normalized($('linkRank').value),roleId=$('linkRoleId').value.trim();
+ const variant=$('linkVariant').value;
+ if(withRank&&(!RANK_LINK_KINDS.has(item.kind)||!rank))
+  return linkNotice('Kies een geldige rangnaam of een andere afbeeldingscategorie.',true);
+ if(withRole&&(!ROLE_LINK_KINDS.has(item.kind)||!/^\d{15,22}$/.test(roleId)))
+  return linkNotice('Discord-koppeling vereist een specialisatiebadge/patch en geldig rol-ID.',true);
+ const previousRank=withRank?visualRules.find(r=>r.department===item.department&&
+  r.kind===item.kind&&r.scope==='rank'&&r.selector===rank):null;
+ const previousRole=withRole?roleAssets.find(r=>r.key===roleId+'_'+variant&&r.active):null;
+ if((previousRank&&previousRank.assetCode!==item.code)||
+    (previousRole&&previousRole.sourceArtworkKey!==item.key)){
+  if(!confirm('Er bestaat al een andere koppeling voor deze rang/rol. Wil je de huidige afbeelding vervangen?'))return;
+ }
+ const button=$('linkSave');button.disabled=true;
+ let saved=0;
+ try{
+  if(withRank){
+   await api('/api/uniform-library/rules','PUT',{
+    department:item.department,kind:item.kind,scope:'rank',selector:rank,
+    assetCode:item.code,reason
+   });saved++;
+  }
+  if(withRole){
+   await api('/api/role-artwork/link','PUT',{
+    department:item.department,roleId,variant,sourceArtworkKey:item.key,
+    label:item.label,reason
+   });saved++;
+  }
+  linkNotice(saved+' koppeling(en) opgeslagen en gelogd. Geen personeels- of Discord-rechten gewijzigd.');
+  await load();drawLinkAssets(item.key);
+ }catch(e){
+  linkNotice('Koppelen onderbroken na '+saved+' geslaagde stap(pen): '+e.message,true);
+  await load().catch(()=>{});drawLinkAssets(item.key);
+ }finally{button.disabled=false;}
+};
+
 async function load(){
  if(!auth?.currentUser){$('editor').hidden=true;return}
  try{
-  const [status,manifest]=await Promise.all([
-   api('/api/uniform-library/status'),api('/api/role-artwork/manage')]);
+  const [status,manifest,rulesData]=await Promise.all([
+   api('/api/uniform-library/status'),api('/api/role-artwork/manage'),
+   api('/api/uniform-library/rules')]);
   allowed=status.editableDepartments||[];
   storageReady=status.storageReady===true;
   assets=(manifest.artworks||[]).filter(x=>x.kind!=='role');
+  roleAssets=(manifest.artworks||[]).filter(x=>x.kind==='role');
+  visualRules=(rulesData.rules||[]).filter(x=>allowed.includes(x.department));
   $('editor').hidden=!allowed.length;
   for(const x of $('dept').options)x.disabled=!allowed.includes(x.value);
   if(!allowed.includes($('dept').value))$('dept').value=allowed[0]||'';
@@ -276,7 +462,7 @@ async function load(){
    'Cloud Storage niet ingesteld: uploads worden als compacte WebP in de bestaande Firestore-bibliotheek opgeslagen (max. 140 KB).';
   notify(allowed.length?'Bibliotheek geladen. Uploaden en rollen toekennen zijn gescheiden.':
    'Je hebt geen bibliotheekrechten.',!allowed.length);
-  updatePreset();draw();
+  updatePreset();draw();drawLinkAssets();
  }catch(e){$('editor').hidden=true;notify('Bibliotheek laden mislukt: '+e.message,true)}
 }
 async function start(){
