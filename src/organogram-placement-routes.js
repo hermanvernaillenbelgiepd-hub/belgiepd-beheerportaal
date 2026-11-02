@@ -18,7 +18,7 @@ import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSpecialtyAssetKeys,
  knownFireRoleSpecialty,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
-import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks} from './bpd-discord-users-display.js';
+import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks,exactApiDisplayRoles} from './bpd-discord-users-display.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
@@ -403,7 +403,17 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    let cached=specialtyCheckCache.get(key),now=Date.now();
    if(!cached||cached.until<=now){
     const live=await verifyLiveSpecialtyRoles(staff.personId);
-    cached={live,until:now+(live.verified?60000:15000)};
+    // Read-only fallback from the authorized BelgiumPD API, scoped to this
+    // unique personnel Discord ID. Never affects access or writes to Firebase.
+    // A confirmed Discord 404 is authoritative and does not use this fallback.
+    let proof=live;
+    if(!live.verified&&live.status!=='not_in_guild'){
+     const upstream=await getBelgiumPdDisplayRoles();
+     const roles=exactApiDisplayRoles(upstream,staff.personId);
+     if(Array.isArray(roles))
+      proof={verified:true,status:'ok',roleIds:[...roles],source:'bpd-users-api'};
+    }
+    cached={live:proof,until:now+(proof.verified?60000:15000)};
     specialtyCheckCache.set(key,cached);
     if(specialtyCheckCache.size>500){
      for(const [k,v] of specialtyCheckCache)if(v.until<=now)specialtyCheckCache.delete(k);
@@ -468,6 +478,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    ])].filter(x=>x!=='RAGO-IO'||!hasFullRago).slice(0,20);
    res.set('Cache-Control','private, no-store');
    return res.json({verified:true,status:'ok',displayOnly:true,
+     verificationSource:cached.live.source||'discord-bot',
     aeRole:synced.aeRole,aeRoles:synced.aeRoles,
     motardRole:motardRole||'',dispRole:dispRole||'',
     specialties,patches});

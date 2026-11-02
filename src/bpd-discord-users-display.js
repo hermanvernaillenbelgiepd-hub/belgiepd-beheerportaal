@@ -169,3 +169,11 @@ export function diagnoseOrganogramRoleLinks(people,apiSnapshot){
   services:[...perService.values()].sort((a,b)=>a.dept.localeCompare(b.dept)),
   issues:rows.slice(0,250),displayOnly:true,accessRightsChanged:false};
 }
+
+export function exactApiDisplayRoles(snapshot,discordId){
+ if(snapshot?.status!=='ok'||typeof discordId!=='string'||!ID.test(discordId)||
+    !(snapshot.entries instanceof Map)||!snapshot.entries.has(discordId))return null;
+ const roles=snapshot.entries.get(discordId);
+ return Array.isArray(roles)&&roles.every(id=>typeof id==='string'&&ID.test(id))?
+  [...new Set(roles)]:null;
+}

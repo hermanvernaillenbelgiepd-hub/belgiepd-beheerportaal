@@ -51,3 +51,24 @@ test('Depannage FAST and LSRA roles are recognized without artwork',async()=>{
  ]);
  assert.ok(links.every(x=>x.assetKey===''&&x.value==='Ja'));
 });
+
+test('exact API fallback only accepts guild-provided IDs and rejects outages',async()=>{
+ const {exactApiDisplayRoles}=await import('../src/bpd-discord-users-display.js');
+ const one='123456789012345678',two='123456789012345679';
+ const proof={status:'ok',entries:new Map([[one,['1309532437977497699','1309532437977497699']]])};
+ assert.deepEqual(exactApiDisplayRoles(proof,one),['1309532437977497699']);
+ assert.equal(exactApiDisplayRoles(proof,two),null);
+ assert.equal(exactApiDisplayRoles({...proof,status:'connection_failed'},one),null);
+ assert.equal(exactApiDisplayRoles({status:'ok',entries:new Map([[one,['invalid']]])},one),null);
+});
+test('per-person verifier uses exact API fallback and cannot update portal rights',()=>{
+ const src=readFileSync(new URL('../src/organogram-placement-routes.js',import.meta.url),'utf8');
+ const start=src.indexOf("app.get('/api/organogram/specialty-check/");
+ const end=src.indexOf("app.put('/api/organogram/ae-display/",start);
+ const route=src.slice(start,end);
+ assert.ok(start>0&&end>start);
+ assert.match(route,/exactApiDisplayRoles\(upstream,staff\.personId\)/);
+ assert.match(route,/!live\.verified/);
+ assert.match(route,/source:'bpd-users-api'/);
+ assert.doesNotMatch(route,/tx\.set\(|db\.collection\('bpd_discord_auth'\)\.doc/);
+});
