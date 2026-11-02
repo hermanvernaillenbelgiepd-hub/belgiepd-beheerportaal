@@ -44,6 +44,13 @@ export function ambulanceMemberWorkspaceStatus(id,grant,roster,stale=false){
   const available=approved&&matches.length===1&&stale!==true;
   return {available,needsReview:approved&&!available};
 }
+// A complete Discord ID may be used as a private search key, but must never
+// be added to the public directory payload. Partial identifiers do not match.
+export function directoryRowsForDiscordId(rows,id=null){
+  if(id===null)return rows;
+  if(typeof id!=='string'||!discordId.test(id))return [];
+  return (Array.isArray(rows)?rows:[]).filter(p=>strip(p?.personId)===id);
+}
 // Personnel-list access and individual dossier access are separate.
 // Export ONLY roster columns, never Discord IDs, activity, dossiers,
 // source row, sanctions, notes, contact information or audit history.
@@ -290,7 +297,12 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       return res.status(503).json({error:'De afmetingen konden niet worden opgeslagen'});
     }
   });
-  app.get('/api/member/personnel-list',memberIdentity,async(_req,res)=>{
+  app.get('/api/member/personnel-list',memberIdentity,async(req,res)=>{
+    // Full ID only: never expose Discord IDs in the directory JSON or allow
+    // unverified users to search the staff source.
+    const requestedId=req.query.discordId===undefined?null:req.query.discordId;
+    if(requestedId!==null&&(typeof requestedId!=='string'||!discordId.test(requestedId)))
+      return res.status(400).json({error:'Geef een volledig Discord-ID van 15–22 cijfers op'});
     try{
       const [snapshot,settings]=await Promise.all([
         getSnapshot(),
@@ -317,7 +329,8 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
         error?.code||'sync_error');
       }
       return res.json({
-        records:publicPoliceRoster(snapshot.data,customSpecialties.map(x=>x.label),verifiedAeMembers),
+        records:publicPoliceRoster(directoryRowsForDiscordId(snapshot.data,requestedId),
+          customSpecialties.map(x=>x.label),verifiedAeMembers),
         customSpecialties,stale:snapshot.stale,readOnly:true
       });
     }catch(error){
