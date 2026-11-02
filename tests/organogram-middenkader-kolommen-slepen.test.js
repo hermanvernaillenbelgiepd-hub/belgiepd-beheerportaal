@@ -1,5 +1,13 @@
 import test from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+// Validate real ES-module syntax (imports and top-level await included).
+function assertModuleSyntax(source){
+ const result=spawnSync(process.execPath,['--check','--input-type=module'],
+  {input:source,encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+}
+
 import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
 import {getTier,policeMiddleSeries,orderedPoliceMiddle,policeMiddleColumns}
@@ -56,7 +64,7 @@ test('draggable person cards are restricted to verified technical management and
  assert.match(source,/Motivering/);
  const js=source.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
  assert.ok(js);
- assert.doesNotThrow(()=>new Script(js.replace(/^import[^\n]+\n/m,'')));
+ assertModuleSyntax(js);
 });
 test('order endpoint validates exact identities, no cross-column movement, and records atomic undo',()=>{
  const ids=['111111111111111111','222222222222222222','333333333333333333'];
