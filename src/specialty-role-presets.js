@@ -60,6 +60,14 @@ export const fireSharedSpecialtyAssetKeys=fireSpecialtyAssetKeys;
 // AZLS: qualifications from exact verified Discord role IDs.
 // Professional categories (Arts, Verpleegkundige, AZLS leiding) and the
 // Medisch-instructeur assignment are distinct functions, not qualifications.
+// Operational Depannage role labels from the verified role catalog.
+// AWV is leadership, not a specialist qualification, so is deliberately excluded.
+export const DEPANNAGE_ROLE_PATCH_PRESETS=Object.freeze([
+ ['1309532438019706970','F.A.S.T'],
+ ['1309532438019706971','LSRA']
+].map(([roleId,label])=>Object.freeze({
+ roleId,label,level:'Volwaardig',value:'Ja',assetKey:''
+})));
 export const AZLS_PIT_MOTOR_ROLE_ID='1508506242299985980';
 export const AMBULANCE_ROLE_PATCH_PRESETS=Object.freeze([
  ['1360990854445137980','MIP'],
@@ -106,6 +114,11 @@ export function defaultSpecialtyRoleLinks(dept,stored,alreadyApplied){
  if(dept==='ambulance'){
   const known=new Set(stored.filter(x=>x.roleId).map(x=>x.roleId));
   return [...stored,...AMBULANCE_ROLE_PATCH_PRESETS.filter(x=>!known.has(x.roleId))
+   .map(x=>({...x}))];
+ }
+ if(dept==='depannage'){
+  const known=new Set(stored.filter(x=>x.roleId).map(x=>x.roleId));
+  return [...stored,...DEPANNAGE_ROLE_PATCH_PRESETS.filter(x=>!known.has(x.roleId))
    .map(x=>({...x}))];
  }
  if(dept!=='politie'||alreadyApplied)return stored;
