@@ -889,6 +889,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div><label for="staffCaseType">Type</label><select id="staffCaseType">
 <option value="notitie">Belangrijke notitie</option>
 <option value="specialisatiebeperking">Beperking van specialisatie</option>
+<option value="inactiviteitsping">Inactiviteitsping</option>
 <option value="opleiding">Gevolgde opleiding</option><option value="verlof">Verlofnotitie</option>
 <option value="promotievoorstel">Promotievoorstel</option>
 <option value="naamswijziging">Naamswijziging registreren</option>
@@ -1241,11 +1242,13 @@ function availablePersonnelRegistrationKinds(){
 function displaySelectedRegistration(){
   const kind=$('registrationKind').value;
   const trainingDestination=$('trainingDestination');
-  trainingDestination.hidden=!['training','case:opleiding'].includes(kind);
+  trainingDestination.hidden=!['training','case:opleiding','case:inactiviteitsping'].includes(kind);
   if(kind==='training'){
     trainingDestination.textContent='Opslag: opleidingsregister. Het resultaat (in opleiding, geslaagd of niet geslaagd) wordt in de opleidingshistoriek bewaard. Deze registratie verschijnt niet automatisch in het weekrapport en wijzigt geen personeelsrang of Discord-rol.';
   }else if(kind==='case:opleiding'){
     trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
+  }else if(kind==='case:inactiviteitsping'){
+    trainingDestination.textContent='De inactiviteitsping wordt met datum, motivering en de registrerende medewerker in dit personeelsdossier en het dynamische weekrapport gelogd. Hiermee wordt niet automatisch een Discord-bericht verstuurd.';
   }
   // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
   // wanneer de gebruiker naar een ander registratietype omschakelt.
@@ -2351,6 +2354,7 @@ const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   promotievoorstel:'Promotievoorstel (geen automatische promotie)',
   personeelsbeweging:'Personeelsbeweging (registratie)',
   activiteit:'Dienstactiviteit',specialisatiebeperking:'Beperking van specialisatie',
+  inactiviteitsping:'Inactiviteitsping',
   functiewijziging:'Functiewijziging'};
 function updateStaffCaseFields(){
   const type=$('staffCaseType').value;
@@ -2832,7 +2836,7 @@ function sheetCaseRows(entries,limited){
     'Geen personeelsbewegingen geregistreerd.',limited);
   // Houd gewone activiteiten buiten de belangrijke-notitierubriek.
   // Geverifieerde kadernotities en beperkingen verschijnen hier automatisch.
-  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking'].includes(x.type));
+  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking','inactiviteitsping'].includes(x.type));
   importantCaseLimited=Boolean(limited);
   renderDossierImportantNotes();
 }
@@ -3768,7 +3772,7 @@ function renderReceived(group,rows,limited){
       activiteit:'Dienstactiviteit',opleiding:'Opleiding',verlof:'Verlofnotitie',
       promotievoorstel:'Promotievoorstel',naamswijziging:'Naamswijziging',
       personeelsbeweging:'Personeelsbeweging',
-      specialisatiebeperking:'Specialisatiebeperking',functiewijziging:'Functiewijziging'};
+      inactiviteitsping:'Inactiviteitsping',specialisatiebeperking:'Specialisatiebeperking',functiewijziging:'Functiewijziging'};
     title.textContent=(labels[entry.type]||entry.type)+
       (entry.sanctionType?' · '+entry.sanctionType:'');
     const meta=document.createElement('span');meta.className='received-meta';
