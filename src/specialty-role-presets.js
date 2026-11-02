@@ -33,15 +33,39 @@ export const BW_LOG_SIG_SPECIALTIES=Object.freeze(['Logistiek','Signalisatie']);
 export const BW_LOG_SIG_PRESETS=Object.freeze(BW_LOG_SIG_SPECIALTIES.map(label=>
  Object.freeze({roleId:BW_LOG_SIG_ROLE_ID,label,level:'Volwaardig',value:'Ja',assetKey:''})
 ));
-export const fireSharedSpecialtyAssetKeys=label=>{
- const code=label==='Logistiek'?'logistiek':label==='Signalisatie'?'signalisatie':'';
+// Other verified Brandweer specialization roles are also qualified by ID,
+// never by an editable role name. Empty image references use library codes.
+export const FIRE_ROLE_PATCH_PRESETS=Object.freeze([
+ ...BW_LOG_SIG_PRESETS,
+ ...[
+  ['1399000349037166664','Ladderwagen'],
+  ['1399006120965570670','Bosbestrijding'],
+  ['1309532437952466985','Duiker'],
+  ['1399000449457197188','RED team'],
+  ['1309532437952466987','Gevaarlijke stoffen']
+ ].map(([roleId,label])=>Object.freeze({
+  roleId,label,level:'Volwaardig',value:'Ja',assetKey:''
+ }))
+]);
+export const fireSpecialtyAssetKeys=label=>{
+ const aliases={'Logistiek':'logistiek','Signalisatie':'signalisatie',
+  'Ladderwagen':'ladderwagen','Bosbestrijding':'bosbestrijding',
+  'Duiker':'duiker','RED team':'red_team',
+  'Gevaarlijke stoffen':'gevaarlijke_stoffen'};
+ const code=aliases[label]||'';
  return code?['specialty','patch'].flatMap(kind=>
   [code,code+'_lokaal',code+'_federaal'].map(suffix=>kind+'_brandweer_'+suffix)):[];
 };
+export const fireSharedSpecialtyAssetKeys=fireSpecialtyAssetKeys;
+export const knownFireRoleSpecialty=(roleId,label)=>FIRE_ROLE_PATCH_PRESETS.some(x=>
+ x.roleId===roleId&&x.label===label);
 export function defaultSpecialtyRoleLinks(dept,stored,alreadyApplied){
  if(dept==='brandweer'){
-  const known=new Set(stored.filter(x=>x.roleId===BW_LOG_SIG_ROLE_ID).map(x=>x.label));
-  return [...stored,...BW_LOG_SIG_PRESETS.filter(x=>!known.has(x.label)).map(x=>({...x}))];
+  const known=new Set(stored.filter(x=>x.roleId).map(x=>
+   x.roleId===BW_LOG_SIG_ROLE_ID?x.roleId+':'+x.label:x.roleId));
+  return [...stored,...FIRE_ROLE_PATCH_PRESETS.filter(x=>
+   !known.has(x.roleId===BW_LOG_SIG_ROLE_ID?x.roleId+':'+x.label:x.roleId))
+   .map(x=>({...x}))];
  }
  if(dept!=='politie'||alreadyApplied)return stored;
  const known=new Set(stored.map(x=>x.roleId).filter(Boolean));

@@ -15,7 +15,9 @@ import {MOTARD_DISPLAY_COLLECTION,verifiedMotardDisplayRole,effectiveMotardDispl
 import {DISP_DISPLAY_COLLECTION,verifiedDispDisplayRole,effectiveDispDisplayRole} from './disp-display-role.js';
 import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
- BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSharedSpecialtyAssetKeys} from './specialty-role-presets.js';
+ BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSpecialtyAssetKeys,
+ knownFireRoleSpecialty} from './specialty-role-presets.js';
+import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap} from './bpd-discord-users-display.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
@@ -77,6 +79,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const store=()=>getFirestore();
  const k9VerificationCooldown=new Map();
   const aeProofCache=new Map();
+  let lastApiMatchReport=0;
  // All returned attributes are display-only. Public output NEVER includes
  // Discord identifiers, access grants, source documents or audit history.
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
@@ -103,7 +106,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       d.get('presetVersion')===POLICE_PATCH_PRESET_VERSION)]));
    const assetKeys=[...new Set([
     ...[...mapped.values()].flat().map(x=>String(x.assetKey||'')),
-    ...BW_LOG_SIG_SPECIALTIES.flatMap(fireSharedSpecialtyAssetKeys)
+    ...['Logistiek','Signalisatie','Ladderwagen','Bosbestrijding','Duiker',
+      'RED team','Gevaarlijke stoffen'].flatMap(fireSpecialtyAssetKeys)
    ].filter(x=>/^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,300);
    const assetUrls=new Map();
    for(const group of chunks(assetKeys,100)){
@@ -141,11 +145,34 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
      byId.set(account.id,account.data());
    }
    const peopleIds=roster.map(p=>p.personId);
-   const roles=await identityMap(db,peopleIds,process.env.DISCORD_GUILD_ID);
+   const [cachedOAuthRoles,upstream]=await Promise.all([
+    identityMap(db,peopleIds,process.env.DISCORD_GUILD_ID),
+    getBelgiumPdDisplayRoles()
+   ]);
+   // ONLY the public organogram presentation uses the upstream API.
+   // Login, dossier permissions and persisted Firebase role evidence remain
+   // independent of this role overlay.
+   const match=organogramDisplayIdentityMap(cachedOAuthRoles,upstream,roster,
+    process.env.DISCORD_GUILD_ID);
+   const roles={...cachedOAuthRoles,entries:match.entries};
+   // Aggregate-only diagnostic for an authenticated organogram request.
+   // Never log Discord IDs, names, role IDs, or individual matches.
+   if(upstream.status==='ok'&&Date.now()-lastApiMatchReport>300000){
+    lastApiMatchReport=Date.now();
+    console.info('BelgiumPD organogram-rolkoppeling:',
+     'personeelsfiches='+roster.length,'gematcht='+match.matches);
+   }
    const prepared=roster.map(p=>{
     const key=personKey(p.dept,p.personId);
     const override=manualDisplay(manual.get(key),p.dept);
     const synced=verifiedSyncRoles(roles.entries.get(p.personId),p.dept,process.env.DISCORD_GUILD_ID);
+    // A roster display source may confirm a specialization but may NEVER
+    // independently create a bestuur appointment; retain existing evidence.
+    if(roles.entries.get(p.personId)?.displaySource==='bpd-users-api'){
+     const original=verifiedSyncRoles(cachedOAuthRoles.entries.get(p.personId),
+      p.dept,process.env.DISCORD_GUILD_ID);
+     synced.boardRole=original.boardRole;
+    }
     return {p,merged:mergePlacement(p,override,synced)};
    });
    // A qualification can have a shared patch WITHOUT a Discord role.
@@ -196,16 +223,16 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     };
     const all=mapped.get(p.dept)||[];
     const activeRole=x=>!['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value);
-    const sharedFire=x=>p.dept==='brandweer'&&x.roleId===BW_LOG_SIG_ROLE_ID&&
-      BW_LOG_SIG_SPECIALTIES.includes(x.label);
+    const curatedFire=x=>p.dept==='brandweer'&&
+      knownFireRoleSpecialty(x.roleId,x.label);
     const assetFor=x=>
-      assetUrls.has(x.assetKey)?x.assetKey:sharedFire(x)?
-       fireSharedSpecialtyAssetKeys(x.label).find(key=>assetUrls.has(key))||'':x.assetKey;
+      assetUrls.has(x.assetKey)?x.assetKey:curatedFire(x)?
+       fireSpecialtyAssetKeys(x.label).find(key=>assetUrls.has(key))||'':x.assetKey;
     const valid=x=>assetUrls.has(assetFor(x))&&activeRole(x);
-    // This ONE verified role displays BOTH qualifications, even if a patch
-    // is not yet uploaded. All other role-specific behaviour stays intact.
+    // Verified Fire specialization roles show their qualification even if
+    // the artwork has not yet been uploaded. BW log/signa yields BOTH labels.
     const rolespecific=all.filter(x=>x.roleId&&verified.has(x.roleId)&&
-      (valid(x)||sharedFire(x)&&activeRole(x)));
+      (valid(x)||curatedFire(x)&&activeRole(x)));
     // An explicitly recorded AE display level must also select the matching
     // library artwork. Registering a mapping is not the same as giving a role.
     const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',

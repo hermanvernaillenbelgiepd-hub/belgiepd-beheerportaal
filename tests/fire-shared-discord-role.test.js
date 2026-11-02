@@ -15,7 +15,7 @@ const roleList=[
  {id:BW_LOG_SIG_ROLE_ID,name:'BW log/signa'},
  {id:'1399000349037166664',name:'Ladderwagen'}
 ];
-const pair=defaultSpecialtyRoleLinks('brandweer',[],false);
+const pair=defaultSpecialtyRoleLinks('brandweer',[],false).filter(x=>x.roleId===BW_LOG_SIG_ROLE_ID);
 const input=links=>({expectedRevision:0,reason:'Koppel beide Brandweer-specialisaties',links});
 
 test('BW log/signa exists in real Discord catalog and expands into exactly two visual qualifications',()=>{
@@ -26,7 +26,7 @@ test('BW log/signa exists in real Discord catalog and expands into exactly two v
  assert.deepEqual(BW_LOG_SIG_SPECIALTIES,['Logistiek','Signalisatie']);
  assert.deepEqual(pair.map(x=>x.label),BW_LOG_SIG_SPECIALTIES);
  assert.ok(pair.every(x=>x.roleId===BW_LOG_SIG_ROLE_ID&&x.assetKey===''&&x.value==='Ja'));
- assert.deepEqual(defaultSpecialtyRoleLinks('brandweer',pair,false),pair);
+ assert.deepEqual(defaultSpecialtyRoleLinks('brandweer',pair,false).filter(x=>x.roleId===BW_LOG_SIG_ROLE_ID),pair);
 });
 
 test('a shared role may hold both DIFFERENT badges without overwriting the other',()=>{
@@ -36,7 +36,7 @@ test('a shared role may hold both DIFFERENT badges without overwriting the other
   {...sign,assetKey:'specialty_brandweer_signalisatie'}
  ];
  assert.deepEqual(validateSpecialtyRoleLinks(input(links),'brandweer',labelList,roleList).links,links);
- const changed=defaultSpecialtyRoleLinks('brandweer',[links[0]],false);
+ const changed=defaultSpecialtyRoleLinks('brandweer',[links[0]],false).filter(x=>x.roleId===BW_LOG_SIG_ROLE_ID);
  assert.equal(changed[0].assetKey,'specialty_brandweer_logistiek');
  assert.equal(changed[1].label,'Signalisatie');
  assert.equal(changed[1].assetKey,'');
@@ -60,9 +60,9 @@ test('only verified matching Discord role can activate the paired specialization
  const html=read('public/organogram-hierarchie.html');
  const library=read('public/beeldbibliotheek.html');
  assert.match(server,/verified\.has\(x\.roleId\)/);
- assert.match(server,/const sharedFire=x=>p\.dept==='brandweer'/);
- assert.match(server,/BW_LOG_SIG_SPECIALTIES\.includes\(x\.label\)/);
- assert.match(server,/fireSharedSpecialtyAssetKeys\(x\.label\)/);
+ assert.match(server,/const curatedFire=x=>p\.dept==='brandweer'/);
+ assert.match(server,/knownFireRoleSpecialty\(x\.roleId,x\.label\)/);
+ assert.match(server,/fireSpecialtyAssetKeys\(x\.label\)/);
  assert.match(server,/assetUrls\.get\(assetFor\(x\)\)\|\|''/);
  assert.match(server,/for\(const link of specialtyPatches\)/);
  assert.match(html,/matchedArtwork\?\.imageUrl\|\|fireSpecialtyPatchUrl\(name\)/);

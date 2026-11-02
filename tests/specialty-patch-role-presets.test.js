@@ -42,8 +42,9 @@ test('existing curated mappings are never overwritten by presets',()=>{
  assert.equal(upgraded.filter(x=>x.roleId===custom[0].roleId).length,1);
  assert.equal(defaultSpecialtyRoleLinks('politie',[],false).length,17);
  const fireLinks=defaultSpecialtyRoleLinks('brandweer',[],false);
- assert.deepEqual(fireLinks.map(x=>x.label),['Logistiek','Signalisatie']);
- assert.ok(fireLinks.every(x=>x.roleId==='1309532437952466986'));
+ assert.deepEqual(fireLinks.map(x=>x.label),['Logistiek','Signalisatie',
+  'Ladderwagen','Bosbestrijding','Duiker','RED team','Gevaarlijke stoffen']);
+ assert.equal(fireLinks.filter(x=>x.roleId==='1309532437952466986').length,2);
 });
 test('automatic privileges start at fixed callsign, A-INP and INP thresholds',()=>{
  for(const call of ['101','199','008','—','P-199']){
@@ -108,4 +109,20 @@ test('verified Discord roles project only visual levels; manual restrictions win
  const noProof=publicSpecializations(police('430'),null);
  applyVerifiedSpecialtyRoleDisplay(noProof,['not-valid'],links);
  assert.notEqual(noProof.items.find(x=>x.label==='Motor').source,'discord-verified');
+});
+
+test('each known Fire specialization role maps to its exact unique label and patch',()=>{
+ const fire=defaultSpecialtyRoleLinks('brandweer',[],false);
+ for(const [roleId,label] of [
+  ['1399000349037166664','Ladderwagen'],
+  ['1399006120965570670','Bosbestrijding'],
+  ['1309532437952466985','Duiker'],
+  ['1399000449457197188','RED team'],
+  ['1309532437952466987','Gevaarlijke stoffen']]){
+  assert.deepEqual(fire.filter(x=>x.roleId===roleId).map(x=>x.label),[label]);
+ }
+ const custom=[{...fire[2],label:'Ladderwagen',level:'Eigen niveau'}];
+ const withCustom=defaultSpecialtyRoleLinks('brandweer',custom,false);
+ assert.equal(withCustom.find(x=>x.roleId===custom[0].roleId).level,'Eigen niveau');
+ assert.equal(withCustom.filter(x=>x.roleId===custom[0].roleId).length,1);
 });
