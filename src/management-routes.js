@@ -330,7 +330,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       year:'numeric',month:'2-digit',day:'2-digit'});
     const subjectIds=new Set(uniqueIds);
     const movements=new Set(['promotion','demotion','rank_changed',
-      'callsign_changed','name_changed','specialization_changed','award_granted','award_revoked']);
+      'callsign_changed','name_changed','specialization_changed','specialty_restriction_started','specialty_restriction_lifted','award_granted','award_revoked']);
     for(const entry of personnelChanges.docs.slice(0,500)){
       const change=entry.data();
       if(change.dept!==report.dept||!movements.has(change.type)||
@@ -343,11 +343,14 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       if(!person)continue;
       const author=allSubjects.find(p=>p.personId===change.actorDiscordId);
       const category=change.type.startsWith('award_')?'onderscheiding':
+        change.type.startsWith('specialty_restriction_')?'specialisatiebeperking':
         change.type==='specialization_changed'?'specialisatiewijziging':'personeelsbeweging';
       const description={
         promotion:'Promotie',demotion:'Degradatie',rank_changed:'Rangwissel',
         callsign_changed:'Roepnummerwijziging',name_changed:'Naamswijziging',
         specialization_changed:'Specialisatiewijziging',
+        specialty_restriction_started:'Tijdelijke beperking gestart',
+        specialty_restriction_lifted:'Tijdelijke beperking ingetrokken',
         award_granted:'Onderscheiding toegekend',award_revoked:'Onderscheiding ingetrokken'
       }[change.type];
       const before=String(change.before||'').slice(0,120),

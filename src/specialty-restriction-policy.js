@@ -3,6 +3,7 @@
 import {validDate,mayWriteManagement} from './management-utils.js';
 import {allSpecialtyLabels} from './specialization-policy.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
+import {roleForDepartment} from './leave-policy.js';
 
 export const SPECIALTY_RESTRICTION_COLLECTION='bpd_specialty_restrictions';
 export const restrictionToday=(now=new Date())=>
@@ -12,6 +13,10 @@ export function canRestrictSpecialty(actor,person){
  return Boolean(person&&actor?.uid==='discord:'+actor.discordId&&
   actor.discordId!==person.personId&&
   actor.dossierNativeDepartments?.includes(person.dept)&&
+  // A police Middenkader member may restrict only a lower cadre, never
+  // another MK, officer or corps member.
+  !(person.dept==='politie'&&roleForDepartment(actor,'politie')==='middenkader'&&
+    !/^(?:[a-z]+[- ]?)?[1-5]\d{2}$/i.test(String(person.call||'').trim()))&&
   canReadServiceDossier(actor,person.dept)&&
   mayWriteManagement(actor,person.dept,'specialisatiebeperking'));
 }

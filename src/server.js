@@ -45,6 +45,7 @@ import {eligibleForTechnicalProfile,verifiedPoliceRank,technicalCookieIsValid,te
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
+import {installSpecialtyRestrictionRoutes} from './specialty-restriction-routes.js';
 import {installSpecialtyRoleLinkRoutes} from './specialty-role-link-routes.js';
 import {installRosterColumnRoutes,loadRosterConfigs} from './roster-column-config.js';
 import {installFunctionChangeRoutes} from './function-change-routes.js';
@@ -664,6 +665,7 @@ installDiscordPersonalProfileRoutes(app,{getSnapshot});
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
 installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installSpecialtyRestrictionRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSpecialtyRoleLinkRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installFunctionChangeRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installReceivedRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
