@@ -33,5 +33,5 @@ test('verified or manually saved AE level selects its own patch, never unrelated
  assert.match(image,/function specialtyImage\(p,name,variant='',strictVariant=false\)/);
  assert.match(image,/strictVariant\?\(suffix\?/);
  assert.match(image,/specialtyVariantImage:/);
- assert.doesNotThrow(()=>new Script(script.replace(/^import[\s\S]*?from\s+['"][^'"]+['"];?\s*/gm,'')));
+ assert.doesNotThrow(()=>new Script(script.replace(/^import[\s\S]*?;\s*/gm,'')));
 });
