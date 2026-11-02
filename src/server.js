@@ -8,6 +8,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import {firebaseDiagnostic} from './firebase-diagnostics.js';
 import { discordConfig } from './discord-utils.js';
+import {discordBotToken} from './discord-bot-refresh.js';
 import { discordPortalAccess } from './discord-portal-access.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
 import { planPersonnelMigration } from './personnel-migration.js';
@@ -724,5 +725,11 @@ async function probeDiscordFirestore(){
 }
 app.listen(Number(process.env.PORT)||8080,()=>{
   console.log('BelgiumPD op poort '+(process.env.PORT||8080));
+  // Startup diagnosis contains only booleans, NEVER the Discord IDs or bot token.
+  const guildConfigured=/^\d{15,22}$/.test(String(process.env.DISCORD_GUILD_ID||''));
+  const botConfigured=Boolean(discordBotToken(process.env));
+  console.info('Discord-botconfiguratie:',
+   guildConfigured?'server-ID geldig':'server-ID ontbreekt of ongeldig',
+   botConfigured?'bot-token ingesteld':'bot-token ontbreekt of ongeldig');
   void probeDiscordFirestore();
 });
