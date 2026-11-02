@@ -42,7 +42,8 @@ export const FIRE_ROLE_PATCH_PRESETS=Object.freeze([
   ['1399006120965570670','Bosbestrijding'],
   ['1309532437952466985','Duiker'],
   ['1399000449457197188','RED team'],
-  ['1309532437952466987','Gevaarlijke stoffen']
+  ['1309532437952466987','Gevaarlijke stoffen'],
+  ['1466508322566967609','Brandweer-AMBU']
  ].map(([roleId,label])=>Object.freeze({
   roleId,label,level:'Volwaardig',value:'Ja',assetKey:''
  }))
@@ -51,7 +52,7 @@ export const fireSpecialtyAssetKeys=label=>{
  const aliases={'Logistiek':'logistiek','Signalisatie':'signalisatie',
   'Ladderwagen':'ladderwagen','Bosbestrijding':'bosbestrijding',
   'Duiker':'duiker','RED team':'red_team',
-  'Gevaarlijke stoffen':'gevaarlijke_stoffen'};
+  'Gevaarlijke stoffen':'gevaarlijke_stoffen','Brandweer-AMBU':'brandweer_ambu'};
  const code=aliases[label]||'';
  return code?['specialty','patch'].flatMap(kind=>
   [code,code+'_lokaal',code+'_federaal'].map(suffix=>kind+'_brandweer_'+suffix)):[];
