@@ -2,13 +2,14 @@ import {roleForDepartment} from './leave-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 // Nieuwe interne dossierregistraties en concept-weekrapporten.
 // Geen Google Sheets-writes, geen clientvertrouwen bij rollen of auteurs.
-export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging','activiteit','specialisatiebeperking']);
+export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging','activiteit','specialisatiebeperking','inactiviteitsping']);
 export const CADRE_ROLES = Object.freeze(['middenkader','officierenkader','korpsleiding']);
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
 export const RECORD_LABELS = Object.freeze({
   observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Personeelsnotitie',
   opleiding:'Opleidingen en resultaten', activiteit:'Dienstactiviteit',
-  specialisatiebeperking:'Specialisatiebeperking', naamswijziging:'Naamswijziging',
+  specialisatiebeperking:'Specialisatiebeperking',inactiviteitsping:'Inactiviteitsping',
+  naamswijziging:'Naamswijziging',
   promotievoorstel:'Promotievoorstel', personeelsbeweging:'Personeelsbeweging',
   specialisatiewijziging:'Specialisatiewijziging', onderscheiding:'Onderscheidingen'
 });
@@ -19,12 +20,12 @@ export const allowedDept = (actor,dept) => ['politie','ambulance','brandweer','d
 export const mayReadManagement = (actor,dept) => allowedDept(actor,dept) &&
   (CADRE_ROLES.includes(roleForDepartment(actor,dept))||
    actor?.dossierFullDepartments?.includes(dept));
-// Depannage uses one dedicated cadre case type: specialization restriction.
+// Depannage allows specific cadre case types: specialization restriction and inactivity ping.
 // Observations and sanctions are submitted through the formal register.
 export const mayWriteManagement = (actor,dept,type) =>
   verifiedBoardCorpsDossierAdmin(actor)&&allowedDept(actor,dept)&&
     MANAGEMENT_TYPES.includes(type)&&type!=='verlof'?true:(
-  type!=='verlof'&& (dept!=='depannage'||type==='specialisatiebeperking')&&(
+  type!=='verlof'&& (dept!=='depannage'||['specialisatiebeperking','inactiviteitsping'].includes(type))&&(
   // Delegated case management can add only routine dossier notes.
   // This does not convey sanctions, rank changes or other personnel powers.
   (['notitie','opleiding'].includes(type)&&actor?.dossierFullDepartments?.includes(dept)&&
