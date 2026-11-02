@@ -33,6 +33,7 @@ const metaData=d=>{
  const v=d.data();
  return {key:d.id,roleId:v.roleId||'',variant:v.variant||'',label:v.label,
   kind:v.kind||'role',code:v.code||'',department:v.department||'politie',
+  sourceArtworkKey:v.sourceArtworkKey||'',
   imageUrl:'/api/role-artwork/file/'+d.id+'?v='+encodeURIComponent(v.version),
   updatedAt:v.updatedAt?.toDate?.()?.toISOString()||null};
 };
@@ -91,32 +92,42 @@ export function installRoleArtworkRoutes(app,{requireUser}){
   try{
    const db=getFirestore(),meta=await db.collection(ROLE_ARTWORK_META).doc(key).get();
    if(!meta.exists||meta.get('active')!==true)return res.sendStatus(404);
+   const linkedKey=meta.get('sourceArtworkKey');
+   let sourceMeta=meta,sourceKey=key;
+   if(linkedKey){
+    if(typeof linkedKey!=='string'||!ARTWORK_KEY.test(linkedKey))return res.sendStatus(404);
+    const linked=await db.collection(ROLE_ARTWORK_META).doc(linkedKey).get();
+    if(!linked.exists||linked.get('active')!==true||
+      linked.get('department')!==meta.get('department')||
+      !['specialty','patch'].includes(linked.get('kind')))return res.sendStatus(404);
+    sourceMeta=linked;sourceKey=linkedKey;
+   }
    // New library files live in Cloud Storage; legacy WebP records remain in Firestore.
-   const storagePath=meta.get('storagePath');
+   const storagePath=sourceMeta.get('storagePath');
    if(typeof storagePath==='string'&&storagePath){
-    const department=meta.get('department'),kind=meta.get('kind'),code=meta.get('code');
+    const department=sourceMeta.get('department'),kind=sourceMeta.get('kind'),code=sourceMeta.get('code');
     const prefix='uniformbibliotheek/'+department+'/'+kind+'/'+code+'/';
     if(!storagePath.startsWith(prefix)||!/^[a-f0-9-]{36}\.(?:webp|png|jpg)$/.test(storagePath.slice(prefix.length)))
      return res.sendStatus(404);
     const bucketName=process.env.BPD_UNIFORM_LIBRARY_BUCKET||process.env.FIREBASE_STORAGE_BUCKET;
     if(!bucketName)return res.sendStatus(503);
-    const mime=meta.get('mime');
+    const mime=sourceMeta.get('mime');
     if(!['image/webp','image/png','image/jpeg'].includes(mime))return res.sendStatus(404);
     const [bytes]=await getStorage().bucket(bucketName).file(storagePath).download();
     if(!bytes||bytes.length>4*1024*1024)return res.sendStatus(404);
     res.set({'Content-Type':mime,'X-Content-Type-Options':'nosniff',
-     'Cross-Origin-Resource-Policy':'same-origin','Cache-Control':'public, max-age=180'});
+     'Cross-Origin-Resource-Policy':'same-origin','Cache-Control':linkedKey?'no-store':'public, max-age=180'});
     return res.send(bytes);
    }
-   const assetId=meta.get('assetId');
+   const assetId=sourceMeta.get('assetId');
    if(typeof assetId!=='string'||!/^[a-f0-9-]{36}$/.test(assetId))return res.sendStatus(404);
    const asset=await db.collection(ROLE_ARTWORK_IMAGES).doc(assetId).get();
-   if(!asset.exists||asset.get('key')!==key||asset.get('mime')!=='image/webp')
+   if(!asset.exists||asset.get('key')!==sourceKey||asset.get('mime')!=='image/webp')
     return res.sendStatus(404);
    const bytes=Buffer.from(asset.get('base64')||'','base64');
    if(bytes.length>MAX_BYTES||bytes.toString('ascii',0,4)!=='RIFF')return res.sendStatus(404);
    res.set({'Content-Type':'image/webp','X-Content-Type-Options':'nosniff',
-    'Cross-Origin-Resource-Policy':'same-origin','Cache-Control':'public, max-age=180'});
+    'Cross-Origin-Resource-Policy':'same-origin','Cache-Control':linkedKey?'no-store':'public, max-age=180'});
    return res.send(bytes);
   }catch(e){console.error('Badgebeeld:',e.code||'storage_error');return res.sendStatus(503)}
  });
@@ -134,6 +145,41 @@ export function installRoleArtworkRoutes(app,{requireUser}){
    return res.json({canEdit:true,artworks:snap.docs.filter(d=>mayEditDepartment(_req.bpd,d.get('department')||'politie')).map(d=>({...metaData(d),
     active:d.get('active')===true,updatedBy:d.get('updatedBy')||''}))});
   }catch(e){return error(res,e)}
+ });
+ app.put('/api/role-artwork/link',requireUser,allowed,async(req,res)=>{
+  const b=req.body||{},department=String(b.department||''),
+   roleId=String(b.roleId||'').trim(),variant=String(b.variant||'standard').trim().toLowerCase(),
+   sourceArtworkKey=String(b.sourceArtworkKey||''),label=String(b.label||'').trim(),
+   reason=String(b.reason||'').trim();
+  if(!DEPTS.includes(department)||!ID.test(roleId)||!VARIANT.test(variant)||
+     !new RegExp('^(?:specialty|patch)_'+department+'_[a-z0-9][a-z0-9_]{0,39}$').test(sourceArtworkKey)||
+     label.length<2||label.length>75||reason.length<8||reason.length>300||
+     /[<>\x00-\x1f]/.test(label+reason))
+   return res.status(400).json({error:'Ongeldige visuele Discord-koppeling'});
+  if(!mayEditDepartment(req.bpd,department))
+   return res.status(403).json({error:'Geen rechten voor deze hulpdienst'});
+  try{
+   const db=getFirestore(),key=keyFor(roleId,variant);
+   const ref=db.collection(ROLE_ARTWORK_META).doc(key);
+   const src=db.collection(ROLE_ARTWORK_META).doc(sourceArtworkKey);
+   const version=Date.now().toString(36)+'-'+randomUUID().slice(0,8);
+   await db.runTransaction(async tx=>{
+    const [before,asset]=await Promise.all([tx.get(ref),tx.get(src)]);
+    if(!asset.exists||asset.get('active')!==true||
+       asset.get('department')!==department||
+       !['specialty','patch'].includes(asset.get('kind')))
+     throw fail(400,'Deze patch is niet actief voor deze hulpdienst');
+    const old=before.exists?before.data():null;
+    if(old&&!mayEditDepartment(req.bpd,old.department||'politie'))
+     throw fail(403,'Geen toegang tot de bestaande rolpatch');
+    tx.set(ref,{roleId,variant,label,department,sourceArtworkKey,
+     active:true,version,updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid});
+    tx.create(db.collection(ROLE_ARTWORK_AUDIT).doc(),{
+     key,action:'link_existing_artwork',previous:old||null,sourceArtworkKey,
+     actorUid:req.bpd.uid,reason,at:FieldValue.serverTimestamp()});
+   });
+   res.json({saved:true,key,permissionsChanged:false});
+  }catch(e){error(res,e)}
  });
  app.put('/api/role-artwork/personnel',requireUser,allowed,async(req,res)=>{
   let input;try{input=validatePersonnelArtwork(req.body)}catch(e){return error(res,e)}
