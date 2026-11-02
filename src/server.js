@@ -736,7 +736,8 @@ app.listen(Number(process.env.PORT)||8080,()=>{
   void probeBelgiumPdDiscordUsers().then(result=>{
    console.info('BelgiumPD Discord-leden-API:',result.status,
     result.status==='ok'?
-     'leden='+result.memberCount+' roltoewijzingen='+result.roleCount:'');
+     'leden='+result.memberCount+' roltoewijzingen='+result.roleCount:
+    result.status==='unexpected_schema'?JSON.stringify(result.shape):'');
   }).catch(()=>console.warn('BelgiumPD Discord-leden-API: connection_failed'));
   void probeDiscordFirestore();
 });

@@ -12,6 +12,44 @@ const possibleRows=data=>Array.isArray(data)?data:
  Array.isArray(data?.data)?data.data:
  Array.isArray(data?.data?.users)?data.data.users:
  Array.isArray(data?.data?.members)?data.data.members:null;
+// Intentionally whitelisted structural metadata only: no raw keys/values from
+// the API, so even a strange payload cannot leak names, IDs or credentials.
+function structuralHint(payload){
+ const kind=Array.isArray(payload)?'array':payload===null?'null':typeof payload;
+ const safeKeys=['success','status','error','message','data','users','members','results',
+  'result','items','records','payload','response','roles','list'];
+ const markers=kind==='object'?safeKeys.filter(key=>
+  Object.prototype.hasOwnProperty.call(payload,key)).join(','):'';
+ let candidate=possibleRows(payload);
+ let path=candidate?'known':'none';
+ if(!candidate){
+  let frontier=[payload];
+  for(let depth=0;depth<3&&!candidate;depth++){
+   const next=[];
+   for(const node of frontier.slice(0,20)){
+    if(!node||typeof node!=='object'||Array.isArray(node))continue;
+    for(const value of Object.values(node).slice(0,25)){
+     if(Array.isArray(value)){candidate=value;path='nested_'+(depth+1);break;}
+     if(value&&typeof value==='object'&&!Array.isArray(value))next.push(value);
+    }
+    if(candidate)break;
+   }
+   frontier=next;
+  }
+ }
+ const sample=candidate?.find(x=>x&&typeof x==='object'&&!Array.isArray(x));
+ const idFields=['discord_id','discordId','discordID','user_id','userId','id'];
+ const roleFields=['roles','roleIds','role_ids','discordRoles','discord_roles'];
+ const id=idFields.find(k=>Object.hasOwn(sample||{},k))||'none';
+ const role=roleFields.find(k=>Object.hasOwn(sample||{},k))||'none';
+ const type=x=>Array.isArray(x)?'array':x===null?'null':typeof x;
+ const roles=role==='none'?undefined:sample[role];
+ const roleItem=Array.isArray(roles)&&roles.length?type(roles[0]):'none';
+ const mapKeys=kind==='object'&&!markers?Object.keys(payload).some(k=>ID.test(k)):false;
+ return {kind,markers,path,hasMember:!!sample,idField:id,idType:id==='none'?'none':type(sample[id]),
+  roleField:role,roleType:role==='none'?'none':type(roles),
+  roleItemType:roleItem,rootDiscordIdKeys:mapKeys};
+}
 function verifiedShape(payload){
  const records=possibleRows(payload);
  if(!records||records.length>MAX_MEMBERS)return null;
@@ -73,7 +111,7 @@ export async function probeBelgiumPdDiscordUsers({
   let payload;
   try{payload=JSON.parse(content)}catch{return {status:'invalid_json'};}
   const counts=verifiedShape(payload);
-  if(!counts)return {status:'unexpected_schema'};
+  if(!counts)return {status:'unexpected_schema',shape:structuralHint(payload)};
   return {status:'ok',memberCount:counts.users,roleCount:counts.roles};
  }catch{return {status:'connection_failed'};}
 }

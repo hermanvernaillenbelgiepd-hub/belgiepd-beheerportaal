@@ -50,3 +50,20 @@ test('server performs only startup diagnostic, not automatic permissions changes
  assert.match(src,/BelgiumPD Discord-leden-API:/);
  assert.doesNotMatch(src,/console\.(?:info|log|warn)\([^\n]*BPD_DISCORD_USERS_API_TOKEN/);
 });
+
+test('unexpected JSON schema reports only whitelisted field types, never contents',async()=>{
+ const env={BPD_DISCORD_USERS_API_TOKEN:token};
+ const res=await probeBelgiumPdDiscordUsers({env,fetchImpl:async()=>response({
+  data:{items:[{discordId:member,secretName:'Never log me',roles:[id]}]},
+  unrelatedPayload:'private'
+ })});
+ assert.equal(res.status,'unexpected_schema');
+ assert.equal(res.shape.idField,'discordId');
+ assert.equal(res.shape.idType,'string');
+ assert.equal(res.shape.roleField,'roles');
+ assert.equal(res.shape.roleItemType,'string');
+ const display=JSON.stringify(res);
+ for(const privateValue of [token,member,id,'Never log me','private']){
+  assert.ok(!display.includes(privateValue));
+ }
+});
