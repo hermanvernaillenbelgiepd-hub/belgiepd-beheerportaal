@@ -134,7 +134,7 @@ body.roster-embedded .roster-profile-dialog{max-height:90vh}
 </nav>
 <div class="panel">
 <a class="login-link" id="discordLogin" href="/auth/discord/start?return=%2Fpersoneelslijst.html" hidden>Inloggen met Discord om personeelslijst te bekijken →</a>
-<div class="filters"><div><label for="search">Zoeken</label><input id="search" placeholder="Roepnummer, naam, rang of reeks"></div>
+<div class="filters"><div><label for="search">Zoeken</label><input id="search" placeholder="Roepnummer, naam, rang, reeks of Discord-ID" autocomplete="off"></div>
 <button id="refresh" type="button">Vernieuwen</button></div>
 <section class="roster-layout-tools" id="rosterLayoutTools" hidden aria-label="Personeelslijstafmetingen">
  <button id="rosterLayoutToggle" class="roster-layout-toggle" type="button"
@@ -218,7 +218,8 @@ body.roster-embedded .roster-profile-dialog{max-height:90vh}
 import {renderMemberPoliceRoster,setPublicRosterSpecialties} from '/member-police-roster.js';
 import {loadRosterLayout,logoutRosterLayout} from '/member-roster-layout.js?v=20261031-officer-only';
 const $=id=>document.getElementById(id);
-let auth=null,people=[];
+let auth=null,people=[],discordSearchRows=[],discordSearchId='';
+let discordSearchTimeout=null,discordSearchRequest=0;
 const directoryEmbedded=new URLSearchParams(window.location.search).get('embed')==='1';
 if(directoryEmbedded){
  document.body.classList.add('roster-embedded');
@@ -265,9 +266,45 @@ window.addEventListener('message',event=>{
   $('rosterProfileStatus').textContent='De personeelskaart is momenteel niet beschikbaar.';
 });
 function render(){
- const q=$('search').value;
- const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),people,q,openRosterProfile);
- $('message').textContent=count+' van '+people.length+' personeelsleden zichtbaar';
+ const q=$('search').value.trim();
+ const byDiscordId=/^\\d{15,22}$/.test(q);
+ const ready=byDiscordId&&discordSearchId===q;
+ const rows=byDiscordId?(ready?discordSearchRows:[]):people;
+ const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),rows,
+  byDiscordId?'':q,openRosterProfile);
+ $('message').textContent=byDiscordId?
+   (ready?count+' personeelslid(leden) gevonden op Discord-ID':'Discord-ID opzoeken…'):
+   count+' van '+people.length+' personeelsleden zichtbaar';
+}
+function searchDirectory(){
+ const q=$('search').value.trim();
+ clearTimeout(discordSearchTimeout);
+ const requestNumber=++discordSearchRequest;
+ discordSearchRows=[];discordSearchId='';
+ render();
+ // Alleen een compleet ID gaat naar de beveiligde serverzoekopdracht.
+ if(!/^\\d{15,22}$/.test(q))return;
+ discordSearchTimeout=setTimeout(async()=>{
+  try{
+   const token=await idToken();
+   if(!token)throw Error('Meld je aan met Discord');
+   if(requestNumber!==discordSearchRequest)return;
+   const res=await fetch('/api/member/personnel-list?'+new URLSearchParams({discordId:q}),{
+    headers:{Authorization:'Bearer '+token},cache:'no-store'
+   });
+   const data=await res.json();
+   if(!res.ok)throw Error(data.error||'Discord-ID zoeken mislukt');
+   if(requestNumber!==discordSearchRequest)return;
+   discordSearchId=q;
+   discordSearchRows=Array.isArray(data.records)?data.records:[];
+   render();
+  }catch(error){
+   if(requestNumber!==discordSearchRequest)return;
+   discordSearchId=q;discordSearchRows=[];
+   render();
+   $('message').textContent='Discord-ID zoeken niet beschikbaar: '+error.message;
+  }
+ },300);
 }
 async function load(){
  const token=await idToken();
@@ -286,7 +323,7 @@ async function load(){
    }).then(r=>{if(!r.ok)throw Error('Logo-overzicht tijdelijk niet beschikbaar');return r.json()});
    window.BPDPersonnelVisuals?.setArtworkManifest?.(artwork.artworks);
   }catch(_err){window.BPDPersonnelVisuals?.setArtworkManifest?.([])}
-  render();
+  searchDirectory();
   // Do not start an officer-only layout request after the user signed out.
   if(auth?.currentUser?.uid?.startsWith('discord:'))
    await loadRosterLayout(token);
@@ -294,7 +331,7 @@ async function load(){
  }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
  finally{$('refresh').disabled=false}
 }
-$('search').oninput=render;$('refresh').onclick=load;
+$('search').oninput=searchDirectory;$('refresh').onclick=load;
 try{
  const config=await(await fetch('/api/client-config',{cache:'no-store'})).json();
  if(!config.enabled)throw Error('Aanmelding tijdelijk niet beschikbaar');
@@ -303,7 +340,9 @@ try{
  const app=getApps().length?getApp():initializeApp(config.firebaseConfig);auth=getAuth(app);
  onAuthStateChanged(auth,user=>{
   if(user?.uid?.startsWith('discord:'))load();
-  else {logoutRosterLayout();setPublicRosterSpecialties([]);people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
+  else {clearTimeout(discordSearchTimeout);discordSearchRequest++;
+   discordSearchId='';discordSearchRows=[];
+   logoutRosterLayout();setPublicRosterSpecialties([]);people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script><script defer src="/bpd-navigation.js"></script></body></html>
