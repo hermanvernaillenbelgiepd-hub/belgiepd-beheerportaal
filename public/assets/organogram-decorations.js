@@ -62,9 +62,15 @@
      ['ribbon','medal','badge'].includes(x.kind))
    .sort((a,b)=>(Number(a.priority)||999)-(Number(b.priority)||999));
   if(!valid.length)return null;
-  const ribbons=node('span','bpd-uniform-ribbons');
-  ribbons.setAttribute('aria-hidden','true');
-  valid.slice(0,4).forEach(x=>ribbons.append(ribbon(x)));
+  // Medals are hanging decorations below the rank plate, not an
+  // additional ribbon above it. Never show the same medal twice.
+  const upper=valid.filter(x=>x.kind==='ribbon'||x.kind==='badge').slice(0,4);
+  let ribbons=null;
+  if(upper.length){
+    ribbons=node('span','bpd-uniform-ribbons');
+    ribbons.setAttribute('aria-hidden','true');
+    upper.forEach(x=>ribbons.append(ribbon(x)));
+  }
   const hanging=valid.filter(x=>x.kind==='medal').slice(0,3);
   let medals=null;
   if(hanging.length){
