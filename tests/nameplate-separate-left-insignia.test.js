@@ -66,7 +66,7 @@ test('non-numbered display ranks still select gold/silver properly',()=>{
 });
 test('new live and studio assets are cache-busted',()=>{
  const hierarchy=read('organogram-hierarchie.html');
- assert.match(hierarchy,/organogram-police-formal\.css\?v=name-autofit-20261031-v5/);
+ assert.match(hierarchy,/organogram-police-formal\.css\?v=awards-position-20261102/);
  assert.match(hierarchy,/organogram-police-formal\.js\?v=name-autofit-20261031-v5/);
  assert.match(admin,/uniform-composer-ui\.js\?v=name-autofit-20261031-v5/);
 });

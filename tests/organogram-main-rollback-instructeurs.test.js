@@ -18,7 +18,7 @@ test('Main has only the operational hierarchy with fresh woven-nameplate rendere
  assert.doesNotMatch(next,/Klassiek organogram/);
  assert.match(classic,/location\.replace\('\/organogram-hierarchie\.html'/);
  assert.match(next,/\/assets\/organogram-police-formal\.js\?v=name-autofit-20261031-v5/);
- assert.match(next,/\/assets\/organogram-police-formal\.css\?v=name-autofit-20261031-v5/);
+ assert.match(next,/\/assets\/organogram-police-formal\.css\?v=awards-position-20261102/);
  assert.match(next,/BPDPoliceUniform\?\.makePortrait/);
  assert.match(home,/\/organogram-hierarchie\.html/);
  assert.doesNotMatch(home,/href="\/organogram\.html"/);

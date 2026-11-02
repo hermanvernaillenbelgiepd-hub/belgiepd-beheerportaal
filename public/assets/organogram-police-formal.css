@@ -132,6 +132,22 @@
  pointer-events:none;
 }
 
+/* Uploaded portrait coats use the portrait chest slots, NOT the retired
+   landscape defaults. The award groups share the same transformed stage as
+   the name and rank plate. Inline Uniformatelier placements still take
+   precedence, so intentional officer/leadership adjustments are preserved. */
+.bpd-police-formal.bpd-assigned-coat>.bpd-gold-stage>.bpd-uniform-ribbons,
+.bpd-police-formal.bpd-assigned-coat>.bpd-silver-stage>.bpd-uniform-ribbons{
+ position:absolute;left:55.3%;top:26%;width:19%;height:5%;
+ display:flex;align-items:stretch;justify-content:flex-start;
+ z-index:9;pointer-events:none;
+}
+.bpd-police-formal.bpd-assigned-coat>.bpd-gold-stage>.bpd-uniform-medals,
+.bpd-police-formal.bpd-assigned-coat>.bpd-silver-stage>.bpd-uniform-medals{
+ position:absolute;left:55.3%;top:45%;width:23%;height:18%;
+ display:flex;align-items:flex-start;justify-content:center;
+ z-index:9;pointer-events:none;
+}
 /* Approved softer, nearly square uniform portraits (gold and silver).
    Old tall 67x77 masks left horizontal image edges above/below the 603:469
    artwork. Matching 70x66 (and 156x146 expanded) frames with a 120% stage
