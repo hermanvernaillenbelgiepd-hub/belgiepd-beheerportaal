@@ -128,3 +128,44 @@ export function organogramDisplayIdentityMap(cachedIdentities,apiSnapshot,people
  return {entries,matches,fromApi:apiSnapshot?.status==='ok',
   apiMemberCount:apiSnapshot?.status==='ok'?apiSnapshot.memberCount:0};
 }
+
+
+// Restricted reconciliation report for technical management only.
+// Uses exact Discord snowflakes; never guesses by name/callsign, writes data,
+// or lists the wider Discord guild membership as operational staff.
+export function diagnoseOrganogramRoleLinks(people,apiSnapshot){
+ const roster=Array.isArray(people)?people:[];
+ const rows=[],perService=new Map(),seen=new Set(),duplicates=new Set();
+ for(const person of roster){
+  const id=person?.personId,dept=String(person?.dept||'');
+  if(!ID.test(String(id||'')))continue;
+  const key=dept+':'+id;
+  if(seen.has(key))duplicates.add(id);
+  seen.add(key);
+ }
+ const stats={total:0,matched:0,missing:0,duplicate:0,withoutRoles:0};
+ for(const person of roster){
+  const dept=String(person?.dept||'');
+  if(!dept||!ID.test(String(person?.personId||'')))continue;
+  const id=person.personId;
+  const service=perService.get(dept)||{dept,total:0,matched:0,missing:0,duplicate:0};
+  service.total++;stats.total++;
+  let status='matched';
+  if(duplicates.has(id))status='duplicate';
+  else if(apiSnapshot?.status!=='ok')status='unavailable';
+  else if(!apiSnapshot.entries.has(id))status='missing';
+  else if(!apiSnapshot.entries.get(id).length)status='without_roles';
+  if(status==='matched'||status==='without_roles'){
+   service.matched++;stats.matched++;
+   if(status==='without_roles')stats.withoutRoles++;
+  }else if(status==='missing'){service.missing++;stats.missing++;}
+  else if(status==='duplicate'){service.duplicate++;stats.duplicate++;}
+  perService.set(dept,service);
+  if(status==='missing'||status==='duplicate')
+   rows.push({dept,personId:id,call:String(person.call||'').slice(0,24),
+    name:String(person.name||'').slice(0,90),status});
+ }
+ return {status:apiSnapshot?.status||'unavailable',stats,
+  services:[...perService.values()].sort((a,b)=>a.dept.localeCompare(b.dept)),
+  issues:rows.slice(0,250),displayOnly:true,accessRightsChanged:false};
+}

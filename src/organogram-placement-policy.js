@@ -15,7 +15,7 @@ export const SPECIALTIES=Object.freeze({
   'K9','RAGO','RAGO-IO','DISP','TO','AE','RECHERCHE',
   // Historical specializations not silently deleted when an existing record is edited.
   'Prioritair rijden','EHBO'],
- brandweer:['Duiker','Ladderwagen','Logistiek','Signalisatie','RED team','Gevaarlijke stoffen','Bosbestrijding'],
+ brandweer:['Duiker','Ladderwagen','Logistiek','Signalisatie','RED team','Gevaarlijke stoffen','Bosbestrijding','Grote Boot','Brandweer-AMBU'],
  ambulance:['MIP','HELI','PIT','PIT-MOTOR','Medicatie','Basis TR'],
  depannage:['F.A.S.T','CRANE','Wegenwerken','LSRA','Signalisatie'],
  burger:['Burgerproject','Burger IO']

@@ -18,7 +18,7 @@ import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSpecialtyAssetKeys,
  knownFireRoleSpecialty,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
-import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap} from './bpd-discord-users-display.js';
+import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks} from './bpd-discord-users-display.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
@@ -81,6 +81,18 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const k9VerificationCooldown=new Map();
   const aeProofCache=new Map();
   let lastApiMatchReport=0;
+ // Admin-only reconciliation: never expose unmatched IDs on public pages.
+ app.get('/api/organogram/discord-links/admin',requireUser,manager,async(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  res.set('X-Content-Type-Options','nosniff');
+  try{
+   const snapshot=await getSnapshot();
+   const people=snapshot.data.filter(p=>validRow(p)&&p.dept!=='burger').slice(0,1200);
+   const upstream=await getBelgiumPdDisplayRoles();
+   return res.json({...diagnoseOrganogramRoleLinks(people,upstream),
+    stale:snapshot.stale===true});
+  }catch(error){return respond(res,error);}
+ });
  // All returned attributes are display-only. Public output NEVER includes
  // Discord identifiers, access grants, source documents or audit history.
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
@@ -236,8 +248,19 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const valid=x=>assetUrls.has(assetFor(x))&&activeRole(x);
     // A verified role shows its qualification even before artwork is
     // uploaded. Never infer a medical qualification from leadership alone.
-    const rolespecific=all.filter(x=>x.roleId&&verified.has(x.roleId)&&
-      (valid(x)||(curatedFire(x)||curatedAmbulance(x))&&activeRole(x)));
+    // Verified specialization roles must be displayed even without artwork.
+    // Keep the highest verified level if trainee and full roles coexist.
+    const levelRank=x=>x.roleId===AE_DISCORD_ROLES.teamleader?5:
+     ({'Stage':1,'AANGEMELD':1,'Ja':2,'LEIDING':4,'INSTRUCTEUR':3}[x.value]||2);
+    const roleChoices=new Map();
+    for(const link of all){
+     if(!link.roleId||!verified.has(link.roleId)||!activeRole(link))continue;
+     const label=normalizedLabel(link.label);
+     if(!SPECIALTIES[p.dept]?.includes(label))continue;
+     const old=roleChoices.get(label);
+     if(!old||levelRank(link)>levelRank(old))roleChoices.set(label,link);
+    }
+    const rolespecific=[...roleChoices.values()];
     // An explicitly recorded AE display level must also select the matching
     // library artwork. Registering a mapping is not the same as giving a role.
     const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',
@@ -245,7 +268,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const displayAE=merged.aeRole||'';
     const aePatch=aeRoleIds[displayAE]?all.find(x=>
      x.roleId===aeRoleIds[displayAE]&&normalizedLabel(x.label)==='AE'&&
-     valid(x)&&(merged.aeManual===displayAE||verified.has(x.roleId))):null;
+     activeRole(x)&&(merged.aeManual===displayAE||verified.has(x.roleId))):null;
     const manual=all.filter(x=>!x.roleId&&valid(x)&&
       active.has(normalizedLabel(x.label))&&
       !(displayAE&&normalizedLabel(x.label)==='AE')&&
@@ -256,7 +279,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     return [...(aePatch?[aePatch]:[]),
       ...rolespecific.filter(x=>!(displayAE&&normalizedLabel(x.label)==='AE')),
       ...manual].map(x=>({
-      label:x.label,level:String(x.level||x.value||'').slice(0,45),
+      label:normalizedLabel(x.label),level:String(x.level||x.value||'').slice(0,45),
       roleId:x.roleId||'',imageUrl:assetUrls.get(assetFor(x))||'',
       source:x===aePatch&&merged.aeManual===displayAE?'registered':
        x.roleId?'discord':'registered'

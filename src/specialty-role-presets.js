@@ -42,7 +42,8 @@ export const FIRE_ROLE_PATCH_PRESETS=Object.freeze([
   ['1399006120965570670','Bosbestrijding'],
   ['1309532437952466985','Duiker'],
   ['1399000449457197188','RED team'],
-  ['1309532437952466987','Gevaarlijke stoffen']
+  ['1309532437952466987','Gevaarlijke stoffen'],
+  ['1466508322566967609','Brandweer-AMBU']
  ].map(([roleId,label])=>Object.freeze({
   roleId,label,level:'Volwaardig',value:'Ja',assetKey:''
  }))
@@ -51,7 +52,7 @@ export const fireSpecialtyAssetKeys=label=>{
  const aliases={'Logistiek':'logistiek','Signalisatie':'signalisatie',
   'Ladderwagen':'ladderwagen','Bosbestrijding':'bosbestrijding',
   'Duiker':'duiker','RED team':'red_team',
-  'Gevaarlijke stoffen':'gevaarlijke_stoffen'};
+  'Gevaarlijke stoffen':'gevaarlijke_stoffen','Brandweer-AMBU':'brandweer_ambu'};
  const code=aliases[label]||'';
  return code?['specialty','patch'].flatMap(kind=>
   [code,code+'_lokaal',code+'_federaal'].map(suffix=>kind+'_brandweer_'+suffix)):[];
@@ -60,6 +61,14 @@ export const fireSharedSpecialtyAssetKeys=fireSpecialtyAssetKeys;
 // AZLS: qualifications from exact verified Discord role IDs.
 // Professional categories (Arts, Verpleegkundige, AZLS leiding) and the
 // Medisch-instructeur assignment are distinct functions, not qualifications.
+// Operational Depannage role labels from the verified role catalog.
+// AWV is leadership, not a specialist qualification, so is deliberately excluded.
+export const DEPANNAGE_ROLE_PATCH_PRESETS=Object.freeze([
+ ['1309532438019706970','F.A.S.T'],
+ ['1309532438019706971','LSRA']
+].map(([roleId,label])=>Object.freeze({
+ roleId,label,level:'Volwaardig',value:'Ja',assetKey:''
+})));
 export const AZLS_PIT_MOTOR_ROLE_ID='1508506242299985980';
 export const AMBULANCE_ROLE_PATCH_PRESETS=Object.freeze([
  ['1360990854445137980','MIP'],
@@ -106,6 +115,11 @@ export function defaultSpecialtyRoleLinks(dept,stored,alreadyApplied){
  if(dept==='ambulance'){
   const known=new Set(stored.filter(x=>x.roleId).map(x=>x.roleId));
   return [...stored,...AMBULANCE_ROLE_PATCH_PRESETS.filter(x=>!known.has(x.roleId))
+   .map(x=>({...x}))];
+ }
+ if(dept==='depannage'){
+  const known=new Set(stored.filter(x=>x.roleId).map(x=>x.roleId));
+  return [...stored,...DEPANNAGE_ROLE_PATCH_PRESETS.filter(x=>!known.has(x.roleId))
    .map(x=>({...x}))];
  }
  if(dept!=='politie'||alreadyApplied)return stored;
