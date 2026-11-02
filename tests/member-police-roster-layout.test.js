@@ -50,10 +50,10 @@ test('Full Discord-ID lookup is exact and never exposes IDs or dossier details',
  assert.equal(directoryRowsForDiscordId(all,null),all);
  const api=read('src/member-dashboard-routes.js');
  const page=read('public/personeelslijst.html');
- assert.match(api,/requestedId=req\\.query\\.discordId/);
- assert.match(api,/directoryRowsForDiscordId\\(snapshot\\.data,requestedId\\)/);
+ assert.match(api,/requestedId=req\.query\.discordId/);
+ assert.match(api,/directoryRowsForDiscordId\(snapshot\.data,requestedId\)/);
  assert.match(page,/placeholder="Roepnummer, naam, rang, reeks of Discord-ID"/);
- assert.match(page,/new URLSearchParams\\(\\{discordId:q\\}\\)/);
+ assert.match(page,/new URLSearchParams\(\{discordId:q\}\)/);
 });
 test('Home roster appears before personal controls and has wide rank and specialty columns',()=>{
  const home=read('public/index.html'),list=read('public/personeelslijst.html');
