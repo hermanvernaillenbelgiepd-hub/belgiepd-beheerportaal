@@ -59,8 +59,10 @@ export function directoryRowsForDiscordId(rows,id=null){
 // fictional police callsign, rank, dossier, or permission.
 export function publicPoliceRoster(rows,extraPublicLabels=[],verifiedAeMembers=new Set()){
  const byIdentity=new Map();
+ const optionalLabels=Array.isArray(extraPublicLabels)?extraPublicLabels:[];
  const whitelist=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
-   'K9','RAGO','Dispatch','TO','AE',...extraPublicLabels.filter(label=>
+   'K9','RAGO','Dispatch','TO','AE',...optionalLabels.filter(label=>
+    typeof label==='string'&&
     !/^ae(?:[-_ ]?(?:i|t|teamleader|instructeur))$/i.test(label))];
  const serviceNames={politie:'Politie',brandweer:'Brandweer',
    ambulance:'Ambulance',depannage:'Depannage'};
