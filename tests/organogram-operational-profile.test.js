@@ -41,3 +41,17 @@ test('only active public awards appear on operational profile',()=>{
  assert.deepEqual(publicDecorations([{...item,public:false}],now),[]);
  assert.deepEqual(publicDecorations([{...item,revokedAt:'2026-10-01'}],now),[]);
 });
+
+
+test('MAIN organogram starts empty and never falls back to fictitious staff on an error',()=>{
+ assert.match(page,/<button[^>]*id="demo-toggle"[^>]*hidden>/);
+ assert.match(page,/const state=\{view:'alle',query:'',demo:false,live:\[\],board:\[\],loaded:false/);
+ assert.match(page,/fixtureModeAllowed=config\.firebaseConfig\?\.projectId==='belgiepd-test'/);
+ assert.match(page,/else if\(btn\.id==='demo-toggle'&&fixtureModeAllowed\)/);
+ assert.match(page,/if\(!state\.loaded&&!state\.demo\)\{syncCadreToggle\(\);return;\}/);
+ assert.match(page,/state\.loaded=false;state\.live=\[\];state\.board=\[\];state\.demo=false/);
+ assert.match(page,/Organogramgegevens tijdelijk niet beschikbaar:/);
+ assert.match(page,/Organogram niet beschikbaar:/);
+ assert.doesNotMatch(page,/state\.demo=true/);
+ assert.doesNotMatch(page,/De fictieve demonstratie blijft herkenbaar/);
+});
