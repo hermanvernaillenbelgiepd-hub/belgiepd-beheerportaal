@@ -18,7 +18,7 @@ import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSpecialtyAssetKeys,
  knownFireRoleSpecialty,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
-import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap} from './bpd-discord-users-display.js';
+import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks} from './bpd-discord-users-display.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
@@ -81,6 +81,18 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const k9VerificationCooldown=new Map();
   const aeProofCache=new Map();
   let lastApiMatchReport=0;
+ // Admin-only reconciliation: never expose unmatched IDs on public pages.
+ app.get('/api/organogram/discord-links/admin',requireUser,manager,async(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  res.set('X-Content-Type-Options','nosniff');
+  try{
+   const snapshot=await getSnapshot();
+   const people=snapshot.data.filter(p=>validRow(p)&&p.dept!=='burger').slice(0,1200);
+   const upstream=await getBelgiumPdDisplayRoles();
+   return res.json({...diagnoseOrganogramRoleLinks(people,upstream),
+    stale:snapshot.stale===true});
+  }catch(error){return respond(res,error);}
+ });
  // All returned attributes are display-only. Public output NEVER includes
  // Discord identifiers, access grants, source documents or audit history.
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
