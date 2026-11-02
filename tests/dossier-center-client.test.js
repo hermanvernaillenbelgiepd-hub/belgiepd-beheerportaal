@@ -25,8 +25,8 @@ test('Dossier controls offer authorised filters and one scrollable overview',()=
   assert.match(html,/\.scroller\{max-height:560px;overflow-y:auto/);
   assert.doesNotMatch(html,/id="nextPage"|id="previousPage"/);
   assert.equal(html.includes('Open volledige personeelsfiche · observaties & sancties'),false);
-  assert.ok(html.includes("frame.src='/personeelsbeheer.html?'"));
-  assert.ok(html.includes("frame.src='/personeelsbeheer.html?'"));
+  assert.match(html,/frame\.src=r\.dept==='brandweer'\?/);
+  assert.match(html,/\/'personeelsbeheer\.html\?'\+new URLSearchParams\(\{embed:'1',dept:r\.dept,discordId:r\.discordId\}\)/);
   assert.equal(html.includes('burgerdossier'),false);
   assert.equal(html.includes('sollicitatiebeheer'),false);
   assert.equal(/\.innerHTML\s*=/.test(html),false);
