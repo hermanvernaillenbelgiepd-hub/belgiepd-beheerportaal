@@ -1,0 +1,244 @@
+/* BelgiumPD organogram: hybrid LIGHT mode.
+   Keep the quiet light portal canvas/white service columns and readable
+   navy hierarchy bars + personnel cards. The normal dark theme is untouched.
+   Applied ONLY to this page, after the shared theme stylesheet.
+   Never recolour embedded uniform artwork, grades, medals or role badges. */
+@media screen {
+html:not([data-bpd-theme="dark"]) {
+  --org-paper:#fff;
+  --org-faint:#f2f6fc;
+  --org-border:#d6e1f0;
+  --org-ink:#173353;
+  --org-muted:#5b7391;
+  --org-navy:#193959;
+  --org-card:#163552;
+  --org-card-hover:#234b70;
+  --org-card-subtitle:#d0e2f5;
+}
+
+/* Layout stays compact and recognisable as part of the light portal. */
+html:not([data-bpd-theme="dark"]) body {
+  background:#f3f6fb!important;
+  color:var(--org-ink)!important;
+}
+html:not([data-bpd-theme="dark"]) main > h1,
+html:not([data-bpd-theme="dark"]) main > .lead {
+  color:var(--org-ink)!important;
+}
+html:not([data-bpd-theme="dark"]) main > .lead {
+  color:var(--org-muted)!important;
+}
+html:not([data-bpd-theme="dark"]) .toolbar {
+  background:var(--org-paper)!important;
+  border:1px solid var(--org-border)!important;
+  border-radius:11px;
+  box-shadow:0 3px 13px #1f35590b;
+}
+html:not([data-bpd-theme="dark"]) .toolbar button:not([aria-pressed="true"]) {
+  background:#eef4fc!important;
+  border-color:#c3d3e7!important;
+  color:#214468!important;
+}
+html:not([data-bpd-theme="dark"]) .toolbar button[aria-pressed="true"] {
+  background:#25558d!important;
+  color:#fff!important;
+  border-color:#437dbf!important;
+}
+html:not([data-bpd-theme="dark"]) .toolbar input {
+  background:#fff!important;
+  border-color:#b9cce4!important;
+  color:#183654!important;
+}
+
+/* Same soft white columns, each service retains its identifying accent. */
+html:not([data-bpd-theme="dark"]) #services.service-grid {
+  align-items:start;
+  gap:14px;
+}
+html:not([data-bpd-theme="dark"]) #services .service {
+  background:#fff!important;
+  color:var(--org-ink)!important;
+  border:1px solid var(--org-border)!important;
+  border-top:3px solid #7298bd!important;
+  border-radius:13px;
+  box-shadow:0 5px 18px #1d3a5e12!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="politie"] {
+  border-top-color:#3783cb!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="brandweer"] {
+  border-top-color:#d66b6e!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="ambulance"] {
+  border-top-color:#48aa83!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="depannage"] {
+  border-top-color:#d99a42!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="burger"] {
+  border-top-color:#7990ae!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service > summary {
+  background:#fff!important;
+  border-radius:10px 10px 0 0;
+  color:var(--org-ink)!important;
+  border-bottom:1px solid #e0e8f2;
+  padding:12px 13px;
+}
+html:not([data-bpd-theme="dark"]) #services .service > summary :is(.service-title,strong) {
+  color:#122d4b!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service > summary :is(.count,.chevron,small) {
+  color:#5c789b!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service-body {
+  background:#fff!important;
+  border-color:#dce7f3!important;
+  border-radius:0 0 11px 11px;
+  padding:7px 10px 13px;
+}
+html:not([data-bpd-theme="dark"]) #services .level::before {
+  border-color:#8aa7c9;
+}
+html:not([data-bpd-theme="dark"]) #services .level > summary.level-title,
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="ambulance"] .level > summary.level-title {
+  background:#1c4166!important;
+  border:1px solid #4c7497!important;
+  border-radius:7px!important;
+  color:#f5f9ff!important;
+  font-weight:800;
+  padding:8px 10px;
+  text-align:left;
+}
+html:not([data-bpd-theme="dark"]) #services .level > summary.level-title :is(.level-count,small,strong),
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="ambulance"] .level > summary.level-title .level-count,
+html:not([data-bpd-theme="dark"]) #services .level > summary.level-title::after {
+  color:#e4f0ff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .level-caption,
+html:not([data-bpd-theme="dark"]) #services .service .gaps,
+html:not([data-bpd-theme="dark"]) #services .service .specialty-note,
+html:not([data-bpd-theme="dark"]) #services .service .police-instructor-sync-note {
+  color:#617b9b!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="ambulance"] .azls-ranks-heading {
+  color:#214e68!important;
+}
+
+/* On light columns, the real personnel cards remain navy and legible. */
+html:not([data-bpd-theme="dark"]) #services .person,
+html:not([data-bpd-theme="dark"]) #services .personnel-card-grid .person {
+  background:var(--org-card)!important;
+  color:#f5f9ff!important;
+  border:1px solid #52779f!important;
+  box-shadow:0 2px 5px #17385a10;
+}
+html:not([data-bpd-theme="dark"]) #services .person:hover,
+html:not([data-bpd-theme="dark"]) #services .personnel-card-grid .person:hover {
+  background:var(--org-card-hover)!important;
+  border-color:#9ebddd!important;
+}
+html:not([data-bpd-theme="dark"]) #services .person .identity,
+html:not([data-bpd-theme="dark"]) #services .person .identity b,
+html:not([data-bpd-theme="dark"]) #services .person .person-heading {
+  color:#fff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .person .identity small,
+html:not([data-bpd-theme="dark"]) #services .personnel-card-grid .person .identity small {
+  color:var(--org-card-subtitle)!important;
+}
+html:not([data-bpd-theme="dark"]) #services .person .num {
+  background:#294c72!important;
+  color:#f5faff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .board .board-member,
+html:not([data-bpd-theme="dark"]) .board #board-members .board-member {
+  background:#193e62!important;
+  color:#f6faff!important;
+  border-color:#688db4!important;
+}
+html:not([data-bpd-theme="dark"]) .board #board-members .board-member :is(b,strong) {
+  color:#fff!important;
+}
+html:not([data-bpd-theme="dark"]) .board #board-members .board-member small {
+  color:#d2e5f8!important;
+}
+
+/* Secondary groupings: a soft background, dark readable section bars. */
+html:not([data-bpd-theme="dark"]) #services .middle-cadre-lane {
+  background:#f1f5fb!important;
+  border:1px solid #d4e0ef!important;
+  border-radius:9px;
+}
+html:not([data-bpd-theme="dark"]) #services .middle-cadre-heading {
+  color:#294e76!important;
+  border-color:#c5d6e9!important;
+}
+html:not([data-bpd-theme="dark"]) #services .specialty,
+html:not([data-bpd-theme="dark"]) #services .police-specialty-grid > .specialty {
+  background:#f8faff!important;
+  border:1px solid #d0dfee!important;
+  border-radius:9px;
+}
+html:not([data-bpd-theme="dark"]) #services .specialty > summary,
+html:not([data-bpd-theme="dark"]) #services .police-specialty-grid > .specialty > summary {
+  background:#254a70!important;
+  border-color:#5b83a9!important;
+  color:#fff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .specialty > summary :is(small,strong,.specialty-branch-count,.fire-specialty-title-name),
+html:not([data-bpd-theme="dark"]) #services .specialty > summary::after {
+  color:#e2efff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .specialty > .specialty-content {
+  background:#f8faff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .group-title:not(.instructors):not(.ae-leadership) {
+  color:#315878!important;
+}
+html:not([data-bpd-theme="dark"]) #services .group-title.members {
+  color:#e4f2ff!important;
+  background:#244a70!important;
+}
+html:not([data-bpd-theme="dark"]) #services .police-instructors-panel {
+  background:#203951!important;
+  border-color:#806e4c!important;
+}
+html:not([data-bpd-theme="dark"]) #services .police-instructors-panel > .group-title.instructors,
+html:not([data-bpd-theme="dark"]) #services .police-instructors-panel .police-instructor-sync-note {
+  color:#f5d9a0!important;
+}
+html:not([data-bpd-theme="dark"]) #services .police-specialty-detail .police-teamleader-panel > .group-title.ae-leadership {
+  background:#28516f!important;
+  color:#fff!important;
+}
+
+/* The status line reads as a single quiet brand-colour announcement. */
+html:not([data-bpd-theme="dark"]) #source.notice {
+  background:#174052!important;
+  color:#f0fbff!important;
+  border-color:#3f6b81!important;
+}
+html:not([data-bpd-theme="dark"]) #source.notice.warn {
+  background:#665025!important;
+  color:#fff0cf!important;
+  border-color:#ad8a42!important;
+}
+html:not([data-bpd-theme="dark"]) .board {
+  background:#fff!important;
+  border:1px solid #cbdced!important;
+  color:#214267!important;
+}
+html:not([data-bpd-theme="dark"]) .board :is(summary,strong,.board-subtitle) {
+  color:#234365!important;
+}
+
+/* Administrator-only editors can stay light without losing readable hints. */
+html:not([data-bpd-theme="dark"]) main > .manager {
+  background:#fff!important;color:#1c3f63!important;
+}
+html:not([data-bpd-theme="dark"]) main > .manager :is(.manager-note,label,h2,h3) {
+  color:#3b5676!important;
+}
+/* All service/status accent badges, images and medals use their own rules. */
+}
