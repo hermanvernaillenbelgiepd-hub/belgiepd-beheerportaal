@@ -1934,7 +1934,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
   <button type="button" data-view="ambulance">Ambulance</button>
   <button type="button" data-view="depannage">Depannage</button>
   <button type="button" data-view="burger">Burger</button>
-  <button type="button" id="demo-toggle" aria-pressed="true">Voorbeeldgegevens</button>
+  <button type="button" id="demo-toggle" aria-pressed="false" hidden>Voorbeeldgegevens (TEST)</button>
    <button type="button" id="toggle-cadres" aria-label="Alle zichtbare kaders inklappen">▴ Alle kaders inklappen</button>
   <button type="button" id="police-specialty-toggle" hidden>⚙ Handmatige specialisaties</button>
   <button type="button" id="manage-toggle" hidden>⚙ Technisch beheer</button>
@@ -1942,7 +1942,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
   <button type="button" id="login">Aanmelden</button>
   <input type="search" id="search" placeholder="Zoek naam, rang of specialisatie" aria-label="Doorzoek organogram">
  </nav>
- <div id="source" class="notice warn">Voorbeeldgegevens laden …</div>
+ <div id="source" class="notice" role="status" aria-live="polite">Echte organogramgegevens laden…</div>
  <section id="police-specialty-editor" class="manager police-specialty-editor" hidden aria-label="Handmatige politiespecialisaties">
   <h2>Handmatige politiespecialisaties · Officierenkader en Korpsleiding</h2>
   <p class="manager-note">Alle politie-specialisaties inclusief K9. Handmatige weergave zonder wijziging van Discord-rollen, aanstellingen of dossierbevoegdheden.</p>
@@ -2122,8 +2122,9 @@ const fixtures=[
  {dept:'burger',name:'Voorbeeld Burgerraad',call:'BUR-01',rank:'Burgerraad'},
  {dept:'burger',name:'Voorbeeld Burgerlid',call:'BUR-10',rank:'Burger',specialties:['Burgerproject']}
 ];
-const state={view:'alle',query:'',demo:true,live:[],board:[],loaded:false,canManageAE:false,
+const state={view:'alle',query:'',demo:false,live:[],board:[],loaded:false,canManageAE:false,
  cadreOpen:{},serviceOpen:{},specialtyOpen:{},specializationsOpen:true};
+let fixtureModeAllowed=false;
 let auth=null,authModule=null,adminPeople=[],adminSpecialties={},adminLeadership={},activeAdminPerson=null;
 let managerReady=false,dragPerson=null,dragSaving=false,lastMidBatchId=null;
 function el(tag,cls,text){
@@ -3202,6 +3203,8 @@ function render(){
  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===state.view)));
  $('demo-toggle').setAttribute('aria-pressed',String(state.demo));
  $('services').replaceChildren();
+ // Zonder vrijgegeven gegevens nooit fictieve personen of lege voorbeeldkaders tonen.
+ if(!state.loaded&&!state.demo){syncCadreToggle();return;}
  const dataset=hierarchy(filteredRows());
  const solo=state.view!=='alle';
  for(let i=0;i<SERVICES.length;i++){
@@ -3215,7 +3218,7 @@ document.querySelector('.toolbar').addEventListener('click',event=>{
  const btn=event.target.closest('button');if(!btn)return;
  if(btn.id==='toggle-cadres')return;
  if(btn.dataset.view)state.view=btn.dataset.view;
- else if(btn.id==='demo-toggle'&&state.loaded)state.demo=!state.demo;
+ else if(btn.id==='demo-toggle'&&fixtureModeAllowed)state.demo=!state.demo;
  render();
 });
 $('search').addEventListener('input',event=>{state.query=event.target.value;render()});
@@ -3282,16 +3285,15 @@ async function loadPublic(){
   state.demo=false;
   $('source').className='notice'+(payload.stale||!payload.syncAvailable?' warn':'');
   $('source').textContent='MAIN · '
-   +(state.demo?'FICTIEVE VOORBEELDEN · ':'')
    +state.live.length+' geregistreerde dienstfuncties · '
    +(payload.syncAvailable?'Discord-sync gecontroleerd.':'Discord-sync tijdelijk onvolledig; handmatige functies blijven behouden.')
    +(payload.stale?' · Personeelsbron is mogelijk verouderd.':'');
  }catch(error){
-  state.loaded=false;state.live=[];state.board=[];state.demo=true;state.canManageAE=false;
+  state.loaded=false;state.live=[];state.board=[];state.demo=false;state.canManageAE=false;
   $('source').className='notice warn';
   $('source').textContent=auth?.currentUser?
    'Organogramgegevens tijdelijk niet beschikbaar: '+error.message:
-   'Meld je aan om echte personeelsgegevens te zien. De fictieve demonstratie blijft herkenbaar.';
+   'Meld je aan om de echte personeelsgegevens te zien.';
  }
  render();
  if(requestedCard){
@@ -3309,6 +3311,11 @@ async function setupManagement(){
  try{
   const response=await fetch('/api/client-config',{cache:'no-store'});
   const config=await response.json();
+  // Alleen de afzonderlijke belgiepd-test-omgeving mag bewust voorbeelden tonen.
+  // MAIN start altijd met echte gegevens en valt nooit terug op voorbeelden.
+  fixtureModeAllowed=config.firebaseConfig?.projectId==='belgiepd-test';
+  $('demo-toggle').hidden=!fixtureModeAllowed;
+  if(!fixtureModeAllowed)state.demo=false;
   if(!response.ok||!config.enabled)throw Error('Aanmelding tijdelijk niet beschikbaar');
   const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
   authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
