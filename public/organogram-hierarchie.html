@@ -2408,6 +2408,9 @@ function openPersonProfile(p){
  fact('Dienst',SERVICES.find(x=>x.id===p.dept)?.name||p.dept);
  fact('Rang / functie',window.BPDPoliceUniform?.gradeFor?.(p)?.label||p.rank||'Niet geregistreerd');
  fact('Niveau (indicatief)',getTier(p));
+ if(p.dept==='politie'&&p.reekshoofdReeks)
+  fact('Reeksfunctie',p.reekshoofdReeks==='VLINDER'?'VLINDER':
+   'Reekshoofd – '+p.reekshoofdReeks);
  fact('Personeelsstatus',p.status||'Niet vermeld');
  if(Array.isArray(p.displayLabels)&&p.displayLabels.length)
   fact('Extra weergavelabel',p.displayLabels.map(x=>x.toUpperCase()).join(' · '));
