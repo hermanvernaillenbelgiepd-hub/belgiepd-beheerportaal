@@ -2603,7 +2603,9 @@ function openPersonProfile(p){
     patch.setAttribute('role','img');
     patch.setAttribute('aria-label','MOTARD-patch: '+MOTARD_PATCH_ROLE_LABELS[level]);
     item.append(patch);
-    item.append(el('span','person-profile-specialty-role',MOTARD_PATCH_ROLE_LABELS[level]));
+    // De patch blijft functiegebonden; een gewoon volwaardig lid krijgt geen overbodig onderschrift.
+    if(level!=='volwaardig')
+     item.append(el('span','person-profile-specialty-role',MOTARD_PATCH_ROLE_LABELS[level]));
    }else if(p.dept==='politie'&&name==='DISP'){
     const level=Object.hasOwn(DISP_PATCH_ROLE_LABELS,p.dispRole)?
      p.dispRole:roles.some(r=>r==='instructeur')?'instructeur':'volwaardig';
@@ -2612,7 +2614,8 @@ function openPersonProfile(p){
     patch.setAttribute('role','img');
     patch.setAttribute('aria-label','DISP-patch: '+DISP_PATCH_ROLE_LABELS[level]);
     item.append(patch);
-    item.append(el('span','person-profile-specialty-role',DISP_PATCH_ROLE_LABELS[level]));
+    if(level!=='volwaardig')
+     item.append(el('span','person-profile-specialty-role',DISP_PATCH_ROLE_LABELS[level]));
    }else if(p.dept==='politie'&&name==='AE'){
     // One AE specialty, with verified Discord levels visible INSIDE it.
     // A user may be both an instructor and a teamleader; show both roles.
@@ -2620,15 +2623,15 @@ function openPersonProfile(p){
     const levels=aeRoles.map(level=>AE_LEVEL_LABELS[level]).filter(Boolean);
     if(!levels.length&&roles.includes('instructeur'))levels.push('AE-INSTRUCTEUR');
     item.append(el('span','person-profile-specialty-role',
-      levels.length?levels.join(' · ')+(p.aeManual?' · handmatig geregistreerd':''):
-      'AE-lid · functieniveau niet geverifieerd'));
+      levels.length?levels.join(' · '):'Functieniveau niet geverifieerd'));
    }else if(p.dept==='politie'&&(name==='RAGO-IO'||name==='RAGO')){
     // Different patches: verified full RAGO versus training role RAGO-IO.
     item.classList.add('person-profile-specialty-rago-io');
     const full=name==='RAGO';
     const isRagoInstructor=full&&roles.some(r=>r==='instructeur'||r==='docent');
-    item.append(el('span','person-profile-specialty-role',
-     isRagoInstructor?'RAGO · INSTRUCTEUR':full?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'));
+    if(isRagoInstructor||!full)
+     item.append(el('span','person-profile-specialty-role',
+      isRagoInstructor?'RAGO · INSTRUCTEUR':'IN OPLEIDING'));
     const patch=el('img','person-profile-specialty-badge rago-io-badge');
     patch.src=full?(isRagoInstructor?
      (roleArtworkUrl(RAGO_DISCORD_ROLE_ID,'instructeur')||RAGO_INSTRUCTOR_PATCH):
@@ -2641,8 +2644,9 @@ function openPersonProfile(p){
     if(isRagoInstructor)patch.classList.add('rago-instructor-badge');
     item.append(patch);
    }else{
-    const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
-    item.append(el('span','person-profile-specialty-role',role));
+    // Alleen bijzondere functies tonen; gewoon lidmaatschap blijkt al uit de kaarttitel.
+    if(roles.length)item.append(el('span','person-profile-specialty-role',
+     roles.map(r=>r==='instructeur'?'INSTRUCTEUR':'DOCENT').join(' · ')));
    }
    // A service-local or federal patch can replace only the visual badge.
    // Verified qualification/function labels are preserved unchanged.
@@ -2693,11 +2697,14 @@ function openPersonProfile(p){
     badge.setAttribute('aria-label','RADIO/BM — neutrale tekstplaat, nog geen officiële badge');
     item.append(badge);
    }
-   if(matchedArtwork?.level&&matchedArtwork.source==='discord'&&
+   // Discord-patchniveaus blijven beschikbaar voor validatie, maar algemene
+   // lidmaatschapslabels horen niet op de compacte profielkaart.
+   const badgeLevel=String(matchedArtwork?.level||'').trim();
+   if(matchedArtwork?.source==='discord'&&badgeLevel&&
+     /(instructeur|teamleader|in[ _-]opleiding|stage|geleider|docent|ae-[it])/i.test(badgeLevel)&&
      ![...item.querySelectorAll('.person-profile-specialty-role')].some(x=>
-       x.textContent?.includes(matchedArtwork.level)))
-    item.append(el('span','person-profile-specialty-role',
-      'Discord geverifieerd: '+matchedArtwork.level));
+       x.textContent?.toLowerCase().includes(badgeLevel.toLowerCase())))
+    item.append(el('span','person-profile-specialty-role',badgeLevel));
    normalizeSpecialtyBadges(item);
    list.append(item);
   }
