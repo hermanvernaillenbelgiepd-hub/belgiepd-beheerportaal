@@ -53,7 +53,8 @@ test('personnel card refresh is scoped to one roster member and never modifies r
  assert.match(backend,/verifyLiveSpecialtyRoles\(staff\.personId\)/);
  assert.match(html,/refreshProfileSpecialtyRoles\(p,profileKey\)/);
  assert.match(html,/name==='RADIO\/BM'\?'':/);
- assert.match(html,/person\.aeRoles=Array\.isArray\(response\.aeRoles\)/);
+ assert.match(html,/const autoAE=Array\.isArray\(response\.aeRoles\)/);
+ assert.match(html,/person\.aeRoles=\[\.\.\.new Set\(\[\.\.\.autoAE/);
  assert.match(dossier,/verifyLiveSpecialtyRoles\(staff\.personId\)/);
  assert.match(admin,/verifyLiveSpecialtyRoles\(discordId\)/);
 });

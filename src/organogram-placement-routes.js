@@ -18,6 +18,8 @@ import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
+export const AE_MANUAL_DISPLAY_COLLECTION='bpd_ae_display_roles';
+const AE_MANUAL_LEVELS=new Set(['ae_i','ae_t','teamleader','instructeur']);
 const idOK=id=>/^\d{15,22}$/.test(String(id||''));
 const fault=(code,msg)=>Object.assign(new Error(msg),{publicStatus:code});
 const respond=(res,e)=>{
@@ -67,7 +69,7 @@ const safePublic=p=>({
  dept:p.dept,name:p.name,call:p.call,rank:p.rank,specialties:p.specialties,
  teachingRoles:p.teachingRoles,displayLabels:p.displayLabels||[],instructorSpecialties:p.instructorSpecialties,
  teacherSpecialties:p.teacherSpecialties,k9Role:p.k9Role||'',motardRole:p.motardRole||'',dispRole:p.dispRole||'',
- aeRole:p.aeRole||'',aeRoles:Array.isArray(p.aeRoles)?p.aeRoles:[],
+ aeRole:p.aeRole||'',aeManual:p.aeManual||'',aeRoles:Array.isArray(p.aeRoles)?p.aeRoles:[],
  aeTeamleader:p.aeTeamleader===true,boardRole:p.boardRole,leadershipTier:p.leadershipTier,displayOrder:p.displayOrder,source:p.source
 });
 export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
@@ -78,11 +80,12 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
   try{
    const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(p=>validRow(p)&&p.dept!=='burger').slice(0,1200);
-   const [manualSnap,k9Snap,motardSnap,dispSnap,decorationSnap,catalogSnap]=await Promise.all([
+   const [manualSnap,k9Snap,motardSnap,dispSnap,aeSnap,decorationSnap,catalogSnap]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
     db.collection(MOTARD_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(DISP_DISPLAY_COLLECTION).limit(1500).get(),
+    db.collection(AE_MANUAL_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(500).get(),
     db.collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get()
    ]);
@@ -118,6 +121,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const k9Manual=manualMap(k9Snap.docs);
    const motardManual=manualMap(motardSnap.docs);
    const dispManual=manualMap(dispSnap.docs);
+   const aeManual=manualMap(aeSnap.docs);
    // Public award projection: no private history, hidden items or revoked medals.
    const decorationEntries=new Map(decorationSnap.docs.map(d=>[d.id,d.get('entries')||[]]));
    const customCatalog=new Map(catalogSnap.docs.map(d=>[d.id,customCatalogItem(d)])
@@ -195,6 +199,17 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
      if(!merged.motardRole&&merged.specialties.includes('MOTARD'))
       merged.motardRole=merged.instructorSpecialties.includes('MOTARD')?'instructeur':'volwaardig';
      if(merged.motardRole&&!merged.specialties.includes('MOTARD'))merged.specialties.push('MOTARD');
+     // Audited manual AE display level supplements (never impersonates) verified Discord.
+     const chosenAE=String(aeManual.get(p.personId)?.role||'');
+     if(AE_MANUAL_LEVELS.has(chosenAE)){
+      merged.aeManual=chosenAE;
+      merged.aeRoles=[...new Set([...(merged.aeRoles||[]),chosenAE])];
+      merged.aeTeamleader=merged.aeRoles.includes('teamleader');
+      merged.aeRole=merged.aeTeamleader?'teamleader':
+       merged.aeRoles.includes('instructeur')?'instructeur':
+       merged.aeRoles.includes('ae_t')?'ae_t':'ae_i';
+      if(!merged.specialties.includes('AE'))merged.specialties.push('AE');
+     }
      const dispAuto=verifiedDispDisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID);
      merged.dispRole=effectiveDispDisplayRole(dispManual.get(p.personId)?.role||'',dispAuto);
      // Existing DISP members without level metadata remain visible, but
@@ -255,7 +270,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    return res.status(400).json({error:'Ongeldige personeelsselectie'});
   try{
    const snapshot=await getSnapshot();
-   if(snapshot.stale)return res.status(503).json({error:'Personeelsbron tijdelijk niet actueel'});
+   // Read-only display verification may run on a uniquely matched roster row
+   // even when the obsolete Sheets refresh is marked stale.
    const targets=snapshot.data.filter(p=>validRow(p)&&p.dept===dept&&p.call===call);
    if(targets.length!==1)return res.status(404).json({error:'Geen uniek personeelslid gevonden'});
    const staff=targets[0],key=String(process.env.DISCORD_GUILD_ID||'')+':'+staff.personId;
@@ -420,21 +436,23 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
   try{
    const db=store(),snapshot=await getSnapshot();
    const people=snapshot.data.filter(p=>validRow(p)&&p.dept==='politie').slice(0,1200);
-   const [placements,k9Snap,motardSnap,dispSnap,identities]=await Promise.all([
+   const [placements,k9Snap,motardSnap,dispSnap,aeSnap,identities]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
     db.collection(MOTARD_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(DISP_DISPLAY_COLLECTION).limit(1500).get(),
+    db.collection(AE_MANUAL_DISPLAY_COLLECTION).limit(1500).get(),
     identityMap(db,people.map(p=>p.personId),process.env.DISCORD_GUILD_ID)
    ]);
    if(placements.size>=1500||k9Snap.size>=1500)throw fault(503,'Registerlimiet bereikt');
-   const pm=manualMap(placements.docs),km=manualMap(k9Snap.docs),mm=manualMap(motardSnap.docs),dm=manualMap(dispSnap.docs);
+   const pm=manualMap(placements.docs),km=manualMap(k9Snap.docs),mm=manualMap(motardSnap.docs),dm=manualMap(dispSnap.docs),am=manualMap(aeSnap.docs);
    return res.json({displayOnly:true,canEdit:true,specialties:SPECIALTIES.politie,
     people:people.map(p=>{
      const v=manualDisplay(pm.get(personKey('politie',p.personId)),'politie');
      const verified=verifiedSyncRoles(identities.entries.get(p.personId),'politie',process.env.DISCORD_GUILD_ID);
      return {personId:p.personId,name:safeName(p.name),
       aeRole:verified.aeRole,aeRoles:verified.aeRoles,aeTeamleader:verified.aeTeamleader,
+      aeManual:AE_MANUAL_LEVELS.has(am.get(p.personId)?.role)?am.get(p.personId).role:'',
       call:String(p.call||'').slice(0,24),
       specialties:v?.specialties||[],
       instructorSpecialties:v?.instructorSpecialties||[],
@@ -469,8 +487,9 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const k9Ref=db.collection(K9_ROLE_COLLECTION).doc(personId);
    const motardRef=db.collection(MOTARD_DISPLAY_COLLECTION).doc(personId);
    const dispRef=db.collection(DISP_DISPLAY_COLLECTION).doc(personId);
+   const aeRef=db.collection(AE_MANUAL_DISPLAY_COLLECTION).doc(personId);
    await db.runTransaction(async tx=>{
-    const [old,oldK9,oldMotard,oldDisp]=await Promise.all([tx.get(ref),tx.get(k9Ref),tx.get(motardRef),tx.get(dispRef)]);
+    const [old,oldK9,oldMotard,oldDisp,oldAE]=await Promise.all([tx.get(ref),tx.get(k9Ref),tx.get(motardRef),tx.get(dispRef),tx.get(aeRef)]);
     const previous=rawDisplay(old);
     const preserve=manualDisplay(old.data(),'politie')||DEFAULT_PLACEMENT;
     const next=validatePlacement({...preserve,
@@ -507,6 +526,14 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       displayOnly:true});
      tx.create(motardRef.collection('audit').doc(),{action:'motard_display_role',
       previous:previousMotardRole,next:values.motardRole,reason:values.reason,
+      actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+    }
+    const previousAERole=oldAE.exists?oldAE.get('role')||'':'';
+    if(previousAERole!==values.aeRole){
+     tx.set(aeRef,{dept:'politie',personId,role:values.aeRole,
+      updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid,displayOnly:true});
+     tx.create(aeRef.collection('audit').doc(),{action:'ae_display_role',
+      previous:previousAERole,next:values.aeRole,reason:values.reason,
       actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
     }
     const previousDispRole=oldDisp.exists?oldDisp.get('role')||'':'';

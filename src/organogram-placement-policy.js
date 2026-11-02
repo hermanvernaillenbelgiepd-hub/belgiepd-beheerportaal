@@ -92,7 +92,7 @@ export function validatePlacement(body,dept){
 // placement properties (board, tier, global labels and order) are not editable.
 export function validatePoliceSpecialtyEdit(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||
-  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','motardRole','dispRole','reason'].includes(k)))
+  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','motardRole','dispRole','aeRole','reason'].includes(k)))
   throw Error('Ongeldige specialisatiewijziging');
  const specialties=body.specialties,ins=body.instructorSpecialties,teachers=body.teacherSpecialties;
  const allowed=SPECIALTIES.politie;
@@ -129,11 +129,18 @@ export function validatePoliceSpecialtyEdit(body){
   throw Error('DISP-instructeur vereist de instructeursselectie');
  if(dispRole&&dispRole!=='instructeur'&&ins.includes('DISP'))
   throw Error('DISP heeft één functieniveau tegelijk');
+ const aeRole=String(body.aeRole??'');
+ if(!['','ae_i','ae_t','teamleader','instructeur'].includes(aeRole))
+  throw Error('Ongeldige AE-functie');
+ if(aeRole&&!specialties.includes('AE'))
+  throw Error('Selecteer eerst AE-lidmaatschap');
+ if(aeRole==='instructeur'&&!ins.includes('AE'))
+  throw Error('AE-instructeur vereist de instructeursselectie');
  const reason=strip(body.reason);
  if(reason.length<8||reason.length>300)
   throw Error('Motivering van 8 tot 300 tekens verplicht');
  return {specialties:[...specialties],instructorSpecialties:[...ins],
-  teacherSpecialties:[...teachers],k9Role,motardRole,dispRole,reason};
+  teacherSpecialties:[...teachers],k9Role,motardRole,dispRole,aeRole,reason};
 }
 export function manualDisplay(raw,dept){
  if(!raw||raw.status!=='active'||raw.dept!==dept)return null;
