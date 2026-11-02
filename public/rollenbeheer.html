@@ -75,6 +75,13 @@ button.alt{background:#26455f}
 </div>
 <div class="actions"><button type="button" id="specialtyLinkSave">Gecontroleerde koppelingen bewaren</button></div>
 </section>
+<section id="discordLinkAudit">
+ <h2>Discord-rolherkenning controleren</h2>
+ <p class="help">Personeelsleden worden via exacte Discord-ID's gekoppeld. Controleer wie in de Discord-API ontbreekt of dubbel geregistreerd is. Dit verandert geen Discord- of portaalrechten.</p>
+ <div class="actions"><button type="button" class="alt" id="discordLinkAuditRun">Koppelingen controleren</button></div>
+ <p id="discordLinkAuditStatus" class="status" role="status">Alleen voor technisch beheer. Start de controle handmatig.</p>
+ <div id="discordLinkAuditResults" aria-live="polite"></div>
+</section>
 <section id="specialtyPanel" hidden>
 <h2>3. Specialisatie toekennen / wijzigen</h2>
 <p class="help">Deze wijziging wordt in het personeelsdossier en activiteitenlog geregistreerd. Het is geen automatische Discord-roltoekenning.</p>
@@ -153,6 +160,52 @@ async function api(path,method='GET',body){
 const specialtyLinksUI=createSpecialtyLinksUI({api,notify:alertUser,
  getDepartment:()=>$('dept').value,getPerson:()=>selected,
  selectedSpecialty:()=>$('specialty').value});
+$('discordLinkAuditRun').onclick=async()=>{
+ const btn=$('discordLinkAuditRun'),status=$('discordLinkAuditStatus');
+ const target=$('discordLinkAuditResults');
+ btn.disabled=true;target.replaceChildren();status.textContent='Discord-koppelingen controleren…';
+ try{
+  const report=await api('/api/organogram/discord-links/admin');
+  if(report.status!=='ok'){
+   status.textContent='Discord-API niet beschikbaar ('+report.status+'). Geen wijzigingen uitgevoerd.';
+   return;
+  }
+  const n=report.stats||{};
+  status.textContent='Personeelsfiches: '+(n.total||0)+' · gekoppeld: '+(n.matched||0)+
+   ' · niet gevonden: '+(n.missing||0)+' · dubbel: '+(n.duplicate||0)+
+   (report.stale?' · personeelsbron verouderd':'');
+  const table=document.createElement('table');
+  const head=document.createElement('thead'),tr=document.createElement('tr');
+  for(const label of ['Dienst','Totaal','Gekoppeld','Niet gevonden','Dubbel']){
+   const th=document.createElement('th');th.textContent=label;tr.append(th);
+  }
+  head.append(tr);table.append(head);
+  const body=document.createElement('tbody');
+  for(const row of report.services||[]){
+   const line=document.createElement('tr');
+   for(const val of [row.dept,row.total,row.matched,row.missing,row.duplicate]){
+    const td=document.createElement('td');td.textContent=String(val);line.append(td);
+   }
+   body.append(line);
+  }
+  table.append(body);target.append(table);
+  if(report.issues?.length){
+   const h=document.createElement('h3');h.textContent='Personeelsfiches die aandacht vragen';
+   target.append(h);
+   for(const issue of report.issues){
+    const line=document.createElement('p');line.className='state';
+    line.textContent=[issue.dept,issue.call,issue.name,issue.personId,
+     issue.status==='duplicate'?'Dubbele registratie':'Niet gevonden in Discord-API'].join(' · ');
+    target.append(line);
+   }
+  }else{
+   const p=document.createElement('p');p.textContent='Geen ontbrekende of dubbele koppelingen gevonden.';
+   target.append(p);
+  }
+ }catch(e){status.textContent=e.message;}
+ finally{btn.disabled=false;}
+};
+
 const key=x=>x.dept+'_'+x.discordId;
 function choosePeople(){
  const dept=$('dept').value,query=$('search').value.trim().toLowerCase();
