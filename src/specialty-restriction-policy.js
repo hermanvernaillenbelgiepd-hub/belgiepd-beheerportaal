@@ -13,6 +13,9 @@ export function canRestrictSpecialty(actor,person){
  return Boolean(person&&actor?.uid==='discord:'+actor.discordId&&
   actor.discordId!==person.personId&&
   actor.dossierNativeDepartments?.includes(person.dept)&&
+  // Fire middle cadre may only submit observations, not apply restrictions.
+  !(person.dept==='brandweer'&&!actor.fireZoneChief&&
+    roleForDepartment(actor,'brandweer')==='middenkader')&&
   // A police Middenkader member may restrict only a lower cadre, never
   // another MK, officer or corps member.
   !(person.dept==='politie'&&roleForDepartment(actor,'politie')==='middenkader'&&

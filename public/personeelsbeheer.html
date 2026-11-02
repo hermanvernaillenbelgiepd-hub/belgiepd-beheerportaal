@@ -2811,10 +2811,10 @@ function sheetDossierProfile(profile={}){
   root.append(list);
 }
 // Dynamisch samengesteld uit de twee bestaande beveiligde bronnen.
-let importantCaseEntries=[],importantRestrictionEntries=[],
+let importantCaseEntries=[],importantRestrictionEntries=[],importantPortalRestrictionEntries=[],
   importantCaseLimited=false,importantRestrictionLimited=false;
 function renderDossierImportantNotes(){
-  const entries=[...importantCaseEntries,...importantRestrictionEntries]
+  const entries=[...importantCaseEntries,...importantRestrictionEntries,...importantPortalRestrictionEntries]
     .sort((a,b)=>String(b.eventDate||'').localeCompare(String(a.eventDate||'')));
   sheetSetRows('notes',entries,x=>[
     x.eventDate||'—',
@@ -3487,6 +3487,16 @@ async function loadSpecialtyState(p){
     }catch(error){restrictionData={error:error.message,entries:[],history:[],
        canRestrict:false,revision:0}}
     if(!same())return;
+    importantPortalRestrictionEntries=(restrictionData.entries||[])
+     .filter(x=>['actief','gepland'].includes(x.status)).map(x=>({
+      type:'specialisatiebeperking',eventDate:x.startDate,
+      importantTitle:'Tijdelijke beperking · '+x.label,
+      details:'Specialisatie: '+x.label+' · '+x.startDate+' t.e.m. '+
+       x.endDate+' · '+(x.status==='gepland'?'gepland':'actief')+
+       ' · '+x.reason,
+      registeredBy:{name:'Intern specialisatieregister'}
+     }));
+    renderDossierImportantNotes();
     window.BPDSpecialtyDossierControls?.render({
       target:$('unifiedSpecialtyRows'),history:$('unifiedRestrictionHistoryRows'),
       status:$('unifiedSpecialtyState'),items:specialtyItems,
@@ -3830,7 +3840,7 @@ async function loadStaffDossier(p){
   $('staffDiscordRoles').textContent='Discord-verificatie controleren…';
   $('staffLeave').textContent='Verlofperiodes laden…';
   $('staffFormalRecords').textContent='Formele registraties laden…';
-  importantCaseEntries=[];importantRestrictionEntries=[];
+  importantCaseEntries=[];importantRestrictionEntries=[];importantPortalRestrictionEntries=[];
   importantCaseLimited=false;importantRestrictionLimited=false;
   $('sheetNotes').textContent='Notities laden…';
   $('staffFormalForm').hidden=true;

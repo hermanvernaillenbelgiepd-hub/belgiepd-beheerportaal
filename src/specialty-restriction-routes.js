@@ -1,6 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {validPersonnelKey,canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
+import {roleForDepartment} from './leave-policy.js';
 import {extraSpecialtyLabels} from './roster-column-config.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {specialtyReadEnabled,specialtyWritesEnabled} from './specialization-policy.js';
@@ -24,6 +25,11 @@ export function installSpecialtyRestrictionRoutes(app,{requireUser,getSnapshot})
   if(matched.length!==1)throw fail(404,'Geen eenduidige personeelsfiche');
   if(!canReadPersonnelSubject(req.bpd,matched[0]))
    throw fail(403,'Geen inzage in deze afgeschermde personeelsfiche');
+  // Fire middle cadre can see identity and submit an observation, but
+  // must never receive confidential notes or restriction explanations.
+  if(dept==='brandweer'&&!req.bpd.fireZoneChief&&
+    roleForDepartment(req.bpd,'brandweer')==='middenkader')
+   throw fail(403,'Geen toegang tot vertrouwelijke Brandweerbeperkingen');
   return matched[0];
  }
  app.get('/api/personnel/:dept/:discordId/specialty-restrictions',requireUser,async(req,res)=>{

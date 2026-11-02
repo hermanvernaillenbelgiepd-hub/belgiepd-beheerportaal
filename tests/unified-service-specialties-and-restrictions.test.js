@@ -51,6 +51,8 @@ test('integration is scoped to dossier API, all-service UI, and dynamic weekrepo
  assert.match(route,/tx\.create\(ref\.collection\('audit'\)/);
  assert.match(page,/specialty-dossier-controls\.js/);
  assert.match(page,/window\.BPDSpecialtyDossierControls\?\.render/);
+ assert.match(page,/importantPortalRestrictionEntries/);
+ assert.match(route,/Geen toegang tot vertrouwelijke Brandweerbeperkingen/);
  assert.match(report,/specialty_restriction_started/);
  assert.match(report,/specialty_restriction_lifted/);
 });
