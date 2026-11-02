@@ -854,6 +854,21 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-specialty-role{display:block;color:#b7d9f7;font-size:10px;margin-top:3px}
 .person-profile-specialty.person-profile-specialty-k9{border-color:#6c88a7}
 .person-profile-specialty-k9 .person-profile-specialty-role{margin-top:0}
+.person-profile-specialty .ae-level-text-patch{
+ display:flex!important;align-items:center;justify-content:center;
+ background:linear-gradient(135deg,#081222,#1c2d48);
+ border:1px solid #8b9cb4;border-radius:5px;
+ font-size:11px;font-weight:800;color:#f1f4ff;
+ text-align:center;letter-spacing:.035em;padding:4px 8px;
+}
+.person-profile-ae-editor{margin:10px 0;border:1px solid #51759b;
+ border-radius:8px;padding:8px;color:#d6e8ff;background:#102b46}
+.person-profile-ae-editor summary{cursor:pointer;font-size:12px;font-weight:700}
+.person-profile-ae-editor-body{display:grid;gap:8px;margin-top:9px}
+.person-profile-ae-editor-body select,.person-profile-ae-editor-body textarea{
+ background:#0b1e33;color:#f1f6ff;border:1px solid #6a91b7;border-radius:6px;padding:8px}
+.person-profile-ae-editor-body button{background:#245887;color:white;border:1px solid #81abd4;
+ border-radius:6px;padding:8px 10px}
 .person-profile-specialty .radio-bm-text-patch{
  display:flex!important;align-items:center;justify-content:center;
  background:linear-gradient(145deg,#070e19,#172d48 70%,#07111f);
@@ -2107,7 +2122,7 @@ const fixtures=[
  {dept:'burger',name:'Voorbeeld Burgerraad',call:'BUR-01',rank:'Burgerraad'},
  {dept:'burger',name:'Voorbeeld Burgerlid',call:'BUR-10',rank:'Burger',specialties:['Burgerproject']}
 ];
-const state={view:'alle',query:'',demo:true,live:[],board:[],loaded:false,
+const state={view:'alle',query:'',demo:true,live:[],board:[],loaded:false,canManageAE:false,
  cadreOpen:{},serviceOpen:{},specialtyOpen:{},specializationsOpen:true};
 let auth=null,authModule=null,adminPeople=[],adminSpecialties={},adminLeadership={},activeAdminPerson=null;
 let managerReady=false,dragPerson=null,dragSaving=false,lastMidBatchId=null;
@@ -2507,6 +2522,48 @@ function openPersonProfile(p){
  const specBox=el('section','person-profile-specialization-box');
  specBox.append(el('h3','','Specialisaties'));
  secondary.append(specBox);
+ // The visible officer-only correction updates exactly one AE display field.
+ // Discord roles, qualifications and unrelated personnel data remain unchanged.
+ if(p.dept==='politie'&&!state.demo&&state.canManageAE){
+  const editor=el('details','person-profile-ae-editor');
+  const summary=el('summary','','AE-functieniveau corrigeren · Officierenkader / Korpsleiding');
+  const panel=el('div','person-profile-ae-editor-body');
+  const level=el('select',''),reason=el('textarea',''),save=el('button','','AE-functie bewaren');
+  level.setAttribute('aria-label','AE-functieniveau');
+  for(const [value,label] of [['','Automatisch volgens Discord (handmatige keuze wissen)'],
+   ['ae_i','AE-I'],['ae_t','AE-T'],['teamleader','TEAMLEADER / LEIDING'],
+   ['instructeur','AE-INSTRUCTEUR']]){
+   const option=el('option','',label);option.value=value;level.append(option);
+  }
+  level.value=p.aeManual||'';
+  reason.placeholder='Motivering (minimaal 8 tekens)';
+  reason.maxLength=300;reason.rows=2;
+  reason.setAttribute('aria-label','Motivering voor handmatige AE-functie');
+  save.type='button';
+  const feedback=el('p','person-profile-note','Deze keuze wordt gelogd en geeft geen Discord- of portaalrechten.');
+  save.addEventListener('click',async()=>{
+   const message=reason.value.trim();
+   if(message.length<8||message.length>300){
+    feedback.textContent='Een motivering van 8 tot 300 tekens is verplicht.';return;
+   }
+   save.disabled=true;feedback.textContent='AE-functie bewaren…';
+   try{
+    await authFetch('/api/organogram/ae-display/'+encodeURIComponent(p.call),{
+     method:'PUT',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({role:level.value,reason:message})
+    });
+    feedback.textContent='AE-functie opgeslagen en gelogd. Personeelskaart vernieuwen…';
+    profileSpecialtyChecks.delete(profileKey);
+    await loadPublic();
+    const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
+    if(dialog.open&&latest)openPersonProfile(latest);
+   }catch(error){feedback.textContent='Niet opgeslagen: '+error.message}
+   finally{save.disabled=false}
+  });
+  panel.append(level,reason,save,feedback);
+  editor.append(summary,panel);specBox.append(editor);
+ }
+
  const names=[...new Set(specialtyNames(p)
   .map(name=>p.dept==='politie'?policeSpecialtyName(name):name).filter(Boolean))];
  if(names.length){
@@ -2602,13 +2659,32 @@ function openPersonProfile(p){
       /^\/api\/role-artwork\/file\/(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})\?v=[a-zA-Z0-9-]+$/.test(entry.imageUrl)) :null;
    // RADIO/BM has no approved generic badge mapping. A historical upload
    // displayed BURGERMELDINGEN here; only an explicitly role-linked patch is safe.
-   const alternative=verified?(matchedArtwork?.imageUrl||
-    (name==='RADIO/BM'?'':window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant))) :'';
+   // AE badges must follow the confirmed or manual function, not silently
+   // fall back to the generic Arrestatie-Eenheid patch for a Teamleader.
+   const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',
+    teamleader:'1337775768083632158',instructeur:'1337156006597103746'};
+   const aeSpecific=name==='AE'&&Object.hasOwn(aeRoleIds,functionVariant);
+   const aeLevelImage=aeSpecific?(
+    window.BPDUniformAssignments?.specialtyVariantImage?.(p,name,functionVariant)||
+    roleArtworkUrl(aeRoleIds[functionVariant])):'';
+   const alternative=verified?(
+    matchedArtwork?.imageUrl||
+    (name==='RADIO/BM'?'':aeSpecific?aeLevelImage:
+     window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant))):'';
    if(alternative){
     item.querySelectorAll('.person-profile-specialty-badge,.rago-io-badge').forEach(x=>x.remove());
     const badge=el('img','person-profile-specialty-badge');
     badge.src=alternative;badge.alt=name+' · '+(window.BPDUniformAssignments?.forPerson?.(p).badgeStyle||'');
     badge.width=170;badge.height=53;badge.loading='lazy';item.append(badge);
+   }else if(aeSpecific){
+    // Clearly marked text fallback; never pretend the generic AE badge is a
+    // Teamleader insignia when the matching image has not been uploaded.
+    const level=AE_LEVEL_LABELS[functionVariant]||'AE';
+    const badge=el('span','person-profile-specialty-badge ae-level-text-patch',
+      'AE · '+level);
+    badge.setAttribute('role','img');
+    badge.setAttribute('aria-label','AE-functie '+level+' · passende badge nog niet gekoppeld');
+    item.append(badge);
    }else if(name==='RADIO/BM'){
     const badge=el('span','person-profile-specialty-badge radio-bm-text-patch','RADIO/BM');
     badge.setAttribute('role','img');
@@ -3192,6 +3268,7 @@ async function loadPublic(){
     personId:/^\d{15,22}$/.test(String(p.personId||''))?String(p.personId):null,
     source:String(p.source||'personeelslijst').slice(0,35)}));
   state.board=[]; // Geen bestuur in het operationele organogram.
+  state.canManageAE=payload.canManageAE===true;
   state.loaded=true;
   state.demo=false;
   $('source').className='notice'+(payload.stale||!payload.syncAvailable?' warn':'');
@@ -3201,7 +3278,7 @@ async function loadPublic(){
    +(payload.syncAvailable?'Discord-sync gecontroleerd.':'Discord-sync tijdelijk onvolledig; handmatige functies blijven behouden.')
    +(payload.stale?' · Personeelsbron is mogelijk verouderd.':'');
  }catch(error){
-  state.loaded=false;state.live=[];state.board=[];state.demo=true;
+  state.loaded=false;state.live=[];state.board=[];state.demo=true;state.canManageAE=false;
   $('source').className='notice warn';
   $('source').textContent=auth?.currentUser?
    'Organogramgegevens tijdelijk niet beschikbaar: '+error.message:

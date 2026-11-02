@@ -137,7 +137,7 @@ const SPECIALTY_CODES=Object.freeze({
  'k-9':'k9','k9':'k9','rago':'rago',
  'signalisatie':'signalisatie'
 });
-function specialtyImage(p,name,variant=''){
+function specialtyImage(p,name,variant='',strictVariant=false){
  const dept=String(p?.dept||'');
  if(!['politie','brandweer','ambulance','depannage','burger'].includes(dept))return '';
  const normalized=String(name||'').trim().toLowerCase();
@@ -152,7 +152,7 @@ function specialtyImage(p,name,variant=''){
  // Prefer explicitly uploaded variants, then general patches. Names used
  // before the central library (e.g. semi_anoniem vs semi_ano) stay supported.
  for(const code of codes){
-  const bases=[...(suffix?[code+'_'+suffix]:[]),code];
+  const bases=strictVariant?(suffix?[code+'_'+suffix]:[]):[...(suffix?[code+'_'+suffix]:[]),code];
   for(const part of bases){
    for(const visualStyle of styles)
     candidates.push('specialty_'+dept+'_'+part+'_'+visualStyle);
@@ -164,4 +164,5 @@ function specialtyImage(p,name,variant=''){
  }
  return candidates.map(key=>assetUrls.get(key)).find(Boolean)||'';
 }
-window.BPDUniformAssignments=Object.freeze({setData,forPerson,specialtyImage});
+window.BPDUniformAssignments=Object.freeze({setData,forPerson,specialtyImage,
+ specialtyVariantImage:(p,name,variant)=>specialtyImage(p,name,variant,true)});
