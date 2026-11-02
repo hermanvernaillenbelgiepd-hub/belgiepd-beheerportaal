@@ -26,7 +26,23 @@ export const policeRolePatchPresets=()=>POLICE_ROLE_PATCH_PRESETS.map(x=>({...x}
 // Upgrades an old manually saved mapping once, while leaving its entries intact.
 // After saving presetVersion=1, deleted/changed presets are NOT reinserted.
 export const POLICE_PATCH_PRESET_VERSION=1;
+// BW log/signa is a shared Discord role: precisely TWO visually distinct
+// qualifications. Never changes Discord role assignments or personnel rights.
+export const BW_LOG_SIG_ROLE_ID='1309532437952466986';
+export const BW_LOG_SIG_SPECIALTIES=Object.freeze(['Logistiek','Signalisatie']);
+export const BW_LOG_SIG_PRESETS=Object.freeze(BW_LOG_SIG_SPECIALTIES.map(label=>
+ Object.freeze({roleId:BW_LOG_SIG_ROLE_ID,label,level:'Volwaardig',value:'Ja',assetKey:''})
+));
+export const fireSharedSpecialtyAssetKeys=label=>{
+ const code=label==='Logistiek'?'logistiek':label==='Signalisatie'?'signalisatie':'';
+ return code?['specialty','patch'].flatMap(kind=>
+  [code,code+'_lokaal',code+'_federaal'].map(suffix=>kind+'_brandweer_'+suffix)):[];
+};
 export function defaultSpecialtyRoleLinks(dept,stored,alreadyApplied){
+ if(dept==='brandweer'){
+  const known=new Set(stored.filter(x=>x.roleId===BW_LOG_SIG_ROLE_ID).map(x=>x.label));
+  return [...stored,...BW_LOG_SIG_PRESETS.filter(x=>!known.has(x.label)).map(x=>({...x}))];
+ }
  if(dept!=='politie'||alreadyApplied)return stored;
  const known=new Set(stored.map(x=>x.roleId).filter(Boolean));
  return [...stored,...policeRolePatchPresets().filter(x=>!known.has(x.roleId))];

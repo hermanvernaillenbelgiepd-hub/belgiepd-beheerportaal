@@ -2693,7 +2693,10 @@ function openPersonProfile(p){
    const aeLevelImage=aeSpecific?(
     window.BPDUniformAssignments?.specialtyVariantImage?.(p,name,functionVariant)||
     roleArtworkUrl(aeRoleIds[functionVariant])):'';
-   const alternative=isFireDiver?fireSpecialtyPatchUrl(name):verified?(
+   const alternative=isFireDiver?fireSpecialtyPatchUrl(name):
+    p.dept==='brandweer'?(
+      matchedArtwork?.imageUrl||fireSpecialtyPatchUrl(name)||
+      window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)):verified?(
     matchedArtwork?.imageUrl||
     (name==='RADIO/BM'?'':aeSpecific?aeLevelImage:
      window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant))):'';

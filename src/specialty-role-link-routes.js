@@ -10,7 +10,8 @@ import {canEditLibrary} from './uniform-library-routes.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {SPECIALTY_STATES,allSpecialtyLabels} from './specialization-policy.js';
-import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
+import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
+ BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSharedSpecialtyAssetKeys} from './specialty-role-presets.js';
 import {suppressSupersededRagoMatches} from './rago-qualification-display.js';
 import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
 
@@ -74,8 +75,12 @@ export function validateSpecialtyRoleLinks(body,dept,labels,roles){
      level.length>45||/[<>\x00-\x1f]/.test(level)||
      !SPECIALTY_STATES.includes(value)||!assetBelongs)
     throw fail(400,'Kies een bestaande specialisatie, optionele Discord-rol, status en afbeelding van dezelfde dienst');
-  const unique=roleId||'manual:'+label;
+  const shared=dept==='brandweer'&&roleId===BW_LOG_SIG_ROLE_ID;
+  if(shared&&!BW_LOG_SIG_SPECIALTIES.includes(label))
+   throw fail(400,'BW log/signa kan alleen Logistiek en Signalisatie koppelen');
+  const unique=shared?roleId+':'+label:roleId||'manual:'+label;
   if(seen.has(unique))throw fail(400,roleId?
+    shared?'Deze Brandweer-specialisatie is al aan BW log/signa gekoppeld':
     'Een Discord-rol kan binnen een dienst maar één specialisatiekoppeling krijgen':
     'Deze specialisatie heeft al een koppeling zonder Discord-rol');
   seen.add(unique);
@@ -114,6 +119,14 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
        // A role artwork's visual slot is tied to its exact Discord ID.
        // Never guess a badge from another role or specialisation.
        if(x.assetKey||!x.roleId)return x;
+       // A shared BW role must NEVER reuse the same role-standard
+       // picture for both qualifications. Find their distinct library images.
+       if(dept==='brandweer'&&x.roleId===BW_LOG_SIG_ROLE_ID&&
+          BW_LOG_SIG_SPECIALTIES.includes(x.label)){
+        const found=fireSharedSpecialtyAssetKeys(x.label)
+         .map(key=>allAssets.find(a=>a.key===key)).find(Boolean);
+        return found?{...x,assetKey:found.key}:x;
+       }
        const matching=allAssets.find(a=>a.key===x.roleId+'_standard');
        return matching?{...x,assetKey:matching.key}:x;
      });

@@ -14,7 +14,8 @@ import {refreshK9DisplayRoles,knownK9Candidate,verifyK9DisplayRoleNow} from './k
 import {MOTARD_DISPLAY_COLLECTION,verifiedMotardDisplayRole,effectiveMotardDisplayRole} from './motard-display-role.js';
 import {DISP_DISPLAY_COLLECTION,verifiedDispDisplayRole,effectiveDispDisplayRole} from './disp-display-role.js';
 import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
-import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
+import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
+ BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSharedSpecialtyAssetKeys} from './specialty-role-presets.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
@@ -95,12 +96,15 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    // for a recently verified Discord role without changing personnel rights.
    const linkDocs=await db.getAll(...['politie','brandweer','ambulance','depannage']
      .map(dept=>db.collection(SPECIALTY_ROLE_LINKS).doc(dept)));
-   const mapped=new Map(linkDocs.filter(d=>d.exists).map(d=>[d.id,
-    (Array.isArray(d.get('links'))?d.get('links'):[]).filter(x=>
-      x&&idOK(x.roleId)&&typeof x.label==='string'&&x.label.length<=90)]));
-   const assetKeys=[...new Set([...mapped.values()].flat()
-      .map(x=>String(x.assetKey||'')).filter(x=>
-       /^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,300);
+   const mapped=new Map(linkDocs.map(d=>[d.id,
+    defaultSpecialtyRoleLinks(d.id,
+      (Array.isArray(d.get('links'))?d.get('links'):[]).filter(x=>
+       x&&idOK(x.roleId)&&typeof x.label==='string'&&x.label.length<=90),
+      d.get('presetVersion')===POLICE_PATCH_PRESET_VERSION)]));
+   const assetKeys=[...new Set([
+    ...[...mapped.values()].flat().map(x=>String(x.assetKey||'')),
+    ...BW_LOG_SIG_SPECIALTIES.flatMap(fireSharedSpecialtyAssetKeys)
+   ].filter(x=>/^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,300);
    const assetUrls=new Map();
    for(const group of chunks(assetKeys,100)){
     const docs=await db.getAll(...group.map(key=>db.collection(ROLE_ARTWORK_META).doc(key)));
@@ -191,9 +195,17 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       return aliases[label]||label;
     };
     const all=mapped.get(p.dept)||[];
-    const valid=x=>assetUrls.has(x.assetKey)&&
-      !['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value);
-    const rolespecific=all.filter(x=>x.roleId&&verified.has(x.roleId)&&valid(x));
+    const activeRole=x=>!['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value);
+    const sharedFire=x=>p.dept==='brandweer'&&x.roleId===BW_LOG_SIG_ROLE_ID&&
+      BW_LOG_SIG_SPECIALTIES.includes(x.label);
+    const assetFor=x=>
+      assetUrls.has(x.assetKey)?x.assetKey:sharedFire(x)?
+       fireSharedSpecialtyAssetKeys(x.label).find(key=>assetUrls.has(key))||'':x.assetKey;
+    const valid=x=>assetUrls.has(assetFor(x))&&activeRole(x);
+    // This ONE verified role displays BOTH qualifications, even if a patch
+    // is not yet uploaded. All other role-specific behaviour stays intact.
+    const rolespecific=all.filter(x=>x.roleId&&verified.has(x.roleId)&&
+      (valid(x)||sharedFire(x)&&activeRole(x)));
     // An explicitly recorded AE display level must also select the matching
     // library artwork. Registering a mapping is not the same as giving a role.
     const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',
@@ -213,7 +225,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       ...rolespecific.filter(x=>!(displayAE&&normalizedLabel(x.label)==='AE')),
       ...manual].map(x=>({
       label:x.label,level:String(x.level||x.value||'').slice(0,45),
-      roleId:x.roleId||'',imageUrl:assetUrls.get(x.assetKey),
+      roleId:x.roleId||'',imageUrl:assetUrls.get(assetFor(x))||'',
       source:x===aePatch&&merged.aeManual===displayAE?'registered':
        x.roleId?'discord':'registered'
     })).slice(0,20);

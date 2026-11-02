@@ -41,7 +41,9 @@ test('existing curated mappings are never overwritten by presets',()=>{
  assert.equal(upgraded[0].level,'Eigen tekst');
  assert.equal(upgraded.filter(x=>x.roleId===custom[0].roleId).length,1);
  assert.equal(defaultSpecialtyRoleLinks('politie',[],false).length,17);
- assert.deepEqual(defaultSpecialtyRoleLinks('brandweer',[],false),[]);
+ const fireLinks=defaultSpecialtyRoleLinks('brandweer',[],false);
+ assert.deepEqual(fireLinks.map(x=>x.label),['Logistiek','Signalisatie']);
+ assert.ok(fireLinks.every(x=>x.roleId==='1309532437952466986'));
 });
 test('automatic privileges start at fixed callsign, A-INP and INP thresholds',()=>{
  for(const call of ['101','199','008','—','P-199']){

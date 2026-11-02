@@ -471,8 +471,10 @@ $('linkSave').onclick=async()=>{
   return linkNotice('Discord-koppeling vereist een specialisatiebadge/patch en geldig rol-ID.',true);
  const previousRank=withRank?visualRules.find(r=>r.department===item.department&&
   r.kind===item.kind&&r.scope==='rank'&&r.selector===rank):null;
- const previousRole=withRole?roleAssets.find(r=>r.key===roleId+'_'+variant&&r.active):null;
- const previousMapping=withRole?(specialtyConfig?.links||[]).find(r=>r.roleId===roleId):null;
+ const sharedFire=item.department==='brandweer'&&roleId==='1309532437952466986';
+ const previousRole=withRole&&!sharedFire?roleAssets.find(r=>r.key===roleId+'_'+variant&&r.active):null;
+ const previousMapping=withRole?(specialtyConfig?.links||[]).find(r=>
+  r.roleId===roleId&&(!sharedFire||r.label===specialtyLabel)):null;
  const [level,value]=rolePatchStatus(variant);
  if((previousRank&&previousRank.assetCode!==item.code)||
     (previousRole&&previousRole.sourceArtworkKey!==item.key)||
@@ -492,15 +494,21 @@ $('linkSave').onclick=async()=>{
   if(withRole){
    // Canonical role-to-qualification mapping. A role-image pointer alone
    // does not connect the role to any specific personnel specialization.
-   const links=[...(specialtyConfig.links||[]).filter(x=>x.roleId!==roleId),
+   // Preserve the OTHER BW log/signa specialty when editing one badge.
+   const links=[...(specialtyConfig.links||[]).filter(x=>
+     x.roleId!==roleId||sharedFire&&x.label!==specialtyLabel),
     {roleId,label:specialtyLabel,level,value,assetKey:item.key}];
    await api('/api/specialty-links/'+encodeURIComponent(item.department),'PUT',{
     expectedRevision:specialtyConfig.revision,links,reason
    });saved++;
-   await api('/api/role-artwork/link','PUT',{
-    department:item.department,roleId,variant,sourceArtworkKey:item.key,
-    label:item.label,reason
-   });saved++;
+   // One role-image slot cannot contain TWO BW specialties. Their canonical
+   // links each hold their own unique image; never overwrite the other.
+   if(!sharedFire){
+    await api('/api/role-artwork/link','PUT',{
+     department:item.department,roleId,variant,sourceArtworkKey:item.key,
+     label:item.label,reason
+    });saved++;
+   }
   }
   linkNotice(saved+' koppeling(en) opgeslagen. De juiste badge verschijnt bij personeelsleden met de geverifieerde Discord-rol. Bestaande rechten blijven ongewijzigd.');
   await load();drawLinkAssets(item.key);
