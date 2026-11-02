@@ -291,7 +291,7 @@ test('Radio normalization deduplicates identities and prevents ambiguous numeric
   assert.equal(result.users.find(user=>user.category==='UNKNOWN').importable,false);
   for(const user of result.users){
     const keys=Object.keys(user).filter(key=>key!=='duplicateCallsign').sort();
-    assert.deepEqual(keys,['category','channel','displayName','id','importable','labelEditable','name','notAvailable','number','paired']);
+    assert.deepEqual(keys,['category','channel','displayName','id','importable','labelEditable','name','notAvailable','number','paired','streamer']);
     if(user.duplicateCallsign!==undefined){
       assert.equal(user.duplicateCallsign,true);
       assert.equal(user.importable,false,'Ambiguous callsigns must never auto-import');
