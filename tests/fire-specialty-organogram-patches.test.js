@@ -62,15 +62,18 @@ test('uploaded fire badges are selected by specialty code, not by personnel or a
   {kind:'specialty',department:'brandweer',code:'logistiek',imageUrl:'https://untrusted.invalid/logo.png'}
  ]);
  for(const [label,code] of [
-  ['Duiker','duiker'],['Gevaarlijke stoffen','gevaarlijke_stoffen'],
+  ['Gevaarlijke stoffen','gevaarlijke_stoffen'],
   ['RED-team','red_team'],['RED team','red_team'],
   ['Signalisatie','signalisatie_lokaal']]){
   const badge=api.specialtyBranch({label,members:[]},false,false,'brandweer')
    .children[0].children[0];
   assert.equal(badge.children[0].src,
-    file(code,code==='duiker'?'one-1':code==='gevaarlijke_stoffen'?'two-1':
+    file(code,code==='gevaarlijke_stoffen'?'two-1':
       code==='red_team'?'three-1':'four-1'));
  }
+ assert.equal(api.fireSpecialtyPatchUrl('Duiker'),'/assets/brandweer-duiker-origineel-20261102.webp');
+ api.setFireSpecialtyPatchArtworks([artwork('duiker_lokaal','new-1')]);
+ assert.equal(api.fireSpecialtyPatchUrl('Duiker'),file('duiker_lokaal','new-1'));
  assert.equal(api.fireSpecialtyPatchUrl('Ladderwagen'),'');
  assert.equal(api.fireSpecialtyPatchUrl('Logistiek'),'');
 });

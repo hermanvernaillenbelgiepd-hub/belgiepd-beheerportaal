@@ -2184,6 +2184,11 @@ function setFireSpecialtyPatchArtworks(artworks){
 }
 function fireSpecialtyPatchUrl(label){
  const code=fireSpecialtyPatchCode(label);
+ // DUlKER uses the user-provided original wide patch. Explicit local or
+ // federal replacements remain editable through the artwork library.
+ if(code==='duiker')return fireSpecialtyPatchArtworks.get('duiker_lokaal')||
+  fireSpecialtyPatchArtworks.get('duiker_federaal')||
+  '/assets/brandweer-duiker-origineel-20261102.webp';
  const aliases=code==='gevaarlijke_stoffen'?['gevaarlijkestoffen']:
   code==='red_team'?['redteam']:[];
  for(const k of [code,...aliases]){
@@ -2584,6 +2589,8 @@ function openPersonProfile(p){
   const list=el('div','person-profile-specialties');
   for(const name of names){
    const item=el('div','person-profile-specialty');
+   const isFireDiver=p.dept==='brandweer'&&fireSpecialtyPatchCode(name)==='duiker';
+   if(isFireDiver)item.classList.add('person-profile-specialty-fire-diver');
    item.append(el('strong','',name));
    const roles=p.dept==='politie'&&supportsSpecialtyInstructors(name)?
     specialtyInstructorRoles(p,name):[];
@@ -2686,7 +2693,7 @@ function openPersonProfile(p){
    const aeLevelImage=aeSpecific?(
     window.BPDUniformAssignments?.specialtyVariantImage?.(p,name,functionVariant)||
     roleArtworkUrl(aeRoleIds[functionVariant])):'';
-   const alternative=verified?(
+   const alternative=isFireDiver?fireSpecialtyPatchUrl(name):verified?(
     matchedArtwork?.imageUrl||
     (name==='RADIO/BM'?'':aeSpecific?aeLevelImage:
      window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant))):'';
@@ -2694,7 +2701,9 @@ function openPersonProfile(p){
     item.querySelectorAll('.person-profile-specialty-badge,.rago-io-badge').forEach(x=>x.remove());
     const badge=el('img','person-profile-specialty-badge');
     badge.src=alternative;badge.alt=name+' · '+(window.BPDUniformAssignments?.forPerson?.(p).badgeStyle||'');
-    badge.width=170;badge.height=53;badge.loading='lazy';item.append(badge);
+    badge.width=isFireDiver?288:170;
+    badge.height=isFireDiver?134:53;
+    badge.loading='lazy';item.append(badge);
    }else if(aeSpecific){
     // Clearly marked text fallback; never pretend the generic AE badge is a
     // Teamleader insignia when the matching image has not been uploaded.

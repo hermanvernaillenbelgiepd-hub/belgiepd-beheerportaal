@@ -66,7 +66,7 @@ export function setupRoleArtworkUI({api,$,notice}){
   if(!preset)return;
   $p('roleArtworkCode').value=preset[0];
   $p('roleArtworkLabel').value=preset[1];
-  void setPreview('');
+  void setPreview('');configureCanvas();
  };
  showKind();
  const select=$p('roleArtworkPreset');
@@ -93,6 +93,8 @@ export function setupRoleArtworkUI({api,$,notice}){
   const size=nativeSize||(['medal','award'].includes(kind)?[320,400]:
    ['helmet','logo','profession','pictogram','patch'].includes(kind)?[320,320]:
    kind==='uniform'?[603,469]:
+   kind==='specialty'&&$p('roleArtworkDepartment').value==='brandweer'&&
+    $p('roleArtworkCode').value.trim().toLowerCase()==='duiker'?[320,149]:
    kind==='specialty'&&$p('roleArtworkDepartment').value==='brandweer'?[320,320]:
    kind==='specialty'&&$p('roleArtworkDepartment').value==='ambulance'?[320,320]:
    [512,160]);
@@ -103,6 +105,11 @@ export function setupRoleArtworkUI({api,$,notice}){
   image.style.maxHeight='115px';
  }
  configureCanvas();
+ $p('roleArtworkCode').addEventListener('change',()=>{
+  if(kindSelect.value!=='specialty')return;
+  configureCanvas();
+  if(sourceImage)renderCrop();
+ });
  $p('roleArtworkDepartment').addEventListener('change',()=>{
   configureCanvas();void setPreview('');
  });

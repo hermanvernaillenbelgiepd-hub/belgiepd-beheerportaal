@@ -453,3 +453,59 @@ html:not([data-bpd-theme="dark"]) main > .manager :is(.manager-note,label,h2,h3)
   color:#fff!important;
  }
 }
+
+
+/* Brandweer DUlKER: original wide patch (288×134). Unlike police 16:5
+   patches, this is a 2.15:1 textile badge. It must never be stretched. */
+@media screen {
+ html .person-profile-dialog.operational-profile .person-profile-specialties
+  .person-profile-specialty.person-profile-specialty-fire-diver{
+   grid-column:1 / -1;
+   display:grid!important;
+   grid-template-columns:minmax(0,1fr) minmax(0,196px)!important;
+   grid-template-rows:auto auto;
+   gap:4px 12px;
+   min-height:110px;
+   align-items:center;
+ }
+ html .person-profile-dialog.operational-profile
+  .person-profile-specialty.person-profile-specialty-fire-diver>strong{
+   grid-column:1;grid-row:1;align-self:end;
+ }
+ html .person-profile-dialog.operational-profile
+  .person-profile-specialty.person-profile-specialty-fire-diver>.person-profile-specialty-role{
+   grid-column:1;grid-row:2;align-self:start;
+ }
+ html .person-profile-dialog.operational-profile
+  .person-profile-specialty.person-profile-specialty-fire-diver img.person-profile-specialty-badge{
+   display:block;
+   grid-column:2;grid-row:1 / span 2;justify-self:center;
+   box-sizing:border-box;
+   width:min(190px,100%)!important;
+   max-width:100%!important;
+   height:auto!important;
+   max-height:94px!important;
+   aspect-ratio:288 / 134!important;
+   object-fit:contain!important;
+   object-position:center;
+   background:#17171b;
+   border:1px solid #7583a4;
+   border-radius:5px;
+   box-shadow:0 2px 8px #10203b22;
+ }
+ @media(max-width:520px){
+  html .person-profile-dialog.operational-profile .person-profile-specialties
+   .person-profile-specialty.person-profile-specialty-fire-diver{
+   grid-template-columns:minmax(0,1fr)!important;
+   grid-template-rows:auto auto auto;
+  }
+  html .person-profile-dialog.operational-profile
+   .person-profile-specialty.person-profile-specialty-fire-diver img.person-profile-specialty-badge{
+   grid-column:1;grid-row:2;justify-self:start;
+  }
+  html .person-profile-dialog.operational-profile
+   .person-profile-specialty.person-profile-specialty-fire-diver>.person-profile-specialty-role{
+   grid-column:1;grid-row:3;
+  }
+ }
+}
