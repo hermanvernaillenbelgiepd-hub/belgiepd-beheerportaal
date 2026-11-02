@@ -50,6 +50,41 @@ function structuralHint(payload){
   roleField:role,roleType:role==='none'?'none':type(roles),
   roleItemType:roleItem,rootDiscordIdKeys:mapKeys};
 }
+// The upstream currently sends Discord snowflakes as unquoted JSON numbers.
+// JSON.parse would silently round them (> Number.MAX_SAFE_INTEGER). While
+// reading the raw JSON, quote ONLY long decimal integer tokens outside
+// strings before parsing. No truncated ID is ever used.
+const JSON_NUMBER=/-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
+export function parseDiscordUsersJsonLossless(raw){
+ if(typeof raw!=='string')throw new TypeError('JSON text required');
+ const parts=[];let start=0,inside=false,escaped=false,converted=0;
+ for(let i=0;i<raw.length;){
+  const ch=raw[i];
+  if(inside){
+   if(escaped)escaped=false;
+   else if(ch==='\\')escaped=true;
+   else if(ch==='"')inside=false;
+   i++;continue;
+  }
+  if(ch==='"'){inside=true;i++;continue;}
+  if(ch==='-'||(ch>='0'&&ch<='9')){
+   JSON_NUMBER.lastIndex=i;
+   const match=JSON_NUMBER.exec(raw);
+   if(match){
+    const num=match[0],end=i+num.length;
+    if(/^[0-9]{15,22}$/.test(num)){
+     parts.push(raw.slice(start,i),'"',num,'"');
+     converted++;start=end;
+    }
+    i=end;continue;
+   }
+  }
+  i++;
+ }
+ if(converted===0)return JSON.parse(raw);
+ parts.push(raw.slice(start));
+ return JSON.parse(parts.join(''));
+}
 function verifiedShape(payload){
  const records=possibleRows(payload);
  if(!records||records.length>MAX_MEMBERS)return null;
@@ -109,7 +144,7 @@ export async function probeBelgiumPdDiscordUsers({
   const content=await readLimited(response);
   if(content===null)return {status:'response_too_large'};
   let payload;
-  try{payload=JSON.parse(content)}catch{return {status:'invalid_json'};}
+  try{payload=parseDiscordUsersJsonLossless(content)}catch{return {status:'invalid_json'};}
   const counts=verifiedShape(payload);
   if(!counts)return {status:'unexpected_schema',shape:structuralHint(payload)};
   return {status:'ok',memberCount:counts.users,roleCount:counts.roles};

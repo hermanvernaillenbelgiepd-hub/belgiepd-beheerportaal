@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {BPD_DISCORD_USERS_URL,probeBelgiumPdDiscordUsers} from '../src/bpd-discord-users-probe.js';
+import {BPD_DISCORD_USERS_URL,probeBelgiumPdDiscordUsers,parseDiscordUsersJsonLossless} from '../src/bpd-discord-users-probe.js';
 
 const token='a-test-bearer-token-value';
 const id='1309532437952466986';
@@ -66,4 +66,22 @@ test('unexpected JSON schema reports only whitelisted field types, never content
  for(const privateValue of [token,member,id,'Never log me','private']){
   assert.ok(!display.includes(privateValue));
  }
+});
+
+test('preserves the EXACT digits of unquoted Discord snowflakes in a JSON response',async()=>{
+ const raw='[{"discord_id":123456789012345678,"name":"A","roles":[{"id":987654321098765432,"name":"Ladderwagen"}]}]';
+ const parsed=parseDiscordUsersJsonLossless(raw);
+ assert.equal(parsed[0].discord_id,'123456789012345678');
+ assert.equal(parsed[0].roles[0].id,'987654321098765432');
+ const env={BPD_DISCORD_USERS_API_TOKEN:token};
+ const result=await probeBelgiumPdDiscordUsers({env,fetchImpl:async()=>response(raw)});
+ assert.deepEqual(result,{status:'ok',memberCount:1,roleCount:1});
+});
+test('does not transform digits inside quoted strings or decimal measurements',()=>{
+ const raw='{"users":[{"discord_id":"123456789012345678","roles":[{"id":987654321098765432}],'+
+  '"description":"quoted 987654321098765432","weight":10.12345678901234567}]}';
+ const parsed=parseDiscordUsersJsonLossless(raw);
+ assert.equal(parsed.users[0].description,'quoted 987654321098765432');
+ assert.equal(parsed.users[0].roles[0].id,'987654321098765432');
+ assert.equal(typeof parsed.users[0].weight,'number');
 });
