@@ -13,6 +13,8 @@ import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
 import {refreshK9DisplayRoles,knownK9Candidate,verifyK9DisplayRoleNow} from './k9-live-discord-sync.js';
 import {MOTARD_DISPLAY_COLLECTION,verifiedMotardDisplayRole,effectiveMotardDisplayRole} from './motard-display-role.js';
 import {DISP_DISPLAY_COLLECTION,verifiedDispDisplayRole,effectiveDispDisplayRole} from './disp-display-role.js';
+import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
+import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
@@ -241,6 +243,89 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    }
    return res.json({readOnly:true,stale:snapshot.stale===true,
     syncAvailable:!roles.failed,records,board:[...boardById.values()].slice(0,50)});
+  }catch(e){return respond(res,e)}
+ });
+ // A personnel-card-only refresh: check the actual Discord guild member via the bot.
+ // No client-supplied Discord ID, guild, role list or authorization is accepted.
+ // Only safe, display-specific levels and vetted patch URLs are returned.
+ const specialtyCheckCache=new Map();
+ app.get('/api/organogram/specialty-check/:dept/:call',requireUser,async(req,res)=>{
+  const dept=req.params.dept,call=String(req.params.call||'');
+  if(dept!=='politie'||!/^([a-z]{1,6}[- ]?)?\\d{3}$/i.test(call))
+   return res.status(400).json({error:'Ongeldige personeelsselectie'});
+  try{
+   const snapshot=await getSnapshot();
+   if(snapshot.stale)return res.status(503).json({error:'Personeelsbron tijdelijk niet actueel'});
+   const targets=snapshot.data.filter(p=>validRow(p)&&p.dept===dept&&p.call===call);
+   if(targets.length!==1)return res.status(404).json({error:'Geen uniek personeelslid gevonden'});
+   const staff=targets[0],key=String(process.env.DISCORD_GUILD_ID||'')+':'+staff.personId;
+   let cached=specialtyCheckCache.get(key),now=Date.now();
+   if(!cached||cached.until<=now){
+    const live=await verifyLiveSpecialtyRoles(staff.personId);
+    cached={live,until:now+(live.verified?60000:15000)};
+    specialtyCheckCache.set(key,cached);
+    if(specialtyCheckCache.size>500){
+     for(const [k,v] of specialtyCheckCache)if(v.until<=now)specialtyCheckCache.delete(k);
+     if(specialtyCheckCache.size>500)specialtyCheckCache.delete(specialtyCheckCache.keys().next().value);
+    }
+   }
+   if(!cached.live.verified||cached.live.status==='not_in_guild')
+    return res.json({verified:false,status:cached.live.status,displayOnly:true});
+   const identity={guildId:process.env.DISCORD_GUILD_ID,verifiedAt:Date.now(),
+    roleIds:cached.live.roleIds};
+   const synced=verifiedSyncRoles(identity,'politie',process.env.DISCORD_GUILD_ID);
+   const motardRole=verifiedMotardDisplayRole(identity,process.env.DISCORD_GUILD_ID);
+   const dispRole=verifiedDispDisplayRole(identity,process.env.DISCORD_GUILD_ID);
+   const roleIds=new Set(identity.roleIds);
+   const db=store();
+   const linksDoc=await db.collection(SPECIALTY_ROLE_LINKS).doc('politie').get();
+   const links=defaultSpecialtyRoleLinks('politie',
+    Array.isArray(linksDoc.get('links'))?linksDoc.get('links'):[],
+    linksDoc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION);
+   const normalizeLabel=label=>({
+    'Motor':'MOTARD','Motard':'MOTARD','Dispatch':'DISP',
+    'Terreinondersteuner':'TO','Radio BM':'RADIO/BM',
+    'Semi-ano.':'SEMI ANONIEM','Signalisatie':'SIGNALISATIE'
+   })[label]||label;
+   const hasFullRago=roleIds.has('1309532437977497700')||
+    roleIds.has('1393050551188721865');
+   const priority={Stage:1,AANGEMELD:1,Ja:2,LEIDING:3,INSTRUCTEUR:4};
+   const selected=new Map();
+   for(const link of links){
+    if(!link||!roleIds.has(link.roleId)||!Object.hasOwn(priority,link.value))continue;
+    const label=normalizeLabel(link.label);
+    if(label==='RAGO'&&link.value==='AANGEMELD'&&hasFullRago)continue;
+    const chosen=selected.get(label);
+    if(!chosen||priority[link.value]>priority[chosen.value])selected.set(label,link);
+   }
+   const patches=[];
+   for(const [label,link] of selected){
+    const key=String(link.assetKey||'');
+    if(!/^(?:(?:specialty|patch)_politie_[a-z0-9_]{1,40}|\\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
+    const asset=await db.collection(ROLE_ARTWORK_META).doc(key).get();
+    const imageLabel=String(asset.get('label')||'');
+    const isRoleImage=/^\\d{15,22}_/.test(key);
+    if(!asset.exists||asset.get('active')!==true||
+      asset.get('department')!=='politie'||!asset.get('version')||
+      !(['patch','specialty'].includes(asset.get('kind'))||
+        isRoleImage&&key.startsWith(link.roleId+'_')&&
+        (asset.get('kind')||'role')==='role')||
+      label==='RADIO/BM'&&/burgermelding/i.test(imageLabel))
+     continue;
+    patches.push({label,level:String(link.level||link.value||'').slice(0,45),
+     imageUrl:'/api/role-artwork/file/'+key+'?v='+encodeURIComponent(asset.get('version')),
+     source:'discord'});
+   }
+   const specialties=[...new Set([
+    ...synced.specialties,
+    ...[...selected.entries()].map(([label,link])=>
+     label==='RAGO'&&link.value==='AANGEMELD'?'RAGO-IO':label)
+   ])].filter(x=>x!=='RAGO-IO'||!hasFullRago).slice(0,20);
+   res.set('Cache-Control','private, no-store');
+   return res.json({verified:true,status:'ok',displayOnly:true,
+    aeRole:synced.aeRole,aeRoles:synced.aeRoles,
+    motardRole:motardRole||'',dispRole:dispRole||'',
+    specialties,patches});
   }catch(e){return respond(res,e)}
  });
  // K9 role editing is independent of the technical-only placement editor.
