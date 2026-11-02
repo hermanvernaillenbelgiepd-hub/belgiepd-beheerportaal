@@ -75,7 +75,7 @@ button.alt{background:#26455f}
 </div>
 <div class="actions"><button type="button" id="specialtyLinkSave">Gecontroleerde koppelingen bewaren</button></div>
 </section>
-<section id="discordLinkAudit">
+<section id="discordLinkAudit" hidden>
  <h2>Discord-rolherkenning controleren</h2>
  <p class="help">Personeelsleden worden via exacte Discord-ID's gekoppeld. Controleer wie in de Discord-API ontbreekt of dubbel geregistreerd is. Dit verandert geen Discord- of portaalrechten.</p>
  <div class="actions"><button type="button" class="alt" id="discordLinkAuditRun">Koppelingen controleren</button></div>
@@ -393,6 +393,7 @@ async function load(){
  if(!auth?.currentUser){$('manager').hidden=true;return}
  try{
   overview=await api('/api/personnel/overview');
+  $('discordLinkAudit').hidden=overview.role!=='beheerder';
   people=overview.records||[];
   try{const manifest=await api('/api/role-artwork/manifest');artworks=manifest.artworks||[]}
   catch{artworks=[]}
