@@ -854,6 +854,13 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-specialty-role{display:block;color:#b7d9f7;font-size:10px;margin-top:3px}
 .person-profile-specialty.person-profile-specialty-k9{border-color:#6c88a7}
 .person-profile-specialty-k9 .person-profile-specialty-role{margin-top:0}
+.person-profile-specialty .radio-bm-text-patch{
+ display:flex!important;align-items:center;justify-content:center;
+ background:linear-gradient(145deg,#070e19,#172d48 70%,#07111f);
+ border:1px solid #8ba5c0;border-radius:5px;
+ color:#f3f7ff;font-size:16px;font-weight:850;letter-spacing:.06em;
+ box-shadow:inset 0 0 0 3px #141c29,0 2px 9px #0006;
+}
 .person-profile-note{font-size:11px;color:#a9c8e7;margin:12px 0 0;line-height:1.5}
 @media(max-width:520px){
  .person-profile-shell{padding:13px}.person-profile-grid{grid-template-columns:1fr}
@@ -2375,9 +2382,13 @@ async function refreshProfileSpecialtyRoles(person,key){
   const response=await authFetch('/api/organogram/specialty-check/politie/'+
    encodeURIComponent(person.call));
   if(response?.verified===true&&response.displayOnly===true){
-   person.aeRoles=Array.isArray(response.aeRoles)?
+   const autoAE=Array.isArray(response.aeRoles)?
     response.aeRoles.filter(x=>['ae_i','ae_t','teamleader','instructeur'].includes(x)):[];
-   person.aeRole=['ae_i','ae_t','teamleader','instructeur'].includes(response.aeRole)?response.aeRole:'';
+   person.aeRoles=[...new Set([...autoAE,...(person.aeManual?[person.aeManual]:[])])];
+   person.aeRole=person.aeRoles.includes('teamleader')?'teamleader':
+    person.aeRoles.includes('instructeur')?'instructeur':
+    person.aeRoles.includes('ae_t')?'ae_t':
+    person.aeRoles.includes('ae_i')?'ae_i':'';
    person.aeTeamleader=person.aeRoles.includes('teamleader');
    if(['in_opleiding','volwaardig','instructeur'].includes(response.motardRole))
     person.motardRole=response.motardRole;
@@ -2387,10 +2398,10 @@ async function refreshProfileSpecialtyRoles(person,key){
     ...(Array.isArray(response.specialties)?response.specialties:[])])].slice(0,20);
    const registered=(person.specialtyPatches||[]).filter(x=>x.source==='registered');
    person.specialtyPatches=[...registered,...(Array.isArray(response.patches)?response.patches:[])].slice(0,20);
-   profileSpecialtyChecks.set(key,{verified:true});
-  }else profileSpecialtyChecks.set(key,{verified:false});
+   profileSpecialtyChecks.set(key,{verified:true,status:'ok'});
+  }else profileSpecialtyChecks.set(key,{verified:false,status:String(response?.status||'unavailable')});
  }catch{
-  profileSpecialtyChecks.set(key,{verified:false});
+  profileSpecialtyChecks.set(key,{verified:false,status:'request_failed'});
  }
  const dialog=$('person-profile');
  if(dialog.open&&dialog.dataset.personKey===key)openPersonProfile(person);
@@ -2542,7 +2553,8 @@ function openPersonProfile(p){
     const levels=aeRoles.map(level=>AE_LEVEL_LABELS[level]).filter(Boolean);
     if(!levels.length&&roles.includes('instructeur'))levels.push('AE-INSTRUCTEUR');
     item.append(el('span','person-profile-specialty-role',
-      levels.length?levels.join(' · '):'AE-lid · functieniveau niet geverifieerd'));
+      levels.length?levels.join(' · ')+(p.aeManual?' · handmatig geregistreerd':''):
+      'AE-lid · functieniveau niet geverifieerd'));
    }else if(p.dept==='politie'&&(name==='RAGO-IO'||name==='RAGO')){
     // Different patches: verified full RAGO versus training role RAGO-IO.
     item.classList.add('person-profile-specialty-rago-io');
@@ -2588,6 +2600,11 @@ function openPersonProfile(p){
     const badge=el('img','person-profile-specialty-badge');
     badge.src=alternative;badge.alt=name+' · '+(window.BPDUniformAssignments?.forPerson?.(p).badgeStyle||'');
     badge.width=170;badge.height=53;badge.loading='lazy';item.append(badge);
+   }else if(name==='RADIO/BM'){
+    const badge=el('span','person-profile-specialty-badge radio-bm-text-patch','RADIO/BM');
+    badge.setAttribute('role','img');
+    badge.setAttribute('aria-label','RADIO/BM — neutrale tekstplaat, nog geen officiële badge');
+    item.append(badge);
    }
    if(matchedArtwork?.level&&matchedArtwork.source==='discord'&&
      ![...item.querySelectorAll('.person-profile-specialty-role')].some(x=>
@@ -2601,11 +2618,23 @@ function openPersonProfile(p){
  }else specBox.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
 
  const roleProof=profileSpecialtyChecks.get(profileKey);
- if(p.dept==='politie'&&!state.demo&&roleProof){
-  specBox.append(el('p','person-profile-note',roleProof.pending?
-   'Actuele Discord-specialisaties controleren…':roleProof.verified?
-   'Specialisatiefuncties actueel gecontroleerd via Discord.':
-   'Actuele Discord-verificatie niet beschikbaar; handmatige registraties blijven behouden.'));
+ if(p.dept==='politie'&&!state.demo){
+  const errors={bot_unconfigured:'Bot ontbreekt op MAIN',
+   not_in_guild:'Lid niet gevonden in de Discord-server',
+   rate_limited:'Discord rate-limit',discord_unavailable:'Discord niet bereikbaar',
+   invalid_member:'Ongeldige lidmaatschapsgegevens',
+   network_error:'Netwerkfout',request_failed:'Portaalverzoek mislukt',
+   unavailable:'Controle niet beschikbaar'};
+  const msg=!roleProof||roleProof.pending?'Discord-rollen controleren…':
+   roleProof.verified?'Discord-rollen actueel bevestigd.':
+   'Discord-controle: '+(errors[roleProof.status]||'Niet bevestigd')+
+   '. Handmatige functies blijven zichtbaar.';
+  const notice=el('div','person-profile-note',msg);
+  const retry=el('button','alt','Opnieuw controleren');
+  retry.type='button';retry.style.marginLeft='8px';
+  retry.onclick=()=>{profileSpecialtyChecks.delete(profileKey);openPersonProfile(p)};
+  notice.append(retry);
+  specBox.insertBefore(notice,specBox.children[1]||null);
  }
  if(!dialog.open)dialog.showModal();
  if(p.dept==='politie'&&!state.demo)void refreshProfileSpecialtyRoles(p,profileKey);
@@ -3143,6 +3172,7 @@ async function loadPublic(){
        typeof x.imageUrl==='string'&&
        /^\/api\/role-artwork\/file\/(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})\?v=[a-zA-Z0-9-]+$/.test(x.imageUrl)).slice(0,20):[],
     aeRole:['ae_i','ae_t','teamleader','instructeur'].includes(p.aeRole)?p.aeRole:'',
+    aeManual:['ae_i','ae_t','teamleader','instructeur'].includes(p.aeManual)?p.aeManual:'',
     aeRoles:Array.isArray(p.aeRoles)?p.aeRoles.filter(x=>['ae_i','ae_t','teamleader','instructeur'].includes(x)):[],
     aeTeamleader:p.aeTeamleader===true,
     reekshoofdReeks:typeof p.reekshoofdReeks==='string'?p.reekshoofdReeks.slice(0,20):'',
