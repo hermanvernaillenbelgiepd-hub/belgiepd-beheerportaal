@@ -10,11 +10,7 @@ test('All browser module scripts parse as valid JavaScript',()=>{
   for(const name of pages){
     const html=readFileSync(new URL('../public/'+name+'.html',import.meta.url),'utf8');
     const scripts=[...html.matchAll(/<script(?:\s+[^>]*)?>([\s\S]*?)<\/script>/gi)];
-    if(name==='index'){
-      assert.equal(scripts.length,0,'The new home screen must remain a script-free navigation page');
-      assert.ok(html.includes('href="/personeelsbeheer.html"'));
-      continue;
-    }
+    if(name==='index')assert.ok(html.includes('href="/personeelsbeheer.html"'));
     assert.ok(scripts.length>0,name+' must contain a module');
     for(const [i,script] of scripts.entries()){
       // Verify as an ECMAScript module; stripping imports and parsing as a
