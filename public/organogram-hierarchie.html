@@ -2452,9 +2452,10 @@ function openPersonProfile(p){
  const portrait=p.dept==='politie'?
   window.BPDPoliceUniform?.makePortrait?.(p,true):makeServiceUniformPortrait(p);
  if(portrait)overview.append(portrait);
- const identity=el('div');
+ const identity=el('div','person-profile-identity');
  identity.append(el('div','person-profile-name',p.name||'Onbekend'),
-  el('div','person-profile-rank',p.rank||'Rang niet geregistreerd'));
+  el('div','person-profile-rank',p.rank||'Rang niet geregistreerd'),
+  el('span','person-profile-inline-call','CALL '+(p.call||'—')));
  overview.append(identity);intro.append(overview);
  if(p.dept==='politie'){
   // Same public badge and grade mapping as the existing verified personnel card.
@@ -2510,17 +2511,26 @@ function openPersonProfile(p){
  const awardsBox=el('section','person-profile-awards-panel');
  window.BPDDecorations?.renderAwards?.(awardsBox,p.awards||[],state.demo);
  secondary.append(awardsBox);
+ // Collapsible presentation only. Actual rights and audit checks remain server-side.
+ let managementBody=null;
+ if(p.dept==='politie'&&!state.demo&&(auth?.currentUser||state.canManageAE)){
+  const management=el('details','person-profile-management');
+  const heading=el('summary','','⚙ Beheeracties · Officierenkader / Korpsleiding');
+  managementBody=el('div','person-profile-management-body');
+  management.append(heading,managementBody);
+  secondary.append(management);
+ }
  if(!state.demo&&p.dept==='politie'&&auth?.currentUser){
   const awardManager=el('div','person-profile-award-manager');
   awardManager.dataset.personKey=String(p.call||'')+'|'+String(p.name||'');
-  secondary.append(awardManager);
+  managementBody.append(awardManager);
   void window.BPDDecorations?.manager?.(awardManager,p,auth,async()=>{
    await loadPublic();
    const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
    if(latest&&dialog.open)openPersonProfile(latest);
   });
   const uploadBox=el('div','person-profile-award-upload');
-  secondary.append(uploadBox);
+  managementBody.append(uploadBox);
   void window.BPDDecorations?.uploadTools?.(auth,uploadBox);
  }
  const specBox=el('section','person-profile-specialization-box');
@@ -2565,7 +2575,7 @@ function openPersonProfile(p){
    finally{save.disabled=false}
   });
   panel.append(level,reason,save,feedback);
-  editor.append(summary,panel);specBox.append(editor);
+  editor.append(summary,panel);managementBody.append(editor);
  }
 
  const names=[...new Set(specialtyNames(p)

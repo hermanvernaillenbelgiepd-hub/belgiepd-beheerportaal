@@ -242,3 +242,214 @@ html:not([data-bpd-theme="dark"]) main > .manager :is(.manager-note,label,h2,h3)
 }
 /* All service/status accent badges, images and medals use their own rules. */
 }
+
+
+/* Light hybrid v2. White service columns with genuinely LIGHT personnel cards;
+   preserve service, rank, status and specialty badge artwork. */
+@media screen {
+ @media(min-width:1251px) and (max-width:1680px){
+  html:not([data-bpd-theme="dark"]) #services.service-grid{
+   grid-template-columns:repeat(3,minmax(260px,1fr));
+  }
+ }
+ html:not([data-bpd-theme="dark"]) #services :is(.person,.personnel-card-grid .person){
+  background:#f3f7fc!important;color:#183657!important;
+  border:1px solid #c7d8eb!important;box-shadow:none!important;
+ }
+ html:not([data-bpd-theme="dark"]) #services :is(.person,.personnel-card-grid .person):hover{
+  background:#e6f0fb!important;border-color:#7da6d3!important;
+ }
+ html:not([data-bpd-theme="dark"]) #services .person :is(.identity,.identity b,.person-heading){
+  color:#173454!important;
+ }
+ html:not([data-bpd-theme="dark"]) #services .person .identity small,
+ html:not([data-bpd-theme="dark"]) #services .personnel-card-grid .person .identity small{
+  color:#526b89!important;
+ }
+ html:not([data-bpd-theme="dark"]) #services .person .num{
+  background:#dde9f7!important;color:#194475!important;
+  border:1px solid #bdd0e5;
+ }
+ html:not([data-bpd-theme="dark"]) #services .person .portrait{
+  border-color:#b6c8dc!important;background:#112841;
+ }
+ html:not([data-bpd-theme="dark"]) #services .level>summary.level-title{
+  color:#fff!important;
+ }
+}
+
+/* The profile is 40/60 on desktop with a scaled full uniform rather than
+   a cropped one. Shared in dark/light; narrow screens keep vertical scroll. */
+@media screen {
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-layout,
+ html:not(.roster-card-embed) .person-profile-dialog.operational-profile .person-profile-layout{
+  grid-template-columns:minmax(0,2fr) minmax(0,3fr)!important;
+  grid-template-areas:"details specials"!important;
+  align-items:start;gap:16px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-intro{
+  background:#122f4d;color:#f5f9ff;border:1px solid #4d7298;
+  border-radius:12px;padding:13px 14px 11px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-overview,
+ html .person-profile-dialog.operational-profile .person-profile-overview{
+  background:transparent!important;border:0!important;box-shadow:none!important;
+  padding:0!important;margin:0!important;gap:5px!important;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-overview
+  .portrait.bpd-police-formal[data-uniform],
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-overview
+  .portrait.bpd-service-uniform,
+ html .person-profile-dialog.operational-profile .person-profile-overview
+  .portrait.bpd-police-formal[data-uniform],
+ html .person-profile-dialog.operational-profile .person-profile-overview
+  .portrait.bpd-service-uniform{
+   width:min(100%,340px,38dvh)!important;min-width:0!important;max-width:340px!important;
+   height:auto!important;min-height:0!important;max-height:none!important;
+   aspect-ratio:198/226;flex:none!important;border-radius:10px!important;
+   border:1px solid #6285ae!important;background:#10243b!important;
+   overflow:hidden!important;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-identity{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding-top:5px;min-width:0;width:100%;text-align:center;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-inline-call{
+  display:inline-flex;padding:3px 9px;margin:3px auto 0;
+  border:1px solid #7098c4;border-radius:6px;
+  background:#234c75;color:#f7fbff;font-weight:800;
+  font-size:11px;letter-spacing:.05em;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-grade,
+ html .person-profile-dialog.operational-profile .person-profile-grade{
+  display:flex;justify-content:center;align-items:center;
+  gap:10px;width:max-content;max-width:100%;margin:9px auto 0!important;
+  padding:7px 9px;background:#203e60;border:1px solid #4c729c;border-radius:9px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-grade-info :is(strong,small){
+  color:#eaf3ff!important;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-grid{
+  margin-top:10px;gap:7px;grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialty-panel{
+  gap:10px;min-width:0;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialties{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;gap:8px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialty{
+  box-sizing:border-box;min-height:82px;
+  padding:9px 10px;gap:4px;border-radius:9px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialty-has-badge{
+  display:grid;grid-template-columns:minmax(0,1fr) var(--bpd-specialty-badge-width,170px);
+  align-content:center;gap:4px 9px;min-width:0;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialty>strong{
+  font-size:12px;line-height:1.35;overflow-wrap:anywhere;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialty-role{
+  font-size:10px;line-height:1.4;overflow-wrap:anywhere;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-management{
+  background:#f4f8fd;border:1px solid #bed1e6;border-radius:9px;
+  overflow:hidden;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-management>summary{
+  padding:11px 12px;background:#244b74;
+  color:#fff!important;font-size:12px;font-weight:800;cursor:pointer;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-management-body{
+  display:grid;gap:8px;padding:10px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-management-body .bpd-awards-control{margin:0}
+ html .person-profile-dialog.operational-profile .person-profile-specialization-box>h3{
+  font-weight:850;font-size:14px;margin:0 0 9px;
+ }
+ @media(max-width:970px){
+  html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-layout,
+  html:not(.roster-card-embed) .person-profile-dialog.operational-profile .person-profile-layout{
+   grid-template-columns:minmax(0,1fr)!important;
+   grid-template-areas:"details" "specials"!important;
+  }
+ }
+ @media(max-width:600px){
+  html .person-profile-dialog.operational-profile .person-profile-specialties{
+   grid-template-columns:minmax(0,1fr);
+  }
+  html .person-profile-dialog.operational-profile .person-profile-grade{
+   flex-wrap:wrap;justify-content:center;
+  }
+ }
+}
+
+/* Fix light-mode contrast with targeted overrides after the shared theme.
+   Dark artwork (stitches/patches/uniform) retains its authored colours. */
+@media screen {
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+   :is(.person-profile-intro,.person-profile-overview){
+  background:#122f4d!important;border-color:#547b9f!important;color:#fff!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+   :is(.person-profile-name,.person-profile-rank,.person-profile-inline-call){
+  color:#f5f9ff!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-grade{
+  background:#203e60!important;color:#fff!important;border-color:#5e82a7!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-grade-info strong{
+  color:#fff!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-fact{
+  background:#f4f8fd!important;border:1px solid #d5e2f0!important;color:#173454!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-fact strong{
+  color:#173454!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-fact small{
+  color:#506987!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-fact.person-profile-call{
+  background:#245380!important;border-color:#447eb1!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+  .person-profile-fact.person-profile-call :is(strong,small){
+  color:#fff!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+  :is(.person-profile-awards-panel,.person-profile-specialization-box){
+  background:#fff!important;color:#173454!important;
+  border:1px solid #d0deed!important;padding:12px;border-radius:10px;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+  :is(.person-profile-awards-panel,.person-profile-specialization-box) h3,
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-awards-panel strong{
+  color:#234b75!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+  :is(.person-profile-awards-panel,.person-profile-specialization-box) :is(
+    p,small,.person-profile-note,.bpd-no-awards){
+  color:#536c8b!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-specialty{
+  background:#f1f6fc!important;color:#18395e!important;border:1px solid #c5d8ef!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-specialty>strong{
+  color:#214b79!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-specialty-role{
+  color:#577398!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-management{
+  background:#f7faff!important;border-color:#cadbed!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-management>summary{
+  background:#244b74!important;color:#fff!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+  :is(.ae-level-text-patch,.radio-bm-text-patch){
+  color:#fff!important;
+ }
+}
