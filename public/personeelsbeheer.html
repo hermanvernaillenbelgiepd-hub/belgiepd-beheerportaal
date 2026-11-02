@@ -1199,7 +1199,7 @@ function availablePersonnelRegistrationKinds(){
   if(!dept)return [];
   const kinds=[];
   if(dept==='depannage'){
-    // Only specific permitted registrations for Depannage; still show
+    // Exactly three administrative registrations for Depannage; still show
     // only those currently granted by the authenticated server session.
     if(formalPermissions?.writesEnabled===true&&formalPermissions.actor){
       if(formalPermissions.observationDepartments?.includes(dept))
@@ -1211,9 +1211,6 @@ function availablePersonnelRegistrationKinds(){
     if(casePermissions?.writesEnabled===true&&casePermissions.actor&&
        casePermissions.typesByDepartment?.[dept]?.includes('specialisatiebeperking'))
       kinds.push(['case:specialisatiebeperking','Beperking van specialisatie']);
-    if(casePermissions?.writesEnabled===true&&casePermissions.actor&&
-       casePermissions.typesByDepartment?.[dept]?.includes('inactiviteitsping'))
-      kinds.push(['case:inactiviteitsping','Inactiviteitsping']);
     if(registrationManualLeave)kinds.push(['leave','Verlofperiode manueel inschrijven']);
     return kinds;
   }

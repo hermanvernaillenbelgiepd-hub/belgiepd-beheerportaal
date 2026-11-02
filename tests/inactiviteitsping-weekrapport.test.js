@@ -19,8 +19,9 @@ test('Inactiviteitsping is a distinct audited case type across department scopes
  assert.equal(event.type,'inactiviteitsping');
  assert.equal(event.reportCategory,'inactiviteitsping');
  assert.equal(event.eventDate,'2026-11-02');
- for(const dept of ['politie','brandweer','ambulance','depannage'])
+ for(const dept of ['politie','brandweer','ambulance'])
   assert.equal(mayWriteManagement(actor('middenkader'),dept,'inactiviteitsping'),true,dept);
+ assert.equal(mayWriteManagement(actor('middenkader'),'depannage','inactiviteitsping'),false);
  assert.equal(mayWriteManagement(actor('basiskader'),'politie','inactiviteitsping'),false);
  assert.equal(mayWriteManagement(actor('middenkader'),'burger','inactiviteitsping'),false);
 });
