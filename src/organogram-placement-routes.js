@@ -251,7 +251,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const specialtyCheckCache=new Map();
  app.get('/api/organogram/specialty-check/:dept/:call',requireUser,async(req,res)=>{
   const dept=req.params.dept,call=String(req.params.call||'');
-  if(dept!=='politie'||!/^([a-z]{1,6}[- ]?)?\\d{3}$/i.test(call))
+  if(dept!=='politie'||!/^([a-z]{1,6}[- ]?)?\d{3}$/i.test(call))
    return res.status(400).json({error:'Ongeldige personeelsselectie'});
   try{
    const snapshot=await getSnapshot();
@@ -301,10 +301,10 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const patches=[];
    for(const [label,link] of selected){
     const key=String(link.assetKey||'');
-    if(!/^(?:(?:specialty|patch)_politie_[a-z0-9_]{1,40}|\\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
+    if(!/^(?:(?:specialty|patch)_politie_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
     const asset=await db.collection(ROLE_ARTWORK_META).doc(key).get();
     const imageLabel=String(asset.get('label')||'');
-    const isRoleImage=/^\\d{15,22}_/.test(key);
+    const isRoleImage=/^\d{15,22}_/.test(key);
     if(!asset.exists||asset.get('active')!==true||
       asset.get('department')!=='politie'||!asset.get('version')||
       !(['patch','specialty'].includes(asset.get('kind'))||
