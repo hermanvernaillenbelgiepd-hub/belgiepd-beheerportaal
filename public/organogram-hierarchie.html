@@ -2368,7 +2368,7 @@ function makeServiceUniformPortrait(person){
 const profileSpecialtyChecks=new Map();
 async function refreshProfileSpecialtyRoles(person,key){
  if(!state.loaded||state.demo||person.dept!=='politie'||
-   !/^(?:[a-z]{1,6}[- ]?)?\\d{3}$/i.test(String(person.call||''))||
+   !/^(?:[a-z]{1,6}[- ]?)?\d{3}$/i.test(String(person.call||''))||
    profileSpecialtyChecks.has(key))return;
  profileSpecialtyChecks.set(key,{pending:true});
  try{
