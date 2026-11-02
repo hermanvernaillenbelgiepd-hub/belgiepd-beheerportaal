@@ -562,6 +562,18 @@ header{padding-inline:clamp(15px,2vw,34px)}
 @media (max-width:1199px){
  .staff-roster-table.roster-police-compact{min-width:1100px}
 }
+ .unified-specialty-controls{border-top:1px solid #385879;margin-top:12px;padding-top:11px}
+.unified-specialty-controls .unified-row{padding:9px 0;border-bottom:1px solid #334c6b}
+.unified-specialty-controls .unified-row summary{cursor:pointer;display:flex;gap:8px;align-items:center;justify-content:space-between;color:#e1edfc;font-size:12px;list-style:none}
+.unified-specialty-controls .unified-row summary::-webkit-details-marker{display:none}
+.unified-specialty-controls .unified-status{font-size:10px;color:#bfd3ee;text-align:right}
+.unified-specialty-controls .unified-limited{color:#ffd391;font-weight:700}
+.unified-specialty-controls .unified-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px 0 3px}
+.unified-specialty-controls .unified-fields label{font-size:11px}
+.unified-specialty-controls .unified-fields input,.unified-specialty-controls .unified-fields select,.unified-specialty-controls .unified-fields textarea{padding:7px;font-size:12px}
+.unified-specialty-controls .unified-fields textarea,.unified-specialty-controls .unified-fields .unified-wide{grid-column:1/-1}
+.unified-specialty-controls .unified-fields button{font-size:11px;padding:7px}
+@media(max-width:600px){.unified-specialty-controls .unified-fields{grid-template-columns:1fr}}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -744,7 +756,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <p class="subtle">Aanstellingsgegevens, functie en administratieve opvolging. Het officiële personeelsbestand, de rang en de bestaande opleidingen worden hierdoor niet overschreven.</p>
 <div id="staffDossierStatus" role="status" class="subtle">Dossiergegevens worden opgehaald…</div>
 <div id="staffDossierSummary" class="dossier-summary"></div>
-<h3>Specialisaties en bevoegdheden</h3>
+<h3>Specialisaties & tijdelijke beperkingen</h3>
 <p class="subtle">Alle onderdelen staan naast elkaar met hun geregistreerde status. Bevoegd officierenkader en korpsleiding kunnen de status met motivering wijzigen. Deze wijziging kent geen Discord-rol toe; een botkoppeling komt later.</p>
 <div id="specialtyStatus" role="status" class="subtle">Specialisaties laden…</div>
 <a id="specialtyRoleEditorLink" class="alt" href="/rollenbeheer.html" hidden
@@ -752,6 +764,15 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  🛡️ Specialisaties en patches toekennen · Rollenbeheer
 </a>
 <div id="specialtyGrid" class="specialty-ledger" aria-label="Alle specialisaties"></div>
+<section id="unifiedSpecialtyControls" class="unified-specialty-controls"
+ aria-label="Specialisaties en tijdelijke beperkingen per personeelslid">
+ <p id="unifiedSpecialtyState" class="subtle" role="status">Specialisaties en beperkingen laden…</p>
+ <div id="unifiedSpecialtyRows"></div>
+ <details id="unifiedRestrictionHistory">
+  <summary>Historiek tijdelijke beperkingen</summary>
+  <div id="unifiedRestrictionHistoryRows" class="subtle"></div>
+ </details>
+</section>
 <form id="specialtyEdit" hidden>
 <div class="grid">
 <div><label for="specialtyLabel">Specialisatie</label><select id="specialtyLabel" required></select></div>
@@ -962,6 +983,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <h3>Officiële personeels- en ranghistoriek</h3><div id="history" class="subtle">Wordt geladen…</div></section>
 </main>
 <script src="/personnel-list-visuals.js"></script>
+<script src="/specialty-dossier-controls.js?v=20261102"></script>
 <script type="module">
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
 import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalog.js';
@@ -2789,10 +2811,10 @@ function sheetDossierProfile(profile={}){
   root.append(list);
 }
 // Dynamisch samengesteld uit de twee bestaande beveiligde bronnen.
-let importantCaseEntries=[],importantRestrictionEntries=[],
+let importantCaseEntries=[],importantRestrictionEntries=[],importantPortalRestrictionEntries=[],
   importantCaseLimited=false,importantRestrictionLimited=false;
 function renderDossierImportantNotes(){
-  const entries=[...importantCaseEntries,...importantRestrictionEntries]
+  const entries=[...importantCaseEntries,...importantRestrictionEntries,...importantPortalRestrictionEntries]
     .sort((a,b)=>String(b.eventDate||'').localeCompare(String(a.eventDate||'')));
   sheetSetRows('notes',entries,x=>[
     x.eventDate||'—',
@@ -3449,12 +3471,39 @@ async function loadSpecialtyState(p){
   $('specialtyEdit').hidden=true;
   $('specialtyRoleEditorLink').hidden=true;
   $('specialtyAudit').replaceChildren();
+  $('unifiedSpecialtyRows').replaceChildren();
+  $('unifiedRestrictionHistoryRows').replaceChildren();
+  $('unifiedSpecialtyState').textContent='Beperkingen laden…';
   $('specialtyStatus').textContent='Specialisatiestatussen laden…';
   try{
     const data=await request('/api/personnel/'+encodeURIComponent(p.dept)+'/'+
       encodeURIComponent(p.discordId)+'/specializations');
     if(!same())return;
     specialtyRevision=data.revision;specialtyItems=data.items||[];
+    let restrictionData;
+    try{
+      restrictionData=await request('/api/personnel/'+encodeURIComponent(p.dept)+'/'+
+       encodeURIComponent(p.discordId)+'/specialty-restrictions');
+    }catch(error){restrictionData={error:error.message,entries:[],history:[],
+       canRestrict:false,revision:0}}
+    if(!same())return;
+    importantPortalRestrictionEntries=(restrictionData.entries||[])
+     .filter(x=>['actief','gepland'].includes(x.status)).map(x=>({
+      type:'specialisatiebeperking',eventDate:x.startDate,
+      importantTitle:'Tijdelijke beperking · '+x.label,
+      details:'Specialisatie: '+x.label+' · '+x.startDate+' t.e.m. '+
+       x.endDate+' · '+(x.status==='gepland'?'gepland':'actief')+
+       ' · '+x.reason,
+      registeredBy:{name:'Intern specialisatieregister'}
+     }));
+    renderDossierImportantNotes();
+    window.BPDSpecialtyDossierControls?.render({
+      target:$('unifiedSpecialtyRows'),history:$('unifiedRestrictionHistoryRows'),
+      status:$('unifiedSpecialtyState'),items:specialtyItems,
+      data:restrictionData,canEdit:data.canEdit===true,person:p,request,
+      refresh:()=>loadSpecialtyState(p),notify:notice,
+      revision:specialtyRevision});
+
     const states=BPDPersonnelVisuals.specialtyStatuses(specialtyItems);
     sheetSpecialtyRows(states);
     if(p.dept==='depannage'){
@@ -3467,7 +3516,9 @@ async function loadSpecialtyState(p){
         const value=document.createElement('span');value.className='specialty-state specialty-'+x.style;
         value.textContent=x.status;cell.title=x.label+' · '+x.status;
         cell.append(icon,label,value);
-        if(data.canEdit&&x.label!=='LRD (Recherche)'){
+        // Status and restrictions are now edited together inside the single
+        // per-specialty control below, instead of duplicate quick toggles.
+        if(false&&data.canEdit&&x.label!=='LRD (Recherche)'){
           const toggle=document.createElement('button');
           toggle.type='button';toggle.className='alt';
           toggle.textContent=['Ja','Docent','INSTRUCTEUR','LEIDING'].includes(x.status)?'Uitvinken':'Aanvinken';
@@ -3540,6 +3591,7 @@ async function loadSpecialtyState(p){
     registrationModuleStates.specialty='ophalen mislukt';
     refreshPersonnelRegistrationOptions();
     $('specialtyStatus').textContent='Specialisatieregister niet beschikbaar: '+e.message;
+    $('unifiedSpecialtyState').textContent='Beheer niet beschikbaar: '+e.message;
     const statuses=BPDPersonnelVisuals.specialtyStatuses(p.specialties);
     for(const x of statuses){
       const tile=document.createElement('div');tile.className='specialty-tile';
@@ -3788,7 +3840,7 @@ async function loadStaffDossier(p){
   $('staffDiscordRoles').textContent='Discord-verificatie controleren…';
   $('staffLeave').textContent='Verlofperiodes laden…';
   $('staffFormalRecords').textContent='Formele registraties laden…';
-  importantCaseEntries=[];importantRestrictionEntries=[];
+  importantCaseEntries=[];importantRestrictionEntries=[];importantPortalRestrictionEntries=[];
   importantCaseLimited=false;importantRestrictionLimited=false;
   $('sheetNotes').textContent='Notities laden…';
   $('staffFormalForm').hidden=true;
