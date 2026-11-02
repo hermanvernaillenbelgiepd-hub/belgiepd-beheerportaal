@@ -1964,6 +1964,15 @@ html.roster-card-embed .person-profile-dialog.operational-profile
      </select>
     </label>
     <div id="police-motard-variants" class="motard-variant-picker" hidden aria-label="Beschikbare MOTARD-patchvarianten"></div>
+    <label id="police-ae-label" hidden>AE-functieniveau (handmatige weergave)
+     <select id="police-ae-role" disabled>
+      <option value="">Automatisch volgens Discord</option>
+      <option value="ae_i">AE-I · IN OPLEIDING</option>
+      <option value="ae_t">AE-T</option>
+      <option value="teamleader">TEAMLEADER / LEIDING</option>
+      <option value="instructeur">AE-INSTRUCTEUR</option>
+     </select>
+    </label>
     <label id="police-disp-label" hidden>DISPATCH-functie
      <select id="police-disp-role" disabled>
       <option value="">Automatisch volgens Discord</option>
@@ -3477,6 +3486,9 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
  const showK9=Boolean(person&&specialty==='K9');
  const showMotard=Boolean(person&&specialty==='MOTARD');
  const showDisp=Boolean(person&&specialty==='DISP');
+ const showAE=Boolean(person&&specialty==='AE');
+ $('police-ae-label').hidden=!showAE;
+ $('police-ae-role').disabled=!showAE;
  $('police-disp-label').hidden=!showDisp;
  $('police-disp-role').disabled=!showDisp;
  $('police-disp-variants').hidden=!showDisp;
@@ -3595,6 +3607,13 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
    'Discord-rol: '+DISP_DISCORD_ROLE_IDS[dispRole]+
    ($('police-disp-role').value?' · handmatig gekozen, nog niet opgeslagen':' · automatisch/voorbeeld'):
    'Kies Dispatch Selectie, Volwaardig of Instructeur.';
+ }else if(specialty==='AE'){
+  const selected=$('police-ae-role').value;
+  role.textContent=selected?(AE_LEVEL_LABELS[selected]||'AE'):
+   person.aeRole?(AE_LEVEL_LABELS[person.aeRole]||'AE'):
+   'AE-functieniveau niet bevestigd';
+  meta.textContent=selected?'Handmatig voorgesteld; na bewaren gelogd. Geen wijziging aan Discord-rollen of portaalrechten.':
+   'Een rolkoppeling bewijst niet dat dit lid die Discord-rol heeft.';
  }else if(specialty==='RAGO-IO'){
   role.textContent='RAGO-IO · '+(checked?'geselecteerd':'in opleiding');
   meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · geen volwaardige RAGO-functie';
@@ -3619,6 +3638,9 @@ function fillPoliceSpecialtyPerson(){
  $('police-motard-role').disabled=true;
  $('police-motard-label').hidden=true;
  $('police-motard-variants').hidden=true;
+ $('police-ae-role').value=person?.aeManual||'';
+ $('police-ae-role').disabled=true;
+ $('police-ae-label').hidden=true;
  $('police-disp-role').value=person?.dispManual||'';
  $('police-disp-role').disabled=true;
  $('police-disp-label').hidden=true;
@@ -3631,6 +3653,7 @@ function fillPoliceSpecialtyPerson(){
  if(person.k9Manual)active.add('K9');
  if(person.motardManual)active.add('MOTARD');
  if(person.dispManual)active.add('DISP');
+ if(person.aeManual)active.add('AE');
  for(const specialty of policeSpecialtyNames){
   const row=el('div','manage-specialty-row');
   const label=el('label'),member=el('input');
@@ -3669,6 +3692,7 @@ function fillPoliceSpecialtyPerson(){
     if(specialty==='K9')$('police-k9-role').value='';
     if(specialty==='MOTARD')$('police-motard-role').value='';
     if(specialty==='DISP')$('police-disp-role').value='';
+    if(specialty==='AE')$('police-ae-role').value='';
    }else if(specialty==='MOTARD'&&!$('police-motard-role').value){
     $('police-motard-role').value='volwaardig';
    }else if(specialty==='DISP'&&!$('police-disp-role').value){
@@ -3748,6 +3772,15 @@ $('police-specialty-person').addEventListener('change',fillPoliceSpecialtyPerson
 $('police-specialty-toggle').addEventListener('click',()=>{
  $('police-specialty-editor').hidden=!$('police-specialty-editor').hidden;
  if(!$('police-specialty-editor').hidden)fillPoliceSpecialtyPerson();
+});
+$('police-ae-role').addEventListener('change',()=>{
+ const v=$('police-ae-role').value;
+ const area=$('police-specialty-choices');
+ const member=area.querySelector('input[data-role="member"][value="AE"]');
+ const instructor=area.querySelector('input[data-role="instructor"][value="AE"]');
+ if(v&&member)member.checked=true;
+ if(instructor)instructor.checked=v==='instructeur';
+ previewPoliceSpecialty('AE');
 });
 $('police-disp-role').addEventListener('change',()=>{
  const selected=$('police-disp-role').value;
@@ -3829,6 +3862,9 @@ $('police-specialty-save').addEventListener('click',async()=>{
  const dispRole=specialtySet.has('DISP')?
   ($('police-disp-role').value||
     (instructorSpecialties.includes('DISP')?'instructeur':'volwaardig')):'';
+ const aeRole=specialtySet.has('AE')?
+  ($('police-ae-role').value||
+    (instructorSpecialties.includes('AE')?'instructeur':'')):'';
  const reason=$('police-specialty-reason').value.trim();
  if(reason.length<8||reason.length>300){
   $('police-specialty-status').textContent='Motivering van 8 tot 300 tekens verplicht.';return;
@@ -3837,11 +3873,11 @@ $('police-specialty-save').addEventListener('click',async()=>{
  try{
   await authFetch('/api/organogram/police-specialties/'+encodeURIComponent(person.personId),{
    method:'PUT',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({specialties,instructorSpecialties,teacherSpecialties,k9Role,motardRole,dispRole,reason})
+   body:JSON.stringify({specialties,instructorSpecialties,teacherSpecialties,k9Role,motardRole,dispRole,aeRole,reason})
   });
   person.specialties=specialties;person.instructorSpecialties=instructorSpecialties;
   person.teacherSpecialties=teacherSpecialties;person.k9Manual=k9Role;
-  person.motardManual=motardRole;person.dispManual=dispRole;
+  person.motardManual=motardRole;person.dispManual=dispRole;person.aeManual=aeRole;
   $('police-specialty-reason').value='';
   $('police-specialty-status').textContent='Specialisaties opgeslagen en gelogd.';
   await loadPublic();
