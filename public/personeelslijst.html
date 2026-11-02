@@ -267,7 +267,7 @@ window.addEventListener('message',event=>{
 });
 function render(){
  const q=$('search').value.trim();
- const byDiscordId=/^\\d{15,22}$/.test(q);
+ const byDiscordId=/^\d{15,22}$/.test(q);
  const ready=byDiscordId&&discordSearchId===q;
  const rows=byDiscordId?(ready?discordSearchRows:[]):people;
  const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),rows,
@@ -283,7 +283,7 @@ function searchDirectory(){
  discordSearchRows=[];discordSearchId='';
  render();
  // Alleen een compleet ID gaat naar de beveiligde serverzoekopdracht.
- if(!/^\\d{15,22}$/.test(q))return;
+ if(!/^\d{15,22}$/.test(q))return;
  discordSearchTimeout=setTimeout(async()=>{
   try{
    const token=await idToken();
