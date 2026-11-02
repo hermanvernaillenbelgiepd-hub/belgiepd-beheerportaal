@@ -365,7 +365,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    return res.status(403).json({error:'Alleen Officierenkader en Korpsleiding'});
   const call=String(req.params.call||''),role=String(req.body?.role??'');
   const reason=String(req.body?.reason??'').trim();
-  if(!/^(?:[a-z]{1,6}[- ]?)?\\d{3}$/i.test(call)||!['',...AE_MANUAL_LEVELS].includes(role)||
+  if(!/^(?:[a-z]{1,6}[- ]?)?\d{3}$/i.test(call)||!['',...AE_MANUAL_LEVELS].includes(role)||
     reason.length<8||reason.length>300)
    return res.status(400).json({error:'Kies een geldige AE-functie en motivering (8-300 tekens)'});
   try{
