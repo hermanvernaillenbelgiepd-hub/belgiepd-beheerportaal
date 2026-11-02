@@ -16,7 +16,8 @@ import {DISP_DISPLAY_COLLECTION,verifiedDispDisplayRole,effectiveDispDisplayRole
 import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSpecialtyAssetKeys,
- knownFireRoleSpecialty} from './specialty-role-presets.js';
+ knownFireRoleSpecialty,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
+ knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
 import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap} from './bpd-discord-users-display.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
@@ -107,7 +108,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const assetKeys=[...new Set([
     ...[...mapped.values()].flat().map(x=>String(x.assetKey||'')),
     ...['Logistiek','Signalisatie','Ladderwagen','Bosbestrijding','Duiker',
-      'RED team','Gevaarlijke stoffen'].flatMap(fireSpecialtyAssetKeys)
+      'RED team','Gevaarlijke stoffen'].flatMap(fireSpecialtyAssetKeys),
+    ...AMBULANCE_ROLE_PATCH_PRESETS.flatMap(x=>ambulanceSpecialtyAssetKeys(x.label))
    ].filter(x=>/^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,300);
    const assetUrls=new Map();
    for(const group of chunks(assetKeys,100)){
@@ -225,14 +227,17 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const activeRole=x=>!['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value);
     const curatedFire=x=>p.dept==='brandweer'&&
       knownFireRoleSpecialty(x.roleId,x.label);
-    const assetFor=x=>
-      assetUrls.has(x.assetKey)?x.assetKey:curatedFire(x)?
-       fireSpecialtyAssetKeys(x.label).find(key=>assetUrls.has(key))||'':x.assetKey;
+    const curatedAmbulance=x=>p.dept==='ambulance'&&
+      knownAmbulanceRoleSpecialty(x.roleId,x.label);
+    const assetFor=x=>assetUrls.has(x.assetKey)?x.assetKey:
+      curatedFire(x)?fireSpecialtyAssetKeys(x.label).find(key=>assetUrls.has(key))||'':
+      curatedAmbulance(x)?ambulanceSpecialtyAssetKeys(x.label)
+       .find(key=>assetUrls.has(key))||'':x.assetKey;
     const valid=x=>assetUrls.has(assetFor(x))&&activeRole(x);
-    // Verified Fire specialization roles show their qualification even if
-    // the artwork has not yet been uploaded. BW log/signa yields BOTH labels.
+    // A verified role shows its qualification even before artwork is
+    // uploaded. Never infer a medical qualification from leadership alone.
     const rolespecific=all.filter(x=>x.roleId&&verified.has(x.roleId)&&
-      (valid(x)||curatedFire(x)&&activeRole(x)));
+      (valid(x)||(curatedFire(x)||curatedAmbulance(x))&&activeRole(x)));
     // An explicitly recorded AE display level must also select the matching
     // library artwork. Registering a mapping is not the same as giving a role.
     const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',
@@ -323,6 +328,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
      specialtyPatches,
+     azlsFunctions:p.dept==='ambulance'?
+      verifiedAzlsFunctions(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID):[],
      awards:p.dept==='politie'?publicDecorations(
       decorationEntries.get(awardKey(p.dept,p.personId))||[],undefined,customCatalog):[],
      status:p.dept==='politie'?String(p.status||'').trim().slice(0,30):'',

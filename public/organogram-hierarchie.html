@@ -180,6 +180,10 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  padding:5px 6px;
  min-width:0;min-height:60px;box-sizing:border-box;
 }
+.person-profile-dialog .azls-discord-functions{margin-top:14px;padding-top:10px;border-top:1px solid #365472}
+.person-profile-dialog .azls-discord-functions h4{font-size:12px;letter-spacing:.025em;color:#b8d1ea;margin:0 0 8px}
+.person-profile-dialog .azls-function-chips{display:flex;flex-wrap:wrap;gap:7px}
+.person-profile-dialog .azls-function-chip{display:inline-flex;align-items:center;border:1px solid #4d789a;background:#1d3f5c;color:#eaf3ff;padding:6px 10px;border-radius:7px;font-size:12px;font-weight:600}
 #services .service[data-dept="ambulance"] .fire-specialty-patch{
  display:grid;place-items:center;flex:0 0 32px;
  width:32px;height:32px;min-width:32px;
@@ -2696,6 +2700,9 @@ function openPersonProfile(p){
    const alternative=isFireDiver?fireSpecialtyPatchUrl(name):
     p.dept==='brandweer'?(
       matchedArtwork?.imageUrl||fireSpecialtyPatchUrl(name)||
+      window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)):
+    p.dept==='ambulance'?(
+      matchedArtwork?.imageUrl||ambulanceSpecialtyPatchUrl(name)||
       window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)):verified?(
     matchedArtwork?.imageUrl||
     (name==='RADIO/BM'?'':aeSpecific?aeLevelImage:
@@ -2740,6 +2747,20 @@ function openPersonProfile(p){
   }
   specBox.append(list);
  }else specBox.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
+ // Public, display-only AZLS Discord functions. Never replace the official
+ // rank or present a professional role as a clinical qualification.
+ if(p.dept==='ambulance'&&Array.isArray(p.azlsFunctions)&&p.azlsFunctions.length){
+  const allowed=new Set(['AZLS Leiding','Arts','Verpleegkundige','Medisch Instructeur']);
+  const functions=p.azlsFunctions.filter(x=>allowed.has(x));
+  if(functions.length){
+   const section=el('section','azls-discord-functions');
+   section.append(el('h4','','Aanvullende Discord-functies'));
+   const items=el('div','azls-function-chips');
+   for(const role of functions)items.append(el('span','azls-function-chip',role));
+   section.append(items);
+   specBox.append(section);
+  }
+ }
 
  const roleProof=profileSpecialtyChecks.get(profileKey);
  if(p.dept==='politie'&&!state.demo){
@@ -3292,6 +3313,8 @@ async function loadPublic(){
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
     motardRole:['in_opleiding','volwaardig','instructeur'].includes(p.motardRole)?p.motardRole:'',
     dispRole:['in_opleiding','volwaardig','instructeur'].includes(p.dispRole)?p.dispRole:'',
+    azlsFunctions:p.dept==='ambulance'&&Array.isArray(p.azlsFunctions)?
+     p.azlsFunctions.filter(x=>['AZLS Leiding','Arts','Verpleegkundige','Medisch Instructeur'].includes(x)).slice(0,4):[],
     specialtyPatches:Array.isArray(p.specialtyPatches)?
      p.specialtyPatches.filter(x=>x&&typeof x.label==='string'&&
        typeof x.level==='string'&&['discord','registered'].includes(x.source)&&

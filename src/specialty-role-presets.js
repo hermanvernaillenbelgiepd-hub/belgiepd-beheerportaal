@@ -57,6 +57,42 @@ export const fireSpecialtyAssetKeys=label=>{
   [code,code+'_lokaal',code+'_federaal'].map(suffix=>kind+'_brandweer_'+suffix)):[];
 };
 export const fireSharedSpecialtyAssetKeys=fireSpecialtyAssetKeys;
+// AZLS: qualifications from exact verified Discord role IDs.
+// Professional categories (Arts, Verpleegkundige, AZLS leiding) and the
+// Medisch-instructeur assignment are distinct functions, not qualifications.
+export const AZLS_PIT_MOTOR_ROLE_ID='1508506242299985980';
+export const AMBULANCE_ROLE_PATCH_PRESETS=Object.freeze([
+ ['1360990854445137980','MIP'],
+ ['1360990813357609181','HELI'],
+ [AZLS_PIT_MOTOR_ROLE_ID,'PIT-MOTOR']
+].map(([roleId,label])=>Object.freeze({
+ roleId,label,level:'Volwaardig',value:'Ja',assetKey:''
+})));
+export const ambulanceSpecialtyAssetKeys=label=>{
+ const codes=label==='MIP'?['mip']:label==='HELI'?['heli','mug_heli']:
+  label==='PIT-MOTOR'?['pit_motor','pitmotor']:[];
+ return codes.flatMap(code=>['specialty','patch'].flatMap(kind=>
+  [code,code+'_lokaal',code+'_federaal'].map(suffix=>kind+'_ambulance_'+suffix)));
+};
+export const knownAmbulanceRoleSpecialty=(roleId,label)=>
+ AMBULANCE_ROLE_PATCH_PRESETS.some(x=>x.roleId===roleId&&x.label===label);
+export const AZLS_FUNCTION_ROLES=Object.freeze([
+ ['1309532438053130325','AZLS Leiding'],
+ ['1309532437977497695','Arts'],
+ ['1309532437977497696','Verpleegkundige'],
+ ['1309532437952466988','Medisch Instructeur']
+]);
+export function verifiedAzlsFunctions(identity,guildId,now=Date.now()){
+ if(identity?.guildId!==guildId||!/^\d{15,22}$/.test(String(guildId||''))||
+    !Number.isSafeInteger(identity.verifiedAt)||
+    identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||
+    !Array.isArray(identity.roleIds)||
+    identity.roleIds.some(x=>typeof x!=='string'||!/^\d{15,22}$/.test(x)))
+  return [];
+ const have=new Set(identity.roleIds);
+ return AZLS_FUNCTION_ROLES.filter(([roleId])=>have.has(roleId)).map(([,label])=>label);
+}
+
 export const knownFireRoleSpecialty=(roleId,label)=>FIRE_ROLE_PATCH_PRESETS.some(x=>
  x.roleId===roleId&&x.label===label);
 export function defaultSpecialtyRoleLinks(dept,stored,alreadyApplied){
@@ -65,6 +101,11 @@ export function defaultSpecialtyRoleLinks(dept,stored,alreadyApplied){
    x.roleId===BW_LOG_SIG_ROLE_ID?x.roleId+':'+x.label:x.roleId));
   return [...stored,...FIRE_ROLE_PATCH_PRESETS.filter(x=>
    !known.has(x.roleId===BW_LOG_SIG_ROLE_ID?x.roleId+':'+x.label:x.roleId))
+   .map(x=>({...x}))];
+ }
+ if(dept==='ambulance'){
+  const known=new Set(stored.filter(x=>x.roleId).map(x=>x.roleId));
+  return [...stored,...AMBULANCE_ROLE_PATCH_PRESETS.filter(x=>!known.has(x.roleId))
    .map(x=>({...x}))];
  }
  if(dept!=='politie'||alreadyApplied)return stored;

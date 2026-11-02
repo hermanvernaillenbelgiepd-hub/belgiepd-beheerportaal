@@ -28,7 +28,10 @@ const respond=(res,e)=>{
 };
 function rolesFor(dept){
  return ROLE_CATALOG.filter(x=>(x.dept===dept||
-   dept==='politie'&&x.dept==='dispatch')&&
+   dept==='politie'&&x.dept==='dispatch'||
+   // PITMOTO is shared with AZLS but catalogued under police.
+   // Allow mapping its visual patch; this never changes role permissions.
+   dept==='ambulance'&&x.id==='1508506242299985980')&&
    (x.kind==='specialisatie'||
      x.dept==='depannage'&&x.kind==='lidmaatschap'||
      dept==='politie'&&x.dept==='dispatch'))

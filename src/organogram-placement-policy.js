@@ -165,7 +165,8 @@ const INSTRUCTORS=Object.freeze({
   '1393050551188721865':'RAGO','1337156006597103746':'AE',
   '1393050971604516904':'DISP'}),
  brandweer:Object.freeze({'1309532437952466989':'Basis TR'}),
- ambulance:Object.freeze({'1309532437952466988':'MIP'}),
+ // Medical Instructor confirms an instructor FUNCTION, not MIP competency.
+ ambulance:Object.freeze({}),
  depannage:Object.freeze({}),burger:Object.freeze({})
 });
 // Known full-membership Discord roles. We deliberately exclude training-only
@@ -228,7 +229,8 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
     !memberNames.includes('DISP')&&!instructorNames.includes('DISP'))
   memberNames.push('DISP');
  return {boardRole:roles.has(BOARD_DISCORD_ROLE)?'bestuur':'none',
-  teachingRoles:instructorNames.length?['instructeur']:[],
+  teachingRoles:instructorNames.length||
+   dept==='ambulance'&&roles.has('1309532437952466988')?['instructeur']:[],
   instructorSpecialties:instructorNames.filter(x=>SPECIALTIES[dept]?.includes(x)),
   teacherSpecialties:[],aeRoles,aeTeamleader:aeRoles.includes('teamleader'),aeRole,
   specialties:[...new Set([...instructorNames,...memberNames])]

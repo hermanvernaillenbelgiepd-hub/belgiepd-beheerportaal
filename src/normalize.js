@@ -15,7 +15,11 @@ const specs = {
 export const SPECIALTY_LABELS=Object.freeze(Object.fromEntries(
   Object.entries(specs).map(([dept,spec])=>[dept,
     Object.freeze([...spec.specialties.map(([,label])=>label),
-      ...(dept==='brandweer'?[
+      ...(dept==='ambulance'?[
+        // Native AZLS qualification from verified Discord PITMOTO role.
+        // Not a new spreadsheet column or a personnel rank.
+        'PIT-MOTOR'
+      ]:dept==='brandweer'?[
         // RED team and Basis TR already exist as actual Google Sheets fields.
         // Do not add display-alias fields RED-TEAM / Basistraining twice.
         'Logistiek / Signalisatie','Bosbestrijding','Brandweer-AMBU'
