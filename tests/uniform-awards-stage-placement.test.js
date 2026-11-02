@@ -5,6 +5,7 @@ import {runInNewContext} from 'node:vm';
 
 const js=readFileSync(new URL('../public/assets/organogram-decorations.js',import.meta.url),'utf8');
 const coat=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');
+const profile=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../public/assets/organogram-police-formal.css',import.meta.url),'utf8');
 
 class Element{
@@ -27,6 +28,11 @@ test('medals render only beneath the rank, not duplicated as top ribbons',()=>{
  assert.equal(onlyMedal.ribbons,null);
  assert.equal(onlyMedal.medals.children.length,1);
  assert.equal(window.BPDDecorations.uniformRack([]),null);
+});
+
+test('profile loads decoration stylesheet alongside its JavaScript renderer',()=>{
+ assert.match(profile,/href="\\/assets\\/organogram-decorations\\.css\\?v=awards-position-20261102"/);
+ assert.match(profile,/src="\\/assets\\/organogram-decorations\\.js/);
 });
 
 test('both gold and silver medals are inside the coat stage with portrait anchors',()=>{
