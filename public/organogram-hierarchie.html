@@ -2365,8 +2365,40 @@ function makeServiceUniformPortrait(person){
  outer.append(stage);
  return outer;
 }
+const profileSpecialtyChecks=new Map();
+async function refreshProfileSpecialtyRoles(person,key){
+ if(!state.loaded||state.demo||person.dept!=='politie'||
+   !/^(?:[a-z]{1,6}[- ]?)?\d{3}$/i.test(String(person.call||''))||
+   profileSpecialtyChecks.has(key))return;
+ profileSpecialtyChecks.set(key,{pending:true});
+ try{
+  const response=await authFetch('/api/organogram/specialty-check/politie/'+
+   encodeURIComponent(person.call));
+  if(response?.verified===true&&response.displayOnly===true){
+   person.aeRoles=Array.isArray(response.aeRoles)?
+    response.aeRoles.filter(x=>['ae_i','ae_t','teamleader','instructeur'].includes(x)):[];
+   person.aeRole=['ae_i','ae_t','teamleader','instructeur'].includes(response.aeRole)?response.aeRole:'';
+   person.aeTeamleader=person.aeRoles.includes('teamleader');
+   if(['in_opleiding','volwaardig','instructeur'].includes(response.motardRole))
+    person.motardRole=response.motardRole;
+   if(['in_opleiding','volwaardig','instructeur'].includes(response.dispRole))
+    person.dispRole=response.dispRole;
+   person.specialties=[...new Set([...(person.specialties||[]),
+    ...(Array.isArray(response.specialties)?response.specialties:[])])].slice(0,20);
+   const registered=(person.specialtyPatches||[]).filter(x=>x.source==='registered');
+   person.specialtyPatches=[...registered,...(Array.isArray(response.patches)?response.patches:[])].slice(0,20);
+   profileSpecialtyChecks.set(key,{verified:true});
+  }else profileSpecialtyChecks.set(key,{verified:false});
+ }catch{
+  profileSpecialtyChecks.set(key,{verified:false});
+ }
+ const dialog=$('person-profile');
+ if(dialog.open&&dialog.dataset.personKey===key)openPersonProfile(person);
+}
 function openPersonProfile(p){
  const dialog=$('person-profile'),content=$('person-profile-content');
+ const profileKey=[p.dept,p.call,p.name].join('|');
+ dialog.dataset.personKey=profileKey;
  dialog.classList.toggle('police-person-profile',p.dept==='politie');
  dialog.classList.add('operational-profile');
  content.replaceChildren();
@@ -2547,8 +2579,10 @@ function openPersonProfile(p){
     p.specialtyPatches.find(entry=>
       (p.dept==='politie'?policeSpecialtyName(entry.label):entry.label)===name&&
       /^\/api\/role-artwork\/file\/(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})\?v=[a-zA-Z0-9-]+$/.test(entry.imageUrl)) :null;
+   // RADIO/BM has no approved generic badge mapping. A historical upload
+   // displayed BURGERMELDINGEN here; only an explicitly role-linked patch is safe.
    const alternative=verified?(matchedArtwork?.imageUrl||
-    window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)) :'';
+    (name==='RADIO/BM'?'':window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant))) :'';
    if(alternative){
     item.querySelectorAll('.person-profile-specialty-badge,.rago-io-badge').forEach(x=>x.remove());
     const badge=el('img','person-profile-specialty-badge');
@@ -2566,7 +2600,15 @@ function openPersonProfile(p){
   specBox.append(list);
  }else specBox.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
 
+ const roleProof=profileSpecialtyChecks.get(profileKey);
+ if(p.dept==='politie'&&!state.demo&&roleProof){
+  specBox.append(el('p','person-profile-note',roleProof.pending?
+   'Actuele Discord-specialisaties controleren…':roleProof.verified?
+   'Specialisatiefuncties actueel gecontroleerd via Discord.':
+   'Actuele Discord-verificatie niet beschikbaar; handmatige registraties blijven behouden.'));
+ }
  if(!dialog.open)dialog.showModal();
+ if(p.dept==='politie'&&!state.demo)void refreshProfileSpecialtyRoles(p,profileKey);
 }
 $('person-profile-close').addEventListener('click',()=>$('person-profile').close());
 $('person-profile').addEventListener('close',()=>notifyCardParent('closed'));

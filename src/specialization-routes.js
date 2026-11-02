@@ -9,6 +9,7 @@ import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,
   publicSpecializations,applyVerifiedSpecialtyRoleDisplay} from './specialization-policy.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
 import {verifiedRagoQualification,overlayVerifiedRagoItems} from './rago-qualification-display.js';
+import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
 const error=(res,status,message)=>res.status(status).json({error:message});
 const failure=(code,message)=>Object.assign(new Error(message),{httpStatus:code});
 function handleError(res,e){
@@ -46,12 +47,17 @@ export function installSpecializationRoutes(app,{requireUser,getSnapshot}){
             db.collection('bpd_discord_auth').doc(staff.personId).get(),
             db.collection('bpd_specialty_role_links').doc('politie').get()
           ]);
-          const roles=identity.data()||{},now=Date.now();
-          const verified=roles.guildId===process.env.DISCORD_GUILD_ID&&
-            Number.isSafeInteger(roles.verifiedAt)&&
-            roles.verifiedAt<=now+60000&&now-roles.verifiedAt<=7*86400000&&
-            Array.isArray(roles.roleIds)&&
-            roles.roleIds.every(x=>/^\d{15,22}$/.test(x));
+          const savedRoles=identity.data()||{},now=Date.now();
+          const cachedVerified=savedRoles.guildId===process.env.DISCORD_GUILD_ID&&
+            Number.isSafeInteger(savedRoles.verifiedAt)&&
+            savedRoles.verifiedAt<=now+60000&&now-savedRoles.verifiedAt<=7*86400000&&
+            Array.isArray(savedRoles.roleIds)&&
+            savedRoles.roleIds.every(x=>/^\d{15,22}$/.test(x));
+          const live=await verifyLiveSpecialtyRoles(staff.personId);
+          const liveVerified=live.verified&&live.status==='ok';
+          const verified=liveVerified||(!live.verified&&cachedVerified);
+          const roles=liveVerified?{guildId:process.env.DISCORD_GUILD_ID,
+            verifiedAt:now,roleIds:live.roleIds}:savedRoles;
           if(verified){
             const saved=Array.isArray(linksDoc.get('links'))?linksDoc.get('links'):[];
             const links=defaultSpecialtyRoleLinks('politie',saved,

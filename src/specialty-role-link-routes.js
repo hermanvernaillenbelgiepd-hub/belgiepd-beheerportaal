@@ -12,6 +12,7 @@ import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {SPECIALTY_STATES,allSpecialtyLabels} from './specialization-policy.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
 import {suppressSupersededRagoMatches} from './rago-qualification-display.js';
+import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
 
 export const SPECIALTY_ROLE_LINKS='bpd_specialty_role_links';
 export const SPECIALTY_ROLE_LINK_AUDIT='bpd_specialty_role_link_audit';
@@ -186,11 +187,16 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
     db.collection('bpd_discord_auth').doc(discordId).get()
    ]);
    const data=identity.data()||{},at=Date.now();
-   const verified=data.guildId===process.env.DISCORD_GUILD_ID&&
+   const cachedVerified=data.guildId===process.env.DISCORD_GUILD_ID&&
      Number.isSafeInteger(data.verifiedAt)&&data.verifiedAt<=at+60000&&
      at-data.verifiedAt<=7*86400000&&
      Array.isArray(data.roleIds)&&data.roleIds.every(x=>ID.test(x));
-   const have=new Set(verified?data.roleIds:[]);
+   // Read-only bot proof takes precedence. If Discord is temporarily unreachable,
+   // a still-recent OAuth proof remains a valid display-only fallback.
+   const live=await verifyLiveSpecialtyRoles(discordId);
+   const liveVerified=live.verified&&live.status==='ok';
+   const verified=liveVerified||(!live.verified&&cachedVerified);
+   const have=new Set(verified?(liveVerified?live.roleIds:data.roleIds):[]);
    const matches=cleanLinks(defaultSpecialtyRoleLinks(dept,
      cleanLinks(doc.get('links')),
      doc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION))
@@ -208,7 +214,9 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
        {...x,assetKey:x.roleId+'_standard'}:x;
    });
    res.set('Cache-Control','private, no-store');
-   return res.json({verified,verifiedAt:verified?new Date(data.verifiedAt).toISOString():null,
+   return res.json({verified,verifiedAt:verified?
+     new Date(liveVerified?at:data.verifiedAt).toISOString():null,
+     verificationSource:liveVerified?'discord-bot':verified?'oauth-cache':'unavailable',
      matches:suppressSupersededRagoMatches(linked),displayOnly:true,discordRolesChanged:false});
   }catch(e){return respond(res,e)}
  });
