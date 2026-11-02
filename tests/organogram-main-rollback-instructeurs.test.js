@@ -1,5 +1,13 @@
 import test from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+// Validate real ES-module syntax (imports and top-level await included).
+function assertModuleSyntax(source){
+ const result=spawnSync(process.execPath,['--check','--input-type=module'],
+  {input:source,encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+}
+
 import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
 import {serviceHierarchy,orderedMembers,policeSpecialtyName}
@@ -95,5 +103,5 @@ test('protected endpoints use authenticated read, technical write and transactio
  assert.doesNotMatch(ui,/fetch\('\/api\/organogram\/hierarchie'/);
  const client=ui.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
  assert.ok(client);
- assert.doesNotThrow(()=>new Script(client.replace(/^import[^\n]+\n/m,'')));
+ assertModuleSyntax(client);
 });
