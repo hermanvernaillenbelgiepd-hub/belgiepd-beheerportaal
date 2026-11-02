@@ -9,6 +9,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import {firebaseDiagnostic} from './firebase-diagnostics.js';
 import { discordConfig } from './discord-utils.js';
 import {discordBotToken} from './discord-bot-refresh.js';
+import {probeBelgiumPdDiscordUsers} from './bpd-discord-users-probe.js';
 import { discordPortalAccess } from './discord-portal-access.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
 import { planPersonnelMigration } from './personnel-migration.js';
@@ -731,5 +732,11 @@ app.listen(Number(process.env.PORT)||8080,()=>{
   console.info('Discord-botconfiguratie:',
    guildConfigured?'server-ID geldig':'server-ID ontbreekt of ongeldig',
    botConfigured?'bot-token ingesteld':'bot-token ontbreekt of ongeldig');
+  // Independent read-only check: never log member IDs, names, roles or tokens.
+  void probeBelgiumPdDiscordUsers().then(result=>{
+   console.info('BelgiumPD Discord-leden-API:',result.status,
+    result.status==='ok'?
+     'leden='+result.memberCount+' roltoewijzingen='+result.roleCount:'');
+  }).catch(()=>console.warn('BelgiumPD Discord-leden-API: connection_failed'));
   void probeDiscordFirestore();
 });
