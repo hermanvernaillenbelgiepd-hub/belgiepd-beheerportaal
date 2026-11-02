@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
+import {spawnSync} from 'node:child_process';
 import { validReturnTo,discordConfig } from '../src/discord-utils.js';
 
 const pages=['index','discord-status','registraties','roepnummers','rollen-opleidingen','verlofbeheer','weekrapporten','gebruikersbeheer','personeelsbeheer','personeel-koppelen'];
@@ -16,8 +17,11 @@ test('All browser module scripts parse as valid JavaScript',()=>{
     }
     assert.ok(scripts.length>0,name+' must contain a module');
     for(const [i,script] of scripts.entries()){
-      const source=script[1].replace(/^import [^\n]*\n/gm,'');
-      assert.doesNotThrow(()=>new Script(source,{filename:name+'#'+i}),name+' has invalid JS');
+      // Verify as an ECMAScript module; stripping imports and parsing as a
+      // classic script wrongly rejects valid top-level await and module imports.
+      const parsed=spawnSync(process.execPath,['--check','--input-type=module'],
+        {input:script[1],encoding:'utf8'});
+      assert.equal(parsed.status,0,name+'#'+i+' has invalid module JS: '+parsed.stderr);
     }
   }
   const common=readFileSync(new URL('../public/portal-login.js',import.meta.url),'utf8');
