@@ -2,6 +2,39 @@
    every protected page and action continues to enforce SERVER permissions. */
 (function(){
   'use strict';
+  // One page-independent preference, never tied to an account or a permission.
+  const themeKey='bpdPortalThemeV1';
+  function storedTheme(){
+    try{return window.localStorage?.getItem(themeKey)==='dark'?'dark':'light'}
+    catch{return 'light'}
+  }
+  let currentTheme=storedTheme();
+  function applyTheme(value,persist=false){
+    currentTheme=value==='dark'?'dark':'light';
+    document.documentElement?.setAttribute('data-bpd-theme',currentTheme);
+    if(persist)try{window.localStorage?.setItem(themeKey,currentTheme)}catch{}
+    document.querySelectorAll?.('.bpd-theme-toggle').forEach(button=>{
+      button.textContent=currentTheme==='dark'?'☀ Licht':'☾ Donker';
+      button.setAttribute('aria-label',
+        currentTheme==='dark'?'Overschakelen naar licht thema':'Overschakelen naar donker thema');
+      button.setAttribute('aria-pressed',String(currentTheme==='dark'));
+      button.title=button.getAttribute('aria-label');
+    });
+  }
+  function makeThemeToggle(){
+    const button=document.createElement('button');
+    button.className='bpd-theme-toggle';button.type='button';
+    button.textContent=currentTheme==='dark'?'☀ Licht':'☾ Donker';
+    button.setAttribute('aria-label',currentTheme==='dark'?
+      'Overschakelen naar licht thema':'Overschakelen naar donker thema');
+    button.setAttribute('aria-pressed',String(currentTheme==='dark'));
+    button.addEventListener('click',()=>applyTheme(currentTheme==='dark'?'light':'dark',true));
+    return button;
+  }
+  applyTheme(currentTheme);
+  window.addEventListener?.('storage',event=>{
+    if(event.key===themeKey)applyTheme(event.newValue==='dark'?'dark':'light');
+  });
   if(window.self!==window.top)return; // Never duplicate inside embedded dossiers.
   const here=window.location.pathname;
   const key='bpdPortalNavigationHistoryV1';
@@ -76,6 +109,7 @@
   function renderQuick(items,bar){
     bar.replaceChildren();
     for(const item of items)bar.append(linkFor(item,true));
+    bar.append(makeThemeToggle());
   }
   function makeQuick(){
     const nav=document.createElement('nav');
@@ -106,7 +140,8 @@
           item.setAttribute('aria-current','page');
         quick.append(item);
       }
-      quick.hidden=!links.length;
+      quick.append(makeThemeToggle());
+      quick.hidden=false;
     }
     update();
     const observer=new MutationObserver(update);
