@@ -165,13 +165,25 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const valid=x=>assetUrls.has(x.assetKey)&&
       !['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value);
     const rolespecific=all.filter(x=>x.roleId&&verified.has(x.roleId)&&valid(x));
+    // An explicitly recorded AE display level must also select the matching
+    // library artwork. Registering a mapping is not the same as giving a role.
+    const aeLevel=merged.aeManual||'';
+    const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',
+     teamleader:'1337775768083632158',instructeur:'1337156006597103746'};
+    const aePatch=aeRoleIds[aeLevel]?all.find(x=>
+     x.roleId===aeRoleIds[aeLevel]&&normalizedLabel(x.label)==='AE'&&valid(x)):null;
     const manual=all.filter(x=>!x.roleId&&valid(x)&&
       active.has(normalizedLabel(x.label))&&
+      !(aePatch&&normalizedLabel(x.label)==='AE')&&
       !rolespecific.some(y=>normalizedLabel(y.label)===normalizedLabel(x.label)));
-    return [...rolespecific,...manual].map(x=>({
+    // A manually verified level takes visual priority over a stale Discord
+    // badge for the same specialty. Do not change underlying role membership.
+    return [...(aePatch?[aePatch]:[]),
+      ...rolespecific.filter(x=>!(aePatch&&normalizedLabel(x.label)==='AE')),
+      ...manual].map(x=>({
       label:x.label,level:String(x.level||x.value||'').slice(0,45),
       imageUrl:assetUrls.get(x.assetKey),
-      source:x.roleId?'discord':'registered'
+      source:x===aePatch?'registered':x.roleId?'discord':'registered'
     })).slice(0,20);
    };
    // A member's own login only refreshes their own Discord identity. For
@@ -257,6 +269,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     }
    }
    return res.json({readOnly:true,stale:snapshot.stale===true,
+    canManageAE:canEditK9Display(_req.bpd),
     syncAvailable:!roles.failed,records,board:[...boardById.values()].slice(0,50)});
   }catch(e){return respond(res,e)}
  });
@@ -342,6 +355,37 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     aeRole:synced.aeRole,aeRoles:synced.aeRoles,
     motardRole:motardRole||'',dispRole:dispRole||'',
     specialties,patches});
+  }catch(e){return respond(res,e)}
+ });
+ // Targeted, audited AE presentation correction from an authorized police
+ // personnel card. Does not alter Discord, Firebase access grants or the roster.
+ app.put('/api/organogram/ae-display/:call',requireUser,async(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  if(!canEditK9Display(req.bpd))
+   return res.status(403).json({error:'Alleen Officierenkader en Korpsleiding'});
+  const call=String(req.params.call||''),role=String(req.body?.role??'');
+  const reason=String(req.body?.reason??'').trim();
+  if(!/^(?:[a-z]{1,6}[- ]?)?\\d{3}$/i.test(call)||!['',...AE_MANUAL_LEVELS].includes(role)||
+    reason.length<8||reason.length>300)
+   return res.status(400).json({error:'Kies een geldige AE-functie en motivering (8-300 tekens)'});
+  try{
+   const snapshot=await getSnapshot();
+   const candidates=snapshot.data.filter(p=>validRow(p)&&
+    p.dept==='politie'&&p.call===call);
+   if(candidates.length!==1)throw fault(409,'Geen uniek personeelslid met dit roepnummer');
+   const staff=candidates[0],db=store();
+   const ref=db.collection(AE_MANUAL_DISPLAY_COLLECTION).doc(staff.personId);
+   await db.runTransaction(async tx=>{
+    const previous=await tx.get(ref),old=String(previous.get('role')||'');
+    if(old===role)return;
+    tx.set(ref,{dept:'politie',personId:staff.personId,role,
+      updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp(),
+      displayOnly:true});
+    tx.create(ref.collection('audit').doc(),{
+      action:'ae_display_role',previous:old,next:role,reason,
+      actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+   });
+   return res.json({saved:true,displayOnly:true,accessRightsChanged:false});
   }catch(e){return respond(res,e)}
  });
  // K9 role editing is independent of the technical-only placement editor.
