@@ -22,7 +22,7 @@ test('Lower-cadre read-only API exposes exactly public roster and ten specializa
  assert.equal(rows.length,2);
  for(const row of rows){
   assert.deepEqual(Object.keys(row).sort(),[
-   'call','name','rank','series','status','specialties'].sort());
+   'call','name','rank','series','status','hasPoliceEntry','services','specialties'].sort());
   assert.equal(row.specialties.length,10);
   assert.deepEqual(row.specialties.map(x=>x.label),[...PUBLIC_POLICE_SPECIALTIES]);
   assert.equal(row.specialties.find(x=>x.label==='Radio BM').value,'Ja');
