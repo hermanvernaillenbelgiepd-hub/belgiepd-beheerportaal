@@ -2423,6 +2423,7 @@ async function refreshProfileSpecialtyRoles(person,key){
    const registered=(person.specialtyPatches||[]).filter(x=>x.source==='registered');
    person.specialtyPatches=[...registered,...(Array.isArray(response.patches)?response.patches:[])].slice(0,20);
    profileSpecialtyChecks.set(key,{verified:true,status:'ok'});
+    render(); // Update AE Teamleader group without reloading.
   }else profileSpecialtyChecks.set(key,{verified:false,status:String(response?.status||'unavailable')});
  }catch{
   profileSpecialtyChecks.set(key,{verified:false,status:'request_failed'});
@@ -2656,6 +2657,7 @@ function openPersonProfile(p){
    const matchedArtwork=verified&&Array.isArray(p.specialtyPatches)?
     p.specialtyPatches.find(entry=>
       (p.dept==='politie'?policeSpecialtyName(entry.label):entry.label)===name&&
+       (!aeSpecific||entry.roleId===aeRoleIds[functionVariant])&&
       /^\/api\/role-artwork\/file\/(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})\?v=[a-zA-Z0-9-]+$/.test(entry.imageUrl)) :null;
    // RADIO/BM has no approved generic badge mapping. A historical upload
    // displayed BURGERMELDINGEN here; only an explicitly role-linked patch is safe.

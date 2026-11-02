@@ -5,7 +5,7 @@ import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
 import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
  from './organogram-mid-order-policy.js';
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
- validatePlacement,validatePoliceSpecialtyEdit,manualDisplay,verifiedSyncRoles,mergePlacement,canManagePlacements
+ validatePlacement,validatePoliceSpecialtyEdit,manualDisplay,verifiedSyncRoles,AE_DISCORD_ROLES,mergePlacement,canManagePlacements
 } from './organogram-placement-policy.js';
 import {organogramReekshoofdTitle,policeOrganogramDossierUrl} from './organogram-profile-display.js';
 import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
@@ -75,6 +75,7 @@ const safePublic=p=>({
 export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const store=()=>getFirestore();
  const k9VerificationCooldown=new Map();
+  const aeProofCache=new Map();
  // All returned attributes are display-only. Public output NEVER includes
  // Discord identifiers, access grants, source documents or audit history.
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
@@ -147,13 +148,41 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    // Shared patches are only shown for a qualification already present in the
    // Sheets/manual personnel register or the controlled organogram.
    // Role-specific versions require a recent guild-verified role snapshot.
-   const mappedPatches=(p,merged)=>{
+   // Previously authenticated Discord snapshots can miss a newly promoted
+    // AE Teamleader. Verify known AE members directly with the guild bot
+    // for organogram presentation only; never persist or grant access.
+    const knownAERoles=new Set(Object.values(AE_DISCORD_ROLES));
+    const aeCandidates=prepared.filter(({p,merged})=>p.dept==='politie'&&(
+      merged.specialties.includes('AE')||
+      AE_MANUAL_LEVELS.has(aeManual.get(p.personId)?.role)||
+      (Array.isArray(roles.entries.get(p.personId)?.roleIds)&&
+       roles.entries.get(p.personId).roleIds.some(id=>knownAERoles.has(id)))
+    )).map(({p})=>p.personId).slice(0,48);
+    const liveAE=new Map();
+    let aeIndex=0;
+    await Promise.all(Array.from({length:Math.min(8,aeCandidates.length)},async()=>{
+     while(aeIndex<aeCandidates.length){
+      const memberId=aeCandidates[aeIndex++],cacheKey=process.env.DISCORD_GUILD_ID+':'+memberId;
+      const cached=aeProofCache.get(cacheKey),now=Date.now();
+      let proof=cached&&cached.until>now?cached.proof:null;
+      if(!proof){
+       proof=await verifyLiveSpecialtyRoles(memberId);
+       aeProofCache.set(cacheKey,{proof,until:Date.now()+(proof.verified?120000:20000)});
+      }
+      // A verified absent role also clears a stale automatic Teamleader.
+      if(proof.verified)liveAE.set(memberId,proof.roleIds);
+     }
+    }));
+    if(aeProofCache.size>500){
+     for(const [key,entry] of aeProofCache)if(entry.until<Date.now())aeProofCache.delete(key);
+    }
+    const mappedPatches=(p,merged)=>{
     const identity=roles.entries.get(p.personId),now=Date.now();
     const trustworthy=identity&&identity.guildId===process.env.DISCORD_GUILD_ID&&
       Number.isSafeInteger(identity.verifiedAt)&&
       identity.verifiedAt<=now+60000&&now-identity.verifiedAt<=7*86400000&&
       Array.isArray(identity.roleIds)&&identity.roleIds.every(idOK);
-    const verified=new Set(trustworthy?identity.roleIds:[]);
+    const verified=new Set(liveAE.has(p.personId)?liveAE.get(p.personId):(trustworthy?identity.roleIds:[]));
     const active=new Set(merged.specialties||[]);
     const normalizedLabel=label=>{
       const aliases={'Motor':'MOTARD','Motard':'MOTARD','Semi-ano.':'SEMI ANONIEM',
@@ -184,7 +213,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       ...rolespecific.filter(x=>!(displayAE&&normalizedLabel(x.label)==='AE')),
       ...manual].map(x=>({
       label:x.label,level:String(x.level||x.value||'').slice(0,45),
-      imageUrl:assetUrls.get(x.assetKey),
+      roleId:x.roleId||'',imageUrl:assetUrls.get(x.assetKey),
       source:x===aePatch&&merged.aeManual===displayAE?'registered':
        x.roleId?'discord':'registered'
     })).slice(0,20);
@@ -200,7 +229,18 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const records=[],boardById=new Map();
    for(const {p,merged} of prepared){
     if(p.dept==='politie'){
-     // A verified bot result (even no current K9 role) supersedes the old
+     // Verified live AE functions replace stale automatic OAuth snapshots.
+      // Handmatige AE-registraties still apply in the next block.
+      if(liveAE.has(p.personId)){
+       const currentAE=verifiedSyncRoles({guildId:process.env.DISCORD_GUILD_ID,
+        verifiedAt:Date.now(),roleIds:liveAE.get(p.personId)},
+        'politie',process.env.DISCORD_GUILD_ID);
+       merged.aeRoles=currentAE.aeRoles;
+       merged.aeRole=currentAE.aeRole;
+       merged.aeTeamleader=currentAE.aeTeamleader;
+       if(merged.aeRole&&!merged.specialties.includes('AE'))merged.specialties.push('AE');
+      }
+      // A verified bot result (even no current K9 role) supersedes the old
      // snapshot. On bot/API failure use only still-verified OAuth data.
      const auto=liveK9.roles.has(p.personId)?
       liveK9.roles.get(p.personId):
@@ -323,12 +363,15 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     roleIds.has('1393050551188721865');
    const priority={Stage:1,AANGEMELD:1,Ja:2,LEIDING:3,INSTRUCTEUR:4};
    const selected=new Map();
+    // AE-Teamleader outranks AE-Instructeur for the single function patch.
+    const linkPriority=link=>link.roleId===AE_DISCORD_ROLES.teamleader&&
+     normalizeLabel(link.label)==='AE'?5:(priority[link.value]||0);
    for(const link of links){
     if(!link||!roleIds.has(link.roleId)||!Object.hasOwn(priority,link.value))continue;
     const label=normalizeLabel(link.label);
     if(label==='RAGO'&&link.value==='AANGEMELD'&&hasFullRago)continue;
     const chosen=selected.get(label);
-    if(!chosen||priority[link.value]>priority[chosen.value])selected.set(label,link);
+    if(!chosen||linkPriority(link)>linkPriority(chosen))selected.set(label,link);
    }
    const patches=[];
    for(const [label,link] of selected){
@@ -345,6 +388,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       label==='RADIO/BM'&&/burgermelding/i.test(imageLabel))
      continue;
     patches.push({label,level:String(link.level||link.value||'').slice(0,45),
+      roleId:link.roleId,
      imageUrl:'/api/role-artwork/file/'+key+'?v='+encodeURIComponent(asset.get('version')),
      source:'discord'});
    }
