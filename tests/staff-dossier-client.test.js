@@ -1,5 +1,13 @@
 import test from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+// Validate real ES-module syntax (imports and top-level await included).
+function assertModuleSyntax(source){
+ const result=spawnSync(process.execPath,['--check','--input-type=module'],
+  {input:source,encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+}
+
 import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
 const load=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
@@ -8,7 +16,7 @@ test('Personnel page keeps one combined dossier and scripts remain syntactically
   const html=load('public/personeelsbeheer.html');
   const matches=[...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)];
   assert.equal(matches.length,1);
-  assert.doesNotThrow(()=>new Script(matches[0][1],{filename:'personeelsbeheer.html'}));
+  assertModuleSyntax(matches[0][1]);
   for(const name of ['staffDossierSection','staffDossierSummary','staffProfileForm',
     'staffLinkedTraining','staffLinkedCases','staffDossierHistory','staffStartDate','staffUnit','staffFunction'])
     assert.ok(html.includes('id="'+name+'"'),name);
