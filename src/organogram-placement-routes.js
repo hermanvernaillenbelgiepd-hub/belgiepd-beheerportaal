@@ -18,7 +18,7 @@ import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSpecialtyAssetKeys,
  knownFireRoleSpecialty,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
-import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks} from './bpd-discord-users-display.js';
+import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks,exactApiDisplayRoles} from './bpd-discord-users-display.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
@@ -409,7 +409,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     let proof=live;
     if(!live.verified&&live.status!=='not_in_guild'){
      const upstream=await getBelgiumPdDisplayRoles();
-     const roles=upstream.status==='ok'&&upstream.entries.get(staff.personId);
+     const roles=exactApiDisplayRoles(upstream,staff.personId);
      if(Array.isArray(roles))
       proof={verified:true,status:'ok',roleIds:[...roles],source:'bpd-users-api'};
     }
