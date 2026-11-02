@@ -3341,7 +3341,14 @@ async function setupManagement(){
     $('police-specialty-search').value='';
    }
   });
- }catch(e){$('manage-status').textContent=e.message;}
+ }catch(e){
+  $('manage-status').textContent=e.message;
+  state.loaded=false;state.demo=false;state.live=[];
+  $('source').className='notice warn';
+  $('source').textContent='Organogram niet beschikbaar: '+e.message;
+  render();
+  if(requestedCard)notifyCardParent('unavailable');
+ }
 }
 const RAGO_IO_ROLE_ID='1490841316656156802';
 const RAGO_IO_PATCH='/assets/rago-definitief-in-opleiding-20261030.svg?v=approved-three';
