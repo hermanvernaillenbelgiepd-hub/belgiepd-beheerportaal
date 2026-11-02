@@ -64,7 +64,7 @@ test('Public police roster hides LRD entirely and exposes only ten legacy column
    assert.equal(row.specialties.length,10);
    assert.equal(row.specialties.some(s=>s.label===LRD_SPECIALTY_LABEL),false);
    assert.deepEqual(Object.keys(row).sort(),
-     ['call','name','rank','series','status','specialties'].sort());
+     ['call','name','rank','series','status','hasPoliceEntry','services','specialties'].sort());
    assert.doesNotMatch(JSON.stringify(row),/111111111111111111|222222222222222222|NO_LEAK|roleIds/);
  }
  const manual=publicPoliceRoster([{...person(second),
