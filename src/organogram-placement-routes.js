@@ -167,23 +167,26 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const rolespecific=all.filter(x=>x.roleId&&verified.has(x.roleId)&&valid(x));
     // An explicitly recorded AE display level must also select the matching
     // library artwork. Registering a mapping is not the same as giving a role.
-    const aeLevel=merged.aeManual||'';
     const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',
      teamleader:'1337775768083632158',instructeur:'1337156006597103746'};
-    const aePatch=aeRoleIds[aeLevel]?all.find(x=>
-     x.roleId===aeRoleIds[aeLevel]&&normalizedLabel(x.label)==='AE'&&valid(x)):null;
+    const displayAE=merged.aeRole||'';
+    const aePatch=aeRoleIds[displayAE]?all.find(x=>
+     x.roleId===aeRoleIds[displayAE]&&normalizedLabel(x.label)==='AE'&&
+     valid(x)&&(merged.aeManual===displayAE||verified.has(x.roleId))):null;
     const manual=all.filter(x=>!x.roleId&&valid(x)&&
       active.has(normalizedLabel(x.label))&&
-      !(aePatch&&normalizedLabel(x.label)==='AE')&&
+      !(displayAE&&normalizedLabel(x.label)==='AE')&&
       !rolespecific.some(y=>normalizedLabel(y.label)===normalizedLabel(x.label)));
-    // A manually verified level takes visual priority over a stale Discord
-    // badge for the same specialty. Do not change underlying role membership.
+    // When an AE level is known, never show an unrelated generic or trainee
+    // patch as the teamleader insignia. The UI can use an exact variant,
+    // otherwise it shows a clearly labelled placeholder.
     return [...(aePatch?[aePatch]:[]),
-      ...rolespecific.filter(x=>!(aePatch&&normalizedLabel(x.label)==='AE')),
+      ...rolespecific.filter(x=>!(displayAE&&normalizedLabel(x.label)==='AE')),
       ...manual].map(x=>({
       label:x.label,level:String(x.level||x.value||'').slice(0,45),
       imageUrl:assetUrls.get(x.assetKey),
-      source:x===aePatch?'registered':x.roleId?'discord':'registered'
+      source:x===aePatch&&merged.aeManual===displayAE?'registered':
+       x.roleId?'discord':'registered'
     })).slice(0,20);
    };
    // A member's own login only refreshes their own Discord identity. For
