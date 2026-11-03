@@ -411,16 +411,18 @@ async function getSnapshot({forceRefresh=false}={}){
   }
   // When the dedicated API is unavailable, retain the previous safe OAuth
   // RAGO fallback. Never let an older OAuth snapshot override fresher API roles.
-  if(!verifiedRosterApplied&&process.env.DISCORD_GUILD_ID){
-    try{
-      const roleDocs=await getFirestore().collection('bpd_discord_auth')
-        .where('roleIds','array-contains-any',RAGO_DISPLAY_ROLE_IDS)
-        .limit(500).get();
-      if(roleDocs.size<500)
-        visible=overlayVerifiedRagoRoster(visible,roleDocs.docs,process.env.DISCORD_GUILD_ID);
-      else console.warn('RAGO-specialisaties: limiet bereikt, toon geregistreerde basisstatus');
-    }catch(err){
-      console.warn('RAGO-status niet recent verifieerbaar:',err?.code||'databasecontrole');
+  if(process.env.DISCORD_GUILD_ID){
+    if(!verifiedRosterApplied){
+      try{
+        const roleDocs=await getFirestore().collection('bpd_discord_auth')
+          .where('roleIds','array-contains-any',RAGO_DISPLAY_ROLE_IDS)
+          .limit(500).get();
+        if(roleDocs.size<500)
+          visible=overlayVerifiedRagoRoster(visible,roleDocs.docs,process.env.DISCORD_GUILD_ID);
+        else console.warn('RAGO-specialisaties: limiet bereikt, toon geregistreerde basisstatus');
+      }catch(err){
+        console.warn('RAGO-status niet recent verifieerbaar:',err?.code||'databasecontrole');
+      }
     }
   }
   return {...base,data:visible};
