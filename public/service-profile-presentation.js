@@ -13,7 +13,7 @@ export function serviceProfileRank(person){
   return rank;
  return 'Operationeel lid Depannage';
 }
-const codes=Object.freeze({fast:'fast',lsra:'lsra',crane:'crane',
+const codes=Object.freeze({fast:'fast',lsra:'lsra',lrsa:'lsra',crane:'crane',
  wegenwerken:'wegenwerken',signalisatie:'signalisatie'});
 const normalize=x=>val(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -23,10 +23,13 @@ export const depannagePatchCode=label=>codes[normalize(label)]||'';
 export function depannageProfilePatch(label,linked=[]){
  const code=depannagePatchCode(label);
  if(!code)return '';
- const prefix='/api/role-artwork/file/patch_depannage_'+code+'_';
- const suffix=/^(?:badge|geborduurd|badge_lokaal|badge_federaal)\?v=[a-zA-Z0-9-]+$/;
+ // A qualification may use a specifically uploaded same-service PATCH.
+ // Legacy generic specialty photographs never count as embroidered patches.
+ const prefix='/api/role-artwork/file/patch_depannage_'+code;
+ const suffix=/^(?:|_(?:badge|geborduurd|lokaal|federaal|badge_lokaal|badge_federaal))\?v=[a-zA-Z0-9-]+$/;
  const arr=Array.isArray(linked)?linked:[];
- const approved=arr.find(x=>x?.label===label&&typeof x.imageUrl==='string'&&
-  x.imageUrl.startsWith(prefix)&&suffix.test(x.imageUrl.slice(prefix.length)));
+ const approved=arr.find(x=>depannagePatchCode(x?.label)===code&&
+  typeof x.imageUrl==='string'&&x.imageUrl.startsWith(prefix)&&
+  suffix.test(x.imageUrl.slice(prefix.length)));
  return approved?.imageUrl||'/assets/bpd-depannage-'+code+'-patch.svg';
 }

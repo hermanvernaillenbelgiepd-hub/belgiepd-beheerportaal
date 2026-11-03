@@ -67,12 +67,38 @@ test('upload manifest can match AZLS labels safely and never leak fire patches',
  const nonAmbulance=view.specialtyBranch({label:'PIT',members:[]},false,false,'depannage');
  assert.ok(!nonAmbulance.children[0].children.some(node=>node.className==='fire-specialty-patch'));
 });
+test('AZLS accepts PATCH uploads and rejects mismatched or external artwork',()=>{
+ const app=api();
+ const patch='/api/role-artwork/file/patch_ambulance_pit?v=patch-2';
+ app.setAmbulanceSpecialtyPatchArtworks([
+  {kind:'patch',department:'ambulance',code:'pit',imageUrl:patch},
+  {kind:'patch',department:'politie',code:'mip',
+   imageUrl:'/api/role-artwork/file/patch_politie_mip?v=wrong-1'},
+  {kind:'patch',department:'ambulance',code:'medicatie',
+   imageUrl:'/api/role-artwork/file/patch_brandweer_medicatie?v=wrong-1'},
+  {kind:'patch',department:'ambulance',code:'heli',
+   imageUrl:'https://untrusted.example/patch.png'}
+ ]);
+ assert.equal(app.ambulanceSpecialtyPatchUrl('PIT'),patch);
+ assert.equal(app.ambulanceSpecialtyPatchUrl('MIP'),'');
+ assert.equal(app.ambulanceSpecialtyPatchUrl('Medicatie'),'');
+ assert.equal(app.ambulanceSpecialtyPatchUrl('HELI'),'');
+ const slot=app.specialtyBranch({label:'PIT',members:[]},false,false,'ambulance')
+  .children[0].children[0];
+ assert.equal(slot.children[0].src,patch);
+ app.setAmbulanceSpecialtyPatchArtworks([
+  {kind:'patch',department:'ambulance',code:'pit',imageUrl:patch},
+  {kind:'specialty',department:'ambulance',code:'pit',
+   imageUrl:'/api/role-artwork/file/specialty_ambulance_pit?v=specialty-3'}]);
+ assert.equal(app.ambulanceSpecialtyPatchUrl('PIT'),
+  '/api/role-artwork/file/specialty_ambulance_pit?v=specialty-3');
+});
 test('existing uploads and new square AZLS preview are available to managers',()=>{
  for(const key of ['mug_heli','pit','pit_motor','medicatie','mip','verpleegkundige']){
   assert.match(uploader,new RegExp("'"+key+"'"));
  }
  assert.match(uploader,/kind==='specialty'&&\$p\('roleArtworkDepartment'\)\.value==='ambulance'\?\[320,320\]/);
  assert.match(admin,/AZLS-patches: kies bijvoorbeeld/);
- assert.match(admin,/role-artwork-ui\.js\?v=ambulance-specialty-patches-20261031/);
+ assert.match(admin,/role-artwork-ui\.js\?v=patch-proportions-20261103/);
  assert.match(html,/setAmbulanceSpecialtyPatchArtworks\(artworkManifest\?\.artworks\)/);
 });

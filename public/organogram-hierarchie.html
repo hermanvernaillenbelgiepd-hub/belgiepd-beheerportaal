@@ -2092,7 +2092,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
 import '/uniform-assignment-display.js?v=studio-coats-only-20261030';
-import {serviceProfileRank,depannageProfilePatch} from '/service-profile-presentation.js?v=20261103a';
+import {serviceProfileRank,depannagePatchCode,depannageProfilePatch} from '/service-profile-presentation.js?v=20261103b';
 const $=id=>document.getElementById(id);
 const cardParams=new URLSearchParams(location.search);
 const isEmbeddedCard=cardParams.get('embedded')==='1';
@@ -2268,12 +2268,14 @@ function ambulanceSpecialtyPatchCode(label){
 function setAmbulanceSpecialtyPatchArtworks(artworks){
  const map=new Map();
  for(const item of Array.isArray(artworks)?artworks:[]){
-  if(item?.kind!=='specialty'||item.department!=='ambulance')continue;
+  if(!['specialty','patch'].includes(item?.kind)||item.department!=='ambulance')continue;
   const code=String(item.code||'');
   if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code))continue;
   const url=String(item.imageUrl||'');
-  if(!/^\/api\/role-artwork\/file\/specialty_ambulance_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url))continue;
-  map.set(code,url);
+  if(!/^\/api\/role-artwork\/file\/(?:specialty|patch)_ambulance_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url)||
+     !url.includes('/'+item.kind+'_ambulance_'+code+'?v='))continue;
+  // Uploaded specialty badges win over generic patches with the same code.
+  if(!map.has(code)||item.kind==='specialty')map.set(code,url);
  }
  ambulanceSpecialtyPatchArtworks=map;
 }
@@ -2308,6 +2310,37 @@ function makeAmbulanceSpecialtyPatch(label){
   slot.title='Nog geen AZLS-specialisatiepatch: '+label+' · upload via Afbeeldingen & badges';
  }
  return slot;
+}
+
+/* Depannage uses wide embroidered qualifications. Only same-service
+   PATCH uploads may replace the built-in badge, not older vehicle photos. */
+let depannageSpecialtyPatchArtworks=new Map();
+function setDepannageSpecialtyPatchArtworks(artworks){
+ const map=new Map();
+ for(const item of Array.isArray(artworks)?artworks:[]){
+  if(item?.kind!=='patch'||item.department!=='depannage')continue;
+  const code=String(item.code||''),url=String(item.imageUrl||'');
+  if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code)||
+     !/^\/api\/role-artwork\/file\/patch_depannage_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url)||
+     !url.includes('/patch_depannage_'+code+'?v='))continue;
+  map.set(code,url);
+ }
+ depannageSpecialtyPatchArtworks=map;
+}
+function depannageSpecialtyPatchUrl(label,linked=[],preferred=''){
+ const code=depannagePatchCode(label);
+ if(!code)return '';
+ const builtIn=depannageProfilePatch(label,[]);
+ const assigned=preferred||depannageProfilePatch(label,linked);
+ if(assigned&&assigned!==builtIn)return assigned;
+ // A newly uploaded patch is available immediately, without another manual
+ // linking step; this does not change the member's qualifications or roles.
+ for(const suffix of ['_badge','_geborduurd','_badge_lokaal','_badge_federaal',
+   '_lokaal','_federaal','']){
+  const url=depannageSpecialtyPatchArtworks.get(code+suffix);
+  if(url)return url;
+ }
+ return builtIn;
 }
 
 function setServiceUniformData(artworks,layouts,nameplates=[],coats=[],visibility=[]){
@@ -2734,7 +2767,9 @@ function openPersonProfile(p){
    const aeLevelImage=aeSpecific?(
     window.BPDUniformAssignments?.specialtyVariantImage?.(p,name,functionVariant)||
     roleArtworkUrl(aeRoleIds[functionVariant])):'';
-   const alternative=p.dept==='depannage'?depannageProfilePatch(name,p.specialtyPatches):
+   const alternative=p.dept==='depannage'?
+     depannageSpecialtyPatchUrl(name,p.specialtyPatches,
+      depannageProfilePatch(name,p.specialtyPatches)):
      p.dept==='brandweer'?(
       matchedArtwork?.imageUrl||fireSpecialtyPatchUrl(name)||
       window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)):
@@ -3360,6 +3395,7 @@ async function loadPublic(){
   applyRoleArtworkManifest(artworkManifest?.artworks);
   setFireSpecialtyPatchArtworks(artworkManifest?.artworks);
   setAmbulanceSpecialtyPatchArtworks(artworkManifest?.artworks);
+  setDepannageSpecialtyPatchArtworks(artworkManifest?.artworks);
   setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats,uniformLayoutData?.visibility);
   window.BPDPoliceUniform?.setGradeArtworkManifest?.(artworkManifest?.artworks);
   window.BPDPoliceUniform?.setUniformManagementData?.(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats);
