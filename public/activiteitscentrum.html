@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="nl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>BelgiëPD · Activiteitscentrum</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<style>
+:root{font:14px/1.45 Inter,system-ui,Segoe UI,Arial,sans-serif;background:#f4f7fb;color:#192c48}
+*{box-sizing:border-box}body{margin:0}header{background:#101b36;color:#eef4ff;padding:14px clamp(16px,3vw,38px);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header a{color:#d7e4ff}main{max-width:1400px;margin:auto;padding:22px clamp(12px,2.5vw,30px) 50px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:16px;margin:0 0 10px}
+p{color:#536a85;margin:4px 0 14px}
+section{background:white;border:1px solid #dfe8f3;border-radius:12px;padding:16px;margin:12px 0}
+button,input,select{font:inherit;border:1px solid #b9c7d9;border-radius:8px;padding:9px 11px;background:white}
+button{cursor:pointer;background:#3158cb;border-color:#3158cb;color:white;font-weight:700}
+button:disabled{opacity:.55}label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#506682}
+.controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.controls input{min-width:240px}
+.counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:9px}
+.counter{border:1px solid #dce6f0;background:#f9fbff;padding:12px;border-radius:10px}
+.counter strong{font-size:22px;display:block;color:#183966}.counter small{color:#627792}
+.tablewrap{overflow:auto;max-height:67vh}table{border-collapse:collapse;width:100%;min-width:970px;font-size:12px}
+th,td{border-bottom:1px solid #e3eaf3;padding:8px 9px;text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:#eaf1fb;color:#23406b;z-index:1}
+td small{display:block;color:#6b7a90;margin-top:3px}
+.state{display:inline-block;padding:3px 8px;border-radius:7px;background:#e8eff9;font-weight:700}
+.state-50\/50,.state-inactief,.state-beoordelen{background:#fff0e7;color:#873f1c}
+.state-ok{background:#e6f5ea;color:#166138}
+.state-verouderd,.state-geen_data{background:#eef0f3;color:#667286}
+.warn{color:#95401e;font-weight:700}#feedback{font-weight:650;margin:10px 0;color:#285287}
+[hidden]{display:none!important}
+</style></head>
+<body><header><strong>BelgiëPD · Activiteitscentrum</strong><div><a href="/">← Dashboard</a> <button id="login" type="button">Aanmelden</button></div></header>
+<main>
+<h1>Activiteitscentrum</h1>
+<p>Personeelsactiviteit per dienst, gekoppeld aan de Discord ID. Gegevens uit de bestaande spreadsheet zijn voorlopig uitsluitend ter controle.</p>
+<section><strong>Alleen-lezen · geen automatische maatregelen</strong>
+<p>De 14-, 30- en 60-dagengrenzen tonen enkel een opvolgadvies. De speeluren in deze bron zijn gebaseerd op een resetperiode, niet op een afgesloten kalendermaand. Echte automatische pings blijven afhankelijk van geverifieerde FiveM-gegevens en goedgekeurd verlof.</p></section>
+<div id="feedback" role="status" aria-live="polite">Aanmelden om gegevens te bekijken.</div>
+<div id="content" hidden>
+<section><div class="controls">
+<label>Dienst<select id="department"><option value="">Alle bevoegde diensten</option></select></label>
+<label>Opvolging<select id="filter"><option value="">Alles</option><option value="beoordelen">60+ dagen</option><option value="inactief">30+ dagen</option><option value="50/50">14+ dagen</option><option value="verlof_nazien">Verlof nazien</option><option value="verouderd">Bron verouderd</option><option value="geen_data">Geen gegevens</option><option value="ok">Geen actie</option></select></label>
+<label>Zoeken<input id="search" type="search" placeholder="Naam, roepnummer of Discord ID"></label>
+<button id="refresh" type="button">↻ Vernieuwen</button></div></section>
+<section><h2>Overzicht <small id="asof"></small></h2><div id="counts" class="counts"></div></section>
+<section><h2>Personeelsopvolging <small id="resultCount"></small></h2><div class="tablewrap"><table>
+<thead><tr><th>Personeel</th><th>Dienst</th><th>Huidige status</th><th>Laatste connectie</th><th>Inactief</th><th>Speeluren sinds reset</th><th>Pinghistoriek</th><th>Voorstel · controle</th></tr></thead>
+<tbody id="rows"></tbody></table></div></section>
+</div>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+let auth,authSdk,records=[],asOf='';
+function label(kind){return ({beoordelen:'Beoordelen 60+',inactief:'INACTIEF-ping', '50/50':'50/50-ping',
+ verlof_nazien:'Verlof nazien',verouderd:'Bron verouderd',geen_data:'Geen gegevens',ok:'Geen actie'})[kind]||kind}
+function el(tag,text,className){const n=document.createElement(tag);n.textContent=String(text??'—');if(className)n.className=className;return n}
+function render(){
+ const dept=$('department').value,kind=$('filter').value,query=$('search').value.trim().toLocaleLowerCase('nl');
+ const visible=records.filter(p=>(!dept||p.department===dept)&&(!kind||p.kind===kind)&&
+  (!query||[p.name,p.call,p.discordId].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query))));
+ $('counts').replaceChildren();
+ for(const key of ['ok','50/50','inactief','beoordelen','verlof_nazien','verouderd','geen_data']){
+  const box=el('div','', 'counter');box.append(el('strong',visible.filter(p=>p.kind===key).length),
+    el('small',label(key)));$('counts').append(box);
+ }
+ $('resultCount').textContent='· '+visible.length+' leden';
+ const body=$('rows');body.replaceChildren();
+ for(const p of visible){
+  const row=document.createElement('tr');
+  const person=el('td',p.call+' · '+p.name);person.append(el('small',p.discordId));row.append(person);
+  row.append(el('td',p.department));
+  const current=el('td',p.currentStatus);if(p.statusMismatch)current.append(el('small','Status wijkt af van politiesheet','warn'));row.append(current);
+  row.append(el('td',p.lastConnection||'Geen gegevens'));
+  row.append(el('td',p.daysInactive===null?'—':p.daysInactive+' dagen'));
+  row.append(el('td',p.periodPlayHours===null?'—':p.periodPlayHours+' uur'));
+  const ping=el('td',p.pingCount===null?'—':p.pingCount+' ping(s)');
+  if(p.lastPing)ping.append(el('small','Laatste: '+p.lastPing));row.append(ping);
+  const note=document.createElement('td');note.append(el('span',label(p.kind),'state state-'+p.kind),
+    el('small',p.reason));row.append(note);body.append(row);
+ }
+ if(!visible.length){const row=document.createElement('tr'),cell=el('td','Geen resultaten binnen de gekozen filters.');
+  cell.colSpan=8;row.append(cell);body.append(row)}
+ $('asof').textContent='· broncontrole '+asOf;
+}
+async function load(){
+ if(!auth?.currentUser){$('content').hidden=true;$('feedback').textContent='Meld je aan om activiteitsgegevens te zien.';return}
+ $('feedback').textContent='Gegevens controleren…';$('refresh').disabled=true;
+ try{
+  const token=await auth.currentUser.getIdToken();
+  const response=await fetch('/api/activity-center/overview',{cache:'no-store',headers:{Authorization:'Bearer '+token}});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(result.error||'Activiteitscontrole mislukt');
+  records=Array.isArray(result.people)?result.people:[];asOf=result.asOf||'onbekend';
+  const select=$('department'),last=select.value;select.replaceChildren(new Option('Alle bevoegde diensten',''));
+  for(const d of result.departments||[])select.add(new Option(d[0].toUpperCase()+d.slice(1),d));
+  if([...select.options].some(o=>o.value===last))select.value=last;
+  $('content').hidden=false;$('feedback').textContent='Alleen-lezen · '+records.length+' dossiers binnen jouw toegangsrechten. Geen acties uitgevoerd.';
+  render();
+ }catch(err){$('content').hidden=true;$('feedback').textContent=err.message}
+ finally{$('refresh').disabled=false}
+}
+for(const control of ['department','filter','search'])$(control).addEventListener('input',render);
+$('refresh').addEventListener('click',load);
+(async()=>{
+ try{
+  const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+  if(!cfg.enabled)throw Error('Firebase niet geconfigureerd');
+  const appSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  const app=appSdk.getApps()[0]||appSdk.initializeApp(cfg.firebaseConfig);
+  auth=authSdk.getAuth(app);
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:$('login'),auth,authModule:authSdk,config:cfg,
+   onError:e=>{$('feedback').textContent=e.message}});
+  authSdk.onAuthStateChanged(auth,load);
+ }catch(e){$('feedback').textContent=e.message}
+})();
+</script><script defer src="/bpd-navigation.js"></script>
+</body></html>

@@ -74,6 +74,7 @@
   const NAV=Object.freeze({
     home:{href:'/',icon:'⌂',label:'Startpagina',short:'Start'},
     personnel:{href:'/personeelsbeheer.html',icon:'♟',label:'Personeelsbeheer',short:'Personeel'},
+    activity:{href:'/activiteitscentrum.html',icon:'◷',label:'Activiteitscentrum',short:'Activiteit'},
     organogram:{href:'/organogram-hierarchie.html',icon:'🌳',label:'Organogram',short:'Organogram'},
     dossiers:{href:'/dossiercentrum.html',icon:'▣',label:'Dossiercentrum',short:'Dossiers'},
     education:{href:'/opleidingscentrum.html',icon:'🎓',label:'Opleidingscentrum',short:'Opleiding'},
@@ -87,7 +88,7 @@
     profile:{href:'/discord-status.html',icon:'♙',label:'Mijn profiel',short:'Profiel'}
   });
   const SAFE=['home','personnel','organogram','education','calendar','leave','profile'];
-  const STAFF=['home','personnel','organogram','dossiers','education','calendar','observations',
+  const STAFF=['home','personnel','activity','organogram','dossiers','education','calendar','observations',
     'reports','to','leave','admin'];
   const currentPage=(href)=>{
     const target=new URL(href,window.location.origin).pathname;
@@ -243,12 +244,12 @@
           ]);
           if(turn!==request)return;
           if(context?.dashboardProfile==='brandweer-zone'){
-            const pages=['home','personnel','organogram','dossiers','education','calendar','reports','leave','notifications'];
+            const pages=['home','personnel','activity','organogram','dossiers','education','calendar','reports','leave','notifications'];
             show(pages);return;
           }
           if(context?.dashboardProfile==='ambulance-azls'){
             const pages=['home','personnel','organogram'];
-            if(context.ambulanceCanOpenDossier===true)pages.push('dossiers');
+            if(context.ambulanceCanOpenDossier===true)pages.push('dossiers','activity');
             pages.push('education','calendar');
             if(context.ambulanceReportVerified===true)pages.push('reports');
             pages.push('leave','notifications');

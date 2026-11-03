@@ -20,6 +20,7 @@ import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installActivityTelemetryRoutes} from './activity-telemetry-routes.js';
+import {installActivityCenterRoutes} from './activity-center-routes.js';
 import {scheduleAutomaticActivityPings} from './activity-ping-runner.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
@@ -757,6 +758,8 @@ installDiscordPersonalProfileRoutes(app,{getSnapshot});
 // More-specific activity endpoints MUST precede /api/personnel/:dept/:discordId.
 // That broad POST edit route otherwise intercepts retrospective audit submissions.
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
+// Isolated legacy activity read: no automated pings or personnel changes.
+installActivityCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
 installPersonnelLifecycleRoutes(app,{requireUser:requireDossierUser,
   getSnapshot,invalidateLifecycle:invalidatePersonnelLifecycle});
