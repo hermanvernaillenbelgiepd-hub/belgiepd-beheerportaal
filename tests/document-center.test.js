@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {documentScopes,verifiedDocumentRoles,mayReadDocument,
-  mayWriteDocuments} from '../src/document-center-policy.js';
+  mayWriteDocuments,mayManageDocuments} from '../src/document-center-policy.js';
 import {validateDocumentUpload} from '../src/document-center-routes.js';
 const ID='111111111111111111',GUILD='999999999999999999';
 const staff=(dept)=>({dept,personId:ID,name:'Demo'});
@@ -13,6 +13,8 @@ const roles=(ids)=>({guildId:GUILD,roleIds:ids,verifiedAt:Date.now()});
 test('Politie Middenkader beheert eigen dienst maar niet automatisch Brandweer',()=>{
  const s=documentScopes(actor('politie','middenkader'),[staff('politie')]);
  assert.deepEqual(s.write,['politie']);
+ assert.deepEqual(s.manage,[]);
+ assert.equal(mayManageDocuments(s,'politie'),false);
  assert.deepEqual(s.read,['politie','multidisciplinair']);
  assert.equal(mayWriteDocuments(s,'brandweer'),false);
  assert.equal(mayReadDocument(s,{status:'active',department:'brandweer',
@@ -46,6 +48,8 @@ test('Bevoegd Officierenkader mag alle diensten beheren, maar niet op basis van 
  const s=documentScopes(high,[staff('politie')]);
  assert.ok(s.write.includes('multidisciplinair'));
  assert.ok(s.write.includes('ambulance'));
+ assert.ok(s.manage.includes('brandweer'));
+ assert.ok(mayManageDocuments(s,'multidisciplinair'));
  const denied=documentScopes(high,[]);
  assert.deepEqual(denied.write,[]);
 });
@@ -83,4 +87,34 @@ test('Documentbestanden nooit publiek vrijgegeven en archief verwijdert alleen m
  assert.match(server,/installDocumentCenterRoutes\(app,\{requireUser:requireDossierUser,getSnapshot\}\)/);
  assert.match(center,/documentencentrum|Documentencentrum/i);
  assert.match(education,/href="\/documentencentrum.html"/);
+});
+
+test('Een vertrokken uploader blijft niet de eigenaar van zijn documenten',()=>{
+ const original={status:'active',department:'politie',audience:'instructeurs',
+   uploadedBy:'discord:222222222222222222',owner:'belgiepd'};
+ const officer=documentScopes(actor('politie','officierenkader'),[staff('politie')]);
+ assert.equal(mayReadDocument(officer,original),true);
+ assert.equal(mayManageDocuments(officer,original.department),true);
+ const replacement=documentScopes(actor('politie','middenkader'),[staff('politie')]);
+ assert.equal(mayReadDocument(replacement,original),true);
+ assert.equal(mayManageDocuments(replacement,original.department),false);
+ const departure=documentScopes({...actor('politie','middenkader'),
+   discordId:'222222222222222222',uid:'discord:222222222222222222'},
+   [staff('politie')]);
+ assert.equal(departure.manage.length,0);
+ assert.equal(departure.write.length,0);
+});
+test('Bestaande documenten en oude bestandsversies blijven na archiveren bewaard',()=>{
+ const routes=readFileSync(new URL('../src/document-center-routes.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/documentencentrum.html',import.meta.url),'utf8');
+ assert.match(routes,/const META='bpd_document_center',AUDIT='bpd_document_center_audit',\s+VERSIONS='bpd_document_center_versions'/);
+ assert.match(routes,/action:'replace_file'/);
+ assert.match(routes,/previousStoragePath:old\.storagePath/);
+ assert.match(routes,/expectedVersion/);
+ assert.match(routes,/owner:'belgiepd'/);
+ assert.match(routes,/mayManageDocuments\(req\.documentScopes,old\.department\)/);
+ assert.match(routes,/status:'archived'/);
+ assert.doesNotMatch(routes,/oldFile\.delete|storage\(\)\.file\(old\.storagePath\)\.delete/);
+ assert.match(page,/Nieuwe bestandsversie/);
+ assert.match(page,/canManage\(\)/);
 });
