@@ -120,7 +120,7 @@ app.use('/api/visual-layers',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
 app.use('/api/training-calendar',express.json({limit:'4kb',strict:true}));
-app.use('/api/document-center',express.json({limit:'8mb',strict:true}));
+app.use('/api/document-center',express.json({limit:'36mb',strict:true}));
 app.use('/api/dc-id-transfer',express.json({limit:'5kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/member',express.json({limit:'3kb',strict:true}));
