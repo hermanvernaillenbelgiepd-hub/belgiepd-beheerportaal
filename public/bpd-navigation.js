@@ -172,8 +172,8 @@
     aside.id='bpdSidebar';aside.setAttribute('aria-label','Hoofdnavigatie BelgiëPD');
     const brand=document.createElement('a');brand.className='bpd-brand';
     brand.href='/';brand.setAttribute('aria-label','BelgiëPD startpagina');
-    const mark=document.createElement('span');mark.className='bpd-brand-mark';
-    mark.textContent='BP';mark.setAttribute('aria-hidden','true');
+    const mark=document.createElement('img');mark.className='bpd-brand-mark';
+    mark.src='/belgiepd-logo-compact.svg';mark.alt='';mark.width=42;mark.height=42;
     const brandText=document.createElement('span');brandText.className='bpd-brand-text';
     const title=document.createElement('strong');title.textContent='BelgiëPD';
     const sub=document.createElement('small');sub.textContent='Beheerportaal';
