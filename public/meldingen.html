@@ -78,6 +78,13 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
  padding:6px 10px;font-size:11px;line-height:1.3;border-radius:6px;min-height:30px
 }
 #trainingReview .item .actions{gap:6px;margin-top:6px}
+#activityPingsPanel{padding:14px 16px;margin:10px 0;border-radius:10px}
+#activityPingsPanel h2{font-size:15px;line-height:1.3;margin:0 0 7px}
+#activityPingsPanel>p{font-size:12px;line-height:1.4;margin:5px 0 9px}
+#activityPingsList .item{padding:8px 0;font-size:12px;line-height:1.4}
+#activityPingsList .item p{margin:3px 0;font-size:11px}
+#activityPingsList .item button{padding:6px 10px;font-size:11px;min-height:30px}
+
 @media(max-width:700px){
  #trainingPersonalPanel,#trainingReviewPanel{padding:12px}
  #trainingReviewPanel>.actions{flex-wrap:wrap}
@@ -87,6 +94,11 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 <header><strong>🛡️ BelgiëPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>📬 Meldingen</h1><p>Bekijk je persoonlijke verlofbeslissingen en opleidingsmeldingen. Reekshoofden en bevoegde dienstleiding zien hier aanvragen die zij mogen behandelen.</p>
 <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
+<section id="activityPingsPanel" class="panel" hidden>
+ <h2>🔔 Mijn activiteitspings</h2>
+ <p>Ontvangen inactiviteitspings en leesbevestigingen. Iedere ping heeft één bewijsregistratie in je dossier en het dienstweekrapport.</p>
+ <div id="activityPingsList"></div>
+</section>
 <section id="personalPanel" class="panel" hidden>
  <h2>Mijn verlofmeldingen</h2>
  <p>Uitsluitend je eigen aanvragen en beslissingen. Bekijk <a href="/verlofbeheer.html">Mijn verlof</a> om een nieuwe aanvraag te doen.</p>
@@ -155,7 +167,48 @@ function item(x,override=false){
   row.append(buttons);
  }return row;
 }
+async function loadActivityPings(){
+ const panel=$('activityPingsPanel'),list=$('activityPingsList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const result=await api('/api/management/pings/mine');
+  const notices=Array.isArray(result.pings)?result.pings:[];
+  for(const entry of notices){
+   const row=document.createElement('div');row.className='item';
+   const heading=document.createElement('strong');
+   heading.textContent='Inactiviteitsping · '+(entry.department||'Dienst');
+   const info=document.createElement('p');
+   const date=entry.sentAt&&Number.isFinite(Date.parse(entry.sentAt))?
+    new Date(entry.sentAt).toLocaleString('nl-BE'):'Datum onbekend';
+   info.textContent='Verzonden '+date+' · '+(entry.status==='read'?'Gelezen':'Nog niet bevestigd');
+   const details=document.createElement('p');
+   details.textContent=entry.details||'Activiteitsopvolging gevraagd.';
+   row.append(heading,info,details);
+   if(entry.status!=='read'){
+    const action=document.createElement('button');action.type='button';
+    action.textContent='GELEZEN';
+    action.onclick=async()=>{
+     action.disabled=true;
+     try{
+      await api('/api/management/pings/mine/'+encodeURIComponent(entry.id)+'/read',{});
+      feedback('Leesbevestiging opgeslagen in je dossier.');
+      await loadActivityPings();
+     }catch(e){feedback('Leesbevestiging mislukt: '+e.message,true);action.disabled=false}
+    };
+    row.append(action);
+   }
+   list.append(row);
+  }
+  if(!notices.length)list.textContent='Je hebt momenteel geen activiteitspings.';
+  panel.hidden=false;
+ }catch(e){
+  list.textContent='Activiteitspings kunnen niet worden geladen: '+e.message;
+  panel.hidden=false;
+ }
+}
 async function load(){
+ void loadActivityPings();
  void loadTraining();
  void loadSeriesLeave();
  $('reviewPanel').hidden=true;
