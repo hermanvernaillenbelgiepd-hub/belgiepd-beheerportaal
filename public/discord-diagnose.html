@@ -2,7 +2,7 @@
 <html lang="nl"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
-<title>BelgiumPD MAIN · Discord-rolcontrole voor Bestuur</title>
+<title>BelgiumPD MAIN · Discord-bot en rollencontrole</title>
 <style>
 :root{color-scheme:dark;font:15px/1.55 Inter,system-ui,Segoe UI,Arial,sans-serif;background:#071428;color:#eaf1ff}
 *{box-sizing:border-box}body{margin:0}a{color:#bcd5ff}button{font:inherit;cursor:pointer;color:white;background:#345de1;border:1px solid #7498ff;border-radius:9px;padding:10px 16px;font-weight:750}
@@ -25,13 +25,13 @@ small,.muted{color:#a9bfdb}h1{font-size:clamp(25px,4vw,36px);margin:0 0 8px}h2{f
 #notes{padding-left:22px;color:#c8d8ec}#notes li{margin:7px 0}
 [hidden]{display:none!important}
 </style><link rel="stylesheet" href="/bpd-navigation.css"></head><body>
-<header><strong>🛡️ BelgiumPD / MAIN · Bestuur</strong>
+<header><strong>🛡️ BelgiumPD / MAIN · Rollencontrole</strong>
 <nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/discord-status.html">Mijn Discord</a></nav>
 </header><main>
-<p class="tag">MAINOMGEVING · BESTUUR · ALLEEN LEZEN</p>
+<p class="tag">MAINOMGEVING · BEVOEGD KADER EN BEHEER · ALLEEN LEZEN</p>
 <h1>Discord-bot en rollencontrole</h1>
 <p class="lead">Controle van botverbinding, serverrollen, beperkte ledenlijsttoegang en jouw eigen rolverificatie. De pagina wijzigt geen Discord-rollen, personeelsgegevens of portaalrechten. Geen tokens of volledige ledenlijsten worden getoond.</p>
-<div id="notice" role="status" aria-live="polite">Je Discord- en bestuursrechten worden gecontroleerd.</div>
+<div id="notice" role="status" aria-live="polite">Je Discord-aanmelding en toegangsrechten worden gecontroleerd.</div>
 <div class="panel" id="content" hidden>
  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center">
   <div><h2>Diagnose-overzicht</h2><small id="timestamp"></small></div>
@@ -115,7 +115,7 @@ function render(data){
   for(const item of notes.slice(0,8))$('notes').append(make('li',String(item).slice(0,330)));
   $('timestamp').textContent='Gecontroleerd: '+new Date(data.checkedAt).toLocaleString('nl-BE');
   $('content').hidden=false;
-  showNotice('Bestuurstoegang bevestigd. Dit is uitsluitend een technische diagnose op MAIN.');
+  showNotice('Toegang bevestigd. Dit is uitsluitend een technische diagnose op MAIN.');
 }
 let currentUser=null,request=0;
 async function refresh(coverage=false){

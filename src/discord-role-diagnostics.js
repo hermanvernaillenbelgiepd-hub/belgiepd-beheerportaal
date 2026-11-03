@@ -18,6 +18,14 @@ export function diagnosisAccess(actor,member,appointment,guild,verifyBoard,activ
   if(!isDiscordId(id)||actor?.uid!=='discord:'+id)return null;
   if(verifyBoard(member,guild))return 'geverifieerde_bestuursrol';
   if(activeAppointment(appointment))return 'goedgekeurde_bestuursaanstelling';
+  // Technical mode is activated by the verified server-side profile cookie.
+  if(actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true&&
+     actor.role==='beheerder')return 'geverifieerd_technisch_beheer';
+  // The approved server-side portal cadre is separate from Discord role labels.
+  if(Array.isArray(actor.departments)&&actor.departments.length>0){
+    if(actor.role==='korpsleiding')return 'goedgekeurde_korpsleiding';
+    if(actor.role==='officierenkader')return 'goedgekeurd_officierenkader';
+  }
   return null;
 }
 export function ageStatus(member,guild,at=Date.now()){
@@ -43,7 +51,7 @@ async function probe(url,token,{fetchImpl=fetch,limit=MAX_RESPONSE_BYTES}={}){
     return {status:'ok',data};
   }catch{return safeResponse;}
 }
-// Optional, explicitly requested board-only diagnostic. Discord's official
+// Optional, explicitly requested authorized-cadre diagnostic. Discord's official
 // List Guild Members endpoint requires GUILD_MEMBERS. We count responses
 // in server memory and return ONLY aggregated totals, never member identities.
 // A 1000-member result is not proof of full coverage: use after-pagination.
