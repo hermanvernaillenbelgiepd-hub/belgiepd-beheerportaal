@@ -107,10 +107,13 @@ export function assessActivityPings(evidence,{joinedAt=null,leaves=[]}={},now=ne
    }
   }
  }
- // If both inactivity and 50/50 apply, only the strongest notification
- // per review round is issued. Independent month/absence evidence remains.
- return candidates.filter(x=>x.criterion==='monthly'||
-  !candidates.some(y=>y.criterion==='absence'&&y.kind==='INACTIEF'&&x.kind==='50/50'));
+ // One notification per review round, with the strongest applicable rule.
+ // Prefer absence when severity ties; do not send conflicting 50/50 and
+ // INACTIEF pings at the same time. Idempotency is per rule and incident.
+ return candidates.sort((a,b)=>
+  (b.kind==='INACTIEF'?2:1)-(a.kind==='INACTIEF'?2:1)||
+  (b.criterion==='absence'?1:0)-(a.criterion==='absence'?1:0)
+ ).slice(0,1);
 }
 export function automaticPingEntryId(dept,id,ping){
  if(!/^(politie|brandweer|ambulance|depannage)$/.test(dept)||!ID.test(String(id))||
