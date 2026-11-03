@@ -31,7 +31,7 @@ async function storeAutomaticPing(db,person,ping,date){
   const details='Automatische '+ping.kind+'-ping. '+ping.reason+
    ' Dit is een waarschuwing, geen automatische statuswijziging of ontslag.';
   const source=inactivityPingNotice({
-   dept,discordId:id,entryId,details,actor,source:'automatic'
+   dept,discordId:id,entryId,details,actor,source:'automatic',kind:ping.kind
   });
   tx.create(entry,{
    type:'inactiviteitsping',reportCategory:'inactiviteitsping',dept,
