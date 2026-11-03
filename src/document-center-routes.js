@@ -198,6 +198,38 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       res.json({saved:true});
     }catch(e){error(res,e);}
   });
+
+  // Custom folders can be archived only when no ACTIVE documents still
+  // reference them. System folder IDs do not match UUID and cannot be removed.
+  app.delete('/api/document-center/folders/:id',requireUser,scope,async(req,res)=>{
+    try{
+      const id=String(req.params.id||'');
+      if(!ID.test(id))throw fail(404,'Alleen zelf aangemaakte mappen kunnen verwijderd worden');
+      const db=getFirestore(),ref=db.collection(FOLDERS).doc(id);
+      await db.runTransaction(async tx=>{
+        const folder=await tx.get(ref);
+        if(!folder.exists||folder.get('status')!=='active')
+          throw fail(404,'Map niet gevonden of al verwijderd');
+        const dept=folder.get('department');
+        if(!mayManageDocuments(req.documentScopes,dept))
+          throw fail(403,'Alleen Officierenkader, Korpsleiding of Technisch Beheer mag mappen verwijderen');
+        // Keep archived document history and metadata; never delete document
+        // objects or other service resources when a folder is archived.
+        const stillActive=await tx.get(db.collection(META)
+          .where('folderId','==',id).where('status','==','active').limit(1));
+        if(!stillActive.empty)
+          throw fail(409,'Deze map bevat nog documenten. Verplaats ze via Gegevens aanpassen of archiveer ze eerst.');
+        const stamp=FieldValue.serverTimestamp();
+        tx.update(ref,{status:'archived',archivedAt:stamp,archivedBy:req.bpd.uid});
+        tx.create(db.collection(AUDIT).doc(),{
+          action:'archive_folder',folderId:id,department:dept,
+          name:folder.get('name'),actorUid:req.bpd.uid,at:stamp
+        });
+      });
+      res.json({removed:true,documentsPreserved:true});
+    }catch(e){error(res,e);}
+  });
+
   app.post('/api/document-center/links',requireUser,scope,async(req,res)=>{
     try{
       const body=req.body||{};
