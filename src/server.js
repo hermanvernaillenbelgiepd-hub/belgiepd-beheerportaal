@@ -763,7 +763,11 @@ installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installRosterColumnRoutes(app,{requireUser});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
 installDocumentCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
-installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
+  onCompleted:id=>{
+    authDocCache.delete(DC_TRANSFER_ALIASES+':'+id);
+    authDocCache.delete(USER_COLLECTION+':'+id);
+  }});
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installRoleArtworkRoutes(app,{requireUser});
