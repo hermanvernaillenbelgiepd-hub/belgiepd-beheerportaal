@@ -58,7 +58,7 @@ small{color:#bad1ed}.warning{border-left:3px solid #e4ac55;padding-left:12px}
 </main>
 <script type="module">
 const $=id=>document.getElementById(id);
-let auth=null,me=null,checked=null,loading=false;
+let auth=null,me=null,checked=null,loading=false,executionEnabled=false;
 function announce(message,kind=''){const n=$('notice');n.textContent=message;n.className='notice '+kind}
 function el(tag,text){const n=document.createElement(tag);n.textContent=text;return n}
 async function api(path,method='GET',data){
@@ -149,7 +149,8 @@ async function loadRequests(){
   const actions=document.createElement('td');
   if(request.status==='pending'){
    const button=document.createElement('button');button.type='button';
-   button.textContent='Controleren en overdragen';button.className='secondary';
+   button.textContent=executionEnabled?'Controleren en overdragen':'TEST-controle vereist';button.className='secondary';
+   button.disabled=!executionEnabled;
    button.onclick=()=>approve(request);actions.append(button);
   }else actions.textContent='Afgehandeld';
   tr.append(actions);table.append(tr);
@@ -189,9 +190,14 @@ async function init(){
    me=user;
    if(!me){$('intake').hidden=true;$('requests').hidden=true;announce('Meld je aan via het beheerportaal.');return}
    try{
+    const status=await api('/api/dc-id-transfer/status');
+    executionEnabled=status.executionEnabled===true;
     await loadRequests();
     $('intake').hidden=false;$('requests').hidden=false;
-    announce('Beheerrechten gecontroleerd. Geen personeelsgegevens gewijzigd.','good');
+    announce(executionEnabled?
+      'Beheerrechten gecontroleerd. Geen personeelsgegevens gewijzigd.':
+      'Voorcontrole en aanvraag zijn beschikbaar. Definitieve overdracht op MAIN blijft geblokkeerd tot de TEST-proef is goedgekeurd.',
+      executionEnabled?'good':'');
    }catch(e){$('intake').hidden=true;$('requests').hidden=true;announce(e.message,'error')}
   });
  }catch(e){announce(e.message,'error')}
