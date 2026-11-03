@@ -33,6 +33,12 @@ export function mayAdministerDcTransfer(actor){
    ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'));
  return technical||police;
 }
+// The same authorized officer can prepare and complete a transfer.
+// Subject accounts may never transfer themselves, regardless of their cadre.
+export function mayCompleteDcTransfer(actor,oldId,newId){
+ return mayAdministerDcTransfer(actor)&&ID.test(oldId)&&ID.test(newId)&&
+   oldId!==newId&&![oldId,newId].includes(actor.discordId);
+}
 export function freshTransferTarget(member,discordId,guildId,now=Date.now()){
  return ID.test(discordId)&&ID.test(guildId)&&member?.guildId===guildId&&
   Number.isSafeInteger(member.verifiedAt)&&member.verifiedAt<=now&&
