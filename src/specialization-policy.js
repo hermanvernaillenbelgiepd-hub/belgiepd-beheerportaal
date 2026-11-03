@@ -11,9 +11,11 @@ export const PORTAL_POLICE_SPECIALTIES=Object.freeze([
  'Burgermeldingen','Terreinondersteuner','INTERVENTIEDIENST',
  'Prioritair rijden','EHBO'
 ]);
+export const PORTAL_DEPANNAGE_SPECIALTIES=Object.freeze(['F.A.S.T','LSRA']);
 export const allSpecialtyLabels=(dept,additional=[])=>[...new Set([
  ...(SPECIALTY_LABELS[dept]||[]),
  ...(dept==='politie'?PORTAL_POLICE_SPECIALTIES:[]),
+ ...(dept==='depannage'?PORTAL_DEPANNAGE_SPECIALTIES:[]),
  ...additional
 ])];
 // The callsign is checked on the police record, never inferred from Discord roles.

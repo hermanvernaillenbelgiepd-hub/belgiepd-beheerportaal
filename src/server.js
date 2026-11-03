@@ -371,7 +371,7 @@ async function getSnapshot({forceRefresh=false}={}){
   // only: no Firestore writes, role grants, cadre or dossier-right changes.
   // The same cached upstream snapshot also powers the organogram.
   let verifiedRosterApplied=false;
-  if(specialties&&process.env.DISCORD_GUILD_ID){
+  if(specialties&&/^\d{15,22}$/.test(String(process.env.DISCORD_GUILD_ID||''))){
     try{
       const upstream=await getBelgiumPdDisplayRoles();
       if(upstream.status==='ok'){
