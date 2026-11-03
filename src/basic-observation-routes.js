@@ -93,7 +93,7 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
       for(const doc of snapshots.docs){
         const e=doc.data(),author=e.submittedByActor||e.registeredBy;
         if(e.type!=='observatie'||e.dept!==POL||
-           !/^[345]\\d\\d$/.test(String(author?.call||'').replace(/^S[- ]?/i,'')))continue;
+           !/^[345]\d\d$/.test(String(author?.call||'').replace(/^S[- ]?/i,'')))continue;
         const subject=staffCount(people,e.subjectDiscordId);
         if(subject.length!==1)continue;
         if(!req.bpd.boardPersonnelAdmin&&
