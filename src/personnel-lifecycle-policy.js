@@ -1,7 +1,9 @@
+import {ROLE_CATALOG} from './role-catalog.js';
+
 // Reversible, service-scoped personnel lifecycle. All historical dossiers stay
 // in their original collections; this register controls active roster display.
 export const PERSONNEL_LIFECYCLE_COLLECTION='bpd_personnel_lifecycle';
-export const LIFECYCLE_SERVICES=Object.freeze(['politie','brandweer','ambulance','depannage']);
+export const LIFECYCLE_SERVICES=Object.freeze(['politie','brandweer','ambulance','depannage','burger']);
 const SERVICE=new Set(LIFECYCLE_SERVICES);
 const ID=/^\d{15,22}$/;
 export const lifecycleKey=(dept,id)=>SERVICE.has(dept)&&ID.test(String(id||''))?
@@ -77,18 +79,30 @@ export function overlayPersonnelLifecycle(records,docs,{includeArchived=false}={
  }
  return out;
 }
+// Read-only discrepancy detection. No automatic dismissal from Discord absence.
+const SERVICE_ROLE_IDS=new Map(LIFECYCLE_SERVICES.map(dept=>[
+ dept,new Set(ROLE_CATALOG.filter(r=>r.dept===dept&&r.kind==='lidmaatschap'&&
+  r.stage!=='interesse').map(r=>r.id))
+]));
 export function possibleDiscordDepartures(records,snapshot){
  if(snapshot?.status!=='ok'||!(snapshot.entries instanceof Map))return [];
- const groups=new Map(),duplicate=new Set();
+ const groups=new Map(),duplicates=new Set();
  for(const p of records||[]){
   const key=lifecycleKey(p?.dept,p?.personId);
   if(!key)continue;
-  if(groups.has(key))duplicate.add(key);
+  if(groups.has(key))duplicates.add(key);
   groups.set(key,p);
  }
- return [...groups].filter(([key,p])=>!duplicate.has(key)&&
-   !snapshot.entries.has(p.personId)).map(([,p])=>({
-    dept:p.dept,discordId:p.personId,name:String(p.name||'').slice(0,120),
-    call:String(p.call||'').slice(0,24),evidence:'not_in_successful_api_snapshot'
-  }));
+ return [...groups].flatMap(([key,p])=>{
+  if(duplicates.has(key))return [];
+  let evidence=null;
+  if(!snapshot.entries.has(p.personId))evidence='not_in_successful_api_snapshot';
+  else{
+   const roles=snapshot.entries.get(p.personId),membership=SERVICE_ROLE_IDS.get(p.dept);
+   if(Array.isArray(roles)&&membership?.size&&!roles.some(id=>membership.has(id)))
+    evidence='service_roles_missing_in_verified_snapshot';
+  }
+  return evidence?[{dept:p.dept,discordId:p.personId,name:String(p.name||'').slice(0,120),
+   call:String(p.call||'').slice(0,24),evidence,displayOnly:true}]:[];
+ });
 }

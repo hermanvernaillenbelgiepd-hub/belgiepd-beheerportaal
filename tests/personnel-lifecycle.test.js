@@ -14,7 +14,7 @@ const archived=(dept='politie')=>({
 });
 test('lifecycle only accepts exact, qualified departmental Discord IDs',()=>{
  assert.equal(lifecycleKey('politie',id),'politie_'+id);
- assert.equal(lifecycleKey('burger',id),null);
+ assert.equal(lifecycleKey('burger',id),'burger_'+id);
  assert.equal(lifecycleKey('politie','not-a-snowflake'),null);
 });
 test('outdienst registration validates cause and revision; restoration has no invented cause',()=>{
@@ -79,7 +79,14 @@ test('missing Discord membership is a read-only candidate, never an automatic di
  assert.equal(missing.length,2);
  assert.ok(missing.every(x=>x.evidence==='not_in_successful_api_snapshot'));
  assert.equal(input[0].status,'Actief');
- assert.equal(possibleDiscordDepartures(input,{status:'ok',entries:new Map([[id,[]]])}).length,0);
+ const roleMissing=possibleDiscordDepartures(input,{status:'ok',entries:new Map([[id,[]]])});
+ assert.equal(roleMissing.length,2);
+ assert.ok(roleMissing.every(x=>x.evidence==='service_roles_missing_in_verified_snapshot'));
+ const policeOnly=possibleDiscordDepartures(input,{
+  status:'ok',entries:new Map([[id,['1309532438053130326']]])
+ });
+ assert.equal(policeOnly.length,1);
+ assert.equal(policeOnly[0].dept,'ambulance');
 });
 test('personnel administration UI has syntactically valid inline Javascript',()=>{
  const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');

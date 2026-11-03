@@ -1,8 +1,8 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {PERSONNEL_LIFECYCLE_COLLECTION,lifecycleKey,validateLifecycleAction,
+import {PERSONNEL_LIFECYCLE_COLLECTION,LIFECYCLE_SERVICES,lifecycleKey,validateLifecycleAction,
  lifecycleSourceSnapshot,possibleDiscordDepartures} from './personnel-lifecycle-policy.js';
-import {canReadPersonnelSubject,canEditPersonnel,canViewPersonnel} from './personnel-editor-policy.js';
-import {canReadServiceDossier} from './service-dossier-access.js';
+import {canManageLifecycleDepartment,canReadPersonnelLifecycle,
+ canManagePersonnelLifecycle} from './personnel-lifecycle-access.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
 const fail=(status,message)=>Object.assign(new Error(message),{status});
@@ -14,8 +14,7 @@ const respond=(res,e)=>{
 export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,invalidateLifecycle}){
  const db=()=>getFirestore();
  const store=()=>db().collection(PERSONNEL_LIFECYCLE_COLLECTION);
- const allowed=(actor,person)=>canReadPersonnelSubject(actor,person)&&
-   canEditPersonnel(actor,person)&&actor.discordId!==person.personId;
+ const allowed=canManagePersonnelLifecycle;
  const resolve=async(dept,id)=>{
   const key=lifecycleKey(dept,id);
   if(!key)throw fail(400,'Ongeldige dienst of Discord ID');
@@ -28,8 +27,8 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
  app.get('/api/personnel-lifecycle/archives',requireUser,async(req,res)=>{
   try{
    const dept=String(req.query.dept||'');
-   if(!['politie','brandweer','ambulance','depannage'].includes(dept)||
-      !canViewPersonnel(req.bpd,dept)||!canReadServiceDossier(req.bpd,dept))
+   if(!LIFECYCLE_SERVICES.includes(dept)||
+      !canManageLifecycleDepartment(req.bpd,dept))
     throw fail(403,'Geen bevoegdheid tot dit personeelsarchief');
    const [records,snapshot]=await Promise.all([
      store().where('dept','==',dept).limit(600).get(),
@@ -38,7 +37,7 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    if(records.size===600)throw fail(503,'Archief is te groot voor veilige weergave');
    const byId=new Map(snapshot.data.filter(p=>p.dept===dept).map(p=>[p.personId,p]));
    const entries=records.docs.filter(d=>['archived','pending'].includes(d.get('state')))
-    .filter(d=>{const p=byId.get(d.get('discordId'));return p&&canReadPersonnelSubject(req.bpd,p)})
+    .filter(d=>{const p=byId.get(d.get('discordId'));return p&&canReadPersonnelLifecycle(req.bpd,p)})
     .map(d=>({dept,discordId:d.get('discordId'),name:String(d.get('snapshot')?.name||'').slice(0,120),
       call:String(d.get('snapshot')?.call||'').slice(0,24),rank:String(d.get('snapshot')?.rank||'').slice(0,100),
       state:d.get('state'),cause:d.get('cause'),reason:String(d.get('reason')||'').slice(0,500),
@@ -54,14 +53,14 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
  app.get('/api/personnel-lifecycle/departures',requireUser,async(req,res)=>{
   try{
    const dept=String(req.query.dept||'');
-   if(!['politie','brandweer','ambulance','depannage'].includes(dept)||
-      !canViewPersonnel(req.bpd,dept)||!canReadServiceDossier(req.bpd,dept))
+   if(!LIFECYCLE_SERVICES.includes(dept)||
+      !canManageLifecycleDepartment(req.bpd,dept))
     throw fail(403,'Geen bevoegdheid tot Discord-controle');
    const snapshot=await getSnapshot();
    if(snapshot.stale)throw fail(503,'Personeelsbron tijdelijk verouderd');
    const upstream=await getBelgiumPdDisplayRoles();
    if(upstream.status!=='ok')throw fail(503,'Discord-ledenlijst niet met zekerheid gecontroleerd');
-   const people=snapshot.data.filter(p=>p.dept===dept&&canReadPersonnelSubject(req.bpd,p));
+   const people=snapshot.data.filter(p=>p.dept===dept&&canReadPersonnelLifecycle(req.bpd,p));
    const candidates=possibleDiscordDepartures(people,upstream);
    res.set('Cache-Control','private, no-store');
    return res.json({candidates:candidates.slice(0,100),total:candidates.length,
@@ -72,7 +71,7 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
  app.get('/api/personnel-lifecycle/:dept/:discordId',requireUser,async(req,res)=>{
   try{
    const {dept,discordId}=req.params,person=await resolve(dept,discordId);
-   if(!canReadPersonnelSubject(req.bpd,person))throw fail(403,'Geen inzagerecht');
+   if(!canReadPersonnelLifecycle(req.bpd,person))throw fail(403,'Geen inzagerecht');
    const [entry,audit]=await Promise.all([
     store().doc(dept+'_'+discordId).get(),
     store().doc(dept+'_'+discordId).collection('audit').orderBy('at','desc').limit(25).get()

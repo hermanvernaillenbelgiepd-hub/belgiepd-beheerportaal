@@ -1,6 +1,8 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
+import {LIFECYCLE_SERVICES} from './personnel-lifecycle-policy.js';
+import {canManageLifecycleDepartment,canManagePersonnelLifecycle} from './personnel-lifecycle-access.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canReadPersonnelSubject,canEditPersonnel,canEditGeneralPersonnelInfo,canChangePersonnelStatus,canRenameLowerPolice,validateLowerPoliceRename,validatePersonnelChange,mergePersonnelEdits,
   currentPersonnelAuditActor,personnelCallClaimId} from './personnel-editor-policy.js';
@@ -32,7 +34,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
   const writes=()=>process.env.BPD_ENABLE_PERSONNEL_WRITES==='true';
   app.get('/api/personnel/overview',requireDossierUser,async(req,res)=>{
     try {
-      const allowed=(req.bpd.dossierAllowedDepartments||req.bpd.departments||[]).filter(d=>canReadServiceDossier(req.bpd,d));
+      const lifecycleDepartments=LIFECYCLE_SERVICES.filter(dept=>canManageLifecycleDepartment(req.bpd,dept));
+      const allowed=[...new Set([
+       ...(req.bpd.dossierAllowedDepartments||req.bpd.departments||[])
+        .filter(d=>canReadServiceDossier(req.bpd,d)),
+       ...(lifecycleDepartments.includes('burger')?['burger']:[])
+      ])];
       if(!allowed.length)return error(res,403,'Je hebt geen kaderrechten voor personeelsbeheer');
       const [snapshot,edits,pending]=await Promise.all([
         getSnapshot(),collection().limit(400).get(),
@@ -45,12 +52,13 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const overlay=edits.docs.map(d=>d.data());
       const records=mergePersonnelEdits(base,overlay).map(p=>{
         const edit=overlay.find(e=>e.dept===p.dept&&e.discordId===p.personId);
-        const canOpenDossier=canReadPersonnelSubject(req.bpd,p);
+        const canOpenDossier=p.dept!=='burger'&&canReadPersonnelSubject(req.bpd,p);
         const canPromote=Boolean(canOpenDossier&&p.createdInFirestore===true&&p.dept==='politie'&&
           nextPoliceRank(p.rank)&&req.bpd.discordId!==p.personId&&
           canAuthoriseExceptionalPoliceRank(req.bpd,'politie'));
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
-          canOpenDossier,canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
+          canOpenDossier,canManageLifecycle:canManagePersonnelLifecycle(req.bpd,p),
+          canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
           canChangeRank:canChangePoliceGrade(req.bpd,p),
           series:displaySeries(p.seriesRaw??p.series,p.rank,p.dept,p.call),status:p.status,
           // Private activity summary only for authenticated service managers.
@@ -80,7 +88,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       return res.json({records:labelledRecords,pendingPersonnel,
         testMode:process.env.BPD_TEST_FIXTURES==='true',pendingLimited:pending.size===500,
         canViewPersonnelDiagnostics:req.bpd.boardPersonnelAdmin===true,
-        role:req.bpd.role,departments:allowed,
+        role:req.bpd.role,departments:allowed,lifecycleDepartments,
         writesEnabled:writes(),createEnabled:personnelCreationEnabled(process.env),
         promotionsEnabled:personnelDataEnabled(process.env)&&process.env.BPD_ENABLE_PERSONNEL_RANK_CHANGES==='true',
         rankChangesEnabled:personnelDataEnabled(process.env)&&writes()&&

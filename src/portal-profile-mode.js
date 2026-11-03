@@ -7,7 +7,7 @@ import {roleSummary} from './role-catalog.js';
 export const PROFILE_COOKIE='bpd_portal_profile';
 export const PROFILE_SECONDS=3600;
 const ID=/^\d{15,22}$/;
-const departments=['politie','ambulance','brandweer','depannage'];
+const departments=['politie','ambulance','brandweer','depannage','burger'];
 
 export function eligibleForTechnicalProfile(decoded,actor,member,env,now=Date.now()){
   if(!ID.test(actor?.discordId)||decoded?.uid!=='discord:'+actor.discordId)return false;
