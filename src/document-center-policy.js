@@ -29,7 +29,7 @@ export function documentScopes(actor,roster,verifiedRoleIds=[]){
   const unique=(dept)=>actor.departments.includes(dept)&&
     roster.filter(p=>p.dept===dept&&p.personId===actor.discordId).length===1;
   const highPolice=unique('politie')&&COMMAND.has(roleForDepartment(actor,'politie'));
-  if(highPolice)return {read:[...DOCUMENT_DEPARTMENTS],write:[...DOCUMENT_DEPARTMENTS]};
+  if(highPolice)return {read:[...DOCUMENT_DEPARTMENTS],write:[...DOCUMENT_DEPARTMENTS],manage:[...DOCUMENT_DEPARTMENTS]};
   const read=[],write=[];
   const verified=new Set(verifiedRoleIds);
   for(const dept of INTERNAL){
