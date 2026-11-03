@@ -197,18 +197,6 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-dialog .person-profile-completed-training-entry span{
  color:#9de0b6;font-weight:800;letter-spacing:.04em
 }
-.person-profile-dialog .person-profile-other-service-roles{
- margin-top:14px;padding-top:10px;border-top:1px solid #365472
-}
-.person-profile-dialog .person-profile-other-service-roles h4{
- font-size:12px;letter-spacing:.025em;color:#b8d1ea;margin:0 0 8px
-}
-.person-profile-dialog .person-profile-other-service-row{
- margin:9px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap
-}
-.person-profile-dialog .person-profile-other-service-row>strong{
- font-size:12px;min-width:95px;color:#d5e7fc
-}
 .person-profile-dialog .azls-function-chip{display:inline-flex;align-items:center;border:1px solid #4d789a;background:#1d3f5c;color:#eaf3ff;padding:6px 10px;border-radius:7px;font-size:12px;font-weight:600}
 #services .service[data-dept="ambulance"] .fire-specialty-patch{
  display:grid;place-items:center;flex:0 0 32px;
@@ -2819,23 +2807,6 @@ function openPersonProfile(p){
   }
  }
 
- // Verified Discord roles of OTHER services remain separate from the
- // selected service's qualifications and never grant dossier privileges.
- if(Array.isArray(p.otherServiceRoles)&&p.otherServiceRoles.length){
-  const other=el('section','person-profile-other-service-roles');
-  other.append(el('h4','','Discord-functies bij andere diensten'));
-  other.append(el('p','person-profile-note',
-   'Deze Discord-rollen zijn geen specialisaties van deze dienst. '+
-   'De personeelsfiches van andere diensten worden afzonderlijk beheerd.'));
-  for(const group of p.otherServiceRoles){
-   const row=el('div','person-profile-other-service-row');
-   row.append(el('strong','',SERVICES.find(s=>s.id===group.dept)?.name||group.dept));
-   const chips=el('div','azls-function-chips');
-   for(const label of group.labels)chips.append(el('span','azls-function-chip',label));
-   row.append(chips);other.append(row);
-  }
-  specBox.append(other);
- }
  const roleProof=profileSpecialtyChecks.get(profileKey);
  if(p.dept==='politie'&&!state.demo){
   const errors={bot_unconfigured:'Bot ontbreekt op MAIN',
@@ -3389,11 +3360,6 @@ async function loadPublic(){
     motardRole:['in_opleiding','volwaardig','instructeur'].includes(p.motardRole)?p.motardRole:'',
     dispRole:['in_opleiding','volwaardig','instructeur'].includes(p.dispRole)?p.dispRole:'',
     completedFireBasicTraining:p.dept==='brandweer'&&p.completedFireBasicTraining===true,
-    otherServiceRoles:(Array.isArray(p.otherServiceRoles)?p.otherServiceRoles:[])
-     .filter(x=>x&&['politie','brandweer','ambulance','depannage'].includes(x.dept)&&
-       x.dept!==p.dept&&Array.isArray(x.labels))
-     .slice(0,3).map(x=>({dept:x.dept,
-      labels:x.labels.filter(v=>typeof v==='string'&&v.length<=45).slice(0,16)})),
     azlsFunctions:p.dept==='ambulance'&&Array.isArray(p.azlsFunctions)?
      p.azlsFunctions.filter(x=>['AZLS Leiding','Arts','Verpleegkundige','Medisch Instructeur'].includes(x)).slice(0,4):[],
     specialtyPatches:Array.isArray(p.specialtyPatches)?
