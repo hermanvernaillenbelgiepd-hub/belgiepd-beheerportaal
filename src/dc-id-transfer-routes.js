@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
 import {DC_TRANSFER_REQUESTS,DC_TRANSFER_ALIASES,DC_TRANSFER_TARGETS,TRANSFER_DEPARTMENTS,
-  validTransferInput,mayAdministerDcTransfer,freshTransferTarget,
+  validTransferInput,mayAdministerDcTransfer,mayCompleteDcTransfer,freshTransferTarget,
   transferRosterPlan,transferSubjectFields} from './dc-id-transfer-policy.js';
 
 const ID=/^\d{15,22}$/;
@@ -184,10 +184,10 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onComplet
    const oldId=doc.get('oldDiscordId'),newId=doc.get('newDiscordId');
    if(!ID.test(oldId)||!ID.test(newId)||oldId===newId)
      throw failure(409,'Aanvraag bevat geen geldige Discord-ID’s');
-   // The same authorized officer may finish their own request. Prevent
-   // self-transfer even when a privileged account initiates the operation.
-   if([oldId,newId].includes(req.bpd.discordId))
-     throw failure(403,'Een beheerder mag zijn eigen account niet overdragen.');
+   // A single authorized officer may finish their own request. Recheck the
+   // actor and reject transferring either their source or target identity.
+   if(!mayCompleteDcTransfer(req.bpd,oldId,newId))
+     throw failure(403,'Alleen bevoegd kader mag een andere identiteit overdragen.');
    if(doc.get('expiresAt')?.toMillis?.()<Date.now())
      throw failure(409,'De aanvraag is verlopen en moet opnieuw worden gecontroleerd.');
    const [roster]=await Promise.all([
