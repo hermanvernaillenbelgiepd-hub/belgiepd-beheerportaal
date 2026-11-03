@@ -38,6 +38,44 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .previewBody iframe{border:0;width:100%;height:100%;background:#fff}
 .previewBody img{max-width:100%;max-height:100%;object-fit:contain}
 
+
+/* Documentencentrum: restrained folder layout, with genuine light/dark colour contrast. */
+#folderButtons{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:9px;margin:11px 0 15px}
+.folder-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:15px 0 6px}
+.folder-header h2{margin:0;font-size:15px}
+#folderButtons button{background:#1a3150!important;color:#e9f3ff!important;text-align:left;
+  border:1px solid #40618a!important;padding:12px;min-height:58px;font-weight:600}
+#folderButtons button[aria-pressed="true"]{background:#294d81!important;
+  outline:2px solid #81b5ef;outline-offset:1px}
+#folderButtons button:hover{background:#2c4c75!important}
+#folderButtons button small{display:block;color:#b4cee9;font-size:11px;font-weight:500;margin-top:3px}
+#workspace,#editor{background:#13243b;color:#e9f1fc;border:1px solid #385575}
+#workspace label,#editor label{color:#c8dcf6}
+#workspace input,#workspace select,#editor input,#editor select,#editor textarea{
+ background:#0c1d33!important;color:#f3f7ff!important;
+ border:1px solid #547399!important;border-radius:8px;min-height:39px}
+#workspace input::placeholder,#editor input::placeholder,#editor textarea::placeholder{color:#a8bcd7!important;opacity:1}
+#workspace select option,#editor select option{color:#f3f7ff;background:#122842}
+#workspace input:focus-visible,#workspace select:focus-visible,#editor :is(input,select,textarea):focus-visible{
+ outline:2px solid #88c6ff;outline-offset:1px}
+.document{background:#10223a;border-color:#3e5d81;color:#eaf2ff}
+.document .desc{color:#d8e6fb}
+.document .meta,.document .counter{color:#b8cae6}
+html[data-bpd-theme="dark"] #workspace,
+html[data-bpd-theme="dark"] #editor{background:#13243b!important;color:#e9f1fc!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #workspace,
+html:not([data-bpd-theme="dark"]) body.bpd-shell #editor{background:#fff!important;color:#1e3456!important;border-color:#cddcef!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #folderButtons button{background:#f3f7fd!important;color:#1e3d61!important;border-color:#c5d6ec!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #folderButtons button[aria-pressed="true"]{background:#dcecff!important;color:#173968!important;outline-color:#3866be}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #folderButtons button small{color:#597089}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #workspace :is(input,select),
+html:not([data-bpd-theme="dark"]) body.bpd-shell #editor :is(input,select,textarea){background:#f7faff!important;color:#15304f!important;border-color:#b5c7df!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #workspace select option,
+html:not([data-bpd-theme="dark"]) body.bpd-shell #editor select option{background:#fff;color:#15304f}
+html:not([data-bpd-theme="dark"]) body.bpd-shell .document{background:#f8fbff!important;color:#203a5c!important;border-color:#cbd9eb!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell .document :is(.desc,.meta,.counter){color:#476281!important}
+@media(max-width:640px){#folderButtons{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.folder-header{align-items:start}}
+
 @media(max-width:640px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.top-actions{margin-left:0}}
 </style></head>
 <body>
@@ -58,22 +96,30 @@ button:disabled{opacity:.5;cursor:not-allowed}
   <label class="search">Zoeken<input id="search" type="search" placeholder="Titel, bestand of omschrijving"></label>
   <button type="button" id="reload" class="secondary">Vernieuwen</button>
  </div>
+ <div class="folder-header"><h2>📁 Mappen</h2><button type="button" id="addFolder" class="secondary" hidden>+ Nieuwe map</button></div>
+ <div class="folder-grid" id="folderButtons" aria-label="Selecteer een map"></div>
  <p class="counter" id="counter"></p>
  <div id="documents"></div>
 </section>
 <section class="card" id="editor" hidden>
- <h2 id="editorTitle">Document uploaden</h2>
- <p class="note">Bestanden worden privé opgeslagen. Alleen PDF, DOCX, PPTX, XLSX, PNG, JPG en WebP tot 5 MB.</p>
+ <h2 id="editorTitle">Document of link toevoegen</h2>
+ <p class="note">Bewaar PDF, Word, PowerPoint, Excel, afbeeldingen of HTTPS-leslinks per map. Bestanden blijven privé; bestanden maximaal 5 MB. YouTube-video's kunnen in het portaal worden bekeken.</p>
  <form id="documentForm">
  <div class="grid">
   <label>Titel<input id="title" maxlength="120" minlength="3" required></label>
+  <label>Map<select id="folder"><option value="">Algemeen (zonder map)</option></select></label>
+  <label>Type lesmateriaal<select id="resourceType">
+    <option value="file">Bestand · PDF, Word, PowerPoint, Excel, afbeelding</option>
+    <option value="link">Weblink · website, video, documentlink</option>
+  </select></label>
   <label>Categorie<select id="category" required></select></label>
   <label>Wie mag dit bekijken?<select id="audience" required>
    <option value="leden">Alle geverifieerde dienstleden (ook tijdelijk roepnummer)</option>
    <option value="instructeurs">Instructeurs en leiding</option>
    <option value="leiding">Alleen leiding</option>
    <option value="toegewezen">Alleen handmatig toegewezen lesgevers</option></select></label>
-  <label id="fileWrap">Bestand<input id="file" type="file" accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,.webp" required></label>
+  <label id="fileWrap" class="full">Bestand<input id="file" type="file" accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,.webp" required></label>
+  <label id="linkWrap" class="full" hidden>Externe HTTPS-link<input id="linkUrl" type="url" placeholder="https://..." maxlength="1800"></label>
   <label class="full">Omschrijving (optioneel)<textarea id="description" maxlength="1000"></textarea></label>
   <label class="full">Extra leesrechten voor lesgevers (Discord-ID's, gescheiden door komma of nieuwe regel)
     <textarea id="readerIds" maxlength="1200" placeholder="123456789012345678, 234567890123456789"></textarea>
