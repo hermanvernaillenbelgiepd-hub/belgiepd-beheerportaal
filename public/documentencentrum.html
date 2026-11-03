@@ -42,7 +42,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 </header>
 <main>
 <h1>Documentencentrum</h1>
-<p>Afgeschermd lesmateriaal en procedures. Instructeurs kunnen documenten van hun dienst lezen; Middenkader en bevoegde leiding kunnen documenten beheren.</p>
+<p>Documenten zijn eigendom van BelgiumPD en blijven bewaard als een medewerker vertrekt. Middenkader en dienstleiding kunnen uploaden; alleen Officierenkader, Korpsleiding en bevoegd beheer kunnen bestaande documenten wijzigen, vervangen of archiveren.</p>
 <div class="status" id="feedback" role="status" aria-live="polite">Bevoegdheden controleren…</div>
 <section class="card" id="workspace" hidden>
  <div class="toolbar">
@@ -71,7 +71,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
  <button type="button" id="cancel" class="secondary">Wissen</button></div>
  </form>
 </section>
-<p class="note">Verwijderen archiveert een document: de inhoud blijft beveiligd bewaard voor audit en herstel. Toegang tot bestanden wordt bij elke download opnieuw gecontroleerd.</p>
+<p class="note">Gepubliceerde documenten blijven alleen-lezen voor gewone gebruikers en uploaders. Oude bestandsversies en gearchiveerde documenten blijven beveiligd bewaard op de server. Downloadrechten worden telkens opnieuw gecontroleerd.</p>
 </main>
 <script type="module">
 const $=id=>document.getElementById(id);
@@ -79,7 +79,7 @@ const NAMES={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
  depannage:'Depannage',burger:'Burger',multidisciplinair:'Multidisciplinair'};
 const CATEGORIES={opleiding:'Opleiding',procedure:'Procedure',lesmateriaal:'Lesmateriaal',
  formulier:'Formulier',evaluatie:'Evaluatie',dienstnota:'Dienstnota',overig:'Overig'};
-let bridge=null,context=null,documents=[],editing=null,busy=false;
+let bridge=null,context=null,documents=[],editing=null,replacing=false,editingVersion=null,busy=false;
 const status=(text,kind='')=>{$('feedback').className='status '+kind;$('feedback').textContent=text};
 async function api(url,method='GET',data){
  const user=bridge?.auth.currentUser;
@@ -97,15 +97,19 @@ async function api(url,method='GET',data){
 }
 function option(value,label){const o=document.createElement('option');o.value=value;o.textContent=label;return o}
 const canWrite=()=>context?.writeDepartments?.includes($('department').value)===true;
+const canManage=()=>context?.manageDepartments?.includes($('department').value)===true;
 function resetEditor(){
- editing=null;$('documentForm').reset();$('editorTitle').textContent='Document uploaden';
+ editing=null;replacing=false;editingVersion=null;
+ $('documentForm').reset();$('editorTitle').textContent='Document uploaden';
+ for(const id of ['title','description','category','audience'])$(id).disabled=false;
  $('fileWrap').hidden=false;$('file').required=true;$('save').textContent='Uploaden';
 }
 function render(){
  const q=$('search').value.toLocaleLowerCase('nl').trim(),category=$('filterCategory').value;
  const rows=documents.filter(d=>(!category||d.category===category)&&
   [d.title,d.description,d.fileName,d.uploadedByName].some(x=>String(x||'').toLocaleLowerCase('nl').includes(q)));
- $('counter').textContent=rows.length+' van '+documents.length+' documenten'+(canWrite()?' · beheerrechten':' · leesrechten');
+ $('counter').textContent=rows.length+' van '+documents.length+' documenten'+
+  (canManage()?' · volledig documentbeheer':canWrite()?' · uploadrechten':' · alleen lezen');
  const root=$('documents');root.replaceChildren();
  if(!rows.length){root.textContent='Geen documenten gevonden binnen jouw toegangsrechten.';return}
  for(const d of rows){
@@ -127,8 +131,9 @@ function render(){
   if(d.mime==='application/pdf'||d.mime.startsWith('image/'))
    btn('Bekijken','secondary',()=>download(d,true));
   btn('Downloaden','secondary',()=>download(d,false));
-  if(canWrite()){
-   btn('Bewerken','secondary',()=>edit(d));
+  if(canManage()){
+   btn('Gegevens aanpassen','secondary',()=>edit(d));
+   btn('Nieuwe bestandsversie','secondary',()=>replaceFile(d));
    btn('Archiveren','danger',()=>archive(d));
   }
   article.append(heading,meta,desc,actions);root.append(article);
@@ -147,10 +152,23 @@ async function download(doc,preview=false){
  }catch(e){if(tab)tab.close();status('Bestand niet beschikbaar: '+e.message,'error')}
 }
 function edit(d){
- editing=d.id;$('editor').hidden=false;$('editorTitle').textContent='Document bewerken';
+ if(!canManage())return;
+ editing=d.id;replacing=false;editingVersion=d.version;
+ $('editor').hidden=false;$('editorTitle').textContent='Documentgegevens aanpassen';
  $('title').value=d.title;$('description').value=d.description;
  $('category').value=d.category;$('audience').value=d.audience;
  $('fileWrap').hidden=true;$('file').required=false;$('save').textContent='Wijzigingen opslaan';
+ $('editor').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function replaceFile(d){
+ if(!canManage())return;
+ resetEditor();editing=d.id;replacing=true;editingVersion=d.version;
+ $('editor').hidden=false;$('editorTitle').textContent='Nieuwe versie uploaden · '+d.title;
+ $('title').value=d.title;$('description').value=d.description;
+ $('category').value=d.category;$('audience').value=d.audience;
+ for(const id of ['title','description','category','audience'])$(id).disabled=true;
+ $('fileWrap').hidden=false;$('file').required=true;
+ $('save').textContent='Nieuwe versie bewaren';
  $('editor').scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function archive(d){
@@ -194,14 +212,24 @@ $('filterCategory').onchange=render;
 $('department').onchange=loadDocuments;
 $('cancel').onclick=resetEditor;
 $('documentForm').onsubmit=async e=>{
- e.preventDefault();if(busy||!canWrite())return;
+ e.preventDefault();if(busy||!(editing?canManage():canWrite()))return;
  busy=true;$('save').disabled=true;
  try{
   const payload={department:$('department').value,title:$('title').value,
    description:$('description').value,category:$('category').value,audience:$('audience').value};
-  if(editing){await api('/api/document-center/'+encodeURIComponent(editing),'PATCH',payload);
-   status('Document bijgewerkt en gelogd.','good');}
-  else{
+  if(editing&&replacing){
+   if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
+   const file=$('file').files?.[0];
+   if(!file||file.size<16||file.size>context.maxBytes)
+    throw Error('Kies een bestand van maximaal 5 MB');
+   await api('/api/document-center/'+encodeURIComponent(editing)+'/file','PUT',{
+     fileName:file.name,base64:await fileToBase64(file),expectedVersion:editingVersion
+   });
+   status('Nieuwe bestandsversie opgeslagen, vorige versie veilig bewaard.','good');
+  }else if(editing){
+   await api('/api/document-center/'+encodeURIComponent(editing),'PATCH',payload);
+   status('Documentgegevens aangepast en gelogd.','good');
+  }else{
    if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
    const file=$('file').files?.[0];
    if(!file||file.size<16||file.size>context.maxBytes)
