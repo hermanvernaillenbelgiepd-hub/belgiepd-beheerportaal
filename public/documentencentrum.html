@@ -277,18 +277,41 @@ $('previewDialog').addEventListener('close',()=>{
 async function preview(doc){
  try{
   status('Voorvertoning laden…');
-  const blob=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/preview');
-  if(previewUrl)URL.revokeObjectURL(previewUrl);
-  previewUrl=URL.createObjectURL(blob);
   $('previewBody').replaceChildren();
-  const viewer=blob.type.startsWith('image/')?document.createElement('img'):document.createElement('iframe');
-  viewer.src=previewUrl;
-  viewer.title='Voorvertoning '+doc.title;
-  viewer.referrerPolicy='no-referrer';
-  $('previewBody').append(viewer);
+  if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+  if(doc.kind==='link'){
+    const resource=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/open-link');
+    if(resource.embed){
+      const viewer=document.createElement('iframe');
+      viewer.src=resource.embed;
+      viewer.title='Ingesloten video · '+doc.title;
+      viewer.referrerPolicy='strict-origin-when-cross-origin';
+      viewer.allow='fullscreen; encrypted-media; picture-in-picture';
+      viewer.setAttribute('sandbox','allow-scripts allow-same-origin allow-presentation');
+      $('previewBody').append(viewer);
+    }else{
+      const block=document.createElement('div');
+      block.style.cssText='padding:28px;max-width:520px;line-height:1.6;color:#172c47';
+      const intro=document.createElement('p');
+      intro.textContent='Deze bron staat op een externe website. Open de link om de inhoud te bekijken.';
+      const link=document.createElement('a');
+      link.href=resource.url;link.target='_blank';link.rel='noopener noreferrer';
+      link.textContent='Open externe bron ↗';
+      link.style.cssText='display:inline-block;padding:12px 15px;background:#214c91;color:#fff;border-radius:8px';
+      block.append(intro,link);$('previewBody').append(block);
+    }
+  }else{
+    const blob=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/preview');
+    previewUrl=URL.createObjectURL(blob);
+    const viewer=blob.type.startsWith('image/')?document.createElement('img'):document.createElement('iframe');
+    viewer.src=previewUrl;
+    viewer.title='Voorvertoning '+doc.title;
+    viewer.referrerPolicy='no-referrer';
+    $('previewBody').append(viewer);
+  }
   $('previewTitle').textContent=doc.title+' · alleen lezen';
   $('previewDialog').showModal();
-  status('Document voorvertoning geopend.','good');
+  status('Lesmateriaal geopend.','good');
  }catch(e){status('Voorvertoning niet beschikbaar: '+e.message,'error')}
 }
 async function download(doc){
@@ -307,7 +330,13 @@ function edit(d){
  $('title').value=d.title;$('description').value=d.description;
  $('category').value=d.category;$('audience').value=d.audience;
  $('readerIds').value=(d.readerIds||[]).join('\n');
- $('fileWrap').hidden=true;$('file').required=false;$('save').textContent='Wijzigingen opslaan';
+ $('folder').value=d.folderId||'';
+ $('resourceType').value=d.kind==='link'?'link':'file';updateResourceInput();
+ if(d.kind==='link')$('linkUrl').value=d.linkUrl||'';
+ $('resourceType').disabled=true;
+ $('fileWrap').hidden=true;$('file').required=false;
+ if(d.kind==='link'){$('linkWrap').hidden=false;$('linkUrl').required=true;}
+ $('save').textContent='Wijzigingen opslaan';
  $('editor').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function replaceFile(d){
@@ -317,7 +346,9 @@ function replaceFile(d){
  $('title').value=d.title;$('description').value=d.description;
  $('category').value=d.category;$('audience').value=d.audience;
  $('readerIds').value=(d.readerIds||[]).join('\n');
- for(const id of ['title','description','category','audience','readerIds'])$(id).disabled=true;
+ $('folder').value=d.folderId||'';
+ $('resourceType').value='file';$('resourceType').disabled=true;
+ for(const id of ['title','description','category','audience','readerIds','folder'])$(id).disabled=true;
  $('fileWrap').hidden=false;$('file').required=true;
  $('save').textContent='Nieuwe versie bewaren';
  $('editor').scrollIntoView({behavior:'smooth',block:'start'});
@@ -338,11 +369,17 @@ function fileToBase64(file){
 async function loadDocuments(){
  const dept=$('department').value;if(!dept)return;
  status('Documenten laden…');
- try{const data=await api('/api/document-center?department='+encodeURIComponent(dept));
-  documents=data.documents||[];$('editor').hidden=!canWrite();resetEditor();
-  render();status(data.limited?'De eerste 160 documenten zijn geladen. Beperk de lijst per dienst.':
-   'Documenten geladen.','good');
- }catch(e){documents=[];render();status('Documenten niet beschikbaar: '+e.message,'error')}
+ try{
+  const [data]=await Promise.all([
+    api('/api/document-center?department='+encodeURIComponent(dept)),
+    loadFolders()
+  ]);
+  documents=data.documents||[];
+  $('editor').hidden=!canWrite();resetEditor();
+  renderFolders();render();
+  status(data.limited?'Eerste 160 documenten geladen. Verfijn je zoekopdracht.':'Documenten geladen.','good');
+ }catch(e){documents=[];folders=[];renderFolders();render();
+  status('Documenten niet beschikbaar: '+e.message,'error')}
 }
 async function loadContext(){
  context=await api('/api/document-center/context');
@@ -355,12 +392,12 @@ async function loadContext(){
  $('category').replaceChildren();
  for(const id of context.categories||[])$('category').append(option(id,CATEGORIES[id]||id));
  $('workspace').hidden=false;await loadDocuments();
- if(!context.storageReady)status('De documentopslag is nog niet ingesteld op Render. Uploaden is tijdelijk niet beschikbaar.','error');
+ if(!context.storageReady)status('Bestandsopslag nog niet ingesteld. Leslinks kunnen wel toegevoegd worden.','error');
 }
 $('reload').onclick=loadDocuments;
 $('search').oninput=render;
 $('filterCategory').onchange=render;
-$('department').onchange=loadDocuments;
+$('department').onchange=()=>{selectedFolder='all';loadDocuments();};
 $('cancel').onclick=resetEditor;
 $('documentForm').onsubmit=async e=>{
  e.preventDefault();if(busy||!(editing?canManage():canWrite()))return;
