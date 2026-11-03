@@ -19,6 +19,8 @@ import { installRegistrationRoutes } from './registration-routes.js';
 import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
+import {installActivityTelemetryRoutes} from './activity-telemetry-routes.js';
+import {scheduleAutomaticActivityPings} from './activity-ping-runner.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
 import {canSeeDashboardManagement,canSeeAdvancedDashboard,isFireZoneDashboard,ambulanceDashboardTier} from './dashboard-admin-policy.js';
@@ -98,6 +100,9 @@ app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHead
 app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
 app.use('/api/callsigns',express.json({limit:'12kb',strict:true,
+  verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
+// The signed FiveM activity endpoint must retain the exact HMAC body bytes.
+app.use('/api/activity',express.json({limit:'4kb',strict:true,
   verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
@@ -711,6 +716,7 @@ installBasicObservationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installManagementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installCallsignBotRoutes(app);
+installActivityTelemetryRoutes(app);
 installCallsignSelfServiceRoutes(app,{getSnapshot});
 installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installRosterColumnRoutes(app,{requireUser});
@@ -828,4 +834,6 @@ app.listen(Number(process.env.PORT)||8080,()=>{
     result.status==='unexpected_schema'?JSON.stringify(result.shape):'');
   }).catch(()=>console.warn('BelgiumPD Discord-leden-API: connection_failed'));
   void probeDiscordFirestore();
+  // Opt-in only. Missing configuration keeps automatic activity alerts OFF.
+  scheduleAutomaticActivityPings({getSnapshot});
 });
