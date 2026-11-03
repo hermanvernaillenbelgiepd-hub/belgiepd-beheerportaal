@@ -116,6 +116,10 @@ async function collectTransfers(db,oldId,newId,depts){
 }
 export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onCompleted=()=>{}}){
  const admin=[requireUser,checkAdmin];
+ app.get('/api/dc-id-transfer/status',...admin,(_req,res)=>{
+   res.json({previewAvailable:true,executionEnabled:process.env.BPD_ENABLE_DC_ID_TRANSFERS==='true',
+     requiresSecondAdministrator:true});
+ });
  app.get('/api/dc-id-transfer/preview',...admin,async(req,res)=>{
   try{
    const {oldDiscordId,newDiscordId}=validTransferInput({
@@ -167,6 +171,8 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onComplet
  });
  app.post('/api/dc-id-transfer/requests/:id/execute',...admin,async(req,res)=>{
   try{
+   if(process.env.BPD_ENABLE_DC_ID_TRANSFERS!=='true')
+     throw failure(503,'Definitieve overdrachten zijn nog uitgeschakeld tot de gecontroleerde TEST-proef is goedgekeurd.');
    if(!UUID.test(req.params.id))throw failure(404,'Aanvraag niet gevonden');
    if(!req.body||Object.keys(req.body).some(k=>!['confirmation','reason'].includes(k))||
       req.body.confirmation!=='OVERDRAGEN'||
