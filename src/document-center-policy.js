@@ -48,7 +48,8 @@ export function documentScopes(actor,roster,verifiedRoleIds=[]){
 export function mayReadDocument(scopes,entry){
   return !!entry&&entry.status==='active'&&
     scopes.read.includes(entry.department)&&
-    (entry.audience!=='leiding'||scopes.write.includes(entry.department));
+    (entry.audience!=='leiding'||scopes.write.includes(entry.department)||
+      entry.department==='multidisciplinair'&&scopes.write.length>0);
 }
 export function mayWriteDocuments(scopes,department){
   return DOCUMENT_DEPARTMENTS.includes(department)&&scopes.write.includes(department);
