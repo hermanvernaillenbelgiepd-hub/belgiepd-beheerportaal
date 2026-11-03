@@ -80,6 +80,8 @@ test('Geen rolkoppelingen of machtigingen worden meegekopieerd',()=>{
  const ui=readFileSync(new URL('../public/dc-id-overdracht.html',import.meta.url),'utf8');
  const access=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
  assert.match(routes,/DC_TRANSFER_TARGETS/);
+ assert.match(routes,/BPD_ENABLE_DC_ID_TRANSFERS!=='true'/);
+ assert.match(routes,/get\('status'\)==='pending'|get\('status'\)!=='pending'/);
  assert.match(routes,/doc\.get\('createdBy'\)===req\.bpd\.discordId/);
  assert.match(routes,/status:'blocked'/);
  assert.match(routes,/req\.body\.confirmation!=='OVERDRAGEN'/);
