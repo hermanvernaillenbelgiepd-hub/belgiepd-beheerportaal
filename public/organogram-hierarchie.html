@@ -1932,7 +1932,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
-<link rel="stylesheet" href="/organogram-hybrid.css?v=brandweer-compact-20261103">
+<link rel="stylesheet" href="/organogram-hybrid.css?v=depannage-patch-20261103a">
 </head>
 <body>
 <header>
@@ -2092,6 +2092,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
 import '/uniform-assignment-display.js?v=studio-coats-only-20261030';
+import {serviceProfileRank,depannageProfilePatch} from '/service-profile-presentation.js?v=20261103a';
 const $=id=>document.getElementById(id);
 const cardParams=new URLSearchParams(location.search);
 const isEmbeddedCard=cardParams.get('embedded')==='1';
@@ -2355,9 +2356,15 @@ function makeServiceUniformPortrait(person){
  const dept=String(person?.dept||''),key='uniform_'+dept+'_default';
  const selected=window.BPDUniformAssignments?.forPerson?.(person);
  // Old service-default uniforms are retired; display the service icon until an atelier coat is chosen.
- const src=selected?.uniformUrl||'';
+ const src=selected?.uniformUrl||serviceUniformArtworks.get(key)||'';
  const iconFallback=window.BPDVisualAssets?.baseIcon?.(dept);
- if(!src&&!iconFallback)return null;
+ if(!src&&!iconFallback){
+  const empty=el('span','portrait bpd-service-uniform bpd-service-uniform-empty');
+  empty.setAttribute('role','img');
+  empty.setAttribute('aria-label','Nog geen uniform gekoppeld aan '+dept);
+  empty.append(el('span','bpd-service-uniform-empty-label','Uniform nog niet gekoppeld'));
+  return empty;
+ }
  const outer=el('span','portrait bpd-service-uniform');
  outer.setAttribute('role','img');
  outer.setAttribute('aria-label','Uniformvoorbeeld van '+dept+' · '+(person.rank||''));
@@ -2474,6 +2481,7 @@ function openPersonProfile(p){
  dialog.dataset.personKey=profileKey;
  dialog.classList.toggle('police-person-profile',p.dept==='politie');
  dialog.classList.toggle('fire-person-profile',p.dept==='brandweer');
+ dialog.classList.toggle('depannage-person-profile',p.dept==='depannage');
  dialog.classList.add('operational-profile');
  content.replaceChildren();
  const layout=el('div','person-profile-layout');
@@ -2484,12 +2492,14 @@ function openPersonProfile(p){
  layout.append(primary,secondary);
  content.append(layout);
  const overview=el('div','person-profile-overview');
+ const displayRank=serviceProfileRank(p);
+ const portraitPerson=p.dept==='depannage'?{...p,rank:displayRank}:p;
  const portrait=p.dept==='politie'?
-  window.BPDPoliceUniform?.makePortrait?.(p,true):makeServiceUniformPortrait(p);
+  window.BPDPoliceUniform?.makePortrait?.(p,true):makeServiceUniformPortrait(portraitPerson);
  if(portrait)overview.append(portrait);
  const identity=el('div','person-profile-identity');
  identity.append(el('div','person-profile-name',p.name||'Onbekend'),
-  el('div','person-profile-rank',p.rank||'Rang niet geregistreerd'),
+  el('div','person-profile-rank',displayRank),
   el('span','person-profile-inline-call','CALL '+(p.call||'—')));
  overview.append(identity);intro.append(overview);
  if(p.dept==='politie'){
@@ -2514,7 +2524,8 @@ function openPersonProfile(p){
  }
  fact('CALL',p.call||'—');
  fact('Dienst',SERVICES.find(x=>x.id===p.dept)?.name||p.dept);
- fact('Rang / functie',window.BPDPoliceUniform?.gradeFor?.(p)?.label||p.rank||'Niet geregistreerd');
+ fact('Rang / functie',p.dept==='politie'?
+  window.BPDPoliceUniform?.gradeFor?.(p)?.label||displayRank:displayRank);
  fact('Niveau (indicatief)',getTier(p));
  if(p.dept==='politie'&&p.reekshoofdReeks)
   fact('Reeksfunctie',p.reekshoofdReeks==='VLINDER'?'VLINDER':
@@ -2723,7 +2734,8 @@ function openPersonProfile(p){
    const aeLevelImage=aeSpecific?(
     window.BPDUniformAssignments?.specialtyVariantImage?.(p,name,functionVariant)||
     roleArtworkUrl(aeRoleIds[functionVariant])):'';
-   const alternative=p.dept==='brandweer'?(
+   const alternative=p.dept==='depannage'?depannageProfilePatch(name,p.specialtyPatches):
+     p.dept==='brandweer'?(
       matchedArtwork?.imageUrl||fireSpecialtyPatchUrl(name)||
       window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)):
     p.dept==='ambulance'?(
@@ -2735,11 +2747,23 @@ function openPersonProfile(p){
    if(alternative){
     item.querySelectorAll('.person-profile-specialty-badge,.rago-io-badge').forEach(x=>x.remove());
     const badge=el('img','person-profile-specialty-badge');
-    badge.src=alternative;badge.alt=name+' · '+(window.BPDUniformAssignments?.forPerson?.(p).badgeStyle||'');
+    badge.src=alternative;
+     badge.alt=p.dept==='depannage'?name+' · specialisatiepatch Depannage':
+      name+' · '+(window.BPDUniformAssignments?.forPerson?.(p).badgeStyle||'');
+     if(p.dept==='depannage'){
+      badge.classList.add('depannage-specialty-badge');
+      badge.addEventListener('error',()=>{
+       const fallback=depannageProfilePatch(name,[]);
+       if(fallback&&badge.getAttribute('src')!==fallback)badge.src=fallback;
+       else badge.replaceWith(el('span','person-profile-specialty-missing-patch','Patch niet beschikbaar'));
+      });
+     }
     badge.width=isFireDiver?288:170;
     badge.height=isFireDiver?134:53;
     badge.loading='lazy';item.append(badge);
-   }else if(aeSpecific){
+   }else if(p.dept==='depannage'){
+     item.append(el('span','person-profile-specialty-missing-patch','Patch nog niet gekoppeld'));
+    }else if(aeSpecific){
     // Clearly marked text fallback; never pretend the generic AE badge is a
     // Teamleader insignia when the matching image has not been uploaded.
     const level=AE_LEVEL_LABELS[functionVariant]||'AE';
@@ -2840,7 +2864,7 @@ $('person-profile').addEventListener('click',event=>{
    medical placeholder; never leave a person card visually empty. */
 function makeAzlsCompactPortrait(person){
  const selected=window.BPDUniformAssignments?.forPerson?.(person);
- if(selected?.uniformUrl)return makeServiceUniformPortrait(person);
+ if(selected?.uniformUrl||serviceUniformArtworks.has('uniform_ambulance_default'))return makeServiceUniformPortrait(person);
  const grade=serviceRankKey(person?.rank);
  const art=selected?.rankUrl||
   serviceRankArtworks.get('rank_ambulance_'+grade)||
@@ -2871,6 +2895,7 @@ function person(p,compact=false,specialtyLabel=null){
  // The former overview called the police renderer only, so fire members
  // had no portrait even though their nameplate existed in the open profile.
  const portrait=p.dept==='brandweer'?makeServiceUniformPortrait(p):
+  p.dept==='depannage'?makeServiceUniformPortrait({...p,rank:serviceProfileRank(p)}):
   p.dept==='ambulance'?makeAzlsCompactPortrait(p):
   window.BPDPoliceUniform?.makePortrait?.(p);
  if(portrait)b.append(portrait);
@@ -2878,8 +2903,8 @@ function person(p,compact=false,specialtyLabel=null){
  const name=el('b','',p.name||'Onbekend');name.title=p.name||'';
  if(compact){
   const heading=el('span','person-heading');heading.append(name);
-  label.append(heading,el('small','',p.rank||'Lid'));
- }else label.append(name,el('small','',p.rank||'Lid'));
+  label.append(heading,el('small','',serviceProfileRank(p)));
+ }else label.append(name,el('small','',serviceProfileRank(p)));
  const roles=compact&&specialtyLabel?
   (supportsSpecialtyInstructors(specialtyLabel)?specialtyInstructorRoles(p,specialtyLabel):[]):
   (Array.isArray(p.teachingRoles)?p.teachingRoles.map(x=>String(x).toLowerCase()):[]);

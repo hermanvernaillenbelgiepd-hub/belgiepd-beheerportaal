@@ -577,3 +577,47 @@ html .person-profile-dialog.fire-person-profile.operational-profile
   max-width:112px;
  }
 }
+
+/* Depannage: embroidered 16:5 patches to the LEFT of each qualification. */
+html .person-profile-dialog.depannage-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty{
+ display:grid!important;grid-template-columns:minmax(0,142px) minmax(0,1fr)!important;
+ grid-template-rows:auto auto;gap:3px 12px;align-content:center;
+ min-height:84px!important;padding:9px 10px!important;
+ background:#152f49;border:1px solid #507391;border-radius:9px;
+}
+html .person-profile-dialog.depannage-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty>strong{
+ grid-column:2;grid-row:1;align-self:end;justify-self:start;font-size:13px!important;
+}
+html .person-profile-dialog.depannage-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty>.person-profile-specialty-role{
+ grid-column:2;grid-row:2;align-self:start;margin:0;font-size:10px;
+}
+html .person-profile-dialog.depannage-person-profile.operational-profile
+ .person-profile-specialties img.depannage-specialty-badge{
+ grid-column:1;grid-row:1 / 3;align-self:center;justify-self:center;
+ width:100%!important;max-width:142px!important;height:auto!important;
+ max-height:67px!important;aspect-ratio:16 / 5;object-fit:contain!important;
+ border:0!important;border-radius:0!important;background:transparent!important;
+ box-shadow:none!important;
+}
+html .person-profile-dialog.depannage-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty>.person-profile-specialty-missing-patch{
+ grid-column:1;grid-row:1 / 3;align-self:center;padding:7px;
+ border:1px dashed #557795;border-radius:6px;font-size:10px;color:#c0d5e7;
+}
+html .person-profile-dialog.operational-profile .bpd-service-uniform-empty{
+ display:flex;align-items:center;justify-content:center;
+ border:1px dashed #557795;background:#102842;color:#b6cfe6;text-align:center;
+}
+html .person-profile-dialog.operational-profile .bpd-service-uniform-empty-label{
+ font-size:12px;font-weight:700;
+}
+@media(max-width:480px){
+ html .person-profile-dialog.depannage-person-profile.operational-profile
+  .person-profile-specialties .person-profile-specialty{
+  grid-template-columns:minmax(0,120px) minmax(0,1fr)!important;
+  gap:3px 8px;
+ }
+}
