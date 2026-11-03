@@ -9,6 +9,7 @@ RUN npm install --omit=dev
 COPY src ./src
 COPY public ./public
 COPY tests ./tests
+COPY Dockerfile ./Dockerfile
 # Identity transfers modify dossier ownership: release only after policy checks pass.
 RUN node --test tests/dc-id-transfer.test.js tests/basic-observations.test.js tests/document-center.test.js
 ENV PORT=8080
