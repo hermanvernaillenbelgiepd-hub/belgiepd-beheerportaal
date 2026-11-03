@@ -80,7 +80,7 @@ html:not([data-bpd-theme="dark"]) #linkStatus.bad{color:#a02232}
  </div>
  <img id="preview" alt="Afbeelding vóór upload" hidden>
  <p id="storageNote" class="hint"></p>
- <p class="hint">Voor een afbeelding in de personeelskaart kies je bij voorkeur <strong>Specialisatiebadge</strong>.
+ <p class="hint">Voor de personeelskaart kun je zowel <strong>Specialisatiebadge</strong> als <strong>Patch</strong> kiezen. Koppel de afbeelding in stap 2 aan de specialisatie; alleen uploaden is niet altijd voldoende.
  Een upload met bijvoorbeeld code <code>semi_ano</code> wordt voortaan automatisch gevonden bij
  SEMI ANONIEM. Kies <strong>dezelfde code</strong> om een bestaande patch te vervangen;
  afbeeldingsuploads wijzigen nooit specialisatierechten.</p>
@@ -335,7 +335,16 @@ $('upload').onclick=async()=>{
   }
   const uploadedKey=kind+'_'+department+'_'+code;
   clearFile();await load();drawLinkAssets(uploadedKey);
-  linkNotice('Afbeelding opgeslagen. Kies nu optioneel een rang en/of Discord-rol.');
+  if(['specialty','patch'].includes(kind)&&$('linkAsset').value===uploadedKey){
+   // Show the next step without granting any role or qualification.
+   $('linkRankEnabled').checked=false;
+   $('linkRoleEnabled').checked=true;
+   $('linkRoleId').value='';
+   $('linkVariant').value='standard';
+   $('linkReason').value=reason;
+   updateLinkChoices();
+   linkNotice('Patch opgeslagen. Kies hieronder de juiste specialisatie. Laat het Discord-rol-ID leeg voor een bestaande handmatige toekenning en bewaar de koppeling.');
+  }else linkNotice('Afbeelding opgeslagen. Kies eventueel een rangkoppeling in stap 2.');
  }catch(e){notify('Upload mislukt: '+e.message,true)}
  finally{save.disabled=false}
 };
@@ -457,7 +466,7 @@ $('linkSave').onclick=async()=>{
  const item=currentLinkItem(),reason=$('linkReason').value.trim();
  const withRank=$('linkRankEnabled').checked,withRole=$('linkRoleEnabled').checked;
  if(!item)return linkNotice('Kies eerst een actieve afbeelding.',true);
- if(!withRank&&!withRole)return linkNotice('Vink rang en/of Discord-rol aan om te koppelen.',true);
+ if(!withRank&&!withRole)return linkNotice('Vink rang en/of specialisatie aan om te koppelen.',true);
  if(reason.length<8||reason.length>300)return linkNotice('Motivering van 8 tot 300 tekens verplicht.',true);
  const rank=normalized($('linkRank').value),roleId=$('linkRoleId').value.trim();
  const variant=$('linkVariant').value,specialtyLabel=$('linkSpecialty').value;
@@ -480,7 +489,7 @@ $('linkSave').onclick=async()=>{
     (previousRole&&previousRole.sourceArtworkKey!==item.key)||
     (previousMapping&&(previousMapping.label!==specialtyLabel||
       previousMapping.assetKey!==item.key||previousMapping.value!==value))){
-  if(!confirm('Er bestaat al een andere koppeling voor deze rang/rol. Wil je de huidige afbeelding vervangen?'))return;
+  if(!confirm('Er bestaat al een andere koppeling voor deze rang, specialisatie of rol. Wil je de huidige afbeelding vervangen?'))return;
  }
  const button=$('linkSave');button.disabled=true;
  let saved=0;
