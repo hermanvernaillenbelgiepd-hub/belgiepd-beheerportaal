@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
+import {serviceProfileRank} from '../public/service-profile-presentation.js';
 const page=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
 const slice=(from,to)=>{const start=page.indexOf(from),end=page.indexOf(to,start);assert.ok(start>=0&&end>start);return page.slice(start,end)};
 const renderer=slice('function serviceRankKey(rank){','function openPersonProfile(p){');
@@ -26,11 +27,11 @@ const run=(code,other={})=>runInNewContext(code,{el,window:{
   visualLayout:null})},
  BPDPoliceUniform:{makePortrait:p=>p.dept==='politie'?el('span','portrait bpd-police-formal'):null}
 },serviceCoatLayouts:new Map(),serviceNameplateLayouts:new Map(),serviceRankArtworks:new Map(),
- serviceUniformLayouts:new Map(),serviceVisibilityLayouts:new Map(),...other});
+ serviceUniformLayouts:new Map(),serviceUniformArtworks:new Map(),serviceVisibilityLayouts:new Map(),serviceProfileRank,...other});
 test('roster uses the exact service portrait factory used in the expanded profile for brandweer',()=>{
  assert.match(page,/const portrait=p\.dept==='brandweer'\?makeServiceUniformPortrait\(p\):/);
  assert.match(page,/p\.dept==='ambulance'\?makeAzlsCompactPortrait\(p\):/);
- assert.match(page,/window\.BPDPoliceUniform\?\.makePortrait\?\.\(p,true\):makeServiceUniformPortrait\(p\)/);
+ assert.match(page,/window\.BPDPoliceUniform\?\.makePortrait\?\.\(p,true\):makeServiceUniformPortrait\(portraitPerson\)/);
 });
 test('brandweer small card now shows the live nameplate and grade on the actual uniform',()=>{
  const p={dept:'brandweer',name:'Alex',call:'ZONE',rank:'Zonecommandant'};
