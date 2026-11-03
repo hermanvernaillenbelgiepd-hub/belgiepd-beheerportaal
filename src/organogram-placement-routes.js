@@ -115,7 +115,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const mapped=new Map(linkDocs.map(d=>[d.id,
     defaultSpecialtyRoleLinks(d.id,
       (Array.isArray(d.get('links'))?d.get('links'):[]).filter(x=>
-       x&&idOK(x.roleId)&&typeof x.label==='string'&&x.label.length<=90),
+       x&&(x.roleId===''||idOK(x.roleId))&&typeof x.label==='string'&&x.label.length<=90),
       d.get('presetVersion')===POLICE_PATCH_PRESET_VERSION)]));
    const assetKeys=[...new Set([
     ...[...mapped.values()].flat().map(x=>String(x.assetKey||'')),
