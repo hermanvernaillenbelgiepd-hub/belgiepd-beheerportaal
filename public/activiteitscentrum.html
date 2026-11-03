@@ -28,6 +28,85 @@ td small{display:block;color:#6b7a90;margin-top:3px}
 .state-verouderd,.state-geen_data{background:#eef0f3;color:#667286}
 .warn{color:#95401e;font-weight:700}#feedback{font-weight:650;margin:10px 0;color:#285287}
 [hidden]{display:none!important}
+
+/* Activiteitscentrum: houd tekst, tabellen en kaarten bij hetzelfde thema.
+   De globale thema-CSS zet labels/kleine tekst in donker thema licht; zonder
+   lokale paneelkleuren werd dit onleesbaar op de witte secties. */
+@media screen {
+  body.bpd-shell main table {font-size:13px;line-height:1.5}
+  body.bpd-shell main th,body.bpd-shell main td {padding:10px 9px}
+  body.bpd-shell main h2 {font-size:17px}
+  body.bpd-shell main td small {font-size:12px;overflow-wrap:anywhere}
+  body.bpd-shell main .counter small {font-size:12px}
+  body.bpd-shell main .state {white-space:nowrap}
+  html[data-bpd-theme="dark"] body.bpd-shell main section {
+    background:#12243e!important;color:#e7f1ff!important;
+    border-color:#344e70!important;box-shadow:0 4px 14px #020b1b2b;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main section :is(h2,section > strong) {
+    color:#f1f6ff!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main section :is(p,label,small) {
+    color:#c3d4eb!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .counter {
+    background:#192f4b!important;border-color:#426184!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .counter strong {
+    color:#f1f6ff!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .counter small {
+    color:#c3d4eb!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .tablewrap {
+    scrollbar-color:#8099bb #12243e;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main table {
+    color:#e7f1ff!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main table thead th {
+    background:#1b3655!important;color:#edf5ff!important;
+    border-color:#426184!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main table tbody td {
+    background:transparent!important;color:#e7f1ff!important;
+    border-color:#36516e!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main table tbody tr:nth-child(even) {
+    background:#192f4b!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main table tbody tr:hover {
+    background:#254567!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main table td small {
+    color:#bcd0eb!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .state {
+    background:#284461!important;color:#e7f1ff!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .state-ok {
+    background:#164733!important;color:#b0f4cc!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .state:is(
+    [class~="state-50/50"],.state-inactief,.state-beoordelen
+  ) {
+    background:#573a25!important;color:#ffdaa9!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .state-verlof_nazien {
+    background:#4f4929!important;color:#ffecac!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .state:is(
+    .state-verouderd,.state-geen_data
+  ) {
+    background:#37455c!important;color:#e3eaf6!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .warn {
+    color:#ffd1a8!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main #feedback {
+    color:#bcd7ff!important;
+  }
+}
 </style></head>
 <body><header><strong>BelgiëPD · Activiteitscentrum</strong><div><a href="/">← Dashboard</a> <button id="login" type="button">Aanmelden</button></div></header>
 <main>
