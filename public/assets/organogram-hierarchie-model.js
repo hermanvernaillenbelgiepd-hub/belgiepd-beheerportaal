@@ -11,7 +11,7 @@ export const SERVICES=Object.freeze([
  {id:'brandweer',name:'Brandweer',icon:'🚒',levels:['Zoneleiding','Officieren','Middenkader','Basiskader','Stagiairs']},
  {id:'ambulance',name:'Ambulance (AZLS)',icon:'🚑',levels:AZLS_RANK_ORDER},
  {id:'depannage',name:'Depannage',icon:'🛠',levels:['Leiding / AWV','LSRA','FAST']},
- {id:'burger',name:'Burger',icon:'🏛',levels:['Burgerraad']}
+ {id:'burger',name:'Burger',icon:'🏛',levels:['Burgerraad','Burger','Burger IO']}
 ]);
 const clean=v=>String(v??'').trim();
 const lower=v=>clean(v).toLocaleLowerCase('nl');
@@ -107,8 +107,13 @@ export function getTier(p){
  }
  if(dept==='depannage')return depannageOrganogramGroups(p)[0]||'LSRA';
  if(dept==='burger'){
+  const verified=Array.isArray(p.burgerGroups)?p.burgerGroups:[];
+  if(verified.includes('Burgerraad'))return 'Burgerraad';
+  if(verified.includes('Burger'))return 'Burger';
+  if(verified.includes('Burger IO'))return 'Burger IO';
   if(/burgerraad/.test(rank+' '+call))return 'Burgerraad';
-  return 'Burgerleden';
+  if(/burger[- ]?io|burger in opleiding|\b(io|stagiair)\b/.test(rank+' '+call))return 'Burger IO';
+  return 'Burger';
  }
  return 'Overige leden';
 }
@@ -122,7 +127,7 @@ const rankWeight=(p)=>{
   'Overige brandweerleden':5,'Operationele leden':3,LSRA:7,FAST:6,
   DIRMED:12,HARTS:11,HVPK:10,HAMB:9,ARTS:8,VPK:7,AMB:6,STAG:5,
   'Overige AZLS-leden':4,
-  'Leiding / AWV':8,Burgerraad:8,Burgerleden:3
+  'Leiding / AWV':8,Burgerraad:8,Burger:4,'Burger IO':3
  };
  return scores[tier]??1;
 };
