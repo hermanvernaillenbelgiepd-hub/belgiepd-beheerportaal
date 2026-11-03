@@ -25,12 +25,13 @@ export function mayAdministerDcTransfer(actor){
    return false;
  const technical=actor.portalTechnicalMode===true&&
    actor.profileTechnicalAvailable===true;
- const board=actor.boardPersonnelAdmin===true;
+ // General Bestuur access is not sufficient for identity migrations.
+ // Only verified police command or the separately authorized technical profile.
  const police=actor.discordRosterEditorVerified===true&&
    actor.departments?.includes('politie')&&
    ['officierenkader','korpsleiding'].includes(actor.role)&&
    ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'));
- return technical||board||police;
+ return technical||police;
 }
 export function freshTransferTarget(member,discordId,guildId,now=Date.now()){
  return ID.test(discordId)&&ID.test(guildId)&&member?.guildId===guildId&&
