@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {mayAdministerDcTransfer,validTransferInput,freshTransferTarget,
+import {mayAdministerDcTransfer,mayCompleteDcTransfer,validTransferInput,freshTransferTarget,
  transferRosterPlan,transferSubjectFields,applyCompletedDcAliases} from '../src/dc-id-transfer-policy.js';
 
 const oldId='111111111111111111',newId='222222222222222222',admin='333333333333333333',
@@ -34,7 +34,18 @@ test('Enkel geverifieerde hogere bevoegdheid, geen rangclaim of self spoof',()=>
  assert.equal(mayAdministerDcTransfer({...actor(),portalTechnicalMode:true,
    profileTechnicalAvailable:true}),true);
  assert.equal(mayAdministerDcTransfer({...actor(),boardPersonnelAdmin:true,
-   discordRosterEditorVerified:false}),true);
+   discordRosterEditorVerified:false}),false);
+});
+test('Een enkele bevoegde officier of korpsleiding kan zelf aanvragen en uitvoeren',()=>{
+ const officer=actor('officierenkader');
+ assert.equal(mayCompleteDcTransfer(officer,oldId,newId),true);
+ assert.equal(mayCompleteDcTransfer(actor('korpsleiding'),oldId,newId),true);
+ assert.equal(mayCompleteDcTransfer({...officer,discordRosterEditorVerified:false},oldId,newId),false);
+ assert.equal(mayCompleteDcTransfer(officer,admin,newId),false);
+ assert.equal(mayCompleteDcTransfer(officer,oldId,admin),false);
+ assert.equal(mayCompleteDcTransfer(officer,oldId,oldId),false);
+ assert.equal(mayCompleteDcTransfer({...officer,portalTechnicalMode:true,
+   profileTechnicalAvailable:true,role:'beheerder'},oldId,newId),true);
 });
 test('Een actueel Discord-verificatiebewijs is verplicht voor het nieuwe account',()=>{
  const good={guildId:guild,verifiedAt:Date.now(),roleIds:[]};
@@ -82,7 +93,7 @@ test('Geen rolkoppelingen of machtigingen worden meegekopieerd',()=>{
  assert.match(routes,/DC_TRANSFER_TARGETS/);
  assert.match(routes,/BPD_ENABLE_DC_ID_TRANSFERS!=='true'/);
  assert.match(routes,/get\('status'\)==='pending'|get\('status'\)!=='pending'/);
- assert.match(routes,/doc\.get\('createdBy'\)===req\.bpd\.discordId/);
+ assert.match(routes,/mayCompleteDcTransfer\(req\.bpd,oldId,newId\)/);
  assert.match(routes,/status:'blocked'/);
  assert.match(routes,/req\.body\.confirmation!=='OVERDRAGEN'/);
  assert.match(routes,/tx\.create\(alias/);
@@ -93,6 +104,7 @@ test('Geen rolkoppelingen of machtigingen worden meegekopieerd',()=>{
  assert.match(server,/applyCompletedDcAliases/);
  assert.match(server,/installDcIdTransferRoutes/);
  assert.match(server,/DC_TRANSFER_ALIASES/);
- assert.match(ui,/requiresSecondAdministrator|tweede beheerder|twee verschillende/);
+ assert.match(ui,/Hetzelfde bevoegde kaderlid/);
+ assert.doesNotMatch(ui,/tweede beheerder|twee verschillende bevoegde beheerders|onafhankelijke goedkeuring/i);
  assert.match(access,/href="\/dc-id-overdracht.html"/);
 });
