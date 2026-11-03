@@ -109,3 +109,16 @@ test('Beveiligde routes weigeren sancties en gebruiken een afzonderlijk register
   assert.ok(!page.includes('id="sanctionType"'));
   assert.ok(page.includes('Observaties vanuit Basiskader'));
 });
+
+test('Agentenkader krijgt ook bij foutieve dossiergrant geen politiedossiers',()=>{
+ const agent={...actorFor(0,'agentenkader'),
+   dossierNativeDepartments:['politie'],dossierFullDepartments:['politie']};
+ assert.equal(canReadServiceDossier(agent,'politie'),false);
+ assert.equal(mayReadBasicInbox(agent),false);
+ assert.equal(basicObservationTargets(agent,ranks).targets.length,0);
+ const technical={...agent,portalTechnicalMode:true,profileTechnicalAvailable:true,
+   uid:'discord:'+agent.discordId};
+ assert.equal(canReadServiceDossier(technical,'politie'),true);
+ const board={...agent,boardPersonnelAdmin:true};
+ assert.equal(canReadServiceDossier(board,'politie'),true);
+});
