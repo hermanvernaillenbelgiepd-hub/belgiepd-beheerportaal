@@ -32,7 +32,7 @@ small{color:#bad1ed}.warning{border-left:3px solid #e4ac55;padding-left:12px}
 <body><header><strong>🛡️ BelgiumPD / Beheer & rollen</strong><a href="/gebruikersbeheer.html">← Gebruikersbeheer</a></header>
 <main>
 <h1>DC-ID-overdracht</h1>
-<p>Koppel de bestaande personeelsgegevens aan een nieuwe Discord-identiteit, zonder de oorspronkelijke dossierhistoriek te wissen. Een overdracht vereist <strong>twee verschillende bevoegde beheerders</strong>.</p>
+<p>Koppel de bestaande personeelsgegevens aan een nieuwe Discord-identiteit, zonder de oorspronkelijke dossierhistoriek te wissen. Eén geverifieerd lid van het <strong>Officierenkader of de Korpsleiding</strong> mag de volledige overdracht uitvoeren. Technisch Beheer behoudt de afzonderlijk beveiligde onderhoudstoegang.</p>
 <div class="notice" id="notice" role="status" aria-live="polite">Aanmelding en rechten controleren…</div>
 <section class="card" id="intake" hidden>
 <h2>1. Persoon en nieuw DC-ID controleren</h2>
@@ -44,13 +44,13 @@ small{color:#bad1ed}.warning{border-left:3px solid #e4ac55;padding-left:12px}
 <label>Waarom wordt dit ID gewijzigd? (verplicht)
 <textarea id="reason" minlength="20" maxlength="500" placeholder="Wie heeft de identiteit gecontroleerd, waarom en wanneer?" required></textarea></label>
 <div class="actions"><button id="check" type="button">Veilige voorcontrole</button>
-<button type="submit" id="request" disabled>Overdracht ter goedkeuring indienen</button></div>
+<button type="submit" id="request" disabled>Overdracht voorbereiden</button></div>
 </form>
 <div id="preview" hidden></div>
 <p class="warning"><strong>Let op:</strong> het nieuwe account moet recent via Discord geverifieerd zijn. Er worden geen Discord-rollen, machtigingen of speeluren overgezet. Een bestaande personeelsfiche op de nieuwe ID blokkeert de overdracht.</p>
 </section>
 <section class="card" id="requests" hidden>
-<h2>2. Aanvragen door een tweede beheerder laten goedkeuren</h2>
+<h2>2. Voorbereide overdrachten definitief uitvoeren</h2>
 <div class="actions"><button type="button" id="reload" class="secondary">Aanvragen vernieuwen</button></div>
 <div id="requestRows">Aanvragen laden…</div>
 </section>
@@ -91,7 +91,7 @@ function showPreview(p){
  list.textContent=Object.entries(p.collectionCounts).filter(([,n])=>n>0)
   .map(([collection,n])=>collection+': '+n).join(' · ')||'Geen aanvullende Firestore-historiek';
  box.append(list);
- const caution=el('p','Geen wijziging uitgevoerd. Een tweede beheerder moet de aanvraag na controle definitief goedkeuren.');
+ const caution=el('p','Nog niets gewijzigd. Hetzelfde bevoegde kaderlid kan na de controle de overdracht definitief bevestigen.');
  caution.className='warning';box.append(caution);
 }
 $('oldId').addEventListener('input',()=>{checked=null;$('request').disabled=true;$('preview').hidden=true});
@@ -120,13 +120,13 @@ $('transferForm').onsubmit=async event=>{
   return announce('Voer de controle opnieuw uit.','error');
  const reason=$('reason').value.trim();
  if(reason.length<20)return announce('Een motivering van 20 tekens is verplicht.','error');
- if(!confirm('Aanvraag voor overdracht '+oldDiscordId+' → '+newDiscordId+
-   ' indienen voor onafhankelijke goedkeuring?'))return;
+ if(!confirm('Overdracht '+oldDiscordId+' → '+newDiscordId+
+   ' voorbereiden? Er worden nog geen personeelsgegevens gewijzigd.'))return;
  setBusy(true);
  try{
   await api('/api/dc-id-transfer/requests','POST',{oldDiscordId,newDiscordId,reason});
   checked=null;$('request').disabled=true;$('preview').hidden=true;
-  announce('Aanvraag geregistreerd. Een tweede beheerder moet nu beslissen.','good');
+  announce('Aanvraag voorbereid. Je kunt deze zelf definitief uitvoeren zodra de TEST-controle is afgerond.','good');
   await loadRequests();
  }catch(e){announce('Aanvraag niet ingediend: '+e.message,'error')}
  finally{setBusy(false)}
@@ -137,7 +137,7 @@ async function loadRequests(){
  if(!data.requests?.length){root.textContent='Geen overdrachtsaanvragen.';return}
  const table=document.createElement('table');
  const head=document.createElement('tr');
- for(const x of ['Oud → nieuw','Status','Initiatiefnemer','Motivering','Actie'])
+ for(const x of ['Oud → nieuw','Status','Voorbereid door','Motivering','Actie'])
   head.append(el('th',x));
  table.append(head);
  for(const request of data.requests){
@@ -149,7 +149,7 @@ async function loadRequests(){
   const actions=document.createElement('td');
   if(request.status==='pending'){
    const button=document.createElement('button');button.type='button';
-   button.textContent=executionEnabled?'Controleren en overdragen':'TEST-controle vereist';button.className='secondary';
+   button.textContent=executionEnabled?'Overdracht bevestigen':'TEST-controle vereist';button.className='secondary';
    button.disabled=!executionEnabled;
    button.onclick=()=>approve(request);actions.append(button);
   }else actions.textContent='Afgehandeld';
@@ -160,11 +160,11 @@ async function loadRequests(){
 }
 async function approve(request){
  if(loading)return;
- if(!confirm('Je keurt als tweede beheerder de identiteit '+request.oldDiscordId+
+ if(!confirm('Je bevestigt als bevoegd kaderlid de identiteit '+request.oldDiscordId+
    ' → '+request.newDiscordId+' goed. Controleer deze personen eerst buiten het portaal. Doorgaan?'))return;
  const confirmation=prompt('Typ OVERDRAGEN om de definitieve gegevensoverdracht te bevestigen:');
  if(confirmation!=='OVERDRAGEN')return;
- const reason=prompt('Geef de onafhankelijke verificatie en reden (minstens 20 tekens):');
+ const reason=prompt('Geef de verificatie en reden (minstens 20 tekens):');
  if(!reason||reason.trim().length<20)return announce('Motivering ontbreekt. Geen gegevens aangepast.','error');
  setBusy(true);
  try{
