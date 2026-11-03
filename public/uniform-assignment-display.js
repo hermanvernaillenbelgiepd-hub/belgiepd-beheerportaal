@@ -1,6 +1,6 @@
 // Client-side visual-only resolver. Scoped assignments never confer rank or roles.
 import {getTier} from '/assets/organogram-hierarchie-model.js';
-import {policeUniformGroup,ambulanceFunction,policeCallSeries} from '/uniform-profile-policy.js';
+import {policeUniformGroup,ambulanceFunction,depannageFunction,policeCallSeries} from '/uniform-profile-policy.js';
 const UID=/^\d{15,22}$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const nameCode=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -38,7 +38,7 @@ function forPerson(p){
  const id=UID.test(String(p?.personId||''))?String(p.personId):'';
  const callCode=nameCode(p?.call);
  const matching=(scope,selector)=>rules.find(r=>r.department===dept&&r.scope===scope&&r.selector===selector);
- const group=policeUniformGroup(p),functionCode=ambulanceFunction(p),series=policeCallSeries(p.call);
+ const group=policeUniformGroup(p),functionCode=dept==='depannage'?depannageFunction(p):ambulanceFunction(p),series=policeCallSeries(p.call);
  const ordered=[...(id?[matching('person',id)]:[]),
   ...(callCode?[matching('person','call_'+callCode)]:[]),
   matching('rank',nameCode(p.rank)),
@@ -55,11 +55,17 @@ function forPerson(p){
  // Personnel ranks, badges and historical assignments remain in Firestore.
  // An actual rank/function gets its own composed coat, with personal exceptions
  // taking precedence. The template is visual only; it never determines authority.
- const compScope=dept==='politie'?'call':dept==='ambulance'?'function':'rank';
+ const compScope=dept==='politie'?'call':
+  ['ambulance','depannage'].includes(dept)?'function':'rank';
  const compSelector=compScope==='call'?series:
   compScope==='function'?functionCode:nameCode(p.rank);
+ const previousTowingRanks=dept==='depannage'?
+  ({awv:['leiding','agentschap_wegen_en_verkeer','awv'],
+    lsra:['lsra','depannagetechnicus'],fast:['f_a_s_t','fast']}[functionCode]||[]):[];
  const composition=compositions.find(x=>x.department===dept&&
-  x.scope===compScope&&x.selector===compSelector);
+  x.scope===compScope&&x.selector===compSelector)||
+  (dept==='depannage'?compositions.find(x=>x.department===dept&&x.scope==='rank'&&
+   [nameCode(p.rank),...previousTowingRanks].includes(x.selector)):null);
  const activeCoat=composition?.assets?.uniform||'';
  if(CODE.test(activeCoat)&&!['gold','silver','default'].includes(activeCoat)&&
   assetUrls.has('uniform_'+dept+'_'+activeCoat))

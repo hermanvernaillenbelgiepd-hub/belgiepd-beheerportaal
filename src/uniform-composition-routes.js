@@ -1,6 +1,7 @@
 // Uniformatelier: one visual composition per effective grade/function.
 // Templates control presentation only; medals are still granted per person.
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {DEPANNAGE_FUNCTIONS} from '../public/uniform-profile-policy.js';
 import {canEditLibrary} from './uniform-library-routes.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
 import {DECORATION_CATALOG,PERSONNEL_DECORATION_CATALOG_COLLECTION,customCatalogItem} from './personnel-decoration-policy.js';
@@ -11,6 +12,7 @@ const DEPTS=['politie','brandweer','ambulance','depannage','burger'];
 const GRADES=new Set(['100','200','300','400','500','600','700','800',
  '900','910','920','930']);
 const FUNCTIONS=new Set(['ambulancier','vpk','arts','dirmed']);
+const TOWING_FUNCTIONS=new Set(DEPANNAGE_FUNCTIONS.map(([code])=>code));
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const LAYERS=['name','rank','ribbons','medals','helmet','profession','logo'];
 const assetTypes=['uniform','rank','helmet','profession','logo'];
@@ -33,6 +35,7 @@ export function validateComposition(body){
  if(!DEPTS.includes(department)||!CODE.test(selector)||
   !(department==='politie'&&scope==='call'&&GRADES.has(selector)||
     department==='ambulance'&&scope==='function'&&FUNCTIONS.has(selector)||
+    department==='depannage'&&scope==='function'&&TOWING_FUNCTIONS.has(selector)||
     ['brandweer','depannage','burger'].includes(department)&&scope==='rank'))
   throw bad(400,'Kies een geldige hulpdienst en graad of hoedanigheid');
  const reason=String(body.reason||'').trim();

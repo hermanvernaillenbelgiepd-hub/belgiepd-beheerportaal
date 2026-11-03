@@ -20,6 +20,11 @@ export const AMBULANCE_FUNCTIONS=Object.freeze([
  ['arts','Arts (ARTS / HARTS)'],
  ['dirmed','DIRMED — functieopschrift']
 ]);
+export const DEPANNAGE_FUNCTIONS=Object.freeze([
+ ['awv','AWV — Leiding'],
+ ['lsra','LSRA — Depannage'],
+ ['fast','F.A.S.T. — FAST']
+]);
 export function normalizeVisual(value){
  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
@@ -74,6 +79,23 @@ export function ambulanceFunction(person){
  if(rank==='ambulancier'||rank==='ambulance'||rank==='amb'||rank==='hamb')return 'ambulancier';
  return '';
 }
+// Depot uniforms are keyed to the towing function, not an often-empty rank.
+ // A CRANE role is a specialization and never selects a separate coat.
+export function depannageFunction(person){
+ if(person?.dept!=='depannage')return '';
+ const verified=normalizeVisual(person.verifiedFunction);
+ if(['leiding','awv','anwv','agentschap_wegen_en_verkeer'].includes(verified))return 'awv';
+ if(['fast','f_a_s_t'].includes(verified))return 'fast';
+ if(['lsra','lrsa'].includes(verified))return 'lsra';
+ const call=String(person.call||'').trim().toUpperCase().replace(/\s+/g,'');
+ if(/^(?:AWV|ANWV)(?:[-_0-9*]|$)/.test(call))return 'awv';
+ if(/^(?:FAST|F\.A\.S\.T\.?)(?:[-_0-9*]|$)/.test(call))return 'fast';
+ if(/^(?:LSRA|LRSA)(?:[-_0-9*]|$)/.test(call))return 'lsra';
+ const rank=normalizeVisual(person.rank);
+ if(['leiding','awv','anwv'].includes(rank)||rank.includes('agentschap_wegen'))return 'awv';
+ if(['fast','f_a_s_t'].includes(rank))return 'fast';
+ return 'lsra';
+}
 export function displaySelectors(person){
  const department=String(person?.dept||'');
  const result=[];
@@ -81,8 +103,8 @@ export function displaySelectors(person){
   const call=policeCallSeries(person.call);
   if(call)result.push(['call',call]);
  }
- if(department==='ambulance'){
-  const functionCode=ambulanceFunction(person);
+ if(department==='ambulance'||department==='depannage'){
+  const functionCode=department==='ambulance'?ambulanceFunction(person):depannageFunction(person);
   if(functionCode)result.push(['function',functionCode]);
  }
  if(person?.rank)result.push(['rank',normalizeVisual(person.rank)]);

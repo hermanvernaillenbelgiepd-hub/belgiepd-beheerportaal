@@ -1,5 +1,5 @@
 // Operational uniform composition: one grade, one preview, one save.
-import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction} from '/uniform-profile-policy.js';
+import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,DEPANNAGE_FUNCTIONS,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction,depannageFunction} from '/uniform-profile-policy.js';
 export function setupUniformComposer({api,$}){
  const dept=$('composeDept'),grade=$('composeGrade'),panel=$('composePreview'),
   gallery=$('composeGallery'),types=$('composeTypes'),save=$('composeSave'),notice=$('composeStatus');
@@ -18,12 +18,11 @@ export function setupUniformComposer({api,$}){
  function ranks(){
   if(dept.value==='politie')return POLICE_CALL_GRADES.map(([code,title])=>['call',code,code+' · '+title]);
   if(dept.value==='ambulance')return AMBULANCE_FUNCTIONS.map(([code,title])=>['function',code,title]);
+  if(dept.value==='depannage')return DEPANNAGE_FUNCTIONS.map(([code,title])=>['function',code,title]);
   const base=dept.value==='brandweer'?
    ['Zonecommandant','Kolonel','Majoor','Kapitein','Luitenant',
     'Adjudant','Sergeant','Korporaal','Brandweerman','Stagiair']:
-   dept.value==='depannage'?
-    ['Leiding','F.A.S.T','LSRA','Depannagetechnicus']:
-    ['Burgerraad','Burger'];
+   ['Burgerraad','Burger'];
   const all=new Map(base.map(label=>[normalizeVisual(label),label]));
   for(const person of people.filter(x=>x.dept===dept.value&&x.rank))
    all.set(normalizeVisual(person.rank),String(person.rank));
@@ -31,7 +30,15 @@ export function setupUniformComposer({api,$}){
  }
  function initialize(){
   const scope=grade.selectedOptions[0]?.dataset.scope||'rank';
-  const saved=templates.find(x=>x.department===dept.value&&x.scope===scope&&x.selector===grade.value);
+  const exact=templates.find(x=>x.department===dept.value&&x.scope===scope&&x.selector===grade.value);
+  // A previously configured rank-based towing uniform stays available when
+  // the editor is upgraded to the stable AWV / LSRA / FAST function codes.
+  const legacy=dept.value==='depannage'&&scope==='function'?
+   ({awv:['leiding','agentschap_wegen_en_verkeer','awv'],
+     lsra:['lsra','depannagetechnicus'],fast:['f_a_s_t','fast']}[grade.value]||[])
+    .map(code=>templates.find(x=>x.department==='depannage'&&x.scope==='rank'&&x.selector===code))
+    .find(Boolean):null;
+  const saved=exact||legacy;
   // New atelier starts with saved compositions only. Never resurrect coats
   // from the retired per-service or per-cadre assignment system.
   const inherited='';
@@ -65,7 +72,7 @@ export function setupUniformComposer({api,$}){
  function sampleMember(){
   const match=people.find(p=>p.dept===dept.value&&(
    draft.scope==='call'?policeCallSeries(p.call)===grade.value:
-   draft.scope==='function'?ambulanceFunction(p)===grade.value:
+   draft.scope==='function'?(dept.value==='depannage'?depannageFunction(p)===grade.value:ambulanceFunction(p)===grade.value):
     normalizeVisual(p.rank)===grade.value));
   const prefix=dept.value==='politie'?'SANTO-':
    dept.value==='ambulance'?'AZLS-':'';
@@ -260,7 +267,7 @@ export function setupUniformComposer({api,$}){
    await api('/api/uniform-compositions',{method:'PUT',body:{
     ...draft,reason:'Uniformatelier opmaak voor '+dept.value+' '+grade.value}});
    await load(true);
-   notify('Uniformopmaak voor de graad opgeslagen.');
+   notify('Uniformopmaak voor de gekozen functie of graad opgeslagen.');
   }catch(e){notify(e.message,true)}
   finally{busy=false;updateSave()}
  };
