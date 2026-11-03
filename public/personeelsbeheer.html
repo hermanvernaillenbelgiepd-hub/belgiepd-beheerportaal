@@ -421,6 +421,32 @@ header{padding-inline:clamp(15px,2vw,34px)}
   display:flex;align-items:center;flex-wrap:wrap;gap:3px;
 }
 
+/* Compact archive/disconnect management: keep the section discreet until expanded. */
+#personnelArchivePanel.card{
+  margin:6px 0 9px!important;padding:7px 10px;border-radius:7px;
+}
+#personnelArchivePanel>summary{
+  cursor:pointer;font-size:11.5px;line-height:1.25;font-weight:750;
+}
+#personnelArchivePanel[open]{padding:9px 11px}
+#personnelArchivePanel>p.subtle{
+  font-size:10.5px;line-height:1.35;margin:7px 0 5px;
+}
+#personnelArchivePanel .controls{
+  display:flex;flex-wrap:wrap;gap:5px;margin:7px 0;
+}
+#personnelArchivePanel button{
+  padding:5px 8px;min-height:28px;font-size:10.5px;border-radius:6px;
+}
+#personnelArchivePanel #archiveFeedback{font-size:10.5px;line-height:1.3;margin:5px 0}
+#personnelArchivePanel .history{
+  padding:6px 0;font-size:11px;line-height:1.35;
+}
+@media(max-width:660px){
+  #personnelArchivePanel.card{padding:7px 9px}
+  #personnelArchivePanel[open]{padding:8px 9px}
+}
+
 /* Column configuration editor, isolated from dossiers and regular users. */
 .roster-column-panel{border:1px solid #42648d;border-radius:8px;padding:11px;background:#0e2540;margin:9px 0}
 .roster-column-panel>summary{font-weight:800;font-size:12px;cursor:pointer}
@@ -627,7 +653,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  <div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div>
  <div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div>
 </div>
-<details id="personnelArchivePanel" class="card" style="margin:12px 0">
+<details id="personnelArchivePanel" class="card">
  <summary>Personeelsarchief en Discord-vertrekcontrole</summary>
  <p class="subtle">Het archief bewaart de oorspronkelijke personeelsfiche. Ontbreken in de Discord-ledenlijst is alleen een waarschuwing: nooit een automatisch ontslag.</p>
  <div class="controls">
