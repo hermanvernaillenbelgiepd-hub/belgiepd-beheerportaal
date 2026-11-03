@@ -11,7 +11,8 @@ const UUID=/^[0-9a-f-]{36}$/i;
 const PERSON_COLLECTIONS=Object.freeze([
  'bpd_cases','bpd_staff_dossiers','bpd_training',
  'bpd_personnel_created','bpd_personnel_edits','bpd_personnel_specializations',
- 'bpd_personnel_lifecycle','bpd_personnel_decorations'
+ 'bpd_personnel_lifecycle','bpd_personnel_decorations',
+ 'bpd_specialty_restrictions','bpd_personnel_functions'
 ]);
 const FIELD_COLLECTIONS=Object.freeze([
  {collection:'bpd_leave_requests',field:'personDiscordId'},
@@ -85,6 +86,9 @@ async function collectTransfers(db,oldId,newId,depts){
      await collectTree(db.collection(name).doc(dept+'_'+oldId),
        db.collection(name).doc(dept+'_'+newId),copies);
    }
+   // Per-person uniform choice is a visual assignment, never a role grant.
+   await collectTree(db.collection('bpd_uniform_visual_assignments').doc(dept+'_person_'+oldId),
+     db.collection('bpd_uniform_visual_assignments').doc(dept+'_person_'+newId),copies);
  }
  for(const {collection,field} of FIELD_COLLECTIONS){
    const snap=await db.collection(collection).where(field,'==',oldId)
@@ -208,6 +212,10 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot}){
      const stamp=FieldValue.serverTimestamp();
      for(const item of prepared.copies){
        const data=transferSubjectFields(item.snap.data(),oldId,newId);
+       if(item.source.path.startsWith('bpd_uniform_visual_assignments/')){
+         if(data.selector===oldId)data.selector=newId;
+         if(data.key===item.source.id)data.key=item.target.id;
+       }
        tx.create(item.target,{...data,identityTransferId:requestRef.id,
          ...(item.source.parent.parent?{}:{transferredFromDiscordId:oldId})});
      }
