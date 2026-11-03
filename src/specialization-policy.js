@@ -11,9 +11,11 @@ export const PORTAL_POLICE_SPECIALTIES=Object.freeze([
  'Burgermeldingen','Terreinondersteuner','INTERVENTIEDIENST',
  'Prioritair rijden','EHBO'
 ]);
+export const PORTAL_DEPANNAGE_SPECIALTIES=Object.freeze(['F.A.S.T','LSRA']);
 export const allSpecialtyLabels=(dept,additional=[])=>[...new Set([
  ...(SPECIALTY_LABELS[dept]||[]),
  ...(dept==='politie'?PORTAL_POLICE_SPECIALTIES:[]),
+ ...(dept==='depannage'?PORTAL_DEPANNAGE_SPECIALTIES:[]),
  ...additional
 ])];
 // The callsign is checked on the police record, never inferred from Discord roles.
@@ -131,7 +133,7 @@ export function applyVerifiedSpecialtyRoleDisplay(state,roleIds,links){
  if(!state||!Array.isArray(state.items)||!Array.isArray(roleIds)||!Array.isArray(links))
   return state;
  const valid=new Set(roleIds.filter(x=>/^\d{15,22}$/.test(String(x))));
- const priority={Stage:1,Ja:2,LEIDING:3,INSTRUCTEUR:4};
+ const priority={Stage:1,AANGEMELD:1,Ja:2,INSTRUCTEUR:3,LEIDING:4};
  const best=new Map();
  for(const link of links){
   if(!valid.has(link?.roleId)||!Object.hasOwn(priority,link.value))continue;
