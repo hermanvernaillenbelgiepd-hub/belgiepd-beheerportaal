@@ -2177,12 +2177,15 @@ function fireSpecialtyPatchCode(label){
 function setFireSpecialtyPatchArtworks(artworks){
  const map=new Map();
  for(const item of Array.isArray(artworks)?artworks:[]){
-  if(item?.kind!=='specialty'||item.department!=='brandweer')continue;
+  if(!['specialty','patch'].includes(item?.kind)||item.department!=='brandweer')continue;
   const code=String(item.code||'');
   if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code))continue;
   const url=String(item.imageUrl||'');
-  if(!/^\/api\/role-artwork\/file\/specialty_brandweer_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url))continue;
-  map.set(code,url);
+  if(!/^\/api\/role-artwork\/file\/(?:specialty|patch)_brandweer_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url))continue;
+  if(!url.includes('/'+item.kind+'_brandweer_'+code+'?v='))continue;
+  // A deliberately uploaded Specialisatiebadge takes precedence over a
+  // generic Patch with the same code; exact role links are resolved later.
+  if(!map.has(code)||item.kind==='specialty')map.set(code,url);
  }
  fireSpecialtyPatchArtworks=map;
 }
@@ -2192,6 +2195,7 @@ function fireSpecialtyPatchUrl(label){
  // federal replacements remain editable through the artwork library.
  if(code==='duiker')return fireSpecialtyPatchArtworks.get('duiker_lokaal')||
   fireSpecialtyPatchArtworks.get('duiker_federaal')||
+  fireSpecialtyPatchArtworks.get('duiker')||
   '/assets/brandweer-duiker-origineel-20261102.webp';
  const aliases=code==='gevaarlijke_stoffen'?['gevaarlijkestoffen']:
   code==='red_team'?['redteam']:[];
@@ -2698,8 +2702,7 @@ function openPersonProfile(p){
    const aeLevelImage=aeSpecific?(
     window.BPDUniformAssignments?.specialtyVariantImage?.(p,name,functionVariant)||
     roleArtworkUrl(aeRoleIds[functionVariant])):'';
-   const alternative=isFireDiver?fireSpecialtyPatchUrl(name):
-    p.dept==='brandweer'?(
+   const alternative=p.dept==='brandweer'?(
       matchedArtwork?.imageUrl||fireSpecialtyPatchUrl(name)||
       window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)):
     p.dept==='ambulance'?(
