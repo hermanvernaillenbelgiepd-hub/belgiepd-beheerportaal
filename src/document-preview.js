@@ -16,21 +16,26 @@ export async function officePreviewPdf(bytes,extension){
   // Limit simultaneous conversions on the Render 512 MB instance.
   if(pending>=1)throw Object.assign(Error('Documentvoorvertoning is bezet. Probeer opnieuw.'),{status:503});
   pending++;
-  const dir=await mkdtemp(path.join(tmpdir(),'bpd-office-'));
+  let dir=null;
   try{
+    dir=await mkdtemp(path.join(tmpdir(),'bpd-office-'));
     const source=path.join(dir,'document'+extension);
     const profile=path.join(dir,'profile');
     await mkdir(profile,{mode:0o700});
     await writeFile(source,bytes,{mode:0o600});
+    const env={...process.env,HOME:dir};
+    delete env.DISPLAY;
+    delete env.SAL_USE_VCLPLUGIN;
     await exec('soffice',[
       '-env:UserInstallation=file://'+profile,
       '--headless','--convert-to','pdf','--outdir',dir,source
-    ],{timeout:35000,maxBuffer:16384,env:{
-      ...process.env,HOME:dir,SAL_USE_VCLPLUGIN:'gen'
-    }});
+    ],{timeout:35000,maxBuffer:16384,env});
     const pdf=await readFile(path.join(dir,'document.pdf'));
     if(pdf.length<20||pdf.length>LIMIT||pdf.subarray(0,5).toString()!=='%PDF-')
       throw Error('Conversie leverde geen geldig PDF-bestand op');
     return pdf;
-  }finally{pending--;await rm(dir,{recursive:true,force:true}).catch(()=>{});}
+  }finally{
+    pending--;
+    if(dir)await rm(dir,{recursive:true,force:true}).catch(()=>{});
+  }
 }
