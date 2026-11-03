@@ -261,7 +261,7 @@ export function serviceHierarchy(people,dept){
  if(!settings)throw Error('Onbekende dienst');
  const rows=(people||[]).filter(p=>p&&p.dept===dept&&clean(p.name));
  const leadership=settings.levels.map(label=>({
-  label,members:(dept==='politie'&&['Basiskader','Agentenkader'].includes(label)?orderedSpecialtyMembers:orderedMembers)(rows.filter(p=>getTier(p)===label))
+  label,members:(dept==='politie'?orderedSpecialtyMembers:orderedMembers)(rows.filter(p=>getTier(p)===label))
  }));
  // Keep unknown historic/incomplete AZLS call registrations visible, but
  // never mislabel them as a medical rank. Show only if such entries exist.
