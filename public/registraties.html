@@ -211,6 +211,7 @@ async function loadContext(){
   prepareForm(data);
   $('inboxPanel').hidden=!data.canReview;
   $('noAccess').hidden=Boolean(data.canSubmit||data.canReview);
+  $('accessReason').textContent=data.explanation||'Controleer je politierol en gekoppelde personeelsfiche.';
   if(data.canReview)await loadInbox();
 }
 $('clearBtn').onclick=()=>{clearForm();setMessage('')};

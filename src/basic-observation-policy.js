@@ -4,15 +4,18 @@ const ID=/^\d{15,22}$/;
 export function basicCallLevel(person){
   if(person?.dept!=='politie')return null;
   const call=String(person.call||'').trim();
-  const match=/^(?:S[- ]?)?([1-5]\d{2})$/i.exec(call);
+  // Personnel identifiers can use e.g. 432, S432 or SANTO-432.
+  // Use the same general prefix convention as policeKader/normalize.js.
+  const match=/^(?:[a-z]+[- ]?)?([1-5]\d{2})$/i.exec(call);
   if(!match)return null;
   const digit=Number(match[1][0]);
   // 1xx and 2xx share the same Agent rank.
   return digit<=2?0:digit-2;
 }
 export function basicAuthor(actor,person){
-  if(!actor||actor.role!=='basiskader'||
-     roleForDepartment(actor,'politie')!=='basiskader'||
+  // The verified POLICE department role is authoritative. A multi-service
+  // member can have another global/primary role without losing Police rights.
+  if(!actor||roleForDepartment(actor,'politie')!=='basiskader'||
      !actor.departments?.includes('politie')||!ID.test(actor.discordId)||
      !person||person.personId!==actor.discordId||person.dept!=='politie')return false;
   const lvl=basicCallLevel(person);
@@ -40,3 +43,21 @@ export const mayReadBasicInbox=actor=>Boolean(actor?.boardPersonnelAdmin===true|
     actor?.dossierAllowedDepartments?.includes('politie')&&
     ['middenkader','officierenkader','korpsleiding'].includes(
       roleForDepartment(actor,'politie'))));
+
+export function basicObservationDenial(actor,people){
+  if(!actor?.departments?.includes('politie')||
+     roleForDepartment(actor,'politie')!=='basiskader')
+    return 'Geen goedgekeurde Basiskaderrol binnen Politie gevonden. Controleer Mijn Discord en je portaalprofiel.';
+  const matches=(people||[]).filter(p=>p.dept==='politie'&&p.personId===actor.discordId);
+  if(matches.length!==1)return 'Je politiefiche is niet eenduidig gekoppeld aan je Discord-ID. Laat Personeelsbeheer de koppeling nakijken.';
+  if(basicCallLevel(matches[0])===null)
+    return 'Je politiroepnummer wordt niet herkend als een geldig Basiskader-nummer (3xx–5xx).';
+  if(!basicAuthor(actor,matches[0]))
+    return 'Je goedgekeurde politierol en je rang in de personeelslijst komen niet overeen.';
+  return null;
+}
+export function basicObservationWritesEnabled(env=process.env){
+  // Separately scoped, rank-checked observations can be enabled without
+  // activating the wider sanction/registration module.
+  return env.BPD_ENABLE_BASIC_OBSERVATIONS!=='false';
+}

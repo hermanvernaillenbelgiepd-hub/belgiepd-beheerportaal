@@ -1,6 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {actorFromPersonnel,validateEntry} from './registrations.js';
-import {basicObservationTargets,mayReadBasicInbox} from './basic-observation-policy.js';
+import {basicObservationTargets,mayReadBasicInbox,basicObservationDenial,
+ basicObservationWritesEnabled} from './basic-observation-policy.js';
 import {receivedAccess} from './received-registration-policy.js';
 
 const POL='politie';
@@ -22,13 +23,13 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
       const access=basicObservationTargets(req.bpd,roster),review=mayReadBasicInbox(req.bpd);
       res.set('Cache-Control','private, no-store');
       res.json({canSubmit:!!access.author,
-        canReview:review,writesEnabled:process.env.BPD_ENABLE_REGISTRATIONS==='true',
+        canReview:review,writesEnabled:basicObservationWritesEnabled(process.env),
         actor:access.author?actorSafe(access.author):null,
         targets:access.targets.map(p=>({...actorSafe(p),dept:POL})),
         source:'Centrale personeelslijst van Personeelsbeheer',
         explanation:access.author?
           'Observaties zijn alleen mogelijk over medewerkers met een lagere politierang (1xx–5xx). Geen sancties.':
-          'Alleen Basiskader kan hier een observatie indienen; Middenkader en hoger bekijken het beveiligde ontvangen overzicht.'});
+          basicObservationDenial(req.bpd,roster)});
     }catch(e){
       if(e.status)return err(res,e.status,e.message);
       console.error('Basiskader-observatie context:',e.code||e.message);
@@ -36,8 +37,8 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
     }
   });
   app.post('/api/basic-observations',requireUser,async(req,res)=>{
-    if(process.env.BPD_ENABLE_REGISTRATIONS!=='true')
-      return err(res,503,'Registraties staan uit in de serverconfiguratie');
+    if(!basicObservationWritesEnabled(process.env))
+      return err(res,503,'Basiskader-observaties zijn uitgeschakeld in de serverconfiguratie');
     const body=req.body||{};
     if(body.type && body.type!=='observatie'||
        Object.keys(body).some(k=>!['type','discordId','eventDate','eventTime',

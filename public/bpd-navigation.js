@@ -262,6 +262,7 @@
           }
           const basic=[...SAFE];
           if(context||member?.mode==='member')basic.push('documents');
+          if(context?.basicObservationCanSubmit===true)basic.push('observations');
           if(member?.mode==='member'&&member?.canUseSelfService===true)
             basic.push('notifications');
           show(basic);
