@@ -69,6 +69,10 @@ export function depannageOrganogramGroups(person){
 export function getTier(p){
  const rank=lower(p?.rank),call=lower(p?.call),dept=p?.dept;
  const deptSettings=SERVICES.find(s=>s.id===dept);
+ // Verified Burgerraad membership always occupies the first citizen tier,
+ // even if an older manual placement or a concurrent Burger/IO role exists.
+ if(dept==='burger'&&Array.isArray(p?.burgerGroups)&&p.burgerGroups.includes('Burgerraad'))
+  return 'Burgerraad';
  // Manually assigned placement changes only the visual tree, never rank/access.
  if(deptSettings?.levels.includes(p?.leadershipTier))return p.leadershipTier;
  if(dept==='politie'){
