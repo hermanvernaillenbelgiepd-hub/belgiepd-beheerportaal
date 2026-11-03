@@ -110,7 +110,7 @@ async function collectTransfers(db,oldId,newId,depts){
    changes.filter(y=>y.collection===x.collection).length])
  ])};
 }
-export function installDcIdTransferRoutes(app,{requireUser,getSnapshot}){
+export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onCompleted=()=>{}}){
  const admin=[requireUser,checkAdmin];
  app.get('/api/dc-id-transfer/preview',...admin,async(req,res)=>{
   try{
@@ -237,6 +237,7 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot}){
        completedBy:req.bpd.discordId,completionReason:req.body.reason.trim(),
        recordsTransferred:prepared.copies.length+prepared.changes.length});
    },{maxAttempts:3});
+   onCompleted(oldId);
    res.json({completed:true,oldDiscordId:oldId,newDiscordId:newId,
      affectedRecords:prepared.copies.length+prepared.changes.length,
      oldAccountBlocked:true,newRolesGranted:false,originalArchiveRetained:true});
