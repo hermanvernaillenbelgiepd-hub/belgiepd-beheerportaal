@@ -365,6 +365,8 @@ async function queryLive(){
   if(plan.duplicates.length||plan.unmatched.length)
     console.warn('Personeelsynchronisatie vraagt broncontrole:',JSON.stringify({
       unmatched:plan.unmatched.length,duplicates:plan.duplicates.length,
+      byReason:Object.fromEntries([...new Set(plan.unmatched.map(x=>x.reason))].sort().map(reason=>
+        [reason,plan.unmatched.filter(x=>x.reason===reason).length])),
       byDepartment:Object.fromEntries(Object.entries(plan.statistics).map(([dept,x])=>
         [dept,{linked:x.records,unmatched:x.unmatched,duplicates:x.duplicates}]))
     }));
