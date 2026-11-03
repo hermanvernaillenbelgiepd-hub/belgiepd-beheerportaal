@@ -41,8 +41,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
        const heavySanctionDepartments=sanctionDepartments.filter(d=>sanctionRoles[d]==='korpsleiding');
        const sanctionAmendDepartments=sanctionDepartments.filter(d=>mayAmend(req.bpd,'sanctie',d) &&
          ['officierenkader','korpsleiding'].includes(sanctionRoles[d]));
-       const basic=req.bpd.role==='basiskader'&&
-         roleForDepartment(req.bpd,'politie')==='basiskader';
+       const basic=roleForDepartment(req.bpd,'politie')==='basiskader';
        const limited=basic?basicObservationTargets(req.bpd,snap.data):null;
        res.json({role:req.bpd.role,departments:req.bpd.departments,writesEnabled:writesEnabled(),
          fireZoneChief:req.bpd.fireZoneChief===true,portalTechnicalMode:req.bpd.portalTechnicalMode===true,
@@ -133,7 +132,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       if(!actor)return res.status(403).json({error:'Koppel je ingelogde Google-account eerst aan je eigen Discord ID in de serverconfiguratie'});
       // Ook oudere formulieren of directe API-aanroepen kunnen deze
       // beperkingen niet omzeilen: Basiskader uitsluitend naar lagere rangen.
-      if(req.bpd.role==='basiskader'&&roleForDepartment(req.bpd,'politie')==='basiskader'){
+      if(roleForDepartment(req.bpd,'politie')==='basiskader'){
         const {author,targets}=basicObservationTargets(req.bpd,snap.data);
         if(dept!=='politie'||type!=='observatie'||representedId||!author||
            !targets.some(p=>p.personId===id))
