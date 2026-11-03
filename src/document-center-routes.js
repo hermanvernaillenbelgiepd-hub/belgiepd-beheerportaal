@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getStorage} from 'firebase-admin/storage';
+import {officePreviewPdf,isOfficeDocument} from './document-preview.js';
 import {DOCUMENT_DEPARTMENTS,documentScopes,verifiedDocumentRoles,
   mayReadDocument,mayWriteDocuments,mayManageDocuments} from './document-center-policy.js';
 
@@ -18,7 +19,8 @@ const TYPES=Object.freeze({
   webp:{mime:'image/webp',ext:'.webp'}
 });
 const CATEGORIES=Object.freeze(['opleiding','procedure','lesmateriaal','formulier','evaluatie','dienstnota','overig']);
-const AUDIENCES=Object.freeze(['instructeurs','leiding']);
+const AUDIENCES=Object.freeze(['leden','instructeurs','leiding','toegewezen']);
+const DISCORD_ID=/^\d{15,22}$/;
 const ID=/^[0-9a-f-]{36}$/i;
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 const bucketName=env=>String(env.BPD_DOCUMENT_CENTER_BUCKET||
@@ -36,7 +38,7 @@ const cleanText=(value,min,max,label)=>{
 function details(body,upload=false){
   if(!body||typeof body!=='object'||Array.isArray(body)||
     Object.keys(body).some(k=>!['department','title','description','category','audience',
-      ...(upload?['fileName','base64']:[])].includes(k)))throw fail(400,'Ongeldige documentgegevens');
+      'readerIds',...(upload?['fileName','base64']:[])].includes(k)))throw fail(400,'Ongeldige documentgegevens');
   const department=String(body.department||'');
   if(!DOCUMENT_DEPARTMENTS.includes(department))throw fail(400,'Onbekende hulpdienst');
   const title=cleanText(body.title,3,120,'Titel');
@@ -45,7 +47,14 @@ function details(body,upload=false){
   const audience=String(body.audience||'');
   if(!CATEGORIES.includes(category)||!AUDIENCES.includes(audience))
     throw fail(400,'Kies een geldige categorie en doelgroep');
-  return {department,title,description,category,audience};
+  const readerIds=body.readerIds===undefined?[]:body.readerIds;
+  if(!Array.isArray(readerIds)||readerIds.length>30||
+    readerIds.some(id=>typeof id!=='string'||!DISCORD_ID.test(id)))
+    throw fail(400,'Maximaal 30 geldige Discord-ID’s zijn toegestaan');
+  const readers=[...new Set(readerIds)];
+  if(audience==='toegewezen'&&!readers.length)
+    throw fail(400,'Kies minstens één toegewezen lesgever');
+  return {department,title,description,category,audience,readerIds:readers};
 }
 export function validateDocumentUpload(body){
   const fields=details(body,true);
@@ -92,6 +101,18 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
         await getFirestore().collection('bpd_discord_auth').doc(id).get():null;
       const roles=verifiedDocumentRoles(member?.data(),process.env.DISCORD_GUILD_ID);
       req.documentScopes=documentScopes(req.bpd,snap.data,roles);
+      // Explicit instructor assignments remain valid for approved accounts
+      // even if the assignee is not on this department's personnel roster.
+      if(DISCORD_ID.test(id)){
+        const assigned=await getFirestore().collection(META)
+          .where('readerIds','array-contains',id).limit(100).get();
+        for(const d of assigned.docs){
+          if(d.get('status')!=='active')continue;
+          const dept=d.get('department');
+          if(DOCUMENT_DEPARTMENTS.includes(dept)&&
+            !req.documentScopes.read.includes(dept))req.documentScopes.read.push(dept);
+        }
+      }
       req.documentStaff=snap.data.filter(p=>p.personId===id);
       next();
     }catch(e){error(res,e);}
@@ -111,7 +132,10 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       const snapshot=await getFirestore().collection(META)
         .where('department','==',dept).limit(160).get();
       const rows=snapshot.docs.filter(x=>mayReadDocument(req.documentScopes,x.data()))
-        .map(x=>publicRow(x.id,x.data()))
+        .map(x=>({ ...publicRow(x.id,x.data()),
+          ...(req.documentScopes.manage?.includes(dept)?{
+            readerIds:Array.isArray(x.get('readerIds'))?x.get('readerIds'):[]}: {})
+        }))
         .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
       res.json({documents:rows,limited:snapshot.size===160});
     }catch(e){error(res,e);}
