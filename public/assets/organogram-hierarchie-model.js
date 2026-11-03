@@ -113,6 +113,11 @@ export function getTier(p){
  if(dept==='burger'){
   const verified=Array.isArray(p.burgerGroups)?p.burgerGroups:[];
   if(verified.includes('Burgerraad'))return 'Burgerraad';
+  // An explicitly registered Burgerraad qualification in the legacy
+  // personnel sheet is also valid display evidence (not a permission grant).
+  if(Array.isArray(p.specialties)&&p.specialties.some(x=>
+   x?.label==='Burgerraad'&&/^(ja|true|behaald)$/i.test(String(x.value||'').trim())))
+   return 'Burgerraad';
   if(verified.includes('Burger'))return 'Burger';
   if(verified.includes('Burger IO'))return 'Burger IO';
   if(/burgerraad/.test(rank+' '+call))return 'Burgerraad';
