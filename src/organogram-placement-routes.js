@@ -21,7 +21,7 @@ import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  depannageSpecialtyAssetKeys,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
 import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks,exactApiDisplayRoles} from './bpd-discord-users-display.js';
-import {projectCitizenOrganogram} from './burger-organogram-projection.js';
+import {projectCitizenOrganogram,projectVerifiedCouncilAccounts,councilRoleIds} from './burger-organogram-projection.js';
 import {roleArtworkCandidateKeys,resolveSpecialtyArtworkKey} from './specialty-artwork-resolver.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
@@ -176,6 +176,22 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    // Burger dossier, authorization grant or persisted personnel entry.
    roster=projectCitizenOrganogram(roster,upstream,cachedOAuthRoles,
     process.env.DISCORD_GUILD_ID);
+   // A verified Burgerraad role may belong to an approved portal account
+   // with no legacy personnel fiche. Look up only those exact council IDs.
+   // Do not persist anything or assign dossier/leadership permissions.
+   const councilIds=councilRoleIds(upstream);
+   const councilAccounts=new Map();
+   for(const batch of chunks(councilIds,100)){
+    const docs=await db.getAll(...batch.map(id=>db.collection(USER_COLLECTION).doc(id)));
+    for(const doc of docs)if(doc.exists&&doc.get('status')==='approved')
+     councilAccounts.set(doc.id,doc.data());
+   }
+   roster=projectVerifiedCouncilAccounts(roster,upstream,councilAccounts);
+   if(upstream.status==='ok')
+    console.info('Burgerraad rolcontrole (alleen aantallen):',
+     'discord='+councilIds.length,
+     'met_gekoppeld_profiel='+roster.filter(p=>p.dept==='burger'&&
+      councilIds.includes(p.personId)).length);
    // ONLY the public organogram presentation uses the upstream API.
    // Login, dossier permissions and persisted Firebase role evidence remain
    // independent of this role overlay.
