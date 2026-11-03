@@ -53,6 +53,10 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           canOpenDossier,canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
           canChangeRank:canChangePoliceGrade(req.bpd,p),
           series:displaySeries(p.seriesRaw??p.series,p.rank,p.dept,p.call),status:p.status,
+          // Private activity summary only for authenticated service managers.
+          hours:Number.isFinite(p.hours)?p.hours:null,
+          totalHours:Number.isFinite(p.totalHours)?p.totalHours:null,
+          lastConnection:typeof p.lastConnection==='string'?p.lastConnection.slice(0,80):null,
           // Presentation-only specialties from the already-authorized Sheets
           // roster. Do not treat these values as Discord role grants.
           specialties:Array.isArray(p.specialties)?p.specialties.slice(0,16)
