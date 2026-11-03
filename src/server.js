@@ -40,6 +40,8 @@ import {installUniformGradeRoutes} from './uniform-grade-routes.js';
 import {installUniformCompositionRoutes} from './uniform-composition-routes.js';
 import {installTrainingRequestRoutes} from './training-request-routes.js';
 import {installDocumentCenterRoutes} from './document-center-routes.js';
+import {installDcIdTransferRoutes} from './dc-id-transfer-routes.js';
+import {DC_TRANSFER_ALIASES,applyCompletedDcAliases} from './dc-id-transfer-policy.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
 import { installUserRoutes } from './user-routes.js';
@@ -118,6 +120,7 @@ app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
 app.use('/api/training-calendar',express.json({limit:'4kb',strict:true}));
 app.use('/api/document-center',express.json({limit:'8mb',strict:true}));
+app.use('/api/dc-id-transfer',express.json({limit:'5kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/member',express.json({limit:'3kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
@@ -394,20 +397,24 @@ async function getSourceSnapshot(forceRefresh=false){
 async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
-  const [created,edits,specialties,rosterConfigs]=await Promise.all([
+  const [created,edits,specialties,rosterConfigs,identityAliases]=await Promise.all([
     on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(500).get():null,
     process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'
       ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null,
     specialtyReadEnabled(process.env)
       ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null,
-    specialtyReadEnabled(process.env)?loadRosterConfigs():null
+    specialtyReadEnabled(process.env)?loadRosterConfigs():null,
+    getFirestore().collection(DC_TRANSFER_ALIASES).limit(201).get()
   ]);
-  if(created?.size===500||edits?.size===400||specialties?.size===600)throw Error('Te veel personeelsrecords; migratiecontrole nodig');
+  if(created?.size===500||edits?.size===400||specialties?.size===600||identityAliases.size===201)
+    throw Error('Te veel personeelsrecords; migratiecontrole nodig');
   const added=(created?.docs||[]).map(d=>asCreatedPersonnel(d.data())).filter(Boolean);
   // Never silently override or duplicate an original service+Discord ID.
-  const keys=new Set(base.data.map(p=>p.dept+':'+p.personId));
-  const extra=added.filter(p=>!keys.has(p.dept+':'+p.personId));
-  const combined=base.data.concat(extra);
+  const canonicalBase=applyCompletedDcAliases(base.data,identityAliases.docs);
+  const canonicalAdded=applyCompletedDcAliases(added,identityAliases.docs);
+  const keys=new Set(canonicalBase.map(p=>p.dept+':'+p.personId));
+  const extra=canonicalAdded.filter(p=>!keys.has(p.dept+':'+p.personId));
+  const combined=canonicalBase.concat(extra);
   const personnel=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
   let visible=specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel;
   // Reuse the already-authorized BelgiumPD members API to project fresh,
@@ -727,6 +734,7 @@ installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installRosterColumnRoutes(app,{requireUser});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
 installDocumentCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installRoleArtworkRoutes(app,{requireUser});
