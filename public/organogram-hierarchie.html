@@ -183,6 +183,20 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-dialog .azls-discord-functions{margin-top:14px;padding-top:10px;border-top:1px solid #365472}
 .person-profile-dialog .azls-discord-functions h4{font-size:12px;letter-spacing:.025em;color:#b8d1ea;margin:0 0 8px}
 .person-profile-dialog .azls-function-chips{display:flex;flex-wrap:wrap;gap:7px}
+.person-profile-dialog .person-profile-completed-training{
+ margin-top:14px;padding-top:12px;border-top:1px solid #365472
+}
+.person-profile-dialog .person-profile-completed-training h4{
+ font-size:12px;letter-spacing:.025em;color:#b8d1ea;margin:0 0 8px
+}
+.person-profile-dialog .person-profile-completed-training-entry{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ padding:10px 12px;border:1px solid #365472;border-radius:9px;
+ background:#173450;color:#eaf4ff;font-size:12px
+}
+.person-profile-dialog .person-profile-completed-training-entry span{
+ color:#9de0b6;font-weight:800;letter-spacing:.04em
+}
 .person-profile-dialog .person-profile-other-service-roles{
  margin-top:14px;padding-top:10px;border-top:1px solid #365472
 }
@@ -2777,7 +2791,19 @@ function openPersonProfile(p){
    list.append(item);
   }
   specBox.append(list);
- }else specBox.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
+ }else specBox.append(el('p','person-profile-note',p.dept==='brandweer'?
+  'Geen aanvullende specialisaties geregistreerd.':'Geen geregistreerde specialisaties.'));
+ // Separately show registered Brandweer training completion, never inferred
+ // from the generic Brandweer membership Discord role.
+ if(p.dept==='brandweer'&&p.completedFireBasicTraining===true){
+  const education=el('section','person-profile-completed-training');
+  education.append(el('h4','','Afgeronde opleidingen'));
+  const training=el('div','person-profile-completed-training-entry');
+  training.append(el('strong','','Basisopleiding Brandweer'),
+   el('span','','BEHAALD'));
+  education.append(training);
+  specBox.append(education);
+ }
  // Public, display-only AZLS Discord functions. Never replace the official
  // rank or present a professional role as a clinical qualification.
  if(p.dept==='ambulance'&&Array.isArray(p.azlsFunctions)&&p.azlsFunctions.length){
@@ -3362,6 +3388,7 @@ async function loadPublic(){
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
     motardRole:['in_opleiding','volwaardig','instructeur'].includes(p.motardRole)?p.motardRole:'',
     dispRole:['in_opleiding','volwaardig','instructeur'].includes(p.dispRole)?p.dispRole:'',
+    completedFireBasicTraining:p.dept==='brandweer'&&p.completedFireBasicTraining===true,
     otherServiceRoles:(Array.isArray(p.otherServiceRoles)?p.otherServiceRoles:[])
      .filter(x=>x&&['politie','brandweer','ambulance','depannage'].includes(x.dept)&&
        x.dept!==p.dept&&Array.isArray(x.labels))

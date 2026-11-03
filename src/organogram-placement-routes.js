@@ -5,7 +5,7 @@ import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
 import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
  from './organogram-mid-order-policy.js';
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
- validatePlacement,validatePoliceSpecialtyEdit,manualDisplay,verifiedSyncRoles,verifiedOtherServiceDiscordRoles,
+ validatePlacement,validatePoliceSpecialtyEdit,manualDisplay,verifiedSyncRoles,verifiedOtherServiceDiscordRoles,registeredFireBasicTraining,
  AE_DISCORD_ROLES,mergePlacement,canManagePlacements
 } from './organogram-placement-policy.js';
 import {organogramReekshoofdTitle,policeOrganogramDossierUrl} from './organogram-profile-display.js';
@@ -363,6 +363,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
      specialtyPatches,
+     completedFireBasicTraining:registeredFireBasicTraining(p),
      otherServiceRoles:verifiedOtherServiceDiscordRoles(roles.entries.get(p.personId),
       p.dept,process.env.DISCORD_GUILD_ID),
      azlsFunctions:p.dept==='ambulance'?

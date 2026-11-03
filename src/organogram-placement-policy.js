@@ -295,6 +295,14 @@ export function verifiedOtherServiceDiscordRoles(identity,currentDept,guildId,no
  }
  return out;
 }
+// Fire basic training is a registered completion, not a consequence of
+// possessing a generic Brandweer Discord membership role.
+export function registeredFireBasicTraining(person){
+ if(person?.dept!=='brandweer'||!Array.isArray(person.specialties))return false;
+ return person.specialties.some(entry=>
+  entry&&['Basis TR','Basistraining'].includes(String(entry.label||''))&&
+  /^(ja|behaald|voltooid|geslaagd|true)$/i.test(String(entry.value||'').trim()));
+}
 export function mergePlacement(person,manual,auto){
  // Explicit manual entries supplement verified roles, never grant rights.
  const specialtyValues=Array.isArray(person.specialties)?
