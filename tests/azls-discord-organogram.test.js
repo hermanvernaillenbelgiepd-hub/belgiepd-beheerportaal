@@ -7,12 +7,21 @@ import {
  defaultSpecialtyRoleLinks
 } from '../src/specialty-role-presets.js';
 import {verifiedSyncRoles} from '../src/organogram-placement-policy.js';
-import {ROLE_CATALOG} from '../src/role-catalog.js';
+import {ROLE_CATALOG,roleSummary} from '../src/role-catalog.js';
 import {allSpecialtyLabels} from '../src/specialization-policy.js';
 
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const guild='111111111111111111',now=Date.now();
 const identity=roleIds=>({guildId:guild,verifiedAt:now,roleIds});
+
+test('PIT-MOTOR stays in the ambulance department in the central Discord catalog',()=>{
+ const pit=ROLE_CATALOG.find(x=>x.id===AZLS_PIT_MOTOR_ROLE_ID);
+ assert.equal(pit?.dept,'ambulance');
+ assert.equal(pit?.kind,'specialisatie');
+ const overview=roleSummary([AZLS_PIT_MOTOR_ROLE_ID]);
+ assert.ok(overview.departments.includes('ambulance'));
+ assert.equal(overview.departments.includes('politie'),false);
+});
 
 test('each AZLS qualification is derived from an exact verified Discord role ID',()=>{
  assert.deepEqual(AMBULANCE_ROLE_PATCH_PRESETS.map(x=>x.label),['MIP','HELI','PIT-MOTOR']);
