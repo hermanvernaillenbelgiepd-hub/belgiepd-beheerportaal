@@ -177,7 +177,8 @@ async function loadActivityPings(){
   for(const entry of notices){
    const row=document.createElement('div');row.className='item';
    const heading=document.createElement('strong');
-   heading.textContent='Inactiviteitsping · '+(entry.department||'Dienst');
+   heading.textContent=(['50/50','INACTIEF'].includes(entry.kind)?entry.kind+'-ping':'Inactiviteitsping')+
+    ' · '+(entry.department||'Dienst');
    const info=document.createElement('p');
    const date=entry.sentAt&&Number.isFinite(Date.parse(entry.sentAt))?
     new Date(entry.sentAt).toLocaleString('nl-BE'):'Datum onbekend';
