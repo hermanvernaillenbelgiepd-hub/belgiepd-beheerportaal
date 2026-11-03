@@ -136,7 +136,7 @@ function render(){
 }
 async function download(doc,preview=false){
  let tab=null;
- if(preview)tab=window.open('about:blank','_blank','noopener');
+ if(preview){tab=window.open('about:blank','_blank');if(tab)tab.opener=null;}
  try{
   const blob=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/download');
   const url=URL.createObjectURL(blob);
