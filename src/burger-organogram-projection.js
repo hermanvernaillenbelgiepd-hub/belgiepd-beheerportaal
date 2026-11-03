@@ -51,3 +51,26 @@ export function projectCitizenOrganogram(roster,upstream,oauth,guildId,now=Date.
  }
  return [...rows,...projected];
 }
+
+export function councilRoleIds(upstream){
+ if(upstream?.status!=='ok'||!(upstream.entries instanceof Map))return [];
+ return [...upstream.entries].filter(([id,ids])=>validId(id)&&
+  citizenGroupsForRoles(ids).includes('Burgerraad')).map(([id])=>id).slice(0,150);
+}
+// An approved existing portal account supplies the visible name for a verified
+// council member who has no personnel record in any operational service.
+export function projectVerifiedCouncilAccounts(roster,upstream,accounts){
+ const rows=Array.isArray(roster)?roster:[];
+ const seen=new Set(rows.filter(p=>p?.dept==='burger').map(p=>p.personId));
+ const added=[];
+ for(const [id,account] of accounts instanceof Map?accounts:[]){
+  if(seen.has(id)||!validId(id)||account?.status!=='approved'||
+     !citizenGroupsForRoles(upstream?.entries?.get(id)).includes('Burgerraad'))continue;
+  const name=String(account.username||'').trim();
+  if(!name||name.length>90)continue;
+  added.push({dept:'burger',personId:id,name,call:'—',rank:'Burgerraad',
+   series:'',status:'',specialties:[],citizenDisplayOnly:true});
+  seen.add(id);
+ }
+ return [...rows,...added];
+}
