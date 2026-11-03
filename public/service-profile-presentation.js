@@ -1,7 +1,14 @@
 // Service-specific labels and patch visuals; presentation-only, no role grants.
+import {getTier} from './assets/organogram-hierarchie-model.js';
 const val=x=>String(x??'').trim();
 export function serviceProfileRank(person){
  const rank=val(person?.rank);
+ // A Burger profile must show its citizen tier, never a rank inherited
+ // from another service (e.g. Ambulancier for a Burgerraad member).
+ if(person?.dept==='burger'){
+  const tier=getTier(person);
+  return tier==='Burger IO'?'BIO':tier;
+ }
  if(person?.dept!=='depannage')return rank||'Rang niet geregistreerd';
  const call=val(person?.call).toUpperCase().replace(/\s+/g,'');
  const normalized=rank.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
