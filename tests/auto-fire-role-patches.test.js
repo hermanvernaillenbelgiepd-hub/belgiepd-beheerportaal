@@ -37,10 +37,10 @@ test('verified Discord evidence, never user-supplied roles, connects badges to s
 
 test('fire specialty badges stay crisp, compact, centered and uncropped',()=>{
  assert.match(style,/min-height:100px!important/);
- assert.match(style,/grid-template-columns:minmax\(0,150px\) minmax\(0,200px\)!important/);
- assert.match(style,/justify-content:center!important/);
- assert.match(style,/width:min\(185px,100%\)!important/);
- assert.match(style,/max-height:88px!important/);
+ assert.match(style,/grid-template-columns:minmax\(0,1fr\) minmax\(0,150px\)!important/);
+ assert.match(style,/align-content:center/);
+ assert.match(style,/width:min\(150px,100%\)!important/);
+ assert.match(style,/max-height:78px!important/);
  assert.match(style,/aspect-ratio:auto!important/);
  assert.match(style,/object-fit:contain!important/);
 });
