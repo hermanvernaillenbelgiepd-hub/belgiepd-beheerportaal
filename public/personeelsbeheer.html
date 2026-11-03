@@ -4287,8 +4287,8 @@ $('rankChangeForm').onsubmit=async ev=>{
   if(!selected||!rankChangesEnabled||selected.canChangeRank!==true)return;
   const person=selected,rank=$('rankChangeTo').value,call=$('rankChangeCall').value.trim();
   if(!rank||!call)return;
-  if(!confirm('Definitieve rangwijziging voor '+person.name+'?\\n'+
-      person.rank+' ('+person.call+') → '+rank+' ('+call+')\\n'+
+  if(!confirm('Definitieve rangwijziging voor '+person.name+'?\n'+
+      person.rank+' ('+person.call+') → '+rank+' ('+call+')\n'+
       'Deze beslissing wordt gelogd. Discord-rollen blijven ongewijzigd.'))return;
   const button=$('rankChangeSave');button.disabled=true;
   try{
@@ -4457,7 +4457,7 @@ async function archiveServiceMembership(p){
  try{current=await request(url)}catch(e){return notice('Dienstverband niet beschikbaar: '+e.message,true)}
  if(!current.canManage||current.state!=='active')
   return notice('Dit dienstverband is niet actief of je hebt geen wijzigingsrecht.',true);
- const code=prompt('Reden uitdiensttreding?\\n1 = Vrijwillig Discord verlaten\\n2 = Ontslag door leiding\\n3 = Vrijwillig vertrek uit deze dienst\\n4 = Andere reden','3');
+ const code=prompt('Reden uitdiensttreding?\n1 = Vrijwillig Discord verlaten\n2 = Ontslag door leiding\n3 = Vrijwillig vertrek uit deze dienst\n4 = Andere reden','3');
  if(code===null)return;
  const cause=({'1':'voluntary_discord_leave','2':'management_dismissal',
    '3':'service_resignation','4':'other'})[code.trim()];
@@ -4467,7 +4467,7 @@ async function archiveServiceMembership(p){
  const reason=explanation.trim();
  if(reason.length<10||reason.length>500)return notice('Motivering moet 10 tot 500 tekens zijn.',true);
  if(!confirm(p.name+' UITSLUITEND uit '+(departments[p.dept]||p.dept)+' plaatsen?'+
-   '\\nAndere dienstverbanden en dossiers blijven intact. CMS-rollen afzonderlijk nakijken.'))return;
+   '\nAndere dienstverbanden en dossiers blijven intact. CMS-rollen afzonderlijk nakijken.'))return;
  try{
   await request(url+'/archive',{method:'POST',
    body:{cause,reason,expectedRevision:current.revision}});
