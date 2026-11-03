@@ -92,6 +92,9 @@ async function collectTransfers(db,oldId,newId,depts){
      db.collection('bpd_uniform_visual_assignments').doc(dept+'_person_'+newId),copies);
  }
  for(const {collection,field} of FIELD_COLLECTIONS){
+   const target=await db.collection(collection).where(field,'==',newId).limit(1).get();
+   if(!target.empty)
+     throw failure(409,'Het nieuwe account heeft al historische records in '+collection+'. Handmatige controle nodig.');
    const snap=await db.collection(collection).where(field,'==',oldId)
      .limit(MAX_FIELD+1).get();
    if(snap.size>MAX_FIELD)throw failure(409,'Te veel gekoppelde dossiers in '+collection);
