@@ -24,9 +24,9 @@ export const SPECIALTY_LABELS=Object.freeze(Object.fromEntries(
         // Do not add display-alias fields RED-TEAM / Basistraining twice.
         'Logistiek / Signalisatie','Bosbestrijding','Brandweer-AMBU'
       ]:dept==='depannage'?[
-        // No Google Sheets source columns for these two capabilities yet.
-        // Both default to "Niet ingevuld" until an authorized audited update.
-        'CRANE','WEGENWERKEN'
+        // These qualifications have no independent Sheets source columns.
+        // They default to "Niet ingevuld" without verified roles or an audited edit.
+        'CRANE','WEGENWERKEN','F.A.S.T','LSRA'
       ]:[])])])
 ));
 const s = value => String(value ?? '').trim();

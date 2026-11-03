@@ -52,7 +52,12 @@ import {installSpecialtyRoleLinkRoutes} from './specialty-role-link-routes.js';
 import {installRosterColumnRoutes,loadRosterConfigs} from './roster-column-config.js';
 import {installFunctionChangeRoutes} from './function-change-routes.js';
 import {installReceivedRegistrationRoutes} from './received-registration-routes.js';
-import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
+import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays,allSpecialtyLabels,SPECIALTY_STATES} from './specialization-policy.js';
+import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
+import {overlayVerifiedRosterSpecialties} from './specialty-roster-display.js';
+import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
+import {SPECIALTY_ROLE_LINKS} from './specialty-role-link-routes.js';
+import {ROLE_CATALOG} from './role-catalog.js';
 import {RAGO_DISPLAY_ROLE_IDS,overlayVerifiedRagoRoster} from './rago-qualification-display.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierRetirementRoutes} from './dossier-retirement-routes.js';
@@ -361,12 +366,52 @@ async function getSnapshot({forceRefresh=false}={}){
   const combined=base.data.concat(extra);
   const personnel=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
   let visible=specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel;
-  // RAGO is a read-only projection of verified Discord roles, not a write to
-  // the optional specialization register. It must also work when that register
-  // is disabled, e.g. in the member-facing personnel roster.
-  if(process.env.DISCORD_GUILD_ID){
-    // Only recently verified Discord guild snapshots can annotate RAGO. The
-    // Sheets, manual dossier overrides and Discord roles are not modified.
+  // Reuse the already-authorized BelgiumPD members API to project fresh,
+  // verified Discord specializations across the personnel roster. Display
+  // only: no Firestore writes, role grants, cadre or dossier-right changes.
+  // The same cached upstream snapshot also powers the organogram.
+  let verifiedRosterApplied=false;
+  if(specialties&&process.env.DISCORD_GUILD_ID){
+    try{
+      const upstream=await getBelgiumPdDisplayRoles();
+      if(upstream.status==='ok'){
+        const depts=['politie','brandweer','ambulance','depannage'];
+        const docs=await getFirestore().getAll(...depts.map(dept=>
+          getFirestore().collection(SPECIALTY_ROLE_LINKS).doc(dept)));
+        const linked=new Map(docs.map((doc,index)=>{
+          const dept=depts[index];
+          const extra=(rosterConfigs?.[dept]?.customSpecialties||[]).map(x=>x.label);
+          const labels=new Set(allSpecialtyLabels(dept,extra));
+          const catalog=new Set(ROLE_CATALOG.filter(x=>x.dept===dept||
+            dept==='politie'&&x.dept==='dispatch'||
+            dept==='ambulance'&&x.id==='1508506242299985980').map(x=>x.id));
+          const saved=Array.isArray(doc.get('links'))?doc.get('links'):[];
+          const links=defaultSpecialtyRoleLinks(dept,saved,
+            doc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION)
+            .filter(x=>x&&catalog.has(x.roleId)&&labels.has(x.label)&&
+              SPECIALTY_STATES.includes(x.value));
+          return [dept,links];
+        }));
+        // RAGO has a separate, long-standing verified-role projection that
+        // must continue to work even if its editable patch link was removed.
+        const at=Date.now(),ragoProof=visible.filter(p=>p.dept==='politie'&&
+          /^\d{15,22}$/.test(String(p.personId||''))&&
+          upstream.entries.has(p.personId)).map(p=>({
+            id:p.personId,data:()=>({guildId:process.env.DISCORD_GUILD_ID,
+              verifiedAt:at,roleIds:upstream.entries.get(p.personId)})
+          }));
+        visible=overlayVerifiedRagoRoster(visible,ragoProof,process.env.DISCORD_GUILD_ID,at);
+        visible=overlayVerifiedRosterSpecialties(visible,upstream,linked);
+        verifiedRosterApplied=true;
+      }
+    }catch(err){
+      console.warn('Discord-personeelsweergave niet beschikbaar:',
+        err?.code||'verificatie');
+    }
+  }
+  // When the dedicated API is unavailable, retain the previous safe OAuth
+  // RAGO fallback. Never let an older OAuth snapshot override fresher API roles.
+  if(!verifiedRosterApplied&&process.env.DISCORD_GUILD_ID){
     try{
       const roleDocs=await getFirestore().collection('bpd_discord_auth')
         .where('roleIds','array-contains-any',RAGO_DISPLAY_ROLE_IDS)
