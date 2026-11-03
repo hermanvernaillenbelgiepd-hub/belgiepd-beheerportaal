@@ -2,11 +2,12 @@ import {randomUUID} from 'node:crypto';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getStorage} from 'firebase-admin/storage';
 import {officePreviewPdf,isOfficeDocument} from './document-preview.js';
+import {normalizeFolderId,builtInFolders,resolveDocumentUrl,safeYouTubeEmbed} from './document-folder-policy.js';
 import {DOCUMENT_DEPARTMENTS,documentScopes,verifiedDocumentRoles,
   mayReadDocument,mayWriteDocuments,mayManageDocuments} from './document-center-policy.js';
 
 const META='bpd_document_center',AUDIT='bpd_document_center_audit',
-  VERSIONS='bpd_document_center_versions';
+  VERSIONS='bpd_document_center_versions',FOLDERS='bpd_document_center_folders';
 const MAX_BYTES=5*1024*1024;
 const TYPES=Object.freeze({
   pdf:{mime:'application/pdf',ext:'.pdf'},
@@ -38,7 +39,7 @@ const cleanText=(value,min,max,label)=>{
 function details(body,upload=false){
   if(!body||typeof body!=='object'||Array.isArray(body)||
     Object.keys(body).some(k=>!['department','title','description','category','audience',
-      'readerIds',...(upload?['fileName','base64']:[])].includes(k)))throw fail(400,'Ongeldige documentgegevens');
+      'readerIds','folderId',...(upload?['fileName','base64']:[])].includes(k)))throw fail(400,'Ongeldige documentgegevens');
   const department=String(body.department||'');
   if(!DOCUMENT_DEPARTMENTS.includes(department))throw fail(400,'Onbekende hulpdienst');
   const title=cleanText(body.title,3,120,'Titel');
@@ -54,7 +55,8 @@ function details(body,upload=false){
   const readers=[...new Set(readerIds)];
   if(audience==='toegewezen'&&!readers.length)
     throw fail(400,'Kies minstens één toegewezen lesgever');
-  return {department,title,description,category,audience,readerIds:readers};
+  return {department,title,description,category,audience,readerIds:readers,
+    folderId:normalizeFolderId(body.folderId)};
 }
 export function validateDocumentUpload(body){
   const fields=details(body,true);
@@ -81,11 +83,20 @@ export function validateDocumentUpload(body){
   return {...fields,filename,bytes,mime:type.mime,size:bytes.length,ext:type.ext};
 }
 const publicRow=(id,x)=>({
-  id,department:x.department,title:x.title,description:x.description,
+  id,kind:x.kind==='link'?'link':'file',folderId:x.folderId||null,
+  department:x.department,title:x.title,description:x.description,
   category:x.category,audience:x.audience,fileName:x.fileName,mime:x.mime,
-  size:x.size,version:x.version||1,uploadedByName:x.uploadedByName||'',
+  size:x.size||0,version:x.version||1,uploadedByName:x.uploadedByName||'',
   createdAt:x.createdAt?.toDate?.()?.toISOString?.()||null
 });
+async function validateFolder(db,department,folderId){
+  if(!folderId)return null;
+  if(builtInFolders(department).some(x=>x.id===folderId))return folderId;
+  const snap=await db.collection(FOLDERS).doc(folderId).get();
+  if(!snap.exists||snap.get('department')!==department||snap.get('status')!=='active')
+    throw fail(400,'Deze map bestaat niet binnen de gekozen dienst');
+  return folderId;
+}
 const error=(res,e)=>{if(e?.status)return res.status(e.status).json({error:e.message});
   console.error('Documentencentrum:',typeof e?.code==='string'?e.code:'storage_error');
   return res.status(503).json({error:'Documentencentrum tijdelijk niet beschikbaar'});
@@ -147,6 +158,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       if(!mayWriteDocuments(req.documentScopes,item.department))
         throw fail(403,'Geen uploadrechten voor deze dienst');
       const db=getFirestore(),id=randomUUID();
+      await validateFolder(db,item.department,item.folderId);
       const path='belgiepd/documents/'+item.department+'/'+id+item.ext;
       const previewBytes=await officePreviewPdf(item.bytes,item.ext);
       file=storage().file(path);
@@ -162,7 +174,8 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       const ref=db.collection(META).doc(id);
       const audit=db.collection(AUDIT).doc();
       const batch=db.batch();
-      batch.create(ref,{department:item.department,title:item.title,
+      batch.create(ref,{kind:'file',folderId:item.folderId,
+        department:item.department,title:item.title,
         description:item.description,category:item.category,audience:item.audience,
         fileName:item.filename,mime:item.mime,size:item.size,storagePath:path,
         previewStoragePath:previewFile?.name||null,readerIds:item.readerIds,
@@ -274,6 +287,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
         if(!mayManageDocuments(req.documentScopes,old.department))throw fail(403,'Alleen Officierenkader, Korpsleiding of bevoegde administratie kan documenten wijzigen');
         const item=details(req.body);
         if(item.department!==old.department)throw fail(400,'Dienst kan niet gewijzigd worden');
+        await validateFolder(db,item.department,item.folderId);
         tx.update(ref,{...item,updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
         tx.create(db.collection(AUDIT).doc(),{
           documentId:req.params.id,department:old.department,action:'edit',
@@ -305,6 +319,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       if(!mayManageDocuments(req.documentScopes,old.department))
         throw fail(403,'Alleen Officierenkader, Korpsleiding of bevoegde administratie mag bestanden vervangen');
       if((old.version||1)!==expectedVersion)throw fail(409,'Document is inmiddels gewijzigd. Vernieuw de lijst.');
+      if(old.kind==='link')throw fail(400,'Een weblink heeft geen uploadbestand');
       const input=validateDocumentUpload({
         department:old.department,title:old.title,description:old.description,
         category:old.category,audience:old.audience,fileName:body.fileName,base64:body.base64
