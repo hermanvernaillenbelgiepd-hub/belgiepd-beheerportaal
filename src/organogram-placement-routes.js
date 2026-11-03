@@ -16,7 +16,7 @@ import {DISP_DISPLAY_COLLECTION,verifiedDispDisplayRole,effectiveDispDisplayRole
 import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSpecialtyAssetKeys,
- knownFireRoleSpecialty,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
+ knownFireRoleSpecialty,normalizedSpecialtyLinkLabel,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
 import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks,exactApiDisplayRoles} from './bpd-discord-users-display.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
@@ -229,12 +229,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       Array.isArray(identity.roleIds)&&identity.roleIds.every(idOK);
     const verified=new Set(liveAE.has(p.personId)?liveAE.get(p.personId):(trustworthy?identity.roleIds:[]));
     const active=new Set(merged.specialties||[]);
-    const normalizedLabel=label=>{
-      const aliases={'Motor':'MOTARD','Motard':'MOTARD','Semi-ano.':'SEMI ANONIEM',
-       'Semi-anoniem':'SEMI ANONIEM','Dispatch':'DISP','Radio BM':'RADIO/BM',
-       'Signalisatie':'SIGNALISATIE','SIV/WPR':'SIGNALISATIE','K-9':'K9'};
-      return aliases[label]||label;
-    };
+    const normalizedLabel=label=>normalizedSpecialtyLinkLabel(p.dept,label);
     const all=mapped.get(p.dept)||[];
     const activeRole=x=>!['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value);
     const curatedFire=x=>p.dept==='brandweer'&&

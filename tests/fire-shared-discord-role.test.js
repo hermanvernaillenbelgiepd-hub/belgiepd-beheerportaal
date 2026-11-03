@@ -5,7 +5,7 @@ import {ROLE_CATALOG} from '../src/role-catalog.js';
 import {SPECIALTY_STATES} from '../src/specialization-policy.js';
 import {
  BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,BW_LOG_SIG_PRESETS,
- fireSharedSpecialtyAssetKeys,defaultSpecialtyRoleLinks
+ fireSharedSpecialtyAssetKeys,normalizedSpecialtyLinkLabel,defaultSpecialtyRoleLinks
 } from '../src/specialty-role-presets.js';
 import {validateSpecialtyRoleLinks} from '../src/specialty-role-link-routes.js';
 
@@ -18,6 +18,15 @@ const roleList=[
 const pair=defaultSpecialtyRoleLinks('brandweer',[],false).filter(x=>x.roleId===BW_LOG_SIG_ROLE_ID);
 const input=links=>({expectedRevision:0,reason:'Koppel beide Brandweer-specialisaties',links});
 
+test('mapping labels use per-service normalization and preserve legacy BW patch aliases',()=>{
+ assert.equal(normalizedSpecialtyLinkLabel('brandweer','Signalisatie'),'Signalisatie');
+ assert.equal(normalizedSpecialtyLinkLabel('politie','Signalisatie'),'SIGNALISATIE');
+ assert.equal(normalizedSpecialtyLinkLabel('depannage','Signalisatie'),'Signalisatie');
+ assert.ok(fireSharedSpecialtyAssetKeys('Signalisatie')
+  .includes('specialty_brandweer_bw_sig'));
+ assert.ok(fireSharedSpecialtyAssetKeys('Logistiek')
+  .includes('specialty_brandweer_bw_log'));
+});
 test('BW log/signa exists in real Discord catalog and expands into exactly two visual qualifications',()=>{
  const role=ROLE_CATALOG.find(x=>x.id===BW_LOG_SIG_ROLE_ID);
  assert.ok(role);

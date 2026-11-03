@@ -48,14 +48,33 @@ export const FIRE_ROLE_PATCH_PRESETS=Object.freeze([
   roleId,label,level:'Volwaardig',value:'Ja',assetKey:''
  }))
 ]);
+// One verified BW log/signa role can select TWO distinct qualifications.
+// Historical BW SIG/LOG uploads have stable, explicit aliases.
 export const fireSpecialtyAssetKeys=label=>{
- const aliases={'Logistiek':'logistiek','Signalisatie':'signalisatie',
-  'Ladderwagen':'ladderwagen','Bosbestrijding':'bosbestrijding',
-  'Duiker':'duiker','RED team':'red_team',
-  'Gevaarlijke stoffen':'gevaarlijke_stoffen','Brandweer-AMBU':'brandweer_ambu'};
- const code=aliases[label]||'';
- return code?['specialty','patch'].flatMap(kind=>
-  [code,code+'_lokaal',code+'_federaal'].map(suffix=>kind+'_brandweer_'+suffix)):[];
+ const aliases={
+  'Logistiek':['logistiek','bw_log','bw_logistiek'],
+  'Signalisatie':['signalisatie','bw_sig','bw_signal','bw_signalisatie','bw_signa'],
+  'Ladderwagen':['ladderwagen','bw_ladderwagen'],
+  'Bosbestrijding':['bosbestrijding','boswagen','bw_boswagen','bw_bosbestrijding'],
+  'Duiker':['duiker','bw_duiker'],
+  'RED team':['red_team','redteam','bw_red_team','bw_redteam'],
+  'Gevaarlijke stoffen':['gevaarlijke_stoffen','gevaarlijkestoffen','ags','bw_ags','bw_gevaarlijke_stoffen'],
+  'Brandweer-AMBU':['brandweer_ambu','bw_ambu','ambu'],
+  'Grote Boot':['grote_boot','groteboot','bw_grote_boot','bw_boot']
+ };
+ return [...new Set(aliases[label]||[])].flatMap(code=>
+  ['specialty','patch'].flatMap(kind=>
+   [code,code+'_lokaal',code+'_federaal'].map(suffix=>kind+'_brandweer_'+suffix)));
+};
+
+// Police-only presentation aliases must not be applied to other services.
+// In particular, Brandweer "Signalisatie" is NOT "SIGNALISATIE".
+export const normalizedSpecialtyLinkLabel=(dept,label)=>{
+ if(dept!=='politie')return label;
+ const aliases={'Motor':'MOTARD','Motard':'MOTARD','Semi-ano.':'SEMI ANONIEM',
+  'Semi-anoniem':'SEMI ANONIEM','Dispatch':'DISP','Radio BM':'RADIO/BM',
+  'Signalisatie':'SIGNALISATIE','SIV/WPR':'SIGNALISATIE','K-9':'K9'};
+ return aliases[label]||label;
 };
 export const fireSharedSpecialtyAssetKeys=fireSpecialtyAssetKeys;
 // AZLS: qualifications from exact verified Discord role IDs.

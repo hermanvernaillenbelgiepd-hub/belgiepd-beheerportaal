@@ -79,6 +79,16 @@ test('uploaded fire badges are selected by specialty code, not by personnel or a
  assert.equal(api.fireSpecialtyPatchUrl('Ladderwagen'),'');
  assert.equal(api.fireSpecialtyPatchUrl('Logistiek'),'');
 });
+test('legacy BW SIG and BW LOG assets resolve as distinct Brandweer patches',()=>{
+ const api=view();
+ api.setFireSpecialtyPatchArtworks([
+  artwork('bw_sig','sig-1'),artwork('bw_log','log-1')
+ ]);
+ assert.equal(api.fireSpecialtyPatchUrl('Signalisatie'),file('bw_sig','sig-1'));
+ assert.equal(api.fireSpecialtyPatchUrl('Logistiek'),file('bw_log','log-1'));
+ assert.notEqual(api.fireSpecialtyPatchUrl('Signalisatie'),
+  api.fireSpecialtyPatchUrl('Logistiek'));
+});
 test('unrelated service specializations keep the original header without a patch',()=>{
  const api=view();
  const other=api.specialtyBranch({label:'Depannage opleiding',members:[]},false,false,'depannage');

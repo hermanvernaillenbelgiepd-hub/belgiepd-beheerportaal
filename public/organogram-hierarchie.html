@@ -2200,10 +2200,10 @@ function fireSpecialtyPatchUrl(label){
  const aliases={
   gevaarlijke_stoffen:['gevaarlijkestoffen','ags','bw_ags','bw_gevaarlijke_stoffen'],
   red_team:['redteam','bw_red_team','bw_redteam'],
-  signalisatie:['signa','bw_signalisatie','bw_signa'],
+  signalisatie:['bw_sig','bw_signal','signa','bw_signalisatie','bw_signa'],
   grote_boot:['groteboot','bw_grote_boot','bw_boot'],
   bosbestrijding:['boswagen','bw_boswagen','bw_bosbestrijding'],
-  logistiek:['bw_logistiek'],ladderwagen:['bw_ladderwagen'],
+  logistiek:['bw_log','bw_logistiek'],ladderwagen:['bw_ladderwagen'],
   brandweer_ambu:['bw_ambu','ambu']
  };
  for(const k of [code,...(aliases[code]||[])]){
