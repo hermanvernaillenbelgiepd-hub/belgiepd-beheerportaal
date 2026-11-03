@@ -325,7 +325,7 @@ async function download(doc){
 }
 function edit(d){
  if(!canManage())return;
- editing=d.id;replacing=false;editingVersion=d.version;
+ resetEditor();editing=d.id;replacing=false;editingVersion=d.version;
  $('editor').hidden=false;$('editorTitle').textContent='Documentgegevens aanpassen';
  $('title').value=d.title;$('description').value=d.description;
  $('category').value=d.category;$('audience').value=d.audience;
