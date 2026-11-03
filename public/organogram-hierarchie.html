@@ -2448,6 +2448,7 @@ function openPersonProfile(p){
  const profileKey=[p.dept,p.call,p.name].join('|');
  dialog.dataset.personKey=profileKey;
  dialog.classList.toggle('police-person-profile',p.dept==='politie');
+ dialog.classList.toggle('fire-person-profile',p.dept==='brandweer');
  dialog.classList.add('operational-profile');
  content.replaceChildren();
  const layout=el('div','person-profile-layout');
@@ -2738,11 +2739,19 @@ function openPersonProfile(p){
        x.textContent?.toLowerCase().includes(badgeLevel.toLowerCase())))
     item.append(el('span','person-profile-specialty-role',badgeLevel));
    normalizeSpecialtyBadges(item);
-   // Display-only: all fire-service patches use the same full-width profile
-   // presentation. Cards without an image stay in the compact two-column grid.
-   // This changes no specialty, role or personnel membership data.
-   if(p.dept==='brandweer'&&item.querySelector('img.person-profile-specialty-badge'))
-    item.classList.add('person-profile-specialty-fire-badged');
+   // Brandweer uses identical, compact cards whether artwork exists or not.
+   // A missing patch is visual only; the membership/role stays unchanged.
+   if(p.dept==='brandweer'){
+    const fireBadge=item.querySelector('img.person-profile-specialty-badge');
+    const missingPatch=()=>el('span','person-profile-specialty-missing-patch','Patch niet gekoppeld');
+    if(fireBadge){
+     item.classList.add('person-profile-specialty-fire-badged');
+     fireBadge.addEventListener('error',()=>{
+      fireBadge.replaceWith(missingPatch());
+      item.classList.remove('person-profile-specialty-has-badge','person-profile-specialty-fire-badged');
+     },{once:true});
+    }else item.append(missingPatch());
+   }
    list.append(item);
   }
   specBox.append(list);
