@@ -99,6 +99,6 @@ test('existing uploads and new square AZLS preview are available to managers',()
  }
  assert.match(uploader,/kind==='specialty'&&\$p\('roleArtworkDepartment'\)\.value==='ambulance'\?\[320,320\]/);
  assert.match(admin,/AZLS-patches: kies bijvoorbeeld/);
- assert.match(admin,/role-artwork-ui\.js\?v=ambulance-specialty-patches-20261031/);
+ assert.match(admin,/role-artwork-ui\.js\?v=patch-proportions-20261103/);
  assert.match(html,/setAmbulanceSpecialtyPatchArtworks\(artworkManifest\?\.artworks\)/);
 });
