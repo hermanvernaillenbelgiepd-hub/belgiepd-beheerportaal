@@ -69,3 +69,18 @@ test('only verified matching Discord role can activate the paired specialization
  assert.match(library,/x\.roleId!==roleId\|\|sharedFire&&x\.label!==specialtyLabel/);
  assert.match(library,/if\(!sharedFire\)\{/);
 });
+
+test('generic patch links without role can coexist for several fire specialties',()=>{
+ const manualLinks=[
+  {roleId:'',label:'Ladderwagen',level:'Handmatig',value:'Ja',assetKey:'patch_brandweer_ladderwagen'},
+  {roleId:'',label:'RED team',level:'Handmatig',value:'Ja',assetKey:'specialty_brandweer_red_team'}
+ ];
+ const saved=validateSpecialtyRoleLinks(input(manualLinks),'brandweer',labelList,roleList);
+ assert.deepEqual(saved.links,manualLinks);
+ const withRole=validateSpecialtyRoleLinks(input([...manualLinks,pair[0]]),
+  'brandweer',['Logistiek',...labelList],roleList);
+ assert.equal(withRole.links.length,3);
+ const organogram=read('src/organogram-placement-routes.js');
+ assert.match(organogram,/x\.roleId===''\|\|idOK\(x\.roleId\)/);
+ assert.match(organogram,/const manual=all\.filter\(x=>!x\.roleId&&valid\(x\)/);
+});
