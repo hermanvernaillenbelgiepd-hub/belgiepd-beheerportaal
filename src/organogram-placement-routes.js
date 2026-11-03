@@ -21,6 +21,7 @@ import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  depannageSpecialtyAssetKeys,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
 import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks,exactApiDisplayRoles} from './bpd-discord-users-display.js';
+import {projectCitizenOrganogram} from './burger-organogram-projection.js';
 import {roleArtworkCandidateKeys,resolveSpecialtyArtworkKey} from './specialty-artwork-resolver.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
@@ -100,7 +101,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  // Discord identifiers, access grants, source documents or audit history.
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
   try{
-   const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(p=>validRow(p)).slice(0,1200);
+   const db=store(),snapshot=await getSnapshot();
+   let roster=snapshot.data.filter(p=>validRow(p)).slice(0,1200);
    const [manualSnap,k9Snap,motardSnap,dispSnap,aeSnap,decorationSnap,catalogSnap]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
@@ -168,6 +170,12 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     identityMap(db,peopleIds,process.env.DISCORD_GUILD_ID),
     getBelgiumPdDisplayRoles()
    ]);
+   // Project verified Burger/Burger IO/Burgerraad memberships onto an existing
+   // service identity, even when BURGERS has no separate personnel record.
+   // This only extends the public organogram response; it cannot create a
+   // Burger dossier, authorization grant or persisted personnel entry.
+   roster=projectCitizenOrganogram(roster,upstream,cachedOAuthRoles,
+    process.env.DISCORD_GUILD_ID);
    // ONLY the public organogram presentation uses the upstream API.
    // Login, dossier permissions and persisted Firebase role evidence remain
    // independent of this role overlay.
