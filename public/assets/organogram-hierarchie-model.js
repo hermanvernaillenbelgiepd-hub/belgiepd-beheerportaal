@@ -10,7 +10,7 @@ export const SERVICES=Object.freeze([
  {id:'politie',name:'Politie',icon:'👮',levels:['Korpsleiding','Officierenkader','Middenkader','Basiskader','Agentenkader']},
  {id:'brandweer',name:'Brandweer',icon:'🚒',levels:['Zoneleiding','Officieren','Middenkader','Basiskader','Stagiairs']},
  {id:'ambulance',name:'Ambulance (AZLS)',icon:'🚑',levels:AZLS_RANK_ORDER},
- {id:'depannage',name:'Depannage',icon:'🛠',levels:['Leiding / AWV']},
+ {id:'depannage',name:'Depannage',icon:'🛠',levels:['Leiding / AWV','LSRA','FAST']},
  {id:'burger',name:'Burger',icon:'🏛',levels:['Burgerraad']}
 ]);
 const clean=v=>String(v??'').trim();
@@ -38,6 +38,33 @@ export function ambulanceOrganogramRank(p){
  if(/ambulancier|\bamb\b/.test(rank))return 'AMB';
  if(/stagiair|stagiaire|\bstag\b|\bstage\b/.test(rank))return 'STAG';
  return null;
+}
+// Visual Depannage groups: LSRA and FAST can overlap; CRANE is only a patch.
+export function depannageOrganogramGroups(person){
+ if(person?.dept!=='depannage')return [];
+ const groups=new Set();
+ const codes={awv:'Leiding / AWV',lsra:'LSRA',fast:'FAST'};
+ const verified=Array.isArray(person.depannageGroups)?
+  person.depannageGroups.filter(x=>Object.hasOwn(codes,x)):[];
+ for(const code of verified)groups.add(codes[code]);
+ if(!verified.length){
+  const call=lower(person.call).replace(/\s+/g,'').replace(/[._]/g,'-');
+  const rank=lower(person.rank);
+  if(/^(?:awv|anwv)(?:-|\d|$)/.test(call)||
+     /\bawv\b|agentschap wegen|\bleiding\b/.test(rank))groups.add('Leiding / AWV');
+  else if(/^(?:fast|f-a-s-t)(?:-|\d|$)/.test(call)||
+     /\bfast\b|f\.?a\.?s\.?t\.?/.test(rank))groups.add('FAST');
+  else groups.add('LSRA');
+ }
+ // Existing manual placements are only a presentation preference.
+ if(codes.awv===person.leadershipTier||['LSRA','FAST'].includes(person.leadershipTier))
+  groups.add(person.leadershipTier);
+ for(const specialty of specialtyNames(person)){
+  const code=lower(specialty).replace(/[^a-z]/g,'');
+  if(['lsra','lrsa'].includes(code))groups.add('LSRA');
+  if(code==='fast')groups.add('FAST');
+ }
+ return ['Leiding / AWV','LSRA','FAST'].filter(label=>groups.has(label));
 }
 export function getTier(p){
  const rank=lower(p?.rank),call=lower(p?.call),dept=p?.dept;
@@ -78,10 +105,7 @@ export function getTier(p){
  if(dept==='ambulance'){
   return ambulanceOrganogramRank(p)||'Overige AZLS-leden';
  }
- if(dept==='depannage'){
-  if(/\bawv\b|agentschap|leiding/.test(rank+' '+call))return 'Leiding / AWV';
-  return 'Operationele leden';
- }
+ if(dept==='depannage')return depannageOrganogramGroups(p)[0]||'LSRA';
  if(dept==='burger'){
   if(/burgerraad/.test(rank+' '+call))return 'Burgerraad';
   return 'Burgerleden';
@@ -95,7 +119,7 @@ const rankWeight=(p)=>{
  const tier=getTier(p);
  const scores={
   Zoneleiding:10,Officieren:9,Middenkader:8,Basiskader:7,Stagiairs:6,
-  'Overige brandweerleden':5,'Operationele leden':3,
+  'Overige brandweerleden':5,'Operationele leden':3,LSRA:7,FAST:6,
   DIRMED:12,HARTS:11,HVPK:10,HAMB:9,ARTS:8,VPK:7,AMB:6,STAG:5,
   'Overige AZLS-leden':4,
   'Leiding / AWV':8,Burgerraad:8,Burgerleden:3
@@ -261,7 +285,7 @@ export function serviceHierarchy(people,dept){
  if(!settings)throw Error('Onbekende dienst');
  const rows=(people||[]).filter(p=>p&&p.dept===dept&&clean(p.name));
  const leadership=settings.levels.map(label=>({
-  label,members:(dept==='politie'?orderedSpecialtyMembers:orderedMembers)(rows.filter(p=>getTier(p)===label))
+  label,members:(dept==='politie'?orderedSpecialtyMembers:orderedMembers)(rows.filter(p=>dept==='depannage'?depannageOrganogramGroups(p).includes(label):getTier(p)===label))
  }));
  // Keep unknown historic/incomplete AZLS call registrations visible, but
  // never mislabel them as a medical rank. Show only if such entries exist.
@@ -280,7 +304,8 @@ export function serviceHierarchy(people,dept){
  }
  const groups=new Map();
  for(const person of rows){
-  const specs=specialtyNames(person);
+  const specs=specialtyNames(person).filter(label=>dept!=='depannage'||
+   !['lsra','lrsa','fast'].includes(lower(label).replace(/[^a-z]/g,'')));
   // AZLS specialties remain a separate membership list below the rank tree:
   // an AMB without a specialisation must still appear among 'Overige leden'.
   if(!specs.length&&settings.levels.includes(getTier(person))&&

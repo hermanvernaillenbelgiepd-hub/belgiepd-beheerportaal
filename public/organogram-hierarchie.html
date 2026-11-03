@@ -2139,7 +2139,7 @@ const fixtures=[
  {dept:'ambulance',name:'Voorbeeld PIT-lid',call:'HVPK-03',rank:'Verpleegkundige',specialties:['MIP','PIT']},
  {dept:'depannage',name:'Voorbeeld AWV',call:'AWV-01',rank:'Agentschap Wegen en Verkeer leiding'},
  {dept:'depannage',name:'Voorbeeld FAST',call:'FAST-02',rank:'Technicus',teachingRoles:['instructeur'],specialties:['FAST']},
- {dept:'depannage',name:'Voorbeeld Takelaar',call:'LSRA-10',rank:'Depannagetechnicus',specialties:['FAST']},
+ {dept:'depannage',name:'Voorbeeld Takelaar',call:'LSRA-10',rank:'Depannagetechnicus',specialties:['F.A.S.T','CRANE']},
  {dept:'burger',name:'Voorbeeld Burgerraad',call:'BUR-01',rank:'Burgerraad'},
  {dept:'burger',name:'Voorbeeld Burgerlid',call:'BUR-10',rank:'Burger',specialties:['Burgerproject']}
 ];
@@ -3379,6 +3379,8 @@ async function loadPublic(){
        /^\/api\/personnel-awards\/catalog-image\/custom_[a-f0-9-]{36}$/i.test(x.imageUrl)?
        x.imageUrl:undefined})),
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,20):[],
+    depannageGroups:p.dept==='depannage'&&Array.isArray(p.depannageGroups)?
+     p.depannageGroups.filter(x=>['awv','lsra','fast'].includes(x)):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
     displayLabels:Array.isArray(p.displayLabels)?p.displayLabels.filter(x=>['stage','lid'].includes(x)).slice(0,1):[],
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',

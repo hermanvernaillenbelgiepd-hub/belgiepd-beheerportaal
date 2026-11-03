@@ -6,7 +6,7 @@ import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
  from './organogram-mid-order-policy.js';
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
  validatePlacement,validatePoliceSpecialtyEdit,manualDisplay,verifiedSyncRoles,registeredFireBasicTraining,
- AE_DISCORD_ROLES,mergePlacement,canManagePlacements
+ AE_DISCORD_ROLES,mergePlacement,verifiedDepannageOrganogramGroups,canManagePlacements
 } from './organogram-placement-policy.js';
 import {organogramReekshoofdTitle,policeOrganogramDossierUrl} from './organogram-profile-display.js';
 import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
@@ -373,6 +373,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
+     ...(p.dept==='depannage'?{depannageGroups:verifiedDepannageOrganogramGroups(
+      roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID)}:{}),
      specialtyPatches,
      completedFireBasicTraining:registeredFireBasicTraining(p),
      azlsFunctions:p.dept==='ambulance'?
