@@ -21,6 +21,7 @@ import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  depannageSpecialtyAssetKeys,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
 import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks,exactApiDisplayRoles} from './bpd-discord-users-display.js';
+import {roleArtworkCandidateKeys,resolveSpecialtyArtworkKey} from './specialty-artwork-resolver.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
 
@@ -120,12 +121,13 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
        x&&(x.roleId===''||idOK(x.roleId))&&typeof x.label==='string'&&x.label.length<=90),
       d.get('presetVersion')===POLICE_PATCH_PRESET_VERSION)]));
    const assetKeys=[...new Set([
-    ...[...mapped.values()].flat().map(x=>String(x.assetKey||'')),
+    ...[...mapped.values()].flat().flatMap(x=>[
+     String(x.assetKey||''),...roleArtworkCandidateKeys(x)]),
     ...['Logistiek','Signalisatie','Ladderwagen','Bosbestrijding','Duiker',
       'RED team','Gevaarlijke stoffen'].flatMap(fireSpecialtyAssetKeys),
     ...AMBULANCE_ROLE_PATCH_PRESETS.flatMap(x=>ambulanceSpecialtyAssetKeys(x.label)),
     ...['F.A.S.T','LSRA','CRANE'].flatMap(depannageSpecialtyAssetKeys)
-   ].filter(x=>/^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,300);
+   ].filter(x=>/^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,450);
    const assetUrls=new Map();
    for(const group of chunks(assetKeys,100)){
     const docs=await db.getAll(...group.map(key=>db.collection(ROLE_ARTWORK_META).doc(key)));
@@ -241,12 +243,15 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       knownAmbulanceRoleSpecialty(x.roleId,x.label);
     const curatedDepannage=x=>p.dept==='depannage'&&
       knownDepannageRoleSpecialty(x.roleId,x.label);
-    const assetFor=x=>assetUrls.has(x.assetKey)?x.assetKey:
-      curatedFire(x)?fireSpecialtyAssetKeys(x.label).find(key=>assetUrls.has(key))||'':
-      curatedAmbulance(x)?ambulanceSpecialtyAssetKeys(x.label)
-       .find(key=>assetUrls.has(key))||'':
-      curatedDepannage(x)?depannageSpecialtyAssetKeys(x.label)
-       .find(key=>assetUrls.has(key))||'':x.assetKey;
+    // Explicit library choices win. When a saved link lacks an assetKey,
+    // also try the exact Discord-role artwork slot before generic icons.
+    // The one shared BW LOG/SIG role must NOT reuse one role patch for both.
+    const assetFor=x=>resolveSpecialtyArtworkKey(x,assetUrls,
+      curatedFire(x)?fireSpecialtyAssetKeys(x.label):
+      curatedAmbulance(x)?ambulanceSpecialtyAssetKeys(x.label):
+      curatedDepannage(x)?depannageSpecialtyAssetKeys(x.label):[],
+      {allowRoleFallback:!(p.dept==='brandweer'&&
+       x.roleId===BW_LOG_SIG_ROLE_ID&&BW_LOG_SIG_SPECIALTIES.includes(x.label))});
     const valid=x=>assetUrls.has(assetFor(x))&&activeRole(x);
     // A verified role shows its qualification even before artwork is
     // uploaded. Never infer a medical qualification from leadership alone.
