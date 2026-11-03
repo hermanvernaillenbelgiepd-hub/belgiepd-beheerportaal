@@ -405,6 +405,7 @@ $('documentForm').onsubmit=async e=>{
  try{
   const payload={department:$('department').value,title:$('title').value,
    description:$('description').value,category:$('category').value,audience:$('audience').value,
+   folderId:$('folder').value||null,
    readerIds:[...new Set($('readerIds').value.split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean))]};
   if(editing&&replacing){
    if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
@@ -416,8 +417,13 @@ $('documentForm').onsubmit=async e=>{
    });
    status('Nieuwe bestandsversie opgeslagen, vorige versie veilig bewaard.','good');
   }else if(editing){
+   if($('resourceType').value==='link')payload.url=$('linkUrl').value.trim();
    await api('/api/document-center/'+encodeURIComponent(editing),'PATCH',payload);
    status('Documentgegevens aangepast en gelogd.','good');
+  }else if($('resourceType').value==='link'){
+   payload.url=$('linkUrl').value.trim();
+   await api('/api/document-center/links','POST',payload);
+   status('Leslink toegevoegd aan de geselecteerde map.','good');
   }else{
    if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
    const file=$('file').files?.[0];
