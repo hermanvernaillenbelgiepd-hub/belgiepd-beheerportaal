@@ -2390,6 +2390,19 @@ function makeServiceUniformPortrait(person){
  const selected=window.BPDUniformAssignments?.forPerson?.(person);
  // Old service-default uniforms are retired; display the service icon until an atelier coat is chosen.
  const src=selected?.uniformUrl||serviceUniformArtworks.get(key)||'';
+ // Civilians use a neutral community portrait, never a police uniform.
+ // A future library-assigned Burger visual takes precedence over this default.
+ if(dept==='burger'&&!src){
+  const outer=el('span','portrait bpd-service-uniform bpd-burger-portrait');
+  outer.setAttribute('role','img');
+  outer.setAttribute('aria-label','Burgerdienst: groep burgers');
+  const stage=el('span','bpd-service-stage');
+  const img=el('img','bpd-service-coat');
+  img.src='/assets/burger-groep.webp';img.alt='';img.loading='lazy';
+  img.style.objectFit='contain';
+  stage.append(img);outer.append(stage);
+  return outer;
+ }
  const iconFallback=window.BPDVisualAssets?.baseIcon?.(dept);
  if(!src&&!iconFallback){
   const empty=el('span','portrait bpd-service-uniform bpd-service-uniform-empty');
@@ -2932,6 +2945,7 @@ function person(p,compact=false,specialtyLabel=null){
  const portrait=p.dept==='brandweer'?makeServiceUniformPortrait(p):
   p.dept==='depannage'?makeServiceUniformPortrait({...p,rank:serviceProfileRank(p)}):
   p.dept==='ambulance'?makeAzlsCompactPortrait(p):
+  p.dept==='burger'?makeServiceUniformPortrait(p):
   window.BPDPoliceUniform?.makePortrait?.(p);
  if(portrait)b.append(portrait);
  const label=el('span','identity');
