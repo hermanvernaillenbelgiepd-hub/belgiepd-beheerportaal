@@ -115,7 +115,9 @@ test('Personnel overview returns bounded, authorized specialties without copying
   const api=source('src/personnel-editor-routes.js');
   assert.ok(api.includes("specialties:Array.isArray(p.specialties)?p.specialties.slice(0,16)"));
   assert.ok(api.includes("label:x.label.slice(0,64),value:x.value.slice(0,90)"));
-  assert.ok(api.includes("const allowed=(req.bpd.dossierAllowedDepartments||req.bpd.departments||[]).filter(d=>canReadServiceDossier(req.bpd,d))"));
+  assert.ok(api.includes("const lifecycleDepartments=LIFECYCLE_SERVICES.filter("));
+  assert.ok(api.includes(".filter(d=>canReadServiceDossier(req.bpd,d))"));
+  assert.ok(api.includes("lifecycleDepartments.includes('burger')"));
   assert.equal(/setCustomUserClaims.*specialties/s.test(api),false);
 });
 test('Personnel management inline script remains valid JavaScript and homepage has no inline scripts',()=>{
