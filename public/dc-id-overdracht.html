@@ -126,7 +126,8 @@ $('transferForm').onsubmit=async event=>{
  try{
   await api('/api/dc-id-transfer/requests','POST',{oldDiscordId,newDiscordId,reason});
   checked=null;$('request').disabled=true;$('preview').hidden=true;
-  announce('Aanvraag voorbereid. Je kunt deze zelf definitief uitvoeren zodra de TEST-controle is afgerond.','good');
+  announce(executionEnabled?'Aanvraag voorbereid. Klik hieronder zelf op Overdracht bevestigen.':
+   'Aanvraag voorbereid. Definitieve uitvoering blijft uitgeschakeld tot de TEST-controle is afgerond.','good');
   await loadRequests();
  }catch(e){announce('Aanvraag niet ingediend: '+e.message,'error')}
  finally{setBusy(false)}
