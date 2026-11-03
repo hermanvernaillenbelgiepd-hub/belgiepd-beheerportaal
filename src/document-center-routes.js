@@ -141,16 +141,22 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
     }catch(e){error(res,e);}
   });
   app.post('/api/document-center',requireUser,scope,async(req,res)=>{
-    let file=null;
+    let file=null,previewFile=null;
     try{
       const item=validateDocumentUpload(req.body);
       if(!mayWriteDocuments(req.documentScopes,item.department))
         throw fail(403,'Geen uploadrechten voor deze dienst');
       const db=getFirestore(),id=randomUUID();
       const path='belgiepd/documents/'+item.department+'/'+id+item.ext;
+      const previewBytes=await officePreviewPdf(item.bytes,item.ext);
       file=storage().file(path);
       await file.save(item.bytes,{resumable:false,validation:'crc32c',
         metadata:{contentType:item.mime,cacheControl:'private, no-store'}});
+      if(previewBytes){
+        previewFile=storage().file(path+'.preview.pdf');
+        await previewFile.save(previewBytes,{resumable:false,validation:'crc32c',
+          metadata:{contentType:'application/pdf',cacheControl:'private, no-store'}});
+      }
       const person=req.documentStaff.find(p=>p.dept===item.department)||
         req.documentStaff.find(p=>p.dept==='politie');
       const ref=db.collection(META).doc(id);
@@ -159,6 +165,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       batch.create(ref,{department:item.department,title:item.title,
         description:item.description,category:item.category,audience:item.audience,
         fileName:item.filename,mime:item.mime,size:item.size,storagePath:path,
+        previewStoragePath:previewFile?.name||null,readerIds:item.readerIds,
         version:1,status:'active',owner:'belgiepd',uploadedBy:req.bpd.uid,
         uploadedByName:String(person?.name||'Bevoegd beheer').slice(0,120),
         createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
@@ -168,9 +175,69 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       await batch.commit();
       res.status(201).json({saved:true,id});
     }catch(e){
+      if(previewFile)await previewFile.delete({ignoreNotFound:true}).catch(()=>{});
       if(file)await file.delete({ignoreNotFound:true}).catch(()=>{});
       error(res,e);
     }
+  });
+  // The original is never hosted under a public URL. Office files are
+  // converted into PDF server-side, then streamed to an authenticated reader.
+  app.get('/api/document-center/:id/preview',requireUser,scope,async(req,res)=>{
+    try{
+      if(!ID.test(req.params.id))throw fail(404,'Document niet gevonden');
+      const db=getFirestore(),ref=db.collection(META).doc(req.params.id);
+      const snap=await ref.get();
+      if(!snap.exists||!mayReadDocument(req.documentScopes,snap.data()))
+        throw fail(404,'Document niet gevonden');
+      const record=snap.data();
+      const prefix='belgiepd/documents/'+record.department+'/'+req.params.id;
+      if(typeof record.storagePath!=='string'||
+        !(record.storagePath.startsWith(prefix+'.')||record.storagePath.startsWith(prefix+'/')))
+        throw fail(503,'Bestandsverwijzing ongeldig');
+      let bytes,mime;
+      if(isOfficeDocument(record.storagePath.match(/\.(pptx|docx|xlsx)$/)?.[0])){
+        let previewPath=record.previewStoragePath;
+        if(!previewPath){
+          // Historical uploads automatically receive a private preview at first view.
+          const [original]=await storage().file(record.storagePath).download();
+          const ext=record.storagePath.match(/\.(pptx|docx|xlsx)$/)?.[0];
+          const converted=await officePreviewPdf(original,ext);
+          previewPath=record.storagePath+'.preview.pdf';
+          await storage().file(previewPath).save(converted,{resumable:false,
+            validation:'crc32c',metadata:{
+              contentType:'application/pdf',cacheControl:'private, no-store'
+            }});
+          await db.runTransaction(async tx=>{
+            const current=await tx.get(ref);
+            if(current.exists&&current.get('storagePath')===record.storagePath){
+              tx.update(ref,{previewStoragePath:previewPath});
+              tx.create(db.collection(AUDIT).doc(),{
+                documentId:req.params.id,department:record.department,
+                action:'generate_preview',actorUid:req.bpd.uid,
+                at:FieldValue.serverTimestamp()
+              });
+            }
+          });
+          bytes=converted;
+        }else{
+          if(!previewPath.startsWith(prefix))throw fail(503,'Voorvertoningspad ongeldig');
+          [bytes]=await storage().file(previewPath).download();
+        }
+        mime='application/pdf';
+      }else if(record.mime==='application/pdf'||record.mime?.startsWith('image/')){
+        [bytes]=await storage().file(record.storagePath).download();
+        mime=record.mime;
+      }else throw fail(415,'Voor dit bestandstype is geen voorvertoning beschikbaar');
+      await db.collection(AUDIT).doc().create({
+        documentId:req.params.id,department:record.department,action:'preview',
+        actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()
+      });
+      res.set('Content-Type',mime);
+      res.set('Content-Disposition','inline');
+      res.set('X-Content-Type-Options','nosniff');
+      res.set('Cache-Control','private, no-store');
+      res.send(bytes);
+    }catch(e){error(res,e);}
   });
   app.get('/api/document-center/:id/download',requireUser,scope,async(req,res)=>{
     try{
