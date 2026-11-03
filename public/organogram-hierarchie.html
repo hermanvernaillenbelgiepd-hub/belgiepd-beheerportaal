@@ -2879,7 +2879,8 @@ function specialtyPeopleList(rows,rankOnly,specialtyLabel){
  return list;
 }
 function cadrePeopleList(rows,levelLabel=''){
- const list=peopleList(rows);
+ // Police cadre cards always follow callsign/rank, even for instructors.
+ const list=peopleList(rows,rows[0]?.dept==='politie');
  // Basiskader en Agentenkader: drie groepen van twee kaarten, met extra
  // tussenruimte per groep; behoud de bestaande gesorteerde volgorde.
  if(['Basiskader','Agentenkader'].includes(levelLabel)){
