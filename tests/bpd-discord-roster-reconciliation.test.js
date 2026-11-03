@@ -42,12 +42,13 @@ test('recognition never requires an uploaded image or grants access',()=>{
  assert.match(src,/app\.get\('\/api\/organogram\/discord-links\/admin',requireUser,manager/);
 });
 
-test('Depannage FAST and LSRA roles are recognized without artwork',async()=>{
+test('Depannage FAST, LSRA and CRANE roles are recognized without artwork',async()=>{
  const {defaultSpecialtyRoleLinks}=await import('../src/specialty-role-presets.js');
  const links=defaultSpecialtyRoleLinks('depannage',[],false);
  assert.deepEqual(links.map(x=>[x.roleId,x.label]),[
   ['1309532438019706970','F.A.S.T'],
-  ['1309532438019706971','LSRA']
+  ['1309532438019706971','LSRA'],
+  ['1562090158667333692','CRANE']
  ]);
  assert.ok(links.every(x=>x.assetKey===''&&x.value==='Ja'));
 });
