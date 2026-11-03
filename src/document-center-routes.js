@@ -86,6 +86,7 @@ const publicRow=(id,x)=>({
   id,kind:x.kind==='link'?'link':'file',folderId:x.folderId||null,
   department:x.department,title:x.title,description:x.description,
   category:x.category,audience:x.audience,fileName:x.fileName,mime:x.mime,
+  linkUrl:x.kind==='link'?x.linkUrl||'':undefined,
   size:x.size||0,version:x.version||1,uploadedByName:x.uploadedByName||'',
   createdAt:x.createdAt?.toDate?.()?.toISOString?.()||null
 });
@@ -398,10 +399,17 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
         if(!snap.exists||snap.get('status')!=='active')throw fail(404,'Document niet gevonden');
         const old=snap.data();
         if(!mayManageDocuments(req.documentScopes,old.department))throw fail(403,'Alleen Officierenkader, Korpsleiding of bevoegde administratie kan documenten wijzigen');
-        const item=details(req.body);
+        const body=req.body||{};
+        const allowedUrl=old.kind==='link'&&Object.prototype.hasOwnProperty.call(body,'url');
+        const url=allowedUrl?resolveDocumentUrl(body.url):null;
+        if(!allowedUrl&&Object.prototype.hasOwnProperty.call(body,'url'))
+          throw fail(400,'Alleen weblinks hebben een URL');
+        const item=details(allowedUrl?Object.fromEntries(Object.entries(body)
+          .filter(([k])=>k!=='url')):body);
         if(item.department!==old.department)throw fail(400,'Dienst kan niet gewijzigd worden');
         await validateFolder(db,item.department,item.folderId);
-        tx.update(ref,{...item,updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
+        tx.update(ref,{...item,...(allowedUrl?{linkUrl:url}:{}),
+          updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
         tx.create(db.collection(AUDIT).doc(),{
           documentId:req.params.id,department:old.department,action:'edit',
           actorUid:req.bpd.uid,at:FieldValue.serverTimestamp(),
