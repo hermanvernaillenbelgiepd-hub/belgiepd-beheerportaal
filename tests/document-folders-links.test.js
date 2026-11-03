@@ -55,3 +55,24 @@ test('Documentencentrum toont toegankelijke mapnavigatie en donkere invoervelden
  assert.match(ui,/Presenteren \/ bekijken/);
  assert.match(ui,/youtube-nocookie|resource\.embed/);
 });
+
+test('Alleen centraal bevoegd documentbeheer mag lege eigen mappen archiveren',()=>{
+ const routes=file('src/document-center-routes.js');
+ const html=file('public/documentencentrum.html');
+ const start=routes.indexOf("app.delete('/api/document-center/folders/:id'");
+ const end=routes.indexOf("app.post('/api/document-center/links'",start);
+ assert.ok(start>0&&end>start,'Folder route must be before the generic document route');
+ const archive=routes.slice(start,end);
+ assert.match(archive,/!ID\.test\(id\)/);
+ assert.match(archive,/mayManageDocuments\(req\.documentScopes,dept\)/);
+ assert.match(archive,/where\('folderId','==',id\)/);
+ assert.match(archive,/where\('status','==','active'\)/);
+ assert.match(archive,/stillActive\.empty/);
+ assert.match(archive,/status:'archived'/);
+ assert.match(archive,/action:'archive_folder'/);
+ assert.doesNotMatch(archive,/tx\.delete|file\.delete|storage\(\)\.file/);
+ assert.match(html,/id="deleteFolder"/);
+ assert.match(html,/selected\.system===true/);
+ assert.match(html,/!canManage\(\)/);
+ assert.match(html,/\/api\/document-center\/folders\/'\+encodeURIComponent\(folder\.id\),'DELETE'/);
+});
