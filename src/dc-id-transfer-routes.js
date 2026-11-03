@@ -60,7 +60,7 @@ async function memberCheck(db,newId){
 function checkAdmin(req,res,next){
  res.set('Cache-Control','private, no-store');
  if(!mayAdministerDcTransfer(req.bpd))
-  return res.status(403).json({error:'Enkel geverifieerd Officierenkader, Korpsleiding, Bestuur of Technisch Beheer'});
+  return res.status(403).json({error:'Enkel geverifieerd Officierenkader, Korpsleiding of Technisch Beheer'});
  next();
 }
 // Recursively prepare a read-only list of every old document, including its
@@ -118,7 +118,7 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onComplet
  const admin=[requireUser,checkAdmin];
  app.get('/api/dc-id-transfer/status',...admin,(_req,res)=>{
    res.json({previewAvailable:true,executionEnabled:process.env.BPD_ENABLE_DC_ID_TRANSFERS==='true',
-     requiresSecondAdministrator:true});
+     requiresSecondAdministrator:false});
  });
  app.get('/api/dc-id-transfer/preview',...admin,async(req,res)=>{
   try{
@@ -138,7 +138,7 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onComplet
      collectionCounts:plan.counts,
      affectedRecords:plan.copies.length+plan.changes.length,
      originalRecordsRetained:true,rolesAutomaticallyTransferred:false,
-     requiresSecondAdministrator:true});
+     requiresSecondAdministrator:false});
   }catch(e){safeError(res,e)}
  });
  app.get('/api/dc-id-transfer/requests',...admin,async(req,res)=>{
@@ -166,7 +166,7 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onComplet
      personnelAtRequest:roster.personnel,status:'pending',
      createdBy:req.bpd.discordId,createdAt:FieldValue.serverTimestamp(),
      expiresAt:new Date(Date.now()+7*86400000)});
-   res.status(201).json({id:ref.id,status:'pending',requiresSecondAdministrator:true});
+   res.status(201).json({id:ref.id,status:'pending',requiresSecondAdministrator:false});
   }catch(e){safeError(res,e)}
  });
  app.post('/api/dc-id-transfer/requests/:id/execute',...admin,async(req,res)=>{
@@ -184,9 +184,10 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onComplet
    const oldId=doc.get('oldDiscordId'),newId=doc.get('newDiscordId');
    if(!ID.test(oldId)||!ID.test(newId)||oldId===newId)
      throw failure(409,'Aanvraag bevat geen geldige Discord-ID’s');
-   if(doc.get('createdBy')===req.bpd.discordId||
-      [oldId,newId].includes(req.bpd.discordId))
-     throw failure(403,'Een tweede, onafhankelijke beheerder moet goedkeuren.');
+   // The same authorized officer may finish their own request. Prevent
+   // self-transfer even when a privileged account initiates the operation.
+   if([oldId,newId].includes(req.bpd.discordId))
+     throw failure(403,'Een beheerder mag zijn eigen account niet overdragen.');
    if(doc.get('expiresAt')?.toMillis?.()<Date.now())
      throw failure(409,'De aanvraag is verlopen en moet opnieuw worden gecontroleerd.');
    const [roster]=await Promise.all([
