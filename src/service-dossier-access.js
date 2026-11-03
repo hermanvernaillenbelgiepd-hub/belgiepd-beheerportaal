@@ -74,7 +74,7 @@ export function canReadServiceDossier(actor,dept){
   // Even a historical or accidentally delegated 'full' dossier grant cannot
   // override this boundary. Independently verified Board/technical accounts
   // retain their separate administrative privileges.
-  if(dept==='politie'&&roleForDepartment(actor,'politie')==='basiskader'&&
+  if(dept==='politie'&&['agentenkader','basiskader'].includes(roleForDepartment(actor,'politie'))&&
      actor?.boardPersonnelAdmin!==true&&
      !(actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true&&
        actor?.uid==='discord:'+actor?.discordId&&DISCORD.test(actor?.discordId)))
