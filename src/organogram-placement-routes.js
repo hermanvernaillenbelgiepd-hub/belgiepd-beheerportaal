@@ -5,7 +5,8 @@ import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
 import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
  from './organogram-mid-order-policy.js';
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
- validatePlacement,validatePoliceSpecialtyEdit,manualDisplay,verifiedSyncRoles,AE_DISCORD_ROLES,mergePlacement,canManagePlacements
+ validatePlacement,validatePoliceSpecialtyEdit,manualDisplay,verifiedSyncRoles,verifiedOtherServiceDiscordRoles,
+ AE_DISCORD_ROLES,mergePlacement,canManagePlacements
 } from './organogram-placement-policy.js';
 import {organogramReekshoofdTitle,policeOrganogramDossierUrl} from './organogram-profile-display.js';
 import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
@@ -362,6 +363,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
      specialtyPatches,
+     otherServiceRoles:verifiedOtherServiceDiscordRoles(roles.entries.get(p.personId),
+      p.dept,process.env.DISCORD_GUILD_ID),
      azlsFunctions:p.dept==='ambulance'?
       verifiedAzlsFunctions(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID):[],
      awards:p.dept==='politie'?publicDecorations(

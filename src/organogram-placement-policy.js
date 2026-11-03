@@ -174,6 +174,11 @@ const INSTRUCTORS=Object.freeze({
 export const RAGO_IO_DISCORD_ROLE='1490841316656156802';
 export const MOTARD_IO_DISCORD_ROLE='1365602771855740958';
 export const DISP_SELECTION_DISCORD_ROLE='1337852029611016233';
+// These Discord membership roles also designate Depannage functions.
+const DEPANNAGE_MEMBER_SPECIALTIES=Object.freeze({
+ '1309532438019706970':'F.A.S.T',
+ '1309532438019706971':'LSRA'
+});
 const POLICE_MEMBER_ROLES=Object.freeze({
  '1358148694297415741':'MOTARD',
  '1309532437977497699':'K9',
@@ -213,8 +218,10 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
   aeRoles.includes('ae_t')?'ae_t':aeRoles.includes('ae_i')?'ae_i':'';
  const instructorNames=Object.entries(INSTRUCTORS[dept]||{})
   .filter(([id])=>roles.has(id)).map(([,name])=>name);
- const memberNames=dept==='politie'?Object.entries(POLICE_MEMBER_ROLES)
-  .filter(([id])=>roles.has(id)).map(([,name])=>name):[];
+ const memberCatalog=dept==='politie'?POLICE_MEMBER_ROLES:
+  dept==='depannage'?DEPANNAGE_MEMBER_SPECIALTIES:{};
+ const memberNames=Object.entries(memberCatalog)
+  .filter(([id])=>roles.has(id)).map(([,name])=>name);
  // RAGO-IO is a training membership only, NOT the full RAGO unit role.
  // Existing RAGO full members may retain their trainee role in Discord.
  if(dept==='politie'&&roles.has(RAGO_IO_DISCORD_ROLE)&&
@@ -236,6 +243,57 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
   specialties:[...new Set([...instructorNames,...memberNames])]
    .filter(x=>SPECIALTIES[dept]?.includes(x)),
   synced:true};
+}
+// Display-only roles from another service do not establish any qualification
+// in the current service, register a new staff member, or grant permissions.
+const OTHER_SERVICE_ROLE_NAMES=Object.freeze({
+ politie:Object.freeze({
+  '1309532437977497700':'RAGO','1490841316656156802':'RAGO-IO',
+  '1393050551188721865':'RAGO-instructeur',
+  '1309532437977497699':'K9','1345297414612979713':'K9-IO',
+  '1345302115689431061':'K9-instructeur',
+  '1358148694297415741':'MOTARD','1365602771855740958':'MOTARD-IO',
+  '1359656762289946755':'MOTARD-instructeur',
+  '1309532438019706963':'Dispatch','1337852029611016233':'Dispatch selectie',
+  '1393050971604516904':'Dispatch-instructeur',
+  '1309542190409580594':'AE-I','1310674604821581894':'AE-T',
+  '1337775768083632158':'AE-Teamleader','1337156006597103746':'AE-instructeur'
+ }),
+ depannage:DEPANNAGE_MEMBER_SPECIALTIES,
+ brandweer:Object.freeze({
+  '1309532437952466986':'BW log/signa',
+  '1399000349037166664':'Ladderwagen',
+  '1399006120965570670':'Bosbestrijding',
+  '1309532437952466985':'Duiker',
+  '1399000449457197188':'RED team',
+  '1309532437952466987':'Gevaarlijke stoffen',
+  '1466508322566967609':'Brandweer-AMBU'
+ }),
+ ambulance:Object.freeze({
+  '1360990854445137980':'MIP',
+  '1360990813357609181':'HELI',
+  '1508506242299985980':'PIT-MOTOR'
+ })
+});
+export function verifiedOtherServiceDiscordRoles(identity,currentDept,guildId,now=Date.now()){
+ if(!identity||!DEPTS.includes(currentDept)||!ID.test(String(guildId||''))||
+    identity.guildId!==guildId||!Number.isSafeInteger(identity.verifiedAt)||
+    identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||
+    !Array.isArray(identity.roleIds)||identity.roleIds.some(id=>!ID.test(id)))
+  return [];
+ const have=new Set(identity.roleIds),out=[];
+ for(const [dept,known] of Object.entries(OTHER_SERVICE_ROLE_NAMES)){
+  if(dept===currentDept)continue;
+  const names=Object.entries(known).filter(([id])=>have.has(id))
+   .map(([,name])=>name);
+  // An older RAGO trainee role may coexist with an active full RAGO role.
+  if(dept==='politie'&&names.includes('RAGO')){
+   const i=names.indexOf('RAGO-IO');
+   if(i>=0)names.splice(i,1);
+  }
+  if(names.length)out.push({dept,labels:[...new Set(names)].slice(0,16)});
+ }
+ return out;
 }
 export function mergePlacement(person,manual,auto){
  // Explicit manual entries supplement verified roles, never grant rights.
