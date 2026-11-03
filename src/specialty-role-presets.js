@@ -84,10 +84,21 @@ export const fireSharedSpecialtyAssetKeys=fireSpecialtyAssetKeys;
 // AWV is leadership, not a specialist qualification, so is deliberately excluded.
 export const DEPANNAGE_ROLE_PATCH_PRESETS=Object.freeze([
  ['1309532438019706970','F.A.S.T'],
- ['1309532438019706971','LSRA']
+ ['1309532438019706971','LSRA'],
+ ['1562090158667333692','CRANE']
 ].map(([roleId,label])=>Object.freeze({
  roleId,label,level:'Volwaardig',value:'Ja',assetKey:''
 })));
+// Distinct generic patch keys for Depannage: no unrelated vehicle photo
+// should be mistaken for the crane-operation qualification.
+export const depannageSpecialtyAssetKeys=label=>{
+ const code=label==='F.A.S.T'?'fast':label==='LSRA'?'lsra':
+  label==='CRANE'?'crane':'';
+ return code?['specialty','patch'].flatMap(kind=>
+  [code,code+'_lokaal',code+'_federaal'].map(suffix=>kind+'_depannage_'+suffix)):[];
+};
+export const knownDepannageRoleSpecialty=(roleId,label)=>
+ DEPANNAGE_ROLE_PATCH_PRESETS.some(x=>x.roleId===roleId&&x.label===label);
 export const AZLS_PIT_MOTOR_ROLE_ID='1508506242299985980';
 export const AMBULANCE_ROLE_PATCH_PRESETS=Object.freeze([
  ['1360990854445137980','MIP'],

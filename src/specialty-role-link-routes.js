@@ -11,7 +11,8 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {SPECIALTY_STATES,allSpecialtyLabels} from './specialization-policy.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
- BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSharedSpecialtyAssetKeys} from './specialty-role-presets.js';
+ BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSharedSpecialtyAssetKeys,
+ knownDepannageRoleSpecialty,depannageSpecialtyAssetKeys} from './specialty-role-presets.js';
 import {suppressSupersededRagoMatches} from './rago-qualification-display.js';
 import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
 
@@ -129,6 +130,13 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
         const found=fireSharedSpecialtyAssetKeys(x.label)
          .map(key=>allAssets.find(a=>a.key===key)).find(Boolean);
         return found?{...x,assetKey:found.key}:x;
+       }
+       // Generic Depannage specialty patches take precedence over an
+       // unmapped Discord role-photo slot; saved explicit choices win.
+       if(dept==='depannage'&&knownDepannageRoleSpecialty(x.roleId,x.label)){
+        const found=depannageSpecialtyAssetKeys(x.label)
+         .map(key=>allAssets.find(a=>a.key===key)).find(Boolean);
+        if(found)return {...x,assetKey:found.key};
        }
        const matching=allAssets.find(a=>a.key===x.roleId+'_standard');
        return matching?{...x,assetKey:matching.key}:x;

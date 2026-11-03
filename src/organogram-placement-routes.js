@@ -17,7 +17,8 @@ import {DISP_DISPLAY_COLLECTION,verifiedDispDisplayRole,effectiveDispDisplayRole
 import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSpecialtyAssetKeys,
- knownFireRoleSpecialty,normalizedSpecialtyLinkLabel,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
+ knownFireRoleSpecialty,normalizedSpecialtyLinkLabel,knownDepannageRoleSpecialty,
+ depannageSpecialtyAssetKeys,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
 import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks,exactApiDisplayRoles} from './bpd-discord-users-display.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
@@ -122,7 +123,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     ...[...mapped.values()].flat().map(x=>String(x.assetKey||'')),
     ...['Logistiek','Signalisatie','Ladderwagen','Bosbestrijding','Duiker',
       'RED team','Gevaarlijke stoffen'].flatMap(fireSpecialtyAssetKeys),
-    ...AMBULANCE_ROLE_PATCH_PRESETS.flatMap(x=>ambulanceSpecialtyAssetKeys(x.label))
+    ...AMBULANCE_ROLE_PATCH_PRESETS.flatMap(x=>ambulanceSpecialtyAssetKeys(x.label)),
+    ...['F.A.S.T','LSRA','CRANE'].flatMap(depannageSpecialtyAssetKeys)
    ].filter(x=>/^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,300);
    const assetUrls=new Map();
    for(const group of chunks(assetKeys,100)){
@@ -237,9 +239,13 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       knownFireRoleSpecialty(x.roleId,x.label);
     const curatedAmbulance=x=>p.dept==='ambulance'&&
       knownAmbulanceRoleSpecialty(x.roleId,x.label);
+    const curatedDepannage=x=>p.dept==='depannage'&&
+      knownDepannageRoleSpecialty(x.roleId,x.label);
     const assetFor=x=>assetUrls.has(x.assetKey)?x.assetKey:
       curatedFire(x)?fireSpecialtyAssetKeys(x.label).find(key=>assetUrls.has(key))||'':
       curatedAmbulance(x)?ambulanceSpecialtyAssetKeys(x.label)
+       .find(key=>assetUrls.has(key))||'':
+      curatedDepannage(x)?depannageSpecialtyAssetKeys(x.label)
        .find(key=>assetUrls.has(key))||'':x.assetKey;
     const valid=x=>assetUrls.has(assetFor(x))&&activeRole(x);
     // A verified role shows its qualification even before artwork is

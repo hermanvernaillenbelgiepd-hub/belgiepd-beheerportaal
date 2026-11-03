@@ -174,10 +174,12 @@ const INSTRUCTORS=Object.freeze({
 export const RAGO_IO_DISCORD_ROLE='1490841316656156802';
 export const MOTARD_IO_DISCORD_ROLE='1365602771855740958';
 export const DISP_SELECTION_DISCORD_ROLE='1337852029611016233';
-// These Discord membership roles also designate Depannage functions.
+// These verified Discord roles designate Depannage qualifications.
+ // FAST/LSRA are existing service functions; CRANE is specialization-only.
 const DEPANNAGE_MEMBER_SPECIALTIES=Object.freeze({
  '1309532438019706970':'F.A.S.T',
- '1309532438019706971':'LSRA'
+ '1309532438019706971':'LSRA',
+ '1562090158667333692':'CRANE'
 });
 const POLICE_MEMBER_ROLES=Object.freeze({
  '1358148694297415741':'MOTARD',
