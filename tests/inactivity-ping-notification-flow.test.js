@@ -50,8 +50,8 @@ test('member receives only an allowlisted notice projection with no raw audit id
 test('member-only read endpoint cannot choose a different subject from request',()=>{
  const route=read('src/management-routes.js');
  const page=read('public/meldingen.html');
- assert.match(route,/app\.get\('\/api\/management\/pings\/mine',requireUser/);
- assert.match(route,/app\.post\('\/api\/management\/pings\/mine\/:entryId\/read',requireUser/);
+ assert.match(route,/app\.get\('\/api\/management\/pings\/mine',requireMemberUser/);
+ assert.match(route,/app\.post\('\/api\/management\/pings\/mine\/:entryId\/read',requireMemberUser/);
  assert.match(route,/const id=req\.bpd\?\.discordId,entryId=req\.params\.entryId/);
  assert.match(route,/current\.get\('targetDiscordId'\)!==id/);
  assert.match(route,/batch\.create\(newDoc,/);
