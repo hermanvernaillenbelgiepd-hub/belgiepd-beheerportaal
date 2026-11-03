@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getStorage} from 'firebase-admin/storage';
+import {officePreviewPdf,isOfficeDocument} from './document-preview.js';
 import {DOCUMENT_DEPARTMENTS,documentScopes,verifiedDocumentRoles,
   mayReadDocument,mayWriteDocuments,mayManageDocuments} from './document-center-policy.js';
 
@@ -18,7 +19,8 @@ const TYPES=Object.freeze({
   webp:{mime:'image/webp',ext:'.webp'}
 });
 const CATEGORIES=Object.freeze(['opleiding','procedure','lesmateriaal','formulier','evaluatie','dienstnota','overig']);
-const AUDIENCES=Object.freeze(['instructeurs','leiding']);
+const AUDIENCES=Object.freeze(['leden','instructeurs','leiding','toegewezen']);
+const DISCORD_ID=/^\d{15,22}$/;
 const ID=/^[0-9a-f-]{36}$/i;
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 const bucketName=env=>String(env.BPD_DOCUMENT_CENTER_BUCKET||
@@ -36,7 +38,7 @@ const cleanText=(value,min,max,label)=>{
 function details(body,upload=false){
   if(!body||typeof body!=='object'||Array.isArray(body)||
     Object.keys(body).some(k=>!['department','title','description','category','audience',
-      ...(upload?['fileName','base64']:[])].includes(k)))throw fail(400,'Ongeldige documentgegevens');
+      'readerIds',...(upload?['fileName','base64']:[])].includes(k)))throw fail(400,'Ongeldige documentgegevens');
   const department=String(body.department||'');
   if(!DOCUMENT_DEPARTMENTS.includes(department))throw fail(400,'Onbekende hulpdienst');
   const title=cleanText(body.title,3,120,'Titel');
@@ -45,7 +47,14 @@ function details(body,upload=false){
   const audience=String(body.audience||'');
   if(!CATEGORIES.includes(category)||!AUDIENCES.includes(audience))
     throw fail(400,'Kies een geldige categorie en doelgroep');
-  return {department,title,description,category,audience};
+  const readerIds=body.readerIds===undefined?[]:body.readerIds;
+  if(!Array.isArray(readerIds)||readerIds.length>30||
+    readerIds.some(id=>typeof id!=='string'||!DISCORD_ID.test(id)))
+    throw fail(400,'Maximaal 30 geldige Discord-ID’s zijn toegestaan');
+  const readers=[...new Set(readerIds)];
+  if(audience==='toegewezen'&&!readers.length)
+    throw fail(400,'Kies minstens één toegewezen lesgever');
+  return {department,title,description,category,audience,readerIds:readers};
 }
 export function validateDocumentUpload(body){
   const fields=details(body,true);
@@ -92,6 +101,18 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
         await getFirestore().collection('bpd_discord_auth').doc(id).get():null;
       const roles=verifiedDocumentRoles(member?.data(),process.env.DISCORD_GUILD_ID);
       req.documentScopes=documentScopes(req.bpd,snap.data,roles);
+      // Explicit instructor assignments remain valid for approved accounts
+      // even if the assignee is not on this department's personnel roster.
+      if(DISCORD_ID.test(id)){
+        const assigned=await getFirestore().collection(META)
+          .where('readerIds','array-contains',id).limit(100).get();
+        for(const d of assigned.docs){
+          if(d.get('status')!=='active')continue;
+          const dept=d.get('department');
+          if(DOCUMENT_DEPARTMENTS.includes(dept)&&
+            !req.documentScopes.read.includes(dept))req.documentScopes.read.push(dept);
+        }
+      }
       req.documentStaff=snap.data.filter(p=>p.personId===id);
       next();
     }catch(e){error(res,e);}
@@ -111,22 +132,31 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       const snapshot=await getFirestore().collection(META)
         .where('department','==',dept).limit(160).get();
       const rows=snapshot.docs.filter(x=>mayReadDocument(req.documentScopes,x.data()))
-        .map(x=>publicRow(x.id,x.data()))
+        .map(x=>({ ...publicRow(x.id,x.data()),
+          ...(req.documentScopes.manage?.includes(dept)?{
+            readerIds:Array.isArray(x.get('readerIds'))?x.get('readerIds'):[]}: {})
+        }))
         .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
       res.json({documents:rows,limited:snapshot.size===160});
     }catch(e){error(res,e);}
   });
   app.post('/api/document-center',requireUser,scope,async(req,res)=>{
-    let file=null;
+    let file=null,previewFile=null;
     try{
       const item=validateDocumentUpload(req.body);
       if(!mayWriteDocuments(req.documentScopes,item.department))
         throw fail(403,'Geen uploadrechten voor deze dienst');
       const db=getFirestore(),id=randomUUID();
       const path='belgiepd/documents/'+item.department+'/'+id+item.ext;
+      const previewBytes=await officePreviewPdf(item.bytes,item.ext);
       file=storage().file(path);
       await file.save(item.bytes,{resumable:false,validation:'crc32c',
         metadata:{contentType:item.mime,cacheControl:'private, no-store'}});
+      if(previewBytes){
+        previewFile=storage().file(path+'.preview.pdf');
+        await previewFile.save(previewBytes,{resumable:false,validation:'crc32c',
+          metadata:{contentType:'application/pdf',cacheControl:'private, no-store'}});
+      }
       const person=req.documentStaff.find(p=>p.dept===item.department)||
         req.documentStaff.find(p=>p.dept==='politie');
       const ref=db.collection(META).doc(id);
@@ -135,6 +165,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       batch.create(ref,{department:item.department,title:item.title,
         description:item.description,category:item.category,audience:item.audience,
         fileName:item.filename,mime:item.mime,size:item.size,storagePath:path,
+        previewStoragePath:previewFile?.name||null,readerIds:item.readerIds,
         version:1,status:'active',owner:'belgiepd',uploadedBy:req.bpd.uid,
         uploadedByName:String(person?.name||'Bevoegd beheer').slice(0,120),
         createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
@@ -144,9 +175,69 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       await batch.commit();
       res.status(201).json({saved:true,id});
     }catch(e){
+      if(previewFile)await previewFile.delete({ignoreNotFound:true}).catch(()=>{});
       if(file)await file.delete({ignoreNotFound:true}).catch(()=>{});
       error(res,e);
     }
+  });
+  // The original is never hosted under a public URL. Office files are
+  // converted into PDF server-side, then streamed to an authenticated reader.
+  app.get('/api/document-center/:id/preview',requireUser,scope,async(req,res)=>{
+    try{
+      if(!ID.test(req.params.id))throw fail(404,'Document niet gevonden');
+      const db=getFirestore(),ref=db.collection(META).doc(req.params.id);
+      const snap=await ref.get();
+      if(!snap.exists||!mayReadDocument(req.documentScopes,snap.data()))
+        throw fail(404,'Document niet gevonden');
+      const record=snap.data();
+      const prefix='belgiepd/documents/'+record.department+'/'+req.params.id;
+      if(typeof record.storagePath!=='string'||
+        !(record.storagePath.startsWith(prefix+'.')||record.storagePath.startsWith(prefix+'/')))
+        throw fail(503,'Bestandsverwijzing ongeldig');
+      let bytes,mime;
+      if(isOfficeDocument(record.storagePath.match(/\.(pptx|docx|xlsx)$/)?.[0])){
+        let previewPath=record.previewStoragePath;
+        if(!previewPath){
+          // Historical uploads automatically receive a private preview at first view.
+          const [original]=await storage().file(record.storagePath).download();
+          const ext=record.storagePath.match(/\.(pptx|docx|xlsx)$/)?.[0];
+          const converted=await officePreviewPdf(original,ext);
+          previewPath=record.storagePath+'.preview.pdf';
+          await storage().file(previewPath).save(converted,{resumable:false,
+            validation:'crc32c',metadata:{
+              contentType:'application/pdf',cacheControl:'private, no-store'
+            }});
+          await db.runTransaction(async tx=>{
+            const current=await tx.get(ref);
+            if(current.exists&&current.get('storagePath')===record.storagePath){
+              tx.update(ref,{previewStoragePath:previewPath});
+              tx.create(db.collection(AUDIT).doc(),{
+                documentId:req.params.id,department:record.department,
+                action:'generate_preview',actorUid:req.bpd.uid,
+                at:FieldValue.serverTimestamp()
+              });
+            }
+          });
+          bytes=converted;
+        }else{
+          if(!previewPath.startsWith(prefix))throw fail(503,'Voorvertoningspad ongeldig');
+          [bytes]=await storage().file(previewPath).download();
+        }
+        mime='application/pdf';
+      }else if(record.mime==='application/pdf'||record.mime?.startsWith('image/')){
+        [bytes]=await storage().file(record.storagePath).download();
+        mime=record.mime;
+      }else throw fail(415,'Voor dit bestandstype is geen voorvertoning beschikbaar');
+      await db.collection(AUDIT).doc().create({
+        documentId:req.params.id,department:record.department,action:'preview',
+        actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()
+      });
+      res.set('Content-Type',mime);
+      res.set('Content-Disposition','inline');
+      res.set('X-Content-Type-Options','nosniff');
+      res.set('Cache-Control','private, no-store');
+      res.send(bytes);
+    }catch(e){error(res,e);}
   });
   app.get('/api/document-center/:id/download',requireUser,scope,async(req,res)=>{
     try{
@@ -197,7 +288,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
   // Replacing a published binary creates a new immutable storage object.
   // The old object and its metadata remain preserved for institutional audit.
   app.put('/api/document-center/:id/file',requireUser,scope,async(req,res)=>{
-    let newFile=null;
+    let newFile=null,newPreviewFile=null;
     try{
       if(!ID.test(req.params.id))throw fail(404,'Document niet gevonden');
       const body=req.body||{};
@@ -220,9 +311,15 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       });
       const newPath='belgiepd/documents/'+old.department+'/'+req.params.id+
         '/v'+(expectedVersion+1)+'-'+randomUUID()+input.ext;
+      const previewBytes=await officePreviewPdf(input.bytes,input.ext);
       newFile=storage().file(newPath);
       await newFile.save(input.bytes,{resumable:false,validation:'crc32c',
         metadata:{contentType:input.mime,cacheControl:'private, no-store'}});
+      if(previewBytes){
+        newPreviewFile=storage().file(newPath+'.preview.pdf');
+        await newPreviewFile.save(previewBytes,{resumable:false,validation:'crc32c',
+          metadata:{contentType:'application/pdf',cacheControl:'private, no-store'}});
+      }
       await db.runTransaction(async tx=>{
         const current=await tx.get(ref);
         if(!current.exists||current.get('status')!=='active')throw fail(404,'Document niet gevonden');
@@ -234,11 +331,13 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
         tx.create(db.collection(VERSIONS).doc(),{
           documentId:req.params.id,department:old.department,
           version:expectedVersion,storagePath:old.storagePath,
+          previewStoragePath:old.previewStoragePath||null,
           fileName:old.fileName,mime:old.mime,size:old.size,
           archivedAt:stamp,archivedBy:req.bpd.uid
         });
         tx.update(ref,{
           version:expectedVersion+1,storagePath:newPath,fileName:input.filename,
+          previewStoragePath:newPreviewFile?.name||null,
           mime:input.mime,size:input.size,updatedBy:req.bpd.uid,updatedAt:stamp
         });
         tx.create(db.collection(AUDIT).doc(),{
@@ -248,9 +347,10 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
           previousStoragePath:old.storagePath,newStoragePath:newPath
         });
       });
-      newFile=null; // The committed version must never be deleted.
+      newFile=null;newPreviewFile=null; // Committed versions must never be deleted.
       res.json({saved:true,version:expectedVersion+1});
     }catch(e){
+      if(newPreviewFile)await newPreviewFile.delete({ignoreNotFound:true}).catch(()=>{});
       if(newFile)await newFile.delete({ignoreNotFound:true}).catch(()=>{});
       error(res,e);
     }

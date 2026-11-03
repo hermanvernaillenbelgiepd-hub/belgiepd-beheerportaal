@@ -78,6 +78,7 @@
     organogram:{href:'/organogram-hierarchie.html',icon:'🌳',label:'Organogram',short:'Organogram'},
     dossiers:{href:'/dossiercentrum.html',icon:'▣',label:'Dossiercentrum',short:'Dossiers'},
     education:{href:'/opleidingscentrum.html',icon:'🎓',label:'Opleidingscentrum',short:'Opleiding'},
+    documents:{href:'/documentencentrum.html',icon:'📚',label:'Documentencentrum',short:'Documenten'},
     calendar:{href:'/opleidingskalender.html',icon:'📅',label:'Multidisciplinaire agenda',short:'Agenda'},
     observations:{href:'/registraties.html',icon:'▤',label:'Observaties Basiskader',short:'Observaties'},
     reports:{href:'/weekrapporten.html',icon:'▥',label:'Weekrapporten',short:'Rapporten'},
@@ -88,7 +89,7 @@
     profile:{href:'/discord-status.html',icon:'♙',label:'Mijn profiel',short:'Profiel'}
   });
   const SAFE=['home','personnel','organogram','education','calendar','leave','profile'];
-  const STAFF=['home','personnel','activity','organogram','dossiers','education','calendar','observations',
+  const STAFF=['home','personnel','activity','organogram','dossiers','education','documents','calendar','observations',
     'reports','to','leave','admin'];
   const currentPage=(href)=>{
     const target=new URL(href,window.location.origin).pathname;
@@ -244,13 +245,13 @@
           ]);
           if(turn!==request)return;
           if(context?.dashboardProfile==='brandweer-zone'){
-            const pages=['home','personnel','activity','organogram','dossiers','education','calendar','reports','leave','notifications'];
+            const pages=['home','personnel','activity','organogram','dossiers','education','documents','calendar','reports','leave','notifications'];
             show(pages);return;
           }
           if(context?.dashboardProfile==='ambulance-azls'){
             const pages=['home','personnel','organogram'];
             if(context.ambulanceCanOpenDossier===true)pages.push('dossiers','activity');
-            pages.push('education','calendar');
+            pages.push('education','documents','calendar');
             if(context.ambulanceReportVerified===true)pages.push('reports');
             pages.push('leave','notifications');
             show(pages);return;
@@ -260,6 +261,7 @@
             show(pages);return;
           }
           const basic=[...SAFE];
+          if(context||member?.mode==='member')basic.push('documents');
           if(member?.mode==='member'&&member?.canUseSelfService===true)
             basic.push('notifications');
           show(basic);

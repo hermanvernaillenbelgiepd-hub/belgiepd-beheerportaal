@@ -31,6 +31,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .meta{color:#a4c2e7;font-size:11px;margin-top:5px}.desc{white-space:pre-wrap;overflow-wrap:anywhere;color:#e2ebfa;margin:8px 0}
 .doc-buttons{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
 .counter{font-size:12px;color:#a9c2df}.hidden,[hidden]{display:none!important}
+#previewDialog{border:1px solid #5a7194;border-radius:13px;padding:0;width:min(1120px,95vw);max-width:none;max-height:96vh;background:#09172d;color:#eaf1ff}
+#previewDialog::backdrop{background:#000b}
+.previewTop{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px}
+.previewBody{height:min(79vh,870px);background:#fff;overflow:auto;display:grid;place-items:center}
+.previewBody iframe{border:0;width:100%;height:100%;background:#fff}
+.previewBody img{max-width:100%;max-height:100%;object-fit:contain}
+
 @media(max-width:640px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.top-actions{margin-left:0}}
 </style></head>
 <body>
@@ -42,7 +49,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 </header>
 <main>
 <h1>Documentencentrum</h1>
-<p>Documenten zijn eigendom van BelgiumPD en blijven bewaard als een medewerker vertrekt. Middenkader en dienstleiding kunnen uploaden; alleen Officierenkader, Korpsleiding en bevoegd beheer kunnen bestaande documenten wijzigen, vervangen of archiveren.</p>
+<p>Geverifieerde leden, ook met een tijdelijk roepnummer, kunnen de voor hun dienst vrijgegeven handboeken direct bekijken. Bevoegd kader publiceert documenten; Officierenkader en Korpsleiding behouden het volledige versiebeheer.</p>
 <div class="status" id="feedback" role="status" aria-live="polite">Bevoegdheden controleren…</div>
 <section class="card" id="workspace" hidden>
  <div class="toolbar">
@@ -61,11 +68,17 @@ button:disabled{opacity:.5;cursor:not-allowed}
  <div class="grid">
   <label>Titel<input id="title" maxlength="120" minlength="3" required></label>
   <label>Categorie<select id="category" required></select></label>
-  <label>Doelgroep<select id="audience" required>
+  <label>Wie mag dit bekijken?<select id="audience" required>
+   <option value="leden">Alle geverifieerde dienstleden (ook tijdelijk roepnummer)</option>
    <option value="instructeurs">Instructeurs en leiding</option>
-   <option value="leiding">Alleen leiding</option></select></label>
+   <option value="leiding">Alleen leiding</option>
+   <option value="toegewezen">Alleen handmatig toegewezen lesgevers</option></select></label>
   <label id="fileWrap">Bestand<input id="file" type="file" accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,.webp" required></label>
   <label class="full">Omschrijving (optioneel)<textarea id="description" maxlength="1000"></textarea></label>
+  <label class="full">Extra leesrechten voor lesgevers (Discord-ID's, gescheiden door komma of nieuwe regel)
+    <textarea id="readerIds" maxlength="1200" placeholder="123456789012345678, 234567890123456789"></textarea>
+    <span class="note">Optioneel. Deze personen krijgen uitsluitend inzage; geen bewerkingsrechten.</span>
+  </label>
  </div>
  <div class="buttons"><button type="submit" id="save">Uploaden</button>
  <button type="button" id="cancel" class="secondary">Wissen</button></div>
@@ -73,13 +86,18 @@ button:disabled{opacity:.5;cursor:not-allowed}
 </section>
 <p class="note">Gepubliceerde documenten blijven alleen-lezen voor gewone gebruikers en uploaders. Oude bestandsversies en gearchiveerde documenten blijven beveiligd bewaard op de server. Downloadrechten worden telkens opnieuw gecontroleerd.</p>
 </main>
+<dialog id="previewDialog" aria-label="Document bekijken">
+ <div class="previewTop"><strong id="previewTitle">Document bekijken</strong>
+ <button type="button" id="closePreview" class="secondary">Sluiten</button></div>
+ <div id="previewBody" class="previewBody"></div>
+</dialog>
 <script type="module">
 const $=id=>document.getElementById(id);
 const NAMES={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
  depannage:'Depannage',burger:'Burger',multidisciplinair:'Multidisciplinair'};
 const CATEGORIES={opleiding:'Opleiding',procedure:'Procedure',lesmateriaal:'Lesmateriaal',
  formulier:'Formulier',evaluatie:'Evaluatie',dienstnota:'Dienstnota',overig:'Overig'};
-let bridge=null,context=null,documents=[],editing=null,replacing=false,editingVersion=null,busy=false;
+let bridge=null,context=null,documents=[],editing=null,replacing=false,editingVersion=null,busy=false,previewUrl=null;
 const status=(text,kind='')=>{$('feedback').className='status '+kind;$('feedback').textContent=text};
 async function api(url,method='GET',data){
  const user=bridge?.auth.currentUser;
@@ -101,7 +119,7 @@ const canManage=()=>context?.manageDepartments?.includes($('department').value)=
 function resetEditor(){
  editing=null;replacing=false;editingVersion=null;
  $('documentForm').reset();$('editorTitle').textContent='Document uploaden';
- for(const id of ['title','description','category','audience'])$(id).disabled=false;
+ for(const id of ['title','description','category','audience','readerIds'])$(id).disabled=false;
  $('fileWrap').hidden=false;$('file').required=true;$('save').textContent='Uploaden';
 }
 function render(){
@@ -117,7 +135,8 @@ function render(){
   const heading=document.createElement('div');heading.className='doc-head';
   const name=document.createElement('strong');name.textContent=d.title;
   const type=document.createElement('span');type.className='counter';
-  type.textContent=(CATEGORIES[d.category]||d.category)+' · '+(d.audience==='leiding'?'Leiding':'Instructeurs');
+  const targets={leden:'Alle dienstleden',instructeurs:'Instructeurs',leiding:'Leiding',toegewezen:'Toegewezen lesgevers'};
+  type.textContent=(CATEGORIES[d.category]||d.category)+' · '+(targets[d.audience]||d.audience);
   heading.append(name,type);
   const meta=document.createElement('div');meta.className='meta';
   meta.textContent=d.fileName+' · '+(d.size/1024/1024).toFixed(2)+' MB · versie '+d.version+
@@ -128,9 +147,8 @@ function render(){
    const b=document.createElement('button');b.type='button';b.textContent=name;b.className=cls;
    b.onclick=action;actions.append(b);
   };
-  if(d.mime==='application/pdf'||d.mime.startsWith('image/'))
-   btn('Bekijken','secondary',()=>download(d,true));
-  btn('Downloaden','secondary',()=>download(d,false));
+  btn('Presenteren / bekijken','secondary',()=>preview(d));
+  btn('Downloaden','secondary',()=>download(d));
   if(canManage()){
    btn('Gegevens aanpassen','secondary',()=>edit(d));
    btn('Nieuwe bestandsversie','secondary',()=>replaceFile(d));
@@ -139,17 +157,40 @@ function render(){
   article.append(heading,meta,desc,actions);root.append(article);
  }
 }
-async function download(doc,preview=false){
- let tab=null;
- if(preview){tab=window.open('about:blank','_blank');if(tab)tab.opener=null;}
+function closePreview(){
+ $('previewDialog').close();$('previewBody').replaceChildren();
+ if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+}
+$('closePreview').onclick=closePreview;
+$('previewDialog').addEventListener('close',()=>{
+ $('previewBody').replaceChildren();
+ if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+});
+async function preview(doc){
+ try{
+  status('Voorvertoning laden…');
+  const blob=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/preview');
+  if(previewUrl)URL.revokeObjectURL(previewUrl);
+  previewUrl=URL.createObjectURL(blob);
+  $('previewBody').replaceChildren();
+  const viewer=blob.type.startsWith('image/')?document.createElement('img'):document.createElement('iframe');
+  viewer.src=previewUrl;
+  viewer.title='Voorvertoning '+doc.title;
+  viewer.referrerPolicy='no-referrer';
+  $('previewBody').append(viewer);
+  $('previewTitle').textContent=doc.title+' · alleen lezen';
+  $('previewDialog').showModal();
+  status('Document voorvertoning geopend.','good');
+ }catch(e){status('Voorvertoning niet beschikbaar: '+e.message,'error')}
+}
+async function download(doc){
  try{
   const blob=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/download');
   const url=URL.createObjectURL(blob);
-  if(preview&&tab){tab.location.href=url;}
-  else{if(tab)tab.close();const anchor=document.createElement('a');anchor.href=url;
-   anchor.download=doc.fileName;document.body.append(anchor);anchor.click();anchor.remove();}
+  const anchor=document.createElement('a');anchor.href=url;anchor.download=doc.fileName;
+  document.body.append(anchor);anchor.click();anchor.remove();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
- }catch(e){if(tab)tab.close();status('Bestand niet beschikbaar: '+e.message,'error')}
+ }catch(e){status('Bestand niet beschikbaar: '+e.message,'error')}
 }
 function edit(d){
  if(!canManage())return;
@@ -157,6 +198,7 @@ function edit(d){
  $('editor').hidden=false;$('editorTitle').textContent='Documentgegevens aanpassen';
  $('title').value=d.title;$('description').value=d.description;
  $('category').value=d.category;$('audience').value=d.audience;
+ $('readerIds').value=(d.readerIds||[]).join('\n');
  $('fileWrap').hidden=true;$('file').required=false;$('save').textContent='Wijzigingen opslaan';
  $('editor').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -166,7 +208,8 @@ function replaceFile(d){
  $('editor').hidden=false;$('editorTitle').textContent='Nieuwe versie uploaden · '+d.title;
  $('title').value=d.title;$('description').value=d.description;
  $('category').value=d.category;$('audience').value=d.audience;
- for(const id of ['title','description','category','audience'])$(id).disabled=true;
+ $('readerIds').value=(d.readerIds||[]).join('\n');
+ for(const id of ['title','description','category','audience','readerIds'])$(id).disabled=true;
  $('fileWrap').hidden=false;$('file').required=true;
  $('save').textContent='Nieuwe versie bewaren';
  $('editor').scrollIntoView({behavior:'smooth',block:'start'});
@@ -216,7 +259,8 @@ $('documentForm').onsubmit=async e=>{
  busy=true;$('save').disabled=true;
  try{
   const payload={department:$('department').value,title:$('title').value,
-   description:$('description').value,category:$('category').value,audience:$('audience').value};
+   description:$('description').value,category:$('category').value,audience:$('audience').value,
+   readerIds:[...new Set($('readerIds').value.split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean))]};
   if(editing&&replacing){
    if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
    const file=$('file').files?.[0];
