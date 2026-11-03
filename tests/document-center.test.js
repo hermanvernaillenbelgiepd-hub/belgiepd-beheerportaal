@@ -36,12 +36,17 @@ test('Afwijkende server en verlopen rolbewijzen verlenen geen instructeurstoegan
  assert.deepEqual(verifiedDocumentRoles({...roles(['1309532437952466989']),
   verifiedAt:Date.now()-25*60*60*1000},GUILD),[]);
  const s=documentScopes(actor('brandweer','basiskader'),[staff('brandweer')],[]);
- assert.deepEqual(s.read,[]);
+ assert.deepEqual(s.read,['brandweer','multidisciplinair']);
+ assert.equal(mayReadDocument(s,{status:'active',department:'brandweer',audience:'instructeurs'}),false);
 });
-test('Een niet-eenduidige persoonsfiche geeft geen upload- of leesrechten',()=>{
+test('Niet-eenduidige fiches blokkeren schrijven, maar tijdelijke leden zien hun handboeken',()=>{
  const me=actor('politie','middenkader');
  assert.deepEqual(documentScopes(me,[staff('politie'),staff('politie')]).write,[]);
- assert.deepEqual(documentScopes(me,[]).read,[]);
+ const temporary=documentScopes(me,[]);
+ assert.deepEqual(temporary.write,[]);
+ assert.deepEqual(temporary.read,['politie','multidisciplinair']);
+ assert.equal(mayReadDocument(temporary,{status:'active',department:'politie',audience:'leden'}),true);
+ assert.equal(mayReadDocument(temporary,{status:'active',department:'politie',audience:'leiding'}),false);
 });
 test('Bevoegd Officierenkader mag alle diensten beheren, maar niet op basis van callsign alleen',()=>{
  const high=actor('politie','officierenkader');
@@ -117,4 +122,40 @@ test('Bestaande documenten en oude bestandsversies blijven na archiveren bewaard
  assert.doesNotMatch(routes,/oldFile\.delete|storage\(\)\.file\(old\.storagePath\)\.delete/);
  assert.match(page,/Nieuwe bestandsversie/);
  assert.match(page,/canManage\(\)/);
+});
+
+test('Handmatig toegekende lesgever krijgt alleen specifieke documenten te zien',()=>{
+ const person=actor('brandweer','basiskader');
+ const s=documentScopes(person,[staff('brandweer')],[]);
+ const entry={status:'active',department:'ambulance',audience:'toegewezen',
+   readerIds:[ID]};
+ assert.equal(mayReadDocument(s,entry),true);
+ assert.equal(mayReadDocument(s,{...entry,readerIds:[]}),false);
+ assert.equal(mayWriteDocuments(s,'ambulance'),false);
+ assert.equal(mayManageDocuments(s,'ambulance'),false);
+});
+test('Leesmateriaal voor alle geverifieerde dienstleden, ongeacht callsign',()=>{
+ const person=actor('politie','agentenkader');
+ const s=documentScopes(person,[]);
+ const doc={status:'active',department:'politie',audience:'leden'};
+ assert.equal(mayReadDocument(s,doc),true);
+ assert.equal(mayReadDocument(s,{...doc,department:'brandweer'}),false);
+});
+test('PowerPoint en Office-voorvertoning blijft privé in het portaal',()=>{
+ const docker=readFileSync(new URL('../Dockerfile',import.meta.url),'utf8');
+ const routes=readFileSync(new URL('../src/document-center-routes.js',import.meta.url),'utf8');
+ const preview=readFileSync(new URL('../src/document-preview.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/documentencentrum.html',import.meta.url),'utf8');
+ const nav=readFileSync(new URL('../public/bpd-navigation.js',import.meta.url),'utf8');
+ const home=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(docker,/libreoffice-impress/);
+ assert.match(preview,/--headless/);
+ assert.match(preview,/--convert-to','pdf'/);
+ assert.match(routes,/\/api\/document-center\/:id\/preview/);
+ assert.match(routes,/mayReadDocument\(req\.documentScopes,snap\.data\(\)\)/);
+ assert.match(routes,/previewStoragePath/);
+ assert.match(html,/Presenteren \/ bekijken/);
+ assert.match(html,/previewDialog/);
+ assert.match(nav,/documents:\{href:'\/documentencentrum.html'/);
+ assert.match(home,/href="\/documentencentrum.html"/);
 });
