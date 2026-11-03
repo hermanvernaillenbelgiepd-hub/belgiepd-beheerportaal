@@ -13,6 +13,7 @@ const TYPES=Object.freeze({
   xlsx:{mime:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',ext:'.xlsx'},
   png:{mime:'image/png',ext:'.png'},
   jpg:{mime:'image/jpeg',ext:'.jpg'},
+  jpeg:{mime:'image/jpeg',ext:'.jpg'},
   webp:{mime:'image/webp',ext:'.webp'}
 });
 const CATEGORIES=Object.freeze(['opleiding','procedure','lesmateriaal','formulier','evaluatie','dienstnota','overig']);
