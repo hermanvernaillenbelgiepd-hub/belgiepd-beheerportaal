@@ -7,7 +7,7 @@ const css=read('organogram-hybrid.css');
 const html=read('organogram-hierarchie.html');
 
 test('organogram uses a page-specific hybrid stylesheet after the shared palette',()=>{
-  assert.match(html, /<link rel="stylesheet" href="\/bpd-navigation\.css">\s*<link rel="stylesheet" href="\/organogram-hybrid\.css\?v=20261102">/);
+  assert.match(html, /<link rel="stylesheet" href="\/bpd-navigation\.css">\s*<link rel="stylesheet" href="\/organogram-hybrid\.css\?v=brandweer-compact-20261103">/);
 });
 test('hybrid organogram is light-only and keeps dark personnel cards readable',()=>{
   assert.match(css,/html:not\(\[data-bpd-theme="dark"\]\) #services \.service/);
