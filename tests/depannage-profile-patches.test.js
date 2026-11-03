@@ -31,6 +31,30 @@ test('only a dedicated same-service uploaded patch can replace the vector',()=>{
   '/assets/bpd-depannage-fast-patch.svg');
  assert.equal(depannageProfilePatch('LSRA',entries),'/assets/bpd-depannage-lsra-patch.svg');
 });
+test('all approved towing PATCH names are accepted without cross-service leakage',()=>{
+ const base='/assets/bpd-depannage-crane-patch.svg';
+ const exact='/api/role-artwork/file/patch_depannage_crane?v=new-7';
+ assert.equal(depannageProfilePatch('CRANE',[{label:'CRANE',imageUrl:exact}]),exact);
+ assert.equal(depannageProfilePatch('CRANE',[
+  {label:'CRANE',imageUrl:'/api/role-artwork/file/patch_ambulance_crane?v=wrong-1'}
+ ]),base);
+ assert.equal(depannageProfilePatch('CRANE',[
+  {label:'CRANE',imageUrl:'/api/role-artwork/file/specialty_depannage_crane?v=vehicle-1'}
+ ]),base);
+ assert.equal(depannageProfilePatch('CRANE',[
+  {label:'CRANE',imageUrl:'/api/role-artwork/file/patch_depannage_fast?v=other-1'}
+ ]),base);
+ assert.equal(depannagePatchCode('LRSA'),'lsra');
+ assert.equal(depannageProfilePatch('LRSA',[
+  {label:'LSRA',imageUrl:'/api/role-artwork/file/patch_depannage_lsra?v=approved-1'}
+ ]),'/api/role-artwork/file/patch_depannage_lsra?v=approved-1');
+});
+test('uploaded library patches appear in towing profiles with proper format',()=>{
+ const html=src('public/organogram-hierarchie.html');
+ assert.match(html,/setDepannageSpecialtyPatchArtworks\(artworkManifest\?\.artworks\)/);
+ assert.match(html,/depannageSpecialtyPatchUrl\(name,p\.specialtyPatches,/);
+ assert.match(src('public/role-artwork-ui.js'),/widePatch\?\[640,200\]/);
+});
 test('operational profile uses service-locked labels, uniforms and badges',()=>{
  const html=src('public/organogram-hierarchie.html'),css=src('public/organogram-hybrid.css');
  assert.match(html,/serviceProfileRank\(p\)/);
