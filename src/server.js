@@ -713,7 +713,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
 });
 installRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installBasicObservationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
-installManagementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installManagementRoutes(app,{requireUser:requireDossierUser,requireMemberUser:requireUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installCallsignBotRoutes(app);
 installActivityTelemetryRoutes(app);
