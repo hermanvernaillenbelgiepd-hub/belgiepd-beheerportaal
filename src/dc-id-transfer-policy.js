@@ -2,6 +2,7 @@ import {roleForDepartment} from './leave-policy.js';
 
 export const DC_TRANSFER_REQUESTS='bpd_dc_id_transfer_requests';
 export const DC_TRANSFER_ALIASES='bpd_identity_transfers';
+export const DC_TRANSFER_TARGETS='bpd_identity_transfer_targets';
 export const TRANSFER_DEPARTMENTS=Object.freeze(['politie','brandweer','ambulance','depannage','burger']);
 const ID=/^\d{15,22}$/;
 const AGE=24*60*60*1000;
