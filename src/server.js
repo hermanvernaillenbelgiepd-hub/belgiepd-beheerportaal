@@ -828,6 +828,9 @@ async function probeDiscordFirestore(){
 }
 app.listen(Number(process.env.PORT)||8080,()=>{
   console.log('BelgiumPD op poort '+(process.env.PORT||8080));
+  // Public project identifier (not a credential): verify Storage belongs to MAIN.
+  console.info('BelgiumPD Firebase-project-ID:',String(process.env.FIREBASE_PROJECT_ID||'niet ingesteld'));
+
   // Startup diagnosis contains only booleans, NEVER the Discord IDs or bot token.
   const guildConfigured=/^\d{15,22}$/.test(String(process.env.DISCORD_GUILD_ID||''));
   const botConfigured=Boolean(discordBotToken(process.env));
