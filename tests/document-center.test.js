@@ -159,3 +159,34 @@ test('PowerPoint en Office-voorvertoning blijft privé in het portaal',()=>{
  assert.match(nav,/documents:\{href:'\/documentencentrum.html'/);
  assert.match(home,/href="\/documentencentrum.html"/);
 });
+
+test('Handboeken groter dan 5 MB kunnen veilig als PDF worden geüpload tot 25 MB',()=>{
+ const sample=Buffer.alloc(6*1024*1024,32);
+ sample.write('%PDF-',0,'ascii');
+ const base={department:'brandweer',title:'Brandweer Handboek',description:'',
+   category:'lesmateriaal',audience:'leden',readerIds:[],folderId:null,
+   fileName:'brandweer-handboek.pdf'};
+ const file=validateDocumentUpload({...base,base64:sample.toString('base64')});
+ assert.equal(file.size,sample.length);
+ assert.equal(file.mime,'application/pdf');
+ assert.equal(file.department,'brandweer');
+ const tooLarge=Buffer.alloc(25*1024*1024+1,32);
+ tooLarge.write('%PDF-',0,'ascii');
+ assert.throws(()=>validateDocumentUpload({...base,base64:tooLarge.toString('base64')}),
+   /te grote upload/);
+});
+test('UI toont bestandsgrootte en opslaglocatie; Express en Office-converter hanteren dezelfde grens',()=>{
+ const html=readFileSync(new URL('../public/documentencentrum.html',import.meta.url),'utf8');
+ const backend=readFileSync(new URL('../src/document-center-routes.js',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ const office=readFileSync(new URL('../src/document-preview.js',import.meta.url),'utf8');
+ assert.match(html,/id="fileInfo"/);
+ assert.match(html,/id="destinationHint"/);
+ assert.match(html,/Geselecteerd: /);
+ assert.match(html,/Selecteer eerst een document/);
+ assert.match(html,/Het maximum is/);
+ assert.match(html,/Opslaglocatie: /);
+ assert.match(backend,/MAX_BYTES=25\*1024\*1024/);
+ assert.match(office,/bytes\.length>25\*1024\*1024/);
+ assert.match(server,/\/api\/document-center',express\.json\(\{limit:'36mb'/);
+});

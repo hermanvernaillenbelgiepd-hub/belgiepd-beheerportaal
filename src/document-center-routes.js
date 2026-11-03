@@ -8,7 +8,7 @@ import {DOCUMENT_DEPARTMENTS,documentScopes,verifiedDocumentRoles,
 
 const META='bpd_document_center',AUDIT='bpd_document_center_audit',
   VERSIONS='bpd_document_center_versions',FOLDERS='bpd_document_center_folders';
-const MAX_BYTES=5*1024*1024;
+const MAX_BYTES=25*1024*1024;
 const TYPES=Object.freeze({
   pdf:{mime:'application/pdf',ext:'.pdf'},
   docx:{mime:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',ext:'.docx'},

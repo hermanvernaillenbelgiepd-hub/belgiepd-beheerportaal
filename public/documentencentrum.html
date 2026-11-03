@@ -103,7 +103,7 @@ html:not([data-bpd-theme="dark"]) body.bpd-shell .document :is(.desc,.meta,.coun
 </section>
 <section class="card" id="editor" hidden>
  <h2 id="editorTitle">Document of link toevoegen</h2>
- <p class="note">Bewaar PDF, Word, PowerPoint, Excel, afbeeldingen of HTTPS-leslinks per map. Bestanden blijven privé; bestanden maximaal 5 MB. YouTube-video's kunnen in het portaal worden bekeken.</p>
+ <p class="note">Bewaar PDF, Word, PowerPoint, Excel, afbeeldingen of HTTPS-leslinks per map. Bestanden blijven privé; bestanden maximaal 25 MB. YouTube-video's kunnen in het portaal worden bekeken.</p>
  <form id="documentForm">
  <div class="grid">
   <label>Titel<input id="title" maxlength="120" minlength="3" required></label>
@@ -112,13 +112,18 @@ html:not([data-bpd-theme="dark"]) body.bpd-shell .document :is(.desc,.meta,.coun
     <option value="file">Bestand · PDF, Word, PowerPoint, Excel, afbeelding</option>
     <option value="link">Weblink · website, video, documentlink</option>
   </select></label>
+  <label id="fileWrap" class="full">Bestand kiezen (maximaal 25 MB)
+   <input id="file" type="file" accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,.webp" aria-describedby="fileInfo" required>
+   <span id="fileInfo" class="note" role="status" aria-live="polite">Nog geen bestand gekozen.</span>
+  </label>
+  <div class="full"><p id="destinationHint" class="note" aria-live="polite"></p></div>
   <label>Categorie<select id="category" required></select></label>
   <label>Wie mag dit bekijken?<select id="audience" required>
    <option value="leden">Alle geverifieerde dienstleden (ook tijdelijk roepnummer)</option>
    <option value="instructeurs">Instructeurs en leiding</option>
    <option value="leiding">Alleen leiding</option>
    <option value="toegewezen">Alleen handmatig toegewezen lesgevers</option></select></label>
-  <label id="fileWrap" class="full">Bestand<input id="file" type="file" accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,.webp" required></label>
+  
   <label id="linkWrap" class="full" hidden>Externe HTTPS-link<input id="linkUrl" type="url" placeholder="https://..." maxlength="1800"></label>
   <label class="full">Omschrijving (optioneel)<textarea id="description" maxlength="1000"></textarea></label>
   <label class="full">Extra leesrechten voor lesgevers (Discord-ID's, gescheiden door komma of nieuwe regel)
@@ -155,7 +160,7 @@ async function api(url,method='GET',data){
   ...(data?{body:JSON.stringify(data)}:{})});
  if(bridge.auth.currentUser?.uid!==user.uid)throw Error('Aanmelding gewijzigd');
  if(!response.ok){const body=await response.json().catch(()=>({}));
-   throw Error(body.error||'Serverfout '+response.status)}
+   throw Error(body.error||(response.status===413?'Bestand is groter dan de toegelaten uploadlimiet.':'Serverfout '+response.status))}
  if(response.headers.get('Content-Type')?.startsWith('application/json'))
    return response.json();
  return response.blob();
@@ -170,8 +175,46 @@ function resetEditor(){
    $(id).disabled=false;
  $('folder').value=selectedFolder==='all'?'':selectedFolder;
  $('resourceType').value='file';
- updateResourceInput();$('save').textContent='Toevoegen';
+ updateResourceInput();updateSelectedFileInfo();$('save').textContent='Toevoegen';
 }
+function fileMb(bytes){
+ return (bytes/1048576).toLocaleString('nl-BE',{maximumFractionDigits:2})+' MB';
+}
+function validateSelectedFile(file){
+ const maxBytes=context?.maxBytes||25*1024*1024;
+ if(!file)throw Error('Selecteer eerst een document bij "Bestand kiezen".');
+ if(!/\.(pdf|docx|pptx|xlsx|png|jpe?g|webp)$/i.test(file.name))
+  throw Error('Dit bestandstype is niet toegestaan. Gebruik PDF, Word (DOCX), PowerPoint (PPTX), Excel (XLSX), JPG, PNG of WebP.');
+ if(file.size<16)throw Error('Het gekozen bestand is leeg of beschadigd. Kies een ander document.');
+ if(file.size>maxBytes)
+  throw Error('Het bestand "'+file.name+'" is '+fileMb(file.size)+
+    '. Het maximum is '+fileMb(maxBytes)+'. Comprimeer het of maak een kleiner bestand.');
+ return file;
+}
+function updateSelectedFileInfo(){
+ const node=$('fileInfo'),file=$('file').files?.[0];
+ if(!file){node.textContent='Nog geen bestand gekozen.';node.style.color='';return;}
+ try{validateSelectedFile(file);
+  node.textContent='Geselecteerd: '+file.name+' ('+fileMb(file.size)+') · klaar om te uploaden';
+  node.style.color='';
+ }catch(e){
+  node.textContent='Geselecteerd: '+file.name+' ('+fileMb(file.size)+') · '+e.message;
+  node.style.color='#ffc9c9';
+ }
+}
+$('file').addEventListener('change',updateSelectedFileInfo);
+function updateDestinationHint(){
+ const dept=$('department').value,folderId=$('folder').value;
+ const folder=folders.find(f=>f.id===folderId)?.name||'Algemeen';
+ const name=NAMES[dept]||dept;
+ const other=Object.entries(NAMES).find(([id,label])=>
+   id!==dept&&label.toLocaleLowerCase('nl')===folder.toLocaleLowerCase('nl'));
+ $('destinationHint').textContent='Opslaglocatie: '+name+' / '+folder+'.'+
+   (other?' Let op: dit is een map binnen '+name+
+     ', niet de hulpdienst '+other[1]+'. Selecteer bovenaan de juiste hulpdienst als het materiaal daarvoor bedoeld is.':'');
+}
+$('folder').addEventListener('change',updateDestinationHint);
+
 function updateResourceInput(){
  const isLink=$('resourceType').value==='link';
  $('fileWrap').hidden=isLink;$('file').required=!isLink;
@@ -184,6 +227,7 @@ function fillFolderSelect(){
  for(const f of folders)select.append(option(f.id,'📁 '+f.name));
  if([...select.options].some(x=>x.value===desired))select.value=desired;
  else select.value=selectedFolder==='all'?'':selectedFolder;
+ updateDestinationHint();
 }
 function renderFolders(){
  const root=$('folderButtons');root.replaceChildren();
@@ -203,7 +247,7 @@ function renderFolders(){
   button.append(count);
   button.onclick=()=>{
     selectedFolder=item.id;renderFolders();render();
-    if(canWrite()&&!editing)$('folder').value=item.id==='all'?'':item.id;
+    if(canWrite()&&!editing){$('folder').value=item.id==='all'?'':item.id;updateDestinationHint();}
   };
   root.append(button);
  }
@@ -219,7 +263,7 @@ $('addFolder').onclick=async()=>{
     department:$('department').value,name:name.trim()
   });
   await loadFolders();selectedFolder=data.id;renderFolders();render();
-  $('folder').value=data.id;
+  $('folder').value=data.id;updateDestinationHint();
   status('Map aangemaakt en bewaard op BelgiumPD.','good');
  }catch(e){status('Map niet aangemaakt: '+e.message,'error')}
 };
@@ -409,9 +453,7 @@ $('documentForm').onsubmit=async e=>{
    readerIds:[...new Set($('readerIds').value.split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean))]};
   if(editing&&replacing){
    if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
-   const file=$('file').files?.[0];
-   if(!file||file.size<16||file.size>context.maxBytes)
-    throw Error('Kies een bestand van maximaal 5 MB');
+   const file=validateSelectedFile($('file').files?.[0]);
    await api('/api/document-center/'+encodeURIComponent(editing)+'/file','PUT',{
      fileName:file.name,base64:await fileToBase64(file),expectedVersion:editingVersion
    });
@@ -426,9 +468,8 @@ $('documentForm').onsubmit=async e=>{
    status('Leslink toegevoegd aan de geselecteerde map.','good');
   }else{
    if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
-   const file=$('file').files?.[0];
-   if(!file||file.size<16||file.size>context.maxBytes)
-    throw Error('Kies een geldig bestand van maximaal 5 MB');
+   const file=validateSelectedFile($('file').files?.[0]);
+   status('Bestand uploaden: '+file.name+' ('+fileMb(file.size)+')…');
    payload.fileName=file.name;payload.base64=await fileToBase64(file);
    await api('/api/document-center','POST',payload);
    status('Document veilig opgeslagen en gelogd.','good');

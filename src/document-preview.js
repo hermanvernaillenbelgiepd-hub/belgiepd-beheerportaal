@@ -11,7 +11,7 @@ let pending=0;
 export const isOfficeDocument=ext=>OFFICE.has(ext);
 export async function officePreviewPdf(bytes,extension){
   if(!OFFICE.has(extension))return null;
-  if(!Buffer.isBuffer(bytes)||bytes.length<16||bytes.length>5*1024*1024)
+  if(!Buffer.isBuffer(bytes)||bytes.length<16||bytes.length>25*1024*1024)
     throw Error('Ongeldig Office-document');
   // Limit simultaneous conversions on the Render 512 MB instance.
   if(pending>=1)throw Object.assign(Error('Documentvoorvertoning is bezet. Probeer opnieuw.'),{status:503});
