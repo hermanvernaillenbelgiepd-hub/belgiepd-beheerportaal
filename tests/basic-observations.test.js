@@ -93,14 +93,17 @@ test('Gebundelde inbox is alleen voor kaderleden en geverifieerd Bestuur',()=>{
   assert.equal(mayReadBasicInbox({...actor('basiskader'),boardPersonnelAdmin:true}),true);
   assert.equal(mayReadBasicInbox({...actor('officierenkader'),departments:['brandweer']}),false);
 });
-test('Beveiligde routes weigeren sancties en gebruiken bestaande persoonsdossiers plus meldingen',()=>{
+test('Beveiligde routes weigeren sancties en gebruiken een afzonderlijk register',()=>{
   const route=readFileSync(new URL('../src/basic-observation-routes.js',import.meta.url),'utf8');
   const legacy=readFileSync(new URL('../src/registration-routes.js',import.meta.url),'utf8');
   const page=readFileSync(new URL('../public/registraties.html',import.meta.url),'utf8');
   assert.match(route,/basicObservationTargets\(req\.bpd,roster\)/);
   assert.match(route,/validateEntry\(\{\.\.\.body,type:'observatie'\}\)/);
-  assert.match(route,/bpd_cases/);
-  assert.match(route,/bpd_notices/);
+  assert.match(route,/collection\('bpd_basic_observations'\)/);
+  assert.match(route,/Strictly separate from bpd_cases/);
+  assert.doesNotMatch(route,/collection\('bpd_cases'\)/);
+  assert.doesNotMatch(route,/collection\('bpd_notices'\)/);
+  assert.match(route,/\[345\]\\d\\d/);
   assert.match(route,/mayReadBasicInbox\(req\.bpd\)/);
   assert.match(legacy,/basicObservationTargets\(req\.bpd,snap\.data\)/);
   assert.ok(!page.includes('id="sanctionType"'));
