@@ -66,8 +66,8 @@ test('only verified matching Discord role can activate the paired specialization
  assert.match(server,/assetUrls\.get\(assetFor\(x\)\)\|\|''/);
  assert.match(server,/for\(const link of specialtyPatches\)/);
  assert.match(html,/matchedArtwork\?\.imageUrl\|\|fireSpecialtyPatchUrl\(name\)/);
- assert.match(library,/x\.roleId!==roleId\|\|sharedFire&&x\.label!==specialtyLabel/);
- assert.match(library,/if\(!sharedFire\)\{/);
+ assert.match(library,/x\.roleId!==roleId\|\|\(!roleId\|\|sharedFire\)&&x\.label!==specialtyLabel/);
+ assert.match(library,/if\(roleId&&!sharedFire\)\{/);
 });
 
 test('generic patch links without role can coexist for several fire specialties',()=>{
