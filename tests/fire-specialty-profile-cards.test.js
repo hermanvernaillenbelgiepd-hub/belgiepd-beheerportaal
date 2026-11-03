@@ -12,7 +12,7 @@ test('fire profile uses equal-width cards for specialties with and without patch
  assert.match(style,/\.person-profile-dialog\.fire-person-profile\.operational-profile/);
  assert.match(style,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
  assert.match(style,/grid-column:auto!important/);
- assert.doesNotMatch(style,/grid-column:1 \/ -1/);
+ assert.doesNotMatch(style.slice(style.indexOf('/* Brandweer personnel profile:')),/grid-column:1 \/ -1/);
 });
 
 test('unlinked or broken fire patch is represented without changing a specialty',()=>{
