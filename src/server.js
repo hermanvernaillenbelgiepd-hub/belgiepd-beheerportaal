@@ -17,6 +17,7 @@ import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.
 import { ALLOWED_ROLES } from './registrations.js';
 import { installRegistrationRoutes } from './registration-routes.js';
 import {installBasicObservationRoutes} from './basic-observation-routes.js';
+import {basicObservationTargets} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installActivityTelemetryRoutes} from './activity-telemetry-routes.js';
@@ -607,6 +608,8 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     // Restrict exceptional cross-service dossier WRITES if the official roster is stale.
     req.bpd.dossierSourceFresh=snapshot.stale!==true;
     const roster=snapshot.stale?[]:snapshot.data;
+    // Navigation hint only; the API rechecks identity, rank and target on submission.
+    req.bpd.basicObservationCanSubmit=Boolean(basicObservationTargets(req.bpd,roster).author);
     // This verifies a basic Ambulance employee's own OFFICIAL roster
     // mapping for dashboard presentation only. It must never unlock
     // protected service dossiers, report endpoints or grants.
@@ -793,7 +796,8 @@ app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
       ['officierenkader','korpsleiding'].includes(ambulanceDashboardTier(req.bpd))&&
       req.bpd.dossierNativeDepartments?.includes('ambulance')===true&&
       req.bpd.dossierAllowedDepartments?.includes('ambulance')===true,
-    allowedDepartments:req.bpd.dossierAllowedDepartments||[]});
+    allowedDepartments:req.bpd.dossierAllowedDepartments||[],
+    basicObservationCanSubmit:req.bpd.basicObservationCanSubmit===true});
 });
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
