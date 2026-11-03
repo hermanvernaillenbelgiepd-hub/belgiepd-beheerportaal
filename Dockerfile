@@ -8,6 +8,9 @@ COPY package.json ./
 RUN npm install --omit=dev
 COPY src ./src
 COPY public ./public
+COPY tests ./tests
+# Identity transfers modify dossier ownership: release only after policy checks pass.
+RUN node --test tests/dc-id-transfer.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node

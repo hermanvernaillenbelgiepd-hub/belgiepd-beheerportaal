@@ -40,6 +40,8 @@ import {installUniformGradeRoutes} from './uniform-grade-routes.js';
 import {installUniformCompositionRoutes} from './uniform-composition-routes.js';
 import {installTrainingRequestRoutes} from './training-request-routes.js';
 import {installDocumentCenterRoutes} from './document-center-routes.js';
+import {installDcIdTransferRoutes} from './dc-id-transfer-routes.js';
+import {DC_TRANSFER_ALIASES,applyCompletedDcAliases} from './dc-id-transfer-policy.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
 import { installUserRoutes } from './user-routes.js';
@@ -118,6 +120,7 @@ app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
 app.use('/api/training-calendar',express.json({limit:'4kb',strict:true}));
 app.use('/api/document-center',express.json({limit:'8mb',strict:true}));
+app.use('/api/dc-id-transfer',express.json({limit:'5kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/member',express.json({limit:'3kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
@@ -137,6 +140,35 @@ app.use('/api/dossier-retirement',express.json({limit:'4kb',strict:true}));
 app.use('/api/to',express.json({limit:'24kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
+// A transfer revocation must also protect modules that authenticate outside
+// requireUser (training, role management and historical endpoints). This check
+// only blocks an actually signed former identity and never grants permissions.
+app.use('/api',async(req,res,next)=>{
+ const token=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
+ if(!token)return next();
+ try{
+  if(!getApps().length)
+    initializeApp({credential:applicationDefault(),projectId:process.env.FIREBASE_PROJECT_ID});
+  const decoded=await getAuth().verifyIdToken(token);
+  let id=null;
+  if(decoded.firebase?.sign_in_provider==='custom'&&decoded.bpdDiscord===true&&
+      /^discord:\d{15,22}$/.test(decoded.uid||''))
+    id=decoded.uid.slice(8);
+  else if(decoded.firebase?.sign_in_provider==='google.com'&&decoded.email_verified)
+    id=String(accessList()?.[String(decoded.email||'').toLowerCase()]?.discordId||'');
+  if(/^\d{15,22}$/.test(id||'')){
+    const alias=await cachedAuthDoc(DC_TRANSFER_ALIASES,id);
+    if(alias.exists&&alias.get('status')==='completed')
+      return res.status(403).json({error:'Dit Discord-account werd overgedragen. Gebruik het nieuwe account.'});
+  }
+  next();
+ }catch(e){
+  // Invalid tokens remain the responsibility of the original endpoint's
+  // authentication middleware. Infrastructure failures fail closed.
+  if(typeof e?.code==='string'&&e.code.startsWith('auth/'))return next();
+  return res.status(503).json({error:'DC-ID identiteitscontrole tijdelijk niet beschikbaar'});
+ }
+});
 installRoleRoutes(app,{getSnapshot});
 // The live personnel view remains sourced from Sheets during the transition.
  // Including citizens in the snapshot does NOT re-enable retired citizen dossiers.
@@ -394,20 +426,24 @@ async function getSourceSnapshot(forceRefresh=false){
 async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
-  const [created,edits,specialties,rosterConfigs]=await Promise.all([
+  const [created,edits,specialties,rosterConfigs,identityAliases]=await Promise.all([
     on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(500).get():null,
     process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'
       ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null,
     specialtyReadEnabled(process.env)
       ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null,
-    specialtyReadEnabled(process.env)?loadRosterConfigs():null
+    specialtyReadEnabled(process.env)?loadRosterConfigs():null,
+    getFirestore().collection(DC_TRANSFER_ALIASES).limit(201).get()
   ]);
-  if(created?.size===500||edits?.size===400||specialties?.size===600)throw Error('Te veel personeelsrecords; migratiecontrole nodig');
+  if(created?.size===500||edits?.size===400||specialties?.size===600||identityAliases.size===201)
+    throw Error('Te veel personeelsrecords; migratiecontrole nodig');
   const added=(created?.docs||[]).map(d=>asCreatedPersonnel(d.data())).filter(Boolean);
   // Never silently override or duplicate an original service+Discord ID.
-  const keys=new Set(base.data.map(p=>p.dept+':'+p.personId));
-  const extra=added.filter(p=>!keys.has(p.dept+':'+p.personId));
-  const combined=base.data.concat(extra);
+  const canonicalBase=applyCompletedDcAliases(base.data,identityAliases.docs);
+  const canonicalAdded=applyCompletedDcAliases(added,identityAliases.docs);
+  const keys=new Set(canonicalBase.map(p=>p.dept+':'+p.personId));
+  const extra=canonicalAdded.filter(p=>!keys.has(p.dept+':'+p.personId));
+  const combined=canonicalBase.concat(extra);
   const personnel=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
   let visible=specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel;
   // Reuse the already-authorized BelgiumPD members API to project fresh,
@@ -727,6 +763,11 @@ installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installRosterColumnRoutes(app,{requireUser});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
 installDocumentCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
+  onCompleted:id=>{
+    authDocCache.delete(DC_TRANSFER_ALIASES+':'+id);
+    authDocCache.delete(USER_COLLECTION+':'+id);
+  }});
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installRoleArtworkRoutes(app,{requireUser});
