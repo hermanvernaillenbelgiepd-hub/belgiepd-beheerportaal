@@ -22,7 +22,7 @@ const errorResponse=(res,error)=>{
   console.error('Weekrapport/dossierfout:',error?.code||error?.message||'onbekend');
   return res.status(503).json({error:'Interne dossier- of weekrapportopslag tijdelijk niet beschikbaar'});
 };
-export function installManagementRoutes(app,{requireUser,getSnapshot}){
+export function installManagementRoutes(app,{requireUser,requireMemberUser=requireUser,getSnapshot}){
   const db=()=>getFirestore();
   const enabled=()=>process.env.BPD_ENABLE_REGISTRATIONS==='true' && process.env.BPD_ENABLE_MANAGEMENT_WRITES==='true';
   // Technical profile is a signed, allowlisted, authenticated Discord session.
@@ -91,7 +91,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
   });
   // Members can inspect ONLY their own inactivity pings. Their verified
   // portal identity is supplied by requireUser, never by a URL/body ID.
-  app.get('/api/management/pings/mine',requireUser,async(req,res)=>{
+  app.get('/api/management/pings/mine',requireMemberUser,async(req,res)=>{
     const id=req.bpd?.discordId;
     if(!validDiscord(id))return res.status(403).json({error:'Geverifieerde Discord-koppeling vereist'});
     try{
@@ -101,7 +101,7 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       res.json({pings:docs.docs.map(doc=>publicPingNotice(doc.id,doc.data())).filter(Boolean)});
     }catch(e){errorResponse(res,e)}
   });
-  app.post('/api/management/pings/mine/:entryId/read',requireUser,async(req,res)=>{
+  app.post('/api/management/pings/mine/:entryId/read',requireMemberUser,async(req,res)=>{
     const id=req.bpd?.discordId,entryId=req.params.entryId;
     if(!validDiscord(id))return res.status(403).json({error:'Geverifieerde Discord-koppeling vereist'});
     if(!validPingId(entryId)||Object.keys(req.body||{}).length)
