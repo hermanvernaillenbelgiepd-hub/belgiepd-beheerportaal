@@ -19,13 +19,13 @@ export function verifiedDocumentRoles(member,guildId,now=Date.now()){
   return [...new Set(member.roleIds)];
 }
 export function documentScopes(actor,roster,verifiedRoleIds=[]){
-  const empty={read:[],write:[]};
+  const empty={read:[],write:[],manage:[]};
   if(!actor||!ID.test(actor.discordId)||!Array.isArray(actor.departments)||
      !Array.isArray(roster))return empty;
   const technical=actor.portalTechnicalMode===true&&
     actor.profileTechnicalAvailable===true&&actor.uid==='discord:'+actor.discordId;
   if(technical||actor.boardPersonnelAdmin===true||actor.role==='beheerder')
-    return {read:[...DOCUMENT_DEPARTMENTS],write:[...DOCUMENT_DEPARTMENTS]};
+    return {read:[...DOCUMENT_DEPARTMENTS],write:[...DOCUMENT_DEPARTMENTS],manage:[...DOCUMENT_DEPARTMENTS]};
   const unique=(dept)=>actor.departments.includes(dept)&&
     roster.filter(p=>p.dept===dept&&p.personId===actor.discordId).length===1;
   const highPolice=unique('politie')&&COMMAND.has(roleForDepartment(actor,'politie'));
@@ -43,7 +43,7 @@ export function documentScopes(actor,roster,verifiedRoleIds=[]){
   // Global documents are readable by verified instructors and leadership
   // across services but writable only by centrally authorised command.
   if(read.length)read.push('multidisciplinair');
-  return {read,write};
+  return {read,write,manage:[]};
 }
 export function mayReadDocument(scopes,entry){
   return !!entry&&entry.status==='active'&&
@@ -53,4 +53,12 @@ export function mayReadDocument(scopes,entry){
 }
 export function mayWriteDocuments(scopes,department){
   return DOCUMENT_DEPARTMENTS.includes(department)&&scopes.write.includes(department);
+}
+
+// Once uploaded, documents belong to BelgiumPD. Upload permission never grants
+// an author (or their successor) permission to alter/delete published files.
+// Only verified command/Board/Technical administration can manage any document.
+export function mayManageDocuments(scopes,department){
+  return DOCUMENT_DEPARTMENTS.includes(department)&&
+    scopes.manage?.includes(department)===true;
 }
