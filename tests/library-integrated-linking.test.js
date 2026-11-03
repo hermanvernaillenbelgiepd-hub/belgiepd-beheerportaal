@@ -40,3 +40,14 @@ test('module script parses without external dependencies',()=>{
  assert.ok(source);
  assert.doesNotThrow(()=>new Function(source[1].replace(/^import .*;$/gm,'')));
 });
+
+test('one uploaded specialty image can be linked with or without a Discord role',()=>{
+ assert.match(ui,/Koppelen aan specialisatie \(Discord-rol optioneel\)/);
+ assert.match(ui,/\(roleId&&!specialtyConfig\.roles\?\.some/);
+ assert.match(ui,/\(roleId&&!\/\^\\d\{15,22\}\$\/\.test\(roleId\)\)/);
+ assert.match(ui,/if\(roleId&&!sharedFire\)\{/);
+ assert.match(ui,/\(!roleId\|\|sharedFire\)&&x\.label!==specialtyLabel/);
+ assert.match(ui,/\$\('linkRoleEnabled'\)\.checked=true/);
+ assert.match(ui,/\$\('linkAsset'\)\.value===uploadedKey/);
+ assert.match(ui,/x\.assetKey===item\.key/);
+});
