@@ -288,7 +288,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
   // Replacing a published binary creates a new immutable storage object.
   // The old object and its metadata remain preserved for institutional audit.
   app.put('/api/document-center/:id/file',requireUser,scope,async(req,res)=>{
-    let newFile=null;
+    let newFile=null,newPreviewFile=null;
     try{
       if(!ID.test(req.params.id))throw fail(404,'Document niet gevonden');
       const body=req.body||{};
@@ -311,9 +311,15 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       });
       const newPath='belgiepd/documents/'+old.department+'/'+req.params.id+
         '/v'+(expectedVersion+1)+'-'+randomUUID()+input.ext;
+      const previewBytes=await officePreviewPdf(input.bytes,input.ext);
       newFile=storage().file(newPath);
       await newFile.save(input.bytes,{resumable:false,validation:'crc32c',
         metadata:{contentType:input.mime,cacheControl:'private, no-store'}});
+      if(previewBytes){
+        newPreviewFile=storage().file(newPath+'.preview.pdf');
+        await newPreviewFile.save(previewBytes,{resumable:false,validation:'crc32c',
+          metadata:{contentType:'application/pdf',cacheControl:'private, no-store'}});
+      }
       await db.runTransaction(async tx=>{
         const current=await tx.get(ref);
         if(!current.exists||current.get('status')!=='active')throw fail(404,'Document niet gevonden');
@@ -325,11 +331,13 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
         tx.create(db.collection(VERSIONS).doc(),{
           documentId:req.params.id,department:old.department,
           version:expectedVersion,storagePath:old.storagePath,
+          previewStoragePath:old.previewStoragePath||null,
           fileName:old.fileName,mime:old.mime,size:old.size,
           archivedAt:stamp,archivedBy:req.bpd.uid
         });
         tx.update(ref,{
           version:expectedVersion+1,storagePath:newPath,fileName:input.filename,
+          previewStoragePath:newPreviewFile?.name||null,
           mime:input.mime,size:input.size,updatedBy:req.bpd.uid,updatedAt:stamp
         });
         tx.create(db.collection(AUDIT).doc(),{
@@ -339,9 +347,10 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
           previousStoragePath:old.storagePath,newStoragePath:newPath
         });
       });
-      newFile=null; // The committed version must never be deleted.
+      newFile=null;newPreviewFile=null; // Committed versions must never be deleted.
       res.json({saved:true,version:expectedVersion+1});
     }catch(e){
+      if(newPreviewFile)await newPreviewFile.delete({ignoreNotFound:true}).catch(()=>{});
       if(newFile)await newFile.delete({ignoreNotFound:true}).catch(()=>{});
       error(res,e);
     }
