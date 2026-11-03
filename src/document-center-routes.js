@@ -2,9 +2,10 @@ import {randomUUID} from 'node:crypto';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getStorage} from 'firebase-admin/storage';
 import {DOCUMENT_DEPARTMENTS,documentScopes,verifiedDocumentRoles,
-  mayReadDocument,mayWriteDocuments} from './document-center-policy.js';
+  mayReadDocument,mayWriteDocuments,mayManageDocuments} from './document-center-policy.js';
 
-const META='bpd_document_center',AUDIT='bpd_document_center_audit';
+const META='bpd_document_center',AUDIT='bpd_document_center_audit',
+  VERSIONS='bpd_document_center_versions';
 const MAX_BYTES=5*1024*1024;
 const TYPES=Object.freeze({
   pdf:{mime:'application/pdf',ext:'.pdf'},
@@ -98,6 +99,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
   app.get('/api/document-center/context',requireUser,scope,(req,res)=>{
     res.json({readDepartments:req.documentScopes.read,
       writeDepartments:req.documentScopes.write,
+      manageDepartments:req.documentScopes.manage,
       storageReady:Boolean(bucketName(process.env)),maxBytes:MAX_BYTES,
       categories:CATEGORIES,audiences:AUDIENCES});
   });
@@ -133,7 +135,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       batch.create(ref,{department:item.department,title:item.title,
         description:item.description,category:item.category,audience:item.audience,
         fileName:item.filename,mime:item.mime,size:item.size,storagePath:path,
-        version:1,status:'active',uploadedBy:req.bpd.uid,
+        version:1,status:'active',owner:'belgiepd',uploadedBy:req.bpd.uid,
         uploadedByName:String(person?.name||'Bevoegd beheer').slice(0,120),
         createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
       batch.create(audit,{documentId:id,department:item.department,
@@ -153,8 +155,9 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       if(!ref.exists||!mayReadDocument(req.documentScopes,ref.data()))
         throw fail(404,'Document niet gevonden');
       const record=ref.data();
-      const prefix='belgiepd/documents/'+record.department+'/'+req.params.id+'.';
-      if(!record.storagePath?.startsWith(prefix))
+      const prefix='belgiepd/documents/'+record.department+'/'+req.params.id;
+      if(typeof record.storagePath!=='string'||
+        !(record.storagePath.startsWith(prefix+'.')||record.storagePath.startsWith(prefix+'/')))
         throw fail(503,'Bestandsverwijzing ongeldig');
       const [bytes]=await storage().file(record.storagePath).download();
       await getFirestore().collection(AUDIT).doc().create({
@@ -177,7 +180,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
         const snap=await tx.get(ref);
         if(!snap.exists||snap.get('status')!=='active')throw fail(404,'Document niet gevonden');
         const old=snap.data();
-        if(!mayWriteDocuments(req.documentScopes,old.department))throw fail(403,'Geen beheerrechten');
+        if(!mayManageDocuments(req.documentScopes,old.department))throw fail(403,'Alleen Officierenkader, Korpsleiding of bevoegde administratie kan documenten wijzigen');
         const item=details(req.body);
         if(item.department!==old.department)throw fail(400,'Dienst kan niet gewijzigd worden');
         tx.update(ref,{...item,updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
@@ -190,6 +193,69 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       res.json({saved:true});
     }catch(e){error(res,e);}
   });
+
+  // Replacing a published binary creates a new immutable storage object.
+  // The old object and its metadata remain preserved for institutional audit.
+  app.put('/api/document-center/:id/file',requireUser,scope,async(req,res)=>{
+    let newFile=null;
+    try{
+      if(!ID.test(req.params.id))throw fail(404,'Document niet gevonden');
+      const body=req.body||{};
+      if(typeof body!=='object'||Array.isArray(body)||
+        Object.keys(body).some(k=>!['fileName','base64','expectedVersion'].includes(k)))
+        throw fail(400,'Ongeldige versie-aanvraag');
+      const expectedVersion=Number(body.expectedVersion);
+      if(!Number.isSafeInteger(expectedVersion)||expectedVersion<1)
+        throw fail(400,'Een actuele documentversie is verplicht');
+      const db=getFirestore(),ref=db.collection(META).doc(req.params.id);
+      const snap=await ref.get();
+      if(!snap.exists||snap.get('status')!=='active')throw fail(404,'Document niet gevonden');
+      const old=snap.data();
+      if(!mayManageDocuments(req.documentScopes,old.department))
+        throw fail(403,'Alleen Officierenkader, Korpsleiding of bevoegde administratie mag bestanden vervangen');
+      if((old.version||1)!==expectedVersion)throw fail(409,'Document is inmiddels gewijzigd. Vernieuw de lijst.');
+      const input=validateDocumentUpload({
+        department:old.department,title:old.title,description:old.description,
+        category:old.category,audience:old.audience,fileName:body.fileName,base64:body.base64
+      });
+      const newPath='belgiepd/documents/'+old.department+'/'+req.params.id+
+        '/v'+(expectedVersion+1)+'-'+randomUUID()+input.ext;
+      newFile=storage().file(newPath);
+      await newFile.save(input.bytes,{resumable:false,validation:'crc32c',
+        metadata:{contentType:input.mime,cacheControl:'private, no-store'}});
+      await db.runTransaction(async tx=>{
+        const current=await tx.get(ref);
+        if(!current.exists||current.get('status')!=='active')throw fail(404,'Document niet gevonden');
+        const existing=current.data();
+        if((existing.version||1)!==expectedVersion||
+          existing.storagePath!==old.storagePath)
+          throw fail(409,'Document is inmiddels gewijzigd. Vernieuw de lijst.');
+        const stamp=FieldValue.serverTimestamp();
+        tx.create(db.collection(VERSIONS).doc(),{
+          documentId:req.params.id,department:old.department,
+          version:expectedVersion,storagePath:old.storagePath,
+          fileName:old.fileName,mime:old.mime,size:old.size,
+          archivedAt:stamp,archivedBy:req.bpd.uid
+        });
+        tx.update(ref,{
+          version:expectedVersion+1,storagePath:newPath,fileName:input.filename,
+          mime:input.mime,size:input.size,updatedBy:req.bpd.uid,updatedAt:stamp
+        });
+        tx.create(db.collection(AUDIT).doc(),{
+          documentId:req.params.id,department:old.department,action:'replace_file',
+          actorUid:req.bpd.uid,at:stamp,
+          previousVersion:expectedVersion,newVersion:expectedVersion+1,
+          previousStoragePath:old.storagePath,newStoragePath:newPath
+        });
+      });
+      newFile=null; // The committed version must never be deleted.
+      res.json({saved:true,version:expectedVersion+1});
+    }catch(e){
+      if(newFile)await newFile.delete({ignoreNotFound:true}).catch(()=>{});
+      error(res,e);
+    }
+  });
+
   app.delete('/api/document-center/:id',requireUser,scope,async(req,res)=>{
     try{
       if(!ID.test(req.params.id))throw fail(404,'Document niet gevonden');
@@ -198,8 +264,8 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
         const snap=await tx.get(ref);
         if(!snap.exists||snap.get('status')!=='active')throw fail(404,'Document niet gevonden');
         const old=snap.data();
-        if(!mayWriteDocuments(req.documentScopes,old.department))
-          throw fail(403,'Geen beheerrechten');
+        if(!mayManageDocuments(req.documentScopes,old.department))
+          throw fail(403,'Alleen Officierenkader, Korpsleiding of bevoegde administratie kan documenten archiveren');
         tx.update(ref,{status:'archived',archivedBy:req.bpd.uid,
           archivedAt:FieldValue.serverTimestamp()});
         tx.create(db.collection(AUDIT).doc(),{
