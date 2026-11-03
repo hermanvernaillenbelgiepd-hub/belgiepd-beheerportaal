@@ -38,6 +38,44 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .previewBody iframe{border:0;width:100%;height:100%;background:#fff}
 .previewBody img{max-width:100%;max-height:100%;object-fit:contain}
 
+
+/* Documentencentrum: restrained folder layout, with genuine light/dark colour contrast. */
+#folderButtons{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:9px;margin:11px 0 15px}
+.folder-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:15px 0 6px}
+.folder-header h2{margin:0;font-size:15px}
+#folderButtons button{background:#1a3150!important;color:#e9f3ff!important;text-align:left;
+  border:1px solid #40618a!important;padding:12px;min-height:58px;font-weight:600}
+#folderButtons button[aria-pressed="true"]{background:#294d81!important;
+  outline:2px solid #81b5ef;outline-offset:1px}
+#folderButtons button:hover{background:#2c4c75!important}
+#folderButtons button small{display:block;color:#b4cee9;font-size:11px;font-weight:500;margin-top:3px}
+#workspace,#editor{background:#13243b;color:#e9f1fc;border:1px solid #385575}
+#workspace label,#editor label{color:#c8dcf6}
+#workspace input,#workspace select,#editor input,#editor select,#editor textarea{
+ background:#0c1d33!important;color:#f3f7ff!important;
+ border:1px solid #547399!important;border-radius:8px;min-height:39px}
+#workspace input::placeholder,#editor input::placeholder,#editor textarea::placeholder{color:#a8bcd7!important;opacity:1}
+#workspace select option,#editor select option{color:#f3f7ff;background:#122842}
+#workspace input:focus-visible,#workspace select:focus-visible,#editor :is(input,select,textarea):focus-visible{
+ outline:2px solid #88c6ff;outline-offset:1px}
+.document{background:#10223a;border-color:#3e5d81;color:#eaf2ff}
+.document .desc{color:#d8e6fb}
+.document .meta,.document .counter{color:#b8cae6}
+html[data-bpd-theme="dark"] #workspace,
+html[data-bpd-theme="dark"] #editor{background:#13243b!important;color:#e9f1fc!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #workspace,
+html:not([data-bpd-theme="dark"]) body.bpd-shell #editor{background:#fff!important;color:#1e3456!important;border-color:#cddcef!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #folderButtons button{background:#f3f7fd!important;color:#1e3d61!important;border-color:#c5d6ec!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #folderButtons button[aria-pressed="true"]{background:#dcecff!important;color:#173968!important;outline-color:#3866be}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #folderButtons button small{color:#597089}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #workspace :is(input,select),
+html:not([data-bpd-theme="dark"]) body.bpd-shell #editor :is(input,select,textarea){background:#f7faff!important;color:#15304f!important;border-color:#b5c7df!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #workspace select option,
+html:not([data-bpd-theme="dark"]) body.bpd-shell #editor select option{background:#fff;color:#15304f}
+html:not([data-bpd-theme="dark"]) body.bpd-shell .document{background:#f8fbff!important;color:#203a5c!important;border-color:#cbd9eb!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell .document :is(.desc,.meta,.counter){color:#476281!important}
+@media(max-width:640px){#folderButtons{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.folder-header{align-items:start}}
+
 @media(max-width:640px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.top-actions{margin-left:0}}
 </style></head>
 <body>
@@ -58,22 +96,30 @@ button:disabled{opacity:.5;cursor:not-allowed}
   <label class="search">Zoeken<input id="search" type="search" placeholder="Titel, bestand of omschrijving"></label>
   <button type="button" id="reload" class="secondary">Vernieuwen</button>
  </div>
+ <div class="folder-header"><h2>📁 Mappen</h2><button type="button" id="addFolder" class="secondary" hidden>+ Nieuwe map</button></div>
+ <div class="folder-grid" id="folderButtons" aria-label="Selecteer een map"></div>
  <p class="counter" id="counter"></p>
  <div id="documents"></div>
 </section>
 <section class="card" id="editor" hidden>
- <h2 id="editorTitle">Document uploaden</h2>
- <p class="note">Bestanden worden privé opgeslagen. Alleen PDF, DOCX, PPTX, XLSX, PNG, JPG en WebP tot 5 MB.</p>
+ <h2 id="editorTitle">Document of link toevoegen</h2>
+ <p class="note">Bewaar PDF, Word, PowerPoint, Excel, afbeeldingen of HTTPS-leslinks per map. Bestanden blijven privé; bestanden maximaal 5 MB. YouTube-video's kunnen in het portaal worden bekeken.</p>
  <form id="documentForm">
  <div class="grid">
   <label>Titel<input id="title" maxlength="120" minlength="3" required></label>
+  <label>Map<select id="folder"><option value="">Algemeen (zonder map)</option></select></label>
+  <label>Type lesmateriaal<select id="resourceType">
+    <option value="file">Bestand · PDF, Word, PowerPoint, Excel, afbeelding</option>
+    <option value="link">Weblink · website, video, documentlink</option>
+  </select></label>
   <label>Categorie<select id="category" required></select></label>
   <label>Wie mag dit bekijken?<select id="audience" required>
    <option value="leden">Alle geverifieerde dienstleden (ook tijdelijk roepnummer)</option>
    <option value="instructeurs">Instructeurs en leiding</option>
    <option value="leiding">Alleen leiding</option>
    <option value="toegewezen">Alleen handmatig toegewezen lesgevers</option></select></label>
-  <label id="fileWrap">Bestand<input id="file" type="file" accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,.webp" required></label>
+  <label id="fileWrap" class="full">Bestand<input id="file" type="file" accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,.webp" required></label>
+  <label id="linkWrap" class="full" hidden>Externe HTTPS-link<input id="linkUrl" type="url" placeholder="https://..." maxlength="1800"></label>
   <label class="full">Omschrijving (optioneel)<textarea id="description" maxlength="1000"></textarea></label>
   <label class="full">Extra leesrechten voor lesgevers (Discord-ID's, gescheiden door komma of nieuwe regel)
     <textarea id="readerIds" maxlength="1200" placeholder="123456789012345678, 234567890123456789"></textarea>
@@ -97,7 +143,8 @@ const NAMES={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
  depannage:'Depannage',burger:'Burger',multidisciplinair:'Multidisciplinair'};
 const CATEGORIES={opleiding:'Opleiding',procedure:'Procedure',lesmateriaal:'Lesmateriaal',
  formulier:'Formulier',evaluatie:'Evaluatie',dienstnota:'Dienstnota',overig:'Overig'};
-let bridge=null,context=null,documents=[],editing=null,replacing=false,editingVersion=null,busy=false,previewUrl=null;
+let bridge=null,context=null,documents=[],folders=[],selectedFolder='all',editing=null,
+ replacing=false,editingVersion=null,busy=false,previewUrl=null;
 const status=(text,kind='')=>{$('feedback').className='status '+kind;$('feedback').textContent=text};
 async function api(url,method='GET',data){
  const user=bridge?.auth.currentUser;
@@ -118,13 +165,73 @@ const canWrite=()=>context?.writeDepartments?.includes($('department').value)===
 const canManage=()=>context?.manageDepartments?.includes($('department').value)===true;
 function resetEditor(){
  editing=null;replacing=false;editingVersion=null;
- $('documentForm').reset();$('editorTitle').textContent='Document uploaden';
- for(const id of ['title','description','category','audience','readerIds'])$(id).disabled=false;
- $('fileWrap').hidden=false;$('file').required=true;$('save').textContent='Uploaden';
+ $('documentForm').reset();$('editorTitle').textContent='Document toevoegen';
+ for(const id of ['title','description','category','audience','readerIds','folder','resourceType','linkUrl'])
+   $(id).disabled=false;
+ $('folder').value=selectedFolder==='all'?'':selectedFolder;
+ $('resourceType').value='file';
+ updateResourceInput();$('save').textContent='Toevoegen';
+}
+function updateResourceInput(){
+ const isLink=$('resourceType').value==='link';
+ $('fileWrap').hidden=isLink;$('file').required=!isLink;
+ $('linkWrap').hidden=!isLink;$('linkUrl').required=isLink;
+}
+$('resourceType').onchange=updateResourceInput;
+function fillFolderSelect(){
+ const select=$('folder'),desired=select.value||'';
+ select.replaceChildren(option('','Algemeen (zonder map)'));
+ for(const f of folders)select.append(option(f.id,'📁 '+f.name));
+ if([...select.options].some(x=>x.value===desired))select.value=desired;
+ else select.value=selectedFolder==='all'?'':selectedFolder;
+}
+function renderFolders(){
+ const root=$('folderButtons');root.replaceChildren();
+ const choices=[
+  {id:'all',name:'Alle documenten',count:documents.length},
+  {id:'',name:'Algemeen',count:documents.filter(d=>!d.folderId).length},
+  ...folders.map(f=>({...f,count:documents.filter(d=>d.folderId===f.id).length}))
+ ];
+ if(selectedFolder!=='all'&&selectedFolder!==''&&!folders.some(f=>f.id===selectedFolder))
+  selectedFolder='all';
+ for(const item of choices){
+  const button=document.createElement('button');button.type='button';
+  button.setAttribute('aria-pressed',String(selectedFolder===item.id));
+  button.append(document.createTextNode('📁 '+item.name));
+  const count=document.createElement('small');
+  count.textContent=item.count+' document'+(item.count===1?'':'en');
+  button.append(count);
+  button.onclick=()=>{
+    selectedFolder=item.id;renderFolders();render();
+    if(canWrite()&&!editing)$('folder').value=item.id==='all'?'':item.id;
+  };
+  root.append(button);
+ }
+ $('addFolder').hidden=!canWrite();
+ fillFolderSelect();
+}
+$('addFolder').onclick=async()=>{
+ if(!canWrite())return;
+ const name=prompt('Naam van de nieuwe map (bijvoorbeeld Motard, Dispatch, K-9):');
+ if(!name)return;
+ try{
+  const data=await api('/api/document-center/folders','POST',{
+    department:$('department').value,name:name.trim()
+  });
+  await loadFolders();selectedFolder=data.id;renderFolders();render();
+  $('folder').value=data.id;
+  status('Map aangemaakt en bewaard op BelgiumPD.','good');
+ }catch(e){status('Map niet aangemaakt: '+e.message,'error')}
+};
+async function loadFolders(){
+ const dept=$('department').value;
+ const response=await api('/api/document-center/folders?department='+encodeURIComponent(dept));
+ folders=response.folders||[];renderFolders();
 }
 function render(){
  const q=$('search').value.toLocaleLowerCase('nl').trim(),category=$('filterCategory').value;
  const rows=documents.filter(d=>(!category||d.category===category)&&
+  (selectedFolder==='all'||(d.folderId||'')===selectedFolder)&&
   [d.title,d.description,d.fileName,d.uploadedByName].some(x=>String(x||'').toLocaleLowerCase('nl').includes(q)));
  $('counter').textContent=rows.length+' van '+documents.length+' documenten'+
   (canManage()?' · volledig documentbeheer':canWrite()?' · uploadrechten':' · alleen lezen');
@@ -139,19 +246,20 @@ function render(){
   type.textContent=(CATEGORIES[d.category]||d.category)+' · '+(targets[d.audience]||d.audience);
   heading.append(name,type);
   const meta=document.createElement('div');meta.className='meta';
-  meta.textContent=d.fileName+' · '+(d.size/1024/1024).toFixed(2)+' MB · versie '+d.version+
-    ' · '+(d.uploadedByName||'Onbekend')+(d.createdAt?' · '+new Date(d.createdAt).toLocaleString('nl-BE'):'');
+  meta.textContent=(d.kind==='link'?'🔗 Externe bron':d.fileName+' · '+(d.size/1024/1024).toFixed(2)+' MB')+
+    ' · versie '+d.version+' · '+(d.uploadedByName||'Onbekend')+
+    (d.createdAt?' · '+new Date(d.createdAt).toLocaleString('nl-BE'):'');
   const desc=document.createElement('p');desc.className='desc';desc.textContent=d.description||'';
   const actions=document.createElement('div');actions.className='doc-buttons';
   const btn=(name,cls,action)=>{
    const b=document.createElement('button');b.type='button';b.textContent=name;b.className=cls;
    b.onclick=action;actions.append(b);
   };
-  btn('Presenteren / bekijken','secondary',()=>preview(d));
-  btn('Downloaden','secondary',()=>download(d));
+  btn(d.kind==='link'?'Open link / bekijken':'Presenteren / bekijken','secondary',()=>preview(d));
+  if(d.kind!=='link')btn('Downloaden','secondary',()=>download(d));
   if(canManage()){
    btn('Gegevens aanpassen','secondary',()=>edit(d));
-   btn('Nieuwe bestandsversie','secondary',()=>replaceFile(d));
+   if(d.kind!=='link')btn('Nieuwe bestandsversie','secondary',()=>replaceFile(d));
    btn('Archiveren','danger',()=>archive(d));
   }
   article.append(heading,meta,desc,actions);root.append(article);
@@ -169,18 +277,41 @@ $('previewDialog').addEventListener('close',()=>{
 async function preview(doc){
  try{
   status('Voorvertoning laden…');
-  const blob=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/preview');
-  if(previewUrl)URL.revokeObjectURL(previewUrl);
-  previewUrl=URL.createObjectURL(blob);
   $('previewBody').replaceChildren();
-  const viewer=blob.type.startsWith('image/')?document.createElement('img'):document.createElement('iframe');
-  viewer.src=previewUrl;
-  viewer.title='Voorvertoning '+doc.title;
-  viewer.referrerPolicy='no-referrer';
-  $('previewBody').append(viewer);
+  if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+  if(doc.kind==='link'){
+    const resource=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/open-link');
+    if(resource.embed){
+      const viewer=document.createElement('iframe');
+      viewer.src=resource.embed;
+      viewer.title='Ingesloten video · '+doc.title;
+      viewer.referrerPolicy='strict-origin-when-cross-origin';
+      viewer.allow='fullscreen; encrypted-media; picture-in-picture';
+      viewer.setAttribute('sandbox','allow-scripts allow-same-origin allow-presentation');
+      $('previewBody').append(viewer);
+    }else{
+      const block=document.createElement('div');
+      block.style.cssText='padding:28px;max-width:520px;line-height:1.6;color:#172c47';
+      const intro=document.createElement('p');
+      intro.textContent='Deze bron staat op een externe website. Open de link om de inhoud te bekijken.';
+      const link=document.createElement('a');
+      link.href=resource.url;link.target='_blank';link.rel='noopener noreferrer';
+      link.textContent='Open externe bron ↗';
+      link.style.cssText='display:inline-block;padding:12px 15px;background:#214c91;color:#fff;border-radius:8px';
+      block.append(intro,link);$('previewBody').append(block);
+    }
+  }else{
+    const blob=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/preview');
+    previewUrl=URL.createObjectURL(blob);
+    const viewer=blob.type.startsWith('image/')?document.createElement('img'):document.createElement('iframe');
+    viewer.src=previewUrl;
+    viewer.title='Voorvertoning '+doc.title;
+    viewer.referrerPolicy='no-referrer';
+    $('previewBody').append(viewer);
+  }
   $('previewTitle').textContent=doc.title+' · alleen lezen';
   $('previewDialog').showModal();
-  status('Document voorvertoning geopend.','good');
+  status('Lesmateriaal geopend.','good');
  }catch(e){status('Voorvertoning niet beschikbaar: '+e.message,'error')}
 }
 async function download(doc){
@@ -194,12 +325,18 @@ async function download(doc){
 }
 function edit(d){
  if(!canManage())return;
- editing=d.id;replacing=false;editingVersion=d.version;
+ resetEditor();editing=d.id;replacing=false;editingVersion=d.version;
  $('editor').hidden=false;$('editorTitle').textContent='Documentgegevens aanpassen';
  $('title').value=d.title;$('description').value=d.description;
  $('category').value=d.category;$('audience').value=d.audience;
  $('readerIds').value=(d.readerIds||[]).join('\n');
- $('fileWrap').hidden=true;$('file').required=false;$('save').textContent='Wijzigingen opslaan';
+ $('folder').value=d.folderId||'';
+ $('resourceType').value=d.kind==='link'?'link':'file';updateResourceInput();
+ if(d.kind==='link')$('linkUrl').value=d.linkUrl||'';
+ $('resourceType').disabled=true;
+ $('fileWrap').hidden=true;$('file').required=false;
+ if(d.kind==='link'){$('linkWrap').hidden=false;$('linkUrl').required=true;}
+ $('save').textContent='Wijzigingen opslaan';
  $('editor').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function replaceFile(d){
@@ -209,7 +346,9 @@ function replaceFile(d){
  $('title').value=d.title;$('description').value=d.description;
  $('category').value=d.category;$('audience').value=d.audience;
  $('readerIds').value=(d.readerIds||[]).join('\n');
- for(const id of ['title','description','category','audience','readerIds'])$(id).disabled=true;
+ $('folder').value=d.folderId||'';
+ $('resourceType').value='file';$('resourceType').disabled=true;
+ for(const id of ['title','description','category','audience','readerIds','folder'])$(id).disabled=true;
  $('fileWrap').hidden=false;$('file').required=true;
  $('save').textContent='Nieuwe versie bewaren';
  $('editor').scrollIntoView({behavior:'smooth',block:'start'});
@@ -230,11 +369,17 @@ function fileToBase64(file){
 async function loadDocuments(){
  const dept=$('department').value;if(!dept)return;
  status('Documenten laden…');
- try{const data=await api('/api/document-center?department='+encodeURIComponent(dept));
-  documents=data.documents||[];$('editor').hidden=!canWrite();resetEditor();
-  render();status(data.limited?'De eerste 160 documenten zijn geladen. Beperk de lijst per dienst.':
-   'Documenten geladen.','good');
- }catch(e){documents=[];render();status('Documenten niet beschikbaar: '+e.message,'error')}
+ try{
+  const [data]=await Promise.all([
+    api('/api/document-center?department='+encodeURIComponent(dept)),
+    loadFolders()
+  ]);
+  documents=data.documents||[];
+  $('editor').hidden=!canWrite();resetEditor();
+  renderFolders();render();
+  status(data.limited?'Eerste 160 documenten geladen. Verfijn je zoekopdracht.':'Documenten geladen.','good');
+ }catch(e){documents=[];folders=[];renderFolders();render();
+  status('Documenten niet beschikbaar: '+e.message,'error')}
 }
 async function loadContext(){
  context=await api('/api/document-center/context');
@@ -247,12 +392,12 @@ async function loadContext(){
  $('category').replaceChildren();
  for(const id of context.categories||[])$('category').append(option(id,CATEGORIES[id]||id));
  $('workspace').hidden=false;await loadDocuments();
- if(!context.storageReady)status('De documentopslag is nog niet ingesteld op Render. Uploaden is tijdelijk niet beschikbaar.','error');
+ if(!context.storageReady)status('Bestandsopslag nog niet ingesteld. Leslinks kunnen wel toegevoegd worden.','error');
 }
 $('reload').onclick=loadDocuments;
 $('search').oninput=render;
 $('filterCategory').onchange=render;
-$('department').onchange=loadDocuments;
+$('department').onchange=()=>{selectedFolder='all';loadDocuments();};
 $('cancel').onclick=resetEditor;
 $('documentForm').onsubmit=async e=>{
  e.preventDefault();if(busy||!(editing?canManage():canWrite()))return;
@@ -260,6 +405,7 @@ $('documentForm').onsubmit=async e=>{
  try{
   const payload={department:$('department').value,title:$('title').value,
    description:$('description').value,category:$('category').value,audience:$('audience').value,
+   folderId:$('folder').value||null,
    readerIds:[...new Set($('readerIds').value.split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean))]};
   if(editing&&replacing){
    if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
@@ -271,8 +417,13 @@ $('documentForm').onsubmit=async e=>{
    });
    status('Nieuwe bestandsversie opgeslagen, vorige versie veilig bewaard.','good');
   }else if(editing){
+   if($('resourceType').value==='link')payload.url=$('linkUrl').value.trim();
    await api('/api/document-center/'+encodeURIComponent(editing),'PATCH',payload);
    status('Documentgegevens aangepast en gelogd.','good');
+  }else if($('resourceType').value==='link'){
+   payload.url=$('linkUrl').value.trim();
+   await api('/api/document-center/links','POST',payload);
+   status('Leslink toegevoegd aan de geselecteerde map.','good');
   }else{
    if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
    const file=$('file').files?.[0];

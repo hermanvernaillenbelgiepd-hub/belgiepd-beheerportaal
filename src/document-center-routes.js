@@ -2,11 +2,12 @@ import {randomUUID} from 'node:crypto';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getStorage} from 'firebase-admin/storage';
 import {officePreviewPdf,isOfficeDocument} from './document-preview.js';
+import {normalizeFolderId,builtInFolders,resolveDocumentUrl,safeYouTubeEmbed} from './document-folder-policy.js';
 import {DOCUMENT_DEPARTMENTS,documentScopes,verifiedDocumentRoles,
   mayReadDocument,mayWriteDocuments,mayManageDocuments} from './document-center-policy.js';
 
 const META='bpd_document_center',AUDIT='bpd_document_center_audit',
-  VERSIONS='bpd_document_center_versions';
+  VERSIONS='bpd_document_center_versions',FOLDERS='bpd_document_center_folders';
 const MAX_BYTES=5*1024*1024;
 const TYPES=Object.freeze({
   pdf:{mime:'application/pdf',ext:'.pdf'},
@@ -38,7 +39,7 @@ const cleanText=(value,min,max,label)=>{
 function details(body,upload=false){
   if(!body||typeof body!=='object'||Array.isArray(body)||
     Object.keys(body).some(k=>!['department','title','description','category','audience',
-      'readerIds',...(upload?['fileName','base64']:[])].includes(k)))throw fail(400,'Ongeldige documentgegevens');
+      'readerIds','folderId',...(upload?['fileName','base64']:[])].includes(k)))throw fail(400,'Ongeldige documentgegevens');
   const department=String(body.department||'');
   if(!DOCUMENT_DEPARTMENTS.includes(department))throw fail(400,'Onbekende hulpdienst');
   const title=cleanText(body.title,3,120,'Titel');
@@ -54,7 +55,8 @@ function details(body,upload=false){
   const readers=[...new Set(readerIds)];
   if(audience==='toegewezen'&&!readers.length)
     throw fail(400,'Kies minstens één toegewezen lesgever');
-  return {department,title,description,category,audience,readerIds:readers};
+  return {department,title,description,category,audience,readerIds:readers,
+    folderId:normalizeFolderId(body.folderId)};
 }
 export function validateDocumentUpload(body){
   const fields=details(body,true);
@@ -81,11 +83,21 @@ export function validateDocumentUpload(body){
   return {...fields,filename,bytes,mime:type.mime,size:bytes.length,ext:type.ext};
 }
 const publicRow=(id,x)=>({
-  id,department:x.department,title:x.title,description:x.description,
+  id,kind:x.kind==='link'?'link':'file',folderId:x.folderId||null,
+  department:x.department,title:x.title,description:x.description,
   category:x.category,audience:x.audience,fileName:x.fileName,mime:x.mime,
-  size:x.size,version:x.version||1,uploadedByName:x.uploadedByName||'',
+  linkUrl:x.kind==='link'?x.linkUrl||'':undefined,
+  size:x.size||0,version:x.version||1,uploadedByName:x.uploadedByName||'',
   createdAt:x.createdAt?.toDate?.()?.toISOString?.()||null
 });
+async function validateFolder(db,department,folderId){
+  if(!folderId)return null;
+  if(builtInFolders(department).some(x=>x.id===folderId))return folderId;
+  const snap=await db.collection(FOLDERS).doc(folderId).get();
+  if(!snap.exists||snap.get('department')!==department||snap.get('status')!=='active')
+    throw fail(400,'Deze map bestaat niet binnen de gekozen dienst');
+  return folderId;
+}
 const error=(res,e)=>{if(e?.status)return res.status(e.status).json({error:e.message});
   console.error('Documentencentrum:',typeof e?.code==='string'?e.code:'storage_error');
   return res.status(503).json({error:'Documentencentrum tijdelijk niet beschikbaar'});
@@ -124,6 +136,119 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       storageReady:Boolean(bucketName(process.env)),maxBytes:MAX_BYTES,
       categories:CATEGORIES,audiences:AUDIENCES});
   });
+
+  app.get('/api/document-center/folders',requireUser,scope,async(req,res)=>{
+    try{
+      const dept=String(req.query.department||'');
+      if(!DOCUMENT_DEPARTMENTS.includes(dept)||!req.documentScopes.read.includes(dept))
+        throw fail(403,'Geen toegang tot deze dienstmappen');
+      const snap=await getFirestore().collection(FOLDERS).where('department','==',dept).limit(200).get();
+      const custom=snap.docs.filter(d=>d.get('status')==='active').map(d=>({
+        id:d.id,name:d.get('name'),system:false
+      }));
+      res.json({folders:[...builtInFolders(dept),...custom].sort((a,b)=>
+        a.name.localeCompare(b.name,'nl')),limited:snap.size===200});
+    }catch(e){error(res,e);}
+  });
+  app.post('/api/document-center/folders',requireUser,scope,async(req,res)=>{
+    try{
+      const dept=String(req.body?.department||'');
+      if(!mayWriteDocuments(req.documentScopes,dept))
+        throw fail(403,'Geen toestemming om mappen te maken');
+      if(Object.keys(req.body||{}).some(k=>!['department','name'].includes(k)))
+        throw fail(400,'Ongeldige mapgegevens');
+      const name=cleanText(req.body.name,2,60,'Mapnaam');
+      const db=getFirestore();
+      const existing=await db.collection(FOLDERS).where('department','==',dept).limit(200).get();
+      const equal=x=>x.toLocaleLowerCase('nl')===name.toLocaleLowerCase('nl');
+      if(builtInFolders(dept).some(x=>equal(x.name))||
+        existing.docs.some(x=>x.get('status')==='active'&&equal(x.get('name')||'')))
+        throw fail(409,'Er bestaat al een map met deze naam');
+      if(existing.size===200)throw fail(409,'Te veel mappen voor deze dienst');
+      const id=randomUUID(),batch=db.batch();
+      batch.create(db.collection(FOLDERS).doc(id),{
+        department:dept,name,status:'active',owner:'belgiepd',createdBy:req.bpd.uid,
+        createdAt:FieldValue.serverTimestamp()
+      });
+      batch.create(db.collection(AUDIT).doc(),{
+        action:'create_folder',folderId:id,department:dept,name,actorUid:req.bpd.uid,
+        at:FieldValue.serverTimestamp()
+      });
+      await batch.commit();res.status(201).json({created:true,id,name});
+    }catch(e){error(res,e);}
+  });
+  app.patch('/api/document-center/folders/:id',requireUser,scope,async(req,res)=>{
+    try{
+      if(!ID.test(req.params.id))throw fail(404,'Map niet gevonden');
+      if(Object.keys(req.body||{}).some(k=>k!=='name'))throw fail(400,'Ongeldige mapgegevens');
+      const name=cleanText(req.body?.name,2,60,'Mapnaam');
+      const db=getFirestore(),ref=db.collection(FOLDERS).doc(req.params.id);
+      await db.runTransaction(async tx=>{
+        const folder=await tx.get(ref);
+        if(!folder.exists||folder.get('status')!=='active')throw fail(404,'Map niet gevonden');
+        const dept=folder.get('department');
+        if(!mayManageDocuments(req.documentScopes,dept))throw fail(403,'Alleen centraal beheer kan mappen hernoemen');
+        tx.update(ref,{name,updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
+        tx.create(db.collection(AUDIT).doc(),{
+          action:'rename_folder',folderId:req.params.id,department:dept,
+          actorUid:req.bpd.uid,oldName:folder.get('name'),newName:name,
+          at:FieldValue.serverTimestamp()
+        });
+      });
+      res.json({saved:true});
+    }catch(e){error(res,e);}
+  });
+  app.post('/api/document-center/links',requireUser,scope,async(req,res)=>{
+    try{
+      const body=req.body||{};
+      if(Object.keys(body).some(k=>!['department','title','description','category',
+        'audience','readerIds','folderId','url'].includes(k)))
+        throw fail(400,'Ongeldige linkgegevens');
+      const item=details({
+        department:body.department,title:body.title,description:body.description,
+        category:body.category,audience:body.audience,readerIds:body.readerIds,
+        folderId:body.folderId
+      });
+      if(!mayWriteDocuments(req.documentScopes,item.department))
+        throw fail(403,'Geen rechten om links toe te voegen');
+      const url=resolveDocumentUrl(body.url);
+      const db=getFirestore(),id=randomUUID();
+      await validateFolder(db,item.department,item.folderId);
+      const person=req.documentStaff.find(p=>p.dept===item.department)||
+        req.documentStaff.find(p=>p.dept==='politie');
+      const batch=db.batch();
+      batch.create(db.collection(META).doc(id),{
+        kind:'link',linkUrl:url,folderId:item.folderId,
+        department:item.department,title:item.title,description:item.description,
+        category:item.category,audience:item.audience,readerIds:item.readerIds,
+        fileName:'',mime:'text/uri-list',size:0,
+        version:1,status:'active',owner:'belgiepd',uploadedBy:req.bpd.uid,
+        uploadedByName:String(person?.name||'Bevoegd beheer').slice(0,120),
+        createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()
+      });
+      batch.create(db.collection(AUDIT).doc(),{
+        action:'add_link',documentId:id,department:item.department,
+        actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()
+      });
+      await batch.commit();res.status(201).json({saved:true,id});
+    }catch(e){error(res,e);}
+  });
+  app.get('/api/document-center/:id/open-link',requireUser,scope,async(req,res)=>{
+    try{
+      if(!ID.test(req.params.id))throw fail(404,'Link niet gevonden');
+      const snap=await getFirestore().collection(META).doc(req.params.id).get();
+      if(!snap.exists||snap.get('kind')!=='link'||
+        !mayReadDocument(req.documentScopes,snap.data()))
+        throw fail(404,'Link niet gevonden');
+      const url=resolveDocumentUrl(snap.get('linkUrl'));
+      await getFirestore().collection(AUDIT).doc().create({
+        action:'open_link',documentId:req.params.id,department:snap.get('department'),
+        actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()
+      });
+      res.json({url,embed:safeYouTubeEmbed(url)});
+    }catch(e){error(res,e);}
+  });
+
   app.get('/api/document-center',requireUser,scope,async(req,res)=>{
     try{
       const dept=String(req.query.department||'');
@@ -147,6 +272,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       if(!mayWriteDocuments(req.documentScopes,item.department))
         throw fail(403,'Geen uploadrechten voor deze dienst');
       const db=getFirestore(),id=randomUUID();
+      await validateFolder(db,item.department,item.folderId);
       const path='belgiepd/documents/'+item.department+'/'+id+item.ext;
       const previewBytes=await officePreviewPdf(item.bytes,item.ext);
       file=storage().file(path);
@@ -162,7 +288,8 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       const ref=db.collection(META).doc(id);
       const audit=db.collection(AUDIT).doc();
       const batch=db.batch();
-      batch.create(ref,{department:item.department,title:item.title,
+      batch.create(ref,{kind:'file',folderId:item.folderId,
+        department:item.department,title:item.title,
         description:item.description,category:item.category,audience:item.audience,
         fileName:item.filename,mime:item.mime,size:item.size,storagePath:path,
         previewStoragePath:previewFile?.name||null,readerIds:item.readerIds,
@@ -272,9 +399,17 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
         if(!snap.exists||snap.get('status')!=='active')throw fail(404,'Document niet gevonden');
         const old=snap.data();
         if(!mayManageDocuments(req.documentScopes,old.department))throw fail(403,'Alleen Officierenkader, Korpsleiding of bevoegde administratie kan documenten wijzigen');
-        const item=details(req.body);
+        const body=req.body||{};
+        const allowedUrl=old.kind==='link'&&Object.prototype.hasOwnProperty.call(body,'url');
+        const url=allowedUrl?resolveDocumentUrl(body.url):null;
+        if(!allowedUrl&&Object.prototype.hasOwnProperty.call(body,'url'))
+          throw fail(400,'Alleen weblinks hebben een URL');
+        const item=details(allowedUrl?Object.fromEntries(Object.entries(body)
+          .filter(([k])=>k!=='url')):body);
         if(item.department!==old.department)throw fail(400,'Dienst kan niet gewijzigd worden');
-        tx.update(ref,{...item,updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
+        await validateFolder(db,item.department,item.folderId);
+        tx.update(ref,{...item,...(allowedUrl?{linkUrl:url}:{}),
+          updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
         tx.create(db.collection(AUDIT).doc(),{
           documentId:req.params.id,department:old.department,action:'edit',
           actorUid:req.bpd.uid,at:FieldValue.serverTimestamp(),
@@ -305,6 +440,7 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       if(!mayManageDocuments(req.documentScopes,old.department))
         throw fail(403,'Alleen Officierenkader, Korpsleiding of bevoegde administratie mag bestanden vervangen');
       if((old.version||1)!==expectedVersion)throw fail(409,'Document is inmiddels gewijzigd. Vernieuw de lijst.');
+      if(old.kind==='link')throw fail(400,'Een weblink heeft geen uploadbestand');
       const input=validateDocumentUpload({
         department:old.department,title:old.title,description:old.description,
         category:old.category,audience:old.audience,fileName:body.fileName,base64:body.base64
