@@ -62,7 +62,7 @@ export function validateDocumentUpload(body){
   const zip=bytes.subarray(0,4).equals(Buffer.from([80,75,3,4]));
   const signature=ext==='pdf'?bytes.subarray(0,5).toString('ascii')==='%PDF-':
     ext==='png'?bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])):
-    ext==='jpg'?bytes[0]===255&&bytes[1]===216&&bytes.at(-2)===255&&bytes.at(-1)===217:
+    (ext==='jpg'||ext==='jpeg')?bytes[0]===255&&bytes[1]===216&&bytes.at(-2)===255&&bytes.at(-1)===217:
     ext==='webp'?bytes.toString('ascii',0,4)==='RIFF'&&bytes.toString('ascii',8,12)==='WEBP':
     zip&&(ext==='docx'?bytes.includes(Buffer.from('word/')):
       ext==='pptx'?bytes.includes(Buffer.from('ppt/')):
