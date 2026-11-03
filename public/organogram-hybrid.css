@@ -455,170 +455,125 @@ html:not([data-bpd-theme="dark"]) main > .manager :is(.manager-note,label,h2,h3)
 }
 
 
-/* Brandweer DUlKER: original wide patch (288×134). Unlike police 16:5
-   patches, this is a 2.15:1 textile badge. It must never be stretched. */
-@media screen {
- html .person-profile-dialog.operational-profile .person-profile-specialties
-  .person-profile-specialty.person-profile-specialty-fire-diver{
-   grid-column:1 / -1;
-   display:grid!important;
-   grid-template-columns:minmax(0,1fr) minmax(0,196px)!important;
-   grid-template-rows:auto auto;
-   gap:4px 12px;
-   min-height:110px;
-   align-items:center;
+/* Brandweer personnel profile: all specialties share one tidy two-column
+   grid; real image proportions remain intact, including the original 288:134
+   Duiker badge. These presentation rules do not change role assignments. */
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-overview .portrait.bpd-service-uniform,
+html.roster-card-embed .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-overview .portrait.bpd-service-uniform{
+ width:min(100%,258px,30dvh)!important;
+ min-width:0!important;max-width:258px!important;
+ height:auto!important;min-height:0!important;
+ aspect-ratio:198/226!important;flex:0 0 auto!important;
+ object-fit:contain!important;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-overview{
+ padding:9px 11px!important;margin-bottom:8px!important;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-overview .person-profile-name{font-size:18px}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-grid{gap:7px;margin-top:5px}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-grid .person-profile-fact{
+ min-height:57px;padding:7px 10px;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-grid .person-profile-fact.person-profile-call{
+ min-height:61px;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-call strong{font-size:clamp(21px,2.1vw,27px)}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialty-panel{gap:9px}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties{
+ display:grid!important;
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:9px!important;align-items:stretch;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty{
+ display:grid!important;
+ grid-column:auto!important;
+ box-sizing:border-box;min-width:0;max-width:100%;width:100%;
+ min-height:100px!important;
+ grid-template-columns:minmax(0,1fr) minmax(0,150px)!important;
+ grid-template-rows:1fr auto;
+ gap:3px 9px!important;align-items:center;align-content:center;
+ padding:10px 11px!important;
+ border-radius:9px;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty>strong{
+ grid-column:1;grid-row:1;min-width:0;
+ align-self:end;justify-self:start;
+ font-size:12px!important;line-height:1.35;
+ overflow-wrap:anywhere;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty:not(:has(>.person-profile-specialty-role))>strong{
+ grid-row:1 / 3;align-self:center;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty>.person-profile-specialty-role{
+ grid-column:1;grid-row:2;align-self:start;justify-self:start;
+ font-size:10px;min-width:0;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty img.person-profile-specialty-badge{
+ display:block!important;
+ grid-column:2;grid-row:1 / 3;align-self:center;justify-self:end!important;
+ box-sizing:border-box;width:min(150px,100%)!important;
+ min-width:0!important;max-width:100%!important;
+ height:auto!important;min-height:0!important;max-height:78px!important;
+ aspect-ratio:auto!important;
+ object-fit:contain!important;object-position:center;
+ border:1px solid #547391;border-radius:5px;
+ background:#111923;
+ box-shadow:0 2px 6px #0914253a;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty-fire-diver img.person-profile-specialty-badge{
+ aspect-ratio:288 / 134!important;
+ object-fit:contain!important;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty-missing-patch{
+ display:flex;align-items:center;justify-content:center;
+ grid-column:2;grid-row:1 / 3;
+ width:100%;min-height:44px;max-width:150px;
+ border:1px dashed #53718d;border-radius:6px;
+ padding:7px 5px;color:#a7bfd6;
+ font-size:10px;line-height:1.35;text-align:center;
+ background:#112940;
+}
+@media(max-width:700px){
+ html .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-specialties{
+  grid-template-columns:minmax(0,1fr)!important;
  }
- html .person-profile-dialog.operational-profile
-  .person-profile-specialty.person-profile-specialty-fire-diver>strong{
-   grid-column:1;grid-row:1;align-self:end;
- }
- html .person-profile-dialog.operational-profile
-  .person-profile-specialty.person-profile-specialty-fire-diver>.person-profile-specialty-role{
-   grid-column:1;grid-row:2;align-self:start;
- }
- html .person-profile-dialog.operational-profile
-  .person-profile-specialty.person-profile-specialty-fire-diver img.person-profile-specialty-badge{
-   display:block;
-   grid-column:2;grid-row:1 / span 2;justify-self:center;
-   box-sizing:border-box;
-   width:min(190px,100%)!important;
-   max-width:100%!important;
-   height:auto!important;
-   max-height:94px!important;
-   aspect-ratio:288 / 134!important;
-   object-fit:contain!important;
-   object-position:center;
-   background:#17171b;
-   border:1px solid #7583a4;
-   border-radius:5px;
-   box-shadow:0 2px 8px #10203b22;
- }
- @media(max-width:520px){
-  html .person-profile-dialog.operational-profile .person-profile-specialties
-   .person-profile-specialty.person-profile-specialty-fire-diver{
-   grid-template-columns:minmax(0,1fr)!important;
-   grid-template-rows:auto auto auto;
-  }
-  html .person-profile-dialog.operational-profile
-   .person-profile-specialty.person-profile-specialty-fire-diver img.person-profile-specialty-badge{
-   grid-column:1;grid-row:2;justify-self:start;
-  }
-  html .person-profile-dialog.operational-profile
-   .person-profile-specialty.person-profile-specialty-fire-diver>.person-profile-specialty-role{
-   grid-column:1;grid-row:3;
-  }
+ html .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-overview .portrait.bpd-service-uniform,
+ html.roster-card-embed .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-overview .portrait.bpd-service-uniform{
+  width:min(100%,225px,31dvh)!important;max-width:225px!important;
  }
 }
-
-
-/* Uniforme BRANDWEER-specialisatiekaarten (Duiker, Ladderwagen en volgende).
-   Each uploaded or approved badge spans a full row with its original aspect.
-   Do not modify image pixels, personal specialties, Discord roles or uniforms.
-   Empty specialty cards remain two per row. */
-@media screen {
- html .person-profile-dialog.operational-profile
-  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged{
-   grid-column:1 / -1;
-   display:grid!important;
-   grid-template-columns:minmax(0,1fr) minmax(0,238px)!important;
-   grid-template-rows:auto auto;
-   min-height:125px;
-   padding:11px 13px;
-   gap:5px 16px;
-   align-items:center;
-   align-content:center;
+@media(max-width:390px){
+ html .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-specialties .person-profile-specialty{
+  grid-template-columns:minmax(0,1fr) minmax(0,112px)!important;
+  min-height:84px!important;padding:8px!important;
  }
- html .person-profile-dialog.operational-profile
-  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged>strong{
-   grid-column:1;grid-row:1;align-self:end;justify-self:start;
-   font-size:13px;line-height:1.4;
+ html .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-specialties .person-profile-specialty img.person-profile-specialty-badge{
+  width:min(112px,100%)!important;max-height:65px!important;
  }
- html .person-profile-dialog.operational-profile
-  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged>.person-profile-specialty-role{
-   grid-column:1;grid-row:2;align-self:start;justify-self:start;
- }
- html .person-profile-dialog.operational-profile
-  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged img.person-profile-specialty-badge{
-   display:block!important;box-sizing:border-box;
-   grid-column:2;grid-row:1 / span 2;
-   align-self:center;justify-self:end;
-   width:min(230px,100%)!important;
-   min-width:0!important;max-width:100%!important;
-   height:auto!important;min-height:0!important;max-height:none!important;
-   aspect-ratio:auto!important;
-   object-fit:contain!important;object-position:center;
-   background:#111822;
-   border:1px solid #5e7795;border-radius:6px;
-   box-shadow:0 2px 8px #0b1e3550;
- }
- @media(max-width:570px){
-  html .person-profile-dialog.operational-profile
-   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged{
-   grid-template-columns:minmax(0,1fr)!important;
-   grid-template-rows:auto auto auto;
-   gap:7px;justify-items:start;
-  }
-  html .person-profile-dialog.operational-profile
-   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged>strong{
-   grid-column:1;grid-row:1;align-self:center;
-  }
-  html .person-profile-dialog.operational-profile
-   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged img.person-profile-specialty-badge{
-   grid-column:1;grid-row:2;justify-self:start;
-  }
-  html .person-profile-dialog.operational-profile
-   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged>.person-profile-specialty-role{
-   grid-column:1;grid-row:3;
-  }
- }
-}
-
-
-/* Compact BW patches v3: one centred name + badge unit, smaller cards.
-   The image's intrinsic aspect ratio is preserved; existing role proofs and
-   patch-to-specialty associations are not affected by presentation styling. */
-@media screen {
- html .person-profile-dialog.operational-profile
-  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged{
-   grid-template-columns:minmax(0,150px) minmax(0,200px)!important;
-   justify-content:center!important;
-   min-height:100px!important;
-   padding:7px 10px!important;
-   gap:3px 12px!important;
- }
- html .person-profile-dialog.operational-profile
-  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged>strong{
-   font-size:13px;line-height:1.3;
- }
- html .person-profile-dialog.operational-profile
-  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged:not(:has(>.person-profile-specialty-role))>strong{
-   grid-row:1 / span 2;
-   align-self:center;
- }
- html .person-profile-dialog.operational-profile
-  .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged img.person-profile-specialty-badge{
-   width:min(185px,100%)!important;
-   max-height:88px!important;
-   height:auto!important;
-   aspect-ratio:auto!important;
-   object-fit:contain!important;
-   justify-self:center!important;
-   align-self:center!important;
- }
- @media(max-width:570px){
-  html .person-profile-dialog.operational-profile
-   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged{
-   grid-template-columns:minmax(0,1fr)!important;
-   min-height:0!important;justify-items:start!important;
-   padding:9px 11px!important;
-  }
-  html .person-profile-dialog.operational-profile
-   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged:not(:has(>.person-profile-specialty-role))>strong{
-   grid-row:1;
-  }
-  html .person-profile-dialog.operational-profile
-   .person-profile-specialties .person-profile-specialty.person-profile-specialty-fire-badged img.person-profile-specialty-badge{
-   justify-self:start!important;
-  }
+ html .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-specialties .person-profile-specialty-missing-patch{
+  max-width:112px;
  }
 }
