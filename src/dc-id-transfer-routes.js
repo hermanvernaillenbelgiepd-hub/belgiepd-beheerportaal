@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
-import {DC_TRANSFER_REQUESTS,DC_TRANSFER_ALIASES,TRANSFER_DEPARTMENTS,
+import {DC_TRANSFER_REQUESTS,DC_TRANSFER_ALIASES,DC_TRANSFER_TARGETS,TRANSFER_DEPARTMENTS,
   validTransferInput,mayAdministerDcTransfer,freshTransferTarget,
   transferRosterPlan,transferSubjectFields} from './dc-id-transfer-policy.js';
 
@@ -38,12 +38,13 @@ async function rosterCheck(db,getSnapshot,oldId,newId){
  let result;
  try{result=transferRosterPlan(snap.data,oldId,newId)}
  catch(e){throw failure(409,e.message)}
- const [oldAlias,newAlias,existingTarget]=await Promise.all([
+ const [oldAlias,newAlias,existingTarget,targetClaim]=await Promise.all([
   db.collection(DC_TRANSFER_ALIASES).doc(oldId).get(),
   db.collection(DC_TRANSFER_ALIASES).doc(newId).get(),
-  db.collection(DC_TRANSFER_ALIASES).where('newDiscordId','==',newId).limit(2).get()
+  db.collection(DC_TRANSFER_ALIASES).where('newDiscordId','==',newId).limit(2).get(),
+  db.collection(DC_TRANSFER_TARGETS).doc(newId).get()
  ]);
- if(oldAlias.exists||newAlias.exists||!existingTarget.empty)
+ if(oldAlias.exists||newAlias.exists||!existingTarget.empty||targetClaim.exists)
    throw failure(409,'Eén van beide Discord-ID’s werd al eerder overgedragen. Handmatige controle nodig.');
  return result;
 }
@@ -186,8 +187,9 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onComplet
      throw failure(409,'De diensten zijn gewijzigd: vraag een nieuwe overdracht aan.');
    const prepared=await collectTransfers(db,oldId,newId,roster.departments);
    const alias=db.collection(DC_TRANSFER_ALIASES).doc(oldId);
+   const targetClaim=db.collection(DC_TRANSFER_TARGETS).doc(newId);
    const oldAccount=db.collection(USER_COLLECTION).doc(oldId);
-   const refs=[requestRef,alias,oldAccount,
+   const refs=[requestRef,alias,targetClaim,oldAccount,
      ...prepared.copies.flatMap(x=>[x.source,x.target]),
      ...prepared.changes.map(x=>x.doc.ref)];
    const unique=[...new Map(refs.map(x=>[x.path,x])).values()];
@@ -198,7 +200,8 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onComplet
      if(reqSnap.get('status')!=='pending'||reqSnap.get('createdBy')!==doc.get('createdBy')||
         reqSnap.get('newDiscordId')!==newId||reqSnap.get('oldDiscordId')!==oldId)
        throw failure(409,'De overdrachtsaanvraag is inmiddels gewijzigd.');
-     if(seen.get(alias.path).exists)throw failure(409,'De DC-ID is al overgedragen.');
+     if(seen.get(alias.path).exists||seen.get(targetClaim.path).exists)
+       throw failure(409,'De DC-ID is al overgedragen of gereserveerd.');
      for(const item of prepared.copies){
        const before=seen.get(item.source.path),after=seen.get(item.target.path);
        if(!before.exists||after.exists||!isSame(before,item.snap))
@@ -228,6 +231,8 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onComplet
        dcIdTransferredTo:newId,dcIdTransferredAt:stamp,
        dcIdTransferReason:req.body.reason.trim()
      });
+     tx.create(targetClaim,{oldDiscordId:oldId,requestId:requestRef.id,
+       completedAt:stamp});
      tx.create(alias,{status:'completed',oldDiscordId:oldId,newDiscordId:newId,
        departments:roster.departments,requestId:requestRef.id,
        completedAt:stamp,createdBy:doc.get('createdBy'),
