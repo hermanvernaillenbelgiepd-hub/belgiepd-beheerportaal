@@ -7,7 +7,7 @@ export const LEADERSHIP_LEVELS=Object.freeze({
  bestuur:[],politie:['Korpsleiding','Officierenkader','Middenkader','Basiskader','Agentenkader'],
  brandweer:['Zoneleiding','Officieren','Middenkader','Basiskader','Stagiairs'],
  ambulance:['DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','STAG'],
- depannage:['Leiding / AWV'],burger:['Burgerraad']
+ depannage:['Leiding / AWV','LSRA','FAST'],burger:['Burgerraad']
 });
 export const SPECIALTIES=Object.freeze({
  bestuur:[],
@@ -205,6 +205,18 @@ export const AE_DISPLAY_LABELS=Object.freeze({
  teamleader:'TEAMLEADER / LEIDING',instructeur:'AE-INSTRUCTEUR'
 });
 export const BOARD_DISCORD_ROLE='1309532438082355251';
+// Exact, guild-bound function memberships for the public visual hierarchy.
+ // This is display data only: never used to authorize dossier access.
+export function verifiedDepannageOrganogramGroups(identity,guildId,now=Date.now()){
+ if(!identity||!ID.test(String(guildId||''))||
+  identity.guildId!==guildId||!Number.isSafeInteger(identity.verifiedAt)||
+  identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||
+  !Array.isArray(identity.roleIds)||identity.roleIds.some(id=>!ID.test(id)))return [];
+ const ids=new Set(identity.roleIds);
+ return [['1309532438019706969','awv'],
+  ['1309532438019706971','lsra'],
+  ['1309532438019706970','fast']].filter(([id])=>ids.has(id)).map(([,code])=>code);
+}
 export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
  if(!identity||!DISPLAY_DEPTS.includes(dept)||!ID.test(guildId)||
     identity.guildId!==guildId||!Number.isSafeInteger(identity.verifiedAt)||
