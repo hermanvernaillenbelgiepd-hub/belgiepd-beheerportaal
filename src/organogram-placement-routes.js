@@ -273,6 +273,22 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       active.has(normalizedLabel(x.label))&&
       !(displayAE&&normalizedLabel(x.label)==='AE')&&
       !rolespecific.some(y=>normalizedLabel(y.label)===normalizedLabel(x.label)));
+    // A registered Brandweer qualification can show its linked generic
+    // artwork when Discord verification is temporarily unavailable.
+    // This does NOT imply the mapped role or create a qualification.
+    const existingFireArtwork=[];
+    if(p.dept==='brandweer'){
+     const handled=new Set([...rolespecific,...manual].map(x=>normalizedLabel(x.label)));
+     for(const link of all){
+      const label=normalizedLabel(link.label),key=assetFor(link);
+      if(!link.roleId||!active.has(label)||handled.has(label)||!activeRole(link)||
+         !/^(?:specialty|patch)_brandweer_[a-z0-9][a-z0-9_]{0,39}$/.test(key)||
+         !assetUrls.has(key))continue;
+      existingFireArtwork.push({label,level:'',roleId:'',
+       imageUrl:assetUrls.get(key),source:'registered'});
+      handled.add(label);
+     }
+    }
     // When an AE level is known, never show an unrelated generic or trainee
     // patch as the teamleader insignia. The UI can use an exact variant,
     // otherwise it shows a clearly labelled placeholder.
@@ -283,7 +299,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       roleId:x.roleId||'',imageUrl:assetUrls.get(assetFor(x))||'',
       source:x===aePatch&&merged.aeManual===displayAE?'registered':
        x.roleId?'discord':'registered'
-    })).slice(0,20);
+    })).concat(existingFireArtwork).slice(0,20);
    };
    // A member's own login only refreshes their own Discord identity. For
    // K9 candidates, the server bot now checks their roles independently.
