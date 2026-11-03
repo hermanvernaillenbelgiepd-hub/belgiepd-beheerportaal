@@ -5,6 +5,7 @@ import {createWeekReportDocx} from './report-export.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  CATALOG_BY_ID,customCatalogItem,expirationDate} from './personnel-decoration-policy.js';
 import {isArchivedTraining} from './training-maintenance.js';
+import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
@@ -73,10 +74,67 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const newDoc=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const batch=db().batch();
-      batch.create(newDoc,{...data,dept,subjectDiscordId:id,subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,registeredBy:actor,submittedBy:{uid:req.bpd.uid,email:req.bpd.email},createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
+      batch.create(newDoc,{...data,dept,subjectDiscordId:id,subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,registeredBy:actor,submittedBy:{uid:req.bpd.uid,email:req.bpd.email},
+        ...(type==='inactiviteitsping'?{pingNotificationId:newDoc.id,pingNotificationStatus:'sent'}:{}),
+        createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
       batch.create(notice,{caseId:caseId(dept,id),entryId:newDoc.id,type,dept,createdAt:FieldValue.serverTimestamp()});
+      // Exactly one atomic record is shared between the member inbox,
+      // source dossier and dynamic fortnight report. No Discord DM is sent.
+      if(type==='inactiviteitsping'){
+        const ping=db().collection(INACTIVITY_PING_NOTICES).doc(id).collection('events').doc(newDoc.id);
+        batch.create(ping,{...inactivityPingNotice({dept,discordId:id,entryId:newDoc.id,
+          details:data.details,actor}),createdAt:FieldValue.serverTimestamp(),readAt:null});
+      }
       await batch.commit();
       res.status(201).json({saved:true,reference:newDoc.id});
+    }catch(e){errorResponse(res,e)}
+  });
+  // Members can inspect ONLY their own inactivity pings. Their verified
+  // portal identity is supplied by requireUser, never by a URL/body ID.
+  app.get('/api/management/pings/mine',requireUser,async(req,res)=>{
+    const id=req.bpd?.discordId;
+    if(!validDiscord(id))return res.status(403).json({error:'Geverifieerde Discord-koppeling vereist'});
+    try{
+      const docs=await db().collection(INACTIVITY_PING_NOTICES).doc(id)
+        .collection('events').orderBy('createdAt','desc').limit(60).get();
+      res.set('Cache-Control','private, no-store');
+      res.json({pings:docs.docs.map(doc=>publicPingNotice(doc.id,doc.data())).filter(Boolean)});
+    }catch(e){errorResponse(res,e)}
+  });
+  app.post('/api/management/pings/mine/:entryId/read',requireUser,async(req,res)=>{
+    const id=req.bpd?.discordId,entryId=req.params.entryId;
+    if(!validDiscord(id))return res.status(403).json({error:'Geverifieerde Discord-koppeling vereist'});
+    if(!validPingId(entryId)||Object.keys(req.body||{}).length)
+      return res.status(400).json({error:'Ongeldige pingverwijzing'});
+    try{
+      const ping=db().collection(INACTIVITY_PING_NOTICES).doc(id).collection('events').doc(entryId);
+      const result=await db().runTransaction(async tx=>{
+        const current=await tx.get(ping);
+        if(!current.exists||current.get('targetDiscordId')!==id||
+          current.get('type')!=='inactiviteitsping')
+          return 'not_found';
+        if(current.get('status')==='read')return 'already_read';
+        const dept=current.get('dept'),caseKey=current.get('caseId');
+        if(caseKey!==caseId(dept,id)||!['politie','brandweer','ambulance','depannage','burger'].includes(dept)||
+           current.get('entryId')!==entryId)return 'invalid_reference';
+        const entry=db().collection('bpd_cases').doc(caseKey).collection('entries').doc(entryId);
+        const original=await tx.get(entry);
+        if(!original.exists||original.get('type')!=='inactiviteitsping'||
+           original.get('subjectDiscordId')!==id||original.get('dept')!==dept)
+          return 'invalid_reference';
+        const at=FieldValue.serverTimestamp();
+        tx.update(ping,{status:'read',readAt:at});
+        tx.update(entry,{pingNotificationStatus:'read',pingReadAt:at,pingReadByDiscordId:id});
+        tx.create(entry.collection('audit').doc(),{
+          action:'inactiviteitsping_read',subjectDiscordId:id,
+          sourceNotificationId:entryId,at,source:'member_meldingen'
+        });
+        return 'read';
+      });
+      if(result==='not_found')return res.status(404).json({error:'Melding niet gevonden'});
+      if(result==='invalid_reference')return res.status(409).json({error:'Dossierkoppeling vraagt controle'});
+      res.set('Cache-Control','private, no-store');
+      return res.json({read:true,alreadyRead:result==='already_read'});
     }catch(e){errorResponse(res,e)}
   });
   // Bewaar de oorspronkelijke observatie/sanctie. Alleen officierenkader en korpsleiding
