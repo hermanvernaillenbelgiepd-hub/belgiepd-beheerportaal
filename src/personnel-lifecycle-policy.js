@@ -9,7 +9,7 @@ export const lifecycleKey=(dept,id)=>SERVICE.has(dept)&&ID.test(String(id||''))?
 export const ARCHIVE_REASONS=Object.freeze(['voluntary_discord_leave','management_dismissal',
  'service_resignation','other']);
 export function validateLifecycleAction(body,action){
- if(!['archive','restore'].includes(action)||!body||typeof body!=='object'||
+ if(!['archive','restore','activate'].includes(action)||!body||typeof body!=='object'||
     Array.isArray(body))throw Error('Ongeldige personeelsactie');
  const allowed=action==='archive'?
   ['reason','cause','expectedRevision']:['reason','expectedRevision'];
@@ -46,7 +46,7 @@ export function overlayPersonnelLifecycle(records,docs,{includeArchived=false}={
   const d=typeof doc?.data==='function'?doc.data():doc;
   const key=lifecycleKey(d?.dept,d?.discordId);
   if(!key||(id&&id!==key)||byKey.has(key)||
-     !['archived','active'].includes(d.state))continue;
+     !['archived','pending','active'].includes(d.state))continue;
   byKey.set(key,d);
  }
  const out=[],seen=new Set();
@@ -54,8 +54,8 @@ export function overlayPersonnelLifecycle(records,docs,{includeArchived=false}={
   const key=lifecycleKey(p?.dept,p?.personId);
   const state=key?byKey.get(key):null;
   if(key)seen.add(key);
-  if(state?.state==='archived'){
-   if(includeArchived)out.push({...p,lifecycleState:'archived',lifecycleRevision:state.revision,
+  if(state&&['archived','pending'].includes(state.state)){
+   if(includeArchived)out.push({...p,lifecycleState:state.state,lifecycleRevision:state.revision,
      lifecycleCause:state.cause||'',lastPersonnelAction:'archived'});
   }else out.push(state?{...p,lifecycleState:'active',
     lifecycleRevision:state.revision,lastPersonnelAction:state.cause||'restored'}:p);
@@ -66,7 +66,7 @@ export function overlayPersonnelLifecycle(records,docs,{includeArchived=false}={
  for(const [key,d] of byKey){
   if(seen.has(key)||!d.snapshot||!lifecycleKey(d.snapshot.dept,d.snapshot.personId)||
      key!==lifecycleKey(d.snapshot.dept,d.snapshot.personId))continue;
-  if(d.state==='archived'&&!includeArchived)continue;
+  if(['archived','pending'].includes(d.state)&&!includeArchived)continue;
   if(d.state==='active'&&d.restoreFromArchive!==true)continue;
   const p={...d.snapshot,id:d.dept+':'+d.discordId,
     specialties:Array.isArray(d.snapshot.specialties)?d.snapshot.specialties:[],

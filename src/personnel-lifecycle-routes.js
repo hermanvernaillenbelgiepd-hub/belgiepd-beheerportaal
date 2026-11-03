@@ -37,14 +37,15 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    ]);
    if(records.size===600)throw fail(503,'Archief is te groot voor veilige weergave');
    const byId=new Map(snapshot.data.filter(p=>p.dept===dept).map(p=>[p.personId,p]));
-   const entries=records.docs.filter(d=>d.get('state')==='archived')
+   const entries=records.docs.filter(d=>['archived','pending'].includes(d.get('state')))
     .filter(d=>{const p=byId.get(d.get('discordId'));return p&&canReadPersonnelSubject(req.bpd,p)})
     .map(d=>({dept,discordId:d.get('discordId'),name:String(d.get('snapshot')?.name||'').slice(0,120),
       call:String(d.get('snapshot')?.call||'').slice(0,24),rank:String(d.get('snapshot')?.rank||'').slice(0,100),
-      cause:d.get('cause'),reason:String(d.get('reason')||'').slice(0,500),
+      state:d.get('state'),cause:d.get('cause'),reason:String(d.get('reason')||'').slice(0,500),
       archivedAt:d.get('archivedAt')?.toDate?.()?.toISOString?.()||null,
       revision:d.get('revision')||0,
-      canRestore:allowed(req.bpd,byId.get(d.get('discordId'))),
+      canRestore:d.get('state')==='archived'&&allowed(req.bpd,byId.get(d.get('discordId'))),
+      canActivate:d.get('state')==='pending'&&allowed(req.bpd,byId.get(d.get('discordId'))),
       lastHours:Number.isFinite(d.get('snapshot')?.totalHours)?d.get('snapshot').totalHours:null}));
    res.set('Cache-Control','private, no-store');
    return res.json({entries,limited:false});
@@ -78,7 +79,7 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    ]);
    const d=entry.data()||{};
    res.set('Cache-Control','private, no-store');
-   return res.json({state:d.state==='archived'?'archived':'active',
+   return res.json({state:['archived','pending'].includes(d.state)?d.state:'active',
     revision:Number.isSafeInteger(d.revision)?d.revision:0,
     canManage:allowed(req.bpd,person),
     cause:d.cause||'',cmsRoleSyncPending:d.cmsRoleSyncPending===true,
@@ -91,7 +92,7 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
      at:x.get('at')?.toDate?.()?.toISOString?.()||null}))});
   }catch(e){return respond(res,e)}
  });
- for(const action of ['archive','restore']){
+ for(const action of ['archive','restore','activate']){
   app.post('/api/personnel-lifecycle/:dept/:discordId/'+action,requireUser,async(req,res)=>{
    const {dept,discordId}=req.params;
    let input;
@@ -101,11 +102,11 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
     if(!allowed(req.bpd,person))throw fail(403,'Alleen bevoegde dienstleiding kan dit personeelslid beheren');
     // Membership loss alone never mutates an operational record. Even when a
     // trusted snapshot omits a member, a human must confirm the transition.
-    if(action==='restore'||input.cause==='voluntary_discord_leave'){
+    if(action!=='archive'||input.cause==='voluntary_discord_leave'){
      const upstream=await getBelgiumPdDisplayRoles();
      if(upstream.status!=='ok')throw fail(503,'Discord-ledenstatus niet actueel verifieerbaar');
      const inGuild=upstream.entries.has(discordId);
-     if(action==='restore'&&!inGuild)throw fail(409,'Herintreding kan pas wanneer dit Discord-account terug op de server is');
+     if(action!=='archive'&&!inGuild)throw fail(409,'Herintreding kan pas wanneer dit Discord-account terug op de server is');
      if(action==='archive'&&inGuild)
       throw fail(409,'Het Discord-account is nog aanwezig; kies ontslag door leiding of dienstverlating');
     }
@@ -118,7 +119,9 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
       throw fail(409,'Personeelslid is reeds gearchiveerd');
      if(action==='restore'&&prev.state!=='archived')
       throw fail(409,'Deze persoon staat niet in het personeelsarchief');
-     const state=action==='archive'?'archived':'active';
+     if(action==='activate'&&prev.state!=='pending')
+      throw fail(409,'Controleer en registreer eerst de herintreding');
+     const state=action==='archive'?'archived':action==='restore'?'pending':'active';
      const historic=action==='archive'?lifecycleSourceSnapshot(person):prev.snapshot;
      if(!historic)throw fail(409,'Geen veilig bewaarbaar personeelsprofiel gevonden');
      const data={dept,discordId,state,revision:revision+1,
@@ -126,21 +129,23 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        updatedAt:FieldValue.serverTimestamp(),
        updatedByUid:req.bpd.uid,updatedByDiscordId:req.bpd.discordId||null,
        // CMS/Discord have separate authority: explicitly queue role review.
-       cmsRoleSyncPending:true,
-       restoreFromArchive:action==='restore'||prev.restoreFromArchive===true,
+       cmsRoleSyncPending:action!=='activate',
+       restoreFromArchive:action!=='archive'||prev.restoreFromArchive===true,
        ...(action==='archive'?{archivedAt:FieldValue.serverTimestamp()}:
+         action==='restore'?{reentryRequestedAt:FieldValue.serverTimestamp()}:
          {restoredAt:FieldValue.serverTimestamp()})};
      tx.set(ref,data,{merge:true});
      tx.create(ref.collection('audit').doc(),{
-       action:action==='archive'?'personnel_archived':'personnel_restored',
+       action:action==='archive'?'personnel_archived':action==='restore'?'personnel_reentry_pending':'personnel_restored',
        cause:input.cause,reason:input.reason,revision:revision+1,
        actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
        at:FieldValue.serverTimestamp()
      });
      tx.create(db().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
-       type:action==='archive'?'personnel_archived':'personnel_restored',
+       type:action==='archive'?'personnel_archived':action==='restore'?'personnel_reentry_pending':'personnel_restored',
        dept,discordId,name:historic.name,call:historic.call,
-       before:action==='archive'?'Actief':'Uit dienst',after:action==='archive'?'Uit dienst':'Herintreding',
+       before:action==='archive'?'Actief':action==='restore'?'Uit dienst':'Herintreding in controle',
+       after:action==='archive'?'Uit dienst':action==='restore'?'Herintreding in controle':'Actief',
        cause:input.cause,reason:input.reason,actorDiscordId:req.bpd.discordId||null,
        at:FieldValue.serverTimestamp()
      });
@@ -148,7 +153,7 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
     });
     invalidateLifecycle();
     res.set('Cache-Control','no-store');
-    return res.json({...result,cmsRoleSyncPending:true,
+    return res.json({...result,cmsRoleSyncPending:action!=='activate',
      discordRolesChanged:false,historyPreserved:true});
    }catch(e){return respond(res,e)}
   });

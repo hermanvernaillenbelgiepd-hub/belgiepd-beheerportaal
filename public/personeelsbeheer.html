@@ -4429,9 +4429,30 @@ $('refreshArchive').onclick=async()=>{
   for(const p of result.entries){
    const line=document.createElement('div');line.className='history';
    const info=document.createElement('span');
-   info.textContent=(p.call||'—')+' · '+(p.name||'—')+' · '+(p.cause||'')+
+   info.textContent=(p.state==='pending'?'HERINTREDING IN CONTROLE · ':'GEARCHIVEERD · ')+(p.call||'—')+' · '+(p.name||'—')+' · '+(p.cause||'')+
      ' · '+(p.archivedAt||'');
    line.append(info);
+   if(p.canActivate){
+    const button=document.createElement('button');button.type='button';
+    button.className='alt';button.textContent='CMS-rollen gecontroleerd · activeer';
+    button.onclick=async()=>{
+     const reason=prompt('Bevestig dat de oude CMS/Discord-rollen zijn nagekeken. Motivering (10–500 tekens):');
+     if(reason===null)return;
+     if(reason.trim().length<10||reason.trim().length>500)
+      return notice('Motivering moet 10 tot 500 tekens zijn.',true);
+     if(!confirm('Definitief activeren? Verifieer vóór bevestiging dat uitsluitend goedgekeurde functies en rollen in CMS staan.'))return;
+     button.disabled=true;
+     try{
+      await request('/api/personnel-lifecycle/'+encodeURIComponent(dept)+'/'+
+       encodeURIComponent(p.discordId)+'/activate',{method:'POST',
+       body:{reason:reason.trim(),expectedRevision:p.revision}});
+      notice('Herintreding afgerond. Personeelslid opnieuw actief.');
+      await load();await $('refreshArchive').onclick();
+     }catch(e){notice('Activeren mislukt: '+e.message,true)}
+     finally{button.disabled=false}
+    };
+    line.append(button);
+   }
    if(p.canRestore){
     const button=document.createElement('button');button.type='button';
     button.className='alt';button.textContent='Herintreding beoordelen';

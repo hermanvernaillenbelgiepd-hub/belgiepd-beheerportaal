@@ -118,6 +118,7 @@ app.use('/api/fire-dossiers',express.json({limit:'6kb',strict:true}));
 app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/organogram',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
+app.use('/api/personnel-lifecycle',express.json({limit:'4kb',strict:true}));
 app.use('/api/roster-columns',express.json({limit:'16kb',strict:true}));
 app.use('/api/specialty-links',express.json({limit:'28kb',strict:true}));
 app.use('/api/personnel-awards',express.json({limit:'180kb',strict:true}));
@@ -262,7 +263,7 @@ async function requireUser(req,res,next){
       const key=lifecycleKey(dept,discordId);
       if(key){
         const lifecycle=await cachedAuthDoc(PERSONNEL_LIFECYCLE_COLLECTION,key);
-        if(lifecycle.exists&&lifecycle.get('state')==='archived')continue;
+        if(lifecycle.exists&&['archived','pending'].includes(lifecycle.get('state')))continue;
       }
       departments.push(dept);
     }

@@ -48,6 +48,25 @@ test('restoration resurrects an explicit archived snapshot when spreadsheet row 
  assert.equal(active[0].name,'Test Agent');
  assert.equal(active[0].lifecycleState,'active');
 });
+test('reentry stays out of active lists and has no cadre access until CMS review',()=>{
+ const prior=archived();
+ const pending={...prior,state:'pending',revision:3,cmsRoleSyncPending:true,
+  restoreFromArchive:true};
+ assert.equal(overlayPersonnelLifecycle([row()], [pending]).length,0);
+ assert.equal(overlayPersonnelLifecycle([], [pending]).length,0);
+ const review=overlayPersonnelLifecycle([], [pending],{includeArchived:true});
+ assert.equal(review.length,1);
+ assert.equal(review[0].lifecycleState,'pending');
+ const active={...pending,state:'active',cmsRoleSyncPending:false,revision:4};
+ assert.equal(overlayPersonnelLifecycle([], [active]).length,1);
+});
+test('server parses archive JSON and filters pending service access',()=>{
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ assert.ok(server.includes("app.use('/api/personnel-lifecycle',express.json"));
+ assert.ok(server.includes("['archived','pending'].includes(lifecycle.get('state'))"));
+ const routes=readFileSync(new URL('../src/personnel-lifecycle-routes.js',import.meta.url),'utf8');
+ assert.ok(routes.includes("for(const action of ['archive','restore','activate'])"));
+});
 test('duplicate or malformed ledger records cannot silently hide staff',()=>{
  const p=row();
  assert.equal(overlayPersonnelLifecycle([p],[{...archived(),id:'politie_'+other}])[0],p);
