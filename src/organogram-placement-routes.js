@@ -90,7 +90,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
   res.set('X-Content-Type-Options','nosniff');
   try{
    const snapshot=await getSnapshot();
-   const people=snapshot.data.filter(p=>validRow(p)&&p.dept!=='burger').slice(0,1200);
+   const people=snapshot.data.filter(p=>validRow(p)).slice(0,1200);
    const upstream=await getBelgiumPdDisplayRoles();
    return res.json({...diagnoseOrganogramRoleLinks(people,upstream),
     stale:snapshot.stale===true});
@@ -100,7 +100,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  // Discord identifiers, access grants, source documents or audit history.
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
   try{
-   const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(p=>validRow(p)&&p.dept!=='burger').slice(0,1200);
+   const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(p=>validRow(p)).slice(0,1200);
    const [manualSnap,k9Snap,motardSnap,dispSnap,aeSnap,decorationSnap,catalogSnap]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
@@ -373,6 +373,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
+     ...(p.dept==='burger'?{burgerGroups:(()=>{const identity=roles.entries.get(p.personId),now=Date.now();if(!identity||identity.guildId!==process.env.DISCORD_GUILD_ID||!Number.isSafeInteger(identity.verifiedAt)||identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||!Array.isArray(identity.roleIds))return [];const roleIds=new Set(identity.roleIds);return [['1492485336197234728','Burgerraad'],['1309532438019706966','Burger'],['1398985105254650007','Burger IO']].filter(([id])=>roleIds.has(id)).map(([,label])=>label);})()}:{}),
      ...(p.dept==='depannage'?{depannageGroups:verifiedDepannageOrganogramGroups(
       roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID)}:{}),
      specialtyPatches,
