@@ -57,7 +57,7 @@ fieldset{border:0;margin:0;padding:0}
 <main>
   <h1>Observaties vanuit Basiskader</h1>
   <p>Basiskader kan enkel een observatie indienen over politieleden <strong>onder de eigen rang</strong>. Deze pagina bevat geen sancties.</p>
-  <div class="banner">De lijst met betrokken personeelsleden wordt rechtstreeks uit <strong>Centraal personeelsbeheer</strong> geladen. Ingediende observaties komen in het personeelsdossier en in het bestaande dynamische weekrapport. Alleen Middenkader, Officierenkader, Korpsleiding en geverifieerd Bestuur kunnen het gebundelde ontvangstoverzicht bekijken.</div>
+  <div class="banner">De lijst met betrokken personeelsleden wordt rechtstreeks uit <strong>Centraal personeelsbeheer</strong> geladen. Ingediende observaties blijven in een afzonderlijk, beveiligd register en worden niet automatisch in personeelsdossiers of weekrapporten opgenomen. Alleen Middenkader, Officierenkader, Korpsleiding en geverifieerd Bestuur kunnen het gebundelde ontvangstoverzicht bekijken.</div>
   <div class="card" id="loginPanel"><h2>Beveiligd aanmelden</h2><p>Gebruik je voor BelgiëPD goedgekeurde account.</p>
     <p id="loginStatus" class="helper">De aanmeldservice wordt voorbereid…</p></div>
   <div id="message" class="status" role="status" aria-live="polite"></div>
@@ -228,7 +228,7 @@ $('observationForm').onsubmit=async event=>{
   submitBusy=true;$('submitBtn').disabled=true;
   try{
     const response=await api('/api/basic-observations','POST',body);
-    setMessage('Observatie veilig opgeslagen in het personeelsdossier en het weekrapport. Referentie: '+response.reference);
+    setMessage('Observatie veilig opgeslagen in het afzonderlijke register. Referentie: '+response.reference);
     clearForm();
   }catch(e){setMessage('Niet opgeslagen: '+e.message,true)}
   finally{submitBusy=false;$('submitBtn').disabled=!context?.writesEnabled||!context?.targets?.length}
