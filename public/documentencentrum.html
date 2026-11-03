@@ -96,7 +96,7 @@ html:not([data-bpd-theme="dark"]) body.bpd-shell .document :is(.desc,.meta,.coun
   <label class="search">Zoeken<input id="search" type="search" placeholder="Titel, bestand of omschrijving"></label>
   <button type="button" id="reload" class="secondary">Vernieuwen</button>
  </div>
- <div class="folder-header"><h2>📁 Mappen</h2><button type="button" id="addFolder" class="secondary" hidden>+ Nieuwe map</button></div>
+ <div class="folder-header"><h2>📁 Mappen</h2><div class="buttons"><button type="button" id="deleteFolder" class="danger" hidden>Map verwijderen</button><button type="button" id="addFolder" class="secondary" hidden>+ Nieuwe map</button></div></div>
  <div class="folder-grid" id="folderButtons" aria-label="Selecteer een map"></div>
  <p class="counter" id="counter"></p>
  <div id="documents"></div>
@@ -252,8 +252,23 @@ function renderFolders(){
   root.append(button);
  }
  $('addFolder').hidden=!canWrite();
+ const selected=folders.find(f=>f.id===selectedFolder);
+ $('deleteFolder').hidden=!canManage()||!selected||selected.system===true;
  fillFolderSelect();
 }
+
+$('deleteFolder').onclick=async()=>{
+ const folder=folders.find(f=>f.id===selectedFolder);
+ if(!folder||folder.system||!canManage())return;
+ if(!confirm('De map "'+folder.name+'" verwijderen? Alleen een map zonder actieve documenten kan verwijderd worden. Bestaande documenten en archieven blijven bewaard.'))return;
+ try{
+   await api('/api/document-center/folders/'+encodeURIComponent(folder.id),'DELETE');
+   selectedFolder='all';
+   await loadDocuments();
+   status('De map "'+folder.name+'" is verwijderd. Documenten en archieven blijven behouden.','good');
+ }catch(e){status('Map niet verwijderd: '+e.message,'error')}
+};
+
 $('addFolder').onclick=async()=>{
  if(!canWrite())return;
  const name=prompt('Naam van de nieuwe map (bijvoorbeeld Motard, Dispatch, K-9):');
