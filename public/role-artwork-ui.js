@@ -90,7 +90,10 @@ export function setupRoleArtworkUI({api,$,notice}){
    return [Math.max(1,Math.round(sourceImage.naturalWidth*limit)),
     Math.max(1,Math.round(sourceImage.naturalHeight*limit))];
   })():null;
-  const size=nativeSize||(['medal','award'].includes(kind)?[320,400]:
+  const widePatch=(kind==='patch'&&['politie','depannage'].includes($p('roleArtworkDepartment').value))||
+   (kind==='specialty'&&$p('roleArtworkDepartment').value==='depannage');
+  const size=nativeSize||(widePatch?[640,200]:
+   ['medal','award'].includes(kind)?[320,400]:
    ['helmet','logo','profession','pictogram','patch'].includes(kind)?[320,320]:
    kind==='uniform'?[603,469]:
    kind==='specialty'&&$p('roleArtworkDepartment').value==='brandweer'&&
