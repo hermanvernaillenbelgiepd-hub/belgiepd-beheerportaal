@@ -3431,6 +3431,10 @@ async function loadPublic(){
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,20):[],
     depannageGroups:p.dept==='depannage'&&Array.isArray(p.depannageGroups)?
      p.depannageGroups.filter(x=>['awv','lsra','fast'].includes(x)):[],
+    // Preserve only the known public citizen tiers returned by the server.
+    // Without this, verified Burgerraad membership disappears at the client boundary.
+    burgerGroups:p.dept==='burger'&&Array.isArray(p.burgerGroups)?
+     p.burgerGroups.filter(x=>['Burgerraad','Burger','Burger IO'].includes(x)):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
     displayLabels:Array.isArray(p.displayLabels)?p.displayLabels.filter(x=>['stage','lid'].includes(x)).slice(0,1):[],
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
