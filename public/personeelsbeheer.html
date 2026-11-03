@@ -627,6 +627,17 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  <div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div>
  <div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div>
 </div>
+<details id="personnelArchivePanel" class="card" style="margin:12px 0">
+ <summary>Personeelsarchief en Discord-vertrekcontrole</summary>
+ <p class="subtle">Het archief bewaart de oorspronkelijke personeelsfiche. Ontbreken in de Discord-ledenlijst is alleen een waarschuwing: nooit een automatisch ontslag.</p>
+ <div class="controls">
+  <button id="refreshArchive" type="button" class="alt">Toon archief voor geselecteerde dienst</button>
+  <button id="checkDiscordDepartures" type="button" class="alt">Controleer mogelijke Discord-vertrekkers</button>
+ </div>
+ <p id="archiveFeedback" class="subtle" role="status"></p>
+ <div id="archiveEntries"></div>
+ <div id="discordDepartureEntries"></div>
+</details>
 <div id="rosterColumnAdmin" hidden>
  <details id="rosterColumnDetails" class="roster-column-panel">
   <summary>⚙ Kolombreedtes en specialisaties beheren</summary>
@@ -717,6 +728,15 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
   <select id="ficheColleague" aria-label="Selecteer een andere toegelaten personeelsfiche"></select>
 </div>
 <p class="subtle" id="identity"></p>
+<section id="personnelLifecyclePanel" style="margin:10px 0;padding:12px;border:1px solid #3b5374;border-radius:10px" hidden>
+ <h3>Personeelsverloop en speeltijd</h3>
+ <p id="personnelLifeStatus" class="subtle">Personeelsstatus controleren…</p>
+ <p id="personnelPlaytime" class="subtle">Speeltijd: broncontrole vereist.</p>
+ <div class="controls">
+  <button id="personnelArchiveAction" type="button" class="alt" hidden>Uit dienst plaatsen en archiveren</button>
+ </div>
+ <p class="subtle">Discord/CMS-rollen worden niet automatisch verwijderd: vraag de overeenkomende CMS-rolwijziging aan. Een archiefstatus blokkeert heractivering van portaalrechten tot goedgekeurde herintreding.</p>
+</section>
 <div id="dossierTabBar" class="dossier-tabbar" role="tablist" aria-label="Onderdelen van personeelsdossier"></div>
 <div id="dossierViews" class="dossier-views"></div>
 <form id="editForm"><div class="grid">
@@ -784,6 +804,8 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 placeholder="Bijvoorbeeld: opleiding afgerond en gecontroleerd door instructeur"></textarea></div>
 </div>
 <button id="specialtySave" type="submit">Specialisatiestatus bewaren</button>
+<button id="specialtyEnd" type="button" class="alt">Specialisatie beëindigen</button>
+<p class="subtle">Beëindiging bewaart een expliciete status NEE met motivering. De overeenkomstige Discord/CMS-rol moet afzonderlijk verwijderd worden.</p>
 </form>
 <details id="specialtyAuditPanel"><summary>Historiek van specialisatiewijzigingen</summary>
 <div id="specialtyAudit" class="subtle">Nog geen registraties geladen.</div></details>
@@ -998,6 +1020,7 @@ const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
 let activeLeaveRosterIds=new Set();
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
+let currentLifecycleRevision=0;
 let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
 let rankChangesEnabled=false,rankChoices=[];
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
@@ -4114,6 +4137,7 @@ async function showPerson(p){
   }
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
+  void loadPersonnelLifecycle(p);
   displayServiceBadge($('dossierServiceBanner'),p.dept);
   displayServiceBadge($('registrationServiceBanner'),p.dept,{registration:true});
   if(!sameSelected)refreshStaffTrainingCourses(p.dept);
@@ -4337,6 +4361,123 @@ $('newForm').onsubmit=async event=>{
       if(found)await showPerson(found);
     }
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
+};
+async function loadPersonnelLifecycle(p){
+ const key=p.dept+':'+p.discordId;
+ $('personnelLifecyclePanel').hidden=false;
+ $('personnelArchiveAction').hidden=true;
+ $('personnelLifeStatus').textContent='Archiefstatus controleren…';
+ const hrs=x=>Number.isFinite(x)?x.toLocaleString('nl-BE')+' uur':'Niet beschikbaar';
+ $('personnelPlaytime').textContent='Speeltijd (bron): '+hrs(p.hours)+
+   ' recent · '+hrs(p.totalHours)+' totaal'+
+   (p.lastConnection?' · laatste verbinding '+p.lastConnection:'');
+ try{
+  const data=await request('/api/personnel-lifecycle/'+
+    encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId));
+  if(!selected||selected.dept+':'+selected.discordId!==key)return;
+  currentLifecycleRevision=data.revision||0;
+  $('personnelLifeStatus').textContent=(data.state==='archived'?'Gearchiveerd':'Actieve personeelsfiche')+
+    (data.cmsRoleSyncPending?' · CMS-rolcontrole vereist':'');
+  $('personnelArchiveAction').hidden=!(data.canManage&&data.state!=='archived');
+ }catch(e){
+  if(selected?.dept+':'+selected?.discordId===key)
+   $('personnelLifeStatus').textContent='Archiefstatus tijdelijk niet beschikbaar: '+e.message;
+ }
+}
+$('personnelArchiveAction').onclick=async()=>{
+ if(!selected)return;
+ const p=selected;
+ const menu='1 = Vrijwillig Discord verlaten\\n2 = Ontslag door leiding\\n3 = Vrijwillig vertrek uit deze dienst\\n4 = Andere reden';
+ const code=prompt('Reden uitdiensttreding?\\n'+menu,'2');
+ if(code===null)return;
+ const cause=({'1':'voluntary_discord_leave','2':'management_dismissal',
+   '3':'service_resignation','4':'other'})[code.trim()];
+ if(!cause)return notice('Ongeldige ontslagreden gekozen.',true);
+ const explanation=prompt('Verplichte motivering (minstens 10 tekens):');
+ if(explanation===null)return;
+ const reason=explanation.trim();
+ if(reason.length<10||reason.length>500)return notice('Motivering moet 10 tot 500 tekens zijn.',true);
+ if(!confirm(p.name+' uit '+(departments[p.dept]||p.dept)+' plaatsen?'+
+  '\\nDe actieve lijst wordt verborgen, dossierhistoriek blijft bewaard en CMS-rolintrekking moet afzonderlijk worden nagekeken.'))return;
+ const button=$('personnelArchiveAction');button.disabled=true;
+ try{
+  await request('/api/personnel-lifecycle/'+encodeURIComponent(p.dept)+'/'+
+    encodeURIComponent(p.discordId)+'/archive',{method:'POST',
+    body:{cause,reason,expectedRevision:currentLifecycleRevision}});
+  notice('Personeelslid gearchiveerd. Dossierhistoriek behouden; CMS-rollen controleren.');
+  $('panel').hidden=true;selected=null;
+  await load();
+ }catch(e){notice('Archiveren mislukt: '+e.message,true)}
+ finally{button.disabled=false}
+};
+function archiveDepartment(){
+ const d=$('dept').value;
+ if(!departments[d]){
+  $('archiveFeedback').textContent='Selecteer eerst één hulpdienst in de personeelslijst.';
+  return null;
+ }
+ return d;
+}
+$('refreshArchive').onclick=async()=>{
+ const dept=archiveDepartment();if(!dept)return;
+ $('archiveFeedback').textContent='Archief ophalen…';
+ const root=$('archiveEntries');root.replaceChildren();
+ try{
+  const result=await request('/api/personnel-lifecycle/archives?dept='+encodeURIComponent(dept));
+  if(!result.entries.length){$('archiveFeedback').textContent='Geen gearchiveerde personeelsleden in deze dienst.';return}
+  $('archiveFeedback').textContent=result.entries.length+' gearchiveerde personeelsleden.';
+  for(const p of result.entries){
+   const line=document.createElement('div');line.className='history';
+   const info=document.createElement('span');
+   info.textContent=(p.call||'—')+' · '+(p.name||'—')+' · '+(p.cause||'')+
+     ' · '+(p.archivedAt||'');
+   line.append(info);
+   if(p.canRestore){
+    const button=document.createElement('button');button.type='button';
+    button.className='alt';button.textContent='Herintreding beoordelen';
+    button.onclick=async()=>{
+     const reason=prompt('Motivering voor herintreding (minstens 10 tekens):');
+     if(reason===null)return;
+     if(reason.trim().length<10||reason.trim().length>500)
+      return notice('Motivering moet 10 tot 500 tekens zijn.',true);
+     if(!confirm('Herintreding van '+p.name+' goedkeuren? Lid moet eerst opnieuw op Discord zijn. Bestaande kwalificaties en CMS-rollen afzonderlijk controleren.'))return;
+     button.disabled=true;
+     try{
+      await request('/api/personnel-lifecycle/'+encodeURIComponent(dept)+'/'+
+       encodeURIComponent(p.discordId)+'/restore',{method:'POST',
+       body:{reason:reason.trim(),expectedRevision:p.revision}});
+      notice('Herintreding geregistreerd. CMS-rollen moeten worden gecontroleerd.');
+      await load();await $('refreshArchive').onclick();
+     }catch(e){notice('Herintreding mislukt: '+e.message,true)}
+     finally{button.disabled=false}
+    };
+    line.append(button);
+   }
+   root.append(line);
+  }
+ }catch(e){$('archiveFeedback').textContent='Archiefcontrole mislukt: '+e.message}
+};
+$('checkDiscordDepartures').onclick=async()=>{
+ const dept=archiveDepartment();if(!dept)return;
+ $('archiveFeedback').textContent='Discord-ledenlijst controleren…';
+ const root=$('discordDepartureEntries');root.replaceChildren();
+ try{
+  const result=await request('/api/personnel-lifecycle/departures?dept='+encodeURIComponent(dept));
+  $('archiveFeedback').textContent=result.total?
+   result.total+' mogelijk vertrokken leden gevonden. Controleer handmatig voor je ontslag registreert.':
+   'Geen mogelijke Discord-vertrekkers gevonden.';
+  for(const p of result.candidates){
+   const line=document.createElement('div');line.className='history';
+   line.textContent=(p.call||'—')+' · '+(p.name||'—')+
+     ' · Discord ID '+p.discordId+' · NIET AUTOMATISCH ONTSLAGEN';
+   root.append(line);
+  }
+ }catch(e){$('archiveFeedback').textContent='Discord-controle mislukt: '+e.message}
+};
+$('specialtyEnd').onclick=()=>{
+ $('specialtyValue').value='Nee';
+ $('specialtyReason').focus();
+ notice('Kies de specialisatie, motiveer de beëindiging en klik op Specialisatiestatus bewaren. Verwijder daarna ook de Discord/CMS-rol.');
 };
 $('reload').onclick=load;$('search').oninput=render;
 $('dept').onchange=render;

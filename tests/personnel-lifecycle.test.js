@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {lifecycleKey,validateLifecycleAction,lifecycleSourceSnapshot,
+ overlayPersonnelLifecycle,possibleDiscordDepartures} from '../src/personnel-lifecycle-policy.js';
+const id='123456789012345678',other='123456789012345679';
+const row=(dept='politie')=>({dept,personId:id,name:'Test Agent',
+ call:'485',rank:'Inspecteur',status:'Actief',hours:9,totalHours:120,
+ specialties:[{label:'RAGO',value:'Ja',source:'discord-verified'}]});
+const archived=(dept='politie')=>({
+ dept,discordId:id,state:'archived',revision:2,cause:'voluntary_discord_leave',
+ snapshot:lifecycleSourceSnapshot(row(dept))
+});
+test('lifecycle only accepts exact, qualified departmental Discord IDs',()=>{
+ assert.equal(lifecycleKey('politie',id),'politie_'+id);
+ assert.equal(lifecycleKey('burger',id),null);
+ assert.equal(lifecycleKey('politie','not-a-snowflake'),null);
+});
+test('outdienst registration validates cause and revision; restoration has no invented cause',()=>{
+ assert.deepEqual(validateLifecycleAction({
+ reason:'Vrijwillig vertrokken uit de Discord-server',cause:'voluntary_discord_leave',expectedRevision:0
+ },'archive'),{reason:'Vrijwillig vertrokken uit de Discord-server',
+ cause:'voluntary_discord_leave',expectedRevision:0});
+ assert.throws(()=>validateLifecycleAction({reason:'te kort',cause:'management_dismissal',expectedRevision:0},'archive'));
+ assert.throws(()=>validateLifecycleAction({reason:'Verkeerde statuswijziging',cause:'role_guess',expectedRevision:0},'archive'));
+ assert.throws(()=>validateLifecycleAction({reason:'Herintreding toegestaan',expectedRevision:-1},'restore'));
+ assert.equal(validateLifecycleAction({reason:'Herintreding geautoriseerd',expectedRevision:2},'restore').cause,'return_to_service');
+});
+test('archival suppresses only one service; underlying roster and audit evidence stay unchanged',()=>{
+ const police=row(),fire=row('brandweer'),docs=[archived()];
+ const current=overlayPersonnelLifecycle([police,fire],docs);
+ assert.equal(current.length,1);assert.equal(current[0].dept,'brandweer');
+ assert.equal(police.status,'Actief');assert.equal(police.totalHours,120);
+ const historical=overlayPersonnelLifecycle([police,fire],docs,{includeArchived:true});
+ assert.equal(historical.length,2);assert.equal(historical[0].lifecycleState,'archived');
+});
+test('restoration resurrects an explicit archived snapshot when spreadsheet row no longer exists',()=>{
+ const prior=archived();
+ assert.equal(overlayPersonnelLifecycle([], [prior]).length,0);
+ const read=overlayPersonnelLifecycle([], [prior],{includeArchived:true});
+ assert.equal(read.length,1);
+ assert.equal(read[0].totalHours,120);
+ assert.equal(read[0].personId,id);
+ const restored={...prior,state:'active',cause:'return_to_service',revision:3,restoreFromArchive:true};
+ const active=overlayPersonnelLifecycle([], [restored]);
+ assert.equal(active.length,1);
+ assert.equal(active[0].name,'Test Agent');
+ assert.equal(active[0].lifecycleState,'active');
+});
+test('duplicate or malformed ledger records cannot silently hide staff',()=>{
+ const p=row();
+ assert.equal(overlayPersonnelLifecycle([p],[{...archived(),id:'politie_'+other}])[0],p);
+ assert.equal(overlayPersonnelLifecycle([p],[{...archived(),state:'unknown'}])[0],p);
+});
+test('missing Discord membership is a read-only candidate, never an automatic dismissal',()=>{
+ const input=[row(),row('ambulance')];
+ assert.deepEqual(possibleDiscordDepartures(input,{status:'unavailable',entries:new Map()}),[]);
+ const missing=possibleDiscordDepartures(input,{status:'ok',entries:new Map()});
+ assert.equal(missing.length,2);
+ assert.ok(missing.every(x=>x.evidence==='not_in_successful_api_snapshot'));
+ assert.equal(input[0].status,'Actief');
+ assert.equal(possibleDiscordDepartures(input,{status:'ok',entries:new Map([[id,[]]])}).length,0);
+});
+test('personnel administration UI has syntactically valid inline Javascript',()=>{
+ const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ const start=html.indexOf('<script type="module">');
+ const end=html.indexOf('</script><script defer',start);
+ assert.ok(start>0&&end>start,'Expected management inline module');
+ const module=html.slice(start+'<script type="module">'.length,end);
+ const checked=spawnSync(process.execPath,['--input-type=module','--check'],
+  {input:module,encoding:'utf8',timeout:10000});
+ assert.equal(checked.status,0,checked.stderr);
+ assert.match(html,/id="personnelArchivePanel"/);
+ assert.match(html,/id="personnelArchiveAction"/);
+});

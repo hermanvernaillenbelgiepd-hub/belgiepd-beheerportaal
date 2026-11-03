@@ -45,6 +45,8 @@ import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from '
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 import {eligibleForTechnicalProfile,verifiedPoliceRank,technicalCookieIsValid,technicalActor} from './portal-profile-mode.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
+import {installPersonnelLifecycleRoutes} from './personnel-lifecycle-routes.js';
+import {PERSONNEL_LIFECYCLE_COLLECTION,lifecycleKey,overlayPersonnelLifecycle} from './personnel-lifecycle-policy.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
 import {installSpecialtyRestrictionRoutes} from './specialty-restriction-routes.js';
@@ -137,6 +139,26 @@ const docs={
 };
 const auxiliaryPersonnelRanges={brandweerInfo:'BrandweerInfo!A1:M150'};
 const cache={expires:0,data:null,fetchedAt:null,pending:null};
+const personnelLifecycleCache={until:0,docs:null,pending:null};
+function invalidatePersonnelLifecycle(){
+ personnelLifecycleCache.until=0;personnelLifecycleCache.docs=null;
+ for(const key of authDocCache.keys())if(key.startsWith(PERSONNEL_LIFECYCLE_COLLECTION+':'))
+  authDocCache.delete(key);
+}
+async function getPersonnelLifecycleDocs(){
+ const now=Date.now();
+ if(personnelLifecycleCache.docs&&personnelLifecycleCache.until>now)
+  return personnelLifecycleCache.docs;
+ if(personnelLifecycleCache.pending)return personnelLifecycleCache.pending;
+ personnelLifecycleCache.pending=getFirestore().collection(PERSONNEL_LIFECYCLE_COLLECTION)
+  .limit(1200).get().then(snapshot=>{
+   if(snapshot.size===1200)throw Error('Personeelsarchief overschrijdt veilige limiet');
+   personnelLifecycleCache.docs=snapshot.docs;
+   personnelLifecycleCache.until=Date.now()+15000;
+   return snapshot.docs;
+  }).finally(()=>{personnelLifecycleCache.pending=null});
+ return personnelLifecycleCache.pending;
+}
 const cacheMs=Math.max(1,Math.min(60,Number(process.env.SYNC_CACHE_MINUTES)||15))*60*1000;
 function accessList(){
   try {
@@ -232,7 +254,18 @@ async function requireUser(req,res,next){
       }
     }else return res.status(403).json({error:'Gebruik de toegelaten Google- of Discord-aanmelding'});
     if (!entry || !Array.isArray(entry.departments) || !ALLOWED_ROLES.includes(entry.role)) return res.status(403).json({error:'Account is niet gemachtigd voor de koppeling'});
-    const departments=entry.departments.filter(d=>allDepts.includes(d));
+    // A departed employee cannot regain their former service access just
+    // because CMS restores their historical Discord roles on guild rejoin.
+    // The audited lifecycle decision takes precedence over the role cache.
+    const departments=[];
+    for(const dept of entry.departments.filter(d=>allDepts.includes(d))){
+      const key=lifecycleKey(dept,discordId);
+      if(key){
+        const lifecycle=await cachedAuthDoc(PERSONNEL_LIFECYCLE_COLLECTION,key);
+        if(lifecycle.exists&&lifecycle.get('state')==='archived')continue;
+      }
+      departments.push(dept);
+    }
     if (!departments.length) return res.status(403).json({error:'Geen toegelaten hulpdienst'});
     // Een rol geldt alleen voor de gekoppelde hulpdienst; geen algemene verhoging.
     const rawDepartmentRoles =
@@ -347,7 +380,7 @@ async function getSourceSnapshot(forceRefresh=false){
 }
 // Only read Firestore edits into shared personnel snapshots after the pilot is approved.
 // Read-only Sheets remain intact for rollback and comparison.
-async function getSnapshot({forceRefresh=false}={}){
+async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
   const [created,edits,specialties,rosterConfigs]=await Promise.all([
@@ -425,6 +458,11 @@ async function getSnapshot({forceRefresh=false}={}){
       }
     }
   }
+  // Firestore lifecycle is authoritative for ACTIVE roster visibility even
+  // when a departed member remains in the old Google spreadsheet.
+  // Protected archive routes explicitly request includeArchived=true.
+  const lifecycleDocs=await getPersonnelLifecycleDocs();
+  visible=overlayPersonnelLifecycle(visible,lifecycleDocs,{includeArchived});
   return {...base,data:visible};
 }
 app.get('/api/client-config',(_req,res)=>{
@@ -713,6 +751,8 @@ installDiscordPersonalProfileRoutes(app,{getSnapshot});
 // That broad POST edit route otherwise intercepts retrospective audit submissions.
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
+installPersonnelLifecycleRoutes(app,{requireUser:requireDossierUser,
+  getSnapshot,invalidateLifecycle:invalidatePersonnelLifecycle});
 installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSpecialtyRestrictionRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSpecialtyRoleLinkRoutes(app,{requireUser:requireDossierUser,getSnapshot});

@@ -330,17 +330,17 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       year:'numeric',month:'2-digit',day:'2-digit'});
     const subjectIds=new Set(uniqueIds);
     const movements=new Set(['promotion','demotion','rank_changed',
-      'callsign_changed','name_changed','specialization_changed','specialty_restriction_started','specialty_restriction_lifted','award_granted','award_revoked']);
+      'callsign_changed','name_changed','specialization_changed','specialty_restriction_started','specialty_restriction_lifted','award_granted','award_revoked','personnel_archived','personnel_restored']);
     for(const entry of personnelChanges.docs.slice(0,500)){
       const change=entry.data();
       if(change.dept!==report.dept||!movements.has(change.type)||
-         !subjectIds.has(change.discordId)||!change.at?.toDate?.()||
+         !subjectIds.has(change.discordId)&&!['personnel_archived','personnel_restored'].includes(change.type)||!change.at?.toDate?.()||
          !includedAfterReportRestart(change.at,resetAt)||
          change.rankMovement===true&&change.type==='callsign_changed')continue;
       const date=brusselsDate.format(change.at.toDate());
       if(date<report.periodStart||date>report.periodEnd)continue;
       const person=uniqueSubject(allSubjects,report.dept,change.discordId);
-      if(!person)continue;
+      if(!person&&!['personnel_archived','personnel_restored'].includes(change.type))continue;
       const author=allSubjects.find(p=>p.personId===change.actorDiscordId);
       const category=change.type.startsWith('award_')?'onderscheiding':
         change.type.startsWith('specialty_restriction_')?'specialisatiebeperking':
@@ -351,7 +351,8 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
         specialization_changed:'Specialisatiewijziging',
         specialty_restriction_started:'Tijdelijke beperking gestart',
         specialty_restriction_lifted:'Tijdelijke beperking ingetrokken',
-        award_granted:'Onderscheiding toegekend',award_revoked:'Onderscheiding ingetrokken'
+        award_granted:'Onderscheiding toegekend',award_revoked:'Onderscheiding ingetrokken',
+        personnel_archived:'Uit dienst / archief',personnel_restored:'Herintreding'
       }[change.type];
       const before=String(change.before||'').slice(0,120),
         after=String(change.after||'').slice(0,120),
@@ -366,8 +367,8 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       ].filter(Boolean).join(' · ');
       result.push({id:'personnel:'+entry.id,type:category,eventDate:date,
         subjectDiscordId:change.discordId,
-        subjectNameAtCreation:String(change.name||person.name).slice(0,120),
-        subjectCallAtCreation:person.call,
+        subjectNameAtCreation:String(change.name||person?.name||'—').slice(0,120),
+        subjectCallAtCreation:String(change.call||person?.call||'—').slice(0,24),
         registeredBy:{name:author?.name||'Discord-ID '+String(change.actorDiscordId||'onbekend'),
           call:author?.call||''},
         details,source:'bpd_personnel_activity'});
