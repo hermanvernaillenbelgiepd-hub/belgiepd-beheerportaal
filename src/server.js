@@ -140,6 +140,35 @@ app.use('/api/dossier-retirement',express.json({limit:'4kb',strict:true}));
 app.use('/api/to',express.json({limit:'24kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
+// A transfer revocation must also protect modules that authenticate outside
+// requireUser (training, role management and historical endpoints). This check
+// only blocks an actually signed former identity and never grants permissions.
+app.use('/api',async(req,res,next)=>{
+ const token=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
+ if(!token)return next();
+ try{
+  if(!getApps().length)
+    initializeApp({credential:applicationDefault(),projectId:process.env.FIREBASE_PROJECT_ID});
+  const decoded=await getAuth().verifyIdToken(token);
+  let id=null;
+  if(decoded.firebase?.sign_in_provider==='custom'&&decoded.bpdDiscord===true&&
+      /^discord:\d{15,22}$/.test(decoded.uid||''))
+    id=decoded.uid.slice(8);
+  else if(decoded.firebase?.sign_in_provider==='google.com'&&decoded.email_verified)
+    id=String(accessList()?.[String(decoded.email||'').toLowerCase()]?.discordId||'');
+  if(/^\d{15,22}$/.test(id||'')){
+    const alias=await cachedAuthDoc(DC_TRANSFER_ALIASES,id);
+    if(alias.exists&&alias.get('status')==='completed')
+      return res.status(403).json({error:'Dit Discord-account werd overgedragen. Gebruik het nieuwe account.'});
+  }
+  next();
+ }catch(e){
+  // Invalid tokens remain the responsibility of the original endpoint's
+  // authentication middleware. Infrastructure failures fail closed.
+  if(typeof e?.code==='string'&&e.code.startsWith('auth/'))return next();
+  return res.status(503).json({error:'DC-ID identiteitscontrole tijdelijk niet beschikbaar'});
+ }
+});
 installRoleRoutes(app,{getSnapshot});
 // The live personnel view remains sourced from Sheets during the transition.
  // Including citizens in the snapshot does NOT re-enable retired citizen dossiers.
