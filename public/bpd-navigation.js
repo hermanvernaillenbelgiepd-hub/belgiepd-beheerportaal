@@ -85,12 +85,13 @@
     to:{href:'/to-dienstbord.html',icon:'◉',label:'TO-dienstbord',short:'TO'},
     leave:{href:'/verlofbeheer.html',icon:'▦',label:'Verlofbeheer',short:'Verlof'},
     admin:{href:'/gebruikersbeheer.html#dienstbeheer',icon:'⚙',label:'Beheer & rollen',short:'Beheer'},
+    center:{href:'/beheercentrum.html',icon:'🛠',label:'Beheercentrum',short:'Beheercentrum'},
     notifications:{href:'/meldingen.html',icon:'✉',label:'Meldingen',short:'Meldingen'},
     profile:{href:'/discord-status.html',icon:'♙',label:'Mijn profiel',short:'Profiel'}
   });
   const SAFE=['home','personnel','organogram','education','calendar','leave','profile'];
   const STAFF=['home','personnel','activity','organogram','dossiers','education','documents','calendar','observations',
-    'reports','to','leave','notifications','admin'];
+    'reports','to','leave','notifications','center','admin'];
   const currentPage=(href)=>{
     const target=new URL(href,window.location.origin).pathname;
     if(target===here)return true;
@@ -277,7 +278,7 @@
             show(pages);return;
           }
           if(context?.showAdvancedDashboard===true){
-            const pages=STAFF.filter(item=>item!=='admin'||context.visible===true);
+            const pages=STAFF.filter(item=>!['admin','center'].includes(item)||context.visible===true);
             show(pages);return;
           }
           const basic=[...SAFE];
