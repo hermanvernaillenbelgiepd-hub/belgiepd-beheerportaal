@@ -59,52 +59,87 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <div id="roster"></div>
 </section>
 <section id="detail" hidden>
-<div class="controls noprint"><button type="button" id="back" class="alt">← Terug naar overzicht</button>
-<button type="button" id="quickAdd" hidden>+ Nieuwe registratie toevoegen</button>
-<button type="button" id="print" class="alt">Persoonsgebonden rapport afdrukken</button></div>
+<div class="controls dossier-toolbar noprint">
+  <button type="button" id="back" class="alt">← Terug naar overzicht</button>
+  <button type="button" id="quickAdd" hidden>+ Nieuwe registratie toevoegen</button>
+  <button type="button" id="print" class="alt">Persoonsgebonden rapport afdrukken</button>
+</div>
 <p id="writeNotice" class="muted noprint" hidden>Voor dit dossier heb je geen schrijfrecht. Registreren in je eigen personeelsdossier is niet toegestaan.</p>
-<section class="card">
-<h1 id="personName">Burgerpersoneelsdossier</h1>
-<div class="profile">
-<div><small>DC / DISCORD-ID</small><strong id="personId">—</strong></div>
-<div><small>RANG / ROL</small><strong id="personRole">—</strong></div>
-<div><small>ROEPNUMMER</small><strong id="personCall">—</strong></div>
-<div><small>STATUS</small><strong id="personStatus">—</strong></div>
-<div><small>VOLWAARDIG SINDS</small><strong id="personPromoted">—</strong></div>
-<div><small>OBSERVATIES</small><strong id="personAvg">—</strong></div>
-</div>
-<p id="limited" class="muted" hidden>Een deel van de oudere registratie- of verwijderhistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
-</section>
-<section class="tiles">
-<div class="card"><h2>Verlof</h2><div id="leave"></div></div>
-<div class="card"><h2>Notities</h2><div id="notes"></div></div>
-<div class="card"><h2>Observaties</h2><div id="observations"></div></div>
-<div class="card"><h2>Sancties</h2><div id="sanctions"></div></div>
-<div class="card"><h2>Volwaardig Burger</h2><div id="promotions"></div></div>
-<div class="card"><h2>Persoonsgebonden rapport</h2><p class="muted">Dit rapport bundelt bovenstaande registraties met de bestaande centrale verlofhistoriek. De vastgelegde auteur en registratiedatum blijven behouden. Er wordt geen weekrapport aangemaakt.</p></div>
-<div class="card"><h2>Verwijderhistoriek</h2><p class="muted">Registraties worden niet definitief gewist: Korpsleiding en technisch beheer moeten een reden vastleggen. Burgerraad kan deze historiek lezen maar niets verwijderen.</p><div id="deletionLog"></div></div>
-</section>
-<section class="card" id="formCard" hidden>
-<h2>Nieuwe burgerregistratie</h2>
-<form id="entryForm">
-<div class="form-grid">
-<div><label for="kind">Soort registratie</label>
-<select id="kind" required>
-<option value="notitie">Notitie</option>
-<option value="observatie">Observatie</option>
-<option value="sanctie_mondeling">Mondelinge sanctie</option>
-<option value="sanctie_schriftelijk">Schriftelijke sanctie</option>
-<option value="volwaardig">Notitie: volwaardig Burger geworden</option>
-</select></div>
-<div><label for="eventDate">Datum van gebeurtenis</label><input type="date" id="eventDate" required></div>
-</div>
-<div id="scoreField" hidden><label for="score">Observatiescore (0 tot 10)</label>
-<input type="number" id="score" min="0" max="10" step="1" value="5"></div>
-<label for="details">Notitie of toelichting (apart van observaties)</label>
-<textarea id="details" minlength="3" maxlength="1600" required></textarea>
-<div class="controls"><button type="submit" id="save">Registratie definitief opslaan</button><span class="muted">Opslaan schrijft een auditregistratie naar Firebase; wijzigingen kunnen achteraf niet stilzwijgend worden aangepast.</span></div>
-<p id="saveStatus" class="muted" role="status" aria-live="polite">Vul de registratie in en klik op Opslaan.</p>
-</form></section>
+<article class="citizen-sheet" aria-label="Burgerpersoneelsdossier">
+  <section class="citizen-sheet-head">
+    <p class="citizen-overline">BELGIËPD · BURGERPERSONEELSDOSSIER</p>
+    <h1 id="personName">Burgerpersoneelsdossier</h1>
+    <div class="profile" aria-label="Algemene personeelsgegevens">
+      <div><small>DC / DISCORD-ID</small><strong id="personId">—</strong></div>
+      <div><small>RANG / ROL</small><strong id="personRole">—</strong></div>
+      <div><small>ROEPNUMMER</small><strong id="personCall">—</strong></div>
+      <div><small>STATUS</small><strong id="personStatus">—</strong></div>
+      <div><small>VOLWAARDIG SINDS</small><strong id="personPromoted">—</strong></div>
+      <div><small>OBSERVATIES</small><strong id="personAvg">—</strong></div>
+    </div>
+    <p id="limited" class="muted" hidden>Een deel van de oudere registratie- of verwijderhistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
+  </section>
+
+  <section class="citizen-registration noprint" id="formCard" hidden>
+    <div class="citizen-section-header">
+      <h2>Nieuwe burgerregistratie</h2>
+      <span class="muted">Notities, observaties en sancties blijven afzonderlijke registraties</span>
+    </div>
+    <form id="entryForm">
+      <div class="form-grid">
+        <div><label for="kind">Soort registratie</label>
+          <select id="kind" required>
+            <option value="notitie">Notitie</option>
+            <option value="observatie">Observatie</option>
+            <option value="sanctie_mondeling">Mondelinge sanctie</option>
+            <option value="sanctie_schriftelijk">Schriftelijke sanctie</option>
+            <option value="volwaardig">Notitie: volwaardig Burger geworden</option>
+          </select>
+        </div>
+        <div><label for="eventDate">Datum van gebeurtenis</label>
+          <input type="date" id="eventDate" required>
+        </div>
+      </div>
+      <div id="scoreField" hidden><label for="score">Observatiescore (0 tot 10)</label>
+        <input type="number" id="score" min="0" max="10" step="1" value="5">
+      </div>
+      <label for="details">Notitie of toelichting (apart van observaties)</label>
+      <textarea id="details" minlength="3" maxlength="1600" required></textarea>
+      <div class="citizen-savebar">
+        <button type="submit" id="citizenEntrySave">Registratie definitief opslaan</button>
+        <span class="muted">De registratie wordt in Firebase opgeslagen en ter controle opnieuw ingelezen.</span>
+      </div>
+      <p id="saveStatus" class="muted" role="status" aria-live="polite">Vul de registratie in en klik op Opslaan.</p>
+    </form>
+  </section>
+
+  <div class="citizen-section-list">
+    <section class="citizen-section" id="citizenLeave">
+      <h2>Verlof</h2><div id="leave"></div>
+    </section>
+    <section class="citizen-section" id="citizenNotes">
+      <h2>Notities</h2><div id="notes"></div>
+    </section>
+    <section class="citizen-section" id="citizenObservations">
+      <h2>Observaties</h2><div id="observations"></div>
+    </section>
+    <section class="citizen-section" id="citizenSanctions">
+      <h2>Sancties</h2><div id="sanctions"></div>
+    </section>
+    <section class="citizen-section" id="citizenPromotions">
+      <h2>Volwaardig Burger</h2><div id="promotions"></div>
+    </section>
+    <section class="citizen-section" id="citizenReport">
+      <h2>Persoonsgebonden rapport</h2>
+      <p class="muted">Dit rapport bevat bovenstaande registraties en de centrale verlofhistoriek, met auteur en registratiedatum. Er wordt geen weekrapport aangemaakt.</p>
+    </section>
+    <section class="citizen-section citizen-audit-section" id="citizenDeletionLog">
+      <h2>Verwijderhistoriek</h2>
+      <p class="muted">Alleen Korpsleiding en technisch beheer mogen met een verplichte reden een registratie uit het actieve dossier halen. De originele gegevens blijven bewaard; Burgerraad heeft geen verwijderrecht.</p>
+      <div id="deletionLog"></div>
+    </section>
+  </div>
+</article>
 </section>
 <dialog id="deleteDialog" aria-labelledby="deleteTitle">
 <form id="deleteForm">
@@ -280,7 +315,7 @@ $('deleteForm').onsubmit=async event=>{
 };
 $('entryForm').onsubmit=async event=>{
   event.preventDefault();if(!selectedId)return;
-  const targetId=selectedId,button=$('save');
+  const targetId=selectedId,button=$('citizenEntrySave');
   button.disabled=true;$('saveStatus').textContent='Bezig met opslaan in Firebase…';
   let savedId=null;
   try{
