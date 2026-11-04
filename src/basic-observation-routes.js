@@ -113,6 +113,10 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
         const at=FieldValue.serverTimestamp();
         tx.update(ref,{archivedAt:body.archived?at:null,
           archivedBy:body.archived?req.bpd.uid:null,
+          // A manual restore starts a new 30-day follow-up window. Without
+          // this, the hourly retention check would re-archive it immediately.
+          restoredAt:body.archived?null:at,
+          archiveReason:body.archived?'manual':null,
           modifiedAt:at});
         tx.create(db.collection('bpd_basic_observation_audit').doc(),{
           observationId:id,action:body.archived?'archive':'restore',
