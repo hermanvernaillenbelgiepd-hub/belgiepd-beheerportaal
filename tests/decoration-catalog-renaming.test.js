@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {CATALOG_BY_ID,catalogLabelOverrideItem,decorationCatalogExtras,
- lookupCatalog,publicDecorations,manageDecorations} from '../src/personnel-decoration-policy.js';
+ lookupCatalog,publicDecorations,manageDecorations,canRenameDecorationCatalog,
+ canManagePoliceDecorationCatalog} from '../src/personnel-decoration-policy.js';
 
 const custom='custom_12345678-1234-4234-8234-123456789abc';
 const doc=(id,data)=>({id,data:()=>data});
@@ -47,4 +48,18 @@ test('rename route requires verified officer/corps, audit reason and preserves g
  assert.doesNotMatch(server,/tx\.delete\(/);
  assert.match(ui,/Naam medaille \/ ereteken aanpassen/);
  assert.match(ui,/bpd-decoration-renamed/);
+});
+
+test('technical beheer can rename but cannot grant or upload awards',()=>{
+ const technical={uid:'discord:222222222222222222',discordId:'222222222222222222',
+  role:'beheerder',portalTechnicalMode:true,profileTechnicalAvailable:true,
+  departments:['politie'],dossierAllowedDepartments:['politie']};
+ assert.equal(canRenameDecorationCatalog(technical),true);
+ assert.equal(canManagePoliceDecorationCatalog(technical),false);
+ assert.equal(canRenameDecorationCatalog({...technical,profileTechnicalAvailable:false}),false);
+ assert.equal(canRenameDecorationCatalog({...technical,uid:'google:222222222222222222'}),false);
+ const routes=readFileSync(new URL('../src/personnel-decoration-routes.js',import.meta.url),'utf8');
+ assert.match(routes,/canRename:canRenameDecorationCatalog\(req\.bpd\)/);
+ assert.match(routes,/if\(!canRenameDecorationCatalog\(req\.bpd\)\)/);
+ assert.match(routes,/if\(!canManagePoliceDecorationCatalog\(req\.bpd\)\)/);
 });
