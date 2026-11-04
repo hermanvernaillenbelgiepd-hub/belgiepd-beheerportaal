@@ -166,6 +166,35 @@
     update();
     const observer=new MutationObserver(update);
     observer.observe(sidebar,{attributes:true,attributeFilter:['hidden'],subtree:true});
+    // The home page uses its own role-specific menus. Reveal Burgerdossiers
+    // only after a server-authenticated, freshly verified Burgerraad check.
+    (async()=>{
+      try{
+        const firebase=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+        for(let n=0;!firebase.getApps().length&&n<22;n++)
+          await new Promise(resolve=>setTimeout(resolve,350));
+        if(!firebase.getApps().length)return;
+        const authSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+        let sequence=0;
+        authSdk.onAuthStateChanged(authSdk.getAuth(firebase.getApps()[0]),async user=>{
+          const turn=++sequence;
+          const reveal=allowed=>{
+            for(const link of document.querySelectorAll('.citizen-dossier-entry'))
+              link.hidden=!allowed;
+            update();
+          };
+          reveal(false);
+          if(!user)return;
+          try{
+            const token=await user.getIdToken();
+            const response=await fetch('/api/citizen-dossiers/access',{
+              cache:'no-store',headers:{Authorization:'Bearer '+token}});
+            if(turn!==sequence)return;
+            reveal(response.ok&&(await response.json()).canOpen===true);
+          }catch{if(turn===sequence)reveal(false)}
+        });
+      }catch{/* Navigation remains hidden if the role cannot be confirmed. */}
+    })();
   }
   function addSmallBack(){
     const header=document.querySelector('body > header');
