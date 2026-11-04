@@ -24,7 +24,7 @@ import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogram
 import {projectCitizenOrganogram,projectVerifiedCouncilAccounts,councilRoleIds} from './burger-organogram-projection.js';
 import {roleArtworkCandidateKeys,resolveSpecialtyArtworkKey} from './specialty-artwork-resolver.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
- awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
+ awardKey,publicDecorations,decorationCatalogExtras} from './personnel-decoration-policy.js';
 
 export const AE_MANUAL_DISPLAY_COLLECTION='bpd_ae_display_roles';
 const AE_MANUAL_LEVELS=new Set(['ae_i','ae_t','teamleader','instructeur']);
@@ -110,7 +110,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     db.collection(DISP_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(AE_MANUAL_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(500).get(),
-    db.collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get()
+    db.collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(120).get()
    ]);
    if(manualSnap.size>=1500)return res.status(503).json({error:'Organogramregisterlimiet bereikt'});
    // The per-service mapping is visual-only. It can select a library patch
@@ -154,8 +154,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const aeManual=manualMap(aeSnap.docs);
    // Public award projection: no private history, hidden items or revoked medals.
    const decorationEntries=new Map(decorationSnap.docs.map(d=>[d.id,d.get('entries')||[]]));
-   const customCatalog=new Map(catalogSnap.docs.map(d=>[d.id,customCatalogItem(d)])
-    .filter(([,item])=>Boolean(item)));
+   const customCatalog=decorationCatalogExtras(catalogSnap.docs);
    const boardOnly=manualSnap.docs.filter(d=>d.get('dept')==='bestuur'&&
     d.get('status')==='active'&&['bestuur','bestuur-ai'].includes(d.get('boardRole')))
     .map(d=>d.get('personId')).filter(idOK).slice(0,100);
