@@ -17,9 +17,24 @@ test('Activiteitscentrum volgt de personeelslijst: politie naar kader en nummer,
  const source=[...input];
  const sorted=sortActivityLikePersonnel(input);
  assert.deepEqual(sorted.filter(p=>p.department==='politie').map(p=>p.call),
-   ['900','910','950','700','SANTO 432','405','301','205','105','008']);
+   ['900','910','950','700','405','SANTO 432','301','205','105','008']);
  assert.deepEqual(sorted.slice(-2).map(p=>p.department),['brandweer','ambulance']);
  assert.deepEqual(input,source,'Sorting must not mutate fetched telemetry or other data');
+});
+test('Oplopend binnen dezelfde Politie-reeks: 700, 710, 720; daarna 600, 610',()=>{
+ const unsorted=['610','720','730','600','700','710','505','432','410','400','301','320','220','200','100','110']
+   .map(call=>person('politie',call));
+ const sorted=sortActivityLikePersonnel(unsorted).map(p=>p.call);
+ assert.deepEqual(sorted,[
+   '700','710','720','730','600','610',
+   '505','400','410','432','301','320',
+   '200','220','100','110'
+ ]);
+});
+test('Korpsleiding en Officierenkader blijven correct oplopend',()=>{
+ const sorted=sortActivityLikePersonnel(['930','920','910','900','950','940']
+  .map(call=>person('politie',call)));
+ assert.deepEqual(sorted.map(p=>p.call),['900','910','920','930','940','950']);
 });
 test('Dezelfde kaderindeling en scheiding tussen diensten als de personeelslijst',()=>{
  assert.equal(activityRosterGroup(person('politie','900')),'politie:korpsleiding');
