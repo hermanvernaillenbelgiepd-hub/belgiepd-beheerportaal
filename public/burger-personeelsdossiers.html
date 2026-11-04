@@ -196,15 +196,31 @@ $('quickAdd').onclick=()=>$('formCard').scrollIntoView({behavior:'smooth',block:
 $('print').onclick=()=>window.print();
 $('entryForm').onsubmit=async event=>{
   event.preventDefault();if(!selectedId)return;
-  const button=$('save');button.disabled=true;
+  const targetId=selectedId,button=$('save');
+  button.disabled=true;$('saveStatus').textContent='Bezig met opslaan in Firebase…';
+  let savedId=null;
   try{
     const kind=$('kind').value;
     const payload={kind,eventDate:$('eventDate').value,details:$('details').value.trim()};
     if(kind==='observatie')payload.score=Number($('score').value);
-    await api('/api/citizen-staff/'+encodeURIComponent(selectedId)+'/entries','POST',payload);
-    $('details').value='';await openPerson(selectedId);mark('Registratie veilig opgeslagen');
-  }catch(e){mark('Opslaan mislukt: '+e.message,true)}
-  finally{button.disabled=false}
+    const result=await api('/api/citizen-staff/'+encodeURIComponent(targetId)+'/entries','POST',payload);
+    if(result.saved!==true||!result.id)throw Error('De server heeft geen bevestiging gegeven');
+    savedId=result.id;
+    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(targetId));
+    if(!fresh.entries?.some(entry=>entry.id===savedId))
+      throw Error('De nieuwe registratie kon niet teruggelezen worden');
+    if(selectedId===targetId)renderPerson(fresh);
+    $('details').value='';
+    $('saveStatus').textContent='Opgeslagen en opnieuw gecontroleerd · referentie '+savedId;
+    mark('Registratie opgeslagen in het dossier en bevestigd door Firebase');
+  }catch(e){
+    const warning=savedId
+      ?'De server heeft de registratie opgeslagen (referentie '+savedId+
+        '), maar de controle na opslaan mislukte. Vernieuw het dossier voor je opnieuw opslaat.'
+      :'Opslaan mislukt: '+e.message;
+    $('saveStatus').textContent=warning;
+    mark(warning,true);
+  }finally{button.disabled=false}
 };
 (async()=>{
   try{
