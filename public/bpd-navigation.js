@@ -90,7 +90,7 @@
   });
   const SAFE=['home','personnel','organogram','education','calendar','leave','profile'];
   const STAFF=['home','personnel','activity','organogram','dossiers','education','documents','calendar','observations',
-    'reports','to','leave','admin'];
+    'reports','to','leave','notifications','admin'];
   const currentPage=(href)=>{
     const target=new URL(href,window.location.origin).pathname;
     if(target===here)return true;
