@@ -392,6 +392,8 @@
     refresh();
   }
   function init(){
+    // Gracefully skip non-browser navigation test stubs and older DOM engines.
+    if(typeof document.querySelectorAll!=='function'||typeof MutationObserver!=='function')return;
     for(const table of document.querySelectorAll(selector))attach(table);
     // Some dashboards add their roster after navigation was initialized.
     const arrivals=new MutationObserver(records=>{
