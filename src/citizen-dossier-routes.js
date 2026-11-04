@@ -122,6 +122,9 @@ async function dossierData(person){
 }
 export function installCitizenDossierRoutes(app,{getSnapshot}){
  app.get('/api/citizen-dossiers/status',(_req,res)=>res.json({enabled:enabled()}));
+ app.get('/api/citizen-dossiers/access',councilOnly,(_req,res)=>{
+  res.set('Cache-Control','no-store');res.json({canOpen:true,role:'Burgerraad'});
+ });
  app.get('/api/citizen-dossiers/overview',councilOnly,async(req,res)=>{
   try{
    const people=await citizenSubjects(getSnapshot);
