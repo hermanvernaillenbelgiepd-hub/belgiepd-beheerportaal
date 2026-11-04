@@ -7,12 +7,12 @@ import {roleForDepartment} from './leave-policy.js';
 export const ROSTER_COLUMN_COLLECTION='bpd_roster_column_settings';
 export const ROSTER_DEPARTMENTS=Object.freeze(['politie','brandweer','ambulance','depannage']);
 export const ROSTER_WIDTH_DEFAULTS=Object.freeze({
- call:78,grade:116,rank:164,name:190,series:108,status:108,
+ call:42,grade:68,rank:164,name:190,series:52,status:58,
  specialty:82,summary:180,file:76,discord:224
 });
 const columnBounds=Object.freeze({
- call:[60,200],grade:[75,250],rank:[105,380],name:[120,430],
- series:[95,240],status:[95,240],specialty:[60,220],
+ call:[36,200],grade:[54,250],rank:[105,380],name:[120,430],
+ series:[40,240],status:[48,240],specialty:[60,220],
  summary:[110,400],file:[65,180],discord:[175,360]
 });
 const allowedKeys=Object.keys(ROSTER_WIDTH_DEFAULTS);
