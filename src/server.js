@@ -12,6 +12,7 @@ import {discordBotToken} from './discord-bot-refresh.js';
 import {probeBelgiumPdDiscordUsers} from './bpd-discord-users-probe.js';
 import { discordPortalAccess } from './discord-portal-access.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
+import {verifiedPoliceBasicRole,ensureVerifiedPoliceBasicAccess,autoPoliceBasicActive,hideUnverifiedAutoPoliceBasic} from './verified-police-basic-access.js';
 import { planPersonnelMigration } from './personnel-migration.js';
 import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.js';
 import { ALLOWED_ROLES } from './registrations.js';
@@ -268,10 +269,40 @@ async function requireUser(req,res,next){
           process.env.DISCORD_GUILD_ID,process.env);
         if(provisioned){authDocCache.delete(USER_COLLECTION+':'+id);managed=await cachedAuthDoc(USER_COLLECTION,id);}
       }
+      // Automatically approve Police Basiskader only when fresh Discord
+      // roles AND one active 3xx-5xx Police roster entry agree.
+      // Never overwrite legacy allowlist grants or any explicit Police role.
+      const legacy=Object.values(accessList()).some(x=>x?.discordId===id);
+      const canAutoBasic=(!managed.exists&&!legacy)||
+        managed.get('status')==='pending'||
+        (managed.get('status')==='approved'&&
+          !managed.get('departments')?.includes('politie'));
+      if(canAutoBasic&&verifiedPoliceBasicRole(verified,member,process.env.DISCORD_GUILD_ID)){
+        try{
+          const snap=await getSnapshot();
+          if(!snap.stale){
+            const result=await ensureVerifiedPoliceBasicAccess(store,verified,member,
+              process.env.DISCORD_GUILD_ID,snap.data);
+            if(result.changed){
+              authDocCache.delete(USER_COLLECTION+':'+id);
+              managed=await cachedAuthDoc(USER_COLLECTION,id);
+            }
+          }
+        }catch(error){
+          // Automated role sync must fail closed without breaking login.
+          console.warn('Automatische Basiskadertoegang niet beschikbaar:',
+            typeof error?.code==='string'?error.code.slice(0,40):'controle');
+        }
+      }
       if(managed.exists){
         manualRoleRecovery=managed.data()?.manualRoleRecovery||null;
         entry=approvedManagedEntry(managed.data(),id);
         if(!entry)return res.status(403).json({error:'Je portaaltoegang is nog niet goedgekeurd of werd geblokkeerd. Open Gebruikersbeheer.'});
+        if(!autoPoliceBasicActive(verified,member,process.env.DISCORD_GUILD_ID,managed.data())){
+          entry=hideUnverifiedAutoPoliceBasic(entry);
+          if(!entry)return res.status(403).json({error:
+            'Je automatisch gekoppelde Politie-Basiskaderrol moet opnieuw via Discord worden geverifieerd.'});
+        }
         if(!stillEligibleAutoCadre(verified,member,process.env.DISCORD_GUILD_ID,
           process.env,managed.data()))
           return res.status(403).json({error:'Je automatische Middenkader-toegang vereist een nieuwe Discord-verificatie. Vernieuw je rollen in Mijn Discord.'});
