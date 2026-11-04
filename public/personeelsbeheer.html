@@ -644,7 +644,7 @@ body.dossier-embed main{max-width:none;margin:0;padding:0}
 body.dossier-embed #panel{max-width:none;width:100%;margin:0;border:0;box-shadow:none;background:#10243e}
 body.dossier-embed #notice{margin:0 0 10px}
 body.dossier-embed #accessHelp{margin:10px 0}
-</style><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/roster-name-preview.css">
+</style><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/roster-name-preview.css"><link rel="stylesheet" href="/dossier-identity-polish.css">
 </head>
 <body class="bpd-unified-dossier"><header><div><strong>🛡️ BelgiëPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html" data-personnel-staff hidden>Gebruikersbeheer</a><a href="/rollen-opleidingen.html" data-personnel-staff hidden>Opleidingen</a><a href="/weekrapporten.html" data-personnel-staff hidden>Weekrapporten</a><a href="/dossiercentrum.html" data-personnel-staff hidden>Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><div class="personnel-overview"><h1>Centraal personeelsbeheer</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p></div>
@@ -1092,6 +1092,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <script src="/personnel-list-visuals.js"></script>
 <script src="/specialty-dossier-controls.js?v=20261102"></script>
 <script type="module">
+import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
 import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalog.js';
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
@@ -3006,7 +3007,7 @@ function sheetIdentity(p){
   const scoreHeader=$('sheetScoreSummary');
   scoreHeader.hidden=p.dept!=='politie';
   scoreHeader.textContent='Gem. score: gegevens laden…';
-  $('sheetStatus').textContent=activeLeaveRosterIds.has(p.discordId)?'🏖️ Verlof':p.status||'—';
+  renderDossierStatus($('sheetStatus'),p.status,{leave:activeLeaveRosterIds.has(p.discordId)});
   $('sheetDiscordId').textContent=p.discordId||'—';
   $('ficheEditor').hidden=true;$('ficheEditor').open=false;
   $('editPersonnelSummary').hidden=true;
@@ -3241,7 +3242,7 @@ async function loadStaffLeave(p,key){
     if(isApprovedActive)activeLeaveRosterIds.add(p.discordId);
     else activeLeaveRosterIds.delete(p.discordId);
     render();
-    $('sheetStatus').textContent=isApprovedActive?'🏖️ Verlof':p.status||'—';
+    renderDossierStatus($('sheetStatus'),p.status,{leave:isApprovedActive});
     const periodState=x=>x.startDate<=today&&x.endDate>=today?'Lopend':
       x.startDate>today?'Gepland':'Afgerond';
     const order={Lopend:0,Gepland:1,Afgerond:2};

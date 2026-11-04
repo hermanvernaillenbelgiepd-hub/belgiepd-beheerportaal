@@ -130,7 +130,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
   .citizen-section-list{grid-template-columns:repeat(2,minmax(0,1fr))}
   .record{break-inside:avoid}
 }
-</style></head>
+</style><link rel="stylesheet" href="/dossier-identity-polish.css"></head>
 <body class="bpd-unified-dossier dossier-onepage">
 <header><strong>🏛️ BelgiëPD · Burgerpersoneelsdossiers</strong>
 <nav><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/">Dashboard</a>
@@ -243,6 +243,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 </dialog>
 </main>
 <script type="module">
+import {renderDossierStatus} from '/dossier-identity-presentation.js';
 const $=id=>document.getElementById(id);
 let auth,authMod,portalSetup,selectedId=null,rows=[],deleteTarget=null;
 const set=(id,value)=>{$(id).textContent=value==null||value===''?'—':String(value)};
@@ -289,7 +290,7 @@ function renderRoster(){
 function renderPerson(data){
   const p=data.person;set('personName',p.name||'Burgerpersoneelsdossier');
   set('personId',p.discordId);set('personRole',data.roleType||p.rank||'Niet bevestigd');
-  set('personCall',p.call);set('personStatus',p.status);
+  set('personCall',p.call);renderDossierStatus($('personStatus'),p.status);
   set('personPromoted',data.volwaardigDate);
   set('personAvg',data.observation.count?String(data.observation.average)+'/10 ('+
     data.observation.count+')':'Geen');
