@@ -300,7 +300,7 @@
    (close(pos.left,57)&&close(pos.top,56)&&close(pos.width,25)&&close(pos.height,10))||
    (close(pos.left,56.2)&&close(pos.top,58.9)&&close(pos.width,19.5));
  }
- function snapAssignedPortraitPlates(image,person,nameplate,rankplate){
+ function snapAssignedPortraitPlates(image,person,nameplate,rankplate,ribbons=null,medals=null){
   const apply=()=>{
    if(!image.naturalWidth||!image.naturalHeight||
       image.naturalHeight/image.naturalWidth<1.04)return;
@@ -309,11 +309,22 @@
    // actual image, not to the retired 603:469 landscape backdrop.
    const slots=[
     [nameplate,'name',{left:27.2,top:34.7,width:15.8,height:7.9}],
-    [rankplate,'rank',{left:55.3,top:34.7,width:15.6,height:7.9}]
+    [rankplate,'rank',{left:55.3,top:34.7,width:15.6,height:7.9}],
+    [ribbons,'ribbons',{left:55.3,top:26,width:19,height:5}],
+    [medals,'medals',{left:55.3,top:45,width:23,height:18}]
    ];
+   const legacyAwardPosition=(position,kind)=>{
+    if(!position)return true;
+    const near=(a,b)=>Math.abs(Number(a)-b)<0.65;
+    return kind==='ribbons'?
+     near(position.left,57)&&near(position.top,51)&&near(position.width,21):
+     near(position.left,57)&&near(position.top,70)&&near(position.width,24);
+   };
    for(const [node,kind,slot] of slots){
-    if(layout?.[kind]?.visible===false||
-       !factoryChestPlacement(layout?.[kind],kind))continue;
+    if(!node||layout?.[kind]?.visible===false)continue;
+    const factory=['name','rank'].includes(kind)?
+     factoryChestPlacement(layout?.[kind],kind):legacyAwardPosition(layout?.[kind],kind);
+    if(!factory)continue;
     for(const axis of ['left','top','width','height'])
      node.style[axis]=slot[axis]+'%';
    }
@@ -536,7 +547,7 @@
    applyCompositePlace(chest,person,'rank');
    stage.append(chest);
    if(rack?.medals){applyCompositePlace(rack.medals,person,'medals');stage.append(rack.medals);}
-   if(individualGold)snapAssignedPortraitPlates(img,person,plate,chest);
+   if(individualGold)snapAssignedPortraitPlates(img,person,plate,chest,rack?.ribbons,rack?.medals);
    window.BPDVisualAssets?.appendTo?.(stage,person,'gold');
    outer.append(stage);
    return outer;
@@ -581,7 +592,7 @@
    applyCompositePlace(patch,person,'rank');
   stage.append(patch);
   if(rack?.medals){applyCompositePlace(rack.medals,person,'medals');stage.append(rack.medals);}
-  if(individualSilver)snapAssignedPortraitPlates(image,person,nameplate,patch);
+  if(individualSilver)snapAssignedPortraitPlates(image,person,nameplate,patch,rack?.ribbons,rack?.medals);
   window.BPDVisualAssets?.appendTo?.(stage,person,'silver');
   outer.append(stage);
   return outer;

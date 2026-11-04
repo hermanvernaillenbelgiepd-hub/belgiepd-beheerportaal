@@ -87,12 +87,14 @@ export function setupUniformComposer({api,$}){
  }
  const slots={
   name:{left:27.2,top:34.7,width:15.8,height:7.9},
-  rank:{left:55.3,top:34.7,width:15.6,height:7.9}
+  rank:{left:55.3,top:34.7,width:15.6,height:7.9},
+  ribbons:{left:55.3,top:26,width:19,height:5},
+  medals:{left:55.3,top:45,width:23,height:18}
  };
  function snapChest(){
-  for(const kind of ['name','rank'])Object.assign(draft.layers[kind],slots[kind]);
+  for(const kind of ['name','rank','ribbons','medals'])Object.assign(draft.layers[kind],slots[kind]);
   render();
-  notify('Naam en gradenplaat zijn op de borstvlakken geplaatst. Sleep ze eventueel bij en bewaar het volledige uniform.');
+  notify('Naamplaat, graad, linten en medailles staan op de borstvlakken. Verplaats ze indien nodig en bewaar het uniform.');
  }
  $('composeSnapChest').onclick=snapChest;
  function goldPoliceGrade(){
@@ -117,13 +119,20 @@ export function setupUniformComposer({api,$}){
     $('composeSnapChest').hidden=!portrait;
     const factory=(p,kind)=>{
      const near=(a,b)=>Math.abs(Number(a)-b)<0.65;
-     return kind==='name'?near(p.left,18)&&near(p.top,56):
-      near(p.left,57)&&near(p.top,56);
+     if(kind==='name')return near(p.left,18)&&near(p.top,56)||near(p.left,21.2)&&near(p.top,60.2);
+     if(kind==='rank')return near(p.left,57)&&near(p.top,56)||near(p.left,56.2)&&near(p.top,58.9);
+     if(kind==='ribbons')return near(p.left,57)&&near(p.top,51)&&near(p.width,21);
+     return near(p.left,57)&&near(p.top,70)&&near(p.width,24);
     };
-    if(portrait&&!templates.some(x=>x.department===dept.value&&x.scope===draft.scope&&x.selector===draft.selector)&&
-       factory(draft.layers.name,'name')&&factory(draft.layers.rank,'rank')){
-     for(const kind of ['name','rank'])Object.assign(draft.layers[kind],slots[kind]);
-     render();
+    // Repair only known landscape defaults. User-adjusted coordinates stay untouched.
+    if(portrait){
+     let repaired=false;
+     for(const kind of ['name','rank','ribbons','medals']){
+      if(factory(draft.layers[kind],kind)){
+       Object.assign(draft.layers[kind],slots[kind]);repaired=true;
+      }
+     }
+     if(repaired){render();return}
     }
    };
    pic.addEventListener('load',onImage,{once:true});

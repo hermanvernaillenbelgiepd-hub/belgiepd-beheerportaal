@@ -4,7 +4,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {DEPANNAGE_FUNCTIONS} from '../public/uniform-profile-policy.js';
 import {canEditLibrary} from './uniform-library-routes.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
-import {DECORATION_CATALOG,PERSONNEL_DECORATION_CATALOG_COLLECTION,customCatalogItem} from './personnel-decoration-policy.js';
+import {DECORATION_CATALOG,PERSONNEL_DECORATION_CATALOG_COLLECTION,customCatalogItem,decorationCatalogExtras} from './personnel-decoration-policy.js';
 
 export const COMPOSITIONS='bpd_uniform_compositions';
 export const COMPOSITION_AUDIT='bpd_uniform_composition_audit';
@@ -87,10 +87,11 @@ export function installUniformCompositionRoutes(app,{requireUser}){
  app.get('/api/uniform-compositions/award-catalog',requireUser,async(req,res)=>{
   if(!canEditLibrary(req.bpd,'politie'))return res.json({catalog:[]});
   try{
-   const snap=await getFirestore().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get();
+   const snap=await getFirestore().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(120).get();
    const custom=snap.docs.map(d=>customCatalogItem(d)).filter(Boolean);
+   const overrides=decorationCatalogExtras(snap.docs);
    res.set('Cache-Control','private, no-store');
-   return res.json({catalog:[...DECORATION_CATALOG,...custom]
+   return res.json({catalog:[...DECORATION_CATALOG.map(x=>overrides.get(x.id)||x),...custom]
     .filter(x=>['medal','ribbon','badge'].includes(x.kind))
     .map(x=>({id:x.id,label:x.label,kind:x.kind,imageUrl:x.imageUrl||null}))});
   }catch(e){return error(res,e)}

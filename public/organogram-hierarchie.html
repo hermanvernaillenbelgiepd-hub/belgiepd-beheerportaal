@@ -2087,8 +2087,8 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 </dialog>
 <script src="/visual-layers-render.js?v=optional-uniform-pieces-20261030"></script>
 <script src="/assets/bpd-nameplate-autofit.js?v=name-autofit-20261031-v5"></script>
-<script src="/assets/organogram-police-formal.js?v=name-autofit-20261031-v5"></script>
-<script src="/assets/organogram-decorations.js?v=awards-position-20261102"></script>
+<script src="/assets/organogram-police-formal.js?v=awards-chest-20261104"></script>
+<script src="/assets/organogram-decorations.js?v=awards-rename-20261104"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
 import '/uniform-assignment-display.js?v=studio-coats-only-20261030';
@@ -2623,7 +2623,11 @@ function openPersonProfile(p){
   });
   const uploadBox=el('div','person-profile-award-upload');
   managementBody.append(uploadBox);
-  void window.BPDDecorations?.uploadTools?.(auth,uploadBox);
+  void window.BPDDecorations?.uploadTools?.(auth,uploadBox,async()=>{
+   await loadPublic();
+   const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
+   if(latest&&dialog.open)openPersonProfile(latest);
+  });
  }
  const specBox=el('section','person-profile-specialization-box');
  specBox.append(el('h3','','Specialisaties'));

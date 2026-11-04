@@ -4,18 +4,20 @@ import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,DECORATION_CATALOG,CATALOG_BY_ID,
   brusselsToday,validateDecoration,canManagePoliceDecoration,canManagePoliceDecorationCatalog,
   awardKey,manageDecorations,customCatalogItem,PERSONNEL_DECORATION_CATALOG_COLLECTION,
-  isCustomDecorationId}
+  isCustomDecorationId,decorationCatalogExtras,canRenameDecorationCatalog}
   from './personnel-decoration-policy.js';
 
 const text=(value,max=120)=>typeof value==='string'?value.trim().slice(0,max):'';
 const CATALOG_LIMIT=100,MAX_IMAGE_BYTES=80*1024;
 async function loadCatalog(){
  const snap=await getFirestore().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION)
-   .limit(CATALOG_LIMIT+1).get();
- if(snap.size>CATALOG_LIMIT)throw Error('Het maximumaantal eretekens is bereikt');
+   .limit(CATALOG_LIMIT+20).get();
  const custom=new Map(snap.docs.map(doc=>[doc.id,customCatalogItem(doc)])
-  .filter(([id,item])=>item));
- return {custom,all:new Map([...CATALOG_BY_ID,...custom])};
+  .filter(([,item])=>item));
+ if(custom.size>CATALOG_LIMIT||snap.size>=CATALOG_LIMIT+20)
+  throw Error('Het maximumaantal eretekens is bereikt');
+ const extras=decorationCatalogExtras(snap.docs);
+ return {custom,extras,all:new Map([...CATALOG_BY_ID,...extras])};
 }
 export function imageUpload(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||
@@ -69,7 +71,56 @@ export function installPersonnelDecorationRoutes(app,{requireUser,getSnapshot}){
  });
  app.get('/api/personnel-awards/catalog-access',requireUser,(req,res)=>{
   res.set('Cache-Control','private, no-store');
-  return res.json({canUpload:canManagePoliceDecorationCatalog(req.bpd)});
+  return res.json({canUpload:canManagePoliceDecorationCatalog(req.bpd),
+   canRename:canRenameDecorationCatalog(req.bpd)});
+ });
+ app.get('/api/personnel-awards/catalog-labels',requireUser,async(req,res)=>{
+  if(!canRenameDecorationCatalog(req.bpd))
+   return res.status(403).json({error:'Alleen geverifieerd Officierenkader, Korpsleiding of Technisch Beheer'});
+  try{
+   const catalog=await loadCatalog();
+   res.set('Cache-Control','private, no-store');
+   return res.json({catalog:[...catalog.all.values()].map(item=>({
+    id:item.id,label:item.label,kind:item.kind,custom:isCustomDecorationId(item.id)
+   }))});
+  }catch(error){return failure(res,error)}
+ });
+ app.patch('/api/personnel-awards/catalog-label/:id',requireUser,async(req,res)=>{
+  if(!canRenameDecorationCatalog(req.bpd))
+   return res.status(403).json({error:'Alleen geverifieerd Officierenkader, Korpsleiding of Technisch Beheer'});
+  const id=String(req.params.id||''),body=req.body;
+  if(!CATALOG_BY_ID.has(id)&&!isCustomDecorationId(id))
+   return res.status(404).json({error:'Onbekende onderscheiding'});
+  if(!body||typeof body!=='object'||Array.isArray(body)||
+     Object.keys(body).length!==2||!Object.hasOwn(body,'label')||
+     !Object.hasOwn(body,'reason'))
+   return res.status(400).json({error:'Naam en motivering vereist'});
+  const label=typeof body.label==='string'?body.label.trim():'',
+   reason=typeof body.reason==='string'?body.reason.trim():'';
+  if(label.length<3||label.length>80||/[<>\x00-\x1f\x7f]/.test(label)||
+     reason.length<10||reason.length>500||/[<>\x00-\x1f\x7f]/.test(reason))
+   return res.status(400).json({error:'Naam (3–80) en motivering (10–500) vereist'});
+  try{
+   const store=getFirestore(),ref=store.collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).doc(id);
+   await store.runTransaction(async tx=>{
+    const before=await tx.get(ref),base=CATALOG_BY_ID.get(id);
+    if(!before.exists&&!base)
+     throw Object.assign(Error('Geüploade onderscheiding niet gevonden'),{status:404});
+    if(before.exists&&before.get('disabled')===true)
+     throw Object.assign(Error('Gearchiveerde onderscheiding'),{status:409});
+    const oldLabel=before.exists?String(before.get('label')||base?.label||''):base.label;
+    if(oldLabel===label)throw Object.assign(Error('De naam is niet gewijzigd'),{status:409});
+    tx.set(ref,{id,label,updatedAt:FieldValue.serverTimestamp(),
+     updatedByDiscordId:req.bpd.discordId},{merge:true});
+    tx.create(store.collection('bpd_personnel_decoration_catalog_audit').doc(),{
+     catalogId:id,kind:base?.kind||before.get('kind'),oldLabel,newLabel:label,
+     reason,actorDiscordId:req.bpd.discordId,actorUid:req.bpd.uid,
+     at:FieldValue.serverTimestamp()
+    });
+   });
+   return res.json({saved:true,id,label,audited:true});
+  }catch(error){if(error?.status)return res.status(error.status).json({error:error.message});
+   return failure(res,error)}
  });
  app.post('/api/personnel-awards/catalog-upload',requireUser,async(req,res)=>{
   if(!canManagePoliceDecorationCatalog(req.bpd))
@@ -109,8 +160,8 @@ export function installPersonnelDecorationRoutes(app,{requireUser,getSnapshot}){
   try{
    const [snap,catalog]=await Promise.all([readDoc(req.decorationSubject).get(),loadCatalog()]);
    res.set('Cache-Control','private, no-store');
-   return res.json({canManage:true,catalog:[...DECORATION_CATALOG,...catalog.custom.values()],
-    entries:manageDecorations(snap.get('entries')||[],brusselsToday(),catalog.custom)});
+   return res.json({canManage:true,catalog:[...catalog.all.values()],
+    entries:manageDecorations(snap.get('entries')||[],brusselsToday(),catalog.extras)});
   }catch(error){return failure(res,error)}
  });
  app.post('/api/personnel-awards/grant',requireUser,secureSubject,async(req,res)=>{

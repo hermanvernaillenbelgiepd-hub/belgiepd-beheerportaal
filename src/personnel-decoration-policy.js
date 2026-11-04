@@ -1,4 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
+import {mayEditTechnicalSettings} from './technical-center-config.js';
 import {validPersonnelKey} from './personnel-editor-policy.js';
 
 export const PERSONNEL_DECORATIONS_COLLECTION='bpd_personnel_decorations';
@@ -13,8 +14,8 @@ export function customCatalogItem(doc){
   priority:Number.isInteger(o.priority)?o.priority:150,
   imageUrl:'/api/personnel-awards/catalog-image/'+id};
 }
-export const lookupCatalog=(id,extras)=>CATALOG_BY_ID.get(id)||
- (extras instanceof Map?extras.get(id):null);
+export const lookupCatalog=(id,extras)=>
+ (extras instanceof Map?extras.get(id):null)||CATALOG_BY_ID.get(id);
 
 export const DECORATION_CATALOG=Object.freeze([
  {id:'kroon_blauw',label:'Blauw erelint met kroon',kind:'medal',color:'blue',priority:10},
@@ -31,6 +32,20 @@ export const DECORATION_CATALOG=Object.freeze([
  {id:'lint_blauw_goud_breed',label:'Dienstlint blauw met gouden middenstreep',kind:'ribbon',color:'gold-blue',priority:120}
 ]);
 export const CATALOG_BY_ID=new Map(DECORATION_CATALOG.map(v=>[v.id,v]));
+// Built-in labels can be edited without changing their stable catalogue IDs.
+// Custom entries retain their images and existing personnel grants.
+export function catalogLabelOverrideItem(doc){
+ const o=doc?.data?.()||doc||{},id=String(doc?.id||o.id||'');
+ const base=CATALOG_BY_ID.get(id),label=typeof o.label==='string'?o.label.trim():'';
+ if(!base||o.disabled===true||label.length<3||label.length>80||
+    /[<>\x00-\x1f\x7f]/.test(label))return null;
+ return {...base,label};
+}
+export function decorationCatalogExtras(docs){
+ return new Map((Array.isArray(docs)?docs:[])
+  .map(doc=>[doc.id,customCatalogItem(doc)||catalogLabelOverrideItem(doc)])
+  .filter(([,item])=>item));
+}
 const ID=/^\d{15,22}$/;
 const DATE=/^\d{4}-\d{2}-\d{2}$/;
 export const brusselsToday=(now=new Date())=>new Intl.DateTimeFormat('sv-SE',{
@@ -62,6 +77,9 @@ export function canManagePoliceDecorationCatalog(actor){
     actor?.dossierAllowedDepartments?.includes('politie')&&
     ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
     ['officierenkader','korpsleiding'].includes(actor?.role));
+}
+export function canRenameDecorationCatalog(actor){
+ return canManagePoliceDecorationCatalog(actor)||mayEditTechnicalSettings(actor);
 }
 export function canManagePoliceDecoration(actor,subject){
  // Award administration is deliberately separate from reading or editing
