@@ -31,6 +31,40 @@ test('council permissions never follow police or generic board roles',()=>{
   assert.equal(canAccessCitizenDossier({...actor,portalTechnicalMode:true,profileTechnicalAvailable:false},false),false);
   assert.equal(canAccessCitizenDossier({...actor,portalTechnicalMode:true,profileTechnicalAvailable:true},false),true);
 });
+test('Police Korpsleiding may read Burger dossiers only with independently verified service authority',()=>{
+  const corps={...actor,role:'korpsleiding',departments:['politie'],
+    departmentRoles:{politie:'korpsleiding'},discordPoliceRank:'korpsleiding'};
+  assert.equal(canAccessCitizenDossier(corps,false),true);
+  assert.equal(canWriteCitizenDossier(corps,false,'323456789012345678'),false);
+  assert.equal(canAccessCitizenDossier({...corps,discordPoliceRank:null},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,departmentRoles:{politie:'basiskader'}},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,departments:['brandweer']},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,role:'officierenkader'},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,uid:'discord:999999999999999999'},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,uid:'google:account'},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,discordPoliceRank:null,manualCorpsApproved:true},false),true);
+  assert.equal(canWriteCitizenDossier({...corps,discordPoliceRank:null,manualCorpsApproved:true},
+    false,'323456789012345678'),false);
+  // Een goedgekeurd historisch account met precies één politiedienst mag
+  // de bestaande serverrolfallback gebruiken, mits Discord-rang bevestigd is.
+  assert.equal(canAccessCitizenDossier({...actor,role:'korpsleiding',departments:['politie'],
+    discordPoliceRank:'korpsleiding'},false),true);
+  // Met meerdere diensten of een ontbrekende politie-rolscope mag dat nooit.
+  assert.equal(canAccessCitizenDossier({...corps,departments:['politie','brandweer'],
+    departmentRoles:{brandweer:'korpsleiding'}},false),false);
+  assert.equal(canAccessCitizenDossier({...actor,boardPersonnelAdmin:true},false),false);
+});
+
+test('Burgerraad and verified technical beheer retain write access, not own-dossier writes',()=>{
+  const subject='323456789012345678';
+  const technical={...actor,portalTechnicalMode:true,profileTechnicalAvailable:true};
+  assert.equal(canAccessCitizenDossier(technical,false),true);
+  assert.equal(canWriteCitizenDossier(technical,false,subject),true);
+  assert.equal(canWriteCitizenDossier(technical,false,id),false);
+  assert.equal(canWriteCitizenDossier(actor,true,subject),true);
+  assert.equal(canWriteCitizenDossier(actor,true,id),false);
+});
+
 test('BIO becomes full Burger if both Discord roles are still assigned',()=>{
   assert.equal(citizenMemberType(member([CITIZEN_ROLES.bio]),guildId,now),'BIO');
   assert.equal(citizenMemberType(member([CITIZEN_ROLES.bio,CITIZEN_ROLES.burger]),guildId,now),'Burger');
