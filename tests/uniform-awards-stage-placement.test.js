@@ -31,8 +31,8 @@ test('medals render only beneath the rank, not duplicated as top ribbons',()=>{
 });
 
 test('profile loads decoration stylesheet alongside its JavaScript renderer',()=>{
- assert.ok(profile.includes('href="/assets/organogram-decorations.css?v=awards-position-20261102"'));
- assert.ok(profile.includes('src="/assets/organogram-decorations.js?v=awards-rename-20261104"'));
+ assert.ok(profile.includes('href="/assets/organogram-decorations.css?v=award-preview-20261104"'));
+ assert.ok(profile.includes('src="/assets/organogram-decorations.js?v=award-preview-20261104"'));
 });
 
 test('both gold and silver medals are inside the coat stage with portrait anchors',()=>{

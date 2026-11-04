@@ -81,7 +81,8 @@ export function installPersonnelDecorationRoutes(app,{requireUser,getSnapshot}){
    const catalog=await loadCatalog();
    res.set('Cache-Control','private, no-store');
    return res.json({catalog:[...catalog.all.values()].map(item=>({
-    id:item.id,label:item.label,kind:item.kind,custom:isCustomDecorationId(item.id)
+    id:item.id,label:item.label,kind:item.kind,color:item.color,
+    imageUrl:item.imageUrl||null,custom:isCustomDecorationId(item.id)
    }))});
   }catch(error){return failure(res,error)}
  });
