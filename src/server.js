@@ -105,6 +105,9 @@ app.get('/personeelslijst.html',(req,res,next)=>{
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
 app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
+// Basiskaderobservaties have their OWN POST route. Without a JSON parser,
+// req.body is undefined and every selected Discord subject is rejected.
+app.use('/api/basic-observations',express.json({limit:'12kb',strict:true}));
 app.use('/api/callsigns',express.json({limit:'12kb',strict:true,
   verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
 // The signed FiveM activity endpoint must retain the exact HMAC body bytes.
