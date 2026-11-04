@@ -27,6 +27,8 @@ td small{display:block;color:#6b7a90;margin-top:3px}
 .state-ok{background:#e6f5ea;color:#166138}
 .state-verouderd,.state-geen_data{background:#eef0f3;color:#667286}
 .warn{color:#95401e;font-weight:700}#feedback{font-weight:650;margin:10px 0;color:#285287}
+.activity-group-row th{position:static;background:#dae6f6;color:#234469;font-size:12px;font-weight:800;letter-spacing:.015em;padding:8px 10px;border-bottom:2px solid #a7bdd9}
+html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#203d61!important;color:#f1f7ff!important;border-color:#5b80a8!important}
 [hidden]{display:none!important}
 
 /* Activiteitscentrum: houd tekst, tabellen en kaarten bij hetzelfde thema.
@@ -122,12 +124,13 @@ td small{display:block;color:#6b7a90;margin-top:3px}
 <label>Zoeken<input id="search" type="search" placeholder="Naam, roepnummer of Discord ID"></label>
 <button id="refresh" type="button">↻ Vernieuwen</button></div></section>
 <section><h2>Overzicht <small id="asof"></small></h2><div id="counts" class="counts"></div></section>
-<section><h2>Personeelsopvolging <small id="resultCount"></small></h2><div class="tablewrap"><table>
+<section><h2>Personeelsopvolging <small id="resultCount"></small></h2><p class="activity-order-note">Geordend volgens de Personeelslijst: per dienst en binnen Politie per kader en roepnummer.</p><div class="tablewrap"><table>
 <thead><tr><th>Personeel</th><th>Dienst</th><th>Huidige status</th><th>Laatste connectie</th><th>Inactief</th><th>Speeluren sinds reset</th><th>Pinghistoriek</th><th>Voorstel · controle</th></tr></thead>
 <tbody id="rows"></tbody></table></div></section>
 </div>
 </main>
 <script type="module">
+import {sortActivityLikePersonnel,activityRosterGroup,activityRosterGroupLabel} from '/activity-roster-order.js';
 const $=id=>document.getElementById(id);
 let auth,authSdk,records=[],asOf='';
 function label(kind){return ({beoordelen:'Beoordelen 60+',inactief:'INACTIEF-ping', '50/50':'50/50-ping',
@@ -135,8 +138,8 @@ function label(kind){return ({beoordelen:'Beoordelen 60+',inactief:'INACTIEF-pin
 function el(tag,text,className){const n=document.createElement(tag);n.textContent=String(text??'—');if(className)n.className=className;return n}
 function render(){
  const dept=$('department').value,kind=$('filter').value,query=$('search').value.trim().toLocaleLowerCase('nl');
- const visible=records.filter(p=>(!dept||p.department===dept)&&(!kind||p.kind===kind)&&
-  (!query||[p.name,p.call,p.discordId].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query))));
+ const visible=sortActivityLikePersonnel(records.filter(p=>(!dept||p.department===dept)&&(!kind||p.kind===kind)&&
+  (!query||[p.name,p.call,p.discordId].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query)))));
  $('counts').replaceChildren();
  for(const key of ['ok','50/50','inactief','beoordelen','verlof_nazien','verouderd','geen_data']){
   const box=el('div','', 'counter');box.append(el('strong',visible.filter(p=>p.kind===key).length),
@@ -144,7 +147,14 @@ function render(){
  }
  $('resultCount').textContent='· '+visible.length+' leden';
  const body=$('rows');body.replaceChildren();
+ let previousGroup=null;
  for(const p of visible){
+  const group=activityRosterGroup(p);
+  if(group!==previousGroup){
+   const divider=document.createElement('tr');divider.className='activity-group-row';
+   const cell=el('th',activityRosterGroupLabel(p));cell.colSpan=8;cell.scope='rowgroup';
+   divider.append(cell);body.append(divider);previousGroup=group;
+  }
   const row=document.createElement('tr');
   const person=el('td',p.call+' · '+p.name);person.append(el('small',p.discordId));row.append(person);
   row.append(el('td',p.department));
