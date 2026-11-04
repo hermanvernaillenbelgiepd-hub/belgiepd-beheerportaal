@@ -39,7 +39,7 @@ function rolesFor(dept){
      dept==='politie'&&x.dept==='dispatch'))
   .map(x=>({id:x.id,name:x.name,kind:x.kind,stage:x.stage}));
 }
-function canManage(actor,dept){
+export function canManageSpecialtyRoleLinks(actor,dept){
  if(!actor||!DEPTS.includes(dept)||actor.uid!=='discord:'+actor.discordId||
     !ID.test(String(actor.discordId||'')))return false;
  // Only the independently verified technical profile can manage metadata
@@ -149,13 +149,13 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
    res.set('Cache-Control','private, no-store');
    return res.json({dept,labels,roles,assets:allAssets,links,
     revision:Number.isSafeInteger(doc.get('revision'))?doc.get('revision'):0,
-    canEdit:canManage(req.bpd,dept),verifiedRolesOnly:true,
+    canEdit:canManageSpecialtyRoleLinks(req.bpd,dept),verifiedRolesOnly:true,
     noDiscordRoleMutations:true});
   }catch(e){return respond(res,e)}
  });
  app.put('/api/specialty-links/:dept',requireUser,async(req,res)=>{
   const dept=req.params.dept;
-  if(!canManage(req.bpd,dept))
+  if(!canManageSpecialtyRoleLinks(req.bpd,dept))
    return res.status(403).json({error:'Alleen bevoegde dienstleiding kan koppelingen aanpassen'});
   try{
    const [extras,db]=await Promise.all([extraSpecialtyLabels(dept),Promise.resolve(getFirestore())]);
