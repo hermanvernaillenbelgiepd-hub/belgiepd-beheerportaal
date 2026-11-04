@@ -1,7 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {actorFromPersonnel,validateEntry} from './registrations.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationDenial,
- basicObservationWritesEnabled} from './basic-observation-policy.js';
+ basicObservationWritesEnabled,basicCallLevel} from './basic-observation-policy.js';
 import {receivedAccess} from './received-registration-policy.js';
 
 const POL='politie';
@@ -94,7 +94,7 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
       for(const doc of snapshots.docs){
         const e=doc.data(),author=e.submittedByActor||e.registeredBy;
         if(e.type!=='observatie'||e.dept!==POL||
-           !/^[345]\d\d$/.test(String(author?.call||'').replace(/^S[- ]?/i,'')))continue;
+           ![1,2,3].includes(basicCallLevel({dept:POL,call:author?.call})))continue;
         const subject=staffCount(people,e.subjectDiscordId);
         if(subject.length!==1)continue;
         if(!req.bpd.boardPersonnelAdmin&&
