@@ -1,5 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {actorFromPersonnel,validateEntry} from './registrations.js';
+import {validateEntry} from './registrations.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationDenial,
  basicObservationWritesEnabled,basicCallLevel} from './basic-observation-policy.js';
 import {receivedAccess} from './received-registration-policy.js';
