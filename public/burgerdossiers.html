@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BelgiëPD · Burgerdossiers</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<link rel="stylesheet" href="/bpd-dossier-shared.css">
+<style>
+:root{color-scheme:dark;--surface:#132c4b;--line:#416589;--text:#eaf3ff;--muted:#b5cbe2}
+*{box-sizing:border-box}body{margin:0;background:#0b1930;color:var(--text);font:14px/1.5 system-ui,"Segoe UI",sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 21px;background:#122943;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header a{color:#d2e5fc;text-decoration:none;margin-right:14px}
+header strong{font-size:17px}main{width:min(1500px,98%);margin:20px auto 60px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:17px;margin:0 0 13px}h3{font-size:14px;margin:0 0 10px}
+p{margin:4px 0 12px}.muted{color:var(--muted)}.small{font-size:12px}
+button,input,select,textarea{font:inherit;border-radius:8px}
+button{cursor:pointer;border:1px solid #7c9bc2;background:#264e7e;color:#fff;padding:9px 13px}
+button:hover{background:#346398}button:disabled{opacity:.48;cursor:not-allowed}
+button.secondary{background:#20364f}input,select,textarea{width:100%;padding:10px;color:var(--text);border:1px solid #547394;background:#0b1d34}
+input:focus,select:focus,textarea:focus{outline:2px solid #8db7ff}
+label{display:block;font-size:12px;font-weight:700;margin-bottom:5px}.card{padding:16px;border:1px solid var(--line);background:var(--surface);border-radius:12px;margin-bottom:16px;min-width:0}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.toolbar input{max-width:390px}
+#message{min-height:22px;color:#b2dafb}#message.error{color:#ffadb5}
+.directory{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;max-height:250px;overflow:auto;margin-top:13px}
+.member{background:#0e2542;border:1px solid #3d648a;text-align:left;padding:10px 12px}
+.member strong,.member small{display:block}.member small{color:var(--muted)}
+.member[aria-pressed=true]{border-color:#b0ccff;background:#2b4772}
+.pill{display:inline-block;background:#304c78;border-radius:20px;font-size:11px;padding:3px 10px;margin-left:8px}
+.identity{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:12px 0 17px}
+.identity>div{padding:11px 15px;border-right:1px solid var(--line)}.identity>div:last-child{border:0}
+.identity small{display:block;color:var(--muted);font-size:11px}.identity strong{display:block;font-size:15px;overflow-wrap:anywhere}
+.landscape-grid{display:grid;gap:13px}
+.dossier-main-row,.dossier-lower-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.landscape-cell{border:1px solid #4f7096;border-radius:10px;background:#12263f;min-width:0;overflow:hidden}
+.landscape-cell h3{padding:11px 13px;background:#1d3a5a;border-bottom:1px solid #415e7b;margin:0}
+.entries{padding:11px 13px;max-height:320px;overflow:auto;min-height:65px}
+.entry{padding:10px 0;border-bottom:1px solid #35516f;overflow-wrap:anywhere}.entry:last-child{border-bottom:0}
+.entry strong{display:block}.entry p{margin:3px 0 5px;white-space:pre-wrap}
+.entry small{display:block;color:var(--muted)}.entry .kind{font-weight:700;color:#a6ceff}
+.forms{display:grid;grid-template-columns:1fr 1fr;gap:14px}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.field-full{grid-column:1/-1}form button{margin-top:10px}
+#reportIntro{font-size:12px;color:#c8dbf3}#empty{text-align:center;color:var(--muted);padding:22px}
+[hidden]{display:none!important}@media(max-width:900px){.dossier-main-row,.dossier-lower-row{grid-template-columns:1fr 1fr}.forms{grid-template-columns:1fr}}
+@media(max-width:600px){.identity{grid-template-columns:1fr 1fr}.identity>div:nth-child(2){border:0}.dossier-main-row,.dossier-lower-row{grid-template-columns:1fr}.fields{grid-template-columns:1fr}}
+@media print{body{background:white;color:#111}header,.toolbar,#directoryCard,.forms,#message,.no-print,#bpdSidebar,#bpdQuicknav{display:none!important}
+ main{width:100%;margin:0}.card,.landscape-cell{border:1px solid #999;color:#111;background:white;break-inside:avoid}
+ .landscape-cell h3{background:#eee;color:#111}.entry small,.muted,.identity small{color:#333}.entries{max-height:none;overflow:visible}.dossier-main-row,.dossier-lower-row{display:grid;grid-template-columns:1fr 1fr}.identity strong{color:#111}}
+</style>
+</head>
+<body class="bpd-unified-dossier">
+<header><strong>🧑‍🤝‍🧑 BelgiëPD · Burgerdossiers</strong><nav><a href="/">Dashboard</a><a href="/dossiercentrum.html">Dossiercentrum</a><button id="login" type="button">Aanmelden met Discord</button></nav></header>
+<main>
+<h1>Personeelsdossiers Burgerdienst</h1>
+<p class="muted">Uitsluitend Burgerraad · BIO en volwaardige Burger · persoonsrapporten zonder weekrapporten</p>
+<p id="message" role="status">Aanmelden met een geverifieerde Burgerraad-rol om de dossiers te bekijken.</p>
+<section id="directoryCard" class="card">
+<h2>Burgers en BIO</h2>
+<div class="toolbar"><input id="search" type="search" placeholder="Zoek op naam of Discord-ID" aria-label="Zoek burgerdossier"><button id="reload" type="button">Vernieuwen</button><span id="total" class="muted"></span></div>
+<div id="directory" class="directory"></div>
+</section>
+<p id="empty">Selecteer een Burger of BIO uit de lijst.</p>
+<section id="dossier" hidden>
+<div class="card">
+<div class="toolbar no-print"><h2 id="subjectTitle" style="margin:0;flex:1">Burgerdossier</h2><button id="print" type="button" class="secondary">Persoonsrapport afdrukken / PDF</button></div>
+<div class="identity" aria-label="Burgerfiche">
+<div><small>Naam</small><strong id="name">—</strong></div>
+<div><small>Discord-ID</small><strong id="discordId">—</strong></div>
+<div><small>Burgerstatus</small><strong id="stage">—</strong></div>
+<div><small>Personeelsstatus</small><strong id="status">—</strong></div>
+</div>
+<p id="reportIntro">Dit persoonsrapport is beperkt tot de Burgerdienst en bevat geen weekrapport.</p>
+<div class="landscape-grid">
+<div class="dossier-main-row">
+<section class="landscape-cell"><h3>🏖️ Verlof en verlofhistoriek</h3><div id="leaveRecords" class="entries"></div></section>
+<section class="landscape-cell"><h3>📝 Notities</h3><div id="notes" class="entries"></div></section>
+<section class="landscape-cell"><h3>🎖️ Volwaardig geworden</h3><div id="promotions" class="entries"></div></section>
+</div>
+<div class="dossier-lower-row">
+<section class="landscape-cell"><h3>🔎 Observaties</h3><div id="observations" class="entries"></div></section>
+<section class="landscape-cell"><h3>⚖️ Sancties — mondeling / schriftelijk</h3><div id="sanctions" class="entries"></div></section>
+<section class="landscape-cell"><h3>📋 Persoonsgebonden rapport</h3><div id="reportCounts" class="entries"></div></section>
+</div></div></div>
+<div class="forms no-print">
+<section class="card"><h2>Dossierregistratie toevoegen</h2>
+<form id="entryForm">
+<div class="fields">
+<div><label for="type">Soort registratie</label><select id="type" required><option value="notitie">Notitie</option><option value="observatie">Observatie</option><option value="sanctie">Sanctie</option><option value="volwaardig">Overgang naar volwaardige Burger</option></select></div>
+<div><label for="eventDate">Datum van gebeurtenis</label><input type="date" id="eventDate" required></div>
+<div id="titleField" class="field-full"><label for="entryTitle">Titel</label><input type="text" id="entryTitle" minlength="3" maxlength="120" required></div>
+<div id="sanctionField" hidden><label for="sanctionType">Sanctievorm</label><select id="sanctionType"><option value="mondeling">Mondeling</option><option value="schriftelijk">Schriftelijk</option></select></div>
+<div id="scoreField" hidden><label for="score">Observatiescore (optioneel 0–10)</label><select id="score"><option value="">Geen score</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select></div>
+<div class="field-full"><label for="details">Notitie, motivering of observatie (apart van de andere registraties)</label><textarea id="details" rows="4" maxlength="2000" required></textarea></div>
+</div><button type="submit">Registratie opslaan</button></form></section>
+<section class="card"><h2>Verlof registreren</h2>
+<p class="muted small">Burgerverlof wordt centraal opgeslagen en verschijnt in het persoonlijke dossier, maar maakt geen Burgerweekrapport aan. Bestaand verlof uit andere diensten blijft zichtbaar.</p>
+<form id="leaveForm"><div class="fields">
+<div><label for="leaveStart">Vanaf</label><input id="leaveStart" type="date" required></div>
+<div><label for="leaveEnd">Tot en met</label><input id="leaveEnd" type="date" required></div>
+<div class="field-full"><label for="leaveNote">Toelichting (optioneel)</label><textarea id="leaveNote" rows="3" maxlength="300"></textarea></div>
+</div><button type="submit">Burgerverlof goedkeuren en loggen</button></form></section>
+</div></section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+let auth,authMod,person=null,data=null,people=[];
+const safeId=/^\d{15,22}$/;
+const show=(message,bad=false)=>{const item=$('message');item.textContent=message;item.classList.toggle('error',bad)};
+const dateToday=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels'}).format(new Date());
+const node=(tag,text='',className='')=>{const e=document.createElement(tag);e.textContent=String(text??'');if(className)e.className=className;return e};
+async function api(path,method='GET',payload){
+ if(!auth?.currentUser)throw Error('Aanmelding met Discord vereist');
+ const token=await auth.currentUser.getIdToken();
+ const reply=await fetch(path,{method,cache:'no-store',headers:{Authorization:'Bearer '+token,...(payload?{'Content-Type':'application/json'}:{})},...(payload?{body:JSON.stringify(payload)}:{})});
+ const json=await reply.json().catch(()=>({}));
+ if(!reply.ok)throw Error(json.error||'Burgerdossierverzoek mislukt ('+reply.status+')');
+ return json;
+}
+function renderDirectory(){
+ const query=$('search').value.trim().toLocaleLowerCase('nl');
+ const shown=people.filter(p=>!query||[p.name,p.discordId,p.stage].some(s=>String(s||'').toLocaleLowerCase('nl').includes(query)));
+ $('total').textContent=shown.length+' burgerdossiers';
+ $('directory').replaceChildren(...shown.map(p=>{
+  const item=node('button','','member');item.type='button';item.setAttribute('aria-pressed',String(person?.discordId===p.discordId));
+  item.append(node('strong',p.name),node('small',p.stage+' · '+p.discordId));
+  item.onclick=()=>openPerson(p);
+  return item;
+ }));
+}
+function recordList(id,items,kind){
+ const root=$(id);root.replaceChildren();
+ if(!items.length){root.append(node('p','Geen registraties.','muted'));return}
+ for(const entry of items){
+  const card=node('div','','entry');
+  card.append(node('strong',entry.title||kind));
+  if(entry.details)card.append(node('p',entry.details));
+  if(entry.type==='observatie'&&Number.isInteger(entry.score))card.append(node('span','Score '+entry.score+'/10','kind'));
+  if(entry.type==='sanctie')card.append(node('span','Sanctie: '+entry.sanctionType,'kind'));
+  card.append(node('small',(entry.eventDate||'—')+' · '+(entry.registeredBy||'Burgerraad')+' · '+(entry.createdAt?new Date(entry.createdAt).toLocaleString('nl-BE'):'Historiek')));
+  root.append(card);
+ }
+}
+function render(){
+ $('dossier').hidden=!data;$('empty').hidden=Boolean(data);
+ if(!data)return;
+ const p=data.person;
+ $('subjectTitle').textContent='Burgerdossier · '+p.name;
+ for(const [id,value] of Object.entries({name:p.name,discordId:p.discordId,stage:p.stage,status:p.status||'—'}))$(id).textContent=value;
+ recordList('notes',data.entries.filter(x=>x.type==='notitie'),'Notitie');
+ recordList('observations',data.entries.filter(x=>x.type==='observatie'),'Observatie');
+ recordList('sanctions',data.entries.filter(x=>x.type==='sanctie'),'Sanctie');
+ recordList('promotions',data.entries.filter(x=>x.type==='volwaardig'),'Volwaardig');
+ const leave=$('leaveRecords');leave.replaceChildren();
+ if(!data.leave.length)leave.append(node('p','Geen geregistreerde verloven.','muted'));
+ for(const row of data.leave){
+  const div=node('div','','entry');div.append(node('strong',row.startDate+' t/m '+row.endDate),
+    node('small','Status: '+row.status+' · Bron: '+(row.source==='burgerraad'?'Burgerraad':'centraal verlof')));
+  leave.append(div);
+ }
+ const stats=data.report;
+ const labels={notitie:'Notities',observatie:'Observaties',sanctie:'Sancties',
+  volwaardig:'Volwaardigverklaringen',verlof:'Verlofregistraties'};
+ const box=$('reportCounts');box.replaceChildren();
+ for(const [key,title] of Object.entries(labels))box.append(node('p',title+': '+(stats.counts[key]||0)));
+ box.append(node('p','Gemiddelde observatiescore: '+(stats.observationAverage===null?'geen scores':stats.observationAverage+'/10')));
+ $('type').querySelector('[value=volwaardig]').disabled=p.stage!=='Burger';
+ if(p.stage!=='Burger'&&$('type').value==='volwaardig')$('type').value='notitie';
+ updateForm();renderDirectory();
+}
+async function openPerson(p){
+ try{person=p;data=null;render();renderDirectory();data=await api('/api/citizen-dossiers/'+encodeURIComponent(p.discordId));
+  render();show('Persoonsdossier geopend: '+p.name);
+ }catch(error){person=null;data=null;render();renderDirectory();show(error.message,true)}
+}
+async function reload(){
+ if(!auth?.currentUser){people=[];person=null;data=null;renderDirectory();render();show('Meld aan als Burgerraad met Discord.');return}
+ try{
+  const response=await api('/api/citizen-dossiers/overview');
+  people=response.people||[];renderDirectory();
+  if(person&&people.some(p=>p.discordId===person.discordId))await openPerson(people.find(p=>p.discordId===person.discordId));
+  else {person=null;data=null;render();show(people.length+' gekoppelde Burgerleden beschikbaar.')}
+ }catch(error){people=[];person=null;data=null;render();renderDirectory();show(error.message,true)}
+}
+function updateForm(){
+ const type=$('type').value;
+ $('sanctionField').hidden=type!=='sanctie';
+ $('scoreField').hidden=type!=='observatie';
+ $('titleField').hidden=type==='volwaardig';
+ $('entryTitle').required=type!=='volwaardig';
+ $('details').minLength=type==='volwaardig'?5:10;
+}
+$('type').onchange=updateForm;
+$('search').oninput=renderDirectory;
+$('reload').onclick=reload;
+$('print').onclick=()=>{if(data)window.print()};
+$('entryForm').onsubmit=async event=>{
+ event.preventDefault();if(!person)return;
+ const form=event.currentTarget,button=form.querySelector('button[type=submit]'),type=$('type').value;
+ const payload={type,date:$('eventDate').value,details:$('details').value.trim()};
+ if(type!=='volwaardig')payload.title=$('entryTitle').value.trim();
+ if(type==='sanctie')payload.sanctionType=$('sanctionType').value;
+ if(type==='observatie'&&$('score').value!=='')payload.score=Number($('score').value);
+ if(!confirm('Deze '+type+' definitief toevoegen aan het persoonlijke Burgerdossier?'))return;
+ button.disabled=true;
+ try{await api('/api/citizen-dossiers/'+person.discordId+'/entries','POST',payload);
+  form.reset();$('eventDate').value=dateToday();updateForm();await openPerson(person);show('Registratie inclusief audit opgeslagen.')}
+ catch(e){show(e.message,true)}finally{button.disabled=false}
+};
+$('leaveForm').onsubmit=async event=>{
+ event.preventDefault();if(!person)return;
+ const form=event.currentTarget,button=form.querySelector('button[type=submit]');
+ const payload={startDate:$('leaveStart').value,endDate:$('leaveEnd').value,note:$('leaveNote').value.trim()};
+ if(!confirm('Dit burgerverlof definitief goedkeuren en centraal loggen?'))return;
+ button.disabled=true;
+ try{await api('/api/citizen-dossiers/'+person.discordId+'/leave','POST',payload);
+  form.reset();await openPerson(person);show('Burgerverlof centraal gelogd, zonder Burgerweekrapport.')}
+ catch(e){show(e.message,true)}finally{button.disabled=false}
+};
+async function start(){
+ $('eventDate').value=dateToday();
+ try{
+  const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+  if(!config.enabled)throw Error('Firebase is nog niet geconfigureerd');
+  const {setupPortalLogin}=await import('/portal-login.js');
+  const firebase=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  auth=authMod.getAuth(firebase.initializeApp(config.firebaseConfig));
+  setupPortalLogin({button:$('login'),auth,authModule:authMod,config,onError:e=>show(e.message,true)});
+  authMod.onAuthStateChanged(auth,()=>reload());
+ }catch(e){show(e.message,true)}
+}
+start();
+</script><script defer src="/bpd-navigation.js"></script>
+</body></html>
