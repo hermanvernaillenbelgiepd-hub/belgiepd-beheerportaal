@@ -320,3 +320,96 @@
     document.addEventListener('DOMContentLoaded',init,{once:true});
   else init();
 })();
+
+
+/* BPD adaptive personnel table presentation — 2026-11-04 */
+(function initialiseAdaptivePersonnelTables(){
+  'use strict';
+  // UI-only: no personnel mutations, Firebase writes, permissions or API calls.
+  const selector='table.mr-table,table.staff-roster-table';
+  const attached=new WeakSet();
+  function headings(table){
+    const row=table.tHead?.rows[table.tHead.rows.length-1];
+    if(!row)return [];
+    const names=[];
+    for(const th of row.cells){
+      const label=(
+        th.querySelector('.specialty-col-label')?.textContent||
+        th.getAttribute('aria-label')||
+        th.getAttribute('title')||
+        th.textContent||
+        th.querySelector('img[alt]')?.alt||
+        ''
+      ).replace(/\s+/g,' ').trim();
+      for(let index=0;index<Math.max(1,th.colSpan||1);index++)
+        names.push(label||'Gegeven');
+    }
+    return names;
+  }
+  function annotate(table,labels){
+    for(const body of table.tBodies){
+      for(const row of body.rows){
+        if(row.cells.length===1&&row.cells[0].colSpan>1)continue;
+        let column=0;
+        for(const cell of row.cells){
+          const label=labels[column]||'Gegeven';
+          if(cell.dataset.bpdLabel!==label)cell.dataset.bpdLabel=label;
+          column+=Math.max(1,cell.colSpan||1);
+        }
+      }
+    }
+  }
+  function adapt(table){
+    const labels=headings(table);
+    if(labels.length)annotate(table,labels);
+    const host=table.closest('.staff-roster-holder,.mr-scroll,.member-table-wrap,.tablewrap,.scroller')||
+      table.parentElement;
+    const available=host?.clientWidth||document.documentElement.clientWidth;
+    const requiredWidth=Number.parseFloat(table.style.getPropertyValue('--roster-required-width'))||0;
+    const required=table.classList.contains('staff-roster-table')?
+      Math.max(requiredWidth,table.classList.contains('roster-police-compact')?1250:1160):
+      Math.max(1160,390+Math.max(0,labels.length-5)*65);
+    table.classList.toggle('bpd-adaptive-cards',available<required+12);
+  }
+  function attach(table){
+    if(attached.has(table))return;
+    attached.add(table);
+    let pending=false;
+    const refresh=()=>{
+      if(pending)return;
+      pending=true;
+      requestAnimationFrame(()=>{pending=false;if(table.isConnected)adapt(table)});
+    };
+    const changed=new MutationObserver(refresh);
+    changed.observe(table,{childList:true,subtree:true,attributes:true,attributeFilter:['style']});
+    const host=table.closest('.staff-roster-holder,.mr-scroll,.member-table-wrap,.tablewrap,.scroller')||
+      table.parentElement;
+    if(typeof ResizeObserver!=='undefined'&&host){
+      const resized=new ResizeObserver(refresh);
+      resized.observe(host);
+    }
+    window.addEventListener('resize',refresh,{passive:true});
+    refresh();
+  }
+  function init(){
+    // Gracefully skip non-browser navigation test stubs and older DOM engines.
+    if(typeof document.querySelectorAll!=='function'||typeof MutationObserver!=='function')return;
+    for(const table of document.querySelectorAll(selector))attach(table);
+    // Some dashboards add their roster after navigation was initialized.
+    const arrivals=new MutationObserver(records=>{
+      for(const record of records){
+        for(const node of record.addedNodes){
+          if(node.nodeType!==1)continue;
+          if(node.matches?.(selector)||node.querySelector?.(selector)){
+            for(const table of document.querySelectorAll(selector))attach(table);
+            return;
+          }
+        }
+      }
+    });
+    arrivals.observe(document.body,{childList:true,subtree:true});
+  }
+  if(document.readyState==='loading')
+    document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
+})();

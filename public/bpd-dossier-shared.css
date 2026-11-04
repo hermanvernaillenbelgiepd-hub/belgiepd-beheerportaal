@@ -837,3 +837,41 @@ body.dossier-fire-sheet .record:has(>.dossier-retire-button):hover {
 @media (hover:none) {
   .dossier-retire-button {opacity:1;visibility:visible;position:static;margin-top:6px}
 }
+
+
+/* BPD fluid dossier grids — 2026-11-04 */
+/* Dossier views can run inside an iframe: viewport CSS pixels determine
+   how many readable columns fit, never a fixed minimum page width. */
+body.bpd-unified-dossier :is(#panel,#mainCard,.dossier-panel,.dossier-pane,.citizen-sheet) {
+  max-width:100%;min-width:0;box-sizing:border-box;
+}
+body.bpd-unified-dossier :is(.sheet-identity,.profile,.dossier-main-row,.dossier-lower-row) > * {
+  min-width:0;overflow-wrap:anywhere;
+}
+body.bpd-unified-dossier :is(input,select,textarea) { min-width:0;max-width:100%; }
+@media(max-width:1270px) {
+  body.bpd-unified-dossier .sheet-identity,
+  body.bpd-unified-dossier #mainCard .grid {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  body.dossier-onepage .dossier-main-row,
+  body.dossier-onepage .dossier-lower-row {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  body.dossier-onepage .dossier-main-row > .dossier-right-column {
+    grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:740px) {
+  body.bpd-unified-dossier .sheet-identity,
+  body.bpd-unified-dossier #mainCard .grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  body.dossier-onepage .dossier-main-row,
+  body.dossier-onepage .dossier-lower-row,
+  body.dossier-onepage .dossier-main-row > .dossier-right-column {
+    grid-template-columns:minmax(0,1fr);
+  }
+  body.dossier-onepage .dossier-main-row > .dossier-right-column { grid-column:auto; }
+  body.dossier-onepage :is(.dossier-panel,.landscape-cell,.dossier-pane) { min-width:0; }
+}
