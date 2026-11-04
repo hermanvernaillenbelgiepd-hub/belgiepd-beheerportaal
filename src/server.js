@@ -79,6 +79,7 @@ import {installOrganogramPlacementRoutes} from './organogram-placement-routes.js
 import {installPersonnelDecorationRoutes} from './personnel-decoration-routes.js';
 import {installFireDossierRoutes} from './fire-dossier-routes.js';
 import {installCitizenDossierRoutes} from './citizen-dossier-routes.js';
+import {installTechnicalTestCleanupRoutes} from './technical-test-cleanup-routes.js';
 import {installDossierGrantRoutes} from './dossier-grant-routes.js';
 import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,
   verifyBoardDiscordRole} from './dossier-grants.js';
@@ -119,6 +120,7 @@ app.use('/api/activity',express.json({limit:'4kb',strict:true,
   verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/technical-center',express.json({limit:'3kb',strict:true}));
+app.use('/api/technical-cleanup',express.json({limit:'4kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/role-artwork',express.json({limit:'230kb',strict:true}));
 app.use('/api/uniform-management',express.json({limit:'4kb',strict:true}));
@@ -825,6 +827,7 @@ installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installTechnicalCenterRoutes(app,{requireUser});
+installTechnicalTestCleanupRoutes(app,{requireUser,getSnapshot});
 installRoleArtworkRoutes(app,{requireUser});
 installUniformManagementRoutes(app,{requireUser});
 installUniformAssignmentRoutes(app,{requireUser});
