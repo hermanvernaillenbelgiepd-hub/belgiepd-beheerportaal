@@ -28,6 +28,7 @@ export function mayOpenTechnicalCenter(actor){
  return Boolean(actor&&ID.test(String(actor.discordId||''))&&
    actor.uid==='discord:'+actor.discordId&&
    actor.portalTechnicalMode!==true&&
+   ['officierenkader','korpsleiding'].includes(actor.role)&&
    actor.departments?.includes('politie')===true&&
    ['officierenkader','korpsleiding'].includes(
      roleForDepartment(actor,'politie')));
