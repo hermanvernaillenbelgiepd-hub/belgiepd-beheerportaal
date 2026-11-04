@@ -22,14 +22,14 @@ test('police listing legacy saved table width does not force horizontal desktop 
 
 test('call, series, status narrower on all police rosters without erasing status cells',()=>{
  const css=read('public/member-police-roster.css');
- assert.match(css,/\.mr-table th:first-child\{width:3\.7%;min-width:0\}/);
- assert.match(css,/\.mr-table th:nth-child\(4\)\{width:4\.8%;min-width:0\}/);
- assert.match(css,/\.mr-table th:nth-child\(5\)\{width:6\.1%;min-width:0\}/);
+ assert.match(css,/\.mr-table th:first-child\{width:2\.6%;min-width:0\}/);
+ assert.match(css,/\.mr-table th:nth-child\(4\)\{width:3\.3%;min-width:0\}/);
+ assert.match(css,/\.mr-table th:nth-child\(5\)\{width:4\.6%;min-width:0\}/);
  assert.match(css,/\.mr-table td\.mr-status-cell \.mr-status\{/);
  const html=read('public/personeelsbeheer.html');
- assert.match(html,/Math\.min\(w\.call,44\)/);
- assert.match(html,/Math\.min\(w\.series,62\)/);
- assert.match(html,/Math\.min\(w\.status,76\)/);
+ assert.match(html,/Math\.min\(w\.call,34\)/);
+ assert.match(html,/Math\.min\(w\.series,44\)/);
+ assert.match(html,/Math\.min\(w\.status,55\)/);
  assert.match(html,/const widths=\[w\.call,w\.grade/);
  assert.match(html,/roster-police-compact/);
 });
