@@ -18,7 +18,7 @@ import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.
 import { ALLOWED_ROLES } from './registrations.js';
 import { installRegistrationRoutes } from './registration-routes.js';
 import {installBasicObservationRoutes} from './basic-observation-routes.js';
-import {basicObservationTargets,mayReadBasicInbox} from './basic-observation-policy.js';
+import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installActivityTelemetryRoutes} from './activity-telemetry-routes.js';
@@ -644,6 +644,11 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     const roster=snapshot.stale?[]:snapshot.data;
     // Navigation hint only; the API rechecks identity, rank and target on submission.
     req.bpd.basicObservationCanSubmit=Boolean(basicObservationTargets(req.bpd,roster).author);
+    // Inform only the holder of a verified login that a personal Police
+    // dossier entry exists; no inferred Police authority is granted.
+    const ownPolice=basicObservationAccessChecks(req.bpd,roster);
+    req.bpd.basicObservationPoliceRecord=ownPolice.discordIdentityVerified===true&&
+      ownPolice.policeRosterMatch===true&&ownPolice.policeCadreRecognized===true;
     // This verifies a basic Ambulance employee's own OFFICIAL roster
     // mapping for dashboard presentation only. It must never unlock
     // protected service dossiers, report endpoints or grants.
@@ -835,7 +840,8 @@ app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
       req.bpd.dossierAllowedDepartments?.includes('ambulance')===true,
     allowedDepartments:req.bpd.dossierAllowedDepartments||[],
     basicObservationCanSubmit:req.bpd.basicObservationCanSubmit===true,
-    basicObservationCanReview:req.bpd.basicObservationCanReview===true});
+    basicObservationCanReview:req.bpd.basicObservationCanReview===true,
+    basicObservationPoliceRecord:req.bpd.basicObservationPoliceRecord===true});
 });
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
