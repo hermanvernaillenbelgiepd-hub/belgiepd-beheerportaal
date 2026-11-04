@@ -32,7 +32,7 @@ test('medals render only beneath the rank, not duplicated as top ribbons',()=>{
 
 test('profile loads decoration stylesheet alongside its JavaScript renderer',()=>{
  assert.ok(profile.includes('href="/assets/organogram-decorations.css?v=awards-position-20261102"'));
- assert.ok(profile.includes('src="/assets/organogram-decorations.js?v=awards-position-20261102"'));
+ assert.ok(profile.includes('src="/assets/organogram-decorations.js?v=awards-rename-20261104"'));
 });
 
 test('both gold and silver medals are inside the coat stage with portrait anchors',()=>{
@@ -46,4 +46,15 @@ test('both gold and silver medals are inside the coat stage with portrait anchor
  assert.match(css,/left:55\.3%;top:26%;width:19%;height:5%/);
  assert.match(css,/left:55\.3%;top:45%;width:23%;height:18%/);
  assert.match(coat,/visualLayout\?\.\[kind\]/);
+});
+
+test('portrait medals and ribbons use chest slots when legacy landscape defaults are saved',()=>{
+ assert.match(coat,/snapAssignedPortraitPlates\(image,person,nameplate,patch,rack\?\.ribbons,rack\?\.medals\)/);
+ assert.match(coat,/snapAssignedPortraitPlates\(img,person,plate,chest,rack\?\.ribbons,rack\?\.medals\)/);
+ assert.match(coat,/legacyAwardPosition/);
+ assert.match(coat,/if\(!factory\)continue/);
+ const editor=readFileSync(new URL('../public/uniform-composer-ui.js',import.meta.url),'utf8');
+ assert.match(editor,/for\(const kind of \['name','rank','ribbons','medals'\]\)/);
+ assert.match(editor,/ribbons:\{left:55\.3,top:26,width:19,height:5\}/);
+ assert.match(editor,/medals:\{left:55\.3,top:45,width:23,height:18\}/);
 });
