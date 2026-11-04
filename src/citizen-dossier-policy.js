@@ -62,8 +62,11 @@ export function canWriteCitizenDossier(actor,councilVerified,subjectId){
 // Verwijderen is een uitzonderlijke, geauditeerde bevoegdheid. Alleen
 // server-geverifieerde Korpsleiding of technisch beheer; Burgerraad nooit
 // uitsluitend op grond van de Burgerraadrol. Eigen dossiers blijven beschermd.
+export function canManageCitizenDeletions(actor){
+  return verifiedCitizenCorpsReader(actor)||verifiedCitizenTechnical(actor);
+}
 export function canDeleteCitizenEntry(actor,subjectId){
-  return (verifiedCitizenCorpsReader(actor)||verifiedCitizenTechnical(actor))&&
+  return canManageCitizenDeletions(actor)&&
     validCitizenId(subjectId)&&subjectId!==actor?.discordId;
 }
 export function validateCitizenDeletion(raw){
