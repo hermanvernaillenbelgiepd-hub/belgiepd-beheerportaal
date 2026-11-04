@@ -20,6 +20,7 @@ import { installRegistrationRoutes } from './registration-routes.js';
 import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import {basicObservationJsonParser} from './basic-observation-json.js';
 import {scheduleBasicObservationAutoArchive} from './basic-observation-auto-archive.js';
+import {installTechnicalCenterRoutes} from './technical-center-config.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
@@ -116,6 +117,7 @@ app.use('/api/callsigns',express.json({limit:'12kb',strict:true,
 app.use('/api/activity',express.json({limit:'4kb',strict:true,
   verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
+app.use('/api/technical-center',express.json({limit:'3kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/role-artwork',express.json({limit:'230kb',strict:true}));
 app.use('/api/uniform-management',express.json({limit:'4kb',strict:true}));
@@ -820,6 +822,7 @@ installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
   }});
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
+installTechnicalCenterRoutes(app,{requireUser});
 installRoleArtworkRoutes(app,{requireUser});
 installUniformManagementRoutes(app,{requireUser});
 installUniformAssignmentRoutes(app,{requireUser});
