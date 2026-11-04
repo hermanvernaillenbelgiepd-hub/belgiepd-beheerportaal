@@ -162,3 +162,11 @@
  font-size:clamp(9px,.7vw,11px);line-height:1.2;font-weight:750;
  white-space:normal;overflow-wrap:anywhere;letter-spacing:0;
 }
+
+/* BPD compacte vaste kolommen; overige ruimte naar specialisaties. */
+.mr-table th:first-child,.mr-table td.mr-call{width:42px!important;min-width:36px!important;max-width:48px;padding-inline:2px}
+.mr-table th:nth-child(2),.mr-table td.mr-rank-cell{width:68px!important;min-width:54px!important;max-width:75px;padding-inline:2px}
+.mr-table th:nth-child(5),.mr-table td:nth-child(5){width:52px!important;min-width:40px!important;max-width:65px;padding-inline:2px}
+.mr-table th:nth-child(6),.mr-table td.mr-status-cell{width:58px!important;min-width:48px!important;max-width:70px;padding-inline:2px}
+.mr-table th{white-space:normal;overflow-wrap:anywhere}
+.mr-table .mr-series-badge,.mr-table .mr-status{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
