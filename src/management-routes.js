@@ -3,7 +3,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
- CATALOG_BY_ID,customCatalogItem,expirationDate} from './personnel-decoration-policy.js';
+ CATALOG_BY_ID,decorationCatalogExtras,expirationDate} from './personnel-decoration-policy.js';
 import {isArchivedTraining} from './training-maintenance.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
@@ -453,10 +453,9 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     if(report.dept==='politie'){
       const [awards,uploadedCatalog]=await Promise.all([
        db().collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(501).get(),
-       db().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get()
+       db().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(120).get()
       ]);
-      const catalog=new Map([...CATALOG_BY_ID,...uploadedCatalog.docs
-       .map(doc=>[doc.id,customCatalogItem(doc)]).filter(([,item])=>item)]);
+      const catalog=new Map([...CATALOG_BY_ID,...decorationCatalogExtras(uploadedCatalog.docs)]);
       if(awards.size>500)truncated=true;
       for(const doc of awards.docs.slice(0,500)){
         const pid=doc.get('discordId');
