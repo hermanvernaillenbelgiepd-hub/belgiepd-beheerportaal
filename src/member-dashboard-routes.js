@@ -5,6 +5,7 @@ import {ROSTER_COLUMN_COLLECTION,rosterConfig} from './roster-column-config.js';
 import {AE_DISCORD_ROLES,verifiedSyncRoles} from './organogram-placement-policy.js';
 import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
 import {verifiedOfficerCadre} from './verified-police-cadre.js';
+import {readVerifiedPoliceLrd,LRD_SPECIALTY_LABEL} from './police-lrd-policy.js';
 import {PERSONNEL_ROSTER_DEFAULT,validatePersonnelRosterLayout,
  savedPersonnelRosterLayout} from './personnel-roster-layout-policy.js';
 
@@ -57,11 +58,11 @@ export function directoryRowsForDiscordId(rows,id=null){
 // One read-only directory entry per Discord identity, with Police as its
 // primary registration if present. Other service enrollments never create a
 // fictional police callsign, rank, dossier, or permission.
-export function publicPoliceRoster(rows,extraPublicLabels=[],verifiedAeMembers=new Set()){
+export function publicPoliceRoster(rows,extraPublicLabels=[],verifiedAeMembers=new Set(),verifiedLrdMembers=new Set()){
  const byIdentity=new Map();
  const optionalLabels=Array.isArray(extraPublicLabels)?extraPublicLabels:[];
- const whitelist=['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
-   'K9','RAGO','Dispatch','TO','AE',...optionalLabels.filter(label=>
+ const whitelist=['INTERVENTIEDIENST','Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
+   'K9','RAGO','Dispatch','TO','AE',LRD_SPECIALTY_LABEL,...optionalLabels.filter(label=>
     typeof label==='string'&&
     !/^ae(?:[-_ ]?(?:i|t|teamleader|instructeur))$/i.test(label))];
  const serviceNames={politie:'Politie',brandweer:'Brandweer',
@@ -96,6 +97,10 @@ export function publicPoliceRoster(rows,extraPublicLabels=[],verifiedAeMembers=n
    // AE-specialization detail. No role IDs or leadership status are exposed.
    const rawAe=String(statuses.AE||'Niet ingevuld');
    if(hasPoliceEntry){
+    // LRD is an actual verified Discord role, never a manual or stale flag.
+    const verifiedId=strip(primary.personId);
+    statuses[LRD_SPECIALTY_LABEL]=verifiedLrdMembers.has(verifiedId)?'Ja':
+      verifiedLrdMembers.confirmedIds?.has(verifiedId)?'Nee':'Niet gecontroleerd';
     if(verifiedAeMembers.has(strip(primary.personId))||
        /^(ja|instructeur|leiding|teamleader|ae[-_ ]?(?:i|t|teamleader|instructeur)|ae-f|stage|aangemeld)$/i.test(rawAe))
       statuses.AE='Ja';
@@ -329,9 +334,13 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
        console.warn('AE-personeelslijst: Discord-verificatie tijdelijk niet beschikbaar',
         error?.code||'sync_error');
       }
+      let verifiedLrdMembers=new Set();
+      try{verifiedLrdMembers=await readVerifiedPoliceLrd(snapshot.data)}
+      catch(error){console.warn('LRD-personeelslijst: verificatie niet beschikbaar',
+         error?.code||'verificatie')}
       return res.json({
         records:publicPoliceRoster(directoryRowsForDiscordId(snapshot.data,requestedId),
-          customSpecialties.map(x=>x.label),verifiedAeMembers),
+          customSpecialties.map(x=>x.label),verifiedAeMembers,verifiedLrdMembers),
         customSpecialties,stale:snapshot.stale,readOnly:true
       });
     }catch(error){

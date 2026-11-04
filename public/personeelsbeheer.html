@@ -1739,12 +1739,12 @@ const ROSTER_FONTS=Object.freeze({
  mono:'Consolas,"Courier New",monospace'
 });
 const ROSTER_RESIZE_LIMITS=Object.freeze({
- call:[60,200],grade:[75,250],rank:[105,380],name:[120,430],
- series:[95,240],status:[95,240],specialty:[60,300],
+ call:[36,200],grade:[54,250],rank:[105,380],name:[120,430],
+ series:[40,240],status:[48,240],specialty:[60,300],
  summary:[110,400],file:[65,180],discord:[175,360]
 });
 const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
-  call:78,grade:116,rank:164,name:190,series:108,status:108,
+  call:42,grade:68,rank:164,name:190,series:52,status:58,
   specialty:82,summary:180,file:76,discord:224
 });
 // Resize only modifies this browser's preview. Server-side permissions and
@@ -1864,7 +1864,7 @@ function render(){
   // never additional public or management roster columns.
   const custom=(rosterConfigs[dept]?.customSpecialties||[])
    .filter(item=>!/^ae[-_ ]?(?:i|t|teamleader|instructeur)$/i.test(item.label));
-  const cols=[...BPDPersonnelVisuals.specialtyColumns(dept),...custom.map(x=>x.label)];
+  const cols=[...new Set([...BPDPersonnelVisuals.specialtyColumns(dept),...custom.map(x=>x.label)])];
   // Only the police personnel overview hides the redundant grade name.
   // Full grade title remains available on the insignia tooltip and in dossiers.
   const showRankName=dept!=='politie',policeCompact=!showRankName;
@@ -1889,8 +1889,8 @@ function render(){
   // cap oversized column weights and distribute the total over the available
   // table width. All cells stay aligned without cropping qualifications.
   const compactWidths=policeCompact?[
-    Math.min(w.call,44),Math.min(w.grade,94),Math.min(w.name,150),
-    Math.min(w.series,62),Math.min(w.status,76),
+    Math.min(w.call,34),Math.min(w.grade,68),Math.min(w.name,150),
+    Math.min(w.series,44),Math.min(w.status,55),
     ...(cols.length?cols.map(label=>Math.min(
       rosterConfigs[dept]?.specialtyWidths?.[label]||w.specialty,125)):
       [Math.min(w.summary,150)]),
@@ -1914,8 +1914,8 @@ function render(){
   const titles=dept==='depannage'?
     ['CALL','Functiegroep','Functie','Personeelslid','Reeks','Status']:
     policeCompact?
-      ['CALL','Rangkenteken','Personeelslid','Reeks','Status']:
-      ['CALL','Rangkenteken','Naam van rang','Personeelslid','Reeks','Status'];
+      ['CALL','Rangteken','Personeelslid','Reeks','Status']:
+      ['CALL','Rangteken','Naam van rang','Personeelslid','Reeks','Status'];
   for(const title of titles){
     const th=document.createElement('th');th.textContent=title;line.append(th);
   }
@@ -1929,7 +1929,7 @@ function render(){
     else pict.append(specialtyMark(label));
     pict.setAttribute('aria-hidden','true');
     const name=document.createElement('span');name.className='specialty-col-label';
-    name.textContent=dept==='depannage'?depannageSpecialtyMeta(label).label:label;
+    name.textContent=label==='INTERVENTIEDIENST'?'INTERVENTIE':dept==='depannage'?depannageSpecialtyMeta(label).label:label;
     const banner=BPDPersonnelVisuals.specialtyBannerDisplay(label,dept);
     if(banner){
       th.classList.add('specialty-col-head--patch');
@@ -2171,7 +2171,7 @@ async function checkAccessStatus(){
 }
 
 const ROSTER_WIDTH_LABELS={
- call:'CALL',grade:'Rangkenteken',rank:'Rangnaam',name:'Personeelslid',
+ call:'CALL',grade:'Rangteken',rank:'Rangnaam',name:'Personeelslid',
  series:'Reeks',status:'Status',specialty:'Iedere specialisatie',
  summary:'Samenvatting specialisaties',file:'Fiche',discord:'Discord-ID'
 };
@@ -2194,8 +2194,8 @@ function rosterEditorRender(){
   const name=document.createElement('span');name.textContent=caption;
   const input=document.createElement('input');input.type='number';
   const limits={
-   call:[60,200],grade:[75,250],rank:[105,380],name:[120,430],
-   series:[95,240],status:[95,240],specialty:[60,220],
+   call:[36,200],grade:[54,250],rank:[105,380],name:[120,430],
+   series:[40,240],status:[48,240],specialty:[60,220],
    summary:[110,400],file:[65,180],discord:[175,360]
   }[key];
   input.min=limits[0];input.max=limits[1];input.step='1';input.value=widths[key];
@@ -2207,10 +2207,10 @@ function rosterEditorRender(){
   };
   label.append(name,input);fields.append(label);
  }
- const existing=[
+ const existing=[...new Set([
   ...BPDPersonnelVisuals.specialtyColumns(dept),
   ...(cfg.customSpecialties||[]).map(x=>x.label)
- ];
+ ])];
  cfg.specialtyWidths ||= {};
  const caption=document.createElement('h4');caption.textContent='Breedte per specialisatie';
  caption.style.margin='9px 0 5px';

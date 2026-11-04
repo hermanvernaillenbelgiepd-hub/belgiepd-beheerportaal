@@ -37,7 +37,9 @@
     rago:['rago','rago_federaal','luchtsteun'],
     disp:['disp','dispatch','dispatching'],
     ae:['ae','arrestatie_eenheid','arrestatie_eenheid_lokaal'],
-    siv_wpr:['siv_wpr','wpr','siv']
+    siv_wpr:['siv_wpr','wpr','siv'],
+    interventie:['interventie','interventiedienst'],
+    recherche:['recherche','lrd','lrd_recherche']
   });
   const safeCode=raw=>String(raw||'').toLowerCase().normalize('NFD')
     .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_')
@@ -51,7 +53,8 @@
     if(/^radio(?:\s*[/ -]?\s*bm)?$/.test(value))return 'radio_bm';
     if(/^siv\s*[/ -]?\s*wpr$/.test(value))return 'siv_wpr';
     if(/^(?:semi-?anoniem|semi-?ano\.?)$/.test(value))return 'semi_ano';
-    if(/^lrd$/.test(value))return 'recherche';
+    if(/^(?:lrd|lrd\s*\(recherche\)|recherche)$/.test(value))return 'recherche';
+    if(/^(?:interventie|interventiedienst)$/.test(value))return 'interventie';
     return safeCode(label);
   }
   function setArtworkManifest(records){
@@ -83,6 +86,7 @@
     [/\b(K9|HONDEN|HONDENGE)\b/i,'🐕'],
     [/\bRAGO\b/i,'🚁'],
     [/(RADIO|ASTRID)/i,'📻'],
+    [/(INTERVENTIE)/i,'🚓'],
     [/(DISPATCH|MELDKAMER)/i,'🎧'],
     [/(SIGNALISATIE)/i,'🦺'],
     [/(SIV|WPR|VERKEER)/i,'🚓'],
@@ -197,7 +201,7 @@
   // Display one status column per service-specific specialization.
   // For combined services, the caller displays a compact summary instead.
   const labelsByService=Object.freeze({
-    politie:['Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE'],
+    politie:['INTERVENTIEDIENST','Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE'],
     ambulance:['Basis TR','Medicatie','HELI','Motor','MIP'],
     brandweer:['Basis TR','Logistiek','Ladderwagen','Duiker','Signalisatie','RED team','Gevaarlijke stoffen','Grote Boot'],
     depannage:['Opleiding DEP2K','Opleiding FAST','CRANE','WEGENWERKEN']
