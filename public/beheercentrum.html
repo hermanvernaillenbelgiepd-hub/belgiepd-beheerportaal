@@ -87,6 +87,7 @@ button:disabled{cursor:not-allowed;opacity:.55}
   <a class="tile" href="/gebruikersbeheer.html"><h3>🎖️ Specialisaties en uniformen</h3><p>Rollen, badges, patches en gekoppelde afbeeldingen in de bestaande beheerbibliotheek.</p><small>Open beheer en rollen</small></a>
   <a class="tile" href="/activiteitscentrum.html"><h3>◷ Personeelsactiviteit</h3><p>Activiteitsopvolging en statussen controleren.</p><small>Open activiteitscentrum</small></a>
   <a class="tile" href="/registraties.html"><h3>▤ Observaties Basiskader</h3><p>Ontvangstoverzicht, veilig archiveren en herstellen.</p><small>Open observaties</small></a>
+  <a class="tile" id="cleanupTile" href="/testgegevens-opschonen.html" hidden><h3>🧹 Testgegevens &amp; Opschonen</h3><p>Per persoon expliciete testregistraties controleren, veilig intrekken en herstellen. Met auditlog.</p><small>Alleen Technisch Beheer</small></a>
   <a class="tile" href="/opleidingscentrum.html"><h3>🎓 Opleidingen</h3><p>Opleidingscentrum en dienstgebonden aanvragen.</p><small>Open opleidingscentrum</small></a>
   <a class="tile" href="/organogram-hierarchie.html"><h3>🌳 Organogram</h3><p>Personeelsindeling en beschikbare weergave-instellingen.</p><small>Open organogram</small></a>
   <a class="tile" href="/discord-status.html"><h3>🔗 Discord-koppeling</h3><p>Controleer jouw profiel, verificatie en verbinding.</p><small>Open mijn profiel</small></a>
@@ -247,7 +248,7 @@ function drawHistory(items){
 }
 async function load(){
  if(!auth?.currentUser){
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile'])$(id).hidden=true;
   notice('Meld je aan met een bevoegd BelgiumPD-account.');return;
  }
  try{
@@ -259,6 +260,7 @@ async function load(){
   void serviceEditor.load();
   $('next').hidden=false;$('historyPanel').hidden=!next.canEdit;
   $('accessLabel').textContent=next.canEdit?'Technisch Beheer':'Operationeel kader';
+   $('cleanupTile').hidden=!next.canEdit;
   $('autoEnabled').checked=next.config.observationArchiveEnabled;
   $('autoDays').value=String(next.config.observationArchiveDays);
   $('revision').textContent='Versie '+next.config.revision;
@@ -271,7 +273,7 @@ async function load(){
     'Je hebt alleen leesrechten op de centrale instellingen.'));
  }catch(error){
   context=null;
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile'])$(id).hidden=true;
   notice('Beheercentrum niet beschikbaar: '+error.message,true);
  }
 }
