@@ -45,8 +45,13 @@ test('Police Korpsleiding may read Burger dossiers only with independently verif
   assert.equal(canAccessCitizenDossier({...corps,discordPoliceRank:null,manualCorpsApproved:true},false),true);
   assert.equal(canWriteCitizenDossier({...corps,discordPoliceRank:null,manualCorpsApproved:true},
     false,'323456789012345678'),false);
+  // Een goedgekeurd historisch account met precies één politiedienst mag
+  // de bestaande serverrolfallback gebruiken, mits Discord-rang bevestigd is.
   assert.equal(canAccessCitizenDossier({...actor,role:'korpsleiding',departments:['politie'],
-    discordPoliceRank:'korpsleiding'},false),false);
+    discordPoliceRank:'korpsleiding'},false),true);
+  // Met meerdere diensten of een ontbrekende politie-rolscope mag dat nooit.
+  assert.equal(canAccessCitizenDossier({...corps,departments:['politie','brandweer'],
+    departmentRoles:{brandweer:'korpsleiding'}},false),false);
   assert.equal(canAccessCitizenDossier({...actor,boardPersonnelAdmin:true},false),false);
 });
 
