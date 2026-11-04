@@ -112,13 +112,13 @@ function renderHeader(thead){
        tile.style.backgroundImage='url("'+banner.url+'")';
        tile.style.backgroundPosition='center '+banner.position+'%';
        tile.setAttribute('aria-hidden','true');
-       th.append(tile);
+       th.append(tile,element('small',label));
      }else{
        const img=document.createElement('img');
        img.src=banner.url;img.alt=label;img.loading='lazy';
        img.className='mr-specialty-banner';
        img.onerror=()=>fallback();
-       th.append(img);
+       th.append(img,element('small',label));
      }
    }else fallback();
    tr.append(th);
