@@ -154,4 +154,46 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
         weeklyReportWritten:false});
     }catch(e){return fail(res,e)}
   });
+
+  // No destructive Firestore delete: an approved Korpsleiding or technical
+  // manager marks the registration withdrawn and creates an immutable
+  // person-bound audit event with author, reason and original content.
+  app.delete('/api/citizen-staff/:discordId/entries/:entryId',
+    ...protectedUser,async(req,res)=>{
+    if(!writable())return deny(res,503,'Burgerdossierregistraties staan uit');
+    const entryId=req.params.entryId;
+    if(!validEntryId(entryId))return deny(res,400,'Ongeldige registratie-ID');
+    let reason;
+    try{({reason}=validateCitizenDeletion(req.body))}
+    catch(e){return deny(res,400,e.message)}
+    try{
+      const person=await uniqueSubject(getSnapshot,req.params.discordId);
+      if(!canDeleteCitizenEntry(req.bpd,person.personId))
+        return deny(res,403,'Alleen Korpsleiding of technisch beheer mag registraties verwijderen');
+      const db=getFirestore(),parent=db.collection(CITIZEN_DOSSIER_COLLECTION)
+        .doc(person.personId);
+      const entryRef=parent.collection('entries').doc(entryId);
+      const auditRef=parent.collection('audit').doc();
+      await db.runTransaction(async tx=>{
+        const existing=await tx.get(entryRef);
+        if(!existing.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
+        const original=existing.data();
+        if(original.deletedAt)throw Object.assign(
+          Error('Deze registratie werd reeds verwijderd'),{status:409});
+        tx.update(entryRef,{deletedAt:FieldValue.serverTimestamp(),
+          deletedByDiscordId:req.bpd.discordId,deleteReason:reason});
+        tx.create(auditRef,{action:'delete-citizen-entry',
+          entryId,originalKind:clean(original.kind,32),
+          originalEventDate:clean(original.eventDate,10),
+          originalDetails:clean(original.details,1600),
+          originalScore:Number.isInteger(original.score)?original.score:null,
+          originalByDiscordId:validCitizenId(original.byDiscordId)?
+            original.byDiscordId:null,
+          byDiscordId:req.bpd.discordId,reason,at:FieldValue.serverTimestamp()});
+        tx.set(parent,{updatedAt:FieldValue.serverTimestamp()},{merge:true});
+      });
+      return res.json({deleted:true,id:entryId,auditId:auditRef.id,
+        hardDeleted:false,weeklyReportWritten:false});
+    }catch(e){return fail(res,e)}
+  });
 }
