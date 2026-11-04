@@ -1,7 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {
   CITIZEN_DOSSIER_COLLECTION,validCitizenId,verifiedCitizenCouncil,
-  canAccessCitizenDossier,canWriteCitizenDossier,canDeleteCitizenEntry,citizenMemberType,
+  canAccessCitizenDossier,canWriteCitizenDossier,canDeleteCitizenEntry,canManageCitizenDeletions,citizenMemberType,
   citizenSubject,validateCitizenEntry,validateCitizenDeletion,observationAverage
 } from './citizen-dossier-policy.js';
 
@@ -82,7 +82,7 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
   }
   const protectedUser=[requireUser,authorize];
   const actorWrites=req=>writable()&&canAccessCitizenDossier(req.bpd,req.citizenCouncilVerified);
-  const actorDeletes=req=>writable()&&canDeleteCitizenEntry(req.bpd,'999999999999999999');
+  const actorDeletes=req=>writable()&&canManageCitizenDeletions(req.bpd);
   app.get('/api/citizen-staff/access',...protectedUser,(req,res)=>
     res.json({canAccess:true,writesEnabled:actorWrites(req),deletesEnabled:actorDeletes(req)}));
 
