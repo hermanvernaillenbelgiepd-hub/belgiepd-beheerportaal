@@ -153,7 +153,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a href="/rollen-opleidingen.html">🎓 &nbsp; Opleidingscentrum</a>
     <a href="/documentencentrum.html">📚 &nbsp; Documentencentrum</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
-    <a href="/registraties.html">▤ &nbsp; Observaties Basiskader</a>
+    <a id="staffNavObservations" href="/registraties.html" hidden>▤ &nbsp; Observaties Basiskader</a>
     <a href="/weekrapporten.html">▥ &nbsp; Weekrapporten</a>
     <a href="/to-dienstbord.html">◉ &nbsp; TO-dienstbord</a>
     <a href="/verlofbeheer.html">▦ &nbsp; Verlofbeheer</a>
@@ -169,6 +169,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a href="/opleidingscentrum.html">🎓 &nbsp; Opleidingscentrum</a>
     <a href="/documentencentrum.html">📚 &nbsp; Documentencentrum</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
+    <a id="zoneNavObservations" href="/registraties.html" hidden>▤ &nbsp; Observaties Basiskader</a>
     <a href="/weekrapporten.html">📋 &nbsp; Brandweerweekrapporten</a>
     <a href="/verlofbeheer.html">📅 &nbsp; Mijn verlof</a>
     <a href="/meldingen.html">📬 &nbsp; Meldingen</a>
@@ -182,6 +183,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a href="/opleidingscentrum.html">🎓 &nbsp; Opleidingscentrum</a>
     <a href="/documentencentrum.html">📚 &nbsp; Documentencentrum</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
+    <a id="ambulanceNavObservations" href="/registraties.html" hidden>▤ &nbsp; Observaties Basiskader</a>
     <a id="ambulanceNavReports" href="/weekrapporten.html" hidden>📋 &nbsp; Ambulanceweekrapporten</a>
     <a href="/verlofbeheer.html">📅 &nbsp; Mijn verlof</a>
     <a href="/meldingen.html">📬 &nbsp; Meldingen</a>
@@ -193,6 +195,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a href="/organogram-hierarchie.html">♧ &nbsp; Organogram</a>
     <a href="/documentencentrum.html">📚 &nbsp; Documentencentrum</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
+    <a id="memberNavObservations" href="/registraties.html" hidden>▤ &nbsp; Observaties Basiskader</a>
     <a id="memberNavCallsign" href="/vast-roepnummer-aanvragen.html" hidden>🔢 &nbsp; Vast roepnummer aanvragen</a>
     <a id="memberNavLeave" href="/verlofbeheer.html" hidden>📅 &nbsp; Mijn verlof</a>
     <a id="memberNavNotices" href="/meldingen.html" hidden>📬 &nbsp; Meldingen</a>
@@ -325,6 +328,12 @@ const $=id=>document.getElementById(id);
 const staffNav=$('staffNav'),memberNav=$('memberNav'),zoneNav=$('zoneNav'),ambulanceNav=$('ambulanceNav'),staffHome=$('staffDashboard'),zoneHome=$('zoneDashboard'),ambulanceHome=$('ambulanceDashboard');
 const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
 const adminSection=$('adminRights'),adminNavLink=$('adminNavLink'),logoutButton=$('dashboardLogout');
+const observationNavIds=['staffNavObservations','zoneNavObservations',
+ 'ambulanceNavObservations','memberNavObservations'];
+function showObservationNavigation(ctx){
+ const allowed=ctx?.basicObservationCanSubmit===true||ctx?.basicObservationCanReview===true;
+ for(const id of observationNavIds)$(id).hidden=!allowed;
+}
 const simpleIds=['memberTrainingTile','memberNavCallsign','memberCallsignTile','memberNavLeave','memberLeaveTile','memberNavNotices','memberNoticesTile'];
 function resetSimpleModules(){for(const id of simpleIds)$(id).hidden=true}
 function displaySimpleModules(details){
@@ -355,9 +364,11 @@ function showAmbulanceDashboard(ctx){
     $(name).hidden=!visible;
   $('ambulanceVerificationNotice').hidden=
     !(['officierenkader','korpsleiding'].includes(tier)&&!canReport);
+  showObservationNavigation(ctx);
 }
-function showApprovedBasicDashboard(){
+function showApprovedBasicDashboard(ctx){
  show('member');
+ showObservationNavigation(ctx);
  // Emergency/legacy login cannot use Discord-only callsign verification.
  displaySimpleModules({canUseSelfService:true,callsignRequestAvailable:false,hasPersonnelRecord:true});
  $('memberAccountStatus').textContent='Je account heeft gewone personeelsrechten. Je ziet de personeelslijst en je persoonlijke functies.';
@@ -368,6 +379,7 @@ function show(mode,message=''){
  staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';zoneNav.hidden=mode!=='zone';ambulanceNav.hidden=mode!=='ambulance';
  staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';zoneHome.hidden=mode!=='zone';ambulanceHome.hidden=mode!=='ambulance';
  guestHome.hidden=mode!=='guest';adminSection.hidden=true;adminNavLink.hidden=true;
+ showObservationNavigation(null);
  resetSimpleModules();
  if(message)$('guestMessage').textContent=message;
 }
@@ -403,12 +415,13 @@ async function displayAuthenticated(user){
       show('zone');$('zoneVerificationNotice').hidden=ctx.zoneVerified===true;
     }
     else if(ctx.dashboardProfile==='ambulance-azls')showAmbulanceDashboard(ctx);
-    else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
+    else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard(ctx);
     else{
       show('staff');
       adminSection.hidden=ctx.visible!==true;
       adminNavLink.hidden=ctx.visible!==true;
     }
+    showObservationNavigation(ctx);
   }catch{
     if(turn===requestNumber)show('guest','Je dashboardrechten konden niet worden bevestigd. Vernieuw je aanmelding.');
   }
@@ -440,12 +453,14 @@ async function displayAuthenticated(user){
     $('memberAccountStatus').textContent=details.hasPersonnelRecord?
       'Je Discord-identiteit is bekend. Je beschikt over de persoonlijke functies van het Agenten- of Basiskader.':
       'Je Discord-account is bevestigd. Je kunt de personeelslijst zien en controleren of je een vast roepnummer kunt aanvragen.';
-    const [roster,eligibility,artwork]=await Promise.allSettled([
+    const [roster,eligibility,artwork,policeObsContext]=await Promise.allSettled([
       authorizedFetch('/api/member/personnel-list',token),
       authorizedFetch('/api/callsigns/self/status',token),
-      authorizedFetch('/api/role-artwork/manifest',token)
+      authorizedFetch('/api/role-artwork/manifest',token),
+      authorizedFetch('/api/dashboard/admin-visibility',token)
     ]);
     if(turn!==requestNumber)return;
+    showObservationNavigation(policeObsContext.status==='fulfilled'?policeObsContext.value:null);
     window.BPDPersonnelVisuals?.setArtworkManifest?.(
       artwork.status==='fulfilled'?artwork.value.artworks:[]);
     if(roster.status==='fulfilled'){
@@ -481,12 +496,13 @@ async function displayAuthenticated(user){
       show('zone');$('zoneVerificationNotice').hidden=ctx.zoneVerified===true;
     }
     else if(ctx.dashboardProfile==='ambulance-azls')showAmbulanceDashboard(ctx);
-    else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
+    else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard(ctx);
     else{
       show('staff');
       adminSection.hidden=ctx.visible!==true;
       adminNavLink.hidden=ctx.visible!==true;
     }
+    showObservationNavigation(ctx);
   }else show('guest','Je portaaltoegang moet eerst worden gecontroleerd. Vernieuw je Discord-verificatie in Mijn profiel.');
  }catch(err){
   if(turn===requestNumber)show('guest','De aanmelding kon niet worden bevestigd: '+err.message+'. Open Mijn profiel om opnieuw te verifiëren.');
