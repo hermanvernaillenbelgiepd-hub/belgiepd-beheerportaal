@@ -102,7 +102,7 @@ fieldset{border:0;margin:0;padding:0}
 <script type="module">
 const $=id=>document.getElementById(id);
 let bridge=null,context=null,inboxData=[],inboxCursor=null,submitBusy=false;
-const validTargetId=value=>/^\d{15,22}$/.test(String(value??''));
+const validTargetId=value=>typeof value==='string'&&/^\d{15,22}$/.test(value);
 const normalizeTargetId=value=>String(value??'').trim();
 const setMessage=(msg,error=false)=>{
   $('message').className=msg?'status '+(error?'error':'success'):'status';
@@ -135,7 +135,7 @@ function prepareForm(data){
     ' · '+(data.actor?.rank||'');
   // Every option uses the exact verified server target identity. Do not show
   // unlinked or malformed IDs as selectable members: the write API rejects them.
-  const targets=[...(data.targets||[])].filter(p=>validTargetId(normalizeTargetId(p.discordId)))
+  const targets=[...(data.targets||[])].filter(p=>validTargetId(p.discordId))
     .sort((a,b)=>String(a.call).localeCompare(String(b.call),'nl',{numeric:true}));
   const select=$('target');select.replaceChildren();
   const empty=document.createElement('option');empty.value='';
