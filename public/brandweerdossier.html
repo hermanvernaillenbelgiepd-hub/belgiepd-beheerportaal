@@ -28,7 +28,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 .record small{color:#a9c5e7}
 @media(max-width:960px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.summary-grid{grid-template-columns:1fr}.sheet-row{grid-template-columns:1fr}}
-</style><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-dossier-shared.css">
+</style><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/dossier-identity-polish.css">
 </head><body class="bpd-unified-dossier dossier-onepage dossier-fire-sheet">
 <header><strong>🚒 BelgiëPD · Brandweerdossier</strong><nav class="buttons"><a href="/dossiercentrum.html">← Dossiercentrum</a><a href="/">Home</a><button id="refresh" class="alt" type="button">Vernieuwen</button><button id="login" class="alt">Aanmelden</button></nav></header>
 <main>
@@ -191,6 +191,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 </section>
 </main>
 <script type="module">
+import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fire-specialty-icons.js';
 import {displayServiceBadge} from '/dossier-service-badge.js';
 const $=id=>document.getElementById(id);
@@ -362,7 +363,7 @@ async function load(){
   const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels'}).format(new Date());
   const activeLeave=(data.leave||[]).some(x=>x.startDate<=today&&x.endDate>=today);
   const shownStatus=activeLeave?'🏖️ Verlof':p.status||'—';
-  $('status').textContent=shownStatus;
+  renderDossierStatus($('status'),p.status,{leave:activeLeave});
   $('fireManualLeaveForm').hidden=data.canLogManualLeave!==true;
   $('discord').textContent=p.discordId;
   const advanced=data.visibility==='leadership'||data.visibility==='full';
