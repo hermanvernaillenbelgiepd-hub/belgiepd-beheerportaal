@@ -18,7 +18,7 @@ const columnBounds=Object.freeze({
 const allowedKeys=Object.keys(ROSTER_WIDTH_DEFAULTS);
 export const ROSTER_FONT_FAMILIES=Object.freeze(['inter','segoe','arial','verdana','tahoma','georgia','mono']);
 export const ROSTER_FONT_DEFAULT=Object.freeze({fontFamily:'inter',fontSize:11});
-const allowedBody=['expectedRevision','widths','customSpecialties','specialtyWidths','fontFamily','fontSize'];
+const allowedBody=['expectedRevision','widths','customSpecialties','specialtyWidths','fontFamily','fontSize','reason'];
 export function canEditRosterColumns(actor){
  // A real authenticated Discord identity is mandatory for all changes.
  if(!actor?.discordId||actor.uid!=='discord:'+actor.discordId)return false;
@@ -71,6 +71,12 @@ export function validateRosterConfig(input,dept){
    throw Error('Ongeldige kolominstellingen');
  if(!Number.isSafeInteger(input.expectedRevision)||input.expectedRevision<0)
    throw Error('Vernieuw de instellingen voor je bewaart');
+ // Older table editors do not provide a motivation. The central technical
+ // editor does, and it must be recorded only in the audit trail.
+ const reason=input.reason===undefined?'':typeof input.reason==='string'?input.reason.trim():null;
+ if(reason===null||(reason!==''&&(reason.length<8||reason.length>300||
+     /[<>\x00-\x1f\x7f]/.test(reason))))
+   throw Error('Geef een geldige motivering van 8–300 tekens');
  const raw=input.widths;
  if(!raw||Array.isArray(raw)||typeof raw!=='object'||
     Object.keys(raw).length!==allowedKeys.length||
@@ -123,7 +129,7 @@ export function validateRosterConfig(input,dept){
     fontSize<9||fontSize>18)
    throw Error('Gebruik een toegestaan lettertype en een lettergrootte van 9–18 px');
  return {widths,customSpecialties,specialtyWidths,fontFamily,fontSize,
-  expectedRevision:input.expectedRevision};
+  expectedRevision:input.expectedRevision,...(reason?{reason}:{})};
 }
 export async function loadRosterConfigs(db=getFirestore()){
  const refs=ROSTER_DEPARTMENTS.map(dept=>db.collection(ROSTER_COLUMN_COLLECTION).doc(dept));
@@ -168,8 +174,9 @@ export function installRosterColumnRoutes(app,{requireUser}){
     tx.create(db.collection('bpd_roster_column_audit').doc(),{
      dept:req.params.dept,actorDiscordId:req.bpd.discordId,
      before:old,after:(({
-       expectedRevision:discardRevision,...settings
+       expectedRevision:discardRevision,reason:discardReason,...settings
       })=>settings)(validated),
+     ...(validated.reason?{reason:validated.reason}:{}),
      at:FieldValue.serverTimestamp()});
     return next;
    });

@@ -52,6 +52,19 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .history li:first-child{border-top:0}
 .history small{display:block;color:var(--sub)}
 .buttons{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.edit-list{max-height:460px;overflow:auto;margin:12px 0;border:1px solid var(--stroke);border-radius:9px}
+.edit-line{display:grid;grid-template-columns:minmax(150px,1.2fr) minmax(180px,1.5fr) minmax(110px,.9fr) minmax(110px,.9fr) minmax(145px,1fr) auto;gap:7px;padding:10px;border-bottom:1px solid var(--stroke);align-items:end}
+.edit-line:last-child{border-bottom:0}.edit-line label{font-size:11px}
+.edit-line select,.edit-line input{padding:7px;margin-top:3px;font-size:12px}
+.edit-line .remove{padding:7px 10px}
+.config-block{border:1px solid var(--stroke);background:var(--field);padding:14px;border-radius:10px;margin:12px 0}
+.config-block h3{margin:0 0 7px}
+.config-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.custom-list{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.custom-item{border:1px solid var(--stroke);border-radius:8px;padding:7px 9px;font-size:12px}
+.custom-item button{font-size:11px;margin-left:8px;padding:4px 6px}
+@media(max-width:1150px){.edit-line{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.edit-line{grid-template-columns:1fr 1fr}}
 [hidden]{display:none!important}
 @media(max-width:790px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){main{padding:14px 12px 40px}.grid,.form-grid{grid-template-columns:1fr}header{padding:12px}}
@@ -77,6 +90,69 @@ button:disabled{cursor:not-allowed;opacity:.55}
   <a class="tile" href="/opleidingscentrum.html"><h3>🎓 Opleidingen</h3><p>Opleidingscentrum en dienstgebonden aanvragen.</p><small>Open opleidingscentrum</small></a>
   <a class="tile" href="/organogram-hierarchie.html"><h3>🌳 Organogram</h3><p>Personeelsindeling en beschikbare weergave-instellingen.</p><small>Open organogram</small></a>
   <a class="tile" href="/discord-status.html"><h3>🔗 Discord-koppeling</h3><p>Controleer jouw profiel, verificatie en verbinding.</p><small>Open mijn profiel</small></a>
+ </div>
+</section>
+<section id="serviceCenter" class="card" hidden>
+ <div class="row">
+  <div><h2>Diensten · Discord-rollen, specialisaties en weergave</h2>
+   <p class="muted">Koppel een bestaande Discord-rol-ID aan een specialisatie en patch, zonder codewijziging.
+   De koppelingen beïnvloeden uitsluitend de geverifieerde weergave; ze kennen geen Discord-rollen of kadermachtigingen toe.</p>
+  </div>
+  <label>Hulpdienst<select id="serviceDept">
+   <option value="politie">Politie</option><option value="brandweer">Brandweer</option>
+   <option value="ambulance">Ambulance / AZLS</option><option value="depannage">Depannage</option>
+  </select></label>
+ </div>
+ <div id="serviceMessage" class="notice" role="status" aria-live="polite">Selecteer een dienst om de instellingen te laden.</div>
+ <div id="specialtyEditor" class="config-block" hidden>
+  <div class="row"><h3>Discordrol → specialisatie → badge</h3>
+   <span id="specialtyRevision" class="muted"></span></div>
+  <p class="muted">Alleen bestaande, door het portaal gekende Discord-rol-ID’s zijn selecteerbaar.
+  De beveiligde kaderrollen (Basiskader/Middenkader/Officierenkader/Korpsleiding) worden hier niet veranderd.</p>
+  <div id="linkRows" class="edit-list" aria-label="Specialisatiekoppelingen"></div>
+  <div class="config-actions"><button type="button" class="secondary" id="addLink">+ Koppeling toevoegen</button>
+    <span id="linkCount" class="muted"></span></div>
+  <label>Motivering voor de wijziging
+   <textarea id="linkReason" rows="2" maxlength="300" minlength="8"
+     placeholder="Bijvoorbeeld: Discord-rol en patch van opleiding gelijkzetten"></textarea></label>
+  <div class="buttons"><button type="button" id="saveLinks">Koppelingen bewaren</button>
+   <button type="button" class="secondary" id="resetLinks">Wijzigingen ongedaan maken</button></div>
+ </div>
+ <div id="layoutEditor" class="config-block" hidden>
+  <h3>Personeelslijst en dienstspecifieke specialisaties</h3>
+  <p class="muted">Lettertype en bijkomende specialisaties worden direct gebruikt door de bestaande personeelslijst.
+   Bestaande kolombreedtes en andere instellingen blijven behouden.</p>
+  <div class="form-grid">
+   <label>Lettertype
+    <select id="rosterFont"><option value="inter">Inter</option><option value="segoe">Segoe UI</option>
+      <option value="arial">Arial</option><option value="verdana">Verdana</option><option value="tahoma">Tahoma</option>
+      <option value="georgia">Georgia</option><option value="mono">Monospace</option></select></label>
+   <label>Lettergrootte in pixels<input id="rosterSize" type="number" min="9" max="18" step="1"></label>
+  </div>
+  <p class="muted">Bijkomende specialisaties voor de gekozen dienst:</p>
+  <div id="customSpecialties" class="custom-list"></div>
+  <div class="form-grid">
+   <label>Nieuwe specialisatie
+    <input id="customLabel" maxlength="64" placeholder="Bijvoorbeeld: Signalisatie"></label>
+   <label>Unieke technische code (kleine letters)
+    <input id="customCode" maxlength="40" pattern="[a-z0-9_]{1,40}" placeholder="signalisatie_extra"></label>
+   <label>Pictogram (optioneel)
+    <input id="customIcon" maxlength="10" placeholder="🚧"></label>
+   <label class="toggle"><input type="checkbox" id="customPublic"> Zichtbaar in openbare personeelslijst</label>
+  </div>
+  <div class="buttons"><button type="button" class="secondary" id="addCustom">+ Specialisatie toevoegen</button></div>
+  <label>Motivering
+   <textarea id="layoutReason" rows="2" maxlength="300" minlength="8"
+     placeholder="Waarom wijzigen de instellingen van deze dienst?"></textarea></label>
+  <div class="buttons"><button type="button" id="saveRoster">Dienstinstellingen bewaren</button>
+   <span id="layoutRevision" class="muted"></span></div>
+ </div>
+ <div class="config-block">
+  <h3>Kaderrollen en rangen</h3>
+  <p class="muted">De officiële rang- en bevoegdheidskoppelingen blijven beschermd tegen vrije wijzigingen.
+   Gebruik <a href="/gebruikersbeheer.html#dienstbeheer">Gebruikersbeheer</a> voor goedgekeurde kaderfuncties
+   en de <a href="/gebruikersbeheer.html">uniform- en gradenbibliotheek</a> voor visuele graden.
+   Zo kan een foutieve rol-ID niet zomaar korpsleiding- of dossierrechten toekennen.</p>
  </div>
 </section>
 <section id="automation" class="card" hidden>
@@ -123,6 +199,8 @@ button:disabled{cursor:not-allowed;opacity:.55}
 <script type="module">
 const $=id=>document.getElementById(id);
 let auth=null,context=null,loading=false;
+const {setupTechnicalServiceEditors}=await import('/technical-service-editors.js');
+let serviceEditor=null;
 function notice(message,error=false){
  const element=$('feedback');element.textContent=message;
  element.className='notice'+(error?' bad':'');
@@ -169,13 +247,16 @@ function drawHistory(items){
 }
 async function load(){
  if(!auth?.currentUser){
-  for(const id of ['overview','automation','historyPanel','next'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter'])$(id).hidden=true;
   notice('Meld je aan met een bevoegd BelgiumPD-account.');return;
  }
  try{
   const next=await api('/api/technical-center/context');
   context=next;
   $('overview').hidden=false;$('automation').hidden=false;
+  $('serviceCenter').hidden=false;
+  if(!serviceEditor)serviceEditor=setupTechnicalServiceEditors({api,notice,$});
+  void serviceEditor.load();
   $('next').hidden=false;$('historyPanel').hidden=!next.canEdit;
   $('accessLabel').textContent=next.canEdit?'Technisch Beheer':'Operationeel kader';
   $('autoEnabled').checked=next.config.observationArchiveEnabled;
@@ -190,7 +271,7 @@ async function load(){
     'Je hebt alleen leesrechten op de centrale instellingen.'));
  }catch(error){
   context=null;
-  for(const id of ['overview','automation','historyPanel','next'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter'])$(id).hidden=true;
   notice('Beheercentrum niet beschikbaar: '+error.message,true);
  }
 }
