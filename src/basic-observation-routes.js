@@ -51,9 +51,13 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
       const targets=access.targets.filter(p=>p.personId===body.discordId);
       if(!access.author||targets.length!==1)
         return err(res,403,'Je kunt enkel politieleden van een lagere rang observeren');
-      const author=actorFromPersonnel(req.bpd,roster);
-      if(!author||author.discordId!==access.author.personId)
-        return err(res,403,'Eigen personeelsidentiteit kon niet worden bevestigd');
+      // The verified Police person is the observation author even when the
+      // portal account's primary function belongs to another service.
+      const policePerson=access.author;
+      if(policePerson.personId!==req.bpd.discordId)
+        return err(res,403,'Eigen politie-identiteit kon niet worden bevestigd');
+      const author={discordId:policePerson.personId,name:policePerson.name,
+        call:policePerson.call,rank:policePerson.rank,dept:POL};
       const validated=validateEntry({...body,type:'observatie'});
       // Strictly separate from bpd_cases and staff dossier entries.
       const target=targets[0],db=getFirestore();
