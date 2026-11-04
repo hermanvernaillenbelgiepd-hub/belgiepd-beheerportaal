@@ -62,6 +62,8 @@ test('Niet enkel roepnummer of Brandweerrol: verificatie en Politierol blijven v
  assert.equal(verifiedPoliceBasicCandidate(decoded,member(),guild,[police('720','Hoofdinspecteur van Politie')],now),null);
  assert.equal(verifiedPoliceBasicCandidate(decoded,member(),guild,[police('432','Inspecteur', '555555555555555555')],now),null);
  assert.equal(verifiedPoliceBasicCandidate(decoded,member(),guild,[{...police(),lifecycleState:'archived'}],now),null);
+ assert.equal(verifiedPoliceBasicCandidate(decoded,member(),guild,[{...police(),status:'ONTSLAG'}],now),null);
+ assert.equal(verifiedPoliceBasicCandidate(decoded,member(),guild,[{...police(),status:'GESCHORST'}],now),null);
  assert.equal(verifiedPoliceBasicCandidate(decoded,member([
   POLICE_MEMBER_ROLE,'1335578488664490057'
  ]),guild,[police()],now),null);
