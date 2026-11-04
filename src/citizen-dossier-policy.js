@@ -13,11 +13,11 @@ const validSnapshot=(member,guildId,maxAge,now=Date.now())=>
   Array.isArray(member.roleIds)&&member.roleIds.length<=500&&
   member.roleIds.every(id=>ID.test(id));
 
-export function isVerifiedCitizenCouncil(decoded,member,guildId,now=Date.now()){
+export function isVerifiedCitizenCouncil(decoded,member,guildId,verifiedMemberId,now=Date.now()){
   return Boolean(decoded?.firebase?.sign_in_provider==='custom'&&
     decoded.bpdDiscord===true&&decoded.bpdGuildId===guildId&&
     ID.test(String(decoded.uid||'').replace(/^discord:/,''))&&
-    decoded.uid==='discord:'+String(decoded.uid).slice(8)&&
+    ID.test(String(verifiedMemberId||''))&&decoded.uid==='discord:'+verifiedMemberId&&
     validSnapshot(member,guildId,15*60*1000,now)&&
     member.roleIds.includes(BURGER_ROLE_IDS.council));
 }
