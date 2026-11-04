@@ -19,6 +19,7 @@ import { ALLOWED_ROLES } from './registrations.js';
 import { installRegistrationRoutes } from './registration-routes.js';
 import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import {basicObservationJsonParser} from './basic-observation-json.js';
+import {scheduleBasicObservationAutoArchive} from './basic-observation-auto-archive.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
@@ -940,4 +941,6 @@ app.listen(Number(process.env.PORT)||8080,()=>{
   void probeDiscordFirestore();
   // Opt-in only. Missing configuration keeps automatic activity alerts OFF.
   scheduleAutomaticActivityPings({getSnapshot});
+  // Independent, reversible 30-day retention for submitted Police observations.
+  scheduleBasicObservationAutoArchive();
 });
