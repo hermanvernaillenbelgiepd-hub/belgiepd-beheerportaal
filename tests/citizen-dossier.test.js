@@ -11,13 +11,13 @@ const decoded={uid:'discord:'+id,bpdDiscord:true,bpdGuildId:guild,
 const member={guildId:guild,verifiedAt:now-30000,roleIds:[BURGER_ROLE_IDS.council]};
 const base={type:'notitie',title:'Opvolging BIO',details:'Reguliere opvolging van burger.',date:'2026-11-04'};
 test('Only signed, verified Burgerraad role opens citizen records',()=>{
- assert.equal(isVerifiedCitizenCouncil(decoded,member,guild,now),true);
- assert.equal(isVerifiedCitizenCouncil(decoded,{...member,roleIds:[BURGER_ROLE_IDS.member]},guild,now),false);
- assert.equal(isVerifiedCitizenCouncil(decoded,{...member,verifiedAt:now-16*60000},guild,now),false);
- assert.equal(isVerifiedCitizenCouncil({...decoded,uid:'discord:333333333333333333'},member,guild,now),false);
- assert.equal(isVerifiedCitizenCouncil({...decoded,firebase:{sign_in_provider:'google.com'}},member,guild,now),false);
- assert.equal(isVerifiedCitizenCouncil(decoded,{...member,guildId:'333333333333333333'},guild,now),false);
- assert.equal(isVerifiedCitizenCouncil(decoded,{...member,roleIds:[BURGER_ROLE_IDS.council,'not-id']},guild,now),false);
+ assert.equal(isVerifiedCitizenCouncil(decoded,member,guild,id,now),true);
+ assert.equal(isVerifiedCitizenCouncil(decoded,{...member,roleIds:[BURGER_ROLE_IDS.member]},guild,id,now),false);
+ assert.equal(isVerifiedCitizenCouncil(decoded,{...member,verifiedAt:now-16*60000},guild,id,now),false);
+ assert.equal(isVerifiedCitizenCouncil({...decoded,uid:'discord:333333333333333333'},member,guild,id,now),false);
+ assert.equal(isVerifiedCitizenCouncil({...decoded,firebase:{sign_in_provider:'google.com'}},member,guild,id,now),false);
+ assert.equal(isVerifiedCitizenCouncil(decoded,{...member,guildId:'333333333333333333'},guild,id,now),false);
+ assert.equal(isVerifiedCitizenCouncil(decoded,{...member,roleIds:[BURGER_ROLE_IDS.council,'not-id']},guild,id,now),false);
 });
 test('Citizen rank reflects verified roles, not client-controlled name or sheet stage',()=>{
  assert.equal(citizenStage([BURGER_ROLE_IDS.trainee]),'BIO');
@@ -26,10 +26,10 @@ test('Citizen rank reflects verified roles, not client-controlled name or sheet 
  assert.equal(citizenStage(['333333333333333333']),null);
  const api={status:'ok',entries:new Map([[id,[BURGER_ROLE_IDS.member]]])};
  assert.equal(verifiedCitizenStage(id,api,null,guild,now),'Burger');
- assert.equal(verifiedCitizenStage(id,{status:'ok',entries:new Map()},member,guild,now),null);
- assert.equal(verifiedCitizenStage(id,{status:'unavailable'},member,guild,now),'Burgerraad');
+ assert.equal(verifiedCitizenStage(id,{status:'ok',entries:new Map()},member,guild,id,now),null);
+ assert.equal(verifiedCitizenStage(id,{status:'unavailable'},member,guild,id,now),'Burgerraad');
  assert.equal(verifiedCitizenStage(id,{status:'unavailable'},
-   {...member,verifiedAt:now-8*86400000},guild,now),null);
+   {...member,verifiedAt:now-8*86400000},guild,id,now),null);
 });
 test('Notities and observaties remain separate, with optional 0-10 score',()=>{
  const note=validateCitizenEntry(base,'BIO');
