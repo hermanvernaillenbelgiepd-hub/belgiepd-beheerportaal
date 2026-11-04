@@ -7,6 +7,7 @@ import {ROLE_CATALOG} from './role-catalog.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
 import {extraSpecialtyLabels} from './roster-column-config.js';
 import {canEditLibrary} from './uniform-library-routes.js';
+import {mayEditTechnicalSettings} from './technical-center-config.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {SPECIALTY_STATES,allSpecialtyLabels} from './specialization-policy.js';
@@ -40,8 +41,11 @@ function rolesFor(dept){
 }
 function canManage(actor,dept){
  if(!actor||!DEPTS.includes(dept)||actor.uid!=='discord:'+actor.discordId||
-    !ID.test(String(actor.discordId||''))||
-    !actor.dossierNativeDepartments?.includes(dept)||
+    !ID.test(String(actor.discordId||'')))return false;
+ // Only the independently verified technical profile can manage metadata
+ // across all services without an operational dossier membership.
+ if(mayEditTechnicalSettings(actor))return true;
+ if(!actor.dossierNativeDepartments?.includes(dept)||
     !actor.dossierAllowedDepartments?.includes(dept))return false;
  return canEditLibrary(actor,dept)||
    dept==='brandweer'&&actor.fireZoneChief===true||
@@ -96,7 +100,8 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/specialty-links/:dept',requireUser,async(req,res)=>{
   const dept=req.params.dept;
   if(!DEPTS.includes(dept))return res.status(400).json({error:'Onbekende hulpdienst'});
-  if(!canReadServiceDossier(req.bpd,dept))
+  if(!canReadServiceDossier(req.bpd,dept)&&
+     !mayEditTechnicalSettings(req.bpd))
    return res.status(403).json({error:'Geen toegang tot de specialisaties van deze dienst'});
   try{
    const db=getFirestore();
