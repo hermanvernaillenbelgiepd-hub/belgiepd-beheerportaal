@@ -77,6 +77,7 @@
     activity:{href:'/activiteitscentrum.html',icon:'◷',label:'Activiteitscentrum',short:'Activiteit'},
     organogram:{href:'/organogram-hierarchie.html',icon:'🌳',label:'Organogram',short:'Organogram'},
     dossiers:{href:'/dossiercentrum.html',icon:'▣',label:'Dossiercentrum',short:'Dossiers'},
+    citizens:{href:'/burgerdossiers.html',icon:'♙',label:'Burgerdossiers',short:'Burgers'},
     education:{href:'/opleidingscentrum.html',icon:'🎓',label:'Opleidingscentrum',short:'Opleiding'},
     documents:{href:'/documentencentrum.html',icon:'📚',label:'Documentencentrum',short:'Documenten'},
     calendar:{href:'/opleidingskalender.html',icon:'📅',label:'Multidisciplinaire agenda',short:'Agenda'},
@@ -254,19 +255,24 @@
         if(!user){show(['home','personnel','organogram','profile']);return}
         try{
           const token=await user.getIdToken();
-          const [context,member]=await Promise.all([
+          const [context,member,citizenAccess]=await Promise.all([
             fetch('/api/dashboard/admin-visibility',{cache:'no-store',
               headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
             fetch('/api/member/dashboard',{cache:'no-store',
+              headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
+            fetch('/api/citizen-dossiers/access',{cache:'no-store',
               headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null)
           ]);
           if(turn!==request)return;
+          // Only the server's verified Burgerraad role can expose this navigation item.
+          const showAuthorized=pages=>show(citizenAccess?.canOpen===true?
+            [...new Set([...pages,'citizens'])]:pages);
           const policeObservations=context?.basicObservationCanSubmit===true||
             context?.basicObservationCanReview===true;
           if(context?.dashboardProfile==='brandweer-zone'){
             const pages=['home','personnel','activity','organogram','dossiers','education','documents','calendar','reports','leave','notifications'];
             if(policeObservations)pages.push('observations');
-            show(pages);return;
+            showAuthorized(pages);return;
           }
           if(context?.dashboardProfile==='ambulance-azls'){
             const pages=['home','personnel','organogram'];
@@ -275,19 +281,19 @@
             if(context.ambulanceReportVerified===true)pages.push('reports');
             pages.push('leave','notifications');
             if(policeObservations)pages.push('observations');
-            show(pages);return;
+            showAuthorized(pages);return;
           }
           if(context?.showAdvancedDashboard===true){
             const pages=STAFF.filter(item=>item==='center'?
               context.technicalCenterVisible===true:item!=='admin'||context.visible===true);
-            show(pages);return;
+            showAuthorized(pages);return;
           }
           const basic=[...SAFE];
           if(context||member?.mode==='member')basic.push('documents');
           if(policeObservations)basic.push('observations');
           if(member?.mode==='member'&&member?.canUseSelfService===true)
             basic.push('notifications');
-          show(basic);
+          showAuthorized(basic);
         }catch{if(turn===request)show(SAFE)}
       });
     }catch{/* Navigation is non-authoritative; keep public links only. */}
