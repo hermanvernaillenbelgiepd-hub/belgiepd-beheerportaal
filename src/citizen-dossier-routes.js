@@ -1,8 +1,8 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {
   CITIZEN_DOSSIER_COLLECTION,validCitizenId,verifiedCitizenCouncil,
-  canAccessCitizenDossier,canWriteCitizenDossier,citizenMemberType,
-  citizenSubject,validateCitizenEntry,observationAverage
+  canAccessCitizenDossier,canWriteCitizenDossier,canDeleteCitizenEntry,canManageCitizenDeletions,citizenMemberType,
+  citizenSubject,validateCitizenEntry,validateCitizenDeletion,observationAverage
 } from './citizen-dossier-policy.js';
 
 const enabled=()=>process.env.BPD_ENABLE_CITIZEN_STAFF_DOSSIERS==='true';
@@ -13,6 +13,7 @@ const iso=value=>{
   return date instanceof Date&&Number.isFinite(date.valueOf())?date.toISOString():null;
 };
 const clean=(value,max)=>typeof value==='string'?value.slice(0,max):'';
+const validEntryId=id=>typeof id==='string'&&/^[A-Za-z0-9_-]{8,96}$/.test(id);
 const safePerson=person=>({
   discordId:person.personId,name:clean(person.name,120),call:clean(person.call,30),
   rank:clean(person.rank,100),status:clean(person.status,50),
@@ -25,6 +26,13 @@ const safeEntry=doc=>{
     score:e.kind==='observatie'&&Number.isInteger(e.score)?e.score:null,
     createdAt:iso(e.createdAt),
     byDiscordId:validCitizenId(e.byDiscordId)?e.byDiscordId:null};
+};
+const safeDeletion=doc=>{
+  const d=doc.data();
+  return {id:doc.id,entryId:clean(d.entryId,96),
+    kind:clean(d.originalKind,32),eventDate:clean(d.originalEventDate,10),
+    reason:clean(d.reason,500),byDiscordId:validCitizenId(d.byDiscordId)?d.byDiscordId:null,
+    at:iso(d.at)};
 };
 const safeLeave=doc=>{
   const d=doc.data();
@@ -73,10 +81,10 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
     }catch(e){return fail(res,e)}
   }
   const protectedUser=[requireUser,authorize];
-  const actorWrites=req=>writable()&&(req.citizenCouncilVerified===true||
-    req.bpd?.portalTechnicalMode===true&&req.bpd?.profileTechnicalAvailable===true);
+  const actorWrites=req=>writable()&&canAccessCitizenDossier(req.bpd,req.citizenCouncilVerified);
+  const actorDeletes=req=>writable()&&canManageCitizenDeletions(req.bpd);
   app.get('/api/citizen-staff/access',...protectedUser,(req,res)=>
-    res.json({canAccess:true,writesEnabled:actorWrites(req)}));
+    res.json({canAccess:true,writesEnabled:actorWrites(req),deletesEnabled:actorDeletes(req)}));
 
   app.get('/api/citizen-staff/overview',...protectedUser,async(req,res)=>{
     try{
@@ -88,7 +96,7 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
       const rows=subjects.filter(p=>counts.get(p.personId)===1)
         .map(safePerson).sort((a,b)=>a.name.localeCompare(b.name,'nl-BE'));
       return res.json({rows,ambiguousRecords:[...counts.values()].filter(n=>n>1).length,
-        writesEnabled:actorWrites(req)});
+        writesEnabled:actorWrites(req),deletesEnabled:actorDeletes(req)});
     }catch(e){return fail(res,e)}
   });
 
@@ -96,13 +104,15 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
     try{
       const person=await uniqueSubject(getSnapshot,req.params.discordId),db=getFirestore();
       const ref=db.collection(CITIZEN_DOSSIER_COLLECTION).doc(person.personId);
-      const [entriesSnap,leaveSnap,memberSnap]=await Promise.all([
-        ref.collection('entries').orderBy('createdAt','desc').limit(200).get(),
+      const [entriesSnap,leaveSnap,memberSnap,deletionsSnap]=await Promise.all([
+        ref.collection('entries').orderBy('createdAt','desc').limit(300).get(),
         db.collection('bpd_leave_requests').where('personDiscordId','==',person.personId)
           .limit(100).get(),
-        db.collection('bpd_discord_auth').doc(person.personId).get()
+        db.collection('bpd_discord_auth').doc(person.personId).get(),
+        ref.collection('audit').orderBy('at','desc').limit(100).get()
       ]);
-      const entries=entriesSnap.docs.map(safeEntry);
+      const liveEntries=entriesSnap.docs.filter(doc=>!doc.data().deletedAt);
+      const entries=liveEntries.slice(0,200).map(safeEntry);
       const leaves=leaveSnap.docs.map(safeLeave)
         .sort((a,b)=>b.startDate.localeCompare(a.startDate));
       const promoted=entries.find(e=>e.kind==='volwaardig')||null;
@@ -110,7 +120,10 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
         roleType:citizenMemberType(memberSnap.data(),process.env.DISCORD_GUILD_ID),
         canWrite:writable()&&canWriteCitizenDossier(req.bpd,
           req.citizenCouncilVerified,person.personId),
-        entries,entriesLimited:entriesSnap.size===200,
+        canDelete:writable()&&canDeleteCitizenEntry(req.bpd,person.personId),
+        entries,deletionLog:deletionsSnap.docs.map(safeDeletion),
+        entriesLimited:entriesSnap.size===300||liveEntries.length>200,
+        deletionLogLimited:deletionsSnap.size===100,
         leave:leaves,leaveLimited:leaveSnap.size===100,
         observation:observationAverage(entries),
         volwaardigDate:promoted?.eventDate||null,
@@ -139,6 +152,48 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
       await batch.commit();
       return res.status(201).json({saved:true,id:entry.id,
         weeklyReportWritten:false});
+    }catch(e){return fail(res,e)}
+  });
+
+  // No destructive Firestore delete: an approved Korpsleiding or technical
+  // manager marks the registration withdrawn and creates an immutable
+  // person-bound audit event with author, reason and original content.
+  app.delete('/api/citizen-staff/:discordId/entries/:entryId',
+    ...protectedUser,async(req,res)=>{
+    if(!writable())return deny(res,503,'Burgerdossierregistraties staan uit');
+    const entryId=req.params.entryId;
+    if(!validEntryId(entryId))return deny(res,400,'Ongeldige registratie-ID');
+    let reason;
+    try{({reason}=validateCitizenDeletion(req.body))}
+    catch(e){return deny(res,400,e.message)}
+    try{
+      const person=await uniqueSubject(getSnapshot,req.params.discordId);
+      if(!canDeleteCitizenEntry(req.bpd,person.personId))
+        return deny(res,403,'Alleen Korpsleiding of technisch beheer mag registraties verwijderen');
+      const db=getFirestore(),parent=db.collection(CITIZEN_DOSSIER_COLLECTION)
+        .doc(person.personId);
+      const entryRef=parent.collection('entries').doc(entryId);
+      const auditRef=parent.collection('audit').doc();
+      await db.runTransaction(async tx=>{
+        const existing=await tx.get(entryRef);
+        if(!existing.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
+        const original=existing.data();
+        if(original.deletedAt)throw Object.assign(
+          Error('Deze registratie werd reeds verwijderd'),{status:409});
+        tx.update(entryRef,{deletedAt:FieldValue.serverTimestamp(),
+          deletedByDiscordId:req.bpd.discordId,deleteReason:reason});
+        tx.create(auditRef,{action:'delete-citizen-entry',
+          entryId,originalKind:clean(original.kind,32),
+          originalEventDate:clean(original.eventDate,10),
+          originalDetails:clean(original.details,1600),
+          originalScore:Number.isInteger(original.score)?original.score:null,
+          originalByDiscordId:validCitizenId(original.byDiscordId)?
+            original.byDiscordId:null,
+          byDiscordId:req.bpd.discordId,reason,at:FieldValue.serverTimestamp()});
+        tx.set(parent,{updatedAt:FieldValue.serverTimestamp()},{merge:true});
+      });
+      return res.json({deleted:true,id:entryId,auditId:auditRef.id,
+        hardDeleted:false,weeklyReportWritten:false});
     }catch(e){return fail(res,e)}
   });
 }

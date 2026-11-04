@@ -27,10 +27,21 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 .record{padding:11px 0;border-bottom:1px solid #36516b}
 .record strong{font-size:13px}.record p{font-size:13px;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}
 .record small{font-size:11px;color:#b8c9dd}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.delete-entry{display:block;margin-top:9px;padding:5px 10px;font-size:12px;background:#572c40;border-color:#aa566b;color:#ffe2e7}
+.delete-entry:hover{background:#73364e}
+#deleteDialog{width:min(95vw,540px);max-width:540px;border:1px solid #6880a1;
+  border-radius:13px;background:#122b49;color:#edf4ff;padding:21px;box-shadow:0 12px 45px #0009}
+#deleteDialog::backdrop{background:#010815bd}
+#deleteDialog textarea{width:100%;min-height:100px}
+#deleteDialog h2{margin:0 0 10px}
+#deleteDialog .danger{background:#ac384e;border-color:#e67b8c}
+#deleteDialog .danger:disabled{opacity:.55}
+#deleteDialog .controls{margin-top:12px}
+#deleteDialog .muted{margin:9px 0}
 [hidden]{display:none!important}
 @media(max-width:940px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.profile{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:660px){.tiles,.form-grid{grid-template-columns:1fr}.profile{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media print{header,#overview,#formCard,#back,#print,#refresh,#message,.noprint{display:none!important}
+@media print{header,#overview,#formCard,#deleteDialog,.delete-entry,#back,#print,#refresh,#message,.noprint{display:none!important}
   :root{color:#000;background:#fff}body{background:#fff;color:#000}.card,.profile>div{color:#000;background:#fff;border-color:#ccc}
   main{max-width:none;padding:0}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.record{break-inside:avoid}}
 </style></head>
@@ -43,7 +54,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <div id="message" role="status" class="muted">Aanmelding controleren…</div>
 <section id="overview" class="card" hidden>
 <h1>Burgerpersoneelsdossiers</h1>
-<p class="muted">Burgerraad en geverifieerd technisch beheer kunnen registreren. Korpsleiding heeft inzage zonder schrijfrechten. BIO en Burger behouden één apart personeelsdossier per Discord-ID. Geen weekrapporten.</p>
+<p class="muted">Burgerraad en Korpsleiding kunnen notities, observaties en sancties registreren; geverifieerd technisch beheer kan dit ook. Alleen Korpsleiding en technisch beheer mogen registraties gemotiveerd verwijderen. Burgerraad kan niets wissen. Geen weekrapporten.</p>
 <div class="controls"><label for="search">Zoek op naam of Discord-ID</label><input id="search" type="search" placeholder="Zoek een BIO of Burger"></div>
 <div id="roster"></div>
 </section>
@@ -51,7 +62,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <div class="controls noprint"><button type="button" id="back" class="alt">← Terug naar overzicht</button>
 <button type="button" id="quickAdd" hidden>+ Nieuwe registratie toevoegen</button>
 <button type="button" id="print" class="alt">Persoonsgebonden rapport afdrukken</button></div>
-<p id="writeNotice" class="muted noprint" hidden>Dit dossier is alleen-lezen voor jouw account. Korpsleiding kan dossiers bekijken, maar geen registraties toevoegen. Burgerraad en technisch beheer mogen niet in hun eigen dossier registreren.</p>
+<p id="writeNotice" class="muted noprint" hidden>Voor dit dossier heb je geen schrijfrecht. Registreren in je eigen personeelsdossier is niet toegestaan.</p>
 <section class="card">
 <h1 id="personName">Burgerpersoneelsdossier</h1>
 <div class="profile">
@@ -62,7 +73,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <div><small>VOLWAARDIG SINDS</small><strong id="personPromoted">—</strong></div>
 <div><small>OBSERVATIES</small><strong id="personAvg">—</strong></div>
 </div>
-<p id="limited" class="muted" hidden>Een deel van de oudere registratiehistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
+<p id="limited" class="muted" hidden>Een deel van de oudere registratie- of verwijderhistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
 </section>
 <section class="tiles">
 <div class="card"><h2>Verlof</h2><div id="leave"></div></div>
@@ -71,6 +82,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <div class="card"><h2>Sancties</h2><div id="sanctions"></div></div>
 <div class="card"><h2>Volwaardig Burger</h2><div id="promotions"></div></div>
 <div class="card"><h2>Persoonsgebonden rapport</h2><p class="muted">Dit rapport bundelt bovenstaande registraties met de bestaande centrale verlofhistoriek. De vastgelegde auteur en registratiedatum blijven behouden. Er wordt geen weekrapport aangemaakt.</p></div>
+<div class="card"><h2>Verwijderhistoriek</h2><p class="muted">Registraties worden niet definitief gewist: Korpsleiding en technisch beheer moeten een reden vastleggen. Burgerraad kan deze historiek lezen maar niets verwijderen.</p><div id="deletionLog"></div></div>
 </section>
 <section class="card" id="formCard" hidden>
 <h2>Nieuwe burgerregistratie</h2>
@@ -94,10 +106,24 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <p id="saveStatus" class="muted" role="status" aria-live="polite">Vul de registratie in en klik op Opslaan.</p>
 </form></section>
 </section>
+<dialog id="deleteDialog" aria-labelledby="deleteTitle">
+<form id="deleteForm">
+<h2 id="deleteTitle">Registratie verwijderen</h2>
+<p id="deleteTargetLabel" class="muted"></p>
+<p class="muted">Dit verwijdert de registratie uit het actieve dossier. De oorspronkelijke gegevens blijven in het beveiligde auditarchief bewaard. De reden, uitvoerder en het tijdstip worden gelogd.</p>
+<label for="deleteReason">Verplichte reden (minimaal 10 tekens)</label>
+<textarea id="deleteReason" minlength="10" maxlength="500" required></textarea>
+<p id="deleteStatus" class="muted" role="status" aria-live="polite"></p>
+<div class="controls">
+<button id="confirmDelete" class="danger" type="submit">Verwijdering bevestigen</button>
+<button id="cancelDelete" type="button" class="alt">Annuleren</button>
+</div>
+</form>
+</dialog>
 </main>
 <script type="module">
 const $=id=>document.getElementById(id);
-let auth,authMod,portalSetup,selectedId=null,rows=[];
+let auth,authMod,portalSetup,selectedId=null,rows=[],deleteTarget=null;
 const set=(id,value)=>{$(id).textContent=value==null||value===''?'—':String(value)};
 const mark=(msg,error=false)=>{set('message',msg);$('message').className=error?'error':'muted'};
 const fmt=iso=>iso?new Date(iso).toLocaleString('nl-BE'):'—';
@@ -117,7 +143,7 @@ const line=(container,title,details,meta)=>{
   const h=document.createElement('strong');h.textContent=title;node.append(h);
   if(details){const p=document.createElement('p');p.textContent=details;node.append(p)}
   if(meta){const m=document.createElement('small');m.textContent=meta;node.append(m)}
-  container.append(node);
+  container.append(node);return node;
 };
 function fill(containerId,items,render){
   const container=$(containerId);container.replaceChildren();
@@ -146,19 +172,33 @@ function renderPerson(data){
   set('personPromoted',data.volwaardigDate);
   set('personAvg',data.observation.count?String(data.observation.average)+'/10 ('+
     data.observation.count+')':'Geen');
-  $('limited').hidden=!(data.entriesLimited||data.leaveLimited);
+  $('limited').hidden=!(data.entriesLimited||data.leaveLimited||data.deletionLogLimited);
   fill('leave',data.leave,(root,l)=>line(root,
     l.startDate+' t/m '+l.endDate,l.status+(l.manual?' · manueel':''),fmt(l.createdAt)));
-  const entries=data.entries||[];
+  const entries=data.entries||[],canDelete=data.canDelete===true;
   const meta=e=>e.eventDate+' · '+fmt(e.createdAt)+' · auteur '+(e.byDiscordId||'onbekend');
+  const renderRegistration=(root,e,title)=>{
+    const record=line(root,title,e.details,meta(e));
+    if(canDelete){
+      const remove=document.createElement('button');
+      remove.type='button';remove.className='delete-entry';remove.textContent='Registratie verwijderen';
+      remove.setAttribute('aria-label','Verwijder '+title.toLocaleLowerCase('nl-BE'));
+      remove.onclick=()=>beginDelete(p.discordId,e,title);
+      record.append(remove);
+    }
+  };
   fill('notes',entries.filter(e=>e.kind==='notitie'),(root,e)=>
-    line(root,'Notitie',e.details,meta(e)));
+    renderRegistration(root,e,'Notitie'));
   fill('observations',entries.filter(e=>e.kind==='observatie'),(root,e)=>
-    line(root,'Observatie · '+e.score+'/10',e.details,meta(e)));
+    renderRegistration(root,e,'Observatie · '+e.score+'/10'));
   fill('sanctions',entries.filter(e=>e.kind.startsWith('sanctie_')),(root,e)=>
-    line(root,e.kind==='sanctie_mondeling'?'Mondelinge sanctie':'Schriftelijke sanctie',e.details,meta(e)));
+    renderRegistration(root,e,e.kind==='sanctie_mondeling'?'Mondelinge sanctie':'Schriftelijke sanctie'));
   fill('promotions',entries.filter(e=>e.kind==='volwaardig'),(root,e)=>
-    line(root,'Volwaardig sinds '+e.eventDate,e.details,meta(e)));
+    renderRegistration(root,e,'Volwaardig sinds '+e.eventDate));
+  fill('deletionLog',data.deletionLog||[],(root,e)=>line(root,
+    'Verwijderd · '+(e.kind||'registratie')+' · '+(e.eventDate||'datum onbekend'),
+    'Reden: '+e.reason,
+    fmt(e.at)+' · verwijderd door '+(e.byDiscordId||'onbekend')));
   const writable=data.canWrite===true;
   $('formCard').hidden=!writable;
   $('quickAdd').hidden=!writable;
@@ -189,11 +229,55 @@ async function load(){
 }
 $('kind').onchange=()=>{$('scoreField').hidden=$('kind').value!=='observatie'};
 $('search').oninput=renderRoster;
-$('back').onclick=()=>{selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
+$('back').onclick=()=>{if($('deleteDialog').open)$('deleteDialog').close();deleteTarget=null;
+  selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
   history.replaceState(null,'',location.pathname);mark('Burgerpersoneelsdossiers')};
 $('refresh').onclick=load;
 $('quickAdd').onclick=()=>$('formCard').scrollIntoView({behavior:'smooth',block:'start'});
 $('print').onclick=()=>window.print();
+function beginDelete(personId,entry,title){
+  if(selectedId!==personId||!entry?.id)return;
+  deleteTarget={personId,entryId:entry.id};
+  $('deleteTargetLabel').textContent=title+' · '+entry.eventDate+
+    ' · registratie '+entry.id;
+  $('deleteReason').value='';
+  $('deleteStatus').textContent='Geef een concrete reden voor deze verwijdering.';
+  $('confirmDelete').disabled=false;
+  $('deleteDialog').showModal();
+}
+$('cancelDelete').onclick=()=>{$('deleteDialog').close();deleteTarget=null};
+$('deleteDialog').addEventListener('close',()=>{deleteTarget=null});
+$('deleteForm').onsubmit=async event=>{
+  event.preventDefault();
+  if(!deleteTarget||selectedId!==deleteTarget.personId)return;
+  const target={...deleteTarget},button=$('confirmDelete');
+  button.disabled=true;
+  $('deleteStatus').textContent='Verwijdering en auditlog opslaan in Firebase…';
+  let confirmed=false;
+  try{
+    const result=await api('/api/citizen-staff/'+encodeURIComponent(target.personId)+
+      '/entries/'+encodeURIComponent(target.entryId),'DELETE',
+      {reason:$('deleteReason').value.trim()});
+    if(result.deleted!==true||result.id!==target.entryId)
+      throw Error('De server heeft de verwijdering niet bevestigd');
+    confirmed=true;
+    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(target.personId));
+    if(fresh.entries?.some(e=>e.id===target.entryId)||
+      !fresh.deletionLog?.some(e=>e.entryId===target.entryId))
+      throw Error('De verwijdering is nog niet volledig teruggelezen');
+    if(selectedId===target.personId)renderPerson(fresh);
+    $('deleteDialog').close();
+    mark('Registratie verwijderd uit het actieve dossier. Reden en uitvoerder zijn gelogd.');
+  }catch(e){
+    const warning=confirmed
+      ?'De server heeft de verwijdering bevestigd, maar de nacontrole mislukte. '+
+        'Vernieuw eerst het dossier en probeer niet opnieuw te verwijderen.'
+      :'Verwijderen mislukt: '+e.message;
+    $('deleteStatus').textContent=warning;
+    mark(warning,true);
+    if(!confirmed)button.disabled=false;
+  }
+};
 $('entryForm').onsubmit=async event=>{
   event.preventDefault();if(!selectedId)return;
   const targetId=selectedId,button=$('save');

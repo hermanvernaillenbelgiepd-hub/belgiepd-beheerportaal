@@ -38,7 +38,7 @@ function verifiedCitizenTechnical(actor){
     validCitizenId(actor.discordId)&&actor.uid==='discord:'+actor.discordId;
 }
 
-// Korpsleiding mag burgerdossiers lezen na goedgekeurde Politie-dienstscope
+// Korpsleiding mag burgerdossiers openen na goedgekeurde Politie-dienstscope
 // EN een server-geverifieerde Discord-Korpsleidingrol of geauditeerde uitzondering.
 // Een willekeurig korpsleidinglabel, 9xx-callsign of bestuurslabel volstaat niet.
 export function verifiedCitizenCorpsReader(actor){
@@ -52,10 +52,31 @@ export function canAccessCitizenDossier(actor,councilVerified){
   return councilVerified===true||verifiedCitizenCorpsReader(actor)||
     verifiedCitizenTechnical(actor);
 }
+// Burgerraad en Korpsleiding mogen registreren; technisch beheer behoudt
+// dezelfde bevoegdheid in de afzonderlijk geverifieerde technische modus.
 export function canWriteCitizenDossier(actor,councilVerified,subjectId){
-  // Korpsleiding verkrijgt alleen inzage, nooit sancties of notities schrijven.
-  return (councilVerified===true||verifiedCitizenTechnical(actor))&&
+  return canAccessCitizenDossier(actor,councilVerified)&&
     validCitizenId(subjectId)&&subjectId!==actor?.discordId;
+}
+
+// Verwijderen is een uitzonderlijke, geauditeerde bevoegdheid. Alleen
+// server-geverifieerde Korpsleiding of technisch beheer; Burgerraad nooit
+// uitsluitend op grond van de Burgerraadrol. Eigen dossiers blijven beschermd.
+export function canManageCitizenDeletions(actor){
+  return verifiedCitizenCorpsReader(actor)||verifiedCitizenTechnical(actor);
+}
+export function canDeleteCitizenEntry(actor,subjectId){
+  return canManageCitizenDeletions(actor)&&
+    validCitizenId(subjectId)&&subjectId!==actor?.discordId;
+}
+export function validateCitizenDeletion(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
+    Object.keys(raw).length!==1||!Object.hasOwn(raw,'reason'))
+    throw Error('Een gemotiveerd verwijderverzoek is vereist');
+  if(typeof raw.reason!=='string'||raw.reason.trim().length<10||
+    raw.reason.length>500||/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(raw.reason))
+    throw Error('Vul een verwijderreden van 10 tot 500 tekens in');
+  return {reason:raw.reason.trim()};
 }
 
 // Enkel als we recent onafhankelijk de rol zagen, tonen we een roltype.
