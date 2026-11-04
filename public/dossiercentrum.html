@@ -37,7 +37,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .detail-links{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
 .detail-links a{display:inline-block;border:1px solid #59779c;border-radius:8px;padding:9px 12px;text-decoration:none}
 .detail-links a:hover{background:#1d3c61}
-.service-buttons{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:15px 0 17px}
+.service-buttons{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:15px 0 17px}
 .service-button{background:#152b49;border:1px solid #385b80;border-left:5px solid var(--service-accent,#6999e4);
   border-radius:11px;text-align:left;padding:13px 12px;min-height:91px;display:flex;flex-direction:column;
   gap:6px;justify-content:center;transition:background .15s,border-color .15s}
@@ -52,6 +52,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .service-button[data-service="ambulance"]{--service-accent:#58daa0}
 .service-button[data-service="brandweer"]{--service-accent:#ff7e82}
 .service-button[data-service="depannage"]{--service-accent:#ffbb67}
+.service-button[data-service="burger"]{--service-accent:#b79cff}
 .service-heading{font-size:16px;margin:9px 0 0;font-weight:800}
 .service-notice{font-size:12px;color:#b8cce7;margin:4px 0 8px}
 .dossier-tabs{display:flex;gap:9px;flex-wrap:wrap;margin:15px 0}
@@ -87,16 +88,17 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 </head><body>
 <header><strong>🛡️ BelgiëPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal dossieroverzicht</h1>
-<p>Elk personeelsdossier is volledig dienstgebonden. Politie, ambulance, brandweer en depannage beheren hun eigen personeelsgegevens, notities en historiek. Alleen jouw bevoegde diensten zijn zichtbaar.</p>
+<p>Elk personeelsdossier is volledig dienstgebonden. Politie, ambulance, brandweer, depannage en Burger beheren hun eigen personeelsgegevens, notities en historiek. Alleen jouw bevoegde diensten zijn zichtbaar.</p>
 <div id="message" role="status" aria-live="polite" class="notice">Toegangsrechten controleren…</div>
 <section class="card" aria-label="Kies het personeelsdossier per hulpdienst">
-<h2>Kies je hulpdienst</h2><p class="service-notice">Bestuur: alle dossiers · Politie: middenkader, officierenkader en korpsleiding · Brandweer: ZONE · Ambulance: DIRMED, HARTS, HVPK en HAMB · Depannage: Agentschap Wegen en Verkeer (AWV).</p><p class="service-notice">Dit wordt gecontroleerd op de server. Niet-gemachtigde dienstknoppen blijven vergrendeld.</p>
+<h2>Kies je hulpdienst</h2><p class="service-notice">Bestuur: alle dossiers · Politie: middenkader, officierenkader en korpsleiding · Brandweer: ZONE · Ambulance: DIRMED, HARTS, HVPK en HAMB · Depannage: Agentschap Wegen en Verkeer (AWV) · Burger: Burgerraad en geverifieerd technisch beheer.</p><p class="service-notice">Dit wordt gecontroleerd op de server. Niet-gemachtigde dienstknoppen blijven vergrendeld.</p>
 <div class="service-buttons" id="serviceButtons" role="group" aria-label="Filter op hulpdienst">
 <button type="button" class="service-button" data-service="all" aria-pressed="true" disabled><span class="service-name">📁 Alle toegelaten</span><span class="service-count">Aanmelden vereist</span></button>
 <button type="button" class="service-button" data-service="politie" aria-pressed="false" disabled><span class="service-name">🔵 Politie</span><span class="service-count">Geen toegang</span></button>
 <button type="button" class="service-button" data-service="ambulance" aria-pressed="false" disabled><span class="service-name">🟢 Ambulance</span><span class="service-count">Geen toegang</span></button>
 <button type="button" class="service-button" data-service="brandweer" aria-pressed="false" disabled><span class="service-name">🔴 Brandweer</span><span class="service-count">Geen toegang</span></button>
 <button type="button" class="service-button" data-service="depannage" aria-pressed="false" disabled><span class="service-name">🟠 Depannage</span><span class="service-count">Geen toegang</span></button>
+<button type="button" class="service-button" data-service="burger" aria-pressed="false" disabled><span class="service-name">🟣 Burger</span><span class="service-count">Geen toegang</span></button>
 </div><p id="serviceSelected" class="service-notice" role="status">Meld je aan om dossiers te openen.</p></section>
 <section class="card">
 <div class="filter-grid">
@@ -138,7 +140,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 import {filterDossiers,sortDossiers,policeCallGroup,fireCallGroup,ambulanceCallGroup,depannageCallGroup,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
   from '/dossiercentrum-view.js';
 const $=id=>document.getElementById(id);
-const departments={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage'};
+const departments={politie:'Politie',ambulance:'Ambulance',brandweer:'Brandweer',depannage:'Depannage',burger:'Burger'};
 const actions={create:'Fiche aangemaakt',entry_rank:'Instaprang',
   exceptional_entry_rank:'Uitzonderlijke instaprang',promotion:'Promotie',
   link_discord:'Discord gekoppeld',edit:'Personeelswijziging'};
@@ -260,7 +262,9 @@ function render(){
     if(r.canOpen===true){
       const button=node('button','Open dossier','alt');
       button.type='button';button.onclick=()=>{
-        window.location.assign(r.dept==='brandweer'
+        window.location.assign(r.dept==='burger'
+          ?'/burger-personeelsdossiers.html?'+new URLSearchParams({discordId:r.discordId}).toString()
+          :r.dept==='brandweer'
           ?'/brandweerdossier.html?'+new URLSearchParams({discordId:r.discordId,from:'dossiercentrum'}).toString()
           :'/personeelsbeheer.html?'+new URLSearchParams({fiche:'1',dept:r.dept,discordId:r.discordId,from:'dossiercentrum'}).toString());
       };
