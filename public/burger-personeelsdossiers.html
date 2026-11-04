@@ -235,6 +235,49 @@ $('back').onclick=()=>{if($('deleteDialog').open)$('deleteDialog').close();delet
 $('refresh').onclick=load;
 $('quickAdd').onclick=()=>$('formCard').scrollIntoView({behavior:'smooth',block:'start'});
 $('print').onclick=()=>window.print();
+function beginDelete(personId,entry,title){
+  if(selectedId!==personId||!entry?.id)return;
+  deleteTarget={personId,entryId:entry.id};
+  $('deleteTargetLabel').textContent=title+' · '+entry.eventDate+
+    ' · registratie '+entry.id;
+  $('deleteReason').value='';
+  $('deleteStatus').textContent='Geef een concrete reden voor deze verwijdering.';
+  $('confirmDelete').disabled=false;
+  $('deleteDialog').showModal();
+}
+$('cancelDelete').onclick=()=>{$('deleteDialog').close();deleteTarget=null};
+$('deleteDialog').addEventListener('close',()=>{deleteTarget=null});
+$('deleteForm').onsubmit=async event=>{
+  event.preventDefault();
+  if(!deleteTarget||selectedId!==deleteTarget.personId)return;
+  const target={...deleteTarget},button=$('confirmDelete');
+  button.disabled=true;
+  $('deleteStatus').textContent='Verwijdering en auditlog opslaan in Firebase…';
+  let confirmed=false;
+  try{
+    const result=await api('/api/citizen-staff/'+encodeURIComponent(target.personId)+
+      '/entries/'+encodeURIComponent(target.entryId),'DELETE',
+      {reason:$('deleteReason').value.trim()});
+    if(result.deleted!==true||result.id!==target.entryId)
+      throw Error('De server heeft de verwijdering niet bevestigd');
+    confirmed=true;
+    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(target.personId));
+    if(fresh.entries?.some(e=>e.id===target.entryId)||
+      !fresh.deletionLog?.some(e=>e.entryId===target.entryId))
+      throw Error('De verwijdering is nog niet volledig teruggelezen');
+    if(selectedId===target.personId)renderPerson(fresh);
+    $('deleteDialog').close();
+    mark('Registratie verwijderd uit het actieve dossier. Reden en uitvoerder zijn gelogd.');
+  }catch(e){
+    const warning=confirmed
+      ?'De server heeft de verwijdering bevestigd, maar de nacontrole mislukte. '+
+        'Vernieuw eerst het dossier en probeer niet opnieuw te verwijderen.'
+      :'Verwijderen mislukt: '+e.message;
+    $('deleteStatus').textContent=warning;
+    mark(warning,true);
+    if(!confirmed)button.disabled=false;
+  }
+};
 $('entryForm').onsubmit=async event=>{
   event.preventDefault();if(!selectedId)return;
   const targetId=selectedId,button=$('save');
