@@ -20,13 +20,50 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .controls input{max-width:390px}.row{padding:12px 10px;border-bottom:1px solid #365170;text-align:left;display:flex;gap:12px;justify-content:space-between;align-items:center;width:100%;background:transparent;border-top:0;border-left:0;border-right:0;border-radius:0}
 .row:hover{background:#213d60}.row strong,.row small{display:block}.row small{font-size:12px;color:#b9cbe0}
-.profile{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
-.profile>div{padding:13px;border:1px solid #42627f;background:#1d3a5a;border-radius:8px;overflow-wrap:anywhere}
-.profile small{display:block;font-size:10px;color:#b9d1e8;margin-bottom:6px}.profile strong{font-size:13px}
-.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.record{padding:11px 0;border-bottom:1px solid #36516b}
-.record strong{font-size:13px}.record p{font-size:13px;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}
-.record small{font-size:11px;color:#b8c9dd}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* Eén doorlopende personeelsfiche; secties worden met lijnen gescheiden, niet met kaarten. */
+.dossier-toolbar{margin:12px 0 16px}
+.citizen-sheet{width:100%;overflow:hidden;margin:0 0 24px;
+  background:#132b47;border:1px solid #385576;border-radius:12px;color:#edf4ff}
+.citizen-sheet-head{padding:22px 24px 20px;border-bottom:1px solid #45637f}
+.citizen-overline{font-size:10px;font-weight:750;letter-spacing:.11em;
+  color:#8eb4e8;margin:0 0 6px}
+.citizen-sheet-head h1{margin:0 0 16px}
+.profile{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:0;border-block:1px solid #365878}
+.profile>div{min-width:0;padding:13px 12px;border:0;border-right:1px solid #365878;
+  background:transparent;overflow-wrap:anywhere}
+.profile>div:first-child{padding-left:0}
+.profile>div:last-child{border-right:0}
+.profile small{display:block;font-size:10px;color:#b9d1e8;margin-bottom:7px}
+.profile strong{font-size:13px;font-weight:750}
+.citizen-registration{padding:21px 24px 20px;background:#102841;
+  border-bottom:1px solid #45637f;scroll-margin-top:30px}
+.citizen-section-header{display:flex;align-items:baseline;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.citizen-section-header h2{margin:0}
+.citizen-section-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.citizen-section{padding:18px 24px;min-width:0;
+  border-right:1px solid #355271;border-bottom:1px solid #355271}
+.citizen-section:nth-child(2n){border-right:0}
+.citizen-section h2{font-size:17px;margin:0 0 10px;color:#f2f7ff}
+.citizen-section .muted{margin:5px 0 11px}
+.citizen-audit-section{grid-column:1/-1;border-right:0;border-bottom:0}
+.record{padding:10px 0;border-bottom:1px solid #36516b}
+.record:last-child{border-bottom:0}
+.record strong{font-size:13px}
+.record p{font-size:13px;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.record small{font-size:11px;color:#b8c9dd}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.citizen-savebar{display:flex;gap:15px;align-items:center;flex-wrap:wrap;
+  margin-top:16px;padding-top:15px;border-top:1px solid #355271}
+#citizenEntrySave{display:inline-flex;align-items:center;justify-content:center;
+  min-height:43px;min-width:240px;padding:10px 19px;
+  background:#315ad1;border:1px solid #8aa5ff;color:white;
+  font-size:14px;font-weight:750;cursor:pointer}
+#citizenEntrySave:hover:not(:disabled){background:#3d6dea}
+#citizenEntrySave:focus-visible{outline:3px solid #c4daff;outline-offset:3px}
+#citizenEntrySave:disabled{opacity:.56;cursor:wait}
+#saveStatus{margin:10px 0 0;font-size:12px;line-height:1.45}
 .delete-entry{display:block;margin-top:9px;padding:5px 10px;font-size:12px;background:#572c40;border-color:#aa566b;color:#ffe2e7}
 .delete-entry:hover{background:#73364e}
 #deleteDialog{width:min(95vw,540px);max-width:540px;border:1px solid #6880a1;
@@ -38,12 +75,61 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 #deleteDialog .danger:disabled{opacity:.55}
 #deleteDialog .controls{margin-top:12px}
 #deleteDialog .muted{margin:9px 0}
+/* Unified sheet remains readable when the portal is set to its light theme. */
+@media screen{
+  html:not([data-bpd-theme="dark"]) .citizen-sheet{
+    background:#fff;color:#192f4b;border-color:#cbd9ec;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-sheet-head,
+  html:not([data-bpd-theme="dark"]) .citizen-section{
+    border-color:#d6e1ee;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-registration{
+    background:#f4f8fd;border-color:#d6e1ee;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-sheet h1,
+  html:not([data-bpd-theme="dark"]) .citizen-section h2{
+    color:#17365c;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-overline,
+  html:not([data-bpd-theme="dark"]) .profile small,
+  html:not([data-bpd-theme="dark"]) .record small{
+    color:#49688b;
+  }
+  html:not([data-bpd-theme="dark"]) .profile,
+  html:not([data-bpd-theme="dark"]) .profile>div,
+  html:not([data-bpd-theme="dark"]) .record,
+  html:not([data-bpd-theme="dark"]) .citizen-savebar{
+    border-color:#d6e1ee;
+  }
+}
 [hidden]{display:none!important}
-@media(max-width:940px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.profile{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:660px){.tiles,.form-grid{grid-template-columns:1fr}.profile{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media print{header,#overview,#formCard,#deleteDialog,.delete-entry,#back,#print,#refresh,#message,.noprint{display:none!important}
-  :root{color:#000;background:#fff}body{background:#fff;color:#000}.card,.profile>div{color:#000;background:#fff;border-color:#ccc}
-  main{max-width:none;padding:0}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.record{break-inside:avoid}}
+@media(max-width:1100px){
+  .profile{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .profile>div:nth-child(3n){border-right:0}
+  .profile>div:nth-child(-n+3){border-bottom:1px solid #365878}
+}
+@media(max-width:660px){
+  .citizen-sheet-head,.citizen-registration,.citizen-section{padding:16px}
+  .citizen-section-list,.form-grid{grid-template-columns:1fr}
+  .citizen-section{border-right:0}
+  .profile{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .profile>div:nth-child(3n){border-right:1px solid #365878}
+  .profile>div:nth-child(2n){border-right:0}
+  .profile>div:nth-child(-n+4){border-bottom:1px solid #365878}
+  .citizen-savebar{align-items:stretch;flex-direction:column}
+  #citizenEntrySave{width:100%;min-width:0}
+}
+@media print{
+  header,#overview,#formCard,#deleteDialog,.delete-entry,#back,#print,#refresh,#message,.noprint{display:none!important}
+  :root{color:#000;background:#fff}
+  body{background:#fff;color:#000}
+  .citizen-sheet,.citizen-sheet-head,.citizen-section,.profile>div{color:#000;background:#fff;border-color:#ccc}
+  .citizen-section h2,.citizen-sheet h1,.citizen-overline,.record small,.profile small{color:#111}
+  main{max-width:none;padding:0}
+  .citizen-section-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .record{break-inside:avoid}
+}
 </style></head>
 <body class="bpd-unified-dossier dossier-onepage">
 <header><strong>🏛️ BelgiëPD · Burgerpersoneelsdossiers</strong>
