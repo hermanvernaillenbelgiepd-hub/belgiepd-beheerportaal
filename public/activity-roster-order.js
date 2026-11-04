@@ -39,9 +39,14 @@ export function sortActivityLikePersonnel(records){
   }
   const na=callNumber(a.call),nb=callNumber(b.call);
   if(na!==null&&nb!==null&&na!==nb){
-    if(a.department==='politie'&&[900,910].includes(na)&&[900,910].includes(nb))
-      return na-nb; // Korpsleiding order in the roster: 900, then 910
-    return nb-na; // descending callsign within the same cadre/service
+    if(a.department==='politie'){
+      // Keep the personnel-list series (e.g. 7xx before 6xx, 5xx before 4xx),
+      // but display callsigns INSIDE each series ascending: 700, 710, 720...
+      const seriesA=Math.floor(na/100),seriesB=Math.floor(nb/100);
+      if(seriesA!==seriesB)return seriesB-seriesA;
+      return na-nb;
+    }
+    return nb-na; // retain existing non-police service order
   }
   if(na!==null&&nb===null)return -1;
   if(na===null&&nb!==null)return 1;
