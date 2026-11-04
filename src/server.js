@@ -78,6 +78,7 @@ import {installDossierCenterRoutes} from './dossier-center-routes.js';
 import {installOrganogramPlacementRoutes} from './organogram-placement-routes.js';
 import {installPersonnelDecorationRoutes} from './personnel-decoration-routes.js';
 import {installFireDossierRoutes} from './fire-dossier-routes.js';
+import {installCitizenDossierRoutes} from './citizen-dossier-routes.js';
 import {installDossierGrantRoutes} from './dossier-grant-routes.js';
 import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,
   verifyBoardDiscordRole} from './dossier-grants.js';
@@ -143,6 +144,7 @@ app.use('/api/roster-columns',express.json({limit:'16kb',strict:true}));
 app.use('/api/specialty-links',express.json({limit:'28kb',strict:true}));
 app.use('/api/personnel-awards',express.json({limit:'180kb',strict:true}));
 app.use('/api/staff-dossiers',express.json({limit:'4kb',strict:true}));
+app.use('/api/citizen-staff',express.json({limit:'4kb',strict:true}));
 // Dossier intrekkingen verwachten uitsluitend een gecontroleerde JSON-motivering.
 app.use('/api/dossier-retirement',express.json({limit:'4kb',strict:true}));
 // Parse TO commands before installing TO routes, retaining strict size limits.
@@ -877,6 +879,7 @@ installDossierCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installOrganogramPlacementRoutes(app,{requireUser,getSnapshot});
 installPersonnelDecorationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installFireDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installCitizenDossierRoutes(app,{requireUser,getSnapshot});
 // TO duty board uses MAIN Firestore data and the existing authenticated actor.
 const getVerifiedTemporaryTORequest=async discordId=>{
   if(!/^\d{15,22}$/.test(discordId))return null;
