@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {normalizeFolderId,builtInFolders,resolveDocumentUrl,safeYouTubeEmbed} from '../src/document-folder-policy.js';
+import {normalizeFolderId,builtInFolders,systemFolderArchiveKey,resolveDocumentUrl,safeYouTubeEmbed} from '../src/document-folder-policy.js';
 const file=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 
 test('Politie krijgt vaste mapnamen en diensten houden hun eigen namespace',()=>{
@@ -56,23 +56,35 @@ test('Documentencentrum toont toegankelijke mapnavigatie en donkere invoervelden
  assert.match(ui,/youtube-nocookie|resource\.embed/);
 });
 
-test('Alleen centraal bevoegd documentbeheer mag lege eigen mappen archiveren',()=>{
+test('Elke echte map kan worden verwijderd zonder documenten te wissen',()=>{
  const routes=file('src/document-center-routes.js');
  const html=file('public/documentencentrum.html');
  const start=routes.indexOf("app.delete('/api/document-center/folders/:id'");
  const end=routes.indexOf("app.post('/api/document-center/links'",start);
- assert.ok(start>0&&end>start,'Folder route must be before the generic document route');
+ assert.ok(start>0&&end>start,'Delete-folder endpoint must precede document endpoint');
  const archive=routes.slice(start,end);
- assert.match(archive,/!ID\.test\(id\)/);
  assert.match(archive,/mayManageDocuments\(req\.documentScopes,dept\)/);
- assert.match(archive,/where\('folderId','==',id\)/);
- assert.match(archive,/where\('status','==','active'\)/);
- assert.match(archive,/stillActive\.empty/);
- assert.match(archive,/status:'archived'/);
+ assert.match(archive,/systemFolderArchiveKey\(dept,id\)/);
+ assert.match(archive,/tx\.create\(ref,\{department:dept/);
+ assert.match(archive,/tx\.update\(ref,\{status:'archived'/);
  assert.match(archive,/action:'archive_folder'/);
- assert.doesNotMatch(archive,/tx\.delete|file\.delete|storage\(\)\.file/);
+ assert.match(archive,/documentsPreserved:true/);
+ assert.doesNotMatch(archive,/stillActive|tx\.delete|file\.delete|storage\(\)\.file/);
  assert.match(html,/id="deleteFolder"/);
- assert.match(html,/selected\.system===true/);
- assert.match(html,/!canManage\(\)/);
- assert.match(html,/\/api\/document-center\/folders\/'\+encodeURIComponent\(folder\.id\),'DELETE'/);
+ assert.match(html,/effectiveFolderId\(doc\)/);
+ assert.match(html,/Map.+verwijderd/);
+ assert.match(html,/selectedFolder='';/);
+ assert.doesNotMatch(html,/selected\.system===true|folder\.system\|\|!canManage/);
+ assert.match(html,/\/api\/document-center\/folders\/'\+encodeURIComponent\(folder\.id\)\+/);
+});
+test('Ingebouwde folders krijgen blijvende tombstones per hulpdienst',()=>{
+ assert.equal(systemFolderArchiveKey('politie','builtin-k9'),
+  'archived_system_folder__politie__builtin-k9');
+ assert.notEqual(systemFolderArchiveKey('politie','builtin-dispatch'),
+  systemFolderArchiveKey('politie','builtin-motard'));
+ assert.throws(()=>systemFolderArchiveKey('brandweer','builtin-k9'));
+ assert.throws(()=>systemFolderArchiveKey('politie','random'));
+ const routes=file('src/document-center-routes.js');
+ assert.match(routes,/d\.id===systemFolderArchiveKey\(dept,folder\.id\)/);
+ assert.match(routes,/Deze standaardmap werd verwijderd/);
 });

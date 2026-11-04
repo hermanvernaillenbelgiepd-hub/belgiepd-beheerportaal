@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getStorage} from 'firebase-admin/storage';
 import {officePreviewPdf,isOfficeDocument} from './document-preview.js';
-import {normalizeFolderId,builtInFolders,resolveDocumentUrl,safeYouTubeEmbed} from './document-folder-policy.js';
+import {normalizeFolderId,builtInFolders,systemFolderArchiveKey,resolveDocumentUrl,safeYouTubeEmbed} from './document-folder-policy.js';
 import {DOCUMENT_DEPARTMENTS,documentScopes,verifiedDocumentRoles,
   mayReadDocument,mayWriteDocuments,mayManageDocuments} from './document-center-policy.js';
 
@@ -92,7 +92,13 @@ const publicRow=(id,x)=>({
 });
 async function validateFolder(db,department,folderId){
   if(!folderId)return null;
-  if(builtInFolders(department).some(x=>x.id===folderId))return folderId;
+  if(builtInFolders(department).some(x=>x.id===folderId)){
+    const tombstone=await db.collection(FOLDERS)
+      .doc(systemFolderArchiveKey(department,folderId)).get();
+    if(tombstone.exists&&tombstone.get('status')==='archived')
+      throw fail(400,'Deze standaardmap werd verwijderd. Kies een andere map.');
+    return folderId;
+  }
   const snap=await db.collection(FOLDERS).doc(folderId).get();
   if(!snap.exists||snap.get('department')!==department||snap.get('status')!=='active')
     throw fail(400,'Deze map bestaat niet binnen de gekozen dienst');
@@ -143,10 +149,12 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
       if(!DOCUMENT_DEPARTMENTS.includes(dept)||!req.documentScopes.read.includes(dept))
         throw fail(403,'Geen toegang tot deze dienstmappen');
       const snap=await getFirestore().collection(FOLDERS).where('department','==',dept).limit(200).get();
-      const custom=snap.docs.filter(d=>d.get('status')==='active').map(d=>({
+      const custom=snap.docs.filter(d=>d.get('status')==='active'&&d.get('system')!==true).map(d=>({
         id:d.id,name:d.get('name'),system:false
       }));
-      res.json({folders:[...builtInFolders(dept),...custom].sort((a,b)=>
+      const builtins=builtInFolders(dept).filter(folder=>!snap.docs.some(d=>
+        d.id===systemFolderArchiveKey(dept,folder.id)&&d.get('status')==='archived'));
+      res.json({folders:[...builtins,...custom].sort((a,b)=>
         a.name.localeCompare(b.name,'nl')),limited:snap.size===200});
     }catch(e){error(res,e);}
   });
@@ -199,34 +207,42 @@ export function installDocumentCenterRoutes(app,{requireUser,getSnapshot}){
     }catch(e){error(res,e);}
   });
 
-  // Custom folders can be archived only when no ACTIVE documents still
-  // reference them. System folder IDs do not match UUID and cannot be removed.
+  // All real folders may be archived, including built-ins and folders with
+  // documents. Existing file metadata and history remain untouched; clients
+  // display documents from archived folders under "Algemeen".
   app.delete('/api/document-center/folders/:id',requireUser,scope,async(req,res)=>{
     try{
       const id=String(req.params.id||'');
-      if(!ID.test(id))throw fail(404,'Alleen zelf aangemaakte mappen kunnen verwijderd worden');
-      const db=getFirestore(),ref=db.collection(FOLDERS).doc(id);
+      const dept=String(req.query.department||'');
+      if(!DOCUMENT_DEPARTMENTS.includes(dept)||
+        !mayManageDocuments(req.documentScopes,dept))
+        throw fail(403,'Alleen bevoegd documentbeheer kan dienstmappen verwijderen');
+      const builtIn=builtInFolders(dept).find(folder=>folder.id===id);
+      if(!builtIn&&!ID.test(id))throw fail(404,'Map niet gevonden');
+      const db=getFirestore();
+      const ref=db.collection(FOLDERS).doc(builtIn?
+        systemFolderArchiveKey(dept,id):id);
       await db.runTransaction(async tx=>{
         const folder=await tx.get(ref);
-        if(!folder.exists||folder.get('status')!=='active')
+        if(builtIn){
+          if(folder.exists)throw fail(409,'Deze standaardmap is al verwijderd');
+        }else if(!folder.exists||folder.get('status')!=='active'||
+          folder.get('department')!==dept){
           throw fail(404,'Map niet gevonden of al verwijderd');
-        const dept=folder.get('department');
-        if(!mayManageDocuments(req.documentScopes,dept))
-          throw fail(403,'Alleen Officierenkader, Korpsleiding of Technisch Beheer mag mappen verwijderen');
-        // Keep archived document history and metadata; never delete document
-        // objects or other service resources when a folder is archived.
-        const stillActive=await tx.get(db.collection(META)
-          .where('folderId','==',id).where('status','==','active').limit(1));
-        if(!stillActive.empty)
-          throw fail(409,'Deze map bevat nog documenten. Verplaats ze via Gegevens aanpassen of archiveer ze eerst.');
+        }
         const stamp=FieldValue.serverTimestamp();
-        tx.update(ref,{status:'archived',archivedAt:stamp,archivedBy:req.bpd.uid});
+        if(builtIn){
+          tx.create(ref,{department:dept,name:builtIn.name,folderId:id,
+            system:true,status:'archived',archivedBy:req.bpd.uid,archivedAt:stamp});
+        }else{
+          tx.update(ref,{status:'archived',archivedBy:req.bpd.uid,archivedAt:stamp});
+        }
         tx.create(db.collection(AUDIT).doc(),{
-          action:'archive_folder',folderId:id,department:dept,
-          name:folder.get('name'),actorUid:req.bpd.uid,at:stamp
+          action:'archive_folder',folderId:id,department:dept,system:Boolean(builtIn),
+          name:builtIn?.name||folder.get('name'),actorUid:req.bpd.uid,at:stamp
         });
       });
-      res.json({removed:true,documentsPreserved:true});
+      res.json({removed:true,documentsPreserved:true,visibleUnder:'Algemeen'});
     }catch(e){error(res,e);}
   });
 

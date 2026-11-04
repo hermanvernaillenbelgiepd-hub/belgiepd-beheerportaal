@@ -18,6 +18,13 @@ export function normalizeFolderId(value){
 export function builtInFolders(department){
   return [...(BUILTIN_DOCUMENT_FOLDERS[department]||[])].map(x=>({...x,system:true}));
 }
+// Deterministic tombstone for removable built-in folders; separate from
+// custom UUID folder IDs and never treated as a public folder ID.
+export function systemFolderArchiveKey(department,folderId){
+ if(!builtInFolders(department).some(folder=>folder.id===folderId))
+   throw Object.assign(Error('Onbekende standaardmap'),{status:400});
+ return 'archived_system_folder__'+department+'__'+folderId;
+}
 export function resolveDocumentUrl(value){
   if(typeof value!=='string'||value.length>1800)
     throw Object.assign(Error('Geef een geldige HTTPS-link op'),{status:400});
