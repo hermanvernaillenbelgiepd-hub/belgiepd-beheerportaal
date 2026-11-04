@@ -61,22 +61,24 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
     try{
       const actor=req.bpd;
       if(!validCitizenId(actor?.discordId)||actor.uid!=='discord:'+actor.discordId)
-        return deny(res,403,'Alleen de Burgerraad kan deze dossiers openen');
+        return deny(res,403,'Alleen Burgerraad, Korpsleiding of technisch beheer heeft toegang');
       const member=await getFirestore().collection('bpd_discord_auth')
         .doc(actor.discordId).get();
       const verified=verifiedCitizenCouncil(actor,member.data(),
         process.env.DISCORD_GUILD_ID);
       if(!canAccessCitizenDossier(actor,verified))
-        return deny(res,403,'Alleen de Burgerraad kan deze dossiers openen');
+        return deny(res,403,'Alleen Burgerraad, Korpsleiding of technisch beheer heeft toegang');
       req.citizenCouncilVerified=verified;
       return next();
     }catch(e){return fail(res,e)}
   }
   const protectedUser=[requireUser,authorize];
-  app.get('/api/citizen-staff/access',...protectedUser,(_req,res)=>
-    res.json({canAccess:true,writesEnabled:writable()}));
+  const actorWrites=req=>writable()&&(req.citizenCouncilVerified===true||
+    req.bpd?.portalTechnicalMode===true&&req.bpd?.profileTechnicalAvailable===true);
+  app.get('/api/citizen-staff/access',...protectedUser,(req,res)=>
+    res.json({canAccess:true,writesEnabled:actorWrites(req)}));
 
-  app.get('/api/citizen-staff/overview',...protectedUser,async(_req,res)=>{
+  app.get('/api/citizen-staff/overview',...protectedUser,async(req,res)=>{
     try{
       const roster=await freshRoster(getSnapshot);
       const subjects=roster.filter(p=>p?.dept==='burger'&&validCitizenId(p.personId));
@@ -86,7 +88,7 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
       const rows=subjects.filter(p=>counts.get(p.personId)===1)
         .map(safePerson).sort((a,b)=>a.name.localeCompare(b.name,'nl-BE'));
       return res.json({rows,ambiguousRecords:[...counts.values()].filter(n=>n>1).length,
-        writesEnabled:writable()});
+        writesEnabled:actorWrites(req)});
     }catch(e){return fail(res,e)}
   });
 
