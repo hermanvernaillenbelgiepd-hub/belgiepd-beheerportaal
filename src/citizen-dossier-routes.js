@@ -26,7 +26,7 @@ async function councilOnly(req,res,next){
   const id=String(decoded?.uid||'').startsWith('discord:')?decoded.uid.slice(8):'';
   if(!ID.test(id))return err(res,403,'Alleen geverifieerde Burgerraad via Discord');
   const member=(await getFirestore().collection('bpd_discord_auth').doc(id).get()).data();
-  if(!isVerifiedCitizenCouncil(decoded,member,process.env.DISCORD_GUILD_ID))
+  if(!isVerifiedCitizenCouncil(decoded,member,process.env.DISCORD_GUILD_ID,id))
     return err(res,403,'Alleen Burgerraad heeft toegang. Vernieuw indien nodig je Discord-verificatie.');
   req.citizenCouncil={id,uid:decoded.uid,
     name:short(member.username,80)||'Burgerraad'};
