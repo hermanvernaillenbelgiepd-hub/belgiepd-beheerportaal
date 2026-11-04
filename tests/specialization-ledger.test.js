@@ -4,7 +4,7 @@ import {Script,runInNewContext} from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {SPECIALTY_LABELS,normalizePersonnel} from '../src/normalize.js';
 import {canChangeSpecialty,allowedSpecialty,specialtyReadEnabled,specialtyWritesEnabled,
-  validateSpecialtyChange,publicSpecializations,applySpecialtyOverlays}
+  validateSpecialtyChange,publicSpecializations,applySpecialtyOverlays,automaticPoliceSpecialties,initialFixedCallSpecialties}
   from '../src/specialization-policy.js';
 
 const a='123456789012345678',b='987654321098765432';
@@ -84,11 +84,11 @@ test('Browser headings show pictograms and aligned statuses, including negative 
   const path=new URL('../public/personnel-list-visuals.js',import.meta.url);
   const context={window:{}};runInNewContext(readFileSync(path,'utf8'),context);
   const ui=context.window.BPDPersonnelVisuals;
-  assert.equal(ui.specialtyColumns('politie').length,10);
+  assert.equal(ui.specialtyColumns('politie').length,11);
   assert.equal(ui.specialtyColumns('ambulance').length,5);
   assert.equal(ui.specialtyColumns('all').length,0);
   assert.deepEqual([...ui.specialtyColumns('politie')],
-    SPECIALTY_LABELS.politie);
+    ['INTERVENTIEDIENST',...SPECIALTY_LABELS.politie]);
   const states=ui.specialtyStatuses(subject.specialties);
   assert.equal(states.find(x=>x.label==='K9').style,'stage');
   assert.equal(states.find(x=>x.label==='Radio BM').style,'no');
@@ -118,4 +118,29 @@ test('Server synchronizes per-person overlay only when enabled and keeps all wri
   assert.ok(routes.includes('tx.create(ref.collection(\'audit\').doc()'));
   assert.ok(routes.includes('revision:current+1'));
   assert.ok(routes.includes('discordRoleChanged:false'));
+});
+
+test('Fixed police callsign grants only intervention, radio and traffic by default',()=>{
+ const police=call=>({dept:'politie',call,specialties:[]});
+ for(const call of ['200','245','438','910']){
+  const state=automaticPoliceSpecialties(police(call));
+  for(const label of ['INTERVENTIEDIENST','Radio BM','SIV/WPR'])
+   assert.equal(state[label],'Ja',call+' '+label);
+  assert.equal(state.K9,undefined);
+  assert.equal(state.RAGO,undefined);
+  assert.equal(state.Dispatch,undefined);
+ }
+ for(const call of ['150','008','—','100']){
+  assert.deepEqual(automaticPoliceSpecialties(police(call)),{});
+ }
+ const restricted=publicSpecializations(police('250'),{values:{
+  'Radio BM':{value:'Nee',source:'manual'}
+ }});
+ assert.equal(restricted.items.find(x=>x.label==='Radio BM').value,'Nee');
+ assert.equal(restricted.items.find(x=>x.label==='INTERVENTIEDIENST').value,'Ja');
+ assert.equal(restricted.items.find(x=>x.label==='K9').value,'Niet ingevuld');
+ const approved=initialFixedCallSpecialties({discordId:'123456789012345678',
+   status:'approved',assignedCall:245,sync:{call:245,discordId:'123456789012345678'}});
+ for(const name of ['INTERVENTIEDIENST','Radio BM','SIV/WPR'])
+  assert.equal(approved[name]?.value,'Ja');
 });
