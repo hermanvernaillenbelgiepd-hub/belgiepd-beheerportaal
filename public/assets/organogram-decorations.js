@@ -196,7 +196,8 @@
    const token=await user.getIdToken();
    const response=await fetch('/api/personnel-awards/catalog-access',{
     headers:{Authorization:'Bearer '+token},cache:'no-store'});
-   if(!response.ok||!((await response.json()).canUpload)||auth.currentUser?.uid!==uid)return;
+   const access=await response.json().catch(()=>({}));
+   if(!response.ok||(!access.canUpload&&!access.canRename)||auth.currentUser?.uid!==uid)return;
    const details=node('details','bpd-awards-control bpd-catalog-upload');
    details.append(node('summary','','Eigen ereteken uploaden · Officierenkader / Korpsleiding'));
    details.append(node('p','bpd-no-awards',
@@ -259,7 +260,7 @@
     finally{save.disabled=false}
    });
    if(auth.currentUser?.uid!==uid)return;
-   target.append(details);
+   if(access.canUpload)target.append(details);
    // The name is catalogue metadata, not a new award grant. All existing
    // recipient links keep their stable catalogue ID after an audited rename.
    const rename=node('details','bpd-awards-control bpd-catalog-rename');
