@@ -218,7 +218,9 @@ async function load(){
  try{
   const access=await api('/api/leave/notifications/context');
   const result=await api('/api/leave/requests');
-  if(!access.canReview){
+  // Personal messages belong to every authenticated member, including
+  // Officierenkader and Korpsleiding who also have team-review permissions.
+  {
     const root=$('personalList');root.replaceChildren();
     const names={pending:'In behandeling',approved:'Goedgekeurd',
       rejected:'Geweigerd',withdrawn:'Ingetrokken'};
@@ -231,6 +233,8 @@ async function load(){
     }
     if(!root.children.length)root.textContent='Je hebt momenteel geen verlofmeldingen.';
     $('personalPanel').hidden=false;
+  }
+  if(!access.canReview){
     feedback('Persoonlijke meldingen geladen. Alleen je eigen aanvragen zijn zichtbaar.');
     return;
   }
