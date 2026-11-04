@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>BelgiëPD · Burgerpersoneelsdossiers</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<link rel="stylesheet" href="/personnel-onepage-test.css">
+<link rel="stylesheet" href="/bpd-dossier-shared.css">
+<style>
+:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:#edf4ff;background:#08172d}
+*{box-sizing:border-box}body{margin:0}
+header{padding:17px max(18px,calc((100vw - 1190px)/2));background:#142a46;border-bottom:1px solid #3a5476;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+header nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+a{color:#b8d3ff}main{max-width:1190px;margin:auto;padding:20px 15px 65px}
+.card{background:#132b47;border:1px solid #385576;border-radius:12px;margin:13px 0;padding:17px}
+h1{font-size:24px;margin:0 0 9px}h2{font-size:18px;margin:0 0 10px}h3{font-size:15px;margin:0 0 8px}
+p{line-height:1.5}.muted{color:#b3c9e2;font-size:13px}.error{color:#ffbcc8}
+button,input,select,textarea{font:inherit;border-radius:7px}button{background:#315ad1;border:1px solid #7595ec;padding:9px 12px;color:#fff;font-weight:650;cursor:pointer}button.alt{background:#254464;border-color:#577898}button:disabled{opacity:.55;cursor:not-allowed}
+input,select,textarea{width:100%;background:#0d2138;color:#fff;border:1px solid #4a6686;padding:10px}textarea{min-height:95px;resize:vertical}
+label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.controls input{max-width:390px}.row{padding:12px 10px;border-bottom:1px solid #365170;text-align:left;display:flex;gap:12px;justify-content:space-between;align-items:center;width:100%;background:transparent;border-top:0;border-left:0;border-right:0;border-radius:0}
+.row:hover{background:#213d60}.row strong,.row small{display:block}.row small{font-size:12px;color:#b9cbe0}
+.profile{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
+.profile>div{padding:13px;border:1px solid #42627f;background:#1d3a5a;border-radius:8px;overflow-wrap:anywhere}
+.profile small{display:block;font-size:10px;color:#b9d1e8;margin-bottom:6px}.profile strong{font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.record{padding:11px 0;border-bottom:1px solid #36516b}
+.record strong{font-size:13px}.record p{font-size:13px;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.record small{font-size:11px;color:#b8c9dd}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+[hidden]{display:none!important}
+@media(max-width:940px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.profile{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:660px){.tiles,.form-grid{grid-template-columns:1fr}.profile{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media print{header,#overview,#formCard,#back,#print,#refresh,#message,.noprint{display:none!important}
+  :root{color:#000;background:#fff}body{background:#fff;color:#000}.card,.profile>div{color:#000;background:#fff;border-color:#ccc}
+  main{max-width:none;padding:0}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.record{break-inside:avoid}}
+</style></head>
+<body class="bpd-unified-dossier dossier-onepage">
+<header><strong>🏛️ BelgiëPD · Burgerpersoneelsdossiers</strong>
+<nav><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/">Dashboard</a>
+<button type="button" id="refresh" class="alt">Vernieuwen</button>
+<button type="button" id="login" class="alt">Aanmelden</button></nav></header>
+<main>
+<div id="message" role="status" class="muted">Aanmelding controleren…</div>
+<section id="overview" class="card" hidden>
+<h1>Burgerpersoneelsdossiers</h1>
+<p class="muted">Alleen Burgerraad (of geverifieerd technisch beheer). BIO en Burger hebben één afzonderlijk personeelsdossier per Discord-ID. Geen weekrapporten.</p>
+<div class="controls"><label for="search">Zoek op naam of Discord-ID</label><input id="search" type="search" placeholder="Zoek een BIO of Burger"></div>
+<div id="roster"></div>
+</section>
+<section id="detail" hidden>
+<div class="controls noprint"><button type="button" id="back" class="alt">← Terug naar overzicht</button>
+<button type="button" id="print" class="alt">Persoonsgebonden rapport afdrukken</button></div>
+<section class="card">
+<h1 id="personName">Burgerpersoneelsdossier</h1>
+<div class="profile">
+<div><small>DC / DISCORD-ID</small><strong id="personId">—</strong></div>
+<div><small>RANG / ROL</small><strong id="personRole">—</strong></div>
+<div><small>ROEPNUMMER</small><strong id="personCall">—</strong></div>
+<div><small>STATUS</small><strong id="personStatus">—</strong></div>
+<div><small>VOLWAARDIG SINDS</small><strong id="personPromoted">—</strong></div>
+<div><small>OBSERVATIES</small><strong id="personAvg">—</strong></div>
+</div>
+<p id="limited" class="muted" hidden>Een deel van de oudere registratiehistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
+</section>
+<section class="tiles">
+<div class="card"><h2>Verlof</h2><div id="leave"></div></div>
+<div class="card"><h2>Notities</h2><div id="notes"></div></div>
+<div class="card"><h2>Observaties</h2><div id="observations"></div></div>
+<div class="card"><h2>Sancties</h2><div id="sanctions"></div></div>
+<div class="card"><h2>Volwaardig Burger</h2><div id="promotions"></div></div>
+<div class="card"><h2>Persoonsgebonden rapport</h2><p class="muted">Dit rapport bundelt bovenstaande registraties met de bestaande centrale verlofhistoriek. De vastgelegde auteur en registratiedatum blijven behouden. Er wordt geen weekrapport aangemaakt.</p></div>
+</section>
+<section class="card" id="formCard" hidden>
+<h2>Nieuwe burgerregistratie</h2>
+<form id="entryForm">
+<div class="form-grid">
+<div><label for="kind">Soort registratie</label>
+<select id="kind" required>
+<option value="notitie">Notitie</option>
+<option value="observatie">Observatie</option>
+<option value="sanctie_mondeling">Mondelinge sanctie</option>
+<option value="sanctie_schriftelijk">Schriftelijke sanctie</option>
+<option value="volwaardig">Notitie: volwaardig Burger geworden</option>
+</select></div>
+<div><label for="eventDate">Datum van gebeurtenis</label><input type="date" id="eventDate" required></div>
+</div>
+<div id="scoreField" hidden><label for="score">Observatiescore (0 tot 10)</label>
+<input type="number" id="score" min="0" max="10" step="1" value="5"></div>
+<label for="details">Notitie of toelichting (apart van observaties)</label>
+<textarea id="details" minlength="3" maxlength="1600" required></textarea>
+<div class="controls"><button type="submit" id="save">Registratie opslaan en loggen</button><span class="muted">Een registratie kan achteraf niet stilzwijgend worden gewijzigd.</span></div>
+</form></section>
+</section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+let auth,authMod,portalSetup,selectedId=null,rows=[];
+const set=(id,value)=>{$(id).textContent=value==null||value===''?'—':String(value)};
+const mark=(msg,error=false)=>{set('message',msg);$('message').className=error?'error':'muted'};
+const fmt=iso=>iso?new Date(iso).toLocaleString('nl-BE'):'—';
+async function api(url,method='GET',payload){
+  if(!auth?.currentUser)throw Error('Meld je eerst aan via het portaal');
+  const current=auth.currentUser,token=await current.getIdToken();
+  const response=await fetch(url,{method,cache:'no-store',
+    headers:{Authorization:'Bearer '+token,...(payload?{'Content-Type':'application/json'}:{})},
+    ...(payload?{body:JSON.stringify(payload)}:{})});
+  const data=await response.json().catch(()=>({}));
+  if(current!==auth.currentUser)throw Error('Aanmelding gewijzigd');
+  if(!response.ok)throw Error(data.error||'Dossier niet beschikbaar');
+  return data;
+}
+const line=(container,title,details,meta)=>{
+  const node=document.createElement('div');node.className='record';
+  const h=document.createElement('strong');h.textContent=title;node.append(h);
+  if(details){const p=document.createElement('p');p.textContent=details;node.append(p)}
+  if(meta){const m=document.createElement('small');m.textContent=meta;node.append(m)}
+  container.append(node);
+};
+function fill(containerId,items,render){
+  const container=$(containerId);container.replaceChildren();
+  if(!items?.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='Geen registraties';container.append(empty);return}
+  items.forEach(item=>render(container,item));
+}
+function renderRoster(){
+  const term=$('search').value.toLocaleLowerCase('nl-BE').trim();
+  const filtered=rows.filter(p=>(p.name+' '+p.discordId+' '+p.rank).toLocaleLowerCase('nl-BE').includes(term));
+  const root=$('roster');root.replaceChildren();
+  if(!filtered.length){line(root,'Geen BIO of Burger gevonden','','');return}
+  for(const p of filtered){
+    const button=document.createElement('button');button.type='button';button.className='row';
+    const name=document.createElement('span');
+    const strong=document.createElement('strong');strong.textContent=p.name||'Onbekende burger';
+    const small=document.createElement('small');small.textContent=(p.rank||'Burger')+' · '+p.discordId;
+    name.append(strong,small);button.append(name);
+    const action=document.createElement('span');action.textContent='Open dossier';button.append(action);
+    button.onclick=()=>openPerson(p.discordId);root.append(button);
+  }
+}
+function renderPerson(data){
+  const p=data.person;set('personName',p.name||'Burgerpersoneelsdossier');
+  set('personId',p.discordId);set('personRole',data.roleType||p.rank||'Niet bevestigd');
+  set('personCall',p.call);set('personStatus',p.status);
+  set('personPromoted',data.volwaardigDate);
+  set('personAvg',data.observation.count?String(data.observation.average)+'/10 ('+
+    data.observation.count+')':'Geen');
+  $('limited').hidden=!(data.entriesLimited||data.leaveLimited);
+  fill('leave',data.leave,(root,l)=>line(root,
+    l.startDate+' t/m '+l.endDate,l.status+(l.manual?' · manueel':''),fmt(l.createdAt)));
+  const entries=data.entries||[];
+  const meta=e=>e.eventDate+' · '+fmt(e.createdAt)+' · auteur '+(e.byDiscordId||'onbekend');
+  fill('notes',entries.filter(e=>e.kind==='notitie'),(root,e)=>
+    line(root,'Notitie',e.details,meta(e)));
+  fill('observations',entries.filter(e=>e.kind==='observatie'),(root,e)=>
+    line(root,'Observatie · '+e.score+'/10',e.details,meta(e)));
+  fill('sanctions',entries.filter(e=>e.kind.startsWith('sanctie_')),(root,e)=>
+    line(root,e.kind==='sanctie_mondeling'?'Mondelinge sanctie':'Schriftelijke sanctie',e.details,meta(e)));
+  fill('promotions',entries.filter(e=>e.kind==='volwaardig'),(root,e)=>
+    line(root,'Volwaardig sinds '+e.eventDate,e.details,meta(e)));
+  $('formCard').hidden=data.canWrite!==true;
+  $('detail').hidden=false;$('overview').hidden=true;
+}
+async function openPerson(id){
+  selectedId=id;mark('Dossier laden…');
+  try{
+    const data=await api('/api/citizen-staff/'+encodeURIComponent(id));
+    if(selectedId!==id)return;
+    renderPerson(data);
+    history.replaceState(null,'','?discordId='+encodeURIComponent(id));
+    mark('Burgerdossier geopend · alle wijzigingen worden gelogd');
+  }catch(e){mark(e.message,true)}
+}
+async function load(){
+  $('overview').hidden=true;$('detail').hidden=true;selectedId=null;
+  if(!auth?.currentUser){mark('Meld je aan met een gemachtigd Burgerraad-account');return}
+  try{
+    await api('/api/citizen-staff/access');
+    const data=await api('/api/citizen-staff/overview');
+    rows=data.rows||[];renderRoster();$('overview').hidden=false;
+    mark(rows.length+' burgerdossiers beschikbaar');
+    const target=new URLSearchParams(location.search).get('discordId');
+    if(target&&rows.some(p=>p.discordId===target))await openPerson(target);
+  }catch(e){mark(e.message,true)}
+}
+$('kind').onchange=()=>{$('scoreField').hidden=$('kind').value!=='observatie'};
+$('search').oninput=renderRoster;
+$('back').onclick=()=>{selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
+  history.replaceState(null,'',location.pathname);mark('Burgerpersoneelsdossiers')};
+$('refresh').onclick=load;
+$('print').onclick=()=>window.print();
+$('entryForm').onsubmit=async event=>{
+  event.preventDefault();if(!selectedId)return;
+  const button=$('save');button.disabled=true;
+  try{
+    const kind=$('kind').value;
+    const payload={kind,eventDate:$('eventDate').value,details:$('details').value.trim()};
+    if(kind==='observatie')payload.score=Number($('score').value);
+    await api('/api/citizen-staff/'+encodeURIComponent(selectedId)+'/entries','POST',payload);
+    $('details').value='';await openPerson(selectedId);mark('Registratie veilig opgeslagen');
+  }catch(e){mark('Opslaan mislukt: '+e.message,true)}
+  finally{button.disabled=false}
+};
+(async()=>{
+  try{
+    const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+    if(!cfg.enabled)throw Error('Firebase is niet actief');
+    ({setupPortalLogin:portalSetup}=await import('/portal-login.js'));
+    const app=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+    authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+    auth=authMod.getAuth(app.initializeApp(cfg.firebaseConfig));
+    portalSetup({button:$('login'),auth,authModule:authMod,config:cfg,onError:e=>mark(e.message,true)});
+    $('eventDate').value=new Date().toLocaleDateString('en-CA');
+    authMod.onAuthStateChanged(auth,load);
+  }catch(e){mark(e.message,true)}
+})();
+</script><script defer src="/bpd-navigation.js"></script>
+</body></html>
