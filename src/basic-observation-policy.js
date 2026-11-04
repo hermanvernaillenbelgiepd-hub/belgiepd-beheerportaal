@@ -60,7 +60,7 @@ export const mayReadBasicInbox=actor=>Boolean(actor?.boardPersonnelAdmin===true|
 export function basicObservationDenial(actor,people){
   const matches=(people||[]).filter(p=>p.dept==='politie'&&p.personId===actor?.discordId);
   if(matches.length!==1)
-    return 'Geen unieke politiefiche gevonden voor jouw Discord-ID. Controleer de koppeling in Personeelsbeheer.';
+    return 'Je politiefiche is niet eenduidig gekoppeld aan je Discord-ID. Controleer de koppeling in Personeelsbeheer.';
   if(basicCallLevel(matches[0])===null)
     return 'Je politiroepnummer wordt niet herkend als een geldig Basiskader-nummer (3xx–5xx).';
   if(basicAuthor(actor,matches[0]))return null;
