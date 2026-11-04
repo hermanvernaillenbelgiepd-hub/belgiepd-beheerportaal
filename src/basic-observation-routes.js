@@ -45,7 +45,10 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
        Object.keys(body).some(k=>!['type','discordId','eventDate','eventTime',
          'details','otherPlayers','evidenceUrl'].includes(k)))
       return err(res,400,'Deze module accepteert uitsluitend observaties, geen sancties of rolwijzigingen');
-    if(!ID.test(body.discordId))return err(res,400,'Kies een geldig personeelslid');
+    if(typeof body.discordId!=='string'||!body.discordId.trim())
+      return err(res,400,'Kies eerst een betrokken personeelslid in de keuzelijst.');
+    if(!ID.test(body.discordId))
+      return err(res,400,'De geselecteerde personeelsfiche heeft geen geldig Discord-ID. Vernieuw de pagina en kies opnieuw.');
     try{
       const roster=await latestSubjects(getSnapshot);
       const access=basicObservationTargets(req.bpd,roster);

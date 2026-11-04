@@ -68,7 +68,7 @@ fieldset{border:0;margin:0;padding:0}
         <div class="field"><label for="author">Ingediend door (geverifieerd)</label>
           <div id="author" class="readonly"></div></div>
         <div class="field"><label for="target">Betrokken personeelslid *</label>
-          <select id="target" required></select><div id="targetCount" class="helper"></div></div>
+          <select id="target" required aria-describedby="targetCount selectedTargetInfo"></select><div id="targetCount" class="helper"></div><div id="selectedTargetInfo" class="helper" role="status" aria-live="polite">Kies een personeelslid om de observatie te koppelen.</div></div>
         <div class="field"><label for="eventDate">Datum van gebeurtenis *</label>
           <input id="eventDate" type="date" required></div>
         <div class="field"><label for="eventTime">Tijdstip *</label>
@@ -102,6 +102,8 @@ fieldset{border:0;margin:0;padding:0}
 <script type="module">
 const $=id=>document.getElementById(id);
 let bridge=null,context=null,inboxData=[],inboxCursor=null,submitBusy=false;
+const validTargetId=value=>typeof value==='string'&&/^\d{15,22}$/.test(value);
+const normalizeTargetId=value=>String(value??'').trim();
 const setMessage=(msg,error=false)=>{
   $('message').className=msg?'status '+(error?'error':'success'):'status';
   $('message').textContent=msg;
@@ -131,19 +133,30 @@ function prepareForm(data){
   if(!data.canSubmit)return;
   $('author').textContent=(data.actor?.call||'')+' · '+(data.actor?.name||'')+
     ' · '+(data.actor?.rank||'');
-  const targets=[...(data.targets||[])].sort((a,b)=>String(a.call).localeCompare(String(b.call),'nl',{numeric:true}));
+  // Every option uses the exact verified server target identity. Do not show
+  // unlinked or malformed IDs as selectable members: the write API rejects them.
+  const targets=[...(data.targets||[])].filter(p=>validTargetId(p.discordId))
+    .sort((a,b)=>String(a.call).localeCompare(String(b.call),'nl',{numeric:true}));
   const select=$('target');select.replaceChildren();
-  const empty=document.createElement('option');empty.value='';empty.textContent='Selecteer een personeelslid';select.append(empty);
+  const empty=document.createElement('option');empty.value='';
+  empty.textContent='— Kies eerst een personeelslid —';empty.disabled=true;
+  empty.selected=true;select.append(empty);
   for(const item of targets){
-    const opt=document.createElement('option');opt.value=item.discordId;
+    const opt=document.createElement('option');
+    opt.value=normalizeTargetId(item.discordId);
     opt.textContent=item.call+' · '+item.name+' · '+item.rank;select.append(opt);
   }
   $('targetCount').textContent=targets.length+' personeelsleden met een lagere rang beschikbaar';
+  $('selectedTargetInfo').textContent='Nog geen personeelslid gekozen.';
+  if(targets.length!==(data.targets||[]).length){
+    $('targetCount').textContent+=' · Niet-gekoppelde fiches zijn uitgesloten van selectie.';
+  }
   $('submitHint').textContent=data.writesEnabled?
     'De observatie wordt opgeslagen met jouw geverifieerde identiteit.':
     'De registratieopslag is tijdelijk uitgeschakeld door de server.';
   $('submitBtn').disabled=!data.writesEnabled||!targets.length;
   clearForm();
+  $('selectedTargetInfo').textContent='Nog geen personeelslid gekozen.';
 }
 function displayInbox(list){
   const q=$('filterInbox').value.trim().toLocaleLowerCase('nl');
@@ -227,15 +240,28 @@ async function loadContext(){
   $('accessChecks').textContent=lines.join(' · ');
   if(data.canReview)await loadInbox();
 }
-$('clearBtn').onclick=()=>{clearForm();setMessage('')};
+$('clearBtn').onclick=()=>{
+  clearForm();$('selectedTargetInfo').textContent='Nog geen personeelslid gekozen.';setMessage('');
+};
+$('target').addEventListener('change',()=>{
+  const selected=$('target').selectedOptions[0];
+  $('selectedTargetInfo').textContent=validTargetId($('target').value)&&
+    context?.targets?.some(p=>normalizeTargetId(p.discordId)===$('target').value)?
+    'Geselecteerd: '+selected.textContent+' · gekoppeld aan de officiële politiefiche.':
+    'Kies een geldig personeelslid uit de lijst.';
+  // A previous validation error must not remain after the user corrects it.
+  if($('message').classList.contains('error'))setMessage('');
+});
 $('refreshInbox').onclick=()=>loadInbox();
 $('olderInbox').onclick=()=>loadInbox(true);
 $('filterInbox').oninput=()=>displayInbox(inboxData);
 $('observationForm').onsubmit=async event=>{
   event.preventDefault();if(submitBusy||!context?.canSubmit||!context.writesEnabled)return;
-  const target=$('target').value;
-  if(!context.targets?.some(p=>p.discordId===target))
-    return setMessage('Selecteer een personeelslid van een lagere rang.',true);
+  const target=normalizeTargetId($('target').value);
+  if(!target)return setMessage('Kies eerst een betrokken personeelslid uit de keuzelijst.',true);
+  if(!validTargetId(target)||!context.targets?.some(p=>
+    normalizeTargetId(p.discordId)===target))
+    return setMessage('De gekozen personeelsfiche heeft geen geldig Discord-ID. Vernieuw de pagina en selecteer opnieuw.',true);
   const body={type:'observatie',discordId:target,eventDate:$('eventDate').value,
     eventTime:$('eventTime').value,details:$('details').value,
     otherPlayers:$('otherPlayers').value,evidenceUrl:$('evidenceUrl').value};
