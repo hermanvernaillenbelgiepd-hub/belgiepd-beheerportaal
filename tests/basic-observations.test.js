@@ -104,7 +104,7 @@ test('Beveiligde routes weigeren sancties en gebruiken een afzonderlijk register
   assert.match(route,/Strictly separate from bpd_cases/);
   assert.doesNotMatch(route,/collection\('bpd_cases'\)/);
   assert.doesNotMatch(route,/collection\('bpd_notices'\)/);
-  assert.match(route,/\[345\]\\d\\d/);
+  assert.match(route,/basicCallLevel\(\{dept:POL,call:author\?\.call\}\)/);
   assert.match(route,/mayReadBasicInbox\(req\.bpd\)/);
   assert.match(legacy,/basicObservationTargets\(req\.bpd,snap\.data\)/);
   assert.ok(!page.includes('id="sanctionType"'));
@@ -173,4 +173,44 @@ test('Afzonderlijke Basiskader-opslag kan werken zonder brede registratiemodule'
  assert.match(nav,/basicObservationCanSubmit===true/);
  assert.match(server,/basicObservationTargets\(req\.bpd,roster\)/);
  assert.match(page,/accessReason'\)\.textContent=data\.explanation/);
+});
+
+test('Multi-service leiding behoudt politie-Basiskader inzendknop zonder inboxrechten',()=>{
+ const member=ranks[3];
+ for(const service of ['brandweer','ambulance','depannage']){
+   const actor={...actorFor(3),role:'korpsleiding',
+     departments:[service,'politie'],
+     departmentRoles:{[service]:'korpsleiding',politie:'basiskader'},
+     dossierNativeDepartments:[service],dossierAllowedDepartments:[service]};
+   assert.equal(basicObservationTargets(actor,ranks).author?.personId,member.personId);
+   assert.equal(basicObservationTargets(actor,ranks).targets.length,3);
+   assert.equal(mayReadBasicInbox(actor),false,
+     'Leiding buiten politie geeft nooit inzage in politie-Basiskader inbox');
+ }
+});
+test('Politie Middenkader met leiding in andere dienst kan ontvangstoverzicht openen',()=>{
+ const actor={...actorFor(5),role:'korpsleiding',
+  departments:['brandweer','politie'],
+  departmentRoles:{brandweer:'korpsleiding',politie:'middenkader'},
+  dossierNativeDepartments:['politie','brandweer'],
+  dossierAllowedDepartments:['politie','brandweer']};
+ assert.equal(mayReadBasicInbox(actor),true);
+ assert.equal(basicObservationTargets(actor,ranks).author,null);
+ assert.equal(mayReadBasicInbox({...actor,departmentRoles:{politie:'basiskader'}}),false);
+});
+test('Observaties Basiskader in Brandweer- en AZLS-menu zijn alleen zichtbaar na politiecontrole',()=>{
+ const nav=readFileSync(new URL('../public/bpd-navigation.js',import.meta.url),'utf8');
+ const home=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ const route=readFileSync(new URL('../src/basic-observation-routes.js',import.meta.url),'utf8');
+ assert.match(nav,/if\(policeObservations\)pages\.push\('observations'\)/);
+ assert.match(nav,/context\?\.basicObservationCanReview===true/);
+ for(const name of ['zoneNavObservations','ambulanceNavObservations',
+   'memberNavObservations','staffNavObservations'])assert.match(home,new RegExp('id="'+name+'"'));
+ assert.match(home,/showObservationNavigation\(ctx\)/);
+ assert.match(home,/basicObservationCanReview===true/);
+ assert.match(server,/req\.bpd\.basicObservationCanReview=mayReadBasicInbox\(req\.bpd\)/);
+ assert.match(server,/basicObservationCanReview:req\.bpd\.basicObservationCanReview===true/);
+ assert.match(route,/basicCallLevel\(\{dept:POL,call:author\?\.call\}\)/);
+ assert.doesNotMatch(route,/replace\(\/\^S\[- \]\?\/i/);
 });
