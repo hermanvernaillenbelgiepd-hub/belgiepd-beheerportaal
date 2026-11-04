@@ -13,12 +13,16 @@ export function basicCallLevel(person){
   return digit<=2?0:digit-2;
 }
 export function verifiedBasicPoliceIdentity(actor){
-  // Evidence is produced SERVER-side from a fresh, guild-bound Discord role
-  // snapshot. It does not grant general police dossiers, ranks or management.
+  // Evidence is produced SERVER-side from a recent, guild-bound Discord
+  // snapshot. Police membership + a unique active 3xx-5xx Police personnel
+  // record is sufficient for this OBSERVATION-ONLY submission. An explicit
+  // higher Discord Police cadre always overrides the legacy roster.
   return Boolean(actor&&ID.test(actor.discordId)&&
     actor.uid==='discord:'+actor.discordId&&
-    actor.discordPoliceRank==='basiskader'&&
-    actor.portalTechnicalMode!==true);
+    actor.portalTechnicalMode!==true&&(
+      actor.discordPoliceRank==='basiskader'||
+      (actor.discordPoliceRank==null&&actor.discordPoliceMemberVerified===true)
+    ));
 }
 export function basicAuthor(actor,person){
   // A multi-service member may have a higher PRIMARY role (e.g. Brandweer
@@ -27,8 +31,12 @@ export function basicAuthor(actor,person){
   // Basiskader role PLUS the unique official 3xx-5xx Police staff identity.
   const approvedRole=roleForDepartment(actor,'politie');
   const approved=approvedRole==='basiskader'&&actor?.departments?.includes('politie');
-  const verified=(!approvedRole||approvedRole==='basiskader')&&
-    verifiedBasicPoliceIdentity(actor);
+  const verified=verifiedBasicPoliceIdentity(actor)&&(
+    // A fresh, explicit Basiskader role can correct an old high portal role.
+    // Mere Police membership may not override an explicit higher portal role.
+    actor.discordPoliceRank==='basiskader'||
+    !approvedRole||approvedRole==='basiskader'
+  );
   if(!actor||!(approved||verified)||!ID.test(actor.discordId)||
      !person||person.personId!==actor.discordId||person.dept!=='politie')return false;
   const lvl=basicCallLevel(person);
@@ -66,10 +74,10 @@ export function basicObservationDenial(actor,people){
   if(basicAuthor(actor,matches[0]))return null;
   const policeRole=roleForDepartment(actor,'politie');
   if(policeRole&&policeRole!=='basiskader')
-    return 'Geen goedgekeurde Basiskaderrol binnen Politie: controleer de politierol in Gebruikersbeheer.';
+    return 'Je portaalrol binnen Politie is hoger dan Basiskader. Gebruik Discord opnieuw verifiëren; bij een oude foutieve rol moet Gebruikersbeheer de indeling corrigeren.';
   if(policeRole==='basiskader')
     return 'Je politiefiche of goedgekeurde rol komt niet overeen met Basiskader. Controleer Personeelsbeheer.';
-  return 'Er is wel een politiefiche, maar je Discord-Basiskaderrol is niet recent bevestigd. Klik rechtsboven op Discord opnieuw verifiëren. Blijft dit zo, controleer de Politierol in Gebruikersbeheer.';
+  return 'Je politiefiche is gevonden, maar de recente Discord-verificatie bevestigt geen Politie-lidmaatschap of Basiskaderrol. Klik rechtsboven op Discord opnieuw verifiëren; controleer zo nodig de Discord-rollen.';
 }
 export function basicObservationWritesEnabled(env=process.env){
   // Separately scoped, rank-checked observations can be enabled without
