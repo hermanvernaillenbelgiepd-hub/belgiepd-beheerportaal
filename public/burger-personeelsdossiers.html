@@ -20,13 +20,50 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .controls input{max-width:390px}.row{padding:12px 10px;border-bottom:1px solid #365170;text-align:left;display:flex;gap:12px;justify-content:space-between;align-items:center;width:100%;background:transparent;border-top:0;border-left:0;border-right:0;border-radius:0}
 .row:hover{background:#213d60}.row strong,.row small{display:block}.row small{font-size:12px;color:#b9cbe0}
-.profile{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
-.profile>div{padding:13px;border:1px solid #42627f;background:#1d3a5a;border-radius:8px;overflow-wrap:anywhere}
-.profile small{display:block;font-size:10px;color:#b9d1e8;margin-bottom:6px}.profile strong{font-size:13px}
-.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.record{padding:11px 0;border-bottom:1px solid #36516b}
-.record strong{font-size:13px}.record p{font-size:13px;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}
-.record small{font-size:11px;color:#b8c9dd}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* Eén doorlopende personeelsfiche; secties worden met lijnen gescheiden, niet met kaarten. */
+.dossier-toolbar{margin:12px 0 16px}
+.citizen-sheet{width:100%;overflow:hidden;margin:0 0 24px;
+  background:#132b47;border:1px solid #385576;border-radius:12px;color:#edf4ff}
+.citizen-sheet-head{padding:22px 24px 20px;border-bottom:1px solid #45637f}
+.citizen-overline{font-size:10px;font-weight:750;letter-spacing:.11em;
+  color:#8eb4e8;margin:0 0 6px}
+.citizen-sheet-head h1{margin:0 0 16px}
+.profile{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:0;border-block:1px solid #365878}
+.profile>div{min-width:0;padding:13px 12px;border:0;border-right:1px solid #365878;
+  background:transparent;overflow-wrap:anywhere}
+.profile>div:first-child{padding-left:0}
+.profile>div:last-child{border-right:0}
+.profile small{display:block;font-size:10px;color:#b9d1e8;margin-bottom:7px}
+.profile strong{font-size:13px;font-weight:750}
+.citizen-registration{padding:21px 24px 20px;background:#102841;
+  border-bottom:1px solid #45637f;scroll-margin-top:30px}
+.citizen-section-header{display:flex;align-items:baseline;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.citizen-section-header h2{margin:0}
+.citizen-section-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.citizen-section{padding:18px 24px;min-width:0;
+  border-right:1px solid #355271;border-bottom:1px solid #355271}
+.citizen-section:nth-child(2n){border-right:0}
+.citizen-section h2{font-size:17px;margin:0 0 10px;color:#f2f7ff}
+.citizen-section .muted{margin:5px 0 11px}
+.citizen-audit-section{grid-column:1/-1;border-right:0;border-bottom:0}
+.record{padding:10px 0;border-bottom:1px solid #36516b}
+.record:last-child{border-bottom:0}
+.record strong{font-size:13px}
+.record p{font-size:13px;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.record small{font-size:11px;color:#b8c9dd}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.citizen-savebar{display:flex;gap:15px;align-items:center;flex-wrap:wrap;
+  margin-top:16px;padding-top:15px;border-top:1px solid #355271}
+#citizenEntrySave{display:inline-flex;align-items:center;justify-content:center;
+  min-height:43px;min-width:240px;padding:10px 19px;
+  background:#315ad1;border:1px solid #8aa5ff;color:white;
+  font-size:14px;font-weight:750;cursor:pointer}
+#citizenEntrySave:hover:not(:disabled){background:#3d6dea}
+#citizenEntrySave:focus-visible{outline:3px solid #c4daff;outline-offset:3px}
+#citizenEntrySave:disabled{opacity:.56;cursor:wait}
+#saveStatus{margin:10px 0 0;font-size:12px;line-height:1.45}
 .delete-entry{display:block;margin-top:9px;padding:5px 10px;font-size:12px;background:#572c40;border-color:#aa566b;color:#ffe2e7}
 .delete-entry:hover{background:#73364e}
 #deleteDialog{width:min(95vw,540px);max-width:540px;border:1px solid #6880a1;
@@ -38,12 +75,61 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 #deleteDialog .danger:disabled{opacity:.55}
 #deleteDialog .controls{margin-top:12px}
 #deleteDialog .muted{margin:9px 0}
+/* Unified sheet remains readable when the portal is set to its light theme. */
+@media screen{
+  html:not([data-bpd-theme="dark"]) .citizen-sheet{
+    background:#fff;color:#192f4b;border-color:#cbd9ec;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-sheet-head,
+  html:not([data-bpd-theme="dark"]) .citizen-section{
+    border-color:#d6e1ee;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-registration{
+    background:#f4f8fd;border-color:#d6e1ee;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-sheet h1,
+  html:not([data-bpd-theme="dark"]) .citizen-section h2{
+    color:#17365c;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-overline,
+  html:not([data-bpd-theme="dark"]) .profile small,
+  html:not([data-bpd-theme="dark"]) .record small{
+    color:#49688b;
+  }
+  html:not([data-bpd-theme="dark"]) .profile,
+  html:not([data-bpd-theme="dark"]) .profile>div,
+  html:not([data-bpd-theme="dark"]) .record,
+  html:not([data-bpd-theme="dark"]) .citizen-savebar{
+    border-color:#d6e1ee;
+  }
+}
 [hidden]{display:none!important}
-@media(max-width:940px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.profile{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:660px){.tiles,.form-grid{grid-template-columns:1fr}.profile{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media print{header,#overview,#formCard,#deleteDialog,.delete-entry,#back,#print,#refresh,#message,.noprint{display:none!important}
-  :root{color:#000;background:#fff}body{background:#fff;color:#000}.card,.profile>div{color:#000;background:#fff;border-color:#ccc}
-  main{max-width:none;padding:0}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.record{break-inside:avoid}}
+@media(max-width:1100px){
+  .profile{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .profile>div:nth-child(3n){border-right:0}
+  .profile>div:nth-child(-n+3){border-bottom:1px solid #365878}
+}
+@media(max-width:660px){
+  .citizen-sheet-head,.citizen-registration,.citizen-section{padding:16px}
+  .citizen-section-list,.form-grid{grid-template-columns:1fr}
+  .citizen-section{border-right:0}
+  .profile{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .profile>div:nth-child(3n){border-right:1px solid #365878}
+  .profile>div:nth-child(2n){border-right:0}
+  .profile>div:nth-child(-n+4){border-bottom:1px solid #365878}
+  .citizen-savebar{align-items:stretch;flex-direction:column}
+  #citizenEntrySave{width:100%;min-width:0}
+}
+@media print{
+  header,#overview,#formCard,#deleteDialog,.delete-entry,#back,#print,#refresh,#message,.noprint{display:none!important}
+  :root{color:#000;background:#fff}
+  body{background:#fff;color:#000}
+  .citizen-sheet,.citizen-sheet-head,.citizen-section,.profile>div{color:#000;background:#fff;border-color:#ccc}
+  .citizen-section h2,.citizen-sheet h1,.citizen-overline,.record small,.profile small{color:#111}
+  main{max-width:none;padding:0}
+  .citizen-section-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .record{break-inside:avoid}
+}
 </style></head>
 <body class="bpd-unified-dossier dossier-onepage">
 <header><strong>🏛️ BelgiëPD · Burgerpersoneelsdossiers</strong>
@@ -59,52 +145,87 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <div id="roster"></div>
 </section>
 <section id="detail" hidden>
-<div class="controls noprint"><button type="button" id="back" class="alt">← Terug naar overzicht</button>
-<button type="button" id="quickAdd" hidden>+ Nieuwe registratie toevoegen</button>
-<button type="button" id="print" class="alt">Persoonsgebonden rapport afdrukken</button></div>
+<div class="controls dossier-toolbar noprint">
+  <button type="button" id="back" class="alt">← Terug naar overzicht</button>
+  <button type="button" id="quickAdd" hidden>+ Nieuwe registratie toevoegen</button>
+  <button type="button" id="print" class="alt">Persoonsgebonden rapport afdrukken</button>
+</div>
 <p id="writeNotice" class="muted noprint" hidden>Voor dit dossier heb je geen schrijfrecht. Registreren in je eigen personeelsdossier is niet toegestaan.</p>
-<section class="card">
-<h1 id="personName">Burgerpersoneelsdossier</h1>
-<div class="profile">
-<div><small>DC / DISCORD-ID</small><strong id="personId">—</strong></div>
-<div><small>RANG / ROL</small><strong id="personRole">—</strong></div>
-<div><small>ROEPNUMMER</small><strong id="personCall">—</strong></div>
-<div><small>STATUS</small><strong id="personStatus">—</strong></div>
-<div><small>VOLWAARDIG SINDS</small><strong id="personPromoted">—</strong></div>
-<div><small>OBSERVATIES</small><strong id="personAvg">—</strong></div>
-</div>
-<p id="limited" class="muted" hidden>Een deel van de oudere registratie- of verwijderhistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
-</section>
-<section class="tiles">
-<div class="card"><h2>Verlof</h2><div id="leave"></div></div>
-<div class="card"><h2>Notities</h2><div id="notes"></div></div>
-<div class="card"><h2>Observaties</h2><div id="observations"></div></div>
-<div class="card"><h2>Sancties</h2><div id="sanctions"></div></div>
-<div class="card"><h2>Volwaardig Burger</h2><div id="promotions"></div></div>
-<div class="card"><h2>Persoonsgebonden rapport</h2><p class="muted">Dit rapport bundelt bovenstaande registraties met de bestaande centrale verlofhistoriek. De vastgelegde auteur en registratiedatum blijven behouden. Er wordt geen weekrapport aangemaakt.</p></div>
-<div class="card"><h2>Verwijderhistoriek</h2><p class="muted">Registraties worden niet definitief gewist: Korpsleiding en technisch beheer moeten een reden vastleggen. Burgerraad kan deze historiek lezen maar niets verwijderen.</p><div id="deletionLog"></div></div>
-</section>
-<section class="card" id="formCard" hidden>
-<h2>Nieuwe burgerregistratie</h2>
-<form id="entryForm">
-<div class="form-grid">
-<div><label for="kind">Soort registratie</label>
-<select id="kind" required>
-<option value="notitie">Notitie</option>
-<option value="observatie">Observatie</option>
-<option value="sanctie_mondeling">Mondelinge sanctie</option>
-<option value="sanctie_schriftelijk">Schriftelijke sanctie</option>
-<option value="volwaardig">Notitie: volwaardig Burger geworden</option>
-</select></div>
-<div><label for="eventDate">Datum van gebeurtenis</label><input type="date" id="eventDate" required></div>
-</div>
-<div id="scoreField" hidden><label for="score">Observatiescore (0 tot 10)</label>
-<input type="number" id="score" min="0" max="10" step="1" value="5"></div>
-<label for="details">Notitie of toelichting (apart van observaties)</label>
-<textarea id="details" minlength="3" maxlength="1600" required></textarea>
-<div class="controls"><button type="submit" id="save">Registratie definitief opslaan</button><span class="muted">Opslaan schrijft een auditregistratie naar Firebase; wijzigingen kunnen achteraf niet stilzwijgend worden aangepast.</span></div>
-<p id="saveStatus" class="muted" role="status" aria-live="polite">Vul de registratie in en klik op Opslaan.</p>
-</form></section>
+<article class="citizen-sheet" aria-label="Burgerpersoneelsdossier">
+  <section class="citizen-sheet-head">
+    <p class="citizen-overline">BELGIËPD · BURGERPERSONEELSDOSSIER</p>
+    <h1 id="personName">Burgerpersoneelsdossier</h1>
+    <div class="profile" aria-label="Algemene personeelsgegevens">
+      <div><small>DC / DISCORD-ID</small><strong id="personId">—</strong></div>
+      <div><small>RANG / ROL</small><strong id="personRole">—</strong></div>
+      <div><small>ROEPNUMMER</small><strong id="personCall">—</strong></div>
+      <div><small>STATUS</small><strong id="personStatus">—</strong></div>
+      <div><small>VOLWAARDIG SINDS</small><strong id="personPromoted">—</strong></div>
+      <div><small>OBSERVATIES</small><strong id="personAvg">—</strong></div>
+    </div>
+    <p id="limited" class="muted" hidden>Een deel van de oudere registratie- of verwijderhistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
+  </section>
+
+  <section class="citizen-registration noprint" id="formCard" hidden>
+    <div class="citizen-section-header">
+      <h2>Nieuwe burgerregistratie</h2>
+      <span class="muted">Notities, observaties en sancties blijven afzonderlijke registraties</span>
+    </div>
+    <form id="entryForm">
+      <div class="form-grid">
+        <div><label for="kind">Soort registratie</label>
+          <select id="kind" required>
+            <option value="notitie">Notitie</option>
+            <option value="observatie">Observatie</option>
+            <option value="sanctie_mondeling">Mondelinge sanctie</option>
+            <option value="sanctie_schriftelijk">Schriftelijke sanctie</option>
+            <option value="volwaardig">Notitie: volwaardig Burger geworden</option>
+          </select>
+        </div>
+        <div><label for="eventDate">Datum van gebeurtenis</label>
+          <input type="date" id="eventDate" required>
+        </div>
+      </div>
+      <div id="scoreField" hidden><label for="score">Observatiescore (0 tot 10)</label>
+        <input type="number" id="score" min="0" max="10" step="1" value="5">
+      </div>
+      <label for="details">Notitie of toelichting (apart van observaties)</label>
+      <textarea id="details" minlength="3" maxlength="1600" required></textarea>
+      <div class="citizen-savebar">
+        <button type="submit" id="citizenEntrySave">Registratie definitief opslaan</button>
+        <span class="muted">De registratie wordt in Firebase opgeslagen en ter controle opnieuw ingelezen.</span>
+      </div>
+      <p id="saveStatus" class="muted" role="status" aria-live="polite">Vul de registratie in en klik op Opslaan.</p>
+    </form>
+  </section>
+
+  <div class="citizen-section-list">
+    <section class="citizen-section" id="citizenLeave">
+      <h2>Verlof</h2><div id="leave"></div>
+    </section>
+    <section class="citizen-section" id="citizenNotes">
+      <h2>Notities</h2><div id="notes"></div>
+    </section>
+    <section class="citizen-section" id="citizenObservations">
+      <h2>Observaties</h2><div id="observations"></div>
+    </section>
+    <section class="citizen-section" id="citizenSanctions">
+      <h2>Sancties</h2><div id="sanctions"></div>
+    </section>
+    <section class="citizen-section" id="citizenPromotions">
+      <h2>Volwaardig Burger</h2><div id="promotions"></div>
+    </section>
+    <section class="citizen-section" id="citizenReport">
+      <h2>Persoonsgebonden rapport</h2>
+      <p class="muted">Dit rapport bevat bovenstaande registraties en de centrale verlofhistoriek, met auteur en registratiedatum. Er wordt geen weekrapport aangemaakt.</p>
+    </section>
+    <section class="citizen-section citizen-audit-section" id="citizenDeletionLog">
+      <h2>Verwijderhistoriek</h2>
+      <p class="muted">Alleen Korpsleiding en technisch beheer mogen met een verplichte reden een registratie uit het actieve dossier halen. De originele gegevens blijven bewaard; Burgerraad heeft geen verwijderrecht.</p>
+      <div id="deletionLog"></div>
+    </section>
+  </div>
+</article>
 </section>
 <dialog id="deleteDialog" aria-labelledby="deleteTitle">
 <form id="deleteForm">
@@ -280,7 +401,7 @@ $('deleteForm').onsubmit=async event=>{
 };
 $('entryForm').onsubmit=async event=>{
   event.preventDefault();if(!selectedId)return;
-  const targetId=selectedId,button=$('save');
+  const targetId=selectedId,button=$('citizenEntrySave');
   button.disabled=true;$('saveStatus').textContent='Bezig met opslaan in Firebase…';
   let savedId=null;
   try{
