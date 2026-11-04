@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {basicCallLevel,basicAuthor,basicEligibleTarget,
   basicObservationTargets,mayReadBasicInbox,basicObservationDenial,
-  basicObservationWritesEnabled} from '../src/basic-observation-policy.js';
+  basicObservationWritesEnabled,basicObservationAccessChecks} from '../src/basic-observation-policy.js';
+import {verifiedPoliceMembership} from '../src/portal-profile-mode.js';
 import {canReadServiceDossier} from '../src/service-dossier-access.js';
 
 const ranks=[
@@ -237,8 +238,10 @@ test('Een rol, roepnummer of andere dienst alleen geeft geen Politie-Basiskaderr
  assert.equal(basicAuthor({...actor,discordPoliceRank:null},ranks[3]),false);
  assert.equal(basicAuthor({...actor,discordPoliceRank:'middenkader'},ranks[3]),false);
  assert.equal(basicAuthor({...actor,portalTechnicalMode:true},ranks[3]),false);
+ // A verified Discord Basiskader role + a unique 4xx Police roster
+ // overrides stale over-broad portal role, ONLY for lower-rank observations.
  assert.equal(basicAuthor({...actor,departments:['brandweer','politie'],
-  departmentRoles:{brandweer:'korpsleiding',politie:'officierenkader'}},ranks[3]),false);
+  departmentRoles:{brandweer:'korpsleiding',politie:'officierenkader'}},ranks[3]),true);
  assert.equal(basicObservationTargets(actor,ranks.filter(p=>p!==ranks[3])).author,null);
  assert.equal(basicObservationTargets(actor,[...ranks,ranks[3]]).author,null);
 });
@@ -251,4 +254,53 @@ test('Registratie gebruikt de geverifieerde Politiefiche als auteur, niet de pri
  const policy=readFileSync(new URL('../src/basic-observation-policy.js',import.meta.url),'utf8');
  assert.match(policy,/verifiedBasicPoliceIdentity\(actor\)/);
  assert.match(policy,/uid==='discord:'\+actor\.discordId/);
+});
+
+test('Lid met Politierol + unieke 4xx-fiche krijgt Basiskader-observatie zonder losse kaderrol',()=>{
+ const id=ranks[3].personId;
+ const officer={uid:'discord:'+id,discordId:id,role:'korpsleiding',
+  departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'},
+  discordPoliceRank:null,discordPoliceMemberVerified:true};
+ const c=basicObservationTargets(officer,ranks);
+ assert.equal(c.author?.personId,id);
+ assert.deepEqual(c.targets.map(p=>p.call),['S150','S258','S302']);
+ assert.equal(mayReadBasicInbox(officer),false);
+ const checks=basicObservationAccessChecks(officer,ranks);
+ assert.equal(checks.policeRosterMatch,true);
+ assert.equal(checks.policeCadreRecognized,true);
+ assert.equal(checks.policeMembershipVerified,true);
+ assert.equal(checks.portalPoliceRole,null);
+ assert.equal(Object.hasOwn(checks,'discordId'),false);
+});
+test('Lidmaatschap mag geen hogere politierol, verouderde of verkeerde identiteit omzeilen',()=>{
+ const id=ranks[3].personId;
+ const actor={uid:'discord:'+id,discordId:id,role:'korpsleiding',
+  departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'},
+  discordPoliceRank:null,discordPoliceMemberVerified:true};
+ assert.equal(basicAuthor({...actor,discordPoliceMemberVerified:false},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,discordPoliceRank:'middenkader'},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,uid:'discord:555555555555555555'},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,portalTechnicalMode:true},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,departments:['brandweer','politie'],
+  departmentRoles:{brandweer:'korpsleiding',politie:'officierenkader'}},ranks[3]),false);
+ assert.equal(basicObservationTargets(actor,[...ranks,ranks[3]]).author,null);
+});
+test('Politie-Discordrol moet actueel en afkomstig zijn uit de juiste guild',()=>{
+ const now=Date.now(),guild='111111111111111111';
+ const member={guildId:guild,verifiedAt:now-2000,
+  roleIds:['1309532438053130326','1395115819020714105']};
+ assert.equal(verifiedPoliceMembership(member,guild,now),true);
+ assert.equal(verifiedPoliceMembership({...member,verifiedAt:now-16*60000},guild,now),false);
+ assert.equal(verifiedPoliceMembership(member,'999999999999999999',now),false);
+ assert.equal(verifiedPoliceMembership({...member,roleIds:['1395115819020714105']},guild,now),false);
+ assert.equal(verifiedPoliceMembership({...member,roleIds:['not-a-role']},guild,now),false);
+});
+test('Afwijzing toont alleen eigen beknopte toegangscontroles, zonder Discord-ID of autoriteitsuitbreiding',()=>{
+ const routes=readFileSync(new URL('../src/basic-observation-routes.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/registraties.html',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ assert.match(routes,/accessChecks:basicObservationAccessChecks\(req\.bpd,roster\)/);
+ assert.match(page,/id="accessChecks"/);
+ assert.match(page,/Recente Discord-politirol:/);
+ assert.match(server,/verifiedPoliceMembership\(discordMember,process\.env\.DISCORD_GUILD_ID\)/);
 });
