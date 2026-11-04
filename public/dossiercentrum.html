@@ -330,16 +330,34 @@ async function openDossier(r){
 async function load(){
   if(!auth?.currentUser){rows=[];page=1;closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();return message('Meld je aan met een bevoegd account om dossiers te bekijken.')}
   try{
-    const data=await request('/api/dossiercentrum/overview');
-    rows=data.rows||[];page=1;renderStats();
+    // Dienstgebonden burgerdossiers staan achter een afzonderlijk,
+    // server-side geverifieerd Burgerraad-recht; geen client-side rolafleiding.
+    const [serviceResult,citizenResult]=await Promise.allSettled([
+      request('/api/dossiercentrum/overview'),
+      request('/api/citizen-staff/overview')
+    ]);
+    if(serviceResult.status!=='fulfilled'&&citizenResult.status!=='fulfilled')
+      throw serviceResult.reason;
+    const service=serviceResult.status==='fulfilled'?serviceResult.value:null;
+    const citizen=citizenResult.status==='fulfilled'?citizenResult.value:null;
+    const citizenRows=(citizen?.rows||[]).map(p=>({
+      ...p,dept:'burger',personnel:true,application:false,canOpen:true
+    }));
+    rows=[...(service?.rows||[]),...citizenRows];
+    page=1;renderStats();
     const selected=$('department').value;
     $('department').replaceChildren(node('option','Alle toegelaten diensten'));
     $('department').firstChild.value='all';
-    (data.departments||[]).forEach(d=>{const op=node('option',departments[d]||d);op.value=d;$('department').append(op)});
+    const allowed=new Set(service?.departments||[]);
+    if(citizen)allowed.add('burger');
+    for(const d of allowed){
+      const op=node('option',departments[d]||d);op.value=d;$('department').append(op);
+    }
     $('department').value=[...$('department').options].some(o=>o.value===selected)?selected:'all';
     synchronizeDossierSort($('department').value);
     closeDossier();render();
-    message(rows.length+' personeelsleden in het overzicht. Dossierrechten worden per persoon gecontroleerd.'+(data.sourceStale?' De personeelsbron gebruikt tijdelijk gecachete gegevens.':''));
+    message(rows.length+' personeelsleden in het overzicht. Dossierrechten worden per persoon gecontroleerd.'+
+      (service?.sourceStale?' De personeelsbron gebruikt tijdelijk gecachete gegevens.':''));
   }catch(e){rows=[];closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();message(e.message,true)}
 }
 function changedFilters(){page=1;render()}
