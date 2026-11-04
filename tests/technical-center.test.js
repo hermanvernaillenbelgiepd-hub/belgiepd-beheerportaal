@@ -24,7 +24,7 @@ const body={expectedRevision:0,observationArchiveEnabled:true,
  observationArchiveDays:45,reason:'Aanpassing na controle officierenkader'};
 function fakeFirestore(){
  const docs=new Map(),events=[];
- const settingsDoc={id:'automation'};
+ const settingsDoc={id:'automation',get:async()=>({data:()=>docs.get('automation')})};
  const collection=name=>({
   doc(id){
    if(name==='bpd_portal_technical_settings'){
