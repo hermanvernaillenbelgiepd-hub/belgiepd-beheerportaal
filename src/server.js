@@ -17,7 +17,7 @@ import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.
 import { ALLOWED_ROLES } from './registrations.js';
 import { installRegistrationRoutes } from './registration-routes.js';
 import {installBasicObservationRoutes} from './basic-observation-routes.js';
-import {basicObservationTargets} from './basic-observation-policy.js';
+import {basicObservationTargets,mayReadBasicInbox} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installActivityTelemetryRoutes} from './activity-telemetry-routes.js';
@@ -653,6 +653,9 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     req.bpd.dossierManageDepartments=scope.manageDepartments;
     req.bpd.dossierFullDepartments=scope.fullDepartments;
     req.bpd.dossierTester=scope.tester;
+    // Read only after dossier scopes are resolved; a foreign service-leader
+    // role must never promote the holder's Police Basiskader permissions.
+    req.bpd.basicObservationCanReview=mayReadBasicInbox(req.bpd);
     // A fresh, guild-bound role snapshot for each fire subject. A missing role
     // snapshot can never be treated as ordinary Brandweer membership.
     req.bpd.fireSubjectRoleSets=new Map();
@@ -797,7 +800,8 @@ app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
       req.bpd.dossierNativeDepartments?.includes('ambulance')===true&&
       req.bpd.dossierAllowedDepartments?.includes('ambulance')===true,
     allowedDepartments:req.bpd.dossierAllowedDepartments||[],
-    basicObservationCanSubmit:req.bpd.basicObservationCanSubmit===true});
+    basicObservationCanSubmit:req.bpd.basicObservationCanSubmit===true,
+    basicObservationCanReview:req.bpd.basicObservationCanReview===true});
 });
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
