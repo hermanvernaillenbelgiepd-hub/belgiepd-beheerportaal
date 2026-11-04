@@ -42,6 +42,8 @@ export function setupTechnicalServiceEditors({api,notice,$}){
  const status=(message,error=false)=>report($('serviceMessage'),message,error);
  const setBusy=value=>{
    busy=value;
+   $('serviceDept').disabled=value;
+   $('resetLinks').disabled=value||!canSaveLinks();
    $('saveLinks').disabled=value||!canSaveLinks();
    $('saveRoster').disabled=value||!canSaveLayout();
    $('addLink').disabled=value||!canSaveLinks();
@@ -188,16 +190,17 @@ export function setupTechnicalServiceEditors({api,notice,$}){
  };
  $('saveLinks').onclick=async()=>{
    if(!canSaveLinks()||busy)return;
+   const dept=selectedDept();
    const reason=$('linkReason').value.trim();
    if(reason.length<8||reason.length>300)
      return status('Motivering van minimaal 8 en maximaal 300 tekens verplicht.',true);
    if(mappings.links.some(x=>x.roleId&&!ID.test(x.roleId)))
      return status('Er is een ongeldige Discord-rol-ID geselecteerd.',true);
    if(!confirm('De '+mappings.links.length+' specialisatiekoppelingen van '+
-     selectedDept()+' bewaren? De wijziging wordt centraal gelogd.'))return;
+     dept+' bewaren? De wijziging wordt centraal gelogd.'))return;
    setBusy(true);
    try{
-     const response=await api('/api/specialty-links/'+selectedDept(),'PUT',{
+     const response=await api('/api/specialty-links/'+dept,'PUT',{
        expectedRevision:mappings.revision,links:mappings.links,reason
      });
      if(response.saved){
@@ -230,7 +233,7 @@ export function setupTechnicalServiceEditors({api,notice,$}){
  };
  $('saveRoster').onclick=async()=>{
    if(!canSaveLayout()||busy)return;
-   const config=currentLayout();
+   const dept=selectedDept(),config=currentLayout();
    if(!config)return;
    const fontSize=Number($('rosterSize').value);
    const fontFamily=$('rosterFont').value;
@@ -252,12 +255,12 @@ export function setupTechnicalServiceEditors({api,notice,$}){
      customSpecialties:config.customSpecialties
    })===serial({fontSize,fontFamily,customSpecialties:workingCustom}))
      return status('Geen wijzigingen om te bewaren.');
-   if(!confirm('Dienstinstellingen voor '+selectedDept()+
+   if(!confirm('Dienstinstellingen voor '+dept+
      ' bewaren? De personeelslijst en nieuwe specialisaties worden bijgewerkt.'))return;
    setBusy(true);
    try{
-     const updated=await api('/api/roster-columns/'+selectedDept(),'PUT',request);
-     rosters.departments[selectedDept()]=updated.config;
+     const updated=await api('/api/roster-columns/'+dept,'PUT',request);
+     rosters.departments[dept]=updated.config;
      $('layoutReason').value='';
      renderLayout();
      status('Dienstinstellingen opgeslagen en gelogd. De personeelslijst gebruikt de nieuwe weergave.');
