@@ -1587,12 +1587,12 @@ const ROSTER_FONTS=Object.freeze({
  mono:'Consolas,"Courier New",monospace'
 });
 const ROSTER_RESIZE_LIMITS=Object.freeze({
- call:[60,200],grade:[75,250],rank:[105,380],name:[120,430],
- series:[95,240],status:[95,240],specialty:[60,300],
+ call:[36,200],grade:[54,250],rank:[105,380],name:[120,430],
+ series:[40,240],status:[48,240],specialty:[60,300],
  summary:[110,400],file:[65,180],discord:[175,360]
 });
 const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
-  call:78,grade:116,rank:164,name:190,series:108,status:108,
+  call:42,grade:68,rank:164,name:190,series:52,status:58,
   specialty:82,summary:180,file:76,discord:224
 });
 // Resize only modifies this browser's preview. Server-side permissions and
@@ -1738,7 +1738,7 @@ function render(){
   const line=document.createElement('tr');
   const titles=dept==='depannage'?
     ['CALL','Functiegroep','Functie','Personeelslid','Reeks','Status']:
-    ['CALL','Rangkenteken','Naam van rang','Personeelslid','Reeks','Status'];
+    ['CALL','Rangteken','Naam van rang','Personeelslid','Reeks','Status'];
   for(const title of titles){
     const th=document.createElement('th');th.textContent=title;line.append(th);
   }
@@ -1752,7 +1752,7 @@ function render(){
     else pict.append(specialtyMark(label));
     pict.setAttribute('aria-hidden','true');
     const name=document.createElement('span');name.className='specialty-col-label';
-    name.textContent=dept==='depannage'?depannageSpecialtyMeta(label).label:label;
+    name.textContent=label==='INTERVENTIEDIENST'?'INTERVENTIE':dept==='depannage'?depannageSpecialtyMeta(label).label:label;
     const neutral=BPDPersonnelVisuals.specialtyBannerImage(label,dept);
     if(neutral){
       const image=document.createElement('img');image.src=neutral;
@@ -1997,8 +1997,8 @@ function rosterEditorRender(){
   const name=document.createElement('span');name.textContent=caption;
   const input=document.createElement('input');input.type='number';
   const limits={
-   call:[60,200],grade:[75,250],rank:[105,380],name:[120,430],
-   series:[95,240],status:[95,240],specialty:[60,220],
+   call:[36,200],grade:[54,250],rank:[105,380],name:[120,430],
+   series:[40,240],status:[48,240],specialty:[60,220],
    summary:[110,400],file:[65,180],discord:[175,360]
   }[key];
   input.min=limits[0];input.max=limits[1];input.step='1';input.value=widths[key];
