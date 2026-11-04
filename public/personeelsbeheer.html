@@ -2095,6 +2095,12 @@ function rosterPatchShowCurrent(){
  const preview=$('rosterPatchPreview'),status=$('rosterPatchCurrent');
  preview.hidden=true;preview.removeAttribute('src');
  if(!chosen){status.textContent='Geen specialisatie geselecteerd.';return;}
+ const selected=rosterPatchLibraryItems.find(x=>x.key===$('rosterPatchLibrary').value);
+ if(selected&&selected.department===rosterEditorDepartment){
+  preview.src=selected.imageUrl;preview.hidden=false;
+  status.textContent='Geselecteerd uit beeldbibliotheek: '+(selected.label||selected.code)+' (nog niet gekoppeld).';
+  return;
+ }
  const visual=BPDPersonnelVisuals;
  const descriptor=typeof visual.specialtyBannerDisplay==='function'
    ?visual.specialtyBannerDisplay(chosen,rosterEditorDepartment):null;
@@ -2102,14 +2108,15 @@ function rosterPatchShowCurrent(){
    (descriptor?null:visual.specialtyBannerImage(chosen,rosterEditorDepartment));
  if(path){preview.src=path;preview.hidden=false;status.textContent='Huidige patch van '+chosen+'.';}
  else status.textContent=(descriptor?.type==='sprite'?'Standaardpatch':'Nog geen specifieke patch')+
-   ' voor '+chosen+'. Upload een WebP om deze te vervangen.';
+   ' voor '+chosen+'. Kies een bibliotheekafbeelding of upload WebP.';
 }
 async function rosterPatchSave(){
  const label=$('rosterPatchSpecialty').value,dept=rosterEditorDepartment;
+ const sourceArtworkKey=$('rosterPatchLibrary').value;
  const file=$('rosterPatchImage').files[0],reason=$('rosterPatchReason').value.trim();
  const button=$('rosterPatchSave');
- if(!label||!file){rosterEditorFeedback('Kies een specialisatie en een WebP-patch.',true);return;}
- if(file.type!=='image/webp'||file.size>140*1024||file.size<30){
+ if(!label||(!file&&!sourceArtworkKey)){rosterEditorFeedback('Kies een specialisatie en een bibliotheekpatch of upload WebP.',true);return;}
+ if(!sourceArtworkKey&&file&&(file.type!=='image/webp'||file.size>140*1024||file.size<30)){
   rosterEditorFeedback('Gebruik een geldige WebP-patch van maximaal 140 KB.',true);return;
  }
  if(reason.length<8||reason.length>300){
@@ -2121,21 +2128,33 @@ async function rosterPatchSave(){
  if(!known.includes(label)){rosterEditorFeedback('Deze specialisatie bestaat niet meer. Vernieuw het overzicht.',true);return;}
  button.disabled=true;
  try{
-  const dataUrl=await new Promise((resolve,reject)=>{
+  const code=BPDPersonnelVisuals.specialtyArtworkCode(label);
+  if(sourceArtworkKey){
+   const asset=rosterPatchLibraryItems.find(x=>x.key===sourceArtworkKey);
+   if(!asset||asset.department!==dept||asset.sourceArtworkKey||!['specialty','patch'].includes(asset.kind))
+    throw Error('De gekozen bibliotheekafbeelding is niet meer beschikbaar.');
+   await request('/api/role-artwork/specialty-header-link',{method:'PUT',body:{
+    department:dept,code,label,sourceArtworkKey,reason
+   }});
+  }else{
+   const dataUrl=await new Promise((resolve,reject)=>{
    const reader=new FileReader();
    reader.onload=()=>resolve(reader.result);
    reader.onerror=()=>reject(Error('Afbeelding kon niet worden gelezen'));
    reader.readAsDataURL(file);
   });
   await request('/api/role-artwork/personnel',{method:'PUT',body:{
-   kind:'patch',department:dept,code:BPDPersonnelVisuals.specialtyArtworkCode(label),
-   label,reason,dataUrl
+   kind:'patch',department:dept,code,label,reason,dataUrl
   }});
+  }
   const manifest=await request('/api/role-artwork/manifest');
-  BPDPersonnelVisuals.setArtworkManifest(manifest.artworks);
+  rosterPatchLibraryItems=Array.isArray(manifest.artworks)?manifest.artworks:[];
+  BPDPersonnelVisuals.setArtworkManifest(rosterPatchLibraryItems);
   $('rosterPatchImage').value='';$('rosterPatchReason').value='';
+  $('rosterPatchLibrary').value='';
+  rosterPatchLibraryChoices();
   render();rosterPatchShowCurrent();
-  rosterEditorFeedback('Patch voor '+label+' opgeslagen in de beeldbibliotheek en vernieuwd in de personeelslijst.');
+  rosterEditorFeedback('Patch voor '+label+' gekoppeld en vernieuwd in de personeelslijst.');
  }catch(error){rosterEditorFeedback('Patch niet opgeslagen: '+error.message,true)}
  finally{button.disabled=false}
 }
@@ -2161,6 +2180,7 @@ function initializeRosterEditor(){
   };
   selector.onchange=()=>{
    rosterEditorDepartment=selector.value;rosterEditorRender();
+   void rosterPatchLoadLibrary();
   };
   $('rosterAddSpecialty').onclick=()=>{
    const cfg=rosterConfigs[rosterEditorDepartment];
@@ -2190,10 +2210,18 @@ function initializeRosterEditor(){
    rosterEditorRender();render();
    rosterEditorFeedback('Kolom toegevoegd als voorbeeld. Klik op Bewaren.');
   };
-  $('rosterPatchSpecialty').onchange=rosterPatchShowCurrent;
+  $('rosterPatchSpecialty').onchange=()=>{
+   $('rosterPatchLibrary').value='';
+   rosterPatchLibraryChoices();rosterPatchShowCurrent();
+  };
+  $('rosterPatchLibrary').onchange=()=>{
+   if($('rosterPatchLibrary').value)$('rosterPatchImage').value='';
+   rosterPatchShowCurrent();
+  };
   $('rosterPatchImage').onchange=()=>{
    const file=$('rosterPatchImage').files[0];
    if(!file){rosterPatchShowCurrent();return;}
+   $('rosterPatchLibrary').value='';
    if(file.type!=='image/webp'||file.size>140*1024||file.size<30){
     $('rosterPatchPreview').hidden=true;
     rosterEditorFeedback('Gebruik WebP van maximaal 140 KB.',true);return;
@@ -2208,6 +2236,7 @@ function initializeRosterEditor(){
    reader.readAsDataURL(file);
   };
   $('rosterPatchSave').onclick=rosterPatchSave;
+  void rosterPatchLoadLibrary();
   $('rosterResetConfig').onclick=()=>load().catch(e=>rosterEditorFeedback(e.message,true));
   $('rosterSaveConfig').onclick=async()=>{
    const cfg=rosterConfigs[rosterEditorDepartment],dept=rosterEditorDepartment;
