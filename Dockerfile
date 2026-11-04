@@ -11,7 +11,7 @@ COPY public ./public
 COPY tests ./tests
 COPY Dockerfile ./Dockerfile
 # Identity transfers modify dossier ownership: release only after policy checks pass.
-RUN node --test tests/dc-id-transfer.test.js tests/basic-observations.test.js tests/document-center.test.js tests/document-folders-links.test.js tests/activity-roster-order.test.js tests/officer-notifications.test.js tests/staff-activity-followup.test.js
+RUN node --test tests/dc-id-transfer.test.js tests/basic-observations.test.js tests/document-center.test.js tests/document-folders-links.test.js tests/activity-roster-order.test.js tests/officer-notifications.test.js tests/staff-activity-followup.test.js tests/auto-police-basic-access.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
