@@ -159,7 +159,7 @@ export function installPersonnelDecorationRoutes(app,{requireUser,getSnapshot}){
   try{
    const [snap,catalog]=await Promise.all([readDoc(req.decorationSubject).get(),loadCatalog()]);
    res.set('Cache-Control','private, no-store');
-   return res.json({canManage:true,catalog:[...DECORATION_CATALOG,...catalog.custom.values()],
+   return res.json({canManage:true,catalog:[...catalog.all.values()],
     entries:manageDecorations(snap.get('entries')||[],brusselsToday(),catalog.extras)});
   }catch(error){return failure(res,error)}
  });
