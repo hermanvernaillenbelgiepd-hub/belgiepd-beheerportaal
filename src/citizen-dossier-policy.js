@@ -1,3 +1,5 @@
+import {roleForDepartment} from './leave-policy.js';
+
 // Burgerpersoneelsdossiers: afzonderlijke dienstscope, nooit gekoppeld aan
 // de vroegere (uitgeschakelde) burger-sollicitatiedossiers.
 export const CITIZEN_DOSSIER_COLLECTION='bpd_citizen_staff_dossiers';
@@ -28,14 +30,31 @@ export function verifiedCitizenCouncil(actor,member,guildId,now=Date.now()){
     actor.uid!=='discord:'+actor.discordId)return false;
   return Boolean(roleSnapshot(member,guildId,now,15*60*1000)?.has(CITIZEN_ROLES.burgerraad));
 }
-export function canAccessCitizenDossier(actor,councilVerified){
-  const technical=actor?.portalTechnicalMode===true&&
+// Technisch beheer krijgt alleen toegang via de afzonderlijke, getekende
+// en door de server gecontroleerde technische profielmodus.
+function verifiedCitizenTechnical(actor){
+  return actor?.portalTechnicalMode===true&&
     actor?.profileTechnicalAvailable===true&&
     validCitizenId(actor.discordId)&&actor.uid==='discord:'+actor.discordId;
-  return councilVerified===true||technical;
+}
+
+// Korpsleiding mag burgerdossiers lezen na goedgekeurde Politie-dienstscope
+// EN een server-geverifieerde Discord-Korpsleidingrol of geauditeerde uitzondering.
+// Een willekeurig korpsleidinglabel, 9xx-callsign of bestuurslabel volstaat niet.
+export function verifiedCitizenCorpsReader(actor){
+  return Boolean(validCitizenId(actor?.discordId)&&
+    actor.uid==='discord:'+actor.discordId&&
+    actor.role==='korpsleiding'&&actor.departments?.includes('politie')&&
+    roleForDepartment(actor,'politie')==='korpsleiding'&&
+    (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true));
+}
+export function canAccessCitizenDossier(actor,councilVerified){
+  return councilVerified===true||verifiedCitizenCorpsReader(actor)||
+    verifiedCitizenTechnical(actor);
 }
 export function canWriteCitizenDossier(actor,councilVerified,subjectId){
-  return canAccessCitizenDossier(actor,councilVerified)&&
+  // Korpsleiding verkrijgt alleen inzage, nooit sancties of notities schrijven.
+  return (councilVerified===true||verifiedCitizenTechnical(actor))&&
     validCitizenId(subjectId)&&subjectId!==actor?.discordId;
 }
 
