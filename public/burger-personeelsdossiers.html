@@ -123,7 +123,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 </main>
 <script type="module">
 const $=id=>document.getElementById(id);
-let auth,authMod,portalSetup,selectedId=null,rows=[];
+let auth,authMod,portalSetup,selectedId=null,rows=[],deleteTarget=null;
 const set=(id,value)=>{$(id).textContent=value==null||value===''?'—':String(value)};
 const mark=(msg,error=false)=>{set('message',msg);$('message').className=error?'error':'muted'};
 const fmt=iso=>iso?new Date(iso).toLocaleString('nl-BE'):'—';
@@ -143,7 +143,7 @@ const line=(container,title,details,meta)=>{
   const h=document.createElement('strong');h.textContent=title;node.append(h);
   if(details){const p=document.createElement('p');p.textContent=details;node.append(p)}
   if(meta){const m=document.createElement('small');m.textContent=meta;node.append(m)}
-  container.append(node);
+  container.append(node);return node;
 };
 function fill(containerId,items,render){
   const container=$(containerId);container.replaceChildren();
@@ -172,19 +172,33 @@ function renderPerson(data){
   set('personPromoted',data.volwaardigDate);
   set('personAvg',data.observation.count?String(data.observation.average)+'/10 ('+
     data.observation.count+')':'Geen');
-  $('limited').hidden=!(data.entriesLimited||data.leaveLimited);
+  $('limited').hidden=!(data.entriesLimited||data.leaveLimited||data.deletionLogLimited);
   fill('leave',data.leave,(root,l)=>line(root,
     l.startDate+' t/m '+l.endDate,l.status+(l.manual?' · manueel':''),fmt(l.createdAt)));
-  const entries=data.entries||[];
+  const entries=data.entries||[],canDelete=data.canDelete===true;
   const meta=e=>e.eventDate+' · '+fmt(e.createdAt)+' · auteur '+(e.byDiscordId||'onbekend');
+  const renderRegistration=(root,e,title)=>{
+    const record=line(root,title,e.details,meta(e));
+    if(canDelete){
+      const remove=document.createElement('button');
+      remove.type='button';remove.className='delete-entry';remove.textContent='Registratie verwijderen';
+      remove.setAttribute('aria-label','Verwijder '+title.toLocaleLowerCase('nl-BE'));
+      remove.onclick=()=>beginDelete(p.discordId,e,title);
+      record.append(remove);
+    }
+  };
   fill('notes',entries.filter(e=>e.kind==='notitie'),(root,e)=>
-    line(root,'Notitie',e.details,meta(e)));
+    renderRegistration(root,e,'Notitie'));
   fill('observations',entries.filter(e=>e.kind==='observatie'),(root,e)=>
-    line(root,'Observatie · '+e.score+'/10',e.details,meta(e)));
+    renderRegistration(root,e,'Observatie · '+e.score+'/10'));
   fill('sanctions',entries.filter(e=>e.kind.startsWith('sanctie_')),(root,e)=>
-    line(root,e.kind==='sanctie_mondeling'?'Mondelinge sanctie':'Schriftelijke sanctie',e.details,meta(e)));
+    renderRegistration(root,e,e.kind==='sanctie_mondeling'?'Mondelinge sanctie':'Schriftelijke sanctie'));
   fill('promotions',entries.filter(e=>e.kind==='volwaardig'),(root,e)=>
-    line(root,'Volwaardig sinds '+e.eventDate,e.details,meta(e)));
+    renderRegistration(root,e,'Volwaardig sinds '+e.eventDate));
+  fill('deletionLog',data.deletionLog||[],(root,e)=>line(root,
+    'Verwijderd · '+(e.kind||'registratie')+' · '+(e.eventDate||'datum onbekend'),
+    'Reden: '+e.reason,
+    fmt(e.at)+' · verwijderd door '+(e.byDiscordId||'onbekend')));
   const writable=data.canWrite===true;
   $('formCard').hidden=!writable;
   $('quickAdd').hidden=!writable;
@@ -215,7 +229,8 @@ async function load(){
 }
 $('kind').onchange=()=>{$('scoreField').hidden=$('kind').value!=='observatie'};
 $('search').oninput=renderRoster;
-$('back').onclick=()=>{selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
+$('back').onclick=()=>{if($('deleteDialog').open)$('deleteDialog').close();deleteTarget=null;
+  selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
   history.replaceState(null,'',location.pathname);mark('Burgerpersoneelsdossiers')};
 $('refresh').onclick=load;
 $('quickAdd').onclick=()=>$('formCard').scrollIntoView({behavior:'smooth',block:'start'});
