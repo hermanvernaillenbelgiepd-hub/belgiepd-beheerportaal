@@ -78,6 +78,7 @@ import {installDossierCenterRoutes} from './dossier-center-routes.js';
 import {installOrganogramPlacementRoutes} from './organogram-placement-routes.js';
 import {installPersonnelDecorationRoutes} from './personnel-decoration-routes.js';
 import {installFireDossierRoutes} from './fire-dossier-routes.js';
+import {installCitizenDossierRoutes} from './citizen-dossier-routes.js';
 import {installDossierGrantRoutes} from './dossier-grant-routes.js';
 import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,
   verifyBoardDiscordRole} from './dossier-grants.js';
@@ -106,7 +107,8 @@ app.get('/personeelslijst.html',(req,res,next)=>{
  res.redirect(302,'/personeelsbeheer.html');
 });
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
-app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
+app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Oude burgerdossiers zijn buiten gebruik'}));
+app.use('/api/citizen-dossiers',express.json({limit:'12kb',strict:true}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
 // Basiskaderobservaties have their OWN POST route. Without a JSON parser,
 // req.body is undefined and every selected Discord subject is rejected.
@@ -877,6 +879,8 @@ installDossierCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installOrganogramPlacementRoutes(app,{requireUser,getSnapshot});
 installPersonnelDecorationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installFireDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+// Dedicated BIO/Burger dossiers: Burgerraad-only, independent of emergency service permissions.
+installCitizenDossierRoutes(app,{getSnapshot});
 // TO duty board uses MAIN Firestore data and the existing authenticated actor.
 const getVerifiedTemporaryTORequest=async discordId=>{
   if(!/^\d{15,22}$/.test(discordId))return null;

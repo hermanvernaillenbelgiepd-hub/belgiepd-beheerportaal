@@ -77,6 +77,7 @@
     activity:{href:'/activiteitscentrum.html',icon:'◷',label:'Activiteitscentrum',short:'Activiteit'},
     organogram:{href:'/organogram-hierarchie.html',icon:'🌳',label:'Organogram',short:'Organogram'},
     dossiers:{href:'/dossiercentrum.html',icon:'▣',label:'Dossiercentrum',short:'Dossiers'},
+    citizens:{href:'/burgerdossiers.html',icon:'♙',label:'Burgerdossiers',short:'Burgers'},
     education:{href:'/opleidingscentrum.html',icon:'🎓',label:'Opleidingscentrum',short:'Opleiding'},
     documents:{href:'/documentencentrum.html',icon:'📚',label:'Documentencentrum',short:'Documenten'},
     calendar:{href:'/opleidingskalender.html',icon:'📅',label:'Multidisciplinaire agenda',short:'Agenda'},
@@ -165,6 +166,35 @@
     update();
     const observer=new MutationObserver(update);
     observer.observe(sidebar,{attributes:true,attributeFilter:['hidden'],subtree:true});
+    // The home page uses its own role-specific menus. Reveal Burgerdossiers
+    // only after a server-authenticated, freshly verified Burgerraad check.
+    (async()=>{
+      try{
+        const firebase=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+        for(let n=0;!firebase.getApps().length&&n<22;n++)
+          await new Promise(resolve=>setTimeout(resolve,350));
+        if(!firebase.getApps().length)return;
+        const authSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+        let sequence=0;
+        authSdk.onAuthStateChanged(authSdk.getAuth(firebase.getApps()[0]),async user=>{
+          const turn=++sequence;
+          const reveal=allowed=>{
+            for(const link of document.querySelectorAll('.citizen-dossier-entry'))
+              link.hidden=!allowed;
+            update();
+          };
+          reveal(false);
+          if(!user)return;
+          try{
+            const token=await user.getIdToken();
+            const response=await fetch('/api/citizen-dossiers/access',{
+              cache:'no-store',headers:{Authorization:'Bearer '+token}});
+            if(turn!==sequence)return;
+            reveal(response.ok&&(await response.json()).canOpen===true);
+          }catch{if(turn===sequence)reveal(false)}
+        });
+      }catch{/* Navigation remains hidden if the role cannot be confirmed. */}
+    })();
   }
   function addSmallBack(){
     const header=document.querySelector('body > header');
@@ -254,19 +284,24 @@
         if(!user){show(['home','personnel','organogram','profile']);return}
         try{
           const token=await user.getIdToken();
-          const [context,member]=await Promise.all([
+          const [context,member,citizenAccess]=await Promise.all([
             fetch('/api/dashboard/admin-visibility',{cache:'no-store',
               headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
             fetch('/api/member/dashboard',{cache:'no-store',
+              headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
+            fetch('/api/citizen-dossiers/access',{cache:'no-store',
               headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null)
           ]);
           if(turn!==request)return;
+          // Only the server's verified Burgerraad role can expose this navigation item.
+          const showAuthorized=pages=>show(citizenAccess?.canOpen===true?
+            [...new Set([...pages,'citizens'])]:pages);
           const policeObservations=context?.basicObservationCanSubmit===true||
             context?.basicObservationCanReview===true;
           if(context?.dashboardProfile==='brandweer-zone'){
             const pages=['home','personnel','activity','organogram','dossiers','education','documents','calendar','reports','leave','notifications'];
             if(policeObservations)pages.push('observations');
-            show(pages);return;
+            showAuthorized(pages);return;
           }
           if(context?.dashboardProfile==='ambulance-azls'){
             const pages=['home','personnel','organogram'];
@@ -275,19 +310,19 @@
             if(context.ambulanceReportVerified===true)pages.push('reports');
             pages.push('leave','notifications');
             if(policeObservations)pages.push('observations');
-            show(pages);return;
+            showAuthorized(pages);return;
           }
           if(context?.showAdvancedDashboard===true){
             const pages=STAFF.filter(item=>item==='center'?
               context.technicalCenterVisible===true:item!=='admin'||context.visible===true);
-            show(pages);return;
+            showAuthorized(pages);return;
           }
           const basic=[...SAFE];
           if(context||member?.mode==='member')basic.push('documents');
           if(policeObservations)basic.push('observations');
           if(member?.mode==='member'&&member?.canUseSelfService===true)
             basic.push('notifications');
-          show(basic);
+          showAuthorized(basic);
         }catch{if(turn===request)show(SAFE)}
       });
     }catch{/* Navigation is non-authoritative; keep public links only. */}
