@@ -77,6 +77,7 @@
     activity:{href:'/activiteitscentrum.html',icon:'◷',label:'Activiteitscentrum',short:'Activiteit'},
     organogram:{href:'/organogram-hierarchie.html',icon:'🌳',label:'Organogram',short:'Organogram'},
     dossiers:{href:'/dossiercentrum.html',icon:'▣',label:'Dossiercentrum',short:'Dossiers'},
+    citizen:{href:'/burger-personeelsdossiers.html',icon:'▤',label:'Burgerpersoneelsdossiers',short:'Burgerdossiers'},
     education:{href:'/opleidingscentrum.html',icon:'🎓',label:'Opleidingscentrum',short:'Opleiding'},
     documents:{href:'/documentencentrum.html',icon:'📚',label:'Documentencentrum',short:'Documenten'},
     calendar:{href:'/opleidingskalender.html',icon:'📅',label:'Multidisciplinaire agenda',short:'Agenda'},
@@ -251,22 +252,34 @@
       let request=0;
       authSdk.onAuthStateChanged(authSdk.getAuth(apps[0]),async user=>{
         const turn=++request;
+        document.getElementById('bpdCitizenDossiersLink')?.remove();
         if(!user){show(['home','personnel','organogram','profile']);return}
         try{
           const token=await user.getIdToken();
-          const [context,member]=await Promise.all([
+          const [context,member,citizen]=await Promise.all([
             fetch('/api/dashboard/admin-visibility',{cache:'no-store',
               headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
             fetch('/api/member/dashboard',{cache:'no-store',
+              headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
+            fetch('/api/citizen-staff/access',{cache:'no-store',
               headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null)
           ]);
           if(turn!==request)return;
+          const citizenGranted=citizen?.canAccess===true;
+          const showVerified=pages=>show(citizenGranted?[...pages,'citizen']:pages);
+          if(citizenGranted&&here==='/dossiercentrum.html'){
+            const nav=document.querySelector('body > header nav');
+            if(nav){const link=document.createElement('a');
+              link.id='bpdCitizenDossiersLink';link.href='/burger-personeelsdossiers.html';
+              link.textContent='Burgerdossiers';nav.insertBefore(link,nav.querySelector('#login'));
+            }
+          }
           const policeObservations=context?.basicObservationCanSubmit===true||
             context?.basicObservationCanReview===true;
           if(context?.dashboardProfile==='brandweer-zone'){
             const pages=['home','personnel','activity','organogram','dossiers','education','documents','calendar','reports','leave','notifications'];
             if(policeObservations)pages.push('observations');
-            show(pages);return;
+            showVerified(pages);return;
           }
           if(context?.dashboardProfile==='ambulance-azls'){
             const pages=['home','personnel','organogram'];
@@ -275,19 +288,19 @@
             if(context.ambulanceReportVerified===true)pages.push('reports');
             pages.push('leave','notifications');
             if(policeObservations)pages.push('observations');
-            show(pages);return;
+            showVerified(pages);return;
           }
           if(context?.showAdvancedDashboard===true){
             const pages=STAFF.filter(item=>item==='center'?
               context.technicalCenterVisible===true:item!=='admin'||context.visible===true);
-            show(pages);return;
+            showVerified(pages);return;
           }
           const basic=[...SAFE];
           if(context||member?.mode==='member')basic.push('documents');
           if(policeObservations)basic.push('observations');
           if(member?.mode==='member'&&member?.canUseSelfService===true)
             basic.push('notifications');
-          show(basic);
+          showVerified(basic);
         }catch{if(turn===request)show(SAFE)}
       });
     }catch{/* Navigation is non-authoritative; keep public links only. */}
