@@ -53,7 +53,7 @@ test('Gescheiden Actief- en Archief-overzichten met bestaande rangbeperkingen',(
  const src=source('src/basic-observation-routes.js');
  const ui=source('public/registraties.html');
  assert.match(src,/view=String\(req\.query\.view\|\|'active'\)/);
- assert.match(src,/!\\['active','archived'\\]\.includes\(view\)/);
+ assert.ok(src.includes("!['active','archived'].includes(view)"));
  assert.match(src,/\(e\.archivedAt!=null\)!==\(view==='archived'\)/);
  assert.match(src,/archivedAt:iso\(e\.archivedAt\)/);
  assert.match(src,/nextCursor:snapshots\.docs\.length===160/);
@@ -61,6 +61,6 @@ test('Gescheiden Actief- en Archief-overzichten met bestaande rangbeperkingen',(
  assert.match(ui,/value="active">Actieve observaties/);
  assert.match(ui,/value="archived">Archief/);
  assert.match(ui,/row\.archivedAt\?'Terugzetten naar actief':'Archiveren'/);
- assert.match(ui,/api\('\\/api\\/basic-observations\\/'.+encodeURIComponent\(row\.id\)\+'\\/archive'/);
+ assert.ok(ui.includes("api('/api/basic-observations/'+encodeURIComponent(row.id)+'/archive'"));
  assert.match(ui,/await loadInbox\(\)/);
 });
