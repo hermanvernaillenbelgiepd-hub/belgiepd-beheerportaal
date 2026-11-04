@@ -129,7 +129,7 @@
     for(const link of sidebar.querySelectorAll('nav a[href]')){
       if(link.querySelector('.bpd-home-side-icon'))continue;
       const raw=String(link.textContent||'').trim();
-      const match=/^([^\\p{L}\\p{N}]+)\\s*(.+)$/u.exec(raw);
+      const match=/^([^\p{L}\p{N}]+)\s*(.+)$/u.exec(raw);
       if(!match)continue;
       const symbol=match[1].trim(),label=match[2].trim();
       if(!symbol||!label)continue;
