@@ -69,7 +69,8 @@ export async function ensureVerifiedPoliceBasicAccess(store,decoded,member,guild
   const old=before.exists?before.data():null;
   // A blocked account or an invalid existing approval is never repaired
   // by role syncing. Such cases require explicit management review.
-  if(old&&old.status!=='pending'&&old.status!=='approved')return;
+  if(old?.autoPoliceBasicBlocked===true||
+    (old&&old.status!=='pending'&&old.status!=='approved'))return;
   const approved=old?.status==='approved'?
     approvedManagedEntry(old,candidate.discordId):null;
   if(old?.status==='approved'&&!approved)return;
