@@ -85,6 +85,24 @@ export function validatePersonnelArtwork(body){
   reason:validated.reason,key:kind+'_'+department+'_'+code,
   base64:validated.base64};
 }
+// Library images can be reused in column headers, without another upload.
+export function validateSpecialtyHeaderLink(body){
+ if(!body||typeof body!=='object'||Array.isArray(body)||
+   Object.keys(body).some(k=>!['department','code','label','sourceArtworkKey','reason'].includes(k)))
+  throw fail(400,'Ongeldige koppeling vanuit de beeldbibliotheek');
+ const department=String(body.department||''),code=String(body.code||'');
+ const label=typeof body.label==='string'?body.label.trim():'';
+ const sourceArtworkKey=String(body.sourceArtworkKey||'');
+ const reason=typeof body.reason==='string'?body.reason.trim():'';
+ const key='patch_'+department+'_'+code;
+ if(!DEPTS.includes(department)||!CODE.test(code)||label.length<2||
+    label.length>75||reason.length<8||reason.length>300||
+    /[<>\x00-\x1f\x7f]/.test(label+reason)||
+    !new RegExp('^(?:specialty|patch)_'+department+'_[a-z0-9][a-z0-9_]{0,39}$').test(sourceArtworkKey)||
+    sourceArtworkKey===key)
+  throw fail(400,'Selecteer een actieve patch uit dezelfde hulpdienst en vul een motivering in');
+ return {department,code,label,sourceArtworkKey,reason,key};
+}
 export function installRoleArtworkRoutes(app,{requireUser}){
  // Serve approved image bytes without exposing credentials; assets are decorative,
  // and role IDs/photos stored here never constitute grants or verified roles.
@@ -182,6 +200,48 @@ export function installRoleArtworkRoutes(app,{requireUser}){
    });
    res.json({saved:true,key,permissionsChanged:false});
   }catch(e){error(res,e)}
+ });
+ // Link an existing original library image: no new file or WebP restriction.
+ app.put('/api/role-artwork/specialty-header-link',requireUser,allowed,async(req,res)=>{
+  let input;try{input=validateSpecialtyHeaderLink(req.body)}catch(e){return error(res,e)}
+  if(!mayEditDepartment(req.bpd,input.department))
+   return res.status(403).json({error:'Geen patchbeheerrechten voor deze hulpdienst'});
+  try{
+   const db=getFirestore(),target=db.collection(ROLE_ARTWORK_META).doc(input.key);
+   const source=db.collection(ROLE_ARTWORK_META).doc(input.sourceArtworkKey);
+   const version=Date.now().toString(36)+'-'+randomUUID().slice(0,8);
+   await db.runTransaction(async tx=>{
+    const [oldSnap,sourceSnap]=await Promise.all([tx.get(target),tx.get(source)]);
+    if(!sourceSnap.exists||sourceSnap.get('active')!==true||
+       sourceSnap.get('department')!==input.department||
+       !['specialty','patch'].includes(sourceSnap.get('kind'))||
+       sourceSnap.get('sourceArtworkKey')||
+       !(sourceSnap.get('assetId')||sourceSnap.get('storagePath')))
+     throw fail(400,'Deze afbeelding is geen actieve originele specialisatiepatch van de gekozen dienst');
+    const previous=oldSnap.exists?oldSnap.data():null;
+    if(previous&&!mayEditDepartment(req.bpd,previous.department||input.department))
+     throw fail(403,'Geen toegang tot de huidige kolompatch');
+    if(previous?.storagePath){
+     tx.create(db.collection('bpd_uniform_library_versions').doc(),{
+      key:input.key,kind:previous.kind,department:previous.department,
+      code:previous.code,label:previous.label,storagePath:previous.storagePath,
+      assetId:null,mime:previous.mime||'image/webp',version:previous.version,
+      createdBy:previous.updatedBy||'',createdAt:FieldValue.serverTimestamp(),historic:true
+     });
+    }
+    tx.set(target,{
+     kind:'patch',code:input.code,department:input.department,label:input.label,
+     sourceArtworkKey:input.sourceArtworkKey,active:true,version,
+     updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid
+    });
+    tx.create(db.collection(ROLE_ARTWORK_AUDIT).doc(),{
+     key:input.key,action:'link_existing_specialty_header_artwork',
+     previous:previous||null,sourceArtworkKey:input.sourceArtworkKey,
+     actorUid:req.bpd.uid,reason:input.reason,at:FieldValue.serverTimestamp()
+    });
+   });
+   return res.json({saved:true,key:input.key,permissionsChanged:false});
+  }catch(e){return error(res,e)}
  });
  app.put('/api/role-artwork/personnel',requireUser,allowed,async(req,res)=>{
   let input;try{input=validatePersonnelArtwork(req.body)}catch(e){return error(res,e)}
