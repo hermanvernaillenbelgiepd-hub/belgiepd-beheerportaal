@@ -1,4 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
+import {mayEditTechnicalSettings} from './technical-center-config.js';
 import {validPersonnelKey} from './personnel-editor-policy.js';
 
 export const PERSONNEL_DECORATIONS_COLLECTION='bpd_personnel_decorations';
@@ -76,6 +77,9 @@ export function canManagePoliceDecorationCatalog(actor){
     actor?.dossierAllowedDepartments?.includes('politie')&&
     ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
     ['officierenkader','korpsleiding'].includes(actor?.role));
+}
+export function canRenameDecorationCatalog(actor){
+ return canManagePoliceDecorationCatalog(actor)||mayEditTechnicalSettings(actor);
 }
 export function canManagePoliceDecoration(actor,subject){
  // Award administration is deliberately separate from reading or editing
