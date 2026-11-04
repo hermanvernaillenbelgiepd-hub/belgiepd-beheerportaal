@@ -66,7 +66,7 @@ export function basicObservationDenial(actor,people){
   if(basicAuthor(actor,matches[0]))return null;
   const policeRole=roleForDepartment(actor,'politie');
   if(policeRole&&policeRole!=='basiskader')
-    return 'Je goedgekeurde politierol wijkt af van Basiskader. Laat deze rol in Gebruikersbeheer corrigeren.';
+    return 'Geen goedgekeurde Basiskaderrol binnen Politie: controleer de politierol in Gebruikersbeheer.';
   if(policeRole==='basiskader')
     return 'Je politiefiche of goedgekeurde rol komt niet overeen met Basiskader. Controleer Personeelsbeheer.';
   return 'Er is wel een politiefiche, maar je Discord-Basiskaderrol is niet recent bevestigd. Klik rechtsboven op Discord opnieuw verifiëren. Blijft dit zo, controleer de Politierol in Gebruikersbeheer.';
