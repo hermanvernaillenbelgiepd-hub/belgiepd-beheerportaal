@@ -57,7 +57,7 @@ main .grid{gap:10px}
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
 </head>
-<body>
+<body class="bpd-leave-page">
 <header><div><strong>🛡️ BelgiëPD</strong> <span style="opacity:.7">/ Centraal verlofbeheer</span></div><div class="actions"><a href="/">← Dashboard</a><button id="login">Aanmelden</button></div></header>
 <main>
   <h1>Algemeen verlofbeheer</h1>
@@ -65,15 +65,15 @@ main .grid{gap:10px}
   <div id="feedback" role="status" aria-live="polite" class="notice">Aanmeldstatus controleren…</div>
   <div id="authRequired" class="panel"><h2>Aanmelden vereist</h2><p>Log in met een gemachtigd BelgiëPD-account om de verlofmodule te openen. Zonder aanmelding worden geen personeelsgegevens geladen.</p></div>
   <div id="content" class="hidden">
-    <div class="stat"><div><small>Mijn aanvragen</small><strong id="countMine">0</strong></div><div><small>Mijn kaderrol</small><strong id="myRole" style="font-size:16px">—</strong></div><div><small>Behandeling</small><strong style="font-size:16px">Via Meldingen</strong></div></div>
+    <div class="stat" aria-label="Mijn verlofoverzicht"><div><small>Mijn aanvragen</small><strong id="countMine">0</strong></div><div><small>Mijn kaderrol</small><strong id="myRole">—</strong></div><div><small>Behandeling</small><strong>Via Meldingen</strong></div></div>
     <div id="writesOff" class="warn hidden">De verlofmodule staat momenteel in alleen-lezenstand. Aanvragen indienen en goedkeuren zijn tijdelijk niet beschikbaar.</div>
-    <div class="grid">
-      <section class="panel"><h2>Verlof aanvragen</h2><form id="requestForm">
+    <div class="grid leave-workspace">
+      <section class="panel" id="leaveRequestPanel"><h2>Verlof aanvragen</h2><form id="requestForm">
         <div class="grid"><div class="field"><label for="start">Begindatum</label><input id="start" type="date" required></div><div class="field"><label for="end">Einddatum (inbegrepen)</label><input id="end" type="date" required></div></div>
         <p id="dayCount">Selecteer beide datums.</p><div class="field"><label for="note">Toelichting (optioneel, max. 300 tekens)</label><textarea id="note" maxlength="300" placeholder="Deel geen onnodige persoonlijke informatie."></textarea></div>
         <button id="submitRequest" class="primary" type="submit">Aanvraag indienen</button>
       </form></section>
-      <section class="panel"><h2>Mijn aanvragen</h2><div id="myRequests">Nog geen gegevens geladen.</div></section>
+      <section class="panel" id="leaveHistoryPanel"><h2>Mijn aanvragen</h2><div id="myRequests">Nog geen gegevens geladen.</div></section>
     </div>
     <section class="panel" id="managementLink" hidden><h2>📬 Meldingen voor kaderleden</h2>
       <p>Open hier de verlofaanvragen die jij op basis van je dienst en kaderbevoegdheid mag behandelen. Eigen aanvragen kunnen nooit zelf worden goedgekeurd.</p>
