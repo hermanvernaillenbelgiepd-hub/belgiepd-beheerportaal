@@ -7,6 +7,7 @@ import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION
 import {isArchivedTraining} from './training-maintenance.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
+import {staffActivityFollowup} from './staff-activity-followup.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
@@ -47,6 +48,23 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
           .map(d=>[d,MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,d,t))]))});
     }catch(e){errorResponse(res,e)}
   });
+
+  // Management follow-up is based on the ACTUAL roster status and must never
+  // be presented as evidence of a sent ping. Scope each row with the same
+  // service/dossier restrictions as the personnel management screen.
+  app.get('/api/management/activity-followup',requireUser,async(req,res)=>{
+    try{
+      const snapshot=await getSnapshot();
+      if(snapshot.stale||!Array.isArray(snapshot.data))
+        return res.status(503).json({error:'Actuele personeelsbron niet beschikbaar; opvolging tijdelijk niet zichtbaar'});
+      const result=staffActivityFollowup(req.bpd,snapshot.data);
+      if(!result.allowed)
+        return res.status(403).json({error:'Geen toegang tot personeelsopvolging'});
+      res.set('Cache-Control','private, no-store');
+      return res.json(result);
+    }catch(e){return errorResponse(res,e)}
+  });
+
   app.get('/api/management/cases',requireUser,async(req,res)=>{
     const dept=asString(req.query.dept),id=asString(req.query.discordId);
     if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
