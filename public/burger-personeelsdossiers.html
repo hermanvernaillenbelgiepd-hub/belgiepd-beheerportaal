@@ -49,7 +49,9 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 </section>
 <section id="detail" hidden>
 <div class="controls noprint"><button type="button" id="back" class="alt">← Terug naar overzicht</button>
+<button type="button" id="quickAdd" hidden>+ Nieuwe registratie toevoegen</button>
 <button type="button" id="print" class="alt">Persoonsgebonden rapport afdrukken</button></div>
+<p id="writeNotice" class="muted noprint" hidden>Registreren is voor dit dossier niet toegestaan. Je kan geen registratie aan je eigen dossier toevoegen.</p>
 <section class="card">
 <h1 id="personName">Burgerpersoneelsdossier</h1>
 <div class="profile">
@@ -88,7 +90,8 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <input type="number" id="score" min="0" max="10" step="1" value="5"></div>
 <label for="details">Notitie of toelichting (apart van observaties)</label>
 <textarea id="details" minlength="3" maxlength="1600" required></textarea>
-<div class="controls"><button type="submit" id="save">Registratie opslaan en loggen</button><span class="muted">Een registratie kan achteraf niet stilzwijgend worden gewijzigd.</span></div>
+<div class="controls"><button type="submit" id="save">Registratie definitief opslaan</button><span class="muted">Opslaan schrijft een auditregistratie naar Firebase; wijzigingen kunnen achteraf niet stilzwijgend worden aangepast.</span></div>
+<p id="saveStatus" class="muted" role="status" aria-live="polite">Vul de registratie in en klik op Opslaan.</p>
 </form></section>
 </section>
 </main>
@@ -156,7 +159,10 @@ function renderPerson(data){
     line(root,e.kind==='sanctie_mondeling'?'Mondelinge sanctie':'Schriftelijke sanctie',e.details,meta(e)));
   fill('promotions',entries.filter(e=>e.kind==='volwaardig'),(root,e)=>
     line(root,'Volwaardig sinds '+e.eventDate,e.details,meta(e)));
-  $('formCard').hidden=data.canWrite!==true;
+  const writable=data.canWrite===true;
+  $('formCard').hidden=!writable;
+  $('quickAdd').hidden=!writable;
+  $('writeNotice').hidden=writable;
   $('detail').hidden=false;$('overview').hidden=true;
 }
 async function openPerson(id){
@@ -186,18 +192,35 @@ $('search').oninput=renderRoster;
 $('back').onclick=()=>{selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
   history.replaceState(null,'',location.pathname);mark('Burgerpersoneelsdossiers')};
 $('refresh').onclick=load;
+$('quickAdd').onclick=()=>$('formCard').scrollIntoView({behavior:'smooth',block:'start'});
 $('print').onclick=()=>window.print();
 $('entryForm').onsubmit=async event=>{
   event.preventDefault();if(!selectedId)return;
-  const button=$('save');button.disabled=true;
+  const targetId=selectedId,button=$('save');
+  button.disabled=true;$('saveStatus').textContent='Bezig met opslaan in Firebase…';
+  let savedId=null;
   try{
     const kind=$('kind').value;
     const payload={kind,eventDate:$('eventDate').value,details:$('details').value.trim()};
     if(kind==='observatie')payload.score=Number($('score').value);
-    await api('/api/citizen-staff/'+encodeURIComponent(selectedId)+'/entries','POST',payload);
-    $('details').value='';await openPerson(selectedId);mark('Registratie veilig opgeslagen');
-  }catch(e){mark('Opslaan mislukt: '+e.message,true)}
-  finally{button.disabled=false}
+    const result=await api('/api/citizen-staff/'+encodeURIComponent(targetId)+'/entries','POST',payload);
+    if(result.saved!==true||!result.id)throw Error('De server heeft geen bevestiging gegeven');
+    savedId=result.id;
+    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(targetId));
+    if(!fresh.entries?.some(entry=>entry.id===savedId))
+      throw Error('De nieuwe registratie kon niet teruggelezen worden');
+    if(selectedId===targetId)renderPerson(fresh);
+    $('details').value='';
+    $('saveStatus').textContent='Opgeslagen en opnieuw gecontroleerd · referentie '+savedId;
+    mark('Registratie opgeslagen in het dossier en bevestigd door Firebase');
+  }catch(e){
+    const warning=savedId
+      ?'De server heeft de registratie opgeslagen (referentie '+savedId+
+        '), maar de controle na opslaan mislukte. Vernieuw het dossier voor je opnieuw opslaat.'
+      :'Opslaan mislukt: '+e.message;
+    $('saveStatus').textContent=warning;
+    mark(warning,true);
+  }finally{button.disabled=false}
 };
 (async()=>{
   try{
@@ -208,7 +231,9 @@ $('entryForm').onsubmit=async event=>{
     authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
     auth=authMod.getAuth(app.initializeApp(cfg.firebaseConfig));
     portalSetup({button:$('login'),auth,authModule:authMod,config:cfg,onError:e=>mark(e.message,true)});
-    $('eventDate').value=new Date().toLocaleDateString('en-CA');
+    const today=new Date();
+    $('eventDate').value=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),
+      String(today.getDate()).padStart(2,'0')].join('-');
     authMod.onAuthStateChanged(auth,load);
   }catch(e){mark(e.message,true)}
 })();

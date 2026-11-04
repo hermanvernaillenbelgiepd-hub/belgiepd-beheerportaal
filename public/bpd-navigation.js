@@ -266,7 +266,14 @@
           ]);
           if(turn!==request)return;
           const citizenGranted=citizen?.canAccess===true;
-          const showVerified=pages=>show(citizenGranted?[...pages,'citizen']:pages);
+          const showVerified=pages=>{
+            const visible=[...pages];
+            if(citizenGranted){
+              const dossierIndex=visible.indexOf('dossiers');
+              visible.splice(dossierIndex>=0?dossierIndex+1:visible.length,0,'citizen');
+            }
+            show(visible);
+          };
           if(citizenGranted&&here==='/dossiercentrum.html'){
             const nav=document.querySelector('body > header nav');
             if(nav){const link=document.createElement('a');
