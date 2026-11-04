@@ -9,7 +9,7 @@ import {PERSONNEL_ROSTER_DEFAULT,validatePersonnelRosterLayout,
  savedPersonnelRosterLayout} from './personnel-roster-layout-policy.js';
 
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
-  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
+  awardKey,publicDecorations,decorationCatalogExtras} from './personnel-decoration-policy.js';
 
 const discordId=/^\d{15,22}$/;
 const staffRoles=new Set(['basiskader','middenkader','officierenkader','korpsleiding','beheerder']);
@@ -251,11 +251,10 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       const [snapshot,decorations,customSnap]=await Promise.all([
         getSnapshot(),
         getFirestore().collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(500).get(),
-        getFirestore().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get()
+        getFirestore().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(120).get()
       ]);
       const byPerson=new Map(decorations.docs.map(d=>[d.id,d.get('entries')||[]]));
-      const customCatalog=new Map(customSnap.docs.map(d=>[d.id,customCatalogItem(d)])
-       .filter(([id,item])=>item));
+      const customCatalog=decorationCatalogExtras(customSnap.docs);
       return res.json({records:publicOrganogramRoster(snapshot.data,byPerson,customCatalog),
         stale:snapshot.stale,readOnly:true});
     }catch(error){
