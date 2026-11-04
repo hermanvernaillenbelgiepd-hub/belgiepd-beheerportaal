@@ -77,8 +77,8 @@ test('Beheercentrum bewerkt de echte bestaande registraties en heeft geen eigen 
  assert.match(ui,/id="specialtyEditor"/);
  assert.match(ui,/id="layoutEditor"/);
  assert.match(ui,/technical-service-editors\.js/);
- assert.match(controller,/api\('\/api\/specialty-links\/'\+selectedDept\(\),'PUT'/);
- assert.match(controller,/api\('\/api\/roster-columns\/'\+selectedDept\(\),'PUT'/);
+ assert.match(controller,/api\('\/api\/specialty-links\/'\+dept,'PUT'/);
+ assert.match(controller,/api\('\/api\/roster-columns\/'\+dept,'PUT'/);
  assert.match(controller,/expectedRevision:mappings\.revision/);
  assert.match(controller,/expectedRevision:config\.revision/);
  assert.match(api,/SPECIALTY_ROLE_LINK_AUDIT/);
