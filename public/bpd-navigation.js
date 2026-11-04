@@ -278,7 +278,8 @@
             show(pages);return;
           }
           if(context?.showAdvancedDashboard===true){
-            const pages=STAFF.filter(item=>!['admin','center'].includes(item)||context.visible===true);
+            const pages=STAFF.filter(item=>item==='center'?
+              context.technicalCenterVisible===true:item!=='admin'||context.visible===true);
             show(pages);return;
           }
           const basic=[...SAFE];
