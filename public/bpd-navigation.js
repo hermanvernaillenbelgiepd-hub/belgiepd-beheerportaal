@@ -260,8 +260,11 @@
               headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null)
           ]);
           if(turn!==request)return;
+          const policeObservations=context?.basicObservationCanSubmit===true||
+            context?.basicObservationCanReview===true;
           if(context?.dashboardProfile==='brandweer-zone'){
             const pages=['home','personnel','activity','organogram','dossiers','education','documents','calendar','reports','leave','notifications'];
+            if(policeObservations)pages.push('observations');
             show(pages);return;
           }
           if(context?.dashboardProfile==='ambulance-azls'){
@@ -270,6 +273,7 @@
             pages.push('education','documents','calendar');
             if(context.ambulanceReportVerified===true)pages.push('reports');
             pages.push('leave','notifications');
+            if(policeObservations)pages.push('observations');
             show(pages);return;
           }
           if(context?.showAdvancedDashboard===true){
@@ -278,7 +282,7 @@
           }
           const basic=[...SAFE];
           if(context||member?.mode==='member')basic.push('documents');
-          if(context?.basicObservationCanSubmit===true)basic.push('observations');
+          if(policeObservations)basic.push('observations');
           if(member?.mode==='member'&&member?.canUseSelfService===true)
             basic.push('notifications');
           show(basic);
