@@ -214,3 +214,41 @@ test('Observaties Basiskader in Brandweer- en AZLS-menu zijn alleen zichtbaar na
  assert.match(route,/basicCallLevel\(\{dept:POL,call:author\?\.call\}\)/);
  assert.doesNotMatch(route,/replace\(\/\^S\[- \]\?\/i/);
 });
+
+
+test('Arixx 432 met Brandweerleiding en politierol op Discord kan observaties indienen',()=>{
+ const id=ranks[3].personId;
+ const officer={uid:'discord:'+id,discordId:id,role:'korpsleiding',
+  departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'},
+  discordPoliceRank:'basiskader'};
+ const access=basicObservationTargets(officer,ranks);
+ assert.equal(access.author?.personId,id);
+ assert.deepEqual(access.targets.map(p=>p.call),['S150','S258','S302']);
+ assert.equal(basicObservationDenial(officer,ranks),null);
+ assert.equal(mayReadBasicInbox(officer),false,
+  'Verificatie van Basiskader geeft nooit toegang tot de ontvangen observaties');
+});
+test('Een rol, roepnummer of andere dienst alleen geeft geen Politie-Basiskaderrechten',()=>{
+ const id=ranks[3].personId;
+ const actor={uid:'discord:'+id,discordId:id,role:'korpsleiding',
+  departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'},
+  discordPoliceRank:'basiskader'};
+ assert.equal(basicAuthor({...actor,uid:'discord:555555555555555555'},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,discordPoliceRank:null},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,discordPoliceRank:'middenkader'},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,portalTechnicalMode:true},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,departments:['brandweer','politie'],
+  departmentRoles:{brandweer:'korpsleiding',politie:'officierenkader'}},ranks[3]),false);
+ assert.equal(basicObservationTargets(actor,ranks.filter(p=>p!==ranks[3])).author,null);
+ assert.equal(basicObservationTargets(actor,[...ranks,ranks[3]]).author,null);
+});
+test('Registratie gebruikt de geverifieerde Politiefiche als auteur, niet de primaire Brandweerfunctie',()=>{
+ const route=readFileSync(new URL('../src/basic-observation-routes.js',import.meta.url),'utf8');
+ assert.match(route,/const policePerson=access\.author/);
+ assert.match(route,/discordId:policePerson\.personId/);
+ assert.match(route,/rank:policePerson\.rank,dept:POL/);
+ assert.doesNotMatch(route,/const author=actorFromPersonnel\(req\.bpd,roster\)/);
+ const policy=readFileSync(new URL('../src/basic-observation-policy.js',import.meta.url),'utf8');
+ assert.match(policy,/verifiedBasicPoliceIdentity\(actor\)/);
+ assert.match(policy,/uid==='discord:'\+actor\.discordId/);
+});
