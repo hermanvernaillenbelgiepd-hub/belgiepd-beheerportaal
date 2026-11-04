@@ -6,8 +6,8 @@ import {policeRosterSeriesBadges} from './police-roster-series.js';
 import {attachRosterNamePreview,dismissRosterNamePreview} from './roster-name-preview.js';
 
 export const PUBLIC_POLICE_SPECIALTIES=Object.freeze([
-  'Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
-  'K9','RAGO','Dispatch','TO','AE'
+  'INTERVENTIEDIENST','Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
+  'K9','RAGO','Dispatch','TO','AE','LRD (Recherche)'
 ]);
 let customPublicSpecialties=[];
 export function setPublicRosterSpecialties(items=[]){
@@ -85,6 +85,10 @@ function rankCell(person){
  wrap.append(element('strong',info.code||'—'));
  return wrap;
 }
+function rosterHeaderLabel(label){
+ return label==='INTERVENTIEDIENST'?'INTERVENTIE':
+   label==='LRD (Recherche)'?'LRD':label;
+}
 function renderHeader(thead){
  const tr=element('tr');
  for(const title of ['CALL','RANGKENTEKEN','NAAM VAN RANG',
@@ -101,7 +105,7 @@ function renderHeader(thead){
      pic.textContent=customPublicSpecialties.find(x=>x.label===label)?.icon||
        visual().specialtyIcon(label);
      pic.setAttribute('aria-hidden','true');
-     th.append(pic,element('small',label));
+     th.append(pic,element('small',rosterHeaderLabel(label)));
    };
    if(image){
      const img=document.createElement('img');
@@ -110,7 +114,7 @@ function renderHeader(thead){
      img.onerror=()=>fallback();
      th.classList.add('mr-specialty-head--patch');
      th.setAttribute('aria-label',label);
-     th.append(img,element('small',label));
+     th.append(img,element('small',rosterHeaderLabel(label)));
    }else fallback();
    tr.append(th);
  }
