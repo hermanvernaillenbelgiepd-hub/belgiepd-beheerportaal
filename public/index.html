@@ -293,8 +293,9 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
       <a class="module" href="/weekrapporten.html"><span class="ico" aria-hidden="true">📋</span><h3>Brandweerweekrapporten</h3><p>Eigen dienstgebonden weekrapporten en archief.</p><span class="open">Open →</span></a>
       <a class="module" href="/verlofbeheer.html"><span class="ico" aria-hidden="true">📅</span><h3>Mijn verlof</h3><p>Vraag eigen verlof aan en volg je verlofperiodes.</p><span class="open">Open →</span></a>
       <a class="module" href="/meldingen.html"><span class="ico" aria-hidden="true">📬</span><h3>Meldingen Brandweer</h3><p>Opleidingsaanvragen van brandweerleden en persoonlijke verlofberichten.</p><span class="open">Open →</span></a>
+      <a class="module" id="zonePoliceObservationCard" href="/registraties.html" hidden><span class="ico" aria-hidden="true">📝</span><h3 id="zonePoliceObservationTitle">Politie · Observaties Basiskader</h3><p id="zonePoliceObservationDescription">Je afzonderlijk geverifieerde politiebevoegdheid.</p><span class="open">Open →</span></a>
     </div>
-    <p class="caption">TO-dienstbord, observaties vanuit politiebasiskader, roepnummeraanvragen en algemeen gebruikersbeheer behoren niet tot deze ZONE-werkruimte.</p>
+    <p class="caption">ZONE-bevoegdheden gelden uitsluitend voor Brandweer. Andere functies, zoals Politie-Basiskader, verschijnen hier alleen na een afzonderlijke identiteits- en rolcontrole. TO-dienstbord, roepnummeraanvragen en algemeen gebruikersbeheer volgen hun eigen toegangsrechten.</p>
   </section>
   <section id="ambulanceDashboard" hidden aria-labelledby="ambulanceDashboardTitle">
     <section class="hero"><div><p class="eyebrow">Ambulance · AZLS</p>
@@ -312,8 +313,9 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
       <a class="module" href="/weekrapporten.html" id="ambulanceCardReports" hidden><span class="ico" aria-hidden="true">📋</span><h3>Ambulanceweekrapporten</h3><p>Enkel de rapporten en het archief van de ambulancedienst.</p><span class="open">Open →</span></a>
       <a class="module" href="/verlofbeheer.html"><span class="ico" aria-hidden="true">📅</span><h3>Mijn verlof</h3><p>Vraag zelf verlof aan en bekijk je verlofperiodes.</p><span class="open">Open →</span></a>
       <a class="module" href="/meldingen.html"><span class="ico" aria-hidden="true">📬</span><h3>Meldingen Ambulance</h3><p>Opleidingsaanvragen van ambulanceleden en persoonlijke verlofbeslissingen.</p><span class="open">Open →</span></a>
+      <a class="module" id="ambulancePoliceObservationCard" href="/registraties.html" hidden><span class="ico" aria-hidden="true">📝</span><h3 id="ambulancePoliceObservationTitle">Politie · Observaties Basiskader</h3><p id="ambulancePoliceObservationDescription">Je afzonderlijk geverifieerde politiebevoegdheid.</p><span class="open">Open →</span></a>
     </div>
-    <p class="caption">TO-dienstbord, politionele observaties, vaste-roepnummeraanvragen en algemeen gebruikers- of toegangsbeheer behoren niet tot deze AZLS-werkruimte. Medisch instructeurs zien alleen onderdelen waarvoor ze gemachtigd zijn.</p>
+    <p class="caption">AZLS-bevoegdheden gelden uitsluitend voor Ambulance. Afzonderlijk geverifieerde politiefuncties verschijnen wanneer je ervoor gemachtigd bent. Het TO-dienstbord, roepnummeraanvragen en gebruikersbeheer volgen hun eigen toegangsrechten.</p>
   </section>
   <section id="guestDashboard" aria-labelledby="guestDashboardTitle">
     <p class="eyebrow">BelgiëPD</p><h1 id="guestDashboardTitle">Welkom op het beheerportaal</h1>
@@ -333,7 +335,23 @@ const observationNavIds=['staffNavObservations','zoneNavObservations',
  'ambulanceNavObservations','memberNavObservations'];
 function showObservationNavigation(ctx){
  const allowed=ctx?.basicObservationCanSubmit===true||ctx?.basicObservationCanReview===true;
+ const policeRoster=ctx?.basicObservationPoliceRecord===true;
  for(const id of observationNavIds)$(id).hidden=!allowed;
+ // A Police Basiskader staff record without a verified role may only open
+ // the secure access-diagnostics page; it never gains write/review permission.
+ for(const prefix of ['zone','ambulance']){
+   const card=$(prefix+'PoliceObservationCard');
+   card.hidden=!(allowed||policeRoster);
+   const title=$(prefix+'PoliceObservationTitle');
+   const description=$(prefix+'PoliceObservationDescription');
+   title.textContent=allowed?'Politie · Observaties Basiskader':
+     'Politie · Toegang controleren';
+   description.textContent=ctx?.basicObservationCanSubmit===true?
+     'Dien observaties in over lagere politiegraden, vanuit je eigen politiefunctie.':
+     ctx?.basicObservationCanReview===true?
+       'Bekijk ontvangen Basiskader-observaties volgens je geverifieerde politierechten.':
+       'Je politiefiche bestaat, maar je Politierol moet worden bevestigd. Bekijk de controlepunten en verifieer Discord opnieuw.';
+ }
 }
 const simpleIds=['memberTrainingTile','memberNavCallsign','memberCallsignTile','memberNavLeave','memberLeaveTile','memberNavNotices','memberNoticesTile'];
 function resetSimpleModules(){for(const id of simpleIds)$(id).hidden=true}
