@@ -115,7 +115,7 @@
     const code=specialtyArtworkCode(label);
     const names=specialtyArtworkAliases[code]||[code];
     for(const alias of names){
-      const neutral=artwork('specialty',dept,alias)||artwork('patch',dept,alias);
+      const neutral=artwork('patch',dept,alias)||artwork('specialty',dept,alias);
       if(neutral)return neutral;
     }
     return null;
@@ -132,12 +132,6 @@
   }
   function specialtyBannerDisplay(label,dept='politie'){
     const code=specialtyArtworkCode(label);
-    // The MOTARD and RAGO headings previously used stale artwork from an
-    // older Firebase role/alias. Pin both to the same approved neutral strip
-    // that is shipped to every reader. No role-specific training variants.
-    if(dept==='politie'&&(code==='motard'||code==='rago'))
-      return {type:'sprite',url:neutralPatchStrip,
-        position:neutralPatchPositions[code]*20};
     const neutral=librarySpecialtyBanner(label,dept);
     if(neutral)return {type:'image',url:neutral};
     if(dept==='politie'&&Number.isInteger(neutralPatchPositions[code]))
