@@ -124,6 +124,22 @@
     const sidebar=document.querySelector('.portal > aside');
     const top=document.querySelector('.surface > header.topbar');
     if(!sidebar||!top)return;
+    // The home dashboard writes emoji as inline text, while other pages
+    // render icons in their own span. Normalize both to one fixed icon column.
+    for(const link of sidebar.querySelectorAll('nav a[href]')){
+      if(link.querySelector('.bpd-home-side-icon'))continue;
+      const raw=String(link.textContent||'').trim();
+      const match=/^([^\p{L}\p{N}]+)\s*(.+)$/u.exec(raw);
+      if(!match)continue;
+      const symbol=match[1].trim(),label=match[2].trim();
+      if(!symbol||!label)continue;
+      const icon=document.createElement('span');
+      icon.className='bpd-home-side-icon';icon.textContent=symbol;
+      icon.setAttribute('aria-hidden','true');
+      const text=document.createElement('span');
+      text.className='bpd-home-side-label';text.textContent=label;
+      link.replaceChildren(icon,text);
+    }
     const quick=makeQuick();
     top.after(quick);
     function update(){
