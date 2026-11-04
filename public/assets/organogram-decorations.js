@@ -122,6 +122,11 @@
     catalogue.append(option);catalogue.value=item.id;
    };
    document.addEventListener('bpd-decoration-uploaded',catalogueRefresh);
+    document.addEventListener('bpd-decoration-renamed',e=>{
+     if(!root.isConnected||root.dataset.personKey!==identity)return;
+     const option=[...catalogue.options].find(x=>x.value===e?.detail?.id);
+     if(option)option.textContent=e.detail.label;
+    });
    const dates=node('div','bpd-inline'),startBox=node('div'),endBox=node('div');
    const start=node('input');start.type='date';start.value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const end=node('input');end.type='date';end.min=start.value;
@@ -181,7 +186,7 @@
    root.append(panel);
   }catch(_){/* Gated UI fails closed; ordinary member view remains unchanged. */}
  }
- async function uploadTools(auth,target){
+ async function uploadTools(auth,target,onChange=null){
   if(!target)return;
   target.replaceChildren();
   const user=auth?.currentUser;
@@ -253,7 +258,77 @@
     }catch(err){notice.className='bpd-awards-error';notice.textContent=err.message;}
     finally{save.disabled=false}
    });
-   if(auth.currentUser?.uid===uid)target.append(details);
+   if(auth.currentUser?.uid!==uid)return;
+   target.append(details);
+   // The name is catalogue metadata, not a new award grant. All existing
+   // recipient links keep their stable catalogue ID after an audited rename.
+   const rename=node('details','bpd-awards-control bpd-catalog-rename');
+   rename.append(node('summary','','Naam medaille / ereteken aanpassen'));
+   rename.append(node('p','bpd-no-awards',
+    'Wijzig de benaming van een bestaand erelint, een medaille of een ereteken. Toekenningen blijven behouden.'));
+   const catalogPick=node('select'),newName=node('input'),renameReason=node('textarea');
+   newName.type='text';newName.maxLength=80;newName.placeholder='Nieuwe benaming (3–80 tekens)';
+   renameReason.rows=2;renameReason.maxLength=500;renameReason.placeholder='Waarom wordt de naam gewijzigd?';
+   const renameButton=node('button','','Naam opslaan');renameButton.type='button';
+   const renameStatus=node('p','bpd-awards-guidance');
+   rename.append(node('label','','Bestaande onderscheiding'),catalogPick,
+    node('label','','Nieuwe naam'),newName,
+    node('label','','Motivering voor auditlog'),renameReason,renameButton,renameStatus);
+   target.append(rename);
+   try{
+    const bearer=await auth.currentUser.getIdToken();
+    const listResponse=await fetch('/api/personnel-awards/catalog-labels',{
+     headers:{Authorization:'Bearer '+bearer},cache:'no-store'});
+    const data=await listResponse.json().catch(()=>({}));
+    if(!listResponse.ok||!Array.isArray(data.catalog))throw Error(data.error||'Catalogus niet beschikbaar');
+    const labels=new Map(data.catalog.map(x=>[x.id,x]));
+    const populate=()=>{
+     catalogPick.replaceChildren();
+     [...labels.values()].sort((a,b)=>a.label.localeCompare(b.label,'nl-BE')).forEach(x=>{
+      const option=node('option','',x.label);option.value=x.id;catalogPick.append(option);
+     });
+     newName.value=labels.get(catalogPick.value)?.label||'';
+    };
+    catalogPick.addEventListener('change',()=>{newName.value=labels.get(catalogPick.value)?.label||''});
+    populate();
+    document.addEventListener('bpd-decoration-uploaded',e=>{
+     if(!target.isConnected)return;
+     const item=e?.detail;
+     if(!item?.id||!item.label)return;
+     labels.set(item.id,item);
+     populate();catalogPick.value=item.id;newName.value=item.label;
+    });
+    renameButton.addEventListener('click',async()=>{
+     if(auth.currentUser?.uid!==uid)return;
+     const id=catalogPick.value, label=newName.value.trim(),reason=renameReason.value.trim();
+     if(!labels.has(id)||label.length<3||label.length>80||reason.length<10){
+      renameStatus.className='bpd-awards-error';
+      renameStatus.textContent='Vul een geldige naam en een motivering van minstens 10 tekens in.';return;
+     }
+     renameButton.disabled=true;
+     renameStatus.className='bpd-awards-guidance';renameStatus.textContent='Naam opslaan en loggen…';
+     try{
+      const token=await auth.currentUser.getIdToken();
+      const res=await fetch('/api/personnel-awards/catalog-label/'+encodeURIComponent(id),{
+       method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+       body:JSON.stringify({label,reason})
+      });
+      const result=await res.json().catch(()=>({}));
+      if(!res.ok||result.saved!==true)throw Error(result.error||'Naam niet opgeslagen');
+      labels.set(id,{...labels.get(id),label});renameReason.value='';
+      const selected=catalogPick.selectedOptions[0];if(selected)selected.textContent=label;
+      document.dispatchEvent(new CustomEvent('bpd-decoration-renamed',{detail:{id,label}}));
+      renameStatus.className='bpd-awards-success';
+      renameStatus.textContent='Naam opgeslagen. Alle bestaande toekenningen behouden hun koppeling.';
+      if(typeof onChange==='function')await onChange();
+     }catch(error){
+      renameStatus.className='bpd-awards-error';renameStatus.textContent=error.message;
+     }finally{renameButton.disabled=false}
+    });
+   }catch(error){
+    renameButton.disabled=true;
+    renameStatus.className='bpd-awards-error';renameStatus.textContent=error.message;
+   }
   }catch(_){/* Hide upload controls without verified police permissions. */}
  }
  window.BPDDecorations=Object.freeze({renderAwards,uniformRack,manager,uploadTools});
