@@ -234,7 +234,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   </div>
   <section id="adminRights" hidden aria-label="Administratie en rechten"><h2 class="section-title">Administratie en rechten</h2>
   <div class="grid">
-    <a class="module" href="/beheercentrum.html"><span class="ico" aria-hidden="true">🛠</span><h3>Beheercentrum</h3><p>Gegroepeerde beheerfuncties en instelbare automatiseringen met wijzigingsgeschiedenis.</p><span class="open">Open Beheercentrum →</span></a>
+    <a class="module" id="adminCenterCard" href="/beheercentrum.html" hidden><span class="ico" aria-hidden="true">🛠</span><h3>Beheercentrum</h3><p>Gegroepeerde beheerfuncties en instelbare automatiseringen met wijzigingsgeschiedenis.</p><span class="open">Open Beheercentrum →</span></a>
     <a class="module" href="/gebruikersbeheer.html#dienstbeheer"><span class="ico" aria-hidden="true">🛡️</span><h3>Beheertoegang hulpdiensten</h3><p>Toegang per Discord-ID en hulpdienst toekennen, beheren en intrekken.</p><span class="open">Open dienstbeheer →</span></a>
     <a class="module" href="/gebruikersbeheer.html"><span class="ico" aria-hidden="true">🔐</span><h3>Gebruikersbeheer</h3><p>Accountgoedkeuringen, Bestuur, TO-rechten en toegangsbeheer.</p><span class="open">Open gebruikersbeheer →</span></a>
   </div>
@@ -399,7 +399,7 @@ let auth,requestNumber=0;
 function show(mode,message=''){
  staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';zoneNav.hidden=mode!=='zone';ambulanceNav.hidden=mode!=='ambulance';
  staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';zoneHome.hidden=mode!=='zone';ambulanceHome.hidden=mode!=='ambulance';
- guestHome.hidden=mode!=='guest';adminSection.hidden=true;adminNavLink.hidden=true;$('adminCenterNavLink').hidden=true;
+ guestHome.hidden=mode!=='guest';adminSection.hidden=true;adminNavLink.hidden=true;$('adminCenterNavLink').hidden=true;$('adminCenterCard').hidden=true;
  showObservationNavigation(null);
  resetSimpleModules();
  if(message)$('guestMessage').textContent=message;
@@ -422,7 +422,7 @@ async function authorizedFetch(path,token){
 }
 async function displayAuthenticated(user){
  const turn=++requestNumber;
- adminSection.hidden=true;adminNavLink.hidden=true;$('adminCenterNavLink').hidden=true;
+ adminSection.hidden=true;adminNavLink.hidden=true;$('adminCenterNavLink').hidden=true;$('adminCenterCard').hidden=true;
  if(!user){show('guest','Meld je aan met Discord via Mijn profiel.');return;}
  if(!user.uid?.startsWith('discord:')){
   // Google emergency accounts also need server-confirmed dashboard scope.
@@ -440,7 +440,7 @@ async function displayAuthenticated(user){
     else{
       show('staff');
       adminSection.hidden=ctx.visible!==true;
-      adminNavLink.hidden=ctx.visible!==true;$('adminCenterNavLink').hidden=ctx.visible!==true;
+      adminNavLink.hidden=ctx.visible!==true;$('adminCenterNavLink').hidden=ctx.technicalCenterVisible!==true;$('adminCenterCard').hidden=ctx.technicalCenterVisible!==true;
     }
     showObservationNavigation(ctx);
   }catch{
@@ -521,7 +521,7 @@ async function displayAuthenticated(user){
     else{
       show('staff');
       adminSection.hidden=ctx.visible!==true;
-      adminNavLink.hidden=ctx.visible!==true;$('adminCenterNavLink').hidden=ctx.visible!==true;
+      adminNavLink.hidden=ctx.visible!==true;$('adminCenterNavLink').hidden=ctx.technicalCenterVisible!==true;$('adminCenterCard').hidden=ctx.technicalCenterVisible!==true;
     }
     showObservationNavigation(ctx);
   }else show('guest','Je portaaltoegang moet eerst worden gecontroleerd. Vernieuw je Discord-verificatie in Mijn profiel.');
