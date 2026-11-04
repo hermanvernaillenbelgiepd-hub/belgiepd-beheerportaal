@@ -461,3 +461,46 @@ body.bpd-shell > header button{padding:7px 10px;font-size:12px;min-height:30px}
     .portal .module .open,.portal .member-roster-link
   ){color:#9dc1ff!important}
 }
+
+/* Uniform left-hand grid for every standalone module and homepage.
+   The sidebar logo and all nav icons share the same 18px icon column;
+   page titles, toolbar and cards begin 18px from the content edge.
+   Keep embedded viewers, printable pages and mobile drawer unaffected. */
+@media screen {
+ #bpdSidebar .bpd-side-links a{
+   display:grid;grid-template-columns:18px minmax(0,1fr);
+   align-items:center;gap:9px;padding:8px 10px;min-height:35px;
+ }
+ #bpdSidebar .bpd-side-links .bpd-side-icon{
+   width:18px;min-width:18px;display:inline-flex;justify-content:center;
+   line-height:1;text-align:center;
+ }
+ .portal > aside nav a{
+   display:grid;grid-template-columns:18px minmax(0,1fr);
+   align-items:center;gap:9px;padding:8px 10px;min-height:35px;
+ }
+ .portal > aside nav a .bpd-home-side-icon{
+   display:inline-flex;align-items:center;justify-content:center;
+   width:18px;min-width:18px;line-height:1.1;text-align:center;
+ }
+ .portal > aside nav a .bpd-home-side-label{
+   min-width:0;overflow-wrap:anywhere;
+ }
+ @media(min-width:931px){
+   body.bpd-shell > header{padding-inline:18px!important}
+   body.bpd-shell > main{
+     margin-left:0!important;margin-right:0!important;
+     padding-left:18px!important;padding-right:18px!important;
+   }
+   #bpdQuicknav{padding-inline:18px}
+   .portal .topbar{padding-inline:18px!important}
+   .portal > .surface > main{
+     margin-left:0!important;margin-right:0!important;
+     padding-left:18px!important;padding-right:18px!important;
+   }
+ }
+ @media(max-width:930px){
+   body.bpd-shell > main{padding-inline:12px!important}
+   #bpdQuicknav{padding-inline:12px}
+ }
+}
