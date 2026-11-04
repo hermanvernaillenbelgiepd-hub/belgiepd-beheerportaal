@@ -22,7 +22,8 @@ test('een patch kan per bestaande specialisatie geaudit worden bewaard',()=>{
   assert.match(html,new RegExp('id="'+id+'"'));
  }
  assert.match(html,/function rosterPatchSave\(\)/);
- assert.match(html,/kind:'patch',department:dept,code:BPDPersonnelVisuals\.specialtyArtworkCode\(label\)/);
+ assert.match(html,/const code=BPDPersonnelVisuals\.specialtyArtworkCode\(label\)/);
+ assert.match(html,/kind:'patch',department:dept,code,label,reason,dataUrl/);
  assert.match(html,/\/api\/role-artwork\/personnel/);
  assert.match(html,/rosterPatchShowCurrent\(\)/);
  assert.match(html,/BPDPersonnelVisuals\.setArtworkManifest\(manifest\.artworks\)/);
