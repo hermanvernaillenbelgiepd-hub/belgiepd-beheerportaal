@@ -78,7 +78,8 @@ export async function ensureVerifiedPoliceBasicAccess(store,decoded,member,guild
   const departments=[...(approved?.departments||[]),'politie'];
   const departmentRoles={...(approved?.departmentRoles||{}),politie:'basiskader'};
   const role=Object.values(departmentRoles).reduce((high,next)=>
-   (SERVICE_RANK[next]||0)>(SERVICE_RANK[high]||0)?next:high,'basiskader');
+   (SERVICE_RANK[next]||0)>(SERVICE_RANK[high]||0)?next:high,
+   approved?.role||'basiskader');
   const mark={source:AUTO_BASIC_SOURCE,role:'basiskader',
    policeMemberRoleId:POLICE_MEMBER_ROLE,
    basicRoleSeen:candidate.baseRoleSeen,
