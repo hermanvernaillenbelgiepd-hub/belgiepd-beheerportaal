@@ -50,7 +50,7 @@ import {installManualRoleRoutes} from './manual-role-routes.js';
 import {installBoardAppointmentRoutes} from './board-appointment-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
-import {eligibleForTechnicalProfile,verifiedPoliceRank,technicalCookieIsValid,technicalActor} from './portal-profile-mode.js';
+import {eligibleForTechnicalProfile,verifiedPoliceRank,verifiedPoliceMembership,technicalCookieIsValid,technicalActor} from './portal-profile-mode.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {installPersonnelLifecycleRoutes} from './personnel-lifecycle-routes.js';
 import {PERSONNEL_LIFECYCLE_COLLECTION,lifecycleKey,overlayPersonnelLifecycle} from './personnel-lifecycle-policy.js';
@@ -339,6 +339,9 @@ async function requireUser(req,res,next){
     const canSwitch=eligibleForTechnicalProfile(verified,actor,discordMember,process.env);
     actor.profileTechnicalAvailable=canSwitch;
     actor.discordPoliceRank=verifiedPoliceRank(discordMember,process.env.DISCORD_GUILD_ID);
+    // Scoped read-only proof, used ONLY for writing lower-rank Police observations.
+    actor.discordPoliceMemberVerified=Boolean(verified.uid==='discord:'+discordId&&
+      verifiedPoliceMembership(discordMember,process.env.DISCORD_GUILD_ID));
     // Identical verified officer proof as the shared personnel-list layout
     // editor (up to 24 hours), not the much shorter 15-minute dossier freshness
     // marker. Neither a callsign nor a saved role grants this permission.

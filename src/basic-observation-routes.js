@@ -1,7 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {validateEntry} from './registrations.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationDenial,
- basicObservationWritesEnabled,basicCallLevel} from './basic-observation-policy.js';
+ basicObservationWritesEnabled,basicCallLevel,basicObservationAccessChecks} from './basic-observation-policy.js';
 import {receivedAccess} from './received-registration-policy.js';
 
 const POL='politie';
@@ -27,6 +27,7 @@ export function installBasicObservationRoutes(app,{requireUser,getSnapshot}){
         actor:access.author?actorSafe(access.author):null,
         targets:access.targets.map(p=>({...actorSafe(p),dept:POL})),
         source:'Centrale personeelslijst van Personeelsbeheer',
+        accessChecks:basicObservationAccessChecks(req.bpd,roster),
         explanation:access.author?
           'Observaties zijn alleen mogelijk over medewerkers met een lagere politierang (1xx–5xx). Geen sancties.':
           basicObservationDenial(req.bpd,roster)});

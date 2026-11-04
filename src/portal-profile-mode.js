@@ -18,6 +18,17 @@ export function eligibleForTechnicalProfile(decoded,actor,member,env,now=Date.no
     typeof env.BPD_PORTAL_PROFILE_SIGNING_KEY==='string'&&
     env.BPD_PORTAL_PROFILE_SIGNING_KEY.length>=32;
 }
+// A fresh, guild-bound POLITIE service role can establish membership even
+// when the separate generic Basiskader role is absent in the Discord roles.
+// It never grants cadre, dossier, personnel-management or review privileges.
+export function verifiedPoliceMembership(member,guildId,now=Date.now()){
+  return Boolean(member&&member.guildId===guildId&&ID.test(guildId)&&
+    Number.isSafeInteger(member.verifiedAt)&&member.verifiedAt<=now&&
+    now-member.verifiedAt<=15*60000&&
+    Array.isArray(member.roleIds)&&
+    member.roleIds.every(x=>ID.test(x))&&
+    member.roleIds.includes('1309532438053130326'));
+}
 export function verifiedPoliceRank(member,guildId,now=Date.now()){
   if(!member||member.guildId!==guildId||
     !Number.isSafeInteger(member.verifiedAt)||member.verifiedAt>now||

@@ -94,7 +94,10 @@ fieldset{border:0;margin:0;padding:0}
     <div class="buttons"><button id="olderInbox" type="button" class="secondary" hidden>Oudere observaties laden</button></div>
   </section>
   <section id="noAccess" class="card" hidden><h2>Geen toegang tot deze module</h2>
-    <p id="accessReason">Deze module is bedoeld voor observaties door Basiskader of inzage door bevoegd kader en Bestuur.</p></section>
+    <p id="accessReason">Deze module is bedoeld voor observaties door Basiskader of inzage door bevoegd kader en Bestuur.</p>
+    <div class="readonly"><strong>Controle van jouw toegang</strong><div id="accessChecks" class="helper" aria-live="polite"></div></div>
+    <p class="helper">Hier staan alleen de controles van je eigen account. Er worden geen rollen automatisch toegekend.</p>
+  </section>
 </main>
 <script type="module">
 const $=id=>document.getElementById(id);
@@ -212,6 +215,16 @@ async function loadContext(){
   $('inboxPanel').hidden=!data.canReview;
   $('noAccess').hidden=Boolean(data.canSubmit||data.canReview);
   $('accessReason').textContent=data.explanation||'Controleer je politierol en gekoppelde personeelsfiche.';
+  const c=data.accessChecks||{};
+  const lines=[
+    'Discord-identiteit: '+(c.discordIdentityVerified?'geverifieerd':'niet als Discord-aanmelding bevestigd'),
+    'Politiefiche: '+(c.policeRosterMatch?'exact één gekoppelde fiche':String(c.rosterMatches??0)+' gekoppelde fiches'),
+    'Politiereeks en rang: '+(c.policeCadreRecognized?'geldig Basiskader (3xx–5xx)':'niet als Basiskader herkend'),
+    'Politie-portaalrol: '+(c.portalPoliceRole||'niet afzonderlijk gekoppeld'),
+    'Recente Discord-politirol: '+(c.discordPoliceRank||(
+      c.policeMembershipVerified?'Politielid (geen aparte kaderrol)':'niet bevestigd'))
+  ];
+  $('accessChecks').textContent=lines.join(' · ');
   if(data.canReview)await loadInbox();
 }
 $('clearBtn').onclick=()=>{clearForm();setMessage('')};
