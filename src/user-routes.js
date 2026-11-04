@@ -393,6 +393,10 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
         const clearRecovery=data.manualRoleRecovery?.dept===change.department&&
           data.manualRoleRecovery.role!==change.role;
         tx.update(ref,{...updated,approvalSource:FieldValue.delete(),
+          ...(change.department==='politie'?{
+            autoPoliceBasic:FieldValue.delete(),
+            autoPoliceBasicBlocked:FieldValue.delete()
+          }:{}),
           ...(clearRecovery?{manualRoleRecovery:FieldValue.delete()}:{}),
           updatedAt:FieldValue.serverTimestamp(),approvedBy:req.bpd.uid});
         tx.create(ref.collection('audit').doc(),{
@@ -427,6 +431,10 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
           ...approved,serviceFunctions:data.serviceFunctions
         },change.department);
         tx.update(ref,{...updated,approvalSource:FieldValue.delete(),
+          ...(change.department==='politie'?{
+            autoPoliceBasic:FieldValue.delete(),
+            autoPoliceBasicBlocked:true
+          }:{}),
           ...(data.manualRoleRecovery?.dept===change.department?
             {manualRoleRecovery:FieldValue.delete()}:{}),
           updatedAt:FieldValue.serverTimestamp()});
