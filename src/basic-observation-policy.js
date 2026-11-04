@@ -12,11 +12,24 @@ export function basicCallLevel(person){
   // 1xx and 2xx share the same Agent rank.
   return digit<=2?0:digit-2;
 }
+export function verifiedBasicPoliceIdentity(actor){
+  // Evidence is produced SERVER-side from a fresh, guild-bound Discord role
+  // snapshot. It does not grant general police dossiers, ranks or management.
+  return Boolean(actor&&ID.test(actor.discordId)&&
+    actor.uid==='discord:'+actor.discordId&&
+    actor.discordPoliceRank==='basiskader'&&
+    actor.portalTechnicalMode!==true);
+}
 export function basicAuthor(actor,person){
-  // The verified POLICE department role is authoritative. A multi-service
-  // member can have another global/primary role without losing Police rights.
-  if(!actor||roleForDepartment(actor,'politie')!=='basiskader'||
-     !actor.departments?.includes('politie')||!ID.test(actor.discordId)||
+  // A multi-service member may have a higher PRIMARY role (e.g. Brandweer
+  // leadership) and an older portal approval with no Police department.
+  // In that specific case, trust the independently verified Police Discord
+  // Basiskader role PLUS the unique official 3xx-5xx Police staff identity.
+  const approvedRole=roleForDepartment(actor,'politie');
+  const approved=approvedRole==='basiskader'&&actor?.departments?.includes('politie');
+  const verified=(!approvedRole||approvedRole==='basiskader')&&
+    verifiedBasicPoliceIdentity(actor);
+  if(!actor||!(approved||verified)||!ID.test(actor.discordId)||
      !person||person.personId!==actor.discordId||person.dept!=='politie')return false;
   const lvl=basicCallLevel(person);
   return lvl!==null&&lvl>=1&&lvl<=3&&
@@ -45,16 +58,18 @@ export const mayReadBasicInbox=actor=>Boolean(actor?.boardPersonnelAdmin===true|
       roleForDepartment(actor,'politie'))));
 
 export function basicObservationDenial(actor,people){
-  if(!actor?.departments?.includes('politie')||
-     roleForDepartment(actor,'politie')!=='basiskader')
-    return 'Geen goedgekeurde Basiskaderrol binnen Politie gevonden. Controleer Mijn Discord en je portaalprofiel.';
-  const matches=(people||[]).filter(p=>p.dept==='politie'&&p.personId===actor.discordId);
-  if(matches.length!==1)return 'Je politiefiche is niet eenduidig gekoppeld aan je Discord-ID. Laat Personeelsbeheer de koppeling nakijken.';
+  const matches=(people||[]).filter(p=>p.dept==='politie'&&p.personId===actor?.discordId);
+  if(matches.length!==1)
+    return 'Geen unieke politiefiche gevonden voor jouw Discord-ID. Controleer de koppeling in Personeelsbeheer.';
   if(basicCallLevel(matches[0])===null)
     return 'Je politiroepnummer wordt niet herkend als een geldig Basiskader-nummer (3xx–5xx).';
-  if(!basicAuthor(actor,matches[0]))
-    return 'Je goedgekeurde politierol en je rang in de personeelslijst komen niet overeen.';
-  return null;
+  if(basicAuthor(actor,matches[0]))return null;
+  const policeRole=roleForDepartment(actor,'politie');
+  if(policeRole&&policeRole!=='basiskader')
+    return 'Je goedgekeurde politierol wijkt af van Basiskader. Laat deze rol in Gebruikersbeheer corrigeren.';
+  if(policeRole==='basiskader')
+    return 'Je politiefiche of goedgekeurde rol komt niet overeen met Basiskader. Controleer Personeelsbeheer.';
+  return 'Er is wel een politiefiche, maar je Discord-Basiskaderrol is niet recent bevestigd. Klik rechtsboven op Discord opnieuw verifiëren. Blijft dit zo, controleer de Politierol in Gebruikersbeheer.';
 }
 export function basicObservationWritesEnabled(env=process.env){
   // Separately scoped, rank-checked observations can be enabled without
