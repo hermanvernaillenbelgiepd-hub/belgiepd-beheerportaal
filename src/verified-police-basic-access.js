@@ -37,7 +37,9 @@ export function verifiedPoliceBasicCandidate(decoded,member,guildId,roster,now=D
  const verified=verifiedPoliceBasicRole(decoded,member,guildId,now);
  if(!verified||!Array.isArray(roster))return null;
  const matches=roster.filter(p=>p?.dept==='politie'&&p.personId===verified.discordId&&
-   p.lifecycleState!=='archived'&&p.lifecycleState!=='pending');
+   p.lifecycleState!=='archived'&&p.lifecycleState!=='pending'&&
+   !['ONTSLAG','VERWIJDERD','BLACKLISTED','GESCHORST'].includes(
+     String(p.status||'').trim().toLocaleUpperCase('nl')));
  if(matches.length!==1)return null;
  const p=matches[0],level=basicCallLevel(p);
  if(level===null||level<1||level>3||policeKader(p.rank,p.call)!=='Basiskader')return null;
