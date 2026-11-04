@@ -229,12 +229,16 @@ function fillFolderSelect(){
  else select.value=selectedFolder==='all'?'':selectedFolder;
  updateDestinationHint();
 }
+// Documents whose former folder was archived are still accessible in Algemeen.
+function effectiveFolderId(doc){
+ return folders.some(folder=>folder.id===doc.folderId)?doc.folderId||'':'';
+}
 function renderFolders(){
  const root=$('folderButtons');root.replaceChildren();
  const choices=[
   {id:'all',name:'Alle documenten',count:documents.length},
-  {id:'',name:'Algemeen',count:documents.filter(d=>!d.folderId).length},
-  ...folders.map(f=>({...f,count:documents.filter(d=>d.folderId===f.id).length}))
+  {id:'',name:'Algemeen',count:documents.filter(d=>!effectiveFolderId(d)).length},
+  ...folders.map(f=>({...f,count:documents.filter(d=>effectiveFolderId(d)===f.id).length}))
  ];
  if(selectedFolder!=='all'&&selectedFolder!==''&&!folders.some(f=>f.id===selectedFolder))
   selectedFolder='all';
@@ -253,19 +257,23 @@ function renderFolders(){
  }
  $('addFolder').hidden=!canWrite();
  const selected=folders.find(f=>f.id===selectedFolder);
- $('deleteFolder').hidden=!canManage()||!selected||selected.system===true;
+ $('deleteFolder').hidden=!canManage()||!selected;
  fillFolderSelect();
 }
 
 $('deleteFolder').onclick=async()=>{
  const folder=folders.find(f=>f.id===selectedFolder);
- if(!folder||folder.system||!canManage())return;
- if(!confirm('De map "'+folder.name+'" verwijderen? Alleen een map zonder actieve documenten kan verwijderd worden. Bestaande documenten en archieven blijven bewaard.'))return;
+ if(!folder||!canManage())return;
+ const count=documents.filter(doc=>effectiveFolderId(doc)===folder.id).length;
+ if(!confirm('De map "'+folder.name+'" verwijderen? '+
+  (count?count+' document(en) verschijnen daarna onder Algemeen. ':'')+
+  'Bestanden, rechten en archief blijven behouden.'))return;
  try{
-   await api('/api/document-center/folders/'+encodeURIComponent(folder.id),'DELETE');
-   selectedFolder='all';
+   await api('/api/document-center/folders/'+encodeURIComponent(folder.id)+
+     '?department='+encodeURIComponent($('department').value),'DELETE');
+   selectedFolder='';
    await loadDocuments();
-   status('De map "'+folder.name+'" is verwijderd. Documenten en archieven blijven behouden.','good');
+   status('Map "'+folder.name+'" verwijderd. Eventuele documenten staan onder Algemeen; archieven blijven behouden.','good');
  }catch(e){status('Map niet verwijderd: '+e.message,'error')}
 };
 
@@ -290,7 +298,7 @@ async function loadFolders(){
 function render(){
  const q=$('search').value.toLocaleLowerCase('nl').trim(),category=$('filterCategory').value;
  const rows=documents.filter(d=>(!category||d.category===category)&&
-  (selectedFolder==='all'||(d.folderId||'')===selectedFolder)&&
+  (selectedFolder==='all'||effectiveFolderId(d)===selectedFolder)&&
   [d.title,d.description,d.fileName,d.uploadedByName].some(x=>String(x||'').toLocaleLowerCase('nl').includes(q)));
  $('counter').textContent=rows.length+' van '+documents.length+' documenten'+
   (canManage()?' · volledig documentbeheer':canWrite()?' · uploadrechten':' · alleen lezen');
