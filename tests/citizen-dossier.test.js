@@ -26,10 +26,10 @@ test('Citizen rank reflects verified roles, not client-controlled name or sheet 
  assert.equal(citizenStage(['333333333333333333']),null);
  const api={status:'ok',entries:new Map([[id,[BURGER_ROLE_IDS.member]]])};
  assert.equal(verifiedCitizenStage(id,api,null,guild,now),'Burger');
- assert.equal(verifiedCitizenStage(id,{status:'ok',entries:new Map()},member,guild,id,now),null);
- assert.equal(verifiedCitizenStage(id,{status:'unavailable'},member,guild,id,now),'Burgerraad');
+ assert.equal(verifiedCitizenStage(id,{status:'ok',entries:new Map()},member,guild,now),null);
+ assert.equal(verifiedCitizenStage(id,{status:'unavailable'},member,guild,now),'Burgerraad');
  assert.equal(verifiedCitizenStage(id,{status:'unavailable'},
-   {...member,verifiedAt:now-8*86400000},guild,id,now),null);
+   {...member,verifiedAt:now-8*86400000},guild,now),null);
 });
 test('Notities and observaties remain separate, with optional 0-10 score',()=>{
  const note=validateCitizenEntry(base,'BIO');
