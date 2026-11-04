@@ -4,7 +4,7 @@ import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,DECORATION_CATALOG,CATALOG_BY_ID,
   brusselsToday,validateDecoration,canManagePoliceDecoration,canManagePoliceDecorationCatalog,
   awardKey,manageDecorations,customCatalogItem,PERSONNEL_DECORATION_CATALOG_COLLECTION,
-  isCustomDecorationId,decorationCatalogExtras}
+  isCustomDecorationId,decorationCatalogExtras,canRenameDecorationCatalog}
   from './personnel-decoration-policy.js';
 
 const text=(value,max=120)=>typeof value==='string'?value.trim().slice(0,max):'';
@@ -71,11 +71,12 @@ export function installPersonnelDecorationRoutes(app,{requireUser,getSnapshot}){
  });
  app.get('/api/personnel-awards/catalog-access',requireUser,(req,res)=>{
   res.set('Cache-Control','private, no-store');
-  return res.json({canUpload:canManagePoliceDecorationCatalog(req.bpd)});
+  return res.json({canUpload:canManagePoliceDecorationCatalog(req.bpd),
+   canRename:canRenameDecorationCatalog(req.bpd)});
  });
  app.get('/api/personnel-awards/catalog-labels',requireUser,async(req,res)=>{
-  if(!canManagePoliceDecorationCatalog(req.bpd))
-   return res.status(403).json({error:'Alleen geverifieerd Officierenkader of Korpsleiding'});
+  if(!canRenameDecorationCatalog(req.bpd))
+   return res.status(403).json({error:'Alleen geverifieerd Officierenkader, Korpsleiding of Technisch Beheer'});
   try{
    const catalog=await loadCatalog();
    res.set('Cache-Control','private, no-store');
@@ -85,8 +86,8 @@ export function installPersonnelDecorationRoutes(app,{requireUser,getSnapshot}){
   }catch(error){return failure(res,error)}
  });
  app.patch('/api/personnel-awards/catalog-label/:id',requireUser,async(req,res)=>{
-  if(!canManagePoliceDecorationCatalog(req.bpd))
-   return res.status(403).json({error:'Alleen geverifieerd Officierenkader of Korpsleiding'});
+  if(!canRenameDecorationCatalog(req.bpd))
+   return res.status(403).json({error:'Alleen geverifieerd Officierenkader, Korpsleiding of Technisch Beheer'});
   const id=String(req.params.id||''),body=req.body;
   if(!CATALOG_BY_ID.has(id)&&!isCustomDecorationId(id))
    return res.status(404).json({error:'Onbekende onderscheiding'});
