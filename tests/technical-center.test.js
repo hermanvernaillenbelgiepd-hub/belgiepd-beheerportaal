@@ -170,3 +170,76 @@ test('Nieuwe instelling wordt elke uurlijkse cyclus gelezen; geen serverherstart
  assert.match(nav,/href:'\/beheercentrum\.html'/);
  assert.doesNotMatch(worker,/process\.env\.BPD_PORTAL_CONFIG_SECRET/);
 });
+
+test('Beheercentrum is uitsluitend Politie Officierenkader, Korpsleiding of geverifieerd Technisch Beheer',()=>{
+ const mk={...officer,role:'middenkader',departmentRoles:{politie:'middenkader'}};
+ const basic={...officer,role:'basiskader',departmentRoles:{politie:'basiskader'}};
+ const officerOfFire={...officer,departments:['brandweer'],
+   departmentRoles:{brandweer:'officierenkader'},fireZoneChief:true};
+ const corps={...officer,role:'korpsleiding',
+   departmentRoles:{politie:'korpsleiding'}};
+ assert.equal(mayOpenTechnicalCenter(technical),true);
+ assert.equal(mayOpenTechnicalCenter(officer),true);
+ assert.equal(mayOpenTechnicalCenter(corps),true);
+ for(const actor of [mk,basic,officerOfFire,
+  {...officer,departmentRoles:{politie:'middenkader'}},
+  {...officer,role:'middenkader'},
+  {...officer,role:'beheerder'},
+  {...officer,portalTechnicalMode:true},
+  {...officer,uid:'discord:111111111111111111'},
+  {...officer,discordId:'unknown'},
+  {...officer,departments:['brandweer','ambulance'],
+    departmentRoles:{brandweer:'korpsleiding',ambulance:'korpsleiding'}},
+  {...officer,departments:['brandweer','politie'],
+    departmentRoles:{brandweer:'korpsleiding',politie:'middenkader'}}
+ ])assert.equal(mayOpenTechnicalCenter(actor),false,
+   'Een verkeerde of niet afzonderlijk goedgekeurde Politiekaderrol mag de centrale pagina niet openen');
+ assert.equal(mayEditTechnicalSettings(officer),false);
+ assert.equal(mayEditTechnicalSettings(corps),false);
+});
+
+test('Server weigert onbevoegde middenkaderaccounts zelfs wanneer de beveiligde endpoint direct wordt aangeroepen',async()=>{
+ const {db}=fakeFirestore();
+ const app=express();
+ app.use('/api/technical-center',express.json({limit:'3kb',strict:true}));
+ let current={...officer,role:'middenkader',departmentRoles:{politie:'middenkader'}};
+ installTechnicalCenterRoutes(app,{requireUser:(req,_res,next)=>{
+  req.bpd=current;next();
+ },dbFactory:()=>db});
+ const server=app.listen(0,'127.0.0.1');
+ await once(server,'listening');
+ const base='http://127.0.0.1:'+server.address().port;
+ try{
+  for(const role of ['middenkader','basiskader','agentenkader']){
+   current={...current,role,departmentRoles:{politie:role}};
+   const response=await fetch(base+'/api/technical-center/context');
+   assert.equal(response.status,403);
+   const update=await fetch(base+'/api/technical-center/config',{
+    method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)});
+   assert.equal(update.status,403);
+  }
+  current=officer;
+  const readOnly=await fetch(base+'/api/technical-center/context');
+  assert.equal(readOnly.status,200);
+  const data=await readOnly.json();
+  assert.equal(data.canEdit,false);
+  const denyWrite=await fetch(base+'/api/technical-center/config',{
+   method:'PUT',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify(body)});
+  assert.equal(denyWrite.status,403);
+ }finally{await new Promise((resolve,reject)=>
+  server.close(error=>error?reject(error):resolve()))}
+});
+
+test('Zijbalk en hoofdscherm vertrouwen exclusief op centrale toegangsmachtiging van de server',()=>{
+ const server=read('src/server.js');
+ const home=read('public/index.html');
+ const sidebar=read('public/bpd-navigation.js');
+ assert.match(server,/technicalCenterVisible:mayOpenTechnicalCenter\(req\.bpd\)/);
+ assert.match(home,/id="adminCenterCard"[^>]* hidden/);
+ assert.match(home,/adminCenterNavLink'\)\.hidden=ctx\.technicalCenterVisible!==true/);
+ assert.match(home,/adminCenterCard'\)\.hidden=ctx\.technicalCenterVisible!==true/);
+ assert.match(sidebar,/context\.technicalCenterVisible===true/);
+ assert.doesNotMatch(sidebar,/!\['admin','center'\]\.includes\(item\)\|\|context\.visible===true/);
+});

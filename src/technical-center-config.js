@@ -1,7 +1,7 @@
 // BelgiumPD Technical Centre v1: small, explicit, server-authorized settings.
 // Changing these settings never grants Discord, personnel or dossier rights.
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {isUserManager} from './user-access.js';
+import {roleForDepartment} from './leave-policy.js';
 
 export const TECHNICAL_SETTINGS_COLLECTION='bpd_portal_technical_settings';
 export const TECHNICAL_SETTINGS_AUDIT='bpd_portal_technical_settings_audit';
@@ -21,7 +21,17 @@ export function mayEditTechnicalSettings(actor){
   actor.role==='beheerder');
 }
 export function mayOpenTechnicalCenter(actor){
- return mayEditTechnicalSettings(actor)||isUserManager(actor);
+ if(mayEditTechnicalSettings(actor))return true;
+ // Only personally authenticated, approved Police Officers/Corps may open
+ // central management. A global role from Brandweer, AZLS or Bestuur cannot
+ // substitute for an independent Police department grant.
+ return Boolean(actor&&ID.test(String(actor.discordId||''))&&
+   actor.uid==='discord:'+actor.discordId&&
+   actor.portalTechnicalMode!==true&&
+   ['officierenkader','korpsleiding'].includes(actor.role)&&
+   actor.departments?.includes('politie')===true&&
+   ['officierenkader','korpsleiding'].includes(
+     roleForDepartment(actor,'politie')));
 }
 export function technicalSettingsFrom(value){
  const enabled=typeof value?.observationArchiveEnabled==='boolean'?
@@ -91,7 +101,7 @@ const serialAudit=doc=>{
 export function installTechnicalCenterRoutes(app,{requireUser,dbFactory=getFirestore}){
  app.get('/api/technical-center/context',requireUser,async(req,res)=>{
   if(!mayOpenTechnicalCenter(req.bpd))
-   return res.status(403).json({error:'Beheercentrum uitsluitend voor bevoegd kader en technisch beheer'});
+   return res.status(403).json({error:'Beheercentrum uitsluitend voor Politie Officierenkader, Korpsleiding en geverifieerd Technisch Beheer'});
   try{
    const db=dbFactory(),canEdit=mayEditTechnicalSettings(req.bpd);
    const [config,history]=await Promise.all([

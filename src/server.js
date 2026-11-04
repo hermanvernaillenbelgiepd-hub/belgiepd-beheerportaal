@@ -20,7 +20,7 @@ import { installRegistrationRoutes } from './registration-routes.js';
 import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import {basicObservationJsonParser} from './basic-observation-json.js';
 import {scheduleBasicObservationAutoArchive} from './basic-observation-auto-archive.js';
-import {installTechnicalCenterRoutes} from './technical-center-config.js';
+import {installTechnicalCenterRoutes,mayOpenTechnicalCenter} from './technical-center-config.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
@@ -835,6 +835,7 @@ installManualRoleRoutes(app,{requireUser});
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   res.set('Cache-Control','no-store');
   res.json({visible:canSeeDashboardManagement(req.bpd),
+    technicalCenterVisible:mayOpenTechnicalCenter(req.bpd),
     showAdvancedDashboard:canSeeAdvancedDashboard(req.bpd),
     dashboardProfile:isFireZoneDashboard(req.bpd)?'brandweer-zone':
       ambulanceDashboardTier(req.bpd)?'ambulance-azls':null,
