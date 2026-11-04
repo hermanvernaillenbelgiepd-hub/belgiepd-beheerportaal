@@ -167,11 +167,11 @@
 .mr-table{
  width:100%;min-width:0;table-layout:fixed;
 }
-.mr-table th:first-child{width:3.7%;min-width:0}
-.mr-table th:nth-child(2){width:6.5%;min-width:0}
+.mr-table th:first-child{width:2.6%;min-width:0}
+.mr-table th:nth-child(2){width:4.5%;min-width:0}
 .mr-table th:nth-child(3){width:12%;min-width:0}
-.mr-table th:nth-child(4){width:4.8%;min-width:0}
-.mr-table th:nth-child(5){width:6.1%;min-width:0}
+.mr-table th:nth-child(4){width:3.3%;min-width:0}
+.mr-table th:nth-child(5){width:4.6%;min-width:0}
 .mr-table th.mr-specialty-head{
  min-width:0;overflow-wrap:anywhere;
 }
@@ -225,3 +225,8 @@
  font-size:clamp(9px,.7vw,11px);line-height:1.2;font-weight:750;
  white-space:normal;overflow-wrap:anywhere;letter-spacing:0;
 }
+
+/* Houd de vaste identiteitskolommen compact zonder labels/status te verbergen. */
+.mr-table th:nth-child(-n+5){padding-inline:2px;white-space:normal;overflow-wrap:anywhere;letter-spacing:0}
+.mr-table td.mr-rank-cell,.mr-table td.mr-status-cell{padding-inline:2px}
+.mr-table .mr-status,.mr-table .mr-series-badge{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
