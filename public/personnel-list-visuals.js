@@ -40,8 +40,8 @@
     logoOverrides.clear();
     for(const row of Array.isArray(records)?records:[]){
       const key=String(row?.key||''),url=String(row?.imageUrl||'');
-      if(!/^(?:rank|specialty)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}$/.test(key))continue;
-      if(!/^\/api\/role-artwork\/file\/(?:rank|specialty)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}\?v=[A-Za-z0-9-]+$/.test(url))continue;
+      if(!/^(?:rank|specialty|patch)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}$/.test(key))continue;
+      if(!/^\/api\/role-artwork\/file\/(?:rank|specialty|patch)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}\?v=[A-Za-z0-9-]+$/.test(url))continue;
       logoOverrides.set(key,url);
     }
   }
@@ -89,7 +89,7 @@
   // Only a complete, approved library patch may cover a whole column header.
   // The built-in Signalisatie icon is a small fallback, not a full-width patch.
   function specialtyBannerImage(label,dept='politie'){
-    return artwork('specialty',dept,specialtyArtworkCode(label));
+    return artwork('patch',dept,specialtyArtworkCode(label))||artwork('specialty',dept,specialtyArtworkCode(label));
   }
   function specialtyIcon(label){
     return specialtyCatalog.find(([pattern])=>pattern.test(String(label||'')))?.[1]||'🏷️';

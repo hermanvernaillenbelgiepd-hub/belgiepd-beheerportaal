@@ -110,7 +110,7 @@ function renderHeader(thead){
      img.onerror=()=>fallback();
      th.classList.add('mr-specialty-head--patch');
      th.setAttribute('aria-label',label);
-     th.append(img);
+     th.append(img,element('small',label));
    }else fallback();
    tr.append(th);
  }
