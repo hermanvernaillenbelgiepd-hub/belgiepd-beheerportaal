@@ -65,6 +65,16 @@ export const mayReadBasicInbox=actor=>Boolean(actor?.boardPersonnelAdmin===true|
     ['middenkader','officierenkader','korpsleiding'].includes(
       roleForDepartment(actor,'politie'))));
 
+// Archiveren wijzigt het centrale ontvangstoverzicht voor alle lezers.
+// Daarom mag alleen bevoegd Politie Officierenkader/Korpsleiding of
+// afzonderlijk geverifieerd Bestuur dit doen; Middenkader blijft lezer.
+export const mayArchiveBasicObservation=actor=>Boolean(
+  actor?.boardPersonnelAdmin===true||(
+    mayReadBasicInbox(actor)&&
+    ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))
+  )
+);
+
 export function basicObservationAccessChecks(actor,people){
   const matches=(people||[]).filter(p=>p.dept==='politie'&&
     p.personId===actor?.discordId);

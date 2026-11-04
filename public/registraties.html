@@ -45,6 +45,11 @@ fieldset{border:0;margin:0;padding:0}
 .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .toolbar input{max-width:340px}
 .counter{font-size:11px;color:#afc8e7}
+.archive-actions{margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.archive-actions button{font-size:12px;padding:7px 11px;background:#1b3051}
+.archive-label{font-size:11px;font-weight:700;color:#b2c9e8}
+#inboxView{max-width:185px;width:auto}
+.archive-tip{font-size:12px;margin:8px 0 12px}
 @media(max-width:670px){.grid{grid-template-columns:1fr}.field.full{grid-column:auto}header{padding:13px}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head>
@@ -88,8 +93,13 @@ fieldset{border:0;margin:0;padding:0}
     <div class="toolbar"><div><h2>Gebundelde ontvangen observaties</h2>
       <p class="helper">Alleen zichtbaar voor Middenkader, Officierenkader, Korpsleiding en Bestuur, binnen de eigen inzagerechten.</p></div>
       <button type="button" id="refreshInbox" class="secondary">Vernieuwen</button></div>
-    <div class="toolbar"><input type="search" id="filterInbox" placeholder="Zoek roepnummer, naam of observatie…" aria-label="Zoek in ontvangen observaties">
+    <div class="toolbar">
+      <input type="search" id="filterInbox" placeholder="Zoek roepnummer, naam of observatie…" aria-label="Zoek in ontvangen observaties">
+      <label for="inboxView">Overzicht
+        <select id="inboxView"><option value="active">Actieve observaties</option><option value="archived">Archief</option></select>
+      </label>
       <span id="inboxCount" class="counter"></span></div>
+    <p class="archive-tip">Observaties worden per personeelslid verzameld. Archiveren verplaatst een observatie naar het beveiligde archief; inhoud en indiener blijven behouden.</p>
     <div id="inboxList" role="list"></div>
     <div class="buttons"><button id="olderInbox" type="button" class="secondary" hidden>Oudere observaties laden</button></div>
   </section>
@@ -166,7 +176,11 @@ function displayInbox(list){
   ].some(v=>String(v||'').toLocaleLowerCase('nl').includes(q)));
   const root=$('inboxList');root.replaceChildren();
   $('inboxCount').textContent=rows.length+' van '+(list?.length||0)+' observaties';
-  if(!rows.length){root.textContent='Geen ontvangen observaties gevonden.';return}
+  if(!rows.length){
+    root.textContent=$('inboxView').value==='archived'?
+      'Geen gearchiveerde observaties gevonden.':'Geen actieve observaties gevonden.';
+    return;
+  }
   // Gegroepeerd per betrokken personeelslid; nooit per browser-rol.
   const groups=new Map();
   for(const row of rows){
@@ -191,6 +205,36 @@ function displayInbox(list){
       const details=document.createElement('p');details.className='report-desc';
       details.textContent=row.details||'';
       article.append(title,meta,details);
+      if(row.archivedAt){
+        const archiveStamp=document.createElement('span');
+        archiveStamp.className='archive-label';
+        archiveStamp.textContent='Gearchiveerd op '+new Date(row.archivedAt).toLocaleString('nl-BE');
+        article.append(archiveStamp);
+      }
+      if(context?.canArchive){
+        const buttons=document.createElement('div');buttons.className='archive-actions';
+        const action=document.createElement('button');action.type='button';
+        action.textContent=row.archivedAt?'Terugzetten naar actief':'Archiveren';
+        action.className='secondary';
+        action.onclick=async()=>{
+          const targetArchived=!row.archivedAt;
+          if(!confirm((targetArchived?'Observatie archiveren':'Observatie terugzetten')+
+            ' voor '+(row.subject?.call||'deze persoon')+
+            '? De observatie wordt niet verwijderd en de actie wordt gelogd.'))return;
+          action.disabled=true;
+          try{
+            await api('/api/basic-observations/'+encodeURIComponent(row.id)+'/archive',
+              'PATCH',{archived:targetArchived});
+            await loadInbox();
+            setMessage(targetArchived?'Observatie gearchiveerd. Bekijk het Archief voor deze registratie.':
+              'Observatie teruggezet in de actieve lijst.');
+          }catch(error){
+            setMessage('Archivering niet uitgevoerd: '+error.message,true);
+            action.disabled=false;
+          }
+        };
+        buttons.append(action);article.append(buttons);
+      }
       if(row.testRecord){
         const test=document.createElement('span');test.className='counter';
         test.textContent='TEST · uitgesloten uit weekrapport';article.append(test);
@@ -204,8 +248,9 @@ async function loadInbox(loadMore=false){
   const btn=$('olderInbox');btn.disabled=true;
   if(!loadMore){inboxData=[];inboxCursor=null;$('inboxList').textContent='Ontvangen observaties laden…'}
   try{
-    const url='/api/basic-observations/inbox'+(loadMore&&inboxCursor?
-      '?cursor='+encodeURIComponent(inboxCursor):'');
+    const view=$('inboxView').value;
+    const url='/api/basic-observations/inbox?view='+encodeURIComponent(view)+
+      (loadMore&&inboxCursor?'&cursor='+encodeURIComponent(inboxCursor):'');
     const response=await api(url);
     const ids=new Set(inboxData.map(x=>x.subject?.discordId+':'+x.id));
     for(const row of response.entries||[]){
@@ -253,6 +298,7 @@ $('target').addEventListener('change',()=>{
   if($('message').classList.contains('error'))setMessage('');
 });
 $('refreshInbox').onclick=()=>loadInbox();
+$('inboxView').onchange=()=>{inboxData=[];inboxCursor=null;loadInbox();};
 $('olderInbox').onclick=()=>loadInbox(true);
 $('filterInbox').oninput=()=>displayInbox(inboxData);
 $('observationForm').onsubmit=async event=>{
