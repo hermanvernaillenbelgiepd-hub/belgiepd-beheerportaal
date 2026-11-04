@@ -65,12 +65,31 @@ export const mayReadBasicInbox=actor=>Boolean(actor?.boardPersonnelAdmin===true|
     ['middenkader','officierenkader','korpsleiding'].includes(
       roleForDepartment(actor,'politie'))));
 
+export function basicObservationAccessChecks(actor,people){
+  const matches=(people||[]).filter(p=>p.dept==='politie'&&
+    p.personId===actor?.discordId);
+  const own=matches.length===1?matches[0]:null;
+  return {
+    discordIdentityVerified:Boolean(ID.test(actor?.discordId)&&
+      actor?.uid==='discord:'+actor.discordId),
+    policeRosterMatch:matches.length===1,
+    rosterMatches:matches.length,
+    policeCall:own?String(own.call||'').slice(0,24):null,
+    policeCadreRecognized:own?basicCallLevel(own)!==null&&
+      basicCallLevel(own)>=1&&basicCallLevel(own)<=3&&
+      policeKader(own.rank,own.call)==='Basiskader':false,
+    portalPoliceRole:roleForDepartment(actor,'politie')||null,
+    discordPoliceRank:actor?.discordPoliceRank||null,
+    policeMembershipVerified:actor?.discordPoliceMemberVerified===true
+  };
+}
 export function basicObservationDenial(actor,people){
   const matches=(people||[]).filter(p=>p.dept==='politie'&&p.personId===actor?.discordId);
   if(matches.length!==1)
     return 'Je politiefiche is niet eenduidig gekoppeld aan je Discord-ID. Controleer de koppeling in Personeelsbeheer.';
-  if(basicCallLevel(matches[0])===null)
-    return 'Je politiroepnummer wordt niet herkend als een geldig Basiskader-nummer (3xx–5xx).';
+  if(basicCallLevel(matches[0])===null||
+     policeKader(matches[0].rank,matches[0].call)!=='Basiskader')
+    return 'Je politiefiche heeft geen herkende Basiskaderrang (3xx–5xx). Laat roepnummer en rang controleren in Personeelsbeheer.';
   if(basicAuthor(actor,matches[0]))return null;
   const policeRole=roleForDepartment(actor,'politie');
   if(policeRole&&policeRole!=='basiskader')
