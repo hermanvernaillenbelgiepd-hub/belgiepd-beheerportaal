@@ -3,6 +3,7 @@
 // Never use this helper to send a ping or to modify a roster record.
 import {mayReadManagement} from './management-utils.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
+import {roleForDepartment} from './leave-policy.js';
 
 const ID=/^\d{15,22}$/;
 const DEPARTMENTS=Object.freeze(['politie','brandweer','ambulance','depannage']);
@@ -15,7 +16,14 @@ const callNumber=value=>{
 };
 
 export function staffActivityFollowup(actor,roster,{maxResults=250}={}){
- const permitted=DEPARTMENTS.filter(dept=>mayReadManagement(actor,dept));
+ const technical=actor?.portalTechnicalMode===true&&
+  actor?.profileTechnicalAvailable===true&&ID.test(String(actor?.discordId||''))&&
+  actor?.uid==='discord:'+actor.discordId;
+ const permitted=DEPARTMENTS.filter(dept=>
+  mayReadManagement(actor,dept)&&(
+    ['middenkader','officierenkader','korpsleiding'].includes(roleForDepartment(actor,dept))||
+    technical||actor?.boardPersonnelAdmin===true
+  ));
  if(!permitted.length)return {allowed:false,people:[],counts:{'50/50':0,INACTIEF:0},limited:false};
  const seen=new Set(),rows=[];
  for(const person of Array.isArray(roster)?roster:[]){
