@@ -1932,7 +1932,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
-<link rel="stylesheet" href="/organogram-hybrid.css?v=service-parity-20261105c">
+<link rel="stylesheet" href="/organogram-hybrid.css?v=service-grade-plates-20261105d">
 </head>
 <body>
 <header>
@@ -2521,6 +2521,45 @@ async function refreshProfileSpecialtyRoles(person,key){
  const dialog=$('person-profile');
  if(dialog.open&&dialog.dataset.personKey===key)openPersonProfile(person);
 }
+
+/* Dedicated, display-only grade plate below the uniform (like Politie).
+   Do not infer a grade from unrelated specialization badges and never
+   change the actual uniform composition, rank, or Discord membership. */
+function makeServiceProfileGrade(person,rankLabel){
+ const department=String(person?.dept||'');
+ if(!['brandweer','ambulance','burger'].includes(department))return null;
+ const selected=window.BPDUniformAssignments?.forPerson?.(person);
+ const groups=Array.isArray(person?.burgerGroups)?person.burgerGroups:[];
+ const citizenGrade=groups.includes('Burgerraad')?'burgerraad':
+  groups.includes('Burger')?'burger':
+  groups.includes('Burger IO')?'burger_in_opleiding':'';
+ const rawGrade=department==='burger'?
+  (citizenGrade||serviceRankKey(person.rank)):serviceRankKey(person.rank);
+ const legacyGrade=department==='burger'&&rawGrade==='burger_io'?
+  'burger_in_opleiding':rawGrade;
+ const candidateKeys=[legacyGrade,legacyGrade.split('_')[0]].filter(Boolean);
+ const legacyImage=candidateKeys
+  .map(code=>serviceRankArtworks.get('rank_'+department+'_'+code)).find(Boolean);
+ const rankImage=selected?.rankUrl||legacyImage||'';
+ const shape=department==='brandweer'?'vertical':'horizontal';
+ const frame=el('div','person-profile-grade person-profile-service-grade person-profile-service-grade-'+shape);
+ frame.setAttribute('aria-label','Graadteken van '+String(rankLabel||person.rank||'onbekend'));
+ const slot=el('div','person-profile-service-grade-image-slot');
+ const fallback=()=>el('span','person-profile-service-grade-missing','Graadteken nog niet gekoppeld');
+ if(rankImage){
+  const badge=el('img','person-profile-service-grade-image');
+  badge.src=rankImage;badge.alt='Graadteken '+String(rankLabel||person.rank||'');
+  badge.loading='lazy';badge.decoding='async';
+  badge.onerror=()=>slot.replaceChildren(fallback());
+  slot.append(badge);
+ }else slot.append(fallback());
+ const info=el('div','person-profile-grade-info');
+ info.append(el('small','','GRAADTEKEN'),
+  el('strong','',String(rankLabel||person.rank||'Niet geregistreerd')));
+ frame.append(slot,info);
+ return frame;
+}
+
 function openPersonProfile(p){
  const dialog=$('person-profile'),content=$('person-profile-content');
  const profileKey=[p.dept,p.call,p.name].join('|');
@@ -2563,6 +2602,9 @@ function openPersonProfile(p){
    grade.append(badge,detail);
    intro.append(grade);
   }
+ }else if(['brandweer','ambulance','burger'].includes(p.dept)){
+  const badge=makeServiceProfileGrade(portraitPerson,displayRank);
+  if(badge)intro.append(badge);
  }
  const grid=el('div','person-profile-grid');
  function fact(label,value){

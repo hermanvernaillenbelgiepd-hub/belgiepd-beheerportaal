@@ -759,3 +759,65 @@ html .person-profile-dialog.operational-profile .bpd-service-uniform-empty-label
   max-width:112px!important;
  }
 }
+
+/* Grade plate below the profile portrait, matching the police grade box.
+   Fire brigade insignia are portrait rectangles; AZLS and Burger
+   insignia are landscape rectangles. No cropping, no stretched assets. */
+@media screen {
+ html .person-profile-dialog.operational-profile .person-profile-service-grade,
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-service-grade{
+  box-sizing:border-box;display:flex!important;align-items:center!important;
+  justify-content:center!important;gap:12px!important;
+  width:min(100%,350px)!important;max-width:100%!important;
+  margin:9px auto 12px!important;padding:9px 12px!important;
+  border:1px solid #4c729c!important;border-radius:9px!important;
+  background:#203e60!important;
+  min-width:0!important;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-service-grade-image-slot{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;box-sizing:border-box;
+  border:1px solid #6485a6;border-radius:6px;background:#10243b;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-service-grade-vertical .person-profile-service-grade-image-slot{
+  width:94px;height:122px;aspect-ratio:94 / 122;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-service-grade-horizontal .person-profile-service-grade-image-slot{
+  width:min(180px,50%);height:auto;aspect-ratio:16 / 5;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-service-grade-image{
+  box-sizing:border-box;display:block;width:100%;height:100%;
+  max-width:100%;max-height:100%;object-fit:contain;
+  object-position:center;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-service-grade-info,
+ html .person-profile-dialog.operational-profile .person-profile-service-grade .person-profile-grade-info{
+  flex:1;min-width:0;text-align:left;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-service-grade .person-profile-grade-info small{
+  display:block;margin-bottom:5px;color:#b9d6f2;font-size:10px;
+  font-weight:800;letter-spacing:.05em;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-service-grade .person-profile-grade-info strong{
+  display:block;color:#f3f9ff;font-size:12px;line-height:1.4;
+  overflow-wrap:anywhere;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-service-grade-missing{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;padding:5px;
+  box-sizing:border-box;color:#b5cbe0;font-size:10px;
+  text-align:center;line-height:1.35;
+ }
+}
+@media screen and (max-width:540px){
+ html .person-profile-dialog.operational-profile .person-profile-service-grade,
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-service-grade{
+  gap:8px!important;padding:8px!important;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-service-grade-vertical .person-profile-service-grade-image-slot{
+  width:72px;height:96px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-service-grade-horizontal .person-profile-service-grade-image-slot{
+  width:min(150px,48%);aspect-ratio:16 / 5;
+ }
+}
