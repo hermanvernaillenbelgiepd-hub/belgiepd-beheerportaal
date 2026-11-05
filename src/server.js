@@ -9,6 +9,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import {firebaseDiagnostic} from './firebase-diagnostics.js';
 import { discordConfig } from './discord-utils.js';
 import {discordBotToken} from './discord-bot-refresh.js';
+import {verifyGuildAuthorizationRoles} from './discord-guild-authorization.js';
 import {probeBelgiumPdDiscordUsers} from './bpd-discord-users-probe.js';
 import { discordPortalAccess } from './discord-portal-access.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
@@ -67,6 +68,7 @@ import {installFunctionChangeRoutes} from './function-change-routes.js';
 import {installReceivedRegistrationRoutes} from './received-registration-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays,allSpecialtyLabels,SPECIALTY_STATES} from './specialization-policy.js';
 import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
+import {overlayVerifiedCitizenRankDisplay} from './burger-organogram-projection.js';
 import {overlayVerifiedRosterSpecialties} from './specialty-roster-display.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
 import {SPECIALTY_ROLE_LINKS} from './specialty-role-link-routes.js';
@@ -378,7 +380,24 @@ async function requireUser(req,res,next){
       manualRoleRecovery.approvedBy!==actor.uid)
         ?({middenkader:'middle',officierenkader:'leadership',
           korpsleiding:'zone'}[manualRoleRecovery.role]||null):null;
-    const canSwitch=eligibleForTechnicalProfile(verified,actor,discordMember,process.env);
+    // Technical privilege is enabled only for the separately configured
+    // Discord ID, an approved portal login and a valid signed server cookie.
+    // An active bot can recheck the SAME logged-in guild member automatically,
+    // avoiding repeated OAuth prompts for each management screen.
+    let canSwitch=eligibleForTechnicalProfile(verified,actor,discordMember,process.env);
+    const technicalIds=String(process.env.BPD_TECHNICAL_ADMIN_DISCORD_IDS||'')
+     .split(',').map(s=>s.trim());
+    if(verified.uid==='discord:'+discordId&&technicalIds.includes(discordId)&&
+       String(process.env.BPD_PORTAL_PROFILE_SIGNING_KEY||'').length>=32){
+     const guildProof=await verifyGuildAuthorizationRoles(discordId);
+     if(guildProof.status==='ok'){
+      canSwitch=eligibleForTechnicalProfile(verified,actor,{
+       guildId:process.env.DISCORD_GUILD_ID,verifiedAt:Date.now(),
+       roleIds:guildProof.roleIds
+      },process.env);
+     }else if(guildProof.status==='not_member')canSwitch=false;
+     // A failing bot never extends an expired OAuth role proof.
+    }
     actor.profileTechnicalAvailable=canSwitch;
     actor.discordPoliceRank=verifiedPoliceRank(discordMember,process.env.DISCORD_GUILD_ID);
     // Scoped read-only proof, used ONLY for writing lower-rank Police observations.
@@ -556,6 +575,17 @@ async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   // Protected archive routes explicitly request includeArchived=true.
   const lifecycleDocs=await getPersonnelLifecycleDocs();
   visible=overlayPersonnelLifecycle(visible,lifecycleDocs,{includeArchived});
+  // Existing Citizen personnel records may have a stale legacy rank.
+  // Refresh only the DISPLAY label from the exact-ID Discord roster API.
+  // This may NOT be used for dossier/authorization decisions.
+  if(visible.some(p=>p.dept==='burger')){
+   try{
+    const roleDisplay=await getBelgiumPdDisplayRoles();
+    visible=overlayVerifiedCitizenRankDisplay(visible,roleDisplay);
+   }catch{
+    // Preserve registered rank; never guess council membership by name.
+   }
+  }
   return {...base,data:visible};
 }
 app.get('/api/client-config',(_req,res)=>{

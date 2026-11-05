@@ -57,6 +57,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           nextPoliceRank(p.rank)&&req.bpd.discordId!==p.personId&&
           canAuthoriseExceptionalPoliceRank(req.bpd,'politie'));
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
+          verifiedCitizenRole:p.dept==='burger'&&p.citizenRoleSource==='discord-api-display',
           canOpenDossier,canManageLifecycle:canManagePersonnelLifecycle(req.bpd,p),
           canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
           canChangeRank:canChangePoliceGrade(req.bpd,p),

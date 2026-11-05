@@ -35,3 +35,16 @@ test('recent guild-matched OAuth role is an allowed display fallback',()=>{
  const result=projectCitizenOrganogram(rows,{status:'unavailable'},auth,guild,at);
  assert.equal(result[1]?.rank,'Burgerraad');
 });
+
+test('existing citizen role Burgerraad is projected by exact verified Discord-ID, not nickname',()=>{
+ const old=[person(a,'politie','Jones'),{...person(a,'burger','Jones'),rank:'Burger'}];
+ const result=projectCitizenOrganogram(old,api([[a,[BURGER_ROLE_IDS.member,BURGER_ROLE_IDS.council]]]),null,guild);
+ assert.equal(result.length,2);
+ assert.equal(result[1].rank,'Burgerraad');
+ assert.equal(result[1].citizenRoleSource,'discord-api-display');
+ assert.equal(old[1].rank,'Burger'); // no Firestore/personnel mutation
+ const absence=projectCitizenOrganogram(old,api([[a,[BURGER_ROLE_IDS.member]]]),null,guild);
+ assert.equal(absence[1].rank,'Burger');
+ const outage=projectCitizenOrganogram(old,{status:'unavailable',entries:new Map()},null,guild);
+ assert.equal(outage[1].rank,'Burger');
+});

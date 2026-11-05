@@ -1,4 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {verifyGuildAuthorizationRoles} from './discord-guild-authorization.js';
 import {
   CITIZEN_DOSSIER_COLLECTION,validCitizenId,verifiedCitizenCouncil,
   canAccessCitizenDossier,canWriteCitizenDossier,canDeleteCitizenEntry,canManageCitizenDeletions,citizenMemberType,
@@ -72,8 +73,15 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
         return deny(res,403,'Alleen Burgerraad, Korpsleiding of technisch beheer heeft toegang');
       const member=await getFirestore().collection('bpd_discord_auth')
         .doc(actor.discordId).get();
-      const verified=verifiedCitizenCouncil(actor,member.data(),
-        process.env.DISCORD_GUILD_ID);
+      // Prefer an independently authenticated guild check for the current
+      // logged-in Burgerraad member. Do NOT grant dossier rights from the
+      // separate, presentation-only BelgiumPD user-list API.
+      const live=await verifyGuildAuthorizationRoles(actor.discordId);
+      const verified=live.status==='ok'?
+       verifiedCitizenCouncil(actor,{guildId:process.env.DISCORD_GUILD_ID,
+        verifiedAt:Date.now(),roleIds:live.roleIds},process.env.DISCORD_GUILD_ID):
+       live.status==='not_member'?false:
+       verifiedCitizenCouncil(actor,member.data(),process.env.DISCORD_GUILD_ID);
       if(!canAccessCitizenDossier(actor,verified))
         return deny(res,403,'Alleen Burgerraad, Korpsleiding of technisch beheer heeft toegang');
       req.citizenCouncilVerified=verified;
