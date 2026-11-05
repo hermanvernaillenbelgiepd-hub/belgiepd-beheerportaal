@@ -20,6 +20,27 @@ export const AMBULANCE_FUNCTIONS=Object.freeze([
  ['arts','Arts (ARTS / HARTS)'],
  ['dirmed','DIRMED — functieopschrift']
 ]);
+// Citizen uniforms follow verified Burger/Burgerraad/Burger-IO membership.
+ // This only selects artwork and never modifies personnel rank/permissions.
+export const BURGER_UNIFORM_GRADES=Object.freeze([
+ ['burgerraad','Burgerraad'],
+ ['burger','Burger'],
+ ['burger_in_opleiding','Burger in opleiding (BIO)']
+]);
+export function citizenUniformRank(person){
+ if(person?.dept!=='burger')return '';
+ const groups=Array.isArray(person.burgerGroups)?
+  person.burgerGroups.map(normalizeVisual):[];
+ // Verified Discord membership controls which image to show when present.
+ if(groups.includes('burgerraad'))return 'burgerraad';
+ if(groups.includes('burger'))return 'burger';
+ if(groups.includes('burger_io')||groups.includes('burger_in_opleiding'))return 'burger_in_opleiding';
+ // Older citizen records may have a rank but no live role check.
+ const rank=normalizeVisual(person.rank);
+ if(rank==='burgerraad')return 'burgerraad';
+ if(['burger_io','burger_in_opleiding','bio'].includes(rank))return 'burger_in_opleiding';
+ return 'burger'; // presentation fallback; not a membership assertion
+}
 export const DEPANNAGE_FUNCTIONS=Object.freeze([
  ['awv','AWV — Leiding'],
  ['lsra','LSRA — Depannage'],
@@ -107,7 +128,8 @@ export function displaySelectors(person){
   const functionCode=department==='ambulance'?ambulanceFunction(person):depannageFunction(person);
   if(functionCode)result.push(['function',functionCode]);
  }
- if(person?.rank)result.push(['rank',normalizeVisual(person.rank)]);
+ if(department==='burger')result.push(['rank',citizenUniformRank(person)]);
+ else if(person?.rank)result.push(['rank',normalizeVisual(person.rank)]);
  if(person?.tier)result.push(['cadre',normalizeVisual(person.tier)]);
  return result;
 }

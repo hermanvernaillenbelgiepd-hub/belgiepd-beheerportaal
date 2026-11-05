@@ -1,5 +1,5 @@
 // Operational uniform composition: one grade, one preview, one save.
-import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,DEPANNAGE_FUNCTIONS,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction,depannageFunction} from '/uniform-profile-policy.js';
+import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,DEPANNAGE_FUNCTIONS,BURGER_UNIFORM_GRADES,citizenUniformRank,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction,depannageFunction} from '/uniform-profile-policy.js';
 export function setupUniformComposer({api,$}){
  const dept=$('composeDept'),grade=$('composeGrade'),panel=$('composePreview'),
   gallery=$('composeGallery'),types=$('composeTypes'),save=$('composeSave'),notice=$('composeStatus');
@@ -19,10 +19,13 @@ export function setupUniformComposer({api,$}){
   if(dept.value==='politie')return POLICE_CALL_GRADES.map(([code,title])=>['call',code,code+' · '+title]);
   if(dept.value==='ambulance')return AMBULANCE_FUNCTIONS.map(([code,title])=>['function',code,title]);
   if(dept.value==='depannage')return DEPANNAGE_FUNCTIONS.map(([code,title])=>['function',code,title]);
+  // Burger has exactly three verified citizenship grades: never populate
+  // this list from legacy personnel rank fields (e.g. Ambulancier/Stagiair).
+  if(dept.value==='burger')return BURGER_UNIFORM_GRADES.map(([code,title])=>['rank',code,title]);
   const base=dept.value==='brandweer'?
    ['Zonecommandant','Kolonel','Majoor','Kapitein','Luitenant',
     'Adjudant','Sergeant','Korporaal','Brandweerman','Stagiair']:
-   ['Burgerraad','Burger'];
+   [];
   const all=new Map(base.map(label=>[normalizeVisual(label),label]));
   for(const person of people.filter(x=>x.dept===dept.value&&x.rank))
    all.set(normalizeVisual(person.rank),String(person.rank));
@@ -73,7 +76,7 @@ export function setupUniformComposer({api,$}){
   const match=people.find(p=>p.dept===dept.value&&(
    draft.scope==='call'?policeCallSeries(p.call)===grade.value:
    draft.scope==='function'?(dept.value==='depannage'?depannageFunction(p)===grade.value:ambulanceFunction(p)===grade.value):
-    normalizeVisual(p.rank)===grade.value));
+    (dept.value==='burger'?citizenUniformRank(p):normalizeVisual(p.rank))===grade.value));
   const prefix=dept.value==='politie'?'SANTO-':
    dept.value==='ambulance'?'AZLS-':'';
   const rawCall=String(match?.call||prefix+grade.value).trim().toUpperCase();
