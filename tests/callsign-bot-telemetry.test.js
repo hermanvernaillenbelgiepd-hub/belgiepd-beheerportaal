@@ -90,7 +90,7 @@ test('Production callsign and specialization modules load with matching exports'
  assert.equal(typeof b.initialFixedCallSpecialties,'function');
  const ready=b.initialFixedCallSpecialties({status:'approved',assignedCall:200,
   discordId:id,sync:{call:200,discordId:id}});
- assert.deepEqual(Object.keys(ready),['Radio BM','SIV/WPR','Burgermeldingen']);
+ assert.deepEqual(Object.keys(ready),['Radio BM','SIV/WPR','Burgermeldingen','INTERVENTIEDIENST']);
  assert.equal(b.initialFixedCallSpecialties({status:'verified',assignedCall:200,
   discordId:id,sync:{call:200,discordId:id}}),null);
 });

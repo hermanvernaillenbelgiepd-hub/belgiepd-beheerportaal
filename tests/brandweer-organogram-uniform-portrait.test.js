@@ -5,6 +5,7 @@ import {runInNewContext} from 'node:vm';
 const page=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
 const slice=(from,to)=>{const start=page.indexOf(from),end=page.indexOf(to,start);assert.ok(start>=0&&end>start);return page.slice(start,end)};
 const renderer=slice('function serviceRankKey(rank){','function openPersonProfile(p){');
+const azls=slice('function makeAzlsCompactPortrait(person){','function person(p,compact=false,specialtyLabel=null){');
 const card=slice('function person(p,compact=false,specialtyLabel=null){','function peopleList(rows,rankOnly=false,compact=false,specialtyLabel=null){');
 class El {
  constructor(tag,cls='',text=''){
@@ -34,7 +35,7 @@ test('roster uses the exact service portrait factory used in the expanded profil
 });
 test('brandweer small card now shows the live nameplate and grade on the actual uniform',()=>{
  const p={dept:'brandweer',name:'Alex',call:'ZONE',rank:'Zonecommandant'};
- const fn=run(renderer+'\n'+card+'\n({makeServiceUniformPortrait,person})');
+ const fn=run(renderer+'\n'+azls+'\n'+card+'\n({makeServiceUniformPortrait,person})');
  const node=fn.person(p);
  const portrait=node.children.find(c=>c.className.includes('bpd-service-uniform'));
  assert.ok(portrait,'fire roster must contain the existing service uniform');
@@ -48,7 +49,7 @@ test('brandweer small card now shows the live nameplate and grade on the actual 
  assert.equal(grade.children[0].src,'/api/role-artwork/file/rank_brandweer_zonecommandant?v=1');
 });
 test('other services retain their existing compact presentation',()=>{
- const api=run(renderer+'\n'+card+'\n({person})');
+ const api=run(renderer+'\n'+azls+'\n'+card+'\n({person})');
  const police=api.person({dept:'politie',name:'Test',call:'300',rank:'Aspirant Inspecteur'});
  assert.ok(police.children.some(x=>x.className.includes('bpd-police-formal')));
  const ambulance=api.person({dept:'ambulance',name:'Test',call:'AMB-01',rank:'AMB'});
