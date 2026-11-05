@@ -2684,7 +2684,10 @@ function openPersonProfile(p){
    if(isFireDiver)item.classList.add('person-profile-specialty-fire-diver');
    item.append(el('strong','',name));
    const roles=p.dept==='politie'&&supportsSpecialtyInstructors(name)?
-    specialtyInstructorRoles(p,name):[];
+    specialtyInstructorRoles(p,name):p.dept==='ambulance'?[
+     ...(Array.isArray(p.instructorSpecialties)&&p.instructorSpecialties.includes(name)?['instructeur']:[]),
+     ...(Array.isArray(p.teacherSpecialties)&&p.teacherSpecialties.includes(name)?['docent']:[])
+    ]:[];
    // Alleen de door de server bepaalde K9-functie kiest de patch.
    // Handmatige OFF/KL-correctie heeft voorrang op geverifieerde Discord:
    // INSTRUCTEUR > GELEIDER > GELEIDER IN STAGE.
