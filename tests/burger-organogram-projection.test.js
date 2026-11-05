@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {projectCitizenOrganogram,citizenGroupsForRoles,BURGER_ROLE_IDS} from '../src/burger-organogram-projection.js';
+import {projectCitizenOrganogram,overlayVerifiedCitizenRankDisplay,citizenGroupsForRoles,BURGER_ROLE_IDS} from '../src/burger-organogram-projection.js';
 const guild='1309532438019706999',a='1309532438019706001',b='1309532438019706002';
 const person=(id,dept,name)=>({personId:id,dept,name,call:'S-400',rank:'Inspecteur'});
 const api=(entries)=>({status:'ok',entries:new Map(entries)});
@@ -47,4 +47,22 @@ test('existing citizen role Burgerraad is projected by exact verified Discord-ID
  assert.equal(absence[1].rank,'Burger');
  const outage=projectCitizenOrganogram(old,{status:'unavailable',entries:new Map()},null,guild);
  assert.equal(outage[1].rank,'Burger');
+});
+
+test('citizen role overlay on personnel overview is display-only, after permission decisions',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ const editor=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ assert.doesNotMatch(server,/overlayVerifiedCitizenRankDisplay/);
+ assert.match(editor,/presentation=overlayVerifiedCitizenRankDisplay\(records,roleDisplay\)/);
+ assert.ok(editor.indexOf("const records=mergePersonnelEdits(base,overlay)")<
+  editor.indexOf("presentation=overlayVerifiedCitizenRankDisplay(records,roleDisplay)"));
+});
+test('citizen overview projection accepts discordId without altering permissions',()=>{
+ const source={dept:'burger',discordId:a,rank:'Burger',canEdit:false,canChangeRank:false};
+ const rows=overlayVerifiedCitizenRankDisplay([source],api([[a,[BURGER_ROLE_IDS.council]]]));
+ assert.equal(rows[0].rank,'Burgerraad');
+ assert.equal(rows[0].canEdit,false);
+ assert.equal(rows[0].canChangeRank,false);
+ assert.equal(source.rank,'Burger');
 });

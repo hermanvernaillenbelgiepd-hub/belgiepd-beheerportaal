@@ -31,12 +31,14 @@ export function overlayVerifiedCitizenRankDisplay(roster,upstream){
  const rows=Array.isArray(roster)?roster:[];
  if(upstream?.status!=='ok'||!(upstream.entries instanceof Map))return rows;
  const counts=new Map();
- for(const p of rows)if(p?.dept==='burger'&&validId(p.personId))
-  counts.set(p.personId,(counts.get(p.personId)||0)+1);
+ const identity=p=>p?.personId||p?.discordId;
+ for(const p of rows)if(p?.dept==='burger'&&validId(identity(p)))
+  counts.set(identity(p),(counts.get(identity(p))||0)+1);
  return rows.map(p=>{
-  if(p?.dept!=='burger'||!validId(p.personId)||counts.get(p.personId)!==1||
-    !upstream.entries.has(p.personId))return p;
-  const groups=citizenGroupsForRoles(upstream.entries.get(p.personId));
+  const id=identity(p);
+  if(p?.dept!=='burger'||!validId(id)||counts.get(id)!==1||
+    !upstream.entries.has(id))return p;
+  const groups=citizenGroupsForRoles(upstream.entries.get(id));
   if(!groups.length)return p;
   return {...p,rank:groups[0],citizenGroups:groups,
    citizenRoleSource:'discord-api-display'};

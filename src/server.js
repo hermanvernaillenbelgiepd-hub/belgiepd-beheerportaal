@@ -68,7 +68,6 @@ import {installFunctionChangeRoutes} from './function-change-routes.js';
 import {installReceivedRegistrationRoutes} from './received-registration-routes.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays,allSpecialtyLabels,SPECIALTY_STATES} from './specialization-policy.js';
 import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
-import {overlayVerifiedCitizenRankDisplay} from './burger-organogram-projection.js';
 import {overlayVerifiedRosterSpecialties} from './specialty-roster-display.js';
 import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
 import {SPECIALTY_ROLE_LINKS} from './specialty-role-link-routes.js';
@@ -575,17 +574,6 @@ async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   // Protected archive routes explicitly request includeArchived=true.
   const lifecycleDocs=await getPersonnelLifecycleDocs();
   visible=overlayPersonnelLifecycle(visible,lifecycleDocs,{includeArchived});
-  // Existing Citizen personnel records may have a stale legacy rank.
-  // Refresh only the DISPLAY label from the exact-ID Discord roster API.
-  // This may NOT be used for dossier/authorization decisions.
-  if(visible.some(p=>p.dept==='burger')){
-   try{
-    const roleDisplay=await getBelgiumPdDisplayRoles();
-    visible=overlayVerifiedCitizenRankDisplay(visible,roleDisplay);
-   }catch{
-    // Preserve registered rank; never guess council membership by name.
-   }
-  }
   return {...base,data:visible};
 }
 app.get('/api/client-config',(_req,res)=>{
