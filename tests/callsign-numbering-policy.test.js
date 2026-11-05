@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {checkApplicant,orderedCallNumbers,preferredFreeCall,planPoliceSheetSync} from '../src/callsign-utils.js';
+import {checkApplicant,orderedCallNumbers,preferredFreeCall,orderedPoliceIntakeCalls,planPoliceSheetSync} from '../src/callsign-utils.js';
 
 const discordId='123456789012345678';
 test('CALL 101–199 geldt als tijdelijk nummer, zonder leidende nullen of 100/200',()=>{
@@ -28,7 +28,8 @@ test('10-5-1 verdeelt tijdelijk en vast: tientallen, vijftallen, daarna de rest'
   assert.equal(preferredFreeCall(200,201,[200,201]),null);
   assert.throws(()=>orderedCallNumbers(999,100),/Ongeldige/);
 });
-test('Vaste 200-reeks volgt 10-5-1, maar behoudt expliciet goedgekeurde voorkeur',()=>{
+test('Vaste 200-reeks volgt de opgegeven prioriteit en behoudt expliciet goedgekeurde voorkeur',()=>{
+  assert.deepEqual(orderedPoliceIntakeCalls().slice(0,7),[200,210,220,215,225,201,202]);
   const rows=Array.from({length:100},(_,i)=>[String(200+i),'','Agent van Politie (AP)','']);
   const info=[['Naam','Rang'],['Eerder lid','','']];
   const basic={policeRows:rows,infoRows:info,name:'Voorbeeld Nieuw',discordId};
@@ -37,11 +38,16 @@ test('Vaste 200-reeks volgt 10-5-1, maar behoudt expliciet goedgekeurde voorkeur
   assert.equal(planPoliceSheetSync(basic).call,210);
   for(const n of [210,220,230,240,250,260,270,280,290])
     rows[n-200][3]='Bezet '+n;
-  assert.equal(planPoliceSheetSync(basic).call,205);
-  assert.equal(planPoliceSheetSync({...basic,preferredCall:201}).call,201);
-  // If the same CALL appears twice in source, skip it rather than making a duplicate.
-  rows.push(['205','','Agent van Politie (AP)','']);
   assert.equal(planPoliceSheetSync(basic).call,215);
+  assert.equal(planPoliceSheetSync({...basic,preferredCall:201}).call,201);
+  // Existing Firestore reservations are unavailable even if a Sheet slot
+  // still looks blank, and explicit conflicts must fail closed.
+  assert.equal(planPoliceSheetSync({...basic,unavailableCalls:[215]}).call,225);
+  assert.throws(()=>planPoliceSheetSync({...basic,preferredCall:201,
+    unavailableCalls:[201]}),/Geen vrij/);
+  // If CALL occurs twice in the Sheet, it is excluded completely.
+  rows.push(['215','','Agent van Politie (AP)','']);
+  assert.equal(planPoliceSheetSync(basic).call,225);
 });
 test('Voorbeeld vermeldt gedeelde 900-reeks en personeelscontinuïteit per Discord-ID',()=>{
   const js=readFileSync(new URL('../public/toegangsvoorbeeld.js',import.meta.url),'utf8');

@@ -7,7 +7,7 @@ export async function getPolicePlan(personnelSpreadsheetId,request,options={}) {
   const results=await sheets.spreadsheets.values.batchGet({spreadsheetId:personnelSpreadsheetId,ranges:RANGE,valueRenderOption:'FORMATTED_VALUE'});
   const [policeRows,infoRows]=(results.data.valueRanges||[]).map(x=>x.values||[]);
   if(policeRows.length<200 || infoRows.length<10)throw new Error('Personeelslijst lijkt onvolledig; synchronisatie gestopt');
-  return planPoliceSheetSync({policeRows,infoRows,name:request.name,discordId:request.discordId,preferredCall:options.preferredCall});
+  return planPoliceSheetSync({policeRows,infoRows,name:request.name,discordId:request.discordId,preferredCall:options.preferredCall,unavailableCalls:options.unavailableCalls});
 }
 export async function performPoliceSync(personnelSpreadsheetId,plan) {
   // Een vlak vóór de schrijfoperatie uitgevoerde hercontrole. Google Sheets biedt geen cross-service transactie.

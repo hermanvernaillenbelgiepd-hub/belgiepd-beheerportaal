@@ -1,4 +1,6 @@
 import { getFirestore, FieldValue, FieldPath } from 'firebase-admin/firestore';
+import {readPoliceCallOccupation} from './police-call-availability.js';
+import {personnelCallClaimId} from './personnel-editor-policy.js';
 import {canDecide, canReview, checkApplicant, eligibility, isDiscordId} from './callsign-utils.js';
 import {getPolicePlan, performPoliceSync} from './callsign-sync.js';
 import {initialFixedCallSpecialties,PERSONNEL_SPECIALIZATIONS_COLLECTION} from './specialization-policy.js';
@@ -13,6 +15,15 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
   const officer=(req)=>req.bpd.departments.includes('politie')&&(req.bpd.portalTechnicalMode===true||canDecide(req.bpd.role));
   const actor=async req=>actorFromPersonnel(req.bpd,(await getSnapshot()).data);
   const collection=()=>getFirestore().collection('bpd_callsign_requests');
+  // Preview and approval use one policy. Existing sheet slots stay the
+  // authoritative target for this legacy fixed-call workflow.
+  const planFirstFree=async(data,preferredCall)=>{
+    const snap=await getSnapshot({forceRefresh:true});
+    if(snap.stale)throw Object.assign(new Error('De personeelsbron is niet actueel'),{status:503});
+    const occupation=await readPoliceCallOccupation(snap.data);
+    return getPolicePlan(process.env.PERSONNEL_SPREADSHEET_ID,data,{
+      preferredCall,unavailableCalls:[...occupation.occupied]});
+  };
   app.get('/api/callsigns/settings',requireUser,(req,res)=>{
     if(!permit(req))return res.status(403).json({error:'Alleen bevoegd politiekader heeft toegang'});
     res.json({role:req.bpd.role,requestsEnabled:enabled(),sheetSyncEnabled:syncEnabled(),canApprove:officer(req)});
@@ -62,8 +73,8 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
     if(!officer(req))return res.status(403).json({error:'Alleen officierenkader en korpsleiding mogen een toekenning voorbereiden'});
     const id=req.params.discordId;if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{const d=await collection().doc(id).get();if(!d.exists)return res.status(404).json({error:'Aanvraag niet gevonden'});if(d.get('status')!=='verified')return res.status(409).json({error:'Voorwaarden zijn nog niet bevestigd'});
-      const plan=await getPolicePlan(process.env.PERSONNEL_SPREADSHEET_ID,d.data());res.json({preview:plan,sheetSyncEnabled:syncEnabled()});}
-    catch(e){if(/Discord ID bestaat|Personeelsnaam bestaat|Geen vrij|onvolledig/i.test(e.message))return res.status(409).json({error:e.message});fail(res,e)}
+      const plan=await planFirstFree(d.data());res.json({preview:plan,sheetSyncEnabled:syncEnabled()});}
+    catch(e){if(e.status)return res.status(e.status).json({error:e.message});if(/Discord ID bestaat|Personeelsnaam bestaat|Geen vrij|onvolledig/i.test(e.message))return res.status(409).json({error:e.message});fail(res,e)}
   });
   app.post('/api/callsigns/requests/:discordId/approve',requireUser,async(req,res)=>{
     if(!officer(req))return res.status(403).json({error:'Uitsluitend officierenkader en korpsleiding mogen goedkeuren'});
@@ -73,12 +84,18 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
     try{const current=await collection().doc(id).get();if(!current.exists)return res.status(404).json({error:'Aanvraag niet gevonden'});
       if(current.get('status')!=='verified')return res.status(409).json({error:'Aanvraag is niet gecontroleerd of reeds verwerkt'});
       approvedBy=await actor(req);if(!approvedBy)return res.status(403).json({error:'Account is niet aan een personeelsfiche gekoppeld'});
-      plan=await getPolicePlan(process.env.PERSONNEL_SPREADSHEET_ID,current.data(),{preferredCall:req.body?.preferredCall});
+      plan=await planFirstFree(current.data(),req.body?.preferredCall);
       await getFirestore().runTransaction(async tx=>{
-        const ref=collection().doc(id), claim=getFirestore().collection('bpd_callsign_reservations').doc(String(plan.call));
-        const [doc,already]=await Promise.all([tx.get(ref),tx.get(claim)]);
+        const ref=collection().doc(id),claim=getFirestore().collection('bpd_callsign_reservations').doc(String(plan.call));
+        const manualRef=getFirestore().collection('bpd_personnel_call_claims')
+         .doc(personnelCallClaimId('politie',String(plan.call)));
+        const prefixedRef=getFirestore().collection('bpd_personnel_call_claims')
+         .doc(personnelCallClaimId('politie','S'+plan.call));
+        const [doc,already,manual,prefixed]=await Promise.all([
+         tx.get(ref),tx.get(claim),tx.get(manualRef),tx.get(prefixedRef)]);
         if(!doc.exists||doc.get('status')!=='verified')throw Object.assign(new Error('Aanvraag werd ondertussen gewijzigd'),{status:409});
-        if(already.exists)throw Object.assign(new Error('Roepnummer is al gereserveerd; vernieuw de voorbeeldcontrole'),{status:409});
+        if(already.exists||manual.exists||prefixed.exists)
+         throw Object.assign(new Error('Roepnummer ondertussen gereserveerd; controleer het volgende vrije nummer'),{status:409});
         tx.create(claim,{discordId:id,approvedBy,createdAt:FieldValue.serverTimestamp()});
         tx.update(ref,{status:'syncing',selectedPlan:plan,approvedBy,approvedUid:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
       });locked=true;
