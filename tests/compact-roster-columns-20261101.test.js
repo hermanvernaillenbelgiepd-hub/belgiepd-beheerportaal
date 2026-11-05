@@ -27,9 +27,9 @@ test('call, series, status narrower on all police rosters without erasing status
  assert.match(css,/\.mr-table th:nth-child\(5\)\{width:4\.6%;min-width:0\}/);
  assert.match(css,/\.mr-table td\.mr-status-cell \.mr-status\{/);
  const html=read('public/personeelsbeheer.html');
- assert.match(html,/Math\.min\(w\.call,34\)/);
- assert.match(html,/Math\.min\(w\.series,44\)/);
- assert.match(html,/Math\.min\(w\.status,55\)/);
+ assert.match(html,/call:48,grade:84,name:165,series:60,status:85/);
+ assert.match(html,/policeRosterIdentityWidth\(w,key\)/);
+ assert.match(html,/policeRosterSpecialtyWidth\(/);
  assert.match(html,/const widths=\[w\.call,w\.grade/);
  assert.match(html,/roster-police-compact/);
 });
