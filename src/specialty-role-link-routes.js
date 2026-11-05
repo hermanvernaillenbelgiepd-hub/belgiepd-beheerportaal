@@ -106,8 +106,8 @@ export function validateCustomSpecialty(body,dept,existing=[]){
   throw fail(400,'Ongeldige nieuwe specialisatie');
  const label=typeof body.label==='string'?body.label.trim():'';
  const reason=typeof body.reason==='string'?body.reason.trim():'';
- if(label.length<2||label.length>64||/[<>\\x00-\\x1f\\x7f]/.test(label)||
-   reason.length<8||reason.length>300||/[<>\\x00-\\x1f\\x7f]/.test(reason))
+ if(label.length<2||label.length>64||/[<>\x00-\x1f\x7f]/.test(label)||
+   reason.length<8||reason.length>300||/[<>\x00-\x1f\x7f]/.test(reason))
   throw fail(400,'Vul een naam van 2–64 tekens en een motivering van 8–300 tekens in');
  const fold=x=>String(x||'').toLocaleLowerCase('nl-BE');
  if(['andere','anders'].includes(fold(label))||
@@ -117,7 +117,7 @@ export function validateCustomSpecialty(body,dept,existing=[]){
  if(accepted.some(x=>fold(x)===fold(label)))
   throw fail(409,'Deze specialisatie bestaat al voor de hulpdienst');
  const code=label.toLowerCase().normalize('NFD')
-  .replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'_')
+  .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_')
   .replace(/^_+|_+$/g,'').slice(0,40).replace(/_+$/g,'');
  if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code)||
   existing.some(x=>x.code===code))
