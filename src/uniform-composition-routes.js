@@ -12,6 +12,7 @@ const DEPTS=['politie','brandweer','ambulance','depannage','burger'];
 const GRADES=new Set(['100','200','300','400','500','600','700','800',
  '900','910','920','930']);
 const FUNCTIONS=new Set(['ambulancier','vpk','arts','dirmed']);
+const BURGER_GRADES=new Set(['burgerraad','burger','burger_in_opleiding']);
 const TOWING_FUNCTIONS=new Set(DEPANNAGE_FUNCTIONS.map(([code])=>code));
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const LAYERS=['name','rank','ribbons','medals','helmet','profession','logo'];
@@ -36,7 +37,8 @@ export function validateComposition(body){
   !(department==='politie'&&scope==='call'&&GRADES.has(selector)||
     department==='ambulance'&&scope==='function'&&FUNCTIONS.has(selector)||
     department==='depannage'&&scope==='function'&&TOWING_FUNCTIONS.has(selector)||
-    ['brandweer','depannage','burger'].includes(department)&&scope==='rank'))
+    ['brandweer','depannage'].includes(department)&&scope==='rank'||
+    department==='burger'&&scope==='rank'&&BURGER_GRADES.has(selector)))
   throw bad(400,'Kies een geldige hulpdienst en graad of hoedanigheid');
  const reason=String(body.reason||'').trim();
  if(reason.length<8||reason.length>300||/[<>\x00-\x1f]/.test(reason))

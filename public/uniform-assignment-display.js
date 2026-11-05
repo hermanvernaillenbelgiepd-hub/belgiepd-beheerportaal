@@ -1,6 +1,6 @@
 // Client-side visual-only resolver. Scoped assignments never confer rank or roles.
 import {getTier} from '/assets/organogram-hierarchie-model.js';
-import {policeUniformGroup,ambulanceFunction,depannageFunction,policeCallSeries} from '/uniform-profile-policy.js';
+import {policeUniformGroup,ambulanceFunction,depannageFunction,citizenUniformRank,policeCallSeries} from '/uniform-profile-policy.js';
 const UID=/^\d{15,22}$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const nameCode=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -11,7 +11,7 @@ const FIRE_RANK_ALIASES=Object.freeze({
  stag:['stagiair'],stagiair:['stag'],brandweervrouw:['brandweerman']
 });
 const rankSelectors=p=>{
- const rank=nameCode(p?.rank);
+ const rank=p?.dept==='burger'?citizenUniformRank(p):nameCode(p?.rank);
  return rank?[...new Set([rank,...(p?.dept==='brandweer'?(FIRE_RANK_ALIASES[rank]||[]):[])])]:[];
 };
 let rules=[],elementRules=[],coatChoices=[],compositions=[],assetUrls=new Map();
@@ -51,7 +51,7 @@ function forPerson(p){
  const group=policeUniformGroup(p),functionCode=dept==='depannage'?depannageFunction(p):ambulanceFunction(p),series=policeCallSeries(p.call);
  const ordered=[...(id?[matching('person',id)]:[]),
   ...(callCode?[matching('person','call_'+callCode)]:[]),
-  matching('rank',nameCode(p.rank)),
+  matching('rank',rankCodes[0]),
   ...(functionCode?[matching('function',functionCode)]:[]),
   ...(group?[matching('group',group)]:[]),
   matching('cadre',nameCode(getTier(p))),matching('service','default')];
@@ -68,12 +68,15 @@ function forPerson(p){
  const compScope=dept==='politie'?'call':
   ['ambulance','depannage'].includes(dept)?'function':'rank';
  const compSelector=compScope==='call'?series:
-  compScope==='function'?functionCode:nameCode(p.rank);
+  compScope==='function'?functionCode:rankCodes[0];
  const previousTowingRanks=dept==='depannage'?
   ({awv:['leiding','agentschap_wegen_en_verkeer','awv'],
     lsra:['lsra','depannagetechnicus'],fast:['f_a_s_t','fast']}[functionCode]||[]):[];
+ const previousCitizenTraining=dept==='burger'&&compSelector==='burger_in_opleiding'?
+  compositions.find(x=>x.department==='burger'&&x.scope==='rank'&&
+   ['burger_io','bio'].includes(x.selector)):null;
  const composition=compositions.find(x=>x.department===dept&&
-  x.scope===compScope&&x.selector===compSelector)||
+  x.scope===compScope&&x.selector===compSelector)||previousCitizenTraining||
   (dept==='depannage'?compositions.find(x=>x.department===dept&&x.scope==='rank'&&
    [nameCode(p.rank),...previousTowingRanks].includes(x.selector)):null);
  const ruleUrl=entry=>entry&&assetUrls.get((entry.assetKind||entry.kind)+'_'+dept+'_'+entry.assetCode)||'';
