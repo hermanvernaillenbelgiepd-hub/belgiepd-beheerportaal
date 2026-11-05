@@ -12,7 +12,8 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   const raw=String(label||'').trim().toLowerCase();
   const alt={'motor':'motard','semi-ano.':'semi_ano','semi-anoniem':'semi_ano',
    'semi anoniem':'semi_ano','dispatch':'disp','radio bm':'radio_bm','siv/wpr':'wpr',
-   'terreinondersteuner':'to','arrestatie-eenheid':'ae'};
+   'terreinondersteuner':'to','arrestatie-eenheid':'ae',
+   'interventiedienst':'interventie'};
   return alt[raw]||raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
    .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
  };
