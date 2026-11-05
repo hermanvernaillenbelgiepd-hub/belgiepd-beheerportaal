@@ -2651,14 +2651,14 @@ function openPersonProfile(p){
  secondary.append(awardsBox);
  // Collapsible presentation only. Actual rights and audit checks remain server-side.
  let managementBody=null;
- if(p.dept==='politie'&&!state.demo&&(auth?.currentUser||state.canManageAE)){
+ if(p.dept==='politie'&&!state.demo&&auth?.currentUser&&state.canManageAE){
   const management=el('details','person-profile-management');
   const heading=el('summary','','⚙ Beheeracties · Officierenkader / Korpsleiding');
   managementBody=el('div','person-profile-management-body');
   management.append(heading,managementBody);
   secondary.append(management);
  }
- if(!state.demo&&p.dept==='politie'&&auth?.currentUser){
+ if(!state.demo&&p.dept==='politie'&&auth?.currentUser&&state.canManageAE&&managementBody){
   const awardManager=el('div','person-profile-award-manager');
   awardManager.dataset.personKey=String(p.call||'')+'|'+String(p.name||'');
   managementBody.append(awardManager);
@@ -3030,8 +3030,7 @@ function person(p,compact=false,specialtyLabel=null){
  const displayLabels=Array.isArray(p.displayLabels)?p.displayLabels:[];
  if(displayLabels.includes('stage'))flags.append(el('span','flag stage','STAGE'));
  if(displayLabels.includes('lid'))flags.append(el('span','flag member','LID'));
- if(!compact&&String(p.source||'').includes('handmatig'))
-  flags.append(el('span','flag','Handmatig'));
+ // The data source remains auditable server-side; no 'Handmatig' badge on personnel cards.
  if(flags.childElementCount)label.append(flags);
  b.append(label);
  b.setAttribute('aria-label',(p.name||'')+' '+(p.call||'')+' · Open profiel');
