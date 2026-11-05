@@ -10,6 +10,8 @@ header a{color:#dbe7ff}main{max-width:1070px;margin:32px auto;padding:0 20px}h1{
 button{font:inherit;padding:10px 16px;border-radius:8px;border:1px solid #9ab1da;cursor:pointer;background:#ecf2ff;color:#183e83;font-weight:700}
 button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabled{opacity:.5}
 .item{border-top:1px solid #e0e9f2;padding:16px 0}.item:first-child{border-top:0}
+.read-confirm{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#356049;font-weight:700;margin-top:7px}
+.item button.read-button{font-size:11px;padding:6px 10px;min-height:30px;margin-top:7px}
 .pill{border-radius:20px;background:#fff0d7;color:#8d5914;font-size:12px;padding:4px 9px}
 .message{background:#eaf1fc;border-radius:9px;padding:12px;color:#194481}
 .message.error{background:#ffebee;color:#953341}
@@ -156,6 +158,27 @@ async function api(url,body){
  if(!response.ok)throw Error(data.error||'Verzoek mislukt');
  return data;
 }
+// Always write the receipt against the logged-in user, never against a
+// shared request status. The backend verifies recipient and series access.
+function addReadControl(row,record,prefix,reload){
+ if(!record?.id)return;
+ if(record.readByMe){
+  const label=document.createElement('span');label.className='read-confirm';
+  label.textContent='✓ Door jou gelezen';row.append(label);return;
+ }
+ const button=document.createElement('button');
+ button.type='button';button.className='read-button';
+ button.textContent='Markeer als gelezen';
+ button.onclick=async()=>{
+  button.disabled=true;
+  try{
+   await api(prefix+encodeURIComponent(record.id)+'/read',{});
+   feedback('Deze melding is voor jouw account als gelezen gemarkeerd.');
+   await reload();
+  }catch(e){feedback('Leesbevestiging mislukt: '+e.message,true);button.disabled=false}
+ };
+ row.append(button);
+}
 function item(x,override=false){
  const row=document.createElement('div');row.className='item';
  const title=document.createElement('strong');title.textContent=(x.subjectName||'Personeelslid')+
@@ -183,7 +206,9 @@ function item(x,override=false){
    };buttons.append(b);
   }
   row.append(buttons);
- }return row;
+ }
+ addReadControl(row,x,'/api/leave/requests/',load);
+ return row;
 }
 async function loadStaffActivityFollowup(){
  const panel=$('staffActivityFollowupPanel'),list=$('staffFollowupList');
@@ -283,7 +308,9 @@ async function load(){
       const heading=document.createElement('strong');
       heading.textContent=(record.startDate||'—')+' t/m '+
         (record.endDate||'—')+' · '+(names[record.status]||'Status onbekend');
-      entry.append(heading);root.append(entry);
+      entry.append(heading);
+      addReadControl(entry,record,'/api/leave/requests/',load);
+      root.append(entry);
     }
     if(!root.children.length)root.textContent='Je hebt momenteel geen verlofmeldingen.';
     $('personalPanel').hidden=false;
@@ -331,7 +358,9 @@ async function loadSeriesLeave(){
      ' · reeks '+record.series;
    const dates=document.createElement('p');
    dates.textContent=record.startDate+' t/m '+record.endDate+' · Wacht op bevoegde beslissing';
-   row.append(title,dates);pendingEl.append(row);
+   row.append(title,dates);
+   addReadControl(row,record,'/api/leave/requests/',loadSeriesLeave);
+   pendingEl.append(row);
   }
   const recent=$('seriesLeaveAutomatic');
   const approved=result.recentAutomatic||[];
@@ -342,7 +371,9 @@ async function loadSeriesLeave(){
    title.textContent=record.subjectCall+' · '+record.subjectName;
    const dates=document.createElement('p');
    dates.textContent=record.startDate+' t/m '+record.endDate+' · AUTOMATISCH GOEDGEKEURD';
-   row.append(title,dates);recent.append(row);
+   row.append(title,dates);
+   addReadControl(row,record,'/api/leave/requests/',loadSeriesLeave);
+   recent.append(row);
   }
  }catch(e){
   // This informational panel must never disrupt authorized leave decisions.
@@ -360,7 +391,9 @@ async function loadTraining(){
    const title=document.createElement('strong');title.textContent=r.courseName+' · '+r.department;
    row.append(title);const message=document.createElement('p');
    message.textContent=trainingStateText(r);
-   row.append(message);own.append(row);
+   row.append(message);
+   addReadControl(row,r,'/api/training-requests/',loadTraining);
+   own.append(row);
   }
   if(!own.children.length)own.textContent='Geen opleidingsaanvragen.';
   $('trainingPersonalPanel').hidden=false;
@@ -374,7 +407,7 @@ async function loadTraining(){
     const status=document.createElement('p');status.textContent='Status: '+r.status;
     const actions=document.createElement('div');actions.className='actions';
     for(const [action,label] of TRAINING_ACTIONS){
-      if(!availableTrainingActions(r).includes(action))continue;
+      if(action==='gelezen'||!availableTrainingActions(r).includes(action))continue;
       const b=document.createElement('button');b.type='button';b.textContent=label;
       if(action==='gepland'||action==='uitgevoerd')b.className='primary';
       b.onclick=async()=>{
@@ -389,7 +422,9 @@ async function loadTraining(){
       };
       actions.append(b);
     }
-    row.append(title,note,status,actions);target.append(row);
+    row.append(title,note,status,actions);
+    addReadControl(row,r,'/api/training-requests/',loadTraining);
+    target.append(row);
   }
   if(!pending.length){
    const empty=document.createElement('p');
