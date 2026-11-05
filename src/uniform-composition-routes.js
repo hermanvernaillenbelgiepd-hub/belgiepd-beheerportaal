@@ -1,7 +1,7 @@
 // Uniformatelier: one visual composition per effective grade/function.
 // Templates control presentation only; medals are still granted per person.
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {DEPANNAGE_FUNCTIONS} from '../public/uniform-profile-policy.js';
+import {DEPANNAGE_FUNCTIONS,AMBULANCE_FUNCTIONS} from '../public/uniform-profile-policy.js';
 import {canEditLibrary} from './uniform-library-routes.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
 import {DECORATION_CATALOG,PERSONNEL_DECORATION_CATALOG_COLLECTION,customCatalogItem,decorationCatalogExtras} from './personnel-decoration-policy.js';
@@ -11,7 +11,7 @@ export const COMPOSITION_AUDIT='bpd_uniform_composition_audit';
 const DEPTS=['politie','brandweer','ambulance','depannage','burger'];
 const GRADES=new Set(['100','200','300','400','500','600','700','800',
  '900','910','920','930']);
-const FUNCTIONS=new Set(['ambulancier','vpk','arts','dirmed']);
+const FUNCTIONS=new Set(AMBULANCE_FUNCTIONS.map(([code])=>code));
 const BURGER_GRADES=new Set(['burgerraad','burger','burger_in_opleiding']);
 const TOWING_FUNCTIONS=new Set(DEPANNAGE_FUNCTIONS.map(([code])=>code));
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;

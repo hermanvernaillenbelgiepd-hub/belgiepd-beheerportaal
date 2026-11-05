@@ -1,6 +1,6 @@
 // Client-side visual-only resolver. Scoped assignments never confer rank or roles.
 import {getTier} from '/assets/organogram-hierarchie-model.js';
-import {policeUniformGroup,ambulanceFunction,depannageFunction,citizenUniformRank,policeCallSeries} from '/uniform-profile-policy.js';
+import {policeUniformGroup,ambulanceFunction,ambulanceUniformFallback,depannageFunction,citizenUniformRank,policeCallSeries} from '/uniform-profile-policy.js?v=azls-grades-20261105b';
 const UID=/^\d{15,22}$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const nameCode=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -49,10 +49,12 @@ function forPerson(p){
  const rankCodes=rankSelectors(p);
  const matching=(scope,selector)=>rules.find(r=>r.department===dept&&r.scope===scope&&r.selector===selector);
  const group=policeUniformGroup(p),functionCode=dept==='depannage'?depannageFunction(p):ambulanceFunction(p),series=policeCallSeries(p.call);
+ const oldAzlsCode=dept==='ambulance'?ambulanceUniformFallback(functionCode):'';
+ const functionCodes=[functionCode,oldAzlsCode].filter(Boolean);
  const ordered=[...(id?[matching('person',id)]:[]),
   ...(callCode?[matching('person','call_'+callCode)]:[]),
   matching('rank',rankCodes[0]),
-  ...(functionCode?[matching('function',functionCode)]:[]),
+  ...functionCodes.map(code=>matching('function',code)),
   ...(group?[matching('group',group)]:[]),
   matching('cadre',nameCode(getTier(p))),matching('service','default')];
  let uniformCode='',badgeStyle='';
@@ -69,6 +71,9 @@ function forPerson(p){
   ['ambulance','depannage'].includes(dept)?'function':'rank';
  const compSelector=compScope==='call'?series:
   compScope==='function'?functionCode:rankCodes[0];
+ const previousAzlsComposition=dept==='ambulance'&&oldAzlsCode?
+  compositions.find(x=>x.department==='ambulance'&&x.scope==='function'&&
+   x.selector===oldAzlsCode):null;
  const previousTowingRanks=dept==='depannage'?
   ({awv:['leiding','agentschap_wegen_en_verkeer','awv'],
     lsra:['lsra','depannagetechnicus'],fast:['f_a_s_t','fast']}[functionCode]||[]):[];
@@ -76,7 +81,7 @@ function forPerson(p){
   compositions.find(x=>x.department==='burger'&&x.scope==='rank'&&
    ['burger_io','bio'].includes(x.selector)):null;
  const composition=compositions.find(x=>x.department===dept&&
-  x.scope===compScope&&x.selector===compSelector)||previousCitizenTraining||
+  x.scope===compScope&&x.selector===compSelector)||previousAzlsComposition||previousCitizenTraining||
   (dept==='depannage'?compositions.find(x=>x.department===dept&&x.scope==='rank'&&
    [nameCode(p.rank),...previousTowingRanks].includes(x.selector)):null);
  const ruleUrl=entry=>entry&&assetUrls.get((entry.assetKind||entry.kind)+'_'+dept+'_'+entry.assetCode)||'';
@@ -84,7 +89,8 @@ function forPerson(p){
   ...(id?[['person',id]]:[]),
   ...(callCode?[['person','call_'+callCode]]:[]),
   ...(series&&dept==='politie'?[['call',series]]:[]),
-  ...(functionCode&&['ambulance','depannage'].includes(dept)?[['function',functionCode]]:[]),
+  ...(dept==='ambulance'?functionCodes.map(code=>['function',code]):
+      functionCode?[['function',functionCode]]:[]),
   ...rankCodes.map(code=>['rank',code]),
   ...(group?[['cadre',group]]:[]),
   ['cadre',nameCode(getTier(p))],['service','default']
@@ -110,7 +116,7 @@ function forPerson(p){
    ...(callCode?[['person','call_'+callCode]]:[]),
    ...(uniformCode&&coatScope&&coatSelector?[['uniform',coatSelector]]:[]),
    ...(series&&dept==='politie'?[['call',series]]:[]),
-   ...(functionCode&&dept==='ambulance'?[['function',functionCode]]:[]),
+   ...(dept==='ambulance'?functionCodes.map(code=>['function',code]):[]),
    ...rankCodes.map(code=>['rank',code]),['cadre',nameCode(getTier(p))],['service','default']]){
    const found=scope==='uniform'?
     coatChoices.find(x=>x.department===dept&&x.uniformCode===uniformCode&&
@@ -130,7 +136,7 @@ function forPerson(p){
    const candidates=kind==='rank'?
     (dept==='politie'?[series,policeRankAliases[series],rankCode]:rankCodes):
     kind==='helmet'&&dept==='brandweer'?[rankCode]:
-    kind==='profession'&&dept==='ambulance'?[functionCode]:
+    kind==='profession'&&dept==='ambulance'?functionCodes:
     [];
    for(const guessed of candidates){
     if(!guessed)continue;
