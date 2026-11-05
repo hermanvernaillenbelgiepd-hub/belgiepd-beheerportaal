@@ -1933,6 +1933,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
 <link rel="stylesheet" href="/organogram-hybrid.css?v=depannage-patch-20261103a">
+<link rel="stylesheet" href="/organogram-profile-compact.css?v=20261105a">
 </head>
 <body>
 <header>
@@ -2091,7 +2092,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 <script src="/assets/organogram-decorations.js?v=award-preview-20261104"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
-import '/uniform-assignment-display.js?v=studio-coats-only-20261030';
+import '/uniform-assignment-display.js?v=brandweer-rang-20261105a';
 import {serviceProfileRank,depannagePatchCode,depannageProfilePatch} from '/service-profile-presentation.js?v=20261103c';
 const $=id=>document.getElementById(id);
 const cardParams=new URLSearchParams(location.search);
@@ -2528,6 +2529,8 @@ function openPersonProfile(p){
  dialog.classList.toggle('police-person-profile',p.dept==='politie');
  dialog.classList.toggle('fire-person-profile',p.dept==='brandweer');
  dialog.classList.toggle('depannage-person-profile',p.dept==='depannage');
+ dialog.classList.toggle('azls-person-profile',p.dept==='ambulance');
+ dialog.classList.toggle('burger-person-profile',p.dept==='burger');
  dialog.classList.add('operational-profile');
  content.replaceChildren();
  const layout=el('div','person-profile-layout');
@@ -2817,8 +2820,8 @@ function openPersonProfile(p){
     badge.width=isFireDiver?288:170;
     badge.height=isFireDiver?134:53;
     badge.loading='lazy';item.append(badge);
-   }else if(p.dept==='depannage'){
-     item.append(el('span','person-profile-specialty-missing-patch','Patch nog niet gekoppeld'));
+   }else if(p.dept==='depannage'||p.dept==='ambulance'){
+     item.append(el('span','person-profile-specialty-missing-patch','Patch niet gekoppeld'));
     }else if(aeSpecific){
     // Clearly marked text fallback; never pretend the generic AE badge is a
     // Teamleader insignia when the matching image has not been uploaded.
@@ -2837,7 +2840,8 @@ function openPersonProfile(p){
    // Discord-patchniveaus blijven beschikbaar voor validatie, maar algemene
    // lidmaatschapslabels horen niet op de compacte profielkaart.
    const badgeLevel=String(matchedArtwork?.level||'').trim();
-   if(matchedArtwork?.source==='discord'&&badgeLevel&&
+   // A decorative AZLS patch does not confer per-specialty instructor status.
+   if(p.dept!=='ambulance'&&matchedArtwork?.source==='discord'&&badgeLevel&&
      /(instructeur|teamleader|in[ _-]opleiding|stage|geleider|docent|ae-[it])/i.test(badgeLevel)&&
      ![...item.querySelectorAll('.person-profile-specialty-role')].some(x=>
        x.textContent?.toLowerCase().includes(badgeLevel.toLowerCase())))
