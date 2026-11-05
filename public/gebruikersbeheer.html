@@ -356,10 +356,11 @@ header button{padding:7px 10px;font-size:12px}
 <p>Personeelsleden vragen toegang aan met hun eigen Discord-account. Bevoegde leidinggevenden controleren hun hulpdienst en kaderfunctie. Beslissingen worden bewaard in Firestore, niet in Render.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmelding controleren…</div>
 <div class="controls" style="margin:12px 0 14px;gap:8px;flex-wrap:wrap">
+ <a href="/gebruikersbeheer.html#uniformbeheer" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">🧥 Uniformatelier</a>
  <a href="/beeldbibliotheek.html" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">📁 Beeldbibliotheek per dienst</a>
  <a href="/rollenbeheer.html" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">🛡️ Rollen & specialisaties toekennen</a>
  <a href="/dc-id-overdracht.html" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">🔐 DC-ID-overdracht (bevoegd kader)</a>
- <small>Afbeeldingen en personeelsrollen zijn voortaan afzonderlijk te beheren. Uniformbeheer blijft ongewijzigd.</small>
+ <small>Beheer uniformfoto’s en hun plaatsing via Uniformatelier; koppel bestaande afbeeldingen aan rangen, uniformen of specialisaties via de Beeldbibliotheek.</small>
 </div>
 <nav id="manageTabs" class="manage-tabs" aria-label="Tabbladen gebruikersbeheer" hidden>
 <button type="button" data-tab="accounts" hidden>👥 Personeelsaccounts</button>
@@ -930,7 +931,8 @@ const uniformQuick=setupUniformQuickUI({api,$,notice});
 const uniformComposer=setupUniformComposer({api,$,notice});
 const uniformLibrary=setupUniformLibraryUI({api,$,notice});
 let tabChoice=window.location.hash==='#dienstbeheer'?'services':
-  window.location.hash==='#verlofmachtigingen'?'leave':'accounts';
+  window.location.hash==='#verlofmachtigingen'?'leave':
+  window.location.hash==='#uniformbeheer'?'uniform':'accounts';
 function showManageTabs(){
   const mapping={accounts:'admin',manual:'manualRoleSection',services:'dossierGrantSection',to:'toSection',
     board:'boardSection',leave:'leaveGrantSection',artwork:'roleArtworkSection',uniform:'uniformSection'};
@@ -949,6 +951,7 @@ for(const b of $('manageTabs').querySelectorAll('button[data-tab]'))
     tabChoice=b.dataset.tab;
     if(tabChoice==='services')window.history.replaceState(null,'','#dienstbeheer');
     else if(tabChoice==='leave')window.history.replaceState(null,'','#verlofmachtigingen');
+    else if(tabChoice==='uniform')window.history.replaceState(null,'','#uniformbeheer');
     else window.history.replaceState(null,'',window.location.pathname);
     showManageTabs();
   };

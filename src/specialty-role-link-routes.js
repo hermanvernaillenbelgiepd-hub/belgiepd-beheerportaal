@@ -21,7 +21,9 @@ export const SPECIALTY_ROLE_LINKS='bpd_specialty_role_links';
 export const SPECIALTY_ROLE_LINK_AUDIT='bpd_specialty_role_link_audit';
 const DEPTS=Object.freeze(['politie','brandweer','ambulance','depannage']);
 const ID=/^\d{15,22}$/;
-const ASSET=/^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9][a-z0-9_]{0,39}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/;
+// All visual sources are allowed; link metadata never awards qualifications.
+const VISUAL_SOURCE_KINDS=Object.freeze(['rank','uniform','specialty','patch','helmet','profession','logo','pictogram']);
+const ASSET=/^(?:(?:rank|uniform|specialty|patch|helmet|profession|logo|pictogram)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9][a-z0-9_]{0,39}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/;
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 const respond=(res,e)=>{
  if(e.status)return res.status(e.status).json({error:e.message});
@@ -115,7 +117,7 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
    const labels=allSpecialtyLabels(dept,extra);
    const allowedLabels=new Set(labels);
    const allAssets=assets.docs.filter(d=>d.get('active')===true&&
-     (['specialty','patch'].includes(d.get('kind'))||
+     (VISUAL_SOURCE_KINDS.includes(d.get('kind'))||
        (d.get('kind')||'role')==='role'&&d.get('roleId')&&
         d.id.startsWith(d.get('roleId')+'_'))&&ASSET.test(d.id))
     .map(d=>({key:d.id,label:String(d.get('label')||d.get('code')||'').slice(0,75),
@@ -167,7 +169,7 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
     for(let i=0;i<docs.length;i++){
      if(!docs[i].exists||docs[i].get('active')!==true||
         docs[i].get('department')!==dept||
-        !(['specialty','patch'].includes(docs[i].get('kind'))||
+        !(VISUAL_SOURCE_KINDS.includes(docs[i].get('kind'))||
           (docs[i].get('kind')||'role')==='role'&&
           docs[i].id.startsWith(String(docs[i].get('roleId')||'')+'_')))
       throw fail(400,'Kies een actieve specialisatiepatch uit de bibliotheek van deze dienst');

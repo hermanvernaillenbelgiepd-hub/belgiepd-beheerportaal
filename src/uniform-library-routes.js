@@ -15,7 +15,11 @@ export const UNIFORM_LIBRARY_KINDS=Object.freeze([
  'rank','uniform','specialty','medal','helmet','profession','logo','pictogram','patch','award'
 ]);
 export const UNIFORM_LIBRARY_RULE_KINDS=Object.freeze([
- 'rank','helmet','profession','logo','pictogram','patch','specialty'
+ 'rank','uniform','helmet','profession','logo','pictogram','patch','specialty'
+]);
+// A saved image may serve different visual purposes without recategorizing it.
+export const UNIFORM_LIBRARY_RULE_ASSET_KINDS=Object.freeze([
+ 'rank','uniform','helmet','profession','logo','pictogram','patch','specialty'
 ]);
 const DEPTS=['politie','brandweer','ambulance','depannage','burger','beveiliging'];
 const SCOPES=['service','cadre','rank','person','call','function'];
@@ -100,19 +104,21 @@ export function validateLibraryUpload(body){
 }
 export function validateLibraryRule(body){
  if(!body||Array.isArray(body)||typeof body!=='object'||
-  Object.keys(body).some(k=>!['department','kind','scope','selector','assetCode','reason'].includes(k)))
+  Object.keys(body).some(k=>!['department','kind','scope','selector','assetCode','assetKind','reason'].includes(k)))
   throw err(400,'Ongeldige afbeeldingskoppeling');
  const department=validateDepartment(String(body.department||''));
  const kind=String(body.kind||''),scope=String(body.scope||'');
  const selector=String(body.selector||'').trim().toLowerCase();
  const assetCode=String(body.assetCode||'').trim().toLowerCase();
- if(!UNIFORM_LIBRARY_RULE_KINDS.includes(kind)||!SCOPES.includes(scope)||
+ const assetKind=String(body.assetKind||kind);
+ if(!UNIFORM_LIBRARY_RULE_KINDS.includes(kind)||
+   !UNIFORM_LIBRARY_RULE_ASSET_KINDS.includes(assetKind)||!SCOPES.includes(scope)||
    !validScopedType(department,scope,selector)||
    !(scope==='person'?(PERSON.test(selector)||/^call_[a-z0-9][a-z0-9_]{0,34}$/.test(selector)):
      scope==='service'?selector==='default':CODE.test(selector))||!CODE.test(assetCode))
   throw err(400,'Ongeldige soort, doelgroep of afbeeldingscode');
  return {key:department+'_'+kind+'_'+scope+'_'+selector,
-  department,kind,scope,selector,assetCode,reason:reasonOf(body.reason)};
+  department,kind,scope,selector,assetCode,assetKind,reason:reasonOf(body.reason)};
 }
 function metadataForVersion(key,record){
  return {key,kind:record.kind,department:record.department,code:record.code,
@@ -223,8 +229,8 @@ export function installUniformLibraryRoutes(app,{requireUser}){
   try{
    const db=getFirestore();
    const asset=await db.collection(ROLE_ARTWORK_META)
-    .doc(input.kind+'_'+input.department+'_'+input.assetCode).get();
-   if(!asset.exists||asset.get('active')!==true||asset.get('kind')!==input.kind||
+    .doc(input.assetKind+'_'+input.department+'_'+input.assetCode).get();
+   if(!asset.exists||asset.get('active')!==true||asset.get('kind')!==input.assetKind||
     asset.get('department')!==input.department)
     return res.status(400).json({error:'Kies een actieve afbeelding van de juiste hulpdienst'});
    const ref=db.collection(UNIFORM_LIBRARY_RULES).doc(input.key);

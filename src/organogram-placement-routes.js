@@ -505,13 +505,13 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const patches=[];
    for(const [label,link] of selected){
     const key=String(link.assetKey||'');
-    if(!/^(?:(?:specialty|patch)_politie_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
+    if(!/^(?:(?:rank|uniform|specialty|patch|helmet|profession|logo|pictogram)_politie_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
     const asset=await db.collection(ROLE_ARTWORK_META).doc(key).get();
     const imageLabel=String(asset.get('label')||'');
     const isRoleImage=/^\d{15,22}_/.test(key);
     if(!asset.exists||asset.get('active')!==true||
       asset.get('department')!=='politie'||!asset.get('version')||
-      !(['patch','specialty'].includes(asset.get('kind'))||
+      !(['rank','uniform','patch','specialty','helmet','profession','logo','pictogram'].includes(asset.get('kind'))||
         isRoleImage&&key.startsWith(link.roleId+'_')&&
         (asset.get('kind')||'role')==='role')||
       label==='RADIO/BM'&&/burgermelding/i.test(imageLabel))

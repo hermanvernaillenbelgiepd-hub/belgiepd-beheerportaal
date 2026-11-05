@@ -6,15 +6,11 @@ const html=readFileSync(new URL('../public/organogram-hierarchie.html',import.me
 const css=readFileSync(new URL('../public/organogram-profile-compact.css',import.meta.url),'utf8');
 const source=readFileSync(new URL('../public/uniform-assignment-display.js',import.meta.url),'utf8');
 const route=readFileSync(new URL('../src/organogram-placement-routes.js',import.meta.url),'utf8');
-test('AZLS, Depannage and Burger use compact responsive profiles',()=>{
- for(const cls of ['azls-person-profile','depannage-person-profile','burger-person-profile']){
-  assert.ok(html.includes("dialog.classList.toggle('"+cls+"'"));
-  assert.ok(css.includes('.'+cls));
- }
- assert.match(css,/grid-template-areas:"details specials"!important/);
- assert.match(css,/max-width:170px!important/);
- assert.match(css,/max-width:1080px/);
- assert.match(css,/max-width:650px/);
+test('the original service personnel profile layout is restored',()=>{
+ assert.doesNotMatch(html,/\/organogram-profile-compact\.css/);
+ assert.match(html,/\/organogram-hybrid\.css/);
+ assert.doesNotMatch(html,/dialog\.classList\.toggle\('azls-person-profile'/);
+ assert.doesNotMatch(html,/dialog\.classList\.toggle\('burger-person-profile'/);
  assert.match(html,/p\.dept!=='ambulance'&&matchedArtwork\?\.source==='discord'/);
  assert.match(route,/status:String\(p\.status\|\|''\)\.trim\(\)\.slice\(0,30\),/);
 });
