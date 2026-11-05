@@ -226,8 +226,11 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       for(const person of ctx.persons){
         const dept=person.dept,rank=roleForDepartment(ctx.actor,dept);
         const highPolice=dept==='politie'&&['officierenkader','korpsleiding'].includes(rank);
-        const series=personSeries(person);
-        const seriesLead=dept==='politie'&&series&&SERIES_LEADERS[series]?.includes(ctx.id);
+        // A reekshoofd may have no series label on their own MK roster card.
+        // The centrally approved leader IDs define which series they follow.
+        const ledSeries=dept==='politie'?Object.entries(SERIES_LEADERS)
+          .filter(([,ids])=>ids.includes(ctx.id)).map(([series])=>series):[];
+        const seriesLead=ledSeries.length>0;
         const serviceLead=dept!=='politie'&&
           ['middenkader','officierenkader','korpsleiding'].includes(rank);
         const verifiedInstructor=(TRAINING_ROLE_IDS[dept]?.instructors||[])
@@ -235,19 +238,21 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         if(!highPolice&&!seriesLead&&!serviceLead&&!verifiedInstructor)continue;
         // This is a verified reviewer, even if the current queue is empty.
         canReviewTraining=true;
-        let query=db().collection('bpd_training_requests');
-        // A reekshoofd sees only the own series. That single-field query
-        // uses Firestore's automatic index, without requiring a composite.
-        query=seriesLead&&!highPolice?
-          query.where('series','==',series):
-          query.where('department','==',dept);
-        const rows=await query.limit(200).get();
-        for(const doc of rows.docs){
-          const request={id:doc.id,...doc.data()};
-          if(request.department!==dept||
-            !([...ACTIVE_TRAINING_REQUEST_STATUSES,'uitgevoerd','gegeven'].includes(request.status)))continue;
-          if(reviewScope(ctx,request))incoming.push({...exposed(request,ctx.id),
-            canSchedule:scheduleScope(ctx,request.department)});
+        const collection=db().collection('bpd_training_requests');
+        // Query exactly the authorized series, even if the reekshoofd's own
+        // roster card has no series label. A higher cadre keeps service scope.
+        const queries=seriesLead&&!highPolice?
+          ledSeries.map(series=>collection.where('series','==',series)):
+          [collection.where('department','==',dept)];
+        for(const query of queries){
+          const rows=await query.limit(200).get();
+          for(const doc of rows.docs){
+            const request={id:doc.id,...doc.data()};
+            if(request.department!==dept||
+              !([...ACTIVE_TRAINING_REQUEST_STATUSES,'uitgevoerd','gegeven'].includes(request.status)))continue;
+            if(reviewScope(ctx,request))incoming.push({...exposed(request,ctx.id),
+              canSchedule:scheduleScope(ctx,request.department)});
+          }
         }
       }
       incoming.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
