@@ -15,11 +15,21 @@ export const POLICE_CALL_GRADES=Object.freeze([
  ['920','Aspirant Commissaris'],['930','Aspirant Commissaris']
 ]);
 export const AMBULANCE_FUNCTIONS=Object.freeze([
- ['ambulancier','Ambulancier (AMB / HAMB)'],
- ['vpk','Verpleegkundige (VPK / HVPK)'],
- ['arts','Arts (ARTS / HARTS)'],
+ ['stag','Stagiair'],
+ ['ambulancier','Ambulancier (AMB)'],
+ ['hamb','H-AMB'],
+ ['vpk','Verpleegkundige (VPK)'],
+ ['hvpk','H-VPK'],
+ ['arts','Arts (ARTS)'],
+ ['harts','H-ARTS'],
  ['dirmed','DIRMED — functieopschrift']
 ]);
+// Higher-grade AZLS uniform designs can be saved independently. Until saved,
+// existing base uniforms stay available for display and editing (visual only).
+export const AMBULANCE_UNIFORM_FALLBACK=Object.freeze({
+ hamb:'ambulancier',hvpk:'vpk',harts:'arts'
+});
+export const ambulanceUniformFallback=code=>AMBULANCE_UNIFORM_FALLBACK[code]||'';
 // Citizen uniforms follow verified Burger/Burgerraad/Burger-IO membership.
  // This only selects artwork and never modifies personnel rank/permissions.
 export const BURGER_UNIFORM_GRADES=Object.freeze([
@@ -87,17 +97,26 @@ export function policeUniformGroup(person){
 }
 export function ambulanceFunction(person){
  if(person?.dept!=='ambulance')return '';
- const raw=String(person.call||'').trim().toUpperCase().replace(/\s+/g,'');
- const prefix=/^(DIRMED|HARTS|HVPK|HAMB|ARTS|VPK|AMB)(?:[-_0-9*]|$)/.exec(raw)?.[1];
+ const raw=String(person.call||'').trim().toUpperCase().replace(/\s+/g,'')
+  .replace(/^H-(?=ARTS|VPK|AMB)/,'H');
+ const prefix=/^(DIRMED|HARTS|HVPK|HAMB|ARTS|VPK|AMB|STAGIAIR|STAGE|STAG)(?:[-_0-9*]|$)/.exec(raw)?.[1];
  if(prefix==='DIRMED')return 'dirmed';
- if(['HARTS','ARTS'].includes(prefix))return 'arts';
- if(['HVPK','VPK'].includes(prefix))return 'vpk';
- if(['HAMB','AMB'].includes(prefix))return 'ambulancier';
+ if(prefix==='HARTS')return 'harts';
+ if(prefix==='HVPK')return 'hvpk';
+ if(prefix==='HAMB')return 'hamb';
+ if(prefix==='ARTS')return 'arts';
+ if(prefix==='VPK')return 'vpk';
+ if(prefix==='AMB')return 'ambulancier';
+ if(['STAGIAIR','STAGE','STAG'].includes(prefix))return 'stag';
  const rank=normalizeVisual(person.rank);
  if(rank==='dirmed'||rank==='dir_med'||rank.includes('directeur_medisch'))return 'dirmed';
- if(rank.includes('verpleegkundige')||rank==='vpk'||rank==='hvpk')return 'vpk';
- if(rank==='arts'||rank==='harts'||rank.includes('_arts'))return 'arts';
- if(rank==='ambulancier'||rank==='ambulance'||rank==='amb'||rank==='hamb')return 'ambulancier';
+ if(['stag','stage','stagiair','ambulance_stagiair'].includes(rank))return 'stag';
+ if(['harts','h_arts','hoofd_arts','hoofdarts'].includes(rank))return 'harts';
+ if(['hvpk','h_vpk','hoofd_verpleegkundige','hoofdverpleegkundige'].includes(rank))return 'hvpk';
+ if(['hamb','h_amb','hoofd_ambulancier','hoofdambulancier'].includes(rank))return 'hamb';
+ if(rank.includes('verpleegkundige')||rank==='vpk')return 'vpk';
+ if(rank==='arts'||rank.includes('_arts'))return 'arts';
+ if(rank==='ambulancier'||rank==='ambulance'||rank==='amb')return 'ambulancier';
  return '';
 }
 // Depot uniforms are keyed to the towing function, not an often-empty rank.

@@ -1,5 +1,5 @@
 // Operational uniform composition: one grade, one preview, one save.
-import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,DEPANNAGE_FUNCTIONS,BURGER_UNIFORM_GRADES,citizenUniformRank,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction,depannageFunction} from '/uniform-profile-policy.js';
+import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,ambulanceUniformFallback,DEPANNAGE_FUNCTIONS,BURGER_UNIFORM_GRADES,citizenUniformRank,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction,depannageFunction} from '/uniform-profile-policy.js?v=azls-grades-20261105b';
 export function setupUniformComposer({api,$}){
  const dept=$('composeDept'),grade=$('composeGrade'),panel=$('composePreview'),
   gallery=$('composeGallery'),types=$('composeTypes'),save=$('composeSave'),notice=$('composeStatus');
@@ -41,7 +41,11 @@ export function setupUniformComposer({api,$}){
      lsra:['lsra','depannagetechnicus'],fast:['f_a_s_t','fast']}[grade.value]||[])
     .map(code=>templates.find(x=>x.department==='depannage'&&x.scope==='rank'&&x.selector===code))
     .find(Boolean):null;
-  const saved=exact||legacy;
+  const previousAzls=dept.value==='ambulance'&&scope==='function'&&
+   ambulanceUniformFallback(grade.value)?
+    templates.find(x=>x.department==='ambulance'&&x.scope==='function'&&
+     x.selector===ambulanceUniformFallback(grade.value)):null;
+  const saved=exact||previousAzls||legacy;
   // New atelier starts with saved compositions only. Never resurrect coats
   // from the retired per-service or per-cadre assignment system.
   const inherited='';

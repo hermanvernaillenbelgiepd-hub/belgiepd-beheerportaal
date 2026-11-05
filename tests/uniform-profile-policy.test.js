@@ -53,9 +53,9 @@ test('fire helmet and plate remain linked to grade independent of call prefix',(
  assert.equal(asset.key,'brandweer_helmet_rank_sergeant');
 });
 test('ambulance functions resolve badges and DIRMED text from calls and ranks',()=>{
- for(const [call,want] of [['AMB-01','ambulancier'],['HAMB-05','ambulancier'],
-  ['VPK-02','vpk'],['HVPK-04','vpk'],['ARTS-01','arts'],
-  ['HARTS-01','arts'],['DIRMED-01','dirmed']]){
+ for(const [call,want] of [['AMB-01','ambulancier'],['HAMB-05','hamb'],
+  ['VPK-02','vpk'],['HVPK-04','hvpk'],['ARTS-01','arts'],
+  ['HARTS-01','harts'],['STAG-03','stag'],['DIRMED-01','dirmed']]){
   assert.equal(ambulanceFunction({dept:'ambulance',call}),want);
  }
  assert.equal(ambulanceFunction({dept:'ambulance',call:'AZLS-01',rank:'Verpleegkundige'}),'vpk');
