@@ -621,3 +621,141 @@ html .person-profile-dialog.operational-profile .bpd-service-uniform-empty-label
   gap:3px 8px;
  }
 }
+
+ 
+/* MULTISERVICE PERSONNEL PROFILE — reference: Brandweer OOFF-09.
+   Apply Brandweer's intact layout to AZLS, Depannage and Burger.
+   Do not modify the existing Brandweer or Police styles, artwork or data. */
+@media screen {
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-layout,
+ html.roster-card-embed .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-layout{
+  display:grid!important;
+  grid-template-columns:minmax(0,2fr) minmax(0,3fr)!important;
+  grid-template-areas:"details specials"!important;
+  gap:16px!important;
+  align-items:start!important;
+ }
+ /* The old service profiles allowed the facts to appear ABOVE the portrait.
+    Restore the Brandweer order explicitly: portrait, identity, then facts. */
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-main{
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;
+  min-width:0!important;padding:0!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-intro{
+  order:0!important;grid-area:auto!important;position:relative!important;
+  width:100%;box-sizing:border-box;margin:0!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-grid{
+  order:1!important;grid-area:auto!important;
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:7px!important;margin:5px 0 0!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-overview{
+  display:flex!important;flex-direction:column!important;
+  align-items:center!important;justify-content:center!important;
+  gap:5px!important;margin:0 0 8px!important;padding:9px 11px!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-overview
+  .portrait.bpd-service-uniform,
+ html.roster-card-embed .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-overview
+  .portrait.bpd-service-uniform{
+  width:min(100%,258px,30dvh)!important;
+  min-width:0!important;max-width:258px!important;
+  height:auto!important;min-height:0!important;max-height:none!important;
+  aspect-ratio:198/226!important;flex:0 0 auto!important;
+  object-fit:contain!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-identity{
+  width:100%!important;min-width:0!important;
+  text-align:center!important;align-items:center!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-name{
+  font-size:18px!important;line-height:1.25!important;
+  max-width:100%;overflow-wrap:anywhere;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-grid .person-profile-fact{
+  min-height:57px!important;padding:7px 10px!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-grid .person-profile-call{
+  min-height:61px!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-call strong{
+  font-size:clamp(21px,2.1vw,27px)!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialty-panel{
+  display:flex!important;flex-direction:column!important;min-width:0!important;gap:9px!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:9px!important;align-items:stretch!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties .person-profile-specialty{
+  display:grid!important;grid-column:auto!important;
+  box-sizing:border-box!important;min-width:0!important;max-width:100%!important;width:100%!important;
+  min-height:100px!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,150px)!important;
+  grid-template-rows:1fr auto!important;
+  gap:3px 9px!important;align-items:center!important;align-content:center!important;
+  padding:10px 11px!important;border-radius:9px!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties .person-profile-specialty>strong{
+  grid-column:1!important;grid-row:1!important;
+  min-width:0!important;align-self:end!important;justify-self:start!important;
+  font-size:12px!important;line-height:1.35!important;overflow-wrap:anywhere;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties .person-profile-specialty:not(:has(>.person-profile-specialty-role))>strong{
+  grid-row:1 / 3!important;align-self:center!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties .person-profile-specialty>.person-profile-specialty-role{
+  grid-column:1!important;grid-row:2!important;
+  align-self:start!important;justify-self:start!important;
+  min-width:0!important;font-size:10px!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties .person-profile-specialty img.person-profile-specialty-badge{
+  display:block!important;grid-column:2!important;grid-row:1 / 3!important;
+  align-self:center!important;justify-self:end!important;
+  width:min(150px,100%)!important;max-width:100%!important;
+  height:auto!important;min-height:0!important;max-height:78px!important;
+  aspect-ratio:auto!important;object-fit:contain!important;
+  object-position:center!important;border:1px solid #547391!important;
+  border-radius:5px!important;background:#111923!important;
+  box-shadow:0 2px 6px #0914253a!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties .person-profile-specialty-missing-patch{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  grid-column:2!important;grid-row:1 / 3!important;
+  width:100%!important;min-height:44px!important;max-width:150px!important;
+  border:1px dashed #53718d!important;border-radius:6px!important;
+  padding:7px 5px!important;color:#a7bfd6!important;
+  font-size:10px!important;line-height:1.35!important;text-align:center!important;
+  background:#112940!important;
+ }
+}
+@media screen and (max-width:970px){
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-layout,
+ html.roster-card-embed .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-layout{
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-areas:"details" "specials"!important;
+ }
+}
+@media screen and (max-width:700px){
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-overview .portrait.bpd-service-uniform,
+ html.roster-card-embed .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-overview .portrait.bpd-service-uniform{
+  width:min(100%,225px,31dvh)!important;max-width:225px!important;
+ }
+}
+@media screen and (max-width:390px){
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties .person-profile-specialty{
+  grid-template-columns:minmax(0,1fr) minmax(0,112px)!important;
+  min-height:84px!important;padding:8px!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties .person-profile-specialty img.person-profile-specialty-badge{
+  width:min(112px,100%)!important;max-height:65px!important;
+ }
+ html .person-profile-dialog.operational-profile.bpd-service-reference-profile .person-profile-specialties .person-profile-specialty-missing-patch{
+  max-width:112px!important;
+ }
+}
