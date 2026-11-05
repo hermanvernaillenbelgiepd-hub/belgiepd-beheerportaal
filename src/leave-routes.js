@@ -1,4 +1,5 @@
-import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getFirestore,FieldValue,FieldPath} from 'firebase-admin/firestore';
+import {notificationReadByViewer,canSeeSeriesLeaveNotification} from './notification-read-policy.js';
 import {getAuth} from 'firebase-admin/auth';
 import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
@@ -24,11 +25,12 @@ const jsonError=(res,e)=>{
 const rejection=(message,status=400)=>Object.assign(new Error(message),{userError:true,status});
 const validId=s=>/^[A-Za-z0-9_-]{12,200}$/.test(String(s||''));
 const iso=t=>t?.toDate?.().toISOString?.()||null;
-const item=(doc,showNote=false)=>{
+const item=(doc,showNote=false,viewerId=null)=>{
   const d=doc.data();
   return {id:doc.id,personDiscordId:d.personDiscordId,subjectName:d.subjectName,
     subjectDepartments:d.subjectDepartments||[],startDate:d.startDate,endDate:d.endDate,
-    days:d.days,status:d.status,canWithdraw:leaveCanWithdraw(d,yyyyMmDd()),
+    days:d.days,status:d.status,readByMe:notificationReadByViewer(d,viewerId),
+    canWithdraw:leaveCanWithdraw(d,yyyyMmDd()),
     createdAt:iso(d.createdAt),decidedAt:iso(d.decidedAt),withdrawnAt:iso(d.withdrawnAt),
     ...(showNote?{note:d.note||''}:{})};
 };
@@ -141,12 +143,13 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       const pending=[],recentAutomatic=[],now=Date.now();
       for(const d of results.docs){
         const r=d.data(),subject=policePeople.get(r.personDiscordId);
-        if(!subject||!assigned.includes(personSeries(subject))||owner===r.personDiscordId)
+        if(!canSeeSeriesLeaveNotification(owner,policePeople.has(owner),subject,r,now))
           continue;
         const summary={id:d.id,subjectName:subject.name,
           subjectCall:subject.call,series:personSeries(subject),
           startDate:r.startDate,endDate:r.endDate,days:r.days,
-          status:r.status,autoApproved:r.autoApproved===true};
+          status:r.status,autoApproved:r.autoApproved===true,
+          readByMe:notificationReadByViewer(r,owner)};
         if(r.status==='pending')pending.push(summary);
         if(r.status==='approved'&&r.autoApproved===true){
           const when=r.createdAt?.toMillis?.()||0;
@@ -155,6 +158,43 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       }
       res.json({series:assigned,pending:pending.slice(0,100),
         recentAutomatic:recentAutomatic.slice(0,50),limited:results.size===250});
+    }catch(e){jsonError(res,e)}
+  });
+  // One acknowledgement per authenticated Discord user, not per request.
+  // The latest status must be acknowledged again when a decision changes.
+  app.post('/api/leave/requests/:id/read',requireUser,async(req,res)=>{
+    const id=String(req.params.id||'');
+    if(!validId(id))return res.status(400).json({error:'Ongeldige aanvraagverwijzing'});
+    if(Object.keys(req.body||{}).length)
+      return res.status(400).json({error:'Onbekende leesbevestigingsgegevens'});
+    try{
+      const owner=req.bpd?.discordId;
+      if(!validDiscordId(owner))throw rejection('Ongeldige Discord-identiteit',403);
+      const board=await verifiedBoardFor(req.bpd);
+      const snapshot=board?(await getSnapshot()).data:(await context(req)).snapshot;
+      const grant=activeGrant(await grantFor(req.bpd));
+      const policePeople=new Map(snapshot.filter(p=>p.dept==='politie'&&p.personId)
+        .map(p=>[p.personId,p]));
+      const ref=db().collection(coll).doc(id);
+      await db().runTransaction(async tx=>{
+        const found=await tx.get(ref);
+        if(!found.exists)throw rejection('Verlofmelding niet gevonden',404);
+        const r=found.data();
+        const self=r.personDiscordId===owner;
+        const subject=policePeople.get(r.personDiscordId);
+        const series=req.bpd?.departments?.includes('politie')&&
+          canSeeSeriesLeaveNotification(owner,policePeople.has(owner),subject,r);
+        const reviewer=r.status==='pending'&&
+          (board||mayApproveLeave(req.bpd,await resolveApplicantRoles(r),
+            grant,yyyyMmDd(),false));
+        const override=board&&['approved','rejected'].includes(r.status);
+        if(!self&&!series&&!reviewer&&!override)
+          throw rejection('Geen toegang tot deze melding',403);
+        tx.update(ref,new FieldPath('readBy',owner),{
+          status:r.status,at:FieldValue.serverTimestamp()
+        });
+      });
+      res.json({saved:true,readByMe:true});
     }catch(e){jsonError(res,e)}
   });
   app.get('/api/leave/requests',requireUser,async(req,res)=>{
@@ -181,9 +221,9 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         req.bpd,await resolveApplicantRoles(d.data()),grant,yyyyMmDd(),false)));
       review=review.filter((d,i)=>allowed[i]);
       const byTime=(a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''));
-      return res.json({mine:my.docs.map(d=>item(d,true)).sort(byTime),
-        toReview:review.map(d=>item(d,false)).sort(byTime),
-        toOverride:board?overrides.map(d=>item(d,false)).sort(byTime):[],
+      return res.json({mine:my.docs.map(d=>item(d,true,req.bpd.discordId)).sort(byTime),
+        toReview:review.map(d=>item(d,false,req.bpd.discordId)).sort(byTime),
+        toOverride:board?overrides.map(d=>item(d,false,req.bpd.discordId)).sort(byTime):[],
         canOverride:board,limited:my.docs.length===100||review.length>=100||overrides.length>=250});
     }catch(e){return jsonError(res,e)}
   });
