@@ -636,6 +636,59 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .roster-patch-preview img{display:block;max-width:170px;width:clamp(90px,20vw,170px);height:auto;max-height:70px;object-fit:contain;background:#071322}
 .roster-patch-preview img[hidden]{display:none}
 @media(max-width:670px){.roster-patch-editor{grid-template-columns:1fr}}
+
+/* Compact, legible police management matrix: never allow badges or titles
+   to paint into the neighbouring cell. Full values remain on hover. */
+.staff-roster-table.roster-police-compact thead th.roster-resizable{
+ padding:7px 3px!important;
+}
+.staff-roster-table.roster-police-compact .roster-resize-handle{
+ width:7px;
+}
+.staff-roster-table.roster-police-compact thead th:not(.specialty-col-head){
+ white-space:nowrap;word-break:normal;overflow-wrap:normal;
+ text-overflow:ellipsis;
+}
+.staff-roster-table.roster-police-compact .specialty-col-head{
+ padding:3px 1px!important;
+}
+.staff-roster-table.roster-police-compact .specialty-col-label,
+.staff-roster-table.roster-police-compact th.specialty-col-head--patch>.specialty-col-label{
+ display:block;max-width:100%;min-width:0;
+ white-space:nowrap;word-break:normal;overflow:hidden;
+ text-overflow:ellipsis;overflow-wrap:normal;
+ font-size:9px;line-height:1.15;min-height:14px;
+ padding:3px 1px;
+}
+.staff-roster-table.roster-police-compact tbody td{
+ overflow:hidden;
+}
+.staff-roster-table.roster-police-compact td:nth-child(3) strong{
+ display:block;white-space:normal;overflow-wrap:anywhere;
+}
+.staff-roster-table.roster-police-compact .roster-series-cell .police-roster-badge,
+.staff-roster-table.roster-police-compact .roster-series-cell .police-roster-series>*,
+.staff-roster-table.roster-police-compact .pill,
+.staff-roster-table.roster-police-compact .active-leave-pill{
+ box-sizing:border-box;width:100%;min-width:0;max-width:100%;
+ min-height:20px;height:auto;margin:0;padding:2px 2px;
+ white-space:normal;overflow-wrap:anywhere;
+ font-size:9px!important;line-height:1.1;
+}
+.staff-roster-table.roster-police-compact .specialty-status-col .specialty-state{
+ display:flex;align-items:center;justify-content:center;
+ width:100%;max-width:100%;min-width:0;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ word-break:normal;overflow-wrap:normal;
+ font-size:9px!important;line-height:1.1;
+}
+.staff-roster-table.roster-police-compact .roster-protected{
+ display:inline-block;max-width:100%;white-space:nowrap;
+ overflow:hidden;text-overflow:ellipsis;
+}
+@media(max-width:1279px){
+ .staff-roster-table.roster-police-compact{min-width:1280px}
+}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -1744,6 +1797,33 @@ const ROSTER_RESIZE_LIMITS=Object.freeze({
  series:[40,240],status:[48,240],specialty:[60,300],
  summary:[110,400],file:[65,180],discord:[175,360]
 });
+const POLICE_ROSTER_IDENTITY_MIN=Object.freeze({
+ call:48,grade:84,name:165,series:60,status:85,file:78,discord:168
+});
+const POLICE_ROSTER_SPECIALTY_DEFAULT=72;
+const policeRosterIdentityWidth=(widths,key)=>
+ Math.max(widths[key]||0,POLICE_ROSTER_IDENTITY_MIN[key]||0);
+const policeRosterSpecialtyWidth=(cfg,label)=>
+ cfg?.specialtyWidths?.[label]??
+ Math.min(cfg?.widths?.specialty||82,POLICE_ROSTER_SPECIALTY_DEFAULT);
+function compactSpecialtyHeaderLabel(label){
+ return ({
+  INTERVENTIEDIENST:'INTERVENTIE',Signalisatie:'SIGNA',
+  Motor:'MOTARD','Semi-ano.':'SEMI-ANO',
+  'LRD (Recherche)':'LRD'
+ })[label]||label;
+}
+function compactSpecialtyStatusLabel(status){
+ const value=String(status||'').trim();
+ const short={
+  'SPECIALISATIE':'SPEC.','INSTRUCTEUR':'INSTR.',
+  'AANGEMELD':'AANG.','RESTRICTED':'RESTR.',
+  'BLACKLISTED':'BLACKL.','GESCHORST':'SCHORS.',
+  'OPLEIDING!':'OPLEID.','TEAMLEADER':'TEAMLD.',
+  'LEIDING':'LEID.'
+ };
+ return short[value.toUpperCase()]||value;
+}
 const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
   call:42,grade:68,rank:164,name:190,series:52,status:58,
   specialty:82,summary:180,file:76,discord:224
@@ -1773,20 +1853,36 @@ function rosterDragHandles({dept,cols,headers,colgroup,table,widths,showRankName
   const th=headers.children[index],part=descriptors[index];
   const key=part.key||'specialty',range=ROSTER_RESIZE_LIMITS[key];
   const col=colgroup.children[index];
-  const current=()=>part.specialty?
-    (cfg.specialtyWidths?.[part.specialty]||cfg.widths.specialty):
-    cfg.widths[part.key];
+  const current=()=>showRankName?
+    (part.specialty?
+      (cfg.specialtyWidths?.[part.specialty]||cfg.widths.specialty):
+      cfg.widths[part.key]):
+    (part.specialty?policeRosterSpecialtyWidth(cfg,part.specialty):
+      policeRosterIdentityWidth(cfg.widths,part.key));
   const change=value=>{
-   const safe=Math.max(range[0],Math.min(range[1],Math.round(value)));
+   const compactMin=showRankName?0:POLICE_ROSTER_IDENTITY_MIN[part.key]||0;
+   const safe=Math.max(range[0],compactMin,
+     Math.min(range[1],Math.round(value)));
    if(safe===current())return false;
    if(part.specialty){
     cfg.specialtyWidths ||= {};
     cfg.specialtyWidths[part.specialty]=safe;
    }else cfg.widths[part.key]=safe;
    widths[index]=safe;
-   col.style.width=safe+'px';
-   table.style.setProperty('--roster-required-width',
+   if(!showRankName){
+    const weights=descriptors.map(descriptor=>descriptor.specialty?
+      policeRosterSpecialtyWidth(cfg,descriptor.specialty):
+      policeRosterIdentityWidth(cfg.widths,descriptor.key));
+    const total=weights.reduce((sum,width)=>sum+width,0);
+    [...colgroup.children].forEach((item,i)=>{
+     item.style.width=(100*weights[i]/total).toFixed(4)+'%';
+    });
+    table.style.setProperty('--roster-required-width','0px');
+   }else{
+    col.style.width=safe+'px';
+    table.style.setProperty('--roster-required-width',
      widths.reduce((total,width)=>total+width,0)+'px');
+   }
    return true;
   };
   th.classList.add('roster-resizable');
@@ -1890,12 +1986,12 @@ function render(){
   // cap oversized column weights and distribute the total over the available
   // table width. All cells stay aligned without cropping qualifications.
   const compactWidths=policeCompact?[
-    Math.min(w.call,34),Math.min(w.grade,68),Math.min(w.name,150),
-    Math.min(w.series,44),Math.min(w.status,55),
-    ...(cols.length?cols.map(label=>Math.min(
-      rosterConfigs[dept]?.specialtyWidths?.[label]||w.specialty,125)):
-      [Math.min(w.summary,150)]),
-    Math.min(w.file,72),Math.min(w.discord,168)
+    ...['call','grade','name','series','status'].map(key=>
+      policeRosterIdentityWidth(w,key)),
+    ...(cols.length?cols.map(label=>policeRosterSpecialtyWidth(
+      rosterConfigs[dept],label)):[Math.min(w.summary,150)]),
+    policeRosterIdentityWidth(w,'file'),
+    policeRosterIdentityWidth(w,'discord')
   ]:widths;
   const compactTotal=compactWidths.reduce((sum,width)=>sum+width,0);
   const colgroup=document.createElement('colgroup');
@@ -1915,10 +2011,12 @@ function render(){
   const titles=dept==='depannage'?
     ['CALL','Functiegroep','Functie','Personeelslid','Reeks','Status']:
     policeCompact?
-      ['CALL','Rangteken','Personeelslid','Reeks','Status']:
+      ['CALL','RANG','PERSONEELSLID','REEKS','STATUS']:
       ['CALL','Rangteken','Naam van rang','Personeelslid','Reeks','Status'];
   for(const title of titles){
-    const th=document.createElement('th');th.textContent=title;line.append(th);
+    const th=document.createElement('th');th.textContent=title;
+    if(policeCompact&&title==='RANG')th.title='Rangteken';
+    line.append(th);
   }
   if(!cols.length){const th=document.createElement('th');th.textContent='Specialisaties';line.append(th)}
   for(const label of cols){
@@ -1930,7 +2028,8 @@ function render(){
     else pict.append(specialtyMark(label));
     pict.setAttribute('aria-hidden','true');
     const name=document.createElement('span');name.className='specialty-col-label';
-    name.textContent=label==='INTERVENTIEDIENST'?'INTERVENTIE':dept==='depannage'?depannageSpecialtyMeta(label).label:label;
+    name.textContent=policeCompact?compactSpecialtyHeaderLabel(label):
+      dept==='depannage'?depannageSpecialtyMeta(label).label:label;
     const banner=BPDPersonnelVisuals.specialtyBannerDisplay(label,dept);
     if(banner){
       th.classList.add('specialty-col-head--patch');
@@ -2083,8 +2182,10 @@ function render(){
         {status:'Ja',style:'yes'}:status;
       const cell=document.createElement('td');cell.className='specialty-status-col';
       const chip=document.createElement('span');chip.className='specialty-state specialty-'+shown.style;
-      chip.textContent=shown.status==='Niet ingevuld'?'—':shown.status;
+      chip.textContent=shown.status==='Niet ingevuld'?'—':
+        policeCompact?compactSpecialtyStatusLabel(shown.status):shown.status;
       chip.title=specialty+' · '+shown.status;
+      chip.setAttribute('aria-label',specialty+' · '+shown.status);
       cell.append(chip);tr.append(cell);
     }
     const cell=document.createElement('td');
@@ -2097,8 +2198,9 @@ function render(){
     }else{
       const restricted=document.createElement('span');
       restricted.className='roster-protected';
-      restricted.textContent='🔒 Afgeschermd';
+      restricted.textContent=policeCompact?'🔒':'🔒 Afgeschermd';
       restricted.title='Personeelslid zichtbaar; het volledige dossier is alleen voor bevoegd Korpsleiding of Bestuur';
+      restricted.setAttribute('aria-label','Dossier afgeschermd');
       cell.append(restricted);
     }
     if(person.canManageLifecycle===true){
