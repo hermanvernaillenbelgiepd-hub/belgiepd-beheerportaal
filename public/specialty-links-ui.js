@@ -85,34 +85,70 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
    root.append(tile);
   }
  }
- function renderPersonList(items){
+
+ function renderPersonList(items,options={}){
   const root=$('specialtyPersonList');root.replaceChildren();
   if(!Array.isArray(items))return;
   for(const spec of items){
-   const tile=el('button');tile.type='button';tile.className='specialty-person-item';
-   const info=el('span');
+   const row=el('details');row.className='specialty-person-item specialty-person-level';
+   const head=el('summary'),info=el('span');
    info.append(el('strong',spec.label),el('small',
-     String(spec.value||'Niet ingevuld')+' · '+(spec.source==='manual'?'Handmatig':'Geregistreerd')));
-   tile.append(info);
+    'Functieniveau: '+String(spec.value||'Niet ingevuld')));
+   head.append(info);
    const pic=currentArtwork(spec.label);
    if(pic){
     const image=el('img');image.src=pic.imageUrl;image.alt='Patch '+pic.label;
-    image.loading='lazy';tile.append(image);
+    image.loading='lazy';head.append(image);
    }
-   if(spec.readOnly)tile.title='Alleen via geverifieerde Discord-rol';
-   tile.onclick=()=>{
-    const found=[...$('specialty').options].find(x=>x.value===spec.label);
-    if(!found)return notify('Deze functie wordt uitsluitend via Discord geverifieerd.',true);
-    $('specialty').value=spec.label;
-    $('specialtyValue').value=spec.value;
-    if(!$('specialtyValue').value)$('specialtyValue').value='Niet ingevuld';
-    updatePreview();
-    $('specialty').scrollIntoView({behavior:'smooth',block:'nearest'});
-   };
-   root.append(tile);
+   row.append(head);
+   if(options.editable&&spec.readOnly!==true&&typeof options.save==='function'){
+    const form=el('form');form.className='specialty-person-editor';
+    const level=el('label','Functieniveau voor '+spec.label);
+    const choice=el('select');
+    for(const opt of $('specialtyValue').options){
+     const o=el('option',opt.textContent);o.value=opt.value;choice.append(o);
+    }
+    if(![...choice.options].some(o=>o.value===spec.value)){
+     const extra=el('option',spec.value);extra.value=spec.value;choice.append(extra);
+    }
+    choice.value=spec.value;
+    level.append(choice);
+    const reasonLabel=el('label','Motivering (minstens 15 tekens)');
+    const reason=el('textarea');reason.required=true;reason.minLength=15;
+    reason.maxLength=500;reason.rows=2;
+    reason.placeholder='Waarom wijzigt het functieniveau?';
+    reasonLabel.append(reason);
+    const button=el('button','Functieniveau bewaren');button.type='submit';
+    const status=el('p');status.setAttribute('role','status');
+    form.append(level,reasonLabel,button,status);
+    form.addEventListener('submit',async event=>{
+     event.preventDefault();
+     if(!form.reportValidity())return;
+     if(choice.value===spec.value){
+      status.textContent='Het functieniveau is niet gewijzigd.';return;
+     }
+     if(!confirm('Functieniveau van '+spec.label+' wijzigen naar '+
+      choice.value+'? Dit wordt in het personeelsdossier gelogd.'))return;
+     button.disabled=true;status.textContent='Opslaan…';
+     try{
+      await options.save(spec.label,choice.value,reason.value.trim());
+      status.textContent='Afzonderlijk opgeslagen.';
+     }catch(error){
+      status.textContent='Niet opgeslagen: '+error.message;
+      button.disabled=false;
+     }
+    });
+    row.append(form);
+   }else{
+    row.append(el('p',spec.readOnly?
+     'Dit functieniveau volgt een geverifieerde Discord-rol en is niet handmatig wijzigbaar.':
+     'Alleen bevoegd Officierenkader, Korpsleiding of geverifieerd technisch beheer kan dit functieniveau aanpassen.'));
+   }
+   root.append(row);
   }
   renderVerifiedRoleTiles();
  }
+
  function render(){
   const root=$('specialtyLinkRows');root.replaceChildren();
   setAvailable(Boolean(config));
