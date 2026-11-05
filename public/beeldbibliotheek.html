@@ -95,11 +95,13 @@ html:not([data-bpd-theme="dark"]) #linkStatus.bad{color:#a02232}
    <label>Geselecteerde afbeelding uit de bibliotheek
     <select id="linkAsset"><option value="">Upload eerst een afbeelding of selecteer een bestaande</option></select>
    </label>
-   <label class="link-option"><input id="linkRankEnabled" type="checkbox"> Automatisch tonen bij een bepaalde rang</label>
+   <label class="link-option"><input id="linkRankEnabled" type="checkbox"> Automatisch tonen bij een bepaalde rang (ook bij specialisatiebadges)</label>
    <div id="rankLinkFields" class="link-fields" hidden>
-    <label>Rangnaam (zoals in personeelsfiche)
-     <input id="linkRank" list="linkRankPresets" maxlength="80" placeholder="Bijvoorbeeld: Adjudant">
-     <datalist id="linkRankPresets"></datalist>
+    <label>Rang kiezen (van deze hulpdienst)
+     <select id="linkRankChoice"><option value="">Selecteer een rang</option></select>
+    </label>
+    <label>Rangnaam (automatisch ingevuld of zelf aanpassen)
+     <input id="linkRank" maxlength="80" placeholder="Bijvoorbeeld: VPK of Adjudant">
     </label>
    </div>
    <label class="link-option"><input id="linkRoleEnabled" type="checkbox"> Koppelen aan specialisatie (Discord-rol optioneel)</label>
@@ -142,7 +144,7 @@ html:not([data-bpd-theme="dark"]) #linkStatus.bad{color:#a02232}
     <strong>Bestaande visuele koppelingen</strong>
     <p>Hier verschijnen de koppelingen van de gekozen afbeelding.</p>
    </div>
-   <p class="hint">Een rangkoppeling is beschikbaar voor gradenplaten, helmen, beroepsinsignes, logo's, pictogrammen en patches. Voor een specialisatiebadge of patch kun je een specialisatie koppelen, met of zonder Discord-rol. Uniformen worden verder samengesteld in Uniformatelier; eretekens blijven persoonlijk toegekend.</p>
+   <p class="hint">Een rangkoppeling is beschikbaar voor gradenplaten, helmen, beroepsinsignes, logo's, pictogrammen, patches én specialisatiebadges. Vink de rangoptie aan en kies de rang; voor een onbekende rang kun je de naam zelf invoeren. Voor een specialisatiebadge of patch kun je een specialisatie koppelen, met of zonder Discord-rol. Uniformen worden verder samengesteld in Uniformatelier; eretekens blijven persoonlijk toegekend.</p>
   </div>
  </div>
 </section>
@@ -351,15 +353,17 @@ $('upload').onclick=async()=>{
 $('dept').onchange=()=>{updatePreset();draw();drawLinkAssets();void loadSpecialtyMapping()};
 $('kind').onchange=()=>{updatePreset();draw();drawLinkAssets()};$('search').oninput=draw;
 
-const RANK_LINK_KINDS=new Set(['rank','helmet','profession','logo','pictogram','patch']);
+const RANK_LINK_KINDS=new Set(['rank','helmet','profession','logo','pictogram','patch','specialty']);
 const ROLE_LINK_KINDS=new Set(['specialty','patch']);
 const RANK_PRESETS={
- politie:['Agent van Politie','Aspirant Inspecteur','Inspecteur','Eerste Inspecteur',
+ politie:['Agent','Agent van Politie','Aspirant Inspecteur','Inspecteur','Eerste Inspecteur',
   'Aspirant Hoofdinspecteur','Hoofdinspecteur','Eerste Hoofdinspecteur',
-  'Aspirant Commissaris','Eerste Commissaris','Eerste Hoofdcommissaris'],
- brandweer:['Zonecommandant','Kolonel','Majoor','Kapitein','Luitenant','Adjudant',
+  'Aspirant Commissaris','Commissaris','Eerste Commissaris','Eerste Hoofdcommissaris'],
+ brandweer:['Zonechef','Zonecommandant','Kolonel','Majoor','Kapitein','Luitenant','Adjudant',
   'Sergeant','Korporaal','Brandweerman','Stagiair'],
- ambulance:['DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','STAG']
+ ambulance:['DIRMED','DIR-MED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','STAG'],
+ depannage:['AWV','LSRA','FAST','Depannage'],
+ burger:['Burgerraad','Burger IO','Burger']
 };
 const linkNotice=(text,bad=false)=>{
  $('linkStatus').textContent=text;$('linkStatus').classList.toggle('bad',bad);
@@ -420,8 +424,10 @@ function updateLinkChoices(){
  $('linkImageMeta').textContent=item?
   labelFor(departments,item.department)+' · '+labelFor(kinds,item.kind)+' · '+item.code:
   'Selecteer een afbeelding uit de bibliotheek.';
- const options=$('linkRankPresets');options.replaceChildren();
- for(const label of RANK_PRESETS[item?.department]||[])options.append(opt(normalized(label),label));
+ const choices=$('linkRankChoice'),currentRank=normalized($('linkRank').value);
+ choices.replaceChildren(opt('','Selecteer een rang of vul zelf in'));
+ for(const label of RANK_PRESETS[item?.department]||[])choices.append(opt(label,label));
+ choices.value=[...choices.options].find(x=>normalized(x.value)===currentRank)?.value||'';
  const overview=$('linkOverview');
  overview.replaceChildren(make('strong','Bestaande visuele koppelingen'));
  if(!item){overview.append(make('p','Geen afbeelding geselecteerd.'));return;}
@@ -452,12 +458,13 @@ function drawLinkAssets(preferred=''){
  select.value=active.some(x=>x.key===old)?old:'';
  updateLinkChoices();
 }
-$('linkAsset').onchange=()=>{$('linkSpecialty').value='';updateLinkChoices()};
+$('linkAsset').onchange=()=>{$('linkSpecialty').value='';$('linkRank').value='';updateLinkChoices()};
+$('linkRankChoice').onchange=()=>{if($('linkRankChoice').value)$('linkRank').value=$('linkRankChoice').value;};
 for(const [id] of [['linkRankEnabled'],['linkRoleEnabled']])
  $(id).onchange=updateLinkChoices;
 $('linkClear').onclick=()=>{
  $('linkRankEnabled').checked=false;$('linkRoleEnabled').checked=false;
- $('linkRank').value='';$('linkRoleId').value='';$('linkVariant').value='standard';
+ $('linkRank').value='';$('linkRankChoice').value='';$('linkRoleId').value='';$('linkVariant').value='standard';
  $('linkSpecialty').value='';
  $('linkReason').value='';updateLinkChoices();
  linkNotice('Keuzes gewist. Bestaande koppelingen zijn behouden.');

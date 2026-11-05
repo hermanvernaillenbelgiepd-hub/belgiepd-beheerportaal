@@ -2450,7 +2450,7 @@ function makeServiceUniformPortrait(person){
  stage.append(img);
  const grade=serviceRankKey(person.rank);
  const simple=grade.split('_')[0];
- const rankImage=selected?.rankUrl||serviceRankArtworks.get('rank_'+dept+'_'+grade)||
+ const rankImage=selected?.rankUrl||selected?.rankSpecialtyUrl||serviceRankArtworks.get('rank_'+dept+'_'+grade)||
   serviceRankArtworks.get('rank_'+dept+'_'+simple);
  const place=serviceUniformLayouts.get(dept+'_default')||
   {left:62,top:55,width:24,height:12};
@@ -2919,7 +2919,7 @@ function makeAzlsCompactPortrait(person){
  const selected=window.BPDUniformAssignments?.forPerson?.(person);
  if(selected?.uniformUrl||serviceUniformArtworks.has('uniform_ambulance_default'))return makeServiceUniformPortrait(person);
  const grade=serviceRankKey(person?.rank);
- const art=selected?.rankUrl||
+ const art=selected?.rankUrl||selected?.rankSpecialtyUrl||
   serviceRankArtworks.get('rank_ambulance_'+grade)||
   serviceRankArtworks.get('rank_ambulance_'+grade.split('_')[0]);
  const wrapper=el('span','portrait azls-compact-portrait');
