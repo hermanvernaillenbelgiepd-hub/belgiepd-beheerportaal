@@ -10,7 +10,8 @@ test('police management roster has five identity columns, keeping rank in toolti
  assert.match(html,/const showRankName=dept!=='politie',policeCompact=!showRankName/);
  assert.match(html,/\['CALL','RANG','PERSONEELSLID','REEKS','STATUS'\]/);
  assert.match(html,/if\(showRankName\)\{\s*const rankCell=td\(tr,grade.label\)/);
- assert.match(html,/gradeDisplay.title=grade.label/);\n assert.match(html,/th.title='Rangteken'/);
+ assert.match(html,/gradeDisplay.title=grade.label/);
+ assert.match(html,/th.title='Rangteken'/);
  assert.match(html,/const fullColumnCount=baseColumnCount\+Math.max\(cols.length,1\)\+2/);
  assert.equal(html.match(/\.colSpan=fullColumnCount/g)?.length,3);
 });
