@@ -2795,7 +2795,8 @@ function openPersonProfile(p){
       window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)):verified?(
     matchedArtwork?.imageUrl||
     (name==='RADIO/BM'?'':aeSpecific?aeLevelImage:
-     window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant))):'';
+     window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)||
+     (name==='INTERVENTIEDIENST'?policeInterventionBadgeUrl:''))):'';
    if(alternative){
     item.querySelectorAll('.person-profile-specialty-badge,.rago-io-badge').forEach(x=>x.remove());
     const badge=el('img','person-profile-specialty-badge');
@@ -3411,6 +3412,7 @@ async function loadPublic(){
   window.BPDUniformAssignments?.setData?.(assignmentData?.assignments,artworkManifest?.artworks,libraryRules?.rules,uniformGrades?.choices,compositions?.compositions);
   window.BPDVisualAssets?.setData?.(artworkManifest?.artworks,visualLayers?.layers,uniformLayoutData?.visibility);
   applyRoleArtworkManifest(artworkManifest?.artworks);
+  policeInterventionBadgeUrl=policeInterventionPatchFromManifest(artworkManifest?.artworks);
   setFireSpecialtyPatchArtworks(artworkManifest?.artworks);
   setAmbulanceSpecialtyPatchArtworks(artworkManifest?.artworks);
   setDepannageSpecialtyPatchArtworks(artworkManifest?.artworks);
@@ -3584,6 +3586,18 @@ const ROLE_ARTWORK_SLOTS=[
 // Artwork manifest is presentation-only; the trusted Discord role mapping
 // above remains unchanged for membership and all API permissions.
 let roleArtworkUrls=new Map();
+let policeInterventionBadgeUrl='';
+function policeInterventionPatchFromManifest(manifest){
+ // A general library patch is purely visual and does not assign a training role.
+ for(const key of ['patch_politie_interventie','specialty_politie_interventie',
+                   'patch_politie_interventiedienst','specialty_politie_interventiedienst']){
+  const entry=(Array.isArray(manifest)?manifest:[]).find(row=>row?.key===key);
+  const url=String(entry?.imageUrl||'');
+  if(url.startsWith('/api/role-artwork/file/'+key+'?v=')&&
+     /^\/api\/role-artwork\/file\/(?:patch|specialty)_politie_[a-z0-9_]+\?v=[A-Za-z0-9-]+$/.test(url))return url;
+ }
+ return '';
+}
 function roleArtworkUrl(roleId,variant='standard'){
  return roleArtworkUrls.get(roleId+'_'+variant)||'';
 }
