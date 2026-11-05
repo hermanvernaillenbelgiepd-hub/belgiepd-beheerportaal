@@ -5,7 +5,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {SPECIALTY_LABELS} from './normalize.js';
 import {ROLE_CATALOG} from './role-catalog.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
-import {extraSpecialtyLabels} from './roster-column-config.js';
+import {extraSpecialtyLabels,ROSTER_COLUMN_COLLECTION,rosterConfig} from './roster-column-config.js';
 import {canEditLibrary} from './uniform-library-routes.js';
 import {mayEditTechnicalSettings} from './technical-center-config.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
@@ -98,7 +98,63 @@ export function validateSpecialtyRoleLinks(body,dept,labels,roles){
  });
  return {expectedRevision:body.expectedRevision,reason,links};
 }
+/** Register a service-scoped label in the existing roster catalog only.
+ * This does NOT register a qualification on a person's dossier. */
+export function validateCustomSpecialty(body,dept,existing=[]){
+ if(!DEPTS.includes(dept)||!body||Array.isArray(body)||typeof body!=='object'||
+   Object.keys(body).some(k=>!['label','reason'].includes(k)))
+  throw fail(400,'Ongeldige nieuwe specialisatie');
+ const label=typeof body.label==='string'?body.label.trim():'';
+ const reason=typeof body.reason==='string'?body.reason.trim():'';
+ if(label.length<2||label.length>64||/[<>\x00-\x1f\x7f]/.test(label)||
+   reason.length<8||reason.length>300||/[<>\x00-\x1f\x7f]/.test(reason))
+  throw fail(400,'Vul een naam van 2–64 tekens en een motivering van 8–300 tekens in');
+ const fold=x=>String(x||'').toLocaleLowerCase('nl-BE');
+ if(['andere','anders'].includes(fold(label))||
+   dept==='ambulance'&&fold(label)==='motor')
+  throw fail(400,'Deze naam kan niet als aparte specialisatie worden toegevoegd');
+ const accepted=[...allSpecialtyLabels(dept),...existing.map(x=>x.label)];
+ if(accepted.some(x=>fold(x)===fold(label)))
+  throw fail(409,'Deze specialisatie bestaat al voor de hulpdienst');
+ const code=label.toLowerCase().normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_')
+  .replace(/^_+|_+$/g,'').slice(0,40).replace(/_+$/g,'');
+ if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code)||
+  existing.some(x=>x.code===code))
+  throw fail(400,'Deze naam kan niet naar een unieke afbeeldingscode worden omgezet');
+ return {label,code,reason};
+}
+
 export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
+ // Append to the already established per-service customSpecialties registry.
+ // No duplicate specialist records and no changes to permissions or roles.
+ app.post('/api/specialty-links/:dept/custom-label',requireUser,async(req,res)=>{
+  const dept=req.params.dept;
+  if(!canManageSpecialtyRoleLinks(req.bpd,dept))
+   return res.status(403).json({error:'Geen beheerrechten voor deze hulpdienst'});
+  try{
+   const db=getFirestore(),ref=db.collection(ROSTER_COLUMN_COLLECTION).doc(dept);
+   const result=await db.runTransaction(async tx=>{
+    const old=await tx.get(ref),before=rosterConfig(old.data());
+    const next=validateCustomSpecialty(req.body,dept,before.customSpecialties);
+    if(before.customSpecialties.length>=20)
+     throw fail(409,'Maximaal 20 extra specialisaties per hulpdienst');
+    const customSpecialties=[...before.customSpecialties,
+     {label:next.label,code:next.code,icon:'',public:false}];
+    const after={...before,customSpecialties,revision:before.revision+1};
+    tx.set(ref,{customSpecialties,revision:after.revision,
+     updatedBy:req.bpd.discordId,updatedAt:FieldValue.serverTimestamp()},{merge:true});
+    tx.create(db.collection('bpd_roster_column_audit').doc(),{
+     dept,actorDiscordId:req.bpd.discordId,action:'custom_specialty_added',
+     before,after,reason:next.reason,at:FieldValue.serverTimestamp()
+    });
+    return {label:next.label,code:next.code,revision:after.revision};
+   });
+   res.set('Cache-Control','no-store');
+   return res.status(201).json({saved:true,...result,
+    qualificationGranted:false,discordRolesChanged:false});
+  }catch(e){return respond(res,e);}
+ });
  app.get('/api/specialty-links/:dept',requireUser,async(req,res)=>{
   const dept=req.params.dept;
   if(!DEPTS.includes(dept))return res.status(400).json({error:'Onbekende hulpdienst'});

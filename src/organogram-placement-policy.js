@@ -16,7 +16,7 @@ export const SPECIALTIES=Object.freeze({
   // Historical specializations not silently deleted when an existing record is edited.
   'Prioritair rijden','EHBO'],
  brandweer:['Duiker','Ladderwagen','Logistiek','Signalisatie','RED team','Gevaarlijke stoffen','Bosbestrijding','Grote Boot','Brandweer-AMBU'],
- ambulance:['MIP','HELI','PIT','PIT-MOTOR','Medicatie','Basis TR','Motor'],
+ ambulance:['MIP','HELI','PIT','PIT-MOTOR','Medicatie','Basis TR'],
  depannage:['F.A.S.T','CRANE','Wegenwerken','LSRA','Signalisatie'],
  burger:['Burgerproject','Burger IO']
 });
@@ -37,8 +37,9 @@ const POLICE_DISPLAY_ALIASES=new Map([
 ]);
 const normalizedStoredSpecialty=(dept,label)=>
  dept==='politie'?(POLICE_DISPLAY_ALIASES.get(label)||label):label;
-const validStoredSpecialty=(dept,label)=>SPECIALTIES[dept]?.includes(label)||
- (dept==='politie'&&LEGACY_POLICE_SPECIALTIES.includes(label));
+const validStoredSpecialty=(dept,label,additional=[])=>SPECIALTIES[dept]?.includes(label)||
+ (dept==='politie'&&LEGACY_POLICE_SPECIALTIES.includes(label))||
+ (typeof label==='string'&&additional.includes(label));
 const ID=/^\d{15,22}$/;
 const strip=v=>String(v??'').trim();
 export const personKey=(dept,id)=>DISPLAY_DEPTS.includes(dept)&&ID.test(String(id||''))?dept+'_'+id:null;
@@ -266,7 +267,7 @@ export function registeredFireBasicTraining(person){
   entry&&['Basis TR','Basistraining'].includes(String(entry.label||''))&&
   /^(ja|behaald|voltooid|geslaagd|true)$/i.test(String(entry.value||'').trim()));
 }
-export function mergePlacement(person,manual,auto){
+export function mergePlacement(person,manual,auto,additional=[]){
  // Explicit manual entries supplement verified roles, never grant rights.
  const specialtyValues=Array.isArray(person.specialties)?
   person.specialties.filter(x=>x&&typeof x.label==='string'&&
@@ -276,7 +277,7 @@ export function mergePlacement(person,manual,auto){
      // This display-only fallback works if an existing verified Discord role
      // is unavailable; it does not grant permissions or write to Firestore.
      (person.dept==='politie'&&x.label==='RAGO'&&/^aangemeld$/i.test(strip(x.value))))&&
-   validStoredSpecialty(person.dept,x.label))
+   validStoredSpecialty(person.dept,x.label,additional))
     .map(x=>person.dept==='politie'&&x.label==='RAGO'&&
       /^aangemeld$/i.test(strip(x.value))?'RAGO-IO':
       normalizedStoredSpecialty(person.dept,x.label)):[];
@@ -284,7 +285,7 @@ export function mergePlacement(person,manual,auto){
  // 'Docent'/'Instructeur' instead of 'Ja'. This is display data only.
  const registeredTeaching=Array.isArray(person.specialties)?
   person.specialties.filter(x=>x&&typeof x.label==='string'&&
-   validStoredSpecialty(person.dept,x.label)&&
+   validStoredSpecialty(person.dept,x.label,additional)&&
    /^(docent|instructeur)$/i.test(strip(x.value))).map(x=>({
     label:normalizedStoredSpecialty(person.dept,x.label),
     role:strip(x.value).toLowerCase()
@@ -299,15 +300,19 @@ export function mergePlacement(person,manual,auto){
   aeRole:auto?.aeRole||'',aeRoles:auto?.aeRoles||[],aeTeamleader:auto?.aeTeamleader===true,
   instructorSpecialties:[...new Set([...(manual?.instructorSpecialties||[]),
    ...(auto?.instructorSpecialties||[]),
-   ...registeredTeaching.filter(x=>x.role==='instructeur').map(x=>x.label)].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
+   ...registeredTeaching.filter(x=>x.role==='instructeur').map(x=>x.label)].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,(SPECIALTIES[person.dept]?.length||12)+additional.length),
   teacherSpecialties:[...new Set([...(manual?.teacherSpecialties||[]),
    ...(auto?.teacherSpecialties||[]),
-   ...registeredTeaching.filter(x=>x.role==='docent').map(x=>x.label)].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
+   ...registeredTeaching.filter(x=>x.role==='docent').map(x=>x.label)].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,(SPECIALTIES[person.dept]?.length||12)+additional.length),
   specialties:(()=>{
    const found=[...new Set([...(manual?.specialties||[]),...(auto?.specialties||[]),...specialtyValues]
     .map(label=>normalizedStoredSpecialty(person.dept,label)))];
    // A verified full RAGO specialization supersedes its IO training badge.
-   return found.filter(label=>label!=='RAGO-IO'||!found.includes('RAGO')).slice(0,SPECIALTIES[person.dept]?.length||12);
+   return found.filter(label=>
+    // Never upgrade the legacy AZLS Motor column to the qualified PIT-MOTOR.
+    !(person.dept==='ambulance'&&label==='Motor')&&
+    (label!=='RAGO-IO'||!found.includes('RAGO')))
+    .slice(0,(SPECIALTIES[person.dept]?.length||12)+additional.length);
   })(),
   source:manual&&auto?.synced?'handmatig + Discord':manual?'handmatig':auto?.synced?'Discord':'personeelslijst'};
 }
