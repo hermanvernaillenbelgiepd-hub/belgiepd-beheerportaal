@@ -575,6 +575,19 @@ header{padding-inline:clamp(15px,2vw,34px)}
  background-color:#050b13;
 }
 
+/* Flexible specialisatievakken in personeelsbeheer; preserve readable rows.
+   Per-column preferences remain editable by officers with existing permissions. */
+.staff-roster-table.roster-police-compact .specialty-col-head,
+.staff-roster-table.roster-police-compact .specialty-status-col{
+ min-width:0!important;padding-inline:1px!important;
+}
+.staff-roster-table.roster-police-compact .specialty-col-label{
+ font-size:clamp(8px,.6vw,9px);line-height:1.1;overflow-wrap:anywhere;
+}
+.staff-roster-table.roster-police-compact .specialty-status-col .specialty-state{
+ padding-inline:1px!important;font-size:clamp(8px,.6vw,9px);
+}
+
 /* Responsive police overview: no forced horizontal scrolling on desktop.
    The rank name is present in the insignia tooltip and full personnel fiche.
    Other service rosters retain their independently configured widths. */
@@ -1741,7 +1754,7 @@ const ROSTER_FONTS=Object.freeze({
 });
 const ROSTER_RESIZE_LIMITS=Object.freeze({
  call:[36,200],grade:[54,250],rank:[105,380],name:[120,430],
- series:[40,240],status:[48,240],specialty:[60,300],
+ series:[40,240],status:[48,240],specialty:[38,300],
  summary:[110,400],file:[65,180],discord:[175,360]
 });
 const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
@@ -1784,9 +1797,25 @@ function rosterDragHandles({dept,cols,headers,colgroup,table,widths,showRankName
     cfg.specialtyWidths[part.specialty]=safe;
    }else cfg.widths[part.key]=safe;
    widths[index]=safe;
-   col.style.width=safe+'px';
-   table.style.setProperty('--roster-required-width',
-     widths.reduce((total,width)=>total+width,0)+'px');
+   if(!showRankName){
+    // Police uses proportional columns: update every column after a resize.
+    // Mixing pixel widths with percentages previously made dragging unreliable.
+    const capped=widths.map((width,i)=>{
+     const descriptor=descriptors[i];
+     if(descriptor.specialty)return Math.min(width,130);
+     const caps={call:34,grade:68,name:150,series:44,status:55,file:72,discord:168};
+     return Math.min(width,caps[descriptor.key]??width);
+    });
+    const total=capped.reduce((sum,width)=>sum+width,0);
+    [...colgroup.children].forEach((item,i)=>{
+     item.style.width=(100*capped[i]/total).toFixed(4)+'%';
+    });
+    table.style.setProperty('--roster-required-width','0px');
+   }else{
+    col.style.width=safe+'px';
+    table.style.setProperty('--roster-required-width',
+      widths.reduce((total,width)=>total+width,0)+'px');
+   }
    return true;
   };
   th.classList.add('roster-resizable');
@@ -1893,7 +1922,7 @@ function render(){
     Math.min(w.call,34),Math.min(w.grade,68),Math.min(w.name,150),
     Math.min(w.series,44),Math.min(w.status,55),
     ...(cols.length?cols.map(label=>Math.min(
-      rosterConfigs[dept]?.specialtyWidths?.[label]||w.specialty,125)):
+      rosterConfigs[dept]?.specialtyWidths?.[label]??Math.min(w.specialty,54),130)):
       [Math.min(w.summary,150)]),
     Math.min(w.file,72),Math.min(w.discord,168)
   ]:widths;
