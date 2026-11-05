@@ -16,7 +16,7 @@ export const SPECIALTIES=Object.freeze({
   // Historical specializations not silently deleted when an existing record is edited.
   'Prioritair rijden','EHBO'],
  brandweer:['Duiker','Ladderwagen','Logistiek','Signalisatie','RED team','Gevaarlijke stoffen','Bosbestrijding'],
- ambulance:['MIP','HELI','PIT','PIT-MOTOR','Medicatie','Basis TR'],
+ ambulance:['MIP','HELI','PIT','PIT-MOTOR','Medicatie','Basis TR','Motor'],
  depannage:['F.A.S.T','CRANE','Wegenwerken','LSRA','Signalisatie'],
  burger:['Burgerproject','Burger IO']
 });
@@ -232,10 +232,19 @@ export function mergePlacement(person,manual,auto){
  // Explicit manual entries supplement verified roles, never grant rights.
  const specialtyValues=Array.isArray(person.specialties)?
   person.specialties.filter(x=>x&&typeof x.label==='string'&&
-   (/^(ja|behaald|voltooid|geslaagd|true)$/i.test(strip(x.value))||
+   (/^(ja|behaald|voltooid|geslaagd|true|docent|instructeur)$/i.test(strip(x.value))||
      (person.dept==='politie'&&x.label==='AE'&&/^(instructeur|leiding|teamleader|ae[-_ ]?[it])$/i.test(strip(x.value))))&&
    validStoredSpecialty(person.dept,x.label))
     .map(x=>normalizedStoredSpecialty(person.dept,x.label)):[];
+ // Historic AZLS/other service registers record qualified instructors as
+ // 'Docent'/'Instructeur' instead of 'Ja'. This is display data only.
+ const registeredTeaching=Array.isArray(person.specialties)?
+  person.specialties.filter(x=>x&&typeof x.label==='string'&&
+   validStoredSpecialty(person.dept,x.label)&&
+   /^(docent|instructeur)$/i.test(strip(x.value))).map(x=>({
+    label:normalizedStoredSpecialty(person.dept,x.label),
+    role:strip(x.value).toLowerCase()
+   })):[];
  const boardRole=manual?.boardRole&&manual.boardRole!=='none'?
   manual.boardRole:auto?.boardRole||'none';
  return {dept:person.dept,name:strip(person.name).slice(0,90),
@@ -245,9 +254,11 @@ export function mergePlacement(person,manual,auto){
   displayLabels:[...(manual?.displayLabels||[])],
   aeRole:auto?.aeRole||'',aeRoles:auto?.aeRoles||[],aeTeamleader:auto?.aeTeamleader===true,
   instructorSpecialties:[...new Set([...(manual?.instructorSpecialties||[]),
-   ...(auto?.instructorSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
+   ...(auto?.instructorSpecialties||[]),
+   ...registeredTeaching.filter(x=>x.role==='instructeur').map(x=>x.label)].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
   teacherSpecialties:[...new Set([...(manual?.teacherSpecialties||[]),
-   ...(auto?.teacherSpecialties||[])].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
+   ...(auto?.teacherSpecialties||[]),
+   ...registeredTeaching.filter(x=>x.role==='docent').map(x=>x.label)].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,SPECIALTIES[person.dept]?.length||12),
   specialties:(()=>{
    const found=[...new Set([...(manual?.specialties||[]),...(auto?.specialties||[]),...specialtyValues]
     .map(label=>normalizedStoredSpecialty(person.dept,label)))];
