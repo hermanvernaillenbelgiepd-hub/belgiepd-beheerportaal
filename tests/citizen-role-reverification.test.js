@@ -44,3 +44,20 @@ test('server never derives technical or citizen grants from the display-only ros
  assert.match(citizens,/verifyGuildAuthorizationRoles\(actor\.discordId\)/);
  assert.doesNotMatch(citizens,/getBelgiumPdDisplayRoles/);
 });
+
+test('login is persistent and role recheck is optional on the page',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const login=readFileSync(new URL('../public/portal-login.js',import.meta.url),'utf8');
+ const mgr=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
+ assert.match(login,/browserLocalPersistence/);
+ assert.match(login,/Discordrollen vernieuwen \(indien nodig\)/);
+ assert.match(mgr,/De beveiligde beheersessie duurt maximaal acht uur/);
+});
+test('Burger has no specialization editor; official Burger roles are managed separately',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const page=readFileSync(new URL('../public/rollenbeheer.html',import.meta.url),'utf8');
+ assert.match(page,/id="citizenRolePanel"/);
+ assert.match(page,/if\(p\.dept==='burger'\)\{/);
+ assert.match(page,/\$\('specialtyLinkPanel'\)\.hidden=true/);
+ assert.match(page,/burger-personeelsdossiers\.html/);
+});

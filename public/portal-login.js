@@ -27,7 +27,7 @@ export function setupPortalLogin({button,auth,authModule,config,onError}){
     refresh=document.createElement('button');
     refresh.type='button';
     refresh.textContent='Aanmelden met Discord';
-    refresh.title='Verbind of vernieuw je eigen Discord-serververificatie';
+    refresh.title='Alleen nodig als je Discordrollen gewijzigd zijn of de server om herverificatie vraagt';
     refresh.style.marginInlineStart='8px';
     refresh.onclick=()=>location.assign('/auth/discord/start?return='+encodeURIComponent(location.pathname));
     button.insertAdjacentElement('afterend',refresh);
@@ -49,7 +49,7 @@ export function setupPortalLogin({button,auth,authModule,config,onError}){
     if(refresh){
       refresh.hidden=!user;
       refresh.textContent=user?.uid?.startsWith('discord:')?
-        'Discord opnieuw verifiëren':'Aanmelden met Discord';
+        'Discordrollen vernieuwen (indien nodig)':'Aanmelden met Discord';
     }
   });
   button.textContent=label(auth.currentUser);

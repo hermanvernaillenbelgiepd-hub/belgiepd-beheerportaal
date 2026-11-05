@@ -381,7 +381,7 @@ header button{padding:7px 10px;font-size:12px}
     <label for="profileMode">Werkmodus</label>
     <select id="profileMode" style="width:auto;min-width:220px">
       <option value="politie">Mijn politieprofiel</option>
-      <option value="technisch">Technisch beheer — volledige toegang</option>
+      <option value="technisch">Technisch beheer — portaalbrede toegang</option>
     </select>
     <button type="button" id="profileApply" class="alt">Profiel activeren</button>
   </div>
@@ -1572,7 +1572,7 @@ async function loadProfileSwitcher(){
 }
 $('profileApply').onclick=async()=>{
   const mode=$('profileMode').value;
-  if(mode==='technisch'&&!confirm('Technisch beheer geeft uitgebreide toegang tot LIVE-gegevens op MAIN. Deze sessie duurt maximaal één uur en vereist een recent geverifieerde Discord-login. Activeren?'))return;
+  if(mode==='technisch'&&!confirm('Technisch beheer geeft uitgebreide toegang tot LIVE-gegevens op MAIN. De beveiligde beheersessie duurt maximaal acht uur. De server controleert intussen de Discord-identiteit; wanneer de bot onbereikbaar is, kan een nieuwe controle nodig zijn. Activeren?'))return;
   $('profileApply').disabled=true;
   try{
     await api('/api/users/profile',{method:'POST',body:{mode}});
