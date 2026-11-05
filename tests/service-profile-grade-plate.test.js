@@ -6,15 +6,16 @@ const page=readFileSync(new URL('../public/organogram-hierarchie.html',import.me
 const style=readFileSync(new URL('../public/organogram-hybrid.css',import.meta.url),'utf8');
 const resolver=readFileSync(new URL('../public/uniform-assignment-display.js',import.meta.url),'utf8');
 const helper=page.slice(page.indexOf('function makeServiceProfileGrade('),page.indexOf('function openPersonProfile(p){'));
-test('standalone grade plate renders under portrait for fire, AZLS and Burger only',()=>{
+test('standalone grade plate renders under portrait for Brandweer and Burger only',()=>{
  assert.match(page,/const badge=makeServiceProfileGrade\(portraitPerson,displayRank\);/);
- assert.match(page,/\['brandweer','ambulance','burger'\]\.includes\(p\.dept\)/);
- assert.match(helper,/if\(!\['brandweer','ambulance','burger'\]\.includes\(department\)\)return null/);
+ assert.match(page,/\['brandweer','burger'\]\.includes\(p\.dept\)/);
+ assert.doesNotMatch(page,/\['brandweer','ambulance','burger'\]\.includes\(p\.dept\)/);
+ assert.match(helper,/if\(!\['brandweer','burger'\]\.includes\(department\)\)return null/);
  assert.match(helper,/selected\?\.rankUrl\|\|legacyImage\|\|''/);
  assert.doesNotMatch(helper,/rankSpecialtyUrl/);
  assert.match(page,/if\(p\.dept==='politie'\)\{/);
 });
-test('portrait-style Brandweer badge and landscape AZLS/Burger plates never distort imagery',()=>{
+test('portrait-style Brandweer badge and landscape Burger plate never distort imagery',()=>{
  assert.match(style,/\.person-profile-service-grade-vertical \.person-profile-service-grade-image-slot\{[\s\S]*?width:94px;height:122px/);
  assert.match(style,/\.person-profile-service-grade-horizontal \.person-profile-service-grade-image-slot\{[\s\S]*?aspect-ratio:16 \/ 5/);
  assert.match(style,/\.person-profile-service-grade-image\{[\s\S]*?object-fit:contain/);
@@ -39,4 +40,16 @@ test('grade plate uses existing library artwork and a no-link placeholder',()=>{
  assert.match(helper,/Graadteken nog niet gekoppeld/);
  assert.match(helper,/badge\.onerror=\(\)=>slot\.replaceChildren\(fallback\(\)\)/);
  assert.match(helper,/frame\.append\(slot,info\)/);
+});
+
+test('Burger profile omits the entire specializations section, not only its content',()=>{
+ const start=page.indexOf("if(p.dept!=='burger'){\n const specBox=el('section','person-profile-specialization-box');");
+ const spec=page.indexOf("specBox.append(el('h3','','Specialisaties'))");
+ const append=page.indexOf("secondary.append(specBox);");
+ const close=page.indexOf("if(!dialog.open)dialog.showModal();",start);
+ assert.ok(start>0&&spec>start&&append>spec&&close>append);
+ assert.match(page.slice(start,close),/\n \}\n $/);
+ assert.match(page.slice(0,start),/secondary\.append\(awardsBox\);/);
+ assert.match(page,/if\(p\.dept==='politie'\)\{/);
+ assert.match(page,/if\(!\['brandweer','burger'\]\.includes\(department\)\)return null/);
 });
