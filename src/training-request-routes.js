@@ -1,6 +1,6 @@
 import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
-import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getFirestore,FieldValue,FieldPath} from 'firebase-admin/firestore';
 import {approvedManagedEntry,USER_COLLECTION,verifiedDiscordIdentity} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
 import {TRAINING_ROLE_IDS} from './role-catalog.js';
@@ -344,7 +344,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
             if(!who)throw rejection('Eigen personeelsfiche niet gevonden',403);
             const by={discordId:ctx.id,name:who.name,call:who.call};
             const now=FieldValue.serverTimestamp();
-            tx.update(ref,{['readBy.'+ctx.id]:now});
+            tx.update(ref,new FieldPath('readBy',ctx.id),now);
             tx.create(ref.collection('audit').doc(),{
               action:'persoonlijk-gelezen',by,at:now,status:old.status
             });
