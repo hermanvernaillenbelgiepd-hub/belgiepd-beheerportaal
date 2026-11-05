@@ -1,4 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
+import {overlayVerifiedCitizenRankDisplay} from './burger-organogram-projection.js';
 import {getAuth} from 'firebase-admin/auth';
 import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
 import {LIFECYCLE_SERVICES} from './personnel-lifecycle-policy.js';
@@ -78,7 +80,19 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           canEditIdentity:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p),
           canEditStatus:canOpenDossier&&canEditGeneralPersonnelInfo(req.bpd,p)};
       });
-      const labelledRecords=records.map(p=>({...p,
+      // Rank projection happens AFTER all personnel permissions have been
+      // calculated, exclusively in the serialized overview response.
+      let presentation=records;
+      if(records.some(p=>p.dept==='burger')){
+       try{
+        const roleDisplay=await getBelgiumPdDisplayRoles();
+        presentation=overlayVerifiedCitizenRankDisplay(records,roleDisplay);
+       }catch{
+        // Keep previously registered labels. No authorization is inferred.
+       }
+      }
+      const labelledRecords=presentation.map(p=>({...p,
+        verifiedCitizenRole:p.dept==='burger'&&p.citizenRoleSource==='discord-api-display',
         discordCadre:p.dept==='politie'&&isPolice9xx(p.call)?
           req.bpd.verifiedPoliceSubjectRoles?.[p.discordId]||null:null,
         verifiedFunction:p.dept==='depannage'?

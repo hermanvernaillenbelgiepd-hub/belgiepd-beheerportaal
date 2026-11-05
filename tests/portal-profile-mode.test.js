@@ -24,10 +24,10 @@ test('Only exactly approved and freshly verified Discord identity may use techni
 });
 test('Technical cookie is signed, identity-bound, short-lived, and HttpOnly',()=>{
   const cookie=makeProfileCookie(decoded.uid,id,env.BPD_PORTAL_PROFILE_SIGNING_KEY,now);
-  assert.match(cookie,/HttpOnly; Secure; SameSite=Strict; Max-Age=3600/);
+  assert.match(cookie,/HttpOnly; Secure; SameSite=Strict; Max-Age=28800/);
   assert.equal(technicalCookieIsValid(cookie,decoded.uid,id,env.BPD_PORTAL_PROFILE_SIGNING_KEY,now+30000),true);
   assert.equal(technicalCookieIsValid(cookie,'discord:111111111111111111','111111111111111111',env.BPD_PORTAL_PROFILE_SIGNING_KEY,now+30000),false);
-  assert.equal(technicalCookieIsValid(cookie,decoded.uid,id,env.BPD_PORTAL_PROFILE_SIGNING_KEY,now+3600001),false);
+  assert.equal(technicalCookieIsValid(cookie,decoded.uid,id,env.BPD_PORTAL_PROFILE_SIGNING_KEY,now+28800001),false);
   assert.equal(technicalCookieIsValid(cookie.replace('=eyJ','=aeyJ'),decoded.uid,id,env.BPD_PORTAL_PROFILE_SIGNING_KEY,now),false);
   assert.match(clearProfileCookie(),/Max-Age=0/);
 });

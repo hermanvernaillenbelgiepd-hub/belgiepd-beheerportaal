@@ -57,6 +57,17 @@ button.alt{background:#26455f}
 </div>
 <div id="identity" class="state" hidden></div>
 </section>
+<section id="citizenRolePanel" hidden>
+ <h2>Burger · rolherkenning en personeelsdossier</h2>
+ <p id="citizenRoleProof" class="help"></p>
+ <p>Burgerraad, Burger en Burger in opleiding zijn <strong>dienstrollen</strong>, geen specialisaties.
+  De werkelijke Burgerraadbevoegdheid wordt server-side gecontroleerd via de Discordrol.</p>
+ <div class="actions">
+  <a class="link" href="/burger-personeelsdossiers.html">Burgerdossiers openen</a>
+  <a class="link" href="/gebruikersbeheer.html">Portaalrechten en rolherstel beheren</a>
+  <a class="link" href="/discord-status.html">Mijn Discord-verificatie</a>
+ </div>
+</section>
 <section id="specialtyLinkPanel" hidden>
 <h2>2. Specialisaties, patches en optionele Discord-rollen koppelen</h2>
 <p class="help">Een specialisatie kan <strong>zonder Discord-rol</strong> bestaan. Kies dan <strong>Geen Discord-rol — handmatige specialisatie / patch</strong> en koppel de bijpassende afbeelding. Officierenkader en Korpsleiding kunnen deze vervolgens per personeelslid toekennen, ook aan Agentenkader of Basiskader. Heeft een specialisatie wél een aparte Discord-rol, dan kun je die daarnaast selecteren. Dit verleent nooit automatisch toegangsrechten.</p>
@@ -216,7 +227,7 @@ function choosePeople(){
  for(const p of records)$('person').append(option(key(p),p.call+' · '+p.name+' · '+p.rank));
  if(records.some(x=>key(x)===old))$('person').value=old;
  else selected=null;
- if(!selected){$('specialtyPanel').hidden=true;$('rankPanel').hidden=true;$('identity').hidden=true}
+ if(!selected){$('specialtyPanel').hidden=true;$('rankPanel').hidden=true;$('identity').hidden=true;$('citizenRolePanel').hidden=true}
 }
 async function loadVisualCatalog(){
  visualCatalog=null;$('policeVisualPanel').hidden=true;
@@ -297,10 +308,24 @@ function updateSelection(){
  const p=people.find(x=>key(x)===$('person').value);
  selected=p||null;specialtyData=null;
  $('specialtyPanel').hidden=true;$('rankPanel').hidden=true;
+ $('citizenRolePanel').hidden=!p||p.dept!=='burger';
  $('identity').hidden=!p;
  if(!p)return;
  $('identity').textContent=p.call+' · '+p.name+' · '+p.rank+
   ' · '+(p.dept||'').toUpperCase()+' · '+p.status;
+ if(p.dept==='burger'){
+  $('citizenRoleProof').textContent=p.verifiedCitizenRole?
+   'Discordrol bevestigd voor deze personeelskaart: '+p.rank:
+   'Geregistreerde rol: '+p.rank+
+   '. Geen recente Discord-rolcontrole beschikbaar; controleer via Burgerdossiers.';
+  // Burger has no specialization ledger. No more misleading kaderrol error.
+  $('specialtyPanel').hidden=true;
+  $('specialtyLinkPanel').hidden=true;
+  $('specialtyLinkRows').replaceChildren();
+  $('specialtyLinkStatus').textContent='Burger heeft geen specialisaties';
+  $('policeVisualPanel').hidden=true;
+  return;
+ }
  const allowed=p.dept==='politie'&&p.canChangeRank===true&&overview?.rankChangesEnabled===true;
  $('rankPanel').hidden=p.dept!=='politie';
  $('newRank').replaceChildren(option('','Kies een andere rang'));
@@ -355,7 +380,15 @@ function updateArtwork(){
 }
 $('specialty').onchange=updateArtwork;
 $('specialtyValue').onchange=()=>{$('specialtyConfirmImage').checked=false};
-$('dept').onchange=()=>{selected=null;choosePeople();void specialtyLinksUI.load()};
+$('dept').onchange=()=>{
+ selected=null;choosePeople();$('citizenRolePanel').hidden=true;
+ if($('dept').value==='burger'){
+  $('specialtyLinkPanel').hidden=true;
+  $('specialtyLinkStatus').textContent='Burger heeft geen specialisaties';
+  return;
+ }
+ void specialtyLinksUI.load();
+};
 $('search').oninput=choosePeople;$('person').onchange=updateSelection;
 $('specialtySave').onclick=async()=>{
  const p=selected,state=specialtyData,label=$('specialty').value,value=$('specialtyValue').value,
@@ -404,7 +437,10 @@ async function load(){
   if(startingParams.has('dept')&&(overview.departments||[]).includes(startingParams.get('dept')))
    $('dept').value=startingParams.get('dept');
   choosePeople();
-  await specialtyLinksUI.load();
+  if($('dept').value==='burger'){
+   $('specialtyLinkPanel').hidden=true;
+   $('specialtyLinkStatus').textContent='Burger heeft geen specialisaties';
+  }else await specialtyLinksUI.load();
   if(startingParams.has('person')){
    const wanted=$('dept').value+'_'+startingParams.get('person');
    if([...$('person').options].some(x=>x.value===wanted)){

@@ -5,7 +5,9 @@ import {roleSummary} from './role-catalog.js';
 // The owner-configured allowlist is a deliberate infrastructure grant.
 // A matching username, Discord role, callsign or browser request is NEVER enough.
 export const PROFILE_COOKIE='bpd_portal_profile';
-export const PROFILE_SECONDS=3600;
+// An authenticated workday; privileged access still requires a fresh,
+// independently checked guild identity or the short OAuth fallback.
+export const PROFILE_SECONDS=8*3600;
 const ID=/^\d{15,22}$/;
 const departments=['politie','ambulance','brandweer','depannage','burger'];
 

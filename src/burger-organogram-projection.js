@@ -24,8 +24,28 @@ export function verifiedCitizenRoles(personId,upstream,oauth,guildId,now=Date.no
     auth.verifiedAt>now+60000||now-auth.verifiedAt>7*86400000)return [];
  return citizenGroupsForRoles(auth.roleIds);
 }
-export function projectCitizenOrganogram(roster,upstream,oauth,guildId,now=Date.now()){
+/** Verified, display-only Burger rank for existing records.
+ * Does not write to Firestore or confer Burgerraad permissions.
+ * Never resolves by name and ignores ambiguous duplicate service identities. */
+export function overlayVerifiedCitizenRankDisplay(roster,upstream){
  const rows=Array.isArray(roster)?roster:[];
+ if(upstream?.status!=='ok'||!(upstream.entries instanceof Map))return rows;
+ const counts=new Map();
+ const identity=p=>p?.personId||p?.discordId;
+ for(const p of rows)if(p?.dept==='burger'&&validId(identity(p)))
+  counts.set(identity(p),(counts.get(identity(p))||0)+1);
+ return rows.map(p=>{
+  const id=identity(p);
+  if(p?.dept!=='burger'||!validId(id)||counts.get(id)!==1||
+    !upstream.entries.has(id))return p;
+  const groups=citizenGroupsForRoles(upstream.entries.get(id));
+  if(!groups.length)return p;
+  return {...p,rank:groups[0],citizenGroups:groups,
+   citizenRoleSource:'discord-api-display'};
+ });
+}
+export function projectCitizenOrganogram(roster,upstream,oauth,guildId,now=Date.now()){
+ const rows=overlayVerifiedCitizenRankDisplay(roster,upstream);
  if(!validId(guildId))return rows;
  const existing=new Set(rows.filter(p=>p?.dept==='burger'&&validId(p.personId)).map(p=>p.personId));
  const byPerson=new Map();
