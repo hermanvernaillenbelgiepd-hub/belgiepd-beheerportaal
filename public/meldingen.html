@@ -94,6 +94,8 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 #activityPingsList .item{padding:8px 0;font-size:12px;line-height:1.4}
 #activityPingsList .item p{margin:3px 0;font-size:11px}
 #activityPingsList .item button{padding:6px 10px;font-size:11px;min-height:30px}
+#seriesLeaveList .item button,#seriesLeaveAutomatic .item button{padding:6px 10px;font-size:11px;min-height:30px}
+.read-receipt{display:block;font-size:11px;color:#3d664b;margin:4px 0}
 
 @media(max-width:700px){
  #trainingPersonalPanel,#trainingReviewPanel{padding:12px}
@@ -311,6 +313,24 @@ async function load(){
   feedback(writesEnabled?'Je kunt aanvragen behandelen binnen je eigen bevoegdheid.':'De verlofmodule staat momenteel op alleen-lezen.');
  }catch(e){feedback(e.message,true)}
 }
+function addSeriesReadConfirmation(row,record){
+  if(record.readAt){
+    const done=document.createElement('span');done.className='read-receipt';
+    done.textContent='✓ Door jou gelezen · '+new Date(record.readAt).toLocaleString('nl-BE');
+    row.append(done);return;
+  }
+  const button=document.createElement('button');button.type='button';
+  button.textContent='GELEZEN';
+  button.onclick=async()=>{
+    button.disabled=true;
+    try{
+      await api('/api/leave/series-notifications/'+encodeURIComponent(record.id)+'/read',{});
+      feedback('Je eigen leesbevestiging is opgeslagen. Andere reekshoofden behouden hun melding.');
+      await loadSeriesLeave();
+    }catch(e){feedback('Leesbevestiging mislukt: '+e.message,true);button.disabled=false}
+  };
+  row.append(button);
+}
 async function loadSeriesLeave(){
  const panel=$('seriesLeavePanel');
  panel.hidden=true;
@@ -331,7 +351,7 @@ async function loadSeriesLeave(){
      ' · reeks '+record.series;
    const dates=document.createElement('p');
    dates.textContent=record.startDate+' t/m '+record.endDate+' · Wacht op bevoegde beslissing';
-   row.append(title,dates);pendingEl.append(row);
+   row.append(title,dates);addSeriesReadConfirmation(row,record);pendingEl.append(row);
   }
   const recent=$('seriesLeaveAutomatic');
   const approved=result.recentAutomatic||[];
@@ -342,7 +362,7 @@ async function loadSeriesLeave(){
    title.textContent=record.subjectCall+' · '+record.subjectName;
    const dates=document.createElement('p');
    dates.textContent=record.startDate+' t/m '+record.endDate+' · AUTOMATISCH GOEDGEKEURD';
-   row.append(title,dates);recent.append(row);
+   row.append(title,dates);addSeriesReadConfirmation(row,record);recent.append(row);
   }
  }catch(e){
   // This informational panel must never disrupt authorized leave decisions.
@@ -372,8 +392,25 @@ async function loadTraining(){
       r.applicantCall+' · '+r.applicantName+' · '+r.department+' · '+r.courseName;
     const note=document.createElement('p');note.textContent=r.note||'Geen toelichting';
     const status=document.createElement('p');status.textContent='Status: '+r.status;
-    const actions=document.createElement('div');actions.className='actions';
-    for(const [action,label] of TRAINING_ACTIONS){
+     const actions=document.createElement('div');actions.className='actions';
+     if(r.readAt){
+       const done=document.createElement('span');done.className='read-receipt';
+       done.textContent='✓ Door jou gelezen · '+new Date(r.readAt).toLocaleString('nl-BE');
+       actions.append(done);
+     }else{
+       const read=document.createElement('button');read.type='button';read.textContent='GELEZEN';
+       read.onclick=async()=>{
+         read.disabled=true;
+         try{
+           await api('/api/training-requests/'+encodeURIComponent(r.id)+'/action',{action:'gelezen'});
+           feedback('Je eigen leesbevestiging is opgeslagen. Andere ontvangers behouden hun melding.');
+           await loadTraining();
+         }catch(e){feedback('Leesbevestiging mislukt: '+e.message,true);read.disabled=false}
+       };
+       actions.append(read);
+     }
+     for(const [action,label] of TRAINING_ACTIONS){
+       if(action==='gelezen')continue;
       if(!availableTrainingActions(r).includes(action))continue;
       const b=document.createElement('button');b.type='button';b.textContent=label;
       if(action==='gepland'||action==='uitgevoerd')b.className='primary';
