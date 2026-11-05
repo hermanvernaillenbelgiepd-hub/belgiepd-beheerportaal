@@ -1,6 +1,7 @@
 import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
-import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getFirestore,FieldValue,FieldPath} from 'firebase-admin/firestore';
+import {notificationReadByViewer} from './notification-read-policy.js';
 import {approvedManagedEntry,USER_COLLECTION,verifiedDiscordIdentity} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
 import {TRAINING_ROLE_IDS} from './role-catalog.js';
@@ -191,12 +192,13 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       res.status(201).json({saved:true,id:ref.id});
     }catch(e){error(res,e)}
   });
-  const exposed=x=>({
+  const exposed=(x,viewerId)=>({
     id:x.id,department:x.department,courseName:x.courseName,
     note:x.note||'',applicantDiscordId:x.applicantDiscordId,
     applicantName:x.applicantName,applicantCall:x.applicantCall,
     applicantTier:x.applicantTier||null,series:x.series||null,
-    status:x.status,createdAt:iso(x.createdAt),updatedAt:iso(x.updatedAt),
+    status:x.status,readByMe:notificationReadByViewer(x,viewerId),
+    createdAt:iso(x.createdAt),updatedAt:iso(x.updatedAt),
     reviewedBy:x.reviewedBy||null,reviewedAt:iso(x.reviewedAt),
     givenBy:x.givenBy||null,givenAt:iso(x.givenAt),
     plannedBy:x.plannedBy||null,plannedAt:iso(x.plannedAt),
@@ -210,7 +212,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       const ctx=req.trainingApplicant;
       const mineSnap=await db().collection('bpd_training_requests')
         .where('applicantDiscordId','==',ctx.id).limit(100).get();
-      const mine=mineSnap.docs.map(d=>exposed({id:d.id,...d.data()}))
+      const mine=mineSnap.docs.map(d=>exposed({id:d.id,...d.data()},ctx.id))
         .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
       const scopes=ctx.persons.map(p=>({
         department:p.dept,tier:tierOf(ctx,p),
@@ -224,8 +226,11 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       for(const person of ctx.persons){
         const dept=person.dept,rank=roleForDepartment(ctx.actor,dept);
         const highPolice=dept==='politie'&&['officierenkader','korpsleiding'].includes(rank);
-        const series=personSeries(person);
-        const seriesLead=dept==='politie'&&series&&SERIES_LEADERS[series]?.includes(ctx.id);
+        // A reekshoofd may have no series label on their own MK roster card.
+        // The centrally approved leader IDs define which series they follow.
+        const ledSeries=dept==='politie'?Object.entries(SERIES_LEADERS)
+          .filter(([,ids])=>ids.includes(ctx.id)).map(([series])=>series):[];
+        const seriesLead=ledSeries.length>0;
         const serviceLead=dept!=='politie'&&
           ['middenkader','officierenkader','korpsleiding'].includes(rank);
         const verifiedInstructor=(TRAINING_ROLE_IDS[dept]?.instructors||[])
@@ -233,19 +238,21 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         if(!highPolice&&!seriesLead&&!serviceLead&&!verifiedInstructor)continue;
         // This is a verified reviewer, even if the current queue is empty.
         canReviewTraining=true;
-        let query=db().collection('bpd_training_requests');
-        // A reekshoofd sees only the own series. That single-field query
-        // uses Firestore's automatic index, without requiring a composite.
-        query=seriesLead&&!highPolice?
-          query.where('series','==',series):
-          query.where('department','==',dept);
-        const rows=await query.limit(200).get();
-        for(const doc of rows.docs){
-          const request={id:doc.id,...doc.data()};
-          if(request.department!==dept||
-            !([...ACTIVE_TRAINING_REQUEST_STATUSES,'uitgevoerd','gegeven'].includes(request.status)))continue;
-          if(reviewScope(ctx,request))incoming.push({...exposed(request),
-            canSchedule:scheduleScope(ctx,request.department)});
+        const collection=db().collection('bpd_training_requests');
+        // Query exactly the authorized series, even if the reekshoofd's own
+        // roster card has no series label. A higher cadre keeps service scope.
+        const queries=seriesLead&&!highPolice?
+          ledSeries.map(series=>collection.where('series','==',series)):
+          [collection.where('department','==',dept)];
+        for(const query of queries){
+          const rows=await query.limit(200).get();
+          for(const doc of rows.docs){
+            const request={id:doc.id,...doc.data()};
+            if(request.department!==dept||
+              !([...ACTIVE_TRAINING_REQUEST_STATUSES,'uitgevoerd','gegeven'].includes(request.status)))continue;
+            if(reviewScope(ctx,request))incoming.push({...exposed(request,ctx.id),
+              canSchedule:scheduleScope(ctx,request.department)});
+          }
         }
       }
       incoming.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
@@ -299,6 +306,35 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       return res.status(201).json({saved:true,id:ref.id,status:'nieuw'});
     }catch(e){error(res,e)}
   });
+  // Acknowledging an application belongs to one recipient only. It must not
+  // advance the shared workflow from NIEUW to GELEZEN for other reekshoofden.
+  async function markRead(ctx,id){
+    const ref=db().collection('bpd_training_requests').doc(id);
+    await db().runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists)throw rejection('Aanvraag niet gevonden',404);
+      const old=snap.data();
+      const mine=old.applicantDiscordId===ctx.id&&
+        ctx.persons.some(p=>p.dept===old.department);
+      const incoming=[...ACTIVE_TRAINING_REQUEST_STATUSES,'uitgevoerd','gegeven']
+        .includes(old.status)&&reviewScope(ctx,old);
+      if(!mine&&!incoming)throw rejection('Geen toegang tot deze melding');
+      tx.update(ref,new FieldPath('readBy',ctx.id),{
+        status:old.status,at:FieldValue.serverTimestamp()
+      });
+    });
+  }
+  app.post('/api/training-requests/:id/read',identity,async(req,res)=>{
+    const id=String(req.params.id||'');
+    if(!/^[A-Za-z0-9]{12,40}$/.test(id))
+      return res.status(400).json({error:'Ongeldige aanvraagverwijzing'});
+    if(Object.keys(req.body||{}).length)
+      return res.status(400).json({error:'Onbekende leesbevestigingsgegevens'});
+    try{
+      await markRead(req.trainingApplicant,id);
+      res.json({saved:true,readByMe:true});
+    }catch(e){error(res,e)}
+  });
   app.post('/api/training-requests/:id/action',identity,async(req,res)=>{
     const id=String(req.params.id||'');
     if(!/^[A-Za-z0-9]{12,40}$/.test(id))
@@ -312,6 +348,14 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       ['action'];
     if(Object.keys(body).some(k=>!permitted.includes(k)))
       return res.status(400).json({error:'Ongeldige bijkomende gegevens'});
+    // Old clients may still send the historical GELEZEN action. Apply the
+    // same personal receipt semantics, without changing request.status.
+    if(action==='gelezen'){
+      try{
+        await markRead(req.trainingApplicant,id);
+        return res.json({saved:true,readByMe:true});
+      }catch(e){return error(res,e)}
+    }
     let schedule=null,reason='';
     if(action==='gepland'){
       try{schedule=validTrainingSchedule({
