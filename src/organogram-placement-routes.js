@@ -22,7 +22,9 @@ import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
 import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks,exactApiDisplayRoles} from './bpd-discord-users-display.js';
 import {projectCitizenOrganogram,projectVerifiedCouncilAccounts,councilRoleIds} from './burger-organogram-projection.js';
-import {roleArtworkCandidateKeys,resolveSpecialtyArtworkKey} from './specialty-artwork-resolver.js';
+import {roleArtworkCandidateKeys,resolveSpecialtyArtworkKey,registeredAzlsPatchEligible}
+ from './specialty-artwork-resolver.js';
+import {ROSTER_COLUMN_COLLECTION,rosterConfig} from './roster-column-config.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  awardKey,publicDecorations,decorationCatalogExtras} from './personnel-decoration-policy.js';
 
@@ -115,8 +117,15 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    if(manualSnap.size>=1500)return res.status(503).json({error:'Organogramregisterlimiet bereikt'});
    // The per-service mapping is visual-only. It can select a library patch
    // for a recently verified Discord role without changing personnel rights.
-   const linkDocs=await db.getAll(...['politie','brandweer','ambulance','depannage']
-     .map(dept=>db.collection(SPECIALTY_ROLE_LINKS).doc(dept)));
+   const registries=['politie','brandweer','ambulance','depannage'];
+   const [linkDocs,customDocs]=await Promise.all([
+    db.getAll(...registries.map(dept=>db.collection(SPECIALTY_ROLE_LINKS).doc(dept))),
+    db.getAll(...registries.map(dept=>db.collection(ROSTER_COLUMN_COLLECTION).doc(dept)))
+   ]);
+   // Reuse the one existing custom-specialty catalog; no duplicated registry.
+   const approvedAdditions=Object.fromEntries(customDocs.map(d=>[
+    d.id,rosterConfig(d.data()).customSpecialties.map(x=>x.label)
+   ]));
    const mapped=new Map(linkDocs.map(d=>[d.id,
     defaultSpecialtyRoleLinks(d.id,
       (Array.isArray(d.get('links'))?d.get('links'):[]).filter(x=>
@@ -129,7 +138,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       'RED team','Gevaarlijke stoffen'].flatMap(fireSpecialtyAssetKeys),
     ...AMBULANCE_ROLE_PATCH_PRESETS.flatMap(x=>ambulanceSpecialtyAssetKeys(x.label)),
     ...['F.A.S.T','LSRA','CRANE'].flatMap(depannageSpecialtyAssetKeys)
-   ].filter(x=>/^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,450);
+   ].filter(x=>/^(?:(?:rank|uniform|specialty|patch|helmet|profession|logo|pictogram)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,450);
    const assetUrls=new Map();
    for(const group of chunks(assetKeys,100)){
     const docs=await db.getAll(...group.map(key=>db.collection(ROLE_ARTWORK_META).doc(key)));
@@ -137,7 +146,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
      if(!asset.exists||asset.get('active')!==true||!asset.get('version'))continue;
      const key=asset.id,dept=asset.get('department');
      const isSpecialtyAsset=key.includes('_'+dept+'_')&&
-      ['patch','specialty'].includes(asset.get('kind'));
+      ['rank','uniform','specialty','patch','helmet','profession','logo','pictogram']
+       .includes(asset.get('kind'));
      const isLegacyRoleAsset=(asset.get('kind')||'role')==='role'&&
       key.startsWith(String(asset.get('roleId')||'')+'_')&&
       /^(?:\d{15,22})_[a-z][a-z0-9_]{0,39}$/.test(key);
@@ -215,7 +225,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       p.dept,process.env.DISCORD_GUILD_ID);
      synced.boardRole=original.boardRole;
     }
-    return {p,merged:mergePlacement(p,override,synced)};
+    return {p,merged:mergePlacement(p,override,synced,approvedAdditions[p.dept]||[])};
    });
    // A qualification can have a shared patch WITHOUT a Discord role.
    // Shared patches are only shown for a qualification already present in the
@@ -286,7 +296,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     for(const link of all){
      if(!link.roleId||!verified.has(link.roleId)||!activeRole(link))continue;
      const label=normalizedLabel(link.label);
-     if(!SPECIALTIES[p.dept]?.includes(label))continue;
+     if(!SPECIALTIES[p.dept]?.includes(label)&&
+       !approvedAdditions[p.dept]?.includes(label))continue;
      const old=roleChoices.get(label);
      if(!old||levelRank(link)>levelRank(old))roleChoices.set(label,link);
     }
@@ -319,6 +330,22 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       handled.add(label);
      }
     }
+    // Already recorded AZLS qualifications may reuse their explicitly chosen
+    // general library image even when the corresponding Discord role was not
+    // verified. This never asserts the role or any instructor qualification.
+    const existingAzlsArtwork=[];
+    if(p.dept==='ambulance'){
+     const handled=new Set([...rolespecific,...manual]
+      .map(x=>normalizedLabel(x.label)));
+     for(const link of all){
+      const label=normalizedLabel(link.label),key=assetFor(link);
+      if(handled.has(label)||!activeRole(link)||
+       !registeredAzlsPatchEligible(label,active,link,key,assetUrls))continue;
+      existingAzlsArtwork.push({label,level:'',roleId:'',
+       imageUrl:assetUrls.get(key),source:'registered'});
+      handled.add(label);
+     }
+    }
     // When an AE level is known, never show an unrelated generic or trainee
     // patch as the teamleader insignia. The UI can use an exact variant,
     // otherwise it shows a clearly labelled placeholder.
@@ -329,7 +356,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       roleId:x.roleId||'',imageUrl:assetUrls.get(assetFor(x))||'',
       source:x===aePatch&&merged.aeManual===displayAE?'registered':
        x.roleId?'discord':'registered'
-    })).concat(existingFireArtwork).slice(0,20);
+    })).concat(existingFireArtwork,existingAzlsArtwork).slice(0,20);
    };
    // A member's own login only refreshes their own Discord identity. For
    // K9 candidates, the server bot now checks their roles independently.

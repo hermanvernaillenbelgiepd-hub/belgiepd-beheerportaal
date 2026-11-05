@@ -2,7 +2,7 @@
 // roles itself. Authorization and audit are enforced by server endpoints.
 export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selectedSpecialty}){
  const $=id=>document.getElementById(id);
- let config=null,draft=[],verified=null;
+ let config=null,draft=[],verified=null,addingCustomRow=null;
  const el=(tag,text)=>{const x=document.createElement(tag);x.textContent=text||'';return x};
  const option=(value,label)=>{const x=el('option',label);x.value=value;return x};
  const select=(items,value)=>{const x=el('select');
@@ -24,6 +24,8 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   signalisatie:['bw_sig','bw_signal','signa','bw_signalisatie','bw_signa'],
   grote_boot:['groteboot','bw_grote_boot','bw_boot'],
   bosbestrijding:['boswagen','bw_boswagen','bw_bosbestrijding'],
+  heli:['mug_heli','mugheli'],
+  basis_tr:['basis_training','basistraining','basisopleiding'],
   logistiek:['bw_log','bw_logistiek'],ladderwagen:['bw_ladderwagen'],
   duiker:['bw_duiker'],brandweer_ambu:['bw_ambu','ambu']
  };
@@ -130,7 +132,7 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
    const compatible=config.assets.filter(x=>!/^\d{15,22}_/.test(x.key)||
      row.roleId&&x.key.startsWith(row.roleId+'_'));
    const matches=image=>{
-    const suffix=image.key.replace(new RegExp('^(?:specialty|patch)_'+dept+'_'),'');
+    const suffix=image.key.replace(new RegExp('^(?:rank|uniform|specialty|patch|helmet|profession|logo|pictogram)_'+dept+'_'),'');
     const acceptable=new Set([...codesFor(row.label).flatMap(code=>
      [code,code+'_lokaal',code+'_federaal']),
      ...(targetCode==='semi_ano'?['semi_anoniem','semi_anoniem_lokaal']:[]),
@@ -143,19 +145,52 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
    const wrap=el('div');wrap.className='specialty-map-row';
    const field=(title,choices,key)=>{
     const group=el('label',title);
-    const input=select(choices,row[key]);input.disabled=!config.canEdit;
+    const input=select(choices,key==='label'&&addingCustomRow===row?'__other__':row[key]);input.disabled=!config.canEdit;
     input.onchange=()=>{
+     if(key==='label'&&input.value==='__other__'){
+      addingCustomRow=row;render();return;
+     }
      const previousRoleId=row.roleId;
      row[key]=input.value;
+     if(key==='label')addingCustomRow=null;
      if(key==='label'||key==='roleId'&&previousRoleId&&
        row.assetKey?.startsWith(previousRoleId+'_'))row.assetKey='';
      render();
     };
     group.append(input);wrap.append(group);
    };
-   const specialtyChoices=row.label===legacyCombined?
-     [...labels,[legacyCombined,'Logistiek / Signalisatie (oud: kies aparte regels)']]:labels;
-    field('Specialisatie',specialtyChoices,'label');
+   const specialtyChoices=[
+    ...(row.label===legacyCombined?
+      [...labels,[legacyCombined,'Logistiek / Signalisatie (oud: kies aparte regels)']]:labels),
+    ['__other__','Andere – nieuwe specialisatie toevoegen']
+   ];
+   field('Specialisatie',specialtyChoices,'label');
+   if(addingCustomRow===row){
+    const extra=el('label','Nieuwe specialisatienaam');
+    const custom=el('input');custom.type='text';custom.maxLength=64;
+    custom.placeholder='Naam, bv. AZLS bergredding';
+    custom.autocomplete='off';custom.disabled=!config.canEdit;
+    const register=el('button','Nieuwe specialisatie registreren');
+    register.type='button';register.className='alt';register.disabled=!config.canEdit;
+    register.onclick=async()=>{
+     const reason=$('specialtyLinkReason').value.trim();
+     if(reason.length<8)return notify('Vul onderaan een motivering van minstens 8 tekens in.',true);
+     const label=custom.value.trim();
+     if(!label)return notify('Vul eerst de nieuwe specialisatienaam in.',true);
+     register.disabled=true;
+     try{
+      const result=await api('/api/specialty-links/'+encodeURIComponent(dept)+'/custom-label',
+       'POST',{label,reason});
+      config.labels=[...new Set([...config.labels,result.label])];
+      row.label=result.label;row.assetKey='';addingCustomRow=null;
+      render();
+      notify('Nieuwe specialisatie '+result.label+' geregistreerd. Kies nu de patch, '+
+       'bewaar de koppelingen en registreer kwalificaties per personeelsdossier.');
+     }catch(e){notify(e.message,true)}
+     finally{register.disabled=false}
+    };
+    extra.append(custom,register);wrap.append(extra);
+   }
     if(row.label===legacyCombined){
      const warning=el('div','De gedeelde BW log/signa-rol heeft twee afzonderlijke patches nodig. '+
       'Koppel Logistiek en Signalisatie apart aan deze rol en kies voor elk een eigen afbeelding.');
@@ -179,7 +214,7 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
     preview.append(img)}
    else preview.textContent='Geen patch gekozen';
    if(asset&&!/^\d{15,22}_/.test(asset.key)&&!matches(asset))
-    preview.append(el('span','Let op: deze afbeelding heeft geen herkenbare code voor '+row.label+'. Controleer zorgvuldig.'));
+    preview.append(el('span','Andere afbeeldingscode: de expliciete koppeling werkt na opslaan. Controleer of deze patch bij '+row.label+' hoort.'));
    if(row.assetKey&&/^\d{15,22}_/.test(row.assetKey)&&
       (!row.roleId||!row.assetKey.startsWith(row.roleId+'_')))
     preview.append(el('span','Deze oude patch hoort bij een andere Discord-rol. Kies een algemene patch.'));
@@ -194,7 +229,7 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   updatePreview();
  }
  async function load(){
-  const dept=getDepartment();config=null;draft=[];verified=null;
+  const dept=getDepartment();config=null;draft=[];verified=null;addingCustomRow=null;
   setAvailable(false);
   try{
    const data=await api('/api/specialty-links/'+encodeURIComponent(dept));

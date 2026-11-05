@@ -17,9 +17,12 @@ test('AZLS Docent is a registered qualification, not a lost specialty',()=>{
  ]),null,noRoles);
  assert.equal(merged.rank,'Hoofd-Arts');
  assert.equal(merged.call,'HARTS-01');
- assert.ok(SPECIALTIES.ambulance.includes('Motor'));
- assert.deepEqual([...merged.specialties].sort(),['Basis TR','Medicatie','Motor','MIP'].sort());
- assert.deepEqual([...merged.teacherSpecialties].sort(),['Basis TR','Medicatie','Motor'].sort());
+ // The historic AZLS Motor column remains in old data, but is no longer a
+ // current qualification. PIT-MOTOR is separate and is never inferred.
+ assert.ok(!SPECIALTIES.ambulance.includes('Motor'));
+ assert.ok(SPECIALTIES.ambulance.includes('PIT-MOTOR'));
+ assert.deepEqual([...merged.specialties].sort(),['Basis TR','Medicatie','MIP'].sort());
+ assert.deepEqual([...merged.teacherSpecialties].sort(),['Basis TR','Medicatie'].sort());
  assert.deepEqual(merged.instructorSpecialties,[]);
  assert.ok(!merged.specialties.includes('HELI'));
 });

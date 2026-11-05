@@ -202,7 +202,7 @@
   // For combined services, the caller displays a compact summary instead.
   const labelsByService=Object.freeze({
     politie:['INTERVENTIEDIENST','Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.','K9','RAGO','Dispatch','TO','AE'],
-    ambulance:['Basis TR','Medicatie','HELI','Motor','MIP'],
+    ambulance:['Basis TR','Medicatie','HELI','MIP','PIT-MOTOR'],
     brandweer:['Basis TR','Logistiek','Ladderwagen','Duiker','Signalisatie','RED team','Gevaarlijke stoffen','Grote Boot'],
     depannage:['Opleiding DEP2K','Opleiding FAST','CRANE','WEGENWERKEN']
   });

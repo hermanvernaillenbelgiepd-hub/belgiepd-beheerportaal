@@ -4,7 +4,7 @@ const specs = {
   politie: { name: 3, callsign: 0, rank: 2, series: 4, status: 5, discord: 17,
     specialties: [[6,'Radio BM'],[7,'SIV/WPR'],[8,'Signalisatie'],[9,'Motor'],[10,'Semi-ano.'],[11,'K9'],[12,'RAGO'],[13,'Dispatch'],[14,'TO'],[15,'AE']] },
   ambulance: { name: 3, callsign: 0, rank: 2, series: 1, status: 4, discord: 10,
-    specialties: [[5,'Basis TR'],[6,'Medicatie'],[7,'HELI'],[8,'Motor'],[9,'MIP']] },
+    specialties: [[5,'Basis TR'],[6,'Medicatie'],[7,'HELI'],[9,'MIP']] },
   brandweer: { name: 3, callsign: 0, rank: 2, series: 1, status: 4, discord: 13,
     specialties: [[5,'Basis TR'],[6,'Logistiek'],[7,'Ladderwagen'],[8,'Duiker'],[9,'Signalisatie'],[10,'RED team'],[11,'Gevaarlijke stoffen'],[12,'Grote Boot']] },
   depannage: { name: 3, callsign: 0, rank: 2, series: 1, status: 4, discord: 7,
