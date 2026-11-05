@@ -405,7 +405,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       verifiedAzlsFunctions(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID):[],
      awards:p.dept==='politie'?publicDecorations(
       decorationEntries.get(awardKey(p.dept,p.personId))||[],undefined,customCatalog):[],
-     status:p.dept==='politie'?String(p.status||'').trim().slice(0,30):'',
+     status:String(p.status||'').trim().slice(0,30),
      reekshoofdReeks:organogramReekshoofdTitle(p),
      // URL only for this signed-in police officer/corps with subject-level
      // dossier access; never send an ID or usable URL to other viewers.

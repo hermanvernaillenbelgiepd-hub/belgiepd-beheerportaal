@@ -5,6 +5,15 @@ const UID=/^\d{15,22}$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const nameCode=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
+// Equal grade names: visual aliases only, never operational appointments.
+const FIRE_RANK_ALIASES=Object.freeze({
+ zonechef:['zonecommandant'],zonecommandant:['zonechef'],
+ stag:['stagiair'],stagiair:['stag'],brandweervrouw:['brandweerman']
+});
+const rankSelectors=p=>{
+ const rank=nameCode(p?.rank);
+ return rank?[...new Set([rank,...(p?.dept==='brandweer'?(FIRE_RANK_ALIASES[rank]||[]):[])])]:[];
+};
 let rules=[],elementRules=[],coatChoices=[],compositions=[],assetUrls=new Map();
 function setData(assignments,artworks,visualRules=[],uniformGradeChoices=[],savedCompositions=[]){
  rules=(Array.isArray(assignments)?assignments:[]).filter(x=>
@@ -37,6 +46,7 @@ function forPerson(p){
  const dept=String(p?.dept||'');
  const id=UID.test(String(p?.personId||''))?String(p.personId):'';
  const callCode=nameCode(p?.call);
+ const rankCodes=rankSelectors(p);
  const matching=(scope,selector)=>rules.find(r=>r.department===dept&&r.scope===scope&&r.selector===selector);
  const group=policeUniformGroup(p),functionCode=dept==='depannage'?depannageFunction(p):ambulanceFunction(p),series=policeCallSeries(p.call);
  const ordered=[...(id?[matching('person',id)]:[]),
@@ -85,7 +95,7 @@ function forPerson(p){
    ...(uniformCode&&coatScope&&coatSelector?[['uniform',coatSelector]]:[]),
    ...(series&&dept==='politie'?[['call',series]]:[]),
    ...(functionCode&&dept==='ambulance'?[['function',functionCode]]:[]),
-   ['rank',nameCode(p.rank)],['cadre',nameCode(getTier(p))],['service','default']]){
+   ...rankCodes.map(code=>['rank',code]),['cadre',nameCode(getTier(p))],['service','default']]){
    const found=scope==='uniform'?
     coatChoices.find(x=>x.department===dept&&x.uniformCode===uniformCode&&
      x.kind===kind&&x.scope===coatScope&&x.selector===selector):
@@ -102,7 +112,7 @@ function forPerson(p){
     '400':'inp','500':'1inp','600':'ahinp','700':'hinp',
     '800':'1hinp','900':'1hcp','910':'1cp','920':'acp','930':'acp'};
    const candidates=kind==='rank'?
-    (dept==='politie'?[series,policeRankAliases[series],rankCode]:[rankCode]):
+    (dept==='politie'?[series,policeRankAliases[series],rankCode]:rankCodes):
     kind==='helmet'&&dept==='brandweer'?[rankCode]:
     kind==='profession'&&dept==='ambulance'?[functionCode]:
     [];
@@ -123,9 +133,19 @@ function forPerson(p){
    if(url&&!personal){elementCodes[kind]=selected;elementUrls[kind]=url;}
   }
  }
+ // Explicitly linked rank badges can be stored as specialty/patch images.
+ // They override older inferred artwork, except an individual grade override.
+ const personalGrade=elementRules.some(x=>x.department===dept&&x.kind==='rank'&&
+  x.scope==='person'&&(x.selector===id||x.selector==='call_'+callCode)&&
+  assetUrls.has('rank_'+dept+'_'+x.assetCode));
+ const linked=elementRules.find(x=>x.department===dept&&
+  ['specialty','patch'].includes(x.kind)&&x.scope==='rank'&&
+  rankCodes.includes(x.selector)&&assetUrls.has(x.kind+'_'+dept+'_'+x.assetCode));
+ const linkedUrl=linked?assetUrls.get(linked.kind+'_'+dept+'_'+linked.assetCode):'';
+ const gradeUrl=personalGrade?elementUrls.rank:linkedUrl||elementUrls.rank;
  return {uniformCode,badgeStyle,uniformGroup:group,callSeries:series,profession:functionCode,
   visualLayout:composition?.layers||null,elementCodes,elementUrls,
-  rankUrl:elementUrls.rank||'',rankSpecialtyUrl:elementUrls.specialty||'',
+  rankUrl:gradeUrl||'',rankSpecialtyUrl:elementUrls.specialty||'',
   uniformUrl:uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
 }
 // Specialization badges are independent of uniform selection. A newly uploaded

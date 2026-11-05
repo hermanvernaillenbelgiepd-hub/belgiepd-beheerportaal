@@ -1,0 +1,83 @@
+
+/* Uniform, compact personnel profiles for AZLS, Depannage and Burger only. */
+@media screen{
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile){
+ width:min(1160px,calc(100vw - 24px))!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px);overflow-y:auto;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-shell{padding:13px 15px 15px}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-layout{
+ grid-template-columns:minmax(0,1fr) minmax(0,1.03fr)!important;grid-template-areas:"details specials"!important;gap:12px!important;align-items:start;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-main{
+ display:grid;grid-template-columns:minmax(150px,185px) minmax(0,1fr);gap:10px;align-items:start;padding:0!important;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-intro{grid-column:1;min-width:0;padding:9px!important}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-overview{
+ display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:start!important;gap:4px!important;margin:0!important;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-overview .portrait.bpd-service-uniform{
+ width:min(100%,170px)!important;min-width:0!important;max-width:170px!important;height:auto!important;min-height:0!important;
+ max-height:none!important;aspect-ratio:198/226!important;flex:0 0 auto!important;object-fit:contain!important;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-identity{
+ width:100%;min-width:0;padding:6px 0 0!important;gap:3px;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-name{
+ font-size:16px!important;line-height:1.25;overflow-wrap:anywhere;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-rank{font-size:11px!important}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-grid{
+ grid-column:2;display:grid!important;grid-template-columns:minmax(0,1fr)!important;margin:0!important;gap:6px!important;align-content:start;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-grid .person-profile-fact{
+ grid-column:auto!important;min-height:49px!important;padding:6px 9px!important;text-align:left!important;gap:2px;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-fact strong{
+ font-size:12px!important;line-height:1.25!important;overflow-wrap:anywhere;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-fact.person-profile-call strong{font-size:21px!important;letter-spacing:.015em}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-specialty-panel{gap:8px!important}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) :is(.person-profile-awards-panel,.person-profile-specialization-box){padding:10px!important}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-specialties{
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;align-items:stretch;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile) .person-profile-specialties .person-profile-specialty{
+ display:grid!important;grid-column:auto!important;grid-template-columns:minmax(0,1fr) minmax(72px,126px)!important;
+ grid-template-rows:auto auto!important;align-content:center!important;min-width:0;width:100%;min-height:72px!important;
+ gap:2px 7px!important;padding:7px 9px!important;border-radius:8px!important;overflow:hidden;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile) .person-profile-specialties .person-profile-specialty>strong{
+ grid-column:1!important;grid-row:1!important;align-self:end!important;min-width:0;font-size:12px!important;line-height:1.3;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile) .person-profile-specialties .person-profile-specialty>.person-profile-specialty-role{
+ grid-column:1!important;grid-row:2!important;align-self:start!important;justify-self:start!important;margin:0!important;font-size:9px!important;line-height:1.3;overflow-wrap:anywhere;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile) .person-profile-specialties .person-profile-specialty img.person-profile-specialty-badge{
+ display:block!important;grid-column:2!important;grid-row:1 / 3!important;align-self:center!important;justify-self:center!important;
+ width:100%!important;max-width:126px!important;height:auto!important;max-height:65px!important;min-width:0!important;
+ aspect-ratio:auto!important;object-fit:contain!important;border:0!important;background:transparent!important;box-shadow:none!important;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile) .person-profile-specialties .person-profile-specialty>.person-profile-specialty-missing-patch{
+ display:flex!important;grid-column:2!important;grid-row:1 / 3!important;align-items:center;justify-content:center;min-height:32px;width:100%;
+ padding:5px!important;border:1px dashed #5a7895;border-radius:5px;font-size:9px;text-align:center;color:#b2cade;background:#112941;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile) .person-profile-specialties .person-profile-specialty:not(:has(>.person-profile-specialty-role))>strong{
+ grid-row:1 / 3!important;align-self:center!important;
+}
+}
+@media screen and (max-width:1080px){
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-layout{
+ grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"details" "specials"!important;
+}
+}
+@media screen and (max-width:650px){
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-main{grid-template-columns:minmax(0,1fr)!important}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-intro,
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-grid{grid-column:1!important}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-overview{
+ flex-direction:row!important;justify-content:flex-start!important;gap:12px!important;
+}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-overview .portrait.bpd-service-uniform{width:min(37vw,118px)!important}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-specialties{grid-template-columns:minmax(0,1fr)!important}
+html .person-profile-dialog.operational-profile:is(.azls-person-profile,.depannage-person-profile,.burger-person-profile) .person-profile-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
