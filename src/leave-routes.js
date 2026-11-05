@@ -1,4 +1,4 @@
-import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getFirestore,FieldValue,FieldPath} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
@@ -191,7 +191,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           created>0&&Date.now()-created<=72*60*60*1000;
         if(!validPending&&!recentAuto)throw rejection('Melding is niet meer actief',409);
         if(!r.seriesReadBy?.[owner])
-          tx.update(ref,{['seriesReadBy.'+owner]:FieldValue.serverTimestamp()});
+          tx.update(ref,new FieldPath('seriesReadBy',owner),FieldValue.serverTimestamp());
       });
       res.json({saved:true,read:true});
     }catch(e){jsonError(res,e)}
