@@ -1932,7 +1932,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
-<link rel="stylesheet" href="/organogram-hybrid.css?v=service-grade-plates-20261105d">
+<link rel="stylesheet" href="/organogram-hybrid.css?v=service-profile-display-20261105e">
 </head>
 <body>
 <header>
@@ -2527,7 +2527,7 @@ async function refreshProfileSpecialtyRoles(person,key){
    change the actual uniform composition, rank, or Discord membership. */
 function makeServiceProfileGrade(person,rankLabel){
  const department=String(person?.dept||'');
- if(!['brandweer','ambulance','burger'].includes(department))return null;
+ if(!['brandweer','burger'].includes(department))return null;
  const selected=window.BPDUniformAssignments?.forPerson?.(person);
  const groups=Array.isArray(person?.burgerGroups)?person.burgerGroups:[];
  const citizenGrade=groups.includes('Burgerraad')?'burgerraad':
@@ -2602,7 +2602,7 @@ function openPersonProfile(p){
    grade.append(badge,detail);
    intro.append(grade);
   }
- }else if(['brandweer','ambulance','burger'].includes(p.dept)){
+ }else if(['brandweer','burger'].includes(p.dept)){
   const badge=makeServiceProfileGrade(portraitPerson,displayRank);
   if(badge)intro.append(badge);
  }
@@ -2675,6 +2675,9 @@ function openPersonProfile(p){
    if(latest&&dialog.open)openPersonProfile(latest);
   });
  }
+ // Burgerprofielen kennen geen specialisaties: verberg de volledige
+ // presentatie, maar behoud bestaande records en dienstbevoegdheden.
+ if(p.dept!=='burger'){
  const specBox=el('section','person-profile-specialization-box');
  specBox.append(el('h3','','Specialisaties'));
  secondary.append(specBox);
@@ -2952,6 +2955,7 @@ function openPersonProfile(p){
   retry.onclick=()=>{profileSpecialtyChecks.delete(profileKey);openPersonProfile(p)};
   notice.append(retry);
   specBox.insertBefore(notice,specBox.children[1]||null);
+ }
  }
  if(!dialog.open)dialog.showModal();
  if(p.dept==='politie'&&!state.demo)void refreshProfileSpecialtyRoles(p,profileKey);
