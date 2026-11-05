@@ -86,10 +86,15 @@ test('reekshoofden only receive read-only leave info from their own police serie
  const route=read('src/leave-routes.js');
  assert.match(route,/app\.get\('\/api\/leave\/series-notifications',requireUser/);
  assert.match(route,/SERIES_LEADERS/);
- assert.match(route,/assigned\.includes\(personSeries\(subject\)\)/);
- assert.match(route,/r\.status==='pending'/);
- assert.match(route,/r\.status==='approved'&&r\.autoApproved===true/);
- assert.match(route,/72\*60\*60\*1000/);
+ // Centralized policy now serves both the visible series feed and the
+ // server-side per-user read confirmation; preserve the access assertions.
+ const policy=read('src/notification-read-policy.js');
+ assert.match(route,/canSeeSeriesLeaveNotification/);
+ assert.match(policy,/SERIES_LEADERS\[series\]/);
+ assert.match(policy,/personSeries\(subject\)/);
+ assert.match(policy,/request\.status==='pending'/);
+ assert.match(policy,/request\.status==='approved'&&request\.autoApproved===true/);
+ assert.match(policy,/72\*60\*60\*1000/);
  const page=read('public/meldingen.html');
  assert.match(page,/id="seriesLeavePanel"/);
  assert.match(page,/\/api\/leave\/series-notifications/);
