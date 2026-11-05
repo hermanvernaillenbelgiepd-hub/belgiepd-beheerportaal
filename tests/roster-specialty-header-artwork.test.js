@@ -13,7 +13,7 @@ test('politiepersoneelslijst toont de specialisatienaam onder een afbeelding',()
  assert.match(html,/specialty-col-head--patch/);
  assert.match(html,/th\.append\(name\)|th\.append\(image,name\)/);
  assert.match(styles,/mr-specialty-head--patch>small/);
- assert.match(member,/element\('small',label\)/);
+ assert.match(member,/element\('small',rosterHeaderLabel\(label\)\)/);
 });
 
 test('een patch kan per bestaande specialisatie geaudit worden bewaard',()=>{

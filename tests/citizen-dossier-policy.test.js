@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CITIZEN_ROLES,verifiedCitizenCouncil,canAccessCitizenDossier,
-  canWriteCitizenDossier,citizenMemberType,citizenSubject,
-  validateCitizenEntry,observationAverage
+  canWriteCitizenDossier,canDeleteCitizenEntry,canManageCitizenDeletions,
+  citizenMemberType,citizenSubject,validateCitizenEntry,validateCitizenDeletion,
+  observationAverage
 } from '../src/citizen-dossier-policy.js';
 
 const now=Date.parse('2026-11-04T12:00:00.000Z');
@@ -31,6 +32,61 @@ test('council permissions never follow police or generic board roles',()=>{
   assert.equal(canAccessCitizenDossier({...actor,portalTechnicalMode:true,profileTechnicalAvailable:false},false),false);
   assert.equal(canAccessCitizenDossier({...actor,portalTechnicalMode:true,profileTechnicalAvailable:true},false),true);
 });
+test('Police Korpsleiding may read and write only with independently verified authority',()=>{
+  const corps={...actor,role:'korpsleiding',departments:['politie'],
+    departmentRoles:{politie:'korpsleiding'},discordPoliceRank:'korpsleiding'};
+  assert.equal(canAccessCitizenDossier(corps,false),true);
+  assert.equal(canWriteCitizenDossier(corps,false,'323456789012345678'),true);
+  assert.equal(canDeleteCitizenEntry(corps,'323456789012345678'),true);
+  assert.equal(canWriteCitizenDossier(corps,false,id),false);
+  assert.equal(canDeleteCitizenEntry(corps,id),false);
+  assert.equal(canAccessCitizenDossier({...corps,discordPoliceRank:null},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,departmentRoles:{politie:'basiskader'}},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,departments:['brandweer']},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,role:'officierenkader'},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,uid:'discord:999999999999999999'},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,uid:'google:account'},false),false);
+  assert.equal(canAccessCitizenDossier({...corps,discordPoliceRank:null,manualCorpsApproved:true},false),true);
+  assert.equal(canWriteCitizenDossier({...corps,discordPoliceRank:null,manualCorpsApproved:true},
+    false,'323456789012345678'),true);
+  // Een goedgekeurd historisch account met precies één politiedienst mag
+  // de bestaande serverrolfallback gebruiken, mits Discord-rang bevestigd is.
+  assert.equal(canAccessCitizenDossier({...actor,role:'korpsleiding',departments:['politie'],
+    discordPoliceRank:'korpsleiding'},false),true);
+  // Met meerdere diensten of een ontbrekende politie-rolscope mag dat nooit.
+  assert.equal(canAccessCitizenDossier({...corps,departments:['politie','brandweer'],
+    departmentRoles:{brandweer:'korpsleiding'}},false),false);
+  assert.equal(canAccessCitizenDossier({...actor,boardPersonnelAdmin:true},false),false);
+});
+
+test('Burgerraad may save but never delete; verified technical beheer may save and delete',()=>{
+  const subject='323456789012345678';
+  const technical={...actor,portalTechnicalMode:true,profileTechnicalAvailable:true};
+  assert.equal(canAccessCitizenDossier(technical,false),true);
+  assert.equal(canWriteCitizenDossier(technical,false,subject),true);
+  assert.equal(canDeleteCitizenEntry(technical,subject),true);
+  assert.equal(canDeleteCitizenEntry(technical,id),false);
+  assert.equal(canWriteCitizenDossier(technical,false,id),false);
+  assert.equal(canWriteCitizenDossier(actor,true,subject),true);
+  assert.equal(canWriteCitizenDossier(actor,true,id),false);
+  assert.equal(canManageCitizenDeletions(actor),false);
+  assert.equal(canDeleteCitizenEntry(actor,subject),false);
+  assert.equal(canDeleteCitizenEntry({...actor,boardPersonnelAdmin:true},subject),false);
+  assert.equal(canDeleteCitizenEntry({...actor,role:'officierenkader'},subject),false);
+  assert.equal(canDeleteCitizenEntry({...technical,profileTechnicalAvailable:false},subject),false);
+});
+
+test('removal reasons are mandatory, bounded, and cannot smuggle audit properties',()=>{
+  assert.deepEqual(validateCitizenDeletion({reason:'  Onjuiste registratie herstellen  '}),
+    {reason:'Onjuiste registratie herstellen'});
+  assert.throws(()=>validateCitizenDeletion({reason:'te kort'}));
+  assert.throws(()=>validateCitizenDeletion({reason:'x'.repeat(501)}));
+  assert.throws(()=>validateCitizenDeletion({reason:'geldige reden',byDiscordId:id}));
+  assert.throws(()=>validateCitizenDeletion({reason:'geldige\u0000reden'}));
+  assert.throws(()=>validateCitizenDeletion([]));
+  assert.throws(()=>validateCitizenDeletion(null));
+});
+
 test('BIO becomes full Burger if both Discord roles are still assigned',()=>{
   assert.equal(citizenMemberType(member([CITIZEN_ROLES.bio]),guildId,now),'BIO');
   assert.equal(citizenMemberType(member([CITIZEN_ROLES.bio,CITIZEN_ROLES.burger]),guildId,now),'Burger');

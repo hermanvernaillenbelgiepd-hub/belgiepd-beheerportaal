@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
+import {serviceProfileRank} from '../public/service-profile-presentation.js';
 
 const html=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
 const between=(a,b)=>{
@@ -31,6 +32,7 @@ function render(select=()=>({}),rankArts=new Map()){
   makeServiceUniformPortrait:()=>el('span','portrait bpd-service-uniform'),
   serviceRankKey:rank=>String(rank).toLowerCase().replace(/[^a-z0-9]+/g,'_'),
   serviceRankArtworks:rankArts,
+  serviceUniformArtworks:new Map(),serviceProfileRank,
   openPersonProfile:()=>{},
   supportsSpecialtyInstructors:()=>false,
   isSpecialtyInstructor:()=>false

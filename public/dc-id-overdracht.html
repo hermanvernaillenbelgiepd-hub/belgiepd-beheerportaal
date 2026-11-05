@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>DC-ID-overdracht · BelgiumPD</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<style>
+:root{font-family:Inter,"Segoe UI",Arial,sans-serif;color-scheme:dark;background:#091426;color:#eaf2ff}
+*{box-sizing:border-box}body{margin:0;background:#091426;color:#eaf2ff;font-size:13px}
+header{padding:15px 24px;background:#12243f;border-bottom:1px solid #36526e;display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+header strong{font-size:17px}header a{margin-left:auto;color:#b6d6ff}
+main{max-width:1080px;margin:auto;padding:20px clamp(13px,3vw,28px) 50px}
+h1{margin:0;font-size:23px}h2{font-size:17px;margin:0 0 8px}p{line-height:1.5;color:#bbd0ec}
+.card{padding:17px;border:1px solid #3a5577;background:#14253f;border-radius:10px;margin-top:14px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+label{display:block;font-size:12px;color:#c9ddf5;font-weight:600}
+input,textarea{width:100%;margin-top:6px;font:inherit;color:#f1f7ff;background:#0b1d33;border:1px solid #53749c;padding:10px;border-radius:8px}
+textarea{min-height:72px;resize:vertical}
+button{font:inherit;cursor:pointer;background:#315de0;border:1px solid #7293ef;color:white;border-radius:8px;padding:10px 14px;font-weight:700}
+button.secondary{background:#1e395a;border-color:#55789c}
+button:disabled{opacity:.55;cursor:not-allowed}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}
+.notice{padding:12px;background:#18344f;border:1px solid #496c99;border-radius:8px;margin:13px 0}
+.notice.error{background:#492936;border-color:#805467}
+.notice.good{background:#17453b;border-color:#467c69}
+table{border-collapse:collapse;width:100%}td,th{padding:9px;border-bottom:1px solid #3e5675;text-align:left;vertical-align:top}
+th{color:#b4cced}.scroll{overflow-x:auto}
+code{color:#d8e8ff;word-break:break-all}
+tr:last-child td{border-bottom:0}
+small{color:#bad1ed}.warning{border-left:3px solid #e4ac55;padding-left:12px}
+[hidden]{display:none!important}
+@media(max-width:620px){.grid{grid-template-columns:1fr}table{min-width:640px}header a{margin-left:0}}
+</style></head>
+<body><header><strong>🛡️ BelgiumPD / Beheer & rollen</strong><a href="/gebruikersbeheer.html">← Gebruikersbeheer</a></header>
+<main>
+<h1>DC-ID-overdracht</h1>
+<p>Koppel de bestaande personeelsgegevens aan een nieuwe Discord-identiteit, zonder de oorspronkelijke dossierhistoriek te wissen. Eén geverifieerd lid van het <strong>Officierenkader of de Korpsleiding</strong> mag de volledige overdracht uitvoeren. Technisch Beheer behoudt de afzonderlijk beveiligde onderhoudstoegang.</p>
+<div class="notice" id="notice" role="status" aria-live="polite">Aanmelding en rechten controleren…</div>
+<section class="card" id="intake" hidden>
+<h2>1. Persoon en nieuw DC-ID controleren</h2>
+<form id="transferForm">
+<div class="grid">
+ <label>Oud Discord-ID<input id="oldId" inputmode="numeric" pattern="[0-9]{15,22}" maxlength="22" required></label>
+ <label>Nieuw Discord-ID<input id="newId" inputmode="numeric" pattern="[0-9]{15,22}" maxlength="22" required></label>
+</div>
+<label>Waarom wordt dit ID gewijzigd? (verplicht)
+<textarea id="reason" minlength="20" maxlength="500" placeholder="Wie heeft de identiteit gecontroleerd, waarom en wanneer?" required></textarea></label>
+<div class="actions"><button id="check" type="button">Veilige voorcontrole</button>
+<button type="submit" id="request" disabled>Overdracht voorbereiden</button></div>
+</form>
+<div id="preview" hidden></div>
+<p class="warning"><strong>Let op:</strong> het nieuwe account moet recent via Discord geverifieerd zijn. Er worden geen Discord-rollen, machtigingen of speeluren overgezet. Een bestaande personeelsfiche op de nieuwe ID blokkeert de overdracht.</p>
+</section>
+<section class="card" id="requests" hidden>
+<h2>2. Voorbereide overdrachten definitief uitvoeren</h2>
+<div class="actions"><button type="button" id="reload" class="secondary">Aanvragen vernieuwen</button></div>
+<div id="requestRows">Aanvragen laden…</div>
+</section>
+<p><small>Bronrecords en logboeken blijven behouden. Bestaande Discord-rollen en rechten van de oude gebruiker worden niet gekopieerd. Het oude portaalaccount wordt bij succesvolle overdracht geblokkeerd.</small></p>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+let auth=null,me=null,checked=null,loading=false,executionEnabled=false;
+function announce(message,kind=''){const n=$('notice');n.textContent=message;n.className='notice '+kind}
+function el(tag,text){const n=document.createElement(tag);n.textContent=text;return n}
+async function api(path,method='GET',data){
+ if(!me)throw Error('Aanmelden vereist');
+ const token=await me.getIdToken();
+ const r=await fetch(path,{method,cache:'no-store',
+  headers:{Authorization:'Bearer '+token,...(data?{'Content-Type':'application/json'}:{})},
+  ...(data?{body:JSON.stringify(data)}:{})});
+ const result=await r.json().catch(()=>({}));
+ if(auth.currentUser?.uid!==me.uid)throw Error('Aanmelding gewijzigd');
+ if(!r.ok)throw Error(result.error||'Verbinding mislukt ('+r.status+')');
+ return result;
+}
+function setBusy(on){loading=on;$('check').disabled=on;$('request').disabled=on||!checked;$('reload').disabled=on}
+function showPreview(p){
+ const box=$('preview');box.replaceChildren();box.hidden=false;
+ const h=el('h2','Voorcontrole — '+p.affectedRecords+' gekoppelde archiefrecords');box.append(h);
+ const summary=el('p','Diensten: '+p.departments.join(', ')+
+  ' · Nieuwe accountstatus: '+p.newPortalStatus+
+  ' · Oud archief blijft behouden');box.append(summary);
+ const table=document.createElement('table');
+ for(const person of p.personnel){
+  const row=document.createElement('tr');
+  for(const value of [person.department,person.call,person.name,person.rank])
+    row.append(el('td',value));
+  table.append(row);
+ }
+ box.append(table);
+ const list=document.createElement('p');
+ list.textContent=Object.entries(p.collectionCounts).filter(([,n])=>n>0)
+  .map(([collection,n])=>collection+': '+n).join(' · ')||'Geen aanvullende Firestore-historiek';
+ box.append(list);
+ const caution=el('p','Nog niets gewijzigd. Hetzelfde bevoegde kaderlid kan na de controle de overdracht definitief bevestigen.');
+ caution.className='warning';box.append(caution);
+}
+$('oldId').addEventListener('input',()=>{checked=null;$('request').disabled=true;$('preview').hidden=true});
+$('newId').addEventListener('input',()=>{checked=null;$('request').disabled=true;$('preview').hidden=true});
+$('reason').addEventListener('input',()=>{checked=null;$('request').disabled=true});
+$('check').onclick=async()=>{
+ if(loading)return;
+ const oldDiscordId=$('oldId').value.trim(),newDiscordId=$('newId').value.trim();
+ if(!/^\d{15,22}$/.test(oldDiscordId)||!/^\d{15,22}$/.test(newDiscordId)||
+    oldDiscordId===newDiscordId)return announce('Vul twee verschillende geldige Discord-ID’s in.','error');
+ setBusy(true);
+ try{
+  announce('Personeels- en dossierkoppelingen controleren…');
+  const p=await api('/api/dc-id-transfer/preview?oldDiscordId='+oldDiscordId+
+    '&newDiscordId='+newDiscordId);
+  checked={oldDiscordId,newDiscordId};showPreview(p);
+  $('request').disabled=false;
+  announce('Voorcontrole geslaagd. De gegevens zijn nog niet gewijzigd.','good');
+ }catch(e){checked=null;$('preview').hidden=true;announce(e.message,'error')}
+ finally{setBusy(false)}
+};
+$('transferForm').onsubmit=async event=>{
+ event.preventDefault();if(loading||!checked)return;
+ const {oldDiscordId,newDiscordId}=checked;
+ if(oldDiscordId!==$('oldId').value.trim()||newDiscordId!==$('newId').value.trim())
+  return announce('Voer de controle opnieuw uit.','error');
+ const reason=$('reason').value.trim();
+ if(reason.length<20)return announce('Een motivering van 20 tekens is verplicht.','error');
+ if(!confirm('Overdracht '+oldDiscordId+' → '+newDiscordId+
+   ' voorbereiden? Er worden nog geen personeelsgegevens gewijzigd.'))return;
+ setBusy(true);
+ try{
+  await api('/api/dc-id-transfer/requests','POST',{oldDiscordId,newDiscordId,reason});
+  checked=null;$('request').disabled=true;$('preview').hidden=true;
+  announce(executionEnabled?'Aanvraag voorbereid. Klik hieronder zelf op Overdracht bevestigen.':
+   'Aanvraag voorbereid. Definitieve uitvoering blijft uitgeschakeld tot de TEST-controle is afgerond.','good');
+  await loadRequests();
+ }catch(e){announce('Aanvraag niet ingediend: '+e.message,'error')}
+ finally{setBusy(false)}
+};
+async function loadRequests(){
+ const data=await api('/api/dc-id-transfer/requests');
+ const root=$('requestRows');root.replaceChildren();
+ if(!data.requests?.length){root.textContent='Geen overdrachtsaanvragen.';return}
+ const table=document.createElement('table');
+ const head=document.createElement('tr');
+ for(const x of ['Oud → nieuw','Status','Voorbereid door','Motivering','Actie'])
+  head.append(el('th',x));
+ table.append(head);
+ for(const request of data.requests){
+  const tr=document.createElement('tr');
+  tr.append(el('td',request.oldDiscordId+' → '+request.newDiscordId));
+  tr.append(el('td',request.status));
+  tr.append(el('td',request.createdBy||''));
+  tr.append(el('td',request.reason));
+  const actions=document.createElement('td');
+  if(request.status==='pending'){
+   const button=document.createElement('button');button.type='button';
+   button.textContent=executionEnabled?'Overdracht bevestigen':'TEST-controle vereist';button.className='secondary';
+   button.disabled=!executionEnabled;
+   button.onclick=()=>approve(request);actions.append(button);
+  }else actions.textContent='Afgehandeld';
+  tr.append(actions);table.append(tr);
+ }
+ const scroller=document.createElement('div');scroller.className='scroll';scroller.append(table);
+ root.append(scroller);
+}
+async function approve(request){
+ if(loading)return;
+ if(!confirm('Je bevestigt als bevoegd kaderlid de identiteit '+request.oldDiscordId+
+   ' → '+request.newDiscordId+' goed. Controleer deze personen eerst buiten het portaal. Doorgaan?'))return;
+ const confirmation=prompt('Typ OVERDRAGEN om de definitieve gegevensoverdracht te bevestigen:');
+ if(confirmation!=='OVERDRAGEN')return;
+ const reason=prompt('Geef de verificatie en reden (minstens 20 tekens):');
+ if(!reason||reason.trim().length<20)return announce('Motivering ontbreekt. Geen gegevens aangepast.','error');
+ setBusy(true);
+ try{
+  const result=await api('/api/dc-id-transfer/requests/'+encodeURIComponent(request.id)+
+   '/execute','POST',{confirmation,reason:reason.trim()});
+  announce('Overdracht voltooid: '+result.affectedRecords+
+   ' gekoppelde archiefrecords. Oud account geblokkeerd; oude archieven bewaard.','good');
+  await loadRequests();
+ }catch(e){announce('Overdracht geblokkeerd: '+e.message,'error')}
+ finally{setBusy(false)}
+}
+$('reload').onclick=()=>loadRequests().catch(e=>announce(e.message,'error'));
+async function init(){
+ try{
+  const config=await(await fetch('/api/client-config',{cache:'no-store'})).json();
+  if(!config.enabled)throw Error('Firebase-configuratie ontbreekt');
+  const [{getApps,initializeApp},{getAuth,onAuthStateChanged}]=await Promise.all([
+    import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js')
+  ]);
+  auth=getAuth(getApps()[0]||initializeApp(config.firebaseConfig));
+  onAuthStateChanged(auth,async user=>{
+   me=user;
+   if(!me){$('intake').hidden=true;$('requests').hidden=true;announce('Meld je aan via het beheerportaal.');return}
+   try{
+    const status=await api('/api/dc-id-transfer/status');
+    executionEnabled=status.executionEnabled===true;
+    await loadRequests();
+    $('intake').hidden=false;$('requests').hidden=false;
+    announce(executionEnabled?
+      'Beheerrechten gecontroleerd. Geen personeelsgegevens gewijzigd.':
+      'Voorcontrole en aanvraag zijn beschikbaar. Definitieve overdracht op MAIN blijft geblokkeerd tot de TEST-proef is goedgekeurd.',
+      executionEnabled?'good':'');
+   }catch(e){$('intake').hidden=true;$('requests').hidden=true;announce(e.message,'error')}
+  });
+ }catch(e){announce(e.message,'error')}
+}
+init();
+</script>
+<script defer src="/bpd-navigation.js"></script>
+</body></html>

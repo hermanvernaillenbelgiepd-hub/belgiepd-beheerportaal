@@ -115,7 +115,9 @@ test('Personnel overview returns bounded, authorized specialties without copying
   const api=source('src/personnel-editor-routes.js');
   assert.ok(api.includes("specialties:Array.isArray(p.specialties)?p.specialties.slice(0,16)"));
   assert.ok(api.includes("label:x.label.slice(0,64),value:x.value.slice(0,90)"));
-  assert.ok(api.includes("const allowed=(req.bpd.dossierAllowedDepartments||req.bpd.departments||[]).filter(d=>canReadServiceDossier(req.bpd,d))"));
+  assert.ok(api.includes("const lifecycleDepartments=LIFECYCLE_SERVICES.filter("));
+  assert.ok(api.includes(".filter(d=>canReadServiceDossier(req.bpd,d))"));
+  assert.ok(api.includes("lifecycleDepartments.includes('burger')"));
   assert.equal(/setCustomUserClaims.*specialties/s.test(api),false);
 });
 test('Personnel management inline script remains valid JavaScript and homepage has no inline scripts',()=>{
@@ -169,4 +171,76 @@ test('Personeelsbeheer behoudt sorteerkeuze bij laden, vernieuwen en filteren',(
   assert.match(html,/\$\('rosterSort'\)\.value/);
   assert.match(html,/\$\('rosterSort'\)\.onchange=render/);
   assert.match(html,/BPDPersonnelVisuals\.comparePersonnel\(a,b,'call-desc'\)/);
+});
+
+test('Neutral specialty patches fill all roster headers using library aliases before role images',()=>{
+  const api=visuals();
+  const record=key=>({key,imageUrl:'/api/role-artwork/file/'+key+'?v=20261101-silver'});
+  api.setArtworkManifest([
+    record('patch_politie_motor'),
+    record('specialty_politie_semi_anoniem'),
+    record('1309532437977497699_standard'),
+    record('1309532437977497700_standard'),
+    record('specialty_politie_dispatch'),
+    record('patch_politie_arrestatie_eenheid')
+  ]);
+  for(const [label,key] of [
+    ['Motor','patch_politie_motor'],
+    ['Semi-ano.','specialty_politie_semi_anoniem'],
+    ['K9','1309532437977497699_standard'],
+    ['RAGO','1309532437977497700_standard'],
+    ['Dispatch','specialty_politie_dispatch'],
+    ['AE','patch_politie_arrestatie_eenheid']
+  ]){
+    assert.equal(api.specialtyBannerImage(label),record(key).imageUrl,label);
+  }
+  assert.equal(api.specialtyBannerImage('RAGO','ambulance'),null);
+  api.setArtworkManifest([record('specialty_politie_k9'),
+    record('1309532437977497699_standard')]);
+  assert.equal(api.specialtyBannerImage('K9'),record('specialty_politie_k9').imageUrl);
+  api.setArtworkManifest([{key:'specialty_politie_k9',
+    imageUrl:'https://attacker.example/asset.webp'}]);
+  assert.equal(api.specialtyBannerImage('K9'),null);
+  assert.equal(api.specialtyBannerImage('Onbekend'),null);
+});
+
+test('Six approved neutral patch slices remain visible without Firebase image records',()=>{
+  const api=visuals();
+  for(const [name,position] of [
+    ['Motor',0],['Semi-ano.',20],['K9',40],
+    ['RAGO',60],['Dispatch',80],['AE',100]
+  ]){
+    const banner=api.specialtyBannerDisplay(name);
+    assert.equal(banner.type,'sprite',name);
+    assert.equal(banner.position,position,name);
+    assert.equal(banner.url,'/assets/neutral-specialisatiepatches-20261101.webp');
+  }
+  assert.equal(api.specialtyBannerDisplay('Semi-ano.','brandweer'),null);
+  assert.equal(api.specialtyBannerDisplay('Niet Bestaand'),null);
+  const record={key:'patch_politie_semi_anoniem',
+    imageUrl:'/api/role-artwork/file/patch_politie_semi_anoniem?v=1-abc'};
+  api.setArtworkManifest([record]);
+  assert.equal(api.specialtyBannerDisplay('Semi-ano.').type,'image');
+  assert.equal(api.specialtyBannerDisplay('Semi-ano.').url,record.imageUrl);
+  assert.equal(api.specialtyBannerDisplay('RAGO').position,60);
+  const img=readFileSync(new URL('../public/assets/neutral-specialisatiepatches-20261101.webp',import.meta.url));
+  assert.equal(img.subarray(0,4).toString(),'RIFF');
+  assert.equal(img.subarray(8,12).toString(),'WEBP');
+});
+
+test('Motard and RAGO do not regress to stale Firebase header art for any member',()=>{
+ const api=visuals();
+ const stale=(key)=>({key,imageUrl:'/api/role-artwork/file/'+key+'?v=old-111'});
+ api.setArtworkManifest([
+  stale('specialty_politie_motard'),stale('patch_politie_rago'),
+  stale('1358148694297415741_standard'),
+  stale('1309532437977497700_standard')
+ ]);
+ for(const [label,position] of [['Motor',0],['RAGO',60]]){
+  const banner=api.specialtyBannerDisplay(label);
+  assert.equal(banner.type,'sprite');
+  assert.equal(banner.position,position);
+  assert.equal(banner.url,'/assets/neutral-specialisatiepatches-20261101.webp');
+ }
+ assert.equal(api.specialtyBannerDisplay('Motor','brandweer'),null);
 });

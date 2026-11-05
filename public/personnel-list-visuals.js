@@ -21,6 +21,26 @@
   ];
   const imgRoot='https://commons.wikimedia.org/wiki/Special:FilePath/';
   const logoOverrides=new Map();
+  // Approved visual roles are a fallback only when the neutral library patch
+  // has not yet been uploaded. Neither choice changes someone's qualifications.
+  const roleArtworkFallbacks=Object.freeze({
+    motard:'1358148694297415741_standard',
+    k9:'1309532437977497699_standard',
+    rago:'1309532437977497700_standard',
+    disp:'1309532438019706963_standard',
+    ae:'1310674604821581894_standard'
+  });
+  const specialtyArtworkAliases=Object.freeze({
+    motard:['motard','motor','motard_lokaal'],
+    semi_ano:['semi_ano','semi_anoniem','semi_anoniem_lokaal','semi_ano_lokaal'],
+    k9:['k9','k_9','k9_geleider'],
+    rago:['rago','rago_federaal','luchtsteun'],
+    disp:['disp','dispatch','dispatching'],
+    ae:['ae','arrestatie_eenheid','arrestatie_eenheid_lokaal'],
+    siv_wpr:['siv_wpr','wpr','siv'],
+    interventie:['interventie','interventiedienst'],
+    recherche:['recherche','lrd','lrd_recherche']
+  });
   const safeCode=raw=>String(raw||'').toLowerCase().normalize('NFD')
     .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_')
     .replace(/^_+|_+$/g,'').slice(0,40);
@@ -41,8 +61,9 @@
     logoOverrides.clear();
     for(const row of Array.isArray(records)?records:[]){
       const key=String(row?.key||''),url=String(row?.imageUrl||'');
-      if(!/^(?:rank|specialty|patch)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}$/.test(key))continue;
-      if(!/^\/api\/role-artwork\/file\/(?:rank|specialty|patch)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}\?v=[A-Za-z0-9-]+$/.test(url))continue;
+      if(!/^(?:(?:rank|specialty|patch)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
+      const prefix='/api/role-artwork/file/'+key+'?v=';
+      if(!url.startsWith(prefix)||!/^[A-Za-z0-9-]+$/.test(url.slice(prefix.length)))continue;
       logoOverrides.set(key,url);
     }
   }
@@ -88,10 +109,40 @@
     return /^signalisatie$/i.test(String(label||'').trim())
       ?'/assets/icons/signalisatie.svg':null;
   }
-  // Only a complete, approved library patch may cover a whole column header.
-  // The built-in Signalisatie icon is a small fallback, not a full-width patch.
+  // A custom neutral library image always wins. The bundled, approved neutral
+  // patch strip fills only missing police headers; no rank/role changes occur.
+  const neutralPatchStrip='/assets/neutral-specialisatiepatches-20261101.webp';
+  const neutralPatchPositions=Object.freeze({
+    motard:0,semi_ano:1,k9:2,rago:3,disp:4,ae:5
+  });
+  function librarySpecialtyBanner(label,dept='politie'){
+    const code=specialtyArtworkCode(label);
+    const names=specialtyArtworkAliases[code]||[code];
+    for(const alias of names){
+      const neutral=artwork('patch',dept,alias)||artwork('specialty',dept,alias);
+      if(neutral)return neutral;
+    }
+    return null;
+  }
   function specialtyBannerImage(label,dept='politie'){
-    return artwork('patch',dept,specialtyArtworkCode(label))||artwork('specialty',dept,specialtyArtworkCode(label));
+    const neutral=librarySpecialtyBanner(label,dept);
+    if(neutral)return neutral;
+    const code=specialtyArtworkCode(label);
+    if(dept==='politie'){
+      const role=roleArtworkFallbacks[code];
+      if(role&&logoOverrides.has(role))return logoOverrides.get(role);
+    }
+    return null;
+  }
+  function specialtyBannerDisplay(label,dept='politie'){
+    const code=specialtyArtworkCode(label);
+    const neutral=librarySpecialtyBanner(label,dept);
+    if(neutral)return {type:'image',url:neutral};
+    if(dept==='politie'&&Number.isInteger(neutralPatchPositions[code]))
+      return {type:'sprite',url:neutralPatchStrip,
+        position:neutralPatchPositions[code]*20};
+    const image=specialtyBannerImage(label,dept);
+    return image?{type:'image',url:image}:null;
   }
   function specialtyIcon(label){
     return specialtyCatalog.find(([pattern])=>pattern.test(String(label||'')))?.[1]||'🏷️';
@@ -296,7 +347,7 @@
   }
   root.BPDPersonnelVisuals=Object.freeze({
     rankInfo,specialtyBadges,specialtyIcon,specialtyIconImage,specialtyBannerImage,qualification,specialtyStatuses,
-    setArtworkManifest,specialtyArtworkCode,
+    setArtworkManifest,specialtyArtworkCode,specialtyBannerDisplay,
     specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre,depannageFunction,comparePersonnel,sortPersonnelRows
   });
 })(typeof window==='object'?window:globalThis);

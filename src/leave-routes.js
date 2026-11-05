@@ -1,4 +1,4 @@
-import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getFirestore,FieldValue,FieldPath} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
@@ -146,7 +146,8 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         const summary={id:d.id,subjectName:subject.name,
           subjectCall:subject.call,series:personSeries(subject),
           startDate:r.startDate,endDate:r.endDate,days:r.days,
-          status:r.status,autoApproved:r.autoApproved===true};
+          status:r.status,autoApproved:r.autoApproved===true,
+          readAt:iso(r.seriesReadBy?.[owner])};
         if(r.status==='pending')pending.push(summary);
         if(r.status==='approved'&&r.autoApproved===true){
           const when=r.createdAt?.toMillis?.()||0;
@@ -155,6 +156,44 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       }
       res.json({series:assigned,pending:pending.slice(0,100),
         recentAutomatic:recentAutomatic.slice(0,50),limited:results.size===250});
+    }catch(e){jsonError(res,e)}
+  });
+  // Each verified series leader acknowledges their own notification.
+  // Other leaders' receipts and the actual leave decision are unaffected.
+  app.post('/api/leave/series-notifications/:id/read',requireUser,async(req,res)=>{
+    try{
+      const owner=req.bpd?.discordId,id=String(req.params.id||'');
+      if(!req.bpd?.departments?.includes('politie')||!validDiscordId(owner))
+        throw rejection('Geen toegang tot politiereeksmeldingen',403);
+      if(!validId(id))throw rejection('Ongeldige melding',400);
+      if(!req.body||Object.keys(req.body).length)
+        throw rejection('Ongeldige leesbevestiging',400);
+      const assigned=Object.entries(SERIES_LEADERS)
+        .filter(([,ids])=>ids.includes(owner)).map(([series])=>series);
+      if(!assigned.length)throw rejection('Geen reekshoofd voor deze reeks',403);
+      const {snapshot}=await context(req);
+      const policePeople=new Map(snapshot.filter(p=>p.dept==='politie'&&p.personId)
+        .map(p=>[p.personId,p]));
+      if(!policePeople.has(owner))
+        throw rejection('Je politionele personeelsfiche ontbreekt',403);
+      const ref=db().collection(coll).doc(id);
+      await db().runTransaction(async tx=>{
+        const doc=await tx.get(ref);
+        if(!doc.exists)throw rejection('Melding niet gevonden',404);
+        const r=doc.data(),subject=policePeople.get(r.personDiscordId);
+        if(!subject||!Array.isArray(r.subjectDepartments)||
+           !r.subjectDepartments.includes('politie')||
+           !assigned.includes(personSeries(subject))||owner===r.personDiscordId)
+          throw rejection('Geen toegang tot deze reeks',403);
+        const validPending=r.status==='pending';
+        const created=r.createdAt?.toMillis?.()||0;
+        const recentAuto=r.status==='approved'&&r.autoApproved===true&&
+          created>0&&Date.now()-created<=72*60*60*1000;
+        if(!validPending&&!recentAuto)throw rejection('Melding is niet meer actief',409);
+        if(!r.seriesReadBy?.[owner])
+          tx.update(ref,new FieldPath('seriesReadBy',owner),FieldValue.serverTimestamp());
+      });
+      res.json({saved:true,read:true});
     }catch(e){jsonError(res,e)}
   });
   app.get('/api/leave/requests',requireUser,async(req,res)=>{

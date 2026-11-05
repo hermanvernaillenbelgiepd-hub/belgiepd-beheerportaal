@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
+import {serviceProfileRank} from '../public/service-profile-presentation.js';
 const page=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
 const slice=(from,to)=>{const start=page.indexOf(from),end=page.indexOf(to,start);assert.ok(start>=0&&end>start);return page.slice(start,end)};
 const renderer=slice('function serviceRankKey(rank){','function openPersonProfile(p){');
-const azls=slice('function makeAzlsCompactPortrait(person){','function person(p,compact=false,specialtyLabel=null){');
 const card=slice('function person(p,compact=false,specialtyLabel=null){','function peopleList(rows,rankOnly=false,compact=false,specialtyLabel=null){');
 class El {
  constructor(tag,cls='',text=''){
@@ -27,15 +27,15 @@ const run=(code,other={})=>runInNewContext(code,{el,window:{
   visualLayout:null})},
  BPDPoliceUniform:{makePortrait:p=>p.dept==='politie'?el('span','portrait bpd-police-formal'):null}
 },serviceCoatLayouts:new Map(),serviceNameplateLayouts:new Map(),serviceRankArtworks:new Map(),
- serviceUniformLayouts:new Map(),serviceVisibilityLayouts:new Map(),...other});
+ serviceUniformLayouts:new Map(),serviceUniformArtworks:new Map(),serviceVisibilityLayouts:new Map(),serviceProfileRank,...other});
 test('roster uses the exact service portrait factory used in the expanded profile for brandweer',()=>{
  assert.match(page,/const portrait=p\.dept==='brandweer'\?makeServiceUniformPortrait\(p\):/);
  assert.match(page,/p\.dept==='ambulance'\?makeAzlsCompactPortrait\(p\):/);
- assert.match(page,/window\.BPDPoliceUniform\?\.makePortrait\?\.\(p,true\):makeServiceUniformPortrait\(p\)/);
+ assert.match(page,/window\.BPDPoliceUniform\?\.makePortrait\?\.\(p,true\):makeServiceUniformPortrait\(portraitPerson\)/);
 });
 test('brandweer small card now shows the live nameplate and grade on the actual uniform',()=>{
  const p={dept:'brandweer',name:'Alex',call:'ZONE',rank:'Zonecommandant'};
- const fn=run(renderer+'\n'+azls+'\n'+card+'\n({makeServiceUniformPortrait,person})');
+ const fn=run(renderer+'\n'+card+'\n({makeServiceUniformPortrait,person})');
  const node=fn.person(p);
  const portrait=node.children.find(c=>c.className.includes('bpd-service-uniform'));
  assert.ok(portrait,'fire roster must contain the existing service uniform');
@@ -49,7 +49,7 @@ test('brandweer small card now shows the live nameplate and grade on the actual 
  assert.equal(grade.children[0].src,'/api/role-artwork/file/rank_brandweer_zonecommandant?v=1');
 });
 test('other services retain their existing compact presentation',()=>{
- const api=run(renderer+'\n'+azls+'\n'+card+'\n({person})');
+ const api=run(renderer+'\n'+card+'\n({person})');
  const police=api.person({dept:'politie',name:'Test',call:'300',rank:'Aspirant Inspecteur'});
  assert.ok(police.children.some(x=>x.className.includes('bpd-police-formal')));
  const ambulance=api.person({dept:'ambulance',name:'Test',call:'AMB-01',rank:'AMB'});

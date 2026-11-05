@@ -7,10 +7,15 @@ import {ROLE_CATALOG} from './role-catalog.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
 import {extraSpecialtyLabels} from './roster-column-config.js';
 import {canEditLibrary} from './uniform-library-routes.js';
+import {mayEditTechnicalSettings} from './technical-center-config.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {SPECIALTY_STATES,allSpecialtyLabels} from './specialization-policy.js';
-import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
+import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
+ BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSharedSpecialtyAssetKeys,
+ knownDepannageRoleSpecialty,depannageSpecialtyAssetKeys} from './specialty-role-presets.js';
+import {suppressSupersededRagoMatches} from './rago-qualification-display.js';
+import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
 
 export const SPECIALTY_ROLE_LINKS='bpd_specialty_role_links';
 export const SPECIALTY_ROLE_LINK_AUDIT='bpd_specialty_role_link_audit';
@@ -25,16 +30,22 @@ const respond=(res,e)=>{
 };
 function rolesFor(dept){
  return ROLE_CATALOG.filter(x=>(x.dept===dept||
-   dept==='politie'&&x.dept==='dispatch')&&
+   dept==='politie'&&x.dept==='dispatch'||
+   // PITMOTO is shared with AZLS but catalogued under police.
+   // Allow mapping its visual patch; this never changes role permissions.
+   dept==='ambulance'&&x.id==='1508506242299985980')&&
    (x.kind==='specialisatie'||
      x.dept==='depannage'&&x.kind==='lidmaatschap'||
      dept==='politie'&&x.dept==='dispatch'))
   .map(x=>({id:x.id,name:x.name,kind:x.kind,stage:x.stage}));
 }
-function canManage(actor,dept){
+export function canManageSpecialtyRoleLinks(actor,dept){
  if(!actor||!DEPTS.includes(dept)||actor.uid!=='discord:'+actor.discordId||
-    !ID.test(String(actor.discordId||''))||
-    !actor.dossierNativeDepartments?.includes(dept)||
+    !ID.test(String(actor.discordId||'')))return false;
+ // Only the independently verified technical profile can manage metadata
+ // across all services without an operational dossier membership.
+ if(mayEditTechnicalSettings(actor))return true;
+ if(!actor.dossierNativeDepartments?.includes(dept)||
     !actor.dossierAllowedDepartments?.includes(dept))return false;
  return canEditLibrary(actor,dept)||
    dept==='brandweer'&&actor.fireZoneChief===true||
@@ -72,8 +83,12 @@ export function validateSpecialtyRoleLinks(body,dept,labels,roles){
      level.length>45||/[<>\x00-\x1f]/.test(level)||
      !SPECIALTY_STATES.includes(value)||!assetBelongs)
     throw fail(400,'Kies een bestaande specialisatie, optionele Discord-rol, status en afbeelding van dezelfde dienst');
-  const unique=roleId||'manual:'+label;
+  const shared=dept==='brandweer'&&roleId===BW_LOG_SIG_ROLE_ID;
+  if(shared&&!BW_LOG_SIG_SPECIALTIES.includes(label))
+   throw fail(400,'BW log/signa kan alleen Logistiek en Signalisatie koppelen');
+  const unique=shared?roleId+':'+label:roleId||'manual:'+label;
   if(seen.has(unique))throw fail(400,roleId?
+    shared?'Deze Brandweer-specialisatie is al aan BW log/signa gekoppeld':
     'Een Discord-rol kan binnen een dienst maar één specialisatiekoppeling krijgen':
     'Deze specialisatie heeft al een koppeling zonder Discord-rol');
   seen.add(unique);
@@ -85,7 +100,8 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/specialty-links/:dept',requireUser,async(req,res)=>{
   const dept=req.params.dept;
   if(!DEPTS.includes(dept))return res.status(400).json({error:'Onbekende hulpdienst'});
-  if(!canReadServiceDossier(req.bpd,dept))
+  if(!canReadServiceDossier(req.bpd,dept)&&
+     !mayEditTechnicalSettings(req.bpd))
    return res.status(403).json({error:'Geen toegang tot de specialisaties van deze dienst'});
   try{
    const db=getFirestore();
@@ -112,19 +128,34 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
        // A role artwork's visual slot is tied to its exact Discord ID.
        // Never guess a badge from another role or specialisation.
        if(x.assetKey||!x.roleId)return x;
+       // A shared BW role must NEVER reuse the same role-standard
+       // picture for both qualifications. Find their distinct library images.
+       if(dept==='brandweer'&&x.roleId===BW_LOG_SIG_ROLE_ID&&
+          BW_LOG_SIG_SPECIALTIES.includes(x.label)){
+        const found=fireSharedSpecialtyAssetKeys(x.label)
+         .map(key=>allAssets.find(a=>a.key===key)).find(Boolean);
+        return found?{...x,assetKey:found.key}:x;
+       }
+       // Generic Depannage specialty patches take precedence over an
+       // unmapped Discord role-photo slot; saved explicit choices win.
+       if(dept==='depannage'&&knownDepannageRoleSpecialty(x.roleId,x.label)){
+        const found=depannageSpecialtyAssetKeys(x.label)
+         .map(key=>allAssets.find(a=>a.key===key)).find(Boolean);
+        if(found)return {...x,assetKey:found.key};
+       }
        const matching=allAssets.find(a=>a.key===x.roleId+'_standard');
        return matching?{...x,assetKey:matching.key}:x;
      });
    res.set('Cache-Control','private, no-store');
    return res.json({dept,labels,roles,assets:allAssets,links,
     revision:Number.isSafeInteger(doc.get('revision'))?doc.get('revision'):0,
-    canEdit:canManage(req.bpd,dept),verifiedRolesOnly:true,
+    canEdit:canManageSpecialtyRoleLinks(req.bpd,dept),verifiedRolesOnly:true,
     noDiscordRoleMutations:true});
   }catch(e){return respond(res,e)}
  });
  app.put('/api/specialty-links/:dept',requireUser,async(req,res)=>{
   const dept=req.params.dept;
-  if(!canManage(req.bpd,dept))
+  if(!canManageSpecialtyRoleLinks(req.bpd,dept))
    return res.status(403).json({error:'Alleen bevoegde dienstleiding kan koppelingen aanpassen'});
   try{
    const [extras,db]=await Promise.all([extraSpecialtyLabels(dept),Promise.resolve(getFirestore())]);
@@ -185,11 +216,16 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
     db.collection('bpd_discord_auth').doc(discordId).get()
    ]);
    const data=identity.data()||{},at=Date.now();
-   const verified=data.guildId===process.env.DISCORD_GUILD_ID&&
+   const cachedVerified=data.guildId===process.env.DISCORD_GUILD_ID&&
      Number.isSafeInteger(data.verifiedAt)&&data.verifiedAt<=at+60000&&
      at-data.verifiedAt<=7*86400000&&
      Array.isArray(data.roleIds)&&data.roleIds.every(x=>ID.test(x));
-   const have=new Set(verified?data.roleIds:[]);
+   // Read-only bot proof takes precedence. If Discord is temporarily unreachable,
+   // a still-recent OAuth proof remains a valid display-only fallback.
+   const live=await verifyLiveSpecialtyRoles(discordId);
+   const liveVerified=live.verified&&live.status==='ok';
+   const verified=liveVerified||(!live.verified&&cachedVerified);
+   const have=new Set(verified?(liveVerified?live.roleIds:data.roleIds):[]);
    const matches=cleanLinks(defaultSpecialtyRoleLinks(dept,
      cleanLinks(doc.get('links')),
      doc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION))
@@ -207,8 +243,10 @@ export function installSpecialtyRoleLinkRoutes(app,{requireUser,getSnapshot}){
        {...x,assetKey:x.roleId+'_standard'}:x;
    });
    res.set('Cache-Control','private, no-store');
-   return res.json({verified,verifiedAt:verified?new Date(data.verifiedAt).toISOString():null,
-     matches:linked,displayOnly:true,discordRolesChanged:false});
+   return res.json({verified,verifiedAt:verified?
+     new Date(liveVerified?at:data.verifiedAt).toISOString():null,
+     verificationSource:liveVerified?'discord-bot':verified?'oauth-cache':'unavailable',
+     matches:suppressSupersededRagoMatches(linked),displayOnly:true,discordRolesChanged:false});
   }catch(e){return respond(res,e)}
  });
 }

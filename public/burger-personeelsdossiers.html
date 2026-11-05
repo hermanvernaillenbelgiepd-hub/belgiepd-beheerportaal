@@ -20,19 +20,116 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .controls input{max-width:390px}.row{padding:12px 10px;border-bottom:1px solid #365170;text-align:left;display:flex;gap:12px;justify-content:space-between;align-items:center;width:100%;background:transparent;border-top:0;border-left:0;border-right:0;border-radius:0}
 .row:hover{background:#213d60}.row strong,.row small{display:block}.row small{font-size:12px;color:#b9cbe0}
-.profile{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
-.profile>div{padding:13px;border:1px solid #42627f;background:#1d3a5a;border-radius:8px;overflow-wrap:anywhere}
-.profile small{display:block;font-size:10px;color:#b9d1e8;margin-bottom:6px}.profile strong{font-size:13px}
-.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.record{padding:11px 0;border-bottom:1px solid #36516b}
-.record strong{font-size:13px}.record p{font-size:13px;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}
-.record small{font-size:11px;color:#b8c9dd}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* Eén doorlopende personeelsfiche; secties worden met lijnen gescheiden, niet met kaarten. */
+.dossier-toolbar{margin:12px 0 16px}
+.citizen-sheet{width:100%;overflow:hidden;margin:0 0 24px;
+  background:#132b47;border:1px solid #385576;border-radius:12px;color:#edf4ff}
+.citizen-sheet-head{padding:22px 24px 20px;border-bottom:1px solid #45637f}
+.citizen-overline{font-size:10px;font-weight:750;letter-spacing:.11em;
+  color:#8eb4e8;margin:0 0 6px}
+.citizen-sheet-head h1{margin:0 0 16px}
+.profile{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:0;border-block:1px solid #365878}
+.profile>div{min-width:0;padding:13px 12px;border:0;border-right:1px solid #365878;
+  background:transparent;overflow-wrap:anywhere}
+.profile>div:first-child{padding-left:0}
+.profile>div:last-child{border-right:0}
+.profile small{display:block;font-size:10px;color:#b9d1e8;margin-bottom:7px}
+.profile strong{font-size:13px;font-weight:750}
+.citizen-registration{padding:21px 24px 20px;background:#102841;
+  border-bottom:1px solid #45637f;scroll-margin-top:30px}
+.citizen-section-header{display:flex;align-items:baseline;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.citizen-section-header h2{margin:0}
+.citizen-section-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.citizen-section{padding:18px 24px;min-width:0;
+  border-right:1px solid #355271;border-bottom:1px solid #355271}
+.citizen-section:nth-child(2n){border-right:0}
+.citizen-section h2{font-size:17px;margin:0 0 10px;color:#f2f7ff}
+.citizen-section .muted{margin:5px 0 11px}
+.citizen-audit-section{grid-column:1/-1;border-right:0;border-bottom:0}
+.record{padding:10px 0;border-bottom:1px solid #36516b}
+.record:last-child{border-bottom:0}
+.record strong{font-size:13px}
+.record p{font-size:13px;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.record small{font-size:11px;color:#b8c9dd}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.citizen-savebar{display:flex;gap:15px;align-items:center;flex-wrap:wrap;
+  margin-top:16px;padding-top:15px;border-top:1px solid #355271}
+#citizenEntrySave{display:inline-flex;align-items:center;justify-content:center;
+  min-height:43px;min-width:240px;padding:10px 19px;
+  background:#315ad1;border:1px solid #8aa5ff;color:white;
+  font-size:14px;font-weight:750;cursor:pointer}
+#citizenEntrySave:hover:not(:disabled){background:#3d6dea}
+#citizenEntrySave:focus-visible{outline:3px solid #c4daff;outline-offset:3px}
+#citizenEntrySave:disabled{opacity:.56;cursor:wait}
+#saveStatus{margin:10px 0 0;font-size:12px;line-height:1.45}
+.delete-entry{display:block;margin-top:9px;padding:5px 10px;font-size:12px;background:#572c40;border-color:#aa566b;color:#ffe2e7}
+.delete-entry:hover{background:#73364e}
+#deleteDialog{width:min(95vw,540px);max-width:540px;border:1px solid #6880a1;
+  border-radius:13px;background:#122b49;color:#edf4ff;padding:21px;box-shadow:0 12px 45px #0009}
+#deleteDialog::backdrop{background:#010815bd}
+#deleteDialog textarea{width:100%;min-height:100px}
+#deleteDialog h2{margin:0 0 10px}
+#deleteDialog .danger{background:#ac384e;border-color:#e67b8c}
+#deleteDialog .danger:disabled{opacity:.55}
+#deleteDialog .controls{margin-top:12px}
+#deleteDialog .muted{margin:9px 0}
+/* Unified sheet remains readable when the portal is set to its light theme. */
+@media screen{
+  html:not([data-bpd-theme="dark"]) .citizen-sheet{
+    background:#fff;color:#192f4b;border-color:#cbd9ec;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-sheet-head,
+  html:not([data-bpd-theme="dark"]) .citizen-section{
+    border-color:#d6e1ee;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-registration{
+    background:#f4f8fd;border-color:#d6e1ee;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-sheet h1,
+  html:not([data-bpd-theme="dark"]) .citizen-section h2{
+    color:#17365c;
+  }
+  html:not([data-bpd-theme="dark"]) .citizen-overline,
+  html:not([data-bpd-theme="dark"]) .profile small,
+  html:not([data-bpd-theme="dark"]) .record small{
+    color:#49688b;
+  }
+  html:not([data-bpd-theme="dark"]) .profile,
+  html:not([data-bpd-theme="dark"]) .profile>div,
+  html:not([data-bpd-theme="dark"]) .record,
+  html:not([data-bpd-theme="dark"]) .citizen-savebar{
+    border-color:#d6e1ee;
+  }
+}
 [hidden]{display:none!important}
-@media(max-width:940px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.profile{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:660px){.tiles,.form-grid{grid-template-columns:1fr}.profile{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media print{header,#overview,#formCard,#back,#print,#refresh,#message,.noprint{display:none!important}
-  :root{color:#000;background:#fff}body{background:#fff;color:#000}.card,.profile>div{color:#000;background:#fff;border-color:#ccc}
-  main{max-width:none;padding:0}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.record{break-inside:avoid}}
+@media(max-width:1100px){
+  .profile{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .profile>div:nth-child(3n){border-right:0}
+  .profile>div:nth-child(-n+3){border-bottom:1px solid #365878}
+}
+@media(max-width:660px){
+  .citizen-sheet-head,.citizen-registration,.citizen-section{padding:16px}
+  .citizen-section-list,.form-grid{grid-template-columns:1fr}
+  .citizen-section{border-right:0}
+  .profile{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .profile>div:nth-child(3n){border-right:1px solid #365878}
+  .profile>div:nth-child(2n){border-right:0}
+  .profile>div:nth-child(-n+4){border-bottom:1px solid #365878}
+  .citizen-savebar{align-items:stretch;flex-direction:column}
+  #citizenEntrySave{width:100%;min-width:0}
+}
+@media print{
+  header,#overview,#formCard,#deleteDialog,.delete-entry,#back,#print,#refresh,#message,.noprint{display:none!important}
+  :root{color:#000;background:#fff}
+  body{background:#fff;color:#000}
+  .citizen-sheet,.citizen-sheet-head,.citizen-section,.profile>div{color:#000;background:#fff;border-color:#ccc}
+  .citizen-section h2,.citizen-sheet h1,.citizen-overline,.record small,.profile small{color:#111}
+  main{max-width:none;padding:0}
+  .citizen-section-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .record{break-inside:avoid}
+}
 </style><link rel="stylesheet" href="/dossier-identity-polish.css"></head>
 <body class="bpd-unified-dossier dossier-onepage">
 <header><strong>🏛️ BelgiëPD · Burgerpersoneelsdossiers</strong>
@@ -43,59 +140,112 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <div id="message" role="status" class="muted">Aanmelding controleren…</div>
 <section id="overview" class="card" hidden>
 <h1>Burgerpersoneelsdossiers</h1>
-<p class="muted">Alleen Burgerraad (of geverifieerd technisch beheer). BIO en Burger hebben één afzonderlijk personeelsdossier per Discord-ID. Geen weekrapporten.</p>
+<p class="muted">Burgerraad en Korpsleiding kunnen notities, observaties en sancties registreren; geverifieerd technisch beheer kan dit ook. Alleen Korpsleiding en technisch beheer mogen registraties gemotiveerd verwijderen. Burgerraad kan niets wissen. Geen weekrapporten.</p>
 <div class="controls"><label for="search">Zoek op naam of Discord-ID</label><input id="search" type="search" placeholder="Zoek een BIO of Burger"></div>
 <div id="roster"></div>
 </section>
 <section id="detail" hidden>
-<div class="controls noprint"><button type="button" id="back" class="alt">← Terug naar overzicht</button>
-<button type="button" id="print" class="alt">Persoonsgebonden rapport afdrukken</button></div>
-<section class="card">
-<h1 id="personName">Burgerpersoneelsdossier</h1>
-<div class="profile">
-<div><small>DC / DISCORD-ID</small><strong id="personId">—</strong></div>
-<div><small>RANG / ROL</small><strong id="personRole">—</strong></div>
-<div><small>ROEPNUMMER</small><strong id="personCall">—</strong></div>
-<div><small>STATUS</small><strong id="personStatus">—</strong></div>
-<div><small>VOLWAARDIG SINDS</small><strong id="personPromoted">—</strong></div>
-<div><small>OBSERVATIES</small><strong id="personAvg">—</strong></div>
+<div class="controls dossier-toolbar noprint">
+  <button type="button" id="back" class="alt">← Terug naar overzicht</button>
+  <button type="button" id="quickAdd" hidden>+ Nieuwe registratie toevoegen</button>
+  <button type="button" id="print" class="alt">Persoonsgebonden rapport afdrukken</button>
 </div>
-<p id="limited" class="muted" hidden>Een deel van de oudere registratiehistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
+<p id="writeNotice" class="muted noprint" hidden>Voor dit dossier heb je geen schrijfrecht. Registreren in je eigen personeelsdossier is niet toegestaan.</p>
+<article class="citizen-sheet" aria-label="Burgerpersoneelsdossier">
+  <section class="citizen-sheet-head">
+    <p class="citizen-overline">BELGIËPD · BURGERPERSONEELSDOSSIER</p>
+    <h1 id="personName">Burgerpersoneelsdossier</h1>
+    <div class="profile" aria-label="Algemene personeelsgegevens">
+      <div><small>DC / DISCORD-ID</small><strong id="personId">—</strong></div>
+      <div><small>RANG / ROL</small><strong id="personRole">—</strong></div>
+      <div><small>ROEPNUMMER</small><strong id="personCall">—</strong></div>
+      <div><small>STATUS</small><strong id="personStatus">—</strong></div>
+      <div><small>VOLWAARDIG SINDS</small><strong id="personPromoted">—</strong></div>
+      <div><small>OBSERVATIES</small><strong id="personAvg">—</strong></div>
+    </div>
+    <p id="limited" class="muted" hidden>Een deel van de oudere registratie- of verwijderhistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
+  </section>
+
+  <section class="citizen-registration noprint" id="formCard" hidden>
+    <div class="citizen-section-header">
+      <h2>Nieuwe burgerregistratie</h2>
+      <span class="muted">Notities, observaties en sancties blijven afzonderlijke registraties</span>
+    </div>
+    <form id="entryForm">
+      <div class="form-grid">
+        <div><label for="kind">Soort registratie</label>
+          <select id="kind" required>
+            <option value="notitie">Notitie</option>
+            <option value="observatie">Observatie</option>
+            <option value="sanctie_mondeling">Mondelinge sanctie</option>
+            <option value="sanctie_schriftelijk">Schriftelijke sanctie</option>
+            <option value="volwaardig">Notitie: volwaardig Burger geworden</option>
+          </select>
+        </div>
+        <div><label for="eventDate">Datum van gebeurtenis</label>
+          <input type="date" id="eventDate" required>
+        </div>
+      </div>
+      <div id="scoreField" hidden><label for="score">Observatiescore (0 tot 10)</label>
+        <input type="number" id="score" min="0" max="10" step="1" value="5">
+      </div>
+      <label for="details">Notitie of toelichting (apart van observaties)</label>
+      <textarea id="details" minlength="3" maxlength="1600" required></textarea>
+      <div class="citizen-savebar">
+        <button type="submit" id="citizenEntrySave">Registratie definitief opslaan</button>
+        <span class="muted">De registratie wordt in Firebase opgeslagen en ter controle opnieuw ingelezen.</span>
+      </div>
+      <p id="saveStatus" class="muted" role="status" aria-live="polite">Vul de registratie in en klik op Opslaan.</p>
+    </form>
+  </section>
+
+  <div class="citizen-section-list">
+    <section class="citizen-section" id="citizenLeave">
+      <h2>Verlof</h2><div id="leave"></div>
+    </section>
+    <section class="citizen-section" id="citizenNotes">
+      <h2>Notities</h2><div id="notes"></div>
+    </section>
+    <section class="citizen-section" id="citizenObservations">
+      <h2>Observaties</h2><div id="observations"></div>
+    </section>
+    <section class="citizen-section" id="citizenSanctions">
+      <h2>Sancties</h2><div id="sanctions"></div>
+    </section>
+    <section class="citizen-section" id="citizenPromotions">
+      <h2>Volwaardig Burger</h2><div id="promotions"></div>
+    </section>
+    <section class="citizen-section" id="citizenReport">
+      <h2>Persoonsgebonden rapport</h2>
+      <p class="muted">Dit rapport bevat bovenstaande registraties en de centrale verlofhistoriek, met auteur en registratiedatum. Er wordt geen weekrapport aangemaakt.</p>
+    </section>
+    <section class="citizen-section citizen-audit-section" id="citizenDeletionLog">
+      <h2>Verwijderhistoriek</h2>
+      <p class="muted">Alleen Korpsleiding en technisch beheer mogen met een verplichte reden een registratie uit het actieve dossier halen. De originele gegevens blijven bewaard; Burgerraad heeft geen verwijderrecht.</p>
+      <div id="deletionLog"></div>
+    </section>
+  </div>
+</article>
 </section>
-<section class="tiles">
-<div class="card"><h2>Verlof</h2><div id="leave"></div></div>
-<div class="card"><h2>Notities</h2><div id="notes"></div></div>
-<div class="card"><h2>Observaties</h2><div id="observations"></div></div>
-<div class="card"><h2>Sancties</h2><div id="sanctions"></div></div>
-<div class="card"><h2>Volwaardig Burger</h2><div id="promotions"></div></div>
-<div class="card"><h2>Persoonsgebonden rapport</h2><p class="muted">Dit rapport bundelt bovenstaande registraties met de bestaande centrale verlofhistoriek. De vastgelegde auteur en registratiedatum blijven behouden. Er wordt geen weekrapport aangemaakt.</p></div>
-</section>
-<section class="card" id="formCard" hidden>
-<h2>Nieuwe burgerregistratie</h2>
-<form id="entryForm">
-<div class="form-grid">
-<div><label for="kind">Soort registratie</label>
-<select id="kind" required>
-<option value="notitie">Notitie</option>
-<option value="observatie">Observatie</option>
-<option value="sanctie_mondeling">Mondelinge sanctie</option>
-<option value="sanctie_schriftelijk">Schriftelijke sanctie</option>
-<option value="volwaardig">Notitie: volwaardig Burger geworden</option>
-</select></div>
-<div><label for="eventDate">Datum van gebeurtenis</label><input type="date" id="eventDate" required></div>
+<dialog id="deleteDialog" aria-labelledby="deleteTitle">
+<form id="deleteForm">
+<h2 id="deleteTitle">Registratie verwijderen</h2>
+<p id="deleteTargetLabel" class="muted"></p>
+<p class="muted">Dit verwijdert de registratie uit het actieve dossier. De oorspronkelijke gegevens blijven in het beveiligde auditarchief bewaard. De reden, uitvoerder en het tijdstip worden gelogd.</p>
+<label for="deleteReason">Verplichte reden (minimaal 10 tekens)</label>
+<textarea id="deleteReason" minlength="10" maxlength="500" required></textarea>
+<p id="deleteStatus" class="muted" role="status" aria-live="polite"></p>
+<div class="controls">
+<button id="confirmDelete" class="danger" type="submit">Verwijdering bevestigen</button>
+<button id="cancelDelete" type="button" class="alt">Annuleren</button>
 </div>
-<div id="scoreField" hidden><label for="score">Observatiescore (0 tot 10)</label>
-<input type="number" id="score" min="0" max="10" step="1" value="5"></div>
-<label for="details">Notitie of toelichting (apart van observaties)</label>
-<textarea id="details" minlength="3" maxlength="1600" required></textarea>
-<div class="controls"><button type="submit" id="save">Registratie opslaan en loggen</button><span class="muted">Een registratie kan achteraf niet stilzwijgend worden gewijzigd.</span></div>
-</form></section>
-</section>
+</form>
+</dialog>
 </main>
 <script type="module">
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 const $=id=>document.getElementById(id);
-let auth,authMod,portalSetup,selectedId=null,rows=[];
+let auth,authMod,portalSetup,selectedId=null,rows=[],deleteTarget=null;
 const set=(id,value)=>{$(id).textContent=value==null||value===''?'—':String(value)};
 const mark=(msg,error=false)=>{set('message',msg);$('message').className=error?'error':'muted'};
 const fmt=iso=>iso?new Date(iso).toLocaleString('nl-BE'):'—';
@@ -115,7 +265,7 @@ const line=(container,title,details,meta)=>{
   const h=document.createElement('strong');h.textContent=title;node.append(h);
   if(details){const p=document.createElement('p');p.textContent=details;node.append(p)}
   if(meta){const m=document.createElement('small');m.textContent=meta;node.append(m)}
-  container.append(node);
+  container.append(node);return node;
 };
 function fill(containerId,items,render){
   const container=$(containerId);container.replaceChildren();
@@ -144,20 +294,37 @@ function renderPerson(data){
   set('personPromoted',data.volwaardigDate);
   set('personAvg',data.observation.count?String(data.observation.average)+'/10 ('+
     data.observation.count+')':'Geen');
-  $('limited').hidden=!(data.entriesLimited||data.leaveLimited);
+  $('limited').hidden=!(data.entriesLimited||data.leaveLimited||data.deletionLogLimited);
   fill('leave',data.leave,(root,l)=>line(root,
     l.startDate+' t/m '+l.endDate,l.status+(l.manual?' · manueel':''),fmt(l.createdAt)));
-  const entries=data.entries||[];
+  const entries=data.entries||[],canDelete=data.canDelete===true;
   const meta=e=>e.eventDate+' · '+fmt(e.createdAt)+' · auteur '+(e.byDiscordId||'onbekend');
+  const renderRegistration=(root,e,title)=>{
+    const record=line(root,title,e.details,meta(e));
+    if(canDelete){
+      const remove=document.createElement('button');
+      remove.type='button';remove.className='delete-entry';remove.textContent='Registratie verwijderen';
+      remove.setAttribute('aria-label','Verwijder '+title.toLocaleLowerCase('nl-BE'));
+      remove.onclick=()=>beginDelete(p.discordId,e,title);
+      record.append(remove);
+    }
+  };
   fill('notes',entries.filter(e=>e.kind==='notitie'),(root,e)=>
-    line(root,'Notitie',e.details,meta(e)));
+    renderRegistration(root,e,'Notitie'));
   fill('observations',entries.filter(e=>e.kind==='observatie'),(root,e)=>
-    line(root,'Observatie · '+e.score+'/10',e.details,meta(e)));
+    renderRegistration(root,e,'Observatie · '+e.score+'/10'));
   fill('sanctions',entries.filter(e=>e.kind.startsWith('sanctie_')),(root,e)=>
-    line(root,e.kind==='sanctie_mondeling'?'Mondelinge sanctie':'Schriftelijke sanctie',e.details,meta(e)));
+    renderRegistration(root,e,e.kind==='sanctie_mondeling'?'Mondelinge sanctie':'Schriftelijke sanctie'));
   fill('promotions',entries.filter(e=>e.kind==='volwaardig'),(root,e)=>
-    line(root,'Volwaardig sinds '+e.eventDate,e.details,meta(e)));
-  $('formCard').hidden=data.canWrite!==true;
+    renderRegistration(root,e,'Volwaardig sinds '+e.eventDate));
+  fill('deletionLog',data.deletionLog||[],(root,e)=>line(root,
+    'Verwijderd · '+(e.kind||'registratie')+' · '+(e.eventDate||'datum onbekend'),
+    'Reden: '+e.reason,
+    fmt(e.at)+' · verwijderd door '+(e.byDiscordId||'onbekend')));
+  const writable=data.canWrite===true;
+  $('formCard').hidden=!writable;
+  $('quickAdd').hidden=!writable;
+  $('writeNotice').hidden=writable;
   $('detail').hidden=false;$('overview').hidden=true;
 }
 async function openPerson(id){
@@ -172,7 +339,7 @@ async function openPerson(id){
 }
 async function load(){
   $('overview').hidden=true;$('detail').hidden=true;selectedId=null;
-  if(!auth?.currentUser){mark('Meld je aan met een gemachtigd Burgerraad-account');return}
+  if(!auth?.currentUser){mark('Meld je aan met een bevoegd Burgerraad-, Korpsleiding- of technisch-beheeraccount');return}
   try{
     await api('/api/citizen-staff/access');
     const data=await api('/api/citizen-staff/overview');
@@ -184,21 +351,82 @@ async function load(){
 }
 $('kind').onchange=()=>{$('scoreField').hidden=$('kind').value!=='observatie'};
 $('search').oninput=renderRoster;
-$('back').onclick=()=>{selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
+$('back').onclick=()=>{if($('deleteDialog').open)$('deleteDialog').close();deleteTarget=null;
+  selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
   history.replaceState(null,'',location.pathname);mark('Burgerpersoneelsdossiers')};
 $('refresh').onclick=load;
+$('quickAdd').onclick=()=>$('formCard').scrollIntoView({behavior:'smooth',block:'start'});
 $('print').onclick=()=>window.print();
+function beginDelete(personId,entry,title){
+  if(selectedId!==personId||!entry?.id)return;
+  deleteTarget={personId,entryId:entry.id};
+  $('deleteTargetLabel').textContent=title+' · '+entry.eventDate+
+    ' · registratie '+entry.id;
+  $('deleteReason').value='';
+  $('deleteStatus').textContent='Geef een concrete reden voor deze verwijdering.';
+  $('confirmDelete').disabled=false;
+  $('deleteDialog').showModal();
+}
+$('cancelDelete').onclick=()=>{$('deleteDialog').close();deleteTarget=null};
+$('deleteDialog').addEventListener('close',()=>{deleteTarget=null});
+$('deleteForm').onsubmit=async event=>{
+  event.preventDefault();
+  if(!deleteTarget||selectedId!==deleteTarget.personId)return;
+  const target={...deleteTarget},button=$('confirmDelete');
+  button.disabled=true;
+  $('deleteStatus').textContent='Verwijdering en auditlog opslaan in Firebase…';
+  let confirmed=false;
+  try{
+    const result=await api('/api/citizen-staff/'+encodeURIComponent(target.personId)+
+      '/entries/'+encodeURIComponent(target.entryId),'DELETE',
+      {reason:$('deleteReason').value.trim()});
+    if(result.deleted!==true||result.id!==target.entryId)
+      throw Error('De server heeft de verwijdering niet bevestigd');
+    confirmed=true;
+    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(target.personId));
+    if(fresh.entries?.some(e=>e.id===target.entryId)||
+      !fresh.deletionLog?.some(e=>e.entryId===target.entryId))
+      throw Error('De verwijdering is nog niet volledig teruggelezen');
+    if(selectedId===target.personId)renderPerson(fresh);
+    $('deleteDialog').close();
+    mark('Registratie verwijderd uit het actieve dossier. Reden en uitvoerder zijn gelogd.');
+  }catch(e){
+    const warning=confirmed
+      ?'De server heeft de verwijdering bevestigd, maar de nacontrole mislukte. '+
+        'Vernieuw eerst het dossier en probeer niet opnieuw te verwijderen.'
+      :'Verwijderen mislukt: '+e.message;
+    $('deleteStatus').textContent=warning;
+    mark(warning,true);
+    if(!confirmed)button.disabled=false;
+  }
+};
 $('entryForm').onsubmit=async event=>{
   event.preventDefault();if(!selectedId)return;
-  const button=$('save');button.disabled=true;
+  const targetId=selectedId,button=$('citizenEntrySave');
+  button.disabled=true;$('saveStatus').textContent='Bezig met opslaan in Firebase…';
+  let savedId=null;
   try{
     const kind=$('kind').value;
     const payload={kind,eventDate:$('eventDate').value,details:$('details').value.trim()};
     if(kind==='observatie')payload.score=Number($('score').value);
-    await api('/api/citizen-staff/'+encodeURIComponent(selectedId)+'/entries','POST',payload);
-    $('details').value='';await openPerson(selectedId);mark('Registratie veilig opgeslagen');
-  }catch(e){mark('Opslaan mislukt: '+e.message,true)}
-  finally{button.disabled=false}
+    const result=await api('/api/citizen-staff/'+encodeURIComponent(targetId)+'/entries','POST',payload);
+    if(result.saved!==true||!result.id)throw Error('De server heeft geen bevestiging gegeven');
+    savedId=result.id;
+    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(targetId));
+    if(!fresh.entries?.some(entry=>entry.id===savedId))
+      throw Error('De nieuwe registratie kon niet teruggelezen worden');
+    if(selectedId===targetId)renderPerson(fresh);
+    $('details').value='';
+    $('saveStatus').textContent='Opgeslagen en opnieuw gecontroleerd · referentie '+savedId;
+    mark('Registratie opgeslagen in het dossier en bevestigd door Firebase');
+  }catch(e){
+    const warning=savedId
+      ?'De server heeft de registratie opgeslagen (referentie '+savedId+
+        '), maar de controle na opslaan mislukte. Vernieuw het dossier voor je opnieuw opslaat.'
+      :'Opslaan mislukt: '+e.message;
+    $('saveStatus').textContent=warning;
+    mark(warning,true);
+  }finally{button.disabled=false}
 };
 (async()=>{
   try{
@@ -209,7 +437,9 @@ $('entryForm').onsubmit=async event=>{
     authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
     auth=authMod.getAuth(app.initializeApp(cfg.firebaseConfig));
     portalSetup({button:$('login'),auth,authModule:authMod,config:cfg,onError:e=>mark(e.message,true)});
-    $('eventDate').value=new Date().toLocaleDateString('en-CA');
+    const today=new Date();
+    $('eventDate').value=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),
+      String(today.getDate()).padStart(2,'0')].join('-');
     authMod.onAuthStateChanged(auth,load);
   }catch(e){mark(e.message,true)}
 })();

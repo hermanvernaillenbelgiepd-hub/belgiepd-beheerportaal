@@ -2,6 +2,39 @@
    every protected page and action continues to enforce SERVER permissions. */
 (function(){
   'use strict';
+  // One page-independent preference, never tied to an account or a permission.
+  const themeKey='bpdPortalThemeV1';
+  function storedTheme(){
+    try{return window.localStorage?.getItem(themeKey)==='dark'?'dark':'light'}
+    catch{return 'light'}
+  }
+  let currentTheme=storedTheme();
+  function applyTheme(value,persist=false){
+    currentTheme=value==='dark'?'dark':'light';
+    document.documentElement?.setAttribute('data-bpd-theme',currentTheme);
+    if(persist)try{window.localStorage?.setItem(themeKey,currentTheme)}catch{}
+    document.querySelectorAll?.('.bpd-theme-toggle').forEach(button=>{
+      button.textContent=currentTheme==='dark'?'☀ Licht':'☾ Donker';
+      button.setAttribute('aria-label',
+        currentTheme==='dark'?'Overschakelen naar licht thema':'Overschakelen naar donker thema');
+      button.setAttribute('aria-pressed',String(currentTheme==='dark'));
+      button.title=button.getAttribute('aria-label');
+    });
+  }
+  function makeThemeToggle(){
+    const button=document.createElement('button');
+    button.className='bpd-theme-toggle';button.type='button';
+    button.textContent=currentTheme==='dark'?'☀ Licht':'☾ Donker';
+    button.setAttribute('aria-label',currentTheme==='dark'?
+      'Overschakelen naar licht thema':'Overschakelen naar donker thema');
+    button.setAttribute('aria-pressed',String(currentTheme==='dark'));
+    button.addEventListener('click',()=>applyTheme(currentTheme==='dark'?'light':'dark',true));
+    return button;
+  }
+  applyTheme(currentTheme);
+  window.addEventListener?.('storage',event=>{
+    if(event.key===themeKey)applyTheme(event.newValue==='dark'?'dark':'light');
+  });
   if(window.self!==window.top)return; // Never duplicate inside embedded dossiers.
   const here=window.location.pathname;
   const key='bpdPortalNavigationHistoryV1';
@@ -41,21 +74,25 @@
   const NAV=Object.freeze({
     home:{href:'/',icon:'⌂',label:'Startpagina',short:'Start'},
     personnel:{href:'/personeelsbeheer.html',icon:'♟',label:'Personeelsbeheer',short:'Personeel'},
+    activity:{href:'/activiteitscentrum.html',icon:'◷',label:'Activiteitscentrum',short:'Activiteit'},
     organogram:{href:'/organogram-hierarchie.html',icon:'🌳',label:'Organogram',short:'Organogram'},
     dossiers:{href:'/dossiercentrum.html',icon:'▣',label:'Dossiercentrum',short:'Dossiers'},
+    citizen:{href:'/burger-personeelsdossiers.html',icon:'▤',label:'Burgerpersoneelsdossiers',short:'Burgerdossiers'},
     education:{href:'/opleidingscentrum.html',icon:'🎓',label:'Opleidingscentrum',short:'Opleiding'},
+    documents:{href:'/documentencentrum.html',icon:'📚',label:'Documentencentrum',short:'Documenten'},
     calendar:{href:'/opleidingskalender.html',icon:'📅',label:'Multidisciplinaire agenda',short:'Agenda'},
     observations:{href:'/registraties.html',icon:'▤',label:'Observaties Basiskader',short:'Observaties'},
     reports:{href:'/weekrapporten.html',icon:'▥',label:'Weekrapporten',short:'Rapporten'},
     to:{href:'/to-dienstbord.html',icon:'◉',label:'TO-dienstbord',short:'TO'},
     leave:{href:'/verlofbeheer.html',icon:'▦',label:'Verlofbeheer',short:'Verlof'},
     admin:{href:'/gebruikersbeheer.html#dienstbeheer',icon:'⚙',label:'Beheer & rollen',short:'Beheer'},
+    center:{href:'/beheercentrum.html',icon:'🛠',label:'Beheercentrum',short:'Beheercentrum'},
     notifications:{href:'/meldingen.html',icon:'✉',label:'Meldingen',short:'Meldingen'},
     profile:{href:'/discord-status.html',icon:'♙',label:'Mijn profiel',short:'Profiel'}
   });
   const SAFE=['home','personnel','organogram','education','calendar','leave','profile'];
-  const STAFF=['home','personnel','organogram','dossiers','education','calendar','observations',
-    'reports','to','leave','admin'];
+  const STAFF=['home','personnel','activity','organogram','dossiers','education','documents','calendar','observations',
+    'reports','to','leave','notifications','center','admin'];
   const currentPage=(href)=>{
     const target=new URL(href,window.location.origin).pathname;
     if(target===here)return true;
@@ -76,6 +113,7 @@
   function renderQuick(items,bar){
     bar.replaceChildren();
     for(const item of items)bar.append(linkFor(item,true));
+    bar.append(makeThemeToggle());
   }
   function makeQuick(){
     const nav=document.createElement('nav');
@@ -88,6 +126,22 @@
     const sidebar=document.querySelector('.portal > aside');
     const top=document.querySelector('.surface > header.topbar');
     if(!sidebar||!top)return;
+    // The home dashboard writes emoji as inline text, while other pages
+    // render icons in their own span. Normalize both to one fixed icon column.
+    for(const link of sidebar.querySelectorAll('nav a[href]')){
+      if(link.querySelector('.bpd-home-side-icon'))continue;
+      const raw=String(link.textContent||'').trim();
+      const match=/^([^\p{L}\p{N}]+)\s*(.+)$/u.exec(raw);
+      if(!match)continue;
+      const symbol=match[1].trim(),label=match[2].trim();
+      if(!symbol||!label)continue;
+      const icon=document.createElement('span');
+      icon.className='bpd-home-side-icon';icon.textContent=symbol;
+      icon.setAttribute('aria-hidden','true');
+      const text=document.createElement('span');
+      text.className='bpd-home-side-label';text.textContent=label;
+      link.replaceChildren(icon,text);
+    }
     const quick=makeQuick();
     top.after(quick);
     function update(){
@@ -106,7 +160,8 @@
           item.setAttribute('aria-current','page');
         quick.append(item);
       }
-      quick.hidden=!links.length;
+      quick.append(makeThemeToggle());
+      quick.hidden=false;
     }
     update();
     const observer=new MutationObserver(update);
@@ -136,8 +191,8 @@
     aside.id='bpdSidebar';aside.setAttribute('aria-label','Hoofdnavigatie BelgiëPD');
     const brand=document.createElement('a');brand.className='bpd-brand';
     brand.href='/';brand.setAttribute('aria-label','BelgiëPD startpagina');
-    const mark=document.createElement('span');mark.className='bpd-brand-mark';
-    mark.textContent='BP';mark.setAttribute('aria-hidden','true');
+    const mark=document.createElement('img');mark.className='bpd-brand-mark';
+    mark.src='/belgiepd-logo-compact.svg';mark.alt='';mark.width=42;mark.height=42;
     const brandText=document.createElement('span');brandText.className='bpd-brand-text';
     const title=document.createElement('strong');title.textContent='BelgiëPD';
     const sub=document.createElement('small');sub.textContent='Beheerportaal';
@@ -197,36 +252,62 @@
       let request=0;
       authSdk.onAuthStateChanged(authSdk.getAuth(apps[0]),async user=>{
         const turn=++request;
+        document.getElementById('bpdCitizenDossiersLink')?.remove();
         if(!user){show(['home','personnel','organogram','profile']);return}
         try{
           const token=await user.getIdToken();
-          const [context,member]=await Promise.all([
+          const [context,member,citizen]=await Promise.all([
             fetch('/api/dashboard/admin-visibility',{cache:'no-store',
               headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
             fetch('/api/member/dashboard',{cache:'no-store',
+              headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
+            fetch('/api/citizen-staff/access',{cache:'no-store',
               headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null)
           ]);
           if(turn!==request)return;
+          const citizenGranted=citizen?.canAccess===true;
+          const showVerified=pages=>{
+            const visible=[...pages];
+            if(citizenGranted){
+              const dossierIndex=visible.indexOf('dossiers');
+              visible.splice(dossierIndex>=0?dossierIndex+1:visible.length,0,'citizen');
+            }
+            show(visible);
+          };
+          if(citizenGranted&&here==='/dossiercentrum.html'){
+            const nav=document.querySelector('body > header nav');
+            if(nav){const link=document.createElement('a');
+              link.id='bpdCitizenDossiersLink';link.href='/burger-personeelsdossiers.html';
+              link.textContent='Burgerdossiers';nav.insertBefore(link,nav.querySelector('#login'));
+            }
+          }
+          const policeObservations=context?.basicObservationCanSubmit===true||
+            context?.basicObservationCanReview===true;
           if(context?.dashboardProfile==='brandweer-zone'){
-            const pages=['home','personnel','organogram','dossiers','education','calendar','reports','leave','notifications'];
-            show(pages);return;
+            const pages=['home','personnel','activity','organogram','dossiers','education','documents','calendar','reports','leave','notifications'];
+            if(policeObservations)pages.push('observations');
+            showVerified(pages);return;
           }
           if(context?.dashboardProfile==='ambulance-azls'){
             const pages=['home','personnel','organogram'];
-            if(context.ambulanceCanOpenDossier===true)pages.push('dossiers');
-            pages.push('education','calendar');
+            if(context.ambulanceCanOpenDossier===true)pages.push('dossiers','activity');
+            pages.push('education','documents','calendar');
             if(context.ambulanceReportVerified===true)pages.push('reports');
             pages.push('leave','notifications');
-            show(pages);return;
+            if(policeObservations)pages.push('observations');
+            showVerified(pages);return;
           }
           if(context?.showAdvancedDashboard===true){
-            const pages=STAFF.filter(item=>item!=='admin'||context.visible===true);
-            show(pages);return;
+            const pages=STAFF.filter(item=>item==='center'?
+              context.technicalCenterVisible===true:item!=='admin'||context.visible===true);
+            showVerified(pages);return;
           }
           const basic=[...SAFE];
+          if(context||member?.mode==='member')basic.push('documents');
+          if(policeObservations)basic.push('observations');
           if(member?.mode==='member'&&member?.canUseSelfService===true)
             basic.push('notifications');
-          show(basic);
+          showVerified(basic);
         }catch{if(turn===request)show(SAFE)}
       });
     }catch{/* Navigation is non-authoritative; keep public links only. */}

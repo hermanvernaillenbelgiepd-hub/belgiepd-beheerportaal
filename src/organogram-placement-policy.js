@@ -7,7 +7,7 @@ export const LEADERSHIP_LEVELS=Object.freeze({
  bestuur:[],politie:['Korpsleiding','Officierenkader','Middenkader','Basiskader','Agentenkader'],
  brandweer:['Zoneleiding','Officieren','Middenkader','Basiskader','Stagiairs'],
  ambulance:['DIRMED','HARTS','HVPK','HAMB','ARTS','VPK','AMB','STAG'],
- depannage:['Leiding / AWV'],burger:['Burgerraad']
+ depannage:['Leiding / AWV','LSRA','FAST'],burger:['Burgerraad']
 });
 export const SPECIALTIES=Object.freeze({
  bestuur:[],
@@ -15,7 +15,7 @@ export const SPECIALTIES=Object.freeze({
   'K9','RAGO','RAGO-IO','DISP','TO','AE','RECHERCHE',
   // Historical specializations not silently deleted when an existing record is edited.
   'Prioritair rijden','EHBO'],
- brandweer:['Duiker','Ladderwagen','Logistiek','Signalisatie','RED team','Gevaarlijke stoffen','Bosbestrijding'],
+ brandweer:['Duiker','Ladderwagen','Logistiek','Signalisatie','RED team','Gevaarlijke stoffen','Bosbestrijding','Grote Boot','Brandweer-AMBU'],
  ambulance:['MIP','HELI','PIT','PIT-MOTOR','Medicatie','Basis TR','Motor'],
  depannage:['F.A.S.T','CRANE','Wegenwerken','LSRA','Signalisatie'],
  burger:['Burgerproject','Burger IO']
@@ -92,7 +92,7 @@ export function validatePlacement(body,dept){
 // placement properties (board, tier, global labels and order) are not editable.
 export function validatePoliceSpecialtyEdit(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||
-  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','motardRole','dispRole','reason'].includes(k)))
+  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','motardRole','dispRole','aeRole','reason'].includes(k)))
   throw Error('Ongeldige specialisatiewijziging');
  const specialties=body.specialties,ins=body.instructorSpecialties,teachers=body.teacherSpecialties;
  const allowed=SPECIALTIES.politie;
@@ -129,11 +129,18 @@ export function validatePoliceSpecialtyEdit(body){
   throw Error('DISP-instructeur vereist de instructeursselectie');
  if(dispRole&&dispRole!=='instructeur'&&ins.includes('DISP'))
   throw Error('DISP heeft één functieniveau tegelijk');
+ const aeRole=String(body.aeRole??'');
+ if(!['','ae_i','ae_t','teamleader','instructeur'].includes(aeRole))
+  throw Error('Ongeldige AE-functie');
+ if(aeRole&&!specialties.includes('AE'))
+  throw Error('Selecteer eerst AE-lidmaatschap');
+ if(aeRole==='instructeur'&&!ins.includes('AE'))
+  throw Error('AE-instructeur vereist de instructeursselectie');
  const reason=strip(body.reason);
  if(reason.length<8||reason.length>300)
   throw Error('Motivering van 8 tot 300 tekens verplicht');
  return {specialties:[...specialties],instructorSpecialties:[...ins],
-  teacherSpecialties:[...teachers],k9Role,motardRole,dispRole,reason};
+  teacherSpecialties:[...teachers],k9Role,motardRole,dispRole,aeRole,reason};
 }
 export function manualDisplay(raw,dept){
  if(!raw||raw.status!=='active'||raw.dept!==dept)return null;
@@ -158,7 +165,8 @@ const INSTRUCTORS=Object.freeze({
   '1393050551188721865':'RAGO','1337156006597103746':'AE',
   '1393050971604516904':'DISP'}),
  brandweer:Object.freeze({'1309532437952466989':'Basis TR'}),
- ambulance:Object.freeze({'1309532437952466988':'MIP'}),
+ // Medical Instructor confirms an instructor FUNCTION, not MIP competency.
+ ambulance:Object.freeze({}),
  depannage:Object.freeze({}),burger:Object.freeze({})
 });
 // Known full-membership Discord roles. We deliberately exclude training-only
@@ -166,6 +174,13 @@ const INSTRUCTORS=Object.freeze({
 export const RAGO_IO_DISCORD_ROLE='1490841316656156802';
 export const MOTARD_IO_DISCORD_ROLE='1365602771855740958';
 export const DISP_SELECTION_DISCORD_ROLE='1337852029611016233';
+// These verified Discord roles designate Depannage qualifications.
+ // FAST/LSRA are existing service functions; CRANE is specialization-only.
+const DEPANNAGE_MEMBER_SPECIALTIES=Object.freeze({
+ '1309532438019706970':'F.A.S.T',
+ '1309532438019706971':'LSRA',
+ '1562090158667333692':'CRANE'
+});
 const POLICE_MEMBER_ROLES=Object.freeze({
  '1358148694297415741':'MOTARD',
  '1309532437977497699':'K9',
@@ -190,6 +205,18 @@ export const AE_DISPLAY_LABELS=Object.freeze({
  teamleader:'TEAMLEADER / LEIDING',instructeur:'AE-INSTRUCTEUR'
 });
 export const BOARD_DISCORD_ROLE='1309532438082355251';
+// Exact, guild-bound function memberships for the public visual hierarchy.
+ // This is display data only: never used to authorize dossier access.
+export function verifiedDepannageOrganogramGroups(identity,guildId,now=Date.now()){
+ if(!identity||!ID.test(String(guildId||''))||
+  identity.guildId!==guildId||!Number.isSafeInteger(identity.verifiedAt)||
+  identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||
+  !Array.isArray(identity.roleIds)||identity.roleIds.some(id=>!ID.test(id)))return [];
+ const ids=new Set(identity.roleIds);
+ return [['1309532438019706969','awv'],
+  ['1309532438019706971','lsra'],
+  ['1309532438019706970','fast']].filter(([id])=>ids.has(id)).map(([,code])=>code);
+}
 export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
  if(!identity||!DISPLAY_DEPTS.includes(dept)||!ID.test(guildId)||
     identity.guildId!==guildId||!Number.isSafeInteger(identity.verifiedAt)||
@@ -205,8 +232,10 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
   aeRoles.includes('ae_t')?'ae_t':aeRoles.includes('ae_i')?'ae_i':'';
  const instructorNames=Object.entries(INSTRUCTORS[dept]||{})
   .filter(([id])=>roles.has(id)).map(([,name])=>name);
- const memberNames=dept==='politie'?Object.entries(POLICE_MEMBER_ROLES)
-  .filter(([id])=>roles.has(id)).map(([,name])=>name):[];
+ const memberCatalog=dept==='politie'?POLICE_MEMBER_ROLES:
+  dept==='depannage'?DEPANNAGE_MEMBER_SPECIALTIES:{};
+ const memberNames=Object.entries(memberCatalog)
+  .filter(([id])=>roles.has(id)).map(([,name])=>name);
  // RAGO-IO is a training membership only, NOT the full RAGO unit role.
  // Existing RAGO full members may retain their trainee role in Discord.
  if(dept==='politie'&&roles.has(RAGO_IO_DISCORD_ROLE)&&
@@ -221,21 +250,36 @@ export function verifiedSyncRoles(identity,dept,guildId,now=Date.now()){
     !memberNames.includes('DISP')&&!instructorNames.includes('DISP'))
   memberNames.push('DISP');
  return {boardRole:roles.has(BOARD_DISCORD_ROLE)?'bestuur':'none',
-  teachingRoles:instructorNames.length?['instructeur']:[],
+  teachingRoles:instructorNames.length||
+   dept==='ambulance'&&roles.has('1309532437952466988')?['instructeur']:[],
   instructorSpecialties:instructorNames.filter(x=>SPECIALTIES[dept]?.includes(x)),
   teacherSpecialties:[],aeRoles,aeTeamleader:aeRoles.includes('teamleader'),aeRole,
   specialties:[...new Set([...instructorNames,...memberNames])]
    .filter(x=>SPECIALTIES[dept]?.includes(x)),
   synced:true};
 }
+// Fire basic training is a registered completion, not a consequence of
+// possessing a generic Brandweer Discord membership role.
+export function registeredFireBasicTraining(person){
+ if(person?.dept!=='brandweer'||!Array.isArray(person.specialties))return false;
+ return person.specialties.some(entry=>
+  entry&&['Basis TR','Basistraining'].includes(String(entry.label||''))&&
+  /^(ja|behaald|voltooid|geslaagd|true)$/i.test(String(entry.value||'').trim()));
+}
 export function mergePlacement(person,manual,auto){
  // Explicit manual entries supplement verified roles, never grant rights.
  const specialtyValues=Array.isArray(person.specialties)?
   person.specialties.filter(x=>x&&typeof x.label==='string'&&
    (/^(ja|behaald|voltooid|geslaagd|true|docent|instructeur)$/i.test(strip(x.value))||
-     (person.dept==='politie'&&x.label==='AE'&&/^(instructeur|leiding|teamleader|ae[-_ ]?[it])$/i.test(strip(x.value))))&&
+     (person.dept==='politie'&&x.label==='AE'&&/^(instructeur|leiding|teamleader|ae[-_ ]?[it])$/i.test(strip(x.value)))||
+     // Explicitly registered RAGO 'Aangemeld' is training only, NEVER full RAGO.
+     // This display-only fallback works if an existing verified Discord role
+     // is unavailable; it does not grant permissions or write to Firestore.
+     (person.dept==='politie'&&x.label==='RAGO'&&/^aangemeld$/i.test(strip(x.value))))&&
    validStoredSpecialty(person.dept,x.label))
-    .map(x=>normalizedStoredSpecialty(person.dept,x.label)):[];
+    .map(x=>person.dept==='politie'&&x.label==='RAGO'&&
+      /^aangemeld$/i.test(strip(x.value))?'RAGO-IO':
+      normalizedStoredSpecialty(person.dept,x.label)):[];
  // Historic AZLS/other service registers record qualified instructors as
  // 'Docent'/'Instructeur' instead of 'Ja'. This is display data only.
  const registeredTeaching=Array.isArray(person.specialties)?

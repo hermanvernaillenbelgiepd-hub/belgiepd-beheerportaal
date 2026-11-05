@@ -76,6 +76,7 @@ function seriesCell(person){
 function rankCell(person){
  const info=visual().rankInfo(person.rank,'politie');
  const wrap=element('span',undefined,'mr-rank');
+ wrap.title=info.label||'Rang onbekend';
  if(person.hasPoliceEntry===false){wrap.textContent='—';return wrap;}
  if(info.image){
    const img=document.createElement('img');
@@ -85,19 +86,16 @@ function rankCell(person){
  wrap.append(element('strong',info.code||'—'));
  return wrap;
 }
-function rosterHeaderLabel(label){
- return label==='INTERVENTIEDIENST'?'INTERVENTIE':
-   label==='LRD (Recherche)'?'LRD':label;
-}
+function rosterHeaderLabel(label){return label==='INTERVENTIEDIENST'?'INTERVENTIE':
+ label==='LRD (Recherche)'?'LRD':label;}
 function renderHeader(thead){
  const tr=element('tr');
- for(const title of ['CALL','RANGKENTEKEN','NAAM VAN RANG',
-   'PERSONEELSLID','REEKS','STATUS'])
+ for(const title of ['CALL','RANGKENTEKEN','PERSONEELSLID','REEKS','STATUS'])
    tr.append(element('th',title));
  for(const label of visibleSpecialties()){
    const th=element('th',undefined,'mr-specialty-head');
    th.title=label;
-   const image=visual().specialtyBannerImage(label);
+   const banner=visual().specialtyBannerDisplay(label);
    const fallback=()=>{
      th.classList.remove('mr-specialty-head--patch');
      th.replaceChildren();
@@ -107,14 +105,23 @@ function renderHeader(thead){
      pic.setAttribute('aria-hidden','true');
      th.append(pic,element('small',rosterHeaderLabel(label)));
    };
-   if(image){
-     const img=document.createElement('img');
-     img.src=image;img.alt=label;img.loading='lazy';
-     img.className='mr-specialty-banner';
-     img.onerror=()=>fallback();
+   if(banner){
      th.classList.add('mr-specialty-head--patch');
      th.setAttribute('aria-label',label);
-     th.append(img,element('small',rosterHeaderLabel(label)));
+     if(banner.type==='sprite'){
+       const tile=element('span',undefined,
+         'mr-specialty-banner mr-specialty-banner--sprite');
+       tile.style.backgroundImage='url("'+banner.url+'")';
+       tile.style.backgroundPosition='center '+banner.position+'%';
+       tile.setAttribute('aria-hidden','true');
+       th.append(tile,element('small',rosterHeaderLabel(label)));
+     }else{
+       const img=document.createElement('img');
+       img.src=banner.url;img.alt=label;img.loading='lazy';
+       img.className='mr-specialty-banner';
+       img.onerror=()=>fallback();
+       th.append(img,element('small',rosterHeaderLabel(label)));
+     }
    }else fallback();
    tr.append(th);
  }
@@ -133,7 +140,7 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
  const groups=policeGroupedRoster(people);
  for(const [tier,rows] of groups){
    const title=element('tr',undefined,'mr-divider mr-'+tier);
-   const cell=element('td');cell.colSpan=6+visibleSpecialties().length;
+   const cell=element('td');cell.colSpan=5+visibleSpecialties().length;
    cell.append(element('strong',policeTierDisplay(tier).label));
    cell.append(element('small',rows.length+' personeelsleden','mr-count'));
    title.append(cell);frag.append(title);
@@ -141,7 +148,7 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
      const tr=element('tr',undefined,'mr-person');
      addCell(tr,person.call||'—','mr-call');
      addCell(tr,rankCell(person),'mr-rank-cell');
-     addCell(tr,person.hasPoliceEntry===false?'—':visual().rankInfo(person.rank,'politie').label);
+     // The full rank name is available via the insignia tooltip and dossier.
      const nameCell=element('strong',person.name||'—');
      const nameWrapper=element('span',undefined,'mr-person-name-wrap');
      const clickable=typeof onPersonClick==='function'&&person.hasPoliceEntry!==false;
@@ -181,7 +188,7 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
  if(!people.length){
    const empty=element('tr');
    const cell=element('td','Geen personeelsleden gevonden.');
-   cell.colSpan=6+visibleSpecialties().length;
+   cell.colSpan=5+visibleSpecialties().length;
    empty.append(cell);tbody.append(empty);
  }
  return people.length;

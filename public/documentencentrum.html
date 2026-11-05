@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Documentencentrum · BelgiumPD</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<style>
+:root{font-family:Inter,"Segoe UI",Arial,sans-serif;color-scheme:dark;background:#0d1930;color:#e7effb}
+*{box-sizing:border-box}body{margin:0;background:#0d1930;font-size:14px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px max(16px,calc((100vw - 1160px)/2));background:#112542;border-bottom:1px solid #354b70}
+header strong{font-size:18px}header small{display:block;color:#adbedb;font-size:11px}
+.brand{display:flex;gap:11px;align-items:center}.brand-mark{height:46px;width:46px;border-radius:12px;background:#1b4676;border:1px solid #4a739f;display:grid;place-items:center;font-weight:900;color:#e5f7ff}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+main{max-width:1160px;margin:auto;padding:19px clamp(12px,3vw,28px) 50px}
+a{color:#acd1ff}h1{font-size:23px;margin:0 0 6px}h2{font-size:17px;margin:0 0 10px}p{color:#bad0ee;line-height:1.5}
+.card{background:#152740;border:1px solid #334c71;border-radius:11px;padding:17px;margin:14px 0}
+.toolbar,.buttons{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.toolbar label{flex:1 1 200px}.toolbar .search{flex:2 1 240px}
+label{display:block;font-size:12px;color:#bed3f0;margin-bottom:9px}
+input,select,textarea,button{font:inherit}
+input,select,textarea{display:block;width:100%;margin-top:5px;padding:9px 10px;background:#0a1a30;color:#fff;border:1px solid #4c6689;border-radius:8px}
+textarea{resize:vertical;min-height:75px}input[type=file]{padding:8px}
+button{border:1px solid #5575a3;border-radius:8px;padding:9px 13px;background:#2f5bd0;color:#fff;cursor:pointer;font-weight:650}
+button.secondary{background:#243958}button.danger{background:#532535;border-color:#984b64}
+button:disabled{opacity:.5;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}
+.note{font-size:12px;color:#a7bfdc}.status{padding:10px 12px;background:#193651;border-radius:8px;margin:12px 0;line-height:1.5}
+.status.error{background:#492936;color:#ffe0e2}.status.good{background:#1b423a;color:#c8ffdc}
+.document{border:1px solid #375474;padding:13px;border-radius:9px;margin:8px 0;background:#102037}
+.doc-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.doc-head strong{font-size:15px}
+.meta{color:#a4c2e7;font-size:11px;margin-top:5px}.desc{white-space:pre-wrap;overflow-wrap:anywhere;color:#e2ebfa;margin:8px 0}
+.doc-buttons{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.counter{font-size:12px;color:#a9c2df}.hidden,[hidden]{display:none!important}
+#previewDialog{border:1px solid #5a7194;border-radius:13px;padding:0;width:min(1120px,95vw);max-width:none;max-height:96vh;background:#09172d;color:#eaf1ff}
+#previewDialog::backdrop{background:#000b}
+.previewTop{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px}
+.previewBody{height:min(79vh,870px);background:#fff;overflow:auto;display:grid;place-items:center}
+.previewBody iframe{border:0;width:100%;height:100%;background:#fff}
+.previewBody img{max-width:100%;max-height:100%;object-fit:contain}
+
+
+/* Documentencentrum: restrained folder layout, with genuine light/dark colour contrast. */
+#folderButtons{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:9px;margin:11px 0 15px}
+.folder-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:15px 0 6px}
+.folder-header h2{margin:0;font-size:15px}
+#folderButtons button{background:#1a3150!important;color:#e9f3ff!important;text-align:left;
+  border:1px solid #40618a!important;padding:12px;min-height:58px;font-weight:600}
+#folderButtons button[aria-pressed="true"]{background:#294d81!important;
+  outline:2px solid #81b5ef;outline-offset:1px}
+#folderButtons button:hover{background:#2c4c75!important}
+#folderButtons button small{display:block;color:#b4cee9;font-size:11px;font-weight:500;margin-top:3px}
+#workspace,#editor{background:#13243b;color:#e9f1fc;border:1px solid #385575}
+#workspace label,#editor label{color:#c8dcf6}
+#workspace input,#workspace select,#editor input,#editor select,#editor textarea{
+ background:#0c1d33!important;color:#f3f7ff!important;
+ border:1px solid #547399!important;border-radius:8px;min-height:39px}
+#workspace input::placeholder,#editor input::placeholder,#editor textarea::placeholder{color:#a8bcd7!important;opacity:1}
+#workspace select option,#editor select option{color:#f3f7ff;background:#122842}
+#workspace input:focus-visible,#workspace select:focus-visible,#editor :is(input,select,textarea):focus-visible{
+ outline:2px solid #88c6ff;outline-offset:1px}
+.document{background:#10223a;border-color:#3e5d81;color:#eaf2ff}
+.document .desc{color:#d8e6fb}
+.document .meta,.document .counter{color:#b8cae6}
+html[data-bpd-theme="dark"] #workspace,
+html[data-bpd-theme="dark"] #editor{background:#13243b!important;color:#e9f1fc!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #workspace,
+html:not([data-bpd-theme="dark"]) body.bpd-shell #editor{background:#fff!important;color:#1e3456!important;border-color:#cddcef!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #folderButtons button{background:#f3f7fd!important;color:#1e3d61!important;border-color:#c5d6ec!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #folderButtons button[aria-pressed="true"]{background:#dcecff!important;color:#173968!important;outline-color:#3866be}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #folderButtons button small{color:#597089}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #workspace :is(input,select),
+html:not([data-bpd-theme="dark"]) body.bpd-shell #editor :is(input,select,textarea){background:#f7faff!important;color:#15304f!important;border-color:#b5c7df!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell #workspace select option,
+html:not([data-bpd-theme="dark"]) body.bpd-shell #editor select option{background:#fff;color:#15304f}
+html:not([data-bpd-theme="dark"]) body.bpd-shell .document{background:#f8fbff!important;color:#203a5c!important;border-color:#cbd9eb!important}
+html:not([data-bpd-theme="dark"]) body.bpd-shell .document :is(.desc,.meta,.counter){color:#476281!important}
+@media(max-width:640px){#folderButtons{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.folder-header{align-items:start}}
+
+@media(max-width:640px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.top-actions{margin-left:0}}
+</style></head>
+<body>
+<header>
+ <div class="brand"><img class="brand-mark" src="/belgiepd-logo-compact.svg" alt="" width="46" height="46">
+ <div><strong>BelgiumPD</strong><small>DOCUMENTENCENTRUM · OPLEIDINGEN</small></div></div>
+ <div class="top-actions"><a href="/opleidingscentrum.html">← Opleidingscentrum</a>
+ <button type="button" id="loginBtn" class="secondary">Aanmelden</button></div>
+</header>
+<main>
+<h1>Documentencentrum</h1>
+<p>Geverifieerde leden, ook met een tijdelijk roepnummer, kunnen de voor hun dienst vrijgegeven handboeken direct bekijken. Bevoegd kader publiceert documenten; Officierenkader en Korpsleiding behouden het volledige versiebeheer.</p>
+<div class="status" id="feedback" role="status" aria-live="polite">Bevoegdheden controleren…</div>
+<section class="card" id="workspace" hidden>
+ <div class="toolbar">
+  <label>Hulpdienst<select id="department"></select></label>
+  <label>Categorie<select id="filterCategory"><option value="">Alle categorieën</option></select></label>
+  <label class="search">Zoeken<input id="search" type="search" placeholder="Titel, bestand of omschrijving"></label>
+  <button type="button" id="reload" class="secondary">Vernieuwen</button>
+ </div>
+ <div class="folder-header"><h2>📁 Mappen</h2><div class="buttons"><button type="button" id="deleteFolder" class="danger" hidden>Map verwijderen</button><button type="button" id="addFolder" class="secondary" hidden>+ Nieuwe map</button></div></div>
+ <div class="folder-grid" id="folderButtons" aria-label="Selecteer een map"></div>
+ <p class="counter" id="counter"></p>
+ <div id="documents"></div>
+</section>
+<section class="card" id="editor" hidden>
+ <h2 id="editorTitle">Document of link toevoegen</h2>
+ <p class="note">Bewaar PDF, Word, PowerPoint, Excel, afbeeldingen of HTTPS-leslinks per map. Bestanden blijven privé; bestanden maximaal 25 MB. YouTube-video's kunnen in het portaal worden bekeken.</p>
+ <form id="documentForm">
+ <div class="grid">
+  <label>Titel<input id="title" maxlength="120" minlength="3" required></label>
+  <label>Map<select id="folder"><option value="">Algemeen (zonder map)</option></select></label>
+  <label>Type lesmateriaal<select id="resourceType">
+    <option value="file">Bestand · PDF, Word, PowerPoint, Excel, afbeelding</option>
+    <option value="link">Weblink · website, video, documentlink</option>
+  </select></label>
+  <label id="fileWrap" class="full">Bestand kiezen (maximaal 25 MB)
+   <input id="file" type="file" accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,.webp" aria-describedby="fileInfo" required>
+   <span id="fileInfo" class="note" role="status" aria-live="polite">Nog geen bestand gekozen.</span>
+  </label>
+  <div class="full"><p id="destinationHint" class="note" aria-live="polite"></p></div>
+  <label>Categorie<select id="category" required></select></label>
+  <label>Wie mag dit bekijken?<select id="audience" required>
+   <option value="leden">Alle geverifieerde dienstleden (ook tijdelijk roepnummer)</option>
+   <option value="instructeurs">Instructeurs en leiding</option>
+   <option value="leiding">Alleen leiding</option>
+   <option value="toegewezen">Alleen handmatig toegewezen lesgevers</option></select></label>
+  
+  <label id="linkWrap" class="full" hidden>Externe HTTPS-link<input id="linkUrl" type="url" placeholder="https://..." maxlength="1800"></label>
+  <label class="full">Omschrijving (optioneel)<textarea id="description" maxlength="1000"></textarea></label>
+  <label class="full">Extra leesrechten voor lesgevers (Discord-ID's, gescheiden door komma of nieuwe regel)
+    <textarea id="readerIds" maxlength="1200" placeholder="123456789012345678, 234567890123456789"></textarea>
+    <span class="note">Optioneel. Deze personen krijgen uitsluitend inzage; geen bewerkingsrechten.</span>
+  </label>
+ </div>
+ <div class="buttons"><button type="submit" id="save">Uploaden</button>
+ <button type="button" id="cancel" class="secondary">Wissen</button></div>
+ </form>
+</section>
+<p class="note">Gepubliceerde documenten blijven alleen-lezen voor gewone gebruikers en uploaders. Oude bestandsversies en gearchiveerde documenten blijven beveiligd bewaard op de server. Downloadrechten worden telkens opnieuw gecontroleerd.</p>
+</main>
+<dialog id="previewDialog" aria-label="Document bekijken">
+ <div class="previewTop"><strong id="previewTitle">Document bekijken</strong>
+ <button type="button" id="closePreview" class="secondary">Sluiten</button></div>
+ <div id="previewBody" class="previewBody"></div>
+</dialog>
+<script type="module">
+const $=id=>document.getElementById(id);
+const NAMES={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
+ depannage:'Depannage',burger:'Burger',multidisciplinair:'Multidisciplinair'};
+const CATEGORIES={opleiding:'Opleiding',procedure:'Procedure',lesmateriaal:'Lesmateriaal',
+ formulier:'Formulier',evaluatie:'Evaluatie',dienstnota:'Dienstnota',overig:'Overig'};
+let bridge=null,context=null,documents=[],folders=[],selectedFolder='all',editing=null,
+ replacing=false,editingVersion=null,busy=false,previewUrl=null;
+const status=(text,kind='')=>{$('feedback').className='status '+kind;$('feedback').textContent=text};
+async function api(url,method='GET',data){
+ const user=bridge?.auth.currentUser;
+ if(!user)throw Error('Aanmelden vereist');
+ const token=await user.getIdToken();
+ const response=await fetch(url,{method,cache:'no-store',headers:{
+  Authorization:'Bearer '+token,...(data?{'Content-Type':'application/json'}:{})},
+  ...(data?{body:JSON.stringify(data)}:{})});
+ if(bridge.auth.currentUser?.uid!==user.uid)throw Error('Aanmelding gewijzigd');
+ if(!response.ok){const body=await response.json().catch(()=>({}));
+   throw Error(body.error||(response.status===413?'Bestand is groter dan de toegelaten uploadlimiet.':'Serverfout '+response.status))}
+ if(response.headers.get('Content-Type')?.startsWith('application/json'))
+   return response.json();
+ return response.blob();
+}
+function option(value,label){const o=document.createElement('option');o.value=value;o.textContent=label;return o}
+const canWrite=()=>context?.writeDepartments?.includes($('department').value)===true;
+const canManage=()=>context?.manageDepartments?.includes($('department').value)===true;
+function resetEditor(){
+ editing=null;replacing=false;editingVersion=null;
+ $('documentForm').reset();$('editorTitle').textContent='Document toevoegen';
+ for(const id of ['title','description','category','audience','readerIds','folder','resourceType','linkUrl'])
+   $(id).disabled=false;
+ $('folder').value=selectedFolder==='all'?'':selectedFolder;
+ $('resourceType').value='file';
+ updateResourceInput();updateSelectedFileInfo();$('save').textContent='Toevoegen';
+}
+function fileMb(bytes){
+ return (bytes/1048576).toLocaleString('nl-BE',{maximumFractionDigits:2})+' MB';
+}
+function validateSelectedFile(file){
+ const maxBytes=context?.maxBytes||25*1024*1024;
+ if(!file)throw Error('Selecteer eerst een document bij "Bestand kiezen".');
+ if(!/\.(pdf|docx|pptx|xlsx|png|jpe?g|webp)$/i.test(file.name))
+  throw Error('Dit bestandstype is niet toegestaan. Gebruik PDF, Word (DOCX), PowerPoint (PPTX), Excel (XLSX), JPG, PNG of WebP.');
+ if(file.size<16)throw Error('Het gekozen bestand is leeg of beschadigd. Kies een ander document.');
+ if(file.size>maxBytes)
+  throw Error('Het bestand "'+file.name+'" is '+fileMb(file.size)+
+    '. Het maximum is '+fileMb(maxBytes)+'. Comprimeer het of maak een kleiner bestand.');
+ return file;
+}
+function updateSelectedFileInfo(){
+ const node=$('fileInfo'),file=$('file').files?.[0];
+ if(!file){node.textContent='Nog geen bestand gekozen.';node.style.color='';return;}
+ try{validateSelectedFile(file);
+  node.textContent='Geselecteerd: '+file.name+' ('+fileMb(file.size)+') · klaar om te uploaden';
+  node.style.color='';
+ }catch(e){
+  node.textContent='Geselecteerd: '+file.name+' ('+fileMb(file.size)+') · '+e.message;
+  node.style.color='#ffc9c9';
+ }
+}
+$('file').addEventListener('change',updateSelectedFileInfo);
+function updateDestinationHint(){
+ const dept=$('department').value,folderId=$('folder').value;
+ const folder=folders.find(f=>f.id===folderId)?.name||'Algemeen';
+ const name=NAMES[dept]||dept;
+ const other=Object.entries(NAMES).find(([id,label])=>
+   id!==dept&&label.toLocaleLowerCase('nl')===folder.toLocaleLowerCase('nl'));
+ $('destinationHint').textContent='Opslaglocatie: '+name+' / '+folder+'.'+
+   (other?' Let op: dit is een map binnen '+name+
+     ', niet de hulpdienst '+other[1]+'. Selecteer bovenaan de juiste hulpdienst als het materiaal daarvoor bedoeld is.':'');
+}
+$('folder').addEventListener('change',updateDestinationHint);
+
+function updateResourceInput(){
+ const isLink=$('resourceType').value==='link';
+ $('fileWrap').hidden=isLink;$('file').required=!isLink;
+ $('linkWrap').hidden=!isLink;$('linkUrl').required=isLink;
+}
+$('resourceType').onchange=updateResourceInput;
+function fillFolderSelect(){
+ const select=$('folder'),desired=select.value||'';
+ select.replaceChildren(option('','Algemeen (zonder map)'));
+ for(const f of folders)select.append(option(f.id,'📁 '+f.name));
+ if([...select.options].some(x=>x.value===desired))select.value=desired;
+ else select.value=selectedFolder==='all'?'':selectedFolder;
+ updateDestinationHint();
+}
+// Documents whose former folder was archived are still accessible in Algemeen.
+function effectiveFolderId(doc){
+ return folders.some(folder=>folder.id===doc.folderId)?doc.folderId||'':'';
+}
+function renderFolders(){
+ const root=$('folderButtons');root.replaceChildren();
+ const choices=[
+  {id:'all',name:'Alle documenten',count:documents.length},
+  {id:'',name:'Algemeen',count:documents.filter(d=>!effectiveFolderId(d)).length},
+  ...folders.map(f=>({...f,count:documents.filter(d=>effectiveFolderId(d)===f.id).length}))
+ ];
+ if(selectedFolder!=='all'&&selectedFolder!==''&&!folders.some(f=>f.id===selectedFolder))
+  selectedFolder='all';
+ for(const item of choices){
+  const button=document.createElement('button');button.type='button';
+  button.setAttribute('aria-pressed',String(selectedFolder===item.id));
+  button.append(document.createTextNode('📁 '+item.name));
+  const count=document.createElement('small');
+  count.textContent=item.count+' document'+(item.count===1?'':'en');
+  button.append(count);
+  button.onclick=()=>{
+    selectedFolder=item.id;renderFolders();render();
+    if(canWrite()&&!editing){$('folder').value=item.id==='all'?'':item.id;updateDestinationHint();}
+  };
+  root.append(button);
+ }
+ $('addFolder').hidden=!canWrite();
+ const selected=folders.find(f=>f.id===selectedFolder);
+ $('deleteFolder').hidden=!canManage()||!selected;
+ fillFolderSelect();
+}
+
+$('deleteFolder').onclick=async()=>{
+ const folder=folders.find(f=>f.id===selectedFolder);
+ if(!folder||!canManage())return;
+ const count=documents.filter(doc=>effectiveFolderId(doc)===folder.id).length;
+ if(!confirm('De map "'+folder.name+'" verwijderen? '+
+  (count?count+' document(en) verschijnen daarna onder Algemeen. ':'')+
+  'Bestanden, rechten en archief blijven behouden.'))return;
+ try{
+   await api('/api/document-center/folders/'+encodeURIComponent(folder.id)+
+     '?department='+encodeURIComponent($('department').value),'DELETE');
+   selectedFolder='';
+   await loadDocuments();
+   status('Map "'+folder.name+'" verwijderd. Eventuele documenten staan onder Algemeen; archieven blijven behouden.','good');
+ }catch(e){status('Map niet verwijderd: '+e.message,'error')}
+};
+
+$('addFolder').onclick=async()=>{
+ if(!canWrite())return;
+ const name=prompt('Naam van de nieuwe map (bijvoorbeeld Motard, Dispatch, K-9):');
+ if(!name)return;
+ try{
+  const data=await api('/api/document-center/folders','POST',{
+    department:$('department').value,name:name.trim()
+  });
+  await loadFolders();selectedFolder=data.id;renderFolders();render();
+  $('folder').value=data.id;updateDestinationHint();
+  status('Map aangemaakt en bewaard op BelgiumPD.','good');
+ }catch(e){status('Map niet aangemaakt: '+e.message,'error')}
+};
+async function loadFolders(){
+ const dept=$('department').value;
+ const response=await api('/api/document-center/folders?department='+encodeURIComponent(dept));
+ folders=response.folders||[];renderFolders();
+}
+function render(){
+ const q=$('search').value.toLocaleLowerCase('nl').trim(),category=$('filterCategory').value;
+ const rows=documents.filter(d=>(!category||d.category===category)&&
+  (selectedFolder==='all'||effectiveFolderId(d)===selectedFolder)&&
+  [d.title,d.description,d.fileName,d.uploadedByName].some(x=>String(x||'').toLocaleLowerCase('nl').includes(q)));
+ $('counter').textContent=rows.length+' van '+documents.length+' documenten'+
+  (canManage()?' · volledig documentbeheer':canWrite()?' · uploadrechten':' · alleen lezen');
+ const root=$('documents');root.replaceChildren();
+ if(!rows.length){root.textContent='Geen documenten gevonden binnen jouw toegangsrechten.';return}
+ for(const d of rows){
+  const article=document.createElement('article');article.className='document';
+  const heading=document.createElement('div');heading.className='doc-head';
+  const name=document.createElement('strong');name.textContent=d.title;
+  const type=document.createElement('span');type.className='counter';
+  const targets={leden:'Alle dienstleden',instructeurs:'Instructeurs',leiding:'Leiding',toegewezen:'Toegewezen lesgevers'};
+  type.textContent=(CATEGORIES[d.category]||d.category)+' · '+(targets[d.audience]||d.audience);
+  heading.append(name,type);
+  const meta=document.createElement('div');meta.className='meta';
+  meta.textContent=(d.kind==='link'?'🔗 Externe bron':d.fileName+' · '+(d.size/1024/1024).toFixed(2)+' MB')+
+    ' · versie '+d.version+' · '+(d.uploadedByName||'Onbekend')+
+    (d.createdAt?' · '+new Date(d.createdAt).toLocaleString('nl-BE'):'');
+  const desc=document.createElement('p');desc.className='desc';desc.textContent=d.description||'';
+  const actions=document.createElement('div');actions.className='doc-buttons';
+  const btn=(name,cls,action)=>{
+   const b=document.createElement('button');b.type='button';b.textContent=name;b.className=cls;
+   b.onclick=action;actions.append(b);
+  };
+  btn(d.kind==='link'?'Open link / bekijken':'Presenteren / bekijken','secondary',()=>preview(d));
+  if(d.kind!=='link')btn('Downloaden','secondary',()=>download(d));
+  if(canManage()){
+   btn('Gegevens aanpassen','secondary',()=>edit(d));
+   if(d.kind!=='link')btn('Nieuwe bestandsversie','secondary',()=>replaceFile(d));
+   btn('Archiveren','danger',()=>archive(d));
+  }
+  article.append(heading,meta,desc,actions);root.append(article);
+ }
+}
+function closePreview(){
+ $('previewDialog').close();$('previewBody').replaceChildren();
+ if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+}
+$('closePreview').onclick=closePreview;
+$('previewDialog').addEventListener('close',()=>{
+ $('previewBody').replaceChildren();
+ if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+});
+async function preview(doc){
+ try{
+  status('Voorvertoning laden…');
+  $('previewBody').replaceChildren();
+  if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+  if(doc.kind==='link'){
+    const resource=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/open-link');
+    if(resource.embed){
+      const viewer=document.createElement('iframe');
+      viewer.src=resource.embed;
+      viewer.title='Ingesloten video · '+doc.title;
+      viewer.referrerPolicy='strict-origin-when-cross-origin';
+      viewer.allow='fullscreen; encrypted-media; picture-in-picture';
+      viewer.setAttribute('sandbox','allow-scripts allow-same-origin allow-presentation');
+      $('previewBody').append(viewer);
+    }else{
+      const block=document.createElement('div');
+      block.style.cssText='padding:28px;max-width:520px;line-height:1.6;color:#172c47';
+      const intro=document.createElement('p');
+      intro.textContent='Deze bron staat op een externe website. Open de link om de inhoud te bekijken.';
+      const link=document.createElement('a');
+      link.href=resource.url;link.target='_blank';link.rel='noopener noreferrer';
+      link.textContent='Open externe bron ↗';
+      link.style.cssText='display:inline-block;padding:12px 15px;background:#214c91;color:#fff;border-radius:8px';
+      block.append(intro,link);$('previewBody').append(block);
+    }
+  }else{
+    const blob=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/preview');
+    previewUrl=URL.createObjectURL(blob);
+    const viewer=blob.type.startsWith('image/')?document.createElement('img'):document.createElement('iframe');
+    viewer.src=previewUrl;
+    viewer.title='Voorvertoning '+doc.title;
+    viewer.referrerPolicy='no-referrer';
+    $('previewBody').append(viewer);
+  }
+  $('previewTitle').textContent=doc.title+' · alleen lezen';
+  $('previewDialog').showModal();
+  status('Lesmateriaal geopend.','good');
+ }catch(e){status('Voorvertoning niet beschikbaar: '+e.message,'error')}
+}
+async function download(doc){
+ try{
+  const blob=await api('/api/document-center/'+encodeURIComponent(doc.id)+'/download');
+  const url=URL.createObjectURL(blob);
+  const anchor=document.createElement('a');anchor.href=url;anchor.download=doc.fileName;
+  document.body.append(anchor);anchor.click();anchor.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+ }catch(e){status('Bestand niet beschikbaar: '+e.message,'error')}
+}
+function edit(d){
+ if(!canManage())return;
+ resetEditor();editing=d.id;replacing=false;editingVersion=d.version;
+ $('editor').hidden=false;$('editorTitle').textContent='Documentgegevens aanpassen';
+ $('title').value=d.title;$('description').value=d.description;
+ $('category').value=d.category;$('audience').value=d.audience;
+ $('readerIds').value=(d.readerIds||[]).join('\n');
+ $('folder').value=d.folderId||'';
+ $('resourceType').value=d.kind==='link'?'link':'file';updateResourceInput();
+ if(d.kind==='link')$('linkUrl').value=d.linkUrl||'';
+ $('resourceType').disabled=true;
+ $('fileWrap').hidden=true;$('file').required=false;
+ if(d.kind==='link'){$('linkWrap').hidden=false;$('linkUrl').required=true;}
+ $('save').textContent='Wijzigingen opslaan';
+ $('editor').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function replaceFile(d){
+ if(!canManage())return;
+ resetEditor();editing=d.id;replacing=true;editingVersion=d.version;
+ $('editor').hidden=false;$('editorTitle').textContent='Nieuwe versie uploaden · '+d.title;
+ $('title').value=d.title;$('description').value=d.description;
+ $('category').value=d.category;$('audience').value=d.audience;
+ $('readerIds').value=(d.readerIds||[]).join('\n');
+ $('folder').value=d.folderId||'';
+ $('resourceType').value='file';$('resourceType').disabled=true;
+ for(const id of ['title','description','category','audience','readerIds','folder'])$(id).disabled=true;
+ $('fileWrap').hidden=false;$('file').required=true;
+ $('save').textContent='Nieuwe versie bewaren';
+ $('editor').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function archive(d){
+ if(!confirm('Document "'+d.title+'" archiveren? Het bestand blijft veilig bewaard.'))return;
+ try{await api('/api/document-center/'+encodeURIComponent(d.id),'DELETE');
+  status('Document gearchiveerd.','good');await loadDocuments();}
+ catch(e){status('Archiveren mislukt: '+e.message,'error')}
+}
+function fileToBase64(file){
+ return new Promise((resolve,reject)=>{const reader=new FileReader();
+  reader.onerror=()=>reject(Error('Bestand kon niet worden gelezen'));
+  reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');
+  reader.readAsDataURL(file);
+ });
+}
+async function loadDocuments(){
+ const dept=$('department').value;if(!dept)return;
+ status('Documenten laden…');
+ try{
+  const [data]=await Promise.all([
+    api('/api/document-center?department='+encodeURIComponent(dept)),
+    loadFolders()
+  ]);
+  documents=data.documents||[];
+  $('editor').hidden=!canWrite();resetEditor();
+  renderFolders();render();
+  status(data.limited?'Eerste 160 documenten geladen. Verfijn je zoekopdracht.':'Documenten geladen.','good');
+ }catch(e){documents=[];folders=[];renderFolders();render();
+  status('Documenten niet beschikbaar: '+e.message,'error')}
+}
+async function loadContext(){
+ context=await api('/api/document-center/context');
+ const select=$('department');select.replaceChildren();
+ for(const dept of context.readDepartments||[])select.append(option(dept,NAMES[dept]||dept));
+ if(!select.children.length){$('workspace').hidden=true;$('editor').hidden=true;
+  status('Je hebt momenteel geen documentenrechten. De leiding kan je Discord-rol controleren.','error');return}
+ $('filterCategory').replaceChildren(option('','Alle categorieën'));
+ for(const id of context.categories||[])$('filterCategory').append(option(id,CATEGORIES[id]||id));
+ $('category').replaceChildren();
+ for(const id of context.categories||[])$('category').append(option(id,CATEGORIES[id]||id));
+ $('workspace').hidden=false;await loadDocuments();
+ if(!context.storageReady)status('Bestandsopslag nog niet ingesteld. Leslinks kunnen wel toegevoegd worden.','error');
+}
+$('reload').onclick=loadDocuments;
+$('search').oninput=render;
+$('filterCategory').onchange=render;
+$('department').onchange=()=>{selectedFolder='all';loadDocuments();};
+$('cancel').onclick=resetEditor;
+$('documentForm').onsubmit=async e=>{
+ e.preventDefault();if(busy||!(editing?canManage():canWrite()))return;
+ busy=true;$('save').disabled=true;
+ try{
+  const payload={department:$('department').value,title:$('title').value,
+   description:$('description').value,category:$('category').value,audience:$('audience').value,
+   folderId:$('folder').value||null,
+   readerIds:[...new Set($('readerIds').value.split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean))]};
+  if(editing&&replacing){
+   if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
+   const file=validateSelectedFile($('file').files?.[0]);
+   await api('/api/document-center/'+encodeURIComponent(editing)+'/file','PUT',{
+     fileName:file.name,base64:await fileToBase64(file),expectedVersion:editingVersion
+   });
+   status('Nieuwe bestandsversie opgeslagen, vorige versie veilig bewaard.','good');
+  }else if(editing){
+   if($('resourceType').value==='link')payload.url=$('linkUrl').value.trim();
+   await api('/api/document-center/'+encodeURIComponent(editing),'PATCH',payload);
+   status('Documentgegevens aangepast en gelogd.','good');
+  }else if($('resourceType').value==='link'){
+   payload.url=$('linkUrl').value.trim();
+   await api('/api/document-center/links','POST',payload);
+   status('Leslink toegevoegd aan de geselecteerde map.','good');
+  }else{
+   if(!context.storageReady)throw Error('Firebase Storage is niet ingesteld');
+   const file=validateSelectedFile($('file').files?.[0]);
+   status('Bestand uploaden: '+file.name+' ('+fileMb(file.size)+')…');
+   payload.fileName=file.name;payload.base64=await fileToBase64(file);
+   await api('/api/document-center','POST',payload);
+   status('Document veilig opgeslagen en gelogd.','good');
+  }
+  await loadDocuments();
+ }catch(error){status('Niet opgeslagen: '+error.message,'error')}
+ finally{busy=false;$('save').disabled=false}
+};
+async function init(){
+ try{
+  const conf=await(await fetch('/api/client-config',{cache:'no-store'})).json();
+  if(!conf.enabled)throw Error('Firebase is niet beschikbaar');
+  const [{getApps,initializeApp},{getAuth,onAuthStateChanged,
+    GoogleAuthProvider,signInWithPopup,signOut}]=await Promise.all([
+   import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),
+   import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js')]);
+  const app=getApps()[0]||initializeApp(conf.firebaseConfig),auth=getAuth(app);
+  bridge={auth};onAuthStateChanged(auth,async user=>{
+   if(!user){context=null;documents=[];$('workspace').hidden=true;$('editor').hidden=true;
+    $('loginBtn').textContent='Aanmelden';status('Meld je aan om lesmateriaal te bekijken.');return}
+   $('loginBtn').textContent='Afmelden';
+   try{await loadContext()}catch(e){context=null;$('workspace').hidden=true;$('editor').hidden=true;
+    status('Toegang controleren mislukt: '+e.message,'error')}
+  });
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:$('loginBtn'),auth,authModule:{
+   GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged,
+   ...await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js')},
+   config:conf,onError:error=>status('Aanmelden mislukt: '+error.message,'error')});
+ }catch(e){status('Verbinding mislukt: '+e.message,'error')}
+}
+init();
+</script>
+<script defer src="/bpd-navigation.js"></script>
+</body></html>

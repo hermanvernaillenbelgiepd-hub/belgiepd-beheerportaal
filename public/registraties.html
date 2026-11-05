@@ -45,6 +45,11 @@ fieldset{border:0;margin:0;padding:0}
 .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .toolbar input{max-width:340px}
 .counter{font-size:11px;color:#afc8e7}
+.archive-actions{margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.archive-actions button{font-size:12px;padding:7px 11px;background:#1b3051}
+.archive-label{font-size:11px;font-weight:700;color:#b2c9e8}
+#inboxView{max-width:185px;width:auto}
+.archive-tip{font-size:12px;margin:8px 0 12px}
 @media(max-width:670px){.grid{grid-template-columns:1fr}.field.full{grid-column:auto}header{padding:13px}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head>
@@ -57,7 +62,7 @@ fieldset{border:0;margin:0;padding:0}
 <main>
   <h1>Observaties vanuit Basiskader</h1>
   <p>Basiskader kan enkel een observatie indienen over politieleden <strong>onder de eigen rang</strong>. Deze pagina bevat geen sancties.</p>
-  <div class="banner">De lijst met betrokken personeelsleden wordt rechtstreeks uit <strong>Centraal personeelsbeheer</strong> geladen. Ingediende observaties komen in het personeelsdossier en in het bestaande dynamische weekrapport. Alleen Middenkader, Officierenkader, Korpsleiding en geverifieerd Bestuur kunnen het gebundelde ontvangstoverzicht bekijken.</div>
+  <div class="banner">De lijst met betrokken personeelsleden wordt rechtstreeks uit <strong>Centraal personeelsbeheer</strong> geladen. Ingediende observaties blijven in een afzonderlijk, beveiligd register en worden niet automatisch in personeelsdossiers of weekrapporten opgenomen. Alleen Middenkader, Officierenkader, Korpsleiding en geverifieerd Bestuur kunnen het gebundelde ontvangstoverzicht bekijken.</div>
   <div class="card" id="loginPanel"><h2>Beveiligd aanmelden</h2><p>Gebruik je voor BelgiëPD goedgekeurde account.</p>
     <p id="loginStatus" class="helper">De aanmeldservice wordt voorbereid…</p></div>
   <div id="message" class="status" role="status" aria-live="polite"></div>
@@ -68,7 +73,7 @@ fieldset{border:0;margin:0;padding:0}
         <div class="field"><label for="author">Ingediend door (geverifieerd)</label>
           <div id="author" class="readonly"></div></div>
         <div class="field"><label for="target">Betrokken personeelslid *</label>
-          <select id="target" required></select><div id="targetCount" class="helper"></div></div>
+          <select id="target" required aria-describedby="targetCount selectedTargetInfo"></select><div id="targetCount" class="helper"></div><div id="selectedTargetInfo" class="helper" role="status" aria-live="polite">Kies een personeelslid om de observatie te koppelen.</div></div>
         <div class="field"><label for="eventDate">Datum van gebeurtenis *</label>
           <input id="eventDate" type="date" required></div>
         <div class="field"><label for="eventTime">Tijdstip *</label>
@@ -88,17 +93,27 @@ fieldset{border:0;margin:0;padding:0}
     <div class="toolbar"><div><h2>Gebundelde ontvangen observaties</h2>
       <p class="helper">Alleen zichtbaar voor Middenkader, Officierenkader, Korpsleiding en Bestuur, binnen de eigen inzagerechten.</p></div>
       <button type="button" id="refreshInbox" class="secondary">Vernieuwen</button></div>
-    <div class="toolbar"><input type="search" id="filterInbox" placeholder="Zoek roepnummer, naam of observatie…" aria-label="Zoek in ontvangen observaties">
+    <div class="toolbar">
+      <input type="search" id="filterInbox" placeholder="Zoek roepnummer, naam of observatie…" aria-label="Zoek in ontvangen observaties">
+      <label for="inboxView">Overzicht
+        <select id="inboxView"><option value="active">Actieve observaties</option><option value="archived">Archief</option></select>
+      </label>
       <span id="inboxCount" class="counter"></span></div>
+    <p class="archive-tip">Observaties worden per personeelslid verzameld en 30 dagen na indiening automatisch gearchiveerd (controle elk uur). Archiveren en terugzetten kan ook handmatig; na terugzetten start een nieuwe opvolgperiode van 30 dagen. Inhoud en indiener blijven altijd behouden.</p>
     <div id="inboxList" role="list"></div>
     <div class="buttons"><button id="olderInbox" type="button" class="secondary" hidden>Oudere observaties laden</button></div>
   </section>
   <section id="noAccess" class="card" hidden><h2>Geen toegang tot deze module</h2>
-    <p id="accessReason">Deze module is bedoeld voor observaties door Basiskader of inzage door bevoegd kader en Bestuur.</p></section>
+    <p id="accessReason">Deze module is bedoeld voor observaties door Basiskader of inzage door bevoegd kader en Bestuur.</p>
+    <div class="readonly"><strong>Controle van jouw toegang</strong><div id="accessChecks" class="helper" aria-live="polite"></div></div>
+    <p class="helper">Hier staan alleen de controles van je eigen account. Er worden geen rollen automatisch toegekend.</p>
+  </section>
 </main>
 <script type="module">
 const $=id=>document.getElementById(id);
 let bridge=null,context=null,inboxData=[],inboxCursor=null,submitBusy=false;
+const validTargetId=value=>typeof value==='string'&&/^\d{15,22}$/.test(value);
+const normalizeTargetId=value=>String(value??'').trim();
 const setMessage=(msg,error=false)=>{
   $('message').className=msg?'status '+(error?'error':'success'):'status';
   $('message').textContent=msg;
@@ -128,19 +143,30 @@ function prepareForm(data){
   if(!data.canSubmit)return;
   $('author').textContent=(data.actor?.call||'')+' · '+(data.actor?.name||'')+
     ' · '+(data.actor?.rank||'');
-  const targets=[...(data.targets||[])].sort((a,b)=>String(a.call).localeCompare(String(b.call),'nl',{numeric:true}));
+  // Every option uses the exact verified server target identity. Do not show
+  // unlinked or malformed IDs as selectable members: the write API rejects them.
+  const targets=[...(data.targets||[])].filter(p=>validTargetId(p.discordId))
+    .sort((a,b)=>String(a.call).localeCompare(String(b.call),'nl',{numeric:true}));
   const select=$('target');select.replaceChildren();
-  const empty=document.createElement('option');empty.value='';empty.textContent='Selecteer een personeelslid';select.append(empty);
+  const empty=document.createElement('option');empty.value='';
+  empty.textContent='— Kies eerst een personeelslid —';empty.disabled=true;
+  empty.selected=true;select.append(empty);
   for(const item of targets){
-    const opt=document.createElement('option');opt.value=item.discordId;
+    const opt=document.createElement('option');
+    opt.value=normalizeTargetId(item.discordId);
     opt.textContent=item.call+' · '+item.name+' · '+item.rank;select.append(opt);
   }
   $('targetCount').textContent=targets.length+' personeelsleden met een lagere rang beschikbaar';
+  $('selectedTargetInfo').textContent='Nog geen personeelslid gekozen.';
+  if(targets.length!==(data.targets||[]).length){
+    $('targetCount').textContent+=' · Niet-gekoppelde fiches zijn uitgesloten van selectie.';
+  }
   $('submitHint').textContent=data.writesEnabled?
     'De observatie wordt opgeslagen met jouw geverifieerde identiteit.':
     'De registratieopslag is tijdelijk uitgeschakeld door de server.';
   $('submitBtn').disabled=!data.writesEnabled||!targets.length;
   clearForm();
+  $('selectedTargetInfo').textContent='Nog geen personeelslid gekozen.';
 }
 function displayInbox(list){
   const q=$('filterInbox').value.trim().toLocaleLowerCase('nl');
@@ -150,7 +176,11 @@ function displayInbox(list){
   ].some(v=>String(v||'').toLocaleLowerCase('nl').includes(q)));
   const root=$('inboxList');root.replaceChildren();
   $('inboxCount').textContent=rows.length+' van '+(list?.length||0)+' observaties';
-  if(!rows.length){root.textContent='Geen ontvangen observaties gevonden.';return}
+  if(!rows.length){
+    root.textContent=$('inboxView').value==='archived'?
+      'Geen gearchiveerde observaties gevonden.':'Geen actieve observaties gevonden.';
+    return;
+  }
   // Gegroepeerd per betrokken personeelslid; nooit per browser-rol.
   const groups=new Map();
   for(const row of rows){
@@ -175,6 +205,36 @@ function displayInbox(list){
       const details=document.createElement('p');details.className='report-desc';
       details.textContent=row.details||'';
       article.append(title,meta,details);
+      if(row.archivedAt){
+        const archiveStamp=document.createElement('span');
+        archiveStamp.className='archive-label';
+        archiveStamp.textContent='Gearchiveerd op '+new Date(row.archivedAt).toLocaleString('nl-BE');
+        article.append(archiveStamp);
+      }
+      if(context?.canArchive){
+        const buttons=document.createElement('div');buttons.className='archive-actions';
+        const action=document.createElement('button');action.type='button';
+        action.textContent=row.archivedAt?'Terugzetten naar actief':'Archiveren';
+        action.className='secondary';
+        action.onclick=async()=>{
+          const targetArchived=!row.archivedAt;
+          if(!confirm((targetArchived?'Observatie archiveren':'Observatie terugzetten')+
+            ' voor '+(row.subject?.call||'deze persoon')+
+            '? De observatie wordt niet verwijderd en de actie wordt gelogd.'))return;
+          action.disabled=true;
+          try{
+            await api('/api/basic-observations/'+encodeURIComponent(row.id)+'/archive',
+              'PATCH',{archived:targetArchived});
+            await loadInbox();
+            setMessage(targetArchived?'Observatie gearchiveerd. Bekijk het Archief voor deze registratie.':
+              'Observatie teruggezet in de actieve lijst.');
+          }catch(error){
+            setMessage('Archivering niet uitgevoerd: '+error.message,true);
+            action.disabled=false;
+          }
+        };
+        buttons.append(action);article.append(buttons);
+      }
       if(row.testRecord){
         const test=document.createElement('span');test.className='counter';
         test.textContent='TEST · uitgesloten uit weekrapport';article.append(test);
@@ -188,8 +248,9 @@ async function loadInbox(loadMore=false){
   const btn=$('olderInbox');btn.disabled=true;
   if(!loadMore){inboxData=[];inboxCursor=null;$('inboxList').textContent='Ontvangen observaties laden…'}
   try{
-    const url='/api/basic-observations/inbox'+(loadMore&&inboxCursor?
-      '?cursor='+encodeURIComponent(inboxCursor):'');
+    const view=$('inboxView').value;
+    const url='/api/basic-observations/inbox?view='+encodeURIComponent(view)+
+      (loadMore&&inboxCursor?'&cursor='+encodeURIComponent(inboxCursor):'');
     const response=await api(url);
     const ids=new Set(inboxData.map(x=>x.subject?.discordId+':'+x.id));
     for(const row of response.entries||[]){
@@ -211,24 +272,49 @@ async function loadContext(){
   prepareForm(data);
   $('inboxPanel').hidden=!data.canReview;
   $('noAccess').hidden=Boolean(data.canSubmit||data.canReview);
+  $('accessReason').textContent=data.explanation||'Controleer je politierol en gekoppelde personeelsfiche.';
+  const c=data.accessChecks||{};
+  const lines=[
+    'Discord-identiteit: '+(c.discordIdentityVerified?'geverifieerd':'niet als Discord-aanmelding bevestigd'),
+    'Politiefiche: '+(c.policeRosterMatch?'exact één gekoppelde fiche':String(c.rosterMatches??0)+' gekoppelde fiches'),
+    'Politiereeks en rang: '+(c.policeCadreRecognized?'geldig Basiskader (3xx–5xx)':'niet als Basiskader herkend'),
+    'Politie-portaalrol: '+(c.portalPoliceRole||'niet afzonderlijk gekoppeld'),
+    'Recente Discord-politirol: '+(c.discordPoliceRank||(
+      c.policeMembershipVerified?'Politielid (geen aparte kaderrol)':'niet bevestigd'))
+  ];
+  $('accessChecks').textContent=lines.join(' · ');
   if(data.canReview)await loadInbox();
 }
-$('clearBtn').onclick=()=>{clearForm();setMessage('')};
+$('clearBtn').onclick=()=>{
+  clearForm();$('selectedTargetInfo').textContent='Nog geen personeelslid gekozen.';setMessage('');
+};
+$('target').addEventListener('change',()=>{
+  const selected=$('target').selectedOptions[0];
+  $('selectedTargetInfo').textContent=validTargetId($('target').value)&&
+    context?.targets?.some(p=>normalizeTargetId(p.discordId)===$('target').value)?
+    'Geselecteerd: '+selected.textContent+' · gekoppeld aan de officiële politiefiche.':
+    'Kies een geldig personeelslid uit de lijst.';
+  // A previous validation error must not remain after the user corrects it.
+  if($('message').classList.contains('error'))setMessage('');
+});
 $('refreshInbox').onclick=()=>loadInbox();
+$('inboxView').onchange=()=>{inboxData=[];inboxCursor=null;loadInbox();};
 $('olderInbox').onclick=()=>loadInbox(true);
 $('filterInbox').oninput=()=>displayInbox(inboxData);
 $('observationForm').onsubmit=async event=>{
   event.preventDefault();if(submitBusy||!context?.canSubmit||!context.writesEnabled)return;
-  const target=$('target').value;
-  if(!context.targets?.some(p=>p.discordId===target))
-    return setMessage('Selecteer een personeelslid van een lagere rang.',true);
+  const target=normalizeTargetId($('target').value);
+  if(!target)return setMessage('Kies eerst een betrokken personeelslid uit de keuzelijst.',true);
+  if(!validTargetId(target)||!context.targets?.some(p=>
+    normalizeTargetId(p.discordId)===target))
+    return setMessage('De gekozen personeelsfiche heeft geen geldig Discord-ID. Vernieuw de pagina en selecteer opnieuw.',true);
   const body={type:'observatie',discordId:target,eventDate:$('eventDate').value,
     eventTime:$('eventTime').value,details:$('details').value,
     otherPlayers:$('otherPlayers').value,evidenceUrl:$('evidenceUrl').value};
   submitBusy=true;$('submitBtn').disabled=true;
   try{
     const response=await api('/api/basic-observations','POST',body);
-    setMessage('Observatie veilig opgeslagen in het personeelsdossier en het weekrapport. Referentie: '+response.reference);
+    setMessage('Observatie veilig opgeslagen in het afzonderlijke register. Referentie: '+response.reference);
     clearForm();
   }catch(e){setMessage('Niet opgeslagen: '+e.message,true)}
   finally{submitBusy=false;$('submitBtn').disabled=!context?.writesEnabled||!context?.targets?.length}

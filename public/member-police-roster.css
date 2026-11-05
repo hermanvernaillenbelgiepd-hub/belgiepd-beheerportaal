@@ -155,7 +155,70 @@
 }
 .mr-table th.mr-specialty-head--patch img{max-width:none;}
 
-/* Behoud de compacte kolomkop: na de patch is de specialisatienaam leesbaar. */
+/* Six approved neutral patches bundled as one file. Each header shows
+   exactly one of the six equal-height strips, never a role status. */
+.mr-table .mr-specialty-banner--sprite{
+ background-size:100% 600%;background-repeat:no-repeat;
+ background-color:#050b13;
+}
+
+/* Desktop member roster: keep every specialization visible without horizontal
+   scrolling. Removing the duplicate rank-name column leaves five fixed fields. */
+.mr-table{
+ width:100%;min-width:0;table-layout:fixed;
+}
+.mr-table th:first-child{width:2.6%;min-width:0}
+.mr-table th:nth-child(2){width:4.5%;min-width:0}
+.mr-table th:nth-child(3){width:12%;min-width:0}
+.mr-table th:nth-child(4){width:3.3%;min-width:0}
+.mr-table th:nth-child(5){width:4.6%;min-width:0}
+.mr-table th.mr-specialty-head{
+ min-width:0;overflow-wrap:anywhere;
+}
+.mr-table th.mr-specialty-head--patch{
+ min-width:0!important;width:auto!important;padding:0!important;
+}
+.mr-table td,.mr-table th{overflow-wrap:anywhere;}
+.mr-table .mr-status{
+ width:100%;min-width:0;max-width:100%;
+ padding-inline:2px;font-size:clamp(8px,.65vw,10px);
+}
+.mr-table .mr-specialty{
+ padding-inline:1px;white-space:normal;overflow-wrap:anywhere;
+ font-size:clamp(8px,.62vw,10px);
+}
+.mr-table .mr-specialty-banner{
+ max-width:100%;width:100%;height:auto;object-fit:contain;
+}
+.mr-table .mr-person-name-wrap,.mr-table .mr-rank{
+ min-width:0;max-width:100%;overflow-wrap:anywhere;
+}
+@media(max-width:1099px){
+ .mr-table{min-width:1100px}
+}
+
+/* Make CALL, REEKS and STATUS genuinely narrow in the read-only roster.
+   Specialization banners receive the recovered space; values can wrap. */
+.mr-table th:first-child,.mr-table td.mr-call{
+ padding-inline:2px;
+}
+.mr-table td.mr-status-cell{
+ padding-inline:2px;
+}
+.mr-table .mr-series{
+ justify-content:center;gap:2px;
+}
+.mr-table .mr-series-badge{
+ padding:2px 3px;max-width:100%;min-width:0;
+ white-space:normal;overflow-wrap:anywhere;text-align:center;
+}
+.mr-table td.mr-status-cell .mr-status{
+ display:block;width:100%;max-width:100%;
+ overflow-wrap:anywhere;white-space:normal;
+ padding-inline:1px;
+}
+
+/* Specialisatienaam blijft onder een eigen bibliotheekpatch leesbaar. */
 .mr-table th.mr-specialty-head--patch>small{
  display:block!important;padding:4px 2px 5px;margin:0;
  text-align:center;background:#152b47;color:#edf5ff;
@@ -163,10 +226,7 @@
  white-space:normal;overflow-wrap:anywhere;letter-spacing:0;
 }
 
-/* BPD compacte vaste kolommen; overige ruimte naar specialisaties. */
-.mr-table th:first-child,.mr-table td.mr-call{width:42px!important;min-width:36px!important;max-width:48px;padding-inline:2px}
-.mr-table th:nth-child(2),.mr-table td.mr-rank-cell{width:68px!important;min-width:54px!important;max-width:75px;padding-inline:2px}
-.mr-table th:nth-child(5),.mr-table td:nth-child(5){width:52px!important;min-width:40px!important;max-width:65px;padding-inline:2px}
-.mr-table th:nth-child(6),.mr-table td.mr-status-cell{width:58px!important;min-width:48px!important;max-width:70px;padding-inline:2px}
-.mr-table th{white-space:normal;overflow-wrap:anywhere}
-.mr-table .mr-series-badge,.mr-table .mr-status{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
+/* Houd de vaste identiteitskolommen compact zonder labels/status te verbergen. */
+.mr-table th:nth-child(-n+5){padding-inline:2px;white-space:normal;overflow-wrap:anywhere;letter-spacing:0}
+.mr-table td.mr-rank-cell,.mr-table td.mr-status-cell{padding-inline:2px}
+.mr-table .mr-status,.mr-table .mr-series-badge{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}

@@ -10,6 +10,8 @@ export function isVerifiedTechnicalRoleApprover(actor){
 }
 export function manualRoleDecisionScope(actor,request,subjectDiscordId){
   if(!actor||!request||!ID.test(String(subjectDiscordId||''))||
+     !ID.test(String(actor.discordId||''))||
+     actor.uid!=='discord:'+actor.discordId||
      actor.discordId===subjectDiscordId||
      actor.uid==='discord:'+subjectDiscordId)
     return {allowed:false,technicalOverride:false};

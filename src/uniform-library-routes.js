@@ -15,7 +15,7 @@ export const UNIFORM_LIBRARY_KINDS=Object.freeze([
  'rank','uniform','specialty','medal','helmet','profession','logo','pictogram','patch','award'
 ]);
 export const UNIFORM_LIBRARY_RULE_KINDS=Object.freeze([
- 'rank','helmet','profession','logo','pictogram','patch'
+ 'rank','helmet','profession','logo','pictogram','patch','specialty'
 ]);
 const DEPTS=['politie','brandweer','ambulance','depannage','burger','beveiliging'];
 const SCOPES=['service','cadre','rank','person','call','function'];

@@ -2,13 +2,14 @@ import {roleForDepartment} from './leave-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 // Nieuwe interne dossierregistraties en concept-weekrapporten.
 // Geen Google Sheets-writes, geen clientvertrouwen bij rollen of auteurs.
-export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging','activiteit','specialisatiebeperking']);
+export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging','activiteit','specialisatiebeperking','inactiviteitsping']);
 export const CADRE_ROLES = Object.freeze(['middenkader','officierenkader','korpsleiding']);
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
 export const RECORD_LABELS = Object.freeze({
   observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Personeelsnotitie',
   opleiding:'Opleidingen en resultaten', activiteit:'Dienstactiviteit',
-  specialisatiebeperking:'Specialisatiebeperking', naamswijziging:'Naamswijziging',
+  specialisatiebeperking:'Specialisatiebeperking',inactiviteitsping:'Inactiviteitsping',
+  naamswijziging:'Naamswijziging',
   promotievoorstel:'Promotievoorstel', personeelsbeweging:'Personeelsbeweging',
   specialisatiewijziging:'Specialisatiewijziging', onderscheiding:'Onderscheidingen'
 });

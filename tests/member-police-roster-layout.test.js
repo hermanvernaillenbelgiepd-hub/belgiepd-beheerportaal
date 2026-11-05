@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {publicPoliceRoster} from '../src/member-dashboard-routes.js';
+import {publicPoliceRoster,directoryRowsForDiscordId} from '../src/member-dashboard-routes.js';
 import {basicObservationTargets} from '../src/basic-observation-policy.js';
 import {maySubmit} from '../src/registrations.js';
 import {PUBLIC_POLICE_SPECIALTIES} from '../public/member-police-roster.js';
@@ -22,7 +22,7 @@ test('Lower-cadre read-only API exposes exactly public roster and ten specializa
  assert.equal(rows.length,2);
  for(const row of rows){
   assert.deepEqual(Object.keys(row).sort(),[
-   'call','name','rank','series','status','specialties'].sort());
+   'call','name','rank','series','status','hasPoliceEntry','services','specialties'].sort());
   assert.equal(row.specialties.length,12);
   assert.deepEqual(row.specialties.map(x=>x.label),[...PUBLIC_POLICE_SPECIALTIES]);
   assert.equal(row.specialties.find(x=>x.label==='Radio BM').value,'Ja');
@@ -34,6 +34,26 @@ test('Lower-cadre read-only API exposes exactly public roster and ten specializa
   ...person('500'),specialties:[{label:'K9',value:'Nee'}]
  }])[0];
  assert.equal(missed.specialties.find(x=>x.label==='SIV/WPR').value,'Niet ingevuld');
+});
+test('Full Discord-ID lookup is exact and never exposes IDs or dossier details',()=>{
+ const otherId='222222222222222222';
+ const all=[person('400'),person('401',otherId)];
+ const matching=directoryRowsForDiscordId(all,discordId);
+ assert.equal(matching.length,1);
+ const publicMatch=publicPoliceRoster(matching);
+ assert.equal(publicMatch.length,1);
+ assert.equal(publicMatch[0].call,'400');
+ assert.equal(JSON.stringify(publicMatch).includes(discordId),false);
+ assert.equal(JSON.stringify(publicMatch).includes('Geheim dossier'),false);
+ assert.deepEqual(directoryRowsForDiscordId(all,discordId.slice(0,14)),[]);
+ assert.deepEqual(directoryRowsForDiscordId(all,discordId+'9'),[]);
+ assert.equal(directoryRowsForDiscordId(all,null),all);
+ const api=read('src/member-dashboard-routes.js');
+ const page=read('public/personeelslijst.html');
+ assert.match(api,/requestedId=req\.query\.discordId/);
+ assert.match(api,/directoryRowsForDiscordId\(snapshot\.data,requestedId\)/);
+ assert.match(page,/placeholder="Roepnummer, naam, rang, reeks of Discord-ID"/);
+ assert.match(page,/new URLSearchParams\(\{discordId:q\}\)/);
 });
 test('Home roster appears before personal controls and has wide rank and specialty columns',()=>{
  const home=read('public/index.html'),list=read('public/personeelslijst.html');

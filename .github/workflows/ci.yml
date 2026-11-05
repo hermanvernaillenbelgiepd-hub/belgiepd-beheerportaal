@@ -6,7 +6,6 @@ on:
       - main
       - feature/test-personeel-toevoegen-20261019
       - feature/verlofmodule-test
-      - feature/burgerpersoneelsdossiers-20261104
   pull_request:
     branches:
       - main

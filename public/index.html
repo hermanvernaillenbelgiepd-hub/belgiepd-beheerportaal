@@ -143,28 +143,35 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
 <a class="skip" href="#inhoud">Ga naar inhoud</a>
 <div class="portal">
 <aside aria-label="Hoofdnavigatie">
-  <a class="brand" href="/" aria-label="BelgiëPD startpagina"><span class="brand-icon">BP</span><span><strong>BelgiëPD</strong><small>Beheerportaal</small></span></a>
+  <a class="brand" href="/" aria-label="BelgiëPD startpagina"><img class="brand-icon" src="/belgiepd-logo-compact.svg" alt="" width="40" height="40"><span><strong>BelgiëPD</strong><small>Beheerportaal</small></span></a>
   <nav id="staffNav" aria-label="Werkruimte" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
     <a href="/personeelsbeheer.html">♙ &nbsp; Personeelsbeheer</a>
+    <a href="/activiteitscentrum.html">◷ &nbsp; Activiteitscentrum</a>
     <a href="/dossiercentrum.html">▣ &nbsp; Dossiercentrum</a>
     <a href="/organogram-hierarchie.html">♧ &nbsp; Organogram</a>
     <a href="/rollen-opleidingen.html">🎓 &nbsp; Opleidingscentrum</a>
+    <a href="/documentencentrum.html">📚 &nbsp; Documentencentrum</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
-    <a href="/registraties.html">▤ &nbsp; Observaties Basiskader</a>
+    <a id="staffNavObservations" href="/registraties.html" hidden>▤ &nbsp; Observaties Basiskader</a>
     <a href="/weekrapporten.html">▥ &nbsp; Weekrapporten</a>
     <a href="/to-dienstbord.html">◉ &nbsp; TO-dienstbord</a>
     <a href="/verlofbeheer.html">▦ &nbsp; Verlofbeheer</a>
+    <a href="/meldingen.html">📬 &nbsp; Meldingen</a>
+    <a id="adminCenterNavLink" href="/beheercentrum.html" hidden>🛠 &nbsp; Beheercentrum</a>
     <a id="adminNavLink" href="/gebruikersbeheer.html#dienstbeheer" hidden>⚙ &nbsp; Beheer &amp; rollen</a>
   </nav>
   <nav id="zoneNav" aria-label="Brandweer Zonecommandant" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
     <a href="/personeelsbeheer.html">👥 &nbsp; Personeelsbeheer (lijst)</a>
     <a href="/personeelsbeheer.html">🚒 &nbsp; Brandweerpersoneel</a>
+    <a href="/activiteitscentrum.html">◷ &nbsp; Activiteitscentrum</a>
     <a href="/dossiercentrum.html">📁 &nbsp; Brandweerdossiers</a>
     <a href="/organogram-hierarchie.html">♧ &nbsp; Organogram</a>
     <a href="/opleidingscentrum.html">🎓 &nbsp; Opleidingscentrum</a>
+    <a href="/documentencentrum.html">📚 &nbsp; Documentencentrum</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
+    <a id="zoneNavObservations" href="/registraties.html" hidden>▤ &nbsp; Observaties Basiskader</a>
     <a href="/weekrapporten.html">📋 &nbsp; Brandweerweekrapporten</a>
     <a href="/verlofbeheer.html">📅 &nbsp; Mijn verlof</a>
     <a href="/meldingen.html">📬 &nbsp; Meldingen</a>
@@ -176,7 +183,9 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a id="ambulanceNavDossiers" href="/dossiercentrum.html" hidden>📁 &nbsp; Ambulancedossiers</a>
     <a href="/organogram-hierarchie.html">♧ &nbsp; Organogram</a>
     <a href="/opleidingscentrum.html">🎓 &nbsp; Opleidingscentrum</a>
+    <a href="/documentencentrum.html">📚 &nbsp; Documentencentrum</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
+    <a id="ambulanceNavObservations" href="/registraties.html" hidden>▤ &nbsp; Observaties Basiskader</a>
     <a id="ambulanceNavReports" href="/weekrapporten.html" hidden>📋 &nbsp; Ambulanceweekrapporten</a>
     <a href="/verlofbeheer.html">📅 &nbsp; Mijn verlof</a>
     <a href="/meldingen.html">📬 &nbsp; Meldingen</a>
@@ -186,7 +195,9 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a href="/discord-status.html">👤 &nbsp; Mijn profiel</a>
     <a href="/personeelsbeheer.html">👥 &nbsp; Personeelsbeheer</a>
     <a href="/organogram-hierarchie.html">♧ &nbsp; Organogram</a>
+    <a href="/documentencentrum.html">📚 &nbsp; Documentencentrum</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
+    <a id="memberNavObservations" href="/registraties.html" hidden>▤ &nbsp; Observaties Basiskader</a>
     <a id="memberNavCallsign" href="/vast-roepnummer-aanvragen.html" hidden>🔢 &nbsp; Vast roepnummer aanvragen</a>
     <a id="memberNavLeave" href="/verlofbeheer.html" hidden>📅 &nbsp; Mijn verlof</a>
     <a id="memberNavNotices" href="/meldingen.html" hidden>📬 &nbsp; Meldingen</a>
@@ -209,9 +220,11 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   <h2 class="section-title">Dagelijks beheer</h2>
   <div class="grid">
     <a class="module" href="/personeelsbeheer.html"><span class="ico" aria-hidden="true">👥</span><h3>Personeelsbeheer</h3><p>Personeel, rangen, roepnummers en administratieve dossiers volgens jouw rechten.</p><span class="open">Open personeelslijst →</span></a>
+    <a class="module" href="/activiteitscentrum.html"><span class="ico" aria-hidden="true">📊</span><h3>Activiteitscentrum</h3><p>FiveM-activiteit, statusverschillen en opvolging per dienst. Voorlopig alleen-lezen vanuit de activiteitsspreadsheet.</p><span class="open">Open activiteitscentrum →</span></a>
     <a class="module" href="/dossiercentrum.html"><span class="ico" aria-hidden="true">📁</span><h3>Dossiercentrum</h3><p>Afzonderlijke personeelsdossiers en historiek voor Politie, Brandweer, Ambulance en Depannage.</p><span class="open">Open dossiers →</span></a>
     <a class="module" href="/organogram-hierarchie.html"><span class="ico" aria-hidden="true">🌳</span><h3>Organogram · alle diensten</h3><p>Visuele personeelsstructuur per hulpdienst, met beveiligde inzage en fictieve voorbeelden.</p><span class="open">Bekijk organogram →</span></a>
     <a class="module" href="/rollen-opleidingen.html"><span class="ico" aria-hidden="true">🎓</span><h3>Opleidingscentrum</h3><p>Opleidingen registreren, resultaten opvolgen en opleidingshistoriek bekijken per hulpdienst. Toegang volgens je Discord-rol.</p><span class="open">Open opleidingscentrum →</span></a>
+    <a class="module" href="/documentencentrum.html"><span class="ico" aria-hidden="true">📚</span><h3>Documentencentrum</h3><p>Lees en presenteer geverifieerde handboeken, ook met tijdelijk roepnummer. Beheerrechten volgens je dienst.</p><span class="open">Open documenten →</span></a>
     <a class="module" href="/registraties.html"><span class="ico" aria-hidden="true">📝</span><h3>Observaties vanuit Basiskader</h3><p>Basiskader observeert alleen lagere politiegraden. Ontvangen observaties zijn uitsluitend voor bevoegd kader en Bestuur.</p><span class="open">Open observaties →</span></a>
     <a class="module" href="/weekrapporten.html"><span class="ico" aria-hidden="true">📋</span><h3>Weekrapporten</h3><p>Dossierregistraties, conceptweekrapporten, controles en opvolging.</p><span class="open">Open weekrapporten →</span></a>
     <a class="module" href="/to-dienstbord.html"><span class="ico" aria-hidden="true">📻</span><h3>TO-dienstbord</h3><p>Operationele ploegen, meldingen, inzetstatussen en Sonoran Radio-overzicht.</p><span class="open">Open dienstbord →</span></a>
@@ -221,6 +234,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   </div>
   <section id="adminRights" hidden aria-label="Administratie en rechten"><h2 class="section-title">Administratie en rechten</h2>
   <div class="grid">
+    <a class="module" id="adminCenterCard" href="/beheercentrum.html" hidden><span class="ico" aria-hidden="true">🛠</span><h3>Beheercentrum</h3><p>Gegroepeerde beheerfuncties en instelbare automatiseringen met wijzigingsgeschiedenis.</p><span class="open">Open Beheercentrum →</span></a>
     <a class="module" href="/gebruikersbeheer.html#dienstbeheer"><span class="ico" aria-hidden="true">🛡️</span><h3>Beheertoegang hulpdiensten</h3><p>Toegang per Discord-ID en hulpdienst toekennen, beheren en intrekken.</p><span class="open">Open dienstbeheer →</span></a>
     <a class="module" href="/gebruikersbeheer.html"><span class="ico" aria-hidden="true">🔐</span><h3>Gebruikersbeheer</h3><p>Accountgoedkeuringen, Bestuur, TO-rechten en toegangsbeheer.</p><span class="open">Open gebruikersbeheer →</span></a>
   </div>
@@ -281,8 +295,9 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
       <a class="module" href="/weekrapporten.html"><span class="ico" aria-hidden="true">📋</span><h3>Brandweerweekrapporten</h3><p>Eigen dienstgebonden weekrapporten en archief.</p><span class="open">Open →</span></a>
       <a class="module" href="/verlofbeheer.html"><span class="ico" aria-hidden="true">📅</span><h3>Mijn verlof</h3><p>Vraag eigen verlof aan en volg je verlofperiodes.</p><span class="open">Open →</span></a>
       <a class="module" href="/meldingen.html"><span class="ico" aria-hidden="true">📬</span><h3>Meldingen Brandweer</h3><p>Opleidingsaanvragen van brandweerleden en persoonlijke verlofberichten.</p><span class="open">Open →</span></a>
+      <a class="module" id="zonePoliceObservationCard" href="/registraties.html" hidden><span class="ico" aria-hidden="true">📝</span><h3 id="zonePoliceObservationTitle">Politie · Observaties Basiskader</h3><p id="zonePoliceObservationDescription">Je afzonderlijk geverifieerde politiebevoegdheid.</p><span class="open">Open →</span></a>
     </div>
-    <p class="caption">TO-dienstbord, observaties vanuit politiebasiskader, roepnummeraanvragen en algemeen gebruikersbeheer behoren niet tot deze ZONE-werkruimte.</p>
+    <p class="caption">ZONE-bevoegdheden gelden uitsluitend voor Brandweer. Andere functies, zoals Politie-Basiskader, verschijnen hier alleen na een afzonderlijke identiteits- en rolcontrole. TO-dienstbord, roepnummeraanvragen en algemeen gebruikersbeheer volgen hun eigen toegangsrechten.</p>
   </section>
   <section id="ambulanceDashboard" hidden aria-labelledby="ambulanceDashboardTitle">
     <section class="hero"><div><p class="eyebrow">Ambulance · AZLS</p>
@@ -300,8 +315,9 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
       <a class="module" href="/weekrapporten.html" id="ambulanceCardReports" hidden><span class="ico" aria-hidden="true">📋</span><h3>Ambulanceweekrapporten</h3><p>Enkel de rapporten en het archief van de ambulancedienst.</p><span class="open">Open →</span></a>
       <a class="module" href="/verlofbeheer.html"><span class="ico" aria-hidden="true">📅</span><h3>Mijn verlof</h3><p>Vraag zelf verlof aan en bekijk je verlofperiodes.</p><span class="open">Open →</span></a>
       <a class="module" href="/meldingen.html"><span class="ico" aria-hidden="true">📬</span><h3>Meldingen Ambulance</h3><p>Opleidingsaanvragen van ambulanceleden en persoonlijke verlofbeslissingen.</p><span class="open">Open →</span></a>
+      <a class="module" id="ambulancePoliceObservationCard" href="/registraties.html" hidden><span class="ico" aria-hidden="true">📝</span><h3 id="ambulancePoliceObservationTitle">Politie · Observaties Basiskader</h3><p id="ambulancePoliceObservationDescription">Je afzonderlijk geverifieerde politiebevoegdheid.</p><span class="open">Open →</span></a>
     </div>
-    <p class="caption">TO-dienstbord, politionele observaties, vaste-roepnummeraanvragen en algemeen gebruikers- of toegangsbeheer behoren niet tot deze AZLS-werkruimte. Medisch instructeurs zien alleen onderdelen waarvoor ze gemachtigd zijn.</p>
+    <p class="caption">AZLS-bevoegdheden gelden uitsluitend voor Ambulance. Afzonderlijk geverifieerde politiefuncties verschijnen wanneer je ervoor gemachtigd bent. Het TO-dienstbord, roepnummeraanvragen en gebruikersbeheer volgen hun eigen toegangsrechten.</p>
   </section>
   <section id="guestDashboard" aria-labelledby="guestDashboardTitle">
     <p class="eyebrow">BelgiëPD</p><h1 id="guestDashboardTitle">Welkom op het beheerportaal</h1>
@@ -317,6 +333,28 @@ const $=id=>document.getElementById(id);
 const staffNav=$('staffNav'),memberNav=$('memberNav'),zoneNav=$('zoneNav'),ambulanceNav=$('ambulanceNav'),staffHome=$('staffDashboard'),zoneHome=$('zoneDashboard'),ambulanceHome=$('ambulanceDashboard');
 const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
 const adminSection=$('adminRights'),adminNavLink=$('adminNavLink'),logoutButton=$('dashboardLogout');
+const observationNavIds=['staffNavObservations','zoneNavObservations',
+ 'ambulanceNavObservations','memberNavObservations'];
+function showObservationNavigation(ctx){
+ const allowed=ctx?.basicObservationCanSubmit===true||ctx?.basicObservationCanReview===true;
+ const policeRoster=ctx?.basicObservationPoliceRecord===true;
+ for(const id of observationNavIds)$(id).hidden=!allowed;
+ // A Police Basiskader staff record without a verified role may only open
+ // the secure access-diagnostics page; it never gains write/review permission.
+ for(const prefix of ['zone','ambulance']){
+   const card=$(prefix+'PoliceObservationCard');
+   card.hidden=!(allowed||policeRoster);
+   const title=$(prefix+'PoliceObservationTitle');
+   const description=$(prefix+'PoliceObservationDescription');
+   title.textContent=allowed?'Politie · Observaties Basiskader':
+     'Politie · Toegang controleren';
+   description.textContent=ctx?.basicObservationCanSubmit===true?
+     'Dien observaties in over lagere politiegraden, vanuit je eigen politiefunctie.':
+     ctx?.basicObservationCanReview===true?
+       'Bekijk ontvangen Basiskader-observaties volgens je geverifieerde politierechten.':
+       'Je politiefiche bestaat, maar je Politierol moet worden bevestigd. Bekijk de controlepunten en verifieer Discord opnieuw.';
+ }
+}
 const simpleIds=['memberTrainingTile','memberNavCallsign','memberCallsignTile','memberNavLeave','memberLeaveTile','memberNavNotices','memberNoticesTile'];
 function resetSimpleModules(){for(const id of simpleIds)$(id).hidden=true}
 function displaySimpleModules(details){
@@ -347,9 +385,11 @@ function showAmbulanceDashboard(ctx){
     $(name).hidden=!visible;
   $('ambulanceVerificationNotice').hidden=
     !(['officierenkader','korpsleiding'].includes(tier)&&!canReport);
+  showObservationNavigation(ctx);
 }
-function showApprovedBasicDashboard(){
+function showApprovedBasicDashboard(ctx){
  show('member');
+ showObservationNavigation(ctx);
  // Emergency/legacy login cannot use Discord-only callsign verification.
  displaySimpleModules({canUseSelfService:true,callsignRequestAvailable:false,hasPersonnelRecord:true});
  $('memberAccountStatus').textContent='Je account heeft gewone personeelsrechten. Je ziet de personeelslijst en je persoonlijke functies.';
@@ -359,7 +399,8 @@ let auth,requestNumber=0;
 function show(mode,message=''){
  staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';zoneNav.hidden=mode!=='zone';ambulanceNav.hidden=mode!=='ambulance';
  staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';zoneHome.hidden=mode!=='zone';ambulanceHome.hidden=mode!=='ambulance';
- guestHome.hidden=mode!=='guest';adminSection.hidden=true;adminNavLink.hidden=true;
+ guestHome.hidden=mode!=='guest';adminSection.hidden=true;adminNavLink.hidden=true;$('adminCenterNavLink').hidden=true;$('adminCenterCard').hidden=true;
+ showObservationNavigation(null);
  resetSimpleModules();
  if(message)$('guestMessage').textContent=message;
 }
@@ -381,7 +422,7 @@ async function authorizedFetch(path,token){
 }
 async function displayAuthenticated(user){
  const turn=++requestNumber;
- adminSection.hidden=true;adminNavLink.hidden=true;
+ adminSection.hidden=true;adminNavLink.hidden=true;$('adminCenterNavLink').hidden=true;$('adminCenterCard').hidden=true;
  if(!user){show('guest','Meld je aan met Discord via Mijn profiel.');return;}
  if(!user.uid?.startsWith('discord:')){
   // Google emergency accounts also need server-confirmed dashboard scope.
@@ -395,12 +436,13 @@ async function displayAuthenticated(user){
       show('zone');$('zoneVerificationNotice').hidden=ctx.zoneVerified===true;
     }
     else if(ctx.dashboardProfile==='ambulance-azls')showAmbulanceDashboard(ctx);
-    else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
+    else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard(ctx);
     else{
       show('staff');
       adminSection.hidden=ctx.visible!==true;
-      adminNavLink.hidden=ctx.visible!==true;
+      adminNavLink.hidden=ctx.visible!==true;$('adminCenterNavLink').hidden=ctx.technicalCenterVisible!==true;$('adminCenterCard').hidden=ctx.technicalCenterVisible!==true;
     }
+    showObservationNavigation(ctx);
   }catch{
     if(turn===requestNumber)show('guest','Je dashboardrechten konden niet worden bevestigd. Vernieuw je aanmelding.');
   }
@@ -432,12 +474,14 @@ async function displayAuthenticated(user){
     $('memberAccountStatus').textContent=details.hasPersonnelRecord?
       'Je Discord-identiteit is bekend. Je beschikt over de persoonlijke functies van het Agenten- of Basiskader.':
       'Je Discord-account is bevestigd. Je kunt de personeelslijst zien en controleren of je een vast roepnummer kunt aanvragen.';
-    const [roster,eligibility,artwork]=await Promise.allSettled([
+    const [roster,eligibility,artwork,policeObsContext]=await Promise.allSettled([
       authorizedFetch('/api/member/personnel-list',token),
       authorizedFetch('/api/callsigns/self/status',token),
-      authorizedFetch('/api/role-artwork/manifest',token)
+      authorizedFetch('/api/role-artwork/manifest',token),
+      authorizedFetch('/api/dashboard/admin-visibility',token)
     ]);
     if(turn!==requestNumber)return;
+    showObservationNavigation(policeObsContext.status==='fulfilled'?policeObsContext.value:null);
     window.BPDPersonnelVisuals?.setArtworkManifest?.(
       artwork.status==='fulfilled'?artwork.value.artworks:[]);
     if(roster.status==='fulfilled'){
@@ -473,12 +517,13 @@ async function displayAuthenticated(user){
       show('zone');$('zoneVerificationNotice').hidden=ctx.zoneVerified===true;
     }
     else if(ctx.dashboardProfile==='ambulance-azls')showAmbulanceDashboard(ctx);
-    else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard();
+    else if(ctx.showAdvancedDashboard!==true)showApprovedBasicDashboard(ctx);
     else{
       show('staff');
       adminSection.hidden=ctx.visible!==true;
-      adminNavLink.hidden=ctx.visible!==true;
+      adminNavLink.hidden=ctx.visible!==true;$('adminCenterNavLink').hidden=ctx.technicalCenterVisible!==true;$('adminCenterCard').hidden=ctx.technicalCenterVisible!==true;
     }
+    showObservationNavigation(ctx);
   }else show('guest','Je portaaltoegang moet eerst worden gecontroleerd. Vernieuw je Discord-verificatie in Mijn profiel.');
  }catch(err){
   if(turn===requestNumber)show('guest','De aanmelding kon niet worden bevestigd: '+err.message+'. Open Mijn profiel om opnieuw te verifiëren.');

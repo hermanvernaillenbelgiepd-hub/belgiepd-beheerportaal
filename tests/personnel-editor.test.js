@@ -226,7 +226,7 @@ test('API beschermt tevens directe dossierlinks en opleidingen tegen een 900-byp
   assert.match(s,/const subjectRole=member\.exists\?verifiedOfficerCadre/);
   assert.match(roles,/if\(!mayAccessSubject\(req\.roleActor\.bpd,subject,verified\)\)/);
   assert.match(roles,/await verifiedSubjects\(\[subject\]\)/);
-  assert.match(overview,/canOpenDossier=canReadPersonnelSubject\(req\.bpd,p\)/);
+  assert.match(overview,/canOpenDossier=p\.dept!=='burger'&&canReadPersonnelSubject\(req\.bpd,p\)/);
   assert.match(overview,/req\.bpd\.verifiedPoliceSubjectRoles\?\.\[p\.discordId\]/);
   assert.match(center,/if\(!canReadPersonnelSubject\(req\.bpd,p\)\)/);
 });

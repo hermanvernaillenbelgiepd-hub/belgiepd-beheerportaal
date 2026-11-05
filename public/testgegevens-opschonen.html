@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="nl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>BelgiëPD · Testgegevens &amp; Opschonen</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<style>
+:root{font:14px/1.5 Inter,system-ui,Segoe UI,Arial,sans-serif;color-scheme:dark;
+ --page:#0b172b;--surface:#142640;--text:#edf5ff;--muted:#b8cde7;
+ --border:#385473;--field:#0c1d33;--accent:#a8cbff}
+html[data-bpd-theme="light"]{color-scheme:light;--page:#f4f7fc;--surface:#fff;
+ --text:#1a304d;--muted:#526985;--border:#c6d5e7;--field:#f5f9fd;--accent:#2459ab}
+*{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--text)}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
+ padding:17px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
+header nav{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+header a,a{color:var(--accent)}main{max-width:1200px;margin:auto;padding:22px 22px 70px}
+h1{font-size:25px;margin:0 0 6px}h2{font-size:18px;margin:0 0 12px}
+p{color:var(--muted)}.intro{font-size:13px;margin:4px 0 15px;max-width:950px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:11px;
+ padding:18px 21px;margin:14px 0}
+.panel h2{margin-bottom:14px}.fields{display:grid;grid-template-columns:200px minmax(0,1fr);gap:15px}
+label{display:block;color:var(--muted);font-size:12px;font-weight:700;margin:8px 0}
+input,select,textarea{font:inherit;width:100%;padding:9px 11px;color:var(--text);
+ background:var(--field);border:1px solid var(--border);border-radius:7px;margin:5px 0}
+textarea{min-height:90px;resize:vertical}
+button{font:inherit;font-weight:750;padding:9px 13px;background:#315bc9;color:white;
+ border:1px solid #698adb;border-radius:8px;cursor:pointer}
+button.secondary{background:var(--field);border-color:var(--border);color:var(--text)}
+button.danger{background:#873746;border-color:#c47886;color:#fff}
+button:hover:not(:disabled){filter:brightness(1.12)}button:disabled{opacity:.5;cursor:wait}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+ outline:2px solid #87b1ff;outline-offset:2px}
+[hidden]{display:none!important}.muted{font-size:12px;color:var(--muted)}.status{padding:11px 13px;
+ border:1px solid var(--border);background:var(--field);border-radius:9px;margin:12px 0;
+ color:var(--text);font-size:12px}
+.status.error{border-color:#d16b79;color:#f6aab2}
+html[data-bpd-theme="light"] .status.error{color:#9c2736}
+.subject-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+ max-height:330px;overflow:auto;margin-top:9px}
+.subject-list button{text-align:left;background:var(--field);color:var(--text);
+ border-color:var(--border);font-weight:600;overflow-wrap:anywhere}
+.subject-list button small{display:block;font-size:11px;font-weight:400;color:var(--muted)}
+.subject-list button.selected{outline:2px solid #7ca4f9}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.entry{border-top:1px solid var(--border);padding:15px 0;display:flex;
+ justify-content:space-between;gap:18px;align-items:start}
+.entry:first-child{border-top:0}.entry>div{min-width:0;overflow-wrap:anywhere}
+.entry strong{font-size:14px}.entry p{font-size:12px;margin:6px 0;white-space:pre-wrap;
+ overflow-wrap:anywhere}.entry small{font-size:11px;color:var(--muted)}
+.entry button{flex:none}.tag{display:inline-block;border:1px solid var(--border);
+ border-radius:6px;padding:2px 7px;font-size:11px;font-weight:750;margin-left:9px}
+.audit-entry{padding:9px 0;border-top:1px solid var(--border);font-size:12px}
+.audit-entry:first-child{border-top:0}
+.audit-entry small{display:block;color:var(--muted)}
+dialog{width:min(92vw,540px);border:1px solid var(--border);border-radius:12px;
+ padding:21px;background:var(--surface);color:var(--text)}
+dialog::backdrop{background:#020914bc}
+dialog h2{margin-top:0}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}
+@media(max-width:740px){main{padding:15px 12px 40px}
+ .fields,.subject-list{grid-template-columns:1fr}
+ .entry{flex-direction:column;gap:7px}.entry button{width:100%}}
+</style></head>
+<body>
+<header><div><strong>🛠️ BelgiëPD · Testgegevens &amp; Opschonen</strong></div>
+<nav><a href="/beheercentrum.html">← Beheercentrum</a>
+<a href="/dossiercentrum.html">Dossiercentrum</a><button type="button" id="login" class="secondary">Aanmelden</button></nav></header>
+<main>
+<h1>Testgegevens &amp; Opschonen</h1>
+<p class="intro">Uitsluitend voor het geverifieerde technische beheerprofiel. Zoek een personeelslid
+en controleer expliciet gemarkeerde testregistraties van Burger, Politie, Brandweer, Ambulance of
+Depannage. Echte dossierregistraties, verlof, weekrapporten en andere officiële historiek
+blijven beschermd. Er worden geen gegevens definitief uit Firebase gewist.</p>
+<div id="status" class="status" role="status" aria-live="polite">Toegang controleren…</div>
+<section id="workspace" hidden>
+  <section class="panel">
+    <h2>1. Kies een hulpdienst en personeelslid</h2>
+    <div class="fields">
+      <label>Hulpdienst
+        <select id="dept">
+          <option value="burger">Burger</option>
+          <option value="politie">Politie</option>
+          <option value="brandweer">Brandweer</option>
+          <option value="ambulance">Ambulance / AZLS</option>
+          <option value="depannage">Depannage</option>
+        </select>
+      </label>
+      <label>Zoek personeelslid (naam, roepnummer of Discord-ID)
+        <input id="search" type="search" placeholder="Typ een naam, roepnummer of Discord-ID">
+      </label>
+    </div>
+    <div id="subjects" class="subject-list" role="list"></div>
+    <p id="subjectsNote" class="muted"></p>
+  </section>
+  <section class="panel" id="entryPanel" hidden>
+    <div class="row"><div>
+      <h2 id="subjectName">2. Controleer testregistraties</h2>
+      <p class="muted" id="protectedNote">Alleen expliciete testmarkeringen worden aangeboden.</p>
+    </div><button id="refresh" type="button" class="secondary">↻ Vernieuwen</button></div>
+    <div id="entries"></div>
+  </section>
+  <section class="panel" id="auditPanel" hidden>
+    <h2>Wijzigingshistoriek van dit dossier</h2>
+    <p class="muted">Elke intrekking of herstelactie blijft met uitvoerder, reden en tijdstip bewaard.</p>
+    <div id="audit"></div>
+  </section>
+</section>
+<dialog id="actionDialog" aria-labelledby="actionTitle">
+  <form id="actionForm">
+    <h2 id="actionTitle">Testregistratie intrekken</h2>
+    <p class="muted" id="actionDescription"></p>
+    <p class="muted">De oorspronkelijke inhoud en het auditspoor blijven bewaard. Er worden geen
+    personeelsleden, verloven of officiële registraties verwijderd.</p>
+    <label>Verplichte motivering (12–500 tekens)
+      <textarea id="actionReason" required minlength="12" maxlength="500"
+        placeholder="Bijvoorbeeld: testregistratie uit ontwikkelcontrole"></textarea>
+    </label>
+    <label id="confirmLabel">Typ INTREKKEN om te bevestigen
+      <input id="actionConfirm" required autocomplete="off" spellcheck="false">
+    </label>
+    <p id="actionStatus" class="muted" role="status" aria-live="polite"></p>
+    <div class="actions">
+      <button type="submit" id="actionSubmit" class="danger">Bevestigen</button>
+      <button type="button" id="actionCancel" class="secondary">Annuleren</button>
+    </div>
+  </form>
+</dialog>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+let auth=null,authSdk=null,persons=[],selected=null,items=[],pending=null,busy=false,subjectGeneration=0;
+const message=(text,error=false)=>{$('status').textContent=text;
+ $('status').className='status'+(error?' error':'')};
+async function api(path,method='GET',payload){
+ if(!auth?.currentUser)throw Error('Meld je eerst aan in technisch beheer');
+ const token=await auth.currentUser.getIdToken();
+ const r=await fetch(path,{method,cache:'no-store',credentials:'same-origin',
+  headers:{Authorization:'Bearer '+token,...(payload?{'Content-Type':'application/json'}:{})},
+  ...(payload?{body:JSON.stringify(payload)}:{})});
+ const result=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(result.error||'Serverfout '+r.status);
+ return result;
+}
+const add=(tag,text,css='')=>{const el=document.createElement(tag);el.textContent=text;
+ if(css)el.className=css;return el};
+function renderSubjects(){
+ const term=$('search').value.toLocaleLowerCase('nl-BE').trim();
+ const matches=persons.filter(p=>(p.name+' '+p.call+' '+p.rank+' '+p.discordId)
+  .toLocaleLowerCase('nl-BE').includes(term)).slice(0,35);
+ const root=$('subjects');root.replaceChildren();
+ if(!matches.length){root.append(add('p','Geen personeelsleden gevonden','muted'));return}
+ for(const p of matches){
+  const b=add('button',p.name+' · '+(p.call||'—')+(selected?.discordId===p.discordId?' ✓':''));
+  b.type='button';b.className=selected?.discordId===p.discordId?'selected':'';
+  b.append(add('small',p.rank+' · '+p.discordId));
+  b.onclick=()=>void selectPerson(p);root.append(b);
+ }
+}
+async function loadSubjects(){
+ const generation=++subjectGeneration;
+ selected=null;persons=[];$('entries').replaceChildren();$('audit').replaceChildren();
+ $('entryPanel').hidden=true;$('auditPanel').hidden=true;
+ $('subjectsNote').textContent='Personeelslijst laden…';
+ renderSubjects();
+ try{
+  const data=await api('/api/technical-cleanup/subjects?dept='+encodeURIComponent($('dept').value));
+  if(generation!==subjectGeneration)return;
+  persons=data.persons||[];
+  $('subjectsNote').textContent=persons.length+' personeelsleden beschikbaar.'+
+   (data.limited?' Alleen de eerste 600 personen zijn geladen.':'')+
+   (data.excludedDuplicates?' Dubbele Discord-ID’s zijn uitgesloten.':'');
+  renderSubjects();
+ }catch(e){if(generation===subjectGeneration)message(e.message,true)}
+}
+async function selectPerson(person){
+ selected=person;renderSubjects();$('entryPanel').hidden=false;
+ $('subjectName').textContent='2. Testregistraties · '+person.name;
+ $('auditPanel').hidden=false;
+ await refreshEntries();
+}
+function renderEntries(data){
+ const root=$('entries');root.replaceChildren();items=data.entries||[];
+ const parts=Object.values(data.bySource||{});
+ const protectedCount=parts.reduce((sum,x)=>sum+x.protectedCount,0);
+ $('protectedNote').textContent=items.length+' testregistraties of herstelbare intrekkingen · '+
+   protectedCount+' overige registraties beschermd. '+
+   (parts.some(x=>x.limited)?'Alleen de laatste 120 registraties per bron zijn doorzocht. ':'')+
+   'Geen automatische of definitieve verwijdering.';
+ if(!items.length){root.append(add('p','Geen expliciet gemarkeerde testregistraties gevonden.','muted'));return}
+ for(const item of items){
+  const row=add('div','', 'entry'),left=document.createElement('div');
+  left.append(add('strong',(item.title||item.kind||'Registratie')+' · '+item.source));
+  left.append(add('span',item.state==='withdrawn'?'Ingetrokken':'Testkandidaat','tag'));
+  left.append(add('p',item.details||'(geen toelichting)'));
+  left.append(add('small',(item.eventDate||item.createdAt||'Datum onbekend')+
+    ' · registratie '+item.entryId+(item.reason?' · reden: '+item.reason:'')));
+  row.append(left);
+  if(item.canWithdraw||item.canRestore){
+   const action=item.canRestore?'restore':'withdraw';
+   const btn=add('button',item.canRestore?'Herstellen':'Testregistratie intrekken',
+     item.canRestore?'secondary':'danger');
+   btn.type='button';btn.onclick=()=>showAction(item,action);
+   row.append(btn);
+  }
+  root.append(row);
+ }
+}
+function renderAudit(data){
+ const root=$('audit');root.replaceChildren();
+ if(!data.events?.length){root.append(add('p','Nog geen opschoonacties geregistreerd.','muted'));return}
+ for(const event of data.events){
+  const row=add('div',event.action==='restore'?'Hersteld':'Ingetrokken','audit-entry');
+  row.append(add('small',event.at?new Date(event.at).toLocaleString('nl-BE'):'Datum onbekend'));
+  row.append(add('small',event.source+' · '+event.kind+' · uitvoerder '+event.actorDiscordId));
+  row.append(add('small','Reden: '+event.reason));root.append(row);
+ }
+ if(data.limited)root.append(add('p','Alleen de laatste 50 auditgebeurtenissen zijn geladen.','muted'));
+}
+async function refreshEntries(){
+ if(!selected)return;
+ const person=selected;
+ $('entries').replaceChildren(add('p','Registraties controleren…','muted'));
+ try{
+  const params=new URLSearchParams({dept:$('dept').value,discordId:person.discordId});
+  const [list,audit]=await Promise.all([
+   api('/api/technical-cleanup/entries?'+params),
+   api('/api/technical-cleanup/audit?'+params)
+  ]);
+  if(selected!==person)return;
+  renderEntries(list);renderAudit(audit);
+  message('Testoverzicht gecontroleerd voor '+person.name+'. Geen gegevens gewijzigd.');
+ }catch(e){if(selected===person)message('Kan dossier niet laden: '+e.message,true)}
+}
+function showAction(item,action){
+ if(!selected||busy)return;
+ pending={item,action,person:selected,dept:$('dept').value};
+ const word=action==='restore'?'HERSTELLEN':'INTREKKEN';
+ $('actionTitle').textContent=action==='restore'?'Testregistratie herstellen':'Testregistratie intrekken';
+ $('actionDescription').textContent=item.source+' · '+item.kind+' · '+item.entryId;
+ $('actionReason').value='';$('actionConfirm').value='';
+ $('confirmLabel').firstChild.textContent='Typ '+word+' om te bevestigen';
+ $('actionStatus').textContent='Deze handeling vereist je expliciete bevestiging.';
+ $('actionSubmit').textContent=action==='restore'?'Herstellen':'Intrekken en loggen';
+ $('actionDialog').showModal();
+}
+$('actionCancel').onclick=()=>$('actionDialog').close();
+$('actionDialog').addEventListener('close',()=>{if(!busy)pending=null});
+$('actionForm').onsubmit=async event=>{
+ event.preventDefault();
+ if(!pending||busy||selected!==pending.person)return;
+ const {item,action,person,dept}=pending,word=action==='restore'?'HERSTELLEN':'INTREKKEN';
+ if($('actionConfirm').value.trim()!==word){
+  $('actionStatus').textContent='Typ exact '+word+'.';return
+ }
+ const reason=$('actionReason').value.trim();
+ if(reason.length<12||reason.length>500){$('actionStatus').textContent='Geef een geldige reden.';return}
+ busy=true;$('actionSubmit').disabled=true;$('actionCancel').disabled=true;
+ $('actionStatus').textContent='Wijziging en auditlog in Firebase opslaan…';
+ let committed=false;
+ try{
+  const result=await api('/api/technical-cleanup/'+action,'POST',{
+   dept,discordId:person.discordId,source:item.source,entryId:item.entryId,
+   reason,confirm:word
+  });
+  if(result.saved!==true||result.entryId!==item.entryId)
+   throw Error('De server bevestigde de wijziging niet');
+  committed=true;
+  await refreshEntries();
+  $('actionDialog').close();pending=null;
+  message('Wijziging opgeslagen en gelogd. De oorspronkelijke gegevens blijven bewaard.');
+ }catch(e){
+  $('actionStatus').textContent=committed?
+   'Wijziging door de server bevestigd, maar de nacontrole mislukte. Vernieuw eerst het dossier.':
+   'Actie mislukt: '+e.message;
+  message($('actionStatus').textContent,true);
+ }finally{busy=false;$('actionSubmit').disabled=false;$('actionCancel').disabled=false}
+};
+$('dept').onchange=()=>void loadSubjects();
+$('search').oninput=renderSubjects;
+$('refresh').onclick=()=>void refreshEntries();
+async function init(){
+ try{
+  const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+  if(!cfg.enabled)throw Error('Firebase is niet actief');
+  const app=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  auth=authSdk.getAuth(app.getApps()[0]||app.initializeApp(cfg.firebaseConfig));
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:$('login'),auth,authModule:authSdk,
+   config:cfg,onError:e=>message(e.message,true)});
+  authSdk.onAuthStateChanged(auth,async user=>{
+   if(!user){subjectGeneration++;$('workspace').hidden=true;message('Meld je aan in je technische profiel.');return}
+   try{
+    await api('/api/technical-cleanup/access');
+    $('workspace').hidden=false;await loadSubjects();
+    message('Technische opschoonfunctie beschikbaar. Selecteer een testregistratie.');
+   }catch(e){$('workspace').hidden=true;message('Geen technische toegang: '+e.message,true)}
+  });
+ }catch(e){message('Aanmelding niet beschikbaar: '+e.message,true)}
+}
+void init();
+</script>
+<script defer src="/bpd-navigation.js"></script>
+</body></html>

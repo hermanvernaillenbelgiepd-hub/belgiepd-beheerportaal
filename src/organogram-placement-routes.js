@@ -5,7 +5,8 @@ import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
 import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
  from './organogram-mid-order-policy.js';
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
- validatePlacement,validatePoliceSpecialtyEdit,manualDisplay,verifiedSyncRoles,mergePlacement,canManagePlacements
+ validatePlacement,validatePoliceSpecialtyEdit,manualDisplay,verifiedSyncRoles,registeredFireBasicTraining,
+ AE_DISCORD_ROLES,mergePlacement,verifiedDepannageOrganogramGroups,canManagePlacements
 } from './organogram-placement-policy.js';
 import {organogramReekshoofdTitle,policeOrganogramDossierUrl} from './organogram-profile-display.js';
 import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
@@ -13,9 +14,20 @@ import {K9_ROLE_COLLECTION,K9_ROLE_IDS,canEditK9Display,verifiedK9DisplayRole,
 import {refreshK9DisplayRoles,knownK9Candidate,verifyK9DisplayRoleNow} from './k9-live-discord-sync.js';
 import {MOTARD_DISPLAY_COLLECTION,verifiedMotardDisplayRole,effectiveMotardDisplayRole} from './motard-display-role.js';
 import {DISP_DISPLAY_COLLECTION,verifiedDispDisplayRole,effectiveDispDisplayRole} from './disp-display-role.js';
+import {verifyLiveSpecialtyRoles} from './specialty-live-discord-sync.js';
+import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
+ BW_LOG_SIG_ROLE_ID,BW_LOG_SIG_SPECIALTIES,fireSpecialtyAssetKeys,
+ knownFireRoleSpecialty,normalizedSpecialtyLinkLabel,knownDepannageRoleSpecialty,
+ depannageSpecialtyAssetKeys,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
+ knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
+import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks,exactApiDisplayRoles} from './bpd-discord-users-display.js';
+import {projectCitizenOrganogram,projectVerifiedCouncilAccounts,councilRoleIds} from './burger-organogram-projection.js';
+import {roleArtworkCandidateKeys,resolveSpecialtyArtworkKey} from './specialty-artwork-resolver.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
- awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
+ awardKey,publicDecorations,decorationCatalogExtras} from './personnel-decoration-policy.js';
 
+export const AE_MANUAL_DISPLAY_COLLECTION='bpd_ae_display_roles';
+const AE_MANUAL_LEVELS=new Set(['ae_i','ae_t','teamleader','instructeur']);
 const idOK=id=>/^\d{15,22}$/.test(String(id||''));
 const fault=(code,msg)=>Object.assign(new Error(msg),{publicStatus:code});
 const respond=(res,e)=>{
@@ -65,36 +77,59 @@ const safePublic=p=>({
  dept:p.dept,name:p.name,call:p.call,rank:p.rank,specialties:p.specialties,
  teachingRoles:p.teachingRoles,displayLabels:p.displayLabels||[],instructorSpecialties:p.instructorSpecialties,
  teacherSpecialties:p.teacherSpecialties,k9Role:p.k9Role||'',motardRole:p.motardRole||'',dispRole:p.dispRole||'',
- aeRole:p.aeRole||'',aeRoles:Array.isArray(p.aeRoles)?p.aeRoles:[],
+ aeRole:p.aeRole||'',aeManual:p.aeManual||'',aeRoles:Array.isArray(p.aeRoles)?p.aeRoles:[],
  aeTeamleader:p.aeTeamleader===true,boardRole:p.boardRole,leadershipTier:p.leadershipTier,displayOrder:p.displayOrder,source:p.source
 });
 export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
  const store=()=>getFirestore();
  const k9VerificationCooldown=new Map();
+  const aeProofCache=new Map();
+  let lastApiMatchReport=0;
+ // Admin-only reconciliation: never expose unmatched IDs on public pages.
+ app.get('/api/organogram/discord-links/admin',requireUser,manager,async(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  res.set('X-Content-Type-Options','nosniff');
+  try{
+   const snapshot=await getSnapshot();
+   const people=snapshot.data.filter(p=>validRow(p)).slice(0,1200);
+   const upstream=await getBelgiumPdDisplayRoles();
+   return res.json({...diagnoseOrganogramRoleLinks(people,upstream),
+    stale:snapshot.stale===true});
+  }catch(error){return respond(res,error);}
+ });
  // All returned attributes are display-only. Public output NEVER includes
  // Discord identifiers, access grants, source documents or audit history.
  app.get('/api/organogram/hierarchie',requireUser,async(_req,res)=>{
   try{
-   const db=store(),snapshot=await getSnapshot(),roster=snapshot.data.filter(p=>validRow(p)&&p.dept!=='burger').slice(0,1200);
-   const [manualSnap,k9Snap,motardSnap,dispSnap,decorationSnap,catalogSnap]=await Promise.all([
+   const db=store(),snapshot=await getSnapshot();
+   let roster=snapshot.data.filter(p=>validRow(p)).slice(0,1200);
+   const [manualSnap,k9Snap,motardSnap,dispSnap,aeSnap,decorationSnap,catalogSnap]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
     db.collection(MOTARD_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(DISP_DISPLAY_COLLECTION).limit(1500).get(),
+    db.collection(AE_MANUAL_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(500).get(),
-    db.collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get()
+    db.collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(120).get()
    ]);
    if(manualSnap.size>=1500)return res.status(503).json({error:'Organogramregisterlimiet bereikt'});
    // The per-service mapping is visual-only. It can select a library patch
    // for a recently verified Discord role without changing personnel rights.
    const linkDocs=await db.getAll(...['politie','brandweer','ambulance','depannage']
      .map(dept=>db.collection(SPECIALTY_ROLE_LINKS).doc(dept)));
-   const mapped=new Map(linkDocs.filter(d=>d.exists).map(d=>[d.id,
-    (Array.isArray(d.get('links'))?d.get('links'):[]).filter(x=>
-      x&&idOK(x.roleId)&&typeof x.label==='string'&&x.label.length<=90)]));
-   const assetKeys=[...new Set([...mapped.values()].flat()
-      .map(x=>String(x.assetKey||'')).filter(x=>
-       /^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,300);
+   const mapped=new Map(linkDocs.map(d=>[d.id,
+    defaultSpecialtyRoleLinks(d.id,
+      (Array.isArray(d.get('links'))?d.get('links'):[]).filter(x=>
+       x&&(x.roleId===''||idOK(x.roleId))&&typeof x.label==='string'&&x.label.length<=90),
+      d.get('presetVersion')===POLICE_PATCH_PRESET_VERSION)]));
+   const assetKeys=[...new Set([
+    ...[...mapped.values()].flat().flatMap(x=>[
+     String(x.assetKey||''),...roleArtworkCandidateKeys(x)]),
+    ...['Logistiek','Signalisatie','Ladderwagen','Bosbestrijding','Duiker',
+      'RED team','Gevaarlijke stoffen'].flatMap(fireSpecialtyAssetKeys),
+    ...AMBULANCE_ROLE_PATCH_PRESETS.flatMap(x=>ambulanceSpecialtyAssetKeys(x.label)),
+    ...['F.A.S.T','LSRA','CRANE'].flatMap(depannageSpecialtyAssetKeys)
+   ].filter(x=>/^(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,450);
    const assetUrls=new Map();
    for(const group of chunks(assetKeys,100)){
     const docs=await db.getAll(...group.map(key=>db.collection(ROLE_ARTWORK_META).doc(key)));
@@ -116,10 +151,10 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const k9Manual=manualMap(k9Snap.docs);
    const motardManual=manualMap(motardSnap.docs);
    const dispManual=manualMap(dispSnap.docs);
+   const aeManual=manualMap(aeSnap.docs);
    // Public award projection: no private history, hidden items or revoked medals.
    const decorationEntries=new Map(decorationSnap.docs.map(d=>[d.id,d.get('entries')||[]]));
-   const customCatalog=new Map(catalogSnap.docs.map(d=>[d.id,customCatalogItem(d)])
-    .filter(([,item])=>Boolean(item)));
+   const customCatalog=decorationCatalogExtras(catalogSnap.docs);
    const boardOnly=manualSnap.docs.filter(d=>d.get('dept')==='bestuur'&&
     d.get('status')==='active'&&['bestuur','bestuur-ai'].includes(d.get('boardRole')))
     .map(d=>d.get('personId')).filter(idOK).slice(0,100);
@@ -130,43 +165,171 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
      byId.set(account.id,account.data());
    }
    const peopleIds=roster.map(p=>p.personId);
-   const roles=await identityMap(db,peopleIds,process.env.DISCORD_GUILD_ID);
+   const [cachedOAuthRoles,upstream]=await Promise.all([
+    identityMap(db,peopleIds,process.env.DISCORD_GUILD_ID),
+    getBelgiumPdDisplayRoles()
+   ]);
+   // Project verified Burger/Burger IO/Burgerraad memberships onto an existing
+   // service identity, even when BURGERS has no separate personnel record.
+   // This only extends the public organogram response; it cannot create a
+   // Burger dossier, authorization grant or persisted personnel entry.
+   roster=projectCitizenOrganogram(roster,upstream,cachedOAuthRoles,
+    process.env.DISCORD_GUILD_ID);
+   // A verified Burgerraad role may belong to an approved portal account
+   // with no legacy personnel fiche. Look up only those exact council IDs.
+   // Do not persist anything or assign dossier/leadership permissions.
+   const councilIds=councilRoleIds(upstream);
+   const councilAccounts=new Map();
+   for(const batch of chunks(councilIds,100)){
+    const docs=await db.getAll(...batch.map(id=>db.collection(USER_COLLECTION).doc(id)));
+    for(const doc of docs)if(doc.exists&&doc.get('status')==='approved')
+     councilAccounts.set(doc.id,doc.data());
+   }
+   roster=projectVerifiedCouncilAccounts(roster,upstream,councilAccounts);
+   if(upstream.status==='ok')
+    console.info('Burgerraad rolcontrole (alleen aantallen):',
+     'discord='+councilIds.length,
+     'met_gekoppeld_profiel='+roster.filter(p=>p.dept==='burger'&&
+      councilIds.includes(p.personId)).length);
+   // ONLY the public organogram presentation uses the upstream API.
+   // Login, dossier permissions and persisted Firebase role evidence remain
+   // independent of this role overlay.
+   const match=organogramDisplayIdentityMap(cachedOAuthRoles,upstream,roster,
+    process.env.DISCORD_GUILD_ID);
+   const roles={...cachedOAuthRoles,entries:match.entries};
+   // Aggregate-only diagnostic for an authenticated organogram request.
+   // Never log Discord IDs, names, role IDs, or individual matches.
+   if(upstream.status==='ok'&&Date.now()-lastApiMatchReport>300000){
+    lastApiMatchReport=Date.now();
+    console.info('BelgiumPD organogram-rolkoppeling:',
+     'personeelsfiches='+roster.length,'gematcht='+match.matches);
+   }
    const prepared=roster.map(p=>{
     const key=personKey(p.dept,p.personId);
     const override=manualDisplay(manual.get(key),p.dept);
     const synced=verifiedSyncRoles(roles.entries.get(p.personId),p.dept,process.env.DISCORD_GUILD_ID);
+    // A roster display source may confirm a specialization but may NEVER
+    // independently create a bestuur appointment; retain existing evidence.
+    if(roles.entries.get(p.personId)?.displaySource==='bpd-users-api'){
+     const original=verifiedSyncRoles(cachedOAuthRoles.entries.get(p.personId),
+      p.dept,process.env.DISCORD_GUILD_ID);
+     synced.boardRole=original.boardRole;
+    }
     return {p,merged:mergePlacement(p,override,synced)};
    });
    // A qualification can have a shared patch WITHOUT a Discord role.
    // Shared patches are only shown for a qualification already present in the
    // Sheets/manual personnel register or the controlled organogram.
    // Role-specific versions require a recent guild-verified role snapshot.
-   const mappedPatches=(p,merged)=>{
+   // Previously authenticated Discord snapshots can miss a newly promoted
+    // AE Teamleader. Verify known AE members directly with the guild bot
+    // for organogram presentation only; never persist or grant access.
+    const knownAERoles=new Set(Object.values(AE_DISCORD_ROLES));
+    const aeCandidates=prepared.filter(({p,merged})=>p.dept==='politie'&&(
+      merged.specialties.includes('AE')||
+      AE_MANUAL_LEVELS.has(aeManual.get(p.personId)?.role)||
+      (Array.isArray(roles.entries.get(p.personId)?.roleIds)&&
+       roles.entries.get(p.personId).roleIds.some(id=>knownAERoles.has(id)))
+    )).map(({p})=>p.personId).slice(0,48);
+    const liveAE=new Map();
+    let aeIndex=0;
+    await Promise.all(Array.from({length:Math.min(8,aeCandidates.length)},async()=>{
+     while(aeIndex<aeCandidates.length){
+      const memberId=aeCandidates[aeIndex++],cacheKey=process.env.DISCORD_GUILD_ID+':'+memberId;
+      const cached=aeProofCache.get(cacheKey),now=Date.now();
+      let proof=cached&&cached.until>now?cached.proof:null;
+      if(!proof){
+       proof=await verifyLiveSpecialtyRoles(memberId);
+       aeProofCache.set(cacheKey,{proof,until:Date.now()+(proof.verified?120000:20000)});
+      }
+      // A verified absent role also clears a stale automatic Teamleader.
+      if(proof.verified)liveAE.set(memberId,proof.roleIds);
+     }
+    }));
+    if(aeProofCache.size>500){
+     for(const [key,entry] of aeProofCache)if(entry.until<Date.now())aeProofCache.delete(key);
+    }
+    const mappedPatches=(p,merged)=>{
     const identity=roles.entries.get(p.personId),now=Date.now();
     const trustworthy=identity&&identity.guildId===process.env.DISCORD_GUILD_ID&&
       Number.isSafeInteger(identity.verifiedAt)&&
       identity.verifiedAt<=now+60000&&now-identity.verifiedAt<=7*86400000&&
       Array.isArray(identity.roleIds)&&identity.roleIds.every(idOK);
-    const verified=new Set(trustworthy?identity.roleIds:[]);
+    const verified=new Set(liveAE.has(p.personId)?liveAE.get(p.personId):(trustworthy?identity.roleIds:[]));
     const active=new Set(merged.specialties||[]);
-    const normalizedLabel=label=>{
-      const aliases={'Motor':'MOTARD','Motard':'MOTARD','Semi-ano.':'SEMI ANONIEM',
-       'Semi-anoniem':'SEMI ANONIEM','Dispatch':'DISP','Radio BM':'RADIO/BM',
-       'Signalisatie':'SIGNALISATIE','SIV/WPR':'SIGNALISATIE','K-9':'K9'};
-      return aliases[label]||label;
-    };
+    const normalizedLabel=label=>normalizedSpecialtyLinkLabel(p.dept,label);
     const all=mapped.get(p.dept)||[];
-    const valid=x=>assetUrls.has(x.assetKey)&&
-      !['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value);
-    const rolespecific=all.filter(x=>x.roleId&&verified.has(x.roleId)&&valid(x));
+    const activeRole=x=>!['Nee','Niet ingevuld','ONTSLAG','GESCHORST','BLACKLISTED'].includes(x.value);
+    const curatedFire=x=>p.dept==='brandweer'&&
+      knownFireRoleSpecialty(x.roleId,x.label);
+    const curatedAmbulance=x=>p.dept==='ambulance'&&
+      knownAmbulanceRoleSpecialty(x.roleId,x.label);
+    const curatedDepannage=x=>p.dept==='depannage'&&
+      knownDepannageRoleSpecialty(x.roleId,x.label);
+    // Explicit library choices win. When a saved link lacks an assetKey,
+    // also try the exact Discord-role artwork slot before generic icons.
+    // The one shared BW LOG/SIG role must NOT reuse one role patch for both.
+    const assetFor=x=>resolveSpecialtyArtworkKey(x,assetUrls,
+      curatedFire(x)?fireSpecialtyAssetKeys(x.label):
+      curatedAmbulance(x)?ambulanceSpecialtyAssetKeys(x.label):
+      curatedDepannage(x)?depannageSpecialtyAssetKeys(x.label):[],
+      {allowRoleFallback:!(p.dept==='brandweer'&&
+       x.roleId===BW_LOG_SIG_ROLE_ID&&BW_LOG_SIG_SPECIALTIES.includes(x.label))});
+    const valid=x=>assetUrls.has(assetFor(x))&&activeRole(x);
+    // A verified role shows its qualification even before artwork is
+    // uploaded. Never infer a medical qualification from leadership alone.
+    // Verified specialization roles must be displayed even without artwork.
+    // Keep the highest verified level if trainee and full roles coexist.
+    const levelRank=x=>x.roleId===AE_DISCORD_ROLES.teamleader?5:
+     ({'Stage':1,'AANGEMELD':1,'Ja':2,'LEIDING':4,'INSTRUCTEUR':3}[x.value]||2);
+    const roleChoices=new Map();
+    for(const link of all){
+     if(!link.roleId||!verified.has(link.roleId)||!activeRole(link))continue;
+     const label=normalizedLabel(link.label);
+     if(!SPECIALTIES[p.dept]?.includes(label))continue;
+     const old=roleChoices.get(label);
+     if(!old||levelRank(link)>levelRank(old))roleChoices.set(label,link);
+    }
+    const rolespecific=[...roleChoices.values()];
+    // An explicitly recorded AE display level must also select the matching
+    // library artwork. Registering a mapping is not the same as giving a role.
+    const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',
+     teamleader:'1337775768083632158',instructeur:'1337156006597103746'};
+    const displayAE=merged.aeRole||'';
+    const aePatch=aeRoleIds[displayAE]?all.find(x=>
+     x.roleId===aeRoleIds[displayAE]&&normalizedLabel(x.label)==='AE'&&
+     activeRole(x)&&(merged.aeManual===displayAE||verified.has(x.roleId))):null;
     const manual=all.filter(x=>!x.roleId&&valid(x)&&
       active.has(normalizedLabel(x.label))&&
+      !(displayAE&&normalizedLabel(x.label)==='AE')&&
       !rolespecific.some(y=>normalizedLabel(y.label)===normalizedLabel(x.label)));
-    return [...rolespecific,...manual].map(x=>({
-      label:x.label,level:String(x.level||x.value||'').slice(0,45),
-      imageUrl:assetUrls.get(x.assetKey),
-      source:x.roleId?'discord':'registered'
-    })).slice(0,20);
+    // A registered Brandweer qualification can show its linked generic
+    // artwork when Discord verification is temporarily unavailable.
+    // This does NOT imply the mapped role or create a qualification.
+    const existingFireArtwork=[];
+    if(p.dept==='brandweer'){
+     const handled=new Set([...rolespecific,...manual].map(x=>normalizedLabel(x.label)));
+     for(const link of all){
+      const label=normalizedLabel(link.label),key=assetFor(link);
+      if(!link.roleId||!active.has(label)||handled.has(label)||!activeRole(link)||
+         !/^(?:specialty|patch)_brandweer_[a-z0-9][a-z0-9_]{0,39}$/.test(key)||
+         !assetUrls.has(key))continue;
+      existingFireArtwork.push({label,level:'',roleId:'',
+       imageUrl:assetUrls.get(key),source:'registered'});
+      handled.add(label);
+     }
+    }
+    // When an AE level is known, never show an unrelated generic or trainee
+    // patch as the teamleader insignia. The UI can use an exact variant,
+    // otherwise it shows a clearly labelled placeholder.
+    return [...(aePatch?[aePatch]:[]),
+      ...rolespecific.filter(x=>!(displayAE&&normalizedLabel(x.label)==='AE')),
+      ...manual].map(x=>({
+      label:normalizedLabel(x.label),level:String(x.level||x.value||'').slice(0,45),
+      roleId:x.roleId||'',imageUrl:assetUrls.get(assetFor(x))||'',
+      source:x===aePatch&&merged.aeManual===displayAE?'registered':
+       x.roleId?'discord':'registered'
+    })).concat(existingFireArtwork).slice(0,20);
    };
    // A member's own login only refreshes their own Discord identity. For
    // K9 candidates, the server bot now checks their roles independently.
@@ -179,7 +342,18 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const records=[],boardById=new Map();
    for(const {p,merged} of prepared){
     if(p.dept==='politie'){
-     // A verified bot result (even no current K9 role) supersedes the old
+     // Verified live AE functions replace stale automatic OAuth snapshots.
+      // Handmatige AE-registraties still apply in the next block.
+      if(liveAE.has(p.personId)){
+       const currentAE=verifiedSyncRoles({guildId:process.env.DISCORD_GUILD_ID,
+        verifiedAt:Date.now(),roleIds:liveAE.get(p.personId)},
+        'politie',process.env.DISCORD_GUILD_ID);
+       merged.aeRoles=currentAE.aeRoles;
+       merged.aeRole=currentAE.aeRole;
+       merged.aeTeamleader=currentAE.aeTeamleader;
+       if(merged.aeRole&&!merged.specialties.includes('AE'))merged.specialties.push('AE');
+      }
+      // A verified bot result (even no current K9 role) supersedes the old
      // snapshot. On bot/API failure use only still-verified OAuth data.
      const auto=liveK9.roles.has(p.personId)?
       liveK9.roles.get(p.personId):
@@ -193,6 +367,17 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
      if(!merged.motardRole&&merged.specialties.includes('MOTARD'))
       merged.motardRole=merged.instructorSpecialties.includes('MOTARD')?'instructeur':'volwaardig';
      if(merged.motardRole&&!merged.specialties.includes('MOTARD'))merged.specialties.push('MOTARD');
+     // Audited manual AE display level supplements (never impersonates) verified Discord.
+     const chosenAE=String(aeManual.get(p.personId)?.role||'');
+     if(AE_MANUAL_LEVELS.has(chosenAE)){
+      merged.aeManual=chosenAE;
+      merged.aeRoles=[...new Set([...(merged.aeRoles||[]),chosenAE])];
+      merged.aeTeamleader=merged.aeRoles.includes('teamleader');
+      merged.aeRole=merged.aeTeamleader?'teamleader':
+       merged.aeRoles.includes('instructeur')?'instructeur':
+       merged.aeRoles.includes('ae_t')?'ae_t':'ae_i';
+      if(!merged.specialties.includes('AE'))merged.specialties.push('AE');
+     }
      const dispAuto=verifiedDispDisplayRole(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID);
      merged.dispRole=effectiveDispDisplayRole(dispManual.get(p.personId)?.role||'',dispAuto);
      // Existing DISP members without level metadata remain visible, but
@@ -211,7 +396,13 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
+     ...(p.dept==='burger'?{burgerGroups:(()=>{const identity=roles.entries.get(p.personId),now=Date.now();if(!identity||identity.guildId!==process.env.DISCORD_GUILD_ID||!Number.isSafeInteger(identity.verifiedAt)||identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||!Array.isArray(identity.roleIds))return [];const roleIds=new Set(identity.roleIds);return [['1492485336197234728','Burgerraad'],['1309532438019706966','Burger'],['1398985105254650007','Burger IO']].filter(([id])=>roleIds.has(id)).map(([,label])=>label);})()}:{}),
+     ...(p.dept==='depannage'?{depannageGroups:verifiedDepannageOrganogramGroups(
+      roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID)}:{}),
      specialtyPatches,
+     completedFireBasicTraining:registeredFireBasicTraining(p),
+     azlsFunctions:p.dept==='ambulance'?
+      verifiedAzlsFunctions(roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID):[],
      awards:p.dept==='politie'?publicDecorations(
       decorationEntries.get(awardKey(p.dept,p.personId))||[],undefined,customCatalog):[],
      status:p.dept==='politie'?String(p.status||'').trim().slice(0,30):'',
@@ -240,7 +431,138 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     }
    }
    return res.json({readOnly:true,stale:snapshot.stale===true,
+    canManageAE:canEditK9Display(_req.bpd),
     syncAvailable:!roles.failed,records,board:[...boardById.values()].slice(0,50)});
+  }catch(e){return respond(res,e)}
+ });
+ // A personnel-card-only refresh: check the actual Discord guild member via the bot.
+ // No client-supplied Discord ID, guild, role list or authorization is accepted.
+ // Only safe, display-specific levels and vetted patch URLs are returned.
+ const specialtyCheckCache=new Map();
+ app.get('/api/organogram/specialty-check/:dept/:call',requireUser,async(req,res)=>{
+  const dept=req.params.dept,call=String(req.params.call||'');
+  if(dept!=='politie'||!/^([a-z]{1,6}[- ]?)?\d{3}$/i.test(call))
+   return res.status(400).json({error:'Ongeldige personeelsselectie'});
+  try{
+   const snapshot=await getSnapshot();
+   // Read-only display verification may run on a uniquely matched roster row
+   // even when the obsolete Sheets refresh is marked stale.
+   const targets=snapshot.data.filter(p=>validRow(p)&&p.dept===dept&&p.call===call);
+   if(targets.length!==1)return res.status(404).json({error:'Geen uniek personeelslid gevonden'});
+   const staff=targets[0],key=String(process.env.DISCORD_GUILD_ID||'')+':'+staff.personId;
+   let cached=specialtyCheckCache.get(key),now=Date.now();
+   if(!cached||cached.until<=now){
+    const live=await verifyLiveSpecialtyRoles(staff.personId);
+    // Read-only fallback from the authorized BelgiumPD API, scoped to this
+    // unique personnel Discord ID. Never affects access or writes to Firebase.
+    // A confirmed Discord 404 is authoritative and does not use this fallback.
+    let proof=live;
+    if(!live.verified&&live.status!=='not_in_guild'){
+     const upstream=await getBelgiumPdDisplayRoles();
+     const roles=exactApiDisplayRoles(upstream,staff.personId);
+     if(Array.isArray(roles))
+      proof={verified:true,status:'ok',roleIds:[...roles],source:'bpd-users-api'};
+    }
+    cached={live:proof,until:now+(proof.verified?60000:15000)};
+    specialtyCheckCache.set(key,cached);
+    if(specialtyCheckCache.size>500){
+     for(const [k,v] of specialtyCheckCache)if(v.until<=now)specialtyCheckCache.delete(k);
+     if(specialtyCheckCache.size>500)specialtyCheckCache.delete(specialtyCheckCache.keys().next().value);
+    }
+   }
+   if(!cached.live.verified||cached.live.status==='not_in_guild')
+    return res.json({verified:false,status:cached.live.status,displayOnly:true});
+   const identity={guildId:process.env.DISCORD_GUILD_ID,verifiedAt:Date.now(),
+    roleIds:cached.live.roleIds};
+   const synced=verifiedSyncRoles(identity,'politie',process.env.DISCORD_GUILD_ID);
+   const motardRole=verifiedMotardDisplayRole(identity,process.env.DISCORD_GUILD_ID);
+   const dispRole=verifiedDispDisplayRole(identity,process.env.DISCORD_GUILD_ID);
+   const roleIds=new Set(identity.roleIds);
+   const db=store();
+   const linksDoc=await db.collection(SPECIALTY_ROLE_LINKS).doc('politie').get();
+   const links=defaultSpecialtyRoleLinks('politie',
+    Array.isArray(linksDoc.get('links'))?linksDoc.get('links'):[],
+    linksDoc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION);
+   const normalizeLabel=label=>({
+    'Motor':'MOTARD','Motard':'MOTARD','Dispatch':'DISP',
+    'Terreinondersteuner':'TO','Radio BM':'RADIO/BM',
+    'Semi-ano.':'SEMI ANONIEM','Signalisatie':'SIGNALISATIE'
+   })[label]||label;
+   const hasFullRago=roleIds.has('1309532437977497700')||
+    roleIds.has('1393050551188721865');
+   const priority={Stage:1,AANGEMELD:1,Ja:2,LEIDING:3,INSTRUCTEUR:4};
+   const selected=new Map();
+    // AE-Teamleader outranks AE-Instructeur for the single function patch.
+    const linkPriority=link=>link.roleId===AE_DISCORD_ROLES.teamleader&&
+     normalizeLabel(link.label)==='AE'?5:(priority[link.value]||0);
+   for(const link of links){
+    if(!link||!roleIds.has(link.roleId)||!Object.hasOwn(priority,link.value))continue;
+    const label=normalizeLabel(link.label);
+    if(label==='RAGO'&&link.value==='AANGEMELD'&&hasFullRago)continue;
+    const chosen=selected.get(label);
+    if(!chosen||linkPriority(link)>linkPriority(chosen))selected.set(label,link);
+   }
+   const patches=[];
+   for(const [label,link] of selected){
+    const key=String(link.assetKey||'');
+    if(!/^(?:(?:specialty|patch)_politie_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
+    const asset=await db.collection(ROLE_ARTWORK_META).doc(key).get();
+    const imageLabel=String(asset.get('label')||'');
+    const isRoleImage=/^\d{15,22}_/.test(key);
+    if(!asset.exists||asset.get('active')!==true||
+      asset.get('department')!=='politie'||!asset.get('version')||
+      !(['patch','specialty'].includes(asset.get('kind'))||
+        isRoleImage&&key.startsWith(link.roleId+'_')&&
+        (asset.get('kind')||'role')==='role')||
+      label==='RADIO/BM'&&/burgermelding/i.test(imageLabel))
+     continue;
+    patches.push({label,level:String(link.level||link.value||'').slice(0,45),
+      roleId:link.roleId,
+     imageUrl:'/api/role-artwork/file/'+key+'?v='+encodeURIComponent(asset.get('version')),
+     source:'discord'});
+   }
+   const specialties=[...new Set([
+    ...synced.specialties,
+    ...[...selected.entries()].map(([label,link])=>
+     label==='RAGO'&&link.value==='AANGEMELD'?'RAGO-IO':label)
+   ])].filter(x=>x!=='RAGO-IO'||!hasFullRago).slice(0,20);
+   res.set('Cache-Control','private, no-store');
+   return res.json({verified:true,status:'ok',displayOnly:true,
+     verificationSource:cached.live.source||'discord-bot',
+    aeRole:synced.aeRole,aeRoles:synced.aeRoles,
+    motardRole:motardRole||'',dispRole:dispRole||'',
+    specialties,patches});
+  }catch(e){return respond(res,e)}
+ });
+ // Targeted, audited AE presentation correction from an authorized police
+ // personnel card. Does not alter Discord, Firebase access grants or the roster.
+ app.put('/api/organogram/ae-display/:call',requireUser,async(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  if(!canEditK9Display(req.bpd))
+   return res.status(403).json({error:'Alleen Officierenkader en Korpsleiding'});
+  const call=String(req.params.call||''),role=String(req.body?.role??'');
+  const reason=String(req.body?.reason??'').trim();
+  if(!/^(?:[a-z]{1,6}[- ]?)?\d{3}$/i.test(call)||!['',...AE_MANUAL_LEVELS].includes(role)||
+    reason.length<8||reason.length>300)
+   return res.status(400).json({error:'Kies een geldige AE-functie en motivering (8-300 tekens)'});
+  try{
+   const snapshot=await getSnapshot();
+   const candidates=snapshot.data.filter(p=>validRow(p)&&
+    p.dept==='politie'&&p.call===call);
+   if(candidates.length!==1)throw fault(409,'Geen uniek personeelslid met dit roepnummer');
+   const staff=candidates[0],db=store();
+   const ref=db.collection(AE_MANUAL_DISPLAY_COLLECTION).doc(staff.personId);
+   await db.runTransaction(async tx=>{
+    const previous=await tx.get(ref),old=String(previous.get('role')||'');
+    if(old===role)return;
+    tx.set(ref,{dept:'politie',personId:staff.personId,role,
+      updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp(),
+      displayOnly:true});
+    tx.create(ref.collection('audit').doc(),{
+      action:'ae_display_role',previous:old,next:role,reason,
+      actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+   });
+   return res.json({saved:true,displayOnly:true,accessRightsChanged:false});
   }catch(e){return respond(res,e)}
  });
  // K9 role editing is independent of the technical-only placement editor.
@@ -335,21 +657,23 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
   try{
    const db=store(),snapshot=await getSnapshot();
    const people=snapshot.data.filter(p=>validRow(p)&&p.dept==='politie').slice(0,1200);
-   const [placements,k9Snap,motardSnap,dispSnap,identities]=await Promise.all([
+   const [placements,k9Snap,motardSnap,dispSnap,aeSnap,identities]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
     db.collection(MOTARD_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(DISP_DISPLAY_COLLECTION).limit(1500).get(),
+    db.collection(AE_MANUAL_DISPLAY_COLLECTION).limit(1500).get(),
     identityMap(db,people.map(p=>p.personId),process.env.DISCORD_GUILD_ID)
    ]);
    if(placements.size>=1500||k9Snap.size>=1500)throw fault(503,'Registerlimiet bereikt');
-   const pm=manualMap(placements.docs),km=manualMap(k9Snap.docs),mm=manualMap(motardSnap.docs),dm=manualMap(dispSnap.docs);
+   const pm=manualMap(placements.docs),km=manualMap(k9Snap.docs),mm=manualMap(motardSnap.docs),dm=manualMap(dispSnap.docs),am=manualMap(aeSnap.docs);
    return res.json({displayOnly:true,canEdit:true,specialties:SPECIALTIES.politie,
     people:people.map(p=>{
      const v=manualDisplay(pm.get(personKey('politie',p.personId)),'politie');
      const verified=verifiedSyncRoles(identities.entries.get(p.personId),'politie',process.env.DISCORD_GUILD_ID);
      return {personId:p.personId,name:safeName(p.name),
       aeRole:verified.aeRole,aeRoles:verified.aeRoles,aeTeamleader:verified.aeTeamleader,
+      aeManual:AE_MANUAL_LEVELS.has(am.get(p.personId)?.role)?am.get(p.personId).role:'',
       call:String(p.call||'').slice(0,24),
       specialties:v?.specialties||[],
       instructorSpecialties:v?.instructorSpecialties||[],
@@ -384,8 +708,9 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
    const k9Ref=db.collection(K9_ROLE_COLLECTION).doc(personId);
    const motardRef=db.collection(MOTARD_DISPLAY_COLLECTION).doc(personId);
    const dispRef=db.collection(DISP_DISPLAY_COLLECTION).doc(personId);
+   const aeRef=db.collection(AE_MANUAL_DISPLAY_COLLECTION).doc(personId);
    await db.runTransaction(async tx=>{
-    const [old,oldK9,oldMotard,oldDisp]=await Promise.all([tx.get(ref),tx.get(k9Ref),tx.get(motardRef),tx.get(dispRef)]);
+    const [old,oldK9,oldMotard,oldDisp,oldAE]=await Promise.all([tx.get(ref),tx.get(k9Ref),tx.get(motardRef),tx.get(dispRef),tx.get(aeRef)]);
     const previous=rawDisplay(old);
     const preserve=manualDisplay(old.data(),'politie')||DEFAULT_PLACEMENT;
     const next=validatePlacement({...preserve,
@@ -422,6 +747,14 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       displayOnly:true});
      tx.create(motardRef.collection('audit').doc(),{action:'motard_display_role',
       previous:previousMotardRole,next:values.motardRole,reason:values.reason,
+      actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
+    }
+    const previousAERole=oldAE.exists?oldAE.get('role')||'':'';
+    if(previousAERole!==values.aeRole){
+     tx.set(aeRef,{dept:'politie',personId,role:values.aeRole,
+      updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid,displayOnly:true});
+     tx.create(aeRef.collection('audit').doc(),{action:'ae_display_role',
+      previous:previousAERole,next:values.aeRole,reason:values.reason,
       actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
     }
     const previousDispRole=oldDisp.exists?oldDisp.get('role')||'':'';

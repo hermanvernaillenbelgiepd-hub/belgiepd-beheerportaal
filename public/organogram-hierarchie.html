@@ -180,6 +180,24 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  padding:5px 6px;
  min-width:0;min-height:60px;box-sizing:border-box;
 }
+.person-profile-dialog .azls-discord-functions{margin-top:14px;padding-top:10px;border-top:1px solid #365472}
+.person-profile-dialog .azls-discord-functions h4{font-size:12px;letter-spacing:.025em;color:#b8d1ea;margin:0 0 8px}
+.person-profile-dialog .azls-function-chips{display:flex;flex-wrap:wrap;gap:7px}
+.person-profile-dialog .person-profile-completed-training{
+ margin-top:14px;padding-top:12px;border-top:1px solid #365472
+}
+.person-profile-dialog .person-profile-completed-training h4{
+ font-size:12px;letter-spacing:.025em;color:#b8d1ea;margin:0 0 8px
+}
+.person-profile-dialog .person-profile-completed-training-entry{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ padding:10px 12px;border:1px solid #365472;border-radius:9px;
+ background:#173450;color:#eaf4ff;font-size:12px
+}
+.person-profile-dialog .person-profile-completed-training-entry span{
+ color:#9de0b6;font-weight:800;letter-spacing:.04em
+}
+.person-profile-dialog .azls-function-chip{display:inline-flex;align-items:center;border:1px solid #4d789a;background:#1d3f5c;color:#eaf3ff;padding:6px 10px;border-radius:7px;font-size:12px;font-weight:600}
 #services .service[data-dept="ambulance"] .fire-specialty-patch{
  display:grid;place-items:center;flex:0 0 32px;
  width:32px;height:32px;min-width:32px;
@@ -565,7 +583,8 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
  .board #board-members .board-member{min-height:78px}
 }
 </style>
-<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=name-autofit-20261031-v5">
+<link rel="stylesheet" href="/assets/organogram-police-formal.css?v=awards-position-20261102">
+<link rel="stylesheet" href="/assets/organogram-decorations.css?v=award-preview-20261104">
 <style>
 .person .portrait{display:block;position:relative;overflow:hidden;flex:0 0 70px;width:70px;height:66px;border:1px solid #5b7da6;border-radius:7px;background:#0b223a}
 .person .portrait.bpd-police-formal{width:70px;height:66px}
@@ -853,6 +872,28 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .person-profile-specialty-role{display:block;color:#b7d9f7;font-size:10px;margin-top:3px}
 .person-profile-specialty.person-profile-specialty-k9{border-color:#6c88a7}
 .person-profile-specialty-k9 .person-profile-specialty-role{margin-top:0}
+.person-profile-specialty .ae-level-text-patch{
+ display:flex!important;align-items:center;justify-content:center;
+ background:linear-gradient(135deg,#081222,#1c2d48);
+ border:1px solid #8b9cb4;border-radius:5px;
+ font-size:11px;font-weight:800;color:#f1f4ff;
+ text-align:center;letter-spacing:.035em;padding:4px 8px;
+}
+.person-profile-ae-editor{margin:10px 0;border:1px solid #51759b;
+ border-radius:8px;padding:8px;color:#d6e8ff;background:#102b46}
+.person-profile-ae-editor summary{cursor:pointer;font-size:12px;font-weight:700}
+.person-profile-ae-editor-body{display:grid;gap:8px;margin-top:9px}
+.person-profile-ae-editor-body select,.person-profile-ae-editor-body textarea{
+ background:#0b1e33;color:#f1f6ff;border:1px solid #6a91b7;border-radius:6px;padding:8px}
+.person-profile-ae-editor-body button{background:#245887;color:white;border:1px solid #81abd4;
+ border-radius:6px;padding:8px 10px}
+.person-profile-specialty .radio-bm-text-patch{
+ display:flex!important;align-items:center;justify-content:center;
+ background:linear-gradient(145deg,#070e19,#172d48 70%,#07111f);
+ border:1px solid #8ba5c0;border-radius:5px;
+ color:#f3f7ff;font-size:16px;font-weight:850;letter-spacing:.06em;
+ box-shadow:inset 0 0 0 3px #141c29,0 2px 9px #0006;
+}
 .person-profile-note{font-size:11px;color:#a9c8e7;margin:12px 0 0;line-height:1.5}
 @media(max-width:520px){
  .person-profile-shell{padding:13px}.person-profile-grid{grid-template-columns:1fr}
@@ -1579,6 +1620,128 @@ html.roster-card-embed .person-profile-dialog.operational-profile
   width:min(100%,300px)!important;height:min(42dvh,340px)!important;min-height:200px!important
  }
 }
+/* Compact desktop personnel card in the single Personeelsbeheer dialog.
+   Keep medals and every specialization visible, including RAGO and K9.
+   Preserve the whole uniform canvas; larger specialty panels remain readable.
+   Short or narrow screens may scroll instead of cutting off information. */
+@media (min-width:1000px){
+ html.roster-card-embed .person-profile-shell{
+  padding:7px 12px 10px;
+  overflow-y:auto;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-layout{
+  grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);
+  gap:11px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-overview .portrait.bpd-police-formal[data-uniform],
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-overview .portrait.bpd-service-uniform{
+  /* The assigned coat stage is sized from the portrait width; reserve
+     at least ~1.12 times that width in height to avoid clipping its hem. */
+  width:min(100%,410px,44dvh)!important;
+  max-width:410px!important;
+  height:min(52dvh,490px)!important;
+  min-height:0!important;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-overview{
+  padding:5px 7px;
+  gap:2px;
+  margin:0 0 4px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-overview .person-profile-name{
+  font-size:17px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-grade{
+  margin:4px auto 6px;
+  padding:5px 7px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-grid{
+  gap:5px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-grid .person-profile-fact{
+  min-height:46px;
+  padding:4px 7px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-grid .person-profile-fact.person-profile-call{
+  min-height:54px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-specialty-panel{
+  gap:5px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-awards-panel{
+  padding:7px 9px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-specialization-box{
+  padding:7px 8px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-specialization-box>h3{
+  margin:0 0 5px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile
+  .person-profile-specialties{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+ }
+ html.roster-card-embed .person-profile-dialog.police-person-profile{
+  --police-specialty-card-height:78px;
+  --bpd-specialty-badge-width:clamp(128px,12.7vw,170px);
+  --bpd-specialty-badge-height:calc(var(--bpd-specialty-badge-width) * 5 / 16);
+ }
+ html.roster-card-embed .person-profile-dialog.police-person-profile
+  .person-profile-specialty{
+  min-height:var(--police-specialty-card-height);
+  padding:8px 10px;
+  gap:4px;
+  width:100%;
+ }
+ html.roster-card-embed .person-profile-dialog.police-person-profile
+  .person-profile-specialty.person-profile-specialty-k9{
+  grid-template-columns:minmax(0,1fr) var(--bpd-specialty-badge-width);
+  min-height:var(--police-specialty-card-height);
+  padding:8px 10px;
+ }
+ html.roster-card-embed .person-profile-dialog.police-person-profile
+  .person-profile-specialty-rago-io{
+  grid-template-columns:minmax(0,1fr) var(--bpd-specialty-badge-width);
+ }
+ html.roster-card-embed .person-profile-dialog.police-person-profile
+  .person-profile-specialty-k9 .k9-role-patch,
+ html.roster-card-embed .person-profile-dialog.police-person-profile
+  .person-profile-specialty .motard-role-patch,
+ html.roster-card-embed .person-profile-dialog.police-person-profile
+  .person-profile-specialty .disp-role-patch,
+ html.roster-card-embed .person-profile-dialog.police-person-profile
+  .person-profile-specialty .rago-io-badge{
+  width:var(--bpd-specialty-badge-width);
+  height:var(--bpd-specialty-badge-height);
+ }
+ html.roster-card-embed .person-profile-dialog.police-person-profile
+  .person-profile-specialty-has-badge{
+  grid-template-columns:minmax(0,1fr) var(--bpd-specialty-badge-width);
+ }
+ html.roster-card-embed .person-profile-dialog.police-person-profile
+  .person-profile-specialty>strong{
+  font-size:12px;
+ }
+ html.roster-card-embed .person-profile-dialog.police-person-profile
+  .person-profile-specialty-role{
+  font-size:10.5px;
+  line-height:1.35;
+ }
+}
+/* On short desktops the shell remains scrollable. Never lower the
+   uniform height alone: that would crop the saved coat image again. */
 /* Brandweer organogram thumbnails render the SAME actual uniform composite
    (including dynamic name, BRANDWEER · ZONE, grade and optional insignia)
    as the expanded personnel profile. The former CSS applied only to dialogs. */
@@ -1768,6 +1931,8 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 }
 
 </style>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<link rel="stylesheet" href="/organogram-hybrid.css?v=depannage-patch-20261103a">
 </head>
 <body>
 <header>
@@ -1789,7 +1954,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
   <button type="button" data-view="ambulance">Ambulance</button>
   <button type="button" data-view="depannage">Depannage</button>
   <button type="button" data-view="burger">Burger</button>
-  <button type="button" id="demo-toggle" aria-pressed="true">Voorbeeldgegevens</button>
+  <button type="button" id="demo-toggle" aria-pressed="false" hidden>Voorbeeldgegevens (TEST)</button>
    <button type="button" id="toggle-cadres" aria-label="Alle zichtbare kaders inklappen">▴ Alle kaders inklappen</button>
   <button type="button" id="police-specialty-toggle" hidden>⚙ Handmatige specialisaties</button>
   <button type="button" id="manage-toggle" hidden>⚙ Technisch beheer</button>
@@ -1797,7 +1962,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
   <button type="button" id="login">Aanmelden</button>
   <input type="search" id="search" placeholder="Zoek naam, rang of specialisatie" aria-label="Doorzoek organogram">
  </nav>
- <div id="source" class="notice warn">Voorbeeldgegevens laden …</div>
+ <div id="source" class="notice" role="status" aria-live="polite">Echte organogramgegevens laden…</div>
  <section id="police-specialty-editor" class="manager police-specialty-editor" hidden aria-label="Handmatige politiespecialisaties">
   <h2>Handmatige politiespecialisaties · Officierenkader en Korpsleiding</h2>
   <p class="manager-note">Alle politie-specialisaties inclusief K9. Handmatige weergave zonder wijziging van Discord-rollen, aanstellingen of dossierbevoegdheden.</p>
@@ -1834,6 +1999,15 @@ html.roster-card-embed .person-profile-dialog.operational-profile
      </select>
     </label>
     <div id="police-motard-variants" class="motard-variant-picker" hidden aria-label="Beschikbare MOTARD-patchvarianten"></div>
+    <label id="police-ae-label" hidden>AE-functieniveau (handmatige weergave)
+     <select id="police-ae-role" disabled>
+      <option value="">Automatisch volgens Discord</option>
+      <option value="ae_i">AE-I · IN OPLEIDING</option>
+      <option value="ae_t">AE-T</option>
+      <option value="teamleader">TEAMLEADER / LEIDING</option>
+      <option value="instructeur">AE-INSTRUCTEUR</option>
+     </select>
+    </label>
     <label id="police-disp-label" hidden>DISPATCH-functie
      <select id="police-disp-role" disabled>
       <option value="">Automatisch volgens Discord</option>
@@ -1913,11 +2087,12 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 </dialog>
 <script src="/visual-layers-render.js?v=optional-uniform-pieces-20261030"></script>
 <script src="/assets/bpd-nameplate-autofit.js?v=name-autofit-20261031-v5"></script>
-<script src="/assets/organogram-police-formal.js?v=name-autofit-20261031-v5"></script>
-<script src="/assets/organogram-decorations.js?v=5"></script>
+<script src="/assets/organogram-police-formal.js?v=awards-chest-20261104"></script>
+<script src="/assets/organogram-decorations.js?v=award-preview-20261104"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
 import '/uniform-assignment-display.js?v=studio-coats-only-20261030';
+import {serviceProfileRank,depannagePatchCode,depannageProfilePatch} from '/service-profile-presentation.js?v=20261103c';
 const $=id=>document.getElementById(id);
 const cardParams=new URLSearchParams(location.search);
 const isEmbeddedCard=cardParams.get('embedded')==='1';
@@ -1964,12 +2139,13 @@ const fixtures=[
  {dept:'ambulance',name:'Voorbeeld PIT-lid',call:'HVPK-03',rank:'Verpleegkundige',specialties:['MIP','PIT']},
  {dept:'depannage',name:'Voorbeeld AWV',call:'AWV-01',rank:'Agentschap Wegen en Verkeer leiding'},
  {dept:'depannage',name:'Voorbeeld FAST',call:'FAST-02',rank:'Technicus',teachingRoles:['instructeur'],specialties:['FAST']},
- {dept:'depannage',name:'Voorbeeld Takelaar',call:'LSRA-10',rank:'Depannagetechnicus',specialties:['FAST']},
+ {dept:'depannage',name:'Voorbeeld Takelaar',call:'LSRA-10',rank:'Depannagetechnicus',specialties:['F.A.S.T','CRANE']},
  {dept:'burger',name:'Voorbeeld Burgerraad',call:'BUR-01',rank:'Burgerraad'},
  {dept:'burger',name:'Voorbeeld Burgerlid',call:'BUR-10',rank:'Burger',specialties:['Burgerproject']}
 ];
-const state={view:'alle',query:'',demo:true,live:[],board:[],loaded:false,
+const state={view:'alle',query:'',demo:false,live:[],board:[],loaded:false,canManageAE:false,
  cadreOpen:{},serviceOpen:{},specialtyOpen:{},specializationsOpen:true};
+let fixtureModeAllowed=false;
 let auth=null,authModule=null,adminPeople=[],adminSpecialties={},adminLeadership={},activeAdminPerson=null;
 let managerReady=false,dragPerson=null,dragSaving=false,lastMidBatchId=null;
 function el(tag,cls,text){
@@ -1978,8 +2154,8 @@ function el(tag,cls,text){
  if(text!==undefined)n.textContent=text;
  return n;
 }
-// Central policy: every image or role=img added to a specialty card
-// automatically becomes a 170 x 53.125 px badge, including future patches.
+// Central badge selector. Police patches retain 16:5 sizing; fire-service
+// artwork keeps its original aspect ratio via scoped profile presentation.
 function normalizeSpecialtyBadges(card){
  const badges=card.querySelectorAll('img,[role="img"]');
  if(!badges.length)return;
@@ -2016,20 +2192,36 @@ function fireSpecialtyPatchCode(label){
 function setFireSpecialtyPatchArtworks(artworks){
  const map=new Map();
  for(const item of Array.isArray(artworks)?artworks:[]){
-  if(item?.kind!=='specialty'||item.department!=='brandweer')continue;
+  if(!['specialty','patch'].includes(item?.kind)||item.department!=='brandweer')continue;
   const code=String(item.code||'');
   if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code))continue;
   const url=String(item.imageUrl||'');
-  if(!/^\/api\/role-artwork\/file\/specialty_brandweer_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url))continue;
-  map.set(code,url);
+  if(!/^\/api\/role-artwork\/file\/(?:specialty|patch)_brandweer_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url))continue;
+  if(!url.includes('/'+item.kind+'_brandweer_'+code+'?v='))continue;
+  // A deliberately uploaded Specialisatiebadge takes precedence over a
+  // generic Patch with the same code; exact role links are resolved later.
+  if(!map.has(code)||item.kind==='specialty')map.set(code,url);
  }
  fireSpecialtyPatchArtworks=map;
 }
 function fireSpecialtyPatchUrl(label){
  const code=fireSpecialtyPatchCode(label);
- const aliases=code==='gevaarlijke_stoffen'?['gevaarlijkestoffen']:
-  code==='red_team'?['redteam']:[];
- for(const k of [code,...aliases]){
+ // DUlKER uses the user-provided original wide patch. Explicit local or
+ // federal replacements remain editable through the artwork library.
+ if(code==='duiker')return fireSpecialtyPatchArtworks.get('duiker_lokaal')||
+  fireSpecialtyPatchArtworks.get('duiker_federaal')||
+  fireSpecialtyPatchArtworks.get('duiker')||
+  '/assets/brandweer-duiker-origineel-20261102.webp';
+ const aliases={
+  gevaarlijke_stoffen:['gevaarlijkestoffen','ags','bw_ags','bw_gevaarlijke_stoffen'],
+  red_team:['redteam','bw_red_team','bw_redteam'],
+  signalisatie:['bw_sig','bw_signal','signa','bw_signalisatie','bw_signa'],
+  grote_boot:['groteboot','bw_grote_boot','bw_boot'],
+  bosbestrijding:['boswagen','bw_boswagen','bw_bosbestrijding'],
+  logistiek:['bw_log','bw_logistiek'],ladderwagen:['bw_ladderwagen'],
+  brandweer_ambu:['bw_ambu','ambu']
+ };
+ for(const k of [code,...(aliases[code]||[])]){
   for(const candidate of [k,k+'_lokaal',k+'_federaal']){
    const url=fireSpecialtyPatchArtworks.get(candidate);
    if(url)return url;
@@ -2076,12 +2268,14 @@ function ambulanceSpecialtyPatchCode(label){
 function setAmbulanceSpecialtyPatchArtworks(artworks){
  const map=new Map();
  for(const item of Array.isArray(artworks)?artworks:[]){
-  if(item?.kind!=='specialty'||item.department!=='ambulance')continue;
+  if(!['specialty','patch'].includes(item?.kind)||item.department!=='ambulance')continue;
   const code=String(item.code||'');
   if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code))continue;
   const url=String(item.imageUrl||'');
-  if(!/^\/api\/role-artwork\/file\/specialty_ambulance_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url))continue;
-  map.set(code,url);
+  if(!/^\/api\/role-artwork\/file\/(?:specialty|patch)_ambulance_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url)||
+     !url.includes('/'+item.kind+'_ambulance_'+code+'?v='))continue;
+  // Uploaded specialty badges win over generic patches with the same code.
+  if(!map.has(code)||item.kind==='specialty')map.set(code,url);
  }
  ambulanceSpecialtyPatchArtworks=map;
 }
@@ -2116,6 +2310,37 @@ function makeAmbulanceSpecialtyPatch(label){
   slot.title='Nog geen AZLS-specialisatiepatch: '+label+' · upload via Afbeeldingen & badges';
  }
  return slot;
+}
+
+/* Depannage uses wide embroidered qualifications. Only same-service
+   PATCH uploads may replace the built-in badge, not older vehicle photos. */
+let depannageSpecialtyPatchArtworks=new Map();
+function setDepannageSpecialtyPatchArtworks(artworks){
+ const map=new Map();
+ for(const item of Array.isArray(artworks)?artworks:[]){
+  if(item?.kind!=='patch'||item.department!=='depannage')continue;
+  const code=String(item.code||''),url=String(item.imageUrl||'');
+  if(!/^[a-z0-9][a-z0-9_]{0,39}$/.test(code)||
+     !/^\/api\/role-artwork\/file\/patch_depannage_[a-z0-9_]{1,40}\?v=[a-zA-Z0-9-]+$/.test(url)||
+     !url.includes('/patch_depannage_'+code+'?v='))continue;
+  map.set(code,url);
+ }
+ depannageSpecialtyPatchArtworks=map;
+}
+function depannageSpecialtyPatchUrl(label,linked=[],preferred=''){
+ const code=depannagePatchCode(label);
+ if(!code)return '';
+ const builtIn=depannageProfilePatch(label,[]);
+ const assigned=preferred||depannageProfilePatch(label,linked);
+ if(assigned&&assigned!==builtIn)return assigned;
+ // A newly uploaded patch is available immediately, without another manual
+ // linking step; this does not change the member's qualifications or roles.
+ for(const suffix of ['_badge','_geborduurd','_badge_lokaal','_badge_federaal',
+   '_lokaal','_federaal','']){
+  const url=depannageSpecialtyPatchArtworks.get(code+suffix);
+  if(url)return url;
+ }
+ return builtIn;
 }
 
 function setServiceUniformData(artworks,layouts,nameplates=[],coats=[],visibility=[]){
@@ -2164,9 +2389,28 @@ function makeServiceUniformPortrait(person){
  const dept=String(person?.dept||''),key='uniform_'+dept+'_default';
  const selected=window.BPDUniformAssignments?.forPerson?.(person);
  // Old service-default uniforms are retired; display the service icon until an atelier coat is chosen.
- const src=selected?.uniformUrl||'';
+ const src=selected?.uniformUrl||serviceUniformArtworks.get(key)||'';
+ // Civilians use a neutral community portrait, never a police uniform.
+ // A future library-assigned Burger visual takes precedence over this default.
+ if(dept==='burger'&&!src){
+  const outer=el('span','portrait bpd-service-uniform bpd-burger-portrait');
+  outer.setAttribute('role','img');
+  outer.setAttribute('aria-label','Burgerdienst: groep burgers');
+  const stage=el('span','bpd-service-stage');
+  const img=el('img','bpd-service-coat');
+  img.src='/assets/burger-groep.webp';img.alt='';img.loading='lazy';
+  img.style.objectFit='contain';
+  stage.append(img);outer.append(stage);
+  return outer;
+ }
  const iconFallback=window.BPDVisualAssets?.baseIcon?.(dept);
- if(!src&&!iconFallback)return null;
+ if(!src&&!iconFallback){
+  const empty=el('span','portrait bpd-service-uniform bpd-service-uniform-empty');
+  empty.setAttribute('role','img');
+  empty.setAttribute('aria-label','Nog geen uniform gekoppeld aan '+dept);
+  empty.append(el('span','bpd-service-uniform-empty-label','Uniform nog niet gekoppeld'));
+  return empty;
+ }
  const outer=el('span','portrait bpd-service-uniform');
  outer.setAttribute('role','img');
  outer.setAttribute('aria-label','Uniformvoorbeeld van '+dept+' · '+(person.rank||''));
@@ -2206,7 +2450,7 @@ function makeServiceUniformPortrait(person){
  stage.append(img);
  const grade=serviceRankKey(person.rank);
  const simple=grade.split('_')[0];
- const rankImage=selected?.rankUrl||serviceRankArtworks.get('rank_'+dept+'_'+grade)||
+ const rankImage=selected?.rankUrl||selected?.rankSpecialtyUrl||serviceRankArtworks.get('rank_'+dept+'_'+grade)||
   serviceRankArtworks.get('rank_'+dept+'_'+simple);
  const place=serviceUniformLayouts.get(dept+'_default')||
   {left:62,top:55,width:24,height:12};
@@ -2242,9 +2486,48 @@ function makeServiceUniformPortrait(person){
  outer.append(stage);
  return outer;
 }
+const profileSpecialtyChecks=new Map();
+async function refreshProfileSpecialtyRoles(person,key){
+ if(!state.loaded||state.demo||person.dept!=='politie'||
+   !/^(?:[a-z]{1,6}[- ]?)?\d{3}$/i.test(String(person.call||''))||
+   profileSpecialtyChecks.has(key))return;
+ profileSpecialtyChecks.set(key,{pending:true});
+ try{
+  const response=await authFetch('/api/organogram/specialty-check/politie/'+
+   encodeURIComponent(person.call));
+  if(response?.verified===true&&response.displayOnly===true){
+   const autoAE=Array.isArray(response.aeRoles)?
+    response.aeRoles.filter(x=>['ae_i','ae_t','teamleader','instructeur'].includes(x)):[];
+   person.aeRoles=[...new Set([...autoAE,...(person.aeManual?[person.aeManual]:[])])];
+   person.aeRole=person.aeRoles.includes('teamleader')?'teamleader':
+    person.aeRoles.includes('instructeur')?'instructeur':
+    person.aeRoles.includes('ae_t')?'ae_t':
+    person.aeRoles.includes('ae_i')?'ae_i':'';
+   person.aeTeamleader=person.aeRoles.includes('teamleader');
+   if(['in_opleiding','volwaardig','instructeur'].includes(response.motardRole))
+    person.motardRole=response.motardRole;
+   if(['in_opleiding','volwaardig','instructeur'].includes(response.dispRole))
+    person.dispRole=response.dispRole;
+   person.specialties=[...new Set([...(person.specialties||[]),
+    ...(Array.isArray(response.specialties)?response.specialties:[])])].slice(0,20);
+   const registered=(person.specialtyPatches||[]).filter(x=>x.source==='registered');
+   person.specialtyPatches=[...registered,...(Array.isArray(response.patches)?response.patches:[])].slice(0,20);
+   profileSpecialtyChecks.set(key,{verified:true,status:'ok'});
+    render(); // Update AE Teamleader group without reloading.
+  }else profileSpecialtyChecks.set(key,{verified:false,status:String(response?.status||'unavailable')});
+ }catch{
+  profileSpecialtyChecks.set(key,{verified:false,status:'request_failed'});
+ }
+ const dialog=$('person-profile');
+ if(dialog.open&&dialog.dataset.personKey===key)openPersonProfile(person);
+}
 function openPersonProfile(p){
  const dialog=$('person-profile'),content=$('person-profile-content');
+ const profileKey=[p.dept,p.call,p.name].join('|');
+ dialog.dataset.personKey=profileKey;
  dialog.classList.toggle('police-person-profile',p.dept==='politie');
+ dialog.classList.toggle('fire-person-profile',p.dept==='brandweer');
+ dialog.classList.toggle('depannage-person-profile',p.dept==='depannage');
  dialog.classList.add('operational-profile');
  content.replaceChildren();
  const layout=el('div','person-profile-layout');
@@ -2255,12 +2538,15 @@ function openPersonProfile(p){
  layout.append(primary,secondary);
  content.append(layout);
  const overview=el('div','person-profile-overview');
+ const displayRank=serviceProfileRank(p);
+ const portraitPerson=['depannage','burger'].includes(p.dept)?{...p,rank:displayRank}:p;
  const portrait=p.dept==='politie'?
-  window.BPDPoliceUniform?.makePortrait?.(p,true):makeServiceUniformPortrait(p);
+  window.BPDPoliceUniform?.makePortrait?.(p,true):makeServiceUniformPortrait(portraitPerson);
  if(portrait)overview.append(portrait);
- const identity=el('div');
+ const identity=el('div','person-profile-identity');
  identity.append(el('div','person-profile-name',p.name||'Onbekend'),
-  el('div','person-profile-rank',p.rank||'Rang niet geregistreerd'));
+  el('div','person-profile-rank',displayRank),
+  el('span','person-profile-inline-call','CALL '+(p.call||'—')));
  overview.append(identity);intro.append(overview);
  if(p.dept==='politie'){
   // Same public badge and grade mapping as the existing verified personnel card.
@@ -2284,8 +2570,12 @@ function openPersonProfile(p){
  }
  fact('CALL',p.call||'—');
  fact('Dienst',SERVICES.find(x=>x.id===p.dept)?.name||p.dept);
- fact('Rang / functie',window.BPDPoliceUniform?.gradeFor?.(p)?.label||p.rank||'Niet geregistreerd');
+ fact('Rang / functie',p.dept==='politie'?
+  window.BPDPoliceUniform?.gradeFor?.(p)?.label||displayRank:displayRank);
  fact('Niveau (indicatief)',getTier(p));
+ if(p.dept==='politie'&&p.reekshoofdReeks)
+  fact('Reeksfunctie',p.reekshoofdReeks==='VLINDER'?'VLINDER':
+   'Reekshoofd – '+p.reekshoofdReeks);
  fact('Personeelsstatus',p.status||'Niet vermeld');
  if(Array.isArray(p.displayLabels)&&p.displayLabels.length)
   fact('Extra weergavelabel',p.displayLabels.map(x=>x.toUpperCase()).join(' · '));
@@ -2313,28 +2603,85 @@ function openPersonProfile(p){
  const awardsBox=el('section','person-profile-awards-panel');
  window.BPDDecorations?.renderAwards?.(awardsBox,p.awards||[],state.demo);
  secondary.append(awardsBox);
+ // Collapsible presentation only. Actual rights and audit checks remain server-side.
+ let managementBody=null;
+ if(p.dept==='politie'&&!state.demo&&(auth?.currentUser||state.canManageAE)){
+  const management=el('details','person-profile-management');
+  const heading=el('summary','','⚙ Beheeracties · Officierenkader / Korpsleiding');
+  managementBody=el('div','person-profile-management-body');
+  management.append(heading,managementBody);
+  secondary.append(management);
+ }
  if(!state.demo&&p.dept==='politie'&&auth?.currentUser){
   const awardManager=el('div','person-profile-award-manager');
   awardManager.dataset.personKey=String(p.call||'')+'|'+String(p.name||'');
-  secondary.append(awardManager);
+  managementBody.append(awardManager);
   void window.BPDDecorations?.manager?.(awardManager,p,auth,async()=>{
    await loadPublic();
    const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
    if(latest&&dialog.open)openPersonProfile(latest);
   });
   const uploadBox=el('div','person-profile-award-upload');
-  secondary.append(uploadBox);
-  void window.BPDDecorations?.uploadTools?.(auth,uploadBox);
+  managementBody.append(uploadBox);
+  void window.BPDDecorations?.uploadTools?.(auth,uploadBox,async()=>{
+   await loadPublic();
+   const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
+   if(latest&&dialog.open)openPersonProfile(latest);
+  });
  }
  const specBox=el('section','person-profile-specialization-box');
  specBox.append(el('h3','','Specialisaties'));
  secondary.append(specBox);
+ // The visible officer-only correction updates exactly one AE display field.
+ // Discord roles, qualifications and unrelated personnel data remain unchanged.
+ if(p.dept==='politie'&&!state.demo&&state.canManageAE){
+  const editor=el('details','person-profile-ae-editor');
+  const summary=el('summary','','AE-functieniveau corrigeren · Officierenkader / Korpsleiding');
+  const panel=el('div','person-profile-ae-editor-body');
+  const level=el('select',''),reason=el('textarea',''),save=el('button','','AE-functie bewaren');
+  level.setAttribute('aria-label','AE-functieniveau');
+  for(const [value,label] of [['','Automatisch volgens Discord (handmatige keuze wissen)'],
+   ['ae_i','AE-I'],['ae_t','AE-T'],['teamleader','TEAMLEADER / LEIDING'],
+   ['instructeur','AE-INSTRUCTEUR']]){
+   const option=el('option','',label);option.value=value;level.append(option);
+  }
+  level.value=p.aeManual||'';
+  reason.placeholder='Motivering (minimaal 8 tekens)';
+  reason.maxLength=300;reason.rows=2;
+  reason.setAttribute('aria-label','Motivering voor handmatige AE-functie');
+  save.type='button';
+  const feedback=el('p','person-profile-note','Deze keuze wordt gelogd en geeft geen Discord- of portaalrechten.');
+  save.addEventListener('click',async()=>{
+   const message=reason.value.trim();
+   if(message.length<8||message.length>300){
+    feedback.textContent='Een motivering van 8 tot 300 tekens is verplicht.';return;
+   }
+   save.disabled=true;feedback.textContent='AE-functie bewaren…';
+   try{
+    await authFetch('/api/organogram/ae-display/'+encodeURIComponent(p.call),{
+     method:'PUT',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({role:level.value,reason:message})
+    });
+    feedback.textContent='AE-functie opgeslagen en gelogd. Personeelskaart vernieuwen…';
+    profileSpecialtyChecks.delete(profileKey);
+    await loadPublic();
+    const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
+    if(dialog.open&&latest)openPersonProfile(latest);
+   }catch(error){feedback.textContent='Niet opgeslagen: '+error.message}
+   finally{save.disabled=false}
+  });
+  panel.append(level,reason,save,feedback);
+  editor.append(summary,panel);managementBody.append(editor);
+ }
+
  const names=[...new Set(specialtyNames(p)
   .map(name=>p.dept==='politie'?policeSpecialtyName(name):name).filter(Boolean))];
  if(names.length){
   const list=el('div','person-profile-specialties');
   for(const name of names){
    const item=el('div','person-profile-specialty');
+   const isFireDiver=p.dept==='brandweer'&&fireSpecialtyPatchCode(name)==='duiker';
+   if(isFireDiver)item.classList.add('person-profile-specialty-fire-diver');
    item.append(el('strong','',name));
    const roles=p.dept==='politie'&&supportsSpecialtyInstructors(name)?
     specialtyInstructorRoles(p,name):p.dept==='ambulance'?[
@@ -2370,7 +2717,9 @@ function openPersonProfile(p){
     patch.setAttribute('role','img');
     patch.setAttribute('aria-label','MOTARD-patch: '+MOTARD_PATCH_ROLE_LABELS[level]);
     item.append(patch);
-    item.append(el('span','person-profile-specialty-role',MOTARD_PATCH_ROLE_LABELS[level]));
+    // De patch blijft functiegebonden; een gewoon volwaardig lid krijgt geen overbodig onderschrift.
+    if(level!=='volwaardig')
+     item.append(el('span','person-profile-specialty-role',MOTARD_PATCH_ROLE_LABELS[level]));
    }else if(p.dept==='politie'&&name==='DISP'){
     const level=Object.hasOwn(DISP_PATCH_ROLE_LABELS,p.dispRole)?
      p.dispRole:roles.some(r=>r==='instructeur')?'instructeur':'volwaardig';
@@ -2379,7 +2728,8 @@ function openPersonProfile(p){
     patch.setAttribute('role','img');
     patch.setAttribute('aria-label','DISP-patch: '+DISP_PATCH_ROLE_LABELS[level]);
     item.append(patch);
-    item.append(el('span','person-profile-specialty-role',DISP_PATCH_ROLE_LABELS[level]));
+    if(level!=='volwaardig')
+     item.append(el('span','person-profile-specialty-role',DISP_PATCH_ROLE_LABELS[level]));
    }else if(p.dept==='politie'&&name==='AE'){
     // One AE specialty, with verified Discord levels visible INSIDE it.
     // A user may be both an instructor and a teamleader; show both roles.
@@ -2387,14 +2737,15 @@ function openPersonProfile(p){
     const levels=aeRoles.map(level=>AE_LEVEL_LABELS[level]).filter(Boolean);
     if(!levels.length&&roles.includes('instructeur'))levels.push('AE-INSTRUCTEUR');
     item.append(el('span','person-profile-specialty-role',
-      levels.length?levels.join(' · '):'AE-lid · functieniveau niet geverifieerd'));
+      levels.length?levels.join(' · '):'Functieniveau niet geverifieerd'));
    }else if(p.dept==='politie'&&(name==='RAGO-IO'||name==='RAGO')){
     // Different patches: verified full RAGO versus training role RAGO-IO.
     item.classList.add('person-profile-specialty-rago-io');
     const full=name==='RAGO';
     const isRagoInstructor=full&&roles.some(r=>r==='instructeur'||r==='docent');
-    item.append(el('span','person-profile-specialty-role',
-     isRagoInstructor?'RAGO · INSTRUCTEUR':full?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'));
+    if(isRagoInstructor||!full)
+     item.append(el('span','person-profile-specialty-role',
+      isRagoInstructor?'RAGO · INSTRUCTEUR':'IN OPLEIDING'));
     const patch=el('img','person-profile-specialty-badge rago-io-badge');
     patch.src=full?(isRagoInstructor?
      (roleArtworkUrl(RAGO_DISCORD_ROLE_ID,'instructeur')||RAGO_INSTRUCTOR_PATCH):
@@ -2407,8 +2758,9 @@ function openPersonProfile(p){
     if(isRagoInstructor)patch.classList.add('rago-instructor-badge');
     item.append(patch);
    }else{
-    const role=roles.length?roles.map(r=>r==='instructeur'?'Instructeur':'Docent').join(' · '):'Geregistreerd lid';
-    item.append(el('span','person-profile-specialty-role',role));
+    // Alleen bijzondere functies tonen; gewoon lidmaatschap blijkt al uit de kaarttitel.
+    if(roles.length)item.append(el('span','person-profile-specialty-role',
+     roles.map(r=>r==='instructeur'?'INSTRUCTEUR':'DOCENT').join(' · ')));
    }
    // A service-local or federal patch can replace only the visual badge.
    // Verified qualification/function labels are preserved unchanged.
@@ -2420,30 +2772,142 @@ function openPersonProfile(p){
    // Role-specific library artwork has priority only when the server has
    // recently verified the matching Discord role. Otherwise use the existing
    // manual/general specialty badge, never alter Uniformbeheer.
+   const aeRoleIds={ae_i:'1309542190409580594',ae_t:'1310674604821581894',
+    teamleader:'1337775768083632158',instructeur:'1337156006597103746'};
+   const aeSpecific=name==='AE'&&Object.hasOwn(aeRoleIds,functionVariant);
    const matchedArtwork=verified&&Array.isArray(p.specialtyPatches)?
     p.specialtyPatches.find(entry=>
       (p.dept==='politie'?policeSpecialtyName(entry.label):entry.label)===name&&
+       (!aeSpecific||entry.roleId===aeRoleIds[functionVariant])&&
       /^\/api\/role-artwork\/file\/(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})\?v=[a-zA-Z0-9-]+$/.test(entry.imageUrl)) :null;
-   const alternative=verified?(matchedArtwork?.imageUrl||
-    window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)) :'';
+   // RADIO/BM has no approved generic badge mapping. A historical upload
+   // displayed BURGERMELDINGEN here; only an explicitly role-linked patch is safe.
+   // AE badges must follow the confirmed or manual function, not silently
+   // fall back to the generic Arrestatie-Eenheid patch for a Teamleader.
+   const aeLevelImage=aeSpecific?(
+    window.BPDUniformAssignments?.specialtyVariantImage?.(p,name,functionVariant)||
+    roleArtworkUrl(aeRoleIds[functionVariant])):'';
+   const alternative=p.dept==='depannage'?
+     depannageSpecialtyPatchUrl(name,p.specialtyPatches,
+      depannageProfilePatch(name,p.specialtyPatches)):
+     p.dept==='brandweer'?(
+      matchedArtwork?.imageUrl||fireSpecialtyPatchUrl(name)||
+      window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)):
+    p.dept==='ambulance'?(
+      matchedArtwork?.imageUrl||ambulanceSpecialtyPatchUrl(name)||
+      window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)):verified?(
+    matchedArtwork?.imageUrl||
+    (name==='RADIO/BM'?'':aeSpecific?aeLevelImage:
+     window.BPDUniformAssignments?.specialtyImage?.(p,name,functionVariant)||
+     (name==='INTERVENTIEDIENST'?policeInterventionBadgeUrl:''))):'';
    if(alternative){
     item.querySelectorAll('.person-profile-specialty-badge,.rago-io-badge').forEach(x=>x.remove());
     const badge=el('img','person-profile-specialty-badge');
-    badge.src=alternative;badge.alt=name+' · '+(window.BPDUniformAssignments?.forPerson?.(p).badgeStyle||'');
-    badge.width=170;badge.height=53;badge.loading='lazy';item.append(badge);
+    badge.src=alternative;
+     badge.alt=p.dept==='depannage'?name+' · specialisatiepatch Depannage':
+      name+' · '+(window.BPDUniformAssignments?.forPerson?.(p).badgeStyle||'');
+     if(p.dept==='depannage'){
+      badge.classList.add('depannage-specialty-badge');
+      badge.addEventListener('error',()=>{
+       const fallback=depannageProfilePatch(name,[]);
+       if(fallback&&badge.getAttribute('src')!==fallback)badge.src=fallback;
+       else badge.replaceWith(el('span','person-profile-specialty-missing-patch','Patch niet beschikbaar'));
+      });
+     }
+    badge.width=isFireDiver?288:170;
+    badge.height=isFireDiver?134:53;
+    badge.loading='lazy';item.append(badge);
+   }else if(p.dept==='depannage'){
+     item.append(el('span','person-profile-specialty-missing-patch','Patch nog niet gekoppeld'));
+    }else if(aeSpecific){
+    // Clearly marked text fallback; never pretend the generic AE badge is a
+    // Teamleader insignia when the matching image has not been uploaded.
+    const level=AE_LEVEL_LABELS[functionVariant]||'AE';
+    const badge=el('span','person-profile-specialty-badge ae-level-text-patch',
+      'AE · '+level);
+    badge.setAttribute('role','img');
+    badge.setAttribute('aria-label','AE-functie '+level+' · passende badge nog niet gekoppeld');
+    item.append(badge);
+   }else if(name==='RADIO/BM'){
+    const badge=el('span','person-profile-specialty-badge radio-bm-text-patch','RADIO/BM');
+    badge.setAttribute('role','img');
+    badge.setAttribute('aria-label','RADIO/BM — neutrale tekstplaat, nog geen officiële badge');
+    item.append(badge);
    }
-   if(matchedArtwork?.level&&matchedArtwork.source==='discord'&&
+   // Discord-patchniveaus blijven beschikbaar voor validatie, maar algemene
+   // lidmaatschapslabels horen niet op de compacte profielkaart.
+   const badgeLevel=String(matchedArtwork?.level||'').trim();
+   if(matchedArtwork?.source==='discord'&&badgeLevel&&
+     /(instructeur|teamleader|in[ _-]opleiding|stage|geleider|docent|ae-[it])/i.test(badgeLevel)&&
      ![...item.querySelectorAll('.person-profile-specialty-role')].some(x=>
-       x.textContent?.includes(matchedArtwork.level)))
-    item.append(el('span','person-profile-specialty-role',
-      'Discord geverifieerd: '+matchedArtwork.level));
+       x.textContent?.toLowerCase().includes(badgeLevel.toLowerCase())))
+    item.append(el('span','person-profile-specialty-role',badgeLevel));
    normalizeSpecialtyBadges(item);
+   // Brandweer uses identical, compact cards whether artwork exists or not.
+   // A missing patch is visual only; the membership/role stays unchanged.
+   if(p.dept==='brandweer'){
+    const fireBadge=item.querySelector('img.person-profile-specialty-badge');
+    const missingPatch=()=>el('span','person-profile-specialty-missing-patch','Patch niet gekoppeld');
+    if(fireBadge){
+     item.classList.add('person-profile-specialty-fire-badged');
+     fireBadge.addEventListener('error',()=>{
+      fireBadge.replaceWith(missingPatch());
+      item.classList.remove('person-profile-specialty-has-badge','person-profile-specialty-fire-badged');
+     },{once:true});
+    }else item.append(missingPatch());
+   }
    list.append(item);
   }
   specBox.append(list);
- }else specBox.append(el('p','person-profile-note','Geen geregistreerde specialisaties.'));
+ }else specBox.append(el('p','person-profile-note',p.dept==='brandweer'?
+  'Geen aanvullende specialisaties geregistreerd.':'Geen geregistreerde specialisaties.'));
+ // Separately show registered Brandweer training completion, never inferred
+ // from the generic Brandweer membership Discord role.
+ if(p.dept==='brandweer'&&p.completedFireBasicTraining===true){
+  const education=el('section','person-profile-completed-training');
+  education.append(el('h4','','Afgeronde opleidingen'));
+  const training=el('div','person-profile-completed-training-entry');
+  training.append(el('strong','','Basisopleiding Brandweer'),
+   el('span','','BEHAALD'));
+  education.append(training);
+  specBox.append(education);
+ }
+ // Public, display-only AZLS Discord functions. Never replace the official
+ // rank or present a professional role as a clinical qualification.
+ if(p.dept==='ambulance'&&Array.isArray(p.azlsFunctions)&&p.azlsFunctions.length){
+  const allowed=new Set(['AZLS Leiding','Arts','Verpleegkundige','Medisch Instructeur']);
+  const functions=p.azlsFunctions.filter(x=>allowed.has(x));
+  if(functions.length){
+   const section=el('section','azls-discord-functions');
+   section.append(el('h4','','Aanvullende Discord-functies'));
+   const items=el('div','azls-function-chips');
+   for(const role of functions)items.append(el('span','azls-function-chip',role));
+   section.append(items);
+   specBox.append(section);
+  }
+ }
 
+ const roleProof=profileSpecialtyChecks.get(profileKey);
+ if(p.dept==='politie'&&!state.demo){
+  const errors={bot_unconfigured:'Bot ontbreekt op MAIN',
+   not_in_guild:'Lid niet gevonden in de Discord-server',
+   rate_limited:'Discord rate-limit',discord_unavailable:'Discord niet bereikbaar',
+   invalid_member:'Ongeldige lidmaatschapsgegevens',
+   network_error:'Netwerkfout',request_failed:'Portaalverzoek mislukt',
+   unavailable:'Controle niet beschikbaar'};
+  const msg=!roleProof||roleProof.pending?'Discord-rollen controleren…':
+   roleProof.verified?'Discord-rollen actueel bevestigd.':
+   'Discord-controle: '+(errors[roleProof.status]||'Niet bevestigd')+
+   '. Handmatige functies blijven zichtbaar.';
+  const notice=el('div','person-profile-note',msg);
+  const retry=el('button','alt','Opnieuw controleren');
+  retry.type='button';retry.style.marginLeft='8px';
+  retry.onclick=()=>{profileSpecialtyChecks.delete(profileKey);openPersonProfile(p)};
+  notice.append(retry);
+  specBox.insertBefore(notice,specBox.children[1]||null);
+ }
  if(!dialog.open)dialog.showModal();
+ if(p.dept==='politie'&&!state.demo)void refreshProfileSpecialtyRoles(p,profileKey);
 }
 $('person-profile-close').addEventListener('click',()=>$('person-profile').close());
 $('person-profile').addEventListener('close',()=>notifyCardParent('closed'));
@@ -2456,9 +2920,9 @@ $('person-profile').addEventListener('click',event=>{
    medical placeholder; never leave a person card visually empty. */
 function makeAzlsCompactPortrait(person){
  const selected=window.BPDUniformAssignments?.forPerson?.(person);
- if(selected?.uniformUrl)return makeServiceUniformPortrait(person);
+ if(selected?.uniformUrl||serviceUniformArtworks.has('uniform_ambulance_default'))return makeServiceUniformPortrait(person);
  const grade=serviceRankKey(person?.rank);
- const art=selected?.rankUrl||
+ const art=selected?.rankUrl||selected?.rankSpecialtyUrl||
   serviceRankArtworks.get('rank_ambulance_'+grade)||
   serviceRankArtworks.get('rank_ambulance_'+grade.split('_')[0]);
  const wrapper=el('span','portrait azls-compact-portrait');
@@ -2487,15 +2951,17 @@ function person(p,compact=false,specialtyLabel=null){
  // The former overview called the police renderer only, so fire members
  // had no portrait even though their nameplate existed in the open profile.
  const portrait=p.dept==='brandweer'?makeServiceUniformPortrait(p):
+  p.dept==='depannage'?makeServiceUniformPortrait({...p,rank:serviceProfileRank(p)}):
   p.dept==='ambulance'?makeAzlsCompactPortrait(p):
+  p.dept==='burger'?makeServiceUniformPortrait({...p,rank:serviceProfileRank(p)}):
   window.BPDPoliceUniform?.makePortrait?.(p);
  if(portrait)b.append(portrait);
  const label=el('span','identity');
  const name=el('b','',p.name||'Onbekend');name.title=p.name||'';
  if(compact){
   const heading=el('span','person-heading');heading.append(name);
-  label.append(heading,el('small','',p.rank||'Lid'));
- }else label.append(name,el('small','',p.rank||'Lid'));
+  label.append(heading,el('small','',serviceProfileRank(p)));
+ }else label.append(name,el('small','',serviceProfileRank(p)));
  const roles=compact&&specialtyLabel?
   (supportsSpecialtyInstructors(specialtyLabel)?specialtyInstructorRoles(p,specialtyLabel):[]):
   (Array.isArray(p.teachingRoles)?p.teachingRoles.map(x=>String(x).toLowerCase()):[]);
@@ -2540,7 +3006,8 @@ function specialtyPeopleList(rows,rankOnly,specialtyLabel){
  return list;
 }
 function cadrePeopleList(rows,levelLabel=''){
- const list=peopleList(rows);
+ // Police cadre cards always follow callsign/rank, even for instructors.
+ const list=peopleList(rows,rows[0]?.dept==='politie');
  // Basiskader en Agentenkader: drie groepen van twee kaarten, met extra
  // tussenruimte per groep; behoud de bestaande gesorteerde volgorde.
  if(['Basiskader','Agentenkader'].includes(levelLabel)){
@@ -2764,7 +3231,7 @@ function serviceCard(item,settings,solo){
  }
  const body=el('div','service-body');
  if(settings.id==='burger'&&!state.demo&&!item.count){
-  body.append(el('div','gaps','Burgerraad en burgers blijven onder Bestuur; er is momenteel geen openbare burgerlijst beschikbaar.'));
+  body.append(el('div','gaps','Nog geen burgers geregistreerd in de personeelslijst.'));
  }
  // Rank structure above the speciality cards. Empty AZLS ranks stay
  // available as collapsed headers, not tall empty 'leadership' panels.
@@ -2914,6 +3381,8 @@ function render(){
  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===state.view)));
  $('demo-toggle').setAttribute('aria-pressed',String(state.demo));
  $('services').replaceChildren();
+ // Zonder vrijgegeven gegevens nooit fictieve personen of lege voorbeeldkaders tonen.
+ if(!state.loaded&&!state.demo){syncCadreToggle();return;}
  const dataset=hierarchy(filteredRows());
  const solo=state.view!=='alle';
  for(let i=0;i<SERVICES.length;i++){
@@ -2927,7 +3396,7 @@ document.querySelector('.toolbar').addEventListener('click',event=>{
  const btn=event.target.closest('button');if(!btn)return;
  if(btn.id==='toggle-cadres')return;
  if(btn.dataset.view)state.view=btn.dataset.view;
- else if(btn.id==='demo-toggle'&&state.loaded)state.demo=!state.demo;
+ else if(btn.id==='demo-toggle'&&fixtureModeAllowed)state.demo=!state.demo;
  render();
 });
 $('search').addEventListener('input',event=>{state.query=event.target.value;render()});
@@ -2946,8 +3415,10 @@ async function loadPublic(){
   window.BPDUniformAssignments?.setData?.(assignmentData?.assignments,artworkManifest?.artworks,libraryRules?.rules,uniformGrades?.choices,compositions?.compositions);
   window.BPDVisualAssets?.setData?.(artworkManifest?.artworks,visualLayers?.layers,uniformLayoutData?.visibility);
   applyRoleArtworkManifest(artworkManifest?.artworks);
+  policeInterventionBadgeUrl=policeInterventionPatchFromManifest(artworkManifest?.artworks);
   setFireSpecialtyPatchArtworks(artworkManifest?.artworks);
   setAmbulanceSpecialtyPatchArtworks(artworkManifest?.artworks);
+  setDepannageSpecialtyPatchArtworks(artworkManifest?.artworks);
   setServiceUniformData(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats,uniformLayoutData?.visibility);
   window.BPDPoliceUniform?.setGradeArtworkManifest?.(artworkManifest?.artworks);
   window.BPDPoliceUniform?.setUniformManagementData?.(artworkManifest?.artworks,uniformLayoutData?.layouts,uniformLayoutData?.nameplates,uniformLayoutData?.coats);
@@ -2967,17 +3438,27 @@ async function loadPublic(){
        /^\/api\/personnel-awards\/catalog-image\/custom_[a-f0-9-]{36}$/i.test(x.imageUrl)?
        x.imageUrl:undefined})),
     specialties:Array.isArray(p.specialties)?p.specialties.slice(0,20):[],
+    depannageGroups:p.dept==='depannage'&&Array.isArray(p.depannageGroups)?
+     p.depannageGroups.filter(x=>['awv','lsra','fast'].includes(x)):[],
+    // Preserve only the known public citizen tiers returned by the server.
+    // Without this, verified Burgerraad membership disappears at the client boundary.
+    burgerGroups:p.dept==='burger'&&Array.isArray(p.burgerGroups)?
+     p.burgerGroups.filter(x=>['Burgerraad','Burger','Burger IO'].includes(x)):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
     displayLabels:Array.isArray(p.displayLabels)?p.displayLabels.filter(x=>['stage','lid'].includes(x)).slice(0,1):[],
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
     motardRole:['in_opleiding','volwaardig','instructeur'].includes(p.motardRole)?p.motardRole:'',
     dispRole:['in_opleiding','volwaardig','instructeur'].includes(p.dispRole)?p.dispRole:'',
+    completedFireBasicTraining:p.dept==='brandweer'&&p.completedFireBasicTraining===true,
+    azlsFunctions:p.dept==='ambulance'&&Array.isArray(p.azlsFunctions)?
+     p.azlsFunctions.filter(x=>['AZLS Leiding','Arts','Verpleegkundige','Medisch Instructeur'].includes(x)).slice(0,4):[],
     specialtyPatches:Array.isArray(p.specialtyPatches)?
      p.specialtyPatches.filter(x=>x&&typeof x.label==='string'&&
        typeof x.level==='string'&&['discord','registered'].includes(x.source)&&
        typeof x.imageUrl==='string'&&
        /^\/api\/role-artwork\/file\/(?:(?:specialty|patch)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})\?v=[a-zA-Z0-9-]+$/.test(x.imageUrl)).slice(0,20):[],
     aeRole:['ae_i','ae_t','teamleader','instructeur'].includes(p.aeRole)?p.aeRole:'',
+    aeManual:['ae_i','ae_t','teamleader','instructeur'].includes(p.aeManual)?p.aeManual:'',
     aeRoles:Array.isArray(p.aeRoles)?p.aeRoles.filter(x=>['ae_i','ae_t','teamleader','instructeur'].includes(x)):[],
     aeTeamleader:p.aeTeamleader===true,
     reekshoofdReeks:typeof p.reekshoofdReeks==='string'?p.reekshoofdReeks.slice(0,20):'',
@@ -2988,20 +3469,20 @@ async function loadPublic(){
     personId:/^\d{15,22}$/.test(String(p.personId||''))?String(p.personId):null,
     source:String(p.source||'personeelslijst').slice(0,35)}));
   state.board=[]; // Geen bestuur in het operationele organogram.
+  state.canManageAE=payload.canManageAE===true;
   state.loaded=true;
   state.demo=false;
   $('source').className='notice'+(payload.stale||!payload.syncAvailable?' warn':'');
   $('source').textContent='MAIN · '
-   +(state.demo?'FICTIEVE VOORBEELDEN · ':'')
    +state.live.length+' geregistreerde dienstfuncties · '
    +(payload.syncAvailable?'Discord-sync gecontroleerd.':'Discord-sync tijdelijk onvolledig; handmatige functies blijven behouden.')
    +(payload.stale?' · Personeelsbron is mogelijk verouderd.':'');
  }catch(error){
-  state.loaded=false;state.live=[];state.board=[];state.demo=true;
+  state.loaded=false;state.live=[];state.board=[];state.demo=false;state.canManageAE=false;
   $('source').className='notice warn';
   $('source').textContent=auth?.currentUser?
    'Organogramgegevens tijdelijk niet beschikbaar: '+error.message:
-   'Meld je aan om echte personeelsgegevens te zien. De fictieve demonstratie blijft herkenbaar.';
+   'Meld je aan om de echte personeelsgegevens te zien.';
  }
  render();
  if(requestedCard){
@@ -3010,8 +3491,16 @@ async function loadPublic(){
     p.call.toLocaleLowerCase('nl-BE')===requestedCard.call.toLocaleLowerCase('nl-BE')&&
     (!requestedCard.name||p.name.toLocaleLowerCase('nl-BE')===
      requestedCard.name.toLocaleLowerCase('nl-BE')));
-   if(person){openPersonProfile(person);notifyCardParent('ready');}
-   else notifyCardParent('not-found');
+   if(person){
+    try{
+     openPersonProfile(person);
+     notifyCardParent('ready');
+    }catch(error){
+     console.error('Personeelskaart kon niet worden opgebouwd:',error);
+     notifyCardParent('unavailable');
+    }
+   }
+   else notifyCardParent(state.loaded?'not-found':'unavailable');
   }else notifyCardParent('unavailable');
  }
 }
@@ -3019,6 +3508,11 @@ async function setupManagement(){
  try{
   const response=await fetch('/api/client-config',{cache:'no-store'});
   const config=await response.json();
+  // Alleen de afzonderlijke belgiepd-test-omgeving mag bewust voorbeelden tonen.
+  // MAIN start altijd met echte gegevens en valt nooit terug op voorbeelden.
+  fixtureModeAllowed=config.firebaseConfig?.projectId==='belgiepd-test';
+  $('demo-toggle').hidden=!fixtureModeAllowed;
+  if(!fixtureModeAllowed)state.demo=false;
   if(!response.ok||!config.enabled)throw Error('Aanmelding tijdelijk niet beschikbaar');
   const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
   authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
@@ -3044,7 +3538,14 @@ async function setupManagement(){
     $('police-specialty-search').value='';
    }
   });
- }catch(e){$('manage-status').textContent=e.message;}
+ }catch(e){
+  $('manage-status').textContent=e.message;
+  state.loaded=false;state.demo=false;state.live=[];
+  $('source').className='notice warn';
+  $('source').textContent='Organogram niet beschikbaar: '+e.message;
+  render();
+  if(requestedCard)notifyCardParent('unavailable');
+ }
 }
 const RAGO_IO_ROLE_ID='1490841316656156802';
 const RAGO_IO_PATCH='/assets/rago-definitief-in-opleiding-20261030.svg?v=approved-three';
@@ -3088,6 +3589,18 @@ const ROLE_ARTWORK_SLOTS=[
 // Artwork manifest is presentation-only; the trusted Discord role mapping
 // above remains unchanged for membership and all API permissions.
 let roleArtworkUrls=new Map();
+let policeInterventionBadgeUrl='';
+function policeInterventionPatchFromManifest(manifest){
+ // A general library patch is purely visual and does not assign a training role.
+ for(const key of ['patch_politie_interventie','specialty_politie_interventie',
+                   'patch_politie_interventiedienst','specialty_politie_interventiedienst']){
+  const entry=(Array.isArray(manifest)?manifest:[]).find(row=>row?.key===key);
+  const url=String(entry?.imageUrl||'');
+  if(url.startsWith('/api/role-artwork/file/'+key+'?v=')&&
+     /^\/api\/role-artwork\/file\/(?:patch|specialty)_politie_[a-z0-9_]+\?v=[A-Za-z0-9-]+$/.test(url))return url;
+ }
+ return '';
+}
 function roleArtworkUrl(roleId,variant='standard'){
  return roleArtworkUrls.get(roleId+'_'+variant)||'';
 }
@@ -3282,6 +3795,9 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
  const showK9=Boolean(person&&specialty==='K9');
  const showMotard=Boolean(person&&specialty==='MOTARD');
  const showDisp=Boolean(person&&specialty==='DISP');
+ const showAE=Boolean(person&&specialty==='AE');
+ $('police-ae-label').hidden=!showAE;
+ $('police-ae-role').disabled=!showAE;
  $('police-disp-label').hidden=!showDisp;
  $('police-disp-role').disabled=!showDisp;
  $('police-disp-variants').hidden=!showDisp;
@@ -3400,6 +3916,13 @@ function previewPoliceSpecialty(specialty=policeSpecialtyFocus){
    'Discord-rol: '+DISP_DISCORD_ROLE_IDS[dispRole]+
    ($('police-disp-role').value?' · handmatig gekozen, nog niet opgeslagen':' · automatisch/voorbeeld'):
    'Kies Dispatch Selectie, Volwaardig of Instructeur.';
+ }else if(specialty==='AE'){
+  const selected=$('police-ae-role').value;
+  role.textContent=selected?(AE_LEVEL_LABELS[selected]||'AE'):
+   person.aeRole?(AE_LEVEL_LABELS[person.aeRole]||'AE'):
+   'AE-functieniveau niet bevestigd';
+  meta.textContent=selected?'Handmatig voorgesteld; na bewaren gelogd. Geen wijziging aan Discord-rollen of portaalrechten.':
+   'Een rolkoppeling bewijst niet dat dit lid die Discord-rol heeft.';
  }else if(specialty==='RAGO-IO'){
   role.textContent='RAGO-IO · '+(checked?'geselecteerd':'in opleiding');
   meta.textContent='Discord-rol: '+RAGO_IO_ROLE_ID+' · geen volwaardige RAGO-functie';
@@ -3424,6 +3947,9 @@ function fillPoliceSpecialtyPerson(){
  $('police-motard-role').disabled=true;
  $('police-motard-label').hidden=true;
  $('police-motard-variants').hidden=true;
+ $('police-ae-role').value=person?.aeManual||'';
+ $('police-ae-role').disabled=true;
+ $('police-ae-label').hidden=true;
  $('police-disp-role').value=person?.dispManual||'';
  $('police-disp-role').disabled=true;
  $('police-disp-label').hidden=true;
@@ -3436,6 +3962,7 @@ function fillPoliceSpecialtyPerson(){
  if(person.k9Manual)active.add('K9');
  if(person.motardManual)active.add('MOTARD');
  if(person.dispManual)active.add('DISP');
+ if(person.aeManual)active.add('AE');
  for(const specialty of policeSpecialtyNames){
   const row=el('div','manage-specialty-row');
   const label=el('label'),member=el('input');
@@ -3474,6 +4001,7 @@ function fillPoliceSpecialtyPerson(){
     if(specialty==='K9')$('police-k9-role').value='';
     if(specialty==='MOTARD')$('police-motard-role').value='';
     if(specialty==='DISP')$('police-disp-role').value='';
+    if(specialty==='AE')$('police-ae-role').value='';
    }else if(specialty==='MOTARD'&&!$('police-motard-role').value){
     $('police-motard-role').value='volwaardig';
    }else if(specialty==='DISP'&&!$('police-disp-role').value){
@@ -3553,6 +4081,15 @@ $('police-specialty-person').addEventListener('change',fillPoliceSpecialtyPerson
 $('police-specialty-toggle').addEventListener('click',()=>{
  $('police-specialty-editor').hidden=!$('police-specialty-editor').hidden;
  if(!$('police-specialty-editor').hidden)fillPoliceSpecialtyPerson();
+});
+$('police-ae-role').addEventListener('change',()=>{
+ const v=$('police-ae-role').value;
+ const area=$('police-specialty-choices');
+ const member=area.querySelector('input[data-role="member"][value="AE"]');
+ const instructor=area.querySelector('input[data-role="instructor"][value="AE"]');
+ if(v&&member)member.checked=true;
+ if(instructor)instructor.checked=v==='instructeur';
+ previewPoliceSpecialty('AE');
 });
 $('police-disp-role').addEventListener('change',()=>{
  const selected=$('police-disp-role').value;
@@ -3634,6 +4171,9 @@ $('police-specialty-save').addEventListener('click',async()=>{
  const dispRole=specialtySet.has('DISP')?
   ($('police-disp-role').value||
     (instructorSpecialties.includes('DISP')?'instructeur':'volwaardig')):'';
+ const aeRole=specialtySet.has('AE')?
+  ($('police-ae-role').value||
+    (instructorSpecialties.includes('AE')?'instructeur':'')):'';
  const reason=$('police-specialty-reason').value.trim();
  if(reason.length<8||reason.length>300){
   $('police-specialty-status').textContent='Motivering van 8 tot 300 tekens verplicht.';return;
@@ -3642,11 +4182,11 @@ $('police-specialty-save').addEventListener('click',async()=>{
  try{
   await authFetch('/api/organogram/police-specialties/'+encodeURIComponent(person.personId),{
    method:'PUT',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({specialties,instructorSpecialties,teacherSpecialties,k9Role,motardRole,dispRole,reason})
+   body:JSON.stringify({specialties,instructorSpecialties,teacherSpecialties,k9Role,motardRole,dispRole,aeRole,reason})
   });
   person.specialties=specialties;person.instructorSpecialties=instructorSpecialties;
   person.teacherSpecialties=teacherSpecialties;person.k9Manual=k9Role;
-  person.motardManual=motardRole;person.dispManual=dispRole;
+  person.motardManual=motardRole;person.dispManual=dispRole;person.aeManual=aeRole;
   $('police-specialty-reason').value='';
   $('police-specialty-status').textContent='Specialisaties opgeslagen en gelogd.';
   await loadPublic();
@@ -3764,5 +4304,6 @@ $('manage-undo').addEventListener('click',async()=>{
  finally{button.disabled=!activeAdminPerson?.undoAvailable}
 });
 </script>
+<script defer src="/bpd-navigation.js"></script>
 </body>
 </html>

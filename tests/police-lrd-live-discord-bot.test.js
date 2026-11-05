@@ -150,13 +150,14 @@ test('No complete guild-member enumeration means no invented Discord-only roster
  assert.deepEqual(result.unlinked,[]);
 });
 
-test('Recherche is visible in the general roster only with verified Discord evidence',()=>{
+test('Recherche is absent from all personnel list screens and roster API',()=>{
  const source=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
  const route=source('src/member-dashboard-routes.js');
  const manager=source('src/personnel-editor-routes.js');
  const publicPage=source('public/personeelslijst.html');
  const home=source('public/index.html');
  const managerPage=source('public/personeelsbeheer.html');
+ const visuals=source('public/personnel-list-visuals.js');
  assert.equal(route.includes('discordRechercheUnlinked'),false);
  assert.equal(route.includes("app.get('/api/member/personnel-list',memberIdentity"),true);
  assert.equal(manager.includes('discordRechercheUnlinked'),false);
@@ -164,13 +165,10 @@ test('Recherche is visible in the general roster only with verified Discord evid
  assert.equal(home.includes('id="memberDiscordRecherche"'),false);
  assert.equal(managerPage.includes('id="staffDiscordRecherche"'),false);
  assert.equal(managerPage.includes('lrdDiscordVerified'),false);
- const records=publicPoliceRoster(roster);
- assert.ok(records.length>0);
- for(const record of records){
-  assert.equal(record.specialties.length,12);
-  assert.equal(record.specialties.find(s=>s.label===LRD_SPECIALTY_LABEL)?.value,
-    'Niet gecontroleerd');
- }
+ assert.equal(visuals.includes("'TO','AE','LRD (Recherche)'"),false);
+ const publicPeople=publicPoliceRoster(roster);
+ assert.equal(publicPeople[0].specialties.length,10);
+ assert.equal(publicPeople[0].specialties.some(s=>s.label===LRD_SPECIALTY_LABEL),false);
 });
 
 test('Individual dossier renders LRD only after positive verified Discord bot role',async()=>{

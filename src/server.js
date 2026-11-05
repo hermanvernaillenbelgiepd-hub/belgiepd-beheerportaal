@@ -8,15 +8,25 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import {firebaseDiagnostic} from './firebase-diagnostics.js';
 import { discordConfig } from './discord-utils.js';
+import {discordBotToken} from './discord-bot-refresh.js';
+import {probeBelgiumPdDiscordUsers} from './bpd-discord-users-probe.js';
 import { discordPortalAccess } from './discord-portal-access.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
+import {verifiedPoliceBasicRole,ensureVerifiedPoliceBasicAccess,autoPoliceBasicActive,hideUnverifiedAutoPoliceBasic} from './verified-police-basic-access.js';
 import { planPersonnelMigration } from './personnel-migration.js';
 import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.js';
 import { ALLOWED_ROLES } from './registrations.js';
 import { installRegistrationRoutes } from './registration-routes.js';
 import {installBasicObservationRoutes} from './basic-observation-routes.js';
+import {basicObservationJsonParser} from './basic-observation-json.js';
+import {scheduleBasicObservationAutoArchive} from './basic-observation-auto-archive.js';
+import {installTechnicalCenterRoutes,mayOpenTechnicalCenter} from './technical-center-config.js';
+import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
+import {installActivityTelemetryRoutes} from './activity-telemetry-routes.js';
+import {installActivityCenterRoutes} from './activity-center-routes.js';
+import {scheduleAutomaticActivityPings} from './activity-ping-runner.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
 import {canSeeDashboardManagement,canSeeAdvancedDashboard,isFireZoneDashboard,ambulanceDashboardTier} from './dashboard-admin-policy.js';
@@ -34,6 +44,9 @@ import {installUniformLibraryRoutes} from './uniform-library-routes.js';
 import {installUniformGradeRoutes} from './uniform-grade-routes.js';
 import {installUniformCompositionRoutes} from './uniform-composition-routes.js';
 import {installTrainingRequestRoutes} from './training-request-routes.js';
+import {installDocumentCenterRoutes} from './document-center-routes.js';
+import {installDcIdTransferRoutes} from './dc-id-transfer-routes.js';
+import {DC_TRANSFER_ALIASES,applyCompletedDcAliases} from './dc-id-transfer-policy.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
 import { installUserRoutes } from './user-routes.js';
@@ -41,15 +54,24 @@ import {installManualRoleRoutes} from './manual-role-routes.js';
 import {installBoardAppointmentRoutes} from './board-appointment-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
-import {eligibleForTechnicalProfile,verifiedPoliceRank,technicalCookieIsValid,technicalActor} from './portal-profile-mode.js';
+import {eligibleForTechnicalProfile,verifiedPoliceRank,verifiedPoliceMembership,technicalCookieIsValid,technicalActor} from './portal-profile-mode.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
+import {installPersonnelLifecycleRoutes} from './personnel-lifecycle-routes.js';
+import {PERSONNEL_LIFECYCLE_COLLECTION,lifecycleKey,overlayPersonnelLifecycle} from './personnel-lifecycle-policy.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
+import {installSpecialtyRestrictionRoutes} from './specialty-restriction-routes.js';
 import {installSpecialtyRoleLinkRoutes} from './specialty-role-link-routes.js';
 import {installRosterColumnRoutes,loadRosterConfigs} from './roster-column-config.js';
 import {installFunctionChangeRoutes} from './function-change-routes.js';
 import {installReceivedRegistrationRoutes} from './received-registration-routes.js';
-import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays} from './specialization-policy.js';
+import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyReadEnabled,applySpecialtyOverlays,allSpecialtyLabels,SPECIALTY_STATES} from './specialization-policy.js';
+import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
+import {overlayVerifiedRosterSpecialties} from './specialty-roster-display.js';
+import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION} from './specialty-role-presets.js';
+import {SPECIALTY_ROLE_LINKS} from './specialty-role-link-routes.js';
+import {ROLE_CATALOG} from './role-catalog.js';
+import {RAGO_DISPLAY_ROLE_IDS,overlayVerifiedRagoRoster} from './rago-qualification-display.js';
 import {installStaffDossierRoutes} from './staff-dossier-routes.js';
 import {installDossierRetirementRoutes} from './dossier-retirement-routes.js';
 import {installDossierCenterRoutes} from './dossier-center-routes.js';
@@ -57,6 +79,7 @@ import {installOrganogramPlacementRoutes} from './organogram-placement-routes.js
 import {installPersonnelDecorationRoutes} from './personnel-decoration-routes.js';
 import {installFireDossierRoutes} from './fire-dossier-routes.js';
 import {installCitizenDossierRoutes} from './citizen-dossier-routes.js';
+import {installTechnicalTestCleanupRoutes} from './technical-test-cleanup-routes.js';
 import {installDossierGrantRoutes} from './dossier-grant-routes.js';
 import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,
   verifyBoardDiscordRole} from './dossier-grants.js';
@@ -87,9 +110,17 @@ app.get('/personeelslijst.html',(req,res,next)=>{
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
 app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
+// Basiskaderobservaties have their OWN POST route. Without a JSON parser,
+// req.body is undefined and every selected Discord subject is rejected.
+app.use('/api/basic-observations',basicObservationJsonParser);
 app.use('/api/callsigns',express.json({limit:'12kb',strict:true,
   verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
+// The signed FiveM activity endpoint must retain the exact HMAC body bytes.
+app.use('/api/activity',express.json({limit:'4kb',strict:true,
+  verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
+app.use('/api/technical-center',express.json({limit:'3kb',strict:true}));
+app.use('/api/technical-cleanup',express.json({limit:'4kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/role-artwork',express.json({limit:'230kb',strict:true}));
 app.use('/api/uniform-management',express.json({limit:'4kb',strict:true}));
@@ -100,6 +131,8 @@ app.use('/api/visual-layers',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
 app.use('/api/training-calendar',express.json({limit:'4kb',strict:true}));
+app.use('/api/document-center',express.json({limit:'36mb',strict:true}));
+app.use('/api/dc-id-transfer',express.json({limit:'5kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
 app.use('/api/member',express.json({limit:'3kb',strict:true}));
 app.use('/api/users',express.json({limit:'4kb',strict:true}));
@@ -108,6 +141,7 @@ app.use('/api/fire-dossiers',express.json({limit:'6kb',strict:true}));
 app.use('/api/board',express.json({limit:'4kb',strict:true}));
 app.use('/api/organogram',express.json({limit:'4kb',strict:true}));
 app.use('/api/personnel',express.json({limit:'4kb',strict:true}));
+app.use('/api/personnel-lifecycle',express.json({limit:'4kb',strict:true}));
 app.use('/api/roster-columns',express.json({limit:'16kb',strict:true}));
 app.use('/api/specialty-links',express.json({limit:'28kb',strict:true}));
 app.use('/api/personnel-awards',express.json({limit:'180kb',strict:true}));
@@ -119,6 +153,35 @@ app.use('/api/dossier-retirement',express.json({limit:'4kb',strict:true}));
 app.use('/api/to',express.json({limit:'24kb',strict:true}));
 app.locals.discordJsonParser=express.json({limit:'2kb',strict:true});
 installDiscordOAuth(app);
+// A transfer revocation must also protect modules that authenticate outside
+// requireUser (training, role management and historical endpoints). This check
+// only blocks an actually signed former identity and never grants permissions.
+app.use('/api',async(req,res,next)=>{
+ const token=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
+ if(!token)return next();
+ try{
+  if(!getApps().length)
+    initializeApp({credential:applicationDefault(),projectId:process.env.FIREBASE_PROJECT_ID});
+  const decoded=await getAuth().verifyIdToken(token);
+  let id=null;
+  if(decoded.firebase?.sign_in_provider==='custom'&&decoded.bpdDiscord===true&&
+      /^discord:\d{15,22}$/.test(decoded.uid||''))
+    id=decoded.uid.slice(8);
+  else if(decoded.firebase?.sign_in_provider==='google.com'&&decoded.email_verified)
+    id=String(accessList()?.[String(decoded.email||'').toLowerCase()]?.discordId||'');
+  if(/^\d{15,22}$/.test(id||'')){
+    const alias=await cachedAuthDoc(DC_TRANSFER_ALIASES,id);
+    if(alias.exists&&alias.get('status')==='completed')
+      return res.status(403).json({error:'Dit Discord-account werd overgedragen. Gebruik het nieuwe account.'});
+  }
+  next();
+ }catch(e){
+  // Invalid tokens remain the responsibility of the original endpoint's
+  // authentication middleware. Infrastructure failures fail closed.
+  if(typeof e?.code==='string'&&e.code.startsWith('auth/'))return next();
+  return res.status(503).json({error:'DC-ID identiteitscontrole tijdelijk niet beschikbaar'});
+ }
+});
 installRoleRoutes(app,{getSnapshot});
 // The live personnel view remains sourced from Sheets during the transition.
  // Including citizens in the snapshot does NOT re-enable retired citizen dossiers.
@@ -130,6 +193,26 @@ const docs={
 };
 const auxiliaryPersonnelRanges={brandweerInfo:'BrandweerInfo!A1:M150'};
 const cache={expires:0,data:null,fetchedAt:null,pending:null};
+const personnelLifecycleCache={until:0,docs:null,pending:null};
+function invalidatePersonnelLifecycle(){
+ personnelLifecycleCache.until=0;personnelLifecycleCache.docs=null;
+ for(const key of authDocCache.keys())if(key.startsWith(PERSONNEL_LIFECYCLE_COLLECTION+':'))
+  authDocCache.delete(key);
+}
+async function getPersonnelLifecycleDocs(){
+ const now=Date.now();
+ if(personnelLifecycleCache.docs&&personnelLifecycleCache.until>now)
+  return personnelLifecycleCache.docs;
+ if(personnelLifecycleCache.pending)return personnelLifecycleCache.pending;
+ personnelLifecycleCache.pending=getFirestore().collection(PERSONNEL_LIFECYCLE_COLLECTION)
+  .limit(1200).get().then(snapshot=>{
+   if(snapshot.size===1200)throw Error('Personeelsarchief overschrijdt veilige limiet');
+   personnelLifecycleCache.docs=snapshot.docs;
+   personnelLifecycleCache.until=Date.now()+15000;
+   return snapshot.docs;
+  }).finally(()=>{personnelLifecycleCache.pending=null});
+ return personnelLifecycleCache.pending;
+}
 const cacheMs=Math.max(1,Math.min(60,Number(process.env.SYNC_CACHE_MINUTES)||15))*60*1000;
 function accessList(){
   try {
@@ -197,10 +280,40 @@ async function requireUser(req,res,next){
           process.env.DISCORD_GUILD_ID,process.env);
         if(provisioned){authDocCache.delete(USER_COLLECTION+':'+id);managed=await cachedAuthDoc(USER_COLLECTION,id);}
       }
+      // Automatically approve Police Basiskader only when fresh Discord
+      // roles AND one active 3xx-5xx Police roster entry agree.
+      // Never overwrite legacy allowlist grants or any explicit Police role.
+      const legacy=Object.values(accessList()).some(x=>x?.discordId===id);
+      const canAutoBasic=(!managed.exists&&!legacy)||
+        managed.get('status')==='pending'||
+        (managed.get('status')==='approved'&&
+          !managed.get('departments')?.includes('politie'));
+      if(canAutoBasic&&verifiedPoliceBasicRole(verified,member,process.env.DISCORD_GUILD_ID)){
+        try{
+          const snap=await getSnapshot();
+          if(!snap.stale){
+            const result=await ensureVerifiedPoliceBasicAccess(store,verified,member,
+              process.env.DISCORD_GUILD_ID,snap.data);
+            if(result.changed){
+              authDocCache.delete(USER_COLLECTION+':'+id);
+              managed=await cachedAuthDoc(USER_COLLECTION,id);
+            }
+          }
+        }catch(error){
+          // Automated role sync must fail closed without breaking login.
+          console.warn('Automatische Basiskadertoegang niet beschikbaar:',
+            typeof error?.code==='string'?error.code.slice(0,40):'controle');
+        }
+      }
       if(managed.exists){
         manualRoleRecovery=managed.data()?.manualRoleRecovery||null;
         entry=approvedManagedEntry(managed.data(),id);
         if(!entry)return res.status(403).json({error:'Je portaaltoegang is nog niet goedgekeurd of werd geblokkeerd. Open Gebruikersbeheer.'});
+        if(!autoPoliceBasicActive(verified,member,process.env.DISCORD_GUILD_ID,managed.data())){
+          entry=hideUnverifiedAutoPoliceBasic(entry);
+          if(!entry)return res.status(403).json({error:
+            'Je automatisch gekoppelde Politie-Basiskaderrol moet opnieuw via Discord worden geverifieerd.'});
+        }
         if(!stillEligibleAutoCadre(verified,member,process.env.DISCORD_GUILD_ID,
           process.env,managed.data()))
           return res.status(403).json({error:'Je automatische Middenkader-toegang vereist een nieuwe Discord-verificatie. Vernieuw je rollen in Mijn Discord.'});
@@ -225,7 +338,18 @@ async function requireUser(req,res,next){
       }
     }else return res.status(403).json({error:'Gebruik de toegelaten Google- of Discord-aanmelding'});
     if (!entry || !Array.isArray(entry.departments) || !ALLOWED_ROLES.includes(entry.role)) return res.status(403).json({error:'Account is niet gemachtigd voor de koppeling'});
-    const departments=entry.departments.filter(d=>allDepts.includes(d));
+    // A departed employee cannot regain their former service access just
+    // because CMS restores their historical Discord roles on guild rejoin.
+    // The audited lifecycle decision takes precedence over the role cache.
+    const departments=[];
+    for(const dept of entry.departments.filter(d=>allDepts.includes(d))){
+      const key=lifecycleKey(dept,discordId);
+      if(key){
+        const lifecycle=await cachedAuthDoc(PERSONNEL_LIFECYCLE_COLLECTION,key);
+        if(lifecycle.exists&&['archived','pending'].includes(lifecycle.get('state')))continue;
+      }
+      departments.push(dept);
+    }
     if (!departments.length) return res.status(403).json({error:'Geen toegelaten hulpdienst'});
     // Een rol geldt alleen voor de gekoppelde hulpdienst; geen algemene verhoging.
     const rawDepartmentRoles =
@@ -257,6 +381,9 @@ async function requireUser(req,res,next){
     const canSwitch=eligibleForTechnicalProfile(verified,actor,discordMember,process.env);
     actor.profileTechnicalAvailable=canSwitch;
     actor.discordPoliceRank=verifiedPoliceRank(discordMember,process.env.DISCORD_GUILD_ID);
+    // Scoped read-only proof, used ONLY for writing lower-rank Police observations.
+    actor.discordPoliceMemberVerified=Boolean(verified.uid==='discord:'+discordId&&
+      verifiedPoliceMembership(discordMember,process.env.DISCORD_GUILD_ID));
     // Identical verified officer proof as the shared personnel-list layout
     // editor (up to 24 hours), not the much shorter 15-minute dossier freshness
     // marker. Neither a callsign nor a saved role grants this permission.
@@ -318,6 +445,8 @@ async function queryLive(){
   if(plan.duplicates.length||plan.unmatched.length)
     console.warn('Personeelsynchronisatie vraagt broncontrole:',JSON.stringify({
       unmatched:plan.unmatched.length,duplicates:plan.duplicates.length,
+      byReason:Object.fromEntries([...new Set(plan.unmatched.map(x=>x.reason))].sort().map(reason=>
+        [reason,plan.unmatched.filter(x=>x.reason===reason).length])),
       byDepartment:Object.fromEntries(Object.entries(plan.statistics).map(([dept,x])=>
         [dept,{linked:x.records,unmatched:x.unmatched,duplicates:x.duplicates}]))
     }));
@@ -340,25 +469,94 @@ async function getSourceSnapshot(forceRefresh=false){
 }
 // Only read Firestore edits into shared personnel snapshots after the pilot is approved.
 // Read-only Sheets remain intact for rollback and comparison.
-async function getSnapshot({forceRefresh=false}={}){
+async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
-  const [created,edits,specialties,rosterConfigs]=await Promise.all([
+  const [created,edits,specialties,rosterConfigs,identityAliases]=await Promise.all([
     on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(500).get():null,
     process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'
       ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null,
     specialtyReadEnabled(process.env)
       ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null,
-    specialtyReadEnabled(process.env)?loadRosterConfigs():null
+    specialtyReadEnabled(process.env)?loadRosterConfigs():null,
+    getFirestore().collection(DC_TRANSFER_ALIASES).limit(201).get()
   ]);
-  if(created?.size===500||edits?.size===400||specialties?.size===600)throw Error('Te veel personeelsrecords; migratiecontrole nodig');
+  if(created?.size===500||edits?.size===400||specialties?.size===600||identityAliases.size===201)
+    throw Error('Te veel personeelsrecords; migratiecontrole nodig');
   const added=(created?.docs||[]).map(d=>asCreatedPersonnel(d.data())).filter(Boolean);
   // Never silently override or duplicate an original service+Discord ID.
-  const keys=new Set(base.data.map(p=>p.dept+':'+p.personId));
-  const extra=added.filter(p=>!keys.has(p.dept+':'+p.personId));
-  const combined=base.data.concat(extra);
+  const canonicalBase=applyCompletedDcAliases(base.data,identityAliases.docs);
+  const canonicalAdded=applyCompletedDcAliases(added,identityAliases.docs);
+  const keys=new Set(canonicalBase.map(p=>p.dept+':'+p.personId));
+  const extra=canonicalAdded.filter(p=>!keys.has(p.dept+':'+p.personId));
+  const combined=canonicalBase.concat(extra);
   const personnel=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
-  return {...base,data:specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel};
+  let visible=specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel;
+  // Reuse the already-authorized BelgiumPD members API to project fresh,
+  // verified Discord specializations across the personnel roster. Display
+  // only: no Firestore writes, role grants, cadre or dossier-right changes.
+  // The same cached upstream snapshot also powers the organogram.
+  let verifiedRosterApplied=false;
+  if(specialties&&/^\d{15,22}$/.test(String(process.env.DISCORD_GUILD_ID||''))){
+    try{
+      const upstream=await getBelgiumPdDisplayRoles();
+      if(upstream.status==='ok'){
+        const depts=['politie','brandweer','ambulance','depannage'];
+        const docs=await getFirestore().getAll(...depts.map(dept=>
+          getFirestore().collection(SPECIALTY_ROLE_LINKS).doc(dept)));
+        const linked=new Map(docs.map((doc,index)=>{
+          const dept=depts[index];
+          const extra=(rosterConfigs?.[dept]?.customSpecialties||[]).map(x=>x.label);
+          const labels=new Set(allSpecialtyLabels(dept,extra));
+          const catalog=new Set(ROLE_CATALOG.filter(x=>x.dept===dept||
+            dept==='politie'&&x.dept==='dispatch'||
+            dept==='ambulance'&&x.id==='1508506242299985980').map(x=>x.id));
+          const saved=Array.isArray(doc.get('links'))?doc.get('links'):[];
+          const links=defaultSpecialtyRoleLinks(dept,saved,
+            doc.get('presetVersion')===POLICE_PATCH_PRESET_VERSION)
+            .filter(x=>x&&catalog.has(x.roleId)&&labels.has(x.label)&&
+              SPECIALTY_STATES.includes(x.value));
+          return [dept,links];
+        }));
+        // RAGO has a separate, long-standing verified-role projection that
+        // must continue to work even if its editable patch link was removed.
+        const at=Date.now(),ragoProof=visible.filter(p=>p.dept==='politie'&&
+          /^\d{15,22}$/.test(String(p.personId||''))&&
+          upstream.entries.has(p.personId)).map(p=>({
+            id:p.personId,data:()=>({guildId:process.env.DISCORD_GUILD_ID,
+              verifiedAt:at,roleIds:upstream.entries.get(p.personId)})
+          }));
+        visible=overlayVerifiedRagoRoster(visible,ragoProof,process.env.DISCORD_GUILD_ID,at);
+        visible=overlayVerifiedRosterSpecialties(visible,upstream,linked);
+        verifiedRosterApplied=true;
+      }
+    }catch(err){
+      console.warn('Discord-personeelsweergave niet beschikbaar:',
+        err?.code||'verificatie');
+    }
+  }
+  // When the dedicated API is unavailable, retain the previous safe OAuth
+  // RAGO fallback. Never let an older OAuth snapshot override fresher API roles.
+  if(process.env.DISCORD_GUILD_ID){
+    if(!verifiedRosterApplied){
+      try{
+        const roleDocs=await getFirestore().collection('bpd_discord_auth')
+          .where('roleIds','array-contains-any',RAGO_DISPLAY_ROLE_IDS)
+          .limit(500).get();
+        if(roleDocs.size<500)
+          visible=overlayVerifiedRagoRoster(visible,roleDocs.docs,process.env.DISCORD_GUILD_ID);
+        else console.warn('RAGO-specialisaties: limiet bereikt, toon geregistreerde basisstatus');
+      }catch(err){
+        console.warn('RAGO-status niet recent verifieerbaar:',err?.code||'databasecontrole');
+      }
+    }
+  }
+  // Firestore lifecycle is authoritative for ACTIVE roster visibility even
+  // when a departed member remains in the old Google spreadsheet.
+  // Protected archive routes explicitly request includeArchived=true.
+  const lifecycleDocs=await getPersonnelLifecycleDocs();
+  visible=overlayPersonnelLifecycle(visible,lifecycleDocs,{includeArchived});
+  return {...base,data:visible};
 }
 app.get('/api/client-config',(_req,res)=>{
   const {FIREBASE_PROJECT_ID,FIREBASE_API_KEY,FIREBASE_AUTH_DOMAIN}=process.env;
@@ -455,6 +653,13 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     // Restrict exceptional cross-service dossier WRITES if the official roster is stale.
     req.bpd.dossierSourceFresh=snapshot.stale!==true;
     const roster=snapshot.stale?[]:snapshot.data;
+    // Navigation hint only; the API rechecks identity, rank and target on submission.
+    req.bpd.basicObservationCanSubmit=Boolean(basicObservationTargets(req.bpd,roster).author);
+    // Inform only the holder of a verified login that a personal Police
+    // dossier entry exists; no inferred Police authority is granted.
+    const ownPolice=basicObservationAccessChecks(req.bpd,roster);
+    req.bpd.basicObservationPoliceRecord=ownPolice.discordIdentityVerified===true&&
+      ownPolice.policeRosterMatch===true&&ownPolice.policeCadreRecognized===true;
     // This verifies a basic Ambulance employee's own OFFICIAL roster
     // mapping for dashboard presentation only. It must never unlock
     // protected service dossiers, report endpoints or grants.
@@ -498,6 +703,9 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     req.bpd.dossierManageDepartments=scope.manageDepartments;
     req.bpd.dossierFullDepartments=scope.fullDepartments;
     req.bpd.dossierTester=scope.tester;
+    // Read only after dossier scopes are resolved; a foreign service-leader
+    // role must never promote the holder's Police Basiskader permissions.
+    req.bpd.basicObservationCanReview=mayReadBasicInbox(req.bpd);
     // A fresh, guild-bound role snapshot for each fire subject. A missing role
     // snapshot can never be treated as ordinary Brandweer membership.
     req.bpd.fireSubjectRoleSets=new Map();
@@ -602,15 +810,24 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
 });
 installRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installBasicObservationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
-installManagementRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installManagementRoutes(app,{requireUser:requireDossierUser,requireMemberUser:requireUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installCallsignBotRoutes(app);
+installActivityTelemetryRoutes(app);
 installCallsignSelfServiceRoutes(app,{getSnapshot});
 installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installRosterColumnRoutes(app,{requireUser});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
+installDocumentCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
+  onCompleted:id=>{
+    authDocCache.delete(DC_TRANSFER_ALIASES+':'+id);
+    authDocCache.delete(USER_COLLECTION+':'+id);
+  }});
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
+installTechnicalCenterRoutes(app,{requireUser});
+installTechnicalTestCleanupRoutes(app,{requireUser,getSnapshot});
 installRoleArtworkRoutes(app,{requireUser});
 installUniformManagementRoutes(app,{requireUser});
 installUniformAssignmentRoutes(app,{requireUser});
@@ -623,6 +840,7 @@ installManualRoleRoutes(app,{requireUser});
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   res.set('Cache-Control','no-store');
   res.json({visible:canSeeDashboardManagement(req.bpd),
+    technicalCenterVisible:mayOpenTechnicalCenter(req.bpd),
     showAdvancedDashboard:canSeeAdvancedDashboard(req.bpd),
     dashboardProfile:isFireZoneDashboard(req.bpd)?'brandweer-zone':
       ambulanceDashboardTier(req.bpd)?'ambulance-azls':null,
@@ -634,7 +852,10 @@ app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
       ['officierenkader','korpsleiding'].includes(ambulanceDashboardTier(req.bpd))&&
       req.bpd.dossierNativeDepartments?.includes('ambulance')===true&&
       req.bpd.dossierAllowedDepartments?.includes('ambulance')===true,
-    allowedDepartments:req.bpd.dossierAllowedDepartments||[]});
+    allowedDepartments:req.bpd.dossierAllowedDepartments||[],
+    basicObservationCanSubmit:req.bpd.basicObservationCanSubmit===true,
+    basicObservationCanReview:req.bpd.basicObservationCanReview===true,
+    basicObservationPoliceRecord:req.bpd.basicObservationPoliceRecord===true});
 });
 installDossierGrantRoutes(app,{requireUser:requireDossierUser,accessList});
 installBoardAppointmentRoutes(app,{requireUser});
@@ -645,8 +866,13 @@ installDiscordPersonalProfileRoutes(app,{getSnapshot});
 // More-specific activity endpoints MUST precede /api/personnel/:dept/:discordId.
 // That broad POST edit route otherwise intercepts retrospective audit submissions.
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
+// Isolated legacy activity read: no automated pings or personnel changes.
+installActivityCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
+installPersonnelLifecycleRoutes(app,{requireUser:requireDossierUser,
+  getSnapshot,invalidateLifecycle:invalidatePersonnelLifecycle});
 installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installSpecialtyRestrictionRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSpecialtyRoleLinkRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installFunctionChangeRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installReceivedRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
@@ -706,5 +932,25 @@ async function probeDiscordFirestore(){
 }
 app.listen(Number(process.env.PORT)||8080,()=>{
   console.log('BelgiumPD op poort '+(process.env.PORT||8080));
+  // Public project identifier (not a credential): verify Storage belongs to MAIN.
+  console.info('BelgiumPD Firebase-project-ID:',String(process.env.FIREBASE_PROJECT_ID||'niet ingesteld'));
+
+  // Startup diagnosis contains only booleans, NEVER the Discord IDs or bot token.
+  const guildConfigured=/^\d{15,22}$/.test(String(process.env.DISCORD_GUILD_ID||''));
+  const botConfigured=Boolean(discordBotToken(process.env));
+  console.info('Discord-botconfiguratie:',
+   guildConfigured?'server-ID geldig':'server-ID ontbreekt of ongeldig',
+   botConfigured?'bot-token ingesteld':'bot-token ontbreekt of ongeldig');
+  // Independent read-only check: never log member IDs, names, roles or tokens.
+  void probeBelgiumPdDiscordUsers().then(result=>{
+   console.info('BelgiumPD Discord-leden-API:',result.status,
+    result.status==='ok'?
+     'leden='+result.memberCount+' roltoewijzingen='+result.roleCount:
+    result.status==='unexpected_schema'?JSON.stringify(result.shape):'');
+  }).catch(()=>console.warn('BelgiumPD Discord-leden-API: connection_failed'));
   void probeDiscordFirestore();
+  // Opt-in only. Missing configuration keeps automatic activity alerts OFF.
+  scheduleAutomaticActivityPings({getSnapshot});
+  // Independent, reversible 30-day retention for submitted Police observations.
+  scheduleBasicObservationAutoArchive();
 });

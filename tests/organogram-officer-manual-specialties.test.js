@@ -95,6 +95,12 @@ test('RAGO full role has its own wing patch, and RAGO-IO remains training only',
  assert.match(html,/const RAGO_IO_PATCH='\/assets\/rago-io-belgische-luchtsteun-geborduurd-20261029\.webp'/);
  assert.match(script,/img\.src=specialty==='RAGO'\?RAGO_PATCH:RAGO_IO_PATCH/);
  assert.match(script,/patch\.src=full\?RAGO_PATCH:RAGO_IO_PATCH/);
- assert.match(script,/full\?'Volwaardig RAGO-lid':'RAGO-IO · in opleiding'/);
+ assert.match(script,/if\(isRagoInstructor\|\|!full\)/);
+ assert.match(script,/isRagoInstructor\?'RAGO · INSTRUCTEUR':'IN OPLEIDING'/);
+ const profileSpecialties=script.split("const names=[...new Set(specialtyNames(p)")[1]
+  ?.split('const roleProof=profileSpecialtyChecks.get(profileKey);')[0]||'';
+ assert.ok(profileSpecialties,'Profielweergave met specialisatiekaarten moet bestaan');
+ assert.doesNotMatch(profileSpecialties,/Volwaardig RAGO-lid|Geregistreerd lid|handmatig geregistreerd/);
+ assert.match(profileSpecialties,/if\(level!=='volwaardig'\)/);
  assert.match(script,/meta\.textContent='Discord-rol: '\+RAGO_DISCORD_ROLE_ID/);
 });

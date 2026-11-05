@@ -54,22 +54,22 @@ test('Bounded LRD roster reader refreshes and caches verified membership only',a
  assert.equal(calls,2);
 });
 
-test('Public roster exposes LRD only with verified Discord proof, never manually',()=>{
+test('Openbare personeelslijst toont LRD uitsluitend na recente Discord-verificatie',()=>{
  const verified=new Set([first]);verified.confirmedIds=new Set([first,second]);
  const records=publicPoliceRoster([person(first),person(second)],[],new Set(),verified);
  assert.equal(records.length,2);
  assert.equal(PUBLIC_POLICE_SPECIALTIES.includes(LRD_SPECIALTY_LABEL),true);
  for(const row of records){
-  assert.equal(row.specialties.length,12);
-  assert.deepEqual(Object.keys(row).sort(),
-    ['call','name','rank','series','status','specialties'].sort());
-  assert.doesNotMatch(JSON.stringify(row),/111111111111111111|222222222222222222|NO_LEAK|roleIds/);
+   assert.equal(row.specialties.length,12);
+   assert.deepEqual(Object.keys(row).sort(),
+     ['call','name','rank','series','status','hasPoliceEntry','services','specialties'].sort());
+   assert.doesNotMatch(JSON.stringify(row),/111111111111111111|222222222222222222|NO_LEAK|roleIds/);
  }
  assert.equal(records[0].specialties.find(x=>x.label===LRD_SPECIALTY_LABEL)?.value,'Ja');
  assert.equal(records[1].specialties.find(x=>x.label===LRD_SPECIALTY_LABEL)?.value,'Nee');
- const manuallyClaimed=publicPoliceRoster([{...person(second),
+ const forged=publicPoliceRoster([{...person(second),
    specialties:[{label:LRD_SPECIALTY_LABEL,value:'Ja'}]}]);
- assert.equal(manuallyClaimed[0].specialties.find(x=>x.label===LRD_SPECIALTY_LABEL)?.value,'Niet gecontroleerd');
+ assert.equal(forged[0].specialties.find(x=>x.label===LRD_SPECIALTY_LABEL)?.value,'Niet gecontroleerd');
 });
 
 test('Protected personnel table omits LRD while individual speciality policy is retained',()=>{

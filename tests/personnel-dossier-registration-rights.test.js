@@ -1,5 +1,13 @@
 import test from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+// Validate real ES-module syntax (imports and top-level await included).
+function assertModuleSyntax(source){
+ const result=spawnSync(process.execPath,['--check','--input-type=module'],
+  {input:source,encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+}
+
 import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
 import {validateEntry,canChooseSanction,permittedSanctionTypes} from '../src/registrations.js';
@@ -58,7 +66,7 @@ test('Registratieblok vermeldt score, omkadering, clip, beperkingen en compacte 
   const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
   const css=readFileSync(new URL('../public/personnel-onepage-test.css',import.meta.url),'utf8');
   const code=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
-  assert.ok(code);assert.doesNotThrow(()=>new Script(code.replace(/^import [^\n]*\n/gm,'')));
+  assert.ok(code);assertModuleSyntax(code);
   assert.match(html,/id="formalScore"/);
   assert.match(html,/\$\('formalScore'\)\.required=!isSanction/);
   assert.match(html,/data\.score=score/);
@@ -76,7 +84,7 @@ test('Registration selector stays focused on dossier entries while protected mai
   const css=readFileSync(new URL('../public/personnel-onepage-test.css',import.meta.url),'utf8');
   const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
   assert.ok(script);
-  assert.doesNotThrow(()=>new Script(script));
+  assertModuleSyntax(script);
   const start=script.indexOf('function availablePersonnelRegistrationKinds()');
   const end=script.indexOf('function displaySelectedRegistration()',start);
   assert.ok(start>=0&&end>start);
@@ -100,7 +108,7 @@ test('Registration selector stays focused on dossier entries while protected mai
 test('Eén officiële opleidingsregistratie met alle geselecteerde types en vrije keuze ANDERE',()=>{
   const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
   const inline=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]||'';
-  assert.doesNotThrow(()=>new Script(inline));
+  assertModuleSyntax(inline);
   const select=html.match(/<select id="staffTrainingCourse" required>([\s\S]*?)<\/select>/)?.[1];
   assert.ok(select,'Keuzelijst opleidingen aanwezig');
   const options=[...select.matchAll(/<option value="([^"]*)">/g)].map(match=>match[1]);
@@ -151,7 +159,7 @@ test('Eén officiële opleidingsregistratie met alle geselecteerde types en vrij
 test('Opleiding blijft zichtbaar met kaderregisterrechten wanneer formele training uit staat',()=>{
   const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
   const inline=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]||'';
-  assert.doesNotThrow(()=>new Script(inline));
+  assertModuleSyntax(inline);
   const choices=inline.slice(inline.indexOf('function canRegisterOfficialTraining()'),
     inline.indexOf('function displaySelectedRegistration()'));
   assert.match(choices,/if\(canRegisterOfficialTraining\(\)\)/);
@@ -208,7 +216,7 @@ test('Opleidingregistratie verklaart opslagbestemming en toont apart register',(
   const register=readFileSync(new URL('../public/rollen-opleidingen.html',import.meta.url),'utf8');
   const css=readFileSync(new URL('../public/personnel-onepage-test.css',import.meta.url),'utf8');
   const script=personnel.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
-  assert.ok(script);assert.doesNotThrow(()=>new Script(script));
+  assert.ok(script);assertModuleSyntax(script);
   assert.match(personnel,/href="\/rollen-opleidingen.html"[^>]*>Opleidingsregister/);
   assert.match(personnel,/id="trainingDestination"[^>]*hidden/);
   assert.match(script,/trainingDestination\.hidden=!\['training','case:opleiding'\]\.includes\(kind\)/);
@@ -408,7 +416,7 @@ test('Opleidingscentrum verbergt overbodige rolblokken en houdt aanmelden bereik
   const html=readFileSync(new URL('../public/rollen-opleidingen.html',import.meta.url),'utf8');
   const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
   assert.ok(script);
-  assert.doesNotThrow(()=>new Script(script));
+  assertModuleSyntax(script);
   assert.doesNotMatch(html,/>Politionele kaderindeling</);
   assert.doesNotMatch(html,/De Discord-rollen worden herkend, maar geven/);
   assert.match(html,/<details id="technicalDetails" class="tech-details">/);
@@ -431,5 +439,5 @@ test('Opleidingscentrum toont geen interne machtigingsvariabelen in de interface
   assert.match(html,/id="overrideInfo"/);
   const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
   assert.ok(script);
-  assert.doesNotThrow(()=>new Script(script));
+  assertModuleSyntax(script);
 });

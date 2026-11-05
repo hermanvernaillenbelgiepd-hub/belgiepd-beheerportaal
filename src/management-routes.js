@@ -3,9 +3,11 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
- CATALOG_BY_ID,customCatalogItem,expirationDate} from './personnel-decoration-policy.js';
+ CATALOG_BY_ID,decorationCatalogExtras,expirationDate} from './personnel-decoration-policy.js';
 import {isArchivedTraining} from './training-maintenance.js';
+import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
+import {staffActivityFollowup} from './staff-activity-followup.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
@@ -21,7 +23,7 @@ const errorResponse=(res,error)=>{
   console.error('Weekrapport/dossierfout:',error?.code||error?.message||'onbekend');
   return res.status(503).json({error:'Interne dossier- of weekrapportopslag tijdelijk niet beschikbaar'});
 };
-export function installManagementRoutes(app,{requireUser,getSnapshot}){
+export function installManagementRoutes(app,{requireUser,requireMemberUser=requireUser,getSnapshot}){
   const db=()=>getFirestore();
   const enabled=()=>process.env.BPD_ENABLE_REGISTRATIONS==='true' && process.env.BPD_ENABLE_MANAGEMENT_WRITES==='true';
   // Technical profile is a signed, allowlisted, authenticated Discord session.
@@ -46,6 +48,23 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
           .map(d=>[d,MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,d,t))]))});
     }catch(e){errorResponse(res,e)}
   });
+
+  // Management follow-up is based on the ACTUAL roster status and must never
+  // be presented as evidence of a sent ping. Scope each row with the same
+  // service/dossier restrictions as the personnel management screen.
+  app.get('/api/management/activity-followup',requireUser,async(req,res)=>{
+    try{
+      const snapshot=await getSnapshot();
+      if(snapshot.stale||!Array.isArray(snapshot.data))
+        return res.status(503).json({error:'Actuele personeelsbron niet beschikbaar; opvolging tijdelijk niet zichtbaar'});
+      const result=staffActivityFollowup(req.bpd,snapshot.data);
+      if(!result.allowed)
+        return res.status(403).json({error:'Geen toegang tot personeelsopvolging'});
+      res.set('Cache-Control','private, no-store');
+      return res.json(result);
+    }catch(e){return errorResponse(res,e)}
+  });
+
   app.get('/api/management/cases',requireUser,async(req,res)=>{
     const dept=asString(req.query.dept),id=asString(req.query.discordId);
     if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
@@ -73,10 +92,67 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       const newDoc=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const batch=db().batch();
-      batch.create(newDoc,{...data,dept,subjectDiscordId:id,subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,registeredBy:actor,submittedBy:{uid:req.bpd.uid,email:req.bpd.email},createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
+      batch.create(newDoc,{...data,dept,subjectDiscordId:id,subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,registeredBy:actor,submittedBy:{uid:req.bpd.uid,email:req.bpd.email},
+        ...(type==='inactiviteitsping'?{pingNotificationId:newDoc.id,pingNotificationStatus:'sent'}:{}),
+        createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
       batch.create(notice,{caseId:caseId(dept,id),entryId:newDoc.id,type,dept,createdAt:FieldValue.serverTimestamp()});
+      // Exactly one atomic record is shared between the member inbox,
+      // source dossier and dynamic fortnight report. No Discord DM is sent.
+      if(type==='inactiviteitsping'){
+        const ping=db().collection(INACTIVITY_PING_NOTICES).doc(id).collection('events').doc(newDoc.id);
+        batch.create(ping,{...inactivityPingNotice({dept,discordId:id,entryId:newDoc.id,
+          details:data.details,actor}),createdAt:FieldValue.serverTimestamp(),readAt:null});
+      }
       await batch.commit();
       res.status(201).json({saved:true,reference:newDoc.id});
+    }catch(e){errorResponse(res,e)}
+  });
+  // Members can inspect ONLY their own inactivity pings. Their verified
+  // portal identity is supplied by requireUser, never by a URL/body ID.
+  app.get('/api/management/pings/mine',requireMemberUser,async(req,res)=>{
+    const id=req.bpd?.discordId;
+    if(!validDiscord(id))return res.status(403).json({error:'Geverifieerde Discord-koppeling vereist'});
+    try{
+      const docs=await db().collection(INACTIVITY_PING_NOTICES).doc(id)
+        .collection('events').orderBy('createdAt','desc').limit(60).get();
+      res.set('Cache-Control','private, no-store');
+      res.json({pings:docs.docs.map(doc=>publicPingNotice(doc.id,doc.data())).filter(Boolean)});
+    }catch(e){errorResponse(res,e)}
+  });
+  app.post('/api/management/pings/mine/:entryId/read',requireMemberUser,async(req,res)=>{
+    const id=req.bpd?.discordId,entryId=req.params.entryId;
+    if(!validDiscord(id))return res.status(403).json({error:'Geverifieerde Discord-koppeling vereist'});
+    if(!validPingId(entryId)||Object.keys(req.body||{}).length)
+      return res.status(400).json({error:'Ongeldige pingverwijzing'});
+    try{
+      const ping=db().collection(INACTIVITY_PING_NOTICES).doc(id).collection('events').doc(entryId);
+      const result=await db().runTransaction(async tx=>{
+        const current=await tx.get(ping);
+        if(!current.exists||current.get('targetDiscordId')!==id||
+          current.get('type')!=='inactiviteitsping')
+          return 'not_found';
+        if(current.get('status')==='read')return 'already_read';
+        const dept=current.get('dept'),caseKey=current.get('caseId');
+        if(caseKey!==caseId(dept,id)||!['politie','brandweer','ambulance','depannage','burger'].includes(dept)||
+           current.get('entryId')!==entryId)return 'invalid_reference';
+        const entry=db().collection('bpd_cases').doc(caseKey).collection('entries').doc(entryId);
+        const original=await tx.get(entry);
+        if(!original.exists||original.get('type')!=='inactiviteitsping'||
+           original.get('subjectDiscordId')!==id||original.get('dept')!==dept)
+          return 'invalid_reference';
+        const at=FieldValue.serverTimestamp();
+        tx.update(ping,{status:'read',readAt:at});
+        tx.update(entry,{pingNotificationStatus:'read',pingReadAt:at,pingReadByDiscordId:id});
+        tx.create(entry.collection('audit').doc(),{
+          action:'inactiviteitsping_read',subjectDiscordId:id,
+          sourceNotificationId:entryId,at,source:'member_meldingen'
+        });
+        return 'read';
+      });
+      if(result==='not_found')return res.status(404).json({error:'Melding niet gevonden'});
+      if(result==='invalid_reference')return res.status(409).json({error:'Dossierkoppeling vraagt controle'});
+      res.set('Cache-Control','private, no-store');
+      return res.json({read:true,alreadyRead:result==='already_read'});
     }catch(e){errorResponse(res,e)}
   });
   // Bewaar de oorspronkelijke observatie/sanctie. Alleen officierenkader en korpsleiding
@@ -330,25 +406,29 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       year:'numeric',month:'2-digit',day:'2-digit'});
     const subjectIds=new Set(uniqueIds);
     const movements=new Set(['promotion','demotion','rank_changed',
-      'callsign_changed','name_changed','specialization_changed','award_granted','award_revoked']);
+      'callsign_changed','name_changed','specialization_changed','specialty_restriction_started','specialty_restriction_lifted','award_granted','award_revoked','personnel_archived','personnel_reentry_pending','personnel_restored']);
     for(const entry of personnelChanges.docs.slice(0,500)){
       const change=entry.data();
       if(change.dept!==report.dept||!movements.has(change.type)||
-         !subjectIds.has(change.discordId)||!change.at?.toDate?.()||
+         !subjectIds.has(change.discordId)&&!['personnel_archived','personnel_reentry_pending','personnel_restored'].includes(change.type)||!change.at?.toDate?.()||
          !includedAfterReportRestart(change.at,resetAt)||
          change.rankMovement===true&&change.type==='callsign_changed')continue;
       const date=brusselsDate.format(change.at.toDate());
       if(date<report.periodStart||date>report.periodEnd)continue;
       const person=uniqueSubject(allSubjects,report.dept,change.discordId);
-      if(!person)continue;
+      if(!person&&!['personnel_archived','personnel_reentry_pending','personnel_restored'].includes(change.type))continue;
       const author=allSubjects.find(p=>p.personId===change.actorDiscordId);
       const category=change.type.startsWith('award_')?'onderscheiding':
+        change.type.startsWith('specialty_restriction_')?'specialisatiebeperking':
         change.type==='specialization_changed'?'specialisatiewijziging':'personeelsbeweging';
       const description={
         promotion:'Promotie',demotion:'Degradatie',rank_changed:'Rangwissel',
         callsign_changed:'Roepnummerwijziging',name_changed:'Naamswijziging',
         specialization_changed:'Specialisatiewijziging',
-        award_granted:'Onderscheiding toegekend',award_revoked:'Onderscheiding ingetrokken'
+        specialty_restriction_started:'Tijdelijke beperking gestart',
+        specialty_restriction_lifted:'Tijdelijke beperking ingetrokken',
+        award_granted:'Onderscheiding toegekend',award_revoked:'Onderscheiding ingetrokken',
+        personnel_archived:'Uit dienst / archief',personnel_reentry_pending:'Herintreding in controle',personnel_restored:'Herintreding afgerond'
       }[change.type];
       const before=String(change.before||'').slice(0,120),
         after=String(change.after||'').slice(0,120),
@@ -363,8 +443,8 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
       ].filter(Boolean).join(' · ');
       result.push({id:'personnel:'+entry.id,type:category,eventDate:date,
         subjectDiscordId:change.discordId,
-        subjectNameAtCreation:String(change.name||person.name).slice(0,120),
-        subjectCallAtCreation:person.call,
+        subjectNameAtCreation:String(change.name||person?.name||'—').slice(0,120),
+        subjectCallAtCreation:String(change.call||person?.call||'—').slice(0,24),
         registeredBy:{name:author?.name||'Discord-ID '+String(change.actorDiscordId||'onbekend'),
           call:author?.call||''},
         details,source:'bpd_personnel_activity'});
@@ -373,10 +453,9 @@ export function installManagementRoutes(app,{requireUser,getSnapshot}){
     if(report.dept==='politie'){
       const [awards,uploadedCatalog]=await Promise.all([
        db().collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(501).get(),
-       db().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get()
+       db().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(120).get()
       ]);
-      const catalog=new Map([...CATALOG_BY_ID,...uploadedCatalog.docs
-       .map(doc=>[doc.id,customCatalogItem(doc)]).filter(([,item])=>item)]);
+      const catalog=new Map([...CATALOG_BY_ID,...decorationCatalogExtras(uploadedCatalog.docs)]);
       if(awards.size>500)truncated=true;
       for(const doc of awards.docs.slice(0,500)){
         const pid=doc.get('discordId');

@@ -44,7 +44,44 @@ tbody tr:nth-child(2n){background:#183450}
 
 /* Admin-configurable SHARED dimensions. All regular members see the saved
    dimensions but never the editing controls. CSS applies only to this page. */
-.roster-personnel-page .mr-table{min-width:var(--mr-custom-table-width,1280px)}
+/* Keep saved layout settings for other dimensions, but never force a
+   desktop horizontal scrollbar because of an old total-width setting. */
+.roster-personnel-page .mr-table{
+ width:100%;min-width:1650px;table-layout:fixed;
+}
+/* Preserve readable identity columns; scroll horizontally for specialties. */
+.roster-personnel-page .mr-scroll{
+ overflow-x:auto;overflow-y:auto;scrollbar-width:auto;
+ scrollbar-gutter:stable;
+}
+.roster-personnel-page .mr-table th:first-child{width:65px}
+.roster-personnel-page .mr-table th:nth-child(2){width:110px}
+.roster-personnel-page .mr-table th:nth-child(3){width:200px}
+.roster-personnel-page .mr-table th:nth-child(4){width:95px}
+.roster-personnel-page .mr-table th:nth-child(5){width:110px}
+.roster-personnel-page .mr-table .mr-rank{
+ display:flex;align-items:center;justify-content:flex-start;
+ min-width:0;gap:6px;white-space:nowrap;
+}
+.roster-personnel-page .mr-table .mr-rank .mr-insignia{
+ flex:0 0 auto;object-fit:contain;
+}
+.roster-personnel-page .mr-table .mr-rank strong{
+ white-space:nowrap;flex:0 0 auto;
+}
+.roster-personnel-page .mr-table .mr-name-cell{
+ min-width:0;overflow-wrap:anywhere;line-height:1.3;
+}
+.roster-personnel-page .mr-table .mr-person-open{
+ display:inline-block;text-align:left;white-space:normal;
+ overflow-wrap:anywhere;line-height:1.3;
+}
+.roster-personnel-page .mr-table tbody tr.mr-person{
+ height:auto;min-height:34px;
+}
+@media(max-width:1099px){
+ .roster-personnel-page .mr-table{min-width:1650px}
+}
 .roster-personnel-page .mr-wrapper{font-family:var(--mr-custom-font-family,Inter,"Segoe UI",Arial,sans-serif)}
 .roster-personnel-page .mr-table th{
  font-size:clamp(9px,calc(var(--mr-custom-text-size,11px) - 1px),16px)
@@ -52,8 +89,21 @@ tbody tr:nth-child(2n){background:#183450}
 .roster-personnel-page .mr-table .mr-status{
  font-family:var(--mr-custom-font-family,Inter,"Segoe UI",Arial,sans-serif)
 }
-.roster-personnel-page .mr-table th:nth-child(3){min-width:var(--mr-custom-rank-column,165px)}
-.roster-personnel-page .mr-table th:nth-child(4){min-width:var(--mr-custom-name-column,150px)}
+/* The rank-name column was removed; columns 3/4 are now member/series.
+   Never apply the former rank/name minimum widths to the wrong columns. */
+.roster-personnel-page .mr-table th:nth-child(3),
+.roster-personnel-page .mr-table th:nth-child(4){min-width:0}
+.roster-personnel-page .mr-table th:first-child{width:2.6%;min-width:0}
+.roster-personnel-page .mr-table th:nth-child(4){width:3.3%}
+.roster-personnel-page .mr-table th:nth-child(5){width:4.6%}
+.roster-personnel-page .mr-table td.mr-call{padding-inline:2px}
+.roster-personnel-page .mr-table td.mr-status-cell{padding-inline:2px}
+.roster-personnel-page .mr-table td.mr-status-cell .mr-status{
+ max-width:100%;width:100%;white-space:normal;overflow-wrap:anywhere
+}
+/* Legacy rangnaam width control remains in saved settings for compatibility,
+   but there is no longer a separate rangnaam column to resize. */
+.roster-layout-fields label[for="rosterLayout-rankColumn"]{display:none}
 .roster-personnel-page .mr-table tbody tr.mr-person{
  height:var(--mr-custom-row-height,28px)
 }
@@ -116,8 +166,7 @@ body.roster-embedded .roster-profile-dialog{max-height:90vh}
 </nav>
 <div class="panel">
 <a class="login-link" id="discordLogin" href="/auth/discord/start?return=%2Fpersoneelslijst.html" hidden>Inloggen met Discord om personeelslijst te bekijken →</a>
-<div class="filters"><div><label for="search">Zoeken</label><input id="search" placeholder="Roepnummer, naam, rang of reeks"></div>
-<div><label>Vaste kaderindeling</label><small>Korpsleiding → Officierenkader → Middenkader → Basiskader → Agentenkader</small></div>
+<div class="filters"><div><label for="search">Zoeken</label><input id="search" placeholder="Roepnummer, naam, rang, reeks of Discord-ID" autocomplete="off"></div>
 <button id="refresh" type="button">Vernieuwen</button></div>
 <section class="roster-layout-tools" id="rosterLayoutTools" hidden aria-label="Personeelslijstafmetingen">
  <button id="rosterLayoutToggle" class="roster-layout-toggle" type="button"
@@ -201,7 +250,9 @@ body.roster-embedded .roster-profile-dialog{max-height:90vh}
 import {renderMemberPoliceRoster,setPublicRosterSpecialties} from '/member-police-roster.js';
 import {loadRosterLayout,logoutRosterLayout} from '/member-roster-layout.js?v=20261031-officer-only';
 const $=id=>document.getElementById(id);
-let auth=null,people=[];
+let auth=null,people=[],discordSearchRows=[],discordSearchId='';
+let discordSearchTimeout=null,discordSearchRequest=0;
+let rosterProfileLoadTimer=0;
 const directoryEmbedded=new URLSearchParams(window.location.search).get('embed')==='1';
 if(directoryEmbedded){
  document.body.classList.add('roster-embedded');
@@ -229,9 +280,17 @@ function openRosterProfile(person){
  $('rosterProfileStatus').hidden=false;
  $('rosterProfileFrame').src='/organogram-hierarchie.html?'+params.toString();
  $('rosterProfile').showModal();
+ window.clearTimeout(rosterProfileLoadTimer);
+ rosterProfileLoadTimer=window.setTimeout(()=>{
+  if($('rosterProfile').open&&!$('rosterProfileStatus').hidden)
+   $('rosterProfileStatus').textContent=
+    'De personeelskaart reageert niet. Sluit dit venster en probeer opnieuw.';
+ },15000);
 }
 $('rosterProfileClose').onclick=()=>$('rosterProfile').close();
 $('rosterProfile').addEventListener('close',()=>{
+ window.clearTimeout(rosterProfileLoadTimer);
+ rosterProfileLoadTimer=0;
  $('rosterProfileFrame').removeAttribute('src');
 });
 $('rosterProfile').addEventListener('click',event=>{
@@ -240,6 +299,10 @@ $('rosterProfile').addEventListener('click',event=>{
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==$('rosterProfileFrame').contentWindow||
   event.data?.type!=='bpd-organogram-card')return;
+ if(['ready','not-found','unavailable'].includes(event.data.status)){
+  window.clearTimeout(rosterProfileLoadTimer);
+  rosterProfileLoadTimer=0;
+ }
  if(event.data.status==='closed')$('rosterProfile').close();
  else if(event.data.status==='ready')$('rosterProfileStatus').hidden=true;
  else if(event.data.status==='not-found')
@@ -248,9 +311,45 @@ window.addEventListener('message',event=>{
   $('rosterProfileStatus').textContent='De personeelskaart is momenteel niet beschikbaar.';
 });
 function render(){
- const q=$('search').value;
- const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),people,q,openRosterProfile);
- $('message').textContent=count+' van '+people.length+' personeelsleden zichtbaar';
+ const q=$('search').value.trim();
+ const byDiscordId=/^\d{15,22}$/.test(q);
+ const ready=byDiscordId&&discordSearchId===q;
+ const rows=byDiscordId?(ready?discordSearchRows:[]):people;
+ const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),rows,
+  byDiscordId?'':q,openRosterProfile);
+ $('message').textContent=byDiscordId?
+   (ready?count+' personeelslid(leden) gevonden op Discord-ID':'Discord-ID opzoeken…'):
+   count+' van '+people.length+' personeelsleden zichtbaar';
+}
+function searchDirectory(){
+ const q=$('search').value.trim();
+ clearTimeout(discordSearchTimeout);
+ const requestNumber=++discordSearchRequest;
+ discordSearchRows=[];discordSearchId='';
+ render();
+ // Alleen een compleet ID gaat naar de beveiligde serverzoekopdracht.
+ if(!/^\d{15,22}$/.test(q))return;
+ discordSearchTimeout=setTimeout(async()=>{
+  try{
+   const token=await idToken();
+   if(!token)throw Error('Meld je aan met Discord');
+   if(requestNumber!==discordSearchRequest)return;
+   const res=await fetch('/api/member/personnel-list?'+new URLSearchParams({discordId:q}),{
+    headers:{Authorization:'Bearer '+token},cache:'no-store'
+   });
+   const data=await res.json();
+   if(!res.ok)throw Error(data.error||'Discord-ID zoeken mislukt');
+   if(requestNumber!==discordSearchRequest)return;
+   discordSearchId=q;
+   discordSearchRows=Array.isArray(data.records)?data.records:[];
+   render();
+  }catch(error){
+   if(requestNumber!==discordSearchRequest)return;
+   discordSearchId=q;discordSearchRows=[];
+   render();
+   $('message').textContent='Discord-ID zoeken niet beschikbaar: '+error.message;
+  }
+ },300);
 }
 async function load(){
  const token=await idToken();
@@ -269,7 +368,7 @@ async function load(){
    }).then(r=>{if(!r.ok)throw Error('Logo-overzicht tijdelijk niet beschikbaar');return r.json()});
    window.BPDPersonnelVisuals?.setArtworkManifest?.(artwork.artworks);
   }catch(_err){window.BPDPersonnelVisuals?.setArtworkManifest?.([])}
-  render();
+  searchDirectory();
   // Do not start an officer-only layout request after the user signed out.
   if(auth?.currentUser?.uid?.startsWith('discord:'))
    await loadRosterLayout(token);
@@ -277,7 +376,7 @@ async function load(){
  }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
  finally{$('refresh').disabled=false}
 }
-$('search').oninput=render;$('refresh').onclick=load;
+$('search').oninput=searchDirectory;$('refresh').onclick=load;
 try{
  const config=await(await fetch('/api/client-config',{cache:'no-store'})).json();
  if(!config.enabled)throw Error('Aanmelding tijdelijk niet beschikbaar');
@@ -286,7 +385,9 @@ try{
  const app=getApps().length?getApp():initializeApp(config.firebaseConfig);auth=getAuth(app);
  onAuthStateChanged(auth,user=>{
   if(user?.uid?.startsWith('discord:'))load();
-  else {logoutRosterLayout();setPublicRosterSpecialties([]);people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
+  else {clearTimeout(discordSearchTimeout);discordSearchRequest++;
+   discordSearchId='';discordSearchRows=[];
+   logoutRosterLayout();setPublicRosterSpecialties([]);people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script><script defer src="/bpd-navigation.js"></script></body></html>

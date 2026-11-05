@@ -12,7 +12,7 @@ export const ROLE_CATALOG=Object.freeze([
     ['1562710901080068229','Korpsleiding']]),
   ...make('politie','specialisatie',[
     ['1365602771855740958','Motard-IO','opleiding'],['1358148694297415741','Motard'],
-    ['1359656762289946755','Motard-instructeur'],['1508506242299985980','PIT-MOTOR'],
+    ['1359656762289946755','Motard-instructeur'],
     ['1309542190409580594','AE-I (SRT)'],['1310674604821581894','AE-T (DSU)'],
     ['1337156006597103746','AE-instructeur'],
     ['1337775768083632158','AE-teamleader / leiding'],['1380843428354592780','LRD (Lokale Recherche)'],
@@ -26,6 +26,9 @@ export const ROLE_CATALOG=Object.freeze([
   ...make('dispatch','specialisatie', [['1393050971604516904','Dispatch-instructeur']]),
   ...make('depannage','lidmaatschap',[
     ['1309532438019706971','LSRA'],['1309532438019706970','FAST'],['1309532438019706969','AWV']]),
+  // CRANE qualifies a member for crane operations, not service membership
+  // or any management/instructor privilege.
+  ...make('depannage','specialisatie', [['1562090158667333692','CRANE']]),
   ...make('burger','lidmaatschap',[
     ['1398985105254650007','Burger-IO','opleiding'],['1309532438019706966','Burger'],
     ['1492485336197234728','Burgerraad']]),
@@ -44,7 +47,8 @@ export const ROLE_CATALOG=Object.freeze([
   ...make('ambulance','specialisatie',[
     ['1309532437977497696','Verpleegkundige'],['1360990854445137980','MIP'],
     ['1360990813357609181','MUGHELI'],['1309532437952466988','Medisch instructeur'],
-    ['1309532437977497695','Arts'],['1309532438053130325','AZLS leiding']]),
+    ['1309532437977497695','Arts'],['1309532438053130325','AZLS leiding'],
+    ['1508506242299985980','PIT-MOTOR']]),
   ...make('algemeen','ondersteuning',[
     ['1392989523104895168','Ticket-support'],['1309532438019706967','Comm-helper'],
     ['1309536724463910924','Server booster'],['1311383517103657030','Gewaardeerd lid'],
@@ -67,7 +71,9 @@ export function recognizeRoles(roleIds){
 }
 export function roleSummary(roleIds){
   const roles=recognizeRoles(roleIds);
-  const depts=[...new Set(roles.filter(r=>r.dept!=='algemeen'&&r.stage!=='interesse').map(r=>r.dept))];
+  // CRANE specialization alone does not establish Depannage membership.
+  const depts=[...new Set(roles.filter(r=>r.dept!=='algemeen'&&r.stage!=='interesse'&&
+    r.id!=='1562090158667333692').map(r=>r.dept))];
   const police=new Set(roles.filter(r=>r.dept==='politie').map(r=>r.id));
   const rank=police.has('1562710901080068229')?'korpsleiding'
     :police.has('1473474238664020151')?'officierenkader'

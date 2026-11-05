@@ -34,6 +34,8 @@ function view(){
 const file=(code,version='a1')=>'/api/role-artwork/file/specialty_brandweer_'+code+'?v='+version;
 const artwork=(code,version='a1')=>({kind:'specialty',department:'brandweer',
  code,imageUrl:file(code,version)});
+const patch=(code,version='a1')=>({kind:'patch',department:'brandweer',code,
+ imageUrl:'/api/role-artwork/file/patch_brandweer_'+code+'?v='+version});
 
 test('every fire speciality gets a visible 32px slot without changing the seven-column layout',()=>{
  const css=html.slice(html.indexOf('<style>'),html.indexOf('</style>'));
@@ -62,17 +64,30 @@ test('uploaded fire badges are selected by specialty code, not by personnel or a
   {kind:'specialty',department:'brandweer',code:'logistiek',imageUrl:'https://untrusted.invalid/logo.png'}
  ]);
  for(const [label,code] of [
-  ['Duiker','duiker'],['Gevaarlijke stoffen','gevaarlijke_stoffen'],
+  ['Gevaarlijke stoffen','gevaarlijke_stoffen'],
   ['RED-team','red_team'],['RED team','red_team'],
   ['Signalisatie','signalisatie_lokaal']]){
   const badge=api.specialtyBranch({label,members:[]},false,false,'brandweer')
    .children[0].children[0];
   assert.equal(badge.children[0].src,
-    file(code,code==='duiker'?'one-1':code==='gevaarlijke_stoffen'?'two-1':
+    file(code,code==='gevaarlijke_stoffen'?'two-1':
       code==='red_team'?'three-1':'four-1'));
  }
+ assert.equal(api.fireSpecialtyPatchUrl('Duiker'),file('duiker','one-1'));
+ api.setFireSpecialtyPatchArtworks([artwork('duiker_lokaal','new-1')]);
+ assert.equal(api.fireSpecialtyPatchUrl('Duiker'),file('duiker_lokaal','new-1'));
  assert.equal(api.fireSpecialtyPatchUrl('Ladderwagen'),'');
  assert.equal(api.fireSpecialtyPatchUrl('Logistiek'),'');
+});
+test('legacy BW SIG and BW LOG assets resolve as distinct Brandweer patches',()=>{
+ const api=view();
+ api.setFireSpecialtyPatchArtworks([
+  artwork('bw_sig','sig-1'),artwork('bw_log','log-1')
+ ]);
+ assert.equal(api.fireSpecialtyPatchUrl('Signalisatie'),file('bw_sig','sig-1'));
+ assert.equal(api.fireSpecialtyPatchUrl('Logistiek'),file('bw_log','log-1'));
+ assert.notEqual(api.fireSpecialtyPatchUrl('Signalisatie'),
+  api.fireSpecialtyPatchUrl('Logistiek'));
 });
 test('unrelated service specializations keep the original header without a patch',()=>{
  const api=view();
@@ -86,9 +101,27 @@ test('uploaded specialty badges are manageable from the existing role artwork se
   assert.match(uploader,new RegExp("'"+code+"'"));
  }
  assert.match(admin,/Specialisatiepatch \(organogram en personeelslijst\)/);
- assert.match(admin,/role-artwork-ui\.js\?v=ambulance-specialty-patches-20261031/);
+ assert.match(admin,/role-artwork-ui\.js\?v=patch-proportions-20261103/);
  assert.ok(uploader.includes("kind==='specialty'&&$p('roleArtworkDepartment').value==='brandweer'?[320,320]"));
  assert.ok(uploader.includes("$p('roleArtworkDepartment').addEventListener('change'"));
  assert.ok(admin.includes("Brandweer- en ambulance-specialisatiepatches krijgen een vierkant formaat"));
  assert.match(html,/setFireSpecialtyPatchArtworks\(artworkManifest\?\.artworks\)/);
+});
+
+test('Brandweer profile finds patches uploaded under the Patch category too',()=>{
+ const api=view();
+ api.setFireSpecialtyPatchArtworks([
+  patch('ladderwagen','new-7'),patch('logistiek','new-8'),
+  patch('duiker','new-9')
+ ]);
+ assert.equal(api.fireSpecialtyPatchUrl('Ladderwagen'),
+  '/api/role-artwork/file/patch_brandweer_ladderwagen?v=new-7');
+ assert.equal(api.fireSpecialtyPatchUrl('Logistiek'),
+  '/api/role-artwork/file/patch_brandweer_logistiek?v=new-8');
+ assert.equal(api.fireSpecialtyPatchUrl('Duiker'),
+  '/api/role-artwork/file/patch_brandweer_duiker?v=new-9');
+ api.setFireSpecialtyPatchArtworks([patch('ladderwagen','new-7'),artwork('ladderwagen','new-8')]);
+ assert.equal(api.fireSpecialtyPatchUrl('Ladderwagen'),file('ladderwagen','new-8'));
+ api.setFireSpecialtyPatchArtworks([]);
+ assert.equal(api.fireSpecialtyPatchUrl('Duiker'),'/assets/brandweer-duiker-origineel-20261102.webp');
 });

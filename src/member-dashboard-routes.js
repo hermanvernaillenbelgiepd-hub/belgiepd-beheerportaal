@@ -10,7 +10,7 @@ import {PERSONNEL_ROSTER_DEFAULT,validatePersonnelRosterLayout,
  savedPersonnelRosterLayout} from './personnel-roster-layout-policy.js';
 
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
-  awardKey,publicDecorations,customCatalogItem} from './personnel-decoration-policy.js';
+  awardKey,publicDecorations,decorationCatalogExtras} from './personnel-decoration-policy.js';
 
 const discordId=/^\d{15,22}$/;
 const staffRoles=new Set(['basiskader','middenkader','officierenkader','korpsleiding','beheerder']);
@@ -45,6 +45,13 @@ export function ambulanceMemberWorkspaceStatus(id,grant,roster,stale=false){
   const available=approved&&matches.length===1&&stale!==true;
   return {available,needsReview:approved&&!available};
 }
+// A complete Discord ID may be used as a private search key, but must never
+// be added to the public directory payload. Partial identifiers do not match.
+export function directoryRowsForDiscordId(rows,id=null){
+  if(id===null)return rows;
+  if(typeof id!=='string'||!discordId.test(id))return [];
+  return (Array.isArray(rows)?rows:[]).filter(p=>strip(p?.personId)===id);
+}
 // Personnel-list access and individual dossier access are separate.
 // Export ONLY roster columns, never Discord IDs, activity, dossiers,
 // source row, sanctions, notes, contact information or audit history.
@@ -53,8 +60,10 @@ export function ambulanceMemberWorkspaceStatus(id,grant,roster,stale=false){
 // fictional police callsign, rank, dossier, or permission.
 export function publicPoliceRoster(rows,extraPublicLabels=[],verifiedAeMembers=new Set(),verifiedLrdMembers=new Set()){
  const byIdentity=new Map();
+ const optionalLabels=Array.isArray(extraPublicLabels)?extraPublicLabels:[];
  const whitelist=['INTERVENTIEDIENST','Radio BM','SIV/WPR','Signalisatie','Motor','Semi-ano.',
-   'K9','RAGO','Dispatch','TO','AE',LRD_SPECIALTY_LABEL,...extraPublicLabels.filter(label=>
+   'K9','RAGO','Dispatch','TO','AE',LRD_SPECIALTY_LABEL,...optionalLabels.filter(label=>
+    typeof label==='string'&&
     !/^ae(?:[-_ ]?(?:i|t|teamleader|instructeur))$/i.test(label))];
  const serviceNames={politie:'Politie',brandweer:'Brandweer',
    ambulance:'Ambulance',depannage:'Depannage'};
@@ -88,11 +97,10 @@ export function publicPoliceRoster(rows,extraPublicLabels=[],verifiedAeMembers=n
    // AE-specialization detail. No role IDs or leadership status are exposed.
    const rawAe=String(statuses.AE||'Niet ingevuld');
    if(hasPoliceEntry){
-    // LRD is derived solely from freshly verified Discord role evidence.
-    // Never trust an old manually entered status or expose Discord IDs.
-    const id=strip(primary.personId);
-    statuses[LRD_SPECIALTY_LABEL]=verifiedLrdMembers.has(id)?'Ja':
-      verifiedLrdMembers.confirmedIds?.has(id)?'Nee':'Niet gecontroleerd';
+    // LRD is an actual verified Discord role, never a manual or stale flag.
+    const verifiedId=strip(primary.personId);
+    statuses[LRD_SPECIALTY_LABEL]=verifiedLrdMembers.has(verifiedId)?'Ja':
+      verifiedLrdMembers.confirmedIds?.has(verifiedId)?'Nee':'Niet gecontroleerd';
     if(verifiedAeMembers.has(strip(primary.personId))||
        /^(ja|instructeur|leiding|teamleader|ae[-_ ]?(?:i|t|teamleader|instructeur)|ae-f|stage|aangemeld)$/i.test(rawAe))
       statuses.AE='Ja';
@@ -248,11 +256,10 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       const [snapshot,decorations,customSnap]=await Promise.all([
         getSnapshot(),
         getFirestore().collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(500).get(),
-        getFirestore().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get()
+        getFirestore().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(120).get()
       ]);
       const byPerson=new Map(decorations.docs.map(d=>[d.id,d.get('entries')||[]]));
-      const customCatalog=new Map(customSnap.docs.map(d=>[d.id,customCatalogItem(d)])
-       .filter(([id,item])=>item));
+      const customCatalog=decorationCatalogExtras(customSnap.docs);
       return res.json({records:publicOrganogramRoster(snapshot.data,byPerson,customCatalog),
         stale:snapshot.stale,readOnly:true});
     }catch(error){
@@ -296,7 +303,12 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       return res.status(503).json({error:'De afmetingen konden niet worden opgeslagen'});
     }
   });
-  app.get('/api/member/personnel-list',memberIdentity,async(_req,res)=>{
+  app.get('/api/member/personnel-list',memberIdentity,async(req,res)=>{
+    // Full ID only: never expose Discord IDs in the directory JSON or allow
+    // unverified users to search the staff source.
+    const requestedId=req.query.discordId===undefined?null:req.query.discordId;
+    if(requestedId!==null&&(typeof requestedId!=='string'||!discordId.test(requestedId)))
+      return res.status(400).json({error:'Geef een volledig Discord-ID van 15–22 cijfers op'});
     try{
       const [snapshot,settings]=await Promise.all([
         getSnapshot(),
@@ -324,11 +336,11 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       }
       let verifiedLrdMembers=new Set();
       try{verifiedLrdMembers=await readVerifiedPoliceLrd(snapshot.data)}
-      catch(error){console.warn('LRD-personeelslijst: Discord-verificatie niet beschikbaar',
-        error?.code||'verificatie')}
+      catch(error){console.warn('LRD-personeelslijst: verificatie niet beschikbaar',
+         error?.code||'verificatie')}
       return res.json({
-        records:publicPoliceRoster(snapshot.data,customSpecialties.map(x=>x.label),
-          verifiedAeMembers,verifiedLrdMembers),
+        records:publicPoliceRoster(directoryRowsForDiscordId(snapshot.data,requestedId),
+          customSpecialties.map(x=>x.label),verifiedAeMembers,verifiedLrdMembers),
         customSpecialties,stale:snapshot.stale,readOnly:true
       });
     }catch(error){

@@ -1,5 +1,13 @@
 import test from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+// Validate real ES-module syntax (imports and top-level await included).
+function assertModuleSyntax(source){
+ const result=spawnSync(process.execPath,['--check','--input-type=module'],
+  {input:source,encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+}
+
 import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
 import {serviceHierarchy,orderedMembers,policeSpecialtyName}
@@ -17,8 +25,8 @@ test('Main has only the operational hierarchy with fresh woven-nameplate rendere
  assert.match(classic,/Nieuw organogram/);
  assert.doesNotMatch(next,/Klassiek organogram/);
  assert.match(classic,/location\.replace\('\/organogram-hierarchie\.html'/);
- assert.match(next,/\/assets\/organogram-police-formal\.js\?v=name-autofit-20261031-v5/);
- assert.match(next,/\/assets\/organogram-police-formal\.css\?v=name-autofit-20261031-v5/);
+ assert.match(next,/\/assets\/organogram-police-formal\.js\?v=awards-chest-20261104/);
+ assert.match(next,/\/assets\/organogram-police-formal\.css\?v=awards-position-20261102/);
  assert.match(next,/BPDPoliceUniform\?\.makePortrait/);
  assert.match(home,/\/organogram-hierarchie\.html/);
  assert.doesNotMatch(home,/href="\/organogram\.html"/);
@@ -95,5 +103,5 @@ test('protected endpoints use authenticated read, technical write and transactio
  assert.doesNotMatch(ui,/fetch\('\/api\/organogram\/hierarchie'/);
  const client=ui.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
  assert.ok(client);
- assert.doesNotThrow(()=>new Script(client.replace(/^import[^\n]+\n/m,'')));
+ assertModuleSyntax(client);
 });

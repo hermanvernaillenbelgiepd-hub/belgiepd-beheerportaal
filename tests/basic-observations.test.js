@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {basicCallLevel,basicAuthor,basicEligibleTarget,
-  basicObservationTargets,mayReadBasicInbox} from '../src/basic-observation-policy.js';
+  basicObservationTargets,mayReadBasicInbox,basicObservationDenial,
+  basicObservationWritesEnabled,basicObservationAccessChecks} from '../src/basic-observation-policy.js';
+import {verifiedPoliceMembership} from '../src/portal-profile-mode.js';
 import {canReadServiceDossier} from '../src/service-dossier-access.js';
 
 const ranks=[
@@ -93,16 +95,212 @@ test('Gebundelde inbox is alleen voor kaderleden en geverifieerd Bestuur',()=>{
   assert.equal(mayReadBasicInbox({...actor('basiskader'),boardPersonnelAdmin:true}),true);
   assert.equal(mayReadBasicInbox({...actor('officierenkader'),departments:['brandweer']}),false);
 });
-test('Beveiligde routes weigeren sancties en gebruiken bestaande persoonsdossiers plus meldingen',()=>{
+test('Beveiligde routes weigeren sancties en gebruiken een afzonderlijk register',()=>{
   const route=readFileSync(new URL('../src/basic-observation-routes.js',import.meta.url),'utf8');
   const legacy=readFileSync(new URL('../src/registration-routes.js',import.meta.url),'utf8');
   const page=readFileSync(new URL('../public/registraties.html',import.meta.url),'utf8');
   assert.match(route,/basicObservationTargets\(req\.bpd,roster\)/);
   assert.match(route,/validateEntry\(\{\.\.\.body,type:'observatie'\}\)/);
-  assert.match(route,/bpd_cases/);
-  assert.match(route,/bpd_notices/);
+  assert.match(route,/collection\('bpd_basic_observations'\)/);
+  assert.match(route,/Strictly separate from bpd_cases/);
+  assert.doesNotMatch(route,/collection\('bpd_cases'\)/);
+  assert.doesNotMatch(route,/collection\('bpd_notices'\)/);
+  assert.match(route,/basicCallLevel\(\{dept:POL,call:author\?\.call\}\)/);
   assert.match(route,/mayReadBasicInbox\(req\.bpd\)/);
   assert.match(legacy,/basicObservationTargets\(req\.bpd,snap\.data\)/);
   assert.ok(!page.includes('id="sanctionType"'));
   assert.ok(page.includes('Observaties vanuit Basiskader'));
+});
+
+test('Agentenkader krijgt ook bij foutieve dossiergrant geen politiedossiers',()=>{
+ const agent={...actorFor(0,'agentenkader'),
+   dossierNativeDepartments:['politie'],dossierFullDepartments:['politie']};
+ assert.equal(canReadServiceDossier(agent,'politie'),false);
+ assert.equal(mayReadBasicInbox(agent),false);
+ assert.equal(basicObservationTargets(agent,ranks).targets.length,0);
+ const technical={...agent,portalTechnicalMode:true,profileTechnicalAvailable:true,
+   uid:'discord:'+agent.discordId};
+ assert.equal(canReadServiceDossier(technical,'politie'),true);
+ const board={...agent,boardPersonnelAdmin:true};
+ assert.equal(canReadServiceDossier(board,'politie'),true);
+});
+
+
+test('Arixx 432: Basiskader kan 1xx/2xx/3xx observeren, niet 4xx of hoger',()=>{
+ const me={dept:'politie',personId:'432432432432432432',
+   name:'Arixx',call:'SANTO-432',rank:'Inspecteur van Politie'};
+ const lower=[
+   {dept:'politie',personId:'111111111111111111',call:'SANTO 123',rank:'Agent van Politie'},
+   {dept:'politie',personId:'222222222222222222',call:'205',rank:'Agent van Politie'},
+   {dept:'politie',personId:'333333333333333333',call:'S 303',rank:'Aspirant Inspecteur'}
+ ];
+ const peers=[
+   {dept:'politie',personId:'444444444444444444',call:'401',rank:'Inspecteur'},
+   {dept:'politie',personId:'555555555555555555',call:'501',rank:'Eerste Inspecteur'}
+ ];
+ const actor={role:'middenkader',discordId:me.personId,
+   departments:['brandweer','politie'],departmentRoles:{brandweer:'middenkader',politie:'basiskader'}};
+ assert.equal(basicCallLevel(me),2);
+ assert.equal(basicCallLevel({...me,call:'432'}),2);
+ assert.equal(basicCallLevel({...me,call:'S432'}),2);
+ const access=basicObservationTargets(actor,[me,...lower,...peers]);
+ assert.equal(access.author?.personId,me.personId);
+ assert.deepEqual(access.targets.map(p=>p.personId),lower.map(p=>p.personId));
+ assert.equal(basicObservationDenial(actor,[me,...lower,...peers]),null);
+});
+test('Geverifieerde politierol, ondubbelzinnige identiteit en foutmelding blijven verplicht',()=>{
+ const id='432432432432432432';
+ const p={dept:'politie',personId:id,call:'432',rank:'Inspecteur',name:'Arixx'};
+ const actor={role:'middenkader',discordId:id,departments:['politie','brandweer'],
+   departmentRoles:{politie:'basiskader',brandweer:'middenkader'}};
+ assert.match(basicObservationDenial(actor,[]),/niet eenduidig/);
+ assert.match(basicObservationDenial(actor,[p,p]),/niet eenduidig/);
+ assert.match(basicObservationDenial({...actor,departmentRoles:{politie:'middenkader'}},[p]),/Basiskaderrol/);
+ assert.match(basicObservationDenial(actor,[{...p,call:'onbekend'}]),/roepnummer/);
+ assert.equal(basicAuthor({...actor,departments:['brandweer']},p),false);
+});
+test('Afzonderlijke Basiskader-opslag kan werken zonder brede registratiemodule',()=>{
+ assert.equal(basicObservationWritesEnabled({BPD_ENABLE_REGISTRATIONS:'false'}),true);
+ assert.equal(basicObservationWritesEnabled({BPD_ENABLE_BASIC_OBSERVATIONS:'false'}),false);
+ assert.equal(basicObservationWritesEnabled({BPD_ENABLE_BASIC_OBSERVATIONS:'true'}),true);
+ const route=readFileSync(new URL('../src/basic-observation-routes.js',import.meta.url),'utf8');
+ const safe=readFileSync(new URL('../src/registrations.js',import.meta.url),'utf8');
+ const nav=readFileSync(new URL('../public/bpd-navigation.js',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/registraties.html',import.meta.url),'utf8');
+ assert.match(route,/basicObservationWritesEnabled\(process.env\)/);
+ assert.match(route,/basicObservationDenial\(req\.bpd,roster\)/);
+ assert.match(safe,/roleForDepartment\(user,'politie'\)==='basiskader'/);
+ assert.match(nav,/basicObservationCanSubmit===true/);
+ assert.match(server,/basicObservationTargets\(req\.bpd,roster\)/);
+ assert.match(page,/accessReason'\)\.textContent=data\.explanation/);
+});
+
+test('Multi-service leiding behoudt politie-Basiskader inzendknop zonder inboxrechten',()=>{
+ const member=ranks[3];
+ for(const service of ['brandweer','ambulance','depannage']){
+   const actor={...actorFor(3),role:'korpsleiding',
+     departments:[service,'politie'],
+     departmentRoles:{[service]:'korpsleiding',politie:'basiskader'},
+     dossierNativeDepartments:[service],dossierAllowedDepartments:[service]};
+   assert.equal(basicObservationTargets(actor,ranks).author?.personId,member.personId);
+   assert.equal(basicObservationTargets(actor,ranks).targets.length,3);
+   assert.equal(mayReadBasicInbox(actor),false,
+     'Leiding buiten politie geeft nooit inzage in politie-Basiskader inbox');
+ }
+});
+test('Politie Middenkader met leiding in andere dienst kan ontvangstoverzicht openen',()=>{
+ const actor={...actorFor(5),role:'korpsleiding',
+  departments:['brandweer','politie'],
+  departmentRoles:{brandweer:'korpsleiding',politie:'middenkader'},
+  dossierNativeDepartments:['politie','brandweer'],
+  dossierAllowedDepartments:['politie','brandweer']};
+ assert.equal(mayReadBasicInbox(actor),true);
+ assert.equal(basicObservationTargets(actor,ranks).author,null);
+ assert.equal(mayReadBasicInbox({...actor,departmentRoles:{politie:'basiskader'}}),false);
+});
+test('Observaties Basiskader in Brandweer- en AZLS-menu zijn alleen zichtbaar na politiecontrole',()=>{
+ const nav=readFileSync(new URL('../public/bpd-navigation.js',import.meta.url),'utf8');
+ const home=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ const route=readFileSync(new URL('../src/basic-observation-routes.js',import.meta.url),'utf8');
+ assert.match(nav,/if\(policeObservations\)pages\.push\('observations'\)/);
+ assert.match(nav,/context\?\.basicObservationCanReview===true/);
+ for(const name of ['zoneNavObservations','ambulanceNavObservations',
+   'memberNavObservations','staffNavObservations'])assert.match(home,new RegExp('id="'+name+'"'));
+ assert.match(home,/showObservationNavigation\(ctx\)/);
+ assert.match(home,/basicObservationCanReview===true/);
+ assert.match(server,/req\.bpd\.basicObservationCanReview=mayReadBasicInbox\(req\.bpd\)/);
+ assert.match(server,/basicObservationCanReview:req\.bpd\.basicObservationCanReview===true/);
+ assert.match(route,/basicCallLevel\(\{dept:POL,call:author\?\.call\}\)/);
+ assert.doesNotMatch(route,/replace\(\/\^S\[- \]\?\/i/);
+});
+
+
+test('Arixx 432 met Brandweerleiding en politierol op Discord kan observaties indienen',()=>{
+ const id=ranks[3].personId;
+ const officer={uid:'discord:'+id,discordId:id,role:'korpsleiding',
+  departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'},
+  discordPoliceRank:'basiskader'};
+ const access=basicObservationTargets(officer,ranks);
+ assert.equal(access.author?.personId,id);
+ assert.deepEqual(access.targets.map(p=>p.call),['S150','S258','S302']);
+ assert.equal(basicObservationDenial(officer,ranks),null);
+ assert.equal(mayReadBasicInbox(officer),false,
+  'Verificatie van Basiskader geeft nooit toegang tot de ontvangen observaties');
+});
+test('Een rol, roepnummer of andere dienst alleen geeft geen Politie-Basiskaderrechten',()=>{
+ const id=ranks[3].personId;
+ const actor={uid:'discord:'+id,discordId:id,role:'korpsleiding',
+  departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'},
+  discordPoliceRank:'basiskader'};
+ assert.equal(basicAuthor({...actor,uid:'discord:555555555555555555'},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,discordPoliceRank:null},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,discordPoliceRank:'middenkader'},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,portalTechnicalMode:true},ranks[3]),false);
+ // A verified Discord Basiskader role + a unique 4xx Police roster
+ // overrides stale over-broad portal role, ONLY for lower-rank observations.
+ assert.equal(basicAuthor({...actor,departments:['brandweer','politie'],
+  departmentRoles:{brandweer:'korpsleiding',politie:'officierenkader'}},ranks[3]),true);
+ assert.equal(basicObservationTargets(actor,ranks.filter(p=>p!==ranks[3])).author,null);
+ assert.equal(basicObservationTargets(actor,[...ranks,ranks[3]]).author,null);
+});
+test('Registratie gebruikt de geverifieerde Politiefiche als auteur, niet de primaire Brandweerfunctie',()=>{
+ const route=readFileSync(new URL('../src/basic-observation-routes.js',import.meta.url),'utf8');
+ assert.match(route,/const policePerson=access\.author/);
+ assert.match(route,/discordId:policePerson\.personId/);
+ assert.match(route,/rank:policePerson\.rank,dept:POL/);
+ assert.doesNotMatch(route,/const author=actorFromPersonnel\(req\.bpd,roster\)/);
+ const policy=readFileSync(new URL('../src/basic-observation-policy.js',import.meta.url),'utf8');
+ assert.match(policy,/verifiedBasicPoliceIdentity\(actor\)/);
+ assert.match(policy,/uid==='discord:'\+actor\.discordId/);
+});
+
+test('Lid met Politierol + unieke 4xx-fiche krijgt Basiskader-observatie zonder losse kaderrol',()=>{
+ const id=ranks[3].personId;
+ const officer={uid:'discord:'+id,discordId:id,role:'korpsleiding',
+  departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'},
+  discordPoliceRank:null,discordPoliceMemberVerified:true};
+ const c=basicObservationTargets(officer,ranks);
+ assert.equal(c.author?.personId,id);
+ assert.deepEqual(c.targets.map(p=>p.call),['S150','S258','S302']);
+ assert.equal(mayReadBasicInbox(officer),false);
+ const checks=basicObservationAccessChecks(officer,ranks);
+ assert.equal(checks.policeRosterMatch,true);
+ assert.equal(checks.policeCadreRecognized,true);
+ assert.equal(checks.policeMembershipVerified,true);
+ assert.equal(checks.portalPoliceRole,null);
+ assert.equal(Object.hasOwn(checks,'discordId'),false);
+});
+test('Lidmaatschap mag geen hogere politierol, verouderde of verkeerde identiteit omzeilen',()=>{
+ const id=ranks[3].personId;
+ const actor={uid:'discord:'+id,discordId:id,role:'korpsleiding',
+  departments:['brandweer'],departmentRoles:{brandweer:'korpsleiding'},
+  discordPoliceRank:null,discordPoliceMemberVerified:true};
+ assert.equal(basicAuthor({...actor,discordPoliceMemberVerified:false},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,discordPoliceRank:'middenkader'},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,uid:'discord:555555555555555555'},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,portalTechnicalMode:true},ranks[3]),false);
+ assert.equal(basicAuthor({...actor,departments:['brandweer','politie'],
+  departmentRoles:{brandweer:'korpsleiding',politie:'officierenkader'}},ranks[3]),false);
+ assert.equal(basicObservationTargets(actor,[...ranks,ranks[3]]).author,null);
+});
+test('Politie-Discordrol moet actueel en afkomstig zijn uit de juiste guild',()=>{
+ const now=Date.now(),guild='111111111111111111';
+ const member={guildId:guild,verifiedAt:now-2000,
+  roleIds:['1309532438053130326','1395115819020714105']};
+ assert.equal(verifiedPoliceMembership(member,guild,now),true);
+ assert.equal(verifiedPoliceMembership({...member,verifiedAt:now-16*60000},guild,now),false);
+ assert.equal(verifiedPoliceMembership(member,'999999999999999999',now),false);
+ assert.equal(verifiedPoliceMembership({...member,roleIds:['1395115819020714105']},guild,now),false);
+ assert.equal(verifiedPoliceMembership({...member,roleIds:['not-a-role']},guild,now),false);
+});
+test('Afwijzing toont alleen eigen beknopte toegangscontroles, zonder Discord-ID of autoriteitsuitbreiding',()=>{
+ const routes=readFileSync(new URL('../src/basic-observation-routes.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/registraties.html',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ assert.match(routes,/accessChecks:basicObservationAccessChecks\(req\.bpd,roster\)/);
+ assert.match(page,/id="accessChecks"/);
+ assert.match(page,/Recente Discord-politirol:/);
+ assert.match(server,/verifiedPoliceMembership\(discordMember,process\.env\.DISCORD_GUILD_ID\)/);
 });

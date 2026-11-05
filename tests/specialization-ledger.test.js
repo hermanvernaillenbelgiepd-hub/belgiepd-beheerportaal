@@ -120,35 +120,25 @@ test('Server synchronizes per-person overlay only when enabled and keeps all wri
   assert.ok(routes.includes('discordRoleChanged:false'));
 });
 
-test('Fixed police callsign grants only intervention, radio and traffic by default',()=>{
+test('Vast roepnummer verleent interventie, radio en SIV/WPR zonder extra opleidingen',()=>{
  const police=call=>({dept:'politie',call,specialties:[]});
  for(const call of ['200','245','438','910']){
   const state=automaticPoliceSpecialties(police(call));
   for(const label of ['INTERVENTIEDIENST','Radio BM','SIV/WPR'])
    assert.equal(state[label],'Ja',call+' '+label);
-  assert.equal(state.K9,undefined);
-  assert.equal(state.RAGO,undefined);
-  assert.equal(state.Dispatch,undefined);
+  for(const label of ['K9','RAGO','Motor','Dispatch','AE'])
+   assert.equal(state[label],undefined);
  }
- for(const call of ['150','008','—','100']){
+ for(const call of ['150','008','—','100'])
   assert.deepEqual(automaticPoliceSpecialties(police(call)),{});
- }
  const restricted=publicSpecializations(police('250'),{values:{
   'Radio BM':{value:'Nee',source:'manual'}
  }});
  assert.equal(restricted.items.find(x=>x.label==='Radio BM').value,'Nee');
  assert.equal(restricted.items.find(x=>x.label==='INTERVENTIEDIENST').value,'Ja');
- const manualIntervention=publicSpecializations(police('250'),{values:{
-  'INTERVENTIEDIENST':{value:'Nee',source:'manual'}
- }});
- const intervention=manualIntervention.items.find(x=>x.label==='INTERVENTIEDIENST');
- assert.equal(intervention?.value,'Nee');
- assert.equal(intervention?.source,'manual');
- assert.equal(publicSpecializations(police('150')).items.find(x=>
-  x.label==='INTERVENTIEDIENST')?.value,'Niet ingevuld');
  assert.equal(restricted.items.find(x=>x.label==='K9').value,'Niet ingevuld');
  const approved=initialFixedCallSpecialties({discordId:'123456789012345678',
-   status:'approved',assignedCall:245,sync:{call:245,discordId:'123456789012345678'}});
- for(const name of ['INTERVENTIEDIENST','Radio BM','SIV/WPR'])
-  assert.equal(approved[name]?.value,'Ja');
+  status:'approved',assignedCall:245,sync:{call:245,discordId:'123456789012345678'}});
+ for(const label of ['INTERVENTIEDIENST','Radio BM','SIV/WPR'])
+  assert.equal(approved[label]?.value,'Ja');
 });

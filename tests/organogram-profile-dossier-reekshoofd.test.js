@@ -5,17 +5,24 @@ import {organogramReekshoofdTitle,canLinkPoliceOrganogramDossier,
  policeOrganogramDossierUrl} from '../src/organogram-profile-display.js';
 
 const j={dept:'politie',personId:'344065695635734528',name:'J.Eclaire',
- call:'600',rank:'Aspirant Hoofdinspecteur van Politie (AHINP)'};
+ call:'600',series:'Reeks 3',rank:'Aspirant Hoofdinspecteur van Politie (AHINP)'};
 const officer={role:'officierenkader',uid:'discord:987654321012345678',
  discordId:'987654321012345678',departments:['politie'],
  departmentRoles:{politie:'officierenkader'},
  dossierAllowedDepartments:['politie']};
 
-test('Reekshoofd Reeks 03 is a confirmed display-only appointment, not inferred from any name/callsign',()=>{
- assert.equal(organogramReekshoofdTitle(j),'Reeks 03');
- assert.equal(organogramReekshoofdTitle({...j,personId:'345678901234567890'}),'');
- assert.equal(organogramReekshoofdTitle({...j,dept:'brandweer'}),'');
- assert.equal(organogramReekshoofdTitle({...j,personId:'not-valid'}),'');
+test('middle cadre with a registered series is reekshoofd, otherwise VLINDER',()=>{
+ assert.equal(organogramReekshoofdTitle(j),'Reeks 3');
+ const yassine={...j,personId:'622486684033875968',call:'700',
+  rank:'Hoofdinspecteur van Politie (HINP)',series:'Reeks 1'};
+ assert.equal(organogramReekshoofdTitle(yassine),'Reeks 1');
+ assert.equal(organogramReekshoofdTitle({...yassine,series:'KADER'}),'VLINDER');
+ assert.equal(organogramReekshoofdTitle({...yassine,series:''}),'VLINDER');
+ assert.equal(organogramReekshoofdTitle({...yassine,series:'VLINDER'}),'VLINDER');
+ assert.equal(organogramReekshoofdTitle({...yassine,series:'02'}),'Reeks 2');
+ assert.equal(organogramReekshoofdTitle({...yassine,call:'485',rank:'Inspecteur'}),'');
+ assert.equal(organogramReekshoofdTitle({...yassine,dept:'brandweer'}),'');
+ assert.equal(organogramReekshoofdTitle({...yassine,personId:'not-valid'}),'');
 });
 test('dossier button is only offered to approved police officers/corps and only for permitted subject',()=>{
  assert.equal(canLinkPoliceOrganogramDossier(officer,j),true);
@@ -39,7 +46,7 @@ test('organogram gives no private ID or dossier shortcut to other readers and hi
  const html=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
  assert.match(api,/dossierUrl:policeOrganogramDossierUrl\(_req\.bpd,p\)/);
  assert.match(api,/reekshoofdReeks:organogramReekshoofdTitle\(p\)/);
- assert.match(html,/trainingRoles\.push\('Reekshoofd – '\+p\.reekshoofdReeks\)/);
+ assert.match(html,/fact\('Reeksfunctie',p\.reekshoofdReeks==='VLINDER'/);
  assert.match(html,/person-profile-dossier-link/);
  assert.match(html,/url\.searchParams\.get\('dept'\)==='politie'/);
  assert.doesNotMatch(html,/Alle informatie is alleen-lezen/);

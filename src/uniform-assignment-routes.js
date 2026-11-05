@@ -3,7 +3,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {isUserManager} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
-import {policeUniformGroup,ambulanceFunction} from '../public/uniform-profile-policy.js';
+import {policeUniformGroup,ambulanceFunction,depannageFunction} from '../public/uniform-profile-policy.js';
 
 export const UNIFORM_ASSIGNMENTS='bpd_uniform_visual_assignments';
 export const UNIFORM_ASSIGNMENT_AUDIT='bpd_uniform_assignment_audit';
@@ -35,7 +35,8 @@ export function validateUniformAssignment(body){
  const selector=selectorFor(scope,body.selector);
  if(!DEPTS.has(department)||!SCOPES.has(scope)||!selector||
   (scope==='group'&&(department!=='politie'||!['agentenkader','basis_tm_ahinp','hinp_1hinp','officieren'].includes(selector)))||
-  (scope==='function'&&(department!=='ambulance'||!['ambulancier','vpk','arts','dirmed'].includes(selector))))
+  (scope==='function'&&!(department==='ambulance'&&['ambulancier','vpk','arts','dirmed'].includes(selector)||
+    department==='depannage'&&['awv','lsra','fast'].includes(selector))))
   throw fail(400,'Ongeldige hulpdienst, doelgroep of personeels-ID');
  const uniformCode=String(body.uniformCode||'').trim().toLowerCase();
  const badgeStyle=String(body.badgeStyle||'').trim().toLowerCase();
@@ -57,7 +58,7 @@ export function resolveUniformAssignment(person,assignments){
  const find=(scope,selector)=>assignments.find(r=>r&&r.department===dept&&
   r.scope===scope&&r.selector===selector);
  const group=policeUniformGroup(person);
- const functionCode=ambulanceFunction(person);
+ const functionCode=dept==='depannage'?depannageFunction(person):ambulanceFunction(person);
  const order=[
   ...(personId?[find('person',personId)]:[]),
   ...(fallbackCall?[find('person','call_'+fallbackCall)]:[]),

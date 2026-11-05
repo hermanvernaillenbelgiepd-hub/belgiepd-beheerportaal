@@ -1,6 +1,6 @@
 import {getApps,initializeApp,applicationDefault} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
-import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getFirestore,FieldValue,FieldPath} from 'firebase-admin/firestore';
 import {approvedManagedEntry,USER_COLLECTION,verifiedDiscordIdentity} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
 import {TRAINING_ROLE_IDS} from './role-catalog.js';
@@ -245,6 +245,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
           if(request.department!==dept||
             !([...ACTIVE_TRAINING_REQUEST_STATUSES,'uitgevoerd','gegeven'].includes(request.status)))continue;
           if(reviewScope(ctx,request))incoming.push({...exposed(request),
+            readAt:iso(request.readBy?.[ctx.id]),
             canSchedule:scheduleScope(ctx,request.department)});
         }
       }
@@ -334,6 +335,22 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         if(!request.exists)throw rejection('Aanvraag niet gevonden',404);
         const old=request.data();
         if(!reviewScope(ctx,old))throw rejection('Geen toegang tot deze reeks of dienst');
+        // GELEZEN is personal, not a shared workflow status. Keep existing
+        // decisions/planning untouched for every other recipient.
+        if(action==='gelezen'){
+          if(old.status==='gewist')throw rejection('Aanvraag is gearchiveerd',409);
+          if(!old.readBy?.[ctx.id]){
+            const who=ctx.persons.find(p=>p.dept===old.department);
+            if(!who)throw rejection('Eigen personeelsfiche niet gevonden',403);
+            const by={discordId:ctx.id,name:who.name,call:who.call};
+            const now=FieldValue.serverTimestamp();
+            tx.update(ref,new FieldPath('readBy',ctx.id),now);
+            tx.create(ref.collection('audit').doc(),{
+              action:'persoonlijk-gelezen',by,at:now,status:old.status
+            });
+          }
+          return old.status;
+        }
         if(['gepland','uitgevoerd'].includes(action)&&
            !scheduleScope(ctx,old.department))
           throw rejection('Alleen bevoegde instructeurs of dienstleiding kunnen plannen/uitvoeren');

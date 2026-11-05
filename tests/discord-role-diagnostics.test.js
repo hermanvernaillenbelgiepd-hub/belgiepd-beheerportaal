@@ -53,7 +53,8 @@ const appAndResponse=({firestore,collect,config=env,clock=()=>at})=>{
    status(code){this.statusCode=code;return this},
    json(data){this.body=data;return this}
  };
- return {handler:handlers.get('/api/board/discord-diagnostics').at(-1),res};
+ return {handler:handlers.get('/api/board/discord-diagnostics').at(-1),
+  accessHandler:handlers.get('/api/board/discord-diagnostics/access').at(-1),res};
 };
 
 test('Board access is independent of police cadre, validates own Discord identity',()=>{
@@ -71,6 +72,27 @@ test('Board access is independent of police cadre, validates own Discord identit
    verifyBoardDiscordRole,activeBoardAppointment),null);
  assert.equal(diagnosisAccess(actor,{...verified,verifiedAt:at-16*60000},null,guild,
    (m,g)=>verifyBoardDiscordRole(m,g,at),activeBoardAppointment),null);
+});
+
+test('Approved cadre and signed technical mode gain only diagnostic access',()=>{
+ const noBoard=member([]);
+ const cases=[
+   [{...actor,role:'officierenkader',departments:['ambulance']},'goedgekeurd_officierenkader'],
+   [{...actor,role:'korpsleiding',departments:['brandweer']},'goedgekeurde_korpsleiding'],
+   [{...actor,role:'beheerder',portalTechnicalMode:true,
+     profileTechnicalAvailable:true},'geverifieerd_technisch_beheer']
+ ];
+ for(const [who,expected] of cases)
+   assert.equal(diagnosisAccess(who,noBoard,null,guild,verifyBoardDiscordRole,
+     activeBoardAppointment),expected);
+ for(const who of [
+   {...actor,role:'middenkader',departments:['politie']},
+   {...actor,role:'officierenkader',departments:[]},
+   {...actor,role:'beheerder',portalTechnicalMode:false,profileTechnicalAvailable:true},
+   {...actor,role:'beheerder',portalTechnicalMode:true,profileTechnicalAvailable:false},
+   {...actor,role:'officierenkader',departments:['politie'],uid:'google:fake'}
+ ])assert.equal(diagnosisAccess(who,noBoard,null,guild,verifyBoardDiscordRole,
+   activeBoardAppointment),null);
 });
 
 test('Only the canonical Render MAIN service exposes the diagnostic endpoint',()=>{
@@ -176,15 +198,36 @@ test('Only board-scoped bearer identity can call the API; reads cached per user'
  assert.equal(calls,2);
 });
 
-test('Board link is hidden until independent board evidence is present',()=>{
+test('Diagnostic link is independently gated by the server for approved roles',()=>{
  const html=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
  const page=readFileSync(new URL('../public/discord-diagnose.html',import.meta.url),'utf8');
  const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
  assert.match(html,/id="discordDiagnosticsLaunch" hidden/);
- assert.match(html,/verified\|\|entry\?\.status==='approved'/);
+ assert.match(html,/\/api\/board\/discord-diagnostics\/access/);
+ assert.match(html,/loadDiscordDiagnosticsLink\(\)/);
+ assert.doesNotMatch(html,/verified\|\|entry\?\.status==='approved'/);
  assert.match(page,/getIdToken\(\)/);
  assert.match(page,/\/api\/board\/discord-diagnostics/);
  assert.match(server,/installDiscordDiagnosticRoutes\(app,\{requireUser\}\)/);
+});
+
+test('Link access check never scans Discord and requires the same privileges',async()=>{
+ let calls=0;
+ const collect=async()=>{calls++;return {}};
+ const officer=appAndResponse({firestore:()=>dbFor(member([]),null),collect});
+ await officer.accessHandler({bpd:{...actor,role:'officierenkader',
+   departments:['politie']}},officer.res);
+ assert.deepEqual(officer.res.body,{allowed:true});
+ assert.equal(calls,0);
+ const basic=appAndResponse({firestore:()=>dbFor(member([]),null),collect});
+ await basic.accessHandler({bpd:actor},basic.res);
+ assert.deepEqual(basic.res.body,{allowed:false});
+ assert.equal(calls,0);
+ const tech=appAndResponse({firestore:()=>dbFor(member([]),null),collect});
+ await tech.handler({bpd:{...actor,role:'beheerder',portalTechnicalMode:true,
+   profileTechnicalAvailable:true}},tech.res);
+ assert.equal(tech.res.statusCode,200);
+ assert.equal(calls,1);
 });
 
 test('Explicit complete Discord member scan follows after cursor and reveals only totals',async()=>{

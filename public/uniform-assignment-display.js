@@ -1,6 +1,6 @@
 // Client-side visual-only resolver. Scoped assignments never confer rank or roles.
 import {getTier} from '/assets/organogram-hierarchie-model.js';
-import {policeUniformGroup,ambulanceFunction,policeCallSeries} from '/uniform-profile-policy.js';
+import {policeUniformGroup,ambulanceFunction,depannageFunction,policeCallSeries} from '/uniform-profile-policy.js';
 const UID=/^\d{15,22}$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const nameCode=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -13,7 +13,7 @@ function setData(assignments,artworks,visualRules=[],uniformGradeChoices=[],save
   (CODE.test(x.selector||'')||UID.test(x.selector||'')));
  elementRules=(Array.isArray(visualRules)?visualRules:[]).filter(x=>
   x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
-  ['rank','helmet','profession','logo','pictogram','patch'].includes(x.kind)&&
+  ['rank','helmet','profession','logo','pictogram','patch','specialty'].includes(x.kind)&&
   ['service','cadre','rank','person','call','function'].includes(x.scope)&&
   CODE.test(x.assetCode||''));
  coatChoices=(Array.isArray(uniformGradeChoices)?uniformGradeChoices:[]).filter(x=>
@@ -38,7 +38,7 @@ function forPerson(p){
  const id=UID.test(String(p?.personId||''))?String(p.personId):'';
  const callCode=nameCode(p?.call);
  const matching=(scope,selector)=>rules.find(r=>r.department===dept&&r.scope===scope&&r.selector===selector);
- const group=policeUniformGroup(p),functionCode=ambulanceFunction(p),series=policeCallSeries(p.call);
+ const group=policeUniformGroup(p),functionCode=dept==='depannage'?depannageFunction(p):ambulanceFunction(p),series=policeCallSeries(p.call);
  const ordered=[...(id?[matching('person',id)]:[]),
   ...(callCode?[matching('person','call_'+callCode)]:[]),
   matching('rank',nameCode(p.rank)),
@@ -55,17 +55,23 @@ function forPerson(p){
  // Personnel ranks, badges and historical assignments remain in Firestore.
  // An actual rank/function gets its own composed coat, with personal exceptions
  // taking precedence. The template is visual only; it never determines authority.
- const compScope=dept==='politie'?'call':dept==='ambulance'?'function':'rank';
+ const compScope=dept==='politie'?'call':
+  ['ambulance','depannage'].includes(dept)?'function':'rank';
  const compSelector=compScope==='call'?series:
   compScope==='function'?functionCode:nameCode(p.rank);
+ const previousTowingRanks=dept==='depannage'?
+  ({awv:['leiding','agentschap_wegen_en_verkeer','awv'],
+    lsra:['lsra','depannagetechnicus'],fast:['f_a_s_t','fast']}[functionCode]||[]):[];
  const composition=compositions.find(x=>x.department===dept&&
-  x.scope===compScope&&x.selector===compSelector);
+  x.scope===compScope&&x.selector===compSelector)||
+  (dept==='depannage'?compositions.find(x=>x.department===dept&&x.scope==='rank'&&
+   [nameCode(p.rank),...previousTowingRanks].includes(x.selector)):null);
  const activeCoat=composition?.assets?.uniform||'';
  if(CODE.test(activeCoat)&&!['gold','silver','default'].includes(activeCoat)&&
   assetUrls.has('uniform_'+dept+'_'+activeCoat))
   uniformCode=activeCoat;
  const elementCodes={},elementUrls={};
- for(const kind of ['rank','helmet','profession','logo','pictogram','patch']){
+ for(const kind of ['rank','helmet','profession','logo','pictogram','patch','specialty']){
   const coatScope=dept==='politie'&&kind==='rank'&&series?'call':
    dept==='brandweer'&&['rank','helmet'].includes(kind)?'rank':
    dept==='ambulance'&&kind==='profession'&&functionCode?'function':'';
@@ -119,7 +125,7 @@ function forPerson(p){
  }
  return {uniformCode,badgeStyle,uniformGroup:group,callSeries:series,profession:functionCode,
   visualLayout:composition?.layers||null,elementCodes,elementUrls,
-  rankUrl:elementUrls.rank||'',
+  rankUrl:elementUrls.rank||'',rankSpecialtyUrl:elementUrls.specialty||'',
   uniformUrl:uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
 }
 // Specialization badges are independent of uniform selection. A newly uploaded
@@ -137,7 +143,7 @@ const SPECIALTY_CODES=Object.freeze({
  'k-9':'k9','k9':'k9','rago':'rago',
  'signalisatie':'signalisatie'
 });
-function specialtyImage(p,name,variant=''){
+function specialtyImage(p,name,variant='',strictVariant=false){
  const dept=String(p?.dept||'');
  if(!['politie','brandweer','ambulance','depannage','burger'].includes(dept))return '';
  const normalized=String(name||'').trim().toLowerCase();
@@ -152,7 +158,7 @@ function specialtyImage(p,name,variant=''){
  // Prefer explicitly uploaded variants, then general patches. Names used
  // before the central library (e.g. semi_anoniem vs semi_ano) stay supported.
  for(const code of codes){
-  const bases=[...(suffix?[code+'_'+suffix]:[]),code];
+  const bases=strictVariant?(suffix?[code+'_'+suffix]:[]):[...(suffix?[code+'_'+suffix]:[]),code];
   for(const part of bases){
    for(const visualStyle of styles)
     candidates.push('specialty_'+dept+'_'+part+'_'+visualStyle);
@@ -164,4 +170,5 @@ function specialtyImage(p,name,variant=''){
  }
  return candidates.map(key=>assetUrls.get(key)).find(Boolean)||'';
 }
-window.BPDUniformAssignments=Object.freeze({setData,forPerson,specialtyImage});
+window.BPDUniformAssignments=Object.freeze({setData,forPerson,specialtyImage,
+ specialtyVariantImage:(p,name,variant)=>specialtyImage(p,name,variant,true)});

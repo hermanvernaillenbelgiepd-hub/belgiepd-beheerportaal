@@ -421,6 +421,32 @@ header{padding-inline:clamp(15px,2vw,34px)}
   display:flex;align-items:center;flex-wrap:wrap;gap:3px;
 }
 
+/* Compact archive/disconnect management: keep the section discreet until expanded. */
+#personnelArchivePanel.card{
+  margin:6px 0 9px!important;padding:7px 10px;border-radius:7px;
+}
+#personnelArchivePanel>summary{
+  cursor:pointer;font-size:11.5px;line-height:1.25;font-weight:750;
+}
+#personnelArchivePanel[open]{padding:9px 11px}
+#personnelArchivePanel>p.subtle{
+  font-size:10.5px;line-height:1.35;margin:7px 0 5px;
+}
+#personnelArchivePanel .controls{
+  display:flex;flex-wrap:wrap;gap:5px;margin:7px 0;
+}
+#personnelArchivePanel button{
+  padding:5px 8px;min-height:28px;font-size:10.5px;border-radius:6px;
+}
+#personnelArchivePanel #archiveFeedback{font-size:10.5px;line-height:1.3;margin:5px 0}
+#personnelArchivePanel .history{
+  padding:6px 0;font-size:11px;line-height:1.35;
+}
+@media(max-width:660px){
+  #personnelArchivePanel.card{padding:7px 9px}
+  #personnelArchivePanel[open]{padding:8px 9px}
+}
+
 /* Column configuration editor, isolated from dossiers and regular users. */
 .roster-column-panel{border:1px solid #42648d;border-radius:8px;padding:11px;background:#0e2540;margin:9px 0}
 .roster-column-panel>summary{font-weight:800;font-size:12px;cursor:pointer}
@@ -486,6 +512,27 @@ header{padding-inline:clamp(15px,2vw,34px)}
 #personnelDirectoryFrame{display:block;width:100%;height:min(82vh,1100px);min-height:590px;
  border:0;border-radius:9px;background:#09162a}
 
+/* One compact group for specialist staff tools, without new large cards. */
+#personnelUnifiedNav{gap:6px;margin:8px 0 10px}
+#personnelUnifiedNav>button,#personnelUnifiedNav>a,
+#personnelUnifiedNav .personnel-admin-tools>summary{
+ padding:6px 9px;font-size:11px;min-height:30px;
+}
+.personnel-admin-tools{position:relative}
+.personnel-admin-tools>summary{list-style:none;cursor:pointer;display:flex;
+ align-items:center;border:1px solid #527ba5;background:#1d395b;
+ color:#e8f3ff;border-radius:7px;font-weight:750}
+.personnel-admin-tools>summary::-webkit-details-marker{display:none}
+.personnel-admin-menu{position:absolute;z-index:15;top:calc(100% + 4px);
+ right:0;min-width:215px;padding:6px;border:1px solid #527ba5;
+ background:#102944;border-radius:8px;box-shadow:0 8px 20px #0007}
+.personnel-admin-menu a{display:block!important;padding:8px 10px!important;
+ white-space:nowrap;border:0!important;border-radius:5px}
+.personnel-admin-menu a:hover{background:#24466e}
+#personnelAdminTools[hidden],#personnelArchivePanel[hidden]{display:none!important}
+#personnelArchivePanel .history{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
+#personnelArchivePanel .history>span{flex:1 1 300px;min-width:0;overflow-wrap:anywhere}
+
 /* Unified large top-level staff card; no second dialog in the roster iframe. */
 #personnelCardDialog{box-sizing:border-box;width:min(1320px,calc(100vw - 26px));
  height:calc(100dvh - 22px);max-width:1320px;max-height:calc(100dvh - 22px);
@@ -522,6 +569,58 @@ header{padding-inline:clamp(15px,2vw,34px)}
  object-fit:contain;background:#050b13;
 }
 
+.staff-roster-table .specialty-neutral-banner--sprite{
+ display:block;width:100%;aspect-ratio:16/5;
+ background-size:100% 600%;background-repeat:no-repeat;
+ background-color:#050b13;
+}
+
+/* Responsive police overview: no forced horizontal scrolling on desktop.
+   The rank name is present in the insignia tooltip and full personnel fiche.
+   Other service rosters retain their independently configured widths. */
+.staff-roster-table.roster-police-compact{
+ width:100%;table-layout:fixed;
+}
+.staff-roster-table.roster-police-compact th,
+.staff-roster-table.roster-police-compact td{
+ min-width:0;overflow-wrap:anywhere;
+}
+.staff-roster-table.roster-police-compact th.specialty-col-head--patch{
+ min-width:0!important;padding:0!important;
+}
+.staff-roster-table.roster-police-compact .specialty-neutral-banner{
+ max-width:100%;width:100%;object-fit:contain;
+}
+.staff-roster-table.roster-police-compact .roster-series-cell,
+.staff-roster-table.roster-police-compact .discord-id-cell{
+ font-size:10px;line-height:1.1;
+}
+.staff-roster-table.roster-police-compact .discord-id-cell code{
+ white-space:normal;overflow-wrap:anywhere;font-size:9px;
+}
+.staff-roster-table.roster-police-compact .pill,
+.staff-roster-table.roster-police-compact .specialty-state{
+ max-width:100%;min-width:0;white-space:normal;
+ font-size:clamp(8px,.62vw,10px);
+}
+.staff-roster-table.roster-police-compact .rank-inline{
+ max-width:100%;overflow:hidden;
+}
+@media (max-width:1199px){
+ .staff-roster-table.roster-police-compact{min-width:1100px}
+}
+ .unified-specialty-controls{border-top:1px solid #385879;margin-top:12px;padding-top:11px}
+.unified-specialty-controls .unified-row{padding:9px 0;border-bottom:1px solid #334c6b}
+.unified-specialty-controls .unified-row summary{cursor:pointer;display:flex;gap:8px;align-items:center;justify-content:space-between;color:#e1edfc;font-size:12px;list-style:none}
+.unified-specialty-controls .unified-row summary::-webkit-details-marker{display:none}
+.unified-specialty-controls .unified-status{font-size:10px;color:#bfd3ee;text-align:right}
+.unified-specialty-controls .unified-limited{color:#ffd391;font-weight:700}
+.unified-specialty-controls .unified-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px 0 3px}
+.unified-specialty-controls .unified-fields label{font-size:11px}
+.unified-specialty-controls .unified-fields input,.unified-specialty-controls .unified-fields select,.unified-specialty-controls .unified-fields textarea{padding:7px;font-size:12px}
+.unified-specialty-controls .unified-fields textarea,.unified-specialty-controls .unified-fields .unified-wide{grid-column:1/-1}
+.unified-specialty-controls .unified-fields button{font-size:11px;padding:7px}
+@media(max-width:600px){.unified-specialty-controls .unified-fields{grid-template-columns:1fr}}
 /* Header patch editor and readable labels below each visual, without extra framing. */
 .staff-roster-table th.specialty-col-head--patch>.specialty-col-label{
   display:block!important;min-width:0;padding:4px 2px 5px;
@@ -537,6 +636,59 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .roster-patch-preview img{display:block;max-width:170px;width:clamp(90px,20vw,170px);height:auto;max-height:70px;object-fit:contain;background:#071322}
 .roster-patch-preview img[hidden]{display:none}
 @media(max-width:670px){.roster-patch-editor{grid-template-columns:1fr}}
+
+/* Compact, legible police management matrix: never allow badges or titles
+   to paint into the neighbouring cell. Full values remain on hover. */
+.staff-roster-table.roster-police-compact thead th.roster-resizable{
+ padding:7px 3px!important;
+}
+.staff-roster-table.roster-police-compact .roster-resize-handle{
+ width:7px;
+}
+.staff-roster-table.roster-police-compact thead th:not(.specialty-col-head){
+ white-space:nowrap;word-break:normal;overflow-wrap:normal;
+ text-overflow:ellipsis;
+}
+.staff-roster-table.roster-police-compact .specialty-col-head{
+ padding:3px 1px!important;
+}
+.staff-roster-table.roster-police-compact .specialty-col-label,
+.staff-roster-table.roster-police-compact th.specialty-col-head--patch>.specialty-col-label{
+ display:block;max-width:100%;min-width:0;
+ white-space:nowrap;word-break:normal;overflow:hidden;
+ text-overflow:ellipsis;overflow-wrap:normal;
+ font-size:9px;line-height:1.15;min-height:14px;
+ padding:3px 1px;
+}
+.staff-roster-table.roster-police-compact tbody td{
+ overflow:hidden;
+}
+.staff-roster-table.roster-police-compact td:nth-child(3) strong{
+ display:block;white-space:normal;overflow-wrap:anywhere;
+}
+.staff-roster-table.roster-police-compact .roster-series-cell .police-roster-badge,
+.staff-roster-table.roster-police-compact .roster-series-cell .police-roster-series>*,
+.staff-roster-table.roster-police-compact .pill,
+.staff-roster-table.roster-police-compact .active-leave-pill{
+ box-sizing:border-box;width:100%;min-width:0;max-width:100%;
+ min-height:20px;height:auto;margin:0;padding:2px 2px;
+ white-space:normal;overflow-wrap:anywhere;
+ font-size:9px!important;line-height:1.1;
+}
+.staff-roster-table.roster-police-compact .specialty-status-col .specialty-state{
+ display:flex;align-items:center;justify-content:center;
+ width:100%;max-width:100%;min-width:0;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ word-break:normal;overflow-wrap:normal;
+ font-size:9px!important;line-height:1.1;
+}
+.staff-roster-table.roster-police-compact .roster-protected{
+ display:inline-block;max-width:100%;white-space:nowrap;
+ overflow:hidden;text-overflow:ellipsis;
+}
+@media(max-width:1279px){
+ .staff-roster-table.roster-police-compact{min-width:1280px}
+}
 </style><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -564,8 +716,13 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  <button id="personnelPublicTab" type="button" aria-selected="true" aria-controls="personnelPublicView">👥 Algemene personeelslijst</button>
  <button id="personnelManageTab" type="button" hidden aria-selected="false" aria-controls="staffManagePanel">⚙ Personeelsbeheer</button>
  <a href="/organogram-hierarchie.html">🌳 Organogram per dienst</a>
- <a href="/rollenbeheer.html" data-personnel-staff hidden>🛡️ Rollen & specialisaties</a>
- <a href="/beeldbibliotheek.html" data-personnel-staff hidden>📁 Beeldbibliotheek</a>
+ <details id="personnelAdminTools" class="personnel-admin-tools" data-personnel-leadership hidden>
+  <summary>⚙ Beheer & instellingen</summary>
+  <div class="personnel-admin-menu">
+   <a href="/rollenbeheer.html">🛡️ Rollen & specialisaties</a>
+   <a href="/beeldbibliotheek.html">📁 Beeldbibliotheek</a>
+  </div>
+ </details>
 </nav>
 <section id="personnelPublicView" class="card" aria-label="Algemene personeelslijst">
  <iframe id="personnelDirectoryFrame" src="/personeelslijst.html?embed=1"
@@ -590,6 +747,17 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  <div><label for="dept">Hulpdienst</label><select id="dept"><option value="all">Alle toegelaten diensten</option></select></div>
  <div><label for="search">Personeelslid zoeken</label><input id="search" placeholder="Naam, roepnummer of Discord ID"></div>
 </div>
+<details id="personnelArchivePanel" class="card" hidden>
+ <summary>Dienstverbanden, archief & CMS-controle</summary>
+ <p class="subtle">Het archief bewaart de oorspronkelijke personeelsfiche. Ontbreken in de Discord-ledenlijst is alleen een waarschuwing: nooit een automatisch ontslag.</p>
+ <div class="controls">
+  <button id="refreshArchive" type="button" class="alt">Toon archief voor geselecteerde dienst</button>
+  <button id="checkDiscordDepartures" type="button" class="alt">Controleer Discord- en CMS-dienstrollen</button>
+ </div>
+ <p id="archiveFeedback" class="subtle" role="status"></p>
+ <div id="archiveEntries"></div>
+ <div id="discordDepartureEntries"></div>
+</details>
 <div id="rosterColumnAdmin" hidden>
  <details id="rosterColumnDetails" class="roster-column-panel">
   <summary>⚙ Kolombreedtes en specialisaties beheren</summary>
@@ -630,7 +798,6 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
    <button id="rosterAddSpecialty" type="button" class="alt">+ Specialisatie toevoegen</button>
   </div>
   </section>
-
   <section class="roster-custom-section" aria-label="Specialisatiepatch per kolom beheren">
    <h3>2b. Patch per bestaande specialisatie instellen</h3>
    <p class="subtle">Kies een bestaande specialisatie en selecteer een afbeelding uit de beeldbibliotheek of upload een nieuwe WebP. De vorige kolompatch wordt vervangen; dossiers, Discord-rollen en specialisatiebevoegdheden blijven ongewijzigd.</p>
@@ -698,6 +865,15 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
   <select id="ficheColleague" aria-label="Selecteer een andere toegelaten personeelsfiche"></select>
 </div>
 <p class="subtle" id="identity"></p>
+<section id="personnelLifecyclePanel" style="margin:10px 0;padding:12px;border:1px solid #3b5374;border-radius:10px" hidden>
+ <h3>Personeelsverloop en speeltijd</h3>
+ <p id="personnelLifeStatus" class="subtle">Personeelsstatus controleren…</p>
+ <p id="personnelPlaytime" class="subtle">Speeltijd: broncontrole vereist.</p>
+ <div class="controls">
+  <button id="personnelArchiveAction" type="button" class="alt" hidden>Uit dienst plaatsen en archiveren</button>
+ </div>
+ <p class="subtle">Discord/CMS-rollen worden niet automatisch verwijderd: vraag de overeenkomende CMS-rolwijziging aan. Een archiefstatus blokkeert heractivering van portaalrechten tot goedgekeurde herintreding.</p>
+</section>
 <div id="dossierTabBar" class="dossier-tabbar" role="tablist" aria-label="Onderdelen van personeelsdossier"></div>
 <div id="dossierViews" class="dossier-views"></div>
 <form id="editForm"><div class="grid">
@@ -737,7 +913,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <p class="subtle">Aanstellingsgegevens, functie en administratieve opvolging. Het officiële personeelsbestand, de rang en de bestaande opleidingen worden hierdoor niet overschreven.</p>
 <div id="staffDossierStatus" role="status" class="subtle">Dossiergegevens worden opgehaald…</div>
 <div id="staffDossierSummary" class="dossier-summary"></div>
-<h3>Specialisaties en bevoegdheden</h3>
+<h3>Specialisaties & tijdelijke beperkingen</h3>
 <p class="subtle">Alle onderdelen staan naast elkaar met hun geregistreerde status. Bevoegd officierenkader en korpsleiding kunnen de status met motivering wijzigen. Deze wijziging kent geen Discord-rol toe; een botkoppeling komt later.</p>
 <div id="specialtyStatus" role="status" class="subtle">Specialisaties laden…</div>
 <a id="specialtyRoleEditorLink" class="alt" href="/rollenbeheer.html" hidden
@@ -745,6 +921,15 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  🛡️ Specialisaties en patches toekennen · Rollenbeheer
 </a>
 <div id="specialtyGrid" class="specialty-ledger" aria-label="Alle specialisaties"></div>
+<section id="unifiedSpecialtyControls" class="unified-specialty-controls"
+ aria-label="Specialisaties en tijdelijke beperkingen per personeelslid">
+ <p id="unifiedSpecialtyState" class="subtle" role="status">Specialisaties en beperkingen laden…</p>
+ <div id="unifiedSpecialtyRows"></div>
+ <details id="unifiedRestrictionHistory">
+  <summary>Historiek tijdelijke beperkingen</summary>
+  <div id="unifiedRestrictionHistoryRows" class="subtle"></div>
+ </details>
+</section>
 <form id="specialtyEdit" hidden>
 <div class="grid">
 <div><label for="specialtyLabel">Specialisatie</label><select id="specialtyLabel" required></select></div>
@@ -756,6 +941,8 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 placeholder="Bijvoorbeeld: opleiding afgerond en gecontroleerd door instructeur"></textarea></div>
 </div>
 <button id="specialtySave" type="submit">Specialisatiestatus bewaren</button>
+<button id="specialtyEnd" type="button" class="alt">Specialisatie beëindigen</button>
+<p class="subtle">Beëindiging bewaart een expliciete status NEE met motivering. De overeenkomstige Discord/CMS-rol moet afzonderlijk verwijderd worden.</p>
 </form>
 <details id="specialtyAuditPanel"><summary>Historiek van specialisatiewijzigingen</summary>
 <div id="specialtyAudit" class="subtle">Nog geen registraties geladen.</div></details>
@@ -861,6 +1048,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div><label for="staffCaseType">Type</label><select id="staffCaseType">
 <option value="notitie">Belangrijke notitie</option>
 <option value="specialisatiebeperking">Beperking van specialisatie</option>
+<option value="inactiviteitsping">Inactiviteitsping</option>
 <option value="opleiding">Gevolgde opleiding</option><option value="verlof">Verlofnotitie</option>
 <option value="promotievoorstel">Promotievoorstel</option>
 <option value="naamswijziging">Naamswijziging registreren</option>
@@ -955,6 +1143,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <h3>Officiële personeels- en ranghistoriek</h3><div id="history" class="subtle">Wordt geladen…</div></section>
 </main>
 <script src="/personnel-list-visuals.js"></script>
+<script src="/specialty-dossier-controls.js?v=20261102"></script>
 <script type="module">
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
@@ -969,10 +1158,12 @@ const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
 let activeLeaveRosterIds=new Set();
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
+let currentLifecycleRevision=0;
 let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
 let rankChangesEnabled=false,rankChoices=[];
-const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage'};
+const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage',burger:'Burger'};
 let rosterConfigs=Object.create(null),rosterCanEdit=false;
+let lifecycleDepartments=[];
 let personnelManagementAllowed=false;
 let personnelManagementRequested=false;
 const initialQuery=new URLSearchParams(window.location.search);
@@ -1006,9 +1197,12 @@ $('personnelManageTab').onclick=()=>{
 // Only the authenticated manager overview may disclose Discord identity.
 // The public list sends a call/name, never an ID.
 let personnelCardDiscordId='';
+let personnelCardLoadTimer=0;
 const cardDialog=$('personnelCardDialog');
 function closeUnifiedCard(){if(cardDialog.open)cardDialog.close();}
 function clearUnifiedCard(){
+ window.clearTimeout(personnelCardLoadTimer);
+ personnelCardLoadTimer=0;
  personnelCardDiscordId='';
  $('personnelCardFrame').removeAttribute('src');
  for(const key of ['personnelCardId','personnelCardCopyId','personnelCardPing'])$(key).hidden=true;
@@ -1033,6 +1227,11 @@ function openUnifiedCard(call,name){
  const params=new URLSearchParams({embedded:'1',dienst:'politie',kaart:call,naam:name});
  $('personnelCardFrame').src='/organogram-hierarchie.html?'+params;
  cardDialog.showModal();
+ personnelCardLoadTimer=window.setTimeout(()=>{
+  if(cardDialog.open&&!$('personnelCardInfo').hidden)
+   $('personnelCardInfo').textContent=
+    'De personeelskaart reageert niet. Sluit dit venster en probeer opnieuw.';
+ },15000);
 }
 $('personnelCardClose').onclick=closeUnifiedCard;
 cardDialog.addEventListener('close',clearUnifiedCard);
@@ -1062,6 +1261,10 @@ window.addEventListener('message',event=>{
  }
  if(event.source!==$('personnelCardFrame').contentWindow||
     event.data?.type!=='bpd-organogram-card'||!cardDialog.open)return;
+ if(['ready','not-found','unavailable'].includes(event.data.status)){
+  window.clearTimeout(personnelCardLoadTimer);
+  personnelCardLoadTimer=0;
+ }
  switch(event.data.status){
   case 'closed':closeUnifiedCard();break;
   case 'ready':$('personnelCardInfo').hidden=true;break;
@@ -1213,11 +1416,13 @@ function availablePersonnelRegistrationKinds(){
 function displaySelectedRegistration(){
   const kind=$('registrationKind').value;
   const trainingDestination=$('trainingDestination');
-  trainingDestination.hidden=!['training','case:opleiding'].includes(kind);
+  trainingDestination.hidden=!['training','case:opleiding','case:inactiviteitsping'].includes(kind);
   if(kind==='training'){
     trainingDestination.textContent='Opslag: opleidingsregister. Het resultaat (in opleiding, geslaagd of niet geslaagd) wordt in de opleidingshistoriek bewaard. Deze registratie verschijnt niet automatisch in het weekrapport en wijzigt geen personeelsrang of Discord-rol.';
   }else if(kind==='case:opleiding'){
     trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
+  }else if(kind==='case:inactiviteitsping'){
+    trainingDestination.textContent='De inactiviteitsping wordt met datum, motivering en de registrerende medewerker in dit personeelsdossier en het dynamische weekrapport gelogd. Hiermee wordt niet automatisch een Discord-bericht verstuurd.';
   }
   // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
   // wanneer de gebruiker naar een ander registratietype omschakelt.
@@ -1592,13 +1797,40 @@ const ROSTER_RESIZE_LIMITS=Object.freeze({
  series:[40,240],status:[48,240],specialty:[60,300],
  summary:[110,400],file:[65,180],discord:[175,360]
 });
+const POLICE_ROSTER_IDENTITY_MIN=Object.freeze({
+ call:48,grade:84,name:165,series:60,status:85,file:78,discord:168
+});
+const POLICE_ROSTER_SPECIALTY_DEFAULT=72;
+const policeRosterIdentityWidth=(widths,key)=>
+ Math.max(widths[key]||0,POLICE_ROSTER_IDENTITY_MIN[key]||0);
+const policeRosterSpecialtyWidth=(cfg,label)=>
+ cfg?.specialtyWidths?.[label]??
+ Math.min(cfg?.widths?.specialty||82,POLICE_ROSTER_SPECIALTY_DEFAULT);
+function compactSpecialtyHeaderLabel(label){
+ return ({
+  INTERVENTIEDIENST:'INTERVENTIE',Signalisatie:'SIGNA',
+  Motor:'MOTARD','Semi-ano.':'SEMI-ANO',
+  'LRD (Recherche)':'LRD'
+ })[label]||label;
+}
+function compactSpecialtyStatusLabel(status){
+ const value=String(status||'').trim();
+ const short={
+  'SPECIALISATIE':'SPEC.','INSTRUCTEUR':'INSTR.',
+  'AANGEMELD':'AANG.','RESTRICTED':'RESTR.',
+  'BLACKLISTED':'BLACKL.','GESCHORST':'SCHORS.',
+  'OPLEIDING!':'OPLEID.','TEAMLEADER':'TEAMLD.',
+  'LEIDING':'LEID.'
+ };
+ return short[value.toUpperCase()]||value;
+}
 const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
   call:42,grade:68,rank:164,name:190,series:52,status:58,
   specialty:82,summary:180,file:76,discord:224
 });
 // Resize only modifies this browser's preview. Server-side permissions and
 // revision checks still apply when the officer explicitly clicks Save.
-function rosterDragHandles({dept,cols,headers,colgroup,table,widths}){
+function rosterDragHandles({dept,cols,headers,colgroup,table,widths,showRankName}){
  const allowed=rosterCanEdit&&!dossierEmbedded&&!ficheMode&&
   auth?.currentUser&&rosterConfigs[dept];
  const hint=$('rosterResizeHelp');
@@ -1607,7 +1839,9 @@ function rosterDragHandles({dept,cols,headers,colgroup,table,widths}){
   '↔ Sleep de rechterrand van een kolomkop om de breedte te wijzigen. Pijltjestoetsen werken ook. Klik daarna op ':
   'Selecteer eerst één hulpdienst om de kolombreedtes te verslepen. ';
  if(!allowed)return;
- const cfg=rosterConfigs[dept],primary=['call','grade','rank','name','series','status'];
+ const cfg=rosterConfigs[dept],primary=showRankName?
+  ['call','grade','rank','name','series','status']:
+  ['call','grade','name','series','status'];
  const descriptors=[
   ...primary.map((key,i)=>({key,title:headers.children[i].textContent})),
   ...(cols.length?cols.map(label=>({specialty:label,title:label})):
@@ -1619,20 +1853,36 @@ function rosterDragHandles({dept,cols,headers,colgroup,table,widths}){
   const th=headers.children[index],part=descriptors[index];
   const key=part.key||'specialty',range=ROSTER_RESIZE_LIMITS[key];
   const col=colgroup.children[index];
-  const current=()=>part.specialty?
-    (cfg.specialtyWidths?.[part.specialty]||cfg.widths.specialty):
-    cfg.widths[part.key];
+  const current=()=>showRankName?
+    (part.specialty?
+      (cfg.specialtyWidths?.[part.specialty]||cfg.widths.specialty):
+      cfg.widths[part.key]):
+    (part.specialty?policeRosterSpecialtyWidth(cfg,part.specialty):
+      policeRosterIdentityWidth(cfg.widths,part.key));
   const change=value=>{
-   const safe=Math.max(range[0],Math.min(range[1],Math.round(value)));
+   const compactMin=showRankName?0:POLICE_ROSTER_IDENTITY_MIN[part.key]||0;
+   const safe=Math.max(range[0],compactMin,
+     Math.min(range[1],Math.round(value)));
    if(safe===current())return false;
    if(part.specialty){
     cfg.specialtyWidths ||= {};
     cfg.specialtyWidths[part.specialty]=safe;
    }else cfg.widths[part.key]=safe;
    widths[index]=safe;
-   col.style.width=safe+'px';
-   table.style.setProperty('--roster-required-width',
+   if(!showRankName){
+    const weights=descriptors.map(descriptor=>descriptor.specialty?
+      policeRosterSpecialtyWidth(cfg,descriptor.specialty):
+      policeRosterIdentityWidth(cfg.widths,descriptor.key));
+    const total=weights.reduce((sum,width)=>sum+width,0);
+    [...colgroup.children].forEach((item,i)=>{
+     item.style.width=(100*weights[i]/total).toFixed(4)+'%';
+    });
+    table.style.setProperty('--roster-required-width','0px');
+   }else{
+    col.style.width=safe+'px';
+    table.style.setProperty('--roster-required-width',
      widths.reduce((total,width)=>total+width,0)+'px');
+   }
    return true;
   };
   th.classList.add('roster-resizable');
@@ -1711,7 +1961,12 @@ function render(){
   // never additional public or management roster columns.
   const custom=(rosterConfigs[dept]?.customSpecialties||[])
    .filter(item=>!/^ae[-_ ]?(?:i|t|teamleader|instructeur)$/i.test(item.label));
-  const cols=[...BPDPersonnelVisuals.specialtyColumns(dept),...custom.map(x=>x.label)];
+  const cols=[...new Set([...BPDPersonnelVisuals.specialtyColumns(dept),...custom.map(x=>x.label)])];
+  // Only the police personnel overview hides the redundant grade name.
+  // Full grade title remains available on the insignia tooltip and in dossiers.
+  const showRankName=dept!=='politie',policeCompact=!showRankName;
+  const baseColumnCount=showRankName?6:5;
+  const fullColumnCount=baseColumnCount+Math.max(cols.length,1)+2;
   const head=$('staffColumnHeaders');head.replaceChildren();
   const table=head.closest('table');
   const font=rosterConfigs[dept]||{};
@@ -1722,26 +1977,46 @@ function render(){
   // Match every visible header/body column, including the specialty fallback,
   // Fiche and Discord-ID. Keeping widths in a colgroup prevents drift.
   const w=rosterConfigs[dept]?.widths||ROSTER_COLUMN_WIDTH_DEFAULTS;
-  const widths=[w.call,w.grade,w.rank,w.name,w.series,w.status,
+  const widths=[w.call,w.grade,...(showRankName?[w.rank]:[]),
+    w.name,w.series,w.status,
     ...(cols.length?cols.map(label=>
       rosterConfigs[dept]?.specialtyWidths?.[label]||w.specialty):[w.summary]),
     w.file,w.discord];
+  // Existing Firestore configuration is preserved. For the police list only,
+  // cap oversized column weights and distribute the total over the available
+  // table width. All cells stay aligned without cropping qualifications.
+  const compactWidths=policeCompact?[
+    ...['call','grade','name','series','status'].map(key=>
+      policeRosterIdentityWidth(w,key)),
+    ...(cols.length?cols.map(label=>policeRosterSpecialtyWidth(
+      rosterConfigs[dept],label)):[Math.min(w.summary,150)]),
+    policeRosterIdentityWidth(w,'file'),
+    policeRosterIdentityWidth(w,'discord')
+  ]:widths;
+  const compactTotal=compactWidths.reduce((sum,width)=>sum+width,0);
   const colgroup=document.createElement('colgroup');
-  for(const width of widths){
+  for(const width of compactWidths){
     const col=document.createElement('col');
-    col.style.width=width+'px';
+    col.style.width=policeCompact?
+      (100*width/compactTotal).toFixed(4)+'%':width+'px';
     colgroup.append(col);
   }
   table.querySelector('colgroup')?.remove();
   table.insertBefore(colgroup,head);
-  table.style.setProperty('--roster-required-width',
+  table.classList.toggle('roster-police-compact',policeCompact);
+  table.style.minWidth=policeCompact?'1100px':'0';
+  table.style.setProperty('--roster-required-width',policeCompact?'0px':
     widths.reduce((sum,width)=>sum+width,0)+'px');
   const line=document.createElement('tr');
   const titles=dept==='depannage'?
     ['CALL','Functiegroep','Functie','Personeelslid','Reeks','Status']:
-    ['CALL','Rangteken','Naam van rang','Personeelslid','Reeks','Status'];
+    policeCompact?
+      ['CALL','RANG','PERSONEELSLID','REEKS','STATUS']:
+      ['CALL','Rangteken','Naam van rang','Personeelslid','Reeks','Status'];
   for(const title of titles){
-    const th=document.createElement('th');th.textContent=title;line.append(th);
+    const th=document.createElement('th');th.textContent=title;
+    if(policeCompact&&title==='RANG')th.title='Rangteken';
+    line.append(th);
   }
   if(!cols.length){const th=document.createElement('th');th.textContent='Specialisaties';line.append(th)}
   for(const label of cols){
@@ -1753,24 +2028,36 @@ function render(){
     else pict.append(specialtyMark(label));
     pict.setAttribute('aria-hidden','true');
     const name=document.createElement('span');name.className='specialty-col-label';
-    name.textContent=label==='INTERVENTIEDIENST'?'INTERVENTIE':dept==='depannage'?depannageSpecialtyMeta(label).label:label;
-    const neutral=BPDPersonnelVisuals.specialtyBannerImage(label,dept);
-    if(neutral){
-      const image=document.createElement('img');image.src=neutral;
-      image.alt=label;image.className='specialty-neutral-banner';image.loading='lazy';
-      image.onerror=()=>{th.classList.remove('specialty-col-head--patch');th.replaceChildren(pict,name)};
+    name.textContent=policeCompact?compactSpecialtyHeaderLabel(label):
+      dept==='depannage'?depannageSpecialtyMeta(label).label:label;
+    const banner=BPDPersonnelVisuals.specialtyBannerDisplay(label,dept);
+    if(banner){
       th.classList.add('specialty-col-head--patch');
-      th.setAttribute('aria-label',label);th.append(image,name);
+      th.setAttribute('aria-label',label);
+      if(banner.type==='sprite'){
+        const image=document.createElement('span');
+        image.className='specialty-neutral-banner specialty-neutral-banner--sprite';
+        image.style.backgroundImage='url("'+banner.url+'")';
+        image.style.backgroundPosition='center '+banner.position+'%';
+        image.setAttribute('aria-hidden','true');
+        th.append(image);
+      }else{
+        const image=document.createElement('img');image.src=banner.url;
+        image.alt=label;image.className='specialty-neutral-banner';image.loading='lazy';
+        image.onerror=()=>{th.classList.remove('specialty-col-head--patch');th.replaceChildren(pict,name)};
+        th.append(image);
+      }
+      th.append(name);
     }else th.append(pict,name);
     line.append(th);
   }
   const last=document.createElement('th');last.textContent='Fiche';line.append(last);
   const discordHeader=document.createElement('th');discordHeader.textContent='Discord-ID';discordHeader.className='discord-id-head';line.append(discordHeader);head.append(line);
-  rosterDragHandles({dept,cols,headers:line,colgroup,table,widths});
+  rosterDragHandles({dept,cols,headers:line,colgroup,table,widths,showRankName});
   const body=$('results');body.replaceChildren();
   if(!matches.length){
     const tr=document.createElement('tr'),c=td(tr,'Geen personeelsfiches gevonden.');
-    c.colSpan=8+Math.max(cols.length,1);body.append(tr);return;
+    c.colSpan=fullColumnCount;body.append(tr);return;
   }
   const allPolice=matches.every(person=>person.dept==='politie');
   const rosterGroups=allPolice?policeGroupedRoster(matches):[];
@@ -1788,7 +2075,7 @@ function render(){
       const divider=document.createElement('tr');
       divider.className='police-kader-divider';
       const cell=document.createElement('td');
-      cell.colSpan=8+Math.max(cols.length,1);
+      cell.colSpan=fullColumnCount;
       const label=document.createElement('strong');label.textContent=entry.label;
       cell.append(label);divider.append(cell);body.append(divider);
       continue;
@@ -1797,7 +2084,7 @@ function render(){
       const divider=document.createElement('tr');
       divider.className='police-kader-divider kader-'+entry.tier;
       const cell=document.createElement('td');
-      cell.colSpan=8+Math.max(cols.length,1);
+      cell.colSpan=fullColumnCount;
       const label=document.createElement('strong');
       label.textContent=policeTierDisplay(entry.tier).label;
       const total=document.createElement('span');
@@ -1831,13 +2118,15 @@ function render(){
     gradeDisplay.append(gradeCode);
     badgeCol.append(gradeDisplay);
     tr.append(badgeCol);
-    const rankCell=td(tr,grade.label);
-    if(person.discordCadre==='Korpsleiding'||person.discordCadre==='Officierenkader'){
-      const cadre=document.createElement('small');
-      cadre.className='roster-dept discord-verified-cadre';
-      cadre.textContent='Discord: '+person.discordCadre;
-      cadre.title='Recent geverifieerde Discord-kaderrol · uitsluitend ter informatie';
-      rankCell.append(cadre);
+    if(showRankName){
+      const rankCell=td(tr,grade.label);
+      if(person.discordCadre==='Korpsleiding'||person.discordCadre==='Officierenkader'){
+        const cadre=document.createElement('small');
+        cadre.className='roster-dept discord-verified-cadre';
+        cadre.textContent='Discord: '+person.discordCadre;
+        cadre.title='Recent geverifieerde Discord-kaderrol · uitsluitend ter informatie';
+        rankCell.append(cadre);
+      }
     }
     const nameCol=document.createElement('td');
     const name=document.createElement('strong');name.textContent=person.name;
@@ -1893,8 +2182,10 @@ function render(){
         {status:'Ja',style:'yes'}:status;
       const cell=document.createElement('td');cell.className='specialty-status-col';
       const chip=document.createElement('span');chip.className='specialty-state specialty-'+shown.style;
-      chip.textContent=shown.status==='Niet ingevuld'?'—':shown.status;
+      chip.textContent=shown.status==='Niet ingevuld'?'—':
+        policeCompact?compactSpecialtyStatusLabel(shown.status):shown.status;
       chip.title=specialty+' · '+shown.status;
+      chip.setAttribute('aria-label',specialty+' · '+shown.status);
       cell.append(chip);tr.append(cell);
     }
     const cell=document.createElement('td');
@@ -1907,9 +2198,17 @@ function render(){
     }else{
       const restricted=document.createElement('span');
       restricted.className='roster-protected';
-      restricted.textContent='🔒 Afgeschermd';
+      restricted.textContent=policeCompact?'🔒':'🔒 Afgeschermd';
       restricted.title='Personeelslid zichtbaar; het volledige dossier is alleen voor bevoegd Korpsleiding of Bestuur';
+      restricted.setAttribute('aria-label','Dossier afgeschermd');
       cell.append(restricted);
+    }
+    if(person.canManageLifecycle===true){
+      const button=document.createElement('button');button.type='button';
+      button.className='alt small';button.textContent='Uit dienst';
+      button.title='Uitsluitend dit dienstverband archiveren, andere diensten blijven actief';
+      button.onclick=()=>archiveServiceMembership(person);
+      cell.append(button);
     }
     tr.append(cell);
     const discordCell=document.createElement('td');discordCell.className='discord-id-cell';
@@ -1975,7 +2274,7 @@ async function checkAccessStatus(){
 }
 
 const ROSTER_WIDTH_LABELS={
- call:'CALL',grade:'Rangkenteken',rank:'Rangnaam',name:'Personeelslid',
+ call:'CALL',grade:'Rangteken',rank:'Rangnaam',name:'Personeelslid',
  series:'Reeks',status:'Status',specialty:'Iedere specialisatie',
  summary:'Samenvatting specialisaties',file:'Fiche',discord:'Discord-ID'
 };
@@ -2011,10 +2310,10 @@ function rosterEditorRender(){
   };
   label.append(name,input);fields.append(label);
  }
- const existing=[
+ const existing=[...new Set([
   ...BPDPersonnelVisuals.specialtyColumns(dept),
   ...(cfg.customSpecialties||[]).map(x=>x.label)
- ];
+ ])];
  cfg.specialtyWidths ||= {};
  const caption=document.createElement('h4');caption.textContent='Breedte per specialisatie';
  caption.style.margin='9px 0 5px';
@@ -2061,7 +2360,6 @@ function rosterEditorRender(){
  }
  if(!target.children.length)target.textContent='Geen toegevoegde specialisaties voor deze hulpdienst.';
 }
-
 function rosterPatchLibraryChoices(){
  const select=$('rosterPatchLibrary'),dept=rosterEditorDepartment;
  const current=select.value,label=$('rosterPatchSpecialty').value;
@@ -2290,8 +2588,9 @@ function initializeRosterEditor(){
 
 async function load(){
   if(!auth?.currentUser){
-    personnelManagementAllowed=false;closeUnifiedCard();
-    for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=true;
+    personnelManagementAllowed=false;lifecycleDepartments=[];
+    $('personnelArchivePanel').hidden=true;closeUnifiedCard();
+    for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
     updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     try{
@@ -2322,6 +2621,9 @@ async function load(){
     $('accessHelp').hidden=true;
     personnelManagementAllowed=true;
     for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=false;
+    lifecycleDepartments=Array.isArray(data.lifecycleDepartments)?data.lifecycleDepartments:[];
+    $('personnelArchivePanel').hidden=!lifecycleDepartments.length;
+    $('personnelAdminTools').hidden=!lifecycleDepartments.length;
     $('accessHelp').hidden=true;
     people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
@@ -2384,8 +2686,9 @@ async function load(){
       else if(!still)$('panel').hidden=true;
     }
   }catch(e){
-    people=[];personnelManagementAllowed=false;closeUnifiedCard();
-    for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=true;
+    people=[];personnelManagementAllowed=false;lifecycleDepartments=[];
+    $('personnelArchivePanel').hidden=true;closeUnifiedCard();
+    for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
     $('panel').hidden=true;render();updatePersonnelView();
     if(!dossierEmbedded&&!ficheMode){
       $('accessHelp').hidden=true;
@@ -2420,6 +2723,7 @@ const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   promotievoorstel:'Promotievoorstel (geen automatische promotie)',
   personeelsbeweging:'Personeelsbeweging (registratie)',
   activiteit:'Dienstactiviteit',specialisatiebeperking:'Beperking van specialisatie',
+  inactiviteitsping:'Inactiviteitsping',
   functiewijziging:'Functiewijziging'};
 function updateStaffCaseFields(){
   const type=$('staffCaseType').value;
@@ -2880,10 +3184,10 @@ function sheetDossierProfile(profile={}){
   root.append(list);
 }
 // Dynamisch samengesteld uit de twee bestaande beveiligde bronnen.
-let importantCaseEntries=[],importantRestrictionEntries=[],
+let importantCaseEntries=[],importantRestrictionEntries=[],importantPortalRestrictionEntries=[],
   importantCaseLimited=false,importantRestrictionLimited=false;
 function renderDossierImportantNotes(){
-  const entries=[...importantCaseEntries,...importantRestrictionEntries]
+  const entries=[...importantCaseEntries,...importantRestrictionEntries,...importantPortalRestrictionEntries]
     .sort((a,b)=>String(b.eventDate||'').localeCompare(String(a.eventDate||'')));
   sheetSetRows('notes',entries,x=>[
     x.eventDate||'—',
@@ -2901,7 +3205,7 @@ function sheetCaseRows(entries,limited){
     'Geen personeelsbewegingen geregistreerd.',limited);
   // Houd gewone activiteiten buiten de belangrijke-notitierubriek.
   // Geverifieerde kadernotities en beperkingen verschijnen hier automatisch.
-  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking'].includes(x.type));
+  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking','inactiviteitsping'].includes(x.type));
   importantCaseLimited=Boolean(limited);
   renderDossierImportantNotes();
 }
@@ -3540,12 +3844,39 @@ async function loadSpecialtyState(p){
   $('specialtyEdit').hidden=true;
   $('specialtyRoleEditorLink').hidden=true;
   $('specialtyAudit').replaceChildren();
+  $('unifiedSpecialtyRows').replaceChildren();
+  $('unifiedRestrictionHistoryRows').replaceChildren();
+  $('unifiedSpecialtyState').textContent='Beperkingen laden…';
   $('specialtyStatus').textContent='Specialisatiestatussen laden…';
   try{
     const data=await request('/api/personnel/'+encodeURIComponent(p.dept)+'/'+
       encodeURIComponent(p.discordId)+'/specializations');
     if(!same())return;
     specialtyRevision=data.revision;specialtyItems=data.items||[];
+    let restrictionData;
+    try{
+      restrictionData=await request('/api/personnel/'+encodeURIComponent(p.dept)+'/'+
+       encodeURIComponent(p.discordId)+'/specialty-restrictions');
+    }catch(error){restrictionData={error:error.message,entries:[],history:[],
+       canRestrict:false,revision:0}}
+    if(!same())return;
+    importantPortalRestrictionEntries=(restrictionData.entries||[])
+     .filter(x=>['actief','gepland'].includes(x.status)).map(x=>({
+      type:'specialisatiebeperking',eventDate:x.startDate,
+      importantTitle:'Tijdelijke beperking · '+x.label,
+      details:'Specialisatie: '+x.label+' · '+x.startDate+' t.e.m. '+
+       x.endDate+' · '+(x.status==='gepland'?'gepland':'actief')+
+       ' · '+x.reason,
+      registeredBy:{name:'Intern specialisatieregister'}
+     }));
+    renderDossierImportantNotes();
+    window.BPDSpecialtyDossierControls?.render({
+      target:$('unifiedSpecialtyRows'),history:$('unifiedRestrictionHistoryRows'),
+      status:$('unifiedSpecialtyState'),items:specialtyItems,
+      data:restrictionData,canEdit:data.canEdit===true,person:p,request,
+      refresh:()=>loadSpecialtyState(p),notify:notice,
+      revision:specialtyRevision});
+
     const states=BPDPersonnelVisuals.specialtyStatuses(specialtyItems);
     sheetSpecialtyRows(states);
     if(p.dept==='depannage'){
@@ -3558,7 +3889,9 @@ async function loadSpecialtyState(p){
         const value=document.createElement('span');value.className='specialty-state specialty-'+x.style;
         value.textContent=x.status;cell.title=x.label+' · '+x.status;
         cell.append(icon,label,value);
-        if(data.canEdit&&x.label!=='LRD (Recherche)'){
+        // Status and restrictions are now edited together inside the single
+        // per-specialty control below, instead of duplicate quick toggles.
+        if(false&&data.canEdit&&x.label!=='LRD (Recherche)'){
           const toggle=document.createElement('button');
           toggle.type='button';toggle.className='alt';
           toggle.textContent=['Ja','Docent','INSTRUCTEUR','LEIDING'].includes(x.status)?'Uitvinken':'Aanvinken';
@@ -3631,6 +3964,7 @@ async function loadSpecialtyState(p){
     registrationModuleStates.specialty='ophalen mislukt';
     refreshPersonnelRegistrationOptions();
     $('specialtyStatus').textContent='Specialisatieregister niet beschikbaar: '+e.message;
+    $('unifiedSpecialtyState').textContent='Beheer niet beschikbaar: '+e.message;
     const statuses=BPDPersonnelVisuals.specialtyStatuses(p.specialties);
     for(const x of statuses){
       const tile=document.createElement('div');tile.className='specialty-tile';
@@ -3807,7 +4141,7 @@ function renderReceived(group,rows,limited){
       activiteit:'Dienstactiviteit',opleiding:'Opleiding',verlof:'Verlofnotitie',
       promotievoorstel:'Promotievoorstel',naamswijziging:'Naamswijziging',
       personeelsbeweging:'Personeelsbeweging',
-      specialisatiebeperking:'Specialisatiebeperking',functiewijziging:'Functiewijziging'};
+      inactiviteitsping:'Inactiviteitsping',specialisatiebeperking:'Specialisatiebeperking',functiewijziging:'Functiewijziging'};
     title.textContent=(labels[entry.type]||entry.type)+
       (entry.sanctionType?' · '+entry.sanctionType:'');
     const meta=document.createElement('span');meta.className='received-meta';
@@ -3879,7 +4213,7 @@ async function loadStaffDossier(p){
   $('staffDiscordRoles').textContent='Discord-verificatie controleren…';
   $('staffLeave').textContent='Verlofperiodes laden…';
   $('staffFormalRecords').textContent='Formele registraties laden…';
-  importantCaseEntries=[];importantRestrictionEntries=[];
+  importantCaseEntries=[];importantRestrictionEntries=[];importantPortalRestrictionEntries=[];
   importantCaseLimited=false;importantRestrictionLimited=false;
   $('sheetNotes').textContent='Notities laden…';
   $('staffFormalForm').hidden=true;
@@ -4137,6 +4471,7 @@ async function showPerson(p){
   }
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
+  void loadPersonnelLifecycle(p);
   displayServiceBadge($('dossierServiceBanner'),p.dept);
   displayServiceBadge($('registrationServiceBanner'),p.dept,{registration:true});
   if(!sameSelected)refreshStaffTrainingCourses(p.dept);
@@ -4221,8 +4556,8 @@ $('rankChangeForm').onsubmit=async ev=>{
   if(!selected||!rankChangesEnabled||selected.canChangeRank!==true)return;
   const person=selected,rank=$('rankChangeTo').value,call=$('rankChangeCall').value.trim();
   if(!rank||!call)return;
-  if(!confirm('Definitieve rangwijziging voor '+person.name+'?\\n'+
-      person.rank+' ('+person.call+') → '+rank+' ('+call+')\\n'+
+  if(!confirm('Definitieve rangwijziging voor '+person.name+'?\n'+
+      person.rank+' ('+person.call+') → '+rank+' ('+call+')\n'+
       'Deze beslissing wordt gelogd. Discord-rollen blijven ongewijzigd.'))return;
   const button=$('rankChangeSave');button.disabled=true;
   try{
@@ -4360,6 +4695,154 @@ $('newForm').onsubmit=async event=>{
       if(found)await showPerson(found);
     }
   }catch(e){notice(e.message,true)}finally{btn.disabled=false}
+};
+async function loadPersonnelLifecycle(p){
+ const key=p.dept+':'+p.discordId;
+ $('personnelLifecyclePanel').hidden=false;
+ $('personnelArchiveAction').hidden=true;
+ $('personnelLifeStatus').textContent='Archiefstatus controleren…';
+ const hrs=x=>Number.isFinite(x)?x.toLocaleString('nl-BE')+' uur':'Niet beschikbaar';
+ $('personnelPlaytime').textContent='Speeltijd (bron): '+hrs(p.hours)+
+   ' recent · '+hrs(p.totalHours)+' totaal'+
+   (p.lastConnection?' · laatste verbinding '+p.lastConnection:'');
+ try{
+  const data=await request('/api/personnel-lifecycle/'+
+    encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId));
+  if(!selected||selected.dept+':'+selected.discordId!==key)return;
+  currentLifecycleRevision=data.revision||0;
+  $('personnelLifeStatus').textContent=(data.state==='archived'?'Gearchiveerd':'Actieve personeelsfiche')+
+    (data.cmsRoleSyncPending?' · CMS-rolcontrole vereist':'');
+  $('personnelArchiveAction').hidden=!(data.canManage&&data.state!=='archived');
+ }catch(e){
+  if(selected?.dept+':'+selected?.discordId===key)
+   $('personnelLifeStatus').textContent='Archiefstatus tijdelijk niet beschikbaar: '+e.message;
+ }
+}
+// Eén handmatige, geauditeerde dienstactie voor alle vijf de diensten.
+async function archiveServiceMembership(p){
+ if(!p||!lifecycleDepartments.includes(p.dept))return;
+ const url='/api/personnel-lifecycle/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
+ let current;
+ try{current=await request(url)}catch(e){return notice('Dienstverband niet beschikbaar: '+e.message,true)}
+ if(!current.canManage||current.state!=='active')
+  return notice('Dit dienstverband is niet actief of je hebt geen wijzigingsrecht.',true);
+ const code=prompt('Reden uitdiensttreding?\n1 = Vrijwillig Discord verlaten\n2 = Ontslag door leiding\n3 = Vrijwillig vertrek uit deze dienst\n4 = Andere reden','3');
+ if(code===null)return;
+ const cause=({'1':'voluntary_discord_leave','2':'management_dismissal',
+   '3':'service_resignation','4':'other'})[code.trim()];
+ if(!cause)return notice('Ongeldige ontslagreden gekozen.',true);
+ const explanation=prompt('Verplichte motivering (10–500 tekens):');
+ if(explanation===null)return;
+ const reason=explanation.trim();
+ if(reason.length<10||reason.length>500)return notice('Motivering moet 10 tot 500 tekens zijn.',true);
+ if(!confirm(p.name+' UITSLUITEND uit '+(departments[p.dept]||p.dept)+' plaatsen?'+
+   '\nAndere dienstverbanden en dossiers blijven intact. CMS-rollen afzonderlijk nakijken.'))return;
+ try{
+  await request(url+'/archive',{method:'POST',
+   body:{cause,reason,expectedRevision:current.revision}});
+  notice('Uitdiensttreding bij '+(departments[p.dept]||p.dept)+
+   ' geregistreerd. Andere diensten en dossierhistoriek behouden.');
+  if(selected?.dept===p.dept&&selected?.discordId===p.discordId){
+   $('panel').hidden=true;selected=null;
+  }
+  await load();
+ }catch(e){notice('Archiveren mislukt: '+e.message,true)}
+}
+$('personnelArchiveAction').onclick=async()=>{
+ if(selected)await archiveServiceMembership(selected);
+};
+function archiveDepartment(){
+ const d=$('dept').value;
+ if(!lifecycleDepartments.includes(d)){
+  $('archiveFeedback').textContent='Selecteer eerst een hulpdienst waarvoor je beheerrechten hebt.';
+  return null;
+ }
+ return d;
+}
+$('refreshArchive').onclick=async()=>{
+ const dept=archiveDepartment();if(!dept)return;
+ $('archiveFeedback').textContent='Archief ophalen…';
+ const root=$('archiveEntries');root.replaceChildren();
+ try{
+  const result=await request('/api/personnel-lifecycle/archives?dept='+encodeURIComponent(dept));
+  if(!result.entries.length){$('archiveFeedback').textContent='Geen gearchiveerde personeelsleden in deze dienst.';return}
+  $('archiveFeedback').textContent=result.entries.length+' gearchiveerde personeelsleden.';
+  for(const p of result.entries){
+   const line=document.createElement('div');line.className='history';
+   const info=document.createElement('span');
+   info.textContent=(p.state==='pending'?'HERINTREDING IN CONTROLE · ':'GEARCHIVEERD · ')+(p.call||'—')+' · '+(p.name||'—')+' · '+(p.cause||'')+
+     ' · '+(p.archivedAt||'');
+   line.append(info);
+   if(p.canActivate){
+    const button=document.createElement('button');button.type='button';
+    button.className='alt';button.textContent='CMS-rollen gecontroleerd · activeer';
+    button.onclick=async()=>{
+     const reason=prompt('Bevestig dat de oude CMS/Discord-rollen zijn nagekeken. Motivering (10–500 tekens):');
+     if(reason===null)return;
+     if(reason.trim().length<10||reason.trim().length>500)
+      return notice('Motivering moet 10 tot 500 tekens zijn.',true);
+     if(!confirm('Definitief activeren? Verifieer vóór bevestiging dat uitsluitend goedgekeurde functies en rollen in CMS staan.'))return;
+     button.disabled=true;
+     try{
+      await request('/api/personnel-lifecycle/'+encodeURIComponent(dept)+'/'+
+       encodeURIComponent(p.discordId)+'/activate',{method:'POST',
+       body:{reason:reason.trim(),expectedRevision:p.revision}});
+      notice('Herintreding afgerond. Personeelslid opnieuw actief.');
+      await load();await $('refreshArchive').onclick();
+     }catch(e){notice('Activeren mislukt: '+e.message,true)}
+     finally{button.disabled=false}
+    };
+    line.append(button);
+   }
+   if(p.canRestore){
+    const button=document.createElement('button');button.type='button';
+    button.className='alt';button.textContent='Herintreding beoordelen';
+    button.onclick=async()=>{
+     const reason=prompt('Motivering voor herintreding (minstens 10 tekens):');
+     if(reason===null)return;
+     if(reason.trim().length<10||reason.trim().length>500)
+      return notice('Motivering moet 10 tot 500 tekens zijn.',true);
+     if(!confirm('Herintreding van '+p.name+' goedkeuren? Lid moet eerst opnieuw op Discord zijn. Bestaande kwalificaties en CMS-rollen afzonderlijk controleren.'))return;
+     button.disabled=true;
+     try{
+      await request('/api/personnel-lifecycle/'+encodeURIComponent(dept)+'/'+
+       encodeURIComponent(p.discordId)+'/restore',{method:'POST',
+       body:{reason:reason.trim(),expectedRevision:p.revision}});
+      notice('Herintreding geregistreerd. CMS-rollen moeten worden gecontroleerd.');
+      await load();await $('refreshArchive').onclick();
+     }catch(e){notice('Herintreding mislukt: '+e.message,true)}
+     finally{button.disabled=false}
+    };
+    line.append(button);
+   }
+   root.append(line);
+  }
+ }catch(e){$('archiveFeedback').textContent='Archiefcontrole mislukt: '+e.message}
+};
+$('checkDiscordDepartures').onclick=async()=>{
+ const dept=archiveDepartment();if(!dept)return;
+ $('archiveFeedback').textContent='Discord-ledenlijst controleren…';
+ const root=$('discordDepartureEntries');root.replaceChildren();
+ try{
+  const result=await request('/api/personnel-lifecycle/departures?dept='+encodeURIComponent(dept));
+  $('archiveFeedback').textContent=result.total?
+   result.total+' mogelijke Discord/CMS-afwijkingen gevonden. Controleer handmatig voor je een dienstverband wijzigt.':
+   'Geen mogelijke Discord-vertrekkers gevonden.';
+  for(const p of result.candidates){
+   const line=document.createElement('div');line.className='history';
+   line.textContent=(p.call||'—')+' · '+(p.name||'—')+
+     ' · Discord ID '+p.discordId+' · '+
+     (p.evidence==='service_roles_missing_in_verified_snapshot'?
+      'DIENSTROL NIET HERKEND — controleer CMS':'NIET MEER OP DISCORD')+
+     ' · GEEN AUTOMATISCH ONTSLAG';
+   root.append(line);
+  }
+ }catch(e){$('archiveFeedback').textContent='Discord-controle mislukt: '+e.message}
+};
+$('specialtyEnd').onclick=()=>{
+ $('specialtyValue').value='Nee';
+ $('specialtyReason').focus();
+ notice('Kies de specialisatie, motiveer de beëindiging en klik op Specialisatiestatus bewaren. Verwijder daarna ook de Discord/CMS-rol.');
 };
 $('reload').onclick=load;$('search').oninput=render;
 $('dept').onchange=render;

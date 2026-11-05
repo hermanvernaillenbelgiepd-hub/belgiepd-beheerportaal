@@ -30,7 +30,7 @@ test('Homepage role-aware sidebar is reused, never overlaid with a duplicate',()
 
 test('Subpage sidebar starts with safe links and waits for server-confirmed roles',()=>{
   const js=read('bpd-navigation.js');
-  assert.match(js,/show\(\['home','personnel','profile'\]\)/);
+  assert.match(js,/show\(\['home','personnel','organogram','profile'\]\)/);
   assert.match(js,/fetch\('\/api\/dashboard\/admin-visibility'/);
   assert.match(js,/fetch\('\/api\/member\/dashboard'/);
   assert.match(js,/context\?\.showAdvancedDashboard===true/);

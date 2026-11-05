@@ -1,5 +1,13 @@
 import test from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+// Validate real ES-module syntax (imports and top-level await included).
+function assertModuleSyntax(source){
+ const result=spawnSync(process.execPath,['--check','--input-type=module'],
+  {input:source,encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+}
+
 import {staffRoleDisplay} from '../src/staff-role-display.js';
 import {mayReadManagement,mayWriteManagement} from '../src/management-utils.js';
 import {mayApproveLeave} from '../src/leave-policy.js';
@@ -68,7 +76,7 @@ test('Personnel card supports inline safe action forms and never duplicates form
   const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
   const match=html.match(/<script type="module">([\s\S]*?)<\/script>/);
   assert.ok(match);
-  assert.doesNotThrow(()=>new Script(match[1],{filename:'personeelsbeheer.html'}));
+  assertModuleSyntax(match[1]);
   for(const token of [
     'staffManualLeaveForm','staffCaseForm','staffFormalRecords',
     'staffDiscordRoles','staffLeave','staffLinkedTraining',

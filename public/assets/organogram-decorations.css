@@ -114,3 +114,35 @@
  left:55.712%;top:48.096%;width:20.496%;height:4.704%}
 .bpd-police-formal[data-uniform="silver"]>.bpd-uniform-medals{
  left:55.88%;top:70.944%;width:26.544%;height:26.88%}
+
+
+/* Visual example for both award-granting and catalogue-label editing. */
+.bpd-catalog-preview{
+ display:flex;align-items:center;gap:12px;min-height:88px;margin:8px 0 11px;
+ padding:9px;border:1px solid #47698e;border-radius:8px;background:#0c2038;
+}
+.bpd-catalog-preview-art{
+ flex:0 0 88px;width:88px;height:75px;min-width:0;
+ display:flex;align-items:center;justify-content:center;
+ border:1px solid #486583;border-radius:7px;background:#19334e;
+}
+.bpd-catalog-preview-art>.bpd-ribbon{width:65px;height:36px;flex:none}
+.bpd-catalog-preview-art>.bpd-hanging-medal{
+ width:52px;height:70px;flex:none;max-width:100%;
+}
+.bpd-catalog-preview-art .bpd-medal-pendant{font-size:17px}
+.bpd-catalog-preview-art .bpd-hanging-medal:has(.bpd-medal-art){
+ justify-content:center;align-items:center;
+}
+.bpd-catalog-preview-art .bpd-medal-art{
+ display:block;max-width:100%;max-height:70px;width:auto;height:auto;
+ object-fit:contain;
+}
+.bpd-catalog-preview-art .bpd-award-art{object-fit:contain;background:#172d4b}
+.bpd-catalog-preview-details{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}
+.bpd-catalog-preview-details strong{color:#f1f7ff;font-size:12px;font-weight:700}
+.bpd-catalog-preview-details small{color:#b6cee9;font-size:10px}
+@media(max-width:420px){
+ .bpd-catalog-preview{gap:8px}
+ .bpd-catalog-preview-art{flex-basis:72px;width:72px}
+}

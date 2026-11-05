@@ -358,6 +358,7 @@ header button{padding:7px 10px;font-size:12px}
 <div class="controls" style="margin:12px 0 14px;gap:8px;flex-wrap:wrap">
  <a href="/beeldbibliotheek.html" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">📁 Beeldbibliotheek per dienst</a>
  <a href="/rollenbeheer.html" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">🛡️ Rollen & specialisaties toekennen</a>
+ <a href="/dc-id-overdracht.html" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">🔐 DC-ID-overdracht (bevoegd kader)</a>
  <small>Afbeeldingen en personeelsrollen zijn voortaan afzonderlijk te beheren. Uniformbeheer blijft ongewijzigd.</small>
 </div>
 <nav id="manageTabs" class="manage-tabs" aria-label="Tabbladen gebruikersbeheer" hidden>
@@ -385,7 +386,10 @@ header button{padding:7px 10px;font-size:12px}
   </div>
   <p id="profileWarning" class="muted" hidden>Technische modus is actief op MAIN. Alle wijzigingen aan gegevens zijn echt en worden volgens de bestaande modules geregistreerd. Het verandert je Discord-rol of politierang niet. Je kunt altijd terugschakelen.</p>
 </div>
-<button id="request" type="button" hidden>Toegang aanvragen</button></section>
+<button id="request" type="button" hidden>Toegang aanvragen</button>
+<p id="discordDiagnosticsLaunch" hidden><a class="personnel-quicklink" href="/discord-diagnose.html">🔎 Discord-bot & rollencontrole · MAIN</a>
+<small>Voor Bestuur, Technisch Beheer, Korpsleiding en Officierenkader. Alleen lezen; geen tokens of ledenlijsten.</small></p>
+</section>
 <section id="admin" class="card" hidden><div class="controls" style="justify-content:space-between"><h2>Te beheren personeelsaccounts</h2><button id="refresh" class="alt" type="button">Vernieuwen</button></div>
 <details class="admin-guide"><summary>ℹ️ Toelichting bij functies en bevoegdheden</summary><div class="admin-guide-body">
 <div class="grant-info"><strong>Bekijk rechten zoals een personeelslid ze zou ervaren</strong><p class="muted">Vergelijk een nieuw lid, Basiskader (CALL 300), Middenkader, Officierenkader en Korpsleiding in een fictieve, alleen-lezen weergave. Je echte account en rechten blijven ongewijzigd.</p><a class="personnel-quicklink" href="/toegangsvoorbeeld.html">👁️ Open toegangsvoorbeeld per rol →</a></div>
@@ -464,8 +468,6 @@ header button{padding:7px 10px;font-size:12px}
 <h2>Bestuur · afzonderlijke bestuursfunctie</h2>
 <p>De <strong>Discord-rol Bestuur</strong> en een <strong>formele bestuursaanstelling</strong> zijn twee afzonderlijke zaken. Een recent geverifieerde Discord-rol kan toegang geven tot dossier- en hulpdienstbeheer zonder bestuursaanstelling in dit register. Een formele bestuursaanstelling wordt apart goedgekeurd door technisch beheer; er worden daarbij geen personeels-, Discord- of portaalrollen toegekend.</p>
 <div id="boardOwn" class="muted">Bestuursstatus controleren…</div>
-<p id="discordDiagnosticsLaunch" hidden><a class="personnel-quicklink" href="/discord-diagnose.html">🔎 Discord-bot & rollencontrole · MAIN</a>
-<small>Veilige diagnose voor geverifieerd Bestuur. Uitsluitend ter inzage; geen tokens of ledenlijsten.</small></p>
 <p id="boardDiscordStatus" class="muted" hidden></p>
 <p id="boardHelp" class="muted" hidden></p>
 <div class="controls"><button type="button" id="boardBotRefresh" class="alt">↻ Mijn Discord-rollen via bot vernieuwen</button></div>
@@ -527,7 +529,7 @@ header button{padding:7px 10px;font-size:12px}
  <div id="roleArtworkRoleIdWrap"><label for="roleArtworkRoleId">Discord-rol-ID</label><input id="roleArtworkRoleId" maxlength="22" inputmode="numeric" pattern="[0-9]{15,22}" placeholder="Bijv. 1358148694297415741"></div>
  <div id="roleArtworkVariantWrap"><label for="roleArtworkVariant">Variant</label><select id="roleArtworkVariant"><option value="standard">Standaard / rol</option><option value="instructeur">Instructeur (aparte badge bij gedeelde rol)</option></select></div>
  <div><label for="roleArtworkLabel">Naam van het logo</label><input id="roleArtworkLabel" maxlength="75" placeholder="Bijv. MOTARD · Volwaardig"></div>
- <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 5 MB. Rolpatches blijven 16:5. Brandweer- en ambulance-specialisatiepatches krijgen een vierkant formaat; dienstlogo’s en pictogrammen worden passend uitgesneden. Je kunt de uitsnede verslepen en schalen.</small></div>
+ <div><label for="roleArtworkFile">Nieuw logo (PNG, JPG of WebP)</label><input id="roleArtworkFile" type="file" accept="image/png,image/jpeg,image/webp"><small>Maximaal 5 MB. Rolpatches blijven 16:5. Brandweer- en ambulance-specialisatiepatches krijgen een vierkant formaat, behalve Duiker (brede originele verhouding); dienstlogo’s en pictogrammen worden passend uitgesneden. Je kunt de uitsnede verslepen en schalen.</small></div>
  <div><label id="roleArtworkFormatLabel">Voorbeeld (170 × 53,125 px)</label><div class="artwork-preview"><img id="roleArtworkPreview" width="170" height="53" alt="Voorbeeld van de gekozen patch" hidden></div></div>
 </div>
 <div class="artwork-crop-section" id="roleArtworkCropSection" hidden>
@@ -858,12 +860,12 @@ header button{padding:7px 10px;font-size:12px}
 <script src="/assets/bpd-nameplate-autofit.js?v=name-autofit-20261031-v5"></script>
 <script type="module">
 import {setupDossierGrantUI} from '/dossier-grants-ui.js';
-import {setupRoleArtworkUI} from '/role-artwork-ui.js?v=ambulance-specialty-patches-20261031';
+import {setupRoleArtworkUI} from '/role-artwork-ui.js?v=patch-proportions-20261103';
 import {setupUniformManagementUI} from '/uniform-management-ui.js?v=optional-uniform-pieces-20261030';
 import {setupVisualLayerUI} from '/visual-layer-ui.js?v=optional-uniform-pieces-20261030';
 import {setupUniformAssignmentUI} from '/uniform-assignment-ui.js';
 import {setupUniformQuickUI} from '/uniform-quick-ui.js?v=illustrated-uniform-20261030';
-import {setupUniformComposer} from '/uniform-composer-ui.js?v=name-autofit-20261031-v5';
+import {setupUniformComposer} from '/uniform-composer-ui.js?v=award-chest-20261104';
 import {setupUniformLibraryUI} from '/uniform-library-ui.js?v=cloud-library-20261030';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
@@ -1435,24 +1437,30 @@ $('boardBotRefresh').onclick=async()=>{
 function boardCell(root,value){
   const td=document.createElement('td');td.textContent=String(value||'—');root.append(td);return td;
 }
+async function loadDiscordDiagnosticsLink(){
+  $('discordDiagnosticsLaunch').hidden=true;
+  if(!auth?.currentUser?.uid?.startsWith('discord:'))return;
+  try{
+    const result=await api('/api/board/discord-diagnostics/access');
+    $('discordDiagnosticsLaunch').hidden=result.allowed!==true;
+  }catch{/* Keep the link hidden without positive server authorization. */}
+}
 async function boardRefresh(){
-  if(!auth?.currentUser){$('boardSection').hidden=true;$('discordDiagnosticsLaunch').hidden=true;return}
+  if(!auth?.currentUser){$('boardSection').hidden=true;return}
   let flag;
   try{flag=await fetch('/api/board/status',{cache:'no-store'}).then(r=>r.json())}
   catch{$('boardSection').hidden=true;return}
-  if(flag.enabled!==true){$('boardSection').hidden=true;$('discordDiagnosticsLaunch').hidden=true;return}
+  if(flag.enabled!==true){$('boardSection').hidden=true;return}
   $('boardSection').dataset.authorized='yes';$('boardSection').hidden=false;
   boardWritesEnabled=flag.writesEnabled===true;
   $('boardNominationSection').hidden=true;
   $('boardTableWrap').hidden=true;
   $('boardDiscordStatus').hidden=true;
   $('boardHelp').hidden=true;
-  $('discordDiagnosticsLaunch').hidden=true;
   try{
     const own=await api('/api/board/me');
     const entry=own.appointment;
     const verified=own.discordBoardVerified===true;
-    $('discordDiagnosticsLaunch').hidden=!(verified||entry?.status==='approved');
     $('boardOwn').textContent=entry?
       'Formele bestuursaanstelling: Bestuur ('+entry.status+') · '+
       (entry.permissions.map(k=>boardLabels[k]||k).join(', ')||'Geen bijkomende bestuursbevoegdheden'):
@@ -1631,7 +1639,7 @@ $('leaveGrantReload').onclick=()=>loadLeaveGrantManager().then(showManageTabs);
 async function refresh(){
   for(const name of ['admin','manualRoleSection','toSection','boardSection','dossierGrantSection','leaveGrantSection','roleArtworkSection','uniformSection'])$(name).dataset.authorized='no';
   dossierGrants.reset();
-  if(!auth?.currentUser){$('profileSwitcher').hidden=true;$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;$('toSection').hidden=true;return}
+  if(!auth?.currentUser){$('discordDiagnosticsLaunch').hidden=true;$('profileSwitcher').hidden=true;$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;$('toSection').hidden=true;return}
   const isDiscord=auth.currentUser.uid.startsWith('discord:');
   $('request').hidden=true;
   let accessStatus=null;
@@ -1647,6 +1655,7 @@ async function refresh(){
   // Unapproved Discord members must never query the administrator endpoint.
   // Display their expected request status rather than a confusing 403 error.
   if(isDiscord && ['not_requested','pending','blocked'].includes(accessStatus)){
+    $('discordDiagnosticsLaunch').hidden=true;
     $('admin').hidden=true;$('toSection').hidden=true;
     const message={
       not_requested:'Je Discord-account is herkend. Klik op Toegang aanvragen om je personeelsrechten te laten goedkeuren.',
@@ -1657,6 +1666,7 @@ async function refresh(){
     return;
   }
   await loadProfileSwitcher();
+  await loadDiscordDiagnosticsLink();
   await loadAdmin();
   await loadManualRoles();
   await loadTOGrants();
@@ -1670,7 +1680,7 @@ async function refresh(){
   showManageTabs();
 }
 $('request').onclick=async()=>{const btn=$('request');btn.disabled=true;try{const r=await api('/api/users/request',{method:'POST',body:{}});notice(r.status==='legacy'?'Je hebt al bestaande rechten.':r.status==='approved'?'Je portaaltoegang is automatisch goedgekeurd op basis van de geverifieerde Discord-Middenkaderrol.':'Aanvraag geregistreerd. Een bevoegd kaderlid kan deze behandelen.');await refresh()}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
-$('refresh').onclick=async()=>{await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformComposer.load();await uniformLibrary.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
+$('refresh').onclick=async()=>{await loadDiscordDiagnosticsLink();await loadAdmin();await loadManualRoles();await loadTOGrants();await boardRefresh();await dossierGrants.load();await loadLeaveGrantManager();await roleArtwork.load();await uniformComposer.load();await uniformLibrary.load();showManageTabs()};$('filter').onchange=render;$('accountSearch').oninput=render;
 async function start(){
   try{
     const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());

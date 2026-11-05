@@ -66,9 +66,11 @@ export function canAdministerRoles(bpd,dept){
 }
 export function canLogTraining(bpd,dept,perms){
   if(!SERVICE_DEPTS.includes(dept))return false;
-  if(dept==='brandweer')return bpd?.boardPersonnelAdmin===true||perms?.brandweer?.['training.log']===true;
+  // A server-verified, service-scoped full dossier delegation also grants
+  // training-registration access, including Brandweer. Read/manage do not.
   if(bpd?.boardPersonnelAdmin===true)return true;
   if(bpd?.dossierFullDepartments?.includes(dept))return true;
+  if(dept==='brandweer')return perms?.brandweer?.['training.log']===true;
   // Approved cadre rights never migrate from one service to another.
   const rank=roleForDepartment(bpd,dept);
   if(bpd?.trustedStaff===true &&
@@ -79,9 +81,9 @@ export function canLogTraining(bpd,dept,perms){
 }
 export function canReviewTraining(bpd,dept,perms){
   if(!SERVICE_DEPTS.includes(dept))return false;
-  if(dept==='brandweer')return bpd?.boardPersonnelAdmin===true||perms?.brandweer?.['training.review']===true;
   if(bpd?.boardPersonnelAdmin===true)return true;
   if(bpd?.dossierFullDepartments?.includes(dept))return true;
+  if(dept==='brandweer')return perms?.brandweer?.['training.review']===true;
   const rank=roleForDepartment(bpd,dept);
   return (bpd?.trustedStaff===true &&
     ['middenkader','officierenkader','korpsleiding'].includes(rank)) ||

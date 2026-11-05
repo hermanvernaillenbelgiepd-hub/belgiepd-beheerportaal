@@ -1,0 +1,623 @@
+/* BelgiumPD organogram: hybrid LIGHT mode.
+   Keep the quiet light portal canvas/white service columns and readable
+   navy hierarchy bars + personnel cards. The normal dark theme is untouched.
+   Applied ONLY to this page, after the shared theme stylesheet.
+   Never recolour embedded uniform artwork, grades, medals or role badges. */
+@media screen {
+html:not([data-bpd-theme="dark"]) {
+  --org-paper:#fff;
+  --org-faint:#f2f6fc;
+  --org-border:#d6e1f0;
+  --org-ink:#173353;
+  --org-muted:#5b7391;
+  --org-navy:#193959;
+  --org-card:#163552;
+  --org-card-hover:#234b70;
+  --org-card-subtitle:#d0e2f5;
+}
+
+/* Layout stays compact and recognisable as part of the light portal. */
+html:not([data-bpd-theme="dark"]) body {
+  background:#f3f6fb!important;
+  color:var(--org-ink)!important;
+}
+html:not([data-bpd-theme="dark"]) main > h1,
+html:not([data-bpd-theme="dark"]) main > .lead {
+  color:var(--org-ink)!important;
+}
+html:not([data-bpd-theme="dark"]) main > .lead {
+  color:var(--org-muted)!important;
+}
+html:not([data-bpd-theme="dark"]) .toolbar {
+  background:var(--org-paper)!important;
+  border:1px solid var(--org-border)!important;
+  border-radius:11px;
+  box-shadow:0 3px 13px #1f35590b;
+}
+html:not([data-bpd-theme="dark"]) .toolbar button:not([aria-pressed="true"]) {
+  background:#eef4fc!important;
+  border-color:#c3d3e7!important;
+  color:#214468!important;
+}
+html:not([data-bpd-theme="dark"]) .toolbar button[aria-pressed="true"] {
+  background:#25558d!important;
+  color:#fff!important;
+  border-color:#437dbf!important;
+}
+html:not([data-bpd-theme="dark"]) .toolbar input {
+  background:#fff!important;
+  border-color:#b9cce4!important;
+  color:#183654!important;
+}
+
+/* Same soft white columns, each service retains its identifying accent. */
+html:not([data-bpd-theme="dark"]) #services.service-grid {
+  align-items:start;
+  gap:14px;
+}
+html:not([data-bpd-theme="dark"]) #services .service {
+  background:#fff!important;
+  color:var(--org-ink)!important;
+  border:1px solid var(--org-border)!important;
+  border-top:3px solid #7298bd!important;
+  border-radius:13px;
+  box-shadow:0 5px 18px #1d3a5e12!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="politie"] {
+  border-top-color:#3783cb!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="brandweer"] {
+  border-top-color:#d66b6e!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="ambulance"] {
+  border-top-color:#48aa83!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="depannage"] {
+  border-top-color:#d99a42!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="burger"] {
+  border-top-color:#7990ae!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service > summary {
+  background:#fff!important;
+  border-radius:10px 10px 0 0;
+  color:var(--org-ink)!important;
+  border-bottom:1px solid #e0e8f2;
+  padding:12px 13px;
+}
+html:not([data-bpd-theme="dark"]) #services .service > summary :is(.service-title,strong) {
+  color:#122d4b!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service > summary :is(.count,.chevron,small) {
+  color:#5c789b!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service-body {
+  background:#fff!important;
+  border-color:#dce7f3!important;
+  border-radius:0 0 11px 11px;
+  padding:7px 10px 13px;
+}
+html:not([data-bpd-theme="dark"]) #services .level::before {
+  border-color:#8aa7c9;
+}
+html:not([data-bpd-theme="dark"]) #services .level > summary.level-title,
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="ambulance"] .level > summary.level-title {
+  background:#1c4166!important;
+  border:1px solid #4c7497!important;
+  border-radius:7px!important;
+  color:#f5f9ff!important;
+  font-weight:800;
+  padding:8px 10px;
+  text-align:left;
+}
+html:not([data-bpd-theme="dark"]) #services .level > summary.level-title :is(.level-count,small,strong),
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="ambulance"] .level > summary.level-title .level-count,
+html:not([data-bpd-theme="dark"]) #services .level > summary.level-title::after {
+  color:#e4f0ff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .level-caption,
+html:not([data-bpd-theme="dark"]) #services .service .gaps,
+html:not([data-bpd-theme="dark"]) #services .service .specialty-note,
+html:not([data-bpd-theme="dark"]) #services .service .police-instructor-sync-note {
+  color:#617b9b!important;
+}
+html:not([data-bpd-theme="dark"]) #services .service[data-dept="ambulance"] .azls-ranks-heading {
+  color:#214e68!important;
+}
+
+/* On light columns, the real personnel cards remain navy and legible. */
+html:not([data-bpd-theme="dark"]) #services .person,
+html:not([data-bpd-theme="dark"]) #services .personnel-card-grid .person {
+  background:var(--org-card)!important;
+  color:#f5f9ff!important;
+  border:1px solid #52779f!important;
+  box-shadow:0 2px 5px #17385a10;
+}
+html:not([data-bpd-theme="dark"]) #services .person:hover,
+html:not([data-bpd-theme="dark"]) #services .personnel-card-grid .person:hover {
+  background:var(--org-card-hover)!important;
+  border-color:#9ebddd!important;
+}
+html:not([data-bpd-theme="dark"]) #services .person .identity,
+html:not([data-bpd-theme="dark"]) #services .person .identity b,
+html:not([data-bpd-theme="dark"]) #services .person .person-heading {
+  color:#fff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .person .identity small,
+html:not([data-bpd-theme="dark"]) #services .personnel-card-grid .person .identity small {
+  color:var(--org-card-subtitle)!important;
+}
+html:not([data-bpd-theme="dark"]) #services .person .num {
+  background:#294c72!important;
+  color:#f5faff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .board .board-member,
+html:not([data-bpd-theme="dark"]) .board #board-members .board-member {
+  background:#193e62!important;
+  color:#f6faff!important;
+  border-color:#688db4!important;
+}
+html:not([data-bpd-theme="dark"]) .board #board-members .board-member :is(b,strong) {
+  color:#fff!important;
+}
+html:not([data-bpd-theme="dark"]) .board #board-members .board-member small {
+  color:#d2e5f8!important;
+}
+
+/* Secondary groupings: a soft background, dark readable section bars. */
+html:not([data-bpd-theme="dark"]) #services .middle-cadre-lane {
+  background:#f1f5fb!important;
+  border:1px solid #d4e0ef!important;
+  border-radius:9px;
+}
+html:not([data-bpd-theme="dark"]) #services .middle-cadre-heading {
+  color:#294e76!important;
+  border-color:#c5d6e9!important;
+}
+html:not([data-bpd-theme="dark"]) #services .specialty,
+html:not([data-bpd-theme="dark"]) #services .police-specialty-grid > .specialty {
+  background:#f8faff!important;
+  border:1px solid #d0dfee!important;
+  border-radius:9px;
+}
+html:not([data-bpd-theme="dark"]) #services .specialty > summary,
+html:not([data-bpd-theme="dark"]) #services .police-specialty-grid > .specialty > summary {
+  background:#254a70!important;
+  border-color:#5b83a9!important;
+  color:#fff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .specialty > summary :is(small,strong,.specialty-branch-count,.fire-specialty-title-name),
+html:not([data-bpd-theme="dark"]) #services .specialty > summary::after {
+  color:#e2efff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .specialty > .specialty-content {
+  background:#f8faff!important;
+}
+html:not([data-bpd-theme="dark"]) #services .group-title:not(.instructors):not(.ae-leadership) {
+  color:#315878!important;
+}
+html:not([data-bpd-theme="dark"]) #services .group-title.members {
+  color:#e4f2ff!important;
+  background:#244a70!important;
+}
+html:not([data-bpd-theme="dark"]) #services .police-instructors-panel {
+  background:#203951!important;
+  border-color:#806e4c!important;
+}
+html:not([data-bpd-theme="dark"]) #services .police-instructors-panel > .group-title.instructors,
+html:not([data-bpd-theme="dark"]) #services .police-instructors-panel .police-instructor-sync-note {
+  color:#f5d9a0!important;
+}
+html:not([data-bpd-theme="dark"]) #services .police-specialty-detail .police-teamleader-panel > .group-title.ae-leadership {
+  background:#28516f!important;
+  color:#fff!important;
+}
+
+/* The status line reads as a single quiet brand-colour announcement. */
+html:not([data-bpd-theme="dark"]) #source.notice {
+  background:#174052!important;
+  color:#f0fbff!important;
+  border-color:#3f6b81!important;
+}
+html:not([data-bpd-theme="dark"]) #source.notice.warn {
+  background:#665025!important;
+  color:#fff0cf!important;
+  border-color:#ad8a42!important;
+}
+html:not([data-bpd-theme="dark"]) .board {
+  background:#fff!important;
+  border:1px solid #cbdced!important;
+  color:#214267!important;
+}
+html:not([data-bpd-theme="dark"]) .board :is(summary,strong,.board-subtitle) {
+  color:#234365!important;
+}
+
+/* Administrator-only editors can stay light without losing readable hints. */
+html:not([data-bpd-theme="dark"]) main > .manager {
+  background:#fff!important;color:#1c3f63!important;
+}
+html:not([data-bpd-theme="dark"]) main > .manager :is(.manager-note,label,h2,h3) {
+  color:#3b5676!important;
+}
+/* All service/status accent badges, images and medals use their own rules. */
+}
+
+
+/* Light hybrid v2. White service columns with genuinely LIGHT personnel cards;
+   preserve service, rank, status and specialty badge artwork. */
+@media screen {
+ @media(min-width:1251px) and (max-width:1680px){
+  html:not([data-bpd-theme="dark"]) #services.service-grid{
+   grid-template-columns:repeat(3,minmax(260px,1fr));
+  }
+ }
+ html:not([data-bpd-theme="dark"]) #services :is(.person,.personnel-card-grid .person){
+  background:#f3f7fc!important;color:#183657!important;
+  border:1px solid #c7d8eb!important;box-shadow:none!important;
+ }
+ html:not([data-bpd-theme="dark"]) #services :is(.person,.personnel-card-grid .person):hover{
+  background:#e6f0fb!important;border-color:#7da6d3!important;
+ }
+ html:not([data-bpd-theme="dark"]) #services .person :is(.identity,.identity b,.person-heading){
+  color:#173454!important;
+ }
+ html:not([data-bpd-theme="dark"]) #services .person .identity small,
+ html:not([data-bpd-theme="dark"]) #services .personnel-card-grid .person .identity small{
+  color:#526b89!important;
+ }
+ html:not([data-bpd-theme="dark"]) #services .person .num{
+  background:#dde9f7!important;color:#194475!important;
+  border:1px solid #bdd0e5;
+ }
+ html:not([data-bpd-theme="dark"]) #services .person .portrait{
+  border-color:#b6c8dc!important;background:#112841;
+ }
+ html:not([data-bpd-theme="dark"]) #services .level>summary.level-title{
+  color:#fff!important;
+ }
+}
+
+/* The profile is 40/60 on desktop with a scaled full uniform rather than
+   a cropped one. Shared in dark/light; narrow screens keep vertical scroll. */
+@media screen {
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-layout,
+ html:not(.roster-card-embed) .person-profile-dialog.operational-profile .person-profile-layout{
+  grid-template-columns:minmax(0,2fr) minmax(0,3fr)!important;
+  grid-template-areas:"details specials"!important;
+  align-items:start;gap:16px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-intro{
+  background:#122f4d;color:#f5f9ff;border:1px solid #4d7298;
+  border-radius:12px;padding:13px 14px 11px;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-overview,
+ html .person-profile-dialog.operational-profile .person-profile-overview{
+  background:transparent!important;border:0!important;box-shadow:none!important;
+  padding:0!important;margin:0!important;gap:5px!important;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-overview
+  .portrait.bpd-police-formal[data-uniform],
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-overview
+  .portrait.bpd-service-uniform,
+ html .person-profile-dialog.operational-profile .person-profile-overview
+  .portrait.bpd-police-formal[data-uniform],
+ html .person-profile-dialog.operational-profile .person-profile-overview
+  .portrait.bpd-service-uniform{
+   width:min(100%,340px,38dvh)!important;min-width:0!important;max-width:340px!important;
+   height:auto!important;min-height:0!important;max-height:none!important;
+   aspect-ratio:198/226;flex:none!important;border-radius:10px!important;
+   border:1px solid #6285ae!important;background:#10243b!important;
+   overflow:hidden!important;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-identity{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding-top:5px;min-width:0;width:100%;text-align:center;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-inline-call{
+  display:inline-flex;padding:3px 9px;margin:3px auto 0;
+  border:1px solid #7098c4;border-radius:6px;
+  background:#234c75;color:#f7fbff;font-weight:800;
+  font-size:11px;letter-spacing:.05em;
+ }
+ html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-grade,
+ html .person-profile-dialog.operational-profile .person-profile-grade{
+  display:flex;justify-content:center;align-items:center;
+  gap:10px;width:max-content;max-width:100%;margin:9px auto 0!important;
+  padding:7px 9px;background:#203e60;border:1px solid #4c729c;border-radius:9px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-grade-info :is(strong,small){
+  color:#eaf3ff!important;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-grid{
+  margin-top:10px;gap:7px;grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialty-panel{
+  gap:10px;min-width:0;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialties{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;gap:8px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialty{
+  box-sizing:border-box;min-height:82px;
+  padding:9px 10px;gap:4px;border-radius:9px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialty-has-badge{
+  display:grid;grid-template-columns:minmax(0,1fr) var(--bpd-specialty-badge-width,170px);
+  align-content:center;gap:4px 9px;min-width:0;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialty>strong{
+  font-size:12px;line-height:1.35;overflow-wrap:anywhere;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-specialty-role{
+  font-size:10px;line-height:1.4;overflow-wrap:anywhere;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-management{
+  background:#f4f8fd;border:1px solid #bed1e6;border-radius:9px;
+  overflow:hidden;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-management>summary{
+  padding:11px 12px;background:#244b74;
+  color:#fff!important;font-size:12px;font-weight:800;cursor:pointer;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-management-body{
+  display:grid;gap:8px;padding:10px;
+ }
+ html .person-profile-dialog.operational-profile .person-profile-management-body .bpd-awards-control{margin:0}
+ html .person-profile-dialog.operational-profile .person-profile-specialization-box>h3{
+  font-weight:850;font-size:14px;margin:0 0 9px;
+ }
+ @media(max-width:970px){
+  html.roster-card-embed .person-profile-dialog.operational-profile .person-profile-layout,
+  html:not(.roster-card-embed) .person-profile-dialog.operational-profile .person-profile-layout{
+   grid-template-columns:minmax(0,1fr)!important;
+   grid-template-areas:"details" "specials"!important;
+  }
+ }
+ @media(max-width:600px){
+  html .person-profile-dialog.operational-profile .person-profile-specialties{
+   grid-template-columns:minmax(0,1fr);
+  }
+  html .person-profile-dialog.operational-profile .person-profile-grade{
+   flex-wrap:wrap;justify-content:center;
+  }
+ }
+}
+
+/* Fix light-mode contrast with targeted overrides after the shared theme.
+   Dark artwork (stitches/patches/uniform) retains its authored colours. */
+@media screen {
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+   :is(.person-profile-intro,.person-profile-overview){
+  background:#122f4d!important;border-color:#547b9f!important;color:#fff!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+   :is(.person-profile-name,.person-profile-rank,.person-profile-inline-call){
+  color:#f5f9ff!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-grade{
+  background:#203e60!important;color:#fff!important;border-color:#5e82a7!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-grade-info strong{
+  color:#fff!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-fact{
+  background:#f4f8fd!important;border:1px solid #d5e2f0!important;color:#173454!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-fact strong{
+  color:#173454!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-fact small{
+  color:#506987!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-fact.person-profile-call{
+  background:#245380!important;border-color:#447eb1!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+  .person-profile-fact.person-profile-call :is(strong,small){
+  color:#fff!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+  :is(.person-profile-awards-panel,.person-profile-specialization-box){
+  background:#fff!important;color:#173454!important;
+  border:1px solid #d0deed!important;padding:12px;border-radius:10px;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+  :is(.person-profile-awards-panel,.person-profile-specialization-box) h3,
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-awards-panel strong{
+  color:#234b75!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+  :is(.person-profile-awards-panel,.person-profile-specialization-box) :is(
+    p,small,.person-profile-note,.bpd-no-awards){
+  color:#536c8b!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-specialty{
+  background:#f1f6fc!important;color:#18395e!important;border:1px solid #c5d8ef!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-specialty>strong{
+  color:#214b79!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-specialty-role{
+  color:#577398!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-management{
+  background:#f7faff!important;border-color:#cadbed!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile .person-profile-management>summary{
+  background:#244b74!important;color:#fff!important;
+ }
+ html:not([data-bpd-theme="dark"]) .person-profile-dialog.operational-profile
+  :is(.ae-level-text-patch,.radio-bm-text-patch){
+  color:#fff!important;
+ }
+}
+
+
+/* Brandweer personnel profile: all specialties share one tidy two-column
+   grid; real image proportions remain intact, including the original 288:134
+   Duiker badge. These presentation rules do not change role assignments. */
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-overview .portrait.bpd-service-uniform,
+html.roster-card-embed .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-overview .portrait.bpd-service-uniform{
+ width:min(100%,258px,30dvh)!important;
+ min-width:0!important;max-width:258px!important;
+ height:auto!important;min-height:0!important;
+ aspect-ratio:198/226!important;flex:0 0 auto!important;
+ object-fit:contain!important;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-overview{
+ padding:9px 11px!important;margin-bottom:8px!important;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-overview .person-profile-name{font-size:18px}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-grid{gap:7px;margin-top:5px}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-grid .person-profile-fact{
+ min-height:57px;padding:7px 10px;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-grid .person-profile-fact.person-profile-call{
+ min-height:61px;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-call strong{font-size:clamp(21px,2.1vw,27px)}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialty-panel{gap:9px}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties{
+ display:grid!important;
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:9px!important;align-items:stretch;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty{
+ display:grid!important;
+ grid-column:auto!important;
+ box-sizing:border-box;min-width:0;max-width:100%;width:100%;
+ min-height:100px!important;
+ grid-template-columns:minmax(0,1fr) minmax(0,150px)!important;
+ grid-template-rows:1fr auto;
+ gap:3px 9px!important;align-items:center;align-content:center;
+ padding:10px 11px!important;
+ border-radius:9px;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty>strong{
+ grid-column:1;grid-row:1;min-width:0;
+ align-self:end;justify-self:start;
+ font-size:12px!important;line-height:1.35;
+ overflow-wrap:anywhere;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty:not(:has(>.person-profile-specialty-role))>strong{
+ grid-row:1 / 3;align-self:center;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty>.person-profile-specialty-role{
+ grid-column:1;grid-row:2;align-self:start;justify-self:start;
+ font-size:10px;min-width:0;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty img.person-profile-specialty-badge{
+ display:block!important;
+ grid-column:2;grid-row:1 / 3;align-self:center;justify-self:end!important;
+ box-sizing:border-box;width:min(150px,100%)!important;
+ min-width:0!important;max-width:100%!important;
+ height:auto!important;min-height:0!important;max-height:78px!important;
+ aspect-ratio:auto!important;
+ object-fit:contain!important;object-position:center;
+ border:1px solid #547391;border-radius:5px;
+ background:#111923;
+ box-shadow:0 2px 6px #0914253a;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty-fire-diver img.person-profile-specialty-badge{
+ aspect-ratio:288 / 134!important;
+ object-fit:contain!important;
+}
+html .person-profile-dialog.fire-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty-missing-patch{
+ display:flex;align-items:center;justify-content:center;
+ grid-column:2;grid-row:1 / 3;
+ width:100%;min-height:44px;max-width:150px;
+ border:1px dashed #53718d;border-radius:6px;
+ padding:7px 5px;color:#a7bfd6;
+ font-size:10px;line-height:1.35;text-align:center;
+ background:#112940;
+}
+@media(max-width:700px){
+ html .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-specialties{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ html .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-overview .portrait.bpd-service-uniform,
+ html.roster-card-embed .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-overview .portrait.bpd-service-uniform{
+  width:min(100%,225px,31dvh)!important;max-width:225px!important;
+ }
+}
+@media(max-width:390px){
+ html .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-specialties .person-profile-specialty{
+  grid-template-columns:minmax(0,1fr) minmax(0,112px)!important;
+  min-height:84px!important;padding:8px!important;
+ }
+ html .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-specialties .person-profile-specialty img.person-profile-specialty-badge{
+  width:min(112px,100%)!important;max-height:65px!important;
+ }
+ html .person-profile-dialog.fire-person-profile.operational-profile
+  .person-profile-specialties .person-profile-specialty-missing-patch{
+  max-width:112px;
+ }
+}
+
+/* Depannage: embroidered 16:5 patches to the LEFT of each qualification. */
+html .person-profile-dialog.depannage-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty{
+ display:grid!important;grid-template-columns:minmax(0,142px) minmax(0,1fr)!important;
+ grid-template-rows:auto auto;gap:3px 12px;align-content:center;
+ min-height:84px!important;padding:9px 10px!important;
+ background:#152f49;border:1px solid #507391;border-radius:9px;
+}
+html .person-profile-dialog.depannage-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty>strong{
+ grid-column:2;grid-row:1;align-self:end;justify-self:start;font-size:13px!important;
+}
+html .person-profile-dialog.depannage-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty>.person-profile-specialty-role{
+ grid-column:2;grid-row:2;align-self:start;margin:0;font-size:10px;
+}
+html .person-profile-dialog.depannage-person-profile.operational-profile
+ .person-profile-specialties img.depannage-specialty-badge{
+ grid-column:1;grid-row:1 / 3;align-self:center;justify-self:center;
+ width:100%!important;max-width:142px!important;height:auto!important;
+ max-height:67px!important;aspect-ratio:16 / 5;object-fit:contain!important;
+ border:0!important;border-radius:0!important;background:transparent!important;
+ box-shadow:none!important;
+}
+html .person-profile-dialog.depannage-person-profile.operational-profile
+ .person-profile-specialties .person-profile-specialty>.person-profile-specialty-missing-patch{
+ grid-column:1;grid-row:1 / 3;align-self:center;padding:7px;
+ border:1px dashed #557795;border-radius:6px;font-size:10px;color:#c0d5e7;
+}
+html .person-profile-dialog.operational-profile .bpd-service-uniform-empty{
+ display:flex;align-items:center;justify-content:center;
+ border:1px dashed #557795;background:#102842;color:#b6cfe6;text-align:center;
+}
+html .person-profile-dialog.operational-profile .bpd-service-uniform-empty-label{
+ font-size:12px;font-weight:700;
+}
+@media(max-width:480px){
+ html .person-profile-dialog.depannage-person-profile.operational-profile
+  .person-profile-specialties .person-profile-specialty{
+  grid-template-columns:minmax(0,120px) minmax(0,1fr)!important;
+  gap:3px 8px;
+ }
+}

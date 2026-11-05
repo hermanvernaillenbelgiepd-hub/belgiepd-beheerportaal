@@ -12,9 +12,24 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   const raw=String(label||'').trim().toLowerCase();
   const alt={'motor':'motard','semi-ano.':'semi_ano','semi-anoniem':'semi_ano',
    'semi anoniem':'semi_ano','dispatch':'disp','radio bm':'radio_bm','siv/wpr':'wpr',
-   'terreinondersteuner':'to','arrestatie-eenheid':'ae'};
+   'terreinondersteuner':'to','arrestatie-eenheid':'ae',
+   'interventiedienst':'interventie'};
   return alt[raw]||raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
    .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+ };
+ // Older uploaded BW/AGS artwork aliases are display-only, not roles.
+ const codeAliases={
+  red_team:['redteam','bw_red_team','bw_redteam'],
+  gevaarlijke_stoffen:['gevaarlijkestoffen','ags','bw_ags','bw_gevaarlijke_stoffen'],
+  signalisatie:['bw_sig','bw_signal','signa','bw_signalisatie','bw_signa'],
+  grote_boot:['groteboot','bw_grote_boot','bw_boot'],
+  bosbestrijding:['boswagen','bw_boswagen','bw_bosbestrijding'],
+  logistiek:['bw_log','bw_logistiek'],ladderwagen:['bw_ladderwagen'],
+  duiker:['bw_duiker'],brandweer_ambu:['bw_ambu','ambu']
+ };
+ const codesFor=label=>{
+  const code=codes(label);
+  return [...new Set([code,...(codeAliases[code]||[])])];
  };
  const values=['Nee','Stage','Ja','Docent','Niet ingevuld','AANGEMELD',
   'RESTRICTED','ONTSLAG','INSTRUCTEUR','PLAVA','GPC','INACTIEF',
@@ -30,11 +45,15 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
    draft.find(x=>x.label===label&&x.assetKey);
   const chosen=config?.assets?.find(x=>x.key===matched?.assetKey);
   if(chosen)return chosen;
-  const code=codes(label);
-  return config?.assets?.find(x=>x.key==='specialty_'+dept+'_'+code)||
-   config?.assets?.find(x=>x.key==='patch_'+dept+'_'+code)||
-   config?.assets?.find(x=>x.key==='specialty_'+dept+'_'+code+'_lokaal')||
-   config?.assets?.find(x=>x.key==='specialty_'+dept+'_'+code+'_federaal')||null;
+  for(const code of codesFor(label)){
+   for(const kind of ['specialty','patch']){
+    for(const suffix of [code,code+'_lokaal',code+'_federaal']){
+     const image=config?.assets?.find(x=>x.key===kind+'_'+dept+'_'+suffix);
+     if(image)return image;
+    }
+   }
+  }
+  return null;
  }
  function updatePreview(){
   const label=selectedSpecialty();
@@ -101,7 +120,9 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
    draft.length+' koppelingen'+(config.canEdit?' · bewerkbaar':' · alleen lezen');
   const roles=[['','Geen Discord-rol — handmatige specialisatie / patch'],
    ...config.roles.map(x=>[x.id,x.name+' · '+x.id])];
-  const labels=config.labels.map(x=>[x,x]);
+  const dept=getDepartment();
+  const legacyCombined=dept==='brandweer'?'Logistiek / Signalisatie':'';
+  const labels=config.labels.filter(x=>x!==legacyCombined).map(x=>[x,x]);
   for(const row of draft){
    // Images uploaded for the whole department can be used without a role.
    // A legacy role-specific badge is valid only for the exact same role ID.
@@ -110,7 +131,8 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
      row.roleId&&x.key.startsWith(row.roleId+'_'));
    const matches=image=>{
     const suffix=image.key.replace(new RegExp('^(?:specialty|patch)_'+dept+'_'),'');
-    const acceptable=new Set([targetCode,targetCode+'_lokaal',targetCode+'_federaal',
+    const acceptable=new Set([...codesFor(row.label).flatMap(code=>
+     [code,code+'_lokaal',code+'_federaal']),
      ...(targetCode==='semi_ano'?['semi_anoniem','semi_anoniem_lokaal']:[]),
      ...(targetCode==='wpr'?['siv_wpr']:[])]);
     return acceptable.has(suffix);
@@ -131,7 +153,15 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
     };
     group.append(input);wrap.append(group);
    };
-   field('Specialisatie',labels,'label');
+   const specialtyChoices=row.label===legacyCombined?
+     [...labels,[legacyCombined,'Logistiek / Signalisatie (oud: kies aparte regels)']]:labels;
+    field('Specialisatie',specialtyChoices,'label');
+    if(row.label===legacyCombined){
+     const warning=el('div','De gedeelde BW log/signa-rol heeft twee afzonderlijke patches nodig. '+
+      'Koppel Logistiek en Signalisatie apart aan deze rol en kies voor elk een eigen afbeelding.');
+     warning.className='specialty-map-warning';
+     wrap.append(warning);
+    }
    field('Discord-rol (optioneel)',roles,'roleId');
    const level=el('label','Functieniveau');
    const levelInput=el('input');levelInput.value=row.level;levelInput.maxLength=45;
@@ -229,7 +259,11 @@ export function createSpecialtyLinksUI({api,notify,getDepartment,getPerson,selec
   const reason=$('specialtyLinkReason').value.trim();
   if(reason.length<8||!$('specialtyLinkReviewed').checked)
    return notify('Vul een motivering in en bevestig de controle van rollen en afbeeldingen.',true);
-  if(!confirm('Alle specialisatie- en patchkoppelingen voor '+getDepartment()+
+  if(getDepartment()==='brandweer'&&draft.some(x=>
+      x.roleId==='1309532437952466986'&&x.label==='Logistiek / Signalisatie'))
+    return notify('BW log/signa heeft twee aparte regels nodig: Logistiek en Signalisatie. '+
+     'Kies bij elk de eigen patch en bewaar opnieuw.',true);
+   if(!confirm('Alle specialisatie- en patchkoppelingen voor '+getDepartment()+
     ' bewaren? Een Discord-rol is niet verplicht. Handmatige toekenningen '+
     'blijven per personeelslid.'))return;
   const b=$('specialtyLinkSave');b.disabled=true;

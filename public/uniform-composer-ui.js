@@ -1,5 +1,5 @@
 // Operational uniform composition: one grade, one preview, one save.
-import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction} from '/uniform-profile-policy.js';
+import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,DEPANNAGE_FUNCTIONS,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction,depannageFunction} from '/uniform-profile-policy.js';
 export function setupUniformComposer({api,$}){
  const dept=$('composeDept'),grade=$('composeGrade'),panel=$('composePreview'),
   gallery=$('composeGallery'),types=$('composeTypes'),save=$('composeSave'),notice=$('composeStatus');
@@ -18,12 +18,11 @@ export function setupUniformComposer({api,$}){
  function ranks(){
   if(dept.value==='politie')return POLICE_CALL_GRADES.map(([code,title])=>['call',code,code+' · '+title]);
   if(dept.value==='ambulance')return AMBULANCE_FUNCTIONS.map(([code,title])=>['function',code,title]);
+  if(dept.value==='depannage')return DEPANNAGE_FUNCTIONS.map(([code,title])=>['function',code,title]);
   const base=dept.value==='brandweer'?
    ['Zonecommandant','Kolonel','Majoor','Kapitein','Luitenant',
     'Adjudant','Sergeant','Korporaal','Brandweerman','Stagiair']:
-   dept.value==='depannage'?
-    ['Leiding','F.A.S.T','LSRA','Depannagetechnicus']:
-    ['Burgerraad','Burger'];
+   ['Burgerraad','Burger'];
   const all=new Map(base.map(label=>[normalizeVisual(label),label]));
   for(const person of people.filter(x=>x.dept===dept.value&&x.rank))
    all.set(normalizeVisual(person.rank),String(person.rank));
@@ -31,7 +30,15 @@ export function setupUniformComposer({api,$}){
  }
  function initialize(){
   const scope=grade.selectedOptions[0]?.dataset.scope||'rank';
-  const saved=templates.find(x=>x.department===dept.value&&x.scope===scope&&x.selector===grade.value);
+  const exact=templates.find(x=>x.department===dept.value&&x.scope===scope&&x.selector===grade.value);
+  // A previously configured rank-based towing uniform stays available when
+  // the editor is upgraded to the stable AWV / LSRA / FAST function codes.
+  const legacy=dept.value==='depannage'&&scope==='function'?
+   ({awv:['leiding','agentschap_wegen_en_verkeer','awv'],
+     lsra:['lsra','depannagetechnicus'],fast:['f_a_s_t','fast']}[grade.value]||[])
+    .map(code=>templates.find(x=>x.department==='depannage'&&x.scope==='rank'&&x.selector===code))
+    .find(Boolean):null;
+  const saved=exact||legacy;
   // New atelier starts with saved compositions only. Never resurrect coats
   // from the retired per-service or per-cadre assignment system.
   const inherited='';
@@ -65,7 +72,7 @@ export function setupUniformComposer({api,$}){
  function sampleMember(){
   const match=people.find(p=>p.dept===dept.value&&(
    draft.scope==='call'?policeCallSeries(p.call)===grade.value:
-   draft.scope==='function'?ambulanceFunction(p)===grade.value:
+   draft.scope==='function'?(dept.value==='depannage'?depannageFunction(p)===grade.value:ambulanceFunction(p)===grade.value):
     normalizeVisual(p.rank)===grade.value));
   const prefix=dept.value==='politie'?'SANTO-':
    dept.value==='ambulance'?'AZLS-':'';
@@ -80,12 +87,14 @@ export function setupUniformComposer({api,$}){
  }
  const slots={
   name:{left:27.2,top:34.7,width:15.8,height:7.9},
-  rank:{left:55.3,top:34.7,width:15.6,height:7.9}
+  rank:{left:55.3,top:34.7,width:15.6,height:7.9},
+  ribbons:{left:55.3,top:26,width:19,height:5},
+  medals:{left:55.3,top:45,width:23,height:18}
  };
  function snapChest(){
-  for(const kind of ['name','rank'])Object.assign(draft.layers[kind],slots[kind]);
+  for(const kind of ['name','rank','ribbons','medals'])Object.assign(draft.layers[kind],slots[kind]);
   render();
-  notify('Naam en gradenplaat zijn op de borstvlakken geplaatst. Sleep ze eventueel bij en bewaar het volledige uniform.');
+  notify('Naamplaat, graad, linten en medailles staan op de borstvlakken. Verplaats ze indien nodig en bewaar het uniform.');
  }
  $('composeSnapChest').onclick=snapChest;
  function goldPoliceGrade(){
@@ -110,13 +119,20 @@ export function setupUniformComposer({api,$}){
     $('composeSnapChest').hidden=!portrait;
     const factory=(p,kind)=>{
      const near=(a,b)=>Math.abs(Number(a)-b)<0.65;
-     return kind==='name'?near(p.left,18)&&near(p.top,56):
-      near(p.left,57)&&near(p.top,56);
+     if(kind==='name')return near(p.left,18)&&near(p.top,56)||near(p.left,21.2)&&near(p.top,60.2);
+     if(kind==='rank')return near(p.left,57)&&near(p.top,56)||near(p.left,56.2)&&near(p.top,58.9);
+     if(kind==='ribbons')return near(p.left,57)&&near(p.top,51)&&near(p.width,21);
+     return near(p.left,57)&&near(p.top,70)&&near(p.width,24);
     };
-    if(portrait&&!templates.some(x=>x.department===dept.value&&x.scope===draft.scope&&x.selector===draft.selector)&&
-       factory(draft.layers.name,'name')&&factory(draft.layers.rank,'rank')){
-     for(const kind of ['name','rank'])Object.assign(draft.layers[kind],slots[kind]);
-     render();
+    // Repair only known landscape defaults. User-adjusted coordinates stay untouched.
+    if(portrait){
+     let repaired=false;
+     for(const kind of ['name','rank','ribbons','medals']){
+      if(factory(draft.layers[kind],kind)){
+       Object.assign(draft.layers[kind],slots[kind]);repaired=true;
+      }
+     }
+     if(repaired){render();return}
     }
    };
    pic.addEventListener('load',onImage,{once:true});
@@ -260,7 +276,7 @@ export function setupUniformComposer({api,$}){
    await api('/api/uniform-compositions',{method:'PUT',body:{
     ...draft,reason:'Uniformatelier opmaak voor '+dept.value+' '+grade.value}});
    await load(true);
-   notify('Uniformopmaak voor de graad opgeslagen.');
+   notify('Uniformopmaak voor de gekozen functie of graad opgeslagen.');
   }catch(e){notify(e.message,true)}
   finally{busy=false;updateSave()}
  };

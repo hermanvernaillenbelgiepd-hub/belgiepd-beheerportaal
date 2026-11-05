@@ -61,8 +61,9 @@ test('the same single autofit script is loaded before live and atelier renderers
  for(const page of ['organogram.html','organogram-hierarchie.html','gebruikersbeheer.html']){
   const html=readFileSync(new URL('../public/'+page,import.meta.url),'utf8');
   const fit=html.indexOf('/assets/bpd-nameplate-autofit.js?v=name-autofit-20261031-v5');
-  const renderer=html.indexOf(page==='gebruikersbeheer.html'?'uniform-composer-ui.js?v=name-autofit-20261031-v5':
-   '/assets/organogram-police-formal.js?v=name-autofit-20261031-v5');
+  const renderer=html.indexOf(page==='gebruikersbeheer.html'?'uniform-composer-ui.js?v=award-chest-20261104':
+   (page==='organogram-hierarchie.html'?'/assets/organogram-police-formal.js?v=awards-chest-20261104':
+    '/assets/organogram-police-formal.js?v=name-autofit-20261031-v5'));
   assert.ok(fit>=0&&fit<renderer,page+' must load fit before its renderer');
  }
  const code=readFileSync(new URL('../public/assets/organogram-police-formal.js',import.meta.url),'utf8');

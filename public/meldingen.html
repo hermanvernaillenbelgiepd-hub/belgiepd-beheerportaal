@@ -78,6 +78,25 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
  padding:6px 10px;font-size:11px;line-height:1.3;border-radius:6px;min-height:30px
 }
 #trainingReview .item .actions{gap:6px;margin-top:6px}
+#staffActivityFollowupPanel{padding:14px 16px;margin:10px 0;border-radius:10px}
+#staffActivityFollowupPanel h2{font-size:15px;margin:0}
+#staffActivityFollowupPanel p{font-size:12px;line-height:1.5;margin:6px 0 10px}
+#staffFollowupList .item{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:9px 0}
+#staffFollowupList .item strong{font-size:12px;min-width:190px}
+.staff-status{display:inline-block;font-size:11px;font-weight:750;border-radius:999px;
+ padding:3px 8px;background:#643b25;color:#ffe8d5;border:1px solid #ad7c5f}
+.staff-status[data-status="INACTIEF"]{background:#713037;color:#ffe2e4;border-color:#a85c66}
+.staff-dept{color:#bcd0ed;font-size:11px}
+#staffFollowupReload{padding:6px 10px;min-height:30px;font-size:11px}
+#activityPingsPanel{padding:14px 16px;margin:10px 0;border-radius:10px}
+#activityPingsPanel h2{font-size:15px;line-height:1.3;margin:0 0 7px}
+#activityPingsPanel>p{font-size:12px;line-height:1.4;margin:5px 0 9px}
+#activityPingsList .item{padding:8px 0;font-size:12px;line-height:1.4}
+#activityPingsList .item p{margin:3px 0;font-size:11px}
+#activityPingsList .item button{padding:6px 10px;font-size:11px;min-height:30px}
+#seriesLeaveList .item button,#seriesLeaveAutomatic .item button{padding:6px 10px;font-size:11px;min-height:30px}
+.read-receipt{display:block;font-size:11px;color:#3d664b;margin:4px 0}
+
 @media(max-width:700px){
  #trainingPersonalPanel,#trainingReviewPanel{padding:12px}
  #trainingReviewPanel>.actions{flex-wrap:wrap}
@@ -87,6 +106,19 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 <header><strong>🛡️ BelgiëPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>📬 Meldingen</h1><p>Bekijk je persoonlijke verlofbeslissingen en opleidingsmeldingen. Reekshoofden en bevoegde dienstleiding zien hier aanvragen die zij mogen behandelen.</p>
 <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
+<section id="staffActivityFollowupPanel" class="panel" hidden>
+ <div class="actions" style="justify-content:space-between;align-items:center">
+  <h2>👥 Personeelsopvolging · <span id="staffFollowup50">0</span> op 50/50 · <span id="staffFollowupInactive">0</span> INACTIEF</h2>
+  <button type="button" id="staffFollowupReload">↻ Vernieuwen</button>
+ </div>
+ <p>Actuele personeelsstatussen binnen jouw dienstbevoegdheden. <strong>Dit zijn geen verzonden activiteitspings.</strong> Voor beoordeling en eventuele dossierregistratie gebruik je het <a href="/activiteitscentrum.html">Activiteitscentrum</a> of Dossiercentrum.</p>
+ <div id="staffFollowupList" aria-live="polite"></div>
+</section>
+<section id="activityPingsPanel" class="panel" hidden>
+ <h2>🔔 Mijn activiteitspings</h2>
+ <p>Ontvangen inactiviteitspings en leesbevestigingen. Iedere ping heeft één bewijsregistratie in je dossier en het dienstweekrapport.</p>
+ <div id="activityPingsList"></div>
+</section>
 <section id="personalPanel" class="panel" hidden>
  <h2>Mijn verlofmeldingen</h2>
  <p>Uitsluitend je eigen aanvragen en beslissingen. Bekijk <a href="/verlofbeheer.html">Mijn verlof</a> om een nieuwe aanvraag te doen.</p>
@@ -155,7 +187,85 @@ function item(x,override=false){
   row.append(buttons);
  }return row;
 }
+async function loadStaffActivityFollowup(){
+ const panel=$('staffActivityFollowupPanel'),list=$('staffFollowupList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const result=await api('/api/management/activity-followup');
+  const people=Array.isArray(result.people)?result.people:[];
+  $('staffFollowup50').textContent=String(result.counts?.['50/50']||0);
+  $('staffFollowupInactive').textContent=String(result.counts?.INACTIEF||0);
+  for(const person of people){
+   const row=document.createElement('div');row.className='item';
+   const title=document.createElement('strong');
+   title.textContent=(person.call||'—')+' · '+(person.name||'Personeelslid');
+   const state=document.createElement('span');state.className='staff-status';
+   state.dataset.status=person.status;state.textContent=person.status;
+   const dept=document.createElement('span');dept.className='staff-dept';
+   dept.textContent='· '+person.department;
+   row.append(title,state,dept);list.append(row);
+  }
+  if(!people.length)
+   list.textContent='Geen personeelsleden met status 50/50 of INACTIEF binnen jouw inzagerechten.';
+  if(result.limited){
+   const note=document.createElement('p');
+   note.textContent='Lijst afgekapt: raadpleeg het Activiteitscentrum voor de volledige opvolging.';
+   list.append(note);
+  }
+  panel.hidden=false;
+ }catch(e){
+  if(e.message==='Geen toegang tot personeelsopvolging')return;
+  panel.hidden=false;
+  list.textContent='Personeelsopvolging niet beschikbaar: '+e.message;
+ }
+}
+$('staffFollowupReload').onclick=loadStaffActivityFollowup;
+
+async function loadActivityPings(){
+ const panel=$('activityPingsPanel'),list=$('activityPingsList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const result=await api('/api/management/pings/mine');
+  const notices=Array.isArray(result.pings)?result.pings:[];
+  for(const entry of notices){
+   const row=document.createElement('div');row.className='item';
+   const heading=document.createElement('strong');
+   heading.textContent=(['50/50','INACTIEF'].includes(entry.kind)?entry.kind+'-ping':'Inactiviteitsping')+
+    ' · '+(entry.department||'Dienst');
+   const info=document.createElement('p');
+   const date=entry.sentAt&&Number.isFinite(Date.parse(entry.sentAt))?
+    new Date(entry.sentAt).toLocaleString('nl-BE'):'Datum onbekend';
+   info.textContent='Verzonden '+date+' · '+(entry.status==='read'?'Gelezen':'Nog niet bevestigd');
+   const details=document.createElement('p');
+   details.textContent=entry.details||'Activiteitsopvolging gevraagd.';
+   row.append(heading,info,details);
+   if(entry.status!=='read'){
+    const action=document.createElement('button');action.type='button';
+    action.textContent='GELEZEN';
+    action.onclick=async()=>{
+     action.disabled=true;
+     try{
+      await api('/api/management/pings/mine/'+encodeURIComponent(entry.id)+'/read',{});
+      feedback('Leesbevestiging opgeslagen in je dossier.');
+      await loadActivityPings();
+     }catch(e){feedback('Leesbevestiging mislukt: '+e.message,true);action.disabled=false}
+    };
+    row.append(action);
+   }
+   list.append(row);
+  }
+  if(!notices.length)list.textContent='Je hebt momenteel geen activiteitspings.';
+  panel.hidden=false;
+ }catch(e){
+  list.textContent='Activiteitspings kunnen niet worden geladen: '+e.message;
+  panel.hidden=false;
+ }
+}
 async function load(){
+ void loadStaffActivityFollowup();
+ void loadActivityPings();
  void loadTraining();
  void loadSeriesLeave();
  $('reviewPanel').hidden=true;
@@ -164,7 +274,9 @@ async function load(){
  try{
   const access=await api('/api/leave/notifications/context');
   const result=await api('/api/leave/requests');
-  if(!access.canReview){
+  // Personal messages belong to every authenticated member, including
+  // Officierenkader and Korpsleiding who also have team-review permissions.
+  {
     const root=$('personalList');root.replaceChildren();
     const names={pending:'In behandeling',approved:'Goedgekeurd',
       rejected:'Geweigerd',withdrawn:'Ingetrokken'};
@@ -177,6 +289,8 @@ async function load(){
     }
     if(!root.children.length)root.textContent='Je hebt momenteel geen verlofmeldingen.';
     $('personalPanel').hidden=false;
+  }
+  if(!access.canReview){
     feedback('Persoonlijke meldingen geladen. Alleen je eigen aanvragen zijn zichtbaar.');
     return;
   }
@@ -199,6 +313,24 @@ async function load(){
   feedback(writesEnabled?'Je kunt aanvragen behandelen binnen je eigen bevoegdheid.':'De verlofmodule staat momenteel op alleen-lezen.');
  }catch(e){feedback(e.message,true)}
 }
+function addSeriesReadConfirmation(row,record){
+  if(record.readAt){
+    const done=document.createElement('span');done.className='read-receipt';
+    done.textContent='✓ Door jou gelezen · '+new Date(record.readAt).toLocaleString('nl-BE');
+    row.append(done);return;
+  }
+  const button=document.createElement('button');button.type='button';
+  button.textContent='GELEZEN';
+  button.onclick=async()=>{
+    button.disabled=true;
+    try{
+      await api('/api/leave/series-notifications/'+encodeURIComponent(record.id)+'/read',{});
+      feedback('Je eigen leesbevestiging is opgeslagen. Andere reekshoofden behouden hun melding.');
+      await loadSeriesLeave();
+    }catch(e){feedback('Leesbevestiging mislukt: '+e.message,true);button.disabled=false}
+  };
+  row.append(button);
+}
 async function loadSeriesLeave(){
  const panel=$('seriesLeavePanel');
  panel.hidden=true;
@@ -219,7 +351,7 @@ async function loadSeriesLeave(){
      ' · reeks '+record.series;
    const dates=document.createElement('p');
    dates.textContent=record.startDate+' t/m '+record.endDate+' · Wacht op bevoegde beslissing';
-   row.append(title,dates);pendingEl.append(row);
+   row.append(title,dates);addSeriesReadConfirmation(row,record);pendingEl.append(row);
   }
   const recent=$('seriesLeaveAutomatic');
   const approved=result.recentAutomatic||[];
@@ -230,7 +362,7 @@ async function loadSeriesLeave(){
    title.textContent=record.subjectCall+' · '+record.subjectName;
    const dates=document.createElement('p');
    dates.textContent=record.startDate+' t/m '+record.endDate+' · AUTOMATISCH GOEDGEKEURD';
-   row.append(title,dates);recent.append(row);
+   row.append(title,dates);addSeriesReadConfirmation(row,record);recent.append(row);
   }
  }catch(e){
   // This informational panel must never disrupt authorized leave decisions.
@@ -260,8 +392,25 @@ async function loadTraining(){
       r.applicantCall+' · '+r.applicantName+' · '+r.department+' · '+r.courseName;
     const note=document.createElement('p');note.textContent=r.note||'Geen toelichting';
     const status=document.createElement('p');status.textContent='Status: '+r.status;
-    const actions=document.createElement('div');actions.className='actions';
-    for(const [action,label] of TRAINING_ACTIONS){
+     const actions=document.createElement('div');actions.className='actions';
+     if(r.readAt){
+       const done=document.createElement('span');done.className='read-receipt';
+       done.textContent='✓ Door jou gelezen · '+new Date(r.readAt).toLocaleString('nl-BE');
+       actions.append(done);
+     }else{
+       const read=document.createElement('button');read.type='button';read.textContent='GELEZEN';
+       read.onclick=async()=>{
+         read.disabled=true;
+         try{
+           await api('/api/training-requests/'+encodeURIComponent(r.id)+'/action',{action:'gelezen'});
+           feedback('Je eigen leesbevestiging is opgeslagen. Andere ontvangers behouden hun melding.');
+           await loadTraining();
+         }catch(e){feedback('Leesbevestiging mislukt: '+e.message,true);read.disabled=false}
+       };
+       actions.append(read);
+     }
+     for(const [action,label] of TRAINING_ACTIONS){
+       if(action==='gelezen')continue;
       if(!availableTrainingActions(r).includes(action))continue;
       const b=document.createElement('button');b.type='button';b.textContent=label;
       if(action==='gepland'||action==='uitgevoerd')b.className='primary';

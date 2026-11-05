@@ -57,3 +57,28 @@ test('approved embroidered WebP replaces the incorrect vector illustration every
  assert.match(html,/patch\\.src=RAGO_IO_PATCH/);
  assert.match(html,/img\\.src=RAGO_IO_PATCH/);
 });
+
+test('registered RAGO Aangemeld appears in personnel card as RAGO-IO without a verified Discord role',()=>{
+ const subject={...p,personId:'1263877296129970198',call:'485',name:'Sander',
+  specialties:[{label:'RAGO',value:'Aangemeld',source:'google-sheets'}]};
+ const source=structuredClone(subject);
+ const unverified=verifiedSyncRoles(null,'politie',guild,now);
+ const result=mergePlacement(subject,null,unverified);
+ assert.deepEqual(result.specialties,['RAGO-IO']);
+ assert.deepEqual(specialtyNames(result),['RAGO-IO']);
+ assert.deepEqual(subject,source);
+});
+
+test('registered RAGO Aangemeld never upgrades a full member or invents other trainee roles',()=>{
+ const subject={...p,specialties:[{label:'RAGO',value:'AANGEMELD'},
+  {label:'K9',value:'Aangemeld'}]};
+ const none=verifiedSyncRoles(id([]),'politie',guild,now);
+ assert.deepEqual(mergePlacement(subject,null,none).specialties,['RAGO-IO']);
+ const full=verifiedSyncRoles(id([RAGO_IO_DISCORD_ROLE,'1309532437977497700']),
+  'politie',guild,now);
+ assert.deepEqual(mergePlacement(subject,null,full).specialties,['RAGO']);
+ const noRegistration={...p,specialties:[{label:'RAGO',value:'Nee'}]};
+ assert.deepEqual(mergePlacement(noRegistration,null,none).specialties,[]);
+ const restricted={...p,specialties:[{label:'RAGO',value:'RESTRICTED',source:'manual'}]};
+ assert.deepEqual(mergePlacement(restricted,null,none).specialties,[]);
+});

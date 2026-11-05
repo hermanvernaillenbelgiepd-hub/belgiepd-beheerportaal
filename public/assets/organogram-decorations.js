@@ -56,15 +56,47 @@
   }else medal.append(fabric,emblem);
   return medal;
  }
+ // One visual source for grant and rename selectors: custom images stay linked
+ // to their Firestore-backed catalogue IDs, while built-in art uses CSS.
+ function decorationPreview(select,getItem){
+  const preview=node('div','bpd-catalog-preview');
+  preview.setAttribute('role','status');
+  preview.setAttribute('aria-live','polite');
+  const render=()=>{
+   preview.replaceChildren();
+   const item=getItem(select.value);
+   if(!item){
+    preview.append(node('span','bpd-awards-guidance','Selecteer een ereteken om het voorbeeld te bekijken.'));
+    return;
+   }
+   const art=node('span','bpd-catalog-preview-art bpd-award');
+   art.dataset.kind=item.kind==='medal'?'medal':item.kind==='badge'?'badge':'ribbon';
+   art.append(item.kind==='medal'?hangingMedal(item):ribbon(item));
+   const info=node('span','bpd-catalog-preview-details');
+   const kind=item.kind==='medal'?'Hangende medaille':
+    item.kind==='badge'?'Ereteken / insigne':'Erelint';
+   info.append(node('strong','',item.label||'Onderscheiding'),node('small','',kind));
+   preview.append(art,info);
+  };
+  select.addEventListener('change',render);
+  render();
+  return {element:preview,render};
+ }
  function uniformRack(awards){
   const valid=(Array.isArray(awards)?awards:[])
    .filter(x=>x&&typeof x==='object'&&typeof x.color==='string'&&
      ['ribbon','medal','badge'].includes(x.kind))
    .sort((a,b)=>(Number(a.priority)||999)-(Number(b.priority)||999));
   if(!valid.length)return null;
-  const ribbons=node('span','bpd-uniform-ribbons');
-  ribbons.setAttribute('aria-hidden','true');
-  valid.slice(0,4).forEach(x=>ribbons.append(ribbon(x)));
+  // Medals are hanging decorations below the rank plate, not an
+  // additional ribbon above it. Never show the same medal twice.
+  const upper=valid.filter(x=>x.kind==='ribbon'||x.kind==='badge').slice(0,4);
+  let ribbons=null;
+  if(upper.length){
+    ribbons=node('span','bpd-uniform-ribbons');
+    ribbons.setAttribute('aria-hidden','true');
+    upper.forEach(x=>ribbons.append(ribbon(x)));
+  }
   const hanging=valid.filter(x=>x.kind==='medal').slice(0,3);
   let medals=null;
   if(hanging.length){
@@ -102,20 +134,38 @@
    const panel=node('details','bpd-awards-control');
    panel.append(node('summary','','Onderscheiding toekennen / intrekken · Officierenkader en Korpsleiding'));
    const catalogue=node('select');
+   const catalogItems=new Map(data.catalog.map(item=>[item.id,item]));
    data.catalog.forEach(item=>{
     const o=node('option','',item.label);o.value=item.id;catalogue.append(o);
    });
-   panel.append(node('label','','Onderscheiding'),catalogue);
+   const awardPreview=decorationPreview(catalogue,id=>catalogItems.get(id));
+   panel.append(node('label','','Onderscheiding'),catalogue,awardPreview.element);
    const catalogueRefresh=e=>{
     if(!root.isConnected||root.dataset.personKey!==identity){
      document.removeEventListener('bpd-decoration-uploaded',catalogueRefresh);return;
     }
     const item=e?.detail;if(!item?.id||!item?.label)return;
-    if([...catalogue.options].some(x=>x.value===item.id))return;
-    const option=node('option','',item.label);option.value=item.id;
-    catalogue.append(option);catalogue.value=item.id;
+    catalogItems.set(item.id,item);
+    if(![...catalogue.options].some(x=>x.value===item.id)){
+     const option=node('option','',item.label);option.value=item.id;
+     catalogue.append(option);
+    }
+    catalogue.value=item.id;
+    awardPreview.render();
    };
    document.addEventListener('bpd-decoration-uploaded',catalogueRefresh);
+   const catalogueRenamed=e=>{
+    if(!root.isConnected||root.dataset.personKey!==identity){
+     document.removeEventListener('bpd-decoration-renamed',catalogueRenamed);return;
+    }
+    const id=e?.detail?.id,label=e?.detail?.label;
+    if(!catalogItems.has(id)||!label)return;
+    catalogItems.set(id,{...catalogItems.get(id),label});
+    const option=[...catalogue.options].find(x=>x.value===id);
+    if(option)option.textContent=label;
+    awardPreview.render();
+   };
+   document.addEventListener('bpd-decoration-renamed',catalogueRenamed);
    const dates=node('div','bpd-inline'),startBox=node('div'),endBox=node('div');
    const start=node('input');start.type='date';start.value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
    const end=node('input');end.type='date';end.min=start.value;
@@ -175,7 +225,7 @@
    root.append(panel);
   }catch(_){/* Gated UI fails closed; ordinary member view remains unchanged. */}
  }
- async function uploadTools(auth,target){
+ async function uploadTools(auth,target,onChange=null){
   if(!target)return;
   target.replaceChildren();
   const user=auth?.currentUser;
@@ -185,7 +235,8 @@
    const token=await user.getIdToken();
    const response=await fetch('/api/personnel-awards/catalog-access',{
     headers:{Authorization:'Bearer '+token},cache:'no-store'});
-   if(!response.ok||!((await response.json()).canUpload)||auth.currentUser?.uid!==uid)return;
+   const access=await response.json().catch(()=>({}));
+   if(!response.ok||(!access.canUpload&&!access.canRename)||auth.currentUser?.uid!==uid)return;
    const details=node('details','bpd-awards-control bpd-catalog-upload');
    details.append(node('summary','','Eigen ereteken uploaden · Officierenkader / Korpsleiding'));
    details.append(node('p','bpd-no-awards',
@@ -247,8 +298,83 @@
     }catch(err){notice.className='bpd-awards-error';notice.textContent=err.message;}
     finally{save.disabled=false}
    });
-   if(auth.currentUser?.uid===uid)target.append(details);
+   if(auth.currentUser?.uid!==uid)return;
+   if(access.canUpload)target.append(details);
+   // The name is catalogue metadata, not a new award grant. All existing
+   // recipient links keep their stable catalogue ID after an audited rename.
+   const rename=node('details','bpd-awards-control bpd-catalog-rename');
+   rename.append(node('summary','','Naam medaille / ereteken aanpassen'));
+   rename.append(node('p','bpd-no-awards',
+    'Wijzig de benaming van een bestaand erelint, een medaille of een ereteken. Toekenningen blijven behouden.'));
+   const catalogPick=node('select'),newName=node('input'),renameReason=node('textarea');
+   const labels=new Map();
+   const renamePreview=decorationPreview(catalogPick,id=>labels.get(id));
+   newName.type='text';newName.maxLength=80;newName.placeholder='Nieuwe benaming (3–80 tekens)';
+   renameReason.rows=2;renameReason.maxLength=500;renameReason.placeholder='Waarom wordt de naam gewijzigd?';
+   const renameButton=node('button','','Naam opslaan');renameButton.type='button';
+   const renameStatus=node('p','bpd-awards-guidance');
+   rename.append(node('label','','Bestaande onderscheiding'),catalogPick,
+    renamePreview.element,node('label','','Nieuwe naam'),newName,
+    node('label','','Motivering voor auditlog'),renameReason,renameButton,renameStatus);
+   target.append(rename);
+   try{
+    const bearer=await auth.currentUser.getIdToken();
+    const listResponse=await fetch('/api/personnel-awards/catalog-labels',{
+     headers:{Authorization:'Bearer '+bearer},cache:'no-store'});
+    const data=await listResponse.json().catch(()=>({}));
+    if(!listResponse.ok||!Array.isArray(data.catalog))throw Error(data.error||'Catalogus niet beschikbaar');
+    data.catalog.forEach(x=>labels.set(x.id,x));
+    const populate=()=>{
+     catalogPick.replaceChildren();
+     [...labels.values()].sort((a,b)=>a.label.localeCompare(b.label,'nl-BE')).forEach(x=>{
+      const option=node('option','',x.label);option.value=x.id;catalogPick.append(option);
+     });
+     newName.value=labels.get(catalogPick.value)?.label||'';
+     renamePreview.render();
+    };
+    catalogPick.addEventListener('change',()=>{newName.value=labels.get(catalogPick.value)?.label||''});
+    populate();
+    document.addEventListener('bpd-decoration-uploaded',e=>{
+     if(!target.isConnected)return;
+     const item=e?.detail;
+     if(!item?.id||!item.label)return;
+     labels.set(item.id,item);
+     populate();catalogPick.value=item.id;newName.value=item.label;
+     renamePreview.render();
+    });
+    renameButton.addEventListener('click',async()=>{
+     if(auth.currentUser?.uid!==uid)return;
+     const id=catalogPick.value, label=newName.value.trim(),reason=renameReason.value.trim();
+     if(!labels.has(id)||label.length<3||label.length>80||reason.length<10){
+      renameStatus.className='bpd-awards-error';
+      renameStatus.textContent='Vul een geldige naam en een motivering van minstens 10 tekens in.';return;
+     }
+     renameButton.disabled=true;
+     renameStatus.className='bpd-awards-guidance';renameStatus.textContent='Naam opslaan en loggen…';
+     try{
+      const token=await auth.currentUser.getIdToken();
+      const res=await fetch('/api/personnel-awards/catalog-label/'+encodeURIComponent(id),{
+       method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+       body:JSON.stringify({label,reason})
+      });
+      const result=await res.json().catch(()=>({}));
+      if(!res.ok||result.saved!==true)throw Error(result.error||'Naam niet opgeslagen');
+      labels.set(id,{...labels.get(id),label});renameReason.value='';
+      const selected=catalogPick.selectedOptions[0];if(selected)selected.textContent=label;
+      renamePreview.render();
+      document.dispatchEvent(new CustomEvent('bpd-decoration-renamed',{detail:{id,label}}));
+      renameStatus.className='bpd-awards-success';
+      renameStatus.textContent='Naam opgeslagen. Alle bestaande toekenningen behouden hun koppeling.';
+      if(typeof onChange==='function')await onChange();
+     }catch(error){
+      renameStatus.className='bpd-awards-error';renameStatus.textContent=error.message;
+     }finally{renameButton.disabled=false}
+    });
+   }catch(error){
+    renameButton.disabled=true;
+    renameStatus.className='bpd-awards-error';renameStatus.textContent=error.message;
+   }
   }catch(_){/* Hide upload controls without verified police permissions. */}
  }
- window.BPDDecorations=Object.freeze({renderAwards,uniformRack,manager,uploadTools});
+ window.BPDDecorations=Object.freeze({renderAwards,uniformRack,decorationPreview,manager,uploadTools});
 })();

@@ -1,9 +1,10 @@
 // Uniformatelier: one visual composition per effective grade/function.
 // Templates control presentation only; medals are still granted per person.
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {DEPANNAGE_FUNCTIONS} from '../public/uniform-profile-policy.js';
 import {canEditLibrary} from './uniform-library-routes.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
-import {DECORATION_CATALOG,PERSONNEL_DECORATION_CATALOG_COLLECTION,customCatalogItem} from './personnel-decoration-policy.js';
+import {DECORATION_CATALOG,PERSONNEL_DECORATION_CATALOG_COLLECTION,customCatalogItem,decorationCatalogExtras} from './personnel-decoration-policy.js';
 
 export const COMPOSITIONS='bpd_uniform_compositions';
 export const COMPOSITION_AUDIT='bpd_uniform_composition_audit';
@@ -11,6 +12,7 @@ const DEPTS=['politie','brandweer','ambulance','depannage','burger'];
 const GRADES=new Set(['100','200','300','400','500','600','700','800',
  '900','910','920','930']);
 const FUNCTIONS=new Set(['ambulancier','vpk','arts','dirmed']);
+const TOWING_FUNCTIONS=new Set(DEPANNAGE_FUNCTIONS.map(([code])=>code));
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const LAYERS=['name','rank','ribbons','medals','helmet','profession','logo'];
 const assetTypes=['uniform','rank','helmet','profession','logo'];
@@ -33,6 +35,7 @@ export function validateComposition(body){
  if(!DEPTS.includes(department)||!CODE.test(selector)||
   !(department==='politie'&&scope==='call'&&GRADES.has(selector)||
     department==='ambulance'&&scope==='function'&&FUNCTIONS.has(selector)||
+    department==='depannage'&&scope==='function'&&TOWING_FUNCTIONS.has(selector)||
     ['brandweer','depannage','burger'].includes(department)&&scope==='rank'))
   throw bad(400,'Kies een geldige hulpdienst en graad of hoedanigheid');
  const reason=String(body.reason||'').trim();
@@ -84,10 +87,11 @@ export function installUniformCompositionRoutes(app,{requireUser}){
  app.get('/api/uniform-compositions/award-catalog',requireUser,async(req,res)=>{
   if(!canEditLibrary(req.bpd,'politie'))return res.json({catalog:[]});
   try{
-   const snap=await getFirestore().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(100).get();
+   const snap=await getFirestore().collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(120).get();
    const custom=snap.docs.map(d=>customCatalogItem(d)).filter(Boolean);
+   const overrides=decorationCatalogExtras(snap.docs);
    res.set('Cache-Control','private, no-store');
-   return res.json({catalog:[...DECORATION_CATALOG,...custom]
+   return res.json({catalog:[...DECORATION_CATALOG.map(x=>overrides.get(x.id)||x),...custom]
     .filter(x=>['medal','ribbon','badge'].includes(x.kind))
     .map(x=>({id:x.id,label:x.label,kind:x.kind,imageUrl:x.imageUrl||null}))});
   }catch(e){return error(res,e)}

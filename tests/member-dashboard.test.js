@@ -1,5 +1,13 @@
 import test from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+// Validate real ES-module syntax (imports and top-level await included).
+function assertModuleSyntax(source){
+ const result=spawnSync(process.execPath,['--check','--input-type=module'],
+  {input:source,encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+}
+
 import {readFileSync} from 'node:fs';
 import {Script} from 'node:vm';
 import {newcomerPortalMode,publicPoliceRoster} from '../src/member-dashboard-routes.js';
@@ -74,9 +82,8 @@ test('Dashboard/roster browsercode parses and does not contain new account or do
  const rosterScript=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
  assert.ok(inline&&rosterScript);
  // Inline ES modules contain top-level await; parse using an async wrapper.
- const withoutImports=code=>code.replace(/^import\\s+[^\\n]+;\\s*$/gm,'');
- assert.doesNotThrow(()=>new Script('(async()=>{'+withoutImports(inline)+'})()'));
- assert.doesNotThrow(()=>new Script('(async()=>{'+withoutImports(rosterScript)+'})()'));
+ assertModuleSyntax(inline);
+ assertModuleSyntax(rosterScript);
  assert.doesNotMatch(inline,/method:\s*'POST'/);
  assert.doesNotMatch(rosterScript,/method:\s*'POST'/);
 });
