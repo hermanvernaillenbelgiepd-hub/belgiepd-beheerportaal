@@ -282,10 +282,21 @@ export function setupUniformComposer({api,$}){
  };
  async function load(preserve=false){
   const before=dept.value,previous=grade.value;
-  const [media,records,persons,rights,catalog]=await Promise.all([
-   api('/api/role-artwork/manage'),api('/api/uniform-compositions'),
-   api('/api/organogram/hierarchie').catch(()=>({records:[]})),
-   api('/api/uniform-library/status'),api('/api/uniform-compositions/award-catalog')]);
+  // Visibility depends only on authorization. A temporarily unavailable
+  // optional catalog must never hide the entire Uniformatelier tab.
+  const rights=await api('/api/uniform-library/status');
+  const optionalErrors=[];
+  const safe=(name,fallback,promise)=>promise.catch(()=>{
+   optionalErrors.push(name);return fallback;
+  });
+  const [media,records,persons,catalog]=await Promise.all([
+   safe('afbeeldingen',{artworks:[]},api('/api/role-artwork/manage')),
+   safe('uniformopmaken',{compositions:[]},api('/api/uniform-compositions')),
+   safe('personeelsvoorbeelden',{records:[]},api('/api/organogram/hierarchie')),
+   safe('eretekens',{catalog:[]},api('/api/uniform-compositions/award-catalog'))
+  ]);
+  if(optionalErrors.length)notify('Uniformatelier: '+optionalErrors.join(', ')+
+   ' tijdelijk niet beschikbaar. Je beheerrechten blijven geldig.',true);
   images=media.artworks||[];templates=records.compositions||[];
 
 

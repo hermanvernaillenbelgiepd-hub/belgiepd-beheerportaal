@@ -22,7 +22,7 @@ function setData(assignments,artworks,visualRules=[],uniformGradeChoices=[],save
   (CODE.test(x.selector||'')||UID.test(x.selector||'')));
  elementRules=(Array.isArray(visualRules)?visualRules:[]).filter(x=>
   x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
-  ['rank','helmet','profession','logo','pictogram','patch','specialty'].includes(x.kind)&&
+  ['rank','uniform','helmet','profession','logo','pictogram','patch','specialty'].includes(x.kind)&&
   ['service','cadre','rank','person','call','function'].includes(x.scope)&&
   CODE.test(x.assetCode||''));
  coatChoices=(Array.isArray(uniformGradeChoices)?uniformGradeChoices:[]).filter(x=>
@@ -76,6 +76,19 @@ function forPerson(p){
   x.scope===compScope&&x.selector===compSelector)||
   (dept==='depannage'?compositions.find(x=>x.department===dept&&x.scope==='rank'&&
    [nameCode(p.rank),...previousTowingRanks].includes(x.selector)):null);
+ const ruleUrl=entry=>entry&&assetUrls.get((entry.assetKind||entry.kind)+'_'+dept+'_'+entry.assetCode)||'';
+ const lookups=[
+  ...(id?[['person',id]]:[]),
+  ...(callCode?[['person','call_'+callCode]]:[]),
+  ...(series&&dept==='politie'?[['call',series]]:[]),
+  ...(functionCode&&['ambulance','depannage'].includes(dept)?[['function',functionCode]]:[]),
+  ...rankCodes.map(code=>['rank',code]),
+  ...(group?[['cadre',group]]:[]),
+  ['cadre',nameCode(getTier(p))],['service','default']
+ ];
+ const explicitCoat=lookups.map(([scope,selector])=>elementRules.find(x=>
+  x.department===dept&&x.kind==='uniform'&&x.scope===scope&&x.selector===selector))
+  .find(x=>Boolean(ruleUrl(x)));
  const activeCoat=composition?.assets?.uniform||'';
  if(CODE.test(activeCoat)&&!['gold','silver','default'].includes(activeCoat)&&
   assetUrls.has('uniform_'+dept+'_'+activeCoat))
@@ -101,7 +114,7 @@ function forPerson(p){
      x.kind===kind&&x.scope===coatScope&&x.selector===selector):
     elementRules.find(x=>x.department===dept&&x.kind===kind&&
      x.scope===scope&&x.selector===selector);
-   const image=found&&assetUrls.get(kind+'_'+dept+'_'+found.assetCode);
+   const image=ruleUrl(found);
    if(image){elementCodes[kind]=found.assetCode;elementUrls[kind]=image;break;}
   }
   // A well-named upload works immediately: no manual image-to-uniform link.
@@ -141,12 +154,18 @@ function forPerson(p){
  const linked=elementRules.find(x=>x.department===dept&&
   ['specialty','patch'].includes(x.kind)&&x.scope==='rank'&&
   rankCodes.includes(x.selector)&&assetUrls.has(x.kind+'_'+dept+'_'+x.assetCode));
- const linkedUrl=linked?assetUrls.get(linked.kind+'_'+dept+'_'+linked.assetCode):'';
- const gradeUrl=personalGrade?elementUrls.rank:linkedUrl||elementUrls.rank;
+ const linkedUrl=ruleUrl(linked);
+ const selectedGrade=lookups.map(([scope,selector])=>elementRules.find(x=>
+  x.department===dept&&x.kind==='rank'&&x.scope===scope&&x.selector===selector))
+  .find(x=>Boolean(ruleUrl(x)));
+ const gradeUrl=personalGrade?elementUrls.rank:
+  ruleUrl(selectedGrade)||linkedUrl||elementUrls.rank;
+ const chosenCoatUrl=ruleUrl(explicitCoat)||
+  (uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':'');
  return {uniformCode,badgeStyle,uniformGroup:group,callSeries:series,profession:functionCode,
   visualLayout:composition?.layers||null,elementCodes,elementUrls,
   rankUrl:gradeUrl||'',rankSpecialtyUrl:elementUrls.specialty||'',
-  uniformUrl:uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
+  uniformUrl:chosenCoatUrl};
 }
 // Specialization badges are independent of uniform selection. A newly uploaded
 // image with code "to" must work without a local/federal uniform badge style.
