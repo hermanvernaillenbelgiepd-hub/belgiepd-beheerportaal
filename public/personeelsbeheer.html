@@ -841,7 +841,12 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <input id="newId" pattern="[0-9]{15,22}" maxlength="22" placeholder="Leeg laten als het Discord-account nog ontbreekt">
 <small>Er wordt automatisch een interne personeelsreferentie aangemaakt. Discord kan later gekoppeld worden.</small></div>
 <div><label for="newName">Naam</label><input id="newName" required minlength="2" maxlength="120" placeholder="Naam personeelslid"></div>
-<div><label for="newCall">Roepnummer</label><input id="newCall" required maxlength="24" placeholder="Bijvoorbeeld S250"></div>
+<div><label for="newCall">Roepnummer</label>
+ <div class="controls" style="gap:7px;align-items:center">
+  <input id="newCall" required maxlength="24" placeholder="Bijvoorbeeld 200" style="flex:1;min-width:0">
+  <button id="newCallSuggest" type="button" class="alt">Vrij nummer</button>
+ </div>
+ <small id="newCallHint" role="status" aria-live="polite">Bij Politie Agent wordt automatisch een vrij nummer voorgesteld. Je kunt dit aanpassen.</small></div>
 <div><label for="newRank">Instaprang</label><select id="newRank" required></select><small>Politie start standaard als Agent. Alleen korpsleiding of beheerder kan uitzonderlijk een hogere instaprang registreren.</small></div>
 <div id="newRankException" style="grid-column:1/-1" hidden>
   <label class="inline-check" for="newRankExceptionConfirm"><input id="newRankExceptionConfirm" type="checkbox"> Uitzonderlijke instaprang expliciet bevestigen (verplicht)</label>
@@ -4615,11 +4620,14 @@ $('editForm').onsubmit=async ev=>{
 function newPersonnelConflicts(person){
   const dept=person.dept;
   const call=String(person.call||'').trim().toLocaleLowerCase('nl-BE');
+  const policeNumber=v=>/^(?:s[- ]?)?(2\d\d)$/i.exec(String(v||'').trim())?.[1]||null;
+  const policeCall=dept==='politie'?policeNumber(call):null;
   const discordId=String(person.discordId||'').trim();
   const existing=people.filter(p=>p.dept===dept);
   const pending=pendingPeople.filter(p=>p.dept===dept);
-  const sameCall=[...existing,...pending].find(p=>call&&
-    String(p.call||'').trim().toLocaleLowerCase('nl-BE')===call);
+  const sameCall=[...existing,...pending].find(p=>call&&(
+    String(p.call||'').trim().toLocaleLowerCase('nl-BE')===call||
+    policeCall&&policeNumber(p.call)===policeCall));
   const sameDiscord=discordId&&(
     existing.find(p=>p.discordId===discordId)||
     pending.find(p=>p.request?.discordId===discordId));
@@ -4652,24 +4660,71 @@ function refreshExceptionalRank(){
     $('newRankExceptionReason').value='';
   }
 }
-function refreshNewRanks(){
-  $('newRank').replaceChildren(...(createRanks[$('newDept').value]||[]).map(rank=>option(rank,rank)));
-  refreshExceptionalRank();
+let newCallSuggestionSeq=0,newCallManuallyEdited=false,newCallAutoValue='';
+async function proposeNewPersonnelCall(){
+ const seq=++newCallSuggestionSeq,dept=$('newDept').value,rank=$('newRank').value;
+ if(!newCallManuallyEdited&&$('newCall').value.trim()===newCallAutoValue)
+  $('newCall').value='';
+ newCallAutoValue='';
+ if(dept!=='politie'||rank!=='Agent'){
+  $('newCallHint').textContent='Voor deze dienst of uitzonderlijke instaprang vul je zelf een passend vrij nummer in.';
+  updateNewDuplicateWarning();return;
+ }
+ if(newCallManuallyEdited&&$('newCall').value.trim()){
+  $('newCallHint').textContent='Handmatig gekozen nummer. De server controleert dit opnieuw bij opslaan.';
+  return;
+ }
+ $('newCallHint').textContent='Vrij nummer controleren…';
+ try{
+  const result=await request('/api/personnel/call-suggestion?dept='+
+   encodeURIComponent(dept)+'&rank='+encodeURIComponent(rank));
+  if(seq!==newCallSuggestionSeq||$('newDept').value!==dept||
+    $('newRank').value!==rank||newCallManuallyEdited)return;
+  if(result.suggestedCall){
+   newCallAutoValue=String(result.suggestedCall);
+   $('newCall').value=newCallAutoValue;
+   $('newCallHint').textContent='Voorgesteld vrij nummer: '+newCallAutoValue+
+    ' (200 → 210 → 220 → 215 → 225 → 201 → 202 …). Bij opslaan opnieuw gecontroleerd.';
+  }else{
+   $('newCallHint').textContent=result.message||'Geen vrij nummer gevonden. Controleer de personeelslijst.';
+  }
   updateNewDuplicateWarning();
+ }catch(e){
+  if(seq!==newCallSuggestionSeq)return;
+  $('newCallHint').textContent='Geen actueel nummervoorstel beschikbaar: '+e.message+
+   '. Kies niet zomaar een nummer; controleer eerst de personeelslijst.';
+ }
+}
+function refreshNewRanks(){
+ $('newRank').replaceChildren(...(createRanks[$('newDept').value]||[]).map(rank=>option(rank,rank)));
+ refreshExceptionalRank();
+ updateNewDuplicateWarning();
+ void proposeNewPersonnelCall();
 }
 $('newBtn').onclick=()=>{
   $('panel').hidden=true;selected=null;
   $('newForm').reset();
+  newCallManuallyEdited=false;newCallAutoValue='';++newCallSuggestionSeq;
   $('newDept').replaceChildren(...Object.keys(createRanks).map(key=>option(key,departments[key]||key)));
   refreshNewRanks();$('newPanel').hidden=false;
   personnelManagementRequested=true;updatePersonnelView();
   $('newPanel').scrollIntoView({behavior:'smooth',block:'start'});
 };
-$('newClose').onclick=()=>{$('newPanel').hidden=true};
-$('newDept').onchange=refreshNewRanks;
-$('newRank').onchange=refreshExceptionalRank;
+$('newClose').onclick=()=>{++newCallSuggestionSeq;$('newPanel').hidden=true};
+$('newDept').onchange=()=>{
+ newCallManuallyEdited=false;refreshNewRanks();
+};
+$('newRank').onchange=()=>{refreshExceptionalRank();newCallManuallyEdited=false;void proposeNewPersonnelCall()};
 $('newId').oninput=updateNewDuplicateWarning;
-$('newCall').oninput=updateNewDuplicateWarning;
+$('newCall').oninput=()=>{
+ newCallManuallyEdited=true;newCallAutoValue='';++newCallSuggestionSeq;
+ $('newCallHint').textContent='Handmatig gekozen nummer; definitieve controle bij opslaan.';
+ updateNewDuplicateWarning();
+};
+$('newCallSuggest').onclick=()=>{
+ newCallManuallyEdited=false;newCallAutoValue='';$('newCall').value='';
+ void proposeNewPersonnelCall();
+};
 $('newForm').onsubmit=async event=>{
   event.preventDefault();
   if(!createEnabled||!Object.keys(createRanks).length)return;

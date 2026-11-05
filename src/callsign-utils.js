@@ -14,6 +14,33 @@ export function preferredFreeCall(min,max,used){
   const occupied=new Set(Array.from(used||[],v=>Number(v)));
   return orderedCallNumbers(min,max).find(call=>!occupied.has(call))??null;
 }
+// Explicit preferred Police Agent calls. Other numbers retain the historic
+// 10-5-1 order. A preview does not reserve a number.
+export const POLICE_INTAKE_PRIORITY=Object.freeze([200,210,220,215,225,201,202]);
+export function orderedPoliceIntakeCalls(){
+ const preferred=new Set(POLICE_INTAKE_PRIORITY);
+ return [...POLICE_INTAKE_PRIORITY,...orderedCallNumbers(200,299).filter(x=>!preferred.has(x))];
+}
+export function policeCallNumber(raw){
+ const match=/^(?:S[- ]?)?(2\d\d)$/i.exec(String(raw??'').trim());
+ return match?Number(match[1]):null;
+}
+export function occupiedPoliceCalls({records=[],personnelClaims=[],fixedReservations=[]}={}){
+ const used=new Set();
+ for(const person of records){
+  if(person?.dept!=='politie')continue;
+  const call=policeCallNumber(person.call);if(call!==null)used.add(call);
+ }
+ for(const claim of [...personnelClaims,...fixedReservations]){
+  const call=policeCallNumber(claim?.call??claim?.id);
+  if(call!==null)used.add(call);
+ }
+ return used;
+}
+export function firstFreePoliceCall(input={}){
+ const used=occupiedPoliceCalls(input);
+ return orderedPoliceIntakeCalls().find(x=>!used.has(x))??null;
+}
 const s = v => String(v ?? '').trim();
 export const canReview = role => ['middenkader','officierenkader','korpsleiding'].includes(role);
 export const canDecide = role => ['officierenkader','korpsleiding'].includes(role);
@@ -34,7 +61,7 @@ export function eligibility({joinedOn, playHours}, now = new Date()) {
   const hasHours=hours>=10;
   return {joinedOn:date,playHours:hours,hasFiveDays:fiveFullDays,hasTenHours:hasHours,eligible:fiveFullDays&&hasHours};
 }
-export function planPoliceSheetSync({policeRows, infoRows, name, discordId, preferredCall}) {
+export function planPoliceSheetSync({policeRows, infoRows, name, discordId, preferredCall, unavailableCalls=[]}) {
   const n=s(name),id=s(discordId);
   if(n.length<2||n.length>80||/^[=+@-]/.test(n)||/[\n\r]/.test(n)||!isDiscordId(id))throw new Error('Ongeldige aanvraaggegevens');
   if(!Array.isArray(policeRows)||!Array.isArray(infoRows))throw new Error('Brongegevens ontbreken');
@@ -62,8 +89,9 @@ export function planPoliceSheetSync({policeRows, infoRows, name, discordId, pref
   const slots=policeRows.map((r,i)=>({row:i+1,call:Number(s(r?.[0])),rawCall:s(r?.[0]),name:s(r?.[3]),rank:s(r?.[2])}))
     .filter(x=>Number.isInteger(x.call)&&x.call>=200&&x.call<=299&&String(x.call)===x.rawCall&&/Agent van Politie\s*\(AP\)/i.test(x.rank));
   const counts=new Map();for(const x of slots)counts.set(x.call,(counts.get(x.call)||0)+1);
-  const callPriority=new Map(orderedCallNumbers(200,299).map((call,index)=>[call,index]));
-  const candidates=slots.filter(x=>!x.name&&counts.get(x.call)===1)
+  const callPriority=new Map(orderedPoliceIntakeCalls().map((call,index)=>[call,index]));
+  const unavailable=new Set([...unavailableCalls].map(Number));
+  const candidates=slots.filter(x=>!x.name&&counts.get(x.call)===1&&!unavailable.has(x.call))
     .sort((a,b)=>callPriority.get(a.call)-callPriority.get(b.call));
   const preferred=preferredCall===undefined||preferredCall===null||s(preferredCall)===''?null:Number(s(preferredCall));
   if(preferred!==null&&(!Number.isInteger(preferred)||preferred<200||preferred>299))throw new Error('Roepnummer buiten de 200-reeks');
