@@ -138,6 +138,14 @@ test('Fixed police callsign grants only intervention, radio and traffic by defau
  }});
  assert.equal(restricted.items.find(x=>x.label==='Radio BM').value,'Nee');
  assert.equal(restricted.items.find(x=>x.label==='INTERVENTIEDIENST').value,'Ja');
+ const manualIntervention=publicSpecializations(police('250'),{values:{
+  'INTERVENTIEDIENST':{value:'Nee',source:'manual'}
+ }});
+ const intervention=manualIntervention.items.find(x=>x.label==='INTERVENTIEDIENST');
+ assert.equal(intervention?.value,'Nee');
+ assert.equal(intervention?.source,'manual');
+ assert.equal(publicSpecializations(police('150')).items.find(x=>
+  x.label==='INTERVENTIEDIENST')?.value,'Niet ingevuld');
  assert.equal(restricted.items.find(x=>x.label==='K9').value,'Niet ingevuld');
  const approved=initialFixedCallSpecialties({discordId:'123456789012345678',
    status:'approved',assignedCall:245,sync:{call:245,discordId:'123456789012345678'}});
