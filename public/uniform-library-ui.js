@@ -8,7 +8,7 @@ export function setupUniformLibraryUI({api,$}){
   ['profession','Beroepsteken'],['logo','Dienstlogo'],['patch','Patch'],
   ['specialty','Specialisatiebadge'],['pictogram','Pictogram'],
   ['medal','Medaille (alleen bibliotheek)'],['award','Ereteken (alleen bibliotheek)']];
- const ruleKinds=kinds.filter(([k])=>!['uniform','medal','award','specialty'].includes(k));
+ const ruleKinds=kinds.filter(([k])=>!['uniform','medal','award'].includes(k));
  const mk=(value,label)=>new Option(label,value);
  const callScope=document.querySelector('#libraryAssignScope option[value="call"]');
  const functionScope=document.querySelector('#libraryAssignScope option[value="function"]');

@@ -13,7 +13,7 @@ function setData(assignments,artworks,visualRules=[],uniformGradeChoices=[],save
   (CODE.test(x.selector||'')||UID.test(x.selector||'')));
  elementRules=(Array.isArray(visualRules)?visualRules:[]).filter(x=>
   x&&['politie','brandweer','ambulance','depannage','burger'].includes(x.department)&&
-  ['rank','helmet','profession','logo','pictogram','patch'].includes(x.kind)&&
+  ['rank','helmet','profession','logo','pictogram','patch','specialty'].includes(x.kind)&&
   ['service','cadre','rank','person','call','function'].includes(x.scope)&&
   CODE.test(x.assetCode||''));
  coatChoices=(Array.isArray(uniformGradeChoices)?uniformGradeChoices:[]).filter(x=>
@@ -71,7 +71,7 @@ function forPerson(p){
   assetUrls.has('uniform_'+dept+'_'+activeCoat))
   uniformCode=activeCoat;
  const elementCodes={},elementUrls={};
- for(const kind of ['rank','helmet','profession','logo','pictogram','patch']){
+ for(const kind of ['rank','helmet','profession','logo','pictogram','patch','specialty']){
   const coatScope=dept==='politie'&&kind==='rank'&&series?'call':
    dept==='brandweer'&&['rank','helmet'].includes(kind)?'rank':
    dept==='ambulance'&&kind==='profession'&&functionCode?'function':'';
@@ -125,7 +125,7 @@ function forPerson(p){
  }
  return {uniformCode,badgeStyle,uniformGroup:group,callSeries:series,profession:functionCode,
   visualLayout:composition?.layers||null,elementCodes,elementUrls,
-  rankUrl:elementUrls.rank||'',
+  rankUrl:elementUrls.rank||'',rankSpecialtyUrl:elementUrls.specialty||'',
   uniformUrl:uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':''};
 }
 // Specialization badges are independent of uniform selection. A newly uploaded

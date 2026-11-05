@@ -39,6 +39,10 @@ test('assignments cannot award medals or alter personnel privileges',()=>{
  assert.equal(value.key,'brandweer_helmet_rank_sergeant');
  assert.equal(Object.hasOwn(value,'permissions'),false);
  assert.equal(UNIFORM_LIBRARY_RULE_KINDS.includes('medal'),false);
+ assert.equal(UNIFORM_LIBRARY_RULE_KINDS.includes('specialty'),true);
+ const visualBadge=validateLibraryRule(rule({department:'ambulance',kind:'specialty',scope:'rank',selector:'vpk',assetCode:'vpk'}));
+ assert.equal(visualBadge.key,'ambulance_specialty_rank_vpk');
+ assert.equal(Object.hasOwn(visualBadge,'roleId'),false);
  assert.throws(()=>validateLibraryRule(rule({kind:'medal'})),/soort/);
  assert.throws(()=>validateLibraryRule(rule({scope:'person',selector:'500'})),/doelgroep/);
  assert.throws(()=>validateLibraryRule(rule({scope:'service',selector:'sergeant'})),/doelgroep/);

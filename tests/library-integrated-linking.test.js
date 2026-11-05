@@ -17,6 +17,9 @@ test('bibliotheek offers an integrated visual-only assign step',()=>{
  assert.match(ui,/Geen personeels- of Discord-rechten gewijzigd/);
  assert.match(ui,/confirm\('Er bestaat al een andere koppeling/);
  assert.match(ui,/RANK_LINK_KINDS/);
+ assert.match(ui,/RANK_LINK_KINDS=new Set\(\[[^\n]*'specialty'\]\)/);
+ assert.match(ui,/id="linkRankChoice"/);
+ assert.match(ui,/id="linkRank"/);
  assert.match(ui,/ROLE_LINK_KINDS/);
 });
 test('a role asset resolves to the current original, without a second upload',()=>{
