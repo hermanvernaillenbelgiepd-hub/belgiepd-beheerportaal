@@ -1932,7 +1932,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
-<link rel="stylesheet" href="/organogram-hybrid.css?v=restored-original-profile-20261105b">
+<link rel="stylesheet" href="/organogram-hybrid.css?v=service-parity-20261105c">
 </head>
 <body>
 <header>
@@ -2528,6 +2528,10 @@ function openPersonProfile(p){
  dialog.classList.toggle('police-person-profile',p.dept==='politie');
  dialog.classList.toggle('fire-person-profile',p.dept==='brandweer');
  dialog.classList.toggle('depannage-person-profile',p.dept==='depannage');
+ // Match the established Brandweer personnel-profile layout for the other
+ // three services. This class only controls presentation, not profile data.
+ dialog.classList.toggle('bpd-service-reference-profile',
+  ['ambulance','depannage','burger'].includes(p.dept));
  dialog.classList.add('operational-profile');
  content.replaceChildren();
  const layout=el('div','person-profile-layout');
