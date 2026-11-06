@@ -4,6 +4,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getStorage} from 'firebase-admin/storage';
 import {isUserManager} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
+import {ROLE_CATALOG} from './role-catalog.js';
 
 export const ROLE_ARTWORK_META='bpd_role_artwork_meta';
 export const ROLE_ARTWORK_IMAGES='bpd_role_artwork_images';
@@ -162,8 +163,20 @@ export function installRoleArtworkRoutes(app,{requireUser}){
   try{
    const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(1200).get();
    res.set('Cache-Control','private, no-store');
-   return res.json({canEdit:true,artworks:snap.docs.filter(d=>mayEditDepartment(_req.bpd,d.get('department')||'politie')).map(d=>({...metaData(d),
-    active:d.get('active')===true,updatedBy:d.get('updatedBy')||''}))});
+   return res.json({
+    canEdit:true,
+    editableDepartments:DEPTS.filter(dept=>mayEditDepartment(_req.bpd,dept)),
+    // A visual label catalogue, not verified role membership or a permission grant.
+    // DISPATCH roles are listed separately in the source catalog; the UI can show
+    // them under the Police service without altering their source identity.
+    roleOptions:ROLE_CATALOG.filter(role=>
+     [...DEPTS,'dispatch'].includes(role.dept)).map(role=>({
+      id:role.id,name:role.name,dept:role.dept,kind:role.kind,stage:role.stage
+     })),
+    artworks:snap.docs.filter(d=>mayEditDepartment(_req.bpd,d.get('department')||'politie')).map(d=>({
+     ...metaData(d),active:d.get('active')===true,updatedBy:d.get('updatedBy')||''
+    }))
+   });
   }catch(e){return error(res,e)}
  });
  app.put('/api/role-artwork/link',requireUser,allowed,async(req,res)=>{
