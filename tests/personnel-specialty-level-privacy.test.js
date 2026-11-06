@@ -8,9 +8,10 @@ test('organogram hides manual source badges and keeps recorded manual changes in
  assert.match(s,/state\.canManageAE/);
 });
 test('personnel profile management is hidden unless server verified officer or corps permission',()=>{
- const s=source('public/organogram-hierarchie.html');
- assert.match(s,/if\(p\.dept==='politie'&&!state\.demo&&auth\?\.currentUser&&state\.canManageAE\)\{/);
- assert.match(s,/auth\?\.currentUser&&state\.canManageAE&&managementBody/);
+ const s=source('public/beheercentrum.html');
+ assert.match(s,/id="ae-beheer"[^>]*hidden/);
+ assert.match(s,/data\.canManageAE!==true/);
+ assert.match(s,/\['awardTile','awardLibraryTile','aeTile'\]/);
  const server=source('src/organogram-placement-routes.js');
  assert.match(server,/canManageAE:canEditK9Display\(_req\.bpd\)/);
 });

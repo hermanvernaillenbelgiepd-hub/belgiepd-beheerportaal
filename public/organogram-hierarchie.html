@@ -2649,80 +2649,12 @@ function openPersonProfile(p){
  const awardsBox=el('section','person-profile-awards-panel');
  window.BPDDecorations?.renderAwards?.(awardsBox,p.awards||[],state.demo);
  secondary.append(awardsBox);
- // Collapsible presentation only. Actual rights and audit checks remain server-side.
- let managementBody=null;
- if(p.dept==='politie'&&!state.demo&&auth?.currentUser&&state.canManageAE){
-  const management=el('details','person-profile-management');
-  const heading=el('summary','','⚙ Beheeracties · Officierenkader / Korpsleiding');
-  managementBody=el('div','person-profile-management-body');
-  management.append(heading,managementBody);
-  secondary.append(management);
- }
- if(!state.demo&&p.dept==='politie'&&auth?.currentUser&&state.canManageAE&&managementBody){
-  const awardManager=el('div','person-profile-award-manager');
-  awardManager.dataset.personKey=String(p.call||'')+'|'+String(p.name||'');
-  managementBody.append(awardManager);
-  void window.BPDDecorations?.manager?.(awardManager,p,auth,async()=>{
-   await loadPublic();
-   const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
-   if(latest&&dialog.open)openPersonProfile(latest);
-  });
-  const uploadBox=el('div','person-profile-award-upload');
-  managementBody.append(uploadBox);
-  void window.BPDDecorations?.uploadTools?.(auth,uploadBox,async()=>{
-   await loadPublic();
-   const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
-   if(latest&&dialog.open)openPersonProfile(latest);
-  });
- }
  // Burgerprofielen kennen geen specialisaties: verberg de volledige
  // presentatie, maar behoud bestaande records en dienstbevoegdheden.
  if(p.dept!=='burger'){
  const specBox=el('section','person-profile-specialization-box');
  specBox.append(el('h3','','Specialisaties'));
  secondary.append(specBox);
- // The visible officer-only correction updates exactly one AE display field.
- // Discord roles, qualifications and unrelated personnel data remain unchanged.
- if(p.dept==='politie'&&!state.demo&&state.canManageAE){
-  const editor=el('details','person-profile-ae-editor');
-  const summary=el('summary','','AE-functieniveau corrigeren · Officierenkader / Korpsleiding');
-  const panel=el('div','person-profile-ae-editor-body');
-  const level=el('select',''),reason=el('textarea',''),save=el('button','','AE-functie bewaren');
-  level.setAttribute('aria-label','AE-functieniveau');
-  for(const [value,label] of [['','Automatisch volgens Discord (handmatige keuze wissen)'],
-   ['ae_i','AE-I'],['ae_t','AE-T'],['teamleader','TEAMLEADER / LEIDING'],
-   ['instructeur','AE-INSTRUCTEUR']]){
-   const option=el('option','',label);option.value=value;level.append(option);
-  }
-  level.value=p.aeManual||'';
-  reason.placeholder='Motivering (minimaal 8 tekens)';
-  reason.maxLength=300;reason.rows=2;
-  reason.setAttribute('aria-label','Motivering voor handmatige AE-functie');
-  save.type='button';
-  const feedback=el('p','person-profile-note','Deze keuze wordt gelogd en geeft geen Discord- of portaalrechten.');
-  save.addEventListener('click',async()=>{
-   const message=reason.value.trim();
-   if(message.length<8||message.length>300){
-    feedback.textContent='Een motivering van 8 tot 300 tekens is verplicht.';return;
-   }
-   save.disabled=true;feedback.textContent='AE-functie bewaren…';
-   try{
-    await authFetch('/api/organogram/ae-display/'+encodeURIComponent(p.call),{
-     method:'PUT',headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({role:level.value,reason:message})
-    });
-    feedback.textContent='AE-functie opgeslagen en gelogd. Personeelskaart vernieuwen…';
-    profileSpecialtyChecks.delete(profileKey);
-    await loadPublic();
-    const latest=state.live.find(x=>x.dept===p.dept&&x.call===p.call&&x.name===p.name);
-    if(dialog.open&&latest)openPersonProfile(latest);
-   }catch(error){feedback.textContent='Niet opgeslagen: '+error.message}
-   finally{save.disabled=false}
-  });
-  panel.append(level,reason,save,feedback);
-  editor.append(summary,panel);managementBody.append(editor);
- }
-
  const names=[...new Set(specialtyNames(p)
   .map(name=>p.dept==='politie'?policeSpecialtyName(name):name).filter(Boolean))];
  if(names.length){

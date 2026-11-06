@@ -70,6 +70,7 @@ button:disabled{cursor:not-allowed;opacity:.55}
 @media(max-width:540px){main{padding:14px 12px 40px}.grid,.form-grid{grid-template-columns:1fr}header{padding:12px}}
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
+<link rel="stylesheet" href="/assets/organogram-decorations.css?v=central-awards-management-20261106">
 </head><body>
 <header><div><span class="eyebrow">BelgiumPD · beheer</span><h1>Beheercentrum</h1></div>
 <nav><a href="/">Startpagina</a><a href="/discord-status.html">Mijn profiel</a>
@@ -84,6 +85,9 @@ button:disabled{cursor:not-allowed;opacity:.55}
   <a class="tile" href="/gebruikersbeheer.html#dienstbeheer"><h3>🔐 Discord-rollen en toegang</h3><p>Goedkeuring, hulpdienstfuncties, handmatige uitzonderingen en roltoewijzingen.</p><small>Open gebruikersbeheer</small></a>
   <a class="tile" href="/personeelsbeheer.html"><h3>👥 Personeelsbeheer</h3><p>Personeelsfiches, dienstindeling, rangen en personeelsstatussen.</p><small>Open personeelsbeheer</small></a>
   <a class="tile" href="/documentencentrum.html"><h3>📚 Documenten en mappen</h3><p>Handboeken, presentaties, leslinks, leesrechten en documentarchief.</p><small>Open documentencentrum</small></a>
+  <a class="tile" id="awardTile" href="#awardManage" hidden><h3>🏅 Onderscheidingen toekennen</h3><p>Medailles en eretekens per politiemedewerker beheren, toekennen of intrekken met auditlog.</p><small>Open onderscheidingenbeheer</small></a>
+  <a class="tile" id="awardLibraryTile" href="/beeldbibliotheek.html#onderscheidingen" hidden><h3>📁 Onderscheidingenbibliotheek</h3><p>Upload medailles en eretekens of wijzig hun benaming zonder bestaande toekenningen te verliezen.</p><small>Open Beeldbibliotheek</small></a>
+  <a class="tile" id="aeTile" href="#ae-beheer" hidden><h3>🛡️ AE-functieniveau</h3><p>AE-I, AE-T, Teamleader of Instructeur corrigeren zonder Discord-rechten te wijzigen.</p><small>Open AE-beheer</small></a>
   <a class="tile" href="/gebruikersbeheer.html"><h3>🎖️ Specialisaties en uniformen</h3><p>Rollen, badges, patches en gekoppelde afbeeldingen in de bestaande beheerbibliotheek.</p><small>Open beheer en rollen</small></a>
   <a class="tile" href="/activiteitscentrum.html"><h3>◷ Personeelsactiviteit</h3><p>Activiteitsopvolging en statussen controleren.</p><small>Open activiteitscentrum</small></a>
   <a class="tile" href="/registraties.html"><h3>▤ Observaties Basiskader</h3><p>Ontvangstoverzicht, veilig archiveren en herstellen.</p><small>Open observaties</small></a>
@@ -92,6 +96,35 @@ button:disabled{cursor:not-allowed;opacity:.55}
   <a class="tile" href="/organogram-hierarchie.html"><h3>🌳 Organogram</h3><p>Personeelsindeling en beschikbare weergave-instellingen.</p><small>Open organogram</small></a>
   <a class="tile" href="/discord-status.html"><h3>🔗 Discord-koppeling</h3><p>Controleer jouw profiel, verificatie en verbinding.</p><small>Open mijn profiel</small></a>
  </div>
+</section>
+<section id="awardManage" class="card" hidden aria-label="Onderscheidingen toekennen">
+ <h2>🏅 Onderscheidingen per politiemedewerker beheren</h2>
+ <p class="muted">Selecteer een medewerker om bestaande medailles en eretekens toe te kennen of in te trekken.
+ De server controleert iedere actie; de historiek en motivering worden bewaard.</p>
+ <div class="form-grid">
+  <label>Zoeken op naam of roepnummer<input type="search" id="awardSearch" placeholder="Zoek politiemedewerker…" autocomplete="off"></label>
+  <label>Politiemedewerker<select id="awardPerson"><option value="">Selecteer eerst een medewerker</option></select></label>
+ </div>
+ <p id="awardStatus" class="muted" role="status" aria-live="polite">Kies een personeelslid.</p>
+ <div id="awardManageTools"></div>
+</section>
+<section id="ae-beheer" class="card" hidden aria-label="AE-functieniveaus beheren">
+ <h2>🛡️ AE-functieniveaus corrigeren</h2>
+ <p class="muted">Handmatige weergavecorrectie voor een politiepersoneelslid. Discord-rollen, opleidingen,
+ portaalrechten en andere specialisaties blijven ongewijzigd. Elke wijziging wordt gelogd.</p>
+ <div class="form-grid">
+  <label>Zoeken op naam of roepnummer<input type="search" id="aeSearch" placeholder="Zoek politiemedewerker…" autocomplete="off"></label>
+  <label>Politiemedewerker<select id="aePerson"><option value="">Selecteer eerst een medewerker</option></select></label>
+  <label>AE-functieniveau<select id="aeLevel">
+   <option value="">Automatisch volgens Discord (handmatige correctie wissen)</option>
+   <option value="ae_i">AE-I</option><option value="ae_t">AE-T</option>
+   <option value="teamleader">TEAMLEADER / LEIDING</option>
+   <option value="instructeur">AE-INSTRUCTEUR</option>
+  </select></label>
+  <label>Motivering voor auditlog<textarea id="aeReason" rows="3" maxlength="300" placeholder="Minstens 8 tekens"></textarea></label>
+ </div>
+ <div class="buttons"><button type="button" id="aeSave" disabled>AE-functie bewaren</button></div>
+ <p id="aeStatus" class="muted" role="status" aria-live="polite">Kies een medewerker om het opgeslagen niveau te controleren.</p>
 </section>
 <section id="serviceCenter" class="card" hidden>
  <div class="row">
@@ -197,9 +230,10 @@ button:disabled{cursor:not-allowed;opacity:.55}
  <p class="muted">Programmacode, servers, geheime sleutels en deployments blijven bewust buiten de gewone portaalinstellingen.</p>
 </section>
 </main>
+<script src="/assets/organogram-decorations.js?v=central-awards-management-20261106"></script>
 <script type="module">
 const $=id=>document.getElementById(id);
-let auth=null,context=null,loading=false;
+let auth=null,context=null,loading=false,aePeople=[],aeHasAccess=false;
 const {setupTechnicalServiceEditors}=await import('/technical-service-editors.js');
 let serviceEditor=null;
 function notice(message,error=false){
@@ -216,6 +250,94 @@ async function api(path,method='GET',payload){
  if(!response.ok)throw Error(data.error||'Serverfout '+response.status);
  return data;
 }
+function personOption(select,value,label){
+ const item=document.createElement('option');item.value=value;item.textContent=label;select.append(item);
+}
+function filterPersonnel(selectId,searchId){
+ const select=$(selectId),value=select.value,term=$(searchId).value.trim()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl-BE');
+ select.replaceChildren();
+ personOption(select,'','Kies een politiemedewerker');
+ aePeople.forEach((p,index)=>{
+  const haystack=(p.call+' '+p.name).normalize('NFD')
+   .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl-BE');
+  if(!term||haystack.includes(term))personOption(select,String(index),p.call+' · '+p.name);
+ });
+ if(value&&[...select.options].some(option=>option.value===value))select.value=value;
+}
+function selectedPerson(selectId){
+ const value=$(selectId).value;
+ return /^\d+$/.test(value)?aePeople[Number(value)]||null:null;
+}
+function refreshAEChoice(){
+ const person=selectedPerson('aePerson');
+ $('aeLevel').value=person?.aeManual||'';
+ $('aeSave').disabled=!person;
+ $('aeStatus').textContent=person?
+  'Huidige weergave: '+(person.aeRole||'geen AE-functie')+
+  (person.aeManual?' · handmatige correctie actief':' · volgens Discord')+
+  '. Opslaan verandert geen Discord-rol.':
+  'Kies een politiemedewerker om diens functie te corrigeren.';
+}
+function refreshAwardManager(){
+ const root=$('awardManageTools'),person=selectedPerson('awardPerson');
+ root.replaceChildren();root.dataset.personKey=person?person.call+'|'+person.name:'';
+ $('awardStatus').textContent=person?
+  'Onderscheidingen voor '+person.call+' · '+person.name+'.':'Kies een politiemedewerker.';
+ if(person&&auth?.currentUser&&aeHasAccess){
+  void window.BPDDecorations?.manager?.(root,{dept:'politie',call:person.call,name:person.name},
+   auth,async()=>refreshAwardManager());
+ }
+}
+async function loadPersonnelManagement(){
+ $('ae-beheer').hidden=true;$('awardManage').hidden=true;
+ for(const id of ['awardTile','awardLibraryTile','aeTile'])$(id).hidden=true;
+ $('awardManageTools').replaceChildren();aeHasAccess=false;aePeople=[];
+ if(!auth?.currentUser||!context)return;
+ const uid=auth.currentUser.uid;
+ try{
+  const data=await api('/api/organogram/hierarchie');
+  if(auth?.currentUser?.uid!==uid||!context)return;
+  if(data.readOnly!==true||data.canManageAE!==true||!Array.isArray(data.records))return;
+  aePeople=data.records.filter(p=>p.dept==='politie'&&
+   typeof p.call==='string'&&p.call.length>0&&
+   typeof p.name==='string'&&p.name.length>0)
+   .map(p=>({call:p.call,name:p.name,aeManual:p.aeManual||'',aeRole:p.aeRole||''}))
+   .sort((a,b)=>a.call.localeCompare(b.call,'nl-BE',{numeric:true}));
+  aeHasAccess=true;
+  $('ae-beheer').hidden=false;$('awardManage').hidden=false;
+  for(const id of ['awardTile','awardLibraryTile','aeTile'])$(id).hidden=false;
+  filterPersonnel('aePerson','aeSearch');
+  filterPersonnel('awardPerson','awardSearch');
+  refreshAEChoice();refreshAwardManager();
+ }catch(_error){
+  if(auth?.currentUser?.uid===uid){$('ae-beheer').hidden=true;$('awardManage').hidden=true;}
+ }
+}
+$('aeSearch').addEventListener('input',()=>{
+ filterPersonnel('aePerson','aeSearch');refreshAEChoice();
+});
+$('aePerson').addEventListener('change',refreshAEChoice);
+$('awardSearch').addEventListener('input',()=>{
+ filterPersonnel('awardPerson','awardSearch');refreshAwardManager();
+});
+$('awardPerson').addEventListener('change',refreshAwardManager);
+$('aeSave').addEventListener('click',async()=>{
+ const person=selectedPerson('aePerson'),reason=$('aeReason').value.trim();
+ if(!aeHasAccess||!person)return;
+ if(reason.length<8||reason.length>300){
+  $('aeStatus').textContent='Een motivering van 8 tot 300 tekens is verplicht.';return;
+ }
+ $('aeSave').disabled=true;$('aeStatus').textContent='AE-functieniveau opslaan…';
+ try{
+  await api('/api/organogram/ae-display/'+encodeURIComponent(person.call),'PUT',
+   {role:$('aeLevel').value,reason});
+  person.aeManual=$('aeLevel').value;person.aeRole=$('aeLevel').value||person.aeRole;
+  $('aeReason').value='';
+  $('aeStatus').textContent='Correctie opgeslagen en gelogd. Discord-rollen zijn ongewijzigd.';
+ }catch(error){$('aeStatus').textContent='Niet opgeslagen: '+error.message;}
+ finally{$('aeSave').disabled=!selectedPerson('aePerson')}
+});
 function settingsText(x){
  return (x.observationArchiveEnabled?'Aan':'Uit')+' · '+
   x.observationArchiveDays+' dagen';
@@ -248,12 +370,14 @@ function drawHistory(items){
 }
 async function load(){
  if(!auth?.currentUser){
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile'])$(id).hidden=true;
+  context=null;aeHasAccess=false;aePeople=[];
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile'])$(id).hidden=true;
   notice('Meld je aan met een bevoegd BelgiumPD-account.');return;
  }
  try{
   const next=await api('/api/technical-center/context');
   context=next;
+  void loadPersonnelManagement();
   $('overview').hidden=false;$('automation').hidden=false;
   $('serviceCenter').hidden=false;
   if(!serviceEditor)serviceEditor=setupTechnicalServiceEditors({api,notice,$});
@@ -273,7 +397,7 @@ async function load(){
     'Je hebt alleen leesrechten op de centrale instellingen.'));
  }catch(error){
   context=null;
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile'])$(id).hidden=true;
   notice('Beheercentrum niet beschikbaar: '+error.message,true);
  }
 }

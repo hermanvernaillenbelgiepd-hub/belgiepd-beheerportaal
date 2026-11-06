@@ -5,6 +5,8 @@ import {publicDecorations} from '../src/personnel-decoration-policy.js';
 
 const page=readFileSync(new URL('../public/organogram-hierarchie.html',import.meta.url),'utf8');
 const source=readFileSync(new URL('../src/organogram-placement-routes.js',import.meta.url),'utf8');
+const management=readFileSync(new URL('../public/beheercentrum.html',import.meta.url),'utf8');
+const library=readFileSync(new URL('../public/beeldbibliotheek.html',import.meta.url),'utf8');
 const classic=readFileSync(new URL('../public/organogram.html',import.meta.url),'utf8');
 
 test('one operational organogram is used, without a board panel',()=>{
@@ -24,11 +26,13 @@ test('staff dialog prioritizes 2:1 coat and shows five operational facts',()=>{
  assert.match(page,/person-profile-awards-panel/);
  assert.match(page,/person-profile-specialization-box/);
 });
-test('medal manager only uses existing authenticated subject checked API',()=>{
+test('medal manager is centralized and uses existing authenticated subject checked API',()=>{
  assert.match(page,/BPDDecorations\?\.renderAwards/);
- assert.match(page,/BPDDecorations\?\.manager/);
- assert.match(page,/BPDDecorations\?\.uploadTools/);
- assert.match(page,/p\.dept==='politie'&&auth\?\.currentUser/);
+ assert.doesNotMatch(page,/BPDDecorations\?\.manager/);
+ assert.doesNotMatch(page,/BPDDecorations\?\.uploadTools/);
+ assert.match(management,/BPDDecorations\?\.manager/);
+ assert.match(management,/data\.canManageAE!==true/);
+ assert.match(library,/BPDDecorations\?\.uploadTools/);
  assert.match(source,/PERSONNEL_DECORATIONS_COLLECTION/);
  assert.match(source,/publicDecorations\(/);
  assert.match(source,/awards:p\.dept==='politie'/);

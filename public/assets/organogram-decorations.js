@@ -238,7 +238,7 @@
    const access=await response.json().catch(()=>({}));
    if(!response.ok||(!access.canUpload&&!access.canRename)||auth.currentUser?.uid!==uid)return;
    const details=node('details','bpd-awards-control bpd-catalog-upload');
-   details.append(node('summary','','Eigen ereteken uploaden · Officierenkader / Korpsleiding'));
+   details.append(node('summary','','Medaille of ereteken toevoegen'));
    details.append(node('p','bpd-no-awards',
     'PNG, JPG of WebP. Eerst toevoegen aan de catalogus; daarna kun je het toekennen aan een toegestaan personeelsdossier.'));
    const label=node('input');label.type='text';label.maxLength=80;label.placeholder='Naam van de onderscheiding';
@@ -293,17 +293,18 @@
      if(!response.ok)throw Error(data.error||'Upload mislukt');
      document.dispatchEvent(new CustomEvent('bpd-decoration-uploaded',{detail:data.item}));
      notice.className='bpd-awards-success';
-     notice.textContent='Toegevoegd aan catalogus. Kies een lager personeelsdossier en open Toekennen.';
+     notice.textContent='Toegevoegd aan de onderscheidingenbibliotheek. Toekennen gebeurt afzonderlijk via Beheer.';
      label.value='';file.value='';
     }catch(err){notice.className='bpd-awards-error';notice.textContent=err.message;}
     finally{save.disabled=false}
    });
    if(auth.currentUser?.uid!==uid)return;
    if(access.canUpload)target.append(details);
+   if(!access.canRename)return;
    // The name is catalogue metadata, not a new award grant. All existing
    // recipient links keep their stable catalogue ID after an audited rename.
    const rename=node('details','bpd-awards-control bpd-catalog-rename');
-   rename.append(node('summary','','Naam medaille / ereteken aanpassen'));
+   rename.append(node('summary','','Naam van een medaille of ereteken wijzigen'));
    rename.append(node('p','bpd-no-awards',
     'Wijzig de benaming van een bestaand erelint, een medaille of een ereteken. Toekenningen blijven behouden.'));
    const catalogPick=node('select'),newName=node('input'),renameReason=node('textarea');

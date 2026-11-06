@@ -46,7 +46,7 @@ test('rename route requires verified officer/corps, audit reason and preserves g
  assert.match(server,/reason\.length<10/);
  assert.match(server,/tx\.set\(ref,\{id,label,updatedAt:/);
  assert.doesNotMatch(server,/tx\.delete\(/);
- assert.match(ui,/Naam medaille \/ ereteken aanpassen/);
+ assert.match(ui,/Naam van een medaille of ereteken wijzigen/);
  assert.match(ui,/bpd-decoration-renamed/);
 });
 

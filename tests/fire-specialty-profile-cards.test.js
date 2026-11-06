@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=p=>readFileSync(new URL('../public/'+p,import.meta.url),'utf8');
 const organogram=read('organogram-hierarchie.html');
+const management=read('beheercentrum.html');
 const style=read('organogram-hybrid.css');
 
 test('fire profile uses equal-width cards for specialties with and without patches',()=>{
@@ -38,5 +39,6 @@ test('other services, access, awards and role labels remain intact',()=>{
  assert.match(organogram,/normalizeSpecialtyBadges\(item\)/);
  assert.match(organogram,/p\.dept==='politie'&&name==='K9'/);
  assert.match(organogram,/person-profile-specialty-fire-diver/);
- assert.match(organogram,/BPDDecorations\?\.manager/);
+ assert.match(organogram,/BPDDecorations\?\.renderAwards/);
+ assert.match(management,/BPDDecorations\?\.manager/);
 });
