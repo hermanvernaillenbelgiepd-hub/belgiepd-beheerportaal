@@ -156,7 +156,7 @@ test('A-INP entry is allowed for officer; higher ranks only for corps with match
  assert.equal(canAuthorisePoliceEntryRank(officer,'politie','Inspecteur'),false);
  assert.equal(canAuthorisePoliceEntryRank(chief,'politie','Inspecteur'),true);
  assert.equal(validateNewPersonnel(entry).rank,entry.rank);
- assert.throws(()=>validateNewPersonnel({...entry,call:'215'}),/roepnummer/);
+ assert.throws(()=>validateNewPersonnel({...entry,call:'215'}),/[Rr]oepnummer/);
  assert.equal(asCreatedPersonnel({...entry,status:'In opleiding'}).rank,entry.rank);
  assert.equal(ENTRY_POLICE_RANKS.includes('Aspirant Commissaris'),true);
 });
