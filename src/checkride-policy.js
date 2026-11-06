@@ -46,7 +46,11 @@ export function permittedCheckrideTracks(actor,member,roster,guildId,now=Date.no
   const roles=verifiedCheckrideRoles(member,guildId,now);
   if(!roles)return [];
   return Object.values(CHECKRIDE_TRACKS).filter(track=>{
-    if(!actor.departments?.includes(track.dept)||
+    // Burgerraad is a separate verified civilian role; managed portal grants
+    // do not currently list burger as a normal cadre department. Require both
+    // Burgerraad Discord proof and one unique burger roster entry instead.
+    const civilianCouncil=track.dept==='burger'&&roles.has(track.instructor);
+    if((!actor.departments?.includes(track.dept)&&!civilianCouncil)||
        !uniqueOwnService(roster,actor,track.dept))return false;
     if(roles.has(track.instructor))return true;
     if(track.dept==='politie'){
@@ -65,6 +69,8 @@ export function permittedCheckrideTracks(actor,member,roster,guildId,now=Date.no
 export function eligibleCheckrideSubject(trackCode,person,member,guildId,now=Date.now()){
   const track=CHECKRIDE_TRACKS[trackCode];
   if(!track||person?.dept!==track.dept||!eligibleId(person?.personId))return false;
+  // The protected 9xx police dossiers are not ordinary trainee candidates.
+  if(track.dept==='politie'&&/^9[0-9]{2}$/.test(String(person.call||'').trim()))return false;
   const roles=verifiedCheckrideRoles(member,guildId,now,24*60*60*1000);
   if(!roles||!track.candidates.some(id=>roles.has(id))||
      (track.excluded||[]).some(id=>roles.has(id)))return false;

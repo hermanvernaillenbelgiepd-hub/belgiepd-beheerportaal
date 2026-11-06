@@ -75,3 +75,17 @@ test('valid input is pinned to the correct track and department',()=>{
  assert.equal(result.subjectDiscordId,S);
  assert.equal('evaluatorDiscordId' in result,false);
 });
+
+test('Burgerraad can oversee BIO with independent council role and citizen roster',()=>{
+ const policePortal={...actor('politie'),departments:['politie']};
+ assert.deepEqual(permittedCheckrideTracks(policePortal,member('1492485336197234728'),
+  [profile('politie'),profile('burger')],GUILD,now),['burger_io']);
+});
+test('unverified council role cannot open civilian assessments',()=>{
+ assert.deepEqual(permittedCheckrideTracks(actor('politie'),member('1345302115689431061'),
+  [profile('politie'),profile('burger')],GUILD,now),['k9']);
+});
+test('protected 9xx police dossiers are not ordinary checkride trainees',()=>{
+ assert.equal(eligibleCheckrideSubject('k9',{...profile('politie',S),call:'900'},
+  member('1309532438053130326','1345297414612979713'),GUILD,now),false);
+});
