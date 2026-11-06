@@ -160,3 +160,11 @@ test('A-INP entry is allowed for officer; higher ranks only for corps with match
  assert.equal(asCreatedPersonnel({...entry,status:'In opleiding'}).rank,entry.rank);
  assert.equal(ENTRY_POLICE_RANKS.includes('Aspirant Commissaris'),true);
 });
+
+test('Higher corps entry with temporarily unlinked Discord remains visible for approval',()=>{
+ const pending={dept:'politie',discordId:null,name:'Hogere instroom',
+  call:'531',rank:'Eerste Inspecteur',state:'awaiting_discord'};
+ const res=visiblePendingPersonnel('aBcDefGhiJKlmNop1234',pending);
+ assert.equal(res?.rank,'Eerste Inspecteur');
+ assert.equal(res?.call,'531');
+});

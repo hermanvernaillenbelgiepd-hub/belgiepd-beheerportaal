@@ -140,7 +140,7 @@ export function uniqueNewPerson(records,person){
 
 export function visiblePendingPersonnel(id,data){
   if(!/^[A-Za-z0-9]{12,40}$/.test(id)||!data||
-     !TEST_RANKS[data.dept]?.includes(data.rank)||
+     !(data.dept==='politie'?ENTRY_POLICE_RANKS:TEST_RANKS[data.dept])?.includes(data.rank)||
      typeof data.name!=='string'||typeof data.call!=='string'||
      data.state!=='awaiting_discord'||data.discordId!==null)return null;
   return {internalId:id,dept:data.dept,name:data.name,call:data.call,
