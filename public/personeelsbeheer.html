@@ -846,7 +846,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
   <input id="newCall" required maxlength="24" placeholder="Bijvoorbeeld 200" style="flex:1;min-width:0">
   <button id="newCallSuggest" type="button" class="alt">Vrij nummer</button>
  </div>
- <small id="newCallHint" role="status" aria-live="polite">Bij Politie Agent wordt automatisch een vrij nummer voorgesteld. Je kunt dit aanpassen.</small></div>
+ <small id="newCallHint" role="status" aria-live="polite" hidden></small></div>
 <div><label for="newRank">Instaprang</label><select id="newRank" required></select><small>Politie start standaard als Agent. Alleen korpsleiding of beheerder kan uitzonderlijk een hogere instaprang registreren.</small></div>
 <div id="newRankException" style="grid-column:1/-1" hidden>
   <label class="inline-check" for="newRankExceptionConfirm"><input id="newRankExceptionConfirm" type="checkbox"> Uitzonderlijke instaprang expliciet bevestigen (verplicht)</label>
@@ -4661,20 +4661,25 @@ function refreshExceptionalRank(){
   }
 }
 let newCallSuggestionSeq=0,newCallManuallyEdited=false,newCallAutoValue='';
+function setNewCallHint(message=''){
+ const hint=$('newCallHint');
+ hint.textContent=message;
+ hint.hidden=!message;
+}
 async function proposeNewPersonnelCall(){
  const seq=++newCallSuggestionSeq,dept=$('newDept').value,rank=$('newRank').value;
  if(!newCallManuallyEdited&&$('newCall').value.trim()===newCallAutoValue)
   $('newCall').value='';
  newCallAutoValue='';
  if(dept!=='politie'||rank!=='Agent'){
-  $('newCallHint').textContent='Voor deze dienst of uitzonderlijke instaprang vul je zelf een passend vrij nummer in.';
+  setNewCallHint('');
   updateNewDuplicateWarning();return;
  }
  if(newCallManuallyEdited&&$('newCall').value.trim()){
-  $('newCallHint').textContent='Handmatig gekozen nummer. De server controleert dit opnieuw bij opslaan.';
+  setNewCallHint('');
   return;
  }
- $('newCallHint').textContent='Vrij nummer controleren…';
+ setNewCallHint('');
  try{
   const result=await request('/api/personnel/call-suggestion?dept='+
    encodeURIComponent(dept)+'&rank='+encodeURIComponent(rank));
@@ -4683,16 +4688,15 @@ async function proposeNewPersonnelCall(){
   if(result.suggestedCall){
    newCallAutoValue=String(result.suggestedCall);
    $('newCall').value=newCallAutoValue;
-   $('newCallHint').textContent='Voorgesteld vrij nummer: '+newCallAutoValue+
-    ' (200 → 210 → 220 → 215 → 225 → 201 → 202 …). Bij opslaan opnieuw gecontroleerd.';
+   setNewCallHint(''); // Keep the suggested number only in the input field.
   }else{
-   $('newCallHint').textContent=result.message||'Geen vrij nummer gevonden. Controleer de personeelslijst.';
+   setNewCallHint(result.message||'Geen vrij nummer gevonden. Controleer de personeelslijst.');
   }
   updateNewDuplicateWarning();
  }catch(e){
   if(seq!==newCallSuggestionSeq)return;
-  $('newCallHint').textContent='Geen actueel nummervoorstel beschikbaar: '+e.message+
-   '. Kies niet zomaar een nummer; controleer eerst de personeelslijst.';
+  setNewCallHint('Geen actueel nummervoorstel beschikbaar: '+e.message+
+   '. Kies niet zomaar een nummer; controleer eerst de personeelslijst.');
  }
 }
 function refreshNewRanks(){
@@ -4718,7 +4722,7 @@ $('newRank').onchange=()=>{refreshExceptionalRank();newCallManuallyEdited=false;
 $('newId').oninput=updateNewDuplicateWarning;
 $('newCall').oninput=()=>{
  newCallManuallyEdited=true;newCallAutoValue='';++newCallSuggestionSeq;
- $('newCallHint').textContent='Handmatig gekozen nummer; definitieve controle bij opslaan.';
+ setNewCallHint('');
  updateNewDuplicateWarning();
 };
 $('newCallSuggest').onclick=()=>{

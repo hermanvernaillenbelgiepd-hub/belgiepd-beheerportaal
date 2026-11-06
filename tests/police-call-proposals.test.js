@@ -74,3 +74,12 @@ test('automatic fixed-call requests use same order and reject manual cross-reser
  assert.match(sync,/unavailableCalls:options\.unavailableCalls/);
  assert.match(route,/tx\.create\(claim/);
 });
+
+test('suggested roepnummer appears only as input value, without duplicate explanatory line',()=>{
+ const ui=read('public/personeelsbeheer.html');
+ assert.match(ui,/<small id="newCallHint" role="status" aria-live="polite" hidden><\/small>/);
+ assert.match(ui,/\$\('newCall'\)\.value=newCallAutoValue/);
+ assert.match(ui,/setNewCallHint\(''\); \/\/ Keep the suggested number only in the input field/);
+ assert.doesNotMatch(ui,/Voorgesteld vrij nummer:/);
+ assert.match(ui,/tx\.get|updateNewDuplicateWarning/);
+});
