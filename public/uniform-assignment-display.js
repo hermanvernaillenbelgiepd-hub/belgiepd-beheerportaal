@@ -1,6 +1,6 @@
 // Client-side visual-only resolver. Scoped assignments never confer rank or roles.
 import {getTier} from '/assets/organogram-hierarchie-model.js';
-import {policeUniformGroup,ambulanceFunction,ambulanceUniformFallback,depannageFunction,citizenUniformRank,policeCallSeries} from '/uniform-profile-policy.js?v=azls-grades-20261105b';
+import {policeUniformGroup,ambulanceFunction,ambulanceUniformFallback,depannageFunction,citizenUniformRank,policeCallSeries} from '/uniform-profile-policy.js?v=depannage-awvrank-20261106';
 const UID=/^\d{15,22}$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const nameCode=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -169,8 +169,11 @@ function forPerson(p){
   .find(x=>Boolean(ruleUrl(x)));
  const gradeUrl=personalGrade?elementUrls.rank:
   ruleUrl(selectedGrade)||linkedUrl||elementUrls.rank;
- const chosenCoatUrl=ruleUrl(explicitCoat)||
-  (uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':'');
+ // A personal uniform override wins, then the actual saved Uniformatelier
+ // composition. Retired service/cadre/rank rules must not mask a saved coat.
+ const chosenCoatUrl=ruleUrl(explicitCoat?.scope==='person'?explicitCoat:null)||
+  (uniformCode?assetUrls.get('uniform_'+dept+'_'+uniformCode)||'':'')||
+  ruleUrl(explicitCoat);
  return {uniformCode,badgeStyle,uniformGroup:group,callSeries:series,profession:functionCode,
   visualLayout:composition?.layers||null,elementCodes,elementUrls,
   rankUrl:gradeUrl||'',rankSpecialtyUrl:elementUrls.specialty||'',

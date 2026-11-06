@@ -2091,7 +2091,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 <script src="/assets/organogram-decorations.js?v=award-preview-20261104"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
-import '/uniform-assignment-display.js?v=azls-grades-20261105b';
+import '/uniform-assignment-display.js?v=depannage-awvrank-20261106';
 import {serviceProfileRank,depannagePatchCode,depannageProfilePatch} from '/service-profile-presentation.js?v=20261103c';
 const $=id=>document.getElementById(id);
 const cardParams=new URLSearchParams(location.search);
@@ -2582,7 +2582,7 @@ function openPersonProfile(p){
  content.append(layout);
  const overview=el('div','person-profile-overview');
  const displayRank=serviceProfileRank(p);
- const portraitPerson=['depannage','burger'].includes(p.dept)?{...p,rank:displayRank}:p;
+ const portraitPerson=p.dept==='burger'?{...p,rank:displayRank}:p;
  const portrait=p.dept==='politie'?
   window.BPDPoliceUniform?.makePortrait?.(p,true):makeServiceUniformPortrait(portraitPerson);
  if(portrait)overview.append(portrait);
@@ -3002,7 +3002,7 @@ function person(p,compact=false,specialtyLabel=null){
  // The former overview called the police renderer only, so fire members
  // had no portrait even though their nameplate existed in the open profile.
  const portrait=p.dept==='brandweer'?makeServiceUniformPortrait(p):
-  p.dept==='depannage'?makeServiceUniformPortrait({...p,rank:serviceProfileRank(p)}):
+  p.dept==='depannage'?makeServiceUniformPortrait(p):
   p.dept==='ambulance'?makeAzlsCompactPortrait(p):
   p.dept==='burger'?makeServiceUniformPortrait({...p,rank:serviceProfileRank(p)}):
   window.BPDPoliceUniform?.makePortrait?.(p);
