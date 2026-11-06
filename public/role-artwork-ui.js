@@ -148,8 +148,16 @@ export function setupRoleArtworkUI({api,$,notice}){
   configureCanvas();
   if(sourceImage)renderCrop();
  });
- $p('roleArtworkDepartment').addEventListener('change',()=>{
-  configureCanvas();void setPreview('');
+ departmentSelect.addEventListener('change',()=>{
+  // Clear the former service's ID, code and name before loading the new one.
+  select.value='';
+  $p('roleArtworkRoleId').value='';
+  $p('roleArtworkCode').value='';
+  $p('roleArtworkLabel').value='';
+  $p('roleArtworkVariant').value='standard';
+  badgeStyle.value='';
+  showKind();refreshRoleChoices();configureCanvas();void setPreview('');
+  void reload().catch(e=>message(e.message,true));
  });
  const zoom=$p('roleArtworkZoom'),zoomValue=$p('roleArtworkZoomValue');
  const fit=$p('roleArtworkFit');
@@ -259,16 +267,17 @@ export function setupRoleArtworkUI({api,$,notice}){
  },{passive:false});
  const list=$p('roleArtworkList');
  function selectItem(row){
+  departmentSelect.value=row.department||'politie';
   kindSelect.value=row.kind||'role';
-  showKind();configureCanvas();
+  showKind();refreshRoleChoices();configureCanvas();
   const styleMatch=row.kind==='specialty'?/^(.+)_(lokaal|federaal)$/.exec(row.code||''):null;
   badgeStyle.value=styleMatch?styleMatch[2]:'';
   $p('roleArtworkCode').value=styleMatch?styleMatch[1]:(row.code||'');
   codePreset.value=styleMatch?styleMatch[1]:(row.code||'');
   $p('roleArtworkRoleId').value=row.roleId||'';
-  $p('roleArtworkDepartment').value=row.department||'politie';
   configureCanvas();
   $p('roleArtworkVariant').value=row.variant||'standard';
+  select.value=row.kind==='role'?row.roleId+'|'+(row.variant||'standard'):'';
   $p('roleArtworkLabel').value=row.label;
   select.value='';
   void setPreview(row.active?row.imageUrl:'').catch(e=>message('Afbeelding openen mislukt: '+e.message,true));
@@ -276,14 +285,14 @@ export function setupRoleArtworkUI({api,$,notice}){
   message('Geselecteerd: '+row.label+'. Je kunt nu een vervangende afbeelding uploaden.');
  }
  select.onchange=()=>{
-  const preset=presets.find(p=>p[0]+'|'+p[1]===select.value);
-  if(!preset)return;
+  const item=roleArtworkChoices(departmentSelect.value,catalogRoles,savedArtworks,presets)
+   .find(x=>x.roleId+'|'+x.variant===select.value);
+  if(!item)return;
   kindSelect.value='role';showKind();configureCanvas();
-  $p('roleArtworkRoleId').value=preset[0];
-  $p('roleArtworkDepartment').value='politie';
-  $p('roleArtworkVariant').value=preset[1];
-  $p('roleArtworkLabel').value=preset[2];
-  setPreview('');
+  $p('roleArtworkRoleId').value=item.roleId;
+  $p('roleArtworkVariant').value=item.variant;
+  $p('roleArtworkLabel').value=item.label;
+  void setPreview('');
  };
  $p('roleArtworkFile').onchange=async()=>{
   const file=$p('roleArtworkFile').files?.[0];
@@ -300,13 +309,26 @@ export function setupRoleArtworkUI({api,$,notice}){
    message('Sleep het logo en kies de grootte. Het kleine voorbeeld toont het uiteindelijke resultaat. Daarna kun je opslaan.');
   }catch(e){message('Afbeelding openen mislukt: '+e.message,true)}
  };
+ let activeReload=0;
  async function reload(){
+  const revision=++activeReload;
   const result=await api('/api/role-artwork/manage');
+  if(revision!==activeReload)return;
+  savedArtworks=Array.isArray(result.artworks)?result.artworks:[];
+  catalogRoles=Array.isArray(result.roleOptions)?result.roleOptions:[];
+  editableDepartments=Array.isArray(result.editableDepartments)?result.editableDepartments:[];
+  showKind();refreshRoleChoices();
   list.replaceChildren();
   // This tab is dedicated to role and specialty artwork. Existing coats and
   // rank pictures remain preserved for personnel and the uniform studio.
   const visibleKinds=new Set(['role','specialty','logo','pictogram','patch']);
-  const rows=(result.artworks||[]).filter(row=>visibleKinds.has(row.kind)&&row.kind===kindSelect.value);
+  const department=departmentSelect.value;
+  const rows=savedArtworks.filter(row=>visibleKinds.has(row.kind)&&
+   row.kind===kindSelect.value&&row.department===department);
+  const canEdit=editableDepartments.includes(department);
+  $p('roleArtworkSave').disabled=!canEdit;
+  if(!canEdit)message('Geen upload- of wijzigingsrechten voor '+department+
+   '. Alleen Officierenkader of Korpsleiding van deze hulpdienst (of Technisch Beheer) kan dit aanpassen.',true);
   $p('roleArtworkCount').textContent=rows.length+' '+(labels[kindSelect.value]||'logo')+'-afbeelding(en)';
   for(const row of rows){
    const card=document.createElement('div');card.className='artwork-item';
@@ -332,7 +354,8 @@ export function setupRoleArtworkUI({api,$,notice}){
    };
    card.append(pic,body,btn,off);list.append(card);
   }
-  if(!rows.length)list.textContent='Geen afbeeldingen in deze categorie. Kies een andere soort of upload een nieuwe badge.';
+  if(!rows.length)list.textContent='Nog geen '+(labels[kindSelect.value]||'logo')+
+   '-afbeeldingen voor '+department+'. Kies een beschikbare rol of upload een nieuwe badge.';
  }
  const upload=$p('roleArtworkSave');
  upload.onclick=async()=>{
@@ -342,7 +365,10 @@ export function setupRoleArtworkUI({api,$,notice}){
   const codeBase=$p('roleArtworkCode').value.trim().toLowerCase();
   const code=kind==='specialty'&&badgeStyle.value?codeBase+'_'+badgeStyle.value:codeBase;
   const label=$p('roleArtworkLabel').value.trim(),reason=$p('roleArtworkReason').value.trim();
-  const department=$p('roleArtworkDepartment').value;
+  const department=departmentSelect.value;
+  if(!editableDepartments.includes(department)){
+   message('Je hebt geen logobeheerrechten voor '+department+'.',true);return;
+  }
   if(kind==='role'){
    if(!/^\d{15,22}$/.test(roleId)||!/^[a-z][a-z0-9_]{0,39}$/.test(variant)){
     message('Geef een geldig Discord-rol-ID en variant op.',true);return;
@@ -362,7 +388,7 @@ export function setupRoleArtworkUI({api,$,notice}){
    $p('roleArtworkFile').value='';await setPreview('');
    await reload();
   }catch(e){message('Opslaan mislukt: '+e.message,true)}
-  finally{busy=false;upload.disabled=false}
+  finally{busy=false;upload.disabled=!editableDepartments.includes(departmentSelect.value)}
  };
  $p('roleArtworkReload').onclick=()=>reload().catch(e=>message(e.message,true));
  return {async load(){
