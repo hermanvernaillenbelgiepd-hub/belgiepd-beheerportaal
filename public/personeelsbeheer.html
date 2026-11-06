@@ -854,8 +854,8 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
   <textarea id="newRankExceptionReason" rows="3" minlength="30" maxlength="500" placeholder="Beschrijf de uitzonderlijke beslissing en waarom niet als Agent wordt gestart."></textarea>
   <small>De oorspronkelijke instaprang, afwijking, motivering en bevoegde beslisser worden geregistreerd in het auditlog.</small>
 </div>
-<div><label>Startstatus</label><input value="In opleiding (automatisch)" disabled>
-<small>Dit is de administratieve instroomstatus, geen reeksindeling. Een vast roepnummer geeft de standaardinterventiespecialisaties; statuswijzigingen blijven afzonderlijk beheerd.</small></div>
+<div><label for="newStartStatus">Startstatus</label><input id="newStartStatus" value="In opleiding (automatisch)" disabled>
+<small>Bij een definitieve inschrijving met vast roepnummer wordt de status Actief. Zonder Discord-koppeling blijft de fiche In opleiding tot goedkeuring.</small></div>
 <div style="grid-column:1/-1"><label for="newReason">Motivering (minstens 10 tekens)</label><textarea id="newReason" required minlength="10" maxlength="500" rows="2" placeholder="Reden van inschrijving"></textarea></div>
 </div><div id="newDuplicateWarning" class="warn" role="status" aria-live="polite" hidden></div>
 <div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Firestore registratie; Google Sheets en Discord-rollen blijven ongewijzigd</span></div></form>
@@ -4698,6 +4698,13 @@ function refreshExceptionalRank(){
   }
 }
 let newCallSuggestionSeq=0,newCallManuallyEdited=false,newCallAutoValue='';
+function updateNewStartStatus(){
+ const linked=/^\d{15,22}$/.test($('newId').value.trim());
+ const fixed=$('newDept').value==='politie'&&
+  /^(?:S[- ]?)?[2-8]\d\d$/i.test($('newCall').value.trim());
+ $('newStartStatus').value=linked&&fixed?
+  'Actief (bij vast roepnummer)':'In opleiding (automatisch)';
+}
 function setNewCallHint(message=''){
  const hint=$('newCallHint');
  hint.textContent=message;
@@ -4730,6 +4737,7 @@ async function proposeNewPersonnelCall(){
    setNewCallHint(result.message||'Geen vrij nummer gevonden. Controleer de personeelslijst.');
   }
   updateNewDuplicateWarning();
+  updateNewStartStatus();
  }catch(e){
   if(seq!==newCallSuggestionSeq)return;
   setNewCallHint('Geen actueel nummervoorstel beschikbaar: '+e.message+
@@ -4740,6 +4748,7 @@ function refreshNewRanks(){
  $('newRank').replaceChildren(...(createRanks[$('newDept').value]||[]).map(rank=>option(rank,rank)));
  refreshExceptionalRank();
  updateNewDuplicateWarning();
+ updateNewStartStatus();
  void proposeNewPersonnelCall();
 }
 $('newBtn').onclick=()=>{
@@ -4755,12 +4764,13 @@ $('newClose').onclick=()=>{++newCallSuggestionSeq;$('newPanel').hidden=true};
 $('newDept').onchange=()=>{
  newCallManuallyEdited=false;refreshNewRanks();
 };
-$('newRank').onchange=()=>{refreshExceptionalRank();newCallManuallyEdited=false;void proposeNewPersonnelCall()};
-$('newId').oninput=updateNewDuplicateWarning;
+$('newRank').onchange=()=>{refreshExceptionalRank();newCallManuallyEdited=false;updateNewStartStatus();void proposeNewPersonnelCall()};
+$('newId').oninput=()=>{updateNewDuplicateWarning();updateNewStartStatus()};
 $('newCall').oninput=()=>{
  newCallManuallyEdited=true;newCallAutoValue='';++newCallSuggestionSeq;
  setNewCallHint('');
  updateNewDuplicateWarning();
+ updateNewStartStatus();
 };
 $('newCallSuggest').onclick=()=>{
  newCallManuallyEdited=false;newCallAutoValue='';$('newCall').value='';
