@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Koppelritten · BelgiëPD</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<style>
+:root{font:14px/1.5 system-ui,Segoe UI,Arial,sans-serif;background:#0a1526;color:#edf4ff;color-scheme:dark}*{box-sizing:border-box}
+body{margin:0}header{background:#10243f;padding:12px 22px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+header a{color:#b9d5ff}main{max-width:1060px;margin:20px auto;padding:0 16px 48px}
+h1{font-size:24px;margin:0}h2{font-size:18px;margin:0 0 9px}p,small{color:#b5c9e3}
+.card{background:#152943;border:1px solid #355170;border-radius:12px;padding:16px;margin:13px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:660px){.grid{grid-template-columns:1fr}}
+label{display:block;font-weight:600;margin:8px 0;color:#d4e3fa}
+select,input,textarea{display:block;width:100%;background:#0a1c32;border:1px solid #557799;color:#fff;border-radius:7px;padding:9px;font:inherit;margin-top:5px}
+textarea{min-height:90px;resize:vertical}button{border:0;border-radius:7px;background:#3167c4;color:#fff;font:inherit;padding:9px 13px;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.status{padding:10px;border-radius:8px;background:#234638;color:#edfff3}.status.error{background:#743839}
+.entry{border-top:1px solid #3a526e;padding:12px 0}.entry:first-child{border:0}
+.badge{font-size:12px;border-radius:5px;padding:2px 6px;background:#305075}
+[hidden]{display:none!important}
+</style></head><body>
+<header><strong>BelgiëPD · Koppelritten</strong><a href="/opleidingscentrum.html">← Opleidingscentrum</a><a href="/">Start</a><button id="login" type="button">Aanmelden</button></header>
+<main>
+<h1>Koppelritten en stage-evaluaties</h1>
+<p>Beoordelingen zijn gescheiden per dienst en specialisatie. Alleen geverifieerde instructeurs en bevoegde leiding zien hun eigen opleidingsluik.</p>
+<p class="status" id="message" role="status">Toegang controleren…</p>
+<section class="card" id="panel" hidden>
+<h2>Mijn bevoegde opleidingsonderdelen</h2>
+<label>Onderdeel<select id="track"></select></label>
+<p id="scopeNote"></p>
+<div class="grid">
+<section>
+<h2>Nieuwe beoordeling</h2>
+<form id="form">
+<label>Kandidaat<select id="subject" required></select></label>
+<div class="grid">
+<label>Datum<input id="date" type="date" required></label>
+<label>Koppelrit<select id="kind"><option value="eerste">Eerste rit</option><option value="vervolg">Vervolgrit</option><option value="eind">Eindbeoordeling</option></select></label>
+</div>
+<div id="scoreFields"></div>
+<label>Eindadvies<select id="outcome"><option value="voldoende">Voldoende</option><option value="verder_begeleiden">Verder begeleiden</option><option value="herkansing">Extra rit of herkansing</option></select></label>
+<label>Observaties, sterke punten en werkpunten<textarea id="notes" required minlength="3" maxlength="1500" placeholder="Omschrijf de beoordeling"></textarea></label>
+<p><small>Ingediende evaluaties blijven bewaard. Geen automatische promotie, specialisatie of Discordrol.</small></p>
+<button type="submit" id="save">Evaluatie indienen</button>
+</form>
+</section>
+<section><h2>Evaluaties binnen dit onderdeel</h2><div id="history">Laden…</div></section>
+</div>
+</section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+const scoreNames={kennis:'Kennis van procedures',praktijk:'Praktische uitvoering',
+communicatie:'Communicatie en radiogebruik',veiligheid:'Veiligheid',zelfstandigheid:'Zelfstandigheid'};
+let auth,authModule,scopes=[],canWrite=false;
+function status(text,error=false){$('message').textContent=text;$('message').classList.toggle('error',error)}
+function element(tag,text){const e=document.createElement(tag);e.textContent=String(text||'');return e}
+const scoreFields=$('scoreFields');
+for(const [key,name] of Object.entries(scoreNames)){
+ const l=element('label',name),s=document.createElement('select');s.id='score_'+key;
+ for(let n=1;n<=5;n++)s.add(new Option(n+' / 5',n));
+ s.value='3';l.append(s);scoreFields.append(l)
+}
+async function api(path,opts={}){
+ if(!auth?.currentUser)throw Error('Meld je aan met Discord');
+ const token=await auth.currentUser.getIdToken();
+ const response=await fetch(path,{...opts,cache:'no-store',headers:{
+  Authorization:'Bearer '+token,...(opts.body?{'Content-Type':'application/json'}:{})}});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'Fout '+response.status);
+ return data;
+}
+async function refresh(){
+ $('panel').hidden=true;
+ if(!auth?.currentUser){status('Meld je aan met je goedgekeurde Discord-account.');return}
+ try{
+  const data=await api('/api/checkrides/context');
+  scopes=data.tracks||[];canWrite=data.writesEnabled===true;
+  const track=$('track');track.replaceChildren(...scopes.map(x=>new Option(x.label,x.code)));
+  if(!scopes.length){status('Je hebt geen geverifieerde instructeurs- of leidingrechten voor een koppelritonderdeel.');return}
+  $('panel').hidden=false;$('save').disabled=!canWrite;
+  await showTrack();
+  status('Toegang gecontroleerd. Je ziet alleen de onderdelen waarvoor je bevoegd bent.');
+ }catch(e){status(e.message,true)}
+}
+async function showTrack(){
+ const track=$('track').value;
+ const current=scopes.find(x=>x.code===track);
+ if(!current){$('panel').hidden=true;return}
+ $('scopeNote').textContent='Afgeschermd onderdeel: '+current.label;
+ $('subject').replaceChildren(new Option('Kandidaten controleren…',''));
+ $('history').textContent='Evaluaties laden…';
+ try{
+  const [candidates,history]=await Promise.all([
+    api('/api/checkrides/subjects?track='+encodeURIComponent(track)),
+    api('/api/checkrides/evaluations?track='+encodeURIComponent(track))
+  ]);
+  $('subject').replaceChildren(new Option('Selecteer kandidaat',''),...
+    candidates.people.map(p=>new Option((p.call?p.call+' · ':'')+p.name,p.discordId)));
+  if(!candidates.people.length)$('subject').replaceChildren(new Option('Geen geverifieerde kandidaten',''));
+  $('save').disabled=!canWrite||!candidates.people.length;
+  const list=$('history');list.replaceChildren();
+  if(!history.evaluations.length)list.textContent='Nog geen evaluaties binnen dit onderdeel.';
+  for(const e of history.evaluations){
+    const div=document.createElement('div');div.className='entry';
+    const header=element('strong',e.subjectCall+' · '+e.subjectName);
+    const meta=element('p',e.eventDate+' · '+e.kind+' · '+e.average+'/5 · '+e.outcome);
+    const note=element('p',e.notes);
+    div.append(header,meta,note);list.append(div);
+  }
+  if(history.limited)list.append(element('small','De nieuwste 100 evaluaties worden getoond.'));
+ }catch(e){status(e.message,true);$('history').textContent='Kan evaluaties niet laden.'}
+}
+$('track').onchange=showTrack;
+$('form').onsubmit=async ev=>{
+ ev.preventDefault();const button=$('save');button.disabled=true;
+ try{
+  const scores=Object.fromEntries(Object.keys(scoreNames).map(k=>[k,Number($('score_'+k).value)]));
+  const body={track:$('track').value,subjectDiscordId:$('subject').value,
+   eventDate:$('date').value,kind:$('kind').value,outcome:$('outcome').value,
+   scores,notes:$('notes').value};
+  await api('/api/checkrides/evaluations',{method:'POST',body:JSON.stringify(body)});
+  $('notes').value='';await showTrack();status('Evaluatie opgeslagen bij de juiste dienst en opleidingscategorie.');
+ }catch(e){status(e.message,true)}finally{button.disabled=!canWrite||!$('subject').value}
+};
+async function init(){
+ const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+ if(!config.enabled)throw Error('Firebase niet beschikbaar');
+ const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+ authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+ auth=authModule.getAuth(appModule.initializeApp(config.firebaseConfig));
+ const {setupPortalLogin}=await import('/portal-login.js');
+ setupPortalLogin({button:$('login'),auth,authModule,config,onError:e=>status(e.message,true)});
+ authModule.onAuthStateChanged(auth,()=>refresh());
+ const d=new Date();const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);
+ $('date').value=local.toISOString().slice(0,10);
+}
+init().catch(e=>status(e.message,true));
+</script><script defer src="/bpd-navigation.js"></script>
+</body></html>

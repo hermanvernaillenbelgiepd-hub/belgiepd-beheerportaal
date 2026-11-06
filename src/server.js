@@ -45,6 +45,7 @@ import {installUniformLibraryRoutes} from './uniform-library-routes.js';
 import {installUniformGradeRoutes} from './uniform-grade-routes.js';
 import {installUniformCompositionRoutes} from './uniform-composition-routes.js';
 import {installTrainingRequestRoutes} from './training-request-routes.js';
+import {installCheckrideRoutes} from './checkride-routes.js';
 import {installDocumentCenterRoutes} from './document-center-routes.js';
 import {installDcIdTransferRoutes} from './dc-id-transfer-routes.js';
 import {DC_TRANSFER_ALIASES,applyCompletedDcAliases} from './dc-id-transfer-policy.js';
@@ -134,6 +135,7 @@ app.use('/api/visual-layers',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
 app.use('/api/training-calendar',express.json({limit:'4kb',strict:true}));
+app.use('/api/checkrides',express.json({limit:'5kb',strict:true}));
 app.use('/api/document-center',express.json({limit:'36mb',strict:true}));
 app.use('/api/dc-id-transfer',express.json({limit:'5kb',strict:true}));
 app.use('/api/leave',express.json({limit:'4kb',strict:true}));
@@ -840,6 +842,7 @@ installCallsignSelfServiceRoutes(app,{getSnapshot});
 installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installRosterColumnRoutes(app,{requireUser});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
+installCheckrideRoutes(app,{requireUser,getSnapshot});
 installDocumentCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
   onCompleted:id=>{
