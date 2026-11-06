@@ -847,14 +847,15 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
   <button id="newCallSuggest" type="button" class="alt">Vrij nummer</button>
  </div>
  <small id="newCallHint" role="status" aria-live="polite" hidden></small></div>
-<div><label for="newRank">Instaprang</label><select id="newRank" required></select><small>Politie start standaard als Agent. Alleen korpsleiding of beheerder kan uitzonderlijk een hogere instaprang registreren.</small></div>
+<div><label for="newRank">Instaprang</label><select id="newRank" required></select><small>Politie start standaard als Agent. Officierenkader mag uitzonderlijk A-INP kiezen; Korpsleiding en geverifieerd technisch beheer mogen hogere instaprangen registreren.</small></div>
 <div id="newRankException" style="grid-column:1/-1" hidden>
   <label class="inline-check" for="newRankExceptionConfirm"><input id="newRankExceptionConfirm" type="checkbox"> Uitzonderlijke instaprang expliciet bevestigen (verplicht)</label>
   <label for="newRankExceptionReason">Afzonderlijke motivering hogere instaprang (30–500 tekens)</label>
   <textarea id="newRankExceptionReason" rows="3" minlength="30" maxlength="500" placeholder="Beschrijf de uitzonderlijke beslissing en waarom niet als Agent wordt gestart."></textarea>
   <small>De oorspronkelijke instaprang, afwijking, motivering en bevoegde beslisser worden geregistreerd in het auditlog.</small>
 </div>
-<div><label>Startstatus</label><input value="In opleiding (automatisch)" disabled></div>
+<div><label>Startstatus</label><input value="In opleiding (automatisch)" disabled>
+<small>Dit is de administratieve instroomstatus, geen reeksindeling. Een vast roepnummer geeft de standaardinterventiespecialisaties; statuswijzigingen blijven afzonderlijk beheerd.</small></div>
 <div style="grid-column:1/-1"><label for="newReason">Motivering (minstens 10 tekens)</label><textarea id="newReason" required minlength="10" maxlength="500" rows="2" placeholder="Reden van inschrijving"></textarea></div>
 </div><div id="newDuplicateWarning" class="warn" role="status" aria-live="polite" hidden></div>
 <div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Firestore registratie; Google Sheets en Discord-rollen blijven ongewijzigd</span></div></form>
@@ -912,6 +913,21 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <textarea id="rankChangeReason" required minlength="20" maxlength="500" rows="3"></textarea></div>
 </div>
 <div class="controls"><button type="submit" id="rankChangeSave">Rangwijziging bevestigen</button></div>
+</form></section>
+<section id="policeSeriesPanel" hidden style="border-top:1px solid #3b5374;margin-top:14px;padding-top:12px">
+<h3>Reeksindeling aanpassen</h3>
+<p class="subtle">Alleen bevoegd Officierenkader, Korpsleiding en geverifieerd technisch beheer. De wijziging wordt in het personeelsdossier en de personeelsbewegingen geregistreerd; Discord-rollen blijven ongewijzigd.</p>
+<form id="policeSeriesForm">
+ <div class="grid">
+  <div><label for="policeSeriesCurrent">Huidige reeks</label><input id="policeSeriesCurrent" disabled></div>
+  <div><label for="policeSeriesNext">Nieuwe reeks</label><select id="policeSeriesNext" required>
+   <option value="">Kies een reeks…</option>
+   <option value="1">Reeks 1</option><option value="2">Reeks 2</option>
+   <option value="3">Reeks 3</option></select></div>
+  <div style="grid-column:1/-1"><label for="policeSeriesReason">Motivering (minstens 15 tekens)</label>
+  <textarea id="policeSeriesReason" rows="2" required minlength="15" maxlength="500"></textarea></div>
+ </div>
+ <div class="controls"><button type="submit" id="policeSeriesSave">Reekswissel registreren</button></div>
 </form></section>
 <section class="dossier-head" id="staffDossierSection">
 <h2>Administratief personeelsdossier</h2>
@@ -4508,6 +4524,10 @@ async function showPerson(p){
     ...rankChoices.filter(x=>x!==p.rank).map(x=>option(x,x)));
   $('rankChangeTo').value='';$('rankChangeCall').value=p.call;
   $('rankChangeReason').value='';
+  $('policeSeriesPanel').hidden=!(p.dept==='politie'&&p.canChangeSeries===true);
+  $('policeSeriesCurrent').value=p.series||'Niet ingedeeld';
+  $('policeSeriesNext').value='';
+  $('policeSeriesReason').value='';
   const canChangeStatus=p.canEditStatus===true&&writesEnabled;
   const canChangeIdentity=p.canEditIdentity===true&&writesEnabled;
   $('pName').disabled=!canChangeIdentity;
@@ -4556,6 +4576,23 @@ async function showPerson(p){
   }catch(e){$('history').textContent='Geschiedenis niet beschikbaar: '+e.message}
   if(!dossierEmbedded&&!ficheMode)$('panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
+$('policeSeriesForm').onsubmit=async ev=>{
+ ev.preventDefault();
+ if(!selected||selected.dept!=='politie'||selected.canChangeSeries!==true)return;
+ const person=selected,series=Number($('policeSeriesNext').value);
+ if(![1,2,3].includes(series))return;
+ if(!confirm('Reekswissel registreren voor '+person.name+' naar Reeks '+series+
+  '? De wijziging komt in het personeelsdossier en activiteitenregister.'))return;
+ const button=$('policeSeriesSave');button.disabled=true;
+ try{
+  await request('/api/personnel/politie/'+encodeURIComponent(person.discordId)+'/series',{
+   method:'POST',body:{series,
+    reason:$('policeSeriesReason').value.trim(),
+    expectedRevision:person.seriesRevision||0}
+  });
+  await load();notice('Reeks '+series+' geregistreerd; alle andere functies blijven ongewijzigd.');
+ }catch(e){notice(e.message,true)}finally{button.disabled=false}
+};
 $('rankChangeForm').onsubmit=async ev=>{
   ev.preventDefault();
   if(!selected||!rankChangesEnabled||selected.canChangeRank!==true)return;
