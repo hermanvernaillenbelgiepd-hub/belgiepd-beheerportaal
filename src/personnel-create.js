@@ -1,4 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
+import {POLICE_RANK_CHOICES,policeCallNumber,policeCallGrade} from './personnel-rank-policy.js';
 import {validPersonnelKey,EDITABLE_STATUSES} from './personnel-editor-policy.js';
 // New profiles never grant Discord roles or module permissions.
 // The pilot is limited to an isolated Firebase test project with fixtures.
@@ -13,6 +14,19 @@ export const TEST_RANKS=Object.freeze({
 });
 // A new police recruit is always an Agent unless leadership explicitly
 // authorises an exceptional entry rank with a separately recorded justification.
+export const ENTRY_POLICE_RANKS=Object.freeze(POLICE_RANK_CHOICES.map(x=>x.rank));
+export function allowedPoliceEntryRanks(actor){
+ if(!canCreatePersonnel(actor,'politie'))return [];
+ const scoped=roleForDepartment(actor,'politie');
+ const officer=actor.role==='officierenkader'&&scoped==='officierenkader';
+ if(officer)return ['Agent','Aspirant Inspecteur'];
+ return canAuthoriseExceptionalPoliceRank(actor,'politie')?[...ENTRY_POLICE_RANKS]:['Agent'];
+}
+export function canAuthorisePoliceEntryRank(actor,dept,rank){
+ if(dept!=='politie')return rank===STANDARD_ENTRY_RANK[dept]||
+  TEST_RANKS[dept]?.includes(rank);
+ return allowedPoliceEntryRanks(actor).includes(rank);
+}
 export const STANDARD_ENTRY_RANK=Object.freeze({
   politie:'Agent',brandweer:'Brandweerman',ambulance:'Ambulancier',depannage:'Depanneur'
 });
@@ -40,7 +54,8 @@ export function canAuthoriseExceptionalPoliceRank(actor,dept){
   if(dept!=='politie'||!actor?.departments?.includes('politie'))return false;
   const scoped=roleForDepartment(actor,'politie');
   return actor.role==='beheerder'&&scoped==='beheerder'||
-    actor.role==='korpsleiding'&&scoped==='korpsleiding';
+    actor.role==='korpsleiding'&&scoped==='korpsleiding'||
+    actor.role==='officierenkader'&&scoped==='officierenkader';
 }
 function safe(v,min,max,label){
   const s=typeof v==='string'?v.trim():'';
@@ -83,7 +98,16 @@ export function validateNewPersonnel(body){
     throw Error('Ongeldige hulpdienst of Discord-ID');
   const name=safe(body.name,2,120,'Naam'),call=safe(body.call,1,24,'Roepnummer');
   const rank=String(body.rank||'');
-  if(!TEST_RANKS[dept]?.includes(rank))throw Error('Kies een geldige instaprang voor deze hulpdienst');
+  if(!(dept==='politie'?ENTRY_POLICE_RANKS:TEST_RANKS[dept])?.includes(rank))
+    throw Error('Kies een geldige instaprang voor deze hulpdienst');
+  if(dept==='politie'){
+   const numeric=policeCallNumber(call);
+   const expected=POLICE_RANK_CHOICES.find(x=>x.rank===rank);
+   if(numeric!==null&&(numeric===900||numeric===910||
+      !expected?.hundreds.includes(Math.floor(numeric/100))||
+      numeric>=900&&numeric<920))
+    throw Error('Roepnummer komt niet overeen met de gekozen instaprang');
+  }
   const exceptional=exceptionalPoliceRank(rank,dept);
   const requestedException=body.exceptionalRank===true;
   const exceptionReason=typeof body.exceptionReason==='string'?body.exceptionReason.trim():'';
@@ -96,7 +120,8 @@ export function validateNewPersonnel(body){
     exceptionalRank:exceptional,exceptionReason:exceptional?exceptionReason:null};
 }
 export function asCreatedPersonnel(d){
-  if(!d||!validPersonnelKey(d.dept,d.discordId)||!TEST_RANKS[d.dept].includes(d.rank)||
+  if(!d||!validPersonnelKey(d.dept,d.discordId)||
+     !(d.dept==='politie'?ENTRY_POLICE_RANKS:TEST_RANKS[d.dept])?.includes(d.rank)||
      typeof d.name!=='string'||typeof d.call!=='string'||!EDITABLE_STATUSES.includes(d.status))return null;
   const {dept,discordId,name,call,rank,status}=d;
   return {id:dept+':'+discordId,personId:discordId,name,call,dept,rank,

@@ -57,6 +57,8 @@ import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from '
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 import {eligibleForTechnicalProfile,verifiedPoliceRank,verifiedPoliceMembership,technicalCookieIsValid,technicalActor} from './portal-profile-mode.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
+import {readPoliceSeriesAssignments} from './police-series-store.js';
+import {overlayPoliceSeriesAssignments} from './police-series-policy.js';
 import {installPersonnelLifecycleRoutes} from './personnel-lifecycle-routes.js';
 import {PERSONNEL_LIFECYCLE_COLLECTION,lifecycleKey,overlayPersonnelLifecycle} from './personnel-lifecycle-policy.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
@@ -490,14 +492,15 @@ async function getSourceSnapshot(forceRefresh=false){
 async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
-  const [created,edits,specialties,rosterConfigs,identityAliases]=await Promise.all([
+  const [created,edits,specialties,rosterConfigs,identityAliases,policeSeries]=await Promise.all([
     on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(500).get():null,
     process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'
       ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null,
     specialtyReadEnabled(process.env)
       ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null,
     specialtyReadEnabled(process.env)?loadRosterConfigs():null,
-    getFirestore().collection(DC_TRANSFER_ALIASES).limit(201).get()
+    getFirestore().collection(DC_TRANSFER_ALIASES).limit(201).get(),
+    readPoliceSeriesAssignments()
   ]);
   if(created?.size===500||edits?.size===400||specialties?.size===600||identityAliases.size===201)
     throw Error('Te veel personeelsrecords; migratiecontrole nodig');
@@ -508,7 +511,8 @@ async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const keys=new Set(canonicalBase.map(p=>p.dept+':'+p.personId));
   const extra=canonicalAdded.filter(p=>!keys.has(p.dept+':'+p.personId));
   const combined=canonicalBase.concat(extra);
-  const personnel=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
+  const edited=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
+  const personnel=overlayPoliceSeriesAssignments(edited,policeSeries);
   let visible=specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel;
   // Reuse the already-authorized BelgiumPD members API to project fresh,
   // verified Discord specializations across the personnel roster. Display

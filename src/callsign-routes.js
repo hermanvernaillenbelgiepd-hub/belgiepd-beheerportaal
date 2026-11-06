@@ -4,6 +4,7 @@ import {personnelCallClaimId} from './personnel-editor-policy.js';
 import {canDecide, canReview, checkApplicant, eligibility, isDiscordId} from './callsign-utils.js';
 import {getPolicePlan, performPoliceSync} from './callsign-sync.js';
 import {initialFixedCallSpecialties,PERSONNEL_SPECIALIZATIONS_COLLECTION} from './specialization-policy.js';
+import {ensurePoliceSeries} from './police-series-store.js';
 import {actorFromPersonnel} from './registrations.js';
 const s=x=>String(x??'').trim();
 const timestamp=x=>x?.toDate?.().toISOString()||null;
@@ -183,7 +184,26 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
         const reservation=await tempRef.get();
         if(reservation.exists&&reservation.get('discordId')===id)batch.delete(tempRef);
       }
-      await batch.commit();onPersonnelChanged();res.json({approved:true,...synced});
+      await batch.commit();onPersonnelChanged();
+      // Sheet sync has already been verified. A separate, idempotent
+      // Firestore transaction records the least-populated operational series.
+      // A failed allocation never reverses a completed fixed-call assignment.
+      let series=null,seriesPending=false;
+      try{
+       const roster=await getSnapshot({forceRefresh:true});
+       if(roster.stale)throw Error('Reeksbalans is niet actueel');
+       const subject=roster.data.find(p=>p.dept==='politie'&&p.personId===id)||
+        {dept:'politie',personId:id,call:String(plan.call),series:'Instroom'};
+       series=await ensurePoliceSeries(subject,roster.data,{
+        actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
+        reason:'Eerste vaste roepnummer: automatische evenwichtige reeksindeling'});
+      }catch(err){
+       seriesPending=true;
+       console.warn('Vast roepnummer gesynchroniseerd; reeks nog te controleren:',
+        err?.code||err?.message||'onbekend');
+      }
+      onPersonnelChanged();
+      res.json({approved:true,...synced,series,seriesPending});
     }catch(e){if(locked){try{await collection().doc(id).update({status:'sync_needs_review',updatedAt:FieldValue.serverTimestamp()});}catch{}} if(e.status)return res.status(e.status).json({error:e.message});if(!locked&&/Discord ID bestaat|Personeelsnaam bestaat|Geen vrij|gewijzigd/i.test(e.message))return res.status(409).json({error:e.message});if(locked)return res.status(503).json({error:'Schrijfactie moet handmatig gecontroleerd worden. NIET opnieuw goedkeuren. Bekijk POLITIE, PolitieInfo en Firestore.'});return fail(res,e)}
   });
 }

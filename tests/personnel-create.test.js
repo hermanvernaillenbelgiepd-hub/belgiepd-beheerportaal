@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {testCreateEnabled,personnelDataEnabled,personnelCreationEnabled,
-  STANDARD_ENTRY_RANK,exceptionalPoliceRank,canAuthoriseExceptionalPoliceRank,
+  STANDARD_ENTRY_RANK,ENTRY_POLICE_RANKS,allowedPoliceEntryRanks,canAuthorisePoliceEntryRank,exceptionalPoliceRank,canAuthoriseExceptionalPoliceRank,
   nextPoliceRank,validatePolicePromotion,
   canCreatePersonnel,validateNewPersonnel,
   asCreatedPersonnel,uniqueNewPerson,visiblePendingPersonnel} from '../src/personnel-create.js';
@@ -52,10 +52,15 @@ test('Police starts as Agent unless leadership independently authorises and logs
   assert.equal(exceptionalPoliceRank('Agent','politie'),false);
   assert.equal(exceptionalPoliceRank('Inspecteur','politie'),true);
   assert.equal(exceptionalPoliceRank('Ambulancier','ambulance'),false);
-  assert.equal(canAuthoriseExceptionalPoliceRank(actor,'politie'),false);
+  assert.equal(canAuthoriseExceptionalPoliceRank(actor,'politie'),true);
+  assert.deepEqual(allowedPoliceEntryRanks(actor),['Agent','Aspirant Inspecteur']);
+  assert.equal(canAuthorisePoliceEntryRank(actor,'politie','Aspirant Inspecteur'),true);
+  assert.equal(canAuthorisePoliceEntryRank(actor,'politie','Inspecteur'),false);
   const chief={role:'korpsleiding',departments:['politie'],departmentRoles:{politie:'korpsleiding'}};
   const admin={role:'beheerder',departments:['politie'],departmentRoles:{politie:'beheerder'}};
   assert.equal(canAuthoriseExceptionalPoliceRank(chief,'politie'),true);
+  assert.equal(allowedPoliceEntryRanks(chief).includes('Aspirant Commissaris'),true);
+  assert.equal(canAuthorisePoliceEntryRank(chief,'politie','Eerste Hoofdinspecteur'),true);
   assert.equal(canAuthoriseExceptionalPoliceRank(admin,'politie'),true);
   assert.equal(canAuthoriseExceptionalPoliceRank({...chief,departmentRoles:{politie:'officierenkader'}},'politie'),false);
   assert.equal(canAuthoriseExceptionalPoliceRank(admin,'ambulance'),false);
@@ -135,4 +140,23 @@ test('Police promotions advance only one grade and require a recorded reason',()
   assert.throws(()=>validatePolicePromotion({...change,discordId:person.discordId}));
   assert.throws(()=>validatePolicePromotion({...change,expectedRank:'Hoofdinspecteur'}));
   assert.equal(asCreatedPersonnel({...person,status:'In opleiding'}).createdInFirestore,true);
+});
+
+test('A-INP entry is allowed for officer; higher ranks only for corps with matching call',()=>{
+ const officer={role:'officierenkader',departments:['politie'],
+  departmentRoles:{politie:'officierenkader'}};
+ const chief={...officer,role:'korpsleiding',
+  departmentRoles:{politie:'korpsleiding'}};
+ const reason='Uitdrukkelijke kaderbeslissing en controle van voorafgaande opleiding.';
+ const entry={dept:'politie',discordId:'444444444444444444',
+  name:'Nieuw inspecteur',call:'315',rank:'Aspirant Inspecteur',
+  exceptionalRank:true,exceptionReason:reason,
+  reason:'Nieuwe inschrijving met correcte rang'};
+ assert.equal(canAuthorisePoliceEntryRank(officer,'politie',entry.rank),true);
+ assert.equal(canAuthorisePoliceEntryRank(officer,'politie','Inspecteur'),false);
+ assert.equal(canAuthorisePoliceEntryRank(chief,'politie','Inspecteur'),true);
+ assert.equal(validateNewPersonnel(entry).rank,entry.rank);
+ assert.throws(()=>validateNewPersonnel({...entry,call:'215'}),/[Rr]oepnummer/);
+ assert.equal(asCreatedPersonnel({...entry,status:'In opleiding'}).rank,entry.rank);
+ assert.equal(ENTRY_POLICE_RANKS.includes('Aspirant Commissaris'),true);
 });

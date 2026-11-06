@@ -11,7 +11,7 @@ import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
 import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
   personnelDataEnabled,personnelCreationEnabled,canCreatePersonnel,canAuthoriseExceptionalPoliceRank,
   nextPoliceRank,validatePolicePromotion,
-  STANDARD_ENTRY_RANK,validateNewPersonnel,uniqueNewPerson,
+  STANDARD_ENTRY_RANK,allowedPoliceEntryRanks,canAuthorisePoliceEntryRank,validateNewPersonnel,uniqueNewPerson,
   visiblePendingPersonnel} from './personnel-create.js';
 
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
@@ -19,6 +19,10 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {isPolice9xx} from './verified-police-cadre.js';
 import {checkServiceEnrollment} from './service-enrollment-policy.js';
 import {displaySeries} from './normalize.js';
+import {roleForDepartment} from './leave-policy.js';
+import {validatePoliceSeriesChange,isFixedPoliceAgent,policeSeriesNumber,POLICE_SERIES_COLLECTION,POLICE_SERIES_CONTROL} from './police-series-policy.js';
+import {reservePoliceSeriesWithinTransaction} from './police-series-store.js';
+import {PERSONNEL_SPECIALIZATIONS_COLLECTION,INITIAL_POLICE_SPECIALTIES} from './specialization-policy.js';
 import {occupiedPoliceCalls,policeCallNumber} from './callsign-utils.js';
 import {readPoliceCallOccupation} from './police-call-availability.js';
 import {canChangePoliceGrade,allowedPoliceGradeChoices,
@@ -34,6 +38,18 @@ function safeResponse(res,e){
 function userError(status,message){return Object.assign(new Error(message),{publicStatus:status})}
 export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser=requireUser,getSnapshot}){
   const collection=()=>getFirestore().collection(PERSONNEL_EDITS_COLLECTION);
+  const canEditSeries=(actor,person)=>{
+    if(!isFixedPoliceAgent(person)||!canEditGeneralPersonnelInfo(actor,person)||
+       actor?.uid!=='discord:'+actor?.discordId)return false;
+    const scoped=roleForDepartment(actor,'politie');
+    const officer=actor.role==='officierenkader'&&scoped==='officierenkader'&&
+       actor.discordPoliceRank==='officierenkader';
+    const chief=actor.role==='korpsleiding'&&scoped==='korpsleiding'&&
+       (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true);
+    const technical=actor.portalTechnicalMode===true&&
+       actor.profileTechnicalAvailable===true;
+    return officer||chief||technical;
+  };
   // Production defaults to read-only; authorized users cannot bypass the flag.
   const writes=()=>process.env.BPD_ENABLE_PERSONNEL_WRITES==='true';
   app.get('/api/personnel/overview',requireDossierUser,async(req,res)=>{
@@ -64,7 +80,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           canOpenDossier,canManageLifecycle:canManagePersonnelLifecycle(req.bpd,p),
           canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
           canChangeRank:canChangePoliceGrade(req.bpd,p),
-          series:displaySeries(p.seriesRaw??p.series,p.rank,p.dept,p.call),status:p.status,
+          series:displaySeries(p.seriesRaw??p.series,p.rank,p.dept,p.call),
+          canChangeSeries:writes()&&canEditSeries(req.bpd,p),
+          seriesRevision:p.policeSeriesRevision??0,status:p.status,
           // Private activity summary only for authenticated service managers.
           hours:Number.isFinite(p.hours)?p.hours:null,
           totalHours:Number.isFinite(p.totalHours)?p.totalHours:null,
@@ -111,7 +129,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'&&
           process.env.BPD_ENABLE_PERSONNEL_RANK_CHANGES==='true',
         rankOptions:allowedPoliceGradeChoices(req.bpd),
-        createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,dept==='politie'&&!canAuthoriseExceptionalPoliceRank(req.bpd,dept)?[STANDARD_ENTRY_RANK.politie]:TEST_RANKS[dept]])),
+        createRanks:Object.fromEntries(allowed.filter(dept=>canCreatePersonnel(req.bpd,dept)).map(dept=>[dept,dept==='politie'?allowedPoliceEntryRanks(req.bpd):TEST_RANKS[dept]])),
         overridesActive:process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true',
         sourceStale:snapshot.stale,limited:edits.size===400,statuses:EDITABLE_STATUSES});
     }catch(e){return safeResponse(res,e)}
@@ -146,8 +164,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
     try{proposed=validateNewPersonnel(req.body)}catch(e){return error(res,400,e.message)}
     if(!canCreatePersonnel(req.bpd,proposed.dept))
       return error(res,403,'Geen bevoegdheid om personeelsleden in deze hulpdienst aan te maken');
-    if(proposed.exceptionalRank&&!canAuthoriseExceptionalPoliceRank(req.bpd,proposed.dept))
-      return error(res,403,'Een uitzonderlijke politie-instaprang vereist toestemming van korpsleiding of beheerder');
+    if(!canAuthorisePoliceEntryRank(req.bpd,proposed.dept,proposed.rank))
+      return error(res,403,'Deze instaprang vereist een hogere, geverifieerde kaderbevoegdheid');
     try{
       // Reject intake rather than trusting a stale cached personnel roster.
       const snap=await getSnapshot({forceRefresh:true});
@@ -172,15 +190,27 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         .doc(personnelCallClaimId('politie','S'+numeric));
       const fixedClaim=numeric===null?null:store.collection('bpd_callsign_reservations')
         .doc(String(numeric));
+      let assignedSeries=null;
+      const wantsFixedDefaults=proposed.dept==='politie'&&numeric!==null&&
+        /^\\d{15,22}$/.test(String(proposed.discordId||''));
+      const autoSpecialRef=wantsFixedDefaults?store.collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
+        .doc('politie_'+proposed.discordId):null;
       await store.runTransaction(async tx=>{
         const [existing,reserved,canonical,prefixed,fixed]=await Promise.all([
          tx.get(ref),tx.get(claim),
          canonicalClaim?tx.get(canonicalClaim):Promise.resolve(null),
          prefixedClaim?tx.get(prefixedClaim):Promise.resolve(null),
          fixedClaim?tx.get(fixedClaim):Promise.resolve(null)]);
+        const autoSpecialDoc=autoSpecialRef?await tx.get(autoSpecialRef):null;
         if(existing.exists)throw userError(409,'Deze personeelsfiche bestaat al');
         if(reserved.exists||canonical?.exists||prefixed?.exists||fixed?.exists)
          throw userError(409,'Roepnummer ondertussen gereserveerd. Vraag het volgende vrije nummer op');
+        if(wantsFixedDefaults){
+         assignedSeries=await reservePoliceSeriesWithinTransaction(tx,store,snap.data,
+          {dept:'politie',personId:proposed.discordId,call:proposed.call,series:'Instroom'},
+          {actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
+           reason:'Eerste vaste roepnummer: automatische reeksindeling'});
+        }
         const doc={dept:proposed.dept,discordId:proposed.discordId,
           name:proposed.name,call:proposed.call,rank:proposed.rank,
           status:'In opleiding',state:pending?'awaiting_discord':'linked',
@@ -191,6 +221,31 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           exceptionalEntryReason:proposed.exceptionReason,
           createdAt:FieldValue.serverTimestamp()};
         tx.create(ref,doc);
+        if(autoSpecialRef){
+         const prior=autoSpecialDoc?.data()||{};
+         const values={...(prior.values||{})};
+         const added=[];
+         for(const label of INITIAL_POLICE_SPECIALTIES){
+          if(values[label]?.source==='manual')continue;
+          if(!values[label]||values[label].value==='Niet ingevuld'){
+           values[label]={value:'Ja',source:'automatic-fixed-call'};
+           added.push(label);
+          }
+         }
+         if(added.length){
+          const revision=(Number.isSafeInteger(prior.revision)?prior.revision:0)+1;
+          tx.set(autoSpecialRef,{dept:'politie',discordId:proposed.discordId,values,
+           revision,source:'created_fixed_callsign',updatedAt:FieldValue.serverTimestamp(),
+           updatedByUid:req.bpd.uid,updatedByDiscordId:req.bpd.discordId},{merge:true});
+          for(const label of added)tx.create(autoSpecialRef.collection('audit').doc(),{
+           action:'initial_fixed_callsign_specialty',label,value:'Ja',
+           previous:'Niet ingevuld',source:'automatic',
+           reason:'Automatisch bij inschrijving met vast politieroepnummer',
+           revision,actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
+           at:FieldValue.serverTimestamp()
+          });
+         }
+        }
         // Every spelling of a 200–299 manual CALL holds the same canonical
         // Police lock, also checked by the fixed-call approval workflow.
         if(canonicalClaim&&canonicalClaim.path!==claim.path)
@@ -217,7 +272,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           at:FieldValue.serverTimestamp()
         });
       });
-      return res.status(201).json({created:true,pending,internalId:pending?ref.id:null,
+      return res.status(201).json({created:true,pending,series:assignedSeries,internalId:pending?ref.id:null,
         discordId:proposed.discordId,dept:proposed.dept});
     }catch(e){return safeResponse(res,e)}
   });
@@ -279,6 +334,65 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       return res.json({status:'awaiting_approval'});
     }catch(e){return safeResponse(res,e)}
   });
+  // Series changes are separate from ranks, access rights and Discord roles.
+  app.post('/api/personnel/politie/:discordId/series',requireDossierUser,async(req,res)=>{
+    if(!writes())return error(res,503,'Personeelswijzigingen staan uit');
+    if(!validPersonnelKey('politie',req.params.discordId))
+      return error(res,400,'Ongeldige personeelsidentiteit');
+    let proposal;
+    try{proposal=validatePoliceSeriesChange(req.body)}
+    catch(e){return error(res,400,e.message)}
+    try{
+     const snap=await getSnapshot({forceRefresh:true});
+     if(snap.stale)return error(res,503,'Personeelsbron is niet actueel');
+     const matches=snap.data.filter(p=>p.dept==='politie'&&p.personId===req.params.discordId);
+     if(matches.length!==1)return error(res,409,'Geen eenduidige personeelsfiche');
+     const staff=matches[0];
+     if(!canEditSeries(req.bpd,staff))
+      return error(res,403,'Alleen bevoegd Officierenkader, Korpsleiding of technisch beheer');
+     if(policeSeriesNumber(staff.series)===proposal.series)
+      return error(res,409,'Het personeelslid staat al in deze reeks');
+     const db=getFirestore();
+     const ref=db.collection(POLICE_SERIES_COLLECTION).doc(staff.personId);
+     const control=db.collection(POLICE_SERIES_CONTROL).doc('agentreeksen');
+     const revision=await db.runTransaction(async tx=>{
+      const [saved,lock]=await Promise.all([tx.get(ref),tx.get(control)]);
+      const previous=Number.isSafeInteger(saved.get('revision'))?saved.get('revision'):0;
+      if(previous!==proposal.expectedRevision)
+       throw userError(409,'De reeks is intussen gewijzigd. Vernieuw de personeelsfiche.');
+      const old=policeSeriesNumber(saved.get('series'))||
+       policeSeriesNumber(staff.seriesRaw)||policeSeriesNumber(staff.series);
+      const at=FieldValue.serverTimestamp();
+      tx.set(ref,{dept:'politie',discordId:staff.personId,
+       series:proposal.series,revision:previous+1,source:'approved_manual_series',
+       updatedAt:at,updatedByUid:req.bpd.uid,
+       updatedByDiscordId:req.bpd.discordId},{merge:true});
+      tx.set(control,{revision:(lock.get('revision')||0)+1,updatedAt:at},{merge:true});
+      tx.create(ref.collection('audit').doc(),{action:'police_series_changed',
+       previous:old,series:proposal.series,reason:proposal.reason,
+       actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,at});
+      tx.create(db.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+       type:'police_series_changed',dept:'politie',discordId:staff.personId,
+       name:staff.name,before:old?String(old):'Niet ingedeeld',
+       after:String(proposal.series),reason:proposal.reason,
+       actorDiscordId:req.bpd.discordId,at});
+      tx.create(db.collection('bpd_cases').doc('politie_'+staff.personId)
+       .collection('entries').doc(),{
+        type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+        movement:'Reekswissel',dept:'politie',subjectDiscordId:staff.personId,
+        subjectNameAtCreation:staff.name,subjectCallAtCreation:staff.call,
+        previousSeries:old||null,newSeries:proposal.series,
+        eventDate:new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Brussels'}),
+        details:'Reeks '+(old||'niet ingedeeld')+' → '+proposal.series+
+          '. '+proposal.reason,registeredBy:{
+         discordId:req.bpd.discordId,name:req.bpd.name||'Kaderlid'},
+        source:'approved_police_series_change',createdAt:at,modifiedAt:null});
+      return previous+1;
+     });
+     return res.json({saved:true,series:proposal.series,revision,
+       rankChanged:false,discordRolesChanged:false});
+    }catch(e){return safeResponse(res,e)}
+  });
   // Explicit kader approval does not grant any Firebase/Discord module roles.
   app.post('/api/personnel/link/:internalId/approve',requireUser,async(req,res)=>{
     if(!linkEnabled(process.env))
@@ -307,10 +421,14 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const created=store.collection(CREATED_PERSONNEL_COLLECTION).doc(record.dept+'_'+discordId);
       const claim=store.collection('bpd_personnel_call_claims')
         .doc(personnelCallClaimId(record.dept,record.call));
+      const linkedFixed=record.dept==='politie'&&/^2\d\d$/.test(String(record.call||''));
+      const linkedSpecialRef=linkedFixed?store.collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
+        .doc('politie_'+discordId):null;
       await store.runTransaction(async tx=>{
         const [current,existing,reserved]=await Promise.all([
           tx.get(pending),tx.get(created),tx.get(claim)
         ]);
+        const oldSpecial=linkedSpecialRef?await tx.get(linkedSpecialRef):null;
         if(!current.exists||existing.exists||
            !mayApproveLink(req.bpd,current.data(),member,process.env.DISCORD_GUILD_ID))
           throw userError(409,'De koppelaanvraag is gewijzigd of deze medewerker bestaat al');
@@ -318,6 +436,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
            reserved.get('discordId')!==null)
           throw userError(409,'De roepnummerreservering komt niet overeen');
         const d=current.data();
+        if(d.dept==='politie'&&/^2\\d\\d$/.test(String(d.call||''))){
+         await reservePoliceSeriesWithinTransaction(tx,store,snap.data,
+          {dept:'politie',personId:discordId,call:d.call,series:'Instroom'},
+          {actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
+           reason:'Automatische reeksindeling na goedgekeurde Discord-koppeling'});
+        }
         tx.create(created,{dept:d.dept,discordId,internalId:pending.id,
           name:d.name,call:d.call,rank:d.rank,status:'In opleiding',
           entryRank:d.entryRank||d.rank,
@@ -325,6 +449,30 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           exceptionalEntryReason:d.exceptionalEntryReason||null,
           revision:0,state:'linked',createdAt:d.createdAt,
           linkedAt:FieldValue.serverTimestamp(),linkedByUid:req.bpd.uid});
+        if(linkedSpecialRef){
+         const previous=oldSpecial?.data()||{};
+         const values={...(previous.values||{})};
+         const added=[];
+         for(const label of INITIAL_POLICE_SPECIALTIES){
+          if(values[label]?.source==='manual')continue;
+          if(!values[label]||values[label].value==='Niet ingevuld'){
+           values[label]={value:'Ja',source:'automatic-fixed-call'};
+           added.push(label);
+          }
+         }
+         if(added.length){
+          const revision=(Number.isSafeInteger(previous.revision)?previous.revision:0)+1;
+          tx.set(linkedSpecialRef,{dept:'politie',discordId,values,revision,
+           source:'linked_fixed_callsign',updatedAt:FieldValue.serverTimestamp(),
+           updatedByUid:req.bpd.uid,updatedByDiscordId:req.bpd.discordId},{merge:true});
+          for(const label of added)tx.create(linkedSpecialRef.collection('audit').doc(),{
+           action:'initial_fixed_callsign_specialty',label,
+           previous:'Niet ingevuld',value:'Ja',source:'automatic',
+           reason:'Automatisch na goedgekeurde Discord-koppeling vast roepnummer',
+           revision,actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
+           at:FieldValue.serverTimestamp()});
+         }
+        }
         tx.update(pending,{state:'linked',discordId,linkedAt:FieldValue.serverTimestamp(),
           linkedByUid:req.bpd.uid,linkApprovedReason:reason});
         tx.update(claim,{discordId,internalId:null,updatedAt:FieldValue.serverTimestamp()});
@@ -629,18 +777,22 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const editLog=collection().doc(key).collection('audit');
       const createLog=getFirestore().collection(CREATED_PERSONNEL_COLLECTION)
         .doc(key).collection('audit');
-      const [edits,created]=await Promise.all([
+      const [edits,created,seriesHistory]=await Promise.all([
         editLog.orderBy('at','desc').limit(25).get(),
         personnelDataEnabled(process.env)
-          ?createLog.orderBy('at','desc').limit(25).get():Promise.resolve({docs:[]})
+          ?createLog.orderBy('at','desc').limit(25).get():Promise.resolve({docs:[]}),
+        req.params.dept==='politie'?getFirestore().collection(POLICE_SERIES_COLLECTION)
+          .doc(req.params.discordId).collection('audit').orderBy('at','desc')
+          .limit(25).get():Promise.resolve({docs:[]})
       ]);
       const allowedActorDepartments=Array.isArray(req.bpd.dossierAllowedDepartments)?
         req.bpd.dossierAllowedDepartments:[req.params.dept];
-      const changes=[...edits.docs,...created.docs].map(d=>{
+      const changes=[...edits.docs,...created.docs,...seriesHistory.docs].map(d=>{
         const e=d.data(),actorId=e.actorDiscordId||e.byDiscordId||null;
         return {action:e.action||'edit',revision:e.revision,
           previous:e.previous||null,next:e.next||null,
           previousRank:e.previousRank??null,newRank:e.newRank??null,
+          previousSeries:e.previous??null,newSeries:e.series??null,
           standardRank:e.standardRank??null,exceptional:e.exceptional===true,
           reason:e.reason||'',at:asTime(e.at),actorDiscordId:actorId,
           actorCurrent:currentPersonnelAuditActor(actorId,req.params.dept,
