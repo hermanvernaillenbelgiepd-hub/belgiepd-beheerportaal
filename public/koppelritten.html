@@ -76,7 +76,7 @@ async function refresh(){
   const data=await api('/api/checkrides/context');
   scopes=data.tracks||[];canWrite=data.writesEnabled===true;
   const track=$('track');track.replaceChildren(...scopes.map(x=>new Option(x.label,x.code)));
-  if(!scopes.length){status('Je hebt geen geverifieerde instructeurs- of leidingrechten voor een koppelritonderdeel.');return}
+  if(!scopes.length){status(data.accessNotice||'Je hebt geen geverifieerde instructeurs- of leidingrechten voor een koppelritonderdeel.');return}
   $('panel').hidden=false;$('save').disabled=!canWrite;
   await showTrack();
   status('Toegang gecontroleerd. Je ziet alleen de onderdelen waarvoor je bevoegd bent.');

@@ -1,5 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {CHECKRIDE_TRACKS,verifiedCheckrideRoles,permittedCheckrideTracks,
+import {CHECKRIDE_TRACKS,permittedCheckrideTracks,checkrideAccessNotice,
   eligibleCheckrideSubject,checkrideInput} from './checkride-policy.js';
 
 const ID=/^\d{15,22}$/;
@@ -25,7 +25,7 @@ export function installCheckrideRoutes(app,{requireUser,getSnapshot}){
         return deny(res,503,'Personeelslijst is niet actueel');
       const allowed=permittedCheckrideTracks(actor,proof.data(),snapshot.data,
         process.env.DISCORD_GUILD_ID);
-      req.checkride={actor,roster:snapshot.data,allowed};
+      req.checkride={actor,member:proof.data(),roster:snapshot.data,allowed};
       res.set('Cache-Control','private, no-store');
       next();
     }catch(e){problem(res,e)}
@@ -41,7 +41,10 @@ export function installCheckrideRoutes(app,{requireUser,getSnapshot}){
   app.get('/api/checkrides/context',requireUser,authorize,(req,res)=>{
     res.json({tracks:req.checkride.allowed.map(code=>({
       code,department:CHECKRIDE_TRACKS[code].dept,label:CHECKRIDE_TRACKS[code].label
-    })),writesEnabled:process.env.BPD_ENABLE_TRAINING_WRITES==='true'});
+    })),writesEnabled:process.env.BPD_ENABLE_TRAINING_WRITES==='true',
+      accessNotice:req.checkride.allowed.length?null:
+        checkrideAccessNotice(req.checkride.actor,req.checkride.member,
+          req.checkride.roster,process.env.DISCORD_GUILD_ID)});
   });
   app.get('/api/checkrides/subjects',requireUser,authorize,async(req,res)=>{
     const track=scoped(req,res);if(!track)return;

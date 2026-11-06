@@ -24,11 +24,16 @@ export const CHECKRIDE_TRACKS=Object.freeze({
     excluded:['1309532438019706966','1492485336197234728']})
 });
 const ID=/^\d{15,22}$/;
+// An already authenticated Discord identity is checked by the portal on every
+// request. For read/write training evaluations, allow the same maximum role
+// age as the official Police cadre and training scheduling screens (24 h).
+// Roles must still be valid, guild-bound and match the person/service exactly.
+export const CHECKRIDE_ROLE_MAX_AGE_MS=24*60*60*1000;
 const SCORES=['kennis','praktijk','communicatie','veiligheid','zelfstandigheid'];
 const OUTCOMES=['voldoende','verder_begeleiden','herkansing'];
 const KINDS=['eerste','vervolg','eind'];
 const eligibleId=value=>typeof value==='string'&&ID.test(value);
-export function verifiedCheckrideRoles(member,guildId,now=Date.now(),maxAgeMs=15*60*1000){
+export function verifiedCheckrideRoles(member,guildId,now=Date.now(),maxAgeMs=CHECKRIDE_ROLE_MAX_AGE_MS){
   if(!eligibleId(guildId)||member?.guildId!==guildId||
     !Number.isSafeInteger(member?.verifiedAt)||
     member.verifiedAt>now||now-member.verifiedAt>maxAgeMs||
@@ -65,6 +70,24 @@ export function permittedCheckrideTracks(actor,member,roster,guildId,now=Date.no
     // Burgerraad role is itself the independent service proof.
     return false;
   }).map(t=>t.code);
+}
+// Only a scoped, authenticated actor can receive this explanatory response.
+// No roster details, role IDs or other persons are disclosed.
+export function checkrideAccessNotice(actor,member,roster,guildId,now=Date.now()){
+  if(!eligibleId(actor?.discordId)||actor.uid!=='discord:'+actor.discordId)
+    return 'Gebruik je persoonlijke Discord-aanmelding (geen Google-noodlogin).';
+  if(!verifiedCheckrideRoles(member,guildId,now))
+    return 'Je Discordrolverificatie is verlopen of ontbreekt. Klik op Discordrollen vernieuwen en meld je opnieuw aan.';
+  if(!Array.isArray(roster))return 'De personeelslijst kon niet worden gecontroleerd.';
+  const own=roster.filter(p=>p?.personId===actor.discordId);
+  if(!own.length)return 'Je Discord-ID heeft geen gekoppelde personeelsfiche. Controleer de personeelskoppeling.';
+  const ownedDepts=new Set(own.map(p=>p.dept));
+  if([...ownedDepts].some(dept=>own.filter(p=>p.dept===dept).length!==1))
+    return 'Er zijn meerdere personeelsfiches met jouw Discord-ID binnen een dienst. Laat de koppeling nakijken.';
+  if(!actor.departments?.some(dept=>ownedDepts.has(dept))&&
+     !verifiedCheckrideRoles(member,guildId,now)?.has(CHECKRIDE_TRACKS.burger_io.instructor))
+    return 'Je personeelsfiche bestaat, maar de dienstmachtiging van je portaalaccount ontbreekt. Controleer Gebruikersbeheer.';
+  return 'Er werd geen bijpassende, geverifieerde instructeurs- of leidinggevende Discordrol gevonden. Controleer de toegewezen rollen.';
 }
 export function eligibleCheckrideSubject(trackCode,person,member,guildId,now=Date.now()){
   const track=CHECKRIDE_TRACKS[trackCode];

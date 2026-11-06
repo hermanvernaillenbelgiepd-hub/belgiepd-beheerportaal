@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CHECKRIDE_TRACKS,verifiedCheckrideRoles,permittedCheckrideTracks,
- eligibleCheckrideSubject,checkrideInput} from '../src/checkride-policy.js';
+ eligibleCheckrideSubject,checkrideInput,checkrideAccessNotice,CHECKRIDE_ROLE_MAX_AGE_MS} from '../src/checkride-policy.js';
 
 const GUILD='123456789012345678';
 const M='987654321098765432';
@@ -43,8 +43,14 @@ test('AMB and BW teaching roles stay separate',()=>{
  assert.deepEqual(permittedCheckrideTracks(actor('brandweer'),member('1309532437952466989'),
  roster('brandweer'),GUILD,now),['brandweer_stage']);
 });
-test('stale role proofs never authorize instructors',()=>{
- assert.equal(verifiedCheckrideRoles({guildId:GUILD,verifiedAt:now-16*60*1000,roleIds:['1345302115689431061']},GUILD,now),null);
+test('instructor role proof stays valid during the ordinary training day',()=>{
+ assert.equal(CHECKRIDE_ROLE_MAX_AGE_MS,24*60*60*1000);
+ assert.deepEqual(permittedCheckrideTracks(actor('politie'),
+  {...member('1345302115689431061'),verifiedAt:now-4*60*60*1000},
+  roster('politie'),GUILD,now),['k9']);
+});
+test('expired role proofs never authorize instructors',()=>{
+ assert.equal(verifiedCheckrideRoles({guildId:GUILD,verifiedAt:now-25*60*60*1000,roleIds:['1345302115689431061']},GUILD,now),null);
 });
 test('wrong guild and invalid role IDs fail closed',()=>{
  assert.equal(verifiedCheckrideRoles(member('x'),GUILD,now),null);
@@ -88,4 +94,22 @@ test('unverified council role cannot open civilian assessments',()=>{
 test('protected 9xx police dossiers are not ordinary checkride trainees',()=>{
  assert.equal(eligibleCheckrideSubject('k9',{...profile('politie',S),call:'900'},
   member('1309532438053130326','1345297414612979713'),GUILD,now),false);
+});
+
+test('no access gives an actionable role-refresh explanation',()=>{
+ const message=checkrideAccessNotice(actor('politie'),
+  {...member('1345302115689431061'),verifiedAt:now-25*60*60*1000},
+  roster('politie'),GUILD,now);
+ assert.match(message,/Discordrollen vernieuwen/);
+});
+test('missing own service record gives a linkage explanation',()=>{
+ const message=checkrideAccessNotice(actor('politie'),member('1345302115689431061'),
+  [profile('brandweer')],GUILD,now);
+ assert.match(message,/dienstmachtiging/);
+});
+test('portal authorization and own staff record stay mandatory after freshness fix',()=>{
+ assert.deepEqual(permittedCheckrideTracks({...actor('politie'),departments:['brandweer']},
+  member('1345302115689431061'),roster('politie'),GUILD,now),[]);
+ assert.deepEqual(permittedCheckrideTracks(actor('politie'),
+  member('1345302115689431061'),[],GUILD,now),[]);
 });
