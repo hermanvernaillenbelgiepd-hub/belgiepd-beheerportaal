@@ -45,11 +45,20 @@ html:not([data-bpd-theme="dark"]) .link-option{background:#eaf2fc;border-color:#
 html:not([data-bpd-theme="dark"]) :is(.link-overview,.link-preview){background:#f5f8fd;color:#173557;border-color:#d3dfed}
 html:not([data-bpd-theme="dark"]) #linkStatus.bad{color:#a02232}
 [hidden]{display:none!important}
-</style><link rel="stylesheet" href="/bpd-navigation.css"></head>
+</style><link rel="stylesheet" href="/bpd-navigation.css">
+<link rel="stylesheet" href="/assets/organogram-decorations.css?v=central-awards-library-20261106"></head>
 <body><header><h1>📁 Beeldbibliotheek</h1><nav><a href="/gebruikersbeheer.html#uniformbeheer">🧥 Uniformatelier</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/rollenbeheer.html">Rollen & specialisaties</a><a href="/personeelsbeheer.html">Personeelsbeheer</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main>
 <p>Één afbeeldingsbibliotheek per hulpdienst. Upload hier patches, graden, specialisatiebadges, uniformfoto's en logo's. <strong>Hiermee ken je niemand een rang, rol of specialisatie toe.</strong> Bestaande Uniformbeheer-instellingen worden niet aangepast.</p>
 <div id="message" role="status" aria-live="polite">Aanmelding controleren…</div>
+<section class="panel" id="onderscheidingen" hidden aria-label="Onderscheidingenbibliotheek">
+ <h2>🎖️ Onderscheidingenbibliotheek</h2>
+ <p>Upload hier toekenbare medailles, erelinten en eretekens, of pas hun benaming aan.
+ Dit is een afzonderlijk beveiligde catalogus: een afbeelding toevoegen kent aan niemand een onderscheiding toe.
+ De bestaande toekenningen en hun historiek blijven behouden.</p>
+ <div id="decorationCatalogTools"></div>
+ <p class="hint">Toekennen en intrekken doe je in het <a href="/beheercentrum.html#awardManage">Beheercentrum → Onderscheidingen beheren</a>.</p>
+</section>
 <div id="editor" hidden>
 <section class="panel">
  <h2>Afbeelding toevoegen of vervangen</h2>
@@ -187,6 +196,7 @@ html:not([data-bpd-theme="dark"]) #linkStatus.bad{color:#a02232}
  <p class="hint">Een herstel wijzigt alleen de actieve afbeelding. Vorige versies en de auditgeschiedenis blijven bestaan.</p>
 </section>
 </div></main>
+<script src="/assets/organogram-decorations.js?v=central-awards-library-20261106"></script>
 <script type="module">
 import {setupPatchBulkImport} from '/patch-bulk-import.js';
 let setupPortalLogin;
@@ -195,7 +205,7 @@ const departments=[['politie','Politie'],['brandweer','Brandweer'],['ambulance',
  ['depannage','Depannage'],['burger','Burger'],['beveiliging','Beveiliging']];
 const kinds=[['specialty','Specialisatiebadge'],['rank','Gradenplaat / rangteken'],['patch','Patch'],
  ['uniform','Uniformfoto'],['helmet','Helm'],['profession','Beroepsteken'],
- ['logo','Dienstlogo'],['pictogram','Pictogram'],['medal','Medaille'],['award','Ereteken']];
+ ['logo','Dienstlogo'],['pictogram','Pictogram'],['medal','Medaille (uniformafbeelding)'],['award','Ereteken (uniformafbeelding)']];
 const labelFor=(list,value)=>list.find(x=>x[0]===value)?.[1]||value;
 const make=(tag,txt)=>{const x=document.createElement(tag);x.textContent=txt;return x};
 const opt=(value,label)=>{const x=make('option',label);x.value=value;return x};
@@ -587,6 +597,21 @@ async function load(){
   await loadSpecialtyMapping();
  }catch(e){$('editor').hidden=true;notify('Bibliotheek laden mislukt: '+e.message,true)}
 }
+async function loadAwardCatalogue(){
+ const section=$('onderscheidingen'),target=$('decorationCatalogTools');
+ section.hidden=true;target.replaceChildren();
+ if(!auth?.currentUser)return;
+ const userId=auth.currentUser.uid;
+ try{
+  const access=await api('/api/personnel-awards/catalog-access');
+  if(auth.currentUser?.uid!==userId)return;
+  if(access.canUpload!==true&&access.canRename!==true)return;
+  section.hidden=false;
+  await window.BPDDecorations?.uploadTools?.(auth,target);
+ }catch(_error){
+  if(auth?.currentUser?.uid===userId){section.hidden=true;target.replaceChildren();}
+ }
+}
 async function start(){
  try{
   const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(x=>x.json());
@@ -596,7 +621,7 @@ async function start(){
   authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
   auth=authMod.getAuth(app.initializeApp(cfg.firebaseConfig));
   setupPortalLogin({button:$('login'),auth,authModule:authMod,config:cfg,onError:e=>notify(e.message,true)});
-  authMod.onAuthStateChanged(auth,()=>{load().catch(e=>notify(e.message,true))});
+  authMod.onAuthStateChanged(auth,()=>{void loadAwardCatalogue();load().catch(e=>notify(e.message,true))});
  }catch(e){notify(e.message,true)}
 }
 setupPatchBulkImport({
