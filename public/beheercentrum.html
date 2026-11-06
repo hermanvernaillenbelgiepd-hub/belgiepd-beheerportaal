@@ -85,9 +85,9 @@ button:disabled{cursor:not-allowed;opacity:.55}
   <a class="tile" href="/gebruikersbeheer.html#dienstbeheer"><h3>🔐 Discord-rollen en toegang</h3><p>Goedkeuring, hulpdienstfuncties, handmatige uitzonderingen en roltoewijzingen.</p><small>Open gebruikersbeheer</small></a>
   <a class="tile" href="/personeelsbeheer.html"><h3>👥 Personeelsbeheer</h3><p>Personeelsfiches, dienstindeling, rangen en personeelsstatussen.</p><small>Open personeelsbeheer</small></a>
   <a class="tile" href="/documentencentrum.html"><h3>📚 Documenten en mappen</h3><p>Handboeken, presentaties, leslinks, leesrechten en documentarchief.</p><small>Open documentencentrum</small></a>
-  <a class="tile" href="#awardManage"><h3>🏅 Onderscheidingen toekennen</h3><p>Medailles en eretekens per politiemedewerker beheren, toekennen of intrekken met auditlog.</p><small>Open onderscheidingenbeheer</small></a>
-  <a class="tile" href="/beeldbibliotheek.html#onderscheidingen"><h3>📁 Onderscheidingenbibliotheek</h3><p>Upload medailles en eretekens of wijzig hun benaming zonder bestaande toekenningen te verliezen.</p><small>Open Beeldbibliotheek</small></a>
-  <a class="tile" href="#ae-beheer"><h3>🛡️ AE-functieniveau</h3><p>AE-I, AE-T, Teamleader of Instructeur corrigeren zonder Discord-rechten te wijzigen.</p><small>Open AE-beheer</small></a>
+  <a class="tile" id="awardTile" href="#awardManage" hidden><h3>🏅 Onderscheidingen toekennen</h3><p>Medailles en eretekens per politiemedewerker beheren, toekennen of intrekken met auditlog.</p><small>Open onderscheidingenbeheer</small></a>
+  <a class="tile" id="awardLibraryTile" href="/beeldbibliotheek.html#onderscheidingen" hidden><h3>📁 Onderscheidingenbibliotheek</h3><p>Upload medailles en eretekens of wijzig hun benaming zonder bestaande toekenningen te verliezen.</p><small>Open Beeldbibliotheek</small></a>
+  <a class="tile" id="aeTile" href="#ae-beheer" hidden><h3>🛡️ AE-functieniveau</h3><p>AE-I, AE-T, Teamleader of Instructeur corrigeren zonder Discord-rechten te wijzigen.</p><small>Open AE-beheer</small></a>
   <a class="tile" href="/gebruikersbeheer.html"><h3>🎖️ Specialisaties en uniformen</h3><p>Rollen, badges, patches en gekoppelde afbeeldingen in de bestaande beheerbibliotheek.</p><small>Open beheer en rollen</small></a>
   <a class="tile" href="/activiteitscentrum.html"><h3>◷ Personeelsactiviteit</h3><p>Activiteitsopvolging en statussen controleren.</p><small>Open activiteitscentrum</small></a>
   <a class="tile" href="/registraties.html"><h3>▤ Observaties Basiskader</h3><p>Ontvangstoverzicht, veilig archiveren en herstellen.</p><small>Open observaties</small></a>
@@ -291,6 +291,7 @@ function refreshAwardManager(){
 }
 async function loadPersonnelManagement(){
  $('ae-beheer').hidden=true;$('awardManage').hidden=true;
+ for(const id of ['awardTile','awardLibraryTile','aeTile'])$(id).hidden=true;
  $('awardManageTools').replaceChildren();aeHasAccess=false;aePeople=[];
  if(!auth?.currentUser||!context)return;
  const uid=auth.currentUser.uid;
@@ -305,6 +306,7 @@ async function loadPersonnelManagement(){
    .sort((a,b)=>a.call.localeCompare(b.call,'nl-BE',{numeric:true}));
   aeHasAccess=true;
   $('ae-beheer').hidden=false;$('awardManage').hidden=false;
+  for(const id of ['awardTile','awardLibraryTile','aeTile'])$(id).hidden=false;
   filterPersonnel('aePerson','aeSearch');
   filterPersonnel('awardPerson','awardSearch');
   refreshAEChoice();refreshAwardManager();
@@ -369,7 +371,7 @@ function drawHistory(items){
 async function load(){
  if(!auth?.currentUser){
   context=null;aeHasAccess=false;aePeople=[];
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','awardManage','ae-beheer'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile'])$(id).hidden=true;
   notice('Meld je aan met een bevoegd BelgiumPD-account.');return;
  }
  try{
@@ -395,7 +397,7 @@ async function load(){
     'Je hebt alleen leesrechten op de centrale instellingen.'));
  }catch(error){
   context=null;
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','awardManage','ae-beheer'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile'])$(id).hidden=true;
   notice('Beheercentrum niet beschikbaar: '+error.message,true);
  }
 }
