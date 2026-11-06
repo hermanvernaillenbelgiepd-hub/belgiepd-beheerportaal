@@ -52,7 +52,7 @@ test('Police starts as Agent unless leadership independently authorises and logs
   assert.equal(exceptionalPoliceRank('Agent','politie'),false);
   assert.equal(exceptionalPoliceRank('Inspecteur','politie'),true);
   assert.equal(exceptionalPoliceRank('Ambulancier','ambulance'),false);
-  assert.equal(canAuthoriseExceptionalPoliceRank(actor,'politie'),true);
+  assert.equal(canAuthoriseExceptionalPoliceRank(actor,'politie'),false);
   assert.deepEqual(allowedPoliceEntryRanks(actor),['Agent','Aspirant Inspecteur']);
   assert.equal(canAuthorisePoliceEntryRank(actor,'politie','Aspirant Inspecteur'),true);
   assert.equal(canAuthorisePoliceEntryRank(actor,'politie','Inspecteur'),false);
@@ -167,4 +167,15 @@ test('Higher corps entry with temporarily unlinked Discord remains visible for a
  const res=visiblePendingPersonnel('aBcDefGhiJKlmNop1234',pending);
  assert.equal(res?.rank,'Eerste Inspecteur');
  assert.equal(res?.call,'531');
+});
+
+test('A-INP intake never grants officer promotion or unrestricted exceptional approvals',()=>{
+ const officer={role:'officierenkader',departments:['politie'],
+  departmentRoles:{politie:'officierenkader'}};
+ const corps={...officer,role:'korpsleiding',departmentRoles:{politie:'korpsleiding'}};
+ assert.deepEqual(allowedPoliceEntryRanks(officer),['Agent','Aspirant Inspecteur']);
+ assert.equal(canAuthorisePoliceEntryRank(officer,'politie','Aspirant Inspecteur'),true);
+ assert.equal(canAuthorisePoliceEntryRank(officer,'politie','Inspecteur'),false);
+ assert.equal(canAuthoriseExceptionalPoliceRank(officer,'politie'),false);
+ assert.equal(canAuthoriseExceptionalPoliceRank(corps,'politie'),true);
 });

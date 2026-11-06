@@ -22,6 +22,7 @@ import {displaySeries} from './normalize.js';
 import {roleForDepartment} from './leave-policy.js';
 import {validatePoliceSeriesChange,isFixedPoliceAgent,policeSeriesNumber,POLICE_SERIES_COLLECTION,POLICE_SERIES_CONTROL} from './police-series-policy.js';
 import {reservePoliceSeriesWithinTransaction} from './police-series-store.js';
+import {fixedPoliceStartStatus,activateOnFixedCallLink} from './police-fixed-status-policy.js';
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,INITIAL_POLICE_SPECIALTIES} from './specialization-policy.js';
 import {occupiedPoliceCalls,policeCallNumber} from './callsign-utils.js';
 import {readPoliceCallOccupation} from './police-call-availability.js';
@@ -191,8 +192,10 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const fixedClaim=numeric===null?null:store.collection('bpd_callsign_reservations')
         .doc(String(numeric));
       let assignedSeries=null;
-      const wantsFixedDefaults=proposed.dept==='politie'&&numeric!==null&&
-        /^\\d{15,22}$/.test(String(proposed.discordId||''));
+      const startStatus=fixedPoliceStartStatus(proposed,{linked:!pending});
+      const wantsFixedDefaults=proposed.dept==='politie'&&
+        /^(?:S[- ]?)?[2-8]\d\d$/i.test(String(proposed.call||''))&&
+        /^\d{15,22}$/.test(String(proposed.discordId||''));
       const autoSpecialRef=wantsFixedDefaults?store.collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
         .doc('politie_'+proposed.discordId):null;
       await store.runTransaction(async tx=>{
@@ -213,7 +216,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         }
         const doc={dept:proposed.dept,discordId:proposed.discordId,
           name:proposed.name,call:proposed.call,rank:proposed.rank,
-          status:'In opleiding',state:pending?'awaiting_discord':'linked',
+          status:startStatus,state:pending?'awaiting_discord':'linked',
           revision:0,createdByUid:req.bpd.uid,
           createdByDiscordId:req.bpd.discordId||null,
           entryRank:proposed.rank,
@@ -257,9 +260,15 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           updatedAt:FieldValue.serverTimestamp()});
         tx.create(ref.collection('audit').doc(),{action:'create',
           next:{name:proposed.name,call:proposed.call,rank:proposed.rank,
-            status:'In opleiding'},revision:0,reason:proposed.reason,
+            status:startStatus},revision:0,reason:proposed.reason,
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
           at:FieldValue.serverTimestamp()});
+        if(startStatus==='Actief')tx.create(ref.collection('audit').doc(),{
+         action:'fixed_callsign_activated',previous:{status:'In opleiding'},
+         next:{status:'Actief'},reason:'Automatisch ACTIEF bij eerste vast politieroepnummer',
+         actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
+         at:FieldValue.serverTimestamp()
+        });
         // Dedicated, immutable entry-rank event. Promotion events will use the
         // same old/new-rank vocabulary so career history remains chronological.
         tx.create(ref.collection('audit').doc(),{
@@ -421,7 +430,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const created=store.collection(CREATED_PERSONNEL_COLLECTION).doc(record.dept+'_'+discordId);
       const claim=store.collection('bpd_personnel_call_claims')
         .doc(personnelCallClaimId(record.dept,record.call));
-      const linkedFixed=record.dept==='politie'&&/^2\d\d$/.test(String(record.call||''));
+      const linkedFixed=record.dept==='politie'&&
+       /^(?:S[- ]?)?[2-8]\d\d$/i.test(String(record.call||''));
       const linkedSpecialRef=linkedFixed?store.collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
         .doc('politie_'+discordId):null;
       await store.runTransaction(async tx=>{
@@ -436,14 +446,16 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
            reserved.get('discordId')!==null)
           throw userError(409,'De roepnummerreservering komt niet overeen');
         const d=current.data();
-        if(d.dept==='politie'&&/^2\\d\\d$/.test(String(d.call||''))){
+        if(d.dept==='politie'&&
+          /^(?:S[- ]?)?[2-8]\d\d$/i.test(String(d.call||''))){
          await reservePoliceSeriesWithinTransaction(tx,store,snap.data,
           {dept:'politie',personId:discordId,call:d.call,series:'Instroom'},
           {actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
            reason:'Automatische reeksindeling na goedgekeurde Discord-koppeling'});
         }
+        const nextStatus=activateOnFixedCallLink(d);
         tx.create(created,{dept:d.dept,discordId,internalId:pending.id,
-          name:d.name,call:d.call,rank:d.rank,status:'In opleiding',
+          name:d.name,call:d.call,rank:d.rank,status:nextStatus,
           entryRank:d.entryRank||d.rank,
           exceptionalEntryRank:d.exceptionalEntryRank===true,
           exceptionalEntryReason:d.exceptionalEntryReason||null,
@@ -473,6 +485,13 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
            at:FieldValue.serverTimestamp()});
          }
         }
+        if(linkedFixed&&nextStatus==='Actief'&&d.status!=='Actief')
+         tx.create(created.collection('audit').doc(),{
+          action:'fixed_callsign_activated',previous:{status:d.status||'In opleiding'},
+          next:{status:'Actief'},reason:'Automatisch ACTIEF na goedgekeurde Discord-koppeling',
+          actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
+          at:FieldValue.serverTimestamp()
+         });
         tx.update(pending,{state:'linked',discordId,linkedAt:FieldValue.serverTimestamp(),
           linkedByUid:req.bpd.uid,linkApprovedReason:reason});
         tx.update(claim,{discordId,internalId:null,updatedAt:FieldValue.serverTimestamp()});
