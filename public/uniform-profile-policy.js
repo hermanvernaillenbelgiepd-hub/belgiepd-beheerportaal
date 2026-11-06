@@ -124,9 +124,16 @@ export function ambulanceFunction(person){
 export function depannageFunction(person){
  if(person?.dept!=='depannage')return '';
  const verified=normalizeVisual(person.verifiedFunction);
- if(['leiding','awv','anwv','agentschap_wegen_en_verkeer'].includes(verified))return 'awv';
- if(['fast','f_a_s_t'].includes(verified))return 'fast';
- if(['lsra','lrsa'].includes(verified))return 'lsra';
+ // Match the actual service hierarchy visible in the organogram. Leadership
+ // may be verified from Discord while the legacy grade says "Operationeel lid".
+ // These fields select artwork only; they never confer an AWV or FAST role.
+ const groups=Array.isArray(person.depannageGroups)?
+  person.depannageGroups.filter(x=>['awv','lsra','fast'].includes(x)):[];
+ const tier=normalizeVisual(person.leadershipTier);
+ if(['leiding','awv','anwv','agentschap_wegen_en_verkeer'].includes(verified)||
+    groups.includes('awv')||['leiding_awv','awv'].includes(tier))return 'awv';
+ if(['fast','f_a_s_t'].includes(verified)||tier==='fast'||groups.includes('fast'))return 'fast';
+ if(['lsra','lrsa'].includes(verified)||tier==='lsra'||groups.includes('lsra'))return 'lsra';
  const call=String(person.call||'').trim().toUpperCase().replace(/\s+/g,'');
  if(/^(?:AWV|ANWV)(?:[-_0-9*]|$)/.test(call))return 'awv';
  if(/^(?:FAST|F\.A\.S\.T\.?)(?:[-_0-9*]|$)/.test(call))return 'fast';

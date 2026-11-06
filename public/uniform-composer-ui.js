@@ -1,5 +1,5 @@
 // Operational uniform composition: one grade, one preview, one save.
-import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,ambulanceUniformFallback,DEPANNAGE_FUNCTIONS,BURGER_UNIFORM_GRADES,citizenUniformRank,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction,depannageFunction} from '/uniform-profile-policy.js?v=azls-grades-20261105b';
+import {POLICE_CALL_GRADES,AMBULANCE_FUNCTIONS,ambulanceUniformFallback,DEPANNAGE_FUNCTIONS,BURGER_UNIFORM_GRADES,citizenUniformRank,normalizeVisual,policeCallSeries,policeCallDigits,ambulanceFunction,depannageFunction} from '/uniform-profile-policy.js?v=depannage-awvrank-20261106';
 export function setupUniformComposer({api,$}){
  const dept=$('composeDept'),grade=$('composeGrade'),panel=$('composePreview'),
   gallery=$('composeGallery'),types=$('composeTypes'),save=$('composeSave'),notice=$('composeStatus');
