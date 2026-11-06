@@ -53,9 +53,10 @@ export function validatePolicePromotion(body){
 export function canAuthoriseExceptionalPoliceRank(actor,dept){
   if(dept!=='politie'||!actor?.departments?.includes('politie'))return false;
   const scoped=roleForDepartment(actor,'politie');
+  // The exceptional *intake* allowance for Officers (A-INP only) is separate.
+  // Keep the pre-existing promotion/approval privilege at Corps/technical.
   return actor.role==='beheerder'&&scoped==='beheerder'||
-    actor.role==='korpsleiding'&&scoped==='korpsleiding'||
-    actor.role==='officierenkader'&&scoped==='officierenkader';
+    actor.role==='korpsleiding'&&scoped==='korpsleiding';
 }
 function safe(v,min,max,label){
   const s=typeof v==='string'?v.trim():'';

@@ -191,8 +191,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const fixedClaim=numeric===null?null:store.collection('bpd_callsign_reservations')
         .doc(String(numeric));
       let assignedSeries=null;
-      const wantsFixedDefaults=proposed.dept==='politie'&&numeric!==null&&
-        /^\\d{15,22}$/.test(String(proposed.discordId||''));
+      const wantsFixedDefaults=proposed.dept==='politie'&&
+        /^(?:S[- ]?)?[2-8]\d\d$/i.test(String(proposed.call||''))&&
+        /^\d{15,22}$/.test(String(proposed.discordId||''));
       const autoSpecialRef=wantsFixedDefaults?store.collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
         .doc('politie_'+proposed.discordId):null;
       await store.runTransaction(async tx=>{
@@ -421,7 +422,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const created=store.collection(CREATED_PERSONNEL_COLLECTION).doc(record.dept+'_'+discordId);
       const claim=store.collection('bpd_personnel_call_claims')
         .doc(personnelCallClaimId(record.dept,record.call));
-      const linkedFixed=record.dept==='politie'&&/^2\d\d$/.test(String(record.call||''));
+      const linkedFixed=record.dept==='politie'&&
+       /^(?:S[- ]?)?[2-8]\d\d$/i.test(String(record.call||''));
       const linkedSpecialRef=linkedFixed?store.collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
         .doc('politie_'+discordId):null;
       await store.runTransaction(async tx=>{
@@ -436,7 +438,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
            reserved.get('discordId')!==null)
           throw userError(409,'De roepnummerreservering komt niet overeen');
         const d=current.data();
-        if(d.dept==='politie'&&/^2\\d\\d$/.test(String(d.call||''))){
+        if(d.dept==='politie'&&
+          /^(?:S[- ]?)?[2-8]\d\d$/i.test(String(d.call||''))){
          await reservePoliceSeriesWithinTransaction(tx,store,snap.data,
           {dept:'politie',personId:discordId,call:d.call,series:'Instroom'},
           {actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,

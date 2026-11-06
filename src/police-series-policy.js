@@ -10,7 +10,7 @@ export function policeSeriesNumber(value){
 }
 export function isFixedPoliceAgent(p){
  if(p?.dept!=='politie')return false;
- const m=/^(?:S[- ]?)?(2\d\d)$/i.exec(String(p.call||'').trim());
+ const m=/^(?:S[- ]?)?([2-8]\d\d)$/i.exec(String(p.call||'').trim());
  return !!m;
 }
 const inRoster=p=>p?.dept==='politie'&&!/^(?:ontslag|verwijderd|blacklisted|ontslagen)$/i.test(String(p.status||'').trim());

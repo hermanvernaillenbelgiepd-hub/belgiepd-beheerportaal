@@ -35,11 +35,19 @@ test('Series overlays do not change ranks or Discord privileges; official member
 test('Only linked fixed 2xx Police numbers obtain series, never 100 temp or 9xx',()=>{
  const fixed=person(1,null,210),temp=person(1,null,150),officer=person(1,null,930);
  assert.equal(isFixedPoliceAgent(fixed),true);
+ assert.equal(isFixedPoliceAgent(person(1,null,315)),true);
+ assert.equal(needsPoliceSeriesAssignment(person(1,null,315)),true);
+ assert.equal(isFixedPoliceAgent(person(1,null,730)),true);
  assert.equal(needsPoliceSeriesAssignment(fixed),true);
  assert.equal(needsPoliceSeriesAssignment(fixed,[{dept:'politie',discordId:fixed.personId,series:2}]),false);
  assert.equal(needsPoliceSeriesAssignment(person(1,3,225)),false);
  assert.equal(needsPoliceSeriesAssignment(temp),false);
  assert.equal(needsPoliceSeriesAssignment(officer),false);
+ const route=src('src/personnel-editor-routes.js');
+ assert.match(route,/const wantsFixedDefaults=proposed\.dept==='politie'/);
+ assert.match(route,/const linkedFixed=record\.dept==='politie'/);
+ assert.match(route,/\[2-8\]/);
+ assert.doesNotMatch(route,/\/\^2\\\\d\\\\d\$\//);
  assert.equal(policeSeriesNumber('Reeks 1'),1);
  assert.equal(policeSeriesNumber('R02'),2);
  assert.equal(policeSeriesNumber('3'),3);
