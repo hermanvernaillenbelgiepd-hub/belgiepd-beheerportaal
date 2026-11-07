@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {CHECKRIDE_TRACKS,permittedCheckrideTracks,checkrideAccessNotice,
+import {getBelgiumPdDisplayRoles,exactApiDisplayRoles} from './bpd-discord-users-display.js';
+import {CHECKRIDE_TRACKS,permittedCheckrideAccess,checkrideAccessNotice,
   eligibleCheckrideSubject,checkrideInput} from './checkride-policy.js';
 
 const ID=/^\d{15,22}$/;
@@ -23,9 +24,10 @@ export function installCheckrideRoutes(app,{requireUser,getSnapshot}){
       ]);
       if(snapshot?.stale||!Array.isArray(snapshot?.data))
         return deny(res,503,'Personeelslijst is niet actueel');
-      const allowed=permittedCheckrideTracks(actor,proof.data(),snapshot.data,
+      const access=permittedCheckrideAccess(actor,proof.data(),snapshot.data,
         process.env.DISCORD_GUILD_ID);
-      req.checkride={actor,member:proof.data(),roster:snapshot.data,allowed};
+      req.checkride={actor,member:proof.data(),roster:snapshot.data,
+        access,allowed:Object.keys(access)};
       res.set('Cache-Control','private, no-store');
       next();
     }catch(e){problem(res,e)}
@@ -40,7 +42,8 @@ export function installCheckrideRoutes(app,{requireUser,getSnapshot}){
   const entries=track=>db().collection('bpd_checkride_tracks').doc(track).collection('evaluations');
   app.get('/api/checkrides/context',requireUser,authorize,(req,res)=>{
     res.json({tracks:req.checkride.allowed.map(code=>({
-      code,department:CHECKRIDE_TRACKS[code].dept,label:CHECKRIDE_TRACKS[code].label
+      code,department:CHECKRIDE_TRACKS[code].dept,label:CHECKRIDE_TRACKS[code].label,
+      access:req.checkride.access[code]
     })),writesEnabled:process.env.BPD_ENABLE_TRAINING_WRITES==='true',
       accessNotice:req.checkride.allowed.length?null:
         checkrideAccessNotice(req.checkride.actor,req.checkride.member,
@@ -55,6 +58,10 @@ export function installCheckrideRoutes(app,{requireUser,getSnapshot}){
       for(const p of roster)counts.set(p.personId,(counts.get(p.personId)||0)+1);
       const unique=roster.filter(p=>counts.get(p.personId)===1&&
         p.personId!==req.checkride.actor.discordId).slice(0,250);
+      const proof=await getBelgiumPdDisplayRoles();
+      // Member feed is used only to identify a candidate's trainee role.
+      // Mentor permissions always come from the actor's independently
+      // authenticated OAuth proof above, never from this feed.
       const snaps=[];
       for(let i=0;i<unique.length;i+=50){
         const batch=unique.slice(i,i+50);
@@ -62,18 +69,32 @@ export function installCheckrideRoutes(app,{requireUser,getSnapshot}){
           db().collection('bpd_discord_auth').doc(p.personId))));
       }
       const people=unique.filter((p,i)=>eligibleCheckrideSubject(track,p,
-        snaps[i]?.data(),process.env.DISCORD_GUILD_ID)).map(p=>({
+        snaps[i]?.data(),process.env.DISCORD_GUILD_ID,Date.now(),
+        exactApiDisplayRoles(proof,p.personId))).map(p=>({
           discordId:p.personId,name:String(p.name||'').slice(0,120),
           call:String(p.call||'').slice(0,30)
         })).sort((a,b)=>a.call.localeCompare(b.call,'nl',{numeric:true}));
-      res.json({track,people,limited:roster.length>250});
+      const missing=unique.length-people.length;
+      res.json({track,people,limited:roster.length>250,
+        emptyReason:people.length?null:
+        !unique.length?'Er zijn geen gekoppelde, unieke personeelsfiches voor deze dienst.':
+        proof.status!=='ok'
+          ?'De Discord-ledencontrole is tijdelijk niet beschikbaar. Alleen kandidaten met een recente Discord-aanmelding worden herkend.':
+          'Geen lid met een passende IO- of stagiairrol gevonden. Controleer de juiste Discordrol en DC-ID-koppeling.',
+        examined:unique.length,notEligible:missing});
     }catch(e){problem(res,e)}
   });
   app.get('/api/checkrides/evaluations',requireUser,authorize,async(req,res)=>{
     const track=scoped(req,res);if(!track)return;
     try{
-      const snap=await entries(track).orderBy('createdAt','desc').limit(100).get();
-      const evaluations=snap.docs.map(doc=>{const e=doc.data();return {
+      const mentor=req.checkride.access[track]==='begeleider';
+      const snap=mentor?await entries(track).where('evaluatorDiscordId','==',
+        req.checkride.actor.discordId).limit(200).get():
+        await entries(track).orderBy('createdAt','desc').limit(100).get();
+      const ordered=mentor?[...snap.docs].sort((a,b)=>
+        (b.get('createdAt')?.toMillis?.()||0)-
+        (a.get('createdAt')?.toMillis?.()||0)).slice(0,100):snap.docs;
+      const evaluations=ordered.map(doc=>{const e=doc.data();return {
         id:doc.id,track,department:CHECKRIDE_TRACKS[track].dept,
         subjectDiscordId:e.subjectDiscordId,
         subjectName:String(e.subjectName||'').slice(0,120),
@@ -82,7 +103,8 @@ export function installCheckrideRoutes(app,{requireUser,getSnapshot}){
         scores:e.scores,average:e.average,notes:e.notes,
         evaluatorDiscordId:e.evaluatorDiscordId,createdAt:iso(e.createdAt)
       }});
-      res.json({track,evaluations,limited:snap.size===100});
+      res.json({track,evaluations,limited:snap.size===(mentor?200:100),
+        view:'begeleider'===req.checkride.access[track]?'eigen':'alle'});
     }catch(e){problem(res,e)}
   });
   app.post('/api/checkrides/evaluations',requireUser,authorize,async(req,res)=>{
@@ -91,7 +113,9 @@ export function installCheckrideRoutes(app,{requireUser,getSnapshot}){
     let body;try{body=checkrideInput(req.body)}
     catch(e){return deny(res,400,e.message)}
     if(!req.checkride.allowed.includes(body.track))
-      return deny(res,403,'Geen instructeursrecht voor deze categorie');
+      return deny(res,403,'Geen begeleiders- of instructeursrecht voor deze categorie');
+    if(req.checkride.access[body.track]==='begeleider'&&body.kind==='eind')
+      return deny(res,403,'Alleen instructeurs en leiding mogen een eindbeoordeling indienen');
     if(body.subjectDiscordId===req.checkride.actor.discordId)
       return deny(res,403,'Je kunt jezelf niet evalueren');
     const matches=req.checkride.roster.filter(p=>p?.dept===body.department&&
@@ -99,10 +123,13 @@ export function installCheckrideRoutes(app,{requireUser,getSnapshot}){
     if(matches.length!==1)return deny(res,matches.length?409:404,
       'Geen eenduidige kandidaat binnen de juiste dienst');
     try{
-      const membership=await db().collection('bpd_discord_auth')
-        .doc(body.subjectDiscordId).get();
+      const [membership,upstream]=await Promise.all([
+        db().collection('bpd_discord_auth').doc(body.subjectDiscordId).get(),
+        getBelgiumPdDisplayRoles()
+      ]);
       if(!eligibleCheckrideSubject(body.track,matches[0],
-        membership.data(),process.env.DISCORD_GUILD_ID))
+        membership.data(),process.env.DISCORD_GUILD_ID,Date.now(),
+        exactApiDisplayRoles(upstream,body.subjectDiscordId)))
         return deny(res,403,'Kandidaat heeft geen passende, geverifieerde opleidingsstatus');
       const record=entries(body.track).doc();
       await record.create({...body,
@@ -111,6 +138,7 @@ export function installCheckrideRoutes(app,{requireUser,getSnapshot}){
         evaluatorDiscordId:req.checkride.actor.discordId,
         evaluatorUid:req.checkride.actor.uid,
         status:'ingediend',createdAt:FieldValue.serverTimestamp(),
+        evaluatorAccess:req.checkride.access[body.track],
         // Distinct from ordinary training registration and all Discord changes.
         discordRoleUpdated:false,automaticPromotion:false
       });

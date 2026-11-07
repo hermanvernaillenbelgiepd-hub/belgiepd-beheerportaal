@@ -21,7 +21,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <header><strong>BelgiëPD · Koppelritten</strong><a href="/opleidingscentrum.html">← Opleidingscentrum</a><a href="/">Start</a><button id="login" type="button">Aanmelden</button></header>
 <main>
 <h1>Koppelritten en stage-evaluaties</h1>
-<p>Beoordelingen zijn gescheiden per dienst en specialisatie. Alleen geverifieerde instructeurs en bevoegde leiding zien hun eigen opleidingsluik.</p>
+<p>Beoordelingen zijn gescheiden per dienst en specialisatie. Instructeurs en bevoegde leiding kunnen alle verslagen binnen hun onderdeel opvolgen. Volwaardige leden kunnen hun eigen begeleidingsritten registreren, zonder personeelsdossierrechten.</p>
 <p class="status" id="message" role="status">Toegang controleren…</p>
 <section class="card" id="panel" hidden>
 <h2>Mijn bevoegde opleidingsonderdelen</h2>
@@ -79,14 +79,20 @@ async function refresh(){
   if(!scopes.length){status(data.accessNotice||'Je hebt geen geverifieerde instructeurs- of leidingrechten voor een koppelritonderdeel.');return}
   $('panel').hidden=false;$('save').disabled=!canWrite;
   await showTrack();
-  status('Toegang gecontroleerd. Je ziet alleen de onderdelen waarvoor je bevoegd bent.');
+  if($('subject').value)status('Toegang gecontroleerd. Je ziet alleen de onderdelen waarvoor je bevoegd bent.');
  }catch(e){status(e.message,true)}
 }
 async function showTrack(){
  const track=$('track').value;
  const current=scopes.find(x=>x.code===track);
  if(!current){$('panel').hidden=true;return}
- $('scopeNote').textContent='Afgeschermd onderdeel: '+current.label;
+ const mentor=current.access==='begeleider';
+ const endOption=$('kind').querySelector('option[value="eind"]');
+ endOption.disabled=mentor;
+ if(mentor&&$('kind').value==='eind')$('kind').value='vervolg';
+ $('scopeNote').textContent='Afgeschermd onderdeel: '+current.label+
+   (mentor?' · Volwaardig begeleider: alleen eigen verslagen, geen eindbeoordelingen.':
+     ' · Instructeur/leiding: alle verslagen binnen dit onderdeel.');
  $('subject').replaceChildren(new Option('Kandidaten controleren…',''));
  $('history').textContent='Evaluaties laden…';
  try{
@@ -96,10 +102,14 @@ async function showTrack(){
   ]);
   $('subject').replaceChildren(new Option('Selecteer kandidaat',''),...
     candidates.people.map(p=>new Option((p.call?p.call+' · ':'')+p.name,p.discordId)));
-  if(!candidates.people.length)$('subject').replaceChildren(new Option('Geen geverifieerde kandidaten',''));
+  if(!candidates.people.length)$('subject').replaceChildren(new Option('Geen kandidaten in opleiding',''));
   $('save').disabled=!canWrite||!candidates.people.length;
+  if(!candidates.people.length)
+    status(candidates.emptyReason||'Er zijn geen geschikte kandidaten gevonden.',true);
   const list=$('history');list.replaceChildren();
-  if(!history.evaluations.length)list.textContent='Nog geen evaluaties binnen dit onderdeel.';
+  if(!history.evaluations.length)list.textContent=history.view==='eigen'
+    ?'Je hebt zelf nog geen koppelritverslagen ingediend.':
+     'Nog geen evaluaties binnen dit onderdeel.';
   for(const e of history.evaluations){
     const div=document.createElement('div');div.className='entry';
     const header=element('strong',e.subjectCall+' · '+e.subjectName);

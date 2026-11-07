@@ -4,16 +4,16 @@ import {roleForDepartment} from './leave-policy.js';
 export const CHECKRIDE_TRACKS=Object.freeze({
   motard:Object.freeze({code:'motard',dept:'politie',label:'Politie · MOTARD',
     instructor:'1359656762289946755',
-    candidates:['1365602771855740958','1358148694297415741'],
-    member:'1309532438053130326'}),
+    candidates:['1365602771855740958'],
+    fullMember:'1358148694297415741',member:'1309532438053130326'}),
   k9:Object.freeze({code:'k9',dept:'politie',label:'Politie · K9',
     instructor:'1345302115689431061',
-    candidates:['1345297414612979713','1309532437977497699'],
-    member:'1309532438053130326'}),
+    candidates:['1345297414612979713'],
+    fullMember:'1309532437977497699',member:'1309532438053130326'}),
   rago:Object.freeze({code:'rago',dept:'politie',label:'Politie · RAGO',
     instructor:'1393050551188721865',
-    candidates:['1490841316656156802','1309532437977497700'],
-    member:'1309532438053130326'}),
+    candidates:['1490841316656156802'],
+    fullMember:'1309532437977497700',member:'1309532438053130326'}),
   ambulance_stage:Object.freeze({code:'ambulance_stage',dept:'ambulance',label:'Ambulance · stagiairs',
     instructor:'1309532437952466988',candidates:['1309532438053130323','1309532437977497697'],
     stage:true}),
@@ -54,33 +54,43 @@ export function verifiedCheckrideRoles(member,guildId,now=Date.now(),maxAgeMs=CH
 function uniqueOwnService(roster,actor,dept){
   return roster.filter(p=>p?.dept===dept&&p.personId===actor.discordId).length===1;
 }
-export function permittedCheckrideTracks(actor,member,roster,guildId,now=Date.now()){
+// Access is derived only from the logged-in person's own verified Discord
+// identity, approved service scope and one unique personnel-roster entry.
+// An ordinary full specialty member is a mentor only, not an instructor.
+export function permittedCheckrideAccess(actor,member,roster,guildId,now=Date.now()){
   if(!eligibleId(actor?.discordId)||actor.uid!=='discord:'+actor.discordId||
-     !Array.isArray(roster))return [];
+     !Array.isArray(roster))return {};
   if(actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true)
-    return Object.keys(CHECKRIDE_TRACKS);
+    return Object.fromEntries(Object.keys(CHECKRIDE_TRACKS).map(code=>[code,'leiding']));
   const roles=verifiedCheckrideRoles(member,guildId,now);
-  if(!roles)return [];
-  return Object.values(CHECKRIDE_TRACKS).filter(track=>{
-    // Burgerraad is a separate verified civilian role; managed portal grants
-    // do not currently list burger as a normal cadre department. Require both
-    // Burgerraad Discord proof and one unique burger roster entry instead.
+  if(!roles)return {};
+  const permitted={};
+  for(const track of Object.values(CHECKRIDE_TRACKS)){
     const civilianCouncil=track.dept==='burger'&&roles.has(track.instructor);
     if((!actor.departments?.includes(track.dept)&&!civilianCouncil)||
-       !uniqueOwnService(roster,actor,track.dept))return false;
-    if(roles.has(track.instructor))return true;
+       !uniqueOwnService(roster,actor,track.dept))continue;
+    if(roles.has(track.instructor)){permitted[track.code]='instructeur';continue}
     if(track.dept==='politie'){
       const rank=roleForDepartment(actor,'politie');
       const proof=(rank==='middenkader'&&roles.has('1335578488664490057'))||
         (rank==='officierenkader'&&roles.has('1473474238664020151'))||
         (rank==='korpsleiding'&&roles.has('1562710901080068229'));
-      return proof;
+      if(proof){permitted[track.code]='leiding';continue}
     }
-    if(track.dept==='ambulance')return roles.has('1309532438053130325');
-    if(track.dept==='brandweer')return roles.has('1395115819020714105');
-    // Burgerraad role is itself the independent service proof.
-    return false;
-  }).map(t=>t.code);
+    if(track.dept==='ambulance'&&roles.has('1309532438053130325')){
+      permitted[track.code]='leiding';continue
+    }
+    if(track.dept==='brandweer'&&roles.has('1395115819020714105')){
+      permitted[track.code]='leiding';continue
+    }
+    if(track.fullMember&&roles.has(track.fullMember)){
+      permitted[track.code]='begeleider';continue
+    }
+  }
+  return permitted;
+}
+export function permittedCheckrideTracks(actor,member,roster,guildId,now=Date.now()){
+  return Object.keys(permittedCheckrideAccess(actor,member,roster,guildId,now));
 }
 // Only a scoped, authenticated actor can receive this explanatory response.
 // No roster details, role IDs or other persons are disclosed.
@@ -100,15 +110,28 @@ export function checkrideAccessNotice(actor,member,roster,guildId,now=Date.now()
     return 'Je personeelsfiche bestaat, maar de dienstmachtiging van je portaalaccount ontbreekt. Controleer Gebruikersbeheer.';
   return 'Er werd geen bijpassende, geverifieerde instructeurs- of leidinggevende Discordrol gevonden. Controleer de toegewezen rollen.';
 }
-export function eligibleCheckrideSubject(trackCode,person,member,guildId,now=Date.now()){
+// Candidate qualification may come from the maintained Discord member feed;
+// this NEVER establishes the mentor's login, rank, service or dossier rights.
+// A separate exact-ID roster match is mandatory in both GET and POST routes.
+export function eligibleCheckrideSubject(trackCode,person,member,guildId,
+  now=Date.now(),candidateRoleIds=null){
   const track=CHECKRIDE_TRACKS[trackCode];
   if(!track||person?.dept!==track.dept||!eligibleId(person?.personId))return false;
   // The protected 9xx police dossiers are not ordinary trainee candidates.
   if(track.dept==='politie'&&/^9[0-9]{2}$/.test(String(person.call||'').trim()))return false;
-  const roles=verifiedCheckrideRoles(member,guildId,now,24*60*60*1000);
+  // Prefer current role IDs from the server-fetched Discord member feed.
+  // Stale/unavailable feed falls back to the candidate's own fresh OAuth proof.
+  const live=Array.isArray(candidateRoleIds)&&candidateRoleIds.length<=500&&
+    candidateRoleIds.every(eligibleId)?new Set(candidateRoleIds):null;
+  const roles=live||verifiedCheckrideRoles(member,guildId,now);
   if(!roles||!track.candidates.some(id=>roles.has(id))||
      (track.excluded||[]).some(id=>roles.has(id)))return false;
-  if(track.member&&!roles.has(track.member))return false;
+  // Completed full specialty members are no longer trainees, even if IO
+  // Discord role was mistakenly retained after qualification.
+  if(track.fullMember&&roles.has(track.fullMember))return false;
+  // For specialist IO a verified IO role plus an official Police roster
+  // entry is sufficient: some trainee accounts lack the separate member badge.
+  if(track.member&&!track.fullMember&&!roles.has(track.member))return false;
   if(track.memberAny&&!track.memberAny.some(id=>roles.has(id)))return false;
   if(track.stage){
     const official=[person.rank,person.call,person.status,person.series]

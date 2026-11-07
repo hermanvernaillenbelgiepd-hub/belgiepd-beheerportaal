@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CHECKRIDE_TRACKS,verifiedCheckrideRoles,permittedCheckrideTracks,
+import {CHECKRIDE_TRACKS,verifiedCheckrideRoles,permittedCheckrideTracks,permittedCheckrideAccess,
  eligibleCheckrideSubject,checkrideInput,checkrideAccessNotice,CHECKRIDE_ROLE_MAX_AGE_MS} from '../src/checkride-policy.js';
 
 const GUILD='123456789012345678';
@@ -136,4 +136,48 @@ test('LSRA and FAST remain distinct trainee tracks',()=>{
    member('1309532438019706971'),GUILD,now),true);
  assert.equal(eligibleCheckrideSubject('depannage_fast',p,
    member('1309532438019706971'),GUILD,now),false);
+});
+
+test('full K9 mentor may access only K9, independently of instructor roles',()=>{
+ const result=permittedCheckrideAccess(actor('politie'),
+  member('1309532437977497699'),roster('politie'),GUILD,now);
+ assert.deepEqual(result,{k9:'begeleider'});
+});
+test('full MOTARD and RAGO mentors may each evaluate only their own track',()=>{
+ const result=permittedCheckrideAccess(actor('politie'),
+  member('1358148694297415741','1309532437977497700'),
+  roster('politie'),GUILD,now);
+ assert.deepEqual(result,{motard:'begeleider',rago:'begeleider'});
+});
+test('K9 instructor and police leadership supersede mentor-only access',()=>{
+ assert.equal(permittedCheckrideAccess(actor('politie'),
+   member('1309532437977497699','1345302115689431061'),
+   roster('politie'),GUILD,now).k9,'instructeur');
+ const officer={...actor('politie'),role:'officierenkader',
+  departmentRoles:{politie:'officierenkader'}};
+ assert.deepEqual(permittedCheckrideAccess(officer,
+   member('1473474238664020151'),roster('politie'),GUILD,now),
+   {motard:'leiding',k9:'leiding',rago:'leiding'});
+});
+test('specialty trainee IO is eligible with correct role and police roster even without separate police badge',()=>{
+ const student=profile('politie',S);
+ assert.equal(eligibleCheckrideSubject('k9',student,undefined,GUILD,now,
+   ['1345297414612979713']),true);
+ assert.equal(eligibleCheckrideSubject('motard',student,undefined,GUILD,now,
+   ['1345297414612979713']),false);
+});
+test('full member who kept IO badge is never selectable as candidate',()=>{
+ const student=profile('politie',S);
+ assert.equal(eligibleCheckrideSubject('k9',student,undefined,GUILD,now,
+   ['1345297414612979713','1309532437977497699']),false);
+});
+test('no cross-service or wrong specialty mentor access and training IO alone is not mentor',()=>{
+ assert.deepEqual(permittedCheckrideTracks(actor('brandweer'),
+   member('1309532437977497699'),roster('brandweer'),GUILD,now),[]);
+ assert.deepEqual(permittedCheckrideTracks(actor('politie'),
+   member('1345297414612979713'),roster('politie'),GUILD,now),[]);
+});
+test('invalid untrusted candidate role lists fail closed',()=>{
+ assert.equal(eligibleCheckrideSubject('k9',profile('politie',S),undefined,GUILD,now,
+   ['BAD']),false);
 });
