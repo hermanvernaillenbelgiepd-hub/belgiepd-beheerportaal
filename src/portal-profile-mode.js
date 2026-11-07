@@ -35,7 +35,7 @@ export function verifiedPoliceMembership(member,guildId,now=Date.now()){
 export function verifiedPoliceRank(member,guildId,now=Date.now()){
   if(!member||!ID.test(String(guildId||''))||member.guildId!==guildId||
     !Number.isSafeInteger(member.verifiedAt)||member.verifiedAt>now||
-    !Array.isArray(member.roleIds)||!member.roleIds.every(ID.test))return null;
+    !Array.isArray(member.roleIds)||!member.roleIds.every(x=>ID.test(x)))return null;
   const rank=roleSummary(member.roleIds).policeRank;
   // A real Korpsleiding role remains recognised for one workday; all other
   // cadre roles keep the existing short 15-minute elevated-role window.
