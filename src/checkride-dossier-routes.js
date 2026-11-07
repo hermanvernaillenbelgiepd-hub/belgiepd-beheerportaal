@@ -2,7 +2,7 @@ import {getFirestore} from 'firebase-admin/firestore';
 import {dossierScopes} from './dossier-center-policy.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {loadSubjectCheckrides} from './checkride-dossier-history.js';
-const ID=/^\\d{15,22}$/;
+const ID=/^\d{15,22}$/;
 const SERVICES=new Set(['politie','ambulance','brandweer','depannage']);
 export function installCheckrideDossierRoutes(app,{requireUser,getSnapshot}){
   app.get('/api/checkrides/dossier/:dept/:discordId',requireUser,async(req,res)=>{
