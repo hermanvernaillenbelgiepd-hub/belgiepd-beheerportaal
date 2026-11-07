@@ -1,6 +1,7 @@
 import {createHmac,timingSafeEqual} from 'node:crypto';
 import {verifiedDiscordIdentity} from './user-access.js';
 import {roleSummary} from './role-catalog.js';
+import {VERIFIED_CORPS_SESSION_MS} from './verified-police-cadre.js';
 
 // The owner-configured allowlist is a deliberate infrastructure grant.
 // A matching username, Discord role, callsign or browser request is NEVER enough.
@@ -32,11 +33,14 @@ export function verifiedPoliceMembership(member,guildId,now=Date.now()){
     member.roleIds.includes('1309532438053130326'));
 }
 export function verifiedPoliceRank(member,guildId,now=Date.now()){
-  if(!member||member.guildId!==guildId||
+  if(!member||!ID.test(String(guildId||''))||member.guildId!==guildId||
     !Number.isSafeInteger(member.verifiedAt)||member.verifiedAt>now||
-    now-member.verifiedAt>15*60000||!Array.isArray(member.roleIds))
-    return null;
-  return roleSummary(member.roleIds).policeRank;
+    !Array.isArray(member.roleIds)||!member.roleIds.every(ID.test))return null;
+  const rank=roleSummary(member.roleIds).policeRank;
+  // A real Korpsleiding role remains recognised for one workday; all other
+  // cadre roles keep the existing short 15-minute elevated-role window.
+  const maxAge=rank==='korpsleiding'?VERIFIED_CORPS_SESSION_MS:15*60000;
+  return now-member.verifiedAt<=maxAge?rank:null;
 }
 function sign(body,secret){
   return createHmac('sha256',secret).update(body).digest('base64url');

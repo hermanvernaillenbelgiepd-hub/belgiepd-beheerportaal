@@ -1,5 +1,6 @@
 import {roleForDepartment} from './leave-policy.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
+import {VERIFIED_CORPS_SESSION_MS} from './verified-police-cadre.js';
 
 export const SERVICE_DOSSIER_DEPARTMENTS=Object.freeze(['politie','ambulance','brandweer','depannage']);
 const DISCORD=/^\d{15,22}$/;
@@ -13,9 +14,17 @@ const DISCORD_AZLS_ROLE='1309532438053130325';
 const verifiedRoles=(member,guildId,now)=>{
   if(!member||typeof guildId!=='string'||!DISCORD.test(guildId)||
      member.guildId!==guildId||!Number.isSafeInteger(member.verifiedAt)||
-     member.verifiedAt>now||now-member.verifiedAt>15*60*1000||
+     member.verifiedAt>now||
      !Array.isArray(member.roleIds)||!member.roleIds.every(x=>DISCORD.test(x)))return new Set();
-  return new Set(member.roleIds);
+  const age=now-member.verifiedAt;
+  if(age<=15*60*1000)return new Set(member.roleIds);
+  // Narrow exception: keep only the dual Board+Corps proof within eight
+  // hours; expired ambulance/depannage/other service roles stay unavailable.
+  if(age<=VERIFIED_CORPS_SESSION_MS&&member.roleIds.includes(DISCORD_BOARD_ROLE)&&
+     member.roleIds.includes('1309532438053130326')&&
+     member.roleIds.includes('1562710901080068229'))
+    return new Set([DISCORD_BOARD_ROLE]);
+  return new Set();
 };
 const code=text=>typeof text==='string'?text.trim().toUpperCase().replace(/\s+/g,' '):'';
 const AMBULANCE=/^(?:DIRMED|HARTS|HVPK|HAMB)(?:[- ]?\d{1,4})?$/;

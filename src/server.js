@@ -96,7 +96,7 @@ import {installTOBoardRoutes,createFirestoreTOStore} from './to-board-routes.js'
 import {installTORadioRoutes} from './to-radio-routes.js';
 import {publicDeploymentInfo} from './deployment-info.js';
 import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits,canReadPersonnelSubject,isCorpsLeadershipPersonnel} from './personnel-editor-policy.js';
-import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
+import {isPolice9xx,verifiedOfficerCadre,verifiedCorpsSelfDossier} from './verified-police-cadre.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
@@ -640,10 +640,12 @@ app.get('/api/dossiers/:dept/:discordId',requireUser,async(req,res)=>{
       const member=await cachedAuthDoc('bpd_discord_auth',discordId);
       const subjectRole=member.exists?verifiedOfficerCadre(member.data(),
         process.env.DISCORD_GUILD_ID,Date.now(),15*60*1000):null;
+      const selfCorps=member.exists&&verifiedCorpsSelfDossier(req.bpd,
+        discordId,member.data(),process.env.DISCORD_GUILD_ID);
       const genuineChief=req.bpd.uid==='discord:'+req.bpd.discordId&&
         req.bpd.role==='korpsleiding'&&req.bpd.departmentRoles?.politie==='korpsleiding'&&
         req.bpd.discordPoliceRank==='korpsleiding';
-      if(subjectRole!=='Officierenkader'&&!genuineChief)
+      if(subjectRole!=='Officierenkader'&&!genuineChief&&!selfCorps)
         return res.status(403).json({error:'Dit dossier is afgeschermd'});
     }else if(isCorpsLeadershipPersonnel(subject[0])&&!verifiedTechnical){
       if(req.bpd.uid!=='discord:'+req.bpd.discordId||
@@ -795,10 +797,17 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
         const found=await Promise.all(group.map(subjectId=>
           cachedAuthDoc('bpd_discord_auth',subjectId)));
         for(let j=0;j<group.length;j++){
-          const label=found[j]?.exists?
+          const subjectId=group[j];
+          const freshRole=found[j]?.exists?
             verifiedOfficerCadre(found[j].data(),process.env.DISCORD_GUILD_ID,
               Date.now(),15*60*1000):null;
-          if(label)req.bpd.verifiedPoliceSubjectRoles[group[j]]=label;
+          // Never relax the 15-minute check for someone else's 9xx dossier.
+          // Only a verified Corps leader's OWN 9xx subject may reuse the
+          // independently validated eight-hour workday role proof.
+          const ownCorps=found[j]?.exists&&verifiedCorpsSelfDossier(req.bpd,
+            subjectId,found[j].data(),process.env.DISCORD_GUILD_ID);
+          const label=freshRole||(ownCorps?'Korpsleiding':null);
+          if(label)req.bpd.verifiedPoliceSubjectRoles[subjectId]=label;
         }
       }
     }

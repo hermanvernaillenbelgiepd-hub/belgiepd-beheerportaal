@@ -1,6 +1,7 @@
 import {roleForDepartment} from './leave-policy.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
+import {VERIFIED_CORPS_SESSION_MS} from './verified-police-cadre.js';
 export const DOSSIER_GRANT_COLLECTION='bpd_dossier_delegations';
 export const DOSSIER_GRANT_AUDIT='bpd_dossier_delegations_audit';
 export const DOSSIER_DEPTS=Object.freeze(['politie','ambulance','brandweer','depannage']);
@@ -78,8 +79,16 @@ export function applyDossierGrants(actor,defaults,docs=[],tester=null){
     fullDepartments:[...new Set(full)],tester:tested};
 }
 export function verifyBoardDiscordRole(member,guildId,now=Date.now()){
-  return Boolean(ID.test(guildId)&&member?.guildId===guildId&&
-    Number.isSafeInteger(member.verifiedAt)&&member.verifiedAt<=now&&
-    now-member.verifiedAt<=15*60000&&Array.isArray(member.roleIds)&&
-    member.roleIds.every(x=>ID.test(x))&&member.roleIds.includes(BOARD_ROLE));
+  if(!ID.test(String(guildId||''))||member?.guildId!==guildId||
+    !Number.isSafeInteger(member.verifiedAt)||member.verifiedAt>now||
+    !Array.isArray(member.roleIds)||!member.roleIds.every(x=>ID.test(x))||
+    !member.roleIds.includes(BOARD_ROLE))return false;
+  const age=now-member.verifiedAt;
+  if(age<=15*60000)return true;
+  // Only verified *dual* Bestuur + Politie Korpsleiding + Police membership
+  // retains this role proof during a workday. Ordinary Board members retain
+  // their former 15-minute window. Portal grants are checked separately.
+  return age<=VERIFIED_CORPS_SESSION_MS&&
+    member.roleIds.includes('1309532438053130326')&&
+    member.roleIds.includes('1562710901080068229');
 }
