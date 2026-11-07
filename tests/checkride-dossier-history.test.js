@@ -1,18 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {loadSubjectCheckrides} from '../src/checkride-dossier-history.js';
-const A='123456789012345678',B='987654321098765432';
-function mockDb(){
+
+const A='123456789012345678', B='987654321098765432';
+function mockDb(transform=record=>record){
  const calls=[];
- const db={collection:()=>({doc:track=>({
-  collection:()=>({where:(field,op,id)=>({limit:n=>({
-    get:async()=>{calls.push({track,field,op,id,n});return {
-      size:1,docs:[{id:'record123',data:()=>({
-        track,department:track.startsWith('depannage_')?'depannage':'politie',
-        subjectDiscordId:id,notes:'Onder begeleiding',eventDate:'2026-11-06',
-        outcome:'voldoende',average:4,status:'ingediend'})}]}
-    }}
-  })})})})})};
+ const db={
+   collection(collectionName){
+     assert.equal(collectionName,'bpd_checkride_tracks');
+     return {
+       doc(track){
+         return {
+           collection(name){
+             assert.equal(name,'evaluations');
+             return {
+               where(field,op,id){
+                 return {
+                   limit(n){
+                     return {
+                       async get(){
+                         calls.push({track,field,op,id,n});
+                         const record=transform({
+                           track,department:track.startsWith('depannage_')?'depannage':'politie',
+                           subjectDiscordId:id,notes:'Onder begeleiding',
+                           eventDate:'2026-11-06',outcome:'voldoende',
+                           average:4,status:'ingediend'
+                         });
+                         return {size:1,docs:[{id:'record123',data:()=>record}]};
+                       }
+                     };
+                   }
+                 };
+               }
+             };
+           }
+         };
+       }
+     };
+   }
+ };
  return {db,calls};
 }
 test('dossier reader only queries tracks of target service and subject',async()=>{
@@ -30,10 +56,7 @@ test('dossier reader never resolves cross-service or invalid identity',async()=>
  assert.equal(calls.length,0);
 });
 test('dossier reader suppresses malformed cross-person response',async()=>{
- const db={collection:()=>({doc:track=>({collection:()=>({where:()=>({limit:()=>({
-   get:async()=>({size:1,docs:[{id:'x',data:()=>({
-     track,department:'politie',subjectDiscordId:B,status:'ingediend'})}]})})
- })})})})};
+ const {db}=mockDb(record=>({...record,subjectDiscordId:B}));
  const result=await loadSubjectCheckrides(db,'politie',A);
  assert.equal(result.evaluations.length,0);
 });
