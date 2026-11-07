@@ -212,6 +212,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
     <section class="citizen-section" id="citizenSanctions">
       <h2>Sancties</h2><div id="sanctions"></div>
     </section>
+    <section class="citizen-section" id="citizenCheckrideSection"><h2>Opleidingen & BIO-evaluaties</h2><div id="citizenCheckrides">Evaluaties laden…</div></section>
     <section class="citizen-section" id="citizenPromotions">
       <h2>Volwaardig Burger</h2><div id="promotions"></div>
     </section>
@@ -315,6 +316,13 @@ function renderPerson(data){
     renderRegistration(root,e,'Observatie · '+e.score+'/10'));
   fill('sanctions',entries.filter(e=>e.kind.startsWith('sanctie_')),(root,e)=>
     renderRegistration(root,e,e.kind==='sanctie_mondeling'?'Mondelinge sanctie':'Schriftelijke sanctie'));
+  fill('citizenCheckrides',data.evaluations||[],(root,e)=>
+    line(root,e.trackLabel+' · '+e.eventDate+' · '+e.average+'/5',
+      e.notes||'—',(e.outcome||'—')+' · beoordelaar '+(e.evaluatorDiscordId||'—')));
+  if(data.evaluationsUnavailable)$('citizenCheckrides').textContent=
+    'Evaluatiehistoriek is tijdelijk niet beschikbaar.';
+  if(data.evaluationsLimited)$('citizenCheckrides').append(
+    document.createTextNode(' Mogelijk zijn oudere evaluaties niet getoond.'));
   fill('promotions',entries.filter(e=>e.kind==='volwaardig'),(root,e)=>
     renderRegistration(root,e,'Volwaardig sinds '+e.eventDate));
   fill('deletionLog',data.deletionLog||[],(root,e)=>line(root,

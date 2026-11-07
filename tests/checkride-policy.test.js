@@ -14,8 +14,8 @@ const roster=dept=>[profile(dept)];
 const data={track:'k9',subjectDiscordId:S,eventDate:'2026-11-06',kind:'vervolg',
  outcome:'voldoende',scores:{kennis:4,praktijk:4,communicatie:4,veiligheid:4,zelfstandigheid:4},
  notes:'Procedures goed toegepast'};
-test('six independent training scopes exist',()=>assert.deepEqual(Object.keys(CHECKRIDE_TRACKS),
- ['motard','k9','rago','ambulance_stage','brandweer_stage','burger_io']));
+test('nine independent training scopes exist',()=>assert.deepEqual(Object.keys(CHECKRIDE_TRACKS),
+ ['motard','k9','rago','ambulance_stage','brandweer_stage','depannage_lsra','depannage_fast','depannage_crane','burger_io']));
 test('K9 instructor does not inherit MOTARD or RAGO',()=>{
  assert.deepEqual(permittedCheckrideTracks(actor('politie'),member('1345302115689431061'),
  roster('politie'),GUILD,now),['k9']);
@@ -112,4 +112,28 @@ test('portal authorization and own staff record stay mandatory after freshness f
   member('1345302115689431061'),roster('politie'),GUILD,now),[]);
  assert.deepEqual(permittedCheckrideTracks(actor('politie'),
   member('1345302115689431061'),[],GUILD,now),[]);
+});
+
+test('AWV leadership grants only the three Depannage training tracks',()=>{
+ assert.deepEqual(permittedCheckrideTracks(actor('depannage'),
+   member('1309532438019706969'),roster('depannage'),GUILD,now),
+   ['depannage_lsra','depannage_fast','depannage_crane']);
+ assert.deepEqual(permittedCheckrideTracks(actor('brandweer'),
+   member('1309532438019706969'),roster('brandweer'),GUILD,now),[]);
+});
+test('CRANE alone cannot establish Depannage membership',()=>{
+ const p=profile('depannage',S);
+ assert.equal(eligibleCheckrideSubject('depannage_crane',p,
+   member('1562090158667333692'),GUILD,now),false);
+ assert.equal(eligibleCheckrideSubject('depannage_crane',p,
+   member('1562090158667333692','1309532438019706971'),GUILD,now),true);
+ assert.equal(eligibleCheckrideSubject('depannage_fast',p,
+   member('1562090158667333692','1309532438019706971'),GUILD,now),false);
+});
+test('LSRA and FAST remain distinct trainee tracks',()=>{
+ const p=profile('depannage',S);
+ assert.equal(eligibleCheckrideSubject('depannage_lsra',p,
+   member('1309532438019706971'),GUILD,now),true);
+ assert.equal(eligibleCheckrideSubject('depannage_fast',p,
+   member('1309532438019706971'),GUILD,now),false);
 });

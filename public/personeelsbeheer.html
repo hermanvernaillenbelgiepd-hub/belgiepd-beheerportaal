@@ -1059,6 +1059,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div class="controls" style="margin-top:10px"><button id="staffTrainingSave" type="submit">Opleiding registreren</button><button class="alt" id="staffTrainingCancel" type="button" hidden>Annuleren</button></div>
 </form>
 <div id="staffLinkedTraining" class="subtle">Opleidingsgegevens laden…</div>
+<h3>Stage- en koppelritevaluaties</h3><div id="staffLinkedCheckrides" class="subtle">Evaluaties laden…</div>
 <h3>Nieuwe dossierregistratie</h3>
 <p class="subtle">Registreer rechtstreeks in deze personeelsfiche. Je ziet uitsluitend de categorieën waarvoor je volgens je dienst- en kaderrol bevoegd bent. Auteur, tijdstip en wijzigingen worden via de beveiligde server geregistreerd in het dossier en dynamische weekrapport.</p>
 <div id="staffLinkedCases" class="subtle">Kaderregistraties laden…</div>
@@ -1593,6 +1594,7 @@ function setupDossierTabs(){
     <section class="landscape-cell" data-sheet-tile="training">
       <h3>Voltooide opleidingen <a id="sheetTrainingRegisterLink" class="training-register-link" href="/rollen-opleidingen.html" title="Open opleidingen voor dit personeelslid">Opleidingsregister ↗</a></h3>
       <div id="sheetTraining" class="sheet-records">Opleidingen laden…</div>
+      <h4>Stage- en koppelritevaluaties</h4><div id="sheetCheckrides" class="sheet-records">Evaluaties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="basisNotes">
       <h3>Notities (basis)</h3>
@@ -3265,8 +3267,45 @@ function sheetFormalRows(entries,limited){
   importantRestrictionLimited=Boolean(limited);
   renderDossierImportantNotes();
 }
+async function loadStaffCheckrides(p,key){
+  const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
+  const preview=$('sheetCheckrides'),detail=$('staffLinkedCheckrides');
+  preview.textContent=detail.textContent='Evaluaties laden…';
+  try{
+    const data=await request('/api/checkrides/dossier/'+encodeURIComponent(p.dept)+'/'+
+      encodeURIComponent(p.discordId));
+    if(!same())return;
+    const records=data.evaluations||[];
+    preview.replaceChildren();detail.replaceChildren();
+    if(!records.length){
+      preview.textContent=detail.textContent='Nog geen stage- of koppelritevaluaties geregistreerd.';
+      return;
+    }
+    for(const e of records.slice(0,5)){
+      const row=document.createElement('div');row.className='sheet-record';
+      row.textContent=(e.eventDate||'—')+' · '+e.trackLabel+' · '+(e.average??'—')+
+        '/5 · '+(e.outcome||'—');
+      preview.append(row);
+    }
+    for(const e of records.slice(0,50)){
+      const row=document.createElement('div');row.className='note-item';
+      const title=document.createElement('strong');
+      title.textContent=(e.eventDate||'—')+' · '+e.trackLabel+' · '+(e.average??'—')+'/5';
+      const meta=document.createElement('span');meta.className='subtle';
+      meta.textContent=(e.outcome||'—')+' · Beoordelaar: '+(e.evaluatorDiscordId||'—');
+      const note=document.createElement('p');note.textContent=e.notes||'—';
+      row.append(title,meta,note);detail.append(row);
+    }
+    if(data.limited||records.length>50)
+      detail.append(document.createTextNode(' Meer evaluaties kunnen beschikbaar zijn in de opleidingshistoriek.'));
+  }catch(e){if(same()){
+    preview.textContent='Evaluatiegegevens niet beschikbaar voor deze dossierbevoegdheid.';
+    detail.textContent='Evaluatiehistoriek niet beschikbaar ('+e.message+').';
+  }}
+}
 async function loadLinkedPersonnelRecords(p,key){
   const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
+  void loadStaffCheckrides(p,key);
   const training=$('staffLinkedTraining'),cases=$('staffLinkedCases');
   const trainingUrl='/api/training/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
   const casesUrl='/api/management/cases?dept='+encodeURIComponent(p.dept)+

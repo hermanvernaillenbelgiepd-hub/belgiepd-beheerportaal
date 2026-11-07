@@ -19,6 +19,17 @@ export const CHECKRIDE_TRACKS=Object.freeze({
     stage:true}),
   brandweer_stage:Object.freeze({code:'brandweer_stage',dept:'brandweer',label:'Brandweer · stagiairs',
     instructor:'1309532437952466989',candidates:['1309532438053130324'],stage:true}),
+
+  depannage_lsra:Object.freeze({code:'depannage_lsra',dept:'depannage',
+    label:'Depannage · LSRA',instructor:'1309532438019706969',
+    candidates:['1309532438019706971']}),
+  depannage_fast:Object.freeze({code:'depannage_fast',dept:'depannage',
+    label:'Depannage · FAST',instructor:'1309532438019706969',
+    candidates:['1309532438019706970']}),
+  depannage_crane:Object.freeze({code:'depannage_crane',dept:'depannage',
+    label:'Depannage · CRANE',instructor:'1309532438019706969',
+    candidates:['1562090158667333692'],
+    memberAny:['1309532438019706971','1309532438019706970','1309532438019706969']}),
   burger_io:Object.freeze({code:'burger_io',dept:'burger',label:'Burger · BIO',
     instructor:'1492485336197234728',candidates:['1398985105254650007'],
     excluded:['1309532438019706966','1492485336197234728']})
@@ -98,6 +109,7 @@ export function eligibleCheckrideSubject(trackCode,person,member,guildId,now=Dat
   if(!roles||!track.candidates.some(id=>roles.has(id))||
      (track.excluded||[]).some(id=>roles.has(id)))return false;
   if(track.member&&!roles.has(track.member))return false;
+  if(track.memberAny&&!track.memberAny.some(id=>roles.has(id)))return false;
   if(track.stage){
     const official=[person.rank,person.call,person.status,person.series]
       .map(v=>String(v||'')).join(' ').toUpperCase();

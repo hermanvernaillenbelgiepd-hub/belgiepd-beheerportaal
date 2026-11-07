@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {verifyGuildAuthorizationRoles} from './discord-guild-authorization.js';
+import {loadSubjectCheckrides} from './checkride-dossier-history.js';
 import {
   CITIZEN_DOSSIER_COLLECTION,validCitizenId,verifiedCitizenCouncil,
   canAccessCitizenDossier,canWriteCitizenDossier,canDeleteCitizenEntry,canManageCitizenDeletions,citizenMemberType,
@@ -123,6 +124,10 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
       const entries=liveEntries.slice(0,200).map(safeEntry);
       const leaves=leaveSnap.docs.map(safeLeave)
         .sort((a,b)=>b.startDate.localeCompare(a.startDate));
+      // Evaluaties worden niet gekopieerd of opnieuw opgeslagen in Burger.
+      // Gebruik de bestaande dienstgebonden koppelritbron, alleen na Burgerraad-autorisatie.
+      const assessment=await loadSubjectCheckrides(db,'burger',person.personId)
+        .catch(()=>null);
       const promoted=entries.find(e=>e.kind==='volwaardig')||null;
       return res.json({person:safePerson(person),
         roleType:citizenMemberType(memberSnap.data(),process.env.DISCORD_GUILD_ID),
@@ -137,7 +142,9 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
         volwaardigDate:promoted?.eventDate||null,
         // Een persoonsrapport is de auditbare combinatie van registraties
         // en het centrale verloflog. Nooit een tweede weekrapport schrijven.
-        reportAvailable:true});
+        reportAvailable:true,
+        evaluations:assessment?.evaluations||[],evaluationsLimited:assessment?.limited===true,
+        evaluationsUnavailable:assessment===null});
     }catch(e){return fail(res,e)}
   });
 

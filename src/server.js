@@ -46,6 +46,7 @@ import {installUniformGradeRoutes} from './uniform-grade-routes.js';
 import {installUniformCompositionRoutes} from './uniform-composition-routes.js';
 import {installTrainingRequestRoutes} from './training-request-routes.js';
 import {installCheckrideRoutes} from './checkride-routes.js';
+import {installCheckrideDossierRoutes} from './checkride-dossier-routes.js';
 import {installDocumentCenterRoutes} from './document-center-routes.js';
 import {installDcIdTransferRoutes} from './dc-id-transfer-routes.js';
 import {DC_TRANSFER_ALIASES,applyCompletedDcAliases} from './dc-id-transfer-policy.js';
@@ -843,6 +844,7 @@ installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installRosterColumnRoutes(app,{requireUser});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
 installCheckrideRoutes(app,{requireUser,getSnapshot});
+installCheckrideDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installDocumentCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
   onCompleted:id=>{

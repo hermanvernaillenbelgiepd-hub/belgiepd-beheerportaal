@@ -48,7 +48,9 @@ main .row h2{margin:0}
  main .two{gap:4px}
 }
 .education-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px}
-.education-tabs button{background:#1c3a5f;border:1px solid #547fa8;min-width:190px;text-align:left}
+.education-tabs button,.education-tabs .education-link{background:#1c3a5f;border:1px solid #547fa8;min-width:190px;text-align:left}
+.education-tabs .education-link{display:inline-flex;align-items:center;border-radius:7px;padding:7px 11px;text-decoration:none;color:#e9f2ff;font-size:12px;line-height:1.35;font-weight:650}
+.education-tabs .education-link:hover,.education-tabs .education-link:focus-visible{background:#3268b5;border-color:#9bc7f1}
 .education-tabs button[aria-selected=true]{background:#3268b5;border-color:#9bc7f1}
 .education-tabs button[hidden],#requestPane[hidden],#registerPane[hidden]{display:none}
 #registerPane #inboxPanel{margin:12px 0}
@@ -58,10 +60,11 @@ main .row h2{margin:0}
 </style></head><body>
 <header><strong>🎓 BelgiëPD · Opleidingscentrum</strong><a href="/">Dashboard</a><a href="/meldingen.html">Meldingen</a><button id="login" type="button">Aanmelden</button></header>
 <main>
-<h1>Opleidingscentrum</h1><p><a href="/koppelritten.html">📝 Koppelritten en stage-evaluaties (alleen bevoegde instructeurs en leiding)</a></p><p><a href="/opleidingskalender.html">📅 Multidisciplinaire opleidingskalender (alle hulpdiensten)</a> &nbsp; · &nbsp; <a href="/documentencentrum.html">📁 Documentencentrum — lesmateriaal en procedures</a></p><p>Vraag zelf opleidingen aan of registreer en behandel opleidingen met de juiste dienstbevoegdheid.</p>
+<h1>Opleidingscentrum</h1><p><a href="/opleidingskalender.html">📅 Multidisciplinaire opleidingskalender (alle hulpdiensten)</a> &nbsp; · &nbsp; <a href="/documentencentrum.html">📁 Documentencentrum — lesmateriaal en procedures</a></p><p>Vraag zelf opleidingen aan of registreer en behandel opleidingen met de juiste dienstbevoegdheid.</p>
 <nav class="education-tabs" aria-label="Luik kiezen">
  <button type="button" id="requestTab" role="tab" aria-selected="true" aria-controls="requestPane">Opleiding aanvragen</button>
  <button type="button" id="registerTab" role="tab" aria-selected="false" aria-controls="registerPane" hidden>Opleiding registreren / behandelen</button>
+ <a class="education-link" href="/koppelritten.html">Koppelritten & stages</a>
 </nav>
 <div id="requestPane" role="tabpanel" aria-labelledby="requestTab">
 <div id="feedback" class="status" role="status">Je account en opleidingsmogelijkheden controleren…</div>

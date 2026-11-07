@@ -162,7 +162,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <section id="trainingSection" class="card dossier-panel" data-pane="opleidingen" hidden>
 <div class="buttons" style="justify-content:space-between">
 <h2>Gekoppelde opleidingen</h2><a id="trainingLink" href="/rollen-opleidingen.html?department=brandweer">Brandweeropleidingen ↗</a></div>
-<div id="trainings" class="sheet-rows"></div></section>
+<div id="trainings" class="sheet-rows"></div><h3>Stage- en koppelritevaluaties</h3><div id="fireCheckrides" class="sheet-rows">Evaluaties laden…</div></section>
 <section id="historySection" class="card dossier-panel" data-pane="historiek" hidden>
 <h2>Administratieve dossierhistoriek</h2>
 <div id="history" class="sheet-rows"></div>
@@ -346,6 +346,19 @@ function setAvailableTabs(data){
    button.hidden=!allowedTabs.has(button.dataset.openTab)||
      Boolean(button.dataset.entryKind&&!data.canWrite.includes(button.dataset.entryKind));
 }
+async function loadFireCheckrides(){
+ const root=$('fireCheckrides');root.textContent='Evaluaties laden…';
+ try{
+   const data=await api('/api/checkrides/dossier/brandweer/'+encodeURIComponent(id));
+   root.replaceChildren();
+   if(!data.evaluations?.length){root.textContent='Nog geen stage-evaluaties geregistreerd.';return}
+   cards(root,data.evaluations,
+     e=>e.trackLabel+' · '+e.eventDate+' · '+e.average+'/5',
+     e=>e.notes||'—',
+     e=>e.outcome+' · Instructeur '+(e.evaluatorDiscordId||'—'));
+   if(data.limited)root.append(document.createTextNode(' Oudere evaluaties kunnen ontbreken in dit overzicht.'));
+ }catch(e){root.textContent='Stage-evaluaties niet beschikbaar ('+e.message+').'}
+}
 async function load(){
  if(!auth?.currentUser)return;
  try{
@@ -459,6 +472,7 @@ async function load(){
      x=>(x.at||'').slice(0,16)+' · '+(x.byDiscordId||''));
    $('trainingLink').href='/rollen-opleidingen.html?department=brandweer&discordId='+
      encodeURIComponent(id);
+   void loadFireCheckrides();
   }
   $('specialtyEdit').hidden=true;
   if(data.canEditSpecialties){
