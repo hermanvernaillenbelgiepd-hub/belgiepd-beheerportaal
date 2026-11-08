@@ -549,6 +549,31 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         if(!request.exists)throw rejection('Verlofaanvraag niet gevonden',404);
         const d=request.data();
         if(d.status!=='pending')throw rejection('Aanvraag is al behandeld',409);
+        // Een eerder verleende periode kan intussen ingetrokken of verlengd
+        // zijn. Herbereken daarom vóór goedkeuring dezelfde totale periode.
+        if(decision==='approved'&&d.extensionOf){
+          if(!validId(d.extensionOf))
+            throw rejection('De oorspronkelijke verlofverwijzing is ongeldig',409);
+          const [base,timeline]=await Promise.all([
+            tx.get(db().collection(coll).doc(d.extensionOf)),
+            tx.get(db().collection(coll)
+              .where('personDiscordId','==',d.personDiscordId).limit(500))
+          ]);
+          if(!base.exists||base.get('personDiscordId')!==d.personDiscordId||
+             timeline.size===500)
+            throw rejection('De oorspronkelijke verlofperiode is niet meer geldig',409);
+          let verified;
+          try{
+            verified=planLeaveExtension(base.data(),d.endDate,
+              timeline.docs.filter(doc=>doc.id!==ref.id).map(doc=>doc.data()),
+              base.get('endDate'));
+          }catch{throw rejection('De verlofperiode is intussen gewijzigd; controleer de verlengingsaanvraag',409)}
+          if(verified.startDate!==d.startDate||
+             verified.periodStartDate!==d.periodStartDate||
+             verified.totalPeriodDays!==d.totalPeriodDays||
+             verified.days!==d.days)
+            throw rejection('De totale verlofduur is gewijzigd; laat een nieuwe verlenging indienen',409);
+        }
         const grant=grantDoc.exists?grantDoc.data():oldGrant?.exists?oldGrant.data():null;
         if(!mayApproveLeave(req.bpd,board?d:await resolveApplicantRoles(d),grant,yyyyMmDd(),board))
           throw rejection('Geen bevoegdheid om dit verlof goed te keuren',403);
