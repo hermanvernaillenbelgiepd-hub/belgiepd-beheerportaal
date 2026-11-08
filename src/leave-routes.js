@@ -376,6 +376,68 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       return res.status(201).json({id:createdId,status,days:details.days,automatic:autoApproved});
     }catch(e){return jsonError(res,e)}
   });
+  // Een verlenging is altijd een NIEUWE aanvraag met pending-status.
+  // De bestaande goedgekeurde verlofperiode blijft onaangeroerd.
+  app.post('/api/leave/requests/:id/extend',requireUser,requireWrites,async(req,res)=>{
+    if(!validId(req.params.id))return res.status(400).json({error:'Ongeldig aanvraagnummer'});
+    const body=req.body;
+    if(!body||typeof body!=='object'||Array.isArray(body)||
+       Object.keys(body).some(key=>!['endDate','note'].includes(key)))
+      return res.status(400).json({error:'Ongeldige verlengingsaanvraag'});
+    if(typeof body.endDate!=='string')
+      return res.status(400).json({error:'Vul een geldige nieuwe einddatum in'});
+    try{parseDay(body.endDate)}
+    catch{return res.status(400).json({error:'Ongeldige nieuwe einddatum'})}
+    const note=body.note===undefined?'':body.note;
+    if(typeof note!=='string'||note.trim().length>300)
+      return res.status(400).json({error:'Toelichting mag maximaal 300 tekens bevatten'});
+    try{
+      const {records}=await context(req);
+      const personId=req.bpd.discordId,baseRef=db().collection(coll).doc(req.params.id);
+      const departments=departmentsOf(records);
+      if(!departments.length)throw rejection('Geen actieve hulpdiensten gevonden',403);
+      const roles=Object.fromEntries(departments.map(dept=>[
+        dept,req.bpd.portalTechnicalMode===true
+          ?req.bpd.operationalDepartmentRoles?.[dept]||null
+          :roleForDepartment(req.bpd,dept)
+      ]));
+      const target=db().collection(coll).doc();
+      let plan;
+      await db().runTransaction(async tx=>{
+        const [base,timeline]=await Promise.all([
+          tx.get(baseRef),
+          tx.get(db().collection(coll).where('personDiscordId','==',personId).limit(500))
+        ]);
+        if(!base.exists)throw rejection('Verlofperiode niet gevonden',404);
+        const prior=base.data();
+        if(prior.personDiscordId!==personId)
+          throw rejection('Je mag uitsluitend je eigen verlof verlengen',403);
+        if(timeline.size===500)
+          throw rejection('Te veel verlofregistraties voor een veilige verlengingscontrole',503);
+        try{
+          plan=planLeaveExtension(prior,body.endDate,
+            timeline.docs.map(doc=>doc.data()),yyyyMmDd());
+        }catch(e){throw rejection(e.message,409)}
+        const subject=records.find(row=>departments.includes(row.dept))||records[0];
+        const request={...plan,note:note.trim(),extensionOf:baseRef.id,
+          personDiscordId:personId,subjectName:subject.name||prior.subjectName||'Onbekend personeelslid',
+          subjectCall:subject.call||prior.subjectCall||'',subjectDepartments:departments,
+          subjectDepartmentRoles:roles,
+          subjectRole:req.bpd.portalTechnicalMode===true?req.bpd.operationalRole:req.bpd.role,
+          status:'pending',autoApproved:false,
+          submittedByUid:req.bpd.uid,submittedByDiscordId:personId,
+          createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()};
+        tx.create(target,request);
+        writeLeaveEvent(tx,{requestRef:target,request,action:'extension_submitted',
+          actor:actorFromPersonnel(req.bpd,records)||{
+            discordId:personId,name:request.subjectName,call:request.subjectCall
+          },actorUid:req.bpd.uid,eventDate:yyyyMmDd(),to:'pending'});
+      });
+      return res.status(201).json({id:target.id,status:'pending',
+        days:plan.days,totalPeriodDays:plan.totalPeriodDays,
+        periodStartDate:plan.periodStartDate,automatic:false});
+    }catch(e){return jsonError(res,e)}
+  });
   // Een eigen nog lopend/voorafgaand verlof intrekken, nooit verwijderen.
   // De originele aanvraag, alle beslissingen en het tijdstip blijven bewaard.
   // Withdraw an approved leave period only on an independently confirmed
