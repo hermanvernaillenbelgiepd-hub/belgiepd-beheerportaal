@@ -150,6 +150,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         const summary={id:d.id,subjectName:subject.name,
           subjectCall:subject.call,series:personSeries(subject),
           startDate:r.startDate,endDate:r.endDate,days:r.days,
+          extensionOf:r.extensionOf||null,totalPeriodDays:r.totalPeriodDays||null,
           status:r.status,autoApproved:r.autoApproved===true,
           readAt:iso(r.seriesReadBy?.[owner])};
         if(r.status==='pending')pending.push(summary);
