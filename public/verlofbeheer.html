@@ -8,6 +8,12 @@
 *{box-sizing:border-box}body{margin:0}header{background:#101c38;color:white;padding:18px max(20px,calc((100vw - 1150px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}header a{color:#dbe7ff;text-decoration:none}header button{background:#e9efff;color:#233e95}button,.link{font:inherit;cursor:pointer;border:1px solid #cdd7e9;border-radius:9px;padding:10px 14px;background:white;color:#14336c}button:hover{filter:brightness(.97)}button.primary{color:white;background:#2e55df;border-color:#2e55df}button:disabled{opacity:.5;cursor:not-allowed}main{max-width:1150px;margin:30px auto;padding:0 20px}h1{font-size:29px;margin:0 0 10px}h2{font-size:19px;margin:0 0 14px}p{color:#51617a;line-height:1.55}small,.muted{color:#6e7c92}.panel{background:white;border:1px solid #e0e6f0;border-radius:14px;padding:22px;margin:18px 0;box-shadow:0 3px 14px #15234407}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}label{font-size:13px;font-weight:700;color:#34425c}input,select,textarea{font:inherit;padding:11px;border:1px solid #cbd5e4;border-radius:8px;width:100%;color:#182747;background:white}textarea{min-height:70px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.pill{display:inline-block;padding:4px 9px;border-radius:12px;background:#eff2fb;color:#344a78;font-size:12px;font-weight:700}.pending{background:#fff3de;color:#976118}.approved{background:#e4f5e9;color:#166739}.rejected{background:#ffe5e9;color:#a02938}.withdrawn{background:#e9edf4;color:#4e5d73}
 button.withdraw{background:#fff1f2;border-color:#efb8c0;color:#a3293c;padding:7px 11px;font-size:12px}
 button.withdraw:hover{background:#ffe4e8}
+button.extend{background:#edf5ff;border-color:#aac8ee;color:#2457a4}
+button.extend:hover{background:#e2efff}
+.dialog-extension{border-color:#8eafd7;color:#24446b}
+.dialog-extension .dialog-body h2{color:#194c85}
+.dialog-extension .dialog-body p{color:#355674}
+.dialog-extension .dialog-actions{gap:8px}
 .record .record-activity{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
 .history-details{border:1px solid #e2e8f3;border-radius:7px;margin-top:9px;padding:7px 9px;font-size:12px}
 .history-details summary{cursor:pointer;font-weight:650;color:#32537e}
@@ -227,6 +233,7 @@ body.bpd-leave-page #content>#managementLink p{
         <div class="grid"><div class="field"><label for="start">Begindatum</label><input id="start" type="date" required></div><div class="field"><label for="end">Einddatum (inbegrepen)</label><input id="end" type="date" required></div></div>
         <p id="dayCount">Selecteer beide datums.</p><div class="field"><label for="note">Toelichting (optioneel, max. 300 tekens)</label><textarea id="note" maxlength="300" placeholder="Deel geen onnodige persoonlijke informatie."></textarea></div>
         <button id="submitRequest" class="primary" type="submit">Aanvraag indienen</button>
+        <p>Heb je al goedgekeurd verlof? Gebruik dan hieronder bij die periode <strong>Verlenging aanvragen</strong>. Een aansluitende aanvraag wordt nooit automatisch goedgekeurd.</p>
       </form></section>
       <section class="panel" id="leaveHistoryPanel"><h2>Mijn aanvragen</h2><div id="myRequests">Nog geen gegevens geladen.</div></section>
     </div>
@@ -236,6 +243,22 @@ body.bpd-leave-page #content>#managementLink p{
     </section>
   </div>
 </main>
+<dialog id="leaveExtensionDialog" class="dialog-error dialog-extension" aria-labelledby="leaveExtensionTitle">
+  <div class="dialog-body">
+    <h2 id="leaveExtensionTitle">Verlenging aanvragen</h2>
+    <p>Je oorspronkelijke verlof blijft behouden. De verlenging wordt niet automatisch goedgekeurd; de totale verlofduur bepaalt welke kaderleden mogen beslissen.</p>
+    <form id="extensionForm">
+      <div class="field"><label for="extensionEnd">Nieuwe einddatum (inbegrepen)</label>
+        <input id="extensionEnd" type="date" required></div>
+      <div class="field"><label for="extensionNote">Toelichting (optioneel, max. 300 tekens)</label>
+        <textarea id="extensionNote" maxlength="300"></textarea></div>
+      <div class="dialog-actions">
+        <button id="extensionCancel" type="button">Annuleren</button>
+        <button id="extensionSubmit" class="primary" type="submit">Ter goedkeuring indienen</button>
+      </div>
+    </form>
+  </div>
+</dialog>
 <dialog id="leaveErrorDialog" class="dialog-error" aria-labelledby="leaveErrorTitle" aria-describedby="leaveErrorMessage">
   <div class="dialog-body">
     <h2 id="leaveErrorTitle">Verlofaanvraag niet verwerkt</h2>
@@ -244,12 +267,12 @@ body.bpd-leave-page #content>#managementLink p{
   </div>
 </dialog>
 <script type="module">
-let firebaseAuth=null,firebaseFns=null,me=null;
+let firebaseAuth=null,firebaseFns=null,me=null,extendingId=null;
 const el=id=>document.getElementById(id);
 const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const statusText={pending:'In behandeling',approved:'Goedgekeurd',rejected:'Geweigerd',withdrawn:'Ingetrokken'};
 const auditActionText={
-  submitted:'Aanvraag ingediend',automatic_approved:'Automatisch goedgekeurd',
+  submitted:'Aanvraag ingediend',extension_submitted:'Verlenging aangevraagd',automatic_approved:'Automatisch goedgekeurd',
   korpsleiding_vrijgesteld:'Automatisch geregistreerd (Korpsleiding)',
   approved:'Goedgekeurd',rejected:'Geweigerd',withdrawn:'Ingetrokken door aanvrager',
   board_override:'Beslissing herzien door Bestuur',manual_approved:'Handmatig goedgekeurd'
@@ -281,8 +304,25 @@ function record(x){
  const status=document.createElement('span');
  status.className='pill '+(['pending','approved','rejected','withdrawn'].includes(x.status)?x.status:'');
  status.textContent=statusText[x.status]||x.status||'Onbekend';
- const days=document.createElement('p');days.textContent=Number(x.days||0)+' kalenderdagen';
+ const days=document.createElement('p');days.textContent=x.extensionOf?
+   Number(x.days||0)+' extra dagen · totale periode '+Number(x.totalPeriodDays||0)+' kalenderdagen':
+   Number(x.days||0)+' kalenderdagen';
  main.append(label,' ',status,days);
+ if(x.canExtend&&me?.writesEnabled){
+   const extendButton=document.createElement('button');
+   extendButton.type='button';extendButton.className='withdraw extend';
+   extendButton.textContent='Verlenging aanvragen';
+   extendButton.onclick=()=>{
+     extendingId=x.id;
+     el('extensionEnd').value='';
+     el('extensionEnd').min=new Date(Date.parse(x.endDate+'T00:00:00Z')+86400000)
+       .toISOString().slice(0,10);
+     el('extensionNote').value='';
+     el('leaveExtensionDialog').showModal();
+   };
+   const actions=document.createElement('div');actions.className='record-activity';
+   actions.append(extendButton);main.append(actions);
+ }
  if(x.canWithdraw&&me?.writesEnabled){
    const actions=document.createElement('div');actions.className='record-activity';
    const button=document.createElement('button');button.type='button';button.className='withdraw';
@@ -344,6 +384,24 @@ async function refresh(){
  fill('myRequests',leaves.mine);
  if(leaves.limited)tell('Dit overzicht toont maximaal 100 recente aanvragen.');
 }
+el('extensionCancel').onclick=()=>el('leaveExtensionDialog').close();
+el('extensionForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ if(!extendingId)return;
+ const button=el('extensionSubmit');
+ button.disabled=true;
+ try{
+   const result=await request('/api/leave/requests/'+encodeURIComponent(extendingId)+'/extend',{
+     method:'POST',body:JSON.stringify({
+       endDate:el('extensionEnd').value,note:el('extensionNote').value
+     })});
+   el('leaveExtensionDialog').close();extendingId=null;
+   await refresh();
+   tell('Verlenging van '+result.days+' dagen aangevraagd. Totale periode: '+
+     result.totalPeriodDays+' kalenderdagen. Goedkeuring door bevoegd kader vereist.');
+ }catch(error){showError(error.message,'Verlenging kon niet worden ingediend')}
+ finally{button.disabled=false}
+});
 el('requestForm').addEventListener('submit',async e=>{
  e.preventDefault();
  const startDate=el('start').value,endDate=el('end').value;

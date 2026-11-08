@@ -4,6 +4,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 // cancellation from disappearing from weekly reports or a dossier.
 const TITLE=Object.freeze({
   submitted:'Verlof aangevraagd',
+  extension_submitted:'Verlofverlenging aangevraagd',
   automatic_approved:'Verlof automatisch goedgekeurd',
   korpsleiding_vrijgesteld:'Verlof Korpsleiding automatisch geregistreerd',
   approved:'Verlof goedgekeurd',
@@ -24,7 +25,9 @@ export const leaveCanReapply=status=>status==='withdrawn'||status==='rejected';
 export function leaveEventDetails(action,request,from=null,to=null){
   const base=leaveEventLabel(action)+' · '+request.startDate+' t/m '+
     request.endDate+' ('+request.days+' kalenderdagen)';
-  return base+(from?' · status '+from+' → '+(to||'ingetrokken'):'');
+  return base+(request.extensionOf&&Number.isSafeInteger(request.totalPeriodDays)?
+    ' · totale periode '+request.totalPeriodDays+' kalenderdagen vanaf '+request.periodStartDate:'')+
+    (from?' · status '+from+' → '+(to||'ingetrokken'):'');
 }
 export function writeLeaveEvent(tx,{requestRef,request,action,actor,actorUid,
   eventDate,from=null,to=null,note=''}) {

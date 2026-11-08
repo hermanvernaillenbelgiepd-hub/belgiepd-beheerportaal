@@ -4,7 +4,8 @@ import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
   mayRegisterCentralManualLeave,mayApproveLeave,
   mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,
-  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,leaveApplicantIsCorps} from './leave-policy.js';
+  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,leaveApplicantIsCorps,parseDay} from './leave-policy.js';
+import {activeLeaveCollision,planLeaveExtension} from './leave-extension-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {leaveCanWithdraw,leaveCanReapply,writeLeaveEvent} from './leave-event-log.js';
@@ -29,6 +30,9 @@ const item=(doc,showNote=false)=>{
   return {id:doc.id,personDiscordId:d.personDiscordId,subjectName:d.subjectName,
     subjectDepartments:d.subjectDepartments||[],startDate:d.startDate,endDate:d.endDate,
     days:d.days,status:d.status,canWithdraw:leaveCanWithdraw(d,yyyyMmDd()),
+    canExtend:d.status==='approved'&&d.endDate>=yyyyMmDd(),
+    extensionOf:d.extensionOf||null,totalPeriodDays:d.totalPeriodDays||null,
+    periodStartDate:d.periodStartDate||null,
     createdAt:iso(d.createdAt),decidedAt:iso(d.decidedAt),withdrawnAt:iso(d.withdrawnAt),
     ...(showNote?{note:d.note||''}:{})};
 };
@@ -146,6 +150,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         const summary={id:d.id,subjectName:subject.name,
           subjectCall:subject.call,series:personSeries(subject),
           startDate:r.startDate,endDate:r.endDate,days:r.days,
+          extensionOf:r.extensionOf||null,totalPeriodDays:r.totalPeriodDays||null,
           status:r.status,autoApproved:r.autoApproved===true,
           readAt:iso(r.seriesReadBy?.[owner])};
         if(r.status==='pending')pending.push(summary);
@@ -316,6 +321,14 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       try{
         await db().runTransaction(async tx=>{
           const original=await tx.get(ref);
+          const timeline=await tx.get(db().collection(coll)
+            .where('personDiscordId','==',id).limit(500));
+          if(timeline.size===500)
+            throw rejection('Te veel verlofregistraties voor een veilige controle',503);
+          // Aansluitende en overlappende 7-14-daagse aanvragen mogen niet
+          // stilzwijgend een bestaande verlofperiode verlengen.
+          if(activeLeaveCollision(timeline.docs.map(doc=>doc.data()),details))
+            throw rejection('Deze periode raakt aan lopend of goedgekeurd verlof. Gebruik bij goedgekeurd verlof de knop Verlenging aanvragen; bij een openstaande aanvraag wacht je de beslissing af.',409);
           let latest=original;
           if(original.exists&&original.get('latestAttemptId')){
             const latestId=original.get('latestAttemptId');
@@ -362,6 +375,68 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         throw e;
       }
       return res.status(201).json({id:createdId,status,days:details.days,automatic:autoApproved});
+    }catch(e){return jsonError(res,e)}
+  });
+  // Een verlenging is altijd een NIEUWE aanvraag met pending-status.
+  // De bestaande goedgekeurde verlofperiode blijft onaangeroerd.
+  app.post('/api/leave/requests/:id/extend',requireUser,requireWrites,async(req,res)=>{
+    if(!validId(req.params.id))return res.status(400).json({error:'Ongeldig aanvraagnummer'});
+    const body=req.body;
+    if(!body||typeof body!=='object'||Array.isArray(body)||
+       Object.keys(body).some(key=>!['endDate','note'].includes(key)))
+      return res.status(400).json({error:'Ongeldige verlengingsaanvraag'});
+    if(typeof body.endDate!=='string')
+      return res.status(400).json({error:'Vul een geldige nieuwe einddatum in'});
+    try{parseDay(body.endDate)}
+    catch{return res.status(400).json({error:'Ongeldige nieuwe einddatum'})}
+    const note=body.note===undefined?'':body.note;
+    if(typeof note!=='string'||note.trim().length>300)
+      return res.status(400).json({error:'Toelichting mag maximaal 300 tekens bevatten'});
+    try{
+      const {records}=await context(req);
+      const personId=req.bpd.discordId,baseRef=db().collection(coll).doc(req.params.id);
+      const departments=departmentsOf(records);
+      if(!departments.length)throw rejection('Geen actieve hulpdiensten gevonden',403);
+      const roles=Object.fromEntries(departments.map(dept=>[
+        dept,req.bpd.portalTechnicalMode===true
+          ?req.bpd.operationalDepartmentRoles?.[dept]||null
+          :roleForDepartment(req.bpd,dept)
+      ]));
+      const target=db().collection(coll).doc();
+      let plan;
+      await db().runTransaction(async tx=>{
+        const [base,timeline]=await Promise.all([
+          tx.get(baseRef),
+          tx.get(db().collection(coll).where('personDiscordId','==',personId).limit(500))
+        ]);
+        if(!base.exists)throw rejection('Verlofperiode niet gevonden',404);
+        const prior=base.data();
+        if(prior.personDiscordId!==personId)
+          throw rejection('Je mag uitsluitend je eigen verlof verlengen',403);
+        if(timeline.size===500)
+          throw rejection('Te veel verlofregistraties voor een veilige verlengingscontrole',503);
+        try{
+          plan=planLeaveExtension(prior,body.endDate,
+            timeline.docs.map(doc=>doc.data()),yyyyMmDd());
+        }catch(e){throw rejection(e.message,409)}
+        const subject=records.find(row=>departments.includes(row.dept))||records[0];
+        const request={...plan,note:note.trim(),extensionOf:baseRef.id,
+          personDiscordId:personId,subjectName:subject.name||prior.subjectName||'Onbekend personeelslid',
+          subjectCall:subject.call||prior.subjectCall||'',subjectDepartments:departments,
+          subjectDepartmentRoles:roles,
+          subjectRole:req.bpd.portalTechnicalMode===true?req.bpd.operationalRole:req.bpd.role,
+          status:'pending',autoApproved:false,
+          submittedByUid:req.bpd.uid,submittedByDiscordId:personId,
+          createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()};
+        tx.create(target,request);
+        writeLeaveEvent(tx,{requestRef:target,request,action:'extension_submitted',
+          actor:actorFromPersonnel(req.bpd,records)||{
+            discordId:personId,name:request.subjectName,call:request.subjectCall
+          },actorUid:req.bpd.uid,eventDate:yyyyMmDd(),to:'pending'});
+      });
+      return res.status(201).json({id:target.id,status:'pending',
+        days:plan.days,totalPeriodDays:plan.totalPeriodDays,
+        periodStartDate:plan.periodStartDate,automatic:false});
     }catch(e){return jsonError(res,e)}
   });
   // Een eigen nog lopend/voorafgaand verlof intrekken, nooit verwijderen.
@@ -475,6 +550,31 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         if(!request.exists)throw rejection('Verlofaanvraag niet gevonden',404);
         const d=request.data();
         if(d.status!=='pending')throw rejection('Aanvraag is al behandeld',409);
+        // Een eerder verleende periode kan intussen ingetrokken of verlengd
+        // zijn. Herbereken daarom vóór goedkeuring dezelfde totale periode.
+        if(decision==='approved'&&d.extensionOf){
+          if(!validId(d.extensionOf))
+            throw rejection('De oorspronkelijke verlofverwijzing is ongeldig',409);
+          const [base,timeline]=await Promise.all([
+            tx.get(db().collection(coll).doc(d.extensionOf)),
+            tx.get(db().collection(coll)
+              .where('personDiscordId','==',d.personDiscordId).limit(500))
+          ]);
+          if(!base.exists||base.get('personDiscordId')!==d.personDiscordId||
+             timeline.size===500)
+            throw rejection('De oorspronkelijke verlofperiode is niet meer geldig',409);
+          let verified;
+          try{
+            verified=planLeaveExtension(base.data(),d.endDate,
+              timeline.docs.filter(doc=>doc.id!==ref.id).map(doc=>doc.data()),
+              base.get('endDate'));
+          }catch{throw rejection('De verlofperiode is intussen gewijzigd; controleer de verlengingsaanvraag',409)}
+          if(verified.startDate!==d.startDate||
+             verified.periodStartDate!==d.periodStartDate||
+             verified.totalPeriodDays!==d.totalPeriodDays||
+             verified.days!==d.days)
+            throw rejection('De totale verlofduur is gewijzigd; laat een nieuwe verlenging indienen',409);
+        }
         const grant=grantDoc.exists?grantDoc.data():oldGrant?.exists?oldGrant.data():null;
         if(!mayApproveLeave(req.bpd,board?d:await resolveApplicantRoles(d),grant,yyyyMmDd(),board))
           throw rejection('Geen bevoegdheid om dit verlof goed te keuren',403);

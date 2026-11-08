@@ -161,9 +161,13 @@ async function api(url,body){
 function item(x,override=false){
  const row=document.createElement('div');row.className='item';
  const title=document.createElement('strong');title.textContent=(x.subjectName||'Personeelslid')+
-  ' · '+(x.startDate||'?')+' t/m '+(x.endDate||'?');
- const info=document.createElement('p');info.textContent=Number(x.days)+' kalenderdagen · '+
-  (x.subjectDepartments||[]).join(', ')+(override?' · huidige status: '+(x.status==='approved'?'Goedgekeurd':'Afgewezen'):'');
+  ' · '+(x.startDate||'?')+' t/m '+(x.endDate||'?')+
+  (x.extensionOf?' · VERLENGING':'');
+ const info=document.createElement('p');info.textContent=
+  (x.extensionOf?Number(x.days)+' extra dagen · TOTAAL '+Number(x.totalPeriodDays)+
+    ' kalenderdagen vanaf '+(x.periodStartDate||'?'):
+    Number(x.days)+' kalenderdagen')+' · '+(x.subjectDepartments||[]).join(', ')+
+  (override?' · huidige status: '+(x.status==='approved'?'Goedgekeurd':'Afgewezen'):'');
  row.append(title,info);
  if(writesEnabled){
   const buttons=document.createElement('div');buttons.className='actions';
@@ -350,7 +354,9 @@ async function loadSeriesLeave(){
    title.textContent=(record.subjectCall||'')+' · '+record.subjectName+
      ' · reeks '+record.series;
    const dates=document.createElement('p');
-   dates.textContent=record.startDate+' t/m '+record.endDate+' · Wacht op bevoegde beslissing';
+   dates.textContent=record.startDate+' t/m '+record.endDate+
+     (record.extensionOf?' · verlenging, totaal '+record.totalPeriodDays+' dagen':'')+
+     ' · Wacht op bevoegde beslissing';
    row.append(title,dates);addSeriesReadConfirmation(row,record);pendingEl.append(row);
   }
   const recent=$('seriesLeaveAutomatic');

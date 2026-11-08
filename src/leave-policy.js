@@ -118,10 +118,18 @@ function scopedRoles(actor,subjectDepartments){
   if(!Array.isArray(subjectDepartments))return [];
   return subjectDepartments.map(dept=>roleForDepartment(actor,dept)).filter(Boolean);
 }
+export function leaveDecisionDays(request){
+  const ownDays=calendarDays(request.startDate,request.endDate);
+  if(!request.extensionOf)return ownDays;
+  // Deze totale duur is bij indiening op de server vastgesteld.
+  const total=request.totalPeriodDays;
+  return Number.isSafeInteger(total)&&total>ownDays&&total<=LEAVE_MAX_DAYS?total:null;
+}
 export function mayApproveLeave(actor,request,grant,today=new Date().toISOString().slice(0,10),verifiedBoard=false){
   if(!actor||!validDiscordId(actor.discordId)||!request||request.status!=='pending')return false;
   if(actor.discordId===request.personDiscordId)return false;
-  const days=calendarDays(request.startDate,request.endDate);
+  const days=leaveDecisionDays(request);
+  if(days===null)return false;
   // Board may decide all pending requests irrespective of service or operational grade.
   if(verifiedBoard)return true;
   const departments=Array.isArray(request.subjectDepartments)?request.subjectDepartments:[];
