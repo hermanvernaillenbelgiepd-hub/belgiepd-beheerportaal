@@ -123,7 +123,7 @@ export function leaveDecisionDays(request){
   if(!request.extensionOf)return ownDays;
   // Deze totale duur is bij indiening op de server vastgesteld.
   const total=request.totalPeriodDays;
-  return Number.isSafeInteger(total)&&total>=ownDays&&total<=LEAVE_MAX_DAYS?total:null;
+  return Number.isSafeInteger(total)&&total>ownDays&&total<=LEAVE_MAX_DAYS?total:null;
 }
 export function mayApproveLeave(actor,request,grant,today=new Date().toISOString().slice(0,10),verifiedBoard=false){
   if(!actor||!validDiscordId(actor.discordId)||!request||request.status!=='pending')return false;
