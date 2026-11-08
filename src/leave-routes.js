@@ -4,7 +4,8 @@ import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
   mayRegisterCentralManualLeave,mayApproveLeave,
   mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,
-  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,leaveApplicantIsCorps} from './leave-policy.js';
+  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,leaveApplicantIsCorps,parseDay} from './leave-policy.js';
+import {activeLeaveCollision,planLeaveExtension} from './leave-extension-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {leaveCanWithdraw,leaveCanReapply,writeLeaveEvent} from './leave-event-log.js';
@@ -29,6 +30,9 @@ const item=(doc,showNote=false)=>{
   return {id:doc.id,personDiscordId:d.personDiscordId,subjectName:d.subjectName,
     subjectDepartments:d.subjectDepartments||[],startDate:d.startDate,endDate:d.endDate,
     days:d.days,status:d.status,canWithdraw:leaveCanWithdraw(d,yyyyMmDd()),
+    canExtend:d.status==='approved'&&d.endDate>=yyyyMmDd(),
+    extensionOf:d.extensionOf||null,totalPeriodDays:d.totalPeriodDays||null,
+    periodStartDate:d.periodStartDate||null,
     createdAt:iso(d.createdAt),decidedAt:iso(d.decidedAt),withdrawnAt:iso(d.withdrawnAt),
     ...(showNote?{note:d.note||''}:{})};
 };
@@ -316,6 +320,14 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       try{
         await db().runTransaction(async tx=>{
           const original=await tx.get(ref);
+          const timeline=await tx.get(db().collection(coll)
+            .where('personDiscordId','==',id).limit(500));
+          if(timeline.size===500)
+            throw rejection('Te veel verlofregistraties voor een veilige controle',503);
+          // Aansluitende en overlappende 7-14-daagse aanvragen mogen niet
+          // stilzwijgend een bestaande verlofperiode verlengen.
+          if(activeLeaveCollision(timeline.docs.map(doc=>doc.data()),details))
+            throw rejection('Deze periode raakt aan lopend of goedgekeurd verlof. Gebruik bij goedgekeurd verlof de knop Verlenging aanvragen; bij een openstaande aanvraag wacht je de beslissing af.',409);
           let latest=original;
           if(original.exists&&original.get('latestAttemptId')){
             const latestId=original.get('latestAttemptId');
