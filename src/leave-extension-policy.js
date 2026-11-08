@@ -37,7 +37,10 @@ export function planLeaveExtension(base,newEndDate,records,today){
   const extra={startDate:extraStart,endDate:newEndDate};
   if(records.some(row=>row.status==='pending'&&leavePeriodsTouch(row,extra)))
     throw new Error('Er loopt al een aansluitende verlofaanvraag. Wacht eerst de beslissing af.');
-  if(approved.some(row=>leavePeriodsTouch(row,extra)))
+  // De oorspronkelijke goedgekeurde keten grenst noodzakelijk aan extraStart.
+  // Alleen ANDERE goedgekeurde perioden buiten die keten zijn een conflict.
+  if(approved.some(row=>leavePeriodsTouch(row,extra)&&
+      !(row.startDate>=start&&row.endDate<=end)))
     throw new Error('Deze verlenging sluit aan bij een andere goedgekeurde periode. Contacteer het kader.');
   return {startDate:extraStart,endDate:newEndDate,days:calendarDays(extraStart,newEndDate),
     periodStartDate:start,totalPeriodDays:calendarDays(start,newEndDate)};
