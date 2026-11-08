@@ -31,6 +31,10 @@ test('21 plus 14 dagen wordt 35 dagen: geen Middenkader, wel Officieren en Korps
   assert.equal(mayApproveLeave(reviewer('middenkader'),request,null,'2026-11-08'),false);
   assert.equal(mayApproveLeave(reviewer('officierenkader'),request,null,'2026-11-08'),true);
   assert.equal(mayApproveLeave(reviewer('korpsleiding'),request,null,'2026-11-08'),true);
+  const exactly31=pending(planLeaveExtension(original,'2026-12-01',[original],'2026-11-08'));
+  assert.equal(exactly31.totalPeriodDays,31);
+  assert.equal(mayApproveLeave(reviewer('middenkader'),exactly31,null,'2026-11-08'),false);
+  assert.equal(mayApproveLeave(reviewer('officierenkader'),exactly31,null,'2026-11-08'),true);
 });
 test('totale duur maximaal 30 dagen mag Middenkader beoordelen, nooit eigen aanvraag',()=>{
   const plan=planLeaveExtension(original,'2026-11-30',[original],'2026-11-08');
