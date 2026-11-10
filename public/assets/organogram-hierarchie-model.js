@@ -47,9 +47,13 @@ export function depannageOrganogramGroups(person){
  const verified=Array.isArray(person.depannageGroups)?
   person.depannageGroups.filter(x=>Object.hasOwn(codes,x)):[];
  for(const code of verified)groups.add(codes[code]);
+ // The authoritative service personnel record identifies a Director as
+ // Depannage leadership even when only a legacy LSRA Discord role is known.
+ // This is a visual classification, not a grant of AWV permissions.
+ const rank=lower(person.rank);
+ if(/\bdirecteur\b/.test(rank))groups.add('Leiding / AWV');
  if(!verified.length){
   const call=lower(person.call).replace(/\s+/g,'').replace(/[._]/g,'-');
-  const rank=lower(person.rank);
   if(/^(?:awv|anwv)(?:-|\d|$)/.test(call)||
      /\bawv\b|agentschap wegen|\bleiding\b/.test(rank))groups.add('Leiding / AWV');
   else if(/^(?:fast|f-a-s-t)(?:-|\d|$)/.test(call)||
