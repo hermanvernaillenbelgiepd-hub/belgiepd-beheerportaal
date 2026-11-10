@@ -2,10 +2,11 @@
 export const LEAVE_ROLES=Object.freeze(['middenkader','officierenkader','korpsleiding']);
 const HIGH_ROLES=new Set(['officierenkader','korpsleiding']);
 const LEAVE_RANK=Object.freeze({agentenkader:1,basiskader:1,middenkader:2,officierenkader:3,korpsleiding:4});
-export const MIN_LEAVE_REQUEST_DAYS=7;
-export function leaveSubmissionStatus(days,isCorpsLeadership=false){
-  if(days<MIN_LEAVE_REQUEST_DAYS)throw new Error('Verlof korter dan 7 kalenderdagen hoef je niet aan te vragen.');
-  return isCorpsLeadership||days<=14?'approved':'pending';
+export const MIN_LEAVE_REQUEST_DAYS=1;
+export function leaveSubmissionStatus(days){
+  if(!Number.isSafeInteger(days)||days<MIN_LEAVE_REQUEST_DAYS||days>LEAVE_MAX_DAYS)
+    throw new Error('Verlof moet tussen 1 en 730 kalenderdagen liggen.');
+  return days<=7?'approved':'pending';
 }
 export function leaveApplicantIsCorps(actor,departments){
   return Array.isArray(departments)&&departments.some(dept=>
@@ -37,7 +38,7 @@ export function validateLeaveRequest(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Ongeldige aanvraag');
   const startDate=raw.startDate,endDate=raw.endDate;
   const days=calendarDays(startDate,endDate);
-  if(days<MIN_LEAVE_REQUEST_DAYS)throw new Error('Verlof korter dan 7 kalenderdagen hoef je niet aan te vragen.');
+  if(days<MIN_LEAVE_REQUEST_DAYS)throw new Error('Verlof moet minstens 1 kalenderdag duren.');
   const note=raw.note===undefined?'':raw.note;
   if(typeof note!=='string'||note.trim().length>300)throw new Error('Toelichting mag maximaal 300 tekens bevatten');
   return {startDate,endDate,days,note:note.trim()};
@@ -131,7 +132,9 @@ export function mayApproveLeave(actor,request,grant,today=new Date().toISOString
   const days=leaveDecisionDays(request);
   if(days===null)return false;
   // Board may decide all pending requests irrespective of service or operational grade.
-  if(verifiedBoard)return true;
+  // Bestuur mag bestaande beslissingen overrulen via de aparte override-route.
+  // Gewone aanvragen vanaf dag 31 vereisen expliciet Officierenkader/Korpsleiding.
+  if(verifiedBoard&&days<=30)return true;
   const departments=Array.isArray(request.subjectDepartments)?request.subjectDepartments:[];
   if(!departments.length)return false;
   const subjectRoles=request.subjectDepartmentRoles||{};
@@ -142,6 +145,8 @@ export function mayApproveLeave(actor,request,grant,today=new Date().toISOString
     if(!actor.departments?.includes(dept))continue;
     const reviewer=roleForDepartment(actor,dept),subject=subjectRoles[dept]||request.subjectRole;
     const reviewerRank=LEAVE_RANK[reviewer]||0,subjectRank=LEAVE_RANK[subject]||0;
+    // Korpsleiding kan een ander lid van Korpsleiding behandelen; nooit zichzelf.
+    if(reviewer==='korpsleiding'&&subject==='korpsleiding')return true;
     if(!subjectRank||reviewerRank<=subjectRank)continue;
     if(reviewer==='korpsleiding')return true;
     if(reviewer==='officierenkader')return true;
