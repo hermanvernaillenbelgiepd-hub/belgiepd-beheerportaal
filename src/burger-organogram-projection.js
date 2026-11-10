@@ -15,6 +15,17 @@ export function citizenGroupsForRoles(ids){
  const have=new Set(Array.isArray(ids)?ids:[]);
  return tiers.filter(([id])=>have.has(id)).map(([,label])=>label);
 }
+// A registered Burgerraad: Ja in the official citizen roster is legitimate
+// display evidence, even if the Discord role API omits the council role.
+// This is NEVER used as authorization, an appointment, or a roster write.
+export function citizenOrganogramGroups(person,verified=[]){
+ const groups=(Array.isArray(verified)?verified:[])
+  .filter(value=>['Burgerraad','Burger','Burger IO'].includes(value));
+ const council=person?.dept==='burger'&&Array.isArray(person.specialties)&&
+  person.specialties.some(value=>value?.label==='Burgerraad'&&
+   /^(ja|behaald|true)$/i.test(String(value.value||'').trim()));
+ return council?['Burgerraad',...groups.filter(value=>value!=='Burgerraad')]:groups;
+}
 export function verifiedCitizenRoles(personId,upstream,oauth,guildId,now=Date.now()){
  if(!validId(personId)||!validId(guildId))return [];
  if(upstream?.status==='ok'&&upstream.entries instanceof Map&&upstream.entries.has(personId))
