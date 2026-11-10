@@ -72,6 +72,20 @@ export function transferSubjectFields(value,oldId,newId){
  }
  return next;
 }
+// Rebuild subject references inside a lifecycle snapshot as well. Such snapshots
+// are used to restore a member whose old Google Sheets row no longer exists.
+// Never rewrite audit authors or other person's nested identities.
+export function transferPersonDocument(value,collection,oldId,newId){
+ const result=transferSubjectFields(value,oldId,newId);
+ if(collection!=='bpd_personnel_lifecycle'||!result?.snapshot)return result;
+ const previous=result.snapshot;
+ if(typeof previous!=='object'||Array.isArray(previous)||previous.personId!==oldId)
+   throw Error('De gearchiveerde personeelsidentiteit is niet eenduidig');
+ const snapshot=transferSubjectFields(previous,oldId,newId);
+ if(snapshot.id===snapshot.dept+':'+oldId)snapshot.id=snapshot.dept+':'+newId;
+ return {...result,snapshot};
+}
+
 export function applyCompletedDcAliases(personnel,aliasDocs){
  const aliases=new Map();
  for(const d of aliasDocs||[]){
