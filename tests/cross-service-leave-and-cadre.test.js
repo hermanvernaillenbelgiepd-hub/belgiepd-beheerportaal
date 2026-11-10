@@ -58,7 +58,7 @@ test('Manual leave permits Police cadre across all services, never other departm
  assert.equal(rosterPoliceRole(staff('700')),'middenkader');
  assert.equal(rosterPoliceRole(staff('400')),'basiskader');
 });
-test('Manual leave permits any 1-730-day interval and does not change ordinary request minimum',()=>{
+test('Handmatig verlof blijft geldig vanaf 1 dag en loopt niet via normale aanvragen',()=>{
  assert.deepEqual(validateManualLeaveRequest({
   startDate:'2026-10-25',endDate:'2026-10-25',note:'test'
  }),{startDate:'2026-10-25',endDate:'2026-10-25',days:1,note:'test'});
