@@ -109,6 +109,15 @@ test('Een afgeronde identiteit wordt transparant geprojecteerd op alle diensten'
  assert.equal(result[0].identityTransferred,true);
  assert.equal(applyCompletedDcAliases(people,[{id:oldId,data:()=>({status:'pending',newDiscordId:newId})}])[0].personId,oldId);
 });
+test('Opleidingshistoriek wordt alleen als onveranderlijke bron gekoppeld',()=>{
+ const routes=readFileSync(new URL('../src/dc-id-transfer-routes.js',import.meta.url),'utf8');
+ const history=readFileSync(new URL('../src/checkride-dossier-history.js',import.meta.url),'utf8');
+ assert.match(history,/verifiedHistoricalSubjectIds/);
+ assert.match(history,/DC_TRANSFER_ALIASES/);
+ assert.match(history,/DC_TRANSFER_TARGETS/);
+ assert.match(history,/alias\.get\('status'\)!=='completed'/);
+ assert.doesNotMatch(routes,/tx\.update\(.*bpd_checkride_tracks/);
+});
 test('Geen rolkoppelingen of machtigingen worden meegekopieerd',()=>{
  const routes=readFileSync(new URL('../src/dc-id-transfer-routes.js',import.meta.url),'utf8');
  const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
