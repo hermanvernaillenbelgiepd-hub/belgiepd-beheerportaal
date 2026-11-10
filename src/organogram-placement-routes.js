@@ -21,7 +21,7 @@ import {defaultSpecialtyRoleLinks,POLICE_PATCH_PRESET_VERSION,
  depannageSpecialtyAssetKeys,AMBULANCE_ROLE_PATCH_PRESETS,ambulanceSpecialtyAssetKeys,
  knownAmbulanceRoleSpecialty,verifiedAzlsFunctions} from './specialty-role-presets.js';
 import {getBelgiumPdDisplayRoles,organogramDisplayIdentityMap,diagnoseOrganogramRoleLinks,exactApiDisplayRoles} from './bpd-discord-users-display.js';
-import {projectCitizenOrganogram,projectVerifiedCouncilAccounts,councilRoleIds} from './burger-organogram-projection.js';
+import {projectCitizenOrganogram,projectVerifiedCouncilAccounts,councilRoleIds,citizenOrganogramGroups} from './burger-organogram-projection.js';
 import {roleArtworkCandidateKeys,resolveSpecialtyArtworkKey,registeredAzlsPatchEligible}
  from './specialty-artwork-resolver.js';
 import {ROSTER_COLUMN_COLLECTION,rosterConfig} from './roster-column-config.js';
@@ -423,7 +423,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
-     ...(p.dept==='burger'?{burgerGroups:(()=>{const identity=roles.entries.get(p.personId),now=Date.now();if(!identity||identity.guildId!==process.env.DISCORD_GUILD_ID||!Number.isSafeInteger(identity.verifiedAt)||identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||!Array.isArray(identity.roleIds))return [];const roleIds=new Set(identity.roleIds);return [['1492485336197234728','Burgerraad'],['1309532438019706966','Burger'],['1398985105254650007','Burger IO']].filter(([id])=>roleIds.has(id)).map(([,label])=>label);})()}:{}),
+     ...(p.dept==='burger'?{burgerGroups:citizenOrganogramGroups(p,(()=>{const identity=roles.entries.get(p.personId),now=Date.now();if(!identity||identity.guildId!==process.env.DISCORD_GUILD_ID||!Number.isSafeInteger(identity.verifiedAt)||identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||!Array.isArray(identity.roleIds))return [];const roleIds=new Set(identity.roleIds);return [['1492485336197234728','Burgerraad'],['1309532438019706966','Burger'],['1398985105254650007','Burger IO']].filter(([id])=>roleIds.has(id)).map(([,label])=>label);})())}:{}),
      ...(p.dept==='depannage'?{depannageGroups:verifiedDepannageOrganogramGroups(
       roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID)}:{}),
      specialtyPatches,
