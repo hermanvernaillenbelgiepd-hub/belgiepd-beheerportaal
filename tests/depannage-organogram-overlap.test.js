@@ -57,3 +57,11 @@ test('Public client receives safe group codes rather than raw role IDs',()=>{
  assert.match(page,/depannageGroups:p\.dept==='depannage'/);
  assert.doesNotMatch(page,/roleIds:p\.roleIds/);
 });
+
+test('registered Depannage director is visibly AWV without privileged Discord grant',()=>{
+ const director=p('Royke','—',{rank:'Directeur'});
+ assert.deepEqual(depannageOrganogramGroups(director),['Leiding / AWV']);
+ assert.deepEqual(depannageOrganogramGroups({...director,depannageGroups:['lsra']}),['Leiding / AWV','LSRA']);
+ assert.deepEqual(serviceHierarchy([director],'depannage').leadership[0].members.map(x=>x.name),['Royke']);
+ assert.deepEqual(depannageOrganogramGroups(p('Lid','—',{rank:'Technicus'})),['LSRA']);
+});
