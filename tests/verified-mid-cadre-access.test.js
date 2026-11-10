@@ -73,7 +73,7 @@ test('Both access paths derive roles on server, audit and preserve manual approv
  const server=f('src/server.js'),routes=f('src/user-routes.js'),ui=f('public/personeelsbeheer.html');
  assert.ok(server.includes('ensureVerifiedMiddleAccess(store,verified,member,'));
  assert.ok(server.includes('stillEligibleAutoCadre(verified,member,process.env.DISCORD_GUILD_ID,'));
- assert.ok(server.includes("managed.get('approvalSource')===AUTO_CADRE_SOURCE"));
+ assert.ok(server.includes("[AUTO_CADRE_SOURCE,AUTO_REGULAR_SOURCE].includes(managed.get('approvalSource'))"));
  assert.ok(routes.includes("app.get('/api/users/me'"));
  assert.ok(routes.includes('ensureVerifiedMiddleAccess(db(),decoded,member,'));
  assert.ok(routes.includes('approvalSource:FieldValue.delete()'));
