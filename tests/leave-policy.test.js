@@ -23,12 +23,14 @@ test('datums worden strikt gecontroleerd en beide grensdagen tellen mee',()=>{
   assert.throws(()=>calendarDays('2026-02-30','2026-03-01'));
   assert.throws(()=>calendarDays('2026-10-21','2026-10-20'));
   assert.throws(()=>calendarDays('2026-01-01','2028-01-02'));
-  assert.throws(()=>validateLeaveRequest({startDate:'2026-10-20',endDate:'2026-10-20',note:'  Test  '}),/7/);
+  assert.deepEqual(validateLeaveRequest({startDate:'2026-10-20',endDate:'2026-10-20',note:'  Test  '}),
+    {startDate:'2026-10-20',endDate:'2026-10-20',days:1,note:'Test'});
   assert.deepEqual(validateLeaveRequest({startDate:'2026-10-20',endDate:'2026-10-26',note:'  Test  '}),
     {startDate:'2026-10-20',endDate:'2026-10-26',days:7,note:'Test'});
 });
 
 test('middenkader mag maximaal dertig dagen behandelen, hoger kader meer',()=>{
+  assert.equal(mayApproveLeave(actor(),request('2026-10-27'),null,today),true);
   assert.equal(mayApproveLeave(actor(),request(),null,today),true);
   assert.equal(mayApproveLeave(actor(),request('2026-11-19'),null,today),false);
   assert.equal(mayApproveLeave(actor('officierenkader'),request('2026-11-19'),null,today),true);
@@ -82,15 +84,14 @@ test('de verlofpagina en routes mogen geen Google-e-mailadres als nieuwe machtig
   assert.equal(validDiscordId(idB),true);
 });
 
-test('aanvraagduur 6/7/14/15/16/30/31 en automatische korpsbeslissing',()=>{
-  assert.throws(()=>leaveSubmissionStatus(6),/7/);
-  assert.equal(leaveSubmissionStatus(7),'approved');
-  assert.equal(leaveSubmissionStatus(14),'approved');
-  assert.equal(leaveSubmissionStatus(15),'pending');
-  assert.equal(leaveSubmissionStatus(16),'pending');
-  assert.equal(leaveSubmissionStatus(30),'pending');
-  assert.equal(leaveSubmissionStatus(31),'pending');
-  assert.equal(leaveSubmissionStatus(31,true),'approved');
+test('1 t/m 7 dagen worden automatisch goedgekeurd, vanaf dag 8 is kadergoedkeuring nodig',()=>{
+  assert.throws(()=>leaveSubmissionStatus(0),/1 tot 730/);
+  assert.throws(()=>leaveSubmissionStatus(731),/1 tot 730/);
+  assert.throws(()=>leaveSubmissionStatus(1.5),/1 tot 730/);
+  for(const days of [1,2,6,7])assert.equal(leaveSubmissionStatus(days),'approved');
+  for(const days of [8,14,15,16,30,31])assert.equal(leaveSubmissionStatus(days),'pending');
+  // Een korpsaanvraag mag de nieuwe duurregels niet omzeilen.
+  assert.equal(leaveSubmissionStatus(31,true),'pending');
   assert.equal(leaveApplicantIsCorps(actor('korpsleiding'),['politie']),true);
   assert.equal(leaveApplicantIsCorps(actor('officierenkader'),['politie']),false);
 });
