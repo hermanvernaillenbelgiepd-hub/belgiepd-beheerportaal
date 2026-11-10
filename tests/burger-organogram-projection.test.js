@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {projectCitizenOrganogram,overlayVerifiedCitizenRankDisplay,citizenGroupsForRoles,BURGER_ROLE_IDS} from '../src/burger-organogram-projection.js';
+import {projectCitizenOrganogram,overlayVerifiedCitizenRankDisplay,citizenGroupsForRoles,citizenOrganogramGroups,BURGER_ROLE_IDS} from '../src/burger-organogram-projection.js';
 const guild='1309532438019706999',a='1309532438019706001',b='1309532438019706002';
 const person=(id,dept,name)=>({personId:id,dept,name,call:'S-400',rank:'Inspecteur'});
 const api=(entries)=>({status:'ok',entries:new Map(entries)});
@@ -65,4 +65,13 @@ test('citizen overview projection accepts discordId without altering permissions
  assert.equal(rows[0].canEdit,false);
  assert.equal(rows[0].canChangeRank,false);
  assert.equal(source.rank,'Burger');
+});
+
+test('registered Burgerraad from the citizen personnel source survives missing Discord role',()=>{
+ const row={...person(a,'burger','Jones'),rank:'—',
+  specialties:[{label:'Burgerraad',value:'Ja'}]};
+ assert.deepEqual(citizenOrganogramGroups(row,[]),['Burgerraad']);
+ assert.deepEqual(citizenOrganogramGroups(row,['Burger']),['Burgerraad','Burger']);
+ assert.deepEqual(citizenOrganogramGroups({...row,specialties:[{label:'Burgerraad',value:'Nee'}]},['Burger']),['Burger']);
+ assert.deepEqual(citizenOrganogramGroups({...row,dept:'politie'},[]),[]);
 });
