@@ -23,7 +23,8 @@ test('datums worden strikt gecontroleerd en beide grensdagen tellen mee',()=>{
   assert.throws(()=>calendarDays('2026-02-30','2026-03-01'));
   assert.throws(()=>calendarDays('2026-10-21','2026-10-20'));
   assert.throws(()=>calendarDays('2026-01-01','2028-01-02'));
-  assert.throws(()=>validateLeaveRequest({startDate:'2026-10-20',endDate:'2026-10-20',note:'  Test  '}),/7/);
+  assert.deepEqual(validateLeaveRequest({startDate:'2026-10-20',endDate:'2026-10-20',note:'  Test  '}),
+    {startDate:'2026-10-20',endDate:'2026-10-20',days:1,note:'Test'});
   assert.deepEqual(validateLeaveRequest({startDate:'2026-10-20',endDate:'2026-10-26',note:'  Test  '}),
     {startDate:'2026-10-20',endDate:'2026-10-26',days:7,note:'Test'});
 });
@@ -82,15 +83,11 @@ test('de verlofpagina en routes mogen geen Google-e-mailadres als nieuwe machtig
   assert.equal(validDiscordId(idB),true);
 });
 
-test('aanvraagduur 6/7/14/15/16/30/31 en automatische korpsbeslissing',()=>{
-  assert.throws(()=>leaveSubmissionStatus(6),/7/);
-  assert.equal(leaveSubmissionStatus(7),'approved');
-  assert.equal(leaveSubmissionStatus(14),'approved');
-  assert.equal(leaveSubmissionStatus(15),'pending');
-  assert.equal(leaveSubmissionStatus(16),'pending');
-  assert.equal(leaveSubmissionStatus(30),'pending');
-  assert.equal(leaveSubmissionStatus(31),'pending');
-  assert.equal(leaveSubmissionStatus(31,true),'approved');
+test('1 t.e.m. 7 dagen automatisch, vanaf dag 8 beoordeling ook voor Korpsleiding',()=>{
+  for(const days of [1,2,6,7])assert.equal(leaveSubmissionStatus(days),'approved');
+  for(const days of [8,14,15,16,30,31,730])assert.equal(leaveSubmissionStatus(days),'pending');
+  assert.equal(leaveSubmissionStatus(31,true),'pending');
+  for(const days of [0,-1,731,3.5,NaN])assert.throws(()=>leaveSubmissionStatus(days));
   assert.equal(leaveApplicantIsCorps(actor('korpsleiding'),['politie']),true);
   assert.equal(leaveApplicantIsCorps(actor('officierenkader'),['politie']),false);
 });
@@ -102,13 +99,32 @@ test('hiërarchie: alleen lagere kadergroepen, middenkader maximaal 30 dagen',()
   assert.equal(mayApproveLeave(actor('officierenkader'),middleRequest,null,today),true);
   assert.equal(mayApproveLeave(actor('officierenkader'),officerRequest,null,today),false);
   assert.equal(mayApproveLeave(actor('korpsleiding'),officerRequest,null,today),true);
-  assert.equal(mayApproveLeave(actor('korpsleiding'),corpRequest,null,today),false);
+  assert.equal(mayApproveLeave(actor('korpsleiding'),corpRequest,null,today),true); // Ander KL-lid, nooit de aanvrager
   assert.equal(mayApproveLeave(actor('officierenkader'),request('2026-11-19'),null,today),true);
   assert.equal(mayApproveLeave(actor(),request('2026-11-19'),null,today),false);
 });
-test('Bestuur kan alle andere aanvragen behandelen maar nooit eigen aanvragen',()=>{
-  const pending={...request('2026-11-19'),subjectDepartmentRoles:{politie:'korpsleiding'}};
-  assert.equal(mayApproveLeave(actor(),pending,null,today,true),true);
-  assert.equal(mayApproveLeave({...actor(),discordId:idB},pending,null,today,true),false);
-  assert.equal(mayApproveLeave(actor(),{...pending,status:'approved'},null,today,true),false);
+test('Bestuur kan tot 30 dagen behandelen of bestaande besluiten overrulen, maar dag 31+ vereist hoger kader',()=>{
+  const longPending={...request('2026-11-19'),subjectDepartmentRoles:{politie:'korpsleiding'}};
+  const shortPending={...request('2026-11-18'),subjectDepartmentRoles:{politie:'korpsleiding'}};
+  assert.equal(mayApproveLeave(actor(),shortPending,null,today,true),true);
+  assert.equal(mayApproveLeave(actor(),longPending,null,today,true),false);
+  assert.equal(mayApproveLeave(actor('korpsleiding'),longPending,null,today,true),true);
+  assert.equal(mayApproveLeave({...actor('korpsleiding'),discordId:idB},longPending,null,today,true),false);
+  assert.equal(mayApproveLeave(actor(),{...longPending,status:'approved'},null,today,true),false);
+});
+
+// Bescherm de formuliertekst, auditlog en serverrechten tegen een terugval naar 7-14 dagen.
+test('verlof vanaf 1 dag is zichtbaar beschikbaar en alle beslissingen blijven gelogd',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const page=readFileSync(new URL('../public/verlofbeheer.html',import.meta.url),'utf8');
+  const routes=readFileSync(new URL('../src/leave-routes.js',import.meta.url),'utf8');
+  const events=readFileSync(new URL('../src/leave-event-log.js',import.meta.url),'utf8');
+  assert.match(page,/Elke verlofaanvraag vanaf 1 kalenderdag/);
+  assert.doesNotMatch(page,/geen aanvraag nodig|korter dan 7 kalenderdagen hoef/);
+  assert.match(routes,/leaveSubmissionStatus\(details\.days\)/);
+  assert.match(routes,/duur_1_tot_7_dagen/);
+  assert.match(routes,/action:'submitted'/);
+  assert.match(routes,/action:'automatic_approved'/);
+  assert.match(events,/tx\.create\(notice/);
+  assert.match(events,/tx\.create\(ref/);
 });
