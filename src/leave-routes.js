@@ -4,7 +4,7 @@ import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
   mayRegisterCentralManualLeave,mayApproveLeave,
   mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,
-  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,leaveApplicantIsCorps,parseDay} from './leave-policy.js';
+  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,parseDay} from './leave-policy.js';
 import {activeLeaveCollision,planLeaveExtension} from './leave-extension-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
@@ -304,8 +304,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       const ref=db().collection(coll).doc(`${id}_${details.startDate}_${details.endDate}`);
       const subjectDepartments=departmentsOf(records);
       if(!subjectDepartments.length)throw rejection('Geen actieve hulpdiensten gevonden',403);
-      const isCorps=leaveApplicantIsCorps(req.bpd,subjectDepartments);
-      const status=leaveSubmissionStatus(details.days,isCorps);
+      const status=leaveSubmissionStatus(details.days);
       const subjectDepartmentRoles=Object.fromEntries(subjectDepartments.map(dept=>[
         dept,req.bpd.portalTechnicalMode===true
           ?req.bpd.operationalDepartmentRoles?.[dept]||null
@@ -325,7 +324,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
             .where('personDiscordId','==',id).limit(500));
           if(timeline.size===500)
             throw rejection('Te veel verlofregistraties voor een veilige controle',503);
-          // Aansluitende en overlappende 7-14-daagse aanvragen mogen niet
+          // Aansluitende en overlappende aanvragen mogen niet
           // stilzwijgend een bestaande verlofperiode verlengen.
           if(activeLeaveCollision(timeline.docs.map(doc=>doc.data()),details))
             throw rejection('Deze periode raakt aan lopend of goedgekeurd verlof. Gebruik bij goedgekeurd verlof de knop Verlenging aanvragen; bij een openstaande aanvraag wacht je de beslissing af.',409);
@@ -348,11 +347,10 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           if(original.exists)tx.update(ref,{
             latestAttemptId:target.id,latestAttemptAt:FieldValue.serverTimestamp()
           });
-          tx.create(target,{...details,note:isCorps?'':details.note,
+          tx.create(target,{...details,
             personDiscordId:id,subjectName,subjectCall,subjectDepartments,subjectDepartmentRoles,
             subjectRole:req.bpd.portalTechnicalMode===true?req.bpd.operationalRole:req.bpd.role,
-            status,autoApproved,approvalReason:isCorps?'korpsleiding_vrijgesteld':
-              autoApproved?'duur_7_tot_14_dagen':null,
+            status,autoApproved,approvalReason:autoApproved?'duur_1_tot_7_dagen':null,
             submittedByUid:req.bpd.uid,submittedByDiscordId:id,
             ...(original.exists?{previousAttemptId:latest.id}:{}),
             ...(autoApproved?{decidedAt:FieldValue.serverTimestamp(),decidedBy:'system'}:{}),
@@ -365,7 +363,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           writeLeaveEvent(tx,{requestRef:target,request:historyBase,action:'submitted',
             actor:submitter,actorUid:req.bpd.uid,eventDate:yyyyMmDd(),to:'pending'});
           if(autoApproved)writeLeaveEvent(tx,{requestRef:target,request:historyBase,
-            action:isCorps?'korpsleiding_vrijgesteld':'automatic_approved',
+            action:'automatic_approved',
             actor:null,actorUid:null,eventDate:yyyyMmDd(),from:'pending',to:'approved'});
           createdId=target.id;
         });
