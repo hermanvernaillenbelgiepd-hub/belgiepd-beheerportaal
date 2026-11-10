@@ -3,7 +3,7 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
 import {DC_TRANSFER_REQUESTS,DC_TRANSFER_ALIASES,DC_TRANSFER_TARGETS,TRANSFER_DEPARTMENTS,
   validTransferInput,mayAdministerDcTransfer,mayCompleteDcTransfer,freshTransferTarget,
-  transferRosterPlan,transferSubjectFields} from './dc-id-transfer-policy.js';
+  transferRosterPlan,transferSubjectFields,transferPersonDocument} from './dc-id-transfer-policy.js';
 
 const ID=/^\d{15,22}$/;
 const UUID=/^[0-9a-f-]{36}$/i;
@@ -13,6 +13,11 @@ const PERSON_COLLECTIONS=Object.freeze([
  'bpd_personnel_created','bpd_personnel_edits','bpd_personnel_specializations',
  'bpd_personnel_lifecycle','bpd_personnel_decorations',
  'bpd_specialty_restrictions','bpd_personnel_functions'
+]);
+// These root documents use an unprefixed person Discord ID.
+const SINGLE_ID_COLLECTIONS=Object.freeze([
+ {collection:'bpd_citizen_staff_dossiers',department:'burger'},
+ {collection:'bpd_police_series_assignments',department:'politie'}
 ]);
 const FIELD_COLLECTIONS=Object.freeze([
  {collection:'bpd_leave_requests',field:'personDiscordId'},
@@ -91,6 +96,11 @@ async function collectTransfers(db,oldId,newId,depts){
    await collectTree(db.collection('bpd_uniform_visual_assignments').doc(dept+'_person_'+oldId),
      db.collection('bpd_uniform_visual_assignments').doc(dept+'_person_'+newId),copies);
  }
+ for(const {collection,department} of SINGLE_ID_COLLECTIONS){
+   if(!depts.includes(department))continue;
+   await collectTree(db.collection(collection).doc(oldId),
+     db.collection(collection).doc(newId),copies);
+ }
  for(const {collection,field} of FIELD_COLLECTIONS){
    const target=await db.collection(collection).where(field,'==',newId).limit(1).get();
    if(!target.empty)
@@ -110,6 +120,8 @@ async function collectTransfers(db,oldId,newId,depts){
  return {copies,changes,counts:Object.fromEntries([
   ...PERSON_COLLECTIONS.map(name=>[
    name,copies.filter(x=>x.source.path.startsWith(name+'/')).length]),
+  ...SINGLE_ID_COLLECTIONS.map(x=>[x.collection,
+    copies.filter(y=>y.source.path.startsWith(x.collection+'/')).length]),
   ...FIELD_COLLECTIONS.map(x=>[x.collection,
    changes.filter(y=>y.collection===x.collection).length])
  ])};
@@ -224,7 +236,8 @@ export function installDcIdTransferRoutes(app,{requireUser,getSnapshot,onComplet
      }
      const stamp=FieldValue.serverTimestamp();
      for(const item of prepared.copies){
-       const data=transferSubjectFields(item.snap.data(),oldId,newId);
+       const data=transferPersonDocument(item.snap.data(),
+         item.source.path.split('/')[0],oldId,newId);
        if(item.source.path.startsWith('bpd_uniform_visual_assignments/')){
          if(data.selector===oldId)data.selector=newId;
          if(data.key===item.source.id)data.key=item.target.id;
