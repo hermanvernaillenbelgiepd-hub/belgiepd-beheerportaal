@@ -58,7 +58,7 @@ export function depannageOrganogramGroups(person){
      /\bawv\b|agentschap wegen|\bleiding\b/.test(rank))groups.add('Leiding / AWV');
   else if(/^(?:fast|f-a-s-t)(?:-|\d|$)/.test(call)||
      /\bfast\b|f\.?a\.?s\.?t\.?/.test(rank))groups.add('FAST');
-  else groups.add('LSRA');
+  else if(!groups.has('Leiding / AWV'))groups.add('LSRA');
  }
  // Existing manual placements are only a presentation preference.
  if(codes.awv===person.leadershipTier||['LSRA','FAST'].includes(person.leadershipTier))
