@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {mayAdministerDcTransfer,mayCompleteDcTransfer,validTransferInput,freshTransferTarget,
- transferRosterPlan,transferSubjectFields,applyCompletedDcAliases} from '../src/dc-id-transfer-policy.js';
+ transferRosterPlan,transferSubjectFields,transferPersonDocument,applyCompletedDcAliases} from '../src/dc-id-transfer-policy.js';
 
 const oldId='111111111111111111',newId='222222222222222222',admin='333333333333333333',
  guild='999999999999999999';
@@ -76,6 +76,30 @@ test('Alleen subjectreferenties veranderen, audit van de oorspronkelijke actor b
  assert.equal(next.createdBy,oldId);
  assert.equal(next.registeredBy.discordId,oldId);
  assert.equal(input.discordId,oldId);
+});
+test('Burgerdossiers en politie-reeksen zijn deel van een veilige overdracht',()=>{
+ const routes=readFileSync(new URL('../src/dc-id-transfer-routes.js',import.meta.url),'utf8');
+ assert.match(routes,/bpd_citizen_staff_dossiers/);
+ assert.match(routes,/bpd_police_series_assignments/);
+ assert.match(routes,/SINGLE_ID_COLLECTIONS/);
+ assert.match(routes,/await collectTree\(db\.collection\(collection\)\.doc\(oldId\)/);
+ assert.match(routes,/item\.source\.path\.split\('\/'\)\[0\]/);
+});
+test('Gearchiveerde personeelsfiche koppelt opnieuw aan de nieuwe identiteit',()=>{
+ const old={dept:'politie',discordId:oldId,status:'archived',
+   snapshot:{dept:'politie',personId:oldId,id:'politie:'+oldId,name:'Test',
+     lastConnection:'2026-11-01'},
+   createdBy:oldId,actorDiscordId:oldId};
+ const moved=transferPersonDocument(old,'bpd_personnel_lifecycle',oldId,newId);
+ assert.equal(moved.discordId,newId);
+ assert.equal(moved.snapshot.personId,newId);
+ assert.equal(moved.snapshot.id,'politie:'+newId);
+ assert.equal(moved.createdBy,oldId);
+ assert.equal(moved.actorDiscordId,oldId);
+ assert.equal(old.snapshot.personId,oldId);
+ assert.deepEqual(transferPersonDocument(old,'bpd_cases',oldId,newId).snapshot,old.snapshot);
+ assert.throws(()=>transferPersonDocument({...old,snapshot:{personId:'123'}},
+   'bpd_personnel_lifecycle',oldId,newId),/niet eenduidig/);
 });
 test('Een afgeronde identiteit wordt transparant geprojecteerd op alle diensten',()=>{
  const alias={id:oldId,data:()=>({status:'completed',newDiscordId:newId})};
