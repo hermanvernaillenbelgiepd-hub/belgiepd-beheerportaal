@@ -7,6 +7,7 @@ import {SERVICE_FUNCTIONS,choiceFor,parseServiceFunctionChange,parseServiceRevok
   applyServiceFunction,removeServiceFunction,mayEditServiceFunction} from './service-function-policy.js';
 import {MANUAL_ROLE_CATALOG} from './manual-role-catalog.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
+import {ensureVerifiedRegularAccess,stillEligibleAutoRegular,AUTO_REGULAR_SOURCE} from './verified-regular-personnel-access.js';
 import {makeProfileCookie,clearProfileCookie} from './portal-profile-mode.js';
 import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
@@ -59,8 +60,9 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
     if(!verified)throw publicError('Vernieuw eerst je Discord-verificatie en probeer opnieuw');
     return {id,member,decoded};
   }
-  // This endpoint cannot grant roles. It only creates one pending request tied
-  // to an independently verified Discord ID belonging to our own guild.
+  // Only the server can approve a rank-and-file request when a current,
+  // uniquely matching personnel dossier and Discord membership both exist.
+  // Elevated/blocked/unclear cases remain pending for management.
   app.post('/api/users/request',async(req,res)=>{
     try{
       ready();
@@ -74,6 +76,15 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
           process.env.DISCORD_GUILD_ID,process.env);
         if(auto?.status==='approved')
           return res.json({status:'approved',automatic:true,role:'middenkader',departments:['politie']});
+      }
+      if(!existing.exists||existing.get('status')==='pending'){
+        const snap=await getSnapshot();
+        if(!snap.stale){
+          const regular=await ensureVerifiedRegularAccess(db(),decoded,member,
+            process.env.DISCORD_GUILD_ID,snap.data,process.env);
+          if(regular.changed)
+            return res.json({status:'approved',automatic:true,role:'basiskader'});
+        }
       }
       const candidates=roleSummary(member.roleIds).departments.filter(d=>USER_DEPTS.includes(d));
       try{
@@ -97,12 +108,21 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
           process.env.DISCORD_GUILD_ID,process.env);
         if(auto)snap=await collection().doc(id).get();
       }
+      if(!legacy&&(!snap.exists||snap.get('status')==='pending')){
+        const personnel=await getSnapshot();
+        if(!personnel.stale){
+          const regular=await ensureVerifiedRegularAccess(db(),decoded,member,
+            process.env.DISCORD_GUILD_ID,personnel.data,process.env);
+          if(regular.changed)snap=await collection().doc(id).get();
+        }
+      }
       const d=snap.exists?snap.data():null;
-      const active=d?.status==='approved'?
-        stillEligibleAutoCadre(decoded,member,process.env.DISCORD_GUILD_ID,process.env,d):false;
+      const active=d?.status==='approved'&&
+        stillEligibleAutoCadre(decoded,member,process.env.DISCORD_GUILD_ID,process.env,d)&&
+        stillEligibleAutoRegular(decoded,member,process.env.DISCORD_GUILD_ID,d,process.env);
       return res.json({discordId:id,username:member.username||'',
         status:d?.status==='approved'&&!active?'reverify':d?.status||(legacy?'legacy':'not_requested'),
-        role:active?d.role:null,automatic:d?.approvalSource===AUTO_CADRE_SOURCE});
+        role:active?d.role:null,automatic:[AUTO_CADRE_SOURCE,AUTO_REGULAR_SOURCE].includes(d?.approvalSource)});
     }catch(e){return fail(res,e)}
   });
   // The profile switch cannot alter the permanent approval/Discord rank.

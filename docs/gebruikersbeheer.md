@@ -8,12 +8,14 @@ Discord-secret** nodig voor deze module. Athena-rollen wijzigen we nog niet.
 
 1. Het personeelslid logt met zijn of haar **eigen** Discord-account in.
 2. Open `/gebruikersbeheer.html` en klik **Toegang aanvragen**.
-3. Het portaal leest uitsluitend de reeds geverifieerde Discord-ID, rol-ID's en
-   serverlidmaatschap uit `bpd_discord_auth`. Er wordt één Firestore-document
-   `bpd_portal_users/{discordId}` met status `pending` aangemaakt.
-4. Een bevoegde officier of korpsleiding opent Gebruikersbeheer. De relevante
-   aanvraag is zichtbaar binnen de eigen hulpdienst. Kies handmatig de gewenste
-   kaderfunctie, controleer de hulpdienst, vermeld een reden en keur goed.
+3. Het portaal controleert een recente eigen Discord-verificatie en exact één
+   actieve personeelsfiche per geverifieerde gewone dienst. Alleen bij een
+   volledige overeenkomst wordt de beperkte portaalfunctie automatisch goedgekeurd
+   en geaudit. Automatische toekenning geldt niet voor leiding, Bestuur of
+   technische beheerders, en herstelt nooit een geblokkeerd account.
+4. Bij ontbrekende of afwijkende gegevens volgt status `pending`. Een bevoegde
+   officier of korpsleiding controleert dan de hulpdienst en kaderfunctie,
+   vermeldt een reden en keurt de koppeling handmatig goed.
 5. Een nieuwe `approved`-toewijzing geeft toegang binnen de goedgekeurde
    dienst(en) op dezelfde beveiligde backendroutes als de bestaande medewerkers.
 6. Blokkering verandert de status in `blocked`, waardoor zowel de Discord-login
@@ -27,7 +29,9 @@ Discord-secret** nodig voor deze module. Athena-rollen wijzigen we nog niet.
   korpsleiding toekennen. De rol `beheerder` kan via het portaal niet worden
   gecreëerd.
 - Niemand kan via deze module eigen rechten wijzigen of zichzelf blokkeren.
-- Discord-rol-ID's creëren **nooit** automatisch personeelsbevoegdheden.
+- Discord-rol-ID's alléén creëren **nooit** personeelsbevoegdheden; voor gewone
+  functies zijn aanvullende actuele Discord-identiteit én een unieke actieve
+  personeelsfiche vereist.
 - Een verlopen Discord-verificatie wordt niet stilzwijgend verlengd.
 - Elke goedkeuring, wijziging of blokkering bevat een verplichte reden en audit.
 

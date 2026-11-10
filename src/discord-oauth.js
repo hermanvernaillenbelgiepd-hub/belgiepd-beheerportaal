@@ -213,7 +213,7 @@ export function installDiscordOAuth(app){
         roleNames:Object.fromEntries(ids.filter(id=>actual.has(id)||known.has(id))
           .map(id=>[id,actual.get(id)||known.get(id)])),
         lastVerifiedAt:data.verifiedAt,
-        accessNote:'Discord-rollen worden onafhankelijk geverifieerd. Alleen de expliciet ingestelde Politie-Middenkaderrol kan automatisch een beperkte portaalgoedkeuring krijgen.'});
+        accessNote:'Bij een actieve, eenduidig gekoppelde personeelsfiche kunnen gewone dienstrollen automatisch worden goedgekeurd. Hogere kader- en beheerdersrechten vereisen afzonderlijke controle.'});
     }catch(e){
       // Firestore/server errors are not evidence that the user's token expired.
       const diagnostic=firebaseDiagnostic(e);

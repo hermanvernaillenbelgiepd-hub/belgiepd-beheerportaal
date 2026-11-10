@@ -13,6 +13,7 @@ import {verifyGuildAuthorizationRoles} from './discord-guild-authorization.js';
 import {probeBelgiumPdDiscordUsers} from './bpd-discord-users-probe.js';
 import { discordPortalAccess } from './discord-portal-access.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
+import {ensureVerifiedRegularAccess,stillEligibleAutoRegular,AUTO_REGULAR_SOURCE} from './verified-regular-personnel-access.js';
 import {verifiedPoliceBasicRole,ensureVerifiedPoliceBasicAccess,autoPoliceBasicActive,hideUnverifiedAutoPoliceBasic} from './verified-police-basic-access.js';
 import { planPersonnelMigration } from './personnel-migration.js';
 import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.js';
@@ -265,7 +266,7 @@ async function requireUser(req,res,next){
       if(entry && /^\d{15,22}$/.test(discordId)){
         const managed=await cachedAuthDoc(USER_COLLECTION,discordId);
         if(managed.exists){
-          if(managed.get('approvalSource')===AUTO_CADRE_SOURCE)
+          if([AUTO_CADRE_SOURCE,AUTO_REGULAR_SOURCE].includes(managed.get('approvalSource')))
             return res.status(403).json({error:'Automatisch goedgekeurde kaderrechten vereisen je eigen Discord-login'});
           entry=approvedManagedEntry(managed.data(),discordId);
           if(!entry)return res.status(403).json({error:'Deze portaaltoegang is geblokkeerd of niet goedgekeurd'});
@@ -286,10 +287,29 @@ async function requireUser(req,res,next){
           process.env.DISCORD_GUILD_ID,process.env);
         if(provisioned){authDocCache.delete(USER_COLLECTION+':'+id);managed=await cachedAuthDoc(USER_COLLECTION,id);}
       }
+      // Regular rank-and-file members may be approved only with a unique
+      // active personnel record in each verified service; never auto-approve
+      // leadership, Board or technical identities.
+      const legacy=Object.values(accessList()).some(x=>x?.discordId===id);
+      if((!managed.exists||managed.get('status')==='pending')&&!legacy){
+        try{
+          const snap=await getSnapshot();
+          if(!snap.stale){
+            const result=await ensureVerifiedRegularAccess(store,verified,member,
+              process.env.DISCORD_GUILD_ID,snap.data,process.env);
+            if(result.changed){
+              authDocCache.delete(USER_COLLECTION+':'+id);
+              managed=await cachedAuthDoc(USER_COLLECTION,id);
+            }
+          }
+        }catch(error){
+          console.warn('Automatische reguliere personeelsgoedkeuring niet beschikbaar:',
+            typeof error?.code==='string'?error.code.slice(0,40):'controle');
+        }
+      }
       // Automatically approve Police Basiskader only when fresh Discord
       // roles AND one active 3xx-5xx Police roster entry agree.
       // Never overwrite legacy allowlist grants or any explicit Police role.
-      const legacy=Object.values(accessList()).some(x=>x?.discordId===id);
       const canAutoBasic=(!managed.exists&&!legacy)||
         managed.get('status')==='pending'||
         (managed.get('status')==='approved'&&
@@ -323,6 +343,9 @@ async function requireUser(req,res,next){
         if(!stillEligibleAutoCadre(verified,member,process.env.DISCORD_GUILD_ID,
           process.env,managed.data()))
           return res.status(403).json({error:'Je automatische Middenkader-toegang vereist een nieuwe Discord-verificatie. Vernieuw je rollen in Mijn Discord.'});
+        if(!stillEligibleAutoRegular(verified,member,process.env.DISCORD_GUILD_ID,
+          managed.data(),process.env))
+          return res.status(403).json({error:'Je automatische personeelskoppeling vereist opnieuw geverifieerde Discord-dienstrollen. Vernieuw je Discord-verificatie of vraag een manuele controle.'});
         discordId=id;
         email=Object.entries(accessList()).find(([,value])=>value?.discordId===id)?.[0]||'';
       }else{
