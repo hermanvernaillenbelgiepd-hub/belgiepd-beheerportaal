@@ -305,7 +305,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       const subjectDepartments=departmentsOf(records);
       if(!subjectDepartments.length)throw rejection('Geen actieve hulpdiensten gevonden',403);
       const isCorps=leaveApplicantIsCorps(req.bpd,subjectDepartments);
-      const status=leaveSubmissionStatus(details.days,isCorps);
+      const status=leaveSubmissionStatus(details.days);
       const subjectDepartmentRoles=Object.fromEntries(subjectDepartments.map(dept=>[
         dept,req.bpd.portalTechnicalMode===true
           ?req.bpd.operationalDepartmentRoles?.[dept]||null
@@ -325,7 +325,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
             .where('personDiscordId','==',id).limit(500));
           if(timeline.size===500)
             throw rejection('Te veel verlofregistraties voor een veilige controle',503);
-          // Aansluitende en overlappende 7-14-daagse aanvragen mogen niet
+          // Aansluitende en overlappende korte aanvragen mogen niet
           // stilzwijgend een bestaande verlofperiode verlengen.
           if(activeLeaveCollision(timeline.docs.map(doc=>doc.data()),details))
             throw rejection('Deze periode raakt aan lopend of goedgekeurd verlof. Gebruik bij goedgekeurd verlof de knop Verlenging aanvragen; bij een openstaande aanvraag wacht je de beslissing af.',409);
@@ -365,7 +365,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           writeLeaveEvent(tx,{requestRef:target,request:historyBase,action:'submitted',
             actor:submitter,actorUid:req.bpd.uid,eventDate:yyyyMmDd(),to:'pending'});
           if(autoApproved)writeLeaveEvent(tx,{requestRef:target,request:historyBase,
-            action:isCorps?'korpsleiding_vrijgesteld':'automatic_approved',
+            action:'automatic_approved',
             actor:null,actorUid:null,eventDate:yyyyMmDd(),from:'pending',to:'approved'});
           createdId=target.id;
         });
