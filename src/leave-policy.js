@@ -2,10 +2,11 @@
 export const LEAVE_ROLES=Object.freeze(['middenkader','officierenkader','korpsleiding']);
 const HIGH_ROLES=new Set(['officierenkader','korpsleiding']);
 const LEAVE_RANK=Object.freeze({agentenkader:1,basiskader:1,middenkader:2,officierenkader:3,korpsleiding:4});
-export const MIN_LEAVE_REQUEST_DAYS=7;
-export function leaveSubmissionStatus(days,isCorpsLeadership=false){
-  if(days<MIN_LEAVE_REQUEST_DAYS)throw new Error('Verlof korter dan 7 kalenderdagen hoef je niet aan te vragen.');
-  return isCorpsLeadership||days<=14?'approved':'pending';
+export const MIN_LEAVE_REQUEST_DAYS=1;
+export function leaveSubmissionStatus(days){
+  if(!Number.isSafeInteger(days)||days<MIN_LEAVE_REQUEST_DAYS||days>LEAVE_MAX_DAYS)
+    throw new Error('Ongeldige verlofduur. Kies 1 tot 730 kalenderdagen.');
+  return days<=7?'approved':'pending';
 }
 export function leaveApplicantIsCorps(actor,departments){
   return Array.isArray(departments)&&departments.some(dept=>
@@ -37,7 +38,6 @@ export function validateLeaveRequest(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Ongeldige aanvraag');
   const startDate=raw.startDate,endDate=raw.endDate;
   const days=calendarDays(startDate,endDate);
-  if(days<MIN_LEAVE_REQUEST_DAYS)throw new Error('Verlof korter dan 7 kalenderdagen hoef je niet aan te vragen.');
   const note=raw.note===undefined?'':raw.note;
   if(typeof note!=='string'||note.trim().length>300)throw new Error('Toelichting mag maximaal 300 tekens bevatten');
   return {startDate,endDate,days,note:note.trim()};
