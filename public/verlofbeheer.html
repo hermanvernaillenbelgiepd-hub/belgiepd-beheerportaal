@@ -407,7 +407,7 @@ el('requestForm').addEventListener('submit',async e=>{
  const startDate=el('start').value,endDate=el('end').value;
  const days=countDays(startDate,endDate);
  if(days<=0)return tell('Controleer de datums.',true);
- if(days<7){const msg='Verlof korter dan 7 kalenderdagen hoef je niet aan te vragen.';window.alert(msg);return tell(msg,true)}
+
  const button=el('submitRequest');button.disabled=true;
  try{
    const result=await request('/api/leave/requests',{method:'POST',
