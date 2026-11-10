@@ -14,6 +14,23 @@ export function isFixedPoliceAgent(p){
  return !!m;
 }
 const inRoster=p=>p?.dept==='politie'&&!/^(?:ontslag|verwijderd|blacklisted|ontslagen)$/i.test(String(p.status||'').trim());
+// Older series documents stay in the archive after an identity transfer.
+ // Exclude only the old identifiers from active balancing; the new record
+ // retains the same series and is counted once.
+export function activePoliceSeriesDocuments(assignments=[],aliases=[]){
+ const oldIds=new Set();
+ for(const raw of aliases){
+  const alias=typeof raw?.data==='function'?raw.data():raw;
+  const oldId=raw?.id||alias?.oldDiscordId;
+  if(alias?.status==='completed'&&ID.test(String(oldId||''))&&
+     ID.test(String(alias.newDiscordId||''))&&oldId!==alias.newDiscordId)
+   oldIds.add(oldId);
+ }
+ return assignments.filter(raw=>{
+  const d=typeof raw?.data==='function'?raw.data():raw;
+  return !oldIds.has(raw?.id||d?.discordId);
+ });
+}
 export function seriesCounts(records,assignments=[],excludedId=''){
  const byId=new Map();
  for(const raw of assignments){

@@ -1,21 +1,36 @@
 import {CHECKRIDE_TRACKS} from './checkride-policy.js';
+import {DC_TRANSFER_ALIASES,DC_TRANSFER_TARGETS} from './dc-id-transfer-policy.js';
 const ID=/^\d{15,22}$/;
 const iso=v=>v?.toDate?.()?.toISOString()||null;
+// A completed, double-checked identity transfer can display earlier immutable
+// evaluations under the new Discord identity. No evaluation or evaluator is edited.
+async function verifiedHistoricalSubjectIds(db,newId){
+  const target=await db.collection(DC_TRANSFER_TARGETS).doc(newId).get();
+  if(!target.exists)return [newId];
+  const oldId=target.get('oldDiscordId');
+  if(!ID.test(String(oldId||''))||oldId===newId)
+    throw Error('Ongeldige DC-ID-overdracht voor opleidingshistoriek');
+  const alias=await db.collection(DC_TRANSFER_ALIASES).doc(oldId).get();
+  if(!alias.exists||alias.get('status')!=='completed'||alias.get('newDiscordId')!==newId)
+    throw Error('DC-ID-overdracht kon niet onafhankelijk worden bevestigd');
+  return [newId,oldId];
+}
 // Every evaluation remains stored exactly once in its original track.
-// A dossier reads only evaluations where department AND Discord subject match.
+// A dossier reads only evaluations where department AND verified Discord subject match.
 export async function loadSubjectCheckrides(db,dept,discordId){
   if(!ID.test(String(discordId||''))||
      !['politie','ambulance','brandweer','depannage','burger'].includes(dept))
     throw Error('Ongeldige dienstgebonden personeelsidentiteit');
   const tracks=Object.values(CHECKRIDE_TRACKS).filter(t=>t.dept===dept);
-  const query=await Promise.all(tracks.map(async track=>{
+  const subjectIds=await verifiedHistoricalSubjectIds(db,discordId);
+  const query=await Promise.all(tracks.flatMap(track=>subjectIds.map(async sourceId=>{
     const snapshot=await db.collection('bpd_checkride_tracks').doc(track.code)
-      .collection('evaluations').where('subjectDiscordId','==',discordId).limit(100).get();
-    return {track,docs:snapshot.docs,limited:snapshot.size===100};
-  }));
-  const evaluations=query.flatMap(({track,docs})=>docs.filter(d=>{
+      .collection('evaluations').where('subjectDiscordId','==',sourceId).limit(100).get();
+    return {track,sourceId,docs:snapshot.docs,limited:snapshot.size===100};
+  })));
+  const evaluations=query.flatMap(({track,sourceId,docs})=>docs.filter(d=>{
     const e=d.data();
-    return e.subjectDiscordId===discordId&&e.department===dept&&
+    return e.subjectDiscordId===sourceId&&e.department===dept&&
       e.track===track.code&&e.status==='ingediend';
   }).map(doc=>{
     const e=doc.data();

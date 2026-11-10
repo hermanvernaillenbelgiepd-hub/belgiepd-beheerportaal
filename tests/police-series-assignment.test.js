@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {policeSeriesNumber,isFixedPoliceAgent,firstBalancedPoliceSeries,
- seriesCounts,overlayPoliceSeriesAssignments,needsPoliceSeriesAssignment,
+ seriesCounts,overlayPoliceSeriesAssignments,needsPoliceSeriesAssignment,activePoliceSeriesDocuments,
  validatePoliceSeriesChange} from '../src/police-series-policy.js';
 import {automaticPoliceSpecialties,INITIAL_POLICE_SPECIALTIES,
  publicSpecializations} from '../src/specialization-policy.js';
@@ -20,6 +20,22 @@ test('First available R1, R2, R3 balances current Police roster, deterministic t
  assert.equal(firstBalancedPoliceSeries([person(1,1),person(2,1),person(3,2)]),3);
  assert.equal(firstBalancedPoliceSeries([...roster,person(5,2)]),3);
  assert.equal(firstBalancedPoliceSeries([...roster,person(5,3)]),2);
+});
+test('Een overgedragen oude reeks wordt niet dubbel geteld',()=>{
+ const original=id(1),replacement=id(10);
+ const assignments=[
+  {id:original,data:()=>({dept:'politie',discordId:original,series:1})},
+  {id:replacement,data:()=>({dept:'politie',discordId:replacement,series:1})}
+ ];
+ const aliases=[{id:original,data:()=>({status:'completed',newDiscordId:replacement})}];
+ const onlyCurrent=activePoliceSeriesDocuments(assignments,aliases);
+ assert.equal(onlyCurrent.length,1);
+ assert.equal(onlyCurrent[0].id,replacement);
+ assert.deepEqual(seriesCounts([person(10,1)],onlyCurrent),{1:1,2:0,3:0});
+ assert.equal(activePoliceSeriesDocuments(assignments,
+  [{id:original,data:()=>({status:'pending',newDiscordId:replacement})}]).length,2);
+ const store=src('src/police-series-store.js');
+ assert.match(store,/activePoliceSeriesDocuments\(all\.docs,aliases\.docs\)/);
 });
 test('Series overlays do not change ranks or Discord privileges; official membership retained',()=>{
  const before=[person(1,null),person(2,2),{dept:'ambulance',personId:id(3),series:'Reeks 2'}];

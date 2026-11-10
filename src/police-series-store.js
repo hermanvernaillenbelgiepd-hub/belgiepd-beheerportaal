@@ -1,12 +1,17 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {DC_TRANSFER_ALIASES} from './dc-id-transfer-policy.js';
 import {POLICE_SERIES_COLLECTION,POLICE_SERIES_CONTROL,
  firstBalancedPoliceSeries,needsPoliceSeriesAssignment,
- policeSeriesNumber} from './police-series-policy.js';
+ policeSeriesNumber,activePoliceSeriesDocuments} from './police-series-policy.js';
 
 export async function readPoliceSeriesAssignments(db=getFirestore()){
- const query=await db.collection(POLICE_SERIES_COLLECTION).limit(500).get();
- if(query.size===500)throw Error('Te veel reekstoewijzingen; veilige paginering vereist');
- return query.docs;
+ const [query,aliases]=await Promise.all([
+   db.collection(POLICE_SERIES_COLLECTION).limit(500).get(),
+   db.collection(DC_TRANSFER_ALIASES).limit(201).get()
+ ]);
+ if(query.size===500||aliases.size===201)
+   throw Error('Te veel reekstoewijzingen of identiteitsoverdrachten; veilige paginering vereist');
+ return activePoliceSeriesDocuments(query.docs,aliases.docs);
 }
 // Use one coordinator document to serialize concurrent automatic assignments.
 // The query and coordinator are read before writes inside the transaction.
@@ -14,16 +19,19 @@ export async function reservePoliceSeriesWithinTransaction(tx,db,records,person,
  if(!needsPoliceSeriesAssignment(person))return null;
  const root=db.collection(POLICE_SERIES_COLLECTION),ref=root.doc(person.personId);
  const control=db.collection(POLICE_SERIES_CONTROL).doc('agentreeksen');
- const [lock,old,all]=await Promise.all([
-  tx.get(control),tx.get(ref),tx.get(root.limit(499))
+ const [lock,old,all,aliases]=await Promise.all([
+  tx.get(control),tx.get(ref),tx.get(root.limit(499)),
+  tx.get(db.collection(DC_TRANSFER_ALIASES).limit(201))
  ]);
- if(all.size===499)throw Error('Reeksregister bereikt limiet; controle nodig');
+ if(all.size===499||aliases.size===201)
+   throw Error('Reeksregister of overdrachtsarchief bereikt limiet; controle nodig');
+ const active=activePoliceSeriesDocuments(all.docs,aliases.docs);
  if(old.exists){
   const value=policeSeriesNumber(old.get('series'));
   return value===null?null:value;
  }
- if(!needsPoliceSeriesAssignment(person,all.docs))return null;
- const chosen=firstBalancedPoliceSeries(records,all.docs,person.personId);
+ if(!needsPoliceSeriesAssignment(person,active))return null;
+ const chosen=firstBalancedPoliceSeries(records,active,person.personId);
  const at=FieldValue.serverTimestamp();
  tx.create(ref,{dept:'politie',discordId:person.personId,series:chosen,
   revision:1,source:'first_fixed_callsign',updatedAt:at,
