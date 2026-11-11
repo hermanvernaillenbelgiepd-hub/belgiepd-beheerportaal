@@ -3,7 +3,7 @@ import {USER_COLLECTION} from './user-access.js';
 import {activeManualCitizenCouncil} from './citizen-dossier-policy.js';
 import {SPECIALTY_ROLE_LINKS} from './specialty-role-link-routes.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
-import {PERSON_SPECIALTY_PATCH_COLLECTION,overlayPersonalSpecialtyArtwork}
+import {PERSON_SPECIALTY_PATCH_COLLECTION,overlayPersonalSpecialtyArtwork,personPatchKey}
  from './person-specialty-artwork-policy.js';
 import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
  from './organogram-mid-order-policy.js';
@@ -579,12 +579,40 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     ...[...selected.entries()].map(([label,link])=>
      label==='RAGO'&&link.value==='AANGEMELD'?'RAGO-IO':label)
    ])].filter(x=>x!=='RAGO-IO'||!hasFullRago).slice(0,20);
+   // The profile's separate live Discord verification MUST reuse the audited
+   // visual per-person override. Otherwise it replaces the correct patch with
+   // a role image as soon as the profile finishes refreshing.
+   // Only existing, independently verified specializations may be displayed.
+   const eligible=specialties.filter(label=>SPECIALTIES.politie.includes(label)).slice(0,20);
+   const personalDocs=eligible.length?await db.getAll(...eligible.map(label=>
+     db.collection(PERSON_SPECIALTY_PATCH_COLLECTION).doc(
+      personPatchKey('politie',staff.personId,label)))):[];
+   const personalLinks=personalDocs.map(doc=>doc.data()).filter(link=>
+     link?.active===true&&link.department==='politie'&&
+     link.personId===staff.personId&&eligible.includes(link.specialty)&&
+     /^(?:rank|uniform|specialty|patch|helmet|profession|logo|pictogram)_politie_[a-z0-9_]{1,40}$/.test(link.sourceArtworkKey));
+   const personalKeys=[...new Set(personalLinks.map(link=>link.sourceArtworkKey))];
+   const imageDocs=personalKeys.length?await db.getAll(...personalKeys.map(artKey=>
+     db.collection(ROLE_ARTWORK_META).doc(artKey))):[];
+   const personalUrls=new Map();
+   for(const image of imageDocs){
+    const key=image.id;
+    if(!image.exists||image.get('active')!==true||
+       image.get('department')!=='politie'||!image.get('version')||
+       image.get('sourceArtworkKey')||
+       !(image.get('storagePath')||image.get('assetId')))continue;
+    personalUrls.set(key,'/api/role-artwork/file/'+key+'?v='+
+      encodeURIComponent(image.get('version')));
+   }
+   const profilePatches=overlayPersonalSpecialtyArtwork(
+    patches,{dept:'politie',personId:staff.personId},{specialties},
+    personalLinks,personalUrls,normalizedSpecialtyLinkLabel);
    res.set('Cache-Control','private, no-store');
    return res.json({verified:true,status:'ok',displayOnly:true,
      verificationSource:cached.live.source||'discord-bot',
     aeRole:synced.aeRole,aeRoles:synced.aeRoles,
     motardRole:motardRole||'',dispRole:dispRole||'',
-    specialties,patches});
+    specialties,patches:profilePatches});
   }catch(e){return respond(res,e)}
  });
  // Targeted, audited AE presentation correction from an authorized police
