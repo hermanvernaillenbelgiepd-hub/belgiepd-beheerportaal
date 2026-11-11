@@ -79,9 +79,9 @@ test('Management overview presents verified Board origin without changing operat
   const page=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
   assert.ok(routes.includes('verifyBoardDiscordRole(member.data(),process.env.DISCORD_GUILD_ID)'));
   assert.ok(routes.includes('activeBoardAppointment(appointment.data())'));
-  assert.ok(page.includes("rank.value=u.board?.discord||u.board?.appointed?'bestuur'"));
-  assert.ok(page.includes("u.board.discord?'Discord (geverifieerd)'"));
-  assert.ok(page.includes("u.board.appointed?'portaal (goedgekeurd)'"));
+  assert.ok(page.includes("const boardAssigned=Boolean(u.board?.discord||u.board?.appointed)"));
+  assert.ok(page.includes("u.board.discord?'Discord geverifieerd':'Portaalbenoeming goedgekeurd'"));
+  assert.ok(page.includes("dept.value==='bestuur'||(rank.value==='bestuur'&&serviceDepartments.includes(dept.value))"));
 });
 
 test('Burger and technical colleague are informational categories, never service or admin roles',()=>{

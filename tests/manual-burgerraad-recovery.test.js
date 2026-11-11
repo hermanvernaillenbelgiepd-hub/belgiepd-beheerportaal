@@ -92,6 +92,7 @@ test('routes enforce real Burger personnel identity and publish revocation with 
  assert.match(route,/otherDepartmentsPreserved:true/);
  assert.match(server,/activeManualCitizenCouncil\(managed\.data\(\),id\)/);
  assert.match(server,/manualCitizenCouncilApproved=Boolean\(citizenCouncilApproved/);
+ assert.match(source('src/organogram-placement-routes.js'),/manualCouncilIds\.has\(p\.personId\)/);
  assert.match(citizen,/verifiedManualCitizenCouncil\(actor,fresh,process\.env\.DISCORD_GUILD_ID\)/);
  assert.match(citizen,/live\.status==='not_member'\?null/);
  assert.match(html,/value="burger">Burger/);

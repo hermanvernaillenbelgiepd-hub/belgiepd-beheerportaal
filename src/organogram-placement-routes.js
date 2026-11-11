@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
+import {activeManualCitizenCouncil} from './citizen-dossier-policy.js';
 import {SPECIALTY_ROLE_LINKS} from './specialty-role-link-routes.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
 import {PERSON_SPECIALTY_PATCH_COLLECTION,overlayPersonalSpecialtyArtwork}
@@ -107,6 +108,14 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
   try{
    const db=store(),snapshot=await getSnapshot();
    let roster=snapshot.data.filter(p=>validRow(p)).slice(0,1200);
+   // Audited and still-approved Burgerraad: a display-only council group,
+   // never a rank or operational authority from the diagram itself.
+   const citizenIds=[...new Set(roster.filter(p=>p.dept==='burger')
+      .map(p=>p.personId).filter(idOK))].slice(0,200);
+   const citizenDocs=citizenIds.length?
+     await db.getAll(...citizenIds.map(id=>db.collection(USER_COLLECTION).doc(id))):[];
+   const manualCouncilIds=new Set(citizenDocs.filter(doc=>
+     activeManualCitizenCouncil(doc.data(),doc.id)).map(doc=>doc.id));
    const [manualSnap,k9Snap,motardSnap,dispSnap,aeSnap,decorationSnap,catalogSnap,personPatchSnap]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
@@ -440,7 +449,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
-     ...(p.dept==='burger'?{burgerGroups:citizenOrganogramGroups(p,(()=>{const identity=roles.entries.get(p.personId),now=Date.now();if(!identity||identity.guildId!==process.env.DISCORD_GUILD_ID||!Number.isSafeInteger(identity.verifiedAt)||identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||!Array.isArray(identity.roleIds))return [];const roleIds=new Set(identity.roleIds);return [['1492485336197234728','Burgerraad'],['1309532438019706966','Burger'],['1398985105254650007','Burger IO']].filter(([id])=>roleIds.has(id)).map(([,label])=>label);})())}:{}),
+     ...(p.dept==='burger'?{burgerGroups:citizenOrganogramGroups(p,(()=>{const identity=roles.entries.get(p.personId),now=Date.now();if(!identity||identity.guildId!==process.env.DISCORD_GUILD_ID||!Number.isSafeInteger(identity.verifiedAt)||identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||!Array.isArray(identity.roleIds))return [];const roleIds=new Set(identity.roleIds);return [['1492485336197234728','Burgerraad'],['1309532438019706966','Burger'],['1398985105254650007','Burger IO']].filter(([id])=>roleIds.has(id)).map(([,label])=>label);})(),manualCouncilIds.has(p.personId))}:{}),
      ...(p.dept==='depannage'?{depannageGroups:verifiedDepannageOrganogramGroups(
       roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID)}:{}),
      specialtyPatches,
