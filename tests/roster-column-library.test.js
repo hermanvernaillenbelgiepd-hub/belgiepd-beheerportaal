@@ -50,3 +50,8 @@ test('de personeelslijst geeft alleen kolompatch voorrang op gewone badge',()=>{
  assert.match(routes,/permissionsChanged:false/);
  assert.match(routes,/\['patch','specialty'\]\.includes\(sourceSnap\.get\('kind'\)\)/);
 });
+
+test('een herstelde kolompatch laat de vroegere afbeeldingsalias los',()=>{
+ const routes=file('src/uniform-library-routes.js');
+ assert.match(routes,/tx\.update\(meta,\{\.\.\.metadataForVersion\(key\.key,pick\),sourceArtworkKey:FieldValue\.delete\(\)/);
+});

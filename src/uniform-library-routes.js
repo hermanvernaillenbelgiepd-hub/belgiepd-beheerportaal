@@ -205,7 +205,8 @@ export function installUniformLibraryRoutes(app,{requireUser}){
     if(!previous.exists||!version.exists||version.get('key')!==key.key)
      throw err(404,'Versie niet beschikbaar');
     const old=previous.data(),pick=version.data();
-    tx.update(meta,{...metadataForVersion(key.key,pick),updatedAt:FieldValue.serverTimestamp(),
+    tx.update(meta,{...metadataForVersion(key.key,pick),sourceArtworkKey:FieldValue.delete(),
+     updatedAt:FieldValue.serverTimestamp(),
      updatedBy:req.bpd.uid});
     tx.create(db.collection(ROLE_ARTWORK_AUDIT).doc(),{
      key:key.key,action:'restore_cloud_library_version',
