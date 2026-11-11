@@ -49,7 +49,10 @@ test('Server uses the scope for the transaction, preserves Discord proof and aud
  assert.match(route,/if\(!scope\.allowed\)/);
  assert.match(route,/!freshGuildMember\(verified\.data\(\),process\.env\.DISCORD_GUILD_ID\)/);
  assert.match(route,/!canChangeUser\(req\.bpd,discordId,candidate/);
- assert.match(route,/manualRoleRecovery:\{dept,role:request\.role,approvedBy:req\.bpd\.uid/);
+ assert.match(route,/canConfirmCitizenCouncil\(req\.bpd\)/);
+ assert.match(route,/activeManualCitizenCouncil\(current\.data\(\),target\)/);
+ assert.match(route,/manualRoleRecovery:\{dept,role:request\.role/);
+ assert.match(route,/citizenCouncilRecovery:\{dept:'burger',role:'basiskader'/);
  assert.match(route,/approvalMethod:scope\.technicalOverride\?/);
  assert.match(route,/tx\.create\(ref\.collection\('audit'\)\.doc\(\),\{action:decision/);
 });
