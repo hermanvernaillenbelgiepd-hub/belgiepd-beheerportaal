@@ -66,10 +66,15 @@ export function permittedCheckrideAccess(actor,member,roster,guildId,now=Date.no
   if(!roles)return {};
   const permitted={};
   for(const track of Object.values(CHECKRIDE_TRACKS)){
-    const civilianCouncil=track.dept==='burger'&&roles.has(track.instructor);
+    const civilianCouncil=track.dept==='burger'&&
+      (roles.has(track.instructor)||actor.manualCitizenCouncilApproved===true&&
+        actor.departments?.includes('burger')&&
+        roleForDepartment(actor,'burger')==='basiskader');
     if((!actor.departments?.includes(track.dept)&&!civilianCouncil)||
        !uniqueOwnService(roster,actor,track.dept))continue;
-    if(roles.has(track.instructor)){permitted[track.code]='instructeur';continue}
+    if(roles.has(track.instructor)||civilianCouncil&&track.dept==='burger'){
+      permitted[track.code]='instructeur';continue
+    }
     if(track.dept==='politie'){
       const rank=roleForDepartment(actor,'politie');
       const proof=(rank==='middenkader'&&roles.has('1335578488664490057'))||
@@ -106,7 +111,8 @@ export function checkrideAccessNotice(actor,member,roster,guildId,now=Date.now()
   if([...ownedDepts].some(dept=>own.filter(p=>p.dept===dept).length!==1))
     return 'Er zijn meerdere personeelsfiches met jouw Discord-ID binnen een dienst. Laat de koppeling nakijken.';
   if(!actor.departments?.some(dept=>ownedDepts.has(dept))&&
-     !verifiedCheckrideRoles(member,guildId,now)?.has(CHECKRIDE_TRACKS.burger_io.instructor))
+     !verifiedCheckrideRoles(member,guildId,now)?.has(CHECKRIDE_TRACKS.burger_io.instructor)&&
+     actor.manualCitizenCouncilApproved!==true)
     return 'Je personeelsfiche bestaat, maar de dienstmachtiging van je portaalaccount ontbreekt. Controleer Gebruikersbeheer.';
   return 'Er werd geen bijpassende, geverifieerde instructeurs- of leidinggevende Discordrol gevonden. Controleer de toegewezen rollen.';
 }

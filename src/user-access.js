@@ -6,7 +6,7 @@ import {choiceFor} from './service-function-policy.js';
 // Andere Discord-rollen blijven verificatie- en selectiesignalen.
 export const USER_COLLECTION='bpd_portal_users';
 export const MANAGED_ROLES=Object.freeze(['basiskader','middenkader','officierenkader','korpsleiding']);
-export const USER_DEPTS=Object.freeze(['politie','brandweer','ambulance','depannage']);
+export const USER_DEPTS=Object.freeze(['politie','brandweer','ambulance','depannage','burger']);
 // Administrative labels, not operational service memberships or access rights.
 // BESTUUR uses independently verified Discord roles or approved appointments.
 export const ACCOUNT_CATEGORIES=Object.freeze(['burger','technisch_medewerker']);
@@ -64,6 +64,10 @@ export function validUserGrant(body){
   if(!MANAGED_ROLES.includes(role)||!Array.isArray(departments)||departments.length<1||
      departments.length>USER_DEPTS.length||departments.some(d=>!USER_DEPTS.includes(d))||
      new Set(departments).size!==departments.length)throw new Error('Ongeldige functie of hulpdiensten');
+  // Burgerraad is an independently authorized citizen function, not
+  // a globally elevated cadre or a shortcut to other service rights.
+  if(departments.includes('burger')&&role!=='basiskader')
+    throw new Error('Burger kan alleen als basisportaalaccount worden toegevoegd');
   const reason=typeof body?.reason==='string'?body.reason.trim():'';
   if(reason.length<8||reason.length>300)throw new Error('Reden moet 8 tot 300 tekens bevatten');
   // Optional specialised portal function for a single new service account.

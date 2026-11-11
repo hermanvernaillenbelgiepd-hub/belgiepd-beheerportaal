@@ -1,4 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
+import {approvedManagedEntry} from './user-access.js';
 
 // Burgerpersoneelsdossiers: afzonderlijke dienstscope, nooit gekoppeld aan
 // de vroegere (uitgeschakelde) burger-sollicitatiedossiers.
@@ -25,6 +26,27 @@ function roleSnapshot(member,guildId,now,maxAgeMs){
 
 // Alleen een actuele, aan de guild en de aangemelde Discord-identiteit
 // gekoppelde rol mag operationele rechten geven. Een label is geen bewijs.
+// Two-person, audited manual recovery for a real Burgerraad. Never derive
+// access from a free-form label, global rank, roster nickname or role image.
+export function activeManualCitizenCouncil(account,id){
+ const approved=approvedManagedEntry(account,id),receipt=account?.citizenCouncilRecovery;
+ return Boolean(approved&&approved.departments.includes('burger')&&
+   approved.departmentRoles.burger==='basiskader'&&
+   receipt?.dept==='burger'&&receipt?.role==='basiskader'&&
+   ['independent','verified_technical_single_approver'].includes(receipt.approvalMethod)&&
+   typeof receipt.approvedBy==='string'&&typeof receipt.requestedBy==='string'&&
+   /^discord:\d{15,22}$/.test(receipt.approvedBy)&&
+   /^discord:\d{15,22}$/.test(receipt.requestedBy)&&
+   receipt.approvedBy!=='discord:'+id&&receipt.requestedBy!=='discord:'+id&&
+   (receipt.approvalMethod!=='independent'||receipt.approvedBy!==receipt.requestedBy));
+}
+export function verifiedManualCitizenCouncil(actor,member,guildId,now=Date.now()){
+ return Boolean(actor?.manualCitizenCouncilApproved===true&&
+   validCitizenId(actor?.discordId)&&actor.uid==='discord:'+actor.discordId&&
+   actor.departments?.includes('burger')&&
+   roleForDepartment(actor,'burger')==='basiskader'&&
+   roleSnapshot(member,guildId,now,15*60*1000));
+}
 export function verifiedCitizenCouncil(actor,member,guildId,now=Date.now()){
   if(!validCitizenId(actor?.discordId)||
     actor.uid!=='discord:'+actor.discordId)return false;

@@ -3,7 +3,7 @@ import {verifyGuildAuthorizationRoles} from './discord-guild-authorization.js';
 import {loadSubjectCheckrides} from './checkride-dossier-history.js';
 import {
   CITIZEN_DOSSIER_COLLECTION,validCitizenId,verifiedCitizenCouncil,
-  canAccessCitizenDossier,canWriteCitizenDossier,canDeleteCitizenEntry,canManageCitizenDeletions,citizenMemberType,
+  canAccessCitizenDossier,canWriteCitizenDossier,canDeleteCitizenEntry,canManageCitizenDeletions,citizenMemberType,verifiedManualCitizenCouncil,
   citizenSubject,validateCitizenEntry,validateCitizenDeletion,observationAverage
 } from './citizen-dossier-policy.js';
 
@@ -78,11 +78,15 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
       // logged-in Burgerraad member. Do NOT grant dossier rights from the
       // separate, presentation-only BelgiumPD user-list API.
       const live=await verifyGuildAuthorizationRoles(actor.discordId);
-      const verified=live.status==='ok'?
-       verifiedCitizenCouncil(actor,{guildId:process.env.DISCORD_GUILD_ID,
-        verifiedAt:Date.now(),roleIds:live.roleIds},process.env.DISCORD_GUILD_ID):
-       live.status==='not_member'?false:
-       verifiedCitizenCouncil(actor,member.data(),process.env.DISCORD_GUILD_ID);
+      // A confirmed Discord leave always invalidates both role and manual
+      // recovery. Bot outage may use the same 15-minute verified snapshot.
+      const fresh=live.status==='ok'?
+        {guildId:process.env.DISCORD_GUILD_ID,verifiedAt:Date.now(),roleIds:live.roleIds}:
+        live.status==='not_member'?null:member.data();
+      const verified=Boolean(fresh&&(
+        verifiedCitizenCouncil(actor,fresh,process.env.DISCORD_GUILD_ID)||
+        verifiedManualCitizenCouncil(actor,fresh,process.env.DISCORD_GUILD_ID)
+      ));
       if(!canAccessCitizenDossier(actor,verified))
         return deny(res,403,'Alleen Burgerraad, Korpsleiding of technisch beheer heeft toegang');
       req.citizenCouncilVerified=verified;
