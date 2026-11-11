@@ -2,6 +2,8 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
 import {SPECIALTY_ROLE_LINKS} from './specialty-role-link-routes.js';
 import {ROLE_ARTWORK_META} from './role-artwork-routes.js';
+import {PERSON_SPECIALTY_PATCH_COLLECTION,overlayPersonalSpecialtyArtwork}
+ from './person-specialty-artwork-policy.js';
 import {MID_ORDER_COLLECTION,callMiddleSeries,validMidOrder}
  from './organogram-mid-order-policy.js';
 import {COLLECTION,DEPTS,DISPLAY_DEPTS,SPECIALTIES,LEADERSHIP_LEVELS,personKey,
@@ -105,15 +107,26 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
   try{
    const db=store(),snapshot=await getSnapshot();
    let roster=snapshot.data.filter(p=>validRow(p)).slice(0,1200);
-   const [manualSnap,k9Snap,motardSnap,dispSnap,aeSnap,decorationSnap,catalogSnap]=await Promise.all([
+   const [manualSnap,k9Snap,motardSnap,dispSnap,aeSnap,decorationSnap,catalogSnap,personPatchSnap]=await Promise.all([
     db.collection(COLLECTION).limit(1500).get(),
     db.collection(K9_ROLE_COLLECTION).limit(1500).get(),
     db.collection(MOTARD_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(DISP_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(AE_MANUAL_DISPLAY_COLLECTION).limit(1500).get(),
     db.collection(PERSONNEL_DECORATIONS_COLLECTION).where('dept','==','politie').limit(500).get(),
-    db.collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(120).get()
+    db.collection(PERSONNEL_DECORATION_CATALOG_COLLECTION).limit(120).get(),
+    db.collection(PERSON_SPECIALTY_PATCH_COLLECTION).limit(1200).get()
    ]);
+   if(personPatchSnap.size>=1200)
+    return res.status(503).json({error:'Limiet persoonlijke patchkoppelingen bereikt'});
+   const personalBySubject=new Map();
+   for(const doc of personPatchSnap.docs){
+    const item=doc.data();
+    if(item.active!==true||!idOK(item.personId)||!DEPTS.includes(item.department)||
+       typeof item.specialty!=='string'||typeof item.sourceArtworkKey!=='string')continue;
+    const key=item.department+':'+item.personId,group=personalBySubject.get(key)||[];
+    group.push(item);personalBySubject.set(key,group);
+   }
    if(manualSnap.size>=1500)return res.status(503).json({error:'Organogramregisterlimiet bereikt'});
    // The per-service mapping is visual-only. It can select a library patch
    // for a recently verified Discord role without changing personnel rights.
@@ -137,7 +150,8 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     ...['Logistiek','Signalisatie','Ladderwagen','Bosbestrijding','Duiker',
       'RED team','Gevaarlijke stoffen'].flatMap(fireSpecialtyAssetKeys),
     ...AMBULANCE_ROLE_PATCH_PRESETS.flatMap(x=>ambulanceSpecialtyAssetKeys(x.label)),
-    ...['F.A.S.T','LSRA','CRANE'].flatMap(depannageSpecialtyAssetKeys)
+    ...['F.A.S.T','LSRA','CRANE'].flatMap(depannageSpecialtyAssetKeys),
+    ...[...personalBySubject.values()].flat().map(x=>x.sourceArtworkKey)
    ].filter(x=>/^(?:(?:rank|uniform|specialty|patch|helmet|profession|logo|pictogram)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(x)))].slice(0,450);
    const assetUrls=new Map();
    for(const group of chunks(assetKeys,100)){
@@ -416,7 +430,10 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Verified, approved role mappings can add a *display-only*
     // specialization to the organogram, even when the legacy sheet was
     // not updated yet. The personnel dossier remains unchanged.
-    const specialtyPatches=mappedPatches(p,merged);
+    const specialtyPatches=overlayPersonalSpecialtyArtwork(
+     mappedPatches(p,merged),p,merged,
+     personalBySubject.get(p.dept+':'+p.personId)||[],assetUrls,
+     normalizedSpecialtyLinkLabel);
     for(const link of specialtyPatches){
      if(!merged.specialties.includes(link.label))merged.specialties.push(link.label);
     }
