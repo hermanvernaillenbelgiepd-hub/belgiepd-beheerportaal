@@ -8,6 +8,7 @@ import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-polic
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {isVerifiedTechnicalRoleApprover,manualRoleDecisionScope} from './manual-role-decision-policy.js';
 import {MANUAL_ROLE_CATALOG,manualRoleChoice,manualRoleLabel} from './manual-role-catalog.js';
+import {verifiedCitizenCorpsReader,activeManualCitizenCouncil} from './citizen-dossier-policy.js';
 
 const STORE='bpd_manual_role_requests';
 const VALID_ID=/^\d{15,22}$/;
@@ -35,6 +36,10 @@ function payload(body){
 }
 const safeIdentity=actor=>VALID_ID.test(String(actor?.discordId||''))&&
   actor?.uid==='discord:'+actor.discordId;
+const isCitizenCouncilRequest=request=>
+  request?.dept==='burger'&&request?.role==='basiskader';
+const canConfirmCitizenCouncil=actor=>
+  isVerifiedTechnicalRoleApprover(actor)||verifiedCitizenCorpsReader(actor);
 const freshGuildMember=(member,guildId,now=Date.now())=>
   VALID_ID.test(String(guildId||''))&&member?.guildId===guildId&&
   Number.isSafeInteger(member.verifiedAt)&&member.verifiedAt<=now+60000&&
@@ -53,7 +58,16 @@ async function rights(actor,db){
 const brief=d=>({discordId:d.discordId,dept:d.dept,role:d.role,
   roleLabel:manualRoleLabel(d.dept,d.role),status:d.status,
   reason:d.reason,requestedBy:d.requestedBy,decidedBy:d.decidedBy||null});
-export function installManualRoleRoutes(app,{requireUser}){
+export function installManualRoleRoutes(app,{requireUser,getSnapshot}){
+  async function confirmCitizenPersonnel(request){
+    if(!isCitizenCouncilRequest(request))return;
+    const snapshot=await getSnapshot();
+    if(snapshot?.stale||!Array.isArray(snapshot?.data))
+      throw error(503,'De Burger-personeelsbron is tijdelijk niet actueel');
+    const people=snapshot.data.filter(p=>p.dept==='burger'&&p.personId===request.discordId);
+    if(people.length!==1)
+      throw error(409,'De Burgerraad-medewerker moet een unieke Burger-personeelsfiche hebben');
+  }
   app.get('/api/users/manual-role-requests',requireUser,async(req,res)=>{
     try{
       const db=getFirestore(),access=await rights(req.bpd,db);
@@ -74,6 +88,9 @@ export function installManualRoleRoutes(app,{requireUser}){
     try{
       const db=getFirestore(),access=await rights(req.bpd,db);
       if(!access.propose)return res.status(403).json({error:'Geen bevoegdheid om rolherstel aan te vragen'});
+      if(isCitizenCouncilRequest(data)&&!access.board&&!canConfirmCitizenCouncil(req.bpd))
+        throw error(403,'Burgerraad moet door Bestuur, geverifieerde Korpsleiding of technisch beheer worden voorgedragen');
+      await confirmCitizenPersonnel(data);
       if(data.discordId===req.bpd.discordId)
         return res.status(403).json({error:'Eigen rolherstel aanvragen of goedkeuren is niet mogelijk'});
       const subjectRef=db.collection(USER_COLLECTION).doc(data.discordId);
@@ -86,7 +103,8 @@ export function installManualRoleRoutes(app,{requireUser}){
         throw error(409,'Een geblokkeerd account kan niet via rolherstel geactiveerd worden');
       const record=subject.exists?subject.data():{status:'pending',candidateDepartments:[data.dept]};
       const candidate={...record,candidateDepartments:[...new Set([...(record.candidateDepartments||[]),data.dept])]};
-      if(!access.board&&!canChangeUser(req.bpd,data.discordId,candidate,{role:data.role,departments:[data.dept]}))
+      if(!access.board&&!isCitizenCouncilRequest(data)&&
+         !canChangeUser(req.bpd,data.discordId,candidate,{role:data.role,departments:[data.dept]}))
         throw error(403,'Je mag voor deze medewerker of kaderrol geen verzoek indienen');
       const ref=db.collection(STORE).doc(data.dept+'_'+data.discordId);
       await db.runTransaction(async tx=>{
@@ -119,12 +137,15 @@ export function installManualRoleRoutes(app,{requireUser}){
         const ref=db.collection(STORE).doc(dept+'_'+discordId);
         const user=db.collection(USER_COLLECTION).doc(discordId);
         const member=db.collection('bpd_discord_auth').doc(discordId);
+        if(dept==='burger')await confirmCitizenPersonnel({dept,role:'basiskader',discordId});
         await db.runTransaction(async tx=>{
           const [pending,subject,verified]=await Promise.all([
             tx.get(ref),tx.get(user),tx.get(member)
           ]);
           const request=pending.data();
           if(!request||request.status!=='pending')throw error(409,'Geen openstaand verzoek');
+          if(isCitizenCouncilRequest(request)&&!canConfirmCitizenCouncil(req.bpd))
+            throw error(403,'Burgerraad vereist geverifieerde Korpsleiding of technisch beheer als goedkeurder');
           const scope=manualRoleDecisionScope(req.bpd,request,discordId);
           if(!scope.allowed)
             throw error(403,'Voor deze goedkeuring is een tweede persoon vereist, behalve in geverifieerde technische beheermodus. Eigen rollen wijzigen blijft verboden.');
@@ -140,8 +161,11 @@ export function installManualRoleRoutes(app,{requireUser}){
           const candidate={...base,candidateDepartments:[
             ...new Set([...(base.candidateDepartments||[]),dept])
           ]};
-          if(!canChangeUser(req.bpd,discordId,candidate,{role:request.role,departments:[dept]}))
+          if(!isCitizenCouncilRequest(request)&&
+             !canChangeUser(req.bpd,discordId,candidate,{role:request.role,departments:[dept]}))
             throw error(403,'Je kaderrol mag deze toegang niet goedkeuren');
+          if(dept==='burger'&&!isCitizenCouncilRequest(request))
+            throw error(400,'De aangevraagde Burgerfunctie is ongeldig');
           if(decision==='approved'){
             const approved=subject.exists&&current.status==='approved'
               ?approvedManagedEntry(current,discordId):null;
@@ -156,10 +180,17 @@ export function installManualRoleRoutes(app,{requireUser}){
               departments,departmentRoles,
               username:String(current?.username||verified.get('username')||'Discord-lid').slice(0,80),
               approvedBy:req.bpd.uid,approvedAt:FieldValue.serverTimestamp(),
-              manualRoleRecovery:{dept,role:request.role,
-                roleLabel:manualRoleLabel(dept,request.role),approvedBy:req.bpd.uid,
-                requestedBy:request.requestedBy,
-                approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent'},
+              ...(isCitizenCouncilRequest(request)?{
+                citizenCouncilRecovery:{dept:'burger',role:'basiskader',
+                  roleLabel:manualRoleLabel(dept,request.role),
+                  approvedBy:req.bpd.uid,requestedBy:request.requestedBy,
+                  approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent'}
+              }:{
+                manualRoleRecovery:{dept,role:request.role,
+                  roleLabel:manualRoleLabel(dept,request.role),approvedBy:req.bpd.uid,
+                  requestedBy:request.requestedBy,
+                  approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent'}
+              }),
               approvalSource:FieldValue.delete(),updatedAt:FieldValue.serverTimestamp()
             },{merge:true});
             tx.create(user.collection('audit').doc(),{

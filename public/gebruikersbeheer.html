@@ -1327,7 +1327,7 @@ async function loadManualRoles(){
              const solo=ownRequest&&data.canSoloApprove;
              if(ownRequest&&!solo)return notice('Een onafhankelijke goedkeurder is vereist. Alleen de geverifieerde technische beheermodus mag eigen ingediende verzoeken beoordelen.',true);
              if(decision==='approved'&&!confirm('Bevestig goedkeuring van '+item.discordId+
-               ' als '+(item.roleLabel||roleNames[item.role]||item.role)+' bij '+(deptNames[item.dept]||item.dept)+
+               ' als '+(item.roleLabel||roleNames[item.role]||item.role)+' bij '+(item.dept==='burger'?'Burger':deptNames[item.dept]||item.dept)+
                (solo?' via de technische uitzonderingsbevoegdheid':'')+
                '. De beslissing wordt gelogd en wijzigt de portaalrechten.'))return;
              const reason=prompt('Motivering van deze beslissing (minimaal 15 tekens):');
