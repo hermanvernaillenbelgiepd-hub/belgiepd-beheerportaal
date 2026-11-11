@@ -4,6 +4,9 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getStorage} from 'firebase-admin/storage';
 import {isUserManager} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
+import {extraSpecialtyLabels} from './roster-column-config.js';
+import {PERSON_SPECIALTY_PATCH_COLLECTION,PERSON_SPECIALTY_ASSET,validatePersonSpecialtyPatch}
+ from './person-specialty-artwork-policy.js';
 
 export const ROLE_ARTWORK_META='bpd_role_artwork_meta';
 export const ROLE_ARTWORK_IMAGES='bpd_role_artwork_images';
@@ -120,7 +123,7 @@ export function validateRosterHeaderLink(body){
   throw fail(400,'Kies een bestaande politiepatch, een vaste specialisatiekolom en een motivering');
  return {key,code,label,sourceArtworkKey,reason,department:'politie'};
 }
-export function installRoleArtworkRoutes(app,{requireUser}){
+export function installRoleArtworkRoutes(app,{requireUser,getSnapshot}){
  // Serve approved image bytes without exposing credentials; assets are decorative,
  // and role IDs/photos stored here never constitute grants or verified roles.
  app.get('/api/role-artwork/file/:key',async(req,res)=>{
@@ -177,10 +180,20 @@ export function installRoleArtworkRoutes(app,{requireUser}){
  });
  app.get('/api/role-artwork/manage',requireUser,allowed,async(_req,res)=>{
   try{
-   const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(1200).get();
+   const db=getFirestore();
+   const [snap,personSnap]=await Promise.all([
+    db.collection(ROLE_ARTWORK_META).limit(1200).get(),
+    db.collection(PERSON_SPECIALTY_PATCH_COLLECTION).limit(1200).get()
+   ]);
+   if(personSnap.size>=1200)throw fail(503,'Te veel persoonlijke patchkoppelingen voor veilige weergave');
    res.set('Cache-Control','private, no-store');
    return res.json({canEdit:true,artworks:snap.docs.filter(d=>mayEditDepartment(_req.bpd,d.get('department')||'politie')).map(d=>({...metaData(d),
-    active:d.get('active')===true,updatedBy:d.get('updatedBy')||''}))});
+    active:d.get('active')===true,updatedBy:d.get('updatedBy')||''})),
+    personLinks:personSnap.docs.filter(d=>d.get('active')===true&&
+      mayEditDepartment(_req.bpd,d.get('department'))).map(d=>({
+       department:d.get('department'),personId:d.get('personId'),
+       specialty:d.get('specialty'),sourceArtworkKey:d.get('sourceArtworkKey')
+      }))});
   }catch(e){return error(res,e)}
  });
  app.put('/api/role-artwork/link',requireUser,allowed,async(req,res)=>{
@@ -256,6 +269,69 @@ export function installRoleArtworkRoutes(app,{requireUser}){
      reason:input.reason,at:FieldValue.serverTimestamp()});
    });
    return res.json({saved:true,key:input.key,permissionsChanged:false});
+  }catch(e){return error(res,e)}
+ });
+ // Separate, audited visual-only link for one member in one service.
+ app.put('/api/role-artwork/person-specialty-link',requireUser,allowed,async(req,res)=>{
+  const department=String(req.body?.department||'');
+  if(!mayEditDepartment(req.bpd,department))
+   return res.status(403).json({error:'Geen rechten voor persoonlijke patchkoppelingen'});
+  let input;
+  try{input=validatePersonSpecialtyPatch(req.body,await extraSpecialtyLabels(department))}
+  catch(e){return res.status(400).json({error:e.message})}
+  try{
+   const snapshot=await getSnapshot();
+   if(snapshot.stale)throw fail(503,'Personeelsbron niet actueel: probeer later');
+   if(snapshot.data.filter(p=>p.dept===input.department&&p.personId===input.personId).length!==1)
+    throw fail(409,'Discord-ID niet uniek aanwezig bij deze hulpdienst');
+   const db=getFirestore(),ref=db.collection(PERSON_SPECIALTY_PATCH_COLLECTION).doc(input.key),
+    src=db.collection(ROLE_ARTWORK_META).doc(input.sourceArtworkKey);
+   await db.runTransaction(async tx=>{
+    const [prior,asset]=await Promise.all([tx.get(ref),tx.get(src)]);
+    if(!asset.exists||asset.get('active')!==true||
+       asset.get('department')!==input.department||
+       !PERSON_SPECIALTY_ASSET.test(asset.id)||
+       !(asset.get('assetId')||asset.get('storagePath'))||
+       asset.get('sourceArtworkKey'))
+      throw fail(400,'Kies een actieve originele afbeelding uit dezelfde dienst');
+    const before=prior.exists?prior.data():null;
+    tx.set(ref,{department:input.department,personId:input.personId,
+     specialty:input.specialty,sourceArtworkKey:input.sourceArtworkKey,
+     active:true,updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid});
+    tx.create(db.collection(ROLE_ARTWORK_AUDIT).doc(),{
+     key:input.key,action:'person_specialty_patch_linked',
+     previous:before||null,sourceArtworkKey:input.sourceArtworkKey,
+     department:input.department,personId:input.personId,specialty:input.specialty,
+     actorUid:req.bpd.uid,reason:input.reason,at:FieldValue.serverTimestamp()});
+   });
+   return res.json({saved:true,personal:true,permissionsChanged:false,
+    qualificationChanged:false,rankChanged:false});
+  }catch(e){return error(res,e)}
+ });
+ app.delete('/api/role-artwork/person-specialty-link',requireUser,allowed,async(req,res)=>{
+  const department=String(req.body?.department||'');
+  if(!mayEditDepartment(req.bpd,department))
+   return res.status(403).json({error:'Geen rechten voor persoonlijke patchkoppelingen'});
+  let input;
+  try{input=validatePersonSpecialtyPatch(req.body,await extraSpecialtyLabels(department),true)}
+  catch(e){return res.status(400).json({error:e.message})}
+  try{
+   const db=getFirestore(),ref=db.collection(PERSON_SPECIALTY_PATCH_COLLECTION).doc(input.key);
+   await db.runTransaction(async tx=>{
+    const before=await tx.get(ref);
+    if(!before.exists||before.get('active')!==true||
+      before.get('department')!==input.department||
+      before.get('personId')!==input.personId||
+      before.get('specialty')!==input.specialty)
+     throw fail(404,'Geen actieve persoonlijke patchkoppeling');
+    tx.update(ref,{active:false,updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid});
+    tx.create(db.collection(ROLE_ARTWORK_AUDIT).doc(),{
+     key:input.key,action:'person_specialty_patch_unlinked',
+     previous:before.data(),department:input.department,personId:input.personId,
+     specialty:input.specialty,actorUid:req.bpd.uid,reason:input.reason,
+     at:FieldValue.serverTimestamp()});
+   });
+   return res.json({saved:true,permissionsChanged:false,qualificationChanged:false});
   }catch(e){return error(res,e)}
  });
  // Link an existing original library image: no new file or WebP restriction.

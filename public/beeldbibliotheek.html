@@ -148,6 +148,10 @@ html:not([data-bpd-theme="dark"]) #linkStatus.bad{color:#a02232}
      <input id="linkRoleId" list="linkKnownRoles" inputmode="numeric" pattern="[0-9]{15,22}" maxlength="22" placeholder="Leeg laten of kies een Discord-rol-ID">
      <datalist id="linkKnownRoles"></datalist>
     </label>
+    <label>Discord-ID van één persoon (optioneel; persoonlijke patch)
+     <input id="linkPersonId" inputmode="numeric" pattern="[0-9]{15,22}" maxlength="22" placeholder="Bijvoorbeeld: 123456789012345678">
+    </label>
+    <p class="hint" style="grid-column:1/-1">Vul een <strong>persoon-ID</strong> in om uitsluitend voor die persoon een andere patch te tonen. Laat het rol-ID dan leeg. Zonder persoon-ID blijft de gewone rolkoppeling gelden. Dit wijzigt geen specialisatie, rang of leidinggevende positie.</p>
     <label>Bij welke specialisatie hoort deze patch?
      <select id="linkSpecialty"><option value="">Selecteer specialisatie</option></select>
     </label>
@@ -160,7 +164,8 @@ html:not([data-bpd-theme="dark"]) #linkStatus.bad{color:#a02232}
       <option value="teamleader">Teamleader</option>
      </select>
     </label>
-    <p id="linkRoleHint" class="hint">Kies de specialisatie. Een Discord-rol is optioneel en dient alleen voor automatische herkenning.</p>
+    <p id="linkRoleHint" class="hint">Een persoonsgebonden patch heeft voorrang op de rolpatch, maar is alleen zichtbaar voor een reeds geregistreerde specialisatie.</p>
+    <button id="linkRemovePerson" type="button" class="secondary" hidden>Persoonlijke patchkoppeling verwijderen</button>
    </div>
    <label>Motivering voor de koppeling
     <input id="linkReason" maxlength="300" placeholder="Bijvoorbeeld: officiële afbeelding gekoppeld aan functie">
@@ -231,7 +236,7 @@ const make=(tag,txt)=>{const x=document.createElement(tag);x.textContent=txt;ret
 const opt=(value,label)=>{const x=make('option',label);x.value=value;return x};
 for(const [id,options] of [['dept',departments],['kind',kinds],['rosterHeaderPreset',rosterHeaderSlots]])
  for(const [value,label] of options)$(id).append(opt(value,label));
-let auth=null,authMod=null,allowed=[],assets=[],roleAssets=[],visualRules=[],storageReady=false,previewUrl='';
+let auth=null,authMod=null,allowed=[],assets=[],roleAssets=[],visualRules=[],personLinks=[],storageReady=false,previewUrl='';
 let specialtyConfig=null,specialtyDept='';
 const notify=(text,bad=false)=>{$('message').textContent=text;$('message').classList.toggle('bad',bad)};
 function normalized(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -550,13 +555,14 @@ function updateLinkChoices(){
  choices.value=[...choices.options].find(x=>normalized(x.value)===currentRank)?.value||'';
  const overview=$('linkOverview');
  overview.replaceChildren(make('strong','Bestaande visuele koppelingen'));
- if(!item){overview.append(make('p','Geen afbeelding geselecteerd.'));return;}
+ if(!item){overview.append(make('p','Geen afbeelding geselecteerd.'));$('linkRemovePerson').hidden=true;return;}
  const matchingRules=visualRules.filter(r=>r.department===item.department&&
   (r.assetKind||r.kind)===item.kind&&r.assetCode===item.code);
  const matchingRoles=roleAssets.filter(r=>r.active&&r.department===item.department&&
   r.sourceArtworkKey===item.key);
  const specialtyMatches=(specialtyConfig?.links||[]).filter(x=>x.assetKey===item.key);
- if(!matchingRules.length&&!matchingRoles.length&&!specialtyMatches.length){
+ const matchedPersons=personLinks.filter(x=>x.sourceArtworkKey===item.key&&x.department===item.department);
+ if(!matchingRules.length&&!matchingRoles.length&&!specialtyMatches.length&&!matchedPersons.length){
   overview.append(make('p','Nog geen expliciete koppelingen. De afbeelding blijft gewoon opgeslagen.'));return;
  }
  for(const rule of matchingRules){
@@ -568,6 +574,16 @@ function updateLinkChoices(){
  for(const x of specialtyMatches){
   overview.append(make('p',(x.roleId?'Discord-rol '+x.roleId:'Zonder Discord-rol')+' · '+x.label+' · '+(x.level||x.value)));
  }
+ for(const x of matchedPersons){
+  overview.append(make('p','Persoon '+x.personId+' · '+x.specialty+' · persoonlijk gekoppeld'));
+ }
+ updatePersonalLinkRemove();
+}
+function updatePersonalLinkRemove(){
+ const item=currentLinkItem(),personId=$('linkPersonId').value.trim(),
+  specialty=$('linkSpecialty').value;
+ $('linkRemovePerson').hidden=!personLinks.some(x=>x.department===item?.department&&
+  x.personId===personId&&x.specialty===specialty);
 }
 function drawLinkAssets(preferred=''){
  const select=$('linkAsset'),old=preferred||select.value;
@@ -579,6 +595,15 @@ function drawLinkAssets(preferred=''){
  updateLinkChoices();
 }
 $('linkAsset').onchange=()=>{$('linkSpecialty').value='';$('linkRank').value='';updateLinkChoices()};
+$('linkPersonId').oninput=()=>{
+ if($('linkPersonId').value.trim())$('linkRoleId').value='';
+ updatePersonalLinkRemove();
+};
+$('linkRoleId').oninput=()=>{
+ if($('linkRoleId').value.trim())$('linkPersonId').value='';
+ updatePersonalLinkRemove();
+};
+$('linkSpecialty').onchange=updatePersonalLinkRemove;
 $('linkRankChoice').onchange=()=>{if($('linkRankChoice').value)$('linkRank').value=$('linkRankChoice').value;};
 for(const [id] of [['linkUniformEnabled'],['linkRankEnabled'],['linkRoleEnabled']])
  $(id).onchange=updateLinkChoices;
@@ -586,7 +611,8 @@ $('linkUniformScope').onchange=updateLinkChoices;
 $('linkClear').onclick=()=>{
  $('linkUniformEnabled').checked=false;
  $('linkRankEnabled').checked=false;$('linkRoleEnabled').checked=false;
- $('linkRank').value='';$('linkRankChoice').value='';$('linkRoleId').value='';$('linkVariant').value='standard';
+ $('linkRank').value='';$('linkRankChoice').value='';$('linkRoleId').value='';
+ $('linkPersonId').value='';$('linkVariant').value='standard';
  $('linkSpecialty').value='';
  $('linkReason').value='';updateLinkChoices();
  linkNotice('Keuzes gewist. Bestaande koppelingen zijn behouden.');
@@ -598,10 +624,15 @@ $('linkSave').onclick=async()=>{
  if(!item)return linkNotice('Kies eerst een actieve afbeelding.',true);
  if(!withRank&&!withRole&&!withUniform)return linkNotice('Vink uniform, rang en/of specialisatie aan om te koppelen.',true);
  if(reason.length<8||reason.length>300)return linkNotice('Motivering van 8 tot 300 tekens verplicht.',true);
- const rank=normalized($('linkRank').value),roleId=$('linkRoleId').value.trim();
+ const rank=normalized($('linkRank').value),roleId=$('linkRoleId').value.trim(),
+  personId=$('linkPersonId').value.trim();
  const variant=$('linkVariant').value,specialtyLabel=$('linkSpecialty').value;
+ if(withRole&&personId&&!/^\d{15,22}$/.test(personId))
+  return linkNotice('Vul de volledige Discord-ID van de persoon in (15–22 cijfers).',true);
+ if(withRole&&personId&&roleId)
+  return linkNotice('Kies een rol OF een persoon; bewaar de rolkoppeling afzonderlijk.',true);
  if(withRole&&(!specialtyConfig?.canEdit||specialtyDept!==item.department||
-   (roleId&&!specialtyConfig.roles?.some(x=>x.id===roleId))||
+   (roleId&&!personId&&!specialtyConfig.roles?.some(x=>x.id===roleId))||
    !specialtyConfig.labels?.includes(specialtyLabel)))
   return linkNotice('Kies een bestaande specialisatie en eventueel een erkende Discord-rol. Controleer je dienstrechten.',true);
  if((withRank||withUniform&&uniformScope==='rank')&&(!RANK_LINK_KINDS.has(item.kind)||!rank))
@@ -614,11 +645,14 @@ $('linkSave').onclick=async()=>{
  const previousUniform=withUniform?visualRules.find(r=>r.department===item.department&&
   r.kind==='uniform'&&r.scope===uniformScope&&r.selector===uniformSelector):null;
  const sharedFire=item.department==='brandweer'&&roleId==='1309532437952466986';
- const previousRole=withRole&&!sharedFire?roleAssets.find(r=>r.key===roleId+'_'+variant&&r.active):null;
- const previousMapping=withRole?(specialtyConfig?.links||[]).find(r=>
+ const previousRole=withRole&&!personId&&!sharedFire?roleAssets.find(r=>r.key===roleId+'_'+variant&&r.active):null;
+ const previousMapping=withRole&&!personId?(specialtyConfig?.links||[]).find(r=>
   r.roleId===roleId&&(!roleId||sharedFire?r.label===specialtyLabel:true)):null;
+ const previousPerson=withRole&&personId?personLinks.find(x=>x.department===item.department&&
+  x.personId===personId&&x.specialty===specialtyLabel):null;
  const [level,value]=rolePatchStatus(variant);
- if((previousRank&&(previousRank.assetCode!==item.code||(previousRank.assetKind||previousRank.kind)!==item.kind))||
+ if((previousPerson&&previousPerson.sourceArtworkKey!==item.key)||
+    (previousRank&&(previousRank.assetCode!==item.code||(previousRank.assetKind||previousRank.kind)!==item.kind))||
     (previousUniform&&(previousUniform.assetCode!==item.code||(previousUniform.assetKind||previousUniform.kind)!==item.kind))||
     (previousRole&&previousRole.sourceArtworkKey!==item.key)||
     (previousMapping&&(previousMapping.label!==specialtyLabel||
@@ -640,7 +674,12 @@ $('linkSave').onclick=async()=>{
     assetKind:item.kind,assetCode:item.code,reason
    });saved++;
   }
-  if(withRole){
+  if(withRole&&personId){
+   await api('/api/role-artwork/person-specialty-link','PUT',{
+    department:item.department,personId,specialty:specialtyLabel,
+    sourceArtworkKey:item.key,reason
+   });saved++;
+  }else if(withRole){
    // Canonical role-to-qualification mapping. A role-image pointer alone
    // does not connect the role to any specific personnel specialization.
    // Preserve the OTHER BW log/signa specialty when editing one badge.
@@ -659,7 +698,10 @@ $('linkSave').onclick=async()=>{
     });saved++;
    }
   }
-  linkNotice(saved+' visuele koppeling(en) opgeslagen. De gekozen afbeeldingen worden toegepast op de geselecteerde doelgroep. Rechten en rangen blijven ongewijzigd.');
+  linkNotice(saved+' visuele koppeling(en) opgeslagen. '+(personId?
+   'Deze persoonlijke patch geldt uitsluitend voor Discord-ID '+personId+'. ':
+   'De gekozen afbeeldingen worden toegepast op de geselecteerde doelgroep. ')+
+   'Rechten, rang en leiding blijven ongewijzigd.');
   await load();drawLinkAssets(item.key);
  }catch(e){
   linkNotice('Koppelen onderbroken na '+saved+' geslaagde stap(pen): '+e.message,true);
@@ -667,6 +709,21 @@ $('linkSave').onclick=async()=>{
  }finally{button.disabled=false;}
 };
 
+$('linkRemovePerson').onclick=async()=>{
+ const item=currentLinkItem(),personId=$('linkPersonId').value.trim(),
+  specialty=$('linkSpecialty').value,reason=$('linkReason').value.trim();
+ if(!item||!personLinks.some(x=>x.department===item.department&&
+  x.personId===personId&&x.specialty===specialty))return;
+ if(reason.length<8)return linkNotice('Vul eerst een motivering van minstens 8 tekens in.',true);
+ if(!confirm('Persoonlijke patch voor '+personId+' verwijderen? De rolpatch blijft behouden.'))return;
+ try{
+  await api('/api/role-artwork/person-specialty-link','DELETE',{
+   department:item.department,personId,specialty,reason
+  });
+  linkNotice('Persoonlijke uitzondering verwijderd. De gewone rolpatch wordt opnieuw gebruikt.');
+  await load();drawLinkAssets(item.key);
+ }catch(e){linkNotice('Verwijderen mislukt: '+e.message,true)}
+};
 async function load(){
  if(!auth?.currentUser){$('editor').hidden=true;return}
  try{
@@ -677,6 +734,7 @@ async function load(){
   storageReady=status.storageReady===true;
   assets=(manifest.artworks||[]).filter(x=>x.kind!=='role');
   roleAssets=(manifest.artworks||[]).filter(x=>x.kind==='role');
+  personLinks=Array.isArray(manifest.personLinks)?manifest.personLinks:[];
   visualRules=(rulesData.rules||[]).filter(x=>allowed.includes(x.department));
   $('editor').hidden=!allowed.length;
   for(const x of $('dept').options)x.disabled=!allowed.includes(x.value);
