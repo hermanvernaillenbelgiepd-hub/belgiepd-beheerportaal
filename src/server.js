@@ -850,7 +850,7 @@ installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installTechnicalCenterRoutes(app,{requireUser});
 installTechnicalTestCleanupRoutes(app,{requireUser,getSnapshot});
-installRoleArtworkRoutes(app,{requireUser});
+installRoleArtworkRoutes(app,{requireUser,getSnapshot});
 installUniformManagementRoutes(app,{requireUser});
 installUniformAssignmentRoutes(app,{requireUser});
 installVisualLayerRoutes(app,{requireUser});
