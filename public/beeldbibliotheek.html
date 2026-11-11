@@ -318,7 +318,8 @@ function draw(){
   pick.onclick=()=>{$('dept').value=item.department;$('kind').value=item.kind;
    $('code').value=item.code;$('label').value=item.label;
    $('policePreset').value=item.department==='politie'?item.code:'';
-   updateSlotNote();drawLinkAssets(item.key);
+   if(item.kind==='roster_header')$('rosterHeaderPreset').value=item.code;
+   updatePreset();drawLinkAssets(item.key);
    notify('Geselecteerd: '+item.label+'. Je kunt de afbeelding nu koppelen of vervangen.');
    void versions(item)};
   actions.append(pick);
