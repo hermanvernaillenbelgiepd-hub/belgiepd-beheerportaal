@@ -55,6 +55,7 @@ import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
 import { installUserRoutes } from './user-routes.js';
 import {installManualRoleRoutes} from './manual-role-routes.js';
+import {activeManualCitizenCouncil} from './citizen-dossier-policy.js';
 import {installBoardAppointmentRoutes} from './board-appointment-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
@@ -256,7 +257,8 @@ async function requireUser(req,res,next){
     const verified=await getAuth().verifyIdToken(token);
     // Google-noodtoegang blijft bestaan. Discord krijgt enkel de bestaande,
     // persoonlijk gemapte rechten uit de allowlist; geen rollen op basis van ID alleen.
-    let email,entry,discordId,discordMember=null,manualRoleRecovery=null;
+    let email,entry,discordId,discordMember=null,manualRoleRecovery=null,
+      citizenCouncilApproved=false;
     if(verified.email_verified && verified.firebase?.sign_in_provider==='google.com'){
       email=String(verified.email||'').toLowerCase();
       entry=accessList()[email];
@@ -333,6 +335,7 @@ async function requireUser(req,res,next){
       }
       if(managed.exists){
         manualRoleRecovery=managed.data()?.manualRoleRecovery||null;
+        citizenCouncilApproved=activeManualCitizenCouncil(managed.data(),id);
         entry=approvedManagedEntry(managed.data(),id);
         if(!entry)return res.status(403).json({error:'Je portaaltoegang is nog niet goedgekeurd of werd geblokkeerd. Open Gebruikersbeheer.'});
         if(!autoPoliceBasicActive(verified,member,process.env.DISCORD_GUILD_ID,managed.data())){
@@ -392,6 +395,11 @@ async function requireUser(req,res,next){
     );
     const actor={email,uid:verified.uid,role:String(entry.role),departments,
       discordId,departmentRoles};
+    // Dedicated Burgerraad manual recovery: never promote global cadre or
+    // bypass the fresh independent Discord membership check at each dossier.
+    actor.manualCitizenCouncilApproved=Boolean(citizenCouncilApproved&&
+      verified.uid==='discord:'+discordId&&departments.includes('burger')&&
+      departmentRoles.burger==='basiskader');
     // Alleen een apart goedgekeurde, geauditeerde manuele Korpsleiding-machtiging
     // kan bij ontbrekende Discord-rolverificatie de beschermde dossiers openen.
     actor.manualCorpsApproved=Boolean(manualRoleRecovery?.dept==='politie'&&
@@ -894,7 +902,7 @@ installVisualLayerRoutes(app,{requireUser});
 installUniformLibraryRoutes(app,{requireUser});
 installUniformGradeRoutes(app,{requireUser});
 installUniformCompositionRoutes(app,{requireUser});
-installManualRoleRoutes(app,{requireUser});
+installManualRoleRoutes(app,{requireUser,getSnapshot});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   res.set('Cache-Control','no-store');

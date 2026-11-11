@@ -18,6 +18,11 @@ export const MANUAL_ROLE_CATALOG=Object.freeze({
   ]),
   depannage:Object.freeze([
     {role:'korpsleiding',label:'AWV/ANWV – Agentschap Wegen en Verkeer (leiding)'}
+  ]),
+  // Burgerraad is a strictly service-local, audited manual council proof,
+  // not a higher global portal cadre or a Discord role.
+  burger:Object.freeze([
+    {role:'basiskader',label:'Burger – Burgerraad (dossiers en BIO-begeleiding)'}
   ])
 });
 export const manualRoleChoice=(dept,role)=>

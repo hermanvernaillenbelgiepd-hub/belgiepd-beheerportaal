@@ -417,7 +417,7 @@ header button{padding:7px 10px;font-size:12px}
 <form id="manualRoleForm">
 <div class="grid">
 <div><label for="manualId">Discord-ID medewerker</label><input id="manualId" inputmode="numeric" autocomplete="off" maxlength="22" pattern="[0-9]{15,22}" required placeholder="Discord-ID"></div>
-<div><label for="manualDept">Hulpdienst</label><select id="manualDept"><option value="politie">Politie</option><option value="ambulance">Ambulance</option><option value="brandweer">Brandweer</option><option value="depannage">Depannage</option></select></div>
+<div><label for="manualDept">Hulpdienst</label><select id="manualDept"><option value="politie">Politie</option><option value="ambulance">Ambulance</option><option value="brandweer">Brandweer</option><option value="depannage">Depannage</option><option value="burger">Burger</option></select></div>
 <div><label for="manualRole">Functie / portaalkader</label><select id="manualRole" required><option value="">Selecteer eerst een hulpdienst</option></select></div>
 </div>
 <label for="manualReason">Motivering (minimaal 15 tekens)</label>
@@ -426,7 +426,7 @@ header button{padding:7px 10px;font-size:12px}
 </form>
 <p id="manualMessage" class="muted" role="status"></p>
 <div class="scroller"><table><thead><tr><th>Discord-ID</th><th>Hulpdienst / kader</th><th>Status</th><th>Aanvrager</th><th>Beslissing</th></tr></thead><tbody id="manualRecords"></tbody></table></div>
-<p class="muted">De keuzes geven uitsluitend het herstelde <strong>portaalkader</strong> aan. Officiële functies zoals DIR-MED, ZONE en AWV blijven daarnaast gebonden aan een geverifieerde personeelsfiche of Discord-rol. Een goedkeuring wijzigt de Discord-rol niet. Elke toekenning wordt gelogd.</p>
+<p class="muted">De keuzes herstellen het <strong>portaalkader</strong>. Voor <strong>Burger → Burgerraad</strong> geeft een onafhankelijk goedgekeurde en geauditeerde uitzondering toegang tot burgerpersoneelsdossiers en BIO-koppelritten, uitsluitend bij een geldige Discord-verificatie. Burgerraad mag registreren, maar geen dossierregistraties verwijderen. Andere diensten blijven afgeschermd. Er wordt geen Discord-rol gewijzigd.</p>
 </section>
 <section id="dossierGrantSection" class="card" hidden>
 <h2>🛡️ Beheertoegang hulpdiensten</h2>
@@ -1311,13 +1311,14 @@ async function loadManualRoles(){
     for(const item of records){
       const tr=document.createElement('tr');
       cell(tr,item.discordId);
-      cell(tr,(deptNames[item.dept]||item.dept)+' · '+(item.roleLabel||roleNames[item.role]||item.role));
+      cell(tr,(item.dept==='burger'?'Burger':deptNames[item.dept]||item.dept)+' · '+(item.roleLabel||roleNames[item.role]||item.role));
       const status=document.createElement('span');status.className='status '+(item.status==='approved'?'approved':item.status==='rejected'?'blocked':'');
-      status.textContent=({pending:'In afwachting',approved:'Goedgekeurd',rejected:'Geweigerd'})[item.status]||item.status;
+      status.textContent=({pending:'In afwachting',approved:'Goedgekeurd',rejected:'Geweigerd',revoked:'Ingetrokken'})[item.status]||item.status;
       cell(tr,status);
       cell(tr,item.requestedBy||'—');
       const actions=document.createElement('div');actions.className='controls';
-      if(item.status==='pending'&&data.canApprove){
+      if(item.status==='pending'&&data.canApprove&&
+        (item.dept!=='burger'||data.canApproveCitizenCouncil)){
         for(const decision of ['approved','rejected']){
           const button=document.createElement('button');button.type='button';
           button.className=decision==='rejected'?'danger':'alt';
@@ -1327,7 +1328,7 @@ async function loadManualRoles(){
              const solo=ownRequest&&data.canSoloApprove;
              if(ownRequest&&!solo)return notice('Een onafhankelijke goedkeurder is vereist. Alleen de geverifieerde technische beheermodus mag eigen ingediende verzoeken beoordelen.',true);
              if(decision==='approved'&&!confirm('Bevestig goedkeuring van '+item.discordId+
-               ' als '+(item.roleLabel||roleNames[item.role]||item.role)+' bij '+(deptNames[item.dept]||item.dept)+
+               ' als '+(item.roleLabel||roleNames[item.role]||item.role)+' bij '+(item.dept==='burger'?'Burger':deptNames[item.dept]||item.dept)+
                (solo?' via de technische uitzonderingsbevoegdheid':'')+
                '. De beslissing wordt gelogd en wijzigt de portaalrechten.'))return;
              const reason=prompt('Motivering van deze beslissing (minimaal 15 tekens):');
@@ -1342,6 +1343,24 @@ async function loadManualRoles(){
           };
           actions.append(button);
         }
+      }else if(item.dept==='burger'&&item.status==='approved'&&data.canApproveCitizenCouncil){
+        const revoke=document.createElement('button');revoke.type='button';
+        revoke.className='danger';revoke.textContent='Burgerraad intrekken';
+        revoke.onclick=async()=>{
+          if(!confirm('Burgerraad-toegang voor '+item.discordId+
+            ' intrekken? Andere diensten blijven behouden.'))return;
+          const reason=prompt('Motivering intrekking (minimaal 15 tekens):');
+          if(reason===null)return;
+          revoke.disabled=true;
+          try{
+            await api('/api/users/manual-role-requests/burger/'+
+              encodeURIComponent(item.discordId)+'/revoke',{
+                method:'POST',body:{reason}});
+            notice('Burgerraad-machtiging ingetrokken. De Burger-dossier- en BIO-rechten zijn niet langer actief.');
+            await loadManualRoles();await loadAdmin();showManageTabs();
+          }catch(e){notice(e.message,true);revoke.disabled=false}
+        };
+        actions.append(revoke);
       }else actions.textContent=item.status==='pending'?'Wacht op onafhankelijke goedkeuring':'Afgehandeld';
       cell(tr,actions);body.append(tr);
     }

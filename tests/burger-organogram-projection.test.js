@@ -75,3 +75,10 @@ test('registered Burgerraad from the citizen personnel source survives missing D
  assert.deepEqual(citizenOrganogramGroups({...row,specialties:[{label:'Burgerraad',value:'Nee'}]},['Burger']),['Burger']);
  assert.deepEqual(citizenOrganogramGroups({...row,dept:'politie'},[]),[]);
 });
+
+test('handmatig goedgekeurde Burgerraad wordt correct gegroepeerd',()=>{
+ const member={dept:'burger',name:'Raadslid',rank:'Burger',specialties:[]};
+ assert.deepEqual(citizenOrganogramGroups(member,['Burger'],true),['Burgerraad','Burger']);
+ assert.deepEqual(citizenOrganogramGroups(member,['Burger'],false),['Burger']);
+ assert.deepEqual(citizenOrganogramGroups({...member,dept:'politie'},[],true),[]);
+});
