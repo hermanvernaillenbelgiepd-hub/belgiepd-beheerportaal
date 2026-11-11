@@ -2511,7 +2511,15 @@ async function refreshProfileSpecialtyRoles(person,key){
    person.specialties=[...new Set([...(person.specialties||[]),
     ...(Array.isArray(response.specialties)?response.specialties:[])])].slice(0,20);
    const registered=(person.specialtyPatches||[]).filter(x=>x.source==='registered'||x.source==='person');
-   person.specialtyPatches=[...registered,...(Array.isArray(response.patches)?response.patches:[])].slice(0,20);
+   const livePatches=Array.isArray(response.patches)?response.patches:[];
+   // A fresh, server-validated per-person override wins over an older one.
+   // A Discord role refresh must never replace an approved personal image.
+   const refreshedPersonal=new Set(livePatches.filter(x=>x.source==='person')
+     .map(x=>x.label));
+   person.specialtyPatches=[
+     ...registered.filter(x=>x.source!=='person'||!refreshedPersonal.has(x.label)),
+     ...livePatches
+   ].slice(0,20);
    profileSpecialtyChecks.set(key,{verified:true,status:'ok'});
     render(); // Update AE Teamleader group without reloading.
   }else profileSpecialtyChecks.set(key,{verified:false,status:String(response?.status||'unavailable')});
@@ -2797,7 +2805,21 @@ function openPersonProfile(p){
      }
     badge.width=isFireDiver?288:170;
     badge.height=isFireDiver?134:53;
-    badge.loading='lazy';item.append(badge);
+    badge.loading='lazy';
+    if(p.dept==='politie'){
+     // A retired/broken image slot must never leave a broken image icon.
+     // This fallback is visual only: qualifications and role labels stay intact.
+     badge.addEventListener('error',()=>{
+      const level=name==='AE'&&Object.hasOwn(AE_LEVEL_LABELS,functionVariant)?
+       ' · '+AE_LEVEL_LABELS[functionVariant]:'';
+      const fallback=el('span','person-profile-specialty-badge ae-level-text-patch',
+       name+level+' · patch niet beschikbaar');
+      fallback.setAttribute('role','img');
+      fallback.setAttribute('aria-label',name+' · patch tijdelijk niet beschikbaar');
+      badge.replaceWith(fallback);
+     },{once:true});
+    }
+    item.append(badge);
    }else if(p.dept==='depannage'){
      item.append(el('span','person-profile-specialty-missing-patch','Patch nog niet gekoppeld'));
     }else if(aeSpecific){

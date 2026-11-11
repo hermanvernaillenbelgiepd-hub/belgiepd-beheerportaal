@@ -493,6 +493,7 @@ const currentLinkItem=()=>assets.find(x=>x.key===$('linkAsset').value&&x.active)
 
 async function loadSpecialtyMapping(){
  const dept=$('dept').value;
+ const priorAsset=$('linkAsset').value,priorSpecialty=$('linkSpecialty').value;
  specialtyConfig=null;specialtyDept=dept;
  $('linkSpecialty').replaceChildren(opt('','Laden…'));
  try{
@@ -507,7 +508,17 @@ async function loadSpecialtyMapping(){
  }catch(e){
   if(specialtyDept!==dept)return;
   $('linkRoleHint').textContent='Specialisatieregister niet beschikbaar: '+e.message;
- }finally{if(specialtyDept===dept)updateLinkChoices();}
+ }finally{
+  if(specialtyDept===dept){
+   updateLinkChoices();
+   // Reloading after saving must not make a persisted personal patch
+   // appear to have no specialisation selected in the editor.
+   if($('linkAsset').value===priorAsset&&
+      specialtyConfig?.labels?.includes(priorSpecialty))
+     $('linkSpecialty').value=priorSpecialty;
+   updatePersonalLinkRemove();
+  }
+ }
 }
 let lastSpecialtyImageKey='';
 function showSpecialtyChoices(item){

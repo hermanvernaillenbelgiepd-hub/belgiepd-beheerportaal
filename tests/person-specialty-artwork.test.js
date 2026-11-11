@@ -61,3 +61,29 @@ test('API, UI en profiel behouden visueel-only gedrag en audit',()=>{
  assert.match(ui,/person-specialty-link/);
  assert.match(server,/installRoleArtworkRoutes\(app,\{requireUser,getSnapshot\}\)/);
 });
+
+test('persoonlijke AE-patch wint ook na afzonderlijke live Discord-profielcontrole',()=>{
+ const server=src('src/organogram-placement-routes.js'),
+  client=src('public/organogram-hierarchie.html');
+ const refresh=server.slice(
+  server.indexOf("app.get('/api/organogram/specialty-check/"),
+  server.indexOf('// Targeted, audited AE presentation correction'));
+ assert.ok(refresh.length>1000);
+ assert.match(refresh,/personPatchKey\('politie',staff\.personId,label\)/);
+ assert.match(refresh,/doc\.data\(\)\)\.filter\(link/);
+ assert.match(refresh,/link\.personId===staff\.personId/);
+ assert.match(refresh,/eligible\.includes\(link\.specialty\)/);
+ assert.match(refresh,/image\.get\('active'\)!==true/);
+ assert.match(refresh,/const profilePatches=overlayPersonalSpecialtyArtwork\(/);
+ assert.match(refresh,/patches:profilePatches/);
+ assert.match(client,/const refreshedPersonal=new Set\(livePatches\.filter\(x=>x\.source==='person'\)/);
+ assert.match(client,/registered\.filter\(x=>x\.source!=='person'\|\|!refreshedPersonal\.has\(x\.label\)\)/);
+});
+test('ongeldige patch toont tekstfallback zonder rang- of Discordwijziging',()=>{
+ const client=src('public/organogram-hierarchie.html');
+ const ui=src('public/beeldbibliotheek.html');
+ assert.match(client,/badge\.addEventListener\('error',\(\)=>\{/);
+ assert.match(client,/patch niet beschikbaar/);
+ assert.match(ui,/const priorAsset=\$\('linkAsset'\)\.value,priorSpecialty=\$\('linkSpecialty'\)\.value/);
+ assert.match(ui,/specialtyConfig\?\.labels\?\.includes\(priorSpecialty\)/);
+});
