@@ -78,7 +78,8 @@ export function installManualRoleRoutes(app,{requireUser,getSnapshot}){
         req.bpd.role==='beheerder'||req.bpd.departments?.includes(d.dept))
         .filter(d=>VALID_ID.test(d.discordId)).map(brief);
       return res.json({requests:records,roleCatalog:MANUAL_ROLE_CATALOG,canPropose:true,
-        canApprove:access.manager,board:access.board,
+        canApprove:access.manager,canApproveCitizenCouncil:access.manager&&canConfirmCitizenCouncil(req.bpd),
+        board:access.board,
         canSoloApprove:access.manager&&isVerifiedTechnicalRoleApprover(req.bpd),
         actorUid:req.bpd.uid});
     }catch(e){return respond(res,e)}
@@ -212,6 +213,52 @@ export function installManualRoleRoutes(app,{requireUser,getSnapshot}){
         });
         return res.json({status:decision,roleGranted:decision==='approved',
           discordRoleChanged:false});
+      }catch(e){return respond(res,e)}
+    });
+  // Revokes only the exceptional Burgerraad portal scope. Other departments
+  // and the individual's recorded notes or historical evaluations remain.
+  app.post('/api/users/manual-role-requests/burger/:discordId/revoke',
+    requireUser,async(req,res)=>{
+      const target=String(req.params.discordId||'');
+      if(!VALID_ID.test(target)||target===req.bpd?.discordId)
+        return res.status(403).json({error:'Ongeldige of eigen Burgerraad-intrekking'});
+      let reason;
+      try{
+        if(!req.body||Object.keys(req.body).some(x=>x!=='reason'))
+          throw error(400,'Een motivering is verplicht');
+        reason=safeReason(req.body.reason);
+        const db=getFirestore(),access=await rights(req.bpd,db);
+        if(!access.manager||!canConfirmCitizenCouncil(req.bpd))
+          throw error(403,'Alleen geverifieerde Korpsleiding of technisch beheer mag Burgerraad intrekken');
+        const user=db.collection(USER_COLLECTION).doc(target),
+         request=db.collection(STORE).doc('burger_'+target);
+        await db.runTransaction(async tx=>{
+          const [current,original]=await Promise.all([tx.get(user),tx.get(request)]);
+          if(!activeManualCitizenCouncil(current.data(),target)||
+            original.get('status')!=='approved'||
+            !isCitizenCouncilRequest(original.data()))
+            throw error(409,'Geen actieve handmatige Burgerraad-machtiging');
+          const approved=approvedManagedEntry(current.data(),target);
+          const departments=approved.departments.filter(d=>d!=='burger');
+          const departmentRoles={...approved.departmentRoles};
+          delete departmentRoles.burger;
+          const top=Object.values(departmentRoles).reduce((role,next)=>
+            RANK[next]>RANK[role]?next:role,'basiskader');
+          tx.update(user,{departments,departmentRoles,role:top,
+            ...(departments.length?{}:{status:'blocked'}),
+            citizenCouncilRecovery:FieldValue.delete(),
+            updatedAt:FieldValue.serverTimestamp()});
+          tx.update(request,{status:'revoked',decidedBy:req.bpd.uid,
+            decisionReason:reason,decidedAt:FieldValue.serverTimestamp()});
+          tx.create(user.collection('audit').doc(),{
+            action:'manual_citizen_council_revoked',dept:'burger',
+            actorUid:req.bpd.uid,reason,at:FieldValue.serverTimestamp()});
+          tx.create(request.collection('audit').doc(),{
+            action:'revoked',actorUid:req.bpd.uid,reason,
+            at:FieldValue.serverTimestamp()});
+        });
+        return res.json({revoked:true,discordRoleChanged:false,
+          otherDepartmentsPreserved:true});
       }catch(e){return respond(res,e)}
     });
 }

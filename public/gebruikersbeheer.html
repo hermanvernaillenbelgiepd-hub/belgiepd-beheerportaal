@@ -1313,11 +1313,12 @@ async function loadManualRoles(){
       cell(tr,item.discordId);
       cell(tr,(item.dept==='burger'?'Burger':deptNames[item.dept]||item.dept)+' · '+(item.roleLabel||roleNames[item.role]||item.role));
       const status=document.createElement('span');status.className='status '+(item.status==='approved'?'approved':item.status==='rejected'?'blocked':'');
-      status.textContent=({pending:'In afwachting',approved:'Goedgekeurd',rejected:'Geweigerd'})[item.status]||item.status;
+      status.textContent=({pending:'In afwachting',approved:'Goedgekeurd',rejected:'Geweigerd',revoked:'Ingetrokken'})[item.status]||item.status;
       cell(tr,status);
       cell(tr,item.requestedBy||'—');
       const actions=document.createElement('div');actions.className='controls';
-      if(item.status==='pending'&&data.canApprove){
+      if(item.status==='pending'&&data.canApprove&&
+        (item.dept!=='burger'||data.canApproveCitizenCouncil)){
         for(const decision of ['approved','rejected']){
           const button=document.createElement('button');button.type='button';
           button.className=decision==='rejected'?'danger':'alt';
@@ -1342,6 +1343,24 @@ async function loadManualRoles(){
           };
           actions.append(button);
         }
+      }else if(item.dept==='burger'&&item.status==='approved'&&data.canApproveCitizenCouncil){
+        const revoke=document.createElement('button');revoke.type='button';
+        revoke.className='danger';revoke.textContent='Burgerraad intrekken';
+        revoke.onclick=async()=>{
+          if(!confirm('Burgerraad-toegang voor '+item.discordId+
+            ' intrekken? Andere diensten blijven behouden.'))return;
+          const reason=prompt('Motivering intrekking (minimaal 15 tekens):');
+          if(reason===null)return;
+          revoke.disabled=true;
+          try{
+            await api('/api/users/manual-role-requests/burger/'+
+              encodeURIComponent(item.discordId)+'/revoke',{
+                method:'POST',body:{reason}});
+            notice('Burgerraad-machtiging ingetrokken. De Burger-dossier- en BIO-rechten zijn niet langer actief.');
+            await loadManualRoles();await loadAdmin();showManageTabs();
+          }catch(e){notice(e.message,true);revoke.disabled=false}
+        };
+        actions.append(revoke);
       }else actions.textContent=item.status==='pending'?'Wacht op onafhankelijke goedkeuring':'Afgehandeld';
       cell(tr,actions);body.append(tr);
     }
