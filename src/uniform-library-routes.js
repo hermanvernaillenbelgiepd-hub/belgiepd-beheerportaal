@@ -5,14 +5,14 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getStorage} from 'firebase-admin/storage';
 import {isUserManager} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
-import {ROLE_ARTWORK_META,ROLE_ARTWORK_AUDIT} from './role-artwork-routes.js';
+import {ROLE_ARTWORK_META,ROLE_ARTWORK_AUDIT,POLICE_ROSTER_HEADER_CODES} from './role-artwork-routes.js';
 
 export const UNIFORM_LIBRARY_VERSIONS='bpd_uniform_library_versions';
 export const UNIFORM_LIBRARY_RULES='bpd_uniform_library_rules';
 export const UNIFORM_LIBRARY_RULE_AUDIT='bpd_uniform_library_rule_audit';
 export const UNIFORM_LIBRARY_PREFIX='uniformbibliotheek/';
 export const UNIFORM_LIBRARY_KINDS=Object.freeze([
- 'rank','uniform','specialty','medal','helmet','profession','logo','pictogram','patch','award'
+ 'rank','uniform','specialty','medal','helmet','profession','logo','pictogram','patch','award','roster_header'
 ]);
 export const UNIFORM_LIBRARY_RULE_KINDS=Object.freeze([
  'rank','uniform','helmet','profession','logo','pictogram','patch','specialty'
@@ -30,7 +30,7 @@ const validScopedType=(department,scope,selector)=>
  scope==='function'?department==='ambulance'&&AMBULANCE_FUNCTIONS.has(selector):true;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const PERSON=/^\d{15,22}$/;
-const KEY=/^(rank|uniform|specialty|medal|helmet|profession|logo|pictogram|patch|award)_(politie|brandweer|ambulance|depannage|burger|beveiliging)_([a-z0-9][a-z0-9_]{0,39})$/;
+const KEY=/^(rank|uniform|specialty|medal|helmet|profession|logo|pictogram|patch|award|roster_header)_(politie|brandweer|ambulance|depannage|burger|beveiliging)_([a-z0-9][a-z0-9_]{0,39})$/;
 const MAX_BYTES=4*1024*1024;
 const err=(code,message)=>Object.assign(new Error(message),{publicStatus:code});
 const fail=(res,e)=>{
@@ -73,7 +73,8 @@ export function validateLibraryUpload(body){
   throw err(400,'Ongeldige uploadvelden');
  const department=validateDepartment(String(body.department||''));
  const kind=String(body.kind||''),code=String(body.code||'').trim().toLowerCase();
- if(!UNIFORM_LIBRARY_KINDS.includes(kind)||!CODE.test(code))
+ if(!UNIFORM_LIBRARY_KINDS.includes(kind)||!CODE.test(code)||
+    (kind==='roster_header'&&(department!=='politie'||!POLICE_ROSTER_HEADER_CODES.includes(code))))
   throw err(400,'Onbekende beeldsoort of code');
  const label=typeof body.label==='string'?body.label.trim():'';
  if(label.length<2||label.length>75||/[<>\x00-\x1f]/.test(label))

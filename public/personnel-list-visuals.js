@@ -61,7 +61,7 @@
     logoOverrides.clear();
     for(const row of Array.isArray(records)?records:[]){
       const key=String(row?.key||''),url=String(row?.imageUrl||'');
-      if(!/^(?:(?:rank|specialty|patch)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
+      if(!/^(?:(?:rank|specialty|patch|roster_header)_(?:politie|ambulance|brandweer|depannage|burger)_[a-z0-9][a-z0-9_]{0,39}|\d{15,22}_[a-z][a-z0-9_]{0,39})$/.test(key))continue;
       const prefix='/api/role-artwork/file/'+key+'?v=';
       if(!url.startsWith(prefix)||!/^[A-Za-z0-9-]+$/.test(url.slice(prefix.length)))continue;
       logoOverrides.set(key,url);
@@ -118,6 +118,14 @@
   function librarySpecialtyBanner(label,dept='politie'){
     const code=specialtyArtworkCode(label);
     const names=specialtyArtworkAliases[code]||[code];
+    // Dedicated personnel-list artwork outranks generic patches but never
+    // overwrites their original images on uniforms or personnel cards.
+    if(dept==='politie'){
+      for(const alias of names){
+        const header=artwork('roster_header','politie',alias);
+        if(header)return header;
+      }
+    }
     for(const alias of names){
       const neutral=artwork('patch',dept,alias)||artwork('specialty',dept,alias);
       if(neutral)return neutral;
