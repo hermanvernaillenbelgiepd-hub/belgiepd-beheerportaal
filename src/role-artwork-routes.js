@@ -4,7 +4,6 @@ import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {getStorage} from 'firebase-admin/storage';
 import {isUserManager} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
-import {ROLE_CATALOG} from './role-catalog.js';
 
 export const ROLE_ARTWORK_META='bpd_role_artwork_meta';
 export const ROLE_ARTWORK_IMAGES='bpd_role_artwork_images';
@@ -12,8 +11,10 @@ export const ROLE_ARTWORK_AUDIT='bpd_role_artwork_audit';
 const ID=/^\d{15,22}$/;
 const VARIANT=/^[a-z][a-z0-9_]{0,39}$/;
 const DEPTS=['politie','brandweer','ambulance','depannage','burger','beveiliging'];
-export const VISUAL_ARTWORK_KINDS=Object.freeze(['rank','specialty','uniform','medal','helmet','profession','logo','pictogram','patch','award']);
-const ARTWORK_KEY=/^(?:\d{15,22}_[a-z][a-z0-9_]{0,39}|(?:rank|specialty|uniform|medal|helmet|profession|logo|pictogram|patch|award)_(?:politie|brandweer|ambulance|depannage|burger|beveiliging)_[a-z0-9][a-z0-9_]{0,39})$/;
+export const POLICE_ROSTER_HEADER_CODES=Object.freeze(["interventie","radio_bm","siv_wpr","signalisatie","motard","semi_ano","k9","rago","disp","to","ae","recherche"]);
+const rosterHeaderCodes=new Set(POLICE_ROSTER_HEADER_CODES);
+export const VISUAL_ARTWORK_KINDS=Object.freeze(['rank','specialty','uniform','medal','helmet','profession','logo','pictogram','patch','award','roster_header']);
+const ARTWORK_KEY=/^(?:\d{15,22}_[a-z][a-z0-9_]{0,39}|(?:rank|specialty|uniform|medal|helmet|profession|logo|pictogram|patch|award|roster_header)_(?:politie|brandweer|ambulance|depannage|burger|beveiliging)_[a-z0-9][a-z0-9_]{0,39})$/;
 const CODE=/^[a-z0-9][a-z0-9_]{0,39}$/;
 const MAX_BYTES=140*1024;
 const keyFor=(roleId,variant)=>roleId+'_'+variant;
@@ -74,7 +75,8 @@ export function validatePersonnelArtwork(body){
  const kind=String(body.kind||'');
  const department=String(body.department||'politie');
  const code=String(body.code||'').toLowerCase().trim();
- if(!VISUAL_ARTWORK_KINDS.includes(kind)||!DEPTS.includes(department)||!CODE.test(code))
+ if(!VISUAL_ARTWORK_KINDS.includes(kind)||!DEPTS.includes(department)||!CODE.test(code)||
+    (kind==='roster_header'&&(department!=='politie'||!rosterHeaderCodes.has(code))))
   throw fail(400,'Ongeldige graad, specialisatie, assetsoort, code of hulpdienst');
  // Reuse all binary/motivation/label checks from the role uploader while
  // avoiding the need for a fake Discord role ID.
@@ -103,6 +105,20 @@ export function validateSpecialtyHeaderLink(body){
     sourceArtworkKey===key)
   throw fail(400,'Selecteer een actieve patch uit dezelfde hulpdienst en vul een motivering in');
  return {department,code,label,sourceArtworkKey,reason,key};
+}
+export function validateRosterHeaderLink(body){
+ if(!body||Array.isArray(body)||typeof body!=='object'||
+    Object.keys(body).some(x=>!['code','label','sourceArtworkKey','reason'].includes(x)))
+  throw fail(400,'Ongeldige kolompatchkoppeling');
+ const code=String(body.code||''),label=String(body.label||'').trim(),
+  sourceArtworkKey=String(body.sourceArtworkKey||''),
+  reason=String(body.reason||'').trim();
+ const key='roster_header_politie_'+code;
+ if(!rosterHeaderCodes.has(code)||label.length<2||label.length>75||
+    reason.length<8||reason.length>300||/[<>\x00-\x1f\x7f]/.test(label+reason)||
+    !/^(?:specialty|patch)_politie_[a-z0-9][a-z0-9_]{0,39}$/.test(sourceArtworkKey))
+  throw fail(400,'Kies een bestaande politiepatch, een vaste specialisatiekolom en een motivering');
+ return {key,code,label,sourceArtworkKey,reason,department:'politie'};
 }
 export function installRoleArtworkRoutes(app,{requireUser}){
  // Serve approved image bytes without exposing credentials; assets are decorative,
@@ -163,20 +179,8 @@ export function installRoleArtworkRoutes(app,{requireUser}){
   try{
    const snap=await getFirestore().collection(ROLE_ARTWORK_META).limit(1200).get();
    res.set('Cache-Control','private, no-store');
-   return res.json({
-    canEdit:true,
-    editableDepartments:DEPTS.filter(dept=>mayEditDepartment(_req.bpd,dept)),
-    // A visual label catalogue, not verified role membership or a permission grant.
-    // DISPATCH roles are listed separately in the source catalog; the UI can show
-    // them under the Police service without altering their source identity.
-    roleOptions:ROLE_CATALOG.filter(role=>
-     [...DEPTS,'dispatch'].includes(role.dept)).map(role=>({
-      id:role.id,name:role.name,dept:role.dept,kind:role.kind,stage:role.stage
-     })),
-    artworks:snap.docs.filter(d=>mayEditDepartment(_req.bpd,d.get('department')||'politie')).map(d=>({
-     ...metaData(d),active:d.get('active')===true,updatedBy:d.get('updatedBy')||''
-    }))
-   });
+   return res.json({canEdit:true,artworks:snap.docs.filter(d=>mayEditDepartment(_req.bpd,d.get('department')||'politie')).map(d=>({...metaData(d),
+    active:d.get('active')===true,updatedBy:d.get('updatedBy')||''}))});
   }catch(e){return error(res,e)}
  });
  app.put('/api/role-artwork/link',requireUser,allowed,async(req,res)=>{
@@ -213,6 +217,46 @@ export function installRoleArtworkRoutes(app,{requireUser}){
    });
    res.json({saved:true,key,permissionsChanged:false});
   }catch(e){error(res,e)}
+ });
+ // Dedicated personnel-list header patches. A source patch is referenced, not
+ // reassigned, and neither a person's specialties nor uniform art is changed.
+ app.put('/api/role-artwork/roster-header-link',requireUser,allowed,async(req,res)=>{
+  let input;try{input=validateRosterHeaderLink(req.body)}catch(e){return error(res,e)}
+  if(!mayEditDepartment(req.bpd,'politie'))
+   return res.status(403).json({error:'Geen bevoegdheid voor kolompatches van Politie'});
+  try{
+   const db=getFirestore(),target=db.collection(ROLE_ARTWORK_META).doc(input.key),
+    source=db.collection(ROLE_ARTWORK_META).doc(input.sourceArtworkKey),
+    version=Date.now().toString(36)+'-'+randomUUID().slice(0,8);
+   await db.runTransaction(async tx=>{
+    const [oldSnap,sourceSnap]=await Promise.all([tx.get(target),tx.get(source)]);
+    if(!sourceSnap.exists||sourceSnap.get('active')!==true||
+       sourceSnap.get('department')!=='politie'||
+       !['patch','specialty'].includes(sourceSnap.get('kind'))||
+       sourceSnap.get('sourceArtworkKey')||
+       !(sourceSnap.get('assetId')||sourceSnap.get('storagePath')))
+      throw fail(400,'De bronafbeelding moet een actieve, originele politiepatch zijn');
+    const previous=oldSnap.exists?oldSnap.data():null;
+    if(previous&&previous.department!=='politie')
+      throw fail(403,'Geen toegang tot deze afbeelding');
+    if(previous?.storagePath){
+     tx.create(db.collection('bpd_uniform_library_versions').doc(),{
+      key:input.key,kind:previous.kind,department:previous.department,
+      code:previous.code,label:previous.label,storagePath:previous.storagePath,
+      assetId:null,mime:previous.mime||'image/webp',version:previous.version,
+      createdBy:previous.updatedBy||'',createdAt:FieldValue.serverTimestamp(),historic:true
+     });
+    }
+    tx.set(target,{kind:'roster_header',department:'politie',code:input.code,
+     label:input.label,sourceArtworkKey:input.sourceArtworkKey,version,
+     active:true,updatedBy:req.bpd.uid,updatedAt:FieldValue.serverTimestamp()});
+    tx.create(db.collection(ROLE_ARTWORK_AUDIT).doc(),{
+     key:input.key,action:'link_roster_header_artwork',previous:previous||null,
+     sourceArtworkKey:input.sourceArtworkKey,actorUid:req.bpd.uid,
+     reason:input.reason,at:FieldValue.serverTimestamp()});
+   });
+   return res.json({saved:true,key:input.key,permissionsChanged:false});
+  }catch(e){return error(res,e)}
  });
  // Link an existing original library image: no new file or WebP restriction.
  app.put('/api/role-artwork/specialty-header-link',requireUser,allowed,async(req,res)=>{
