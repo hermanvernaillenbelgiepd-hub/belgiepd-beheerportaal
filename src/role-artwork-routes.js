@@ -115,7 +115,7 @@ export function validateRosterHeaderLink(body){
   reason=String(body.reason||'').trim();
  const key='roster_header_politie_'+code;
  if(!rosterHeaderCodes.has(code)||label.length<2||label.length>75||
-    reason.length<8||reason.length>300||/[<>\\x00-\\x1f\\x7f]/.test(label+reason)||
+    reason.length<8||reason.length>300||/[<>\x00-\x1f\x7f]/.test(label+reason)||
     !/^(?:specialty|patch)_politie_[a-z0-9][a-z0-9_]{0,39}$/.test(sourceArtworkKey))
   throw fail(400,'Kies een bestaande politiepatch, een vaste specialisatiekolom en een motivering');
  return {key,code,label,sourceArtworkKey,reason,department:'politie'};
