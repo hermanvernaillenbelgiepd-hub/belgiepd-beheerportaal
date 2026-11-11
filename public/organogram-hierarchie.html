@@ -2510,7 +2510,7 @@ async function refreshProfileSpecialtyRoles(person,key){
     person.dispRole=response.dispRole;
    person.specialties=[...new Set([...(person.specialties||[]),
     ...(Array.isArray(response.specialties)?response.specialties:[])])].slice(0,20);
-   const registered=(person.specialtyPatches||[]).filter(x=>x.source==='registered');
+   const registered=(person.specialtyPatches||[]).filter(x=>x.source==='registered'||x.source==='person');
    person.specialtyPatches=[...registered,...(Array.isArray(response.patches)?response.patches:[])].slice(0,20);
    profileSpecialtyChecks.set(key,{verified:true,status:'ok'});
     render(); // Update AE Teamleader group without reloading.
@@ -2825,9 +2825,9 @@ function openPersonProfile(p){
     teamleader:'1337775768083632158',instructeur:'1337156006597103746'};
    const aeSpecific=name==='AE'&&Object.hasOwn(aeRoleIds,functionVariant);
    const matchedArtwork=verified&&Array.isArray(p.specialtyPatches)?
-    p.specialtyPatches.find(entry=>
+    [...p.specialtyPatches].sort((a,b)=>(b.source==='person')-(a.source==='person')).find(entry=>
       (p.dept==='politie'?policeSpecialtyName(entry.label):entry.label)===name&&
-       (!aeSpecific||entry.roleId===aeRoleIds[functionVariant])&&
+       (entry.source==='person'||!aeSpecific||entry.roleId===aeRoleIds[functionVariant])&&
       /^\/api\/role-artwork\/file\/(?:(?:rank|uniform|specialty|patch|helmet|profession|logo|pictogram)_(?:politie|brandweer|ambulance|depannage)_[a-z0-9_]{1,40}|\d{15,22}_[a-z][a-z0-9_]{0,39})\?v=[a-zA-Z0-9-]+$/.test(entry.imageUrl)) :null;
    // RADIO/BM has no approved generic badge mapping. A historical upload
    // displayed BURGERMELDINGEN here; only an explicitly role-linked patch is safe.
