@@ -101,10 +101,12 @@ test('directe instellingenlink opent configuratie ook zonder schrijfrechten, nie
  assert.ok(html.includes("personnelGroupView=initialQuery.get('weergave');"));
  assert.ok(html.includes("personnelManagementRequested=false;\n personnelGroupView=initialQuery.get('weergave');"));
  assert.ok(html.includes("personnelGroupView==='instellingen';"));
- assert.ok(html.includes("$('personnelGroupSettingsTab').hidden=dossierEmbedded||ficheMode;"));
+ assert.ok(html.includes("$('personnelManageSubnav').hidden=!manageActive;"));
+ assert.ok(html.includes('id="personnelGroupSettingsTab"'));
  assert.ok(html.includes("personnelGroupView='instellingen';updatePersonnelView();"));
  assert.ok(!html.includes("personnelGroupView==='instellingen'&&personnelGroupSettingsAllowed"));
- assert.ok(html.includes("$('staffManagePanel').hidden=!privileged||dossierEmbedded||ficheMode;"));
+ assert.ok(html.includes("$('staffManagePanel').hidden=!privileged||embedded;"));
+ assert.ok(html.includes("$('personnelManageFichesTab').hidden=!personnelManagementAllowed;"));
  const editor=read('public/personnel-group-settings-editor.js');
  assert.ok(editor.includes("save.disabled=!allowed||!draft"));
  assert.ok(editor.includes("const allowed=eligible();"));
