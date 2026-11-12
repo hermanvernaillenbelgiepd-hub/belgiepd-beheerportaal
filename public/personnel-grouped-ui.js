@@ -1,26 +1,25 @@
-import {canonicalPoliceSpecialty,groupPoliceSeries,groupPoliceSpecialties} from './personnel-grouping-policy.js';
+import {canonicalPoliceSpecialty,groupPoliceSeries,groupPoliceSpecialties,groupServiceSpecialties} from './personnel-grouping-policy.js';
+import {applyGroupSettings,specialtyGroupKey,GROUP_TIER_DEFAULTS} from './personnel-group-settings-policy.js';
 // One read-only presentation over the existing, permission-checked organogram.
 // All user-supplied names are textContent; no identifier or role is sent back.
 const el=(tag,cls='',value)=>{const x=document.createElement(tag);
  if(cls)x.className=cls;if(value!==undefined)x.textContent=String(value);return x};
-const headings=Object.freeze([
- ['leadership','Leiding / Teamleaders'],
- ['instructors','Instructeurs / Docenten'],
- ['members','Volwaardige leden'],
- ['trainees','In opleiding / Stage']
-]);
+const headings=['leadership','instructors','members','trainees'];
+const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
+ depannage:'Depannage',burger:'Burger'};
 function safePatch(person,key){
  const matches=(Array.isArray(person?.specialtyPatches)?person.specialtyPatches:[])
-  .filter(p=>canonicalPoliceSpecialty(p.label)===key&&
+  .filter(p=>specialtyGroupKey(p.label,person.dept)===key&&
    typeof p.imageUrl==='string'&&
    /^\/api\/role-artwork\/file\/[a-zA-Z0-9_-]+(?:\?v=[a-zA-Z0-9_-]+)?$/.test(p.imageUrl));
  return matches.find(p=>p.source==='person')||matches[0]||null;
 }
-export function mountPersonnelGroupedViews({root,status,title,search,fetchData,viewerUid,openPerson}){
- let records=null,owner='',mode='reeksen',loading=null,stale=false,error='',loadedAt=0;
+export function mountPersonnelGroupedViews({root,status,title,search,departmentSelect,fetchData,viewerUid,openPerson}){
+ let records=null,settings={},owner='',mode='reeksen',dept='politie',
+  loading=null,stale=false,error='',loadedAt=0;
  const formatCount=n=>n+' '+(n===1?'lid':'leden');
  function memberRow(p,specialty){
-  const validCall=/^(?:[a-z]{1,6}[- ]?)?\d{3}$/i.test(String(p.call||'')),
+  const validCall=p.dept==='politie'&&/^(?:[a-z]{1,6}[- ]?)?\d{3}$/i.test(String(p.call||'')),
    row=el(validCall?'button':'div','personnel-group-person');
   if(validCall){
    row.type='button';
@@ -57,16 +56,21 @@ export function mountPersonnelGroupedViews({root,status,title,search,fetchData,v
  function render(){
   root.replaceChildren();
   const q=String(search.value||'').trim().toLocaleLowerCase('nl-BE');
-  const filtered=(records||[]).filter(p=>[p.name,p.call,p.rank,p.series,
-   ...(Array.isArray(p.specialties)?p.specialties:[])]
+  const scoped=mode==='reeksen'?'politie':dept;
+  const filtered=(records||[]).filter(p=>p.dept===scoped&&
+   [p.name,p.call,p.rank,p.series,...(Array.isArray(p.specialties)?p.specialties:[])]
    .some(x=>String(x??'').toLocaleLowerCase('nl-BE').includes(q)));
-  const groups=mode==='reeksen'?groupPoliceSeries(filtered):groupPoliceSpecialties(filtered);
-  const total=groups.reduce((n,g)=>n+g.total,0),shown=groups.filter(g=>g.total);
-  title.textContent=mode==='reeksen'?'Politie · Reeksen':'Politie · Specialisaties';
+  const base=mode==='reeksen'?groupPoliceSeries(filtered):
+    groupServiceSpecialties(filtered,scoped);
+  const groups=applyGroupSettings(base,settings[scoped],mode);
+  const shown=groups.filter(g=>g.total);
+  departmentSelect.disabled=mode==='reeksen';
+  title.textContent=mode==='reeksen'?'Politie · Reeksen':
+   (deptNames[dept]||dept)+' · Specialisaties';
   status.textContent=error?error:loading?'Actuele personeelsindeling laden…':
    !records?'Open het overzicht om de actuele gegevens te laden.':
    (stale?'Bron tijdelijk verouderd · ':'')+
-   filtered.length+' politiemedewerkers · '+shown.length+' categorieën met leden'+
+   filtered.length+' medewerkers · '+shown.length+' categorieën met leden'+
    (mode==='specialisaties'?' · één hoofdgroep per specialisatie':'');
   if(!records||loading)return;
   if(!shown.length){root.append(el('p','personnel-group-empty',
@@ -85,7 +89,8 @@ export function mountPersonnelGroupedViews({root,status,title,search,fetchData,v
     const members=section(g.key==='kader'?'Kaderleden':'Leden',g.members);
     if(head)inner.append(head);
     if(members)inner.append(members);
-   }else for(const [key,label] of headings){
+   }else for(const key of headings){
+    const label=settings[scoped]?.tiers?.[key]||GROUP_TIER_DEFAULTS[key];
     const sub=section(label,g.groups[key],g.key);if(sub)inner.append(sub);
    }
    item.append(inner);root.append(item);
@@ -103,7 +108,8 @@ export function mountPersonnelGroupedViews({root,status,title,search,fetchData,v
     if(viewerUid()!==current)return;
     if(!Array.isArray(data?.records)||data?.readOnly!==true)
      throw Error('Ongeldige personeelsindeling ontvangen');
-    records=data.records.filter(p=>p?.dept==='politie');
+    records=data.records.filter(p=>Object.hasOwn(deptNames,p?.dept));
+    settings=data.groupSettings||{};
     loadedAt=Date.now();stale=data.stale===true;
    }catch(e){
     if(viewerUid()!==current)return;
@@ -116,10 +122,15 @@ export function mountPersonnelGroupedViews({root,status,title,search,fetchData,v
   render();
  }
  search.addEventListener('input',render);
+ departmentSelect.addEventListener('change',()=>{
+  if(Object.hasOwn(deptNames,departmentSelect.value)){
+   dept=departmentSelect.value;render();
+  }
+ });
  return {
   activate(next){if(!['reeksen','specialisaties'].includes(next))return;
    mode=next;return refresh(false)},
   refresh(){return refresh(true)},
-  reset(){owner='';records=null;error='';stale=false;loadedAt=0;render()}
+  reset(){owner='';records=null;settings={};error='';stale=false;loadedAt=0;render()}
  };
 }

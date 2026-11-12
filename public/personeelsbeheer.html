@@ -689,7 +689,7 @@ header{padding-inline:clamp(15px,2vw,34px)}
 @media(max-width:1279px){
  .staff-roster-table.roster-police-compact{min-width:1280px}
 }
-</style><link rel="stylesheet" href="/personnel-grouped-views.css"><link rel="stylesheet" href="/dossier-compact-test.css">
+</style><link rel="stylesheet" href="/personnel-grouped-views.css"><link rel="stylesheet" href="/personnel-group-settings.css"><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
 body.dossier-embed>header{display:none}
@@ -716,6 +716,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  <button id="personnelPublicTab" type="button" aria-selected="true" aria-controls="personnelPublicView">👥 Personeelslijst</button>
  <button id="personnelSeriesTab" type="button" aria-selected="false" aria-controls="personnelGroupedView">🗂 Reeksen</button>
  <button id="personnelSpecialtiesTab" type="button" aria-selected="false" aria-controls="personnelGroupedView">🛡 Specialisaties</button>
+ <button id="personnelGroupSettingsTab" type="button" hidden aria-selected="false" aria-controls="personnelGroupSettingsView">⚙ Indeling beheren</button>
  <button id="personnelManageTab" type="button" hidden aria-selected="false" aria-controls="staffManagePanel">⚙ Personeelsbeheer</button>
  <a href="/organogram-hierarchie.html">🌳 Organogram per dienst</a>
  <details id="personnelAdminTools" class="personnel-admin-tools" data-personnel-leadership hidden>
@@ -723,6 +724,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
   <div class="personnel-admin-menu">
    <a href="/rollenbeheer.html">🛡️ Rollen & specialisaties</a>
    <a href="/beeldbibliotheek.html">📁 Beeldbibliotheek</a>
+   <a href="/personeelsbeheer.html?weergave=instellingen">🗂 Reeksen & specialisaties instellen</a>
   </div>
  </details>
 </nav>
@@ -734,15 +736,23 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <section id="personnelGroupedView" class="card" hidden aria-label="Politiereeksen en specialisaties">
  <div class="personnel-group-toolbar">
   <h2 id="personnelGroupTitle">Politie · Reeksen</h2>
+  <label for="personnelGroupDepartment">Hulpdienst
+   <select id="personnelGroupDepartment" aria-label="Hulpdienst voor specialisatieoverzicht">
+    <option value="politie">Politie</option><option value="brandweer">Brandweer</option>
+    <option value="ambulance">Ambulance</option><option value="depannage">Depannage</option>
+    <option value="burger">Burger</option>
+   </select>
+  </label>
   <label for="personnelGroupSearch">Zoeken
    <input id="personnelGroupSearch" type="search" placeholder="Naam, roepnummer, rang of specialisatie" autocomplete="off">
   </label>
   <button id="personnelGroupsRefresh" type="button">↻ Vernieuwen</button>
  </div>
- <p class="subtle">Alleen-lezen indeling uit het bestaande organogram. Reeksen, specialisaties en persoonlijke patches worden hier niet gewijzigd.</p>
+ <p class="subtle">De getoonde indeling volgt de huidige personeelsgegevens. De visuele structuur kan via Beheer & instellingen worden aangepast; individuele rollen, reekswissels en dossierrechten blijven apart beveiligd.</p>
  <p id="personnelGroupStatus" role="status" aria-live="polite">Kies Reeksen of Specialisaties om het overzicht te openen.</p>
  <div id="personnelGroupResults" class="personnel-group-cards"></div>
 </section>
+<section id="personnelGroupSettingsView" class="card" hidden aria-label="Indeling van reeksen en specialisaties beheren"></section>
 <dialog id="personnelCardDialog" aria-labelledby="personnelCardTitle">
  <div class="personnel-card-bar">
   <strong id="personnelCardTitle">Personeelskaart</strong>
@@ -1187,6 +1197,7 @@ import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalo
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
+import {mountPersonnelGroupSettingsEditor} from '/personnel-group-settings-editor.js';
 import {displayServiceBadge,serviceIdentity} from '/dossier-service-badge.js';
 import {policeGroupedRoster,policeOperationalTier,policeTierDisplay} from '/police-roster-cadre.js';
 import {attachRosterNamePreview,dismissRosterNamePreview} from '/roster-name-preview.js';
@@ -1204,28 +1215,35 @@ let lifecycleDepartments=[];
 let personnelManagementAllowed=false;
 let personnelManagementRequested=false;
 let personnelGroupView='lijst';
+let personnelGroupSettingsAllowed=false;
 const initialQuery=new URLSearchParams(window.location.search);
 const dossierEmbedded=initialQuery.get('embed')==='1';
 const ficheMode=!dossierEmbedded&&initialQuery.get('fiche')==='1';
 personnelManagementRequested=ficheMode||dossierEmbedded||
   (initialQuery.has('discordId')&&initialQuery.has('dept'))||
   window.location.hash==='#rosterColumnDetails';
-if(!personnelManagementRequested&&['reeksen','specialisaties'].includes(initialQuery.get('weergave')))
+if(!personnelManagementRequested&&['reeksen','specialisaties','instellingen'].includes(initialQuery.get('weergave')))
  personnelGroupView=initialQuery.get('weergave');
 function updatePersonnelView(){
   const privileged=personnelManagementAllowed&&personnelManagementRequested;
   $('personnelUnifiedNav').hidden=dossierEmbedded||ficheMode;
-  const grouped=!privileged&&!dossierEmbedded&&!ficheMode&&
+  const settingsView=!privileged&&!dossierEmbedded&&!ficheMode&&
+    personnelGroupView==='instellingen'&&personnelGroupSettingsAllowed;
+  const grouped=!privileged&&!settingsView&&!dossierEmbedded&&!ficheMode&&
     ['reeksen','specialisaties'].includes(personnelGroupView);
   $('personnelManageTab').hidden=!personnelManagementAllowed;
+  $('personnelGroupSettingsTab').hidden=!personnelGroupSettingsAllowed||dossierEmbedded||ficheMode;
   $('personnelPublicView').hidden=privileged||grouped||dossierEmbedded||ficheMode;
   $('personnelGroupedView').hidden=!grouped;
+  $('personnelGroupSettingsView').hidden=!settingsView;
   $('staffManagePanel').hidden=!privileged||dossierEmbedded||ficheMode;
-  $('personnelPublicTab').setAttribute('aria-selected',String(!privileged&&!grouped));
+  $('personnelPublicTab').setAttribute('aria-selected',String(!privileged&&!grouped&&!settingsView));
+  $('personnelGroupSettingsTab').setAttribute('aria-selected',String(settingsView));
   $('personnelSeriesTab').setAttribute('aria-selected',String(grouped&&personnelGroupView==='reeksen'));
   $('personnelSpecialtiesTab').setAttribute('aria-selected',String(grouped&&personnelGroupView==='specialisaties'));
   $('personnelManageTab').setAttribute('aria-selected',String(privileged));
   if(grouped)void personnelGroupedViews.activate(personnelGroupView);
+  if(settingsView)void personnelGroupSettingsEditor.activate();
   if(!privileged&&!ficheMode&&!dossierEmbedded){
     $('panel').hidden=true;
     $('newPanel').hidden=true;
@@ -1239,6 +1257,10 @@ $('personnelPublicTab').onclick=()=>{
 for(const [id,view] of [['personnelSeriesTab','reeksen'],['personnelSpecialtiesTab','specialisaties']]){
  $(id).onclick=()=>{personnelManagementRequested=false;personnelGroupView=view;updatePersonnelView()};
 }
+$('personnelGroupSettingsTab').onclick=()=>{
+ if(!personnelGroupSettingsAllowed)return;
+ personnelManagementRequested=false;personnelGroupView='instellingen';updatePersonnelView();
+};
 $('personnelManageTab').onclick=()=>{
  if(!personnelManagementAllowed)return;
  personnelGroupView='lijst';personnelManagementRequested=true;updatePersonnelView();
@@ -1285,9 +1307,20 @@ function openUnifiedCard(call,name){
 const personnelGroupedViews=mountPersonnelGroupedViews({
  root:$('personnelGroupResults'),status:$('personnelGroupStatus'),
  title:$('personnelGroupTitle'),search:$('personnelGroupSearch'),
- fetchData:()=>request('/api/organogram/hierarchie'),
+ departmentSelect:$('personnelGroupDepartment'),
+ fetchData:async()=>{
+  const organogram=await request('/api/organogram/hierarchie');
+  // Optional visual settings never prevent reading the existing personnel.
+  const layout=await request('/api/personnel-group-settings')
+   .catch(()=>({settings:{}}));
+  return {...organogram,groupSettings:layout.settings||{}};
+ },
  viewerUid:()=>auth?.currentUser?.uid||'',
  openPerson:(call,name)=>openUnifiedCard(call,name)
+});
+const personnelGroupSettingsEditor=mountPersonnelGroupSettingsEditor({
+ root:$('personnelGroupSettingsView'),request,
+ onSaved:()=>personnelGroupedViews.refresh()
 });
 $('personnelGroupsRefresh').onclick=()=>{void personnelGroupedViews.refresh()};
 $('personnelCardClose').onclick=closeUnifiedCard;
@@ -2646,7 +2679,8 @@ function initializeRosterEditor(){
 
 async function load(){
   if(!auth?.currentUser){
-    personnelManagementAllowed=false;lifecycleDepartments=[];
+    personnelManagementAllowed=false;personnelGroupSettingsAllowed=false;
+    personnelGroupSettingsEditor.reset();personnelGroupedViews.reset();lifecycleDepartments=[];
     $('personnelArchivePanel').hidden=true;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
     updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
@@ -2671,6 +2705,10 @@ async function load(){
         'Instellingen niet beschikbaar: '+error.message;
       if(location.hash==='#rosterColumnDetails')$('rosterColumnDetails').open=true;
     }
+    try{
+     const groupMeta=await request('/api/personnel-group-settings');
+     personnelGroupSettingsAllowed=Object.values(groupMeta.canEdit||{}).some(Boolean);
+    }catch{personnelGroupSettingsAllowed=false;}
     const data=await request('/api/personnel/overview');
     try{
      const artwork=await request('/api/role-artwork/manifest');
@@ -2681,7 +2719,7 @@ async function load(){
     for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=false;
     lifecycleDepartments=Array.isArray(data.lifecycleDepartments)?data.lifecycleDepartments:[];
     $('personnelArchivePanel').hidden=!lifecycleDepartments.length;
-    $('personnelAdminTools').hidden=!lifecycleDepartments.length;
+    $('personnelAdminTools').hidden=!lifecycleDepartments.length&&!personnelGroupSettingsAllowed;
     $('accessHelp').hidden=true;
     people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
