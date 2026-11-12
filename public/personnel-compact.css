@@ -1,0 +1,191 @@
+/* BelgiumPD TEST: quiet four-tab personnel workspace.
+   Scope is limited to Personeelsbeheer. No dossier fields or permissions. */
+body.personnel-ui-redesign{--pc-border:#365778;--pc-soft:#9fbad5;--pc-bg:#10253d}
+body.personnel-ui-redesign #personnelUnifiedNav{
+ gap:5px;margin:8px 0 11px;padding:5px;
+ border:1px solid #345270;border-radius:10px;
+ background:#122842;width:max-content;max-width:100%;box-sizing:border-box;
+}
+body.personnel-ui-redesign #personnelUnifiedNav>button{
+ border:0;border-radius:7px;min-height:35px;padding:9px 15px;
+ background:transparent;color:#bdd4ec;font-weight:750;font-size:12px
+}
+body.personnel-ui-redesign #personnelUnifiedNav>button[aria-selected="true"]{
+ background:#315f99;color:#fff;box-shadow:inset 0 0 0 1px #6894c5
+}
+body.personnel-ui-redesign #personnelUnifiedNav>button:hover{
+ background:#264666;color:#fff
+}
+body.personnel-ui-redesign #personnelUnifiedNav [hidden]{display:none!important}
+body.personnel-ui-redesign #personnelManageSubnav{
+ display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 12px;
+ background:#10243a;border:1px solid #345270;border-radius:10px;
+ padding:9px 12px;min-width:0
+}
+body.personnel-ui-redesign #personnelManageSubnav[hidden]{display:none!important}
+body.personnel-ui-redesign #personnelManageSubnav button,
+body.personnel-ui-redesign #personnelManageSubnav a{
+ display:inline-flex;align-items:center;justify-content:center;
+ padding:7px 12px;border-radius:7px;border:1px solid #446787;
+ color:#d0e5f9;background:#1c3a58;text-decoration:none;
+ font-size:12px;font-weight:700;cursor:pointer
+}
+body.personnel-ui-redesign #personnelManageSubnav button[aria-selected="true"]{
+ background:#315e96;color:white;border-color:#7ba9db
+}
+body.personnel-ui-redesign #personnelManageSubnav .pc-manage-divider{
+ width:1px;min-height:23px;background:#486480;margin:0 4px
+}
+body.personnel-ui-redesign #personnelPublicView{
+ overflow:visible;padding:14px;background:#10243d;
+ border:1px solid #355574;border-radius:11px;min-width:0
+}
+body.personnel-ui-redesign .pc-toolbar{display:grid;
+ grid-template-columns:minmax(180px,2fr) repeat(3,minmax(105px,1fr)) auto;
+ gap:10px;align-items:end;margin-bottom:13px}
+body.personnel-ui-redesign .pc-field{display:grid;min-width:0;gap:5px;
+ font-size:11px;color:#bfd5eb;font-weight:700}
+body.personnel-ui-redesign .pc-field input,
+body.personnel-ui-redesign .pc-field select{
+ width:100%;min-width:0;max-width:100%;box-sizing:border-box;
+ background:#0c2036;color:#f3f8ff;border:1px solid #486989;
+ border-radius:8px;padding:10px 11px;font-size:12px;min-height:37px
+}
+body.personnel-ui-redesign .pc-field input:focus-visible,
+body.personnel-ui-redesign .pc-field select:focus-visible{
+ outline:2px solid #9ac5f2;outline-offset:1px
+}
+body.personnel-ui-redesign .pc-reload{
+ min-height:37px;background:#28496b;border:1px solid #567b9e;
+ color:#eaf5ff;border-radius:8px;padding:9px 13px;font-size:11px;cursor:pointer
+}
+body.personnel-ui-redesign .pc-meta{
+ display:flex;justify-content:space-between;gap:12px;align-items:center;
+ color:#a5c1da;font-size:11px;flex-wrap:wrap;margin:4px 0 10px
+}
+body.personnel-ui-redesign .pc-count{color:#e0f0ff;font-weight:700}
+body.personnel-ui-redesign .pc-table{width:100%;min-width:0;border:1px solid var(--pc-border);
+ border-radius:10px;overflow:hidden;background:#0d2137}
+body.personnel-ui-redesign .pc-heading,
+body.personnel-ui-redesign .pc-entry{
+ display:grid;grid-template-columns:60px 94px minmax(130px,1.55fr) 90px 105px minmax(154px,1.4fr) 12px;
+ align-items:center;gap:8px;min-width:0
+}
+body.personnel-ui-redesign .pc-heading{
+ background:#1b3958;border-bottom:1px solid #436283;
+ padding:10px 13px;color:#b8d4ed;text-transform:uppercase;
+ letter-spacing:.04em;font-size:10px;font-weight:800
+}
+body.personnel-ui-redesign .pc-entry{
+ width:100%;box-sizing:border-box;padding:9px 13px;
+ background:transparent;color:#e7f1fd;border:0;border-bottom:1px solid #294560;
+ min-height:49px;text-align:left;font:inherit;font-size:12px;border-radius:0;
+}
+body.personnel-ui-redesign .pc-entry:nth-child(even){background:#132b44}
+body.personnel-ui-redesign .pc-entry:last-child{border-bottom:0}
+body.personnel-ui-redesign .pc-entry.pc-clickable{cursor:pointer}
+body.personnel-ui-redesign .pc-entry.pc-clickable:hover,
+body.personnel-ui-redesign .pc-entry.pc-clickable:focus-visible{
+ background:#264766;outline:2px solid #6da2d3;outline-offset:-2px
+}
+body.personnel-ui-redesign .pc-call{font-weight:850;color:#e8f4ff;
+ font-variant-numeric:tabular-nums;white-space:nowrap}
+body.personnel-ui-redesign .pc-rank{display:flex;align-items:center;
+ gap:5px;min-width:0;color:#bfd0e5;font-size:11px;overflow:hidden}
+body.personnel-ui-redesign .pc-rank img{width:35px;height:23px;max-width:35px;
+ object-fit:contain;flex:none}
+body.personnel-ui-redesign .pc-rank strong{white-space:nowrap;
+ text-overflow:ellipsis;overflow:hidden}
+body.personnel-ui-redesign .pc-identity{display:flex;flex-direction:column;gap:2px;min-width:0}
+body.personnel-ui-redesign .pc-identity strong{font-size:12px;overflow:hidden;
+ white-space:nowrap;text-overflow:ellipsis}
+body.personnel-ui-redesign .pc-identity small{font-size:10px;color:#9fbcd8;overflow:hidden;
+ white-space:nowrap;text-overflow:ellipsis}
+body.personnel-ui-redesign .pc-series{justify-self:start;max-width:100%;
+ padding:4px 6px;border-radius:5px;background:#25405e;color:#cde3f9;
+ font-weight:750;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.personnel-ui-redesign .pc-series-1{border-left:3px solid #e66b73}
+body.personnel-ui-redesign .pc-series-2{border-left:3px solid #bb89eb}
+body.personnel-ui-redesign .pc-series-3{border-left:3px solid #83d2f5}
+body.personnel-ui-redesign .pc-series-4{border-left:3px solid #ebd277}
+body.personnel-ui-redesign .pc-status{display:inline-block;justify-self:start;max-width:100%;
+ padding:4px 7px;border-radius:5px;background:#2d4560;border:1px solid #405b77;
+ color:#d5e5f5;font-size:10px;font-weight:700;overflow:hidden;
+ white-space:nowrap;text-overflow:ellipsis}
+body.personnel-ui-redesign .pc-status-active{border-color:#3d8b67;color:#a7efc6}
+body.personnel-ui-redesign .pc-status-inactive{border-color:#9d565b;color:#ffc2c4}
+body.personnel-ui-redesign .pc-status-leave{border-color:#5385ae;color:#bbdcfa}
+body.personnel-ui-redesign .pc-status-warning{border-color:#b0904f;color:#f4dea6}
+body.personnel-ui-redesign .pc-status-muted{color:#aab7c5}
+body.personnel-ui-redesign .pc-specialties{display:flex;align-items:center;
+ flex-wrap:wrap;gap:4px;min-width:0}
+body.personnel-ui-redesign .pc-specialty,
+body.personnel-ui-redesign .pc-specialty-more{
+ padding:3px 6px;border-radius:5px;background:#203a57;color:#d2e7fb;
+ border:1px solid #355a7b;font-size:10px;line-height:1.2}
+body.personnel-ui-redesign .pc-specialty-more{background:transparent}
+body.personnel-ui-redesign .pc-empty{color:#8caac6}
+body.personnel-ui-redesign .pc-chevron{font-weight:900;font-size:20px;
+ color:#83b0d9;line-height:1}
+body.personnel-ui-redesign .pc-empty-state{padding:30px 15px;
+ text-align:center;color:#b4cde5;font-size:12px}
+body.personnel-ui-redesign .pc-legacy{
+ margin-top:13px;border:1px solid #365574;border-radius:8px;
+ background:#122b45;padding:10px 12px
+}
+body.personnel-ui-redesign .pc-legacy summary{cursor:pointer;
+ color:#a5c6e8;font-size:12px;font-weight:700}
+body.personnel-ui-redesign .pc-legacy .pc-note{font-size:11px;
+ color:#b5cce5;margin:8px 0}
+body.personnel-ui-redesign .pc-legacy iframe{
+ display:block;width:100%;height:min(82vh,1000px);min-height:530px;
+ border:0;border-radius:8px;background:#09162a
+}
+/* Existing authenticated card, shown as a non-modal right-hand details sheet. */
+body.personnel-ui-redesign #personnelCardDialog{
+ position:fixed!important;inset:70px 13px 13px auto!important;
+ margin:0!important;width:min(465px,calc(100vw - 26px))!important;
+ max-width:none!important;height:calc(100dvh - 83px)!important;
+ max-height:none!important;box-sizing:border-box;
+ border:1px solid #779cc2;border-radius:13px;
+ background:#112740;box-shadow:-16px 0 55px #020b1bd9;z-index:9900
+}
+body.personnel-ui-redesign #personnelCardDialog .personnel-card-bar{
+ flex-wrap:wrap;gap:7px;min-height:48px
+}
+body.personnel-ui-redesign #personnelCardDialog #personnelCardFrame{
+ height:calc(100% - 64px)
+}
+body.personnel-ui-redesign #personnelCardDialog::backdrop{background:transparent}
+@media(max-width:1160px){
+ body.personnel-ui-redesign .pc-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}
+ body.personnel-ui-redesign .pc-field:first-child{grid-column:span 2}
+ body.personnel-ui-redesign .pc-heading,
+ body.personnel-ui-redesign .pc-entry{grid-template-columns:52px 70px minmax(130px,1.5fr) 75px 95px minmax(100px,1fr) 10px}
+ body.personnel-ui-redesign .pc-specialties .pc-specialty:nth-child(n+3){display:none}
+}
+@media(max-width:780px){
+ body.personnel-ui-redesign #personnelUnifiedNav{width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+ body.personnel-ui-redesign #personnelUnifiedNav>button{padding:8px 4px;font-size:11px}
+ body.personnel-ui-redesign .pc-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ body.personnel-ui-redesign .pc-field:first-child{grid-column:span 2}
+ body.personnel-ui-redesign .pc-heading,
+ body.personnel-ui-redesign .pc-entry{grid-template-columns:52px minmax(115px,1fr) 68px 88px 12px;gap:6px}
+ body.personnel-ui-redesign .pc-heading>span:nth-child(2),
+ body.personnel-ui-redesign .pc-heading>span:nth-child(6),
+ body.personnel-ui-redesign .pc-entry>.pc-rank,
+ body.personnel-ui-redesign .pc-entry>.pc-specialties{display:none}
+ body.personnel-ui-redesign .pc-entry{padding:9px 8px}
+ body.personnel-ui-redesign .pc-heading{padding:10px 8px;font-size:9px}
+ body.personnel-ui-redesign #personnelCardDialog{
+  inset:56px 5px 5px auto!important;width:min(450px,calc(100vw - 10px))!important;
+  height:calc(100dvh - 61px)!important
+ }
+}
+@media(max-width:450px){
+ body.personnel-ui-redesign .pc-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.personnel-ui-redesign .pc-heading,
+ body.personnel-ui-redesign .pc-entry{grid-template-columns:43px minmax(85px,1fr) 54px 72px 9px}
+ body.personnel-ui-redesign .pc-status,
+ body.personnel-ui-redesign .pc-series{font-size:9px;padding:3px}
+}
