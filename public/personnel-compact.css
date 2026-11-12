@@ -41,7 +41,7 @@ body.personnel-ui-redesign #personnelPublicView{
  border:1px solid #355574;border-radius:11px;min-width:0
 }
 body.personnel-ui-redesign .pc-toolbar{display:grid;
- grid-template-columns:minmax(180px,2fr) repeat(3,minmax(105px,1fr)) auto;
+ grid-template-columns:minmax(175px,2fr) repeat(4,minmax(105px,1fr)) auto;
  gap:10px;align-items:end;margin-bottom:13px}
 body.personnel-ui-redesign .pc-field{display:grid;min-width:0;gap:5px;
  font-size:11px;color:#bfd5eb;font-weight:700}
@@ -188,4 +188,19 @@ body.personnel-ui-redesign #personnelCardDialog::backdrop{background:transparent
  body.personnel-ui-redesign .pc-entry{grid-template-columns:43px minmax(85px,1fr) 54px 72px 9px}
  body.personnel-ui-redesign .pc-status,
  body.personnel-ui-redesign .pc-series{font-size:9px;padding:3px}
+}
+
+/* Verifiable scope controls remain hidden for ordinary personnel viewers. */
+body.personnel-ui-redesign .pc-field[hidden],
+body.personnel-ui-redesign .pc-scope-field[hidden]{display:none!important}
+body.personnel-ui-redesign .pc-show-all{
+ font-size:11px;font-weight:700;padding:6px 10px;color:#d6eaff;
+ border:1px solid #557a9f;background:#204362;border-radius:7px;
+ cursor:pointer
+}
+body.personnel-ui-redesign .pc-show-all[aria-pressed="true"]{
+ border-color:#89b8e8;color:white;background:#315e8e
+}
+body.personnel-ui-redesign .pc-entry>.pc-rank[title] strong{
+ text-overflow:ellipsis;overflow:hidden;max-width:100%
 }

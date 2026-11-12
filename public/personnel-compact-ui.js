@@ -17,6 +17,7 @@ function rankBadge(person){
  const wrap=el('span','pc-rank');
  if(person.hasPoliceEntry===false){
   wrap.append(el('strong','',person.serviceDept?String(person.rank||'—'):'—'));
+  wrap.title=person.rank||'';
   return wrap;
  }
  const info=window.BPDPersonnelVisuals?.rankInfo?.(person.rank,'politie');
@@ -51,7 +52,7 @@ function rowFor(person,openPerson,showAll){
  row.append(rankBadge(person));
  const identity=el('span','pc-identity');
  identity.append(el('strong','',person.name));
- if((person.services||[]).length>1||person.hasPoliceEntry===false)
+ if(person.serviceDept||(person.services||[]).length>1||person.hasPoliceEntry===false)
   identity.append(el('small','',Array.isArray(person.services)?
    person.services.join(' · '):''));
  row.append(identity);

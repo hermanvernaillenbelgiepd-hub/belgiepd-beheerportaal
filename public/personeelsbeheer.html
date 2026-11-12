@@ -1275,11 +1275,10 @@ $('personnelGroupSettingsTab').onclick=()=>{
  personnelManagementRequested=false;personnelGroupView='instellingen';updatePersonnelView();
 };
 $('personnelManageTab').onclick=()=>{
- if(personnelManagementAllowed){
-  personnelGroupView='lijst';personnelManagementRequested=true;
- }else{
-  personnelManagementRequested=false;personnelGroupView='instellingen';
- }
+ // Viewing and editing are deliberate separate actions. Beheer opens the
+ // configurable layout; editable personnel fiches need an explicit second tab.
+ personnelManagementRequested=false;
+ personnelGroupView='instellingen';
  updatePersonnelView();
 };
 $('personnelManageFichesTab').onclick=()=>{
@@ -2756,7 +2755,11 @@ async function load(){
     $('personnelArchivePanel').hidden=!lifecycleDepartments.length;
     $('personnelAdminTools').hidden=!lifecycleDepartments.length&&!personnelGroupSettingsAllowed;
     $('accessHelp').hidden=true;
-    people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
+    people=data.records||[];
+    // Only the verified manager overview may unlock an own-service viewer.
+    // It is never used to grant any edit permission from a public table.
+    personnelCompactViews.setScopedPersonnel(people,data.departments||[]);
+    pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
     $('newBtn').hidden=!Object.keys(createRanks).length;
     if($('newPanel').hidden===false&&!Object.keys(createRanks).length)$('newPanel').hidden=true;
@@ -2818,6 +2821,7 @@ async function load(){
     }
   }catch(e){
     people=[];personnelManagementAllowed=false;lifecycleDepartments=[];
+    personnelCompactViews.setScopedPersonnel([],[]);
     $('personnelArchivePanel').hidden=true;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
     $('panel').hidden=true;render();updatePersonnelView();

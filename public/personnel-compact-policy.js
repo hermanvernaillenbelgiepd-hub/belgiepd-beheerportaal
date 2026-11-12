@@ -28,7 +28,7 @@ export function activeDirectorySpecialties(person){
   const name=norm(item?.label),value=norm(item?.value).toLocaleUpperCase('nl-BE');
   if(!name||seen.has(name.toLocaleLowerCase('nl-BE')))continue;
   // A "Nee", unknown or restricted field never becomes a qualification.
-  if(!(/^(JA|ACTIEF|BEHAALD|INSTRUCTEUR|DOCENT|LEIDING|TEAMLEADER|STAGE|AANGEMELD|SPECIALISATIE)$/.test(value)||
+  if(!(/^(JA|ACTIEF|BEHAALD|VOLWAARDIG|IN OPLEIDING|GELEIDER|GELEIDER IN STAGE|STAGIAIR|INSTRUCTEUR|DOCENT|LEIDING|TEAMLEADER|STAGE|AANGEMELD|SPECIALISATIE)$/.test(value)||
    /^AE[-_ ](?:I|T|F|INSTRUCTEUR|TEAMLEADER)$/.test(value)))continue;
   shown.push(name==='INTERVENTIEDIENST'?'Interventie':name==='Motor'?'Motard':
    name==='LRD (Recherche)'?'LRD':name);
