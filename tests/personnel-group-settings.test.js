@@ -95,3 +95,26 @@ test('API heeft revisiecontrole en audit; UI bevat alle configuratievelden zonde
  const imported=await import('../public/personnel-group-settings-editor.js');
  assert.equal(typeof imported.mountPersonnelGroupSettingsEditor,'function');
 });
+
+test('directe instellingenlink opent configuratie ook zonder schrijfrechten, niet de personeelsmatrix',()=>{
+ const html=read('public/personeelsbeheer.html');
+ assert.ok(html.includes("personnelGroupView=initialQuery.get('weergave');"));
+ assert.ok(html.includes("personnelManagementRequested=false;\n personnelGroupView=initialQuery.get('weergave');"));
+ assert.ok(html.includes("personnelGroupView==='instellingen';"));
+ assert.ok(html.includes("$('personnelGroupSettingsTab').hidden=dossierEmbedded||ficheMode;"));
+ assert.ok(html.includes("personnelGroupView='instellingen';updatePersonnelView();"));
+ assert.ok(!html.includes("personnelGroupView==='instellingen'&&personnelGroupSettingsAllowed"));
+ assert.ok(html.includes("$('staffManagePanel').hidden=!privileged||dossierEmbedded||ficheMode;"));
+ const editor=read('public/personnel-group-settings-editor.js');
+ assert.ok(editor.includes("save.disabled=!allowed||!draft"));
+ assert.ok(editor.includes("const allowed=eligible();"));
+});
+test('personeelsmanagement blijft compacte tabel op desktop; andere roosters houden mobiel kaartgedrag',()=>{
+ const nav=read('public/bpd-navigation.js'),css=read('public/bpd-navigation.css');
+ assert.ok(nav.includes("table.closest('#staffManagePanel')"));
+ assert.ok(nav.includes("document.documentElement.clientWidth>=900"));
+ assert.ok(nav.includes("table.classList.remove('bpd-adaptive-cards');"));
+ assert.ok(nav.includes("table.classList.toggle('bpd-adaptive-cards',available<required+12);"));
+ assert.ok(css.includes('table.bpd-adaptive-cards'));
+ assert.ok(read('public/personeelsbeheer.html').includes('class="scroller staff-roster-holder"'));
+});
