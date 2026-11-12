@@ -108,7 +108,7 @@ export function policeSpecialtyTier(person,key){
  if(key==='K9'&&role==='GELEIDER IN STAGE'||role==='IN OPLEIDING'||
     key==='RAGO'&&
        !list(p.specialties).some(x=>normal(x)==='RAGO')&&
-       list(p.specialties).some(x=>normal(x)==='RAGO IO')||
+       list(p.specialties).some(x=>normal(x).replace(/-/g,' ')==='RAGO IO')||
     /IN OPLEIDING|SELECTIE|AANGEMELD|STAGE/.test(patch))
   return 'trainees';
  if(/TEAMLEADER|LEIDING/.test(patch))return 'leadership';
