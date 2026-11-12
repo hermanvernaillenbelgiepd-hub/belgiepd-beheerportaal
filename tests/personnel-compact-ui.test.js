@@ -73,3 +73,39 @@ test('aanmeldcontrole en privacybescherming van de oude directory blijven gelden
  assert.ok(html.includes("const personnelGroupedViews=mountPersonnelGroupedViews"));
  assert.ok(html.includes("const personnelGroupSettingsEditor=mountPersonnelGroupSettingsEditor"));
 });
+
+test('dienstleiding ziet uitsluitend door de server toegelaten dienstrecords en niet hun Discord-ID',async()=>{
+ const {scopedServiceDirectory}=await import('../public/personnel-compact-policy.js');
+ const raw=[
+  {dept:'politie',name:'Agent',call:'280',rank:'Agent',status:'Actief',
+   series:'Reeks 1',discordId:'123456789012345678',hours:320,
+   notes:'privé',specialties:[{label:'K9',value:'Ja'}]},
+  {dept:'ambulance',name:'Arts',call:'ARTS-01',rank:'Arts',status:'Actief',
+   discordId:'923456789012345678',lastConnection:'privé'},
+  {dept:'brandweer',name:'Brandweer',call:'STAG-02',rank:'Stagiair',status:'Stage'}
+ ];
+ const own=scopedServiceDirectory(raw,['ambulance']);
+ assert.equal(own.length,1);assert.equal(own[0].name,'Arts');
+ assert.equal(own[0].rank,'Arts');
+ assert.equal(own[0].hasPoliceEntry,false);
+ assert.deepEqual(own[0].services,['Ambulance']);
+ assert.equal(JSON.stringify(own).includes('discordId'),false);
+ assert.equal(JSON.stringify(own).includes('lastConnection'),false);
+ assert.equal(JSON.stringify(own).includes('hours'),false);
+ assert.deepEqual(scopedServiceDirectory(raw,['burger']),[]);
+});
+test('personeelslijst blijft standaard; beheertab opent instellingen, niet onbedoeld een fichebewerking',()=>{
+ const html=file('public/personeelsbeheer.html');
+ const compact=file('public/personnel-compact-ui.js');
+ assert.ok(html.includes("let personnelGroupView='lijst'"));
+ assert.ok(html.includes("personnelCompactViews.setScopedPersonnel(people,data.departments||[])"));
+ assert.ok(html.includes("personnelCompactViews.setScopedPersonnel([],[])"));
+ assert.ok(html.includes("personnelManagementRequested=false;\n personnelGroupView='instellingen';"));
+ assert.ok(html.includes("if(publicView)void personnelCompactViews.activate();"));
+ assert.ok(compact.includes("scope.append(choice('all','Algemene personeelslijst')"));
+ assert.ok(compact.includes("choice('service','Personeel van mijn dienst')"));
+ assert.ok(compact.includes("seriesLabel.hidden=!allowedDepts.includes('politie')"));
+ assert.ok(compact.includes("showAll.textContent=showAllBadges?'Minder specialisaties tonen'"));
+ assert.ok(compact.includes("scopeLabel.hidden=!canSee"));
+ assert.ok(compact.includes("scope.value='all'"));
+});
