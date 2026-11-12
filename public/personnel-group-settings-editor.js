@@ -119,7 +119,12 @@ export function mountPersonnelGroupSettingsEditor({root,request,onSaved}){
   loading=true;warn('Beheerinstellingen laden…');
   try{
    const response=await request('/api/personnel-group-settings');
-   configs=response.settings||{};rights=response.canEdit||{};
+   // READ is available to all approved portal users. Editable service scopes
+   // require a separate verified dossier session; 403 means read-only.
+   const scoped=await request('/api/personnel-group-settings/edit-permissions')
+    .catch(()=>({canEdit:{}}));
+   configs=response.settings||{};
+   rights={...(response.canEdit||{}),...(scoped.canEdit||{})};
    selectDept(selected);
   }catch(e){warn('Laden mislukt: '+e.message,true)}
   finally{loading=false}

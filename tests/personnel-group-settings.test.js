@@ -82,7 +82,7 @@ test('API heeft revisiecontrole en audit; UI bevat alle configuratievelden zonde
  const server=read('src/server.js'),routes=read('src/personnel-group-settings-routes.js'),
   html=read('public/personeelsbeheer.html'),client=read('public/personnel-group-settings-editor.js'),
   viewer=read('public/personnel-grouped-ui.js');
- assert.match(server,/installPersonnelGroupSettingsRoutes\(app,\{requireUser,getSnapshot\}\)/);
+ assert.match(server,/installPersonnelGroupSettingsRoutes\(app,\{requireUser,requireDossierUser,getSnapshot\}\)/);
  assert.match(routes,/tx\.create\(db\.collection\(PERSONNEL_GROUP_SETTINGS_AUDIT\)\.doc\(\)/);
  assert.match(routes,/validated\.expectedRevision!==before\.revision/);
  assert.match(routes,/rightsChanged:false,qualificationsChanged:false/);
@@ -117,4 +117,25 @@ test('personeelsmanagement blijft compacte tabel op desktop; andere roosters hou
  assert.ok(nav.includes("table.classList.toggle('bpd-adaptive-cards',available<required+12);"));
  assert.ok(css.includes('table.bpd-adaptive-cards'));
  assert.ok(read('public/personeelsbeheer.html').includes('class="scroller staff-roster-holder"'));
+});
+
+test('dienstspecifieke opslaanrechten gebruiken echte dossierverificatie, leesmodus blijft beschikbaar',()=>{
+ const server=read('src/server.js'),routes=read('src/personnel-group-settings-routes.js'),
+  editor=read('public/personnel-group-settings-editor.js'),
+  page=read('public/personeelsbeheer.html');
+ assert.ok(routes.includes("req.params.dept==='politie'?"));
+ assert.ok(routes.includes("requireUser(req,res,next):requireDossierUser(req,res,next)"));
+ assert.ok(routes.includes("app.get('/api/personnel-group-settings/edit-permissions'"));
+ assert.ok(routes.includes("app.put('/api/personnel-group-settings/:dept',requireScopedEdit"));
+ assert.ok(routes.includes("app.get('/api/personnel-group-settings',requireUser"));
+ assert.ok(routes.includes("['officierenkader','korpsleiding'].includes(roleForDepartment(actor,dept))"));
+ assert.ok(server.includes("installPersonnelGroupSettingsRoutes(app,{requireUser,requireDossierUser,getSnapshot})"));
+ assert.ok(editor.includes("request('/api/personnel-group-settings/edit-permissions')"));
+ assert.ok(page.includes("request('/api/personnel-group-settings/edit-permissions')"));
+ const officer={uid:'discord:123456789012345678',discordId:'123456789012345678',
+  role:'officierenkader',departments:['ambulance'],departmentRoles:{ambulance:'officierenkader'}};
+ assert.equal(canEditPersonnelGroupSettings(officer,'ambulance'),false);
+ assert.equal(canEditPersonnelGroupSettings({...officer,dossierAllowedDepartments:['ambulance']},'ambulance'),true);
+ assert.equal(canEditPersonnelGroupSettings({...officer,dossierAllowedDepartments:['brandweer']},'ambulance'),false);
+ assert.equal(canEditPersonnelGroupSettings({...officer,dossierAllowedDepartments:['ambulance']},'politie'),false);
 });
