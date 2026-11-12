@@ -60,7 +60,11 @@ export function mountPersonnelGroupedViews({root,status,title,search,departmentS
   const filtered=(records||[]).filter(p=>p.dept===scoped&&
    [p.name,p.call,p.rank,p.series,...(Array.isArray(p.specialties)?p.specialties:[])]
    .some(x=>String(x??'').toLocaleLowerCase('nl-BE').includes(q)));
-  const base=mode==='reeksen'?groupPoliceSeries(filtered):
+  // Only operational Reeks 1, Reeks 2 and Reeks 3 appear in personnel
+  // navigation. Kader, Vlinder and invalid source series remain represented
+  // in the underlying roster/organogram; this is a display choice only.
+  const base=mode==='reeksen'?groupPoliceSeries(filtered)
+    .filter(group=>['1','2','3'].includes(group.key)):
     groupServiceSpecialties(filtered,scoped);
   const groups=applyGroupSettings(base,settings[scoped],mode);
   const shown=groups.filter(g=>g.total);

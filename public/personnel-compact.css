@@ -41,7 +41,7 @@ body.personnel-ui-redesign #personnelPublicView{
  border:1px solid #355574;border-radius:11px;min-width:0
 }
 body.personnel-ui-redesign .pc-toolbar{display:grid;
- grid-template-columns:minmax(180px,2fr) repeat(3,minmax(105px,1fr)) auto;
+ grid-template-columns:minmax(175px,2fr) repeat(4,minmax(105px,1fr)) auto;
  gap:10px;align-items:end;margin-bottom:13px}
 body.personnel-ui-redesign .pc-field{display:grid;min-width:0;gap:5px;
  font-size:11px;color:#bfd5eb;font-weight:700}
@@ -188,4 +188,62 @@ body.personnel-ui-redesign #personnelCardDialog::backdrop{background:transparent
  body.personnel-ui-redesign .pc-entry{grid-template-columns:43px minmax(85px,1fr) 54px 72px 9px}
  body.personnel-ui-redesign .pc-status,
  body.personnel-ui-redesign .pc-series{font-size:9px;padding:3px}
+}
+
+/* Verifiable scope controls remain hidden for ordinary personnel viewers. */
+body.personnel-ui-redesign .pc-field[hidden],
+body.personnel-ui-redesign .pc-scope-field[hidden]{display:none!important}
+body.personnel-ui-redesign .pc-show-all{
+ font-size:11px;font-weight:700;padding:6px 10px;color:#d6eaff;
+ border:1px solid #557a9f;background:#204362;border-radius:7px;
+ cursor:pointer
+}
+body.personnel-ui-redesign .pc-show-all[aria-pressed="true"]{
+ border-color:#89b8e8;color:white;background:#315e8e
+}
+body.personnel-ui-redesign .pc-entry>.pc-rank[title] strong{
+ text-overflow:ellipsis;overflow:hidden;max-width:100%
+}
+
+/* Original roster is once again the default. Keep filters out of its dense
+   table and avoid a second competing overview on the same screen. */
+body.personnel-ui-redesign .personnel-roster-controls{
+ display:flex;gap:12px;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;padding:3px 3px 11px;margin-bottom:8px;border-bottom:1px solid #345676
+}
+body.personnel-ui-redesign .personnel-roster-heading{
+ display:flex;flex-direction:column;gap:3px;flex:1 1 280px
+}
+body.personnel-ui-redesign .personnel-roster-heading strong{font-size:14px;color:#f3f8ff}
+body.personnel-ui-redesign .personnel-roster-heading span{font-size:11px;color:#a9c7e2}
+body.personnel-ui-redesign #personnelRosterSeriesLabel{
+ display:grid;gap:4px;min-width:143px;color:#c9e0f5;font-size:11px;font-weight:700
+}
+body.personnel-ui-redesign #personnelRosterSeriesLabel[hidden],
+body.personnel-ui-redesign #personnelServiceMode[hidden],
+body.personnel-ui-redesign #personnelOriginalDirectory[hidden],
+body.personnel-ui-redesign #personnelServiceDirectory[hidden]{display:none!important}
+body.personnel-ui-redesign #personnelRosterSeries{
+ padding:8px 12px;border:1px solid #54799d;border-radius:7px;
+ background:#0d243e;color:#edf7ff;font-size:12px;min-height:36px
+}
+body.personnel-ui-redesign #personnelServiceMode,
+body.personnel-ui-redesign .personnel-back-original{
+ padding:9px 12px;border:1px solid #567da3;border-radius:7px;
+ background:#224569;color:#e9f4ff;font-size:12px;font-weight:700;cursor:pointer
+}
+body.personnel-ui-redesign .personnel-back-original{margin-bottom:11px}
+body.personnel-ui-redesign #personnelOriginalDirectory{
+ min-width:0;max-width:100%;overflow:hidden;border:1px solid #385a7c;
+ border-radius:9px
+}
+body.personnel-ui-redesign #personnelOriginalDirectory #personnelDirectoryFrame{
+ display:block;width:100%;height:min(84vh,1100px);min-height:610px;
+ border:0;background:#09162a
+}
+@media(max-width:700px){
+ body.personnel-ui-redesign #personnelOriginalDirectory #personnelDirectoryFrame{
+  height:75vh;min-height:500px
+ }
+ body.personnel-ui-redesign .personnel-roster-heading span{font-size:10px}
 }

@@ -40,7 +40,7 @@ test('filters werken uitsluitend op reeds zichtbare directoryvelden',()=>{
  assert.deepEqual(filterCompactDirectory(items,{status:'active'}).map(x=>x.name),['Pablo']);
  assert.deepEqual(filterCompactDirectory(items,{query:'k9'}).map(x=>x.name),['Marie']);
  assert.deepEqual(filterCompactDirectory(items,{query:'depannage'}).map(x=>x.name),['Jean']);
- assert.deepEqual(directorySeriesOptions(items),['2','3']);
+ assert.deepEqual(directorySeriesOptions(items),['1','2','3']);
 });
 test('vier tabbladen, subbeheer en bestaande uitklapbare detailtabel blijven aanwezig',()=>{
  const html=file('public/personeelsbeheer.html');
@@ -51,12 +51,15 @@ test('vier tabbladen, subbeheer en bestaande uitklapbare detailtabel blijven aan
  assert.ok(html.includes('id="personnelManageSubnav"'));
  assert.ok(html.includes('id="personnelGroupSettingsTab"'));
  assert.ok(html.includes('id="personnelCompactRoot"'));
+ assert.ok(html.includes('id="personnelDirectoryFrame"'));
+ assert.ok(html.includes('src="/personeelslijst.html?embed=1"'));
+ assert.ok(html.includes('id="personnelOriginalDirectory"'));
  assert.ok(html.includes("mountCompactPersonnelDirectory({"));
  assert.ok(html.includes("request('/api/member/personnel-list'"));
  assert.ok(html.includes('personnelCompactViews.activate()'));
  assert.ok(html.includes("cardDialog.show();"));
  assert.ok(html.includes('personnelCompactViews.reset()'));
- assert.ok(publicUi.includes("frame.id='personnelDirectoryFrame'"));
+ assert.ok(publicUi.includes("frame.id='personnelLegacyDirectoryFrame'"));
  assert.ok(publicUi.includes("frame.src='/personeelslijst.html?embed=1'"));
  assert.ok(publicUi.includes("fetchPersonnel(text)"));
  assert.ok(publicUi.includes('openPerson(String(person.call),String(person.name))'));
@@ -72,4 +75,87 @@ test('aanmeldcontrole en privacybescherming van de oude directory blijven gelden
  assert.ok(html.includes('const id=matches.length===1?'));
  assert.ok(html.includes("const personnelGroupedViews=mountPersonnelGroupedViews"));
  assert.ok(html.includes("const personnelGroupSettingsEditor=mountPersonnelGroupSettingsEditor"));
+});
+
+test('dienstleiding ziet uitsluitend door de server toegelaten dienstrecords en niet hun Discord-ID',async()=>{
+ const {scopedServiceDirectory}=await import('../public/personnel-compact-policy.js');
+ const raw=[
+  {dept:'politie',name:'Agent',call:'280',rank:'Agent',status:'Actief',
+   series:'Reeks 1',discordId:'123456789012345678',hours:320,
+   notes:'privé',specialties:[{label:'K9',value:'Ja'}]},
+  {dept:'ambulance',name:'Arts',call:'ARTS-01',rank:'Arts',status:'Actief',
+   discordId:'923456789012345678',lastConnection:'privé'},
+  {dept:'brandweer',name:'Brandweer',call:'STAG-02',rank:'Stagiair',status:'Stage'}
+ ];
+ const own=scopedServiceDirectory(raw,['ambulance']);
+ assert.equal(own.length,1);assert.equal(own[0].name,'Arts');
+ assert.equal(own[0].rank,'Arts');
+ assert.equal(own[0].hasPoliceEntry,false);
+ assert.deepEqual(own[0].services,['Ambulance']);
+ assert.equal(JSON.stringify(own).includes('discordId'),false);
+ assert.equal(JSON.stringify(own).includes('lastConnection'),false);
+ assert.equal(JSON.stringify(own).includes('hours'),false);
+ assert.deepEqual(scopedServiceDirectory(raw,['burger']),[]);
+});
+test('personeelslijst blijft standaard; beheertab opent instellingen, niet onbedoeld een fichebewerking',()=>{
+ const html=file('public/personeelsbeheer.html');
+ const compact=file('public/personnel-compact-ui.js');
+ assert.ok(html.includes("let personnelGroupView='lijst'"));
+ assert.ok(html.includes("personnelCompactViews.setScopedPersonnel(people,data.departments||[])"));
+ assert.ok(html.includes("personnelCompactViews.setScopedPersonnel([],[])"));
+ assert.ok(html.includes("personnelManagementRequested=false;\n personnelGroupView='instellingen';"));
+ assert.ok(html.includes("if(publicView&&personnelServiceDirectoryActive)"));
+ assert.ok(compact.includes("scope.append(choice('all','Algemene personeelslijst')"));
+ assert.ok(compact.includes("choice('service','Personeel van mijn dienst')"));
+ assert.ok(compact.includes("seriesLabel.hidden=!allowedDepts.includes('politie')"));
+ assert.ok(compact.includes("showAll.textContent=showAllBadges?'Minder specialisaties tonen'"));
+ assert.ok(compact.includes("scopeLabel.hidden=!canSee"));
+ assert.ok(compact.includes("scope.value='all'"));
+});
+
+
+test('oorspronkelijke lijst is standaard en bevat alle oorspronkelijke specialisatiekolommen',()=>{
+ const html=file('public/personeelsbeheer.html'),
+  original=file('public/personeelslijst.html'),
+  roster=file('public/member-police-roster.js');
+ assert.ok(html.includes('id="personnelOriginalDirectory"'));
+ assert.ok(html.includes('id="personnelServiceDirectory" hidden'));
+ assert.ok(html.includes('id="personnelRosterSeries"'));
+ assert.ok(html.includes('id="personnelRosterSeriesLabel"'));
+ assert.ok(html.includes('personnelCanViewService=entitled.length>0'));
+ assert.ok(html.includes('hasAccess=personnelCanViewService'));
+ assert.ok(html.includes("personnelServiceDirectoryActive=false;updatePersonnelServiceMode();"));
+ assert.ok(original.includes('renderMemberPoliceRoster('));
+ assert.ok(roster.includes('PUBLIC_POLICE_SPECIALTIES'));
+ assert.ok(roster.includes("['CALL','RANGKENTEKEN','PERSONEELSLID','REEKS','STATUS']"));
+});
+test('reeksfilter is uitsluitend 1, 2, 3 en gewone bronstatussen worden niet geïnterpreteerd als reeks',async()=>{
+ const html=file('public/personeelsbeheer.html'),
+  iframe=file('public/personeelslijst.html'),
+  policy=await import('../public/personnel-compact-policy.js');
+ const select=html.slice(html.indexOf('id="personnelRosterSeries"'),
+  html.indexOf('</select>',html.indexOf('id="personnelRosterSeries"')));
+ assert.match(select,/option value="all"/);
+ for(const n of [1,2,3])assert.ok(select.includes('option value="'+n+'"'));
+ for(const bad of ['4','BANNED','Niet ingevuld','Officierenkader'])
+  assert.ok(!select.includes('option value="'+bad+'"'));
+ for(const n of [1,2,3]){
+  assert.equal(policy.personnelSeriesNumber('Reeks '+n),String(n));
+  assert.equal(policy.personnelSeriesNumber(String(n)),String(n));
+ }
+ for(const value of ['BANNED','Niet ingevuld','Officierenkader / Korpsleiding','4'])
+  assert.equal(policy.personnelSeriesNumber(value),null);
+ assert.ok(iframe.includes("event.data?.type!=='bpd-directory-series-filter'"));
+ assert.ok(iframe.includes("event.source!==window.parent"));
+ assert.ok(iframe.includes("event.origin!==location.origin"));
+ assert.ok(iframe.includes("['all','1','2','3'].includes(value)"));
+ assert.ok(iframe.includes("seriesNumber(p.series)===rosterSeriesFilter"));
+});
+
+test('reeksenoverzicht verbergt overige labels zonder personeelsrecords of dossierhistoriek te verwijderen',()=>{
+ const grouped=file('public/personnel-grouped-ui.js');
+ const policy=file('public/personnel-grouping-policy.js');
+ assert.ok(grouped.includes(".filter(group=>['1','2','3'].includes(group.key))"));
+ assert.ok(policy.includes("key:'vlinder'"));
+ assert.ok(policy.includes("key:'kader'"));
 });

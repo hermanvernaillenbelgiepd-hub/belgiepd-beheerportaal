@@ -733,8 +733,31 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
   </div>
  </details>
 </div>
-<section id="personnelPublicView" class="card" aria-label="Compacte personeelslijst">
- <div id="personnelCompactRoot" aria-label="Personeelsleden en filters"></div>
+<section id="personnelPublicView" class="card" aria-label="Algemene personeelslijst">
+ <div class="personnel-roster-controls">
+  <div class="personnel-roster-heading">
+   <strong>Personeelslijst</strong>
+   <span>De oorspronkelijke lijst met rangtekens, reeksen, status en specialisatiepatches.</span>
+  </div>
+  <label id="personnelRosterSeriesLabel" for="personnelRosterSeries" hidden>Reeks
+   <select id="personnelRosterSeries" aria-label="Politiereeks filteren">
+    <option value="all">Alle reeksen</option>
+    <option value="1">Reeks 1</option>
+    <option value="2">Reeks 2</option>
+    <option value="3">Reeks 3</option>
+   </select>
+  </label>
+  <button id="personnelServiceMode" type="button" hidden>Mijn dienst bekijken</button>
+ </div>
+ <div id="personnelOriginalDirectory" class="personnel-original-directory">
+  <iframe id="personnelDirectoryFrame" src="/personeelslijst.html?embed=1"
+   title="Oorspronkelijke personeelslijst, alleen-lezen" loading="eager"
+   referrerpolicy="same-origin"></iframe>
+ </div>
+ <div id="personnelServiceDirectory" hidden>
+  <button id="personnelBackToOriginal" type="button" class="personnel-back-original">← Terug naar algemene personeelslijst</button>
+  <div id="personnelCompactRoot" aria-label="Geverifieerd dienstpersoneel"></div>
+ </div>
 </section>
 <section id="personnelGroupedView" class="card" hidden aria-label="Politiereeksen en specialisaties">
  <div class="personnel-group-toolbar">
@@ -1257,7 +1280,8 @@ function updatePersonnelView(){
   $('personnelManageTab').setAttribute('aria-selected',String(manageActive));
   $('personnelManageFichesTab').setAttribute('aria-selected',String(privileged));
   $('personnelGroupSettingsTab').setAttribute('aria-selected',String(settingsView));
-  if(publicView)void personnelCompactViews.activate();
+  if(publicView&&personnelServiceDirectoryActive)
+    void personnelCompactViews.activate();
   if(grouped)void personnelGroupedViews.activate(personnelGroupView);
   if(settingsView)void personnelGroupSettingsEditor.activate();
   if(!privileged&&!embedded){
@@ -1275,11 +1299,10 @@ $('personnelGroupSettingsTab').onclick=()=>{
  personnelManagementRequested=false;personnelGroupView='instellingen';updatePersonnelView();
 };
 $('personnelManageTab').onclick=()=>{
- if(personnelManagementAllowed){
-  personnelGroupView='lijst';personnelManagementRequested=true;
- }else{
-  personnelManagementRequested=false;personnelGroupView='instellingen';
- }
+ // Viewing and editing are deliberate separate actions. Beheer opens the
+ // configurable layout; editable personnel fiches need an explicit second tab.
+ personnelManagementRequested=false;
+ personnelGroupView='instellingen';
  updatePersonnelView();
 };
 $('personnelManageFichesTab').onclick=()=>{
@@ -1327,6 +1350,36 @@ function openUnifiedCard(call,name){
     'De personeelskaart reageert niet. Sluit dit venster en probeer opnieuw.';
  },15000);
 }
+let personnelServiceDirectoryActive=false;
+let personnelCanFilterSeries=false;
+let personnelCanViewService=false;
+function updatePersonnelServiceMode(){
+ const service=$('personnelServiceDirectory'),
+  original=$('personnelOriginalDirectory'),
+  hasAccess=personnelCanViewService;
+ if(!hasAccess)personnelServiceDirectoryActive=false;
+ service.hidden=!personnelServiceDirectoryActive;
+ original.hidden=personnelServiceDirectoryActive;
+ $('personnelRosterSeriesLabel').hidden=personnelServiceDirectoryActive||
+  !personnelCanFilterSeries;
+ $('personnelServiceMode').hidden=!hasAccess||personnelServiceDirectoryActive;
+ if(personnelServiceDirectoryActive)void personnelCompactViews.activate();
+}
+function sendPersonnelRosterSeries(){
+ const frame=$('personnelDirectoryFrame');
+ if(frame?.contentWindow)frame.contentWindow.postMessage({
+  type:'bpd-directory-series-filter',
+  series:$('personnelRosterSeries').value
+ },location.origin);
+}
+$('personnelRosterSeries').addEventListener('change',sendPersonnelRosterSeries);
+$('personnelDirectoryFrame').addEventListener('load',sendPersonnelRosterSeries);
+$('personnelServiceMode').addEventListener('click',()=>{
+ personnelServiceDirectoryActive=true;updatePersonnelServiceMode();
+});
+$('personnelBackToOriginal').addEventListener('click',()=>{
+ personnelServiceDirectoryActive=false;updatePersonnelServiceMode();
+});
 const personnelCompactViews=mountCompactPersonnelDirectory({
  root:$('personnelCompactRoot'),
  fetchPersonnel:id=>request('/api/member/personnel-list'+
@@ -2711,7 +2764,11 @@ async function load(){
   if(!auth?.currentUser){
     personnelManagementAllowed=false;personnelGroupSettingsAllowed=false;
     personnelGroupSettingsEditor.reset();personnelGroupedViews.reset();
-    personnelCompactViews.reset();lifecycleDepartments=[];
+    personnelCompactViews.reset();
+    personnelCanFilterSeries=false;personnelCanViewService=false;
+    personnelServiceDirectoryActive=false;
+    $('personnelServiceMode').hidden=true;updatePersonnelServiceMode();
+    lifecycleDepartments=[];
     $('personnelArchivePanel').hidden=true;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
     updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
@@ -2756,7 +2813,18 @@ async function load(){
     $('personnelArchivePanel').hidden=!lifecycleDepartments.length;
     $('personnelAdminTools').hidden=!lifecycleDepartments.length&&!personnelGroupSettingsAllowed;
     $('accessHelp').hidden=true;
-    people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
+    people=data.records||[];
+    // Only the verified manager overview may unlock an own-service viewer.
+    // It is never used to grant any edit permission from a public table.
+    personnelCompactViews.setScopedPersonnel(people,data.departments||[]);
+    // The separate verified manager overview may enable an own-service view.
+    const entitled=(data.departments||[]).filter(x=>
+     ['politie','brandweer','ambulance','depannage','burger'].includes(x));
+    personnelCanFilterSeries=entitled.includes('politie');
+    personnelCanViewService=entitled.length>0;
+    $('personnelServiceMode').hidden=!personnelCanViewService;
+    updatePersonnelServiceMode();
+    pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
     $('newBtn').hidden=!Object.keys(createRanks).length;
     if($('newPanel').hidden===false&&!Object.keys(createRanks).length)$('newPanel').hidden=true;
@@ -2818,6 +2886,10 @@ async function load(){
     }
   }catch(e){
     people=[];personnelManagementAllowed=false;lifecycleDepartments=[];
+    personnelCompactViews.setScopedPersonnel([],[]);
+    personnelCanFilterSeries=false;personnelCanViewService=false;
+    personnelServiceDirectoryActive=false;
+    $('personnelServiceMode').hidden=true;updatePersonnelServiceMode();
     $('personnelArchivePanel').hidden=true;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
     $('panel').hidden=true;render();updatePersonnelView();

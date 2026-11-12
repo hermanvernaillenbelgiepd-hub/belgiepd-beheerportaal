@@ -251,6 +251,13 @@ import {renderMemberPoliceRoster,setPublicRosterSpecialties} from '/member-polic
 import {loadRosterLayout,logoutRosterLayout} from '/member-roster-layout.js?v=20261031-officer-only';
 const $=id=>document.getElementById(id);
 let auth=null,people=[],discordSearchRows=[],discordSearchId='';
+let rosterSeriesFilter='all';
+const seriesNumber=value=>{
+ const s=String(value||'').trim();
+ const match=s.match(/^(?:reeks|r)\s*0?([1-3])$/i)||s.match(/^0?([1-3])$/);
+ return match?match[1]:'';
+};
+
 let discordSearchTimeout=null,discordSearchRequest=0;
 let rosterProfileLoadTimer=0;
 const directoryEmbedded=new URLSearchParams(window.location.search).get('embed')==='1';
@@ -315,7 +322,11 @@ function render(){
  const byDiscordId=/^\d{15,22}$/.test(q);
  const ready=byDiscordId&&discordSearchId===q;
  const rows=byDiscordId?(ready?discordSearchRows:[]):people;
- const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),rows,
+ // The parent offers only existing operational series 1/2/3. This is a
+ // display filter; all dossier and Discord permissions remain unchanged.
+ const shown=rosterSeriesFilter==='all'?rows:rows.filter(p=>
+  seriesNumber(p.series)===rosterSeriesFilter);
+ const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),shown,
   byDiscordId?'':q,openRosterProfile);
  $('message').textContent=byDiscordId?
    (ready?count+' personeelslid(leden) gevonden op Discord-ID':'Discord-ID opzoeken…'):
@@ -377,6 +388,15 @@ async function load(){
  finally{$('refresh').disabled=false}
 }
 $('search').oninput=searchDirectory;$('refresh').onclick=load;
+window.addEventListener('message',event=>{
+ if(!directoryEmbedded||window.parent===window||
+    event.origin!==location.origin||event.source!==window.parent||
+    event.data?.type!=='bpd-directory-series-filter')return;
+ const value=String(event.data.series||'');
+ if(!['all','1','2','3'].includes(value))return;
+ rosterSeriesFilter=value;
+ render();
+});
 try{
  const config=await(await fetch('/api/client-config',{cache:'no-store'})).json();
  if(!config.enabled)throw Error('Aanmelding tijdelijk niet beschikbaar');
