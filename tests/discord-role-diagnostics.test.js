@@ -6,10 +6,9 @@ import {
   collectDiscordCoverage
 } from '../src/discord-role-diagnostics.js';
 import {
-  discordDiagnosticsMainOnly,installDiscordDiagnosticRoutes
+  discordDiagnosticsMainOnly,discordDiagnosticsPageAllowed,installDiscordDiagnosticRoutes
 } from '../src/discord-role-diagnostics-routes.js';
-import {verifyBoardDiscordRole} from '../src/dossier-grants.js';
-import {activeBoardAppointment} from '../src/board-appointment-policy.js';
+import {makeProfileCookie} from '../src/portal-profile-mode.js';
 
 const guild='123456789012345678';
 const id='222222222222222222';
@@ -27,6 +26,8 @@ const env={
  DISCORD_REDIRECT_URI:'https://test.example/auth/discord/callback'
 };
 const actor={uid:'discord:'+id,discordId:id,role:'basiskader'};
+const technical={...actor,role:'beheerder',portalTechnicalMode:true,
+  profileTechnicalAvailable:true};
 const response=(payload,status=200)=>new Response(JSON.stringify(payload),{
  status,headers:{'content-type':'application/json'}
 });
@@ -57,42 +58,38 @@ const appAndResponse=({firestore,collect,config=env,clock=()=>at})=>{
   accessHandler:handlers.get('/api/board/discord-diagnostics/access').at(-1),res};
 };
 
-test('Board access is independent of police cadre, validates own Discord identity',()=>{
- const verified=member();
- assert.equal(diagnosisAccess(actor,verified,null,guild,verifyBoardDiscordRole,
-   activeBoardAppointment),'geverifieerde_bestuursrol');
- assert.equal(diagnosisAccess(actor,member([]),null,guild,verifyBoardDiscordRole,
-   activeBoardAppointment),null);
- assert.equal(diagnosisAccess(actor,member([]),{
-   status:'approved',permissions:[]},guild,verifyBoardDiscordRole,
-   activeBoardAppointment),'goedgekeurde_bestuursaanstelling');
- assert.equal(diagnosisAccess({...actor,uid:'google:admin'},verified,null,guild,
-   verifyBoardDiscordRole,activeBoardAppointment),null);
- assert.equal(diagnosisAccess({...actor,discordId:'unexpected'},verified,null,guild,
-   verifyBoardDiscordRole,activeBoardAppointment),null);
- assert.equal(diagnosisAccess(actor,{...verified,verifiedAt:at-16*60000},null,guild,
-   (m,g)=>verifyBoardDiscordRole(m,g,at),activeBoardAppointment),null);
+test('Alleen aangemelde Technisch Beheer-modus mag diagnosegegevens zien',()=>{
+ assert.equal(diagnosisAccess(technical),'geverifieerd_technisch_beheer');
+ for(const blocked of [
+  actor,{...actor,role:'officierenkader',departments:['politie']},
+  {...actor,role:'korpsleiding',departments:['politie']},
+  {...actor,role:'bestuur',boardPersonnelAdmin:true},
+  {...actor,role:'beheerder',profileTechnicalAvailable:true},
+  {...actor,role:'beheerder',portalTechnicalMode:true},
+  {...technical,uid:'google:'+id},
+  {...technical,discordId:'234567890123456789'},
+  {...technical,role:'officierenkader'}
+ ])assert.equal(diagnosisAccess(blocked),null);
 });
-
-test('Approved cadre and signed technical mode gain only diagnostic access',()=>{
- const noBoard=member([]);
- const cases=[
-   [{...actor,role:'officierenkader',departments:['ambulance']},'goedgekeurd_officierenkader'],
-   [{...actor,role:'korpsleiding',departments:['brandweer']},'goedgekeurde_korpsleiding'],
-   [{...actor,role:'beheerder',portalTechnicalMode:true,
-     profileTechnicalAvailable:true},'geverifieerd_technisch_beheer']
- ];
- for(const [who,expected] of cases)
-   assert.equal(diagnosisAccess(who,noBoard,null,guild,verifyBoardDiscordRole,
-     activeBoardAppointment),expected);
- for(const who of [
-   {...actor,role:'middenkader',departments:['politie']},
-   {...actor,role:'officierenkader',departments:[]},
-   {...actor,role:'beheerder',portalTechnicalMode:false,profileTechnicalAvailable:true},
-   {...actor,role:'beheerder',portalTechnicalMode:true,profileTechnicalAvailable:false},
-   {...actor,role:'officierenkader',departments:['politie'],uid:'google:fake'}
- ])assert.equal(diagnosisAccess(who,noBoard,null,guild,verifyBoardDiscordRole,
-   activeBoardAppointment),null);
+test('Rechtstreekse diagnosepagina vereist geldige ondertekende technische cookie en allowlist',()=>{
+ const pageEnv={...env,BPD_TECHNICAL_ADMIN_DISCORD_IDS:id,
+   BPD_PORTAL_PROFILE_SIGNING_KEY:'S'.repeat(48)};
+ const cookie=makeProfileCookie(actor.uid,id,pageEnv.BPD_PORTAL_PROFILE_SIGNING_KEY,at)
+   .split(';')[0];
+ assert.equal(discordDiagnosticsPageAllowed(cookie,pageEnv,at),true);
+ assert.equal(discordDiagnosticsPageAllowed('',pageEnv,at),false);
+ assert.equal(discordDiagnosticsPageAllowed(cookie,{...pageEnv,
+   BPD_TECHNICAL_ADMIN_DISCORD_IDS:'333333333333333333'},at),false);
+ assert.equal(discordDiagnosticsPageAllowed(cookie,{...pageEnv,
+   RENDER_SERVICE_ID:'srv-dbampoqjnfac738b1tsg'},at),false);
+ assert.equal(discordDiagnosticsPageAllowed(cookie,pageEnv,at+9*3600*1000),false);
+ assert.equal(discordDiagnosticsPageAllowed(cookie.replace(/.$/,'x'),pageEnv,at),false);
+ assert.equal(discordDiagnosticsPageAllowed('bpd_portal_profile=invalid',pageEnv,at),false);
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ assert.ok(server.indexOf("app.get('/discord-diagnose.html'")>=0);
+ assert.ok(server.indexOf("app.get('/discord-diagnose.html'")<
+   server.indexOf("app.use(express.static"));
+ assert.match(server,/discordDiagnosticsPageAllowed\(req\.headers\.cookie,process\.env\)/);
 });
 
 test('Only the canonical Render MAIN service exposes the diagnostic endpoint',()=>{
@@ -167,66 +164,69 @@ test('Without bot secrets no Discord requests are initiated',async()=>{
  assert.equal(ageStatus(member(),guild,at).status,'fresh');
 });
 
-test('Only board-scoped bearer identity can call the API; reads cached per user',async()=>{
+test('API weigert Bestuur en kader, cache en botcalls alleen in technische modus',async()=>{
  let calls=0;
  const collect=async()=>{calls++;return {environment:'MAIN',mode:'alleen-lezen'}};
  const {handler,res}=appAndResponse({
-   firestore:()=>dbFor(member(),null),collect
+  firestore:()=>dbFor(member([]),null),collect
  });
- await handler({bpd:actor},res);
+ await handler({bpd:technical},res);
  assert.equal(res.statusCode,200);
  assert.equal(calls,1);
- await handler({bpd:actor},res);
- assert.equal(calls,1,'Second request uses 45s sanitized cache');
- const blocked=appAndResponse({firestore:()=>dbFor(member([]),null),collect});
- await blocked.handler({bpd:actor},blocked.res);
- assert.equal(blocked.res.statusCode,403);
- assert.equal(calls,1,'No Discord probe for non-board roles');
- const otherLogin=appAndResponse({firestore:()=>dbFor(member(),null),collect});
- await otherLogin.handler({bpd:{...actor,uid:'google:'+id}},otherLogin.res);
- assert.equal(otherLogin.res.statusCode,403);
- assert.equal(calls,1);
- const otherService=appAndResponse({firestore:()=>dbFor(member(),null),collect,
-   config:{RENDER_SERVICE_ID:'srv-other',RENDER_GIT_BRANCH:'feature/verlofmodule-test'}});
- await otherService.handler({bpd:actor},otherService.res);
+ await handler({bpd:technical},res);
+ assert.equal(calls,1,'Herhaald technisch verzoek gebruikt beperkte cache');
+ for(const blocked of [
+  actor,{...actor,role:'officierenkader',departments:['politie']},
+  {...actor,role:'korpsleiding',departments:['politie']},
+  {...actor,role:'bestuur'},
+  {...technical,portalTechnicalMode:false},
+  {...technical,uid:'google:'+id}
+ ]){
+  const result=appAndResponse({firestore:()=>{throw Error('No database read allowed')},collect});
+  await result.handler({bpd:blocked},result.res);
+  assert.equal(result.res.statusCode,403);
+  assert.equal(calls,1);
+ }
+ const otherService=appAndResponse({firestore:()=>dbFor(member([]),null),collect,
+  config:{RENDER_SERVICE_ID:'srv-other',RENDER_GIT_BRANCH:'main'}});
+ await otherService.handler({bpd:technical},otherService.res);
  assert.equal(otherService.res.statusCode,404);
  assert.equal(calls,1);
- const appointed=appAndResponse({firestore:()=>dbFor(member([]),
-   {status:'approved',permissions:[]}),collect});
- await appointed.handler({bpd:actor},appointed.res);
- assert.equal(appointed.res.statusCode,200);
- assert.equal(calls,2);
 });
 
-test('Diagnostic link is independently gated by the server for approved roles',()=>{
+test('Technische diagnoselink blijft verborgen zonder positieve API-toestemming',()=>{
  const html=readFileSync(new URL('../public/gebruikersbeheer.html',import.meta.url),'utf8');
  const page=readFileSync(new URL('../public/discord-diagnose.html',import.meta.url),'utf8');
  const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
  assert.match(html,/id="discordDiagnosticsLaunch" hidden/);
  assert.match(html,/\/api\/board\/discord-diagnostics\/access/);
  assert.match(html,/loadDiscordDiagnosticsLink\(\)/);
- assert.doesNotMatch(html,/verified\|\|entry\?\.status==='approved'/);
+ assert.match(html,/Uitsluitend geverifieerd Technisch Beheer/);
+ assert.match(page,/UITSLUITEND TECHNISCH BEHEER/);
  assert.match(page,/getIdToken\(\)/);
  assert.match(page,/\/api\/board\/discord-diagnostics/);
  assert.match(server,/installDiscordDiagnosticRoutes\(app,\{requireUser\}\)/);
 });
-
-test('Link access check never scans Discord and requires the same privileges',async()=>{
+test('De toegangscheck raadpleegt Discord niet en weigert alle niet-technische rollen',async()=>{
  let calls=0;
  const collect=async()=>{calls++;return {}};
- const officer=appAndResponse({firestore:()=>dbFor(member([]),null),collect});
- await officer.accessHandler({bpd:{...actor,role:'officierenkader',
-   departments:['politie']}},officer.res);
- assert.deepEqual(officer.res.body,{allowed:true});
+ for(const denied of [
+  actor,{...actor,role:'officierenkader',departments:['politie']},
+  {...actor,role:'korpsleiding',departments:['politie']},
+  {...actor,role:'bestuur'}
+ ]){
+  const result=appAndResponse({firestore:()=>{throw Error('No reads')},collect});
+  await result.accessHandler({bpd:denied},result.res);
+  assert.deepEqual(result.res.body,{allowed:false});
+  assert.equal(calls,0);
+ }
+ const approved=appAndResponse({firestore:()=>{throw Error('No reads')},collect});
+ await approved.accessHandler({bpd:technical},approved.res);
+ assert.deepEqual(approved.res.body,{allowed:true});
  assert.equal(calls,0);
- const basic=appAndResponse({firestore:()=>dbFor(member([]),null),collect});
- await basic.accessHandler({bpd:actor},basic.res);
- assert.deepEqual(basic.res.body,{allowed:false});
- assert.equal(calls,0);
- const tech=appAndResponse({firestore:()=>dbFor(member([]),null),collect});
- await tech.handler({bpd:{...actor,role:'beheerder',portalTechnicalMode:true,
-   profileTechnicalAvailable:true}},tech.res);
- assert.equal(tech.res.statusCode,200);
+ const diagnosis=appAndResponse({firestore:()=>dbFor(member([]),null),collect});
+ await diagnosis.handler({bpd:technical},diagnosis.res);
+ assert.equal(diagnosis.res.statusCode,200);
  assert.equal(calls,1);
 });
 
@@ -286,24 +286,24 @@ test('403 and invalid paged member list fail closed without leaking partial cens
  assert.equal(invalidRole.status,'invalid_response');
 });
 
-test('Extended member census is opt-in and per-user cached without bypassing Board',async()=>{
+test('Volledige ledenlijstcontrole vraagt technische modus en is per gebruiker gecachet',async()=>{
  let scans=0;
  const collect=async({coverage})=>{
-   if(coverage)scans++;
-   return {environment:'MAIN',mode:'alleen-lezen',
-     probes:{fullCoverage:{status:coverage?'ok':'not_run'}}};
+  if(coverage)scans++;
+  return {environment:'MAIN',mode:'alleen-lezen',
+    probes:{fullCoverage:{status:coverage?'ok':'not_run'}}};
  };
  const {handler,res}=appAndResponse({
-   firestore:()=>dbFor(member(),null),collect
+  firestore:()=>dbFor(member([]),null),collect
  });
- await handler({bpd:actor,query:{}},res);
+ await handler({bpd:technical,query:{}},res);
  assert.equal(scans,0);
- await handler({bpd:actor,query:{coverage:'1'}},res);
+ await handler({bpd:technical,query:{coverage:'1'}},res);
  assert.equal(scans,1);
- await handler({bpd:actor,query:{coverage:'1'}},res);
- assert.equal(scans,1,'Repeated full scan within cache must not hit Discord');
+ await handler({bpd:technical,query:{coverage:'1'}},res);
+ assert.equal(scans,1,'Een dubbele controle leest Discord niet opnieuw');
  const unauthorized=appAndResponse({
-   firestore:()=>dbFor(member([]),null),collect
+  firestore:()=>{throw Error('No reads')},collect
  });
  await unauthorized.handler({bpd:actor,query:{coverage:'1'}},unauthorized.res);
  assert.equal(unauthorized.res.statusCode,403);
