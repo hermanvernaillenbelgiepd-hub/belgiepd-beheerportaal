@@ -1235,31 +1235,34 @@ if(!dossierEmbedded&&!ficheMode&&
  personnelGroupView=initialQuery.get('weergave');
 }
 function updatePersonnelView(){
+  // Four top-level destinations; sensitive editing stays under Beheer.
   const privileged=personnelManagementAllowed&&personnelManagementRequested;
-  $('personnelUnifiedNav').hidden=dossierEmbedded||ficheMode;
-  const settingsView=!privileged&&!dossierEmbedded&&!ficheMode&&
-    personnelGroupView==='instellingen';
-  const grouped=!privileged&&!settingsView&&!dossierEmbedded&&!ficheMode&&
+  const embedded=dossierEmbedded||ficheMode;
+  const settingsView=!privileged&&!embedded&&personnelGroupView==='instellingen';
+  const grouped=!privileged&&!settingsView&&!embedded&&
     ['reeksen','specialisaties'].includes(personnelGroupView);
-  $('personnelManageTab').hidden=!personnelManagementAllowed;
-  // Opening the settings is read-only by default; Save stays server-gated.
-  $('personnelGroupSettingsTab').hidden=dossierEmbedded||ficheMode;
-  $('personnelPublicView').hidden=privileged||grouped||dossierEmbedded||ficheMode;
+  const manageActive=!embedded&&(settingsView||privileged);
+  const publicView=!privileged&&!grouped&&!settingsView&&!embedded;
+  $('personnelUnifiedNav').hidden=embedded;
+  $('personnelManageSubnav').hidden=!manageActive;
+  $('personnelManageTab').hidden=embedded;
+  $('personnelManageFichesTab').hidden=!personnelManagementAllowed;
+  $('personnelPublicView').hidden=!publicView;
   $('personnelGroupedView').hidden=!grouped;
   $('personnelGroupSettingsView').hidden=!settingsView;
-  $('staffManagePanel').hidden=!privileged||dossierEmbedded||ficheMode;
-  $('personnelPublicTab').setAttribute('aria-selected',String(!privileged&&!grouped&&!settingsView));
-  $('personnelGroupSettingsTab').setAttribute('aria-selected',String(settingsView));
+  $('staffManagePanel').hidden=!privileged||embedded;
+  $('personnelPublicTab').setAttribute('aria-selected',String(publicView));
   $('personnelSeriesTab').setAttribute('aria-selected',String(grouped&&personnelGroupView==='reeksen'));
   $('personnelSpecialtiesTab').setAttribute('aria-selected',String(grouped&&personnelGroupView==='specialisaties'));
-  $('personnelManageTab').setAttribute('aria-selected',String(privileged));
+  $('personnelManageTab').setAttribute('aria-selected',String(manageActive));
+  $('personnelManageFichesTab').setAttribute('aria-selected',String(privileged));
+  $('personnelGroupSettingsTab').setAttribute('aria-selected',String(settingsView));
+  if(publicView)void personnelCompactViews.activate();
   if(grouped)void personnelGroupedViews.activate(personnelGroupView);
   if(settingsView)void personnelGroupSettingsEditor.activate();
-  if(!privileged&&!ficheMode&&!dossierEmbedded){
-    $('panel').hidden=true;
-    $('newPanel').hidden=true;
-    $('promotionPanel').hidden=true;
-    selected=null; // Never reopen a previously selected dossier under the public list.
+  if(!privileged&&!embedded){
+    $('panel').hidden=true;$('newPanel').hidden=true;
+    $('promotionPanel').hidden=true;selected=null;
   }
 }
 $('personnelPublicTab').onclick=()=>{
@@ -1272,6 +1275,14 @@ $('personnelGroupSettingsTab').onclick=()=>{
  personnelManagementRequested=false;personnelGroupView='instellingen';updatePersonnelView();
 };
 $('personnelManageTab').onclick=()=>{
+ if(personnelManagementAllowed){
+  personnelGroupView='lijst';personnelManagementRequested=true;
+ }else{
+  personnelManagementRequested=false;personnelGroupView='instellingen';
+ }
+ updatePersonnelView();
+};
+$('personnelManageFichesTab').onclick=()=>{
  if(!personnelManagementAllowed)return;
  personnelGroupView='lijst';personnelManagementRequested=true;updatePersonnelView();
 };
@@ -1289,8 +1300,9 @@ function clearUnifiedCard(){
  for(const key of ['personnelCardId','personnelCardCopyId','personnelCardPing'])$(key).hidden=true;
 }
 function openUnifiedCard(call,name){
- if(cardDialog.open||dossierEmbedded||ficheMode||typeof call!=='string'||typeof name!=='string'||
+ if(dossierEmbedded||ficheMode||typeof call!=='string'||typeof name!=='string'||
    !/^[a-zA-Z0-9 *_-]{1,24}$/.test(call)||!name.trim()||name.length>90)return;
+ if(cardDialog.open)cardDialog.close();
  clearUnifiedCard();
  $('personnelCardTitle').textContent='Personeelskaart · '+call+' · '+name;
  $('personnelCardInfo').textContent='Personeelskaart laden…';
@@ -1307,13 +1319,21 @@ function openUnifiedCard(call,name){
  }
  const params=new URLSearchParams({embedded:'1',dienst:'politie',kaart:call,naam:name});
  $('personnelCardFrame').src='/organogram-hierarchie.html?'+params;
- cardDialog.showModal();
+ if(document.body.classList.contains('personnel-ui-redesign'))cardDialog.show();
+ else cardDialog.showModal();
  personnelCardLoadTimer=window.setTimeout(()=>{
   if(cardDialog.open&&!$('personnelCardInfo').hidden)
    $('personnelCardInfo').textContent=
     'De personeelskaart reageert niet. Sluit dit venster en probeer opnieuw.';
  },15000);
 }
+const personnelCompactViews=mountCompactPersonnelDirectory({
+ root:$('personnelCompactRoot'),
+ fetchPersonnel:id=>request('/api/member/personnel-list'+
+  (id?'?'+new URLSearchParams({discordId:id}):'')),
+ viewerUid:()=>auth?.currentUser?.uid||'',
+ openPerson:(call,name)=>openUnifiedCard(call,name)
+});
 const personnelGroupedViews=mountPersonnelGroupedViews({
  root:$('personnelGroupResults'),status:$('personnelGroupStatus'),
  title:$('personnelGroupTitle'),search:$('personnelGroupSearch'),
@@ -2690,7 +2710,8 @@ function initializeRosterEditor(){
 async function load(){
   if(!auth?.currentUser){
     personnelManagementAllowed=false;personnelGroupSettingsAllowed=false;
-    personnelGroupSettingsEditor.reset();personnelGroupedViews.reset();lifecycleDepartments=[];
+    personnelGroupSettingsEditor.reset();personnelGroupedViews.reset();
+    personnelCompactViews.reset();lifecycleDepartments=[];
     $('personnelArchivePanel').hidden=true;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
     updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
