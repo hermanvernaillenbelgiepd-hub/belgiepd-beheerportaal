@@ -1,5 +1,5 @@
 import {DIRECTORY_DEPTS,directoryStatusKind,activeDirectorySpecialties,
- filterCompactDirectory,directorySeriesOptions} from './personnel-compact-policy.js';
+ filterCompactDirectory,directorySeriesOptions,scopedServiceDirectory} from './personnel-compact-policy.js';
 const el=(tag,cls='',text)=>{
  const result=document.createElement(tag);
  if(cls)result.className=cls;
@@ -10,12 +10,15 @@ const choice=(value,label)=>{const opt=el('option','',label);opt.value=value;ret
 const STATUS=[['all','Alle statussen'],['active','Actief'],['leave','Verlof'],
  ['inactive','Inactief'],['warning','Opvolging'],['muted','Afgesloten'],
  ['neutral','Overig']];
-const SELECTED_SPECIALTIES=3;
+const SELECTED_SPECIALTIES=4;
 const safeRankArt=src=>typeof src==='string'&&(
  src.startsWith('/')||/^https:\/\/[a-z0-9.-]+\//i.test(src));
 function rankBadge(person){
  const wrap=el('span','pc-rank');
- if(person.hasPoliceEntry===false){wrap.textContent='—';return wrap}
+ if(person.hasPoliceEntry===false){
+  wrap.append(el('strong','',person.serviceDept?String(person.rank||'—'):'—'));
+  return wrap;
+ }
  const info=window.BPDPersonnelVisuals?.rankInfo?.(person.rank,'politie');
  if(safeRankArt(info?.image)){
   const img=el('img');img.src=info.image;img.alt='';img.loading='lazy';
@@ -25,17 +28,17 @@ function rankBadge(person){
  wrap.append(el('strong','',info?.code||String(person.rank||'—').slice(0,8)));
  wrap.title=info?.label||person.rank||'';return wrap;
 }
-function specialtyList(person){
+function specialtyList(person,showAll=false){
  const labels=activeDirectorySpecialties(person);
  const wrapper=el('span','pc-specialties');
  if(!labels.length){wrapper.append(el('span','pc-empty','—'));return wrapper}
- for(const label of labels.slice(0,SELECTED_SPECIALTIES))
+ for(const label of (showAll?labels:labels.slice(0,SELECTED_SPECIALTIES)))
   wrapper.append(el('span','pc-specialty',label));
- if(labels.length>SELECTED_SPECIALTIES)
+ if(!showAll&&labels.length>SELECTED_SPECIALTIES)
   wrapper.append(el('span','pc-specialty-more','+'+(labels.length-SELECTED_SPECIALTIES)));
  wrapper.title=labels.join(' · ');return wrapper;
 }
-function rowFor(person,openPerson){
+function rowFor(person,openPerson,showAll){
  const clickable=person.hasPoliceEntry!==false&&/^[a-z0-9 *_-]{1,24}$/i.test(
   String(person.call||''));
  const row=el(clickable?'button':'div','pc-entry');
@@ -58,12 +61,19 @@ function rowFor(person,openPerson){
  row.append(series);
  const status=el('span','pc-status pc-status-'+directoryStatusKind(person.status),
   String(person.status||'Onbekend').slice(0,28));
- row.append(status,specialtyList(person));
+ row.append(status,specialtyList(person,showAll));
  if(clickable)row.append(el('span','pc-chevron','›'));
  return row;
 }
 export function mountCompactPersonnelDirectory({root,fetchPersonnel,viewerUid,openPerson}){
  const toolbar=el('div','pc-toolbar');
+ const scopeLabel=el('label','pc-field pc-scope-field');
+ scopeLabel.hidden=true;
+ scopeLabel.append(el('span','','Bekijken'));
+ const scope=el('select');
+ scope.append(choice('all','Algemene personeelslijst'),
+  choice('service','Personeel van mijn dienst'));
+ scopeLabel.append(scope);
  const searchLabel=el('label','pc-field');
  searchLabel.append(el('span','', 'Zoeken'));
  const search=el('input');search.type='search';
@@ -75,6 +85,8 @@ export function mountCompactPersonnelDirectory({root,fetchPersonnel,viewerUid,op
  for(const item of DIRECTORY_DEPTS)department.append(choice(item.key,item.label));
  departmentLabel.append(department);
  const seriesLabel=el('label','pc-field');
+ // Only verified kader accounts receive the police series selector.
+ seriesLabel.hidden=true;
  seriesLabel.append(el('span','', 'Reeks'));
  const series=el('select');series.append(choice('all','Alle reeksen'));seriesLabel.append(series);
  const statusLabel=el('label','pc-field');
@@ -83,11 +95,14 @@ export function mountCompactPersonnelDirectory({root,fetchPersonnel,viewerUid,op
  for(const item of STATUS)status.append(choice(item[0],item[1]));
  statusLabel.append(status);
  const reload=el('button','pc-reload','Vernieuwen');reload.type='button';
- toolbar.append(searchLabel,departmentLabel,seriesLabel,statusLabel,reload);
+ toolbar.append(searchLabel,scopeLabel,departmentLabel,seriesLabel,statusLabel,reload);
  const meta=el('div','pc-meta');
  const count=el('span','pc-count','Personeelslijst laden…');
- const legend=el('span','pc-legend','Selecteer een naam om de personeelskaart rechts te bekijken.');
- meta.append(count,legend);
+ const legend=el('span','pc-legend','Bekijken staat los van beheren: wijzigingen gebeuren uitsluitend via Beheer.');
+ const showAll=el('button','pc-show-all','Alle specialisaties tonen');
+ showAll.type='button';
+ showAll.setAttribute('aria-pressed','false');
+ meta.append(count,legend,showAll);
  const table=el('div','pc-table');
  table.setAttribute('role','table');
  const heading=el('div','pc-heading');
@@ -112,28 +127,48 @@ export function mountCompactPersonnelDirectory({root,fetchPersonnel,viewerUid,op
  });
  root.append(toolbar,meta,table,legacy);
  let records=null,owner='',loadedAt=0,stale=false,busy=null,querySerial=0;
- let idResults=null,idQuery='';
+ let idResults=null,idQuery='',scopedRecords=[],allowedDepts=[],showAllBadges=false;
+ const serviceLabels={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
+  depannage:'Depannage',burger:'Burger'};
+ function activeRecords(){return scope.value==='service'?scopedRecords:records||[]}
+ function updateScope(){
+  const canSee=allowedDepts.length>0;
+  scopeLabel.hidden=!canSee;
+  if(!canSee||scope.value==='service'&&!scopedRecords.length)scope.value='all';
+  const current=department.value;
+  department.replaceChildren(choice('all',scope.value==='service'?
+   'Mijn toegelaten diensten':'Alle diensten'));
+  const keys=scope.value==='service'?
+   allowedDepts.map(x=>serviceLabels[x]).filter(Boolean):
+   DIRECTORY_DEPTS.filter(x=>x.key!=='all').map(x=>x.key);
+  for(const key of keys)department.append(choice(key,key));
+  if([...department.options].some(x=>x.value===current))department.value=current;
+  seriesLabel.hidden=!allowedDepts.includes('politie');
+  seriesOptions();draw();
+ }
  function draw(){
   const q=search.value.trim(),byId=/^\d{15,22}$/.test(q);
-  const data=byId?(idQuery===q?idResults||[]:[]):records||[];
+  const data=byId?(scope.value==='all'&&idQuery===q?idResults||[]:[]):activeRecords();
   const filtered=filterCompactDirectory(data,{
    query:byId?'':q,department:department.value,series:series.value,status:status.value
   });
   results.replaceChildren();
   const fragment=document.createDocumentFragment();
-  for(const person of filtered.slice(0,1200))fragment.append(rowFor(person,openPerson));
+  for(const person of filtered.slice(0,1200))fragment.append(rowFor(person,openPerson,showAllBadges));
   if(!filtered.length)fragment.append(el('p','pc-empty-state',
+   byId&&scope.value==='service'?'Zoeken op Discord-ID kan via de algemene personeelslijst.':
    byId&&idQuery!==q?'Discord-ID veilig opzoeken…':
    'Geen personeelsleden gevonden met deze filters.'));
   results.append(fragment);
   count.textContent=(!records?'Personeelslijst laden…':
-   filtered.length+' van '+records.length+' personeelsleden zichtbaar')+
+   filtered.length+' van '+activeRecords().length+' personeelsleden zichtbaar')+
+   (scope.value==='service'?' · Geverifieerde dienstinzage':'')+
    (stale?' · Brongegevens tijdelijk verouderd':'');
  }
  function seriesOptions(){
   const current=series.value;
   series.replaceChildren(choice('all','Alle reeksen'));
-  for(const value of directorySeriesOptions(records))series.append(choice(value,value));
+  for(const value of directorySeriesOptions(activeRecords()))series.append(choice(value,value));
   if([...series.options].some(x=>x.value===current))series.value=current;
  }
  async function refresh(force=false){
@@ -150,7 +185,7 @@ export function mountCompactPersonnelDirectory({root,fetchPersonnel,viewerUid,op
      throw Error('De personeelsbron gaf geen geldige gegevens terug');
     records=response.records;
     stale=response.stale===true;loadedAt=Date.now();
-    seriesOptions();
+    seriesOptions();updateScope();
    }catch(e){
     if(viewerUid()===uid)count.textContent='Personeelslijst tijdelijk niet beschikbaar: '+e.message;
     records=null;
@@ -174,13 +209,31 @@ export function mountCompactPersonnelDirectory({root,fetchPersonnel,viewerUid,op
  let idTimer=0;
  search.addEventListener('input',()=>{
   window.clearTimeout(idTimer);
-  if(/^\d{15,22}$/.test(search.value.trim()))
+  if(scope.value==='all'&&/^\d{15,22}$/.test(search.value.trim()))
    idTimer=window.setTimeout(()=>void lookupId(),350);
   else{querySerial++;idQuery='';idResults=null;draw()}
+ });
+ scope.addEventListener('change',updateScope);
+ showAll.addEventListener('click',()=>{
+  showAllBadges=!showAllBadges;
+  showAll.setAttribute('aria-pressed',String(showAllBadges));
+  showAll.textContent=showAllBadges?'Minder specialisaties tonen':'Alle specialisaties tonen';
+  draw();
  });
  for(const input of [department,series,status])input.addEventListener('change',draw);
  reload.addEventListener('click',()=>void refresh(true));
  return {activate:refresh,refresh:()=>refresh(true),
+  // Pass only records returned by an independently authorized manager API.
+  setScopedPersonnel(rows,departments){
+   const safe=(Array.isArray(departments)?departments:[])
+    .filter(d=>Object.hasOwn(serviceLabels,d));
+   allowedDepts=[...new Set(safe)];
+   scopedRecords=scopedServiceDirectory(rows,allowedDepts);
+   updateScope();
+  },
   reset(){owner='';records=null;loadedAt=0;idResults=null;idQuery='';
-   querySerial++;frame.removeAttribute('src');legacy.open=false;draw()}};
+   allowedDepts=[];scopedRecords=[];scope.value='all';showAllBadges=false;
+   showAll.textContent='Alle specialisaties tonen';
+   showAll.setAttribute('aria-pressed','false');
+   querySerial++;frame.removeAttribute('src');legacy.open=false;updateScope()}};
 }
