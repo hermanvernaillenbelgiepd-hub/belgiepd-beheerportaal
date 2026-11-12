@@ -17,7 +17,7 @@ function safePatch(person,key){
  return matches.find(p=>p.source==='person')||matches[0]||null;
 }
 export function mountPersonnelGroupedViews({root,status,title,search,fetchData,viewerUid,openPerson}){
- let records=null,owner='',mode='reeksen',loading=null,stale=false,error='';
+ let records=null,owner='',mode='reeksen',loading=null,stale=false,error='',loadedAt=0;
  const formatCount=n=>n+' '+(n===1?'lid':'leden');
  function memberRow(p,specialty){
   const validCall=/^(?:[a-z]{1,6}[- ]?)?\d{3}$/i.test(String(p.call||'')),
@@ -94,7 +94,7 @@ export function mountPersonnelGroupedViews({root,status,title,search,fetchData,v
  async function refresh(force=false){
   const current=viewerUid();
   if(!current){records=null;owner='';error='Meld je aan met je goedgekeurde portaalaccount om deze indeling te bekijken.';render();return}
-  if(!force&&records&&owner===current){render();return}
+  if(!force&&records&&owner===current&&Date.now()-loadedAt<60000){render();return}
   if(loading){await loading;render();return}
   records=null;error='';owner=current;stale=false;
   loading=(async()=>{
@@ -104,7 +104,7 @@ export function mountPersonnelGroupedViews({root,status,title,search,fetchData,v
     if(!Array.isArray(data?.records)||data?.readOnly!==true)
      throw Error('Ongeldige personeelsindeling ontvangen');
     records=data.records.filter(p=>p?.dept==='politie');
-    stale=data.stale===true;
+    loadedAt=Date.now();stale=data.stale===true;
    }catch(e){
     if(viewerUid()!==current)return;
     error='Indeling niet beschikbaar: '+(e?.message||'onbekende fout')+
@@ -120,6 +120,6 @@ export function mountPersonnelGroupedViews({root,status,title,search,fetchData,v
   activate(next){if(!['reeksen','specialisaties'].includes(next))return;
    mode=next;return refresh(false)},
   refresh(){return refresh(true)},
-  reset(){owner='';records=null;error='';stale=false;render()}
+  reset(){owner='';records=null;error='';stale=false;loadedAt=0;render()}
  };
 }

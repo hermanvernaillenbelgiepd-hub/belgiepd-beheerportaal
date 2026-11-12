@@ -73,3 +73,9 @@ test('read-only UI and API projection do not grant dossier access or expose iden
  assert.ok(api.includes("series:p.dept==='politie'"));
  assert.match(docker,/tests\/personnel-grouping-policy\.test\.js/);
 });
+
+test('browsermodule is geldig JavaScript en ververst de projectie na maximaal een minuut',async()=>{
+ const ui=await import('../public/personnel-grouped-ui.js');
+ assert.equal(typeof ui.mountPersonnelGroupedViews,'function');
+ assert.match(root('public/personnel-grouped-ui.js'),/Date\.now\(\)-loadedAt<60000/);
+});
