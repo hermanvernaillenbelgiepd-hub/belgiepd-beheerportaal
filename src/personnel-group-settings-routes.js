@@ -38,7 +38,12 @@ function knownSpecialties(dept,snapshot,custom=[]){
  }
  return [...names.values()].slice(0,75);
 }
-export function installPersonnelGroupSettingsRoutes(app,{requireUser,getSnapshot}){
+export function installPersonnelGroupSettingsRoutes(app,{requireUser,requireDossierUser,getSnapshot}){
+ // The general portal session contains Police officer proof, but independent
+ // service dossier scopes are resolved by requireDossierUser. Do not invent
+ // authority from the client-selected service or stored rank alone.
+ const requireScopedEdit=(req,res,next)=>req.params.dept==='politie'?
+  requireUser(req,res,next):requireDossierUser(req,res,next);
  app.get('/api/personnel-group-settings',requireUser,async(req,res)=>{
   try{
    const db=getFirestore(),snapshot=await getSnapshot();
@@ -63,7 +68,13 @@ export function installPersonnelGroupSettingsRoutes(app,{requireUser,getSnapshot
    res.status(503).json({error:'Indelingsinstellingen tijdelijk niet beschikbaar'});
   }
  });
- app.put('/api/personnel-group-settings/:dept',requireUser,async(req,res)=>{
+ app.get('/api/personnel-group-settings/edit-permissions',
+  requireDossierUser,(req,res)=>{
+   res.set('Cache-Control','private, no-store');
+   res.json({canEdit:Object.fromEntries(GROUP_DEPARTMENTS.map(dept=>
+     [dept,canEditPersonnelGroupSettings(req.bpd,dept)]))});
+  });
+ app.put('/api/personnel-group-settings/:dept',requireScopedEdit,async(req,res)=>{
   const dept=String(req.params.dept||'');
   if(!canEditPersonnelGroupSettings(req.bpd,dept))
    return res.status(403).json({error:'Geen geverifieerde beheertoegang voor deze hulpdienst'});

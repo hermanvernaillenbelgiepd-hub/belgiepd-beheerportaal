@@ -883,7 +883,7 @@ installActivityTelemetryRoutes(app);
 installCallsignSelfServiceRoutes(app,{getSnapshot});
 installMemberDashboardRoutes(app,{getSnapshot,accessList});
 installRosterColumnRoutes(app,{requireUser});
-installPersonnelGroupSettingsRoutes(app,{requireUser,getSnapshot});
+installPersonnelGroupSettingsRoutes(app,{requireUser,requireDossierUser,getSnapshot});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});
 installCheckrideRoutes(app,{requireUser,getSnapshot});
 installCheckrideDossierRoutes(app,{requireUser:requireDossierUser,getSnapshot});

@@ -2712,7 +2712,11 @@ async function load(){
     }
     try{
      const groupMeta=await request('/api/personnel-group-settings');
-     personnelGroupSettingsAllowed=Object.values(groupMeta.canEdit||{}).some(Boolean);
+     const groupRights=await request('/api/personnel-group-settings/edit-permissions')
+      .catch(()=>({canEdit:{}}));
+     personnelGroupSettingsAllowed=Object.values({
+      ...(groupMeta.canEdit||{}),...(groupRights.canEdit||{})
+     }).some(Boolean);
     }catch{personnelGroupSettingsAllowed=false;}
     const data=await request('/api/personnel/overview');
     try{
