@@ -63,9 +63,10 @@ export function policeSeriesMemberOrder(a,b){
   n>=800&&n<=899?2:n>=900&&n<=999?3:
   n>=500&&n<=599?4:n>=400&&n<=499?5:
   n>=300&&n<=399?6:n>=200&&n<=299?7:n>=100&&n<=199?8:9;
- const an=callNumber(a),bn=callNumber(b);
- return priority(an)-priority(bn)||
-  (an===null?0:an)-(bn===null?0:bn)||
+ const an=callNumber(a),bn=callNumber(b),
+  groupA=priority(an),groupB=priority(bn);
+ return groupA-groupB||
+  (an===null||bn===null?0:groupA<=1?an-bn:bn-an)||
   String(a?.name||'').localeCompare(String(b?.name||''),'nl-BE');
 }
 export function groupPoliceSeries(records){
