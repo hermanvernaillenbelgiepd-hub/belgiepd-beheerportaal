@@ -1,6 +1,5 @@
 import {getFirestore} from 'firebase-admin/firestore';
-import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
-import {verifyBoardDiscordRole} from './dossier-grants.js';
+import {PROFILE_COOKIE,technicalCookieIsValid} from './portal-profile-mode.js';
 import {collectDiscordDiagnosis,diagnosisAccess} from './discord-role-diagnostics.js';
 
 const MAIN_SERVICE_ID='srv-dbaj7njbc2fs73bjt4fg';
@@ -13,6 +12,27 @@ export function discordDiagnosticsMainOnly(env=process.env){
   return env.RENDER_GIT_BRANCH==='main'&&
     env.RENDER_SERVICE_NAME==='belgiepd-beheerportaal';
 }
+// The direct HTML request carries only the signed, HttpOnly technical cookie.
+// Actual diagnostic data additionally requires a freshly verified Bearer login.
+export function discordDiagnosticsPageAllowed(cookieHeader,env=process.env,now=Date.now()){
+  if(!discordDiagnosticsMainOnly(env))return false;
+  const header=String(cookieHeader||'');
+  if(header.length>2048)return false;
+  const raw=header.split(';').map(x=>x.trim())
+    .find(x=>x.startsWith(PROFILE_COOKIE+'='));
+  if(!raw)return false;
+  try{
+    const token=raw.slice(PROFILE_COOKIE.length+1).split('.');
+    if(token.length!==2||token[0].length>512)return false;
+    const payload=JSON.parse(Buffer.from(token[0],'base64url').toString('utf8'));
+    const id=String(payload?.id||''),uid=String(payload?.uid||'');
+    if(!/^\d{15,22}$/.test(id)||uid!=='discord:'+id)return false;
+    if(!String(env.BPD_TECHNICAL_ADMIN_DISCORD_IDS||'')
+      .split(',').map(x=>x.trim()).includes(id))return false;
+    return technicalCookieIsValid(header,uid,id,
+      env.BPD_PORTAL_PROFILE_SIGNING_KEY,now);
+  }catch{return false}
+}
 export function installDiscordDiagnosticRoutes(app,{
   requireUser,firestore=()=>getFirestore(),env=process.env,
   collect=collectDiscordDiagnosis,now=Date.now
@@ -20,19 +40,13 @@ export function installDiscordDiagnosticRoutes(app,{
   // Cache only sanitized, per-actor results. Authorization is evaluated on
   // every call before looking at the cache. Do not cache 401/403 responses.
   const cache=new Map(),pending=new Map();
-  async function scopedAccess(actor){
-    const id=actor?.discordId;
-    if(actor?.uid!=='discord:'+id||!/^\d{15,22}$/.test(String(id||'')))
-      return {access:null,member:null};
-    const db=firestore();
-    const [identity,appointment]=await Promise.all([
-      db.collection('bpd_discord_auth').doc(id).get(),
-      db.collection(BOARD_COLLECTION).doc(id).get()
-    ]);
-    const member=identity.exists?identity.data():null;
-    const appointed=appointment.exists?appointment.data():null;
-    return {member,access:diagnosisAccess(actor,member,appointed,
-      env.DISCORD_GUILD_ID,verifyBoardDiscordRole,activeBoardAppointment)};
+  async function scopedAccess(actor,includeMember=false){
+    const access=diagnosisAccess(actor);
+    if(!access)return {access:null,member:null};
+    if(!includeMember)return {access,member:null};
+    const identity=await firestore().collection('bpd_discord_auth')
+      .doc(actor.discordId).get();
+    return {access,member:identity.exists?identity.data():null};
   }
   // Lightweight access check: no Discord API calls or scan on page load.
   app.get('/api/board/discord-diagnostics/access',requireUser,async(req,res)=>{
@@ -54,12 +68,12 @@ export function installDiscordDiagnosticRoutes(app,{
       return res.status(404).json({error:'Alleen beschikbaar op MAIN'});
     const actor=req.bpd,id=actor?.discordId;
     if(actor?.uid!=='discord:'+id||!/^\d{15,22}$/.test(String(id||'')))
-      return res.status(403).json({error:'Een eigen geverifieerde Discord-bestuursaanmelding is vereist'});
+      return res.status(403).json({error:'Een geverifieerde Discord-aanmelding als Technisch Beheer is vereist'});
     try{
-      const {member,access}=await scopedAccess(actor);
-      if(!access)return res.status(403).json({
-        error:'Alleen Bestuur, Technisch Beheer, Korpsleiding en Officierenkader kunnen deze diagnose bekijken'
+      if(!diagnosisAccess(actor))return res.status(403).json({
+        error:'Schakel eerst jouw geverifieerde Technisch Beheer-profiel in'
       });
+      const {member,access}=await scopedAccess(actor,true);
       // Full guild pagination is never triggered by routine page loads.
       // It requires an explicit action from an already authorised read-only user.
       const coverage=req.query?.coverage==='1';

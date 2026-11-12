@@ -13,20 +13,13 @@ export function diagnosticState(httpStatus){
   if(httpStatus===429)return 'rate_limited';
   return 'unavailable';
 }
-export function diagnosisAccess(actor,member,appointment,guild,verifyBoard,activeAppointment){
+export function diagnosisAccess(actor){
+  // The server-side, signed Technisch Beheer mode is the sole authority.
   const id=String(actor?.discordId||'');
   if(!isDiscordId(id)||actor?.uid!=='discord:'+id)return null;
-  if(verifyBoard(member,guild))return 'geverifieerde_bestuursrol';
-  if(activeAppointment(appointment))return 'goedgekeurde_bestuursaanstelling';
-  // Technical mode is activated by the verified server-side profile cookie.
-  if(actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true&&
-     actor.role==='beheerder')return 'geverifieerd_technisch_beheer';
-  // The approved server-side portal cadre is separate from Discord role labels.
-  if(Array.isArray(actor.departments)&&actor.departments.length>0){
-    if(actor.role==='korpsleiding')return 'goedgekeurde_korpsleiding';
-    if(actor.role==='officierenkader')return 'goedgekeurd_officierenkader';
-  }
-  return null;
+  return actor.portalTechnicalMode===true&&
+    actor.profileTechnicalAvailable===true&&actor.role==='beheerder'
+      ?'geverifieerd_technisch_beheer':null;
 }
 export function ageStatus(member,guild,at=Date.now()){
   if(member?.guildId!==guild||!Number.isSafeInteger(member?.verifiedAt)||
