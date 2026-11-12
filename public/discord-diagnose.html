@@ -28,10 +28,10 @@ small,.muted{color:#a9bfdb}h1{font-size:clamp(25px,4vw,36px);margin:0 0 8px}h2{f
 <header><strong>🛡️ BelgiumPD / MAIN · Rollencontrole</strong>
 <nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html">Gebruikersbeheer</a><a href="/discord-status.html">Mijn Discord</a></nav>
 </header><main>
-<p class="tag">MAINOMGEVING · BEVOEGD KADER EN BEHEER · ALLEEN LEZEN</p>
+<p class="tag">MAINOMGEVING · UITSLUITEND TECHNISCH BEHEER · ALLEEN LEZEN</p>
 <h1>Discord-bot en rollencontrole</h1>
 <p class="lead">Controle van botverbinding, serverrollen, beperkte ledenlijsttoegang en jouw eigen rolverificatie. De pagina wijzigt geen Discord-rollen, personeelsgegevens of portaalrechten. Geen tokens of volledige ledenlijsten worden getoond.</p>
-<div id="notice" role="status" aria-live="polite">Je Discord-aanmelding en toegangsrechten worden gecontroleerd.</div>
+<div id="notice" role="status" aria-live="polite">Je geverifieerde Technisch Beheer-sessie wordt gecontroleerd.</div>
 <div class="panel" id="content" hidden>
  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center">
   <div><h2>Diagnose-overzicht</h2><small id="timestamp"></small></div>
@@ -121,7 +121,7 @@ let currentUser=null,request=0;
 async function refresh(coverage=false){
   const sequence=++request;
   if(!currentUser?.uid?.startsWith('discord:')){
-    $('content').hidden=true;showNotice('Meld je met je eigen goedgekeurde Discord-account aan via Gebruikersbeheer.',true);return;
+    $('content').hidden=true;showNotice('Meld je aan en activeer Technisch Beheer in Gebruikersbeheer.',true);return;
   }
   $('refresh').disabled=true;
   $('coverageRefresh').disabled=true;

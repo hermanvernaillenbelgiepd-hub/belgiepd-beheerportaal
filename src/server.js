@@ -36,7 +36,8 @@ import {mayReadFortnightReport} from './fortnight-report-policy.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
 import {installDiscordPersonalProfileRoutes} from './discord-personal-profile.js';
-import {installDiscordDiagnosticRoutes} from './discord-role-diagnostics-routes.js';
+import {installDiscordDiagnosticRoutes,discordDiagnosticsPageAllowed,
+  discordDiagnosticsMainOnly} from './discord-role-diagnostics-routes.js';
 import { installRoleRoutes } from './role-routes.js';
 import {installRoleArtworkRoutes} from './role-artwork-routes.js';
 import {installUniformManagementRoutes} from './uniform-management-routes.js';
@@ -111,6 +112,14 @@ app.get(['/burgerdossier.html','/solliciteren.html','/sollicitatiebeheer.html'],
   res.status(410).type('text/plain').send('Deze pagina is buiten gebruik.'));
 // One canonical personnel entry. Keep the old read-only document available
 // ONLY as the sandboxed same-origin directory embedded in that entry.
+// Block direct access to the technical HTML before express.static.
+app.get('/discord-diagnose.html',(req,res,next)=>{
+ if(!discordDiagnosticsMainOnly(process.env))
+  return res.status(404).type('text/plain').send('Technische diagnose alleen beschikbaar op MAIN.');
+ if(!discordDiagnosticsPageAllowed(req.headers.cookie,process.env))
+  return res.status(403).type('text/plain').send('Alleen toegankelijk in geverifieerde Technisch Beheer-modus. Activeer die in Gebruikersbeheer.');
+ next();
+});
 app.get('/personeelslijst.html',(req,res,next)=>{
  if(req.query.embed==='1')return next();
  res.redirect(302,'/personeelsbeheer.html');
