@@ -22,7 +22,7 @@ export function canonicalPoliceSpecialty(label){
  const joined=raw.replace(/[\s/-]/g,'');
  const alias={
   MOTOR:'MOTARD',MOTARD:'MOTARD',
-  K9:'K9',K9IO:'K9',K9INSTUCTEUR:'K9',
+  K9:'K9',K9IO:'K9',K9INSTRUCTEUR:'K9',
   ARRESTATIEEENHEID:'AE',AE:'AE',AEI:'AE',AET:'AE',
   DISP:'DISP',DISPATCH:'DISP',DISPATCHSELECTIE:'DISP',
   RAGO:'RAGO',RAGOIO:'RAGO',
@@ -106,7 +106,8 @@ export function policeSpecialtyTier(person,key){
  if(instructor||role==='INSTRUCTEUR'||/INSTRUCTEUR|DOCENT/.test(patch))
   return 'instructors';
  if(key==='K9'&&role==='GELEIDER IN STAGE'||role==='IN OPLEIDING'||
-    key==='RAGO'&&!specialtiesOf(p).has('RAGO')&&
+    key==='RAGO'&&
+       !list(p.specialties).some(x=>normal(x)==='RAGO')&&
        list(p.specialties).some(x=>normal(x)==='RAGO IO')||
     /IN OPLEIDING|SELECTIE|AANGEMELD|STAGE/.test(patch))
   return 'trainees';

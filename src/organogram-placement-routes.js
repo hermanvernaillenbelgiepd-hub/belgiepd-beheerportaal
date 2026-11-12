@@ -79,7 +79,9 @@ async function identityMap(db,ids,guild){
 }
 const manualMap=docs=>new Map(docs.map(d=>[d.id,d.data()]));
 const safePublic=p=>({
- dept:p.dept,name:p.name,call:p.call,rank:p.rank,specialties:p.specialties,
+ dept:p.dept,name:p.name,call:p.call,rank:p.rank,
+ series:p.dept==='politie'?String(p.series||'').slice(0,36):'',
+ specialties:p.specialties,
  teachingRoles:p.teachingRoles,displayLabels:p.displayLabels||[],instructorSpecialties:p.instructorSpecialties,
  teacherSpecialties:p.teacherSpecialties,k9Role:p.k9Role||'',motardRole:p.motardRole||'',dispRole:p.dispRole||'',
  aeRole:p.aeRole||'',aeManual:p.aeManual||'',aeRoles:Array.isArray(p.aeRoles)?p.aeRoles:[],

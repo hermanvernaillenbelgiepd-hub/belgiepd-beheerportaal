@@ -555,7 +555,7 @@ header{padding-inline:clamp(15px,2vw,34px)}
  #personnelCardDialog .personnel-card-bar{min-height:61px;align-items:start;flex-wrap:wrap;padding:6px}
  #personnelCardFrame{height:calc(100% - 61px)}
 }
-#personnelPublicView[hidden],#staffManagePanel[hidden],
+#personnelPublicView[hidden],#personnelGroupedView[hidden],#staffManagePanel[hidden],
 #personnelUnifiedNav[hidden]{display:none!important}
 @media(max-width:720px){#personnelPublicView{padding:4px}
  #personnelDirectoryFrame{height:78vh;min-height:540px}}
@@ -689,7 +689,7 @@ header{padding-inline:clamp(15px,2vw,34px)}
 @media(max-width:1279px){
  .staff-roster-table.roster-police-compact{min-width:1280px}
 }
-</style><link rel="stylesheet" href="/dossier-compact-test.css">
+</style><link rel="stylesheet" href="/personnel-grouped-views.css"><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
 body.dossier-embed>header{display:none}
@@ -713,7 +713,9 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 </section>
 <div id="mode" class="warn" hidden></div>
 <nav id="personnelUnifiedNav" aria-label="Personeelsweergaven">
- <button id="personnelPublicTab" type="button" aria-selected="true" aria-controls="personnelPublicView">👥 Algemene personeelslijst</button>
+ <button id="personnelPublicTab" type="button" aria-selected="true" aria-controls="personnelPublicView">👥 Personeelslijst</button>
+ <button id="personnelSeriesTab" type="button" aria-selected="false" aria-controls="personnelGroupedView">🗂 Reeksen</button>
+ <button id="personnelSpecialtiesTab" type="button" aria-selected="false" aria-controls="personnelGroupedView">🛡 Specialisaties</button>
  <button id="personnelManageTab" type="button" hidden aria-selected="false" aria-controls="staffManagePanel">⚙ Personeelsbeheer</button>
  <a href="/organogram-hierarchie.html">🌳 Organogram per dienst</a>
  <details id="personnelAdminTools" class="personnel-admin-tools" data-personnel-leadership hidden>
@@ -728,6 +730,18 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  <iframe id="personnelDirectoryFrame" src="/personeelslijst.html?embed=1"
   title="Algemene personeelslijst, alleen lezen" loading="eager"
   referrerpolicy="same-origin"></iframe>
+</section>
+<section id="personnelGroupedView" class="card" hidden aria-label="Politiereeksen en specialisaties">
+ <div class="personnel-group-toolbar">
+  <h2 id="personnelGroupTitle">Politie · Reeksen</h2>
+  <label for="personnelGroupSearch">Zoeken
+   <input id="personnelGroupSearch" type="search" placeholder="Naam, roepnummer, rang of specialisatie" autocomplete="off">
+  </label>
+  <button id="personnelGroupsRefresh" type="button">↻ Vernieuwen</button>
+ </div>
+ <p class="subtle">Alleen-lezen indeling uit het bestaande organogram. Reeksen, specialisaties en persoonlijke patches worden hier niet gewijzigd.</p>
+ <p id="personnelGroupStatus" role="status" aria-live="polite">Kies Reeksen of Specialisaties om het overzicht te openen.</p>
+ <div id="personnelGroupResults" class="personnel-group-cards"></div>
 </section>
 <dialog id="personnelCardDialog" aria-labelledby="personnelCardTitle">
  <div class="personnel-card-bar">
@@ -1172,6 +1186,7 @@ import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon
 import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalog.js';
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
+import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
 import {displayServiceBadge,serviceIdentity} from '/dossier-service-badge.js';
 import {policeGroupedRoster,policeOperationalTier,policeTierDisplay} from '/police-roster-cadre.js';
 import {attachRosterNamePreview,dismissRosterNamePreview} from '/roster-name-preview.js';
@@ -1188,20 +1203,29 @@ let rosterConfigs=Object.create(null),rosterCanEdit=false;
 let lifecycleDepartments=[];
 let personnelManagementAllowed=false;
 let personnelManagementRequested=false;
+let personnelGroupView='lijst';
 const initialQuery=new URLSearchParams(window.location.search);
 const dossierEmbedded=initialQuery.get('embed')==='1';
 const ficheMode=!dossierEmbedded&&initialQuery.get('fiche')==='1';
 personnelManagementRequested=ficheMode||dossierEmbedded||
   (initialQuery.has('discordId')&&initialQuery.has('dept'))||
   window.location.hash==='#rosterColumnDetails';
+if(!personnelManagementRequested&&['reeksen','specialisaties'].includes(initialQuery.get('weergave')))
+ personnelGroupView=initialQuery.get('weergave');
 function updatePersonnelView(){
   const privileged=personnelManagementAllowed&&personnelManagementRequested;
   $('personnelUnifiedNav').hidden=dossierEmbedded||ficheMode;
+  const grouped=!privileged&&!dossierEmbedded&&!ficheMode&&
+    ['reeksen','specialisaties'].includes(personnelGroupView);
   $('personnelManageTab').hidden=!personnelManagementAllowed;
-  $('personnelPublicView').hidden=privileged||dossierEmbedded||ficheMode;
+  $('personnelPublicView').hidden=privileged||grouped||dossierEmbedded||ficheMode;
+  $('personnelGroupedView').hidden=!grouped;
   $('staffManagePanel').hidden=!privileged||dossierEmbedded||ficheMode;
-  $('personnelPublicTab').setAttribute('aria-selected',String(!privileged));
+  $('personnelPublicTab').setAttribute('aria-selected',String(!privileged&&!grouped));
+  $('personnelSeriesTab').setAttribute('aria-selected',String(grouped&&personnelGroupView==='reeksen'));
+  $('personnelSpecialtiesTab').setAttribute('aria-selected',String(grouped&&personnelGroupView==='specialisaties'));
   $('personnelManageTab').setAttribute('aria-selected',String(privileged));
+  if(grouped)void personnelGroupedViews.activate(personnelGroupView);
   if(!privileged&&!ficheMode&&!dossierEmbedded){
     $('panel').hidden=true;
     $('newPanel').hidden=true;
@@ -1210,11 +1234,14 @@ function updatePersonnelView(){
   }
 }
 $('personnelPublicTab').onclick=()=>{
- personnelManagementRequested=false;updatePersonnelView();
+ personnelManagementRequested=false;personnelGroupView='lijst';updatePersonnelView();
 };
+for(const [id,view] of [['personnelSeriesTab','reeksen'],['personnelSpecialtiesTab','specialisaties']]){
+ $(id).onclick=()=>{personnelManagementRequested=false;personnelGroupView=view;updatePersonnelView()};
+}
 $('personnelManageTab').onclick=()=>{
  if(!personnelManagementAllowed)return;
- personnelManagementRequested=true;updatePersonnelView();
+ personnelGroupView='lijst';personnelManagementRequested=true;updatePersonnelView();
 };
 // Only the authenticated manager overview may disclose Discord identity.
 // The public list sends a call/name, never an ID.
@@ -1255,6 +1282,14 @@ function openUnifiedCard(call,name){
     'De personeelskaart reageert niet. Sluit dit venster en probeer opnieuw.';
  },15000);
 }
+const personnelGroupedViews=mountPersonnelGroupedViews({
+ root:$('personnelGroupResults'),status:$('personnelGroupStatus'),
+ title:$('personnelGroupTitle'),search:$('personnelGroupSearch'),
+ fetchData:()=>request('/api/organogram/hierarchie'),
+ viewerUid:()=>auth?.currentUser?.uid||'',
+ openPerson:(call,name)=>openUnifiedCard(call,name)
+});
+$('personnelGroupsRefresh').onclick=()=>{void personnelGroupedViews.refresh()};
 $('personnelCardClose').onclick=closeUnifiedCard;
 cardDialog.addEventListener('close',clearUnifiedCard);
 cardDialog.addEventListener('click',e=>{if(e.target===cardDialog)closeUnifiedCard();});
