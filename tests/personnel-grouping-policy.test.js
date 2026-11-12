@@ -69,7 +69,7 @@ test('read-only UI and API projection do not grant dossier access or expose iden
  assert.match(management,/id="personnelSpecialtiesTab"/);
  assert.match(management,/id="personnelGroupedView"/);
  assert.match(page,/groupPoliceSeries/);assert.match(page,/groupPoliceSpecialties/);
- assert.match(page,/openPerson\(p\\.call,p\\.name\\)/);
- assert.match(api,/series:p\\.dept==='politie'/);
+ assert.ok(page.includes('openPerson(p.call,p.name)'));
+ assert.ok(api.includes("series:p.dept==='politie'"));
  assert.match(docker,/tests\/personnel-grouping-policy\.test\.js/);
 });
