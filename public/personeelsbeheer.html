@@ -1307,9 +1307,20 @@ function openUnifiedCard(call,name){
 const personnelGroupedViews=mountPersonnelGroupedViews({
  root:$('personnelGroupResults'),status:$('personnelGroupStatus'),
  title:$('personnelGroupTitle'),search:$('personnelGroupSearch'),
- fetchData:()=>request('/api/organogram/hierarchie'),
+ departmentSelect:$('personnelGroupDepartment'),
+ fetchData:async()=>{
+  const organogram=await request('/api/organogram/hierarchie');
+  // Optional visual settings never prevent reading the existing personnel.
+  const layout=await request('/api/personnel-group-settings')
+   .catch(()=>({settings:{}}));
+  return {...organogram,groupSettings:layout.settings||{}};
+ },
  viewerUid:()=>auth?.currentUser?.uid||'',
  openPerson:(call,name)=>openUnifiedCard(call,name)
+});
+const personnelGroupSettingsEditor=mountPersonnelGroupSettingsEditor({
+ root:$('personnelGroupSettingsView'),request,
+ onSaved:()=>personnelGroupedViews.refresh()
 });
 $('personnelGroupsRefresh').onclick=()=>{void personnelGroupedViews.refresh()};
 $('personnelCardClose').onclick=closeUnifiedCard;
@@ -2668,7 +2679,8 @@ function initializeRosterEditor(){
 
 async function load(){
   if(!auth?.currentUser){
-    personnelManagementAllowed=false;lifecycleDepartments=[];
+    personnelManagementAllowed=false;personnelGroupSettingsAllowed=false;
+    personnelGroupSettingsEditor.reset();personnelGroupedViews.reset();lifecycleDepartments=[];
     $('personnelArchivePanel').hidden=true;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
     updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
@@ -2693,6 +2705,10 @@ async function load(){
         'Instellingen niet beschikbaar: '+error.message;
       if(location.hash==='#rosterColumnDetails')$('rosterColumnDetails').open=true;
     }
+    try{
+     const groupMeta=await request('/api/personnel-group-settings');
+     personnelGroupSettingsAllowed=Object.values(groupMeta.canEdit||{}).some(Boolean);
+    }catch{personnelGroupSettingsAllowed=false;}
     const data=await request('/api/personnel/overview');
     try{
      const artwork=await request('/api/role-artwork/manifest');
@@ -2703,7 +2719,7 @@ async function load(){
     for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=false;
     lifecycleDepartments=Array.isArray(data.lifecycleDepartments)?data.lifecycleDepartments:[];
     $('personnelArchivePanel').hidden=!lifecycleDepartments.length;
-    $('personnelAdminTools').hidden=!lifecycleDepartments.length;
+    $('personnelAdminTools').hidden=!lifecycleDepartments.length&&!personnelGroupSettingsAllowed;
     $('accessHelp').hidden=true;
     people=data.records||[];pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
