@@ -151,3 +151,11 @@ test('reeksfilter is uitsluitend 1, 2, 3 en gewone bronstatussen worden niet geÃ
  assert.ok(iframe.includes("['all','1','2','3'].includes(value)"));
  assert.ok(iframe.includes("seriesNumber(p.series)===rosterSeriesFilter"));
 });
+
+test('reeksenoverzicht verbergt overige labels zonder personeelsrecords of dossierhistoriek te verwijderen',()=>{
+ const grouped=file('public/personnel-grouped-ui.js');
+ const policy=file('public/personnel-grouping-policy.js');
+ assert.ok(grouped.includes(".filter(group=>['1','2','3'].includes(group.key))"));
+ assert.ok(policy.includes("key:'vlinder'"));
+ assert.ok(policy.includes("key:'kader'"));
+});
