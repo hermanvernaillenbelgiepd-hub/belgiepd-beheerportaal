@@ -56,7 +56,7 @@ export function policeMemberOrder(a,b){
 // to the general personnel roster or to specialisation rankings.
 export function policeSeriesMemberOrder(a,b){
  const callNumber=p=>{
-  const match=String(p?.call||'').trim().match(/(?:^|[- ])(\\d{3})$/);
+  const match=String(p?.call||'').trim().match(/(?:^|[- ])(\d{3})$/);
   return match?Number(match[1]):null;
  };
  const priority=n=>n===null?100:n>=700&&n<=799?0:n>=600&&n<=699?1:
