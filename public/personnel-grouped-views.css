@@ -1,0 +1,49 @@
+/* Read-only groups share the existing personnel card; no horizontal scrolling. */
+#personnelGroupedView{padding:14px;min-width:0}
+#personnelGroupedView[hidden]{display:none!important}
+.personnel-group-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.personnel-group-toolbar h2{margin:0;font-size:17px}
+.personnel-group-toolbar label{display:grid;gap:4px;font-size:11px;font-weight:650;flex:1 1 230px}
+.personnel-group-toolbar input{width:100%;min-width:0;max-width:450px;box-sizing:border-box;
+ border:1px solid #527ba5;border-radius:7px;background:#0d2037;color:#edf6ff;padding:9px 11px}
+.personnel-group-toolbar button{padding:8px 12px;border:1px solid #527ba5;border-radius:7px;
+ background:#23466b;color:#f0f7ff;font-weight:750;cursor:pointer}
+#personnelGroupStatus{font-size:12px;color:#bad3ec;margin:7px 0 12px}
+.personnel-group-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,390px),1fr));
+ gap:12px;align-items:start}
+.personnel-group-card{background:#102941;border:1px solid #476787;border-radius:10px;overflow:hidden;min-width:0}
+.personnel-group-card[open]{border-color:#81aedc}
+.personnel-group-summary{display:flex;gap:12px;justify-content:space-between;align-items:center;
+ cursor:pointer;padding:12px 13px;background:#193857;color:#eff7ff;font-size:13px;list-style-position:inside}
+.personnel-group-summary strong{overflow-wrap:anywhere}
+.personnel-group-summary:hover{background:#254b75}
+.personnel-group-count{white-space:nowrap;font-size:11px;color:#cce5ff}
+.personnel-group-card.series-1 .personnel-group-summary{border-left:4px solid #e66b73}
+.personnel-group-card.series-2 .personnel-group-summary{border-left:4px solid #bb89eb}
+.personnel-group-card.series-3 .personnel-group-summary{border-left:4px solid #83d2f5}
+.personnel-group-card.series-4 .personnel-group-summary{border-left:4px solid #ebd277}
+.personnel-group-card.series-vlinder .personnel-group-summary{border-left:4px solid #7fdc9b}
+.personnel-group-content{display:grid;gap:10px;padding:10px}
+.personnel-group-subsection h4{font-size:11px;color:#b9d9f7;margin:0 0 5px;letter-spacing:.02em}
+.personnel-group-members{display:grid;gap:5px}
+.personnel-group-person{display:flex;align-items:center;gap:8px;padding:8px;
+ background:#172f4b;color:#edf6ff;border:1px solid #3c5979;border-radius:8px;text-align:left;
+ min-width:0;width:100%;box-sizing:border-box;font:inherit}
+button.personnel-group-person{cursor:pointer}
+button.personnel-group-person:hover,button.personnel-group-person:focus-visible{background:#2c5179;border-color:#9bc9ef}
+.personnel-group-call{display:inline-flex;justify-content:center;align-items:center;
+ width:62px;flex:0 0 62px;min-height:25px;border-radius:6px;background:#284b72;
+ font-size:11px;font-variant-numeric:tabular-nums;font-weight:800}
+.personnel-group-identity{display:grid;gap:2px;min-width:0;flex:1}
+.personnel-group-identity strong{font-size:12px;overflow-wrap:anywhere}
+.personnel-group-identity small{font-size:10px;color:#c0d6ee;overflow-wrap:anywhere}
+.personnel-group-patch{display:flex;align-items:center;justify-content:center;
+ flex:0 0 108px;max-width:108px;min-width:0;font-size:10px;color:#bfdaed}
+.personnel-group-patch img{display:block;width:100%;height:45px;object-fit:contain;border-radius:4px}
+.personnel-group-empty{font-size:12px;color:#c0d5ed}
+@media(max-width:620px){
+ #personnelGroupedView{padding:8px}
+ .personnel-group-cards{grid-template-columns:1fr}
+ .personnel-group-patch{flex-basis:76px;max-width:76px}
+ .personnel-group-call{width:53px;flex-basis:53px}
+}

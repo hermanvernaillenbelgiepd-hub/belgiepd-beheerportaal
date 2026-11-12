@@ -449,6 +449,9 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     // Reuse only the public police status already visible in the member
     // personnel list. No leave history, dossier fields or sensitive data.
     const display={...safePublic(merged),
+     // Reeksen come from the actual personnel source; mergePlacement is
+     // presentation-only and does not copy source series information.
+     series:p.dept==='politie'?String(p.series||'').slice(0,36):'',
      ...(p.dept==='burger'?{burgerGroups:citizenOrganogramGroups(p,(()=>{const identity=roles.entries.get(p.personId),now=Date.now();if(!identity||identity.guildId!==process.env.DISCORD_GUILD_ID||!Number.isSafeInteger(identity.verifiedAt)||identity.verifiedAt>now+60000||now-identity.verifiedAt>7*86400000||!Array.isArray(identity.roleIds))return [];const roleIds=new Set(identity.roleIds);return [['1492485336197234728','Burgerraad'],['1309532438019706966','Burger'],['1398985105254650007','Burger IO']].filter(([id])=>roleIds.has(id)).map(([,label])=>label);})(),manualCouncilIds.has(p.personId))}:{}),
      ...(p.dept==='depannage'?{depannageGroups:verifiedDepannageOrganogramGroups(
       roles.entries.get(p.personId),process.env.DISCORD_GUILD_ID)}:{}),
