@@ -102,7 +102,8 @@ export function mountCompactPersonnelDirectory({root,fetchPersonnel,viewerUid,op
  const summary=el('summary','', 'Volledige tabel met alle specialisatiekolommen');
  legacy.append(summary);
  const note=el('p','pc-note','De uitgebreide, bestaande personeelslijst blijft hier beschikbaar. Op smalle schermen kunnen de detailkolommen horizontaal scrollen.');
- const frame=el('iframe');frame.title='Uitgebreide personeelslijst (alle specialisatiekolommen)';
+ const frame=el('iframe');frame.id='personnelDirectoryFrame';
+ frame.title='Uitgebreide personeelslijst (alle specialisatiekolommen)';
  frame.loading='lazy';frame.referrerPolicy='same-origin';
  legacy.append(note,frame);
  legacy.addEventListener('toggle',()=>{
