@@ -1352,10 +1352,11 @@ function openUnifiedCard(call,name){
 }
 let personnelServiceDirectoryActive=false;
 let personnelCanFilterSeries=false;
+let personnelCanViewService=false;
 function updatePersonnelServiceMode(){
  const service=$('personnelServiceDirectory'),
   original=$('personnelOriginalDirectory'),
-  hasAccess=!$('personnelServiceMode').hidden;
+  hasAccess=personnelCanViewService;
  if(!hasAccess)personnelServiceDirectoryActive=false;
  service.hidden=!personnelServiceDirectoryActive;
  original.hidden=personnelServiceDirectoryActive;
@@ -2764,7 +2765,8 @@ async function load(){
     personnelManagementAllowed=false;personnelGroupSettingsAllowed=false;
     personnelGroupSettingsEditor.reset();personnelGroupedViews.reset();
     personnelCompactViews.reset();
-    personnelCanFilterSeries=false;personnelServiceDirectoryActive=false;
+    personnelCanFilterSeries=false;personnelCanViewService=false;
+    personnelServiceDirectoryActive=false;
     $('personnelServiceMode').hidden=true;updatePersonnelServiceMode();
     lifecycleDepartments=[];
     $('personnelArchivePanel').hidden=true;closeUnifiedCard();
@@ -2819,7 +2821,8 @@ async function load(){
     const entitled=(data.departments||[]).filter(x=>
      ['politie','brandweer','ambulance','depannage','burger'].includes(x));
     personnelCanFilterSeries=entitled.includes('politie');
-    $('personnelServiceMode').hidden=entitled.length===0;
+    personnelCanViewService=entitled.length>0;
+    $('personnelServiceMode').hidden=!personnelCanViewService;
     updatePersonnelServiceMode();
     pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
@@ -2884,7 +2887,8 @@ async function load(){
   }catch(e){
     people=[];personnelManagementAllowed=false;lifecycleDepartments=[];
     personnelCompactViews.setScopedPersonnel([],[]);
-    personnelCanFilterSeries=false;personnelServiceDirectoryActive=false;
+    personnelCanFilterSeries=false;personnelCanViewService=false;
+    personnelServiceDirectoryActive=false;
     $('personnelServiceMode').hidden=true;updatePersonnelServiceMode();
     $('personnelArchivePanel').hidden=true;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
