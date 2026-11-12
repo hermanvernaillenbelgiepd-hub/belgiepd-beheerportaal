@@ -21,7 +21,7 @@ export function directoryStatusKind(value){
  return 'neutral';
 }
 export function activeDirectorySpecialties(person){
- if(person?.hasPoliceEntry===false)return [];
+ if(person?.hasPoliceEntry===false&&!person?.serviceDept)return [];
  const values=Array.isArray(person?.specialties)?person.specialties:[];
  const shown=[],seen=new Set();
  for(const item of values){
@@ -60,4 +60,29 @@ export function directorySeriesOptions(records){
   if(s&&s!=='—'&&s.length<80)names.add(s);
  }
  return [...names].sort((a,b)=>a.localeCompare(b,'nl-BE',{numeric:true})).slice(0,50);
+}
+
+
+// Only a previously authorized /api/personnel/overview response can be
+// projected to the "Mijn dienst" read-only viewer. This projection deliberately
+// removes Discord IDs, audit data, edit flags, activity and private dossier data.
+// The caller must NEVER fall back to a requested client-side service role.
+export function scopedServiceDirectory(records,departments){
+ const allowed=new Set((Array.isArray(departments)?departments:[])
+  .filter(x=>['politie','brandweer','ambulance','depannage','burger'].includes(x)));
+ const labels={politie:'Politie',brandweer:'Brandweer',
+  ambulance:'Ambulance',depannage:'Depannage',burger:'Burger'};
+ return (Array.isArray(records)?records:[]).filter(p=>p&&allowed.has(p.dept)&&
+  typeof p.name==='string'&&p.name.trim()).slice(0,1200).map(p=>({
+  name:String(p.name).slice(0,90),
+  call:String(p.call||'—').slice(0,24),
+  rank:String(p.rank||'—').slice(0,95),
+  status:String(p.status||'').slice(0,30),
+  series:p.dept==='politie'?String(p.series||'—').slice(0,85):'—',
+  hasPoliceEntry:p.dept==='politie',
+  services:[labels[p.dept]],serviceDept:p.dept,
+  specialties:(Array.isArray(p.specialties)?p.specialties:[])
+   .filter(x=>x&&typeof x.label==='string'&&typeof x.value==='string')
+   .slice(0,20).map(x=>({label:x.label.slice(0,64),value:x.value.slice(0,50)}))
+ }));
 }
