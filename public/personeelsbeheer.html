@@ -1222,17 +1222,23 @@ const ficheMode=!dossierEmbedded&&initialQuery.get('fiche')==='1';
 personnelManagementRequested=ficheMode||dossierEmbedded||
   (initialQuery.has('discordId')&&initialQuery.has('dept'))||
   window.location.hash==='#rosterColumnDetails';
-if(!personnelManagementRequested&&['reeksen','specialisaties','instellingen'].includes(initialQuery.get('weergave')))
+// Explicit deep-links take precedence over the general personnel editor.
+// Actual edit permission remains checked independently by the API.
+if(!dossierEmbedded&&!ficheMode&&
+   ['reeksen','specialisaties','instellingen'].includes(initialQuery.get('weergave'))){
+ personnelManagementRequested=false;
  personnelGroupView=initialQuery.get('weergave');
+}
 function updatePersonnelView(){
   const privileged=personnelManagementAllowed&&personnelManagementRequested;
   $('personnelUnifiedNav').hidden=dossierEmbedded||ficheMode;
   const settingsView=!privileged&&!dossierEmbedded&&!ficheMode&&
-    personnelGroupView==='instellingen'&&personnelGroupSettingsAllowed;
+    personnelGroupView==='instellingen';
   const grouped=!privileged&&!settingsView&&!dossierEmbedded&&!ficheMode&&
     ['reeksen','specialisaties'].includes(personnelGroupView);
   $('personnelManageTab').hidden=!personnelManagementAllowed;
-  $('personnelGroupSettingsTab').hidden=!personnelGroupSettingsAllowed||dossierEmbedded||ficheMode;
+  // Opening the settings is read-only by default; Save stays server-gated.
+  $('personnelGroupSettingsTab').hidden=dossierEmbedded||ficheMode;
   $('personnelPublicView').hidden=privileged||grouped||dossierEmbedded||ficheMode;
   $('personnelGroupedView').hidden=!grouped;
   $('personnelGroupSettingsView').hidden=!settingsView;
@@ -1258,7 +1264,6 @@ for(const [id,view] of [['personnelSeriesTab','reeksen'],['personnelSpecialtiesT
  $(id).onclick=()=>{personnelManagementRequested=false;personnelGroupView=view;updatePersonnelView()};
 }
 $('personnelGroupSettingsTab').onclick=()=>{
- if(!personnelGroupSettingsAllowed)return;
  personnelManagementRequested=false;personnelGroupView='instellingen';updatePersonnelView();
 };
 $('personnelManageTab').onclick=()=>{
