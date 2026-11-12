@@ -359,6 +359,16 @@
     }
   }
   function adapt(table){
+    // The management matrix has many compact, carefully sized columns.
+    // Desktop conversion to giant two-column cards makes personnel unusable.
+    // Keep the matrix; its existing holder can scroll where unavoidable.
+    const desktopAdminMatrix=table.classList.contains('staff-roster-table')&&
+      table.closest('#staffManagePanel')&&
+      document.documentElement.clientWidth>=900;
+    if(desktopAdminMatrix){
+      table.classList.remove('bpd-adaptive-cards');
+      return;
+    }
     const labels=headings(table);
     if(labels.length)annotate(table,labels);
     const host=table.closest('.staff-roster-holder,.mr-scroll,.member-table-wrap,.tablewrap,.scroller')||
