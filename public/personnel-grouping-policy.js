@@ -136,3 +136,36 @@ export function groupPoliceSpecialties(records){
   return {...def,groups,total:Object.values(groups).reduce((n,x)=>n+x.length,0)};
  });
 }
+
+// Other services reuse the same verified organogram projection as Police.
+// Unknown qualifications never appear until registered on that source.
+export function groupServiceSpecialties(records,dept){
+ if(dept==='politie')return groupPoliceSpecialties(records);
+ const groups=new Map();
+ const raw=x=>String(x||'').trim();
+ const code=x=>raw(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toUpperCase().replace(/[.]/g,' ').replace(/\s+/g,' ').slice(0,64);
+ for(const p of list(records).filter(x=>x?.dept===dept)){
+  const active=new Set(list(p.specialties).map(code).filter(Boolean));
+  const instructor=new Set(list(p.instructorSpecialties).map(code));
+  const teacher=new Set(list(p.teacherSpecialties).map(code));
+  for(const spec of active){
+   if(!/^[A-Z0-9][A-Z0-9 /_-]{0,63}$/.test(spec))continue;
+   if(!groups.has(spec))groups.set(spec,{key:spec,label:spec,icon:'🏷️',
+    groups:{leadership:[],instructors:[],members:[],trainees:[]}});
+   const group=groups.get(spec);
+   const levels=list(p.specialtyPatches).filter(x=>code(x?.label)===spec)
+    .map(x=>code(x?.level));
+   // These labels remain purely descriptive; never grant service access.
+   const level=instructor.has(spec)||teacher.has(spec)||
+      levels.some(x=>/INSTRUCTEUR|DOCENT/.test(x))?'instructors':
+     levels.some(x=>/OPLEIDING|STAGE|SELECTIE/.test(x))?'trainees':
+     levels.some(x=>/TEAMLEADER|LEIDING/.test(x))?'leadership':'members';
+   group.groups[level].push(p);
+  }
+ }
+ return [...groups.values()].map(group=>{
+  for(const people of Object.values(group.groups))people.sort(policeMemberOrder);
+  return {...group,total:Object.values(group.groups).reduce((n,arr)=>n+arr.length,0)};
+ }).sort((a,b)=>a.label.localeCompare(b.label,'nl-BE')).slice(0,80);
+}

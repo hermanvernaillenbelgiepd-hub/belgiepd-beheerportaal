@@ -90,7 +90,7 @@ export function validateGroupSettings(payload,dept,registered=[]){
  const {expectedRevision,series,specialties,tiers,reason}=payload;
  if(!Number.isSafeInteger(expectedRevision)||expectedRevision<0)
   throw Error('Vernieuw de instellingen en probeer opnieuw');
- if(!labelOk(reason)||reason.trim().length<8||reason.trim().length>300)
+ if(typeof reason!=='string'||reason.trim().length<8||reason.trim().length>300||/[<>\x00-\x1f\x7f]/.test(reason))
   throw Error('Geef een motivering van 8–300 tekens');
  if(!Array.isArray(series)||series.length!==(dept==='politie'?7:0)||
   !Array.isArray(specialties)||specialties.length>80||
