@@ -43,7 +43,7 @@ export function filterCompactDirectory(records,filters={}){
  return (Array.isArray(records)?records:[]).filter(person=>{
   if(!person||!norm(person.name))return false;
   if(dept!=='all'&&!((person.services||[]).includes(dept)))return false;
-  if(series!=='all'&&norm(person.series)!==series)return false;
+  if(series!=='all'&&personnelSeriesNumber(person.series)!==series)return false;
   if(status!=='all'&&directoryStatusKind(person.status)!==status)return false;
   if(!query)return true;
   const visible=[person.call,person.rank,person.name,person.series,person.status,
@@ -52,14 +52,16 @@ export function filterCompactDirectory(records,filters={}){
   return visible.some(value=>norm(value).toLocaleLowerCase('nl-BE').includes(query));
  });
 }
-export function directorySeriesOptions(records){
- const names=new Set();
- for(const p of Array.isArray(records)?records:[]){
-  if(!p?.hasPoliceEntry)continue;
-  const s=norm(p.series);
-  if(s&&s!=='—'&&s.length<80)names.add(s);
- }
- return [...names].sort((a,b)=>a.localeCompare(b,'nl-BE',{numeric:true})).slice(0,50);
+export function personnelSeriesNumber(value){
+ const series=String(value??'').trim();
+ const m=series.match(/^(?:reeks|r)\s*0?([1-3])$/i)||
+  series.match(/^0?([1-3])$/);
+ return m?m[1]:null;
+}
+export function directorySeriesOptions(_records){
+ // Only the three active operational series are selectable. Kader, BANNED,
+ // unset or archived source values must never become a dropdown option.
+ return ['1','2','3'];
 }
 
 

@@ -118,7 +118,7 @@ export function mountCompactPersonnelDirectory({root,fetchPersonnel,viewerUid,op
  const summary=el('summary','', 'Volledige tabel met alle specialisatiekolommen');
  legacy.append(summary);
  const note=el('p','pc-note','De uitgebreide, bestaande personeelslijst blijft hier beschikbaar. Op smalle schermen kunnen de detailkolommen horizontaal scrollen.');
- const frame=el('iframe');frame.id='personnelDirectoryFrame';
+ const frame=el('iframe');frame.id='personnelLegacyDirectoryFrame';
  frame.title='Uitgebreide personeelslijst (alle specialisatiekolommen)';
  frame.loading='lazy';frame.referrerPolicy='same-origin';
  legacy.append(note,frame);
@@ -169,7 +169,7 @@ export function mountCompactPersonnelDirectory({root,fetchPersonnel,viewerUid,op
  function seriesOptions(){
   const current=series.value;
   series.replaceChildren(choice('all','Alle reeksen'));
-  for(const value of directorySeriesOptions(activeRecords()))series.append(choice(value,value));
+  for(const value of directorySeriesOptions(activeRecords()))series.append(choice(value,'Reeks '+value));
   if([...series.options].some(x=>x.value===current))series.value=current;
  }
  async function refresh(force=false){
