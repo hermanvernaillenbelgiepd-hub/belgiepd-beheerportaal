@@ -1,0 +1,24 @@
+#personnelGroupSettingsView[hidden]{display:none!important}
+#personnelGroupSettingsView{background:#102941;color:#e8f4ff;padding:18px;max-width:100%}
+.personnel-settings-top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.personnel-settings-top h2{font-size:19px;margin:0}
+.personnel-settings-top select{max-width:250px;min-width:150px}
+#personnelGroupSettingsView h3{font-size:15px;margin:22px 0 9px;border-bottom:1px solid #426485;padding-bottom:7px}
+.personnel-settings-help{font-size:12px;color:#bad3ec;line-height:1.6}
+.personnel-settings-status{font-size:12px;color:#bad3ec;margin:10px 0}
+.personnel-settings-entries{display:grid;gap:7px}
+.personnel-settings-entry{display:flex;gap:8px;align-items:center;padding:7px;
+ border:1px solid #426485;background:#18344f;border-radius:7px;flex-wrap:wrap}
+.personnel-settings-entry code{width:110px;min-width:80px;font-size:11px;overflow-wrap:anywhere;color:#bbe1ff}
+.personnel-settings-entry .personnel-settings-field{flex:1 1 180px}
+.personnel-settings-entry button{padding:5px 9px;min-width:34px;background:#305578}
+.personnel-settings-field{display:grid;gap:4px;min-width:0;color:#c9e0f5;font-size:11px}
+.personnel-settings-field input,.personnel-settings-top select{box-sizing:border-box;
+ background:#0b2037;color:#f5faff;border:1px solid #587ca4;border-radius:6px;padding:9px;min-width:0}
+.personnel-settings-toggle{display:flex;align-items:center;gap:5px;font-size:11px;white-space:nowrap}
+.personnel-settings-tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:9px}
+.personnel-settings-actions,.personnel-settings-links{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.personnel-settings-links a{color:#b8dcff;font-size:12px}
+#personnelGroupDepartment{border:1px solid #527ba5;background:#0d2037;color:#edf6ff;
+ padding:9px;border-radius:7px;min-width:145px}
+@media(max-width:640px){.personnel-settings-entry code{width:100%}}
