@@ -64,7 +64,7 @@ export function policeSeriesMemberOrder(a,b){
   n>=500&&n<=599?4:n>=400&&n<=499?5:
   n>=300&&n<=399?6:n>=200&&n<=299?7:n>=100&&n<=199?8:9;
  const an=callNumber(a),bn=callNumber(b);
- return priority(an)-priority(b)||
+ return priority(an)-priority(bn)||
   (an===null?0:an)-(bn===null?0:bn)||
   String(a?.name||'').localeCompare(String(b?.name||''),'nl-BE');
 }
