@@ -50,6 +50,24 @@ export function policeMemberOrder(a,b){
  const number=p=>Number(String(p.call||'').match(/(\d{3})$/)?.[1]||-1);
  return number(b)-number(a)||String(a.name).localeCompare(String(b.name),'nl-BE');
 }
+// Hidden presentation order within the Reeksen overview: operational
+// 7xx callsigns first (700, 710, 720, ...), then 6xx (600, 610, ...).
+// Other ranks keep their existing relative cadre priority. Do not apply this
+// to the general personnel roster or to specialisation rankings.
+export function policeSeriesMemberOrder(a,b){
+ const callNumber=p=>{
+  const match=String(p?.call||'').trim().match(/(?:^|[- ])(\\d{3})$/);
+  return match?Number(match[1]):null;
+ };
+ const priority=n=>n===null?100:n>=700&&n<=799?0:n>=600&&n<=699?1:
+  n>=800&&n<=899?2:n>=900&&n<=999?3:
+  n>=500&&n<=599?4:n>=400&&n<=499?5:
+  n>=300&&n<=399?6:n>=200&&n<=299?7:n>=100&&n<=199?8:9;
+ const an=callNumber(a),bn=callNumber(b);
+ return priority(an)-priority(b)||
+  (an===null?0:an)-(bn===null?0:bn)||
+  String(a?.name||'').localeCompare(String(b?.name||''),'nl-BE');
+}
 export function groupPoliceSeries(records){
  const definitions=[
   {key:'1',title:'Reeks 1',color:'series-1'},
@@ -76,7 +94,7 @@ export function groupPoliceSeries(records){
  }
  return definitions.map(def=>{
   const g=groups.get(def.key);
-  g.heads.sort(policeMemberOrder);g.members.sort(policeMemberOrder);
+  g.heads.sort(policeSeriesMemberOrder);g.members.sort(policeSeriesMemberOrder);
   return {...g,total:g.heads.length+g.members.length};
  });
 }

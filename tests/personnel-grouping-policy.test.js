@@ -79,3 +79,22 @@ test('browsermodule is geldig JavaScript en ververst de projectie na maximaal ee
  assert.equal(typeof ui.mountPersonnelGroupedViews,'function');
  assert.match(root('public/personnel-grouped-ui.js'),/Date\.now\(\)-loadedAt<60000/);
 });
+
+test('reeksen volgen verborgen 700-710-720-600-610 volgorde, niet dalend roepnummer',()=>{
+ const records=[
+  person('600','600'),person('720','720'),person('610','610'),
+  person('700','700'),person('710','710'),person('450','450'),
+  person('420','420'),person('800','800'),person('B','geen-roepnummer')
+ ];
+ const reeks1=groupPoliceSeries(records).find(x=>x.key==='1');
+ assert.deepEqual(reeks1.members.map(x=>x.name),
+  ['700','710','720','600','610','800','450','420','B']);
+ const a=groupPoliceSeries([
+  person('720','720',[],{reekshoofdReeks:'Reeks 1'}),
+  person('700','700',[],{reekshoofdReeks:'Reeks 1'}),
+  person('710','710',[],{reekshoofdReeks:'Reeks 1'}),
+  person('610','610',[],{reekshoofdReeks:'Reeks 1'}),
+  person('600','600',[],{reekshoofdReeks:'Reeks 1'})
+ ]).find(x=>x.key==='1');
+ assert.deepEqual(a.heads.map(x=>x.call),['700','710','720','600','610']);
+});
