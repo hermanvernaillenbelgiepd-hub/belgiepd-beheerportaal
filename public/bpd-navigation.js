@@ -146,30 +146,67 @@
       text.className='bpd-home-side-label';text.textContent=label;
       link.replaceChildren(icon,text);
     }
-    const quick=makeQuick();
-    top.after(quick);
-    function update(){
-      const active=Array.from(sidebar.querySelectorAll('nav'))
-        .find(n=>!n.hidden);
-      const links=active?Array.from(active.querySelectorAll('a[href]'))
-        .filter(a=>!a.hidden):[];
-      quick.replaceChildren();
-      for(const original of links){
-        // Copy only the safe local portal destination, not any profile ID.
-        const href=original.getAttribute('href');
-        if(!validPath(href))continue;
-        const item=document.createElement('a');item.href=href;
-        item.textContent=original.textContent.replace(/^[^\p{L}\p{N}]+/u,'').trim();
-        if(new URL(href,window.location.origin).pathname===here)
-          item.setAttribute('aria-current','page');
-        quick.append(item);
-      }
-      quick.append(makeThemeToggle());
-      quick.hidden=false;
+    // A second, horizontally scrolling quick-navigation duplicated the
+    // role-aware menu. Keep the theme switch, but use a compact drawer for
+    // widths where the normal sidebar no longer fits.
+    const actions=top.querySelector('.topbar-actions')||top;
+    const theme=makeThemeToggle();
+    theme.id='homeThemeToggle';
+    actions.prepend(theme);
+    const portal=sidebar.closest('.portal');
+    sidebar.id='homeRoleSidebar';
+    const toggle=document.createElement('button');
+    toggle.type='button';toggle.id='homeMenuToggle';
+    toggle.textContent='☰ Menu';
+    toggle.setAttribute('aria-label','Hoofdmenu openen');
+    toggle.setAttribute('aria-controls','homeRoleSidebar');
+    toggle.setAttribute('aria-expanded','false');
+    actions.prepend(toggle);
+    const closeButton=document.createElement('button');
+    closeButton.type='button';closeButton.id='homeMenuClose';
+    closeButton.textContent='× Sluiten';
+    closeButton.setAttribute('aria-label','Hoofdmenu sluiten');
+    sidebar.prepend(closeButton);
+    const scrim=document.createElement('button');
+    scrim.type='button';scrim.className='bpd-home-menu-scrim';
+    scrim.setAttribute('aria-label','Menu sluiten');
+    portal.prepend(scrim);
+    function closeMenu(){
+      portal.classList.remove('bpd-home-menu-open');
+      toggle.setAttribute('aria-expanded','false');
+      toggle.setAttribute('aria-label','Hoofdmenu openen');
     }
-    update();
-    const observer=new MutationObserver(update);
-    observer.observe(sidebar,{attributes:true,attributeFilter:['hidden'],subtree:true});
+    toggle.addEventListener('click',()=>{
+      const open=portal.classList.toggle('bpd-home-menu-open');
+      toggle.setAttribute('aria-expanded',String(open));
+      toggle.setAttribute('aria-label',open?'Hoofdmenu sluiten':'Hoofdmenu openen');
+    });
+    closeButton.addEventListener('click',()=>{
+      closeMenu();toggle.focus();
+    });
+    scrim.addEventListener('click',closeMenu);
+    sidebar.addEventListener('click',event=>{
+      if(event.target.closest('a[href]'))closeMenu();
+    });
+    document.addEventListener('keydown',event=>{
+      if(event.key==='Escape'&&portal.classList.contains('bpd-home-menu-open')){
+        closeMenu();toggle.focus();
+      }
+    });
+    const compactViewport=window.matchMedia('(max-width:1280px)');
+    const memberView=document.getElementById('memberDashboard');
+    function syncMenu(){
+      const needsDrawer=compactViewport.matches||memberView?.hidden===false;
+      portal.classList.toggle('bpd-home-nav-drawer',Boolean(needsDrawer));
+      if(!needsDrawer)closeMenu();
+    }
+    if(compactViewport.addEventListener)
+      compactViewport.addEventListener('change',syncMenu);
+    else compactViewport.addListener(syncMenu);
+    if(memberView)new MutationObserver(syncMenu).observe(memberView,{
+      attributes:true,attributeFilter:['hidden']
+    });
+    syncMenu();
   }
   function addSmallBack(){
     const header=document.querySelector('body > header');
