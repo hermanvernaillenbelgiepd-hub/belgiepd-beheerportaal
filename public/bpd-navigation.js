@@ -71,9 +71,13 @@
     }catch{}
     window.location.assign('/');
   }
+  const portalLabelScript=document.createElement('script');
+  portalLabelScript.src='/portal-labels-client.js';
+  portalLabelScript.defer=true;
+  document.head.append(portalLabelScript);
   const NAV=Object.freeze({
     home:{href:'/',icon:'⌂',label:'Startpagina',short:'Start'},
-    personnel:{href:'/personeelsbeheer.html',icon:'♟',label:'Personeelsbeheer',short:'Personeel'},
+    personnel:{href:'/personeelsbeheer.html',icon:'♟',label:'Personeelslijst',short:'Personeel'},
     activity:{href:'/activiteitscentrum.html',icon:'◷',label:'Activiteitscentrum',short:'Activiteit'},
     organogram:{href:'/organogram-hierarchie.html',icon:'🌳',label:'Organogram',short:'Organogram'},
     dossiers:{href:'/dossiercentrum.html',icon:'▣',label:'Dossiercentrum',short:'Dossiers'},
