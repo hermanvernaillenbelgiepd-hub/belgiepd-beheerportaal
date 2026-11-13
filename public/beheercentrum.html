@@ -189,6 +189,16 @@ button:disabled{cursor:not-allowed;opacity:.55}
    Zo kan een foutieve rol-ID niet zomaar korpsleiding- of dossierrechten toekennen.</p>
  </div>
 </section>
+<section id="portalLabelEditor" class="card" data-portal-label-editor hidden>
+ <h2>Benamingen beheren</h2>
+ <p class="muted">Korpsleiding en geverifieerd Technisch Beheer kunnen zichtbare menu- en sectienamen aanpassen. De oorspronkelijke tekst wordt exact herkend. Technische routes, rechten en personeelsgegevens blijven onaangeroerd.</p>
+ <div id="portalLabelRows"></div>
+ <div class="buttons"><button type="button" class="secondary" id="portalLabelAdd">+ Benaming toevoegen</button>
+ <button type="button" class="secondary" id="portalLabelReload">Opnieuw laden</button></div>
+ <label>Motivering voor auditlog<textarea id="portalLabelReason" rows="2" maxlength="240" placeholder="Waarom worden de benamingen aangepast?"></textarea></label>
+ <div class="buttons"><button type="button" id="portalLabelSave">Benamingen opslaan</button></div>
+ <p id="portalLabelStatus" class="muted" role="status"></p>
+</section>
 <section id="automation" class="card" hidden>
  <div class="row"><div><h2>Automatiseringen · instelbaar vanuit het portaal</h2>
  <p class="muted">Instellingen worden bewaard in Firebase. De server leest ze opnieuw bij iedere controle, zonder GitHub-deploy.</p></div>
@@ -450,4 +460,5 @@ async function init(){
 init();
 </script>
 <script defer src="/bpd-navigation.js"></script>
+<script src="/portal-labels-editor.js" defer></script>
 </body></html>
