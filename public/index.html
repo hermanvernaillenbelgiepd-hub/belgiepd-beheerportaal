@@ -135,6 +135,53 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
  #staffDashboard .grid{grid-template-columns:1fr}
  #staffDashboard .module{min-height:112px}
 }
+
+/* Compact startscherm: op gangbare desktopafmetingen alle beheerlinks zichtbaar.
+   Kleinere schermen behouden normale verticale scroll en leesbare kaarten. */
+@media (min-width:1280px) and (min-height:760px){
+  body:has(#staffDashboard:not([hidden])) .portal{
+    min-height:100dvh;
+  }
+  body:has(#staffDashboard:not([hidden])) aside{
+    padding:14px 12px;gap:12px;
+  }
+  body:has(#staffDashboard:not([hidden])) aside nav{gap:1px}
+  body:has(#staffDashboard:not([hidden])) aside nav a{
+    padding:6px 10px;font-size:12px;line-height:1.25;
+  }
+  body:has(#staffDashboard:not([hidden])) .topbar{
+    padding:10px clamp(20px,3vw,36px);
+  }
+  body:has(#staffDashboard:not([hidden])) main{
+    max-width:1600px;padding:16px clamp(18px,2.5vw,36px) 20px;
+  }
+  #staffDashboard .hero{padding-bottom:12px;gap:14px}
+  #staffDashboard .hero-icon{width:48px;height:48px;border-radius:12px}
+  #staffDashboard .hero-icon svg{width:27px;height:27px}
+  #staffDashboard h1{font-size:clamp(24px,2vw,31px)}
+  #staffDashboard .eyebrow{margin-bottom:3px}
+  #staffDashboard .lead{font-size:12px;margin-top:5px;max-width:100ch;line-height:1.35}
+  #staffDashboard .section-title{margin:11px 0 7px;font-size:14px}
+  #staffDashboard .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  #staffDashboard .module{
+    min-height:0;padding:10px 11px;gap:4px;border-radius:10px;
+  }
+  #staffDashboard .module .ico{width:25px;height:25px;font-size:15px}
+  #staffDashboard .module h3{font-size:12px;line-height:1.15}
+  #staffDashboard .module p{font-size:10.5px;line-height:1.24}
+  #staffDashboard .module .open{font-size:10.5px;line-height:1.2}
+  #staffDashboard .bottom{gap:8px;margin-top:9px}
+  #staffDashboard .bottom a{padding:9px 12px;font-size:12px}
+  #staffDashboard .caption{margin-top:8px;font-size:10px}
+}
+/* Op lagere laptops wordt de indeling compacter, maar scroll blijft beschikbaar. */
+@media (min-width:1081px) and (max-width:1279px){
+  #staffDashboard .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #staffDashboard .hero{padding-bottom:18px}
+  #staffDashboard .section-title{margin:14px 0 8px}
+  #staffDashboard .module{min-height:112px;padding:11px}
+}
+
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
 <link rel="stylesheet" href="/member-police-roster.css">
