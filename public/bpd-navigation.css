@@ -661,3 +661,76 @@ table.bpd-adaptive-cards > tbody > tr:has(>td[colspan]) > td::before { display:n
     padding:8px!important;
   }
 }
+
+
+/* Home dashboard: no page-level horizontal overflow or duplicated scrolling menus.
+   Only the start page is affected; dossier tables and other modules are unchanged. */
+body:has(> .portal){max-width:100%;overflow-x:clip}
+.portal{min-width:0;max-width:100%;width:100%}
+.portal > .surface,.portal > .surface > main,
+.portal .grid,.portal .bottom,.portal .hero{min-width:0;max-width:100%}
+.portal .grid > *,.portal .bottom > *,.portal .hero > div{min-width:0}
+.portal .module :is(h3,p,.open),.portal .bottom a{
+  overflow-wrap:anywhere;
+}
+.portal .bottom{grid-template-columns:repeat(2,minmax(0,1fr))}
+.portal .topbar{min-width:0;flex-wrap:wrap}
+.portal .topbar-actions{min-width:0;flex-wrap:wrap}
+#homeMenuToggle,#homeMenuClose{display:none}
+#homeThemeToggle,#homeMenuToggle,#homeMenuClose{
+  font:700 12px/1.2 Inter,system-ui,"Segoe UI",sans-serif;
+  border-radius:8px;border:1px solid #6688c4;padding:8px 10px;
+  background:#244b83;color:#fff;cursor:pointer;
+}
+#homeThemeToggle{display:inline-flex;align-items:center;justify-content:center}
+#homeMenuToggle:focus-visible,#homeMenuClose:focus-visible,
+#homeThemeToggle:focus-visible{outline:3px solid #7fa8ff;outline-offset:2px}
+.portal > .bpd-home-menu-scrim{display:none}
+.portal.bpd-home-nav-drawer{display:block!important}
+.portal.bpd-home-nav-drawer > .surface{width:100%;min-width:0}
+.portal.bpd-home-nav-drawer #homeMenuToggle{display:inline-flex;align-items:center}
+.portal.bpd-home-nav-drawer > #homeRoleSidebar{
+  display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;
+  position:fixed!important;inset:0 auto 0 0!important;
+  z-index:1203;box-sizing:border-box;
+  width:min(292px,calc(100vw - 24px));height:100dvh;max-height:100dvh;
+  max-width:100%;padding:14px!important;gap:13px!important;
+  overflow-y:auto;overflow-x:hidden;
+  transform:translateX(-105%);visibility:hidden;pointer-events:none;
+  box-shadow:10px 0 28px #060e2055;
+  transition:transform .16s ease,visibility .16s ease;
+}
+.portal.bpd-home-nav-drawer #homeRoleSidebar nav[hidden]{
+  display:none!important;
+}
+.portal.bpd-home-nav-drawer #homeRoleSidebar nav:not([hidden]){
+  display:grid!important;grid-template-columns:minmax(0,1fr);
+  width:100%;max-width:100%;min-width:0;
+  gap:3px;overflow:visible!important;
+}
+.portal.bpd-home-nav-drawer #homeRoleSidebar nav:not([hidden]) a{
+  display:grid;grid-template-columns:20px minmax(0,1fr);
+  flex:none;white-space:normal!important;
+  width:100%;max-width:100%;min-width:0;
+  overflow-wrap:anywhere;
+}
+.portal.bpd-home-nav-drawer #homeMenuClose{
+  display:inline-flex;align-self:flex-end;
+  position:sticky;top:0;z-index:1;
+}
+.portal.bpd-home-menu-open > #homeRoleSidebar{
+  transform:translateX(0);visibility:visible;pointer-events:auto;
+}
+.portal.bpd-home-menu-open > .bpd-home-menu-scrim{
+  display:block;position:fixed;inset:0;z-index:1202;
+  width:100%;height:100%;padding:0;margin:0;
+  border:0;background:#020817a8;cursor:pointer;
+}
+@media(max-width:480px){
+  .portal .bottom{grid-template-columns:minmax(0,1fr)}
+  .portal .topbar{gap:8px}
+  .portal .topbar-actions{justify-content:flex-start}
+}
+@media(prefers-reduced-motion:reduce){
+  .portal.bpd-home-nav-drawer > #homeRoleSidebar{transition:none}
+}
