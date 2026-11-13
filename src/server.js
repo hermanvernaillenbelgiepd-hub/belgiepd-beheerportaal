@@ -23,6 +23,7 @@ import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import {basicObservationJsonParser} from './basic-observation-json.js';
 import {scheduleBasicObservationAutoArchive} from './basic-observation-auto-archive.js';
 import {installTechnicalCenterRoutes,mayOpenTechnicalCenter} from './technical-center-config.js';
+import {installPortalLabelRoutes} from './portal-labels.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
@@ -905,6 +906,7 @@ installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installTechnicalCenterRoutes(app,{requireUser});
+installPortalLabelRoutes(app,{requireUser:requireDossierUser});
 installTechnicalTestCleanupRoutes(app,{requireUser,getSnapshot});
 installRoleArtworkRoutes(app,{requireUser,getSnapshot});
 installUniformManagementRoutes(app,{requireUser});
