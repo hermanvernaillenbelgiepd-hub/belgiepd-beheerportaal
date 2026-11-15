@@ -399,6 +399,52 @@
       }
     }
   }
+  /* Personnel-management lists also stay real compact lists on a phone.
+     No data is cloned or removed: expandable fields retain live input/button handlers. */
+  function prepareManagementMobileList(table){
+    if(!table.classList.contains('staff-roster-table')||
+       document.documentElement.clientWidth>700)return;
+    const compact=table.classList.contains('roster-police-compact');
+    const main=[0,1,compact?2:3,compact?3:4,compact?4:5];
+    if(!table.caption?.classList.contains('bpd-mobile-list-heading')){
+      const caption=table.createCaption();
+      caption.className='bpd-mobile-list-heading';
+      for(const label of ['CALL','RANG','NAAM','REEKS','STATUS']){
+        const head=document.createElement('span');
+        head.textContent=label;caption.append(head);
+      }
+    }
+    for(const body of table.tBodies){
+      for(const row of body.rows){
+        if(row.cells.length<=main[4]||row.cells.length===1&&row.cells[0].colSpan>1)
+          continue;
+        row.classList.add('bpd-mobile-list-row');
+        for(let i=0;i<main.length;i++){
+          const cell=row.cells[main[i]];
+          if(cell)cell.classList.add('bpd-mobile-list-cell','bpd-mobile-list-'+
+            ['call','rank','name','series','status'][i]);
+        }
+        const nameCell=row.cells[main[2]];
+        if(!nameCell||nameCell.querySelector('.bpd-mobile-list-toggle'))continue;
+        const toggle=document.createElement('button');
+        toggle.type='button';
+        toggle.className='bpd-mobile-list-toggle';
+        toggle.textContent='+';
+        toggle.setAttribute('aria-expanded','false');
+        const name=nameCell.querySelector('strong')?.textContent?.trim()||
+          nameCell.textContent.trim()||'personeelslid';
+        toggle.setAttribute('aria-label','Toon details van '+name);
+        toggle.addEventListener('click',()=>{
+          const open=row.classList.toggle('bpd-mobile-list-expanded');
+          toggle.textContent=open?'−':'+';
+          toggle.setAttribute('aria-expanded',String(open));
+          toggle.setAttribute('aria-label',(open?'Verberg':'Toon')+' details van '+name);
+        });
+        nameCell.append(toggle);
+      }
+    }
+  }
+
   function adapt(table){
     // The management matrix has many compact, carefully sized columns.
     // Desktop conversion to giant two-column cards makes personnel unusable.
@@ -420,6 +466,7 @@
       Math.max(requiredWidth,table.classList.contains('roster-police-compact')?1250:1160):
       Math.max(1160,390+Math.max(0,labels.length-5)*65);
     table.classList.toggle('bpd-adaptive-cards',available<required+12);
+    prepareManagementMobileList(table);
   }
   function attach(table){
     if(attached.has(table))return;
