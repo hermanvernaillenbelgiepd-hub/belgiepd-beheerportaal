@@ -48,7 +48,7 @@ test('mobile police directory stays a compact list with expand-on-demand special
   assert.ok(css.includes('.mr-mobile-roster tbody > tr.mr-mobile-person{display:table-row!important}'));
   assert.ok(css.includes('.mr-mobile-roster tbody > tr.mr-mobile-detail:not([hidden])'));
   assert.ok(css.includes('display:table-row!important'));
-  assert.ok(css.includes('@media(max-width:700px)'));
+  assert.ok(css.includes('@media(max-width:1024px)'));
 });
 
 
