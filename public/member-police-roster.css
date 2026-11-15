@@ -230,3 +230,119 @@
 .mr-table th:nth-child(-n+5){padding-inline:2px;white-space:normal;overflow-wrap:anywhere;letter-spacing:0}
 .mr-table td.mr-rank-cell,.mr-table td.mr-status-cell{padding-inline:2px}
 .mr-table .mr-status,.mr-table .mr-series-badge{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
+
+
+/* BelgiumPD compact mobile list — 2026-11-15 */
+/* Use one actual table row per person. Specializations are in an optional
+   detail row, not an enormous personnel card or a sideways-scrolling table. */
+.mr-mobile-roster{display:none!important}
+@media(max-width:700px){
+  .mr-scroll:has(>.mr-mobile-roster),
+  .roster-personnel-page .mr-scroll:has(>.mr-mobile-roster){
+    max-height:none!important;overflow:visible!important;max-width:100%;width:100%;
+  }
+  .mr-scroll > .mr-table{display:none!important}
+  .mr-scroll > .mr-mobile-roster{
+    display:table!important;width:100%!important;min-width:0!important;
+    max-width:100%!important;table-layout:fixed;border-collapse:collapse;
+    background:#0f2440;color:#ecf4ff;
+  }
+  .mr-mobile-roster thead{display:table-header-group!important}
+  .mr-mobile-roster tbody{display:table-row-group!important}
+  .mr-mobile-roster thead th{
+    background:#1e3b5e;color:#d3e6ff;font-size:9px;font-weight:800;
+    padding:8px 2px;text-align:left;line-height:1.2;
+    border-bottom:2px solid #5879a6;white-space:normal;
+  }
+  .mr-mobile-roster thead th:nth-child(1){width:12%}
+  .mr-mobile-roster thead th:nth-child(2){width:12%}
+  .mr-mobile-roster thead th:nth-child(3){width:34%}
+  .mr-mobile-roster thead th:nth-child(4){width:12%}
+  .mr-mobile-roster thead th:nth-child(5){width:21%}
+  .mr-mobile-roster thead th:nth-child(6){width:9%;text-align:center}
+  .mr-mobile-roster tbody > tr.mr-mobile-person{display:table-row!important}
+  .mr-mobile-roster tbody > tr.mr-mobile-person:nth-child(4n+3){background:#142d4c}
+  .mr-mobile-roster td{
+    min-width:0;max-width:100%;padding:6px 2px;
+    border-bottom:1px solid #355272;vertical-align:middle;
+    font-size:11px;line-height:1.25;overflow-wrap:anywhere;
+  }
+  .mr-mobile-roster .mr-mobile-call{font-weight:850;font-variant-numeric:tabular-nums}
+  .mr-mobile-roster .mr-rank{
+    display:flex;flex-direction:column;gap:2px;
+    align-items:center;justify-content:center;min-width:0;
+    font-size:9px;line-height:1.1;
+  }
+  .mr-mobile-roster .mr-rank strong{max-width:100%;font-size:9px}
+  .mr-mobile-roster .mr-insignia{
+    width:100%;max-width:41px;max-height:23px;object-fit:contain;
+  }
+  .mr-mobile-roster .mr-person-name-wrap{
+    display:flex;flex-direction:column;align-items:flex-start;
+    gap:3px;min-width:0;overflow-wrap:anywhere;
+  }
+  .mr-mobile-roster .mr-person-open{
+    display:inline-flex;align-items:center;padding:0;min-width:0;
+    max-width:100%;min-height:36px;border:0;background:transparent;
+    color:#f1f7ff;font-size:12px;font-weight:750;text-align:left;
+    white-space:normal;overflow-wrap:anywhere;cursor:pointer;
+  }
+  .mr-mobile-roster .mr-person-open:focus-visible,
+  .mr-mobile-roster .mr-mobile-detail-toggle:focus-visible{
+    outline:2px solid #a7ceff;outline-offset:2px;
+  }
+  .mr-mobile-roster .mr-person-affiliations{font-size:9px;line-height:1.1}
+  .mr-mobile-roster .mr-series{gap:2px;justify-content:flex-start}
+  .mr-mobile-roster .mr-series-badge{
+    min-width:0;max-width:100%;padding:3px 2px;
+    font-size:9px;white-space:normal;overflow-wrap:anywhere;
+  }
+  .mr-mobile-roster .mr-status{
+    display:inline-block;max-width:100%;min-width:0;width:auto;
+    height:auto;min-height:25px;padding:5px 2px;text-align:center;
+    font-size:9px;line-height:1.15;white-space:normal;overflow-wrap:anywhere;
+  }
+  .mr-mobile-roster .mr-status--actief{background:#1d6847;border-color:#3ca873;color:#ebfff2}
+  .mr-mobile-roster .mr-status--verlof{background:#21588c;border-color:#5a9ada;color:#f0f8ff}
+  .mr-mobile-roster .mr-status--inactief{background:#88323b;border-color:#d36a70;color:#fff0f2}
+  .mr-mobile-roster .mr-status--fifty-fifty{background:#995c1e;border-color:#dfa24d;color:#fff4e2}
+  .mr-mobile-roster .mr-status--non-actief{background:#633f86;border-color:#aa83d8;color:#f8f1ff}
+  .mr-mobile-roster .mr-status--verwijderd{background:#505a67;border-color:#919ba8;color:#f5f6f7}
+  .mr-mobile-roster .mr-mobile-info{text-align:center}
+  .mr-mobile-roster .mr-mobile-detail-toggle{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:27px;width:27px;min-height:38px;height:38px;
+    padding:0;border:1px solid #628ab2;border-radius:7px;
+    background:#244e78;color:#fff;font-size:18px;font-weight:700;
+    cursor:pointer;touch-action:manipulation;
+  }
+  .mr-mobile-roster tbody > tr.mr-mobile-divider{display:table-row!important}
+  .mr-mobile-roster .mr-mobile-divider td{
+    background:#25466e;color:white;font-weight:800;font-size:11px;
+    padding:7px 9px;border-top:2px solid #7095bf;
+  }
+  .mr-mobile-roster .mr-mobile-divider .mr-count{margin-left:6px;font-size:10px;color:#bad3ef}
+  .mr-mobile-roster tbody > tr.mr-mobile-detail{display:none!important}
+  .mr-mobile-roster tbody > tr.mr-mobile-detail:not([hidden]){display:table-row!important}
+  .mr-mobile-roster .mr-mobile-detail td{padding:9px!important;background:#10243c}
+  .mr-mobile-roster .mr-mobile-specialties{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 10px;
+  }
+  .mr-mobile-roster .mr-mobile-specialty{
+    display:flex;align-items:center;justify-content:space-between;
+    min-width:0;gap:6px;border-bottom:1px solid #294766;padding:5px 2px;
+    font-size:10px;
+  }
+  .mr-mobile-roster .mr-mobile-specialty strong{
+    min-width:0;overflow-wrap:anywhere;color:#bfd9f6;
+  }
+  .mr-mobile-roster .mr-mobile-specialty .mr-specialty{
+    flex:0 0 auto;font-size:10px;padding:4px 5px;
+  }
+}
+@media(max-width:400px){
+  .mr-mobile-roster thead th{font-size:8px;padding-inline:1px}
+  .mr-mobile-roster td{padding-inline:1px;font-size:10px}
+  .mr-mobile-roster .mr-person-open{font-size:11px}
+  .mr-mobile-roster .mr-mobile-specialties{grid-template-columns:minmax(0,1fr)}
+}
