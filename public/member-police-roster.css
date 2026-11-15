@@ -236,7 +236,7 @@
 /* Use one actual table row per person. Specializations are in an optional
    detail row, not an enormous personnel card or a sideways-scrolling table. */
 .mr-mobile-roster{display:none!important}
-@media(max-width:700px){
+@media(max-width:1024px){
   .mr-scroll:has(>.mr-mobile-roster),
   .roster-personnel-page .mr-scroll:has(>.mr-mobile-roster){
     max-height:none!important;overflow:visible!important;max-width:100%;width:100%;
