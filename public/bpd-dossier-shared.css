@@ -874,3 +874,35 @@ body.bpd-unified-dossier :is(input,select,textarea) { min-width:0;max-width:100%
   body.dossier-onepage .dossier-main-row > .dossier-right-column { grid-column:auto; }
   body.dossier-onepage :is(.dossier-panel,.landscape-cell,.dossier-pane) { min-width:0; }
 }
+
+
+/* BelgiumPD touch-friendly dossier controls — 2026-11-15 */
+/* Visual-only: keeps authorization, dossier data and save actions unchanged. */
+@media(max-width:740px){
+  body.bpd-unified-dossier {
+    max-width:100%;overflow-x:clip;
+  }
+  body.bpd-unified-dossier :is(.dossier-main-row,.dossier-lower-row,.dossier-right-column,.sheet-identity){
+    min-width:0;max-width:100%;
+  }
+  body.bpd-unified-dossier :is(.dossier-panel,.dossier-pane,.landscape-cell,.record,.note-item){
+    max-width:100%;overflow-wrap:anywhere;
+  }
+  body.bpd-unified-dossier :is(button,[role="button"],input[type="submit"]){
+    min-height:44px;touch-action:manipulation;
+  }
+  body.bpd-unified-dossier :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){
+    font-size:16px;max-width:100%;box-sizing:border-box;
+  }
+  body.bpd-unified-dossier dialog{
+    max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);
+    overflow:auto;
+  }
+}
+@media(max-width:420px){
+  body.bpd-unified-dossier :is(.sheet-identity,#mainCard .grid),
+  body.bpd-unified-dossier.dossier-onepage #panel > .sheet-identity,
+  body.dossier-fire-sheet #panel > .sheet-identity {
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+}
