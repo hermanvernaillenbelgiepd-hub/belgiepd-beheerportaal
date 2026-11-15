@@ -805,3 +805,141 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
   .mr-table.bpd-adaptive-cards > tbody > tr.mr-person{column-gap:2px;padding:4px}
   .mr-table.bpd-adaptive-cards > tbody > tr.mr-person > td{padding:6px!important}
 }
+
+/* BelgiumPD mobile management roster as list — 2026-11-15 */
+/* Keep real controls on their source row; expand for specialties and actions. */
+.bpd-mobile-list-toggle{display:none!important}
+@media(max-width:700px){
+  .staff-roster-holder:has(> .staff-roster-table.bpd-adaptive-cards){
+    max-height:none!important;overflow-x:visible!important;
+  }
+  .staff-roster-table.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row,
+  .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row{
+    display:grid!important;
+    grid-template-columns:11% 12% minmax(0,1fr) 12% 21%!important;
+    column-gap:2px;row-gap:0;
+    padding:3px 3px!important;margin:0!important;
+    border:0!important;border-bottom:1px solid #405979!important;
+    border-radius:0!important;min-height:45px;
+    background:#112945!important;
+  }
+  .staff-roster-table.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row:nth-of-type(2n){
+    background:#182f4c!important;
+  }
+  .staff-roster-table.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row > td.bpd-mobile-list-cell{
+    display:flex!important;flex-direction:column;justify-content:center;
+    align-items:flex-start;min-width:0!important;max-width:100%!important;
+    padding:5px 2px!important;border:0!important;
+    border-radius:0!important;background:transparent!important;
+    font-size:10px!important;line-height:1.2!important;
+    text-align:left!important;overflow-wrap:anywhere;
+  }
+  .staff-roster-table.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row > td.bpd-mobile-list-cell::before{
+    display:none!important;
+  }
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-call{grid-column:1;grid-row:1}
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-rank{grid-column:2;grid-row:1}
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-name{
+    grid-column:3;grid-row:1;position:relative;padding-right:32px!important;
+    font-weight:750;
+  }
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-series{grid-column:4;grid-row:1}
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-status{grid-column:5;grid-row:1}
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-name > strong{
+    min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;
+    font-size:11px;
+  }
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-name .roster-dept{font-size:9px}
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-rank .rank-inline{
+    max-width:100%;min-width:0;display:flex;align-items:center;
+    flex-wrap:wrap;gap:2px;font-size:9px;
+  }
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-rank .rank-insignia{
+    display:block;width:100%!important;max-width:38px!important;
+    height:24px!important;max-height:24px!important;
+    padding:0!important;border:0!important;background:none!important;
+  }
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-rank .rank-inline:has(img) .rank-code{
+    display:none;
+  }
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-series :is(.police-roster-badge,.mr-series-badge){
+    max-width:100%;min-width:0;font-size:9px!important;
+    white-space:normal;overflow-wrap:anywhere;
+  }
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-status :is(.pill,.active-leave-pill){
+    max-width:100%;min-width:0;padding:3px 2px;font-size:9px!important;
+    line-height:1.2;white-space:normal;overflow-wrap:anywhere;
+  }
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-toggle{
+    display:inline-flex!important;align-items:center;justify-content:center;
+    position:absolute;right:0;top:0;
+    width:29px;min-width:29px;height:40px;min-height:40px;
+    padding:0!important;margin:0!important;border:1px solid #628ab2;
+    border-radius:5px;background:#214b7b;color:#fff;font-size:18px;
+    font-weight:750;cursor:pointer;touch-action:manipulation;
+  }
+  .staff-roster-table.bpd-adaptive-cards .bpd-mobile-list-toggle:focus-visible{
+    outline:2px solid #b4d5ff;outline-offset:2px;
+  }
+  .staff-roster-table.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row > td:not(.bpd-mobile-list-cell){
+    display:none!important;
+  }
+  .staff-roster-table.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row.bpd-mobile-list-expanded > td:not(.bpd-mobile-list-cell){
+    display:flex!important;grid-column:1 / -1!important;
+    align-items:flex-start;flex-direction:column;
+    width:100%!important;max-width:100%!important;
+    padding:7px 9px!important;min-height:0!important;
+    border-top:1px solid #35577d!important;
+  }
+  .staff-roster-table.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row.bpd-mobile-list-expanded > td:not(.bpd-mobile-list-cell)::before{
+    display:block!important;
+  }
+  .staff-roster-table.bpd-adaptive-cards > tbody > tr.police-kader-divider{
+    margin:0!important;border-radius:0!important;
+  }
+}
+@media(max-width:360px){
+  .staff-roster-table.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row,
+  .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row{
+    grid-template-columns:11% 11% minmax(0,1fr) 12% 22%!important;
+    padding-inline:1px!important;
+  }
+}
+
+/* BelgiumPD mobile management roster heading — 2026-11-15 */
+.staff-roster-table > caption.bpd-mobile-list-heading{display:none!important}
+@media(max-width:700px){
+ .staff-roster-table.bpd-adaptive-cards > caption.bpd-mobile-list-heading{
+   display:grid!important;
+   grid-template-columns:11% 12% minmax(0,1fr) 12% 21%;
+   align-items:center;column-gap:2px;width:100%;max-width:100%;
+   background:#1b3858;color:#cde4ff;padding:8px 3px!important;
+   box-sizing:border-box;font-size:9px;line-height:1.2;font-weight:800;
+   text-align:left;
+ }
+ .staff-roster-table.bpd-adaptive-cards > caption.bpd-mobile-list-heading > span{
+   overflow-wrap:anywhere;min-width:0;
+ }
+}
+@media(max-width:360px){
+ .staff-roster-table.bpd-adaptive-cards > caption.bpd-mobile-list-heading{
+   grid-template-columns:11% 11% minmax(0,1fr) 12% 22%;
+ }
+}
+
+/* BelgiumPD mobile management specificity safeguard — 2026-11-15 */
+/* An older 2-column admin-card rule has :not(:has(...)) specificity.
+   The mobile list MUST win while leaving colspan section headings intact. */
+@media(max-width:700px){
+ .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row:not(.police-kader-divider):not(:has(>td[colspan])){
+   grid-template-columns:11% 12% minmax(0,1fr) 12% 21%!important;
+ }
+ .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row:not(.police-kader-divider) > td.bpd-mobile-list-name{
+   grid-column:3!important;grid-row:1!important;
+ }
+}
+@media(max-width:360px){
+ .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row:not(.police-kader-divider):not(:has(>td[colspan])){
+   grid-template-columns:11% 11% minmax(0,1fr) 12% 22%!important;
+ }
+}
