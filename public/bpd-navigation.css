@@ -929,3 +929,20 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
    grid-template-columns:11% 11% minmax(0,1fr) 12% 22%;
  }
 }
+
+/* BelgiumPD mobile management specificity safeguard — 2026-11-15 */
+/* An older 2-column admin-card rule has :not(:has(...)) specificity.
+   The mobile list MUST win while leaving colspan section headings intact. */
+@media(max-width:700px){
+ .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row:not(.police-kader-divider):not(:has(>td[colspan])){
+   grid-template-columns:11% 12% minmax(0,1fr) 12% 21%!important;
+ }
+ .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row:not(.police-kader-divider) > td.bpd-mobile-list-name{
+   grid-column:3!important;grid-row:1!important;
+ }
+}
+@media(max-width:360px){
+ .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row:not(.police-kader-divider):not(:has(>td[colspan])){
+   grid-template-columns:11% 11% minmax(0,1fr) 12% 22%!important;
+ }
+}
