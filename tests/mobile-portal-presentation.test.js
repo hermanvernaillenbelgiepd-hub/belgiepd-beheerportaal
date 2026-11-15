@@ -64,4 +64,7 @@ test('mobile personnel management keeps the compact list and original live butto
   assert.ok(css.includes('grid-template-columns:11% 12% minmax(0,1fr) 12% 21%!important'));
   assert.ok(css.includes('> td:not(.bpd-mobile-list-cell)'));
   assert.ok(css.includes('.bpd-mobile-list-expanded > td:not(.bpd-mobile-list-cell)'));
+  assert.ok(css.includes('/* BelgiumPD mobile management specificity safeguard — 2026-11-15 */'));
+  assert.ok(css.includes('tr.bpd-mobile-list-row:not(.police-kader-divider):not(:has(>td[colspan]))'));
+  assert.ok(css.includes('grid-column:3!important;grid-row:1!important'));
 });
