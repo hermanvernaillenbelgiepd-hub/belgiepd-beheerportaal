@@ -407,6 +407,14 @@
        document.documentElement.clientWidth>700)return;
     const compact=table.classList.contains('roster-police-compact');
     const main=[0,1,compact?2:3,compact?3:4,compact?4:5];
+    if(!table.caption?.classList.contains('bpd-mobile-list-heading')){
+      const caption=table.createCaption();
+      caption.className='bpd-mobile-list-heading';
+      for(const label of ['CALL','RANG','NAAM','REEKS','STATUS']){
+        const head=document.createElement('span');
+        head.textContent=label;caption.append(head);
+      }
+    }
     for(const body of table.tBodies){
       for(const row of body.rows){
         if(row.cells.length<=main[4]||row.cells.length===1&&row.cells[0].colSpan>1)
