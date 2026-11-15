@@ -29,3 +29,24 @@ test('mobile dossiers remain readable and touch-operable',()=>{
   assert.ok(css.includes('@media(max-width:420px)'));
   assert.ok(css.includes('grid-template-columns:minmax(0,1fr)!important'));
 });
+
+
+test('mobile police directory stays a compact list with expand-on-demand specializations',()=>{
+  const script=source('public/member-police-roster.js');
+  const css=source('public/member-police-roster.css');
+  assert.ok(script.includes('function renderMobilePoliceRoster(thead,tbody)'));
+  assert.ok(script.includes('renderMobilePoliceRoster(thead,tbody);'));
+  assert.ok(script.includes("const table=element('table',undefined,'mr-mobile-roster')"));
+  assert.ok(script.includes("['CALL','RANG','NAAM','REEKS','STATUS','INFO']"));
+  assert.ok(script.includes("detail.hidden=!expanded"));
+  assert.ok(script.includes("toggle.setAttribute('aria-expanded',String(expanded))"));
+  assert.ok(script.includes("sourceCells[index]?.firstElementChild?.cloneNode(true)"));
+  assert.ok(css.includes('/* BelgiumPD compact mobile list — 2026-11-15 */'));
+  assert.ok(css.includes('.mr-scroll > .mr-table{display:none!important}'));
+  assert.ok(css.includes('.mr-scroll > .mr-mobile-roster{'));
+  assert.ok(css.includes('display:table!important'));
+  assert.ok(css.includes('.mr-mobile-roster tbody > tr.mr-mobile-person{display:table-row!important}'));
+  assert.ok(css.includes('.mr-mobile-roster tbody > tr.mr-mobile-detail:not([hidden])'));
+  assert.ok(css.includes('display:table-row!important'));
+  assert.ok(css.includes('@media(max-width:700px)'));
+});
