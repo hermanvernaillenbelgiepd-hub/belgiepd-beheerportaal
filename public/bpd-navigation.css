@@ -908,3 +908,24 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
     padding-inline:1px!important;
   }
 }
+
+/* BelgiumPD mobile management roster heading — 2026-11-15 */
+.staff-roster-table > caption.bpd-mobile-list-heading{display:none!important}
+@media(max-width:700px){
+ .staff-roster-table.bpd-adaptive-cards > caption.bpd-mobile-list-heading{
+   display:grid!important;
+   grid-template-columns:11% 12% minmax(0,1fr) 12% 21%;
+   align-items:center;column-gap:2px;width:100%;max-width:100%;
+   background:#1b3858;color:#cde4ff;padding:8px 3px!important;
+   box-sizing:border-box;font-size:9px;line-height:1.2;font-weight:800;
+   text-align:left;
+ }
+ .staff-roster-table.bpd-adaptive-cards > caption.bpd-mobile-list-heading > span{
+   overflow-wrap:anywhere;min-width:0;
+ }
+}
+@media(max-width:360px){
+ .staff-roster-table.bpd-adaptive-cards > caption.bpd-mobile-list-heading{
+   grid-template-columns:11% 11% minmax(0,1fr) 12% 22%;
+ }
+}
