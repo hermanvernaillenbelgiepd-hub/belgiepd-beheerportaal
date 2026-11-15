@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 
 const source=file=>readFileSync(new URL('../'+file,import.meta.url),'utf8');
 
-test('narrow personnel tables turn into labelled cards without omitting columns',()=>{
+test('responsive personnel tables preserve labelled data and expandable actions',()=>{
   const js=source('public/bpd-navigation.js');
   const css=source('public/bpd-navigation.css');
   assert.ok(js.includes("const selector='table.mr-table,table.staff-roster-table'"));
@@ -16,7 +16,7 @@ test('narrow personnel tables turn into labelled cards without omitting columns'
   assert.ok(css.includes('.mr-table.bpd-adaptive-cards .mr-specialty'));
   assert.ok(css.includes('.mr-table.bpd-adaptive-cards .mr-person-open'));
   assert.ok(css.includes('.staff-roster-table.roster-police-compact.bpd-adaptive-cards'));
-  const mobile=css.split('/* BelgiumPD touch-first personnel layouts — 2026-11-15 */')[1];
+  const mobile=css.split('/* BelgiumPD touch-first personnel layouts — 2026-11-15 */')[1].split('/* BelgiumPD mobile management roster as list — 2026-11-15 */')[0];
   assert.ok(!mobile.includes('display:none'),'Mobile overrides must not hide specialization cells');
 });
 
@@ -28,4 +28,43 @@ test('mobile dossiers remain readable and touch-operable',()=>{
   assert.ok(css.includes('font-size:16px;max-width:100%;box-sizing:border-box'));
   assert.ok(css.includes('@media(max-width:420px)'));
   assert.ok(css.includes('grid-template-columns:minmax(0,1fr)!important'));
+});
+
+
+test('mobile police directory stays a compact list with expand-on-demand specializations',()=>{
+  const script=source('public/member-police-roster.js');
+  const css=source('public/member-police-roster.css');
+  assert.ok(script.includes('function renderMobilePoliceRoster(thead,tbody)'));
+  assert.ok(script.includes('renderMobilePoliceRoster(thead,tbody);'));
+  assert.ok(script.includes("const table=element('table',undefined,'mr-mobile-roster')"));
+  assert.ok(script.includes("['CALL','RANG','NAAM','REEKS','STATUS','INFO']"));
+  assert.ok(script.includes("detail.hidden=!expanded"));
+  assert.ok(script.includes("toggle.setAttribute('aria-expanded',String(expanded))"));
+  assert.ok(script.includes("sourceCells[index]?.firstElementChild?.cloneNode(true)"));
+  assert.ok(css.includes('/* BelgiumPD compact mobile list — 2026-11-15 */'));
+  assert.ok(css.includes('.mr-scroll > .mr-table{display:none!important}'));
+  assert.ok(css.includes('.mr-scroll > .mr-mobile-roster{'));
+  assert.ok(css.includes('display:table!important'));
+  assert.ok(css.includes('.mr-mobile-roster tbody > tr.mr-mobile-person{display:table-row!important}'));
+  assert.ok(css.includes('.mr-mobile-roster tbody > tr.mr-mobile-detail:not([hidden])'));
+  assert.ok(css.includes('display:table-row!important'));
+  assert.ok(css.includes('@media(max-width:700px)'));
+});
+
+
+test('mobile personnel management keeps the compact list and original live buttons',()=>{
+  const js=source('public/bpd-navigation.js');
+  const css=source('public/bpd-navigation.css');
+  assert.ok(js.includes('function prepareManagementMobileList(table)'));
+  assert.ok(js.includes("table.classList.contains('roster-police-compact')"));
+  assert.ok(js.includes("row.classList.add('bpd-mobile-list-row')"));
+  assert.ok(js.includes("const open=row.classList.toggle('bpd-mobile-list-expanded')"));
+  assert.ok(js.includes("prepareManagementMobileList(table);"));
+  assert.ok(css.includes('/* BelgiumPD mobile management roster as list — 2026-11-15 */'));
+  assert.ok(css.includes('grid-template-columns:11% 12% minmax(0,1fr) 12% 21%!important'));
+  assert.ok(css.includes('> td:not(.bpd-mobile-list-cell)'));
+  assert.ok(css.includes('.bpd-mobile-list-expanded > td:not(.bpd-mobile-list-cell)'));
+  assert.ok(css.includes('/* BelgiumPD mobile management specificity safeguard — 2026-11-15 */'));
+  assert.ok(css.includes('tr.bpd-mobile-list-row:not(.police-kader-divider):not(:has(>td[colspan]))'));
+  assert.ok(css.includes('grid-column:3!important;grid-row:1!important'));
 });
