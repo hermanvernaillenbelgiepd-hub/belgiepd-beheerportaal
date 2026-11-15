@@ -404,7 +404,7 @@
      No data is cloned or removed: expandable fields retain live input/button handlers. */
   function prepareManagementMobileList(table){
     if(!table.classList.contains('staff-roster-table')||
-       document.documentElement.clientWidth>700)return;
+       document.documentElement.clientWidth>1024)return;
     const compact=table.classList.contains('roster-police-compact');
     const main=[0,1,compact?2:3,compact?3:4,compact?4:5];
     if(!table.caption?.classList.contains('bpd-mobile-list-heading')){
