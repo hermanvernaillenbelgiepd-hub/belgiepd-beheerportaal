@@ -733,3 +733,75 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
 @media(prefers-reduced-motion:reduce){
   .portal.bpd-home-nav-drawer > #homeRoleSidebar{transition:none}
 }
+
+/* BelgiumPD touch-first personnel layouts — 2026-11-15 */
+/* Mobile changes apply only to the adaptive read-only/personnel cards.
+   Preserve the original table and all specialisation data on desktop. */
+@media(max-width:700px){
+  /* No nested sideways scrolling for the converted personnel lists. */
+  .mr-scroll:has(> .mr-table.bpd-adaptive-cards),
+  .staff-roster-holder:has(> .staff-roster-table.bpd-adaptive-cards){
+    max-height:none!important;overflow:visible!important;
+    width:100%;min-width:0;
+  }
+  .mr-table.bpd-adaptive-cards > tbody > tr.mr-person{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    column-gap:5px;row-gap:0;padding:5px 7px;
+    margin-bottom:9px;
+  }
+  .mr-table.bpd-adaptive-cards > tbody > tr.mr-person > td{
+    padding:7px 8px!important;min-width:0;align-items:flex-start;
+  }
+  .mr-table.bpd-adaptive-cards > tbody > tr.mr-person > td.mr-name-cell{
+    grid-column:1 / -1;
+  }
+  .mr-table.bpd-adaptive-cards .mr-person-name-wrap{
+    width:100%;gap:5px;font-size:14px;overflow-wrap:anywhere;
+  }
+  .mr-table.bpd-adaptive-cards .mr-person-open{
+    min-height:44px;max-width:100%;text-align:left;
+    white-space:normal;overflow-wrap:anywhere;
+  }
+  .mr-table.bpd-adaptive-cards .mr-rank{min-height:24px}
+  .mr-table.bpd-adaptive-cards .mr-insignia{width:52px;max-height:28px}
+  .mr-table.bpd-adaptive-cards .mr-status{
+    width:auto;max-width:100%;min-width:0;min-height:26px;height:auto;
+    padding:5px 8px;font-size:11px;line-height:1.2;
+    white-space:normal;overflow-wrap:anywhere;
+  }
+  .mr-table.bpd-adaptive-cards .mr-specialty{
+    display:inline-flex;align-items:center;justify-content:flex-start;
+    min-height:28px;padding:5px 8px;font-size:11px;
+    white-space:normal;overflow-wrap:anywhere;
+  }
+  .mr-table.bpd-adaptive-cards > tbody > tr.mr-divider{
+    margin:12px 0 8px;display:block!important;
+  }
+  /* Police management retains the buttons/columns, but fits in the viewport. */
+  .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr:not(.police-kader-divider):not(:has(>td[colspan])){
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr:not(.police-kader-divider) > td:nth-child(3){
+    grid-column:1 / -1;
+  }
+  .staff-roster-table.bpd-adaptive-cards > tbody > tr > td :is(button,a,select,input){
+    touch-action:manipulation;
+  }
+  /* Keep touch controls usable in forms while avoiding iOS input zoom. */
+  body.bpd-shell main :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){
+    font-size:max(16px,1em);
+  }
+  body.bpd-shell main :is(button,.roster-open,.personnel-card-close){
+    min-height:40px;
+  }
+  body.personnel-ui-redesign #personnelCardDialog{
+    inset:env(safe-area-inset-top, 0px) 5px env(safe-area-inset-bottom, 0px) 5px!important;
+    width:calc(100vw - 10px)!important;
+    height:calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))!important;
+    max-width:none!important;overflow:auto;
+  }
+}
+@media(max-width:380px){
+  .mr-table.bpd-adaptive-cards > tbody > tr.mr-person{column-gap:2px;padding:4px}
+  .mr-table.bpd-adaptive-cards > tbody > tr.mr-person > td{padding:6px!important}
+}
