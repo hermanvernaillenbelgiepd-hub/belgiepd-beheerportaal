@@ -812,7 +812,7 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
 /* BelgiumPD mobile management roster as list — 2026-11-15 */
 /* Keep real controls on their source row; expand for specialties and actions. */
 .bpd-mobile-list-toggle{display:none!important}
-@media(max-width:700px){
+@media(max-width:1024px){
   .staff-roster-holder:has(> .staff-roster-table.bpd-adaptive-cards){
     max-height:none!important;overflow-x:visible!important;
   }
@@ -911,7 +911,7 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
 
 /* BelgiumPD mobile management roster heading — 2026-11-15 */
 .staff-roster-table > caption.bpd-mobile-list-heading{display:none!important}
-@media(max-width:700px){
+@media(max-width:1024px){
  .staff-roster-table.bpd-adaptive-cards > caption.bpd-mobile-list-heading{
    display:grid!important;
    grid-template-columns:11% 12% minmax(0,1fr) 12% 21%;
@@ -933,7 +933,7 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
 /* BelgiumPD mobile management specificity safeguard — 2026-11-15 */
 /* An older 2-column admin-card rule has :not(:has(...)) specificity.
    The mobile list MUST win while leaving colspan section headings intact. */
-@media(max-width:700px){
+@media(max-width:1024px){
  .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row:not(.police-kader-divider):not(:has(>td[colspan])){
    grid-template-columns:11% 12% minmax(0,1fr) 12% 21%!important;
  }
