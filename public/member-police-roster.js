@@ -127,6 +127,101 @@ function renderHeader(thead){
  }
  thead.replaceChildren(tr);
 }
+/* Keep the mobile directory as a REAL compact list, not stacked person cards.
+   Desktop continues to render the complete read-only specialization matrix.
+   Rows are projected from the same rendered data, so filters/sorting stay identical. */
+function renderMobilePoliceRoster(thead,tbody){
+ const desktop=tbody.closest('table');
+ if(!desktop?.parentElement)return;
+ const previous=[...desktop.parentElement.children].find(
+   node=>node.classList?.contains('mr-mobile-roster'));
+ previous?.remove();
+ const table=element('table',undefined,'mr-mobile-roster');
+ table.setAttribute('aria-label','Personeelslijst voor gsm en tablet');
+ const header=element('thead');
+ const heading=element('tr');
+ for(const text of ['CALL','RANG','NAAM','REEKS','STATUS','INFO'])
+   heading.append(element('th',text));
+ header.append(heading);
+ const body=element('tbody');
+ const headings=[...(thead.rows[0]?.cells||[])];
+ for(const sourceRow of tbody.rows){
+   if(sourceRow.classList.contains('mr-divider')){
+     const divider=element('tr',undefined,'mr-mobile-divider');
+     const cell=element('td');cell.colSpan=6;
+     cell.append(...[...sourceRow.cells[0].childNodes].map(node=>node.cloneNode(true)));
+     divider.append(cell);body.append(divider);
+     continue;
+   }
+   if(!sourceRow.classList.contains('mr-person')){
+     const empty=element('tr');
+     const cell=element('td',sourceRow.textContent.trim());cell.colSpan=6;
+     empty.append(cell);body.append(empty);
+     continue;
+   }
+   const sourceCells=[...sourceRow.cells];
+   const tr=element('tr',undefined,'mr-mobile-person');
+   const call=element('td',sourceCells[0]?.textContent?.trim()||'—','mr-mobile-call');
+   const rank=element('td',undefined,'mr-mobile-rank');
+   const insignia=sourceCells[1]?.firstElementChild?.cloneNode(true);
+   if(insignia)rank.append(insignia);
+   const name=element('td',undefined,'mr-mobile-name');
+   const nameWrap=element('span',undefined,'mr-person-name-wrap');
+   const sourceButton=sourceCells[2]?.querySelector('.mr-person-open');
+   if(sourceButton){
+     const button=element('button',sourceButton.textContent,'mr-person-open');
+     button.type='button';
+     button.setAttribute('aria-label',sourceButton.getAttribute('aria-label')||'Open personeelskaart');
+     button.addEventListener('click',()=>sourceButton.click());
+     nameWrap.append(button);
+   }else{
+     nameWrap.append(element('strong',sourceCells[2]?.querySelector('strong')?.textContent||
+       sourceCells[2]?.textContent?.trim()||'—'));
+   }
+   const services=sourceCells[2]?.querySelector('.mr-person-affiliations');
+   if(services)nameWrap.append(services.cloneNode(true));
+   name.append(nameWrap);
+   const series=element('td',undefined,'mr-mobile-series');
+   if(sourceCells[3])series.append(...[...sourceCells[3].childNodes].map(node=>node.cloneNode(true)));
+   const status=element('td',undefined,'mr-mobile-status');
+   if(sourceCells[4])status.append(...[...sourceCells[4].childNodes].map(node=>node.cloneNode(true)));
+   const info=element('td',undefined,'mr-mobile-info');
+   const detail=element('tr',undefined,'mr-mobile-detail');
+   detail.hidden=true;
+   const detailCell=element('td');detailCell.colSpan=6;
+   const details=element('div',undefined,'mr-mobile-specialties');
+   for(let index=5;index<sourceCells.length;index++){
+     const title=headings[index]?.getAttribute('title')||
+       headings[index]?.getAttribute('aria-label')||
+       headings[index]?.textContent?.trim()||'Specialisatie';
+     const item=element('div',undefined,'mr-mobile-specialty');
+     item.append(element('strong',title));
+     const value=sourceCells[index]?.firstElementChild?.cloneNode(true)||
+       element('span',sourceCells[index]?.textContent?.trim()||'—');
+     item.append(value);details.append(item);
+   }
+   detailCell.append(details);detail.append(detailCell);
+   const toggle=element('button','+','mr-mobile-detail-toggle');
+   toggle.type='button';
+   toggle.setAttribute('aria-expanded','false');
+   const displayName=sourceButton?.textContent||name.textContent.trim();
+   toggle.setAttribute('aria-label','Toon specialisaties van '+displayName);
+   toggle.addEventListener('click',()=>{
+     const expanded=detail.hidden;
+     detail.hidden=!expanded;
+     toggle.textContent=expanded?'−':'+';
+     toggle.setAttribute('aria-expanded',String(expanded));
+     toggle.setAttribute('aria-label',(expanded?'Verberg':'Toon')+
+       ' specialisaties van '+displayName);
+   });
+   info.append(toggle);
+   tr.append(call,rank,name,series,status,info);
+   body.append(tr,detail);
+ }
+ table.append(header,body);
+ desktop.after(table);
+}
+
 export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonClick=null){
  dismissRosterNamePreview();
  const q=String(query).trim().toLocaleLowerCase('nl-BE');
@@ -191,5 +286,6 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
    cell.colSpan=5+visibleSpecialties().length;
    empty.append(cell);tbody.append(empty);
  }
+ renderMobilePoliceRoster(thead,tbody);
  return people.length;
 }
