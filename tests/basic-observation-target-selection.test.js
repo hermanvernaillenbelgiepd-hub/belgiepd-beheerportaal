@@ -42,3 +42,33 @@ test('Server separately validates missing vs malformed target ID; rank scope rem
  assert.match(api,/Je kunt enkel politieleden van een lagere rang observeren/);
  assert.match(api,/getFirestore\(\)/);
 });
+
+test('Basiskader finds eligible staff by callsign or name in a compact read-only list',()=>{
+ const functions=page.match(/const normalizeRosterSearch=value=>[\s\S]*?const TARGET_RESULT_LIMIT=60;/)?.[0];
+ assert.ok(functions,'search normalization and filtering are available');
+ const {filterRosterTargets}=new Function(functions+
+   '\nreturn {filterRosterTargets};')();
+ const people=[
+  {call:'SANTO-285',name:'Éloïse Dupont',rank:'Agent'},
+  {call:'SANTO-341',name:'Bram Verhoeven',rank:'Aspirant inspecteur'},
+  {call:'452',name:'Sébastien Janssens',rank:'Inspecteur'}
+ ];
+ assert.deepEqual(filterRosterTargets(people,'285').map(x=>x.call),['SANTO-285']);
+ assert.deepEqual(filterRosterTargets(people,'ÉLO').map(x=>x.call),['SANTO-285']);
+ assert.deepEqual(filterRosterTargets(people,'sebastien').map(x=>x.call),['452']);
+ assert.deepEqual(filterRosterTargets(people,'BRAM').map(x=>x.call),['SANTO-341']);
+ assert.deepEqual(filterRosterTargets(people,'niet aanwezig'),[]);
+ assert.equal(filterRosterTargets(people,'').length,3);
+ assert.match(page,/id="targetSearch" type="search"/);
+ assert.match(page,/id="targetList" class="target-roster" role="group"/);
+ assert.match(page,/target-roster-head[\s\S]*?<span>CALL<\/span><span>NAAM<\/span><span>RANG<\/span>/);
+ assert.match(page,/const targets=\[\.\.\.\(data\.targets\|\|\[\]\)\]\.filter\(p=>validTargetId\(p\.discordId\)\)/);
+ assert.match(page,/selectableTargets=targets/);
+ assert.match(page,/option\.addEventListener\('click',\(\)=>\{/);
+ assert.match(page,/\$\('target'\)\.dispatchEvent\(new Event\('change'/);
+ assert.match(page,/\$\('formPanel'\)\.hidden=!data\.canSubmit/);
+ assert.match(page,/const target=normalizeTargetId\(\$\('target'\)\.value\)/);
+ assert.match(page,/context\.targets\?\.some\(p=>/);
+ assert.match(page,/TARGET_RESULT_LIMIT=60/);
+ assert.match(page,/@media\(max-width:550px\)/);
+});
