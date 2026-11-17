@@ -53,6 +53,8 @@ fieldset{border:0;margin:0;padding:0}
 .observation-group{border:1px solid #3b597f;border-radius:10px;background:#10213a;margin:10px 0;overflow:hidden}
 .observation-group>summary{cursor:pointer;display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:13px 15px;color:#ebf3ff;font-weight:750}
 .observation-group>summary:hover{background:#1c3554}
+.observation-group>summary::before{content:'▸';color:#b7d5ff;font-size:16px;line-height:1}
+.observation-group[open]>summary::before{content:'▾'}
 .observation-group>summary:focus-visible{outline:2px solid #a5c9ff;outline-offset:-3px}
 .observation-group[open]>summary{border-bottom:1px solid #365476;background:#193452}
 .observation-group-name{flex:1 1 200px;overflow-wrap:anywhere}
