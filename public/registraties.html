@@ -221,6 +221,7 @@ const today=()=>{
 };
 function clearForm(){
   $('observationForm').reset();today();
+  $('selectedTargetInfo').textContent='Nog geen personeelslid gekozen.';
   renderTargetPicker();
 }
 async function api(path,method='GET',body){
