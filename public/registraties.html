@@ -50,6 +50,32 @@ fieldset{border:0;margin:0;padding:0}
 .archive-label{font-size:11px;font-weight:700;color:#b2c9e8}
 #inboxView{max-width:185px;width:auto}
 .archive-tip{font-size:12px;margin:8px 0 12px}
+
+/* Eenvoudige, door de server afgebakende personeelslijst voor BK-observaties. */
+.target-roster-head{display:grid;grid-template-columns:82px minmax(150px,1fr) minmax(130px,.8fr);gap:8px;
+ padding:8px 11px;background:#213a59;border:1px solid #466386;border-bottom:0;border-radius:8px 8px 0 0;
+ color:#bfd5f3;font-size:11px;font-weight:800;letter-spacing:.03em}
+.target-roster{border:1px solid #466386;border-radius:0 0 8px 8px;background:#0b1b32;
+ max-height:290px;overflow-y:auto;overscroll-behavior:contain;scrollbar-color:#6a88b0 #112746}
+.target-roster-row{display:grid;grid-template-columns:82px minmax(150px,1fr) minmax(130px,.8fr);gap:8px;
+ width:100%;padding:9px 11px;min-height:43px;border:0;border-bottom:1px solid #2b4463;border-radius:0;
+ background:transparent;text-align:left;color:#e9f2ff;font-size:12px;font-weight:500;align-items:center}
+.target-roster-row:hover{background:#1d395c}
+.target-roster-row:focus-visible{outline:2px solid #8ebeff;outline-offset:-3px;position:relative}
+.target-roster-row[aria-pressed="true"]{background:#164d46;color:#edfff8;box-shadow:inset 3px 0 #57d3a6}
+.target-roster-call{font-weight:850;font-variant-numeric:tabular-nums;color:#bfd9ff}
+.target-roster-name{font-weight:750;overflow-wrap:anywhere}
+.target-roster-rank{font-size:11px;color:#b5cce8;overflow-wrap:anywhere}
+.target-roster-empty{color:#c4d4ed;padding:12px;font-size:12px}
+.target-fallback{margin-top:10px;font-size:12px;color:#adc8e7}
+.target-fallback summary{cursor:pointer;padding:6px 0}
+.target-fallback select{margin-top:5px}
+@media(max-width:550px){
+ .target-roster-head,.target-roster-row{grid-template-columns:51px minmax(100px,1fr) minmax(83px,.75fr);gap:5px;padding-inline:6px}
+ .target-roster-head{font-size:9px}
+ .target-roster-row{font-size:11px;min-height:44px}
+ .target-roster-rank{font-size:10px}
+}
 .observation-group{border:1px solid #3b597f;border-radius:10px;background:#10213a;margin:10px 0;overflow:hidden}
 .observation-group>summary{cursor:pointer;display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:13px 15px;color:#ebf3ff;font-weight:750}
 .observation-group>summary:hover{background:#1c3554}
@@ -86,8 +112,18 @@ fieldset{border:0;margin:0;padding:0}
       <div class="grid">
         <div class="field"><label for="author">Ingediend door (geverifieerd)</label>
           <div id="author" class="readonly"></div></div>
-        <div class="field"><label for="target">Betrokken personeelslid *</label>
-          <select id="target" required aria-describedby="targetCount selectedTargetInfo"></select><div id="targetCount" class="helper"></div><div id="selectedTargetInfo" class="helper" role="status" aria-live="polite">Kies een personeelslid om de observatie te koppelen.</div></div>
+        <div class="field full" id="observationTargetPicker">
+          <label for="targetSearch">Betrokken personeelslid *</label>
+          <input id="targetSearch" type="search" autocomplete="off" placeholder="Zoek op roepnummer of naam…" aria-controls="targetList" aria-describedby="targetCount selectedTargetInfo">
+          <div class="target-roster-head" aria-hidden="true"><span>CALL</span><span>NAAM</span><span>RANG</span></div>
+          <div id="targetList" class="target-roster" role="group" aria-label="Selecteer een personeelslid van lagere rang"></div>
+          <div id="targetCount" class="helper" role="status" aria-live="polite"></div>
+          <div id="selectedTargetInfo" class="helper" role="status" aria-live="polite">Kies een personeelslid om de observatie te koppelen.</div>
+          <details class="target-fallback"><summary>Alternatief: kiezen via keuzelijst</summary>
+            <label for="target">Personeelslid</label>
+            <select id="target" required aria-describedby="targetCount selectedTargetInfo"></select>
+          </details>
+        </div>
         <div class="field"><label for="eventDate">Datum van gebeurtenis *</label>
           <input id="eventDate" type="date" required></div>
         <div class="field"><label for="eventTime">Tijdstip *</label>
@@ -126,9 +162,54 @@ fieldset{border:0;margin:0;padding:0}
 <script type="module">
 const $=id=>document.getElementById(id);
 let bridge=null,context=null,inboxData=[],inboxCursor=null,submitBusy=false;
+let selectableTargets=[];
 const openObservationGroups=new Set();
 const validTargetId=value=>typeof value==='string'&&/^\d{15,22}$/.test(value);
 const normalizeTargetId=value=>String(value??'').trim();
+const normalizeRosterSearch=value=>String(value??'').normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl-BE').trim();
+const filterRosterTargets=(targets,term)=>targets.filter(item=>
+  [item.call,item.name].some(value=>
+    normalizeRosterSearch(value).includes(normalizeRosterSearch(term))));
+const TARGET_RESULT_LIMIT=60;
+function renderTargetPicker(){
+  const q=$('targetSearch').value;
+  const matches=filterRosterTargets(selectableTargets,q);
+  const shown=matches.slice(0,TARGET_RESULT_LIMIT);
+  const root=$('targetList');root.replaceChildren();
+  const selectedId=normalizeTargetId($('target').value);
+  for(const person of shown){
+    const option=document.createElement('button');
+    option.type='button';option.className='target-roster-row';
+    option.dataset.discordId=normalizeTargetId(person.discordId);
+    option.setAttribute('aria-pressed',String(selectedId===option.dataset.discordId));
+    option.setAttribute('aria-label','Selecteer '+person.call+' · '+person.name+' · '+person.rank);
+    for(const [text,cls] of [
+      [person.call,'target-roster-call'],[person.name,'target-roster-name'],
+      [person.rank,'target-roster-rank']]){
+      const span=document.createElement('span');span.className=cls;
+      span.textContent=String(text||'—');option.append(span);
+    }
+    option.addEventListener('click',()=>{
+      const id=normalizeTargetId(person.discordId);
+      if(!selectableTargets.some(p=>normalizeTargetId(p.discordId)===id))return;
+      $('target').value=id;
+      $('target').dispatchEvent(new Event('change',{bubbles:true}));
+      renderTargetPicker();
+    });
+    root.append(option);
+  }
+  if(!matches.length){
+    const note=document.createElement('p');note.className='target-roster-empty';
+    note.textContent=selectableTargets.length?
+      'Geen personeelsleden gevonden. Probeer een ander roepnummer of naam.':
+      'Er zijn momenteel geen selecteerbare personeelsleden.';
+    root.append(note);
+  }
+  $('targetCount').textContent=matches.length+' gevonden van '+selectableTargets.length+
+    ' toegestane personeelsleden'+(matches.length>TARGET_RESULT_LIMIT?
+      ' · eerste '+TARGET_RESULT_LIMIT+' getoond, verfijn je zoekopdracht':'');
+}
 const setMessage=(msg,error=false)=>{
   $('message').className=msg?'status '+(error?'error':'success'):'status';
   $('message').textContent=msg;
@@ -140,6 +221,7 @@ const today=()=>{
 };
 function clearForm(){
   $('observationForm').reset();today();
+  renderTargetPicker();
 }
 async function api(path,method='GET',body){
   const user=bridge?.auth.currentUser;
@@ -162,7 +244,11 @@ function prepareForm(data){
   // unlinked or malformed IDs as selectable members: the write API rejects them.
   const targets=[...(data.targets||[])].filter(p=>validTargetId(p.discordId))
     .sort((a,b)=>String(a.call).localeCompare(String(b.call),'nl',{numeric:true}));
+  selectableTargets=targets;
   const select=$('target');select.replaceChildren();
+  // The visible searchable list validates selection in JS; the native dropdown
+  // stays available as an optional fallback inside a collapsed details element.
+  select.required=false;
   const empty=document.createElement('option');empty.value='';
   empty.textContent='— Kies eerst een personeelslid —';empty.disabled=true;
   empty.selected=true;select.append(empty);
@@ -171,11 +257,8 @@ function prepareForm(data){
     opt.value=normalizeTargetId(item.discordId);
     opt.textContent=item.call+' · '+item.name+' · '+item.rank;select.append(opt);
   }
-  $('targetCount').textContent=targets.length+' personeelsleden met een lagere rang beschikbaar';
   $('selectedTargetInfo').textContent='Nog geen personeelslid gekozen.';
-  if(targets.length!==(data.targets||[]).length){
-    $('targetCount').textContent+=' · Niet-gekoppelde fiches zijn uitgesloten van selectie.';
-  }
+  $('targetSearch').disabled=!targets.length;
   $('submitHint').textContent=data.writesEnabled?
     'De observatie wordt opgeslagen met jouw geverifieerde identiteit.':
     'De registratieopslag is tijdelijk uitgeschakeld door de server.';
@@ -325,6 +408,7 @@ async function loadContext(){
 $('clearBtn').onclick=()=>{
   clearForm();$('selectedTargetInfo').textContent='Nog geen personeelslid gekozen.';setMessage('');
 };
+$('targetSearch').addEventListener('input',renderTargetPicker);
 $('target').addEventListener('change',()=>{
   const selected=$('target').selectedOptions[0];
   $('selectedTargetInfo').textContent=validTargetId($('target').value)&&
@@ -333,6 +417,7 @@ $('target').addEventListener('change',()=>{
     'Kies een geldig personeelslid uit de lijst.';
   // A previous validation error must not remain after the user corrects it.
   if($('message').classList.contains('error'))setMessage('');
+  renderTargetPicker();
 });
 $('refreshInbox').onclick=()=>loadInbox();
 $('inboxView').onchange=()=>{inboxData=[];inboxCursor=null;loadInbox();};
@@ -369,7 +454,7 @@ async function init(){
     onAuthStateChanged(auth,async user=>{
       setMessage('');
       if(!user){
-        context=null;inboxData=[];inboxCursor=null;$('olderInbox').hidden=true;$('formPanel').hidden=true;$('inboxPanel').hidden=true;
+        context=null;selectableTargets=[];inboxData=[];inboxCursor=null;$('olderInbox').hidden=true;$('formPanel').hidden=true;$('inboxPanel').hidden=true;
         $('noAccess').hidden=true;$('loginPanel').hidden=false;
         $('roleLabel').textContent='Niet aangemeld';$('authBtn').textContent='Google aanmelden';
         $('loginStatus').textContent='Meld je aan met je goedgekeurde BelgiëPD-account.';
