@@ -64,3 +64,34 @@ test('Gescheiden Actief- en Archief-overzichten met bestaande rangbeperkingen',(
  assert.ok(ui.includes("api('/api/basic-observations/'+encodeURIComponent(row.id)+'/archive'"));
  assert.match(ui,/await loadInbox\(\)/);
 });
+
+test('Gebundeld observatieoverzicht is uitsluitend toegankelijk vanaf Middenkader',()=>{
+ assert.equal(mayReadBasicInbox(actor('agentenkader')),false);
+ assert.equal(mayReadBasicInbox(actor('basiskader')),false);
+ assert.equal(mayReadBasicInbox(actor('middenkader')),true);
+ assert.equal(mayReadBasicInbox(actor('officierenkader')),true);
+ assert.equal(mayReadBasicInbox(actor('korpsleiding')),true);
+ assert.equal(mayReadBasicInbox({...actor('basiskader'),boardPersonnelAdmin:true}),true,
+   'Bestuur heeft afzonderlijke toegangsrechten');
+ const routes=source('src/basic-observation-routes.js');
+ assert.match(routes,/app\.get\('\/api\/basic-observations\/inbox',requireUser/);
+ assert.match(routes,/if\(!mayReadBasicInbox\(req\.bpd\)\)/);
+ const ui=source('public/registraties.html');
+ assert.match(ui,/\$\('inboxPanel'\)\.hidden=!data\.canReview/);
+ assert.match(ui,/if\(!context\?\.canReview\)return/);
+});
+test('Observaties worden per personeelslid ingeklapt met teller, nieuwste eerst en uitklapbare details',()=>{
+ const ui=source('public/registraties.html');
+ assert.match(ui,/const groups=new Map\(\)/);
+ assert.match(ui,/const key=row\.subject\?\.discordId/);
+ assert.match(ui,/rows\.sort\(\(a,b\)=>createdMs\(b\)-createdMs\(a\)\)/);
+ assert.match(ui,/for\(const \[key,entries\] of groups\)/);
+ assert.match(ui,/group=document\.createElement\('details'\)/);
+ assert.match(ui,/summary=document\.createElement\('summary'\)/);
+ assert.match(ui,/group\.dataset\.subjectId=key/);
+ assert.match(ui,/entries\.length\+' observatie'/);
+ assert.match(ui,/items\.append\(article\)/);
+ assert.match(ui,/group\.open=Boolean\(q\)\|\|openObservationGroups\.has\(key\)/);
+ assert.match(ui,/if\(context\?\.canArchive\)/);
+ assert.match(ui,/id="inboxView"/);
+});
