@@ -50,6 +50,18 @@ fieldset{border:0;margin:0;padding:0}
 .archive-label{font-size:11px;font-weight:700;color:#b2c9e8}
 #inboxView{max-width:185px;width:auto}
 .archive-tip{font-size:12px;margin:8px 0 12px}
+.observation-group{border:1px solid #3b597f;border-radius:10px;background:#10213a;margin:10px 0;overflow:hidden}
+.observation-group>summary{cursor:pointer;display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:13px 15px;color:#ebf3ff;font-weight:750}
+.observation-group>summary:hover{background:#1c3554}
+.observation-group>summary:focus-visible{outline:2px solid #a5c9ff;outline-offset:-3px}
+.observation-group[open]>summary{border-bottom:1px solid #365476;background:#193452}
+.observation-group-name{flex:1 1 200px;overflow-wrap:anywhere}
+.observation-group-count{font-size:11px;color:#d8ebff;background:#27496e;border-radius:999px;padding:4px 9px;white-space:nowrap}
+.observation-group-latest{font-size:11px;color:#b0c8e7;font-weight:500}
+.observation-group-items{padding:7px 11px 10px}
+.observation-group-items>.report-item:last-child{margin-bottom:0}
+@media(max-width:670px){.observation-group>summary{padding:11px}.observation-group-items{padding:6px}}
+
 @media(max-width:670px){.grid{grid-template-columns:1fr}.field.full{grid-column:auto}header{padding:13px}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head>
@@ -112,6 +124,7 @@ fieldset{border:0;margin:0;padding:0}
 <script type="module">
 const $=id=>document.getElementById(id);
 let bridge=null,context=null,inboxData=[],inboxCursor=null,submitBusy=false;
+const openObservationGroups=new Set();
 const validTargetId=value=>typeof value==='string'&&/^\d{15,22}$/.test(value);
 const normalizeTargetId=value=>String(value??'').trim();
 const setMessage=(msg,error=false)=>{
@@ -174,6 +187,12 @@ function displayInbox(list){
     row.subject?.name,row.subject?.call,row.actor?.name,row.actor?.call,
     row.details,row.eventDate
   ].some(v=>String(v||'').toLocaleLowerCase('nl').includes(q)));
+  // Always present the latest registered observation first, including after loading older pages.
+  const createdMs=row=>{
+    const ms=Date.parse(row.createdAt||((row.eventDate||'')+'T'+(row.eventTime||'00:00')));
+    return Number.isFinite(ms)?ms:0;
+  };
+  rows.sort((a,b)=>createdMs(b)-createdMs(a));
   const root=$('inboxList');root.replaceChildren();
   $('inboxCount').textContent=rows.length+' van '+(list?.length||0)+' observaties';
   if(!rows.length){
@@ -188,11 +207,27 @@ function displayInbox(list){
     if(!groups.has(key))groups.set(key,[]);
     groups.get(key).push(row);
   }
-  for(const entries of groups.values()){
-    const first=entries[0],head=document.createElement('h3');
-    head.textContent=(first.subject?.call||'—')+' · '+(first.subject?.name||'Onbekend')+
-      ' ('+entries.length+' observatie'+(entries.length===1?'':'s')+')';
-    root.append(head);
+  for(const [key,entries] of groups){
+    const first=entries[0];
+    const group=document.createElement('details');
+    group.className='observation-group';
+    group.dataset.subjectId=key;
+    group.open=Boolean(q)||openObservationGroups.has(key);
+    const summary=document.createElement('summary');
+    const name=document.createElement('span');name.className='observation-group-name';
+    name.textContent=(first.subject?.call||'—')+' · '+(first.subject?.name||'Onbekend');
+    const count=document.createElement('span');count.className='observation-group-count';
+    count.textContent=entries.length+' observatie'+(entries.length===1?'':'s');
+    const latest=document.createElement('span');latest.className='observation-group-latest';
+    latest.textContent='Laatste: '+(first.eventDate||'datum onbekend');
+    summary.append(name,count,latest);
+    const items=document.createElement('div');items.className='observation-group-items';
+    group.append(summary,items);
+    group.addEventListener('toggle',()=>{
+      if(group.open)openObservationGroups.add(key);
+      else openObservationGroups.delete(key);
+    });
+    root.append(group);
     for(const row of entries){
       const article=document.createElement('article');article.className='report-item';
       const title=document.createElement('strong');
@@ -239,7 +274,7 @@ function displayInbox(list){
         const test=document.createElement('span');test.className='counter';
         test.textContent='TEST · uitgesloten uit weekrapport';article.append(test);
       }
-      root.append(article);
+      items.append(article);
     }
   }
 }
