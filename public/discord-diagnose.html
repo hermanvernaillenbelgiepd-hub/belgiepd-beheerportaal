@@ -23,6 +23,9 @@ small,.muted{color:#a9bfdb}h1{font-size:clamp(25px,4vw,36px);margin:0 0 8px}h2{f
 #notice{padding:15px 17px;border:1px solid #54739b;border-radius:11px;background:#193455}
 #notice.bad{background:#4b2b3a;border-color:#a15e78}
 #notes{padding-left:22px;color:#c8d8ec}#notes li{margin:7px 0}
+.audit-entry{padding:10px 12px;border:1px solid #3d5574;border-radius:8px;margin:7px 0;background:#0b1d34;overflow-wrap:anywhere}
+.audit-entry strong{display:block;color:#e7f2ff;font-size:13px}
+.audit-entry small{display:block;font-size:12px;color:#b6c9e6}
 [hidden]{display:none!important}
 </style><link rel="stylesheet" href="/bpd-navigation.css"></head><body>
 <header><strong>🛡️ BelgiumPD / MAIN · Rollencontrole</strong>
@@ -44,6 +47,13 @@ small,.muted{color:#a9bfdb}h1{font-size:clamp(25px,4vw,36px);margin:0 0 8px}h2{f
  <section><h2>Wat vraagt aandacht?</h2><ul id="notes"></ul></section>
  <p class="muted">De uitgebreide controle wordt alleen op verzoek uitgevoerd en stopt na maximaal 3000 leden of zodra de laatste pagina is bereikt. Er worden enkel totalen getoond, geen Discord-ID’s, namen of persoonlijke rollen. De uitkomst blijft maximaal 10 minuten in de cache.</p>
 </div>
+<section class="panel" id="leadershipAuditPanel">
+ <h2>Bevoegdheden bij Discord-aanmelding</h2>
+ <p class="muted">Vergelijk de laatst geverifieerde Discord-rollen met de goedgekeurde leidinggevende functies. Alleen Technisch Beheer kan deze lijst ophalen. Dit is uitsluitend een signalering: er worden geen rollen gewijzigd.</p>
+ <button type="button" id="checkLeadership">Controleer leidinggevende rolverschillen</button>
+ <p id="leadershipStatus" class="muted" role="status" aria-live="polite">Nog niet gecontroleerd.</p>
+ <div id="leadershipDifferences"></div>
+</section>
 <section class="panel">
  <h2>Herstelacties</h2>
  <p>Controleer in de Discord Developer Portal bij <strong>Bot → Privileged Gateway Intents</strong> of Server Members Intent ingeschakeld is. Controleer vervolgens of de BelgiumPD-bot tot de juiste server behoort, en laat leden via <a href="/discord-status.html">Mijn Discord</a> hun eigen rollen verifiëren.</p>
@@ -145,6 +155,34 @@ async function refresh(coverage=false){
     $('coverageRefresh').disabled=false;
   }}
 }
+$('checkLeadership').onclick=async()=>{
+ const btn=$('checkLeadership'),out=$('leadershipDifferences');
+ if(!currentUser?.uid?.startsWith('discord:'))return;
+ btn.disabled=true;out.replaceChildren();
+ $('leadershipStatus').textContent='Geverifieerde Discord-rollen en portaalfuncties vergelijken…';
+ try{
+  const token=await currentUser.getIdToken();
+  const response=await fetch('/api/board/discord-leadership-audit',{
+   headers:{Authorization:'Bearer '+token},cache:'no-store',credentials:'same-origin'
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||data.mode!=='alleen-lezen')throw Error(data.error||'Controle niet beschikbaar');
+  $('leadershipStatus').textContent=String(data.accountsChecked||0)+' goedgekeurde accounts gecontroleerd · '+
+   String(data.staleVerifications||0)+' verouderde rolverificaties · '+
+   String(data.freshDifferences?.length||0)+' aandachtspunten'+(data.limited?' (beperkte steekproef)':'')+
+   '. Vraag betrokken leden eerst hun Discord-rollen te vernieuwen.';
+  if(!data.freshDifferences?.length)out.append(make('p','Geen actuele rolverschillen aangetroffen in de gecontroleerde accounts.'));
+  for(const item of (data.freshDifferences||[])){
+   const row=make('div','');row.className='audit-entry';
+   row.append(make('strong','Discord '+String(item.discordId||'')+' · '+String(item.department||'')));
+   row.append(make('small','Goedgekeurd: '+String(item.expected||'')+
+     ' · Recente Discord-verificatie: '+String(item.actual||'')+
+     ' · '+(item.status==='different'?'Verschil':'Controle personeelsfiche vereist')));
+   out.append(row);
+  }
+ }catch(e){$('leadershipStatus').textContent='Geen resultaat: '+e.message}
+ finally{btn.disabled=false}
+};
 $('refresh').onclick=()=>void refresh(false);
 $('coverageRefresh').onclick=()=>void refresh(true);
 try{
