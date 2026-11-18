@@ -11,6 +11,7 @@ const TITLE=Object.freeze({
   rejected:'Verlof geweigerd',
   withdrawn:'Verlof ingetrokken',
   board_override:'Verlofbeslissing herzien door Bestuur',
+  manual_submitted:'Verlof namens medewerker ter goedkeuring ingediend',
   manual_approved:'Verlof handmatig goedgekeurd',
   cadre_retired:'Verlofperiode ingetrokken door bevoegd kader'
 });
