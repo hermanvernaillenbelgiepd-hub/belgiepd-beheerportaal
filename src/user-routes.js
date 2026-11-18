@@ -67,6 +67,25 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
     try{
       ready();
       const {id,member,decoded}=await discordSubject(req);
+      // Flag a previously archived or unknown police identity before any
+      // automatic personnel approval. This alert is not an access grant.
+      const candidateDepartments=roleSummary(member.roleIds).departments;
+      const lifecycle=await db().collection('bpd_personnel_lifecycle').doc('politie_'+id).get();
+      const previouslyArchived=['archived','pending'].includes(lifecycle.get('state'));
+      const policeCandidate=candidateDepartments.includes('politie')||candidateDepartments.length===0;
+      if(policeCandidate||previouslyArchived){
+        const roster=await getSnapshot({includeArchived:true});
+        if(roster.stale)throw publicError('Identiteitscontrole niet actueel; probeer later opnieuw',503);
+        const mine=roster.data.filter(p=>p.dept==='politie'&&p.personId===id);
+        const archived=mine.some(p=>['archived','pending'].includes(p.lifecycleState));
+        if(archived||mine.length!==1){
+          await db().collection('bpd_personnel_reentry_alerts').doc(id).set({
+            discordId:id,name:String(member.username||'Discord-lid').slice(0,80),
+            kind:archived?'archived_portal_login':'unknown_dc_login',
+            status:'pending',updatedAt:FieldValue.serverTimestamp()
+          },{merge:true});
+        }
+      }
       if(Object.values(accessList()).some(entry=>entry?.discordId===id))
         return res.json({status:'legacy',message:'Je account heeft al een bestaande toewijzing.'});
       const ref=collection().doc(id);

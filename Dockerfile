@@ -22,6 +22,7 @@ RUN node --test tests/dc-id-transfer.test.js tests/basic-observations.test.js te
  tests/personnel-lifecycle.test.js \
  tests/personnel-decoration-policy.test.js \
  tests/training-requests-fortnight-reports.test.js && npm run check
+RUN node --test tests/personnel-identity-return-review.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node

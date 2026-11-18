@@ -123,6 +123,14 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 <header><strong>🛡️ BelgiëPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>📬 Meldingen</h1><p>Bekijk je persoonlijke verlofbeslissingen en opleidingsmeldingen. Reekshoofden en bevoegde dienstleiding zien hier aanvragen die zij mogen behandelen.</p>
 <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
+<section id="identityReviewPanel" class="panel" hidden>
+ <details class="notification-fold" id="identityReviewFold" open>
+  <summary>🔐 Herinstroom en DC-ID-controle · <span id="identityReviewCount" class="pill">0</span></summary>
+  <p>Voor Officierenkader en Korpsleiding: controleer onbekende DC-ID's, mogelijke oude dossiers en nieuwe roepnummeraanvragen vóór goedkeuring. Een overeenkomstige naam bewijst geen identiteit.</p>
+  <div class="actions"><button type="button" id="identityReviewReload">↻ Vernieuwen</button></div>
+  <div id="identityReviewList" aria-live="polite"></div>
+ </details>
+</section>
 <section id="staffActivityFollowupPanel" class="panel" hidden>
  <details class="notification-fold" id="staffFollowupFold">
   <summary>👥 Personeelsopvolging · <span id="staffFollowup50">0</span> op 50/50 · <span id="staffFollowupInactive">0</span> INACTIEF</summary>
@@ -330,7 +338,57 @@ async function loadActivityPings(){
   panel.hidden=false;
  }
 }
+async function loadIdentityReview(){
+ const panel=$('identityReviewPanel'),list=$('identityReviewList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const result=await api('/api/personnel-return-review');
+  const rows=result.rows||[];
+  $('identityReviewCount').textContent=String(rows.length);
+  for(const item of rows){
+   const card=document.createElement('div');card.className='item';
+   const heading=document.createElement('strong');
+   heading.textContent=(item.name||'Aanvrager')+' · '+item.discordId;
+   const detail=document.createElement('p');
+   detail.textContent=item.detail+
+     (item.archivedSameId?' · OUD DOSSIER OP DEZE DC-ID':'')+
+     (item.possiblePriorRecord?' · MOGELIJK OUD DOSSIER':'')+
+     (item.archivedCall?' · Vorig roepnummer: '+item.archivedCall:'')+
+     (item.priorDiscordId?' · Te controleren vorige DC-ID: '+item.priorDiscordId:'');
+   const link=document.createElement('a');
+   link.href=item.href||'/personeelsbeheer.html';
+   link.textContent='Open controlepagina';
+   card.append(heading,detail,link);
+   if(item.alertId){
+    const check=document.createElement('button');check.className='alt';
+    check.type='button';check.textContent='Als gecontroleerd markeren';
+    check.onclick=async()=>{
+     const reason=prompt('Motivering controle (10–500 tekens). Dit keurt geen dossier of account goed:');
+     if(reason===null)return;
+     if(reason.trim().length<10||reason.trim().length>500)
+       return feedback('Motivering moet 10 tot 500 tekens zijn.',true);
+     check.disabled=true;
+     try{
+      await api('/api/personnel-return-review/'+encodeURIComponent(item.alertId)+'/acknowledge',
+        {reason:reason.trim()});
+      await loadIdentityReview();
+     }catch(e){feedback(e.message,true);check.disabled=false}
+    };
+    card.append(check);
+   }
+   list.append(card);
+  }
+  if(!rows.length)list.textContent='Geen openstaande aanvragen voor identiteits- of herinstroomcontrole.';
+  panel.hidden=false;
+ }catch(e){
+  if(/Alleen geverifieerd Officierenkader|Geen toegang|Aanmelding vereist/i.test(e.message))return;
+  panel.hidden=false;list.textContent='Identiteitscontrole tijdelijk niet beschikbaar: '+e.message;
+ }
+}
+$('identityReviewReload').onclick=loadIdentityReview;
 async function load(){
+ void loadIdentityReview();
  void loadStaffActivityFollowup();
  void loadActivityPings();
  void loadTraining();

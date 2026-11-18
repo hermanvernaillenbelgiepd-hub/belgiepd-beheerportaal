@@ -101,6 +101,9 @@ async function collectTransfers(db,oldId,newId,depts){
    await collectTree(db.collection(collection).doc(oldId),
      db.collection(collection).doc(newId),copies);
  }
+ // Canonical identity name is keyed by bare Discord ID, across departments.
+ await collectTree(db.collection('bpd_personnel_identity_names').doc(oldId),
+   db.collection('bpd_personnel_identity_names').doc(newId),copies);
  for(const {collection,field} of FIELD_COLLECTIONS){
    const target=await db.collection(collection).where(field,'==',newId).limit(1).get();
    if(!target.empty)

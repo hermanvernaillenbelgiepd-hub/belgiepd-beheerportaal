@@ -85,6 +85,14 @@ export function installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelCh
     try{const current=await collection().doc(id).get();if(!current.exists)return res.status(404).json({error:'Aanvraag niet gevonden'});
       if(current.get('status')!=='verified')return res.status(409).json({error:'Aanvraag is niet gecontroleerd of reeds verwerkt'});
       approvedBy=await actor(req);if(!approvedBy)return res.status(403).json({error:'Account is niet aan een personeelsfiche gekoppeld'});
+      const identity=await getSnapshot({forceRefresh:true,includeArchived:true});
+      if(identity.stale)return res.status(503).json({error:'Archiefcontrole niet actueel'});
+      if(identity.data.some(p=>p.dept==='politie'&&
+        ['archived','pending'].includes(p.lifecycleState)&&
+        (p.personId===id||p.personId!==id&&
+          String(p.name||'').trim().toLocaleLowerCase('nl-BE')===
+          String(current.get('name')||'').trim().toLocaleLowerCase('nl-BE'))))
+        return res.status(409).json({error:'Mogelijk gearchiveerd dossier: herintreding of DC-ID-overdracht eerst controleren'});
       plan=await planFirstFree(current.data(),req.body?.preferredCall);
       await getFirestore().runTransaction(async tx=>{
         const ref=collection().doc(id),claim=getFirestore().collection('bpd_callsign_reservations').doc(String(plan.call));

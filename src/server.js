@@ -66,6 +66,8 @@ import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {readPoliceSeriesAssignments} from './police-series-store.js';
 import {overlayPoliceSeriesAssignments} from './police-series-policy.js';
 import {installPersonnelLifecycleRoutes} from './personnel-lifecycle-routes.js';
+import {PERSONNEL_IDENTITY_NAMES,projectCanonicalPersonnelNames} from './personnel-identity-policy.js';
+import {installPersonnelReturnReviewRoutes} from './personnel-return-review-routes.js';
 import {PERSONNEL_LIFECYCLE_COLLECTION,lifecycleKey,overlayPersonnelLifecycle} from './personnel-lifecycle-policy.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
@@ -558,7 +560,7 @@ async function getSourceSnapshot(forceRefresh=false){
 async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
-  const [created,edits,specialties,rosterConfigs,identityAliases,policeSeries]=await Promise.all([
+  const [created,edits,specialties,rosterConfigs,identityAliases,policeSeries,identityNames]=await Promise.all([
     on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(500).get():null,
     process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'
       ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null,
@@ -566,9 +568,11 @@ async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
       ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null,
     specialtyReadEnabled(process.env)?loadRosterConfigs():null,
     getFirestore().collection(DC_TRANSFER_ALIASES).limit(201).get(),
-    readPoliceSeriesAssignments()
+    readPoliceSeriesAssignments(),
+    getFirestore().collection(PERSONNEL_IDENTITY_NAMES).limit(1001).get()
   ]);
-  if(created?.size===500||edits?.size===400||specialties?.size===600||identityAliases.size===201)
+  if(created?.size===500||edits?.size===400||specialties?.size===600||
+     identityAliases.size===201||identityNames.size===1001)
     throw Error('Te veel personeelsrecords; migratiecontrole nodig');
   const added=(created?.docs||[]).map(d=>asCreatedPersonnel(d.data())).filter(Boolean);
   // Never silently override or duplicate an original service+Discord ID.
@@ -578,7 +582,8 @@ async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const extra=canonicalAdded.filter(p=>!keys.has(p.dept+':'+p.personId));
   const combined=canonicalBase.concat(extra);
   const edited=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
-  const personnel=overlayPoliceSeriesAssignments(edited,policeSeries);
+  const named=projectCanonicalPersonnelNames(edited,identityNames.docs);
+  const personnel=overlayPoliceSeriesAssignments(named,policeSeries);
   let visible=specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel;
   // Reuse the already-authorized BelgiumPD members API to project fresh,
   // verified Discord specializations across the personnel roster. Display
@@ -971,6 +976,7 @@ installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 // Isolated legacy activity read: no automated pings or personnel changes.
 installActivityCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
+installPersonnelReturnReviewRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelLifecycleRoutes(app,{requireUser:requireDossierUser,
   getSnapshot,invalidateLifecycle:invalidatePersonnelLifecycle,
   invalidateUserAccess:id=>{
