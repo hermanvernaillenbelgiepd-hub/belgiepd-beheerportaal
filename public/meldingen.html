@@ -215,10 +215,12 @@ async function api(url,body){
  if(!response.ok)throw Error(data.error||'Verzoek mislukt');
  return data;
 }
+const displayLeaveDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)?
+ value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
 function item(x,override=false){
  const row=document.createElement('div');row.className='item';
  const title=document.createElement('strong');title.textContent=(x.subjectCall?x.subjectCall+' · ':'')+(x.subjectName||'Personeelslid')+
-  ' · '+(x.startDate||'?')+' t/m '+(x.endDate||'?')+
+  ' · '+displayLeaveDate(x.startDate)+' t/m '+displayLeaveDate(x.endDate)+
   (x.extensionOf?' · VERLENGING':'')+
    (x.manualPendingReview?' · Handmatig ingediend door kaderlid':'');
  const info=document.createElement('p');info.textContent=
@@ -227,6 +229,9 @@ function item(x,override=false){
     Number(x.days)+' kalenderdagen')+' · '+(x.subjectDepartments||[]).join(', ')+
   (override?' · huidige status: '+(x.status==='approved'?'Goedgekeurd':'Afgewezen'):'');
  row.append(title,info);
+ const reason=document.createElement('p');
+ reason.textContent='Reden: '+(x.note?.trim()||'Niet geregistreerd (oude verlofperiode)');
+ row.append(reason);
  if(writesEnabled){
   const buttons=document.createElement('div');buttons.className='actions';
   for(const [decision,label] of [['approved','Goedkeuren'],['rejected','Afwijzen']]){
@@ -345,8 +350,8 @@ async function load(){
     for(const record of result.mine||[]){
       const entry=document.createElement('div');entry.className='item';
       const heading=document.createElement('strong');
-      heading.textContent=(record.startDate||'—')+' t/m '+
-        (record.endDate||'—')+' · '+(names[record.status]||'Status onbekend');
+      heading.textContent=displayLeaveDate(record.startDate)+' t/m '+
+        displayLeaveDate(record.endDate)+' · '+(names[record.status]||'Status onbekend');
       entry.append(heading);root.append(entry);
     }
     if(!root.children.length)root.textContent='Je hebt momenteel geen verlofmeldingen.';
@@ -412,7 +417,7 @@ async function loadSeriesLeave(){
    title.textContent=(record.subjectCall||'')+' · '+record.subjectName+
      ' · reeks '+record.series;
    const dates=document.createElement('p');
-   dates.textContent=record.startDate+' t/m '+record.endDate+
+   dates.textContent=displayLeaveDate(record.startDate)+' t/m '+displayLeaveDate(record.endDate)+
      (record.extensionOf?' · verlenging, totaal '+record.totalPeriodDays+' dagen':'')+
      ' · Wacht op bevoegde beslissing';
    row.append(title,dates);addSeriesReadConfirmation(row,record);pendingEl.append(row);
@@ -425,7 +430,7 @@ async function loadSeriesLeave(){
    const title=document.createElement('strong');
    title.textContent=record.subjectCall+' · '+record.subjectName;
    const dates=document.createElement('p');
-   dates.textContent=record.startDate+' t/m '+record.endDate+' · AUTOMATISCH GOEDGEKEURD';
+   dates.textContent=displayLeaveDate(record.startDate)+' t/m '+displayLeaveDate(record.endDate)+' · AUTOMATISCH GOEDGEKEURD';
    row.append(title,dates);addSeriesReadConfirmation(row,record);recent.append(row);
   }
  }catch(e){
