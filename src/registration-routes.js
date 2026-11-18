@@ -8,7 +8,9 @@ import {canRetireDossierRecord,isRetired} from './dossier-retirement-policy.js';
 import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_SETTINGS_AUDIT,
  HISTORICAL_OBSERVATION_DOC,canManageHistoricalObservationImport,
  historicalObservationSettings,validateHistoricalObservationToggle,
- historicalObservationAllowed} from './historical-observation-import-policy.js';
+ historicalObservationAllowed,historicalMigrationSettings,
+ validateHistoricalMigrationToggle,historicalMigrationAllowed,
+ validateHistoricalActorSelection} from './historical-observation-import-policy.js';
 import { actorFromPersonnel, isCadre, isDiscordId, mayAmend, mayRead, maySubmit, canChooseSanction, permittedSanctionTypes, permittedDepartmentSanctions, canChooseDepartmentSanction, canRepresent, eligibleRepresentative, representativeFromPersonnel, safeSubject, validateAmend, validateEntry, SANCTION_REASONS } from './registrations.js';
 const DEPTS=['politie','brandweer','ambulance','depannage'];
 const trim=s=>String(s??'').trim();
@@ -86,6 +88,9 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
        res.set('Cache-Control','private, no-store');
        res.json({role:req.bpd.role,departments:req.bpd.departments,writesEnabled:writesEnabled(),
          historicalObservationImport:importConfig,
+         historicalMigration:historicalMigrationSettings((await db()
+           .collection(HISTORICAL_OBSERVATION_SETTINGS)
+           .doc(HISTORICAL_OBSERVATION_DOC).get()).data()),
          canManageHistoricalObservationImport:canManageHistoricalObservationImport(req.bpd),
          fireZoneChief:req.bpd.fireZoneChief===true,portalTechnicalMode:req.bpd.portalTechnicalMode===true,
          fullDossierDepartments:req.bpd.dossierFullDepartments||[],
@@ -165,11 +170,18 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
            'Deze sanctiemaatregel is niet toegestaan voor jouw kaderrol. Degradatie en schorsing vereisen Officierenkader of Korpsleiding; ontslag en blacklisting uitsluitend Korpsleiding.'});
        const representedId=trim(raw?.onBehalfOfDiscordId);
        if(representedId){
-         if(!canRepresent(req.bpd,type,dept))
-           return res.status(403).json({error:'Registratie namens een ander is alleen toegestaan voor observaties door kaderleden'});
-         const config=await historicalSettings();
-         if(!historicalObservationAllowed(req.bpd,dept,type,config))
-           return res.status(403).json({error:'Historische observaties namens een ander zijn door Officierenkader/Korpsleiding uitgeschakeld'});
+         const settings=await db().collection(HISTORICAL_OBSERVATION_SETTINGS)
+           .doc(HISTORICAL_OBSERVATION_DOC).get();
+         if(type==='observatie'){
+           if(!canRepresent(req.bpd,type,dept)||!historicalObservationAllowed(
+             req.bpd,dept,type,historicalObservationSettings(settings.data())))
+             return res.status(403).json({error:'Historische observatie-overname is niet toegestaan'});
+         }else if(!historicalMigrationAllowed(req.bpd,dept,type,historicalMigrationSettings(settings.data())))
+           return res.status(403).json({error:'Historische sanctie-overname is uitgeschakeld of niet toegestaan'});
+         try{validateHistoricalActorSelection(representedId,raw?.onBehalfReason,req.bpd.discordId)}
+         catch(e){return res.status(400).json({error:e.message})}
+         if(type==='sanctie'&&values.eventDate>new Date().toISOString().slice(0,10))
+           return res.status(400).json({error:'Historische sanctie moet een oude gebeurtenisdatum hebben'});
        }
        const onBehalfReason=representedId ? trim(raw?.onBehalfReason) : '';
        if(representedId && (onBehalfReason.length<5 || onBehalfReason.length>500))
@@ -195,7 +207,8 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const at=FieldValue.serverTimestamp();
       const batch=db().batch();
-      batch.create(newDoc,{...values,subjectDiscordId:id,dept,subjectNameAtCreation:target.name,subjectCallAtCreation:target.call,
+      batch.create(newDoc,{...values,...(type==='sanctie'&&represented?{status:'historisch'}:{}),
+         subjectDiscordId:id,dept,subjectNameAtCreation:target.name,subjectCallAtCreation:target.call,
         registeredBy:represented||actor,submittedByActor:actor,
         onBehalfOf:represented||null,onBehalfReason,
         historicalImport:Boolean(represented),importSource:represented?'spreadsheet':null,
