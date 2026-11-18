@@ -105,7 +105,9 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
         req.bpd.dossierAllowedDepartments?.includes(p.dept):req.bpd.departments.includes(p.dept));
       const actor=actorFromPersonnel(req.bpd,subset);
       const importConfig=await historicalSettings();
-      const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))&&importConfig.enabled===true?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
+      const migrationConfig=historicalMigrationSettings((await db()
+        .collection(HISTORICAL_OBSERVATION_SETTINGS).doc(HISTORICAL_OBSERVATION_DOC).get()).data());
+      const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))&&(importConfig.enabled===true||migrationConfig.enabled===true&&canManageHistoricalObservationImport(req.bpd))?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
          .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank})):[];
        const sanctionDepartments=['politie','brandweer','ambulance','depannage'].filter(d=>
          (req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&
@@ -121,9 +123,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
        res.set('Cache-Control','private, no-store');
        res.json({role:req.bpd.role,departments:req.bpd.departments,writesEnabled:writesEnabled(),
          historicalObservationImport:importConfig,
-         historicalMigration:historicalMigrationSettings((await db()
-           .collection(HISTORICAL_OBSERVATION_SETTINGS)
-           .doc(HISTORICAL_OBSERVATION_DOC).get()).data()),
+         historicalMigration:migrationConfig,
          canManageHistoricalObservationImport:canManageHistoricalObservationImport(req.bpd),
          fireZoneChief:req.bpd.fireZoneChief===true,portalTechnicalMode:req.bpd.portalTechnicalMode===true,
          fullDossierDepartments:req.bpd.dossierFullDepartments||[],
