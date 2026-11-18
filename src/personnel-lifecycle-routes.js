@@ -10,6 +10,7 @@ import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
 import {verifyGuildAuthorizationRoles} from './discord-guild-authorization.js';
 import {ROLE_CATALOG} from './role-catalog.js';
 import {USER_COLLECTION} from './user-access.js';
+import {personnelCallClaimId} from './personnel-editor-policy.js';
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 const respond=(res,e)=>{
  if(e?.status)return res.status(e.status).json({error:e.message});
@@ -267,8 +268,18 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    if(duplicate)throw fail(409,'Dit INP-nummer is al in gebruik');
    const lifecycleRef=store().doc('politie_'+discordId);
    const accountRef=db().collection(USER_COLLECTION).doc(discordId);
+   const claimStore=db().collection('bpd_personnel_call_claims');
+   const claim=claimStore.doc(personnelCallClaimId('politie',input.newCall));
+   const aliasClaim=claimStore.doc(personnelCallClaimId('politie','S'+input.newCall));
+   const fixedClaim=db().collection('bpd_callsign_reservations').doc(input.newCall);
    const result=await db().runTransaction(async tx=>{
-     const [life,user]=await Promise.all([tx.get(lifecycleRef),tx.get(accountRef)]);
+     const [life,user,reserved,alias,fixed]=await Promise.all([
+       tx.get(lifecycleRef),tx.get(accountRef),tx.get(claim),
+       tx.get(aliasClaim),tx.get(fixedClaim)
+     ]);
+     if([reserved,alias,fixed].some(doc=>doc.exists&&
+       doc.get('discordId')!==discordId))
+       throw fail(409,'Roepnummer is al door een andere medewerker gereserveerd');
      if(life.get('state')!=='pending'||life.get('honorableResignation')!==true)
        throw fail(409,'Geen gecontroleerde herinstroom na eervol ontslag gevonden');
      const revision=life.get('revision')||0;
@@ -294,6 +305,10 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
      const assignment={rank:'Inspecteur',call:input.newCall,series:input.series,
        confirmed:true,at,approvedBy:req.bpd.discordId,
        trainingHistory:honorablePreviousTraining(previous)};
+     tx.set(claim,{dept:'politie',discordId,call:input.newCall,
+       updatedAt:at},{merge:true});
+     tx.set(aliasClaim,{dept:'politie',discordId,call:'S'+input.newCall,
+       aliasOf:input.newCall,updatedAt:at},{merge:true});
      tx.set(lifecycleRef,{
        state:'active',revision:revision+1,restoreFromArchive:true,
        honorableInpAssignment:assignment,cmsRoleSyncPending:false,
