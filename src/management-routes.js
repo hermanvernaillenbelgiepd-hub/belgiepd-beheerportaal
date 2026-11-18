@@ -22,7 +22,11 @@ const toIso=t=>t?.toDate?.().toISOString()||null;
 const caseId=(dept,id)=>`${dept}_${id}`;
 const noPrivate=e=>{
   const {submittedBy,submittedByActor,createdAt,modifiedAt,...other}=e;
-  return {...other,createdAt:toIso(createdAt),modifiedAt:toIso(modifiedAt)};
+  const importedBy=e.historicalImport===true&&submittedByActor?{
+    name:String(submittedByActor.name||'').slice(0,120),
+    call:String(submittedByActor.call||'').slice(0,24)}:null;
+  return {...other,...(importedBy?{importedBy}:{}),
+    createdAt:toIso(createdAt),modifiedAt:toIso(modifiedAt)};
 };
 const errorResponse=(res,error)=>{
   if(/^(Ongeldig|Ongeldige|Omschrijving|Rapporttitel|Rapportperiode|Einddatum|Naam van|Nieuwe naam|Voorgestelde graad|Personeelsbeweging|Datum|Begindatum|Hulpdienst)/.test(error?.message||''))return res.status(400).json({error:error.message});
