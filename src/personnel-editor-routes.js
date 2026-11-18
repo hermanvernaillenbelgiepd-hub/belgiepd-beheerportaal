@@ -636,6 +636,11 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const newClaim=claims.doc(personnelCallClaimId(dept,proposal.newCall));
       const oldClaim=claims.doc(personnelCallClaimId(dept,subject.call));
       const type=classifyPoliceGradeChange(subject.call,proposal.newCall);
+      const movementLabel=type==='promotion'?'Promotie':type==='demotion'?'Degradatie':'Rangwissel';
+      const caseRef=store.collection('bpd_cases').doc(dept+'_'+discordId).collection('entries').doc();
+      const noticeRef=store.collection('bpd_notices').doc(dept).collection('events').doc();
+      const eventDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       await store.runTransaction(async tx=>{
         const [current,reserved,previousClaim]=await Promise.all([
           tx.get(ref),tx.get(newClaim),
@@ -669,10 +674,24 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         });
         tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
           type,dept,discordId,name:next.name,before:oldRank,after:proposal.newRank,
+          dossierCaseLogged:true,
           previousCall:oldCall,newCall:proposal.newCall,
           reason:proposal.reason,actorDiscordId:req.bpd.discordId,
           at:FieldValue.serverTimestamp()
         });
+        tx.create(caseRef,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+          source:'personnel-rank-change',dept,subjectDiscordId:discordId,
+          subjectNameAtCreation:next.name,subjectCallAtCreation:oldCall,
+          eventDate,movement:movementLabel,previousRank:oldRank,newRank:proposal.newRank,
+          previousCall:oldCall,newCall:proposal.newCall,
+          details:movementLabel+': '+oldRank+' ('+oldCall+') → '+
+            proposal.newRank+' ('+proposal.newCall+'). Motivering: '+proposal.reason+
+            '. Uniform-/Discord-roltoewijzing controleren.',
+          registeredBy:{discordId:req.bpd.discordId,name:req.bpd.name||'Bevoegd kader',
+            call:req.bpd.call||''},submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
+          createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
+        tx.create(noticeRef,{caseId:dept+'_'+discordId,entryId:caseRef.id,
+          type:'personeelsbeweging',dept,createdAt:FieldValue.serverTimestamp()});
         if(oldCall!==proposal.newCall)
           tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
             type:'callsign_changed',rankMovement:true,dept,discordId,name:next.name,
@@ -773,6 +792,27 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         tx.create(audit,{previous,next,revision:revision+1,reason:proposed.reason,
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
           at:FieldValue.serverTimestamp()});
+        if(previous.status!=='GESCHORST'&&next.status==='GESCHORST'){
+          const entry=getFirestore().collection('bpd_cases')
+            .doc(subject.dept+'_'+subject.personId).collection('entries').doc();
+          const notification=getFirestore().collection('bpd_notices')
+            .doc(subject.dept).collection('events').doc();
+          const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+            year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+          tx.create(entry,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+            source:'personnel-suspension',dept:subject.dept,
+            subjectDiscordId:subject.personId,subjectNameAtCreation:subject.name,
+            subjectCallAtCreation:subject.call,eventDate:date,movement:'Schorsing',
+            previousRank:subject.rank,newRank:subject.rank,
+            previousCall:oldCall,newCall:proposed.call,
+            details:'Schorsing. Motivering: '+proposed.reason,
+            registeredBy:{discordId:req.bpd.discordId,name:req.bpd.name||'Bevoegd kader',
+              call:req.bpd.call||''},submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
+            createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
+          tx.create(notification,{caseId:subject.dept+'_'+subject.personId,entryId:entry.id,
+            type:'personeelsbeweging',dept:subject.dept,
+            createdAt:FieldValue.serverTimestamp()});
+        }
         if(oldCall!==proposed.call){
           tx.create(getFirestore().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
             type:'callsign_changed',dept:subject.dept,discordId:subject.personId,

@@ -677,7 +677,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       'callsign_changed','name_changed','specialization_changed','specialty_restriction_started','specialty_restriction_lifted','award_granted','award_revoked','personnel_archived','personnel_reentry_pending','personnel_restored']);
     for(const entry of personnelChanges.docs.slice(0,500)){
       const change=entry.data();
-      if(change.dept!==report.dept||!movements.has(change.type)||
+      if(change.dossierCaseLogged===true||change.dept!==report.dept||!movements.has(change.type)||
          !subjectIds.has(change.discordId)&&!['personnel_archived','personnel_reentry_pending','personnel_restored'].includes(change.type)||!change.at?.toDate?.()||
          !includedAfterReportRestart(change.at,resetAt)||
          change.rankMovement===true&&change.type==='callsign_changed')continue;

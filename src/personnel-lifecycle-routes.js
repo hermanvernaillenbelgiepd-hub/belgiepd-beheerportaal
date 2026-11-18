@@ -409,7 +409,29 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
        at:FieldValue.serverTimestamp()
      });
+     if(action==='archive'){
+       const movement=input.cause==='inactive_dismissal'?'Ontslag inactief':
+         input.cause==='service_resignation'||input.cause==='voluntary_discord_leave'?
+           'Vrijwillig':'Ontslag';
+       const eventDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+         year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+       const entry=db().collection('bpd_cases').doc(dept+'_'+discordId)
+         .collection('entries').doc();
+       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
+       tx.create(entry,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+         source:'personnel-lifecycle-archive',dept,subjectDiscordId:discordId,
+         subjectNameAtCreation:historic.name,subjectCallAtCreation:historic.call,
+         eventDate,movement,previousRank:historic.rank,newRank:historic.rank,
+         previousCall:historic.call,newCall:historic.call,
+         details:movement+'. Motivering: '+input.reason,
+         registeredBy:{discordId:req.bpd.discordId,name:req.bpd.name||'Bevoegd kader',
+           call:req.bpd.call||''},submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
+         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
+       tx.create(notice,{caseId:dept+'_'+discordId,entryId:entry.id,
+         type:'personeelsbeweging',dept,createdAt:FieldValue.serverTimestamp()});
+     }
      tx.create(db().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+       dossierCaseLogged:action==='archive',
        type:action==='archive'?'personnel_archived':action==='restore'?'personnel_reentry_pending':'personnel_restored',
        dept,discordId,name:historic.name,call:historic.call,
        before:action==='archive'?'Actief':action==='restore'?'Uit dienst':'Herintreding in controle',
