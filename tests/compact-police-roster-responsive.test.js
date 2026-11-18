@@ -46,3 +46,15 @@ test('personnel admin inline scripts remain syntactically valid',()=>{
  for(const [,script] of scripts)
   assert.doesNotThrow(()=>new Script(script.replace(/^import [^\n]*\n/gm,'')));
 });
+
+test('reeksbadges blijven leesbaar op één regel naast status en specialisaties',()=>{
+ const html=source('public/personeelsbeheer.html');
+ assert.match(html,/call:48,grade:84,name:165,series:100,status:85/);
+ assert.match(html,/name:190,series:100,status:58/);
+ assert.match(html,/roster-police-compact \.roster-series-cell \.police-roster-badge\{/);
+ const css=html.slice(html.indexOf('\/\* Reeksbadges: volledige naam'),html.indexOf('<\/style>',html.indexOf('\/\* Reeksbadges: volledige naam')));
+ assert.match(css,/white-space:nowrap/);
+ assert.match(css,/overflow-wrap:normal/);
+ assert.match(css,/justify-content:center/);
+ assert.match(css,/flex-wrap:nowrap/);
+});
