@@ -50,7 +50,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
         if(before.enabled===input.enabled)return before;
         const next={enabled:input.enabled,revision:before.revision+1};
         const at=FieldValue.serverTimestamp();
-        tx.set(ref,{...next,updatedAt:at,updatedBy:req.bpd.discordId});
+        tx.set(ref,{...next,updatedAt:at,updatedBy:req.bpd.discordId},{merge:true});
         tx.create(store.collection(HISTORICAL_OBSERVATION_SETTINGS_AUDIT).doc(),{
           dept:'politie',actorDiscordId:req.bpd.discordId,actorUid:req.bpd.uid,
           before,after:next,reason:input.reason,at
