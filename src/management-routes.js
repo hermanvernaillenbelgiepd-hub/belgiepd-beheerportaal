@@ -162,7 +162,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         const config=await db().collection(HISTORICAL_OBSERVATION_SETTINGS)
           .doc(HISTORICAL_OBSERVATION_DOC).get();
         if(!historicalMigrationAllowed(req.bpd,dept,type,historicalMigrationSettings(config.data()))||
-          !['notitie','inactiviteitsping'].includes(type))
+          !['notitie','algemene_notitie','inactiviteitsping'].includes(type))
           return res.status(403).json({error:'Historische overname is uitgeschakeld of niet toegestaan'});
         try{onBehalfReason=validateHistoricalActorSelection(
           representedId,req.body.onBehalfReason,req.bpd.discordId).reason}
