@@ -18,6 +18,24 @@ test('Only staff within the authorised input is searchable',()=>{
   assert.deepEqual(filterDossiers([],{query:'Emile'}),[]);
   assert.equal(filterDossiers([{dept:'politie',personnel:false,name:'Burger'}]).length,0);
 });
+test('Politiedossiers kunnen op bestaande reeks worden gefilterd binnen de toegelaten dienst',()=>{
+  const data=[
+    {dept:'politie',name:'Lid A',series:'Reeks 1',personnel:true},
+    {dept:'politie',name:'Lid B',series:'R02',personnel:true},
+    {dept:'politie',name:'Lid C',series:'3',personnel:true},
+    {dept:'politie',name:'Nog niet ingedeeld',series:'',personnel:true},
+    {dept:'ambulance',name:'Ambulance',series:'Reeks 1',personnel:true},
+    {dept:'politie',name:'Geen dossier',series:'Reeks 1',personnel:false}
+  ];
+  const names=filters=>filterDossiers(data,filters).map(p=>p.name);
+  assert.deepEqual(names({department:'politie',series:'1'}),['Lid A']);
+  assert.deepEqual(names({department:'politie',series:'2'}),['Lid B']);
+  assert.deepEqual(names({department:'all',series:'3'}),['Lid C']);
+  assert.deepEqual(names({department:'ambulance',series:'1'}),[]);
+  assert.deepEqual(names({department:'politie',series:'all',query:'Nog'}),['Nog niet ingedeeld']);
+  assert.deepEqual(names({department:'politie',series:'4'}),[]);
+  assert.equal(names({department:'politie',series:'all'}).length,4);
+});
 test('Stats never count non-personnel records',()=>{
   assert.deepEqual(dossierStats([...rows,{personnel:false}]),{
     total:2,personnel:2,applications:0,both:0});
