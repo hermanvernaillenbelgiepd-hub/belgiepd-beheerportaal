@@ -2,6 +2,7 @@ import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {roleForDepartment} from './leave-policy.js';
+import {canRetireDossierRecord} from './dossier-retirement-policy.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
@@ -12,7 +13,7 @@ import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {staffActivityFollowup} from './staff-activity-followup.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
-import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport} from './management-utils.js';
+import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport,mayCorrectManualCase} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
 const caseId=(dept,id)=>`${dept}_${id}`;
@@ -76,7 +77,11 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
       if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
       const rows=await db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').orderBy('createdAt','desc').limit(150).get();
-      res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},entries:rows.docs.filter(d=>d.get('status')!=='verwijderd').map(d=>({id:d.id,...noPrivate(d.data())})),limited:rows.docs.length===150});
+      res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},
+        entries:rows.docs.filter(d=>d.get('status')!=='verwijderd').map(d=>({
+          id:d.id,...noPrivate(d.data()),
+          canAmend:enabled()&&mayCorrectManualCase(req.bpd,subject,d.data())
+        })),limited:rows.docs.length===150});
     }catch(e){errorResponse(res,e)}
   });
   // Narrow self-note exception: verified 900/910 Korpsleiding can append
@@ -161,6 +166,101 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       await batch.commit();
       res.status(201).json({saved:true,reference:newDoc.id});
     }catch(e){errorResponse(res,e)}
+  });
+  // Alleen manuele dossiernotities van een ondergeschikte kunnen gecorrigeerd
+  // worden: niet de echte verlof-, rang-, sanctie- of promotiebeslissingen.
+  app.patch('/api/management/cases/:dept/:discordId/:entryId',requireUser,async(req,res)=>{
+    if(!enabled())return res.status(503).json({error:'Dossierregistraties staan momenteel uit'});
+    const {dept,discordId:id,entryId}=req.params;
+    if(dept!=='politie'||!validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
+      return res.status(400).json({error:'Ongeldige dossierverwijzing'});
+    const reason=typeof req.body?.amendmentReason==='string'?req.body.amendmentReason.trim():'';
+    if(reason.length<10||reason.length>1000)
+      return res.status(400).json({error:'Vermeld een motivering van 10 tot 1000 tekens'});
+    if(!Object.hasOwn(req.body||{},'expectedModifiedAt')||
+      req.body.expectedModifiedAt!==null&&(
+        typeof req.body.expectedModifiedAt!=='string'||
+        !Number.isFinite(Date.parse(req.body.expectedModifiedAt))))
+      return res.status(400).json({error:'Vernieuw eerst het dossier'});
+    try{
+      const snapshot=await getSnapshot();
+      if(snapshot.stale)return res.status(503).json({error:'Personeelsgegevens zijn niet actueel'});
+      const subject=uniqueSubject(snapshot.data,dept,id);
+      if(!subject)return res.status(404).json({error:'Personeelslid niet gevonden'});
+      const actor=actorFromPersonnel(req.bpd,snapshot.data);
+      if(!actor)return res.status(403).json({error:'Eigen identiteit is niet geverifieerd'});
+      if(!canRetireDossierRecord(req.bpd,subject))
+        return res.status(403).json({error:'Alleen bevoegd Officierenkader of Korpsleiding mag registraties van ondergeschikten corrigeren'});
+      const store=db(),entries=store.collection('bpd_cases').doc(caseId(dept,id)).collection('entries');
+      const ref=entries.doc(entryId),audit=ref.collection('audit').doc(),report=entries.doc();
+      const notice=store.collection('bpd_notices').doc(dept).collection('events').doc();
+      const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      await store.runTransaction(async tx=>{
+        const existing=await tx.get(ref);
+        if(!existing.exists)throw Object.assign(Error('Dossierregistratie niet gevonden'),{status:404});
+        const old=existing.data();
+        if(!mayCorrectManualCase(req.bpd,subject,old))
+          throw Object.assign(Error('Deze registratie mag niet gewijzigd worden; controleer dossier, type en bevoegdheid'),{status:403});
+        if((toIso(old.modifiedAt)||null)!==req.body.expectedModifiedAt)
+          throw Object.assign(Error('Deze registratie is intussen gewijzigd. Vernieuw het dossier.'),{status:409});
+        if(req.body.type!==old.type)
+          throw Object.assign(Error('Het oorspronkelijke registratietype mag niet wijzigen'),{status:400});
+        let values;
+        try{values=validateManagementEntry({...req.body,type:old.type})}
+        catch(e){throw Object.assign(e,{status:400})}
+        const before=Object.fromEntries(Object.keys(values).map(key=>[key,old[key]??null]));
+        if(Object.keys(values).every(key=>JSON.stringify(old[key]??null)===JSON.stringify(values[key])))
+          throw Object.assign(Error('Er zijn geen gewijzigde gegevens'),{status:400});
+        const at=FieldValue.serverTimestamp();
+        tx.update(ref,{...values,modifiedAt:at,modifiedBy:actor});
+        tx.create(audit,{action:'manual_case_amended',before,after:values,
+          reason,by:actor,byUid:req.bpd.uid,at});
+        tx.create(report,{type:'activiteit',reportCategory:'activiteit',dept,
+          subjectDiscordId:id,subjectNameAtCreation:subject.name,
+          subjectCallAtCreation:subject.call,eventDate:today,registeredBy:actor,
+          source:'case-amendment',amendmentOf:{entryId,kind:old.type},
+          details:'CORRECTIE DOSSIERREGISTRATIE · '+entryId+
+            ' · Motivering: '+reason+' · Door '+actor.name,
+          createdAt:at,modifiedAt:null});
+        tx.create(notice,{caseId:caseId(dept,id),entryId:report.id,
+          type:'activiteit',action:'manual_case_amended',originalEntryId:entryId,
+          dept,createdAt:at});
+      });
+      return res.json({saved:true,auditRecorded:true,reportLogged:true});
+    }catch(e){
+      if([400,403,404,409].includes(e?.status))
+        return res.status(e.status).json({error:e.message});
+      return errorResponse(res,e)
+    }
+  });
+  app.get('/api/management/cases/:dept/:discordId/:entryId/audit',requireUser,async(req,res)=>{
+    const {dept,discordId:id,entryId}=req.params;
+    if(dept!=='politie'||!validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
+      return res.status(400).json({error:'Ongeldige dossierverwijzing'});
+    try{
+      const snapshot=await getSnapshot(),subject=uniqueSubject(snapshot.data,dept,id);
+      if(!subject)return res.status(404).json({error:'Personeelslid niet gevonden'});
+      const ref=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc(entryId);
+      const doc=await ref.get();
+      if(!doc.exists)return res.status(404).json({error:'Registratie niet gevonden'});
+      if(!mayCorrectManualCase(req.bpd,subject,doc.data()))
+        return res.status(403).json({error:'Geen recht om deze correctiehistoriek te bekijken'});
+      const history=await ref.collection('audit').orderBy('at','desc').limit(40).get();
+      res.set('Cache-Control','private, no-store');
+      return res.json({changes:history.docs.filter(d=>d.get('action')==='manual_case_amended').map(d=>{
+        const val=d.data();
+        return {at:toIso(val.at),reason:String(val.reason||'').slice(0,1000),
+          actor:{name:String(val.by?.name||'Onbekend'),call:String(val.by?.call||'')},
+          before:{eventDate:val.before?.eventDate||null,
+            details:String(val.before?.details||'').slice(0,4000),
+            courseName:val.before?.courseName||null,
+            referenceUrl:val.before?.referenceUrl||null,
+            proposedRank:val.before?.proposedRank||null,
+            newName:val.before?.newName||null,
+            movement:val.before?.movement||null}};
+      }),limited:history.docs.length===40});
+    }catch(e){return errorResponse(res,e)}
   });
   // Police decorations nominations have an independent review queue.
   // An approved proposal is NOT automatically an awarded medal.
