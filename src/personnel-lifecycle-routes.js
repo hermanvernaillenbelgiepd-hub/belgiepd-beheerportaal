@@ -129,7 +129,8 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
         revision:revision+1,snapshot:historic,cause:'honorable_resignation',
         reason:input.reason,archivedAt:at,updatedAt:at,
         updatedByUid:req.bpd.uid,updatedByDiscordId:req.bpd.discordId,
-        cmsRoleSyncPending:true,restoreFromArchive:false},{merge:true});
+        cmsRoleSyncPending:true,restoreFromArchive:false,
+        honorableResignation:true},{merge:true});
       tx.create(stateRef.collection('audit').doc(),{
         action:'honorable_resignation_approved',cause:'honorable_resignation',
         reason:input.reason,actorDiscordId:req.bpd.discordId,at,
@@ -244,6 +245,10 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
       throw fail(409,'Deze persoon staat niet in het personeelsarchief');
      if(action==='activate'&&prev.state!=='pending')
       throw fail(409,'Controleer en registreer eerst de herintreding');
+     // Never reactivate a historical senior police rank on honorable reentry.
+     // A dedicated independently authorised INP placement must precede activation.
+     if(action==='activate'&&prev.honorableResignation===true)
+      throw fail(409,'Herinstroom na eervol ontslag vereist eerst een afzonderlijk INP-aanstellingsproces. Vorige rangen en specialisatierechten worden niet automatisch hersteld');
      const state=action==='archive'?'archived':action==='restore'?'pending':'active';
      const historic=action==='archive'?lifecycleSourceSnapshot(person):prev.snapshot;
      if(!historic)throw fail(409,'Geen veilig bewaarbaar personeelsprofiel gevonden');
