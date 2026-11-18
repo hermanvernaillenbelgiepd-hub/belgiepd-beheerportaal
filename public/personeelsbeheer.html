@@ -1106,6 +1106,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
   <input id="staffTrainingOther" maxlength="150" minlength="3" placeholder="Vul de naam van de opleiding in">
 </div>
 <div><label for="staffTrainingDate">Datum</label><input id="staffTrainingDate" type="date" required></div>
+<div><label for="staffTrainingInstructor">Opleider (naam of roepnummer)</label><input id="staffTrainingInstructor" type="text" minlength="2" maxlength="120" placeholder="Bijv. 930 · Naam opleider" required></div>
 <div><label for="staffTrainingResult">Resultaat</label><select id="staffTrainingResult"><option value="in_opleiding">In opleiding</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="stage">STAGE</option><option value="restricted">RESTRICTED</option></select></div>
 <div style="grid-column:1/-1"><label for="staffTrainingDetails">Evaluatie of opmerkingen</label><textarea id="staffTrainingDetails" rows="2" maxlength="1600"></textarea></div>
 <div id="staffTrainingAmend" style="grid-column:1/-1" hidden><label for="staffTrainingReason">Motivering wijziging (minimaal 8 tekens)</label><textarea id="staffTrainingReason" rows="2" maxlength="500"></textarea></div>
@@ -1244,6 +1245,7 @@ import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
 import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalog.js';
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
+import {createObservationScoreBadge,createObservationHeader} from '/dossier-observation-ui.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
 import {mountCompactPersonnelDirectory} from '/personnel-compact-ui.js';
@@ -3101,6 +3103,7 @@ function staffTrainingEdit(record){
   $('staffTrainingDate').value=record.eventDate||'';
   $('staffTrainingResult').value=record.result||'in_opleiding';
   $('staffTrainingDetails').value=record.details||'';
+  $('staffTrainingInstructor').value=record.instructorName||record.instructor||'';
   $('staffTrainingTitle').textContent='Bestaande opleiding wijzigen';
   $('staffTrainingAmend').hidden=false;
   $('staffTrainingReason').required=true;
@@ -3118,11 +3121,14 @@ $('staffTrainingForm').onsubmit=async event=>{
     return notice('Kies een opleiding of vul bij ANDERE een naam van 3 tot 150 tekens in.',true);
   const body={department:p.dept,discordId:p.discordId,
     courseName,eventDate:$('staffTrainingDate').value,
-    result:$('staffTrainingResult').value,details:$('staffTrainingDetails').value};
+    result:$('staffTrainingResult').value,details:$('staffTrainingDetails').value,
+    instructorName:$('staffTrainingInstructor').value.trim()};
   if(id){
     body.reason=$('staffTrainingReason').value;
     if(body.reason.trim().length<8)return notice('Motivering wijziging: minstens 8 tekens.',true);
   }
+  if(body.instructorName.length<2||body.instructorName.length>120)
+    return notice('Vul de opleider in (naam of roepnummer, 2–120 tekens).',true);
   const button=$('staffTrainingSave');button.disabled=true;
   try{
     await request(id?'/api/training/'+encodeURIComponent(p.dept)+'/'+
@@ -3205,6 +3211,23 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
   const wasExpanded=root.dataset.expanded==='true';
   root.replaceChildren();
   const append=(row)=>{
+    if((group==='observations'||group==='formal')&&row.type==='observatie'){
+      const item=document.createElement('div');
+      item.className='overview-preview bpd-observation-entry';
+      item.append(createObservationHeader((row.eventDate||'Datum onbekend')+' · Observatie',row.score));
+      const details=document.createElement('p');
+      details.className='bpd-observation-body';
+      details.textContent=String(row.details||row.description||'Geen omschrijving').slice(0,6000);
+      const author=document.createElement('small');
+      author.className='bpd-observation-meta';
+      author.textContent=(row.historicalImport?'Oorspronkelijk door ':'Door ')+
+        sheetWho(row)+(row.historicalImport&&row.submittedByActor?.name?
+          ' · Overgenomen door '+row.submittedByActor.name:'');
+      item.append(details,author);
+      attachRetireButton(item,row,'cases');
+      root.append(item);
+      return;
+    }
     const cells=toCells(row).map(value=>value===null||value===undefined||value===''?'—':String(value));
     const item=document.createElement('div');item.className='overview-preview';
     const heading=document.createElement('strong');
@@ -3242,13 +3265,7 @@ const sheetWho=row=>row.registeredBy?.name||row.submittedByActor?.name||'Onbeken
 function makeScoreBadge(score){
   const value=validObservationScore(score);
   if(value===null)return null;
-  const badge=document.createElement('span');
-  badge.className='police-score-badge '+scoreClass(value);
-  badge.textContent=scoreLabel(value);
-  badge.title=value===0?
-    'Observatiescore 0: DEGRADATIE-aanduiding. Geen automatische rangwijziging.':
-    'Observatiescore '+value+' op 10';
-  return badge;
+  return createObservationScoreBadge(value);
 }
 function sheetAverageScore(entries,limited=false){
   const element=$('sheetScoreSummary');
@@ -3533,7 +3550,8 @@ async function loadLinkedPersonnelRecords(p,key){
           title.textContent=String(row.courseName||'Opleiding').slice(0,150)+
             ' · '+(row.result==='restricted'?'RESTRICTED':row.result==='stage'?'STAGE':String(row.result||'Onbekend resultaat'));
           const meta=document.createElement('span');meta.className='subtle';
-          meta.textContent=String(row.eventDate||'Datum onbekend');
+          meta.textContent=String(row.eventDate||'Datum onbekend')+
+            ' · Opleider: '+String(row.instructorName||row.instructor||'niet vermeld');
           div.append(title,meta);
           if(row.canEdit===true&&trainingRights?.trainingWritesEnabled===true&&
               trainingRights.permissions?.[p.dept]?.['training.log']){
@@ -4114,8 +4132,12 @@ async function loadStaffFormalRecords(p,key){
       const details=document.createElement('p');
       details.textContent=String(row.details||row.description||row.reason||'').slice(0,6000);
       const score=row.type==='observatie'?makeScoreBadge(row.score):null;
-      if(score)item.append(title,score,author,details);
-      else item.append(title,author,details);
+      if(row.type==='observatie'){
+        item.classList.add('bpd-observation-entry');
+        details.classList.add('bpd-observation-body');
+        author.classList.add('bpd-observation-meta');
+        item.append(createObservationHeader(title.textContent,row.score),details,author);
+      }else item.append(title,author,details);
       attachRetireButton(item,row,'cases');
       if(row.type==='sanctie'){
         const reasons=document.createElement('div');reasons.className='subtle';

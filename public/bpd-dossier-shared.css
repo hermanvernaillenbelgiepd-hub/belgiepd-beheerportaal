@@ -875,6 +875,7 @@ body.bpd-unified-dossier :is(input,select,textarea) { min-width:0;max-width:100%
   body.dossier-onepage :is(.dossier-panel,.landscape-cell,.dossier-pane) { min-width:0; }
 }
 
+
 /* BelgiumPD touch-friendly dossier controls — 2026-11-15 */
 /* Visual-only: keeps authorization, dossier data and save actions unchanged. */
 @media(max-width:740px){
@@ -904,4 +905,90 @@ body.bpd-unified-dossier :is(input,select,textarea) { min-width:0;max-width:100%
   body.dossier-fire-sheet #panel > .sheet-identity {
     grid-template-columns:minmax(0,1fr)!important;
   }
+}
+
+
+/* One observation presentation across all BelgiumPD services.
+   Palette remains readable in both portal themes: color is a border/accent
+   rather than a filled badge behind low-contrast numbers. */
+.bpd-observation-entry {
+  --bpd-observation-bg:#10243d;
+  --bpd-observation-line:#3c5778;
+  --bpd-observation-text:#eaf3ff;
+  --bpd-observation-muted:#bbcee7;
+  color:var(--bpd-observation-text);
+  background:var(--bpd-observation-bg)!important;
+  border:1px solid var(--bpd-observation-line)!important;
+  border-radius:9px;
+  padding:10px 12px!important;
+  margin:6px 0!important;
+  min-width:0;
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+.bpd-observation-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:7px 12px;
+  margin-bottom:4px;
+}
+.bpd-observation-entry .bpd-observation-head>strong{
+  display:block;flex:1 1 170px;
+  font-size:12px;line-height:1.45;
+  color:var(--bpd-observation-text)!important;
+}
+.bpd-observation-entry .bpd-observation-body {
+  display:block;white-space:pre-wrap;
+  overflow-wrap:anywhere;margin:5px 0 4px;
+  line-height:1.48;font-size:12px;
+  color:var(--bpd-observation-text)!important;
+}
+.bpd-observation-entry .bpd-observation-meta {
+  display:block;font-size:11px;line-height:1.4;
+  color:var(--bpd-observation-muted)!important;
+}
+.bpd-score-chip,
+body.dossier-onepage .police-score-badge.bpd-score-chip{
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 auto;width:max-content;min-width:49px;
+  margin:0;padding:4px 9px;
+  font-size:12px;font-weight:850;line-height:1.3;
+  white-space:nowrap;border-radius:7px;
+  font-variant-numeric:tabular-nums;
+  background:#080f1d!important;
+  color:#fff!important;
+  border:2px solid var(--bpd-score-accent,#8ca9c9)!important;
+  box-shadow:inset 0 0 0 1px #ffffff0c;
+}
+.bpd-score-chip:is(.police-score-0,.police-score-1,.police-score-2,.police-score-3){--bpd-score-accent:#f16c73}
+.bpd-score-chip:is(.police-score-4,.police-score-5,.police-score-6){--bpd-score-accent:#f5af4d}
+.bpd-score-chip:is(.police-score-7,.police-score-8){--bpd-score-accent:#c9d955}
+.bpd-score-chip:is(.police-score-9,.police-score-10){--bpd-score-accent:#61d69a}
+html:not([data-bpd-theme="dark"]) .bpd-observation-entry{
+  --bpd-observation-bg:#f8fbff;
+  --bpd-observation-line:#cad8e9;
+  --bpd-observation-text:#172d4a;
+  --bpd-observation-muted:#455e7e;
+}
+html:not([data-bpd-theme="dark"]) .bpd-score-chip,
+html:not([data-bpd-theme="dark"]) body.dossier-onepage .police-score-badge.bpd-score-chip{
+  background:#f7faff!important;
+  color:#16243b!important;
+  box-shadow:inset 0 0 0 1px #ffffff;
+}
+html:not([data-bpd-theme="dark"]) body.dossier-onepage .police-score-summary{
+  background:#f7faff;color:#17365c;border-color:#c6d6ea;
+}
+html:not([data-bpd-theme="dark"]) body.dossier-onepage .police-score-summary strong{
+  color:#17365c!important;
+}
+html:not([data-bpd-theme="dark"]) body.dossier-onepage .police-score-summary small{
+  color:#526987!important;
+}
+@media(max-width:550px){
+ .bpd-observation-entry{padding:9px 10px!important}
+ .bpd-observation-head{align-items:center}
+ .bpd-score-chip{font-size:11px;min-width:44px;padding:4px 7px}
 }

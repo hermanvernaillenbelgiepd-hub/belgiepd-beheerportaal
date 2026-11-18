@@ -194,6 +194,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fire-specialty-icons.js';
 import {displayServiceBadge} from '/dossier-service-badge.js';
+import {createObservationHeader} from '/dossier-observation-ui.js';
 const $=id=>document.getElementById(id);
 displayServiceBadge($('dossierServiceBanner'),'brandweer');
 displayServiceBadge($('registrationServiceBanner'),'brandweer',{registration:true});
@@ -326,7 +327,12 @@ function cards(root,items,heading,text,metadata){
   const title=document.createElement('h3');title.textContent=heading(item);
   const details=document.createElement('p');details.textContent=text(item)||'—';
   const meta=document.createElement('small');meta.textContent=metadata(item)||'';
-  card.append(title,details,meta);
+  if(root.id==='observations'){
+    card.classList.add('bpd-observation-entry');
+    details.classList.add('bpd-observation-body');
+    meta.classList.add('bpd-observation-meta');
+    card.append(createObservationHeader(heading(item),item.score),details,meta);
+  }else card.append(title,details,meta);
   addFireRetireControl(card,item,root.id);
   root.append(card);
  }

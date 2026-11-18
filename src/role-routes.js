@@ -125,12 +125,18 @@ function trainingAccess(req,dept,kind){
 function inputRecord(x){
   const department=asText(x?.department,40),discordId=asText(x?.discordId,40);
   const courseName=asText(x?.courseName,150),details=asText(x?.details,1600),eventDate=asText(x?.eventDate,20),result=asText(x?.result,32);
+  const instructorName=asText(x?.instructorName,120);
+  if(x?.instructorName!==undefined&&(
+    typeof x.instructorName!=='string'||x.instructorName.length>120||
+    (instructorName.length>0&&instructorName.length<2)||
+    /[<>\x00-\x1f\x7f]/.test(instructorName)
+  ))throw new Error('Opleider moet een naam of roepnummer van 2 tot 120 tekens bevatten');
   if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId))throw new Error('Ongeldige dienst of Discord ID');
   if(courseName.length<3 || typeof x?.courseName!=='string' || x.courseName.length>150)throw new Error('Ongeldige opleidingsnaam');
   if(typeof x?.details!=='string'||x.details.length>1600)throw new Error('Omschrijving te lang');
   if(!['in_opleiding','geslaagd','niet_geslaagd','stage','restricted'].includes(result))throw new Error('Ongeldig opleidingsresultaat');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)||new Date(eventDate+'T12:00:00Z').toISOString().slice(0,10)!==eventDate||eventDate>new Date().toISOString().slice(0,10))throw new Error('Ongeldige opleidingsdatum');
-  return {department,subjectDiscordId:discordId,courseName,details,eventDate,result};
+  return {department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName};
 }
 const error=(res,e)=>{console.error('Rollen/opleidingen:',e?.code||e?.message||'onbekend');return res.status(503).json({error:'Firestore tijdelijk niet beschikbaar'});};
 export function installRoleRoutes(app,{getSnapshot}={}){
@@ -327,8 +333,8 @@ export function installRoleRoutes(app,{getSnapshot}={}){
         if(!snap.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
         const old=snap.data();
         if(!mayMaintainTraining(old,{actorDiscordId:actor.discordId,mayLog,mayReview}))throw Object.assign(Error('Geen wijzigingsrecht op deze registratie'),{status:403});
-        const before=Object.fromEntries(['courseName','details','eventDate','result','rosterStatus'].map(k=>[k,old[k]??null]));
-        const next={courseName:data.courseName,details:data.details,eventDate:data.eventDate,result:data.result};
+        const before=Object.fromEntries(['courseName','details','eventDate','result','rosterStatus','instructorName'].map(k=>[k,old[k]??null]));
+        const next={courseName:data.courseName,details:data.details,eventDate:data.eventDate,result:data.result,instructorName:data.instructorName};
         if(requiresReReview(old,next))next.rosterStatus='ter_controle';
         tx.update(ref,{...next,updatedAt:FieldValue.serverTimestamp(),updatedByDiscordId:actor.discordId});
         tx.create(ref.collection('audit').doc(),{kind:'record-edit',previous:before,next:{...next},reason,
