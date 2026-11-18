@@ -6,6 +6,7 @@ import {canManageHistoricalObservationImport,historicalObservationSettings,
  validateHistoricalObservationToggle,historicalObservationAllowed}
  from '../src/historical-observation-import-policy.js';
 import {specialFields} from '../src/report-export.js';
+import {eligibleRepresentative,representativeFromPersonnel} from '../src/registrations.js';
 const officer={uid:'discord:111111111111111111',discordId:'111111111111111111',
  role:'officierenkader',departments:['politie'],
  departmentRoles:{politie:'officierenkader'},dossierNativeDepartments:['politie']};
@@ -80,4 +81,28 @@ test('historische observaties vermeld in weekrapport ook wie de invoer uitvoerde
  assert.ok(text.some(x=>x.includes('Oorspronkelijke observator: Anvar')));
  assert.ok(text.some(x=>x.includes('Handmatig ingevoerd door: Unemi')));
  assert.ok(text.some(x=>x.includes('Historische overname uit spreadsheet')));
+});
+
+test('oorspronkelijke observator kan Middenkader, Officierenkader of Korpsleiding zijn',()=>{
+ const people=[
+  {dept:'politie',personId:'111111111111111111',call:'610',rank:'Hoofdinspecteur',name:'Middenkaderlid'},
+  {dept:'politie',personId:'222222222222222222',call:'920',rank:'Aspirant Commissaris',name:'Officier'},
+  {dept:'politie',personId:'333333333333333333',call:'910',rank:'Eerste Commissaris',name:'Korpsleiding'},
+  {dept:'politie',personId:'444444444444444444',call:'440',rank:'Inspecteur',name:'Basiskaderlid'},
+  {dept:'brandweer',personId:'555555555555555555',call:'900',rank:'Commissaris',name:'Andere dienst'}
+ ];
+ assert.deepEqual(people.map(p=>eligibleRepresentative(p,'politie')),
+   [true,true,true,false,false]);
+ assert.deepEqual(people.slice(0,3).map(p=>
+   representativeFromPersonnel(people,'politie',p.personId)?.name),
+  ['Middenkaderlid','Officier','Korpsleiding']);
+ assert.equal(representativeFromPersonnel(people,'politie',people[3].personId),null);
+ assert.equal(representativeFromPersonnel([...people,people[2]],'politie',people[2].personId),null,
+   'Dubbele gekoppelde personeelsfiches blijven verboden');
+ const api=readFileSync(new URL('../src/registration-routes.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ assert.match(api,/rank:p\.rank/);
+ assert.match(ui,/p\.rank\|\|'Politie'/);
+ assert.match(api,/representativeFromPersonnel\(snap\.data,dept,representedId\)/);
+ assert.match(api,/submittedByActor:actor/);
 });
