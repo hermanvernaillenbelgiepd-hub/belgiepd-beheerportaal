@@ -3846,38 +3846,98 @@ async function loadStaffLeave(p,key){
 /* Formele registraties delen de bestaande beveiligde registratietabellen,
    met originele actor, auditlog en automatische opname in weekrapporten. */
 let formalPermissions=null,formalRecords=[],formalEditId=null,formalEditVersion=null;
+function updateHistoricalMigrationUi(){
+ const police=selected?.dept==='politie';
+ const cfg=formalPermissions?.historicalMigration;
+ const manager=police&&formalPermissions?.canManageHistoricalObservationImport===true;
+ const enabled=manager&&cfg?.enabled===true&&formalPermissions?.writesEnabled===true;
+ $('historicalMigrationManage').hidden=!manager;
+ if(manager){
+   $('historicalMigrationStatus').textContent=enabled?
+     'Ingeschakeld voor deze overdracht: bestaande verlofperioden, sancties, notities en inactiviteitspings kunnen met oorspronkelijke registrator overgenomen worden.':
+     'Uitgeschakeld: er kunnen geen nieuwe historische overnames van deze categorieën gebeuren.';
+   $('historicalMigrationToggle').textContent=cfg?.enabled?
+     'Overname na overdracht uitschakelen':'Overname tijdelijk inschakelen';
+ }
+ const kind=$('registrationKind').value;
+ const choices=formalPermissions?.representatives||[];
+ for(const [prefix,visible] of [
+   ['historicalLeave',enabled&&kind==='leave'&&registrationManualLeave],
+   ['historicalCase',enabled&&['case:notitie','case:inactiviteitsping'].includes(kind)]
+ ]){
+   const block=$(prefix+'Block'),box=$(prefix+'Check'),fields=$(prefix+'Fields');
+   block.hidden=!visible;
+   if(!visible)box.checked=false;
+   const select=$(prefix+'Author'),old=select.value;
+   select.replaceChildren(option('','Selecteer oorspronkelijke registrator'));
+   for(const p of choices.filter(p=>p.dept==='politie'))
+     select.append(option(p.discordId,(p.call||'—')+' · '+p.name));
+   if([...select.options].some(o=>o.value===old))select.value=old;
+   fields.hidden=!visible||!box.checked;
+   select.required=!fields.hidden;
+   $(prefix+'Reason').required=!fields.hidden;
+ }
+}
+$('historicalLeaveCheck').onchange=updateHistoricalMigrationUi;
+$('historicalCaseCheck').onchange=updateHistoricalMigrationUi;
 function updateHistoricalObservationUi(){
-  const police=selected?.dept==='politie';
-  const config=formalPermissions?.historicalObservationImport;
-  const enabled=police&&config?.enabled===true;
-  const allowed=enabled&&formalPermissions?.writesEnabled===true&&
-    formalPermissions?.observationDepartments?.includes('politie')&&
-    Array.isArray(formalPermissions?.representatives)&&
-    formalPermissions.representatives.length>0;
-  const manager=police&&formalPermissions?.canManageHistoricalObservationImport===true;
-  $('historicalObservationManage').hidden=!manager;
-  if(manager){
-    $('historicalObservationStatus').textContent=enabled?
-      'Ingeschakeld: bevoegde kaderleden mogen historische observaties van een oorspronkelijke waarnemer overnemen.':
-      'Uitgeschakeld: niemand kan nieuwe observaties namens een andere waarnemer opslaan.';
-    $('historicalObservationToggle').textContent=enabled?
-      'Historische overname uitschakelen':'Historische overname inschakelen';
-  }
-  const visible=Boolean(allowed&&$('formalType').value==='observatie'&&!formalEditId);
-  $('historicalObservationField').hidden=!visible;
-  if(!visible)$('historicalObservationCheck').checked=false;
-  const select=$('historicalObservationAuthor'),old=select.value;
-  const participants=formalPermissions?.representatives||[];
-  select.replaceChildren(option('','Selecteer oorspronkelijke observator'));
-  for(const p of participants.filter(p=>p.dept==='politie'))
-    select.append(option(p.discordId,(p.call||'—')+' · '+p.name+' · '+(p.rank||'Politie')));
-  if([...select.options].some(o=>o.value===old))select.value=old;
-  const show=visible&&$('historicalObservationCheck').checked;
-  $('historicalObservationSelection').hidden=!show;
-  select.required=show;
-  $('historicalObservationReason').required=show;
+ const police=selected?.dept==='politie';
+ const config=formalPermissions?.historicalObservationImport;
+ const enabled=police&&config?.enabled===true;
+ const manager=police&&formalPermissions?.canManageHistoricalObservationImport===true;
+ const migration=manager&&formalPermissions?.historicalMigration?.enabled===true;
+ const isSanction=$('formalType').value==='sanctie';
+ const allowed=police&&formalPermissions?.writesEnabled===true&&
+   Array.isArray(formalPermissions?.representatives)&&
+   formalPermissions.representatives.length>0&&
+   (isSanction?migration&&formalPermissions.sanctionDepartments?.includes('politie'):
+     enabled&&formalPermissions.observationDepartments?.includes('politie'));
+ $('historicalObservationManage').hidden=!manager;
+ if(manager){
+   $('historicalObservationStatus').textContent=enabled?
+     'Ingeschakeld: bevoegde kaderleden mogen historische observaties van een oorspronkelijke waarnemer overnemen.':
+     'Uitgeschakeld: niemand kan nieuwe observaties namens een andere waarnemer opslaan.';
+   $('historicalObservationToggle').textContent=enabled?
+     'Historische overname uitschakelen':'Historische overname inschakelen';
+ }
+ const visible=Boolean(allowed&&!formalEditId);
+ $('historicalObservationField').hidden=!visible;
+ if(!visible)$('historicalObservationCheck').checked=false;
+ const select=$('historicalObservationAuthor'),old=select.value;
+ const participants=formalPermissions?.representatives||[];
+ select.replaceChildren(option('','Selecteer oorspronkelijke registrator'));
+ for(const p of participants.filter(p=>p.dept==='politie'))
+   select.append(option(p.discordId,(p.call||'—')+' · '+p.name+' · '+(p.rank||'Politie')));
+ if([...select.options].some(o=>o.value===old))select.value=old;
+ const show=visible&&$('historicalObservationCheck').checked;
+ $('historicalObservationSelection').hidden=!show;
+ select.required=show;
+ $('historicalObservationReason').required=show;
+ updateHistoricalMigrationUi();
 }
 $('historicalObservationCheck').onchange=updateHistoricalObservationUi;
+$('historicalMigrationToggle').onclick=async()=>{
+ const cfg=formalPermissions?.historicalMigration;
+ if(!cfg||!formalPermissions.canManageHistoricalObservationImport)return;
+ const enabled=!cfg.enabled;
+ const reason=prompt('Motivering voor '+(enabled?'inschakelen':'uitschakelen')+
+   ' van de tijdelijke historische dossierovername (10–300 tekens):');
+ if(reason===null)return;
+ if(reason.trim().length<10||reason.trim().length>300)
+   return notice('Vermeld een motivering van 10 tot 300 tekens.',true);
+ if(!confirm('Tijdelijke overname '+(enabled?'INSCHAKELEN':'UITSCHAKELEN')+
+   '? Alleen oude gegevens mogen namens de oorspronkelijke registrator worden ingevoerd; bestaande historiek blijft bewaard.'))return;
+ const button=$('historicalMigrationToggle');button.disabled=true;
+ try{
+   await request('/api/registrations/historical-migration',{
+     method:'PUT',body:{enabled,expectedRevision:cfg.revision,reason:reason.trim()}});
+   formalPermissions=await request('/api/registrations/subjects');
+   updateHistoricalObservationUi();
+   notice('Tijdelijke historische dossierovername '+(enabled?'ingeschakeld':'uitgeschakeld')+
+     ', met auditregistratie.');
+ }catch(e){notice('Migratie-instelling niet opgeslagen: '+e.message,true)}
+ finally{button.disabled=false}
+};
 $('historicalObservationToggle').onclick=async()=>{
   const cfg=formalPermissions?.historicalObservationImport;
   if(!cfg||!formalPermissions?.canManageHistoricalObservationImport)return;
