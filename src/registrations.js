@@ -43,8 +43,15 @@ export const canChooseDepartmentSanction=(dept,role,kind,severity)=>
   permittedDepartmentSanctions(dept,role,severity).includes(kind);
 
 export const canRepresent = (user,type,dept) => type==='observatie' && hasDept(user,dept) && (user?.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(user?.role));
-// Alleen politie-middenkaderleden als mogelijke vertegenwoordigde auteur; het is geen autorisatiebron.
-export const eligibleRepresentative = (person,dept) => dept==='politie' && person?.dept===dept && isDiscordId(person?.personId) && policeKader(person.rank)==='Middenkader';
+// Een oorspronkelijke waarnemer kan uit Middenkader, Officierenkader of
+// Korpsleiding komen. Dit is uitsluitend een author-keuze bij historische
+// overname en verleent de gekozen persoon geen extra portaalrechten.
+export const eligibleRepresentative = (person,dept) => {
+  if(dept!=='politie'||person?.dept!==dept||!isDiscordId(person?.personId))
+    return false;
+  return ['Middenkader','Officierenkader','Korpsleiding',
+    'Officierenkader / Korpsleiding'].includes(policeKader(person.rank,person.call));
+};
 export function representativeFromPersonnel(persons,dept,id) {
   if(!isDiscordId(id)) return null;
   const matches=persons.filter(p=>p.personId===id && eligibleRepresentative(p,dept));
