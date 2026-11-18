@@ -14,6 +14,7 @@ export function dossierOverviewRows(personnel,_unused,scopes){
     if(rows.has(key))throw Error('Dubbele personeelsidentiteit gevonden');
     rows.set(key,{dept:p.dept,discordId:linked?p.personId:null,
       name:String(p.name||'').slice(0,120),call:String(p.call||'').slice(0,24),
+      series:p.dept==='politie'?String(p.series||'').slice(0,32):null,
       rank:String(p.rank||'').slice(0,80),status:String(p.status||'').slice(0,50),
       canOpen:linked&&typeof scopes.canReadSubject==='function'&&scopes.canReadSubject(p),
       personnel:true,application:false,applicationStatus:null,
