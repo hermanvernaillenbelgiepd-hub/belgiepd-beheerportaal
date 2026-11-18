@@ -689,6 +689,23 @@ header{padding-inline:clamp(15px,2vw,34px)}
 @media(max-width:1279px){
  .staff-roster-table.roster-police-compact{min-width:1280px}
 }
+/* Reeksbadges: volledige naam op één regel, ook bij eerder opgeslagen
+   smalle kolombreedtes. De reekskleuren en de kadericoontjes blijven intact. */
+.staff-roster-table.roster-police-compact tbody td.roster-series-cell{
+  padding-inline:3px!important;text-align:center;
+}
+.staff-roster-table.roster-police-compact .roster-series-cell .police-roster-series{
+  display:flex;flex-direction:column;flex-wrap:nowrap;
+  align-items:center;justify-content:center;gap:2px;min-width:0;
+}
+.staff-roster-table.roster-police-compact .roster-series-cell .police-roster-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  box-sizing:border-box;width:100%;min-width:0;max-width:100%;
+  min-height:22px;margin:0;padding:3px 3px;
+  white-space:nowrap;word-break:normal;overflow-wrap:normal;
+  overflow:hidden;text-overflow:ellipsis;
+  font-size:10px!important;line-height:1.1;
+}
 </style><link rel="stylesheet" href="/personnel-grouped-views.css"><link rel="stylesheet" href="/personnel-group-settings.css"><link rel="stylesheet" href="/dossier-compact-test.css">
 <style>
 body.dossier-embed{background:transparent}
@@ -1999,7 +2016,7 @@ const ROSTER_RESIZE_LIMITS=Object.freeze({
  summary:[110,400],file:[65,180],discord:[175,360]
 });
 const POLICE_ROSTER_IDENTITY_MIN=Object.freeze({
- call:48,grade:84,name:165,series:60,status:85,file:78,discord:168
+ call:48,grade:84,name:165,series:100,status:85,file:78,discord:168
 });
 const POLICE_ROSTER_SPECIALTY_DEFAULT=72;
 const policeRosterIdentityWidth=(widths,key)=>
@@ -2026,7 +2043,7 @@ function compactSpecialtyStatusLabel(status){
  return short[value.toUpperCase()]||value;
 }
 const ROSTER_COLUMN_WIDTH_DEFAULTS=Object.freeze({
-  call:42,grade:68,rank:164,name:190,series:52,status:58,
+  call:42,grade:68,rank:164,name:190,series:100,status:58,
   specialty:82,summary:180,file:76,discord:224
 });
 // Resize only modifies this browser's preview. Server-side permissions and
