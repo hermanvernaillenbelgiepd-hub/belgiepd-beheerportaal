@@ -950,7 +950,8 @@ installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 installActivityCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
 installPersonnelLifecycleRoutes(app,{requireUser:requireDossierUser,
-  getSnapshot,invalidateLifecycle:invalidatePersonnelLifecycle});
+  getSnapshot,invalidateLifecycle:invalidatePersonnelLifecycle,
+  invalidateUserAccess:id=>authDocCache.delete(USER_COLLECTION+':'+id)});
 installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSpecialtyRestrictionRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSpecialtyRoleLinkRoutes(app,{requireUser:requireDossierUser,getSnapshot});
