@@ -147,7 +147,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
   <h3>Handmatig centraal verlof registreren (uitsluitend politioneel kader)</h3>
   <div class="fieldgrid"><div><label for="fireLeaveFrom">Vanaf</label><input id="fireLeaveFrom" type="date" required></div>
   <div><label for="fireLeaveUntil">Tot en met</label><input id="fireLeaveUntil" type="date" required></div></div>
-  <label for="fireLeaveNote">Toelichting voor audit</label><textarea id="fireLeaveNote" rows="2" maxlength="300"></textarea>
+  <label for="fireLeaveNote">Reden van het verlof (verplicht)</label><textarea id="fireLeaveNote" required minlength="1" rows="2" maxlength="300"></textarea>
   <button type="submit">Goedkeuren en bij alle diensten registreren</button>
 </form>
 <p><a href="/verlofbeheer.html">Naar Verlofbeheer</a></p></section>
@@ -217,6 +217,9 @@ $('fireManualLeaveForm').onsubmit=async event=>{
  if(current?.canLogManualLeave!==true)return;
  const from=$('fireLeaveFrom').value,until=$('fireLeaveUntil').value;
  if(!from||!until)return;
+ if(!$('fireLeaveNote').value.trim()){
+   $('fireLeaveNote').focus();mark('Vul een reden voor het verlof in.',true);return;
+ }
  if(!confirm('Centraal verlof registreren? Dit geldt voor alle gekoppelde hulpdiensten en verschijnt in de weekrapporten.'))return;
  const btn=$('fireManualLeaveForm').querySelector('button[type=submit]');
  btn.disabled=true;
@@ -230,6 +233,8 @@ $('fireManualLeaveForm').onsubmit=async event=>{
  }catch(e){mark(e.message,true)}
  finally{btn.disabled=false}
 };
+const formatBelgianLeaveDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)?
+ value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
 function line(root,heading,detail,meta){
  const box=document.createElement('div');box.className='row';
  const name=document.createElement('strong');name.textContent=heading;
@@ -422,14 +427,17 @@ async function load(){
 
   rows($('leaveSummary'),[['Personeels-/verlofstatus',shownStatus]]);
   $('overviewLeave').textContent=Array.isArray(data.leave)&&data.leave.length
-    ?data.leave.slice(0,5).map(x=>(x.startDate||'—')+' t/m '+(x.endDate||'—'))
-      .join(' | ')
+    ?data.leave.slice(0,5).map(x=>formatBelgianLeaveDate(x.startDate)+' t/m '+
+      formatBelgianLeaveDate(x.endDate)).join(' | ')
     :shownStatus;
-  // Approved calendar dates are intentionally visible at every allowed
-  // Brandweer dossier level; confidential leave notes never leave the API.
+  // Alle Brandweerleden met dossierleesrecht zien de verlofperiode;
+  // enkel volledig bevoegde dossierraadplegers krijgen de motivering.
   cards($('leavePeriods'),data.leave||[],
-    x=>'Goedgekeurd verlof',x=>(x.startDate||'—')+' t/m '+(x.endDate||'—'),
-    x=>'Status: goedgekeurd');
+    x=>'Goedgekeurd verlof',
+    x=>formatBelgianLeaveDate(x.startDate)+' t/m '+formatBelgianLeaveDate(x.endDate),
+    x=>'Status: goedgekeurd'+(advanced?
+      ' · Reden: '+(x.note?.trim()||'Niet geregistreerd (oude verlofperiode)'):''));
+
   $('overviewQuals').hidden=!advanced;
   $('overviewActivity').hidden=!advanced;
   for(const tile of ['overviewObservationTile','overviewNotesTile',
