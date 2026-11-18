@@ -4,7 +4,7 @@ import {loadSubjectCheckrides} from './checkride-dossier-history.js';
 import {
   CITIZEN_DOSSIER_COLLECTION,validCitizenId,verifiedCitizenCouncil,
   canAccessCitizenDossier,canWriteCitizenDossier,canDeleteCitizenEntry,canManageCitizenDeletions,citizenMemberType,verifiedManualCitizenCouncil,
-  citizenSubject,validateCitizenEntry,validateCitizenDeletion,observationAverage
+  citizenSubject,validateCitizenEntry,validateCitizenDeletion,validateCitizenObservationAmendment,observationAverage
 } from './citizen-dossier-policy.js';
 
 const enabled=()=>process.env.BPD_ENABLE_CITIZEN_STAFF_DOSSIERS==='true';
@@ -26,7 +26,7 @@ const safeEntry=doc=>{
   return {id:doc.id,kind:e.kind,eventDate:clean(e.eventDate,10),
     details:clean(e.details,1600),
     score:e.kind==='observatie'&&Number.isInteger(e.score)?e.score:null,
-    createdAt:iso(e.createdAt),
+    createdAt:iso(e.createdAt),modifiedAt:iso(e.modifiedAt),
     byDiscordId:validCitizenId(e.byDiscordId)?e.byDiscordId:null};
 };
 const safeDeletion=doc=>{
@@ -35,6 +35,15 @@ const safeDeletion=doc=>{
     kind:clean(d.originalKind,32),eventDate:clean(d.originalEventDate,10),
     reason:clean(d.reason,500),byDiscordId:validCitizenId(d.byDiscordId)?d.byDiscordId:null,
     at:iso(d.at)};
+};
+
+const safeObservationCorrection=doc=>{
+  const x=doc.data();
+  return {entryId:clean(x.entryId,96),at:iso(x.at),
+    reason:clean(x.reason,500),byDiscordId:validCitizenId(x.byDiscordId)?x.byDiscordId:null,
+    previous:{eventDate:clean(x.before?.eventDate,10),
+      details:clean(x.before?.details,1600),
+      score:Number.isInteger(x.before?.score)?x.before.score:null}};
 };
 const safeLeave=doc=>{
   const d=doc.data();
@@ -138,7 +147,8 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
         canWrite:writable()&&canWriteCitizenDossier(req.bpd,
           req.citizenCouncilVerified,person.personId),
         canDelete:writable()&&canDeleteCitizenEntry(req.bpd,person.personId),
-        entries,deletionLog:deletionsSnap.docs.map(safeDeletion),
+        entries,deletionLog:deletionsSnap.docs.filter(d=>d.get('action')==='delete-citizen-entry').map(safeDeletion),
+        observationEditLog:deletionsSnap.docs.filter(d=>d.get('action')==='amend-citizen-observation').map(safeObservationCorrection),
         entriesLimited:entriesSnap.size===300||liveEntries.length>200,
         deletionLogLimited:deletionsSnap.size===100,
         leave:leaves,leaveLimited:leaveSnap.size===100,
@@ -173,6 +183,47 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
         weeklyReportWritten:false});
     }catch(e){return fail(res,e)}
   });
+
+
+  // Alle correcties zijn uitsluitend toegestaan aan dezelfde bevoegdheden
+  // als gemotiveerd wissen; het originele auteurschap blijft behouden.
+  app.patch('/api/citizen-staff/:discordId/entries/:entryId/observation',
+    ...protectedUser,async(req,res)=>{
+      if(!writable())return deny(res,503,'Burgerdossierregistraties staan uit');
+      if(!validEntryId(req.params.entryId))return deny(res,400,'Ongeldige registratie-ID');
+      let proposal;
+      try{proposal=validateCitizenObservationAmendment(req.body)}
+      catch(e){return deny(res,400,e.message)}
+      try{
+        const person=await uniqueSubject(getSnapshot,req.params.discordId);
+        if(!canDeleteCitizenEntry(req.bpd,person.personId))
+          return deny(res,403,'Alleen Korpsleiding of technisch beheer mag observaties corrigeren');
+        const store=getFirestore(),parent=store.collection(CITIZEN_DOSSIER_COLLECTION).doc(person.personId);
+        const ref=parent.collection('entries').doc(req.params.entryId),audit=parent.collection('audit').doc();
+        await store.runTransaction(async tx=>{
+          const snap=await tx.get(ref);
+          if(!snap.exists)throw Object.assign(Error('Observatie niet gevonden'),{status:404});
+          const old=snap.data();
+          if(old.kind!=='observatie')throw Object.assign(Error('Registratie is geen observatie'),{status:404});
+          if(old.deletedAt)throw Object.assign(Error('Ingetrokken observatie kan niet worden gewijzigd'),{status:409});
+          if((iso(old.modifiedAt)||null)!==proposal.expectedModifiedAt)
+            throw Object.assign(Error('Observatie werd intussen gewijzigd. Vernieuw het dossier.'),{status:409});
+          const before={eventDate:old.eventDate,details:old.details,score:old.score};
+          if(JSON.stringify(before)===JSON.stringify(proposal.entry))
+            throw Object.assign(Error('Geen wijzigingen vastgesteld'),{status:400});
+          const at=FieldValue.serverTimestamp();
+          tx.update(ref,{eventDate:proposal.entry.eventDate,
+            details:proposal.entry.details,score:proposal.entry.score,
+            modifiedAt:at,modifiedByDiscordId:req.bpd.discordId});
+          tx.create(audit,{action:'amend-citizen-observation',entryId:ref.id,
+            before,after:proposal.entry,reason:proposal.reason,
+            originalByDiscordId:old.byDiscordId||null,
+            byDiscordId:req.bpd.discordId,at});
+          tx.set(parent,{updatedAt:at},{merge:true});
+        });
+        return res.json({saved:true,id:ref.id,audited:true,weeklyReportWritten:false});
+      }catch(e){return fail(res,e)}
+    });
 
   // No destructive Firestore delete: an approved Korpsleiding or technical
   // manager marks the registration withdrawn and creates an immutable

@@ -101,6 +101,20 @@ export function validateCitizenDeletion(raw){
   return {reason:raw.reason.trim()};
 }
 
+
+export function validateCitizenObservationAmendment(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
+    Object.keys(raw).some(k=>!['eventDate','details','score','reason','expectedModifiedAt'].includes(k)))
+    throw Error('Ongeldige observatiecorrectie');
+  const {reason}=validateCitizenDeletion({reason:raw.reason});
+  const entry=validateCitizenEntry({kind:'observatie',eventDate:raw.eventDate,
+    details:raw.details,score:raw.score});
+  if(!Object.hasOwn(raw,'expectedModifiedAt')||
+    raw.expectedModifiedAt!==null&&
+    (typeof raw.expectedModifiedAt!=='string'||!Number.isFinite(Date.parse(raw.expectedModifiedAt))))
+    throw Error('Ongeldige wijzigingsversie');
+  return {entry,reason,expectedModifiedAt:raw.expectedModifiedAt};
+}
 // Enkel als we recent onafhankelijk de rol zagen, tonen we een roltype.
 // De volledige Burger-rol wint van de oude BIO-rol bij promotie.
 export function citizenMemberType(member,guildId,now=Date.now()){

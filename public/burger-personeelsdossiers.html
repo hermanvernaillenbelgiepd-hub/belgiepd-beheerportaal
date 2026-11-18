@@ -224,6 +224,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
       <h2>Verwijderhistoriek</h2>
       <p class="muted">Alleen Korpsleiding en technisch beheer mogen met een verplichte reden een registratie uit het actieve dossier halen. De originele gegevens blijven bewaard; Burgerraad heeft geen verwijderrecht.</p>
       <div id="deletionLog"></div>
+      <h3>Correctiehistoriek observaties</h3><div id="observationEditLog"></div>
     </section>
   </div>
 </article>
@@ -239,6 +240,27 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <div class="controls">
 <button id="confirmDelete" class="danger" type="submit">Verwijdering bevestigen</button>
 <button id="cancelDelete" type="button" class="alt">Annuleren</button>
+</div>
+</form>
+</dialog>
+
+<dialog id="editObservationDialog" aria-labelledby="editObservationTitle">
+<form id="editObservationForm">
+<h2 id="editObservationTitle">Observatie wijzigen</h2>
+<p id="editObservationTarget" class="muted"></p>
+<p class="muted">De oorspronkelijke observatie en de wijzigingsreden blijven in de audit bewaard.</p>
+<label for="editObservationDate">Datum</label>
+<input id="editObservationDate" type="date" required>
+<label for="editObservationScore">Score (0–10)</label>
+<input id="editObservationScore" type="number" min="0" max="10" step="1" required>
+<label for="editObservationDetails">Observatietekst</label>
+<textarea id="editObservationDetails" minlength="3" maxlength="1600" required></textarea>
+<label for="editObservationReason">Verplichte motivering van wijziging (minimaal 10 tekens)</label>
+<textarea id="editObservationReason" minlength="10" maxlength="500" required></textarea>
+<p id="editObservationStatus" class="muted" role="status"></p>
+<div class="controls">
+<button id="editObservationConfirm" type="submit">Wijziging met audit opslaan</button>
+<button id="editObservationCancel" type="button" class="alt">Annuleren</button>
 </div>
 </form>
 </dialog>
@@ -307,6 +329,12 @@ function renderPerson(data){
     }):null;
     const record=disclosure?disclosure.element:line(root,title,e.details,meta(e));
     if(disclosure)root.append(record);
+    if(canDelete&&isObservation){
+      const edit=document.createElement('button');
+      edit.type='button';edit.className='alt';edit.textContent='Observatie wijzigen';
+      edit.onclick=()=>beginObservationEdit(p.discordId,e);
+      (disclosure?disclosure.content:record).append(edit);
+    }
     if(canDelete){
       const remove=document.createElement('button');
       remove.type='button';remove.className='delete-entry';remove.textContent='Registratie verwijderen';
@@ -334,6 +362,11 @@ function renderPerson(data){
     'Verwijderd · '+(e.kind||'registratie')+' · '+(e.eventDate||'datum onbekend'),
     'Reden: '+e.reason,
     fmt(e.at)+' · verwijderd door '+(e.byDiscordId||'onbekend')));
+  fill('observationEditLog',data.observationEditLog||[],(root,e)=>line(root,
+    'Observatiecorrectie · '+(e.previous?.eventDate||'datum onbekend'),
+    'Vorige score '+(e.previous?.score??'—')+'/10 · '+
+      (e.previous?.details||'—')+' · Reden: '+e.reason,
+    fmt(e.at)+' · gewijzigd door '+(e.byDiscordId||'onbekend')));
   const writable=data.canWrite===true;
   $('formCard').hidden=!writable;
   $('quickAdd').hidden=!writable;
@@ -364,12 +397,58 @@ async function load(){
 }
 $('kind').onchange=()=>{$('scoreField').hidden=$('kind').value!=='observatie'};
 $('search').oninput=renderRoster;
-$('back').onclick=()=>{if($('deleteDialog').open)$('deleteDialog').close();deleteTarget=null;
+$('back').onclick=()=>{if($('deleteDialog').open)$('deleteDialog').close();if($('editObservationDialog').open)$('editObservationDialog').close();deleteTarget=null;
   selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
   history.replaceState(null,'',location.pathname);mark('Burgerpersoneelsdossiers')};
 $('refresh').onclick=load;
 $('quickAdd').onclick=()=>$('formCard').scrollIntoView({behavior:'smooth',block:'start'});
 $('print').onclick=()=>window.print();
+
+let observationEditTarget=null;
+function beginObservationEdit(personId,entry){
+  if(selectedId!==personId||!entry?.id||entry.kind!=='observatie')return;
+  observationEditTarget={personId,entryId:entry.id,expectedModifiedAt:entry.modifiedAt||null};
+  $('editObservationTarget').textContent='Observatie · '+entry.eventDate+' · registratie '+entry.id;
+  $('editObservationDate').value=entry.eventDate||'';
+  $('editObservationScore').value=entry.score??'';
+  $('editObservationDetails').value=entry.details||'';
+  $('editObservationReason').value='';
+  $('editObservationStatus').textContent='';
+  $('editObservationConfirm').disabled=false;
+  $('editObservationDialog').showModal();
+}
+$('editObservationCancel').onclick=()=>{$('editObservationDialog').close();observationEditTarget=null};
+$('editObservationDialog').addEventListener('close',()=>{observationEditTarget=null});
+$('editObservationForm').onsubmit=async event=>{
+  event.preventDefault();
+  if(!observationEditTarget||selectedId!==observationEditTarget.personId)return;
+  const target={...observationEditTarget},button=$('editObservationConfirm');
+  button.disabled=true;$('editObservationStatus').textContent='Correctie en audit opslaan…';
+  let confirmed=false;
+  try{
+    const payload={eventDate:$('editObservationDate').value,
+      score:Number($('editObservationScore').value),
+      details:$('editObservationDetails').value.trim(),
+      reason:$('editObservationReason').value.trim(),
+      expectedModifiedAt:target.expectedModifiedAt};
+    const result=await api('/api/citizen-staff/'+encodeURIComponent(target.personId)+
+      '/entries/'+encodeURIComponent(target.entryId)+'/observation','PATCH',payload);
+    if(result.saved!==true)throw Error('Geen bevestiging van de server');
+    confirmed=true;
+    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(target.personId));
+    const updated=fresh.entries?.find(x=>x.id===target.entryId);
+    if(!updated||updated.score!==payload.score||updated.details!==payload.details||
+       updated.eventDate!==payload.eventDate)
+      throw Error('De wijziging kon nog niet worden teruggelezen');
+    if(selectedId===target.personId)renderPerson(fresh);
+    $('editObservationDialog').close();mark('Observatie gewijzigd; oorspronkelijke gegevens en reden zijn gelogd.');
+  }catch(e){
+    const warning=confirmed?'Wijziging opgeslagen maar nacontrole mislukt. Vernieuw het dossier.':
+      'Observatiecorrectie mislukt: '+e.message;
+    $('editObservationStatus').textContent=warning;mark(warning,true);
+    if(!confirmed)button.disabled=false;
+  }
+};
 function beginDelete(personId,entry,title){
   if(selectedId!==personId||!entry?.id)return;
   deleteTarget={personId,entryId:entry.id};
