@@ -50,7 +50,8 @@ test('de server verifieert bevoegdheid en schakelt middels Firestore-transactie 
  assert.match(source,/HISTORICAL_OBSERVATION_SETTINGS_AUDIT/);
  assert.match(source,/before\.revision!==input\.expectedRevision/);
  assert.match(source,/await historicalSettings\(\)/);
- assert.match(source,/!historicalObservationAllowed\(req\.bpd,dept,type,config\)/);
+ assert.match(source,/!historicalObservationAllowed\(/);
+ assert.match(source,/historicalMigrationAllowed\(req\.bpd,dept,type/);
  assert.match(source,/const represented=representedId\?representativeFromPersonnel/);
  assert.match(source,/submittedByActor:actor/);
  assert.match(source,/historicalImport:Boolean\(represented\)/);
