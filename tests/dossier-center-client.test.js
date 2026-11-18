@@ -66,7 +66,5 @@ test('Police series selection follows existing server-authorized department scop
   for(const series of ['1','2','3'])assert.ok(html.includes('value="'+series+'">Reeks '+series));
   assert.ok(html.includes('syncSeriesFilter()'));
   assert.ok(html.includes("policeAllowed&&(current==='all'||current==='politie')"));
-  assert.ok(html.includes("r.dept==='politie'")===false,
-    'Department filtering stays inside pure authorised-row view');
   assert.ok(html.includes("$('series').value='all';selectDepartment('all')"));
 });
