@@ -1174,6 +1174,25 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div id="formalScoreField"><label for="formalScore">Observatiescore (0–10; 0 = DEGRADATIE)</label><input id="formalScore" type="number" min="0" max="10" step="1" placeholder="0–10"></div>
 <div style="grid-column:1/-1"><label for="formalDetails">Samenvatting observatie / feiten en omkadering sanctie</label><textarea id="formalDetails" rows="3" maxlength="6000" required></textarea></div>
 <div style="grid-column:1/-1"><label for="formalPlayers">Betrokken personen (optioneel)</label><input id="formalPlayers" maxlength="1000"></div>
+<div id="historicalObservationField" style="grid-column:1/-1" hidden>
+  <label style="display:flex;gap:9px;align-items:center;cursor:pointer">
+    <input id="historicalObservationCheck" type="checkbox" style="width:auto">
+    Oude observatie uit spreadsheet overnemen namens oorspronkelijke observator
+  </label>
+  <div id="historicalObservationSelection" hidden style="margin:8px 0;padding:11px;border:1px solid #466386;border-radius:8px">
+    <label for="historicalObservationAuthor">Oorspronkelijke observator *</label>
+    <select id="historicalObservationAuthor"></select>
+    <label for="historicalObservationReason">Bron en reden overname *</label>
+    <input id="historicalObservationReason" maxlength="500" value="Historische overname uit oude spreadsheet">
+    <small>De originele observator wordt vermeld, maar jouw eigen account blijft als invoerder in het auditspoor bewaard. Alleen observaties, nooit sancties.</small>
+  </div>
+</div>
+<div id="historicalObservationManage" style="grid-column:1/-1;padding:12px;border:1px solid #466386;border-radius:8px" hidden>
+  <strong>Overname oude observaties beheren (Politie)</strong>
+  <p id="historicalObservationStatus" class="subtle">Instelling laden…</p>
+  <button id="historicalObservationToggle" class="alt" type="button">Uitschakelen</button>
+  <small>Enkel Officierenkader en Korpsleiding kunnen de functie in- of uitschakelen. Bestaande registraties blijven bewaard.</small>
+</div>
 </div>
 <div id="formalSanctionFields" hidden>
 <h4>Sanctiegegevens</h4><div class="grid">
@@ -3640,6 +3659,65 @@ async function loadStaffLeave(p,key){
 /* Formele registraties delen de bestaande beveiligde registratietabellen,
    met originele actor, auditlog en automatische opname in weekrapporten. */
 let formalPermissions=null,formalRecords=[],formalEditId=null;
+function updateHistoricalObservationUi(){
+  const police=selected?.dept==='politie';
+  const config=formalPermissions?.historicalObservationImport;
+  const enabled=police&&config?.enabled===true;
+  const allowed=enabled&&formalPermissions?.writesEnabled===true&&
+    formalPermissions?.observationDepartments?.includes('politie')&&
+    Array.isArray(formalPermissions?.representatives)&&
+    formalPermissions.representatives.length>0;
+  const manager=police&&formalPermissions?.canManageHistoricalObservationImport===true;
+  $('historicalObservationManage').hidden=!manager;
+  if(manager){
+    $('historicalObservationStatus').textContent=enabled?
+      'Ingeschakeld: bevoegde kaderleden mogen historische observaties van een oorspronkelijke waarnemer overnemen.':
+      'Uitgeschakeld: niemand kan nieuwe observaties namens een andere waarnemer opslaan.';
+    $('historicalObservationToggle').textContent=enabled?
+      'Historische overname uitschakelen':'Historische overname inschakelen';
+  }
+  const visible=Boolean(allowed&&$('formalType').value==='observatie'&&!formalEditId);
+  $('historicalObservationField').hidden=!visible;
+  if(!visible)$('historicalObservationCheck').checked=false;
+  const select=$('historicalObservationAuthor'),old=select.value;
+  const participants=formalPermissions?.representatives||[];
+  select.replaceChildren(option('','Selecteer oorspronkelijke observator'));
+  for(const p of participants.filter(p=>p.dept==='politie'))
+    select.append(option(p.discordId,(p.call||'—')+' · '+p.name));
+  if([...select.options].some(o=>o.value===old))select.value=old;
+  const show=visible&&$('historicalObservationCheck').checked;
+  $('historicalObservationSelection').hidden=!show;
+  select.required=show;
+  $('historicalObservationReason').required=show;
+}
+$('historicalObservationCheck').onchange=updateHistoricalObservationUi;
+$('historicalObservationToggle').onclick=async()=>{
+  const cfg=formalPermissions?.historicalObservationImport;
+  if(!cfg||!formalPermissions?.canManageHistoricalObservationImport)return;
+  const next=!cfg.enabled;
+  const reason=prompt('Motivering voor '+(next?'inschakelen':'uitschakelen')+
+    ' van historische observatie-overname (10 tot 300 tekens):');
+  if(reason===null)return;
+  if(reason.trim().length<10||reason.trim().length>300)
+    return notice('Geef een motivering van 10 tot 300 tekens.',true);
+  if(!confirm('Historische overname voor Politie '+(next?'INSCHAKELEN':'UITSCHAKELEN')+
+    '? Bestaande dossierobservaties blijven behouden.'))return;
+  const button=$('historicalObservationToggle');button.disabled=true;
+  try{
+    const result=await request('/api/registrations/historical-import',{
+      method:'PUT',body:{enabled:next,expectedRevision:cfg.revision,reason:reason.trim()}});
+    formalPermissions.historicalObservationImport=result.config;
+    if(!next)formalPermissions.representatives=[];
+    else{
+      const permissions=await request('/api/registrations/subjects');
+      formalPermissions=permissions;
+    }
+    updateHistoricalObservationUi();
+    notice('Historische observatie-overname '+(next?'ingeschakeld':'uitgeschakeld')+
+      ', met auditregistratie.');
+  }catch(e){notice('Instelling niet gewijzigd: '+e.message,true)}
+  finally{button.disabled=false}
+};
 const sameDossier=key=>Boolean(selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden);
 // Zichtbare afkortingen, maar de checkbox-waarde blijft de officiële
 // sanctiereden die de server valideert, bewaart en exporteert.
@@ -3754,6 +3832,7 @@ function updateFormalFields(){
   updateSelectedSanctionReasons();
   $('formalSave').disabled=!formalPermissions?.writesEnabled||
     (isSanction?!sanction||!opts.length:!observation);
+  updateHistoricalObservationUi();
   $('staffFormalPolicy').textContent=!formalPermissions?.writesEnabled?
     'De registratiemodule staat momenteel uit. Je kunt de bestaande registraties wel raadplegen.':
     dept==='depannage'?
@@ -3803,6 +3882,7 @@ function clearFormalEdit(){
   $('formalTime').value=pad(now.getHours())+':'+pad(now.getMinutes());
   $('formalNotice').textContent='';
   updateFormalFields();
+  updateHistoricalObservationUi();
 }
 function openFormalEdit(row){
   if(!row||row.type!=='sanctie'||!sameDossier(selected.dept+':'+selected.discordId)||
@@ -3859,6 +3939,7 @@ async function loadStaffFormalPermissions(p,key){
     const data=await request('/api/registrations/subjects');
     if(!sameDossier(key))return;
     formalPermissions=data;
+    updateHistoricalObservationUi();
     const canObs=Boolean(data.writesEnabled===true&&data.actor&&
       data.observationDepartments?.includes(p.dept));
     const canSan=Boolean(data.writesEnabled===true&&data.actor&&
@@ -3917,6 +3998,15 @@ $('staffFormalForm').onsubmit=async event=>{
     eventTime:$('formalTime').value,details:$('formalDetails').value,
     otherPlayers:$('formalPlayers').value,evidenceUrl:$('formalEvidence').value};
   if(!isSanction){
+    if($('historicalObservationCheck').checked&&
+       !$('historicalObservationField').hidden){
+      const original=$('historicalObservationAuthor').value;
+      const reason=$('historicalObservationReason').value.trim();
+      if(!original||reason.length<5||reason.length>500)
+        return notice('Kies een oorspronkelijke observator en vermeld de bron van de overname.',true);
+      data.onBehalfOfDiscordId=original;
+      data.onBehalfReason=reason;
+    }
     const value=$('formalScore').value.trim();
     const score=value!==''?Number(value):NaN;
     if(!Number.isInteger(score)||score<0||score>10)
@@ -4013,10 +4103,14 @@ async function loadStaffFormalRecords(p,key){
         'Observatie')+' · '+date+(row.testRecord===true?' · TEST':'')+
         (row.status==='ingetrokken'?' · INGETROKKEN':'');
       const author=document.createElement('span');author.className='subtle';author.style.display='block';
-      author.textContent='Door '+(row.registeredBy?.name||'onbekend')+
+      author.textContent=(row.historicalImport===true?'Oorspronkelijke observator: ':'Door ')+
+        (row.registeredBy?.name||'onbekend')+
         (row.registeredBy?.call?' · '+row.registeredBy.call:'')+
         (row.eventTime?' · '+row.eventTime:'')+
-        (row.modifiedAt?' · bijgewerkt '+new Date(row.modifiedAt).toLocaleString('nl-BE'):'');
+        (row.modifiedAt?' · bijgewerkt '+new Date(row.modifiedAt).toLocaleString('nl-BE'):'')+
+        (row.historicalImport===true?' · Overgenomen uit spreadsheet door '+
+          (row.submittedByActor?.name||'onbekend')+
+          (row.onBehalfReason?' · Bron: '+row.onBehalfReason:''):'');
       const details=document.createElement('p');
       details.textContent=String(row.details||row.description||row.reason||'').slice(0,6000);
       const score=row.type==='observatie'?makeScoreBadge(row.score):null;
