@@ -89,6 +89,14 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table .roster-open{padding:5px;font-size:10px}
 .specialty-summary{display:flex;flex-wrap:wrap;gap:3px}
 
+
+/* Algemene notities hebben een eigen rubriek en tonen de complete inhoud. */
+.general-note-preview .general-note-body,
+.general-note-item p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;
+ margin:5px 0;color:#d8e8fc}
+.general-note-preview>span{display:block;font-size:11px;color:#abc5e6}
+.general-note-item{border-bottom:1px solid #365273;padding:10px 0}
+.general-note-history{margin-top:10px}
 /* Shared pictogram asset, displayed consistently in rosters and dossiers. */
 .specialty-col-icon{display:flex;align-items:center;justify-content:center;min-height:38px}
 .specialty-col-icon .specialty-custom-image{display:block;width:35px;height:37px;max-width:100%;object-fit:contain}
@@ -1150,7 +1158,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <p class="subtle">Wordt opgeslagen in het bestaande kaderregister met jouw identiteit en tijdstip en opgenomen in het dynamische weekrapport. Een dossierregistratie past de effectieve naam, rang of bevoegdheden niet automatisch aan: gebruik daarvoor Personeelsgegevens of Specialisaties.</p>
 <div class="grid">
 <div><label for="staffCaseType">Type</label><select id="staffCaseType">
-<option value="notitie">Belangrijke notitie</option>
+<option value="notitie">Belangrijke notitie</option><option value="algemene_notitie">Algemene notitie</option>
 <option value="specialisatiebeperking">Beperking van specialisatie</option>
 <option value="inactiviteitsping">Inactiviteitsping</option>
 <option value="opleiding">Gevolgde opleiding</option><option value="verlof">Verlofnotitie</option>
@@ -1559,7 +1567,7 @@ if(dossierEmbedded){
 /* Alle onderdelen behouden hun originele ID's en beveiligde API's, maar delen één fiche. */
 let dossierTab='overzicht';
 const dossierTabNames={overzicht:'Overzicht',gegevens:'Personeelsgegevens',specialisaties:'Specialisaties',
-  verlof:'Verlof',nieuw:'Notities & registratie',
+  verlof:'Verlof',nieuw:'Notities & registratie',notities:'Notities',
   registraties:'Ontvangen vanuit Basiskader',
   middenregistraties:'Ontvangen vanuit Middenkader',
   sancties:'Observaties & sancties',opleidingen:'Opleidingen',historiek:'Audit & historiek'};
@@ -1725,6 +1733,8 @@ function refreshPersonnelRegistrationOptions(){
   // lijst met ontbrekende bevoegdheden op het normale personeelsblad.
   $('registrationAccessHint').textContent='';
   $('registerTrainingQuick').hidden=!kinds.some(([key])=>key==='training');
+  const addNote=$('registerGeneralNoteQuick');
+  if(addNote)addNote.hidden=!kinds.some(([key])=>key==='case:algemene_notitie');
   syncDossierMaintenance();
 }
 function choosePersonnelRegistration(kind,focus=false){
@@ -1765,7 +1775,7 @@ function setupDossierTabs(){
       heading.className='sheet-category-heading';
       heading.textContent=({
         gegevens:'Personeelsinformatie',specialisaties:'Specialisaties & functies',
-        nieuw:'Belangrijke notities & personeelsbewegingen',
+        nieuw:'Belangrijke notities & personeelsbewegingen',notities:'Algemene notities',
         verlof:'Verloven',sancties:'Observaties & sancties',
         opleidingen:'Voltooide opleidingen',
         registraties:'Notities (basis)',middenregistraties:'Ontvangen vanuit Middenkader',
@@ -1787,7 +1797,7 @@ function setupDossierTabs(){
     </div>
     <details class="fiche-editor" id="ficheEditor" hidden><summary>Algemene personeelsgegevens aanpassen</summary></details>
     <p class="sheet-intro">Dossiergegevens uit de actuele personeels- en kaderregistraties. Wijzigingen worden afzonderlijk geaudit.</p>
-    <div class="landscape-grid" aria-label="Personeelsdossier in negen categorieën">
+    <div class="landscape-grid" aria-label="Rubrieken van het personeelsdossier">
     <section class="landscape-cell" data-sheet-tile="gegevens">
       <h3>Personeelsinformatie</h3>
       <div id="sheetProfile" class="sheet-data">Administratieve gegevens laden…</div>
@@ -1818,8 +1828,8 @@ function setupDossierTabs(){
       <h4>Stage- en koppelritevaluaties</h4><div id="sheetCheckrides" class="sheet-records">Evaluaties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="basisNotes">
-      <h3>Notities (basis)</h3>
-      <div id="sheetBasisNotes" class="sheet-records">Basisnotities laden…</div>
+      <h3>Notities</h3>
+      <div id="sheetBasisNotes" class="sheet-records">Algemene notities laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="notes">
       <h3>Belangrijke notities</h3>
@@ -1917,6 +1927,17 @@ function setupDossierTabs(){
     content.dataset.receivedList=key;content.textContent='Ontvangen registraties worden geladen…';
     panes[key].append(info,content);
   };
+  const generalNoteInfo=document.createElement('p');
+  generalNoteInfo.className='subtle';
+  generalNoteInfo.textContent='Algemene notities, nieuwste eerst. Belangrijke notities, observaties en sancties blijven afzonderlijk.';
+  const generalNoteAdd=document.createElement('button');
+  generalNoteAdd.type='button';generalNoteAdd.id='registerGeneralNoteQuick';
+  generalNoteAdd.textContent='+ Algemene notitie';generalNoteAdd.hidden=true;
+  generalNoteAdd.onclick=()=>choosePersonnelRegistration('case:algemene_notitie',true);
+  const generalNoteList=document.createElement('div');
+  generalNoteList.id='dossierGeneralNoteList';generalNoteList.className='general-note-history';
+  generalNoteList.textContent='Notities laden…';
+  panes.notities.append(generalNoteInfo,generalNoteAdd,generalNoteList);
   insertReceived('registraties','Observaties en dossierregistraties ingediend door Agentenkader of Basiskader, uitsluitend bij personeel onder jouw kaderbevoegdheid.');
   insertReceived('middenregistraties','Afzonderlijke registraties ingediend door Middenkader, uitsluitend zichtbaar voor bevoegd Officierenkader en Korpsleiding.');
   source.remove();
@@ -3031,6 +3052,7 @@ const staffCaseFields={verlof:['staffEndDateField'],opleiding:['staffCourseField
   personeelsbeweging:['staffMovementField']};
 const staffCaseValues=['staffEndDate','staffCourseName','staffProposedRank','staffNewName','staffMovement'];
 const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
+  algemene_notitie:'Algemene notitie',
   opleiding:'Gevolgde opleiding',naamswijziging:'Naamswijziging (registratie)',
   promotievoorstel:'Promotievoorstel (geen automatische promotie)',
   voordracht_ereteken:'Voordracht tot ereteken/medaille (geen automatische toekenning)',
@@ -3882,7 +3904,7 @@ function updateHistoricalMigrationUi(){
  const choices=formalPermissions?.representatives||[];
  for(const [prefix,visible] of [
    ['historicalLeave',enabled&&kind==='leave'&&registrationManualLeave],
-   ['historicalCase',enabled&&['case:notitie','case:inactiviteitsping'].includes(kind)]
+   ['historicalCase',enabled&&['case:notitie','case:algemene_notitie','case:inactiviteitsping'].includes(kind)]
  ]){
    const block=$(prefix+'Block'),box=$(prefix+'Check'),fields=$(prefix+'Fields');
    block.hidden=!visible;
