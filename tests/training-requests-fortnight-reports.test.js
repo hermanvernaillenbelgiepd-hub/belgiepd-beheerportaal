@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
  policeRequestTier,personSeries,requestCourseOptions,
- canSubmitTrainingRequest,mayReviewTrainingRequest,validateTrainingRequestInput,
+ canSubmitTrainingRequest,mayReviewTrainingRequest,mayInstructorReviewTrainingRequest,validateTrainingRequestInput,
  nextTrainingRequestStatus
 } from '../src/training-request-policy.js';
 import {
@@ -34,16 +34,26 @@ test('course vocabularies are scoped by service and middle cadre enters free tex
  assert.equal(canSubmitTrainingRequest(police('S650'),'middenkader','basiskader'),false);
  assert.equal(canSubmitTrainingRequest(police('S650'),'middenkader','middenkader'),true);
 });
-test('reekshoofden see only basic requests in their own series; officers see middle cadre',()=>{
+test('police middle cadre can review lower rank training regardless of series',()=>{
  const req={department:'politie',series:'03',applicantDiscordId:'888888888888888888',applicantTier:'basiskader'};
- const lead={discordId:'1103170819355574328',departments:['politie'],departmentRoles:{politie:'basiskader'},role:'basiskader'};
- assert.equal(mayReviewTrainingRequest(lead,req),true);
- assert.equal(mayReviewTrainingRequest(lead,{...req,series:'01'}),false);
- assert.equal(mayReviewTrainingRequest(lead,{...req,applicantTier:'middenkader'}),false);
+ const middle={discordId:'1103170819355574328',departments:['politie'],departmentRoles:{politie:'middenkader'},role:'middenkader'};
+ assert.equal(mayReviewTrainingRequest(middle,req),true);
+ assert.equal(mayReviewTrainingRequest(middle,{...req,series:'01'}),true);
+ assert.equal(mayReviewTrainingRequest(middle,{...req,applicantTier:'middenkader'}),false);
  assert.equal(mayReviewTrainingRequest(high,{...req,applicantTier:'middenkader'}),true);
+ assert.equal(mayReviewTrainingRequest(high,{...req,applicantTier:'officierenkader'}),false);
  assert.equal(mayReviewTrainingRequest({...high,discordId:req.applicantDiscordId},req),false);
  assert.equal(mayReviewTrainingRequest({role:'officierenkader',departments:['ambulance'],
    departmentRoles:{ambulance:'officierenkader'},discordId:high.discordId},req),false);
+});
+test('specialization instructors cannot review other specialization requests',()=>{
+ const officer={discordId:'333333333333333333',departments:['politie'],departmentRoles:{politie:'basiskader'},role:'basiskader'};
+ const request={department:'politie',applicantDiscordId:'888888888888888888',applicantTier:'basiskader'};
+ assert.equal(mayInstructorReviewTrainingRequest(officer,{...request,courseName:'K-9'},['1345302115689431061']),true);
+ assert.equal(mayInstructorReviewTrainingRequest(officer,{...request,courseName:'MOTARD'},['1345302115689431061']),false);
+ assert.equal(mayInstructorReviewTrainingRequest(officer,{...request,courseName:'K-9',applicantTier:'middenkader'},['1345302115689431061']),false);
+ assert.equal(mayInstructorReviewTrainingRequest(officer,{...request,courseName:'K-9',applicantDiscordId:officer.discordId},['1345302115689431061']),false);
+ assert.equal(mayInstructorReviewTrainingRequest({...officer,departments:['brandweer']},{...request,courseName:'K-9'},['1345302115689431061']),false);
 });
 test('the distinct read, given and archived actions preserve a monotone record',()=>{
  assert.equal(nextTrainingRequestStatus('nieuw','gelezen'),'gelezen');
