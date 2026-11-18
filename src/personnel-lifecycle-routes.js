@@ -1,6 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {PERSONNEL_LIFECYCLE_COLLECTION,LIFECYCLE_SERVICES,lifecycleKey,validateLifecycleAction,
- lifecycleSourceSnapshot,possibleDiscordDepartures} from './personnel-lifecycle-policy.js';
+ lifecycleSourceSnapshot,possibleDiscordDepartures,HONORABLE_REQUEST_COLLECTION,
+ validateHonorableRequest,validateHonorableDecision} from './personnel-lifecycle-policy.js';
 import {canManageLifecycleDepartment,canReadPersonnelLifecycle,
  canManagePersonnelLifecycle} from './personnel-lifecycle-access.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
@@ -24,6 +25,129 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
   if(persons.length!==1)throw fail(409,'Geen eenduidige personeelsfiche; controleer eerst de bron');
   return persons[0];
  };
+
+ // Police-only self-service. A request never changes a rank, Discord role,
+ // personnel status, privilege or archive until approved independently.
+ const honorable=()=>db().collection(HONORABLE_REQUEST_COLLECTION);
+ const policeIdentity=async actor=>{
+  const id=String(actor?.discordId||'');
+  if(!/^\d{15,22}$/.test(id)||actor?.uid!=='discord:'+id||
+     actor?.portalTechnicalMode===true||!actor.departments?.includes('politie'))
+   throw fail(403,'Gebruik je goedgekeurde persoonlijke Politie-aanmelding');
+  return resolve('politie',id);
+ };
+ app.get('/api/personnel-lifecycle/honorable/me',requireUser,async(req,res)=>{
+  try{
+   const person=await policeIdentity(req.bpd);
+   const [record,lifecycle]=await Promise.all([
+     honorable().doc('politie_'+person.personId).get(),
+     store().doc('politie_'+person.personId).get()
+   ]);
+   const row=record.data()||{};
+   res.set('Cache-Control','private, no-store');
+   return res.json({eligible:!['archived','pending'].includes(lifecycle.get('state')),
+     status:row.status||null,
+     reason:row.status==='pending'?String(row.reason||'').slice(0,500):null,
+     decidedAt:row.decidedAt?.toDate?.()?.toISOString?.()||null,
+     decisionReason:row.status&&row.status!=='pending'?
+       String(row.decisionReason||'').slice(0,500):null});
+  }catch(e){return respond(res,e)}
+ });
+ app.post('/api/personnel-lifecycle/honorable/request',requireUser,async(req,res)=>{
+  let input;
+  try{input=validateHonorableRequest(req.body)}catch(e){return respond(res,fail(400,e.message))}
+  try{
+   const actor=req.bpd,person=await policeIdentity(actor);
+   const id=person.personId,ref=honorable().doc('politie_'+id),
+     stateRef=store().doc('politie_'+id);
+   await db().runTransaction(async tx=>{
+    const [prior,life]=await Promise.all([tx.get(ref),tx.get(stateRef)]);
+    if(prior.get('status')==='pending')throw fail(409,'Er is al een openstaande aanvraag');
+    if(['archived','pending'].includes(life.get('state')))
+      throw fail(409,'Dit dienstverband staat niet actief');
+    const at=FieldValue.serverTimestamp();
+    tx.set(ref,{department:'politie',discordId:id,status:'pending',
+      reason:input.reason,requestedByUid:actor.uid,
+      createdAt:at,updatedAt:at,decisionReason:null,decidedAt:null},{merge:true});
+    tx.create(ref.collection('audit').doc(),{
+      action:'requested',reason:input.reason,actorDiscordId:id,at});
+   });
+   res.set('Cache-Control','private, no-store');
+   return res.status(201).json({saved:true,status:'pending',
+     message:'Aanvraag ingediend. Je personeelsfiche blijft actief tot een onafhankelijke goedkeuring.'});
+  }catch(e){return respond(res,e)}
+ });
+ app.get('/api/personnel-lifecycle/honorable/pending',requireUser,async(req,res)=>{
+  try{
+   if(!canManageLifecycleDepartment(req.bpd,'politie'))
+     throw fail(403,'Alleen bevoegd Politiekader kan ontslagaanvragen beoordelen');
+   const [requests,snapshot]=await Promise.all([
+     honorable().where('department','==','politie').limit(200).get(),
+     getSnapshot({includeArchived:true})
+   ]);
+   if(snapshot.stale)throw fail(503,'Personeelsbron tijdelijk niet actueel');
+   const people=new Map(snapshot.data.filter(p=>p.dept==='politie')
+     .map(p=>[p.personId,p]));
+   const pending=requests.docs.filter(d=>d.get('status')==='pending')
+     .filter(d=>allowed(req.bpd,people.get(d.get('discordId'))))
+     .map(d=>({discordId:d.get('discordId'),
+       name:String(people.get(d.get('discordId'))?.name||'').slice(0,120),
+       call:String(people.get(d.get('discordId'))?.call||'').slice(0,24),
+       reason:String(d.get('reason')||'').slice(0,500),
+       requestedAt:d.get('createdAt')?.toDate?.()?.toISOString?.()||null}));
+   res.set('Cache-Control','private, no-store');
+   return res.json({pending,limited:requests.size===200});
+  }catch(e){return respond(res,e)}
+ });
+ app.post('/api/personnel-lifecycle/honorable/:discordId/decision',requireUser,async(req,res)=>{
+  let input;
+  try{input=validateHonorableDecision(req.body)}catch(e){return respond(res,fail(400,e.message))}
+  try{
+   const discordId=req.params.discordId,person=await resolve('politie',discordId);
+   if(!allowed(req.bpd,person))throw fail(403,'Geen onafhankelijke bevoegdheid voor dit personeelslid');
+   const requestRef=honorable().doc('politie_'+discordId);
+   const stateRef=store().doc('politie_'+discordId);
+   const approved=input.decision==='approve';
+   const result=await db().runTransaction(async tx=>{
+    const [request,life]=await Promise.all([tx.get(requestRef),tx.get(stateRef)]);
+    if(request.get('status')!=='pending')
+      throw fail(409,'Geen openstaande aanvraag voor dit personeelslid');
+    if(approved&&['archived','pending'].includes(life.get('state')))
+      throw fail(409,'Personeelslid is reeds uit dienst of in herinstroom');
+    const at=FieldValue.serverTimestamp(),revision=
+      Number.isSafeInteger(life.get('revision'))?life.get('revision'):0;
+    tx.set(requestRef,{status:approved?'approved':'rejected',
+      decisionReason:input.reason,decidedByDiscordId:req.bpd.discordId,
+      decidedAt:at,updatedAt:at},{merge:true});
+    tx.create(requestRef.collection('audit').doc(),{
+      action:approved?'approved':'rejected',reason:input.reason,
+      actorDiscordId:req.bpd.discordId,at});
+    if(approved){
+      const historic=lifecycleSourceSnapshot(person);
+      if(!historic)throw fail(409,'Historische personeelsgegevens niet veilig beschikbaar');
+      tx.set(stateRef,{dept:'politie',discordId,state:'archived',
+        revision:revision+1,snapshot:historic,cause:'honorable_resignation',
+        reason:input.reason,archivedAt:at,updatedAt:at,
+        updatedByUid:req.bpd.uid,updatedByDiscordId:req.bpd.discordId,
+        cmsRoleSyncPending:true,restoreFromArchive:false},{merge:true});
+      tx.create(stateRef.collection('audit').doc(),{
+        action:'honorable_resignation_approved',cause:'honorable_resignation',
+        reason:input.reason,actorDiscordId:req.bpd.discordId,at,
+        revision:revision+1});
+      tx.create(db().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+        type:'personnel_archived',dept:'politie',discordId,
+        name:historic.name,call:historic.call,
+        before:'Actief',after:'Eervol uit dienst',cause:'honorable_resignation',
+        reason:input.reason,actorDiscordId:req.bpd.discordId,at});
+    }
+    return {status:approved?'approved':'rejected',
+      archived:approved,cmsRoleSyncPending:approved};
+   });
+   if(approved)invalidateLifecycle();
+   res.set('Cache-Control','private, no-store');
+   return res.json({...result,historyPreserved:true,discordRolesChanged:false});
+  }catch(e){return respond(res,e)}
+ });
  app.get('/api/personnel-lifecycle/archives',requireUser,async(req,res)=>{
   try{
    const dept=String(req.query.dept||'');
