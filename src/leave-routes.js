@@ -294,6 +294,16 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           return {id:d.id,startDate:record.startDate,endDate:record.endDate,
             days:record.days,status:record.status,manual:record.manual===true,
             note:typeof record.note==='string'?record.note:'',
+            historicalImport:record.historicalImport===true,
+            ...(record.historicalImport===true?{
+              originalRegistrar:record.registeredBy?{
+                name:String(record.registeredBy.name||'').slice(0,120),
+                call:String(record.registeredBy.call||'').slice(0,24)}:null,
+              importedBy:record.submittedByActor?{
+                name:String(record.submittedByActor.name||'').slice(0,120),
+                call:String(record.submittedByActor.call||'').slice(0,24)}:null,
+              onBehalfReason:String(record.onBehalfReason||'').slice(0,500)
+            }:{}),
             canDecide:canDecide&&writes()};
         }),limited:snap.docs.length===100});
     }catch(e){return jsonError(res,e)}
