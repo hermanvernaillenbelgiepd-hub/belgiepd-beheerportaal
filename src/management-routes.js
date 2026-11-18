@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
+import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
@@ -72,6 +73,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     try{
       const snap=await getSnapshot(),subject=uniqueSubject(snap.data,dept,id);
       if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
+      if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
       const rows=await db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').orderBy('createdAt','desc').limit(150).get();
       res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},entries:rows.docs.filter(d=>d.get('status')!=='verwijderd').map(d=>({id:d.id,...noPrivate(d.data())})),limited:rows.docs.length===150});
     }catch(e){errorResponse(res,e)}
@@ -87,6 +89,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const data=validateManagementEntry(req.body),snap=await getSnapshot();
       const subject=uniqueSubject(snap.data,dept,id);
       if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
+      if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
       const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel je Google-account eerst aan je eigen Discord ID'});
       const newDoc=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc();
