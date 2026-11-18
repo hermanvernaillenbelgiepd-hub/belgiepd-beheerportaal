@@ -188,7 +188,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       }
       const represented=representedId?representativeFromPersonnel(snap.data,dept,representedId):null;
        if(representedId && (!represented || representedId===actor.discordId))
-         return res.status(400).json({error:'Ongeldige middenkaderselectie voor registratie namens een ander'});
+         return res.status(400).json({error:'Ongeldige oorspronkelijke politieobservator voor deze historische overname'});
        const collection=db().collection('bpd_cases').doc(docId(dept,id)).collection('entries');
       const newDoc=collection.doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
