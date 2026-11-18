@@ -3562,6 +3562,91 @@ async function loadStaffCheckrides(p,key){
     detail.textContent='Evaluatiehistoriek niet beschikbaar ('+e.message+').';
   }}
 }
+// Een bestaande dossierregistratie corrigeren is een afzonderlijke,
+ // serverbeveiligde beheeractie. Geen nieuwe dossierregistratie of rolwijziging.
+function addManualCaseCorrectionControls(container,row,person,key){
+ if(row.canAmend!==true)return;
+ const actions=document.createElement('div');actions.className='actions';
+ const edit=document.createElement('button');edit.type='button';edit.className='alt small';
+ edit.textContent='Registratie wijzigen';
+ const history=document.createElement('button');history.type='button';history.className='alt small';
+ history.textContent='Wijzigingslog';
+ const editor=document.createElement('form');editor.className='inline-form';
+ editor.hidden=true;
+ const field=(text,tag,type,value,max)=>{
+   const label=document.createElement('label');label.textContent=text;
+   const element=document.createElement(tag);
+   if(type)element.type=type;
+   if(max)element.maxLength=max;
+   element.value=value??'';
+   label.append(element);editor.append(label);return element;
+ };
+ const date=field('Datum gebeurtenis','input','date',row.eventDate);
+ date.required=true;
+ const details=field('Gecorrigeerde omschrijving','textarea',null,row.details,4000);
+ details.rows=4;details.required=true;details.minLength=1;
+ const link=field('Bewijs- of documentlink (optioneel)','input','url',row.referenceUrl,800);
+ const specific={
+   opleiding:['courseName','Naam van de opleiding',150],
+   naamswijziging:['newName','Geregistreerde nieuwe naam',100],
+   promotievoorstel:['proposedRank','Voorgestelde rang',140],
+   personeelsbeweging:['movement','Personeelsbeweging',150]
+ }[row.type];
+ const extra=specific?field(specific[1],'input','text',row[specific[0]],specific[2]):null;
+ if(extra)extra.required=true;
+ const reason=field('Verplichte motivering van de correctie (minimaal 10 tekens)',
+   'textarea',null,'',1000);
+ reason.required=true;reason.minLength=10;reason.rows=2;
+ const save=document.createElement('button');save.type='submit';save.className='alt small';
+ save.textContent='Correctie met audit opslaan';
+ const cancel=document.createElement('button');cancel.type='button';cancel.className='alt small';
+ cancel.textContent='Annuleren';cancel.onclick=()=>{editor.hidden=true};
+ editor.append(save,cancel);
+ edit.onclick=()=>{editor.hidden=!editor.hidden;if(!editor.hidden)details.focus()};
+ editor.onsubmit=async event=>{
+   event.preventDefault();
+   if(!selected||selected.dept+':'+selected.discordId!==key)return;
+   const data={type:row.type,eventDate:date.value,details:details.value,
+     referenceUrl:link.value,amendmentReason:reason.value.trim(),
+     expectedModifiedAt:row.modifiedAt||null};
+   if(specific)data[specific[0]]=extra.value;
+   save.disabled=true;
+   try{
+     await request('/api/management/cases/'+encodeURIComponent(person.dept)+'/'+
+       encodeURIComponent(person.discordId)+'/'+encodeURIComponent(row.id),{
+         method:'PATCH',body:data});
+     notice('Dossierregistratie gecorrigeerd. Vorige gegevens, motivering en auteur zijn in het auditlog bewaard; het weekrapport is bijgewerkt.');
+     await loadLinkedPersonnelRecords(person,key);
+   }catch(error){
+     notice('Correctie niet opgeslagen: '+error.message,true);
+     save.disabled=false;
+   }
+ };
+ const auditResult=document.createElement('div');auditResult.className='subtle';
+ auditResult.hidden=true;
+ history.onclick=async()=>{
+   auditResult.hidden=!auditResult.hidden;
+   if(auditResult.hidden)return;
+   auditResult.textContent='Wijzigingshistoriek laden…';
+   try{
+     const r=await request('/api/management/cases/'+encodeURIComponent(person.dept)+'/'+
+       encodeURIComponent(person.discordId)+'/'+encodeURIComponent(row.id)+'/audit');
+     auditResult.replaceChildren();
+     if(!r.changes?.length)auditResult.textContent='Nog geen correcties geregistreerd.';
+     for(const x of r.changes||[]){
+       const item=document.createElement('div');item.className='history';
+       const title=document.createElement('strong');
+       title.textContent=(x.at?new Date(x.at).toLocaleString('nl-BE'):'Datum onbekend')+
+         ' · '+(x.actor?.name||'Onbekend');
+       const body=document.createElement('p');
+       body.textContent='Vorige gegevens: '+(x.before?.eventDate||'')+' · '+
+         (x.before?.details||'')+' · Motivering: '+(x.reason||'');
+       item.append(title,body);auditResult.append(item);
+     }
+   }catch(e){auditResult.textContent='Wijzigingslog niet beschikbaar: '+e.message}
+ };
+ actions.append(edit,history);container.append(actions,editor,auditResult);
+}
 async function loadLinkedPersonnelRecords(p,key){
   const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
   void loadStaffCheckrides(p,key);
@@ -3629,6 +3714,7 @@ async function loadLinkedPersonnelRecords(p,key){
           body.textContent=String(row.details||'').slice(0,4000);
           div.append(title,body);
           attachRetireButton(div,row,'cases');
+          addManualCaseCorrectionControls(div,row,p,key);
           cases.append(div);
         }
         if(data.limited)cases.append(document.createTextNode(' Er kunnen oudere registraties bestaan.'));
