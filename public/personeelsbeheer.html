@@ -1106,6 +1106,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
   <input id="staffTrainingOther" maxlength="150" minlength="3" placeholder="Vul de naam van de opleiding in">
 </div>
 <div><label for="staffTrainingDate">Datum</label><input id="staffTrainingDate" type="date" required></div>
+<div><label for="staffTrainingInstructor">Opleider (naam of roepnummer)</label><input id="staffTrainingInstructor" type="text" minlength="2" maxlength="120" placeholder="Bijv. 930 · Naam opleider" required></div>
 <div><label for="staffTrainingResult">Resultaat</label><select id="staffTrainingResult"><option value="in_opleiding">In opleiding</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="stage">STAGE</option><option value="restricted">RESTRICTED</option></select></div>
 <div style="grid-column:1/-1"><label for="staffTrainingDetails">Evaluatie of opmerkingen</label><textarea id="staffTrainingDetails" rows="2" maxlength="1600"></textarea></div>
 <div id="staffTrainingAmend" style="grid-column:1/-1" hidden><label for="staffTrainingReason">Motivering wijziging (minimaal 8 tekens)</label><textarea id="staffTrainingReason" rows="2" maxlength="500"></textarea></div>
@@ -3101,6 +3102,7 @@ function staffTrainingEdit(record){
   $('staffTrainingDate').value=record.eventDate||'';
   $('staffTrainingResult').value=record.result||'in_opleiding';
   $('staffTrainingDetails').value=record.details||'';
+  $('staffTrainingInstructor').value=record.instructorName||record.instructor||'';
   $('staffTrainingTitle').textContent='Bestaande opleiding wijzigen';
   $('staffTrainingAmend').hidden=false;
   $('staffTrainingReason').required=true;
@@ -3118,11 +3120,14 @@ $('staffTrainingForm').onsubmit=async event=>{
     return notice('Kies een opleiding of vul bij ANDERE een naam van 3 tot 150 tekens in.',true);
   const body={department:p.dept,discordId:p.discordId,
     courseName,eventDate:$('staffTrainingDate').value,
-    result:$('staffTrainingResult').value,details:$('staffTrainingDetails').value};
+    result:$('staffTrainingResult').value,details:$('staffTrainingDetails').value,
+    instructorName:$('staffTrainingInstructor').value.trim()};
   if(id){
     body.reason=$('staffTrainingReason').value;
     if(body.reason.trim().length<8)return notice('Motivering wijziging: minstens 8 tekens.',true);
   }
+  if(body.instructorName.length<2||body.instructorName.length>120)
+    return notice('Vul de opleider in (naam of roepnummer, 2–120 tekens).',true);
   const button=$('staffTrainingSave');button.disabled=true;
   try{
     await request(id?'/api/training/'+encodeURIComponent(p.dept)+'/'+
@@ -3533,7 +3538,8 @@ async function loadLinkedPersonnelRecords(p,key){
           title.textContent=String(row.courseName||'Opleiding').slice(0,150)+
             ' · '+(row.result==='restricted'?'RESTRICTED':row.result==='stage'?'STAGE':String(row.result||'Onbekend resultaat'));
           const meta=document.createElement('span');meta.className='subtle';
-          meta.textContent=String(row.eventDate||'Datum onbekend');
+          meta.textContent=String(row.eventDate||'Datum onbekend')+
+            ' · Opleider: '+String(row.instructorName||row.instructor||'niet vermeld');
           div.append(title,meta);
           if(row.canEdit===true&&trainingRights?.trainingWritesEnabled===true&&
               trainingRights.permissions?.[p.dept]?.['training.log']){
