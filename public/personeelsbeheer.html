@@ -1623,8 +1623,9 @@ function availablePersonnelRegistrationKinds(){
   if(!dept)return [];
   const kinds=[];
   if(dept==='depannage'){
-    // Exactly three administrative registrations for Depannage; still show
-    // only those currently granted by the authenticated server session.
+    // Depannage behoudt zijn bestaande drie operationele categorieën;
+    // Algemene notities zijn louter dossierinformatie en krijgen geen
+    // operationele sanctionerings- of specialisatiebevoegdheden.
     if(formalPermissions?.writesEnabled===true&&formalPermissions.actor){
       if(formalPermissions.observationDepartments?.includes(dept))
         kinds.push(['observatie','Observatie']);
@@ -1635,6 +1636,9 @@ function availablePersonnelRegistrationKinds(){
     if(casePermissions?.writesEnabled===true&&casePermissions.actor&&
        casePermissions.typesByDepartment?.[dept]?.includes('specialisatiebeperking'))
       kinds.push(['case:specialisatiebeperking','Beperking van specialisatie']);
+    if(casePermissions?.writesEnabled===true&&casePermissions.actor&&
+       casePermissions.typesByDepartment?.[dept]?.includes('algemene_notitie'))
+      kinds.push(['case:algemene_notitie','Algemene notitie']);
     if(registrationManualLeave)kinds.push(['leave','Verlofperiode manueel inschrijven']);
     return kinds;
   }

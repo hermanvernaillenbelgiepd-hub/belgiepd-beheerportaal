@@ -23,11 +23,12 @@ test('Depannage sanctions have exactly the four requested measures, with role ch
    .includes('Degradatie'),'Police sanctions remain unchanged');
 });
 
-test('Depannage can register only specialization restriction as a management case',()=>{
+test('Depannage kan alleen specialisatiebeperking en algemene notitie registreren als management-case',()=>{
  const actor={role:'middenkader',
   departments:['depannage'],departmentRoles:{depannage:'middenkader'},
   dossierAllowedDepartments:['depannage'],dossierNativeDepartments:['depannage']};
  assert.equal(mayWriteManagement(actor,'depannage','specialisatiebeperking'),true);
+ assert.equal(mayWriteManagement(actor,'depannage','algemene_notitie'),true);
  for(const type of ['verlof','notitie','opleiding','naamswijziging',
   'promotievoorstel','personeelsbeweging','activiteit']){
   assert.equal(mayWriteManagement(actor,'depannage',type),false,type);
@@ -41,15 +42,16 @@ test('Depannage can register only specialization restriction as a management cas
   'Police management capabilities remain unchanged');
 });
 
-test('Depannage registration menu is explicitly reduced to three choices',()=>{
+test('Depannage houdt zijn drie operationele keuzes plus gewone notities',()=>{
  const page=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
  const start=page.indexOf("if(dept==='depannage'){");
  const end=page.indexOf("  if(formalPermissions?.writesEnabled",start+10);
  assert.ok(start>=0&&end>start,'A Depannage-specific registration branch exists');
- const context=page.slice(start,start+1050);
+ const context=page.slice(start,start+1420);
  assert.match(context,/kinds\.push\(\['observatie','Observatie'\]\)/);
  assert.match(context,/kinds\.push\(\['sanctie','Sanctie'\]\)/);
  assert.match(context,/kinds\.push\(\['case:specialisatiebeperking','Beperking van specialisatie'\]\)/);
+ assert.match(context,/kinds\.push\(\['case:algemene_notitie','Algemene notitie'\]\)/);
  assert.match(context,/return kinds/);
  assert.doesNotMatch(context,/kinds\.push\(\['training'/);
 });
