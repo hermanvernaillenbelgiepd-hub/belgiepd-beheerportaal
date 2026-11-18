@@ -582,9 +582,9 @@ async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const extra=canonicalAdded.filter(p=>!keys.has(p.dept+':'+p.personId));
   const combined=canonicalBase.concat(extra);
   const edited=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
-  const named=projectCanonicalPersonnelNames(edited,identityNames.docs);
-  const personnel=overlayPoliceSeriesAssignments(named,policeSeries);
-  let visible=specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel;
+  const personnel=overlayPoliceSeriesAssignments(edited,policeSeries);
+  const named=projectCanonicalPersonnelNames(personnel,identityNames.docs);
+  let visible=specialties?applySpecialtyOverlays(named,specialties.docs,rosterConfigs):named;
   // Reuse the already-authorized BelgiumPD members API to project fresh,
   // verified Discord specializations across the personnel roster. Display
   // only: no Firestore writes, role grants, cadre or dossier-right changes.
