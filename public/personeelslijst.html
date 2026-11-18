@@ -156,6 +156,49 @@ body.roster-embedded main{margin:0;padding:0}
 body.roster-embedded .panel{margin:0;padding:8px 9px;border:0;border-radius:0}
 body.roster-embedded .tablewrap{max-height:calc(100vh - 155px)}
 body.roster-embedded .roster-profile-dialog{max-height:90vh}
+
+/* Originele publieke lijst binnen Personeelsbeheer: REEKS op één regel. */
+.roster-personnel-page .mr-table td:nth-child(4){text-align:center;padding-inline:3px}
+.roster-personnel-page .mr-table td:nth-child(4) .mr-series{
+ display:flex;flex-direction:column;flex-wrap:nowrap;align-items:center;
+ justify-content:center;gap:2px;min-width:0
+}
+.roster-personnel-page .mr-table td:nth-child(4) .mr-series-badge{
+ display:inline-flex;align-items:center;justify-content:center;
+ width:max-content;max-width:100%;min-height:20px;
+ white-space:nowrap!important;word-break:keep-all!important;
+ overflow-wrap:normal!important;overflow:hidden;text-overflow:ellipsis;
+ padding:2px 5px;font-size:10px
+}
+.roster-personnel-page .mr-table:not(.mr-direct-columns) th:nth-child(4){
+ width:94px;min-width:94px
+}
+.roster-personnel-page .mr-table.mr-direct-columns{
+ table-layout:fixed;max-width:none
+}
+.roster-personnel-page .mr-table.mr-direct-columns th{min-width:0!important}
+.roster-personnel-page .mr-table.mr-direct-columns th.mr-can-resize{
+ position:sticky;padding-right:15px!important
+}
+.mr-col-handle{
+ position:absolute;right:0;top:0;bottom:0;width:13px;z-index:6;
+ padding:0!important;margin:0;border:0;border-radius:0;
+ cursor:col-resize;touch-action:none;background:transparent
+}
+.mr-col-handle::after{
+ content:"";position:absolute;top:15%;bottom:15%;
+ left:6px;width:2px;border-radius:3px;background:#8dbdff
+}
+.mr-col-handle:hover::after,.mr-col-handle:focus-visible::after,
+.mr-col-handle.dragging::after{background:#ffe18a;width:3px}
+.mr-col-handle:focus-visible{outline:2px solid #ffe18a;outline-offset:-2px}
+.mr-col-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+ background:#0d2540;border:1px solid #426288;padding:8px;border-radius:8px;
+ margin:8px 0 10px;color:#d5eaff;font-size:11px
+}
+.mr-col-toolbar button{padding:5px 8px;font-size:11px}
+html.mr-dragging,html.mr-dragging *{cursor:col-resize!important;user-select:none!important}
+@media(max-width:1024px){.mr-col-toolbar{display:none!important}}
 </style><link rel="stylesheet" href="/roster-name-preview.css"><link rel="stylesheet" href="/bpd-navigation.css"></head><body class="roster-personnel-page">
 <header><strong>🛡️ BelgiëPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
 <main><h1>Algemene personeelslijst</h1>
@@ -231,6 +274,13 @@ body.roster-embedded .roster-profile-dialog{max-height:90vh}
   <p id="rosterLayoutStatus" role="status" aria-live="polite"></p>
  </div>
 </section>
+<div id="publicRosterColumnToolbar" class="mr-col-toolbar" hidden>
+ <strong>↔ Kolommen verslepen</strong>
+ <span>Sleep het blauwe streepje aan de rechterrand van iedere kolomkop. Ook bij specialisaties.</span>
+ <button type="button" id="publicRosterColumnSave" disabled>Breedtes bewaren voor iedereen</button>
+ <button type="button" id="publicRosterColumnCancel">Herstellen</button>
+ <span id="publicRosterColumnFeedback" role="status" aria-live="polite">Geen wijzigingen.</span>
+</div>
 <p id="message" role="status" aria-live="polite">Personeelslijst laden…</p>
 <div class="mr-wrapper"><div class="mr-scroll"><table class="mr-table">
   <thead id="rosterHead"></thead><tbody id="rows"></tbody>
@@ -317,6 +367,176 @@ window.addEventListener('message',event=>{
  else if(event.data.status==='unavailable')
   $('rosterProfileStatus').textContent='De personeelskaart is momenteel niet beschikbaar.';
 });
+
+// De originele lijst gebruikt exact dezelfde Firestore-kolominstellingen
+// als Kolombeheer. Alle mutaties vereisen de bestaande serverbevoegdheid.
+const rosterColumnKeys=['call','grade','name','series','status'];
+const rosterColumnBounds={call:[36,200],grade:[54,250],name:[120,430],
+ series:[90,240],status:[70,240],specialty:[60,300]};
+const rosterColumnMin={call:46,grade:88,name:178,series:94,status:78};
+let rosterColumnSettings=null,rosterColumnOriginal=null;
+let rosterColumnAllowed=false,rosterColumnToken=null,rosterColumnVersion=0;
+const rosterColumnCopy=x=>JSON.parse(JSON.stringify(x));
+const rosterColumnFeedback=msg=>$('publicRosterColumnFeedback').textContent=msg;
+function rosterColumnDescriptors(){
+ return [...$('rosterHead').querySelectorAll('th')].map((th,index)=>
+  index<5?{key:rosterColumnKeys[index],title:th.textContent}:
+   {specialty:th.title||'',title:th.title||'Specialisatie'});
+}
+function rosterColumnWidth(item){
+ if(!rosterColumnSettings)return 0;
+ if(item.specialty)return Math.max(60,
+  rosterColumnSettings.specialtyWidths?.[item.specialty]||
+   rosterColumnSettings.widths?.specialty||82);
+ return Math.max(rosterColumnMin[item.key]||0,
+  rosterColumnSettings.widths?.[item.key]||80);
+}
+function rosterColumnPaint(){
+ if(!rosterColumnSettings)return;
+ const table=document.querySelector('.mr-table');
+ const headers=[...$('rosterHead').querySelectorAll('th')],items=rosterColumnDescriptors();
+ if(items.length<5)return;
+ const widths=items.map(rosterColumnWidth),total=widths.reduce((a,b)=>a+b,0);
+ table.classList.add('mr-direct-columns');
+ table.style.width='max(100%, '+total+'px)';
+ table.style.minWidth=total+'px';
+ let colgroup=table.querySelector('colgroup');
+ if(!colgroup){colgroup=document.createElement('colgroup');table.prepend(colgroup);}
+ if(colgroup.children.length!==widths.length)
+  colgroup.replaceChildren(...widths.map(()=>document.createElement('col')));
+ widths.forEach((width,index)=>{
+  colgroup.children[index].style.width=width+'px';
+  headers[index].style.width=width+'px';
+ });
+}
+function rosterColumnChange(item,raw){
+ if(!rosterColumnAllowed||!rosterColumnSettings)return;
+ const name=item.specialty?'specialty':item.key;
+ const [lower,upper]=rosterColumnBounds[name];
+ const width=Math.max(lower,Math.min(upper,Math.round(raw)));
+ if(width===rosterColumnWidth(item))return;
+ if(item.specialty){
+  rosterColumnSettings.specialtyWidths||={};
+  rosterColumnSettings.specialtyWidths[item.specialty]=width;
+ }else rosterColumnSettings.widths[item.key]=width;
+ rosterColumnPaint();
+ $('publicRosterColumnSave').disabled=false;
+ rosterColumnFeedback(item.title+' → '+width+' px (voorbeeld, nog niet opgeslagen).');
+}
+function renderRosterColumnHandles(){
+ if(!rosterColumnSettings)return;
+ rosterColumnPaint();
+ if(!rosterColumnAllowed)return;
+ const headers=[...$('rosterHead').querySelectorAll('th')],items=rosterColumnDescriptors();
+ headers.forEach((th,index)=>{
+  const item=items[index];
+  if(!item||item.specialty===''||th.querySelector('.mr-col-handle'))return;
+  th.classList.add('mr-can-resize');
+  const handle=document.createElement('button');
+  handle.type='button';handle.className='mr-col-handle';
+  handle.title=item.title+' verslepen om te verbreden of versmallen';
+  handle.setAttribute('aria-label','Breedte '+item.title+' aanpassen door te slepen of met de pijltjestoetsen');
+  let pointer=null,start=0,initial=0;
+  handle.addEventListener('pointerdown',e=>{
+   if(e.button!==0||pointer!==null)return;
+   e.preventDefault();e.stopPropagation();
+   pointer=e.pointerId;start=e.clientX;initial=rosterColumnWidth(item);
+   handle.setPointerCapture(pointer);
+   handle.classList.add('dragging');
+   document.documentElement.classList.add('mr-dragging');
+  });
+  handle.addEventListener('pointermove',e=>{
+   if(pointer!==e.pointerId)return;
+   rosterColumnChange(item,initial+e.clientX-start);
+  });
+  const stop=e=>{
+   if(pointer!==e.pointerId)return;
+   pointer=null;handle.classList.remove('dragging');
+   document.documentElement.classList.remove('mr-dragging');
+  };
+  handle.addEventListener('pointerup',stop);
+  handle.addEventListener('pointercancel',stop);
+  handle.addEventListener('keydown',e=>{
+   if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;
+   e.preventDefault();
+   rosterColumnChange(item,rosterColumnWidth(item)+
+    (e.key==='ArrowRight'?1:-1)*(e.shiftKey?1:5));
+  });
+  th.append(handle);
+ });
+}
+function rosterColumnClear(){
+ rosterColumnVersion++;
+ rosterColumnSettings=null;rosterColumnOriginal=null;
+ rosterColumnAllowed=false;rosterColumnToken=null;
+ $('publicRosterColumnToolbar').hidden=true;
+ $('publicRosterColumnSave').disabled=true;
+ const table=document.querySelector('.mr-table');
+ table.classList.remove('mr-direct-columns');
+ table.style.removeProperty('width');table.style.removeProperty('min-width');
+ table.querySelector('colgroup')?.remove();
+ for(const th of table.querySelectorAll('th')){
+  th.style.removeProperty('width');th.classList.remove('mr-can-resize');
+  th.querySelector('.mr-col-handle')?.remove();
+ }
+ document.documentElement.classList.remove('mr-dragging');
+}
+async function rosterColumnLoad(token){
+ rosterColumnClear();
+ if(!token)return;
+ const version=rosterColumnVersion;
+ try{
+  const res=await fetch('/api/roster-columns',{
+   headers:{Authorization:'Bearer '+token},cache:'no-store'});
+  const data=await res.json().catch(()=>({}));
+  if(rosterColumnVersion!==version||!res.ok||!data.departments?.politie)return;
+  rosterColumnOriginal=rosterColumnCopy(data.departments.politie);
+  rosterColumnSettings=rosterColumnCopy(rosterColumnOriginal);
+  rosterColumnAllowed=data.canEdit===true;
+  rosterColumnToken=rosterColumnAllowed?token:null;
+  $('publicRosterColumnToolbar').hidden=!rosterColumnAllowed;
+  renderRosterColumnHandles();
+  if(rosterColumnAllowed)
+   rosterColumnFeedback('Sleep de blauwe kolomranden en klik daarna op Bewaren.');
+ }catch(_error){if(rosterColumnVersion===version)rosterColumnClear();}
+}
+$('publicRosterColumnCancel').onclick=()=>{
+ if(!rosterColumnAllowed)return;
+ rosterColumnSettings=rosterColumnCopy(rosterColumnOriginal);
+ $('publicRosterColumnSave').disabled=true;
+ rosterColumnPaint();
+ rosterColumnFeedback('Opgeslagen kolombreedtes hersteld.');
+};
+$('publicRosterColumnSave').onclick=async()=>{
+ if(!rosterColumnAllowed||!rosterColumnToken)return;
+ const old=rosterColumnOriginal,updated=rosterColumnSettings;
+ $('publicRosterColumnSave').disabled=true;
+ rosterColumnFeedback('Kolombreedtes bewaren…');
+ try{
+  const res=await fetch('/api/roster-columns/politie',{
+   method:'PUT',headers:{Authorization:'Bearer '+rosterColumnToken,
+    'Content-Type':'application/json'},cache:'no-store',
+   body:JSON.stringify({
+    expectedRevision:rosterColumnOriginal.revision,
+    widths:updated.widths,specialtyWidths:updated.specialtyWidths||{},
+    customSpecialties:updated.customSpecialties||[],
+    fontFamily:updated.fontFamily,fontSize:updated.fontSize,
+    reason:'Kolommen rechtstreeks versleept op de personeelslijst'
+   })
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw Error(data.error||'Bewaren mislukt');
+  if(rosterColumnOriginal!==old)return;
+  rosterColumnOriginal=rosterColumnCopy(data.config);
+  rosterColumnSettings=rosterColumnCopy(data.config);
+  rosterColumnPaint();
+  rosterColumnFeedback('Opgeslagen voor iedereen.');
+ }catch(e){
+  $('publicRosterColumnSave').disabled=false;
+  rosterColumnFeedback('Niet opgeslagen: '+e.message);
+ }
+};
+
 function render(){
  const q=$('search').value.trim();
  const byDiscordId=/^\d{15,22}$/.test(q);
@@ -328,6 +548,7 @@ function render(){
   seriesNumber(p.series)===rosterSeriesFilter);
  const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),shown,
   byDiscordId?'':q,openRosterProfile);
+ renderRosterColumnHandles();
  $('message').textContent=byDiscordId?
    (ready?count+' personeelslid(leden) gevonden op Discord-ID':'Discord-ID opzoeken…'):
    count+' van '+people.length+' personeelsleden zichtbaar';
@@ -381,8 +602,10 @@ async function load(){
   }catch(_err){window.BPDPersonnelVisuals?.setArtworkManifest?.([])}
   searchDirectory();
   // Do not start an officer-only layout request after the user signed out.
-  if(auth?.currentUser?.uid?.startsWith('discord:'))
+  if(auth?.currentUser?.uid?.startsWith('discord:')){
    await loadRosterLayout(token);
+   await rosterColumnLoad(token);
+  }
   if(data.stale)$('message').textContent+=' · Let op: brongegevens momenteel niet actueel';
  }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
  finally{$('refresh').disabled=false}
@@ -407,7 +630,7 @@ try{
   if(user?.uid?.startsWith('discord:'))load();
   else {clearTimeout(discordSearchTimeout);discordSearchRequest++;
    discordSearchId='';discordSearchRows=[];
-   logoutRosterLayout();setPublicRosterSpecialties([]);people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
+   logoutRosterLayout();rosterColumnClear();setPublicRosterSpecialties([]);people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script><script defer src="/bpd-navigation.js"></script></body></html>

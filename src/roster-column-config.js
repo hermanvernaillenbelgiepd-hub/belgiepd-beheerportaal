@@ -115,8 +115,11 @@ export function validateRosterConfig(input,dept){
  if(!rawSpecialtyWidths||typeof rawSpecialtyWidths!=='object'||
     Array.isArray(rawSpecialtyWidths)||Object.keys(rawSpecialtyWidths).length>60)
    throw Error('Ongeldige specialisatiebreedtes');
+ // Twee read-only kolommen van de publieke politielijst zijn niet aanwezig
+ // als afzonderlijke bronkolom in Google Sheets. Breedtes mogen wel beheerd worden.
+ const publicPoliceLabels=dept==='politie'?['INTERVENTIEDIENST','LRD (Recherche)']:[];
  const allowedSpecialtyLabels=new Set([...(SPECIALTY_LABELS[dept]||[]),
-   ...customSpecialties.map(x=>x.label)]);
+   ...publicPoliceLabels,...customSpecialties.map(x=>x.label)]);
  const specialtyWidths={};
  for(const [label,width] of Object.entries(rawSpecialtyWidths)){
    if(!allowedSpecialtyLabels.has(label)||!Number.isSafeInteger(width)||
