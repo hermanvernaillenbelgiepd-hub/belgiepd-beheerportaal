@@ -1074,6 +1074,15 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div style="grid-column:1/-1"><label for="leaveNote">Reden van het verlof (verplicht, max. 300 tekens)</label>
 <textarea id="leaveNote" required minlength="1" maxlength="300" rows="2" placeholder="Reden van administratieve inschrijving"></textarea></div>
 </div>
+<div id="historicalLeaveBlock" style="margin:8px 0;padding:10px;border:1px solid #466386;border-radius:8px" hidden>
+ <label><input type="checkbox" id="historicalLeaveCheck" style="width:auto"> Oud verlof namens oorspronkelijke registrator overnemen</label>
+ <div id="historicalLeaveFields" hidden>
+  <label for="historicalLeaveAuthor">Oorspronkelijke registrator</label><select id="historicalLeaveAuthor"></select>
+  <label for="historicalLeaveReason">Bron en reden overname</label>
+  <input id="historicalLeaveReason" minlength="10" maxlength="500" value="Historische overname uit het vroegere personeelsdossier">
+  <small>Alleen volledig afgelopen verlofperiodes. Je eigen account blijft als invoerder gelogd.</small>
+ </div>
+</div>
 <p id="leaveManualGuidance" class="subtle" role="status" aria-live="polite">Middenkader mag maximaal 30 dagen rechtstreeks goedkeuren. Meer dan 30 dagen gaat naar Officierenkader of Korpsleiding.</p>
 <button id="leaveManualSave" type="submit">Verlof registreren</button>
 </form>
@@ -1167,6 +1176,15 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div style="grid-column:1/-1"><label for="staffCaseDetails">Omschrijving of motivering</label>
 <textarea id="staffCaseDetails" rows="3" maxlength="4000" minlength="10" required></textarea></div>
 <div style="grid-column:1/-1"><label for="staffCaseReference">Bewijs- of documentlink (optioneel, https)</label><input id="staffCaseReference" type="url" maxlength="800" placeholder="https://…"></div>
+<div id="historicalCaseBlock" style="grid-column:1/-1;padding:10px;border:1px solid #466386;border-radius:8px" hidden>
+ <label><input id="historicalCaseCheck" type="checkbox" style="width:auto"> Oude registratie overnemen namens een andere registrator</label>
+ <div id="historicalCaseFields" hidden>
+  <label for="historicalCaseAuthor">Oorspronkelijke registrator</label><select id="historicalCaseAuthor"></select>
+  <label for="historicalCaseReason">Bron en reden overname</label>
+  <input id="historicalCaseReason" minlength="10" maxlength="500" value="Historische overname uit het vroegere personeelsdossier">
+  <small>Een oude inactiviteitsping wordt uitsluitend gelogd; er wordt geen nieuwe ping verstuurd.</small>
+ </div>
+</div>
 </div>
 <button id="staffCaseSave" type="submit">Registratie bewaren in dossier en weekrapport</button>
 <span id="staffCaseHint" class="subtle" role="status"></span>
@@ -1196,14 +1214,14 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div id="historicalObservationField" style="grid-column:1/-1" hidden>
   <label style="display:flex;gap:9px;align-items:center;cursor:pointer">
     <input id="historicalObservationCheck" type="checkbox" style="width:auto">
-    Oude observatie uit spreadsheet overnemen namens oorspronkelijke observator
+    Oude observatie of sanctie overnemen namens oorspronkelijke registrator
   </label>
   <div id="historicalObservationSelection" hidden style="margin:8px 0;padding:11px;border:1px solid #466386;border-radius:8px">
     <label for="historicalObservationAuthor">Oorspronkelijke observator *</label>
     <select id="historicalObservationAuthor"></select>
     <label for="historicalObservationReason">Bron en reden overname *</label>
     <input id="historicalObservationReason" maxlength="500" value="Historische overname uit oude spreadsheet">
-    <small>De originele observator wordt vermeld, maar jouw eigen account blijft als invoerder in het auditspoor bewaard. Alleen observaties, nooit sancties.</small>
+    <small>De oorspronkelijke registrator wordt vermeld, jouw account blijft als invoerder bewaard. Oude sancties zijn alleen archiefregistraties.</small>
   </div>
 </div>
 <div id="historicalObservationManage" style="grid-column:1/-1;padding:12px;border:1px solid #466386;border-radius:8px" hidden>
@@ -1211,6 +1229,12 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
   <p id="historicalObservationStatus" class="subtle">Instelling laden…</p>
   <button id="historicalObservationToggle" class="alt" type="button">Uitschakelen</button>
   <small>Enkel Officierenkader en Korpsleiding kunnen de functie in- of uitschakelen. Bestaande registraties blijven bewaard.</small>
+</div>
+<div id="historicalMigrationManage" style="grid-column:1/-1;padding:12px;border:1px solid #466386;border-radius:8px" hidden>
+ <strong>Oude dossiers tijdelijk overnemen: verlof, sancties, notities en inactiviteitspings</strong>
+ <p id="historicalMigrationStatus" class="subtle">Standaard uitgeschakeld.</p>
+ <button id="historicalMigrationToggle" type="button" class="alt">Inschakelen voor overdracht</button>
+ <small>Alleen Officierenkader/Korpsleiding. De overname gebeurt met bron en audit. Schakel na de overdracht weer uit.</small>
 </div>
 </div>
 <div id="formalSanctionFields" hidden>
