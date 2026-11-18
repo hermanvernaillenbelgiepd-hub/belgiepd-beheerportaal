@@ -242,6 +242,9 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const batch=db().batch();
       batch.create(newDoc,{...values,...(type==='sanctie'&&represented?{status:'historisch'}:{}),
          subjectDiscordId:id,dept,subjectNameAtCreation:target.name,subjectCallAtCreation:target.call,
+         // Only record an issuance-time rank for genuinely new sanctions.
+         // A historical import must not misrepresent today's rank as an old one.
+         ...(type==='sanctie'&&!represented?{subjectRankAtCreation:target.rank}:{}),
         registeredBy:represented||actor,submittedByActor:actor,
         onBehalfOf:represented||null,onBehalfReason,
         historicalImport:Boolean(represented),importSource:represented?'spreadsheet':null,

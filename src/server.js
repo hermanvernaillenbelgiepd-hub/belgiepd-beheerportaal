@@ -19,6 +19,7 @@ import { planPersonnelMigration } from './personnel-migration.js';
 import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.js';
 import { ALLOWED_ROLES } from './registrations.js';
 import { installRegistrationRoutes } from './registration-routes.js';
+import {installSanctionOverviewRoutes} from './sanction-overview-routes.js';
 import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import {basicObservationJsonParser} from './basic-observation-json.js';
 import {scheduleBasicObservationAutoArchive} from './basic-observation-auto-archive.js';
@@ -151,6 +152,7 @@ app.get('/personeelslijst.html',(req,res,next)=>{
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
 app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
+app.use('/api/sanctieoverzicht',express.json({limit:'4kb',strict:true}));
 // Basiskaderobservaties have their OWN POST route. Without a JSON parser,
 // req.body is undefined and every selected Discord subject is rejected.
 app.use('/api/basic-observations',basicObservationJsonParser);
@@ -911,6 +913,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
   }
 });
 installRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installSanctionOverviewRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installBasicObservationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installManagementRoutes(app,{requireUser:requireDossierUser,requireMemberUser:requireUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});

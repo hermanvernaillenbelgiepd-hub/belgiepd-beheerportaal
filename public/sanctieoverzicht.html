@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>BelgiëPD · Sanctieoverzicht</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<style>
+:root{color-scheme:dark;--bg:#0b172c;--panel:#142745;--card:#1b3353;--line:#3c5677;--text:#ebf3ff;--muted:#bdd0e7;--input:#11243d;--accent:#96bcff;--button:#3156c3}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font:14px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;margin:0}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 22px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+nav{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+a{color:var(--accent)}
+main{max-width:1240px;margin:0 auto;padding:22px 18px 70px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:0 0 12px}h3{font-size:15px;margin:12px 0 8px}
+p{margin:5px 0 12px}.muted{color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:17px;margin:15px 0}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+label{display:block;font-weight:650;font-size:12px;margin-bottom:4px}
+.field{flex:1;min-width:150px}
+input,select,textarea,button{font:inherit}
+input,select,textarea{width:100%;background:var(--input);color:var(--text);border:1px solid #6280a4;border-radius:7px;padding:9px 11px}
+textarea{resize:vertical;min-height:86px}
+button{border:1px solid #7292c6;background:var(--button);color:#fff;border-radius:7px;padding:9px 13px;cursor:pointer;font-weight:650}
+button.secondary{background:var(--card);color:var(--text)}button:disabled{opacity:.55;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.notice{border:1px solid var(--line);border-radius:8px;padding:11px 13px;background:var(--card);margin:12px 0}
+.notice.error{border-color:#e89c9c;color:#ffd2d2}
+.list{display:grid;gap:9px}
+.entry{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 14px}
+.entry-top{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.entry-name{font-size:15px;font-weight:750}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0}
+.tag{font-size:11px;border:1px solid #7290b4;border-radius:5px;padding:2px 7px;background:#24446b;color:#ecf6ff}
+.entry-info{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:12px}
+.entry-reason{margin:8px 0;overflow-wrap:anywhere}
+.entry-actions{margin-top:10px}
+.detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.info{background:var(--card);padding:10px;border-radius:7px;border:1px solid var(--line);overflow-wrap:anywhere}
+.info small{display:block;color:var(--muted);font-size:11px;margin-bottom:3px}
+.info strong{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.full{grid-column:1/-1}
+.timeline{display:grid;gap:7px;margin:10px 0}
+.timeline-item{border-left:3px solid #719bdf;background:var(--card);padding:9px 11px;border-radius:4px;white-space:pre-wrap;overflow-wrap:anywhere}
+.timeline-item small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+#detail{scroll-margin-top:12px}
+#more{margin-top:12px}
+@media(max-width:800px){.detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){main{padding:13px 10px 45px}.panel{padding:12px}.detail-grid{grid-template-columns:1fr}.controls>.field{min-width:100%}.entry-top{align-items:start}}
+@media(prefers-color-scheme:light){
+ :root{color-scheme:light;--bg:#eef3fa;--panel:#fff;--card:#f4f7fc;--line:#b5c6da;--text:#17304f;--muted:#465f7c;--input:#fff;--accent:#214daa;--button:#3155b3}
+ .tag{background:#e5edf9;color:#1d3a61}.notice.error{color:#9a2433}
+}
+</style>
+</head>
+<body>
+<header><strong>🛡️ BelgiëPD · Sanctieoverzicht</strong>
+<nav><a href="/personeelsbeheer.html">Personeelslijst</a><a href="/dossiercentrum.html">Dossiercentrum</a><a href="/weekrapporten.html">Weekrapporten</a><button id="login" type="button">Aanmelden</button></nav></header>
+<main>
+<h1>Uitgegeven sancties</h1>
+<p class="muted">Afgeschermde opvolging voor bevoegd Officierenkader en Korpsleiding. De originele sancties en hun wijzigingshistoriek blijven bewaard.</p>
+<div id="feedback" class="notice" role="status" aria-live="polite">Aanmeldgegevens controleren…</div>
+<section id="overview" class="panel" hidden>
+<div class="controls">
+<div class="field"><label for="dept">Hulpdienst</label><select id="dept"></select></div>
+<div class="field"><label for="search">Zoek op naam, graad, roepnummer of reden</label><input id="search" autocomplete="off" placeholder="Zoeken in geladen sancties"></div>
+<div class="field"><label for="status">Status</label><select id="status"><option value="">Alle statussen</option><option value="actief">Actief</option><option value="historisch">Historisch</option><option value="ingetrokken">Ingetrokken</option></select></div>
+<button id="reload" class="secondary" type="button">Vernieuwen</button>
+</div>
+<p id="resultCount" class="muted" role="status">Geen sancties geladen.</p>
+<div id="items" class="list"></div>
+<button id="more" type="button" class="secondary" hidden>Oudere registraties doorzoeken</button>
+<p class="muted">Het overzicht laadt de sanctieregistraties per periode uit het bestaande register. Historische dossiers blijven beschikbaar; geen sanctie wordt hierdoor gewijzigd.</p>
+</section>
+<section id="detail" class="panel" hidden>
+<div class="entry-top"><h2 id="detailTitle">Sanctie</h2><button id="close" class="secondary" type="button">Details sluiten</button></div>
+<div id="sanctionData" class="detail-grid"></div>
+<h3>Opvolgnotities</h3>
+<div id="notes" class="timeline"></div>
+<p id="noteLimit" class="muted" hidden>Enkel de 100 recentste notities worden in dit detailvenster weergegeven. De overige notities blijven bewaard.</p>
+<form id="noteForm" hidden>
+<label for="noteText">Nieuwe opvolgnotitie (verplicht, 10–2000 tekens)</label>
+<textarea id="noteText" minlength="10" maxlength="2000" required placeholder="Beschrijf de opvolging of aanvulling zonder de bestaande sanctie te wijzigen."></textarea>
+<div class="controls"><button id="noteSave" type="submit">Opvolgnotitie definitief opslaan</button><span class="muted">Wordt afzonderlijk gelogd in het dossier en het dynamische weekrapport.</span></div>
+</form>
+<h3>Wijzigings- en auditgeschiedenis</h3>
+<div id="audit" class="timeline"></div>
+<p id="auditLimit" class="muted" hidden>Enkel de 100 recentste auditgebeurtenissen worden hier getoond. De volledige historiek blijft bewaard.</p>
+</section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+const DEPTS={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance (AZLS)',depannage:'Depannage'};
+let auth,authMod,rows=[],cursor=null,busy=false,active=null,context=null;
+const text=(name,value,extra='')=>{
+ const el=document.createElement(name);el.textContent=String(value??'');if(extra)el.className=extra;return el;
+};
+function feedback(message,error=false){
+ $('feedback').textContent=message;$('feedback').classList.toggle('error',error);
+}
+const date=value=>/^\d{4}-\d{2}-\d{2}$/.test(String(value||''))?
+ value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
+const timestamp=value=>{
+ if(!value)return '—';
+ const d=new Date(value);return Number.isNaN(d.getTime())?'—':d.toLocaleString('nl-BE',
+   {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+};
+const nameOf=value=>value?.name||'Onbekend';
+const rankOf=value=>value?.rank?' · '+value.rank:'';
+async function api(url,payload){
+ if(!auth?.currentUser)throw Error('Meld je eerst aan met je goedgekeurde Discord-account.');
+ const token=await auth.currentUser.getIdToken();
+ const response=await fetch(url,{method:payload?'POST':'GET',cache:'no-store',
+  headers:{Authorization:'Bearer '+token,...(payload?{'Content-Type':'application/json'}:{})},
+  ...(payload?{body:JSON.stringify(payload)}:{})});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'Aanvraag mislukt');
+ return data;
+}
+function renderRows(){
+ const term=$('search').value.trim().toLocaleLowerCase('nl-BE');
+ const status=$('status').value;
+ const result=rows.filter(x=>{
+  if(status&&x.status!==status)return false;
+  if(!term)return true;
+  return [x.name,x.call,x.currentRank,x.rankAtSanction,x.sanctionType,x.issuer?.name,
+   x.reasons?.join(' '),x.reasonOther].join(' ').toLocaleLowerCase('nl-BE').includes(term);
+ }).sort((a,b)=>(b.eventDate||'').localeCompare(a.eventDate||'')||
+   (b.registeredAt||'').localeCompare(a.registeredAt||''));
+ const root=$('items');root.replaceChildren();
+ $('resultCount').textContent=result.length+' sanctie(s) zichtbaar · '+rows.length+
+  ' geladen'+(cursor?' · oudere registraties beschikbaar':'');
+ for(const x of result){
+  const article=text('article','','entry');
+  const head=text('div','','entry-top');
+  const left=text('div','','entry-name');left.append(text('span',x.name||'—'));
+  head.append(left,text('strong',date(x.eventDate)));
+  const tags=text('div','','tags');
+  for(const label of [DEPTS[x.dept]||x.dept,x.sanctionType,
+    x.severity!==null?'Ernst '+x.severity+'/10':null,
+    x.status?.toUpperCase(),x.testRecord?'TEST':null,x.historicalImport?'HISTORISCH OVERGENOMEN':null]
+    .filter(Boolean))tags.append(text('span',label,'tag'));
+  const info=text('div','','entry-info');
+  info.append(text('span','Roepnummer: '+(x.call||'—')),
+    text('span','Graad: '+(x.rankAtSanction||x.currentRank||'—')+
+      (!x.rankAtSanction?' (huidig)':'')),
+    text('span','Opgelegd door: '+nameOf(x.issuer)+rankOf(x.issuer)));
+  const reason=text('div','Reden: '+(x.reasons?.join(', ')||'—')+
+    (x.reasonOther?' · '+x.reasonOther:''),'entry-reason');
+  const actions=text('div','','entry-actions');
+  const open=text('button','Details en notities bekijken','secondary');
+  open.type='button';open.onclick=()=>showDetail(x);
+  actions.append(open);
+  article.append(head,tags,info,reason,actions);root.append(article);
+ }
+ if(!result.length)root.append(text('p',cursor?
+   'Geen overeenkomende sancties in dit gedeelte. Gebruik Oudere registraties doorzoeken.':
+   'Geen overeenkomende sancties gevonden.','muted'));
+}
+async function loadPage(reset=false){
+ if(busy||!$('dept').value)return;
+ busy=true;$('more').disabled=true;
+ if(reset){rows=[];cursor=null;$('detail').hidden=true;renderRows()}
+ try{
+  const dept=$('dept').value;
+  const url='/api/sanctieoverzicht?dept='+encodeURIComponent(dept)+
+   (cursor?'&before='+encodeURIComponent(cursor):'');
+  const result=await api(url);
+  if(dept!==$('dept').value)return;
+  const seen=new Set(rows.map(x=>x.dept+'_'+x.discordId+'_'+x.id));
+  for(const item of result.rows||[]){
+   const key=item.dept+'_'+item.discordId+'_'+item.id;
+   if(!seen.has(key)){rows.push(item);seen.add(key)}
+  }
+  cursor=result.nextCursor||null;$('more').hidden=!cursor;
+  renderRows();
+  feedback('Sanctieoverzicht geladen. Alleen jouw toegelaten dienst is zichtbaar.');
+ }catch(e){feedback('Sancties niet beschikbaar: '+e.message,true)}
+ finally{busy=false;$('more').disabled=false}
+}
+function field(label,value,wide=false){
+ const holder=text('div','','info'+(wide?' full':''));
+ holder.append(text('small',label),text('strong',value===null||value===''?'—':value));
+ return holder;
+}
+function renderDetailData(s){
+ const box=$('sanctionData');box.replaceChildren();
+ box.append(
+  field('Medewerker',s.name),
+  field('Roepnummer nu',s.call),
+  field('Graad nu',s.currentRank),
+  field('Graad ten tijde van sanctie',s.rankAtSanction||'Niet apart vastgelegd'),
+  field('Roepnummer bij sanctie',s.callAtSanction),
+  field('Hulpdienst',DEPTS[s.dept]||s.dept),
+  field('Sanctie',s.sanctionType),
+  field('Ernst',s.severity===null?'—':s.severity+'/10'),
+  field('Status',s.status),
+  field('Datum',date(s.eventDate)+' · '+(s.eventTime||'—')),
+  field('Geregistreerd op',timestamp(s.registeredAt)),
+  field('Laatst gewijzigd',timestamp(s.modifiedAt)),
+  field('Uitgegeven door',nameOf(s.issuer)+rankOf(s.issuer)+
+    (s.issuer?.call?' · '+s.issuer.call:'')),
+  field('Oorspronkelijke registrator',nameOf(s.originalRegistrant)+rankOf(s.originalRegistrant)),
+  field('Historisch overgenomen door',s.onBehalfOf?nameOf(s.onBehalfOf):'Niet van toepassing'),
+  field('Reden(en)',(s.reasons||[]).join(', ')+(s.reasonOther?' · '+s.reasonOther:''),true),
+  field('Feiten en context',s.details,true),
+  field('Bijkomende toelichting',s.explanation,true),
+  field('Overige betrokkenen',s.otherPlayers,true),
+  field('Specialisatiebeperking',s.restrictedSpecialties?.join(', ')+
+    (s.endDate?' · einddatum '+date(s.endDate):''),true)
+ );
+ if(s.evidenceUrl&&/^https:\/\//i.test(s.evidenceUrl)){
+  const holder=text('div','','info full');
+  holder.append(text('small','Bewijsmateriaal'));
+  const link=text('a','Bekijk bewijsmateriaal');
+  link.href=s.evidenceUrl;link.target='_blank';link.rel='noopener noreferrer';
+  holder.append(link);box.append(holder);
+ }
+}
+function renderTimeline(root,items,kind){
+ root.replaceChildren();
+ if(!items?.length){root.append(text('p','Geen '+(kind==='notitie'?'opvolgnotities':'wijzigingen')+' geregistreerd.','muted'));return}
+ for(const item of items){
+  const card=text('div','','timeline-item');
+  const title=kind==='notitie'?item.text:
+   (item.action||'Sanctiewijziging')+' · '+(item.reason||'Geen nadere motivering');
+  card.append(text('div',title));
+  if(kind!=='notitie'&&item.previous?.sanctionType){
+   card.append(text('small','Vorige sanctie: '+item.previous.sanctionType+
+    ' · '+(item.previous.status||'—')+(item.previous.details?' · '+item.previous.details:'')));
+  }
+  card.append(text('small',timestamp(item.at)+' · '+nameOf(item.actor)+rankOf(item.actor)));
+  root.append(card);
+ }
+}
+async function showDetail(item){
+ active=item;
+ $('detail').hidden=false;$('detailTitle').textContent='Sanctie · '+item.name;
+ $('sanctionData').replaceChildren(text('p','Sanctiegegevens ophalen…'));
+ $('notes').replaceChildren();$('audit').replaceChildren();
+ $('noteForm').hidden=true;$('detail').scrollIntoView({block:'start',behavior:'smooth'});
+ try{
+  const url='/api/sanctieoverzicht/'+encodeURIComponent(item.dept)+'/'+
+   encodeURIComponent(item.discordId)+'/'+encodeURIComponent(item.id);
+  const data=await api(url);
+  if(active!==item)return;
+  renderDetailData(data.sanction);
+  renderTimeline($('notes'),data.notes,'notitie');
+  renderTimeline($('audit'),data.audit,'audit');
+  $('noteLimit').hidden=!data.notesLimited;$('auditLimit').hidden=!data.auditLimited;
+  $('noteForm').hidden=!data.canAddNote;$('noteText').value='';
+ }catch(e){$('sanctionData').replaceChildren(text('p','Sanctie niet beschikbaar: '+e.message))}
+}
+$('noteForm').addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(!active)return;
+ const textValue=$('noteText').value.trim();
+ if(textValue.length<10||textValue.length>2000)return feedback('Notitie moet 10 tot 2000 tekens zijn.',true);
+ if(!confirm('Opvolgnotitie definitief opslaan bij deze sanctie? De oorspronkelijke sanctie blijft onveranderd.'))return;
+ const button=$('noteSave');button.disabled=true;
+ const selected=active;
+ try{
+  await api('/api/sanctieoverzicht/'+encodeURIComponent(selected.dept)+'/'+
+   encodeURIComponent(selected.discordId)+'/'+encodeURIComponent(selected.id)+'/notes',
+   {text:textValue});
+  await showDetail(selected);
+  feedback('Opvolgnotitie toegevoegd en geaudit. Dossierregistratie en weekrapportlog zijn opgeslagen.');
+ }catch(e){feedback('Notitie niet opgeslagen: '+e.message,true)}
+ finally{button.disabled=false}
+});
+$('more').onclick=()=>loadPage(false);
+$('reload').onclick=()=>loadPage(true);
+$('dept').onchange=()=>loadPage(true);
+$('search').oninput=renderRows;
+$('status').onchange=renderRows;
+$('close').onclick=()=>{$('detail').hidden=true;active=null};
+async function loadContext(){
+ $('overview').hidden=true;$('detail').hidden=true;rows=[];cursor=null;
+ if(!auth?.currentUser){feedback('Meld je aan met je Discord-account om sancties te bekijken.');return}
+ try{
+  context=await api('/api/sanctieoverzicht/context');
+  const select=$('dept');select.replaceChildren();
+  for(const dept of context.departments||[]){
+   const option=document.createElement('option');option.value=dept;
+   option.textContent=DEPTS[dept]||dept;select.append(option);
+  }
+  if(!select.options.length)throw Error('Geen toegelaten hulpdiensten');
+  $('overview').hidden=false;
+  await loadPage(true);
+ }catch(e){feedback('Geen toegang of bron tijdelijk niet beschikbaar: '+e.message,true)}
+}
+async function init(){
+ try{
+  const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+  if(!config.enabled)throw Error('Firebase is niet geconfigureerd');
+  const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  auth=authMod.getAuth(appModule.initializeApp(config.firebaseConfig));
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:$('login'),auth,authModule:authMod,config,onError:e=>feedback(e.message,true)});
+  authMod.onAuthStateChanged(auth,()=>loadContext());
+ }catch(e){feedback(e.message,true)}
+}
+init();
+</script>
+<script defer src="/bpd-navigation.js"></script>
+</body>
+</html>
