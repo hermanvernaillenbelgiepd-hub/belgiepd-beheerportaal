@@ -19,9 +19,16 @@ test('Dossier UI renders fetched data as text and cannot grant access',()=>{
 
 test('Dossier controls offer authorised filters and one scrollable overview',()=>{
   const html=readFileSync(new URL('../public/dossiercentrum.html',import.meta.url),'utf8');
-  for(const id of ['query','department','historyKind','sortOrder','stats'])
+  for(const id of ['query','series','department','historyKind','sortOrder','stats'])
     assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
   assert.ok(html.includes("from '/dossiercentrum-view.js'"));
+  assert.ok(html.includes('Reeks (Politie)'));
+  assert.ok(html.includes('value="1">Reeks 1</option>'));
+  assert.ok(html.includes('value="2">Reeks 2</option>'));
+  assert.ok(html.includes('value="3">Reeks 3</option>'));
+  assert.ok(html.includes('synchronizeSeriesFilter'));
+  assert.ok(html.includes("$('series').onchange=changedFilters"));
+  assert.ok(html.includes("series:$('series').value"));
   assert.match(html,/\.scroller\{max-height:560px;overflow-y:auto/);
   assert.doesNotMatch(html,/id="nextPage"|id="previousPage"/);
   assert.equal(html.includes('Open volledige personeelsfiche · observaties & sancties'),false);
