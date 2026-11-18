@@ -1295,6 +1295,7 @@ import {mountPersonnelGroupSettingsEditor} from '/personnel-group-settings-edito
 import {displayServiceBadge,serviceIdentity} from '/dossier-service-badge.js';
 import {policeGroupedRoster,policeOperationalTier,policeTierDisplay} from '/police-roster-cadre.js';
 import {attachRosterNamePreview,dismissRosterNamePreview} from '/roster-name-preview.js';
+import {sortDossierColleagues} from '/dossier-colleague-sort.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
@@ -1528,9 +1529,9 @@ const ficheUrl=p=>'/personeelsbeheer.html?'+new URLSearchParams({
 function updateFicheColleagues(){
   if(!ficheMode)return;
   const select=$('ficheColleague');
-  const options=people.filter(p=>p.canOpenDossier===true)
-    .sort((a,b)=>(a.dept||'').localeCompare(b.dept||'','nl')||
-      BPDPersonnelVisuals.comparePersonnel(a,b,'call-desc'));
+  // Zelfde sortering als de personeelslijst: 900, 910, ... 700, 710,
+  // ... 600, ... 008; per andere dienst de eigen ranghiërarchie.
+  const options=sortDossierColleagues(people,BPDPersonnelVisuals.comparePersonnel);
   select.replaceChildren(...options.map(p=>option(p.dept+':'+p.discordId,
     (p.call||'—')+' · '+p.name+' ('+(departments[p.dept]||p.dept)+')')));
   if(selected)select.value=selected.dept+':'+selected.discordId;
