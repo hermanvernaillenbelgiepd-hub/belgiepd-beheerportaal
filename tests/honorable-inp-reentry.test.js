@@ -67,7 +67,9 @@ test('herinstroomcontrole raakt alleen eigen politiedienst en vraagt levende Dis
  assert.match(route,/tx\.set\(accountRef,/);
  assert.match(route,/role:'basiskader'/);
  assert.match(route,/invalidateUserAccess\(discordId\)/);
- assert.match(server,/invalidateUserAccess:id=>authDocCache\.delete\(USER_COLLECTION/);
+ assert.match(server,/invalidateUserAccess:id=>\{/);
+ assert.match(server,/authDocCache\.delete\(USER_COLLECTION/);
+ assert.match(server,/authDocCache\.delete\('bpd_discord_auth:/);
  assert.match(route,/canActivateInp:/);
  assert.match(ui,/Herinstroom als INP afronden/);
  assert.match(ui,/activate-inp/);
