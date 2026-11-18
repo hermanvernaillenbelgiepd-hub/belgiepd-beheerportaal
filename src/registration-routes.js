@@ -4,6 +4,7 @@ import {SPECIALTY_LABELS} from './normalize.js';
 import {roleForDepartment} from './leave-policy.js';
 import {dossierAuthorityRole,verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 import {basicObservationTargets} from './basic-observation-policy.js';
+import {canRetireDossierRecord,isRetired} from './dossier-retirement-policy.js';
 import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_SETTINGS_AUDIT,
  HISTORICAL_OBSERVATION_DOC,canManageHistoricalObservationImport,
  historicalObservationSettings,validateHistoricalObservationToggle,
@@ -205,6 +206,103 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       // Basiskader krijgt alleen bevestiging, geen record of dossierinformatie terug.
       res.status(201).json({saved:true,reference:newDoc.id});
     }catch(err){return handleError(res,err)}
+  });
+
+  // Auditbare correctie: dezelfde rechten als het gemotiveerd wissen.
+  app.patch('/api/registrations/observations/:dept/:discordId/:entryId',requireUser,async(req,res)=>{
+    if(!writesEnabled())return res.status(503).json({error:'Registraties staan uit'});
+    const {dept,discordId:id,entryId}=req.params;
+    if(!DEPTS.includes(dept)||!isDiscordId(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
+      return res.status(400).json({error:'Ongeldige observatieverwijzing'});
+    const reason=typeof req.body?.amendmentReason==='string'?req.body.amendmentReason.trim():'';
+    if(reason.length<10||reason.length>500)
+      return res.status(400).json({error:'Geef een motivering van 10 tot 500 tekens'});
+    if(!Object.hasOwn(req.body||{},'expectedModifiedAt')||
+      req.body.expectedModifiedAt!==null&&
+        (typeof req.body.expectedModifiedAt!=='string'||
+         !Number.isFinite(Date.parse(req.body.expectedModifiedAt))))
+      return res.status(400).json({error:'Ongeldige wijzigingsversie'});
+    let fields;
+    try{
+      const entry=validateEntry({...req.body,type:'observatie'});
+      if(!Number.isInteger(entry.score))throw Error('Kies een observatiescore van 0 tot 10');
+      const {type,...validatedFields}=entry;
+      fields=validatedFields;
+    }catch(e){return res.status(400).json({error:e.message})}
+    try{
+      const snap=await getSnapshot();
+      if(snap?.stale===true)return res.status(503).json({error:'Personeelsbron niet actueel'});
+      const matches=snap.data.filter(p=>p.dept===dept&&p.personId===id);
+      if(matches.length!==1)return res.status(404).json({error:'Personeelslid ontbreekt of is dubbel geregistreerd'});
+      const subject=matches[0];
+      if(!canRetireDossierRecord(req.bpd,subject))
+        return res.status(403).json({error:'Geen bevoegdheid om deze observatie te wijzigen'});
+      const actor=actorFromPersonnel(req.bpd,snap.data);
+      if(!actor)return res.status(403).json({error:'Eigen identiteit niet geverifieerd'});
+      const store=db(),collection=store.collection('bpd_cases').doc(docId(dept,id)).collection('entries');
+      const ref=collection.doc(entryId),audit=ref.collection('audit').doc(),report=collection.doc();
+      const notice=store.collection('bpd_notices').doc(dept).collection('events').doc();
+      const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels'}).format(new Date());
+      await store.runTransaction(async tx=>{
+        const doc=await tx.get(ref);
+        if(!doc.exists)throw Object.assign(Error('Observatie niet gevonden'),{status:404});
+        const old=doc.data();
+        if(old.type!=='observatie'||old.dept!==dept||old.subjectDiscordId!==id)
+          throw Object.assign(Error('Observatie niet gevonden'),{status:404});
+        if(isRetired(old))throw Object.assign(Error('Ingetrokken observaties kunnen niet gewijzigd worden'),{status:409});
+        if((isoTimestamp(old.modifiedAt)||null)!==req.body.expectedModifiedAt)
+          throw Object.assign(Error('Deze observatie werd intussen gewijzigd. Vernieuw het dossier.'),{status:409});
+        const before=Object.fromEntries(Object.keys(fields).map(k=>[k,old[k]??null]));
+        if(Object.keys(fields).every(k=>JSON.stringify(old[k]??null)===JSON.stringify(fields[k])))
+          throw Object.assign(Error('Geen wijzigingen vastgesteld'),{status:400});
+        const at=FieldValue.serverTimestamp();
+        tx.update(ref,{...fields,modifiedAt:at,modifiedBy:actor});
+        tx.create(audit,{action:'observation_amended',before,after:fields,
+          originalObserver:old.registeredBy||null,reason,by:actor,
+          byUid:req.bpd.uid,at});
+        tx.create(report,{type:'activiteit',reportCategory:'activiteit',dept,
+          subjectDiscordId:id,subjectNameAtCreation:subject.name,
+          subjectCallAtCreation:subject.call,eventDate:today,registeredBy:actor,
+          source:'observation-amendment',amendmentOf:{entryId,kind:'observatie'},
+          details:'CORRECTIE OBSERVATIE · registratie '+entryId+
+            ' · Motivering: '+reason+' · Door '+actor.name,
+          createdAt:at,modifiedAt:null});
+        tx.create(notice,{caseId:docId(dept,id),entryId:report.id,
+          type:'activiteit',action:'observation_amended',
+          originalEntryId:entryId,dept,createdAt:at});
+      });
+      return res.json({saved:true,auditRecorded:true,reportLogged:true});
+    }catch(e){
+      if([400,403,404,409].includes(e?.status))return res.status(e.status).json({error:e.message});
+      return handleError(res,e);
+    }
+  });
+  app.get('/api/registrations/observations/:dept/:discordId/:entryId/audit',requireUser,async(req,res)=>{
+    const {dept,discordId:id,entryId}=req.params;
+    if(!DEPTS.includes(dept)||!isDiscordId(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
+      return res.status(400).json({error:'Ongeldige observatieverwijzing'});
+    try{
+      const snap=await getSnapshot();
+      if(snap?.stale===true)return res.status(503).json({error:'Personeelsbron niet actueel'});
+      const matches=snap.data.filter(p=>p.dept===dept&&p.personId===id);
+      if(matches.length!==1)return res.status(404).json({error:'Personeelslid niet gevonden'});
+      if(!canRetireDossierRecord(req.bpd,matches[0]))
+        return res.status(403).json({error:'Geen toegang tot observatie-audit'});
+      const ref=db().collection('bpd_cases').doc(docId(dept,id)).collection('entries').doc(entryId);
+      const record=await ref.get();
+      if(!record.exists||record.data()?.type!=='observatie')
+        return res.status(404).json({error:'Observatie niet gevonden'});
+      const records=await ref.collection('audit').orderBy('at','desc').limit(40).get();
+      res.set('Cache-Control','private, no-store');
+      return res.json({changes:records.docs.filter(d=>d.data().action==='observation_amended').map(d=>{
+        const x=d.data();return {at:isoTimestamp(x.at),
+          actor:{name:String(x.by?.name||'Onbekend'),call:String(x.by?.call||'')},
+          reason:String(x.reason||'').slice(0,500),
+          before:{eventDate:x.before?.eventDate||null,
+            details:String(x.before?.details||'').slice(0,6000),
+            score:Number.isInteger(x.before?.score)?x.before.score:null}};
+      }),limited:records.docs.length===40});
+    }catch(e){return handleError(res,e)}
   });
   // Wijziging van een sanctie vereist officierenkader/korpsleiding.
   app.patch('/api/registrations/entries/:dept/:discordId/:entryId',requireUser,async(req,res)=>{

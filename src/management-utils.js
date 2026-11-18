@@ -1,9 +1,26 @@
 import {roleForDepartment} from './leave-policy.js';
+import {canRetireDossierRecord,isRetired} from './dossier-retirement-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 // Nieuwe interne dossierregistraties en concept-weekrapporten.
 // Geen Google Sheets-writes, geen clientvertrouwen bij rollen of auteurs.
 export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','voordracht_ereteken','personeelsbeweging','activiteit','specialisatiebeperking','inactiviteitsping']);
 export const CADRE_ROLES = Object.freeze(['middenkader','officierenkader','korpsleiding']);
+// Correcties aan door kaderleden ingevoerde dossiernotities zijn geen
+// verlofbeslissingen, sanctieacties, statussen of effectieve rangwijzigingen.
+export const CORRECTABLE_CASE_TYPES = Object.freeze([
+  'notitie','opleiding','activiteit','naamswijziging','promotievoorstel',
+  'personeelsbeweging','specialisatiebeperking'
+]);
+export function mayCorrectManualCase(actor,subject,entry){
+  if(!subject||subject.dept!=='politie'||!entry||
+     !CORRECTABLE_CASE_TYPES.includes(entry.type)||
+     entry.dept!==subject.dept||entry.subjectDiscordId!==subject.personId||
+     !entry.registeredBy?.discordId||entry.source||entry.amendmentOf||
+     entry.ownCorpsNote===true||entry.pingNotificationId||
+     entry.nominationStatus||isRetired(entry))return false;
+  return ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
+    canRetireDossierRecord(actor,subject);
+}
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
 export const RECORD_LABELS = Object.freeze({
   observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Personeelsnotitie',

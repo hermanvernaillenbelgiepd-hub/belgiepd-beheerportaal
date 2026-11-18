@@ -1223,8 +1223,8 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div><label for="formalCfx">CFX-naam (optioneel)</label><input id="formalCfx" maxlength="120"></div>
 <div style="grid-column:1/-1"><label for="formalExplanation">Omkadering, toelichting en opvolging</label><textarea id="formalExplanation" rows="2" maxlength="2000"></textarea></div>
 </div></div>
-<div id="formalAmendFields" hidden><h4>Bestaande sanctie wijzigen</h4><div class="grid">
-<div><label for="formalAmendStatus">Status</label><select id="formalAmendStatus"><option value="actief">Actief</option><option value="ingetrokken">Ingetrokken</option></select></div>
+<div id="formalAmendFields" hidden><h4>Gemotiveerde correctie van bestaande registratie</h4><div class="grid">
+<div id="formalAmendStatusWrap"><label for="formalAmendStatus">Status</label><select id="formalAmendStatus"><option value="actief">Actief</option><option value="ingetrokken">Ingetrokken</option></select></div>
 <div style="grid-column:1/-1"><label for="formalAmendReason">Verplichte motivering van de wijziging</label><textarea id="formalAmendReason" maxlength="1000" rows="2"></textarea></div>
 </div></div>
 <div class="controls" style="margin-top:10px"><button type="submit" id="formalSave">Registratie opslaan</button>
@@ -3261,7 +3261,8 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
           sheetWho(row)+(row.historicalImport&&row.submittedByActor?.name?
             ' · Overgenomen door '+row.submittedByActor.name:'')
       });
-      attachRetireButton(content,row,'cases');
+      attachObservationEditButton(content,row);
+       attachRetireButton(content,row,'cases');
       root.append(element);
       return;
     }
@@ -3561,6 +3562,91 @@ async function loadStaffCheckrides(p,key){
     detail.textContent='Evaluatiehistoriek niet beschikbaar ('+e.message+').';
   }}
 }
+// Een bestaande dossierregistratie corrigeren is een afzonderlijke,
+ // serverbeveiligde beheeractie. Geen nieuwe dossierregistratie of rolwijziging.
+function addManualCaseCorrectionControls(container,row,person,key){
+ if(row.canAmend!==true)return;
+ const actions=document.createElement('div');actions.className='actions';
+ const edit=document.createElement('button');edit.type='button';edit.className='alt small';
+ edit.textContent='Registratie wijzigen';
+ const history=document.createElement('button');history.type='button';history.className='alt small';
+ history.textContent='Wijzigingslog';
+ const editor=document.createElement('form');editor.className='inline-form';
+ editor.hidden=true;
+ const field=(text,tag,type,value,max)=>{
+   const label=document.createElement('label');label.textContent=text;
+   const element=document.createElement(tag);
+   if(type)element.type=type;
+   if(max)element.maxLength=max;
+   element.value=value??'';
+   label.append(element);editor.append(label);return element;
+ };
+ const date=field('Datum gebeurtenis','input','date',row.eventDate);
+ date.required=true;
+ const details=field('Gecorrigeerde omschrijving','textarea',null,row.details,4000);
+ details.rows=4;details.required=true;details.minLength=1;
+ const link=field('Bewijs- of documentlink (optioneel)','input','url',row.referenceUrl,800);
+ const specific={
+   opleiding:['courseName','Naam van de opleiding',150],
+   naamswijziging:['newName','Geregistreerde nieuwe naam',100],
+   promotievoorstel:['proposedRank','Voorgestelde rang',140],
+   personeelsbeweging:['movement','Personeelsbeweging',150]
+ }[row.type];
+ const extra=specific?field(specific[1],'input','text',row[specific[0]],specific[2]):null;
+ if(extra)extra.required=true;
+ const reason=field('Verplichte motivering van de correctie (minimaal 10 tekens)',
+   'textarea',null,'',1000);
+ reason.required=true;reason.minLength=10;reason.rows=2;
+ const save=document.createElement('button');save.type='submit';save.className='alt small';
+ save.textContent='Correctie met audit opslaan';
+ const cancel=document.createElement('button');cancel.type='button';cancel.className='alt small';
+ cancel.textContent='Annuleren';cancel.onclick=()=>{editor.hidden=true};
+ editor.append(save,cancel);
+ edit.onclick=()=>{editor.hidden=!editor.hidden;if(!editor.hidden)details.focus()};
+ editor.onsubmit=async event=>{
+   event.preventDefault();
+   if(!selected||selected.dept+':'+selected.discordId!==key)return;
+   const data={type:row.type,eventDate:date.value,details:details.value,
+     referenceUrl:link.value,amendmentReason:reason.value.trim(),
+     expectedModifiedAt:row.modifiedAt||null};
+   if(specific)data[specific[0]]=extra.value;
+   save.disabled=true;
+   try{
+     await request('/api/management/cases/'+encodeURIComponent(person.dept)+'/'+
+       encodeURIComponent(person.discordId)+'/'+encodeURIComponent(row.id),{
+         method:'PATCH',body:data});
+     notice('Dossierregistratie gecorrigeerd. Vorige gegevens, motivering en auteur zijn in het auditlog bewaard; het weekrapport is bijgewerkt.');
+     await loadLinkedPersonnelRecords(person,key);
+   }catch(error){
+     notice('Correctie niet opgeslagen: '+error.message,true);
+     save.disabled=false;
+   }
+ };
+ const auditResult=document.createElement('div');auditResult.className='subtle';
+ auditResult.hidden=true;
+ history.onclick=async()=>{
+   auditResult.hidden=!auditResult.hidden;
+   if(auditResult.hidden)return;
+   auditResult.textContent='Wijzigingshistoriek laden…';
+   try{
+     const r=await request('/api/management/cases/'+encodeURIComponent(person.dept)+'/'+
+       encodeURIComponent(person.discordId)+'/'+encodeURIComponent(row.id)+'/audit');
+     auditResult.replaceChildren();
+     if(!r.changes?.length)auditResult.textContent='Nog geen correcties geregistreerd.';
+     for(const x of r.changes||[]){
+       const item=document.createElement('div');item.className='history';
+       const title=document.createElement('strong');
+       title.textContent=(x.at?new Date(x.at).toLocaleString('nl-BE'):'Datum onbekend')+
+         ' · '+(x.actor?.name||'Onbekend');
+       const body=document.createElement('p');
+       body.textContent='Vorige gegevens: '+(x.before?.eventDate||'')+' · '+
+         (x.before?.details||'')+' · Motivering: '+(x.reason||'');
+       item.append(title,body);auditResult.append(item);
+     }
+   }catch(e){auditResult.textContent='Wijzigingslog niet beschikbaar: '+e.message}
+ };
+ actions.append(edit,history);container.append(actions,editor,auditResult);
+}
 async function loadLinkedPersonnelRecords(p,key){
   const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
   void loadStaffCheckrides(p,key);
@@ -3628,6 +3714,7 @@ async function loadLinkedPersonnelRecords(p,key){
           body.textContent=String(row.details||'').slice(0,4000);
           div.append(title,body);
           attachRetireButton(div,row,'cases');
+          addManualCaseCorrectionControls(div,row,p,key);
           cases.append(div);
         }
         if(data.limited)cases.append(document.createTextNode(' Er kunnen oudere registraties bestaan.'));
@@ -3713,7 +3800,7 @@ async function loadStaffLeave(p,key){
 
 /* Formele registraties delen de bestaande beveiligde registratietabellen,
    met originele actor, auditlog en automatische opname in weekrapporten. */
-let formalPermissions=null,formalRecords=[],formalEditId=null;
+let formalPermissions=null,formalRecords=[],formalEditId=null,formalEditVersion=null;
 function updateHistoricalObservationUi(){
   const police=selected?.dept==='politie';
   const config=formalPermissions?.historicalObservationImport;
@@ -3865,6 +3952,7 @@ function updateFormalFields(){
   const sanction=Boolean(formalPermissions?.sanctionDepartments?.includes(dept));
   const isSanction=$('formalType').value==='sanctie';
   $('formalSanctionFields').hidden=!isSanction;
+  $('formalAmendStatusWrap').hidden=!isSanction;
   $('formalScoreField').hidden=isSanction;
   $('formalScore').required=!isSanction;
   $('formalSanctionType').required=isSanction;
@@ -3929,7 +4017,7 @@ function clearFormalEdit(){
   formalEditId=null;
   $('staffFormalForm').reset();
   $('formalCancelEdit').hidden=true;$('formalAmendFields').hidden=true;
-  $('formalAmendReason').required=false;
+  $('formalAmendReason').required=false;formalEditVersion=null;
   $('staffFormalFormTitle').textContent='Nieuwe observatie of sanctie';
   $('formalSave').textContent='Registratie opslaan';
   const now=new Date(),pad=n=>String(n).padStart(2,'0');
@@ -3939,16 +4027,21 @@ function clearFormalEdit(){
   updateFormalFields();
   updateHistoricalObservationUi();
 }
+
 function openFormalEdit(row){
-  if(!row||row.type!=='sanctie'||!sameDossier(selected.dept+':'+selected.discordId)||
-     !formalPermissions?.sanctionAmendDepartments?.includes(selected.dept))return;
-  if(!choosePersonnelRegistration('sanctie',true))return;
-  formalEditId=row.id;
-  $('formalType').value='sanctie';$('formalType').disabled=true;
-  $('formalSeverity').value=String(row.severity||5);
+  if(!row||!['sanctie','observatie'].includes(row.type)||
+    !selected||!sameDossier(selected.dept+':'+selected.discordId))return;
+  const sanction=row.type==='sanctie',dept=selected.dept;
+  if(sanction&&!formalPermissions?.sanctionAmendDepartments?.includes(dept))return;
+  if(!sanction&&!(dossierCanRetire&&formalPermissions?.writesEnabled&&
+    formalPermissions?.observationDepartments?.includes(dept)))return;
+  if(!choosePersonnelRegistration(row.type,true))return;
+  formalEditId=row.id;formalEditVersion=row.modifiedAt||null;
+  $('formalType').value=row.type;$('formalType').disabled=true;
+  if(sanction)$('formalSeverity').value=String(row.severity||5);
   updateFormalFields();
-  if(!formalSanctionOptions().includes(row.sanctionType)){
-    formalEditId=null;$('formalType').disabled=false;
+  if(sanction&&!formalSanctionOptions().includes(row.sanctionType)){
+    formalEditId=null;formalEditVersion=null;$('formalType').disabled=false;
     notice('Je kaderrol mag deze bestaande sanctie niet wijzigen.',true);return;
   }
   for(const [field,value] of [['formalDate',row.eventDate],['formalTime',row.eventTime],
@@ -3957,18 +4050,20 @@ function openFormalEdit(row){
     ['formalReasonOther',row.reasonOther],['formalCfx',row.cfxName],
     ['formalExplanation',row.explanation],['formalAmendStatus',row.status||'actief']])
     $(field).value=value??'';
-  setFormalDate(row.eventDate);
-  for(const cb of $('formalReasons').querySelectorAll('input[type="checkbox"]'))
-    cb.checked=Array.isArray(row.reasons)&&row.reasons.includes(cb.value);
-  for(const cb of $('formalRestrictedSpecialties').querySelectorAll('input[type="checkbox"]'))
-    cb.checked=Array.isArray(row.restrictedSpecialties)&&row.restrictedSpecialties.includes(cb.value);
-  $('formalRestrictionEndDate').value=row.endDate||'';
+  setFormalDate(row.eventDate);$('formalScore').value=row.score??'';
+  if(sanction){
+    for(const cb of $('formalReasons').querySelectorAll('input[type="checkbox"]'))
+      cb.checked=Array.isArray(row.reasons)&&row.reasons.includes(cb.value);
+    for(const cb of $('formalRestrictedSpecialties').querySelectorAll('input[type="checkbox"]'))
+      cb.checked=Array.isArray(row.restrictedSpecialties)&&row.restrictedSpecialties.includes(cb.value);
+    $('formalRestrictionEndDate').value=row.endDate||'';
+  }
   updateFormalFields();
   $('formalAmendFields').hidden=false;$('formalAmendReason').required=true;
   $('formalAmendReason').value='';$('formalCancelEdit').hidden=false;
-  $('staffFormalFormTitle').textContent='Sanctie wijzigen · bestaande registratie';
+  $('staffFormalFormTitle').textContent=(sanction?'Sanctie':'Observatie')+' wijzigen · bestaande registratie';
   $('formalSave').textContent='Wijziging met audit opslaan';
-  $('formalNotice').textContent='De vorige sanctie blijft in het beveiligde auditlog bewaard.';
+  $('formalNotice').textContent='De oorspronkelijke gegevens blijven bewaard in het beveiligde auditlog.';
   $('staffFormalForm').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function startFormalRegistration(type){
@@ -4088,27 +4183,70 @@ $('staffFormalForm').onsubmit=async event=>{
     if(!data.reasons.length)return notice('Kies minstens één reden voor de sanctie.',true);
   }
   if(formalEditId){
-    if(!isSanction||!formalPermissions.sanctionAmendDepartments?.includes(dept))
+    if(isSanction&&!formalPermissions.sanctionAmendDepartments?.includes(dept))
       return notice('Je mag deze sanctie niet wijzigen.',true);
-    data.status=$('formalAmendStatus').value;
-    data.amendmentReason=$('formalAmendReason').value;
-    if(!data.amendmentReason.trim())return notice('Een motivering voor de wijziging is verplicht.',true);
+    if(!isSanction&&!dossierCanRetire)
+      return notice('Je mag deze observatie niet wijzigen.',true);
+    if(isSanction)data.status=$('formalAmendStatus').value;
+    else data.expectedModifiedAt=formalEditVersion;
+    data.amendmentReason=$('formalAmendReason').value.trim();
+    if(data.amendmentReason.length<(isSanction?1:10)||data.amendmentReason.length>500)
+      return notice('Geef een geldige motivering (observaties: 10–500 tekens).',true);
   }
   const idBefore=formalEditId,button=$('formalSave');button.disabled=true;
   try{
     await request(idBefore?
-      '/api/registrations/entries/'+encodeURIComponent(dept)+'/'+encodeURIComponent(id)+'/'+encodeURIComponent(idBefore):
+      (isSanction?'/api/registrations/entries/':'/api/registrations/observations/')+
+        encodeURIComponent(dept)+'/'+encodeURIComponent(id)+'/'+encodeURIComponent(idBefore):
       '/api/registrations/entries',{
         method:idBefore?'PATCH':'POST',body:data
     });
     if(!sameDossier(key))return;
     $('formalType').disabled=false;clearFormalEdit();
     await loadStaffFormalRecords(person,key);
-    notice(idBefore?'Sanctiewijziging geregistreerd met auditlog en dossiermelding.':
+    notice(idBefore?(isSanction?'Sanctie':'Observatie')+' gewijzigd met auditlog en dossiermelding.':
       'Observatie of sanctie geregistreerd in het personeelsdossier en dynamisch weekrapport.');
   }catch(error){notice('Registratie niet opgeslagen: '+error.message,true)}
   finally{button.disabled=false;updateFormalFields()}
 };
+
+function attachObservationEditButton(container,row){
+  if(!dossierCanRetire||!formalPermissions?.writesEnabled||
+    !formalPermissions?.observationDepartments?.includes(selected?.dept)||!row?.id)return;
+  const edit=document.createElement('button');edit.type='button';edit.className='alt small';
+  edit.textContent='Observatie wijzigen';edit.onclick=()=>openFormalEdit(row);
+  const audit=document.createElement('button');audit.type='button';audit.className='alt small';
+  audit.textContent='Wijzigingslog';audit.onclick=()=>showObservationAudit(row,container);
+  container.append(edit,audit);
+}
+async function showObservationAudit(row,container){
+  if(!selected)return;
+  let box=container.querySelector('.observation-audit-details');
+  if(box){box.remove();return}
+  const p=selected,key=p.dept+':'+p.discordId;
+  box=document.createElement('div');box.className='observation-audit-details';
+  box.textContent='Wijzigingshistoriek laden…';container.append(box);
+  try{
+    const data=await request('/api/registrations/observations/'+
+      encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId)+'/'+
+      encodeURIComponent(row.id)+'/audit');
+    if(!sameDossier(key)||!box.isConnected)return;
+    box.replaceChildren();
+    if(!data.changes?.length)box.textContent='Nog geen observatiecorrecties.';
+    for(const change of data.changes||[]){
+      const line=document.createElement('div');line.className='history';
+      const heading=document.createElement('strong');
+      heading.textContent=(change.at?new Date(change.at).toLocaleString('nl-BE'):'Tijdstip onbekend')+
+        ' · gewijzigd door '+(change.actor?.name||'onbekend');
+      const old=document.createElement('p');
+      old.textContent='Vorige datum '+(change.before?.eventDate||'—')+
+        ' · score '+(change.before?.score??'—')+'/10 · '+(change.before?.details||'—');
+      const reason=document.createElement('p');reason.textContent='Motivering: '+(change.reason||'—');
+      line.append(heading,old,reason);box.append(line);
+    }
+    if(data.limited)box.append(document.createTextNode(' Mogelijk zijn oudere correcties niet getoond.'));
+  }catch(e){if(sameDossier(key))box.textContent='Historiek niet beschikbaar: '+e.message}
+}
 async function showSanctionAudit(row,item,p,key){
   let box=item.querySelector('.sanction-audit-details');
   if(box){box.remove();return}
@@ -4176,6 +4314,7 @@ async function loadStaffFormalRecords(p,key){
           attribution:author.textContent
         });
         item=disclosure.element;
+        attachObservationEditButton(disclosure.content,row);
         attachRetireButton(disclosure.content,row,'cases');
       }else{
         item.append(title,author,details);
