@@ -2,7 +2,7 @@ import {roleForDepartment} from './leave-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 // Nieuwe interne dossierregistraties en concept-weekrapporten.
 // Geen Google Sheets-writes, geen clientvertrouwen bij rollen of auteurs.
-export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','personeelsbeweging','activiteit','specialisatiebeperking','inactiviteitsping']);
+export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','voordracht_ereteken','personeelsbeweging','activiteit','specialisatiebeperking','inactiviteitsping']);
 export const CADRE_ROLES = Object.freeze(['middenkader','officierenkader','korpsleiding']);
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
 export const RECORD_LABELS = Object.freeze({
@@ -10,7 +10,7 @@ export const RECORD_LABELS = Object.freeze({
   opleiding:'Opleidingen en resultaten', activiteit:'Dienstactiviteit',
   specialisatiebeperking:'Specialisatiebeperking',inactiviteitsping:'Inactiviteitsping',
   naamswijziging:'Naamswijziging',
-  promotievoorstel:'Promotievoorstel', personeelsbeweging:'Personeelsbeweging',
+  promotievoorstel:'Promotievoorstel',voordracht_ereteken:'Voordracht tot ereteken/medaille', personeelsbeweging:'Personeelsbeweging',
   specialisatiewijziging:'Specialisatiewijziging', onderscheiding:'Onderscheidingen'
 });
 export const validDiscord = id => /^\d{15,22}$/.test(String(id??''));
@@ -24,8 +24,10 @@ export const mayReadManagement = (actor,dept) => allowedDept(actor,dept) &&
 // Observations and sanctions are submitted through the formal register.
 export const mayWriteManagement = (actor,dept,type) =>
   verifiedBoardCorpsDossierAdmin(actor)&&allowedDept(actor,dept)&&
-    MANAGEMENT_TYPES.includes(type)&&type!=='verlof'?true:(
-  type!=='verlof'&& (dept!=='depannage'||type==='specialisatiebeperking')&&(
+    MANAGEMENT_TYPES.includes(type)&&type!=='verlof'&&
+    (type!=='voordracht_ereteken'||dept==='politie')?true:(
+  type!=='verlof'&&(type!=='voordracht_ereteken'||dept==='politie')&&
+    (dept!=='depannage'||type==='specialisatiebeperking')&&(
   // Delegated case management can add only routine dossier notes.
   // This does not convey sanctions, rank changes or other personnel powers.
   (['notitie','opleiding'].includes(type)&&actor?.dossierFullDepartments?.includes(dept)&&
