@@ -1057,7 +1057,8 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div style="grid-column:1/-1"><label for="leaveNote">Toelichting voor audit</label>
 <textarea id="leaveNote" maxlength="300" rows="2" placeholder="Reden van administratieve inschrijving"></textarea></div>
 </div>
-<button id="leaveManualSave" type="submit">Verlof goedgekeurd registreren</button>
+<p id="leaveManualGuidance" class="subtle" role="status" aria-live="polite">Middenkader mag maximaal 30 dagen rechtstreeks goedkeuren. Meer dan 30 dagen gaat naar Officierenkader of Korpsleiding.</p>
+<button id="leaveManualSave" type="submit">Verlof registreren</button>
 </form>
 <div class="dossier-shortcuts" hidden aria-hidden="true"></div>
 <form id="staffProfileForm" hidden>
@@ -4844,26 +4845,51 @@ $('staffProfileForm').onsubmit=async event=>{
     notice('Administratieve personeelsgegevens opgeslagen, inclusief auditgeschiedenis.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
+function manualLeaveDuration(){
+ const start=$('leaveFrom').value,end=$('leaveUntil').value;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end))return null;
+ const days=(Date.parse(end+'T00:00:00Z')-Date.parse(start+'T00:00:00Z'))/86400000+1;
+ return Number.isInteger(days)&&days>0?days:null;
+}
+function updateManualLeaveGuidance(){
+ const days=manualLeaveDuration(),hint=$('leaveManualGuidance');
+ hint.textContent=!days?
+   'Selecteer de begin- en einddatum. Middenkader mag maximaal 30 dagen rechtstreeks goedkeuren.':
+   days>30?
+   'Deze periode telt '+days+' kalenderdagen. Middenkader dient ter goedkeuring in bij Officierenkader of Korpsleiding.':
+   'Deze periode telt '+days+' kalenderdagen. Bevoegd kader mag dit verlof rechtstreeks registreren.';
+}
+$('leaveFrom').addEventListener('change',updateManualLeaveGuidance);
+$('leaveUntil').addEventListener('change',updateManualLeaveGuidance);
+updateManualLeaveGuidance();
 $('staffManualLeaveForm').onsubmit=async event=>{
-  event.preventDefault();
-  const person=selected;
-  if(!person||!registrationManualLeave)return;
-  const button=$('leaveManualSave');button.disabled=true;
-  try{
-    if(!confirm('Centraal verlof voor '+person.name+' registreren? Dit wordt zichtbaar bij ALLE gekoppelde hulpdiensten en gelogd in het weekrapport.'))return;
-    await request('/api/leave/manual',{method:'POST',
-      body:{dept:person.dept,discordId:person.discordId,
-        startDate:$('leaveFrom').value,endDate:$('leaveUntil').value,
-        note:$('leaveNote').value.trim()}});
-    $('leaveNote').value='';
-    await loadStaffLeave(person,person.dept+':'+person.discordId);
-    try{
-      const data=await request('/api/leave/roster-active');
-      activeLeaveRosterIds=new Set(data.activeDiscordIds||[]);
-      render();
-    }catch{/* Roster status updates on the next refresh. */}
-    notice('Centraal verlof geregistreerd voor alle gekoppelde hulpdiensten en gelogd in het weekrapport.');
-  }catch(e){notice(e.message,true)}finally{button.disabled=false}
+ event.preventDefault();
+ const person=selected;
+ if(!person||!registrationManualLeave)return;
+ const days=manualLeaveDuration();
+ if(!days)return notice('Controleer de begin- en einddatum van het verlof.',true);
+ const button=$('leaveManualSave');button.disabled=true;
+ try{
+   if(!confirm('Verlof van '+days+' kalenderdagen voor '+person.name+' vastleggen? '+
+     (days>30?'Middenkader dient dit ter goedkeuring in; Officierenkader en Korpsleiding kunnen zelf goedkeuren.':
+       'Bevoegd kader registreert dit rechtstreeks.')+
+     ' De registratie wordt in het personeelsdossier en weekrapport gelogd.'))return;
+   const saved=await request('/api/leave/manual',{method:'POST',
+     body:{dept:person.dept,discordId:person.discordId,
+       startDate:$('leaveFrom').value,endDate:$('leaveUntil').value,
+       note:$('leaveNote').value.trim()}});
+   $('leaveNote').value='';
+   await loadStaffLeave(person,person.dept+':'+person.discordId);
+   try{
+     const data=await request('/api/leave/roster-active');
+     activeLeaveRosterIds=new Set(data.activeDiscordIds||[]);
+     render();
+   }catch{/* Roster status updates on the next refresh. */}
+   notice(saved.status==='pending'?
+     'Verlof van '+saved.days+' kalenderdagen ter goedkeuring ingediend. Officierenkader of Korpsleiding ziet dit onder Meldingen → Te behandelen verlofaanvragen. De aanvraag is gelogd in het dossier en weekrapport.':
+     'Centraal verlof goedgekeurd en gelogd in dossier en weekrapport.');
+ }catch(e){notice('Verlofregistratie niet verwerkt: '+e.message,true)}
+ finally{button.disabled=false}
 };
 $('staffCaseForm').onsubmit=async event=>{
   event.preventDefault();
