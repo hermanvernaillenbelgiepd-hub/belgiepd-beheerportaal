@@ -207,8 +207,10 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         if(req.body.type!==old.type)
           throw Object.assign(Error('Het oorspronkelijke registratietype mag niet wijzigen'),{status:400});
         let values;
-        try{values={...validateManagementEntry({...req.body,type:old.type}),
-          referenceUrl:req.body.referenceUrl?.trim()?validateManagementEntry({...req.body,type:old.type}).referenceUrl:''}}
+        try{
+          const parsed=validateManagementEntry({...req.body,type:old.type});
+          values={...parsed,referenceUrl:parsed.referenceUrl||''};
+        }
         catch(e){throw Object.assign(e,{status:400})}
         const before=Object.fromEntries(Object.keys(values).map(key=>[key,old[key]??null]));
         if(Object.keys(values).every(key=>JSON.stringify(old[key]??null)===JSON.stringify(values[key])))
