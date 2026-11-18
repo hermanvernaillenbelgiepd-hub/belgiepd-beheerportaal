@@ -23,6 +23,23 @@ test('Only existing authorized staff are discoverable',()=>{
     departmentRoles:{politie:'basiskader'}},{},{})
     .personnelDepartments,[]);
 });
+test('Reeks is alleen zichtbaar voor toegelaten politiedossiers en geeft geen extra dossierinzage',()=>{
+  const scopes=dossierScopes(actor);
+  const rows=dossierOverviewRows([
+    {...person,series:'Reeks 2'},
+    {...person,dept:'ambulance',series:'Reeks 1'}
+  ],[],scopes);
+  assert.equal(rows.length,1);
+  assert.equal(rows[0].series,'Reeks 2');
+  assert.equal(rows[0].canOpen,true);
+  const both=dossierOverviewRows([
+    {...person,series:'Reeks 1'},
+    {...person,dept:'ambulance',series:'Reeks 1'}
+  ],[],dossierScopes({...actor,departments:['politie','ambulance'],
+    dossierAllowedDepartments:['politie','ambulance'],
+    departmentRoles:{politie:'officierenkader',ambulance:'korpsleiding'}}));
+  assert.equal(both.find(row=>row.dept==='ambulance').series,'');
+});
 test('Invalid identity and duplicate staff records fail closed',()=>{
   const scopes=dossierScopes(actor);
   assert.deepEqual(dossierOverviewRows([{...person,personId:'invalid'}],[],scopes),[]);
