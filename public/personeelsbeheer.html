@@ -803,10 +803,12 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  <div class="controls">
   <button id="refreshArchive" type="button" class="alt">Toon archief voor geselecteerde dienst</button>
   <button id="checkDiscordDepartures" type="button" class="alt">Controleer Discord- en CMS-dienstrollen</button>
+   <button id="refreshHonorable" type="button" class="alt">Aanvragen eervol ontslag · Politie</button>
  </div>
  <p id="archiveFeedback" class="subtle" role="status"></p>
  <div id="archiveEntries"></div>
  <div id="discordDepartureEntries"></div>
+  <div id="honorableRequests" class="history" aria-live="polite"></div>
 </details>
 <div id="rosterColumnAdmin" hidden>
  <details id="rosterColumnDetails" class="roster-column-panel">
@@ -5076,6 +5078,54 @@ async function archiveServiceMembership(p){
 $('personnelArchiveAction').onclick=async()=>{
  if(selected)await archiveServiceMembership(selected);
 };
+async function loadHonorableRequests(){
+ const root=$('honorableRequests');root.replaceChildren();
+ if($('dept').value!=='politie'){
+  root.textContent='Selecteer Politie om aanvragen voor eervol ontslag te bekijken.';return;
+ }
+ root.textContent='Openstaande aanvragen ophalen…';
+ try{
+  const {pending,limited}=await request('/api/personnel-lifecycle/honorable/pending');
+  root.replaceChildren();
+  if(!pending?.length){root.textContent='Geen openstaande aanvragen voor eervol ontslag.';return}
+  for(const entry of pending){
+   const row=document.createElement('div');row.className='history';
+   const summary=document.createElement('span');
+   summary.textContent=(entry.call||'—')+' · '+(entry.name||'Onbekend')+
+     ' · Motivering: '+(entry.reason||'')+
+     (entry.requestedAt?' · '+new Date(entry.requestedAt).toLocaleDateString('nl-BE'):'');
+   row.append(summary);
+   for(const [decision,label] of [['approve','Goedkeuren'],['reject','Afwijzen']]){
+    const btn=document.createElement('button');btn.type='button';
+    btn.className='alt';btn.textContent=label;
+    btn.onclick=async()=>{
+     const reason=prompt('Verplichte onafhankelijke motivering (10–500 tekens):');
+     if(reason===null)return;
+     const explanation=reason.trim();
+     if(explanation.length<10||explanation.length>500)
+      return notice('Motivering moet 10–500 tekens hebben.',true);
+     if(!confirm((decision==='approve'?'Eervol ontslag goedkeuren':'Aanvraag afwijzen')+
+       ' voor '+(entry.name||entry.call)+'?'+(decision==='approve'?
+       '\\nDe actieve personeelsfiche wordt gearchiveerd; historiek en eretekens blijven bestaan.':'')))return;
+     btn.disabled=true;
+     try{
+      await request('/api/personnel-lifecycle/honorable/'+encodeURIComponent(entry.discordId)+
+        '/decision',{method:'POST',body:{decision,reason:explanation}});
+      notice(decision==='approve'?
+        'Eervol ontslag verwerkt; loopbaanhistoriek en eretekens behouden. CMS-rollen nazien.':
+        'Aanvraag afgewezen met motivering.');
+      await loadHonorableRequests();
+      await load();
+     }catch(e){notice('Beslissing niet opgeslagen: '+e.message,true);btn.disabled=false}
+    };
+    row.append(btn);
+   }
+   root.append(row);
+  }
+  if(limited)root.append(document.createTextNode(' Enkel de eerste 200 verzoeken zijn geladen.'));
+ }catch(e){root.textContent='Geen toegang of aanvragen konden niet geladen worden: '+e.message}
+}
+$('refreshHonorable').onclick=()=>loadHonorableRequests();
 function archiveDepartment(){
  const d=$('dept').value;
  if(!lifecycleDepartments.includes(d)){
