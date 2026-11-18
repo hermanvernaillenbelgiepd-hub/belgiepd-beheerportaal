@@ -41,6 +41,8 @@ test('eervol ontslag vergt eigen aanvraag, onafhankelijke beslissing en behoud',
  assert.match(api,/if\(approved\)invalidateLifecycle\(\)/);
  assert.match(api,/cause:'honorable_resignation'/);
  assert.match(api,/cmsRoleSyncPending:true/);
+ assert.match(api,/honorableResignation:true/);
+ assert.match(api,/if\(action==='activate'&&prev\.honorableResignation===true\)/);
  assert.doesNotMatch(api,/tx\.delete\(.*bpd_/);
 });
 test('900 and 910 own notes cannot open general protected dossiers',()=>{
