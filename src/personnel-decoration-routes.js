@@ -183,7 +183,7 @@ export function installPersonnelDecorationRoutes(app,{requireUser,getSnapshot}){
     const current=snap.get('entries')||[];
     if(!Array.isArray(current)||current.length>=100)
       throw Object.assign(Error('Maximumaantal onderscheidingen bereikt'),{status:409});
-    if(current.some(a=>a.catalogId===input.catalogId&&!a.revokedAt&&
+    if(input.catalogId!=='korpspluim'&&current.some(a=>a.catalogId===input.catalogId&&!a.revokedAt&&
        (!a.endDate||a.endDate>=now)))
       throw Object.assign(Error('Deze onderscheiding is al actief of ingepland'),{status:409});
     const entry={...input,id:randomUUID(),grantedAt:new Date().toISOString(),
