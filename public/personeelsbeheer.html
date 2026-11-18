@@ -1697,6 +1697,7 @@ function displaySelectedRegistration(){
     $('staffTrainingReason').required=false;
   }
   $(formId).hidden=false;
+  updateHistoricalMigrationUi();
   $('registrationSubmit').textContent=
     (kind==='sanctie'&&formalEditId!==null)||(kind==='training'&&trainingEditId!==null)?
       'Wijziging met audit opslaan':'Registratie opslaan';
@@ -3878,6 +3879,13 @@ function updateHistoricalMigrationUi(){
    $(prefix+'Reason').required=!fields.hidden;
  }
 }
+function historicalTransferData(prefix){
+ if($(prefix+'Block').hidden||!$(prefix+'Check').checked)return {};
+ const id=$(prefix+'Author').value,reason=$(prefix+'Reason').value.trim();
+ if(!id||reason.length<10||reason.length>500)
+   throw new Error('Kies de oorspronkelijke registrator en vermeld de bron van de overname (10–500 tekens).');
+ return {onBehalfOfDiscordId:id,onBehalfReason:reason};
+}
 $('historicalLeaveCheck').onchange=updateHistoricalMigrationUi;
 $('historicalCaseCheck').onchange=updateHistoricalMigrationUi;
 function updateHistoricalObservationUi(){
@@ -4257,7 +4265,7 @@ $('staffFormalForm').onsubmit=async event=>{
        !$('historicalObservationField').hidden){
       const original=$('historicalObservationAuthor').value;
       const reason=$('historicalObservationReason').value.trim();
-      if(!original||reason.length<5||reason.length>500)
+      if(!original||reason.length<10||reason.length>500)
         return notice('Kies een oorspronkelijke observator en vermeld de bron van de overname.',true);
       data.onBehalfOfDiscordId=original;
       data.onBehalfReason=reason;
@@ -4269,6 +4277,14 @@ $('staffFormalForm').onsubmit=async event=>{
     data.score=score;
   }
   if(isSanction){
+    if(!$('historicalObservationField').hidden&&$('historicalObservationCheck').checked){
+      const original=$('historicalObservationAuthor').value;
+      const reason=$('historicalObservationReason').value.trim();
+      if(!original||reason.length<10||reason.length>500)
+        return notice('Kies de oorspronkelijke registrator en vermeld de bron (10–500 tekens).',true);
+      data.onBehalfOfDiscordId=original;
+      data.onBehalfReason=reason;
+    }
     data.sanctionType=$('formalSanctionType').value;
     data.severity=Number($('formalSeverity').value);
     data.reasons=formalSelectedReasons();
@@ -5071,7 +5087,8 @@ $('staffManualLeaveForm').onsubmit=async event=>{
    const saved=await request('/api/leave/manual',{method:'POST',
      body:{dept:person.dept,discordId:person.discordId,
        startDate:$('leaveFrom').value,endDate:$('leaveUntil').value,
-       note:$('leaveNote').value.trim()}});
+       note:$('leaveNote').value.trim(),
+       ...historicalTransferData('historicalLeave')}});
    $('leaveNote').value='';
    await loadStaffLeave(person,person.dept+':'+person.discordId);
    try{
@@ -5105,7 +5122,8 @@ $('staffCaseForm').onsubmit=async event=>{
         eventDate:$('staffCaseDate').value,details:$('staffCaseDetails').value.trim(),
         endDate:$('staffEndDate').value,courseName,
         proposedRank:$('staffProposedRank').value,newName:$('staffNewName').value,
-        movement:$('staffMovement').value,referenceUrl:$('staffCaseReference').value}});
+        movement:$('staffMovement').value,referenceUrl:$('staffCaseReference').value,
+        ...historicalTransferData('historicalCase')}});
     if(!sameDossier(key))return;
     $('staffCaseDetails').value='';$('staffCaseReference').value='';
     for(const id of staffCaseValues)$(id).value='';
