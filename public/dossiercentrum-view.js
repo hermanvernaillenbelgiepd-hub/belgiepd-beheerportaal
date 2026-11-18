@@ -13,7 +13,8 @@ export function filterDossiers(rows,filters={}){
   if(series!=='all'&&!['1','2','3'].includes(series))return [];
   return data.filter(r=>r&&r.personnel===true&&
     (filters.department==='all'||!filters.department||r.dept===filters.department)&&
-    (series==='all'||r.dept==='politie'&&String(rosterSeriesNumber(r.series)||'')===series)&&
+    (series==='all'||r.dept==='politie'&&
+      String(/^r0?([1-3])$/i.exec(String(r.series||'').trim())?.[1]||rosterSeriesNumber(r.series)||'')===series)&&
     (!query||[r.name,r.call,r.rank,r.status,r.discordId]
       .some(v=>normalized(v).includes(query))));
 }
