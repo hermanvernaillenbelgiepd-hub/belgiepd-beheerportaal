@@ -804,11 +804,13 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
   <button id="refreshArchive" type="button" class="alt">Toon archief voor geselecteerde dienst</button>
   <button id="checkDiscordDepartures" type="button" class="alt">Controleer Discord- en CMS-dienstrollen</button>
    <button id="refreshHonorable" type="button" class="alt">Aanvragen eervol ontslag · Politie</button>
+   <button id="refreshNominations" type="button" class="alt">Voordrachten eretekens · Politie</button>
  </div>
  <p id="archiveFeedback" class="subtle" role="status"></p>
  <div id="archiveEntries"></div>
  <div id="discordDepartureEntries"></div>
   <div id="honorableRequests" class="history" aria-live="polite"></div>
+  <div id="nominationEntries" aria-live="polite"></div>
 </details>
 <div id="rosterColumnAdmin" hidden>
  <details id="rosterColumnDetails" class="roster-column-panel">
@@ -5127,6 +5129,53 @@ async function loadHonorableRequests(){
  }catch(e){root.textContent='Geen toegang of aanvragen konden niet geladen worden: '+e.message}
 }
 $('refreshHonorable').onclick=()=>loadHonorableRequests();
+async function loadAwardNominations(){
+ const root=$('nominationEntries');root.replaceChildren();
+ if($('dept').value!=='politie'){
+  root.textContent='Selecteer Politie voor de voordrachten tot ereteken/medaille.';return;
+ }
+ root.textContent='Voordrachten ophalen…';
+ try{
+  const {nominations,limited}=await request('/api/management/award-nominations');
+  root.replaceChildren();
+  if(!nominations?.length){root.textContent='Geen recente voordrachten gevonden.';return}
+  for(const entry of nominations){
+   const row=document.createElement('div');row.className='history';
+   const line=document.createElement('span');
+   line.textContent=(entry.call||'—')+' · '+(entry.name||'Onbekend')+
+     ' · '+(entry.eventDate||'—')+' · '+(entry.details||'')+
+     ' · '+(entry.status==='approved'?'Voordracht goedgekeurd; ereteken afzonderlijk toekennen':
+       entry.status==='rejected'?'Afgewezen':'Ter beoordeling');
+   row.append(line);
+   if(entry.status==='pending')for(const [decision,label] of [
+     ['approve','Voordracht goedkeuren'],['reject','Afwijzen']]){
+    const btn=document.createElement('button');btn.className='alt';btn.type='button';
+    btn.textContent=label;
+    btn.onclick=async()=>{
+     const raw=prompt('Onafhankelijke motivering (10–500 tekens):');
+     if(raw===null)return;
+     const reason=raw.trim();
+     if(reason.length<10||reason.length>500)return notice('Motivering van 10–500 tekens vereist.',true);
+     if(!confirm((decision==='approve'?'Voordracht goedkeuren':'Voordracht afwijzen')+
+       ' voor '+(entry.name||entry.call)+'? Dit kent nog geen ereteken toe.'))return;
+     btn.disabled=true;
+     try{
+      await request('/api/management/award-nominations/decision',{method:'POST',
+        body:{discordId:entry.discordId,entryId:entry.entryId,decision,reason}});
+      notice(decision==='approve'?
+        'Voordracht goedgekeurd. Ken de onderscheiding nu afzonderlijk toe via het eretekenbeheer.':
+        'Voordracht afgewezen en geregistreerd.');
+      await loadAwardNominations();
+     }catch(e){notice('Voordracht niet verwerkt: '+e.message,true);btn.disabled=false}
+    };
+    row.append(btn);
+   }
+   root.append(row);
+  }
+  if(limited)root.append(document.createTextNode(' Alleen recente voordrachten geladen.'));
+ }catch(e){root.textContent='Voordrachten niet beschikbaar: '+e.message}
+}
+$('refreshNominations').onclick=()=>loadAwardNominations();
 function archiveDepartment(){
  const d=$('dept').value;
  if(!lifecycleDepartments.includes(d)){
