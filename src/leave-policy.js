@@ -34,13 +34,19 @@ export function normalizeEmail(value){
   if(typeof value!=='string'||!ISO_EMAIL.test(value.trim())||value.trim().length>254)throw new Error('Ongeldig e-mailadres');
   return value.trim().toLowerCase();
 }
+// Verplichte reden voor elke nieuwe aanvraag, verlenging en manuele invoer.
+// Bestaande historische records zonder reden blijven ongewijzigd.
+export function validateLeaveNote(raw){
+ if(typeof raw!=='string'||!raw.trim()||raw.trim().length>300)
+  throw new Error('Vul een reden voor het verlof in (maximaal 300 tekens)');
+ return raw.trim();
+}
 export function validateLeaveRequest(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Ongeldige aanvraag');
   const startDate=raw.startDate,endDate=raw.endDate;
   const days=calendarDays(startDate,endDate);
-  const note=raw.note===undefined?'':raw.note;
-  if(typeof note!=='string'||note.trim().length>300)throw new Error('Toelichting mag maximaal 300 tekens bevatten');
-  return {startDate,endDate,days,note:note.trim()};
+  const note=validateLeaveNote(raw.note);
+  return {startDate,endDate,days,note};
 }
 // Manual leave is a distinct administrative act, not a normal leave request.
 // Only Police middle/higher cadre may write it; other services see the
@@ -49,10 +55,8 @@ export function validateManualLeaveRequest(raw){
  if(!raw||typeof raw!=='object'||Array.isArray(raw))
    throw new Error('Ongeldige verlofregistratie');
  const days=calendarDays(raw.startDate,raw.endDate);
- const note=raw.note===undefined?'':raw.note;
- if(typeof note!=='string'||note.trim().length>300)
-   throw new Error('Toelichting mag maximaal 300 tekens bevatten');
- return {startDate:raw.startDate,endDate:raw.endDate,days,note:note.trim()};
+ const note=validateLeaveNote(raw.note);
+ return {startDate:raw.startDate,endDate:raw.endDate,days,note};
 }
 export function rosterPoliceRole(person){
  if(person?.dept!=='politie')return null;

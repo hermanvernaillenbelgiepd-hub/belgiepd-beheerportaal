@@ -147,7 +147,7 @@ button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
     <div class="leave-field"><label for="leaveStart">Begindatum</label><input type="date" id="leaveStart" required></div>
     <div class="leave-field"><label for="leaveEnd">Einddatum (inbegrepen)</label><input type="date" id="leaveEnd" required></div>
   </div>
-  <div class="leave-field"><label for="leaveNote">Toelichting (optioneel, max. 300 tekens)</label><textarea id="leaveNote" maxlength="300" placeholder="Vermeld geen onnodige persoonlijke informatie."></textarea></div>
+  <div class="leave-field"><label for="leaveNote">Reden van het verlof (verplicht, max. 300 tekens)</label><textarea id="leaveNote" required minlength="1" maxlength="300" placeholder="Vermeld geen onnodige persoonlijke informatie."></textarea></div>
   <div class="leave-actions"><button type="submit" id="leaveSubmit">Verlof aanvragen</button><span id="leaveDays" class="muted">Weekends tellen mee als kalenderdagen.</span></div>
 </form>
 <div id="leaveRequests" aria-label="Mijn lopende verlofaanvragen en verlofperiodes"></div>
@@ -360,12 +360,14 @@ function renderLeaves(items){
     const root=isCurrentLeave(x,today)?activeRoot:archivedRoot;
     const row=document.createElement('div');row.className='leave-record';
     const heading=document.createElement('strong');
-    heading.textContent=(x.startDate||'?')+' tot en met '+(x.endDate||'?');
+    heading.textContent=displayLeaveDate(x.startDate)+' tot en met '+displayLeaveDate(x.endDate);
     const badge=document.createElement('span');badge.className='leave-badge '+(
       ['pending','approved','rejected','withdrawn'].includes(x.status)?x.status:'');
     badge.textContent=leaveNames[x.status]||x.status||'Status onbekend';heading.append(badge);
     const sub=document.createElement('small');sub.textContent=Number(x.days||0)+' kalenderdagen';
-    row.append(heading,sub);
+    const reason=document.createElement('small');
+    reason.textContent='Reden: '+(x.note?.trim()||'Niet geregistreerd (oude verlofperiode)');
+    row.append(heading,sub,reason);
     if(x.canWithdraw&&mayWithdrawLeaves){
       const cancel=document.createElement('button');cancel.type='button';
       cancel.className='secondary leave-cancel';cancel.textContent='Verlof intrekken';
@@ -430,13 +432,16 @@ async function loadLeave(){
       '. Controleer je personeelskoppeling of open het volledige verlofbeheer.';
   }
 }
+const displayLeaveDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)?
+  value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
 $('leaveForm').onsubmit=async e=>{
   e.preventDefault();
   const days=leaveDays();
   if(days<1||days>730){$('leaveStatus').textContent='Kies een geldige periode van maximaal 730 kalenderdagen.';return}
-  if(days<7){
-    const msg='Voor verlof van minder dan 7 kalenderdagen hoef je geen aanvraag in te dienen.';
-    window.alert(msg);$('leaveStatus').textContent=msg;return;
+  // Verlof vanaf 1 kalenderdag wordt volgens serverregels geregistreerd.
+  if(!$('leaveNote').value.trim()){
+    $('leaveStatus').textContent='Vul een reden voor het verlof in.';
+    $('leaveNote').focus();return;
   }
   const btn=$('leaveSubmit');btn.disabled=true;
   try{

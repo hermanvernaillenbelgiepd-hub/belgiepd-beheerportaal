@@ -30,3 +30,37 @@ export function validateHistoricalObservationToggle(data){
 }
 export const historicalObservationAllowed=(actor,dept,type,config)=>
  dept==='politie'&&type==='observatie'&&config?.enabled===true;
+
+
+// Onafhankelijk van de bestaande observatie-overname: uitgebreide migratie
+// start UIT en kan enkel tijdelijk door Officierenkader/Korpsleiding geactiveerd
+// worden. Zo opent een bestaande observatie-instelling niet stilzwijgend het
+// overnemen van sancties, notities, verloven of pings.
+export function historicalMigrationSettings(data){
+ return {enabled:data?.extendedEnabled===true,
+  revision:Number.isSafeInteger(data?.extendedRevision)&&data.extendedRevision>=0?
+    data.extendedRevision:0};
+}
+export function validateHistoricalMigrationToggle(data){
+ if(!data||typeof data!=='object'||Array.isArray(data)||
+   Object.keys(data).some(key=>!['enabled','expectedRevision','reason'].includes(key)))
+   throw Error('Ongeldige migratie-instelling');
+ if(typeof data.enabled!=='boolean'||!Number.isSafeInteger(data.expectedRevision)||
+    data.expectedRevision<0)throw Error('Vernieuw eerst de migratie-instelling');
+ const reason=String(data.reason??'').trim();
+ if(reason.length<10||reason.length>300||/[<>\x00-\x1f\x7f]/.test(reason))
+   throw Error('Motivering van 10 tot 300 tekens vereist');
+ return {enabled:data.enabled,expectedRevision:data.expectedRevision,reason};
+}
+export function historicalMigrationAllowed(actor,dept,type,config){
+ return dept==='politie'&&
+  ['sanctie','notitie','inactiviteitsping','verlof'].includes(type)&&
+  config?.enabled===true&&canManageHistoricalObservationImport(actor);
+}
+export function validateHistoricalActorSelection(actorId,reason,loggedInDiscordId){
+ if(typeof actorId!=='string'||!ID.test(actorId)||actorId===loggedInDiscordId)
+  throw Error('Kies een andere, oorspronkelijke registrator');
+ if(typeof reason!=='string'||reason.trim().length<10||reason.trim().length>500)
+  throw Error('Vermeld de bron en reden van historische overname (10–500 tekens)');
+ return {actorId,reason:reason.trim()};
+}

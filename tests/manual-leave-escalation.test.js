@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {mayRegisterCentralManualLeave,maySubmitManualLeaveForApproval,
-  mayApproveLeave,validateManualLeaveRequest} from '../src/leave-policy.js';
+  mayApproveLeave} from '../src/leave-policy.js';
 
 const officer='222222222222222222',subject='111111111111111111';
 const actor=role=>({discordId:officer,role,departments:['politie'],
@@ -51,9 +51,4 @@ test('Meldingsrubrieken zijn afzonderlijk inklapbaar en formulieren tonen 31-dag
   assert.match(personnel,/id="leaveManualGuidance"/);
   assert.match(personnel,/Middenkader dient ter goedkeuring in bij Officierenkader of Korpsleiding/);
   assert.match(personnel,/saved.status==='pending'/);
-});
-
-test('Historisch verlof kan met oorspronkelijke periode geregistreerd worden',()=>{
-  assert.deepEqual(validateManualLeaveRequest({startDate:'2026-10-01',endDate:'2026-10-03'}),
-    {startDate:'2026-10-01',endDate:'2026-10-03',days:3,note:''});
 });

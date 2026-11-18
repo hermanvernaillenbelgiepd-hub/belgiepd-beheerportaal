@@ -3,7 +3,10 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {roleForDepartment} from './leave-policy.js';
 import {canRetireDossierRecord} from './dossier-retirement-policy.js';
-import {actorFromPersonnel} from './registrations.js';
+import {actorFromPersonnel,representativeFromPersonnel} from './registrations.js';
+import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_DOC,
+ historicalMigrationSettings,historicalMigrationAllowed,validateHistoricalActorSelection}
+ from './historical-observation-import-policy.js';
 import {createWeekReportDocx} from './report-export.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  CATALOG_BY_ID,decorationCatalogExtras,expirationDate} from './personnel-decoration-policy.js';
@@ -19,7 +22,11 @@ const toIso=t=>t?.toDate?.().toISOString()||null;
 const caseId=(dept,id)=>`${dept}_${id}`;
 const noPrivate=e=>{
   const {submittedBy,submittedByActor,createdAt,modifiedAt,...other}=e;
-  return {...other,createdAt:toIso(createdAt),modifiedAt:toIso(modifiedAt)};
+  const importedBy=e.historicalImport===true&&submittedByActor?{
+    name:String(submittedByActor.name||'').slice(0,120),
+    call:String(submittedByActor.call||'').slice(0,24)}:null;
+  return {...other,...(importedBy?{importedBy}:{}),
+    createdAt:toIso(createdAt),modifiedAt:toIso(modifiedAt)};
 };
 const errorResponse=(res,error)=>{
   if(/^(Ongeldig|Ongeldige|Omschrijving|Rapporttitel|Rapportperiode|Einddatum|Naam van|Nieuwe naam|Voorgestelde graad|Personeelsbeweging|Datum|Begindatum|Hulpdienst)/.test(error?.message||''))return res.status(400).json({error:error.message});
@@ -149,16 +156,37 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
       const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel je Google-account eerst aan je eigen Discord ID'});
+      const representedId=asString(req.body?.onBehalfOfDiscordId);
+      let represented=null,onBehalfReason='';
+      if(representedId){
+        const config=await db().collection(HISTORICAL_OBSERVATION_SETTINGS)
+          .doc(HISTORICAL_OBSERVATION_DOC).get();
+        if(!historicalMigrationAllowed(req.bpd,dept,type,historicalMigrationSettings(config.data()))||
+          !['notitie','inactiviteitsping'].includes(type))
+          return res.status(403).json({error:'Historische overname is uitgeschakeld of niet toegestaan'});
+        try{onBehalfReason=validateHistoricalActorSelection(
+          representedId,req.body.onBehalfReason,req.bpd.discordId).reason}
+        catch(e){return res.status(400).json({error:e.message})}
+        if(data.eventDate>new Date().toISOString().slice(0,10))
+          return res.status(400).json({error:'Een historische registratie kan niet in de toekomst liggen'});
+        represented=representativeFromPersonnel(snap.data,dept,representedId);
+        if(!represented)return res.status(400).json({error:'Oorspronkelijke registrator niet gevonden in de personeelslijst'});
+      }
       const newDoc=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const batch=db().batch();
-      batch.create(newDoc,{...data,dept,subjectDiscordId:id,subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,registeredBy:actor,submittedBy:{uid:req.bpd.uid,email:req.bpd.email},
-        ...(type==='inactiviteitsping'?{pingNotificationId:newDoc.id,pingNotificationStatus:'sent'}:{}),
+      batch.create(newDoc,{...data,dept,subjectDiscordId:id,subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,registeredBy:represented||actor,submittedByActor:actor,
+        onBehalfOf:represented||null,onBehalfReason,
+        historicalImport:Boolean(represented),importSource:represented?'spreadsheet':null,
+        submittedBy:{uid:req.bpd.uid,email:req.bpd.email},
+        ...(type==='inactiviteitsping'?(represented?{
+          historicalPing:true,pingNotificationStatus:'historisch'
+        }:{pingNotificationId:newDoc.id,pingNotificationStatus:'sent'}):{}),
         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
       batch.create(notice,{caseId:caseId(dept,id),entryId:newDoc.id,type,dept,createdAt:FieldValue.serverTimestamp()});
       // Exactly one atomic record is shared between the member inbox,
       // source dossier and dynamic fortnight report. No Discord DM is sent.
-      if(type==='inactiviteitsping'){
+      if(type==='inactiviteitsping'&&!represented){
         const ping=db().collection(INACTIVITY_PING_NOTICES).doc(id).collection('events').doc(newDoc.id);
         batch.create(ping,{...inactivityPingNotice({dept,discordId:id,entryId:newDoc.id,
           details:data.details,actor}),createdAt:FieldValue.serverTimestamp(),readAt:null});

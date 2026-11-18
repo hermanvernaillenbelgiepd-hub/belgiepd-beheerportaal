@@ -102,7 +102,8 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      const leave=leaveRows.docs.filter(doc=>
        doc.get('status')==='approved').map(doc=>({
        id:doc.id,startDate:clean(doc.get('startDate'),10),
-       endDate:clean(doc.get('endDate'),10),status:'approved'
+       endDate:clean(doc.get('endDate'),10),status:'approved',
+       note:['full','leadership'].includes(level)?clean(doc.get('note'),300):''
      })).sort((a,b)=>String(b.startDate).localeCompare(String(a.startDate))).slice(0,25);
      const dossierHistory=staffHistory.docs.map(publicHistory);
      const profile=summary(staffDocument.get('profile'));

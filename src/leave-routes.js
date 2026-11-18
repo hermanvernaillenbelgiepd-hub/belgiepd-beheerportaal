@@ -4,12 +4,15 @@ import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
   mayRegisterCentralManualLeave,maySubmitManualLeaveForApproval,mayApproveLeave,
   mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,
-  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,parseDay} from './leave-policy.js';
+  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,parseDay,validateLeaveNote} from './leave-policy.js';
 import {activeLeaveCollision,planLeaveExtension} from './leave-extension-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {leaveCanWithdraw,leaveCanReapply,writeLeaveEvent} from './leave-event-log.js';
-import {actorFromPersonnel} from './registrations.js';
+import {actorFromPersonnel,representativeFromPersonnel} from './registrations.js';
+import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_DOC,
+ historicalMigrationSettings,historicalMigrationAllowed,validateHistoricalActorSelection}
+ from './historical-observation-import-policy.js';
 import {SERIES_LEADERS,personSeries} from './training-request-policy.js';
 import {canRetireDossierRecord} from './dossier-retirement-policy.js';
 
@@ -228,13 +231,13 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       review=review.filter((d,i)=>allowed[i]);
       const byTime=(a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''));
       return res.json({mine:my.docs.map(d=>item(d,true)).sort(byTime),
-        toReview:review.map(d=>item(d,false)).sort(byTime),
-        toOverride:board?overrides.map(d=>item(d,false)).sort(byTime):[],
+        toReview:review.map(d=>item(d,true)).sort(byTime),
+        toOverride:board?overrides.map(d=>item(d,true)).sort(byTime):[],
         canOverride:board,limited:my.docs.length===100||review.length>=100||overrides.length>=250});
     }catch(e){return jsonError(res,e)}
   });
-  // Dossierweergave per hulpdienst: enkel kalenderdata/status, GEEN reden of
-  // vertrouwelijke beslissing. Een medewerker mag zijn eigen verlof zien.
+  // Dossierweergave: reden uitsluitend na bestaande dossier-/dienstautorisatie.
+  // Nooit via de publieke personeelslijst. Een medewerker mag eigen verlof zien.
   // Only current, APPROVED leave is shown in the roster. Date boundaries
   // use Europe/Brussels calendar days, not server time or historical status.
   app.get('/api/leave/roster-active',requireDossierUser,async(req,res)=>{
@@ -290,6 +293,17 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           const canDecide=mayApproveLeave(req.bpd,record,grant);
           return {id:d.id,startDate:record.startDate,endDate:record.endDate,
             days:record.days,status:record.status,manual:record.manual===true,
+            note:typeof record.note==='string'?record.note:'',
+            historicalImport:record.historicalImport===true,
+            ...(record.historicalImport===true?{
+              originalRegistrar:record.registeredBy?{
+                name:String(record.registeredBy.name||'').slice(0,120),
+                call:String(record.registeredBy.call||'').slice(0,24)}:null,
+              importedBy:record.submittedByActor?{
+                name:String(record.submittedByActor.name||'').slice(0,120),
+                call:String(record.submittedByActor.call||'').slice(0,24)}:null,
+              onBehalfReason:String(record.onBehalfReason||'').slice(0,500)
+            }:{}),
             canDecide:canDecide&&writes()};
         }),limited:snap.docs.length===100});
     }catch(e){return jsonError(res,e)}
@@ -389,9 +403,9 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       return res.status(400).json({error:'Vul een geldige nieuwe einddatum in'});
     try{parseDay(body.endDate)}
     catch{return res.status(400).json({error:'Ongeldige nieuwe einddatum'})}
-    const note=body.note===undefined?'':body.note;
-    if(typeof note!=='string'||note.trim().length>300)
-      return res.status(400).json({error:'Toelichting mag maximaal 300 tekens bevatten'});
+    let note;
+    try{note=validateLeaveNote(body.note)}
+    catch(error){return res.status(400).json({error:error.message})}
     try{
       const {records}=await context(req);
       const personId=req.bpd.discordId,baseRef=db().collection(coll).doc(req.params.id);
@@ -634,6 +648,21 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
     catch(e){return res.status(400).json({error:e.message})}
     try{
       const {snapshot}=await context(req);
+      const representedId=String(req.body?.onBehalfOfDiscordId||'').trim();
+      let originalAuthor=null,onBehalfReason='';
+      if(representedId){
+        const config=await db().collection(HISTORICAL_OBSERVATION_SETTINGS)
+          .doc(HISTORICAL_OBSERVATION_DOC).get();
+        if(!historicalMigrationAllowed(req.bpd,dept,'verlof',historicalMigrationSettings(config.data())))
+          throw rejection('Historische verlofovername is uitgeschakeld of niet toegestaan',403);
+        try{onBehalfReason=validateHistoricalActorSelection(representedId,
+          req.body.onBehalfReason,req.bpd.discordId).reason}
+        catch(e){throw rejection(e.message)}
+        if(details.endDate>=yyyyMmDd())
+          throw rejection('Historisch overgenomen verlof moet volledig in het verleden liggen');
+        originalAuthor=representativeFromPersonnel(snapshot,'politie',representedId);
+        if(!originalAuthor)throw rejection('Oorspronkelijke registrator niet gevonden in de personeelslijst');
+      }
       const matched=personRecords(snapshot,personId);
       if(!matched.some(p=>p.dept===dept))
         throw rejection('Personeelslid ontbreekt in de geselecteerde hulpdienst',404);
@@ -682,6 +711,11 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         const previous=await tx.get(ref);
         if(previous.exists)throw rejection('Deze verlofregistratie bestaat al',409);
         tx.create(ref,{...details,manual:true,manualPendingReview:needsHigherApproval,
+          historicalImport:Boolean(originalAuthor),importSource:originalAuthor?'spreadsheet':null,
+          registeredBy:originalAuthor||null,onBehalfOf:originalAuthor||null,
+          onBehalfReason,submittedByActor:actorFromPersonnel(req.bpd,snapshot)||{
+            discordId:req.bpd.discordId,name:'Politioneel kader',call:''
+          },
           personDiscordId:personId,subjectName:subject.name,subjectCall:subject.call,
           subjectDepartments:departments,subjectDepartmentRoles,
           subjectRole:subjectPoliceRole,status,autoApproved:false,
