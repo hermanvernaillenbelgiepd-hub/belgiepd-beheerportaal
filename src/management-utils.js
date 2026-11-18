@@ -3,12 +3,12 @@ import {canRetireDossierRecord,isRetired} from './dossier-retirement-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 // Nieuwe interne dossierregistraties en concept-weekrapporten.
 // Geen Google Sheets-writes, geen clientvertrouwen bij rollen of auteurs.
-export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','opleiding','naamswijziging','promotievoorstel','voordracht_ereteken','personeelsbeweging','activiteit','specialisatiebeperking','inactiviteitsping']);
+export const MANAGEMENT_TYPES = Object.freeze(['verlof','notitie','algemene_notitie','opleiding','naamswijziging','promotievoorstel','voordracht_ereteken','personeelsbeweging','activiteit','specialisatiebeperking','inactiviteitsping']);
 export const CADRE_ROLES = Object.freeze(['middenkader','officierenkader','korpsleiding']);
 // Correcties aan door kaderleden ingevoerde dossiernotities zijn geen
 // verlofbeslissingen, sanctieacties, statussen of effectieve rangwijzigingen.
 export const CORRECTABLE_CASE_TYPES = Object.freeze([
-  'notitie','opleiding','activiteit','naamswijziging','promotievoorstel',
+  'notitie','algemene_notitie','opleiding','activiteit','naamswijziging','promotievoorstel',
   'personeelsbeweging','specialisatiebeperking'
 ]);
 export function mayCorrectManualCase(actor,subject,entry){
@@ -23,7 +23,7 @@ export function mayCorrectManualCase(actor,subject,entry){
 }
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
 export const RECORD_LABELS = Object.freeze({
-  observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Personeelsnotitie',
+  observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Personeelsnotitie', algemene_notitie:'Algemene notitie',
   opleiding:'Opleidingen en resultaten', activiteit:'Dienstactiviteit',
   specialisatiebeperking:'Specialisatiebeperking',inactiviteitsping:'Inactiviteitsping',
   naamswijziging:'Naamswijziging',
@@ -44,12 +44,12 @@ export const mayWriteManagement = (actor,dept,type) =>
     MANAGEMENT_TYPES.includes(type)&&type!=='verlof'&&
     (type!=='voordracht_ereteken'||dept==='politie')?true:(
   type!=='verlof'&&(type!=='voordracht_ereteken'||dept==='politie')&&
-    (dept!=='depannage'||type==='specialisatiebeperking')&&(
+    (dept!=='depannage'||['specialisatiebeperking','algemene_notitie'].includes(type))&&(
   // Delegated case management can add only routine dossier notes.
   // This does not convey sanctions, rank changes or other personnel powers.
-  (['notitie','opleiding'].includes(type)&&actor?.dossierFullDepartments?.includes(dept)&&
+  (['notitie','algemene_notitie','opleiding'].includes(type)&&actor?.dossierFullDepartments?.includes(dept)&&
     actor?.dossierAllowedDepartments?.includes(dept)&&allowedDept(actor,dept))
-  ||(type==='notitie'&&Array.isArray(actor?.dossierManageDepartments)&&
+  ||(['notitie','algemene_notitie'].includes(type)&&Array.isArray(actor?.dossierManageDepartments)&&
     actor.dossierManageDepartments.includes(dept)&&actor.dossierAllowedDepartments?.includes(dept))
   ||(CADRE_ROLES.includes(roleForDepartment(actor,dept))&&mayReadManagement(actor,dept) &&
     (!Array.isArray(actor?.dossierNativeDepartments)||actor.dossierNativeDepartments.includes(dept))&&
