@@ -1,0 +1,230 @@
+/* TO-dienstbord theme alignment.
+   Uses the shared BelgiumPD html[data-bpd-theme] preference. Pure presentation:
+   leave team/service colours, Sonoran state and authorization untouched. */
+
+/* In light mode the workspace stays light, including the board toolbar. */
+html:not([data-bpd-theme="dark"]) body.to-duty-page{
+ --bg:#f3f6fb;--surface:#ffffff;--ink:#172a48;--muted:#526987;
+ --line:#d9e3f1;--blue:#3156d8;
+}
+html:not([data-bpd-theme="dark"]) body.to-duty-page .workspace .toolbar{
+ background:transparent!important;border-bottom-color:#cbd9ed!important;
+ box-shadow:none!important;
+}
+html:not([data-bpd-theme="dark"]) body.to-duty-page .summary-card.session{
+ background:#142442!important;color:#f2f7ff!important;
+ border-color:#30496f!important;
+}
+html:not([data-bpd-theme="dark"]) body.to-duty-page
+ .summary-card.session :is(.summary-label,.summary-note){
+ color:#c6d8f1!important;
+}
+html:not([data-bpd-theme="dark"]) body.to-duty-page
+ .summary-card.session .summary-value{color:#fff!important}
+
+/* Dark theme: use the SAME palette as the rest of the portal. */
+html[data-bpd-theme="dark"] body.to-duty-page{
+ --navy:#0d1e37;--ink:#e7f1ff;--muted:#bfd0e8;
+ --line:#395375;--bg:#091426;--surface:#12243e;
+ --blue:#8eb8ff;--soft-blue:#203960;
+ --green:#74dbac;--soft-green:#173e37;
+ --amber:#f3cb82;--soft-amber:#4d371a;
+ --red:#ffa4ad;--soft-red:#4f2635;
+ color-scheme:dark;
+}
+
+/* Primary white surfaces used by the TO module must not stay white in dark. */
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .summary-card:not(.session),.welcome,.search-field,.radio-panel,
+ .team-card,.incident-card,.no-session,.empty-state,.archive-row,
+ .archive-detail-card,.radio-channel,.pending-radio-card
+){
+ background:#12243e!important;color:#e7f1ff!important;
+ border-color:#395375!important;box-shadow:0 3px 12px #02091633;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .summary-card.session{
+ background:#192e50!important;border-color:#49668d!important;
+ color:#f0f7ff!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .summary-card.session
+ :is(.summary-label,.summary-note){color:#c6d8f1!important}
+html[data-bpd-theme="dark"] body.to-duty-page .summary-card.session .summary-value{
+ color:#fff!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .summary-value,.panel-heading h2,.no-session h2,.callsign,
+ .team-card .callsign,.incident-title,.archive-header h2,
+ .archive-copy strong,.archive-detail-card h3,.radio-heading h2,
+ .radio-channel h3,.pending-radio-title strong,.welcome h2
+){color:#f0f7ff!important}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .summary-label,.summary-note,.panel-heading p,.updated-at,
+ .category-heading,.category-heading span,.team-since,.pair-label,
+ .crew-line,.crew-line .mono,.incident-description,.incident-time,
+ .no-session p,.empty-state p,.archive-counts,.archive-copy small,
+ .archive-detail-card p,.radio-heading p,.radio-last-sync,
+ .radio-summary,.radio-summary strong,.radio-empty,.radio-disclaimer,
+ .radio-user-name,.radio-user-channel,.radio-service h3,.radio-team-badge,
+ .pending-radio-card>small,.pending-radio-section>p,.pending-service h4,
+ .service-heading>span:last-child,.page-footer,.unassigned
+){color:#bdd0e9!important}
+html[data-bpd-theme="dark"] body.to-duty-page .workspace .toolbar{
+ background:transparent!important;border-color:#3b5475!important;
+ box-shadow:none!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .tab,.category-filter,.team-view-switch button,.group-chevron
+){color:#c1d4ed!important}
+html[data-bpd-theme="dark"] body.to-duty-page .tab.active{
+ color:#8db8ff!important;
+}
+
+/* Search, filters and controls: no navy text on white or white text on white. */
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .button:not(.button-primary),.dialog-close,.crew-quick-button,
+ .incident-preset,.team-view-switch,.team-view-switch button.active,
+ .incident-filters,.incident-filters button.active,.saved-preset,
+ .compact-menu-toggle,.radio-user .radio-add,.radio-user .radio-remove
+){
+ background:#233b5b!important;border-color:#4d6b91!important;
+ color:#edf5ff!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .button-primary{
+ background:#3768e7!important;color:#fff!important;border-color:#4779f2!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page
+ :is(.button-danger,.text-button.danger,.crew-quick-button[data-action="team-pause"]){
+ color:#ffb9c4!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page
+ .workspace :is(.search-field input,.input,select,textarea){
+ color:#eef6ff!important;background:#0e213a!important;
+ border-color:#4a6689!important;color-scheme:dark!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .search-field input{
+ background:transparent!important;border:0!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .search-field input::placeholder,
+html[data-bpd-theme="dark"] body.to-duty-page .input::placeholder{
+ color:#b3c5df!important;opacity:1;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .search-field>span{color:#bfd3ef}
+html[data-bpd-theme="dark"] body.to-duty-page
+ :is(.incident-filters,.team-view-switch){background:#0e213a!important}
+html[data-bpd-theme="dark"] body.to-duty-page .incident-filters button:not(.active){
+ color:#bed1e9!important;
+}
+
+/* Sonoran: status and radio occupants are readable without changing the feed. */
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .radio-notice,.radio-disclaimer,.radio-board-dropzone,
+ .pending-radio-section,.radio-crew-paired,.shortcut-save-controls
+){
+ background:#192f4c!important;border-color:#3e5879!important;color:#c8d9f1!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .radio-notice.warning,.radio-crew-nb,.radio-crew-paired.radio-crew-nb
+){
+ background:#4a2b37!important;border-color:#96606e!important;color:#ffdae0!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .radio-summary,.radio-user,.crew-list,.crew-quick-controls
+){border-color:#375273!important}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .radio-crew-members span,.radio-pair-detail,.radio-unrecognized,
+ .radio-on-board,.radio-crew-status
+){color:#c3d7ee!important}
+
+/* Category tints convey actual service; status chips remain distinct.
+   Avoid restoring pastel cards (the source of light-on-light collisions). */
+html[data-bpd-theme="dark"] body.to-duty-page .team-card[data-availability="ready"]{
+ background:linear-gradient(120deg,#153b36,#12243e 74%)!important;
+ border-color:#356e63!important;border-left:5px solid #54c29c!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .team-card[data-availability="on-incident"]{
+ background:linear-gradient(120deg,#403219,#12243e 74%)!important;
+ border-color:#837049!important;border-left:5px solid #ecbb6c!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .team-card[data-availability="on-pause"]{
+ background:linear-gradient(120deg,#492734,#12243e 74%)!important;
+ border-color:#92566c!important;border-left:5px dashed #ed92a7!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .team-card[data-service="politie"]{
+ --duty-card-accent:#7eb5ff;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .team-card[data-service="brandweer"]{
+ --duty-card-accent:#f38f87;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .team-card[data-service="ambulance"]{
+ --duty-card-accent:#74dbac;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .team-card[data-service="depannage"]{
+ --duty-card-accent:#f2c07d;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .team-card[data-service][data-availability="ready"],
+html[data-bpd-theme="dark"] body.to-duty-page .team-card[data-service][data-availability="on-incident"]{
+ border-left-color:var(--duty-card-accent)!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .team-card .team-category-name{
+ color:#b9d6f5!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .team-card-foot,.service-team-section>.service-heading,
+ .radio-channel h3>span,.team-chip,.postal,.archive-icon,
+ .pending-service h4 span,.saved-presets,.takeover-request-box,
+ .detach-assignment,.saved-preset .saved-preset-open,.preview
+){
+ background:#1d3656!important;color:#d9e9ff!important;
+ border-color:#456389!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .team-card-foot{
+ border-top-color:#375273!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .service-heading>span:last-child,.category-identity strong,.saved-presets h3,
+ .saved-presets h3 span,.compact-unit-title,.compact-unit-meta
+){color:#d3e5fc!important}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .incident-card:hover,.archive-row:hover,.radio-user:hover
+){border-color:#7099ce!important}
+
+/* Modal dialogs must use the same theme as the board they open from. */
+html[data-bpd-theme="dark"] body.to-duty-page dialog{
+ color:#eaf2ff!important;background:#12243e!important;
+ border:1px solid #49658b!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .dialog-header,.dialog-footer,.form-group,.preview,.form-error
+){background:#192e4c!important;border-color:#3e5879!important;color:#dbe9ff!important}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .field>span,.form-label,.form-group legend,.form-note,.detail-description,
+ .detail-section h3,.assignment small,.log-list li,.log-list strong
+){color:#c6d8f0!important}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .dialog-header h2,.assignment strong,.detail-section strong,.preview strong
+){color:#f0f7ff!important}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .detail-section,.assignment,.radio-disclaimer,.log-list li
+){border-color:#3b5576!important}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .pill.gray,.pill.blue,.incident-number,.counter-icon,.radio-team-badge
+){color:#b8d2fa!important}
+html[data-bpd-theme="dark"] body.to-duty-page :is(
+ .pill.gray,.pill.blue,.counter-icon
+){background:#274568!important}
+html[data-bpd-theme="dark"] body.to-duty-page .feedback{
+ background:#213a63!important;color:#e8f1ff!important;
+ border-color:#557bb5!important;
+}
+html[data-bpd-theme="dark"] body.to-duty-page .feedback.error{
+ background:#482b39!important;color:#ffd4dd!important;border-color:#99546a!important
+}
+html[data-bpd-theme="dark"] body.to-duty-page .feedback.warning{
+ background:#4b381f!important;color:#ffe0a6!important;border-color:#9e804d!important
+}
+html[data-bpd-theme="dark"] body.to-duty-page .empty-state{
+ border-style:dashed!important;
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-bpd-theme="dark"] body.to-duty-page .incident-card{transition:none}
+}
