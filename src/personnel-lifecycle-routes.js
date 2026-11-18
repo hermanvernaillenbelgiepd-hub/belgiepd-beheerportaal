@@ -268,6 +268,7 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    if(duplicate)throw fail(409,'Dit INP-nummer is al in gebruik');
    const lifecycleRef=store().doc('politie_'+discordId);
    const accountRef=db().collection(USER_COLLECTION).doc(discordId);
+   const memberAuthRef=db().collection('bpd_discord_auth').doc(discordId);
    const claimStore=db().collection('bpd_personnel_call_claims');
    const claim=claimStore.doc(personnelCallClaimId('politie',input.newCall));
    const aliasClaim=claimStore.doc(personnelCallClaimId('politie','S'+input.newCall));
@@ -315,6 +316,11 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        restoredAt:at,updatedAt:at,updatedByUid:req.bpd.uid,
        updatedByDiscordId:req.bpd.discordId
      },{merge:true});
+     // Replace stale OAuth role evidence with the authoritative just-verified
+     // guild member roles. This prevents a cached OLD instructor/cadre role
+     // from being used for up to 24 hours after safe INP reinstatement.
+     tx.set(memberAuthRef,{guildId:process.env.DISCORD_GUILD_ID,
+       roleIds:[...ids],verifiedAt:Date.now()},{merge:true});
      tx.set(accountRef,{
        discordId,status:'approved',departments,departmentRoles,role,
        serviceFunctions:{...(stored.serviceFunctions||{}),politie:'basiskader'},
