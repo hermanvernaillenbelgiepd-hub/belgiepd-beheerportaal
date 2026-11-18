@@ -5,7 +5,7 @@ import {dossierScopes,dossierOverviewRows,dossierTimelineEntry} from '../src/dos
 import {canReadPersonnelSubject} from '../src/personnel-editor-policy.js';
 const id='123456789012345678';
 const other='987654321098765432';
-const person={dept:'politie',personId:id,name:'Inspecteur A',call:'P30',
+const person={dept:'politie',personId:id,name:'Inspecteur A',call:'P30',series:'Reeks 2',
   rank:'Inspecteur',status:'Actief',source:'google-sheets'};
 const actor={role:'officierenkader',departments:['politie'],
   departmentRoles:{politie:'officierenkader'},discordId:other,dossierAllowedDepartments:['politie']};
@@ -17,6 +17,7 @@ test('Only existing authorized staff are discoverable',()=>{
     [{dept:'politie',discordId:other,username:'Candidate',status:'accepted'}],scopes);
   assert.equal(rows.length,1);
   assert.equal(rows[0].name,'Inspecteur A');
+  assert.equal(rows[0].series,'Reeks 2');
   assert.equal(rows[0].application,false);
   assert.equal(Object.hasOwn(rows[0],'motivation'),false);
   assert.deepEqual(dossierScopes({role:'basiskader',departments:['politie'],
