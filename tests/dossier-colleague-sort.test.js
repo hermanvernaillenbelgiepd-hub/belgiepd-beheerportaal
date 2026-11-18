@@ -53,10 +53,8 @@ test('dossierkeuzelijst volgt voor elke dienst de officiële personeelsvolgorde'
 test('alleen toegankelijke personeelsdossiers staan in de selector en de link behoudt selectie',()=>{
  const html=source('public/personeelsbeheer.html');
  assert.match(html,/sortDossierColleagues\(people,BPDPersonnelVisuals\.comparePersonnel\)/);
- assert.match(html,/if\(selected\)select\.value=selected\.dept\+':'
-   \+selected\.discordId/);
- assert.match(html,/const person=people\.find\(p=>p\.dept\+':'
-   \+p\.discordId===\$\('ficheColleague'\)\.value\)/);
+ assert.ok(html.includes("if(selected)select.value=selected.dept+':'+selected.discordId;"));
+ assert.ok(html.includes("const person=people.find(p=>p.dept+':'+p.discordId===$('ficheColleague').value);"));
  assert.match(html,/window\.location\.assign\(ficheUrl\(person\)\)/);
  assert.match(source('public/dossier-colleague-sort.js'),/canOpenDossier===true/);
 });
