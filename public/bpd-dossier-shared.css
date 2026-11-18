@@ -992,3 +992,57 @@ html:not([data-bpd-theme="dark"]) body.dossier-onepage .police-score-summary sma
  .bpd-observation-head{align-items:center}
  .bpd-score-chip{font-size:11px;min-width:44px;padding:4px 7px}
 }
+
+
+/* Native details/summary keeps observation lists to a single compact row.
+   Opened records show every character provided by the authorised API. */
+.bpd-observation-disclosure{
+  display:block;
+  padding:0!important;
+  overflow:visible!important;
+}
+.bpd-observation-disclosure>.bpd-observation-summary{
+  cursor:pointer;display:flex;align-items:center;gap:10px;
+  padding:9px 12px;min-height:43px;
+  list-style:none;overflow-wrap:anywhere;
+}
+.bpd-observation-disclosure>.bpd-observation-summary::-webkit-details-marker{display:none}
+.bpd-observation-disclosure>.bpd-observation-summary::before{
+  content:'▸';font-size:14px;line-height:1;flex:0 0 12px;
+  color:var(--bpd-observation-muted);
+}
+.bpd-observation-disclosure[open]>.bpd-observation-summary::before{content:'▾'}
+.bpd-observation-disclosure>.bpd-observation-summary:focus-visible{
+  outline:2px solid #76abf8;outline-offset:-3px;border-radius:8px;
+}
+.bpd-observation-disclosure>.bpd-observation-summary:hover{
+  background:rgba(124,164,219,.10);
+}
+.bpd-observation-disclosure>.bpd-observation-summary>.bpd-observation-head{
+  width:100%;min-width:0;flex:1 1 auto;
+  align-items:center;margin:0;
+}
+.bpd-observation-disclosure>.bpd-observation-content{
+  padding:9px 12px 12px 34px;border-top:1px solid var(--bpd-observation-line);
+  max-width:100%;overflow:visible;overflow-wrap:anywhere;
+}
+.bpd-observation-disclosure .bpd-observation-body{
+  white-space:pre-wrap!important;
+  overflow:visible!important;
+  display:block!important;
+  max-height:none!important;max-width:100%;
+  text-overflow:clip!important;
+  -webkit-line-clamp:unset!important;
+  -webkit-box-orient:initial!important;
+  word-break:break-word;
+}
+.bpd-observation-disclosure .bpd-observation-meta{
+  white-space:normal;overflow-wrap:anywhere;
+}
+html:not([data-bpd-theme="dark"]) .bpd-observation-disclosure>.bpd-observation-summary:hover{
+  background:rgba(36,86,153,.065);
+}
+@media(max-width:550px){
+ .bpd-observation-disclosure>.bpd-observation-summary{padding:9px}
+ .bpd-observation-disclosure>.bpd-observation-content{padding:9px 10px 11px 22px}
+}
