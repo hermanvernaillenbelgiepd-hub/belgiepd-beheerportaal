@@ -34,6 +34,57 @@ export const HONORABLE_REENTRY_REQUIRES=Object.freeze({
  entryRank:'Inspecteur',trainingHistoryPreserved:true,decorationsPreserved:true,
  priorSpecializationTrainingEligible:true,automaticOperationalPrivileges:false
 });
+
+// An independently approved INP placement is the only path for an honourably
+// retired police member. Historical specialties remain evidence, not active roles.
+const INP_CALL=/^(?:S[- ]?)?4\d{2}$/i;
+export function validateHonorableInpActivation(body){
+ if(!body||typeof body!=='object'||Array.isArray(body)||
+  Object.keys(body).some(k=>!['newCall','series','reason','expectedRevision','confirm'].includes(k)))
+  throw Error('Ongeldige INP-herinstroom');
+ const newCall=String(body.newCall||'').trim();
+ if(!INP_CALL.test(newCall))throw Error('Herinstroom als INP vereist een vrij 4xx-nummer');
+ const series=String(body.series||'').trim();
+ if(!['1','2','3'].includes(series))throw Error('Kies reeks 1, 2 of 3');
+ const reason=String(body.reason||'').trim();
+ if(reason.length<20||reason.length>500||/[<>\x00-\x1f\x7f]/.test(reason))
+  throw Error('Motivering van 20 tot 500 tekens vereist');
+ if(!Number.isSafeInteger(body.expectedRevision)||body.expectedRevision<0)
+  throw Error('Herlaad de personeelsfiche vóór bevestiging');
+ if(body.confirm!=='INP')throw Error('Bevestig expliciet INP');
+ return {newCall:String(Number(newCall.match(/4\d{2}/)[0])),series,reason,
+  expectedRevision:body.expectedRevision};
+}
+const PRIOR_TRACKS=Object.freeze([
+ ['K9',/\bK[- ]?9\b/i],['RAGO',/\bRAGO\b/i],
+ ['MOTARD',/\bMOTARD\b/i],['DISPATCH',/\bDISPATCH\b/i],
+ ['AE',/\b(?:AE[- ]?[ITF]|ERT[- ]?AE)\b/i]
+]);
+export function honorablePreviousTraining(snapshot){
+ const specialties=Array.isArray(snapshot?.specialties)?snapshot.specialties:[];
+ return PRIOR_TRACKS.filter(([,re])=>specialties.some(s=>
+  s&&typeof s.label==='string'&&re.test(s.label)&&
+  !/\b(?:IO|IN OPLEIDING|STAGE)\b/i.test(s.label)&&
+  /^(?:ja|behaald|volwaardig|actief|instructeur|gekwalificeerd)$/i.test(String(s.value||'').trim())
+ )).map(([label])=>label);
+}
+export function validHonorableInpAssignment(data){
+ return Boolean(data&&data.rank==='Inspecteur'&&
+  INP_CALL.test(String(data.call||''))&&['1','2','3'].includes(String(data.series||''))&&
+  data.confirmed===true);
+}
+export function applyHonorableInpAssignment(person,ledger){
+ if(!ledger?.honorableResignation||ledger.state!=='active')return person;
+ // An archived high-rank subject is NEVER resurfaced as its previous grade.
+ if(!validHonorableInpAssignment(ledger.honorableInpAssignment))return null;
+ const a=ledger.honorableInpAssignment;
+ return {...person,call:a.call,rank:'Inspecteur',
+   series:'Reeks '+a.series,seriesRaw:a.series,status:'Actief',
+   specialties:[],special:'Geen actieve specialisaties',
+   honorableReentry:true,
+   previousSpecializationTraining:honorablePreviousTraining(ledger.snapshot)};
+}
+
 export const ARCHIVE_REASONS=Object.freeze(['voluntary_discord_leave','management_dismissal',
  'service_resignation','other']);
 export function validateLifecycleAction(body,action){
@@ -85,8 +136,11 @@ export function overlayPersonnelLifecycle(records,docs,{includeArchived=false}={
   if(state&&['archived','pending'].includes(state.state)){
    if(includeArchived)out.push({...p,lifecycleState:state.state,lifecycleRevision:state.revision,
      lifecycleCause:state.cause||'',lastPersonnelAction:'archived'});
-  }else out.push(state?{...p,lifecycleState:'active',
-    lifecycleRevision:state.revision,lastPersonnelAction:state.cause||'restored'}:p);
+  }else if(state){
+    const current=applyHonorableInpAssignment({...p,lifecycleState:'active',
+      lifecycleRevision:state.revision,lastPersonnelAction:state.cause||'restored'},state);
+    if(current)out.push(current);
+  }else out.push(p);
  }
  // A returning worker may have disappeared from the old Google spreadsheet.
  // Their archived identity is never lost and is restored only by a signed,
@@ -101,7 +155,8 @@ export function overlayPersonnelLifecycle(records,docs,{includeArchived=false}={
     special:'Geen geregistreerde specialisaties',source:'firestore-lifecycle',
     lifecycleState:d.state,lifecycleRevision:d.revision,
     lastPersonnelAction:d.cause||'restored'};
-  out.push(p);
+  const current=applyHonorableInpAssignment(p,d);
+  if(current)out.push(current);
  }
  return out;
 }

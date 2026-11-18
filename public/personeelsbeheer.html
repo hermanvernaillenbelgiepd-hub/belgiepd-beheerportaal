@@ -5197,7 +5197,48 @@ $('refreshArchive').onclick=async()=>{
    const info=document.createElement('span');
    info.textContent=(p.state==='pending'?'HERINTREDING IN CONTROLE · ':'GEARCHIVEERD · ')+(p.call||'—')+' · '+(p.name||'—')+' · '+(p.cause||'')+
      ' · '+(p.archivedAt||'');
+   if(p.previousSpecializationTraining?.length){
+    const history=document.createElement('small');
+    history.textContent=' · Eerder behaalde specialisatieopleidingen: '+
+      p.previousSpecializationTraining.join(', ')+
+      ' (alleen opleidingstoegang; bevoegdheden blijven ingetrokken)';
+    info.append(history);
+   }
    line.append(info);
+   if(p.canActivateInp){
+    const button=document.createElement('button');button.type='button';
+    button.className='alt';button.textContent='Herinstroom als INP afronden';
+    button.onclick=async()=>{
+     const rawCall=prompt('Nieuw vrij INP-nummer (400–499). Oude rang wordt NIET hersteld:');
+     if(rawCall===null)return;
+     const newCall=rawCall.trim();
+     if(!/^(?:S[- ]?)?4\d{2}$/i.test(newCall))
+       return notice('Kies een vrij INP-nummer van 400–499.',true);
+     const rawSeries=prompt('Reeks 1, 2 of 3:','1');
+     if(rawSeries===null)return;
+     const series=rawSeries.trim();
+     if(!['1','2','3'].includes(series))return notice('Kies reeks 1, 2 of 3.',true);
+     const rawReason=prompt('Onafhankelijke motivering voor INP-herinstroom (20–500 tekens):');
+     if(rawReason===null)return;
+     const reason=rawReason.trim();
+     if(reason.length<20||reason.length>500)
+       return notice('Motivering moet 20–500 tekens bevatten.',true);
+     if(!confirm('INP-herinstroom voor '+p.name+' definitief controleren?'+
+       '\\nDe server vereist een actuele Politie- en Basiskaderrol zonder oude specialisatie- of leidinggevende Discordrollen.'+
+       '\\nAlle historiek blijft behouden. Nieuwe roepnummer: '+newCall))return;
+     button.disabled=true;
+     try{
+      const result=await request('/api/personnel-lifecycle/politie/'+
+        encodeURIComponent(p.discordId)+'/activate-inp',{method:'POST',
+         body:{newCall,series,reason,expectedRevision:p.revision,confirm:'INP'}});
+      notice('Herinstroom als INP afgerond: '+result.call+
+        '. Eerdere eretekens en opleidingen behouden; geen oude bevoegdheden hersteld.');
+      await load();await $('refreshArchive').onclick();
+     }catch(e){notice('INP-herinstroom geweigerd: '+e.message,true)}
+     finally{button.disabled=false}
+    };
+    line.append(button);
+   }
    if(p.canActivate){
     const button=document.createElement('button');button.type='button';
     button.className='alt';button.textContent='CMS-rollen gecontroleerd · activeer';

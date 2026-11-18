@@ -90,6 +90,7 @@ import {installPersonnelDecorationRoutes} from './personnel-decoration-routes.js
 import {installFireDossierRoutes} from './fire-dossier-routes.js';
 import {installCitizenDossierRoutes} from './citizen-dossier-routes.js';
 import {installTechnicalTestCleanupRoutes} from './technical-test-cleanup-routes.js';
+import {installTechnicalSimulatorRoutes,technicalSimulatorOnlyTest} from './technical-access-simulator.js';
 import {installDossierGrantRoutes} from './dossier-grant-routes.js';
 import {applyDossierGrants,DOSSIER_GRANT_COLLECTION,dossierGrantKey,DOSSIER_DEPTS,
   verifyBoardDiscordRole} from './dossier-grants.js';
@@ -120,6 +121,26 @@ app.get('/discord-diagnose.html',(req,res,next)=>{
  if(!discordDiagnosticsPageAllowed(req.headers.cookie,process.env))
   return res.status(403).type('text/plain').send('Alleen toegankelijk in geverifieerde Technisch Beheer-modus. Activeer die in Gebruikersbeheer.');
  next();
+});
+
+app.get('/technische-rollen-simulatie.html',(req,res,next)=>{
+ if(!technicalSimulatorOnlyTest(process.env))
+   return res.status(404).type('text/plain').send('Uitsluitend TEST');
+ const cookie=String(req.headers.cookie||'');
+ if(cookie.length>2048)return res.status(403).type('text/plain').send('Geen technische sessie');
+ const raw=cookie.split(';').map(x=>x.trim()).find(x=>x.startsWith('bpd_portal_profile='));
+ if(!raw)return res.status(403).type('text/plain').send('Activeer eerst Technisch Beheer');
+ try{
+  const token=raw.slice('bpd_portal_profile='.length).split('.')[0];
+  if(token.length>512)return res.sendStatus(403);
+  const parsed=JSON.parse(Buffer.from(token,'base64url').toString('utf8'));
+  const id=String(parsed.id||''),uid=String(parsed.uid||'');
+  if(!/^\d{15,22}$/.test(id)||uid!=='discord:'+id||
+    !String(process.env.BPD_TECHNICAL_ADMIN_DISCORD_IDS||'').split(',').map(x=>x.trim()).includes(id)||
+    !technicalCookieIsValid(cookie,uid,id,process.env.BPD_PORTAL_PROFILE_SIGNING_KEY))
+    return res.status(403).type('text/plain').send('Technisch profiel niet geverifieerd');
+  next();
+ }catch{return res.sendStatus(403)}
 });
 app.get('/personeelslijst.html',(req,res,next)=>{
  if(req.query.embed==='1')return next();
@@ -908,6 +929,7 @@ installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installTechnicalCenterRoutes(app,{requireUser});
 installPortalLabelRoutes(app,{requireUser:requireDossierUser});
 installTechnicalTestCleanupRoutes(app,{requireUser,getSnapshot});
+installTechnicalSimulatorRoutes(app,{requireUser});
 installRoleArtworkRoutes(app,{requireUser,getSnapshot});
 installUniformManagementRoutes(app,{requireUser});
 installUniformAssignmentRoutes(app,{requireUser});
@@ -950,7 +972,11 @@ installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 installActivityCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
 installPersonnelLifecycleRoutes(app,{requireUser:requireDossierUser,
-  getSnapshot,invalidateLifecycle:invalidatePersonnelLifecycle});
+  getSnapshot,invalidateLifecycle:invalidatePersonnelLifecycle,
+  invalidateUserAccess:id=>{
+    authDocCache.delete(USER_COLLECTION+':'+id);
+    authDocCache.delete('bpd_discord_auth:'+id);
+  }});
 installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSpecialtyRestrictionRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSpecialtyRoleLinkRoutes(app,{requireUser:requireDossierUser,getSnapshot});

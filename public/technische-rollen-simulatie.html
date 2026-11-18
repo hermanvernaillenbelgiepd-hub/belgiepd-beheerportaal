@@ -1,0 +1,101 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BelgiumPD TEST · Rechten testen</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:#0a1527;color:#ebf3ff}
+header{background:#142844;border-bottom:1px solid #355375;padding:16px 5vw;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+header a{color:#a8d4ff}main{max-width:980px;margin:28px auto;padding:0 18px 60px}
+h1{font-size:25px;margin:0 0 12px}h2{font-size:18px;margin:0 0 15px}
+p{color:#b8cae2;line-height:1.5}.card{background:#132743;border:1px solid #365777;border-radius:12px;padding:20px;margin:16px 0}
+select,button{background:#1a3858;color:#fff;border:1px solid #698cb0;border-radius:7px;padding:10px;font:inherit}
+select{width:100%;max-width:420px}button{cursor:pointer}button:disabled{opacity:.6;cursor:default}
+.note{border-left:3px solid #e3b354;padding:12px;background:#362e24;color:#f8e4b8;border-radius:5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.check{padding:12px;border:1px solid #3f5c7a;border-radius:8px;background:#152d48}
+.check strong{display:block;font-size:14px;margin-bottom:5px}.check span{font-size:12px;color:#c9d8ed}
+.check .yes{color:#83e9b4}.check .no{color:#ffb0b0}
+small{color:#a7bdda}#status{min-height:22px}
+</style></head>
+<body><header><strong>BelgiumPD · TEST · Technische simulatie</strong>
+<nav><a href="/beheercentrum.html">Beheercentrum</a> · <a href="/discord-status.html">Mijn Discord</a></nav></header>
+<main><h1>Leidinggevende rechten simuleren</h1>
+<p class="note">Uitsluitend TEST en geverifieerd Technisch Beheer. Dit zijn fictieve profielen zonder echte Discord-aanmelding of persoonsgegevens. De simulatie toont wat de geselecteerde beleidscontroles toelaten, maar verleent geen rechten en schrijft niets naar Firebase of Discord.</p>
+<section class="card"><h2>Kies een fictieve dienstfunctie</h2>
+<label for="profile">Functie</label><p><select id="profile" disabled><option>Authenticatie controleren…</option></select></p>
+<button id="run" type="button" disabled>Controleer rechten</button>
+<p id="status" role="status" aria-live="polite">Meld je aan als Technisch Beheer op de TEST-omgeving.</p></section>
+<section class="card" id="result" hidden><h2 id="title">Toetsresultaten</h2>
+<p id="description"></p><div class="grid" id="checks"></div>
+<p><small>Een geslaagde simulatie is geen bewijs dat een echt lid kan aanmelden: de werkelijke Firebase-/Discord-rolcontrole en API-403-tests moeten afzonderlijk geslaagd zijn.</small></p></section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+let auth,authSdk,ready=false;
+const labels={
+ dossierInzien:'Personeelsdossier inzien',
+ personeelsficheWijzigen:'Personeelsfiche wijzigen',
+ gewoneOpleidingBeoordelen:'Algemene opleiding beoordelen',
+ k9SpecialisatieInstructeur:'K9-specialisatie als instructeur beoordelen',
+ verlofTienDagenGoedkeuren:'Verlof van 10 dagen goedkeuren',
+ dienstarchiefBeheren:'Dienstarchief beheren',
+ korpspluimToekennen:'Korpspluim toekennen',
+ burgerDossierSchrijven:'Burgerdossier schrijven',
+ weekrapportLezen:'Weekrapport lezen'
+};
+async function api(path){
+ if(!auth?.currentUser)throw Error('Geen aangemelde technische beheerder');
+ const token=await auth.currentUser.getIdToken();
+ const resp=await fetch(path,{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+ const data=await resp.json().catch(()=>({}));
+ if(!resp.ok)throw Error(data.error||'Toegang geweigerd ('+resp.status+')');
+ return data;
+}
+async function refresh(){
+ if(!auth?.currentUser)return;
+ try{
+  const data=await api('/api/technical-simulator/profiles');
+  const select=$('profile');select.replaceChildren();
+  for(const p of data.profiles){
+   const option=document.createElement('option');option.value=p.id;
+   option.textContent=p.label;select.append(option);
+  }
+  select.disabled=false;$('run').disabled=false;ready=true;
+  $('status').textContent='Technische TEST-toegang geverifieerd. Kies een functie.';
+ }catch(err){
+  $('status').textContent='Toegang niet beschikbaar: '+err.message;
+  $('run').disabled=true;
+ }
+}
+$('run').onclick=async()=>{
+ if(!ready)return;
+ const run=$('run');run.disabled=true;
+ $('status').textContent='Beveiligde beleidscontroles uitvoeren…';
+ try{
+  const data=await api('/api/technical-simulator/profile/'+encodeURIComponent($('profile').value));
+  $('result').hidden=false;$('title').textContent=data.label;
+  $('description').textContent=data.note;
+  const target=$('checks');target.replaceChildren();
+  for(const [key,value] of Object.entries(data.checks)){
+   const card=document.createElement('div');card.className='check';
+   const heading=document.createElement('strong');heading.textContent=labels[key]||key;
+   const status=document.createElement('span');status.textContent=value?'Toegestaan':'Niet toegestaan';
+   status.className=value?'yes':'no';card.append(heading,status);target.append(card);
+  }
+  $('status').textContent='Fictief profiel gecontroleerd; er zijn geen gegevens gewijzigd.';
+ }catch(e){$('status').textContent='Controle mislukt: '+e.message;}
+ finally{run.disabled=false;}
+};
+async function boot(){
+ try{
+  const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+  if(!config.enabled)throw Error('Firebase is niet beschikbaar');
+  const appSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  const app=appSdk.getApps()[0]||appSdk.initializeApp(config.firebaseConfig);
+  auth=authSdk.getAuth(app);
+  authSdk.onAuthStateChanged(auth,()=>void refresh());
+ }catch(e){$('status').textContent='Kon toegang niet controleren: '+e.message;}
+}
+boot();
+</script><script defer src="/bpd-navigation.js"></script></body></html>
