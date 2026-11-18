@@ -1071,8 +1071,8 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div class="grid">
 <div><label for="leaveFrom">Begindatum</label><input type="date" id="leaveFrom" required></div>
 <div><label for="leaveUntil">Einddatum</label><input type="date" id="leaveUntil" required></div>
-<div style="grid-column:1/-1"><label for="leaveNote">Toelichting voor audit</label>
-<textarea id="leaveNote" maxlength="300" rows="2" placeholder="Reden van administratieve inschrijving"></textarea></div>
+<div style="grid-column:1/-1"><label for="leaveNote">Reden van het verlof (verplicht, max. 300 tekens)</label>
+<textarea id="leaveNote" required minlength="1" maxlength="300" rows="2" placeholder="Reden van administratieve inschrijving"></textarea></div>
 </div>
 <p id="leaveManualGuidance" class="subtle" role="status" aria-live="polite">Middenkader mag maximaal 30 dagen rechtstreeks goedkeuren. Meer dan 30 dagen gaat naar Officierenkader of Korpsleiding.</p>
 <button id="leaveManualSave" type="submit">Verlof registreren</button>
@@ -3743,6 +3743,8 @@ async function loadLinkedPersonnelRecords(p,key){
     })()
   ]);
 }
+const displayLeaveDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)?
+  value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
 const leaveStatusText=status=>({
   pending:'In behandeling',approved:'Goedgekeurd',
   withdrawn:'Ingetrokken',rejected:'Geweigerd'
@@ -3755,8 +3757,7 @@ async function loadStaffLeave(p,key){
       '?dept='+encodeURIComponent(p.dept));
     if(!same())return;
     // Eén centrale bron voor alle disciplines van dezelfde Discord-identiteit.
-    // Toon ingediende, goedgekeurde, geweigerde en ingetrokken periodes,
-    // zonder vertrouwelijke toelichting te kopiëren naar het personeelsdossier.
+    // Toon verlofredenen alleen in dit beveiligde personeelsdossier.
     const leaves=[...(info.leaves||[])].sort((a,b)=>
       String(b.startDate||'').localeCompare(String(a.startDate||''))||
       String(b.endDate||'').localeCompare(String(a.endDate||'')));
@@ -3776,18 +3777,21 @@ async function loadStaffLeave(p,key){
         String(b.startDate||'').localeCompare(String(a.startDate||'')))
       .slice(0,5);
     sheetSetRows('leave',overviewLeaves,x=>[
-      x.startDate||'—',x.endDate||'—',periodState(x),
-      Number(x.days)||'—'
+      displayLeaveDate(x.startDate),displayLeaveDate(x.endDate),periodState(x),
+      (Number(x.days)||'—')+' dagen',
+      'Reden: '+(x.note?.trim()||'Niet geregistreerd (oude verlofperiode)')
     ],'Geen goedgekeurde verlofperiodes.',info.limited);
     root.replaceChildren();
     if(!leaves.length)root.textContent='Geen geregistreerde verlofperiodes.';
     for(const item of leaves){
       const div=document.createElement('div');div.className='note-item';
       const title=document.createElement('strong');
-      title.textContent=item.startDate+' tot '+item.endDate+
+      title.textContent=displayLeaveDate(item.startDate)+' tot '+displayLeaveDate(item.endDate)+
         ' · '+leaveStatusText(item.status)+
         (item.manual?' (handmatig)':'');
-      div.append(title);
+      const reason=document.createElement('p');
+      reason.textContent='Reden: '+(item.note?.trim()||'Niet geregistreerd (oude verlofperiode)');
+      div.append(title,reason);
       attachRetireButton(div,item,'leave');
       if(item.status==='pending'&&item.canDecide===true){
         for(const [decision,label] of [['approved','Goedkeuren'],['rejected','Afwijzen']]){
@@ -4971,6 +4975,9 @@ $('staffManualLeaveForm').onsubmit=async event=>{
  if(!person||!registrationManualLeave)return;
  const days=manualLeaveDuration();
  if(!days)return notice('Controleer de begin- en einddatum van het verlof.',true);
+ if(!$('leaveNote').value.trim()){
+   $('leaveNote').focus();return notice('Vul een reden voor het verlof in.',true);
+ }
  const button=$('leaveManualSave');button.disabled=true;
  try{
    if(!confirm('Verlof van '+days+' kalenderdagen voor '+person.name+' vastleggen? '+
