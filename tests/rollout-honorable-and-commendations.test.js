@@ -52,7 +52,7 @@ test('900 and 910 own notes cannot open general protected dossiers',()=>{
  assert.match(api,/app\.post\('\/api\/management\/corps-note\/me',requireUser/);
  assert.match(api,/actor\?\.role!=='korpsleiding'/);
  assert.match(api,/actor\?\.uid!=='discord:'\+id/);
- assert.match(api,/\(900\|910\)/);
+ assert.match(api,/900\|910/);
  assert.match(api,/ownCorpsNote:true/);
  assert.match(markup,/id="ownCorpsNotesForm"/);
  assert.match(markup,/id="honorableForm"/);
