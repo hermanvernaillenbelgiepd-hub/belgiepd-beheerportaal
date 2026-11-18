@@ -226,7 +226,8 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     try{
       const entry=validateEntry({...req.body,type:'observatie'});
       if(!Number.isInteger(entry.score))throw Error('Kies een observatiescore van 0 tot 10');
-      ({type:undefined,...fields}=entry);
+      const {type,...validatedFields}=entry;
+      fields=validatedFields;
     }catch(e){return res.status(400).json({error:e.message})}
     try{
       const snap=await getSnapshot();
