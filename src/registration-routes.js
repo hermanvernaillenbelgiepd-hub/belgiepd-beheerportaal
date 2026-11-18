@@ -64,6 +64,39 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       return res.status(503).json({error:'De instelling kon niet opgeslagen worden'});
     }
   });
+  // Tijdelijke migratieschakelaar: standaard UIT en onafhankelijk van
+  // de bestaande overname van historische observaties.
+  app.put('/api/registrations/historical-migration',requireUser,async(req,res)=>{
+    if(!canManageHistoricalObservationImport(req.bpd))
+      return res.status(403).json({error:'Alleen geverifieerd Officierenkader/Korpsleiding'});
+    let input;
+    try{input=validateHistoricalMigrationToggle(req.body)}
+    catch(e){return res.status(400).json({error:e.message})}
+    try{
+      const store=db(),ref=store.collection(HISTORICAL_OBSERVATION_SETTINGS)
+        .doc(HISTORICAL_OBSERVATION_DOC);
+      const config=await store.runTransaction(async tx=>{
+        const snap=await tx.get(ref),before=historicalMigrationSettings(snap.data());
+        if(before.revision!==input.expectedRevision)
+          throw Object.assign(Error('De migratie-instelling is intussen gewijzigd'),{status:409});
+        if(before.enabled===input.enabled)return before;
+        const at=FieldValue.serverTimestamp();
+        tx.set(ref,{extendedEnabled:input.enabled,
+          extendedRevision:before.revision+1,extendedUpdatedAt:at,
+          extendedUpdatedBy:req.bpd.discordId},{merge:true});
+        tx.create(store.collection(HISTORICAL_OBSERVATION_SETTINGS_AUDIT).doc(),{
+          kind:'extended-migration',dept:'politie',actorDiscordId:req.bpd.discordId,
+          actorUid:req.bpd.uid,before,after:{enabled:input.enabled,
+            revision:before.revision+1},reason:input.reason,at});
+        return {enabled:input.enabled,revision:before.revision+1};
+      });
+      res.set('Cache-Control','private, no-store');
+      return res.json({saved:true,config});
+    }catch(e){
+      if(e?.status)return res.status(e.status).json({error:e.message});
+      return res.status(503).json({error:'Migratie-instelling kon niet worden opgeslagen'});
+    }
+  });
   // Dossierinhoud is nooit zichtbaar via subjects: zelfs basiskader ziet alleen selectievelden.
   app.get('/api/registrations/subjects',requireUser,async(req,res)=>{
     try{
