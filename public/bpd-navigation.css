@@ -964,8 +964,10 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
   ) { color:#18365a!important; }
   html:not([data-bpd-theme="dark"]) body #profile :is(
     .identity-grid dt, .leave-state, .profile-row small, .leave-record small,
-    .leave-history-list, .leave-history summary, .leave-archive > summary::before
+    .leave-history-list, .leave-history summary
   ) { color:#4e6684!important; }
+  html:not([data-bpd-theme="dark"]) body #profile .profile-fold > summary::before,
+  html:not([data-bpd-theme="dark"]) body #profile .leave-archive > summary::before { color:#4e6684!important; }
   html:not([data-bpd-theme="dark"]) body #profile :is(
     .fold-count, .leave-archive-count, .role-id-button, .role
   ) {
