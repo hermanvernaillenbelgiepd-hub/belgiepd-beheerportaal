@@ -1257,6 +1257,7 @@ let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
 let activeLeaveRosterIds=new Set();
+let activeLeaveRosterLoadState='ready'; // ready | loading | unavailable
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
 let currentLifecycleRevision=0;
 let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
@@ -2155,7 +2156,9 @@ function render(){
     dept==='ambulance'?'ambulance':dept==='brandweer'?'brandweer':
       dept==='depannage'?'depannage':'series-desc'
   );
-  $('count').textContent=matches.length+' fiche(s) zichtbaar';
+  $('count').textContent=matches.length+' fiche(s) zichtbaar'+
+    (activeLeaveRosterLoadState==='loading'?' · verlofstatus wordt gecontroleerd':
+     activeLeaveRosterLoadState==='unavailable'?' · verlofstatus niet geverifieerd':'');
   // AE-I, AE-T, AE-Teamleader and AE-Instructeur are function levels,
   // never additional public or management roster columns.
   const custom=(rosterConfigs[dept]?.customSpecialties||[])
@@ -2785,7 +2788,10 @@ function initializeRosterEditor(){
  rosterEditorRender();
 }
 
+let personnelOverviewLoadSerial=0;
 async function load(){
+  const loadSerial=++personnelOverviewLoadSerial;
+  const viewerUid=auth?.currentUser?.uid||'';
   if(!auth?.currentUser){
     personnelManagementAllowed=false;personnelGroupSettingsAllowed=false;
     personnelGroupSettingsEditor.reset();personnelGroupedViews.reset();
@@ -2796,10 +2802,23 @@ async function load(){
     lifecycleDepartments=[];
     $('personnelArchivePanel').hidden=true;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
-    updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+    updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();activeLeaveRosterLoadState='ready';$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
-    try{
-      const cfg=await request('/api/roster-columns');
+    // Launch all independently authenticated requests together. Only the
+    // verified roster and column layout block the first paint; auxiliary
+    // artwork, group controls and leave projection complete afterwards.
+    const loadStartedAt=performance.now();
+    const columnsPromise=request('/api/roster-columns').catch(error=>({loadError:error}));
+    const groupSettingsPromise=request('/api/personnel-group-settings').catch(()=>null);
+    const groupRightsPromise=request('/api/personnel-group-settings/edit-permissions')
+      .catch(()=>({canEdit:{}}));
+    const overviewPromise=request('/api/personnel/overview');
+    const artworkPromise=request('/api/role-artwork/manifest').catch(()=>null);
+    const leavePromise=request('/api/leave/roster-active').catch(()=>null);
+    const [cfg,data]=await Promise.all([columnsPromise,overviewPromise]);
+    if(loadSerial!==personnelOverviewLoadSerial||auth?.currentUser?.uid!==viewerUid)return;
+
+    if(!cfg?.loadError){
       rosterConfigs=cfg.departments||Object.create(null);
       rosterCanEdit=cfg.canEdit===true;
       $('rosterColumnAdmin').hidden=dossierEmbedded||ficheMode;
@@ -2809,28 +2828,17 @@ async function load(){
       else $('rosterColumnAccessMessage').textContent=
         'Deze instellingen vereisen een geverifieerde leidinggevende of een goedgekeurd technisch beheerprofiel. Controleer je portaalrechten.';
       if(location.hash==='#rosterColumnDetails')$('rosterColumnDetails').open=true;
-    }catch(error){
+    }else{
       rosterCanEdit=false;rosterConfigs=Object.create(null);
       $('rosterColumnAdmin').hidden=dossierEmbedded||ficheMode;
       $('rosterColumnEditorContent').hidden=true;
       $('rosterColumnAccessMessage').hidden=false;
       $('rosterColumnAccessMessage').textContent=
-        'Instellingen niet beschikbaar: '+error.message;
+        'Instellingen niet beschikbaar: '+cfg.loadError.message;
       if(location.hash==='#rosterColumnDetails')$('rosterColumnDetails').open=true;
     }
-    try{
-     const groupMeta=await request('/api/personnel-group-settings');
-     const groupRights=await request('/api/personnel-group-settings/edit-permissions')
-      .catch(()=>({canEdit:{}}));
-     personnelGroupSettingsAllowed=Object.values({
-      ...(groupMeta.canEdit||{}),...(groupRights.canEdit||{})
-     }).some(Boolean);
-    }catch{personnelGroupSettingsAllowed=false;}
-    const data=await request('/api/personnel/overview');
-    try{
-     const artwork=await request('/api/role-artwork/manifest');
-     BPDPersonnelVisuals.setArtworkManifest(artwork.artworks);
-    }catch(_err){BPDPersonnelVisuals.setArtworkManifest([])}
+    // Optional group settings must not delay the authorised personnel list.
+    personnelGroupSettingsAllowed=false;
     $('accessHelp').hidden=true;
     personnelManagementAllowed=true;
     for(const link of document.querySelectorAll('[data-personnel-staff]'))link.hidden=false;
@@ -2872,16 +2880,47 @@ async function load(){
       else $('dept').value='all';
       $('search').value=prefill;
     }
-    // Active periods are person-linked and appear for each department of the
-    // same Discord identity. A read failure must not invent a leave status.
+    // Leave projection is non-authoritative UI metadata. Keep the previous
+    // status while it loads; absence of a verified result never invents leave.
     activeLeaveRosterIds=new Set();
-    try{
-      const todayLeave=await request('/api/leave/roster-active');
-      activeLeaveRosterIds=new Set(todayLeave.activeDiscordIds||[]);
-      if(todayLeave.limited===true)
-        notice('Niet alle verlofperiodes zijn geladen; de actuele status kan onvolledig zijn.',true);
-    }catch{/* Keep ordinary status when verified leave is unavailable. */}
+    activeLeaveRosterLoadState='loading';
     render();updateFicheColleagues();updatePersonnelView();
+    if(data.canViewPersonnelDiagnostics===true)
+      console.info('BelgiumPD personeelslijst: eerste weergave',
+        Math.round(performance.now()-loadStartedAt),'ms');
+
+    const stillCurrent=()=>loadSerial===personnelOverviewLoadSerial&&
+      auth?.currentUser?.uid===viewerUid;
+    // Server-side authorisation is performed independently for every endpoint.
+    // These callbacks only enhance the already-authorised current page.
+    void Promise.all([groupSettingsPromise,groupRightsPromise])
+      .then(([groupMeta,groupRights])=>{
+        if(!stillCurrent())return;
+        personnelGroupSettingsAllowed=Boolean(groupMeta)&&Object.values({
+          ...(groupMeta.canEdit||{}),...(groupRights.canEdit||{})
+        }).some(Boolean);
+        $('personnelAdminTools').hidden=!lifecycleDepartments.length&&
+          !personnelGroupSettingsAllowed;
+      });
+    void artworkPromise.then(artwork=>{
+      if(!stillCurrent())return;
+      BPDPersonnelVisuals.setArtworkManifest(artwork?.artworks||[]);
+      render();
+    });
+    void leavePromise.then(todayLeave=>{
+      if(!stillCurrent())return;
+      activeLeaveRosterLoadState=todayLeave?'ready':'unavailable';
+      if(todayLeave){
+        activeLeaveRosterIds=new Set(todayLeave.activeDiscordIds||[]);
+        if(todayLeave.limited===true)
+          notice('Niet alle verlofperiodes zijn geladen; de actuele status kan onvolledig zijn.',true);
+      }
+      render();updateFicheColleagues();updatePersonnelView();
+      if(todayLeave&&selected&&!$('panel').hidden)
+        renderDossierStatus($('sheetStatus'),selected.status,{
+          leave:activeLeaveRosterIds.has(selected.discordId)
+        });
+    });
     if(prefill&&/^\d{15,22}$/.test(prefill)){
       const matching=people.filter(p=>p.discordId===prefill&&
         (!targetDept||p.dept===targetDept));
@@ -2910,6 +2949,7 @@ async function load(){
       else if(!still)$('panel').hidden=true;
     }
   }catch(e){
+    if(loadSerial!==personnelOverviewLoadSerial||auth?.currentUser?.uid!==viewerUid)return;
     people=[];personnelManagementAllowed=false;lifecycleDepartments=[];
     personnelCompactViews.setScopedPersonnel([],[]);
     personnelCanFilterSeries=false;personnelCanViewService=false;
