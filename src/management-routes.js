@@ -1,6 +1,7 @@
 import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
+import {roleForDepartment} from './leave-policy.js';
 import {actorFromPersonnel} from './registrations.js';
 import {createWeekReportDocx} from './report-export.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
@@ -66,6 +67,57 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     }catch(e){return errorResponse(res,e)}
   });
 
+  // Narrow self-note exception: verified 900/910 Korpsleiding can append
+  // an own note without gaining access to any other protected dossier.
+  const ownCorpsNoteSubject=async actor=>{
+    const id=actor?.discordId;
+    if(!validDiscord(id)||actor?.uid!=='discord:'+id||
+      actor?.portalTechnicalMode===true||actor?.role!=='korpsleiding'||
+      roleForDepartment(actor,'politie')!=='korpsleiding'||
+      !(actor?.discordPoliceRank==='korpsleiding'||actor?.manualCorpsApproved===true))
+      return null;
+    const snap=await getSnapshot();
+    if(snap.stale)return null;
+    const subject=uniqueSubject(snap.data,'politie',id);
+    const call=String(subject?.call||'').trim();
+    return /^(?:(?:SANTO|S)[- ]?)?(?:900|910)$/i.test(call)?subject:null;
+  };
+  app.get('/api/management/corps-note/me',requireUser,async(req,res)=>{
+    try{
+      const subject=await ownCorpsNoteSubject(req.bpd);
+      if(!subject)return res.status(403).json({error:'Eigen korpsnotities uitsluitend voor geverifieerde 900/910'});
+      res.set('Cache-Control','private, no-store');
+      return res.json({allowed:true,subjectCall:subject.call,writesEnabled:enabled()});
+    }catch(e){errorResponse(res,e)}
+  });
+  app.post('/api/management/corps-note/me',requireUser,async(req,res)=>{
+    if(!enabled())return res.status(503).json({error:'Dossierregistraties staan momenteel uit'});
+    try{
+      const subject=await ownCorpsNoteSubject(req.bpd);
+      if(!subject)return res.status(403).json({error:'Geen bevoegdheid voor een eigen korpsnotitie'});
+      const details=String(req.body?.details||'').trim();
+      if(details.length<10||details.length>4000||Object.keys(req.body||{}).some(k=>k!=='details'))
+        return res.status(400).json({error:'Geef uitsluitend een eigen notitie van 10–4000 tekens'});
+      const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      const entryData=validateManagementEntry({type:'notitie',eventDate:date,details});
+      const actor=actorFromPersonnel(req.bpd,[subject]);
+      if(!actor)return res.status(403).json({error:'Niet eenduidig gekoppeld aan je politiefiche'});
+      const item=db().collection('bpd_cases').doc(caseId('politie',subject.personId))
+        .collection('entries').doc();
+      const notice=db().collection('bpd_notices').doc('politie').collection('events').doc();
+      const batch=db().batch(),now=FieldValue.serverTimestamp();
+      batch.create(item,{...entryData,dept:'politie',subjectDiscordId:subject.personId,
+        subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,
+        ownCorpsNote:true,registeredBy:actor,submittedBy:{uid:req.bpd.uid},
+        createdAt:now,modifiedAt:null});
+      batch.create(notice,{caseId:caseId('politie',subject.personId),
+        entryId:item.id,type:'notitie',dept:'politie',createdAt:now});
+      await batch.commit();
+      res.set('Cache-Control','private, no-store');
+      return res.status(201).json({saved:true,reference:item.id});
+    }catch(e){errorResponse(res,e)}
+  });
   app.get('/api/management/cases',requireUser,async(req,res)=>{
     const dept=asString(req.query.dept),id=asString(req.query.discordId);
     if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
