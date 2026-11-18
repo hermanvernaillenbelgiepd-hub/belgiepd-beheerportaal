@@ -3331,6 +3331,18 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       root.append(element);
       return;
     }
+    if(group==='basisNotes'){
+      const item=document.createElement('div');item.className='overview-preview general-note-preview';
+      const heading=document.createElement('strong');
+      heading.textContent=(row._noteDate||'—')+' · '+(row._noteTitle||'Notitie');
+      const body=document.createElement('p');body.className='general-note-body';
+      body.textContent=row.details||'—';
+      const meta=document.createElement('span');
+      meta.textContent='Door '+(row._noteAuthor||'Onbekend');
+      item.append(heading,body,meta);
+      attachRetireButton(item,row,row._dossierSource==='cases'?'cases':'staff');
+      root.append(item);return;
+    }
     const cells=toCells(row).map(value=>value===null||value===undefined||value===''?'—':String(value));
     const item=document.createElement('div');item.className='overview-preview';
     const heading=document.createElement('strong');
@@ -3530,6 +3542,43 @@ function sheetDossierProfile(profile={}){
   }
   root.append(list);
 }
+// Algemene notities uit het bestaande kaderregister en oudere basisdossiers
+// worden alleen in de beveiligde dossierweergave samengevoegd.
+// De oorspronkelijke opslag, auteurs en audit blijven intact.
+let generalCaseEntries=[],generalLegacyEntries=[];
+let generalCasesLimited=false,generalLegacyLimited=false;
+const generalNoteDate=raw=>{
+  const value=String(raw||'');
+  return /^\d{4}-\d{2}-\d{2}/.test(value)?value.slice(8,10)+'/'+
+    value.slice(5,7)+'/'+value.slice(0,4):value||'—';
+};
+function renderGeneralDossierNotes(){
+  const list=[...generalCaseEntries,...generalLegacyEntries].sort((a,b)=>
+    String(b._noteSortDate||'').localeCompare(String(a._noteSortDate||''))||
+    String(b.createdAt||b.recordedAt||'').localeCompare(String(a.createdAt||a.recordedAt||'')));
+  const limited=generalCasesLimited||generalLegacyLimited;
+  sheetSetRows('basisNotes',list,x=>[x._noteDate,x._noteTitle,x.details,'Door '+x._noteAuthor],
+    'Geen algemene notities geregistreerd.',limited);
+  const root=$('dossierGeneralNoteList');
+  if(!root)return;
+  root.replaceChildren();
+  if(!list.length){root.textContent='Geen algemene notities geregistreerd.';return}
+  for(const row of list){
+    const item=document.createElement('div');item.className='note-item general-note-item';
+    const heading=document.createElement('strong');
+    heading.textContent=(row._noteDate||'—')+' · '+(row._noteTitle||'Notitie');
+    const body=document.createElement('p');body.textContent=row.details||'—';
+    const meta=document.createElement('span');meta.className='subtle';
+    meta.textContent='Door '+(row._noteAuthor||'Onbekend')+
+      (row.historicalImport&&row.importedBy?.name?' · Overgenomen door '+row.importedBy.name:'');
+    item.append(heading,body,meta);
+    attachRetireButton(item,row,row._dossierSource==='cases'?'cases':'staff');
+    if(row._dossierSource==='cases'&&selected)
+      addManualCaseCorrectionControls(item,row,selected,selected.dept+':'+selected.discordId);
+    root.append(item);
+  }
+  if(limited)root.append(document.createTextNode(' Er kunnen oudere notities bestaan.'));
+}
 // Dynamisch samengesteld uit de twee bestaande beveiligde bronnen.
 let importantCaseEntries=[],importantRestrictionEntries=[],importantPortalRestrictionEntries=[],
   importantCaseLimited=false,importantRestrictionLimited=false;
@@ -3545,6 +3594,13 @@ function renderDossierImportantNotes(){
 }
 function sheetCaseRows(entries,limited){
   const cases=entries||[];
+  generalCaseEntries=cases.filter(x=>x.type==='algemene_notitie').map(x=>({
+    ...x,_dossierSource:'cases',_noteSortDate:x.eventDate||'',
+    _noteDate:generalNoteDate(x.eventDate),_noteTitle:'Algemene notitie',
+    _noteAuthor:sheetWho(x)
+  }));
+  generalCasesLimited=Boolean(limited);
+  renderGeneralDossierNotes();
   const moves=cases.filter(x=>['personeelsbeweging','promotievoorstel','naamswijziging','functiewijziging'].includes(x.type));
   sheetSetRows('movements',moves,x=>[x.eventDate||'—',
     staffCaseLabels[x.type]||x.type,
@@ -3796,6 +3852,10 @@ async function loadLinkedPersonnelRecords(p,key){
         cases.textContent='Kaderregistraties kunnen alleen met de bestaande kaderrechten worden bekeken ('+e.message+').';
         $('sheetMovements').textContent='Kaderregistraties niet beschikbaar.';
         $('sheetNotes').textContent='Kadernotities niet beschikbaar.';
+        generalCaseEntries=[];generalCasesLimited=false;
+        renderGeneralDossierNotes();
+        if($('dossierGeneralNoteList'))
+          $('dossierGeneralNoteList').append(document.createTextNode(' Kadernotities tijdelijk niet beschikbaar.'));
       }}
     })()
   ]);
@@ -4917,6 +4977,10 @@ async function loadStaffDossier(p){
   $('staffLeave').textContent='Verlofperiodes laden…';
   $('staffFormalRecords').textContent='Formele registraties laden…';
   importantCaseEntries=[];importantRestrictionEntries=[];importantPortalRestrictionEntries=[];
+  generalCaseEntries=[];generalLegacyEntries=[];
+  generalCasesLimited=false;generalLegacyLimited=false;
+  $('sheetBasisNotes').textContent='Algemene notities laden…';
+  if($('dossierGeneralNoteList'))$('dossierGeneralNoteList').textContent='Notities laden…';
   importantCaseLimited=false;importantRestrictionLimited=false;
   $('sheetNotes').textContent='Notities laden…';
   $('staffFormalForm').hidden=true;
@@ -4980,11 +5044,14 @@ async function loadStaffDossier(p){
       'Alleen-lezen dossier. Je bestaande personeels- en opleidingsrechten blijven bepalend.';
     const list=$('staffNotes');
     const basis=(result.notes||[]);
-    sheetSetRows('basisNotes',basis,x=>[
-      x.recordedAt?new Date(x.recordedAt).toLocaleDateString('nl-BE'):'—',
-      x.title||staffNotesLabels[x.kind]||'Notitie',
-      x.details||'—','Door '+(x.authorDiscordId||'—')
-    ],'Geen eerdere basisnotities.',result.notesLimited===true);
+    generalLegacyEntries=basis.map(x=>({
+      ...x,_dossierSource:'staff',_noteSortDate:x.recordedAt||'',
+      _noteDate:x.recordedAt?new Date(x.recordedAt).toLocaleDateString('nl-BE'):'—',
+      _noteTitle:x.title||staffNotesLabels[x.kind]||'Notitie',
+      _noteAuthor:x.authorDiscordId||'Onbekend'
+    }));
+    generalLegacyLimited=result.notesLimited===true;
+    renderGeneralDossierNotes();
     if(!result.notes?.length)list.textContent='Geen eerder in dit aanvullende dossier geregistreerde notities.';
     else for(const item of result.notes){
       const div=document.createElement('div');div.className='note-item';
