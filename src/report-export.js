@@ -45,6 +45,14 @@ export function specialFields(e){
   }
   if(e.referenceUrl||e.evidenceUrl)p.push('Bijlage: '+limit(e.referenceUrl||e.evidenceUrl,800));
   if(e.otherPlayers)p.push('Andere betrokkenen: '+limit(e.otherPlayers,1000));
+  if(e.historicalImport===true){
+    p.push('Historische overname uit spreadsheet');
+    if(e.onBehalfOf?.name||e.registeredBy?.name)
+      p.push('Oorspronkelijke observator: '+limit(e.onBehalfOf?.name||e.registeredBy.name,120));
+    if(e.submittedByActor?.name)
+      p.push('Handmatig ingevoerd door: '+limit(e.submittedByActor.name,120));
+    if(e.onBehalfReason)p.push('Bron/motivering: '+limit(e.onBehalfReason,500));
+  }
   return p;
 }
 export function entryDescription(e){
