@@ -86,6 +86,17 @@ export function mayRegisterCentralManualLeave(actor,personId,days,policeSubjectR
  }
  return true;
 }
+// Middenkader kan langere periodes namens een lager politielid voorstellen,
+// maar nooit zelf goedkeuren. De aanvraag gaat naar Officierenkader/Korpsleiding.
+export function maySubmitManualLeaveForApproval(actor,personId,days,
+  policeSubjectRole=null,policeSubjectPresent=false){
+  if(!actor||!validDiscordId(actor.discordId)||actor.discordId===personId||
+    !Number.isInteger(days)||days<=30||days>LEAVE_MAX_DAYS||
+    !policeSubjectPresent||!policeSubjectRole)return false;
+  const reviewer=roleForDepartment(actor,'politie');
+  return reviewer==='middenkader'&&
+    (LEAVE_RANK[reviewer]||0)>(LEAVE_RANK[policeSubjectRole]||0);
+}
 export function activeGrant(grant,today=new Date().toISOString().slice(0,10)){
   if(!grant||grant.revoked===true||grant.permission!=='VERLOFBEHEER')return null;
   if(!['max30','all'].includes(grant.level))return null;
