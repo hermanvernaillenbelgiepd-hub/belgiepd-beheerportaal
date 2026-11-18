@@ -4,7 +4,7 @@ import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
   mayRegisterCentralManualLeave,maySubmitManualLeaveForApproval,mayApproveLeave,
   mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,
-  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,parseDay} from './leave-policy.js';
+  validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,parseDay,validateLeaveNote} from './leave-policy.js';
 import {activeLeaveCollision,planLeaveExtension} from './leave-extension-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
@@ -233,8 +233,8 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         canOverride:board,limited:my.docs.length===100||review.length>=100||overrides.length>=250});
     }catch(e){return jsonError(res,e)}
   });
-  // Dossierweergave per hulpdienst: enkel kalenderdata/status, GEEN reden of
-  // vertrouwelijke beslissing. Een medewerker mag zijn eigen verlof zien.
+  // Dossierweergave: reden uitsluitend na bestaande dossier-/dienstautorisatie.
+  // Nooit via de publieke personeelslijst. Een medewerker mag eigen verlof zien.
   // Only current, APPROVED leave is shown in the roster. Date boundaries
   // use Europe/Brussels calendar days, not server time or historical status.
   app.get('/api/leave/roster-active',requireDossierUser,async(req,res)=>{
@@ -290,6 +290,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           const canDecide=mayApproveLeave(req.bpd,record,grant);
           return {id:d.id,startDate:record.startDate,endDate:record.endDate,
             days:record.days,status:record.status,manual:record.manual===true,
+            note:typeof record.note==='string'?record.note:'',
             canDecide:canDecide&&writes()};
         }),limited:snap.docs.length===100});
     }catch(e){return jsonError(res,e)}
@@ -389,9 +390,9 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       return res.status(400).json({error:'Vul een geldige nieuwe einddatum in'});
     try{parseDay(body.endDate)}
     catch{return res.status(400).json({error:'Ongeldige nieuwe einddatum'})}
-    const note=body.note===undefined?'':body.note;
-    if(typeof note!=='string'||note.trim().length>300)
-      return res.status(400).json({error:'Toelichting mag maximaal 300 tekens bevatten'});
+    let note;
+    try{note=validateLeaveNote(body.note)}
+    catch(error){return res.status(400).json({error:error.message})}
     try{
       const {records}=await context(req);
       const personId=req.bpd.discordId,baseRef=db().collection(coll).doc(req.params.id);
