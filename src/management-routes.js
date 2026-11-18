@@ -162,6 +162,88 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       res.status(201).json({saved:true,reference:newDoc.id});
     }catch(e){errorResponse(res,e)}
   });
+  // Police decorations nominations have an independent review queue.
+  // An approved proposal is NOT automatically an awarded medal.
+  const mayReviewNominations=actor=>Boolean(isVerifiedReportTechnicalAdmin(actor)||
+    (actor?.uid==='discord:'+actor?.discordId&&
+    actor?.portalTechnicalMode!==true&&actor?.departments?.includes('politie')&&
+    ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
+    actor?.dossierNativeDepartments?.includes('politie')&&
+    actor?.dossierAllowedDepartments?.includes('politie')));
+  app.get('/api/management/award-nominations',requireUser,async(req,res)=>{
+    if(!mayReviewNominations(req.bpd))return res.status(403).json({error:'Alleen politie Officierenkader en Korpsleiding beoordelen voordrachten'});
+    try{
+      const snapshot=await getSnapshot();
+      if(snapshot.stale)return res.status(503).json({error:'Personeelsbron niet actueel'});
+      const notices=await db().collection('bpd_notices').doc('politie')
+        .collection('events').orderBy('createdAt','desc').limit(350).get();
+      const ids=notices.docs.filter(d=>d.get('type')==='voordracht_ereteken')
+        .slice(0,90).map(d=>({
+          caseId:String(d.get('caseId')||''),
+          entryId:String(d.get('entryId')||'')
+        })).filter(e=>/^politie_\d{15,22}$/.test(e.caseId)&&
+          /^[A-Za-z0-9]{10,40}$/.test(e.entryId));
+      const allowed=ids.map(e=>{
+        const discordId=e.caseId.slice(8);
+        const subject=uniqueSubject(snapshot.data,'politie',discordId);
+        return subject&&canReadPersonnelSubject(req.bpd,subject)?
+          {...e,subject,discordId}:null;
+      }).filter(Boolean);
+      const docs=allowed.length?await db().getAll(...allowed.map(e=>
+        db().collection('bpd_cases').doc(e.caseId).collection('entries').doc(e.entryId))):[];
+      const nominations=docs.flatMap((d,i)=>{
+        if(!d.exists||d.get('type')!=='voordracht_ereteken'||d.get('status')==='verwijderd')return [];
+        const e=allowed[i];
+        return [{discordId:e.discordId,entryId:e.entryId,call:e.subject.call,
+          name:e.subject.name,eventDate:d.get('eventDate')||null,
+          details:String(d.get('details')||'').slice(0,2000),
+          status:d.get('nominationStatus')||'pending'}];
+      });
+      res.set('Cache-Control','private, no-store');
+      return res.json({nominations,limited:notices.size===350||ids.length===90});
+    }catch(e){errorResponse(res,e)}
+  });
+  app.post('/api/management/award-nominations/decision',requireUser,async(req,res)=>{
+    if(!mayReviewNominations(req.bpd))return res.status(403).json({error:'Geen voordrachtbevoegdheid'});
+    const body=req.body||{},discordId=body.discordId,entryId=body.entryId;
+    const decision=body.decision,reason=String(body.reason||'').trim();
+    if(!validDiscord(discordId)||typeof entryId!=='string'||
+       !/^[A-Za-z0-9]{10,40}$/.test(entryId)||
+       !['approve','reject'].includes(decision)||reason.length<10||reason.length>500||
+       /[<>\x00-\x1f\x7f]/.test(reason)||
+       Object.keys(body).some(k=>!['discordId','entryId','decision','reason'].includes(k)))
+      return res.status(400).json({error:'Ongeldige beslissing of motivering'});
+    if(req.bpd.discordId===discordId)
+      return res.status(403).json({error:'Je kunt niet over je eigen voordracht beslissen'});
+    try{
+      const snapshot=await getSnapshot();
+      if(snapshot.stale)return res.status(503).json({error:'Personeelsbron niet actueel'});
+      const subject=uniqueSubject(snapshot.data,'politie',discordId);
+      if(!subject||!canReadPersonnelSubject(req.bpd,subject))
+        return res.status(403).json({error:'Afgeschermd dossier of geen eenduidige fiche'});
+      const ref=db().collection('bpd_cases').doc(caseId('politie',discordId))
+        .collection('entries').doc(entryId),at=FieldValue.serverTimestamp();
+      await db().runTransaction(async tx=>{
+        const doc=await tx.get(ref);
+        if(!doc.exists||doc.get('type')!=='voordracht_ereteken'||doc.get('status')==='verwijderd')
+          throw Object.assign(Error('Voordracht bestaat niet'),{status:404});
+        if(doc.get('nominationStatus')&&doc.get('nominationStatus')!=='pending')
+          throw Object.assign(Error('Voordracht is reeds beoordeeld'),{status:409});
+        tx.update(ref,{nominationStatus:decision==='approve'?'approved':'rejected',
+          nominationDecisionReason:reason,nominationDecidedBy:req.bpd.discordId,
+          nominationDecidedAt:at});
+        tx.create(ref.collection('audit').doc(),{
+          action:decision==='approve'?'nomination_approved':'nomination_rejected',
+          reason,actorDiscordId:req.bpd.discordId,at});
+      });
+      res.set('Cache-Control','private, no-store');
+      return res.json({saved:true,status:decision==='approve'?'approved':'rejected',
+        medalAwarded:false,message:'Voordracht beoordeeld. Een ereteken wordt afzonderlijk toegekend in Onderscheidingen.'});
+    }catch(e){
+      if(e?.status)return res.status(e.status).json({error:e.message});
+      errorResponse(res,e);
+    }
+  });
   // Members can inspect ONLY their own inactivity pings. Their verified
   // portal identity is supplied by requireUser, never by a URL/body ID.
   app.get('/api/management/pings/mine',requireMemberUser,async(req,res)=>{
