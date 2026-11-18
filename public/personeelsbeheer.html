@@ -3697,7 +3697,7 @@ function updateHistoricalObservationUi(){
   const participants=formalPermissions?.representatives||[];
   select.replaceChildren(option('','Selecteer oorspronkelijke observator'));
   for(const p of participants.filter(p=>p.dept==='politie'))
-    select.append(option(p.discordId,(p.call||'—')+' · '+p.name));
+    select.append(option(p.discordId,(p.call||'—')+' · '+p.name+' · '+(p.rank||'Politie')));
   if([...select.options].some(o=>o.value===old))select.value=old;
   const show=visible&&$('historicalObservationCheck').checked;
   $('historicalObservationSelection').hidden=!show;
