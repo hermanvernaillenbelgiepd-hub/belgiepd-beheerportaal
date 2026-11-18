@@ -157,6 +157,26 @@ button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
 </details>
 <p><a href="/verlofbeheer.html">Open het volledige verlofbeheer →</a></p>
 </section>
+<section class="leave-box" id="myHonorable" hidden aria-labelledby="honorableHeading">
+<h3 id="honorableHeading">Aanvraag eervol ontslag · Politie</h3>
+<p class="muted">Een aanvraag verwijdert je niet onmiddellijk uit de personeelslijst. Officierenkader of Korpsleiding beslist onafhankelijk. Historische dossiers, gevolgde opleidingen en verdiende eretekens blijven bewaard; bij herinstroom zijn rang en operationele bevoegdheden opnieuw te controleren.</p>
+<p id="honorableStatus" class="leave-state" role="status" aria-live="polite"></p>
+<form id="honorableForm" hidden>
+ <div class="leave-field"><label for="honorableReason">Waarom vraag je eervol ontslag aan? (10–500 tekens)</label>
+ <textarea id="honorableReason" minlength="10" maxlength="500" required placeholder="Omschrijf je reden zonder onnodige persoonlijke informatie."></textarea></div>
+ <div class="leave-actions"><button type="submit" id="honorableSubmit">Eervol ontslag aanvragen</button></div>
+</form>
+</section>
+<section class="leave-box" id="ownCorpsNotes" hidden aria-labelledby="corpsNotesHeading">
+<h3 id="corpsNotesHeading">Eigen dossiernotitie · Korpsleiding 900/910</h3>
+<p class="muted">Persoonlijke notitie voor het eigen beschermde politiedossier. Dit verleent geen inzage in dossiers van anderen en wijzigt geen rang, verloven of onderscheidingen.</p>
+<p id="ownCorpsNotesStatus" class="leave-state" role="status"></p>
+<form id="ownCorpsNotesForm" hidden>
+<div class="leave-field"><label for="ownCorpsNotesText">Notitie (10–4000 tekens)</label>
+<textarea id="ownCorpsNotesText" minlength="10" maxlength="4000" required placeholder="Inhoud van de eigen dossiernotitie"></textarea></div>
+<div class="leave-actions"><button type="submit" id="ownCorpsNotesSubmit">Notitie opslaan in eigen dossier</button></div>
+</form>
+</section>
 <div class="profile-actions">
 <button class="secondary" type="button" id="botRefresh">↻ Discord via bot vernieuwen</button>
 <button type="button" id="personalReload" class="secondary">↻ Mijn profiel vernieuwen</button>
@@ -433,6 +453,73 @@ $('leaveForm').onsubmit=async e=>{
   }
   finally{btn.disabled=false}
 };
+async function loadHonorable(){
+ const root=$('myHonorable'),form=$('honorableForm'),status=$('honorableStatus');
+ root.hidden=true;form.hidden=true;
+ if(!auth?.currentUser?.uid?.startsWith('discord:'))return;
+ try{
+  const details=await leaveRequest('/api/personnel-lifecycle/honorable/me');
+  root.hidden=false;
+  status.textContent=details.status==='pending'?
+    'Je aanvraag staat in behandeling bij de bevoegde leiding. Je dienstverband blijft actief.':
+    details.status==='approved'?
+      'Je eervol ontslag is goedgekeurd. Je loopbaanhistoriek blijft bewaard.':
+    details.status==='rejected'?
+      'Je vorige aanvraag werd afgewezen: '+(details.decisionReason||'Onbekende reden'):
+      'Er is momenteel geen aanvraag ingediend.';
+  form.hidden=!details.eligible||details.status==='pending';
+ }catch(e){
+  if(e.status===403||e.status===404)return;
+  root.hidden=false;
+  status.textContent='Status eervol ontslag momenteel niet beschikbaar. '+e.message;
+ }
+}
+$('honorableForm').onsubmit=async e=>{
+ e.preventDefault();
+ const reason=$('honorableReason').value.trim();
+ if(reason.length<10||reason.length>500)
+  return $('honorableStatus').textContent='Geef een motivering van 10 tot 500 tekens.';
+ if(!confirm('Aanvraag voor eervol ontslag indienen? Je dienstverband blijft actief tot een onafhankelijke goedkeuring.'))return;
+ const btn=$('honorableSubmit');btn.disabled=true;
+ try{
+  await leaveRequest('/api/personnel-lifecycle/honorable/request',{
+    department:'politie',reason});
+  $('honorableForm').reset();
+  await loadHonorable();
+ }catch(err){$('honorableStatus').textContent='Aanvraag niet ingediend: '+err.message}
+ finally{btn.disabled=false}
+};
+async function loadOwnCorpsNotes(){
+ const box=$('ownCorpsNotes'),form=$('ownCorpsNotesForm');
+ box.hidden=true;form.hidden=true;
+ if(!auth?.currentUser?.uid?.startsWith('discord:'))return;
+ try{
+  const ctx=await leaveRequest('/api/management/corps-note/me');
+  if(!ctx.allowed)return;
+  box.hidden=false;form.hidden=!ctx.writesEnabled;
+  $('ownCorpsNotesStatus').textContent=ctx.writesEnabled?
+    'Beschikbaar voor je eigen beschermde dossier '+ctx.subjectCall+'.':
+    'Dossiernotities schrijven is momenteel uitgeschakeld.';
+ }catch(e){
+  if(e.status===403||e.status===404)return;
+  box.hidden=false;
+  $('ownCorpsNotesStatus').textContent='Notities tijdelijk niet beschikbaar: '+e.message;
+ }
+}
+$('ownCorpsNotesForm').onsubmit=async e=>{
+ e.preventDefault();
+ const details=$('ownCorpsNotesText').value.trim();
+ if(details.length<10||details.length>4000){
+  $('ownCorpsNotesStatus').textContent='Vul 10 tot 4000 tekens in.';return;
+ }
+ const btn=$('ownCorpsNotesSubmit');btn.disabled=true;
+ try{
+  await leaveRequest('/api/management/corps-note/me',{details});
+  $('ownCorpsNotesForm').reset();
+  $('ownCorpsNotesStatus').textContent='De notitie is geregistreerd in je eigen beschermde dossier.';
+ }catch(e){$('ownCorpsNotesStatus').textContent='Niet opgeslagen: '+e.message}
+ finally{btn.disabled=false}
+};
 async function loadNewMemberStatus(){
  const user=auth?.currentUser;
  $('myLeave').hidden=true;
@@ -480,7 +567,7 @@ async function showProfile(){const user=auth.currentUser;
     let {r,data}=await load(false);
     if(r.status===401)({r,data}=await load(true));
     if(!r.ok)throw new Error(data.error||'Discord-profiel kon niet worden geverifieerd');$('profile').hidden=false;updateConnectionCard(true);loadedFor=null;$('name').textContent=data.name||'Onbekend';$('discordId').textContent=data.discordId;$('joined').textContent=data.joinedAt?new Date(data.joinedAt).toLocaleString('nl-BE'):'Onbekend';$('verified').textContent=data.lastVerifiedAt?new Date(data.lastVerifiedAt).toLocaleString('nl-BE'):'Onbekend';currentRoles=data.roleIds||[];knownRoleNames=new Map(Object.entries(data.roleNames||{}));renderAdvancedRoles();state('Discord-lidmaatschap geverifieerd. Je volledige profiel staat hieronder.');
-await Promise.all([loadPersonal(),loadNewMemberStatus()]);
+await Promise.all([loadPersonal(),loadNewMemberStatus(),loadHonorable(),loadOwnCorpsNotes()]);
 return true;
 }catch(e){updateConnectionCard(false);$('profile').hidden=true;
   state('Geen actieve Discord-verificatie: '+e.message+'. Klik op Aanmelden met Discord om opnieuw te verbinden.',true);
