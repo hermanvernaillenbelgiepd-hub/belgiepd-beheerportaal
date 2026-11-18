@@ -29,7 +29,8 @@ export const DECORATION_CATALOG=Object.freeze([
  {id:'lint_blauw_wit',label:'Dienstlint blauw-wit',kind:'ribbon',color:'blue-white',priority:90},
  {id:'lint_rood_zwart',label:'Dienstlint rood-zwart',kind:'ribbon',color:'red-black',priority:100},
  {id:'lint_blauw_zilver',label:'Dienstlint blauw-zilver',kind:'ribbon',color:'blue-silver',priority:110},
- {id:'lint_blauw_goud_breed',label:'Dienstlint blauw met gouden middenstreep',kind:'ribbon',color:'gold-blue',priority:120}
+ {id:'lint_blauw_goud_breed',label:'Dienstlint blauw met gouden middenstreep',kind:'ribbon',color:'gold-blue',priority:120},
+ {id:'korpspluim',label:'Korpspluim',kind:'badge',color:'gold',priority:5}
 ]);
 export const CATALOG_BY_ID=new Map(DECORATION_CATALOG.map(v=>[v.id,v]));
 // Built-in labels can be edited without changing their stable catalogue IDs.
@@ -88,7 +89,7 @@ export function canManagePoliceDecoration(actor,subject){
  // Never extend dossier-read, personnel-edit or Discord-role permissions.
  return Boolean(subject&&subject.dept==='politie'&&
   validPersonnelKey('politie',subject.personId)&&
-  canManagePoliceDecorationCatalog(actor));
+  actor?.discordId!==subject.personId&&canManagePoliceDecorationCatalog(actor));
 }
 export const awardKey=(dept,id)=>validPersonnelKey(dept,id)?dept+'_'+id:null;
 export function isDecorationActive(entry,today=brusselsToday()){
@@ -96,10 +97,17 @@ export function isDecorationActive(entry,today=brusselsToday()){
    (!entry.endDate||validDate(entry.endDate)&&entry.endDate>=today));
 }
 export function publicDecorations(entries,today=brusselsToday(),extras=new Map()){
- return (Array.isArray(entries)?entries:[])
-  .filter(a=>a?.public===true&&isDecorationActive(a,today)&&lookupCatalog(a.catalogId,extras))
-  .sort((a,b)=>lookupCatalog(a.catalogId,extras).priority-lookupCatalog(b.catalogId,extras).priority)
-  .slice(0,30).map(a=>({...lookupCatalog(a.catalogId,extras)}));
+ const active=(Array.isArray(entries)?entries:[])
+   .filter(a=>a?.public===true&&isDecorationActive(a,today)&&lookupCatalog(a.catalogId,extras))
+   .sort((a,b)=>lookupCatalog(a.catalogId,extras).priority-lookupCatalog(b.catalogId,extras).priority);
+ // Repeatable approved Korpspluim mentions show one badge with an audited count.
+ const mentionCount=active.filter(a=>a.catalogId==='korpspluim').length;
+ return active.filter((a,index)=>a.catalogId!=='korpspluim'||
+   active.findIndex(x=>x.catalogId==='korpspluim')===index)
+   .slice(0,30).map(a=>({
+     ...lookupCatalog(a.catalogId,extras),
+     ...(a.catalogId==='korpspluim'?{count:mentionCount}:{})
+   }));
 }
 export function manageDecorations(entries,today=brusselsToday(),extras=new Map()){
  return (Array.isArray(entries)?entries:[]).filter(a=>a&&lookupCatalog(a.catalogId,extras))
