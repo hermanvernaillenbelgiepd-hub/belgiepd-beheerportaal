@@ -70,7 +70,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const actor=actorFromPersonnel(req.bpd,subset);
       const importConfig=await historicalSettings();
       const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))&&importConfig.enabled===true?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
-         .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call})):[];
+         .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank})):[];
        const sanctionDepartments=['politie','brandweer','ambulance','depannage'].filter(d=>
          (req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&
          maySubmit(req.bpd,'sanctie',d)&&permittedDepartmentSanctions(d,dossierAuthorityRole(req.bpd,d),10).length>0);
