@@ -54,7 +54,7 @@ export function validateHistoricalMigrationToggle(data){
 }
 export function historicalMigrationAllowed(actor,dept,type,config){
  return dept==='politie'&&
-  ['sanctie','notitie','inactiviteitsping','verlof'].includes(type)&&
+  ['sanctie','notitie','algemene_notitie','inactiviteitsping','verlof'].includes(type)&&
   config?.enabled===true&&canManageHistoricalObservationImport(actor);
 }
 export function validateHistoricalActorSelection(actorId,reason,loggedInDiscordId){
