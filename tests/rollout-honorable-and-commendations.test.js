@@ -41,6 +41,8 @@ test('eervol ontslag vergt eigen aanvraag, onafhankelijke beslissing en behoud',
  assert.match(api,/if\(approved\)invalidateLifecycle\(\)/);
  assert.match(api,/cause:'honorable_resignation'/);
  assert.match(api,/cmsRoleSyncPending:true/);
+ assert.match(api,/honorableResignation:true/);
+ assert.match(api,/if\(action==='activate'&&prev\.honorableResignation===true\)/);
  assert.doesNotMatch(api,/tx\.delete\(.*bpd_/);
 });
 test('900 and 910 own notes cannot open general protected dossiers',()=>{
@@ -64,4 +66,17 @@ test('rollout personnel management UI stays valid ES module',()=>{
   input:html.slice(start+'<script type="module">'.length,end),encoding:'utf8',timeout:10000
  });
  assert.equal(checked.status,0,checked.stderr);
+});
+
+test('voordrachten hebben afzonderlijk beveiligd overzicht en expliciete beslissing',()=>{
+ const api=src('src/management-routes.js');
+ const ui=src('public/personeelsbeheer.html');
+ assert.match(api,/app\.get\('\/api\/management\/award-nominations',requireUser/);
+ assert.match(api,/app\.post\('\/api\/management\/award-nominations\/decision',requireUser/);
+ assert.match(api,/mayReviewNominations\(req\.bpd\)/);
+ assert.match(api,/canReadPersonnelSubject\(req\.bpd,subject\)/);
+ assert.match(api,/nominationStatus:decision==='approve'\?'approved':'rejected'/);
+ assert.match(api,/medalAwarded:false/);
+ assert.match(ui,/id="refreshNominations"/);
+ assert.match(ui,/id="nominationEntries"/);
 });
