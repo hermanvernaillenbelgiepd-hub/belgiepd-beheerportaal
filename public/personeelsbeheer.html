@@ -2926,6 +2926,7 @@ const staffCaseValues=['staffEndDate','staffCourseName','staffProposedRank','sta
 const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   opleiding:'Gevolgde opleiding',naamswijziging:'Naamswijziging (registratie)',
   promotievoorstel:'Promotievoorstel (geen automatische promotie)',
+  voordracht_ereteken:'Voordracht tot ereteken/medaille (geen automatische toekenning)',
   personeelsbeweging:'Personeelsbeweging (registratie)',
   activiteit:'Dienstactiviteit',specialisatiebeperking:'Beperking van specialisatie',
   inactiviteitsping:'Inactiviteitsping',
@@ -3410,7 +3411,7 @@ function sheetCaseRows(entries,limited){
     'Geen personeelsbewegingen geregistreerd.',limited);
   // Houd gewone activiteiten buiten de belangrijke-notitierubriek.
   // Geverifieerde kadernotities en beperkingen verschijnen hier automatisch.
-  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking','inactiviteitsping'].includes(x.type));
+  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking','inactiviteitsping','voordracht_ereteken'].includes(x.type));
   importantCaseLimited=Boolean(limited);
   renderDossierImportantNotes();
 }
