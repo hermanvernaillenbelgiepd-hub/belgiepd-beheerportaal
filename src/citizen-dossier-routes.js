@@ -209,7 +209,8 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
           if((iso(old.modifiedAt)||null)!==proposal.expectedModifiedAt)
             throw Object.assign(Error('Observatie werd intussen gewijzigd. Vernieuw het dossier.'),{status:409});
           const before={eventDate:old.eventDate,details:old.details,score:old.score};
-          if(JSON.stringify(before)===JSON.stringify(proposal.entry))
+          if(before.eventDate===proposal.entry.eventDate&&
+            before.details===proposal.entry.details&&before.score===proposal.entry.score)
             throw Object.assign(Error('Geen wijzigingen vastgesteld'),{status:400});
           const at=FieldValue.serverTimestamp();
           tx.update(ref,{eventDate:proposal.entry.eventDate,
