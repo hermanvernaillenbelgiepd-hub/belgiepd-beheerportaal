@@ -67,6 +67,18 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     }catch(e){return errorResponse(res,e)}
   });
 
+  app.get('/api/management/cases',requireUser,async(req,res)=>{
+    const dept=asString(req.query.dept),id=asString(req.query.discordId);
+    if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
+    if(!validDiscord(id))return res.status(400).json({error:'Ongeldige Discord ID'});
+    try{
+      const snap=await getSnapshot(),subject=uniqueSubject(snap.data,dept,id);
+      if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
+      if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
+      const rows=await db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').orderBy('createdAt','desc').limit(150).get();
+      res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},entries:rows.docs.filter(d=>d.get('status')!=='verwijderd').map(d=>({id:d.id,...noPrivate(d.data())})),limited:rows.docs.length===150});
+    }catch(e){errorResponse(res,e)}
+  });
   // Narrow self-note exception: verified 900/910 Korpsleiding can append
   // an own note without gaining access to any other protected dossier.
   const ownCorpsNoteSubject=async actor=>{
@@ -116,18 +128,6 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       await batch.commit();
       res.set('Cache-Control','private, no-store');
       return res.status(201).json({saved:true,reference:item.id});
-    }catch(e){errorResponse(res,e)}
-  });
-  app.get('/api/management/cases',requireUser,async(req,res)=>{
-    const dept=asString(req.query.dept),id=asString(req.query.discordId);
-    if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
-    if(!validDiscord(id))return res.status(400).json({error:'Ongeldige Discord ID'});
-    try{
-      const snap=await getSnapshot(),subject=uniqueSubject(snap.data,dept,id);
-      if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
-      if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
-      const rows=await db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').orderBy('createdAt','desc').limit(150).get();
-      res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},entries:rows.docs.filter(d=>d.get('status')!=='verwijderd').map(d=>({id:d.id,...noPrivate(d.data())})),limited:rows.docs.length===150});
     }catch(e){errorResponse(res,e)}
   });
   app.post('/api/management/cases',requireUser,async(req,res)=>{
