@@ -3755,6 +3755,15 @@ async function loadLinkedPersonnelRecords(p,key){
           const body=document.createElement('p');
           body.textContent=String(row.details||'').slice(0,4000);
           div.append(title,body);
+          if(row.historicalImport){
+            const provenance=document.createElement('small');
+            provenance.textContent='Historische overname · oorspronkelijk: '+
+              (row.registeredBy?.name||'Onbekend')+
+              ' · ingevoerd door: '+(row.importedBy?.name||'Onbekend')+
+              ' · bron: '+(row.onBehalfReason||'Niet vermeld')+
+              (row.historicalPing?' · GEEN nieuwe ping verstuurd':'');
+            div.append(provenance);
+          }
           attachRetireButton(div,row,'cases');
           addManualCaseCorrectionControls(div,row,p,key);
           cases.append(div);
