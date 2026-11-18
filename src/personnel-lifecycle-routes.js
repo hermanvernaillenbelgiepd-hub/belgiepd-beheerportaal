@@ -1,18 +1,23 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {PERSONNEL_LIFECYCLE_COLLECTION,LIFECYCLE_SERVICES,lifecycleKey,validateLifecycleAction,
  lifecycleSourceSnapshot,possibleDiscordDepartures,HONORABLE_REQUEST_COLLECTION,
- validateHonorableRequest,validateHonorableDecision} from './personnel-lifecycle-policy.js';
+ validateHonorableRequest,validateHonorableDecision,validateHonorableInpActivation,
+ honorablePreviousTraining} from './personnel-lifecycle-policy.js';
 import {canManageLifecycleDepartment,canReadPersonnelLifecycle,
  canManagePersonnelLifecycle} from './personnel-lifecycle-access.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
+import {verifyGuildAuthorizationRoles} from './discord-guild-authorization.js';
+import {ROLE_CATALOG} from './role-catalog.js';
+import {USER_COLLECTION} from './user-access.js';
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 const respond=(res,e)=>{
  if(e?.status)return res.status(e.status).json({error:e.message});
  console.error('Personeelsarchief:',e?.code||'unknown');
  return res.status(503).json({error:'Personeelsarchief momenteel niet beschikbaar'});
 };
-export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,invalidateLifecycle}){
+export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,invalidateLifecycle,
+ invalidateUserAccess=()=>{}}){
  const db=()=>getFirestore();
  const store=()=>db().collection(PERSONNEL_LIFECYCLE_COLLECTION);
  const allowed=canManagePersonnelLifecycle;
@@ -169,7 +174,12 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
       archivedAt:d.get('archivedAt')?.toDate?.()?.toISOString?.()||null,
       revision:d.get('revision')||0,
       canRestore:d.get('state')==='archived'&&allowed(req.bpd,byId.get(d.get('discordId'))),
-      canActivate:d.get('state')==='pending'&&allowed(req.bpd,byId.get(d.get('discordId'))),
+      canActivate:d.get('state')==='pending'&&d.get('honorableResignation')!==true&&
+        allowed(req.bpd,byId.get(d.get('discordId'))),
+      canActivateInp:d.get('state')==='pending'&&d.get('honorableResignation')===true&&
+        allowed(req.bpd,byId.get(d.get('discordId'))),
+      previousSpecializationTraining:d.get('honorableResignation')===true?
+        honorablePreviousTraining(d.get('snapshot')):[],
       lastHours:Number.isFinite(d.get('snapshot')?.totalHours)?d.get('snapshot').totalHours:null}));
    res.set('Cache-Control','private, no-store');
    return res.json({entries,limited:false});
@@ -207,6 +217,9 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
     revision:Number.isSafeInteger(d.revision)?d.revision:0,
     canManage:allowed(req.bpd,person),
     cause:d.cause||'',cmsRoleSyncPending:d.cmsRoleSyncPending===true,
+    honorableResignation:d.honorableResignation===true,
+    previousSpecializationTraining:d.honorableResignation===true?
+      honorablePreviousTraining(d.snapshot):[],
     lastHours:Number.isFinite(person.hours)?person.hours:null,
     totalHours:Number.isFinite(person.totalHours)?person.totalHours:null,
     lastConnection:person.lastConnection||null,
@@ -216,6 +229,112 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
      at:x.get('at')?.toDate?.()?.toISOString?.()||null}))});
   }catch(e){return respond(res,e)}
  });
+
+ // Separate independently approved appointment. The authenticated Discord bot
+ // must see a NORMAL Police+Basiskader membership with ALL old cadre and
+ // specialist roles removed before an archived officer can become INP.
+ app.post('/api/personnel-lifecycle/politie/:discordId/activate-inp',requireUser,async(req,res)=>{
+  let input;
+  try{input=validateHonorableInpActivation(req.body)}
+  catch(e){return respond(res,fail(400,e.message))}
+  try{
+   const discordId=req.params.discordId;
+   const person=await resolve('politie',discordId);
+   if(!allowed(req.bpd,person))throw fail(403,
+     'Alleen onafhankelijke bevoegde Politieleiding kan deze herinstroom goedkeuren');
+   const membership=await verifyGuildAuthorizationRoles(discordId,{cacheResults:false});
+   if(membership.status!=='ok')throw fail(409,
+     'Actuele Discord-lidmaatschapscontrole via de bot is vereist');
+   const ids=new Set(membership.roleIds);
+   const POLICE='1309532438053130326',BASIC='1351212180120408166';
+   if(!ids.has(POLICE)||!ids.has(BASIC))throw fail(409,
+     'Vóór INP-herinstroom moet het lid de politie- en basiskaderrol in Discord hebben');
+   const forbidden=new Set([
+     '1335578488664490057','1473474238664020151','1562710901080068229',
+     ...ROLE_CATALOG.filter(x=>
+       x.dept==='politie'&&x.kind==='specialisatie'||
+       x.dept==='dispatch'&&x.kind==='specialisatie'
+     ).map(x=>x.id)
+   ]);
+   if([...forbidden].some(id=>ids.has(id)))throw fail(409,
+     'Verwijder eerst oude leidinggevende en specialisatie-/instructeursrollen via CMS');
+   const roster=await getSnapshot({includeArchived:true});
+   if(roster.stale)throw fail(503,'Personeelsbron is niet actueel');
+   const duplicate=roster.data.some(p=>p.dept==='politie'&&p.personId!==discordId&&
+     !['archived','pending'].includes(p.lifecycleState)&&
+     /^(?:S[- ]?)?4\d{2}$/i.test(String(p.call||''))&&
+     Number(String(p.call).match(/4\d{2}/)[0])===Number(input.newCall));
+   if(duplicate)throw fail(409,'Dit INP-nummer is al in gebruik');
+   const lifecycleRef=store().doc('politie_'+discordId);
+   const accountRef=db().collection(USER_COLLECTION).doc(discordId);
+   const result=await db().runTransaction(async tx=>{
+     const [life,user]=await Promise.all([tx.get(lifecycleRef),tx.get(accountRef)]);
+     if(life.get('state')!=='pending'||life.get('honorableResignation')!==true)
+       throw fail(409,'Geen gecontroleerde herinstroom na eervol ontslag gevonden');
+     const revision=life.get('revision')||0;
+     if(revision!==input.expectedRevision)throw fail(409,'Herlaad het archief: revisie gewijzigd');
+     const previous=life.get('snapshot');
+     if(!previous||previous.dept!=='politie'||previous.personId!==discordId)
+       throw fail(409,'Historisch dossier is niet eenduidig');
+     if(user.exists&&user.get('status')==='blocked')
+       throw fail(409,'Geblokkeerd portaalaccount vereist afzonderlijke vrijgave');
+     const stored=user.exists?user.data():{};
+     const priorDepts=Array.isArray(stored.departments)?stored.departments
+       .filter(x=>['politie','brandweer','ambulance','depannage','burger'].includes(x)):[];
+     const departments=[...new Set([...priorDepts,'politie'])];
+     const roleRank={basiskader:1,middenkader:2,officierenkader:3,korpsleiding:4};
+     const departmentRoles={};
+     for(const dept of departments){
+       departmentRoles[dept]=dept==='politie'?'basiskader':
+         roleRank[stored.departmentRoles?.[dept]]?stored.departmentRoles[dept]:'basiskader';
+     }
+     const role=Object.values(departmentRoles).reduce((best,cur)=>
+       roleRank[cur]>roleRank[best]?cur:best,'basiskader');
+     const at=FieldValue.serverTimestamp();
+     const assignment={rank:'Inspecteur',call:input.newCall,series:input.series,
+       confirmed:true,at,approvedBy:req.bpd.discordId,
+       trainingHistory:honorablePreviousTraining(previous)};
+     tx.set(lifecycleRef,{
+       state:'active',revision:revision+1,restoreFromArchive:true,
+       honorableInpAssignment:assignment,cmsRoleSyncPending:false,
+       restoredAt:at,updatedAt:at,updatedByUid:req.bpd.uid,
+       updatedByDiscordId:req.bpd.discordId
+     },{merge:true});
+     tx.set(accountRef,{
+       discordId,status:'approved',departments,departmentRoles,role,
+       serviceFunctions:{...(stored.serviceFunctions||{}),politie:'basiskader'},
+       approvalSource:'honorable_inp_reentry',
+       ...(user.exists?{}:{createdAt:at}),
+       approvedAt:at,approvedBy:req.bpd.discordId,updatedAt:at
+     },{merge:true});
+     tx.create(accountRef.collection('audit').doc(),{
+       action:'honorable_inp_reentry',actorDiscordId:req.bpd.discordId,
+       department:'politie',role:'basiskader',reason:input.reason,at
+     });
+     tx.create(lifecycleRef.collection('audit').doc(),{
+       action:'honorable_inp_activated',cause:'honorable_resignation',
+       previousRank:String(previous.rank||'').slice(0,100),
+       newRank:'Inspecteur',newCall:input.newCall,
+       reason:input.reason,revision:revision+1,
+       actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,at
+     });
+     tx.create(db().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+       type:'personnel_restored',dept:'politie',discordId,
+       name:String(previous.name||'').slice(0,120),call:input.newCall,
+       before:'Eervol uit dienst',after:'INP · Actief',
+       reason:input.reason,actorDiscordId:req.bpd.discordId,at
+     });
+     return {state:'active',revision:revision+1,rank:'Inspecteur',
+       call:input.newCall,series:input.series,
+       previousSpecializationTraining:assignment.trainingHistory};
+   });
+   invalidateLifecycle();invalidateUserAccess(discordId);
+   res.set('Cache-Control','private, no-store');
+   return res.json({...result,historyPreserved:true,
+     oldSpecializationRightsRestored:false,discordRolesChanged:false});
+  }catch(e){return respond(res,e)}
+ });
+
  for(const action of ['archive','restore','activate']){
   app.post('/api/personnel-lifecycle/:dept/:discordId/'+action,requireUser,async(req,res)=>{
    const {dept,discordId}=req.params;
