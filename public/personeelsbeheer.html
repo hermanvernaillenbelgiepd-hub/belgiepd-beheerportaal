@@ -1257,6 +1257,7 @@ let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
 let activeLeaveRosterIds=new Set();
+let activeLeaveRosterLoadState='ready'; // ready | loading | unavailable
 let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=[],writesEnabled=false,createEnabled=false,promotionsEnabled=false,testMode=true,createRanks={},staffDossierRevision=0,staffDossierCanMaintain=false;
 let currentLifecycleRevision=0;
 let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
@@ -2155,7 +2156,9 @@ function render(){
     dept==='ambulance'?'ambulance':dept==='brandweer'?'brandweer':
       dept==='depannage'?'depannage':'series-desc'
   );
-  $('count').textContent=matches.length+' fiche(s) zichtbaar';
+  $('count').textContent=matches.length+' fiche(s) zichtbaar'+
+    (activeLeaveRosterLoadState==='loading'?' · verlofstatus wordt gecontroleerd':
+     activeLeaveRosterLoadState==='unavailable'?' · verlofstatus niet geverifieerd':'');
   // AE-I, AE-T, AE-Teamleader and AE-Instructeur are function levels,
   // never additional public or management roster columns.
   const custom=(rosterConfigs[dept]?.customSpecialties||[])
@@ -2799,7 +2802,7 @@ async function load(){
     lifecycleDepartments=[];
     $('personnelArchivePanel').hidden=true;closeUnifiedCard();
     for(const link of document.querySelectorAll('[data-personnel-staff],[data-personnel-leadership]'))link.hidden=true;
-    updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
+    updatePersonnelView();$('rosterColumnAdmin').hidden=true;rosterCanEdit=false;rosterConfigs=Object.create(null);people=[];pendingPeople=[];selected=null;activeLeaveRosterIds=new Set();activeLeaveRosterLoadState='ready';$('panel').hidden=true;createRanks={};promotionsEnabled=false;rankChangesEnabled=false;rankChoices=[];$('promotionPanel').hidden=true;$('newBtn').hidden=true;$('newPanel').hidden=true;render();$('mode').hidden=true;notice('Meld je aan om personeelsfiches te bekijken.');return}
   try{
     // Launch all independently authenticated requests together. Only the
     // verified roster and column layout block the first paint; auxiliary
@@ -2880,6 +2883,7 @@ async function load(){
     // Leave projection is non-authoritative UI metadata. Keep the previous
     // status while it loads; absence of a verified result never invents leave.
     activeLeaveRosterIds=new Set();
+    activeLeaveRosterLoadState='loading';
     render();updateFicheColleagues();updatePersonnelView();
     if(data.canViewPersonnelDiagnostics===true)
       console.info('BelgiumPD personeelslijst: eerste weergave',
@@ -2905,16 +2909,17 @@ async function load(){
     });
     void leavePromise.then(todayLeave=>{
       if(!stillCurrent())return;
+      activeLeaveRosterLoadState=todayLeave?'ready':'unavailable';
       if(todayLeave){
         activeLeaveRosterIds=new Set(todayLeave.activeDiscordIds||[]);
         if(todayLeave.limited===true)
           notice('Niet alle verlofperiodes zijn geladen; de actuele status kan onvolledig zijn.',true);
-        render();updateFicheColleagues();updatePersonnelView();
-        if(selected&&!$('panel').hidden)
-          renderDossierStatus($('sheetStatus'),selected.status,{
-            leave:activeLeaveRosterIds.has(selected.discordId)
-          });
       }
+      render();updateFicheColleagues();updatePersonnelView();
+      if(todayLeave&&selected&&!$('panel').hidden)
+        renderDossierStatus($('sheetStatus'),selected.status,{
+          leave:activeLeaveRosterIds.has(selected.discordId)
+        });
     });
     if(prefill&&/^\d{15,22}$/.test(prefill)){
       const matching=people.filter(p=>p.discordId===prefill&&
