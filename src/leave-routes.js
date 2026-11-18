@@ -2,7 +2,7 @@ import {getFirestore,FieldValue,FieldPath} from 'firebase-admin/firestore';
 import {getAuth} from 'firebase-admin/auth';
 import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
-  mayRegisterCentralManualLeave,mayApproveLeave,
+  mayRegisterCentralManualLeave,maySubmitManualLeaveForApproval,mayApproveLeave,
   mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,
   validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,parseDay} from './leave-policy.js';
 import {activeLeaveCollision,planLeaveExtension} from './leave-extension-policy.js';
@@ -28,7 +28,9 @@ const iso=t=>t?.toDate?.().toISOString?.()||null;
 const item=(doc,showNote=false)=>{
   const d=doc.data();
   return {id:doc.id,personDiscordId:d.personDiscordId,subjectName:d.subjectName,
-    subjectDepartments:d.subjectDepartments||[],startDate:d.startDate,endDate:d.endDate,
+    subjectDepartments:d.subjectDepartments||[],subjectCall:d.subjectCall||'',
+    manual:d.manual===true,manualPendingReview:d.manualPendingReview===true,
+    startDate:d.startDate,endDate:d.endDate,
     days:d.days,status:d.status,canWithdraw:leaveCanWithdraw(d,yyyyMmDd()),
     canExtend:d.status==='approved'&&d.endDate>=yyyyMmDd(),
     extensionOf:d.extensionOf||null,totalPeriodDays:d.totalPeriodDays||null,
@@ -640,15 +642,27 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       // The target's approved role can strengthen roster classification.
       // The roster is always checked server-side, never accepted from the UI.
       let subjectPoliceRole=policeProfile?rosterPoliceRole(policeProfile):null;
+      let verifiedTarget=null;
       if(policeProfile){
         try{
-          const verified=await targetAccount(personId);
-          subjectPoliceRole=roleForDepartment(verified,'politie')||subjectPoliceRole;
+          verifiedTarget=await targetAccount(personId);
+          subjectPoliceRole=roleForDepartment(verifiedTarget,'politie')||subjectPoliceRole;
         }catch{/* no permission is inferred from an unapproved account */}
       }
-      if(!mayRegisterCentralManualLeave(req.bpd,personId,details.days,
-          subjectPoliceRole,Boolean(policeProfile)))
-        throw rejection('Enkel bevoegd politioneel kader kan dit verlof registreren; controleer duur en rang',403);
+      const canApproveDirectly=mayRegisterCentralManualLeave(req.bpd,personId,details.days,
+        subjectPoliceRole,Boolean(policeProfile));
+      const needsHigherApproval=!canApproveDirectly&&
+        maySubmitManualLeaveForApproval(req.bpd,personId,details.days,
+          subjectPoliceRole,Boolean(policeProfile));
+      if(!canApproveDirectly&&!needsHigherApproval)
+        throw rejection(details.days>30&&roleForDepartment(req.bpd,'politie')==='middenkader'?
+          'Dit verlof telt '+details.days+' kalenderdagen. Alleen Officierenkader of Korpsleiding kan het goedkeuren. Een reekshoofd kan uitsluitend verlof van een lager politielid ter goedkeuring indienen.':
+          'Enkel bevoegd politioneel kader kan dit verlof registreren; controleer duur en rang',403);
+      const status=needsHigherApproval?'pending':'approved';
+      const subjectDepartmentRoles=Object.fromEntries(departments.map(service=>[
+        service,service==='politie'?subjectPoliceRole:
+          verifiedTarget?roleForDepartment(verifiedTarget,service):null
+      ]));
       const uniqueId='manual_central_'+personId+'_'+details.startDate+'_'+details.endDate;
       const ref=db().collection(coll).doc(uniqueId);
       const subject=matched.find(p=>p.dept===dept)||matched[0];
@@ -661,29 +675,33 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           throw rejection('Verlofhistoriek is te groot voor een veilige controle',503);
         const collision=existing.docs.some(doc=>{
           const old=doc.data();
-          return old.status==='approved'&&old.startDate<=details.endDate&&
-            old.endDate>=details.startDate;
+          return ['pending','approved'].includes(old.status)&&
+            old.startDate<=details.endDate&&old.endDate>=details.startDate;
         });
-        if(collision)throw rejection('Deze periode overlapt een reeds goedgekeurd verlof',409);
+        if(collision)throw rejection('Deze periode overlapt een lopende of reeds goedgekeurde verlofaanvraag',409);
         const previous=await tx.get(ref);
         if(previous.exists)throw rejection('Deze verlofregistratie bestaat al',409);
-        tx.create(ref,{...details,manual:true,personDiscordId:personId,
-          subjectName:subject.name,subjectDepartments:departments,
-          status:'approved',submittedByUid:req.bpd.uid,
-          submittedByDiscordId:req.bpd.discordId,
-          decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
+        tx.create(ref,{...details,manual:true,manualPendingReview:needsHigherApproval,
+          personDiscordId:personId,subjectName:subject.name,subjectCall:subject.call,
+          subjectDepartments:departments,subjectDepartmentRoles,
+          subjectRole:subjectPoliceRole,status,autoApproved:false,
+          submittedByUid:req.bpd.uid,submittedByDiscordId:req.bpd.discordId,
+          ...(!needsHigherApproval?{
+            decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
+            decidedAt:FieldValue.serverTimestamp()
+          }:{}),
           createdAt:FieldValue.serverTimestamp(),
-          decidedAt:FieldValue.serverTimestamp(),
           updatedAt:FieldValue.serverTimestamp()});
         writeLeaveEvent(tx,{requestRef:ref,request:{
           ...details,personDiscordId:personId,subjectName:subject.name,
-          subjectCall:subject.call,subjectDepartments:departments,status:'approved'
-        },action:'manual_approved',actor:{
+          subjectCall:subject.call,subjectDepartments:departments,status
+        },action:needsHigherApproval?'manual_submitted':'manual_approved',actor:{
           discordId:req.bpd.discordId,name:'Politioneel kader',call:''
-        },actorUid:req.bpd.uid,eventDate:yyyyMmDd(),to:'approved',note:details.note});
+        },actorUid:req.bpd.uid,eventDate:yyyyMmDd(),to:status,note:details.note});
       });
-      return res.status(201).json({id:uniqueId,status:'approved',
-        days:details.days,manual:true,departments});
+      return res.status(201).json({id:uniqueId,status,
+        days:details.days,manual:true,departments,
+        submittedForApproval:needsHigherApproval});
     }catch(e){return jsonError(res,e)}
   });
   // Granting the portal's temporary VERLOFBEHEER function does NOT mutate
