@@ -9,7 +9,10 @@ import {activeLeaveCollision,planLeaveExtension} from './leave-extension-policy.
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {leaveCanWithdraw,leaveCanReapply,writeLeaveEvent} from './leave-event-log.js';
-import {actorFromPersonnel} from './registrations.js';
+import {actorFromPersonnel,representativeFromPersonnel} from './registrations.js';
+import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_DOC,
+ historicalMigrationSettings,historicalMigrationAllowed,validateHistoricalActorSelection}
+ from './historical-observation-import-policy.js';
 import {SERIES_LEADERS,personSeries} from './training-request-policy.js';
 import {canRetireDossierRecord} from './dossier-retirement-policy.js';
 
@@ -635,6 +638,21 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
     catch(e){return res.status(400).json({error:e.message})}
     try{
       const {snapshot}=await context(req);
+      const representedId=String(req.body?.onBehalfOfDiscordId||'').trim();
+      let originalAuthor=null,onBehalfReason='';
+      if(representedId){
+        const config=await db().collection(HISTORICAL_OBSERVATION_SETTINGS)
+          .doc(HISTORICAL_OBSERVATION_DOC).get();
+        if(!historicalMigrationAllowed(req.bpd,dept,'verlof',historicalMigrationSettings(config.data())))
+          throw rejection('Historische verlofovername is uitgeschakeld of niet toegestaan',403);
+        try{onBehalfReason=validateHistoricalActorSelection(representedId,
+          req.body.onBehalfReason,req.bpd.discordId).reason}
+        catch(e){throw rejection(e.message)}
+        if(details.endDate>=yyyyMmDd())
+          throw rejection('Historisch overgenomen verlof moet volledig in het verleden liggen');
+        originalAuthor=representativeFromPersonnel(snapshot,'politie',representedId);
+        if(!originalAuthor)throw rejection('Oorspronkelijke registrator niet gevonden in de personeelslijst');
+      }
       const matched=personRecords(snapshot,personId);
       if(!matched.some(p=>p.dept===dept))
         throw rejection('Personeelslid ontbreekt in de geselecteerde hulpdienst',404);
@@ -683,6 +701,11 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         const previous=await tx.get(ref);
         if(previous.exists)throw rejection('Deze verlofregistratie bestaat al',409);
         tx.create(ref,{...details,manual:true,manualPendingReview:needsHigherApproval,
+          historicalImport:Boolean(originalAuthor),importSource:originalAuthor?'spreadsheet':null,
+          registeredBy:originalAuthor||null,onBehalfOf:originalAuthor||null,
+          onBehalfReason,submittedByActor:actorFromPersonnel(req.bpd,snapshot)||{
+            discordId:req.bpd.discordId,name:'Politioneel kader',call:''
+          },
           personDiscordId:personId,subjectName:subject.name,subjectCall:subject.call,
           subjectDepartments:departments,subjectDepartmentRoles,
           subjectRole:subjectPoliceRole,status,autoApproved:false,
