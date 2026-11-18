@@ -2163,7 +2163,7 @@ function normalizeSpecialtyBadges(card){
  for(const badge of badges)badge.classList.add('person-profile-specialty-badge');
 }
 // Alleen visuele presentatie: dit zijn kwalificaties zonder instructeurslijst.
-const POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS=new Set(['SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO']);
+const POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS=new Set(['SIV/WPR','SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO']);
 function supportsSpecialtyInstructors(label){
  return !POLICE_SPECIALTIES_WITHOUT_INSTRUCTORS.has(policeSpecialtyName(label));
 }

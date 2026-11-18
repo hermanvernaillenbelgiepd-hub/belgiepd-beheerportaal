@@ -199,6 +199,18 @@ body.roster-embedded .roster-profile-dialog{max-height:90vh}
 .mr-col-toolbar button{padding:5px 8px;font-size:11px}
 html.mr-dragging,html.mr-dragging *{cursor:col-resize!important;user-select:none!important}
 @media(max-width:1024px){.mr-col-toolbar{display:none!important}}
+
+/* Leesbare specialisatiekoppen in de ingeladen originele personeelslijst.
+   Een smalle kolom mag een label niet midden in een woord laten afbreken. */
+.roster-personnel-page .mr-table th.mr-specialty-head{
+ overflow-wrap:normal!important;word-break:normal!important
+}
+.roster-personnel-page .mr-table th.mr-specialty-head>small{
+ display:block;max-width:100%;margin:0;
+ white-space:nowrap!important;word-break:normal!important;
+ overflow-wrap:normal!important;overflow:hidden;text-overflow:ellipsis;
+ text-align:center;padding:4px 1px 5px;font-size:9px;line-height:1.15
+}
 </style><link rel="stylesheet" href="/roster-name-preview.css"><link rel="stylesheet" href="/bpd-navigation.css"></head><body class="roster-personnel-page">
 <header><strong>🛡️ BelgiëPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
 <main><h1>Algemene personeelslijst</h1>
@@ -372,7 +384,7 @@ window.addEventListener('message',event=>{
 // als Kolombeheer. Alle mutaties vereisen de bestaande serverbevoegdheid.
 const rosterColumnKeys=['call','grade','name','series','status'];
 const rosterColumnBounds={call:[36,200],grade:[54,250],name:[120,430],
- series:[90,240],status:[70,240],specialty:[60,300]};
+ series:[90,240],status:[70,240],specialty:[108,300]};
 const rosterColumnMin={call:46,grade:88,name:178,series:94,status:78};
 let rosterColumnSettings=null,rosterColumnOriginal=null;
 let rosterColumnAllowed=false,rosterColumnToken=null,rosterColumnVersion=0;
@@ -385,7 +397,7 @@ function rosterColumnDescriptors(){
 }
 function rosterColumnWidth(item){
  if(!rosterColumnSettings)return 0;
- if(item.specialty)return Math.max(60,
+ if(item.specialty)return Math.max(108,
   rosterColumnSettings.specialtyWidths?.[item.specialty]||
    rosterColumnSettings.widths?.specialty||82);
  return Math.max(rosterColumnMin[item.key]||0,

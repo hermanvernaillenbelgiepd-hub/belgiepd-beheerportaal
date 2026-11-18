@@ -11,7 +11,7 @@ export const LEADERSHIP_LEVELS=Object.freeze({
 });
 export const SPECIALTIES=Object.freeze({
  bestuur:[],
- politie:['INTERVENTIEDIENST','RADIO/BM','SIGNALISATIE','MOTARD','SEMI ANONIEM',
+ politie:['INTERVENTIEDIENST','RADIO/BM','SIV/WPR','SIGNALISATIE','MOTARD','SEMI ANONIEM',
   'K9','RAGO','RAGO-IO','DISP','TO','AE','RECHERCHE',
   // Historical specializations not silently deleted when an existing record is edited.
   'Prioritair rijden','EHBO'],
@@ -29,7 +29,7 @@ const LEGACY_POLICE_SPECIALTIES=Object.freeze([
 ]);
 const POLICE_DISPLAY_ALIASES=new Map([
  ['Motor','MOTARD'],['Motard','MOTARD'],
- ['SIV/WPR','SIGNALISATIE'],['Signalisatie','SIGNALISATIE'],
+ ['SIV/WPR','SIV/WPR'],['Signalisatie','SIGNALISATIE'],
  ['Dispatch','DISP'],['Radio BM','RADIO/BM'],
  ['Semi-anoniem','SEMI ANONIEM'],['Semi-anonieme','SEMI ANONIEM'],
  ['Semi-ano.','SEMI ANONIEM'],
@@ -102,7 +102,7 @@ export function validatePoliceSpecialtyEdit(body){
   new Set(list).size===list.length;
  if(!valid(specialties)||!valid(ins)||!valid(teachers))
   throw Error('Selecteer uitsluitend bestaande politie-specialisaties');
- const withoutInstruction=new Set(['SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO']);
+ const withoutInstruction=new Set(['SIV/WPR','SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO']);
  if([...ins,...teachers].some(x=>withoutInstruction.has(x)))
   throw Error('Deze specialisatie heeft geen instructeur- of docentfunctie');
  if([...ins,...teachers].some(x=>!specialties.includes(x)))

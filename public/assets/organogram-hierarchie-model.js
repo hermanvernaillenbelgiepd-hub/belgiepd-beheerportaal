@@ -215,13 +215,13 @@ export function specialtyNames(p){
  return [...new Set(names)].slice(0,20);
 }
 export const POLICE_BRANCH_ORDER=Object.freeze([
- 'INTERVENTIEDIENST','SIGNALISATIE','MOTARD','SEMI ANONIEM','K9',
+ 'INTERVENTIEDIENST','SIV/WPR','SIGNALISATIE','MOTARD','SEMI ANONIEM','K9',
  'RAGO','DISP','TO','AE','RECHERCHE'
 ]);
 const policeNames=new Map([
  ['interventiedienst','INTERVENTIEDIENST'],
  ['radio/bm','RADIO/BM'],['radio bm','RADIO/BM'],['radio','RADIO/BM'],
- ['signalisatie','SIGNALISATIE'],['siv/wpr','SIGNALISATIE'],
+ ['signalisatie','SIGNALISATIE'],['siv/wpr','SIV/WPR'],
  ['motard','MOTARD'],['motor','MOTARD'],['motard-off road','MOTARD'],
  ['semi anoniem','SEMI ANONIEM'],['semi-anoniem','SEMI ANONIEM'],
  ['semi anonieme','SEMI ANONIEM'],['semi-anonieme','SEMI ANONIEM'],
