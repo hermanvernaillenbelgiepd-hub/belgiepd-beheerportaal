@@ -11,8 +11,8 @@ const active={
  grantedByDiscordId:'111111111111111111'
 };
 test('onderscheidingen hebben uniek benoemde catalogusitems',()=>{
- assert.equal(DECORATION_CATALOG.length,12);
- assert.equal(new Set(DECORATION_CATALOG.map(x=>x.id)).size,12);
+ assert.equal(DECORATION_CATALOG.length,13);
+ assert.equal(new Set(DECORATION_CATALOG.map(x=>x.id)).size,13);
 });
 test('looptijd is inclusief einddatum en verdwijnt erna zonder verwijdering',()=>{
  assert.equal(isDecorationActive(active,'2026-10-27'),true);
@@ -70,4 +70,25 @@ test('beveiligde acties en log van toekenning/intrekking blijven gescheiden',()=
  const js=page.match(/<script>([\s\S]*?)<\/script>/)?.[1];
  assert.ok(js);
  assert.doesNotThrow(()=>new Function(js));
+});
+
+test('korpspluim toont aantal afzonderlijk goedgekeurde vermeldingen met een symbool',()=>{
+ const oldAwards=[...Array(3)].map((_,i)=>({
+  ...active,id:'award-'+i,catalogId:'korpspluim',endDate:null,startDate:now
+ }));
+ const display=publicDecorations(oldAwards,now);
+ assert.equal(display.length,1);
+ assert.equal(display[0].id,'korpspluim');
+ assert.equal(display[0].count,3);
+ assert.equal(publicDecorations([{...oldAwards[0],revokedAt:now}],now).length,0);
+ assert.equal(publicDecorations([{...oldAwards[0],public:false}],now).length,0);
+});
+test('eretekentoekenning aan zichzelf is verboden; 900 en 910 blijven toekenbaar',()=>{
+ const giver={uid:'discord:222222222222222222',discordId:'222222222222222222',
+ role:'officierenkader',departments:['politie'],departmentRoles:{politie:'officierenkader'},
+ dossierNativeDepartments:['politie'],dossierAllowedDepartments:['politie']};
+ assert.equal(canManagePoliceDecoration(giver,{dept:'politie',personId:giver.discordId,call:'930'}),false);
+ assert.equal(canManagePoliceDecoration(giver,{dept:'politie',personId:'333333333333333333',call:'900'}),true);
+ const route=readFileSync(new URL('../src/personnel-decoration-routes.js',import.meta.url),'utf8');
+ assert.match(route,/input.catalogId!=='korpspluim'/);
 });
