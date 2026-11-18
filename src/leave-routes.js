@@ -231,8 +231,8 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       review=review.filter((d,i)=>allowed[i]);
       const byTime=(a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''));
       return res.json({mine:my.docs.map(d=>item(d,true)).sort(byTime),
-        toReview:review.map(d=>item(d,false)).sort(byTime),
-        toOverride:board?overrides.map(d=>item(d,false)).sort(byTime):[],
+        toReview:review.map(d=>item(d,true)).sort(byTime),
+        toOverride:board?overrides.map(d=>item(d,true)).sort(byTime):[],
         canOverride:board,limited:my.docs.length===100||review.length>=100||overrides.length>=250});
     }catch(e){return jsonError(res,e)}
   });
