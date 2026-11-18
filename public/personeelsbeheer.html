@@ -1179,7 +1179,30 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div id="staffEndDateField" hidden><label for="staffEndDate">Einddatum verlofnotitie</label><input id="staffEndDate" type="date"></div>
 <div id="staffRankField" hidden><label for="staffProposedRank">Voorgestelde rang</label><input id="staffProposedRank" maxlength="140"></div>
 <div id="staffNewNameField" hidden><label for="staffNewName">Nieuwe naam</label><input id="staffNewName" maxlength="120"></div>
-<div id="staffMovementField" hidden><label for="staffMovement">Personeelsbeweging</label><input id="staffMovement" maxlength="150"></div>
+<div id="staffMovementField" hidden>
+<label for="staffMovement">Soort personeelsbeweging</label>
+<select id="staffMovement">
+<option value="">Kies een beweging…</option>
+<option value="Promotie">▲ Promotie</option>
+<option value="Degradatie">▼ Degradatie</option>
+<option value="Schorsing">● Schorsing</option>
+<option value="Ontslag">Ontslag</option>
+<option value="Ontslag inactief">Ontslag wegens inactiviteit</option>
+<option value="Vrijwillig">Vrijwillig vertrek</option>
+</select>
+<label for="staffMovementMode">Verwerking</label>
+<select id="staffMovementMode">
+<option value="historical">Historische registratie (alleen loggen)</option>
+<option value="effective">Nieuwe beslissing (effectief toepassen)</option>
+</select>
+<div id="staffMovementGradeFields" class="grid" hidden>
+<div><label for="staffMovementOldRank">Oude graad</label><input id="staffMovementOldRank" maxlength="100"></div>
+<div><label for="staffMovementNewRank">Nieuwe graad</label><input id="staffMovementNewRank" list="staffMovementGradeList" maxlength="100"><datalist id="staffMovementGradeList"></datalist></div>
+<div><label for="staffMovementOldCall">Oud roepnummer</label><input id="staffMovementOldCall" maxlength="24"></div>
+<div><label for="staffMovementNewCall">Nieuw roepnummer</label><input id="staffMovementNewCall" maxlength="24"></div>
+</div>
+<p id="staffMovementHint" class="subtle">Oude gebeurtenissen wijzigen geen actuele graad, uniform of roepnummer.</p>
+</div>
 </div>
 <div style="grid-column:1/-1"><label for="staffCaseDetails">Omschrijving of motivering</label>
 <textarea id="staffCaseDetails" rows="3" maxlength="4000" minlength="10" required></textarea></div>
@@ -3054,7 +3077,8 @@ let casePermissions=null;
 const staffCaseFields={verlof:['staffEndDateField'],opleiding:['staffCourseField'],
   promotievoorstel:['staffRankField'],naamswijziging:['staffNewNameField'],
   personeelsbeweging:['staffMovementField']};
-const staffCaseValues=['staffEndDate','staffCourseName','staffProposedRank','staffNewName','staffMovement'];
+const staffCaseValues=['staffEndDate','staffCourseName','staffProposedRank','staffNewName',
+  'staffMovement','staffMovementNewRank','staffMovementNewCall'];
 const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   algemene_notitie:'Algemene notitie',
   opleiding:'Gevolgde opleiding',naamswijziging:'Naamswijziging (registratie)',
@@ -3075,7 +3099,22 @@ function updateStaffCaseFields(){
     staffMovement:'personeelsbeweging'};
   for(const [id,t] of Object.entries(required))$(id).required=type===t;
   syncStaffCaseOther();
+  updateStaffMovementFields();
 }
+function updateStaffMovementFields(){
+  const kind=$('staffMovement').value,grades=kind==='Promotie'||kind==='Degradatie';
+  const effective=$('staffMovementMode').value==='effective';
+  $('staffMovementGradeFields').hidden=!grades;
+  $('staffMovementOldRank').required=grades;
+  $('staffMovementNewRank').required=grades;
+  $('staffMovementOldCall').required=grades;
+  $('staffMovementNewCall').required=grades;
+  $('staffMovementHint').textContent=effective?
+    'Effectieve beslissing: controleer graad en passend vrij roepnummer. Uniformen volgen de rang-/roepnummertoewijzing; handmatige uniformen vereisen soms controle.':
+    'Historische registratie: alleen loggen, zonder de huidige graad, uniformen, status of het roepnummer te veranderen.';
+}
+$('staffMovement').onchange=updateStaffMovementFields;
+$('staffMovementMode').onchange=updateStaffMovementFields;
 function syncStaffCaseOther(){
   const isOther=$('staffCaseType').value==='opleiding'&&$('staffCourseName').value==='ANDERE';
   $('staffCourseOtherWrap').hidden=!isOther;
@@ -3606,9 +3645,14 @@ function sheetCaseRows(entries,limited){
   generalCasesLimited=Boolean(limited);
   renderGeneralDossierNotes();
   const moves=cases.filter(x=>['personeelsbeweging','promotievoorstel','naamswijziging','functiewijziging'].includes(x.type));
-  sheetSetRows('movements',moves,x=>[x.eventDate||'—',
-    staffCaseLabels[x.type]||x.type,
-    x.proposedRank||x.movement||x.newName||x.newFunction||x.details||'—',sheetWho(x)],
+  sheetSetRows('movements',moves,x=>[generalNoteDate(x.eventDate),
+    x.type==='personeelsbeweging'?(x.movement||'Personeelsbeweging'):
+      staffCaseLabels[x.type]||x.type,
+    x.previousRank&&x.newRank?
+      x.previousRank+' → '+x.newRank+
+        (x.previousCall&&x.newCall?' · '+x.previousCall+' → '+x.newCall:''):
+      x.proposedRank||x.newName||x.newFunction||x.details||x.movement||'—',
+    sheetWho(x)],
     'Geen personeelsbewegingen geregistreerd.',limited);
   // Houd gewone activiteiten buiten de belangrijke-notitierubriek.
   // Geverifieerde kadernotities en beperkingen verschijnen hier automatisch.
@@ -5227,20 +5271,87 @@ $('staffCaseForm').onsubmit=async event=>{
     button.disabled=false;
     return notice('Selecteer een opleiding of vul bij ANDERE een naam van 3 tot 150 tekens in.',true);
   }
+  const movement=type==='personeelsbeweging' ? $('staffMovement').value : '';
+  const effective=Boolean(movement&&$('staffMovementMode').value==='effective');
+  const reason=$('staffCaseDetails').value.trim();
+  if(type==='personeelsbeweging'&&!movement){
+    button.disabled=false;return notice('Selecteer het soort personeelsbeweging.',true);
+  }
+  const oldRank=$('staffMovementOldRank').value.trim();
+  const newRank=$('staffMovementNewRank').value.trim();
+  const oldCall=$('staffMovementOldCall').value.trim();
+  const newCall=$('staffMovementNewCall').value.trim();
+  const gradeMove=movement==='Promotie'||movement==='Degradatie';
+  if(gradeMove&&(!oldRank||!newRank||!oldCall||!newCall)){
+    button.disabled=false;return notice('Vul oude en nieuwe graad en beide roepnummers in.',true);
+  }
   try{
+    if(effective){
+      const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      if($('staffCaseDate').value!==today)
+        throw Error('Een nieuwe effectieve beslissing gebruikt de huidige datum. Kies voor oudere gebeurtenissen historische registratie.');
+      if($('historicalCaseCheck').checked)
+        throw Error('Een effectieve beslissing kan niet namens een vroegere registrator worden uitgevoerd.');
+      if(reason.length<10||reason.length>500)
+        throw Error('Motivering moet 10 tot 500 tekens zijn.');
+      if(gradeMove){
+        if(person.dept!=='politie'||person.canChangeRank!==true||!rankChangesEnabled)
+          throw Error('Effectieve rangwijziging is alleen mogelijk voor bevoegd Politiekader.');
+        if(person.rank!==oldRank||person.call!==oldCall)
+          throw Error('Oude graad en roepnummer moeten overeenkomen met de actuele fiche.');
+        const before=rankChoices.indexOf(person.rank),after=rankChoices.indexOf(newRank);
+        if(before<0||after<0||movement==='Promotie'&&after<=before||
+           movement==='Degradatie'&&after>=before)
+          throw Error('De nieuwe graad komt niet overeen met de gekozen promotie of degradatie.');
+        if(reason.length<20)throw Error('Een rangwijziging vereist minstens 20 tekens motivering.');
+        if(!confirm(movement+' voor '+person.name+'?\n'+oldRank+' ('+oldCall+') → '+
+            newRank+' ('+newCall+')\nDiscord-rollen wijzigen niet automatisch.'))return;
+        await request('/api/personnel/politie/'+encodeURIComponent(person.discordId)+'/rank-change',{
+          method:'POST',body:{expectedRank:oldRank,newRank,newCall,reason,
+            expectedRevision:person.revision}});
+      }else if(movement==='Schorsing'){
+        if(person.canEditIdentity!==true||!writesEnabled)
+          throw Error('Geen bevoegdheid voor een effectieve schorsing bij deze dienst.');
+        if(person.status==='GESCHORST')throw Error('Deze persoon is reeds geschorst.');
+        if(!confirm('Schorsing van '+person.name+' definitief registreren?'))return;
+        await request('/api/personnel/'+encodeURIComponent(person.dept)+'/'+
+          encodeURIComponent(person.discordId),{method:'POST',
+          body:{name:person.name,call:person.call,status:'GESCHORST',
+            reason,expectedRevision:person.revision}});
+      }else{
+        const url='/api/personnel-lifecycle/'+encodeURIComponent(person.dept)+'/'+
+          encodeURIComponent(person.discordId);
+        const lifecycle=await request(url);
+        if(!lifecycle.canManage||lifecycle.state!=='active')
+          throw Error('Dit dienstverband is niet actief of je hebt geen archiefbevoegdheid.');
+        const cause=movement==='Vrijwillig'?'service_resignation':
+          movement==='Ontslag inactief'?'inactive_dismissal':'management_dismissal';
+        if(!confirm(movement+' voor '+person.name+' bij '+(departments[person.dept]||person.dept)+
+          ' bevestigen?\nAlle bestaande dossierhistoriek blijft bewaard.'))return;
+        await request(url+'/archive',{method:'POST',
+          body:{cause,reason,expectedRevision:lifecycle.revision}});
+      }
+      await load();
+      notice(movement+' effectief verwerkt en gelogd. Controleer bij rangwissel de Discord-rol en eventuele handmatige uniformtoewijzing.');
+      return;
+    }
+    const historicalDetails=gradeMove?
+      '\nOude graad: '+oldRank+' · Nieuwe graad: '+newRank+
+      '\nRoepnummer: '+oldCall+' → '+newCall:'';
     await request('/api/management/cases',{method:'POST',
       body:{dept:person.dept,discordId:person.discordId,type,
-        eventDate:$('staffCaseDate').value,details:$('staffCaseDetails').value.trim(),
+        eventDate:$('staffCaseDate').value,details:reason+historicalDetails,
         endDate:$('staffEndDate').value,courseName,
         proposedRank:$('staffProposedRank').value,newName:$('staffNewName').value,
-        movement:$('staffMovement').value,referenceUrl:$('staffCaseReference').value,
+        movement,referenceUrl:$('staffCaseReference').value,
         ...historicalTransferData('historicalCase')}});
     if(!sameDossier(key))return;
     $('staffCaseDetails').value='';$('staffCaseReference').value='';
     for(const id of staffCaseValues)$(id).value='';
-    $('staffCourseOther').value='';syncStaffCaseOther();
+    $('staffCourseOther').value='';syncStaffCaseOther();updateStaffMovementFields();
     await loadLinkedPersonnelRecords(person,key);
-    notice('Dossierregistratie opgeslagen in het bestaande kaderregister en het dynamische weekrapport.');
+    notice('Historische personeelsbeweging gelogd; de actuele fiche is niet gewijzigd.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
 // Centrale opslagknop: de oorspronkelijke validators, transactie-API's,
@@ -5307,6 +5418,13 @@ async function showPerson(p){
     ...rankChoices.filter(x=>x!==p.rank).map(x=>option(x,x)));
   $('rankChangeTo').value='';$('rankChangeCall').value=p.call;
   $('rankChangeReason').value='';
+  $('staffMovementOldRank').value=p.rank||'';
+  $('staffMovementOldCall').value=p.call||'';
+  $('staffMovementNewRank').value='';
+  $('staffMovementNewCall').value='';
+  $('staffMovementMode').value='historical';
+  $('staffMovementGradeList').replaceChildren(...rankChoices.map(x=>option(x,x)));
+  updateStaffMovementFields();
   $('policeSeriesPanel').hidden=!(p.dept==='politie'&&p.canChangeSeries===true);
   $('policeSeriesCurrent').value=p.series||'Niet ingedeeld';
   $('policeSeriesNext').value='';

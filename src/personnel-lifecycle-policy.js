@@ -86,7 +86,7 @@ export function applyHonorableInpAssignment(person,ledger){
 }
 
 export const ARCHIVE_REASONS=Object.freeze(['voluntary_discord_leave','management_dismissal',
- 'service_resignation','other']);
+ 'inactive_dismissal','service_resignation','other']);
 export function validateLifecycleAction(body,action){
  if(!['archive','restore','activate'].includes(action)||!body||typeof body!=='object'||
     Array.isArray(body))throw Error('Ongeldige personeelsactie');

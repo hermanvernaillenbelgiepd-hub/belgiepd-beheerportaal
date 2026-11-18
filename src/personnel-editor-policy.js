@@ -9,7 +9,7 @@ import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 // Persistent overlays never contain identity, rank or permissions.
 // They can be merged with source Sheets only after a controlled rollout.
 export const PERSONNEL_EDITS_COLLECTION='bpd_personnel_edits';
-export const EDITABLE_STATUSES=Object.freeze(['Actief','Inactief','50/50','Verlof','In opleiding','Afwezig']);
+export const EDITABLE_STATUSES=Object.freeze(['Actief','Inactief','50/50','Verlof','In opleiding','Afwezig','GESCHORST']);
 const ID=/^\d{15,22}$/;
 const SERVICES=new Set(['politie','brandweer','ambulance','depannage']);
 const TRIM=s=>typeof s==='string'?s.trim():'';
