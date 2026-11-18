@@ -101,49 +101,106 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
  #trainingPersonalPanel,#trainingReviewPanel{padding:12px}
  #trainingReviewPanel>.actions{flex-wrap:wrap}
 }
+/* Elke rubriek kan afzonderlijk open of dicht, zonder wijziging van rechten. */
+.notification-fold>summary{
+ display:flex;align-items:center;gap:9px;cursor:pointer;
+ font-size:15px;font-weight:750;line-height:1.4;color:inherit;
+ list-style:none;min-height:28px
+}
+.notification-fold>summary::-webkit-details-marker{display:none}
+.notification-fold>summary::before{
+ content:'▸';font-size:15px;color:#4d72b8;display:inline-block;
+ transition:transform .14s ease;flex:0 0 auto
+}
+.notification-fold[open]>summary::before{transform:rotate(90deg)}
+.notification-fold>summary:focus-visible{outline:2px solid #4f7fd8;outline-offset:3px;border-radius:4px}
+.notification-fold>.actions{margin:8px 0}
+.notification-fold>p{font-size:12px;line-height:1.5;margin:8px 0}
+.notification-fold #reviewCount,.notification-fold #trainingCount{padding:2px 7px;font-size:11px}
+@media(prefers-reduced-motion:reduce){.notification-fold>summary::before{transition:none}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
 <header><strong>🛡️ BelgiëPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>📬 Meldingen</h1><p>Bekijk je persoonlijke verlofbeslissingen en opleidingsmeldingen. Reekshoofden en bevoegde dienstleiding zien hier aanvragen die zij mogen behandelen.</p>
 <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
 <section id="staffActivityFollowupPanel" class="panel" hidden>
+ <details class="notification-fold" id="staffFollowupFold">
+  <summary>👥 Personeelsopvolging · <span id="staffFollowup50">0</span> op 50/50 · <span id="staffFollowupInactive">0</span> INACTIEF</summary>
+
  <div class="actions" style="justify-content:space-between;align-items:center">
-  <h2>👥 Personeelsopvolging · <span id="staffFollowup50">0</span> op 50/50 · <span id="staffFollowupInactive">0</span> INACTIEF</h2>
+  
   <button type="button" id="staffFollowupReload">↻ Vernieuwen</button>
  </div>
  <p>Actuele personeelsstatussen binnen jouw dienstbevoegdheden. <strong>Dit zijn geen verzonden activiteitspings.</strong> Voor beoordeling en eventuele dossierregistratie gebruik je het <a href="/activiteitscentrum.html">Activiteitscentrum</a> of Dossiercentrum.</p>
  <div id="staffFollowupList" aria-live="polite"></div>
+
+ </details>
 </section>
 <section id="activityPingsPanel" class="panel" hidden>
- <h2>🔔 Mijn activiteitspings</h2>
+ <details class="notification-fold" id="activityPingsFold">
+  <summary>🔔 Mijn activiteitspings</summary>
+
+ 
  <p>Ontvangen inactiviteitspings en leesbevestigingen. Iedere ping heeft één bewijsregistratie in je dossier en het dienstweekrapport.</p>
  <div id="activityPingsList"></div>
+
+ </details>
 </section>
 <section id="personalPanel" class="panel" hidden>
- <h2>Mijn verlofmeldingen</h2>
+ <details class="notification-fold" id="personalLeaveFold">
+  <summary>Mijn verlofmeldingen</summary>
+
+ 
  <p>Uitsluitend je eigen aanvragen en beslissingen. Bekijk <a href="/verlofbeheer.html">Mijn verlof</a> om een nieuwe aanvraag te doen.</p>
  <div id="personalList"></div>
+
+ </details>
 </section>
 <section id="seriesLeavePanel" class="panel" hidden>
- <h2>📅 Verlofmeldingen · mijn politiereeks</h2>
+ <details class="notification-fold" id="seriesLeaveFold">
+  <summary>📅 Verlofmeldingen · mijn politiereeks</summary>
+
+ 
  <p>Alleen ter opvolging voor de bevoegde reekshoofden. Beslissingsbevoegdheid verandert niet.
  Na goedkeuring verdwijnt de aanvraag uit de openstaande meldingen.</p>
  <div id="seriesLeaveList"></div>
  <details><summary>Recent automatisch goedgekeurde verloven (72 uur)</summary>
   <div id="seriesLeaveAutomatic"></div></details>
+
+ </details>
 </section>
 <section id="reviewPanel" class="panel" hidden>
- <div class="actions" style="justify-content:space-between;align-items:center"><h2>Te behandelen verlofaanvragen <span id="reviewCount" class="pill">0</span></h2><button id="reload" type="button">↻ Vernieuwen</button></div>
+ <details class="notification-fold" id="reviewFold" open>
+  <summary>Te behandelen verlofaanvragen <span id="reviewCount" class="pill">0</span></summary>
+
+ <div class="actions" style="justify-content:space-between;align-items:center"><button id="reload" type="button">↻ Vernieuwen</button></div>
  <div id="reviewList"></div>
+
+ </details>
 </section>
 <section id="overridePanel" class="panel" hidden>
-  <h2>Bestuur · eerdere verlofbeslissingen herzien</h2>
+ <details class="notification-fold" id="overrideFold">
+  <summary>Bestuur · eerdere verlofbeslissingen herzien</summary>
+
+  
   <p>Alleen geverifieerd Bestuur of technisch beheer. Een herziening moet gemotiveerd worden en wordt gelogd.</p>
   <div id="overrideList"></div>
+
+ </details>
 </section>
 <p><a href="/opleidingskalender.html">📅 Globale multidisciplinaire opleidingskalender</a></p>
-<section class="panel" id="trainingPersonalPanel" hidden><h2>🎓 Mijn opleidingsaanvragen</h2><div id="trainingPersonal"></div><p><a href="/opleidingscentrum.html">Nieuwe opleiding aanvragen</a></p></section>
-<section class="panel" id="trainingReviewPanel" hidden><div class="actions" style="justify-content:space-between;align-items:center"><h2>🎓 Opleidingen te behandelen <span id="trainingCount" class="pill">0</span></h2><button type="button" id="trainingReload">↻ Vernieuwen</button></div><div id="trainingReview"></div></section></main>
+<section class="panel" id="trainingPersonalPanel" hidden>
+ <details class="notification-fold" id="trainingPersonalFold">
+  <summary>🎓 Mijn opleidingsaanvragen</summary>
+<div id="trainingPersonal"></div><p><a href="/opleidingscentrum.html">Nieuwe opleiding aanvragen</a></p>
+ </details>
+</section>
+<section class="panel" id="trainingReviewPanel" hidden>
+ <details class="notification-fold" id="trainingReviewFold" open>
+  <summary>🎓 Opleidingen te behandelen <span id="trainingCount" class="pill">0</span></summary>
+<div class="actions" style="justify-content:space-between;align-items:center"><button type="button" id="trainingReload">↻ Vernieuwen</button></div><div id="trainingReview"></div>
+ </details>
+</section></main>
 <script type="module">
 import {TRAINING_ACTIONS,availableTrainingActions,trainingActionData,trainingStateText} from '/training-request-actions.js?v=20261031';
 const $=id=>document.getElementById(id);let auth,authMod,writesEnabled=false;
@@ -160,9 +217,10 @@ async function api(url,body){
 }
 function item(x,override=false){
  const row=document.createElement('div');row.className='item';
- const title=document.createElement('strong');title.textContent=(x.subjectName||'Personeelslid')+
+ const title=document.createElement('strong');title.textContent=(x.subjectCall?x.subjectCall+' · ':'')+(x.subjectName||'Personeelslid')+
   ' · '+(x.startDate||'?')+' t/m '+(x.endDate||'?')+
-  (x.extensionOf?' · VERLENGING':'');
+  (x.extensionOf?' · VERLENGING':'')+
+   (x.manualPendingReview?' · Handmatig ingediend door kaderlid':'');
  const info=document.createElement('p');info.textContent=
   (x.extensionOf?Number(x.days)+' extra dagen · TOTAAL '+Number(x.totalPeriodDays)+
     ' kalenderdagen vanaf '+(x.periodStartDate||'?'):
