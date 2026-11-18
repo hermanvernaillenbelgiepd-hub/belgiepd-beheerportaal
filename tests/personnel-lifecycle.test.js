@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {lifecycleKey,validateLifecycleAction,lifecycleSourceSnapshot,
- overlayPersonnelLifecycle,possibleDiscordDepartures} from '../src/personnel-lifecycle-policy.js';
+ overlayPersonnelLifecycle,possibleDiscordDepartures,validateHonorableRequest,
+ validateHonorableDecision,HONORABLE_REENTRY_REQUIRES} from '../src/personnel-lifecycle-policy.js';
 const id='123456789012345678',other='123456789012345679';
 const row=(dept='politie')=>({dept,personId:id,name:'Test Agent',
  call:'485',rank:'Inspecteur',status:'Actief',hours:9,totalHours:120,
@@ -99,4 +100,19 @@ test('personnel administration UI has syntactically valid inline Javascript',()=
  assert.equal(checked.status,0,checked.stderr);
  assert.match(html,/id="personnelArchivePanel"/);
  assert.match(html,/id="personnelArchiveAction"/);
+});
+
+test('eervol ontslag is een aanvraag met onafhankelijke goedkeuring, niet een directe zelf-archivering',()=>{
+ assert.deepEqual(validateHonorableRequest({
+  department:'politie',reason:'Ik vraag eervol ontslag wegens een loopbaanonderbreking'
+ }),{department:'politie',reason:'Ik vraag eervol ontslag wegens een loopbaanonderbreking'});
+ assert.throws(()=>validateHonorableRequest({department:'brandweer',reason:'Eervol ontslag aanvragen'}));
+ assert.deepEqual(validateHonorableDecision({
+  decision:'approve',reason:'Gecontroleerd en akkoord door Korpsleiding'
+ }),{decision:'approve',reason:'Gecontroleerd en akkoord door Korpsleiding'});
+ assert.throws(()=>validateHonorableDecision({decision:'approve',reason:'nee'}));
+ assert.equal(HONORABLE_REENTRY_REQUIRES.entryRank,'Inspecteur');
+ assert.equal(HONORABLE_REENTRY_REQUIRES.trainingHistoryPreserved,true);
+ assert.equal(HONORABLE_REENTRY_REQUIRES.decorationsPreserved,true);
+ assert.equal(HONORABLE_REENTRY_REQUIRES.automaticOperationalPrivileges,false);
 });
