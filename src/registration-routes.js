@@ -4,6 +4,10 @@ import {SPECIALTY_LABELS} from './normalize.js';
 import {roleForDepartment} from './leave-policy.js';
 import {dossierAuthorityRole,verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 import {basicObservationTargets} from './basic-observation-policy.js';
+import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_SETTINGS_AUDIT,
+ HISTORICAL_OBSERVATION_DOC,canManageHistoricalObservationImport,
+ historicalObservationSettings,validateHistoricalObservationToggle,
+ historicalObservationAllowed} from './historical-observation-import-policy.js';
 import { actorFromPersonnel, isCadre, isDiscordId, mayAmend, mayRead, maySubmit, canChooseSanction, permittedSanctionTypes, permittedDepartmentSanctions, canChooseDepartmentSanction, canRepresent, eligibleRepresentative, representativeFromPersonnel, safeSubject, validateAmend, validateEntry, SANCTION_REASONS } from './registrations.js';
 const DEPTS=['politie','brandweer','ambulance','depannage'];
 const trim=s=>String(s??'').trim();
@@ -23,6 +27,40 @@ function handleError(res,err){
 export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
   const db=()=>getFirestore();
   const writesEnabled=()=>process.env.BPD_ENABLE_REGISTRATIONS==='true';
+  const historicalSettings=async()=>historicalObservationSettings((await db()
+    .collection(HISTORICAL_OBSERVATION_SETTINGS).doc(HISTORICAL_OBSERVATION_DOC).get()).data());
+  // Alleen bevoegd OK/KL/Technisch Beheer, afzonderlijk geaudit. Uitgeschakeld =
+  // zelfs rechtstreeks API-posts namens een andere observator worden afgewezen.
+  app.put('/api/registrations/historical-import',requireUser,async(req,res)=>{
+    if(!canManageHistoricalObservationImport(req.bpd))
+      return res.status(403).json({error:'Alleen geverifieerd Politie Officierenkader of Korpsleiding'});
+    let input;
+    try{input=validateHistoricalObservationToggle(req.body)}
+    catch(e){return res.status(400).json({error:e.message})}
+    try{
+      const store=db(),ref=store.collection(HISTORICAL_OBSERVATION_SETTINGS)
+        .doc(HISTORICAL_OBSERVATION_DOC);
+      const config=await store.runTransaction(async tx=>{
+        const current=await tx.get(ref),before=historicalObservationSettings(current.data());
+        if(before.revision!==input.expectedRevision)
+          throw Object.assign(Error('De instelling werd intussen gewijzigd. Vernieuw de pagina.'),{status:409});
+        if(before.enabled===input.enabled)return before;
+        const next={enabled:input.enabled,revision:before.revision+1};
+        const at=FieldValue.serverTimestamp();
+        tx.set(ref,{...next,updatedAt:at,updatedBy:req.bpd.discordId});
+        tx.create(store.collection(HISTORICAL_OBSERVATION_SETTINGS_AUDIT).doc(),{
+          dept:'politie',actorDiscordId:req.bpd.discordId,actorUid:req.bpd.uid,
+          before,after:next,reason:input.reason,at
+        });
+        return next;
+      });
+      res.set('Cache-Control','private, no-store');
+      return res.json({saved:true,config});
+    }catch(e){
+      if(e.status)return res.status(e.status).json({error:e.message});
+      return res.status(503).json({error:'De instelling kon niet opgeslagen worden'});
+    }
+  });
   // Dossierinhoud is nooit zichtbaar via subjects: zelfs basiskader ziet alleen selectievelden.
   app.get('/api/registrations/subjects',requireUser,async(req,res)=>{
     try{
@@ -30,7 +68,8 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const subset=snap.data.filter(p=>req.bpd.boardCorpsDossierAdmin===true?
         req.bpd.dossierAllowedDepartments?.includes(p.dept):req.bpd.departments.includes(p.dept));
       const actor=actorFromPersonnel(req.bpd,subset);
-      const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
+      const importConfig=await historicalSettings();
+      const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))&&importConfig.enabled===true?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
          .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call})):[];
        const sanctionDepartments=['politie','brandweer','ambulance','depannage'].filter(d=>
          (req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&
@@ -43,7 +82,10 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
          ['officierenkader','korpsleiding'].includes(sanctionRoles[d]));
        const basic=roleForDepartment(req.bpd,'politie')==='basiskader';
        const limited=basic?basicObservationTargets(req.bpd,snap.data):null;
+       res.set('Cache-Control','private, no-store');
        res.json({role:req.bpd.role,departments:req.bpd.departments,writesEnabled:writesEnabled(),
+         historicalObservationImport:importConfig,
+         canManageHistoricalObservationImport:canManageHistoricalObservationImport(req.bpd),
          fireZoneChief:req.bpd.fireZoneChief===true,portalTechnicalMode:req.bpd.portalTechnicalMode===true,
          fullDossierDepartments:req.bpd.dossierFullDepartments||[],
          sanctionDepartments,heavySanctionDepartments,sanctionAmendDepartments,sanctionRoles,sanctionOptionsByDepartment,sanctionReasons:SANCTION_REASONS,
@@ -121,7 +163,13 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
            'Een voorstel tot degradatie is alleen toegestaan bij ernst 9 of 10 op 10.':
            'Deze sanctiemaatregel is niet toegestaan voor jouw kaderrol. Degradatie en schorsing vereisen Officierenkader of Korpsleiding; ontslag en blacklisting uitsluitend Korpsleiding.'});
        const representedId=trim(raw?.onBehalfOfDiscordId);
-       if(representedId && !canRepresent(req.bpd,type,dept)) return res.status(403).json({error:'Registratie namens een ander is alleen toegestaan voor observaties door kaderleden'});
+       if(representedId){
+         if(!canRepresent(req.bpd,type,dept))
+           return res.status(403).json({error:'Registratie namens een ander is alleen toegestaan voor observaties door kaderleden'});
+         const config=await historicalSettings();
+         if(!historicalObservationAllowed(req.bpd,dept,type,config))
+           return res.status(403).json({error:'Historische observaties namens een ander zijn door Officierenkader/Korpsleiding uitgeschakeld'});
+       }
        const onBehalfReason=representedId ? trim(raw?.onBehalfReason) : '';
        if(representedId && (onBehalfReason.length<5 || onBehalfReason.length>500))
          return res.status(400).json({error:'Geef een reden (5 tot 500 tekens) voor de registratie namens een ander'});
@@ -146,7 +194,11 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const at=FieldValue.serverTimestamp();
       const batch=db().batch();
-      batch.create(newDoc,{...values,subjectDiscordId:id,dept,subjectNameAtCreation:target.name,subjectCallAtCreation:target.call,registeredBy:represented||actor,submittedByActor:actor,onBehalfOf:represented||null,onBehalfReason,submittedBy:{uid:req.bpd.uid,email:req.bpd.email},createdAt:at,modifiedAt:null});
+      batch.create(newDoc,{...values,subjectDiscordId:id,dept,subjectNameAtCreation:target.name,subjectCallAtCreation:target.call,
+        registeredBy:represented||actor,submittedByActor:actor,
+        onBehalfOf:represented||null,onBehalfReason,
+        historicalImport:Boolean(represented),importSource:represented?'spreadsheet':null,
+        submittedBy:{uid:req.bpd.uid,email:req.bpd.email},createdAt:at,modifiedAt:null});
       // Beperkte melding zonder vertrouwelijke dossierinhoud. Wordt in dezelfde batch opgeslagen.
       batch.create(notice,{caseId:docId(dept,id),entryId:newDoc.id,type,dept,createdAt:at});
       await batch.commit();
