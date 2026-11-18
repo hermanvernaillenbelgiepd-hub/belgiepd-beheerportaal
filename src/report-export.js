@@ -48,7 +48,8 @@ export function specialFields(e){
   if(e.historicalImport===true){
     p.push('Historische overname uit spreadsheet');
     if(e.onBehalfOf?.name||e.registeredBy?.name)
-      p.push('Oorspronkelijke observator: '+limit(e.onBehalfOf?.name||e.registeredBy.name,120));
+      p.push((e.type==='observatie'?'Oorspronkelijke observator: ':
+        'Oorspronkelijke registrator: ')+limit(e.onBehalfOf?.name||e.registeredBy.name,120));
     if(e.submittedByActor?.name)
       p.push('Handmatig ingevoerd door: '+limit(e.submittedByActor.name,120));
     if(e.onBehalfReason)p.push('Bron/motivering: '+limit(e.onBehalfReason,500));
