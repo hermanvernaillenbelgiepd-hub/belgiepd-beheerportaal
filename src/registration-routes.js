@@ -375,6 +375,8 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
         if(!existing.exists)return Object.assign(new Error('Niet gevonden'),{status:404});
         const old=existing.data();
         if(old.type!=='sanctie'||old.subjectDiscordId!==id||old.dept!==dept)throw Object.assign(new Error('Geen sanctie'),{status:404});
+        if(old.historicalImport===true&&old.status==='historisch')
+          throw Object.assign(new Error('Een historisch overgenomen sanctie mag niet worden omgezet in een nieuwe actieve maatregel'),{status:403});
         // Ook de OORSPRONKELIJKE sanctie bepaalt wie ze mag wijzigen:
         // officierenkader kan nooit een degradatie/schorsing/ontslag terugdraaien.
         if(!canChooseSanction(sanctionRole,old.sanctionType,old.severity))
