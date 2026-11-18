@@ -3817,6 +3817,14 @@ async function loadStaffLeave(p,key){
       const reason=document.createElement('p');
       reason.textContent='Reden: '+(item.note?.trim()||'Niet geregistreerd (oude verlofperiode)');
       div.append(title,reason);
+      if(item.historicalImport){
+        const audit=document.createElement('p');
+        audit.textContent='Historische overname · oorspronkelijk: '+
+          (item.originalRegistrar?.name||'Onbekend')+
+          ' · ingevoerd door: '+(item.importedBy?.name||'Onbekend')+
+          ' · bron: '+(item.onBehalfReason||'Niet vermeld');
+        div.append(audit);
+      }
       attachRetireButton(div,item,'leave');
       if(item.status==='pending'&&item.canDecide===true){
         for(const [decision,label] of [['approved','Goedkeuren'],['rejected','Afwijzen']]){
