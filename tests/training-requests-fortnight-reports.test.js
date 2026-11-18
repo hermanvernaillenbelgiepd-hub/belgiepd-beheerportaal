@@ -94,3 +94,29 @@ test('fortnight report permissions are proved separately for each service',()=>{
  assert.equal(mayReadFortnightReport({...own,departmentRoles:{...own.departmentRoles,depannage:'basiskader'}},'depannage',roster),true);
  assert.equal(mayReadFortnightReport({...own,uid:'discord:999999999999999999'},'depannage',roster),false);
 });
+test('service leadership may grant specialization training while instructors stay specialization-scoped',()=>{
+ const policeRequest={department:'politie',courseName:'K-9',
+  applicantDiscordId:'888888888888888888',applicantTier:'basiskader'};
+ const mk={discordId:'333333333333333333',role:'middenkader',
+  departments:['politie'],departmentRoles:{politie:'middenkader'}};
+ assert.equal(mayReviewTrainingRequest(mk,policeRequest),true);
+ assert.equal(mayReviewTrainingRequest(high,{...policeRequest,courseName:'MOTARD'}),true);
+ const corps={...high,role:'korpsleiding',
+  departmentRoles:{politie:'korpsleiding'}};
+ assert.equal(mayReviewTrainingRequest(corps,{...policeRequest,courseName:'RAGO'}),true);
+ assert.equal(mayReviewTrainingRequest({...mk,discordId:policeRequest.applicantDiscordId},policeRequest),false);
+ const k9Teacher={...mk,role:'basiskader',departmentRoles:{politie:'basiskader'}};
+ assert.equal(mayReviewTrainingRequest(k9Teacher,policeRequest),false);
+ assert.equal(mayInstructorReviewTrainingRequest(k9Teacher,policeRequest,
+  ['1345302115689431061']),true);
+ assert.equal(mayInstructorReviewTrainingRequest(k9Teacher,
+  {...policeRequest,courseName:'RAGO'},['1345302115689431061']),false);
+ for(const dept of ['ambulance','brandweer','depannage']){
+  const boss={...high,departments:[dept],departmentRoles:{[dept]:'officierenkader'}};
+  const req={department:dept,courseName:'Dienstspecialisatie',
+   applicantDiscordId:policeRequest.applicantDiscordId,applicantTier:'basiskader'};
+  assert.equal(mayReviewTrainingRequest(boss,req),true);
+  assert.equal(mayReviewTrainingRequest({...high,departments:['politie']},req),false);
+  assert.equal(mayReviewTrainingRequest({...boss,discordId:req.applicantDiscordId},req),false);
+ }
+});
