@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
-import {createObservationScoreBadge,createObservationHeader}
+import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure}
  from '../public/dossier-observation-ui.js';
 import {requiresReReview} from '../src/training-maintenance.js';
 
@@ -54,10 +54,10 @@ test('gedeelde observatieopmaak wisselt achtergrond, tekst en kleurrand per them
  const police=source('../public/personeelsbeheer.html');
  const fire=source('../public/brandweerdossier.html');
  const citizen=source('../public/burger-personeelsdossiers.html');
- assert.match(police,/createObservationHeader\(\(row\.eventDate/);
- assert.match(police,/createObservationHeader\(title\.textContent,row\.score\)/);
- assert.match(fire,/createObservationHeader\(heading\(item\),item\.score\)/);
- assert.match(citizen,/createObservationHeader\(title,e\.score\)/);
+ assert.match(police,/createObservationDisclosure\(\{/);
+ assert.match(police,/title:\(row\.eventDate\|\|'Datum onbekend'\)/);
+ assert.match(fire,/createObservationDisclosure\(\{/);
+ assert.match(citizen,/createObservationDisclosure\(\{/);
  for(const html of [police,fire,citizen])checkModule(html);
 });
 test('opleider is een apart invoerveld in beide opleidingsformulieren, geen vervanging van de invoerder',()=>{
@@ -87,4 +87,44 @@ test('gewijzigde opleider triggert nieuwe controle maar historische opleidingen 
    {...prior,instructorName:'Nieuwe opleider'}),true);
  const police=source('../public/personeelsbeheer.html');
  assert.match(police,/row\.instructorName\|\|row\.instructor\|\|'niet vermeld'/);
+});
+
+test('observaties: alleen datum en score standaard zichtbaar, lange tekst volledig na uitklappen',()=>{
+ const doc=globalThis.document;
+ globalThis.document={createElement:tag=>({
+   tagName:tag.toUpperCase(),className:'',textContent:'',title:'',
+   attrs:{},children:[],append(...children){this.children.push(...children)},
+   setAttribute(k,v){this.attrs[k]=v}
+ })};
+ try{
+   const longText=('De originele observatie blijft volledig leesbaar. '+
+     'Ook na veel informatie en meerdere gebeurtenissen.\n').repeat(150);
+   const result=createObservationDisclosure({
+     title:'18 november 2026 · Observatie',score:7,details:longText,
+     attribution:'Oorspronkelijk door Anvar · overgenomen door Unemi'
+   });
+   assert.equal(result.element.tagName,'DETAILS');
+   assert.equal(result.element.children[0].tagName,'SUMMARY');
+   assert.equal(result.element.children[1],result.content);
+   assert.equal(result.element.children[0].children[0].children[1].textContent,'7/10');
+   assert.equal(result.content.children[0].textContent,longText);
+   assert.equal(result.content.children[1].textContent,
+     'Oorspronkelijk door Anvar · overgenomen door Unemi');
+   assert.ok(!result.element.open,'standaard dicht');
+ }finally{globalThis.document=doc}
+ const css=source('../public/bpd-dossier-shared.css');
+ assert.match(css,/\.bpd-observation-disclosure>/);
+ assert.match(css,/max-height:none!important/);
+ assert.match(css,/white-space:pre-wrap!important/);
+ assert.match(css,/html:not\(\[data-bpd-theme="dark"\]\) \.bpd-observation-disclosure/);
+ const police=source('../public/personeelsbeheer.html');
+ const fire=source('../public/brandweerdossier.html');
+ const citizen=source('../public/burger-personeelsdossiers.html');
+ assert.match(police,/details:row\.details\?\?row\.description\?\?'Geen omschrijving'/);
+ assert.match(police,/details:row\.details\?\?row\.description\?\?row\.reason\?\?''/);
+ assert.match(fire,/details:text\(item\)\|\|'—'/);
+ assert.match(citizen,/details:e\.details\|\|'—'/);
+ assert.match(police,/attachRetireButton\(disclosure\.content,row,'cases'\)/);
+ assert.match(fire,/addFireRetireControl\(disclosure\.content,item,root\.id\)/);
+ assert.match(citizen,/\(disclosure\?disclosure\.content:record\)\.append\(remove\)/);
 });

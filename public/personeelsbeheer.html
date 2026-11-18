@@ -1245,7 +1245,7 @@ import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
 import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalog.js';
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
-import {createObservationScoreBadge,createObservationHeader} from '/dossier-observation-ui.js';
+import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
 import {mountCompactPersonnelDirectory} from '/personnel-compact-ui.js';
@@ -3212,20 +3212,16 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
   root.replaceChildren();
   const append=(row)=>{
     if((group==='observations'||group==='formal')&&row.type==='observatie'){
-      const item=document.createElement('div');
-      item.className='overview-preview bpd-observation-entry';
-      item.append(createObservationHeader((row.eventDate||'Datum onbekend')+' · Observatie',row.score));
-      const details=document.createElement('p');
-      details.className='bpd-observation-body';
-      details.textContent=String(row.details||row.description||'Geen omschrijving').slice(0,6000);
-      const author=document.createElement('small');
-      author.className='bpd-observation-meta';
-      author.textContent=(row.historicalImport?'Oorspronkelijk door ':'Door ')+
-        sheetWho(row)+(row.historicalImport&&row.submittedByActor?.name?
-          ' · Overgenomen door '+row.submittedByActor.name:'');
-      item.append(details,author);
-      attachRetireButton(item,row,'cases');
-      root.append(item);
+      const {element,content}=createObservationDisclosure({
+        title:(row.eventDate||'Datum onbekend')+' · Observatie',
+        score:row.score,
+        details:row.details??row.description??'Geen omschrijving',
+        attribution:(row.historicalImport?'Oorspronkelijke observator: ':'Door ')+
+          sheetWho(row)+(row.historicalImport&&row.submittedByActor?.name?
+            ' · Overgenomen door '+row.submittedByActor.name:'')
+      });
+      attachRetireButton(content,row,'cases');
+      root.append(element);
       return;
     }
     const cells=toCells(row).map(value=>value===null||value===undefined||value===''?'—':String(value));
@@ -3701,7 +3697,7 @@ function updateHistoricalObservationUi(){
   const participants=formalPermissions?.representatives||[];
   select.replaceChildren(option('','Selecteer oorspronkelijke observator'));
   for(const p of participants.filter(p=>p.dept==='politie'))
-    select.append(option(p.discordId,(p.call||'—')+' · '+p.name));
+    select.append(option(p.discordId,(p.call||'—')+' · '+p.name+' · '+(p.rank||'Politie')));
   if([...select.options].some(o=>o.value===old))select.value=old;
   const show=visible&&$('historicalObservationCheck').checked;
   $('historicalObservationSelection').hidden=!show;
@@ -4114,7 +4110,7 @@ async function loadStaffFormalRecords(p,key){
     sheetFormalRows(records,data.limited);
     if(!records.length)root.textContent='Geen zichtbare formele observaties of sancties.';
     for(const row of records.slice(0,100)){
-      const item=document.createElement('div');item.className='note-item';
+      let item=document.createElement('div');item.className='note-item';
       const title=document.createElement('strong');
       const date=row.eventDate||row.createdAt||'Datum onbekend';
       title.textContent=(row.type==='sanctie'?'Sanctie · '+String(row.sanctionType||'onbekend'):
@@ -4130,15 +4126,20 @@ async function loadStaffFormalRecords(p,key){
           (row.submittedByActor?.name||'onbekend')+
           (row.onBehalfReason?' · Bron: '+row.onBehalfReason:''):'');
       const details=document.createElement('p');
-      details.textContent=String(row.details||row.description||row.reason||'').slice(0,6000);
-      const score=row.type==='observatie'?makeScoreBadge(row.score):null;
+      details.textContent=String(row.details??row.description??row.reason??'');
       if(row.type==='observatie'){
-        item.classList.add('bpd-observation-entry');
-        details.classList.add('bpd-observation-body');
-        author.classList.add('bpd-observation-meta');
-        item.append(createObservationHeader(title.textContent,row.score),details,author);
-      }else item.append(title,author,details);
-      attachRetireButton(item,row,'cases');
+        const disclosure=createObservationDisclosure({
+          title:title.textContent,
+          score:row.score,
+          details:row.details??row.description??row.reason??'',
+          attribution:author.textContent
+        });
+        item=disclosure.element;
+        attachRetireButton(disclosure.content,row,'cases');
+      }else{
+        item.append(title,author,details);
+        attachRetireButton(item,row,'cases');
+      }
       if(row.type==='sanctie'){
         const reasons=document.createElement('div');reasons.className='subtle';
         reasons.textContent='Ernst '+(row.severity||'—')+'/10 · '+(row.reasons||[]).join(', ');

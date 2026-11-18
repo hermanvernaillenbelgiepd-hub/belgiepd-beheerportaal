@@ -23,3 +23,28 @@ export function createObservationHeader(label,score){
   if(badge)header.append(badge);
   return header;
 }
+
+/**
+ * A native accessible disclosure. The compact line contains only date/title and
+ * score; full factual text and attribution are never abbreviated or trimmed.
+ * Returns content separately so existing authorised administrative actions may
+ * be placed inside the expanded area without changing their permissions.
+ */
+export function createObservationDisclosure({title,score,details,attribution}={}){
+  const element=document.createElement('details');
+  element.className='bpd-observation-entry bpd-observation-disclosure';
+  const summary=document.createElement('summary');
+  summary.className='bpd-observation-summary';
+  summary.append(createObservationHeader(title||'Observatie',score));
+  const content=document.createElement('div');
+  content.className='bpd-observation-content';
+  const body=document.createElement('p');
+  body.className='bpd-observation-body';
+  body.textContent=String(details??'')||'Geen omschrijving';
+  const author=document.createElement('small');
+  author.className='bpd-observation-meta';
+  author.textContent=String(attribution??'');
+  content.append(body,author);
+  element.append(summary,content);
+  return {element,content};
+}

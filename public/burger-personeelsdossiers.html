@@ -245,7 +245,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 </main>
 <script type="module">
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
-import {createObservationHeader} from '/dossier-observation-ui.js';
+import {createObservationDisclosure} from '/dossier-observation-ui.js';
 const $=id=>document.getElementById(id);
 let auth,authMod,portalSetup,selectedId=null,rows=[],deleteTarget=null;
 const set=(id,value)=>{$(id).textContent=value==null||value===''?'—':String(value)};
@@ -302,24 +302,17 @@ function renderPerson(data){
   const entries=data.entries||[],canDelete=data.canDelete===true;
   const meta=e=>e.eventDate+' · '+fmt(e.createdAt)+' · auteur '+(e.byDiscordId||'onbekend');
   const renderRegistration=(root,e,title,isObservation=false)=>{
-    const record=line(root,title,e.details,meta(e));
-    if(isObservation){
-      record.classList.add('bpd-observation-entry');
-      const oldHeading=record.querySelector('strong');
-      const p=record.querySelector('p');
-      const small=record.querySelector('small');
-      const header=createObservationHeader(title,e.score);
-      oldHeading?.remove();
-      if(p)p.classList.add('bpd-observation-body');
-      if(small)small.classList.add('bpd-observation-meta');
-      record.prepend(header);
-    }
+    const disclosure=isObservation?createObservationDisclosure({
+      title,score:e.score,details:e.details||'—',attribution:meta(e)
+    }):null;
+    const record=disclosure?disclosure.element:line(root,title,e.details,meta(e));
+    if(disclosure)root.append(record);
     if(canDelete){
       const remove=document.createElement('button');
       remove.type='button';remove.className='delete-entry';remove.textContent='Registratie verwijderen';
       remove.setAttribute('aria-label','Verwijder '+title.toLocaleLowerCase('nl-BE'));
       remove.onclick=()=>beginDelete(p.discordId,e,title);
-      record.append(remove);
+      (disclosure?disclosure.content:record).append(remove);
     }
   };
   fill('notes',entries.filter(e=>e.kind==='notitie'),(root,e)=>
