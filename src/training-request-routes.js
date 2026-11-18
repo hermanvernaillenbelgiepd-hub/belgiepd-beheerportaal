@@ -7,6 +7,7 @@ import {TRAINING_ROLE_IDS} from './role-catalog.js';
 import {
   TRAINING_REQUEST_DEPARTMENTS,SERIES_LEADERS,policeRequestTier,personSeries,
   requestCourseOptions,canSubmitTrainingRequest,mayReviewTrainingRequest,
+  mayInstructorReviewTrainingRequest,
   validateTrainingRequestInput,nextTrainingRequestStatus,validTrainingSchedule,
   ACTIVE_TRAINING_REQUEST_STATUSES
 } from './training-request-policy.js';
@@ -99,22 +100,9 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
     person,tierOf(ctx,person),roleForDepartment(ctx.actor,person.dept),
     ownRecord(ctx,person)
   );
-  const reviewScope=(ctx,request)=>mayReviewTrainingRequest(ctx.actor,request) ||
-    // Reekshoofden mogen uitsluitend aanvragen uit hun eigen reeks bekijken.
-    // Hun IDs zijn centraal vastgelegd, niet vanuit de browser opgegeven.
-    (request.department==='politie'&&ctx.persons.some(p=>p.dept==='politie')&&
-      mayReviewTrainingRequest({
-        ...ctx.actor,departments:['politie'],
-        departmentRoles:{politie:'basiskader'}
-      },request))||
-    // Independently verified service instructors may treat training requests
-    // for their own service; police officer/corps applications stay protected.
+  const reviewScope=(ctx,request)=>mayReviewTrainingRequest(ctx.actor,request)||
     (ctx.persons.some(p=>p.dept===request.department)&&
-      (TRAINING_ROLE_IDS[request.department]?.instructors||[])
-        .some(id=>ctx.verifiedRoleIds.includes(id))&&
-      (request.department!=='politie'||
-        !['officierenkader','korpsleiding'].includes(request.applicantTier))&&
-      request.applicantDiscordId!==ctx.id);
+      mayInstructorReviewTrainingRequest(ctx.actor,request,ctx.verifiedRoleIds));
   // Scheduling is distinct from being a reekshoofd or reading a request.
   // A genuine instructor role or verified service leadership is required.
   const scheduleScope=(ctx,dept)=>ctx.persons.some(p=>p.dept===dept)&&
@@ -223,22 +211,14 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       // Firestore scan on every login; this also protects Firestore quotas.
       for(const person of ctx.persons){
         const dept=person.dept,rank=roleForDepartment(ctx.actor,dept);
-        const highPolice=dept==='politie'&&['officierenkader','korpsleiding'].includes(rank);
-        const series=personSeries(person);
-        const seriesLead=dept==='politie'&&series&&SERIES_LEADERS[series]?.includes(ctx.id);
-        const serviceLead=dept!=='politie'&&
-          ['middenkader','officierenkader','korpsleiding'].includes(rank);
+        const cadreLead=['middenkader','officierenkader','korpsleiding'].includes(rank);
         const verifiedInstructor=(TRAINING_ROLE_IDS[dept]?.instructors||[])
           .some(id=>ctx.verifiedRoleIds.includes(id));
-        if(!highPolice&&!seriesLead&&!serviceLead&&!verifiedInstructor)continue;
-        // This is a verified reviewer, even if the current queue is empty.
+        if(!cadreLead&&!verifiedInstructor)continue;
         canReviewTraining=true;
-        let query=db().collection('bpd_training_requests');
-        // A reekshoofd sees only the own series. That single-field query
-        // uses Firestore's automatic index, without requiring a composite.
-        query=seriesLead&&!highPolice?
-          query.where('series','==',series):
-          query.where('department','==',dept);
+        // ReviewScope en de apart geverifieerde instructeurspecialisatie
+        // filteren iedere aanvraag individueel vóór de terugkoppeling.
+        const query=db().collection('bpd_training_requests').where('department','==',dept);
         const rows=await query.limit(200).get();
         for(const doc of rows.docs){
           const request={id:doc.id,...doc.data()};
