@@ -7,11 +7,13 @@ const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
 
 test('TO-dienstbord is een veilige terugkeerpagina na Discord OAuth',()=>{
   assert.equal(validReturnTo('/to-dienstbord.html'),'/to-dienstbord.html');
+  assert.equal(validReturnTo('/meldingen.html'),'/meldingen.html');
   assert.equal(validReturnTo('/discord-status.html'),'/discord-status.html');
   assert.equal(validReturnTo('//discord.com/attacker'),'/discord-status.html');
   assert.equal(validReturnTo('https://untrusted.example/'),'/discord-status.html');
   const page=read('../public/discord-status.html');
   assert.match(page,/\'\/to-dienstbord\.html\'/);
+  assert.ok(page.includes("'/meldingen.html'"));
   assert.match(page,/if\(verified&&safe\.has\(returnTo\)\)location\.replace\(returnTo\)/);
 });
 
