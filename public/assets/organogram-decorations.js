@@ -12,6 +12,7 @@
   elem.dataset.color=['red','silver','gold','blue-silver','blue-gold','red-gold','blue-white','red-black','gold-blue'].includes(item?.color)?
    item.color:'blue-gold';
   elem.setAttribute('aria-hidden','true');
+  if(item?.id==='korpspluim')elem.dataset.award='korpspluim';
   if(typeof item?.imageUrl==='string'&&
      /^\/api\/personnel-awards\/catalog-image\/custom_[a-f0-9-]{36}$/i.test(item.imageUrl)){
    const img=node('img','bpd-award-art');
@@ -31,6 +32,8 @@
     }
     const row=node('span','bpd-award');row.dataset.kind=x.kind==='medal'?'medal':x.kind==='badge'?'badge':'ribbon';
     row.append(ribbon(x),node('span','bpd-award-label',String(x.label||'Onderscheiding').slice(0,90)));
+    if(x.id==='korpspluim'&&Number.isSafeInteger(x.count)&&x.count>0)
+      row.append(node('span','bpd-award-count','×'+x.count));
     row.title=String(x.label||'').slice(0,90);group.append(row);
    });
   }else group.append(node('span','bpd-no-awards','Geen actieve, publiek zichtbare onderscheidingen'));
