@@ -62,26 +62,52 @@ export function canSubmitTrainingRequest(person,tier,actorRole=null,verifiedOwnR
     return ['officierenkader','korpsleiding'].includes(actorRole);
   return tier==='middenkader'&&['middenkader','officierenkader','korpsleiding','beheerder'].includes(actorRole);
 }
+// Algemene politieopleidingen: ieder geverifieerd Middenkader- of hoger
+// kadermandaat behandelt lagere rangen binnen de eigen discipline.
 export function mayReviewTrainingRequest(actor,request){
   if(!actor||!request||actor.discordId===request.applicantDiscordId)return false;
   const dept=request.department;
-  if(!TRAINING_REQUEST_DEPARTMENTS.includes(dept))return false;
+  if(!TRAINING_REQUEST_DEPARTMENTS.includes(dept)||!actor.departments?.includes(dept))return false;
   const scoped=roleForDepartment(actor,dept);
-  // Technisch beheer heeft enkel toegang binnen uitdrukkelijk toegekende diensten.
-  if(!actor.departments?.includes(dept))return false;
   if(dept==='politie'){
-    // Officierenkader mag nooit een aanvraag van het eigen kader afhandelen.
-    // Nieuwe aanvragen van Korpsleiding zijn geblokkeerd; voor historische
-    // aanvragen behoudt een ander Korpsleidingslid de bestaande afhandeling.
     if(['officierenkader','korpsleiding'].includes(request.applicantTier))
       return scoped==='korpsleiding';
-    if(['officierenkader','korpsleiding'].includes(scoped))return true;
-    if(request.applicantTier==='middenkader')return false;
-    return ['agentenkader','basiskader'].includes(request.applicantTier)&&
-      Boolean(request.series&&SERIES_LEADERS[request.series]?.includes(actor.discordId));
+    if(request.applicantTier==='middenkader')
+      return ['officierenkader','korpsleiding'].includes(scoped);
+    if(['agentenkader','basiskader'].includes(request.applicantTier))
+      return ['middenkader','officierenkader','korpsleiding'].includes(scoped);
+    return false;
   }
   return ['middenkader','officierenkader','korpsleiding'].includes(scoped);
 }
+
+// Specialisatie-instructeurs mogen alleen aanvragen van HUN discipline en
+// (voor Politie) HUN specifieke specialisatie behandelen. Dienstleiding
+// gebruikt het bovenstaande afzonderlijke, goedgekeurde kaderrecht.
+export function mayInstructorReviewTrainingRequest(actor,request,verifiedRoleIds=[]){
+  if(!actor||!request||actor.discordId===request.applicantDiscordId||
+     !actor.departments?.includes(request.department)||!Array.isArray(verifiedRoleIds))return false;
+  const roles=new Set(verifiedRoleIds);
+  if(request.department==='politie'){
+    if(!['agentenkader','basiskader'].includes(request.applicantTier))return false;
+    const course=String(request.courseName||'').toLocaleUpperCase('nl-BE')
+      .replace(/\s+/g,' ').trim();
+    const scope=[
+      [/^K-?9$/, '1345302115689431061'],
+      [/^RAGO$/, '1393050551188721865'],
+      [/^MOTARD(?:-OFF ROAD)?$/, '1359656762289946755'],
+      [/^DISPATCH$/, '1393050971604516904'],
+      [/^(?:ERT[- ]?)?AE[- ]?[ITF]$/, '1337156006597103746']
+    ];
+    return scope.some(([name,id])=>name.test(course)&&roles.has(id));
+  }
+  const other={
+    ambulance:'1309532437952466988',
+    brandweer:'1309532437952466989'
+  };
+  return Boolean(other[request.department]&&roles.has(other[request.department]));
+}
+
 export function validateTrainingRequestInput(body,options,tier){
   if(!body||typeof body!=='object'||Array.isArray(body)||
     Object.keys(body).some(key=>!['department','course','varia','note'].includes(key)))
