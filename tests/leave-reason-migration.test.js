@@ -61,7 +61,7 @@ test('historische sanctie is geen nieuwe actieve maatregel, historische ping ver
  assert.match(staff,/historicalPing:true/);
  assert.match(staff,/type==='inactiviteitsping'&&!represented/);
  assert.match(staff,/registeredBy:represented\|\|actor,submittedByActor:actor/);
- assert.match(staff,/extendedEnabled/);
+ assert.match(formal,/extendedEnabled:input\.enabled/);
  const leave=read('src/leave-routes.js');
  assert.match(leave,/historicalImport:Boolean\(originalAuthor\)/);
  assert.match(leave,/onBehalfReason,submittedByActor/);
