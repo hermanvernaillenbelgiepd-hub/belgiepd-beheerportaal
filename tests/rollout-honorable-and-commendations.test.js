@@ -65,3 +65,16 @@ test('rollout personnel management UI stays valid ES module',()=>{
  });
  assert.equal(checked.status,0,checked.stderr);
 });
+
+test('voordrachten hebben afzonderlijk beveiligd overzicht en expliciete beslissing',()=>{
+ const api=src('src/management-routes.js');
+ const ui=src('public/personeelsbeheer.html');
+ assert.match(api,/app\.get\('\/api\/management\/award-nominations',requireUser/);
+ assert.match(api,/app\.post\('\/api\/management\/award-nominations\/decision',requireUser/);
+ assert.match(api,/mayReviewNominations\(req\.bpd\)/);
+ assert.match(api,/canReadPersonnelSubject\(req\.bpd,subject\)/);
+ assert.match(api,/nominationStatus:decision==='approve'\?'approved':'rejected'/);
+ assert.match(api,/medalAwarded:false/);
+ assert.match(ui,/id="refreshNominations"/);
+ assert.match(ui,/id="nominationEntries"/);
+});
