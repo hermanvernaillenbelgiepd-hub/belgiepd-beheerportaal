@@ -164,11 +164,12 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
   });
   // Police decorations nominations have an independent review queue.
   // An approved proposal is NOT automatically an awarded medal.
-  const mayReviewNominations=actor=>Boolean(actor?.uid==='discord:'+actor?.discordId&&
+  const mayReviewNominations=actor=>Boolean(isVerifiedReportTechnicalAdmin(actor)||
+    (actor?.uid==='discord:'+actor?.discordId&&
     actor?.portalTechnicalMode!==true&&actor?.departments?.includes('politie')&&
     ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
     actor?.dossierNativeDepartments?.includes('politie')&&
-    actor?.dossierAllowedDepartments?.includes('politie'));
+    actor?.dossierAllowedDepartments?.includes('politie')));
   app.get('/api/management/award-nominations',requireUser,async(req,res)=>{
     if(!mayReviewNominations(req.bpd))return res.status(403).json({error:'Alleen politie Officierenkader en Korpsleiding beoordelen voordrachten'});
     try{
