@@ -8,6 +8,32 @@ const SERVICE=new Set(LIFECYCLE_SERVICES);
 const ID=/^\d{15,22}$/;
 export const lifecycleKey=(dept,id)=>SERVICE.has(dept)&&ID.test(String(id||''))?
  dept+'_'+id:null;
+export const HONORABLE_REQUEST_COLLECTION='bpd_honorable_resignation_requests';
+export function validateHonorableRequest(body){
+ if(!body||typeof body!=='object'||Array.isArray(body)||
+  Object.keys(body).some(x=>!['department','reason'].includes(x))||
+  body.department!=='politie')throw Error('Eervol ontslag aanvragen kan binnen Politie');
+ const reason=String(body.reason||'').trim();
+ if(reason.length<10||reason.length>500||/[<>\x00-\x1f\x7f]/.test(reason))
+  throw Error('Motivering van 10 tot 500 tekens vereist');
+ return {department:'politie',reason};
+}
+export function validateHonorableDecision(body){
+ if(!body||typeof body!=='object'||Array.isArray(body)||
+  Object.keys(body).some(x=>!['decision','reason'].includes(x))||
+  !['approve','reject'].includes(body.decision))
+  throw Error('Ongeldige beslissing over eervol ontslag');
+ const reason=String(body.reason||'').trim();
+ if(reason.length<10||reason.length>500||/[<>\x00-\x1f\x7f]/.test(reason))
+  throw Error('Motivering van 10 tot 500 tekens vereist');
+ return {decision:body.decision,reason};
+}
+// Historical credentials survive archival. Restored assignments are explicitly
+// REASSESSED, never reactivated just because they existed in a past snapshot.
+export const HONORABLE_REENTRY_REQUIRES=Object.freeze({
+ entryRank:'Inspecteur',trainingHistoryPreserved:true,decorationsPreserved:true,
+ priorSpecializationTrainingEligible:true,automaticOperationalPrivileges:false
+});
 export const ARCHIVE_REASONS=Object.freeze(['voluntary_discord_leave','management_dismissal',
  'service_resignation','other']);
 export function validateLifecycleAction(body,action){
