@@ -3632,7 +3632,9 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
         title:(row.eventDate||'Datum onbekend')+' · '+(row.linked?'Gekoppelde observatie':'Observatie'),
         score:row.score,
         details:row.details??row.description??'Geen omschrijving',
-        attribution:dossierAuthorLine(row)+(row.historicalImport&&row.submittedByActor?.name?
+        attribution:(row.historicalImport?'Oorspronkelijke observator: ':'Door ')+
+          dossierAuthorLine(row).replace(/^(Oorspronkelijke invoerder: |Door )/,'')+
+          (row.historicalImport&&row.submittedByActor?.name?
           ' · Overgenomen door '+row.submittedByActor.name:'')
       });
       attachObservationEditButton(content,row);
@@ -5021,7 +5023,10 @@ async function loadStaffFormalRecords(p,key){
         row.linked?'Gekoppelde observatie':'Observatie')+' · '+date+(row.testRecord===true?' · TEST':'')+
         (row.status==='ingetrokken'?' · INGETROKKEN':'');
       const author=document.createElement('span');author.className='subtle';author.style.display='block';
-      author.textContent=dossierAuthorLine(row)+
+      author.textContent=(row.historicalImport&&row.type==='observatie'?
+        'Oorspronkelijke observator: ':'')+
+        dossierAuthorLine(row).replace(row.historicalImport&&row.type==='observatie'?
+          /^Oorspronkelijke invoerder: /:/^$/, '')+
         (row.eventTime?' · '+row.eventTime:'')+
         (row.modifiedAt?' · bijgewerkt '+new Date(row.modifiedAt).toLocaleString('nl-BE'):'')+
         (row.historicalImport===true?' · Overgenomen uit spreadsheet door '+
