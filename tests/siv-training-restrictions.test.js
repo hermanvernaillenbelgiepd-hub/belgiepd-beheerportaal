@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {effectiveTemporarySanctionStatus}
+ from '../public/temporary-sanction-state.js';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {isSivTrainingSanction,isPriorityCourse,passedPriorityDriving,
@@ -109,4 +111,24 @@ test('alle aangepaste frontend modules blijven syntactisch geldig',()=>{
     {input:match[1],encoding:'utf8'});
   assert.equal(result.status,0,file+': '+result.stderr);
  }
+});
+
+test('algemene tijdelijke sancties verlopen automatisch per Belgische dag, zonder de sanctie te wissen',()=>{
+ const dated={...sample};
+ assert.equal(effectiveTemporarySanctionStatus(dated,'2026-11-19'),
+  'actief · historisch overgenomen');
+ assert.equal(effectiveTemporarySanctionStatus(dated,'2026-12-31'),
+  'actief · historisch overgenomen');
+ assert.equal(effectiveTemporarySanctionStatus(dated,'2027-01-01'),'verlopen');
+ assert.equal(effectiveTemporarySanctionStatus({
+  ...dated,sanctionType:'Tijdelijke degradatie',
+  status:'actief'},'2027-01-01'),'verlopen');
+ assert.equal(effectiveTemporarySanctionStatus({
+  ...dated,status:'ingetrokken'},'2026-11-19'),'ingetrokken');
+ assert.equal(dated.status,'historisch','de bron blijft onaangeroerd');
+ const overview=read('src/sanction-overview-policy.js');
+ assert.match(overview,/effectiveTemporarySanctionStatus\(entry\)/);
+ const dossier=read('public/personeelsbeheer.html');
+ assert.match(dossier,/effectiveTemporarySanctionStatus\(row\)/);
+ assert.match(dossier,/termijn verstreken/);
 });

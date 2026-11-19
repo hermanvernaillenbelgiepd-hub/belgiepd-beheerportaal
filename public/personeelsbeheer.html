@@ -1451,6 +1451,7 @@ import {threeMonthObservationScore,observationTrendLabel,observationTrendSymbol}
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
 import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
 import {newestDossierEntries} from '/dossier-entry-order.js';
+import {effectiveTemporarySanctionStatus} from '/temporary-sanction-state.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
 import {mountCompactPersonnelDirectory} from '/personnel-compact-ui.js';
@@ -3769,7 +3770,8 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
         extra:row.type==='sanctie'?[
           ['Soort sanctie',row.sanctionType],['Ernst',row.severity],
           ['Redenen',Array.isArray(row.reasons)?row.reasons.join(', '):''],
-          ['Status',row.status],['Einddatum',row.endDate]]:[]});
+          ['Huidige geldigheid',effectiveTemporarySanctionStatus(row)],
+          ['Oorspronkelijke status',row.status],['Einddatum',row.endDate]]:[]});
     }
     attachRetireButton(item,row,group==='leave'?'leave':group==='basisNotes'?'staff':'cases');
     root.append(item);
@@ -4104,8 +4106,8 @@ function sheetFormalRows(entries,limited){
   importantRestrictionEntries=list.filter(x=>x.type==='sanctie'&&
     x.sanctionType==='Tijdelijke beperking')
     .map(x=>({...x,importantTitle:'Tijdelijke beperking · '+(
-        x.status==='ingetrokken'?'INGETROKKEN':
-        x.endDate&&x.endDate<new Date().toISOString().slice(0,10)?'termijn verstreken':'actief'),
+        effectiveTemporarySanctionStatus(x)==='ingetrokken'?'INGETROKKEN':
+        effectiveTemporarySanctionStatus(x)==='verlopen'?'termijn verstreken':'actief'),
       details:[
         Array.isArray(x.restrictedSpecialties)&&x.restrictedSpecialties.length?
           'Specialisatie: '+x.restrictedSpecialties.join(', '):'Specialisatie niet gespecificeerd (oud dossier)',
@@ -5122,7 +5124,8 @@ async function loadStaffFormalRecords(p,key){
           extra:[['Soort sanctie',row.sanctionType],
             ['Ernst',row.severity==null?'':row.severity+'/10'],
             ['Redenen',Array.isArray(row.reasons)?row.reasons.join(', '):''],
-            ['Status',row.status],['Einddatum',row.endDate],
+            ['Huidige geldigheid',effectiveTemporarySanctionStatus(row)],
+          ['Oorspronkelijke status',row.status],['Einddatum',row.endDate],
             ['Beperkingen',Array.isArray(row.restrictedSpecialties)?
               row.restrictedSpecialties.join(', '):'']]});
         const permitted=Boolean(formalPermissions?.sanctionAmendDepartments?.includes(p.dept)&&
