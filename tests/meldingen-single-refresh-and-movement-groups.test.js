@@ -41,7 +41,7 @@ test('Personnel movements group options visually and preserve all existing store
  const select=source.slice(start,end);
  for(const title of ['Rangwijzigingen','Tijdelijke maatregelen','Uitdiensttreding'])
   assert.ok(select.includes('<optgroup label="'+title+'">'));
- const values=[...select.matchAll(/<option value="([^"]+)"/g)].map(m=>m[1]);
+ const values=[...select.matchAll(/<option value="([^"]*)"/g)].map(m=>m[1]);
  assert.deepEqual(values,['','Promotie','Degradatie','Schorsing',
   'Ontslag','Ontslag inactief','Vrijwillig']);
  assert.match(source,/const gradeMove=movement==='Promotie'\|\|movement==='Degradatie'/);
