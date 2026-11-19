@@ -39,6 +39,26 @@ export function policeCallGrade(call){
   return n>=920?7:Math.floor(n/100)===9?null:
     Math.floor(n/100)<=2?0:Math.floor(n/100)-2;
 }
+// Technical profile switching does not erase a separately approved,
+// Discord-verified operational Police rank. Nor does technical access itself
+// create any power to promote: only the preserved operational role plus
+// independent Police Discord evidence can enable grade changes.
+export function verifiedPoliceRankAuthority(actor){
+  if(!actor||actor.uid!=='discord:'+actor.discordId||
+     !actor.departments?.includes('politie'))return null;
+  const technical=actor.portalTechnicalMode===true;
+  if(technical&&actor.profileTechnicalAvailable!==true)return null;
+  const role=technical?actor.operationalRole:actor.role;
+  const scoped=technical?actor.operationalDepartmentRoles?.politie:
+    roleForDepartment(actor,'politie');
+  if(role==='korpsleiding'&&scoped==='korpsleiding'&&
+     (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true))
+    return 'korpsleiding';
+  if(role==='officierenkader'&&scoped==='officierenkader'&&
+     actor.discordPoliceRank==='officierenkader')
+    return 'officierenkader';
+  return null;
+}
 export function canChangePoliceGrade(actor,subject){
   if(!subject||subject.dept!=='politie'||actor?.discordId===subject.personId||
      actor?.uid!=='discord:'+actor?.discordId||
@@ -47,23 +67,18 @@ export function canChangePoliceGrade(actor,subject){
      !actor?.dossierAllowedDepartments?.includes('politie')||
      !canReadPersonnelSubject(actor,subject)||!canEditPersonnel(actor,subject))
     return false;
-  const scoped=roleForDepartment(actor,'politie');
-  const officer=actor.role==='officierenkader'&&scoped==='officierenkader'&&
-    actor.discordPoliceRank==='officierenkader';
-  const corps=actor.role==='korpsleiding'&&scoped==='korpsleiding'&&
-    (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true);
-  if(!officer&&!corps)return false;
+  const cadre=verifiedPoliceRankAuthority(actor);
+  if(!cadre)return false;
   const grade=policeCallGrade(subject.call);
   // Callsign and official personnel grade must not disagree on the cadre.
-  if(grade===null)return false;
-  if(officer&&grade>6)return false;
+  if(grade===null||policeSubjectGradeOption(subject)===null)return false;
+  if(cadre==='officierenkader'&&grade>6)return false;
   return true;
 }
 export function allowedPoliceGradeChoices(actor){
-  const corps=actor?.role==='korpsleiding'&&
-    roleForDepartment(actor,'politie')==='korpsleiding'&&
-    (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true);
-  return POLICE_RANK_CHOICES.filter(item=>item.grade<=(corps?7:6))
+  const cadre=verifiedPoliceRankAuthority(actor);
+  if(!cadre)return [];
+  return POLICE_RANK_CHOICES.filter(item=>item.grade<=(cadre==='korpsleiding'?7:6))
     .map(item=>item.rank);
 }
 export function validatePoliceGradeChange(body){
