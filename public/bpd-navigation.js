@@ -407,32 +407,59 @@
   }
   // The action marker is derived only from per-user, server-authorized
   // unread follow-ups. It never reveals case details or grants access.
+  // Show an action-required triangle for unread personal notices and
+  // outstanding work within each user's existing server-authorized scopes.
   function watchUnreadLeaveReturns(){
-    let unread=0,authenticated=null,clock=null;
+    let count=0,unread=0,authenticated=null,requestSeq=0;
     const mark=()=>{
       for(const link of document.querySelectorAll('a[href^="/meldingen.html"]')){
         const existing=link.querySelector('.bpd-action-warning');
-        if(!unread){existing?.remove();link.removeAttribute('data-action-required');continue}
+        if(!count){existing?.remove();link.removeAttribute('data-action-required');continue}
         link.dataset.actionRequired='true';
-        link.title=unread+' ongelezen verlofterugkeercontrole(s) · actie vereist';
+        link.title=count+' openstaande melding(en), waarvan '+unread+' ongelezen · actie vereist';
         const badge=existing||document.createElement('span');
         badge.className='bpd-action-warning';
-        badge.setAttribute('aria-label',unread+' ongelezen, actie vereist');
-        badge.textContent='⚠ '+unread;
+        badge.setAttribute('aria-label',count+' actie vereist; '+unread+' ongelezen');
+        badge.textContent='⚠ '+count;
         if(!existing)link.append(badge);
       }
     };
     const poll=async()=>{
       if(!authenticated)return;
+      const seq=++requestSeq;
       try{
         const token=await authenticated.getIdToken();
-        const response=await fetch('/api/activity-return/checks',{cache:'no-store',
-          headers:{Authorization:'Bearer '+token}});
-        if(!response.ok){unread=0;mark();return}
-        const data=await response.json();
-        unread=data.enabled===true?Math.max(0,Number(data.unread)||0):0;
-        mark();
-      }catch{unread=0;mark()}
+        const paths=['/api/activity-return/checks','/api/leave/requests',
+          '/api/leave/series-notifications','/api/training-requests',
+          '/api/personnel-return-review','/api/management/pings/mine'];
+        const responses=await Promise.all(paths.map(async path=>{
+          try{
+            const response=await fetch(path,{cache:'no-store',
+             headers:{Authorization:'Bearer '+token}});
+            return response.ok?await response.json():null;
+          }catch{return null}
+        }));
+        if(seq!==requestSeq||!authenticated||responses.every(x=>!x))return;
+        const [returns,leave,series,training,identity,pings]=responses;
+        const queue=new Set();let personalUnread=0;
+        for(const x of returns?.checks||[]){
+          if(!x.readAt){queue.add('return:'+x.id);personalUnread++}
+        }
+        // An acknowledged but unresolved CHECKING remains an outstanding
+        // action. It must not be marked as newly unread.
+        for(const x of returns?.checks||[])queue.add('return:'+x.id);
+        for(const x of leave?.toReview||[])queue.add('leave:'+x.id);
+        for(const x of series?.pending||[])if(!x.readAt){
+          queue.add('leave:'+x.id);personalUnread++;
+        }
+        for(const x of training?.incoming||[])queue.add('training:'+x.id);
+        for(const x of identity?.rows||[])queue.add('identity:'+(x.alertId||x.discordId));
+        for(const x of pings?.pings||[])if(x.status!=='read'){
+          queue.add('ping:'+x.id);personalUnread++;
+        }
+        count=queue.size;unread=personalUnread;mark();
+        setTimeout(mark,500);
+      }catch{/* Keep the last authorized marker until next refresh. */}
     };
     (async()=>{
       try{
@@ -442,14 +469,13 @@
         if(!sdk.getApps().length)return;
         const authSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
         authSdk.onAuthStateChanged(authSdk.getAuth(sdk.getApps()[0]),user=>{
-          authenticated=user;unread=0;mark();if(user)void poll();
+          authenticated=user;count=0;unread=0;mark();if(user)void poll();
         });
-        clock=setInterval(()=>{if(authenticated&&document.visibilityState!=='hidden')void poll()},120000);
+        setInterval(()=>{if(authenticated&&document.visibilityState!=='hidden')void poll()},120000);
         window.addEventListener('focus',()=>{if(authenticated)void poll()});
+        window.addEventListener('bpd-notifications-refresh',()=>{if(authenticated)void poll()});
       }catch{/* The navigation remains usable when notices are offline. */}
     })();
-    // The shared menu may re-render after role verification; reapply the
-    // already-authorized count to the new link, without further API requests.
     const region=document.querySelector('#bpdSidebar .bpd-side-links')||
       document.querySelector('.portal > aside nav');
     if(region){
