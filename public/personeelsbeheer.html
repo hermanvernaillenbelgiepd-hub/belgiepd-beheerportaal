@@ -1309,7 +1309,17 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 </select>
 <div id="staffMovementGradeFields" class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:100%" hidden>
 <div><label for="staffMovementOldRank">Oude graad</label><input id="staffMovementOldRank" maxlength="100"></div>
-<div><label for="staffMovementNewRank">Nieuwe graad</label><input id="staffMovementNewRank" list="staffMovementGradeList" maxlength="100"><datalist id="staffMovementGradeList"></datalist></div>
+<div>
+ <div id="staffMovementGradeSelectWrap">
+  <label for="staffMovementGradeSelect">Nieuwe graad</label>
+  <select id="staffMovementGradeSelect" aria-describedby="staffMovementHint"></select>
+ </div>
+ <div id="staffMovementCustomRankField" hidden>
+  <label for="staffMovementNewRank">Nieuwe graad (historisch)</label>
+  <input id="staffMovementNewRank" maxlength="100" autocomplete="off">
+  <datalist id="staffMovementGradeList"></datalist>
+ </div>
+</div>
 <div><label for="staffMovementOldCall">Oud roepnummer</label><input id="staffMovementOldCall" maxlength="24"></div>
 <div><label for="staffMovementNewCall">Nieuw roepnummer</label><input id="staffMovementNewCall" maxlength="24" placeholder="Vrij nummer…" autocomplete="off"></div>
 <div style="grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:8px">
