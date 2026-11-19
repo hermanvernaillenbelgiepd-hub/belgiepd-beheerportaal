@@ -55,6 +55,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <button type="button" data-tab="sancties">Sancties</button>
 <button type="button" data-tab="opleidingen">Opleidingen</button>
 <button type="button" data-tab="historiek">Historiek</button>
+<button type="button" data-tab="promoties">Promotievoorstellen</button>
 <button type="button" data-tab="nieuw">Registratie toevoegen</button>
 </nav>
 <section id="overviewSection" class="dossier-panel" data-pane="overzicht" hidden>
@@ -94,6 +95,13 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
           <div id="overviewTrainingTile" hidden><div id="overviewTrainingCount" class="small-rows"></div></div>
           <div class="fire-redacted">Afgeschermd voor jouw Brandweerfunctie.</div>
         </div>
+      </section>
+      <section class="landscape-cell" data-sheet-tile="promotions">
+        <h3>Promotievoorstellen <span class="fire-inline-actions">
+          <button type="button" data-open-tab="promoties">Bekijken</button>
+          <button type="button" data-open-tab="nieuw" data-entry-kind="promotievoorstel">Voorstellen</button>
+        </span></h3>
+        <div class="sheet-records"><div id="overviewPromotionCount" class="small-rows">Geen promotievoorstellen</div></div>
       </section>
     </div>
   </div>
@@ -161,8 +169,13 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <h2>Sancties</h2><div id="sanctions" class="sheet-rows"></div></section>
 <section id="trainingSection" class="card dossier-panel" data-pane="opleidingen" hidden>
 <div class="buttons" style="justify-content:space-between">
-<h2>Gekoppelde opleidingen</h2><a id="trainingLink" href="/rollen-opleidingen.html?department=brandweer">Brandweeropleidingen ↗</a></div>
+<h2>Gekoppelde opleidingen</h2><a id="trainingLink" href="/rollen-opleidingen.html?department=brandweer">Opleiding registreren / register ↗</a></div>
 <div id="trainings" class="sheet-rows"></div><h3>Stage- en koppelritevaluaties</h3><div id="fireCheckrides" class="sheet-rows">Evaluaties laden…</div></section>
+<section id="promotionSection" class="card dossier-panel" data-pane="promoties" hidden>
+<h2>Promotievoorstellen Brandweer</h2>
+<p class="muted">Middenkader en hoger kunnen binnen hun bevoegdheid een voorstel indienen. Brandweerofficieren en ZONE registreren hun eigen advies. Adviezen veranderen nooit automatisch de graad.</p>
+<div id="promotionRecords" class="sheet-rows"></div>
+</section>
 <section id="historySection" class="card dossier-panel" data-pane="historiek" hidden>
 <h2>Administratieve dossierhistoriek</h2>
 <div id="history" class="sheet-rows"></div>
@@ -172,6 +185,16 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <div class="fieldgrid">
 <div><label for="kind">Type</label><select id="kind"></select></div>
 <div><label for="date">Datum</label><input id="date" type="date" required></div>
+</div>
+<div id="promotionFields" hidden>
+  <label for="proposedRank">Voorgestelde nieuwe graad (geen automatische promotie)</label>
+  <input id="proposedRank" maxlength="100" placeholder="Bijv. Korporaal">
+</div>
+<div id="movementFields" hidden class="fieldgrid">
+  <div><label for="movementType">Personeelsbeweging</label><input id="movementType" maxlength="150" placeholder="Bijv. ploegwissel, overplaatsing, benoeming"></div>
+  <div><label for="movementPreviousRank">Vorige graad (optioneel)</label><input id="movementPreviousRank" maxlength="100"></div>
+  <div><label for="movementNewRank">Nieuwe graad (optioneel)</label><input id="movementNewRank" maxlength="100"></div>
+  <p class="muted">Registratie is historisch; de officiële rang en Discord-rollen worden niet aangepast.</p>
 </div>
 <div id="sanctionFields" hidden class="fieldgrid">
 <div><label for="sanctionType">Sanctie</label><select id="sanctionType">
