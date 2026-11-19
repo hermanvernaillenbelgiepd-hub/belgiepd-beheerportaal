@@ -3348,7 +3348,7 @@ function currentPoliceGradeIndex(person){
  const exact=rankChoices.indexOf(person.rank);
  if(exact>=0)return exact;
  const match=String(person.call||'').trim()
-   .match(/^(?:S[- ]?)?([1-9]\\d{2})$/i);
+   .match(/^(?:S[- ]?)?([1-9]\d{2})$/i);
  if(!match)return -1;
  const call=Number(match[1]);
  const grade=call>=920?7:call>=900?-1:call>=300?
