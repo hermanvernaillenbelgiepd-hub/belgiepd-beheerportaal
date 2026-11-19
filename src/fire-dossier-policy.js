@@ -67,7 +67,23 @@ export function fireSanctionLevel(actor){
     return 'korpsleiding';
   return actor?.fireAccessLevel==='leadership'?'middenkader':null;
 }
+// Proposals and opinions are advisory only; no rank or access changes.
+export function fireMayProposePromotion(actor,subject,subjectRoles){
+ if(!actor||!subject||actor.discordId===subject.personId)return false;
+ const scope=fireRecordVisibility(actor,subject,subjectRoles);
+ return (actor.fireAccessLevel==='middle'&&scope==='identity')||
+  (actor.fireAccessLevel==='leadership'&&scope==='leadership')||
+  (actor.fireZoneChief===true&&scope==='full')||
+  (actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true&&scope==='full');
+}
+export function fireMayAdvisePromotion(actor,subject,subjectRoles){
+ if(!actor||!subject||actor.discordId===subject.personId)return false;
+ const scope=fireRecordVisibility(actor,subject,subjectRoles);
+ return (actor.fireAccessLevel==='leadership'&&scope==='leadership')||
+  (actor.fireZoneChief===true&&scope==='full');
+}
 export function fireMayCreate(actor,subject,subjectRoles,type){
+ if(type==='promotievoorstel')return fireMayProposePromotion(actor,subject,subjectRoles);
  if(verifiedBoardCorpsDossierAdmin(actor))
    return actor.discordId!==subject?.personId&&
      ['observatie','basisnotitie','notitie','sanctie'].includes(type);
@@ -79,5 +95,5 @@ export function fireMayCreate(actor,subject,subjectRoles,type){
  // corps leadership powers, but only inside the Brandweer service.
  return scope==='identity'?type==='observatie':
  scope==='leadership'||scope==='full'?
- ['observatie','basisnotitie','notitie','sanctie'].includes(type):false;
+ ['observatie','basisnotitie','notitie','sanctie','personeelsbeweging'].includes(type):false;
 }
