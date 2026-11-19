@@ -160,6 +160,14 @@ header{padding-inline:clamp(15px,2vw,34px)}
   pointer-events:auto;flex:0 0 150px;width:150px;height:auto;min-width:0;
   padding:10px;border:1px solid #476080;color-scheme:normal}
 @media(max-width:600px){.formal-date-row{flex-wrap:nowrap}}
+/* Opvolgstatus is een vastgelegde DOSSERstatus, niet automatisch de personeelsrang/status. */
+.activity-followup-pill{display:inline-flex;align-self:flex-start;max-width:100%;
+ font-weight:750;font-size:12px;padding:4px 9px;border-radius:7px;margin:6px 0;
+ border:1px solid;white-space:normal}
+.activity-followup-green{background:#164d2a;border-color:#39894c;color:#d8ffe5}
+.activity-followup-orange{background:#623a0c;border-color:#a9711d;color:#ffebca}
+.activity-followup-red{background:#581b21;border-color:#ac5258;color:#ffe0e2}
+.activity-followup-grey{background:#343d4c;border-color:#788498;color:#eff2f8}
 /* Niet-blokkerende, tijdelijke waarschuwing voor dossiers met dezelfde datum. */
 .dossier-date-toast{position:fixed;top:88px;right:18px;z-index:13000;width:min(440px,calc(100vw - 36px));
  padding:14px 16px;border-radius:11px;border:1px solid #ad8b56;background:#263249;color:#f9e7c4;
@@ -1212,6 +1220,34 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 </div>
 <p class="subtle" id="staffCourseRegisterNote">Deze dossierregistratie komt in het weekrapport. Ze markeert de opleiding niet automatisch als geslaagd in het afzonderlijke opleidingsregister.</p>
 </div>
+<div id="staffActivityPingField" hidden style="grid-column:1/-1">
+ <div class="grid">
+  <div>
+   <label for="staffActivityStatus">Activiteitenstatus voor dossier en weekrapport</label>
+   <select id="staffActivityStatus">
+    <option value="">Kies de opvolgstatus…</option>
+    <option value="ACTIEF">🟢 Actief</option>
+    <option value="50/50">🟠 50/50 — minder dan 20 uur of 15+ dagen geen connectie</option>
+    <option value="INACTIEF">🔴 Inactief — minder dan 10 uur of 30+ dagen geen connectie</option>
+    <option value="VERWIJDERING_TE_BEOORDELEN">⚫ 60+ dagen geen connectie — verwijdering beoordelen</option>
+   </select>
+  </div>
+  <div>
+   <label for="staffActivityDiscordContact">Is deze persoon daadwerkelijk via Discord gepingd?</label>
+   <select id="staffActivityDiscordContact">
+    <option value="">Kies de werkelijke situatie…</option>
+    <option value="ja">Ja, handmatig Discord-bericht verstuurd</option>
+    <option value="nee">Nee, nog geen Discord-bericht verstuurd</option>
+   </select>
+  </div>
+  <div id="staffActivityDiscordDateWrap" hidden>
+   <label for="staffActivityDiscordDate">Datum van het verstuurde Discord-bericht</label>
+   <input id="staffActivityDiscordDate" type="date">
+  </div>
+ </div>
+ <p class="subtle">Deze registratie legt de gekozen opvolgstatus en Discord-contact vast; het portaal verstuurt zelf geen Discord-bericht.
+ De status van de officiële personeelslijst verandert niet automatisch. Verwijdering na 60 dagen vereist een afzonderlijke bevoegde beslissing. Goedgekeurd verlof moet in de beoordeling worden meegenomen.</p>
+</div>
 <div id="staffEndDateField" hidden><label for="staffEndDate">Einddatum verlofnotitie</label><input id="staffEndDate" type="date"></div>
 <div id="staffRankField" hidden><label for="staffProposedRank">Voorgestelde rang</label><input id="staffProposedRank" maxlength="140"></div>
 <div id="staffNewNameField" hidden><label for="staffNewName">Nieuwe naam</label><input id="staffNewName" maxlength="120"></div>
@@ -1392,7 +1428,7 @@ import {populateInstructorOptions,syncManualInstructor,selectedInstructor} from 
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 enhanceBelgianDateInputs(['leaveFrom','leaveUntil','staffStartDate','staffTrainingDate',
- 'staffCaseDate','staffEndDate','formalRestrictionEndDate','formalTemporaryEndDate']);
+ 'staffCaseDate','staffEndDate','staffActivityDiscordDate','formalRestrictionEndDate','formalTemporaryEndDate']);
 document.body.classList.add('dossier-onepage');
 let activeLeaveRosterIds=new Set();
 let activeLeaveRosterLoadState='ready'; // ready | loading | unavailable
@@ -1764,7 +1800,7 @@ function displaySelectedRegistration(){
   }else if(kind==='case:opleiding'){
     trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
   }else if(kind==='case:inactiviteitsping'){
-    trainingDestination.textContent='De activiteitenping wordt met datum, motivering en de registrerende medewerker in dit personeelsdossier en het dynamische weekrapport gelogd. Er wordt geen automatisch Discord-bericht verstuurd.';
+    trainingDestination.textContent='Registreer een opvolgstatus (Actief / 50/50 / Inactief / verwijdering beoordelen) en bevestig afzonderlijk of een Discord-ping écht handmatig is verstuurd. De gegevens komen in het dossier en weekrapport. Dit formulier stuurt geen Discord-bericht en wijzigt de officiële personeelsstatus niet.';
   }
   // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
   // wanneer de gebruiker naar een ander registratietype omschakelt.
@@ -3226,6 +3262,7 @@ $('formalDate').addEventListener('change',scheduleDossierDateWarning);
 $('staffCaseDate').addEventListener('change',scheduleDossierDateWarning);
 
 const staffCaseFields={verlof:['staffEndDateField'],opleiding:['staffCourseField'],
+  inactiviteitsping:['staffActivityPingField'],
   promotievoorstel:['staffRankField'],naamswijziging:['staffNewNameField'],
   personeelsbeweging:['staffMovementField']};
 const staffCaseValues=['staffEndDate','staffCourseName','staffProposedRank','staffNewName',
@@ -3239,8 +3276,19 @@ const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   activiteit:'Dienstactiviteit',specialisatiebeperking:'Beperking van specialisatie',
   inactiviteitsping:'Activiteitenping',
   functiewijziging:'Functiewijziging'};
+function updateActivityDiscordDate(){
+ const confirmed=$('staffActivityDiscordContact').value==='ja';
+ $('staffActivityDiscordDateWrap').hidden=!confirmed;
+ $('staffActivityDiscordDate').required=confirmed;
+ if(!confirmed)$('staffActivityDiscordDate').value='';
+}
+$('staffActivityDiscordContact').onchange=updateActivityDiscordDate;
 function updateStaffCaseFields(){
   const type=$('staffCaseType').value;
+  const activity=type==='inactiviteitsping';
+  $('staffActivityStatus').required=activity;
+  $('staffActivityDiscordContact').required=activity;
+  updateActivityDiscordDate();
   $('staffCaseLinkedField').hidden=!['notitie','algemene_notitie'].includes(type);
   const extras=staffCaseFields[type]||[];
   $('staffCaseExtra').hidden=!extras.length;
@@ -3602,6 +3650,23 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       const author=document.createElement('span');author.className='subtle';
       author.textContent='Door '+sheetWho(row);
       item.append(heading,body,author);
+      if(group==='activityPings'&&row.activityStatus){
+        const color={ACTIEF:'green','50/50':'orange',INACTIEF:'red',
+          VERWIJDERING_TE_BEOORDELEN:'grey'}[row.activityStatus]||'grey';
+        const label={ACTIEF:'Actief','50/50':'50/50',INACTIEF:'Inactief',
+          VERWIJDERING_TE_BEOORDELEN:'60+ · verwijdering beoordelen'}[row.activityStatus]||
+          row.activityStatus;
+        const status=document.createElement('span');
+        status.className='activity-followup-pill activity-followup-'+color;
+        status.textContent='Opvolgstatus: '+label;
+        item.insertBefore(status,body);
+      }
+      if(group==='activityPings'&&typeof row.discordPingSent==='boolean'){
+        const discord=document.createElement('small');discord.className='subtle';
+        discord.textContent=row.discordPingSent?'Discord handmatig gepingd op '+
+          generalNoteDate(row.discordPingDate):'Nog geen Discord-bericht verstuurd';
+        item.append(discord);
+      }
       attachRetireButton(item,row,'cases');
       root.append(item);return;
     }
@@ -5716,9 +5781,28 @@ $('staffCaseForm').onsubmit=async event=>{
     const historicalDetails=gradeMove?
       '\nOude graad: '+oldRank+' · Nieuwe graad: '+newRank+
       '\nRoepnummer: '+oldCall+' → '+newCall:'';
+    const activity=type==='inactiviteitsping';
+    const activityStatus=activity?$('staffActivityStatus').value:'';
+    const discordContact=activity?$('staffActivityDiscordContact').value:'';
+    if(activity&&(!activityStatus||!['ja','nee'].includes(discordContact)))
+      throw Error('Kies de opvolgstatus en bevestig of je het Discord-bericht werkelijk hebt verstuurd.');
+    if(activity&&discordContact==='ja'&&!$('staffActivityDiscordDate').value)
+      throw Error('Vul de datum van het verstuurde Discord-bericht in.');
+    const activityLabel={
+      ACTIEF:'Actief','50/50':'50/50',INACTIEF:'Inactief',
+      VERWIJDERING_TE_BEOORDELEN:'60+ dagen: verwijdering beoordelen'
+    }[activityStatus]||'';
+    const activityDescription=activity?
+      'Opvolgstatus: '+activityLabel+' · Discord-ping handmatig verstuurd: '+
+        (discordContact==='ja'?'Ja ('+$('staffActivityDiscordDate').value+')':'Nee')+
+        '\n':'';
+
     const stored=await request('/api/management/cases',{method:'POST',
       body:{dept:person.dept,discordId:person.discordId,type,
-        eventDate:$('staffCaseDate').value,details:reason+historicalDetails,
+        eventDate:$('staffCaseDate').value,
+        details:activityDescription+reason+historicalDetails,
+        ...(activity?{activityStatus,discordPingSent:discordContact==='ja',
+          ...(discordContact==='ja'?{discordPingDate:$('staffActivityDiscordDate').value}:{})}:{}),
         ...(['notitie','algemene_notitie'].includes(type)&&$('staffCaseLinkedColleague').value?
           {linkedColleagueId:$('staffCaseLinkedColleague').value}:{}),
         endDate:$('staffEndDate').value,courseName,
@@ -5755,6 +5839,12 @@ $('staffCaseForm').onsubmit=async event=>{
     sheetCaseRows(readBack.entries||[],readBack.limited);
     $('staffCaseDetails').value='';$('staffCaseReference').value='';
      $('staffCaseLinkedColleague').value='';
+    if(type==='inactiviteitsping'){
+      $('staffActivityStatus').value='';
+      $('staffActivityDiscordContact').value='';
+      updateActivityDiscordDate();
+      refreshBelgianDateInputs(['staffActivityDiscordDate']);
+    }
     for(const id of staffCaseValues)$(id).value='';
     $('staffCourseOther').value='';syncStaffCaseOther();updateStaffMovementFields();
     await loadLinkedPersonnelRecords(person,key);
