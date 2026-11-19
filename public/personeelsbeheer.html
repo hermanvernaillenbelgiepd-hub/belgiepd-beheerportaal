@@ -3951,7 +3951,10 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
           ['Huidige geldigheid',effectiveTemporarySanctionStatus(row)],
           ['Oorspronkelijke status',row.status],['Einddatum',row.endDate]]:[]});
     }
-    attachAdministrativeCaseCorrection(item,row);
+    if(group==='movements'&&row.canAmend===true&&selected)
+      addManualCaseCorrectionControls(item,row,selected,
+        selected.dept+':'+selected.discordId);
+    else attachAdministrativeCaseCorrection(item,row);
     attachRetireButton(item,row,group==='leave'?'leave':group==='basisNotes'?'staff':'cases');
     root.append(item);
   };
@@ -4373,6 +4376,15 @@ function addManualCaseCorrectionControls(container,row,person,key){
  }[row.type];
  const extra=specific?field(specific[1],'input','text',row[specific[0]],specific[2]):null;
  if(extra)extra.required=true;
+ // Manual historical movements may have been transcribed with an incorrect
+ // rank/callsign. Only the original manual-record correction route can edit
+ // those structured historical values; approved effective changes cannot.
+ const historicalMovementFields=row.type==='personeelsbeweging'?
+   ['previousRank','newRank','previousCall','newCall'].map((name,i)=>({
+    name,input:field(['Oude graad (historisch)','Nieuwe graad (historisch)',
+      'Oud roepnummer (historisch)','Nieuw roepnummer (historisch)'][i],
+      'input','text',row[name],i<2?100:24)
+   })): [];
  const reason=field('Verplichte motivering van de correctie (minimaal 10 tekens)',
    'textarea',null,'',1000);
  reason.required=true;reason.minLength=10;reason.rows=2;
@@ -4389,6 +4401,7 @@ function addManualCaseCorrectionControls(container,row,person,key){
      referenceUrl:link.value,amendmentReason:reason.value.trim(),
      expectedModifiedAt:row.modifiedAt||null};
    if(specific)data[specific[0]]=extra.value;
+   for(const {name,input} of historicalMovementFields)data[name]=input.value.trim();
    save.disabled=true;
    try{
      await request('/api/management/cases/'+encodeURIComponent(person.dept)+'/'+
