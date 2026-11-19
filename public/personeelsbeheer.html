@@ -1143,6 +1143,8 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div><label for="staffTrainingDate">Datum</label><input id="staffTrainingDate" type="date" required></div>
 <div><label for="staffTrainingInstructor">Opleider (naam of roepnummer)</label><input id="staffTrainingInstructor" type="text" minlength="2" maxlength="120" placeholder="Bijv. 930 · Naam opleider" required></div>
 <div><label for="staffTrainingResult">Resultaat</label><select id="staffTrainingResult"><option value="aanwezig">Aanwezig</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="onderbroken">Onderbroken</option></select></div>
+<div id="staffTrainingStageWrap" hidden><label for="staffTrainingStage">Specialisatieopleiding</label><select id="staffTrainingStage"><option value="">Enkel aanwezig</option><option value="in_opleiding">In opleiding → STAGE na beoordeling</option></select></div>
+<p class="subtle" id="staffTrainingStageHint" style="grid-column:1/-1">Geslaagd geeft alleen een patch bij erkende specialisaties na beoordeling.</p>
 <div style="grid-column:1/-1"><label for="staffTrainingDetails">Evaluatie of opmerkingen</label><textarea id="staffTrainingDetails" rows="2" maxlength="1600"></textarea></div>
 <div id="staffTrainingAmend" style="grid-column:1/-1" hidden><label for="staffTrainingReason">Motivering wijziging (minimaal 8 tekens)</label><textarea id="staffTrainingReason" rows="2" maxlength="500"></textarea></div>
 </div>
@@ -1333,7 +1335,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <script type="module">
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
-import {coursesForDepartment,trainingSelectLabels} from '/training-course-catalog.js';
+import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '/training-course-catalog.js';
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
@@ -3200,11 +3202,24 @@ async function loadStaffCasePermissions(person,key,canManage){
 }
 
 let trainingRights=null,trainingEditId=null;
+function syncStaffTrainingStage(){
+ const dept=selected?.dept||'politie';
+ const specialty=qualificationSpecialty(dept,selectedStaffTrainingName());
+ const allowed=Boolean(specialty&&$('staffTrainingResult').value==='aanwezig');
+ $('staffTrainingStageWrap').hidden=!allowed;
+ if(!allowed)$('staffTrainingStage').value='';
+ $('staffTrainingStageHint').textContent=specialty?
+   'Specialisatie '+specialty+': Stage na beoordeling, Geslaagd wordt JA.':
+   'Deze opleiding verleent geen specialisatiepatch.';
+}
+$('staffTrainingResult').onchange=syncStaffTrainingStage;
+$('staffTrainingOther').addEventListener('input',syncStaffTrainingStage);
 function syncStaffTrainingOther(){
   const isOther=$('staffTrainingCourse').value==='ANDERE';
   $('staffTrainingOtherWrap').hidden=!isOther;
   $('staffTrainingOther').required=isOther;
   if(!isOther)$('staffTrainingOther').value='';
+  syncStaffTrainingStage();
 }
 $('staffTrainingCourse').onchange=syncStaffTrainingOther;
 function selectedStaffTrainingName(){
@@ -3229,6 +3244,7 @@ function resetStaffTrainingEdit(){
   $('staffTrainingForm').reset();
   for(const historic of $('staffTrainingResult').querySelectorAll('option[data-legacy]'))historic.remove();
   $('staffTrainingResult').value='aanwezig';
+  $('staffTrainingStage').value='';
   syncStaffTrainingOther();
   $('staffTrainingTitle').textContent='Opleiding toevoegen';
   $('staffTrainingSave').textContent='Opleiding registreren';
@@ -3276,6 +3292,8 @@ function staffTrainingEdit(record){
     historic.dataset.legacy='true';$('staffTrainingResult').append(historic);
   }
   $('staffTrainingResult').value=record.result||'aanwezig';
+  $('staffTrainingStage').value=record.qualificationStage||'';
+  syncStaffTrainingStage();
   $('staffTrainingDetails').value=record.details||'';
   $('staffTrainingInstructor').value=record.instructorName||record.instructor||'';
   $('staffTrainingTitle').textContent='Bestaande opleiding wijzigen';
@@ -3295,7 +3313,8 @@ $('staffTrainingForm').onsubmit=async event=>{
     return notice('Kies een opleiding of vul bij ANDERE een naam van 3 tot 150 tekens in.',true);
   const body={department:p.dept,discordId:p.discordId,
     courseName,eventDate:$('staffTrainingDate').value,
-    result:$('staffTrainingResult').value,details:$('staffTrainingDetails').value,
+    result:$('staffTrainingResult').value,qualificationStage:$('staffTrainingStage').value,
+    details:$('staffTrainingDetails').value,
     instructorName:$('staffTrainingInstructor').value.trim()};
   if(id){
     body.reason=$('staffTrainingReason').value;
