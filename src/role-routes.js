@@ -13,6 +13,8 @@ import { mayMaintainTraining,isArchivedTraining,validateMaintenanceReason,isReco
 import {roleForDepartment} from './leave-policy.js';
 import {brusselsEventDate} from './personnel-event-date.js';
 import {isTrainingResult} from './training-result-policy.js';
+import {qualificationSpecialty,trainingSpecialtyCandidate} from '../public/training-course-catalog.js';
+import {PERSONNEL_SPECIALIZATIONS_COLLECTION,specialtyWritesEnabled} from './specialization-policy.js';
 import {COMPLETION_OVERVIEW_DEPARTMENTS,COMPLETION_OVERVIEW_BATCH,
   COMPLETION_OVERVIEW_RECORD_LIMIT,COMPLETION_OVERVIEW_CASE_LIMIT,
   completedTrainingResult,completedTrainingAttendance,completionSort}
@@ -148,6 +150,7 @@ function inputRecord(x){
   const department=asText(x?.department,40),discordId=asText(x?.discordId,40);
   const courseName=asText(x?.courseName,150),details=asText(x?.details,1600),eventDate=asText(x?.eventDate,20),result=asText(x?.result,32);
   const instructorName=asText(x?.instructorName,120);
+  const qualificationStage=asText(x?.qualificationStage,30);
   if(x?.instructorName!==undefined&&(
     typeof x.instructorName!=='string'||x.instructorName.length>120||
     (instructorName.length>0&&instructorName.length<2)||
@@ -157,11 +160,15 @@ function inputRecord(x){
   if(courseName.length<3 || typeof x?.courseName!=='string' || x.courseName.length>150)throw new Error('Ongeldige opleidingsnaam');
   if(typeof x?.details!=='string'||x.details.length>1600)throw new Error('Omschrijving te lang');
   if(!isTrainingResult(result))throw new Error('Ongeldig opleidingsresultaat');
+  if(qualificationStage&&(qualificationStage!=='in_opleiding'||
+      result!=='aanwezig'||!qualificationSpecialty(department,courseName)))
+    throw new Error('In opleiding is alleen mogelijk bij een erkende specialisatieopleiding met resultaat Aanwezig');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)||new Date(eventDate+'T12:00:00Z').toISOString().slice(0,10)!==eventDate||eventDate>brusselsEventDate())throw new Error('Ongeldige opleidingsdatum');
-  return {department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName};
+  return {department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName,
+    qualificationStage};
 }
 const error=(res,e)=>{console.error('Rollen/opleidingen:',e?.code||e?.message||'onbekend');return res.status(503).json({error:'Firestore tijdelijk niet beschikbaar'});};
-export function installRoleRoutes(app,{getSnapshot}={}){
+export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
   // Check the ACTUAL personnel roster before disclosing colleague names or
   // writing a training result. A role never creates an imaginary personnel record.
   const findSubject=async(dept,discordId)=>{
@@ -218,6 +225,52 @@ export function installRoleRoutes(app,{getSnapshot}={}){
       }
     }
     return map;
+  }
+  // Keep qualification badges in the existing native specialty collection.
+  // Explicit manual decisions take precedence; no Discord role is ever granted.
+  // Clearing an edited/archived review removes only a qualification that THIS
+  // training record created, never another person's manual or course grant.
+  async function syncTrainingSpecialty(tx,{department,discordId,recordId,prior,candidate,actor,reason}){
+    if(!specialtyWritesEnabled(process.env))return {applied:null,changed:false};
+    const priorLabel=String(prior?.appliedSpecialtyLabel||'');
+    if(!priorLabel&&!candidate)return {applied:null,changed:false};
+    const ref=db().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
+      .doc(department+'_'+discordId);
+    const snap=await tx.get(ref),old=snap.data()||{};
+    const values={...(old.values&&typeof old.values==='object'&&!Array.isArray(old.values)
+      ?old.values:{})};
+    let changed=false,applied=null;
+    if(priorLabel&&values[priorLabel]?.source==='training'&&
+       values[priorLabel]?.trainingRecordId===recordId){
+      delete values[priorLabel];changed=true;
+    }
+    if(candidate){
+      const found=values[candidate.label];
+      // Never overwrite manual leadership decisions or downgrade an
+      // independent completed qualification to an in-training badge.
+      const protectedValue=found?.source==='manual'||
+        found?.source==='training'&&found.value==='Ja'&&candidate.value==='Stage'&&
+        found.trainingRecordId!==recordId;
+      if(!protectedValue){
+        values[candidate.label]={value:candidate.value,source:'training',
+          trainingRecordId:recordId};
+        applied=candidate.label;changed=true;
+      }
+    }
+    if(changed){
+      const revision=Number.isSafeInteger(old.revision)?old.revision:0;
+      tx.set(ref,{...old,dept:department,discordId,revision:revision+1,values,
+        updatedAt:FieldValue.serverTimestamp(),
+        updatedByDiscordId:actor.discordId});
+      tx.create(ref.collection('audit').doc(),{
+        action:'training_qualification',source:'training',
+        trainingRecordId:recordId,previousLabel:priorLabel||null,
+        label:candidate?.label||priorLabel,value:applied?candidate.value:null,
+        reason:String(reason||'Opleidingsbeoordeling gewijzigd').slice(0,500),
+        actorDiscordId:actor.discordId,at:FieldValue.serverTimestamp()
+      });
+    }
+    return {applied,changed};
   }
   async function guardTrainingSubject(req,res,next){
     const {department,discordId}=req.params;
@@ -434,13 +487,21 @@ export function installRoleRoutes(app,{getSnapshot}={}){
         if(!snap.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
         const old=snap.data();
         if(!mayMaintainTraining(old,{actorDiscordId:actor.discordId,mayLog,mayReview}))throw Object.assign(Error('Geen wijzigingsrecht op deze registratie'),{status:403});
-        const before=Object.fromEntries(['courseName','details','eventDate','result','rosterStatus','instructorName'].map(k=>[k,old[k]??null]));
-        const next={courseName:data.courseName,details:data.details,eventDate:data.eventDate,result:data.result,instructorName:data.instructorName};
-        if(requiresReReview(old,next))next.rosterStatus='ter_controle';
+        const before=Object.fromEntries(['courseName','details','eventDate','result','rosterStatus','instructorName','qualificationStage'].map(k=>[k,old[k]??null]));
+        const next={courseName:data.courseName,details:data.details,eventDate:data.eventDate,
+          result:data.result,instructorName:data.instructorName,
+          qualificationStage:data.qualificationStage};
+        if(requiresReReview(old,next)){
+          next.rosterStatus='ter_controle';
+          const specialty=await syncTrainingSpecialty(tx,{department,discordId,recordId,
+            prior:old,candidate:null,actor,reason});
+          if(specialty.changed)next.appliedSpecialtyLabel=null;
+        }
         tx.update(ref,{...next,updatedAt:FieldValue.serverTimestamp(),updatedByDiscordId:actor.discordId});
         tx.create(ref.collection('audit').doc(),{kind:'record-edit',previous:before,next:{...next},reason,
           actorDiscordId:actor.discordId,actorUid:actor.uid,at:FieldValue.serverTimestamp()});
       });
+      onSpecialtyChanged?.();
       res.json({saved:true,googleSheetsUpdated:false,discordRolesUpdated:false});
     }catch(e){if(e.status===403||e.status===404)return res.status(e.status).json({error:e.message});error(res,e)}
   });
@@ -462,10 +523,14 @@ export function installRoleRoutes(app,{getSnapshot}={}){
         if(!snap.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
         const old=snap.data();
         if(!mayMaintainTraining(old,{actorDiscordId:actor.discordId,mayLog,mayReview}))throw Object.assign(Error('Geen verwijderrecht op deze registratie'),{status:403});
-        tx.update(ref,{status:'verwijderd',archivedAt:FieldValue.serverTimestamp(),archivedByDiscordId:actor.discordId,archiveReason:reason});
+        await syncTrainingSpecialty(tx,{department,discordId,recordId,
+          prior:old,candidate:null,actor,reason});
+        tx.update(ref,{status:'verwijderd',appliedSpecialtyLabel:null,
+          archivedAt:FieldValue.serverTimestamp(),archivedByDiscordId:actor.discordId,archiveReason:reason});
         tx.create(ref.collection('audit').doc(),{kind:'record-archive',previousStatus:old.status||'geregistreerd',reason,
           actorDiscordId:actor.discordId,actorUid:actor.uid,at:FieldValue.serverTimestamp()});
       });
+      onSpecialtyChanged?.();
       res.json({archived:true,googleSheetsUpdated:false,discordRolesUpdated:false});
     }catch(e){if(e.status===403||e.status===404)return res.status(e.status).json({error:e.message});error(res,e)}
   });
@@ -493,10 +558,18 @@ export function installRoleRoutes(app,{getSnapshot}={}){
         if(isArchivedTraining(old))throw Object.assign(new Error('Verwijderde registratie kan niet beoordeeld worden'),{status:409});
         if(!reviewer&&(!instructorOwn||old.registeredByDiscordId!==actor.discordId))
           throw Object.assign(new Error('Een instructeur mag uitsluitend eigen opleidingen controleren'),{status:403});
-        // Approved entries are STILL NOT written into Google Sheets.
-        tx.update(ref,{rosterStatus:status,reviewReason:reason,reviewedByDiscordId:actor.discordId,reviewedAt:FieldValue.serverTimestamp()});
+        // Only specifically mapped, approved specialization training changes
+        // a displayed Stage/Ja qualification; Google Sheets and Discord stay intact.
+        const candidate=status==='klaar_voor_manuele_invoer'?
+          trainingSpecialtyCandidate(old):null;
+        const specialty=await syncTrainingSpecialty(tx,{department,discordId,recordId,
+          prior:old,candidate,actor,reason});
+        tx.update(ref,{rosterStatus:status,reviewReason:reason,
+          appliedSpecialtyLabel:specialty.applied,
+          reviewedByDiscordId:actor.discordId,reviewedAt:FieldValue.serverTimestamp()});
         tx.create(ref.collection('audit').doc(),{kind:'manual-roster-review',previous:old.rosterStatus||null,next:status,reason,actorDiscordId:actor.discordId,at:FieldValue.serverTimestamp()});
       });
+      onSpecialtyChanged?.();
       res.json({saved:true,googleSheetsUpdated:false,discordRolesUpdated:false});
     }catch(e){if([403,404,409].includes(e.status))return res.status(e.status).json({error:e.message});error(res,e)}
   });
