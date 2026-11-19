@@ -1,11 +1,12 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {createHash} from 'node:crypto';
 import {TRAINING_REQUEST_COURSE_CATALOG} from '../public/training-course-catalog.js';
-import {PATHWAY_COLLECTION,keyName} from './training-pathway-policy.js';
+import {PATHWAY_COLLECTION,PERSONAL_PATHWAY_COLLECTION,keyName,basePathwayCourses} from './training-pathway-policy.js';
+import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
 import {
  PLANNING_TRACKS,PLANNING_ASSIGNMENTS,PLANNING_CONFIG,PLANNING_STATUSES,
  planningTrack,planningManager,planningConfigurator,planningOwnMembership,
- eligiblePlanningMembers,planningAudienceMatch,planningCourseAllowed,
+ eligiblePlanningMembers,planningAEVariants,planningAudienceMatch,planningCourseAllowed,
  validatePlanningAudience,validatePlanningAssignment,planningAssignmentKey
 } from './training-planning-policy.js';
 
@@ -17,6 +18,7 @@ const error=(res,e)=>{
 };
 const db=()=>getFirestore();
 const plans=()=>db().collection(PLANNING_ASSIGNMENTS);
+const personal=()=>db().collection(PERSONAL_PATHWAY_COLLECTION);
 const configs=()=>db().collection(PLANNING_CONFIG);
 const hash=v=>createHash('sha256').update(v).digest('hex');
 const did=req=>req.bpd?.discordId;
@@ -31,8 +33,16 @@ const builtins=()=>[
  {id:'alle',kind:'alle',value:'',label:'Alle personeelsleden (handmatig aanvinken)'},
  {id:'kandidaten',kind:'kandidaten',value:'',label:'Nieuwe kandidaten zonder specialisatie'}
 ];
-const safeConfig=conf=>({extraCourses:conf.extraCourses,
- audiences:[...builtins(),...conf.audiences]});
+const aeAudiences=[
+ {id:'ae_alle',kind:'ae_variant',value:'alle',label:'AE · alle varianten'},
+ {id:'ae_i',kind:'ae_variant',value:'AE-I',label:'AE-I · SRT'},
+ {id:'ae_t',kind:'ae_variant',value:'AE-T',label:'AE-T · DSU'},
+ {id:'ae_f',kind:'ae_variant',value:'AE-F',label:'AE-F'},
+ {id:'ae_instructeur',kind:'ae_variant',value:'instructeur',label:'AE-instructeurs'},
+ {id:'ae_leiding',kind:'ae_variant',value:'leiding',label:'AE-leiding'}
+];
+const safeConfig=(conf,track)=>({extraCourses:conf.extraCourses,
+ audiences:[...builtins(),...(track.id==='politie:ae'?aeAudiences:[]),...conf.audiences]});
 async function verifiedRoles(req){
  const id=did(req);
  if(!/^\d{15,22}$/.test(String(id||'')))return [];
@@ -65,17 +75,29 @@ async function configFor(track){
 async function subjectSelection(req,getSnapshot,trackId,audienceId){
  const scope=await scoped(req,getSnapshot),track=allowedTrack(scope,trackId);
  const configuration=await configFor(track);
- const audience=safeConfig(configuration).audiences.find(x=>x.id===audienceId);
+ const audience=safeConfig(configuration,track).audiences.find(x=>x.id===audienceId);
  if(!audience)throw deny(400,'Kies een geldige doelgroep voor deze specialisatie');
- const people=eligiblePlanningMembers(scope.roster,track.department)
-  .filter(p=>planningAudienceMatch(p,track,audience));
+ // Verified member API is DISPLAY EVIDENCE ONLY. Instructor permissions
+ // are checked against their separate authenticated authorization record.
+ const upstream=track.id==='politie:ae'?await getBelgiumPdDisplayRoles():null;
+ const roleMap=upstream?.status==='ok'&&upstream.entries instanceof Map?
+   upstream.entries:new Map();
+ const eligible=eligiblePlanningMembers(scope.roster,track.department);
+ const people=eligible.filter(p=>planningAudienceMatch(p,track,audience,
+   roleMap.get(p.personId)||[]));
  if(people.length>1000)throw deny(503,'Doelgroep te groot; beperk je selectie');
- return {track,configuration,audience,people,scope};
+ const raw=scope.roster.filter(p=>p?.dept===track.department&&
+   !['archived','pending'].includes(p.lifecycleState));
+ return {track,configuration,audience,people,scope,roleMap,
+   skipped:Math.max(0,raw.length-eligible.length),
+   roleSource:upstream?.status==='ok'?'geverifieerd':'personeelslijst'};
 }
-function publicPerson(p){
+function publicPerson(p,track,roleMap){
  return {discordId:p.personId,name:dateName(p.name)||'Onbekende medewerker',
   call:dateName(p.call),rank:dateName(p.rank),
-  series:dateName(p.seriesRaw||p.series)};
+  series:dateName(p.seriesRaw||p.series),
+  variants:track.id==='politie:ae'?
+    planningAEVariants(p,roleMap.get(p.personId)||[]):[]};
 }
 async function allAvailableCourses(dept){
  const snapshot=await db().collection(PATHWAY_COLLECTION).where('department','==',dept).limit(201).get();
@@ -88,7 +110,7 @@ function responseScope(track,config,actor){
  return {id:track.id,department:track.department,label:track.label,
   courses:[...new Set([...track.courses,...config.extraCourses])],
   canConfigureCourses:planningConfigurator(actor,track),
-  audiences:safeConfig(config).audiences};
+  audiences:safeConfig(config,track).audiences};
 }
 export function installTrainingPlanningRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/training-planning/context',requireUser,async(req,res)=>{
@@ -110,10 +132,12 @@ export function installTrainingPlanningRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/training-planning/people',requireUser,async(req,res)=>{
   try{
    const id=String(req.query?.trackId||''),aud=String(req.query?.audienceId||'alle');
-   const {people,track,audience}=await subjectSelection(req,getSnapshot,id,aud);
+   const {people,track,audience,roleMap,skipped,roleSource}=
+     await subjectSelection(req,getSnapshot,id,aud);
    res.set('Cache-Control','private, no-store');
    res.json({trackId:track.id,department:track.department,audience,
-    people:people.map(publicPerson)});
+    people:people.map(p=>publicPerson(p,track,roleMap)),
+    skippedUnlinked:skipped,aeRoleSource:roleSource});
   }catch(e){error(res,e)}
  });
  app.get('/api/training-planning/assigned',requireUser,async(req,res)=>{
@@ -129,6 +153,7 @@ export function installTrainingPlanningRoutes(app,{requireUser,getSnapshot}){
    res.json({trackId:track.id,items:result.docs.map(d=>({id:d.id,...d.data()}))
     .filter(x=>actual.has(x.subjectDiscordId))
     .map(x=>({id:x.id,courseName:x.courseName,status:x.status,
+      mandatoryProposal:x.mandatoryProposal===true,
       name:dateName(actual.get(x.subjectDiscordId).name),
       call:dateName(actual.get(x.subjectDiscordId).call),
       plannedDay:x.plannedDay||'',subjectDiscordId:x.subjectDiscordId,
@@ -216,12 +241,50 @@ export function installTrainingPlanningRoutes(app,{requireUser,getSnapshot}){
      throw deny(403,'Deze opleider mag de gekozen opleiding niet plannen');
    const personMap=new Map(people.map(p=>[p.personId,p]));
    if(data.subjectIds.some(id=>!personMap.has(id)))
-     throw deny(403,'Eén of meer gekozen personen horen niet tot deze doelgroep');
-   const at=FieldValue.serverTimestamp(),by=author(req);
+     throw deny(403,'Een of meer personen horen niet tot deze doelgroep');
+   let courseRef=null,courseName=data.courseName;
+   if(data.proposeMandatory){
+    const catalog=await db().collection(PATHWAY_COLLECTION)
+      .where('department','==',track.department).limit(201).get();
+    if(catalog.size>200)throw deny(503,'Opleidingscatalogus onvolledig');
+    const matches=catalog.docs.filter(d=>d.get('active')!==false&&!d.get('zone')&&
+      keyName(d.get('name'))===keyName(data.courseName));
+    if(matches.length>1)throw deny(409,'Dubbele opleiding in catalogus; controle vereist');
+    if(matches.length===1){courseRef=matches[0].ref;courseName=matches[0].get('name')}
+    else{
+     const existing=basePathwayCourses(track.department).find(x=>
+       keyName(x.name)===keyName(data.courseName));
+     if(!existing)throw deny(409,
+       'Voeg deze opleiding eerst toe aan de Opleidingsmatrix voor verplichte voorstellen');
+     courseName=existing.name;
+     courseRef=db().collection(PATHWAY_COLLECTION).doc(
+       'planning_'+hash(track.department+'|'+keyName(courseName)).slice(0,28));
+    }
+   }
+   const by=author(req),at=FieldValue.serverTimestamp();
    const refs=data.subjectIds.map(id=>plans().doc(
      planningAssignmentKey(track.id,data.courseName,id,hash)));
+   const mandatoryRefs=courseRef?data.subjectIds.map(id=>
+     personal().doc(courseRef.id+'_'+id)):[];
    await db().runTransaction(async tx=>{
+    // Firestore requires ALL reads to precede the first write.
     const existing=await Promise.all(refs.map(ref=>tx.get(ref)));
+    const currentCourse=courseRef?await tx.get(courseRef):null;
+    const existingRequirements=await Promise.all(mandatoryRefs.map(ref=>tx.get(ref)));
+    if(currentCourse?.exists&&
+       (currentCourse.get('department')!==track.department||
+        keyName(currentCourse.get('name'))!==keyName(courseName)||
+        currentCourse.get('active')===false||Boolean(currentCourse.get('zone'))))
+       throw deny(409,'Opleidingscatalogus gewijzigd; vernieuw de pagina');
+    if(existingRequirements.some(x=>x.exists&&x.get('pending')))
+       throw deny(409,'Er loopt al een verplichtingsvoorstel voor een geselecteerde deelnemer');
+    if(courseRef&&!currentCourse.exists){
+     tx.create(courseRef,{department:track.department,name:courseName,
+       description:'Bestaande opleiding',zone:'',source:'standaard',
+       active:true,mandatory:false,targetKind:'alle',targetValue:'',
+       effectiveDate:null,validMonths:0,pending:null,
+       createdAt:at,updatedAt:at,createdBy:by});
+    }
     for(let i=0;i<refs.length;i++){
      const subject=personMap.get(data.subjectIds[i]),old=existing[i];
      const current={department:track.department,trackId:track.id,
@@ -229,17 +292,37 @@ export function installTrainingPlanningRoutes(app,{requireUser,getSnapshot}){
        subjectDiscordId:subject.personId,subjectName:dateName(subject.name),
        subjectCall:dateName(subject.call),audienceId:data.audienceId,
        status:data.status,plannedDay:data.plannedDay,note:data.note,
+       mandatoryProposal:data.proposeMandatory===true,
        assignedBy:by.discordId,updatedAt:at};
      if(old.exists)tx.update(refs[i],current);
      else tx.create(refs[i],{...current,createdAt:at});
      tx.create(refs[i].collection('audit').doc(),
        {type:old.exists?'planning_updated':'planning_assigned',by,at,
         status:data.status,plannedDay:data.plannedDay,audienceId:data.audienceId,
+        mandatoryProposal:data.proposeMandatory,
         previousStatus:old.exists?old.get('status')||null:null});
+     if(courseRef){
+      const reqRef=mandatoryRefs[i],oldReq=existingRequirements[i];
+      // An already approved individual requirement remains valid; no repeat.
+      if(oldReq.exists&&oldReq.get('active')===true)continue;
+      const proposal={mandatory:true,effectiveDate:new Date().toISOString().slice(0,10),
+        validMonths:0,reason:data.mandatoryReason,stage:'ok',
+        proposedBy:by.discordId,okBy:null};
+      const document={courseId:courseRef.id,courseName,department:track.department,
+        zone:'',subjectDiscordId:subject.personId,subjectName:dateName(subject.name),
+        subjectCall:dateName(subject.call),pending:proposal,updatedAt:at};
+      if(oldReq.exists)tx.update(reqRef,document);
+      else tx.create(reqRef,{...document,active:false,effectiveDate:null,
+        validMonths:0,createdAt:at});
+      tx.create(reqRef.collection('audit').doc(),
+        {type:'person_requirement_proposed_from_planning',by,at,
+         proposal,trackId:track.id});
+     }
     }
    });
    res.json({saved:true,participants:data.subjectIds.length,status:data.status,
-     note:'Planning verleent geen specialisatie, kwalificatie of verplichte opleidingsstatus'});
+     mandatoryProposed:data.proposeMandatory,
+     note:'Plannen of voorstellen maakt een opleiding pas verplicht na goedkeuring van OK en KL'});
   }catch(e){error(res,e)}
  });
  app.post('/api/training-planning/cancel',requireUser,async(req,res)=>{

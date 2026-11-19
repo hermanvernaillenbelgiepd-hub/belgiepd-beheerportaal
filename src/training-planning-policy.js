@@ -19,6 +19,40 @@ export const PLANNING_TRACKS=Object.freeze([
  {id:'depannage:algemeen',department:'depannage',label:'Depannageopleidingen',roleIds:[],
    courses:[...(TRAINING_REQUEST_COURSE_CATALOG.depannage||[])],tokens:[]}
 ]);
+// AE-I, AE-T and leadership use verified exact role IDs. AE-F has
+// no confirmed Discord role here; it requires an explicit roster level.
+export const AE_ROLE_VARIANTS=Object.freeze({
+ '1309542190409580594':'AE-I',
+ '1310674604821581894':'AE-T',
+ '1337156006597103746':'instructeur',
+ '1337775768083632158':'leiding'
+});
+export function planningAEVariants(person,verifiedRoleIds=[]){
+ const found=new Set();
+ const roles=[...(Array.isArray(verifiedRoleIds)?verifiedRoleIds:[])];
+ for(const item of (Array.isArray(person?.specialties)?person.specialties:[])){
+   if(item?.source==='discord-verified'&&typeof item.roleId==='string')
+     roles.push(item.roleId);
+   if(!item||typeof item!=='object')continue;
+   if(!/^AE(?:$|[\s_/-])/i.test(String(item.label||'')))continue;
+   const status=String(item.value||'').trim().toLocaleLowerCase('nl-BE');
+   if(['','nee','neen','niet ingevuld','niet gecontroleerd','n.v.t.','nvt'].includes(status))
+     continue;
+   found.add('AE');
+   const label=[item.label,item.level,item.value].join(' ').toLocaleUpperCase('nl-BE');
+   if(/\bAE[\s-]?I\b|\bSRT\b/.test(label))found.add('AE-I');
+   if(/\bAE[\s-]?T\b|\bDSU\b/.test(label))found.add('AE-T');
+   if(/\bAE[\s-]?F\b/.test(label))found.add('AE-F');
+   if(/INSTRUCTEUR/.test(label))found.add('instructeur');
+   if(/TEAMLEADER|LEIDING/.test(label))found.add('leiding');
+ }
+ for(const id of roles){
+   if(Object.hasOwn(AE_ROLE_VARIANTS,id)){
+     found.add('AE');found.add(AE_ROLE_VARIANTS[id]);
+   }
+ }
+ return [...found];
+}
 const DISCORD_ID=/^\d{15,22}$/;
 const V=/[<>\x00-\x1f\x7f]/;
 const dayValid=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T12:00:00Z'))&&new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v;
@@ -54,7 +88,7 @@ export function planningCourseAllowed(course,track,config={}){
  const allowed=[...track.courses,...(Array.isArray(config.extraCourses)?config.extraCourses:[])];
  return allowed.some(c=>keyName(c)===keyName(course));
 }
-export function planningAudienceMatch(person,track,audience){
+export function planningAudienceMatch(person,track,audience,verifiedRoleIds=[]){
  if(!person||!track||!audience)return false;
  const kind=audience.kind,value=String(audience.value||'').trim();
  if(kind==='alle')return true;
@@ -63,9 +97,19 @@ export function planningAudienceMatch(person,track,audience){
    const hit=value.match(/^(?:reeks\s*)?0?([1-9]\d?)$/i);
    return Boolean(hit&&personSeries(person)===hit[1].padStart(2,'0'));
  }
+ const variants=track.id==='politie:ae'?planningAEVariants(person,verifiedRoleIds):[];
  const labels=pathwaySpecialtyLabels(person).map(keyName);
- if(kind==='specialisatie')return Boolean(value)&&labels.includes(keyName(value));
- if(kind==='kandidaten')return !track.tokens.some(t=>labels.some(label=>label.includes(keyName(t))));
+ if(kind==='ae_variant'){
+   if(track.id!=='politie:ae')return false;
+   return value==='alle'?variants.includes('AE'):variants.includes(value);
+ }
+ if(kind==='specialisatie')return Boolean(value)&&(
+   labels.includes(keyName(value))||
+   track.id==='politie:ae'&&variants.some(v=>keyName(v)===keyName(value)));
+ if(kind==='kandidaten'){
+   if(track.id==='politie:ae')return !variants.includes('AE');
+   return !track.tokens.some(t=>labels.some(label=>label.includes(keyName(t))));
+ }
  return false;
 }
 export function validatePlanningAudience(v){
@@ -85,7 +129,7 @@ export function validatePlanningAudience(v){
 }
 export function validatePlanningAssignment(v){
  if(!v||typeof v!=='object'||Array.isArray(v)||
-    Object.keys(v).some(k=>!['trackId','courseName','audienceId','subjectIds','status','plannedDay','note'].includes(k)))
+    Object.keys(v).some(k=>!['trackId','courseName','audienceId','subjectIds','status','plannedDay','note','proposeMandatory','mandatoryReason'].includes(k)))
    throw Error('Ongeldige deelnemersplanning');
  const track=planningTrack(v.trackId);
  if(!track||typeof v.courseName!=='string'||v.courseName.length>150||
@@ -95,11 +139,18 @@ export function validatePlanningAssignment(v){
     new Set(v.subjectIds).size!==v.subjectIds.length||
     !PLANNING_STATUSES.slice(0,3).includes(v.status)||
     !(v.plannedDay===''||dayValid(v.plannedDay))||
-    typeof v.note!=='string'||v.note.length>300||V.test(v.note))
+    typeof v.note!=='string'||v.note.length>300||V.test(v.note)||
+    (v.proposeMandatory!==undefined&&typeof v.proposeMandatory!=='boolean')||
+    (v.mandatoryReason!==undefined&&typeof v.mandatoryReason!=='string')||
+    (v.proposeMandatory===true&&
+      (!v.mandatoryReason||v.mandatoryReason.trim().length<10||
+      v.mandatoryReason.length>500||V.test(v.mandatoryReason))))
    throw Error('Controleer de opleiding, deelnemers, status en datum (maximaal 40 personen)');
  return {trackId:track.id,courseName:v.courseName,
    audienceId:v.audienceId,subjectIds:v.subjectIds,
-   status:v.status,plannedDay:v.plannedDay,note:v.note.trim()};
+   status:v.status,plannedDay:v.plannedDay,note:v.note.trim(),
+   proposeMandatory:v.proposeMandatory===true,
+   mandatoryReason:v.proposeMandatory===true?v.mandatoryReason.trim():''};
 }
 export function planningAssignmentKey(trackId,courseName,personId,hash){
  return hash(trackId+'|'+keyName(courseName)+'|'+personId).slice(0,36);

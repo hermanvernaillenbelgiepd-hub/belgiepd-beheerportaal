@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {
  PLANNING_TRACKS,PLANNING_STATUSES,planningTrack,planningManager,
  planningConfigurator,planningOwnMembership,eligiblePlanningMembers,
- planningCourseAllowed,planningAudienceMatch,validatePlanningAudience,
+ planningCourseAllowed,planningAEVariants,AE_ROLE_VARIANTS,planningAudienceMatch,validatePlanningAudience,
  validatePlanningAssignment,planningAssignmentKey
 } from '../src/training-planning-policy.js';
 
@@ -103,4 +103,59 @@ test('Server bewaakt rollen, doelgroep en audit bij planning, annuleren en confi
  assert.match(html,/opleiding niet officieel verplicht/i);
  assert.match(html,/Opleidingsplanning/);
  assert.match(center,/opleidingsplanning\.html/);
+});
+
+test('AE-I en AE-T komen uit exacte rollen, AE-F alleen uit expliciete personeelskwalificatie',()=>{
+ const ae=planningTrack('politie:ae');
+ const iRole=['1309542190409580594'],tRole=['1310674604821581894'];
+ assert.equal(AE_ROLE_VARIANTS[iRole[0]],'AE-I');
+ assert.deepEqual(planningAEVariants(other,iRole).sort(),['AE','AE-I'].sort());
+ assert.ok(planningAudienceMatch(other,ae,{kind:'ae_variant',value:'AE-I'},iRole));
+ assert.ok(planningAudienceMatch(other,ae,{kind:'ae_variant',value:'AE-T'},tRole));
+ assert.ok(planningAudienceMatch(other,ae,{kind:'ae_variant',value:'alle'},iRole));
+ assert.equal(planningAudienceMatch(other,ae,{kind:'ae_variant',value:'AE-F'},iRole),false);
+ assert.equal(planningAudienceMatch(other,ae,{kind:'ae_variant',value:'AE-F'},tRole),false);
+ const special={...other,specialties:[{label:'AE',value:'Stage',level:'AE-F',source:'manual'}]};
+ assert.ok(planningAudienceMatch(special,ae,{kind:'ae_variant',value:'AE-F'}));
+ assert.equal(planningAudienceMatch(other,ae,{kind:'ae_variant',value:'AE-F'}),false);
+});
+test('AE-instructeur en AE-leiding komen in eigen variant, zonder andere rechten',()=>{
+ const ae=planningTrack('politie:ae');
+ assert.ok(planningAudienceMatch(other,ae,{kind:'ae_variant',value:'instructeur'},
+  ['1337156006597103746']));
+ assert.ok(planningAudienceMatch(other,ae,{kind:'ae_variant',value:'leiding'},
+  ['1337775768083632158']));
+ assert.ok(!planningAudienceMatch(other,planningTrack('politie:k9'),
+  {kind:'ae_variant',value:'alle'},['1309542190409580594']));
+ const unverified={...other,specialties:[{label:'AE',value:'Niet ingevuld'}]};
+ assert.equal(planningAudienceMatch(unverified,ae,{kind:'ae_variant',value:'alle'}),false);
+});
+test('Een voorstel tot individueel verplichte opleiding vereist motivering en blijft voorstel',()=>{
+ const base={trackId:'politie:ae',courseName:'ERT AE-I',audienceId:'ae_alle',
+  subjectIds:[other.personId],status:'ingepland',plannedDay:'',note:'',
+  proposeMandatory:true,mandatoryReason:'Noodzakelijke bijscholing voor deze medewerker'};
+ assert.equal(validatePlanningAssignment(base).proposeMandatory,true);
+ assert.throws(()=>validatePlanningAssignment({...base,mandatoryReason:''}));
+ assert.throws(()=>validatePlanningAssignment({...base,mandatoryReason:'te kort'}));
+ assert.equal(validatePlanningAssignment({...base,proposeMandatory:false,
+  mandatoryReason:''}).proposeMandatory,false);
+});
+test('De verplichte status wordt niet direct toegepast; voorstel vereist OK en KL',()=>{
+ const src=readFileSync(new URL('../src/training-planning-routes.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/opleidingsplanning.html',import.meta.url),'utf8');
+ assert.match(src,/getBelgiumPdDisplayRoles\(\)/);
+ assert.match(src,/planningAEVariants\(p,roleMap\.get\(p\.personId\)/);
+ assert.match(src,/personal\(\)\.doc\(courseRef\.id\+'\_'\+id\)/);
+ assert.match(src,/stage:'ok'/);
+ assert.match(src,/person_requirement_proposed_from_planning/);
+ assert.doesNotMatch(src,/mandatory:true,targetKind:'alle',targetValue:''/);
+ assert.match(page,/id="mandatoryProposal"/);
+ assert.match(page,/Officierenkader én Korpsleiding/);
+});
+test('Lichte en donkere modus hebben afzonderlijke contrastregels',()=>{
+ const page=readFileSync(new URL('../public/opleidingsplanning.html',import.meta.url),'utf8');
+ assert.match(page,/html:not\(\[data-bpd-theme="dark"\]\) body main/);
+ assert.match(page,/color:#172a48!important/);
+ assert.match(page,/html\[data-bpd-theme="dark"\] body main/);
+ assert.match(page,/id="missingLinks"/);
 });
