@@ -14,6 +14,23 @@ export const POLICE_RANK_CHOICES=Object.freeze([
   {rank:'Aspirant Commissaris',hundreds:[9],grade:7}
 ]);
 export const policeRankByName=name=>POLICE_RANK_CHOICES.find(r=>r.rank===name)||null;
+// Official labels are PRESENTATION ONLY. Internal rank decisions keep the
+// stable short grade values used by the validated Firestore mutation flow.
+const POLICE_RANK_PUBLIC_LABELS=Object.freeze({
+ 'Agent':'Agent van Politie (AP)',
+ 'Aspirant Inspecteur':'Aspirant Inspecteur van Politie (A-INP)',
+ 'Inspecteur':'Inspecteur van Politie (INP)',
+ 'Eerste Inspecteur':'Eerste Inspecteur van Politie (1INP)',
+ 'Aspirant Hoofdinspecteur':'Aspirant Hoofdinspecteur van Politie (A-HINP)',
+ 'Hoofdinspecteur':'Hoofdinspecteur van Politie (HINP)',
+ 'Eerste Hoofdinspecteur':'Eerste Hoofdinspecteur van Politie (1HINP)',
+ 'Aspirant Commissaris':'Aspirant Commissaris van Politie (ACP)'
+});
+export function policeOfficialRankLabel(rank){
+ const value=String(rank||'').trim();
+ return POLICE_RANK_PUBLIC_LABELS[value]||value;
+}
+
 /**
  * Some source-sheet personnel grades use extended descriptions (such as
  * "Aspirant Inspecteur van Politie (A-INP)") while the grade editor uses
