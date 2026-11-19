@@ -23,7 +23,13 @@ th,td{border-bottom:1px solid #e3eaf3;padding:8px 9px;text-align:left;vertical-a
 th{position:sticky;top:0;background:#eaf1fb;color:#23406b;z-index:1}
 td small{display:block;color:#6b7a90;margin-top:3px}
 .state{display:inline-block;padding:3px 8px;border-radius:7px;background:#e8eff9;font-weight:700}
-.state-50\/50,.state-inactief,.state-beoordelen{background:#fff0e7;color:#873f1c}
+.state-50\\/50{background:#fff0e7;color:#873f1c}
+.state-inactief{background:#ffe5e8;color:#982a38}
+.state-beoordelen{background:#e9e9ee;color:#373a46}
+.roster-state{font-weight:800}
+.roster-state[data-state="active"]{color:#167f48}
+.roster-state[data-state="half"]{color:#a86110}
+.roster-state[data-state="inactive"]{color:#b82a3c}
 .state-ok{background:#e6f5ea;color:#166138}
 .state-checking{background:#fff1cd;color:#784500;border:1px solid #e9b864}
 .activity-warnings{border-left:4px solid #dd8c1e!important}
@@ -93,6 +99,15 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
   html[data-bpd-theme="dark"] body.bpd-shell main .state {
     background:#284461!important;color:#e7f1ff!important;
   }
+  html[data-bpd-theme="dark"] body.bpd-shell main .state-inactief{
+    background:#652b37!important;color:#ffe1e5!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .state-beoordelen{
+    background:#303740!important;color:#fff!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .roster-state[data-state="active"]{color:#9ae6b6!important}
+  html[data-bpd-theme="dark"] body.bpd-shell main .roster-state[data-state="half"]{color:#ffcea0!important}
+  html[data-bpd-theme="dark"] body.bpd-shell main .roster-state[data-state="inactive"]{color:#ffadb8!important}
   html[data-bpd-theme="dark"] body.bpd-shell main .state-checking {
     background:#674a1f!important;color:#fff1ca!important;border-color:#caa05d!important;
   }
@@ -195,7 +210,12 @@ function render(){
   const row=document.createElement('tr');
   const person=el('td',p.call+' · '+p.name);person.append(el('small',p.discordId));row.append(person);
   row.append(el('td',p.department));
-  const current=el('td',p.currentStatus);if(p.statusMismatch)current.append(el('small','Verschilt van oude bron','warn'));row.append(current);
+  const current=el('td',p.currentStatus);
+  current.className='roster-state';
+  current.dataset.state=/^actief$/i.test(p.currentStatus||'')?'active':
+   /^50\\/50$/i.test(p.currentStatus||'')?'half':
+   /^inactief$/i.test(p.currentStatus||'')?'inactive':'other';
+  if(p.statusMismatch)current.append(el('small','Verschilt van oude bron','warn'));row.append(current);
   const follow=el('td',p.returnChecking?'⚠ CHECKING':p.pingDossier?.latestStatus||'—');
   if(p.returnChecking)follow.className='state-checking';row.append(follow);
   row.append(el('td',p.lastConnection||'Geen gegevens'));
