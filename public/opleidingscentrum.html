@@ -64,6 +64,7 @@ main .row h2{margin:0}
 <nav class="education-tabs" aria-label="Luik kiezen">
  <button type="button" id="requestTab" role="tab" aria-selected="true" aria-controls="requestPane">Opleiding aanvragen</button>
  <button type="button" id="registerTab" role="tab" aria-selected="false" aria-controls="registerPane" hidden>Opleidingsregister · registreren en beoordelen</button>
+ <a class="education-link" href="/opleidingstraject.html">📚 Mijn opleidingstraject · opleidingsmatrix</a>
  <a class="education-link" href="/koppelritten.html">Koppelritten & stages</a>
  <a class="education-link" href="/voltooide-opleidingen.html">Opleidingsresultaten · overzicht voor leiding</a>
 </nav>
@@ -136,7 +137,7 @@ function syncCourse(){
  const allowed=scope?.canRequest===true;
  const custom=allowed&&dept==='politie'&&scope.tier==='middenkader';
  $('courseWrap').hidden=custom;
- const catalog=TRAINING_REQUEST_COURSE_CATALOG[dept]||[];
+ const catalog=[...new Set([...(TRAINING_REQUEST_COURSE_CATALOG[dept]||[]),...(scope?.customCourses||[])])];
  options($('course'),custom?[{value:'VARIA',label:'Zelf in te vullen'}]:[
   {value:'',label:'Selecteer een opleiding…'},
   ...catalog.map(value=>({value,label:value})),
@@ -205,11 +206,22 @@ async function load(){
   // Toon steeds alle vier de publieke opleidingscatalogi. Toegang tot
   // indienen wordt afzonderlijk, zowel hier als op de server, gecontroleerd.
   $('formPanel').hidden=false;
-  const selected=$('department').value;
+  const params=new URLSearchParams(window.location.search);
+  const selected=$('department').value||params.get('department');
   options($('department'),SERVICE_ORDER.map(value=>({value,label:NAMES[value]})));
   $('department').value=SERVICE_ORDER.includes(selected)?selected:
     (scopes.find(s=>s.canRequest)?.department||'politie');
   syncCourse();
+  // Vooraf invullen vanuit opleidingstraject: server controleert de bevoegdheid en catalogus.
+  if(params.has('course')){
+    const wanted=params.get('course');
+    if($('courseWrap').hidden){
+     $('course').value='VARIA';
+     $('varia').value=wanted.slice(0,150);
+    }else if([...$('course').options].some(x=>x.value===wanted))$('course').value=wanted;
+    window.history.replaceState(null,'',window.location.pathname);
+    syncVaria();
+  }
   const incoming=data.incoming||[];
   canReview=data.canReviewTraining===true;
   let registrationRights=null;
