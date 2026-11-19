@@ -18,7 +18,7 @@ export function mayCorrectManualCase(actor,subject,entry){
      entry.dept!==subject.dept||entry.subjectDiscordId!==subject.personId||
      !entry.registeredBy?.discordId||entry.source||entry.amendmentOf||
      entry.ownCorpsNote===true||entry.pingNotificationId||
-     entry.nominationStatus||isRetired(entry))return false;
+     entry.nominationStatus||entry.proposalStatus||isRetired(entry))return false;
   return ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
     canRetireDossierRecord(actor,subject);
 }
