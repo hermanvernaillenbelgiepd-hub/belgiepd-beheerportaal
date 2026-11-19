@@ -38,6 +38,8 @@ export function validPathwayCourse(body){
    throw Error('Ongeldige opleidingsgegevens');
  const department=clean(body.department,30),name=clean(body.name,120),
    description=clean(body.description||'',500),zone=clean(body.zone||'',80);
+ if((body.name||'').length>120||(body.description||'').length>500||
+    (body.zone||'').length>80)throw Error('Opleidingsvelden zijn te lang');
  if(!PATHWAY_DEPARTMENTS.includes(department)||typeof body.name!=='string'||
     name.length<3||name.length>120||unsafe(name)||unsafe(description)||unsafe(zone)||
     (body.mandatoryRequested!==undefined&&typeof body.mandatoryRequested!=='boolean'))

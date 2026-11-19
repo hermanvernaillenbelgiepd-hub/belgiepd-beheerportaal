@@ -140,7 +140,9 @@ function progress(){
    'badge '+(r.status==='behaald'?'ok':r.status==='verlopen'||r.status==='niet_geslaagd'?'bad':
    r.mandatory?'warn':'')));
   card.append(top);
-  const detail=node('p',r.mandatory?'Verplicht voor jouw functie':'Optionele opleiding');
+  const detail=node('p',r.mandatory?'Verplicht voor jouw functie':
+   r.source==='standaard'?'Bestaande catalogusopleiding · verplichting niet afzonderlijk ingesteld':
+   'Optionele opleiding');
   if(r.zone)detail.textContent+=' · Zone: '+r.zone;
   card.append(detail);
   const facts=[];
@@ -216,8 +218,10 @@ async function load(){
  try{
   personal=await api('/api/training-pathway');
   try{managed=await api('/api/training-pathway/manage')}catch(e){
-   if(!/geen opleidingsbeheerrechten/i.test(e.message))throw e;
+   // Het persoonlijke traject blijft bruikbaar bij een tijdelijke beheerfout.
    managed=null;
+   if(!/geen opleidingsbeheerrechten/i.test(e.message))
+     message('Persoonlijk traject geladen; opleidingsbeheer tijdelijk niet beschikbaar: '+e.message,true);
   }
   renderPersonal();renderManager();
   message('Opleidingstraject bijgewerkt. Dit overzicht wijzigt geen officiële personeelsstatus of Discord-rol.');

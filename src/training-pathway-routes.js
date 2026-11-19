@@ -3,7 +3,7 @@ import {TRAINING_ROLE_IDS} from './role-catalog.js';
 import {
  PATHWAY_COLLECTION,PATHWAY_DEPARTMENTS,keyName,authorizedOwnDepartments,
  canManagePathway,canApprovePathway,validPathwayCourse,validRequirement,
- basePathwayCourses,publicPathwayCourse,pathwayProgress
+ basePathwayCourses,publicPathwayCourse,pathwayProgress,recordRelevantToCourse
 } from './training-pathway-policy.js';
 
 const ID=/^\d{15,22}$/;
@@ -60,9 +60,7 @@ export function installTrainingPathwayRoutes(app,{requireUser,getSnapshot}){
     const custom=all.filter(c=>c.department===dept&&c.active!==false);
     const originals=basePathwayCourses(dept).filter(c=>
       !custom.some(o=>keyName(o.name)===keyName(c.name)));
-    const available=[...originals,...custom].filter(c=>
-      !c.zone||String(person.zone||person.fireZone||person.zoneName||'').trim()===
-        c.zone.trim());
+    const available=[...originals,...custom].filter(c=>recordRelevantToCourse(person,c));
     return {department:dept,zone:person.zone||person.fireZone||person.zoneName||null,
       canManage:manage(req,dept,roles),
       courses:available.map(course=>({...publicPathwayCourse(course),
@@ -97,6 +95,8 @@ export function installTrainingPathwayRoutes(app,{requireUser,getSnapshot}){
    const {departments}=await ensureRoster(req,getSnapshot);
    const roles=await instructors(req);
    const item=validPathwayCourse(req.body);
+   if(item.mandatoryRequested)throw fail(400,
+     'Voeg eerst de optionele opleiding toe en dien vervolgens een gemotiveerd verplichtingsvoorstel in');
    if(!departments.includes(item.department)||!manage(req,item.department,roles))
      throw fail(403,'Geen bevoegdheid om opleidingen bij deze dienst toe te voegen');
    const old=await collection().where('department','==',item.department).limit(201).get();
@@ -122,7 +122,9 @@ export function installTrainingPathwayRoutes(app,{requireUser,getSnapshot}){
   try{
    const {departments}=await ensureRoster(req,getSnapshot);
    const roles=await instructors(req),proposal=validRequirement(req.body);
-   const ref=collection().doc(String(req.params.id||''));
+   const courseId=String(req.params.id||'');
+   if(!/^[A-Za-z0-9]{12,40}$/.test(courseId))throw fail(400,'Ongeldige opleiding');
+   const ref=collection().doc(courseId);
    await db().runTransaction(async tx=>{
     const old=await tx.get(ref);
     if(!old.exists)throw fail(404,'Opleiding niet gevonden');
