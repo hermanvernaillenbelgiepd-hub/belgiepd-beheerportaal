@@ -194,3 +194,40 @@ test('verified Police Officierenkader can process a lower-rank 316 movement',()=
  const self={...subject,personId:officerId};
  assert.equal(canChangePoliceGrade(officer,self),false);
 });
+
+test('effective promotion submits to server even if an overview permission flag was stale',()=>{
+ const ui=read('public/personeelsbeheer.html');
+ const from=ui.indexOf("$('staffCaseForm').onsubmit=async event=>");
+ const until=ui.indexOf("$('staffCaseForm').",from+35);
+ const flow=ui.slice(from,until>from?until:from+11000);
+ assert.ok(flow.includes("await request('/api/personnel/politie/'"));
+ assert.doesNotMatch(flow,/person\.canChangeRank\s*!==\s*true/);
+ assert.match(flow,/if\(person\.dept!=='politie'\|\|!rankChangesEnabled\)/);
+});
+test('a technically switched operational Police leader retains only independently verified rank power',async()=>{
+ const {canChangePoliceGrade,allowedPoliceGradeChoices,verifiedPoliceRankAuthority}=
+   await import('../src/personnel-rank-policy.js');
+ const person={dept:'politie',personId:'222222222222222222',
+   call:'316',rank:'Aspirant Inspecteur van Politie (A-INP)'};
+ const source={uid:'discord:111111111111111111',
+   discordId:'111111111111111111',role:'beheerder',
+   operationalRole:'korpsleiding',
+   departments:['politie'],departmentRoles:{politie:'korpsleiding'},
+   operationalDepartmentRoles:{politie:'korpsleiding'},
+   portalTechnicalMode:true,profileTechnicalAvailable:true,
+   dossierNativeDepartments:['politie'],dossierAllowedDepartments:['politie'],
+   discordPoliceRank:'korpsleiding',boardPersonnelAdmin:true};
+ assert.equal(verifiedPoliceRankAuthority(source),'korpsleiding');
+ assert.equal(canChangePoliceGrade(source,person),true);
+ assert.ok(allowedPoliceGradeChoices(source).includes('Aspirant Commissaris'));
+ assert.equal(canChangePoliceGrade({...source,discordPoliceRank:null},person),false);
+ assert.equal(canChangePoliceGrade({...source,operationalRole:'beheerder'},person),false);
+ assert.equal(canChangePoliceGrade({...source,profileTechnicalAvailable:false},person),false);
+ const officer={...source,operationalRole:'officierenkader',
+   operationalDepartmentRoles:{politie:'officierenkader'},
+   discordPoliceRank:'officierenkader'};
+ assert.equal(canChangePoliceGrade(officer,person),true);
+ assert.ok(!allowedPoliceGradeChoices(officer).includes('Aspirant Commissaris'));
+ assert.equal(canChangePoliceGrade({...source,discordId:person.personId,
+   uid:'discord:'+person.personId},person),false);
+});
