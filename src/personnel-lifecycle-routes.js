@@ -142,8 +142,30 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
         action:'honorable_resignation_approved',cause:'honorable_resignation',
         reason:input.reason,actorDiscordId:req.bpd.discordId,at,
         revision:revision+1});
+      // An approved honorable resignation is a real career movement.
+      // Record it atomically with archival and audit, without changing prior data.
+      const caseRef=db().collection('bpd_cases').doc('politie_'+discordId)
+        .collection('entries').doc();
+      const noticeRef=db().collection('bpd_notices').doc('politie')
+        .collection('events').doc();
+      const eventDate=brusselsEventDate();
+      tx.create(caseRef,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+        source:'honorable-resignation',dept:'politie',subjectDiscordId:discordId,
+        subjectNameAtCreation:historic.name,subjectCallAtCreation:historic.call,
+        subjectRankAtCreation:historic.rank||'',
+        eventDate,movement:'Eervol ontslag',previousRank:historic.rank||'',
+        newRank:historic.rank||'',previousCall:historic.call||'',
+        newCall:historic.call||'',
+        details:'Eervol ontslag: Actief → Eervol uit dienst · Motivering: '+input.reason,
+        registeredBy:{discordId:req.bpd.discordId,name:req.bpd.name||'Bevoegd kader',
+          call:req.bpd.call||''},
+        submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
+        createdAt:at,modifiedAt:null});
+      tx.create(noticeRef,{caseId:'politie_'+discordId,entryId:caseRef.id,
+        type:'personeelsbeweging',dept:'politie',createdAt:at});
       tx.create(db().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
         type:'personnel_archived',dept:'politie',discordId,
+        dossierCaseLogged:true,eventDate,
         name:historic.name,call:historic.call,
         before:'Actief',after:'Eervol uit dienst',cause:'honorable_resignation',
         reason:input.reason,actorDiscordId:req.bpd.discordId,at});
