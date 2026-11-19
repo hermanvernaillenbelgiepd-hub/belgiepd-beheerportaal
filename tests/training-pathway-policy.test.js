@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {authorizedOwnDepartments,canManagePathway,canApprovePathway,
  validPathwayCourse,validRequirement,pathwayProgress,requirementApplies,
- requestableCustomCourses} from '../src/training-pathway-policy.js';
+ canManageIndividualPathway,validIndividualRequirement,uniquePathwaySubject,
+ personalRequirementApplies,requestableCustomCourses} from '../src/training-pathway-policy.js';
 const id='1398985105254650007',officer={
  uid:'discord:'+id,discordId:id,role:'officierenkader',departments:['politie'],
  departmentRoles:{politie:'officierenkader'},discordRosterEditorVerified:true
@@ -74,4 +75,65 @@ test('Route bewaakt twee aparte goedkeuringsfasen en een transactielog',()=>{
  assert.match(page,/opleidingstraject\.html/);
  const request=readFileSync(new URL('../src/training-request-routes.js',import.meta.url),'utf8');
  assert.match(request,/requestableCustomCourses/);
+});
+
+test('Individuele verplichting kan voor één medewerker gelden, zonder globale verplichting',()=>{
+ const course={id:'courseA',department:'politie',name:'Rijopleiding',zone:'',
+   mandatory:false,targetKind:'alle',effectiveDate:null};
+ const assignment={courseId:'courseA',department:'politie',
+   subjectDiscordId:id,active:true,effectiveDate:'2026-01-01'};
+ const other={...person,personId:'1309532438053130326'};
+ assert.equal(personalRequirementApplies(person,course,assignment,'2026-11-19'),true);
+ assert.equal(personalRequirementApplies(other,course,assignment,'2026-11-19'),false);
+ assert.equal(personalRequirementApplies(person,course,{...assignment,active:false},'2026-11-19'),false);
+ assert.equal(requirementApplies(other,course,'2026-11-19'),false);
+ assert.equal(requirementApplies(person,course,'2026-11-19'),false);
+});
+test('Individuele verplichting respecteert ingangsdatum en zonekoppeling',()=>{
+ const course={id:'courseA',department:'brandweer',zone:'Zone Noord'};
+ const assignment={courseId:'courseA',department:'brandweer',
+   subjectDiscordId:id,active:true,effectiveDate:'2027-01-01'};
+ const target={...person,dept:'brandweer',zone:'Zone Noord'};
+ assert.equal(personalRequirementApplies(target,course,assignment,'2026-11-19'),false);
+ assert.equal(personalRequirementApplies(target,course,assignment,'2027-01-02'),true);
+ assert.equal(personalRequirementApplies({...target,zone:'Zone Zuid'},course,assignment,'2027-01-02'),false);
+});
+test('Kader mag personen selecteren, instructeur alleen niet',()=>{
+ assert.equal(canManageIndividualPathway(officer,'politie'),true);
+ assert.equal(canManageIndividualPathway({...officer,role:'basiskader',
+   departmentRoles:{politie:'basiskader'}},'politie'),false);
+ assert.equal(canManageIndividualPathway(officer,'brandweer'),false);
+});
+test('Afgeschermde personeelsselectie vereist uniek werkelijk personeelslid',()=>{
+ const course={department:'politie',zone:''};
+ assert.equal(uniquePathwaySubject([person], 'politie', id,course)?.personId,id);
+ assert.equal(uniquePathwaySubject([person,person], 'politie',id,course),null);
+ assert.equal(uniquePathwaySubject([person], 'brandweer',id,course),null);
+ assert.equal(uniquePathwaySubject([person], 'politie','123',course),null);
+});
+test('Persoonsvoorstel heeft een geselecteerde identiteit en een gemotiveerde termijn',()=>{
+ const good=validIndividualRequirement({subjectDiscordId:id,mandatory:true,
+  effectiveDate:'2026-12-01',validMonths:12,
+  reason:'Aanvullende persoonlijke opleiding nodig wegens functie'});
+ assert.equal(good.subjectDiscordId,id);
+ assert.equal(good.mandatory,true);
+ assert.equal(good.validMonths,12);
+ assert.throws(()=>validIndividualRequirement({subjectDiscordId:'onbekend',
+  mandatory:true,reason:'Aanvullende opleiding nodig wegens functie'}));
+ assert.throws(()=>validIndividualRequirement({subjectDiscordId:id,
+  mandatory:true,reason:'te kort'}));
+});
+test('Persoonlijke verplichtingen gebruiken dezelfde twee goedkeuringen en eigen audit',()=>{
+ const routes=readFileSync(new URL('../src/training-pathway-routes.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/opleidingstraject.html',import.meta.url),'utf8');
+ assert.match(routes,/app\.get\('\/api\/training-pathway\/people'/);
+ assert.match(routes,/canManageIndividualPathway\(req\.bpd,course\.department\)/);
+ assert.match(routes,/app\.post\('\/api\/training-pathway\/courses\/:id\/person-requirement'/);
+ assert.match(routes,/app\.post\('\/api\/training-pathway\/person-requirements\/:id\/review'/);
+ assert.match(routes,/canApprovePathway\(req\.bpd,pending\.stage\)/);
+ assert.match(routes,/personalRequirementApplies\(person,course,individual\)/);
+ assert.match(routes,/person_requirement_'\+req\.body\.decision/);
+ assert.match(page,/value="persoon">Specifieke persoon/);
+ assert.match(page,/id="personTarget"/);
+ assert.match(page,/individualManageable/);
 });
