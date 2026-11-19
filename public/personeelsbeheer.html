@@ -1738,6 +1738,7 @@ function availablePersonnelRegistrationKinds(){
 }
 function displaySelectedRegistration(){
   const kind=$('registrationKind').value;
+  scheduleDossierDateWarning();
   const trainingDestination=$('trainingDestination');
   trainingDestination.hidden=!['training','case:opleiding','case:inactiviteitsping'].includes(kind);
   if(kind==='training'){
@@ -3125,6 +3126,62 @@ const staffNotesLabels={opleiding:'Opleiding',begeleiding:'Begeleiding',
 /* Dezelfde categoriebevoegdheden als de kaderregister-API:
    het formulier is alleen een andere weergave van bestaande registraties. */
 let casePermissions=null;
+function populateLinkedColleagues(){
+ if(!selected)return;
+ const known=new Map();
+ for(const p of [...(formalPermissions?.subjects||[]),...(casePermissions?.subjects||[])]){
+   if(p.dept!==selected.dept||p.discordId===selected.discordId||
+     !/^\d{15,22}$/.test(p.discordId||''))continue;
+   known.set(p.discordId,p);
+ }
+ const people=[...known.values()].sort((a,b)=>
+   String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true}));
+ for(const id of ['formalLinkedColleague','staffCaseLinkedColleague']){
+   const field=$(id),before=field.value;
+   field.replaceChildren(option('','Niet koppelen'),
+     ...people.map(p=>option(p.discordId,(p.call||'—')+' · '+p.name)));
+   if(known.has(before))field.value=before;
+ }
+}
+let dateWarningSerial=0,dateWarningTimer=null,dateToastTimer=null,shownDateKey='';
+$('dossierDateToastClose').onclick=()=>{
+ $('dossierDateToast').hidden=true;clearTimeout(dateToastTimer);
+};
+function scheduleDossierDateWarning(){
+ const serial=++dateWarningSerial;
+ clearTimeout(dateWarningTimer);
+ const person=selected,kind=$('registrationKind').value;
+ const relevant=['observatie','sanctie','case:algemene_notitie','case:notitie'].includes(kind);
+ const value=kind.startsWith('case:')?$('staffCaseDate').value:
+   formalDateFromText($('formalDateText').value);
+ if(!person||!relevant||!/^\d{4}-\d{2}-\d{2}$/.test(value||''))return;
+ const key=person.dept+':'+person.discordId+':'+value;
+ if(key===shownDateKey)return;
+ dateWarningTimer=setTimeout(async()=>{
+  try{
+   const data=await request('/api/registrations/date-check?'+new URLSearchParams({
+     dept:person.dept,discordId:person.discordId,eventDate:value}));
+   if(serial!==dateWarningSerial)return;
+   shownDateKey=key;
+   if(!data.count)return;
+   const types={observatie:'observatie',sanctie:'sanctie',
+     algemene_notitie:'algemene notitie',notitie:'belangrijke notitie'};
+   const summary=Object.entries(data.types||{}).map(([kind,count])=>
+      count+' × '+(types[kind]||kind)).join(', ');
+   const day=value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4);
+   $('dossierDateToastText').textContent='Op '+day+' bestaat al '+data.count+
+      (data.limited?'+':'')+' registratie(s): '+summary+
+      '. Controleer de bestaande notities en observaties om dubbel werk te vermijden.';
+   $('dossierDateToast').hidden=false;
+   clearTimeout(dateToastTimer);
+   dateToastTimer=setTimeout(()=>{$('dossierDateToast').hidden=true},9000);
+  }catch{/* Meldingen blokkeren het opslaan niet. */}
+ },280);
+}
+$('formalDateText').addEventListener('change',scheduleDossierDateWarning);
+$('formalDate').addEventListener('change',scheduleDossierDateWarning);
+$('staffCaseDate').addEventListener('change',scheduleDossierDateWarning);
+
 const staffCaseFields={verlof:['staffEndDateField'],opleiding:['staffCourseField'],
   promotievoorstel:['staffRankField'],naamswijziging:['staffNewNameField'],
   personeelsbeweging:['staffMovementField']};
@@ -4341,6 +4398,7 @@ function formalSanctionOptions(){
 }
 function updateFormalFields(){
   const dept=selected?.dept;
+  $('formalLinkedField').hidden=$('formalType').value!=='observatie'||Boolean(formalEditId);
   const observation=Boolean(formalPermissions?.observationDepartments?.includes(dept));
   const sanction=Boolean(formalPermissions?.sanctionDepartments?.includes(dept));
   const isSanction=$('formalType').value==='sanctie';
@@ -4434,6 +4492,7 @@ function clearFormalEdit(){
   setFormalDate(now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate()));
   $('formalTime').value=pad(now.getHours())+':'+pad(now.getMinutes());
   $('formalNotice').textContent='';
+  $('formalLinkedColleague').value='';
   updateFormalFields();
   updateHistoricalObservationUi();
 }
@@ -4560,7 +4619,9 @@ $('staffFormalForm').onsubmit=async event=>{
   setFormalDate(selectedDate);
   const data={dept,discordId:id,type,eventDate:selectedDate,
     eventTime:$('formalTime').value,details:$('formalDetails').value,
-    otherPlayers:$('formalPlayers').value,evidenceUrl:$('formalEvidence').value};
+    otherPlayers:$('formalPlayers').value,evidenceUrl:$('formalEvidence').value,
+    ...(!formalEditId&&type==='observatie'&&$('formalLinkedColleague').value?
+      {linkedColleagueId:$('formalLinkedColleague').value}:{})};
   if(!isSanction){
     if($('historicalObservationCheck').checked&&
        !$('historicalObservationField').hidden){
@@ -5504,6 +5565,8 @@ $('staffCaseForm').onsubmit=async event=>{
     await request('/api/management/cases',{method:'POST',
       body:{dept:person.dept,discordId:person.discordId,type,
         eventDate:$('staffCaseDate').value,details:reason+historicalDetails,
+        ...(['notitie','algemene_notitie'].includes(type)&&$('staffCaseLinkedColleague').value?
+          {linkedColleagueId:$('staffCaseLinkedColleague').value}:{}),
         endDate:$('staffEndDate').value,courseName,
         proposedRank:$('staffProposedRank').value,newName:$('staffNewName').value,
         movement,
