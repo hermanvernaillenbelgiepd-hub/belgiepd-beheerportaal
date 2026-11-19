@@ -731,7 +731,11 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           subjectCall:subject.call,subjectDepartments:departments,status
         },action:needsHigherApproval?'manual_submitted':'manual_approved',actor:{
           discordId:req.bpd.discordId,name:'Politioneel kader',call:''
-        },actorUid:req.bpd.uid,eventDate:yyyyMmDd(),to:status,note:details.note});
+        },actorUid:req.bpd.uid,
+          // A migrated, already completed leave period happened in the past.
+          // Ordinary manual decisions still retain today's decision date.
+          eventDate:originalAuthor?details.startDate:yyyyMmDd(),
+          to:status,note:details.note});
       });
       return res.status(201).json({id:uniqueId,status,
         days:details.days,manual:true,departments,

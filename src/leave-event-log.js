@@ -23,12 +23,16 @@ export const leaveCanWithdraw=(request,today)=>{
 // An old leave application never disappears; only the latest application
 // for the same dates may block a new attempt. Unknown states fail closed.
 export const leaveCanReapply=status=>status==='withdrawn'||status==='rejected';
-export function leaveEventDetails(action,request,from=null,to=null){
+export function leaveEventDetails(action,request,from=null,to=null,decisionNote=''){
   const base=leaveEventLabel(action)+' · '+request.startDate+' t/m '+
     request.endDate+' ('+request.days+' kalenderdagen)';
+  const reason=typeof request.note==='string'?request.note.trim().slice(0,300):'';
+  const decision=typeof decisionNote==='string'?decisionNote.trim().slice(0,300):'';
   return base+(request.extensionOf&&Number.isSafeInteger(request.totalPeriodDays)?
     ' · totale periode '+request.totalPeriodDays+' kalenderdagen vanaf '+request.periodStartDate:'')+
-    (from?' · status '+from+' → '+(to||'ingetrokken'):'');
+    (from?' · status '+from+' → '+(to||'ingetrokken'):'')+
+    (reason?' · Verlofreden: '+reason:'')+
+    (decision&&decision!==reason?' · Motivering beslissing: '+decision:'');
 }
 export function writeLeaveEvent(tx,{requestRef,request,action,actor,actorUid,
   eventDate,from=null,to=null,note=''}) {
@@ -37,7 +41,9 @@ export function writeLeaveEvent(tx,{requestRef,request,action,actor,actorUid,
     discordId:String(actor.discordId||'')
   }:{name:'Systeem',call:'',discordId:''};
   tx.create(requestRef.collection('audit').doc(),{
-    action,from,to,note,actorUid:actorUid||null,
+    action,from,to,note,eventDate,
+    leaveReason:typeof request.note==='string'?request.note.slice(0,300):null,
+    actorUid:actorUid||null,
     actorDiscordId:registeredBy.discordId||null,days:request.days,
     at:FieldValue.serverTimestamp()
   });
@@ -54,7 +60,7 @@ export function writeLeaveEvent(tx,{requestRef,request,action,actor,actorUid,
       subjectDiscordId:request.personDiscordId,
       subjectNameAtCreation:request.subjectName||'Onbekend',
       subjectCallAtCreation:request.subjectCall||'',
-      eventDate,details:leaveEventDetails(action,request,from,to),
+      eventDate,details:leaveEventDetails(action,request,from,to,note),
       statusFrom:from,statusTo:to||request.status,
       registeredBy,createdAt:FieldValue.serverTimestamp(),
       modifiedAt:null,source:'central-leave-audit'

@@ -1,4 +1,5 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import {brusselsEventDate} from './personnel-event-date.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {SPECIALTY_LABELS} from './normalize.js';
 import {roleForDepartment} from './leave-policy.js';
@@ -196,6 +197,10 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       return res.status(403).json({error:'Ook Bestuur/Korpsleiding mag het eigen dossier niet registreren'});
     try{
       const values=validateEntry(raw);
+      // Records describe events that have happened; future sanctions and
+      // observations must not be inserted by direct API calls.
+      if(values.eventDate>brusselsEventDate())
+        return res.status(400).json({error:'De gebeurtenisdatum mag niet in de toekomst liggen'});
        if(type==='sanctie' && !canChooseDepartmentSanction(
          dept,dossierAuthorityRole(req.bpd,dept),values.sanctionType,values.severity))
          return res.status(403).json({error:values.sanctionType==='Voorstel tot degradatie'?
@@ -213,7 +218,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
            return res.status(403).json({error:'Historische sanctie-overname is uitgeschakeld of niet toegestaan'});
          try{validateHistoricalActorSelection(representedId,raw?.onBehalfReason,req.bpd.discordId)}
          catch(e){return res.status(400).json({error:e.message})}
-         if(type==='sanctie'&&values.eventDate>new Date().toISOString().slice(0,10))
+         if(type==='sanctie'&&values.eventDate>brusselsEventDate())
            return res.status(400).json({error:'Historische sanctie moet een oude gebeurtenisdatum hebben'});
        }
        const onBehalfReason=representedId ? trim(raw?.onBehalfReason) : '';
@@ -360,6 +365,8 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       return res.status(403).json({error:'Eigen dossierwijzigingen zijn verboden'});
     try{
       const values=validateAmend(req.body);
+      if(values.eventDate>brusselsEventDate())
+        return res.status(400).json({error:'De sanctiedatum mag niet in de toekomst liggen'});
       const sanctionRole=dossierAuthorityRole(req.bpd,dept);
       if(!canChooseDepartmentSanction(dept,sanctionRole,values.sanctionType,values.severity))
         return res.status(403).json({error:'Geen bevoegdheid voor deze sanctiemaatregel of ernst. Degradatie en schorsing vereisen Officierenkader; ontslag en blacklisting uitsluitend Korpsleiding.'});
@@ -367,12 +374,15 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       if(!safeSubject(snap.data,dept,id))return res.status(404).json({error:'Personeelslid niet gevonden'});
       const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel je ingelogde account eerst aan je eigen Discord ID'});
-      const ref=db().collection('bpd_cases').doc(docId(dept,id)).collection('entries').doc(entryId);
-      const audit=ref.collection('audit').doc();
+      const entries=db().collection('bpd_cases').doc(docId(dept,id)).collection('entries');
+      const ref=entries.doc(entryId),audit=ref.collection('audit').doc(),
+        report=entries.doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
+      const reportNotice=db().collection('bpd_notices').doc(dept).collection('events').doc();
+      const today=brusselsEventDate();
       await db().runTransaction(async tx=>{
         const existing=await tx.get(ref);
-        if(!existing.exists)return Object.assign(new Error('Niet gevonden'),{status:404});
+        if(!existing.exists)throw Object.assign(new Error('Niet gevonden'),{status:404});
         const old=existing.data();
         if(old.type!=='sanctie'||old.subjectDiscordId!==id||old.dept!==dept)throw Object.assign(new Error('Geen sanctie'),{status:404});
         if(old.historicalImport===true&&old.status==='historisch')
@@ -382,12 +392,30 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
         if(!canChooseSanction(sanctionRole,old.sanctionType,old.severity))
           throw Object.assign(new Error('Alleen Korpsleiding mag deze bestaande sanctie wijzigen'),{status:403});
         const {amendmentReason,...rest}=values;
-        tx.update(ref,{...rest,modifiedAt:FieldValue.serverTimestamp(),modifiedBy:actor});
+        const at=FieldValue.serverTimestamp();
+        tx.update(ref,{...rest,modifiedAt:at,modifiedBy:actor});
         // Oude waarden en reden bewaren in een afgeschermd log (geen harde delete).
-        tx.create(audit,{before:{...old,submittedBy:old.submittedBy||null},reason:amendmentReason,by:actor,byUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
-        tx.create(notice,{caseId:docId(dept,id),entryId,type:'sanctie_gewijzigd',dept,createdAt:FieldValue.serverTimestamp()});
+        tx.create(audit,{action:'sanction_edited',
+          before:{...old,submittedBy:old.submittedBy||null},
+          reason:amendmentReason,by:actor,byUid:req.bpd.uid,at});
+        // An amendment is an independent dated event, included exactly
+        // once in the dossier and the fortnight report for its own date.
+        tx.create(report,{type:'activiteit',reportCategory:'activiteit',dept,
+          subjectDiscordId:id,subjectNameAtCreation:snap.data.find(p=>p.dept===dept&&p.personId===id)?.name||'Personeelslid',
+          subjectCallAtCreation:snap.data.find(p=>p.dept===dept&&p.personId===id)?.call||'',
+          eventDate:today,registeredBy:actor,
+          source:'sanction-amendment',amendmentOf:{entryId,kind:'sanctie'},
+          details:'CORRECTIE SANCTIE · registratie '+entryId+
+            ' · '+String(old.sanctionType||'Sanctie')+' → '+values.sanctionType+
+            ' · Motivering: '+amendmentReason,
+          createdAt:at,modifiedAt:null});
+        tx.create(notice,{caseId:docId(dept,id),entryId,
+          type:'sanctie_gewijzigd',dept,createdAt:at});
+        tx.create(reportNotice,{caseId:docId(dept,id),entryId:report.id,
+          type:'activiteit',action:'sanction_amended',originalEntryId:entryId,
+          dept,createdAt:at});
       });
-      res.json({saved:true});
+      res.json({saved:true,auditRecorded:true,reportLogged:true});
     }catch(err){
       if(err?.status===404)return res.status(404).json({error:'Sanctie niet gevonden'});
       if(err?.status===403)return res.status(403).json({error:err.message});

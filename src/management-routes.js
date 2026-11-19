@@ -11,6 +11,7 @@ import {createWeekReportDocx} from './report-export.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  CATALOG_BY_ID,decorationCatalogExtras,expirationDate} from './personnel-decoration-policy.js';
 import {isArchivedTraining} from './training-maintenance.js';
+import {brusselsEventDate} from './personnel-event-date.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {staffActivityFollowup} from './staff-activity-followup.js';
@@ -167,7 +168,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         try{onBehalfReason=validateHistoricalActorSelection(
           representedId,req.body.onBehalfReason,req.bpd.discordId).reason}
         catch(e){return res.status(400).json({error:e.message})}
-        if(data.eventDate>new Date().toISOString().slice(0,10))
+        if(data.eventDate>brusselsEventDate())
           return res.status(400).json({error:'Een historische registratie kan niet in de toekomst liggen'});
         represented=representativeFromPersonnel(snap.data,dept,representedId);
         if(!represented)return res.status(400).json({error:'Oorspronkelijke registrator niet gevonden in de personeelslijst'});
@@ -648,7 +649,9 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
             id:'training:'+doc.id,type:'opleiding',eventDate:r.eventDate,
             courseName:r.courseName,trainingResult:r.result,
             details:['Opleidingsresultaat: '+({geslaagd:'Geslaagd',
-              niet_geslaagd:'Niet geslaagd',in_opleiding:'In opleiding',restricted:'RESTRICTED'}[r.result]||'Onbekend'),
+              niet_geslaagd:'Niet geslaagd',in_opleiding:'In opleiding',
+              stage:'Stage',restricted:'RESTRICTED'}[r.result]||'Onbekend'),
+              r.instructorName?'Opleider: '+String(r.instructorName).slice(0,120):'',
               r.details||''].filter(Boolean).join(' · '),
             subjectDiscordId:pid,subjectNameAtCreation:person?.name||'—',
             subjectCallAtCreation:person?.call||'—',

@@ -11,6 +11,7 @@ import { ROLE_CATALOG,roleSummary,SERVICE_DEPTS } from './role-catalog.js';
 import { basePermissions,effectivePermissions,validateOverride,canAdministerRoles,canLogTraining,canReviewTraining,visibleTrainingPermissions,DELEGATABLE_PERMISSIONS } from './permissions-utils.js';
 import { mayMaintainTraining,isArchivedTraining,validateMaintenanceReason,isRecordId,requiresReReview } from './training-maintenance.js';
 import {roleForDepartment} from './leave-policy.js';
+import {brusselsEventDate} from './personnel-event-date.js';
 import {isCorpsLeadershipPersonnel} from './personnel-editor-policy.js';
 import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
 import {verifiedFireRoles,fireSubjectClass,FIRE_ROLES} from './fire-dossier-policy.js';
@@ -135,7 +136,7 @@ function inputRecord(x){
   if(courseName.length<3 || typeof x?.courseName!=='string' || x.courseName.length>150)throw new Error('Ongeldige opleidingsnaam');
   if(typeof x?.details!=='string'||x.details.length>1600)throw new Error('Omschrijving te lang');
   if(!['in_opleiding','geslaagd','niet_geslaagd','stage','restricted'].includes(result))throw new Error('Ongeldig opleidingsresultaat');
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)||new Date(eventDate+'T12:00:00Z').toISOString().slice(0,10)!==eventDate||eventDate>new Date().toISOString().slice(0,10))throw new Error('Ongeldige opleidingsdatum');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)||new Date(eventDate+'T12:00:00Z').toISOString().slice(0,10)!==eventDate||eventDate>brusselsEventDate())throw new Error('Ongeldige opleidingsdatum');
   return {department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName};
 }
 const error=(res,e)=>{console.error('Rollen/opleidingen:',e?.code||e?.message||'onbekend');return res.status(503).json({error:'Firestore tijdelijk niet beschikbaar'});};
