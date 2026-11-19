@@ -216,8 +216,10 @@ async function load(){
   // de server controleert nog steeds de bevoegdheid en de actuele catalogus.
   if(params.has('course')){
     const wanted=params.get('course');
-    if([...$('course').options].some(x=>x.value===wanted))$('course').value=wanted;
-    else if($('courseWrap').hidden&&$('variaWrap'))$('varia').value=wanted.slice(0,150);
+    if($('courseWrap').hidden){
+     $('course').value='VARIA';
+     $('varia').value=wanted.slice(0,150);
+    }else if([...$('course').options].some(x=>x.value===wanted))$('course').value=wanted;
     window.history.replaceState(null,'',window.location.pathname);
     syncVaria();
   }

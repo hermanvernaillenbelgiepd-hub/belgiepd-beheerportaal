@@ -152,9 +152,14 @@ function progress(){
   if(r.description)facts.push(r.description);
   if(facts.length)card.append(node('div',facts.join(' · '),'detail'));
   const row=node('div',undefined,'actions');
-  const a=node('a','Opleiding aanvragen','button alt');
-  a.href='/opleidingscentrum.html?department='+encodeURIComponent(d)+'&course='+encodeURIComponent(r.name);
-  row.append(a);card.append(row);root.append(card);
+  if(d==='burger'){
+   row.append(node('small','Burgeropleidingen zijn momenteel ter inzage; aanvragen via de leiding volgt na koppeling van de Burgerraad-workflow.'));
+  }else{
+   const a=node('a','Opleiding aanvragen','button alt');
+   a.href='/opleidingscentrum.html?department='+encodeURIComponent(d)+'&course='+encodeURIComponent(r.name);
+   row.append(a);
+  }
+  card.append(row);root.append(card);
  }
  if(!rows.length)root.append(node('p','Geen opleidingen binnen deze filter.'));
 }
