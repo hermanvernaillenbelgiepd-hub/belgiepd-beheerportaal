@@ -31,6 +31,7 @@ import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installActivityTelemetryRoutes} from './activity-telemetry-routes.js';
 import {installActivityCenterRoutes} from './activity-center-routes.js';
 import {scheduleAutomaticActivityPings} from './activity-ping-runner.js';
+import {installActivityReturnRoutes,scheduleLeaveReturnChecks} from './activity-return-routes.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
 import {canSeeDashboardManagement,canSeeAdvancedDashboard,isFireZoneDashboard,ambulanceDashboardTier} from './dashboard-admin-policy.js';
@@ -978,6 +979,7 @@ installDiscordPersonalProfileRoutes(app,{getSnapshot});
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 // Isolated legacy activity read: no automated pings or personnel changes.
 installActivityCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installActivityReturnRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
 installPersonnelReturnReviewRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelLifecycleRoutes(app,{requireUser:requireDossierUser,
@@ -1066,6 +1068,7 @@ app.listen(Number(process.env.PORT)||8080,()=>{
   void probeDiscordFirestore();
   // Opt-in only. Missing configuration keeps automatic activity alerts OFF.
   scheduleAutomaticActivityPings({getSnapshot});
+  scheduleLeaveReturnChecks({getSnapshot});
   // Independent, reversible 30-day retention for submitted Police observations.
   scheduleBasicObservationAutoArchive();
 });
