@@ -2667,7 +2667,7 @@ function render(){
     if(person.canManageLifecycle===true){
       const button=document.createElement('button');button.type='button';
       button.className='alt small';button.textContent='Uit dienst';
-      button.title='Uitsluitend dit dienstverband archiveren, andere diensten blijven actief';
+      button.title='Centraal archiveren: alle gekoppelde dienstfiches en openstaand verlof afsluiten';
       button.onclick=()=>archiveServiceMembership(person);
       cell.append(button);
     }
@@ -6390,13 +6390,15 @@ async function archiveServiceMembership(p,{fromActivityPing=false,presetCause=nu
  if(explanation===null)return;
  const reason=explanation.trim();
  if(reason.length<10||reason.length>500)return notice('Motivering moet 10 tot 500 tekens zijn.',true);
- if(!confirm(p.name+' UITSLUITEND uit '+(departments[p.dept]||p.dept)+' plaatsen?'+
-   '\nAndere dienstverbanden en dossiers blijven intact. CMS-rollen afzonderlijk nakijken.'))return;
+ if(!confirm(p.name+' centraal archiveren vanuit '+(departments[p.dept]||p.dept)+'?'+
+   '\nALLE gekoppelde dienstverbanden worden gearchiveerd. Openstaand verlof wordt afgesloten en alle dienstendossiers behouden hun historiek. CMS-rollen afzonderlijk nakijken.'))return;
  try{
-  await request(url+'/archive',{method:'POST',
+  const result=await request(url+'/archive',{method:'POST',
    body:{cause,reason,expectedRevision:current.revision}});
-  notice('Uitdiensttreding bij '+(departments[p.dept]||p.dept)+
-   ' geregistreerd. Personeelsbeweging én afsluitende activiteitenregistratie gelogd; andere dienstverbanden behouden.');
+  const services=(result.archivedDepartments||[]).map(d=>departments[d]||d).join(', ');
+  notice('Centrale archivering opgeslagen voor '+(services||'alle gekoppelde diensten')+
+   '. Dossierhistoriek behouden; '+(result.closedLeaveRequests||0)+
+   ' openstaande verlofperiode(n) administratief afgesloten.');
   if(selected?.dept===p.dept&&selected?.discordId===p.discordId){
    $('panel').hidden=true;selected=null;
   }
@@ -6437,7 +6439,7 @@ async function loadHonorableRequests(){
       return notice('Motivering moet 10–500 tekens hebben.',true);
      if(!confirm((decision==='approve'?'Eervol ontslag goedkeuren':'Aanvraag afwijzen')+
        ' voor '+(entry.name||entry.call)+'?'+(decision==='approve'?
-       '\\nDe actieve personeelsfiche wordt gearchiveerd; historiek en eretekens blijven bestaan.':'')))return;
+       '\\nALLE gekoppelde dienstfiches worden gearchiveerd en openstaand verlof afgesloten. Historiek en eretekens blijven bestaan.':'')))return;
      btn.disabled=true;
      try{
       await request('/api/personnel-lifecycle/honorable/'+encodeURIComponent(entry.discordId)+
