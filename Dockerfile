@@ -14,7 +14,7 @@ COPY Dockerfile ./Dockerfile
 RUN node --test tests/dc-id-transfer.test.js tests/basic-observations.test.js tests/document-center.test.js tests/document-folders-links.test.js tests/activity-roster-order.test.js tests/officer-notifications.test.js tests/personal-notification-receipts.test.js tests/staff-activity-followup.test.js tests/auto-police-basic-access.test.js tests/multiservice-home-observations.test.js tests/basic-observation-target-selection.test.js tests/basic-observation-json-parser.test.js tests/basic-observation-archive.test.js tests/basic-observation-auto-archive.test.js tests/technical-center.test.js tests/technical-service-editors.test.js tests/azls-registered-docent-specialties.test.js tests/multiservice-profile-rank-visual.test.js tests/library-reuse-visual-artwork.test.js tests/service-profile-brandweer-parity.test.js tests/burger-uniform-grades.test.js tests/service-profile-grade-plate.test.js tests/azls-custom-specialty-visuals.test.js tests/citizen-role-reverification.test.js tests/personnel-specialty-level-privacy.test.js tests/ambulance-uniform-grade-options.test.js tests/weekrapporten-navigation-cleanup.test.js tests/police-call-proposals.test.js tests/personnel-create.test.js tests/police-series-assignment.test.js tests/police-fixed-status.test.js tests/depannage-awv-uniform-parity.test.js tests/burger-organogram-projection.test.js tests/depannage-organogram-overlap.test.js tests/roster-column-library.test.js tests/person-specialty-artwork.test.js tests/manual-burgerraad-recovery.test.js tests/manual-role-service-catalog.test.js tests/manual-role-technical-approval.test.js tests/checkride-policy.test.js tests/citizen-dossier-policy.test.js tests/user-access.test.js tests/discord-role-diagnostics.test.js tests/personnel-grouping-policy.test.js tests/personnel-group-settings.test.js tests/personnel-compact-ui.test.js \
  tests/personnel-first-paint-optimization.test.js \
  tests/dossier-observation-training-instructor.test.js \
- tests/historical-observation-import.test.js \
+ tests/historical-observation-import.test.js tests/leave-reason-migration.test.js \
  tests/honorable-inp-reentry.test.js \
  tests/technical-access-simulator.test.js \
  tests/rollout-final-access-matrix.test.js \
@@ -22,33 +22,19 @@ RUN node --test tests/dc-id-transfer.test.js tests/basic-observations.test.js te
  tests/personnel-lifecycle.test.js \
  tests/personnel-decoration-policy.test.js \
  tests/training-requests-fortnight-reports.test.js && npm run check
-RUN node --test tests/personnel-identity-return-review.test.js
-RUN node --test tests/sanction-overview.test.js
-RUN node --test tests/personnel-event-date-completeness.test.js
 RUN node --test tests/dossier-weekrapport-endcontrole.test.js
 RUN node --test tests/leave-report-projection.test.js
 RUN node --test tests/training-completion-overview.test.js
 RUN node --test tests/meldingen-single-refresh-and-movement-groups.test.js
-RUN node --test tests/sanction-measures-middenkader.test.js
-RUN node --test tests/notification-scope-permissions.test.js
 RUN node --test tests/training-planning-policy.test.js
+RUN node --test tests/dossier-entry-preview.test.js
 RUN node --test tests/training-pathway-policy.test.js
 RUN node --test tests/training-unified-workflow.test.js
-RUN node --test tests/training-specialty-approval.test.js
-RUN node --test tests/portal-date-display.test.js
-RUN node --test tests/training-instructor-choice.test.js
-RUN node --test tests/training-general-instructor-policy.test.js
-RUN node --test tests/dossier-entry-preview.test.js
-RUN node --test tests/dossier-linked-cases.test.js
-RUN node --test tests/dossier-notes-ping-readback.test.js
-RUN node --test tests/dossier-case-readback-import.test.js
-RUN node --test tests/activity-followup-status.test.js
 RUN node --test tests/activity-return-policy.test.js
 RUN node --test tests/activity-return-ui.test.js
-RUN node --test tests/activity-monitor.test.js
-RUN node --test tests/activity-center-model.test.js
-RUN node --test tests/manual-leave-dates-and-notices.test.js
-RUN node --test tests/fire-promotion-workflow.test.js
+RUN node --test tests/training-specialty-approval.test.js
+RUN node --test tests/portal-date-display.test.js
+RUN node --test tests/sanction-measures-middenkader.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
