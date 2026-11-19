@@ -5,6 +5,7 @@ import {POLICE_RANK_CHOICES,policeRankByName,policeCallNumber,
 import {orderedCallNumbers} from './callsign-utils.js';
 import {PERSONNEL_EDITS_COLLECTION,personnelCallClaimId} from './personnel-editor-policy.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
+import {personnelDataEnabled} from './personnel-create.js';
 
 // A proposal never changes grade, callsign, Discord roles or specialties.
 // The approval is a single Firestore transaction and creates one effective movement.
@@ -70,6 +71,10 @@ const exactSubject=(snapshot,id)=>{
 };
 export function installPolicePromotionRoutes(app,{requireUser,getSnapshot}){
  const db=()=>getFirestore();
+ const effectivePromotionEnabled=()=>personnelDataEnabled(process.env)&&
+  process.env.BPD_ENABLE_PERSONNEL_WRITES==='true'&&
+  process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'&&
+  process.env.BPD_ENABLE_PERSONNEL_RANK_CHANGES==='true';
  const proposals=()=>db().collection(POLICE_PROMOTION_PROPOSALS);
  const requireCurrent=async()=>{
   const roster=await getSnapshot({forceRefresh:true});
@@ -130,6 +135,8 @@ export function installPolicePromotionRoutes(app,{requireUser,getSnapshot}){
    const id=String(req.params.id||'');
    if(!validRef(id))throw fail(400,'Ongeldige promotieverwijzing');
    const input=validatePromotionDecision(req.body);
+   if(input.decision==='approve'&&!effectivePromotionEnabled())
+    throw fail(503,'Effectieve rangwijzigingen staan in deze omgeving nog niet aan');
    const proposalRef=proposals().doc(id),initial=await proposalRef.get();
    if(!initial.exists||initial.get('status')!=='pending')
     throw fail(409,'Voorstel bestaat niet meer of is reeds behandeld');
