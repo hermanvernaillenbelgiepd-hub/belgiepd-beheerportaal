@@ -95,20 +95,28 @@ export function installPolicePromotionRoutes(app,{requireUser,getSnapshot}){
    // A verified officer may draft a movement proposal even when the
    // independent effective-rank write permission is unavailable on that fiche.
    // This read-only suggestion does not grant or perform a personnel edit.
-   const maySuggest=canChangePoliceGrade(req.bpd,person)||
-     (mayWriteManagement(req.bpd,'politie','personeelsbeweging')&&
-      canReadPersonnelSubject(req.bpd,person));
-   if(!maySuggest)throw fail(403,'Geen bevoegdheid om een roepnummervoorstel op te vragen');
-   const choices=allowedPoliceGradeChoices(req.bpd);
+   const effectiveAuthorized=canChangePoliceGrade(req.bpd,person);
+   const managementAuthorized=mayWriteManagement(req.bpd,'politie','personeelsbeweging')&&
+     canReadPersonnelSubject(req.bpd,person);
+   if(!effectiveAuthorized&&!managementAuthorized)
+    throw fail(403,'Geen bevoegdheid om een roepnummervoorstel op te vragen');
    const current=policeSubjectGradeOption(person),wanted=policeRankByName(rank);
-   // A read-only preview is allowed for either an effective promotion
-   // or an effective demotion, never for an unchanged rank.
-   if(!choices.includes(rank)||!current||!wanted||wanted.grade===current.grade)
-    throw fail(403,'De gekozen nieuwe graad valt buiten jouw rangbevoegdheid');
+   // Reading a number suggestion DOES NOT change rank or grant rank access.
+   // Do not make the preview fail merely because a short-lived Discord write
+   // proof expired between opening the dossier and asking for a free number.
+   if(!current||!wanted||wanted.grade===current.grade)
+    throw fail(400,'Selecteer een andere geldige politiegradatie');
+   const choices=allowedPoliceGradeChoices(req.bpd);
+   const effectivePermitted=effectiveAuthorized&&choices.includes(rank);
+   // A verified case officer can preview lower-cadre numbers, but may not
+   // preview protected 9xx officer/corps numbers without effective permission.
+   if(!effectivePermitted&&(!managementAuthorized||wanted.grade>6))
+    throw fail(403,'Deze rang vereist een actuele bevoegdheid van Korpsleiding');
    const used=await policeOccupiedNumbers(db(),roster.data);
    res.set('Cache-Control','private, no-store');
    return res.json({rank,call:recommendedPromotionCall(rank,used),
-     currentRank:person.rank,currentCall:person.call,series:person.series||''});
+     currentRank:person.rank,currentCall:person.call,series:person.series||'',
+     effectiveAuthorizationVerified:effectivePermitted});
   }catch(e){return respond(res,e)}
  });
  app.get('/api/police-promotions/pending',requireUser,async(req,res)=>{
