@@ -146,11 +146,20 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table td:nth-child(3),.staff-roster-table td:nth-child(4){overflow-wrap:anywhere;line-height:1.35}
 .discord-verified-cadre{font-weight:700;color:#99c6ff;white-space:nowrap;font-size:10px}
 
-/* MAIN: een volledig handmatig bewerkbare datum en een optionele kalenderkeuze. */
-.formal-date-row{display:flex;align-items:center;gap:7px}
-.formal-date-row #formalDateText{min-width:0;flex:1 1 175px}
-.formal-date-row #formalDate{min-width:137px;width:155px;max-width:45%;flex:0 0 155px;cursor:pointer;color-scheme:dark}
-@media(max-width:600px){.formal-date-row{flex-wrap:wrap}.formal-date-row #formalDate{max-width:none;width:155px}}
+/* Eén zichtbare datum in Belgisch formaat. De native picker bewaart de ISO-waarde. */
+.formal-date-row{display:flex;align-items:center;gap:7px;position:relative}
+.formal-date-row #formalDateText{min-width:0;flex:1 1 auto}
+.formal-date-row #formalDate{position:absolute;width:1px;height:1px;min-width:0;
+  max-width:none;padding:0;border:0;opacity:0;pointer-events:none;top:50%;right:20px}
+.formal-date-row #formalDateCalendar{flex:0 0 42px;width:42px;height:42px;
+  display:inline-flex;align-items:center;justify-content:center;padding:0;
+  background:#192f50;border:1px solid #476080;color:#eaf1ff;font-size:19px}
+.formal-date-row #formalDateCalendar:hover,
+.formal-date-row #formalDateCalendar:focus-visible{border-color:#91bbf9;outline-offset:2px}
+.formal-date-row #formalDate.formal-date-fallback{position:static;opacity:1;
+  pointer-events:auto;flex:0 0 150px;width:150px;height:auto;min-width:0;
+  padding:10px;border:1px solid #476080;color-scheme:normal}
+@media(max-width:600px){.formal-date-row{flex-wrap:nowrap}}
 /* MAIN: dossier-FICHE als geïntegreerde compacte werkruimte. */
 #panel{scroll-margin-top:10px}
 #panel>div:first-child{position:sticky;top:0;z-index:4;background:#11233f;border-bottom:1px solid #3b5374;padding:8px 0}
@@ -1245,7 +1254,8 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div><label for="formalDateText">Datum gebeurtenis (dd/mm/jjjj)</label>
 <div class="formal-date-row">
 <input id="formalDateText" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="dd/mm/jjjj" required aria-describedby="formalDateHint">
-<input id="formalDate" type="date" required aria-label="Datum kiezen met kalender" title="Kies een datum met de kalender">
+<input id="formalDate" type="date" tabindex="-1" aria-hidden="true">
+<button id="formalDateCalendar" type="button" aria-label="Datum kiezen met kalender" title="Datum kiezen met kalender"><span aria-hidden="true">📅</span></button>
 </div><small id="formalDateHint">Je kunt de datum typen of kiezen via de kalender.</small></div>
 <div><label for="formalTime">Tijdstip</label><input id="formalTime" type="time" required></div>
 <div><label for="formalEvidence">Link naar clip / bewijs (optioneel, https)</label><input id="formalEvidence" type="url" maxlength="800" placeholder="https://…"></div>
@@ -4372,11 +4382,23 @@ function setFormalDate(iso){
   $('formalDateText').value=formalDateForDisplay(iso);
 }
 $('formalDateText').addEventListener('input',()=>{
-  const iso=formalDateFromText($('formalDateText').value);
-  if(iso)$('formalDate').value=iso;
+  // Bij een onvolledige of ongeldige handmatige datum mag de oude datum
+  // niet ongemerkt in het verborgen kalender-veld blijven staan.
+  $('formalDate').value=formalDateFromText($('formalDateText').value)||'';
 });
 $('formalDate').addEventListener('change',()=>{
   setFormalDate($('formalDate').value);
+});
+$('formalDateCalendar').addEventListener('click',()=>{
+  const picker=$('formalDate');
+  try{
+    if(typeof picker.showPicker==='function'){picker.showPicker();return;}
+  }catch{/* Fallback voor browsers die de native kalender blokkeren. */}
+  picker.classList.add('formal-date-fallback');
+  picker.removeAttribute('aria-hidden');
+  picker.tabIndex=0;
+  $('formalDateCalendar').hidden=true;
+  picker.focus();
 });
 function clearFormalEdit(){
   formalEditId=null;

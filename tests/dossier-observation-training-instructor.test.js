@@ -60,6 +60,18 @@ test('gedeelde observatieopmaak wisselt achtergrond, tekst en kleurrand per them
  assert.match(citizen,/createObservationDisclosure\(\{/);
  for(const html of [police,fire,citizen])checkModule(html);
 });
+
+test('observatie/sanctie toont één Belgische datum en aparte kalenderknop, ISO-opslag blijft geldig',()=>{
+ const html=source('../public/personeelsbeheer.html');
+ assert.match(html,/id="formalDateText"[^>]*placeholder="dd\/mm\/jjjj"/);
+ assert.match(html,/id="formalDate" type="date" tabindex="-1" aria-hidden="true"/);
+ assert.match(html,/id="formalDateCalendar" type="button"/);
+ assert.match(html,/picker\.showPicker\(\)/);
+ assert.match(html,/\$\('formalDate'\)\.value=formalDateFromText\(\$\('formalDateText'\)\.value\)\|\|''/);
+ assert.match(html,/eventDate:selectedDate/);
+ assert.doesNotMatch(html,/id="formalDate" type="date" required/);
+});
+
 test('opleider is een apart invoerveld in beide opleidingsformulieren, geen vervanging van de invoerder',()=>{
  const police=source('../public/personeelsbeheer.html');
  const training=source('../public/rollen-opleidingen.html');
