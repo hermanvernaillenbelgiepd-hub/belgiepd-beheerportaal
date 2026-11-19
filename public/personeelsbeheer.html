@@ -1191,7 +1191,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div><label for="staffCaseType">Type</label><select id="staffCaseType">
 <option value="notitie">Belangrijke notitie</option><option value="algemene_notitie">Algemene notitie</option>
 <option value="specialisatiebeperking">Beperking van specialisatie</option>
-<option value="inactiviteitsping">Inactiviteitsping</option>
+<option value="inactiviteitsping">Activiteitenping</option>
 <option value="opleiding">Gevolgde opleiding</option><option value="verlof">Verlofnotitie</option>
 <option value="promotievoorstel">Promotievoorstel</option>
 <option value="naamswijziging">Naamswijziging registreren</option>
@@ -1764,7 +1764,7 @@ function displaySelectedRegistration(){
   }else if(kind==='case:opleiding'){
     trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
   }else if(kind==='case:inactiviteitsping'){
-    trainingDestination.textContent='De inactiviteitsping wordt met datum, motivering en de registrerende medewerker in dit personeelsdossier en het dynamische weekrapport gelogd. Hiermee wordt niet automatisch een Discord-bericht verstuurd.';
+    trainingDestination.textContent='De activiteitenping wordt met datum, motivering en de registrerende medewerker in dit personeelsdossier en het dynamische weekrapport gelogd. Er wordt geen automatisch Discord-bericht verstuurd.';
   }
   // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
   // wanneer de gebruiker naar een ander registratietype omschakelt.
@@ -1827,6 +1827,12 @@ function refreshPersonnelRegistrationOptions(){
   $('registerTrainingQuick').hidden=!kinds.some(([key])=>key==='training');
   const addNote=$('registerGeneralNoteQuick');
   if(addNote)addNote.hidden=!kinds.some(([key])=>key==='case:algemene_notitie');
+  const addImportant=$('registerImportantNoteQuick');
+  if(addImportant)addImportant.hidden=!kinds.some(([key])=>key==='case:notitie');
+  const addImportantDetail=$('registerImportantNoteDetail');
+  if(addImportantDetail)addImportantDetail.hidden=!kinds.some(([key])=>key==='case:notitie');
+  const addPing=$('registerActivityPingQuick');
+  if(addPing)addPing.hidden=!kinds.some(([key])=>key==='case:inactiviteitsping');
   syncDossierMaintenance();
 }
 function choosePersonnelRegistration(kind,focus=false){
@@ -1924,8 +1930,12 @@ function setupDossierTabs(){
       <div id="sheetBasisNotes" class="sheet-records">Algemene notities laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="notes">
-      <h3>Belangrijke notities</h3>
+      <h3>Belangrijke notities <button type="button" id="registerImportantNoteQuick" hidden>+ Toevoegen</button></h3>
       <div id="sheetNotes" class="sheet-records">Notities laden…</div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="activityPings">
+      <h3>Activiteitenpings <button type="button" id="registerActivityPingQuick" hidden>+ Toevoegen</button></h3>
+      <div id="sheetActivityPings" class="sheet-records">Activiteitenpings laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="sanctions">
       <h3>Sancties</h3>
@@ -1973,11 +1983,13 @@ function setupDossierTabs(){
   $('ficheEditor').append(makeTile('gegevens'));
   const upper=document.createElement('div');upper.className='dossier-main-row';
   const right=document.createElement('div');right.className='dossier-right-column';
-  right.append(makeTile('specialisaties'),makeTile('movements'),makeTile('training'));
+  right.append(makeTile('specialisaties'),makeTile('movements'),makeTile('training'),makeTile('activityPings'));
   upper.append(makeTile('leave'),makeTile('notes'),right);
   const lower=document.createElement('div');lower.className='dossier-lower-row';
   lower.append(makeTile('basisNotes'),makeTile('observations'),makeTile('sanctions'));
   summaryGrid.replaceChildren(upper,lower);
+  $('registerImportantNoteQuick').onclick=()=>choosePersonnelRegistration('case:notitie',true);
+  $('registerActivityPingQuick').onclick=()=>choosePersonnelRegistration('case:inactiviteitsping',true);
   const trainingHeader=sheet.querySelector('[data-sheet-tile="training"]>h3');
   const trainingAdd=document.createElement('button');
   trainingAdd.type='button';trainingAdd.id='registerTrainingQuick';
@@ -2024,6 +2036,18 @@ function setupDossierTabs(){
     content.dataset.receivedList=key;content.textContent='Ontvangen registraties worden geladen…';
     panes[key].append(info,content);
   };
+  const importantNoteInfo=document.createElement('p');
+  importantNoteInfo.className='subtle';
+  importantNoteInfo.textContent='Belangrijke notities zijn volledig leesbaar. Activiteitenpings staan afzonderlijk in het dossieroverzicht.';
+  const importantNoteAdd=document.createElement('button');
+  importantNoteAdd.type='button';importantNoteAdd.id='registerImportantNoteDetail';
+  importantNoteAdd.textContent='+ Belangrijke notitie';importantNoteAdd.hidden=true;
+  importantNoteAdd.onclick=()=>choosePersonnelRegistration('case:notitie',true);
+  const importantNoteList=document.createElement('div');
+  importantNoteList.id='dossierImportantNoteList';
+  importantNoteList.className='general-note-history';
+  importantNoteList.textContent='Belangrijke notities laden…';
+  panes.nieuw.append(importantNoteInfo,importantNoteAdd,importantNoteList);
   const generalNoteInfo=document.createElement('p');
   generalNoteInfo.className='subtle';
   generalNoteInfo.textContent='Algemene notities, nieuwste eerst. Belangrijke notities, observaties en sancties blijven afzonderlijk.';
@@ -3213,7 +3237,7 @@ const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   voordracht_ereteken:'Voordracht tot ereteken/medaille (geen automatische toekenning)',
   personeelsbeweging:'Personeelsbeweging (registratie)',
   activiteit:'Dienstactiviteit',specialisatiebeperking:'Beperking van specialisatie',
-  inactiviteitsping:'Inactiviteitsping',
+  inactiviteitsping:'Activiteitenping',
   functiewijziging:'Functiewijziging'};
 function updateStaffCaseFields(){
   const type=$('staffCaseType').value;
@@ -3489,7 +3513,8 @@ const sheetDefs={
   leave:['Begin','Einde','Status','Dagen'],
   formal:['Datum','Soort','Omschrijving / reden','Score','Observator'],
   training:['Datum','Opleiding','Resultaat','Opleider'],
-  notes:['Datum','Soort','Notitie','Auteur']
+  notes:['Datum','Soort','Notitie','Auteur'],
+  activityPings:['Datum','Soort','Activiteitenping','Auteur']
 };
 function sheetCell(value){
   const td=document.createElement('td');
@@ -3562,6 +3587,21 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
        attachRetireButton(content,row,'cases');
       root.append(element);
       return;
+    }
+    if(group==='notes'||group==='activityPings'){
+      const item=document.createElement('div');
+      item.className='overview-preview general-note-preview';
+      const heading=document.createElement('strong');
+      heading.textContent=generalNoteDate(row.eventDate)+' · '+
+        (row.importantTitle||staffCaseLabels[row.type]||row.type||'Notitie');
+      const body=document.createElement('p');
+      body.className='general-note-body';
+      body.textContent=String(row.details||'—');
+      const author=document.createElement('span');author.className='subtle';
+      author.textContent='Door '+sheetWho(row);
+      item.append(heading,body,author);
+      attachRetireButton(item,row,'cases');
+      root.append(item);return;
     }
     if(group==='basisNotes'){
       const item=document.createElement('div');item.className='overview-preview general-note-preview';
@@ -3818,11 +3858,30 @@ function renderDossierImportantNotes(){
   const entries=[...importantCaseEntries,...importantRestrictionEntries,...importantPortalRestrictionEntries]
     .sort((a,b)=>String(b.eventDate||'').localeCompare(String(a.eventDate||'')));
   sheetSetRows('notes',entries,x=>[
-    x.eventDate||'—',
+    generalNoteDate(x.eventDate),
     x.importantTitle||staffCaseLabels[x.type]||x.type,
     x.details||'—',
     'Door '+sheetWho(x)
   ],'Geen belangrijke notities of tijdelijke beperkingen.',importantCaseLimited||importantRestrictionLimited);
+  const list=$('dossierImportantNoteList');
+  if(!list)return;
+  list.replaceChildren();
+  if(!entries.length){list.textContent='Geen belangrijke notities geregistreerd.';return;}
+  for(const row of entries){
+    const item=document.createElement('div');item.className='note-item general-note-item';
+    const title=document.createElement('strong');
+    title.textContent=generalNoteDate(row.eventDate)+' · '+
+      (row.importantTitle||staffCaseLabels[row.type]||row.type||'Notitie');
+    const body=document.createElement('p');body.className='general-note-body';
+    body.textContent=String(row.details||'—');
+    const author=document.createElement('span');author.className='subtle';
+    author.textContent='Door '+sheetWho(row);
+    item.append(title,body,author);
+    attachRetireButton(item,row,'cases');
+    if(row.id&&selected&&row.type==='notitie')
+      addManualCaseCorrectionControls(item,row,selected,selected.dept+':'+selected.discordId);
+    list.append(item);
+  }
 }
 function sheetCaseRows(entries,limited){
   const cases=entries||[];
@@ -3845,8 +3904,13 @@ function sheetCaseRows(entries,limited){
     'Geen personeelsbewegingen geregistreerd.',limited);
   // Houd gewone activiteiten buiten de belangrijke-notitierubriek.
   // Geverifieerde kadernotities en beperkingen verschijnen hier automatisch.
-  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking','inactiviteitsping','voordracht_ereteken'].includes(x.type))
+  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking','voordracht_ereteken'].includes(x.type))
     .map(x=>x.linked?{...x,importantTitle:'Gekoppelde belangrijke notitie'}:x);
+  const activityPings=cases.filter(x=>x.type==='inactiviteitsping');
+  sheetSetRows('activityPings',activityPings,x=>[
+    generalNoteDate(x.eventDate),staffCaseLabels[x.type]||'Activiteitenping',
+    x.details||'—','Door '+sheetWho(x)
+  ],'Geen activiteitenpings geregistreerd.',limited);
   importantCaseLimited=Boolean(limited);
   renderDossierImportantNotes();
 }
@@ -5245,7 +5309,7 @@ function renderReceived(group,rows,limited){
       activiteit:'Dienstactiviteit',opleiding:'Opleiding',verlof:'Verlofnotitie',
       promotievoorstel:'Promotievoorstel',naamswijziging:'Naamswijziging',
       personeelsbeweging:'Personeelsbeweging',
-      inactiviteitsping:'Inactiviteitsping',specialisatiebeperking:'Specialisatiebeperking',functiewijziging:'Functiewijziging'};
+      inactiviteitsping:'Activiteitenping',specialisatiebeperking:'Specialisatiebeperking',functiewijziging:'Functiewijziging'};
     title.textContent=(labels[entry.type]||entry.type)+
       (entry.sanctionType?' · '+entry.sanctionType:'');
     const meta=document.createElement('span');meta.className='received-meta';
@@ -5650,7 +5714,7 @@ $('staffCaseForm').onsubmit=async event=>{
     const historicalDetails=gradeMove?
       '\nOude graad: '+oldRank+' · Nieuwe graad: '+newRank+
       '\nRoepnummer: '+oldCall+' → '+newCall:'';
-    await request('/api/management/cases',{method:'POST',
+    const stored=await request('/api/management/cases',{method:'POST',
       body:{dept:person.dept,discordId:person.discordId,type,
         eventDate:$('staffCaseDate').value,details:reason+historicalDetails,
         ...(['notitie','algemene_notitie'].includes(type)&&$('staffCaseLinkedColleague').value?
@@ -5662,12 +5726,38 @@ $('staffCaseForm').onsubmit=async event=>{
         referenceUrl:$('staffCaseReference').value,
         ...historicalTransferData('historicalCase')}});
     if(!sameDossier(key))return;
+    if(stored?.saved!==true||!stored.reference)
+      throw Error('De server heeft de dossierregistratie niet bevestigd.');
+    // Strong read-after-write check: never announce success if the requested
+    // record isn't visible in its authoritative protected personnel dossier.
+    let readBack;
+    try{
+      readBack=await request('/api/management/cases?'+new URLSearchParams({
+        dept:person.dept,discordId:person.discordId
+      }));
+    }catch(error){
+      notice('Firebase heeft de registratie opgeslagen (referentie '+stored.reference+
+        '), maar het dossier kon niet opnieuw worden ingelezen: '+error.message+
+        '. Vernieuw het dossier; registreer niet opnieuw zonder eerst te controleren.',true);
+      return;
+    }
+    if(!sameDossier(key))return;
+    const verified=(readBack.entries||[]).find(row=>row.id===stored.reference&&
+      row.type===type&&row.subjectDiscordId===person.discordId);
+    if(!verified){
+      notice('De server heeft referentie '+stored.reference+
+        ' opgeslagen, maar deze staat nog niet in de beveiligde dossierweergave. '+
+        'Vernieuw het dossier en controleer de rechten voordat je opnieuw registreert.',true);
+      return;
+    }
+    sheetCaseRows(readBack.entries||[],readBack.limited);
     $('staffCaseDetails').value='';$('staffCaseReference').value='';
      $('staffCaseLinkedColleague').value='';
     for(const id of staffCaseValues)$(id).value='';
     $('staffCourseOther').value='';syncStaffCaseOther();updateStaffMovementFields();
     await loadLinkedPersonnelRecords(person,key);
-    notice('Historische personeelsbeweging gelogd; de actuele fiche is niet gewijzigd.');
+    notice((staffCaseLabels[type]||type)+' opgeslagen én opnieuw teruggelezen uit het personeelsdossier. '+
+      'Referentie: '+stored.reference+'. De registratie wordt opgenomen in het weekrapport.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
 // Centrale opslagknop: de oorspronkelijke validators, transactie-API's,

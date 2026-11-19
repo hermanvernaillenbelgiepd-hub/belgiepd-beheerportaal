@@ -23,9 +23,9 @@ export function mayCorrectManualCase(actor,subject,entry){
 }
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
 export const RECORD_LABELS = Object.freeze({
-  observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Personeelsnotitie', algemene_notitie:'Algemene notitie',
+  observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Belangrijke notitie', algemene_notitie:'Algemene notitie',
   opleiding:'Opleidingen en resultaten', activiteit:'Dienstactiviteit',
-  specialisatiebeperking:'Specialisatiebeperking',inactiviteitsping:'Inactiviteitsping',
+  specialisatiebeperking:'Specialisatiebeperking',inactiviteitsping:'Activiteitenping',
   naamswijziging:'Naamswijziging',
   promotievoorstel:'Promotievoorstel',voordracht_ereteken:'Voordracht tot ereteken/medaille', personeelsbeweging:'Personeelsbeweging',
   specialisatiewijziging:'Specialisatiewijziging', onderscheiding:'Onderscheidingen'

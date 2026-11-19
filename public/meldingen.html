@@ -148,7 +148,7 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
   <summary>🔔 Mijn activiteitspings</summary>
 
  
- <p>Ontvangen inactiviteitspings en leesbevestigingen. Iedere ping heeft één bewijsregistratie in je dossier en het dienstweekrapport.</p>
+ <p>Ontvangen activiteitenpings en leesbevestigingen. Iedere ping heeft één bewijsregistratie in je dossier en het dienstweekrapport.</p>
  <div id="activityPingsList"></div>
 
  </details>
@@ -331,7 +331,7 @@ async function loadActivityPings(){
   for(const entry of notices){
    const row=document.createElement('div');row.className='item';
    const heading=document.createElement('strong');
-   heading.textContent=(['50/50','INACTIEF'].includes(entry.kind)?entry.kind+'-ping':'Inactiviteitsping')+
+   heading.textContent=(['50/50','INACTIEF'].includes(entry.kind)?entry.kind+'-ping':'Activiteitenping')+
     ' · '+(entry.department||'Dienst');
    const info=document.createElement('p');
    const date=entry.sentAt&&Number.isFinite(Date.parse(entry.sentAt))?
