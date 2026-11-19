@@ -146,8 +146,8 @@ export function installPolicePromotionRoutes(app,{requireUser,getSnapshot}){
    if(!canChangePoliceGrade(req.bpd,person))
     throw fail(403,'Alleen bevoegd Officierenkader of Korpsleiding mag goedkeuren');
    if(req.bpd.discordId===discordId)throw fail(403,'Eigen promotie goedkeuren is niet toegestaan');
-   if(initial.get('currentRank')!==person.rank)
-    throw fail(409,'Rang is sinds indiening veranderd. Beoordeel het voorstel opnieuw');
+   if(input.decision==='approve'&&initial.get('currentRank')!==person.rank)
+    throw fail(409,'Rang is sinds indiening veranderd. Het verouderde voorstel kan worden afgewezen');
    const before=policeRankByName(person.rank),after=policeRankByName(input.newRank);
    const allowed=allowedPoliceGradeChoices(req.bpd);
    if(input.decision==='approve'&&(!before||!after||after.grade<=before.grade||
