@@ -365,7 +365,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
   app.patch('/api/management/cases/:dept/:discordId/:entryId',requireUser,async(req,res)=>{
     if(!enabled())return res.status(503).json({error:'Dossierregistraties staan momenteel uit'});
     const {dept,discordId:id,entryId}=req.params;
-    if(dept!=='politie'||!validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
+    if(!['politie','ambulance','brandweer','depannage'].includes(dept)||
+      !validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
       return res.status(400).json({error:'Ongeldige dossierverwijzing'});
     const reason=typeof req.body?.amendmentReason==='string'?req.body.amendmentReason.trim():'';
     if(reason.length<10||reason.length>1000)
@@ -432,7 +433,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
   });
   app.get('/api/management/cases/:dept/:discordId/:entryId/audit',requireUser,async(req,res)=>{
     const {dept,discordId:id,entryId}=req.params;
-    if(dept!=='politie'||!validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
+    if(!['politie','ambulance','brandweer','depannage'].includes(dept)||
+      !validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
       return res.status(400).json({error:'Ongeldige dossierverwijzing'});
     try{
       const snapshot=await getSnapshot(),subject=uniqueSubject(snapshot.data,dept,id);
