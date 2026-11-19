@@ -307,6 +307,12 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
   <summary>🎓 Opleidingen te behandelen <span id="trainingCount" class="pill">0</span></summary>
 <div id="trainingReview"></div>
  </details>
+</section><section class="panel notification-tile notification-tile--action" id="pathwayReviewPanel" hidden>
+ <details class="notification-fold" id="pathwayReviewFold">
+  <summary>📚 Opleidingsbeleid · verplichtingen <span id="pathwayReviewCount" class="pill">0</span></summary>
+  <p>Voorstellen worden eerst beoordeeld door Officierenkader en daarna door Korpsleiding.</p>
+  <div id="pathwayReviewList"></div>
+ </details>
 </section></div></section>
  <section class="notification-group notification-group--personal" aria-label="Mijn meldingen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">🔔</span><div><h2>Mijn meldingen</h2><p>Persoonlijke activiteitspings, verlofberichten en opleidingen.</p></div></div><div class="notification-cards"><section id="activityPingsPanel" class="panel notification-tile notification-tile--personal" hidden>
  <details class="notification-fold" id="activityPingsFold">
@@ -549,6 +555,35 @@ async function loadActivityPings(){
   panel.hidden=false;
  }
 }
+async function loadPathwayReview(){
+ const panel=$('pathwayReviewPanel'),list=$('pathwayReviewList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const data=await api('/api/training-pathway/manage');
+  const roles=data.reviewStages||{};
+  if(!roles.ok&&!roles.kl)return;
+  const due=(data.courses||[]).filter(x=>x.pending&&
+   (x.pending.stage==='ok'&&roles.ok||x.pending.stage==='kl'&&roles.kl));
+  $('pathwayReviewCount').textContent=String(due.length);
+  for(const x of due){
+   const item=document.createElement('div');item.className='item';
+   const title=document.createElement('strong');
+   title.textContent=x.name+' · '+x.department+(x.zone?' · '+x.zone:'');
+   const detail=document.createElement('p');
+   detail.textContent='Te beoordelen: '+(x.pending.stage==='ok'?'Officierenkader':'Korpsleiding')+
+    ' · '+(x.pending.mandatory?'verplicht stellen':'verplichting opheffen');
+   const link=document.createElement('a');
+   link.href='/opleidingstraject.html';
+   link.textContent='Voorstel beoordelen in Opleidingscentrum';
+   item.append(title,detail,link);list.append(item);
+  }
+  panel.hidden=false;
+ }catch(_e){
+  // Niet-geautoriseerde gebruikers krijgen geen beoordelingsinformatie.
+  panel.hidden=true;
+ }
+}
 let refreshInFlight=null,refreshRequestedAgain=false;
 async function load(){
  if(refreshInFlight){
@@ -561,7 +596,7 @@ async function load(){
   do{
    refreshRequestedAgain=false;
    const loaders=[loadStaffActivityFollowup,loadLeaveReturnChecks,loadActivityPings,
-     loadTraining,loadSeriesLeave,loadLeave];
+     loadTraining,loadPathwayReview,loadSeriesLeave,loadLeave];
    
    await Promise.allSettled(loaders.map(fn=>fn()));
   }while(refreshRequestedAgain);
