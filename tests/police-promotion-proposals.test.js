@@ -107,7 +107,7 @@ test('a new effective movement never silently skips next-free number suggestion'
  const route=read('src/police-promotion-routes.js');
  assert.match(route,/mayWriteManagement\(req\.bpd,'politie','personeelsbeweging'\)/);
  assert.match(route,/canReadPersonnelSubject\(req\.bpd,person\)/);
- assert.match(route,/const maySuggest=canChangePoliceGrade/);
+ assert.match(route,/const effectiveAuthorized=canChangePoliceGrade/);
 });
 
 test('degradation to Agent proposes the next free permanent 2xx callsign',()=>{
@@ -126,7 +126,7 @@ test('degradation to Agent proposes the next free permanent 2xx callsign',()=>{
 });
 test('the manual effective movement recommends an adjacent grade in either direction',()=>{
  const ui=read('public/personeelsbeheer.html');
- assert.match(ui,/const proposedIndex=kind==='Promotie'\?idx\+1:idx-1/);
+ assert.match(ui,/const adjacent=POLICE_GRADE_SEQUENCE\[current\+\(kind==='Promotie'\?1:-1\)\]/);
  assert.match(ui,/\$\('staffMovement'\)\.onchange=\(\)=>\{/);
  assert.match(ui,/\$\('staffMovementNewCall'\)\.value='';\s*updateStaffMovementFields\(\)/);
  assert.match(ui,/tientallen, vijftallen, daarna overige nummers/);
@@ -165,13 +165,14 @@ test('legacy-grade normalization is shared by proposals, previews and approvals'
  const ui=read('public/personeelsbeheer.html');
  assert.match(ui,/function currentPoliceGradeIndex\(person\)/);
  assert.match(ui,/const idx=currentPoliceGradeIndex\(selected\)/);
- assert.match(ui,/const before=currentPoliceGradeIndex\(person\),after=rankChoices\.indexOf\(newRank\)/);
+ assert.match(ui,/const before=currentPoliceGradeIndex\(person\),\s*after=POLICE_GRADE_SEQUENCE\.indexOf\(newRank\)/);
  const names=['Agent','Aspirant Inspecteur','Inspecteur','Eerste Inspecteur',
   'Aspirant Hoofdinspecteur','Hoofdinspecteur','Eerste Hoofdinspecteur'];
  const start=ui.indexOf('function currentPoliceGradeIndex(person)');
  const end=ui.indexOf('function updateStaffCaseFields(){',start);
  assert.ok(start>0&&end>start);
- const lookup=Function('rankChoices',ui.slice(start,end)+';return currentPoliceGradeIndex;')(names);
+ const lookup=Function('POLICE_GRADE_SEQUENCE','rankChoices',
+   ui.slice(start,end)+';return currentPoliceGradeIndex;')(names,names);
  assert.equal(lookup({dept:'politie',rank:'Aspirant Inspecteur van Politie (A-INP)',call:'316'}),1);
  assert.equal(names[lookup({dept:'politie',rank:'Aspirant Inspecteur van Politie (A-INP)',call:'316'})+1],'Inspecteur');
  assert.equal(lookup({dept:'politie',rank:'Aspirant Inspecteur van Politie (A-INP)',call:'900'}),-1);
@@ -230,4 +231,55 @@ test('a technically switched operational Police leader retains only independentl
  assert.ok(!allowedPoliceGradeChoices(officer).includes('Aspirant Commissaris'));
  assert.equal(canChangePoliceGrade({...source,discordId:person.personId,
    uid:'discord:'+person.personId},person),false);
+});
+
+test('Sander 485 has a real rank selector, and 5xx number preview is not a write grant',()=>{
+ const ui=read('public/personeelsbeheer.html');
+ assert.match(ui,/<select id="staffMovementGradeSelect"/);
+ assert.match(ui,/id="staffMovementCustomRankField" hidden/);
+ assert.match(ui,/const POLICE_GRADE_SEQUENCE=Object\.freeze/);
+ assert.match(ui,/const options=effectivePoliceGradeChoices\(selected,kind\)/);
+ assert.match(ui,/select\.replaceChildren\(option\('', 'Kies nieuwe graad…'\)/);
+ assert.match(ui,/select\.required=grades&&effective/);
+ assert.match(ui,/gradeField\.required=grades&&!effective/);
+ assert.match(ui,/\$\('staffMovementGradeSelect'\)\.addEventListener\('change'/);
+ assert.match(ui,/const before=currentPoliceGradeIndex\(person\),\s*after=POLICE_GRADE_SEQUENCE\.indexOf\(newRank\)/);
+ const grades=['Agent','Aspirant Inspecteur','Inspecteur','Eerste Inspecteur',
+  'Aspirant Hoofdinspecteur','Hoofdinspecteur','Eerste Hoofdinspecteur','Aspirant Commissaris'];
+ const start=ui.indexOf('function currentPoliceGradeIndex(person)');
+ const end=ui.indexOf('function updateStaffCaseFields()',start);
+ assert.ok(start>0&&end>start);
+ const evaluate=Function('POLICE_GRADE_SEQUENCE','rankChoices',ui.slice(start,end)+
+  ';return {currentPoliceGradeIndex,effectivePoliceGradeChoices};');
+ const {currentPoliceGradeIndex,effectivePoliceGradeChoices}=evaluate(grades,grades.slice(0,7));
+ const person={dept:'politie',rank:'Inspecteur van Politie (INP)',call:'485'};
+ assert.equal(currentPoliceGradeIndex(person),2);
+ const promotions=effectivePoliceGradeChoices(person,'Promotie');
+ assert.equal(promotions[0],'Eerste Inspecteur');
+ assert.ok(promotions.includes('Hoofdinspecteur'));
+ assert.ok(!promotions.includes('Aspirant Inspecteur'));
+ assert.deepEqual(effectivePoliceGradeChoices({dept:'politie',
+   rank:'Aspirant Inspecteur van Politie (A-INP)',call:'316'},'Degradatie'),['Agent']);
+ const noPreviewRights=evaluate(grades,[]);
+ assert.equal(noPreviewRights.effectivePoliceGradeChoices(person,'Promotie')[0],
+   'Eerste Inspecteur');
+ assert.equal(recommendedPromotionCall('Eerste Inspecteur',new Set()),500);
+ assert.equal(recommendedPromotionCall('Eerste Inspecteur',new Set([500])),510);
+ assert.equal(recommendedPromotionCall('Eerste Inspecteur',new Set(
+  Array.from({length:10},(_,i)=>500+i*10))),505);
+ const route=read('src/police-promotion-routes.js');
+ assert.match(route,/const effectivePermitted=effectiveAuthorized&&choices\.includes\(rank\)/);
+ assert.match(route,/!effectivePermitted&&\(!managementAuthorized\|\|wanted\.grade>6\)/);
+ assert.match(route,/effectiveAuthorizationVerified:effectivePermitted/);
+});
+test('the real personnel module script parses after the select replaces the datalist',()=>{
+ const html=read('public/personeelsbeheer.html');
+ const sections=[...html.matchAll(/<script[^>]*type="module"[^>]*>([\s\S]*?)<\/script>/g)];
+ assert.ok(sections.length,'Personnel page must have a module script');
+ for(const match of sections){
+  if(!match[1].trim())continue;
+  const parsed=spawnSync(process.execPath,['--input-type=module','--check'],{
+   input:match[1],encoding:'utf8',timeout:10000});
+  assert.equal(parsed.status,0,parsed.stderr);
+ }
 });
