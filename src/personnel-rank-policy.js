@@ -51,8 +51,16 @@ export function verifiedPoliceRankAuthority(actor){
   const role=technical?actor.operationalRole:actor.role;
   const scoped=technical?actor.operationalDepartmentRoles?.politie:
     roleForDepartment(actor,'politie');
-  if(role==='korpsleiding'&&scoped==='korpsleiding'&&
-     (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true))
+  // Dual-appointed Bestuur/Korpsleiding members can have an administrative
+  // profile while their signed Police service scope stays operational.
+  // A separate CURRENT Discord Korpsleiding proof is still mandatory.
+  const independentlyVerifiedChief=actor.discordPoliceRank==='korpsleiding'||
+    actor.manualCorpsApproved===true;
+  const boardChief=!technical&&actor.boardPersonnelAdmin===true&&
+    actor.dossierSourceFresh===true&&scoped==='korpsleiding'&&
+    actor.discordPoliceRank==='korpsleiding';
+  if(scoped==='korpsleiding'&&independentlyVerifiedChief&&
+    (role==='korpsleiding'||boardChief))
     return 'korpsleiding';
   if(role==='officierenkader'&&scoped==='officierenkader'&&
      actor.discordPoliceRank==='officierenkader')
@@ -65,10 +73,17 @@ export function canChangePoliceGrade(actor,subject){
      !actor?.departments?.includes('politie')||
      !actor?.dossierNativeDepartments?.includes('politie')||
      !actor?.dossierAllowedDepartments?.includes('politie')||
-     !canReadPersonnelSubject(actor,subject)||!canEditPersonnel(actor,subject))
+     !canReadPersonnelSubject(actor,subject))
     return false;
   const cadre=verifiedPoliceRankAuthority(actor);
   if(!cadre)return false;
+  // A verified dual-appointment Chief is allowed to write lower Police
+  // grades even when a Board-facing account label prevents the generic
+  // canEditPersonnel check. Never let Board alone grant this capability.
+  const boardChief=actor.boardPersonnelAdmin===true&&
+    actor.dossierSourceFresh===true&&
+    cadre==='korpsleiding'&&actor.discordPoliceRank==='korpsleiding';
+  if(!canEditPersonnel(actor,subject)&&!boardChief)return false;
   const grade=policeCallGrade(subject.call);
   // Callsign and official personnel grade must not disagree on the cadre.
   if(grade===null||policeSubjectGradeOption(subject)===null)return false;
