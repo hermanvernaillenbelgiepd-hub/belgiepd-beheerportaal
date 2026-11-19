@@ -1312,7 +1312,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div><label for="staffMovementOldCall">Oud roepnummer</label><input id="staffMovementOldCall" maxlength="24"></div>
 <div><label for="staffMovementNewCall">Nieuw roepnummer</label><input id="staffMovementNewCall" maxlength="24" placeholder="Vrij nummer…" autocomplete="off"></div>
 <div style="grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:8px">
- <small id="staffMovementCallSuggestion" role="status" aria-live="polite">Het eerste vrije roepnummer wordt opgezocht zodra je de graad kiest.</small>
+ <small id="staffMovementCallSuggestion" role="status" aria-live="polite">Het eerste vrije roepnummer wordt opgezocht zodra je promotie of degradatie kiest.</small>
  <button type="button" id="staffMovementCallRefresh" class="alt small">Opnieuw voorstellen</button>
 </div>
 </div>
@@ -3376,8 +3376,11 @@ function updateStaffMovementFields(){
   if(grades&&effective&&selected?.dept==='politie'&&
       !$('staffMovementNewRank').value.trim()){
     const idx=rankChoices.indexOf(selected.rank);
-    if(kind==='Promotie'&&idx>=0&&idx<rankChoices.length-1)
-      $('staffMovementNewRank').value=rankChoices[idx+1];
+    // Suggest the immediately adjacent grade in the selected direction.
+    // An effective demotion from 316/Aspirant Inspecteur suggests Agent.
+    const proposedIndex=kind==='Promotie'?idx+1:idx-1;
+    if(idx>=0&&proposedIndex>=0&&proposedIndex<rankChoices.length)
+      $('staffMovementNewRank').value=rankChoices[proposedIndex];
   }
   if(grades&&effective&&$('staffMovementNewRank').value.trim()&&
       !$('staffMovementNewCall').value.trim())void suggestPromotionCall(
@@ -3387,7 +3390,7 @@ function updateStaffMovementFields(){
       'Een vrije roepnummersuggestie is enkel beschikbaar bij een nieuwe rangbeslissing.';
   }
   $('staffMovementHint').textContent=effective?
-    'Effectieve beslissing: controleer graad en passend vrij roepnummer. Uniformen volgen de rang-/roepnummertoewijzing; handmatige uniformen vereisen soms controle.':
+    'Effectieve beslissing: de eerstvolgende hogere of lagere graad en een vrij roepnummer worden voorgesteld. Zoekvolgorde: tientallen, vijftallen, daarna overige nummers. Controleer en bevestig de keuze; het nummer is nog niet gereserveerd.':
     'Historische registratie: alleen loggen, zonder de huidige graad, uniformen, status of het roepnummer te veranderen.';
 }
 async function suggestPromotionCall(rank,targetId,person){
@@ -3449,7 +3452,13 @@ $('rankChangeTo').addEventListener('change',()=>{
  $('rankChangeCall').value='';
  void suggestPromotionCall($('rankChangeTo').value,'rankChangeCall',selected);
 });
-$('staffMovement').onchange=updateStaffMovementFields;
+$('staffMovement').onchange=()=>{
+ // Never reuse an earlier proposed rank or callsign when switching
+ // between promotion and demotion.
+ $('staffMovementNewRank').value='';
+ $('staffMovementNewCall').value='';
+ updateStaffMovementFields();
+};
 $('staffMovementMode').onchange=updateStaffMovementFields;
 function syncStaffCaseOther(){
   const isOther=$('staffCaseType').value==='opleiding'&&$('staffCourseName').value==='ANDERE';
