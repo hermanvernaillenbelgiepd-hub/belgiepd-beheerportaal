@@ -28,6 +28,7 @@ function safeCase(row,id){
   eventDate:clean(r.eventDate,10),createdAt:formatDate(r.createdAt),
   registeredBy:clean(r.registeredBy?.name,90),
   registeredCall:clean(r.registeredBy?.call,24),
+  registeredRank:clean(r.registeredBy?.rank,100),
   noteKind:r.type==='notitie'?(r.noteKind==='basis'?'basis':'belangrijk'):null};
  if(r.type==='personeelsbeweging'){
   v.movement=clean(r.movement,150);v.previousRank=clean(r.previousRank,100);

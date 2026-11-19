@@ -38,6 +38,7 @@ RUN node --test tests/training-specialty-approval.test.js
 RUN node --test tests/portal-date-display.test.js
 RUN node --test tests/training-instructor-choice.test.js
 RUN node --test tests/training-general-instructor-policy.test.js
+RUN node --test tests/dossier-entry-preview.test.js
 RUN node --test tests/dossier-linked-cases.test.js
 RUN node --test tests/dossier-notes-ping-readback.test.js
 RUN node --test tests/dossier-case-readback-import.test.js

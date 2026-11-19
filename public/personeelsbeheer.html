@@ -1417,6 +1417,7 @@ import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon
 import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '/training-course-catalog.js';
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
+import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
 import {mountCompactPersonnelDirectory} from '/personnel-compact-ui.js';
@@ -3632,8 +3633,9 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
         score:row.score,
         details:row.details??row.description??'Geen omschrijving',
         attribution:(row.historicalImport?'Oorspronkelijke observator: ':'Door ')+
-          sheetWho(row)+(row.historicalImport&&row.submittedByActor?.name?
-            ' · Overgenomen door '+row.submittedByActor.name:'')
+          dossierAuthorLine(row).replace(/^(Oorspronkelijke invoerder: |Door )/,'')+
+          (row.historicalImport&&row.submittedByActor?.name?
+          ' · Overgenomen door '+row.submittedByActor.name:'')
       });
       attachObservationEditButton(content,row);
        attachRetireButton(content,row,'cases');
@@ -3652,6 +3654,9 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       const author=document.createElement('span');author.className='subtle';
       author.textContent='Door '+sheetWho(row);
       item.append(heading,body,author);
+      attachDossierRecordPreview(item,{row,title:heading.textContent,
+        text:row.details||'—',bodyNode:body,metaNode:author,
+        authorText:dossierAuthorLine(row)});
       if(group==='activityPings'&&row.activityStatus){
         const color={ACTIEF:'green','50/50':'orange',INACTIEF:'red',
           VERWIJDERING_TE_BEOORDELEN:'grey',
@@ -3683,6 +3688,11 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       const meta=document.createElement('span');
       meta.textContent='Door '+(row._noteAuthor||'Onbekend');
       item.append(heading,body,meta);
+      attachDossierRecordPreview(item,{row,title:heading.textContent,
+        text:row.details||'—',bodyNode:body,metaNode:meta,
+        authorText:'Door '+(row._noteAuthor||'Onbekend')+
+          (row.registeredBy?.rank?' · '+row.registeredBy.rank:'')+
+          (row.registeredBy?.call?' · '+row.registeredBy.call:'')});
       attachRetireButton(item,row,row._dossierSource==='cases'?'cases':'staff');
       root.append(item);return;
     }
@@ -3696,6 +3706,18 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       makeScoreBadge(row.score):null;
     if(score)item.append(heading,score,meta);
     else item.append(heading,meta);
+    if(['formal','sanctions','movements'].includes(group)){
+      const description=document.createElement('p');
+      const full=cells.slice(2).filter(x=>x&&x!=='—').join(' · ');
+      description.textContent=full||'—';
+      item.insertBefore(description,meta);
+      attachDossierRecordPreview(item,{row,title:heading.textContent,
+        text:full,bodyNode:description,metaNode:meta,authorText:dossierAuthorLine(row),
+        extra:row.type==='sanctie'?[
+          ['Soort sanctie',row.sanctionType],['Ernst',row.severity],
+          ['Redenen',Array.isArray(row.reasons)?row.reasons.join(', '):''],
+          ['Status',row.status],['Einddatum',row.endDate]]:[]});
+    }
     attachRetireButton(item,row,group==='leave'?'leave':group==='basisNotes'?'staff':'cases');
     root.append(item);
   };
@@ -3915,6 +3937,11 @@ function renderGeneralDossierNotes(){
     meta.textContent='Door '+(row._noteAuthor||'Onbekend')+
       (row.historicalImport&&row.importedBy?.name?' · Overgenomen door '+row.importedBy.name:'');
     item.append(heading,body,meta);
+    attachDossierRecordPreview(item,{row,title:heading.textContent,
+      text:row.details||'—',bodyNode:body,metaNode:meta,
+      authorText:'Door '+(row._noteAuthor||'Onbekend')+
+        (row.registeredBy?.rank?' · '+row.registeredBy.rank:'')+
+        (row.registeredBy?.call?' · '+row.registeredBy.call:'')});
     attachRetireButton(item,row,row._dossierSource==='cases'?'cases':'staff');
     if(row._dossierSource==='cases'&&selected)
       addManualCaseCorrectionControls(item,row,selected,selected.dept+':'+selected.discordId);
@@ -3948,6 +3975,9 @@ function renderDossierImportantNotes(){
     const author=document.createElement('span');author.className='subtle';
     author.textContent='Door '+sheetWho(row);
     item.append(title,body,author);
+    attachDossierRecordPreview(item,{row,title:title.textContent,
+      text:row.details||'—',bodyNode:body,metaNode:author,
+      authorText:dossierAuthorLine(row)});
     attachRetireButton(item,row,'cases');
     if(row.id&&selected&&row.type==='notitie')
       addManualCaseCorrectionControls(item,row,selected,selected.dept+':'+selected.discordId);
@@ -4993,9 +5023,10 @@ async function loadStaffFormalRecords(p,key){
         row.linked?'Gekoppelde observatie':'Observatie')+' · '+date+(row.testRecord===true?' · TEST':'')+
         (row.status==='ingetrokken'?' · INGETROKKEN':'');
       const author=document.createElement('span');author.className='subtle';author.style.display='block';
-      author.textContent=(row.historicalImport===true?'Oorspronkelijke observator: ':'Door ')+
-        (row.registeredBy?.name||'onbekend')+
-        (row.registeredBy?.call?' · '+row.registeredBy.call:'')+
+      author.textContent=(row.historicalImport&&row.type==='observatie'?
+        'Oorspronkelijke observator: ':'')+
+        dossierAuthorLine(row).replace(row.historicalImport&&row.type==='observatie'?
+          /^Oorspronkelijke invoerder: /:/^$/, '')+
         (row.eventTime?' · '+row.eventTime:'')+
         (row.modifiedAt?' · bijgewerkt '+new Date(row.modifiedAt).toLocaleString('nl-BE'):'')+
         (row.historicalImport===true?' · Overgenomen uit spreadsheet door '+
@@ -5021,6 +5052,15 @@ async function loadStaffFormalRecords(p,key){
         const reasons=document.createElement('div');reasons.className='subtle';
         reasons.textContent='Ernst '+(row.severity||'—')+'/10 · '+(row.reasons||[]).join(', ');
         item.append(reasons);
+        attachDossierRecordPreview(item,{row,title:title.textContent,
+          text:row.details??row.description??row.reason??'—',
+          bodyNode:details,metaNode:author,authorText:author.textContent,
+          extra:[['Soort sanctie',row.sanctionType],
+            ['Ernst',row.severity==null?'':row.severity+'/10'],
+            ['Redenen',Array.isArray(row.reasons)?row.reasons.join(', '):''],
+            ['Status',row.status],['Einddatum',row.endDate],
+            ['Beperkingen',Array.isArray(row.restrictedSpecialties)?
+              row.restrictedSpecialties.join(', '):'']]});
         const permitted=Boolean(formalPermissions?.sanctionAmendDepartments?.includes(p.dept)&&
           formalPermissions?.writesEnabled===true&&
           formalPermissions?.sanctionOptionsByDepartment?.[p.dept]?.includes(row.sanctionType)&&

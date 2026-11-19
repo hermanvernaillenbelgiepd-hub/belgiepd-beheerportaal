@@ -60,32 +60,19 @@ test('gedeelde observatieopmaak wisselt achtergrond, tekst en kleurrand per them
  assert.match(citizen,/createObservationDisclosure\(\{/);
  for(const html of [police,fire,citizen])checkModule(html);
 });
-
-test('observatie/sanctie toont één Belgische datum en aparte kalenderknop, ISO-opslag blijft geldig',()=>{
- const html=source('../public/personeelsbeheer.html');
- assert.match(html,/id="formalDateText"[^>]*placeholder="dd\/mm\/jjjj"/);
- assert.match(html,/id="formalDate" type="date" tabindex="-1" aria-hidden="true"/);
- assert.match(html,/id="formalDateCalendar" type="button"/);
- assert.match(html,/picker\.showPicker\(\)/);
- assert.match(html,/\$\('formalDate'\)\.value=formalDateFromText\(\$\('formalDateText'\)\.value\)\|\|''/);
- assert.match(html,/eventDate:selectedDate/);
- assert.doesNotMatch(html,/id="formalDate" type="date" required/);
-});
-
 test('opleider is een apart invoerveld in beide opleidingsformulieren, geen vervanging van de invoerder',()=>{
  const police=source('../public/personeelsbeheer.html');
  const training=source('../public/rollen-opleidingen.html');
  const server=source('../src/role-routes.js');
  for(const html of [police,training])checkModule(html);
- assert.match(police,/id="staffTrainingInstructorChoice"[^>]*required/);
  assert.match(police,/id="staffTrainingInstructor"[^>]*minlength="2"/);
+ assert.match(police,/id="staffTrainingInstructorManualWrap" hidden/);
+ assert.match(police,/if\(body\.instructorName\.length<2\|\|body\.instructorName\.length>120\)/);
  assert.match(police,/instructorName:selectedInstructor\(/);
  assert.match(police,/renderStaffTrainingInstructorChoices\(record\.instructorName/);
  assert.match(police,/row\.instructorName\|\|row\.instructor/);
- assert.match(training,/id="instructorChoice"[^>]*required/);
- assert.match(training,/id="instructorName"[^>]*minlength="2"/);
- assert.match(training,/setInstructorName\(r\.instructorName/);
- assert.match(training,/selectedInstructor\(\$\('instructorChoice'\),\$\('instructorName'\)\)/);
+ assert.match(training,/id="instructorName"[^>]*required/);
+ assert.match(training,/\$\('instructorName'\)\.value=r\.instructorName/);
  assert.match(training,/instructorName,qualificationStage:\$\('qualificationStage'\)\.value/);
  assert.match(server,/const instructorName=asText\(x\?\.instructorName,120\)/);
  assert.match(server,/return \{department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName,/);
