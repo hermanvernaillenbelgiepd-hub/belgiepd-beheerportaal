@@ -107,3 +107,29 @@ test('a new effective movement never silently skips next-free number suggestion'
  assert.match(route,/canReadPersonnelSubject\(req\.bpd,person\)/);
  assert.match(route,/const maySuggest=canChangePoliceGrade/);
 });
+
+test('degradation to Agent proposes the next free permanent 2xx callsign',()=>{
+ assert.equal(recommendedPromotionCall('Agent',new Set()),200);
+ assert.equal(recommendedPromotionCall('Agent',new Set([200])),210);
+ assert.equal(recommendedPromotionCall('Agent',new Set(
+   Array.from({length:10},(_,i)=>200+10*i))),205);
+ assert.equal(recommendedPromotionCall('Agent',new Set(
+   [...Array.from({length:10},(_,i)=>200+10*i),
+    ...Array.from({length:10},(_,i)=>205+10*i)])),201);
+ assert.equal(recommendedPromotionCall('Agent',new Set(
+   Array.from({length:100},(_,i)=>200+i))),null);
+ // Temporary 1xx numbers must never be suggested for effective demotion.
+ assert.equal(recommendedPromotionCall('Agent',new Set(
+   Array.from({length:100},(_,i)=>200+i))),null);
+});
+test('the manual effective movement recommends an adjacent grade in either direction',()=>{
+ const ui=read('public/personeelsbeheer.html');
+ assert.match(ui,/const proposedIndex=kind==='Promotie'\?idx\+1:idx-1/);
+ assert.match(ui,/\$\('staffMovement'\)\.onchange=\(\)=>\{/);
+ assert.match(ui,/\$\('staffMovementNewCall'\)\.value='';\s*updateStaffMovementFields\(\)/);
+ assert.match(ui,/tientallen, vijftallen, daarna overige nummers/);
+ const route=read('src/police-promotion-routes.js');
+ assert.match(route,/const hundreds=rank==='Agent'\?\[2\]:option\.hundreds/);
+ assert.match(route,/wanted\.grade===current\.grade/);
+ assert.doesNotMatch(route,/wanted\.grade<=current\.grade/);
+});
