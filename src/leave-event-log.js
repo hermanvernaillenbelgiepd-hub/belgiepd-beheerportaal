@@ -13,7 +13,8 @@ const TITLE=Object.freeze({
   board_override:'Verlofbeslissing herzien door Bestuur',
   manual_submitted:'Verlof namens medewerker ter goedkeuring ingediend',
   manual_approved:'Verlof handmatig goedgekeurd',
-  cadre_retired:'Verlofperiode ingetrokken door bevoegd kader'
+  cadre_retired:'Verlofperiode ingetrokken door bevoegd kader',
+  personnel_archived:'Verlof administratief afgesloten wegens centrale personeelsarchivering'
 });
 export const leaveEventLabel=action=>TITLE[action]||'Verlofwijziging';
 export const leaveCanWithdraw=(request,today)=>{
@@ -48,7 +49,7 @@ export function writeLeaveEvent(tx,{requestRef,request,action,actor,actorUid,
     at:FieldValue.serverTimestamp()
   });
   const departments=[...new Set((request.subjectDepartments||[])
-    .filter(d=>['politie','brandweer','ambulance','depannage'].includes(d)))];
+    .filter(d=>['politie','brandweer','ambulance','depannage','burger'].includes(d)))];
   for(const dept of departments){
     const ref=getFirestore().collection('bpd_cases').doc(dept+'_'+request.personDiscordId)
       .collection('entries').doc();
