@@ -130,6 +130,17 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
   .citizen-section-list{grid-template-columns:repeat(2,minmax(0,1fr))}
   .record{break-inside:avoid}
 }
+
+.score-trend{display:inline-block;font-size:11px;font-weight:800;border-radius:6px;
+ margin-top:6px;padding:3px 6px;line-height:1.35;border:1px solid currentColor}
+.score-trend-up{color:#62dfa2;background:#183c2c}
+.score-trend-down{color:#ffb0a8;background:#492629}
+.score-trend-stable{color:#f0d47b;background:#463e24}
+.score-trend-insufficient{color:#d4e1f1;background:#30445f}
+html:not([data-bpd-theme="dark"]) .score-trend-up{color:#116f42;background:#e4f7ea}
+html:not([data-bpd-theme="dark"]) .score-trend-down{color:#a02e38;background:#ffe9ea}
+html:not([data-bpd-theme="dark"]) .score-trend-stable{color:#765b12;background:#fff5d4}
+html:not([data-bpd-theme="dark"]) .score-trend-insufficient{color:#405776;background:#edf1f7}
 </style><link rel="stylesheet" href="/dossier-identity-polish.css"></head>
 <body class="bpd-unified-dossier dossier-onepage">
 <header><strong>🏛️ BelgiëPD · Burgerpersoneelsdossiers</strong>
@@ -161,7 +172,8 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
       <div><small>ROEPNUMMER</small><strong id="personCall">—</strong></div>
       <div><small>STATUS</small><strong id="personStatus">—</strong></div>
       <div><small>VOLWAARDIG SINDS</small><strong id="personPromoted">—</strong></div>
-      <div><small>OBSERVATIES</small><strong id="personAvg">—</strong></div>
+      <div><small>OBSERVATIES · LAATSTE 3 MAANDEN</small><strong id="personAvg">—</strong>
+      <span id="personTrend" class="score-trend score-trend-insufficient">— Onvoldoende gegevens</span></div>
     </div>
     <p id="limited" class="muted" hidden>Een deel van de oudere registratie- of verwijderhistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
   </section>
@@ -246,6 +258,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 <script type="module">
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {createObservationDisclosure} from '/dossier-observation-ui.js';
+import {observationTrendSymbol,observationTrendLabel} from '/observation-score-trend.js';
 import {attachDossierRecordPreview} from '/dossier-entry-preview.js';
 const $=id=>document.getElementById(id);
 let auth,authMod,portalSetup,selectedId=null,rows=[],deleteTarget=null;
@@ -295,8 +308,17 @@ function renderPerson(data){
   set('personId',p.discordId);set('personRole',data.roleType||p.rank||'Niet bevestigd');
   set('personCall',p.call);renderDossierStatus($('personStatus'),p.status);
   set('personPromoted',data.volwaardigDate);
-  set('personAvg',data.observation.count?String(data.observation.average)+'/10 ('+
-    data.observation.count+')':'Geen');
+  const score=data.observation||{};
+  set('personAvg',score.count?String(score.average).replace('.',',')+'/10 ('+
+    score.count+')':'Geen scores');
+  const trend=$('personTrend');
+  trend.className='score-trend score-trend-'+(score.trend||'insufficient');
+  trend.textContent=observationTrendSymbol(score.trend)+' '+
+    observationTrendLabel(score.trend);
+  trend.title='Observaties tussen '+(score.from||'—')+' en '+(score.through||'—')+
+    '. Trend: eerdere versus recente observaties, verschil vanaf 0,5 punt.'+
+    (score.limited?' Onvolledige registratiebron; geen trend.':'');
+  $('personAvg').title='Alleen geldige observatiescores van de laatste drie maanden.';
   $('limited').hidden=!(data.entriesLimited||data.leaveLimited||data.deletionLogLimited);
   fill('leave',data.leave,(root,l)=>line(root,
     l.startDate+' t/m '+l.endDate,l.status+(l.manual?' · manueel':''),fmt(l.createdAt)));
