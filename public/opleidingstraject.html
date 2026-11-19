@@ -82,19 +82,22 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <label>Hulpverleningszone (optioneel)<input id="newZone" maxlength="80" placeholder="Leeg = hele dienst"></label>
 <label>Beschrijving<input id="newDescription" maxlength="500" placeholder="Doel en inhoud"></label>
 </div><div class="actions"><button type="submit">+ Optionele opleiding toevoegen</button></div></form>
-<div class="hint">Een nieuwe cursus is eerst optioneel. Je kunt daarna hieronder voorstellen om ze verplicht te maken, met doelgroep, ingangsdatum en motivering.</div>
+<div class="hint">Een nieuwe cursus is eerst optioneel. Maak ze verplicht voor een dienst, rang, specialisatie óf één bepaalde medewerker. Een persoonlijke verplichting verandert geen bestaande dienstverplichting en vereist eveneens goedkeuring door Officierenkader en Korpsleiding.</div>
 <div id="managedCourses"></div>
 <h3 style="margin-top:17px">Verplichting voorstellen of aanpassen</h3>
 <form id="proposalForm"><div class="form-grid">
 <label>Opleiding<select id="proposalCourse" required></select></label>
 <label>Type<select id="proposalMandatory"><option value="true">Verplicht maken / aanpassen</option><option value="false">Verplichting opheffen</option></select></label>
-<label>Doelgroep<select id="targetKind"><option value="alle">Iedereen binnen de dienst/zone</option><option value="rang">Specifieke rang</option><option value="specialisatie">Specialisatie</option></select></label>
-<label>Doelgroepwaarde<input id="targetValue" maxlength="80" placeholder="Enkel bij rang of specialisatie"></label>
+<label>Doelgroep<select id="targetKind"><option value="alle">Iedereen binnen de dienst/zone</option><option value="rang">Specifieke rang</option><option value="specialisatie">Specialisatie</option><option value="persoon">Specifieke persoon</option></select></label>
+<label id="targetValueWrap">Doelgroepwaarde<input id="targetValue" maxlength="80" placeholder="Enkel bij rang of specialisatie"></label>
+<label id="personTargetWrap" hidden>Personeelslid binnen deze dienst/zone
+ <select id="personTarget"><option value="">Selecteer eerst een opleiding</option></select>
+</label>
 <label>Ingangsdatum<input id="effectiveDate" type="date" required></label>
 <label>Opnieuw behalen na (maanden)<input id="validMonths" type="number" min="0" max="120" value="0"></label>
 </div>
 <label style="margin-top:12px">Motivering<textarea id="proposalReason" required minlength="10" maxlength="500" placeholder="Waarom is deze verplichting nodig?"></textarea></label>
-<div class="actions"><button type="submit">Voorleggen aan Officierenkader</button></div></form>
+<div class="actions"><button id="proposeSubmit" type="submit">Voorleggen aan Officierenkader</button></div></form>
 </section>
 <section id="reviewArea" class="card" hidden><h2>Verplichtingen goedkeuren</h2>
 <p>Stap 1: Officierenkader. Stap 2: Korpsleiding. De indiener kan het eigen voorstel niet beoordelen.</p>
@@ -105,7 +108,7 @@ const $=id=>document.getElementById(id);
 const DEPTS={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage',burger:'Burger'};
 const STATES={behaald:'Behaald',verlopen:'Verlopen',aangevraagd:'Aangevraagd / gepland',
  nog_te_volgen:'Nog te volgen',niet_geslaagd:'Niet geslaagd',onderbroken:'Onderbroken',aanwezig:'Aanwezig (geen slaging)'};
-let auth,authMod,personal=null,managed=null;
+let auth,authMod,personal=null,managed=null,peopleRequestSerial=0;
 function message(text,error=false){$('feedback').textContent=text;$('feedback').classList.toggle('error',error)}
 function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e}
 function opts(el,items){const selected=el.value;el.replaceChildren(...items.map(i=>new Option(i.label,i.value)));
@@ -185,7 +188,25 @@ function renderManager(){
     (c.zone?' · Zone '+c.zone:'')+(c.pending?' · Wacht op '+(c.pending.stage==='ok'?'Officierenkader':'Korpsleiding'):'')));
   list.append(row);
  }
- const pending=(managed.courses||[]).filter(c=>c.pending);
+ for(const a of (managed.assignments||[]).filter(a=>depts.includes(a.department))){
+  const row=node('div',undefined,'review');
+  row.append(node('strong',(a.courseName||'Opleiding')+' · '+(a.subjectName||'Medewerker')+
+    (a.subjectCall?' · '+a.subjectCall:'')),
+    node('small',a.pending?'Persoonlijk voorstel wacht op '+
+      (a.pending.stage==='ok'?'Officierenkader':'Korpsleiding'):
+      a.active?'Individueel verplicht':'Persoonlijke verplichting niet actief'));
+  list.append(row);
+ }
+ syncTargetKind();
+ const pending=[
+  ...(managed.courses||[]).filter(c=>c.pending)
+    .map(c=>({...c,reviewType:'course'})),
+  ...(managed.assignments||[]).filter(a=>a.pending)
+    .map(a=>({...a,reviewType:'person',
+      name:(a.courseName||'Opleiding')+' · '+(a.subjectName||a.subjectDiscordId),
+      pending:{...a.pending,targetKind:'persoon',
+       targetValue:(a.subjectName||a.subjectDiscordId)+(a.subjectCall?' · '+a.subjectCall:'')}}))
+ ];
  const reviewers=managed.reviewStages||{};
  if(!reviewers.ok&&!reviewers.kl)return;
  $('reviewArea').hidden=false;
@@ -208,7 +229,11 @@ function renderManager(){
      if(reason===null)return;
      if(reason.trim().length<10||reason.length>500)return message('Vul minimaal 10 tekens motivering in.',true);
      b.disabled=true;
-     try{await api('/api/training-pathway/courses/'+encodeURIComponent(c.id)+'/review',{decision,reason:reason.trim()});
+     try{
+       const url=c.reviewType==='person'?
+        '/api/training-pathway/person-requirements/'+encodeURIComponent(c.id)+'/review':
+        '/api/training-pathway/courses/'+encodeURIComponent(c.id)+'/review';
+       await api(url,{decision,reason:reason.trim()});
       await load();message('Beoordeling opgeslagen en geaudit.')}
      catch(e){message(e.message,true)}finally{b.disabled=false}
     };actions.append(b);
@@ -232,6 +257,47 @@ async function load(){
   message('Opleidingstraject bijgewerkt. Dit overzicht wijzigt geen officiële personeelsstatus of Discord-rol.');
  }catch(e){message(e.message,true);$('personalArea').hidden=true}
 }
+function chosenCourse(){
+ return (managed?.courses||[]).find(c=>c.id===$('proposalCourse').value)||null;
+}
+async function loadAvailablePeople(){
+ const ticket=++peopleRequestSerial;
+ const select=$('personTarget'),course=chosenCourse();
+ opts(select,[{value:'',label:'Personeelsleden ophalen…'}]);
+ if($('targetKind').value!=='persoon'||!course)return;
+ if(!(managed?.individualManageable||[]).includes(course.department)){
+  opts(select,[{value:'',label:'Enkel bevoegd kader kan individuele verplichtingen voorstellen'}]);
+  return;
+ }
+ try{
+  const data=await api('/api/training-pathway/people?courseId='+encodeURIComponent(course.id));
+  if(ticket!==peopleRequestSerial||$('targetKind').value!=='persoon'||
+     chosenCourse()?.id!==course.id)return;
+  const people=(data.people||[]).map(p=>({value:p.discordId,
+    label:(p.call?p.call+' · ':'')+p.name+(p.rank?' · '+p.rank:'')}));
+  opts(select,[{value:'',label:people.length?'Selecteer een medewerker…':
+    'Geen eenduidig personeelslid beschikbaar'},...people]);
+ }catch(e){
+  if(ticket!==peopleRequestSerial)return;
+  opts(select,[{value:'',label:'Personeelslijst niet beschikbaar'}]);
+  message('Kan personeel voor deze opleiding niet ophalen: '+e.message,true);
+ }
+}
+function syncTargetKind(){
+ const specific=$('targetKind').value==='persoon';
+ $('targetValueWrap').hidden=specific;
+ $('personTargetWrap').hidden=!specific;
+ $('targetValue').required=!specific&&$('targetKind').value!=='alle';
+ $('personTarget').required=specific;
+ const allowed=(managed?.individualManageable||[])
+   .includes(chosenCourse()?.department);
+ $('proposeSubmit').disabled=!chosenCourse()||(specific&&!allowed);
+ if(specific)void loadAvailablePeople();
+ else ++peopleRequestSerial;
+}
+$('targetKind').onchange=syncTargetKind;
+$('proposalCourse').onchange=syncTargetKind;
+
 $('deptFilter').onchange=progress;$('statusFilter').onchange=progress;
 $('createForm').onsubmit=async e=>{
  e.preventDefault();
@@ -247,10 +313,18 @@ $('createForm').onsubmit=async e=>{
 $('proposalForm').onsubmit=async e=>{
  e.preventDefault();const button=e.submitter;if(button)button.disabled=true;
  try{
-  await api('/api/training-pathway/courses/'+encodeURIComponent($('proposalCourse').value)+'/propose',{
-   mandatory:$('proposalMandatory').value==='true',targetKind:$('targetKind').value,
-   targetValue:$('targetValue').value,effectiveDate:$('effectiveDate').value,
-   validMonths:Number($('validMonths').value||0),reason:$('proposalReason').value});
+  const courseId=$('proposalCourse').value,targetKind=$('targetKind').value;
+  const fields={mandatory:$('proposalMandatory').value==='true',
+   effectiveDate:$('effectiveDate').value,validMonths:Number($('validMonths').value||0),
+   reason:$('proposalReason').value};
+  if(targetKind==='persoon'){
+   if(!$('personTarget').value)throw Error('Selecteer eerst een medewerker uit de eigen dienst');
+   await api('/api/training-pathway/courses/'+encodeURIComponent(courseId)+'/person-requirement',{
+    ...fields,subjectDiscordId:$('personTarget').value});
+  }else{
+   await api('/api/training-pathway/courses/'+encodeURIComponent(courseId)+'/propose',{
+    ...fields,targetKind,targetValue:$('targetValue').value});
+  }
   $('proposalReason').value='';await load();
   message('Voorstel ingediend bij Officierenkader. Na goedkeuring beslist Korpsleiding.');
  }catch(err){message(err.message,true)}finally{if(button)button.disabled=false}

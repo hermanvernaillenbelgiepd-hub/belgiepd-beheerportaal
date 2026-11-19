@@ -2,6 +2,7 @@ import {roleForDepartment} from './leave-policy.js';
 import {TRAINING_REQUEST_COURSE_CATALOG} from '../public/training-course-catalog.js';
 
 export const PATHWAY_COLLECTION='bpd_training_pathway_courses';
+export const PERSONAL_PATHWAY_COLLECTION='bpd_training_pathway_person_requirements';
 export const PATHWAY_DEPARTMENTS=Object.freeze(['politie','brandweer','ambulance','depannage','burger']);
 const ID=/^\d{15,22}$/;
 const clean=(v,max)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -24,6 +25,37 @@ export function canManagePathway(actor,dept,verifiedInstructor=false){
     !ID.test(actor.discordId)||actor.uid!=='discord:'+actor.discordId)return false;
  return ['middenkader','officierenkader','korpsleiding'].includes(roleForDepartment(actor,dept))||
   verifiedInstructor===true;
+}
+// Individuele opleidingsverplichtingen worden enkel door kader/zoneleiding
+// voorgesteld. Instructeurs kunnen wel het optionele aanbod beheren.
+export const canManageIndividualPathway=(actor,dept)=>
+ canManagePathway(actor,dept,false);
+
+export function uniquePathwaySubject(roster,department,personId,course=null){
+ if(!PATHWAY_DEPARTMENTS.includes(department)||!ID.test(personId)||
+   !Array.isArray(roster))return null;
+ const matches=roster.filter(p=>p.dept===department&&p.personId===personId&&
+   !['archived','pending'].includes(p.lifecycleState));
+ if(matches.length!==1)return null;
+ return course&&!recordRelevantToCourse(matches[0],course)?null:matches[0];
+}
+export function validIndividualRequirement(body){
+ if(!body||typeof body!=='object'||Array.isArray(body)||
+   Object.keys(body).some(k=>!['subjectDiscordId','mandatory','effectiveDate','validMonths','reason'].includes(k))||
+   typeof body.subjectDiscordId!=='string'||!ID.test(body.subjectDiscordId))
+   throw Error('Selecteer één geldig personeelslid');
+ const r=validRequirement({mandatory:body.mandatory,targetKind:'alle',
+   effectiveDate:body.effectiveDate,validMonths:body.validMonths,reason:body.reason});
+ return {subjectDiscordId:body.subjectDiscordId,mandatory:r.mandatory,
+   effectiveDate:r.effectiveDate,validMonths:r.validMonths,reason:r.reason};
+}
+export function personalRequirementApplies(person,course,assignment,now=new Date().toISOString().slice(0,10)){
+ return Boolean(assignment?.active===true&&
+   assignment.department===course.department&&
+   assignment.courseId===course.id&&
+   assignment.subjectDiscordId===person?.personId&&
+   (!assignment.effectiveDate||assignment.effectiveDate<=now)&&
+   recordRelevantToCourse(person,course));
 }
 export function canApprovePathway(actor,stage){
  if(!actor||!ID.test(actor.discordId)||actor.uid!=='discord:'+actor.discordId||
