@@ -39,3 +39,28 @@ export const trainingSelectLabels=Object.freeze({
   ambulance:'Kies een Ambulanceopleiding…',
   politie:'Kies een opleiding…'
 });
+
+/* Explicit mappings only: display qualification, never grant Discord permissions. */
+export const TRAINING_SPECIALTY_COURSES=Object.freeze({
+ politie:Object.freeze({'K-9':'K9','RAGO':'RAGO','MOTARD':'Motor','DISPATCH':'Dispatch',
+   'BEVOEGDHEDEN TO':'TO','ERT AE-I':'AE','ERT AE-T':'AE','ERT-AE-F':'AE',
+   'PRIORITAIR RIJDEN':'Prioritair rijden'}),
+ brandweer:Object.freeze({'Logistiek / Signalisatie':'Logistiek / Signalisatie',
+   'Ladderwagen':'Ladderwagen','Duiker':'Duiker','Bosbestrijding':'Bosbestrijding',
+   'Brandweer-AMBU':'Brandweer-AMBU','RED-TEAM':'RED team',
+   'Gevaarlijke stoffen':'Gevaarlijke stoffen','Basistraining':'Basis TR'}),
+ ambulance:Object.freeze({'BASIS TRAINING':'Basis TR','MEDICATIE':'Medicatie',
+   'MUG-HELI':'HELI','MIP':'MIP','PIT-MOTOR':'PIT-MOTOR'}),
+ depannage:Object.freeze({'F.A.S.T':'F.A.S.T','CRANE':'CRANE','WEGENWERKEN':'WEGENWERKEN'})
+});
+export function qualificationSpecialty(dept,courseName){
+ return TRAINING_SPECIALTY_COURSES[dept]?.[courseName]||null;
+}
+export function trainingSpecialtyCandidate(record){
+ const label=qualificationSpecialty(record?.department,record?.courseName);
+ if(!label)return null;
+ if(record.result==='geslaagd')return {label,value:'Ja'};
+ if(record.result==='aanwezig'&&record.qualificationStage==='in_opleiding')
+   return {label,value:'Stage'};
+ return null;
+}
