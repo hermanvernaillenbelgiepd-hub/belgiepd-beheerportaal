@@ -2,7 +2,7 @@ import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {roleForDepartment} from './leave-policy.js';
-import {canRetireDossierRecord} from './dossier-retirement-policy.js';
+import {canRetireDossierRecord,isRetired} from './dossier-retirement-policy.js';
 import {actorFromPersonnel,representativeFromPersonnel} from './registrations.js';
 import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_DOC,
  historicalMigrationSettings,historicalMigrationAllowed,validateHistoricalActorSelection}
