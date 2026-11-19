@@ -493,12 +493,18 @@ async function requireUser(req,res,next){
     // proof is refreshed even for a Board/technical dual appointment whose
     // global account label differs from the Police service role.
     // The final rank policy still rejects unverified and out-of-scope actors.
+    // Read-only proposals and effective changes share ONE fresh role check.
+    // The stored session's Discord proof can expire between opening the
+    // personnel overview and clicking "suggest". Always revalidate the same
+    // signed Discord identity when a Police cadre action is requested.
+    // The 45-second guild-bot cache prevents a new Discord request per click.
+    // A bot outage never manufactures a verified cadre role.
+    const possiblePoliceCadre=['officierenkader','korpsleiding'].includes(policeScoped)||
+      ['officierenkader','korpsleiding'].includes(actor.role);
     if(personnelRankAction&&verified.uid==='discord:'+discordId&&
-      departments.includes('politie')&&
-      ['officierenkader','korpsleiding'].includes(policeScoped)&&
-      ['officierenkader','korpsleiding','beheerder'].includes(actor.role)&&
-      actor.discordPoliceRank!==policeScoped){
+      departments.includes('politie')&&possiblePoliceCadre){
       const guild=await verifyGuildAuthorizationRoles(discordId);
+      actor.policeRankVerificationStatus=guild.status;
       if(guild.status==='ok'){
         actor.discordPoliceRank=verifiedPoliceRank({
           guildId:process.env.DISCORD_GUILD_ID,verifiedAt:Date.now(),
@@ -507,7 +513,8 @@ async function requireUser(req,res,next){
       }else if(guild.status==='not_member'){
         actor.discordPoliceRank=null;
       }
-      // Bot outages never transform stale session roles into authority.
+      // On bot_unavailable, only an existing *unexpired* signed guild proof
+      // may be used. An expired role never gains authority from the account.
     }
     // Scoped read-only proof, used ONLY for writing lower-rank Police observations.
     actor.discordPoliceMemberVerified=Boolean(verified.uid==='discord:'+discordId&&
