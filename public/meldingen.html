@@ -128,6 +128,12 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 @media(prefers-reduced-motion:reduce){.notification-fold>summary::before{transition:none}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 <style id="notificationDashboardStyle">
+/* Een rubriek blijft zichtbaar, ook als haar lijst leeg is.
+   Bij nul resultaten is de inhoud leeg, zonder nutteloze witruimte. */
+.notification-page #reviewList:empty{display:none}
+.notification-page #reviewFold[open]:has(> #reviewList:empty) > summary{
+  border-bottom:0
+}
 /* Meldingen als overzichtspagina, afgestemd op de startpagina.
    Alleen presentatie; bestaande paneel-ID's, API's en rollen blijven intact. */
 .notification-page{
@@ -483,7 +489,7 @@ async function loadStaffActivityFollowup(){
    note.textContent='Lijst afgekapt: raadpleeg het Activiteitscentrum voor de volledige opvolging.';
    list.append(note);
   }
-  if(people.length||(result.counts?.['50/50']||0)>0||(result.counts?.INACTIEF||0)>0)panel.hidden=false;
+  panel.hidden=false;
  }catch(e){
   if(e.message==='Geen toegang tot personeelsopvolging')return;
   panel.hidden=false;
@@ -543,7 +549,7 @@ async function loadLeaveReturnChecks(){
    }
    row.append(actions);list.append(row);
   }
-  if(checks.length||(result.unread||0)>0||(result.actionRequired||0)>0)panel.hidden=false;
+  panel.hidden=false;
  }catch(e){list.textContent='Verlofterugkeer niet beschikbaar: '+e.message;panel.hidden=false}
 }
 async function loadActivityPings(){
@@ -580,7 +586,7 @@ async function loadActivityPings(){
    }
    list.append(row);
   }
-  if(notices.length)panel.hidden=false;
+  panel.hidden=false;
  }catch(e){
   list.textContent='Activiteitspings kunnen niet worden geladen: '+e.message;
   panel.hidden=false;
@@ -627,7 +633,7 @@ async function loadIdentityReview(){
    }
    list.append(card);
   }
-  if(rows.length)panel.hidden=false;
+  panel.hidden=false;
  }catch(e){
   if(/Alleen geverifieerd Officierenkader|Geen toegang|Aanmelding vereist/i.test(e.message))return;
   panel.hidden=false;list.textContent='Identiteitscontrole tijdelijk niet beschikbaar: '+e.message;
@@ -677,7 +683,7 @@ async function loadLeave(){
         displayLeaveDate(record.endDate)+' · '+(names[record.status]||'Status onbekend');
       entry.append(heading);root.append(entry);
     }
-    if(root.children.length)$('personalPanel').hidden=false;
+    $('personalPanel').hidden=false;
   }
   if(!access.canReview){
     feedback('Persoonlijke meldingen geladen. Alleen je eigen aanvragen zijn zichtbaar.');
@@ -688,16 +694,16 @@ async function loadLeave(){
   const informative=result.toInformation||[];
   $('manualLongLeaveCount').textContent=String(informative.length);
   for(const item of informative)infoList.append(manualLeaveInformation(item));
-  if(informative.length)$('manualLongLeavePanel').hidden=false;
+  $('manualLongLeavePanel').hidden=false;
   const list=$('reviewList');list.replaceChildren();
   const entries=result.toReview||[];
   $('reviewCount').textContent=String(entries.length);
   for(const x of entries)list.append(item(x));
-  if(entries.length)$('reviewPanel').hidden=false;
+  $('reviewPanel').hidden=false;
   const overrides=result.canOverride?result.toOverride||[]:[];
   const overrideList=$('overrideList');overrideList.replaceChildren();
   for(const x of overrides)overrideList.append(item(x,true));
-  $('overridePanel').hidden=result.canOverride!==true||overrides.length===0;
+  $('overridePanel').hidden=result.canOverride!==true;
   feedback(writesEnabled?'Je kunt aanvragen behandelen binnen je eigen bevoegdheid.':'De verlofmodule staat momenteel op alleen-lezen.');
  }catch(e){feedback(e.message,true)}
 }
@@ -729,7 +735,7 @@ async function loadSeriesLeave(){
   const result=await api('/api/leave/series-notifications');
   if(!(result.series||[]).length)return;
   const pending=result.pending||[];
-  panel.hidden=!((result.pending||[]).length||(result.recentAutomatic||[]).length);
+  panel.hidden=false;
   const pendingEl=$('seriesLeaveList');
 
   for(const record of pending){
@@ -772,7 +778,7 @@ async function loadTraining(){
    message.textContent=trainingStateText(r);
    row.append(message);own.append(row);
   }
-  if(own.children.length)$('trainingPersonalPanel').hidden=false;
+  $('trainingPersonalPanel').hidden=false;
   const pending=info.incoming||[],target=$('trainingReview');
   target.replaceChildren();$('trainingCount').textContent=String(pending.length);
   for(const r of pending){
@@ -817,7 +823,7 @@ async function loadTraining(){
     }
     row.append(title,note,status,actions);target.append(row);
   }
-  $('trainingReviewPanel').hidden=info.canReviewTraining!==true||pending.length===0;
+  $('trainingReviewPanel').hidden=info.canReviewTraining!==true;
  }catch(e){
   // Login or leave notifications may still be functional if this independent module fails.
   const p=$('trainingPersonal');p.textContent='Opleidingsmeldingen: '+e.message;
