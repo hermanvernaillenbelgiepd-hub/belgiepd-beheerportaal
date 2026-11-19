@@ -1106,7 +1106,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <button id="staffProfileSave" type="submit">Administratieve gegevens bewaren</button>
 </form>
 <h3>Gekoppelde opleidingen</h3>
-<p class="subtle">Bestaande opleidingsresultaten worden hier alleen gelezen uit het opleidingssysteem. Nieuwe resultaten registreer je uitsluitend via <a href="/rollen-opleidingen.html">Opleidingen</a>.</p>
+<p class="subtle">Middenkader en hoger, bevoegde instructeurs en tijdelijk gemachtigde opleiders kunnen hier rechtstreeks registreren. Iedere opleiding gebruikt hetzelfde <a href="/opleidingscentrum.html">Opleidingsregister</a> en verschijnt automatisch in het dossier, weekrapport en leidingoverzicht.</p>
 <form id="staffTrainingForm" class="inline-form" hidden>
 <h3 id="staffTrainingTitle">Opleiding toevoegen</h3>
 <div class="grid">
@@ -1142,7 +1142,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 </div>
 <div><label for="staffTrainingDate">Datum</label><input id="staffTrainingDate" type="date" required></div>
 <div><label for="staffTrainingInstructor">Opleider (naam of roepnummer)</label><input id="staffTrainingInstructor" type="text" minlength="2" maxlength="120" placeholder="Bijv. 930 · Naam opleider" required></div>
-<div><label for="staffTrainingResult">Resultaat</label><select id="staffTrainingResult"><option value="in_opleiding">In opleiding</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="stage">STAGE</option><option value="restricted">RESTRICTED</option></select></div>
+<div><label for="staffTrainingResult">Resultaat</label><select id="staffTrainingResult"><option value="aanwezig">Aanwezig</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="onderbroken">Onderbroken</option></select></div>
 <div style="grid-column:1/-1"><label for="staffTrainingDetails">Evaluatie of opmerkingen</label><textarea id="staffTrainingDetails" rows="2" maxlength="1600"></textarea></div>
 <div id="staffTrainingAmend" style="grid-column:1/-1" hidden><label for="staffTrainingReason">Motivering wijziging (minimaal 8 tekens)</label><textarea id="staffTrainingReason" rows="2" maxlength="500"></textarea></div>
 </div>
@@ -1712,7 +1712,7 @@ function displaySelectedRegistration(){
   const trainingDestination=$('trainingDestination');
   trainingDestination.hidden=!['training','case:opleiding','case:inactiviteitsping'].includes(kind);
   if(kind==='training'){
-    trainingDestination.textContent='Opslag: opleidingsregister. Het resultaat (in opleiding, geslaagd of niet geslaagd) wordt in de opleidingshistoriek bewaard. Deze registratie verschijnt niet automatisch in het weekrapport en wijzigt geen personeelsrang of Discord-rol.';
+    trainingDestination.textContent='Opslag: opleidingsregister. Aanwezig, geslaagd, niet geslaagd en onderbroken verschijnen automatisch in het dossier, weekrapport en leidingoverzicht. Rangen en Discord-rollen worden niet aangepast.';
   }else if(kind==='case:opleiding'){
     trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
   }else if(kind==='case:inactiviteitsping'){
@@ -3227,6 +3227,8 @@ function setStaffTrainingCourse(name){
 function resetStaffTrainingEdit(){
   trainingEditId=null;
   $('staffTrainingForm').reset();
+  for(const historic of $('staffTrainingResult').querySelectorAll('option[data-legacy]'))historic.remove();
+  $('staffTrainingResult').value='aanwezig';
   syncStaffTrainingOther();
   $('staffTrainingTitle').textContent='Opleiding toevoegen';
   $('staffTrainingSave').textContent='Opleiding registreren';
@@ -3269,7 +3271,11 @@ function staffTrainingEdit(record){
   trainingEditId=record.id;
   setStaffTrainingCourse(record.courseName);
   $('staffTrainingDate').value=record.eventDate||'';
-  $('staffTrainingResult').value=record.result||'in_opleiding';
+  if(![...$('staffTrainingResult').options].some(o=>o.value===record.result)){
+    const historic=new Option('Historisch resultaat · '+record.result,record.result);
+    historic.dataset.legacy='true';$('staffTrainingResult').append(historic);
+  }
+  $('staffTrainingResult').value=record.result||'aanwezig';
   $('staffTrainingDetails').value=record.details||'';
   $('staffTrainingInstructor').value=record.instructorName||record.instructor||'';
   $('staffTrainingTitle').textContent='Bestaande opleiding wijzigen';
