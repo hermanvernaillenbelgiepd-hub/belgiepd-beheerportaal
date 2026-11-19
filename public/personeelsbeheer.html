@@ -1439,6 +1439,7 @@ import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNum
 import {threeMonthObservationScore,observationTrendLabel,observationTrendSymbol} from '/observation-score-trend.js';
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
 import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
+import {newestDossierEntries} from '/dossier-entry-order.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
 import {mountCompactPersonnelDirectory} from '/personnel-compact-ui.js';
@@ -3970,9 +3971,7 @@ const generalNoteDate=raw=>{
     value.slice(5,7)+'/'+value.slice(0,4):value||'—';
 };
 function renderGeneralDossierNotes(){
-  const list=[...generalCaseEntries,...generalLegacyEntries].sort((a,b)=>
-    String(b._noteSortDate||'').localeCompare(String(a._noteSortDate||''))||
-    String(b.createdAt||b.recordedAt||'').localeCompare(String(a.createdAt||a.recordedAt||'')));
+  const list=newestDossierEntries([...generalCaseEntries,...generalLegacyEntries]);
   const limited=generalCasesLimited||generalLegacyLimited;
   sheetSetRows('basisNotes',list,x=>[x._noteDate,x._noteTitle,x.details,'Door '+x._noteAuthor],
     'Geen algemene notities geregistreerd.',limited);
@@ -4005,8 +4004,9 @@ function renderGeneralDossierNotes(){
 let importantCaseEntries=[],importantRestrictionEntries=[],importantPortalRestrictionEntries=[],
   importantCaseLimited=false,importantRestrictionLimited=false;
 function renderDossierImportantNotes(){
-  const entries=[...importantCaseEntries,...importantRestrictionEntries,...importantPortalRestrictionEntries]
-    .sort((a,b)=>String(b.eventDate||'').localeCompare(String(a.eventDate||'')));
+  const entries=newestDossierEntries([
+    ...importantCaseEntries,...importantRestrictionEntries,...importantPortalRestrictionEntries
+  ]);
   sheetSetRows('notes',entries,x=>[
     generalNoteDate(x.eventDate),
     x.importantTitle||staffCaseLabels[x.type]||x.type,
@@ -4037,7 +4037,7 @@ function renderDossierImportantNotes(){
   }
 }
 function sheetCaseRows(entries,limited){
-  const cases=entries||[];
+  const cases=newestDossierEntries(entries);
   generalCaseEntries=cases.filter(x=>x.type==='algemene_notitie').map(x=>({
     ...x,_dossierSource:'cases',_noteSortDate:x.eventDate||'',
     _noteDate:generalNoteDate(x.eventDate),_noteTitle:x.linked?'Gekoppelde algemene notitie':'Algemene notitie',
@@ -4068,7 +4068,7 @@ function sheetCaseRows(entries,limited){
   renderDossierImportantNotes();
 }
 function sheetFormalRows(entries,limited){
-  const list=Array.isArray(entries)?entries:[];
+  const list=newestDossierEntries(entries);
   sheetAverageScore(list,limited);
   // Observaties en sancties hebben afzonderlijke kolommen in het leesblad.
   const preview=x=>[x.eventDate||'—',x.type==='sanctie'?
@@ -5063,7 +5063,8 @@ async function loadStaffFormalRecords(p,key){
       '&discordId='+encodeURIComponent(p.discordId));
     if(!sameDossier(key))return;
     root.replaceChildren();
-    const records=(data.entries||[]).filter(r=>['observatie','sanctie'].includes(r.type));
+    const records=newestDossierEntries(
+      (data.entries||[]).filter(r=>['observatie','sanctie'].includes(r.type)));
     formalRecords=records;
     sheetFormalRows(records,data.limited);
     if(!records.length)root.textContent='Geen zichtbare formele observaties of sancties.';
