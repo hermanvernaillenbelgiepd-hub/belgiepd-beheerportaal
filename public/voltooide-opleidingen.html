@@ -136,7 +136,12 @@ function render(){
   for(const s of ['Roepnr. '+(x.call||'—'),'Graad: '+(x.rank||'—'),date(x.eventDate),
    'Opleider / bevestiger: '+(x.instructor||'Niet vermeld')])details.append(make('span',s));
   item.append(top,details,make('div',x.courseName||'Opleiding','course'));
-  if(x.reviewStatus)item.append(make('p','Beoordelingsstatus: '+x.reviewStatus,'muted'));
+  if(x.reviewStatus)item.append(make('p','Administratieve controle: '+({
+    nog_niet_beoordeeld:'Nog niet beoordeeld',ter_controle:'Ter controle',
+    klaar_voor_manuele_invoer:'Goedgekeurd voor verwerking'
+  }[x.reviewStatus]||x.reviewStatus),'muted'));
+  if(x.specialtyLabel&&x.specialtyStatus)item.append(
+    make('p','Specialisatie: '+x.specialtyLabel+' · '+x.specialtyStatus,'muted'));
   if(x.details)item.append(make('p',x.details,'explain'));
   const actions=make('div',null,'actions');
   const link=make('a','Open personeelsdossier');
