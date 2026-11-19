@@ -197,6 +197,52 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
    }
  });
 
+ // Advies van Zone of geverifieerde Brandweerofficier; geen effectieve promotie.
+ app.post('/api/fire-dossiers/:discordId/promotions/:entryId/opinion',requireUser,async(req,res)=>{
+  if(process.env.BPD_ENABLE_REGISTRATIONS!=='true')
+   return code(res,503,'Registraties zijn niet geactiveerd');
+  const {discordId,entryId}=req.params;
+  if(!ID.test(discordId)||!/^[A-Za-z0-9]{12,30}$/.test(entryId))
+   return code(res,400,'Ongeldige promotieverwijzing');
+  let opinion;
+  try{opinion=firePromotionOpinionInput(req.body)}
+  catch(e){return code(res,400,e.message)}
+  try{
+   const s=await subjectFor(req,getSnapshot);
+   if(s.error)return code(res,s.error,s.message);
+   if(!fireMayAdvisePromotion(req.bpd,s.person,s.roles))
+    return code(res,403,'Alleen bevoegde Brandweerofficieren en ZONE kunnen adviseren');
+   const writers=s.snap.data.filter(p=>p.dept==='brandweer'&&
+    p.personId===req.bpd.discordId);
+   if(writers.length!==1)return code(res,403,'Eigen geverifieerde Brandweerfiche vereist');
+   const actor={discordId:req.bpd.discordId,name:writers[0].name,
+    call:writers[0].call,rank:writers[0].rank};
+   const store=getFirestore(),ref=store.collection('bpd_cases')
+    .doc('brandweer_'+discordId).collection('entries').doc(entryId);
+   await store.runTransaction(async tx=>{
+    const before=await tx.get(ref);
+    if(!before.exists||before.get('dept')!=='brandweer'||
+     before.get('subjectDiscordId')!==discordId||
+     before.get('type')!=='promotievoorstel'||before.get('status')==='verwijderd')
+     throw Object.assign(Error('Promotievoorstel niet gevonden'),{status:404});
+    const at=FieldValue.serverTimestamp();
+    tx.update(ref,{opinions:updatedPromotionOpinions(before.get('opinions'),actor,opinion,at),
+     modifiedAt:at});
+    const audit={action:'fire_promotion_opinion',dept:'brandweer',
+     subjectDiscordId:discordId,entryId,actorDiscordId:actor.discordId,
+     actorName:actor.name,opinion:opinion.opinion,reason:opinion.reason,at};
+    tx.create(ref.collection('audit').doc(),audit);
+    tx.create(store.collection('bpd_notices').doc('brandweer')
+     .collection('events').doc(),{...audit,type:'promotieadvies',createdAt:at});
+   });
+   return res.json({saved:true,rankChanged:false,discordRolesChanged:false});
+  }catch(e){
+   if(e.status===404)return code(res,404,e.message);
+   console.error('Brandweerpromotieadvies:',e.code||e.message);
+   return code(res,503,'Promotieadvies momenteel niet beschikbaar');
+  }
+ });
+
  app.post('/api/fire-dossiers/:discordId/entries',requireUser,async(req,res)=>{
    if(process.env.BPD_ENABLE_REGISTRATIONS!=='true')
      return code(res,503,'Registraties zijn nog niet geactiveerd');
