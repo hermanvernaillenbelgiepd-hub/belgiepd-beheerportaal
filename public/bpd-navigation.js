@@ -583,10 +583,13 @@
     // The management matrix has many compact, carefully sized columns.
     // Desktop conversion to giant two-column cards makes personnel unusable.
     // Keep the matrix; its existing holder can scroll where unavoidable.
-    const desktopAdminMatrix=table.classList.contains('staff-roster-table')&&
-      table.closest('#staffManagePanel')&&
-      document.documentElement.clientWidth>=900;
-    if(desktopAdminMatrix){
+    // The editable personnel matrix must keep the SAME table layout at
+    // every viewport width. A narrow viewport scrolls inside its holder;
+    // adaptive cards break the specialist columns and make rows unreadable.
+    const fixedAdminMatrix=table.classList.contains('staff-roster-table')&&
+      (table.closest('#staffManagePanel')||
+       table.dataset.bpdTableLayout==='always');
+    if(fixedAdminMatrix){
       table.classList.remove('bpd-adaptive-cards');
       return;
     }
