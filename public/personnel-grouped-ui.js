@@ -7,6 +7,13 @@ const el=(tag,cls='',value)=>{const x=document.createElement(tag);
 const headings=['leadership','instructors','members','trainees'];
 const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
  depannage:'Depannage',burger:'Burger'};
+// Stable default when opening the personnel overview: Reeks 1/2 and,
+// in Police specialties, Motard/K-9. User toggles remain free afterwards.
+export function defaultPersonnelGroupOpen(mode,department,key){
+ if(mode==='reeksen')return department==='politie'&&['1','2'].includes(String(key));
+ return mode==='specialisaties'&&department==='politie'&&
+   ['MOTARD','K9'].includes(canonicalPoliceSpecialty(key));
+}
 function safePatch(person,key){
  const matches=(Array.isArray(person?.specialtyPatches)?person.specialtyPatches:[])
   .filter(p=>specialtyGroupKey(p.label,person.dept)===key&&
@@ -17,6 +24,7 @@ function safePatch(person,key){
 export function mountPersonnelGroupedViews({root,status,title,search,departmentSelect,fetchData,viewerUid,openPerson}){
  let records=null,settings={},owner='',mode='reeksen',dept='politie',
   loading=null,stale=false,error='',loadedAt=0;
+ const groupOpen=new Map();
  const formatCount=n=>n+' '+(n===1?'lid':'leden');
  function memberRow(p,specialty){
   const validCall=p.dept==='politie'&&/^(?:[a-z]{1,6}[- ]?)?\d{3}$/i.test(String(p.call||'')),
@@ -79,9 +87,15 @@ export function mountPersonnelGroupedViews({root,status,title,search,departmentS
   if(!records||loading)return;
   if(!shown.length){root.append(el('p','personnel-group-empty',
    q?'Geen overeenkomstige politiemedewerkers gevonden.':'Geen actieve indelingen beschikbaar.'));return}
-  for(const [index,g] of shown.entries()){
+  for(const g of shown){
    const item=el('details','personnel-group-card '+(g.color||''));
-   item.open=index<2;
+   const openKey=mode+':'+scoped+':'+g.key;
+   item.open=groupOpen.has(openKey)?groupOpen.get(openKey):
+     defaultPersonnelGroupOpen(mode,scoped,g.key);
+   item.addEventListener('toggle',()=>{
+     // A rerender can detach the old details element before this event runs.
+     if(item.isConnected)groupOpen.set(openKey,item.open);
+   });
    const summary=el('summary','personnel-group-summary');
    summary.append(el('strong','',mode==='reeksen'?g.title:
     (g.icon||'🏷️')+' '+g.label));
@@ -135,6 +149,6 @@ export function mountPersonnelGroupedViews({root,status,title,search,departmentS
   activate(next){if(!['reeksen','specialisaties'].includes(next))return;
    mode=next;return refresh(false)},
   refresh(){return refresh(true)},
-  reset(){owner='';records=null;settings={};error='';stale=false;loadedAt=0;render()}
+  reset(){groupOpen.clear();owner='';records=null;settings={};error='';stale=false;loadedAt=0;render()}
  };
 }
