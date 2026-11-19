@@ -268,14 +268,22 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
      addCell(tr,nameWrapper,'mr-name-cell');
      addCell(tr,seriesCell(person));
      const status=String(person.status||'Onbekend').trim()||'Onbekend';
-     addCell(tr,element('span',status,
+     const statusLabel=person.sivDrivingRestricted?status+' ⚠':status;
+     const statusCell=addCell(tr,element('span',statusLabel,
        'mr-status mr-status--'+policeRosterStatusStyle(status)),'mr-status-cell');
+     if(person.sivDrivingRestricted)statusCell.title=
+       'SIV/WPR-rijbeperking actief · opleiding Prioritair rijden vereist';
      for(const label of visibleSpecialties()){
        const info=visual().specialtyStateFor(person,label);
        const value=String(info.status||'Niet ingevuld');
        const td=addCell(tr,element('span',value,'mr-specialty mr-'+specialTag(value)),
          'mr-specialty-cell');
-       td.title=label+' · '+value;
+       if(person.sivDrivingRestricted&&/SIV|WPR/i.test(label)){
+         const warning=element('strong',' ⚠','mr-siv-driving-restriction');
+         warning.title='Tijdelijke SIV/WPR-rijbeperking; volg Prioritair rijden';
+         td.append(warning);
+         td.title=label+' · '+value+' · NIET RIJDEN: tijdelijke SIV/WPR-beperking';
+       }else td.title=label+' · '+value;
      }
      frag.append(tr);
    }
