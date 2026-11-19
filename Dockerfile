@@ -38,6 +38,7 @@ RUN node --test tests/training-instructor-choice.test.js
 RUN node --test tests/training-general-instructor-policy.test.js
 RUN node --test tests/dossier-linked-cases.test.js
 RUN node --test tests/dossier-notes-ping-readback.test.js
+RUN node --test tests/dossier-case-readback-import.test.js
 RUN node --test tests/manual-leave-dates-and-notices.test.js
 RUN node --test tests/fire-promotion-workflow.test.js
 ENV PORT=8080
