@@ -5962,8 +5962,12 @@ $('staffCaseForm').onsubmit=async event=>{
       if(reason.length<10||reason.length>500)
         throw Error('Motivering moet 10 tot 500 tekens zijn.');
       if(gradeMove){
-        if(person.dept!=='politie'||person.canChangeRank!==true||!rankChangesEnabled)
-          throw Error('Effectieve rangwijziging is alleen mogelijk voor bevoegd Politiekader.');
+        // The cached overview flag is informative, not authoritative:
+        // a leadership Discord role may have been refreshed since the
+        // personnel overview loaded. Always let the authenticated backend
+        // decide after a fresh guild verification and personnel read.
+        if(person.dept!=='politie'||!rankChangesEnabled)
+          throw Error('Effectieve politierangwijzigingen zijn niet geactiveerd.');
         if(person.rank!==oldRank||person.call!==oldCall)
           throw Error('Oude graad en roepnummer moeten overeenkomen met de actuele fiche.');
         const before=currentPoliceGradeIndex(person),after=rankChoices.indexOf(newRank);
