@@ -1,7 +1,7 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {brusselsEventDate} from './personnel-event-date.js';
 import {POLICE_RANK_CHOICES,policeRankByName,policeCallNumber,
-  canChangePoliceGrade,allowedPoliceGradeChoices} from './personnel-rank-policy.js';
+  policeSubjectGradeOption,canChangePoliceGrade,allowedPoliceGradeChoices} from './personnel-rank-policy.js';
 import {orderedCallNumbers} from './callsign-utils.js';
 import {PERSONNEL_EDITS_COLLECTION,personnelCallClaimId} from './personnel-editor-policy.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
@@ -100,7 +100,7 @@ export function installPolicePromotionRoutes(app,{requireUser,getSnapshot}){
       canReadPersonnelSubject(req.bpd,person));
    if(!maySuggest)throw fail(403,'Geen bevoegdheid om een roepnummervoorstel op te vragen');
    const choices=allowedPoliceGradeChoices(req.bpd);
-   const current=policeRankByName(person.rank),wanted=policeRankByName(rank);
+   const current=policeSubjectGradeOption(person),wanted=policeRankByName(rank);
    // A read-only preview is allowed for either an effective promotion
    // or an effective demotion, never for an unchanged rank.
    if(!choices.includes(rank)||!current||!wanted||wanted.grade===current.grade)
@@ -124,13 +124,13 @@ export function installPolicePromotionRoutes(app,{requireUser,getSnapshot}){
     if(!validId(id))continue;
     const person=roster.data.find(p=>p.dept==='politie'&&p.personId===id);
     if(!person||!canChangePoliceGrade(req.bpd,person))continue;
-    const current=policeRankByName(person.rank);
+    const current=policeSubjectGradeOption(person);
     if(!current)continue;
     const choices=allowedPoliceGradeChoices(req.bpd)
       .filter(rank=>(policeRankByName(rank)?.grade??-1)>current.grade);
     if(!choices.length)continue;
     const suggested=choices.includes(data.proposedRank)?data.proposedRank:
-      (choices.includes(nextPromotionRank(person.rank))?nextPromotionRank(person.rank):choices[0]);
+      (choices.includes(nextPromotionRank(current.rank))?nextPromotionRank(current.rank):choices[0]);
     pending.push({id:row.id,discordId:id,name:person.name,call:person.call,
      currentRank:person.rank,series:person.series||'',
      proposedRank:data.proposedRank,details:String(data.details||'').slice(0,4000),
@@ -161,7 +161,7 @@ export function installPolicePromotionRoutes(app,{requireUser,getSnapshot}){
    if(req.bpd.discordId===discordId)throw fail(403,'Eigen promotie goedkeuren is niet toegestaan');
    if(input.decision==='approve'&&initial.get('currentRank')!==person.rank)
     throw fail(409,'Rang is sinds indiening veranderd. Het verouderde voorstel kan worden afgewezen');
-   const before=policeRankByName(person.rank),after=policeRankByName(input.newRank);
+   const before=policeSubjectGradeOption(person),after=policeRankByName(input.newRank);
    const allowed=allowedPoliceGradeChoices(req.bpd);
    if(input.decision==='approve'&&(!before||!after||after.grade<=before.grade||
      !allowed.includes(input.newRank)))
