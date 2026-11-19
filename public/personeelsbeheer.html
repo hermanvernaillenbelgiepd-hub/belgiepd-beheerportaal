@@ -1303,8 +1303,8 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <p class="subtle">Waarschuwingen, tijdelijke specialisatieschorsing en tijdelijke degradatie worden apart via <strong>Observaties en sancties → Sanctie toevoegen</strong> geregistreerd, met reden, datum en audit. Rang en Discord-rechten veranderen daardoor niet automatisch.</p>
 <label for="staffMovementMode">Verwerking</label>
 <select id="staffMovementMode">
-<option value="historical">Historische registratie (alleen loggen)</option>
 <option value="effective">Nieuwe beslissing (effectief toepassen)</option>
+<option value="historical">Historische registratie (alleen loggen)</option>
 </select>
 <div id="staffMovementGradeFields" class="grid" hidden>
 <div><label for="staffMovementOldRank">Oude graad</label><input id="staffMovementOldRank" maxlength="100"></div>
@@ -3307,9 +3307,9 @@ const staffCaseValues=['staffEndDate','staffCourseName','staffProposedRank','sta
 const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   algemene_notitie:'Algemene notitie',
   opleiding:'Gevolgde opleiding',naamswijziging:'Naamswijziging (registratie)',
-  promotievoorstel:'Promotievoorstel (geen automatische promotie)',
+  promotievoorstel:'Promotievoorstel (ter goedkeuring, geen automatische promotie)',
   voordracht_ereteken:'Voordracht tot ereteken/medaille (geen automatische toekenning)',
-  personeelsbeweging:'Personeelsbeweging (registratie)',
+  personeelsbeweging:'Personeelsbeweging (effectieve beslissing)',
   activiteit:'Dienstactiviteit',specialisatiebeperking:'Beperking van specialisatie',
   inactiviteitsping:'Activiteitenping',
   functiewijziging:'Functiewijziging'};
@@ -3338,6 +3338,12 @@ $('staffActivityStatus').onchange=async()=>{
 };
 function updateStaffCaseFields(){
   const type=$('staffCaseType').value;
+  if(type==='promotievoorstel'&&selected?.dept==='politie'&&
+      !$('staffProposedRank').value.trim()){
+    const idx=rankChoices.indexOf(selected.rank);
+    if(idx>=0&&idx+1<rankChoices.length)
+      $('staffProposedRank').value=rankChoices[idx+1];
+  }
   const activity=type==='inactiviteitsping';
   $('staffActivityStatus').required=activity;
   $('staffActivityDiscordContact').required=activity;
@@ -3363,10 +3369,43 @@ function updateStaffMovementFields(){
   $('staffMovementNewRank').required=grades;
   $('staffMovementOldCall').required=grades;
   $('staffMovementNewCall').required=grades;
+  if(grades&&effective&&selected?.dept==='politie'&&
+      !$('staffMovementNewRank').value.trim()){
+    const idx=rankChoices.indexOf(selected.rank);
+    if(kind==='Promotie'&&idx>=0&&idx<rankChoices.length-1)
+      $('staffMovementNewRank').value=rankChoices[idx+1];
+  }
+  if(grades&&effective&&$('staffMovementNewRank').value.trim()&&
+      !$('staffMovementNewCall').value.trim())void suggestPromotionCall(
+      $('staffMovementNewRank').value.trim(),'staffMovementNewCall',selected);
   $('staffMovementHint').textContent=effective?
     'Effectieve beslissing: controleer graad en passend vrij roepnummer. Uniformen volgen de rang-/roepnummertoewijzing; handmatige uniformen vereisen soms controle.':
     'Historische registratie: alleen loggen, zonder de huidige graad, uniformen, status of het roepnummer te veranderen.';
 }
+async function suggestPromotionCall(rank,targetId,person){
+ if(!person||person.dept!=='politie'||person.canChangeRank!==true||!rank)return;
+ const key=person.dept+':'+person.discordId;
+ try{
+  const result=await request('/api/police-promotions/suggestion?'+new URLSearchParams({
+    discordId:person.discordId,rank
+  }));
+  if(!selected||selected.dept+':'+selected.discordId!==key)return;
+  if($(targetId)&&result.call!==null)$(targetId).value=String(result.call);
+ }catch(error){
+  if($(targetId)&&!$(targetId).value)notice(
+    'Automatisch roepnummer nog niet beschikbaar: '+error.message,true);
+ }
+}
+$('staffMovementNewRank').addEventListener('change',()=>{
+ $('staffMovementNewCall').value='';
+ if($('staffMovementMode').value==='effective')
+  void suggestPromotionCall($('staffMovementNewRank').value.trim(),
+   'staffMovementNewCall',selected);
+});
+$('rankChangeTo').addEventListener('change',()=>{
+ $('rankChangeCall').value='';
+ void suggestPromotionCall($('rankChangeTo').value,'rankChangeCall',selected);
+});
 $('staffMovement').onchange=updateStaffMovementFields;
 $('staffMovementMode').onchange=updateStaffMovementFields;
 function syncStaffCaseOther(){
@@ -6062,7 +6101,7 @@ async function showPerson(p){
   $('staffMovementOldCall').value=p.call||'';
   $('staffMovementNewRank').value='';
   $('staffMovementNewCall').value='';
-  $('staffMovementMode').value='historical';
+  $('staffMovementMode').value='effective';
   $('staffMovementGradeList').replaceChildren(...rankChoices.map(x=>option(x,x)));
   updateStaffMovementFields();
   $('policeSeriesPanel').hidden=!(p.dept==='politie'&&p.canChangeSeries===true);
