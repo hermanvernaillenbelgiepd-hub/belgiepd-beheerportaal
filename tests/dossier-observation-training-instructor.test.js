@@ -71,8 +71,8 @@ test('opleider is een apart invoerveld in beide opleidingsformulieren, geen verv
  assert.match(police,/instructorName:selectedInstructor\(/);
  assert.match(police,/renderStaffTrainingInstructorChoices\(record\.instructorName/);
  assert.match(police,/row\.instructorName\|\|row\.instructor/);
- assert.match(training,/id="instructorName"[^>]*required/);
- assert.match(training,/\$\('instructorName'\)\.value=r\.instructorName/);
+ assert.match(training,/id="instructorChoice"[^>]*required/);
+ assert.match(training,/setInstructorName\(r\.instructorName/);
  assert.match(training,/instructorName,qualificationStage:\$\('qualificationStage'\)\.value/);
  assert.match(server,/const instructorName=asText\(x\?\.instructorName,120\)/);
  assert.match(server,/return \{department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName,/);
