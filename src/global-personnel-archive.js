@@ -107,6 +107,18 @@ export function writeIdentityArchive(tx,db,plan,{actor,actorUid,reason,cause,sou
   });
   newlyArchived.push(person.dept);
  }
+ // Burger heeft een afzonderlijk native dossier; de centrale
+ // loopbaanregistratie wordt daar eveneens historisch opgeslagen.
+ if(allServices.includes('burger')){
+  const citizen=db.collection('bpd_citizen_staff_dossiers').doc(discordId);
+  tx.create(citizen.collection('entries').doc(),{
+   kind:'notitie',eventDate:today,
+   details:'Centrale personeelsarchivering vanuit '+primaryDept+
+    ' · Reden: '+reason+' · Betrokken diensten: '+allServices.join(', '),
+   source:'global-personnel-archive',globalArchiveId:group.id,
+   byDiscordId:registeredBy.discordId,createdAt:at
+  });
+ }
  // End only still-open leave, never rewrite completed historical leave.
  // The leave audit and every service dossier notification are transactional.
  for(const doc of openLeaves){
