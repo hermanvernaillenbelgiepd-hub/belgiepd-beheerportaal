@@ -37,6 +37,7 @@ RUN node --test tests/portal-date-display.test.js
 RUN node --test tests/training-instructor-choice.test.js
 RUN node --test tests/training-general-instructor-policy.test.js
 RUN node --test tests/dossier-linked-cases.test.js
+RUN node --test tests/fire-promotion-workflow.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
