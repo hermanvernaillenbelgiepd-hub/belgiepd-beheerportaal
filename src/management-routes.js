@@ -652,6 +652,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
             courseName:r.courseName,trainingResult:r.result,
             details:['Opleidingsresultaat: '+(TRAINING_RESULT_LABELS[r.result]||'Onbekend'),
               r.instructorName?'Opleider: '+String(r.instructorName).slice(0,120):'',
+              r.appliedSpecialtyLabel?'Specialisatie: '+r.appliedSpecialtyLabel+
+                ' · '+(r.result==='geslaagd'?'JA':'STAGE'):'',
               r.rosterStatus==='klaar_voor_manuele_invoer'?'Administratief beoordeeld: goedgekeurd':
                 r.rosterStatus==='ter_controle'?'Administratief beoordeeld: ter controle':
                 'Administratief nog niet beoordeeld',
