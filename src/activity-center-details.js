@@ -28,8 +28,8 @@ export function dossierPingSummary(rows){
  const valid=(rows||[]).filter(x=>x.type==='inactiviteitsping'&&
    !x.retired&&!x.retiredAt&&x.status!=='verwijderd')
   .sort((a,b)=>(iso(b.createdAt)||'').localeCompare(iso(a.createdAt)||''));
- const actuallyPinged=valid.filter(x=>x.discordPingSent===true||
-    x.source==='automatic_fivem_activity');
+ // A portal alert from the automatic runner is NOT proof of a Discord DM.
+ const actuallyPinged=valid.filter(x=>x.discordPingSent===true);
  const latest=valid[0]||null,last=actuallyPinged[0]||null;
  return {registered:valid.length,discordConfirmed:actuallyPinged.length,
   latestStatus:['ACTIEF','50/50','INACTIEF','VERWIJDERING_TE_BEOORDELEN']
