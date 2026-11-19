@@ -214,11 +214,13 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 </section>
 </main>
 <script type="module">
+import {enhanceBelgianDateInputs,refreshBelgianDateInputs} from '/bpd-date-inputs.js';
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fire-specialty-icons.js';
 import {displayServiceBadge} from '/dossier-service-badge.js';
 import {createObservationDisclosure} from '/dossier-observation-ui.js';
 const $=id=>document.getElementById(id);
+enhanceBelgianDateInputs(['fireLeaveFrom','fireLeaveUntil','date','endDate']);
 displayServiceBadge($('dossierServiceBanner'),'brandweer');
 displayServiceBadge($('registrationServiceBanner'),'brandweer',{registration:true});
 const id=new URLSearchParams(location.search).get('discordId')||'';
@@ -667,6 +669,7 @@ $('entryForm').onsubmit=async ev=>{
    }}
   await api(endpoint+'/entries','POST',data);
   $('entryForm').reset();$('date').value=new Date().toLocaleDateString('en-CA');
+   refreshBelgianDateInputs(['date']);
   await load();mark('Registratie beveiligd opgeslagen en gelogd. '+
     (type==='promotievoorstel'?'Voorstel is uitsluitend adviserend, geen rangwijziging.':''));
  }catch(e){mark('Opslaan mislukt: '+e.message,true)}
@@ -683,6 +686,7 @@ async function start(){
   auth=authMod.getAuth(app.initializeApp(cfg.firebaseConfig));
   setupLogin({button:$('login'),auth,authModule:authMod,config:cfg,onError:e=>mark(e.message,true)});
   $('date').value=new Date().toLocaleDateString('en-CA');
+   refreshBelgianDateInputs(['date']);
   authMod.onAuthStateChanged(auth,()=>load());
  }catch(e){mark(e.message,true)}
 }start();
