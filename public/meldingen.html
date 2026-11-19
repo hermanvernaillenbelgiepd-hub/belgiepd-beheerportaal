@@ -88,6 +88,19 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 .staff-status[data-status="INACTIEF"]{background:#713037;color:#ffe2e4;border-color:#a85c66}
 .staff-dept{color:#bcd0ed;font-size:11px}
 #activityPingsPanel{padding:14px 16px;margin:10px 0;border-radius:10px}
+.siv-restriction-popup{width:min(580px,calc(100vw - 30px));border-radius:12px;
+ border:2px solid #c48647;background:#142940;color:#e9f3ff;
+ padding:20px;max-height:85vh;overflow:auto}
+.siv-restriction-popup::backdrop{background:#04121ddd}
+.siv-restriction-popup h2{font-size:18px;margin:0 0 8px}
+.siv-restriction-popup p{font-size:13px;color:inherit}
+.siv-restriction-popup .actions{align-items:center}
+.siv-restriction-popup a{display:inline-block;padding:9px 12px;
+ border:1px solid #84a6d5;background:#dceaff;color:#173957;border-radius:7px;font-weight:800}
+html:not([data-bpd-theme="dark"]) .siv-restriction-popup{
+ background:#fff;color:#173350;border-color:#be874f}
+#sivTrainingRestrictionList .item{padding:9px 0}
+#sivTrainingRestrictionList .item p{font-size:12px;line-height:1.5}
 #activityPingsPanel h2{font-size:15px;line-height:1.3;margin:0 0 7px}
 #activityPingsPanel>p{font-size:12px;line-height:1.4;margin:5px 0 9px}
 #activityPingsList .item{padding:8px 0;font-size:12px;line-height:1.4}
@@ -292,6 +305,14 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
  </div>
  <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
  <section class="notification-group notification-group--action" aria-label="Te behandelen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">⚡</span><div><h2>Te behandelen</h2><p>Aanvragen, controles en beslissingen die jouw aandacht kunnen vragen.</p></div></div><div class="notification-cards">
+<section id="sivTrainingRestrictionPanel" class="panel notification-tile notification-tile--action" hidden>
+ <details class="notification-fold" id="sivTrainingRestrictionFold" open>
+  <summary>🚫 SIV/WPR · Prioritair rijden <span id="sivTrainingRestrictionCount" class="pill">0</span></summary>
+  <p>Een tijdelijke rijbeperking blijft gelden tot de einddatum of een officieel goedgekeurd
+  slagingsresultaat. Dit overzicht verandert geen Discordrol of rijbevoegdheid.</p>
+  <div id="sivTrainingRestrictionList" aria-live="polite"></div>
+ </details>
+</section>
 <section id="leaveReturnPanel" class="panel notification-tile notification-tile--action" hidden>
  <details class="notification-fold" id="leaveReturnFold" open>
   <summary>⚠ Verlofterugkeer · CHECKING
@@ -401,6 +422,14 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
 </section></div></section>
  <a class="notification-calendar" href="/opleidingskalender.html"><span class="notification-calendar-icon" aria-hidden="true">📅</span><span><strong>Globale multidisciplinaire opleidingskalender</strong><small>Bekijk de planning van alle diensten</small></span><span class="notification-calendar-arrow" aria-hidden="true">↗</span></a>
 </main>
+<dialog id="sivTrainingRestrictionDialog" class="siv-restriction-popup" aria-labelledby="sivPopupTitle">
+ <h2 id="sivPopupTitle">🚫 SIV/WPR · opleidingsopvolging</h2>
+ <p id="sivPopupText"></p>
+ <p><strong>Zo vraag je Prioritair rijden aan:</strong> open het Opleidingscentrum,
+ kies Politie en de opleiding PRIORITAIR RIJDEN, vermeld je motivatie en dien de aanvraag in.</p>
+ <div class="actions"><a href="/opleidingscentrum.html?department=politie&amp;course=PRIORITAIR%20RIJDEN">Opleiding aanvragen</a>
+ <form method="dialog"><button type="submit">Begrepen · sluiten</button></form></div>
+</dialog>
 <script type="module">
 import {TRAINING_ACTIONS,availableTrainingActions,trainingActionData,trainingStateText} from '/training-request-actions.js?v=20261031';
 const $=id=>document.getElementById(id);let auth,authMod,writesEnabled=false;
@@ -684,6 +713,60 @@ async function loadPathwayReview(){
   panel.hidden=true;
  }
 }
+const sifDate=value=>/^\d{4}-\d{2}-\d{2}$/.test(String(value||''))?
+ String(value).split('-').reverse().join('/'):'onbekend';
+async function loadSivTrainingRestrictions(){
+ const panel=$('sivTrainingRestrictionPanel'),list=$('sivTrainingRestrictionList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const data=await api('/api/siv-training-restrictions');
+  const own=(data.mine||[]).filter(x=>x.status==='actief');
+  const review=(data.review||[]).filter(x=>x.status==='actief');
+  const rows=new Map();
+  for(const row of review)rows.set(row.id,row);
+  for(const row of own)if(!rows.has(row.id))rows.set(row.id,{...row,own:true});
+  $('sivTrainingRestrictionCount').textContent=String(rows.size);
+  panel.hidden=!rows.size;
+  for(const item of rows.values()){
+   const ownItem=own.some(x=>x.id===item.id);
+   const node=document.createElement('div');node.className='item';
+   const heading=document.createElement('strong');
+   heading.textContent=ownItem?'Je eigen SIV/WPR-rijbeperking':
+     (item.call?item.call+' · ':'')+(item.name||'Medewerker');
+   const desc=document.createElement('p');
+   desc.textContent='Verplicht te volgen: PRIORITAIR RIJDEN · SIV/WPR niet besturen '+
+     'tot de maatregel vervalt. Einddatum: '+sifDate(item.endDate)+
+     '. Een aanvraag of aanwezigheid beëindigt de beperking nog niet.';
+   const link=document.createElement('a');
+   link.href=ownItem?'/opleidingscentrum.html?department=politie&course=PRIORITAIR%20RIJDEN':
+     '/opleidingsplanning.html';
+   link.textContent=ownItem?'Vraag Prioritair rijden aan':'Open opleidingsplanning';
+   node.append(heading,desc,link);list.append(node);
+  }
+  // Modal is a personal, per-session reminder, never a fabricated receipt.
+  const first=own[0]||review[0];
+  if(first){
+   const seen='siv-restriction-popup:'+first.id;
+   if(!sessionStorage.getItem(seen)&&!$('sivTrainingRestrictionDialog').open){
+    $('sivPopupText').textContent=own.length?
+      'Je mag tijdelijk geen SIV/WPR-voertuig besturen. De beperking geldt '+
+      'tot en met '+sifDate(first.endDate)+', of tot een officieel goedgekeurd '+
+      'slagingsresultaat van de vereiste opleiding.':
+      'Een collega heeft een openstaande SIV/WPR-rijbeperking. '+
+      (first.name||'Medewerker')+' ('+(first.call||'geen roepnummer')+
+      ') moet Prioritair rijden volgen. Einddatum: '+sifDate(first.endDate)+'.';
+    $('sivTrainingRestrictionDialog').addEventListener('close',()=>{
+      sessionStorage.setItem(seen,'1');
+    },{once:true});
+    $('sivTrainingRestrictionDialog').showModal();
+   }
+  }
+ }catch(e){
+  // A member must never see private colleague information on failed scope checks.
+  panel.hidden=true;
+ }
+}
 let refreshInFlight=null,refreshRequestedAgain=false;
 async function load(){
  if(refreshInFlight){
@@ -695,7 +778,7 @@ async function load(){
  const refresh=async()=>{
   do{
    refreshRequestedAgain=false;
-   const loaders=[loadStaffActivityFollowup,loadLeaveReturnChecks,loadActivityPings,
+   const loaders=[loadSivTrainingRestrictions,loadStaffActivityFollowup,loadLeaveReturnChecks,loadActivityPings,
      loadTraining,loadPathwayReview,loadSeriesLeave,loadLeave];
    loaders.unshift(loadIdentityReview);
    await Promise.allSettled(loaders.map(fn=>fn()));

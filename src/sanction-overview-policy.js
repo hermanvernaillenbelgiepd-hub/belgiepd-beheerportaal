@@ -2,6 +2,7 @@ import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {roleForDepartment} from './leave-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
+import {effectiveTemporarySanctionStatus} from '../public/temporary-sanction-state.js';
 
 export const SANCTION_OVERVIEW_DEPARTMENTS=Object.freeze(['politie','brandweer','ambulance','depannage']);
 export const SANCTION_OVERVIEW_PAGE_SIZE=240;
@@ -55,7 +56,8 @@ export function sanctionOverviewItem(entry,subject,id){
   sanctionType:String(entry.sanctionType||'Sanctie').slice(0,100),
   temporaryRank:String(entry.temporaryRank||'').slice(0,100),
   severity:Number.isInteger(entry.severity)?entry.severity:null,
-  status:String(entry.status||'actief').slice(0,30),
+  status:effectiveTemporarySanctionStatus(entry).slice(0,40),
+  sourceStatus:String(entry.status||'actief').slice(0,30),
   reasons:Array.isArray(entry.reasons)?entry.reasons.filter(x=>typeof x==='string').slice(0,12):[],
   reasonOther:String(entry.reasonOther||'').slice(0,500),
   issuer:safeSanctionActor(entry.registeredBy),

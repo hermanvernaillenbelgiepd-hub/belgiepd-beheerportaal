@@ -77,6 +77,8 @@ import {PERSONNEL_LIFECYCLE_COLLECTION,lifecycleKey,overlayPersonnelLifecycle} f
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
 import {installSpecialtyRestrictionRoutes} from './specialty-restriction-routes.js';
+import {installSivTrainingRestrictionRoutes,scheduleSivTrainingRestrictions}
+ from './siv-training-restriction-routes.js';
 import {installSpecialtyRoleLinkRoutes} from './specialty-role-link-routes.js';
 import {installRosterColumnRoutes,loadRosterConfigs} from './roster-column-config.js';
 import {installPersonnelGroupSettingsRoutes} from './personnel-group-settings-routes.js';
@@ -1016,6 +1018,7 @@ installPersonnelLifecycleRoutes(app,{requireUser:requireDossierUser,
   }});
 installSpecializationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSpecialtyRestrictionRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installSivTrainingRestrictionRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSpecialtyRoleLinkRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installFunctionChangeRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installReceivedRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
@@ -1095,6 +1098,7 @@ app.listen(Number(process.env.PORT)||8080,()=>{
   // Opt-in only. Missing configuration keeps automatic activity alerts OFF.
   scheduleAutomaticActivityPings({getSnapshot});
   scheduleLeaveReturnChecks({getSnapshot});
+  scheduleSivTrainingRestrictions();
   // Independent, reversible 30-day retention for submitted Police observations.
   scheduleBasicObservationAutoArchive();
 });

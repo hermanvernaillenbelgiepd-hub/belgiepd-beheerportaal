@@ -760,7 +760,17 @@ html:not([data-bpd-theme="dark"]) .dossier-score-trend.trend-down{color:#9c2934;
 html:not([data-bpd-theme="dark"]) .dossier-score-trend.trend-stable{color:#79620e;background:#fff6d9}
 html:not([data-bpd-theme="dark"]) .dossier-score-trend.trend-insufficient{color:#46576e;background:#e7edf4}
 </style>
-</head>
+<style id="siv-restriction-dossier-style">
+.siv-restriction-dossier-banner{display:flex;gap:8px;align-items:center;
+ flex-wrap:wrap;padding:9px 12px;margin:8px 0;border-radius:9px;
+ border:1px solid #c68d4b;background:#332815;color:#ffdfb0;font-size:12px}
+.siv-restriction-dossier-banner[hidden]{display:none!important}
+.siv-restriction-dossier-banner strong{font-size:12px}
+.siv-restriction-dossier-banner a{color:#c0ddff;font-weight:700}
+html:not([data-bpd-theme="dark"]) .siv-restriction-dossier-banner{
+ background:#fff4da;color:#604012;border-color:#d9a765}
+html:not([data-bpd-theme="dark"]) .siv-restriction-dossier-banner a{color:#184d83}
+</style></head>
 <body class="bpd-unified-dossier"><header><div><strong>🛡️ BelgiëPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html" data-personnel-staff hidden>Gebruikersbeheer</a><a href="/rollen-opleidingen.html" data-personnel-staff hidden>Opleidingen</a><a href="/weekrapporten.html" data-personnel-staff hidden>Weekrapporten</a><a href="/dossiercentrum.html" data-personnel-staff hidden>Dossiercentrum</a><a href="/sanctieoverzicht.html" data-personnel-staff hidden>Sanctieoverzicht</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><div class="personnel-overview"><h1>Personeelslijst</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p></div>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
@@ -978,6 +988,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 </section>
 <section id="panel" class="card" hidden>
 <div id="dossierServiceBanner" class="dossier-service-banner" role="status"></div>
+<div id="sivDossierNotice" class="siv-restriction-dossier-banner" role="status" hidden></div>
 <div class="controls dossier-top-actions" style="justify-content:space-between"><h2 id="personTitle">Personeelsfiche</h2>
 <span id="sheetScoreSummary" class="police-score-summary" aria-live="polite" hidden>Gem. score: —</span>
 <div class="controls"><button id="renameLowerPolice" type="button" class="alt" hidden>Naam corrigeren</button><button id="editPersonnelSummary" type="button" class="alt" hidden>Personeelsgegevens wijzigen</button><button class="alt" id="close" type="button">Sluiten</button></div></div>
@@ -1440,6 +1451,7 @@ import {threeMonthObservationScore,observationTrendLabel,observationTrendSymbol}
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
 import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
 import {newestDossierEntries} from '/dossier-entry-order.js';
+import {effectiveTemporarySanctionStatus} from '/temporary-sanction-state.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
 import {mountCompactPersonnelDirectory} from '/personnel-compact-ui.js';
@@ -3758,7 +3770,8 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
         extra:row.type==='sanctie'?[
           ['Soort sanctie',row.sanctionType],['Ernst',row.severity],
           ['Redenen',Array.isArray(row.reasons)?row.reasons.join(', '):''],
-          ['Status',row.status],['Einddatum',row.endDate]]:[]});
+          ['Huidige geldigheid',effectiveTemporarySanctionStatus(row)],
+          ['Oorspronkelijke status',row.status],['Einddatum',row.endDate]]:[]});
     }
     attachRetireButton(item,row,group==='leave'?'leave':group==='basisNotes'?'staff':'cases');
     root.append(item);
@@ -4093,8 +4106,8 @@ function sheetFormalRows(entries,limited){
   importantRestrictionEntries=list.filter(x=>x.type==='sanctie'&&
     x.sanctionType==='Tijdelijke beperking')
     .map(x=>({...x,importantTitle:'Tijdelijke beperking · '+(
-        x.status==='ingetrokken'?'INGETROKKEN':
-        x.endDate&&x.endDate<new Date().toISOString().slice(0,10)?'termijn verstreken':'actief'),
+        effectiveTemporarySanctionStatus(x)==='ingetrokken'?'INGETROKKEN':
+        effectiveTemporarySanctionStatus(x)==='verlopen'?'termijn verstreken':'actief'),
       details:[
         Array.isArray(x.restrictedSpecialties)&&x.restrictedSpecialties.length?
           'Specialisatie: '+x.restrictedSpecialties.join(', '):'Specialisatie niet gespecificeerd (oud dossier)',
@@ -5111,7 +5124,8 @@ async function loadStaffFormalRecords(p,key){
           extra:[['Soort sanctie',row.sanctionType],
             ['Ernst',row.severity==null?'':row.severity+'/10'],
             ['Redenen',Array.isArray(row.reasons)?row.reasons.join(', '):''],
-            ['Status',row.status],['Einddatum',row.endDate],
+            ['Huidige geldigheid',effectiveTemporarySanctionStatus(row)],
+          ['Oorspronkelijke status',row.status],['Einddatum',row.endDate],
             ['Beperkingen',Array.isArray(row.restrictedSpecialties)?
               row.restrictedSpecialties.join(', '):'']]});
         const permitted=Boolean(formalPermissions?.sanctionAmendDepartments?.includes(p.dept)&&
@@ -5976,6 +5990,33 @@ for(const formId of registrationForms){
     }
   };
 }
+async function loadSivDossierNotice(p){
+ const box=$('sivDossierNotice');box.hidden=true;box.replaceChildren();
+ if(p?.dept!=='politie')return;
+ try{
+  const data=await request('/api/siv-training-restrictions');
+  if(!selected||selected.discordId!==p.discordId||selected.dept!==p.dept)return;
+  const found=[...(data.review||[]),...(data.mine||[])].filter(
+    x=>x.discordId===p.discordId);
+  if(!found.length)return;
+  const current=found.find(x=>x.status==='actief')||found[0];
+  const title=document.createElement('strong');
+  title.textContent=current.status==='actief'?
+    '⚠ Tijdelijke rijbeperking SIV/WPR actief':
+    '✓ SIV/WPR-beperking beëindigd';
+  const info=document.createElement('span');
+  info.textContent=current.status==='actief'?
+    ' PRIORITAIR RIJDEN vereist; einddatum '+(current.endDate||'onbekend')+
+    '. Tot het formeel vervallen is, mag er geen SIV/WPR-voertuig bestuurd worden.':
+    ' Status: '+current.status+'. De oorspronkelijke sanctie blijft in het dossier.';
+  const link=document.createElement('a');
+  link.href='/opleidingscentrum.html?department=politie&course=PRIORITAIR%20RIJDEN';
+  link.textContent='Opleiding aanvragen';
+  box.append(title,info);
+  if(current.status==='actief')box.append(link);
+  box.hidden=false;
+ }catch(_e){box.hidden=true}
+}
 async function showPerson(p){
   if(p?.canOpenDossier!==true){
     selected=null;$('panel').hidden=true;
@@ -5985,6 +6026,7 @@ async function showPerson(p){
   const sameSelected=Boolean(selected&&selected.dept===p.dept&&selected.discordId===p.discordId);
   selected=p;$('panel').hidden=false;$('personTitle').textContent=p.name;
   void loadPersonnelLifecycle(p);
+  void loadSivDossierNotice(p);
   displayServiceBadge($('dossierServiceBanner'),p.dept);
   displayServiceBadge($('registrationServiceBanner'),p.dept,{registration:true});
   if(!sameSelected)refreshStaffTrainingCourses(p.dept);

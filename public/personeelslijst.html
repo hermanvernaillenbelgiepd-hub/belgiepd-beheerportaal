@@ -313,6 +313,7 @@ import {renderMemberPoliceRoster,setPublicRosterSpecialties} from '/member-polic
 import {loadRosterLayout,logoutRosterLayout} from '/member-roster-layout.js?v=20261031-officer-only';
 const $=id=>document.getElementById(id);
 let auth=null,people=[],discordSearchRows=[],discordSearchId='';
+let sivRestrictedCalls=new Set();
 let rosterSeriesFilter='all';
 const seriesNumber=value=>{
  const s=String(value||'').trim();
@@ -558,7 +559,9 @@ function render(){
  // display filter; all dossier and Discord permissions remain unchanged.
  const shown=rosterSeriesFilter==='all'?rows:rows.filter(p=>
   seriesNumber(p.series)===rosterSeriesFilter);
- const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),shown,
+ const projected=shown.map(p=>({...p,sivDrivingRestricted:
+  sivRestrictedCalls.has(String(p.call||'').trim().toUpperCase())}));
+ const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),projected,
   byDiscordId?'':q,openRosterProfile);
  renderRosterColumnHandles();
  $('message').textContent=byDiscordId?
@@ -605,6 +608,16 @@ async function load(){
   if(!res.ok)throw Error(data.error||'Geen toegang');
   $('discordLogin').hidden=true;
   people=Array.isArray(data.records)?data.records:[];
+  sivRestrictedCalls=new Set();
+  try{
+   const restrictions=await fetch('/api/siv-training-restrictions',{
+    headers:{Authorization:'Bearer '+token},cache:'no-store'
+   }).then(async response=>response.ok?response.json():null);
+   for(const item of [...(restrictions?.mine||[]),...(restrictions?.review||[])]){
+    if(item.status==='actief'&&item.call)
+      sivRestrictedCalls.add(String(item.call).trim().toUpperCase());
+   }
+  }catch(_error){sivRestrictedCalls=new Set()}
   setPublicRosterSpecialties(data.customSpecialties);
   try{
    const artwork=await fetch('/api/role-artwork/manifest',{
@@ -642,7 +655,7 @@ try{
   if(user?.uid?.startsWith('discord:'))load();
   else {clearTimeout(discordSearchTimeout);discordSearchRequest++;
    discordSearchId='';discordSearchRows=[];
-   logoutRosterLayout();rosterColumnClear();setPublicRosterSpecialties([]);people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
+   logoutRosterLayout();rosterColumnClear();setPublicRosterSpecialties([]);sivRestrictedCalls=new Set();people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script><script defer src="/bpd-navigation.js"></script></body></html>
