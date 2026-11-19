@@ -69,7 +69,7 @@ test('One Discord identity has separate police and ambulance dossiers with isola
 test('Korpsleiding-dossiers blijven afgeschermd voor andere kaders, ook met het Discord-ID',()=>{
   const leader={...person,rank:'Hoofdcommissaris',call:'S950'};
   assert.equal(canReadPersonnelSubject(actor,leader),false);
-  assert.deepEqual(dossierOverviewRows([person,leader],[],dossierScopes(actor)).map(p=>p.rank),['Inspecteur']);
+  assert.deepEqual(dossierOverviewRows([person,leader],[],dossierScopes(actor)).map(p=>p.rank),['Inspecteur van Politie (INP)']);
   const chief={...actor,uid:'discord:'+actor.discordId,role:'korpsleiding',discordPoliceRank:'korpsleiding',departmentRoles:{politie:'korpsleiding'}};
   assert.equal(canReadPersonnelSubject(chief,leader),true);
   const board={...actor,boardPersonnelAdmin:true};
@@ -87,4 +87,24 @@ test('Volledig personeelsblad bevat zes identiteitsvelden en de 3-koloms dossier
   assert.ok(html.includes("right.append(makeTile('specialisaties'),makeTile('movements'),makeTile('training'))"));
   assert.ok(html.includes("lower.append(makeTile('basisNotes'),makeTile('observations'),makeTile('sanctions'))"));
   assert.ok(html.includes('const ficheMode='));
+});
+
+test('Centrale dossiercentrum toont 419, 420 en 421 met dezelfde officiële inspecteursrang',()=>{
+ const scopes=dossierScopes(actor);
+ const src=[
+  {...person,personId:id,call:'419',rank:'Inspecteur van Politie (INP)',name:'Collega 419'},
+  {...person,personId:'123456789012345679',call:'420',rank:'Inspecteur',name:'Jelle 420'},
+  {...person,personId:'123456789012345670',call:'421',rank:'Inspecteur van Politie (INP)',name:'Collega 421'}
+ ];
+ const records=dossierOverviewRows(src,[],scopes);
+ assert.equal(records.length,3);
+ assert.ok(records.every(row=>row.rank==='Inspecteur van Politie (INP)'));
+ assert.equal(src[1].rank,'Inspecteur','bron en rangwijzigingshistoriek blijven ongewijzigd');
+ const services=dossierOverviewRows([{...src[1],dept:'ambulance',
+   rank:'Ambulancier'}],[],dossierScopes({...actor,
+   departments:['ambulance'],departmentRoles:{ambulance:'korpsleiding'},
+   dossierAllowedDepartments:['ambulance']}));
+ assert.equal(services[0].rank,'Ambulancier');
+ const route=readFileSync(new URL('../src/dossier-center-routes.js',import.meta.url),'utf8');
+ assert.match(route,/p\.dept==='politie'\?policeOfficialRankLabel\(p\.rank\):p\.rank/);
 });
