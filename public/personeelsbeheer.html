@@ -1306,11 +1306,15 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <option value="effective">Nieuwe beslissing (effectief toepassen)</option>
 <option value="historical">Historische registratie (alleen loggen)</option>
 </select>
-<div id="staffMovementGradeFields" class="grid" hidden>
+<div id="staffMovementGradeFields" class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:100%" hidden>
 <div><label for="staffMovementOldRank">Oude graad</label><input id="staffMovementOldRank" maxlength="100"></div>
 <div><label for="staffMovementNewRank">Nieuwe graad</label><input id="staffMovementNewRank" list="staffMovementGradeList" maxlength="100"><datalist id="staffMovementGradeList"></datalist></div>
 <div><label for="staffMovementOldCall">Oud roepnummer</label><input id="staffMovementOldCall" maxlength="24"></div>
-<div><label for="staffMovementNewCall">Nieuw roepnummer</label><input id="staffMovementNewCall" maxlength="24"></div>
+<div><label for="staffMovementNewCall">Nieuw roepnummer</label><input id="staffMovementNewCall" maxlength="24" placeholder="Vrij nummer…" autocomplete="off"></div>
+<div style="grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+ <small id="staffMovementCallSuggestion" role="status" aria-live="polite">Het eerste vrije roepnummer wordt opgezocht zodra je de graad kiest.</small>
+ <button type="button" id="staffMovementCallRefresh" class="alt small">Opnieuw voorstellen</button>
+</div>
 </div>
 <p id="staffMovementHint" class="subtle">Oude gebeurtenissen wijzigen geen actuele graad, uniform of roepnummer.</p>
 </div>
@@ -3378,25 +3382,63 @@ function updateStaffMovementFields(){
   if(grades&&effective&&$('staffMovementNewRank').value.trim()&&
       !$('staffMovementNewCall').value.trim())void suggestPromotionCall(
       $('staffMovementNewRank').value.trim(),'staffMovementNewCall',selected);
+  if(!grades||!effective){
+    $('staffMovementCallSuggestion').textContent=
+      'Een vrije roepnummersuggestie is enkel beschikbaar bij een nieuwe rangbeslissing.';
+  }
   $('staffMovementHint').textContent=effective?
     'Effectieve beslissing: controleer graad en passend vrij roepnummer. Uniformen volgen de rang-/roepnummertoewijzing; handmatige uniformen vereisen soms controle.':
     'Historische registratie: alleen loggen, zonder de huidige graad, uniformen, status of het roepnummer te veranderen.';
 }
 async function suggestPromotionCall(rank,targetId,person){
- if(!person||person.dept!=='politie'||person.canChangeRank!==true||!rank)return;
+ const field=$(targetId),hint=targetId==='staffMovementNewCall'?
+   $('staffMovementCallSuggestion'):null;
+ if(!person||person.dept!=='politie'||!rank||!field){
+  if(hint)hint.textContent='Kies eerst een geldige nieuwe graad.';
+  return;
+ }
+ // Never silently skip the suggestion based on a frontend permission flag.
+ // The authenticated server authorizes each read-only number preview.
  const key=person.dept+':'+person.discordId;
+ if(hint)hint.textContent='Beschikbaar roepnummer opzoeken…';
  try{
   const result=await request('/api/police-promotions/suggestion?'+new URLSearchParams({
     discordId:person.discordId,rank
   }));
   if(!selected||selected.dept+':'+selected.discordId!==key)return;
-  if($(targetId)&&!$(targetId).value.trim()&&result.call!==null)
-    $(targetId).value=String(result.call);
+  const selectedRank=targetId==='staffMovementNewCall'?
+    $('staffMovementNewRank').value.trim():$('rankChangeTo').value.trim();
+  if(selectedRank!==rank)return;
+  if(field.value.trim()){
+    if(hint)hint.textContent='Handmatig gekozen nummer behouden. De server controleert dit bij het opslaan.';
+    return;
+  }
+  if(result.call===null||result.call===undefined){
+    if(hint)hint.textContent='Geen vrij roepnummer gevonden in deze graad. Kies een andere graad of controleer de bezette nummers.';
+    else notice('Geen vrij roepnummer gevonden voor '+rank+'.',true);
+    return;
+  }
+  field.value=String(result.call);
+  if(hint)hint.textContent='Voorgesteld vrij roepnummer: '+result.call+
+    '. Dit nummer is nog niet gereserveerd; bij het opslaan wordt opnieuw gecontroleerd.';
  }catch(error){
-  if($(targetId)&&!$(targetId).value)notice(
-    'Automatisch roepnummer nog niet beschikbaar: '+error.message,true);
+  if(!selected||selected.dept+':'+selected.discordId!==key)return;
+  if(hint)hint.textContent='Automatisch voorstellen mislukt: '+error.message+
+    '. Klik op Opnieuw voorstellen of vul handmatig een nummer in.';
+  else notice('Automatisch roepnummer niet beschikbaar: '+error.message,true);
  }
 }
+$('staffMovementCallRefresh').onclick=()=>{
+ if($('staffMovementMode').value!=='effective')return;
+ $('staffMovementNewCall').value='';
+ void suggestPromotionCall($('staffMovementNewRank').value.trim(),
+   'staffMovementNewCall',selected);
+};
+$('staffMovementNewCall').addEventListener('input',()=>{
+ if($('staffMovementNewCall').value.trim())
+  $('staffMovementCallSuggestion').textContent=
+   'Handmatig ingevuld nummer; de server valideert de beschikbaarheid bij het opslaan.';
+});
 $('staffMovementNewRank').addEventListener('change',()=>{
  $('staffMovementNewCall').value='';
  if($('staffMovementMode').value==='effective')
