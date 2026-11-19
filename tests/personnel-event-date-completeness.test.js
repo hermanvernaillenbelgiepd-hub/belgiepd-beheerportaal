@@ -52,7 +52,8 @@ test('Training completion appears in dossier and fortnight report on scheduled e
  assert.match(action,/tx\.create\(notification,/);
  assert.match(dossier,/linkedCompletedRequestRecords/);
  assert.match(dossier,/x\.trainingRequestId&&x\.reportCategory==='opleiding'/);
- assert.match(dossier,/x\.result==='geslaagd'\|\|x\._trainingSource==='request'/);
+ assert.match(dossier,/const completed=all;/);
+ assert.match(dossier,/sheetSetRows\('training',completed/);
  assert.match(report,/\.where\('eventDate','>=',report\.periodStart\)/);
  assert.match(report,/\.collection\('records'\)\.where\('eventDate','>=',report\.periodStart\)/);
 });
