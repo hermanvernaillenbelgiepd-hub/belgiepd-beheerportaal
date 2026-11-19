@@ -49,6 +49,39 @@ button.danger{background:#842a43;border-color:#842a43}button:disabled{opacity:.5
 .person-list{scrollbar-color:var(--line) transparent}
 #feedback{font-size:12px;padding:8px 11px}
 #courseConfig select[multiple]{min-height:120px}
+/* Contrasts are explicit because the shared portal theme uses !important rules. */
+html:not([data-bpd-theme="dark"]) body main :is(.card,.hero,.panel-disclosure){
+ background:#fff!important;color:#172a48!important;border-color:#c9d7e8!important}
+html:not([data-bpd-theme="dark"]) body main :is(h1,h2,h3,label,strong,.person,.entry,.panel-disclosure>summary){
+ color:#172a48!important}
+html:not([data-bpd-theme="dark"]) body main :is(p,small,.subtle,.section-caption,.entry small,.person small){
+ color:#52647f!important}
+html:not([data-bpd-theme="dark"]) body main :is(.pill,.note,#feedback){
+ background:#edf3fb!important;color:#1b3656!important;border-color:#c8d8ed!important}
+html:not([data-bpd-theme="dark"]) body main .person:nth-child(odd){
+ background:#f4f7fc!important}
+html:not([data-bpd-theme="dark"]) body main :is(input,select,textarea){
+ background:#fff!important;color:#172a48!important;border:1px solid #9bb0ca!important;color-scheme:light!important}
+html:not([data-bpd-theme="dark"]) body main :is(input,select,textarea)::placeholder{color:#647895!important}
+html:not([data-bpd-theme="dark"]) body main select option{background:#fff!important;color:#172a48!important}
+html:not([data-bpd-theme="dark"]) body main button:not(.alt):not(.danger){
+ background:#3157c8!important;color:#fff!important;border-color:#3157c8!important}
+html:not([data-bpd-theme="dark"]) body main button.alt{
+ background:#e8effa!important;color:#193450!important;border-color:#b8cce3!important}
+html:not([data-bpd-theme="dark"]) body main #feedback.bad{
+ background:#fff0f1!important;color:#a32038!important;border-color:#d49cab!important}
+html[data-bpd-theme="dark"] body main :is(.card,.hero,.panel-disclosure){
+ background:#16283e!important;color:#ebf3ff!important;border-color:#3c5370!important}
+html[data-bpd-theme="dark"] body main :is(h1,h2,h3,label,strong,.person,.entry,.panel-disclosure>summary){
+ color:#ebf3ff!important}
+html[data-bpd-theme="dark"] body main :is(p,small,.subtle,.section-caption,.entry small,.person small){
+ color:#b8cce6!important}
+html[data-bpd-theme="dark"] body main .person:nth-child(odd){background:#203850!important}
+html[data-bpd-theme="dark"] body main select option{background:#16283e!important;color:#ebf3ff!important}
+.checkbox-line{display:flex;align-items:flex-start;gap:9px;margin:10px 0;font-size:13px}
+.checkbox-line input{width:18px;height:18px;min-height:18px;margin:2px 0 0;flex:none}
+#mandatoryReasonBox{padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--soft)}
+#missingLinks{font-size:11px;color:var(--mute)}
 [hidden]{display:none!important}
 @media(max-width:850px){.grid{grid-template-columns:1fr}}
 @media(max-width:540px){main{padding:12px 10px 35px}.columns{grid-template-columns:1fr}header nav{margin-left:0}}
@@ -85,6 +118,7 @@ button.danger{background:#842a43;border-color:#842a43}button:disabled{opacity:.5
 <div class="row justify" style="margin:3px 0 9px">
 <span id="candidateCount" class="subtle">Geen medewerkers geladen</span>
 <span id="selectedCount" class="pill">0 geselecteerd</span></div>
+<div id="missingLinks" hidden></div>
 <div class="person-list" id="people"></div>
 </section>
 <section class="card"><h2>2. Inplannen</h2>
@@ -97,6 +131,13 @@ button.danger{background:#842a43;border-color:#842a43}button:disabled{opacity:.5
 </select></label>
 <label>Opleidingsdatum (optioneel)<input id="plannedDay" type="date"></label></div>
 <label>Opmerking voor deelnemer (optioneel)<textarea id="note" maxlength="300" placeholder="Praktische afspraken voor de opleiding"></textarea></label>
+<label class="checkbox-line"><input type="checkbox" id="mandatoryProposal"/>
+<span>Voorstellen als <strong>nog verplicht te volgen</strong> voor de geselecteerde personen</span></label>
+<div id="mandatoryReasonBox" hidden>
+<p>Een opleider kan dit voorstellen. Pas na goedkeuring door <strong>Officierenkader én Korpsleiding</strong> wordt het officieel verplicht.</p>
+<label>Motivering voor de verplichte opleiding<textarea id="mandatoryReason" minlength="10" maxlength="500"
+ placeholder="Waarom is deze opleiding verplicht voor deze personen?"></textarea></label>
+</div>
 <button type="submit" id="assign">Geselecteerde deelnemers opslaan</button>
 </form><p class="section-caption">Plannen maakt een opleiding niet officieel verplicht en wijzigt geen rang of specialisatie.</p>
 </section>
@@ -175,7 +216,8 @@ function renderPeople(){
     $('selectedCount').textContent=selected.size+' / 40 geselecteerd'};
   const text=el('span');
   text.append(el('strong',(p.call?p.call+' · ':'')+p.name),
-   el('small',p.rank+(p.series?' · '+p.series:'')));
+   el('small',p.rank+(p.series?' · '+p.series:'')+
+    (p.variants?.length?' · '+p.variants.filter(x=>x!=='AE').join(' / '):'')));
   label.append(box,text);root.append(label);
  }
  if(!displayed.length)root.append(el('p','Geen personeelsleden gevonden voor deze doelgroep.'));
@@ -189,6 +231,11 @@ async function loadPeople(){
     encodeURIComponent(track.id)+'&audienceId='+encodeURIComponent(audienceId));
   if(ticket!==currentRequest)return;
   people=response.people||[];renderPeople();
+  $('missingLinks').hidden=!response.skippedUnlinked;
+  $('missingLinks').textContent=response.skippedUnlinked?
+   response.skippedUnlinked+' personeelsfiches zonder unieke geldige Discordkoppeling; controleer de personeelslijst.':'';
+  if(track.id==='politie:ae'&&response.aeRoleSource!=='geverifieerd')
+   notify('AE-rolbron tijdelijk niet beschikbaar: selectie toont de bekende gegevens uit de personeelslijst.',true);
  }catch(e){if(ticket===currentRequest)notify(e.message,true)}
 }
 function renderAudiences(){
@@ -219,7 +266,8 @@ async function loadAssignments(){
    if(x.status==='geannuleerd')continue;
    const entry=el('div',undefined,'entry');
    entry.append(el('strong',(x.call?x.call+' · ':'')+x.name+' — '+x.courseName),
-    el('small',x.status+(x.plannedDay?' · '+x.plannedDay.split('-').reverse().join('/'):'')));
+    el('small',x.status+(x.plannedDay?' · '+x.plannedDay.split('-').reverse().join('/'):'')+
+     (x.mandatoryProposal?' · Verplichting voorgesteld / zie Opleidingsmatrix':'')));
    const btn=el('button','Planning annuleren','alt');btn.type='button';
    btn.onclick=async()=>{if(!confirm('De planning voor deze medewerker annuleren?'))return;
     btn.disabled=true;try{
@@ -245,12 +293,15 @@ async function loadCatalog(){
 }
 function renderTrack(){
  const track=currentTrack();
+ $('missingLinks').hidden=true;
  $('managementSection').hidden=!track;
  if(!track)return;
  $('scopeInfo').textContent=track.label+' · '+track.department;
  $('planningCount').textContent='…';
  options('course',(track.courses||[]).map(x=>({value:x,label:x})));
  options('audience',(track.audiences||[]).map(x=>({value:x.id,label:x.label})));
+ if(track.id==='politie:ae'&&[...$('audience').options].some(o=>o.value==='ae_alle'))
+  $('audience').value='ae_alle';
  renderAudiences();void loadPeople();void loadAssignments();void loadCatalog();
 }
 async function load(keep=false){
@@ -282,6 +333,12 @@ function audienceValueRequired(){
 }
 $('audienceKind').onchange=audienceValueRequired;
 audienceValueRequired();
+$('mandatoryProposal').onchange=()=>{
+ const active=$('mandatoryProposal').checked;
+ $('mandatoryReasonBox').hidden=!active;
+ $('mandatoryReason').required=active;
+ if(!active)$('mandatoryReason').value='';
+};
 $('audienceForm').onsubmit=async e=>{
  e.preventDefault();const t=currentTrack(),btn=e.submitter;
  if(btn)btn.disabled=true;
@@ -303,9 +360,12 @@ $('assignForm').onsubmit=async e=>{
   const result=await api('/api/training-planning/assign',{
    trackId:t.id,courseName:$('course').value,audienceId:$('audience').value,
    subjectIds:[...selected],status:$('status').value,plannedDay:$('plannedDay').value,
-   note:$('note').value});
+   note:$('note').value,proposeMandatory:$('mandatoryProposal').checked,
+   mandatoryReason:$('mandatoryProposal').checked?$('mandatoryReason').value:''});
   selected.clear();renderPeople();await loadAssignments();
-  notify(result.participants+' deelnemers verwerkt voor '+t.label+'. De toewijzing is gelogd.');
+  notify(result.participants+' deelnemers verwerkt voor '+t.label+'. '+
+   (result.mandatoryProposed?'Voorstellen doorgestuurd naar Officierenkader, daarna Korpsleiding.':
+    'De toewijzing is gelogd.'));
  }catch(err){notify(err.message,true)}finally{if(btn)btn.disabled=false}
 };
 $('courseForm').onsubmit=async e=>{
