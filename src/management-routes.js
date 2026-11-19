@@ -18,6 +18,8 @@ import {verifiedColleagueLink,createColleagueLink,loadLinkedCaseEntries} from '.
 import {TRAINING_RESULT_LABELS} from './training-result-policy.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
+import {POLICE_PROMOTION_PROPOSALS,nextPromotionRank} from './police-promotion-routes.js';
+import {POLICE_RANK_CHOICES} from './personnel-rank-policy.js';
 import {staffActivityFollowup} from './staff-activity-followup.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
@@ -163,10 +165,26 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     if(verifiedBoardCorpsDossierAdmin(req.bpd)&&id===req.bpd.discordId)
       return res.status(403).json({error:'Dossierregistraties over jezelf zijn niet toegestaan'});
     try{
-      const data=validateManagementEntry(req.body),snap=await getSnapshot();
+      const snap=await getSnapshot();
+      if(snap.stale)return res.status(503).json({error:'Personeelsbron is niet actueel'});
       const subject=uniqueSubject(snap.data,dept,id);
       if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
       if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
+      // A newly filed Police proposal defaults to the next official grade.
+      // It does not mutate a rank or reserve any callsign until approved.
+      const proposalType=type==='promotievoorstel'&&dept==='politie';
+      const suggestedRank=proposalType?nextPromotionRank(subject.rank):null;
+      if(proposalType&&!suggestedRank)
+        return res.status(409).json({error:'Voor deze huidige graad is geen automatische volgende graad beschikbaar'});
+      const proposedInput=proposalType?{...req.body,proposedRank:
+        String(req.body?.proposedRank||suggestedRank).trim()}:req.body;
+      if(proposalType&&!POLICE_RANK_CHOICES.some(x=>x.rank===proposedInput.proposedRank))
+        return res.status(400).json({error:'Selecteer een geldige politiepromotierang'});
+      if(proposalType&&
+        POLICE_RANK_CHOICES.find(x=>x.rank===proposedInput.proposedRank).grade<=
+        POLICE_RANK_CHOICES.find(x=>x.rank===subject.rank)?.grade)
+        return res.status(400).json({error:'Een voorstel moet een hogere graad betreffen'});
+      const data=validateManagementEntry(proposedInput);
       let linkedColleague=null;
       try{
         linkedColleague=verifiedColleagueLink(req.body?.linkedColleagueId,
@@ -207,7 +225,9 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const newDoc=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const batch=db().batch();
-      batch.create(newDoc,{...data,dept,subjectDiscordId:id,
+      batch.create(newDoc,{...data,
+        ...(proposalType?{proposalStatus:'pending',currentRank:subject.rank}:{}),
+        dept,subjectDiscordId:id,
         ...(linkedColleague?{linkedColleagueId:linkedColleague.personId}:{}),
         subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,
         registeredBy:represented||actor,submittedByActor:actor,
@@ -223,6 +243,15 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
           discordContactSource:'manual_attestation'}):{}),
         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
       batch.create(notice,{caseId:caseId(dept,id),entryId:newDoc.id,type,dept,createdAt:FieldValue.serverTimestamp()});
+      if(proposalType){
+        const ref=db().collection(POLICE_PROMOTION_PROPOSALS).doc(newDoc.id);
+        batch.create(ref,{discordId:id,dept:'politie',caseEntryId:newDoc.id,
+          subjectName:subject.name,subjectCall:subject.call,currentRank:subject.rank,
+          proposedRank:data.proposedRank,eventDate:data.eventDate,
+          details:data.details,proposedByDiscordId:actor.discordId,
+          proposedByName:actor.name,status:'pending',
+          createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
+      }
       createColleagueLink(db(),batch,{dept,primaryId:id,entryId:newDoc.id,
         type,eventDate:data.eventDate,colleague:linkedColleague,at:FieldValue.serverTimestamp()});
       // Exactly one atomic record is shared between the member inbox,
