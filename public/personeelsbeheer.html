@@ -3449,7 +3449,7 @@ function refreshOverviewEmpty(){/* Alle negen categorieën blijven altijd zichtb
 // A server-authorized correction, not a physical Firestore delete.
 let dossierCanRetire=false;
 function attachRetireButton(container,item,source='cases'){
- if(!dossierCanRetire||!selected||!item?.id)return;
+ if(!dossierCanRetire||!selected||!item?.id||item.linked===true)return;
  if(source==='cases'&&
    (!['notitie','specialisatiebeperking','basisnotitie','observatie','sanctie'].includes(item.type)||
     item.source==='central-leave-audit'))return;
@@ -3497,7 +3497,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
   const append=(row)=>{
     if((group==='observations'||group==='formal')&&row.type==='observatie'){
       const {element,content}=createObservationDisclosure({
-        title:(row.eventDate||'Datum onbekend')+' · Observatie',
+        title:(row.eventDate||'Datum onbekend')+' · '+(row.linked?'Gekoppelde observatie':'Observatie'),
         score:row.score,
         details:row.details??row.description??'Geen omschrijving',
         attribution:(row.historicalImport?'Oorspronkelijke observator: ':'Door ')+
@@ -3774,7 +3774,7 @@ function sheetCaseRows(entries,limited){
   const cases=entries||[];
   generalCaseEntries=cases.filter(x=>x.type==='algemene_notitie').map(x=>({
     ...x,_dossierSource:'cases',_noteSortDate:x.eventDate||'',
-    _noteDate:generalNoteDate(x.eventDate),_noteTitle:'Algemene notitie',
+    _noteDate:generalNoteDate(x.eventDate),_noteTitle:x.linked?'Gekoppelde algemene notitie':'Algemene notitie',
     _noteAuthor:sheetWho(x)
   }));
   generalCasesLimited=Boolean(limited);
@@ -3791,7 +3791,8 @@ function sheetCaseRows(entries,limited){
     'Geen personeelsbewegingen geregistreerd.',limited);
   // Houd gewone activiteiten buiten de belangrijke-notitierubriek.
   // Geverifieerde kadernotities en beperkingen verschijnen hier automatisch.
-  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking','inactiviteitsping','voordracht_ereteken'].includes(x.type));
+  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking','inactiviteitsping','voordracht_ereteken'].includes(x.type))
+    .map(x=>x.linked?{...x,importantTitle:'Gekoppelde belangrijke notitie'}:x);
   importantCaseLimited=Boolean(limited);
   renderDossierImportantNotes();
 }
@@ -3872,7 +3873,7 @@ async function loadStaffCheckrides(p,key){
 // Een bestaande dossierregistratie corrigeren is een afzonderlijke,
  // serverbeveiligde beheeractie. Geen nieuwe dossierregistratie of rolwijziging.
 function addManualCaseCorrectionControls(container,row,person,key){
- if(row.canAmend!==true)return;
+ if(row.linked===true||row.canAmend!==true)return;
  const actions=document.createElement('div');actions.className='actions';
  const edit=document.createElement('button');edit.type='button';edit.className='alt small';
  edit.textContent='Registratie wijzigen';
@@ -4784,7 +4785,7 @@ async function loadStaffFormalRecords(p,key){
       const title=document.createElement('strong');
       const date=row.eventDate||row.createdAt||'Datum onbekend';
       title.textContent=(row.type==='sanctie'?'Sanctie · '+String(row.sanctionType||'onbekend'):
-        'Observatie')+' · '+date+(row.testRecord===true?' · TEST':'')+
+        row.linked?'Gekoppelde observatie':'Observatie')+' · '+date+(row.testRecord===true?' · TEST':'')+
         (row.status==='ingetrokken'?' · INGETROKKEN':'');
       const author=document.createElement('span');author.className='subtle';author.style.display='block';
       author.textContent=(row.historicalImport===true?'Oorspronkelijke observator: ':'Door ')+
@@ -5575,6 +5576,7 @@ $('staffCaseForm').onsubmit=async event=>{
         ...historicalTransferData('historicalCase')}});
     if(!sameDossier(key))return;
     $('staffCaseDetails').value='';$('staffCaseReference').value='';
+     $('staffCaseLinkedColleague').value='';
     for(const id of staffCaseValues)$(id).value='';
     $('staffCourseOther').value='';syncStaffCaseOther();updateStaffMovementFields();
     await loadLinkedPersonnelRecords(person,key);
