@@ -178,7 +178,9 @@ export function mayViewLongManualLeaveNotice(actor,record){
  for(const dept of Array.isArray(record.subjectDepartments)?record.subjectDepartments:[]){
    if(!actor.departments?.includes(dept))continue;
    const reviewer=roleForDepartment(actor,dept);
-   const subject=record.subjectDepartmentRoles?.[dept]||record.subjectRole;
+   // Do not infer another service's hierarchy from the primary Police rank.
+   const subject=record.subjectDepartmentRoles?.[dept]||
+     (dept==='politie'?record.subjectRole:null);
    if(LEAVE_ROLES.includes(reviewer)&&
       (LEAVE_RANK[reviewer]||0)>(LEAVE_RANK[subject]||0)&&
       (LEAVE_RANK[subject]||0)>0)return true;
