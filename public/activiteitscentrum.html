@@ -216,7 +216,9 @@ function render(){
    /^50\/50$/i.test(p.currentStatus||'')?'half':
    /^inactief$/i.test(p.currentStatus||'')?'inactive':'other';
   if(p.statusMismatch)current.append(el('small','Verschilt van oude bron','warn'));row.append(current);
-  const follow=el('td',p.returnChecking?'⚠ CHECKING':p.pingDossier?.latestStatus||'—');
+  const follow=el('td',p.returnChecking?'⚠ CHECKING':
+   p.pingDossier?.latestStatus==='GEEN_VERBETERING_NA_PING'?'⚠ Geen verbetering na eerdere ping':
+   p.pingDossier?.latestStatus||'—');
   if(p.returnChecking)follow.className='state-checking';row.append(follow);
   row.append(el('td',p.lastConnection||'Geen gegevens'));
   row.append(el('td',p.daysInactive===null?'—':p.daysInactive+' dagen'));
