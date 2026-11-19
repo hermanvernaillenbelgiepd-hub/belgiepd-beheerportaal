@@ -86,3 +86,24 @@ test('notifications has the actionable approvals and role selection',()=>{
   input:script,encoding:'utf8',timeout:10000});
  assert.equal(checked.status,0,checked.stderr);
 });
+
+test('a new effective movement never silently skips next-free number suggestion',()=>{
+ const ui=read('public/personeelsbeheer.html');
+ const start=ui.indexOf('async function suggestPromotionCall(');
+ const end=ui.indexOf("$('staffMovementNewRank').addEventListener",start);
+ assert.ok(start>0&&end>start);
+ const suggestion=ui.slice(start,end);
+ assert.doesNotMatch(suggestion,/person\.canChangeRank\s*!==\s*true/);
+ assert.match(suggestion,/\/api\/police-promotions\/suggestion/);
+ assert.match(suggestion,/result\.call===null/);
+ assert.match(suggestion,/field\.value=String\(result\.call\)/);
+ assert.match(suggestion,/Automatisch voorstellen mislukt/);
+ assert.match(ui,/id="staffMovementCallSuggestion"/);
+ assert.match(ui,/id="staffMovementCallRefresh"/);
+ assert.match(ui,/Voorgesteld vrij roepnummer/);
+ assert.match(ui,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ const route=read('src/police-promotion-routes.js');
+ assert.match(route,/mayWriteManagement\(req\.bpd,'politie','personeelsbeweging'\)/);
+ assert.match(route,/canReadPersonnelSubject\(req\.bpd,person\)/);
+ assert.match(route,/const maySuggest=canChangePoliceGrade/);
+});
