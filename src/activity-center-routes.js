@@ -78,7 +78,7 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
    if(snapshot.stale||!Array.isArray(snapshot.data))
     return res.status(503).json({error:'Actuele personeelsbron tijdelijk niet controleerbaar'});
    const allowed=snapshot.data.filter(person=>scopes.includes(person.dept)&&
-    /^\\d{15,22}$/.test(String(person.personId||''))&&
+    /^\d{15,22}$/.test(String(person.personId||''))&&
     canReadPersonnelSubject(req.bpd,person)&&
     person.lifecycleState!=='archived');
    if(allowed.length>500)
@@ -101,7 +101,7 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
    if(leaveComplete){
     for(const doc of approvedResult.value.docs){
      const data=doc.data(),id=data.personDiscordId;
-     if(!/^\\d{15,22}$/.test(String(id||'')))continue;
+     if(!/^\d{15,22}$/.test(String(id||'')))continue;
      if(!leaves.has(id))leaves.set(id,[]);
      leaves.get(id).push(data);
     }
