@@ -3768,7 +3768,36 @@ function attachAdministrativeCaseCorrection(container,row){
     await loadStaffDossier(p);
   }catch(e){notice('Dossiercorrectie niet opgeslagen: '+e.message,true);button.disabled=false}
  };
- container.append(button);
+ const logButton=document.createElement('button');
+ logButton.type='button';logButton.className='alt small';
+ logButton.textContent='Auditlog';
+ const history=document.createElement('div');
+ history.className='subtle';history.hidden=true;
+ logButton.onclick=async()=>{
+  history.hidden=!history.hidden;
+  if(history.hidden)return;
+  const p=selected;
+  if(!p)return;
+  history.textContent='Auditlog laden…';
+  try{
+   const result=await request('/api/management/cases/'+encodeURIComponent(p.dept)+'/'+
+     encodeURIComponent(p.discordId)+'/'+encodeURIComponent(row.id)+'/audit');
+   history.replaceChildren();
+   if(!result.changes?.length)history.textContent='Geen correcties geregistreerd.';
+   for(const change of result.changes||[]){
+    const item=document.createElement('p');
+    const at=change.at?new Date(change.at).toLocaleString('nl-BE'):'Onbekend';
+    item.textContent=at+' · '+(change.actor?.name||'Bevoegd kader')+
+      ' · Reden: '+(change.reason||'')+
+      ' · Voor: '+(change.before?.details||'')+
+      (change.after?.details?' · Na: '+change.after.details:'');
+    history.append(item);
+   }
+   if(result.limited)history.append(document.createTextNode(
+     'De wijzigingshistoriek is beperkt tot de recentste 40 registraties.'));
+  }catch(e){history.textContent='Auditlog niet beschikbaar: '+e.message}
+ };
+ container.append(button,logButton,history);
 }
 function attachRetireButton(container,item,source='cases'){
  if(!dossierCanRetire||!selected||!item?.id||item.linked===true)return;
