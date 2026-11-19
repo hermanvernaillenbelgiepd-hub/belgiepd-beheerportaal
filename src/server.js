@@ -489,10 +489,15 @@ async function requireUser(req,res,next){
       /^\/api\/personnel\/politie\/\d{15,22}\/rank-change$/.test(req.path)||
       req.path.startsWith('/api/police-promotions/');
     const policeScoped=departmentRoles.politie;
+    // An approved Police service role is the scope. The independent guild
+    // proof is refreshed even for a Board/technical dual appointment whose
+    // global account label differs from the Police service role.
+    // The final rank policy still rejects unverified and out-of-scope actors.
     if(personnelRankAction&&verified.uid==='discord:'+discordId&&
       departments.includes('politie')&&
-      ['officierenkader','korpsleiding'].includes(actor.role)&&
-      policeScoped===actor.role&&actor.discordPoliceRank!==actor.role){
+      ['officierenkader','korpsleiding'].includes(policeScoped)&&
+      ['officierenkader','korpsleiding','beheerder'].includes(actor.role)&&
+      actor.discordPoliceRank!==policeScoped){
       const guild=await verifyGuildAuthorizationRoles(discordId);
       if(guild.status==='ok'){
         actor.discordPoliceRank=verifiedPoliceRank({
