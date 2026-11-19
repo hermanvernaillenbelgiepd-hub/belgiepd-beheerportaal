@@ -27,6 +27,7 @@ RUN node --test tests/sanction-overview.test.js
 RUN node --test tests/personnel-event-date-completeness.test.js
 RUN node --test tests/dossier-weekrapport-endcontrole.test.js
 RUN node --test tests/leave-report-projection.test.js
+RUN node --test tests/training-completion-overview.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node

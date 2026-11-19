@@ -69,7 +69,7 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
 <header><div class="head"><div><div class="brand">BelgiëPD Beheerportaal</div><div class="subtitle">Weekrapporten · Rapportregistraties · Archief</div></div><a href="/" class="ghost" style="padding:9px 12px;border-radius:9px">← Personeelsbeheer</a><div class="head-right"><a href="/discord-status.html" style="color:#adc9ff;font-size:12px">Discord-test</a><span id="authStatus">Aanmelding controleren…</span><button class="secondary" id="authBtn" type="button">Google aanmelden</button></div></div></header>
-<main><div class="intro"><div><h1>Weekrapportcentrum</h1><p>Automatische tweewekelijkse rapporten en het bestaande rapportregistratieregister. Personeelsdossiers beheer je in het Dossiercentrum.</p></div></div>
+<main><div class="intro"><div><h1>Weekrapportcentrum</h1><p>Automatische tweewekelijkse rapporten en het bestaande rapportregistratieregister. Personeelsdossiers beheer je in het Dossiercentrum. <a href="/voltooide-opleidingen.html">Overzicht voltooide opleidingen</a>.</p></div></div>
 <div class="info">Dit scherm is voor <strong>weekrapporten</strong> en de bijbehorende registraties. Voor de actuele personeelsfiche, observaties en sancties gebruik je het <a href="/dossiercentrum.html">Dossiercentrum</a>. Bestaande rapportregistraties en hun audit blijven ongewijzigd. De rapportinhoud wordt voorlopig dynamisch samengesteld.</div>
 <div id="status" role="status" aria-live="polite"></div>
 <section id="needLogin" class="card"><h2>Beveiligde aanmelding vereist</h2><p>Gebruik je eigen gemachtigde BelgiëPD-account. Het basiskader kan deze dossiers en weekrapporten niet openen.</p></section>
@@ -197,7 +197,7 @@ function reportSection(section){
   return `<section class="report-section"><h3 class="section-title">${esc(section.label)} (${section.entries.length})</h3>${rows?`<table class="report-table"><thead><tr><th>Datum</th><th>Personeelslid</th><th>Door</th><th>Registratie / omschrijving</th></tr></thead><tbody>${rows}</tbody></table>`:'<p class="muted">Geen registraties in deze categorie.</p>'}</section>`;
 }
 function renderReport(out){
-  const summary=`<div class="report-summary"><div class="report-kpi"><span>Registraties</span><strong>${out.recordCount}</strong></div><div class="report-kpi"><span>Rubrieken</span><strong>${out.sections.filter(s=>s.entries.length).length}</strong></div><div class="report-kpi"><span>Testregistraties uitgesloten</span><strong>${out.excludedTestCount||0}</strong></div></div>`;
+  const summary=`<div class="report-summary"><div class="report-kpi"><span>Registraties</span><strong>${out.recordCount}</strong></div><div class="report-kpi"><span>Rubrieken</span><strong>${out.sections.filter(s=>s.entries.length).length}</strong></div><div class="report-kpi"><span>Testregistraties uitgesloten</span><strong>${out.excludedTestCount||0}</strong></div><div class="report-kpi"><span>Geslaagde opleidingen</span><strong>${out.completionSummary?.passed||0}</strong></div><div class="report-kpi"><span>Deelname bevestigd</span><strong>${out.completionSummary?.attendanceConfirmed||0}</strong></div></div>`;
   const restartLabel=out.report.restartedAt?`<p class="muted">Handmatige herstart: ${esc(new Date(out.report.restartedAt).toLocaleString('nl-BE'))}. Eerdere registraties zijn alleen uit deze rapportinhoud uitgesloten.</p>`:'';
    const displayTitle=out.report.source==='automatic'?
      'Automatisch tweewekelijks rapport · '+out.report.dept+

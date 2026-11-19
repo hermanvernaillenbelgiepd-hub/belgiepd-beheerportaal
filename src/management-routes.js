@@ -783,8 +783,16 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       }
     }
     const sections=reportSections(result,report.periodStart,report.periodEnd);
+    const trainingItems=sections.find(section=>section.type==='opleiding')?.entries||[];
+    const completionSummary={
+      passed:trainingItems.filter(item=>item.source==='bpd_training'&&
+        item.trainingResult==='geslaagd').length,
+      attendanceConfirmed:trainingItems.filter(item=>
+        item.trainingRequestId&&item.reportCategory==='opleiding').length
+    };
     const excludedTestCount=result.filter(e=>isTestRecord(e) && e.eventDate>=report.periodStart && e.eventDate<=report.periodEnd).length;
-    return {report:{id:automatic?.id||doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy,source:report.source||'manual',restartedAt:resetAt?toIso(resetAt):null},sections,recordCount:sections.reduce((total,section)=>total+section.entries.length,0),excludedTestCount,truncated,disclaimer:'Conceptweergave uit huidige Firestore-dossiers; als test gemarkeerde registraties en registraties van vóór een rapportherstart zijn uitgesloten. Originele dossiergegevens blijven bestaan. Dit is nog geen afgesloten of juridisch gearchiveerd rapport. Externe Word- en Google-dossiers zijn niet geïmporteerd.'};
+    return {report:{id:automatic?.id||doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy,source:report.source||'manual',restartedAt:resetAt?toIso(resetAt):null},sections,completionSummary,
+      recordCount:sections.reduce((total,section)=>total+section.entries.length,0),excludedTestCount,truncated,disclaimer:'Conceptweergave uit huidige Firestore-dossiers; als test gemarkeerde registraties en registraties van vóór een rapportherstart zijn uitgesloten. Originele dossiergegevens blijven bestaan. Dit is nog geen afgesloten of juridisch gearchiveerd rapport. Externe Word- en Google-dossiers zijn niet geïmporteerd.'};
   }
   app.get('/api/management/reports/:id',requireUser,async(req,res)=>{
     try{

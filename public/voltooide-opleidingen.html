@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Voltooide opleidingen · BelgiëPD</title>
+<link rel="stylesheet" href="/bpd-navigation.css">
+<style>
+:root{color-scheme:dark;--bg:#091426;--panel:#11243c;--card:#192f4c;--line:#3f5a7a;--fg:#edf4ff;--muted:#bbcce2;--accent:#9cc1ff;--button:#315cb4}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header strong{font-size:16px}
+nav{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+a{color:var(--accent)}
+main{max-width:1190px;margin:0 auto;padding:21px 15px 70px}
+h1{font-size:24px;margin:0 0 5px}h2{font-size:17px;margin:4px 0 9px}
+p{margin:7px 0 13px}.muted{color:var(--muted)}
+section{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:17px;margin:15px 0}
+.controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.field{flex:1;min-width:150px}
+label{display:block;font-size:12px;font-weight:650;margin-bottom:5px}
+select,input{background:var(--bg);border:1px solid #7089ac;color:var(--fg);border-radius:7px;padding:10px;width:100%;font:inherit}
+button{font:inherit;background:var(--button);color:white;border:1px solid #7797cb;border-radius:7px;padding:9px 13px;font-weight:650;cursor:pointer}
+button.secondary{background:var(--card);color:var(--fg)}button:disabled{opacity:.6;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+#status{padding:12px 14px;border-left:3px solid var(--accent);background:var(--panel);border-radius:6px}
+#status.error{border-color:#ed8e9c;color:#ffc1cb}
+.counters{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.count{background:var(--card);border:1px solid var(--line);padding:10px 15px;border-radius:8px;min-width:132px}
+.count b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.count small{color:var(--muted);font-size:11px}
+.list{display:grid;gap:10px}
+.record{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:13px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.record strong{font-size:16px}
+.tag{font-size:11px;border:1px solid #7897b8;color:var(--fg);padding:3px 8px;border-radius:6px;white-space:nowrap}
+.details{display:flex;gap:6px 17px;flex-wrap:wrap;margin:6px 0;color:var(--muted);font-size:12px}
+.course{font-weight:700;margin:8px 0 2px}
+.explain{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0}
+.actions{margin-top:9px}
+.note{background:var(--card);border-radius:7px;padding:11px;margin:12px 0;color:var(--muted)}
+#more{margin:15px 0 3px}
+@media(max-width:650px){header{padding:11px}main{padding:14px 10px 40px}section{padding:12px}.field{min-width:100%}.counters>.count{flex:1}}
+@media(prefers-color-scheme:light){
+ :root{color-scheme:light;--bg:#edf3fb;--panel:#fff;--card:#f4f8fd;--line:#b7c7d9;--fg:#15304b;--muted:#435d79;--accent:#2352a7;--button:#3257b0}
+ select,input{background:#fff;border-color:#839ab5}
+ .tag{border-color:#8ba4bd}
+ #status.error{color:#982b3a}
+}
+</style></head>
+<body>
+<header><strong>🎓 BelgiëPD · Voltooide opleidingen</strong>
+<nav><a href="/opleidingscentrum.html">Opleidingscentrum</a>
+<a href="/personeelsbeheer.html">Personeelslijst</a>
+<a href="/weekrapporten.html">Weekrapporten</a>
+<button id="login" type="button">Aanmelden</button></nav></header>
+<main><h1>Overzicht voltooide opleidingen</h1>
+<p class="muted">Alleen voor gemachtigde beoordelaars en dienstleiding. De gegevens komen rechtstreeks uit de bestaande opleidingsregistraties en dossiers. Er wordt niets gekopieerd of gewijzigd.</p>
+<div id="status" role="status" aria-live="polite">Aanmeldrechten controleren…</div>
+<section id="overview" hidden>
+<div class="controls">
+<div class="field"><label for="dept">Hulpdienst</label><select id="dept"></select></div>
+<div class="field"><label for="query">Zoek in geladen registraties</label><input id="query" type="search" placeholder="Naam, roepnummer, opleiding, opleider"></div>
+<div class="field"><label for="result">Resultaat</label><select id="result">
+<option value="">Alles</option><option value="geslaagd">Geslaagd</option>
+<option value="deelname_bevestigd">Deelname bevestigd</option>
+</select></div>
+<button class="secondary" id="refresh" type="button">Vernieuwen</button>
+</div>
+<div class="counters">
+<div class="count"><b id="allCount">0</b><small>Gevonden registraties</small></div>
+<div class="count"><b id="passedCount">0</b><small>Geslaagde resultaten</small></div>
+<div class="count"><b id="attendanceCount">0</b><small>Deelname bevestigd</small></div>
+</div>
+<p class="muted" id="scanState">Geen dossiers doorzocht.</p>
+<div class="note"><strong>Betekenis:</strong> ‘Geslaagd’ is een vastgelegd opleidingsresultaat. ‘Deelname bevestigd’ betekent dat de aangevraagde opleiding uitgevoerd is; zonder afzonderlijke beoordeling is daarmee geen slagen aangetoond.</div>
+<h2>Opleidingshistoriek</h2>
+<div id="entries" class="list"></div>
+<button class="secondary" id="more" type="button" hidden>Volgende personeelsdossiers doorzoeken</button>
+<p class="muted">De resultaten worden per personeelsgroep opgehaald. Zoekfilters werken op de reeds geladen gegevens. Klik op ‘Volgende personeelsdossiers’ voor de rest. Bestaande historische records worden niet gewijzigd.</p>
+</section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+const LABELS={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance (AZLS)',depannage:'Depannage'};
+let auth,authModule,all=[],cursor=null,loading=false,scanned=0,limited=0,revision=0;
+const make=(type,content,klass)=>{
+ const el=document.createElement(type);if(klass)el.className=klass;
+ if(content!==undefined&&content!==null)el.textContent=String(content);return el;
+};
+const date=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||''))?
+ s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—';
+function status(value,error=false){
+ $('status').textContent=value;$('status').classList.toggle('error',error);
+}
+async function api(url){
+ if(!auth?.currentUser)throw Error('Aanmelden met een bevoegd account is vereist.');
+ const token=await auth.currentUser.getIdToken();
+ const r=await fetch(url,{cache:'no-store',headers:{Authorization:'Bearer '+token}});
+ const d=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(d.error||'Niet beschikbaar');
+ return d;
+}
+function render(){
+ const term=$('query').value.trim().toLocaleLowerCase('nl-BE'),kind=$('result').value;
+ const visible=all.filter(x=>(!kind||x.result===kind)&&(!term||
+  [x.name,x.call,x.rank,x.courseName,x.instructor,x.reviewStatus,x.eventDate]
+   .join(' ').toLocaleLowerCase('nl-BE').includes(term))).sort((a,b)=>
+  String(b.eventDate||'').localeCompare(String(a.eventDate||''))||
+  String(a.name||'').localeCompare(String(b.name||''),'nl'));
+ $('allCount').textContent=all.length;
+ $('passedCount').textContent=all.filter(x=>x.result==='geslaagd').length;
+ $('attendanceCount').textContent=all.filter(x=>x.result==='deelname_bevestigd').length;
+ $('scanState').textContent=scanned+' personeelsdossiers doorzocht · '+visible.length+
+  ' registraties getoond'+(cursor?' · niet alle personeelsdossiers geladen':'')+
+  (limited?' · '+limited+' dossier(s) met oudere registraties buiten de laadlimiet':'');
+ const container=$('entries');container.replaceChildren();
+ for(const x of visible){
+  const item=make('article',null,'record');
+  const top=make('div',null,'top');top.append(
+    make('strong',x.name||'Personeelslid'),
+    make('span',x.result==='geslaagd'?'Geslaagd':'Deelname bevestigd','tag')
+  );
+  const details=make('div',null,'details');
+  for(const s of ['Roepnr. '+(x.call||'—'),'Graad: '+(x.rank||'—'),date(x.eventDate),
+   'Opleider / bevestiger: '+(x.instructor||'Niet vermeld')])details.append(make('span',s));
+  item.append(top,details,make('div',x.courseName||'Opleiding','course'));
+  if(x.reviewStatus)item.append(make('p','Beoordelingsstatus: '+x.reviewStatus,'muted'));
+  if(x.details)item.append(make('p',x.details,'explain'));
+  const actions=make('div',null,'actions');
+  const link=make('a','Open personeelsdossier');
+  link.href='/personeelsbeheer.html?'+new URLSearchParams({
+   fiche:'1',dept:x.dept,discordId:x.discordId});
+  actions.append(link);item.append(actions);container.append(item);
+ }
+ if(!visible.length)container.append(make('p',cursor?
+  'Geen overeenkomende opleidingsregistraties in de reeds doorzochte personeelsdossiers.':
+  'Geen overeenkomende voltooide opleidingen gevonden.','muted'));
+}
+async function fetchBatch(reset=false){
+ if(loading&&!reset||!$('dept').value)return;
+ loading=true;$('more').disabled=true;
+ const rev=revision;
+ if(reset){all=[];cursor=null;scanned=0;limited=0;render()}
+ try{
+  const dept=$('dept').value;
+  const data=await api('/api/training/completed-overview?dept='+encodeURIComponent(dept)+
+   (cursor?'&after='+encodeURIComponent(cursor):''));
+  if(rev!==revision||dept!==$('dept').value)return;
+  const keys=new Set(all.map(x=>x.source+':'+x.dept+':'+x.discordId+':'+x.id));
+  for(const row of data.entries||[]){
+   const id=row.source+':'+row.dept+':'+row.discordId+':'+row.id;
+   if(!keys.has(id)){all.push(row);keys.add(id)}
+  }
+  scanned+=data.scannedSubjects||0;
+  limited+=data.limitedSubjects||0;
+  cursor=data.nextCursor||null;
+  $('more').hidden=!cursor;
+  render();
+  status('Opleidingsgegevens geladen voor '+LABELS[dept]+'.');
+ }catch(error){if(rev===revision)status('Overzicht kan niet worden geladen: '+error.message,true)}
+ finally{if(rev===revision){loading=false;$('more').disabled=false}}
+}
+async function context(){
+ ++revision;all=[];cursor=null;scanned=0;limited=0;
+ $('overview').hidden=true;
+ if(!auth?.currentUser){status('Meld je aan met je gemachtigde Discord-account.');return}
+ try{
+  const data=await api('/api/training/completed-overview/context');
+  const selection=$('dept');selection.replaceChildren();
+  for(const dept of data.departments||[]){
+   const option=make('option',LABELS[dept]||dept);option.value=dept;
+   selection.append(option);
+  }
+  if(!selection.options.length)throw Error('Geen opleidingsinzage voor jouw diensten');
+  $('overview').hidden=false;
+  await fetchBatch(true);
+ }catch(error){status('Geen toegang tot dit overzicht: '+error.message,true)}
+}
+$('dept').onchange=()=>{++revision;fetchBatch(true)};
+$('query').oninput=render;$('result').onchange=render;
+$('more').onclick=()=>fetchBatch(false);
+$('refresh').onclick=()=>{++revision;fetchBatch(true)};
+async function init(){
+ const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+ if(!cfg.enabled)throw Error('Firebase is niet ingesteld');
+ const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+ authModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+ auth=authModule.getAuth(appModule.initializeApp(cfg.firebaseConfig));
+ const {setupPortalLogin}=await import('/portal-login.js');
+ setupPortalLogin({button:$('login'),auth,authModule,config:cfg,
+  onError:e=>status(e.message,true)});
+ authModule.onAuthStateChanged(auth,context);
+}
+init().catch(e=>status(e.message,true));
+</script>
+<script defer src="/bpd-navigation.js"></script>
+</body></html>

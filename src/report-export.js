@@ -108,6 +108,9 @@ export function createWeekReportDocx(out){
   body.push(PARA('Aangemaakt door: '+(r.createdBy?.name||'Onbekend')));
   body.push(PARA('Status: CONCEPT – dynamische weergave, geen afgesloten archief',{bold:true}));
   body.push(PARA('Registraties: '+out.recordCount+' · Uitgesloten testregistraties: '+(out.excludedTestCount||0)));
+  body.push(PARA('Geslaagde opleidingen: '+(out.completionSummary?.passed||0)+
+    ' · Opleidingen met bevestigde deelname (niet automatisch geslaagd): '+
+    (out.completionSummary?.attendanceConfirmed||0)));
   body.push(PARA('Belangrijk: alleen actuele Firestore-dossierregistraties. Oude Word-rapporten en externe Google-dossiers zijn niet geïmporteerd.'));
   for(const section of out.sections){
     body.push(PARA(section.label+' ('+section.entries.length+')',{heading:true}));

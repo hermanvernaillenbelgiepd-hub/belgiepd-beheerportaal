@@ -12,6 +12,10 @@ import { basePermissions,effectivePermissions,validateOverride,canAdministerRole
 import { mayMaintainTraining,isArchivedTraining,validateMaintenanceReason,isRecordId,requiresReReview } from './training-maintenance.js';
 import {roleForDepartment} from './leave-policy.js';
 import {brusselsEventDate} from './personnel-event-date.js';
+import {COMPLETION_OVERVIEW_DEPARTMENTS,COMPLETION_OVERVIEW_BATCH,
+  COMPLETION_OVERVIEW_RECORD_LIMIT,COMPLETION_OVERVIEW_CASE_LIMIT,
+  completedTrainingResult,completedTrainingAttendance,completionSort}
+  from './training-completion-overview.js';
 import {isCorpsLeadershipPersonnel} from './personnel-editor-policy.js';
 import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
 import {verifiedFireRoles,fireSubjectClass,FIRE_ROLES} from './fire-dossier-policy.js';
@@ -254,6 +258,79 @@ export function installRoleRoutes(app,{getSnapshot}={}){
         tx.create(db().collection('bpd_permission_audit').doc(),{targetDiscordId:target,department:change.department,permission:change.permission,previous:prev,next:existing[change.permission]||null,reason:change.reason,actorDiscordId:actor.discordId,actorUid:actor.uid,at:FieldValue.serverTimestamp()});
       });
       res.json({saved:true,googleSheetsUpdated:false,discordRolesUpdated:false});
+    }catch(e){error(res,e)}
+  });
+  // Dedicated read-only leadership overview. Reuses the existing verified
+  // training.review permission and protected-subject checks, not an insecure
+  // broad collection-group query or a second Firestore training register.
+  app.get('/api/training/completed-overview/context',resolveActor,(req,res)=>{
+    const departments=COMPLETION_OVERVIEW_DEPARTMENTS.filter(dept=>
+      trainingAccess(req,dept,'review'));
+    if(!departments.length)
+      return res.status(403).json({error:'Alleen bevoegde opleidingsleiding mag dit overzicht openen'});
+    res.set('Cache-Control','private, no-store');
+    res.json({departments,batchSize:COMPLETION_OVERVIEW_BATCH,
+      source:'bpd_training + uitgevoerde dossieraanvragen'});
+  });
+  app.get('/api/training/completed-overview',resolveActor,async(req,res)=>{
+    const dept=asText(req.query?.dept,40),after=asText(req.query?.after,22);
+    if(!COMPLETION_OVERVIEW_DEPARTMENTS.includes(dept))
+      return res.status(400).json({error:'Ongeldige hulpdienst'});
+    if(!trainingAccess(req,dept,'review'))
+      return res.status(403).json({error:'Geen volledig opleidingsinzagerecht voor deze hulpdienst'});
+    if(after&&!isDiscordId(after))
+      return res.status(400).json({error:'Ongeldige paginaverwijzing'});
+    try{
+      const snap=await getSnapshot({includeArchived:true});
+      if(snap.stale)return res.status(503).json({error:'Personeelsbron is momenteel niet actueel'});
+      const people=snap.data.filter(p=>p.dept===dept&&isDiscordId(p.personId))
+        .sort((a,b)=>a.personId.localeCompare(b.personId));
+      const counts=new Map();
+      for(const p of people)counts.set(p.personId,(counts.get(p.personId)||0)+1);
+      const eligible=people.filter(p=>counts.get(p.personId)===1&&
+        (!after||p.personId>after));
+      const subjects=eligible.slice(0,COMPLETION_OVERVIEW_BATCH);
+      const verified=await verifiedSubjects(subjects);
+      const visible=subjects.filter(p=>
+        mayAccessSubject(req.roleActor.bpd,p,verified));
+      const entries=[],limitedSubjects=[];
+      for(let i=0;i<visible.length;i+=5){
+        const part=await Promise.all(visible.slice(i,i+5).map(async person=>{
+          const stem=dept+'_'+person.personId;
+          const [training,cases]=await Promise.all([
+            db().collection('bpd_training').doc(stem).collection('records')
+              .orderBy('createdAt','desc')
+              .limit(COMPLETION_OVERVIEW_RECORD_LIMIT+1).get(),
+            db().collection('bpd_cases').doc(stem).collection('entries')
+              .orderBy('createdAt','desc')
+              .limit(COMPLETION_OVERVIEW_CASE_LIMIT+1).get()
+          ]);
+          const rows=[
+            ...training.docs.slice(0,COMPLETION_OVERVIEW_RECORD_LIMIT)
+              .map(d=>completedTrainingResult(d.data(),person,d.id)).filter(Boolean),
+            ...cases.docs.slice(0,COMPLETION_OVERVIEW_CASE_LIMIT)
+              .map(d=>completedTrainingAttendance(d.data(),person,d.id)).filter(Boolean)
+          ];
+          return {rows,limited:training.size>COMPLETION_OVERVIEW_RECORD_LIMIT||
+              cases.size>COMPLETION_OVERVIEW_CASE_LIMIT,
+            personId:person.personId};
+        }));
+        for(const item of part){
+          entries.push(...item.rows);
+          if(item.limited)limitedSubjects.push(item.personId);
+        }
+      }
+      res.set('Cache-Control','private, no-store');
+      res.json({dept,entries:entries.sort(completionSort),
+        scannedSubjects:subjects.length,
+        nextCursor:eligible.length>COMPLETION_OVERVIEW_BATCH?
+          subjects.at(-1).personId:null,
+        limitedSubjects:limitedSubjects.length,
+        limited:limitedSubjects.length>0,
+        notes:[
+          'Geslaagd = bevestigd opleidingsresultaat',
+          'Deelname bevestigd = opleiding uitgevoerd, niet noodzakelijk geslaagd'
+        ]});
     }catch(e){error(res,e)}
   });
   app.get('/api/training/people',resolveActor,async(req,res)=>{
