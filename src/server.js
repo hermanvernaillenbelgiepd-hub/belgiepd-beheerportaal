@@ -480,6 +480,30 @@ async function requireUser(req,res,next){
     }
     actor.profileTechnicalAvailable=canSwitch;
     actor.discordPoliceRank=verifiedPoliceRank(discordMember,process.env.DISCORD_GUILD_ID);
+    // Personnel rank decisions use the independently verified operational
+    // Discord role. A member's existing role snapshot can outlive the short
+    // privileged-role window while the portal login remains active. Refresh
+    // ONLY the same signed Discord identity, directly from the guild bot;
+    // never infer promotion rights from callsign, Board or portal role alone.
+    const personnelRankAction=req.path==='/api/personnel/overview'||
+      /^\/api\/personnel\/politie\/\d{15,22}\/rank-change$/.test(req.path)||
+      req.path.startsWith('/api/police-promotions/');
+    const policeScoped=departmentRoles.politie;
+    if(personnelRankAction&&verified.uid==='discord:'+discordId&&
+      departments.includes('politie')&&
+      ['officierenkader','korpsleiding'].includes(actor.role)&&
+      policeScoped===actor.role&&actor.discordPoliceRank!==actor.role){
+      const guild=await verifyGuildAuthorizationRoles(discordId);
+      if(guild.status==='ok'){
+        actor.discordPoliceRank=verifiedPoliceRank({
+          guildId:process.env.DISCORD_GUILD_ID,verifiedAt:Date.now(),
+          roleIds:guild.roleIds
+        },process.env.DISCORD_GUILD_ID);
+      }else if(guild.status==='not_member'){
+        actor.discordPoliceRank=null;
+      }
+      // Bot outages never transform stale session roles into authority.
+    }
     // Scoped read-only proof, used ONLY for writing lower-rank Police observations.
     actor.discordPoliceMemberVerified=Boolean(verified.uid==='discord:'+discordId&&
       verifiedPoliceMembership(discordMember,process.env.DISCORD_GUILD_ID));
