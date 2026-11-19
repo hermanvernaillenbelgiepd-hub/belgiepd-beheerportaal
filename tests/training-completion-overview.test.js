@@ -9,7 +9,7 @@ const path=file=>readFileSync(new URL('../'+file,import.meta.url),'utf8');
 const id='1398985105254650007';
 const subject={dept:'politie',personId:id,name:'Medewerker',call:'316',rank:'Inspecteur'};
 
-test('Only genuinely passed training results count as completed',()=>{
+test('Every registered training outcome is visible for authorized leadership',()=>{
  const src={department:'politie',subjectDiscordId:id,courseName:'K-9',
    result:'geslaagd',eventDate:'2026-11-10',instructorName:'Opleider',
    details:'Met succes afgerond',rosterStatus:'klaar_voor_manuele_invoer',
@@ -17,8 +17,10 @@ test('Only genuinely passed training results count as completed',()=>{
  const result=completedTrainingResult(src,subject,'abc123');
  assert.deepEqual([result.result,result.source,result.eventDate,result.name,result.instructor],
   ['geslaagd','opleidingsregister','2026-11-10','Medewerker','Opleider']);
- assert.equal(completedTrainingResult({...src,result:'in_opleiding'},subject,'abc123'),null);
- assert.equal(completedTrainingResult({...src,result:'niet_geslaagd'},subject,'abc123'),null);
+ for(const result of ['aanwezig','geslaagd','niet_geslaagd','onderbroken',
+   'in_opleiding','stage','restricted'])
+   assert.equal(completedTrainingResult({...src,result},subject,'abc123')?.result,result);
+ assert.equal(completedTrainingResult({...src,result:'ONBEKEND'},subject,'abc123'),null);
  assert.equal(completedTrainingResult({...src,status:'verwijderd'},subject,'abc123'),null);
  assert.equal(completedTrainingResult({...src,subjectDiscordId:'111111111111111111'},subject,'abc123'),null);
  assert.equal(completedTrainingResult({...src,eventDate:'2026-02-31'},subject,'abc123'),null);

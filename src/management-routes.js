@@ -13,6 +13,7 @@ import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION
 import {isArchivedTraining} from './training-maintenance.js';
 import {projectLeaveReportEvent} from './leave-report-projection.js';
 import {brusselsEventDate} from './personnel-event-date.js';
+import {TRAINING_RESULT_LABELS} from './training-result-policy.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {staffActivityFollowup} from './staff-activity-followup.js';
@@ -652,9 +653,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
           result.push({
             id:'training:'+doc.id,type:'opleiding',eventDate:r.eventDate,
             courseName:r.courseName,trainingResult:r.result,
-            details:['Opleidingsresultaat: '+({geslaagd:'Geslaagd',
-              niet_geslaagd:'Niet geslaagd',in_opleiding:'In opleiding',
-              stage:'Stage',restricted:'RESTRICTED'}[r.result]||'Onbekend'),
+            details:['Opleidingsresultaat: '+(TRAINING_RESULT_LABELS[r.result]||'Onbekend'),
               r.instructorName?'Opleider: '+String(r.instructorName).slice(0,120):'',
               r.details||''].filter(Boolean).join(' · '),
             subjectDiscordId:pid,subjectNameAtCreation:person?.name||'—',
@@ -784,9 +783,12 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     }
     const sections=reportSections(result,report.periodStart,report.periodEnd);
     const trainingItems=sections.find(section=>section.type==='opleiding')?.entries||[];
+    const official=trainingItems.filter(item=>item.source==='bpd_training');
     const completionSummary={
-      passed:trainingItems.filter(item=>item.source==='bpd_training'&&
-        item.trainingResult==='geslaagd').length,
+      present:official.filter(item=>item.trainingResult==='aanwezig').length,
+      passed:official.filter(item=>item.trainingResult==='geslaagd').length,
+      failed:official.filter(item=>item.trainingResult==='niet_geslaagd').length,
+      interrupted:official.filter(item=>item.trainingResult==='onderbroken').length,
       attendanceConfirmed:trainingItems.filter(item=>
         item.trainingRequestId&&item.reportCategory==='opleiding').length
     };

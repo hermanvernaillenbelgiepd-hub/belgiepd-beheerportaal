@@ -47,10 +47,10 @@ body.training-embedded #training h2{font-size:17px}
   <div class="status" id="state" role="status" aria-live="polite">Verbinden…</div>
 </div>
 
-<section class="panel" id="training" hidden><h2>Opleidingshistoriek en resultaten</h2><p>De opleiding en het resultaat worden hier per hulpdienst en Discord-ID bewaard. Je kunt ze raadplegen en met de juiste rechten aanpassen. Dit wijzigt geen Discord-rol of officiële personeelslijst en registreert niet automatisch een weekrapportnotitie.</p>
+<section class="panel" id="training" hidden><h2>Opleidingshistoriek en resultaten</h2><p>De opleiding en het resultaat worden hier per hulpdienst en Discord-ID bewaard. Je kunt ze raadplegen en met de juiste rechten aanpassen. Iedere geregistreerde opleiding verschijnt in het personeelsdossier, het dynamische weekrapport en het beveiligde leidingoverzicht. Discord-rollen en rangen wijzigen niet automatisch.</p>
 <div class="two"><label>Hulpdienst<select id="dept"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="dispatch">Dispatch</option></select></label><label>Personeelslid binnen deze hulpdienst<select id="subjectChoice" aria-describedby="peopleNote"><option value="">Haal personeelslijst op…</option></select><input id="subject" type="hidden"></label></div><p id="peopleNote" class="mini">Alleen collega's uit jouw gemachtigde hulpdienst zijn selecteerbaar.</p>
 <button class="secondary" id="showRecords">Opleidingshistoriek raadplegen</button><p class="mini">Via <strong>Wijzigen</strong> of <strong>Verwijderen</strong> kun je een registratie aanpassen of archiveren, voor zover je bevoegd bent. De audit blijft bewaard. De officiële personeelslijst en Discord-rollen wijzigen niet.</p><div id="records"></div>
-<h3>Opleiding registreren</h3><div class="two"><label>Opleiding<select id="course"><option value="">Kies een opleiding…</option><option value="RADIO OPLEIDING (VERPLICHT)">RADIO OPLEIDING (VERPLICHT)</option><option value="RADIO OPLEIDING (VRIJWILLIG)">RADIO OPLEIDING (VRIJWILLIG)</option><option value="BASISCURSIS">BASISCURSIS</option><option value="GEWELDBEHEERSING">GEWELDBEHEERSING</option><option value="WAPENGEBRUIK">WAPENGEBRUIK</option><option value="VERKEERSBEGELEIDING">VERKEERSBEGELEIDING</option><option value="VERKEERSCONTROLE">VERKEERSCONTROLE</option><option value="PRIORITAIR RIJDEN">PRIORITAIR RIJDEN</option><option value="EHBO VOOR INTERVENIERENDEN">EHBO VOOR INTERVENIERENDEN</option><option value="BEVEILIGEN OPENBARE WEG">BEVEILIGEN OPENBARE WEG</option><option value="K-9">K-9</option><option value="RAGO">RAGO</option><option value="MOTARD">MOTARD</option><option value="MOTARD-OFF ROAD">MOTARD-OFF ROAD</option><option value="DISPATCH">DISPATCH</option><option value="BEVOEGDHEDEN TO">BEVOEGDHEDEN TO</option><option value="ERT AE-I">ERT AE-I</option><option value="ERT AE-T">ERT AE-T</option><option value="ERT-AE-F">ERT-AE-F</option><option value="ANDERE">ANDERE (zelf invullen)</option></select></label><label>Datum<input id="date" type="date"></label></div><label id="courseOtherWrap" hidden>Andere opleiding<input id="courseOther" maxlength="150" minlength="3" placeholder="Naam van de opleiding"></label><label>Opleider (naam of roepnummer)<input id="instructorName" type="text" minlength="2" maxlength="120" placeholder="Bijv. 930 · Naam opleider" required></label><label>Resultaat<select id="result"><option value="in_opleiding">In opleiding</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="stage">STAGE</option><option value="restricted">RESTRICTED</option></select></label><label>Opmerkingen<textarea id="details" maxlength="1600" placeholder="Evaluatie en aandachtspunten"></textarea></label><button id="saveTraining">Registratie bewaren</button><button class="secondary" id="cancelEdit" hidden>Wijziging annuleren</button><p class="mini" id="editNotice" hidden></p><p class="mini" id="trainingNote"></p></section>
+<h3>Opleiding registreren</h3><div class="two"><label>Opleiding<select id="course"><option value="">Kies een opleiding…</option><option value="RADIO OPLEIDING (VERPLICHT)">RADIO OPLEIDING (VERPLICHT)</option><option value="RADIO OPLEIDING (VRIJWILLIG)">RADIO OPLEIDING (VRIJWILLIG)</option><option value="BASISCURSIS">BASISCURSIS</option><option value="GEWELDBEHEERSING">GEWELDBEHEERSING</option><option value="WAPENGEBRUIK">WAPENGEBRUIK</option><option value="VERKEERSBEGELEIDING">VERKEERSBEGELEIDING</option><option value="VERKEERSCONTROLE">VERKEERSCONTROLE</option><option value="PRIORITAIR RIJDEN">PRIORITAIR RIJDEN</option><option value="EHBO VOOR INTERVENIERENDEN">EHBO VOOR INTERVENIERENDEN</option><option value="BEVEILIGEN OPENBARE WEG">BEVEILIGEN OPENBARE WEG</option><option value="K-9">K-9</option><option value="RAGO">RAGO</option><option value="MOTARD">MOTARD</option><option value="MOTARD-OFF ROAD">MOTARD-OFF ROAD</option><option value="DISPATCH">DISPATCH</option><option value="BEVOEGDHEDEN TO">BEVOEGDHEDEN TO</option><option value="ERT AE-I">ERT AE-I</option><option value="ERT AE-T">ERT AE-T</option><option value="ERT-AE-F">ERT-AE-F</option><option value="ANDERE">ANDERE (zelf invullen)</option></select></label><label>Datum<input id="date" type="date"></label></div><label id="courseOtherWrap" hidden>Andere opleiding<input id="courseOther" maxlength="150" minlength="3" placeholder="Naam van de opleiding"></label><label>Opleider (naam of roepnummer)<input id="instructorName" type="text" minlength="2" maxlength="120" placeholder="Bijv. 930 · Naam opleider" required></label><label>Resultaat<select id="result"><option value="aanwezig">Aanwezig</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="onderbroken">Onderbroken</option></select></label><label>Opmerkingen<textarea id="details" maxlength="1600" placeholder="Evaluatie en aandachtspunten"></textarea></label><button id="saveTraining">Registratie bewaren</button><button class="secondary" id="cancelEdit" hidden>Wijziging annuleren</button><p class="mini" id="editNotice" hidden></p><p class="mini" id="trainingNote"></p></section>
 <section class="panel" id="admin" hidden><h2>Uitzonderingen in machtigingen</h2><p>Alleen vooraf gemachtigd officierenkader of korpsleiding via Google. Je kunt je eigen rechten niet veranderen. Alle wijzigingen krijgen een auditvermelding.</p>
 <div class="two"><label>Discord ID medewerker<input id="target" maxlength="22" inputmode="numeric"></label><label>Hulpdienst<select id="overrideDept"><option value="politie">Politie</option><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option><option value="dispatch">Dispatch</option></select></label></div>
 <div class="two"><label>Bevoegdheid<select id="perm"><option value="training.log">Opleidingen registreren</option><option value="training.review">Opleidingsregistratie controleren</option></select></label><label>Actie<select id="action"><option value="allow">Toekennen</option><option value="deny">Weigeren</option><option value="inherit">Uitzondering opheffen</option></select></label></div>
@@ -107,7 +107,9 @@ function refreshCourseOptions(){
   {value:'',text:trainingSelectLabels[dept]||'Kies een opleiding…'},
   ...courses.map(value=>({value,text:value})),
   ...(dept==='brandweer'?[{value:'ANDERE',text:'ANDERE (zelf invullen)'}]:[])
- ]:originalCourses;
+ ]:(dept==='politie'?originalCourses:[
+   {value:'',text:'Kies een opleiding…'},
+   {value:'ANDERE',text:'ANDERE (zelf invullen)'}]);
  $('course').replaceChildren(...options.map(o=>new Option(o.text,o.value)));
  $('course').value=options.some(o=>o.value===chosen)?chosen:'';
  syncCourseOther();
@@ -169,6 +171,8 @@ function cancelEdit(){
   $('saveTraining').textContent='Registratie bewaren';$('cancelEdit').hidden=true;
   $('editNotice').hidden=true;
   $('course').value='';
+  for(const historic of $('result').querySelectorAll('option[data-legacy]'))historic.remove();
+  $('result').value='aanwezig';
   $('instructorName').value='';
   refreshCourseOptions();
 }
@@ -182,7 +186,7 @@ async function showRecords(){
     if(!d.records.length){text($('records'),'Nog geen registraties.','p');return}
     const t=document.createElement('table'),head=document.createElement('tr');
     for(const h of ['Datum','Opleiding','Opleider','Resultaat','Personeelslijst','Aangemaakt','Acties'])text(head,h,'th');t.append(head);
-    const resultLabels={in_opleiding:'In opleiding',geslaagd:'Geslaagd',niet_geslaagd:'Niet geslaagd',stage:'STAGE',restricted:'RESTRICTED'};
+    const resultLabels={aanwezig:'Aanwezig',geslaagd:'Geslaagd',niet_geslaagd:'Niet geslaagd',onderbroken:'Onderbroken',in_opleiding:'In opleiding (historisch)',stage:'STAGE (historisch)',restricted:'RESTRICTED (historisch)'};
     const reviewLabels={nog_niet_beoordeeld:'Nog niet beoordeeld',ter_controle:'Ter controle',klaar_voor_manuele_invoer:'Klaar voor manuele invoer'};
     for(const r of d.records){
       const tr=document.createElement('tr');
@@ -194,7 +198,12 @@ async function showRecords(){
           editing={id:r.id,department:dept,discordId:subject};
           $('dept').value=dept;$('subject').value=subject;$('dept').disabled=true;
           $('subjectChoice').disabled=true;
-          setCourse(r.courseName);$('date').value=r.eventDate;$('result').value=r.result;$('details').value=r.details||'';
+          setCourse(r.courseName);$('date').value=r.eventDate;
+          if(![...$('result').options].some(o=>o.value===r.result)){
+            const historic=new Option('Historisch resultaat · '+(resultLabels[r.result]||r.result),r.result);
+            historic.dataset.legacy='true';$('result').append(historic);
+          }
+          $('result').value=r.result;$('details').value=r.details||'';
           $('instructorName').value=r.instructorName||r.instructor||'';
           $('saveTraining').textContent='Wijziging bewaren';$('cancelEdit').hidden=false;
           $('editNotice').textContent='Je bewerkt een bestaande registratie. Geef bij bewaren een reden. De Discord-rollen en personeelslijst blijven onveranderd.';

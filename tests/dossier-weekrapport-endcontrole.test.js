@@ -39,6 +39,7 @@ test('Eervol ontslag wordt éénmaal in dossier/rapport opgenomen',()=>{
 });
 test('Opleiding stage en opleider worden correct in rapport beschreven',()=>{
  const src=file('src/management-routes.js');
- assert.match(src,/stage:'Stage',restricted:'RESTRICTED'/);
+ assert.match(src,/TRAINING_RESULT_LABELS\[r\.result\]/);
+ assert.match(file('src/training-result-policy.js'),/stage:'Stage \(historisch\)',restricted:'RESTRICTED \(historisch\)'/);
  assert.match(src,/r\.instructorName\?'Opleider: '/);
 });

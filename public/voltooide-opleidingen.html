@@ -62,18 +62,23 @@ button.secondary{background:var(--card);color:var(--fg)}button:disabled{opacity:
 <div class="field"><label for="dept">Hulpdienst</label><select id="dept"></select></div>
 <div class="field"><label for="query">Zoek in geladen registraties</label><input id="query" type="search" placeholder="Naam, roepnummer, opleiding, opleider"></div>
 <div class="field"><label for="result">Resultaat</label><select id="result">
-<option value="">Alles</option><option value="geslaagd">Geslaagd</option>
-<option value="deelname_bevestigd">Deelname bevestigd</option>
+<option value="">Alle resultaten</option><option value="aanwezig">Aanwezig</option><option value="geslaagd">Geslaagd</option>
+<option value="niet_geslaagd">Niet geslaagd</option><option value="onderbroken">Onderbroken</option>
+<option value="deelname_bevestigd">Deelname bevestigd (aanvraag)</option>
+<option value="in_opleiding">In opleiding (historisch)</option><option value="stage">Stage (historisch)</option><option value="restricted">RESTRICTED (historisch)</option>
 </select></div>
 <button class="secondary" id="refresh" type="button">Vernieuwen</button>
 </div>
 <div class="counters">
 <div class="count"><b id="allCount">0</b><small>Gevonden registraties</small></div>
-<div class="count"><b id="passedCount">0</b><small>Geslaagde resultaten</small></div>
+<div class="count"><b id="presentCount">0</b><small>Aanwezig</small></div>
+<div class="count"><b id="passedCount">0</b><small>Geslaagd</small></div>
+<div class="count"><b id="failedCount">0</b><small>Niet geslaagd</small></div>
+<div class="count"><b id="interruptedCount">0</b><small>Onderbroken</small></div>
 <div class="count"><b id="attendanceCount">0</b><small>Deelname bevestigd</small></div>
 </div>
 <p class="muted" id="scanState">Geen dossiers doorzocht.</p>
-<div class="note"><strong>Betekenis:</strong> ‘Geslaagd’ is een vastgelegd opleidingsresultaat. ‘Deelname bevestigd’ betekent dat de aangevraagde opleiding uitgevoerd is; zonder afzonderlijke beoordeling is daarmee geen slagen aangetoond.</div>
+<div class="note"><strong>Betekenis:</strong> Aanwezig, Geslaagd, Niet geslaagd en Onderbroken zijn de formeel geregistreerde opleidingsresultaten. ‘Deelname bevestigd’ komt uit een uitgevoerde opleidingsaanvraag en is op zichzelf geen slagingsbeoordeling. Historische resultaten behouden hun oorspronkelijke status.</div>
 <h2>Opleidingshistoriek</h2>
 <div id="entries" class="list"></div>
 <button class="secondary" id="more" type="button" hidden>Volgende personeelsdossiers doorzoeken</button>
@@ -109,7 +114,10 @@ function render(){
   String(b.eventDate||'').localeCompare(String(a.eventDate||''))||
   String(a.name||'').localeCompare(String(b.name||''),'nl'));
  $('allCount').textContent=all.length;
+ $('presentCount').textContent=all.filter(x=>x.result==='aanwezig').length;
  $('passedCount').textContent=all.filter(x=>x.result==='geslaagd').length;
+ $('failedCount').textContent=all.filter(x=>x.result==='niet_geslaagd').length;
+ $('interruptedCount').textContent=all.filter(x=>x.result==='onderbroken').length;
  $('attendanceCount').textContent=all.filter(x=>x.result==='deelname_bevestigd').length;
  $('scanState').textContent=scanned+' personeelsdossiers doorzocht · '+visible.length+
   ' registraties getoond'+(cursor?' · niet alle personeelsdossiers geladen':'')+
@@ -119,7 +127,10 @@ function render(){
   const item=make('article',null,'record');
   const top=make('div',null,'top');top.append(
     make('strong',x.name||'Personeelslid'),
-    make('span',x.result==='geslaagd'?'Geslaagd':'Deelname bevestigd','tag')
+    make('span',({aanwezig:'Aanwezig',geslaagd:'Geslaagd',niet_geslaagd:'Niet geslaagd',
+       onderbroken:'Onderbroken',deelname_bevestigd:'Deelname bevestigd',
+       in_opleiding:'In opleiding (historisch)',stage:'Stage (historisch)',
+       restricted:'RESTRICTED (historisch)'}[x.result]||'Onbekend resultaat'),'tag')
   );
   const details=make('div',null,'details');
   for(const s of ['Roepnr. '+(x.call||'—'),'Graad: '+(x.rank||'—'),date(x.eventDate),
@@ -135,7 +146,7 @@ function render(){
  }
  if(!visible.length)container.append(make('p',cursor?
   'Geen overeenkomende opleidingsregistraties in de reeds doorzochte personeelsdossiers.':
-  'Geen overeenkomende voltooide opleidingen gevonden.','muted'));
+  'Geen overeenkomende opleidingsresultaten gevonden.','muted'));
 }
 async function fetchBatch(reset=false){
  if(loading&&!reset||!$('dept').value)return;
