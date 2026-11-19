@@ -13,14 +13,13 @@ export const CORRECTABLE_CASE_TYPES = Object.freeze([
   'personeelsbeweging','specialisatiebeperking'
 ]);
 export function mayCorrectManualCase(actor,subject,entry){
-  if(!subject||subject.dept!=='politie'||!entry||
+  if(!subject||!['politie','ambulance','brandweer','depannage'].includes(subject.dept)||!entry||
      !CORRECTABLE_CASE_TYPES.includes(entry.type)||
      entry.dept!==subject.dept||entry.subjectDiscordId!==subject.personId||
      !entry.registeredBy?.discordId||entry.source||entry.amendmentOf||
      entry.ownCorpsNote===true||entry.pingNotificationId||
      entry.nominationStatus||entry.proposalStatus||isRetired(entry))return false;
-  return ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
-    canRetireDossierRecord(actor,subject);
+  return mayAnnotateDossierCase(actor,subject,entry);
 }
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
 /**
