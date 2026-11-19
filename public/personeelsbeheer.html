@@ -3852,7 +3852,7 @@ function renderLinkedTraining(p){
         String(row.result||'Onbekend resultaat'));
     const meta=document.createElement('span');meta.className='subtle';
     meta.textContent=generalNoteDate(row.eventDate)+
-      ' · Opleider: '+String(row.instructorName||row.instructor||row.registeredBy?.name||'niet vermeld');
+      ' · Opleider: '+String(row.instructorName||row.instructor||'niet vermeld');
     div.append(title,meta);
     if(row._trainingSource==='register'&&row.canEdit===true&&
         trainingRights?.trainingWritesEnabled===true&&
