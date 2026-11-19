@@ -23,7 +23,7 @@ th,td{border-bottom:1px solid #e3eaf3;padding:8px 9px;text-align:left;vertical-a
 th{position:sticky;top:0;background:#eaf1fb;color:#23406b;z-index:1}
 td small{display:block;color:#6b7a90;margin-top:3px}
 .state{display:inline-block;padding:3px 8px;border-radius:7px;background:#e8eff9;font-weight:700}
-.state-50\\/50{background:#fff0e7;color:#873f1c}
+.state-50\/50{background:#fff0e7;color:#873f1c}
 .state-inactief{background:#ffe5e8;color:#982a38}
 .state-beoordelen{background:#e9e9ee;color:#373a46}
 .roster-state{font-weight:800}
@@ -213,7 +213,7 @@ function render(){
   const current=el('td',p.currentStatus);
   current.className='roster-state';
   current.dataset.state=/^actief$/i.test(p.currentStatus||'')?'active':
-   /^50\\/50$/i.test(p.currentStatus||'')?'half':
+   /^50\/50$/i.test(p.currentStatus||'')?'half':
    /^inactief$/i.test(p.currentStatus||'')?'inactive':'other';
   if(p.statusMismatch)current.append(el('small','Verschilt van oude bron','warn'));row.append(current);
   const follow=el('td',p.returnChecking?'⚠ CHECKING':p.pingDossier?.latestStatus||'—');
