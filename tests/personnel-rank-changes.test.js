@@ -134,8 +134,9 @@ test('Discord bot refresh never grants rank edits without an actual Police Korps
  assert.match(src,/verifyGuildAuthorizationRoles\(discordId\)/);
  assert.match(src,/actor\.discordPoliceRank=verifiedPoliceRank\(\{/);
  assert.match(src,/verified\.uid==='discord:'\+discordId/);
- assert.match(src,/includes\(policeScoped\)/);
- assert.match(src,/actor\.discordPoliceRank!==policeScoped/);
+ assert.match(src,/const possiblePoliceCadre=/);
+ assert.match(src,/if\(personnelRankAction&&verified\.uid==='discord:'\+discordId/);
+ assert.match(src,/actor\.discordPoliceRank=verifiedPoliceRank\(\{/);
 });
 
 test('Board + highest Police Corps can make verified grade decisions despite a separate administrative role',()=>{
@@ -174,4 +175,21 @@ test('Only the original unified personnel-movement form appears for both cadre g
  assert.match(html,/id="staffMovementNewCall"/);
  assert.match(html,/<section id="rankChangePanel" hidden style="display:none!important/);
  assert.match(html,/\$\('rankChangePanel'\)\.hidden=true/);
+});
+
+test('read-only number previews and real promotions use fresh independently verified guild roles',()=>{
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ assert.match(server,/const possiblePoliceCadre=/);
+ assert.match(server,/actor\.policeRankVerificationStatus=guild\.status/);
+ assert.match(server,/actor\.discordPoliceRank=verifiedPoliceRank/);
+ const route=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ assert.match(route,/policeRankVerificationStatus==='bot_unavailable'/);
+ assert.match(route,/tx\.get\(fixedReservation\)/);
+ assert.match(route,/numberReservation\.exists/);
+ const actor={...officer,discordPoliceRank:'officierenkader'};
+ const sander=target('485','Inspecteur van Politie (INP)');
+ assert.equal(canChangePoliceGrade(actor,sander),true);
+ assert.equal(allowedPoliceGradeChoices(actor).includes('Eerste Inspecteur'),true);
+ assert.equal(canChangePoliceGrade({...actor,discordPoliceRank:null},sander),false);
+ assert.equal(canChangePoliceGrade({...actor,departmentRoles:{politie:'basiskader'}},sander),false);
 });
