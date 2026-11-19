@@ -34,6 +34,8 @@ RUN node --test tests/notification-scope-permissions.test.js
 RUN node --test tests/training-unified-workflow.test.js
 RUN node --test tests/training-specialty-approval.test.js
 RUN node --test tests/portal-date-display.test.js
+RUN node --test tests/training-instructor-choice.test.js
+RUN node --test tests/dossier-linked-cases.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
