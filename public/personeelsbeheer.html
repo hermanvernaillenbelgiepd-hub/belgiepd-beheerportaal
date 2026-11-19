@@ -1156,7 +1156,14 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
   <input id="staffTrainingOther" maxlength="150" minlength="3" placeholder="Vul de naam van de opleiding in">
 </div>
 <div><label for="staffTrainingDate">Datum</label><input id="staffTrainingDate" type="date" required></div>
-<div><label for="staffTrainingInstructor">Opleider (naam of roepnummer)</label><input id="staffTrainingInstructor" type="text" minlength="2" maxlength="120" placeholder="Bijv. 930 · Naam opleider" required></div>
+<div><label for="staffTrainingInstructorChoice">Opleider (personeelslijst)</label>
+ <select id="staffTrainingInstructorChoice" required>
+  <option value="">Kies een opleider…</option><option value="__manual__">ANDERE · zelf invullen</option>
+ </select></div>
+<div id="staffTrainingInstructorManualWrap" hidden>
+ <label for="staffTrainingInstructor">Andere opleider</label>
+ <input id="staffTrainingInstructor" type="text" minlength="2" maxlength="120"
+  placeholder="Naam of roepnummer van opleider"></div>
 <div><label for="staffTrainingResult">Resultaat</label><select id="staffTrainingResult"><option value="aanwezig">Aanwezig</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="onderbroken">Onderbroken</option></select></div>
 <div id="staffTrainingStageWrap" hidden><label for="staffTrainingStage">Specialisatieopleiding</label><select id="staffTrainingStage"><option value="">Enkel aanwezig</option><option value="in_opleiding">In opleiding → STAGE na beoordeling</option></select></div>
 <p class="subtle" id="staffTrainingStageHint" style="grid-column:1/-1">Geslaagd geeft alleen een patch bij erkende specialisaties na beoordeling.</p>
@@ -1372,7 +1379,8 @@ import {mountPersonnelGroupSettingsEditor} from '/personnel-group-settings-edito
 import {displayServiceBadge,serviceIdentity} from '/dossier-service-badge.js';
 import {policeGroupedRoster,policeOperationalTier,policeTierDisplay} from '/police-roster-cadre.js';
 import {attachRosterNamePreview,dismissRosterNamePreview} from '/roster-name-preview.js';
-import {sortDossierColleagues} from '/dossier-colleague-sort.js';
+import {sortDossierColleagues,DOSSIER_COLLEAGUE_SORT_MODES} from '/dossier-colleague-sort.js';
+import {populateInstructorOptions,syncManualInstructor,selectedInstructor} from '/training-instructor-choices.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
 document.body.classList.add('dossier-onepage');
@@ -3135,7 +3143,8 @@ function populateLinkedColleagues(){
    known.set(p.discordId,p);
  }
  const people=[...known.values()].sort((a,b)=>
-   String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true}));
+   BPDPersonnelVisuals.comparePersonnel({...a,dept:selected.dept},
+     {...b,dept:selected.dept},DOSSIER_COLLEAGUE_SORT_MODES[selected.dept]||'name-asc'));
  for(const id of ['formalLinkedColleague','staffCaseLinkedColleague']){
    const field=$(id),before=field.value;
    field.replaceChildren(option('','Niet koppelen'),
@@ -3293,6 +3302,33 @@ async function loadStaffCasePermissions(person,key,canManage){
 }
 
 let trainingRights=null,trainingEditId=null;
+let staffTrainingInstructorPeople=[],staffTrainingInstructorListNonce=0;
+function renderStaffTrainingInstructorChoices(name=''){
+ populateInstructorOptions($('staffTrainingInstructorChoice'),$('staffTrainingInstructor'),
+   staffTrainingInstructorPeople,selected?.dept||'politie',
+   BPDPersonnelVisuals.comparePersonnel,name);
+ syncManualInstructor($('staffTrainingInstructorChoice'),$('staffTrainingInstructor'),
+   $('staffTrainingInstructorManualWrap'));
+}
+$('staffTrainingInstructorChoice').onchange=()=>syncManualInstructor(
+ $('staffTrainingInstructorChoice'),$('staffTrainingInstructor'),
+ $('staffTrainingInstructorManualWrap'));
+async function loadStaffInstructorChoices(p,key){
+ const requestId=++staffTrainingInstructorListNonce;
+ try{
+  const data=await request('/api/training/people?department='+encodeURIComponent(p.dept));
+  if(requestId!==staffTrainingInstructorListNonce||!sameDossier(key))return;
+  staffTrainingInstructorPeople=data.people||[];
+  const value=selectedInstructor($('staffTrainingInstructorChoice'),$('staffTrainingInstructor'));
+  renderStaffTrainingInstructorChoices(value);
+ }catch(e){
+  if(requestId!==staffTrainingInstructorListNonce||!sameDossier(key))return;
+  // Manual registration remains possible when the list is temporarily unavailable.
+  renderStaffTrainingInstructorChoices(selectedInstructor(
+    $('staffTrainingInstructorChoice'),$('staffTrainingInstructor')));
+ }
+}
+
 function syncStaffTrainingStage(){
  const dept=selected?.dept||'politie';
  const specialty=qualificationSpecialty(dept,selectedStaffTrainingName());
@@ -3333,6 +3369,7 @@ function setStaffTrainingCourse(name){
 function resetStaffTrainingEdit(){
   trainingEditId=null;
   $('staffTrainingForm').reset();
+  renderStaffTrainingInstructorChoices('');
   for(const historic of $('staffTrainingResult').querySelectorAll('option[data-legacy]'))historic.remove();
   $('staffTrainingResult').value='aanwezig';
   $('staffTrainingStage').value='';
@@ -3346,7 +3383,8 @@ function resetStaffTrainingEdit(){
 }
 $('staffTrainingCancel').onclick=resetStaffTrainingEdit;
 async function loadStaffTrainingRights(p,key){
-  trainingRights=null;trainingEditId=null;$('staffTrainingForm').hidden=true;
+  trainingRights=null;trainingEditId=null;staffTrainingInstructorPeople=[];
+  ++staffTrainingInstructorListNonce;$('staffTrainingForm').hidden=true;
   registrationModuleStates.training='bevoegdheden laden…';
   refreshPersonnelRegistrationOptions();
   try{
@@ -3359,7 +3397,10 @@ async function loadStaffTrainingRights(p,key){
         'je rol heeft geen opleidingsregistratierecht':'beschikbaar';
     $('staffTrainingForm').hidden=!(data.trainingWritesEnabled===true&&
       data.permissions?.[p.dept]?.['training.log']===true);
-    if(!$('staffTrainingForm').hidden)resetStaffTrainingEdit();
+    if(!$('staffTrainingForm').hidden){
+      resetStaffTrainingEdit();
+      void loadStaffInstructorChoices(p,key);
+    }
   }catch(e){
     if(sameDossier(key)){
       $('staffTrainingForm').hidden=true;
@@ -3386,7 +3427,7 @@ function staffTrainingEdit(record){
   $('staffTrainingStage').value=record.qualificationStage||'';
   syncStaffTrainingStage();
   $('staffTrainingDetails').value=record.details||'';
-  $('staffTrainingInstructor').value=record.instructorName||record.instructor||'';
+  renderStaffTrainingInstructorChoices(record.instructorName||record.instructor||'');
   $('staffTrainingTitle').textContent='Bestaande opleiding wijzigen';
   $('staffTrainingAmend').hidden=false;
   $('staffTrainingReason').required=true;
@@ -3406,7 +3447,8 @@ $('staffTrainingForm').onsubmit=async event=>{
     courseName,eventDate:$('staffTrainingDate').value,
     result:$('staffTrainingResult').value,qualificationStage:$('staffTrainingStage').value,
     details:$('staffTrainingDetails').value,
-    instructorName:$('staffTrainingInstructor').value.trim()};
+    instructorName:selectedInstructor(
+      $('staffTrainingInstructorChoice'),$('staffTrainingInstructor'))};
   if(id){
     body.reason=$('staffTrainingReason').value;
     if(body.reason.trim().length<8)return notice('Motivering wijziging: minstens 8 tekens.',true);
@@ -4209,7 +4251,9 @@ function updateHistoricalMigrationUi(){
    if(!visible)box.checked=false;
    const select=$(prefix+'Author'),old=select.value;
    select.replaceChildren(option('','Selecteer oorspronkelijke registrator'));
-   for(const p of choices.filter(p=>p.dept==='politie'))
+   const roster=choices.filter(p=>p.dept==='politie')
+      .sort((a,b)=>BPDPersonnelVisuals.comparePersonnel(a,b,'series-desc'));
+   for(const p of roster)
      select.append(option(p.discordId,(p.call||'—')+' · '+p.name));
    if([...select.options].some(o=>o.value===old))select.value=old;
    fields.hidden=!visible||!box.checked;
@@ -4252,7 +4296,9 @@ function updateHistoricalObservationUi(){
  const select=$('historicalObservationAuthor'),old=select.value;
  const participants=formalPermissions?.representatives||[];
  select.replaceChildren(option('','Selecteer oorspronkelijke registrator'));
- for(const p of participants.filter(p=>p.dept==='politie'))
+ const roster=participants.filter(p=>p.dept==='politie')
+   .sort((a,b)=>BPDPersonnelVisuals.comparePersonnel(a,b,'series-desc'));
+ for(const p of roster)
    select.append(option(p.discordId,(p.call||'—')+' · '+p.name+' · '+(p.rank||'Politie')));
  if([...select.options].some(o=>o.value===old))select.value=old;
  const show=visible&&$('historicalObservationCheck').checked;
