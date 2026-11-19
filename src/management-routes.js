@@ -13,6 +13,7 @@ import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION
 import {isArchivedTraining} from './training-maintenance.js';
 import {projectLeaveReportEvent} from './leave-report-projection.js';
 import {brusselsEventDate} from './personnel-event-date.js';
+import {ACTIVITY_FOLLOWUP_STATUS} from './activity-followup-status-policy.js';
 import {verifiedColleagueLink,createColleagueLink,loadLinkedCaseEntries} from './dossier-linked-cases.js';
 import {TRAINING_RESULT_LABELS} from './training-result-policy.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
@@ -174,6 +175,15 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel je Google-account eerst aan je eigen Discord ID'});
       const representedId=asString(req.body?.onBehalfOfDiscordId);
+      // Manual activity follow-up needs an explicit status and truthful
+      // Discord-sent attestation. Historical imports retain compatibility.
+      if(type==='inactiviteitsping'&&!representedId&&
+        (!ACTIVITY_FOLLOWUP_STATUS.includes(data.activityStatus)||
+         typeof data.discordPingSent!=='boolean'))
+        return res.status(400).json({error:'Kies de opvolgstatus en bevestig of een Discord-bericht werkelijk is verstuurd'});
+      if(type==='inactiviteitsping'&&data.discordPingSent===true&&
+         data.discordPingDate>brusselsEventDate())
+        return res.status(400).json({error:'De datum van een verstuurde Discord-ping kan niet in de toekomst liggen'});
       let represented=null,onBehalfReason='';
       if(representedId){
         const config=await db().collection(HISTORICAL_OBSERVATION_SETTINGS)
@@ -201,7 +211,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         submittedBy:{uid:req.bpd.uid,email:req.bpd.email},
         ...(type==='inactiviteitsping'?(represented?{
           historicalPing:true,pingNotificationStatus:'historisch'
-        }:{pingNotificationId:newDoc.id,pingNotificationStatus:'sent'}):{}),
+        }:{pingNotificationId:newDoc.id,pingNotificationStatus:'sent',
+          discordContactSource:'manual_attestation'}):{}),
         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
       batch.create(notice,{caseId:caseId(dept,id),entryId:newDoc.id,type,dept,createdAt:FieldValue.serverTimestamp()});
       createColleagueLink(db(),batch,{dept,primaryId:id,entryId:newDoc.id,

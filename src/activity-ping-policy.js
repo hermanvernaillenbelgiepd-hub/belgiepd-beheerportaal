@@ -94,9 +94,9 @@ export function assessActivityPings(evidence,{joinedAt=null,leaves=[]}={},now=ne
   if(last<=at){
    const anchor=absenceAnchor(evidence.lastConnectedAt,leaves,at);
    const days=(at-anchor)/DAY;
-   const kind=days>=30?'INACTIEF':days>=14?'50/50':null;
+   const kind=days>=30?'INACTIEF':days>=15?'50/50':null;
    if(kind){
-    const threshold=kind==='INACTIEF'?30:14;
+    const threshold=kind==='INACTIEF'?30:15;
     candidates.push(proposed(kind,
      'Geen bevestigde FiveM-verbinding gedurende minstens '+threshold+
      ' dagen. Laatste verbinding: '+evidence.lastConnectedAt+'.',
