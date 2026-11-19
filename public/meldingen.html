@@ -114,6 +114,9 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 }
 .notification-fold[open]>summary::before{transform:rotate(90deg)}
 .notification-fold>summary:focus-visible{outline:2px solid #4f7fd8;outline-offset:3px;border-radius:4px}
+.refresh-all-toolbar{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin:15px 0 12px}
+.refresh-all-toolbar button{padding:9px 15px;min-height:38px}
+.refresh-all-toolbar small{font-size:12px;color:#53647c}
 .notification-fold>.actions{margin:8px 0}
 .notification-fold>p{font-size:12px;line-height:1.5;margin:8px 0}
 .notification-fold #reviewCount,.notification-fold #trainingCount{padding:2px 7px;font-size:11px}
@@ -122,15 +125,13 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 </head><body>
 <header><strong>🛡️ BelgiëPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>📬 Meldingen</h1><p>Bekijk je persoonlijke verlofbeslissingen en opleidingsmeldingen. Reekshoofden en bevoegde dienstleiding zien hier aanvragen die zij mogen behandelen.</p>
+<div class="refresh-all-toolbar"><button id="refreshAll" type="button" class="primary">↻ Alles vernieuwen</button>
+ <small>Vernieuwt alle meldingen; opengeklapte rubrieken blijven behouden.</small></div>
 <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
 <section id="staffActivityFollowupPanel" class="panel" hidden>
  <details class="notification-fold" id="staffFollowupFold">
   <summary>👥 Personeelsopvolging · <span id="staffFollowup50">0</span> op 50/50 · <span id="staffFollowupInactive">0</span> INACTIEF</summary>
 
- <div class="actions" style="justify-content:space-between;align-items:center">
-  
-  <button type="button" id="staffFollowupReload">↻ Vernieuwen</button>
- </div>
  <p>Actuele personeelsstatussen binnen jouw dienstbevoegdheden. <strong>Dit zijn geen verzonden activiteitspings.</strong> Voor beoordeling en eventuele dossierregistratie gebruik je het <a href="/activiteitscentrum.html">Activiteitscentrum</a> of Dossiercentrum.</p>
  <div id="staffFollowupList" aria-live="polite"></div>
 
@@ -173,8 +174,7 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
  <details class="notification-fold" id="reviewFold" open>
   <summary>Te behandelen verlofaanvragen <span id="reviewCount" class="pill">0</span></summary>
 
- <div class="actions" style="justify-content:space-between;align-items:center"><button id="reload" type="button">↻ Vernieuwen</button></div>
- <div id="reviewList"></div>
+  <div id="reviewList"></div>
 
  </details>
 </section>
@@ -198,7 +198,7 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 <section class="panel" id="trainingReviewPanel" hidden>
  <details class="notification-fold" id="trainingReviewFold" open>
   <summary>🎓 Opleidingen te behandelen <span id="trainingCount" class="pill">0</span></summary>
-<div class="actions" style="justify-content:space-between;align-items:center"><button type="button" id="trainingReload">↻ Vernieuwen</button></div><div id="trainingReview"></div>
+<div id="trainingReview"></div>
  </details>
 </section></main>
 <script type="module">
@@ -287,7 +287,6 @@ async function loadStaffActivityFollowup(){
   list.textContent='Personeelsopvolging niet beschikbaar: '+e.message;
  }
 }
-$('staffFollowupReload').onclick=loadStaffActivityFollowup;
 
 async function loadActivityPings(){
  const panel=$('activityPingsPanel'),list=$('activityPingsList');
@@ -330,11 +329,30 @@ async function loadActivityPings(){
   panel.hidden=false;
  }
 }
+let refreshInFlight=null,refreshRequestedAgain=false;
 async function load(){
- void loadStaffActivityFollowup();
- void loadActivityPings();
- void loadTraining();
- void loadSeriesLeave();
+ if(refreshInFlight){
+  refreshRequestedAgain=true;
+  return refreshInFlight;
+ }
+ const button=$('refreshAll');
+ button.disabled=true;button.textContent='↻ Meldingen vernieuwen…';
+ const refresh=async()=>{
+  do{
+   refreshRequestedAgain=false;
+   const loaders=[loadStaffActivityFollowup,loadActivityPings,
+     loadTraining,loadSeriesLeave,loadLeave];
+   
+   await Promise.allSettled(loaders.map(fn=>fn()));
+  }while(refreshRequestedAgain);
+ };
+ refreshInFlight=refresh().finally(()=>{
+  refreshInFlight=null;button.disabled=false;
+  button.textContent='↻ Alles vernieuwen';
+ });
+ return refreshInFlight;
+}
+async function loadLeave(){
  $('reviewPanel').hidden=true;
  $('personalPanel').hidden=true;
  $('overridePanel').hidden=true;
@@ -509,8 +527,7 @@ async function loadTraining(){
   $('trainingPersonalPanel').hidden=false;
  }
 }
-$('trainingReload').onclick=loadTraining;
-$('reload').onclick=load;
+$('refreshAll').onclick=load;
 async function init(){
  try{
   const conf=await fetch('/api/client-config',{cache:'no-store'}).then(x=>x.json());
