@@ -4100,10 +4100,17 @@ function sheetCaseRows(entries,limited){
   const moves=cases.filter(x=>['personeelsbeweging','promotievoorstel','naamswijziging','functiewijziging'].includes(x.type));
   sheetSetRows('movements',moves,x=>[generalNoteDate(x.eventDate),
     x.type==='personeelsbeweging'?(x.movement||'Personeelsbeweging'):
-      staffCaseLabels[x.type]||x.type,
+      x.type==='promotievoorstel'?
+        'Promotievoorstel · '+({pending:'In behandeling',approved:'Goedgekeurd',
+          rejected:'Afgewezen'}[x.proposalStatus]||'Historisch geregistreerd'):
+        staffCaseLabels[x.type]||x.type,
     x.previousRank&&x.newRank?
       x.previousRank+' → '+x.newRank+
         (x.previousCall&&x.newCall?' · '+x.previousCall+' → '+x.newCall:''):
+      x.type==='promotievoorstel'&&x.proposalStatus==='approved'?
+        x.proposedRank+' · EFFECTIEF '+x.effectiveRank+' ('+x.effectiveCall+')':
+      x.type==='promotievoorstel'&&x.proposalStatus==='rejected'?
+        x.proposedRank+' · AFGEWEZEN · '+(x.decisionReason||''):
       x.proposedRank||x.newName||x.newFunction||x.details||x.movement||'—',
     sheetWho(x)],
     'Geen personeelsbewegingen geregistreerd.',limited);
