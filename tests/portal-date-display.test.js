@@ -10,7 +10,7 @@ test('Alle diensten tonen ISO-dagen als DD/MM/JJJJ, zonder ISO-opslag te wijzige
  assert.equal(formatVisibleDateText('Datum: 2026-11-19 · tot 2026-12-01'),
   'Datum: 19/11/2026 · tot 01/12/2026');
  assert.equal(formatVisibleDateText('2026-11-19T10:45:31Z'),
-  '19/11/2026 11:45:31');
+  '19/11/2026, 11:45:31');
  assert.equal(formatVisibleDateText('vanaf 19/11/2026'),'vanaf 19/11/2026');
  assert.equal(formatVisibleDateText('geen datums'),'geen datums');
 });
