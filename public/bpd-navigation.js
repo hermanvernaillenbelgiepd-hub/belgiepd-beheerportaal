@@ -280,6 +280,43 @@
     addSmallBack();
     verifyIdentity(show);
   }
+
+  // Shared, short-lived navigation VIEW only. The Firebase login already persists
+  // across same-origin pages; protected APIs keep validating every request.
+  // Never persist ID tokens, role documents, dossier contents or access grants.
+  const navCacheKey='bpdPortalNavigationViewV1';
+  const navCacheTtlMs=20*1000;
+  function cachedNavView(uid){
+    if(typeof uid!=='string'||!uid)return null;
+    try{
+      const saved=JSON.parse(window.sessionStorage.getItem(navCacheKey)||'null');
+      if(saved?.uid!==uid||!Number.isFinite(saved?.at)||saved.at>Date.now()||
+        Date.now()-saved.at>=navCacheTtlMs)return null;
+      return saved.view&&typeof saved.view==='object'?saved.view:null;
+    }catch{return null}
+  }
+  function saveNavView(uid,context,member,citizen){
+    if(typeof uid!=='string'||!uid||!context)return;
+    const view={
+      context:{
+        dashboardProfile:context.dashboardProfile||null,
+        basicObservationCanSubmit:context.basicObservationCanSubmit===true,
+        basicObservationCanReview:context.basicObservationCanReview===true,
+        ambulanceCanOpenDossier:context.ambulanceCanOpenDossier===true,
+        ambulanceReportVerified:context.ambulanceReportVerified===true,
+        showAdvancedDashboard:context.showAdvancedDashboard===true,
+        technicalCenterVisible:context.technicalCenterVisible===true,
+        visible:context.visible===true
+      },
+      member:{mode:member?.mode||null,canUseSelfService:member?.canUseSelfService===true},
+      citizen:{canAccess:citizen?.canAccess===true}
+    };
+    try{window.sessionStorage.setItem(navCacheKey,JSON.stringify({uid,at:Date.now(),view}))}
+    catch{/* Private browsing or disabled storage: use the ordinary API flow. */}
+  }
+  function clearNavView(){
+    try{window.sessionStorage.removeItem(navCacheKey)}catch{}
+  }
   async function verifyIdentity(show){
     // Do not initialize Firebase here: most existing pages initialize their
     // own app. Only subscribe to the app once their own login module exists.
@@ -294,17 +331,24 @@
       authSdk.onAuthStateChanged(authSdk.getAuth(apps[0]),async user=>{
         const turn=++request;
         document.getElementById('bpdCitizenDossiersLink')?.remove();
-        if(!user){show(['home','personnel','organogram','profile']);return}
+        if(!user){clearNavView();show(['home','personnel','organogram','profile']);return}
         try{
           const token=await user.getIdToken();
-          const [context,member,citizen]=await Promise.all([
-            fetch('/api/dashboard/admin-visibility',{cache:'no-store',
-              headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
-            fetch('/api/member/dashboard',{cache:'no-store',
-              headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
-            fetch('/api/citizen-staff/access',{cache:'no-store',
-              headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null)
-          ]);
+          const saved=cachedNavView(user.uid);
+          let context,member,citizen;
+          if(saved){
+            ({context,member,citizen}=saved);
+          }else{
+            [context,member,citizen]=await Promise.all([
+              fetch('/api/dashboard/admin-visibility',{cache:'no-store',
+                headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
+              fetch('/api/member/dashboard',{cache:'no-store',
+                headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
+              fetch('/api/citizen-staff/access',{cache:'no-store',
+                headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null)
+            ]);
+            if(turn===request)saveNavView(user.uid,context,member,citizen);
+          }
           if(turn!==request)return;
           const citizenGranted=citizen?.canAccess===true;
           const showVerified=pages=>{
@@ -399,6 +443,7 @@
       }
     }
   }
+
   /* Personnel-management lists also stay real compact lists on a phone.
      No data is cloned or removed: expandable fields retain live input/button handlers. */
   function prepareManagementMobileList(table){

@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {TRAINING_RESULTS,TRAINING_RESULT_LABELS,isTrainingResult,
  isCurrentTrainingResult} from '../src/training-result-policy.js';
 import {canLogTraining,canReviewTraining,effectivePermissions} from '../src/permissions-utils.js';
+import {approvedManagedEntry} from '../src/user-access.js';
 import {completedTrainingResult} from '../src/training-completion-overview.js';
 const file=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const actor=(dept,role)=>({trustedStaff:true,role,departments:[dept],
@@ -37,6 +38,24 @@ test('Middenkader en hoger mogen uitsluitend binnen hun eigen dienst registreren
   assert.equal(canLogTraining(actor(dept,'basiskader'),dept,{}),false);
   assert.equal(canLogTraining(actor(dept,'officierenkader'),'burger',{}),false);
  }
+});
+test('Goedgekeurd middenkaderaccount geeft uitsluitend opleidingsrechten voor de eigen dienst',()=>{
+ const id='123456789012345678';
+ const grant=approvedManagedEntry({status:'approved',discordId:id,role:'middenkader',
+  departments:['politie'],departmentRoles:{politie:'middenkader'}},id);
+ assert.ok(grant);
+ const scoped={...grant,trustedStaff:true};
+ assert.equal(canLogTraining(scoped,'politie',{}),true);
+ assert.equal(canReviewTraining(scoped,'politie',{}),true);
+ assert.equal(canLogTraining(scoped,'ambulance',{}),false);
+ assert.equal(canReviewTraining(scoped,'brandweer',{}),false);
+ assert.equal(approvedManagedEntry({status:'pending',discordId:id,role:'middenkader',
+  departments:['politie'],departmentRoles:{politie:'middenkader'}},id),null);
+ const route=file('src/role-routes.js');
+ assert.ok(route.includes('verifiedDiscordIdentity(decoded,member,process.env.DISCORD_GUILD_ID)===discordId'));
+ assert.ok(route.includes('if(managed)trainingApprovedGrant=managed'));
+ assert.ok(route.includes('canLogTraining(scoped,dept,{})'));
+ assert.ok(route.includes('permissions:Object.fromEntries(SERVICE_DEPTS.map'));
 });
 test('Tijdelijke opleidingsmachtiging is dienstgebonden en verloopt; geen rangverhoging',()=>{
  const base={fresh:true,departments:['brandweer'],permissions:{
