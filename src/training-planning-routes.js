@@ -258,7 +258,7 @@ export function installTrainingPlanningRoutes(app,{requireUser,getSnapshot}){
        'Voeg deze opleiding eerst toe aan de Opleidingsmatrix voor verplichte voorstellen');
      courseName=existing.name;
      courseRef=db().collection(PATHWAY_COLLECTION).doc(
-       'planning_'+hash(track.department+'|'+keyName(courseName)).slice(0,28));
+       'planning'+hash(track.department+'|'+keyName(courseName)).slice(0,28));
     }
    }
    const by=author(req),at=FieldValue.serverTimestamp();
