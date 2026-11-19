@@ -168,7 +168,8 @@ async function refreshPeople(){
     const data=await api('/api/training/people?department='+encodeURIComponent(dept));
     if(n!==peopleNonce)return;
     const list=sortTrainingPeople(data.people||[],dept,BPDPersonnelVisuals.comparePersonnel);
-    trainingInstructorPeople=list;
+    trainingInstructorPeople=sortTrainingPeople(data.instructors||[],dept,
+      BPDPersonnelVisuals.comparePersonnel);
     const target=new URLSearchParams(location.search).get('discordId');
     select.replaceChildren(new Option('Kies een collega…',''),
       ...list.map(p=>new Option((p.call||'—')+' · '+p.name,p.discordId)));

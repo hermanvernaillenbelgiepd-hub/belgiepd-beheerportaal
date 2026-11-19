@@ -3318,7 +3318,7 @@ async function loadStaffInstructorChoices(p,key){
  try{
   const data=await request('/api/training/people?department='+encodeURIComponent(p.dept));
   if(requestId!==staffTrainingInstructorListNonce||!sameDossier(key))return;
-  staffTrainingInstructorPeople=data.people||[];
+  staffTrainingInstructorPeople=data.instructors||[];
   const value=selectedInstructor($('staffTrainingInstructorChoice'),$('staffTrainingInstructor'));
   renderStaffTrainingInstructorChoices(value);
  }catch(e){

@@ -21,6 +21,7 @@ import {COMPLETION_OVERVIEW_DEPARTMENTS,COMPLETION_OVERVIEW_BATCH,
   from './training-completion-overview.js';
 import {isCorpsLeadershipPersonnel} from './personnel-editor-policy.js';
 import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
+import {eligibleGeneralTrainingInstructor} from './training-general-instructor-policy.js';
 import {verifiedFireRoles,fireSubjectClass,FIRE_ROLES} from './fire-dossier-policy.js';
 
 const asText=(v,n=300)=>typeof v==='string' ? v.trim().slice(0,n):'';
@@ -416,12 +417,17 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
       for(const p of snap.data)if(p.dept===department&&isDiscordId(p.personId))
         counts.set(p.personId,(counts.get(p.personId)||0)+1);
       const verified=await verifiedSubjects(snap.data.filter(p=>p.dept===department));
-      const people=snap.data.filter(p=>p.dept===department&&isDiscordId(p.personId)&&
-        counts.get(p.personId)===1&&mayAccessSubject(req.roleActor.bpd,p,verified))
-        .map(p=>({discordId:p.personId,call:p.call,name:p.name,department:p.dept}))
-        .sort((a,b)=>String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true}));
+      const candidates=snap.data.filter(p=>p.dept===department&&isDiscordId(p.personId)&&
+        counts.get(p.personId)===1&&mayAccessSubject(req.roleActor.bpd,p,verified));
+      const toChoice=p=>({discordId:p.personId,call:p.call,name:p.name,department:p.dept});
+      const byCall=(a,b)=>String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true});
+      // The TRAINEE list remains unchanged, while the general Police instructor
+      // list includes only Middle Cadre, Officer Cadre and Corps Leadership.
+      // The same protected-dossier access checks apply to both lists.
+      const people=candidates.map(toChoice).sort(byCall);
+      const instructors=candidates.filter(eligibleGeneralTrainingInstructor).map(toChoice).sort(byCall);
       res.set('Cache-Control','private, no-store');
-      res.json({department,people,limited:false});
+      res.json({department,people,instructors,limited:false});
     }catch(e){error(res,e)}
   });
   app.get('/api/training/:department/:discordId',resolveActor,guardTrainingSubject,async(req,res)=>{

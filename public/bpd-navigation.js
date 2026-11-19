@@ -278,8 +278,11 @@
     const header=document.querySelector('body > header');
     if(header)header.after(top);
     else(document.querySelector('body > main')||document.body).before(top);
-    function show(list){
-      const items=list.map(key=>NAV[key]).filter(Boolean);
+    let identityConfirmed=false;
+    function show(list,verified=false){
+      identityConfirmed=verified===true;
+      const items=list.map(key=>key==='profile'&&!identityConfirmed?
+        {...NAV.profile,label:'Aanmelden',short:'Aanmelden'}:NAV[key]).filter(Boolean);
       links.replaceChildren(...items.map(item=>linkFor(item)));
       renderQuick(items,top);
     }
@@ -365,7 +368,7 @@
               const dossierIndex=visible.indexOf('dossiers');
               visible.splice(dossierIndex>=0?dossierIndex+1:visible.length,0,'citizen');
             }
-            show(visible);
+            show(visible,true);
           };
           if(citizenGranted&&here==='/dossiercentrum.html'){
             const nav=document.querySelector('body > header nav');
