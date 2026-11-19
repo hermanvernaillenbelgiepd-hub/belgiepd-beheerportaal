@@ -1029,7 +1029,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 </div>
 <div class="controls" style="margin-top:14px"><button id="promoteSave" type="submit">Promotie registreren</button></div>
 </form></section>
-<section id="rankChangePanel" hidden style="border-top:1px solid #3b5374;margin-top:14px;padding-top:12px">
+<section id="rankChangePanel" hidden style="display:none!important;border-top:1px solid #3b5374;margin-top:14px;padding-top:12px">
 <h3>Rangwissel of degradatie</h3>
 <p class="subtle">Alleen bevoegd Officierenkader of Korpsleiding. Kies de nieuwe rang én een passend vrij roepnummer. Deze actie vereist een motivering en wordt gelogd. Discord-rangrollen worden niet automatisch gewijzigd.</p>
 <form id="rankChangeForm">
@@ -1301,6 +1301,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 </optgroup>
 </select>
 <p class="subtle">Waarschuwingen, tijdelijke specialisatieschorsing en tijdelijke degradatie worden apart via <strong>Observaties en sancties → Sanctie toevoegen</strong> geregistreerd, met reden, datum en audit. Rang en Discord-rechten veranderen daardoor niet automatisch.</p>
+<small class="subtle">Gebruik ditzelfde formulier voor promotie en degradatie. Officierenkader en Korpsleiding krijgen dezelfde invoervelden; de server bevestigt de bevoegde beslissing.</small>
 <label for="staffMovementMode">Verwerking</label>
 <select id="staffMovementMode">
 <option value="effective">Nieuwe beslissing (effectief toepassen)</option>
@@ -4029,7 +4030,7 @@ function sheetIdentity(p){
     rankSlot.append(compact);
   }
   const label=document.createElement('span');label.className='dossier-rank-label';
-  label.textContent=p.rank||'—';rankSlot.append(label);
+  label.textContent=p.rankDisplay||p.rank||'—';rankSlot.append(label);
   $('sheetName').textContent=p.name||'—';
   const seriesSlot=$('sheetSeries');
   seriesSlot.replaceChildren();
@@ -6246,7 +6247,8 @@ async function showPerson(p){
     openDossierTab('overzicht');
   }
   $('identity').textContent=(departments[p.dept]||p.dept)+' · Discord ID '+p.discordId+' · Revisie '+p.revision;
-  $('pName').value=p.name;$('pCall').value=p.call;$('pRank').value=p.rank;$('reason').value='';
+  $('pName').value=p.name;$('pCall').value=p.call;
+  $('pRank').value=p.rankDisplay||p.rank;$('reason').value='';
   $('pStatus').replaceChildren(...statuses.map(x=>option(x,x)));
   if(!statuses.includes(p.status))$('pStatus').prepend(option(p.status,p.status+' (bronwaarde)'));
   $('pStatus').value=p.status;
@@ -6257,8 +6259,9 @@ async function showPerson(p){
   $('promoteTo').value=canPromote?p.nextPromotionRank:'';
   $('promoteReason').value='';
   const canChangeRank=rankChangesEnabled&&p.canChangeRank===true&&rankChoices.length>0;
-  $('rankChangePanel').hidden=!canChangeRank;
-  $('rankChangeFrom').value=p.rank;
+  // Use the same registration workflow for both authorized cadre levels.
+  $('rankChangePanel').hidden=true;
+  $('rankChangeFrom').value=p.rankDisplay||p.rank;
   $('rankChangeTo').replaceChildren(option('','Kies de nieuwe rang…'),
     ...rankChoices.filter(x=>x!==p.rank).map(x=>option(x,x)));
   $('rankChangeTo').value='';$('rankChangeCall').value=p.call;
@@ -6268,7 +6271,8 @@ async function showPerson(p){
   $('staffMovementNewRank').value='';
   $('staffMovementNewCall').value='';
   $('staffMovementMode').value='effective';
-  $('staffMovementGradeList').replaceChildren(...rankChoices.map(x=>option(x,x)));
+  $('staffMovementGradeList').replaceChildren(...rankChoices.map(x=>
+    option(x,BPDPersonnelVisuals.rankInfo(x,'politie')?.label||x)));
   updateStaffMovementFields();
   $('policeSeriesPanel').hidden=!(p.dept==='politie'&&p.canChangeSeries===true);
   $('policeSeriesCurrent').value=p.series||'Niet ingedeeld';
