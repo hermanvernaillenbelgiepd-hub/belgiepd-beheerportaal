@@ -126,7 +126,7 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
      today,now});
     if(!leaveComplete){
      copy.leave={active:null,startDate:null,endDate:null,nextStart:null,nextEnd:null,lastEnded:null};
-     if(copy.verified&&copy.kind!=='checking'){
+     if(copy.kind!=='checking'){
       copy.kind='verouderd';
       copy.reason='Goedgekeurd verlof is niet volledig verifieerbaar; geen veilig activiteitsadvies';
      }
@@ -135,7 +135,9 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
     return copy;
    }).filter(Boolean);
    res.set('Cache-Control','private, no-store');
-   return res.json({people,counts:summary.counts,
+   const counts=Object.create(null);
+   for(const p of people)counts[p.kind]=(counts[p.kind]||0)+1;
+   return res.json({people,counts,
     statistics:activityCenterStatistics(people),asOf:today,readOnly:true,
     departments:[...new Set(allowed.map(p=>p.dept))],
     source:{...summary.source,legacyAvailable:legacy.available,
