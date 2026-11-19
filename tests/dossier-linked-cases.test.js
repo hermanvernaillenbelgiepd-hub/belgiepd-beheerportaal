@@ -5,8 +5,8 @@ import {verifiedColleagueLink,sameDayCategories,createColleagueLink}
  from '../src/dossier-linked-cases.js';
 const source=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const A='333333333333333333',B='444444444444444444',C='555555555555555555';
-const people=[{personId:A,dept:'politie',name:'Primair',call:'450'},
- {personId:B,dept:'politie',name:'Collega',call:'455'},
+const people=[{personId:A,dept:'politie',name:'Primair',call:'450',rank:'Inspecteur'},
+ {personId:B,dept:'politie',name:'Collega',call:'455',rank:'Inspecteur'},
  {personId:C,dept:'ambulance',name:'Verpleger',call:'AMB-01'}];
 const actor={uid:'discord:111111111111111111',discordId:'111111111111111111',
  role:'officierenkader',departments:['politie'],
