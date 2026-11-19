@@ -222,7 +222,7 @@ app.use('/api',async(req,res,next)=>{
   return res.status(503).json({error:'DC-ID identiteitscontrole tijdelijk niet beschikbaar'});
  }
 });
-installRoleRoutes(app,{getSnapshot});
+installRoleRoutes(app,{getSnapshot,onSpecialtyChanged:()=>{cache.expires=0;}});
 // The live personnel view remains sourced from Sheets during the transition.
  // Including citizens in the snapshot does NOT re-enable retired citizen dossiers.
 const allDepts=['politie','brandweer','ambulance','depannage','burger'];
