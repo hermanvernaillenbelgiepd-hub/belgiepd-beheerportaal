@@ -3449,7 +3449,7 @@ function updateStaffMovementFields(){
      'Een vrije roepnummersuggestie is enkel beschikbaar bij een nieuwe rangbeslissing.';
  }
  $('staffMovementHint').textContent=effective?
-   'Nieuwe beslissing: kies een geldige hogere of lagere graad. Het eerste beschikbare roepnummer wordt voorgesteld volgens tientallen, vijftallen, overige nummers. De server controleert bij opslaan opnieuw alle bevoegdheden en bezette nummers.':
+   'Nieuwe beslissing: kies een geldige hogere of lagere graad. Het eerste beschikbare roepnummer wordt voorgesteld volgens tientallen, vijftallen, daarna overige nummers. De server controleert bij opslaan opnieuw alle bevoegdheden en bezette nummers.':
    'Historische registratie: alleen loggen, zonder de huidige graad, uniformen, status of het roepnummer te veranderen.';
 }
 async function suggestPromotionCall(rank,targetId,person){
