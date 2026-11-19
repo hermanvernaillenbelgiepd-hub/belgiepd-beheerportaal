@@ -226,7 +226,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      before.get('type')!=='promotievoorstel'||before.get('status')==='verwijderd')
      throw Object.assign(Error('Promotievoorstel niet gevonden'),{status:404});
     const at=FieldValue.serverTimestamp();
-    tx.update(ref,{opinions:updatedPromotionOpinions(before.get('opinions'),actor,opinion,at),
+    tx.update(ref,{opinions:updatedPromotionOpinions(before.get('opinions'),actor,opinion,new Date().toISOString()),
      modifiedAt:at});
     const audit={action:'fire_promotion_opinion',dept:'brandweer',
      subjectDiscordId:discordId,entryId,actorDiscordId:actor.discordId,
@@ -266,6 +266,8 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
        values=validateManagementEntry({type,eventDate:req.body.eventDate,
          details:req.body.details,movement:req.body.movement,
          previousRank:req.body.previousRank,newRank:req.body.newRank});
+       if(values.eventDate>brusselsEventDate())
+         return code(res,400,'Personeelsbeweging kan niet in de toekomst liggen');
      }else if(type==='promotievoorstel'){
        values=firePromotionInput(req.body,brusselsEventDate());
      }else{
