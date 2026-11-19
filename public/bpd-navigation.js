@@ -405,7 +405,63 @@
       });
     }catch{/* Navigation is non-authoritative; keep public links only. */}
   }
+  // The action marker is derived only from per-user, server-authorized
+  // unread follow-ups. It never reveals case details or grants access.
+  function watchUnreadLeaveReturns(){
+    let unread=0,authenticated=null,clock=null;
+    const mark=()=>{
+      for(const link of document.querySelectorAll('a[href^="/meldingen.html"]')){
+        const existing=link.querySelector('.bpd-action-warning');
+        if(!unread){existing?.remove();link.removeAttribute('data-action-required');continue}
+        link.dataset.actionRequired='true';
+        link.title=unread+' ongelezen verlofterugkeercontrole(s) · actie vereist';
+        const badge=existing||document.createElement('span');
+        badge.className='bpd-action-warning';
+        badge.setAttribute('aria-label',unread+' ongelezen, actie vereist');
+        badge.textContent='⚠ '+unread;
+        if(!existing)link.append(badge);
+      }
+    };
+    const poll=async()=>{
+      if(!authenticated)return;
+      try{
+        const token=await authenticated.getIdToken();
+        const response=await fetch('/api/activity-return/checks',{cache:'no-store',
+          headers:{Authorization:'Bearer '+token}});
+        if(!response.ok){unread=0;mark();return}
+        const data=await response.json();
+        unread=data.enabled===true?Math.max(0,Number(data.unread)||0):0;
+        mark();
+      }catch{unread=0;mark()}
+    };
+    (async()=>{
+      try{
+        const sdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+        for(let attempt=0;!sdk.getApps().length&&attempt<22;attempt++)
+          await new Promise(resolve=>setTimeout(resolve,350));
+        if(!sdk.getApps().length)return;
+        const authSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+        authSdk.onAuthStateChanged(authSdk.getAuth(sdk.getApps()[0]),user=>{
+          authenticated=user;unread=0;mark();if(user)void poll();
+        });
+        clock=setInterval(()=>{if(authenticated&&document.visibilityState!=='hidden')void poll()},120000);
+        window.addEventListener('focus',()=>{if(authenticated)void poll()});
+      }catch{/* The navigation remains usable when notices are offline. */}
+    })();
+    // The shared menu may re-render after role verification; reapply the
+    // already-authorized count to the new link, without further API requests.
+    const region=document.querySelector('#bpdSidebar .bpd-side-links')||
+      document.querySelector('.portal > aside nav');
+    if(region){
+      let scheduled=false;
+      new MutationObserver(()=>{
+        if(scheduled)return;scheduled=true;
+        queueMicrotask(()=>{scheduled=false;mark()});
+      }).observe(region,{childList:true});
+    }
+  }
   function init(){
+    watchUnreadLeaveReturns();
     if(here==='/'||here==='/index.html')homepage();
     else shell();
   }
