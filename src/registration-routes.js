@@ -288,8 +288,13 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
           return res.status(403).json({error:'Basiskader mag uitsluitend lagere politiegraden observeren. Sancties of registreren namens derden zijn niet toegestaan.'});
       }
       const represented=representedId?representativeFromPersonnel(snap.data,dept,representedId):null;
-       if(representedId && (!represented || representedId===actor.discordId))
-         return res.status(400).json({error:'Ongeldige oorspronkelijke politieobservator voor deze historische overname'});
+       // Een invoerder mag ook een eigen, eerder in de spreadsheet gemaakte
+       // observatie overzetten. Verifieer de oorspronkelijke registrator via
+       // de personeelsbron, maar weiger niet louter omdat het dezelfde
+       // Discord-ID is. De audit bewaart registeredBy en submittedByActor
+       // afzonderlijk, ook wanneer beide naar dezelfde persoon verwijzen.
+       if(representedId && !represented)
+         return res.status(400).json({error:'De oorspronkelijke registrator is niet geldig of niet eenduidig gevonden in de personeelslijst'});
        const collection=db().collection('bpd_cases').doc(docId(dept,id)).collection('entries');
       const newDoc=collection.doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();

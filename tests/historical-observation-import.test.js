@@ -71,6 +71,23 @@ test('Oorspronkelijke observator mag de actuele, geverifieerde invoerder zelf zi
  assert.ok(routes.includes('subset.filter(p=>eligibleRepresentative(p,p.dept))'));
  assert.ok(!routes.includes('p.personId!==actor?.discordId'));
 });
+test('Een eigen historische observatie kan worden opgeslagen zonder de zelfde-ID blokkade',()=>{
+ const routes=readFileSync(new URL('../src/registration-routes.js',import.meta.url),'utf8');
+ const ownId='111111111111111111';
+ const reason='Oorspronkelijke observatie ingevoerd in de oude spreadsheet';
+ assert.deepEqual(validateHistoricalActorSelection(ownId,reason,ownId),{
+   actorId:ownId,reason
+ });
+ assert.match(routes,/if\(representedId && !represented\)/,
+   'Alleen een ongeldige of ontbrekende oorspronkelijke observator wordt geweigerd');
+ assert.doesNotMatch(routes,/representedId\s*===\s*actor\.discordId/,
+   'De eigenaar van de oorspronkelijke registratie mag ook de huidige invoerder zijn');
+ assert.match(routes,/const represented=representedId\?representativeFromPersonnel\(snap\.data,dept,representedId\):null/);
+ assert.match(routes,/registeredBy:represented\|\|actor,submittedByActor:actor/);
+ assert.match(routes,/historicalImport:Boolean\(represented\),importSource:represented\?'spreadsheet':null/);
+ // Eigen dossierregistraties blijven afzonderlijk beschermd.
+ assert.match(routes,/verifiedBoardCorpsDossierAdmin\(req\.bpd\)&&id===req\.bpd\.discordId/);
+});
 test('in het dossier wordt de originele waarnemer gekozen en de invoerder afzonderlijk vermeld',()=>{
  const page=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
  assert.match(page,/id="historicalObservationCheck"/);
