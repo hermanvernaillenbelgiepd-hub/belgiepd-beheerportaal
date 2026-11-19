@@ -3390,7 +3390,8 @@ async function suggestPromotionCall(rank,targetId,person){
     discordId:person.discordId,rank
   }));
   if(!selected||selected.dept+':'+selected.discordId!==key)return;
-  if($(targetId)&&result.call!==null)$(targetId).value=String(result.call);
+  if($(targetId)&&!$(targetId).value.trim()&&result.call!==null)
+    $(targetId).value=String(result.call);
  }catch(error){
   if($(targetId)&&!$(targetId).value)notice(
     'Automatisch roepnummer nog niet beschikbaar: '+error.message,true);
