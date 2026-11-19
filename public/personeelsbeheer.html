@@ -3735,12 +3735,53 @@ let overviewShowEmpty=false;
 function refreshOverviewEmpty(){/* Alle negen categorieën blijven altijd zichtbaar. */}
 // A server-authorized correction, not a physical Firestore delete.
 let dossierCanRetire=false;
+function attachAdministrativeCaseCorrection(container,row){
+ if(!selected||!row?.id||row.linked===true||row.canAnnotate!==true)return;
+ const button=document.createElement('button');
+ button.type='button';button.className='alt small dossier-correction-button';
+ button.textContent='✎ Toelichting corrigeren';
+ button.title='Gecorrigeerde toelichting; origineel blijft in de audit. Een effectieve beslissing wordt niet teruggedraaid.';
+ button.onclick=async()=>{
+  const p=selected,key=p.dept+':'+p.discordId;
+  const earlier=String(row.details||'');
+  const entered=prompt('Gecorrigeerde toelichting (max. 4000 tekens). Oorspronkelijke registratie blijft in de audit:',earlier);
+  if(entered===null)return;
+  const details=entered.trim();
+  if(details.length<2||details.length>4000)
+   return notice('Vul een toelichting in van 2 tot 4000 tekens.',true);
+  const enteredReason=prompt('Verplichte reden voor de correctie (10 tot 500 tekens):','');
+  if(enteredReason===null)return;
+  const reason=enteredReason.trim();
+  if(reason.length<10||reason.length>500)
+   return notice('Motivering van 10 tot 500 tekens is verplicht.',true);
+  if(['personnel-rank-change','approved-promotion-proposal',
+      'global-personnel-archive','central-leave-audit'].includes(row.source)&&
+     !confirm('Dit is een EFFECTIEVE beslissing. Alleen de toelichting wordt gecorrigeerd. De rang, het roepnummer, verlof of de archiefstatus veranderen NIET. Doorgaan?'))return;
+  button.disabled=true;
+  try{
+   await request('/api/management/cases/'+encodeURIComponent(p.dept)+'/'+
+     encodeURIComponent(p.discordId)+'/'+encodeURIComponent(row.id)+
+     '/administrative-correction',{method:'POST',
+       body:{details,reason,expectedModifiedAt:row.modifiedAt||null}});
+   notice('Correctie met verplichte reden opgeslagen. Oorspronkelijke tekst in audit bewaard; correctie in het weekrapport gelogd.');
+   if(selected?.dept+':'+selected?.discordId===key)
+    await loadStaffDossier(p);
+  }catch(e){notice('Dossiercorrectie niet opgeslagen: '+e.message,true);button.disabled=false}
+ };
+ container.append(button);
+}
 function attachRetireButton(container,item,source='cases'){
  if(!dossierCanRetire||!selected||!item?.id||item.linked===true)return;
- if(source==='cases'&&
-   (!['notitie','algemene_notitie','inactiviteitsping','specialisatiebeperking',
-     'basisnotitie','observatie','sanctie'].includes(item.type)||
-    ['central-leave-audit','automatic_fivem_activity'].includes(item.source)))return;
+ if(source==='cases'){
+   const routine=['notitie','algemene_notitie','inactiviteitsping',
+     'specialisatiebeperking','basisnotitie','observatie','sanctie']
+     .includes(item.type);
+   const manualHistorical=['personeelsbeweging','naamswijziging','opleiding',
+     'activiteit','promotievoorstel'].includes(item.type)&&item.canRetire===true;
+   if(!routine&&!manualHistorical||
+      ['central-leave-audit','automatic_fivem_activity'].includes(item.source)||
+      item.canRetire===false)return;
+ }
  if(source==='leave'&&item.status!=='approved')return;
  const button=document.createElement('button');
  button.type='button';button.className='dossier-retire-button';
@@ -3795,7 +3836,8 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
           ' · Overgenomen door '+row.submittedByActor.name:'')
       });
       attachObservationEditButton(content,row);
-       attachRetireButton(content,row,'cases');
+      attachAdministrativeCaseCorrection(content,row);
+      attachRetireButton(content,row,'cases');
       root.append(element);
       return;
     }
@@ -3836,6 +3878,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
           generalNoteDate(row.discordPingDate):'Nog geen Discord-bericht verstuurd';
         item.append(discord);
       }
+      attachAdministrativeCaseCorrection(item,row);
       attachRetireButton(item,row,'cases');
       root.append(item);return;
     }
@@ -3879,6 +3922,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
           ['Huidige geldigheid',effectiveTemporarySanctionStatus(row)],
           ['Oorspronkelijke status',row.status],['Einddatum',row.endDate]]:[]});
     }
+    attachAdministrativeCaseCorrection(item,row);
     attachRetireButton(item,row,group==='leave'?'leave':group==='basisNotes'?'staff':'cases');
     root.append(item);
   };
@@ -4149,6 +4193,7 @@ function renderDossierImportantNotes(){
     attachDossierRecordPreview(item,{row,title:title.textContent,
       text:row.details||'—',bodyNode:body,metaNode:author,
       authorText:dossierAuthorLine(row)});
+    attachAdministrativeCaseCorrection(item,row);
     attachRetireButton(item,row,'cases');
     if(row.id&&selected&&row.type==='notitie')
       addManualCaseCorrectionControls(item,row,selected,selected.dept+':'+selected.discordId);
@@ -4476,6 +4521,7 @@ async function loadLinkedPersonnelRecords(p,key){
               (row.historicalPing?' · GEEN nieuwe ping verstuurd':'');
             div.append(provenance);
           }
+          attachAdministrativeCaseCorrection(div,row);
           attachRetireButton(div,row,'cases');
           addManualCaseCorrectionControls(div,row,p,key);
           cases.append(div);
