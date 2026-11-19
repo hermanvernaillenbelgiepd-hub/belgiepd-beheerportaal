@@ -1,5 +1,6 @@
 import {isArchivedTraining} from './training-maintenance.js';
 import {isRetired} from './dossier-retirement-policy.js';
+import {isTrainingResult} from './training-result-policy.js';
 export const COMPLETION_OVERVIEW_DEPARTMENTS=Object.freeze(
  ['politie','brandweer','ambulance','depannage']);
 export const COMPLETION_OVERVIEW_BATCH=20;
@@ -11,7 +12,7 @@ const validDate=value=>/^\d{4}-\d{2}-\d{2}$/.test(value||'')&&
  !Number.isNaN(Date.parse(value+'T12:00:00Z'))&&
  new Date(value+'T12:00:00Z').toISOString().slice(0,10)===value;
 export function completedTrainingResult(record,subject,id){
- if(!record||record.result!=='geslaagd'||isArchivedTraining(record)||record.testRecord===true||
+ if(!record||!isTrainingResult(record.result)||isArchivedTraining(record)||record.testRecord===true||
    record.department!==subject?.dept||
    record.subjectDiscordId!==subject.personId||
    !validDate(record.eventDate))return null;
@@ -19,7 +20,7 @@ export function completedTrainingResult(record,subject,id){
    dept:subject.dept,discordId:subject.personId,
    name:clean(subject.name,120),call:clean(subject.call,24),
    rank:clean(subject.rank,120),courseName:clean(record.courseName),
-   eventDate:record.eventDate,result:'geslaagd',
+   eventDate:record.eventDate,result:record.result,
    instructor:clean(record.instructorName,120),
    reviewStatus:clean(record.rosterStatus,80),
    details:clean(record.details,1600),

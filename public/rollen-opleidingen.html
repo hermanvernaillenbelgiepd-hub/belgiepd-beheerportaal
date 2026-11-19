@@ -107,7 +107,9 @@ function refreshCourseOptions(){
   {value:'',text:trainingSelectLabels[dept]||'Kies een opleiding…'},
   ...courses.map(value=>({value,text:value})),
   ...(dept==='brandweer'?[{value:'ANDERE',text:'ANDERE (zelf invullen)'}]:[])
- ]:originalCourses;
+ ]:(dept==='politie'?originalCourses:[
+   {value:'',text:'Kies een opleiding…'},
+   {value:'ANDERE',text:'ANDERE (zelf invullen)'}]);
  $('course').replaceChildren(...options.map(o=>new Option(o.text,o.value)));
  $('course').value=options.some(o=>o.value===chosen)?chosen:'';
  syncCourseOther();

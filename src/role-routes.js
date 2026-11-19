@@ -12,6 +12,7 @@ import { basePermissions,effectivePermissions,validateOverride,canAdministerRole
 import { mayMaintainTraining,isArchivedTraining,validateMaintenanceReason,isRecordId,requiresReReview } from './training-maintenance.js';
 import {roleForDepartment} from './leave-policy.js';
 import {brusselsEventDate} from './personnel-event-date.js';
+import {isTrainingResult} from './training-result-policy.js';
 import {COMPLETION_OVERVIEW_DEPARTMENTS,COMPLETION_OVERVIEW_BATCH,
   COMPLETION_OVERVIEW_RECORD_LIMIT,COMPLETION_OVERVIEW_CASE_LIMIT,
   completedTrainingResult,completedTrainingAttendance,completionSort}
@@ -118,12 +119,16 @@ function trainingAccess(req,dept,kind){
   if(bpd?.portalTechnicalMode===true&&bpd?.profileTechnicalAvailable===true)return true;
   if(dept==='brandweer'){
     const roles=verifiedFireRoles(member,process.env.DISCORD_GUILD_ID);
-    // Overrides or unrelated cadre roles cannot turn Brandweer Middenkader
-    // into an instructor/reviewer.
+    // Instructor / fire leadership must be verified for their own department.
+    // Approved middle-and-higher cadre and temporary scoped training grants
+    // use the SAME service-bound permission checks as other departments.
     if(bpd?.boardPersonnelAdmin===true)return kind==='review';
-    return kind==='log'?
-      (roles?.has(FIRE_ROLES.teacher)||roles?.has(FIRE_ROLES.leadership))===true:
-      roles?.has(FIRE_ROLES.leadership)===true;
+    const verifiedRole=kind==='log'?
+      roles?.has(FIRE_ROLES.teacher)||roles?.has(FIRE_ROLES.leadership):
+      roles?.has(FIRE_ROLES.leadership);
+    return Boolean(verifiedRole||
+      (kind==='log'?canLogTraining(bpd,dept,perms):
+        canReviewTraining(bpd,dept,perms)));
   }
   return kind==='log'?canLogTraining(bpd,dept,perms):canReviewTraining(bpd,dept,perms);
 }
@@ -139,7 +144,7 @@ function inputRecord(x){
   if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId))throw new Error('Ongeldige dienst of Discord ID');
   if(courseName.length<3 || typeof x?.courseName!=='string' || x.courseName.length>150)throw new Error('Ongeldige opleidingsnaam');
   if(typeof x?.details!=='string'||x.details.length>1600)throw new Error('Omschrijving te lang');
-  if(!['in_opleiding','geslaagd','niet_geslaagd','stage','restricted'].includes(result))throw new Error('Ongeldig opleidingsresultaat');
+  if(!isTrainingResult(result))throw new Error('Ongeldig opleidingsresultaat');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)||new Date(eventDate+'T12:00:00Z').toISOString().slice(0,10)!==eventDate||eventDate>brusselsEventDate())throw new Error('Ongeldige opleidingsdatum');
   return {department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName};
 }
@@ -163,7 +168,7 @@ export function installRoleRoutes(app,{getSnapshot}={}){
       bpd?.role==='korpsleiding'&&roleForDepartment(bpd,'politie')==='korpsleiding'&&
       bpd?.discordPoliceRank==='Korpsleiding';
     if(subject.dept==='politie'&&isPolice9xx(subject.call))
-      return roleMap?.get(subject.personId)==='Officierenkader'||mayOpenCorps;
+      return mayOpenCorps;
     return !isCorpsLeadershipPersonnel(subject)||mayOpenCorps;
   };
   async function verifiedSubjects(subjects){

@@ -1693,9 +1693,9 @@ function availablePersonnelRegistrationKinds(){
       // Opleiding blijft als dossierregistratie beschikbaar wanneer het
       // formele opleidingsregister hier niet actief is, zonder dubbel menu.
       if(type==='activiteit'||type==='verlof')continue;
-      if(canRegisterOfficialTraining()){
-        if(type==='opleiding')continue;
-      }
+      // Opleidingen zijn altijd centrale trainingsregistraties. Een losse
+      // managementnotitie mag hier niet als tweede opleidingsinvoer verschijnen.
+      if(type==='opleiding')continue;
       const text=staffCaseLabels[type]||type;
       kinds.push(['case:'+type,
         type==='opleiding'?'Opleiding registreren':
@@ -3153,7 +3153,9 @@ function refreshStaffTrainingCourses(dept){
     {value:'',label:trainingSelectLabels[dept]||'Kies een opleiding…'},
     ...catalog.map(value=>({value,label:value})),
     ...(dept==='brandweer'?[{value:'ANDERE',label:'ANDERE (zelf invullen)'}]:[])
-  ]:policeTrainingOptions;
+  ]:(dept==='politie'?policeTrainingOptions:[
+     {value:'',label:'Kies een opleiding…'},
+     {value:'ANDERE',label:'ANDERE (zelf invullen)'}]);
   officialCourseSelect.replaceChildren(...options.map(x=>option(x.value,x.label)));
   caseCourseSelect.replaceChildren(...options.map(x=>option(x.value,x.label)));
   syncStaffTrainingOther();

@@ -36,7 +36,7 @@ test('Central register and personnel dossier use the same service course module'
  for(const html of [central,dossier]){
   assert.ok(html.includes("from '/training-course-catalog.js'"));
   assert.ok(html.includes('coursesForDepartment('));
-  assert.ok(html.includes("dept==='brandweer'"));
+  assert.ok(html.includes("'ANDERE'"));
  }
  assert.match(central,/const originalCourses=\[/);
  assert.match(dossier,/const policeTrainingOptions=\[/);

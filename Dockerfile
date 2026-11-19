@@ -26,6 +26,7 @@ RUN node --test tests/dossier-weekrapport-endcontrole.test.js
 RUN node --test tests/leave-report-projection.test.js
 RUN node --test tests/training-completion-overview.test.js
 RUN node --test tests/meldingen-single-refresh-and-movement-groups.test.js
+RUN node --test tests/training-unified-workflow.test.js
 RUN node --test tests/sanction-measures-middenkader.test.js
 ENV PORT=8080
 EXPOSE 8080

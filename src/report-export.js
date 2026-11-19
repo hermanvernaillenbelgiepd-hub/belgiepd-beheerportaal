@@ -110,6 +110,10 @@ export function createWeekReportDocx(out){
   body.push(PARA('Aangemaakt door: '+(r.createdBy?.name||'Onbekend')));
   body.push(PARA('Status: CONCEPT – dynamische weergave, geen afgesloten archief',{bold:true}));
   body.push(PARA('Registraties: '+out.recordCount+' · Uitgesloten testregistraties: '+(out.excludedTestCount||0)));
+  body.push(PARA('Opleidingen · aanwezig: '+(out.completionSummary?.present||0)+
+    ' · geslaagd: '+(out.completionSummary?.passed||0)+
+    ' · niet geslaagd: '+(out.completionSummary?.failed||0)+
+    ' · onderbroken: '+(out.completionSummary?.interrupted||0)));
   body.push(PARA('Geslaagde opleidingen: '+(out.completionSummary?.passed||0)+
     ' · Opleidingen met bevestigde deelname (niet automatisch geslaagd): '+
     (out.completionSummary?.attendanceConfirmed||0)));

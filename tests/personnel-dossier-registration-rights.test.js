@@ -62,6 +62,8 @@ test('Opleiding vanuit centrale registratie: politie middenkader/hoger en instru
   assert.equal(canLogTraining({...actor('basiskader'),trustedStaff:true},'politie',
     {politie:{'training.log':true}}),true);
   assert.equal(canLogTraining({...actor('middenkader'),trustedStaff:true},'brandweer',{}),false);
+  assert.equal(canLogTraining({...actor('middenkader'),trustedStaff:true,
+    departments:['brandweer'],departmentRoles:{brandweer:'middenkader'}},'brandweer',{}),true);
 });
 test('Registratieblok vermeldt score, omkadering, clip, beperkingen en compacte audit',()=>{
   const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
@@ -356,17 +358,20 @@ test('Dispatch-instructeur blijft een Dispatch-rol maar kan politieopleiding reg
     assert.equal(p.permissions[dept]['training.log'],false);
 });
 
-test('RESTRICTED is an accepted training outcome and appears in both UI and week reports',()=>{
+test('Vier resultaten in formulieren en weekrapport; historische RESTRICTED blijft bestaan',()=>{
   const route=readFileSync(new URL('../src/role-routes.js',import.meta.url),'utf8');
   const register=readFileSync(new URL('../public/rollen-opleidingen.html',import.meta.url),'utf8');
   const fiche=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
   const reports=readFileSync(new URL('../src/management-routes.js',import.meta.url),'utf8');
-  assert.match(route,/\['in_opleiding','geslaagd','niet_geslaagd','restricted'\]\.includes\(result\)/);
-  assert.match(register,/<option value="restricted">RESTRICTED<\/option>/);
-  assert.match(fiche,/<option value="restricted">RESTRICTED<\/option>/);
-  assert.match(register,/restricted:'RESTRICTED'/);
-  assert.match(reports,/restricted:'RESTRICTED'/);
-  assert.match(fiche,/row\.result==='restricted'\?'RESTRICTED'/);
+  assert.match(route,/isTrainingResult\(result\)/);
+  for(const [value,label] of [['aanwezig','Aanwezig'],['geslaagd','Geslaagd'],
+     ['niet_geslaagd','Niet geslaagd'],['onderbroken','Onderbroken']]){
+    assert.ok(register.includes('<option value="'+value+'">'+label+'</option>'));
+    assert.ok(fiche.includes('<option value="'+value+'">'+label+'</option>'));
+  }
+  assert.match(register,/restricted:'RESTRICTED/);
+  assert.match(reports,/TRAINING_RESULT_LABELS\[r\.result\]/);
+  assert.match(fiche,/Historisch resultaat/);
 });
 
 test('Only verified Bestuur receives training write/review access across all services',()=>{
