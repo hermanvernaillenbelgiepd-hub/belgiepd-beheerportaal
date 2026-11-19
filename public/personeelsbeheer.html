@@ -1256,7 +1256,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
   <label for="historicalCaseAuthor">Oorspronkelijke registrator</label><select id="historicalCaseAuthor"></select>
   <label for="historicalCaseReason">Bron en reden overname</label>
   <input id="historicalCaseReason" minlength="10" maxlength="500" value="Historische overname uit het vroegere personeelsdossier">
-  <small>Een oude inactiviteitsping wordt uitsluitend gelogd; er wordt geen nieuwe ping verstuurd.</small>
+  <small>Een oude activiteitenping wordt uitsluitend gelogd; er wordt geen nieuwe ping verstuurd.</small>
  </div>
 </div>
 </div>
@@ -1312,7 +1312,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
   <small>Enkel Officierenkader en Korpsleiding kunnen de functie in- of uitschakelen. Bestaande registraties blijven bewaard.</small>
 </div>
 <div id="historicalMigrationManage" style="grid-column:1/-1;padding:12px;border:1px solid #466386;border-radius:8px" hidden>
- <strong>Oude dossiers tijdelijk overnemen: verlof, sancties, notities en inactiviteitspings</strong>
+ <strong>Oude dossiers tijdelijk overnemen: verlof, sancties, notities en activiteitenpings</strong>
  <p id="historicalMigrationStatus" class="subtle">Standaard uitgeschakeld.</p>
  <button id="historicalMigrationToggle" type="button" class="alt">Inschakelen voor overdracht</button>
  <small>Alleen Officierenkader/Korpsleiding. De overname gebeurt met bron en audit. Schakel na de overdracht weer uit.</small>
@@ -4323,7 +4323,7 @@ function updateHistoricalMigrationUi(){
  $('historicalMigrationManage').hidden=!manager;
  if(manager){
    $('historicalMigrationStatus').textContent=enabled?
-     'Ingeschakeld voor deze overdracht: bestaande verlofperioden, sancties, notities en inactiviteitspings kunnen met oorspronkelijke registrator overgenomen worden.':
+     'Ingeschakeld voor deze overdracht: bestaande verlofperioden, sancties, notities en activiteitenpings kunnen met oorspronkelijke registrator overgenomen worden.':
      'Uitgeschakeld: er kunnen geen nieuwe historische overnames van deze categorieën gebeuren.';
    $('historicalMigrationToggle').textContent=cfg?.enabled?
      'Overname na overdracht uitschakelen':'Overname tijdelijk inschakelen';
