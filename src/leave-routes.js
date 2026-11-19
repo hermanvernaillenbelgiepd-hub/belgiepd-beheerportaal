@@ -3,7 +3,7 @@ import {getAuth} from 'firebase-admin/auth';
 import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
   mayRegisterCentralManualLeave,maySubmitManualLeaveForApproval,mayApproveLeave,
-  mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,
+  mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,mayViewLongManualLeaveNotice,
   validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,parseDay,validateLeaveNote} from './leave-policy.js';
 import {activeLeaveCollision,planLeaveExtension} from './leave-extension-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
@@ -226,14 +226,24 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         review=[...new Map(lists.flatMap(x=>x.docs)
           .filter(d=>d.get('status')==='pending').map(d=>[d.id,d])).values()];
       }
-      const allowed=await Promise.all(review.map(async d=>board||mayApproveLeave(
-        req.bpd,await resolveApplicantRoles(d.data()),grant,yyyyMmDd(),false)));
-      review=review.filter((d,i)=>allowed[i]);
+      // Read-only awareness for the same service's higher-ranked staff.
+      // Re-use the scoped pending fetch, no cross-service scan or new writes.
+      const resolved=await Promise.all(review.map(async d=>({
+        doc:d,record:await resolveApplicantRoles(d.data())
+      })));
+      const informational=resolved.filter(x=>
+        mayViewLongManualLeaveNotice(req.bpd,x.record)).map(x=>x.doc);
+      const allowed=resolved.map(x=>board||mayApproveLeave(
+        req.bpd,x.record,grant,yyyyMmDd(),false));
+      review=resolved.filter((_,i)=>allowed[i]).map(x=>x.doc);
       const byTime=(a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''));
+      res.set('Cache-Control','private, no-store');
       return res.json({mine:my.docs.map(d=>item(d,true)).sort(byTime),
         toReview:review.map(d=>item(d,true)).sort(byTime),
+        toInformation:informational.map(d=>item(d,true)).sort(byTime),
         toOverride:board?overrides.map(d=>item(d,true)).sort(byTime):[],
-        canOverride:board,limited:my.docs.length===100||review.length>=100||overrides.length>=250});
+        canOverride:board,limited:my.docs.length===100||review.length>=100||
+          informational.length>=100||overrides.length>=250});
     }catch(e){return jsonError(res,e)}
   });
   // Dossierweergave: reden uitsluitend na bestaande dossier-/dienstautorisatie.
