@@ -1,4 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
+import {activityPingRegistration} from './activity-followup-status-policy.js';
 import {canRetireDossierRecord,isRetired} from './dossier-retirement-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 // Nieuwe interne dossierregistraties en concept-weekrapporten.
@@ -87,6 +88,9 @@ export function validateManagementEntry(value){
     if(endDate<eventDate)throw new Error('Einddatum ligt vóór de begindatum');
     result.endDate=endDate;
   }
+  if(type==='inactiviteitsping'&&
+     (value.activityStatus!==undefined||value.discordPingSent!==undefined))
+    Object.assign(result,activityPingRegistration(value));
   if(type==='opleiding')result.courseName=requiredText(value.courseName,150,'Naam van de opleiding');
   if(type==='naamswijziging')result.newName=requiredText(value.newName,100,'Nieuwe naam');
   if(type==='promotievoorstel')result.proposedRank=requiredText(value.proposedRank,140,'Voorgestelde graad');

@@ -15,6 +15,7 @@ import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
   visiblePendingPersonnel} from './personnel-create.js';
 
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
+import {RETURN_CHECK_COLLECTION} from './activity-return-policy.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {isPolice9xx} from './verified-police-cadre.js';
 import {checkServiceEnrollment} from './service-enrollment-policy.js';
@@ -779,6 +780,14 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         if(reserved.exists&&reserved.get('discordId')!==subject.personId)
           throw userError(409,'Dit roepnummer is intussen gereserveerd voor een ander personeelslid');
         const previousClaim=oldCall===proposed.call?reserved:await tx.get(oldClaim);
+        // Only an explicit, authorised ACTIEF/50/50 status edit resolves a
+        // pending leave-return CHECKING. All transaction reads precede writes.
+        const checkRef=subject.leaveReturnChecking===true&&
+          ['ACTIEF','50/50'].includes(proposed.status)&&
+          /^\d{4}-\d{2}-\d{2}$/.test(subject.leaveReturnEndDate||'')?
+          getFirestore().collection(RETURN_CHECK_COLLECTION).doc(
+            subject.dept+'_'+subject.personId+'_'+subject.leaveReturnEndDate):null;
+        const check=checkRef?await tx.get(checkRef):null;
         const audit=ref.collection('audit').doc();
         const previous={name:current?.name??subject.name,call:oldCall,status:current?.status??subject.status};
         const next={name:proposed.name,call:proposed.call,status:proposed.status};
@@ -792,6 +801,32 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         tx.create(audit,{previous,next,revision:revision+1,reason:proposed.reason,
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
           at:FieldValue.serverTimestamp()});
+        if(checkRef&&check.exists&&check.get('status')==='CHECKING'&&
+           check.get('discordId')===subject.personId&&check.get('dept')===subject.dept){
+          const now=FieldValue.serverTimestamp(),date=
+            new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+              year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+          const registrar={discordId:req.bpd.discordId,
+            name:req.bpd.name||'Bevoegd kader',call:req.bpd.call||''};
+          tx.update(checkRef,{status:proposed.status,reason:proposed.reason,
+            resolvedAt:now,resolvedBy:registrar,resolvedByUid:req.bpd.uid});
+          const checkLog=getFirestore().collection('bpd_cases')
+            .doc(subject.dept+'_'+subject.personId).collection('entries').doc();
+          const checkNotice=getFirestore().collection('bpd_notices')
+            .doc(subject.dept).collection('events').doc();
+          tx.create(checkLog,{type:'activiteit',reportCategory:'activiteit',
+            source:'leave-return-personnel-edit',dept:subject.dept,
+            subjectDiscordId:subject.personId,subjectNameAtCreation:subject.name,
+            subjectCallAtCreation:subject.call,
+            eventDate:date,createdAt:now,modifiedAt:null,
+            details:'Verlofcontrole afgerond: CHECKING → '+proposed.status+
+              '. Verlof eindigde '+subject.leaveReturnEndDate+
+              '. Motivering: '+proposed.reason,
+            registeredBy:registrar,submittedBy:{uid:req.bpd.uid}});
+          tx.create(checkNotice,{caseId:subject.dept+'_'+subject.personId,
+            entryId:checkLog.id,type:'activiteit',dept:subject.dept,
+            createdAt:now,source:'leave-return-personnel-edit'});
+        }
         if(previous.status!=='GESCHORST'&&next.status==='GESCHORST'){
           const entry=getFirestore().collection('bpd_cases')
             .doc(subject.dept+'_'+subject.personId).collection('entries').doc();
