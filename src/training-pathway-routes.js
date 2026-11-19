@@ -1,0 +1,178 @@
+import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {TRAINING_ROLE_IDS} from './role-catalog.js';
+import {
+ PATHWAY_COLLECTION,PATHWAY_DEPARTMENTS,keyName,authorizedOwnDepartments,
+ canManagePathway,canApprovePathway,validPathwayCourse,validRequirement,
+ basePathwayCourses,publicPathwayCourse,pathwayProgress
+} from './training-pathway-policy.js';
+
+const ID=/^\d{15,22}$/;
+const fail=(status,message)=>Object.assign(Error(message),{status});
+const responseError=(res,e)=>{
+ if(e?.status)return res.status(e.status).json({error:e.message});
+ console.warn('Opleidingstraject:',e?.code||'opslag tijdelijk niet beschikbaar');
+ return res.status(503).json({error:'Opleidingsmatrix tijdelijk niet beschikbaar'});
+};
+const db=()=>getFirestore();
+const collection=()=>db().collection(PATHWAY_COLLECTION);
+const actorId=req=>req.bpd?.discordId;
+const auditActor=req=>({discordId:actorId(req),role:req.bpd?.role||''});
+const ensureRoster=async(req,getSnapshot)=>{
+ const snap=await getSnapshot();
+ if(snap.stale)throw fail(503,'Personeelsbron is niet actueel');
+ const departments=authorizedOwnDepartments(req.bpd,snap.data||[]);
+ if(!departments.length)throw fail(403,'Geen geverifieerde eigen personeelsfiche gevonden');
+ return {persons:(snap.data||[]).filter(p=>p.personId===actorId(req)&&departments.includes(p.dept)),
+   departments};
+};
+async function instructors(req){
+ if(!ID.test(actorId(req)))return new Set();
+ const doc=await db().collection('bpd_discord_auth').doc(actorId(req)).get();
+ const d=doc.data()||{},now=Date.now();
+ if(!doc.exists||d.guildId!==process.env.DISCORD_GUILD_ID||
+   !Number.isSafeInteger(d.verifiedAt)||d.verifiedAt>now||
+   now-d.verifiedAt>24*60*60*1000||!Array.isArray(d.roleIds))return new Set();
+ return new Set(d.roleIds);
+}
+const manage=(req,dept,roles)=>canManagePathway(req.bpd,dept,
+  (TRAINING_ROLE_IDS[dept]?.instructors||[]).some(id=>roles.has(id))&&
+  req.bpd.departments?.includes(dept));
+function cleanDoc(doc){return {id:doc.id,...doc.data()};}
+export function installTrainingPathwayRoutes(app,{requireUser,getSnapshot}){
+ app.get('/api/training-pathway',requireUser,async(req,res)=>{
+  try{
+   const {persons,departments}=await ensureRoster(req,getSnapshot);
+   const [catalog,applications,...regDocs]=await Promise.all([
+    collection().limit(501).get(),
+    db().collection('bpd_training_requests').where('applicantDiscordId','==',actorId(req))
+      .limit(151).get(),
+    ...departments.map(dept=>db().collection('bpd_training')
+      .doc(dept+'_'+actorId(req)).collection('records')
+      .orderBy('createdAt','desc').limit(301).get())
+   ]);
+   if(catalog.size>500||applications.size>150||regDocs.some(d=>d.size>300))
+     throw fail(503,'Opleidingsgegevens onvolledig; er worden geen resultaten gegist');
+   const all=catalog.docs.map(cleanDoc),requests=applications.docs.map(d=>d.data());
+   const roles=await instructors(req);
+   const result=departments.map((dept,i)=>{
+    const person=persons.find(p=>p.dept===dept);
+    const records=regDocs[i].docs.map(d=>d.data());
+    const custom=all.filter(c=>c.department===dept&&c.active!==false);
+    const originals=basePathwayCourses(dept).filter(c=>
+      !custom.some(o=>keyName(o.name)===keyName(c.name)));
+    const available=[...originals,...custom].filter(c=>
+      !c.zone||String(person.zone||person.fireZone||person.zoneName||'').trim()===
+        c.zone.trim());
+    return {department:dept,zone:person.zone||person.fireZone||person.zoneName||null,
+      canManage:manage(req,dept,roles),
+      courses:available.map(course=>({...publicPathwayCourse(course),
+        ...pathwayProgress(person,course,records,requests)}))};
+   });
+   res.set('Cache-Control','private, no-store');
+   res.json({departments:result,readOnlyResults:true});
+  }catch(e){responseError(res,e)}
+ });
+ app.get('/api/training-pathway/manage',requireUser,async(req,res)=>{
+  try{
+   const {departments}=await ensureRoster(req,getSnapshot);
+   const roles=await instructors(req),manageable=departments.filter(d=>manage(req,d,roles));
+   const reviewer=canApprovePathway(req.bpd,'ok')||canApprovePathway(req.bpd,'kl');
+   if(!manageable.length&&!reviewer)throw fail(403,'Geen opleidingsbeheerrechten');
+   const docs=await collection().limit(501).get();
+   if(docs.size>500)throw fail(503,'Opleidingscatalogus onvolledig');
+   const courses=docs.docs.map(cleanDoc).filter(d=>manageable.includes(d.department)||reviewer)
+     .map(d=>({...publicPathwayCourse(d),
+       createdBy:d.createdBy?.discordId||null,
+       pending:d.pending?{...d.pending,
+         reason:d.pending.reason||'',proposedBy:d.pending.proposedBy||null,
+         okBy:d.pending.okBy||null}:null}));
+   res.set('Cache-Control','private, no-store');
+   res.json({manageable,reviewStages:{
+    ok:canApprovePathway(req.bpd,'ok'),kl:canApprovePathway(req.bpd,'kl')},
+    courses});
+  }catch(e){responseError(res,e)}
+ });
+ app.post('/api/training-pathway/courses',requireUser,async(req,res)=>{
+  try{
+   const {departments}=await ensureRoster(req,getSnapshot);
+   const roles=await instructors(req);
+   const item=validPathwayCourse(req.body);
+   if(!departments.includes(item.department)||!manage(req,item.department,roles))
+     throw fail(403,'Geen bevoegdheid om opleidingen bij deze dienst toe te voegen');
+   const old=await collection().where('department','==',item.department).limit(201).get();
+   if(old.size>200)throw fail(503,'Opleidingscatalogus onvolledig');
+   if(old.docs.some(d=>d.get('active')!==false&&keyName(d.get('name'))===keyName(item.name)&&
+     (d.get('zone')||'')===item.zone))throw fail(409,'Deze opleiding bestaat al voor deze dienst/zone');
+   const ref=collection().doc(),at=FieldValue.serverTimestamp(),by=auditActor(req);
+   const pending=item.mandatoryRequested?{stage:'ok',mandatory:true,targetKind:'alle',
+     targetValue:'',effectiveDate:new Date().toISOString().slice(0,10),
+     validMonths:0,reason:'Nieuw voorgestelde verplichte opleiding, inhoudelijk te beoordelen',
+     proposedBy:by.discordId,okBy:null}:null;
+   const batch=db().batch();
+   batch.create(ref,{...item,source:'eigen',active:true,mandatory:false,
+     targetKind:'alle',targetValue:'',effectiveDate:null,validMonths:0,
+     pending,createdBy:by,createdAt:at,updatedAt:at});
+   batch.create(ref.collection('audit').doc(),{type:'course_created',by,at,
+     proposedMandatory:item.mandatoryRequested});
+   await batch.commit();
+   res.status(201).json({saved:true,id:ref.id,pendingStage:pending?.stage||null});
+  }catch(e){responseError(res,e)}
+ });
+ app.post('/api/training-pathway/courses/:id/propose',requireUser,async(req,res)=>{
+  try{
+   const {departments}=await ensureRoster(req,getSnapshot);
+   const roles=await instructors(req),proposal=validRequirement(req.body);
+   const ref=collection().doc(String(req.params.id||''));
+   await db().runTransaction(async tx=>{
+    const old=await tx.get(ref);
+    if(!old.exists)throw fail(404,'Opleiding niet gevonden');
+    const data=old.data();
+    if(!departments.includes(data.department)||!manage(req,data.department,roles))
+      throw fail(403,'Geen bevoegdheid voor deze opleiding');
+    if(data.pending)throw fail(409,'Er is al een verplichtingsvoorstel in behandeling');
+    const at=FieldValue.serverTimestamp(),by=auditActor(req);
+    tx.update(ref,{pending:{...proposal,stage:'ok',proposedBy:by.discordId,okBy:null},
+      updatedAt:at});
+    tx.create(ref.collection('audit').doc(),{type:'mandatory_proposed',by,proposal,at});
+   });
+   res.json({saved:true,stage:'ok'});
+  }catch(e){responseError(res,e)}
+ });
+ app.post('/api/training-pathway/courses/:id/review',requireUser,async(req,res)=>{
+  try{
+   if(!['approve','reject'].includes(req.body?.decision)||
+       typeof req.body?.reason!=='string'||req.body.reason.trim().length<10||
+       req.body.reason.length>500||/[<>\x00-\x1f\x7f]/.test(req.body.reason))
+     throw fail(400,'Beoordeling met motivering van 10–500 tekens is verplicht');
+   const id=String(req.params.id||'');
+   if(!/^[A-Za-z0-9]{12,40}$/.test(id))throw fail(400,'Ongeldige opleiding');
+   const ref=collection().doc(id);
+   await db().runTransaction(async tx=>{
+    const old=await tx.get(ref);
+    if(!old.exists)throw fail(404,'Opleiding niet gevonden');
+    const data=old.data(),pending=data.pending;
+    if(!pending||!['ok','kl'].includes(pending.stage))throw fail(409,'Geen openstaand voorstel');
+    if(!canApprovePathway(req.bpd,pending.stage))
+      throw fail(403,'Deze goedkeuringsstap behoort niet tot jouw bevoegdheden');
+    if([pending.proposedBy,pending.okBy].includes(actorId(req)))
+      throw fail(403,'Een voorsteller of eerdere beoordelaar mag niet zelf finaal goedkeuren');
+    const at=FieldValue.serverTimestamp(),by=auditActor(req),reason=req.body.reason.trim();
+    if(req.body.decision==='reject'){
+      tx.update(ref,{pending:null,lastDecision:{decision:'rejected',stage:pending.stage,
+        by:by.discordId,reason},updatedAt:at});
+    }else if(pending.stage==='ok'){
+      tx.update(ref,{pending:{...pending,stage:'kl',okBy:by.discordId,
+        okReason:reason},updatedAt:at});
+    }else{
+      tx.update(ref,{mandatory:pending.mandatory,targetKind:pending.targetKind,
+        targetValue:pending.targetValue,effectiveDate:pending.effectiveDate,
+        validMonths:pending.validMonths,pending:null,updatedAt:at,
+        lastDecision:{decision:'approved',stage:'kl',by:by.discordId,reason}});
+    }
+    tx.create(ref.collection('audit').doc(),{type:'mandatory_'+req.body.decision,
+      stage:pending.stage,by,reason,at});
+   });
+   res.json({reviewed:true});
+  }catch(e){responseError(res,e)}
+ });
+}

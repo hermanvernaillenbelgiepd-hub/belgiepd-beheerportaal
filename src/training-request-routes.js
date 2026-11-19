@@ -4,6 +4,7 @@ import {getFirestore,FieldValue,FieldPath} from 'firebase-admin/firestore';
 import {approvedManagedEntry,USER_COLLECTION,verifiedDiscordIdentity} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
 import {TRAINING_ROLE_IDS} from './role-catalog.js';
+import {PATHWAY_COLLECTION,requestableCustomCourses} from './training-pathway-policy.js';
 import {
   TRAINING_REQUEST_DEPARTMENTS,SERIES_LEADERS,policeRequestTier,personSeries,
   requestCourseOptions,canSubmitTrainingRequest,mayReviewTrainingRequest,
@@ -91,6 +92,12 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       next();
     }catch(e){error(res,e)}
   }
+  const customCourses=async(dept,person)=>{
+    const rows=await db().collection(PATHWAY_COLLECTION)
+      .where('department','==',dept).limit(201).get();
+    if(rows.size>200)throw rejection('Opleidingscatalogus te groot; controle vereist',503);
+    return requestableCustomCourses(rows.docs.map(doc=>doc.data()),dept,person);
+  };
   const applicant=(ctx,dept)=>ctx.persons.filter(p=>p.dept===dept).length===1?
     ctx.persons.find(p=>p.dept===dept):null;
   const tierOf=(ctx,person)=>person.dept==='politie'?policeRequestTier(person):null;
@@ -200,11 +207,12 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         .where('applicantDiscordId','==',ctx.id).limit(100).get();
       const mine=mineSnap.docs.map(d=>exposed({id:d.id,...d.data()}))
         .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
-      const scopes=ctx.persons.map(p=>({
+      const scopes=await Promise.all(ctx.persons.map(async p=>({
         department:p.dept,tier:tierOf(ctx,p),
         courses:requestCourseOptions(p.dept,tierOf(ctx,p)),
+        customCourses:await customCourses(p.dept,p),
         canRequest:maySubmit(ctx,p)
-      }));
+      })));
       const incoming=[];
       let canReviewTraining=false;
       // Normal members only load their own records. Avoid a service-wide
@@ -244,7 +252,8 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
       if(!maySubmit(ctx,person))
         throw rejection('Geen aanvraagrecht in dit kader');
       let form;
-      try{form=validateTrainingRequestInput(req.body,requestCourseOptions(dept,tier),tier)}
+      try{form=validateTrainingRequestInput(req.body,[...requestCourseOptions(dept,tier),
+        ...await customCourses(dept,person)],tier)}
       catch(e){throw rejection(e.message,400)}
       const ref=db().collection('bpd_training_requests').doc();
       const stamp=FieldValue.serverTimestamp();
