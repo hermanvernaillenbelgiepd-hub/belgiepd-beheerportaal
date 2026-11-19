@@ -72,11 +72,11 @@ export function verifiedPoliceRankAuthority(actor){
   // profile while their signed Police service scope stays operational.
   // A separate CURRENT Discord Korpsleiding proof is still mandatory.
   const permittedProfile=role==='korpsleiding'||role==='officierenkader'||
-    // A verified technical profile preserves the already approved
-    // operational cadre. A Board profile without an operational scope
-    // NEVER gains Police powers from the Board label alone.
-    role==='beheerder'&&(technical&&actor.profileTechnicalAvailable===true||
-      actor.boardPersonnelAdmin===true&&actor.dossierSourceFresh===true);
+    // A verified Board profile may coexist with a separately approved
+    // service role; technical mode MUST keep its original operational role.
+    // If operationalRole was 'beheerder', no Police promotion authority.
+    !technical&&role==='beheerder'&&actor.boardPersonnelAdmin===true&&
+      actor.dossierSourceFresh===true;
   if(!permittedProfile)return null;
   if(scoped==='korpsleiding'&&
      (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true))
