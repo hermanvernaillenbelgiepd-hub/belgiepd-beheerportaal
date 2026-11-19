@@ -22,5 +22,5 @@ export const isRecordId=value=>typeof value==='string' && /^[A-Za-z0-9]{12,30}$/
 
 export function requiresReReview(record,updated){
   return (record.rosterStatus||'nog_niet_beoordeeld')!=='nog_niet_beoordeeld' &&
-    ['courseName','eventDate','result','details','instructorName'].some(k=>record[k]!==updated[k]);
+    ['courseName','eventDate','result','details','instructorName','qualificationStage'].some(k=>record[k]!==updated[k]);
 }

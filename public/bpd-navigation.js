@@ -32,6 +32,14 @@
     return button;
   }
   applyTheme(currentTheme);
+  // Display-only DD/MM/YYYY formatting for all services, including embedded views.
+  // Input values and API payloads remain ISO dates for consistent sorting.
+  if(!document.querySelector('script[data-bpd-display-dates]')){
+    const dateScript=document.createElement('script');
+    dateScript.type='module';dateScript.src='/bpd-display-dates.js';
+    dateScript.dataset.bpdDisplayDates='1';
+    document.head.append(dateScript);
+  }
   window.addEventListener?.('storage',event=>{
     if(event.key===themeKey)applyTheme(event.newValue==='dark'?'dark':'light');
   });

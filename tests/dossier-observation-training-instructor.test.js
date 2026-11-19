@@ -71,11 +71,11 @@ test('opleider is een apart invoerveld in beide opleidingsformulieren, geen verv
  assert.match(police,/row\.instructorName\|\|row\.instructor/);
  assert.match(training,/id="instructorName"[^>]*required/);
  assert.match(training,/\$\('instructorName'\)\.value=r\.instructorName/);
- assert.match(training,/instructorName};/);
+ assert.match(training,/instructorName,qualificationStage:\$\('qualificationStage'\)\.value/);
  assert.match(server,/const instructorName=asText\(x\?\.instructorName,120\)/);
- assert.match(server,/return \{department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName\}/);
+ assert.match(server,/return \{department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName,/);
  assert.match(server,/registeredByDiscordId:actor\.discordId/);
- assert.match(server,/\['courseName','details','eventDate','result','rosterStatus','instructorName'\]/);
+ assert.match(server,/\['courseName','details','eventDate','result','rosterStatus','instructorName','qualificationStage'\]/);
  assert.match(server,/instructorName:data\.instructorName/);
 });
 test('gewijzigde opleider triggert nieuwe controle maar historische opleidingen zonder opleider blijven leesbaar',()=>{

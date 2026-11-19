@@ -38,7 +38,7 @@ export function overlayVerifiedRosterSpecialties(records,apiSnapshot,linksByDept
   const specialties=p.specialties.map(x=>x&&typeof x==='object'?{...x}:x);
   let changed=false;
   for(const item of specialties){
-   if(!item||typeof item!=='object'||item.source==='manual')continue;
+   if(!item||typeof item!=='object'||['manual','training'].includes(item.source))continue;
    const match=best.get(item.label);
    if(!match)continue;
    item.value=match.value;

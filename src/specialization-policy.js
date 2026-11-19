@@ -111,6 +111,9 @@ export function publicSpecializations(subject,document,additional=[]){
   }:{};
   const savedManual=entry=>!!entry&&typeof entry==='object'&&
     ACCEPTED.has(entry.value)&&entry.source==='manual';
+  const savedTraining=entry=>!!entry&&typeof entry==='object'&&
+    ['Stage','Ja'].includes(entry.value)&&entry.source==='training'&&
+    typeof entry.trainingRecordId==='string';
   const labels=allSpecialtyLabels(subject.dept,additional);
   const automatic=automaticPoliceSpecialties(subject);
   const items=labels.map(label=>{
@@ -119,10 +122,11 @@ export function publicSpecializations(subject,document,additional=[]){
     // Canonical manual edits always take precedence. A legacy explicit
     // value is kept unless it is only an empty placeholder.
     const actual=savedManual(saved)?saved:
-      savedManual(legacy)&&legacy.value!=='Niet ingevuld'?legacy:null;
+      savedManual(legacy)&&legacy.value!=='Niet ingevuld'?legacy:
+      savedTraining(saved)?saved:null;
     const derived=!actual&&automatic[label];
     return {label,value:actual?actual.value:(derived||canonical[label]||'Niet ingevuld'),
-      source:actual?'manual':derived?'automatic-call':'google-sheets'};
+      source:actual?actual.source:derived?'automatic-call':'google-sheets'};
   });
   return {items,revision:Number.isSafeInteger(document?.revision)&&document.revision>=0
     ?document.revision:0};
@@ -143,7 +147,7 @@ export function applyVerifiedSpecialtyRoleDisplay(state,roleIds,links){
  }
  for(const item of state.items){
   const match=best.get(item.label);
-  if(!match||item.source==='manual')continue;
+  if(!match||['manual','training'].includes(item.source))continue;
   item.value=match.value;
   item.source='discord-verified';
   item.level=String(match.level||'').slice(0,45);
