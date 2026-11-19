@@ -127,29 +127,166 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 .notification-fold #reviewCount,.notification-fold #trainingCount{padding:2px 7px;font-size:11px}
 @media(prefers-reduced-motion:reduce){.notification-fold>summary::before{transition:none}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
+<style id="notificationDashboardStyle">
+/* Meldingen als overzichtspagina, afgestemd op de startpagina.
+   Alleen presentatie; bestaande paneel-ID's, API's en rollen blijven intact. */
+.notification-page{
+  --noti-surface:#fff;--noti-border:#dfe7f2;--noti-text:#172a48;
+  --noti-muted:#5f738f;--noti-soft:#eef3fd;--noti-accent:#3156d8;
+  --noti-shadow:0 8px 24px #132e590b;
+  width:100%;max-width:1380px!important;margin:0 auto!important;
+  padding-top:28px!important;padding-bottom:60px!important;
+  color:var(--noti-text);
+}
+html[data-bpd-theme="dark"] .notification-page{
+  --noti-surface:#132841;--noti-border:#345273;--noti-text:#ecf4ff;
+  --noti-muted:#b6cbe6;--noti-soft:#1d3959;--noti-accent:#83a8ff;
+  --noti-shadow:0 10px 24px #020b1b35;
+}
+.notification-page .notification-hero{
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:25px 28px;border-radius:18px;background:linear-gradient(120deg,var(--noti-surface),var(--noti-soft));
+  border:1px solid var(--noti-border);box-shadow:var(--noti-shadow);
+}
+.notification-page .notification-hero-copy{min-width:0;flex:1}
+.notification-page .notification-kicker{
+  font-size:10px;font-weight:850;letter-spacing:.19em;color:var(--noti-accent);margin-bottom:5px
+}
+.notification-page .notification-hero h1{
+  margin:0;font-size:clamp(25px,2.6vw,36px);line-height:1.2;letter-spacing:-.035em;color:var(--noti-text)!important
+}
+.notification-page .notification-hero p{
+  max-width:68ch;margin:9px 0 0;color:var(--noti-muted)!important;font-size:13px;line-height:1.6
+}
+.notification-page .refresh-all-toolbar{
+  margin:0;display:flex;flex-direction:column;align-items:flex-end;gap:7px;max-width:235px;flex:none
+}
+.notification-page .refresh-all-toolbar button{
+  min-height:42px;padding:10px 17px;border-radius:10px;background:#3156d8;color:white;border-color:#3156d8;
+  font-weight:800;box-shadow:0 5px 13px #18387f26
+}
+.notification-page .refresh-all-toolbar button:hover:not(:disabled){background:#2449be}
+.notification-page .refresh-all-toolbar small{
+  max-width:210px;text-align:right;color:var(--noti-muted)!important;font-size:10px;line-height:1.4
+}
+.notification-page #feedback{
+  margin-top:13px;border:1px solid #c4d5ef;border-radius:11px;
+  font-size:12px;line-height:1.45;padding:12px 14px
+}
+html[data-bpd-theme="dark"] .notification-page #feedback:not(.error){
+  background:#203d60;color:#d8ebff;border-color:#4d729a
+}
+.notification-page .notification-group{margin-top:29px}
+.notification-page .notification-group:not(:has(> .notification-cards > .notification-tile:not([hidden]))){display:none}
+.notification-page .notification-group-heading{display:flex;align-items:center;gap:12px;margin-bottom:13px}
+.notification-page .notification-group-icon{
+  display:grid;place-items:center;flex:none;width:40px;height:40px;
+  border-radius:12px;background:var(--noti-soft);font-size:19px;color:var(--noti-accent);
+  border:1px solid var(--noti-border)
+}
+.notification-page .notification-group-heading h2{
+  margin:0;font-size:18px;line-height:1.25;letter-spacing:-.025em;color:var(--noti-text)!important
+}
+.notification-page .notification-group-heading p{
+  margin:3px 0 0;font-size:12px;line-height:1.45;color:var(--noti-muted)!important
+}
+.notification-page .notification-cards{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:12px
+}
+.notification-page .notification-cards > .notification-tile{
+  padding:0!important;margin:0!important;min-width:0;border:1px solid var(--noti-border)!important;
+  border-radius:14px;background:var(--noti-surface)!important;color:var(--noti-text)!important;
+  box-shadow:var(--noti-shadow);overflow:hidden;
+}
+.notification-page .notification-tile > .notification-fold{margin:0;min-width:0}
+.notification-page .notification-fold > summary{
+  display:flex;align-items:center;min-height:63px;gap:8px;
+  margin:0;padding:15px 17px;color:var(--noti-text)!important;
+  font-size:14px;font-weight:800;line-height:1.35;cursor:pointer;
+  overflow-wrap:anywhere
+}
+.notification-page .notification-fold > summary::before{
+  content:'⌄';order:99;flex:none;margin-left:auto;min-width:19px;text-align:center;
+  color:var(--noti-accent);font-size:21px;font-weight:500;
+  transform:rotate(-90deg);transition:transform .15s ease;
+}
+.notification-page .notification-fold[open] > summary::before{transform:rotate(0)}
+.notification-page .notification-fold > summary:hover{background:var(--noti-soft)}
+.notification-page .notification-fold[open] > summary{
+  border-bottom:1px solid var(--noti-border);background:var(--noti-soft)
+}
+.notification-page .notification-fold > summary:focus-visible{outline:3px solid #6d9cff;outline-offset:-3px;border-radius:10px}
+.notification-page .notification-fold > summary .pill{
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+  padding:4px 9px;border-radius:100px;background:#edf2ff;
+  border:1px solid #d8e3fa;color:#274b94;font-size:11px;font-weight:850;white-space:nowrap;
+}
+html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pill{
+  background:#2a4665;color:#e0edff;border-color:#526e8f
+}
+.notification-page .notification-fold > p{
+  margin:14px 17px 11px!important;color:var(--noti-muted)!important;
+  font-size:12px!important;line-height:1.55!important
+}
+.notification-page .notification-fold > div:not(.actions){
+  margin:0!important;padding:0 17px 16px;min-width:0;color:var(--noti-text)
+}
+.notification-page .notification-fold > .actions{padding:0 17px 14px}
+.notification-page .notification-fold > details{margin:0 17px 15px;font-size:12px}
+.notification-page .notification-fold .item{background:transparent!important;box-shadow:none!important}
+.notification-page .notification-fold .item:first-child{border-top:0!important}
+.notification-page .notification-fold .item strong{color:var(--noti-text)}
+.notification-page .notification-fold .item p{color:var(--noti-muted)!important}
+.notification-page .notification-fold a{color:var(--noti-accent);text-underline-offset:3px}
+.notification-page #leaveReturnPanel{border-left:4px solid #dc9a37!important}
+.notification-page #reviewPanel,.notification-page #trainingReviewPanel{border-left:4px solid #5278e2!important}
+.notification-page #identityReviewPanel{border-left:4px solid #7185bd!important}
+.notification-page .notification-calendar{
+  display:flex;align-items:center;gap:14px;min-height:72px;margin-top:22px;
+  padding:15px 18px;background:var(--noti-surface);
+  border:1px solid var(--noti-border);border-radius:14px;
+  color:var(--noti-text);text-decoration:none;box-shadow:var(--noti-shadow)
+}
+.notification-page .notification-calendar:hover{border-color:#6e96e5;background:var(--noti-soft)}
+.notification-page .notification-calendar-icon{font-size:22px;flex:none}
+.notification-page .notification-calendar strong{font-size:13px;display:block}
+.notification-page .notification-calendar small{font-size:11px;display:block;margin-top:3px;color:var(--noti-muted)!important}
+.notification-page .notification-calendar-arrow{margin-left:auto;font-size:21px;color:var(--noti-accent)}
+@media(max-width:920px){
+  .notification-page .notification-cards{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:640px){
+  .notification-page{padding-top:14px!important}
+  .notification-page .notification-hero{display:block;padding:18px;border-radius:14px}
+  .notification-page .refresh-all-toolbar{align-items:flex-start;max-width:none;margin-top:15px}
+  .notification-page .refresh-all-toolbar small{max-width:none;text-align:left}
+  .notification-page .notification-group{margin-top:24px}
+  .notification-page .notification-group-heading h2{font-size:17px}
+  .notification-page .notification-fold > summary{padding:14px 13px;font-size:13px}
+  .notification-page .notification-fold > p{margin:12px 13px 10px!important}
+  .notification-page .notification-fold > div:not(.actions){padding:0 13px 14px}
+}
+@media(prefers-reduced-motion:reduce){
+  .notification-page .notification-fold > summary::before{transition:none}
+}
+</style>
 </head><body>
 <header><strong>🛡️ BelgiëPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
-<main><h1>📬 Meldingen</h1><p>Bekijk je persoonlijke verlofbeslissingen en opleidingsmeldingen. Reekshoofden en bevoegde dienstleiding zien hier aanvragen die zij mogen behandelen.</p>
-<div class="refresh-all-toolbar"><button id="refreshAll" type="button" class="primary">↻ Alles vernieuwen</button>
- <small>Vernieuwt alle meldingen; opengeklapte rubrieken blijven behouden.</small></div>
-<div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
-<section id="identityReviewPanel" class="panel" hidden>
- <details class="notification-fold" id="identityReviewFold" open>
-  <summary>🔐 Herinstroom en DC-ID-controle · <span id="identityReviewCount" class="pill">0</span></summary>
-  <p>Voor Officierenkader en Korpsleiding: controleer onbekende DC-ID's, mogelijke oude dossiers en nieuwe roepnummeraanvragen vóór goedkeuring. Een overeenkomstige naam bewijst geen identiteit.</p>
-  <div id="identityReviewList" aria-live="polite"></div>
- </details>
-</section>
-<section id="staffActivityFollowupPanel" class="panel" hidden>
- <details class="notification-fold" id="staffFollowupFold">
-  <summary>👥 Personeelsopvolging · <span id="staffFollowup50">0</span> op 50/50 · <span id="staffFollowupInactive">0</span> INACTIEF</summary>
-
- <p>Actuele personeelsstatussen binnen jouw dienstbevoegdheden. <strong>Dit zijn geen verzonden activiteitspings.</strong> Voor beoordeling en eventuele dossierregistratie gebruik je het <a href="/activiteitscentrum.html">Activiteitscentrum</a> of Dossiercentrum.</p>
- <div id="staffFollowupList" aria-live="polite"></div>
-
- </details>
-</section>
-<section id="leaveReturnPanel" class="panel" hidden>
+<main class="notification-page" id="notificationDashboardRedesign">
+ <div class="notification-hero">
+  <div class="notification-hero-copy">
+   <div class="notification-kicker">BEHEERPORTAAL · JOUW OVERZICHT</div>
+   <h1>📬 Meldingen</h1>
+   <p>Je aanvragen, persoonlijke berichten en administratieve opvolging. Je ziet enkel wat binnen jouw bevoegdheden valt.</p>
+  </div>
+  <div class="refresh-all-toolbar">
+   <button id="refreshAll" class="primary" type="button">↻ Alles vernieuwen</button>
+   <small>Werk alle meldingen bij, zonder je opengeklapte rubrieken te sluiten.</small>
+  </div>
+ </div>
+ <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
+ <section class="notification-group notification-group--action" aria-label="Te behandelen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">⚡</span><div><h2>Te behandelen</h2><p>Aanvragen, controles en beslissingen die jouw aandacht kunnen vragen.</p></div></div><div class="notification-cards">
+<section id="leaveReturnPanel" class="panel notification-tile notification-tile--action" hidden>
  <details class="notification-fold" id="leaveReturnFold" open>
   <summary>⚠ Verlofterugkeer · CHECKING
    <span id="leaveReturnUnread" class="pill">0 ongelezen</span>
@@ -158,7 +295,39 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
   <div id="leaveReturnList" aria-live="polite"></div>
  </details>
 </section>
-<section id="activityPingsPanel" class="panel" hidden>
+<section id="reviewPanel" class="panel notification-tile notification-tile--action" hidden>
+ <details class="notification-fold" id="reviewFold" open>
+  <summary>Te behandelen verlofaanvragen <span id="reviewCount" class="pill">0</span></summary>
+
+  <div id="reviewList"></div>
+
+ </details>
+</section>
+<section class="panel notification-tile notification-tile--action" id="trainingReviewPanel" hidden>
+ <details class="notification-fold" id="trainingReviewFold">
+  <summary>🎓 Opleidingen te behandelen <span id="trainingCount" class="pill">0</span></summary>
+<div id="trainingReview"></div>
+ </details>
+</section>
+<section id="identityReviewPanel" class="panel notification-tile notification-tile--action" hidden>
+ <details class="notification-fold" id="identityReviewFold">
+  <summary>🔐 Herinstroom en DC-ID-controle · <span id="identityReviewCount" class="pill">0</span></summary>
+  <p>Voor Officierenkader en Korpsleiding: controleer onbekende DC-ID's, mogelijke oude dossiers en nieuwe roepnummeraanvragen vóór goedkeuring. Een overeenkomstige naam bewijst geen identiteit.</p>
+  <div id="identityReviewList" aria-live="polite"></div>
+ </details>
+</section>
+<section id="manualLongLeavePanel" class="panel notification-tile notification-tile--action" hidden>
+ <details class="notification-fold" id="manualLongLeaveFold">
+  <summary>📅 Handmatig ingediend verlof vanaf 31 dagen · ter informatie
+   <span id="manualLongLeaveCount" class="pill">0</span></summary>
+  <p>Voor bevoegd Middenkader en hoger. Een openstaande periode staat in het
+  beveiligde dossier, maar is nog niet goedgekeurd. Alleen bevoegde
+  Officierenkaderleden en Korpsleiding kunnen beslissen.</p>
+  <div id="manualLongLeaveList" aria-live="polite"></div>
+ </details>
+</section></div></section>
+ <section class="notification-group notification-group--personal" aria-label="Mijn meldingen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">🔔</span><div><h2>Mijn meldingen</h2><p>Persoonlijke activiteitspings, verlofberichten en opleidingen.</p></div></div><div class="notification-cards">
+<section id="activityPingsPanel" class="panel notification-tile notification-tile--personal" hidden>
  <details class="notification-fold" id="activityPingsFold">
   <summary>🔔 Mijn activiteitspings</summary>
 
@@ -168,7 +337,7 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 
  </details>
 </section>
-<section id="personalPanel" class="panel" hidden>
+<section id="personalPanel" class="panel notification-tile notification-tile--personal" hidden>
  <details class="notification-fold" id="personalLeaveFold">
   <summary>Mijn verlofmeldingen</summary>
 
@@ -178,7 +347,23 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 
  </details>
 </section>
-<section id="seriesLeavePanel" class="panel" hidden>
+<section class="panel notification-tile notification-tile--personal" id="trainingPersonalPanel" hidden>
+ <details class="notification-fold" id="trainingPersonalFold">
+  <summary>🎓 Mijn opleidingsaanvragen</summary>
+<div id="trainingPersonal"></div><p><a href="/opleidingscentrum.html">Nieuwe opleiding aanvragen</a></p>
+ </details>
+</section></div></section>
+ <section class="notification-group notification-group--followup" aria-label="Opvolging & beheer"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">👥</span><div><h2>Opvolging & beheer</h2><p>Personeelsstatussen, reeksberichten en gemachtigde controles.</p></div></div><div class="notification-cards">
+<section id="staffActivityFollowupPanel" class="panel notification-tile notification-tile--followup" hidden>
+ <details class="notification-fold" id="staffFollowupFold">
+  <summary>👥 Personeelsopvolging · <span id="staffFollowup50">0</span> op 50/50 · <span id="staffFollowupInactive">0</span> INACTIEF</summary>
+
+ <p>Actuele personeelsstatussen binnen jouw dienstbevoegdheden. <strong>Dit zijn geen verzonden activiteitspings.</strong> Voor beoordeling en eventuele dossierregistratie gebruik je het <a href="/activiteitscentrum.html">Activiteitscentrum</a> of Dossiercentrum.</p>
+ <div id="staffFollowupList" aria-live="polite"></div>
+
+ </details>
+</section>
+<section id="seriesLeavePanel" class="panel notification-tile notification-tile--followup" hidden>
  <details class="notification-fold" id="seriesLeaveFold">
   <summary>📅 Verlofmeldingen · mijn politiereeks</summary>
 
@@ -191,25 +376,7 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 
  </details>
 </section>
-<section id="manualLongLeavePanel" class="panel" hidden>
- <details class="notification-fold" id="manualLongLeaveFold" open>
-  <summary>📅 Handmatig ingediend verlof vanaf 31 dagen · ter informatie
-   <span id="manualLongLeaveCount" class="pill">0</span></summary>
-  <p>Voor bevoegd Middenkader en hoger. Een openstaande periode staat in het
-  beveiligde dossier, maar is nog niet goedgekeurd. Alleen bevoegde
-  Officierenkaderleden en Korpsleiding kunnen beslissen.</p>
-  <div id="manualLongLeaveList" aria-live="polite"></div>
- </details>
-</section>
-<section id="reviewPanel" class="panel" hidden>
- <details class="notification-fold" id="reviewFold" open>
-  <summary>Te behandelen verlofaanvragen <span id="reviewCount" class="pill">0</span></summary>
-
-  <div id="reviewList"></div>
-
- </details>
-</section>
-<section id="overridePanel" class="panel" hidden>
+<section id="overridePanel" class="panel notification-tile notification-tile--followup" hidden>
  <details class="notification-fold" id="overrideFold">
   <summary>Bestuur · eerdere verlofbeslissingen herzien</summary>
 
@@ -218,20 +385,9 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
   <div id="overrideList"></div>
 
  </details>
-</section>
-<p><a href="/opleidingskalender.html">📅 Globale multidisciplinaire opleidingskalender</a></p>
-<section class="panel" id="trainingPersonalPanel" hidden>
- <details class="notification-fold" id="trainingPersonalFold">
-  <summary>🎓 Mijn opleidingsaanvragen</summary>
-<div id="trainingPersonal"></div><p><a href="/opleidingscentrum.html">Nieuwe opleiding aanvragen</a></p>
- </details>
-</section>
-<section class="panel" id="trainingReviewPanel" hidden>
- <details class="notification-fold" id="trainingReviewFold" open>
-  <summary>🎓 Opleidingen te behandelen <span id="trainingCount" class="pill">0</span></summary>
-<div id="trainingReview"></div>
- </details>
-</section></main>
+</section></div></section>
+ <a class="notification-calendar" href="/opleidingskalender.html"><span class="notification-calendar-icon" aria-hidden="true">📅</span><span><strong>Globale multidisciplinaire opleidingskalender</strong><small>Bekijk de planning van alle diensten</small></span><span class="notification-calendar-arrow" aria-hidden="true">↗</span></a>
+</main>
 <script type="module">
 import {TRAINING_ACTIONS,availableTrainingActions,trainingActionData,trainingStateText} from '/training-request-actions.js?v=20261031';
 const $=id=>document.getElementById(id);let auth,authMod,writesEnabled=false;
