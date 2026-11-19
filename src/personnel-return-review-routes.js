@@ -80,9 +80,11 @@ export function installPersonnelReturnReviewRoutes(app,{requireUser,getSnapshot}
     // A matching name is a flag, NEVER an automatic identity link.
     return {discordId:x.discordId,name:x.name,kind:x.kind,detail:x.detail,
       href:x.href,alertId:x.alertId||null,
-      archivedSameId:Boolean(oldSame),
+      // Even the existence of a protected archived dossier is sensitive.
+      // Do not return boolean hints from subjects outside this actor's scope.
+      archivedSameId:Boolean(oldReadable),
       archivedCall:oldReadable?safe(oldSame.call):null,
-      possiblePriorRecord:possible.length>0,
+      possiblePriorRecord:readable.length>0,
       priorDiscordId:readable.length===1&&possible.length===1?readable[0].personId:null,
       priorDept:readable.length===1&&possible.length===1?readable[0].dept:null};
    });

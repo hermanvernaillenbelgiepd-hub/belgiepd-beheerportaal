@@ -188,6 +188,8 @@ function reportText(e){
   if(Array.isArray(e.reasons)&&e.reasons.length)attrs.push('Redenen: '+e.reasons.join(', '));
   if(e.severity!==undefined&&e.severity!==null)attrs.push('Ernst: '+e.severity+'/10');
   if(e.status&&e.type==='sanctie')attrs.push('Status: '+e.status);
+  if(e.sanctionType==='Tijdelijke degradatie'&&e.temporaryRank)
+    attrs.push('Tijdelijke graad: '+e.temporaryRank);
   for(const [key,label] of [['endDate','Einddatum'],['courseName','Opleiding'],['newName','Nieuwe naam'],['proposedRank','Voorgestelde graad'],['movement','Personeelsbeweging'],['otherPlayers','Andere betrokkenen'],['referenceUrl','Bijlage'],['evidenceUrl','Bijlage']]){if(e[key])attrs.push(label+': '+e[key]);}
   if(e.details||e.explanation)attrs.push(e.details||e.explanation);
   return attrs.join('\n')||'Geen omschrijving';

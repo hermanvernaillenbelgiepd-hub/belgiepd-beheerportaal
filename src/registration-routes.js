@@ -1,6 +1,7 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import {brusselsEventDate} from './personnel-event-date.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
+import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {SPECIALTY_LABELS} from './normalize.js';
 import {roleForDepartment} from './leave-policy.js';
 import {dossierAuthorityRole,verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
@@ -23,7 +24,7 @@ function publicEntry(record) {
   return {...fields,createdAt:isoTimestamp(createdAt),modifiedAt:isoTimestamp(modifiedAt)};
 }
 function handleError(res,err){
-  if (err instanceof Error && /^(Vereist veld|Onbekend registratietype|Ongeldig|Gebruik een geldige|Selecteer minstens|Andere|Ernst|Einddatum tijdelijke beperking|Geef een reden)/.test(err.message))
+  if (err instanceof Error && /^(Vereist veld|Onbekend registratietype|Ongeldig|Gebruik een geldige|Selecteer minstens|Andere|Ernst|Einddatum tijdelijke beperking|Einddatum tijdelijke degradatie|Geef een reden)/.test(err.message))
     return res.status(400).json({error:err.message});
   console.error('Registratieopslag mislukt:',err?.code||err?.message||'onbekend');
   return res.status(503).json({error:'Beveiligde registratieopslag momenteel niet beschikbaar. Controleer Firestore-toegang van het serviceaccount.'});
@@ -227,6 +228,11 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
        const snap=await getSnapshot();
       const target=safeSubject(snap.data,dept,id);
       if(!target)return res.status(404).json({error:'Personeelslid niet gevonden of Discord ID dubbelzinnig'});
+      // A sanction cannot target a protected or same-ID personnel file.
+      // The actual cadre role is independently verified by server middleware.
+      if(type==='sanctie'&&(id===req.bpd.discordId||
+          !canReadPersonnelSubject(req.bpd,target)))
+        return res.status(403).json({error:'Geen sanctierechten op dit personeelsdossier of deze rang'});
       const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel je ingelogde Google-account eerst aan je eigen Discord ID in de serverconfiguratie'});
       // Ook oudere formulieren of directe API-aanroepen kunnen deze

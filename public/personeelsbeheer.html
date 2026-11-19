@@ -1187,7 +1187,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <option value="Promotie">▲ Promotie</option>
 <option value="Degradatie">▼ Degradatie</option>
 </optgroup>
-<optgroup label="Tijdelijke maatregelen">
+<optgroup label="Maatregelen">
 <option value="Schorsing">● Schorsing</option>
 </optgroup>
 <optgroup label="Uitdiensttreding">
@@ -1196,6 +1196,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <option value="Vrijwillig">Vrijwillig vertrek</option>
 </optgroup>
 </select>
+<p class="subtle">Waarschuwingen, tijdelijke specialisatieschorsing en tijdelijke degradatie worden apart via <strong>Observaties en sancties → Sanctie toevoegen</strong> geregistreerd, met reden, datum en audit. Rang en Discord-rechten veranderen daardoor niet automatisch.</p>
 <label for="staffMovementMode">Verwerking</label>
 <select id="staffMovementMode">
 <option value="historical">Historische registratie (alleen loggen)</option>
@@ -1289,6 +1290,16 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
     <input id="formalRestrictionEndDate" type="date">
   </label>
   <p class="subtle restriction-explanation">De beperking wordt geregistreerd in het personeelsdossier en weekrapport. Een aanpassing aan operationele of Discord-specialisatierechten gebeurt niet automatisch.</p>
+</div>
+<div id="formalTemporaryDemotionFields" style="grid-column:1/-1" hidden>
+ <strong>Tijdelijke degradatie · dossierregistratie</strong>
+ <div class="grid">
+  <div><label for="formalTemporaryRank">Tijdelijk lagere graad *</label>
+    <input id="formalTemporaryRank" type="text" maxlength="100" placeholder="Tijdelijke graad"></div>
+  <div><label for="formalTemporaryEndDate">Geldig tot en met *</label>
+    <input id="formalTemporaryEndDate" type="date"></div>
+ </div>
+ <p class="subtle">Deze sanctie wordt gelogd in dossier en weekrapport. Een effectieve rang- of roepnummerwijziging is een afzonderlijke bevoegdheid van Officierenkader/Korpsleiding en gebeurt niet automatisch.</p>
 </div>
 <div class="sanction-reasons-field" style="grid-column:1/-1">
   <div class="sanction-reasons-heading">
@@ -3676,6 +3687,9 @@ function sheetFormalRows(entries,limited){
     [x.details||x.explanation||'—',
       x.sanctionType==='Tijdelijke beperking'?
         [Array.isArray(x.restrictedSpecialties)?x.restrictedSpecialties.join(', '):'',
+          x.endDate?'tot en met '+x.endDate:''].filter(Boolean).join(' · '):
+      x.sanctionType==='Tijdelijke degradatie'?
+        ['Tijdelijke graad: '+(x.temporaryRank||'niet vermeld'),
           x.endDate?'tot en met '+x.endDate:''].filter(Boolean).join(' · '):''
     ].filter(Boolean).join(' · '),
     x.type==='sanctie'?'Ernst '+(x.severity??'—'):'—',
@@ -4268,12 +4282,17 @@ function updateFormalFields(){
   $('formalSanctionType').replaceChildren(option('','Kies maatregel'));
   for(const kind of opts){
     $('formalSanctionType').append(option(kind,kind==='Tijdelijke beperking'?
-      'Tijdelijke beperking van specialisatie':kind));
+      'Tijdelijke schorsing van specialisatie':kind));
   }
   if(opts.includes(old))$('formalSanctionType').value=old;
   const restrict=isSanction&&$('formalSanctionType').value==='Tijdelijke beperking';
   $('formalSpecializationRestrictionFields').hidden=!restrict;
   $('formalRestrictionEndDate').required=restrict;
+  const temporaryDemotion=isSanction&&$('formalSanctionType').value==='Tijdelijke degradatie';
+  $('formalTemporaryDemotionFields').hidden=!temporaryDemotion;
+  $('formalTemporaryRank').required=temporaryDemotion;
+  $('formalTemporaryEndDate').required=temporaryDemotion;
+  if($('formalDate').value)$('formalTemporaryEndDate').min=$('formalDate').value;
   // De gebeurtenisdatum is ook de begindatum van de beperking.
   if($('formalDate').value)$('formalRestrictionEndDate').min=$('formalDate').value;
   const other=formalSelectedReasons().includes('Anders');
@@ -4286,8 +4305,8 @@ function updateFormalFields(){
   $('staffFormalPolicy').textContent=!formalPermissions?.writesEnabled?
     'De registratiemodule staat momenteel uit. Je kunt de bestaande registraties wel raadplegen.':
     dept==='depannage'?
-      'Depannage: mondelinge waarschuwing en officiële waarschuwing; schorsing uitsluitend voor hoger kader en ontslag uitsluitend voor korpsleiding. De server controleert elke keuze.':
-      'De server bepaalt de toegelaten sancties op basis van je rol binnen deze hulpdienst; bij ernst 9–10 kan een degradatievoorstel worden geregistreerd.';
+      'Depannage: mondelinge/officiële waarschuwing en schorsing door bevoegd kader; ontslag uitsluitend Korpsleiding. De dienst houdt een beperkte lijst van maatregelen.':
+      'Middenkader kan waarschuwingen, tijdelijke specialisatieschorsing, schorsing en tijdelijke degradatie registreren. Definitieve degradatie vereist Officierenkader/Korpsleiding; ontslag is voor Korpsleiding. Een sanctieregistratie wijzigt geen Discord-rollen of actuele graad.';
 }
 // Datums worden in het formulier altijd in Belgisch formaat getoond,
 // maar de bestaande dossier-API bewaart de originele ISO-datum (YYYY-MM-DD).
@@ -4364,6 +4383,9 @@ function openFormalEdit(row){
     for(const cb of $('formalRestrictedSpecialties').querySelectorAll('input[type="checkbox"]'))
       cb.checked=Array.isArray(row.restrictedSpecialties)&&row.restrictedSpecialties.includes(cb.value);
     $('formalRestrictionEndDate').value=row.endDate||'';
+    $('formalTemporaryRank').value=row.temporaryRank||'';
+    $('formalTemporaryEndDate').value=row.sanctionType==='Tijdelijke degradatie'?
+      row.endDate||'':'';
   }
   updateFormalFields();
   $('formalAmendFields').hidden=false;$('formalAmendReason').required=true;
@@ -4485,6 +4507,14 @@ $('staffFormalForm').onsubmit=async event=>{
     data.reasonOther=$('formalReasonOther').value;
     data.cfxName=$('formalCfx').value;
     data.explanation=$('formalExplanation').value;
+    if(data.sanctionType==='Tijdelijke degradatie'){
+      data.temporaryRank=$('formalTemporaryRank').value.trim();
+      data.endDate=$('formalTemporaryEndDate').value;
+      if(!data.temporaryRank)
+        return notice('Vul de tijdelijke lagere graad in.',true);
+      if(!data.endDate||data.endDate<selectedDate)
+        return notice('Kies een einddatum op of na de gebeurtenisdatum.',true);
+    }
     if(data.sanctionType==='Tijdelijke beperking'){
       data.restrictedSpecialties=selectedRestrictedSpecialties();
       data.endDate=$('formalRestrictionEndDate').value;

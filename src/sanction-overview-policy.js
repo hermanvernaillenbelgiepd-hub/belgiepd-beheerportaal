@@ -53,6 +53,7 @@ export function sanctionOverviewItem(entry,subject,id){
   eventDate:String(entry.eventDate||'').slice(0,10),
   eventTime:String(entry.eventTime||'').slice(0,5),
   sanctionType:String(entry.sanctionType||'Sanctie').slice(0,100),
+  temporaryRank:String(entry.temporaryRank||'').slice(0,100),
   severity:Number.isInteger(entry.severity)?entry.severity:null,
   status:String(entry.status||'actief').slice(0,30),
   reasons:Array.isArray(entry.reasons)?entry.reasons.filter(x=>typeof x==='string').slice(0,12):[],

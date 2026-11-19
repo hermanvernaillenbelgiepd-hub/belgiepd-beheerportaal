@@ -34,9 +34,10 @@ test('Observatiescore 1–10 in personeel en weekrapport',()=>{
 });
 test('Sanctiemaatregelen blijven op server beperkt per politiegradering',()=>{
   const mid=permittedSanctionTypes('middenkader',10);
-  for(const v of ['Mondelinge waarschuwing','Officiële waarschuwing','Tijdelijke beperking','Voorstel tot degradatie'])
+  for(const v of ['Mondelinge waarschuwing','Officiële waarschuwing','Tijdelijke beperking',
+    'Schorsing','Tijdelijke degradatie','Voorstel tot degradatie'])
     assert.ok(mid.includes(v),v);
-  for(const v of ['Schorsing','Ontslag','Ontslag met blacklisting'])
+  for(const v of ['Degradatie','Ontslag','Ontslag met blacklisting'])
     assert.ok(!mid.includes(v),v);
   assert.equal(canChooseSanction('middenkader','Voorstel tot degradatie',8),false);
   assert.equal(canChooseSanction('middenkader','Voorstel tot degradatie',9),true);

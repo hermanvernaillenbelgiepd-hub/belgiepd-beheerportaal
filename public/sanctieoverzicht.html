@@ -211,6 +211,10 @@ function renderDetailData(s){
   field('Specialisatiebeperking',s.restrictedSpecialties?.join(', ')+
     (s.endDate?' · einddatum '+date(s.endDate):''),true)
  );
+ if(s.sanctionType==='Tijdelijke degradatie'){
+  box.append(field('Tijdelijk lagere graad',s.temporaryRank||'Niet vastgelegd'),
+    field('Einddatum maatregel',date(s.endDate)));
+ }
  if(s.evidenceUrl&&/^https:\/\//i.test(s.evidenceUrl)){
   const holder=text('div','','info full');
   holder.append(text('small','Bewijsmateriaal'));
