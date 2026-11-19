@@ -176,6 +176,16 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 
  </details>
 </section>
+<section id="manualLongLeavePanel" class="panel" hidden>
+ <details class="notification-fold" id="manualLongLeaveFold" open>
+  <summary>📅 Handmatig ingediend verlof vanaf 31 dagen · ter informatie
+   <span id="manualLongLeaveCount" class="pill">0</span></summary>
+  <p>Voor bevoegd Middenkader en hoger. Een openstaande periode staat in het
+  beveiligde dossier, maar is nog niet goedgekeurd. Alleen bevoegde
+  Officierenkaderleden en Korpsleiding kunnen beslissen.</p>
+  <div id="manualLongLeaveList" aria-live="polite"></div>
+ </details>
+</section>
 <section id="reviewPanel" class="panel" hidden>
  <details class="notification-fold" id="reviewFold" open>
   <summary>Te behandelen verlofaanvragen <span id="reviewCount" class="pill">0</span></summary>
@@ -223,6 +233,23 @@ async function api(url,body){
 }
 const displayLeaveDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)?
  value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
+function manualLeaveInformation(x){
+ const row=document.createElement('div');row.className='item';
+ const heading=document.createElement('strong');
+ heading.textContent=(x.subjectCall?x.subjectCall+' · ':'')+
+  (x.subjectName||'Personeelslid')+' · '+
+  displayLeaveDate(x.startDate)+' tot '+displayLeaveDate(x.endDate)+
+  ' · IN BEHANDELING';
+ const detail=document.createElement('p');
+ detail.textContent=Number(x.days)+' kalenderdagen · '+
+  (x.subjectDepartments||[]).join(', ')+' · Handmatig ingeschreven door kaderlid';
+ const reason=document.createElement('p');
+ reason.textContent='Reden: '+(x.note?.trim()||'Niet vermeld');
+ const info=document.createElement('small');
+ info.textContent='Ter informatie. Goedkeuren/afwijzen kan alleen via de bevoegde beslissingslijst.';
+ row.append(heading,detail,reason,info);
+ return row;
+}
 function item(x,override=false){
  const row=document.createElement('div');row.className='item';
  const title=document.createElement('strong');title.textContent=(x.subjectCall?x.subjectCall+' · ':'')+(x.subjectName||'Personeelslid')+
@@ -407,6 +434,7 @@ async function load(){
  return refreshInFlight;
 }
 async function loadLeave(){
+ $('manualLongLeavePanel').hidden=true;
  $('reviewPanel').hidden=true;
  $('personalPanel').hidden=true;
  $('overridePanel').hidden=true;
@@ -434,6 +462,12 @@ async function loadLeave(){
     return;
   }
   writesEnabled=access.writesEnabled===true;
+  const infoList=$('manualLongLeaveList');infoList.replaceChildren();
+  const informative=result.toInformation||[];
+  $('manualLongLeaveCount').textContent=String(informative.length);
+  for(const item of informative)infoList.append(manualLeaveInformation(item));
+  if(!informative.length)infoList.textContent='Geen openstaande handmatige verlofperiodes van 31+ dagen binnen jouw bevoegdheden.';
+  $('manualLongLeavePanel').hidden=false;
   const list=$('reviewList');list.replaceChildren();
   const entries=result.toReview||[];
   $('reviewCount').textContent=String(entries.length);
