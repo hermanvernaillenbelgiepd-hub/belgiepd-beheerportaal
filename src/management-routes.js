@@ -11,6 +11,7 @@ import {createWeekReportDocx} from './report-export.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  CATALOG_BY_ID,decorationCatalogExtras,expirationDate} from './personnel-decoration-policy.js';
 import {isArchivedTraining} from './training-maintenance.js';
+import {projectLeaveReportEvent} from './leave-report-projection.js';
 import {brusselsEventDate} from './personnel-event-date.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
@@ -750,6 +751,35 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
               catalog.get(award.catalogId).label+' · Einddatum: '+award.endDate,
             source:'bpd_personnel_decorations'});
         }
+      }
+    }
+    // Read-only, permission-scoped enrichment: older manual leave decisions
+    // often refer to a request containing the missing reason and registrar.
+    // Do not edit original events, approvals, dates or audit entries.
+    const pendingLeaveIds=[...new Set(result.filter(e=>e.type==='verlof'&&
+      typeof e.leaveRequestId==='string'&&
+      /^[a-zA-Z0-9_-]{12,200}$/.test(e.leaveRequestId))
+      .map(e=>e.leaveRequestId))];
+    const leaveRequests=new Map();
+    if(pendingLeaveIds.length>300){
+      truncated=true;
+    }else{
+      try{
+        for(let i=0;i<pendingLeaveIds.length;i+=25){
+          const refs=pendingLeaveIds.slice(i,i+25).map(id=>
+            db().collection('bpd_leave_requests').doc(id));
+          const docs=await db().getAll(...refs);
+          for(const doc of docs)if(doc.exists)leaveRequests.set(doc.id,doc.data());
+        }
+        for(let i=0;i<result.length;i++){
+          const row=result[i];
+          if(row.type==='verlof'&&leaveRequests.has(row.leaveRequestId))
+            result[i]=projectLeaveReportEvent(row,
+              leaveRequests.get(row.leaveRequestId),allSubjects);
+        }
+      }catch(error){
+        console.warn('Weekrapport: verlofbron niet volledig beschikbaar',error?.code||'onbekend');
+        truncated=true; // Never export an incomplete retrospective report.
       }
     }
     const sections=reportSections(result,report.periodStart,report.periodEnd);

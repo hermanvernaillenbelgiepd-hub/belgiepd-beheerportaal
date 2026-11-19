@@ -695,6 +695,9 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       const uniqueId='manual_central_'+personId+'_'+details.startDate+'_'+details.endDate;
       const ref=db().collection(coll).doc(uniqueId);
       const subject=matched.find(p=>p.dept===dept)||matched[0];
+      const manualActor=actorFromPersonnel(req.bpd,snapshot)||{
+        discordId:req.bpd.discordId,name:'Politioneel kader',call:''
+      };
       await db().runTransaction(async tx=>{
         // Reading the person's application range transactionally also protects
         // against overlapping approved leave entered concurrently.
@@ -713,9 +716,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         tx.create(ref,{...details,manual:true,manualPendingReview:needsHigherApproval,
           historicalImport:Boolean(originalAuthor),importSource:originalAuthor?'spreadsheet':null,
           registeredBy:originalAuthor||null,onBehalfOf:originalAuthor||null,
-          onBehalfReason,submittedByActor:actorFromPersonnel(req.bpd,snapshot)||{
-            discordId:req.bpd.discordId,name:'Politioneel kader',call:''
-          },
+          onBehalfReason,submittedByActor:manualActor,
           personDiscordId:personId,subjectName:subject.name,subjectCall:subject.call,
           subjectDepartments:departments,subjectDepartmentRoles,
           subjectRole:subjectPoliceRole,status,autoApproved:false,
@@ -729,9 +730,8 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         writeLeaveEvent(tx,{requestRef:ref,request:{
           ...details,personDiscordId:personId,subjectName:subject.name,
           subjectCall:subject.call,subjectDepartments:departments,status
-        },action:needsHigherApproval?'manual_submitted':'manual_approved',actor:{
-          discordId:req.bpd.discordId,name:'Politioneel kader',call:''
-        },actorUid:req.bpd.uid,
+        },action:needsHigherApproval?'manual_submitted':'manual_approved',
+          actor:manualActor,actorUid:req.bpd.uid,
           // A migrated, already completed leave period happened in the past.
           // Ordinary manual decisions still retain today's decision date.
           eventDate:originalAuthor?details.startDate:yyyyMmDd(),

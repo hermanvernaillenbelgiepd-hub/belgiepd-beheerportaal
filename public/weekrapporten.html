@@ -110,6 +110,10 @@ const allTypes=['verlof','notitie','opleiding','promotievoorstel','naamswijzigin
 let firebaseAuth=null,authModule=null,authApp=null,subjects=[],viewData=null,reportItems=[],archivedReportItems=[],canRemoveReport=false,activeReport=null;
 const msg=(message,kind='notice')=>{$('status').textContent=message;$('status').className='status '+kind;};
 const fmt=d=>d?new Date(d).toLocaleString('nl-BE'):'—';
+function reportDate(value){
+ return typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)?
+   value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
+}
 const roleHigher=r=>['officierenkader','korpsleiding'].includes(r);
 function selectOptions(el,items,placeholder){el.replaceChildren();const o=document.createElement('option');o.value='';o.textContent=placeholder;el.append(o);items.forEach(it=>{const a=document.createElement('option');a.value=it.value;a.textContent=it.label;el.append(a)})}
 async function api(url,method='GET',body){if(!firebaseAuth?.currentUser)throw new Error('Niet aangemeld');const token=await firebaseAuth.currentUser.getIdToken();const resp=await fetch(url,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'});const data=await resp.json().catch(()=>({}));if(!resp.ok)throw new Error(data.error||'HTTP '+resp.status);return data}
@@ -189,13 +193,18 @@ function reportText(e){
   return attrs.join('\n')||'Geen omschrijving';
 }
 function reportSection(section){
-  const rows=section.entries.map(e=>`<tr><td>${esc(e.eventDate||'—')}</td><td><strong>${esc(e.subjectNameAtCreation||'—')}</strong><small>Roepnr. ${esc(e.subjectCallAtCreation||'—')}</small></td><td>${esc(e.registeredBy?.name||'Onbekend')}</td><td>${esc(reportText(e))}</td></tr>`).join('');
+  const rows=section.entries.map(e=>`<tr><td>${esc(reportDate(e.eventDate))}</td><td><strong>${esc(e.subjectNameAtCreation||'—')}</strong><small>Roepnr. ${esc(e.subjectCallAtCreation||'—')}</small></td><td>${esc(e.registeredBy?.name||'Onbekend')}</td><td>${esc(reportText(e))}</td></tr>`).join('');
   return `<section class="report-section"><h3 class="section-title">${esc(section.label)} (${section.entries.length})</h3>${rows?`<table class="report-table"><thead><tr><th>Datum</th><th>Personeelslid</th><th>Door</th><th>Registratie / omschrijving</th></tr></thead><tbody>${rows}</tbody></table>`:'<p class="muted">Geen registraties in deze categorie.</p>'}</section>`;
 }
 function renderReport(out){
   const summary=`<div class="report-summary"><div class="report-kpi"><span>Registraties</span><strong>${out.recordCount}</strong></div><div class="report-kpi"><span>Rubrieken</span><strong>${out.sections.filter(s=>s.entries.length).length}</strong></div><div class="report-kpi"><span>Testregistraties uitgesloten</span><strong>${out.excludedTestCount||0}</strong></div></div>`;
   const restartLabel=out.report.restartedAt?`<p class="muted">Handmatige herstart: ${esc(new Date(out.report.restartedAt).toLocaleString('nl-BE'))}. Eerdere registraties zijn alleen uit deze rapportinhoud uitgesloten.</p>`:'';
-   const info=`<h1>${esc(out.report.title)}</h1><div class="report-meta"><strong>BelgiëPD Beheerportaal</strong> · ${esc(out.report.dept)} · ${esc(out.report.periodStart)} t/m ${esc(out.report.periodEnd)}<br/>Opgesteld door ${esc(out.report.createdBy?.name||'BelgiëPD')} · Status: <strong>${esc(out.report.status||'concept')}</strong></div>${restartLabel}${summary}<div class="info warn">${esc(out.disclaimer)}</div>`;
+   const displayTitle=out.report.source==='automatic'?
+     'Automatisch tweewekelijks rapport · '+out.report.dept+
+     ' · '+reportDate(out.report.periodStart):out.report.title;
+   const statusLabel=({lopende_periode:'Lopende periode',afgesloten_periode:'Afgesloten periode'})
+     [out.report.status]||out.report.status||'Concept';
+   const info=`<h1>${esc(displayTitle)}</h1><div class="report-meta"><strong>BelgiëPD Beheerportaal</strong> · ${esc(out.report.dept)} · ${esc(reportDate(out.report.periodStart))} t/m ${esc(reportDate(out.report.periodEnd))}<br/>Opgesteld door ${esc(out.report.createdBy?.name||'BelgiëPD')} · Status: <strong>${esc(statusLabel)}</strong></div>${restartLabel}${summary}<div class="info warn">${esc(out.disclaimer)}</div>`;
   const end=out.truncated?'<div class="info warn">Let op: ten minste één dossier bevat meer registraties dan deze weergave kan verwerken. Export is geblokkeerd; dit rapport is onvolledig.</div>':'';
   return info+out.sections.map(reportSection).join('')+end;
 }
