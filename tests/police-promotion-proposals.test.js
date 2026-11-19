@@ -5,6 +5,8 @@ import {spawnSync} from 'node:child_process';
 import {nextPromotionRank,recommendedPromotionCall,validatePromotionDecision}
  from '../src/police-promotion-routes.js';
 import {automaticPoliceSpecialties} from '../src/specialization-policy.js';
+import {policeSubjectGradeOption,POLICE_RANK_CHOICES,
+  allowedPoliceGradeChoices} from '../src/personnel-rank-policy.js';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
 test('a promotion recommends the immediate next police grade',()=>{
@@ -132,4 +134,45 @@ test('the manual effective movement recommends an adjacent grade in either direc
  assert.match(route,/const hundreds=rank==='Agent'\?\[2\]:option\.hundreds/);
  assert.match(route,/wanted\.grade===current\.grade/);
  assert.doesNotMatch(route,/wanted\.grade<=current\.grade/);
+});
+
+test('3xx police personnel with a legacy long rank name can propose a 4xx promotion',()=>{
+ const person={dept:'politie',rank:'Aspirant Inspecteur van Politie (A-INP)',call:'316'};
+ const current=policeSubjectGradeOption(person);
+ assert.equal(current?.grade,1);
+ assert.equal(current?.rank,'Aspirant Inspecteur');
+ assert.equal(nextPromotionRank(current.rank),'Inspecteur');
+ assert.equal(recommendedPromotionCall('Inspecteur',new Set()),400);
+ assert.equal(policeSubjectGradeOption({...person,rank:'Inspecteur'}),null,
+   'A canonical rank conflicting with the official callsign must fail closed');
+ assert.equal(policeSubjectGradeOption({...person,call:'900'}),null,
+   'Protected 900 is not a valid promotion source');
+ const officer={uid:'discord:111111111111111111',discordId:'111111111111111111',
+  role:'officierenkader',departments:['politie'],
+  departmentRoles:{politie:'officierenkader'},discordPoliceRank:'officierenkader'};
+ assert.ok(allowedPoliceGradeChoices(officer).includes('Inspecteur'));
+ assert.ok(!allowedPoliceGradeChoices(officer).includes('Aspirant Commissaris'));
+ assert.equal(POLICE_RANK_CHOICES[1].rank,'Aspirant Inspecteur');
+});
+test('legacy-grade normalization is shared by proposals, previews and approvals',()=>{
+ const policy=read('src/personnel-rank-policy.js');
+ const manager=read('src/management-routes.js');
+ const routes=read('src/police-promotion-routes.js');
+ assert.match(policy,/export function policeSubjectGradeOption/);
+ assert.match(manager,/const currentPoliceGrade=proposalType\?policeSubjectGradeOption\(subject\):null/);
+ assert.match(routes,/const current=policeSubjectGradeOption\(person\),wanted=policeRankByName\(rank\)/);
+ assert.match(routes,/const before=policeSubjectGradeOption\(person\),after=policeRankByName\(input\.newRank\)/);
+ const ui=read('public/personeelsbeheer.html');
+ assert.match(ui,/function currentPoliceGradeIndex\(person\)/);
+ assert.match(ui,/const idx=currentPoliceGradeIndex\(selected\)/);
+ assert.match(ui,/const before=currentPoliceGradeIndex\(person\),after=rankChoices\.indexOf\(newRank\)/);
+ const names=['Agent','Aspirant Inspecteur','Inspecteur','Eerste Inspecteur',
+  'Aspirant Hoofdinspecteur','Hoofdinspecteur','Eerste Hoofdinspecteur'];
+ const start=ui.indexOf('function currentPoliceGradeIndex(person)');
+ const end=ui.indexOf('function updateStaffCaseFields(){',start);
+ assert.ok(start>0&&end>start);
+ const lookup=Function('rankChoices',ui.slice(start,end)+';return currentPoliceGradeIndex;')(names);
+ assert.equal(lookup({dept:'politie',rank:'Aspirant Inspecteur van Politie (A-INP)',call:'316'}),1);
+ assert.equal(names[lookup({dept:'politie',rank:'Aspirant Inspecteur van Politie (A-INP)',call:'316'})+1],'Inspecteur');
+ assert.equal(lookup({dept:'politie',rank:'Aspirant Inspecteur van Politie (A-INP)',call:'900'}),-1);
 });
