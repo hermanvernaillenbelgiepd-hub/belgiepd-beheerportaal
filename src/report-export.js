@@ -93,13 +93,18 @@ function zip(entries){
   end.writeUInt32LE(centralData.length,12);end.writeUInt32LE(offset,16);
   return Buffer.concat([...files,centralData,end]);
 }
+const reportDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)?
+  value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
 export function createWeekReportDocx(out){
   if(!out?.report||!Array.isArray(out.sections)||out.truncated)throw new Error('Onvolledig of ongeldig weekrapport kan niet geëxporteerd worden');
   const r=out.report,body=[];
   body.push(PARA('BELGIËPD BEHEERPORTAAL',{bold:true}));
-  body.push(PARA(r.title,{heading:true}));
+  body.push(PARA(r.source==='automatic'?
+    'Automatisch tweewekelijks rapport · '+r.dept+' · '+reportDate(r.periodStart):
+    r.title,{heading:true}));
   body.push(PARA('Hulpdienst: '+deptName(r.dept)));
-  body.push(PARA('Rapportperiode: '+r.periodStart+' t/m '+r.periodEnd));
+  body.push(PARA('Rapportperiode: '+reportDate(r.periodStart)+
+    ' t/m '+reportDate(r.periodEnd)));
   body.push(PARA('Aangemaakt door: '+(r.createdBy?.name||'Onbekend')));
   body.push(PARA('Status: CONCEPT – dynamische weergave, geen afgesloten archief',{bold:true}));
   body.push(PARA('Registraties: '+out.recordCount+' · Uitgesloten testregistraties: '+(out.excludedTestCount||0)));
@@ -107,7 +112,7 @@ export function createWeekReportDocx(out){
   for(const section of out.sections){
     body.push(PARA(section.label+' ('+section.entries.length+')',{heading:true}));
     const rows=section.entries.map(e=>[
-      e.eventDate||'',
+      reportDate(e.eventDate),
       e.subjectCallAtCreation||'',
       e.subjectNameAtCreation||'',
       e.registeredBy?.name||'Onbekend',
