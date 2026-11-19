@@ -14,6 +14,21 @@ export const POLICE_RANK_CHOICES=Object.freeze([
   {rank:'Aspirant Commissaris',hundreds:[9],grade:7}
 ]);
 export const policeRankByName=name=>POLICE_RANK_CHOICES.find(r=>r.rank===name)||null;
+/**
+ * Some source-sheet personnel grades use extended descriptions (such as
+ * "Aspirant Inspecteur van Politie (A-INP)") while the grade editor uses
+ * the canonical short label. We may recover the grade from an official
+ * callsign without changing the persisted source grade or granting rights.
+ * A known canonical grade that conflicts with its callsign fails closed.
+ */
+export function policeSubjectGradeOption(subject){
+  const byName=policeRankByName(subject?.rank);
+  const callGrade=policeCallGrade(subject?.call);
+  if(callGrade===null)return null;
+  if(byName&&byName.grade!==callGrade)return null;
+  return byName||POLICE_RANK_CHOICES.find(item=>item.grade===callGrade)||null;
+}
+
 export function policeCallNumber(call){
   const match=/^(?:S[- ]?)?([1-9]\d{2})$/i.exec(String(call||'').trim());
   return match?Number(match[1]):null;
