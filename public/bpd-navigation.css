@@ -946,3 +946,12 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
    grid-template-columns:11% 11% minmax(0,1fr) 12% 22%!important;
  }
 }
+
+/* Verified per-user unread action marker, visible on both navigation layouts. */
+.bpd-action-warning{display:inline-flex;align-items:center;justify-content:center;
+ margin-left:auto;padding:2px 6px;border-radius:6px;
+ background:#fff0cd;color:#713e00;border:1px solid #e6b65d;
+ font:800 11px/1.2 Inter,system-ui,sans-serif;white-space:nowrap}
+#bpdQuicknav .bpd-action-warning{margin-left:5px}
+.portal aside nav a .bpd-action-warning{margin-left:auto}
+a[data-action-required="true"]{position:relative}
