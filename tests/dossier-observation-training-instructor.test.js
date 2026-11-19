@@ -73,7 +73,7 @@ test('opleider is een apart invoerveld in beide opleidingsformulieren, geen verv
  assert.match(training,/\$\('instructorName'\)\.value=r\.instructorName/);
  assert.match(training,/instructorName};/);
  assert.match(server,/const instructorName=asText\(x\?\.instructorName,120\)/);
- assert.match(server,/return \{department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName\}/);
+ assert.match(server,/return \{department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName,/);
  assert.match(server,/registeredByDiscordId:actor\.discordId/);
  assert.match(server,/\['courseName','details','eventDate','result','rosterStatus','instructorName'\]/);
  assert.match(server,/instructorName:data\.instructorName/);
