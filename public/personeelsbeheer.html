@@ -4190,6 +4190,18 @@ async function loadStaffLeave(p,key){
       (Number(x.days)||'—')+' dagen',
       'Reden: '+(x.note?.trim()||'Niet geregistreerd (oude verlofperiode)')
     ],'Geen goedgekeurde verlofperiodes.',info.limited);
+    // A manually submitted 31+ day period is visible as PENDING, not as
+    // approved or active leave. Approval stays with Officers/Corps.
+    const awaiting=leaves.filter(x=>x.manual===true&&x.status==='pending'&&
+      Number(x.days)>=31);
+    if(awaiting.length){
+      const reminder=document.createElement('p');
+      reminder.className='subtle';reminder.style.margin='8px 0';
+      reminder.textContent=awaiting.length+
+        ' handmatig ingediende verlofperiode(n) van 31+ dagen IN BEHANDELING. '+
+        'Nog niet goedgekeurd; beslissing door bevoegd Officierenkader of Korpsleiding.';
+      $('sheetLeave').append(reminder);
+    }
     root.replaceChildren();
     if(!leaves.length)root.textContent='Geen geregistreerde verlofperiodes.';
     for(const item of leaves){
