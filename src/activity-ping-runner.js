@@ -62,11 +62,18 @@ export async function runAutomaticActivityPings({getSnapshot,db=getFirestore(),
   ID.test(String(p?.personId||''))&&p.lifecycleState!=='archived');
  const ids=[...new Set(people.map(p=>p.personId))];
  if(ids.length>1500)return {enabled:true,skipped:'roster_limit',created:0};
- const [leaveSnap]=await Promise.all([
-  db.collection('bpd_leave_requests').where('status','==','approved').limit(1500).get()
+ const [leaveSnap,checkingSnap]=await Promise.all([
+  db.collection('bpd_leave_requests').where('status','==','approved').limit(1500).get(),
+  env.BPD_ENABLE_LEAVE_RETURN_CHECKS==='true'
+   ?db.collection('bpd_leave_return_checks').where('status','==','CHECKING').limit(501).get()
+   :Promise.resolve({docs:[],size:0})
  ]);
  // Failure closed: if the leave result may be truncated, do not issue alerts.
  if(leaveSnap.size===1500)return {enabled:true,skipped:'leave_limit',created:0};
+ if(checkingSnap.size>500)return {enabled:true,skipped:'checking_limit',created:0};
+ const checking=new Set(checkingSnap.docs.map(doc=>{
+  const row=doc.data();return row.dept+':'+row.discordId;
+ }));
  const leaves=new Map();
  for(const doc of leaveSnap.docs){
   const row=doc.data(),id=row.personDiscordId;
@@ -83,6 +90,8 @@ export async function runAutomaticActivityPings({getSnapshot,db=getFirestore(),
  let created=0,considered=0,skipped=0;
  const date=activityDateBrussels(now);
  for(const p of people){
+  // A confirmed post-leave review suppresses automatic follow-up pings.
+  if(checking.has(p.dept+':'+p.personId)){skipped++;continue}
   const evidence=activity.get(p.personId);
   if(!evidence||evidence.guildId!==env.DISCORD_GUILD_ID){skipped++;continue}
   const proposed=assessActivityPings(evidence,{
