@@ -1,8 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
-import {fireRecordVisibility,fireMayCreate,fireSanctionLevel,fireCanWithdrawSanction,FIRE_COURSES,fireMayProposePromotion,fireMayAdvisePromotion} from './fire-dossier-policy.js';
-import {firePromotionInput,firePromotionOpinionInput,updatedPromotionOpinions,firePublicProposal} from './fire-promotion-policy.js';
-import {brusselsEventDate} from './personnel-event-date.js';
+import {fireRecordVisibility,fireMayCreate,fireSanctionLevel,fireCanWithdrawSanction,FIRE_COURSES} from './fire-dossier-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 import {validateEntry,canChooseSanction,permittedSanctionTypes,SANCTION_REASONS} from './registrations.js';
 import {validateManagementEntry} from './management-utils.js';
@@ -22,7 +20,7 @@ const publicHistory=(doc)=>{
 };
 
 const listed=(v)=>Array.isArray(v)?v:[];
-const allowedTypes=['observatie','basisnotitie','notitie','sanctie','personeelsbeweging','promotievoorstel'];
+const allowedTypes=['observatie','basisnotitie','notitie','sanctie'];
 function safeCase(row,id){
  const r=row.data(),v={id,type:r.type||'',details:clean(r.details,4000),
   eventDate:clean(r.eventDate,10),createdAt:formatDate(r.createdAt),
@@ -30,10 +28,6 @@ function safeCase(row,id){
   registeredCall:clean(r.registeredBy?.call,24),
   registeredRank:clean(r.registeredBy?.rank,100),
   noteKind:r.type==='notitie'?(r.noteKind==='basis'?'basis':'belangrijk'):null};
- if(r.type==='personeelsbeweging'){
-  v.movement=clean(r.movement,150);v.previousRank=clean(r.previousRank,100);
-  v.newRank=clean(r.newRank,100);
- }
  if(r.type==='sanctie'){
   v.sanctionType=clean(r.sanctionType,120);
   v.severity=r.severity??null;
@@ -71,8 +65,6 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
        mayRegisterCentralManualLeave(req.bpd,person.personId,1,
          policeMember?rosterPoliceRole(policeMember):null,Boolean(policeMember));
      const canWrite=allowedTypes.filter(type=>fireMayCreate(req.bpd,person,roles,type));
-     const canProposePromotion=fireMayProposePromotion(req.bpd,person,roles);
-     const canAdvisePromotion=fireMayAdvisePromotion(req.bpd,person,roles);
      const sanctionTypes=canWrite.includes('sanctie')?
        permittedSanctionTypes(fireSanctionLevel(req.bpd),10):[];
      if(level==='identity'){
@@ -83,16 +75,8 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
        const leave=leaveSnap.docs.filter(doc=>doc.get('status')==='approved')
          .map(doc=>({id:doc.id,startDate:clean(doc.get('startDate'),10),
            endDate:clean(doc.get('endDate'),10),status:'approved'}));
-       const proposals=canProposePromotion?await getFirestore()
-         .collection('bpd_cases').doc('brandweer_'+person.personId)
-         .collection('entries').orderBy('createdAt','desc').limit(120).get():null;
-       const ownProposals=proposals?.docs.filter(d=>d.get('type')==='promotievoorstel'&&
-         d.get('registeredBy')?.discordId===req.bpd.discordId&&
-         d.get('status')!=='verwijderd').map(d=>firePublicProposal(d.data(),d.id))||[];
-       res.set('Cache-Control','private, no-store');
        return res.json({person:publicInfo(person),visibility:level,
-         leave,entries:[],trainings:[],promotionProposals:ownProposals,
-         canProposePromotion,canAdvisePromotion:false,canWrite,canLogManualLeave:false,
+         leave,entries:[],trainings:[],canWrite,canLogManualLeave:false,
          sanctionTypes:[],canWithdrawSanctions:false,canEditSpecialties:false});
      }
      const db=getFirestore(),casePath='brandweer_'+person.personId;
@@ -107,12 +91,8 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
        db.collection('bpd_leave_requests').where('personDiscordId','==',person.personId)
          .limit(100).get()
      ]);
-     const entries=caseEntries.docs.filter(d=>d.get('status')!=='verwijderd'&&
-       allowedTypes.includes(d.get('type'))&&d.get('type')!=='promotievoorstel')
+     const entries=caseEntries.docs.filter(d=>d.get('status')!=='verwijderd'&&allowedTypes.includes(d.get('type')))
        .map(d=>safeCase(d,d.id));
-     const promotionProposals=caseEntries.docs.filter(d=>
-       d.get('status')!=='verwijderd'&&d.get('type')==='promotievoorstel')
-       .map(d=>firePublicProposal(d.data(),d.id,{opinions:true}));
      const oldNotes=staffNotes.docs.filter(doc=>doc.get('status')!=='verwijderd'&&
        ['opleiding','begeleiding','evaluatie','administratief','waardering']
          .includes(doc.get('kind'))).map(doc=>({
@@ -137,9 +117,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
          eventDate:clean(d.get('eventDate'),10),
          result:clean(d.get('result'),40)}));
      }
-     res.set('Cache-Control','private, no-store');
      return res.json({person:publicInfo(person),visibility:level,entries,trainings,
-       promotionProposals,canProposePromotion,canAdvisePromotion,
        leave,canLogManualLeave,profile,olderNotes:oldNotes,dossierHistory,
        canWrite,sanctionTypes,sanctionReasons:SANCTION_REASONS,
        canWithdrawSanctions:fireCanWithdrawSanction(req.bpd,person,roles),canEditSpecialties:(verifiedBoardCorpsDossierAdmin(req.bpd)||req.bpd.fireZoneChief===true||
@@ -198,52 +176,6 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
    }
  });
 
- // Advies van Zone of geverifieerde Brandweerofficier; geen effectieve promotie.
- app.post('/api/fire-dossiers/:discordId/promotions/:entryId/opinion',requireUser,async(req,res)=>{
-  if(process.env.BPD_ENABLE_REGISTRATIONS!=='true')
-   return code(res,503,'Registraties zijn niet geactiveerd');
-  const {discordId,entryId}=req.params;
-  if(!ID.test(discordId)||!/^[A-Za-z0-9]{12,30}$/.test(entryId))
-   return code(res,400,'Ongeldige promotieverwijzing');
-  let opinion;
-  try{opinion=firePromotionOpinionInput(req.body)}
-  catch(e){return code(res,400,e.message)}
-  try{
-   const s=await subjectFor(req,getSnapshot);
-   if(s.error)return code(res,s.error,s.message);
-   if(!fireMayAdvisePromotion(req.bpd,s.person,s.roles))
-    return code(res,403,'Alleen bevoegde Brandweerofficieren en ZONE kunnen adviseren');
-   const writers=s.snap.data.filter(p=>p.dept==='brandweer'&&
-    p.personId===req.bpd.discordId);
-   if(writers.length!==1)return code(res,403,'Eigen geverifieerde Brandweerfiche vereist');
-   const actor={discordId:req.bpd.discordId,name:writers[0].name,
-    call:writers[0].call,rank:writers[0].rank};
-   const store=getFirestore(),ref=store.collection('bpd_cases')
-    .doc('brandweer_'+discordId).collection('entries').doc(entryId);
-   await store.runTransaction(async tx=>{
-    const before=await tx.get(ref);
-    if(!before.exists||before.get('dept')!=='brandweer'||
-     before.get('subjectDiscordId')!==discordId||
-     before.get('type')!=='promotievoorstel'||before.get('status')==='verwijderd')
-     throw Object.assign(Error('Promotievoorstel niet gevonden'),{status:404});
-    const at=FieldValue.serverTimestamp();
-    tx.update(ref,{opinions:updatedPromotionOpinions(before.get('opinions'),actor,opinion,new Date().toISOString()),
-     modifiedAt:at});
-    const audit={action:'fire_promotion_opinion',dept:'brandweer',
-     subjectDiscordId:discordId,entryId,actorDiscordId:actor.discordId,
-     actorName:actor.name,opinion:opinion.opinion,reason:opinion.reason,at};
-    tx.create(ref.collection('audit').doc(),audit);
-    tx.create(store.collection('bpd_notices').doc('brandweer')
-     .collection('events').doc(),{...audit,type:'promotieadvies',createdAt:at});
-   });
-   return res.json({saved:true,rankChanged:false,discordRolesChanged:false});
-  }catch(e){
-   if(e.status===404)return code(res,404,e.message);
-   console.error('Brandweerpromotieadvies:',e.code||e.message);
-   return code(res,503,'Promotieadvies momenteel niet beschikbaar');
-  }
- });
-
  app.post('/api/fire-dossiers/:discordId/entries',requireUser,async(req,res)=>{
    if(process.env.BPD_ENABLE_REGISTRATIONS!=='true')
      return code(res,503,'Registraties zijn nog niet geactiveerd');
@@ -263,14 +195,6 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      if(type==='notitie'||type==='basisnotitie'){
        values={...validateManagementEntry({type:'notitie',eventDate:req.body.eventDate,
          details:req.body.details}),noteKind:type==='basisnotitie'?'basis':'belangrijk'};
-     }else if(type==='personeelsbeweging'){
-       values=validateManagementEntry({type,eventDate:req.body.eventDate,
-         details:req.body.details,movement:req.body.movement,
-         previousRank:req.body.previousRank,newRank:req.body.newRank});
-       if(values.eventDate>brusselsEventDate())
-         return code(res,400,'Personeelsbeweging kan niet in de toekomst liggen');
-     }else if(type==='promotievoorstel'){
-       values=firePromotionInput(req.body,brusselsEventDate());
      }else{
        values=validateEntry({
          type,details:req.body.details,eventDate:req.body.eventDate,
@@ -306,7 +230,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
        subjectDiscordId:s.person.personId,subjectNameAtCreation:s.person.name,
        subjectCallAtCreation:s.person.call,registeredBy:actor,
        submittedByActor:actor,submittedBy:{uid:req.bpd.uid},
-       reason,createdAt:at,modifiedAt:null,visibility:type==='promotievoorstel'?'brandweer_promotie':'brandweer_leiding'});
+       reason,createdAt:at,modifiedAt:null,visibility:'brandweer_leiding'});
      batch.create(audit,{caseId:'brandweer_'+s.person.personId,entryId:entry.id,
        type,dept:'brandweer',noteKind:values.noteKind||null,
        actorDiscordId:req.bpd.discordId,subjectDiscordId:s.person.personId,
