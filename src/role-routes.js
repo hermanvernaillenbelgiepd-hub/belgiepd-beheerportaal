@@ -385,9 +385,14 @@ export function installRoleRoutes(app,{getSnapshot}={}){
       // Instructeurs zien enkel eigen evaluaties; gemachtigde beoordelaars mogen het hele opleidingsdossier bekijken.
       const s=await (all?query.orderBy('createdAt','desc').limit(100):query.where('registeredByDiscordId','==',req.roleActor.bpd.discordId).limit(100)).get();
       const actorId=req.roleActor.bpd.discordId,mayLog=trainingAccess(req,department,'log');
+      const canReviewOwn=mayLog===true&&req.roleActor.base?.fresh===true&&
+        req.roleActor.base.permissions?.[department]?.['training.log']===true;
       const rows=s.docs.filter(d=>!isArchivedTraining(d.data())).map(d=>({id:d.id,...d.data(),
         canEdit:mayMaintainTraining(d.data(),{actorDiscordId:actorId,mayLog,mayReview:all}),
         canDelete:mayMaintainTraining(d.data(),{actorDiscordId:actorId,mayLog,mayReview:all}),
+        // A verified instructor can check only their OWN registration.
+        // Service leadership and senior cadre can review within their authorized service.
+        canReview:all||canReviewOwn&&d.get('registeredByDiscordId')===actorId,
         createdAt:iso(d.get('createdAt')),reviewedAt:iso(d.get('reviewedAt'))}));
       if(!all)rows.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
       res.json({records:rows,limited:s.size===100,scope:all?'volledig':'alleen_eigen_registraties'});
@@ -469,7 +474,12 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     if(process.env.BPD_ENABLE_TRAINING_WRITES!=='true')return res.status(503).json({error:'Beoordelingen staan nog uit'});
     const {department,discordId,recordId}=req.params;
     if(!SERVICE_DEPTS.includes(department)||!isDiscordId(discordId)||!/^[A-Za-z0-9]{12,30}$/.test(recordId))return res.status(400).json({error:'Ongeldige dossierverwijzing'});
-    if(!trainingAccess(req,department,'review'))return res.status(403).json({error:'Geen bevoegdheid voor officiële opleidingscontrole'});
+    const reviewer=trainingAccess(req,department,'review');
+    const instructorOwn=trainingAccess(req,department,'log')&&
+      req.roleActor.base?.fresh===true&&
+      req.roleActor.base.permissions?.[department]?.['training.log']===true;
+    if(!reviewer&&!instructorOwn)
+      return res.status(403).json({error:'Geen bevoegdheid voor opleidingscontrole'});
     const actor=req.roleActor.bpd;
     if(!isDiscordId(actor.discordId))return res.status(403).json({error:'Geen gekoppelde Discord ID'});
     const status=asText(req.body?.status,40),reason=asText(req.body?.reason,500);
@@ -481,11 +491,13 @@ export function installRoleRoutes(app,{getSnapshot}={}){
         if(!doc.exists)throw Object.assign(new Error('Registratie niet gevonden'),{status:404});
         const old=doc.data();
         if(isArchivedTraining(old))throw Object.assign(new Error('Verwijderde registratie kan niet beoordeeld worden'),{status:409});
+        if(!reviewer&&(!instructorOwn||old.registeredByDiscordId!==actor.discordId))
+          throw Object.assign(new Error('Een instructeur mag uitsluitend eigen opleidingen controleren'),{status:403});
         // Approved entries are STILL NOT written into Google Sheets.
         tx.update(ref,{rosterStatus:status,reviewReason:reason,reviewedByDiscordId:actor.discordId,reviewedAt:FieldValue.serverTimestamp()});
         tx.create(ref.collection('audit').doc(),{kind:'manual-roster-review',previous:old.rosterStatus||null,next:status,reason,actorDiscordId:actor.discordId,at:FieldValue.serverTimestamp()});
       });
       res.json({saved:true,googleSheetsUpdated:false,discordRolesUpdated:false});
-    }catch(e){if(e.status===404||e.status===409)return res.status(e.status).json({error:e.message});error(res,e)}
+    }catch(e){if([403,404,409].includes(e.status))return res.status(e.status).json({error:e.message});error(res,e)}
   });
 }
