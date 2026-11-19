@@ -4,6 +4,8 @@ import {readFileSync} from 'node:fs';
 import {canChangePoliceGrade,allowedPoliceGradeChoices,
   validatePoliceGradeChange,classifyPoliceGradeChange,policeCallGrade} from '../src/personnel-rank-policy.js';
 import {mergePersonnelEdits} from '../src/personnel-editor-policy.js';
+import {verifiedPoliceRank} from '../src/portal-profile-mode.js';
+import {verifyGuildAuthorizationRoles} from '../src/discord-guild-authorization.js';
 import {staffActivityEvent} from '../src/personnel-activity.js';
 import {SPECIALTY_LABELS} from '../src/normalize.js';
 import {roleSummary} from '../src/role-catalog.js';
@@ -86,4 +88,50 @@ test('New rank workflow includes server checks and visible history integration',
  assert.match(page,/id="rankChangeForm"/);
  assert.match(page,/id="rankChangePanel"/);
  assert.match(page,/demotion:'Degradatie'/);
+});
+
+test('Thijs / verified Police Korpsleiding: expired permission is refreshed from guild bot for an effective promotion',async()=>{
+ const leader={...corps,discordPoliceRank:null};
+ assert.equal(canChangePoliceGrade(leader,target('316','Aspirant Inspecteur')),false,
+   'An expired Discord proof must not authorize an actual rank change');
+ const guildId='123456789012345678',clock=Date.UTC(2026,10,19,22,30);
+ const env={DISCORD_GUILD_ID:guildId,BPD_DISCORD_BOT_TOKEN:'A'.repeat(40)};
+ const roles=['1309532438053130326','1562710901080068229'];
+ const verified=await verifyGuildAuthorizationRoles(actorId,{
+  env,now:()=>clock,cacheResults:false,
+  fetchImpl:async()=>({status:200,ok:true,json:async()=>({
+   roles,joined_at:'2026-01-01T00:00:00Z',user:{id:actorId}
+  })})
+ });
+ assert.equal(verified.status,'ok');
+ const verifiedRole=verifiedPoliceRank({guildId,verifiedAt:clock,roleIds:verified.roleIds},
+   guildId,clock);
+ assert.equal(verifiedRole,'korpsleiding');
+ assert.equal(canChangePoliceGrade({...leader,discordPoliceRank:verifiedRole},
+   target('316','Aspirant Inspecteur')),true);
+ assert.equal(allowedPoliceGradeChoices({...leader,discordPoliceRank:verifiedRole})
+   .includes('Inspecteur'),true);
+});
+test('Discord bot refresh never grants rank edits without an actual Police Korpsleiding role',async()=>{
+ const guildId='123456789012345678',clock=Date.UTC(2026,10,19,22,30);
+ const env={DISCORD_GUILD_ID:guildId,BPD_DISCORD_BOT_TOKEN:'A'.repeat(40)};
+ const wrongRoles=await verifyGuildAuthorizationRoles(actorId,{
+  env,now:()=>clock,cacheResults:false,
+  fetchImpl:async()=>({status:200,ok:true,json:async()=>({
+   roles:['1309532438053130326','1309532438082355251'],
+   joined_at:'2026-01-01T00:00:00Z',user:{id:actorId}
+  })})
+ });
+ assert.equal(wrongRoles.status,'ok');
+ const verified=verifiedPoliceRank({guildId,verifiedAt:clock,
+  roleIds:wrongRoles.roleIds},guildId,clock);
+ assert.equal(verified,null);
+ assert.equal(canChangePoliceGrade({...corps,discordPoliceRank:verified},
+   target('316','Aspirant Inspecteur')),false);
+ const src=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ assert.match(src,/const personnelRankAction=req\.path==='\/api\/personnel\/overview'/);
+ assert.match(src,/verifyGuildAuthorizationRoles\(discordId\)/);
+ assert.match(src,/actor\.discordPoliceRank=verifiedPoliceRank\(\{/);
+ assert.match(src,/verified\.uid==='discord:'\+discordId/);
+ assert.match(src,/policeScoped===actor\.role/);
 });
