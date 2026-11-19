@@ -36,6 +36,12 @@ export function createObservationDisclosure({title,score,details,attribution}={}
   const summary=document.createElement('summary');
   summary.className='bpd-observation-summary';
   summary.append(createObservationHeader(title||'Observatie',score));
+  const teaser=document.createElement('small');
+  teaser.className='bpd-observation-shortline';
+  teaser.textContent=String(details??'').replace(/\s+/g,' ').trim().slice(0,108)||
+    'Geen omschrijving';
+  if(String(details??'').replace(/\s+/g,' ').trim().length>108)teaser.textContent+='…';
+  summary.append(teaser);
   const content=document.createElement('div');
   content.className='bpd-observation-content';
   const body=document.createElement('p');

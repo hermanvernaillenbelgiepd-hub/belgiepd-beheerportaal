@@ -55,6 +55,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <button type="button" data-tab="sancties">Sancties</button>
 <button type="button" data-tab="opleidingen">Opleidingen</button>
 <button type="button" data-tab="historiek">Historiek</button>
+<button type="button" data-tab="promoties">Promotievoorstellen</button>
 <button type="button" data-tab="nieuw">Registratie toevoegen</button>
 </nav>
 <section id="overviewSection" class="dossier-panel" data-pane="overzicht" hidden>
@@ -94,6 +95,13 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
           <div id="overviewTrainingTile" hidden><div id="overviewTrainingCount" class="small-rows"></div></div>
           <div class="fire-redacted">Afgeschermd voor jouw Brandweerfunctie.</div>
         </div>
+      </section>
+      <section class="landscape-cell" data-sheet-tile="promotions">
+        <h3>Promotievoorstellen <span class="fire-inline-actions">
+          <button type="button" data-open-tab="promoties">Bekijken</button>
+          <button type="button" data-open-tab="nieuw" data-entry-kind="promotievoorstel">Voorstellen</button>
+        </span></h3>
+        <div class="sheet-records"><div id="overviewPromotionCount" class="small-rows">Geen promotievoorstellen</div></div>
       </section>
     </div>
   </div>
@@ -161,8 +169,13 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <h2>Sancties</h2><div id="sanctions" class="sheet-rows"></div></section>
 <section id="trainingSection" class="card dossier-panel" data-pane="opleidingen" hidden>
 <div class="buttons" style="justify-content:space-between">
-<h2>Gekoppelde opleidingen</h2><a id="trainingLink" href="/rollen-opleidingen.html?department=brandweer">Brandweeropleidingen ↗</a></div>
+<h2>Gekoppelde opleidingen</h2><a id="trainingLink" href="/rollen-opleidingen.html?department=brandweer">Opleiding registreren / register ↗</a></div>
 <div id="trainings" class="sheet-rows"></div><h3>Stage- en koppelritevaluaties</h3><div id="fireCheckrides" class="sheet-rows">Evaluaties laden…</div></section>
+<section id="promotionSection" class="card dossier-panel" data-pane="promoties" hidden>
+<h2>Promotievoorstellen Brandweer</h2>
+<p class="muted">Middenkader en hoger kunnen binnen hun bevoegdheid een voorstel indienen. Brandweerofficieren en ZONE registreren hun eigen advies. Adviezen veranderen nooit automatisch de graad.</p>
+<div id="promotionRecords" class="sheet-rows"></div>
+</section>
 <section id="historySection" class="card dossier-panel" data-pane="historiek" hidden>
 <h2>Administratieve dossierhistoriek</h2>
 <div id="history" class="sheet-rows"></div>
@@ -172,6 +185,16 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <div class="fieldgrid">
 <div><label for="kind">Type</label><select id="kind"></select></div>
 <div><label for="date">Datum</label><input id="date" type="date" required></div>
+</div>
+<div id="promotionFields" hidden>
+  <label for="proposedRank">Voorgestelde nieuwe graad (geen automatische promotie)</label>
+  <input id="proposedRank" maxlength="100" placeholder="Bijv. Korporaal">
+</div>
+<div id="movementFields" hidden class="fieldgrid">
+  <div><label for="movementType">Personeelsbeweging</label><input id="movementType" maxlength="150" placeholder="Bijv. ploegwissel, overplaatsing, benoeming"></div>
+  <div><label for="movementPreviousRank">Vorige graad (optioneel)</label><input id="movementPreviousRank" maxlength="100"></div>
+  <div><label for="movementNewRank">Nieuwe graad (optioneel)</label><input id="movementNewRank" maxlength="100"></div>
+  <p class="muted">Registratie is historisch; de officiële rang en Discord-rollen worden niet aangepast.</p>
 </div>
 <div id="sanctionFields" hidden class="fieldgrid">
 <div><label for="sanctionType">Sanctie</label><select id="sanctionType">
@@ -191,11 +214,14 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 </section>
 </main>
 <script type="module">
+import {enhanceBelgianDateInputs,refreshBelgianDateInputs} from '/bpd-date-inputs.js';
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fire-specialty-icons.js';
 import {displayServiceBadge} from '/dossier-service-badge.js';
 import {createObservationDisclosure} from '/dossier-observation-ui.js';
+import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
 const $=id=>document.getElementById(id);
+enhanceBelgianDateInputs(['fireLeaveFrom','fireLeaveUntil','date','endDate']);
 displayServiceBadge($('dossierServiceBanner'),'brandweer');
 displayServiceBadge($('registrationServiceBanner'),'brandweer',{registration:true});
 const id=new URLSearchParams(location.search).get('discordId')||'';
@@ -243,8 +269,15 @@ function line(root,heading,detail,meta){
  if(meta){const small=document.createElement('small');small.textContent=meta;box.append(small)}
  root.append(box);
 }
-function selectKind(){const sanction=$('kind').value==='sanctie';$('sanctionFields').hidden=!sanction;
- $('limitedSpecialty').hidden=!sanction||$('sanctionType').value!=='Tijdelijke beperking'}
+function selectKind(){
+ const type=$('kind').value,sanction=type==='sanctie';
+ $('sanctionFields').hidden=!sanction;
+ $('promotionFields').hidden=type!=='promotievoorstel';
+ $('movementFields').hidden=type!=='personeelsbeweging';
+ $('proposedRank').required=type==='promotievoorstel';
+ $('movementType').required=type==='personeelsbeweging';
+ $('limitedSpecialty').hidden=!sanction||$('sanctionType').value!=='Tijdelijke beperking';
+}
 $('kind').onchange=selectKind;$('sanctionType').onchange=selectKind;
 // The server provides redacted views; the browser never infers permissions
 // from the target's callsign, from hidden fields, or from a Discord role name.
@@ -333,7 +366,9 @@ function cards(root,items,heading,text,metadata){
       title:heading(item),
       score:item.score,
       details:text(item)||'—',
-      attribution:metadata(item)||''
+      attribution:dossierAuthorLine(item)+
+        (item.registeredRank?' · '+item.registeredRank:'')+
+        (item.createdAt?' · geregistreerd '+item.createdAt:'')
     });
     addFireRetireControl(disclosure.content,item,root.id);
     root.append(disclosure.element);
@@ -344,13 +379,78 @@ function cards(root,items,heading,text,metadata){
   const details=document.createElement('p');details.textContent=text(item)||'—';
   const meta=document.createElement('small');meta.textContent=metadata(item)||'';
   card.append(title,details,meta);
+  if(['entries','basicNotes','sanctions'].includes(root.id)){
+   attachDossierRecordPreview(card,{row:item,title:title.textContent,
+     text:text(item)||'—',bodyNode:details,metaNode:meta,
+     authorText:dossierAuthorLine(item),
+     extra:item.type==='sanctie'?[
+       ['Soort sanctie',item.sanctionType],
+       ['Ernst',item.severity==null?'':item.severity+'/10'],
+       ['Status',item.status]]:[]});
+  }
   addFireRetireControl(card,item,root.id);
+  root.append(card);
+ }
+}
+function displayFirePromotionProposals(data){
+ const root=$('promotionRecords');root.replaceChildren();
+ const proposals=data.promotionProposals||[];
+ $('overviewPromotionCount').textContent=proposals.length+
+   ' promotievoorstel(len)'+(data.visibility==='identity'?' door jou ingediend':' in dit dossier');
+ if(!proposals.length){
+  const p=document.createElement('p');p.className='muted';
+  p.textContent='Er zijn nog geen zichtbare promotievoorstellen.';
+  root.append(p);return;
+ }
+ const displayDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')?
+  d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):d||'—';
+ for(const entry of proposals){
+  const card=document.createElement('div');card.className='record';
+  const title=document.createElement('h3');
+  title.textContent=displayDate(entry.eventDate)+' · Voorgestelde graad: '+entry.proposedRank;
+  const note=document.createElement('p');note.textContent=entry.details||'—';
+  const meta=document.createElement('small');
+  meta.textContent='Voorsteller: '+(entry.registeredBy||'Onbekend')+
+   ' · Status: in behandeling · '+entry.opinionCount+' advies/adviezen';
+  card.append(title,note,meta);
+  for(const advice of entry.opinions||[]){
+    const summary=document.createElement('p');
+    summary.className='muted';
+    summary.textContent=(advice.actorCall||'')+' '+(advice.actorName||'Officier')+
+      ' · '+(advice.opinion||'')+' · '+(advice.reason||'');
+    card.append(summary);
+  }
+  if(data.canAdvisePromotion===true){
+    const form=document.createElement('form');form.className='fieldgrid';
+    const opinion=document.createElement('select');opinion.required=true;
+    opinion.append(new Option('Kies je advies',''),new Option('Positief','positief'),
+      new Option('Negatief','negatief'),new Option('Onthouding','onthouding'));
+    const reason=document.createElement('textarea');reason.minLength=15;
+    reason.maxLength=500;reason.required=true;reason.rows=2;
+    reason.placeholder='Motivering voor je advies (minstens 15 tekens)';
+    const btn=document.createElement('button');btn.type='submit';
+    btn.textContent='Mijn advies registreren';
+    form.append(opinion,reason,btn);
+    form.onsubmit=async event=>{
+      event.preventDefault();btn.disabled=true;
+      try{
+        await api(endpoint+'/promotions/'+encodeURIComponent(entry.id)+'/opinion',
+          'POST',{opinion:opinion.value,reason:reason.value.trim()});
+        mark('Promotieadvies geregistreerd met audit; graad blijft onveranderd.');
+        await load();showTab('promoties');
+      }catch(error){mark('Advies niet opgeslagen: '+error.message,true)}
+      finally{btn.disabled=false}
+    };
+    card.append(form);
+  }
   root.append(card);
  }
 }
 function setAvailableTabs(data){
  allowedTabs.clear();
  for(const tab of ['overzicht','gegevens','verlof'])allowedTabs.add(tab);
+ if(data.canProposePromotion===true||data.canAdvisePromotion===true||
+   (data.promotionProposals||[]).length)allowedTabs.add('promoties');
  if(data.visibility==='leadership'||data.visibility==='full')
   for(const tab of ['specialisaties','observaties','basisnotities','notities','sancties','opleidingen','historiek'])
    allowedTabs.add(tab);
@@ -381,6 +481,7 @@ async function load(){
  try{
   if(!/^[0-9]{15,22}$/.test(id))throw Error('Ongeldige dossierverwijzing');
   const data=await api(endpoint);current=data;
+  displayFirePromotionProposals(data);
   try{
     const access=await api('/api/dossier-retirement/access?dept=brandweer&discordId='+
       encodeURIComponent(id));
@@ -397,6 +498,9 @@ async function load(){
   $('fireManualLeaveForm').hidden=data.canLogManualLeave!==true;
   $('discord').textContent=p.discordId;
   const advanced=data.visibility==='leadership'||data.visibility==='full';
+  document.querySelector('[data-sheet-tile="promotions"]').hidden=
+   !(data.canProposePromotion===true||data.canAdvisePromotion===true||
+      (data.promotionProposals||[]).length);
   const scopes={
    identity:'Brandweer Middenkader: basisgegevens, goedgekeurde verlofperiodes en observaties. Vertrouwelijke registraties zijn niet beschikbaar.',
    leadership:'Brandweerleiding: uitgebreide dossierinzage bij de toegelaten personeelsleden.',
@@ -459,12 +563,14 @@ async function load(){
    $('overviewTrainingCount').textContent=
      (data.trainings||[]).length+' gekoppelde opleidingen';
    $('overviewHistoryCount').textContent=
-     (data.dossierHistory||[]).length+' administratieve wijzigingen';
+     ((data.dossierHistory||[]).length+entries.filter(x=>x.type==='personeelsbeweging').length)+
+     ' administratieve wijzigingen of personeelsbewegingen';
    const label={observatie:'Observatie',notitie:'Belangrijke notitie',sanctie:'Sanctie'};
    $('overviewRecent').textContent=entries.slice(0,5)
      .map(x=>(label[x.type]||x.type)+' · '+(x.eventDate||'—')).join(' | ')
      ||'Geen recente registraties';
    const meta=x=>(x.eventDate||'—')+' · '+(x.registeredBy||'')+
+     (x.registeredRank?' · '+x.registeredRank:'')+
      (x.registeredCall?' ('+x.registeredCall+')':'');
    cards($('observations'),entries.filter(x=>x.type==='observatie'),
      x=>'Observatie · '+(x.eventDate||'—'),x=>x.details,meta);
@@ -487,9 +593,13 @@ async function load(){
    cards($('trainings'),data.trainings||[],
      x=>x.courseName||'Opleiding',x=>x.result||'Geen resultaat',
      x=>x.eventDate||'—');
-   cards($('history'),data.dossierHistory||[],
-     x=>x.action||'Dossierwijziging',x=>x.reason||'Administratieve registratie',
-     x=>(x.at||'').slice(0,16)+' · '+(x.byDiscordId||''));
+   cards($('history'),[
+     ...entries.filter(x=>x.type==='personeelsbeweging'),
+     ...(data.dossierHistory||[])
+   ],
+     x=>x.movement?'Personeelsbeweging · '+x.movement:x.action||'Dossierwijziging',
+     x=>x.details||x.reason||'Administratieve registratie',
+     x=>x.eventDate||((x.at||'').slice(0,16)+' · '+(x.byDiscordId||'')));
    $('trainingLink').href='/rollen-opleidingen.html?department=brandweer&discordId='+
      encodeURIComponent(id);
    void loadFireCheckrides();
@@ -517,7 +627,8 @@ async function load(){
   $('kind').replaceChildren();
   for(const x of data.canWrite||[])
    $('kind').append(new Option(({observatie:'Observatie',basisnotitie:'Basisnotitie',
-     notitie:'Belangrijke notitie',sanctie:'Sanctie'})[x]||x,x));
+     notitie:'Belangrijke notitie',sanctie:'Sanctie',
+     personeelsbeweging:'Personeelsbeweging',promotievoorstel:'Promotievoorstel'})[x]||x,x));
   for(const option of $('sanctionType').querySelectorAll('option'))
     option.disabled=!(data.sanctionTypes||[]).includes(option.value);
   const firstAllowed=[...$('sanctionType').options].find(o=>!o.disabled);
@@ -556,7 +667,12 @@ $('entryForm').onsubmit=async ev=>{
  try{
   const type=$('kind').value;
   const data={type,eventDate:$('date').value,details:$('details').value,
-   reason:$('reason').value,score:5};
+   reason:$('reason').value,score:5,
+   ...(type==='promotievoorstel'?{proposedRank:$('proposedRank').value}:{}),
+   ...(type==='personeelsbeweging'?{
+     movement:$('movementType').value,previousRank:$('movementPreviousRank').value,
+     newRank:$('movementNewRank').value
+   }:{} )};
   if(type==='sanctie'){data.sanctionType=$('sanctionType').value;
    data.severity=Number($('severity').value);
    data.sanctionReason=$('sanctionReason').value;
@@ -566,7 +682,9 @@ $('entryForm').onsubmit=async ev=>{
    }}
   await api(endpoint+'/entries','POST',data);
   $('entryForm').reset();$('date').value=new Date().toLocaleDateString('en-CA');
-  await load();mark('Registratie beveiligd opgeslagen en gelogd.');
+   refreshBelgianDateInputs(['date']);
+  await load();mark('Registratie beveiligd opgeslagen en gelogd. '+
+    (type==='promotievoorstel'?'Voorstel is uitsluitend adviserend, geen rangwijziging.':''));
  }catch(e){mark('Opslaan mislukt: '+e.message,true)}
  finally{btn.disabled=false}
 };
@@ -581,6 +699,7 @@ async function start(){
   auth=authMod.getAuth(app.initializeApp(cfg.firebaseConfig));
   setupLogin({button:$('login'),auth,authModule:authMod,config:cfg,onError:e=>mark(e.message,true)});
   $('date').value=new Date().toLocaleDateString('en-CA');
+   refreshBelgianDateInputs(['date']);
   authMod.onAuthStateChanged(auth,()=>load());
  }catch(e){mark(e.message,true)}
 }start();

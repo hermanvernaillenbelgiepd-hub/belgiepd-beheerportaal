@@ -146,12 +146,35 @@ header{padding-inline:clamp(15px,2vw,34px)}
 .staff-roster-table td:nth-child(3),.staff-roster-table td:nth-child(4){overflow-wrap:anywhere;line-height:1.35}
 .discord-verified-cadre{font-weight:700;color:#99c6ff;white-space:nowrap;font-size:10px}
 
-/* MAIN: een volledig handmatig bewerkbare datum en een optionele kalenderkeuze. */
-.formal-date-row{display:flex;align-items:center;gap:7px}
-.formal-date-row #formalDateText{min-width:0;flex:1 1 175px}
-.formal-date-row #formalDate{min-width:137px;width:155px;max-width:45%;flex:0 0 155px;cursor:pointer;color-scheme:dark}
-@media(max-width:600px){.formal-date-row{flex-wrap:wrap}.formal-date-row #formalDate{max-width:none;width:155px}}
-/* MAIN: dossier-FICHE als geïntegreerde compacte werkruimte. */
+/* Eén zichtbare datum in Belgisch formaat. De native picker bewaart de ISO-waarde. */
+.formal-date-row{display:flex;align-items:center;gap:7px;position:relative}
+.formal-date-row #formalDateText{min-width:0;flex:1 1 auto}
+.formal-date-row #formalDate{position:absolute;width:1px;height:1px;min-width:0;
+  max-width:none;padding:0;border:0;opacity:0;pointer-events:none;top:50%;right:20px}
+.formal-date-row #formalDateCalendar{flex:0 0 42px;width:42px;height:42px;
+  display:inline-flex;align-items:center;justify-content:center;padding:0;
+  background:#192f50;border:1px solid #476080;color:#eaf1ff;font-size:19px}
+.formal-date-row #formalDateCalendar:hover,
+.formal-date-row #formalDateCalendar:focus-visible{border-color:#91bbf9;outline-offset:2px}
+.formal-date-row #formalDate.formal-date-fallback{position:static;opacity:1;
+  pointer-events:auto;flex:0 0 150px;width:150px;height:auto;min-width:0;
+  padding:10px;border:1px solid #476080;color-scheme:normal}
+@media(max-width:600px){.formal-date-row{flex-wrap:nowrap}}
+/* Opvolgstatus is een vastgelegde DOSSERstatus, niet automatisch de personeelsrang/status. */
+.activity-followup-pill{display:inline-flex;align-self:flex-start;max-width:100%;
+ font-weight:750;font-size:12px;padding:4px 9px;border-radius:7px;margin:6px 0;
+ border:1px solid;white-space:normal}
+.activity-followup-green{background:#164d2a;border-color:#39894c;color:#d8ffe5}
+.activity-followup-orange{background:#623a0c;border-color:#a9711d;color:#ffebca}
+.activity-followup-red{background:#581b21;border-color:#ac5258;color:#ffe0e2}
+.activity-followup-grey{background:#343d4c;border-color:#788498;color:#eff2f8}
+/* Niet-blokkerende, tijdelijke waarschuwing voor dossiers met dezelfde datum. */
+.dossier-date-toast{position:fixed;top:88px;right:18px;z-index:13000;width:min(440px,calc(100vw - 36px));
+ padding:14px 16px;border-radius:11px;border:1px solid #ad8b56;background:#263249;color:#f9e7c4;
+ box-shadow:0 9px 25px #0008;font-size:13px;line-height:1.5}
+.dossier-date-toast button{margin-top:9px;padding:6px 10px;background:#253c58;color:#edf3fa;border:1px solid #6d84a0}
+.linked-dossier-note{color:#abd8ff;font-size:12px;font-weight:650}
+ /* MAIN: dossier-FICHE als geïntegreerde compacte werkruimte. */
 #panel{scroll-margin-top:10px}
 #panel>div:first-child{position:sticky;top:0;z-index:4;background:#11233f;border-bottom:1px solid #3b5374;padding:8px 0}
 .dossier-tabbar{display:flex;gap:6px;flex-wrap:wrap;padding:8px 0 12px;border-bottom:1px solid #354d6a}
@@ -724,7 +747,7 @@ body.dossier-embed #notice{margin:0 0 10px}
 body.dossier-embed #accessHelp{margin:10px 0}
 </style><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/roster-name-preview.css"><link rel="stylesheet" href="/dossier-identity-polish.css"><link rel="stylesheet" href="/personnel-compact.css">
 </head>
-<body class="bpd-unified-dossier"><header><div><strong>🛡️ BelgiëPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html" data-personnel-staff hidden>Gebruikersbeheer</a><a href="/rollen-opleidingen.html" data-personnel-staff hidden>Opleidingen</a><a href="/weekrapporten.html" data-personnel-staff hidden>Weekrapporten</a><a href="/dossiercentrum.html" data-personnel-staff hidden>Dossiercentrum</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
+<body class="bpd-unified-dossier"><header><div><strong>🛡️ BelgiëPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html" data-personnel-staff hidden>Gebruikersbeheer</a><a href="/rollen-opleidingen.html" data-personnel-staff hidden>Opleidingen</a><a href="/weekrapporten.html" data-personnel-staff hidden>Weekrapporten</a><a href="/dossiercentrum.html" data-personnel-staff hidden>Dossiercentrum</a><a href="/sanctieoverzicht.html" data-personnel-staff hidden>Sanctieoverzicht</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><div class="personnel-overview"><h1>Personeelslijst</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p></div>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
 <section id="accessHelp" class="card" hidden>
@@ -1092,6 +1115,13 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
  </div>
 </div>
 <p id="leaveManualGuidance" class="subtle" role="status" aria-live="polite">Middenkader mag maximaal 30 dagen rechtstreeks goedkeuren. Meer dan 30 dagen gaat naar Officierenkader of Korpsleiding.</p>
+<div id="manualLeaveEscalationToast" class="dossier-date-toast" role="status" aria-live="polite" hidden>
+ <strong>Verlof van 31 dagen of langer</strong>
+ <p>Je kunt dit als aanvraag in het dossier registreren. Middenkader en hoger zien een melding.
+ Alleen bevoegd Officierenkader of Korpsleiding kan deze aanvraag goedkeuren.
+ Tot dan blijft ze in behandeling en niet actief.</p>
+ <button type="button" id="manualLeaveEscalationDismiss">Sluiten</button>
+</div>
 <button id="leaveManualSave" type="submit">Verlof registreren</button>
 </form>
 <div class="dossier-shortcuts" hidden aria-hidden="true"></div>
@@ -1141,7 +1171,14 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
   <input id="staffTrainingOther" maxlength="150" minlength="3" placeholder="Vul de naam van de opleiding in">
 </div>
 <div><label for="staffTrainingDate">Datum</label><input id="staffTrainingDate" type="date" required></div>
-<div><label for="staffTrainingInstructor">Opleider (naam of roepnummer)</label><input id="staffTrainingInstructor" type="text" minlength="2" maxlength="120" placeholder="Bijv. 930 · Naam opleider" required></div>
+<div><label for="staffTrainingInstructorChoice">Opleider (personeelslijst)</label>
+ <select id="staffTrainingInstructorChoice" required>
+  <option value="">Kies een opleider…</option><option value="__manual__">ANDERE · zelf invullen</option>
+ </select></div>
+<div id="staffTrainingInstructorManualWrap" hidden>
+ <label for="staffTrainingInstructor">Andere opleider</label>
+ <input id="staffTrainingInstructor" type="text" minlength="2" maxlength="120"
+  placeholder="Naam of roepnummer van opleider"></div>
 <div><label for="staffTrainingResult">Resultaat</label><select id="staffTrainingResult"><option value="aanwezig">Aanwezig</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="onderbroken">Onderbroken</option></select></div>
 <div id="staffTrainingStageWrap" hidden><label for="staffTrainingStage">Specialisatieopleiding</label><select id="staffTrainingStage"><option value="">Enkel aanwezig</option><option value="in_opleiding">In opleiding → STAGE na beoordeling</option></select></div>
 <p class="subtle" id="staffTrainingStageHint" style="grid-column:1/-1">Geslaagd geeft alleen een patch bij erkende specialisaties na beoordeling.</p>
@@ -1162,12 +1199,17 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div><label for="staffCaseType">Type</label><select id="staffCaseType">
 <option value="notitie">Belangrijke notitie</option><option value="algemene_notitie">Algemene notitie</option>
 <option value="specialisatiebeperking">Beperking van specialisatie</option>
-<option value="inactiviteitsping">Inactiviteitsping</option>
+<option value="inactiviteitsping">Activiteitenping</option>
 <option value="opleiding">Gevolgde opleiding</option><option value="verlof">Verlofnotitie</option>
 <option value="promotievoorstel">Promotievoorstel</option>
 <option value="naamswijziging">Naamswijziging registreren</option>
 <option value="personeelsbeweging">Personeelsbeweging</option></select></div>
 <div><label for="staffCaseDate">Datum gebeurtenis</label><input id="staffCaseDate" type="date" required></div>
+<div id="staffCaseLinkedField" style="grid-column:1/-1" hidden>
+  <label for="staffCaseLinkedColleague">Ook tonen in dossier van collega (optioneel)</label>
+  <select id="staffCaseLinkedColleague"><option value="">Niet koppelen</option></select>
+  <small>De oorspronkelijke notitie blijft één registratie; de collega krijgt een leesbare verwijzing zonder extra weekrapportregel.</small>
+</div>
 <div id="staffCaseExtra" class="grid" style="grid-column:1/-1" hidden>
 <div id="staffCourseField" hidden>
 <label for="staffCourseName">Soort opleiding</label>
@@ -1177,6 +1219,35 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <input id="staffCourseOther" minlength="3" maxlength="150" placeholder="Vul de naam van de opleiding in">
 </div>
 <p class="subtle" id="staffCourseRegisterNote">Deze dossierregistratie komt in het weekrapport. Ze markeert de opleiding niet automatisch als geslaagd in het afzonderlijke opleidingsregister.</p>
+</div>
+<div id="staffActivityPingField" hidden style="grid-column:1/-1">
+ <div class="grid">
+  <div>
+   <label for="staffActivityStatus">Activiteitenstatus voor dossier en weekrapport</label>
+   <select id="staffActivityStatus">
+    <option value="">Kies de opvolgstatus…</option>
+    <option value="ACTIEF">🟢 Actief</option>
+    <option value="50/50">🟠 50/50 — minder dan 20 uur of 15+ dagen geen connectie</option>
+    <option value="INACTIEF">🔴 Inactief — minder dan 10 uur of 30+ dagen geen connectie</option>
+    <option value="VERWIJDERING_TE_BEOORDELEN">⚫ 60+ dagen geen connectie — verwijdering beoordelen</option>
+    <option value="GEEN_VERBETERING_NA_PING">⚠️ Geen activiteitsverbetering na eerdere ping</option>
+   </select>
+  </div>
+  <div>
+   <label for="staffActivityDiscordContact">Is deze persoon daadwerkelijk via Discord gepingd?</label>
+   <select id="staffActivityDiscordContact">
+    <option value="">Kies de werkelijke situatie…</option>
+    <option value="ja">Ja, handmatig Discord-bericht verstuurd</option>
+    <option value="nee">Nee, nog geen Discord-bericht verstuurd</option>
+   </select>
+  </div>
+  <div id="staffActivityDiscordDateWrap" hidden>
+   <label for="staffActivityDiscordDate">Datum van het verstuurde Discord-bericht</label>
+   <input id="staffActivityDiscordDate" type="date">
+  </div>
+ </div>
+ <p class="subtle">Gebruik ‘Geen activiteitsverbetering na eerdere ping’ om een hercontrole te loggen als de medewerker na een eerdere Discord-ping nog steeds onvoldoende activiteit toont. Vermeld de eerdere ping en de actuele vaststellingen in de verplichte reden. Deze registratie legt de opvolging en het daadwerkelijke Discord-contact vast; het portaal verstuurt zelf geen Discord-bericht.
+ De status van de officiële personeelslijst verandert niet automatisch. Verwijdering na 60 dagen vereist een afzonderlijke bevoegde beslissing. Goedgekeurd verlof moet in de beoordeling worden meegenomen.</p>
 </div>
 <div id="staffEndDateField" hidden><label for="staffEndDate">Einddatum verlofnotitie</label><input id="staffEndDate" type="date"></div>
 <div id="staffRankField" hidden><label for="staffProposedRank">Voorgestelde rang</label><input id="staffProposedRank" maxlength="140"></div>
@@ -1222,7 +1293,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
   <label for="historicalCaseAuthor">Oorspronkelijke registrator</label><select id="historicalCaseAuthor"></select>
   <label for="historicalCaseReason">Bron en reden overname</label>
   <input id="historicalCaseReason" minlength="10" maxlength="500" value="Historische overname uit het vroegere personeelsdossier">
-  <small>Een oude inactiviteitsping wordt uitsluitend gelogd; er wordt geen nieuwe ping verstuurd.</small>
+  <small>Een oude activiteitenping wordt uitsluitend gelogd; er wordt geen nieuwe ping verstuurd.</small>
  </div>
 </div>
 </div>
@@ -1230,6 +1301,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <span id="staffCaseHint" class="subtle" role="status"></span>
 </form>
 <h3>Observaties en sancties</h3>
+<p class="subtle"><a href="/sanctieoverzicht.html">Uitgegeven sancties bekijken en opvolgnotities toevoegen</a> (alleen bevoegd Officierenkader/Korpsleiding).</p>
 <p class="subtle">Formele observaties en sancties staan in het bestaande beveiligde registratieregister. Maatregelen en rolbeperkingen worden niet automatisch gewijzigd door een notitie.</p>
 <div id="formalWriteActions" class="controls" hidden>
   <button id="addFormalObservation" type="button" hidden>+ Observatie toevoegen</button>
@@ -1244,13 +1316,19 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div><label for="formalDateText">Datum gebeurtenis (dd/mm/jjjj)</label>
 <div class="formal-date-row">
 <input id="formalDateText" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="dd/mm/jjjj" required aria-describedby="formalDateHint">
-<input id="formalDate" type="date" required aria-label="Datum kiezen met kalender" title="Kies een datum met de kalender">
+<input id="formalDate" type="date" tabindex="-1" aria-hidden="true">
+<button id="formalDateCalendar" type="button" aria-label="Datum kiezen met kalender" title="Datum kiezen met kalender"><span aria-hidden="true">📅</span></button>
 </div><small id="formalDateHint">Je kunt de datum typen of kiezen via de kalender.</small></div>
 <div><label for="formalTime">Tijdstip</label><input id="formalTime" type="time" required></div>
 <div><label for="formalEvidence">Link naar clip / bewijs (optioneel, https)</label><input id="formalEvidence" type="url" maxlength="800" placeholder="https://…"></div>
 <div id="formalScoreField"><label for="formalScore">Observatiescore (0–10; 0 = DEGRADATIE)</label><input id="formalScore" type="number" min="0" max="10" step="1" placeholder="0–10"></div>
 <div style="grid-column:1/-1"><label for="formalDetails">Samenvatting observatie / feiten en omkadering sanctie</label><textarea id="formalDetails" rows="3" maxlength="6000" required></textarea></div>
 <div style="grid-column:1/-1"><label for="formalPlayers">Betrokken personen (optioneel)</label><input id="formalPlayers" maxlength="1000"></div>
+<div id="formalLinkedField" style="grid-column:1/-1" hidden>
+  <label for="formalLinkedColleague">Observatie ook tonen in dossier van collega (optioneel)</label>
+  <select id="formalLinkedColleague"><option value="">Niet koppelen</option></select>
+  <small>Dit is een leesbare koppeling, geen tweede observatiescore. Bestaande dossierrechten blijven gelden.</small>
+</div>
 <div id="historicalObservationField" style="grid-column:1/-1" hidden>
   <label style="display:flex;gap:9px;align-items:center;cursor:pointer">
     <input id="historicalObservationCheck" type="checkbox" style="width:auto">
@@ -1271,7 +1349,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
   <small>Enkel Officierenkader en Korpsleiding kunnen de functie in- of uitschakelen. Bestaande registraties blijven bewaard.</small>
 </div>
 <div id="historicalMigrationManage" style="grid-column:1/-1;padding:12px;border:1px solid #466386;border-radius:8px" hidden>
- <strong>Oude dossiers tijdelijk overnemen: verlof, sancties, notities en inactiviteitspings</strong>
+ <strong>Oude dossiers tijdelijk overnemen: verlof, sancties, notities en activiteitenpings</strong>
  <p id="historicalMigrationStatus" class="subtle">Standaard uitgeschakeld.</p>
  <button id="historicalMigrationToggle" type="button" class="alt">Inschakelen voor overdracht</button>
  <small>Alleen Officierenkader/Korpsleiding. De overname gebeurt met bron en audit. Schakel na de overdracht weer uit.</small>
@@ -1333,11 +1411,13 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <script src="/personnel-list-visuals.js"></script>
 <script src="/specialty-dossier-controls.js?v=20261102"></script>
 <script type="module">
+import {enhanceBelgianDateInputs,refreshBelgianDateInputs} from '/bpd-date-inputs.js';
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
 import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '/training-course-catalog.js';
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
+import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
 import {mountCompactPersonnelDirectory} from '/personnel-compact-ui.js';
@@ -1345,9 +1425,12 @@ import {mountPersonnelGroupSettingsEditor} from '/personnel-group-settings-edito
 import {displayServiceBadge,serviceIdentity} from '/dossier-service-badge.js';
 import {policeGroupedRoster,policeOperationalTier,policeTierDisplay} from '/police-roster-cadre.js';
 import {attachRosterNamePreview,dismissRosterNamePreview} from '/roster-name-preview.js';
-import {sortDossierColleagues} from '/dossier-colleague-sort.js';
+import {sortDossierColleagues,DOSSIER_COLLEAGUE_SORT_MODES} from '/dossier-colleague-sort.js';
+import {populateInstructorOptions,syncManualInstructor,selectedInstructor} from '/training-instructor-choices.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
+enhanceBelgianDateInputs(['leaveFrom','leaveUntil','staffStartDate','staffTrainingDate',
+ 'staffCaseDate','staffEndDate','staffActivityDiscordDate','formalRestrictionEndDate','formalTemporaryEndDate']);
 document.body.classList.add('dossier-onepage');
 let activeLeaveRosterIds=new Set();
 let activeLeaveRosterLoadState='ready'; // ready | loading | unavailable
@@ -1711,6 +1794,7 @@ function availablePersonnelRegistrationKinds(){
 }
 function displaySelectedRegistration(){
   const kind=$('registrationKind').value;
+  scheduleDossierDateWarning();
   const trainingDestination=$('trainingDestination');
   trainingDestination.hidden=!['training','case:opleiding','case:inactiviteitsping'].includes(kind);
   if(kind==='training'){
@@ -1718,7 +1802,7 @@ function displaySelectedRegistration(){
   }else if(kind==='case:opleiding'){
     trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
   }else if(kind==='case:inactiviteitsping'){
-    trainingDestination.textContent='De inactiviteitsping wordt met datum, motivering en de registrerende medewerker in dit personeelsdossier en het dynamische weekrapport gelogd. Hiermee wordt niet automatisch een Discord-bericht verstuurd.';
+    trainingDestination.textContent='Registreer een opvolgstatus (Actief / 50/50 / Inactief / verwijdering beoordelen / geen verbetering na eerdere ping) en bevestig afzonderlijk of een Discord-ping écht handmatig is verstuurd. De gegevens komen in het dossier en weekrapport. Er wordt niet automatisch een Discord-bericht verstuurd; dit formulier verandert ook de officiële personeelsstatus niet.';
   }
   // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
   // wanneer de gebruiker naar een ander registratietype omschakelt.
@@ -1781,6 +1865,12 @@ function refreshPersonnelRegistrationOptions(){
   $('registerTrainingQuick').hidden=!kinds.some(([key])=>key==='training');
   const addNote=$('registerGeneralNoteQuick');
   if(addNote)addNote.hidden=!kinds.some(([key])=>key==='case:algemene_notitie');
+  const addImportant=$('registerImportantNoteQuick');
+  if(addImportant)addImportant.hidden=!kinds.some(([key])=>key==='case:notitie');
+  const addImportantDetail=$('registerImportantNoteDetail');
+  if(addImportantDetail)addImportantDetail.hidden=!kinds.some(([key])=>key==='case:notitie');
+  const addPing=$('registerActivityPingQuick');
+  if(addPing)addPing.hidden=!kinds.some(([key])=>key==='case:inactiviteitsping');
   syncDossierMaintenance();
 }
 function choosePersonnelRegistration(kind,focus=false){
@@ -1878,8 +1968,12 @@ function setupDossierTabs(){
       <div id="sheetBasisNotes" class="sheet-records">Algemene notities laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="notes">
-      <h3>Belangrijke notities</h3>
+      <h3>Belangrijke notities <button type="button" id="registerImportantNoteQuick" hidden>+ Toevoegen</button></h3>
       <div id="sheetNotes" class="sheet-records">Notities laden…</div>
+    </section>
+    <section class="landscape-cell" data-sheet-tile="activityPings">
+      <h3>Activiteitenpings <button type="button" id="registerActivityPingQuick" hidden>+ Toevoegen</button></h3>
+      <div id="sheetActivityPings" class="sheet-records">Activiteitenpings laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="sanctions">
       <h3>Sancties</h3>
@@ -1907,6 +2001,11 @@ function setupDossierTabs(){
         <p id="registrationAccessHint" class="registration-access-hint" role="status" aria-live="polite"></p>
       </div>
       <p id="trainingDestination" class="training-destination" role="status" aria-live="polite" hidden></p>
+      <div id="dossierDateToast" class="dossier-date-toast" role="status" aria-live="polite" hidden>
+        <strong>Er bestaat al een registratie op deze datum</strong>
+        <div id="dossierDateToastText"></div>
+        <button id="dossierDateToastClose" type="button">Sluiten</button>
+      </div>
       <div id="registrationFields" class="registration-hub-fields"></div>
       <button type="button" id="registrationSubmit">Registratie opslaan</button>
     </section>
@@ -1922,11 +2021,13 @@ function setupDossierTabs(){
   $('ficheEditor').append(makeTile('gegevens'));
   const upper=document.createElement('div');upper.className='dossier-main-row';
   const right=document.createElement('div');right.className='dossier-right-column';
-  right.append(makeTile('specialisaties'),makeTile('movements'),makeTile('training'));
+  right.append(makeTile('specialisaties'),makeTile('movements'),makeTile('training'),makeTile('activityPings'));
   upper.append(makeTile('leave'),makeTile('notes'),right);
   const lower=document.createElement('div');lower.className='dossier-lower-row';
   lower.append(makeTile('basisNotes'),makeTile('observations'),makeTile('sanctions'));
   summaryGrid.replaceChildren(upper,lower);
+  $('registerImportantNoteQuick').onclick=()=>choosePersonnelRegistration('case:notitie',true);
+  $('registerActivityPingQuick').onclick=()=>choosePersonnelRegistration('case:inactiviteitsping',true);
   const trainingHeader=sheet.querySelector('[data-sheet-tile="training"]>h3');
   const trainingAdd=document.createElement('button');
   trainingAdd.type='button';trainingAdd.id='registerTrainingQuick';
@@ -1973,6 +2074,18 @@ function setupDossierTabs(){
     content.dataset.receivedList=key;content.textContent='Ontvangen registraties worden geladen…';
     panes[key].append(info,content);
   };
+  const importantNoteInfo=document.createElement('p');
+  importantNoteInfo.className='subtle';
+  importantNoteInfo.textContent='Belangrijke notities zijn volledig leesbaar. Activiteitenpings staan afzonderlijk in het dossieroverzicht.';
+  const importantNoteAdd=document.createElement('button');
+  importantNoteAdd.type='button';importantNoteAdd.id='registerImportantNoteDetail';
+  importantNoteAdd.textContent='+ Belangrijke notitie';importantNoteAdd.hidden=true;
+  importantNoteAdd.onclick=()=>choosePersonnelRegistration('case:notitie',true);
+  const importantNoteList=document.createElement('div');
+  importantNoteList.id='dossierImportantNoteList';
+  importantNoteList.className='general-note-history';
+  importantNoteList.textContent='Belangrijke notities laden…';
+  panes.nieuw.append(importantNoteInfo,importantNoteAdd,importantNoteList);
   const generalNoteInfo=document.createElement('p');
   generalNoteInfo.className='subtle';
   generalNoteInfo.textContent='Algemene notities, nieuwste eerst. Belangrijke notities, observaties en sancties blijven afzonderlijk.';
@@ -3093,7 +3206,65 @@ const staffNotesLabels={opleiding:'Opleiding',begeleiding:'Begeleiding',
 /* Dezelfde categoriebevoegdheden als de kaderregister-API:
    het formulier is alleen een andere weergave van bestaande registraties. */
 let casePermissions=null;
+function populateLinkedColleagues(){
+ if(!selected)return;
+ const known=new Map();
+ for(const p of [...(formalPermissions?.subjects||[]),...(casePermissions?.subjects||[])]){
+   if(p.dept!==selected.dept||p.discordId===selected.discordId||
+     !/^\d{15,22}$/.test(p.discordId||''))continue;
+   known.set(p.discordId,p);
+ }
+ const people=[...known.values()].sort((a,b)=>
+   BPDPersonnelVisuals.comparePersonnel({...a,dept:selected.dept},
+     {...b,dept:selected.dept},DOSSIER_COLLEAGUE_SORT_MODES[selected.dept]||'name-asc'));
+ for(const id of ['formalLinkedColleague','staffCaseLinkedColleague']){
+   const field=$(id),before=field.value;
+   field.replaceChildren(option('','Niet koppelen'),
+     ...people.map(p=>option(p.discordId,(p.call||'—')+' · '+p.name)));
+   if(known.has(before))field.value=before;
+ }
+}
+let dateWarningSerial=0,dateWarningTimer=null,dateToastTimer=null,shownDateKey='';
+$('dossierDateToastClose').onclick=()=>{
+ $('dossierDateToast').hidden=true;clearTimeout(dateToastTimer);
+};
+function scheduleDossierDateWarning(){
+ const serial=++dateWarningSerial;
+ clearTimeout(dateWarningTimer);
+ const person=selected,kind=$('registrationKind').value;
+ const relevant=['observatie','sanctie','case:algemene_notitie','case:notitie'].includes(kind);
+ const value=kind.startsWith('case:')?$('staffCaseDate').value:
+   formalDateFromText($('formalDateText').value);
+ if(!person||!relevant||!/^\d{4}-\d{2}-\d{2}$/.test(value||''))return;
+ const key=person.dept+':'+person.discordId+':'+value;
+ if(key===shownDateKey)return;
+ dateWarningTimer=setTimeout(async()=>{
+  try{
+   const data=await request('/api/registrations/date-check?'+new URLSearchParams({
+     dept:person.dept,discordId:person.discordId,eventDate:value}));
+   if(serial!==dateWarningSerial)return;
+   shownDateKey=key;
+   if(!data.count)return;
+   const types={observatie:'observatie',sanctie:'sanctie',
+     algemene_notitie:'algemene notitie',notitie:'belangrijke notitie'};
+   const summary=Object.entries(data.types||{}).map(([kind,count])=>
+      count+' × '+(types[kind]||kind)).join(', ');
+   const day=value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4);
+   $('dossierDateToastText').textContent='Op '+day+' bestaat al '+data.count+
+      (data.limited?'+':'')+' registratie(s): '+summary+
+      '. Controleer de bestaande notities en observaties om dubbel werk te vermijden.';
+   $('dossierDateToast').hidden=false;
+   clearTimeout(dateToastTimer);
+   dateToastTimer=setTimeout(()=>{$('dossierDateToast').hidden=true},9000);
+  }catch{/* Meldingen blokkeren het opslaan niet. */}
+ },280);
+}
+$('formalDateText').addEventListener('change',scheduleDossierDateWarning);
+$('formalDate').addEventListener('change',scheduleDossierDateWarning);
+$('staffCaseDate').addEventListener('change',scheduleDossierDateWarning);
+
 const staffCaseFields={verlof:['staffEndDateField'],opleiding:['staffCourseField'],
+  inactiviteitsping:['staffActivityPingField'],
   promotievoorstel:['staffRankField'],naamswijziging:['staffNewNameField'],
   personeelsbeweging:['staffMovementField']};
 const staffCaseValues=['staffEndDate','staffCourseName','staffProposedRank','staffNewName',
@@ -3105,10 +3276,23 @@ const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   voordracht_ereteken:'Voordracht tot ereteken/medaille (geen automatische toekenning)',
   personeelsbeweging:'Personeelsbeweging (registratie)',
   activiteit:'Dienstactiviteit',specialisatiebeperking:'Beperking van specialisatie',
-  inactiviteitsping:'Inactiviteitsping',
+  inactiviteitsping:'Activiteitenping',
   functiewijziging:'Functiewijziging'};
+function updateActivityDiscordDate(){
+ const confirmed=$('staffActivityDiscordContact').value==='ja'&&
+  $('staffCaseType').value==='inactiviteitsping';
+ $('staffActivityDiscordDateWrap').hidden=!confirmed;
+ $('staffActivityDiscordDate').required=confirmed;
+ if(!confirmed)$('staffActivityDiscordDate').value='';
+}
+$('staffActivityDiscordContact').onchange=updateActivityDiscordDate;
 function updateStaffCaseFields(){
   const type=$('staffCaseType').value;
+  const activity=type==='inactiviteitsping';
+  $('staffActivityStatus').required=activity;
+  $('staffActivityDiscordContact').required=activity;
+  updateActivityDiscordDate();
+  $('staffCaseLinkedField').hidden=!['notitie','algemene_notitie'].includes(type);
   const extras=staffCaseFields[type]||[];
   $('staffCaseExtra').hidden=!extras.length;
   for(const [field,ids] of Object.entries(staffCaseFields))
@@ -3177,6 +3361,7 @@ async function loadStaffCasePermissions(person,key,canManage){
     const overview=await request('/api/management/overview');
     if(!sameDossier(key))return;
     casePermissions=overview;
+    populateLinkedColleagues();
     const types=overview.typesByDepartment?.[person.dept]||[];
     registrationModuleStates.cases=!overview.writesEnabled?
       'schrijven momenteel uitgeschakeld':
@@ -3202,6 +3387,33 @@ async function loadStaffCasePermissions(person,key,canManage){
 }
 
 let trainingRights=null,trainingEditId=null;
+let staffTrainingInstructorPeople=[],staffTrainingInstructorListNonce=0;
+function renderStaffTrainingInstructorChoices(name=''){
+ populateInstructorOptions($('staffTrainingInstructorChoice'),$('staffTrainingInstructor'),
+   staffTrainingInstructorPeople,selected?.dept||'politie',
+   BPDPersonnelVisuals.comparePersonnel,name);
+ syncManualInstructor($('staffTrainingInstructorChoice'),$('staffTrainingInstructor'),
+   $('staffTrainingInstructorManualWrap'));
+}
+$('staffTrainingInstructorChoice').onchange=()=>syncManualInstructor(
+ $('staffTrainingInstructorChoice'),$('staffTrainingInstructor'),
+ $('staffTrainingInstructorManualWrap'));
+async function loadStaffInstructorChoices(p,key){
+ const requestId=++staffTrainingInstructorListNonce;
+ try{
+  const data=await request('/api/training/people?department='+encodeURIComponent(p.dept));
+  if(requestId!==staffTrainingInstructorListNonce||!sameDossier(key))return;
+  staffTrainingInstructorPeople=data.instructors||[];
+  const value=selectedInstructor($('staffTrainingInstructorChoice'),$('staffTrainingInstructor'));
+  renderStaffTrainingInstructorChoices(value);
+ }catch(e){
+  if(requestId!==staffTrainingInstructorListNonce||!sameDossier(key))return;
+  // Manual registration remains possible when the list is temporarily unavailable.
+  renderStaffTrainingInstructorChoices(selectedInstructor(
+    $('staffTrainingInstructorChoice'),$('staffTrainingInstructor')));
+ }
+}
+
 function syncStaffTrainingStage(){
  const dept=selected?.dept||'politie';
  const specialty=qualificationSpecialty(dept,selectedStaffTrainingName());
@@ -3242,6 +3454,7 @@ function setStaffTrainingCourse(name){
 function resetStaffTrainingEdit(){
   trainingEditId=null;
   $('staffTrainingForm').reset();
+  renderStaffTrainingInstructorChoices('');
   for(const historic of $('staffTrainingResult').querySelectorAll('option[data-legacy]'))historic.remove();
   $('staffTrainingResult').value='aanwezig';
   $('staffTrainingStage').value='';
@@ -3252,10 +3465,12 @@ function resetStaffTrainingEdit(){
   $('staffTrainingReason').required=false;
   $('staffTrainingCancel').hidden=true;
   $('staffTrainingDate').value=new Date().toISOString().slice(0,10);
+  refreshBelgianDateInputs(['staffTrainingDate']);
 }
 $('staffTrainingCancel').onclick=resetStaffTrainingEdit;
 async function loadStaffTrainingRights(p,key){
-  trainingRights=null;trainingEditId=null;$('staffTrainingForm').hidden=true;
+  trainingRights=null;trainingEditId=null;staffTrainingInstructorPeople=[];
+  ++staffTrainingInstructorListNonce;$('staffTrainingForm').hidden=true;
   registrationModuleStates.training='bevoegdheden laden…';
   refreshPersonnelRegistrationOptions();
   try{
@@ -3268,7 +3483,10 @@ async function loadStaffTrainingRights(p,key){
         'je rol heeft geen opleidingsregistratierecht':'beschikbaar';
     $('staffTrainingForm').hidden=!(data.trainingWritesEnabled===true&&
       data.permissions?.[p.dept]?.['training.log']===true);
-    if(!$('staffTrainingForm').hidden)resetStaffTrainingEdit();
+    if(!$('staffTrainingForm').hidden){
+      resetStaffTrainingEdit();
+      void loadStaffInstructorChoices(p,key);
+    }
   }catch(e){
     if(sameDossier(key)){
       $('staffTrainingForm').hidden=true;
@@ -3287,6 +3505,7 @@ function staffTrainingEdit(record){
   trainingEditId=record.id;
   setStaffTrainingCourse(record.courseName);
   $('staffTrainingDate').value=record.eventDate||'';
+  refreshBelgianDateInputs(['staffTrainingDate']);
   if(![...$('staffTrainingResult').options].some(o=>o.value===record.result)){
     const historic=new Option('Historisch resultaat · '+record.result,record.result);
     historic.dataset.legacy='true';$('staffTrainingResult').append(historic);
@@ -3295,7 +3514,7 @@ function staffTrainingEdit(record){
   $('staffTrainingStage').value=record.qualificationStage||'';
   syncStaffTrainingStage();
   $('staffTrainingDetails').value=record.details||'';
-  $('staffTrainingInstructor').value=record.instructorName||record.instructor||'';
+  renderStaffTrainingInstructorChoices(record.instructorName||record.instructor||'');
   $('staffTrainingTitle').textContent='Bestaande opleiding wijzigen';
   $('staffTrainingAmend').hidden=false;
   $('staffTrainingReason').required=true;
@@ -3315,7 +3534,8 @@ $('staffTrainingForm').onsubmit=async event=>{
     courseName,eventDate:$('staffTrainingDate').value,
     result:$('staffTrainingResult').value,qualificationStage:$('staffTrainingStage').value,
     details:$('staffTrainingDetails').value,
-    instructorName:$('staffTrainingInstructor').value.trim()};
+    instructorName:selectedInstructor(
+      $('staffTrainingInstructorChoice'),$('staffTrainingInstructor'))};
   if(id){
     body.reason=$('staffTrainingReason').value;
     if(body.reason.trim().length<8)return notice('Motivering wijziging: minstens 8 tekens.',true);
@@ -3344,7 +3564,8 @@ const sheetDefs={
   leave:['Begin','Einde','Status','Dagen'],
   formal:['Datum','Soort','Omschrijving / reden','Score','Observator'],
   training:['Datum','Opleiding','Resultaat','Opleider'],
-  notes:['Datum','Soort','Notitie','Auteur']
+  notes:['Datum','Soort','Notitie','Auteur'],
+  activityPings:['Datum','Soort','Activiteitenping','Auteur']
 };
 function sheetCell(value){
   const td=document.createElement('td');
@@ -3358,27 +3579,29 @@ function refreshOverviewEmpty(){/* Alle negen categorieën blijven altijd zichtb
 // A server-authorized correction, not a physical Firestore delete.
 let dossierCanRetire=false;
 function attachRetireButton(container,item,source='cases'){
- if(!dossierCanRetire||!selected||!item?.id)return;
+ if(!dossierCanRetire||!selected||!item?.id||item.linked===true)return;
  if(source==='cases'&&
-   (!['notitie','specialisatiebeperking','basisnotitie','observatie','sanctie'].includes(item.type)||
-    item.source==='central-leave-audit'))return;
+   (!['notitie','algemene_notitie','inactiviteitsping','specialisatiebeperking',
+     'basisnotitie','observatie','sanctie'].includes(item.type)||
+    ['central-leave-audit','automatic_fivem_activity'].includes(item.source)))return;
  if(source==='leave'&&item.status!=='approved')return;
  const button=document.createElement('button');
  button.type='button';button.className='dossier-retire-button';
  button.textContent='🗑 Wissen';
- button.title='Verwijder uit actief dossier; audit en weekrapport blijven bewaard';
+ button.title='Archiveer een foutieve of dubbele registratie; origineel en audit blijven bewaard';
  button.setAttribute('aria-label','Registratie wissen met audit');
  button.onclick=async()=>{
    if(!selected)return;
-   const explanation=prompt('Motivering voor het wissen (10 tot 500 tekens):');
+   const explanation=prompt('Waarom deze registratie archiveren? Bijvoorbeeld: dubbele notitie (10 tot 500 tekens).');
    if(explanation===null)return;
    const reason=explanation.trim();
    if(reason.length<10||reason.length>500){
      notice('Vul een motivering in van 10 tot 500 tekens.',true);return;
    }
    const subject=selected;
-   if(!confirm('Deze registratie uit het actieve dossier verwijderen? '+
-       'De originele gegevens blijven in de audit; de intrekking komt in het lopende weekrapport.'))return;
+   if(!confirm('Deze registratie uit het actieve dossier archiveren? '+
+       'De originele gegevens en auteur blijven bewaard in de audit; de intrekking komt in het weekrapport. '+
+       'Bij een handmatige activiteitenping wordt de actieve persoonlijke melding eveneens ingetrokken.'))return;
    button.disabled=true;
    try{
      const encoded=id=>encodeURIComponent(id);
@@ -3390,7 +3613,7 @@ function attachRetireButton(container,item,source='cases'){
          encoded(subject.discordId)+'/'+source+'/'+encoded(item.id),{
          method:'POST',body:{reason}});
      }
-     notice('Registratie ingetrokken en in het weekrapport gelogd.');
+     notice('Registratie gearchiveerd en in het weekrapport gelogd. De oorspronkelijke gegevens blijven in het auditspoor.');
      if(selected?.dept===subject.dept&&selected?.discordId===subject.discordId)
        loadStaffDossier(subject);
    }catch(e){notice('Wissen mislukt: '+e.message,true);button.disabled=false}
@@ -3406,17 +3629,53 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
   const append=(row)=>{
     if((group==='observations'||group==='formal')&&row.type==='observatie'){
       const {element,content}=createObservationDisclosure({
-        title:(row.eventDate||'Datum onbekend')+' · Observatie',
+        title:(row.eventDate||'Datum onbekend')+' · '+(row.linked?'Gekoppelde observatie':'Observatie'),
         score:row.score,
         details:row.details??row.description??'Geen omschrijving',
-        attribution:(row.historicalImport?'Oorspronkelijke observator: ':'Door ')+
-          sheetWho(row)+(row.historicalImport&&row.submittedByActor?.name?
-            ' · Overgenomen door '+row.submittedByActor.name:'')
+        attribution:dossierAuthorLine(row)+(row.historicalImport&&row.submittedByActor?.name?
+          ' · Overgenomen door '+row.submittedByActor.name:'')
       });
       attachObservationEditButton(content,row);
        attachRetireButton(content,row,'cases');
       root.append(element);
       return;
+    }
+    if(group==='notes'||group==='activityPings'){
+      const item=document.createElement('div');
+      item.className='overview-preview general-note-preview';
+      const heading=document.createElement('strong');
+      heading.textContent=generalNoteDate(row.eventDate)+' · '+
+        (row.importantTitle||staffCaseLabels[row.type]||row.type||'Notitie');
+      const body=document.createElement('p');
+      body.className='general-note-body';
+      body.textContent=String(row.details||'—');
+      const author=document.createElement('span');author.className='subtle';
+      author.textContent='Door '+sheetWho(row);
+      item.append(heading,body,author);
+      attachDossierRecordPreview(item,{row,title:heading.textContent,
+        text:row.details||'—',bodyNode:body,metaNode:author,
+        authorText:dossierAuthorLine(row)});
+      if(group==='activityPings'&&row.activityStatus){
+        const color={ACTIEF:'green','50/50':'orange',INACTIEF:'red',
+          VERWIJDERING_TE_BEOORDELEN:'grey',
+          GEEN_VERBETERING_NA_PING:'orange'}[row.activityStatus]||'grey';
+        const label={ACTIEF:'Actief','50/50':'50/50',INACTIEF:'Inactief',
+          VERWIJDERING_TE_BEOORDELEN:'60+ · verwijdering beoordelen',
+          GEEN_VERBETERING_NA_PING:'Geen verbetering na eerdere ping'}[row.activityStatus]||
+          row.activityStatus;
+        const status=document.createElement('span');
+        status.className='activity-followup-pill activity-followup-'+color;
+        status.textContent='Opvolgstatus: '+label;
+        item.insertBefore(status,body);
+      }
+      if(group==='activityPings'&&typeof row.discordPingSent==='boolean'){
+        const discord=document.createElement('small');discord.className='subtle';
+        discord.textContent=row.discordPingSent?'Discord handmatig gepingd op '+
+          generalNoteDate(row.discordPingDate):'Nog geen Discord-bericht verstuurd';
+        item.append(discord);
+      }
+      attachRetireButton(item,row,'cases');
+      root.append(item);return;
     }
     if(group==='basisNotes'){
       const item=document.createElement('div');item.className='overview-preview general-note-preview';
@@ -3427,6 +3686,11 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       const meta=document.createElement('span');
       meta.textContent='Door '+(row._noteAuthor||'Onbekend');
       item.append(heading,body,meta);
+      attachDossierRecordPreview(item,{row,title:heading.textContent,
+        text:row.details||'—',bodyNode:body,metaNode:meta,
+        authorText:'Door '+(row._noteAuthor||'Onbekend')+
+          (row.registeredBy?.rank?' · '+row.registeredBy.rank:'')+
+          (row.registeredBy?.call?' · '+row.registeredBy.call:'')});
       attachRetireButton(item,row,row._dossierSource==='cases'?'cases':'staff');
       root.append(item);return;
     }
@@ -3440,6 +3704,18 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       makeScoreBadge(row.score):null;
     if(score)item.append(heading,score,meta);
     else item.append(heading,meta);
+    if(['formal','sanctions','movements'].includes(group)){
+      const description=document.createElement('p');
+      const full=cells.slice(2).filter(x=>x&&x!=='—').join(' · ');
+      description.textContent=full||'—';
+      item.insertBefore(description,meta);
+      attachDossierRecordPreview(item,{row,title:heading.textContent,
+        text:full,bodyNode:description,metaNode:meta,authorText:dossierAuthorLine(row),
+        extra:row.type==='sanctie'?[
+          ['Soort sanctie',row.sanctionType],['Ernst',row.severity],
+          ['Redenen',Array.isArray(row.reasons)?row.reasons.join(', '):''],
+          ['Status',row.status],['Einddatum',row.endDate]]:[]});
+    }
     attachRetireButton(item,row,group==='leave'?'leave':group==='basisNotes'?'staff':'cases');
     root.append(item);
   };
@@ -3659,6 +3935,11 @@ function renderGeneralDossierNotes(){
     meta.textContent='Door '+(row._noteAuthor||'Onbekend')+
       (row.historicalImport&&row.importedBy?.name?' · Overgenomen door '+row.importedBy.name:'');
     item.append(heading,body,meta);
+    attachDossierRecordPreview(item,{row,title:heading.textContent,
+      text:row.details||'—',bodyNode:body,metaNode:meta,
+      authorText:'Door '+(row._noteAuthor||'Onbekend')+
+        (row.registeredBy?.rank?' · '+row.registeredBy.rank:'')+
+        (row.registeredBy?.call?' · '+row.registeredBy.call:'')});
     attachRetireButton(item,row,row._dossierSource==='cases'?'cases':'staff');
     if(row._dossierSource==='cases'&&selected)
       addManualCaseCorrectionControls(item,row,selected,selected.dept+':'+selected.discordId);
@@ -3673,17 +3954,39 @@ function renderDossierImportantNotes(){
   const entries=[...importantCaseEntries,...importantRestrictionEntries,...importantPortalRestrictionEntries]
     .sort((a,b)=>String(b.eventDate||'').localeCompare(String(a.eventDate||'')));
   sheetSetRows('notes',entries,x=>[
-    x.eventDate||'—',
+    generalNoteDate(x.eventDate),
     x.importantTitle||staffCaseLabels[x.type]||x.type,
     x.details||'—',
     'Door '+sheetWho(x)
   ],'Geen belangrijke notities of tijdelijke beperkingen.',importantCaseLimited||importantRestrictionLimited);
+  const list=$('dossierImportantNoteList');
+  if(!list)return;
+  list.replaceChildren();
+  if(!entries.length){list.textContent='Geen belangrijke notities geregistreerd.';return;}
+  for(const row of entries){
+    const item=document.createElement('div');item.className='note-item general-note-item';
+    const title=document.createElement('strong');
+    title.textContent=generalNoteDate(row.eventDate)+' · '+
+      (row.importantTitle||staffCaseLabels[row.type]||row.type||'Notitie');
+    const body=document.createElement('p');body.className='general-note-body';
+    body.textContent=String(row.details||'—');
+    const author=document.createElement('span');author.className='subtle';
+    author.textContent='Door '+sheetWho(row);
+    item.append(title,body,author);
+    attachDossierRecordPreview(item,{row,title:title.textContent,
+      text:row.details||'—',bodyNode:body,metaNode:author,
+      authorText:dossierAuthorLine(row)});
+    attachRetireButton(item,row,'cases');
+    if(row.id&&selected&&row.type==='notitie')
+      addManualCaseCorrectionControls(item,row,selected,selected.dept+':'+selected.discordId);
+    list.append(item);
+  }
 }
 function sheetCaseRows(entries,limited){
   const cases=entries||[];
   generalCaseEntries=cases.filter(x=>x.type==='algemene_notitie').map(x=>({
     ...x,_dossierSource:'cases',_noteSortDate:x.eventDate||'',
-    _noteDate:generalNoteDate(x.eventDate),_noteTitle:'Algemene notitie',
+    _noteDate:generalNoteDate(x.eventDate),_noteTitle:x.linked?'Gekoppelde algemene notitie':'Algemene notitie',
     _noteAuthor:sheetWho(x)
   }));
   generalCasesLimited=Boolean(limited);
@@ -3700,7 +4003,13 @@ function sheetCaseRows(entries,limited){
     'Geen personeelsbewegingen geregistreerd.',limited);
   // Houd gewone activiteiten buiten de belangrijke-notitierubriek.
   // Geverifieerde kadernotities en beperkingen verschijnen hier automatisch.
-  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking','inactiviteitsping','voordracht_ereteken'].includes(x.type));
+  importantCaseEntries=cases.filter(x=>['notitie','specialisatiebeperking','voordracht_ereteken'].includes(x.type))
+    .map(x=>x.linked?{...x,importantTitle:'Gekoppelde belangrijke notitie'}:x);
+  const activityPings=cases.filter(x=>x.type==='inactiviteitsping');
+  sheetSetRows('activityPings',activityPings,x=>[
+    generalNoteDate(x.eventDate),staffCaseLabels[x.type]||'Activiteitenping',
+    x.details||'—','Door '+sheetWho(x)
+  ],'Geen activiteitenpings geregistreerd.',limited);
   importantCaseLimited=Boolean(limited);
   renderDossierImportantNotes();
 }
@@ -3781,7 +4090,7 @@ async function loadStaffCheckrides(p,key){
 // Een bestaande dossierregistratie corrigeren is een afzonderlijke,
  // serverbeveiligde beheeractie. Geen nieuwe dossierregistratie of rolwijziging.
 function addManualCaseCorrectionControls(container,row,person,key){
- if(row.canAmend!==true)return;
+ if(row.linked===true||row.canAmend!==true)return;
  const actions=document.createElement('div');actions.className='actions';
  const edit=document.createElement('button');edit.type='button';edit.className='alt small';
  edit.textContent='Registratie wijzigen';
@@ -3863,8 +4172,76 @@ function addManualCaseCorrectionControls(container,row,person,key){
  };
  actions.append(edit,history);container.append(actions,editor,auditResult);
 }
+// Both canonical training results and completed training requests belong in
+// the same dossier training overview; the underlying records are NOT copied.
+let linkedTrainingRecords=[],linkedCompletedRequestRecords=[];
+let linkedTrainingLimited=false,linkedCaseLimited=false,linkedTrainingScope='';
+let linkedTrainingFetchError='',linkedTrainingLoadRevision=0;
+function renderLinkedTraining(p){
+  const canonical=linkedTrainingRecords.map(x=>({...x,_trainingSource:'register'}));
+  const requestCompletions=linkedCompletedRequestRecords.map(x=>({...x,
+    _trainingSource:'request',result:'uitgevoerd',
+    instructorName:x.registeredBy?.name||'Bevoegd opleider'}));
+  const all=[...canonical,...requestCompletions].sort((a,b)=>
+    String(b.eventDate||'').localeCompare(String(a.eventDate||''))||
+    String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  const completed=all;
+  sheetSetRows('training',completed,x=>[
+    generalNoteDate(x.eventDate),
+    String(x.courseName||'Opleiding')+
+      (x._trainingSource==='request'?' · bevestigde deelname':''),
+    x._trainingSource==='request'?'Deelname bevestigd':
+      ({aanwezig:'Aanwezig',geslaagd:'Geslaagd',niet_geslaagd:'Niet geslaagd',
+        onderbroken:'Onderbroken',in_opleiding:'In opleiding (historisch)',
+        stage:'STAGE (historisch)',restricted:'RESTRICTED (historisch)'}[x.result]||
+        x.result||'—'),
+    x.instructorName||x.registeredBy?.name||'—'
+  ],'Nog geen opleidingsregistraties.',linkedTrainingLimited||linkedCaseLimited);
+  const holder=$('staffLinkedTraining');holder.replaceChildren();
+  if(!all.length)holder.textContent=linkedTrainingFetchError?
+    'Opleidingsregister beperkt toegankelijk ('+linkedTrainingFetchError+').'+
+    ' Uitgevoerde opleidingsaanvragen blijven zichtbaar via de dossierhistoriek.':
+    'Geen zichtbare opleidingsregistraties.';
+  for(const row of all.slice(0,25)){
+    const div=document.createElement('div');div.className='note-item';
+    const title=document.createElement('strong');
+    title.textContent=String(row.courseName||'Opleiding').slice(0,150)+
+      ' · '+(row._trainingSource==='request'?'Uitgevoerd · deelname bevestigd':
+        ({aanwezig:'Aanwezig',geslaagd:'Geslaagd',niet_geslaagd:'Niet geslaagd',
+          onderbroken:'Onderbroken',in_opleiding:'In opleiding (historisch)',
+          stage:'STAGE (historisch)',restricted:'RESTRICTED (historisch)'}[row.result]||
+          String(row.result||'Onbekend resultaat')));
+    const meta=document.createElement('span');meta.className='subtle';
+    meta.textContent=generalNoteDate(row.eventDate)+
+      ' · Opleider: '+String(row.instructorName||row.instructor||'niet vermeld')+
+            (row.rosterStatus?' · Controle: '+({
+              nog_niet_beoordeeld:'Nog niet beoordeeld',ter_controle:'Ter controle',
+              klaar_voor_manuele_invoer:'Goedgekeurd'
+            }[row.rosterStatus]||row.rosterStatus):'')+
+            (row.appliedSpecialtyLabel?' · Specialisatie: '+row.appliedSpecialtyLabel+
+              ' ('+(row.result==='geslaagd'?'JA':'STAGE')+')':'');
+    div.append(title,meta);
+    if(row._trainingSource==='register'&&row.canEdit===true&&
+        trainingRights?.trainingWritesEnabled===true&&
+        trainingRights.permissions?.[p.dept]?.['training.log']){
+      const edit=document.createElement('button');edit.type='button';edit.className='alt small';
+      edit.textContent='Opleiding wijzigen';edit.onclick=()=>staffTrainingEdit(row);div.append(edit);
+    }
+    holder.append(div);
+  }
+  if(linkedTrainingLimited||linkedCaseLimited||all.length>25)
+    holder.append(document.createTextNode(' Er kunnen nog oudere registraties bestaan.'));
+  if(linkedTrainingScope==='alleen_eigen_registraties')
+    holder.append(document.createTextNode(' Je ziet uit het opleidingsregister alleen je eigen registraties.'));
+}
 async function loadLinkedPersonnelRecords(p,key){
-  const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
+  const revision=++linkedTrainingLoadRevision;
+  const same=()=>selected&&selected.dept+':'+selected.discordId===key&&
+    !$('panel').hidden&&revision===linkedTrainingLoadRevision;
+  linkedTrainingRecords=[];linkedCompletedRequestRecords=[];
+  linkedTrainingLimited=false;linkedCaseLimited=false;
+  linkedTrainingScope='';linkedTrainingFetchError='';
+  renderLinkedTraining(p);
   void loadStaffCheckrides(p,key);
   const training=$('staffLinkedTraining'),cases=$('staffLinkedCases');
   const trainingUrl='/api/training/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
@@ -3875,43 +4252,14 @@ async function loadLinkedPersonnelRecords(p,key){
       try{
         const data=await request(trainingUrl);
         if(!same())return;
-        // Voltooide opleidingen = geslaagd. Lopende/niet-geslaagde
-        // registraties blijven wel beschikbaar in het opleidingsregister.
-        sheetSetRows('training',data.records||[],x=>[
-          x.eventDate||'—',x.courseName||'Opleiding',x.result||'—',
-          x.instructorName||x.instructor||x.registeredBy?.name||'—'
-        ],'Nog geen opleidingsregistraties.',data.limited);
-        training.replaceChildren();
-        if(!data.records?.length)training.textContent='Geen zichtbare opleidingsregistraties.';
-        for(const row of (data.records||[]).slice(0,25)){
-          const div=document.createElement('div');div.className='note-item';
-          const title=document.createElement('strong');
-          title.textContent=String(row.courseName||'Opleiding').slice(0,150)+
-            ' · '+(row.result==='restricted'?'RESTRICTED':row.result==='stage'?'STAGE':String(row.result||'Onbekend resultaat'));
-          const meta=document.createElement('span');meta.className='subtle';
-          meta.textContent=String(row.eventDate||'Datum onbekend')+
-            ' · Opleider: '+String(row.instructorName||row.instructor||'niet vermeld')+
-            (row.rosterStatus?' · Controle: '+({
-              nog_niet_beoordeeld:'Nog niet beoordeeld',ter_controle:'Ter controle',
-              klaar_voor_manuele_invoer:'Goedgekeurd'
-            }[row.rosterStatus]||row.rosterStatus):'')+
-            (row.appliedSpecialtyLabel?' · Specialisatie: '+row.appliedSpecialtyLabel+
-              ' ('+(row.result==='geslaagd'?'JA':'STAGE')+')':'');
-          div.append(title,meta);
-          if(row.canEdit===true&&trainingRights?.trainingWritesEnabled===true&&
-              trainingRights.permissions?.[p.dept]?.['training.log']){
-            const edit=document.createElement('button');edit.type='button';edit.className='alt small';
-            edit.textContent='Opleiding wijzigen';edit.onclick=()=>staffTrainingEdit(row);div.append(edit);
-          }
-          training.append(div);
-        }
-        if(data.limited||data.records?.length>25)
-          training.append(document.createTextNode(' Alleen een deel van de opleidingsregistraties wordt hier getoond.'));
-        if(data.scope==='alleen_eigen_registraties')
-          training.append(document.createTextNode(' Je ziet alleen opleidingen die je zelf registreerde.'));
+        linkedTrainingRecords=data.records||[];
+        linkedTrainingLimited=Boolean(data.limited);
+        linkedTrainingScope=data.scope||'';
+        linkedTrainingFetchError='';
+        renderLinkedTraining(p);
       }catch(e){if(same()){
-        training.textContent='Opleidingen kunnen uitsluitend met de bestaande opleidingsrechten worden bekeken ('+e.message+').';
-        $('sheetTraining').textContent='Geen toegang tot opleidingsgegevens of bron tijdelijk niet beschikbaar.';
+        linkedTrainingFetchError=e.message;
+        renderLinkedTraining(p);
       }}
     })(),
     (async()=>{
@@ -3919,6 +4267,10 @@ async function loadLinkedPersonnelRecords(p,key){
         const data=await request(casesUrl);
         if(!same())return;
         sheetCaseRows(data.entries||[],data.limited);
+        linkedCompletedRequestRecords=(data.entries||[]).filter(x=>
+          x.type==='opleiding'&&x.trainingRequestId&&x.reportCategory==='opleiding');
+        linkedCaseLimited=Boolean(data.limited);
+        renderLinkedTraining(p);
         cases.replaceChildren();
         const allowed=(data.entries||[]).filter(row=>!['observatie','sanctie'].includes(row.type)).slice(0,60);
         if(!allowed.length)cases.textContent='Geen toegelaten kadernotities gevonden.';
@@ -3950,6 +4302,8 @@ async function loadLinkedPersonnelRecords(p,key){
         }
         if(data.limited)cases.append(document.createTextNode(' Er kunnen oudere registraties bestaan.'));
       }catch(e){if(same()){
+        linkedCompletedRequestRecords=[];linkedCaseLimited=false;
+        renderLinkedTraining(p);
         cases.textContent='Kaderregistraties kunnen alleen met de bestaande kaderrechten worden bekeken ('+e.message+').';
         $('sheetMovements').textContent='Kaderregistraties niet beschikbaar.';
         $('sheetNotes').textContent='Kadernotities niet beschikbaar.';
@@ -3999,6 +4353,18 @@ async function loadStaffLeave(p,key){
       (Number(x.days)||'—')+' dagen',
       'Reden: '+(x.note?.trim()||'Niet geregistreerd (oude verlofperiode)')
     ],'Geen goedgekeurde verlofperiodes.',info.limited);
+    // A manually submitted 31+ day period is visible as PENDING, not as
+    // approved or active leave. Approval stays with Officers/Corps.
+    const awaiting=leaves.filter(x=>x.manual===true&&x.status==='pending'&&
+      Number(x.days)>=31);
+    if(awaiting.length){
+      const reminder=document.createElement('p');
+      reminder.className='subtle';reminder.style.margin='8px 0';
+      reminder.textContent=awaiting.length+
+        ' handmatig ingediende verlofperiode(n) van 31+ dagen IN BEHANDELING. '+
+        'Nog niet goedgekeurd; beslissing door bevoegd Officierenkader of Korpsleiding.';
+      $('sheetLeave').append(reminder);
+    }
     root.replaceChildren();
     if(!leaves.length)root.textContent='Geen geregistreerde verlofperiodes.';
     for(const item of leaves){
@@ -4056,7 +4422,7 @@ function updateHistoricalMigrationUi(){
  $('historicalMigrationManage').hidden=!manager;
  if(manager){
    $('historicalMigrationStatus').textContent=enabled?
-     'Ingeschakeld voor deze overdracht: bestaande verlofperioden, sancties, notities en inactiviteitspings kunnen met oorspronkelijke registrator overgenomen worden.':
+     'Ingeschakeld voor deze overdracht: bestaande verlofperioden, sancties, notities en activiteitenpings kunnen met oorspronkelijke registrator overgenomen worden.':
      'Uitgeschakeld: er kunnen geen nieuwe historische overnames van deze categorieën gebeuren.';
    $('historicalMigrationToggle').textContent=cfg?.enabled?
      'Overname na overdracht uitschakelen':'Overname tijdelijk inschakelen';
@@ -4072,7 +4438,9 @@ function updateHistoricalMigrationUi(){
    if(!visible)box.checked=false;
    const select=$(prefix+'Author'),old=select.value;
    select.replaceChildren(option('','Selecteer oorspronkelijke registrator'));
-   for(const p of choices.filter(p=>p.dept==='politie'))
+   const roster=choices.filter(p=>p.dept==='politie')
+      .sort((a,b)=>BPDPersonnelVisuals.comparePersonnel(a,b,'series-desc'));
+   for(const p of roster)
      select.append(option(p.discordId,(p.call||'—')+' · '+p.name));
    if([...select.options].some(o=>o.value===old))select.value=old;
    fields.hidden=!visible||!box.checked;
@@ -4115,7 +4483,9 @@ function updateHistoricalObservationUi(){
  const select=$('historicalObservationAuthor'),old=select.value;
  const participants=formalPermissions?.representatives||[];
  select.replaceChildren(option('','Selecteer oorspronkelijke registrator'));
- for(const p of participants.filter(p=>p.dept==='politie'))
+ const roster=participants.filter(p=>p.dept==='politie')
+   .sort((a,b)=>BPDPersonnelVisuals.comparePersonnel(a,b,'series-desc'));
+ for(const p of roster)
    select.append(option(p.discordId,(p.call||'—')+' · '+p.name+' · '+(p.rank||'Politie')));
  if([...select.options].some(o=>o.value===old))select.value=old;
  const show=visible&&$('historicalObservationCheck').checked;
@@ -4262,6 +4632,7 @@ function formalSanctionOptions(){
 }
 function updateFormalFields(){
   const dept=selected?.dept;
+  $('formalLinkedField').hidden=$('formalType').value!=='observatie'||Boolean(formalEditId);
   const observation=Boolean(formalPermissions?.observationDepartments?.includes(dept));
   const sanction=Boolean(formalPermissions?.sanctionDepartments?.includes(dept));
   const isSanction=$('formalType').value==='sanctie';
@@ -4326,11 +4697,23 @@ function setFormalDate(iso){
   $('formalDateText').value=formalDateForDisplay(iso);
 }
 $('formalDateText').addEventListener('input',()=>{
-  const iso=formalDateFromText($('formalDateText').value);
-  if(iso)$('formalDate').value=iso;
+  // Bij een onvolledige of ongeldige handmatige datum mag de oude datum
+  // niet ongemerkt in het verborgen kalender-veld blijven staan.
+  $('formalDate').value=formalDateFromText($('formalDateText').value)||'';
 });
 $('formalDate').addEventListener('change',()=>{
   setFormalDate($('formalDate').value);
+});
+$('formalDateCalendar').addEventListener('click',()=>{
+  const picker=$('formalDate');
+  try{
+    if(typeof picker.showPicker==='function'){picker.showPicker();return;}
+  }catch{/* Fallback voor browsers die de native kalender blokkeren. */}
+  picker.classList.add('formal-date-fallback');
+  picker.removeAttribute('aria-hidden');
+  picker.tabIndex=0;
+  $('formalDateCalendar').hidden=true;
+  picker.focus();
 });
 function clearFormalEdit(){
   formalEditId=null;
@@ -4343,6 +4726,7 @@ function clearFormalEdit(){
   setFormalDate(now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate()));
   $('formalTime').value=pad(now.getHours())+':'+pad(now.getMinutes());
   $('formalNotice').textContent='';
+  $('formalLinkedColleague').value='';
   updateFormalFields();
   updateHistoricalObservationUi();
 }
@@ -4411,6 +4795,7 @@ async function loadStaffFormalPermissions(p,key){
     const data=await request('/api/registrations/subjects');
     if(!sameDossier(key))return;
     formalPermissions=data;
+    populateLinkedColleagues();
     updateHistoricalObservationUi();
     const canObs=Boolean(data.writesEnabled===true&&data.actor&&
       data.observationDepartments?.includes(p.dept));
@@ -4468,7 +4853,9 @@ $('staffFormalForm').onsubmit=async event=>{
   setFormalDate(selectedDate);
   const data={dept,discordId:id,type,eventDate:selectedDate,
     eventTime:$('formalTime').value,details:$('formalDetails').value,
-    otherPlayers:$('formalPlayers').value,evidenceUrl:$('formalEvidence').value};
+    otherPlayers:$('formalPlayers').value,evidenceUrl:$('formalEvidence').value,
+    ...(!formalEditId&&type==='observatie'&&$('formalLinkedColleague').value?
+      {linkedColleagueId:$('formalLinkedColleague').value}:{})};
   if(!isSanction){
     if($('historicalObservationCheck').checked&&
        !$('historicalObservationField').hidden){
@@ -4631,12 +5018,10 @@ async function loadStaffFormalRecords(p,key){
       const title=document.createElement('strong');
       const date=row.eventDate||row.createdAt||'Datum onbekend';
       title.textContent=(row.type==='sanctie'?'Sanctie · '+String(row.sanctionType||'onbekend'):
-        'Observatie')+' · '+date+(row.testRecord===true?' · TEST':'')+
+        row.linked?'Gekoppelde observatie':'Observatie')+' · '+date+(row.testRecord===true?' · TEST':'')+
         (row.status==='ingetrokken'?' · INGETROKKEN':'');
       const author=document.createElement('span');author.className='subtle';author.style.display='block';
-      author.textContent=(row.historicalImport===true?'Oorspronkelijke observator: ':'Door ')+
-        (row.registeredBy?.name||'onbekend')+
-        (row.registeredBy?.call?' · '+row.registeredBy.call:'')+
+      author.textContent=dossierAuthorLine(row)+
         (row.eventTime?' · '+row.eventTime:'')+
         (row.modifiedAt?' · bijgewerkt '+new Date(row.modifiedAt).toLocaleString('nl-BE'):'')+
         (row.historicalImport===true?' · Overgenomen uit spreadsheet door '+
@@ -4662,6 +5047,15 @@ async function loadStaffFormalRecords(p,key){
         const reasons=document.createElement('div');reasons.className='subtle';
         reasons.textContent='Ernst '+(row.severity||'—')+'/10 · '+(row.reasons||[]).join(', ');
         item.append(reasons);
+        attachDossierRecordPreview(item,{row,title:title.textContent,
+          text:row.details??row.description??row.reason??'—',
+          bodyNode:details,metaNode:author,authorText:author.textContent,
+          extra:[['Soort sanctie',row.sanctionType],
+            ['Ernst',row.severity==null?'':row.severity+'/10'],
+            ['Redenen',Array.isArray(row.reasons)?row.reasons.join(', '):''],
+            ['Status',row.status],['Einddatum',row.endDate],
+            ['Beperkingen',Array.isArray(row.restrictedSpecialties)?
+              row.restrictedSpecialties.join(', '):'']]});
         const permitted=Boolean(formalPermissions?.sanctionAmendDepartments?.includes(p.dept)&&
           formalPermissions?.writesEnabled===true&&
           formalPermissions?.sanctionOptionsByDepartment?.[p.dept]?.includes(row.sanctionType)&&
@@ -5021,7 +5415,7 @@ function renderReceived(group,rows,limited){
       activiteit:'Dienstactiviteit',opleiding:'Opleiding',verlof:'Verlofnotitie',
       promotievoorstel:'Promotievoorstel',naamswijziging:'Naamswijziging',
       personeelsbeweging:'Personeelsbeweging',
-      inactiviteitsping:'Inactiviteitsping',specialisatiebeperking:'Specialisatiebeperking',functiewijziging:'Functiewijziging'};
+      inactiviteitsping:'Activiteitenping',specialisatiebeperking:'Specialisatiebeperking',functiewijziging:'Functiewijziging'};
     title.textContent=(labels[entry.type]||entry.type)+
       (entry.sanctionType?' · '+entry.sanctionType:'');
     const meta=document.createElement('span');meta.className='received-meta';
@@ -5135,7 +5529,9 @@ async function loadStaffDossier(p){
     registrationManualLeave=result.cadreActions?.manualLeave===true;
     refreshPersonnelRegistrationOptions();
     void loadStaffCasePermissions(p,key,result.cadreActions?.cases===true);
-    $('staffCaseDate').value=new Date().toISOString().slice(0,10);
+    $('staffCaseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    refreshBelgianDateInputs(['staffCaseDate']);
     showStaffRoles(result.discordRoles,result.subject?.rosterSeries);
     void loadSpecialtyState(p);
     void loadFunctionRoles(p);
@@ -5152,6 +5548,7 @@ async function loadStaffDossier(p){
     staffField(summary,'Eenheid of ploeg',profile.unit);
     staffField(summary,'Functie of opdracht',profile.functionTitle);
     $('staffStartDate').value=profile.startDate||'';
+    refreshBelgianDateInputs(['staffStartDate']);
     $('staffUnit').value=profile.unit||'';
     $('staffFunction').value=profile.functionTitle||'';
     $('staffProfileReason').value='';
@@ -5282,8 +5679,23 @@ function manualLeaveDuration(){
  const days=(Date.parse(end+'T00:00:00Z')-Date.parse(start+'T00:00:00Z'))/86400000+1;
  return Number.isInteger(days)&&days>0?days:null;
 }
+let manualLeaveToastKey='',manualLeaveToastTimer=null;
+$('manualLeaveEscalationDismiss').onclick=()=>{
+  $('manualLeaveEscalationToast').hidden=true;
+  clearTimeout(manualLeaveToastTimer);
+};
+function showManualLeaveEscalation(days){
+ const toast=$('manualLeaveEscalationToast');
+ if(!days||days<31){toast.hidden=true;manualLeaveToastKey='';return}
+ const key=$('leaveFrom').value+'|'+$('leaveUntil').value;
+ if(key===manualLeaveToastKey)return;
+ manualLeaveToastKey=key;toast.hidden=false;
+ clearTimeout(manualLeaveToastTimer);
+ manualLeaveToastTimer=setTimeout(()=>{toast.hidden=true},9500);
+}
 function updateManualLeaveGuidance(){
  const days=manualLeaveDuration(),hint=$('leaveManualGuidance');
+ showManualLeaveEscalation(days);
  hint.textContent=!days?
    'Selecteer de begin- en einddatum. Middenkader mag maximaal 30 dagen rechtstreeks goedkeuren.':
    days>30?
@@ -5321,7 +5733,7 @@ $('staffManualLeaveForm').onsubmit=async event=>{
      render();
    }catch{/* Roster status updates on the next refresh. */}
    notice(saved.status==='pending'?
-     'Verlof van '+saved.days+' kalenderdagen ter goedkeuring ingediend. Officierenkader of Korpsleiding ziet dit onder Meldingen → Te behandelen verlofaanvragen. De aanvraag is gelogd in het dossier en weekrapport.':
+     'Verlof van '+saved.days+' kalenderdagen ter goedkeuring ingediend. Middenkader en hoger zien een informatieve melding; bevoegde Officierenkaderleden of Korpsleiding kunnen beslissen onder Meldingen → Te behandelen verlofaanvragen. De aanvraag is gelogd in het dossier en weekrapport.':
      'Centraal verlof goedgekeurd en gelogd in dossier en weekrapport.');
  }catch(e){notice('Verlofregistratie niet verwerkt: '+e.message,true)}
  finally{button.disabled=false}
@@ -5408,19 +5820,76 @@ $('staffCaseForm').onsubmit=async event=>{
     const historicalDetails=gradeMove?
       '\nOude graad: '+oldRank+' · Nieuwe graad: '+newRank+
       '\nRoepnummer: '+oldCall+' → '+newCall:'';
-    await request('/api/management/cases',{method:'POST',
+    const activity=type==='inactiviteitsping';
+    const activityStatus=activity?$('staffActivityStatus').value:'';
+    const discordContact=activity?$('staffActivityDiscordContact').value:'';
+    if(activity&&(!activityStatus||!['ja','nee'].includes(discordContact)))
+      throw Error('Kies de opvolgstatus en bevestig of je het Discord-bericht werkelijk hebt verstuurd.');
+    if(activity&&discordContact==='ja'&&!$('staffActivityDiscordDate').value)
+      throw Error('Vul de datum van het verstuurde Discord-bericht in.');
+    const activityLabel={
+      ACTIEF:'Actief','50/50':'50/50',INACTIEF:'Inactief',
+      VERWIJDERING_TE_BEOORDELEN:'60+ dagen: verwijdering beoordelen',
+      GEEN_VERBETERING_NA_PING:'Geen activiteitsverbetering na eerdere ping'
+    }[activityStatus]||'';
+    const activityDescription=activity?
+      'Opvolgstatus: '+activityLabel+' · Discord-ping handmatig verstuurd: '+
+        (discordContact==='ja'?'Ja ('+$('staffActivityDiscordDate').value+')':'Nee')+
+        '\n':'';
+
+    const stored=await request('/api/management/cases',{method:'POST',
       body:{dept:person.dept,discordId:person.discordId,type,
-        eventDate:$('staffCaseDate').value,details:reason+historicalDetails,
+        eventDate:$('staffCaseDate').value,
+        details:activityDescription+reason+historicalDetails,
+        ...(activity?{activityStatus,discordPingSent:discordContact==='ja',
+          ...(discordContact==='ja'?{discordPingDate:$('staffActivityDiscordDate').value}:{})}:{}),
+        ...(['notitie','algemene_notitie'].includes(type)&&$('staffCaseLinkedColleague').value?
+          {linkedColleagueId:$('staffCaseLinkedColleague').value}:{}),
         endDate:$('staffEndDate').value,courseName,
         proposedRank:$('staffProposedRank').value,newName:$('staffNewName').value,
-        movement,referenceUrl:$('staffCaseReference').value,
+        movement,
+        ...(gradeMove?{previousRank:oldRank,newRank,previousCall:oldCall,newCall}:{}),
+        referenceUrl:$('staffCaseReference').value,
         ...historicalTransferData('historicalCase')}});
     if(!sameDossier(key))return;
+    if(stored?.saved!==true||!stored.reference)
+      throw Error('De server heeft de dossierregistratie niet bevestigd.');
+    // Strong read-after-write check: never announce success if the requested
+    // record isn't visible in its authoritative protected personnel dossier.
+    let readBack;
+    try{
+      readBack=await request('/api/management/cases?'+new URLSearchParams({
+        dept:person.dept,discordId:person.discordId
+      }));
+    }catch(error){
+      notice('Firebase heeft de registratie opgeslagen (referentie '+stored.reference+
+        '), maar het dossier kon niet opnieuw worden ingelezen: '+error.message+
+        '. Vernieuw het dossier; registreer niet opnieuw zonder eerst te controleren.',true);
+      return;
+    }
+    if(!sameDossier(key))return;
+    const verified=(readBack.entries||[]).find(row=>row.id===stored.reference&&
+      row.type===type&&row.subjectDiscordId===person.discordId);
+    if(!verified){
+      notice('De server heeft referentie '+stored.reference+
+        ' opgeslagen, maar deze staat nog niet in de beveiligde dossierweergave. '+
+        'Vernieuw het dossier en controleer de rechten voordat je opnieuw registreert.',true);
+      return;
+    }
+    sheetCaseRows(readBack.entries||[],readBack.limited);
     $('staffCaseDetails').value='';$('staffCaseReference').value='';
+     $('staffCaseLinkedColleague').value='';
+    if(type==='inactiviteitsping'){
+      $('staffActivityStatus').value='';
+      $('staffActivityDiscordContact').value='';
+      updateActivityDiscordDate();
+      refreshBelgianDateInputs(['staffActivityDiscordDate']);
+    }
     for(const id of staffCaseValues)$(id).value='';
     $('staffCourseOther').value='';syncStaffCaseOther();updateStaffMovementFields();
     await loadLinkedPersonnelRecords(person,key);
-    notice('Historische personeelsbeweging gelogd; de actuele fiche is niet gewijzigd.');
+    notice((staffCaseLabels[type]||type)+' opgeslagen én opnieuw teruggelezen uit het personeelsdossier. '+
+      'Referentie: '+stored.reference+'. De registratie wordt opgenomen in het weekrapport.');
   }catch(e){notice(e.message,true)}finally{button.disabled=false}
 };
 // Centrale opslagknop: de oorspronkelijke validators, transactie-API's,
