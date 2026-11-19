@@ -34,6 +34,15 @@ test('Specific series heads are identified by their known Discord IDs, not their
  assert.ok(labels(police({discordId:POLICE_SERIES_RELIEF.id,series:'Vlinder'}),
   'Vlinder · Middenkader').includes('🦋 Vlinder'));
 });
+test('Reeks 2 toont Sir-robin correct in de dossierhoofding en rosterbadge',()=>{
+ const head=POLICE_SERIES_HEADS['2'].find(row=>row.id==='305021081243090944');
+ assert.ok(head,'De Discordkoppeling van het reekshoofd blijft behouden');
+ assert.equal(head.name,'Sir-robin');
+ const badge=policeRosterSeriesBadges(police({series:'Reeks 2'}),'Reeks 2');
+ assert.match(badge[0].title,/Sir-robin/);
+ assert.doesNotMatch(badge[0].title,/Sit-robin/i);
+});
+
 test('Officer rainbow, Corps crown and ambiguous 9xx combined class are visual only',()=>{
  assert.ok(labels(police({call:'900',series:'Kader',rank:'Eerste hoofdcommissaris'}),
   'Officierenkader / Korpsleiding').includes('👑'));
