@@ -19,7 +19,7 @@ import {TRAINING_RESULT_LABELS} from './training-result-policy.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {POLICE_PROMOTION_PROPOSALS,nextPromotionRank} from './police-promotion-routes.js';
-import {POLICE_RANK_CHOICES} from './personnel-rank-policy.js';
+import {POLICE_RANK_CHOICES,policeSubjectGradeOption} from './personnel-rank-policy.js';
 import {staffActivityFollowup} from './staff-activity-followup.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
@@ -173,7 +173,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       // A newly filed Police proposal defaults to the next official grade.
       // It does not mutate a rank or reserve any callsign until approved.
       const proposalType=type==='promotievoorstel'&&dept==='politie';
-      const suggestedRank=proposalType?nextPromotionRank(subject.rank):null;
+      const currentPoliceGrade=proposalType?policeSubjectGradeOption(subject):null;
+      const suggestedRank=proposalType?nextPromotionRank(currentPoliceGrade?.rank):null;
       if(proposalType&&!suggestedRank)
         return res.status(409).json({error:'Voor deze huidige graad is geen automatische volgende graad beschikbaar'});
       const proposedInput=proposalType?{...req.body,proposedRank:
@@ -182,7 +183,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         return res.status(400).json({error:'Selecteer een geldige politiepromotierang'});
       if(proposalType&&
         POLICE_RANK_CHOICES.find(x=>x.rank===proposedInput.proposedRank).grade<=
-        POLICE_RANK_CHOICES.find(x=>x.rank===subject.rank)?.grade)
+        currentPoliceGrade?.grade)
         return res.status(400).json({error:'Een voorstel moet een hogere graad betreffen'});
       const data=validateManagementEntry(proposedInput);
       let linkedColleague=null;
