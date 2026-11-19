@@ -23,8 +23,21 @@ th,td{border-bottom:1px solid #e3eaf3;padding:8px 9px;text-align:left;vertical-a
 th{position:sticky;top:0;background:#eaf1fb;color:#23406b;z-index:1}
 td small{display:block;color:#6b7a90;margin-top:3px}
 .state{display:inline-block;padding:3px 8px;border-radius:7px;background:#e8eff9;font-weight:700}
-.state-50\/50,.state-inactief,.state-beoordelen{background:#fff0e7;color:#873f1c}
+.state-50\/50{background:#fff0e7;color:#873f1c}
+.state-inactief{background:#ffe5e8;color:#982a38}
+.state-beoordelen{background:#e9e9ee;color:#373a46}
+.roster-state{font-weight:800}
+.roster-state[data-state="active"]{color:#167f48}
+.roster-state[data-state="half"]{color:#a86110}
+.roster-state[data-state="inactive"]{color:#b82a3c}
 .state-ok{background:#e6f5ea;color:#166138}
+.state-checking{background:#fff1cd;color:#784500;border:1px solid #e9b864}
+.activity-warnings{border-left:4px solid #dd8c1e!important}
+.action-check{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #aebfd13b}
+.action-check strong{display:block}.action-check small{display:block;color:#546c86}
+.action-check button{font-size:12px}
+.secondary-action{background:transparent;color:inherit;border:1px solid #7f94b0}
+.source-note{font-size:12px;line-height:1.5}
 .state-verouderd,.state-geen_data{background:#eef0f3;color:#667286}
 .warn{color:#95401e;font-weight:700}#feedback{font-weight:650;margin:10px 0;color:#285287}
 .activity-group-row th{position:static;background:#dae6f6;color:#234469;font-size:12px;font-weight:800;letter-spacing:.015em;padding:8px 10px;border-bottom:2px solid #a7bdd9}
@@ -86,6 +99,19 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
   html[data-bpd-theme="dark"] body.bpd-shell main .state {
     background:#284461!important;color:#e7f1ff!important;
   }
+  html[data-bpd-theme="dark"] body.bpd-shell main .state-inactief{
+    background:#652b37!important;color:#ffe1e5!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .state-beoordelen{
+    background:#303740!important;color:#fff!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .roster-state[data-state="active"]{color:#9ae6b6!important}
+  html[data-bpd-theme="dark"] body.bpd-shell main .roster-state[data-state="half"]{color:#ffcea0!important}
+  html[data-bpd-theme="dark"] body.bpd-shell main .roster-state[data-state="inactive"]{color:#ffadb8!important}
+  html[data-bpd-theme="dark"] body.bpd-shell main .state-checking {
+    background:#674a1f!important;color:#fff1ca!important;border-color:#caa05d!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .source-note {color:#c3d4eb!important}
   html[data-bpd-theme="dark"] body.bpd-shell main .state-ok {
     background:#164733!important;color:#b0f4cc!important;
   }
@@ -113,27 +139,32 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 <body><header><strong>BelgiëPD · Activiteitscentrum</strong><div><a href="/">← Dashboard</a> <button id="login" type="button">Aanmelden</button></div></header>
 <main>
 <h1>Activiteitscentrum</h1>
-<p>Personeelsactiviteit per dienst, gekoppeld aan de Discord ID. Gegevens uit de bestaande spreadsheet zijn voorlopig uitsluitend ter controle.</p>
-<section><strong>Alleen-lezen · geen automatische maatregelen</strong>
-<p>De 15-, 30- en 60-dagengrenzen tonen enkel een opvolgadvies. De speeluren in deze bron zijn gebaseerd op een resetperiode, niet op een afgesloten kalendermaand. Echte automatische pings blijven afhankelijk van geverifieerde FiveM-gegevens en goedgekeurd verlof.</p></section>
+<p>Bevoegd overzicht per dienst: actuele personeelslijst, geverifieerde FiveM-speeluren, goedgekeurd verlof en in het dossier geregistreerde activiteitenpings.</p>
+<section><strong>Activiteitsadviezen en registraties zijn afzonderlijk</strong>
+<p>De tracker kan alleen op geverifieerde maandgegevens adviseren (20 / 10 speeluren en 15 / 30 / 60 dagen zonder connectie). Goedgekeurd verlof schort onterechte adviezen op. CHECKING is de controle na afgelopen verlof: bevoegd kader bevestigt ACTIEF of 50/50; de officiële personeelslijst en Discord-rollen worden hierdoor niet stilzwijgend gewijzigd.</p></section>
 <div id="feedback" role="status" aria-live="polite">Aanmelden om gegevens te bekijken.</div>
 <div id="content" hidden>
 <section><div class="controls">
 <label>Dienst<select id="department"><option value="">Alle bevoegde diensten</option></select></label>
-<label>Opvolging<select id="filter"><option value="">Alles</option><option value="beoordelen">60+ dagen</option><option value="inactief">30+ dagen</option><option value="50/50">14+ dagen</option><option value="verlof_nazien">Verlof nazien</option><option value="verouderd">Bron verouderd</option><option value="geen_data">Geen gegevens</option><option value="ok">Geen actie</option></select></label>
+<label>Opvolging<select id="filter"><option value="">Alles</option><option value="beoordelen">60+ dagen</option><option value="inactief">30+ dagen</option><option value="50/50">15+ dagen</option><option value="checking">CHECKING na verlof</option><option value="verlof_nazien">Verlof nazien</option><option value="verouderd">Bron verouderd</option><option value="geen_data">Geen gegevens</option><option value="ok">Geen actie</option></select></label>
 <label>Zoeken<input id="search" type="search" placeholder="Naam, roepnummer of Discord ID"></label>
 <button id="refresh" type="button">↻ Vernieuwen</button></div></section>
-<section><h2>Overzicht <small id="asof"></small></h2><div id="counts" class="counts"></div></section>
+<section><h2>Overzicht <small id="asof"></small></h2><div id="counts" class="counts"></div>
+<h2>Statistieken binnen de geselecteerde filters</h2><div id="statistics" class="counts"></div>
+<p class="source-note" id="sourceNote"></p></section>
+<section id="returnPanel" class="activity-warnings" hidden><h2>⚠ Verlof afgelopen · CHECKING <small id="returnCount"></small></h2>
+<p>Nieuwe en nog niet door jou gelezen controles blijven gemarkeerd. Iedere bevoegde leidinggevende bevestigt het lezen individueel; de opvolging blijft open tot iemand een gemotiveerde beslissing registreert.</p>
+<div id="returnList" aria-live="polite"></div></section>
 <section><h2>Personeelsopvolging <small id="resultCount"></small></h2><p class="activity-order-note">Geordend volgens de Personeelslijst: per dienst en binnen Politie per kader en roepnummer.</p><div class="tablewrap"><table>
-<thead><tr><th>Personeel</th><th>Dienst</th><th>Huidige status</th><th>Laatste connectie</th><th>Inactief</th><th>Speeluren sinds reset</th><th>Pinghistoriek</th><th>Voorstel · controle</th></tr></thead>
+<thead><tr><th>Personeel</th><th>Dienst</th><th>Huidige status</th><th>Opvolging</th><th>Laatste connectie</th><th>Geen connectie</th><th>Speeluren</th><th>Verlof</th><th>Dossierpings</th><th>Advies</th></tr></thead>
 <tbody id="rows"></tbody></table></div></section>
 </div>
 </main>
 <script type="module">
 import {sortActivityLikePersonnel,activityRosterGroup,activityRosterGroupLabel} from '/activity-roster-order.js';
 const $=id=>document.getElementById(id);
-let auth,authSdk,records=[],asOf='';
-function label(kind){return ({beoordelen:'Beoordelen 60+',inactief:'INACTIEF-ping', '50/50':'50/50-ping',
+let auth,authSdk,records=[],asOf='',sources=null;
+function label(kind){return ({checking:'⚠ CHECKING',beoordelen:'Beoordelen 60+',inactief:'INACTIEF-ping', '50/50':'50/50-ping',
  verlof_nazien:'Verlof nazien',verouderd:'Bron verouderd',geen_data:'Geen gegevens',ok:'Geen actie'})[kind]||kind}
 function el(tag,text,className){const n=document.createElement(tag);n.textContent=String(text??'—');if(className)n.className=className;return n}
 function render(){
@@ -141,10 +172,31 @@ function render(){
  const visible=sortActivityLikePersonnel(records.filter(p=>(!dept||p.department===dept)&&(!kind||p.kind===kind)&&
   (!query||[p.name,p.call,p.discordId].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query)))));
  $('counts').replaceChildren();
- for(const key of ['ok','50/50','inactief','beoordelen','verlof_nazien','verouderd','geen_data']){
+ for(const key of ['ok','checking','50/50','inactief','beoordelen','verlof_nazien','verouderd','geen_data']){
   const box=el('div','', 'counter');box.append(el('strong',visible.filter(p=>p.kind===key).length),
     el('small',label(key)));$('counts').append(box);
  }
+ const stats=[
+  ['Personeelsleden',visible.length],
+  ['Officieel actief',visible.filter(p=>/^actief$/i.test(p.currentStatus||'')&&!p.returnChecking).length],
+  ['CHECKING na verlof',visible.filter(p=>p.returnChecking).length],
+  ['Goedgekeurd verlof',visible.filter(p=>p.leave?.active===true).length],
+  ['Bevestigde Discord-pings',visible.reduce((n,p)=>n+(p.pingDossier?.discordConfirmed||0),0)],
+  ['Geverifieerde maanduren',(()=>{
+    const values=visible.filter(p=>p.verified&&Number.isFinite(p.periodPlayHours)).map(p=>p.periodPlayHours);
+    return values.length?(values.reduce((a,b)=>a+b,0)/values.length).toLocaleString('nl-BE',
+     {maximumFractionDigits:1})+' u gemiddeld ('+values.length+')':'Nog niet beschikbaar';
+  })()]
+ ];
+ $('statistics').replaceChildren();
+ for(const [name,value] of stats){const card=el('div','', 'counter');card.append(el('strong',value),
+  el('small',name));$('statistics').append(card)}
+ $('sourceNote').textContent='Bronnen: personeelslijst · '+
+   (sources?.verifiedAvailable?'geverifieerde tracker gekoppeld':'geverifieerde tracker niet beschikbaar')+
+   ' · '+(sources?.approvedLeaveComplete?'goedgekeurd verlof gecontroleerd':'verlofcontrole onvolledig')+
+   ' · '+(sources?.dossierPingsAvailable?'Firebase-dossierpings':'dossierpings niet beschikbaar')+
+   ' · '+(sources?.legacyAvailable?'oude spreadsheet uitsluitend als fallback':'oude spreadsheet niet beschikbaar')+
+   '. Dossierpingtellers zijn beperkt tot 100 registraties per persoon.';
  $('resultCount').textContent='· '+visible.length+' leden';
  const body=$('rows');body.replaceChildren();
  let previousGroup=null;
@@ -152,23 +204,40 @@ function render(){
   const group=activityRosterGroup(p);
   if(group!==previousGroup){
    const divider=document.createElement('tr');divider.className='activity-group-row';
-   const cell=el('th',activityRosterGroupLabel(p));cell.colSpan=8;cell.scope='rowgroup';
+   const cell=el('th',activityRosterGroupLabel(p));cell.colSpan=10;cell.scope='rowgroup';
    divider.append(cell);body.append(divider);previousGroup=group;
   }
   const row=document.createElement('tr');
   const person=el('td',p.call+' · '+p.name);person.append(el('small',p.discordId));row.append(person);
   row.append(el('td',p.department));
-  const current=el('td',p.currentStatus);if(p.statusMismatch)current.append(el('small','Status wijkt af van politiesheet','warn'));row.append(current);
+  const current=el('td',p.currentStatus);
+  current.className='roster-state';
+  current.dataset.state=/^actief$/i.test(p.currentStatus||'')?'active':
+   /^50\/50$/i.test(p.currentStatus||'')?'half':
+   /^inactief$/i.test(p.currentStatus||'')?'inactive':'other';
+  if(p.statusMismatch)current.append(el('small','Verschilt van oude bron','warn'));row.append(current);
+  const follow=el('td',p.returnChecking?'⚠ CHECKING':
+   p.pingDossier?.latestStatus==='GEEN_VERBETERING_NA_PING'?'⚠ Geen verbetering na eerdere ping':
+   p.pingDossier?.latestStatus||'—');
+  if(p.returnChecking)follow.className='state-checking';row.append(follow);
   row.append(el('td',p.lastConnection||'Geen gegevens'));
   row.append(el('td',p.daysInactive===null?'—':p.daysInactive+' dagen'));
-  row.append(el('td',p.periodPlayHours===null?'—':p.periodPlayHours+' uur'));
-  const ping=el('td',p.pingCount===null?'—':p.pingCount+' ping(s)');
-  if(p.lastPing)ping.append(el('small','Laatste: '+p.lastPing));row.append(ping);
+  const hours=el('td',p.periodPlayHours===null?'—':p.periodPlayHours+' uur');
+  hours.append(el('small',p.verified?'✓ Geverifieerd · '+p.periodLabel:p.periodLabel||'Oude bron'));row.append(hours);
+  const leave=el('td',p.leave?.active?'Verlof tot '+p.leave.endDate:
+   p.leave?.lastEnded?'Einde '+p.leave.lastEnded:'—');
+  if(p.leave?.nextStart)leave.append(el('small','Volgend: '+p.leave.nextStart+' → '+p.leave.nextEnd));
+  row.append(leave);
+  const ping=el('td',p.pingDossier?
+    p.pingDossier.discordConfirmed+' Discord bevestigd':'—');
+  if(p.pingDossier?.latestAt)ping.append(el('small','Laatste dossierregistratie: '+p.pingDossier.latestAt.slice(0,10)));
+  if(p.pingDossier?.truncated)ping.append(el('small','Meer dan 100 registraties: gedeeltelijke teller'));
+  row.append(ping);
   const note=document.createElement('td');note.append(el('span',label(p.kind),'state state-'+p.kind),
     el('small',p.reason));row.append(note);body.append(row);
  }
  if(!visible.length){const row=document.createElement('tr'),cell=el('td','Geen resultaten binnen de gekozen filters.');
-  cell.colSpan=8;row.append(cell);body.append(row)}
+  cell.colSpan=10;row.append(cell);body.append(row)}
  $('asof').textContent='· broncontrole '+asOf;
 }
 async function load(){
@@ -179,15 +248,73 @@ async function load(){
   const response=await fetch('/api/activity-center/overview',{cache:'no-store',headers:{Authorization:'Bearer '+token}});
   const result=await response.json().catch(()=>({}));
   if(!response.ok)throw Error(result.error||'Activiteitscontrole mislukt');
-  records=Array.isArray(result.people)?result.people:[];asOf=result.asOf||'onbekend';
+  records=Array.isArray(result.people)?result.people:[];asOf=result.asOf||'onbekend';sources=result.source||null;
   const select=$('department'),last=select.value;select.replaceChildren(new Option('Alle bevoegde diensten',''));
   for(const d of result.departments||[])select.add(new Option(d[0].toUpperCase()+d.slice(1),d));
   if([...select.options].some(o=>o.value===last))select.value=last;
   $('content').hidden=false;$('feedback').textContent='Alleen-lezen · '+records.length+' dossiers binnen jouw toegangsrechten. Geen acties uitgevoerd.';
-  render();
+  render();await loadReturnChecks();
  }catch(err){$('content').hidden=true;$('feedback').textContent=err.message}
  finally{$('refresh').disabled=false}
 }
+async function returnAction(id,action,body={}){
+ const token=await auth.currentUser.getIdToken();
+ const response=await fetch('/api/activity-return/checks/'+encodeURIComponent(id)+'/'+action,{
+  method:'POST',cache:'no-store',headers:{Authorization:'Bearer '+token,
+   'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const result=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(result.error||'Controle niet verwerkt');
+ return result;
+}
+async function loadReturnChecks(){
+ const panel=$('returnPanel'),list=$('returnList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const token=await auth.currentUser.getIdToken();
+  const response=await fetch('/api/activity-return/checks',{cache:'no-store',
+   headers:{Authorization:'Bearer '+token}});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(result.error||'CHECKING-controles niet beschikbaar');
+  if(!result.enabled)return;
+  const rows=Array.isArray(result.checks)?result.checks:[];
+  $('returnCount').textContent='· '+rows.length+' open · '+result.unread+' ongelezen';
+  for(const check of rows){
+   const container=el('div','','action-check');
+   const details=document.createElement('div');
+   details.append(el('strong',(check.readAt?'':'⚠ NIEUW · ')+
+    (check.subjectCall||'—')+' · '+check.subjectName+' · '+check.dept),
+    el('small','Verlof beëindigd: '+check.endDate+
+    ' · '+(check.readAt?'Gelezen door jou':'Ongelezen · actie vereist')));
+   const buttons=document.createElement('div');buttons.className='controls';
+   if(!check.readAt){
+    const read=el('button','Gelezen','secondary-action');read.type='button';
+    read.onclick=async()=>{read.disabled=true;
+     try{await returnAction(check.id,'read');await loadReturnChecks()}
+     catch(e){$('feedback').textContent=e.message;read.disabled=false}};
+    buttons.append(read);
+   }
+   for(const [status,labelText] of [['ACTIEF','✓ ACTIEF'],['50/50','◐ 50/50']]){
+    const button=el('button',labelText);button.type='button';
+    button.onclick=async()=>{
+     const reason=prompt('Motivering voor '+status+' (minimaal 10 tekens):','');
+     if(reason===null)return;
+     if(reason.trim().length<10||reason.trim().length>500)
+      return alert('Vul een motivering van 10 tot 500 tekens in.');
+     if(!confirm('CHECKING als '+status+' afhandelen? Dit logt de opvolging, maar verandert de officiële personeelsstatus NIET automatisch.'))return;
+     button.disabled=true;
+     try{await returnAction(check.id,'resolve',{status,reason:reason.trim()});
+      await load();$('feedback').textContent='Verlofterugkeer gelogd in dossier en weekrapport. Pas de officiële personeelsstatus afzonderlijk aan indien nodig.'}
+     catch(e){$('feedback').textContent=e.message;button.disabled=false}
+    };buttons.append(button);
+   }
+   container.append(details,buttons);list.append(container);
+  }
+  if(!rows.length)list.textContent='Geen openstaande controles na verlof.';
+  panel.hidden=false;
+ }catch(e){list.textContent='Verlofcontroles niet geladen: '+e.message;panel.hidden=false}
+}
+
 for(const control of ['department','filter','search'])$(control).addEventListener('input',render);
 $('refresh').addEventListener('click',load);
 (async()=>{

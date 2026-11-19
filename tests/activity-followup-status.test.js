@@ -58,3 +58,18 @@ test('Dossier en weekrapport bewaren status, datum Discord en audit zonder live-
  const runner=source('src/activity-ping-runner.js');
  assert.ok(runner.includes('No personnel status, Discord roles'));
 });
+
+test('Geen activiteitsverbetering na eerdere ping is een apart gelogd opvolgresultaat, geen nieuwe Discord-ping',()=>{
+ const entry=validateManagementEntry({type:'inactiviteitsping',
+  eventDate:'2026-11-19',details:'Na de eerdere ping geen verbetering; geen extra speeluren vastgesteld.',
+  activityStatus:'GEEN_VERBETERING_NA_PING',discordPingSent:false});
+ assert.equal(entry.activityStatus,'GEEN_VERBETERING_NA_PING');
+ assert.equal(entry.discordPingSent,false);
+ assert.equal(entry.reportCategory,'inactiviteitsping');
+ const sections=reportSections([{...entry,registeredBy:{name:'Middenkader',call:'700'}}],
+  '2026-11-16','2026-11-29');
+ assert.equal(sections.find(x=>x.type==='inactiviteitsping').entries.length,1);
+ const ui=source('public/personeelsbeheer.html');
+ assert.match(ui,/option value="GEEN_VERBETERING_NA_PING"/);
+ assert.match(ui,/Geen activiteitsverbetering na eerdere ping/);
+});
