@@ -13,6 +13,7 @@ import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION
 import {isArchivedTraining} from './training-maintenance.js';
 import {projectLeaveReportEvent} from './leave-report-projection.js';
 import {brusselsEventDate} from './personnel-event-date.js';
+import {verifiedColleagueLink,createColleagueLink,loadLinkedCaseEntries} from './dossier-linked-cases.js';
 import {TRAINING_RESULT_LABELS} from './training-result-policy.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
@@ -86,12 +87,20 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const snap=await getSnapshot(),subject=uniqueSubject(snap.data,dept,id);
       if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
       if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
-      const rows=await db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').orderBy('createdAt','desc').limit(150).get();
+      const [rows,linked]=await Promise.all([
+        db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries')
+          .orderBy('createdAt','desc').limit(150).get(),
+        loadLinkedCaseEntries(db(),req.bpd,snap.data,dept,id,['notitie','algemene_notitie'])
+      ]);
+      res.set('Cache-Control','private, no-store');
       res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},
-        entries:rows.docs.filter(d=>d.get('status')!=='verwijderd').map(d=>({
-          id:d.id,...noPrivate(d.data()),
-          canAmend:enabled()&&mayCorrectManualCase(req.bpd,subject,d.data())
-        })),limited:rows.docs.length===150});
+        entries:[
+          ...rows.docs.filter(d=>!isRetired(d.data())).map(d=>({
+            id:d.id,...noPrivate(d.data()),
+            canAmend:enabled()&&mayCorrectManualCase(req.bpd,subject,d.data())
+          })),
+          ...linked.entries.map(e=>({...noPrivate(e),canAmend:false}))
+        ],limited:rows.size===150||linked.limited});
     }catch(e){errorResponse(res,e)}
   });
   // Narrow self-note exception: verified 900/910 Korpsleiding can append
@@ -157,6 +166,11 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const subject=uniqueSubject(snap.data,dept,id);
       if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
       if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
+      let linkedColleague=null;
+      try{
+        linkedColleague=verifiedColleagueLink(req.body?.linkedColleagueId,
+          dept,id,snap.data,req.bpd,type);
+      }catch(e){return res.status(400).json({error:e.message})}
       const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel je Google-account eerst aan je eigen Discord ID'});
       const representedId=asString(req.body?.onBehalfOfDiscordId);
@@ -178,7 +192,10 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const newDoc=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const batch=db().batch();
-      batch.create(newDoc,{...data,dept,subjectDiscordId:id,subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,registeredBy:represented||actor,submittedByActor:actor,
+      batch.create(newDoc,{...data,dept,subjectDiscordId:id,
+        ...(linkedColleague?{linkedColleagueId:linkedColleague.personId}:{}),
+        subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,
+        registeredBy:represented||actor,submittedByActor:actor,
         onBehalfOf:represented||null,onBehalfReason,
         historicalImport:Boolean(represented),importSource:represented?'spreadsheet':null,
         submittedBy:{uid:req.bpd.uid,email:req.bpd.email},
@@ -187,6 +204,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         }:{pingNotificationId:newDoc.id,pingNotificationStatus:'sent'}):{}),
         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
       batch.create(notice,{caseId:caseId(dept,id),entryId:newDoc.id,type,dept,createdAt:FieldValue.serverTimestamp()});
+      createColleagueLink(db(),batch,{dept,primaryId:id,entryId:newDoc.id,
+        type,eventDate:data.eventDate,colleague:linkedColleague,at:FieldValue.serverTimestamp()});
       // Exactly one atomic record is shared between the member inbox,
       // source dossier and dynamic fortnight report. No Discord DM is sent.
       if(type==='inactiviteitsping'&&!represented){
