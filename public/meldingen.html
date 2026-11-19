@@ -100,6 +100,12 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
  #trainingPersonalPanel,#trainingReviewPanel{padding:12px}
  #trainingReviewPanel>.actions{flex-wrap:wrap}
 }
+#leaveReturnPanel{padding:14px 16px;margin:10px 0;border-radius:10px;border-left:4px solid #d9911e}
+#leaveReturnPanel p{font-size:12px;line-height:1.5;margin:6px 0}
+#leaveReturnList .item{padding:9px 0;font-size:12px}
+#leaveReturnList .item p{margin:4px 0}
+#leaveReturnList .item .actions{margin-top:6px}
+#leaveReturnList .item button{padding:6px 10px;font-size:11px;min-height:30px}
 /* Elke rubriek kan afzonderlijk open of dicht, zonder wijziging van rechten. */
 .notification-fold>summary{
  display:flex;align-items:center;gap:9px;cursor:pointer;
@@ -141,6 +147,15 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
  <p>Actuele personeelsstatussen binnen jouw dienstbevoegdheden. <strong>Dit zijn geen verzonden activiteitspings.</strong> Voor beoordeling en eventuele dossierregistratie gebruik je het <a href="/activiteitscentrum.html">Activiteitscentrum</a> of Dossiercentrum.</p>
  <div id="staffFollowupList" aria-live="polite"></div>
 
+ </details>
+</section>
+<section id="leaveReturnPanel" class="panel" hidden>
+ <details class="notification-fold" id="leaveReturnFold" open>
+  <summary>⚠ Verlofterugkeer · CHECKING
+   <span id="leaveReturnUnread" class="pill">0 ongelezen</span>
+   <span id="leaveReturnOpen" class="pill">0 open</span></summary>
+  <p>Goedgekeurd verlof is voorbij: bevoegd kader controleert de terugkeer. Iedereen bevestigt het lezen apart; een actie blijft open tot gemotiveerde afronding als ACTIEF of 50/50. De officiële personeelsstatus verandert niet stilzwijgend.</p>
+  <div id="leaveReturnList" aria-live="polite"></div>
  </details>
 </section>
 <section id="activityPingsPanel" class="panel" hidden>
@@ -321,6 +336,62 @@ async function loadStaffActivityFollowup(){
  }
 }
 
+async function loadLeaveReturnChecks(){
+ const panel=$('leaveReturnPanel'),list=$('leaveReturnList');
+ panel.hidden=true;list.replaceChildren();if(!auth?.currentUser)return;
+ try{
+  const result=await api('/api/activity-return/checks');
+  if(result.enabled!==true)return;
+  const checks=Array.isArray(result.checks)?result.checks:[];
+  $('leaveReturnUnread').textContent=(result.unread||0)+' ongelezen';
+  $('leaveReturnOpen').textContent=(result.actionRequired||0)+' open';
+  for(const check of checks){
+   const row=document.createElement('div');row.className='item';
+   const title=document.createElement('strong');
+   title.textContent=(check.readAt?'':'⚠ NIEUW · ')+(check.subjectCall||'—')+
+    ' · '+check.subjectName+' · '+check.dept;
+   const note=document.createElement('p');
+   note.textContent='Verlof beëindigd '+displayLeaveDate(check.endDate)+
+    ' · '+(check.readAt?'Door jou gelezen':'Ongelezen, actie vereist');
+   row.append(title,note);
+   const actions=document.createElement('div');actions.className='actions';
+   if(!check.readAt){
+    const button=document.createElement('button');
+    button.type='button';button.textContent='GELEZEN';
+    button.onclick=async()=>{button.disabled=true;
+     try{await api('/api/activity-return/checks/'+encodeURIComponent(check.id)+'/read',{});
+      window.dispatchEvent(new Event('bpd-notifications-refresh'));
+      await loadLeaveReturnChecks()}
+     catch(e){feedback(e.message,true);button.disabled=false}};
+    actions.append(button);
+   }
+   for(const status of ['ACTIEF','50/50']){
+    const button=document.createElement('button');button.type='button';
+    button.textContent='Afronden als '+status;
+    if(status==='ACTIEF')button.className='primary';
+    button.onclick=async()=>{
+     const reason=prompt('Reden van deze controle (10–500 tekens):','');
+     if(reason===null)return;
+     if(reason.trim().length<10||reason.trim().length>500)
+      return feedback('Een motivering van 10–500 tekens is vereist.',true);
+     if(!confirm('CHECKING → '+status+' registreren? De officiële personeelsstatus blijft ongewijzigd.'))return;
+     button.disabled=true;
+     try{
+      await api('/api/activity-return/checks/'+encodeURIComponent(check.id)+'/resolve',
+       {status,reason:reason.trim()});
+      feedback('Verlofterugkeer gelogd in dossier en weekrapport. Wijzig de officiële status afzonderlijk.');
+      window.dispatchEvent(new Event('bpd-notifications-refresh'));
+      await Promise.all([loadLeaveReturnChecks(),loadStaffActivityFollowup()]);
+     }catch(e){feedback(e.message,true);button.disabled=false}
+    };
+    actions.append(button);
+   }
+   row.append(actions);list.append(row);
+  }
+  if(!checks.length)list.textContent='Geen openstaande verlofterugkeercontroles voor jouw diensten.';
+  panel.hidden=false;
+ }catch(e){list.textContent='Verlofterugkeer niet beschikbaar: '+e.message;panel.hidden=false}
+}
 async function loadActivityPings(){
  const panel=$('activityPingsPanel'),list=$('activityPingsList');
  panel.hidden=true;list.replaceChildren();
@@ -421,7 +492,7 @@ async function load(){
  const refresh=async()=>{
   do{
    refreshRequestedAgain=false;
-   const loaders=[loadStaffActivityFollowup,loadActivityPings,
+   const loaders=[loadStaffActivityFollowup,loadLeaveReturnChecks,loadActivityPings,
      loadTraining,loadSeriesLeave,loadLeave];
    loaders.unshift(loadIdentityReview);
    await Promise.allSettled(loaders.map(fn=>fn()));
