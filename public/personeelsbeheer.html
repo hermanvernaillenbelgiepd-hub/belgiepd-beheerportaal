@@ -1487,6 +1487,11 @@ let auth=null,authModule=null,people=[],pendingPeople=[],selected=null,statuses=
 let currentLifecycleRevision=0;
 let personnelInfoOriginalProfile={startDate:'',unit:'',functionTitle:''};
 let rankChangesEnabled=false,rankChoices=[];
+const POLICE_GRADE_SEQUENCE=Object.freeze([
+ 'Agent','Aspirant Inspecteur','Inspecteur','Eerste Inspecteur',
+ 'Aspirant Hoofdinspecteur','Hoofdinspecteur','Eerste Hoofdinspecteur',
+ 'Aspirant Commissaris'
+]);
 const departments={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage',burger:'Burger'};
 let rosterConfigs=Object.create(null),rosterCanEdit=false;
 let lifecycleDepartments=[];
@@ -3354,9 +3359,12 @@ $('staffActivityStatus').onchange=async()=>{
 // Only for display suggestions. Real authorization and number allocation
 // remain server-side. Legacy grades in Sheets may be longer than the short
 // official choices offered by the editor.
+// Grade values are stable and PUBLIC; server permissions are NOT derived
+// from dropdown choices. Firestore mutations still require a fresh signed
+// Discord cadre and the server's official rank/callsign validation.
 function currentPoliceGradeIndex(person){
  if(!person||person.dept!=='politie')return -1;
- const exact=rankChoices.indexOf(person.rank);
+ const exact=POLICE_GRADE_SEQUENCE.indexOf(person.rank);
  if(exact>=0)return exact;
  const match=String(person.call||'').trim()
    .match(/^(?:S[- ]?)?([1-9]\d{2})$/i);
@@ -3364,60 +3372,85 @@ function currentPoliceGradeIndex(person){
  const call=Number(match[1]);
  const grade=call>=920?7:call>=900?-1:call>=300?
    Math.floor(call/100)-2:0;
- return grade>=0&&grade<rankChoices.length?grade:-1;
+ return grade>=0&&grade<POLICE_GRADE_SEQUENCE.length?grade:-1;
+}
+function effectivePoliceGradeChoices(person,kind){
+ if(!person||person.dept!=='politie')return [];
+ const current=currentPoliceGradeIndex(person);
+ if(current<0)return [];
+ // If a short-lived Discord proof expired while the dossier was open,
+ // preserve a useful PREVIEW. The server never accepts these dropdown
+ // options as authorization for an effective change.
+ const preview=rankChoices.length?rankChoices:POLICE_GRADE_SEQUENCE.slice(0,7);
+ return POLICE_GRADE_SEQUENCE.filter(name=>{
+  const at=POLICE_GRADE_SEQUENCE.indexOf(name);
+  return preview.includes(name)&&
+    (kind==='Promotie'?at>current:kind==='Degradatie'?at<current:false);
+ });
 }
 function updateStaffCaseFields(){
-  const type=$('staffCaseType').value;
-  if(type==='promotievoorstel'&&selected?.dept==='politie'&&
-      !$('staffProposedRank').value.trim()){
-    const idx=currentPoliceGradeIndex(selected);
-    if(idx>=0&&idx+1<rankChoices.length)
-      $('staffProposedRank').value=rankChoices[idx+1];
-  }
-  const activity=type==='inactiviteitsping';
-  $('staffActivityStatus').required=activity;
-  $('staffActivityDiscordContact').required=activity;
-  $('archiveFromActivityPing').hidden=!activity||$('personnelArchiveAction').hidden;
-  updateActivityDiscordDate();
-  $('staffCaseLinkedField').hidden=!['notitie','algemene_notitie'].includes(type);
-  const extras=staffCaseFields[type]||[];
-  $('staffCaseExtra').hidden=!extras.length;
-  for(const [field,ids] of Object.entries(staffCaseFields))
-    for(const id of ids)$(id).hidden=!extras.includes(id);
-  const required={staffEndDate:'verlof',staffCourseName:'opleiding',
-    staffProposedRank:'promotievoorstel',staffNewName:'naamswijziging',
-    staffMovement:'personeelsbeweging'};
-  for(const [id,t] of Object.entries(required))$(id).required=type===t;
-  syncStaffCaseOther();
-  updateStaffMovementFields();
+ const type=$('staffCaseType').value;
+ if(type==='promotievoorstel'&&selected?.dept==='politie'&&
+     !$('staffProposedRank').value.trim()){
+   const idx=currentPoliceGradeIndex(selected);
+   if(idx>=0&&idx+1<POLICE_GRADE_SEQUENCE.length)
+     $('staffProposedRank').value=POLICE_GRADE_SEQUENCE[idx+1];
+ }
+ const activity=type==='inactiviteitsping';
+ $('staffActivityStatus').required=activity;
+ $('staffActivityDiscordContact').required=activity;
+ $('archiveFromActivityPing').hidden=!activity||$('personnelArchiveAction').hidden;
+ updateActivityDiscordDate();
+ $('staffCaseLinkedField').hidden=!['notitie','algemene_notitie'].includes(type);
+ const extras=staffCaseFields[type]||[];
+ $('staffCaseExtra').hidden=!extras.length;
+ for(const [field,ids] of Object.entries(staffCaseFields))
+   for(const id of ids)$(id).hidden=!extras.includes(id);
+ const required={staffEndDate:'verlof',staffCourseName:'opleiding',
+   staffProposedRank:'promotievoorstel',staffNewName:'naamswijziging',
+   staffMovement:'personeelsbeweging'};
+ for(const [id,t] of Object.entries(required))$(id).required=type===t;
+ syncStaffCaseOther();
+ updateStaffMovementFields();
 }
 function updateStaffMovementFields(){
-  const kind=$('staffMovement').value,grades=kind==='Promotie'||kind==='Degradatie';
-  const effective=$('staffMovementMode').value==='effective';
-  $('staffMovementGradeFields').hidden=!grades;
-  $('staffMovementOldRank').required=grades;
-  $('staffMovementNewRank').required=grades;
-  $('staffMovementOldCall').required=grades;
-  $('staffMovementNewCall').required=grades;
-  if(grades&&effective&&selected?.dept==='politie'&&
-      !$('staffMovementNewRank').value.trim()){
-    const idx=currentPoliceGradeIndex(selected);
-    // Suggest the immediately adjacent grade in the selected direction.
-    // An effective demotion from 316/Aspirant Inspecteur suggests Agent.
-    const proposedIndex=kind==='Promotie'?idx+1:idx-1;
-    if(idx>=0&&proposedIndex>=0&&proposedIndex<rankChoices.length)
-      $('staffMovementNewRank').value=rankChoices[proposedIndex];
-  }
-  if(grades&&effective&&$('staffMovementNewRank').value.trim()&&
-      !$('staffMovementNewCall').value.trim())void suggestPromotionCall(
-      $('staffMovementNewRank').value.trim(),'staffMovementNewCall',selected);
-  if(!grades||!effective){
-    $('staffMovementCallSuggestion').textContent=
-      'Een vrije roepnummersuggestie is enkel beschikbaar bij een nieuwe rangbeslissing.';
-  }
-  $('staffMovementHint').textContent=effective?
-    'Effectieve beslissing: de eerstvolgende hogere of lagere graad en een vrij roepnummer worden voorgesteld. Zoekvolgorde: tientallen, vijftallen, daarna overige nummers. Controleer en bevestig de keuze; het nummer is nog niet gereserveerd.':
-    'Historische registratie: alleen loggen, zonder de huidige graad, uniformen, status of het roepnummer te veranderen.';
+ const kind=$('staffMovement').value,grades=kind==='Promotie'||kind==='Degradatie';
+ const effective=$('staffMovementMode').value==='effective';
+ const gradeField=$('staffMovementNewRank'),select=$('staffMovementGradeSelect');
+ $('staffMovementGradeFields').hidden=!grades;
+ $('staffMovementCustomRankField').hidden=effective;
+ $('staffMovementGradeSelectWrap').hidden=!effective;
+ $('staffMovementOldRank').required=grades;
+ gradeField.required=grades&&!effective;
+ select.required=grades&&effective;
+ $('staffMovementOldCall').required=grades;
+ $('staffMovementNewCall').required=grades;
+ if(grades&&effective){
+   const options=effectivePoliceGradeChoices(selected,kind);
+   const oldValue=gradeField.value.trim();
+   const oldSelected=select.value;
+   const current=currentPoliceGradeIndex(selected);
+   const adjacent=POLICE_GRADE_SEQUENCE[current+(kind==='Promotie'?1:-1)];
+   select.replaceChildren(option('','Kies nieuwe graad…'),
+     ...options.map(name=>option(name,
+       BPDPersonnelVisuals.rankInfo(name,'politie')?.label||name)));
+   const next=[oldSelected,oldValue,adjacent,options[0]]
+     .find(value=>value&&options.includes(value))||'';
+   select.value=next;
+   gradeField.value=next;
+   if(!next){
+     $('staffMovementCallSuggestion').textContent=
+       'Geen passende volgende graad gevonden. Vernieuw de personeelslijst of controleer de rangbevoegdheid.';
+   }else if(!$('staffMovementNewCall').value.trim()){
+     void suggestPromotionCall(next,'staffMovementNewCall',selected);
+   }
+ }else if(!grades||!effective){
+   $('staffMovementCallSuggestion').textContent=
+     'Een vrije roepnummersuggestie is enkel beschikbaar bij een nieuwe rangbeslissing.';
+ }
+ $('staffMovementHint').textContent=effective?
+   'Nieuwe beslissing: kies een geldige hogere of lagere graad. Het eerste beschikbare roepnummer wordt voorgesteld volgens tientallen, vijftallen, overige nummers. De server controleert bij opslaan opnieuw alle bevoegdheden en bezette nummers.':
+   'Historische registratie: alleen loggen, zonder de huidige graad, uniformen, status of het roepnummer te veranderen.';
 }
 async function suggestPromotionCall(rank,targetId,person){
  const field=$(targetId),hint=targetId==='staffMovementNewCall'?
@@ -3467,6 +3500,13 @@ $('staffMovementNewCall').addEventListener('input',()=>{
  if($('staffMovementNewCall').value.trim())
   $('staffMovementCallSuggestion').textContent=
    'Handmatig ingevuld nummer; de server valideert de beschikbaarheid bij het opslaan.';
+});
+$('staffMovementGradeSelect').addEventListener('change',()=>{
+ const value=$('staffMovementGradeSelect').value;
+ $('staffMovementNewRank').value=value;
+ $('staffMovementNewCall').value='';
+ if(value&&$('staffMovementMode').value==='effective')
+  void suggestPromotionCall(value,'staffMovementNewCall',selected);
 });
 $('staffMovementNewRank').addEventListener('change',()=>{
  $('staffMovementNewCall').value='';
