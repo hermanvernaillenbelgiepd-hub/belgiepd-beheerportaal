@@ -6112,7 +6112,8 @@ $('staffCaseForm').onsubmit=async event=>{
           throw Error('Effectieve politierangwijzigingen zijn niet geactiveerd.');
         if(person.rank!==oldRank||person.call!==oldCall)
           throw Error('Oude graad en roepnummer moeten overeenkomen met de actuele fiche.');
-        const before=currentPoliceGradeIndex(person),after=rankChoices.indexOf(newRank);
+        const before=currentPoliceGradeIndex(person),
+          after=POLICE_GRADE_SEQUENCE.indexOf(newRank);
         if(before<0||after<0||movement==='Promotie'&&after<=before||
            movement==='Degradatie'&&after>=before)
           throw Error('De nieuwe graad komt niet overeen met de gekozen promotie of degradatie.');
