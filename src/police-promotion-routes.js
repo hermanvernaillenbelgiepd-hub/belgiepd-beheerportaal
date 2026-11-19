@@ -6,6 +6,8 @@ import {orderedCallNumbers} from './callsign-utils.js';
 import {PERSONNEL_EDITS_COLLECTION,personnelCallClaimId} from './personnel-editor-policy.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {personnelDataEnabled} from './personnel-create.js';
+import {mayWriteManagement} from './management-utils.js';
+import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 
 // A proposal never changes grade, callsign, Discord roles or specialties.
 // The approval is a single Firestore transaction and creates one effective movement.
@@ -87,7 +89,13 @@ export function installPolicePromotionRoutes(app,{requireUser,getSnapshot}){
    const id=String(req.query.discordId||''),rank=String(req.query.rank||'');
    if(!validId(id)||!policeRankByName(rank))throw fail(400,'Ongeldige promotievraag');
    const roster=await requireCurrent(),person=exactSubject(roster,id);
-   if(!canChangePoliceGrade(req.bpd,person))throw fail(403,'Geen bevoegdheid voor deze rang');
+   // A verified officer may draft a movement proposal even when the
+   // independent effective-rank write permission is unavailable on that fiche.
+   // This read-only suggestion does not grant or perform a personnel edit.
+   const maySuggest=canChangePoliceGrade(req.bpd,person)||
+     (mayWriteManagement(req.bpd,'politie','personeelsbeweging')&&
+      canReadPersonnelSubject(req.bpd,person));
+   if(!maySuggest)throw fail(403,'Geen bevoegdheid om een roepnummervoorstel op te vragen');
    const choices=allowedPoliceGradeChoices(req.bpd);
    const current=policeRankByName(person.rank),wanted=policeRankByName(rank);
    if(!choices.includes(rank)||!current||wanted.grade<=current.grade)
