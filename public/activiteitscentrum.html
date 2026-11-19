@@ -235,6 +235,64 @@ async function load(){
  }catch(err){$('content').hidden=true;$('feedback').textContent=err.message}
  finally{$('refresh').disabled=false}
 }
+async function returnAction(id,action,body={}){
+ const token=await auth.currentUser.getIdToken();
+ const response=await fetch('/api/activity-return/checks/'+encodeURIComponent(id)+'/'+action,{
+  method:'POST',cache:'no-store',headers:{Authorization:'Bearer '+token,
+   'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const result=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(result.error||'Controle niet verwerkt');
+ return result;
+}
+async function loadReturnChecks(){
+ const panel=$('returnPanel'),list=$('returnList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const token=await auth.currentUser.getIdToken();
+  const response=await fetch('/api/activity-return/checks',{cache:'no-store',
+   headers:{Authorization:'Bearer '+token}});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(result.error||'CHECKING-controles niet beschikbaar');
+  if(!result.enabled)return;
+  const rows=Array.isArray(result.checks)?result.checks:[];
+  $('returnCount').textContent='· '+rows.length+' open · '+result.unread+' ongelezen';
+  for(const check of rows){
+   const container=el('div','','action-check');
+   const details=document.createElement('div');
+   details.append(el('strong',(check.readAt?'':'⚠ NIEUW · ')+
+    (check.subjectCall||'—')+' · '+check.subjectName+' · '+check.dept),
+    el('small','Verlof beëindigd: '+check.endDate+
+    ' · '+(check.readAt?'Gelezen door jou':'Ongelezen · actie vereist')));
+   const buttons=document.createElement('div');buttons.className='controls';
+   if(!check.readAt){
+    const read=el('button','Gelezen','secondary-action');read.type='button';
+    read.onclick=async()=>{read.disabled=true;
+     try{await returnAction(check.id,'read');await loadReturnChecks()}
+     catch(e){$('feedback').textContent=e.message;read.disabled=false}};
+    buttons.append(read);
+   }
+   for(const [status,labelText] of [['ACTIEF','✓ ACTIEF'],['50/50','◐ 50/50']]){
+    const button=el('button',labelText);button.type='button';
+    button.onclick=async()=>{
+     const reason=prompt('Motivering voor '+status+' (minimaal 10 tekens):','');
+     if(reason===null)return;
+     if(reason.trim().length<10||reason.trim().length>500)
+      return alert('Vul een motivering van 10 tot 500 tekens in.');
+     if(!confirm('CHECKING als '+status+' afhandelen? Dit logt de opvolging, maar verandert de officiële personeelsstatus NIET automatisch.'))return;
+     button.disabled=true;
+     try{await returnAction(check.id,'resolve',{status,reason:reason.trim()});
+      await load();$('feedback').textContent='Verlofterugkeer gelogd in dossier en weekrapport. Pas de officiële personeelsstatus afzonderlijk aan indien nodig.'}
+     catch(e){$('feedback').textContent=e.message;button.disabled=false}
+    };buttons.append(button);
+   }
+   container.append(details,buttons);list.append(container);
+  }
+  if(!rows.length)list.textContent='Geen openstaande controles na verlof.';
+  panel.hidden=false;
+ }catch(e){list.textContent='Verlofcontroles niet geladen: '+e.message;panel.hidden=false}
+}
+
 for(const control of ['department','filter','search'])$(control).addEventListener('input',render);
 $('refresh').addEventListener('click',load);
 (async()=>{
