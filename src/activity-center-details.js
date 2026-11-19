@@ -32,7 +32,7 @@ export function dossierPingSummary(rows){
  const actuallyPinged=valid.filter(x=>x.discordPingSent===true);
  const latest=valid[0]||null,last=actuallyPinged[0]||null;
  return {registered:valid.length,discordConfirmed:actuallyPinged.length,
-  latestStatus:['ACTIEF','50/50','INACTIEF','VERWIJDERING_TE_BEOORDELEN','GEEN_VERBETERING_NA_PING']
+  latestStatus:['ACTIEF','50/50','INACTIEF','VERWIJDERING_TE_BEOORDELEN','GEEN_VERBETERING_NA_PING','TUSSENTIJDSE_CONTROLE_PING','VERWIJDERD']
     .includes(latest?.activityStatus)?latest.activityStatus:null,
   latestAt:iso(latest?.createdAt)||null,
   lastDiscordAt:iso(last?.createdAt)||null,

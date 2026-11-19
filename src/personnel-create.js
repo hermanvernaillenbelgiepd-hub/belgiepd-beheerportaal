@@ -1,6 +1,6 @@
 import {roleForDepartment} from './leave-policy.js';
 import {POLICE_RANK_CHOICES,policeCallNumber,policeCallGrade} from './personnel-rank-policy.js';
-import {validPersonnelKey,EDITABLE_STATUSES} from './personnel-editor-policy.js';
+import {validPersonnelKey,EDITABLE_STATUSES,LEGACY_PERSONNEL_STATUSES} from './personnel-editor-policy.js';
 // New profiles never grant Discord roles or module permissions.
 // The pilot is limited to an isolated Firebase test project with fixtures.
 export const CREATED_PERSONNEL_COLLECTION='bpd_personnel_created';
@@ -123,7 +123,7 @@ export function validateNewPersonnel(body){
 export function asCreatedPersonnel(d){
   if(!d||!validPersonnelKey(d.dept,d.discordId)||
      !(d.dept==='politie'?ENTRY_POLICE_RANKS:TEST_RANKS[d.dept])?.includes(d.rank)||
-     typeof d.name!=='string'||typeof d.call!=='string'||!EDITABLE_STATUSES.includes(d.status))return null;
+     typeof d.name!=='string'||typeof d.call!=='string'||!EDITABLE_STATUSES.includes(d.status)&&!LEGACY_PERSONNEL_STATUSES.includes(d.status))return null;
   const {dept,discordId,name,call,rank,status}=d;
   return {id:dept+':'+discordId,personId:discordId,name,call,dept,rank,
     series:'Instroom',seriesRaw:'FIRESTORE-NIEUW',status,

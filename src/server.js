@@ -32,6 +32,7 @@ import {installActivityTelemetryRoutes} from './activity-telemetry-routes.js';
 import {installActivityCenterRoutes} from './activity-center-routes.js';
 import {scheduleAutomaticActivityPings} from './activity-ping-runner.js';
 import {installActivityReturnRoutes,scheduleLeaveReturnChecks} from './activity-return-routes.js';
+import {projectLeaveReturnChecking} from './personnel-return-status-projection.js';
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
 import {canSeeDashboardManagement,canSeeAdvancedDashboard,isFireZoneDashboard,ambulanceDashboardTier} from './dashboard-admin-policy.js';
@@ -656,6 +657,25 @@ async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   // Protected archive routes explicitly request includeArchived=true.
   const lifecycleDocs=await getPersonnelLifecycleDocs();
   visible=overlayPersonnelLifecycle(visible,lifecycleDocs,{includeArchived});
+  // Display CHECKING on the roster only when the matching approved leave
+  // really ended. It remains a review overlay, not a persisted personnel
+  // status, and active extensions take precedence. Fail closed on outages.
+  if(process.env.BPD_ENABLE_LEAVE_RETURN_CHECKS==='true'&&!includeArchived){
+    try{
+      const [open,approved]=await Promise.all([
+        getFirestore().collection('bpd_leave_return_checks')
+          .where('status','==','CHECKING').limit(501).get(),
+        getFirestore().collection('bpd_leave_requests')
+          .where('status','==','approved').limit(1501).get()
+      ]);
+      if(open.size<=500&&approved.size<=1500){
+        const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+          year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+        visible=projectLeaveReturnChecking(visible,
+          open.docs.map(d=>d.data()),approved.docs.map(d=>d.data()),today);
+      }
+    }catch(e){console.warn('CHECKING-roosterweergave niet beschikbaar:',e?.code||'gegevenscontrole')}
+  }
   return {...base,data:visible};
 }
 app.get('/api/client-config',(_req,res)=>{

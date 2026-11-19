@@ -9,7 +9,15 @@ import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 // Persistent overlays never contain identity, rank or permissions.
 // They can be merged with source Sheets only after a controlled rollout.
 export const PERSONNEL_EDITS_COLLECTION='bpd_personnel_edits';
-export const EDITABLE_STATUSES=Object.freeze(['Actief','Inactief','50/50','Verlof','In opleiding','Afwezig','GESCHORST']);
+export const EDITABLE_STATUSES=Object.freeze([
+ 'ACTIEF','50/50','NON-ACTIEF','INACTIEF','CHECKING','VERLOF',
+ 'ONTSLAG','GESCHORST','VERWIJDERD'
+]);
+// Previously saved labels still have to render; they are no longer offered
+// for NEW manual status changes.
+export const LEGACY_PERSONNEL_STATUSES=Object.freeze([
+ 'Actief','Inactief','Verlof','In opleiding','Afwezig'
+]);
 const ID=/^\d{15,22}$/;
 const SERVICES=new Set(['politie','brandweer','ambulance','depannage']);
 const TRIM=s=>typeof s==='string'?s.trim():'';
@@ -190,7 +198,8 @@ export function mergePersonnelEdits(records,editRecords){
     const inheritedStatus=e.approvedRankEdit===true&&typeof e.status==='string'&&
       e.status.length>0&&e.status.length<=100&&!/[<>\x00-\x1f\x7f]/.test(e.status);
     if(typeof e.name!=='string'||typeof e.call!=='string'||
-       !EDITABLE_STATUSES.includes(e.status)&&!inheritedStatus)continue;
+       !EDITABLE_STATUSES.includes(e.status)&&
+       !LEGACY_PERSONNEL_STATUSES.includes(e.status)&&!inheritedStatus)continue;
     const key=e.dept+'_'+e.discordId;
     if(byKey.has(key))continue;
     byKey.set(key,e);
