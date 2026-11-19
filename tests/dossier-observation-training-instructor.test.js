@@ -65,7 +65,9 @@ test('opleider is een apart invoerveld in beide opleidingsformulieren, geen verv
  const training=source('../public/rollen-opleidingen.html');
  const server=source('../src/role-routes.js');
  for(const html of [police,training])checkModule(html);
- assert.match(police,/id="staffTrainingInstructor"[^>]*required/);
+ assert.match(police,/id="staffTrainingInstructor"[^>]*minlength="2"/);
+ assert.match(police,/id="staffTrainingInstructorManualWrap" hidden/);
+ assert.match(police,/if\(body\.instructorName\.length<2\|\|body\.instructorName\.length>120\)/);
  assert.match(police,/instructorName:\$\('staffTrainingInstructor'\)\.value\.trim\(\)/);
  assert.match(police,/\$\('staffTrainingInstructor'\)\.value=record\.instructorName/);
  assert.match(police,/row\.instructorName\|\|row\.instructor/);
