@@ -3890,7 +3890,13 @@ async function loadLinkedPersonnelRecords(p,key){
             ' · '+(row.result==='restricted'?'RESTRICTED':row.result==='stage'?'STAGE':String(row.result||'Onbekend resultaat'));
           const meta=document.createElement('span');meta.className='subtle';
           meta.textContent=String(row.eventDate||'Datum onbekend')+
-            ' · Opleider: '+String(row.instructorName||row.instructor||'niet vermeld');
+            ' · Opleider: '+String(row.instructorName||row.instructor||'niet vermeld')+
+            (row.rosterStatus?' · Controle: '+({
+              nog_niet_beoordeeld:'Nog niet beoordeeld',ter_controle:'Ter controle',
+              klaar_voor_manuele_invoer:'Goedgekeurd'
+            }[row.rosterStatus]||row.rosterStatus):'')+
+            (row.appliedSpecialtyLabel?' · Specialisatie: '+row.appliedSpecialtyLabel+
+              ' ('+(row.result==='geslaagd'?'JA':'STAGE')+')':'');
           div.append(title,meta);
           if(row.canEdit===true&&trainingRights?.trainingWritesEnabled===true&&
               trainingRights.permissions?.[p.dept]?.['training.log']){
