@@ -6,7 +6,7 @@ import {nextPromotionRank,recommendedPromotionCall,validatePromotionDecision}
  from '../src/police-promotion-routes.js';
 import {automaticPoliceSpecialties} from '../src/specialization-policy.js';
 import {policeSubjectGradeOption,POLICE_RANK_CHOICES,
-  allowedPoliceGradeChoices} from '../src/personnel-rank-policy.js';
+  allowedPoliceGradeChoices,canChangePoliceGrade} from '../src/personnel-rank-policy.js';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
 test('a promotion recommends the immediate next police grade',()=>{
@@ -175,4 +175,22 @@ test('legacy-grade normalization is shared by proposals, previews and approvals'
  assert.equal(lookup({dept:'politie',rank:'Aspirant Inspecteur van Politie (A-INP)',call:'316'}),1);
  assert.equal(names[lookup({dept:'politie',rank:'Aspirant Inspecteur van Politie (A-INP)',call:'316'})+1],'Inspecteur');
  assert.equal(lookup({dept:'politie',rank:'Aspirant Inspecteur van Politie (A-INP)',call:'900'}),-1);
+});
+
+test('verified Police Officierenkader can process a lower-rank 316 movement',()=>{
+ const officerId='111111111111111111';
+ const officer={uid:'discord:'+officerId,discordId:officerId,
+  role:'officierenkader',departments:['politie'],
+  departmentRoles:{politie:'officierenkader'},
+  dossierNativeDepartments:['politie'],dossierAllowedDepartments:['politie'],
+  discordPoliceRank:'officierenkader'};
+ const subject={dept:'politie',personId:'222222222222222222',
+  rank:'Aspirant Inspecteur van Politie (A-INP)',call:'316'};
+ assert.equal(canChangePoliceGrade(officer,subject),true);
+ assert.equal(allowedPoliceGradeChoices(officer).includes('Inspecteur'),true);
+ const insufficient={...officer,discordPoliceRank:null};
+ assert.equal(canChangePoliceGrade(insufficient,subject),false,
+  'A saved portal role alone is insufficient without Discord verification');
+ const self={...subject,personId:officerId};
+ assert.equal(canChangePoliceGrade(officer,self),false);
 });
