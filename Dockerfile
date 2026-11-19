@@ -40,6 +40,8 @@ RUN node --test tests/dossier-linked-cases.test.js
 RUN node --test tests/dossier-notes-ping-readback.test.js
 RUN node --test tests/dossier-case-readback-import.test.js
 RUN node --test tests/activity-followup-status.test.js
+RUN node --test tests/activity-return-policy.test.js
+RUN node --test tests/activity-return-ui.test.js
 RUN node --test tests/activity-monitor.test.js
 RUN node --test tests/activity-center-model.test.js
 RUN node --test tests/manual-leave-dates-and-notices.test.js
