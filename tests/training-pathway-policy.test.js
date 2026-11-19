@@ -133,7 +133,7 @@ test('Persoonlijke verplichtingen gebruiken dezelfde twee goedkeuringen en eigen
  assert.match(routes,/app\.post\('\/api\/training-pathway\/courses\/:id\/person-requirement'/);
  assert.match(routes,/app\.post\('\/api\/training-pathway\/person-requirements\/:id\/review'/);
  assert.match(routes,/canApprovePathway\(req\.bpd,pending\.stage\)/);
- assert.match(routes,/personalRequirementApplies\(person,course,individual\)/);
+ assert.match(routes,/effectivePathwayCourse\(person,course,groupRules,individual\)/);
  assert.match(routes,/person_requirement_'\+req\.body\.decision/);
  assert.match(page,/value="persoon">Specifieke persoon/);
  assert.match(page,/id="personTarget"/);
