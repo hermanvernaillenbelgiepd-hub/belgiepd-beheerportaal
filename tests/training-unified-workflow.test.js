@@ -52,10 +52,10 @@ test('Goedgekeurd middenkaderaccount geeft uitsluitend opleidingsrechten voor de
  assert.equal(approvedManagedEntry({status:'pending',discordId:id,role:'middenkader',
   departments:['politie'],departmentRoles:{politie:'middenkader'}},id),null);
  const route=file('src/role-routes.js');
- assert.match(route,/verifiedDiscordIdentity\\(decoded,member,process\\.env\\.DISCORD_GUILD_ID\\)===discordId/);
- assert.match(route,/if\\(managed\\)trainingApprovedGrant=managed/);
- assert.match(route,/canLogTraining\\(scoped,dept,\\{\\}\\)/);
- assert.match(route,/permissions:Object\\.fromEntries\\(SERVICE_DEPTS\\.map/);
+ assert.ok(route.includes('verifiedDiscordIdentity(decoded,member,process.env.DISCORD_GUILD_ID)===discordId'));
+ assert.ok(route.includes('if(managed)trainingApprovedGrant=managed'));
+ assert.ok(route.includes('canLogTraining(scoped,dept,{})'));
+ assert.ok(route.includes('permissions:Object.fromEntries(SERVICE_DEPTS.map')));
 });
 test('Tijdelijke opleidingsmachtiging is dienstgebonden en verloopt; geen rangverhoging',()=>{
  const base={fresh:true,departments:['brandweer'],permissions:{
