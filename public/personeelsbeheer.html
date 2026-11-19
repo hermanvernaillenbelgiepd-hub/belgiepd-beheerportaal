@@ -1107,6 +1107,13 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
  </div>
 </div>
 <p id="leaveManualGuidance" class="subtle" role="status" aria-live="polite">Middenkader mag maximaal 30 dagen rechtstreeks goedkeuren. Meer dan 30 dagen gaat naar Officierenkader of Korpsleiding.</p>
+<div id="manualLeaveEscalationToast" class="dossier-date-toast" role="status" aria-live="polite" hidden>
+ <strong>Verlof van 31 dagen of langer</strong>
+ <p>Je kunt dit als aanvraag in het dossier registreren. Middenkader en hoger zien een melding.
+ Alleen bevoegd Officierenkader of Korpsleiding kan deze aanvraag goedkeuren.
+ Tot dan blijft ze in behandeling en niet actief.</p>
+ <button type="button" id="manualLeaveEscalationDismiss">Sluiten</button>
+</div>
 <button id="leaveManualSave" type="submit">Verlof registreren</button>
 </form>
 <div class="dossier-shortcuts" hidden aria-hidden="true"></div>
@@ -1367,6 +1374,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <script src="/personnel-list-visuals.js"></script>
 <script src="/specialty-dossier-controls.js?v=20261102"></script>
 <script type="module">
+import {enhanceBelgianDateInputs,refreshBelgianDateInputs} from '/bpd-date-inputs.js';
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
 import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '/training-course-catalog.js';
@@ -1383,6 +1391,8 @@ import {sortDossierColleagues,DOSSIER_COLLEAGUE_SORT_MODES} from '/dossier-colle
 import {populateInstructorOptions,syncManualInstructor,selectedInstructor} from '/training-instructor-choices.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
+enhanceBelgianDateInputs(['leaveFrom','leaveUntil','staffStartDate','staffTrainingDate',
+ 'staffCaseDate','staffEndDate','formalRestrictionEndDate','formalTemporaryEndDate']);
 document.body.classList.add('dossier-onepage');
 let activeLeaveRosterIds=new Set();
 let activeLeaveRosterLoadState='ready'; // ready | loading | unavailable
@@ -3380,6 +3390,7 @@ function resetStaffTrainingEdit(){
   $('staffTrainingReason').required=false;
   $('staffTrainingCancel').hidden=true;
   $('staffTrainingDate').value=new Date().toISOString().slice(0,10);
+  refreshBelgianDateInputs(['staffTrainingDate']);
 }
 $('staffTrainingCancel').onclick=resetStaffTrainingEdit;
 async function loadStaffTrainingRights(p,key){
@@ -3419,6 +3430,7 @@ function staffTrainingEdit(record){
   trainingEditId=record.id;
   setStaffTrainingCourse(record.courseName);
   $('staffTrainingDate').value=record.eventDate||'';
+  refreshBelgianDateInputs(['staffTrainingDate']);
   if(![...$('staffTrainingResult').options].some(o=>o.value===record.result)){
     const historic=new Option('Historisch resultaat · '+record.result,record.result);
     historic.dataset.legacy='true';$('staffTrainingResult').append(historic);
@@ -5337,6 +5349,7 @@ async function loadStaffDossier(p){
     void loadStaffCasePermissions(p,key,result.cadreActions?.cases===true);
     $('staffCaseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
         year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    refreshBelgianDateInputs(['staffCaseDate']);
     showStaffRoles(result.discordRoles,result.subject?.rosterSeries);
     void loadSpecialtyState(p);
     void loadFunctionRoles(p);
@@ -5353,6 +5366,7 @@ async function loadStaffDossier(p){
     staffField(summary,'Eenheid of ploeg',profile.unit);
     staffField(summary,'Functie of opdracht',profile.functionTitle);
     $('staffStartDate').value=profile.startDate||'';
+    refreshBelgianDateInputs(['staffStartDate']);
     $('staffUnit').value=profile.unit||'';
     $('staffFunction').value=profile.functionTitle||'';
     $('staffProfileReason').value='';
@@ -5483,8 +5497,23 @@ function manualLeaveDuration(){
  const days=(Date.parse(end+'T00:00:00Z')-Date.parse(start+'T00:00:00Z'))/86400000+1;
  return Number.isInteger(days)&&days>0?days:null;
 }
+let manualLeaveToastKey='',manualLeaveToastTimer=null;
+$('manualLeaveEscalationDismiss').onclick=()=>{
+  $('manualLeaveEscalationToast').hidden=true;
+  clearTimeout(manualLeaveToastTimer);
+};
+function showManualLeaveEscalation(days){
+ const toast=$('manualLeaveEscalationToast');
+ if(!days||days<31){toast.hidden=true;manualLeaveToastKey='';return}
+ const key=$('leaveFrom').value+'|'+$('leaveUntil').value;
+ if(key===manualLeaveToastKey)return;
+ manualLeaveToastKey=key;toast.hidden=false;
+ clearTimeout(manualLeaveToastTimer);
+ manualLeaveToastTimer=setTimeout(()=>{toast.hidden=true},9500);
+}
 function updateManualLeaveGuidance(){
  const days=manualLeaveDuration(),hint=$('leaveManualGuidance');
+ showManualLeaveEscalation(days);
  hint.textContent=!days?
    'Selecteer de begin- en einddatum. Middenkader mag maximaal 30 dagen rechtstreeks goedkeuren.':
    days>30?
@@ -5522,7 +5551,7 @@ $('staffManualLeaveForm').onsubmit=async event=>{
      render();
    }catch{/* Roster status updates on the next refresh. */}
    notice(saved.status==='pending'?
-     'Verlof van '+saved.days+' kalenderdagen ter goedkeuring ingediend. Officierenkader of Korpsleiding ziet dit onder Meldingen → Te behandelen verlofaanvragen. De aanvraag is gelogd in het dossier en weekrapport.':
+     'Verlof van '+saved.days+' kalenderdagen ter goedkeuring ingediend. Middenkader en hoger zien een informatieve melding; bevoegde Officierenkaderleden of Korpsleiding kunnen beslissen onder Meldingen → Te behandelen verlofaanvragen. De aanvraag is gelogd in het dossier en weekrapport.':
      'Centraal verlof goedgekeurd en gelogd in dossier en weekrapport.');
  }catch(e){notice('Verlofregistratie niet verwerkt: '+e.message,true)}
  finally{button.disabled=false}
