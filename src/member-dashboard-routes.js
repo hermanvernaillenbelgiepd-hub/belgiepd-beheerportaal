@@ -5,6 +5,7 @@ import {ROSTER_COLUMN_COLLECTION,rosterConfig} from './roster-column-config.js';
 import {AE_DISCORD_ROLES,verifiedSyncRoles} from './organogram-placement-policy.js';
 import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
 import {verifiedOfficerCadre} from './verified-police-cadre.js';
+import {policeOfficialRankLabel} from './personnel-rank-policy.js';
 import {readVerifiedPoliceLrd,LRD_SPECIALTY_LABEL} from './police-lrd-policy.js';
 import {PERSONNEL_ROSTER_DEFAULT,validatePersonnelRosterLayout,
  savedPersonnelRosterLayout} from './personnel-roster-layout-policy.js';
@@ -108,7 +109,7 @@ export function publicPoliceRoster(rows,extraPublicLabels=[],verifiedAeMembers=n
    visible.push({
      call:hasPoliceEntry?strip(primary.call).slice(0,18):'—',
      name:strip(primary.name).slice(0,90),
-     rank:hasPoliceEntry?strip(primary.rank).slice(0,95):'—',
+     rank:hasPoliceEntry?policeOfficialRankLabel(primary.rank).slice(0,95):'—',
      series:hasPoliceEntry?strip(primary.series).slice(0,85):'—',
      status:hasPoliceEntry?strip(primary.status).slice(0,30):'Nog geen politie-inschrijving',
      hasPoliceEntry,
@@ -158,7 +159,7 @@ export function publicOrganogramRoster(rows,decorations=new Map(),customCatalog=
     const publicAwards=p.dept==='politie'?
       publicDecorations(decorations.get(awardKey(p.dept,p.personId))||[],undefined,customCatalog):[];
     visible.push({dept:p.dept,name:strip(p.name).slice(0,90),
-      call:strip(p.call).slice(0,24),rank:strip(p.rank).slice(0,95),
+      call:strip(p.call).slice(0,24),rank:p.dept==='politie'?policeOfficialRankLabel(p.rank).slice(0,95):strip(p.rank).slice(0,95),
       // Align the older public personnel card with the hierarchy profile:
       // only the already-public police personnel status may be shown.
       status:p.dept==='politie'?strip(p.status).slice(0,30):'',
