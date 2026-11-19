@@ -68,8 +68,8 @@ test('opleider is een apart invoerveld in beide opleidingsformulieren, geen verv
  assert.match(police,/id="staffTrainingInstructor"[^>]*minlength="2"/);
  assert.match(police,/id="staffTrainingInstructorManualWrap" hidden/);
  assert.match(police,/if\(body\.instructorName\.length<2\|\|body\.instructorName\.length>120\)/);
- assert.match(police,/instructorName:\$\('staffTrainingInstructor'\)\.value\.trim\(\)/);
- assert.match(police,/\$\('staffTrainingInstructor'\)\.value=record\.instructorName/);
+ assert.match(police,/instructorName:selectedInstructor\(/);
+ assert.match(police,/renderStaffTrainingInstructorChoices\(record\.instructorName/);
  assert.match(police,/row\.instructorName\|\|row\.instructor/);
  assert.match(training,/id="instructorName"[^>]*required/);
  assert.match(training,/\$\('instructorName'\)\.value=r\.instructorName/);
