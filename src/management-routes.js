@@ -404,6 +404,13 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         try{
           const parsed=validateManagementEntry({...req.body,type:old.type});
           values={...parsed,referenceUrl:parsed.referenceUrl||''};
+          // For historical movements only, an explicitly cleared former
+          // number/rank must not leave a stale original field behind.
+          if(old.type==='personeelsbeweging')for(const field of
+            ['previousRank','newRank','previousCall','newCall']){
+             if(Object.hasOwn(req.body,field)&&req.body[field]==='')
+              values[field]='';
+          }
         }
         catch(e){throw Object.assign(e,{status:400})}
         const before=Object.fromEntries(Object.keys(values).map(key=>[key,old[key]??null]));
@@ -462,7 +469,11 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
             referenceUrl:val.before?.referenceUrl||null,
             proposedRank:val.before?.proposedRank||null,
             newName:val.before?.newName||null,
-            movement:val.before?.movement||null}};
+            movement:val.before?.movement||null,
+            previousRank:val.before?.previousRank??null,
+            newRank:val.before?.newRank??null,
+            previousCall:val.before?.previousCall??null,
+            newCall:val.before?.newCall??null}};
       }),limited:history.docs.length===40});
     }catch(e){return errorResponse(res,e)}
   });
