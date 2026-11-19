@@ -673,7 +673,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       if(matches.length!==1)throw userError(409,'Personeelsfiche is niet eenduidig');
       const subject=matches[0];
       if(!canChangePoliceGrade(req.bpd,subject))
-        throw userError(403,'Geen rangbevoegdheid voor dit personeelslid');
+        throw userError(
+          req.bpd.policeRankVerificationStatus==='bot_unavailable'?503:403,
+          req.bpd.policeRankVerificationStatus==='bot_unavailable'?
+          'Discord-rolcontrole is tijdelijk niet beschikbaar. De promotie is niet opgeslagen; probeer opnieuw wanneer de Discord-bot bereikbaar is.':
+          'Geen actueel geverifieerde Politie-kaderbevoegdheid. Controleer je Police Officierenkader- of Korpsleidingrol via Mijn Discord.'
+        );
       if(!allowedPoliceGradeChoices(req.bpd).includes(proposal.newRank))
         throw userError(403,'Deze nieuwe rang valt buiten jouw kaderbevoegdheid');
       if(proposal.expectedRank!==subject.rank)
@@ -685,23 +690,27 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const claims=store.collection('bpd_personnel_call_claims');
       const newClaim=claims.doc(personnelCallClaimId(dept,proposal.newCall));
       const oldClaim=claims.doc(personnelCallClaimId(dept,subject.call));
+      const fixedReservation=store.collection('bpd_callsign_reservations')
+        .doc(proposal.newCall);
       const type=classifyPoliceGradeChange(subject.call,proposal.newCall);
       const movementLabel=type==='promotion'?'Promotie':type==='demotion'?'Degradatie':'Rangwissel';
       const caseRef=store.collection('bpd_cases').doc(dept+'_'+discordId).collection('entries').doc();
       const noticeRef=store.collection('bpd_notices').doc(dept).collection('events').doc();
       const eventDate=brusselsEventDate();
       await store.runTransaction(async tx=>{
-        const [current,reserved,previousClaim]=await Promise.all([
+        const [current,reserved,previousClaim,numberReservation]=await Promise.all([
           tx.get(ref),tx.get(newClaim),
-          newClaim.id===oldClaim.id?tx.get(newClaim):tx.get(oldClaim)
+          newClaim.id===oldClaim.id?tx.get(newClaim):tx.get(oldClaim),
+          tx.get(fixedReservation)
         ]);
         const saved=current.data()||{},revision=saved.revision||0;
         if(revision!==proposal.expectedRevision)
           throw userError(409,'Deze fiche werd intussen gewijzigd. Vernieuw de pagina.');
         if(saved.approvedRankEdit===true&&saved.rank!==subject.rank)
           throw userError(409,'Rang is intussen gewijzigd. Vernieuw de fiche.');
-        if(reserved.exists&&reserved.get('discordId')!==discordId)
-          throw userError(409,'Het nieuwe roepnummer is reeds gereserveerd');
+        if(reserved.exists&&reserved.get('discordId')!==discordId||
+           numberReservation.exists&&numberReservation.get('discordId')!==discordId)
+          throw userError(409,'Het nieuwe roepnummer is reeds bezet of gereserveerd');
         const oldRank=subject.rank,oldCall=subject.call;
         const next={name:saved.name??subject.name,call:proposal.newCall,
           status:saved.status??subject.status};
