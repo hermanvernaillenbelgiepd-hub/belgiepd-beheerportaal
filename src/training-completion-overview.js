@@ -23,6 +23,9 @@ export function completedTrainingResult(record,subject,id){
    eventDate:record.eventDate,result:record.result,
    instructor:clean(record.instructorName,120),
    reviewStatus:clean(record.rosterStatus,80),
+   specialtyLabel:clean(record.appliedSpecialtyLabel,64),
+   specialtyStatus:record.appliedSpecialtyLabel?record.result==='geslaagd'?'Ja':
+     record.qualificationStage==='in_opleiding'?'Stage':'':'',
    details:clean(record.details,1600),
    registeredByDiscordId:clean(record.registeredByDiscordId,22),
    testRecord:record.testRecord===true};
