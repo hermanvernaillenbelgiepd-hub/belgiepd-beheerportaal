@@ -8,12 +8,13 @@ html[data-bpd-theme=dark]{--bg:#0c1729;--card:#16283e;--ink:#ebf3ff;--mute:#bbd1
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);min-height:100vh}
 header{display:flex;gap:18px;flex-wrap:wrap;align-items:center;padding:16px 26px;background:#11233e;color:#fff}
 header a{color:#d7e7ff}header nav{display:flex;gap:14px;align-items:center;margin-left:auto}
-main{max-width:1360px;margin:0 auto;padding:23px 20px 55px}
-h1{font-size:29px;margin:0 0 7px}h2{font-size:19px;margin:0 0 8px}h3{font-size:15px;margin:0 0 8px}
+main{max-width:1180px;margin:0 auto;padding:18px 18px 45px}
+h1{font-size:25px;margin:0 0 5px}h2{font-size:17px;margin:0 0 8px}h3{font-size:14px;margin:0 0 7px}
 p{color:var(--mute);margin:4px 0 11px}a{color:var(--accent)}.hero,.card{border-radius:15px;background:var(--card);border:1px solid var(--line);padding:20px}
 .hero .eyebrow{color:var(--accent);font-weight:800;letter-spacing:.13em;font-size:10px}
-.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:15px}.stack{display:grid;gap:14px}
-.top{margin:16px 0 14px}.card{min-width:0}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(290px,.75fr);gap:12px;align-items:start}.stack{display:grid;gap:12px}
+.top{margin:13px 0}.card{min-width:0;padding:16px}.hero{padding:16px 18px}.hero p{max-width:78ch}
+.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .justify{justify-content:space-between}.subtle{font-size:12px;color:var(--mute)}
 label{display:block;font-size:12px;font-weight:720;margin-bottom:9px}input,select,textarea{
  display:block;width:100%;margin-top:4px;min-height:38px;padding:8px;border-radius:8px;
@@ -34,6 +35,20 @@ button.danger{background:#842a43;border-color:#842a43}button:disabled{opacity:.5
 #feedback.bad{background:#fce7eb;color:#a42342;border-color:#ec9bad}
 .columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .card:not(.hero) p{font-size:12px}.note{padding:10px;border-radius:8px;background:var(--soft);font-size:12px}
+.panel-disclosure{padding:0;overflow:hidden}
+.panel-disclosure > summary{display:flex;align-items:center;justify-content:space-between;gap:10px;
+ padding:15px 16px;cursor:pointer;font-size:15px;font-weight:750;list-style:none}
+.panel-disclosure > summary::-webkit-details-marker{display:none}
+.panel-disclosure > summary::after{content:"⌄";margin-left:auto;color:var(--mute);font-size:18px;line-height:1;transition:transform .16s}
+.panel-disclosure[open] > summary::after{transform:rotate(180deg)}
+.panel-disclosure[open] > summary{border-bottom:1px solid var(--line)}
+.panel-disclosure > .panel-body{padding:15px 16px}
+.panel-disclosure > summary:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.panel-disclosure summary .pill{margin-left:auto}
+.section-caption{font-size:12px;color:var(--mute)}
+.person-list{scrollbar-color:var(--line) transparent}
+#feedback{font-size:12px;padding:8px 11px}
+#courseConfig select[multiple]{min-height:120px}
 [hidden]{display:none!important}
 @media(max-width:850px){.grid{grid-template-columns:1fr}}
 @media(max-width:540px){main{padding:12px 10px 35px}.columns{grid-template-columns:1fr}header nav{margin-left:0}}
@@ -42,27 +57,27 @@ button.danger{background:#842a43;border-color:#842a43}button:disabled{opacity:.5
 <nav><a href="/opleidingscentrum.html">Opleidingscentrum</a>
 <a href="/opleidingstraject.html">Mijn traject</a><button class="alt" id="login" type="button">Aanmelden</button></nav></header>
 <main>
-<section class="hero"><div class="eyebrow">OPLEIDINGSCENTRUM / DEELNEMERSBEHEER</div>
+<section class="hero"><div class="eyebrow">OPLEIDINGSCENTRUM</div>
 <h1>Opleidingsplanning</h1>
-<p>Opleiders en specialisatieleiding selecteren deelnemers binnen hun eigen discipline. Uitnodigen en inplannen maakt een opleiding niet officieel verplicht; dat verloopt uitsluitend via de bestaande goedkeuringen.</p>
+<p>Kies een opleiding, selecteer deelnemers en plan ze in. Je ziet alleen de specialisaties waarvoor je bevoegd bent.</p>
 </section>
 <div id="feedback" role="status" aria-live="polite">Aanmelding controleren…</div>
-<section id="ownSection" class="card top" hidden><h2>Mijn uitnodigingen en planning</h2>
-<div id="ownItems"></div></section>
+<details id="ownSection" class="card top panel-disclosure" hidden>
+<summary>Mijn uitnodigingen <span id="ownCount" class="pill">0</span></summary>
+<div class="panel-body" id="ownItems"></div></details>
 <section id="managementSection" hidden>
-<div class="card top"><div class="row justify"><div><h2>Planning per specialisatie</h2>
-<p>Je ziet uitsluitend de disciplines waarvoor je zelf bevoegd bent.</p></div>
-<label>Specialisatie / dienst<select id="track"></select></label></div>
-<div class="row"><span id="scopeInfo" class="pill">Selecteer een discipline</span>
-<button type="button" class="alt" id="reload">Vernieuwen</button></div></div>
+<div class="card top"><div class="row justify">
+<div><h2>Deelnemersbeheer</h2><span id="scopeInfo" class="section-caption">Selecteer een specialisatie</span></div>
+<div class="row"><label style="margin:0;min-width:195px">Specialisatie<select id="track"></select></label>
+<button type="button" class="alt" id="reload">↻ Vernieuwen</button></div></div></div>
 <div class="grid">
 <div class="stack">
-<section class="card"><h2>1. Selecteer de opleiding en doelgroep</h2>
+<section class="card"><h2>1. Kies opleiding en deelnemers</h2>
 <div class="columns">
 <label>Beschikbare opleiding<select id="course"></select></label>
 <label>Doelgroep<select id="audience"></select></label>
 </div>
-<div class="note">Je kunt ook nieuwe kandidaten kiezen die nog niet tot de specialisatie behoren. Een doelgroep filtert de lijst; er wordt nooit automatisch iemand ingeschreven.</div>
+<p class="section-caption">Ook kandidaten zonder specialisatie kunnen geselecteerd worden.</p>
 <div class="people-commands"><label style="min-width:210px;flex:1">Zoek medewerker
 <input id="search" placeholder="Naam of roepnummer" autocomplete="off"></label>
 <div class="row"><button type="button" class="alt" id="selectVisible">Zichtbare selecteren</button>
@@ -72,7 +87,7 @@ button.danger{background:#842a43;border-color:#842a43}button:disabled{opacity:.5
 <span id="selectedCount" class="pill">0 geselecteerd</span></div>
 <div class="person-list" id="people"></div>
 </section>
-<section class="card"><h2>2. Maak de planning</h2>
+<section class="card"><h2>2. Inplannen</h2>
 <form id="assignForm">
 <div class="columns">
 <label>Status<select id="status" required>
@@ -83,12 +98,13 @@ button.danger{background:#842a43;border-color:#842a43}button:disabled{opacity:.5
 <label>Opleidingsdatum (optioneel)<input id="plannedDay" type="date"></label></div>
 <label>Opmerking voor deelnemer (optioneel)<textarea id="note" maxlength="300" placeholder="Praktische afspraken voor de opleiding"></textarea></label>
 <button type="submit" id="assign">Geselecteerde deelnemers opslaan</button>
-</form><p class="note">Deze registratie wijzigt geen rang, Discordrol, specialisatie, dossierresultaat of verplichte opleidingsstatus.</p>
+</form><p class="section-caption">Plannen verandert geen rang, specialisatie of verplichte opleidingsstatus.</p>
 </section>
 </div>
 <div class="stack">
-<section class="card"><h2>Doelgroepen beheren</h2>
-<p>Bewaar bijvoorbeeld ‘K-9 kandidaten’, ‘Dispatch – Reeks 1’ of ‘AE-in-opleiding’. De selectie is steeds beperkt tot jouw eigen specialisatie.</p>
+<details class="card panel-disclosure" id="audiencePanel"><summary>Doelgroepen beheren</summary>
+<div class="panel-body">
+<p>Maak een herbruikbare selectie binnen je eigen specialisatie.</p>
 <form id="audienceForm">
 <div class="columns"><label>Naam doelgroep<input id="audienceName" maxlength="60" minlength="3" required placeholder="Bijv. AE kandidaten"></label>
 <label>Filter<select id="audienceKind"><option value="kandidaten">Kandidaten zonder specialisatie</option>
@@ -97,14 +113,16 @@ button.danger{background:#842a43;border-color:#842a43}button:disabled{opacity:.5
 <label id="audienceValueWrap" hidden>Naam specialisatie, rang of reeks<input id="audienceValue" maxlength="90" placeholder="Bijvoorbeeld Reeks 1"></label>
 <button type="submit">Doelgroep opslaan</button></form>
 <div id="savedAudiences" style="margin-top:12px"></div>
-</section>
-<section class="card"><h2>Opvolging deelnemers</h2>
-<div id="assignedItems"></div></section>
-<section class="card" id="courseConfig" hidden><h2>Opleidingen koppelen aan deze specialisatie</h2>
-<p>Bevoegde dienstleiding kan het aanbod uitbreiden met bestaande opleidingen van dezelfde dienst. Opleiders blijven beperkt tot hun eigen specialisatie.</p>
+</div></details>
+<details class="card panel-disclosure" id="followupPanel" open>
+<summary>Opvolging deelnemers <span id="planningCount" class="pill">0</span></summary>
+<div class="panel-body" id="assignedItems"></div></details>
+<details class="card panel-disclosure" id="courseConfig" hidden>
+<summary>Opleidingsaanbod beheren</summary><div class="panel-body">
+<p>Voor dienstleiding: koppel extra bestaande opleidingen aan deze specialisatie.</p>
 <form id="courseForm"><label>Beschikbare extra opleidingen (Ctrl of Shift om meerdere te selecteren)
 <select id="extraCourses" size="7" multiple></select></label>
-<button type="submit">Cursuskoppeling opslaan</button></form></section>
+<button type="submit">Cursuskoppeling opslaan</button></form></div></details>
 </div></div></section>
 </main>
 <script type="module">
@@ -133,6 +151,7 @@ function renderOwn(){
  const list=$('ownItems');list.replaceChildren();
  const rows=context?.mine||[];
  $('ownSection').hidden=!rows.length;
+ $('ownCount').textContent=String(rows.length);
  for(const a of rows){
   const item=el('div',undefined,'entry');
   item.append(el('strong',(a.courseName||'Opleiding')+' · '+(a.trackLabel||a.trackId)),
@@ -147,13 +166,13 @@ function renderPeople(){
   String(v||'').toLocaleLowerCase('nl-BE').includes(needle)));
  const root=$('people');root.replaceChildren();
  $('candidateCount').textContent=people.length+' beschikbaar · '+displayed.length+' zichtbaar';
- $('selectedCount').textContent=selected.size+' geselecteerd (maximaal 40 per handeling)';
+ $('selectedCount').textContent=selected.size+' / 40 geselecteerd';
  for(const p of displayed){
   const label=el('label',undefined,'person');
   const box=el('input');box.type='checkbox';box.checked=selected.has(p.discordId);
   box.onchange=()=>{if(box.checked){if(selected.size>=40){box.checked=false;notify('Maximaal 40 personen per handeling.',true);return}
     selected.add(p.discordId)}else selected.delete(p.discordId);
-    $('selectedCount').textContent=selected.size+' geselecteerd (maximaal 40 per handeling)'};
+    $('selectedCount').textContent=selected.size+' / 40 geselecteerd'};
   const text=el('span');
   text.append(el('strong',(p.call?p.call+' · ':'')+p.name),
    el('small',p.rank+(p.series?' · '+p.series:'')));
@@ -194,6 +213,7 @@ async function loadAssignments(){
   const result=await api('/api/training-planning/assigned?trackId='+encodeURIComponent(track.id));
   if(currentTrack()?.id!==track.id)return;
   assigned=result.items||[];
+  $('planningCount').textContent=String(assigned.filter(x=>x.status!=='geannuleerd').length);
   const root=$('assignedItems');root.replaceChildren();
   for(const x of assigned.slice(0,80)){
    if(x.status==='geannuleerd')continue;
@@ -228,6 +248,7 @@ function renderTrack(){
  $('managementSection').hidden=!track;
  if(!track)return;
  $('scopeInfo').textContent=track.label+' · '+track.department;
+ $('planningCount').textContent='…';
  options('course',(track.courses||[]).map(x=>({value:x,label:x})));
  options('audience',(track.audiences||[]).map(x=>({value:x.id,label:x.label})));
  renderAudiences();void loadPeople();void loadAssignments();void loadCatalog();
@@ -245,7 +266,7 @@ async function load(keep=false){
    notify('Je eigen planning is bijgewerkt. Voor deelnemersbeheer heb je een geverifieerde instructeurs- of leidingrol nodig.');
    return;
   }
-  renderTrack();notify('Planning bijgewerkt. Uitnodigen of inplannen geeft geen verplichte opleidingsstatus.');
+  renderTrack();notify('Planning bijgewerkt. Verplichte opleidingen beheer je apart via de Opleidingsmatrix.');
  }catch(e){notify(e.message,true);$('managementSection').hidden=true}
 }
 $('track').onchange=renderTrack;
