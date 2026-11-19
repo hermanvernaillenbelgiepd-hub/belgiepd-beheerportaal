@@ -3469,7 +3469,7 @@ async function suggestPromotionCall(rank,targetId,person){
   }));
   if(!selected||selected.dept+':'+selected.discordId!==key)return;
   const selectedRank=targetId==='staffMovementNewCall'?
-    $('staffMovementNewRank').value.trim():$('rankChangeTo').value.trim();
+    $('staffMovementGradeSelect').value.trim():$('rankChangeTo').value.trim();
   if(selectedRank!==rank)return;
   if(field.value.trim()){
     if(hint)hint.textContent='Handmatig gekozen nummer behouden. De server controleert dit bij het opslaan.';
@@ -3482,7 +3482,9 @@ async function suggestPromotionCall(rank,targetId,person){
   }
   field.value=String(result.call);
   if(hint)hint.textContent='Voorgesteld vrij roepnummer: '+result.call+
-    '. Dit nummer is nog niet gereserveerd; bij het opslaan wordt opnieuw gecontroleerd.';
+    (result.effectiveAuthorizationVerified===false?
+      '. Dit is een informatief voorstel; je actuele Discord-rangmachtiging wordt bij het opslaan gecontroleerd.':
+      '. Nog niet gereserveerd; bij het opslaan wordt opnieuw gecontroleerd.');
  }catch(error){
   if(!selected||selected.dept+':'+selected.discordId!==key)return;
   if(hint)hint.textContent='Automatisch voorstellen mislukt: '+error.message+
@@ -3521,6 +3523,7 @@ $('rankChangeTo').addEventListener('change',()=>{
 $('staffMovement').onchange=()=>{
  // Never reuse an earlier proposed rank or callsign when switching
  // between promotion and demotion.
+ $('staffMovementGradeSelect').value='';
  $('staffMovementNewRank').value='';
  $('staffMovementNewCall').value='';
  updateStaffMovementFields();
@@ -6319,6 +6322,7 @@ async function showPerson(p){
   $('staffMovementOldRank').value=p.rank||'';
   $('staffMovementOldCall').value=p.call||'';
   $('staffMovementNewRank').value='';
+  $('staffMovementGradeSelect').value='';
   $('staffMovementNewCall').value='';
   $('staffMovementMode').value='effective';
   $('staffMovementGradeList').replaceChildren(...rankChoices.map(x=>
