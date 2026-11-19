@@ -113,9 +113,20 @@ test('notes, observations, sanctions and promotion remain separate audited entry
   assert.throws(()=>validateCitizenEntry({...base,kind:'notitie',byDiscordId:id}));
   assert.throws(()=>validateCitizenEntry({...base,kind:'notitie',eventDate:'2026-02-30'}));
 });
-test('observation score average excludes all notes and sanctions',()=>{
-  assert.deepEqual(observationAverage([{kind:'observatie',score:10},{kind:'observatie',score:3},
-    {kind:'notitie',score:0},{kind:'sanctie_schriftelijk',score:0}]),
-    {count:2,average:6.5});
-  assert.deepEqual(observationAverage([]),{count:0,average:null});
+test('observation score average uses only the last three months, excluding notes and sanctions',()=>{
+  const options={today:'2026-11-19'};
+  const scores=observationAverage([
+    {kind:'observatie',eventDate:'2026-09-01',score:10},
+    {kind:'observatie',eventDate:'2026-11-03',score:3},
+    {kind:'observatie',eventDate:'2026-08-01',score:0},
+    {kind:'notitie',eventDate:'2026-09-01',score:0},
+    {kind:'sanctie_schriftelijk',eventDate:'2026-10-01',score:0}
+  ],options);
+  assert.equal(scores.count,2);
+  assert.equal(scores.average,6.5);
+  assert.equal(scores.trend,'down');
+  const empty=observationAverage([],options);
+  assert.equal(empty.count,0);
+  assert.equal(empty.average,null);
+  assert.equal(empty.trend,'insufficient');
 });

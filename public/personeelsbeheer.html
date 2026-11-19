@@ -747,6 +747,19 @@ body.dossier-embed #panel{max-width:none;width:100%;margin:0;border:0;box-shadow
 body.dossier-embed #notice{margin:0 0 10px}
 body.dossier-embed #accessHelp{margin:10px 0}
 </style><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/roster-name-preview.css"><link rel="stylesheet" href="/dossier-identity-polish.css"><link rel="stylesheet" href="/personnel-compact.css">
+
+<style id="dossier-score-trend-style">
+.dossier-score-trend{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;
+ border-radius:7px;font-size:12px;font-weight:800;white-space:nowrap;border:1px solid currentColor}
+.dossier-score-trend.trend-up{color:#49d58b;background:#153d2c}
+.dossier-score-trend.trend-down{color:#ff9d93;background:#4a2225}
+.dossier-score-trend.trend-stable{color:#e3c777;background:#473e25}
+.dossier-score-trend.trend-insufficient{color:#d5dfec;background:#344254}
+html:not([data-bpd-theme="dark"]) .dossier-score-trend.trend-up{color:#126b3b;background:#e6f6ed}
+html:not([data-bpd-theme="dark"]) .dossier-score-trend.trend-down{color:#9c2934;background:#ffedef}
+html:not([data-bpd-theme="dark"]) .dossier-score-trend.trend-stable{color:#79620e;background:#fff6d9}
+html:not([data-bpd-theme="dark"]) .dossier-score-trend.trend-insufficient{color:#46576e;background:#e7edf4}
+</style>
 </head>
 <body class="bpd-unified-dossier"><header><div><strong>🛡️ BelgiëPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html" data-personnel-staff hidden>Gebruikersbeheer</a><a href="/rollen-opleidingen.html" data-personnel-staff hidden>Opleidingen</a><a href="/weekrapporten.html" data-personnel-staff hidden>Weekrapporten</a><a href="/dossiercentrum.html" data-personnel-staff hidden>Dossiercentrum</a><a href="/sanctieoverzicht.html" data-personnel-staff hidden>Sanctieoverzicht</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><div class="personnel-overview"><h1>Personeelslijst</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p></div>
@@ -1231,7 +1244,9 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
     <option value="ACTIEF">🟢 Actief</option>
     <option value="50/50">🟠 50/50 — minder dan 20 uur of 15+ dagen geen connectie</option>
     <option value="INACTIEF">🔴 Inactief — minder dan 10 uur of 30+ dagen geen connectie</option>
-    <option value="VERWIJDERING_TE_BEOORDELEN">⚫ 60+ dagen geen connectie — verwijdering beoordelen</option>
+    <option value="VERWIJDERING_TE_BEOORDELEN">⚫ 60+ dagen — verwijdering beoordelen (enkel loggen)</option>
+    <option value="ARCHIVE_INACTIVE_60">🗄️ Verwijdering wegens 60+ dagen inactief → archiveren</option>
+    <option value="ARCHIVE_DISCORD_DEPARTURE">🗄️ Verwijdering wegens verlaten Discord → archiveren</option>
     <option value="GEEN_VERBETERING_NA_PING">⚠️ Geen activiteitsverbetering na eerdere ping</option>
     <option value="TUSSENTIJDSE_CONTROLE_PING">🔎 Tussentijdse controleping — opvolging CHECKING</option>
    </select>
@@ -1252,7 +1267,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
  <p class="subtle">Gebruik ‘Geen activiteitsverbetering na eerdere ping’ om een hercontrole te loggen als de medewerker na een eerdere Discord-ping nog steeds onvoldoende activiteit toont. Vermeld de eerdere ping en de actuele vaststellingen in de verplichte reden. Deze registratie legt de opvolging en het daadwerkelijke Discord-contact vast; het portaal verstuurt zelf geen Discord-bericht.
  De status van de officiële personeelslijst verandert niet automatisch. Verwijdering na 60 dagen vereist een afzonderlijke bevoegde beslissing. Goedgekeurd verlof moet in de beoordeling worden meegenomen.</p>
  <button id="archiveFromActivityPing" type="button" class="alt small" hidden>Uitdiensttreding beoordelen en archiveren…</button>
- <small class="subtle">Archiveren is een afzonderlijke bevestiging door bevoegd kader. De personeelsbeweging en afsluitende activiteitenregistratie worden dan automatisch opgeslagen.</small>
+ <small class="subtle">Selecteer een verwijderingsreden om onmiddellijk de afzonderlijke archiveringsprocedure te doorlopen. Alleen na motivering én bevestiging worden automatisch de personeelsbeweging en afsluitende activiteitenregistratie opgeslagen. Een losse 60+-controle blijft alleen een opvolgregistratie.</small>
 </div>
 <div id="staffEndDateField" hidden><label for="staffEndDate">Einddatum verlofnotitie</label><input id="staffEndDate" type="date"></div>
 <div id="staffRankField" hidden><label for="staffProposedRank">Voorgestelde rang</label><input id="staffProposedRank" maxlength="140"></div>
@@ -1421,6 +1436,7 @@ import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
 import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '/training-course-catalog.js';
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
+import {threeMonthObservationScore,observationTrendLabel,observationTrendSymbol} from '/observation-score-trend.js';
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
 import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
@@ -3292,6 +3308,21 @@ function updateActivityDiscordDate(){
  if(!confirmed)$('staffActivityDiscordDate').value='';
 }
 $('staffActivityDiscordContact').onchange=updateActivityDiscordDate;
+const ACTIVITY_ARCHIVE_CAUSES=Object.freeze({
+  ARCHIVE_INACTIVE_60:'inactive_dismissal',
+  ARCHIVE_DISCORD_DEPARTURE:'voluntary_discord_leave'
+});
+$('staffActivityStatus').onchange=async()=>{
+ const option=$('staffActivityStatus').value;
+ const cause=ACTIVITY_ARCHIVE_CAUSES[option];
+ if(!cause)return;
+ // Never submit a pseudo-status through the ordinary activities-ping route.
+ $('staffActivityStatus').value='';
+ if($('personnelArchiveAction').hidden||!selected){
+   notice('Alleen bevoegd kader kan een dienstverband archiveren.',true);return;
+ }
+ await archiveServiceMembership(selected,{fromActivityPing:true,presetCause:cause});
+};
 function updateStaffCaseFields(){
   const type=$('staffCaseType').value;
   const activity=type==='inactiviteitsping';
@@ -3759,22 +3790,33 @@ function makeScoreBadge(score){
 }
 function sheetAverageScore(entries,limited=false){
   const element=$('sheetScoreSummary');
-  if(selected?.dept!=='politie'){element.hidden=true;return}
-  const summary=observationSummary(entries,{limited});
+  if(!selected){element.hidden=true;return}
+  const summary=threeMonthObservationScore(entries,{limited});
   const score=summary.average===null?'—':
     summary.average.toLocaleString('nl-BE',{minimumFractionDigits:1,maximumFractionDigits:1});
   element.replaceChildren();
-  const title=document.createElement('span');title.textContent='Gem. score';
+  const title=document.createElement('span');
+  title.textContent='Gem. score · 3 maanden';
   const value=document.createElement('strong');
   value.textContent=score==='—'?'Geen scores':score+' / 10';
   if(summary.average!==null)value.className=scoreClass(Math.round(summary.average))||'';
+  const trend=document.createElement('span');
+  trend.className='dossier-score-trend trend-'+summary.trend;
+  trend.textContent=observationTrendSymbol(summary.trend)+' '+
+    observationTrendLabel(summary.trend);
+  trend.title='Vergelijkt de eerdere en recentere observaties in deze 3 maanden. '+
+    'Minstens twee scores op verschillende dagen nodig; verschil vanaf 0,5 punt.';
   const total=document.createElement('small');
   total.textContent=summary.count+' observatie'+(summary.count===1?'':'s')+
-    (summary.limited?' · recentste registraties':'');
-  element.append(title,value,total);
+    ' · '+summary.from.split('-').reverse().join('/')+'–'+
+    summary.through.split('-').reverse().join('/')+
+    (summary.limited?' · onvolledige bron':'');
+  element.append(title,value,trend,total);
   element.title=summary.limited?
-    'Gemiddelde over de beschikbare recente observaties; oudere scores zijn mogelijk niet volledig geladen.':
-    'Gemiddelde over alle beschikbare observaties met een geldige score (0–10).';
+    'Gemiddelde op basis van geladen observaties uit de afgelopen 3 maanden. '+
+      'Omdat niet alle oudere registraties beschikbaar zijn, tonen we geen trend.':
+    'Alleen geldige, niet-ingetrokken observaties met gebeurtenisdatum binnen de laatste 3 maanden. '+
+    'Dit is de algemene observatiescore; RP heeft geen aparte numerieke score.';
   element.hidden=false;
 }
 function sheetIdentity(p){
@@ -5837,6 +5879,8 @@ $('staffCaseForm').onsubmit=async event=>{
       '\nRoepnummer: '+oldCall+' → '+newCall:'';
     const activity=type==='inactiviteitsping';
     const activityStatus=activity?$('staffActivityStatus').value:'';
+    if(activity&&Object.hasOwn(ACTIVITY_ARCHIVE_CAUSES,activityStatus))
+      throw Error('Selecteer de archiveringsprocedure: deze reden kan niet als losse ping worden opgeslagen.');
     const discordContact=activity?$('staffActivityDiscordContact').value:'';
     if(activity&&(!activityStatus||!['ja','nee'].includes(discordContact)))
       throw Error('Kies de opvolgstatus en bevestig of je het Discord-bericht werkelijk hebt verstuurd.');
@@ -6281,21 +6325,25 @@ async function loadPersonnelLifecycle(p){
  }
 }
 // Eén handmatige, geauditeerde dienstactie voor alle vijf de diensten.
-async function archiveServiceMembership(p,{fromActivityPing=false}={}){
+async function archiveServiceMembership(p,{fromActivityPing=false,presetCause=null}={}){
  if(!p||!lifecycleDepartments.includes(p.dept))return;
  const url='/api/personnel-lifecycle/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
  let current;
  try{current=await request(url)}catch(e){return notice('Dienstverband niet beschikbaar: '+e.message,true)}
  if(!current.canManage||current.state!=='active')
   return notice('Dit dienstverband is niet actief of je hebt geen wijzigingsrecht.',true);
- const code=prompt('Reden uitdiensttreding?\n1 = Discord verlaten\n2 = Ontslag door leiding\n3 = Vrijwillig vertrek uit dienst\n4 = Ontslag wegens inactiviteit\n5 = Andere reden',
-   fromActivityPing&&['INACTIEF','VERWIJDERING_TE_BEOORDELEN','GEEN_VERBETERING_NA_PING'].includes(
-     $('staffActivityStatus').value)?'4':'3');
- if(code===null)return;
- const cause=({'1':'voluntary_discord_leave','2':'management_dismissal',
-   '3':'service_resignation','4':'inactive_dismissal','5':'other'})[code.trim()];
+ let cause=presetCause;
+ if(!cause){
+   const code=prompt('Reden uitdiensttreding?\n1 = Discord verlaten\n2 = Ontslag door leiding\n3 = Vrijwillig vertrek uit dienst\n4 = Ontslag wegens inactiviteit\n5 = Andere reden',
+     fromActivityPing&&['INACTIEF','VERWIJDERING_TE_BEOORDELEN','GEEN_VERBETERING_NA_PING'].includes(
+       $('staffActivityStatus').value)?'4':'3');
+   if(code===null)return;
+   cause=({'1':'voluntary_discord_leave','2':'management_dismissal',
+     '3':'service_resignation','4':'inactive_dismissal','5':'other'})[code.trim()];
+ }
  if(!cause)return notice('Ongeldige ontslagreden gekozen.',true);
- const explanation=prompt('Verplichte motivering (10–500 tekens):');
+ const explanation=prompt('Verplichte motivering (10–500 tekens):',
+    fromActivityPing?$('staffCaseDetails').value.trim().slice(0,500):'');
  if(explanation===null)return;
  const reason=explanation.trim();
  if(reason.length<10||reason.length>500)return notice('Motivering moet 10 tot 500 tekens zijn.',true);

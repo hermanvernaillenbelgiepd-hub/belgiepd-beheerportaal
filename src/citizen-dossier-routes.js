@@ -152,7 +152,7 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
         entriesLimited:entriesSnap.size===300||liveEntries.length>200,
         deletionLogLimited:deletionsSnap.size===100,
         leave:leaves,leaveLimited:leaveSnap.size===100,
-        observation:observationAverage(entries),
+        observation:observationAverage(entries,{limited:entriesSnap.size===300||liveEntries.length>200}),
         volwaardigDate:promoted?.eventDate||null,
         // Een persoonsrapport is de auditbare combinatie van registraties
         // en het centrale verloflog. Nooit een tweede weekrapport schrijven.

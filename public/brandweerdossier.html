@@ -28,6 +28,24 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 .record small{color:#a9c5e7}
 @media(max-width:960px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.summary-grid{grid-template-columns:1fr}.sheet-row{grid-template-columns:1fr}}
+
+.fire-score-summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+ background:#162f4e;border:1px solid #4e6e95;border-radius:9px;
+ padding:10px 13px;margin:9px 0;font-size:13px}
+.fire-score-summary[hidden]{display:none!important}
+.fire-score-summary small{opacity:.86;font-size:11px}
+.fire-score-trend{font-size:12px;font-weight:800;border-radius:6px;
+ padding:3px 7px;border:1px solid currentColor}
+.fire-score-trend.trend-up{color:#5bdfa0}
+.fire-score-trend.trend-down{color:#ffa3a3}
+.fire-score-trend.trend-stable{color:#f3d67d}
+.fire-score-trend.trend-insufficient{color:#c9d9ec}
+html:not([data-bpd-theme="dark"]) .fire-score-summary{
+ background:#f1f5fc!important;color:#1b3452!important;border-color:#bbcce0!important}
+html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-up{color:#137044}
+html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-down{color:#a32b38}
+html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-stable{color:#806711}
+html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-insufficient{color:#607083}
 </style><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/dossier-identity-polish.css">
 </head><body class="bpd-unified-dossier dossier-onepage dossier-fire-sheet">
 <header><strong>🚒 BelgiëPD · Brandweerdossier</strong><nav class="buttons"><a href="/dossiercentrum.html">← Dossiercentrum</a><a href="/">Home</a><button id="refresh" class="alt" type="button">Vernieuwen</button><button id="login" class="alt">Aanmelden</button></nav></header>
@@ -35,6 +53,7 @@ label{font-size:12px;color:#b8cae6;display:block;margin:7px 0 5px}.grid{display:
 <section id="panel" class="card">
 <div id="dossierServiceBanner" class="dossier-service-banner" role="status"></div>
 <h1 id="title">Brandweerpersoneelsdossier</h1>
+<p id="fireScoreSummary" class="fire-score-summary" hidden aria-live="polite"></p>
 <div id="message" class="muted" role="status">Aanmelding controleren…</div>
 <div id="mainCard" class="sheet-identity" hidden>
 <div><small>ROEPNUMMER</small><strong id="call">—</strong></div>
@@ -220,6 +239,7 @@ import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fi
 import {displayServiceBadge} from '/dossier-service-badge.js';
 import {createObservationDisclosure} from '/dossier-observation-ui.js';
 import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
+import {threeMonthObservationScore,observationTrendSymbol,observationTrendLabel} from '/observation-score-trend.js';
 const $=id=>document.getElementById(id);
 enhanceBelgianDateInputs(['fireLeaveFrom','fireLeaveUntil','date','endDate']);
 displayServiceBadge($('dossierServiceBanner'),'brandweer');
@@ -574,6 +594,26 @@ async function load(){
      (x.registeredCall?' ('+x.registeredCall+')':'');
    cards($('observations'),entries.filter(x=>x.type==='observatie'),
      x=>'Observatie · '+(x.eventDate||'—'),x=>x.details,meta);
+   const score=threeMonthObservationScore(entries,{limited:entries.length>=120});
+   const scoreDisplay=$('fireScoreSummary');
+   scoreDisplay.replaceChildren();
+   if(advanced){
+     const value=document.createElement('strong');
+     value.textContent='Gem. observatiescore · 3 maanden: '+
+       (score.average===null?'Geen scores':
+         score.average.toLocaleString('nl-BE',{minimumFractionDigits:1,maximumFractionDigits:1})+'/10');
+     const trend=document.createElement('span');
+     trend.className='fire-score-trend trend-'+score.trend;
+     trend.textContent=observationTrendSymbol(score.trend)+' '+
+       observationTrendLabel(score.trend);
+     const count=document.createElement('small');
+     count.textContent=score.count+' observaties · '+score.from+'–'+score.through+
+       (score.limited?' · onvolledige bron':'');
+     scoreDisplay.append(value,trend,count);
+     scoreDisplay.title='Trend vergelijkt de eerdere met de recentere score binnen drie maanden. '+
+       'RP wordt meegerekend via de bestaande observatiescore, niet apart gescoord.';
+   }
+   scoreDisplay.hidden=!advanced;
    const notes=entries.filter(x=>x.type==='notitie'&&x.noteKind!=='basis');
    cards($('basicNotes'),[...basicEntries,...oldBasicNotes],
      x=>x.title||'Basisnotitie',x=>x.details,

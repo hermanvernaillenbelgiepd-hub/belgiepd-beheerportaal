@@ -1,4 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
+import {threeMonthObservationScore} from '../public/observation-score-trend.js';
 import {approvedManagedEntry} from './user-access.js';
 
 // Burgerpersoneelsdossiers: afzonderlijke dienstscope, nooit gekoppeld aan
@@ -153,11 +154,8 @@ export function validateCitizenEntry(raw){
   return {kind:raw.kind,eventDate:raw.eventDate,
     details:raw.details.trim(),...(raw.kind==='observatie'?{score:raw.score}:{})};
 }
-export function observationAverage(entries){
-  const scores=(Array.isArray(entries)?entries:[])
-    .filter(x=>x?.kind==='observatie'&&Number.isInteger(x.score)&&x.score>=0&&x.score<=10)
-    .map(x=>x.score);
-  return scores.length?
-    {count:scores.length,average:Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10}:
-    {count:0,average:null};
+export function observationAverage(entries,{today,limited=false}={}){
+  const summary=threeMonthObservationScore(entries,{...(today?{today}:{}),limited});
+  return {count:summary.count,average:summary.average,trend:summary.trend,
+    from:summary.from,through:summary.through,limited:summary.limited};
 }
