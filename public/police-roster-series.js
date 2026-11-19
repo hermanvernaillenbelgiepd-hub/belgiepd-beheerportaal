@@ -9,7 +9,7 @@ export const POLICE_SERIES_HEADS=Object.freeze({
   ]),
   '2':Object.freeze([
     {name:'Anvar',id:'729410384095871098'},
-    {name:'Sit-robin',id:'305021081243090944'},
+    {name:'Sir-robin',id:'305021081243090944'},
     {name:'Unemi',id:'298799630458552323'}
   ]),
   '3':Object.freeze([
