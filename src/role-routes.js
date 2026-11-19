@@ -8,7 +8,7 @@ import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-polic
 import {eligibleForTechnicalProfile,technicalCookieIsValid} from './portal-profile-mode.js';
 import { isDiscordId } from './discord-utils.js';
 import { ROLE_CATALOG,roleSummary,SERVICE_DEPTS } from './role-catalog.js';
-import { basePermissions,effectivePermissions,validateOverride,canAdministerRoles,canLogTraining,canReviewTraining,visibleTrainingPermissions,DELEGATABLE_PERMISSIONS } from './permissions-utils.js';
+import { basePermissions,effectivePermissions,validateOverride,canAdministerRoles,canLogTraining,canReviewTraining,DELEGATABLE_PERMISSIONS } from './permissions-utils.js';
 import { mayMaintainTraining,isArchivedTraining,validateMaintenanceReason,isRecordId,requiresReReview } from './training-maintenance.js';
 import {roleForDepartment} from './leave-policy.js';
 import {brusselsEventDate} from './personnel-event-date.js';
@@ -83,10 +83,14 @@ async function resolveActor(req,res,next){
     // THAT department. Validate the portal account and a fresh Discord identity.
     // Never turn a delegation into a global cadre or role-management grant.
     bpd.dossierFullDepartments=[];
+    let trainingApprovedGrant=null;
     if(bpd.provider==='discord'&&process.env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true'&&
        verifiedDiscordIdentity(decoded,member,process.env.DISCORD_GUILD_ID)===discordId){
       const portal=await db().collection(USER_COLLECTION).doc(discordId).get();
       const managed=portal.exists?approvedManagedEntry(portal.data(),discordId):null;
+      // Explicitly approved portal memberships grant training rights in their own
+      // service, without granting general dossier or role-administration access.
+      if(managed)trainingApprovedGrant=managed;
       const services=portal.exists
         ?(managed?.departments||[])
         :(bpd.trustedStaff===true?bpd.departments:[]);
@@ -103,7 +107,8 @@ async function resolveActor(req,res,next){
     const base=basePermissions(member,process.env.DISCORD_GUILD_ID,Date.now(),fireTeacherIds);
     // Never infer rank from a stale role snapshot, or from an unrelated Discord ID.
     const override=isDiscordId(discordId)?(await db().collection('bpd_permission_overrides').doc(discordId).get()).data():null;
-    req.roleActor={bpd,discordId,member,base,perms:effectivePermissions(base,override),override};
+    req.roleActor={bpd,discordId,member,base,perms:effectivePermissions(base,override),
+      override,trainingApprovedGrant};
     next();
   }catch(e){console.error('Rolaanmelding mislukt:',e?.code||e?.message||'onbekend');return res.status(401).json({error:'Verificatie niet beschikbaar'});}
 }
@@ -115,8 +120,15 @@ function admin(req,res,next){
   next();
 }
 function trainingAccess(req,dept,kind){
-  const {bpd,perms,member}=req.roleActor;
+  const {bpd,perms,member,trainingApprovedGrant}=req.roleActor;
   if(bpd?.portalTechnicalMode===true&&bpd?.profileTechnicalAvailable===true)return true;
+  // Training-only authorization from a verified, approved portal account.
+  // Do not mutate bpd.trustedStaff: broader dossier and role rights stay unchanged.
+  if(trainingApprovedGrant){
+    const scoped={...trainingApprovedGrant,trustedStaff:true};
+    if(kind==='log'?canLogTraining(scoped,dept,{}):canReviewTraining(scoped,dept,{}))
+      return true;
+  }
   if(dept==='brandweer'){
     const roles=verifiedFireRoles(member,process.env.DISCORD_GUILD_ID);
     // Instructor / fire leadership must be verified for their own department.
@@ -227,9 +239,10 @@ export function installRoleRoutes(app,{getSnapshot}={}){
     return res.json({provider:bpd.provider,discordId:discordId||null,googleRank:bpd.trustedStaff?bpd.role:null,
       verifiedRolesFresh:base.fresh,roles:base.roles,departments:base.departments,
       policeRank:base.policeRank,unknownRoleCount:base.unknownCount,
-      permissions:{...visibleTrainingPermissions(bpd,perms),brandweer:{
-        'training.log':trainingAccess(req,'brandweer','log'),
-        'training.review':trainingAccess(req,'brandweer','review')}},
+      // Expose exactly the same decisions as /api/training/people and POST /api/training.
+      permissions:Object.fromEntries(SERVICE_DEPTS.map(dept=>[dept,{
+        'training.log':trainingAccess(req,dept,'log'),
+        'training.review':trainingAccess(req,dept,'review')}])),
       canManage:bpd.trustedStaff===true&&['officierenkader','korpsleiding'].includes(bpd.role),
       trainingWritesEnabled:process.env.BPD_ENABLE_TRAINING_WRITES==='true',
       note:'Discord-toekenningen en Google Sheets worden NIET automatisch aangepast. Bestaande dossiers blijven onder de huidige Google-allowlist.'});
