@@ -3817,8 +3817,64 @@ function addManualCaseCorrectionControls(container,row,person,key){
  };
  actions.append(edit,history);container.append(actions,editor,auditResult);
 }
+// Both canonical training results and completed training requests belong in
+// the same dossier training overview; the underlying records are NOT copied.
+let linkedTrainingRecords=[],linkedCompletedRequestRecords=[];
+let linkedTrainingLimited=false,linkedCaseLimited=false,linkedTrainingScope='';
+let linkedTrainingFetchError='',linkedTrainingLoadRevision=0;
+function renderLinkedTraining(p){
+  const canonical=linkedTrainingRecords.map(x=>({...x,_trainingSource:'register'}));
+  const requestCompletions=linkedCompletedRequestRecords.map(x=>({...x,
+    _trainingSource:'request',result:'uitgevoerd',
+    instructorName:x.registeredBy?.name||'Bevoegd opleider'}));
+  const all=[...canonical,...requestCompletions].sort((a,b)=>
+    String(b.eventDate||'').localeCompare(String(a.eventDate||''))||
+    String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  const completed=all.filter(x=>x.result==='geslaagd'||x._trainingSource==='request');
+  sheetSetRows('training',completed,x=>[
+    generalNoteDate(x.eventDate),
+    String(x.courseName||'Opleiding')+
+      (x._trainingSource==='request'?' · bevestigde deelname':''),
+    x._trainingSource==='request'?'Uitgevoerd':x.result||'—',
+    x.instructorName||x.registeredBy?.name||'—'
+  ],'Nog geen voltooide opleidingen.',linkedTrainingLimited||linkedCaseLimited);
+  const holder=$('staffLinkedTraining');holder.replaceChildren();
+  if(!all.length)holder.textContent=linkedTrainingFetchError?
+    'Opleidingsregister beperkt toegankelijk ('+linkedTrainingFetchError+').'+
+    ' Uitgevoerde opleidingsaanvragen blijven zichtbaar via de dossierhistoriek.':
+    'Geen zichtbare opleidingsregistraties.';
+  for(const row of all.slice(0,25)){
+    const div=document.createElement('div');div.className='note-item';
+    const title=document.createElement('strong');
+    title.textContent=String(row.courseName||'Opleiding').slice(0,150)+
+      ' · '+(row._trainingSource==='request'?'Uitgevoerd · deelname bevestigd':
+        row.result==='restricted'?'RESTRICTED':row.result==='stage'?'STAGE':
+        String(row.result||'Onbekend resultaat'));
+    const meta=document.createElement('span');meta.className='subtle';
+    meta.textContent=generalNoteDate(row.eventDate)+
+      ' · Opleider: '+String(row.instructorName||row.instructor||row.registeredBy?.name||'niet vermeld');
+    div.append(title,meta);
+    if(row._trainingSource==='register'&&row.canEdit===true&&
+        trainingRights?.trainingWritesEnabled===true&&
+        trainingRights.permissions?.[p.dept]?.['training.log']){
+      const edit=document.createElement('button');edit.type='button';edit.className='alt small';
+      edit.textContent='Opleiding wijzigen';edit.onclick=()=>staffTrainingEdit(row);div.append(edit);
+    }
+    holder.append(div);
+  }
+  if(linkedTrainingLimited||linkedCaseLimited||all.length>25)
+    holder.append(document.createTextNode(' Er kunnen nog oudere registraties bestaan.'));
+  if(linkedTrainingScope==='alleen_eigen_registraties')
+    holder.append(document.createTextNode(' Je ziet uit het opleidingsregister alleen je eigen registraties.'));
+}
 async function loadLinkedPersonnelRecords(p,key){
-  const same=()=>selected&&selected.dept+':'+selected.discordId===key&&!$('panel').hidden;
+  const revision=++linkedTrainingLoadRevision;
+  const same=()=>selected&&selected.dept+':'+selected.discordId===key&&
+    !$('panel').hidden&&revision===linkedTrainingLoadRevision;
+  linkedTrainingRecords=[];linkedCompletedRequestRecords=[];
+  linkedTrainingLimited=false;linkedCaseLimited=false;
+  linkedTrainingScope='';linkedTrainingFetchError='';
+  renderLinkedTraining(p);
   void loadStaffCheckrides(p,key);
   const training=$('staffLinkedTraining'),cases=$('staffLinkedCases');
   const trainingUrl='/api/training/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
@@ -3829,37 +3885,14 @@ async function loadLinkedPersonnelRecords(p,key){
       try{
         const data=await request(trainingUrl);
         if(!same())return;
-        // Voltooide opleidingen = geslaagd. Lopende/niet-geslaagde
-        // registraties blijven wel beschikbaar in het opleidingsregister.
-        sheetSetRows('training',(data.records||[]).filter(x=>x.result==='geslaagd'),x=>[
-          x.eventDate||'—',x.courseName||'Opleiding',x.result||'—',
-          x.instructorName||x.instructor||x.registeredBy?.name||'—'
-        ],'Nog geen voltooide opleidingen.',data.limited);
-        training.replaceChildren();
-        if(!data.records?.length)training.textContent='Geen zichtbare opleidingsregistraties.';
-        for(const row of (data.records||[]).slice(0,25)){
-          const div=document.createElement('div');div.className='note-item';
-          const title=document.createElement('strong');
-          title.textContent=String(row.courseName||'Opleiding').slice(0,150)+
-            ' · '+(row.result==='restricted'?'RESTRICTED':row.result==='stage'?'STAGE':String(row.result||'Onbekend resultaat'));
-          const meta=document.createElement('span');meta.className='subtle';
-          meta.textContent=String(row.eventDate||'Datum onbekend')+
-            ' · Opleider: '+String(row.instructorName||row.instructor||'niet vermeld');
-          div.append(title,meta);
-          if(row.canEdit===true&&trainingRights?.trainingWritesEnabled===true&&
-              trainingRights.permissions?.[p.dept]?.['training.log']){
-            const edit=document.createElement('button');edit.type='button';edit.className='alt small';
-            edit.textContent='Opleiding wijzigen';edit.onclick=()=>staffTrainingEdit(row);div.append(edit);
-          }
-          training.append(div);
-        }
-        if(data.limited||data.records?.length>25)
-          training.append(document.createTextNode(' Alleen een deel van de opleidingsregistraties wordt hier getoond.'));
-        if(data.scope==='alleen_eigen_registraties')
-          training.append(document.createTextNode(' Je ziet alleen opleidingen die je zelf registreerde.'));
+        linkedTrainingRecords=data.records||[];
+        linkedTrainingLimited=Boolean(data.limited);
+        linkedTrainingScope=data.scope||'';
+        linkedTrainingFetchError='';
+        renderLinkedTraining(p);
       }catch(e){if(same()){
-        training.textContent='Opleidingen kunnen uitsluitend met de bestaande opleidingsrechten worden bekeken ('+e.message+').';
-        $('sheetTraining').textContent='Geen toegang tot opleidingsgegevens of bron tijdelijk niet beschikbaar.';
+        linkedTrainingFetchError=e.message;
+        renderLinkedTraining(p);
       }}
     })(),
     (async()=>{
@@ -3867,6 +3900,10 @@ async function loadLinkedPersonnelRecords(p,key){
         const data=await request(casesUrl);
         if(!same())return;
         sheetCaseRows(data.entries||[],data.limited);
+        linkedCompletedRequestRecords=(data.entries||[]).filter(x=>
+          x.type==='opleiding'&&x.trainingRequestId&&x.reportCategory==='opleiding');
+        linkedCaseLimited=Boolean(data.limited);
+        renderLinkedTraining(p);
         cases.replaceChildren();
         const allowed=(data.entries||[]).filter(row=>!['observatie','sanctie'].includes(row.type)).slice(0,60);
         if(!allowed.length)cases.textContent='Geen toegelaten kadernotities gevonden.';
@@ -3898,6 +3935,8 @@ async function loadLinkedPersonnelRecords(p,key){
         }
         if(data.limited)cases.append(document.createTextNode(' Er kunnen oudere registraties bestaan.'));
       }catch(e){if(same()){
+        linkedCompletedRequestRecords=[];linkedCaseLimited=false;
+        renderLinkedTraining(p);
         cases.textContent='Kaderregistraties kunnen alleen met de bestaande kaderrechten worden bekeken ('+e.message+').';
         $('sheetMovements').textContent='Kaderregistraties niet beschikbaar.';
         $('sheetNotes').textContent='Kadernotities niet beschikbaar.';
@@ -5067,7 +5106,8 @@ async function loadStaffDossier(p){
     registrationManualLeave=result.cadreActions?.manualLeave===true;
     refreshPersonnelRegistrationOptions();
     void loadStaffCasePermissions(p,key,result.cadreActions?.cases===true);
-    $('staffCaseDate').value=new Date().toISOString().slice(0,10);
+    $('staffCaseDate').value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     showStaffRoles(result.discordRoles,result.subject?.rosterSeries);
     void loadSpecialtyState(p);
     void loadFunctionRoles(p);
@@ -5345,7 +5385,9 @@ $('staffCaseForm').onsubmit=async event=>{
         eventDate:$('staffCaseDate').value,details:reason+historicalDetails,
         endDate:$('staffEndDate').value,courseName,
         proposedRank:$('staffProposedRank').value,newName:$('staffNewName').value,
-        movement,referenceUrl:$('staffCaseReference').value,
+        movement,
+        ...(gradeMove?{previousRank:oldRank,newRank,previousCall:oldCall,newCall}:{}),
+        referenceUrl:$('staffCaseReference').value,
         ...historicalTransferData('historicalCase')}});
     if(!sameDossier(key))return;
     $('staffCaseDetails').value='';$('staffCaseReference').value='';

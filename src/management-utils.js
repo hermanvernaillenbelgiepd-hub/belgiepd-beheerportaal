@@ -90,7 +90,18 @@ export function validateManagementEntry(value){
   if(type==='opleiding')result.courseName=requiredText(value.courseName,150,'Naam van de opleiding');
   if(type==='naamswijziging')result.newName=requiredText(value.newName,100,'Nieuwe naam');
   if(type==='promotievoorstel')result.proposedRank=requiredText(value.proposedRank,140,'Voorgestelde graad');
-  if(type==='personeelsbeweging')result.movement=requiredText(value.movement,150,'Personeelsbeweging');
+  if(type==='personeelsbeweging'){
+    result.movement=requiredText(value.movement,150,'Personeelsbeweging');
+    // Historical personnel movements carry the originally effective grade
+    // and callsign as structured data. Never alter live personnel by import.
+    for(const [field,max,label] of [
+      ['previousRank',100,'oude graad'],['newRank',100,'nieuwe graad'],
+      ['previousCall',24,'oud roepnummer'],['newCall',24,'nieuw roepnummer']
+    ]){
+      const fieldValue=optionalText(value[field],max,label);
+      if(fieldValue)result[field]=fieldValue;
+    }
+  }
   const referenceUrl=optionalText(value.referenceUrl,800,'bewijslink');
   if(referenceUrl){let u;try{u=new URL(referenceUrl)}catch{throw new Error('Ongeldige bewijslink')};if(u.protocol!=='https:')throw new Error('Ongeldige bewijslink');result.referenceUrl=u.href;}
   return result;

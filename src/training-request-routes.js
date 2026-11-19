@@ -4,6 +4,7 @@ import {getFirestore,FieldValue,FieldPath} from 'firebase-admin/firestore';
 import {approvedManagedEntry,USER_COLLECTION,verifiedDiscordIdentity} from './user-access.js';
 import {roleForDepartment} from './leave-policy.js';
 import {TRAINING_ROLE_IDS} from './role-catalog.js';
+import {scheduledTrainingEventDate} from './personnel-event-date.js';
 import {
   TRAINING_REQUEST_DEPARTMENTS,SERIES_LEADERS,policeRequestTier,personSeries,
   requestCourseOptions,canSubmitTrainingRequest,mayReviewTrainingRequest,
@@ -354,6 +355,8 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
         if(!who)throw rejection('Eigen personeelsfiche niet gevonden',403);
         const now=FieldValue.serverTimestamp();
         const by={discordId:ctx.id,name:who.name,call:who.call};
+        const trainingEventDate=action==='uitgevoerd'?
+          scheduledTrainingEventDate(eventSnap.get('startAt')):localDay();
         const changes={status,updatedAt:now};
         if(action==='gelezen'){changes.reviewedAt=now;changes.reviewedBy=by}
         if(action==='gepland'){
@@ -398,7 +401,9 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
           dept:old.department,subjectDiscordId:old.applicantDiscordId,
           subjectNameAtCreation:trainees[0].name,
           subjectCallAtCreation:trainees[0].call,
-          eventDate:localDay(),
+          eventDate:trainingEventDate,
+          trainingEventDateSource:action==='uitgevoerd'?'scheduled_start':'action_date',
+          subjectRankAtCreation:trainees[0].rank||null,
           courseName:action==='uitgevoerd'?old.courseName:null,
           details:label+' · '+old.courseName+' · aanvraag '+id+
             (schedule?' · '+schedule.startAt+' · '+schedule.location:'')+
@@ -407,6 +412,12 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
           trainingRequestId:id,registeredBy:by,submittedBy:{uid:ctx.uid},
           createdAt:now,modifiedAt:null
         });
+        if(action==='uitgevoerd'){
+          const notification=db().collection('bpd_notices').doc(old.department)
+            .collection('events').doc();
+          tx.create(notification,{caseId:old.department+'_'+old.applicantDiscordId,
+            entryId:activity.id,type:'opleiding',dept:old.department,createdAt:now});
+        }
         return status;
       });
       res.json({saved:true,status:changed});

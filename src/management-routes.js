@@ -600,7 +600,10 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     const doc=automatic?null:await db().collection('bpd_weekreports').doc(id).get();
     if(!automatic&&!doc.exists)return {status:404,error:'Rapport bestaat niet'};
     const report=automatic||doc.data();
-    const snap=await getSnapshot();
+    // Include departed members in the *report scope only*. Their original
+    // dossier events must remain visible in the fortnight of occurrence.
+    // This does NOT reactivate them in the regular personnel roster.
+    const snap=await getSnapshot({includeArchived:true});
     if(snap.stale)return {status:503,error:'Personeelsbron niet actueel'};
     if(!canReadServiceDossier(req.bpd,report.dept)||
       !mayReadFortnightReport(req.bpd,report.dept,snap.data))

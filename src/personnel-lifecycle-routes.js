@@ -1,4 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {brusselsEventDate} from './personnel-event-date.js';
 import {PERSONNEL_LIFECYCLE_COLLECTION,LIFECYCLE_SERVICES,lifecycleKey,validateLifecycleAction,
  lifecycleSourceSnapshot,possibleDiscordDepartures,HONORABLE_REQUEST_COLLECTION,
  validateHonorableRequest,validateHonorableDecision,validateHonorableInpActivation,
@@ -339,7 +340,32 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        reason:input.reason,revision:revision+1,
        actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,at
      });
+     // A verified INP reentry is an actual career movement, never only
+     // an invisible lifecycle/account audit.
+     const eventDate=brusselsEventDate();
+     const movementRef=db().collection('bpd_cases').doc('politie_'+discordId)
+       .collection('entries').doc();
+     const movementNotice=db().collection('bpd_notices').doc('politie')
+       .collection('events').doc();
+     tx.create(movementRef,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+       source:'honorable-inp-reentry',dept:'politie',subjectDiscordId:discordId,
+       subjectNameAtCreation:String(previous.name||'').slice(0,120),
+       subjectCallAtCreation:String(previous.call||'').slice(0,24),
+       subjectRankAtCreation:String(previous.rank||'').slice(0,100),
+       eventDate,movement:'Herintreding als Inspecteur',
+       previousRank:previous.rank||'',newRank:'Inspecteur',
+       previousCall:previous.call||'',newCall:input.newCall,
+       details:'Herintreding als Inspecteur · '+String(previous.rank||'')+
+         ' → Inspecteur · Roepnummer '+String(previous.call||'')+
+         ' → '+input.newCall+' · Motivering: '+input.reason,
+       registeredBy:{discordId:req.bpd.discordId,name:req.bpd.name||'Bevoegd kader',
+         call:req.bpd.call||''},
+       submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
+       createdAt:at,modifiedAt:null});
+     tx.create(movementNotice,{caseId:'politie_'+discordId,entryId:movementRef.id,
+       type:'personeelsbeweging',dept:'politie',createdAt:at});
      tx.create(db().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+       dossierCaseLogged:true,eventDate,
        type:'personnel_restored',dept:'politie',discordId,
        name:String(previous.name||'').slice(0,120),call:input.newCall,
        before:'Eervol uit dienst',after:'INP · Actief',
@@ -409,29 +435,38 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
        at:FieldValue.serverTimestamp()
      });
-     if(action==='archive'){
-       const movement=input.cause==='inactive_dismissal'?'Ontslag inactief':
-         input.cause==='service_resignation'||input.cause==='voluntary_discord_leave'?
-           'Vrijwillig':'Ontslag';
-       const eventDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
-         year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-       const entry=db().collection('bpd_cases').doc(dept+'_'+discordId)
-         .collection('entries').doc();
-       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
-       tx.create(entry,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
-         source:'personnel-lifecycle-archive',dept,subjectDiscordId:discordId,
-         subjectNameAtCreation:historic.name,subjectCallAtCreation:historic.call,
-         eventDate,movement,previousRank:historic.rank,newRank:historic.rank,
-         previousCall:historic.call,newCall:historic.call,
-         details:movement+'. Motivering: '+input.reason,
-         registeredBy:{discordId:req.bpd.discordId,name:req.bpd.name||'Bevoegd kader',
-           call:req.bpd.call||''},submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
-         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
-       tx.create(notice,{caseId:dept+'_'+discordId,entryId:entry.id,
-         type:'personeelsbeweging',dept,createdAt:FieldValue.serverTimestamp()});
-     }
+     // Every transition (dismissal, voluntary departure, reentry review,
+     // final reactivation) is a distinct immutable dated dossier event.
+     const movement=action==='archive'?
+       input.cause==='inactive_dismissal'?'Ontslag inactief':
+       input.cause==='service_resignation'||input.cause==='voluntary_discord_leave'?
+         'Vrijwillig':'Ontslag':
+       action==='restore'?'Herintreding in controle':'Herintreding afgerond';
+     const previousState=action==='archive'?'Actief':
+       action==='restore'?'Uit dienst':'Herintreding in controle';
+     const nextState=action==='archive'?'Uit dienst':
+       action==='restore'?'Herintreding in controle':'Actief';
+     const eventDate=brusselsEventDate();
+     const entry=db().collection('bpd_cases').doc(dept+'_'+discordId)
+       .collection('entries').doc();
+     const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
+     const at=FieldValue.serverTimestamp();
+     tx.create(entry,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+       source:'personnel-lifecycle-'+action,dept,subjectDiscordId:discordId,
+       subjectNameAtCreation:historic.name,subjectCallAtCreation:historic.call,
+       subjectRankAtCreation:historic.rank||'',
+       eventDate,movement,previousRank:historic.rank||'',newRank:historic.rank||'',
+       previousCall:historic.call||'',newCall:historic.call||'',
+       details:movement+': '+previousState+' → '+nextState+
+         '. Motivering: '+input.reason,
+       registeredBy:{discordId:req.bpd.discordId,name:req.bpd.name||'Bevoegd kader',
+         call:req.bpd.call||''},
+       submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
+       createdAt:at,modifiedAt:null});
+     tx.create(notice,{caseId:dept+'_'+discordId,entryId:entry.id,
+       type:'personeelsbeweging',dept,createdAt:at});
      tx.create(db().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
-       dossierCaseLogged:action==='archive',
+       dossierCaseLogged:true,eventDate,
        type:action==='archive'?'personnel_archived':action==='restore'?'personnel_reentry_pending':'personnel_restored',
        dept,discordId,name:historic.name,call:historic.call,
        before:action==='archive'?'Actief':action==='restore'?'Uit dienst':'Herintreding in controle',

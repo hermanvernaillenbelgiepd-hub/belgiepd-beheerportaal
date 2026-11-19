@@ -1,4 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {brusselsEventDate} from './personnel-event-date.js';
 import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
 import {overlayVerifiedCitizenRankDisplay} from './burger-organogram-projection.js';
 import {getAuth} from 'firebase-admin/auth';
@@ -587,6 +588,11 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
     try{
       const store=getFirestore();
       const ref=store.collection(CREATED_PERSONNEL_COLLECTION).doc(dept+'_'+discordId);
+      const eventDate=brusselsEventDate();
+      const caseRef=store.collection('bpd_cases').doc(dept+'_'+discordId)
+        .collection('entries').doc();
+      const noticeRef=store.collection('bpd_notices').doc(dept)
+        .collection('events').doc();
       await store.runTransaction(async tx=>{
         const current=await tx.get(ref);
         if(!current.exists)
@@ -611,12 +617,34 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
           at:FieldValue.serverTimestamp()
         });
+        const at=FieldValue.serverTimestamp();
         tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
           type:'promotion',dept,discordId,
           name:String(data.name||'Personeelslid').slice(0,120),
           before:data.rank,after:proposal.newRank,
-          at:FieldValue.serverTimestamp()
+          reason:proposal.reason,eventDate,dossierCaseLogged:true,
+          actorDiscordId:req.bpd.discordId||null,at
         });
+        // Legacy promotion route uses the same dated dossier + report event
+        // as the newer rank-and-callsign change, without a duplicate report row.
+        tx.create(caseRef,{
+          type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+          source:'personnel-legacy-promotion',dept,subjectDiscordId:discordId,
+          subjectNameAtCreation:String(data.name||'Personeelslid').slice(0,120),
+          subjectCallAtCreation:String(data.call||'').slice(0,24),
+          subjectRankAtCreation:data.rank,
+          movement:'Promotie',eventDate,
+          previousRank:data.rank,newRank:proposal.newRank,
+          previousCall:data.call||'',newCall:data.call||'',
+          details:'Promotie: '+data.rank+' → '+proposal.newRank+
+            '. Motivering: '+proposal.reason,
+          registeredBy:{discordId:req.bpd.discordId,
+            name:req.bpd.name||'Bevoegd kader',call:req.bpd.call||''},
+          submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
+          createdAt:at,modifiedAt:null
+        });
+        tx.create(noticeRef,{caseId:dept+'_'+discordId,entryId:caseRef.id,
+          type:'personeelsbeweging',dept,createdAt:at});
       });
       return res.json({promoted:true,dept,discordId,newRank:proposal.newRank,
         rolesGranted:false,sourceSheetsChanged:false});
@@ -659,8 +687,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const movementLabel=type==='promotion'?'Promotie':type==='demotion'?'Degradatie':'Rangwissel';
       const caseRef=store.collection('bpd_cases').doc(dept+'_'+discordId).collection('entries').doc();
       const noticeRef=store.collection('bpd_notices').doc(dept).collection('events').doc();
-      const eventDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
-        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      const eventDate=brusselsEventDate();
       await store.runTransaction(async tx=>{
         const [current,reserved,previousClaim]=await Promise.all([
           tx.get(ref),tx.get(newClaim),
@@ -702,6 +729,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         tx.create(caseRef,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
           source:'personnel-rank-change',dept,subjectDiscordId:discordId,
           subjectNameAtCreation:next.name,subjectCallAtCreation:oldCall,
+          subjectRankAtCreation:oldRank,
           eventDate,movement:movementLabel,previousRank:oldRank,newRank:proposal.newRank,
           previousCall:oldCall,newCall:proposal.newCall,
           details:movementLabel+': '+oldRank+' ('+oldCall+') → '+
@@ -840,12 +868,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
             .doc(subject.dept+'_'+subject.personId).collection('entries').doc();
           const notification=getFirestore().collection('bpd_notices')
             .doc(subject.dept).collection('events').doc();
-          const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
-            year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+          const date=brusselsEventDate();
           tx.create(entry,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
             source:'personnel-suspension',dept:subject.dept,
             subjectDiscordId:subject.personId,subjectNameAtCreation:subject.name,
-            subjectCallAtCreation:subject.call,eventDate:date,movement:'Schorsing',
+            subjectCallAtCreation:subject.call,subjectRankAtCreation:subject.rank,
+            eventDate:date,movement:'Schorsing',
             previousRank:subject.rank,newRank:subject.rank,
             previousCall:oldCall,newCall:proposed.call,
             details:'Schorsing. Motivering: '+proposed.reason,
