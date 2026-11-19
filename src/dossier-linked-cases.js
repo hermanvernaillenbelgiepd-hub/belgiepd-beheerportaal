@@ -51,7 +51,8 @@ export async function loadLinkedCaseEntries(db,actor,roster,dept,targetId,types)
      linkedSource:{discordId:source.personId,call:String(source.call||'').slice(0,30),
        name:String(source.name||'').slice(0,120)},
      eventDate:record.eventDate,eventTime:record.eventTime||'',
-     details:String(record.details||'').slice(0,6000),
+     details:'Gekoppelde registratie uit dossier '+String(source.call||'—')+' · '+
+       String(source.name||'—')+'\n'+String(record.details||'').slice(0,6000),
      registeredBy:{name:String(record.registeredBy?.name||'Onbekend').slice(0,120),
        call:String(record.registeredBy?.call||'').slice(0,30)},
      // Mirrors are references, not new observations; do not count score twice.
