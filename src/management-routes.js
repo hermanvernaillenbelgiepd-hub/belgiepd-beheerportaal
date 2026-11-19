@@ -2,7 +2,7 @@ import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {roleForDepartment} from './leave-policy.js';
-import {canRetireDossierRecord,isRetired} from './dossier-retirement-policy.js';
+import {canRetireDossierRecord,mayRetireCaseType,isRetired} from './dossier-retirement-policy.js';
 import {actorFromPersonnel,representativeFromPersonnel} from './registrations.js';
 import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_DOC,
  historicalMigrationSettings,historicalMigrationAllowed,validateHistoricalActorSelection}
@@ -23,7 +23,7 @@ import {POLICE_RANK_CHOICES,policeSubjectGradeOption} from './personnel-rank-pol
 import {staffActivityFollowup} from './staff-activity-followup.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
-import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport,mayCorrectManualCase} from './management-utils.js';
+import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport,mayCorrectManualCase,mayAnnotateDossierCase} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
 const caseId=(dept,id)=>`${dept}_${id}`;
@@ -32,7 +32,10 @@ const noPrivate=e=>{
   const importedBy=e.historicalImport===true&&submittedByActor?{
     name:String(submittedByActor.name||'').slice(0,120),
     call:String(submittedByActor.call||'').slice(0,24)}:null;
+  const corrected=typeof e.administrativeCorrection?.details==='string'?
+    e.administrativeCorrection.details:null;
   return {...other,...(importedBy?{importedBy}:{}),
+    ...(corrected!==null?{details:corrected}:{}),
     createdAt:toIso(createdAt),modifiedAt:toIso(modifiedAt)};
 };
 const errorResponse=(res,error)=>{
@@ -100,11 +103,102 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         entries:[
           ...rows.docs.filter(d=>!isRetired(d.data())).map(d=>({
             id:d.id,...noPrivate(d.data()),
-            canAmend:enabled()&&mayCorrectManualCase(req.bpd,subject,d.data())
+            canAmend:enabled()&&mayCorrectManualCase(req.bpd,subject,d.data()),
+            canAnnotate:enabled()&&mayAnnotateDossierCase(req.bpd,subject,d.data()),
+            canRetire:enabled()&&mayAnnotateDossierCase(req.bpd,subject,d.data())&&
+              mayRetireCaseType(d.data())
           })),
           ...linked.entries.map(e=>({...noPrivate(e),canAmend:false}))
         ],limited:rows.size===150||linked.limited});
     }catch(e){errorResponse(res,e)}
+  });
+  // Administrative correction of ANY authorized dossier entry, including
+  // historical and effective movements. This only replaces the *displayed*
+  // explanation; it cannot change the underlying effective decision,
+  // original rank/callsign/status, dates, author or original record.
+  app.post('/api/management/cases/:dept/:discordId/:entryId/administrative-correction',
+   requireUser,async(req,res)=>{
+    if(!enabled())return res.status(503).json({error:'Dossierregistraties staan momenteel uit'});
+    const {dept,discordId:id,entryId}=req.params;
+    if(!['politie','ambulance','brandweer','depannage'].includes(dept)||
+      !validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
+      return res.status(400).json({error:'Ongeldige dossierverwijzing'});
+    const body=req.body;
+    if(!body||typeof body!=='object'||Array.isArray(body)||
+      Object.keys(body).some(k=>!['details','reason','expectedModifiedAt'].includes(k)))
+      return res.status(400).json({error:'Ongeldige correctie-aanvraag'});
+    const details=typeof body.details==='string'?body.details.trim():'';
+    const reason=typeof body.reason==='string'?body.reason.trim():'';
+    if(details.length<2||details.length>4000||/[<>\x00-\x08\x0b\x0c\x0e-\x1f]/.test(details))
+      return res.status(400).json({error:'Gecorrigeerde omschrijving moet 2 tot 4000 tekens bevatten'});
+    if(reason.length<10||reason.length>500||/[<>\x00-\x08\x0b\x0c\x0e-\x1f]/.test(reason))
+      return res.status(400).json({error:'Vermeld een correctiereden van 10 tot 500 tekens'});
+    if(!Object.hasOwn(body,'expectedModifiedAt')||
+      body.expectedModifiedAt!==null&&(
+        typeof body.expectedModifiedAt!=='string'||
+        !Number.isFinite(Date.parse(body.expectedModifiedAt))))
+      return res.status(400).json({error:'Vernieuw eerst het dossier'});
+    try{
+      const snapshot=await getSnapshot();
+      if(snapshot.stale)return res.status(503).json({error:'Personeelsbron niet actueel'});
+      const subject=uniqueSubject(snapshot.data,dept,id);
+      if(!subject)return res.status(404).json({error:'Personeelslid niet gevonden'});
+      const actor=actorFromPersonnel(req.bpd,snapshot.data);
+      if(!actor||!canReadServiceDossier(req.bpd,dept))
+        return res.status(403).json({error:'Niet bevoegd voor deze dossiercorrectie'});
+      const store=db(),entries=store.collection('bpd_cases')
+        .doc(caseId(dept,id)).collection('entries');
+      const ref=entries.doc(entryId),audit=ref.collection('audit').doc();
+      const log=entries.doc(),notice=store.collection('bpd_notices').doc(dept)
+        .collection('events').doc();
+      const at=FieldValue.serverTimestamp();
+      await store.runTransaction(async tx=>{
+        const current=await tx.get(ref);
+        if(!current.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
+        const old=current.data();
+        if(!mayAnnotateDossierCase(req.bpd,subject,old))
+          throw Object.assign(Error('Deze registratie mag niet door dit kader worden gecorrigeerd'),{status:403});
+        if((toIso(old.modifiedAt)||null)!==body.expectedModifiedAt)
+          throw Object.assign(Error('Registratie werd intussen gewijzigd. Vernieuw het dossier.'),{status:409});
+        const before=typeof old.administrativeCorrection?.details==='string'?
+          old.administrativeCorrection.details:String(old.details||'');
+        if(before===details)
+          throw Object.assign(Error('De gecorrigeerde tekst is ongewijzigd'),{status:400});
+        tx.update(ref,{
+          administrativeCorrection:{details,reason,actorName:actor.name,
+            actorCall:actor.call||'',actorDiscordId:req.bpd.discordId,at},
+          modifiedAt:at
+        });
+        tx.create(audit,{
+          action:'case_administrative_correction',originalType:old.type,
+          originalSource:old.source||null,before:{details:before},
+          after:{details},reason,actorUid:req.bpd.uid,
+          actorDiscordId:req.bpd.discordId,actorName:actor.name,at
+        });
+        // Append an independently dated event to the live weekreport.
+        // The original recorded movement is never silently rewritten.
+        tx.create(log,{
+          type:'activiteit',reportCategory:'activiteit',dept,
+          subjectDiscordId:id,subjectNameAtCreation:subject.name,
+          subjectCallAtCreation:subject.call,eventDate:brusselsEventDate(),
+          source:'case-administrative-correction',
+          amendmentOf:{entryId,kind:old.type},registeredBy:actor,
+          details:'ADMINISTRATIEVE DOSSIERCORRECTIE · '+entryId+
+            ' · Oorspronkelijk type: '+old.type+' · Reden: '+reason+
+            ' · Gecorrigeerd door '+actor.name,
+          createdAt:at,modifiedAt:null
+        });
+        tx.create(notice,{caseId:caseId(dept,id),entryId:log.id,
+          type:'activiteit',action:'case_administrative_correction',
+          originalEntryId:entryId,dept,createdAt:at});
+      });
+      return res.json({saved:true,auditRecorded:true,reportLogged:true,
+        effectiveDecisionChanged:false});
+    }catch(e){
+      if([400,403,404,409].includes(e?.status))
+        return res.status(e.status).json({error:e.message});
+      return errorResponse(res,e);
+    }
   });
   // Narrow self-note exception: verified 900/910 Korpsleiding can append
   // an own note without gaining access to any other protected dossier.
