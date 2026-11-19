@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {mayAdministerDcTransfer} from '../src/dc-id-transfer-policy.js';
+import {mayAdministerDcTransfer,mayReviewPersonnelReentry} from '../src/dc-id-transfer-policy.js';
 import {mayReviewTrainingRequest} from '../src/training-request-policy.js';
 import {roleForDepartment} from '../src/leave-policy.js';
 const file=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
@@ -16,9 +16,29 @@ test('Herinstroommeldingen zijn enkel voor gecontroleerd politiehoger kader of t
  assert.equal(mayAdministerDcTransfer({...policeOfficer,departments:['ambulance'],
   departmentRoles:{ambulance:'officierenkader'}}),false);
 });
+test('Herinstroomwachtrij vereist Officierenkader of Korpsleiding van politie',()=>{
+ const officer={...policeOfficer};
+ const chief={...officer,role:'korpsleiding',
+  departmentRoles:{politie:'korpsleiding'}};
+ const middle={...officer,role:'middenkader',
+  departmentRoles:{politie:'middenkader'}};
+ const technicalOnly={...officer,role:'burger',
+  discordRosterEditorVerified:false,departments:[],
+  departmentRoles:{},portalTechnicalMode:true,profileTechnicalAvailable:true};
+ assert.equal(mayReviewPersonnelReentry(officer),true);
+ assert.equal(mayReviewPersonnelReentry(chief),true);
+ assert.equal(mayReviewPersonnelReentry(middle),false);
+ assert.equal(mayAdministerDcTransfer(technicalOnly),true,
+   'technisch beheer houdt afzonderlijke overdrachtsrechten');
+ assert.equal(mayReviewPersonnelReentry(technicalOnly),false,
+   'technische beheermodus alleen ontsluit geen herinstroommeldingen');
+ assert.equal(mayReviewPersonnelReentry({...officer,discordRosterEditorVerified:false}),false);
+});
 test('Protected archived dossier hints also respect subject permission',()=>{
  const source=file('src/personnel-return-review-routes.js');
  assert.match(source,/if\(!mayAdministerDcTransfer\(req\.bpd\)\)/);
+ assert.equal((source.match(/if\(!mayReviewPersonnelReentry\(req\.bpd\)\)/g)||[]).length,2,
+  'both the read and acknowledgement endpoint require officer review permission');
  assert.match(source,/const readable=possible\.filter\(p=>canReadPersonnelSubject\(req\.bpd,p\)\)/);
  assert.match(source,/const oldReadable=oldSame&&canReadPersonnelSubject\(req\.bpd,oldSame\)/);
  assert.match(source,/archivedSameId:Boolean\(oldReadable\)/);

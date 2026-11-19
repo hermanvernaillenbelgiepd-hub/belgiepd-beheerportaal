@@ -1,5 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {mayAdministerDcTransfer} from './dc-id-transfer-policy.js';
+import {mayAdministerDcTransfer,mayReviewPersonnelReentry} from './dc-id-transfer-policy.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {normalizedIdentityName} from './personnel-identity-policy.js';
 
@@ -12,7 +12,9 @@ const safe=x=>String(x||'').slice(0,120);
 export function installPersonnelReturnReviewRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/personnel-return-review',requireUser,async(req,res)=>{
   if(!mayAdministerDcTransfer(req.bpd))
-    return res.status(403).json({error:'Alleen geverifieerd Officierenkader, Korpsleiding of Technisch Beheer'});
+    return res.status(403).json({error:'Geen bevoegdheid voor herinstroommeldingen'});
+  if(!mayReviewPersonnelReentry(req.bpd))
+    return res.status(403).json({error:'Alleen geverifieerd politie-Officierenkader of Korpsleiding'});
   try{
    const store=getFirestore();
    const [snap,users,calls,alerts,transfers]=await Promise.all([
@@ -100,6 +102,8 @@ export function installPersonnelReturnReviewRoutes(app,{requireUser,getSnapshot}
  app.post('/api/personnel-return-review/:discordId/acknowledge',requireUser,async(req,res)=>{
   if(!mayAdministerDcTransfer(req.bpd))
     return res.status(403).json({error:'Geen bevoegdheid voor deze melding'});
+  if(!mayReviewPersonnelReentry(req.bpd))
+    return res.status(403).json({error:'Alleen geverifieerd politie-Officierenkader of Korpsleiding'});
   const id=req.params.discordId,reason=String(req.body?.reason||'').trim();
   if(!ID.test(id)||reason.length<10||reason.length>500||
      /[<>\x00-\x1f\x7f]/.test(reason))
