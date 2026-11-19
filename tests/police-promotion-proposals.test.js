@@ -239,7 +239,7 @@ test('Sander 485 has a real rank selector, and 5xx number preview is not a write
  assert.match(ui,/id="staffMovementCustomRankField" hidden/);
  assert.match(ui,/const POLICE_GRADE_SEQUENCE=Object\.freeze/);
  assert.match(ui,/const options=effectivePoliceGradeChoices\(selected,kind\)/);
- assert.match(ui,/select\.replaceChildren\(option\('', 'Kies nieuwe graad…'\)/);
+ assert.match(ui,/select\.replaceChildren\(option\('','Kies nieuwe graad…'\)/);
  assert.match(ui,/select\.required=grades&&effective/);
  assert.match(ui,/gradeField\.required=grades&&!effective/);
  assert.match(ui,/\$\('staffMovementGradeSelect'\)\.addEventListener\('change'/);
