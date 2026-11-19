@@ -128,6 +128,12 @@ button.primary{background:#3158d8;color:white;border-color:#3158d8}button:disabl
 @media(prefers-reduced-motion:reduce){.notification-fold>summary::before{transition:none}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 <style id="notificationDashboardStyle">
+/* Een rubriek blijft zichtbaar, ook als haar lijst leeg is.
+   Bij nul resultaten is de inhoud leeg, zonder nutteloze witruimte. */
+.notification-page #reviewList:empty{display:none}
+.notification-page #reviewFold[open]:has(> #reviewList:empty) > summary{
+  border-bottom:0
+}
 /* Meldingen als overzichtspagina, afgestemd op de startpagina.
    Alleen presentatie; bestaande paneel-ID's, API's en rollen blijven intact. */
 .notification-page{
@@ -285,7 +291,8 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
   </div>
  </div>
  <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
- <section class="notification-group notification-group--action" aria-label="Te behandelen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">⚡</span><div><h2>Te behandelen</h2><p>Aanvragen, controles en beslissingen die jouw aandacht kunnen vragen.</p></div></div><div class="notification-cards"><section id="leaveReturnPanel" class="panel notification-tile notification-tile--action" hidden>
+ <section class="notification-group notification-group--action" aria-label="Te behandelen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">⚡</span><div><h2>Te behandelen</h2><p>Aanvragen, controles en beslissingen die jouw aandacht kunnen vragen.</p></div></div><div class="notification-cards">
+<section id="leaveReturnPanel" class="panel notification-tile notification-tile--action" hidden>
  <details class="notification-fold" id="leaveReturnFold" open>
   <summary>⚠ Verlofterugkeer · CHECKING
    <span id="leaveReturnUnread" class="pill">0 ongelezen</span>
@@ -307,19 +314,38 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
   <summary>🎓 Opleidingen te behandelen <span id="trainingCount" class="pill">0</span></summary>
 <div id="trainingReview"></div>
  </details>
-</section><section class="panel notification-tile notification-tile--action" id="pathwayReviewPanel" hidden>
+</section>
+<section class="panel notification-tile notification-tile--action" id="pathwayReviewPanel" hidden>
  <details class="notification-fold" id="pathwayReviewFold">
   <summary>📚 Opleidingsbeleid · verplichtingen <span id="pathwayReviewCount" class="pill">0</span></summary>
   <p>Voorstellen worden eerst beoordeeld door Officierenkader en daarna door Korpsleiding.</p>
   <div id="pathwayReviewList"></div>
  </details>
+</section>
+<section id="identityReviewPanel" class="panel notification-tile notification-tile--action" hidden>
+ <details class="notification-fold" id="identityReviewFold">
+  <summary>🔐 Herinstroom en DC-ID-controle · <span id="identityReviewCount" class="pill">0</span></summary>
+  <p>Voor Officierenkader en Korpsleiding: controleer onbekende DC-ID's, mogelijke oude dossiers en nieuwe roepnummeraanvragen vóór goedkeuring. Een overeenkomstige naam bewijst geen identiteit.</p>
+  <div id="identityReviewList" aria-live="polite"></div>
+ </details>
+</section>
+<section id="manualLongLeavePanel" class="panel notification-tile notification-tile--action" hidden>
+ <details class="notification-fold" id="manualLongLeaveFold">
+  <summary>📅 Handmatig ingediend verlof vanaf 31 dagen · ter informatie
+   <span id="manualLongLeaveCount" class="pill">0</span></summary>
+  <p>Voor bevoegd Middenkader en hoger. Een openstaande periode staat in het
+  beveiligde dossier, maar is nog niet goedgekeurd. Alleen bevoegde
+  Officierenkaderleden en Korpsleiding kunnen beslissen.</p>
+  <div id="manualLongLeaveList" aria-live="polite"></div>
+ </details>
 </section></div></section>
- <section class="notification-group notification-group--personal" aria-label="Mijn meldingen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">🔔</span><div><h2>Mijn meldingen</h2><p>Persoonlijke activiteitspings, verlofberichten en opleidingen.</p></div></div><div class="notification-cards"><section id="activityPingsPanel" class="panel notification-tile notification-tile--personal" hidden>
+ <section class="notification-group notification-group--personal" aria-label="Mijn meldingen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">🔔</span><div><h2>Mijn meldingen</h2><p>Persoonlijke activiteitspings, verlofberichten en opleidingen.</p></div></div><div class="notification-cards">
+<section id="activityPingsPanel" class="panel notification-tile notification-tile--personal" hidden>
  <details class="notification-fold" id="activityPingsFold">
   <summary>🔔 Mijn activiteitspings</summary>
 
  
- <p>Ontvangen inactiviteitspings en leesbevestigingen. Iedere ping heeft één bewijsregistratie in je dossier en het dienstweekrapport.</p>
+ <p>Ontvangen activiteitenpings en leesbevestigingen. Iedere ping heeft één bewijsregistratie in je dossier en het dienstweekrapport.</p>
  <div id="activityPingsList"></div>
 
  </details>
@@ -340,7 +366,8 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
 <div id="trainingPersonal"></div><p><a href="/opleidingscentrum.html">Nieuwe opleiding aanvragen</a></p>
  </details>
 </section></div></section>
- <section class="notification-group notification-group--followup" aria-label="Opvolging & beheer"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">👥</span><div><h2>Opvolging & beheer</h2><p>Personeelsstatussen, reeksberichten en gemachtigde controles.</p></div></div><div class="notification-cards"><section id="staffActivityFollowupPanel" class="panel notification-tile notification-tile--followup" hidden>
+ <section class="notification-group notification-group--followup" aria-label="Opvolging & beheer"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">👥</span><div><h2>Opvolging & beheer</h2><p>Personeelsstatussen, reeksberichten en gemachtigde controles.</p></div></div><div class="notification-cards">
+<section id="staffActivityFollowupPanel" class="panel notification-tile notification-tile--followup" hidden>
  <details class="notification-fold" id="staffFollowupFold">
   <summary>👥 Personeelsopvolging · <span id="staffFollowup50">0</span> op 50/50 · <span id="staffFollowupInactive">0</span> INACTIEF</summary>
 
@@ -390,6 +417,23 @@ async function api(url,body){
 }
 const displayLeaveDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)?
  value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
+function manualLeaveInformation(x){
+ const row=document.createElement('div');row.className='item';
+ const heading=document.createElement('strong');
+ heading.textContent=(x.subjectCall?x.subjectCall+' · ':'')+
+  (x.subjectName||'Personeelslid')+' · '+
+  displayLeaveDate(x.startDate)+' tot '+displayLeaveDate(x.endDate)+
+  ' · IN BEHANDELING';
+ const detail=document.createElement('p');
+ detail.textContent=Number(x.days)+' kalenderdagen · '+
+  (x.subjectDepartments||[]).join(', ')+' · Handmatig ingeschreven door kaderlid';
+ const reason=document.createElement('p');
+ reason.textContent='Reden: '+(x.note?.trim()||'Niet vermeld');
+ const info=document.createElement('small');
+ info.textContent='Ter informatie. Goedkeuren/afwijzen kan alleen via de bevoegde beslissingslijst.';
+ row.append(heading,detail,reason,info);
+ return row;
+}
 function item(x,override=false){
  const row=document.createElement('div');row.className='item';
  const title=document.createElement('strong');title.textContent=(x.subjectCall?x.subjectCall+' · ':'')+(x.subjectName||'Personeelslid')+
@@ -525,7 +569,7 @@ async function loadActivityPings(){
   for(const entry of notices){
    const row=document.createElement('div');row.className='item';
    const heading=document.createElement('strong');
-   heading.textContent=(['50/50','INACTIEF'].includes(entry.kind)?entry.kind+'-ping':'Inactiviteitsping')+
+   heading.textContent=(['50/50','INACTIEF'].includes(entry.kind)?entry.kind+'-ping':'Activiteitenping')+
     ' · '+(entry.department||'Dienst');
    const info=document.createElement('p');
    const date=entry.sentAt&&Number.isFinite(Date.parse(entry.sentAt))?
@@ -555,6 +599,53 @@ async function loadActivityPings(){
   panel.hidden=false;
  }
 }
+async function loadIdentityReview(){
+ const panel=$('identityReviewPanel'),list=$('identityReviewList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const result=await api('/api/personnel-return-review');
+  const rows=result.rows||[];
+  $('identityReviewCount').textContent=String(rows.length);
+  for(const item of rows){
+   const card=document.createElement('div');card.className='item';
+   const heading=document.createElement('strong');
+   heading.textContent=(item.name||'Aanvrager')+' · '+item.discordId;
+   const detail=document.createElement('p');
+   detail.textContent=item.detail+
+     (item.archivedSameId?' · OUD DOSSIER OP DEZE DC-ID':'')+
+     (item.possiblePriorRecord?' · MOGELIJK OUD DOSSIER':'')+
+     (item.archivedCall?' · Vorig roepnummer: '+item.archivedCall:'')+
+     (item.priorDiscordId?' · Te controleren vorige DC-ID: '+item.priorDiscordId:'');
+   const link=document.createElement('a');
+   link.href=item.href||'/personeelsbeheer.html';
+   link.textContent='Open controlepagina';
+   card.append(heading,detail,link);
+   if(item.alertId){
+    const check=document.createElement('button');check.className='alt';
+    check.type='button';check.textContent='Als gecontroleerd markeren';
+    check.onclick=async()=>{
+     const reason=prompt('Motivering controle (10–500 tekens). Dit keurt geen dossier of account goed:');
+     if(reason===null)return;
+     if(reason.trim().length<10||reason.trim().length>500)
+       return feedback('Motivering moet 10 tot 500 tekens zijn.',true);
+     check.disabled=true;
+     try{
+      await api('/api/personnel-return-review/'+encodeURIComponent(item.alertId)+'/acknowledge',
+        {reason:reason.trim()});
+      await loadIdentityReview();
+     }catch(e){feedback(e.message,true);check.disabled=false}
+    };
+    card.append(check);
+   }
+   list.append(card);
+  }
+  panel.hidden=false;
+ }catch(e){
+  if(/Alleen geverifieerd Officierenkader|Geen toegang|Aanmelding vereist/i.test(e.message))return;
+  panel.hidden=false;list.textContent='Identiteitscontrole tijdelijk niet beschikbaar: '+e.message;
+ }
+}
 async function loadPathwayReview(){
  const panel=$('pathwayReviewPanel'),list=$('pathwayReviewList');
  panel.hidden=true;list.replaceChildren();
@@ -563,8 +654,17 @@ async function loadPathwayReview(){
   const data=await api('/api/training-pathway/manage');
   const roles=data.reviewStages||{};
   if(!roles.ok&&!roles.kl)return;
-  const due=(data.courses||[]).filter(x=>x.pending&&
-   (x.pending.stage==='ok'&&roles.ok||x.pending.stage==='kl'&&roles.kl));
+  const due=[
+   ...(data.courses||[]).filter(x=>x.pending&&
+     (x.pending.stage==='ok'&&roles.ok||x.pending.stage==='kl'&&roles.kl)),
+   ...(data.assignments||[]).filter(x=>x.pending&&
+     (x.pending.stage==='ok'&&roles.ok||x.pending.stage==='kl'&&roles.kl))
+     .map(x=>({...x,name:(x.courseName||'Opleiding')+' · '+(x.subjectName||'medewerker')})),
+   ...(data.groupRequirements||[]).filter(x=>x.pending&&
+     (x.pending.stage==='ok'&&roles.ok||x.pending.stage==='kl'&&roles.kl))
+     .map(x=>({...x,name:(x.courseName||'Opleiding')+' · '+x.targetKind+
+       (x.targetValue?' · '+x.targetValue:'')}))
+  ];
   $('pathwayReviewCount').textContent=String(due.length);
   for(const x of due){
    const item=document.createElement('div');item.className='item';
@@ -597,7 +697,7 @@ async function load(){
    refreshRequestedAgain=false;
    const loaders=[loadStaffActivityFollowup,loadLeaveReturnChecks,loadActivityPings,
      loadTraining,loadPathwayReview,loadSeriesLeave,loadLeave];
-   
+   loaders.unshift(loadIdentityReview);
    await Promise.allSettled(loaders.map(fn=>fn()));
   }while(refreshRequestedAgain);
  };
@@ -608,6 +708,7 @@ async function load(){
  return refreshInFlight;
 }
 async function loadLeave(){
+ $('manualLongLeavePanel').hidden=true;
  $('reviewPanel').hidden=true;
  $('personalPanel').hidden=true;
  $('overridePanel').hidden=true;
@@ -634,6 +735,11 @@ async function loadLeave(){
     return;
   }
   writesEnabled=access.writesEnabled===true;
+  const infoList=$('manualLongLeaveList');infoList.replaceChildren();
+  const informative=result.toInformation||[];
+  $('manualLongLeaveCount').textContent=String(informative.length);
+  for(const item of informative)infoList.append(manualLeaveInformation(item));
+  $('manualLongLeavePanel').hidden=false;
   const list=$('reviewList');list.replaceChildren();
   const entries=result.toReview||[];
   $('reviewCount').textContent=String(entries.length);
