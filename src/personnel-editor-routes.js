@@ -30,7 +30,7 @@ import {PERSONNEL_SPECIALIZATIONS_COLLECTION,INITIAL_POLICE_SPECIALTIES} from '.
 import {occupiedPoliceCalls,policeCallNumber} from './callsign-utils.js';
 import {readPoliceCallOccupation} from './police-call-availability.js';
 import {canChangePoliceGrade,allowedPoliceGradeChoices,
-  validatePoliceGradeChange,classifyPoliceGradeChange} from './personnel-rank-policy.js';
+  validatePoliceGradeChange,classifyPoliceGradeChange,policeOfficialRankLabel} from './personnel-rank-policy.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
 const asTime=x=>x?.toDate?.().toISOString?.()||null;
@@ -81,6 +81,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           nextPoliceRank(p.rank)&&req.bpd.discordId!==p.personId&&
           canAuthoriseExceptionalPoliceRank(req.bpd,'politie'));
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
+          rankDisplay:p.dept==='politie'?policeOfficialRankLabel(p.rank):p.rank,
           canOpenDossier,canManageLifecycle:canManagePersonnelLifecycle(req.bpd,p),
           canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
           canChangeRank:canChangePoliceGrade(req.bpd,p),
