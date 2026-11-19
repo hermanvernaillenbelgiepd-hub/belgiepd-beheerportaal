@@ -108,6 +108,8 @@ test('één transactie maakt alle andere dienstfiches gearchiveerd en sluit open
   assert.ok(created.some(x=>x.path.startsWith('bpd_personnel_lifecycle/'+dept+'_'+id+'/audit/')
     &&x.data.action==='personnel_archived_globally'));
  }
+ assert.ok(created.some(x=>x.path.startsWith('bpd_citizen_staff_dossiers/'+id+'/entries/')
+  &&x.data.kind==='notitie'&&x.data.source==='global-personnel-archive'));
  assert.equal(created.some(x=>x.data.type==='verlof'&&x.data.statusTo==='approved'),false);
 });
 
