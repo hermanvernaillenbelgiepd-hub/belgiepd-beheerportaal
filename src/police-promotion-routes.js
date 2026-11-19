@@ -29,7 +29,10 @@ export function recommendedPromotionCall(rank,used){
  const option=policeRankByName(rank);
  if(!option)return null;
  const busy=new Set([...used].map(Number));
- const choices=option.hundreds.flatMap(h=>orderedCallNumbers(h*100,h*100+99))
+ // Agent's permanent grade calls are 2xx; 1xx are temporary recruit
+ // calls and must NOT be offered for an effective demotion to Agent.
+ const hundreds=rank==='Agent'?[2]:option.hundreds;
+ const choices=hundreds.flatMap(h=>orderedCallNumbers(h*100,h*100+99))
    .filter(n=>n!==900&&n!==910&&(Math.floor(n/100)!==9||n>=920));
  return choices.find(n=>!busy.has(n))??null;
 }
@@ -98,8 +101,10 @@ export function installPolicePromotionRoutes(app,{requireUser,getSnapshot}){
    if(!maySuggest)throw fail(403,'Geen bevoegdheid om een roepnummervoorstel op te vragen');
    const choices=allowedPoliceGradeChoices(req.bpd);
    const current=policeRankByName(person.rank),wanted=policeRankByName(rank);
-   if(!choices.includes(rank)||!current||wanted.grade<=current.grade)
-    throw fail(403,'De voorgestelde graad valt buiten jouw promotiebevoegdheid');
+   // A read-only preview is allowed for either an effective promotion
+   // or an effective demotion, never for an unchanged rank.
+   if(!choices.includes(rank)||!current||!wanted||wanted.grade===current.grade)
+    throw fail(403,'De gekozen nieuwe graad valt buiten jouw rangbevoegdheid');
    const used=await policeOccupiedNumbers(db(),roster.data);
    res.set('Cache-Control','private, no-store');
    return res.json({rank,call:recommendedPromotionCall(rank,used),
