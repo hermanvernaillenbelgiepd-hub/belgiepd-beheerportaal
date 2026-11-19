@@ -13,6 +13,8 @@ import {verifyGuildAuthorizationRoles} from './discord-guild-authorization.js';
 import {ROLE_CATALOG} from './role-catalog.js';
 import {USER_COLLECTION} from './user-access.js';
 import {personnelCallClaimId} from './personnel-editor-policy.js';
+import {identityArchiveSubjects,prepareIdentityArchive,writeIdentityArchive}
+ from './global-personnel-archive.js';
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 const respond=(res,e)=>{
  if(e?.status)return res.status(e.status).json({error:e.message});
@@ -116,12 +118,20 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    const requestRef=honorable().doc('politie_'+discordId);
    const stateRef=store().doc('politie_'+discordId);
    const approved=input.decision==='approve';
+   const archiveRoster=approved?await getSnapshot({includeArchived:true}):null;
+   if(archiveRoster?.stale)throw fail(503,'Personeelsbron niet actueel voor centrale archivering');
+   const archiveSubjects=approved?
+     identityArchiveSubjects(archiveRoster.data,discordId):[];
+   if(approved&&archiveSubjects.some(p=>!allowed(req.bpd,p)))
+     throw fail(403,'Centrale archivering vereist bevoegdheid voor alle gekoppelde diensten');
    const result=await db().runTransaction(async tx=>{
     const [request,life]=await Promise.all([tx.get(requestRef),tx.get(stateRef)]);
     if(request.get('status')!=='pending')
       throw fail(409,'Geen openstaande aanvraag voor dit personeelslid');
     if(approved&&['archived','pending'].includes(life.get('state')))
       throw fail(409,'Personeelslid is reeds uit dienst of in herinstroom');
+    const archivePlan=approved?await prepareIdentityArchive(tx,db(),{
+      subjects:archiveSubjects,primaryDept:'politie',discordId}):null;
     const at=FieldValue.serverTimestamp(),revision=
       Number.isSafeInteger(life.get('revision'))?life.get('revision'):0;
     tx.set(requestRef,{status:approved?'approved':'rejected',
@@ -170,9 +180,14 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
         name:historic.name,call:historic.call,
         before:'Actief',after:'Eervol uit dienst',cause:'honorable_resignation',
         reason:input.reason,actorDiscordId:req.bpd.discordId,at});
+      const cross=writeIdentityArchive(tx,db(),archivePlan,{
+        actor:{name:req.bpd.name||'Bevoegd kader',call:req.bpd.call||'',
+          discordId:req.bpd.discordId},actorUid:req.bpd.uid,
+        reason:input.reason,cause:'honorable_resignation',
+        source:'honorable-resignation'});
+      return {status:'approved',archived:true,cmsRoleSyncPending:true,...cross};
     }
-    return {status:approved?'approved':'rejected',
-      archived:approved,cmsRoleSyncPending:approved};
+    return {status:'rejected',archived:false,cmsRoleSyncPending:false};
    });
    if(approved)invalidateLifecycle();
    res.set('Cache-Control','private, no-store');
@@ -416,8 +431,10 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
     const fullRoster=action==='archive'?await getSnapshot({includeArchived:true}):null;
     if(fullRoster?.stale)throw fail(503,'Personeelsbron niet actueel voor uitdiensthistoriek');
     // Only previously authorized service memberships may be listed.
-    const readableServices=fullRoster?fullRoster.data.filter(p=>
-      p.personId===discordId&&canReadPersonnelLifecycle(req.bpd,p)):[];
+    const readableServices=fullRoster?
+      identityArchiveSubjects(fullRoster.data,discordId):[];
+    if(action==='archive'&&readableServices.some(p=>!allowed(req.bpd,p)))
+      throw fail(403,'Centrale archivering vereist bevoegdheid voor alle gekoppelde diensten');
     const actorProfile=fullRoster?.data.find(p=>p.personId===req.bpd.discordId&&
       p.dept===dept);
     // Membership loss alone never mutates an operational record. Even when a
@@ -433,6 +450,8 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
     const ref=store().doc(dept+'_'+discordId);
     const result=await db().runTransaction(async tx=>{
      const current=await tx.get(ref),prev=current.data()||{};
+     const archivePlan=action==='archive'?await prepareIdentityArchive(tx,db(),{
+       subjects:readableServices,primaryDept:dept,discordId}):null;
      const revision=Number.isSafeInteger(prev.revision)?prev.revision:0;
      if(revision!==input.expectedRevision)throw fail(409,'Fiche is intussen gewijzigd. Vernieuw eerst');
      if(action==='archive'&&prev.state==='archived')
@@ -535,7 +554,13 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        cause:input.cause,reason:input.reason,actorDiscordId:req.bpd.discordId||null,
        at:FieldValue.serverTimestamp()
      });
-     return {state,revision:revision+1};
+     const cross=archivePlan?writeIdentityArchive(tx,db(),archivePlan,{
+       actor:{name:actorProfile?.name||req.bpd.name||'Bevoegd kader',
+         call:actorProfile?.call||req.bpd.call||'',
+         discordId:req.bpd.discordId},
+       actorUid:req.bpd.uid,reason:input.reason,cause:input.cause,
+       source:'personnel-lifecycle-archive'}):{};
+     return {state,revision:revision+1,...cross};
     });
     invalidateLifecycle();
     res.set('Cache-Control','no-store');
