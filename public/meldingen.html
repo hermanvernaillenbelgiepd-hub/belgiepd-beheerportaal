@@ -305,6 +305,13 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
  </div>
  <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
  <section class="notification-group notification-group--action" aria-label="Te behandelen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">⚡</span><div><h2>Te behandelen</h2><p>Aanvragen, controles en beslissingen die jouw aandacht kunnen vragen.</p></div></div><div class="notification-cards">
+<section id="policePromotionPanel" class="panel notification-tile notification-tile--action" hidden>
+ <details class="notification-fold" id="policePromotionFold" open>
+  <summary>⚠ Politie · promotievoorstellen <span id="policePromotionCount" class="pill">0</span></summary>
+  <p>Officierenkader en Korpsleiding beoordelen voorstellen. De volgende graad en het eerste beschikbare roepnummer zijn voorstellen: beide mogen vóór goedkeuring worden aangepast. Een goedkeuring verandert de personeelsfiche en wordt als effectieve promotie gelogd.</p>
+  <div id="policePromotionList" aria-live="polite"></div>
+ </details>
+</section>
 <section id="sivTrainingRestrictionPanel" class="panel notification-tile notification-tile--action" hidden>
  <details class="notification-fold" id="sivTrainingRestrictionFold" open>
   <summary>🚫 SIV/WPR · Prioritair rijden <span id="sivTrainingRestrictionCount" class="pill">0</span></summary>
@@ -778,7 +785,7 @@ async function load(){
  const refresh=async()=>{
   do{
    refreshRequestedAgain=false;
-   const loaders=[loadSivTrainingRestrictions,loadStaffActivityFollowup,loadLeaveReturnChecks,loadActivityPings,
+   const loaders=[loadPolicePromotions,loadSivTrainingRestrictions,loadStaffActivityFollowup,loadLeaveReturnChecks,loadActivityPings,
      loadTraining,loadPathwayReview,loadSeriesLeave,loadLeave];
    loaders.unshift(loadIdentityReview);
    await Promise.allSettled(loaders.map(fn=>fn()));
@@ -789,6 +796,101 @@ async function load(){
   button.textContent='↻ Alles vernieuwen';
  });
  return refreshInFlight;
+}
+async function loadPolicePromotions(){
+ const panel=$('policePromotionPanel'),list=$('policePromotionList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const result=await api('/api/police-promotions/pending');
+  const pending=Array.isArray(result.pending)?result.pending:[];
+  $('policePromotionCount').textContent=String(pending.length);
+  if(!pending.length)return;
+  panel.hidden=false;
+  for(const proposal of pending){
+   const row=document.createElement('div');row.className='item';
+   const title=document.createElement('strong');
+   title.textContent='⚠ '+proposal.call+' · '+proposal.name+' · Promotievoorstel';
+   const note=document.createElement('p');
+   note.textContent=proposal.currentRank+' → '+proposal.proposedRank+
+     ' · Voorgesteld door '+proposal.proposedBy+
+     ' · '+displayLeaveDate(proposal.eventDate);
+   const details=document.createElement('p');
+   details.textContent=proposal.details||'Geen aanvullende motivering';
+   const controls=document.createElement('div');controls.className='actions';
+   const rank=document.createElement('select');
+   rank.setAttribute('aria-label','Goed te keuren graad voor '+proposal.name);
+   for(const name of proposal.choices||[]){
+    const opt=document.createElement('option');opt.value=name;opt.textContent=name;
+    rank.append(opt);
+   }
+   rank.value=proposal.suggestedRank;
+   const call=document.createElement('input');
+   call.type='text';call.inputMode='numeric';call.maxLength=4;
+   call.placeholder='Nieuw roepnummer';call.setAttribute('aria-label','Vrij roepnummer');
+   call.value=proposal.suggestedCall==null?'':String(proposal.suggestedCall);
+   rank.onchange=async()=>{
+    call.value='';
+    try{
+     const suggestion=await api('/api/police-promotions/suggestion?'+
+       new URLSearchParams({discordId:proposal.discordId,rank:rank.value}));
+     if(suggestion.call!=null)call.value=String(suggestion.call);
+    }catch(error){feedback('Roepnummervoorstel: '+error.message,true)}
+   };
+   const dossier=document.createElement('a');
+   dossier.href='/personeelsbeheer.html?'+new URLSearchParams({
+     dept:'politie',discordId:proposal.discordId,fiche:'1'});
+   dossier.textContent='Bekijk dossier';
+   const approve=document.createElement('button');approve.className='primary';
+   approve.type='button';approve.textContent='Promotie goedkeuren';
+   approve.onclick=async()=>{
+    const reason=prompt('Officiële motivering van de effectieve promotie (20–500 tekens):',
+      'Promotie goedgekeurd na beoordeling van het dossier en het ingediende voorstel.');
+    if(reason===null)return;
+    if(reason.trim().length<20||reason.trim().length>500)
+     return feedback('De motivering moet 20 tot 500 tekens bevatten.',true);
+    if(!rank.value||!call.value.trim())
+     return feedback('Selecteer een graad en een vrij roepnummer.',true);
+    if(!confirm(proposal.name+' effectief promoveren?\n'+proposal.currentRank+
+       ' ('+proposal.call+') → '+rank.value+' ('+call.value.trim()+
+       ')\nDe personeelsfiche wordt gewijzigd en het dossier gelogd. Discord-rollen blijven afzonderlijk te controleren.'))return;
+    approve.disabled=true;
+    try{
+     await api('/api/police-promotions/'+encodeURIComponent(proposal.id)+'/decision',{
+      decision:'approve',newRank:rank.value,newCall:call.value.trim(),
+      reason:reason.trim()
+     });
+     feedback('Promotie goedgekeurd: rang, roepnummer en dossierhistoriek bijgewerkt. Controleer de Discord-rol.');
+     window.dispatchEvent(new Event('bpd-notifications-refresh'));
+     await loadPolicePromotions();
+    }catch(error){feedback('Promotie niet verwerkt: '+error.message,true);approve.disabled=false}
+   };
+   const reject=document.createElement('button');reject.type='button';
+   reject.textContent='Voorstel afwijzen';
+   reject.onclick=async()=>{
+    const reason=prompt('Motivering van afwijzing (20–500 tekens):','');
+    if(reason===null)return;
+    if(reason.trim().length<20||reason.trim().length>500)
+     return feedback('De afwijzing vereist een motivering van 20 tot 500 tekens.',true);
+    if(!confirm('Promotievoorstel voor '+proposal.name+' afwijzen?'))return;
+    reject.disabled=true;
+    try{
+     await api('/api/police-promotions/'+encodeURIComponent(proposal.id)+'/decision',{
+      decision:'reject',reason:reason.trim()
+     });
+     feedback('Promotievoorstel afgewezen en in het personeelsdossier gelogd.');
+     window.dispatchEvent(new Event('bpd-notifications-refresh'));
+     await loadPolicePromotions();
+    }catch(error){feedback(error.message,true);reject.disabled=false}
+   };
+   controls.append(rank,call,dossier,approve,reject);
+   row.append(title,note,details,controls);list.append(row);
+  }
+  if(result.limited)list.append(document.createTextNode(
+    'De lijst is afgekapt; verwerk eerst de getoonde voorstellen.'));
+ }catch(error){
+  panel.hidden=false;list.textContent='Promotievoorstellen niet beschikbaar: '+error.message;
+ }
 }
 async function loadLeave(){
  $('manualLongLeavePanel').hidden=true;
