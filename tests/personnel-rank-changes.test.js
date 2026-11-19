@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {canChangePoliceGrade,allowedPoliceGradeChoices,
-  validatePoliceGradeChange,classifyPoliceGradeChange,policeCallGrade} from '../src/personnel-rank-policy.js';
+  validatePoliceGradeChange,classifyPoliceGradeChange,policeCallGrade,
+  verifiedPoliceRankAuthority,policeOfficialRankLabel} from '../src/personnel-rank-policy.js';
 import {mergePersonnelEdits} from '../src/personnel-editor-policy.js';
 import {verifiedPoliceRank} from '../src/portal-profile-mode.js';
 import {verifyGuildAuthorizationRoles} from '../src/discord-guild-authorization.js';
@@ -133,5 +134,44 @@ test('Discord bot refresh never grants rank edits without an actual Police Korps
  assert.match(src,/verifyGuildAuthorizationRoles\(discordId\)/);
  assert.match(src,/actor\.discordPoliceRank=verifiedPoliceRank\(\{/);
  assert.match(src,/verified\.uid==='discord:'\+discordId/);
- assert.match(src,/policeScoped===actor\.role/);
+ assert.match(src,/includes\(policeScoped\)/);
+ assert.match(src,/actor\.discordPoliceRank!==policeScoped/);
+});
+
+test('Board + highest Police Corps can make verified grade decisions despite a separate administrative role',()=>{
+ const leader={...corps,boardPersonnelAdmin:true,dossierSourceFresh:true,
+   role:'beheerder',departments:['politie','ambulance'],
+   dossierNativeDepartments:['politie'],dossierAllowedDepartments:['politie'],
+   departmentRoles:{politie:'korpsleiding',ambulance:'basiskader'}};
+ assert.equal(verifiedPoliceRankAuthority(leader),'korpsleiding');
+ assert.equal(canChangePoliceGrade(leader,target('420','Inspecteur')),true);
+ assert.ok(allowedPoliceGradeChoices(leader).includes('Aspirant Commissaris'));
+ assert.equal(canChangePoliceGrade({...leader,discordPoliceRank:null},
+   target('420','Inspecteur')),false);
+ assert.equal(canChangePoliceGrade({...leader,boardPersonnelAdmin:false},
+   target('420','Inspecteur')),false);
+ assert.equal(canChangePoliceGrade({...leader,dossierSourceFresh:false},
+   target('420','Inspecteur')),false);
+ assert.equal(canChangePoliceGrade({...leader,departmentRoles:{politie:'middenkader'}},
+   target('420','Inspecteur')),false);
+ assert.equal(canChangePoliceGrade({...leader,dossierNativeDepartments:[]},
+   target('420','Inspecteur')),false);
+});
+test('Official Inspector name 420 matches 421 in read-only personnel-list display',()=>{
+ assert.equal(policeOfficialRankLabel('Inspecteur'),'Inspecteur van Politie (INP)');
+ assert.equal(policeOfficialRankLabel('Inspecteur van Politie (INP)'),
+   'Inspecteur van Politie (INP)');
+ assert.equal(policeOfficialRankLabel('Aspirant Inspecteur'),
+   'Aspirant Inspecteur van Politie (A-INP)');
+ const member=readFileSync(new URL('../src/member-dashboard-routes.js',import.meta.url),'utf8');
+ assert.match(member,/policeOfficialRankLabel\(primary\.rank\)/);
+ const editor=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ assert.match(editor,/rankDisplay:p\.dept==='politie'\?policeOfficialRankLabel\(p\.rank\)/);
+});
+test('Only the original unified personnel-movement form appears for both cadre groups',()=>{
+ const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ assert.match(html,/id="staffMovementMode"/);
+ assert.match(html,/id="staffMovementNewCall"/);
+ assert.match(html,/<section id="rankChangePanel" hidden style="display:none!important/);
+ assert.match(html,/\$\('rankChangePanel'\)\.hidden=true/);
 });
