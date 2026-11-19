@@ -25,6 +25,13 @@ td small{display:block;color:#6b7a90;margin-top:3px}
 .state{display:inline-block;padding:3px 8px;border-radius:7px;background:#e8eff9;font-weight:700}
 .state-50\/50,.state-inactief,.state-beoordelen{background:#fff0e7;color:#873f1c}
 .state-ok{background:#e6f5ea;color:#166138}
+.state-checking{background:#fff1cd;color:#784500;border:1px solid #e9b864}
+.activity-warnings{border-left:4px solid #dd8c1e!important}
+.action-check{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #aebfd13b}
+.action-check strong{display:block}.action-check small{display:block;color:#546c86}
+.action-check button{font-size:12px}
+.secondary-action{background:transparent;color:inherit;border:1px solid #7f94b0}
+.source-note{font-size:12px;line-height:1.5}
 .state-verouderd,.state-geen_data{background:#eef0f3;color:#667286}
 .warn{color:#95401e;font-weight:700}#feedback{font-weight:650;margin:10px 0;color:#285287}
 .activity-group-row th{position:static;background:#dae6f6;color:#234469;font-size:12px;font-weight:800;letter-spacing:.015em;padding:8px 10px;border-bottom:2px solid #a7bdd9}
@@ -86,6 +93,10 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
   html[data-bpd-theme="dark"] body.bpd-shell main .state {
     background:#284461!important;color:#e7f1ff!important;
   }
+  html[data-bpd-theme="dark"] body.bpd-shell main .state-checking {
+    background:#674a1f!important;color:#fff1ca!important;border-color:#caa05d!important;
+  }
+  html[data-bpd-theme="dark"] body.bpd-shell main .source-note {color:#c3d4eb!important}
   html[data-bpd-theme="dark"] body.bpd-shell main .state-ok {
     background:#164733!important;color:#b0f4cc!important;
   }
@@ -113,19 +124,24 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 <body><header><strong>BelgiëPD · Activiteitscentrum</strong><div><a href="/">← Dashboard</a> <button id="login" type="button">Aanmelden</button></div></header>
 <main>
 <h1>Activiteitscentrum</h1>
-<p>Personeelsactiviteit per dienst, gekoppeld aan de Discord ID. Gegevens uit de bestaande spreadsheet zijn voorlopig uitsluitend ter controle.</p>
-<section><strong>Alleen-lezen · geen automatische maatregelen</strong>
-<p>De 14-, 30- en 60-dagengrenzen tonen enkel een opvolgadvies. De speeluren in deze bron zijn gebaseerd op een resetperiode, niet op een afgesloten kalendermaand. Echte automatische pings blijven afhankelijk van geverifieerde FiveM-gegevens en goedgekeurd verlof.</p></section>
+<p>Bevoegd overzicht per dienst: actuele personeelslijst, geverifieerde FiveM-speeluren, goedgekeurd verlof en in het dossier geregistreerde activiteitenpings.</p>
+<section><strong>Activiteitsadviezen en registraties zijn afzonderlijk</strong>
+<p>De tracker kan alleen op geverifieerde maandgegevens adviseren (20 / 10 speeluren en 15 / 30 / 60 dagen zonder connectie). Goedgekeurd verlof schort onterechte adviezen op. CHECKING is de controle na afgelopen verlof: bevoegd kader bevestigt ACTIEF of 50/50; de officiële personeelslijst en Discord-rollen worden hierdoor niet stilzwijgend gewijzigd.</p></section>
 <div id="feedback" role="status" aria-live="polite">Aanmelden om gegevens te bekijken.</div>
 <div id="content" hidden>
 <section><div class="controls">
 <label>Dienst<select id="department"><option value="">Alle bevoegde diensten</option></select></label>
-<label>Opvolging<select id="filter"><option value="">Alles</option><option value="beoordelen">60+ dagen</option><option value="inactief">30+ dagen</option><option value="50/50">14+ dagen</option><option value="verlof_nazien">Verlof nazien</option><option value="verouderd">Bron verouderd</option><option value="geen_data">Geen gegevens</option><option value="ok">Geen actie</option></select></label>
+<label>Opvolging<select id="filter"><option value="">Alles</option><option value="beoordelen">60+ dagen</option><option value="inactief">30+ dagen</option><option value="50/50">15+ dagen</option><option value="checking">CHECKING na verlof</option><option value="verlof_nazien">Verlof nazien</option><option value="verouderd">Bron verouderd</option><option value="geen_data">Geen gegevens</option><option value="ok">Geen actie</option></select></label>
 <label>Zoeken<input id="search" type="search" placeholder="Naam, roepnummer of Discord ID"></label>
 <button id="refresh" type="button">↻ Vernieuwen</button></div></section>
-<section><h2>Overzicht <small id="asof"></small></h2><div id="counts" class="counts"></div></section>
+<section><h2>Overzicht <small id="asof"></small></h2><div id="counts" class="counts"></div>
+<h2>Statistieken binnen de geselecteerde filters</h2><div id="statistics" class="counts"></div>
+<p class="source-note" id="sourceNote"></p></section>
+<section id="returnPanel" class="activity-warnings" hidden><h2>⚠ Verlof afgelopen · CHECKING <small id="returnCount"></small></h2>
+<p>Nieuwe en nog niet door jou gelezen controles blijven gemarkeerd. Iedere bevoegde leidinggevende bevestigt het lezen individueel; de opvolging blijft open tot iemand een gemotiveerde beslissing registreert.</p>
+<div id="returnList" aria-live="polite"></div></section>
 <section><h2>Personeelsopvolging <small id="resultCount"></small></h2><p class="activity-order-note">Geordend volgens de Personeelslijst: per dienst en binnen Politie per kader en roepnummer.</p><div class="tablewrap"><table>
-<thead><tr><th>Personeel</th><th>Dienst</th><th>Huidige status</th><th>Laatste connectie</th><th>Inactief</th><th>Speeluren sinds reset</th><th>Pinghistoriek</th><th>Voorstel · controle</th></tr></thead>
+<thead><tr><th>Personeel</th><th>Dienst</th><th>Huidige status</th><th>Opvolging</th><th>Laatste connectie</th><th>Geen connectie</th><th>Speeluren</th><th>Verlof</th><th>Dossierpings</th><th>Advies</th></tr></thead>
 <tbody id="rows"></tbody></table></div></section>
 </div>
 </main>
