@@ -11,18 +11,21 @@ export const SANCTION_REASONS = [
   'Ongeoorloofde toe-eigening van een graad',
   'Ongeoorloofde toe-eigening van een specialisatie','Anders'
 ];
-// Kaderbeleid: eerste drie maatregelen zelfstandig; voorstel tot degradatie vanaf ernst 9/10.
-// Effectieve degradatie en schorsing vanaf officierenkader; ontslag (met blacklisting) uitsluitend korpsleiding.
+// Middenkader: waarschuwingen, tijdelijke specialisatiebeperking, schorsing
+// en TIJDELIJKE degradatie als gedateerde sanctie (nooit automatische rangwijziging).
+// Definitieve degradatie blijft Officierenkader/Korpsleiding; ontslag uitsluitend Korpsleiding.
+
 export const SANCTION_TYPES = [
   'Mondelinge waarschuwing', 'Officiële waarschuwing', 'Tijdelijke beperking',
-  'Voorstel tot degradatie', 'Degradatie', 'Schorsing', 'Ontslag', 'Ontslag met blacklisting'
+  'Schorsing', 'Tijdelijke degradatie', 'Voorstel tot degradatie',
+  'Degradatie', 'Ontslag', 'Ontslag met blacklisting'
 ];
-export const HEAVY_SANCTION_TYPES = ['Degradatie','Schorsing','Ontslag','Ontslag met blacklisting'];
+export const HEAVY_SANCTION_TYPES = ['Degradatie','Ontslag','Ontslag met blacklisting'];
 export const isDiscordId = id => /^\d{15,22}$/.test(String(id??''));
 export const isCadre = role => ['middenkader','officierenkader','korpsleiding','beheerder'].includes(role);
 export const canChooseSanction=(role,kind,severity=null)=>{
   if(!['middenkader','officierenkader','korpsleiding'].includes(role)||!SANCTION_TYPES.includes(kind))return false;
-  if(kind==='Degradatie'||kind==='Schorsing')
+  if(kind==='Degradatie')
     return role==='officierenkader'||role==='korpsleiding';
   if(kind==='Ontslag'||kind==='Ontslag met blacklisting')
     return role==='korpsleiding';
@@ -109,7 +112,7 @@ export function validateEntry(raw){
   if(!Number.isInteger(severity)||severity<1||severity>10)throw new Error('Ernst moet tussen 1 en 10 liggen');
   const kind=str(raw.sanctionType,100,true);
   if(!SANCTION_TYPES.includes(kind)) throw new Error('Ongeldig sanctietype');
-  let restrictedSpecialties=[],endDate='';
+  let restrictedSpecialties=[],endDate='',temporaryRank='';
   if(kind==='Tijdelijke beperking'){
     const allowed=SPECIALTY_LABELS[raw?.dept]||[];
     const values=raw?.restrictedSpecialties;
@@ -121,13 +124,23 @@ export function validateEntry(raw){
     endDate=date(raw?.endDate);
     if(endDate<common.eventDate)
       throw new Error('Einddatum tijdelijke beperking mag niet vóór de gebeurtenisdatum liggen');
+  }else if(kind==='Tijdelijke degradatie'){
+    if(Array.isArray(raw?.restrictedSpecialties)&&raw.restrictedSpecialties.length)
+      throw new Error('Selecteer geen specialisatie bij een tijdelijke degradatie');
+    temporaryRank=str(raw?.temporaryRank,100,true);
+    endDate=date(raw?.endDate);
+    if(endDate<common.eventDate)
+      throw new Error('Einddatum tijdelijke degradatie mag niet vóór de gebeurtenisdatum liggen');
   }else if((Array.isArray(raw?.restrictedSpecialties)&&raw.restrictedSpecialties.length>0)||
       (raw?.endDate!==undefined&&raw?.endDate!==null&&String(raw.endDate).trim()!=='')){
-    throw new Error('Specialisatie en einddatum zijn alleen toegestaan bij een tijdelijke beperking');
+    throw new Error('Specialisatie en einddatum zijn uitsluitend toegestaan bij tijdelijke maatregelen');
   }
+  if(kind!=='Tijdelijke degradatie'&&str(raw?.temporaryRank,100))
+    throw new Error('Tijdelijke graad is alleen toegestaan bij tijdelijke degradatie');
   return {...common,sanctionType:kind,explanation:str(raw.explanation,2000),
     reasons:reasons(raw.reasons),reasonOther:raw.reasons.includes('Anders')?str(raw.reasonOther,500,true):'',
-    severity,cfxName:str(raw.cfxName,120),restrictedSpecialties,endDate,status:'actief'};
+    severity,cfxName:str(raw.cfxName,120),restrictedSpecialties,endDate,
+    temporaryRank,status:'actief'};
 }
 export function validateAmend(raw){
   if(raw?.status && !['actief','ingetrokken'].includes(raw.status)) throw new Error('Ongeldige status');

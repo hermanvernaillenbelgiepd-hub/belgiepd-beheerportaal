@@ -12,10 +12,10 @@ test('Depannage sanctions have exactly the four requested measures, with role ch
  const low=permittedDepartmentSanctions('depannage','middenkader',10);
  const high=permittedDepartmentSanctions('depannage','officierenkader',10);
  const corps=permittedDepartmentSanctions('depannage','korpsleiding',10);
- assert.deepEqual(low,['Mondelinge waarschuwing','Officiële waarschuwing']);
- assert.deepEqual(high,[...low,'Schorsing']);
+ assert.deepEqual(low,['Mondelinge waarschuwing','Officiële waarschuwing','Schorsing']);
+ assert.deepEqual(high,low);
  assert.deepEqual(corps,[...high,'Ontslag']);
- for(const forbidden of ['Tijdelijke beperking','Degradatie',
+ for(const forbidden of ['Tijdelijke beperking','Tijdelijke degradatie','Degradatie',
     'Voorstel tot degradatie','Ontslag met blacklisting']){
    assert.equal(canChooseDepartmentSanction('depannage','korpsleiding',forbidden,10),false);
  }

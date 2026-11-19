@@ -34,6 +34,8 @@ export function specialFields(e){
   if(e.sanctionType==='Tijdelijke beperking'&&e.endDate)
     p.push('Tijdelijke beperking tot en met: '+e.endDate);
   else if(e.endDate)p.push('Einddatum: '+e.endDate);
+  if(e.sanctionType==='Tijdelijke degradatie'&&e.temporaryRank)
+    p.push('Tijdelijke graad: '+limit(e.temporaryRank,100));
   if(e.courseName)p.push('Opleiding: '+limit(e.courseName,150));
   if(e.newName)p.push('Nieuwe naam: '+limit(e.newName,150));
   if(e.proposedRank)p.push('Voorgestelde graad: '+limit(e.proposedRank,150));

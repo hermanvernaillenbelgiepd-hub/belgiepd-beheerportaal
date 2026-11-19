@@ -8,16 +8,17 @@ const officer=(role,dept='politie')=>({
   role,departments:[dept],departmentRoles:{[dept]:role},
   dossierNativeDepartments:[dept],discordId:'111111111111111111'
 });
-const three=['Mondelinge waarschuwing','Officiële waarschuwing','Tijdelijke beperking'];
+const five=['Mondelinge waarschuwing','Officiële waarschuwing','Tijdelijke beperking',
+  'Schorsing','Tijdelijke degradatie'];
 const proposal='Voorstel tot degradatie';
 
-test('Middenkader: drie lichte sancties; degradatievoorstel alleen bij ernst 9 of 10',()=>{
+test('Middenkader: vijf maatregelen, degradatievoorstel alleen bij ernst 9 of 10',()=>{
   const actor=officer('middenkader');
   assert.equal(maySubmit(actor,'sanctie','politie'),true);
   assert.equal(roleForDepartment(actor,'politie'),'middenkader');
-  assert.deepEqual(permittedSanctionTypes('middenkader',8),three);
-  assert.deepEqual(permittedSanctionTypes('middenkader',9),[...three,proposal]);
-  assert.deepEqual(permittedSanctionTypes('middenkader',10),[...three,proposal]);
+  assert.deepEqual(permittedSanctionTypes('middenkader',8),five);
+  assert.deepEqual(permittedSanctionTypes('middenkader',9),[...five,proposal]);
+  assert.deepEqual(permittedSanctionTypes('middenkader',10),[...five,proposal]);
   assert.equal(canChooseSanction('middenkader',proposal,8),false);
   assert.equal(canChooseSanction('middenkader',proposal,9),true);
   assert.equal(canChooseSanction('middenkader',proposal,10),true);
@@ -27,16 +28,16 @@ test('Officierenkader kan degraderen en schorsen; alleen Korpsleiding kan ontsla
   for(const kind of HEAVY_SANCTION_TYPES){
     assert.equal(canChooseSanction('middenkader',kind,10),false,kind);
     assert.equal(canChooseSanction('officierenkader',kind,10),
-      ['Degradatie','Schorsing'].includes(kind),kind);
+      kind==='Degradatie',kind);
     assert.equal(canChooseSanction('beheerder',kind,10),false,kind);
     assert.equal(canChooseSanction('korpsleiding',kind,10),true,kind);
   }
   assert.deepEqual(permittedSanctionTypes('officierenkader',8),
-    [...three,'Degradatie','Schorsing']);
+    [...five,'Degradatie']);
   assert.deepEqual(permittedSanctionTypes('officierenkader',10),
-    [...three,proposal,'Degradatie','Schorsing']);
+    [...five,proposal,'Degradatie']);
   assert.deepEqual(permittedSanctionTypes('korpsleiding',10),
-    [...three,proposal,...HEAVY_SANCTION_TYPES]);
+    [...five,proposal,...HEAVY_SANCTION_TYPES]);
 });
 test('Operationele dienstrol en geen algemene of technische rechten bepalen de sancties',()=>{
   const actor={role:'korpsleiding',departments:['politie','ambulance'],
@@ -44,8 +45,9 @@ test('Operationele dienstrol en geen algemene of technische rechten bepalen de s
     dossierNativeDepartments:['politie','ambulance']};
   assert.equal(roleForDepartment(actor,'politie'),'middenkader');
   assert.equal(roleForDepartment(actor,'ambulance'),'korpsleiding');
-  assert.equal(canChooseSanction(roleForDepartment(actor,'politie'),'Schorsing',10),false);
+  assert.equal(canChooseSanction(roleForDepartment(actor,'politie'),'Schorsing',10),true);
   assert.equal(canChooseSanction(roleForDepartment(actor,'ambulance'),'Schorsing',10),true);
+  assert.equal(canChooseSanction(roleForDepartment(actor,'politie'),'Degradatie',10),false);
   assert.equal(mayAmend(officer('middenkader'),'sanctie','politie'),false);
   assert.equal(mayAmend(officer('officierenkader'),'sanctie','politie'),true);
 });
