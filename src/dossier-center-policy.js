@@ -1,5 +1,6 @@
 import {validPersonnelKey,canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
+import {policeOfficialRankLabel} from './personnel-rank-policy.js';
 const SERVICES=Object.freeze(['politie','ambulance','brandweer','depannage']);
 export function dossierScopes(actor){
   return {personnelDepartments:SERVICES.filter(dept=>canReadServiceDossier(actor,dept)),
@@ -15,7 +16,11 @@ export function dossierOverviewRows(personnel,_unused,scopes){
     rows.set(key,{dept:p.dept,discordId:linked?p.personId:null,
       name:String(p.name||'').slice(0,120),call:String(p.call||'').slice(0,24),
       series:p.dept==='politie'?String(p.series||'').slice(0,32):null,
-      rank:String(p.rank||'').slice(0,80),status:String(p.status||'').slice(0,50),
+      // Display-only: approved Firestore rank changes store a short canonical
+      // label (e.g. "Inspecteur"); source-sheet records can hold the complete
+      // Belgian title. Both must show the same official grade in this list.
+      rank:(p.dept==='politie'?policeOfficialRankLabel(p.rank):String(p.rank||'')).slice(0,80),
+      status:String(p.status||'').slice(0,50),
       canOpen:linked&&typeof scopes.canReadSubject==='function'&&scopes.canReadSubject(p),
       personnel:true,application:false,applicationStatus:null,
       source:p.source==='firestore-created'?'Firestore':'Google Sheets'});
