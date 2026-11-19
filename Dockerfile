@@ -38,6 +38,7 @@ RUN node --test tests/training-specialty-approval.test.js
 RUN node --test tests/portal-date-display.test.js
 RUN node --test tests/training-instructor-choice.test.js
 RUN node --test tests/training-general-instructor-policy.test.js
+RUN node --test tests/dossier-administrative-corrections.test.js
 RUN node --test tests/personnel-always-table.test.js
 RUN node --test tests/police-promotion-proposals.test.js
 RUN node --test tests/global-personnel-archive.test.js
