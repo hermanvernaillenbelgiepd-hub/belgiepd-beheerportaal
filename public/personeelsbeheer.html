@@ -3530,25 +3530,27 @@ let dossierCanRetire=false;
 function attachRetireButton(container,item,source='cases'){
  if(!dossierCanRetire||!selected||!item?.id||item.linked===true)return;
  if(source==='cases'&&
-   (!['notitie','specialisatiebeperking','basisnotitie','observatie','sanctie'].includes(item.type)||
-    item.source==='central-leave-audit'))return;
+   (!['notitie','algemene_notitie','inactiviteitsping','specialisatiebeperking',
+     'basisnotitie','observatie','sanctie'].includes(item.type)||
+    ['central-leave-audit','automatic_fivem_activity'].includes(item.source)))return;
  if(source==='leave'&&item.status!=='approved')return;
  const button=document.createElement('button');
  button.type='button';button.className='dossier-retire-button';
  button.textContent='🗑 Wissen';
- button.title='Verwijder uit actief dossier; audit en weekrapport blijven bewaard';
+ button.title='Archiveer een foutieve of dubbele registratie; origineel en audit blijven bewaard';
  button.setAttribute('aria-label','Registratie wissen met audit');
  button.onclick=async()=>{
    if(!selected)return;
-   const explanation=prompt('Motivering voor het wissen (10 tot 500 tekens):');
+   const explanation=prompt('Waarom deze registratie archiveren? Bijvoorbeeld: dubbele notitie (10 tot 500 tekens).');
    if(explanation===null)return;
    const reason=explanation.trim();
    if(reason.length<10||reason.length>500){
      notice('Vul een motivering in van 10 tot 500 tekens.',true);return;
    }
    const subject=selected;
-   if(!confirm('Deze registratie uit het actieve dossier verwijderen? '+
-       'De originele gegevens blijven in de audit; de intrekking komt in het lopende weekrapport.'))return;
+   if(!confirm('Deze registratie uit het actieve dossier archiveren? '+
+       'De originele gegevens en auteur blijven bewaard in de audit; de intrekking komt in het weekrapport. '+
+       'Bij een handmatige activiteitenping wordt de actieve persoonlijke melding eveneens ingetrokken.'))return;
    button.disabled=true;
    try{
      const encoded=id=>encodeURIComponent(id);
@@ -3560,7 +3562,7 @@ function attachRetireButton(container,item,source='cases'){
          encoded(subject.discordId)+'/'+source+'/'+encoded(item.id),{
          method:'POST',body:{reason}});
      }
-     notice('Registratie ingetrokken en in het weekrapport gelogd.');
+     notice('Registratie gearchiveerd en in het weekrapport gelogd. De oorspronkelijke gegevens blijven in het auditspoor.');
      if(selected?.dept===subject.dept&&selected?.discordId===subject.discordId)
        loadStaffDossier(subject);
    }catch(e){notice('Wissen mislukt: '+e.message,true);button.disabled=false}

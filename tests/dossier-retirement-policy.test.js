@@ -24,11 +24,16 @@ test('Retirement reasons are explicit, length checked and single-field only',()=
  }
 });
 test('Only genuine record types are retirably case records',()=>{
- for(const type of ['notitie','specialisatiebeperking','observatie','sanctie','basisnotitie'])
+ for(const type of ['notitie','algemene_notitie','inactiviteitsping',
+  'specialisatiebeperking','observatie','sanctie','basisnotitie'])
   assert.equal(mayRetireCaseType({type}),true);
+ assert.equal(mayRetireCaseType({type:'inactiviteitsping',
+  source:'automatic_fivem_activity'}),false);
  for(const type of ['verlof','activiteit','opleiding','personeelsbeweging'])
   assert.equal(mayRetireCaseType({type}),false);
  assert.equal(mayRetireCaseType({type:'notitie',source:'central-leave-audit'}),false);
+ assert.equal(mayRetireCaseType({type:'algemene_notitie',
+  source:'central-leave-audit'}),false);
  assert.equal(isRetired({status:'verwijderd'}),true);
  assert.equal(isRetired({status:'actief'}),false);
 });
@@ -45,6 +50,8 @@ test('Retiring always requires verified higher duty role with dossier access',()
  assert.equal(canRetireDossierRecord(base,subject),false);
  assert.equal(canRetireDossierRecord({...base,role:'officierenkader',
   departmentRoles:{politie:'officierenkader'}},subject),true);
+ assert.equal(canRetireDossierRecord({...base,role:'korpsleiding',
+  departmentRoles:{politie:'korpsleiding'}},subject),true);
  assert.equal(canRetireDossierRecord({...base,role:'officierenkader',
   departmentRoles:{politie:'officierenkader'}},{...subject,personId:base.discordId}),false);
  assert.equal(canRetireDossierRecord({...base,role:'officierenkader',
@@ -59,6 +66,9 @@ test('All retire actions retain original records and add week-report events',()=
  assert.match(api,/type:'activiteit',reportCategory:'activiteit'/);
  assert.match(api,/tx\.create\(notice,\{/);
  assert.doesNotMatch(api,/tx\.delete\(/);
+ assert.match(api,/tx\.update\(pingRef,\{status:'verwijderd'/);
+ const ping=contents('src/inactivity-ping-notifications.js');
+ assert.match(ping,/record\?\.status==='verwijderd'/);
  const leave=contents('src/leave-routes.js');
  assert.match(leave,/requests\/:id\/retire/);
  assert.match(leave,/action:'cadre_retired'/);

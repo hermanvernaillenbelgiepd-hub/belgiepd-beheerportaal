@@ -21,7 +21,8 @@ export function inactivityPingNotice({dept,discordId,entryId,details,actor,sourc
  };
 }
 export function publicPingNotice(id,record){
- if(!validPingId(id)||record?.type!=='inactiviteitsping')return null;
+ if(!validPingId(id)||record?.type!=='inactiviteitsping'||
+    record?.status==='verwijderd'||record?.retired?.at!=null)return null;
  const iso=x=>x?.toDate?.()?.toISOString?.()||null;
  return {
   id,department:clean(record.dept),details:clean(record.details).slice(0,4000),

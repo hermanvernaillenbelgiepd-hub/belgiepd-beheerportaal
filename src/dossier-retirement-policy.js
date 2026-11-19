@@ -1,8 +1,8 @@
 // Dossier retirement is a correction with permanent traceability, never a
 // Firestore delete. The role must be server-confirmed for the target department.
 import {canEditPersonnel,canReadPersonnelSubject} from './personnel-editor-policy.js';
-export const RETIRABLE_KINDS=Object.freeze(['notitie','specialisatiebeperking',
- 'observatie','sanctie','basisnotitie','oude_basisnotitie']);
+export const RETIRABLE_KINDS=Object.freeze(['notitie','algemene_notitie','inactiviteitsping',
+ 'specialisatiebeperking','observatie','sanctie','basisnotitie','oude_basisnotitie']);
 export const RETIRABLE_SOURCES=Object.freeze(['cases','staff']);
 export function canRetireDossierRecord(actor,subject){
  return Boolean(subject&&actor?.discordId!==subject.personId&&
@@ -11,9 +11,12 @@ export function canRetireDossierRecord(actor,subject){
      actor.profileTechnicalAvailable===true&&actor.uid==='discord:'+actor.discordId));
 }
 export function mayRetireCaseType(entry){
+ // System-generated activity alerts and central leave audit entries must
+ // never be erased from the active dossier by routine duplicate cleanup.
  return entry?.source!=='central-leave-audit'&&
-   ['notitie','specialisatiebeperking','observatie','sanctie',
-    'basisnotitie'].includes(entry?.type);
+   entry?.source!=='automatic_fivem_activity'&&
+   ['notitie','algemene_notitie','inactiviteitsping',
+    'specialisatiebeperking','observatie','sanctie','basisnotitie'].includes(entry?.type);
 }
 export function retirementReason(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||

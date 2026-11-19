@@ -419,7 +419,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const result=await db().runTransaction(async tx=>{
         const current=await tx.get(ping);
         if(!current.exists||current.get('targetDiscordId')!==id||
-          current.get('type')!=='inactiviteitsping')
+          current.get('type')!=='inactiviteitsping'||
+          current.get('status')==='verwijderd')
           return 'not_found';
         if(current.get('status')==='read')return 'already_read';
         const dept=current.get('dept'),caseKey=current.get('caseId');
@@ -428,7 +429,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         const entry=db().collection('bpd_cases').doc(caseKey).collection('entries').doc(entryId);
         const original=await tx.get(entry);
         if(!original.exists||original.get('type')!=='inactiviteitsping'||
-           original.get('subjectDiscordId')!==id||original.get('dept')!==dept)
+           original.get('subjectDiscordId')!==id||original.get('dept')!==dept||
+           isRetired(original.data()))
           return 'invalid_reference';
         const at=FieldValue.serverTimestamp();
         tx.update(ping,{status:'read',readAt:at});
