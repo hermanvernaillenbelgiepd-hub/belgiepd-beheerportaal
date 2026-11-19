@@ -65,7 +65,15 @@ body.training-embedded #training h2{font-size:17px}
     <p class="mini">Dit wijzigt geen Discord-rollen of officiële rang. De registratie en beoordeling verschijnen in de bestaande dossiers en rapportage.</p>
   </form>
 </dialog>
-<h3>Opleiding registreren</h3><div class="two"><label>Opleiding<select id="course"><option value="">Kies een opleiding…</option><option value="RADIO OPLEIDING (VERPLICHT)">RADIO OPLEIDING (VERPLICHT)</option><option value="RADIO OPLEIDING (VRIJWILLIG)">RADIO OPLEIDING (VRIJWILLIG)</option><option value="BASISCURSIS">BASISCURSIS</option><option value="GEWELDBEHEERSING">GEWELDBEHEERSING</option><option value="WAPENGEBRUIK">WAPENGEBRUIK</option><option value="VERKEERSBEGELEIDING">VERKEERSBEGELEIDING</option><option value="VERKEERSCONTROLE">VERKEERSCONTROLE</option><option value="PRIORITAIR RIJDEN">PRIORITAIR RIJDEN</option><option value="EHBO VOOR INTERVENIERENDEN">EHBO VOOR INTERVENIERENDEN</option><option value="BEVEILIGEN OPENBARE WEG">BEVEILIGEN OPENBARE WEG</option><option value="K-9">K-9</option><option value="RAGO">RAGO</option><option value="MOTARD">MOTARD</option><option value="MOTARD-OFF ROAD">MOTARD-OFF ROAD</option><option value="DISPATCH">DISPATCH</option><option value="BEVOEGDHEDEN TO">BEVOEGDHEDEN TO</option><option value="ERT AE-I">ERT AE-I</option><option value="ERT AE-T">ERT AE-T</option><option value="ERT-AE-F">ERT-AE-F</option><option value="ANDERE">ANDERE (zelf invullen)</option></select></label><label>Datum<input id="date" type="date"></label></div><label id="courseOtherWrap" hidden>Andere opleiding<input id="courseOther" maxlength="150" minlength="3" placeholder="Naam van de opleiding"></label><label>Opleider (naam of roepnummer)<input id="instructorName" type="text" minlength="2" maxlength="120" placeholder="Bijv. 930 · Naam opleider" required></label><label>Resultaat<select id="result"><option value="aanwezig">Aanwezig</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="onderbroken">Onderbroken</option></select></label>
+<h3>Opleiding registreren</h3><div class="two"><label>Opleiding<select id="course"><option value="">Kies een opleiding…</option><option value="RADIO OPLEIDING (VERPLICHT)">RADIO OPLEIDING (VERPLICHT)</option><option value="RADIO OPLEIDING (VRIJWILLIG)">RADIO OPLEIDING (VRIJWILLIG)</option><option value="BASISCURSIS">BASISCURSIS</option><option value="GEWELDBEHEERSING">GEWELDBEHEERSING</option><option value="WAPENGEBRUIK">WAPENGEBRUIK</option><option value="VERKEERSBEGELEIDING">VERKEERSBEGELEIDING</option><option value="VERKEERSCONTROLE">VERKEERSCONTROLE</option><option value="PRIORITAIR RIJDEN">PRIORITAIR RIJDEN</option><option value="EHBO VOOR INTERVENIERENDEN">EHBO VOOR INTERVENIERENDEN</option><option value="BEVEILIGEN OPENBARE WEG">BEVEILIGEN OPENBARE WEG</option><option value="K-9">K-9</option><option value="RAGO">RAGO</option><option value="MOTARD">MOTARD</option><option value="MOTARD-OFF ROAD">MOTARD-OFF ROAD</option><option value="DISPATCH">DISPATCH</option><option value="BEVOEGDHEDEN TO">BEVOEGDHEDEN TO</option><option value="ERT AE-I">ERT AE-I</option><option value="ERT AE-T">ERT AE-T</option><option value="ERT-AE-F">ERT-AE-F</option><option value="ANDERE">ANDERE (zelf invullen)</option></select></label><label>Datum<input id="date" type="date"></label></div><label id="courseOtherWrap" hidden>Andere opleiding<input id="courseOther" maxlength="150" minlength="3" placeholder="Naam van de opleiding"></label><label>Opleider (personeelslijst)
+ <select id="instructorChoice" required>
+  <option value="">Kies een opleider…</option>
+  <option value="__manual__">ANDERE · zelf invullen</option>
+ </select></label>
+ <label id="instructorManualWrap" hidden>Andere opleider
+  <input id="instructorName" type="text" minlength="2" maxlength="120"
+   placeholder="Naam of roepnummer van opleider">
+ </label><label>Resultaat<select id="result"><option value="aanwezig">Aanwezig</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="onderbroken">Onderbroken</option></select></label>
 <label id="qualificationStageWrap" hidden>Specialisatiefase<select id="qualificationStage"><option value="">Enkel aanwezig (geen STAGE)</option><option value="in_opleiding">In opleiding → STAGE na beoordeling</option></select></label>
 <p class="mini" id="qualificationHelp">Alleen een erkende specialisatieopleiding kan STAGE of JA activeren na beoordeling.</p><label>Opmerkingen<textarea id="details" maxlength="1600" placeholder="Evaluatie en aandachtspunten"></textarea></label><button id="saveTraining">Registratie bewaren</button><button class="secondary" id="cancelEdit" hidden>Wijziging annuleren</button><p class="mini" id="editNotice" hidden></p><p class="mini" id="trainingNote"></p></section>
 <section class="panel" id="admin" hidden><h2>Uitzonderingen in machtigingen</h2><p>Alleen vooraf gemachtigd officierenkader of korpsleiding via Google. Je kunt je eigen rechten niet veranderen. Alle wijzigingen krijgen een auditvermelding.</p>
@@ -78,8 +86,11 @@ body.training-embedded #training h2{font-size:17px}
   <section class="panel" id="profile" hidden><h2>Mijn geverifieerde rollen</h2><div id="summary"></div><h3>Rollen uit de catalogus</h3><div id="roleList"></div><p id="unknown" class="mini"></p><h3>Opleidingsbevoegdheden</h3><p class="mini">Deze rechten omvatten ook je bestaande, goedgekeurde Google-beheerdersrechten. Controleren betekent een registratie beoordelen voor <strong>handmatige</strong> verwerking; er wordt niets rechtstreeks aangepast in Google Sheets.</p><div class="columns" id="permissionList"></div></section>
 </details>
 </main>
+<script src="/personnel-list-visuals.js"></script>
 <script type="module">
 import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '/training-course-catalog.js';
+import {sortTrainingPeople,populateInstructorOptions,syncManualInstructor,
+ selectedInstructor,MANUAL_INSTRUCTOR_VALUE} from '/training-instructor-choices.js';
 const $=id=>document.getElementById(id);let auth,mods,profile,editing=null,reviewing=null;
 const state=(msg,err=false)=>{$('state').textContent=msg;$('state').classList.toggle('error',err)};
 function text(parent,value,tag='span'){const el=document.createElement(tag);el.textContent=String(value);parent.append(el);return el}
@@ -131,11 +142,23 @@ function refreshCourseOptions(){
  $('course').value=options.some(o=>o.value===chosen)?chosen:'';
  syncCourseOther();
 }
-let peopleNonce=0;
+let peopleNonce=0,trainingInstructorPeople=[];
+function renderInstructorChoices(name=''){
+ populateInstructorOptions($('instructorChoice'),$('instructorName'),
+   trainingInstructorPeople,$('dept').value,BPDPersonnelVisuals.comparePersonnel,name);
+ syncManualInstructor($('instructorChoice'),$('instructorName'),$('instructorManualWrap'));
+}
+$('instructorChoice').onchange=()=>syncManualInstructor(
+ $('instructorChoice'),$('instructorName'),$('instructorManualWrap'));
+function setInstructorName(name){
+ renderInstructorChoices(name);
+}
 async function refreshPeople(){
  refreshCourseOptions();
   const n=++peopleNonce,dept=$('dept').value,select=$('subjectChoice');
-  $('subject').value='';select.replaceChildren(new Option('Personeelslijst laden…',''));
+  $('subject').value='';trainingInstructorPeople=[];
+  renderInstructorChoices('');
+  select.replaceChildren(new Option('Personeelslijst laden…',''));
   if(!dept||!profile?.permissions?.[dept]?.['training.log']&&
       !profile?.permissions?.[dept]?.['training.review']){
     $('peopleNote').textContent='Geen opleidingsrechten voor deze hulpdienst.';
@@ -144,10 +167,13 @@ async function refreshPeople(){
   try{
     const data=await api('/api/training/people?department='+encodeURIComponent(dept));
     if(n!==peopleNonce)return;
+    const list=sortTrainingPeople(data.people||[],dept,BPDPersonnelVisuals.comparePersonnel);
+    trainingInstructorPeople=list;
     const target=new URLSearchParams(location.search).get('discordId');
     select.replaceChildren(new Option('Kies een collega…',''),
-      ...(data.people||[]).map(p=>new Option((p.call||'—')+' · '+p.name,p.discordId)));
-    if(target&&data.people?.some(p=>p.discordId===target))select.value=target;
+      ...list.map(p=>new Option((p.call||'—')+' · '+p.name,p.discordId)));
+    renderInstructorChoices('');
+    if(target&&list.some(p=>p.discordId===target))select.value=target;
     $('subject').value=select.value;
     $('peopleNote').textContent=(data.people?.length||0)+
       ' personeelsleden beschikbaar binnen '+dept+'. Andere diensten blijven afgeschermd.';
@@ -202,7 +228,7 @@ function cancelEdit(){
   $('course').value='';
   for(const historic of $('result').querySelectorAll('option[data-legacy]'))historic.remove();
   $('result').value='aanwezig';
-  $('instructorName').value='';
+  renderInstructorChoices('');
   $('qualificationStage').value='';
   refreshCourseOptions();
 }
@@ -236,7 +262,7 @@ async function showRecords(){
           $('result').value=r.result;
           $('qualificationStage').value=r.qualificationStage||'';
           syncQualificationStage();$('details').value=r.details||'';
-          $('instructorName').value=r.instructorName||r.instructor||'';
+          setInstructorName(r.instructorName||r.instructor||'');
           $('saveTraining').textContent='Wijziging bewaren';$('cancelEdit').hidden=false;
           $('editNotice').textContent='Je bewerkt een bestaande registratie. Geef bij bewaren een reden. De Discord-rollen en personeelslijst blijven onveranderd.';
           $('editNotice').hidden=false;$('course').focus();
@@ -307,7 +333,7 @@ $('saveTraining').onclick=async()=>{
   if(courseName.length<3||courseName.length>150){
     $('trainingNote').textContent='Kies een opleiding of vul bij ANDERE de naam in.';return;
   }
-  const instructorName=$('instructorName').value.trim();
+  const instructorName=selectedInstructor($('instructorChoice'),$('instructorName'));
   if(instructorName.length<2||instructorName.length>120){
     $('trainingNote').textContent='Vul de opleider in (naam of roepnummer, 2–120 tekens).';return;
   }
