@@ -3852,10 +3852,10 @@ async function loadLinkedPersonnelRecords(p,key){
         if(!same())return;
         // Voltooide opleidingen = geslaagd. Lopende/niet-geslaagde
         // registraties blijven wel beschikbaar in het opleidingsregister.
-        sheetSetRows('training',(data.records||[]).filter(x=>x.result==='geslaagd'),x=>[
+        sheetSetRows('training',data.records||[],x=>[
           x.eventDate||'—',x.courseName||'Opleiding',x.result||'—',
           x.instructorName||x.instructor||x.registeredBy?.name||'—'
-        ],'Nog geen voltooide opleidingen.',data.limited);
+        ],'Nog geen opleidingsregistraties.',data.limited);
         training.replaceChildren();
         if(!data.records?.length)training.textContent='Geen zichtbare opleidingsregistraties.';
         for(const row of (data.records||[]).slice(0,25)){

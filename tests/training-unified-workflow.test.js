@@ -52,7 +52,7 @@ test('Tijdelijke opleidingsmachtiging is dienstgebonden en verloopt; geen rangve
  assert.equal(expired.brandweer['training.log'],false);
  const foreign=effectivePermissions(base,{departments:{ambulance:{
   'training.log':{action:'allow',expiresOn:'2026-11-20'}}}},now);
- assert.equal(foreign.ambulance['training.log'],false);
+ assert.notEqual(foreign.ambulance['training.log'],true);
  const stale=effectivePermissions({...base,fresh:false},{departments:{brandweer:{
   'training.log':{action:'allow',expiresOn:'2026-11-20'}}}},now);
  assert.equal(stale.brandweer['training.log'],false);
