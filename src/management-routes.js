@@ -442,14 +442,20 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const ref=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc(entryId);
       const doc=await ref.get();
       if(!doc.exists)return res.status(404).json({error:'Registratie niet gevonden'});
-      if(!mayCorrectManualCase(req.bpd,subject,doc.data()))
+      if(!mayCorrectManualCase(req.bpd,subject,doc.data())&&
+         !mayAnnotateDossierCase(req.bpd,subject,doc.data()))
         return res.status(403).json({error:'Geen recht om deze correctiehistoriek te bekijken'});
       const history=await ref.collection('audit').orderBy('at','desc').limit(40).get();
       res.set('Cache-Control','private, no-store');
-      return res.json({changes:history.docs.filter(d=>d.get('action')==='manual_case_amended').map(d=>{
+      return res.json({changes:history.docs.filter(d=>
+        ['manual_case_amended','case_administrative_correction'].includes(d.get('action')))
+        .map(d=>{
         const val=d.data();
         return {at:toIso(val.at),reason:String(val.reason||'').slice(0,1000),
-          actor:{name:String(val.by?.name||'Onbekend'),call:String(val.by?.call||'')},
+          action:val.action,
+          actor:{name:String(val.by?.name||val.actorName||'Onbekend'),
+            call:String(val.by?.call||'')},
+          after:{details:String(val.after?.details||'').slice(0,4000)},
           before:{eventDate:val.before?.eventDate||null,
             details:String(val.before?.details||'').slice(0,4000),
             courseName:val.before?.courseName||null,
