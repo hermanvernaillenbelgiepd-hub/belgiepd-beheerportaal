@@ -13,10 +13,20 @@ export function canRetireDossierRecord(actor,subject){
 export function mayRetireCaseType(entry){
  // System-generated activity alerts and central leave audit entries must
  // never be erased from the active dossier by routine duplicate cleanup.
- return entry?.source!=='central-leave-audit'&&
-   entry?.source!=='automatic_fivem_activity'&&
-   ['notitie','algemene_notitie','inactiviteitsping',
-    'specialisatiebeperking','observatie','sanctie','basisnotitie'].includes(entry?.type);
+ if(!entry||entry.source==='central-leave-audit'||
+    entry.source==='automatic_fivem_activity')return false;
+ // Already-approved decisions and system records must not disappear while
+ // their effective rank, leave, sanction, qualification or approval lives on.
+ // Only manually entered, non-effectuating historical corrections can be
+ // withdrawn without a separate reversal of that authoritative decision.
+ if(['personeelsbeweging','naamswijziging','opleiding','activiteit',
+     'promotievoorstel'].includes(entry.type))
+   return !entry.source&&!entry.proposalStatus&&!entry.nominationStatus&&
+     !entry.trainingRequestId&&!entry.leaveRequestId&&!entry.approvedMovementEntryId&&
+     !entry.promotionProposalId&&!entry.amendmentOf&&!entry.retirementOf;
+ return ['notitie','algemene_notitie','inactiviteitsping',
+  'specialisatiebeperking','observatie','sanctie','basisnotitie'].includes(entry.type);
+
 }
 export function retirementReason(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||
