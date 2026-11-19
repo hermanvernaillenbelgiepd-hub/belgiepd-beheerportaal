@@ -110,7 +110,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const importConfig=await historicalSettings();
       const migrationConfig=historicalMigrationSettings((await db()
         .collection(HISTORICAL_OBSERVATION_SETTINGS).doc(HISTORICAL_OBSERVATION_DOC).get()).data());
-      const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))&&(importConfig.enabled===true||migrationConfig.enabled===true&&canManageHistoricalObservationImport(req.bpd))?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
+      const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))&&(importConfig.enabled===true||migrationConfig.enabled===true&&canManageHistoricalObservationImport(req.bpd))?subset.filter(p=>eligibleRepresentative(p,p.dept))
          .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank})):[];
        const sanctionDepartments=['politie','brandweer','ambulance','depannage'].filter(d=>
          (req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&

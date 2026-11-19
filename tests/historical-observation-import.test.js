@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {canManageHistoricalObservationImport,historicalObservationSettings,
- validateHistoricalObservationToggle,historicalObservationAllowed}
+ validateHistoricalObservationToggle,historicalObservationAllowed,validateHistoricalActorSelection}
  from '../src/historical-observation-import-policy.js';
 import {specialFields} from '../src/report-export.js';
 import {eligibleRepresentative,representativeFromPersonnel} from '../src/registrations.js';
@@ -57,6 +57,19 @@ test('de server verifieert bevoegdheid en schakelt middels Firestore-transactie 
  assert.match(source,/historicalImport:Boolean\(represented\)/);
  assert.match(source,/importSource:represented\?'spreadsheet':null/);
  assert.match(source,/historicalObservationImport:importConfig/);
+});
+test('Oorspronkelijke observator mag de actuele, geverifieerde invoerder zelf zijn',()=>{
+ const ownId='111111111111111111';
+ const reason='Overgenomen uit het vroegere dossier met behoud van originele auteur';
+ assert.deepEqual(validateHistoricalActorSelection(ownId,reason,ownId),
+  {actorId:ownId,reason});
+ assert.throws(()=>validateHistoricalActorSelection('ongeldig',reason,ownId),
+  /oorspronkelijke registrator/);
+ assert.throws(()=>validateHistoricalActorSelection(ownId,'kort',ownId),
+  /bron en reden/);
+ const routes=readFileSync(new URL('../src/registration-routes.js',import.meta.url),'utf8');
+ assert.ok(routes.includes('subset.filter(p=>eligibleRepresentative(p,p.dept))'));
+ assert.ok(!routes.includes('p.personId!==actor?.discordId'));
 });
 test('in het dossier wordt de originele waarnemer gekozen en de invoerder afzonderlijk vermeld',()=>{
  const page=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
