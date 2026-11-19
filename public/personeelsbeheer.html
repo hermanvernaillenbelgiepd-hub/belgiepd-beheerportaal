@@ -1230,6 +1230,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
     <option value="50/50">🟠 50/50 — minder dan 20 uur of 15+ dagen geen connectie</option>
     <option value="INACTIEF">🔴 Inactief — minder dan 10 uur of 30+ dagen geen connectie</option>
     <option value="VERWIJDERING_TE_BEOORDELEN">⚫ 60+ dagen geen connectie — verwijdering beoordelen</option>
+    <option value="GEEN_VERBETERING_NA_PING">⚠️ Geen activiteitsverbetering na eerdere ping</option>
    </select>
   </div>
   <div>
@@ -1245,7 +1246,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
    <input id="staffActivityDiscordDate" type="date">
   </div>
  </div>
- <p class="subtle">Deze registratie legt de gekozen opvolgstatus en Discord-contact vast; het portaal verstuurt zelf geen Discord-bericht.
+ <p class="subtle">Gebruik ‘Geen activiteitsverbetering na eerdere ping’ om een hercontrole te loggen als de medewerker na een eerdere Discord-ping nog steeds onvoldoende activiteit toont. Vermeld de eerdere ping en de actuele vaststellingen in de verplichte reden. Deze registratie legt de opvolging en het daadwerkelijke Discord-contact vast; het portaal verstuurt zelf geen Discord-bericht.
  De status van de officiële personeelslijst verandert niet automatisch. Verwijdering na 60 dagen vereist een afzonderlijke bevoegde beslissing. Goedgekeurd verlof moet in de beoordeling worden meegenomen.</p>
 </div>
 <div id="staffEndDateField" hidden><label for="staffEndDate">Einddatum verlofnotitie</label><input id="staffEndDate" type="date"></div>
@@ -1800,7 +1801,7 @@ function displaySelectedRegistration(){
   }else if(kind==='case:opleiding'){
     trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
   }else if(kind==='case:inactiviteitsping'){
-    trainingDestination.textContent='Registreer een opvolgstatus (Actief / 50/50 / Inactief / verwijdering beoordelen) en bevestig afzonderlijk of een Discord-ping écht handmatig is verstuurd. De gegevens komen in het dossier en weekrapport. Er wordt niet automatisch een Discord-bericht verstuurd; dit formulier verandert ook de officiële personeelsstatus niet.';
+    trainingDestination.textContent='Registreer een opvolgstatus (Actief / 50/50 / Inactief / verwijdering beoordelen / geen verbetering na eerdere ping) en bevestig afzonderlijk of een Discord-ping écht handmatig is verstuurd. De gegevens komen in het dossier en weekrapport. Er wordt niet automatisch een Discord-bericht verstuurd; dit formulier verandert ook de officiële personeelsstatus niet.';
   }
   // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
   // wanneer de gebruiker naar een ander registratietype omschakelt.
@@ -3653,9 +3654,11 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       item.append(heading,body,author);
       if(group==='activityPings'&&row.activityStatus){
         const color={ACTIEF:'green','50/50':'orange',INACTIEF:'red',
-          VERWIJDERING_TE_BEOORDELEN:'grey'}[row.activityStatus]||'grey';
+          VERWIJDERING_TE_BEOORDELEN:'grey',
+          GEEN_VERBETERING_NA_PING:'orange'}[row.activityStatus]||'grey';
         const label={ACTIEF:'Actief','50/50':'50/50',INACTIEF:'Inactief',
-          VERWIJDERING_TE_BEOORDELEN:'60+ · verwijdering beoordelen'}[row.activityStatus]||
+          VERWIJDERING_TE_BEOORDELEN:'60+ · verwijdering beoordelen',
+          GEEN_VERBETERING_NA_PING:'Geen verbetering na eerdere ping'}[row.activityStatus]||
           row.activityStatus;
         const status=document.createElement('span');
         status.className='activity-followup-pill activity-followup-'+color;
@@ -5791,7 +5794,8 @@ $('staffCaseForm').onsubmit=async event=>{
       throw Error('Vul de datum van het verstuurde Discord-bericht in.');
     const activityLabel={
       ACTIEF:'Actief','50/50':'50/50',INACTIEF:'Inactief',
-      VERWIJDERING_TE_BEOORDELEN:'60+ dagen: verwijdering beoordelen'
+      VERWIJDERING_TE_BEOORDELEN:'60+ dagen: verwijdering beoordelen',
+      GEEN_VERBETERING_NA_PING:'Geen activiteitsverbetering na eerdere ping'
     }[activityStatus]||'';
     const activityDescription=activity?
       'Opvolgstatus: '+activityLabel+' · Discord-ping handmatig verstuurd: '+
