@@ -1,8 +1,10 @@
 import {roleForDepartment} from './leave-policy.js';
+import {personSeries} from './training-request-policy.js';
 import {TRAINING_REQUEST_COURSE_CATALOG} from '../public/training-course-catalog.js';
 
 export const PATHWAY_COLLECTION='bpd_training_pathway_courses';
 export const PERSONAL_PATHWAY_COLLECTION='bpd_training_pathway_person_requirements';
+export const GROUP_PATHWAY_COLLECTION='bpd_training_pathway_group_requirements';
 export const PATHWAY_DEPARTMENTS=Object.freeze(['politie','brandweer','ambulance','depannage','burger']);
 const ID=/^\d{15,22}$/;
 const clean=(v,max)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -89,13 +91,26 @@ export function validRequirement(body){
  const effectiveDate=clean(body.effectiveDate||new Date().toISOString().slice(0,10),10);
  const validMonths=Number(body.validMonths||0);
  const reason=clean(body.reason,500);
- if(!['alle','rang','specialisatie'].includes(targetKind)||
+ if(!['alle','rang','specialisatie','reeks'].includes(targetKind)||
     (targetKind!=='alle'&&(targetValue.length<2||unsafe(targetValue)))||
     !isoDay(effectiveDate)||!Number.isInteger(validMonths)||validMonths<0||validMonths>120||
     reason.length<10||reason.length>500||unsafe(reason))
    throw Error('Vul de doelgroep, geldigheid en een motivering van 10–500 tekens in');
  return {mandatory,targetKind,targetValue:targetKind==='alle'?'':targetValue,
    effectiveDate,validMonths,reason};
+}
+export function pathwaySpecialtyLabels(person){
+ const sources=[person?.specialties,person?.specializations,person?.specialisaties];
+ const names=sources.flatMap(v=>Array.isArray(v)?v:[]).flatMap(item=>{
+   if(typeof item==='string')return [item];
+   if(!item||typeof item!=='object')return [];
+   return [item.label,item.name,item.specialty].filter(v=>typeof v==='string');
+ });
+ // Het officiële personeelsveld 'special' bevat soms een leesbare lijst.
+ if(typeof person?.special==='string'&&
+    !/^geen geregistreerde specialisaties$/i.test(person.special.trim()))
+   names.push(...person.special.split(/[;,|]/));
+ return [...new Set(names.map(v=>String(v).trim()).filter(Boolean))];
 }
 export function recordRelevantToCourse(person,course){
  if(!course.zone)return true;
@@ -106,13 +121,39 @@ export function recordRelevantToCourse(person,course){
 export function requirementApplies(person,course,now=new Date().toISOString().slice(0,10)){
  if(course.mandatory!==true||!recordRelevantToCourse(person,course)||
     course.effectiveDate&&course.effectiveDate>now)return false;
- if(course.targetKind==='rang')return keyName(person.rank).includes(keyName(course.targetValue));
+ if(course.targetKind==='rang')return [person.rank,person.kader].some(v=>
+   keyName(v).includes(keyName(course.targetValue)));
+ if(course.targetKind==='reeks'){
+   const selected=String(course.targetValue||'').trim().match(/^(?:reeks\s*)?0?([1-9]\d?)$/i);
+   return Boolean(selected&&personSeries(person)===selected[1].padStart(2,'0'));
+ }
  if(course.targetKind==='specialisatie'){
-   const labels=[...(Array.isArray(person.specializations)?person.specializations:[]),
-     ...(Array.isArray(person.specialties)?person.specialties:[])];
-   return labels.some(s=>keyName(typeof s==='string'?s:s?.label||s?.name)===keyName(course.targetValue));
+   return pathwaySpecialtyLabels(person).some(s=>keyName(s)===keyName(course.targetValue));
  }
  return true;
+}
+export function groupRequirementApplies(person,course,rule,now=new Date().toISOString().slice(0,10)){
+ return Boolean(rule?.active===true&&rule.courseId===course.id&&
+   rule.department===course.department&&recordRelevantToCourse(person,course)&&
+   requirementApplies(person,{...course,mandatory:true,
+    targetKind:rule.targetKind,targetValue:rule.targetValue,
+    effectiveDate:rule.effectiveDate},now));
+}
+// Aanscherpingen uit verschillende doelgroepen worden gecombineerd, niet vervangen.
+export function effectivePathwayCourse(person,course,groupRules=[],personalRule=null,
+ now=new Date().toISOString().slice(0,10)){
+ const baseApplies=requirementApplies(person,course,now);
+ const applicable=groupRules.filter(rule=>groupRequirementApplies(person,course,rule,now));
+ const own=personalRequirementApplies(person,course,personalRule,now);
+ if(!baseApplies&&!applicable.length&&!own)
+   return {...course,mandatory:false};
+ const durations=[
+   ...(baseApplies?[course.validMonths]:[]),
+   ...(own?[personalRule.validMonths]:[]),
+   ...applicable.map(rule=>rule.validMonths)
+ ].filter(x=>Number.isInteger(x)&&x>0);
+ return {...course,mandatory:true,targetKind:'alle',targetValue:'',
+   effectiveDate:null,validMonths:durations.length?Math.min(...durations):0};
 }
 export function pathwayProgress(person,course,records=[],requests=[],now=new Date().toISOString().slice(0,10)){
  const matches=records.filter(x=>keyName(x.courseName)===keyName(course.name)&&

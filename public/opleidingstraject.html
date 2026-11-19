@@ -75,7 +75,15 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <div id="courses" class="course-grid"></div>
 </section>
 <section id="manageArea" class="card" hidden><div class="section" style="margin-top:0"><div><h2>Opleidingscatalogus beheren</h2>
-<p>Instructeurs en bevoegde dienstleiding mogen opleidingen aanbieden. Een verplichting heeft twee goedkeuringsstappen.</p></div></div>
+<p>Kies een bestaande opleiding of voeg een nieuwe toe. Verplichtingen voor diensten, doelgroepen, specialisaties en personen vragen steeds goedkeuring van OK en KL.</p></div></div>
+<form id="activateForm" class="card" style="margin:12px 0">
+<h3>Bestaande opleiding selecteren</h3>
+<p>Neem een opleiding over uit de bestaande dienstcatalogus. De behaalde registraties blijven behouden.</p>
+<div class="row"><label style="flex:1">Bestaande opleiding
+<select id="catalogPick" required></select></label>
+<button type="submit">Aan beheer toevoegen</button></div>
+</form>
+<h3 style="margin:18px 0 8px">Nieuwe optionele opleiding toevoegen</h3>
 <form id="createForm"><div class="form-grid">
 <label>Hulpdienst<select id="newDept" required></select></label>
 <label>Naam opleiding<input id="newName" minlength="3" maxlength="120" required placeholder="Naam van nieuwe opleiding"></label>
@@ -88,8 +96,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <form id="proposalForm"><div class="form-grid">
 <label>Opleiding<select id="proposalCourse" required></select></label>
 <label>Type<select id="proposalMandatory"><option value="true">Verplicht maken / aanpassen</option><option value="false">Verplichting opheffen</option></select></label>
-<label>Doelgroep<select id="targetKind"><option value="alle">Iedereen binnen de dienst/zone</option><option value="rang">Specifieke rang</option><option value="specialisatie">Specialisatie</option><option value="persoon">Specifieke persoon</option></select></label>
-<label id="targetValueWrap">Doelgroepwaarde<input id="targetValue" maxlength="80" placeholder="Enkel bij rang of specialisatie"></label>
+<label>Doelgroep<select id="targetKind"><option value="alle">Hele dienst of zone</option><option value="rang">Rang / kader (doelgroep)</option><option value="reeks">Reeks (doelgroep)</option><option value="specialisatie">Specialisatie</option><option value="persoon">Specifieke persoon</option></select></label>
+<label id="targetValueWrap">Rang, reeks of specialisatie<input id="targetValue" list="targetSuggestions" maxlength="80" placeholder="Selecteer of vul een bestaande doelgroep in"><datalist id="targetSuggestions"></datalist></label>
 <label id="personTargetWrap" hidden>Personeelslid binnen deze dienst/zone
  <select id="personTarget"><option value="">Selecteer eerst een opleiding</option></select>
 </label>
@@ -177,6 +185,10 @@ function renderManager(){
  const depts=managed.manageable||[];
  $('manageArea').hidden=!depts.length;
  opts($('newDept'),depts.map(x=>({value:x,label:DEPTS[x]||x})));
+ const catalog=(managed.availableCatalog||[]).filter(x=>depts.includes(x.department));
+ $('activateForm').hidden=!catalog.length;
+ opts($('catalogPick'),catalog.map(x=>({value:x.department+'::'+x.name,
+   label:(DEPTS[x.department]||x.department)+' · '+x.name})));
  const ours=(managed.courses||[]).filter(c=>depts.includes(c.department));
  opts($('proposalCourse'),ours.map(x=>({value:x.id,label:(DEPTS[x.department]||x.department)+' · '+x.name+
    (x.zone?' · '+x.zone:'')+(x.pending?' · IN BEHANDELING':'')})));
@@ -186,6 +198,15 @@ function renderManager(){
   row.append(node('strong',c.name+' · '+(DEPTS[c.department]||c.department)),
    node('small',(c.mandatory?'Verplicht':'Optioneel')+
     (c.zone?' · Zone '+c.zone:'')+(c.pending?' · Wacht op '+(c.pending.stage==='ok'?'Officierenkader':'Korpsleiding'):'')));
+  list.append(row);
+ }
+ for(const g of (managed.groupRequirements||[]).filter(g=>depts.includes(g.department))){
+  const row=node('div',undefined,'review');
+  row.append(node('strong',(g.courseName||'Opleiding')+' · '+g.targetKind+
+    (g.targetValue?' · '+g.targetValue:'')),
+    node('small',g.pending?'Doelgroepvoorstel wacht op '+
+      (g.pending.stage==='ok'?'Officierenkader':'Korpsleiding'):
+      g.active?'Verplicht voor deze doelgroep':'Geen actieve verplichting'));
   list.append(row);
  }
  for(const a of (managed.assignments||[]).filter(a=>depts.includes(a.department))){
@@ -205,7 +226,12 @@ function renderManager(){
     .map(a=>({...a,reviewType:'person',
       name:(a.courseName||'Opleiding')+' · '+(a.subjectName||a.subjectDiscordId),
       pending:{...a.pending,targetKind:'persoon',
-       targetValue:(a.subjectName||a.subjectDiscordId)+(a.subjectCall?' · '+a.subjectCall:'')}}))
+       targetValue:(a.subjectName||a.subjectDiscordId)+(a.subjectCall?' · '+a.subjectCall:'')}})),
+  ...(managed.groupRequirements||[]).filter(g=>g.pending)
+    .map(g=>({...g,reviewType:'group',name:(g.courseName||'Opleiding')+
+     ' · '+g.targetKind+(g.targetValue?' · '+g.targetValue:''),
+     pending:{...g.pending,targetKind:g.targetKind,
+       targetValue:g.targetValue}}))
  ];
  const reviewers=managed.reviewStages||{};
  if(!reviewers.ok&&!reviewers.kl)return;
@@ -232,6 +258,8 @@ function renderManager(){
      try{
        const url=c.reviewType==='person'?
         '/api/training-pathway/person-requirements/'+encodeURIComponent(c.id)+'/review':
+        c.reviewType==='group'?
+        '/api/training-pathway/group-requirements/'+encodeURIComponent(c.id)+'/review':
         '/api/training-pathway/courses/'+encodeURIComponent(c.id)+'/review';
        await api(url,{decision,reason:reason.trim()});
       await load();message('Beoordeling opgeslagen en geaudit.')}
@@ -262,43 +290,69 @@ function chosenCourse(){
 }
 async function loadAvailablePeople(){
  const ticket=++peopleRequestSerial;
- const select=$('personTarget'),course=chosenCourse();
- opts(select,[{value:'',label:'Personeelsleden ophalen…'}]);
- if($('targetKind').value!=='persoon'||!course)return;
+ const select=$('personTarget'),course=chosenCourse(),kind=$('targetKind').value;
+ $('targetSuggestions').replaceChildren();
+ if(!course||kind==='alle')return;
+ if(kind==='persoon')opts(select,[{value:'',label:'Personeelsleden ophalen…'}]);
  if(!(managed?.individualManageable||[]).includes(course.department)){
-  opts(select,[{value:'',label:'Enkel bevoegd kader kan individuele verplichtingen voorstellen'}]);
+  if(kind==='persoon')opts(select,[{value:'',label:'Enkel bevoegd kader kan dit voorstellen'}]);
   return;
  }
  try{
   const data=await api('/api/training-pathway/people?courseId='+encodeURIComponent(course.id));
-  if(ticket!==peopleRequestSerial||$('targetKind').value!=='persoon'||
+  if(ticket!==peopleRequestSerial||$('targetKind').value!==kind||
      chosenCourse()?.id!==course.id)return;
-  const people=(data.people||[]).map(p=>({value:p.discordId,
-    label:(p.call?p.call+' · ':'')+p.name+(p.rank?' · '+p.rank:'')}));
-  opts(select,[{value:'',label:people.length?'Selecteer een medewerker…':
-    'Geen eenduidig personeelslid beschikbaar'},...people]);
+  if(kind==='persoon'){
+   const people=(data.people||[]).map(p=>({value:p.discordId,
+     label:(p.call?p.call+' · ':'')+p.name+(p.rank?' · '+p.rank:'')}));
+   opts(select,[{value:'',label:people.length?'Selecteer een medewerker…':
+     'Geen eenduidig personeelslid beschikbaar'},...people]);
+  }else{
+   const field=kind==='rang'?'ranks':kind==='reeks'?'series':'specializations';
+   const options=data.audiences?.[field]||[];
+   $('targetSuggestions').replaceChildren(...options.map(value=>new Option(value,value)));
+  }
  }catch(e){
   if(ticket!==peopleRequestSerial)return;
-  opts(select,[{value:'',label:'Personeelslijst niet beschikbaar'}]);
-  message('Kan personeel voor deze opleiding niet ophalen: '+e.message,true);
+  if(kind==='persoon')opts(select,[{value:'',label:'Personeelslijst niet beschikbaar'}]);
+  message('Doelgroepen kunnen niet geladen worden: '+e.message,true);
  }
 }
 function syncTargetKind(){
  const specific=$('targetKind').value==='persoon';
- $('targetValueWrap').hidden=specific;
+ $('targetValueWrap').hidden=specific||$('targetKind').value==='alle';
  $('personTargetWrap').hidden=!specific;
  $('targetValue').required=!specific&&$('targetKind').value!=='alle';
  $('personTarget').required=specific;
+ $('targetValue').placeholder=$('targetKind').value==='reeks'?'Bijvoorbeeld Reeks 1':
+   $('targetKind').value==='rang'?'Bijvoorbeeld Inspecteur of Middenkader':
+   'Naam van de specialisatie zoals in de personeelslijst';
  const allowed=(managed?.individualManageable||[])
    .includes(chosenCourse()?.department);
- $('proposeSubmit').disabled=!chosenCourse()||(specific&&!allowed);
- if(specific)void loadAvailablePeople();
+ // Alle verplichte opleidingen zijn kaderbeslissingen, ook voor doelgroepen.
+ $('proposeSubmit').disabled=!chosenCourse()||!allowed;
+ if($('targetKind').value!=='alle')void loadAvailablePeople();
  else ++peopleRequestSerial;
 }
 $('targetKind').onchange=syncTargetKind;
 $('proposalCourse').onchange=syncTargetKind;
 
 $('deptFilter').onchange=progress;$('statusFilter').onchange=progress;
+$('activateForm').onsubmit=async e=>{
+ e.preventDefault();const button=e.submitter;if(button)button.disabled=true;
+ try{
+  const choice=$('catalogPick').value;
+  const split=choice.indexOf('::');
+  if(split<0)throw Error('Selecteer een bestaande opleiding');
+  const result=await api('/api/training-pathway/catalog-activate',{
+   department:choice.slice(0,split),name:choice.slice(split+2)});
+  await load();
+  if([...$('proposalCourse').options].some(o=>o.value===result.id))
+   $('proposalCourse').value=result.id;
+  syncTargetKind();
+  message('Bestaande opleiding toegevoegd aan beheer. Selecteer een doelgroep en dien een verplichtingsvoorstel in.');
+ }catch(err){message(err.message,true)}finally{if(button)button.disabled=false}
+};
 $('createForm').onsubmit=async e=>{
  e.preventDefault();
  const button=e.submitter;if(button)button.disabled=true;
@@ -322,7 +376,7 @@ $('proposalForm').onsubmit=async e=>{
    await api('/api/training-pathway/courses/'+encodeURIComponent(courseId)+'/person-requirement',{
     ...fields,subjectDiscordId:$('personTarget').value});
   }else{
-   await api('/api/training-pathway/courses/'+encodeURIComponent(courseId)+'/propose',{
+   await api('/api/training-pathway/courses/'+encodeURIComponent(courseId)+'/group-requirement',{
     ...fields,targetKind,targetValue:$('targetValue').value});
   }
   $('proposalReason').value='';await load();

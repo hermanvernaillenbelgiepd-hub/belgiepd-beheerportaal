@@ -654,8 +654,17 @@ async function loadPathwayReview(){
   const data=await api('/api/training-pathway/manage');
   const roles=data.reviewStages||{};
   if(!roles.ok&&!roles.kl)return;
-  const due=(data.courses||[]).filter(x=>x.pending&&
-   (x.pending.stage==='ok'&&roles.ok||x.pending.stage==='kl'&&roles.kl));
+  const due=[
+   ...(data.courses||[]).filter(x=>x.pending&&
+     (x.pending.stage==='ok'&&roles.ok||x.pending.stage==='kl'&&roles.kl)),
+   ...(data.assignments||[]).filter(x=>x.pending&&
+     (x.pending.stage==='ok'&&roles.ok||x.pending.stage==='kl'&&roles.kl))
+     .map(x=>({...x,name:(x.courseName||'Opleiding')+' · '+(x.subjectName||'medewerker')})),
+   ...(data.groupRequirements||[]).filter(x=>x.pending&&
+     (x.pending.stage==='ok'&&roles.ok||x.pending.stage==='kl'&&roles.kl))
+     .map(x=>({...x,name:(x.courseName||'Opleiding')+' · '+x.targetKind+
+       (x.targetValue?' · '+x.targetValue:'')}))
+  ];
   $('pathwayReviewCount').textContent=String(due.length);
   for(const x of due){
    const item=document.createElement('div');item.className='item';

@@ -4,7 +4,9 @@ import {readFileSync} from 'node:fs';
 import {authorizedOwnDepartments,canManagePathway,canApprovePathway,
  validPathwayCourse,validRequirement,pathwayProgress,requirementApplies,
  canManageIndividualPathway,validIndividualRequirement,uniquePathwaySubject,
- personalRequirementApplies,requestableCustomCourses} from '../src/training-pathway-policy.js';
+ personalRequirementApplies,groupRequirementApplies,effectivePathwayCourse,
+ basePathwayCourses,pathwaySpecialtyLabels,requestableCustomCourses}
+ from '../src/training-pathway-policy.js';
 const id='1398985105254650007',officer={
  uid:'discord:'+id,discordId:id,role:'officierenkader',departments:['politie'],
  departmentRoles:{politie:'officierenkader'},discordRosterEditorVerified:true
@@ -131,9 +133,82 @@ test('Persoonlijke verplichtingen gebruiken dezelfde twee goedkeuringen en eigen
  assert.match(routes,/app\.post\('\/api\/training-pathway\/courses\/:id\/person-requirement'/);
  assert.match(routes,/app\.post\('\/api\/training-pathway\/person-requirements\/:id\/review'/);
  assert.match(routes,/canApprovePathway\(req\.bpd,pending\.stage\)/);
- assert.match(routes,/personalRequirementApplies\(person,course,individual\)/);
+ assert.match(routes,/effectivePathwayCourse\(person,course,groupRules,individual\)/);
  assert.match(routes,/person_requirement_'\+req\.body\.decision/);
  assert.match(page,/value="persoon">Specifieke persoon/);
  assert.match(page,/id="personTarget"/);
  assert.match(page,/individualManageable/);
+});
+
+test('Bestaande opleidingen kunnen worden geactiveerd zonder een tweede registratie',()=>{
+ const catalog=basePathwayCourses('politie');
+ assert.ok(catalog.length>0);
+ assert.ok(catalog.some(course=>course.name==='K-9'));
+ assert.ok(catalog.every(course=>course.mandatory===false));
+});
+test('Een bestaande opleiding ondersteunt meerdere onafhankelijke goedgekeurde doelgroepen',()=>{
+ const course={id:'courseA',department:'politie',name:'K-9',zone:'',
+   mandatory:false,targetKind:'alle',validMonths:0};
+ const p1={...person,rank:'Inspecteur',seriesRaw:'Reeks 1',
+   specialties:[{label:'K9'}]};
+ const p2={...person,personId:'1309532438053130326',rank:'Inspecteur',
+   seriesRaw:'Reeks 2',specialties:[]};
+ const byRank={courseId:'courseA',department:'politie',active:true,
+   targetKind:'rang',targetValue:'Inspecteur',validMonths:12};
+ const bySpec={courseId:'courseA',department:'politie',active:true,
+   targetKind:'specialisatie',targetValue:'K9',validMonths:6};
+ assert.equal(groupRequirementApplies(p1,course,byRank,'2026-11-19'),true);
+ assert.equal(groupRequirementApplies(p1,course,bySpec,'2026-11-19'),true);
+ assert.equal(groupRequirementApplies(p2,course,bySpec,'2026-11-19'),false);
+ const effective=effectivePathwayCourse(p1,course,[byRank,bySpec]);
+ assert.equal(effective.mandatory,true);
+ assert.equal(effective.validMonths,6);
+ assert.equal(effectivePathwayCourse(p2,course,[bySpec]).mandatory,false);
+ assert.equal(effectivePathwayCourse(p1,course,[{...bySpec,active:false}]).mandatory,false);
+});
+test('Reeksen kunnen apart verplicht gesteld worden en starten niet automatisch voor andere reeksen',()=>{
+ const course={id:'courseA',department:'politie',zone:''};
+ const rule={courseId:'courseA',department:'politie',
+  targetKind:'reeks',targetValue:'Reeks 1',active:true};
+ const p1={...person,seriesRaw:'Reeks 1'};
+ const p2={...person,seriesRaw:'Reeks 2'};
+ assert.equal(groupRequirementApplies(p1,course,rule),true);
+ assert.equal(groupRequirementApplies(p2,course,rule),false);
+ assert.equal(validRequirement({mandatory:true,targetKind:'reeks',
+  targetValue:'Reeks 1',reason:'De opleiding is verplicht voor deze reeks'}).targetKind,'reeks');
+});
+test('Individuele verplichting en groepsverplichting staan naast elkaar',()=>{
+ const course={id:'courseA',department:'politie',name:'Radioopleiding',zone:'',
+   mandatory:false};
+ const personAssignment={active:true,courseId:'courseA',
+   department:'politie',subjectDiscordId:id,
+   effectiveDate:'2026-01-01',validMonths:24};
+ const group={active:true,courseId:'courseA',department:'politie',
+   targetKind:'rang',targetValue:'Commissaris',validMonths:12};
+ const current=effectivePathwayCourse(person,course,[group],personAssignment,'2026-11-19');
+ assert.equal(current.mandatory,true);
+ assert.equal(current.validMonths,24);
+ assert.equal(effectivePathwayCourse({...person,personId:'1309532438053130326'},
+   course,[group],personAssignment,'2026-11-19').mandatory,false);
+});
+test('Specialisatiekeuze volgt geregistreerde personeelslabels',()=>{
+ assert.deepEqual(pathwaySpecialtyLabels({specialties:[{label:'K9'},'RAGO'],
+   specializations:['Motard']}),['K9','RAGO','Motard']);
+ assert.ok(pathwaySpecialtyLabels({special:'K9, RAGO'}).includes('K9'));
+});
+test('Groepsverplichtingen staan in transacties en moeten tweemaal beoordeeld worden',()=>{
+ const routes=readFileSync(new URL('../src/training-pathway-routes.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/opleidingstraject.html',import.meta.url),'utf8');
+ const notices=readFileSync(new URL('../public/meldingen.html',import.meta.url),'utf8');
+ assert.match(routes,/\/api\/training-pathway\/catalog-activate/);
+ assert.match(routes,/basePathwayCourses\(dept\)\.find/);
+ assert.match(routes,/\/api\/training-pathway\/courses\/:id\/group-requirement/);
+ assert.match(routes,/\/api\/training-pathway\/group-requirements\/:id\/review/);
+ assert.match(routes,/canApprovePathway\(req\.bpd,pending\.stage\)/);
+ assert.match(routes,/group_requirement_'\+req\.body\.decision/);
+ assert.match(page,/Bestaande opleiding selecteren/);
+ assert.match(page,/value="reeks">Reeks/);
+ assert.match(page,/id="targetSuggestions"/);
+ assert.match(page,/group-requirements\/'\+encodeURIComponent/);
+ assert.match(notices,/data\.groupRequirements/);
 });
