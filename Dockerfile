@@ -28,6 +28,7 @@ RUN node --test tests/training-completion-overview.test.js
 RUN node --test tests/meldingen-single-refresh-and-movement-groups.test.js
 RUN node --test tests/training-unified-workflow.test.js
 RUN node --test tests/activity-return-policy.test.js
+RUN node --test tests/activity-return-ui.test.js
 RUN node --test tests/training-specialty-approval.test.js
 RUN node --test tests/portal-date-display.test.js
 RUN node --test tests/sanction-measures-middenkader.test.js
