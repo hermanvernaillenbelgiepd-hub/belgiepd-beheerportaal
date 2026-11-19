@@ -160,7 +160,13 @@ header{padding-inline:clamp(15px,2vw,34px)}
   pointer-events:auto;flex:0 0 150px;width:150px;height:auto;min-width:0;
   padding:10px;border:1px solid #476080;color-scheme:normal}
 @media(max-width:600px){.formal-date-row{flex-wrap:nowrap}}
-/* MAIN: dossier-FICHE als geïntegreerde compacte werkruimte. */
+/* Niet-blokkerende, tijdelijke waarschuwing voor dossiers met dezelfde datum. */
+.dossier-date-toast{position:fixed;top:88px;right:18px;z-index:13000;width:min(440px,calc(100vw - 36px));
+ padding:14px 16px;border-radius:11px;border:1px solid #ad8b56;background:#263249;color:#f9e7c4;
+ box-shadow:0 9px 25px #0008;font-size:13px;line-height:1.5}
+.dossier-date-toast button{margin-top:9px;padding:6px 10px;background:#253c58;color:#edf3fa;border:1px solid #6d84a0}
+.linked-dossier-note{color:#abd8ff;font-size:12px;font-weight:650}
+ /* MAIN: dossier-FICHE als geïntegreerde compacte werkruimte. */
 #panel{scroll-margin-top:10px}
 #panel>div:first-child{position:sticky;top:0;z-index:4;background:#11233f;border-bottom:1px solid #3b5374;padding:8px 0}
 .dossier-tabbar{display:flex;gap:6px;flex-wrap:wrap;padding:8px 0 12px;border-bottom:1px solid #354d6a}
@@ -1177,6 +1183,11 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <option value="naamswijziging">Naamswijziging registreren</option>
 <option value="personeelsbeweging">Personeelsbeweging</option></select></div>
 <div><label for="staffCaseDate">Datum gebeurtenis</label><input id="staffCaseDate" type="date" required></div>
+<div id="staffCaseLinkedField" style="grid-column:1/-1" hidden>
+  <label for="staffCaseLinkedColleague">Ook tonen in dossier van collega (optioneel)</label>
+  <select id="staffCaseLinkedColleague"><option value="">Niet koppelen</option></select>
+  <small>De oorspronkelijke notitie blijft één registratie; de collega krijgt een leesbare verwijzing zonder extra weekrapportregel.</small>
+</div>
 <div id="staffCaseExtra" class="grid" style="grid-column:1/-1" hidden>
 <div id="staffCourseField" hidden>
 <label for="staffCourseName">Soort opleiding</label>
@@ -1262,6 +1273,11 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div id="formalScoreField"><label for="formalScore">Observatiescore (0–10; 0 = DEGRADATIE)</label><input id="formalScore" type="number" min="0" max="10" step="1" placeholder="0–10"></div>
 <div style="grid-column:1/-1"><label for="formalDetails">Samenvatting observatie / feiten en omkadering sanctie</label><textarea id="formalDetails" rows="3" maxlength="6000" required></textarea></div>
 <div style="grid-column:1/-1"><label for="formalPlayers">Betrokken personen (optioneel)</label><input id="formalPlayers" maxlength="1000"></div>
+<div id="formalLinkedField" style="grid-column:1/-1" hidden>
+  <label for="formalLinkedColleague">Observatie ook tonen in dossier van collega (optioneel)</label>
+  <select id="formalLinkedColleague"><option value="">Niet koppelen</option></select>
+  <small>Dit is een leesbare koppeling, geen tweede observatiescore. Bestaande dossierrechten blijven gelden.</small>
+</div>
 <div id="historicalObservationField" style="grid-column:1/-1" hidden>
   <label style="display:flex;gap:9px;align-items:center;cursor:pointer">
     <input id="historicalObservationCheck" type="checkbox" style="width:auto">
@@ -1918,6 +1934,11 @@ function setupDossierTabs(){
         <p id="registrationAccessHint" class="registration-access-hint" role="status" aria-live="polite"></p>
       </div>
       <p id="trainingDestination" class="training-destination" role="status" aria-live="polite" hidden></p>
+      <div id="dossierDateToast" class="dossier-date-toast" role="status" aria-live="polite" hidden>
+        <strong>Er bestaat al een registratie op deze datum</strong>
+        <div id="dossierDateToastText"></div>
+        <button id="dossierDateToastClose" type="button">Sluiten</button>
+      </div>
       <div id="registrationFields" class="registration-hub-fields"></div>
       <button type="button" id="registrationSubmit">Registratie opslaan</button>
     </section>
@@ -3120,6 +3141,7 @@ const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   functiewijziging:'Functiewijziging'};
 function updateStaffCaseFields(){
   const type=$('staffCaseType').value;
+  $('staffCaseLinkedField').hidden=!['notitie','algemene_notitie'].includes(type);
   const extras=staffCaseFields[type]||[];
   $('staffCaseExtra').hidden=!extras.length;
   for(const [field,ids] of Object.entries(staffCaseFields))
@@ -3188,6 +3210,7 @@ async function loadStaffCasePermissions(person,key,canManage){
     const overview=await request('/api/management/overview');
     if(!sameDossier(key))return;
     casePermissions=overview;
+    populateLinkedColleagues();
     const types=overview.typesByDepartment?.[person.dept]||[];
     registrationModuleStates.cases=!overview.writesEnabled?
       'schrijven momenteel uitgeschakeld':
@@ -4479,6 +4502,7 @@ async function loadStaffFormalPermissions(p,key){
     const data=await request('/api/registrations/subjects');
     if(!sameDossier(key))return;
     formalPermissions=data;
+    populateLinkedColleagues();
     updateHistoricalObservationUi();
     const canObs=Boolean(data.writesEnabled===true&&data.actor&&
       data.observationDepartments?.includes(p.dept));
