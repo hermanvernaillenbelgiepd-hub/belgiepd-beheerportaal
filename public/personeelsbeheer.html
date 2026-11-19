@@ -1800,7 +1800,7 @@ function displaySelectedRegistration(){
   }else if(kind==='case:opleiding'){
     trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
   }else if(kind==='case:inactiviteitsping'){
-    trainingDestination.textContent='Registreer een opvolgstatus (Actief / 50/50 / Inactief / verwijdering beoordelen) en bevestig afzonderlijk of een Discord-ping écht handmatig is verstuurd. De gegevens komen in het dossier en weekrapport. Dit formulier stuurt geen Discord-bericht en wijzigt de officiële personeelsstatus niet.';
+    trainingDestination.textContent='Registreer een opvolgstatus (Actief / 50/50 / Inactief / verwijdering beoordelen) en bevestig afzonderlijk of een Discord-ping écht handmatig is verstuurd. De gegevens komen in het dossier en weekrapport. Er wordt niet automatisch een Discord-bericht verstuurd; dit formulier verandert ook de officiële personeelsstatus niet.';
   }
   // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
   // wanneer de gebruiker naar een ander registratietype omschakelt.
@@ -3277,7 +3277,8 @@ const staffCaseLabels={verlof:'Verlofnotitie',notitie:'Belangrijke notitie',
   inactiviteitsping:'Activiteitenping',
   functiewijziging:'Functiewijziging'};
 function updateActivityDiscordDate(){
- const confirmed=$('staffActivityDiscordContact').value==='ja';
+ const confirmed=$('staffActivityDiscordContact').value==='ja'&&
+  $('staffCaseType').value==='inactiviteitsping';
  $('staffActivityDiscordDateWrap').hidden=!confirmed;
  $('staffActivityDiscordDate').required=confirmed;
  if(!confirmed)$('staffActivityDiscordDate').value='';

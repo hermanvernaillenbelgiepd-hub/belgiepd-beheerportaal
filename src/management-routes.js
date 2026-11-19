@@ -199,6 +199,11 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         represented=representativeFromPersonnel(snap.data,dept,representedId);
         if(!represented)return res.status(400).json({error:'Oorspronkelijke registrator niet gevonden in de personeelslijst'});
       }
+      // Record-only updates must never imply that a message was delivered.
+      // A separate private portal notice is created only for an attested
+      // manual Discord contact; this code NEVER sends an actual Discord DM.
+      const createMemberNotice=type==='inactiviteitsping'&&!represented&&
+        data.discordPingSent===true;
       const newDoc=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const batch=db().batch();
@@ -211,7 +216,10 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         submittedBy:{uid:req.bpd.uid,email:req.bpd.email},
         ...(type==='inactiviteitsping'?(represented?{
           historicalPing:true,pingNotificationStatus:'historisch'
-        }:{pingNotificationId:newDoc.id,pingNotificationStatus:'sent',
+        }:createMemberNotice?{
+          pingNotificationId:newDoc.id,pingNotificationStatus:'sent',
+          discordContactSource:'manual_attestation'
+        }:{pingNotificationStatus:'niet_verstuurd',
           discordContactSource:'manual_attestation'}):{}),
         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
       batch.create(notice,{caseId:caseId(dept,id),entryId:newDoc.id,type,dept,createdAt:FieldValue.serverTimestamp()});
@@ -219,7 +227,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         type,eventDate:data.eventDate,colleague:linkedColleague,at:FieldValue.serverTimestamp()});
       // Exactly one atomic record is shared between the member inbox,
       // source dossier and dynamic fortnight report. No Discord DM is sent.
-      if(type==='inactiviteitsping'&&!represented){
+      if(createMemberNotice){
         const ping=db().collection(INACTIVITY_PING_NOTICES).doc(id).collection('events').doc(newDoc.id);
         batch.create(ping,{...inactivityPingNotice({dept,discordId:id,entryId:newDoc.id,
           details:data.details,actor}),createdAt:FieldValue.serverTimestamp(),readAt:null});
