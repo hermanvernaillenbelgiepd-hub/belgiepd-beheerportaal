@@ -23,6 +23,27 @@ export function mayCorrectManualCase(actor,subject,entry){
     canRetireDossierRecord(actor,subject);
 }
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
+/**
+ * Every administrative annotation is an auditable clarification of an existing
+ * dossier event. It is NOT the authoritative workflow for withdrawing a leave,
+ * reversing a rank change, cancelling a sanction or changing an award.
+ */
+export function mayAnnotateDossierCase(actor,subject,entry){
+ if(!subject||!entry||entry.dept!==subject.dept||
+    entry.subjectDiscordId!==subject.personId||
+    entry.status==='verwijderd'||isRetired(entry)||
+    entry.amendmentOf||entry.retirementOf||
+    ['case-amendment','dossier-retirement','case-administrative-correction']
+     .includes(entry.source))return false;
+ if(!canRetireDossierRecord(actor,subject))return false;
+ const role=actor?.portalTechnicalMode===true?actor.operationalRole:actor?.role;
+ const scoped=actor?.portalTechnicalMode===true?
+   actor.operationalDepartmentRoles?.[subject.dept]:
+   roleForDepartment(actor,subject.dept);
+ return verifiedBoardCorpsDossierAdmin(actor)||
+   HIGH_ROLES.includes(role)&&HIGH_ROLES.includes(scoped);
+}
+
 export const RECORD_LABELS = Object.freeze({
   observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Belangrijke notitie', algemene_notitie:'Algemene notitie',
   opleiding:'Opleidingen en resultaten', activiteit:'Dienstactiviteit',
