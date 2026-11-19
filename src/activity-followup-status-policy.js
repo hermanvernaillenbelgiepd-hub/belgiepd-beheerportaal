@@ -2,16 +2,19 @@
 // Verified bot telemetry and approved leave are evaluated separately from
 // manually entered Discord-ping attestations.
 export const ACTIVITY_FOLLOWUP_STATUS=Object.freeze([
- 'ACTIEF','50/50','INACTIEF','VERWIJDERING_TE_BEOORDELEN'
+ 'ACTIEF','50/50','INACTIEF','VERWIJDERING_TE_BEOORDELEN',
+ 'GEEN_VERBETERING_NA_PING'
 ]);
 export const ACTIVITY_FOLLOWUP_LABELS=Object.freeze({
  ACTIEF:'Actief',
  '50/50':'50/50',
  INACTIEF:'Inactief',
- VERWIJDERING_TE_BEOORDELEN:'60+ dagen · verwijdering beoordelen'
+ VERWIJDERING_TE_BEOORDELEN:'60+ dagen · verwijdering beoordelen',
+ GEEN_VERBETERING_NA_PING:'Geen activiteitsverbetering na eerdere ping'
 });
 export const ACTIVITY_FOLLOWUP_SEVERITY=Object.freeze({
- ACTIEF:0,'50/50':1,INACTIEF:2,VERWIJDERING_TE_BEOORDELEN:3
+ ACTIEF:0,'50/50':1,INACTIEF:2,VERWIJDERING_TE_BEOORDELEN:3,
+ GEEN_VERBETERING_NA_PING:2
 });
 export function activityFollowupStatus({hours=null,daysAbsent=null,onApprovedLeave=false}={}){
  if(onApprovedLeave)return {status:null,reason:'Goedgekeurd verlof: geen automatische statusaanbeveling'};
