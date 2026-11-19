@@ -1,5 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
-import {canReadPersonnelSubject,canEditPersonnel} from './personnel-editor-policy.js';
+import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 
 // This is a personnel-record change, NOT a Discord role/cadre assignment.
 // Officer and corps authorisations always come from the verified portal session.
@@ -71,16 +71,17 @@ export function verifiedPoliceRankAuthority(actor){
   // Dual-appointed Bestuur/Korpsleiding members can have an administrative
   // profile while their signed Police service scope stays operational.
   // A separate CURRENT Discord Korpsleiding proof is still mandatory.
-  const independentlyVerifiedChief=actor.discordPoliceRank==='korpsleiding'||
-    actor.manualCorpsApproved===true;
-  const boardChief=!technical&&actor.boardPersonnelAdmin===true&&
-    actor.dossierSourceFresh===true&&scoped==='korpsleiding'&&
-    actor.discordPoliceRank==='korpsleiding';
-  if(scoped==='korpsleiding'&&independentlyVerifiedChief&&
-    (role==='korpsleiding'||boardChief))
+  const permittedProfile=role==='korpsleiding'||role==='officierenkader'||
+    // A verified technical profile preserves the already approved
+    // operational cadre. A Board profile without an operational scope
+    // NEVER gains Police powers from the Board label alone.
+    role==='beheerder'&&(technical&&actor.profileTechnicalAvailable===true||
+      actor.boardPersonnelAdmin===true&&actor.dossierSourceFresh===true);
+  if(!permittedProfile)return null;
+  if(scoped==='korpsleiding'&&
+     (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true))
     return 'korpsleiding';
-  if(role==='officierenkader'&&scoped==='officierenkader'&&
-     actor.discordPoliceRank==='officierenkader')
+  if(scoped==='officierenkader'&&actor.discordPoliceRank==='officierenkader')
     return 'officierenkader';
   return null;
 }
@@ -94,13 +95,12 @@ export function canChangePoliceGrade(actor,subject){
     return false;
   const cadre=verifiedPoliceRankAuthority(actor);
   if(!cadre)return false;
-  // A verified dual-appointment Chief is allowed to write lower Police
-  // grades even when a Board-facing account label prevents the generic
-  // canEditPersonnel check. Never let Board alone grant this capability.
-  const boardChief=actor.boardPersonnelAdmin===true&&
-    actor.dossierSourceFresh===true&&
-    cadre==='korpsleiding'&&actor.discordPoliceRank==='korpsleiding';
-  if(!canEditPersonnel(actor,subject)&&!boardChief)return false;
+  // The Police-grade permission above is STRICTER and more specific than
+  // generic personnel editing: it requires a matching approved Police cadre
+  // AND independently verified Discord role. A Board/technical profile or
+  // a stale generic editor flag must not veto that verified narrow permission.
+  // Never reuse this exception for names, sanctions, Discord roles or other
+  // personnel edits.
   const grade=policeCallGrade(subject.call);
   // Callsign and official personnel grade must not disagree on the cadre.
   if(grade===null||policeSubjectGradeOption(subject)===null)return false;
