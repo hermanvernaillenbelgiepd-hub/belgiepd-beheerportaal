@@ -35,18 +35,16 @@ test('old protected training register is reused, not duplicated',()=>{
 
 test('navigatie hergebruikt alleen kort geldige UI-context voor dezelfde Firebase-gebruiker',()=>{
  const nav=read('public/bpd-navigation.js');
- assert.match(nav,/navCacheTtlMs=20\\*1000/);
- assert.match(nav,/saved\\?\\.uid!==uid/);
- assert.match(nav,/cachedNavView\\(user\\.uid\\)/);
- assert.match(nav,/saveNavView\\(user\\.uid,context,member,citizen\\)/);
- assert.match(nav,/if\\(!user\\)\\{clearNavView\\(\\)/);
- assert.match(nav,/getIdToken\\(\\)/);
+ for(const value of ['navCacheTtlMs=20*1000','saved?.uid!==uid',
+  'cachedNavView(user.uid)','saveNavView(user.uid,context,member,citizen)',
+  'if(!user){clearNavView()','getIdToken()'])
+  assert.ok(nav.includes(value),'Verwachte navigatiebeveiliging: '+value);
  assert.ok(!nav.includes('sessionStorage.setItem(navCacheKey,token)'));
 });
 test('opleidingsregister vernieuwt rechten en personeelslijst niet dubbel bij initialisatie',()=>{
  const register=read('public/rollen-opleidingen.html');
- assert.match(register,/onAuthStateChanged\\(auth,\\(\\)=>refresh\\(\\)\\)/);
- assert.doesNotMatch(register,/await auth\\.authStateReady\\(\\);.*await refresh\\(\\)/);
+ assert.ok(register.includes('onAuthStateChanged(auth,()=>refresh())'));
+ assert.ok(!register.includes('await auth.authStateReady();await refresh()'));
 });
 test('roster names open the existing organogram card instead of showing private dossier data',()=>{
  assert.match(renderer,/onPersonClick=null/);
